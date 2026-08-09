@@ -19,7 +19,14 @@
  */
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import { Loader2, Send, MessageCircle, User, Users } from "lucide-react";
+import {
+  AlertCircle,
+  Loader2,
+  Send,
+  MessageCircle,
+  User,
+  Users,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
@@ -42,6 +49,7 @@ export default function ChatPage() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [initialLoadFailed, setInitialLoadFailed] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [offset, setOffset] = useState(0);
   const [isSending, setIsSending] = useState(false);
@@ -77,11 +85,13 @@ export default function ChatPage() {
         );
         messagesRef.current = sortedMessages;
         setMessages(sortedMessages);
+        setInitialLoadFailed(false);
         setUnreadCount(data.unreadCount);
         setOffset(PAGE_SIZE);
         setHasMore(data.messages.length === PAGE_SIZE);
       } catch (err) {
         if (!silent) {
+          setInitialLoadFailed(true);
           const is403 =
             (err as Error).message === "Forbidden" ||
             (err as Error).message.includes("HTTP 403");
@@ -357,6 +367,42 @@ export default function ChatPage() {
           />
         </div>
       </div>
+    );
+  }
+
+  if (initialLoadFailed && messages.length === 0) {
+    return (
+      <section
+        role="alert"
+        aria-labelledby="messages-load-error-title"
+        className="flex min-h-[50vh] flex-col items-center justify-center rounded-xl border p-8 text-center"
+        style={{
+          background: "var(--bz-card)",
+          borderColor: "var(--bz-border)",
+        }}
+      >
+        <AlertCircle
+          aria-hidden="true"
+          className="mb-4 h-12 w-12"
+          style={{ color: "var(--bz-copper-text)" }}
+        />
+        <h1
+          id="messages-load-error-title"
+          className="text-xl font-semibold"
+          style={{ color: "var(--tx-pure)" }}
+        >
+          Unable to load messages
+        </h1>
+        <p
+          className="mt-2 max-w-sm text-sm"
+          style={{ color: "var(--tx-secondary)" }}
+        >
+          Your messages are still safe. Check your connection and try again.
+        </p>
+        <Button className="mt-5" onClick={() => void loadMessages()}>
+          Retry
+        </Button>
+      </section>
     );
   }
 

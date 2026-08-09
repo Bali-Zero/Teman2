@@ -5,6 +5,7 @@ Real email+PIN authentication using bcrypt and JWT tokens
 
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from urllib.parse import urlparse
 
 import asyncpg
 import bcrypt
@@ -16,9 +17,10 @@ from pydantic import BaseModel, EmailStr
 from backend.app.core.config import settings
 from backend.app.dependencies import get_database_pool
 from backend.app.models import UserProfile
-from backend.app.utils.cookie_auth import clear_auth_cookies, set_auth_cookies
+from backend.app.utils.cookie_auth import clear_auth_cookies, get_jwt_from_cookie, set_auth_cookies
 from backend.app.utils.logging_utils import get_logger, log_error, log_warning
 from backend.services.common.background import spawn
+from backend.services.pii.violation_store import hash_subject
 
 logger = get_logger(__name__)
 
@@ -62,6 +64,14 @@ class MagicLinkRequest(BaseModel):
     email: EmailStr
 
 
+def _redirect_for_role(role: str) -> str:
+    """Return the only post-auth destination owned by a user role."""
+    return {
+        "client": "/portal",
+        "partner": "/portal/partner/dashboard",
+    }.get(role, "/dashboard")
+
+
 # ============================================================================
 # Database Dependencies
 # ============================================================================
@@ -97,12 +107,66 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> A
     to_encode.update(
         {
             "exp": expire,
-            "iat": now,
+            # Preserve sub-second ordering so a token issued immediately after
+            # revoke-all is distinguishable from one issued just before it.
+            "iat": now.timestamp(),
             "jti": str(uuid.uuid4()),
             "type": "access",
         }
     )
     return jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+
+
+def _get_request_access_token(request: Request) -> str | None:
+    """Extract the active access token without logging or returning its value."""
+    authorization = request.headers.get("authorization", "")
+    if authorization.startswith("Bearer "):
+        token = authorization[7:].strip()
+        if token:
+            return token
+    return get_jwt_from_cookie(request)
+
+
+async def _revoke_request_session(request: Request) -> None:
+    """Revoke the current JWT until its own expiry, when revocation is enabled."""
+    if not settings.enable_token_revocation:
+        logger.warning("Token revocation is disabled; logout is local-only")
+        return
+
+    token = _get_request_access_token(request)
+    if token is None:
+        # This is reachable only in isolated tests that override authentication.
+        return
+
+    try:
+        payload = jwt.decode(
+            token,
+            JWT_SECRET_KEY,
+            algorithms=[JWT_ALGORITHM],
+            options={"verify_exp": True, "require_exp": True},
+        )
+        jti = payload.get("jti")
+        expires_at = payload.get("exp")
+        if not isinstance(jti, str) or not jti or not isinstance(expires_at, (int, float)):
+            raise HTTPException(status_code=401, detail="Invalid session token")
+    except JWTError as exc:
+        raise HTTPException(status_code=401, detail="Invalid session token") from exc
+
+    ttl_seconds = max(1, int(expires_at - datetime.now(timezone.utc).timestamp()))
+
+    try:
+        from backend.core.redis_manager import RedisManager
+        from backend.services.security.token_revocation import TokenRevocationService
+
+        redis_client = RedisManager.get_instance().get_async_client()
+        revocation_service = TokenRevocationService(redis_client=redis_client)
+        await revocation_service.revoke_token(jti, ttl_seconds, reason="logout")
+    except Exception as exc:
+        logger.error("Token revocation failed during logout: %s", type(exc).__name__)
+        raise HTTPException(
+            status_code=503,
+            detail="Session revocation service temporarily unavailable",
+        ) from exc
 
 
 async def get_current_user(
@@ -118,12 +182,11 @@ async def get_current_user(
     )
 
     try:
-        # S03: Two-phase JWT expiry enforcement
         payload = jwt.decode(
             credentials.credentials,
             JWT_SECRET_KEY,
             algorithms=[JWT_ALGORITHM],
-            options={"verify_exp": getattr(settings, "jwt_enforce_expiry", False)},
+            options={"verify_exp": True, "require_exp": True},
         )
         user_id: str = payload.get("sub")
         email: str = payload.get("email")
@@ -131,6 +194,20 @@ async def get_current_user(
             raise credentials_exception
     except JWTError as e:
         raise credentials_exception from e
+
+    from backend.services.security.token_revocation import (
+        RevocationStoreUnavailable,
+        is_session_revoked,
+    )
+
+    try:
+        if await is_session_revoked(payload):
+            raise credentials_exception
+    except RevocationStoreUnavailable as e:
+        raise HTTPException(
+            status_code=503,
+            detail="Authentication service temporarily unavailable",
+        ) from e
 
     # Get user from database using connection pool
     async with db_pool.acquire() as conn:
@@ -240,7 +317,9 @@ async def login(
 
             if await brute_force.is_blocked(client_ip or "", request.email):
                 logger.warning(
-                    f"S03: Login blocked (brute force) ip={client_ip} email={request.email}"
+                    "S03: Login blocked (brute force) ip_hash=%s user_hash=%s",
+                    hash_subject(client_ip),
+                    hash_subject(request.email),
                 )
                 raise HTTPException(
                     status_code=429,
@@ -269,7 +348,7 @@ async def login(
                        COALESCE(full_name, name) as name,
                        pin_hash as password_hash, role,
                        'active' as status, NULL::jsonb as metadata, language as language_preference,
-                       active, avatar
+                       active, avatar, linked_client_id, portal_access
                 FROM team_members
                 WHERE LOWER(email) = LOWER($1)
             """
@@ -351,6 +430,27 @@ async def login(
                         )
                 raise HTTPException(status_code=401, detail="Invalid email or PIN")
 
+            # A valid PIN is not sufficient to establish a portal session.
+            # Keep this check after credential verification so the endpoint
+            # does not disclose portal eligibility to unauthenticated callers,
+            # and align PIN login with the magic-link eligibility contract.
+            if user["role"] == "client" and (
+                not user.get("portal_access") or user.get("linked_client_id") is None
+            ):
+                await audit_service.log_auth_event(
+                    email=request.email,
+                    action="failed_login",
+                    success=False,
+                    ip_address=client_ip,
+                    user_agent=user_agent,
+                    failure_reason="Portal access unavailable",
+                )
+                logger.warning("Portal PIN login denied for an ineligible client account")
+                raise HTTPException(
+                    status_code=403,
+                    detail="Portal access is not available for this account",
+                )
+
             # Update last login
             await conn.execute(
                 "UPDATE team_members SET last_login = NOW(), failed_attempts = 0 WHERE id = $1",
@@ -379,10 +479,10 @@ async def login(
                 "role": user["role"],
             }
 
-            # For client users, include linked_client_id in JWT
-            # linked_client_id logic disabled due to schema mismatch
-            # if user["role"] == "client" and user.get("linked_client_id"):
-            #    jwt_data["client_id"] = user["linked_client_id"]
+            # Bind portal sessions to the authoritative client record. Refresh
+            # already emits this claim; login must use the same contract.
+            if user["role"] == "client" and user.get("linked_client_id"):
+                jwt_data["client_id"] = user["linked_client_id"]
 
             access_token_expires = timedelta(hours=JWT_ACCESS_TOKEN_EXPIRE_HOURS)
             access_token = create_access_token(
@@ -390,9 +490,10 @@ async def login(
                 expires_delta=access_token_expires,
             )
 
-            # Determine redirect based on role
-            # Clients go to portal, team members go to dashboard
-            redirect_to = "/portal" if user["role"] == "client" else "/dashboard"
+            # Determine redirect based on role. Partner users have a dedicated,
+            # data-minimized portal and must never land in the team dashboard or
+            # the client tenant surface.
+            redirect_to = _redirect_for_role(user["role"])
 
             # Prepare user profile
             user_profile = {
@@ -408,8 +509,8 @@ async def login(
 
             # Add client-specific fields
             if user["role"] == "client":
-                # client specific logic temporarily disabled due to schema mismatch
-                pass
+                user_profile["client_id"] = user.get("linked_client_id")
+                user_profile["portal_access"] = user.get("portal_access", False)
 
             # Log success
             await audit_service.log_auth_event(
@@ -467,6 +568,30 @@ async def login(
 # ============================================================================
 
 
+def _synthetic_email_endpoint_is_safe(to_email: str, api_url: str) -> bool:
+    """Keep reserved QA recipients on an explicit loopback mail sink."""
+    if not to_email.strip().lower().endswith("@example.com"):
+        return True
+
+    try:
+        parsed = urlparse(api_url)
+        port = parsed.port
+    except ValueError:
+        return False
+
+    return (
+        parsed.scheme in {"http", "https"}
+        and parsed.hostname in {"127.0.0.1", "::1", "localhost"}
+        and port is not None
+        and parsed.username is None
+        and parsed.password is None
+        and parsed.path == "/api/notifications/send-email"
+        and not parsed.params
+        and not parsed.query
+        and not parsed.fragment
+    )
+
+
 async def _send_magic_link_email(to_email: str, name: str | None, link_url: str) -> bool:
     """Send the magic-link email via Brevo (from=zantara@balizero.com — fixed rule).
 
@@ -492,6 +617,9 @@ async def _send_magic_link_email(to_email: str, name: str | None, link_url: str)
         "https://nuzantara-rag.fly.dev/api/notifications/send-email",
     )
     api_key = os.getenv("NUZANTARA_API_KEY", "")
+    if not _synthetic_email_endpoint_is_safe(to_email, api_url):
+        logger.error("Magic-link email rejected unsafe synthetic-recipient endpoint")
+        return False
     try:
         async with httpx.AsyncClient(timeout=30.0) as http_client:
             resp = await http_client.post(
@@ -603,6 +731,8 @@ async def verify_magic_link(
         "email": user["email"],
         "role": user["role"],
     }
+    if user["role"] == "client" and user.get("client_id"):
+        jwt_data["client_id"] = user["client_id"]
     access_token = create_access_token(
         data=jwt_data,
         expires_delta=timedelta(hours=JWT_ACCESS_TOKEN_EXPIRE_HOURS),
@@ -638,6 +768,8 @@ async def verify_magic_link(
                 "email": user["email"],
                 "name": user["name"],
                 "role": user["role"],
+                "client_id": user.get("client_id"),
+                "portal_access": user.get("portal_access", False),
             },
             "csrfToken": csrf_token,
             "redirectTo": "/portal",
@@ -653,15 +785,12 @@ async def get_profile(current_user: dict = Depends(get_current_user)) -> UserPro
 
 @router.post("/logout")
 async def logout(
+    request: Request,
     response: Response,
     _current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
-    """
-    Logout user and clear authentication cookies.
-
-    Note: JWT tokens are stateless, so we only clear cookies.
-    Client should also discard any stored tokens.
-    """
+    """Revoke the active JWT and clear authentication cookies."""
+    await _revoke_request_session(request)
     clear_auth_cookies(response)
     return {"success": True, "message": "Logout successful"}
 
@@ -752,7 +881,7 @@ async def refresh_token(
             )
 
             # Determine redirect based on role
-            redirect_to = "/portal" if user["role"] == "client" else "/dashboard"
+            redirect_to = _redirect_for_role(user["role"])
 
             # Prepare user profile
             user_profile = {
@@ -806,24 +935,25 @@ async def revoke_all_sessions(
     """
     Revoke all active sessions for the current user (S03-S2).
 
-    Sets a user-level revocation key in Redis. All tokens for this
-    user will be rejected until the key expires (24h).
+    Sets a timestamped user-level revocation key in Redis. Tokens issued at or
+    before that instant are rejected; a subsequent login receives a valid JWT.
     """
-    from backend.app.core.config import settings
-
     user_email = current_user.get("email", "")
     client_ip = request.client.host if request.client else None
 
-    if settings.enable_token_revocation:
-        try:
-            from backend.core.redis_manager import RedisManager
-            from backend.services.security.token_revocation import TokenRevocationService
+    try:
+        from backend.core.redis_manager import RedisManager
+        from backend.services.security.token_revocation import TokenRevocationService
 
-            redis_client = RedisManager.get_instance().get_async_client()
-            revocation_svc = TokenRevocationService(redis_client=redis_client)
-            await revocation_svc.revoke_all_user_tokens(user_email, reason="user_requested")
-        except Exception as e:
-            logger.warning("S03-S2: Revoke-all failed for %s: %s", user_email, e)
+        redis_client = RedisManager.get_instance().get_async_client()
+        revocation_svc = TokenRevocationService(redis_client=redis_client)
+        await revocation_svc.revoke_all_user_tokens(user_email, reason="user_requested")
+    except Exception as e:
+        logger.error("S03-S2: Revoke-all failed: %s", type(e).__name__)
+        raise HTTPException(
+            status_code=503,
+            detail="Session revocation service temporarily unavailable",
+        ) from e
 
     # Audit log
     try:

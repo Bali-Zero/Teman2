@@ -1,10 +1,21 @@
+import asyncio
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from backend.services.rag.agentic import orchestrator_streaming_core
+from backend.services.rag.agentic.orchestrator_core import OrchestratorCore
 from backend.services.rag.agentic.orchestrator_streaming_core import OrchestratorStreamingCore
+from backend.services.rag.agentic.schema import (
+    AnalyticsReceiptStatus,
+    CoreResult,
+    EvidenceProvenance,
+    FinalizationStatus,
+    ProducerOrigin,
+    TrustedBypassReason,
+)
+from backend.services.tools.definitions import AgentState
 
 
 class FakeStreamingManager:
@@ -16,6 +27,26 @@ class FakeStreamingManager:
 
     def create_initial_status_event(self, correlation_id: str) -> dict:
         return {"type": "status", "data": {"correlation_id": correlation_id}}
+
+    def create_error_event(
+        self,
+        *,
+        error_type: str,
+        message: str,
+        correlation_id: str,
+    ) -> dict:
+        return {
+            "type": "error",
+            "data": {
+                "error_type": error_type,
+                "message": message,
+                "correlation_id": correlation_id,
+            },
+        }
+
+    async def process_event_stream(self, *, event_generator, **_kwargs):
+        async for event in event_generator:
+            yield event
 
 
 @pytest.mark.asyncio
@@ -74,6 +105,193 @@ async def test_single_event_generator_yields_original_event() -> None:
     event = {"type": "token", "data": "hello"}
 
     assert [item async for item in core._single_event_generator(event)] == [event]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("result", "expected_origin", "expected_provenance", "expected_trust"),
+    [
+        (
+            CoreResult(answer="hello", model_used="greeting-gate"),
+            ProducerOrigin.QUERY_GATE,
+            None,
+            TrustedBypassReason.DETERMINISTIC_QUERY_GATE,
+        ),
+        (
+            CoreResult(
+                answer="cached",
+                sources=[{"source": "cache-source"}],
+                model_used="cache",
+                cache_hit=True,
+            ),
+            ProducerOrigin.SEMANTIC_CACHE,
+            EvidenceProvenance.SEMANTIC_CACHE,
+            None,
+        ),
+    ],
+)
+async def test_gate_and_cache_stream_cross_finalization_before_first_token(
+    monkeypatch,
+    result: CoreResult,
+    expected_origin: ProducerOrigin,
+    expected_provenance: EvidenceProvenance | None,
+    expected_trust: TrustedBypassReason | None,
+) -> None:
+    async def no_sleep(_seconds: float) -> None:
+        return None
+
+    monkeypatch.setattr(orchestrator_streaming_core.asyncio, "sleep", no_sleep)
+    real_core = OrchestratorCore.__new__(OrchestratorCore)
+    real_core.db_pool = None
+    real_core.prepare_query_context = AsyncMock(return_value=({}, [], {}, "", None))
+    real_core.check_gates_and_cache = AsyncMock(return_value=result)
+    streaming_core = OrchestratorStreamingCore(
+        core=real_core,
+        streaming_manager=FakeStreamingManager(),
+    )
+
+    with patch.object(streaming_core, "_mark_react_stream_unfinalized") as marker:
+        events = [
+            event
+            async for event in streaming_core.stream_query_core(
+                query="stream contract",
+                user_id="contract-user",
+                conversation_history=None,
+                session_id=None,
+                images=None,
+                tool_execution_counter={"count": 0},
+                correlation_id="contract-correlation",
+            )
+        ]
+
+    marker.assert_not_called()
+
+    first_token_index = next(
+        index for index, event in enumerate(events) if event["type"] == "token"
+    )
+    finalization_metadata = next(
+        event
+        for event in events[:first_token_index]
+        if event["type"] == "metadata" and "finalization_status" in event["data"]
+    )
+    assert (
+        finalization_metadata["data"]["finalization_status"] is FinalizationStatus.SHADOW_RECORDED
+    )
+    assert finalization_metadata["data"]["producer_origin"] is expected_origin
+    assert finalization_metadata["data"]["evidence_provenance"] is expected_provenance
+    assert finalization_metadata["data"]["trusted_bypass_reason"] is expected_trust
+    assert finalization_metadata["data"]["analytics_receipt"] is AnalyticsReceiptStatus.SKIPPED
+    assert result.answer in {"hello", "cached"}
+
+
+def test_react_stream_gap_is_fail_visible_and_cannot_claim_complete() -> None:
+    core = OrchestratorStreamingCore(core=object(), streaming_manager=FakeStreamingManager())
+
+    with (
+        patch.object(orchestrator_streaming_core, "add_span_event") as span_event,
+        patch.object(orchestrator_streaming_core.logger, "warning") as warning,
+    ):
+        core._mark_react_stream_unfinalized()
+
+    assert orchestrator_streaming_core.REACT_STREAM_FINALIZATION_COMPLETE is False
+    span_event.assert_called_once_with(
+        "finalization.stream_react_unfinalized",
+        {
+            "coverage_complete": False,
+            "reason": "tokens_emitted_before_confidence_and_analytics",
+        },
+    )
+    warning.assert_called_once()
+
+
+class _RawReactReasoningEngine:
+    def __init__(self, outcome: str) -> None:
+        self.outcome = outcome
+        self.tool_map: dict = {}
+
+    async def execute_react_loop_stream(self, **_kwargs):
+        yield {"type": "token", "data": "raw-token"}
+        if self.outcome == "error":
+            raise RuntimeError("raw stream failed")
+        if self.outcome == "cancel":
+            raise asyncio.CancelledError
+
+
+class _RawReactCore:
+    def __init__(self, outcome: str) -> None:
+        self.reasoning_engine = _RawReactReasoningEngine(outcome)
+        self.llm_gateway = SimpleNamespace(
+            create_chat_with_history=lambda **_kwargs: object(),
+        )
+        self.metrics_manager = SimpleNamespace(
+            extract_collections_from_state=lambda _state: set(),
+            extract_sources_from_state=lambda _state: [],
+        )
+        self.db_pool = None
+
+    async def prepare_query_context(self, **_kwargs):
+        return ({"profile": None}, [], {}, "", None)
+
+    async def check_gates_and_cache(self, **_kwargs):
+        return None
+
+    async def prepare_react_execution(self, **_kwargs):
+        state = AgentState(query="raw stream contract", intent_type="business_complex")
+        state.evidence_score = 0.8
+        state.trusted_tools_used = True
+        return ("gemini-parent", False, state, "system prompt")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("outcome", "expect_error_event", "expect_cancel"),
+    [
+        ("complete", False, False),
+        ("error", True, False),
+        ("cancel", False, True),
+    ],
+)
+async def test_real_raw_react_stream_marks_every_terminal_path_exactly_once(
+    outcome: str,
+    expect_error_event: bool,
+    expect_cancel: bool,
+) -> None:
+    streaming_core = OrchestratorStreamingCore(
+        core=_RawReactCore(outcome),
+        streaming_manager=FakeStreamingManager(),
+    )
+
+    with patch.object(streaming_core, "_mark_react_stream_unfinalized") as marker:
+        if expect_cancel:
+            with pytest.raises(asyncio.CancelledError):
+                async for _event in streaming_core.stream_query_core(
+                    query="raw stream contract",
+                    user_id="contract-user",
+                    conversation_history=None,
+                    session_id=None,
+                    images=None,
+                    tool_execution_counter={"count": 0},
+                    correlation_id="contract-correlation",
+                ):
+                    pass
+            events = []
+        else:
+            events = [
+                event
+                async for event in streaming_core.stream_query_core(
+                    query="raw stream contract",
+                    user_id="contract-user",
+                    conversation_history=None,
+                    session_id=None,
+                    images=None,
+                    tool_execution_counter={"count": 0},
+                    correlation_id="contract-correlation",
+                )
+            ]
+
+    marker.assert_called_once_with()
+    assert any(event.get("data") == "raw-token" for event in events) is not expect_cancel
+    assert any(event["type"] == "error" for event in events) is expect_error_event
 
 
 # ─────────────────────────────────────────────────────────────────────────

@@ -1000,8 +1000,20 @@ class DocumentUpdate(BaseModel):
 
 
 class ClientProfileUpdate(BaseModel):
+    """`google_drive_folder_id` is deliberately NOT a field here (removed
+    2026-08-09, PENDING-ARMS adversarial review of the Drive write-provenance
+    fix). This column is the trust anchor `assert_drive_file_belongs_to_client`
+    checks new document `file_id`s against — accepting it from a generic
+    profile PATCH let any caller with write access to a client poison that
+    anchor with an arbitrary folder id, then either read the victim folder's
+    contents through the read proxy directly or launder a foreign document
+    through the new write guard. The canonical, backend-controlled path is
+    `POST /clients/{id}/ensure-drive-folder` (`crm_clients.py`), which creates
+    the folder itself under a per-client advisory lock and never takes a
+    caller-supplied folder id. No live frontend flow ever sent this field
+    through `PATCH .../profile` (grepped `apps/mouth`, 2026-08-09)."""
+
     avatar_url: AvatarUrl = None
-    google_drive_folder_id: str | None = None
     date_of_birth: str | None = None
     passport_expiry: str | None = None
     company_name: str | None = None
@@ -1217,7 +1229,10 @@ async def update_client_profile(
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
-    Update client profile fields (avatar, Google Drive folder, etc.)
+    Update client profile fields (avatar, date of birth, passport expiry,
+    company name). Does NOT accept `google_drive_folder_id` — see
+    `ClientProfileUpdate`'s docstring for why; use
+    `POST /clients/{id}/ensure-drive-folder` to associate a Drive folder.
     """
     async with pool.acquire() as _conn:
         await verify_client_access(client_id, current_user, _conn, allow_assigned=True, write=True)
@@ -1228,11 +1243,6 @@ async def update_client_profile(
     if data.avatar_url is not None:
         update_fields.append(f"avatar_url = ${param_num}")
         values.append(data.avatar_url)
-        param_num += 1
-
-    if data.google_drive_folder_id is not None:
-        update_fields.append(f"google_drive_folder_id = ${param_num}")
-        values.append(data.google_drive_folder_id)
         param_num += 1
 
     if data.date_of_birth is not None:

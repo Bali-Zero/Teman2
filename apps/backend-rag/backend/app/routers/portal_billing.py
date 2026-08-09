@@ -54,15 +54,26 @@ async def get_invoice_pdf_url(
     client: dict = Depends(get_current_client),
     portal_service: PortalService = Depends(_get_portal_service),
 ) -> dict[str, Any]:
-    """Get the Drive download URL for an invoice PDF."""
-    result = await portal_service.get_invoice_pdf_url(
-        client["client_id"],
-        invoice_id,
-        current_user=client,
-    )
-    if result is None:
-        raise HTTPException(status_code=404, detail="Invoice not found or PDF not available")
-    return {"success": True, "data": result}
+    """Get the client-safe portal proxy URL for an invoice PDF."""
+    try:
+        result = await portal_service.get_invoice_pdf_url(
+            client["client_id"],
+            invoice_id,
+            current_user=client,
+        )
+        if result is None:
+            raise HTTPException(status_code=404, detail="Invoice not found or PDF not available")
+        return {"success": True, "data": result}
+    except HTTPException:
+        raise
+    except Exception as error:
+        logger.error(
+            "Failed to resolve invoice PDF %s for client %s: %s",
+            invoice_id,
+            client["client_id"],
+            error,
+        )
+        raise HTTPException(status_code=500, detail="Failed to load invoice PDF") from error
 
 
 @router.get("/{invoice_id}/pdf")

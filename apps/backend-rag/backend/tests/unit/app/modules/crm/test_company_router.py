@@ -741,6 +741,89 @@ class TestCompanyDocuments:
         assert resp.status_code == 200
 
     @pytest.mark.asyncio
+    async def test_create_document_with_file_id_checks_provenance(
+        self, mock_db_pool, mock_current_user
+    ):
+        """Innocence: a genuine company file_id that passes provenance still
+        registers (PENDING-ARMS 2026-08-01, company twin of the client guard)."""
+        from unittest.mock import patch
+
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.modules.crm.company_router import router
+
+        test_app = FastAPI()
+        test_app.include_router(router)
+
+        from backend.app.dependencies import get_current_user, get_database_pool
+
+        test_app.dependency_overrides[get_database_pool] = lambda: mock_db_pool
+        test_app.dependency_overrides[get_current_user] = lambda: mock_current_user
+
+        mock_db_pool._mock_conn.fetchval = AsyncMock(return_value=1)  # company exists
+        row = MagicMock()
+        row.__getitem__ = lambda s, k: {"id": 10, "uuid": "doc-uuid"}[k]
+        mock_db_pool._mock_conn.fetchrow = AsyncMock(return_value=row)
+
+        with (
+            patch(
+                "backend.app.modules.crm.company_router.assert_drive_file_belongs_to_company",
+                new=AsyncMock(),
+            ) as mock_provenance,
+            TestClient(test_app) as tc,
+        ):
+            resp = tc.post(
+                "/api/crm/companies/1/documents",
+                json={"document_type": "npwp", "google_drive_file_id": "own-file-id"},
+            )
+
+        assert resp.status_code == 200
+        mock_provenance.assert_awaited_once_with("own-file-id", 1, mock_db_pool._mock_conn)
+
+    @pytest.mark.asyncio
+    async def test_create_document_rejects_foreign_file_id(self, mock_db_pool, mock_current_user):
+        """Guilt: a google_drive_file_id that does not descend from THIS
+        company's own Drive folder is refused before the row is inserted."""
+        from unittest.mock import patch
+
+        from fastapi import FastAPI, HTTPException
+        from fastapi.testclient import TestClient
+
+        from backend.app.modules.crm.company_router import router
+
+        test_app = FastAPI()
+        test_app.include_router(router)
+
+        from backend.app.dependencies import get_current_user, get_database_pool
+
+        test_app.dependency_overrides[get_database_pool] = lambda: mock_db_pool
+        test_app.dependency_overrides[get_current_user] = lambda: mock_current_user
+
+        mock_db_pool._mock_conn.fetchval = AsyncMock(return_value=1)  # company exists
+        mock_db_pool._mock_conn.fetchrow = AsyncMock()
+
+        with (
+            patch(
+                "backend.app.modules.crm.company_router.assert_drive_file_belongs_to_company",
+                new=AsyncMock(
+                    side_effect=HTTPException(
+                        status_code=403,
+                        detail="Drive file is not in this client's own folder tree",
+                    )
+                ),
+            ),
+            TestClient(test_app) as tc,
+        ):
+            resp = tc.post(
+                "/api/crm/companies/1/documents",
+                json={"document_type": "npwp", "google_drive_file_id": "someone-elses-file-id"},
+            )
+
+        assert resp.status_code == 403
+        mock_db_pool._mock_conn.fetchrow.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_create_document_company_not_found(self, mock_db_pool, mock_current_user):
         from fastapi import FastAPI
         from fastapi.testclient import TestClient

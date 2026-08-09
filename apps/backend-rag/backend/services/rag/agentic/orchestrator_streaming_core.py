@@ -27,6 +27,10 @@ from backend.services.rag.agentic.thinking_indicators import ThinkingIndicatorSe
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+# Full ReAct streaming finalization requires a separate TTFT/abstain design:
+# raw tokens leave the process before confidence and analytics are available.
+REACT_STREAM_FINALIZATION_COMPLETE = False
+
 
 class OrchestratorStreamingCore:
     """
@@ -179,6 +183,9 @@ class OrchestratorStreamingCore:
         )
 
         if gate_or_cache_result:
+            gate_or_cache_result = await self.core.finalize_result(
+                gate_or_cache_result,
+            )
             # Stream gate/cache response
             async for event in self._stream_core_result(
                 result=gate_or_cache_result,
@@ -266,7 +273,12 @@ class OrchestratorStreamingCore:
         # This is applied AFTER prepare_react_execution via state mutation below.
         _crm_precall_has_data = len(crm_precall_context) > 0
 
-        model_tier, _deep_think_mode, state, system_prompt = await self.core.prepare_react_execution(
+        (
+            model_tier,
+            _deep_think_mode,
+            state,
+            system_prompt,
+        ) = await self.core.prepare_react_execution(
             query=query,
             user_context=user_context,
             history=optimized_history,
@@ -377,9 +389,7 @@ class OrchestratorStreamingCore:
                 )
 
                 policy = build_abstain_policy(getattr(state, "query", "") or "")
-                confidence_zone = policy.confidence_zone(
-                    evidence_score, trusted=trusted
-                )
+                confidence_zone = policy.confidence_zone(evidence_score, trusted=trusted)
 
             # 6. Yield done event with metrics
             execution_time = time.time() - start_time
@@ -426,7 +436,32 @@ class OrchestratorStreamingCore:
                 correlation_id=correlation_id,
             )
         finally:
-            pass  # R5 Phase 6: NLM task cleanup removed (no speculative NLM task)
+            # Exactly one fail-visible marker for every raw ReAct stream exit:
+            # normal exhaustion, handled exception, cancellation, or a caller
+            # closing the async generator. Marker failures must not mask the
+            # original exception/cancellation.
+            try:
+                self._mark_react_stream_unfinalized()
+            except Exception as marker_error:
+                logger.warning(
+                    "[FinalizationSpine] stream gap marker failed: %s",
+                    marker_error,
+                )
+
+    @staticmethod
+    def _mark_react_stream_unfinalized() -> None:
+        """Emit the fail-visible shadow marker for the raw ReAct stream gap."""
+        add_span_event(
+            "finalization.stream_react_unfinalized",
+            {
+                "coverage_complete": REACT_STREAM_FINALIZATION_COMPLETE,
+                "reason": "tokens_emitted_before_confidence_and_analytics",
+            },
+        )
+        logger.warning(
+            "[FinalizationSpine] stream_react_unfinalized: raw tokens precede "
+            "confidence and analytics; full parity is a separate TTFT design"
+        )
 
     async def _stream_core_result(
         self,
@@ -469,13 +504,25 @@ class OrchestratorStreamingCore:
                 if verification_status and verification_status != "passed"
                 else "success"
             )
+        metadata = {
+            "status": status,
+            "route": route_used,
+            "model_used": model_used,
+        }
+        finalization_status = getattr(result, "finalization_status", None)
+        if finalization_status is not None:
+            metadata.update(
+                {
+                    "finalization_status": finalization_status,
+                    "producer_origin": getattr(result, "producer_origin", None),
+                    "evidence_provenance": getattr(result, "evidence_provenance", None),
+                    "trusted_bypass_reason": getattr(result, "trusted_bypass_reason", None),
+                    "analytics_receipt": getattr(result, "analytics_receipt", None),
+                }
+            )
         yield {
             "type": "metadata",
-            "data": {
-                "status": status,
-                "route": route_used,
-                "model_used": model_used,
-            },
+            "data": metadata,
             "timestamp": time.time(),
         }
 

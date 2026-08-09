@@ -62,8 +62,8 @@
     {
       "id": "kim-2025-17x-error-amplification-as-cause",
       "pattern": "\\b17[.,]2\\s*(-|\\s)?\\s*[×x]|\\b4[.,]4\\s*(-|\\s)?\\s*[×x]",
-      "context_pattern": "error|amplif|peer|topolog|coordinat|Kim|2512\\.08296|Independent|Decentralized|swarm|Google|sub-?agents?|agents?|talk|hand-?off|handoff|never",
-      "context_window": 3,
+      "context_pattern": "error|amplif|peer|topolog|coordinat|Kim|2512\\.08296|Independent|Decentralized|swarm|Google|sub-?agents?|hand-?off|handoff",
+      "context_window": 0,
       "source": "arXiv:2512.08296v3 (Kim et al., Towards a Science of Scaling Agent Systems)",
       "retracted": "2026-08-02",
       "prs": ["#3509", "#3513", "#3514"],

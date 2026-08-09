@@ -30,8 +30,20 @@ copies of a corrected line.
 
 WHAT COUNTS AS FAILURE, and what deliberately does not:
 
-  - `halt_reason == "weekend"` → 0. An intentional calendar skip is a healthy
-    no-op, not a death; this rule already existed in pipeline.py and is kept.
+  - an intentional calendar skip → 0. A healthy no-op is not a death.
+    Recognised as `halt_reason == "weekend"` (the literal pipeline.py has
+    written since #3742, kept so a half-deployed fleet cannot regress) **or
+    any reason prefixed `skip:`**.
+
+    The prefix, rather than a set of accepted words, is the whole point.
+    #3742 built this module for all eight pipelines but wired the marker into
+    only ONE — the one that had bitten — so on 2026-08-09 nb2's Saturday skip
+    exited 0 in silence while nb3's Sunday skip still exited 1 and fired a P0
+    reading "NB-3 Company Setup pipeline FAILED (exit 1)". Both runs were
+    correct; one of them shouted. A word-list would have to be edited again
+    for the ninth pipeline, or for `skip:holiday`; a namespace cannot be
+    forgotten, and `test_calendar_skip_marker_class.py` refuses to let a
+    pipeline declare a marker this function does not honour.
   - pre-flight failed → 1 (the only case the old line got right).
   - `halted_at` set → 1. This is the case that was exiting 0.
   - any `status` starting with "error" anywhere in the summary → 1. This is
@@ -52,7 +64,22 @@ from __future__ import annotations
 
 from typing import Any
 
-__all__ = ["verdict", "error_markers"]
+__all__ = ["verdict", "error_markers", "is_intentional_skip", "SKIP_PREFIX"]
+
+SKIP_PREFIX = "skip:"
+
+#: The one literal that predates the namespace. pipeline.py has written it
+#: since #3742 and it is deployed on Pro right now; dropping it here would
+#: make a mid-deploy fleet (new verdict.py, old pipeline.py) alarm on every
+#: Saturday skip — the exact regression this file exists to prevent.
+LEGACY_SKIP_REASONS = frozenset({"weekend"})
+
+
+def is_intentional_skip(halt_reason: Any) -> bool:
+    """True when the pipeline deliberately did not run. See module docstring."""
+    if not isinstance(halt_reason, str):
+        return False
+    return halt_reason in LEGACY_SKIP_REASONS or halt_reason.startswith(SKIP_PREFIX)
 
 
 def error_markers(node: Any, path: str = "") -> list[str]:
@@ -84,8 +111,9 @@ def verdict(summary: Any) -> tuple[int, str]:
         # rather than treating an unreadable summary as a clean run.
         return 1, "pipeline returned no usable summary"
 
-    if summary.get("halt_reason") == "weekend":
-        return 0, "weekend skip (intentional no-op)"
+    halt_reason = summary.get("halt_reason")
+    if is_intentional_skip(halt_reason):
+        return 0, f"{halt_reason} (intentional no-op)"
 
     phases = summary.get("phases")
     preflight = phases.get("preflight") if isinstance(phases, dict) else None

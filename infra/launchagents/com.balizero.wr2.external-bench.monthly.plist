@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.balizero.wr2.external-bench.monthly — Task F (2026-05-12).
+
+  Runs the wr2-external-bench agent once per month (1st Monday) to produce
+  the external SOTA benchmark file (_external-bench-YYYY-MM.md) in the
+  bali-zero-brand skill dir. Coordinated with the weekly internal analyst:
+
+    Sunday 02:30 WITA  — Reflexion (synthesis past week carouseli)
+    Monday 06:07 WITA  — wr2-ig-metrics-analyst.weekly (internal baseline)
+    Monday 07:00 WITA  — wr2-external-bench.monthly (external SOTA refresh)  ← THIS
+
+  StartCalendarInterval cannot natively express "first Monday of month",
+  so this plist fires every Monday at 07:00 and the wrapper script
+  (~/scripts/wr2-external-bench-run.sh) enforces the day-of-month <= 7
+  guard internally + idempotence check on output file existence.
+
+  Per agent spec at the repo's .claude/agents/wr2-external-bench.md: the wrapper
+  cd's into ${HOME}/nuzantara before invoking claude and passes that path as a
+  RELATIVE system-prompt reference, so it resolves against the repo checkout,
+  never against ~/.claude/agents/, which is attic'd as of 2026-08-08 (moved to
+  ~/.claude/agents/_attic-vendored-20260808/). A prior version of this comment
+  named ~/.claude/agents/ directly, which is stale and misleading now that the
+  two locations disagree (superscar #1 HOME-fork, PENDING-ARMS 2026-08-08).
+    - Tier 1: Gemini 3.1 Pro (1M context, OAuth free) for 12 editorial brands ingestion
+    - Tier 2: DeepSeek Reasoner (~$0.04/run) for pattern extraction + devil's advocate
+    - Tier 3: Claude Opus 4.7 (OAuth MAX) for synthesis vs Bali Zero baseline
+    - Output: 20-30 patterns classified ADOPT/PARTIAL/OBSERVE/REJECT
+
+  Cost: ≤$0.10/run (DeepSeek only). Budget: 30 min nominal, 45 min hard cap.
+
+  Seed (May 2026): hand-curated _external-bench-2026-05.md from deep-researcher
+  multi-LLM run 2026-05-12 (commit 1095daa in ~/.claude). First auto run
+  will be 2026-06-01 (first Monday June) and uses May seed as carryover.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.balizero.wr2.external-bench.monthly</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/scripts/wr2-external-bench-run.sh</string>
+    </array>
+
+    <!-- Every Monday 07:00 WITA. Wrapper guards day-of-month <= 7 so only
+         the first Monday of each month actually executes the bench. -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Weekday</key>
+        <integer>1</integer>
+        <key>Hour</key>
+        <integer>7</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/wr2-external-bench.launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/wr2-external-bench.launchd.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/Users/nuzantara/.local/bin:/Users/nuzantara/.npm-global/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>LANG</key>
+        <string>en_US.UTF-8</string>
+    </dict>
+
+    <key>ThrottleInterval</key>
+    <integer>3600</integer>
+
+    <key>KeepAlive</key>
+    <false/>
+</dict>
+</plist>

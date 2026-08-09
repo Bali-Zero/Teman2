@@ -34,6 +34,7 @@ const SuperuserImpersonationBar = dynamic(
 
 interface PortalHeaderProps {
   userName: string;
+  variant?: "client" | "partner";
   onMobileMenuToggle: () => void;
   isMobileMenuOpen: boolean;
   showBackButton?: boolean;
@@ -44,6 +45,7 @@ interface PortalHeaderProps {
 
 export function PortalHeader({
   userName,
+  variant = "client",
   onMobileMenuToggle,
   isMobileMenuOpen,
   showBackButton = false,
@@ -147,10 +149,14 @@ export function PortalHeader({
         {/* Right Section */}
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          {/* Superuser impersonation (renders null for non-superusers) */}
-          <SuperuserImpersonationBar />
-          {/* Notifications */}
-          <PortalNotificationsPopover />
+          {variant === "client" && (
+            <>
+              {/* Superuser impersonation (renders null for non-superusers) */}
+              <SuperuserImpersonationBar />
+              {/* Notifications */}
+              <PortalNotificationsPopover />
+            </>
+          )}
         </div>
       </div>
     </header>

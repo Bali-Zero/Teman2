@@ -952,6 +952,10 @@ class TestMeEndpoints:
             svc_instance.repo.get_partner = AsyncMock(return_value=partner)
             resp = client.get("/api/partners/me")
         assert resp.status_code == 200
+        conn.fetchrow.assert_awaited_once_with(
+            "SELECT partner_id FROM team_members WHERE id::text = $1",
+            str(_USER_ID),
+        )
 
     @pytest.mark.integration
     def test_me_no_partner_id_linked_403(self, partner_app) -> None:
@@ -992,14 +996,50 @@ class TestMeEndpoints:
         assert data[0]["client_display"] == "Mario R."
         # Verify no sensitive fields leaked
         row = data[0]
+        assert row["service_type"] == "Company setup"
+        assert "pt_pma" not in row.values()
         for sensitive in ("passport", "phone", "email", "npwp", "nik"):
             assert sensitive not in row
+        conn.fetchrow.assert_awaited_once_with(
+            "SELECT partner_id FROM team_members WHERE id::text = $1",
+            str(_USER_ID),
+        )
 
     @pytest.mark.integration
     def test_me_commissions_team_forbidden(self, team_app) -> None:
         _, client, _, _ = team_app
         resp = client.get("/api/partners/me/commissions")
         assert resp.status_code == 403
+
+    @pytest.mark.integration
+    def test_me_commissions_uses_text_identity_and_canonical_amounts(self, partner_app) -> None:
+        _, client, _pool, conn = partner_app
+        conn.fetchrow = AsyncMock(return_value={"partner_id": _PARTNER_ID})
+        commission = {
+            "id": _COMMISSION_ID,
+            "partner_id": _PARTNER_ID,
+            "base_amount_idr": Decimal("20000000"),
+            "gross_amount_idr": Decimal("2000000"),
+            "withholding_amount_idr": Decimal("200000"),
+            "net_amount_idr": Decimal("1800000"),
+            "status": "paid",
+            "created_at": _NOW,
+        }
+        with patch("backend.app.routers.partners.PartnersService") as MockSvc:
+            svc_instance = MockSvc.return_value
+            svc_instance.repo = MagicMock()
+            svc_instance.repo.list_commissions_for_partner = AsyncMock(return_value=[commission])
+            resp = client.get("/api/partners/me/commissions")
+
+        assert resp.status_code == 200
+        assert resp.json()[0]["base_amount_idr"] == 20_000_000
+        assert resp.json()[0]["gross_amount_idr"] == 2_000_000
+        assert resp.json()[0]["withholding_amount_idr"] == 200_000
+        assert resp.json()[0]["net_amount_idr"] == 1_800_000
+        conn.fetchrow.assert_awaited_once_with(
+            "SELECT partner_id FROM team_members WHERE id::text = $1",
+            str(_USER_ID),
+        )
 
 
 # ── 10. finance export ────────────────────────────────────────────────────────

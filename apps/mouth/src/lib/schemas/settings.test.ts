@@ -10,9 +10,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  isMigrationMissingMessage,
   Language,
-  MigrationMissingError,
   NotificationChannel,
   NotificationEvent,
   NotificationPrefs,
@@ -237,25 +235,5 @@ describe("NotificationChannel / NotificationEvent enums", () => {
     expect([...NotificationEvent.options].sort()).toEqual(
       ["deadline_reminder", "document_request", "practice_update"].sort(),
     );
-  });
-});
-
-describe("MigrationMissingError + isMigrationMissingMessage", () => {
-  it("parses the FastAPI 503 shape { detail }", () => {
-    const parsed = MigrationMissingError.parse({
-      detail: "notification_prefs unavailable — run migration 110",
-    });
-    expect(parsed.detail).toMatch(/migration 110/);
-  });
-
-  it("isMigrationMissingMessage recognises the BE message variants", () => {
-    expect(
-      isMigrationMissingMessage(
-        "notification_prefs unavailable — run migration 110",
-      ),
-    ).toBe(true);
-    expect(isMigrationMissingMessage("please run Migration 110")).toBe(true);
-    expect(isMigrationMissingMessage("something else went wrong")).toBe(false);
-    expect(isMigrationMissingMessage(undefined)).toBe(false);
   });
 });

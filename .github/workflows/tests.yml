@@ -559,20 +559,34 @@ jobs:
       # step of the already-required `(mouth, true)` leg, because branch
       # protection pins required contexts by NAME (W69).
       #
-      # DECLARED LIMIT — this runs 2 of the 8 files, by name, not the suite.
-      # `apps/wa-mirror` is not an npm workspace and has NO lockfile, so the root
-      # `npm install` above does not install baileys / pino / libphonenumber-js
-      # and the other 6 files fail on the missing packages (measured locally:
-      # 2 passed, 6 failed to import, 26 tests green). These two import nothing
-      # outside node's stdlib, so they resolve vitest upward from the ROOT
-      # node_modules exactly as packages/core does. Arming the remaining 6 needs a
-      # lockfile for that package — its own PR, on the W81 ledger, NOT a silent
-      # `npm install` of floating versions inside a required check.
-      - name: Run wa-mirror bridge alert-policy tests (dependency-free files)
+      # The declared limit of the first version of this step ("runs 2 of the 8
+      # files, because apps/wa-mirror is not an npm workspace and has NO
+      # lockfile") is CLOSED: the lockfile now exists in the repo, so this
+      # installs from it and runs the whole suite. Measured before arming, on two
+      # machines: `npm ci` exits 0 from a pristine tree and all 8 files pass —
+      # 127 tests, 325ms on Pro, 1.1s on M5. The 6 files that used to "fail" were
+      # never broken; they were importing baileys / pino / libphonenumber-js from
+      # a tree that did not have them.
+      #
+      # `npm ci` and not `npm install`: ci fails loudly when the lock and the
+      # manifest disagree, which is the check that keeps the committed lock
+      # honest (W98 — a lock that drifts from its manifest is how a forbidden
+      # version reaches production with every gate green).
+      #
+      # DECLARED LIMIT, unchanged by this step: Dependabot's npm ecosystem is
+      # pointed at "/" only, which resolves the WORKSPACE tree — wa-mirror is not
+      # a workspace, so this lock is not watched by it. `npm audit` on the tree
+      # that runs in production reports 3 high + 1 low, all transitive under
+      # @whiskeysockets/baileys@7.0.0-rc13 (protobufjs, sharp, ws) plus a
+      # Windows-only dev-server issue in esbuild. Committing the lock does not
+      # add that exposure — the same tree was already live and unmeasurable; it
+      # makes it visible. Coverage and the RC bump are on the W81 ledger.
+      - name: Run wa-mirror bridge suite (installs from its own lockfile)
         if: matrix.app == 'mouth'
         run: |
           cd apps/wa-mirror
-          npx vitest run tests/down-alarm.test.ts tests/telegram.test.ts
+          npm ci
+          npx vitest run
 
       - name: Upload coverage
         if: ${{ matrix.coverage && env.HAS_CODECOV_TOKEN == 'true' }}

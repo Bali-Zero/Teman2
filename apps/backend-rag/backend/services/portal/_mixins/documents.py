@@ -29,18 +29,31 @@ import httpx
 from backend.app.utils.logging_utils import get_logger
 from backend.services.common.background import spawn
 from backend.services.common.cache import cache_invalidating
+from backend.services.pii.violation_store import hash_subject
 from backend.services.portal._rbac import ClientContext, require_client_access
 from backend.services.portal.document_processing import (
     DocumentOCR,
     ExpiryDetector,
     VirusScanner,
 )
+from backend.services.portal.qa_document_sink import QADocumentSinkClient
+from backend.services.portal.qa_support_mail_sink import QASupportMailSinkClient
 
 logger = get_logger(__name__)
 
 
 class PortalDocumentsMixin:
     """Client-portal document listing + upload pipeline (Drive / OCR / virus scan)."""
+
+    _CLIENT_UPLOAD_RESPONSE_FIELDS = (
+        "id",
+        "type",
+        "name",
+        "status",
+        "size_kb",
+        "created_at",
+        "expiry_date",
+    )
 
     pool: asyncpg.Pool
     _metrics: dict[str, int]
@@ -62,6 +75,11 @@ class PortalDocumentsMixin:
             name, ext = filename.rsplit(".", 1) if "." in filename else (filename, "")
             filename = name[:195] + ("." + ext if ext else "")
         return filename
+
+    @classmethod
+    def _client_safe_upload_response(cls, result: dict[str, Any]) -> dict[str, Any]:
+        """Project an upload result onto the fields safe for portal clients."""
+        return {key: result[key] for key in cls._CLIENT_UPLOAD_RESPONSE_FIELDS if key in result}
 
     @staticmethod
     def _classify_document_category(document_type: str, file_name: str) -> str:
@@ -230,7 +248,7 @@ class PortalDocumentsMixin:
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
-                SELECT id, file_name, file_id, file_url, mime_type, status
+                SELECT id, file_name, file_id, file_url, mime_type, status, storage_type
                 FROM documents
                 WHERE id = $1
                   AND client_id = $2
@@ -245,6 +263,19 @@ class PortalDocumentsMixin:
 
         if not row:
             return None
+
+        if (row.get("storage_type") or "google_drive") == "qa_sink":
+            qa_sink = QADocumentSinkClient.from_environment()
+            if qa_sink is None or not row["file_id"]:
+                raise RuntimeError("Portal QA document storage is unavailable")
+            content = await qa_sink.download(row["file_id"])
+            if content is None:
+                return None
+            return {
+                "content": content,
+                "file_name": row["file_name"] or "document.pdf",
+                "mime_type": row["mime_type"] or "application/pdf",
+            }
 
         file_id = row["file_id"] or self._extract_drive_file_id(row["file_url"])
         if not file_id:
@@ -385,7 +416,7 @@ class PortalDocumentsMixin:
         logger.info(
             "🗑️ Document %s soft-deleted by %s (client %s)",
             document_id,
-            deleted_by,
+            hash_subject(deleted_by) or f"client:{client_id}",
             client_id,
         )
         return {
@@ -441,7 +472,7 @@ class PortalDocumentsMixin:
         logger.info(
             "♻️ Document %s restored by %s (client %s)",
             document_id,
-            current_user.get("email") or f"client:{client_id}",
+            hash_subject(current_user.get("email")) or f"client:{client_id}",
             client_id,
         )
         return {
@@ -575,23 +606,49 @@ class PortalDocumentsMixin:
                 raise ValueError(f"Client {client_id} not found")
 
             # =========================================================================
-            # STEP 2: GOOGLE DRIVE UPLOAD
+            # STEP 2: DURABLE STORAGE (Drive, or strict synthetic QA sink)
             # =========================================================================
-            drive_result = await self._upload_to_drive(
-                conn=conn,
-                client_id=client_id,
-                client_name=client["full_name"],
-                document_type=document_type,
-                file_content=file_content,
-                file_name=file_name,
-                mime_type=mime_type,
+            qa_sink = QADocumentSinkClient.from_environment()
+            qa_support_mail_sink = (
+                QASupportMailSinkClient.from_environment() if qa_sink is not None else None
             )
+            if qa_sink is not None:
+                qa_sink.validate_synthetic_upload(
+                    email=client["email"],
+                    file_name=file_name,
+                    mime_type=mime_type,
+                )
+                drive_result = await qa_sink.upload(
+                    content=file_content,
+                    file_name=file_name,
+                )
+                storage_type = "qa_sink"
+            else:
+                drive_result = await self._upload_to_drive(
+                    conn=conn,
+                    client_id=client_id,
+                    client_name=client["full_name"],
+                    document_type=document_type,
+                    file_content=file_content,
+                    file_name=file_name,
+                    mime_type=mime_type,
+                )
+                storage_type = "google_drive"
             processing_results["drive_upload"] = drive_result
+            if not drive_result.get("success") or not drive_result.get("file_id"):
+                raise RuntimeError("Document storage is unavailable")
 
             # =========================================================================
             # STEP 3: OCR TEXT EXTRACTION (using Gemini Vision - same as passport box)
             # =========================================================================
-            if skip_ocr:
+            if qa_sink is not None:
+                ocr_result = {
+                    "text": "",
+                    "pages": 0,
+                    "success": False,
+                    "error": "Disabled for synthetic QA storage",
+                }
+            elif skip_ocr:
                 ocr_result = {
                     "text": "",
                     "pages": 0,
@@ -648,7 +705,7 @@ class PortalDocumentsMixin:
                         )
                         VALUES (
                             $1, $2, $3, $13, $4, 'received', $5, 'client', $6, $7,
-                            'google_drive', $8, $9, $10,
+                            $15, $8, $9, $10,
                             $11, $12, $14,
                             true, NOW()
                         )
@@ -670,6 +727,7 @@ class PortalDocumentsMixin:
                         expiry_result.get("expiry_date"),
                         doc_category,
                         document_purpose,
+                        storage_type,
                     )
                 except Exception as e:
                     # Backward compatibility: try without new columns
@@ -681,7 +739,7 @@ class PortalDocumentsMixin:
                                 status, uploaded_by, file_size_kb, mime_type,
                                 storage_type, client_visible
                         )
-                        VALUES ($1, $2, $3, $4, 'received', $5, $6, $7, 'google_drive', true)
+                        VALUES ($1, $2, $3, $4, 'received', $5, $6, $7, $8, true)
                         RETURNING id, document_type, file_name, status, created_at, expiry_date
                         """,
                             client_id,
@@ -691,6 +749,7 @@ class PortalDocumentsMixin:
                             client["email"],
                             file_size_kb,
                             mime_type,
+                            storage_type,
                         )
                     else:
                         raise
@@ -723,75 +782,88 @@ class PortalDocumentsMixin:
             logger.info(
                 f"✅ Document processed and stored: {file_name} for client {client_id}, "
                 f"size: {file_size_kb}KB, type: {document_type}, "
-                f"drive_id: {drive_result.get('file_id', 'N/A')}",
+                f"storage_type: {storage_type}",
             )
 
             # =========================================================================
             # STEP 6b: SMART OCR DISPATCH (passport/visa/npwp/nib extraction)
             # =========================================================================
-            try:
-                from backend.services.documents.ocr_dispatcher_service import (
-                    dispatch_ocr_by_folder,
-                )
-
-                file_id_for_ocr = drive_result.get("file_id")
-                if file_id_for_ocr:
-                    doc_category = self._classify_document_category(document_type, file_name)
-                    folder_hint = self._get_drive_folder_for_category(doc_category)
-                    spawn(
-                        dispatch_ocr_by_folder(
-                            db_pool=self.pool,
-                            client_id=client_id,
-                            file_id=file_id_for_ocr,
-                            folder_name=folder_hint,
-                            filename=file_name,
-                            doc_id=doc["id"],
-                            document_type=document_type,
-                        ),
+            if qa_sink is None:
+                try:
+                    from backend.services.documents.ocr_dispatcher_service import (
+                        dispatch_ocr_by_folder,
                     )
-                    logger.info("Smart OCR dispatch triggered for portal upload: %s", file_name)
-            except Exception as e:
-                logger.error("Smart OCR dispatch failed for portal upload %s: %s", file_name, e)
+
+                    file_id_for_ocr = drive_result.get("file_id")
+                    if file_id_for_ocr:
+                        doc_category = self._classify_document_category(
+                            document_type,
+                            file_name,
+                        )
+                        folder_hint = self._get_drive_folder_for_category(doc_category)
+                        spawn(
+                            dispatch_ocr_by_folder(
+                                db_pool=self.pool,
+                                client_id=client_id,
+                                file_id=file_id_for_ocr,
+                                folder_name=folder_hint,
+                                filename=file_name,
+                                doc_id=doc["id"],
+                                document_type=document_type,
+                            ),
+                        )
+                        logger.info(
+                            "Smart OCR dispatch triggered for portal upload: %s",
+                            file_name,
+                        )
+                except Exception as e:
+                    logger.error(
+                        "Smart OCR dispatch failed for portal upload %s: %s",
+                        file_name,
+                        e,
+                    )
 
             # =========================================================================
             # STEP 7: NOTIFY ASSIGNED LEAD
             # =========================================================================
-            spawn(
-                self._notify_lead_about_document(
+            if qa_support_mail_sink is not None:
+                await self._notify_lead_about_document(
                     client_id=client_id,
                     document_name=file_name,
                     document_type=document_type,
                     expiry_date=expiry_result.get("expiry_date"),
                     drive_url=drive_result.get("file_url"),
-                ),
-            )
+                    qa_support_mail_sink=qa_support_mail_sink,
+                )
+            elif qa_sink is None:
+                spawn(
+                    self._notify_lead_about_document(
+                        client_id=client_id,
+                        document_name=file_name,
+                        document_type=document_type,
+                        expiry_date=expiry_result.get("expiry_date"),
+                        drive_url=drive_result.get("file_url"),
+                    ),
+                )
 
             # Update metrics
             self._metrics["uploads_total"] += 1
-            if drive_result.get("success"):
+            if storage_type == "google_drive" and drive_result.get("success"):
                 self._metrics["drive_uploads"] += 1
             if ocr_result.get("success"):
                 self._metrics["ocr_processed"] += 1
 
-            return {
-                "id": doc["id"],
-                "type": doc["document_type"],
-                "name": doc["file_name"],
-                "status": doc["status"],
-                "size_kb": file_size_kb,
-                "created_at": doc["created_at"].isoformat(),
-                "expiry_date": expiry_result.get("expiry_date"),
-                "extracted_text_preview": (
-                    ocr_result.get("text", "")[:200] + "..."
-                    if ocr_result.get("text") and len(ocr_result.get("text", "")) > 200
-                    else ocr_result.get("text", "")
-                ),
-                "processing": {
-                    "virus_clean": scan_result["clean"],
-                    "ocr_pages": ocr_result.get("pages"),
-                    "drive_uploaded": drive_result.get("success", False),
-                },
-            }
+            return self._client_safe_upload_response(
+                {
+                    "id": doc["id"],
+                    "type": doc["document_type"],
+                    "name": doc["file_name"],
+                    "status": doc["status"],
+                    "size_kb": file_size_kb,
+                    "created_at": doc["created_at"].isoformat(),
+                    "expiry_date": expiry_result.get("expiry_date"),
+                }
+            )
 
     async def _upload_to_drive(
         self,
@@ -1080,17 +1152,15 @@ class PortalDocumentsMixin:
         document_type: str,
         expiry_date: str | None = None,
         drive_url: str | None = None,
+        qa_support_mail_sink: QASupportMailSinkClient | None = None,
     ) -> None:
         """
         Send email notification to assigned lead when client uploads a document.
 
-        This runs async (fire-and-forget) to not block the upload response.
+        Production calls this fire-and-forget. The explicit synthetic QA sink
+        is awaited so the browser gate can verify a deterministic receipt.
         """
         try:
-            from backend.services.integrations.zoho_email_service import ZohoEmailService
-
-            zoho_service = ZohoEmailService(self.pool)
-
             async with self.pool.acquire() as conn:
                 # Get client name and assigned lead
                 client = await conn.fetchrow(
@@ -1139,31 +1209,48 @@ This is an automated notification from Bali Zero CRM.
 
                 # Primary: Brevo
                 sent = False
-                try:
+                if qa_support_mail_sink is not None:
+                    await qa_support_mail_sink.send_document_notification(
+                        recipient=lead_email,
+                        subject=subject,
+                        html_body=body.replace("\n", "<br>"),
+                    )
+                    sent = True
+                    logger.info("Document upload notification captured by the portal QA sink")
+                else:
                     import os
 
                     import httpx
 
-                    _api_url = os.getenv(
-                        "INTERNAL_EMAIL_API_URL",
-                        "https://nuzantara-rag.fly.dev/api/notifications/send-email",
-                    )
-                    _api_key = os.getenv("NUZANTARA_API_KEY", "")
-                    html_body = body.replace("\n", "<br>")
-                    async with httpx.AsyncClient(timeout=30.0) as http_client:
-                        resp = await http_client.post(
-                            _api_url,
-                            headers={"X-API-Key": _api_key},
-                            json={"to": lead_email, "subject": subject, "body": html_body},
+                    try:
+                        _api_url = os.getenv(
+                            "INTERNAL_EMAIL_API_URL",
+                            "https://nuzantara-rag.fly.dev/api/notifications/send-email",
                         )
-                        resp.raise_for_status()
-                    sent = True
-                    logger.info("📧 Document upload notification sent to %s via Brevo", lead_email)
-                except Exception as brevo_err:
-                    logger.warning("Brevo failed for doc notification, trying Zoho: %s", brevo_err)
+                        _api_key = os.getenv("NUZANTARA_API_KEY", "")
+                        html_body = body.replace("\n", "<br>")
+                        async with httpx.AsyncClient(timeout=30.0) as http_client:
+                            resp = await http_client.post(
+                                _api_url,
+                                headers={"X-API-Key": _api_key},
+                                json={"to": lead_email, "subject": subject, "body": html_body},
+                            )
+                            resp.raise_for_status()
+                        sent = True
+                        logger.info(
+                            "📧 Document upload notification sent to %s via Brevo",
+                            lead_email,
+                        )
+                    except Exception as brevo_err:
+                        logger.warning(
+                            "Brevo failed for doc notification, trying Zoho: %s", brevo_err
+                        )
 
                 # Fallback: Zoho
-                if not sent:
+                if not sent and qa_support_mail_sink is None:
+                    from backend.services.integrations.zoho_email_service import ZohoEmailService
+
+                    zoho_service = ZohoEmailService(self.pool)
                     await zoho_service.send_email(
                         to_email=lead_email,
                         subject=subject,

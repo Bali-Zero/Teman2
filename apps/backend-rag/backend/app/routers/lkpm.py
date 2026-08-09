@@ -7,9 +7,12 @@ All calculations are deterministic — no AI on numbers.
 
 import logging
 from typing import Any
+from urllib.parse import quote
+from uuid import uuid4
 
 import asyncpg
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
+from fastapi.responses import Response
 from pydantic import BaseModel, field_validator
 
 from backend.app.dependencies import get_current_user, get_database_pool
@@ -22,6 +25,25 @@ from backend.app.utils.crm_utils import is_crm_admin
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/lkpm", tags=["lkpm"])
+
+
+def _safe_lkpm_failure(
+    operation: str,
+    error: Exception,
+    client_message: str,
+) -> HTTPException:
+    """Create a correlation-safe 500 without logging exception contents."""
+    error_ref = uuid4().hex
+    logger.error(
+        "LKPM operation failed operation=%s error_ref=%s error_type=%s",
+        operation,
+        error_ref,
+        type(error).__name__,
+    )
+    return HTTPException(
+        status_code=500,
+        detail=f"{client_message}. Reference: {error_ref}",
+    )
 
 
 # Allowed tax team emails that can be assigned to an LKPM report.
@@ -65,6 +87,64 @@ def _get_service(db_pool: asyncpg.Pool) -> Any:
     return LKPMService(db_pool)
 
 
+def _require_user_context(current_user: Any) -> dict[str, Any]:
+    """Return a verified JWT principal instead of trusting a scalar dependency result."""
+    if not isinstance(current_user, dict):
+        raise HTTPException(status_code=401, detail="Invalid authentication context")
+    return current_user
+
+
+def _is_lkpm_staff(user: dict[str, Any]) -> bool:
+    """Limit cross-client LKPM operations to CRM admins and the tax team."""
+    email = str(user.get("email") or "").strip().lower()
+    return is_crm_admin(user) or email in LKPM_ASSIGNEES
+
+
+def _require_lkpm_staff(current_user: Any, *, conceal_target: bool = True) -> dict[str, Any]:
+    """Authorize a workspace LKPM actor before any target-specific lookup.
+
+    Portal clients receive the same 404 for every caller-supplied identifier so
+    the endpoint cannot be used as an object-existence oracle.
+    """
+    user = _require_user_context(current_user)
+    if _is_lkpm_staff(user):
+        return user
+    if conceal_target and str(user.get("role") or "").lower() == "client":
+        raise HTTPException(status_code=404, detail="LKPM target not found")
+    raise HTTPException(status_code=403, detail="Not authorized for LKPM staff operation")
+
+
+_CLIENT_RECEIPT_FIELDS = (
+    "id",
+    "lkpm_report_id",
+    "nomor_laporan",
+    "nomor_kegiatan_usaha",
+    "kbli_code",
+    "kegiatan_usaha_desc",
+    "stage",
+    "oss_status",
+    "lokasi",
+    "tanggal_diterima",
+    "nama_perusahaan_oss",
+    "file_name",
+    "quarter",
+    "year",
+    "client_id",
+    "company_id",
+    "company_name",
+)
+
+
+def _client_safe_receipt(item: dict[str, Any]) -> dict[str, Any]:
+    """Allowlist the portal receipt contract and replace Drive data with a proxy URL."""
+    projected = {key: item.get(key) for key in _CLIENT_RECEIPT_FIELDS if key in item}
+    has_download = bool(item.get("file_drive_id") or item.get("file_drive_url"))
+    projected["download_url"] = (
+        f"/api/v1/lkpm/receipts/{item['id']}/download" if has_download else None
+    )
+    return projected
+
+
 # ------------------------------------------------------------------
 # Client Config
 # ------------------------------------------------------------------
@@ -73,17 +153,21 @@ def _get_service(db_pool: asyncpg.Pool) -> Any:
 @router.post("/config", response_model=dict)
 async def save_client_config(
     config: LKPMClientConfig,
-    current_user: str = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict:
     """Save or update LKPM client configuration (investment plan, Jurnal keys)."""
+    _require_lkpm_staff(current_user)
     service = _get_service(db_pool)
     try:
         config_id = await service.save_client_config(config)
         return {"success": True, "config_id": config_id}
     except Exception as e:
-        logger.error("Failed to save client config: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise _safe_lkpm_failure(
+            "save_client_config",
+            e,
+            "LKPM configuration temporarily unavailable",
+        ) from e
 
 
 # ------------------------------------------------------------------
@@ -94,13 +178,37 @@ async def save_client_config(
 @router.post("/submit-data", response_model=dict)
 async def submit_data(
     submission: LKPMClientSubmission,
-    current_user: str = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict:
-    """Submit LKPM data via manual form."""
+    """Submit LKPM data for a portal client or a verified CRM admin."""
+    from backend.services.compliance.lkpm_service import LKPMDraftLockedError
+
+    if not isinstance(current_user, dict):
+        raise HTTPException(status_code=401, detail="Invalid authentication context")
+
+    is_admin = is_crm_admin(current_user)
+    role = (current_user.get("role") or "").lower()
+    if role != "client" and not is_admin:
+        raise HTTPException(status_code=403, detail="This endpoint is only accessible to clients")
+
     service = _get_service(db_pool)
     try:
-        draft = await service.submit_form_data(submission)
+        if is_admin:
+            draft = await service.submit_form_data_for_admin(submission)
+        else:
+            user_id = current_user.get("user_id")
+            if not user_id:
+                raise HTTPException(status_code=401, detail="User ID not found in token")
+            authenticated_client_id = await service.resolve_portal_client_id(str(user_id))
+            if authenticated_client_id is None:
+                raise HTTPException(
+                    status_code=403, detail="Client account is not active or linked"
+                )
+            draft = await service.submit_form_data_for_client(
+                submission,
+                authenticated_client_id=authenticated_client_id,
+            )
         return {
             "success": True,
             "draft_id": draft.id,
@@ -108,11 +216,23 @@ async def submit_data(
             "year": draft.year,
             "realized_total": draft.realized.grand_total,
         }
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail="LKPM submission target not found") from e
+    except LKPMDraftLockedError as e:
+        raise HTTPException(
+            status_code=409,
+            detail="This LKPM report is locked after approval or OSS submission",
+        ) from e
+    except HTTPException:
+        raise
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        raise HTTPException(status_code=400, detail="Invalid LKPM submission data") from e
     except Exception as e:
-        logger.error("Form submission failed: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise _safe_lkpm_failure(
+            "submit_data",
+            e,
+            "LKPM submission temporarily unavailable",
+        ) from e
 
 
 @router.post("/sync-jurnal/{client_id}", response_model=dict)
@@ -120,10 +240,11 @@ async def sync_jurnal(
     client_id: int,
     quarter: str,
     year: int,
-    current_user: str = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict:
     """Pull data from Jurnal.id and create/update LKPM draft."""
+    _require_lkpm_staff(current_user)
     service = _get_service(db_pool)
     try:
         draft = await service.sync_jurnal(client_id, quarter, year)
@@ -135,10 +256,13 @@ async def sync_jurnal(
             "data_source": draft.data_source.value,
         }
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        raise HTTPException(status_code=400, detail="Invalid LKPM synchronization request") from e
     except Exception as e:
-        logger.error("Jurnal sync failed: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise _safe_lkpm_failure(
+            "sync_jurnal",
+            e,
+            "LKPM synchronization temporarily unavailable",
+        ) from e
 
 
 # ------------------------------------------------------------------
@@ -152,26 +276,39 @@ async def get_draft(
     quarter: str,
     request: Request,
     year: int,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict:
     """Get LKPM draft for a client/quarter.
 
     Resolution rules for ``client_id``:
-      * ``client_id > 0`` — used as-is (staff calling with explicit id).
-      * ``client_id = 0`` + ``role='client'`` — resolve from the JWT email
-        (shareholders don't know their own numeric id).
+      * ``client_id > 0`` — staff may select it; clients may only use their
+        server-resolved own id.
+      * ``client_id = 0`` + ``role='client'`` — resolve from the JWT user id
+        and active portal linkage (shareholders don't know their numeric id).
       * ``client_id = 0`` + superuser (zero@balizero.com) + ``?as_client=<id>``
         — override to the requested id (admin impersonation, also honored as
         the new ``/draft/0/...`` convention everywhere).
     """
-    from backend.app.routers.portal import _superuser_emails
+    user = _require_user_context(current_user)
+    service = _get_service(db_pool)
+    role = str(user.get("role") or "").lower()
 
-    email = (current_user.get("email") or "").lower()
-    is_superuser = email in _superuser_emails()
+    if role == "client":
+        user_id = user.get("user_id")
+        if not user_id:
+            raise HTTPException(status_code=404, detail="Draft not found")
+        authenticated_client_id = await service.resolve_portal_client_id(str(user_id))
+        if authenticated_client_id is None or client_id not in {0, authenticated_client_id}:
+            raise HTTPException(status_code=404, detail="Draft not found")
+        client_id = authenticated_client_id
+    elif _is_lkpm_staff(user):
+        if client_id == 0:
+            from backend.app.routers.portal import _superuser_emails
 
-    if client_id == 0:
-        if is_superuser:
+            email = str(user.get("email") or "").lower()
+            if email not in _superuser_emails():
+                raise HTTPException(status_code=422, detail="Use an explicit client id")
             as_client_raw = request.query_params.get("as_client")
             if not as_client_raw:
                 raise HTTPException(
@@ -182,21 +319,9 @@ async def get_draft(
                 client_id = int(as_client_raw)
             except ValueError as e:
                 raise HTTPException(status_code=400, detail="as_client must be int") from e
-        elif current_user.get("role") == "client":
-            if not email:
-                raise HTTPException(status_code=401, detail="No email on token")
-            async with db_pool.acquire() as conn:
-                resolved = await conn.fetchval(
-                    "SELECT id FROM clients WHERE LOWER(email) = LOWER($1) LIMIT 1",
-                    email,
-                )
-            if not resolved:
-                raise HTTPException(status_code=404, detail="Client not found for this account")
-            client_id = int(resolved)
-        else:
-            raise HTTPException(status_code=403, detail="Not authorised")
+    else:
+        raise HTTPException(status_code=404, detail="Draft not found")
 
-    service = _get_service(db_pool)
     draft = await service.get_draft(client_id, quarter, year)
     if not draft:
         raise HTTPException(status_code=404, detail="Draft not found")
@@ -206,10 +331,11 @@ async def get_draft(
 @router.post("/validate/{draft_id}", response_model=dict)
 async def validate_draft(
     draft_id: int,
-    current_user: str = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict:
     """Validate an LKPM draft."""
+    _require_lkpm_staff(current_user)
     service = _get_service(db_pool)
     try:
         result = await service.validate_draft(draft_id)
@@ -222,10 +348,13 @@ async def validate_draft(
             "alerts": [a.model_dump() for a in result.alerts],
         }
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e)) from e
+        raise HTTPException(status_code=404, detail="LKPM draft not found") from e
     except Exception as e:
-        logger.error("Validation failed: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise _safe_lkpm_failure(
+            "validate_draft",
+            e,
+            "LKPM validation temporarily unavailable",
+        ) from e
 
 
 # ------------------------------------------------------------------
@@ -236,10 +365,11 @@ async def validate_draft(
 @router.get("/ready-pack/{draft_id}", response_model=dict)
 async def get_ready_pack(
     draft_id: int,
-    current_user: str = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict:
     """Generate Ready Pack for OSS copy-paste."""
+    _require_lkpm_staff(current_user)
     service = _get_service(db_pool)
     try:
         pack = await service.get_ready_pack(draft_id)
@@ -255,10 +385,13 @@ async def get_ready_pack(
             "ready_pack": pack.model_dump(),
         }
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e)) from e
+        raise HTTPException(status_code=404, detail="LKPM draft not found") from e
     except Exception as e:
-        logger.error("Ready pack generation failed: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise _safe_lkpm_failure(
+            "get_ready_pack",
+            e,
+            "LKPM ready pack temporarily unavailable",
+        ) from e
 
 
 # ------------------------------------------------------------------
@@ -269,32 +402,69 @@ async def get_ready_pack(
 @router.post("/approve/{draft_id}", response_model=dict)
 async def approve_draft(
     draft_id: int,
-    current_user: str = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict:
-    """Client approves LKPM draft."""
+    """Approve an owned LKPM draft, with the existing CRM-admin override."""
+    if not isinstance(current_user, dict):
+        raise HTTPException(status_code=401, detail="Invalid authentication context")
+
     service = _get_service(db_pool)
+    is_admin = is_crm_admin(current_user)
+    authenticated_client_id: int | None = None
+
+    if not is_admin:
+        if (current_user.get("role") or "").lower() != "client":
+            raise HTTPException(status_code=404, detail="LKPM draft not found")
+        user_id = current_user.get("user_id")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User ID not found in token")
+        authenticated_client_id = await service.resolve_portal_client_id(str(user_id))
+        if authenticated_client_id is None:
+            raise HTTPException(status_code=404, detail="LKPM draft not found")
+
     try:
-        return await service.approve_draft(draft_id)
+        return await service.approve_draft_for_actor(
+            draft_id,
+            authenticated_client_id=authenticated_client_id,
+            is_admin=is_admin,
+        )
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail="LKPM draft not found") from e
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error("Approval failed: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise _safe_lkpm_failure(
+            "approve_draft",
+            e,
+            "LKPM approval temporarily unavailable",
+        ) from e
 
 
 @router.post("/mark-submitted/{draft_id}", response_model=dict)
 async def mark_submitted(
     draft_id: int,
     submitted_by: str | None = None,
-    current_user: str = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict:
     """Team marks LKPM as submitted to OSS."""
+    actor = _require_lkpm_staff(current_user)
+    actor_email = str(actor.get("email") or "").strip().lower()
     service = _get_service(db_pool)
     try:
-        return await service.mark_submitted(draft_id, submitted_by or current_user)
+        # Keep the legacy query parameter for compatibility, but never trust it
+        # for audit attribution: the authenticated principal owns the mutation.
+        _ = submitted_by
+        return await service.mark_submitted(draft_id, actor_email)
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail="LKPM draft not found") from e
     except Exception as e:
-        logger.error("Mark submitted failed: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise _safe_lkpm_failure(
+            "mark_submitted",
+            e,
+            "LKPM submission status temporarily unavailable",
+        ) from e
 
 
 @router.post("/upload-receipt/{draft_id}", response_model=dict)
@@ -302,16 +472,22 @@ async def upload_receipt(
     draft_id: int,
     receipt_number: str,
     receipt_file_url: str | None = None,
-    current_user: str = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict:
     """Upload OSS receipt for a submitted LKPM."""
+    _require_lkpm_staff(current_user)
     service = _get_service(db_pool)
     try:
         return await service.upload_receipt(draft_id, receipt_number, receipt_file_url)
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail="LKPM draft not found") from e
     except Exception as e:
-        logger.error("Receipt upload failed: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise _safe_lkpm_failure(
+            "upload_receipt",
+            e,
+            "LKPM receipt upload temporarily unavailable",
+        ) from e
 
 
 # ------------------------------------------------------------------
@@ -338,8 +514,11 @@ async def get_my_history(
             "items": [item.model_dump() for item in items],
         }
     except Exception as e:
-        logger.error("Failed to get LKPM history for portal client: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise _safe_lkpm_failure(
+            "get_my_history",
+            e,
+            "LKPM history temporarily unavailable",
+        ) from e
 
 
 @router.get("/receipts/me", response_model=dict)
@@ -357,7 +536,8 @@ async def get_my_receipts(
     client = await get_current_client(request, db_pool)
     service = _get_service(db_pool)
     try:
-        items = await service.get_receipts_for_portal_client(client["client_id"])
+        raw_items = await service.get_receipts_for_portal_client(client["client_id"])
+        items = [_client_safe_receipt(item) for item in raw_items]
         return {
             "success": True,
             "client_id": client["client_id"],
@@ -365,12 +545,49 @@ async def get_my_receipts(
             "items": items,
         }
     except Exception as e:
-        logger.error(
-            "Failed to get LKPM receipts for portal client: %s",
+        raise _safe_lkpm_failure(
+            "get_my_receipts",
             e,
-            exc_info=True,
+            "LKPM receipts temporarily unavailable",
+        ) from e
+
+
+@router.get("/receipts/{receipt_id}/download")
+async def download_my_receipt(
+    receipt_id: int,
+    request: Request,
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+) -> Response:
+    """Download a tenant-owned LKPM receipt through the client-safe proxy."""
+    from backend.app.routers.portal import get_current_client
+
+    client = await get_current_client(request, db_pool)
+    service = _get_service(db_pool)
+    try:
+        receipt = await service.download_receipt_for_portal_client(
+            client["client_id"],
+            receipt_id,
         )
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        if receipt is None:
+            raise HTTPException(status_code=404, detail="Receipt not found or not downloadable")
+
+        file_name = receipt["file_name"]
+        return Response(
+            content=receipt["content"],
+            media_type=receipt["mime_type"],
+            headers={
+                "Cache-Control": "private, no-store",
+                "Content-Disposition": f"attachment; filename*=UTF-8''{quote(file_name)}",
+            },
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise _safe_lkpm_failure(
+            "download_my_receipt",
+            e,
+            "LKPM receipt download temporarily unavailable",
+        ) from e
 
 
 # Order matters: /receipts/by-client/{id} must precede /receipts/{id}, otherwise
@@ -378,7 +595,7 @@ async def get_my_receipts(
 @router.get("/receipts/by-client/{client_id}", response_model=dict)
 async def get_receipts_by_client(
     client_id: int,
-    current_user: str = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict:
     """
@@ -386,6 +603,7 @@ async def get_receipts_by_client(
     is a shareholder (via client_company_links). Staff-authenticated; the
     portal equivalent is GET /receipts/me.
     """
+    _require_lkpm_staff(current_user)
     service = _get_service(db_pool)
     try:
         items = await service.get_receipts_for_client(client_id)
@@ -396,22 +614,21 @@ async def get_receipts_by_client(
             "items": items,
         }
     except Exception as e:
-        logger.error(
-            "Failed to get LKPM receipts for client %s: %s",
-            client_id,
+        raise _safe_lkpm_failure(
+            "get_receipts_by_client",
             e,
-            exc_info=True,
-        )
-        raise HTTPException(status_code=500, detail=str(e)) from e
+            "LKPM receipts temporarily unavailable",
+        ) from e
 
 
 @router.get("/receipts/{lkpm_report_id}", response_model=dict)
 async def get_receipts_for_report(
     lkpm_report_id: int,
-    current_user: str = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict:
     """Workspace: OSS tanda terima attached to a single lkpm_reports row."""
+    _require_lkpm_staff(current_user)
     service = _get_service(db_pool)
     try:
         items = await service.get_receipts_for_report(lkpm_report_id)
@@ -422,13 +639,11 @@ async def get_receipts_for_report(
             "items": items,
         }
     except Exception as e:
-        logger.error(
-            "Failed to get LKPM receipts for report %s: %s",
-            lkpm_report_id,
+        raise _safe_lkpm_failure(
+            "get_receipts_for_report",
             e,
-            exc_info=True,
-        )
-        raise HTTPException(status_code=500, detail=str(e)) from e
+            "LKPM receipts temporarily unavailable",
+        ) from e
 
 
 # ------------------------------------------------------------------
@@ -440,10 +655,11 @@ async def get_receipts_for_report(
 async def get_batch(
     quarter: str,
     year: int,
-    current_user: str = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict:
     """Get all LKPM reports for a quarter (team batch view)."""
+    _require_lkpm_staff(current_user)
     service = _get_service(db_pool)
     items = await service.get_batch(quarter, year)
     return {
@@ -457,10 +673,11 @@ async def get_batch(
 
 @router.get("/alerts", response_model=dict)
 async def get_alerts(
-    current_user: str = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict:
     """Get active validation alerts across all clients."""
+    _require_lkpm_staff(current_user)
     service = _get_service(db_pool)
     alerts = await service.get_alerts()
     return {"success": True, "alerts": alerts}
@@ -469,10 +686,11 @@ async def get_alerts(
 @router.get("/history/{client_id}", response_model=dict)
 async def get_history(
     client_id: int,
-    current_user: str = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict:
     """Get LKPM report history for a client."""
+    _require_lkpm_staff(current_user)
     service = _get_service(db_pool)
     items = await service.get_history(client_id)
     return {
@@ -486,7 +704,7 @@ async def get_history(
 @router.get("/deadlines", response_model=dict)
 async def get_deadlines(
     days_ahead: int = 30,
-    current_user: str = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict:
     """Get upcoming LKPM deadlines."""
@@ -665,8 +883,7 @@ async def generate_ready_pack_pdf(
     from backend.services.compliance.exceptions import LkpmValidationError
     from backend.services.compliance.lkpm_ready_pack import LkpmReadyPack
 
-    if not isinstance(current_user, dict):
-        raise HTTPException(status_code=401, detail="Invalid authentication context")
+    current_user = _require_lkpm_staff(current_user)
 
     period = (body.period or "").strip()
     if not period:
@@ -737,13 +954,13 @@ async def generate_ready_pack_pdf(
         )
         return {"success": True, **result}
     except LkpmValidationError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=422,
+            detail="LKPM ready pack is incomplete",
+        ) from exc
     except Exception as exc:
-        logger.error(
-            "lkpm ready-pack: unhandled error for client_id=%d period=%s — %s",
-            client_id,
-            period,
+        raise _safe_lkpm_failure(
+            "generate_oss_ready_pack",
             exc,
-            exc_info=True,
-        )
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+            "LKPM ready pack temporarily unavailable",
+        ) from exc
