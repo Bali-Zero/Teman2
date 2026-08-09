@@ -167,16 +167,12 @@ async function getStoryMedia(handler, slug, bindings, authenticated = true) {
   );
 }
 
-test("story media route serves the approved image without exposing its digest in HTML", async () => {
+test("public story media route serves only approved published media without exposing its digest", async () => {
   const handler = await loadStoryRoute();
   const { db, media, metadata, story } = await publishVisibleAsset();
   const bindings = runtimeBindings(db, media);
 
-  assert.equal(
-    (await getStoryMedia(handler, story.slug, bindings, false)).status,
-    401,
-  );
-  const response = await getStoryMedia(handler, story.slug, bindings);
+  const response = await getStoryMedia(handler, story.slug, bindings, false);
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("content-type"), "image/png");
   assert.equal((await response.text()).includes(metadata.sha256), false);

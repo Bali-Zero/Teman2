@@ -3,6 +3,7 @@ import {
   WorkspaceAccessRequired,
 } from "@/components/magazine-shell";
 import { ResearchWorkbench } from "@/components/research-workbench";
+import { requireChatGPTUser } from "@/app/chatgpt-auth";
 import { authorize, parseRoleAllowlist } from "@/lib/server/authorization";
 import { requireMagazineViewer } from "@/lib/server/magazine-read-model";
 import { publicResearchJob } from "@/lib/server/research-http";
@@ -15,6 +16,7 @@ import { getMagazineBindings } from "@/lib/server/runtime-bindings";
 export const dynamic = "force-dynamic";
 
 export default async function ResearchPage() {
+  await requireChatGPTUser("/research");
   const viewer = await requireMagazineViewer();
   if (viewer === null)
     return (

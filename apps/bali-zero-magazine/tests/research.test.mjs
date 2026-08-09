@@ -129,10 +129,14 @@ test("research room ships the human and machine boundary routes", () => {
   for (const [name, path] of Object.entries(routePaths)) {
     assert.ok(existsSync(path), `missing ${name} research surface`);
   }
+
+  const pageSource = readFileSync(routePaths.page, "utf8");
+  assert.match(pageSource, /requireChatGPTUser\("\/research"\)/);
 });
 
 test("research detail exposes the closed brief and labels Notebook Insight as synthesis", () => {
   const source = readFileSync(routePaths.detail, "utf8");
+  assert.match(source, /requireChatGPTUser/);
   assert.match(source, /Controlled brief/);
   assert.match(source, /Synthesis, not verification/);
   assert.match(

@@ -33,7 +33,7 @@ test("server-renders the magazine shell", async () => {
   assert.match(html, /Bali Zero Magazine/);
   assert.match(
     html,
-    /Internal intelligence, research, and operations for Bali Zero\./,
+    /Verified intelligence on immigration, investment, tax, property, and compliance in Bali\./,
   );
 });
 

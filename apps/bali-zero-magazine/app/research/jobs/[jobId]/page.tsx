@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { requireChatGPTUser } from "@/app/chatgpt-auth";
 import {
   MagazineShell,
   WorkspaceAccessRequired,
@@ -19,6 +20,9 @@ function displaySelection(values: readonly string[]): string {
 export default async function ResearchJobPage({
   params,
 }: Readonly<{ params: Promise<{ jobId: string }> }>) {
+  const jobId = (await params).jobId;
+  if (!/^research-job-[A-Za-z0-9-]{16,80}$/.test(jobId)) notFound();
+  await requireChatGPTUser(`/research/jobs/${encodeURIComponent(jobId)}`);
   const viewer = await requireMagazineViewer();
   if (viewer === null)
     return (
@@ -26,8 +30,6 @@ export default async function ResearchJobPage({
         <WorkspaceAccessRequired />
       </MagazineShell>
     );
-  const jobId = (await params).jobId;
-  if (!/^research-job-[A-Za-z0-9-]{16,80}$/.test(jobId)) notFound();
   const db = getMagazineBindings().DB;
   if (db === undefined) throw new Error("Research database is unavailable");
   const storedJob = await createResearchRepository(db).getJob(jobId);

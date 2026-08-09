@@ -1,9 +1,10 @@
 # Bali Zero Magazine
 
-Private editorial observatory for Bali Zero, built on
+Public editorial observatory for Bali Zero, built on
 [vinext](https://github.com/cloudflare/vinext) and OpenAI Sites. It publishes a
 morning edition plus breaking updates from the existing intelligence collectors,
-with Research and Operations rooms nested behind the magazine front page.
+with ChatGPT-protected Research and Operations rooms nested behind the public
+magazine front page.
 
 ## Prerequisites
 
@@ -22,7 +23,7 @@ This starter does not use `wrangler.jsonc`.
 ## Included Shape
 
 - `app/` contains the editorial, research, operations, and machine-ingress routes
-- `.openai/hosting.json` binds the private Sites project to D1 and R2
+- `.openai/hosting.json` binds the public Sites project to D1 and R2
 - `db/schema.ts` and `drizzle/` define the publication and control-plane model
 - `worker/` applies response-security headers at the edge
 - `vite.config.ts` simulates the Sites bindings for local development

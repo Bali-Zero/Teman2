@@ -1,14 +1,8 @@
 import { notFound } from "next/navigation";
 
 import { EvidenceDrawer } from "@/components/evidence-drawer";
-import {
-  MagazineShell,
-  WorkspaceAccessRequired,
-} from "@/components/magazine-shell";
-import {
-  readStoryDetail,
-  requireMagazineViewer,
-} from "@/lib/server/magazine-read-model";
+import { MagazineShell } from "@/components/magazine-shell";
+import { readStoryDetail } from "@/lib/server/magazine-read-model";
 
 export const dynamic = "force-dynamic";
 
@@ -37,15 +31,6 @@ function titleCase(value: string): string {
 }
 
 export default async function StoryPage({ params }: StoryPageProps) {
-  const viewer = await requireMagazineViewer();
-  if (viewer === null) {
-    return (
-      <MagazineShell eyebrow="Private workspace">
-        <WorkspaceAccessRequired />
-      </MagazineShell>
-    );
-  }
-
   const { slug } = await params;
   const detail = await readStoryDetail(slug);
   if (detail === null) notFound();

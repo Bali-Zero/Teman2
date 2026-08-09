@@ -1116,6 +1116,7 @@ test("all five operations lifecycle routes reject oversized signed JSON", async 
 
 test("operations page labels health and keeps actions operator-only", () => {
   const source = `${readFileSync(routePaths.page, "utf8")}\n${readFileSync(routePaths.board, "utf8")}`;
+  assert.match(source, /requireChatGPTUser\("\/operations"\)/);
   assert.match(source, /Collector freshness/);
   assert.match(source, /Edition state/);
   assert.match(source, /Breaking queue/);

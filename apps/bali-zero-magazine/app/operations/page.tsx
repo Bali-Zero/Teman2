@@ -3,6 +3,7 @@ import {
   WorkspaceAccessRequired,
 } from "@/components/magazine-shell";
 import { OperationsBoard } from "@/components/operations-board";
+import { requireChatGPTUser } from "@/app/chatgpt-auth";
 import { requireMagazineViewer } from "@/lib/server/magazine-read-model";
 import { createOperationsRepository } from "@/lib/server/operations-repository";
 import { getMagazineBindings } from "@/lib/server/runtime-bindings";
@@ -10,6 +11,7 @@ import { getMagazineBindings } from "@/lib/server/runtime-bindings";
 export const dynamic = "force-dynamic";
 
 export default async function OperationsPage() {
+  await requireChatGPTUser("/operations");
   const viewer = await requireMagazineViewer();
   if (viewer === null)
     return (

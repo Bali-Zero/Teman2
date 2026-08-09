@@ -43,7 +43,7 @@ export function FrontPage({ page, archive = false }: FrontPageProps) {
 
       <header className="edition-header">
         <div>
-          <p>{edition ? editionDate(edition.date) : "Workspace edition"}</p>
+          <p>{edition ? editionDate(edition.date) : "Latest edition"}</p>
           {edition ? (
             <p>Last verified {verifiedAtWita(edition.verifiedAt)}</p>
           ) : null}

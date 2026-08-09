@@ -795,7 +795,7 @@ test("magazine front page renders editorial priority, five domains, coverage, an
   assert.match(html, /09:25 WITA/i);
   assert.match(
     html,
-    /<meta[^>]+name="robots"[^>]+content="noindex, nofollow"/i,
+    /<meta[^>]+name="robots"[^>]+content="index, follow"/i,
   );
   assert.ok(
     html.indexOf("The Morning File") < html.indexOf("Source systems"),
@@ -955,16 +955,30 @@ test("editorial CSS uses the locked Bali Zero palette and Montserrat stack", () 
   assert.match(css, /font-family:\s*Montserrat,\s*sans-serif/i);
 });
 
-test("anonymous readers receive a protected shell without editorial data", async () => {
-  const response = await render("/", { authenticated: false });
+test("anonymous readers can read the public magazine without workspace identity", async () => {
+  const db = createFixtureDb();
+  const response = await render("/", { authenticated: false, db });
   assertProtectedHtml(response);
   const html = await response.text();
-  assert.match(html, /Workspace access required/i);
-  assert.doesNotMatch(html, /The Morning File/);
-  assert.doesNotMatch(
-    html,
-    /Bali visa files move to a stricter evidence standard/,
-  );
+  assert.doesNotMatch(html, /Workspace access required/i);
+  assert.match(html, /The Morning File/);
+  assert.match(html, /Bali visa files move to a stricter evidence standard/);
+
+  const storyResponse = await render("/stories/bali-visa-evidence-standard", {
+    authenticated: false,
+    db,
+  });
+  const storyHtml = await storyResponse.text();
+  assert.doesNotMatch(storyHtml, /Workspace access required/i);
+  assert.match(storyHtml, /Claims and evidence/);
+
+  const archiveResponse = await render("/editions/2026-07-18-r2", {
+    authenticated: false,
+    db,
+  });
+  const archiveHtml = await archiveResponse.text();
+  assert.doesNotMatch(archiveHtml, /Workspace access required/i);
+  assert.match(archiveHtml, /Immutable revision 2/i);
 });
 
 test("Sites-authenticated readers can read when optional role bindings are absent", async () => {
