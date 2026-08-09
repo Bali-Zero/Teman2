@@ -130,7 +130,9 @@ jobs:
       - name: Migrated senders must REACH the gateway, not just name it
         run: |
           # The 2026-08-09 batch moved six organs (~2,350 wake-ups/day between
-          # them) off raw sendMessage. The anti-regrowth lint below proves they
+          # them) off raw sendMessage; 2026-08-10 added post_publish_poller
+          # (288/day, previously MUTE for want of a token) and
+          # runtime-reconcile (48/day). The anti-regrowth lint below proves they
           # no longer POST directly; it cannot prove the replacement WORKS —
           # a call that resolves no gateway, or resolves `python3` from a PATH
           # the sick environment just broke, satisfies the lint and still leaves
