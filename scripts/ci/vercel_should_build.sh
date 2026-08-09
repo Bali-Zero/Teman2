@@ -72,12 +72,6 @@ REF="${VERCEL_GIT_COMMIT_REF:-}"
 BASE="${VERCEL_GIT_PREVIOUS_SHA:-}"
 
 log() { printf 'should-build: %s\n' "$1" >&2; }
-one_line() { printf '%s' "$1" | tr '\n' ' ' | cut -c1-200; }
-one_line_redacted() {
-  local value="$1" sensitive="$2"
-  [ -n "$sensitive" ] && value=${value//"$sensitive"/<fetch-url>}
-  one_line "$value"
-}
 
 if [ -z "$BASE" ]; then
   # No previous deployment on this ref — this is the case that matters. Measured on the real
@@ -91,9 +85,9 @@ if [ -z "$BASE" ]; then
   # The guard was safe (it built too much, never too little) but effectively inert on its main case.
   #
   # Worse, the reason was unknowable: the fetch's stderr went to /dev/null, so the log said
-  # "cannot fetch" and nothing else. A fail-open branch that does not say WHY it opened cannot
-  # be repaired from its own evidence. So: cheapest-first resolution, each path announcing
-  # itself, and the fetch's actual error surfaced.
+  # "cannot fetch" and nothing else. A fail-open branch that does not say WHICH stage opened
+  # cannot be repaired from its own evidence. So: cheapest-first resolution, each stage
+  # announcing itself without replaying Git stderr, which may contain an authenticated URL.
   if [ "$REF" = "$PROD_BRANCH" ]; then
     log "production branch with no previous deployment -> BUILD (never risk a stale production)"
     exit 1
@@ -134,10 +128,11 @@ if [ -z "$BASE" ]; then
   # from the repository URL that Vercel itself advertises in the build env
   # (VERCEL_GIT_REPO_OWNER/SLUG; the repo is public, an anonymous fetch suffices).
   # SHOULD_BUILD_FETCH_URL overrides the constructed URL — test seam and emergency lever.
-  # Every failure still exits 1 (BUILD), with each attempt's actual error named.
+  # Every failure still exits 1 (BUILD), with each failed transport named. Git stderr is never
+  # logged because it can normalize and repeat credentials or query tokens from the fetch URL.
   if [ -z "$BASE" ]; then
     fetched=
-    if fetch_err=$(git fetch --no-tags --depth=200 origin "$PROD_BRANCH" 2>&1); then
+    if git fetch --no-tags --depth=200 origin "$PROD_BRANCH" >/dev/null 2>&1; then
       fetched=origin
     else
       FETCH_URL="${SHOULD_BUILD_FETCH_URL:-}"
@@ -145,15 +140,15 @@ if [ -z "$BASE" ]; then
         FETCH_URL="https://github.com/${VERCEL_GIT_REPO_OWNER}/${VERCEL_GIT_REPO_SLUG}.git"
       fi
       if [ -z "$FETCH_URL" ]; then
-        log "cannot fetch $PROD_BRANCH (no origin, no repo env to build a URL) -> BUILD (fail-open). git said: $(one_line "$fetch_err")"
+        log "cannot fetch $PROD_BRANCH (no origin, no repo env to build a URL) -> BUILD (fail-open). origin fetch failed"
         exit 1
       fi
-      if url_err=$(git fetch --no-tags --depth=200 "$FETCH_URL" "$PROD_BRANCH" 2>&1); then
+      if git fetch --no-tags --depth=200 "$FETCH_URL" "$PROD_BRANCH" >/dev/null 2>&1; then
         # The override is an operational seam and may contain credentials or another
         # sensitive locator. The fetch target must never be copied into Vercel logs.
         fetched=url
       else
-        log "cannot fetch $PROD_BRANCH from origin or URL -> BUILD (fail-open). origin: $(one_line "$fetch_err") | url: $(one_line_redacted "$url_err" "$FETCH_URL")"
+        log "cannot fetch $PROD_BRANCH from origin or URL -> BUILD (fail-open). origin fetch failed | URL fetch failed"
         exit 1
       fi
     fi

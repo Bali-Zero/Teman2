@@ -77,11 +77,15 @@ run() { # run <expected: BUILD|SKIP> <label> ; env vars come from the caller
   fi
 }
 
-run_log_safe() { # run_log_safe <expected> <label> <sentinel> <required-log-fragment>
-  local want="$1" label="$2" sentinel="$3" required="$4" output got rc
+run_log_safe() { # run_log_safe <expected> <label> <required-log-fragment> <sentinel>...
+  local want="$1" label="$2" required="$3" output got rc sentinel safe=1
+  shift 3
   output=$( ( cd "$WORK" && bash "$SCRIPT" >/dev/null ) 2>&1 ); rc=$?
   case $rc in 1) got=BUILD ;; 0) got=SKIP ;; *) got="rc=$rc" ;; esac
-  if [ "$got" = "$want" ] && [[ "$output" == *"$required"* ]] && [[ "$output" != *"$sentinel"* ]]; then
+  for sentinel in "$@"; do
+    [[ "$output" != *"$sentinel"* ]] || safe=0
+  done
+  if [ "$got" = "$want" ] && [[ "$output" == *"$required"* ]] && [ "$safe" -eq 1 ]; then
     PASS=$((PASS+1)); printf '  ok    %-58s %s\n' "$label" "$got"
   else
     FAIL=$((FAIL+1))
@@ -220,7 +224,7 @@ PRIVATE_UPSTREAM="$ROOT/$FETCH_SENTINEL/upstream.git"
 mkdir -p "$(dirname "$PRIVATE_UPSTREAM")"
 git clone -q --bare "$UPSTREAM" "$PRIVATE_UPSTREAM"
 VERCEL_GIT_COMMIT_REF=docs/noorigin VERCEL_GIT_PREVIOUS_SHA= SHOULD_BUILD_FETCH_URL="$PRIVATE_UPSTREAM" \
-  run_log_safe SKIP "URL fallback succeeds without logging its target" "$FETCH_SENTINEL" "from url -> merge-base"
+  run_log_safe SKIP "URL fallback succeeds without logging its target" "from url -> merge-base" "$FETCH_SENTINEL"
 
 git -C "$WORK" checkout -q -b feat/noorigin main
 commit "apps/mouth/app/no-origin.tsx" "frontend, container without origin"
@@ -230,7 +234,16 @@ VERCEL_GIT_COMMIT_REF=feat/noorigin VERCEL_GIT_PREVIOUS_SHA= SHOULD_BUILD_FETCH_
 git -C "$WORK" checkout -q -b docs/nourl main
 commit "docs/no-url.md" "docs only, and nothing fetchable at all"
 VERCEL_GIT_COMMIT_REF=docs/nourl VERCEL_GIT_PREVIOUS_SHA= SHOULD_BUILD_FETCH_URL="$ROOT/$FETCH_SENTINEL/does-not-exist.git" \
-  run_log_safe BUILD "dead URL fails open without logging its target" "$FETCH_SENTINEL" "cannot fetch main from origin or URL"
+  run_log_safe BUILD "dead URL fails open without logging its target" "cannot fetch main from origin or URL" "$FETCH_SENTINEL"
+
+# Git can normalize a failed HTTP locator before echoing it (for example, stripping userinfo
+# while retaining the query string), so exact-string replacement is not a sufficient redactor.
+FETCH_USERINFO_SENTINEL=SENTINEL_USERINFO_8c17
+FETCH_QUERY_SENTINEL=SENTINEL_QUERY_5e62
+CRED_FETCH_URL="http://sentinel-user:${FETCH_USERINFO_SENTINEL}@127.0.0.1:1/repo.git?access_token=${FETCH_QUERY_SENTINEL}"
+VERCEL_GIT_COMMIT_REF=docs/nourl VERCEL_GIT_PREVIOUS_SHA= SHOULD_BUILD_FETCH_URL="$CRED_FETCH_URL" \
+  run_log_safe BUILD "normalized HTTP errors never leak credentials" \
+  "origin fetch failed | URL fetch failed" "$FETCH_USERINFO_SENTINEL" "$FETCH_QUERY_SENTINEL"
 
 git -C "$WORK" remote add origin "$UPSTREAM"
 git -C "$WORK" fetch -q origin main:refs/remotes/origin/main
