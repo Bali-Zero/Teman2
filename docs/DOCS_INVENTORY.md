@@ -19,7 +19,7 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | File | Status | last_touched_date | orphan_eligible_on | orphan_flipped_on | refs_in | broken | drift | cluster | action |
 |------|--------|--------------------|---------------------|--------------------|--------:|-------:|-------|---------|--------|
 | docs/AI_DISPATCH_REFERENCE.md | LIVE | 2026-05-22 | 2026-08-20 | — | 2 | 0 | no | — | — |
-| docs/AI_ONBOARDING.md | LIVE | 2026-08-08 | 2026-11-06 | — | 21 | 0 | no | — | — |
+| docs/AI_ONBOARDING.md | LIVE | 2026-08-09 | 2026-11-07 | — | 21 | 0 | no | — | — |
 | docs/ANTHROPIC_API_REFERENCE.md | LIVE | 2026-07-25 | 2026-10-23 | — | 1 | 0 | no | — | — |
 | docs/API_REFERENCE.md | LIVE | 2026-02-26 | 2026-05-27 | — | 3 | 0 | no | — | whitelist |
 | docs/APPLICAZIONE_COMPONENTI_UTILITY.md | ARCHIVED | 2026-04-24 | 2026-07-23 | 2026-07-25 | 0 | 0 | no | — | archive: orphan, last_touched=2026-04-24, refs=0 |
@@ -536,7 +536,7 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | docs/nlm-sources/PRO_EXECUTION_INSTRUCTIONS.md | LIVE | 2026-03-31 | 2026-06-29 | — | 1 | 0 | no | — | — |
 | docs/observability/README.md | LIVE | 2026-04-17 | 2026-07-16 | — | 0 | 0 | no | — | keep (directory index) |
 | docs/operations/2026-08-07-fr-ru-translation-freshness-decision.md | LIVE | 2026-08-07 | 2026-11-05 | — | 0 | 0 | no | — | — |
-| docs/operations/2026-08-07-nuzantara-repo-sync-doctrine-conflict.md | LIVE | 2026-08-07 | 2026-11-05 | — | 0 | 0 | no | — | — |
+| docs/operations/2026-08-07-nuzantara-repo-sync-doctrine-conflict.md | LIVE | 2026-08-08 | 2026-11-06 | — | 0 | 0 | no | — | — |
 | docs/operations/AGENT_ARSENAL.md | LIVE | 2026-01-25 | 2026-04-25 | — | 1 | 0 | no | — | — |
 | docs/operations/AUTOMATION_AUDIT_2026_01_18.md | LIVE | 2026-02-01 | 2026-05-02 | — | 1 | 0 | no | — | — |
 | docs/operations/CLEANUP_10_STEPS.md | LIVE | 2026-03-10 | 2026-06-08 | — | 1 | 0 | no | — | — |
@@ -553,7 +553,7 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | docs/operations/cron-canonical-2026-05-20.md | LIVE | 2026-05-19 | 2026-08-17 | — | 0 | 0 | no | — | — |
 | docs/operations/docs-guardian-cron.md | LIVE | 2026-07-16 | 2026-10-14 | — | 1 | 0 | no | — | — |
 | docs/operations/docs-history-analyzer-cron.md | LIVE | 2026-07-16 | 2026-10-14 | — | 0 | 0 | no | — | — |
-| docs/operations/handoff-observability-block-2026-08-06.md | LIVE | 2026-08-07 | 2026-11-05 | — | 1 | 0 | no | — | — |
+| docs/operations/handoff-observability-block-2026-08-06.md | LIVE | 2026-08-08 | 2026-11-06 | — | 1 | 0 | no | — | — |
 | docs/operations/nb-mitochondrial-monitor.md | LIVE | 2026-07-16 | 2026-10-14 | — | 2 | 0 | no | — | — |
 | docs/operations/wa-mirror-email-manifest-runbook.md | LIVE | 2026-05-26 | 2026-08-24 | — | 0 | 0 | no | — | — |
 | docs/ops/2026-04-30-followup-cell-cron-sensor.md | ARCHIVED | 2026-04-29 | 2026-07-28 | 2026-07-29 | 0 | 0 | no | — | archive: orphan, last_touched=2026-04-29, refs=0 |
@@ -632,7 +632,7 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | docs/runbooks/organism-digest.md | LIVE | 2026-07-06 | 2026-10-04 | — | 1 | 0 | no | — | — |
 | docs/runbooks/portal-auth-session-operations.md | LIVE | 2026-08-07 | 2026-11-05 | — | 1 | 0 | no | — | — |
 | docs/runbooks/prod-crm-smoke.md | LIVE | 2026-07-16 | 2026-10-14 | — | 1 | 0 | no | — | — |
-| docs/runbooks/proprioception-boundary-recon.md | LIVE | 2026-07-02 | 2026-09-30 | — | 1 | 0 | no | — | — |
+| docs/runbooks/proprioception-boundary-recon.md | LIVE | 2026-08-08 | 2026-11-06 | — | 1 | 0 | no | — | — |
 | docs/runbooks/qdrant-estate-reconciliation.md | LIVE | 2026-07-05 | 2026-10-03 | — | 2 | 0 | no | — | — |
 | docs/runbooks/redis-lease-registry.md | LIVE | 2026-05-25 | 2026-08-23 | — | 3 | 0 | no | — | — |
 | docs/runbooks/repomap-and-branch-cleanup.md | LIVE | 2026-07-16 | 2026-10-14 | — | 2 | 0 | no | — | — |
