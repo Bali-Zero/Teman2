@@ -177,7 +177,7 @@ slowapi>=0.1.10  # Rate limiting for FastAPI
 redis>=8.1.0  # Already present, used for caching
 
 # MCP (Model Context Protocol)
-mcp>=1.28.1  # Upgraded for pydantic 2.12+ compatibility
+mcp>=2.0.0  # Upgraded for pydantic 2.12+ compatibility
 # fastmcp removed 2026-05-03: not imported by backend-rag runtime. The MCP
 # server lives in apps/nuzantara-mcp/ with its own venv (fastmcp 3.2.4).
 # Removal closes 8 Dependabot alerts on fastmcp 2.1.0 (1 critical + 4 high
