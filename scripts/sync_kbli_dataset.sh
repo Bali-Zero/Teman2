@@ -57,7 +57,14 @@ CONSUMERS=(
   "apps/kbli-navigator/data/kbli-2025.json"
 )
 
-MODE="${1:-sync}"
+MODE="sync"
+LOCAL_CANONICAL=0
+for arg in "$@"; do
+  case "$arg" in
+    --check) MODE="--check" ;;
+    --local-canonical) LOCAL_CANONICAL=1 ;;
+  esac
+done
 
 if [[ ! -f "$CANONICAL" ]]; then
   echo "::error::canonical KBLI dataset missing at $CANONICAL — cannot sync." >&2
@@ -68,6 +75,40 @@ fi
 if [[ -L "$CANONICAL" ]]; then
   echo "::error::$CANONICAL is a SYMLINK — canonical must be a physical file (HOME-fork #1)." >&2
   exit 2
+fi
+
+# ── main-checkout preflight (W106b) ───────────────────────────────────────────────────
+# sync mode WRITES canonical's current bytes over every consumer copy. Run from the
+# shared main checkout (M5's is ~235 commits behind BY DESIGN — agents never pull it,
+# work happens in worktrees), that propagation can silently "sync backwards": overwriting
+# consumer copies a merged PR has since moved forward, the moment the resulting commit
+# lands. NOTE: this deliberately does NOT swap what bytes get read/propagated — the
+# cure-compilers under scripts/kbli_filiera/ write a NEW canonical in THIS checkout and
+# then call this script to propagate that edit to the 4 consumer copies; anchoring the
+# read on origin/main would discard every such edit. This guard only refuses to run from
+# a checkout that cannot possibly be trusted as a propagation source in the first place.
+#
+# --check is NOT guarded: it is CI's read-only intra-repo consistency gate (canonical vs.
+# consumers WITHIN this checkout) — unrelated to which branch is checked out, and every
+# dataset PR needs it to pass while its own branch legitimately carries a canonical edit.
+# --local-canonical bypasses this preflight explicitly (offline dev, or a verified
+# intentional exception).
+#
+# The guilt condition is the checked-out BRANCH (== "main"), not an ancestor/distance
+# check against origin/main: this repo's own Worktree Discipline already declares the
+# main checkout read-only for agents (work happens in worktrees, each on its own agent/*
+# branch), so a checkout with `main` checked out is the exact, permanent, policy-defined
+# risk regardless of how many commits behind it happens to be at any instant. An
+# ancestor/distance check was tried first and measured broken: a worktree branch that is
+# completely healthy and freshly created can already be 1+ commits behind origin/main
+# minutes later, just from ordinary unrelated activity on a busy repo — that is normal,
+# not staleness, and must never be refused.
+if [[ "$MODE" == "sync" && "$LOCAL_CANONICAL" -eq 0 ]]; then
+  CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")"
+  if [[ "$CURRENT_BRANCH" == "main" ]]; then
+    echo "::error::REFUSED: this checkout has 'main' checked out — the shared main checkout is read-only for agents (never pulled; work happens in worktrees, per this repo's Worktree Discipline) and cannot be trusted as a canonical-propagation source (W106b: it can be arbitrarily far behind origin/main — M5's is ~235 commits — and sync would silently propagate that stale content over consumer copies a merged PR already moved forward). Re-run from a fresh worktree (python scripts/agent_start.py --lane <x> --task-id <y>), or pass --local-canonical to override (you have verified this is an intentional exception)." >&2
+    exit 4
+  fi
 fi
 
 drift=0
