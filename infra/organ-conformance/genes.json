@@ -250,6 +250,13 @@
       "G2_heartbeat",
       "G5_kill_switch"
     ],
+    "infra/launchagents/com.balizero.wr2.external-bench.monthly.plist": [
+      "G10_single_instance",
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch",
+      "G6_spawn_hardened"
+    ],
     "infra/launchagents/com.balizero.wr2.fact-checker.plist": [
       "G2_heartbeat",
       "G3_declared_pair",
@@ -269,6 +276,13 @@
       "G2_heartbeat",
       "G5_kill_switch",
       "G9_fail_visible"
+    ],
+    "infra/launchagents/com.balizero.wr2.ig-metrics-analyst.weekly.plist": [
+      "G10_single_instance",
+      "G1_registry",
+      "G2_heartbeat",
+      "G5_kill_switch",
+      "G6_spawn_hardened"
     ],
     "infra/launchagents/com.balizero.wr2.ig-metrics-scrape.daily.plist": [
       "G1_registry",
