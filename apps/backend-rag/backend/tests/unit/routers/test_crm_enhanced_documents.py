@@ -171,6 +171,10 @@ async def test_create_document_success(mock_db_pool, mock_current_user):
 
     with (
         patch("backend.app.routers.crm_enhanced_documents.verify_client_access", new=AsyncMock()),
+        patch(
+            "backend.app.routers.crm_enhanced_documents.assert_drive_file_belongs_to_client",
+            new=AsyncMock(),
+        ) as mock_provenance,
         patch("backend.app.routers.crm_enhanced_documents.invalidate_cache", new=AsyncMock()),
         patch(
             "backend.app.routers.crm_enhanced_documents._dispatch_ocr_by_folder", new=AsyncMock()
@@ -191,6 +195,54 @@ async def test_create_document_success(mock_db_pool, mock_current_user):
     assert result["success"] is True
     assert result["id"] == 42
     assert result["ocr_triggered"] is True
+    mock_provenance.assert_awaited_once_with("drive-file-id-123", 1, mock_db_pool._mock_conn)
+
+
+@pytest.mark.asyncio
+async def test_create_document_rejects_foreign_file_id(mock_db_pool, mock_current_user):
+    """Guilt: a file_id that does not descend from THIS client's own Drive
+    folder is refused before the row is ever inserted (PENDING-ARMS
+    2026-08-01, "the registry is self-authorising for a caller who can WRITE")."""
+    from backend.app.routers.crm_enhanced_documents import create_document
+
+    mock_doc_create = MagicMock()
+    mock_doc_create.document_type = "passport"
+    mock_doc_create.document_category = "immigration"
+    mock_doc_create.file_name = "pass.pdf"
+    mock_doc_create.file_id = "someone-elses-file-id"
+    mock_doc_create.file_url = None
+    mock_doc_create.google_drive_file_url = None
+    mock_doc_create.expiry_date = None
+    mock_doc_create.notes = None
+    mock_doc_create.family_member_id = None
+    mock_doc_create.practice_id = None
+
+    background_tasks = MagicMock()
+
+    with (
+        patch("backend.app.routers.crm_enhanced_documents.verify_client_access", new=AsyncMock()),
+        patch(
+            "backend.app.routers.crm_enhanced_documents.assert_drive_file_belongs_to_client",
+            new=AsyncMock(
+                side_effect=HTTPException(
+                    status_code=403, detail="Drive file is not in this client's own folder tree"
+                )
+            ),
+        ),
+    ):
+        with pytest.raises(HTTPException) as exc_info:
+            await create_document(
+                client_id=1,
+                data=mock_doc_create,
+                background_tasks=background_tasks,
+                pool=mock_db_pool,
+                current_user=mock_current_user,
+            )
+
+    assert exc_info.value.status_code == 403
+    # Never reached the INSERT — the row is never staged for a file that
+    # failed provenance.
+    mock_db_pool._mock_conn.fetchval.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -267,6 +319,10 @@ async def test_create_documents_bulk_success(mock_db_pool, mock_current_user):
 
     with (
         patch("backend.app.routers.crm_enhanced_documents.verify_client_access", new=AsyncMock()),
+        patch(
+            "backend.app.routers.crm_enhanced_documents.assert_drive_file_belongs_to_client",
+            new=AsyncMock(),
+        ) as mock_provenance,
         patch("backend.app.routers.crm_enhanced_documents.invalidate_cache", new=AsyncMock()),
         patch(
             "backend.app.routers.crm_enhanced_documents._dispatch_ocr_by_folder", new=AsyncMock()
@@ -282,6 +338,58 @@ async def test_create_documents_bulk_success(mock_db_pool, mock_current_user):
 
     assert result["success"] is True
     assert result["inserted"] == 1
+    mock_provenance.assert_awaited_once_with("file-1", 1, mock_db_pool._mock_conn)
+
+
+@pytest.mark.asyncio
+async def test_create_documents_bulk_rejects_foreign_file_id_as_per_item_failure(
+    mock_db_pool, mock_current_user
+):
+    """Guilt: a foreign file_id degrades that ONE item to the batch's existing
+    failed_count/continue-on-error semantics, rather than aborting the whole
+    request — matches every other per-item failure in this endpoint."""
+    from backend.app.routers.crm_enhanced_documents import create_documents_bulk
+
+    doc1 = MagicMock()
+    doc1.document_type = "passport"
+    doc1.document_category = "immigration"
+    doc1.file_name = "pass.pdf"
+    doc1.file_id = "someone-elses-file-id"
+    doc1.file_url = None
+    doc1.google_drive_file_url = None
+    doc1.expiry_date = None
+    doc1.notes = None
+    doc1.family_member_id = None
+    doc1.practice_id = None
+
+    tx_cm = MagicMock()
+    tx_cm.__aenter__ = AsyncMock()
+    tx_cm.__aexit__ = AsyncMock(return_value=False)
+    mock_db_pool._mock_conn.transaction = MagicMock(return_value=tx_cm)
+
+    background_tasks = MagicMock()
+
+    with (
+        patch("backend.app.routers.crm_enhanced_documents.verify_client_access", new=AsyncMock()),
+        patch(
+            "backend.app.routers.crm_enhanced_documents.assert_drive_file_belongs_to_client",
+            new=AsyncMock(
+                side_effect=HTTPException(status_code=403, detail="not in this client's tree")
+            ),
+        ),
+    ):
+        result = await create_documents_bulk(
+            client_id=1,
+            documents=[doc1],
+            background_tasks=background_tasks,
+            pool=mock_db_pool,
+            current_user=mock_current_user,
+        )
+
+    assert result["success"] is True
+    assert result["inserted"] == 0
+    assert result["failed"] == 1
+    mock_db_pool._mock_conn.fetchval.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -331,6 +439,7 @@ async def test_update_document_success(mock_db_pool, mock_current_user):
 
     mock_update_data = MagicMock()
     mock_update_data.model_dump.return_value = {"notes": "Updated notes"}
+    mock_update_data.file_id = None
 
     mock_db_pool._mock_conn.execute.return_value = "UPDATE 1"
 
@@ -355,6 +464,7 @@ async def test_update_document_not_found(mock_db_pool, mock_current_user):
 
     mock_update_data = MagicMock()
     mock_update_data.model_dump.return_value = {"notes": "test"}
+    mock_update_data.file_id = None
 
     mock_db_pool._mock_conn.execute.return_value = "UPDATE 0"
 
@@ -400,6 +510,7 @@ async def test_update_document_with_date_field(mock_db_pool, mock_current_user):
 
     mock_update_data = MagicMock()
     mock_update_data.model_dump.return_value = {"expiry_date": "2030-01-01"}
+    mock_update_data.file_id = None
 
     mock_db_pool._mock_conn.execute.return_value = "UPDATE 1"
 
@@ -424,6 +535,7 @@ async def test_update_document_with_empty_date(mock_db_pool, mock_current_user):
 
     mock_update_data = MagicMock()
     mock_update_data.model_dump.return_value = {"expiry_date": "", "notes": "test"}
+    mock_update_data.file_id = None
 
     mock_db_pool._mock_conn.execute.return_value = "UPDATE 1"
 
@@ -440,6 +552,78 @@ async def test_update_document_with_empty_date(mock_db_pool, mock_current_user):
         )
 
     assert result["success"] is True
+
+
+@pytest.mark.asyncio
+async def test_update_document_checks_provenance_when_file_id_changes(
+    mock_db_pool, mock_current_user
+):
+    """Innocence: setting `file_id` on an existing document runs the SAME
+    ownership check as creating one — the guard was originally wired only
+    into POST, leaving PATCH `.../documents/{doc_id}` free to re-point a
+    document at a Drive file belonging to another client (adversarial review
+    of the write-provenance fix, 2026-08-09)."""
+    from backend.app.routers.crm_enhanced_documents import update_document
+
+    mock_update_data = MagicMock()
+    mock_update_data.model_dump.return_value = {"file_id": "drive-file-id-456"}
+    mock_update_data.file_id = "drive-file-id-456"
+
+    mock_db_pool._mock_conn.execute.return_value = "UPDATE 1"
+
+    with (
+        patch("backend.app.routers.crm_enhanced_documents.verify_client_access", new=AsyncMock()),
+        patch(
+            "backend.app.routers.crm_enhanced_documents.assert_drive_file_belongs_to_client",
+            new=AsyncMock(),
+        ) as mock_provenance,
+        patch("backend.app.routers.crm_enhanced_documents.invalidate_cache", new=AsyncMock()),
+    ):
+        result = await update_document(
+            client_id=1,
+            doc_id=10,
+            data=mock_update_data,
+            pool=mock_db_pool,
+            current_user=mock_current_user,
+        )
+
+    assert result["success"] is True
+    mock_provenance.assert_awaited_once_with("drive-file-id-456", 1, mock_db_pool._mock_conn)
+
+
+@pytest.mark.asyncio
+async def test_update_document_rejects_foreign_file_id(mock_db_pool, mock_current_user):
+    """Guilt: a PATCH that re-points `file_id` at a Drive file belonging to a
+    different client is refused before the UPDATE runs."""
+    from backend.app.routers.crm_enhanced_documents import update_document
+
+    mock_update_data = MagicMock()
+    mock_update_data.model_dump.return_value = {"file_id": "someone-elses-file-id"}
+    mock_update_data.file_id = "someone-elses-file-id"
+
+    with (
+        patch("backend.app.routers.crm_enhanced_documents.verify_client_access", new=AsyncMock()),
+        patch(
+            "backend.app.routers.crm_enhanced_documents.assert_drive_file_belongs_to_client",
+            new=AsyncMock(
+                side_effect=HTTPException(
+                    status_code=403, detail="Drive file is not in this client's own folder tree"
+                )
+            ),
+        ),
+    ):
+        with pytest.raises(HTTPException) as exc_info:
+            await update_document(
+                client_id=1,
+                doc_id=10,
+                data=mock_update_data,
+                pool=mock_db_pool,
+                current_user=mock_current_user,
+            )
+
+    assert exc_info.value.status_code == 403
+    # Never reached the UPDATE — a rejected file_id never overwrites the row.
+    mock_db_pool._mock_conn.execute.assert_not_called()
 
 
 # ============================================================
