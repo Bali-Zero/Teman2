@@ -475,10 +475,17 @@ Example output: ["variant 1", "variant 2"]"""
 
         except asyncio.TimeoutError:
             logger.debug("LLM translation timeout, using dictionary only")
-        except LLMStructuredOutputError as e:
-            logger.debug("LLM translation failed schema validation: %s", e)
-        except Exception as e:
-            logger.debug("LLM translation failed (unexpected): %s", e)
+        except LLMStructuredOutputError as exc:
+            # The exception message embeds Pydantic's input_value and can echo
+            # client text. Log only the closed-vocabulary out-of-band reason.
+            logger.debug(
+                "LLM translation failed schema validation (reason=%s)",
+                getattr(exc, "reason", "") or "UNATTRIBUTED",
+            )
+        except Exception as exc:
+            # SDK and validation exceptions can embed request/model text.
+            # Preserve the fail-open dictionary fallback but log type only.
+            logger.debug("LLM translation failed (unexpected=%s)", type(exc).__name__)
 
         return variants
 

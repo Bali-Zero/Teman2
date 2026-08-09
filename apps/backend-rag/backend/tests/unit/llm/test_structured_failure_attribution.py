@@ -1,11 +1,10 @@
 """A structured-output failure must name its own cause.
 
-Three different failures — the model was safety-blocked, it hit
-`max_output_tokens` mid-thought, or it answered in the wrong shape — arrived
-at `llm_cost_events` as the same string, `LLMStructuredOutputError`. Ten live
-verifier failures over seven days could not be told apart, and each of the
-three wants a different fix (loosen the cap / change the prompt / fix the
-schema).
+Four different failures — the model was safety-blocked, it hit
+`max_output_tokens` mid-thought, emitted malformed JSON, or emitted valid JSON
+that failed the schema — arrived at `llm_cost_events` as the same string,
+`LLMStructuredOutputError`. Ten live verifier failures over seven days could
+not be told apart, and each wants a different fix.
 
 Guilt: every vocabulary member is reachable from a response that really has
 that shape. Innocence: the two ways to invent a cause — calling a normal empty
@@ -15,6 +14,7 @@ answer a block, and calling a cut-off partial answer bad JSON — both stay shut
 from types import SimpleNamespace
 
 import pytest
+from pydantic import BaseModel, ValidationError
 
 from backend.llm.genai_client import (
     ERROR_CLASS_MAX_LEN,
@@ -33,6 +33,16 @@ class _Enum:
 
     def __str__(self) -> str:
         return f"FinishReason.{self.name}"
+
+
+class _Payload(BaseModel):
+    value: int
+
+
+def _validation_error(raw_text: str) -> ValidationError:
+    with pytest.raises(ValidationError) as exc_info:
+        _Payload.model_validate_json(raw_text)
+    return exc_info.value
 
 
 def _response(finish: object = None, *, feedback: object = None) -> SimpleNamespace:
@@ -55,6 +65,12 @@ class TestGuilt:
         got = _structured_failure_reason(_response(_Enum("RECITATION")), "")
         assert got == "BLOCKED_RECITATION"
 
+    def test_unknown_finish_reason_is_safe_and_unattributed(self):
+        sentinel = "CLIENT_TEXT_SENTINEL_MUST_NOT_APPEAR"
+        got = _structured_failure_reason(_response(_Enum(sentinel)), "")
+        assert got == "UNATTRIBUTED"
+        assert sentinel not in got
+
     def test_prompt_level_block_has_no_candidates_at_all(self):
         # A prompt rejected before generation carries its reason on
         # prompt_feedback; there is no candidate to read a finish_reason off.
@@ -64,13 +80,68 @@ class TestGuilt:
         )
         assert _structured_failure_reason(resp, "") == "BLOCKED_PROHIBITED_CONTENT"
 
+    def test_unknown_prompt_block_is_safe_and_unattributed(self):
+        sentinel = "CLIENT_TEXT_SENTINEL_MUST_NOT_APPEAR"
+        resp = SimpleNamespace(
+            candidates=[],
+            prompt_feedback=SimpleNamespace(block_reason=_Enum(sentinel)),
+        )
+        got = _structured_failure_reason(resp, "")
+        assert got == "UNATTRIBUTED"
+        assert sentinel not in got
+
     def test_empty_envelope_with_no_explanation_says_so(self):
         resp = SimpleNamespace(candidates=[], prompt_feedback=None)
         assert _structured_failure_reason(resp, "") == "NO_CANDIDATES"
 
-    def test_a_normal_answer_in_the_wrong_shape_is_invalid_json(self):
-        got = _structured_failure_reason(_response(_Enum("STOP")), "not json at all")
+    def test_a_malformed_normal_answer_is_invalid_json(self):
+        raw_text = "not json at all"
+        got = _structured_failure_reason(
+            _response(_Enum("STOP")),
+            raw_text,
+            _validation_error(raw_text),
+        )
         assert got == "INVALID_JSON"
+
+    def test_valid_json_in_the_wrong_shape_is_schema_validation(self):
+        raw_text = '{"wrong": "shape"}'
+        got = _structured_failure_reason(
+            _response(_Enum("STOP")),
+            raw_text,
+            _validation_error(raw_text),
+        )
+        assert got == "SCHEMA_VALIDATION"
+
+    def test_integer_beyond_stdlib_limit_is_invalid_json_not_an_exception(self):
+        raw_text = "1" * 5000
+        got = _structured_failure_reason(
+            _response(_Enum("STOP")),
+            raw_text,
+            _validation_error(raw_text),
+        )
+        assert got == "INVALID_JSON"
+
+    def test_json_beyond_recursion_limit_is_invalid_json_not_an_exception(self):
+        raw_text = "[" * 1100 + "]" * 1100
+        got = _structured_failure_reason(
+            _response(_Enum("STOP")),
+            raw_text,
+            _validation_error(raw_text),
+        )
+        assert got == "INVALID_JSON"
+
+    def test_lone_unicode_surrogate_is_invalid_by_the_actual_parser(self):
+        raw_text = r'{"value":"\ud800"}'
+        got = _structured_failure_reason(
+            _response(_Enum("STOP")),
+            raw_text,
+            _validation_error(raw_text),
+        )
+        assert got == "INVALID_JSON"
+
+    def test_missing_validation_metadata_is_unattributed(self):
+        got = _structured_failure_reason(_response(_Enum("STOP")), '{"value": 1}')
+        assert got == "UNATTRIBUTED"
 
     def test_a_normal_termination_with_nothing_in_it_is_empty_text(self):
         assert _structured_failure_reason(_response(_Enum("STOP")), "") == "EMPTY_TEXT"
@@ -123,23 +194,36 @@ class TestPIIBoundary:
                 "EMPTY_TEXT",
                 "INVALID_JSON",
                 "NO_CANDIDATES",
+                "SCHEMA_VALIDATION",
+                "UNATTRIBUTED",
             } or got.startswith("BLOCKED_")
 
     def test_the_reason_rides_outside_the_message(self):
         # The message embeds pydantic's ValidationError (input_value=... can
         # echo PII), which is why verification_service refuses to log str(exc).
         # `.reason` exists so the caller can name the cause anyway.
-        exc = LLMStructuredOutputError(
-            f"…input_value='{self.LEAKY}'…", reason="MAX_TOKENS"
-        )
+        exc = LLMStructuredOutputError(f"…input_value='{self.LEAKY}'…", reason="MAX_TOKENS")
         assert exc.reason == "MAX_TOKENS"
         assert self.LEAKY not in exc.reason
         # …and the unsafe text really is still in the message, so this test
         # would notice if the message stopped being the dangerous one.
         assert self.LEAKY in str(exc)
 
-    def test_reason_defaults_to_empty_for_callers_that_do_not_set_it(self):
-        assert LLMStructuredOutputError("boom").reason == ""
+    def test_reason_defaults_to_unattributed_for_callers_that_do_not_set_it(self):
+        assert LLMStructuredOutputError("boom").reason == "UNATTRIBUTED"
+
+    def test_untrusted_reason_is_rejected_at_the_exception_boundary(self):
+        exc = LLMStructuredOutputError("boom", reason=self.LEAKY)
+        assert exc.reason == "UNATTRIBUTED"
+
+    def test_blocked_prefix_does_not_make_an_untrusted_reason_safe(self):
+        exc = LLMStructuredOutputError("boom", reason=f"BLOCKED_{self.LEAKY}")
+        assert exc.reason == "UNATTRIBUTED"
+        assert self.LEAKY not in exc.reason
+
+    def test_non_string_reason_is_unattributed_not_an_exception(self):
+        exc = LLMStructuredOutputError("boom", reason=[self.LEAKY])  # type: ignore[arg-type]
+        assert exc.reason == "UNATTRIBUTED"
 
 
 class TestLedgerFit:
@@ -155,6 +239,7 @@ class TestLedgerFit:
             "EMPTY_TEXT",
             "INVALID_JSON",
             "NO_CANDIDATES",
+            "SCHEMA_VALIDATION",
             "BLOCKED_SAFETY",
             "BLOCKED_RECITATION",
             "BLOCKED_PROHIBITED_CONTENT",
