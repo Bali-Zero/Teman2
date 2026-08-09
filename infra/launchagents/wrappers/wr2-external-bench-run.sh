@@ -18,10 +18,43 @@ mkdir -p "$LOGDIR"
 LOG="$LOGDIR/wr2-external-bench.log"
 ERR="$LOGDIR/wr2-external-bench.err.log"
 
+# G2_heartbeat — sidecar EVERY exit path (Esiste≠Armato: prove life, every run,
+# not just "log line written" — the sidecar is what a fleet-wide dead-organ
+# scan actually reads, per pro-healer.sh's established convention).
+ORGAN_ID="wr2.external_bench_monthly"
+SIDECAR_DIR="${HOME}/.organism/last_seen"
+heartbeat() { # $1 status $2 note
+  mkdir -p "$SIDECAR_DIR"
+  printf '{"ts":"%s","status":"%s","note":"%s"}\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" > "$SIDECAR_DIR/$ORGAN_ID.json"
+}
+
+# G5_kill_switch — operator stop without uninstall (default enabled).
+if [ "${WR2_EXTERNAL_BENCH_ENABLED:-true}" = "false" ]; then
+  mkdir -p "$LOGDIR"
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] kill switch WR2_EXTERNAL_BENCH_ENABLED=false — exiting" >> "$LOG"
+  heartbeat "disabled" "kill switch"
+  exit 0
+fi
+
+# G10_single_instance — this job is bounded by a 45min hard timeout below, but
+# launchd can still overlap a slow prior run with a fresh StartCalendarInterval
+# fire; a pidfile makes that overlap a clean skip instead of two Claude sessions
+# racing on the same OUTPUT_FILE.
+PIDFILE="/tmp/nuzantara-wr2-external-bench.pid"
+if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] previous run still alive (pid $(cat "$PIDFILE")) — skipping" >> "$LOG"
+  heartbeat "ok" "skipped: previous run alive"
+  exit 0
+fi
+echo $$ > "$PIDFILE"
+trap 'rm -f "$PIDFILE"' EXIT
+
 YEAR_MONTH=$(date +%Y-%m)
 OUTPUT_FILE="${HOME}/.claude/skills/bali-zero-brand/_external-bench-${YEAR_MONTH}.md"
 
 echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] wr2-external-bench starting (target: ${OUTPUT_FILE})" >> "$LOG"
+heartbeat "running" "starting: target ${OUTPUT_FILE}"
 
 # 1st-Monday-of-month enforcement (defense in depth — plist Day=1..7 alone is
 # insufficient because Day=N is "day N of month", not "Nth occurrence of
@@ -30,6 +63,7 @@ DOM=$(date +%-d)  # 1-31
 DOW=$(date +%u)   # 1=Mon..7=Sun
 if [ "${WR2_BENCH_FORCE:-0}" != "1" ] && { [ "$DOW" -ne 1 ] || [ "$DOM" -gt 7 ]; }; then
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] skip: today is dow=$DOW dom=$DOM (need dow=1 AND dom<=7 for first Monday)" >> "$LOG"
+  heartbeat "ok" "skip: not first Monday (dow=$DOW dom=$DOM)"
   exit 0
 fi
 
@@ -37,6 +71,7 @@ fi
 # (re-runs allowed via manual delete or --force flag — not implemented yet).
 if [ -s "$OUTPUT_FILE" ]; then
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] skip: ${OUTPUT_FILE} already exists ($(wc -l < "$OUTPUT_FILE") lines). Delete to re-run." >> "$LOG"
+  heartbeat "ok" "skip: ${OUTPUT_FILE} already exists"
   exit 0
 fi
 
@@ -66,6 +101,19 @@ echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] carryover prior month: ${PREV_FILE:-<none
 # Spawn Claude Opus 4.7 with the wr2-external-bench agent spec
 # Per CLAUDE.md global rule: OAuth-only, never ANTHROPIC_API_KEY.
 # wr2-external-bench frontmatter declares model: opus (synthesis-grade).
+#
+# G6_spawn_hardened — TCC is PER-BINARY (W84): launchd granting bash access to
+# a path says nothing about the node binary behind `claude`. Probe repo access
+# BEFORE spawning so a TCC-denied context fails loud (exit 78) instead of the
+# claude child hanging invisibly on a consent dialog nothing can answer.
+if [ -z "${SSH_CONNECTION:-}" ]; then
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] no SSH_CONNECTION — running in direct launchd/local context" >> "$LOG"
+fi
+if ! /bin/ls "${HOME}/nuzantara/CLAUDE.md" >/dev/null 2>&1; then
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] FATAL: TCC denies repo access in this context" >> "$ERR"
+  heartbeat "error" "TCC denied"
+  exit 78
+fi
 cd "${HOME}/nuzantara"
 
 PROMPT="Execute wr2-external-bench monthly run for ${YEAR_MONTH}.
@@ -103,23 +151,30 @@ if [ "${WR2_BENCH_DEBUG:-0}" = "1" ]; then
   timeout "$BENCH_TIMEOUT" "$CLAUDE_BIN" -p \
     --model claude-opus-4-8 \
     --permission-mode bypassPermissions \
+    --strict-mcp-config --mcp-config '{"mcpServers":{}}' \
     --max-budget-usd "${WR2_BENCH_MAX_BUDGET_USD:-10}" \
     --verbose --output-format stream-json \
     --append-system-prompt "You are wr2-external-bench. Read your spec at .claude/agents/wr2-external-bench.md. Follow it exactly." \
     "$PROMPT" \
-    >> "${LOG%.log}.debug.jsonl" 2>> "$ERR" || EXIT_CODE=$?
+    < /dev/null >> "${LOG%.log}.debug.jsonl" 2>> "$ERR" || EXIT_CODE=$?
 else
   timeout "$BENCH_TIMEOUT" "$CLAUDE_BIN" -p \
     --model claude-opus-4-8 \
     --permission-mode bypassPermissions \
+    --strict-mcp-config --mcp-config '{"mcpServers":{}}' \
     --max-budget-usd "${WR2_BENCH_MAX_BUDGET_USD:-10}" \
     --append-system-prompt "You are wr2-external-bench. Read your spec at .claude/agents/wr2-external-bench.md. Follow it exactly." \
     "$PROMPT" \
-    >> "$LOG" 2>> "$ERR" || EXIT_CODE=$?
+    < /dev/null >> "$LOG" 2>> "$ERR" || EXIT_CODE=$?
 fi
 
 EXIT_CODE=${EXIT_CODE:-0}
 echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] wr2-external-bench done (exit=${EXIT_CODE}, output_lines=$(wc -l < "$OUTPUT_FILE" 2>/dev/null || echo 0))" >> "$LOG"
+if [ "$EXIT_CODE" -eq 0 ]; then
+  heartbeat "ok" "done: ${YEAR_MONTH}"
+else
+  heartbeat "error" "exit=${EXIT_CODE}"
+fi
 
 # Telegram alert on failure (success notify is agent's job per Step 5).
 #

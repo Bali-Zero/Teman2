@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/logger", () => ({
   logger: {
     info: vi.fn(),
+    warn: vi.fn(),
     error: vi.fn(),
   },
 }));
@@ -30,16 +31,17 @@ describe("POST /api/auth/login", () => {
       vi.fn().mockResolvedValue({
         ok: true,
         status: 200,
-        json: async () => ({
-          success: true,
-          message: "Login successful",
-          data: {
-            token: " token-with-newline\n",
-            csrfToken: " csrf-with-newline\n",
-            expiresIn: 3600,
-            user: { email: "ops@balizero.com" },
-          },
-        }),
+        text: async () =>
+          JSON.stringify({
+            success: true,
+            message: "Login successful",
+            data: {
+              token: " token-with-newline\n",
+              csrfToken: " csrf-with-newline\n",
+              expiresIn: 3600,
+              user: { email: "ops@balizero.com" },
+            },
+          }),
       }),
     );
   });
@@ -135,5 +137,58 @@ describe("POST /api/auth/login", () => {
     });
     expect(JSON.stringify(payload)).not.toContain("private-backend");
     expect(JSON.stringify(payload)).not.toContain("ECONNREFUSED");
+  });
+
+  it("preserves an upstream error status when its response body is empty", async () => {
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: false,
+      status: 503,
+      text: async () => "",
+    } as Response);
+
+    const { POST } = await import("./route");
+    const response = await POST(makeLoginRequest());
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      success: false,
+      message: "Login service unavailable",
+    });
+  });
+
+  it("returns bad gateway when a successful upstream response is incomplete", async () => {
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => "",
+    } as Response);
+
+    const { POST } = await import("./route");
+    const response = await POST(makeLoginRequest());
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({
+      success: false,
+      message: "Invalid response from login service",
+    });
+  });
+
+  it("does not expose a malformed upstream response body", async () => {
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: false,
+      status: 502,
+      text: async () => "<html>private upstream failure</html>",
+    } as Response);
+
+    const { POST } = await import("./route");
+    const response = await POST(makeLoginRequest());
+    const payload = await response.json();
+
+    expect(response.status).toBe(502);
+    expect(payload).toEqual({
+      success: false,
+      message: "Login service unavailable",
+    });
+    expect(JSON.stringify(payload)).not.toContain("private upstream");
   });
 });

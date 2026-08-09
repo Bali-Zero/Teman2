@@ -27,9 +27,11 @@ export type InfoCardVariant =
   | "note"
   | "highlight";
 
+type LegacyInfoCardVariant = InfoCardVariant | "danger";
+
 export interface InfoCardProps {
   /** Variant determines color and icon */
-  variant?: InfoCardVariant;
+  variant?: LegacyInfoCardVariant;
   /** Custom title (optional, uses default based on variant) */
   title?: string;
   /** Content */
@@ -151,7 +153,8 @@ export function InfoCard({
   className,
 }: InfoCardProps) {
   const [isCollapsed, setIsCollapsed] = React.useState(defaultCollapsed);
-  const styles = variantStyles[variant];
+  const normalizedVariant = variant === "danger" ? "error" : variant;
+  const styles = variantStyles[normalizedVariant] ?? variantStyles.info;
   const Icon = styles.icon;
   const displayTitle = title || styles.defaultTitle;
 

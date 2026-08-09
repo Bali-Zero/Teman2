@@ -548,9 +548,10 @@ def maybe_flush_all_batches(threshold: int = _FLUSH_THRESHOLD) -> bool:
     layout_ok = flush_layout_batch()
     if not img_ok or not seo_ok or not layout_ok:
         send_telegram_alert(
-            "⚠️ *Post-publish poller*\n"
+            "⚠️ Post-publish poller\n"
             f"GitHub batch flush failed (image={img_ok}, seo={seo_ok}, "
-            f"layout={layout_ok}) — see log"
+            f"layout={layout_ok}) — see log",
+            dedup_key="post-publish:github-batch-flush-failed",
         )
     return True
 
@@ -602,17 +603,61 @@ def mark_step_done(slug: str, step: str):
         log(f"  ⚠ Failed to mark step '{step}' done: {e}")
 
 
-def send_telegram_alert(message: str):
-    """Send alert to Telegram owner chat."""
-    if not TELEGRAM_BOT_TOKEN:
+_GATEWAY_VERDICT_RE = re.compile(r"^tg_notify:\s*(\S+)", re.MULTILINE)
+
+
+def _find_gateway():
+    """scripts/tg_notify.py, from the checkout this poller lives in."""
+    for cand in (
+        Path(__file__).resolve().parents[3] / "scripts" / "tg_notify.py",
+        Path.home() / "nuzantara" / "scripts" / "tg_notify.py",
+    ):
+        if cand.is_file():
+            return cand
+    return None
+
+
+def send_telegram_alert(message: str, *, dedup_key: str, tier: str = "digest"):
+    """Route an alert through the tg_notify gateway.
+
+    Tier is `digest`, not p0. This poller wakes every 300s and every one of its
+    alerts is a pipeline DEGRADATION (a batch flush that failed, a cover skipped
+    because Codex is down) — real, worth seeing, and not worth a P0 budget slot
+    each. Grouped into the digest they arrive as a handful of lines a day
+    instead of up to 288 individual messages.
+
+    It also could not speak at all before now: its LaunchAgent passes no
+    TELEGRAM_BOT_TOKEN, so the raw POST this replaces returned at the first
+    `if not TELEGRAM_BOT_TOKEN`. The gateway owns credential resolution, so
+    migrating GIVES this organ a voice — which is exactly why the tier is a
+    deliberate choice and not a default.
+
+    Messages are plain text: the old POST passed parse_mode=Markdown and the
+    gateway has none, so `*bold*` and backticks would arrive literally.
+    """
+    gateway = _find_gateway()
+    if gateway is None:
+        log(f"  ⚠ no tg_notify gateway — alert NOT sent: {message[:80]}")
         return
+    cmd = [
+        # Absolute interpreter, never PATH: the alarm must not share a failure
+        # mode with the environment it reports on (W108).
+        sys.executable,
+        str(gateway),
+        "--tier", tier,
+        "--source", "post-publish-poller",
+        "--dedup-key", dedup_key,
+        "--", message,
+    ]
     try:
-        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-        data = json.dumps({"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "Markdown"}).encode()
-        req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
-        urllib.request.urlopen(req, timeout=10)
-    except Exception:
-        pass  # Alert failure is not critical
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=30, check=False)
+    except (subprocess.TimeoutExpired, OSError) as e:
+        log(f"  ⚠ tg_notify unreachable: {e}")
+        return
+    # Verdict on stderr; the gateway exits 0 by design, so the exit code would
+    # read every refusal as a success (W104).
+    m = _GATEWAY_VERDICT_RE.search(proc.stderr or "")
+    log(f"  tg_notify: {m.group(1) if m else 'NESSUN verdetto rc=' + str(proc.returncode)}")
 
 
 def wait_for_ollama_free(max_wait: int = 60 * 15) -> bool:
@@ -866,7 +911,12 @@ def run_image(slug: str, category: str, title: str | None = None, article_id: st
     # Pre-flight: Codex reachable & authed? Otherwise leave queued (no cover-less publish).
     if not codex_healthy():
         log("  ⏸ Codex unavailable — leaving item queued for next tick")
-        send_telegram_alert(f"⚠️ Cover gen skipped (Codex down): {slug}")
+        send_telegram_alert(
+            f"⚠️ Cover gen skipped (Codex down): {slug}",
+            # Keyed on the CONDITION, not the slug: Codex being down skips every
+            # article in the run, and a per-slug key would mint one alert each.
+            dedup_key="post-publish:cover-skipped-codex-down",
+        )
         return False
 
     # Build the two brand-railed prompts
@@ -1171,9 +1221,10 @@ def main():
     layout_flush_ok = flush_layout_batch()
     if not img_flush_ok or not seo_flush_ok or not layout_flush_ok:
         send_telegram_alert(
-            "⚠️ *Post-publish poller*\n"
+            "⚠️ Post-publish poller\n"
             f"GitHub batch flush failed (image={img_flush_ok}, seo={seo_flush_ok}, "
-            f"layout={layout_flush_ok}) — see log"
+            f"layout={layout_flush_ok}) — see log",
+            dedup_key="post-publish:github-batch-flush-failed",
         )
 
     # Commit translations — staged + flushed via the same batch-branch/PR
@@ -1181,8 +1232,9 @@ def main():
     if translated_slugs:
         if not git_commit_and_push_translations(translated_slugs):
             send_telegram_alert(
-                "⚠️ *Post-publish poller*\n"
-                f"Translation batch flush failed for: {', '.join(translated_slugs[:5])}"
+                "⚠️ Post-publish poller\n"
+                f"Translation batch flush failed for: {', '.join(translated_slugs[:5])}",
+                dedup_key="post-publish:translation-batch-flush-failed",
             )
 
     # Mark done
@@ -1210,11 +1262,14 @@ def main():
         # Telegram alert after 2+ attempts
         if attempts >= 2:
             send_telegram_alert(
-                f"⚠️ *Post-publish pipeline*\n"
-                f"Article: `{slug}`\n"
+                f"⚠️ Post-publish pipeline\n"
+                f"Article: {slug}\n"
                 f"Failed steps: {', '.join(steps)}\n"
                 f"Attempt: {attempts}/5\n"
-                f"{'🔴 Will be dead-lettered after 5' if attempts >= 4 else '🔄 Will retry'}"
+                f"{'🔴 Will be dead-lettered after 5' if attempts >= 4 else '🔄 Will retry'}",
+                # Per-article: a stuck article is its own condition, and folding
+                # them onto one key would hide every article after the first.
+                dedup_key=f"post-publish:pipeline-failed:{slug}",
             )
 
     log("🏁 Poller completed")

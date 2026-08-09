@@ -132,6 +132,8 @@ jobs:
               scripts/tests/test_prepush_tip_drift.sh|\
               scripts/verify_connectome_run.sh|\
               scripts/tests/test_connectome_alert_honesty.sh|\
+              scripts/verify_connectome.py|\
+              scripts/tests/test_connectome_retirement_markers.py|\
               scripts/wa_session_liveness.py|\
               scripts/tests/test_wa_session_liveness.py|\
               infra/launchagents/wrappers/wa-session-liveness.sh|\
@@ -174,6 +176,8 @@ jobs:
               scripts/cron-runner.sh|\
               scripts/test_cron_runner_alert.sh|\
               scripts/test_cron_single_voice.sh|\
+              scripts/dlq_autopilot.py|\
+              scripts/tests/test_dlq_terminal_speaks_once.py|\
               apps/evaluator/nlm_deep_research/scripts/*|\
               infra/scripts/fly-backup.sh|\
               scripts/test_fly_backup_phases.sh|\
@@ -516,6 +520,25 @@ jobs:
             apps/evaluator/nlm_deep_research/tests/test_calendar_skip_marker_class.py \
             -q
 
+      - name: DLQ terminal speaks once (one stuck job, one P0)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # A job going TERMINAL used to offer TWO p0 records at the same second
+          # — escalate_to_claude_code()'s "Escalated to Claude Code: <job>" and
+          # then the branch's own "TERMINAL: <job> reached N attempts" — both
+          # saying a human must act, for one event. Measured on the live spool
+          # 2026-08-08: dlq-autopilot was the day's loudest producer at 24 of 69
+          # offered records, and 22 of those 24 were eleven identical pairs.
+          # This matters beyond noise: the P0 budget is 12/day and 1248 of 1251
+          # dropped P0s were dropped for overflow, so each duplicate costs a slot
+          # some other organ's first-ever alarm needed.
+          # Guilt AND innocence: the terminal path must emit exactly one alert
+          # AND still name the task file (the information was never duplicated —
+          # the escalation named the file, the terminal line named the recovery
+          # command, so the cure is one message carrying both, not one dropped),
+          # while the ordinary escalation path must keep its own alert.
+          python -m pytest scripts/tests/test_dlq_terminal_speaks_once.py -q
+
       - name: Connectome alert honesty corpus (freshness + truncation + delivery)
         if: steps.paths.outputs.relevant == 'true'
         run: |
@@ -537,6 +560,21 @@ jobs:
           #                bare path is unreachable, not merely unused.
           # Mutation-verified: reverting each cure turns the matching case red.
           bash scripts/tests/test_connectome_alert_honesty.sh
+
+      - name: Connectome retirement markers (a retirement can be DECLARED in the repo)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # The honesty corpus above proves the alert TELLS THE TRUTH about what it
+          # found. This one proves it FINDS the right thing: the only two P0s
+          # verify-connectome ever spooled were both a false regression for
+          # com.balizero.wr2.newsletter, retired on purpose 2026-07-15 and
+          # superseded by a Fly daily task. plist_intentionally_disabled() exists to
+          # recognise that and looked only in ~/Library/LaunchAgents, where the
+          # retirement left no declaration — the declaration is version-controlled,
+          # in infra/launchagents/. Guilt cases pin what must STILL regress: a
+          # `bak-*` name asserts a backup, not a retirement, and excusing it would
+          # mask a genuine silent death (W94, the twin an over-match fix births).
+          python -m pytest scripts/tests/test_connectome_retirement_markers.py -q
 
       - name: wa-mirror liveness wrapper corpus (a cron armed to nothing must say so)
         if: steps.paths.outputs.relevant == 'true'

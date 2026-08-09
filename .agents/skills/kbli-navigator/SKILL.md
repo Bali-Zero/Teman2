@@ -45,6 +45,81 @@ is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
 ## 1. LIVE STATE (last update 2026-08-09 — keep current)
 
+**🟢 2026-08-09 — THE macOS APP IS NOW TWO APPS FROM ONE CODEBASE (Zero's ruling), FLEET-INSTALLED AND
+PROVEN — AND THE FLEET GUARD'S REFERENCE WAS THE LIAR (W106b).**
+
+**The ruling (Zero, 2026-08-09):** two apps, one codebase, variant decided at build time
+(`build.sh --variant internal|bkpm` → `BZVariant` Info.plist key → `Sources/Variant.swift`, single
+runtime source of truth):
+
+- **"KBLI Navigator - INTERNAL.app"** — everything: 20 articles, balizero.com links, chat. Fleet + team
+  installer.
+- **"KBLI Navigator - BKPM.app"** — book only (2 PDFs + 13 chapters); the 20 articles EXCLUDED from the
+  bundle at build time; ZERO balizero.com links (verified 0 hits in Resources); chat KEPT — Zero: "we
+  need it perfect at answering KBLI questions". Zip staged at `build/KBLI-Navigator-BKPM.zip`
+  (~113MB) — hand-off is Zero's call (Legge 5).
+
+**Shipped and PROVEN, not merely reported.** App repo (real path
+`/Users/balizero/Desktop/logo/kbli-navigator-app`, M5, no git remote — local commits are complete
+actions): the split (`0e1e723`/`5c10772`/`50e1a8f`/`cb65abe`), an SDK fix (`77b1ddb`), a dataset refresh
+from `origin/main` (`a18c148`), and the `check-fleet.sh` W106b fix (`91d91eb`). Real universal builds
+(x86_64+arm64) run on Pro — **M5 has no Xcode** (CLT-only; SwiftUI macros can't expand; `build.sh`
+exits 3 there) — via a build-farm pattern: rsync repo → `pro:/tmp/kbli-app-build`, build, rsync `build/`
+back. SDK scar: a bare `xcrun --show-sdk-path` resolves the CLT SDK on Pro against Xcode's macro
+plugin → use `xcrun --sdk macosx`. Second build scar: `rm -rf $BUILD_DIR` used to wipe the OTHER
+variant's bundle; now scoped per-app.
+
+Fleet install (all 3 Macs): INTERNAL lives on each Desktop, the old "KBLI Navigator.app" moved to each
+machine's Trash (reversible). Install scars: macOS `openrsync` fails on remote paths with SPACES → use
+tar-over-ssh; **Mini's `~/Desktop` is iCloud-Drive-synced** — the file provider re-attaches xattrs that
+break `codesign` in place → sign in `/tmp`, then `mv` (signature survives). `deploy/check-fleet.sh`
+final run: **exit 0, all four surfaces aligned on `a5721756d5b2`** (= `origin/main:data/source_documents/
+KBLI_2025_FINAL_CLEAN.json`).
+
+**The W106b twist, worth more than the fix.** Post-install, `check-fleet.sh` cried DRIFT on all 3
+machines. Chasing the hashes proved the INVERSE: the installed fleet carried `origin/main`'s CURRENT
+dataset; the "canonical" reference was M5's by-design-behind main checkout (235 commits, Aug-4 dataset
+`a9a461b41b50`) — and the tool's own printed remedy (rebuild+reinstall from M5) would have REGRESSED
+the fleet 4 days. Worse: Phase 1's own `chore(data): refresh dataset from canonical` commit (`c5f277a`)
+had already consumed that stale checkout and regressed the app repo's Resources — the fleet was saved
+only by the accident that the build ran on Pro, whose checkout was current. Cures: `check-fleet.sh` now
+anchors on `git show origin/main:…` after a refs-only fetch (fetch failure → CANNOT-VERIFY exit 3,
+never phantom drift; `--local-canonical` escape hatch documented offline-dev-only), and its "unreachable
+≠ aligned" note now prints ONLY when ssh actually failed (it used to be a static string on every
+mismatch). PR #3907 (MERGED): the fleet-notice pointed at the dead pre-move path
+`~/Desktop/kbli-navigator-app` (the repo had moved into `logo/`), so it silently self-skipped on M5.
+PR #3909 (armed `--auto`): `sync_kbli_dataset.sh` now REFUSES sync mode from a checkout with branch
+`main` checked out (exit 4) — deliberately NOT an origin-anchored read: tracing the callers showed the
+script is a PROPAGATOR of freshly-written local canonical edits (cure compilers write then propagate),
+so an origin/main read would discard every cure at its own apply step. The implementer refuted the
+orchestrator's first design with that evidence and shipped the branch-guard instead, with the
+false-positive pinned by a test.
+
+**Honest gaps — the BKPM app is NOT yet a hand-to-BKPM deliverable.**
+
+1. Chat still talks to the OLD brain (OpenClaw `zantara-kbli` on Mini via ssh): fleet-only reachability,
+   no retrieval — cold KBLI questions get "I don't have FONTI" refusals. This is Phase 2's job (below).
+2. Ad-hoc signature: on a non-fleet Mac, Gatekeeper requires right-click-open; a clean external
+   hand-off wants Developer ID + notarization — Zero decision, `operator[business]`, not started.
+3. No human has GUI-opened the two new apps yet (bundles proven by content; native GUI QA = 30 seconds
+   of Zero's eyes).
+
+**NEXT — Phase 2 "the chat perfect on KBLI" (DESIGNED, awaiting Zero's GO — do not start without it):**
+one brain only: a new `KBLIBrainClient` (Swift, URLSession) → prod `chat_kbli` (the cured brain:
+canonical + 314 gold + `kbli_documents` + the exact-code retrieval fix), current code-card context
+rides with the question; API key read from a LOCAL file, never bundled, chat hides gracefully where the
+key is absent (a BKPM Mac); fallback chain HTTP → legacy ssh path → honest offline message; a
+**~25-question KBLI benchmark** (from the 78-question team test + cured traps: 51101→49%, 79122→0%,
+25200, moratorium, paid-up 2.5 mld, SLHS) run against old and new brain, scored against canonical,
+before/after report in-repo. Out of scope: notarization; `kbli_documents` content (that's the
+8-phantoms/25-drafts/312-rows ratification packages already on Zero's desk).
+
+**Also open (small, Zero-gated):** Mini Desktop residue `kbli-2025-navigator/` — a Feb-2026 React
+prototype (8MB, not a git repo) carrying a cleartext `GEMINI_API_KEY` in `.env.local` (superscar
+family #4): trash-or-keep is asked; revoking the key in Google AI Studio is `operator[credential]`, low
+urgency. (The June fossil "KBLI Navigator (nativa congelata 28-6).app" was already trashed on Zero's
+order.)
+
 **🟢 2026-08-09 — GOLD FULL-POPULATION LIVE: 314 codes (from 3 pilots), G1-G5 all innocent — but only
 after G2 caught a real production bug and forced a same-day fix.** The morning attempt (314 = 322 minus
 8 phantom codes, see below) applied cleanly but POST-MEASURE found **G2 violated and reproducible**: on
