@@ -67,6 +67,15 @@ const ASSESSMENT_DOMAIN = "subhi.balizero.com";
 // that somehow reaches this middleware for one of them doesn't get treated as
 // public marketing content.
 const SSO_SUBDOMAINS = ["mail", "calendar", "drive", "knowledge"];
+const PORTAL_SESSION_COOKIE = "nz_access_token";
+const PORTAL_PUBLIC_PATHS = new Set([
+  "/portal/login",
+  "/portal/login-upgraded",
+  "/portal/forgot-password",
+  "/portal/register",
+  "/portal/magic-link",
+  "/portal/magic",
+]);
 
 // Scraper detection — classify requests as human, welcome bot, or suspicious
 const WELCOME_BOTS =
@@ -125,8 +134,32 @@ function classifyRequest(
   return "human";
 }
 
+function normalizeHostname(host: string): string {
+  const normalized = host.trim().toLowerCase().replace(/\.$/, "");
+  if (normalized.startsWith("[")) {
+    return normalized.slice(1, normalized.indexOf("]"));
+  }
+  return normalized.split(":", 1)[0];
+}
+
+function matchesDomain(
+  hostname: string,
+  domain: string,
+  allowWWW = true,
+): boolean {
+  return hostname === domain || (allowWWW && hostname === `www.${domain}`);
+}
+
+function isPortalPath(pathname: string): boolean {
+  return pathname === "/portal" || pathname.startsWith("/portal/");
+}
+
+function hasPortalSession(request: NextRequest): boolean {
+  return Boolean(request.cookies.get(PORTAL_SESSION_COOKIE)?.value);
+}
+
 export function proxy(request: NextRequest) {
-  const hostname = request.headers.get("host") || "";
+  const hostname = normalizeHostname(request.headers.get("host") || "");
   const pathname = request.nextUrl.pathname;
 
   // Skip static files and API routes
@@ -197,42 +230,53 @@ export function proxy(request: NextRequest) {
 
   // Determine if we're on the public domain
   const subdomain = hostname.split(".")[0]; // e.g. "mail", "calendar", "kita", "balizero"
-  const isSSOSubdomain = SSO_SUBDOMAINS.includes(subdomain);
-  const isVisaDomain =
-    hostname.includes("visa.balizero") || hostname === VISA_DOMAIN;
-  const isTaxDomain =
-    hostname.includes("tax.balizero") || hostname === TAX_DOMAIN;
-  const isPublicDomain =
-    hostname.includes(PUBLIC_DOMAIN) &&
-    !hostname.includes("kita") &&
-    !hostname.includes("my") &&
-    !hostname.includes("visa") &&
-    !hostname.includes("tax") &&
-    !isSSOSubdomain &&
-    subdomain !== "prime";
+  const isSSOSubdomain = SSO_SUBDOMAINS.some((name) =>
+    matchesDomain(hostname, `${name}.${PUBLIC_DOMAIN}`),
+  );
+  const isVisaDomain = matchesDomain(hostname, VISA_DOMAIN);
+  const isTaxDomain = matchesDomain(hostname, TAX_DOMAIN);
+  const isPublicDomain = matchesDomain(hostname, PUBLIC_DOMAIN);
   const isAppDomain =
-    hostname.includes(APP_DOMAIN) ||
-    (hostname.includes("kita") && !hostname.includes("my")) ||
+    matchesDomain(hostname, APP_DOMAIN) ||
     isSSOSubdomain ||
-    subdomain === "prime";
-  const isPortalDomain =
-    hostname.includes(PORTAL_DOMAIN) || hostname.includes("my.balizero.com");
+    matchesDomain(hostname, `prime.${PUBLIC_DOMAIN}`);
+  const isPortalDomain = matchesDomain(hostname, PORTAL_DOMAIN);
 
   // Development and Fly.dev: allow all routes (public-facing)
   const isDevelopment =
-    hostname.includes("localhost") || hostname.includes("127.0.0.1");
-  const isFlyDev = hostname.includes("fly.dev");
+    hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+  const isFlyDev = hostname === "fly.dev" || hostname.endsWith(".fly.dev");
+  const enforceProdlikePortal =
+    process.env.MY_PORTAL_PRODLIKE_ENFORCE_MIDDLEWARE === "1" &&
+    isDevelopment &&
+    isPortalPath(pathname);
 
-  if (isDevelopment || isFlyDev) {
+  if ((isDevelopment && !enforceProdlikePortal) || isFlyDev) {
     return response;
   }
 
   // === PORTAL DOMAIN (my.balizero.com) ===
-  if (isPortalDomain) {
+  if (isPortalDomain || enforceProdlikePortal) {
     // Portal domain: only allow /portal/* routes
-    if (pathname.startsWith("/portal")) {
-      // Allow portal routes
-      return response;
+    if (isPortalPath(pathname)) {
+      if (PORTAL_PUBLIC_PATHS.has(pathname) || hasPortalSession(request)) {
+        return response;
+      }
+
+      // Stop anonymous deep links before the client layout calls the profile
+      // API. Besides avoiding a visible loading flash, this prevents the
+      // expected 401 from being reported as a browser console error.
+      const redirectBase = enforceProdlikePortal
+        ? `${request.nextUrl.protocol}//${request.headers.get("host")}`
+        : request.url;
+      const loginUrl = new URL("/portal/login-upgraded", redirectBase);
+      loginUrl.searchParams.set(
+        "redirect",
+        `${pathname}${request.nextUrl.search}`,
+      );
+      const redirectResponse = NextResponse.redirect(loginUrl, 307);
+      redirectResponse.headers.set("x-pathname", pathname);
+      return redirectResponse;
     }
 
     // Redirect root to portal login

@@ -31,15 +31,6 @@ export function useAbortableFetch<T>(options: UseAbortableFetchOptions = {}) {
   const [error, setError] = useState<Error | null>(null);
   const [data, setData] = useState<T | null>(null);
 
-  // Track mount state
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-      abort();
-    };
-  }, []);
-
   /**
    * Abort any in-flight request
    */
@@ -48,6 +39,15 @@ export function useAbortableFetch<T>(options: UseAbortableFetchOptions = {}) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
+  }, []);
+
+  // Track mount state
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      abort();
+    };
   }, []);
 
   /**

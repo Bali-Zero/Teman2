@@ -39,9 +39,8 @@ export function VaultLayout() {
   }, [files, practiceFilter, typeFilter, q]);
 
   const handleDownload = (file: VaultFile) => {
-    // BE exposes `downloadable` but no specific download URL. Best-effort:
-    // open the presumed endpoint in a new tab. If it 404s, user gets browser error.
-    // TODO: replace once BE exposes /api/portal/documents/{id}/download.
+    // Keep the storage provider opaque: the same-origin endpoint proxies the
+    // authenticated document and returns a browser download response.
     window.open(
       `/api/portal/documents/${file.id}/download`,
       "_blank",

@@ -4,7 +4,6 @@ import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function BillingError({
-  error,
   reset,
 }: {
   error: Error;
@@ -41,7 +40,7 @@ export default function BillingError({
         />
         <p className="font-medium">Failed to load billing data</p>
         <p className="text-sm mt-1" style={{ color: "var(--bz-text-2)" }}>
-          {error.message}
+          We couldn&apos;t load your billing data. Please try again.
         </p>
         <Button onClick={reset} variant="outline" className="mt-4">
           Retry

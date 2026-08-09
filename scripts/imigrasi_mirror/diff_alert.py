@@ -83,3 +83,14 @@ def send_status_note(text: str, dedup_key: str) -> str:
     """One-off informational message (e.g. the mandatory dry-run test alert),
     NOT a page-change event — separate dedup namespace from diff alerts."""
     return _tg_notify("p0", "imigrasi-mirror", dedup_key, text)
+
+
+def send_health_alert(severity: str, text: str, date: str) -> str:
+    """Self-health alarm — the mirror is stale / absent / captured nothing /
+    partially failed. Distinct dedup namespace AND source from diff/status
+    alerts (a health outage is a different event class). Keyed on
+    (severity, date) so a persistent outage sends ONCE per severity per day —
+    not muted forever (a new day re-alerts), not spamming every check."""
+    msg = f"🚑 imigrasi-mirror SELF-HEALTH [{severity}]\n{text}"
+    key = f"imigrasi-health:{severity}:{date}"
+    return _tg_notify("p0", "imigrasi-mirror-health", key, msg)

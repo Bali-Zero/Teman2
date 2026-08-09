@@ -275,11 +275,11 @@ BRIDGED_LABELS: tuple[BridgedLaunchAgent, ...] = (
         organ_id="pro.mos_plus_qdrant_indexer",
         daemon=False,
     ),
-    BridgedLaunchAgent(
-        label="com.balizero.nextdns-tamper-detect.weekly",
-        organ_id="pro.nextdns_tamper_detect_weekly",
-        daemon=False,
-    ),
+    # pro.nextdns_tamper_detect_weekly RETIRED 2026-08-09: abandoned flow, 41+
+    # days without secret provisioning (NEXTDNS_API_KEY never sourced). Plist
+    # unloaded + moved to ~/Library/LaunchAgents/.retired-2026-08-09/ on Pro.
+    # scripts/nextdns_tamper_detect.py stays in-repo, re-armable if the secret
+    # ever lands.
     BridgedLaunchAgent(
         label="com.balizero.nuzantara.disk-watchdog",
         organ_id="pro.disk_watchdog",

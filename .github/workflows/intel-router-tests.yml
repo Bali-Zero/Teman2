@@ -110,15 +110,50 @@ jobs:
         run: |
           pip install flake8 black isort mypy
 
-      - name: Check code formatting
-        working-directory: apps/backend-rag
-        run: |
-          black --check backend/services/intel/ backend/app/routers/intel.py || echo "Formatting check skipped"
+      # Removed 2026-08-09 (PENDING-ARMS.md ledger, opened 2026-07-27 — "the
+      # prettier rule is enforced by nothing that can see the whole repo" also
+      # named this step's twin shape). This step ran
+      # `black --check ... || echo "Formatting check skipped"` — the bare
+      # `|| echo` swallows every non-zero exit, so the step could never go red
+      # and certified nothing (same decorative shape as the W104 antibody that
+      # trusted an exit code instead of the reply). Measured before removing
+      # it, not assumed: `black --check backend/services/intel/
+      # backend/app/routers/intel.py` against this same scope goes RED today
+      # (file count in the PR body that removed this step) — arming the bare
+      # `||` would have broken every future intel-router PR on a pre-existing
+      # backlog this PR did not create. `isort`'s step right below had the
+      # identical decorative shape and was left as a ledgered follow-up
+      # (opened 2026-08-08) rather than silently inherited as "fixed"
+      # alongside this one — resolved 2026-08-09, see the comment on that
+      # step: unlike this one, it was armed rather than removed.
+
+      # Mask removed 2026-08-09 (PENDING-ARMS.md ledger, opened 2026-08-08 —
+      # this step's decorative twin to the `black` step above). This step ran
+      # `isort --check-only ... || echo "Import check skipped"` — same bare
+      # `|| echo` shape as `black` had: any non-zero exit was swallowed and
+      # the step could never go red. Measured before touching it, not
+      # assumed: the last 20 runs of this workflow on `main`
+      # (2026-05-19 -> 2026-08-02, job "Lint Intel Services") were inspected
+      # for whether the mask ever actually fired — 0/20 masked, isort exited
+      # 0 silently every time. Re-verified locally against origin/main@44b6d86
+      # (2026-08-09) with the exact tool CI installs (`isort==8.0.1`, the
+      # version `pip install ... isort` resolved to across the whole sampled
+      # window since it's PyPI's current release) and CI's own Python
+      # (3.11.15) from this same working directory (so `[tool.isort]` in
+      # `pyproject.toml` is picked up identically) — still clean, RC=0.
+      # Deliberately NOT removed like `black` was: `black` was RED (3/22
+      # files) — arming its bare `||` would have broken every future PR on a
+      # pre-existing backlog this repo hadn't budgeted for. `isort` is a
+      # measured zero-population — arming it today breaks nothing, and
+      # leaving the mask on is family #2 (esiste≠armato): the day isort
+      # genuinely fails, the `|| echo` would swallow that red exactly like it
+      # swallowed black's, and CI would stay green over a real regression.
+      # Same measurement, opposite verdict, by design.
 
       - name: Check imports
         working-directory: apps/backend-rag
         run: |
-          isort --check-only backend/services/intel/ backend/app/routers/intel.py || echo "Import check skipped"
+          isort --check-only backend/services/intel/ backend/app/routers/intel.py
 
   # Note: Post-deploy tests are run manually after local deployment to Fly.io
   # Deploy is done locally: fly deploy -a nuzantara-rag

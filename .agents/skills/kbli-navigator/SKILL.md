@@ -43,7 +43,47 @@ session reads this corner; it does not browse `research/`.
 Also stale in `20-the-honest-map-blocked-bali-codes.md` and its `_INDEX.md` row: the blocked count
 is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
-## 1. LIVE STATE (last update 2026-08-08 — keep current)
+## 1. LIVE STATE (last update 2026-08-09 — keep current)
+
+**🟢 2026-08-09 — GOLD FULL-POPULATION LIVE: 314 codes (from 3 pilots), G1-G5 all innocent — but only
+after G2 caught a real production bug and forced a same-day fix.** The morning attempt (314 = 322 minus
+8 phantom codes, see below) applied cleanly but POST-MEASURE found **G2 violated and reproducible**: on
+bare-code queries 3 of 10 sampled gold codes (56101/47721/85312) returned the GOLD point at rank1 with
+the BPS twin ABSENT from the top-5. Root cause: `_get_kbli_payload_from_qdrant`'s exact-code fast-path
+(`kbli_notebook.py`) scrolled Qdrant with `limit:1` and no `order_by` — with two points now sharing one
+`kode_kbli`, the winner was a per-code coin-flip on the two points' unrelated deterministic UUIDs
+(10/10 correlation confirmed empirically), zero relation to score/doc_type. Same-day rollback per a
+pre-declared contract, then the real fix: the filter now POSITIVELY selects `doc_type==kbli_bps` instead
+of excluding gold (#3863, deployed v4057, proven live in-container and on the search surface). Re-apply
+then measured G1-G5 all clean, G2 15/15 including the 3 ex-violators (#3865). Open, orthogonal:
+8 phantom codes in `kbli-gold-content.ts` with no 2025 counterpart (excluded from this apply,
+re-keying decision is `operator[business]`), and the `sektor`/`section` payload field remains unreliable
+(unscoped, tracked separately).
+
+**🟢 2026-08-08 (late evening) — THE INDEXERS CAN NOW RUN WHERE THEIR CREDENTIALS LIVE, AND THE FIRST
+THREE GOLD EDITORIAL POINTS EXIST.** Three PRs, each forced by proving the previous one: #3823
+(marker-walk root resolution + the three data files INTO the image — which took two build-context
+rounds of its own), #3832 (the gold indexer was BORN broken: a nested `metadata` write against the
+flat payload, in the file's birth commit — it had never completed a single run, so `doc_type=kbli_gold`
+was 0 points, measured), #3839 (the SAME disease in the stats/sample blocks it had never reached — four
+more sites, swept to a true grep-zero). Applied inside Fly: canonical reindex
+`--only 64995,64210,49296,46415,46496` (5/5 upserted, collection steady at 1559) and gold
+`--only 64995,64210,49296` (the first 3 gold points ever). PROVEN by content, three independent
+instruments: the deployed canonical's 64995 carries the honest no-predecessor sentence;
+`kbli_qdrant_pma_sync --layer whatchanged` dry-run in-container reports **5/5 "already agrees with
+canonical"**; `search_kbli` on an editorial query ("IDXCarbon…") returns the GOLD point FIRST (0.666 vs
+0.546 for its BPS twin) with the Quick Answer visible. Characterized, no action needed: on a code
+carrying both points the sync tool REFUSES the gold one ("carries no 'whatchanged' block — REFUSING to
+rewrite prose we cannot locate") — the refusal semantics were already right.
+**Deliberately NOT done: the other 319 gold entries.** Populating the whole class changes retrieval
+semantics for every consumer of `kbli_2025_final_hybrid` — that is its own ledgered decision with its
+own verification pass, not a night's slip-in.
+Lessons paid for (bodies in the PRs): the root `.dockerignore` is a WHITELIST — a new COPY's source
+must be re-included or the production image stops building, and the non-required Snyk build gate is
+what caught it pre-merge; `source_documents` at repo root is a TRACKED SYMLINK Docker COPY does not
+follow — COPY from the real `data/source_documents/` path; a script that exists but never ran can be
+broken in TWO phases, and a fix that stops at the first crash site is half a fix (W101 symmetry — the
+class census found 4 more sites, and the census probe itself first under-matched on quote style, W107).
 
 **🟢 2026-08-08 — PENDING-ARMS "4 contradicted-predecessor adjudications" (2026-07-25) CLOSED: 2 of 4
 CONFIRMED and live on every surface, 2 stay genuinely disputed BY DESIGN. Merged as #3778

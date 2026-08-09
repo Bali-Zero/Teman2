@@ -1,6 +1,6 @@
 # imigrasi.go.id scoped mirror + diff-alert
 
-**Scope: NOT a full-site copy.** ~123 pages that feed the Bali Zero visa
+**Scope: NOT a full-site copy.** ~127 pages that feed the Bali Zero visa
 engine, versioned daily/weekly, with a Telegram alert when one of them
 changes. The value is the repeated crawl + diff, not a one-off copy
 (cicatrix W90: "anche il ground-truth invecchia" — a static snapshot goes
@@ -11,10 +11,25 @@ stale the moment Imigrasi edits a list; this exists to catch that edit).
 | Category | Count | Tier | Examples |
 |---|---|---|---|
 | VoA/BVK/Calling subject lists + parent | 4 | daily | `/wna/daftar-negara-voa-bvk-calling-visa[/...]` |
+| TPI entry-point list — 122 checkpoints where VoA is issued (v2 — WHERE vs the subject lists' WHO) | 1 | daily | `.../titik-masuk-bagi-pemegang-e-voa` |
 | FAQ (documented for its OWN staleness, not trusted) | 1 | daily | `/faq/visa/negara-mana-saja...e-voa` |
 | Visa catalog index | 1 | daily | `/wna/daftar-visa-indonesia` |
+| News/announcement index (v2 — removals announced here first) | 1 | daily | `/berita` |
+| Kemenimipas Permen legal-doc listing (v2 — enacts visa rule changes) | 1 | daily | `kemenimipas.go.id/produk-hukum/peraturan-menteri-imipas` |
+| e-Visa eVOA info — applicant-facing fee/requirements/eligible countries (v2 — downstream witness to a rule change) | 1 | daily | `evisa.imigrasi.go.id/front/info/evoa` |
 | Regional kanim mirrors (schema counter-proof) | 3 | daily | depok / bontang / ngurah rai |
 | Per-visa-code detail pages | 114 | weekly | `/wna/daftar-visa-indonesia/{CODE}` |
+
+**The Permen listing needs a page-specific extractor** (`extract_produk_hukum`
+in `extract.py`, selected by `Page.extractor="produk_hukum"`). The generic
+`extract_text` is wrong for it two ways, both verified live: the regulation
+table is wrapped in a Joomla `<form>` that the generic extractor strips (so it
+would silently watch the footer menu — the WRONG signal), and each row carries
+a volatile `Dilihat: N` view counter that would fire a false diff on every
+crawl. The custom extractor pulls only the title links, so a new Permen = a new
+line and nothing else moves. It lives on the NEW ministry domain
+`kemenimipas.go.id` (the immigration legal portal moved there —
+`imigrasi.go.id/produk-hukum` is a 404).
 
 The 114 codes are a **copy** of `apps/backend-rag/backend/migrations/scripts/seed_visa_types_complete_2026.py`,
 not a live import (keeps this module free of the backend-rag app's
@@ -24,21 +39,55 @@ dependency chain so it can run standalone from cron). Re-check with:
 scripts/imigrasi_mirror/run-mirror.sh --verify-codes
 ```
 
-All 123 URLs in `urls.py` were verified live (WebFetch, 200, real content)
-on 2026-08-08 before being committed — see the module docstring.
+All 127 URLs in `urls.py` were verified live (200, real content) before being
+committed — 123 on 2026-08-08, the `/berita`, kemenimipas Permen, e-Visa eVOA
+and TPI entry-point v2 pages on 2026-08-09. All four v2 pages were
+extraction-stability probed (identical extract text across two fetches seconds
+apart) so the daily diff fires only on genuinely new content, never on volatile
+page furniture (view counters, timestamps). See the module docstring.
 
 ## Cadence (coded, NOT yet installed as cron)
 
 ```
-run-mirror.sh --tier daily     # the 9 pages that "morde" — run this one daily
+run-mirror.sh --tier daily     # the 13 pages that "morde" — run this one daily
 run-mirror.sh --tier weekly    # the 114 per-code pages — run this one weekly
 run-mirror.sh --tier all       # everything in one pass
 run-mirror.sh --select parent,voa,bvk,calling,faq-evoa   # ad-hoc subset
 ```
 
-**No LaunchAgent/cron is installed by this change.** Arming a schedule is a
-follow-up decision for the operator after reviewing the dry-run output
-below (Zero mandate 2026-08-08: code + dry-run only, this run).
+Both daily and weekly are armed as LaunchAgents on Mini
+(`com.nuzantara.imigrasi-mirror.{daily,weekly}`).
+
+## Self-health (does the mirror still RUN?)
+
+The mirror alerts on content DIFFS — it is structurally blind to its own
+death: an unloaded cron, a broken venv, a network outage or a site-wide 5xx
+either never runs `run.py` or captures nothing, and in every case NO diff
+fires, so the channel stays silent while the sentinel is dead (scar #2
+"Esiste ≠ Armato").
+
+Two independent parts close that gap (kept SEPARATE from the crawl so the
+alarm never shares its failure mode — scar W108):
+
+1. **Heartbeat** — every completed `run.py` writes
+   `~/logs/imigrasi-mirror-heartbeat.json` (env `IMIGRASI_MIRROR_HEARTBEAT`),
+   OUTSIDE the data git repo (so it never breaks the `nothing_to_commit`
+   clean signal), recording tier / captured / failed / epoch.
+
+2. **`healthcheck.py`** — pure stdlib (no venv, no network to the mirrored
+   site), on its OWN LaunchAgent (`com.nuzantara.imigrasi-mirror.healthcheck`,
+   08:30 WITA — after the 06:30 daily run + buffer). Reads the heartbeat and
+   fires a Telegram `🚑 SELF-HEALTH` alert when it is:
+   - **ABSENT / malformed** → CRITICAL (never ran, or logs wiped)
+   - **STALE** > `--max-age-hours` (default 26h) → CRITICAL (cron unloaded / machine off)
+   - **captured 0** of N → CRITICAL (network/proxy dead, site 5xx)
+   - **failed** > `--max-failed` (default 0) → WARN (ran but stumbled)
+
+   Healthy → silent, exit 0. Unhealthy → alert + exit 1. The decision is a
+   pure function (`evaluate_health`) covered by `healthcheck.py --selftest`
+   (no network) with guilt+innocence pairs. Dedup key is
+   `(severity, date)` — one send per severity per day (a persistent outage
+   doesn't spam; a new day re-alerts).
 
 ## Where the data lives
 

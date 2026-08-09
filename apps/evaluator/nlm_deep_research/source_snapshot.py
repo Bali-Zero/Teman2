@@ -23,6 +23,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional
+from apps.evaluator.nlm_deep_research.nlm_bridge import nlm_error_reason
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +88,7 @@ def _run_nlm_command(
     )
 
     if result.returncode != 0:
-        error_msg = result.stderr.strip() or f"nlm exited with code {result.returncode}"
+        error_msg = nlm_error_reason(result)
         raise RuntimeError(f"nlm CLI error: {error_msg}")
 
     return result

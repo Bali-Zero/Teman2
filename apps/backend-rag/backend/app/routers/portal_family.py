@@ -11,7 +11,7 @@ from datetime import date
 from typing import Any
 
 import asyncpg
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from backend.app.dependencies import get_database_pool
 from backend.app.routers.portal import get_current_client
@@ -76,8 +76,11 @@ async def list_family(
             )
             members = [_shape_member(r) for r in rows]
         except Exception as e:
-            logger.warning("family list fetch failed: %s", e)
-            members = []
+            logger.error("family list fetch failed for client=%s: %s", client_id, e)
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to load family data",
+            ) from e
 
     adults = [m for m in members if m["is_adult"]]
     minors = [m for m in members if not m["is_adult"]]

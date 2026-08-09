@@ -51,20 +51,30 @@ jobs:
     # Floor is the CHECKOUT, not the script (scripts/lint_workflow_timeout_floor.py).
     timeout-minutes: 10
     steps:
-      # Checkout base SHA (not branch HEAD), fetch full history — the same
-      # convention hot-zone-pr-gate.yml uses for merge-base-anchored diffing.
-      - name: Checkout base ref
+      # Checkout PR HEAD (not base), fetch full history. Deliberately the
+      # OPPOSITE of hot-zone-pr-gate.yml's base-anchored checkout: that gate
+      # runs its enumerator from BASE's copy on purpose (self-protection — a
+      # hot-zone PR must not be able to disarm the gate that judges it, see
+      # that file's own comment). This check has no such adversarial
+      # concern (it is non-required/dry-run by design) and its own script +
+      # test file are introduced BY THIS VERY PR — checking out base.sha
+      # would leave `scripts/check_ledger_no_silent_loss.py` and its test
+      # physically absent from the working tree on this bootstrap PR,
+      # which is exactly what happened: "ERROR: file or directory not
+      # found" on PR #3838's own first run (self-test step, exit 4),
+      # non-blocking only because this check itself is non-required.
+      - name: Checkout PR head
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.pull_request.base.sha }}
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
-      - name: Fetch PR head
+      - name: Fetch PR base
         env:
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           set -euo pipefail
-          git fetch --no-tags --depth=200 origin "$HEAD_SHA"
+          git fetch --no-tags --depth=200 origin "$BASE_SHA"
 
       - name: Set up Python
         uses: actions/setup-python@v5

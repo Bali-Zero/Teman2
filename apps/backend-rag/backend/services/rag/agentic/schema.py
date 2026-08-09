@@ -7,15 +7,67 @@ result with attribute access (historically a Pydantic model).
 
 from __future__ import annotations
 
+from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
+
+
+class EvidenceProvenance(StrEnum):
+    """Closed evidence paths stamped only when sources cross the boundary."""
+
+    FAQ_CACHE = "faq_cache"
+    SEMANTIC_CACHE = "semantic_cache"
+    MULTI_AGENT_COORDINATOR = "multi_agent_coordinator"
+    SPECIALIZED_SERVICE_ROUTER = "specialized_service_router"
+    KNOWLEDGE_GRAPH = "knowledge_graph"
+    REACT_PIPELINE = "react_pipeline"
+
+
+class ProducerOrigin(StrEnum):
+    """Closed origin set, separate from whether evidence was transferred."""
+
+    QUERY_GATE = "query_gate"
+    FAQ_CACHE = "faq_cache"
+    SEMANTIC_CACHE = "semantic_cache"
+    MULTI_AGENT_COORDINATOR = "multi_agent_coordinator"
+    SPECIALIZED_SERVICE_ROUTER = "specialized_service_router"
+    KNOWLEDGE_GRAPH = "knowledge_graph"
+    REACT_PIPELINE = "react_pipeline"
+    UNKNOWN = "unknown"
+
+
+class TrustedBypassReason(StrEnum):
+    """Closed reasons allowed to ship without evidence provenance."""
+
+    DETERMINISTIC_QUERY_GATE = "deterministic_query_gate"
+
+
+class AnalyticsReceiptStatus(StrEnum):
+    """Truthful state of the analytics side effect at response finalization."""
+
+    SCHEDULED = "scheduled"
+    WRITTEN = "written"
+    SKIPPED = "skipped"
+    FAILED = "failed"
+
+
+class FinalizationStatus(StrEnum):
+    """Rollout state for the additive finalization contract."""
+
+    SHADOW_RECORDED = "shadow_recorded"
+    SHADOW_INCOMPLETE = "shadow_incomplete"
 
 
 class CoreResult(BaseModel):
     """Standard result object returned by AgenticRAGOrchestrator."""
 
     model_config = ConfigDict(protected_namespaces=())
+
+    # Internal identity stamp set only by the deterministic finalizer.  It is
+    # deliberately absent from model fields/serialization: public shadow
+    # metadata is observable output, not an authority for idempotence.
+    _finalization_stamp: object | None = PrivateAttr(default=None)
 
     answer: str
     sources: list[Any] = Field(default_factory=list)
@@ -25,6 +77,13 @@ class CoreResult(BaseModel):
     route_used: str | None = None
     collection_used: str | None = None
     cache_hit: bool | str = False
+
+    # Deterministic finalization spine (shadow-first, additive metadata only)
+    finalization_status: FinalizationStatus | None = None
+    producer_origin: ProducerOrigin | None = None
+    evidence_provenance: EvidenceProvenance | None = None
+    trusted_bypass_reason: TrustedBypassReason | None = None
+    analytics_receipt: AnalyticsReceiptStatus | None = None
 
     # Quality / verification
     verification_status: str | None = None

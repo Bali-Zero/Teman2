@@ -15,9 +15,7 @@ from backend.services.portal.recap_service import (
 
 class TestDeterministicRecap:
     def test_no_actions_no_deadlines(self):
-        text = build_deterministic_recap(
-            open_actions=[], upcoming_deadlines=[], unread_messages=0
-        )
+        text = build_deterministic_recap(open_actions=[], upcoming_deadlines=[], unread_messages=0)
         assert "Nothing needs your attention" in text
 
     def test_single_action(self):
@@ -65,9 +63,7 @@ class TestDeterministicRecap:
         assert "2026-07-01" in text
 
     def test_unread_messages(self):
-        text = build_deterministic_recap(
-            open_actions=[], upcoming_deadlines=[], unread_messages=3
-        )
+        text = build_deterministic_recap(open_actions=[], upcoming_deadlines=[], unread_messages=3)
         assert "3 unread messages" in text
 
     def test_client_first_name_greeting(self):
@@ -98,6 +94,23 @@ class TestFactsPreservedGuard:
 
 class TestBuildRecap:
     @pytest.mark.asyncio
+    async def test_default_path_is_deterministic_without_ollama(self, monkeypatch):
+        async def unexpected_polish(*args, **kwargs):
+            raise AssertionError("default client recap must not call Ollama")
+
+        import backend.services.portal.recap_service as recap_service
+
+        monkeypatch.setattr(recap_service, "polish_recap", unexpected_polish)
+        result = await build_recap(
+            open_actions=[{"title": "Upload X"}],
+            upcoming_deadlines=[],
+            unread_messages=0,
+        )
+
+        assert result["polished"] is False
+        assert "Upload X" in result["text"]
+
+    @pytest.mark.asyncio
     async def test_no_polish_returns_deterministic(self):
         result = await build_recap(
             open_actions=[{"title": "Upload X"}],
@@ -115,6 +128,24 @@ class TestBuildRecap:
             open_actions=[], upcoming_deadlines=[], unread_messages=0, polish=False
         )
         assert "not legal advice" in result["disclaimer"]
+
+    @pytest.mark.asyncio
+    async def test_polish_is_explicitly_opt_in(self, monkeypatch):
+        async def faithful(deterministic: str):
+            return deterministic.replace("Welcome back.", "Good to see you.")
+
+        import backend.services.portal.recap_service as recap_service
+
+        monkeypatch.setattr(recap_service, "polish_recap", faithful)
+        result = await build_recap(
+            open_actions=[],
+            upcoming_deadlines=[],
+            unread_messages=0,
+            polish=True,
+        )
+
+        assert result["polished"] is True
+        assert result["text"].startswith("Good to see you.")
 
     @pytest.mark.asyncio
     async def test_polish_falls_back_when_ollama_unavailable(self, monkeypatch):

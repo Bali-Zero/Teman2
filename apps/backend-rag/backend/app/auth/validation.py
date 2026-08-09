@@ -13,6 +13,10 @@ from jose import JWTError, jwt
 
 from backend.app.core.config import settings
 from backend.app.services.api_key_auth import APIKeyAuth
+from backend.services.security.token_revocation import (
+    RevocationStoreUnavailable,
+    is_session_revoked,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -51,27 +55,29 @@ async def validate_auth_token(token: str | None) -> dict[str, Any] | None:
     """
     Validate JWT tokens locally using the shared secret.
 
-    S03: Two-phase expiry enforcement via jwt_enforce_expiry flag.
+    Expiry and revocation are mandatory launch gates.
     """
     if not token:
         return None
 
     try:
-        # S03: Two-phase JWT expiry enforcement
-        verify_exp = getattr(settings, "jwt_enforce_expiry", False)
         payload = jwt.decode(
             token,
             settings.jwt_secret_key,
             algorithms=[settings.jwt_algorithm],
-            options={"verify_exp": verify_exp},
+            options={"verify_exp": True, "require_exp": True},
         )
 
         user_id = payload.get("sub") or payload.get("userId")
         email = payload.get("email")
 
         if user_id and email:
+            if await is_session_revoked(payload):
+                logger.warning("Rejected revoked JWT session")
+                return None
+
             logger.info("✅ Local JWT validation successful for %s", email)
-            user_ctx: dict[str, Any] = {
+            return {
                 "id": user_id,
                 "email": email,
                 "role": payload.get("role", "member"),
@@ -80,23 +86,11 @@ async def validate_auth_token(token: str | None) -> dict[str, Any] | None:
                 "status": "active",
             }
 
-            # S03: Audit mode — flag expired tokens without rejecting
-            if not verify_exp:
-                exp = payload.get("exp")
-                if exp:
-                    from datetime import datetime, timezone
-
-                    if datetime.fromtimestamp(exp, tz=timezone.utc) < datetime.now(timezone.utc):
-                        logger.warning(
-                            f"S03_AUDIT: Expired token in validation for {email} "
-                            f"(jti={payload.get('jti', 'none')})"
-                        )
-                        user_ctx["_warn_expired"] = True
-
-            return user_ctx
-
     except JWTError as e:
         logger.debug("Local JWT validation failed: %s", e)
+    except RevocationStoreUnavailable:
+        logger.error("Authentication unavailable: session revocation cannot be checked")
+        raise
     except Exception as e:
         logger.warning("Unexpected error during local JWT validation: %s", e)
 

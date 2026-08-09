@@ -403,7 +403,7 @@ async def me(
         # CATA-5: Query team_members.partner_id (not users — production has no users table).
         # team_members.id is VARCHAR string ID; user["user_id"] is already a string.
         row = await conn.fetchrow(
-            "SELECT partner_id FROM team_members WHERE id = $1",
+            "SELECT partner_id FROM team_members WHERE id::text = $1",
             str(user["user_id"]),
         )
         if not row or not row["partner_id"]:
@@ -426,7 +426,7 @@ async def me_referrals(
     async with pool.acquire() as conn:
         # CATA-5: Query team_members.partner_id (not users — production has no users table).
         row = await conn.fetchrow(
-            "SELECT partner_id FROM team_members WHERE id = $1",
+            "SELECT partner_id FROM team_members WHERE id::text = $1",
             str(user["user_id"]),
         )
         if not row or not row["partner_id"]:
@@ -475,16 +475,29 @@ async def me_commissions(
     async with pool.acquire() as conn:
         # CATA-5: Query team_members.partner_id (not users — production has no users table).
         row = await conn.fetchrow(
-            "SELECT partner_id FROM team_members WHERE id = $1",
+            "SELECT partner_id FROM team_members WHERE id::text = $1",
             str(user["user_id"]),
         )
         if not row or not row["partner_id"]:
             raise HTTPException(status_code=403, detail="no partner profile linked to this user")
         svc = PartnersService(conn)
         commissions = await svc.repo.list_commissions_for_partner(row["partner_id"])
-        return [
+        payloads = [
             dataclasses.asdict(c) if dataclasses.is_dataclass(c) else dict(c) for c in commissions
         ]
+        for payload in payloads:
+            # asyncpg returns NUMERIC columns as Decimal. Without an explicit
+            # response model FastAPI serializes those values as strings, which
+            # violates the numeric Partner portal contract.
+            for field in (
+                "base_amount_idr",
+                "gross_amount_idr",
+                "withholding_amount_idr",
+                "net_amount_idr",
+            ):
+                if payload.get(field) is not None:
+                    payload[field] = int(payload[field])
+        return payloads
 
 
 @router.get("/finance/export")

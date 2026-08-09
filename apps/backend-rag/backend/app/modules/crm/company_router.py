@@ -11,6 +11,7 @@ import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.routers.documents_proxy import assert_drive_file_belongs_to_company
 from backend.app.utils.crm_utils import is_crm_admin, verify_client_access
 from backend.services.common.background import spawn
 
@@ -626,6 +627,10 @@ async def create_company_document(
         exists = await conn.fetchval("SELECT 1 FROM companies WHERE id = $1", company_id)
         if not exists:
             raise HTTPException(status_code=404, detail="Company not found")
+
+        google_drive_file_id = data.get("google_drive_file_id")
+        if google_drive_file_id:
+            await assert_drive_file_belongs_to_company(google_drive_file_id, company_id, conn)
 
         row = await conn.fetchrow(
             """

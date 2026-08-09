@@ -303,10 +303,32 @@ fi
 echo "🔧 Running linting..."
 LINT_FILES=$(printf '%s\n' "$STAGED_FILES" | grep -E '\.(ts|tsx|js|jsx|json|md|yml|yaml)$' || true)
 if [ -n "$LINT_FILES" ]; then
-    echo "$LINT_FILES" | xargs npx prettier --check 2>/dev/null || {
+    # CANNOT-VERIFY, not a lint failure (ledger line opened 2026-08-08, family
+    # W104/W106b): the old form piped `npx prettier --check` straight to
+    # `2>/dev/null`, so `npx: command not found` (e.g. a non-interactive ssh
+    # shell where a login shell would have node/npx but this one does not) was
+    # indistinguishable from a genuine formatting failure — the hook told a
+    # session to reformat files that were already clean, because it never ran
+    # prettier at all. Same convention as the ruff check above (Golden Rule
+    # #8): a missing BINARY fails closed with a message that names the binary
+    # and never names a file, so the two failure modes cannot be confused.
+    if ! command -v npx >/dev/null 2>&1; then
+        echo "❌ ERROR: cannot verify formatting — npx is not on PATH."
+        echo "   This is a CANNOT-VERIFY, not a clean bill (no file below is actually unformatted)."
+        echo "   Run from a login shell, or install Node, and retry."
+        exit 1
+    fi
+    # RC captured explicitly (W101/W108: never a bare `cmd || {...}` whose
+    # judgment depends on whatever errexit state the calling shell happens to
+    # be in) and stderr is now the diagnosis, not discarded noise — printed in
+    # the failure branch instead of swallowed by the old `2>/dev/null`.
+    LINT_RC=0
+    LINT_OUT=$(echo "$LINT_FILES" | xargs npx prettier --check 2>&1) || LINT_RC=$?
+    if [ "$LINT_RC" -ne 0 ]; then
+        echo "$LINT_OUT"
         echo "❌ Linting failed on staged files. Run: npx prettier --write <file>"
         exit 1
-    }
+    fi
 fi
 
 # Run type checking — ONLY when frontend TS/TSX under apps/mouth is staged.

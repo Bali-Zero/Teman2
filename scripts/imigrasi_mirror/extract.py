@@ -73,3 +73,45 @@ def extract_text(html: str) -> str:
     lines = [ln.strip() for ln in text.splitlines()]
     lines = [ln for ln in lines if ln]
     return "\n".join(lines)
+
+
+def extract_produk_hukum(html: str) -> str:
+    """Kemenimipas legal-document listing (Joomla category view).
+
+    `extract_text` is WRONG for this page for two independent reasons, both
+    verified live 2026-08-09:
+
+    1. The regulation table lives inside `<form id="adminForm">` (Joomla's
+       sort/filter form). `extract_text` strips every `<form>` as boilerplate,
+       so the whole listing is destroyed and the "largest block" it keeps is
+       the footer menu (386 chars of ministry address + category links) —
+       stable, but the WRONG signal: a new Permen would never be detected
+       (cicatrix family #3 UNDER-match / W99 — a guard that looks green while
+       watching nothing).
+    2. Every row carries a volatile `Dilihat: N` view counter that changes on
+       every crawl — diffing the full rendered row would fire an alert every
+       run (W116, an alarm nobody reads).
+
+    So extract ONLY the regulation title links (`table.category td.list-title
+    a`): "Permenimipas No 15 Tahun 2025 tentang ...", one per line, newest
+    first (document order). A new regulation = a new line; view counters and
+    footer never appear. If the Joomla theme ever changes, the selector stops
+    matching and this returns "" — which diffs LOUDLY against the prior
+    (all rows removed) rather than silently watching nothing.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    titles = [a.get_text(strip=True) for a in soup.select("table.category td.list-title a")]
+    return "\n".join(t for t in titles if t)
+
+
+# Per-page extractor registry. `Page.extractor` selects one; unknown names
+# (and the default) fall back to the generic `extract_text`.
+_EXTRACTORS = {
+    "default": extract_text,
+    "produk_hukum": extract_produk_hukum,
+}
+
+
+def extract_for(name: str, html: str) -> str:
+    """Dispatch to the page's declared extractor (default: generic)."""
+    return _EXTRACTORS.get(name, extract_text)(html)

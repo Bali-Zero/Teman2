@@ -37,6 +37,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 import httpx
+from apps.evaluator.nlm_deep_research.nlm_bridge import nlm_error_reason
 
 logger = logging.getLogger(__name__)
 
@@ -336,7 +337,7 @@ def nlm_source_list(notebook_id: str, timeout: int = NLM_TIMEOUT) -> list[dict]:
             timeout=timeout + 30,
         )
         if result.returncode != 0:
-            logger.error("nlm source list failed: %s", result.stderr[:300])
+            logger.error("nlm source list failed: %s", nlm_error_reason(result, limit=300))
             return []
 
         output = result.stdout.strip()
@@ -382,7 +383,7 @@ def nlm_source_delete(
             timeout=timeout + 30,
         )
         if result.returncode != 0:
-            logger.error("nlm source delete failed: %s", result.stderr[:300])
+            logger.error("nlm source delete failed: %s", nlm_error_reason(result, limit=300))
             return False
         return True
     except subprocess.TimeoutExpired:

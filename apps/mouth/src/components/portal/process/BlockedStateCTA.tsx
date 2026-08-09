@@ -34,6 +34,7 @@ export function BlockedStateCTA({ practiceId, reason }: Props) {
         </p>
         <Link
           href={href}
+          prefetch={false}
           className="inline-block text-xs uppercase tracking-[2px] text-[var(--bz-copper-text,var(--tx-secondary))] hover:underline"
         >
           Contact the team →
