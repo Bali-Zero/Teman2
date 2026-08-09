@@ -699,34 +699,63 @@ def run_selftest(registry_path: Optional[Path] = None) -> int:
                     bare = scan_text(probe + "\n> RETRACTED — see registry.\n", [c], pdirs, pwindow)
                     expect(f"PROD GUILT `{c.id}` bare directive (no correction stated) -> still flagged", len(bare) == 1)
 
-            # REGRESSION PIN (2026-08-09, unblocking #3837). The kim-17x pattern
-            # once also matched a bare `4.4x` — the Centralized 4.4 figure from
-            # S4.3 — which is NOT a distinctive number and, paired with the
-            # deliberately-broad context list (it carries `agents?`, `never`,
-            # `error`, `Google`), false-positived on ANY 4.4x ratio. A ReDoS
-            # timing row in a ledger, "0.0049s -> 0.0216s (4.4x for 2x input)",
-            # with the word "agents" in its window, was flagged as a re-citation
-            # of a paper about error amplification — superscar #3 (form, not
-            # entity). The headline "17.2x" alone uniquely identifies every real
-            # re-derivation, so the bare "4.4x" was dropped. These pins go red if
-            # it is re-added: innocence (the ratio is not the claim) AND guilt
-            # (17.2x is still caught, so the drop did not gut the guard).
+            # REGRESSION PIN (2026-08-09, unblocking #3837; hardened after a
+            # cross-family adversarial round). The kim-17x pattern matched a bare
+            # `4.4x` (the Centralized figure the retracted sentence pairs with
+            # Independent's 17.2x) alongside the headline. Paired with the
+            # deliberately-broad context list (`agents?`/`never`/`error`/`Google`),
+            # a bare `4.4x` false-positived on ANY ratio: a ReDoS timing row in a
+            # ledger, "0.0049s -> 0.0216s (4.4x for 2x input)" with "agents"
+            # nearby, read as a re-citation of a paper about error amplification
+            # (superscar #3: form, not entity). The FIRST fix dropped `4.4x`
+            # outright — REFUTED by a cross-family round: `4.4x` sits verbatim in
+            # the corpus and a real re-citation can cite it WITHOUT `17.2x` and
+            # without ranking phrasing (so the sibling claim misses it too). The
+            # cure keeps `4.4x` under THIS claim (so existing RETRACTED[kim-2025-
+            # 17x-...] markers absolve the corpus) but requires error-amplification
+            # /propagation/rate language WITHIN the line, so a bare timing ratio no
+            # longer matches. Guilt: the causal 4.4x forms the refuter surfaced.
+            # Innocence: the ReDoS ratio. Both go red if the inline-context
+            # requirement on the 4.4x alternative is ever weakened.
             _kim = [c for c in pclaims if c.id == "kim-2025-17x-error-amplification-as-cause"]
             if _kim:
                 _kc = _kim[0]
+                for _t in (
+                    "the suite failed at 96%: 0.0049s -> 0.0216s (4.4x for 2x input, max 3.0x) under agents load",
+                    "the redos guard measured a 4.4x slowdown for 2x input under load average 9-11 with agents running",
+                ):
+                    expect(
+                        f"PIN INNOCENCE kim-17x: a bare 4.4x ratio (no amplification language) is NOT the claim: {_t[:40]}",
+                        scan_text(_t + "\n", [_kc], pdirs, pwindow) == [],
+                    )
+                for _t in (
+                    "Kim et al.'s 4.4x error-amplification factor is why Google recommends agents never coordinate peer-to-peer.",
+                    "The paper shows a 4.4x higher error rate under decentralized coordination, confirming subagents should never talk peer-to-peer.",
+                    "4.4x error amplification (Kim 2025, arXiv:2512.08296) is the reason sub-agents must not hand off state peer-to-peer.",
+                    "Kim et al. found centralized validation bottlenecks contain error amplification to 4.4x; therefore subagents must never communicate peer-to-peer.",
+                    "Google's 17.2x error-amplification finding forbids peer-to-peer agents",
+                ):
+                    expect(
+                        f"PIN GUILT kim-17x: a causal amplification re-citation IS caught: {_t[:40]}",
+                        len(scan_text(_t + "\n", [_kc], pdirs, pwindow)) == 1,
+                    )
+                # DECLARED LIMIT, pinned (superscar #3 lineage): scan_text matches
+                # a claim's pattern per-LINE, so the 4.4x alternative requires its
+                # amplification word on the SAME line. A re-citation that splits
+                # "4.4x" from "error amplification" across a line break is NOT
+                # caught. Closing it needs window-based context for 4.4x, which —
+                # with a distinct claim id — would demand a new marker at 13
+                # existing corpus mentions (disproportionate), and the shared broad
+                # context cannot be tightened for 4.4x without dropping the 17.2x
+                # evasion coverage it is deliberately broad for. The realistic
+                # single-line causal forms above ARE caught; this narrow split is
+                # the accepted residual, pinned so it is a choice, not a surprise.
                 expect(
-                    "PIN INNOCENCE kim-17x: a bare 4.4x ratio (ReDoS timing, 'agents' in window) is NOT the claim",
+                    "known limit: a 4.4x split across lines from its amplification word is NOT caught",
                     scan_text(
-                        "the suite failed at 96%: 0.0049s -> 0.0216s (4.4x for 2x input, max 3.0x) under agents load\n",
+                        "the paper reports 4.4x for centralized coordination\nwhich is error amplification, so avoid peer-to-peer\n",
                         [_kc], pdirs, pwindow,
                     ) == [],
-                )
-                expect(
-                    "PIN GUILT kim-17x: the headline 17.2x re-citation is still caught after dropping 4.4x",
-                    len(scan_text(
-                        "Google's 17.2x error-amplification finding forbids peer-to-peer agents\n",
-                        [_kc], pdirs, pwindow,
-                    )) == 1,
                 )
         else:
             print(
