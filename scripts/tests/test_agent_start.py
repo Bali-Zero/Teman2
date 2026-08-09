@@ -876,6 +876,140 @@ def test_branch_in_origin_main_unmerged_content_refuses_reap(fake_repo):
     assert mod._branch_in_origin_main(wt) is False
 
 
+def test_branch_in_origin_main_mode_only_change_refuses_reap(fake_repo):
+    """PENDING-ARMS 2026-08-09 (opened 'while curing two broker defects'):
+    blob-only comparison (`git rev-parse <ref>:<path>`) is blind to a MODE
+    change — `chmod +x` on a file whose bytes are unchanged reads as
+    already-merged and gets reaped although the mode flip is the branch's
+    only real change. The ls-tree entry (mode+type+blob) comparison must
+    catch it."""
+    mod, repo = fake_repo
+    wt = mod.cmd_create("wr2", "modeonly", ttl_minutes=5)
+
+    (wt / "deploy.sh").write_text("echo hi\n")
+    os.chmod(wt / "deploy.sh", 0o755)
+    _commit_in_worktree(wt, mod, "deploy.sh", "chmod +x deploy.sh")
+
+    # origin/main gets the SAME bytes, but non-executable — mode-only diff.
+    (repo / "deploy.sh").write_text("echo hi\n")
+    subprocess.run(["git", "add", "deploy.sh"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@e", "-c", "user.name=T", "commit", "-m", "add deploy.sh"],
+        cwd=repo,
+        check=True,
+    )
+    subprocess.run(["git", "push", "origin", "main"], cwd=repo, check=True)
+    subprocess.run(["git", "fetch", "origin"], cwd=wt, check=True)
+
+    # Guilt: blob matches, mode does not — must NOT read as merged.
+    assert mod._branch_in_origin_main(wt) is False
+
+
+def test_branch_in_origin_main_matching_mode_is_reapable(fake_repo):
+    """Innocence twin of the mode-only guilt case: when origin/main's copy
+    has the SAME mode (both executable) and the same content, the ls-tree
+    entry comparison must not spuriously refuse — proving the fix targets
+    mode DIVERGENCE, not the mere presence of an executable bit."""
+    mod, repo = fake_repo
+    wt = mod.cmd_create("wr2", "modematch", ttl_minutes=5)
+
+    (wt / "deploy.sh").write_text("echo hi\n")
+    os.chmod(wt / "deploy.sh", 0o755)
+    _commit_in_worktree(wt, mod, "deploy.sh", "chmod +x deploy.sh")
+
+    (repo / "deploy.sh").write_text("echo hi\n")
+    os.chmod(repo / "deploy.sh", 0o755)
+    subprocess.run(["git", "add", "deploy.sh"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@e", "-c", "user.name=T", "commit", "-m", "add deploy.sh +x"],
+        cwd=repo,
+        check=True,
+    )
+    subprocess.run(["git", "push", "origin", "main"], cwd=repo, check=True)
+    subprocess.run(["git", "fetch", "origin"], cwd=wt, check=True)
+
+    assert mod._branch_in_origin_main(wt) is True
+
+
+def _declare_union_ledger(repo: Path) -> None:
+    """Commit a `.gitattributes` declaring LEDGER.md merge=union, plus a base
+    LEDGER.md, to the main repo (pre-worktree) so a worktree created after
+    this inherits both — mirrors `.claude/skills/modus/PENDING-ARMS.md`'s
+    real declaration without coupling the test to that file's live content."""
+    (repo / ".gitattributes").write_text("LEDGER.md merge=union\n")
+    (repo / "LEDGER.md").write_text("- base line\n")
+    subprocess.run(["git", "add", ".gitattributes", "LEDGER.md"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@e", "-c", "user.name=T", "commit", "-m", "declare union ledger"],
+        cwd=repo,
+        check=True,
+    )
+    subprocess.run(["git", "push", "origin", "main"], cwd=repo, check=True)
+
+
+def test_branch_in_origin_main_union_path_growing_superset_is_reapable(fake_repo):
+    """PENDING-ARMS 2026-08-09 (the reaper's-16-of-36-worktrees finding): a
+    branch that appended one line to a declared merge=union path must still
+    read as merged once origin/main carries that line PLUS more lines other
+    lanes appended after — exact blob equality can never hold again for an
+    append-only ledger, so the right question is line-SUBSET, not equality."""
+    mod, repo = fake_repo
+    _declare_union_ledger(repo)
+    wt = mod.cmd_create("wr2", "uniongrow", ttl_minutes=5)
+
+    with (wt / "LEDGER.md").open("a") as f:
+        f.write("- branch line\n")
+    _commit_in_worktree(wt, mod, "LEDGER.md", "append branch line")
+
+    # Not merged yet — blob genuinely differs (branch has a line main lacks).
+    assert mod._branch_in_origin_main(wt) is False
+
+    # Simulate: the branch's PR merged (its line lands on main), AND two more
+    # lanes appended after it — main is now a strict superset.
+    subprocess.run(["git", "checkout", "main"], cwd=repo, check=True)
+    with (repo / "LEDGER.md").open("a") as f:
+        f.write("- branch line\n- other lane 1\n- other lane 2\n")
+    subprocess.run(["git", "add", "LEDGER.md"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@e", "-c", "user.name=T", "commit", "-m", "3 more ledger lines"],
+        cwd=repo,
+        check=True,
+    )
+    subprocess.run(["git", "push", "origin", "main"], cwd=repo, check=True)
+    subprocess.run(["git", "fetch", "origin"], cwd=wt, check=True)
+
+    # Superset: every line the branch has is present on origin/main → reapable.
+    assert mod._branch_in_origin_main(wt) is True
+
+
+def test_branch_in_origin_main_union_path_missing_line_refuses_reap(fake_repo):
+    """Innocence twin: if the branch's own ledger line is genuinely ABSENT
+    from origin/main (its PR never actually landed — only OTHER lanes
+    touched the ledger), the subset check must still refuse to reap."""
+    mod, repo = fake_repo
+    _declare_union_ledger(repo)
+    wt = mod.cmd_create("wr2", "unionmissing", ttl_minutes=5)
+
+    with (wt / "LEDGER.md").open("a") as f:
+        f.write("- branch line never merged\n")
+    _commit_in_worktree(wt, mod, "LEDGER.md", "append branch line")
+
+    # Other lanes append DIFFERENT lines — the branch's own line is absent.
+    subprocess.run(["git", "checkout", "main"], cwd=repo, check=True)
+    with (repo / "LEDGER.md").open("a") as f:
+        f.write("- other lane 1\n- other lane 2\n")
+    subprocess.run(["git", "add", "LEDGER.md"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@e", "-c", "user.name=T", "commit", "-m", "2 ledger lines, unrelated"],
+        cwd=repo,
+        check=True,
+    )
+    subprocess.run(["git", "push", "origin", "main"], cwd=repo, check=True)
+    subprocess.run(["git", "fetch", "origin"], cwd=wt, check=True)
+
+    assert mod._branch_in_origin_main(wt) is False
+
+
 # ---------------------------------------------------------------------------
 # list — orphan detection (W62 ANTIBODY #2)
 # ---------------------------------------------------------------------------

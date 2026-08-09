@@ -309,6 +309,54 @@ def test_main_exit_0_clean(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
     assert rc == 0
 
 
+def test_main_json_includes_resolved_paths(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    """The main-checkout resolution is deliberate (W81 worktree-hardening) but
+    was previously silent — a caller could not tell which config/repo-root
+    was actually read. `resolved_config`/`resolved_repo_root` make it visible
+    without changing the resolution itself."""
+    home, repo = make_env(tmp_path)
+    (repo / "scripts/run.sh").write_text("same\n")
+    (home / "scripts/run.sh").write_text("same\n")
+    cfg = _write_config(tmp_path, [{"live": "~/scripts/run.sh", "repo": "scripts/run.sh"}])
+    monkeypatch.setattr(lhf.subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(a, 0, "", ""))
+    rc = lhf.main([
+        "--config", str(cfg), "--home", str(home), "--repo-root", str(repo),
+        "--plist-dir", str(home / "Library/LaunchAgents"), "--json",
+    ])
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["resolved_config"] == str(cfg.resolve())
+    assert payload["resolved_repo_root"] == str(repo.resolve())
+
+
+def test_main_text_prints_resolved_banner(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    """A worktree-cwd invocation with an explicit --config/--repo-root must
+    name THOSE paths in the banner, not the module-level default — the
+    banner's whole purpose is to make the actually-resolved paths visible."""
+    home, repo = make_env(tmp_path)
+    (repo / "scripts/run.sh").write_text("same\n")
+    (home / "scripts/run.sh").write_text("same\n")
+    cfg = _write_config(tmp_path, [{"live": "~/scripts/run.sh", "repo": "scripts/run.sh"}])
+    monkeypatch.setattr(lhf.subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(a, 0, "", ""))
+    rc = lhf.main([
+        "--config", str(cfg), "--home", str(home), "--repo-root", str(repo),
+        "--plist-dir", str(home / "Library/LaunchAgents"),
+    ])
+    assert rc == 0
+    out = capsys.readouterr().out
+    banner = next(line for line in out.splitlines() if line.startswith("[resolved]"))
+    assert f"config={cfg.resolve()}" in banner
+    assert f"repo-root={repo.resolve()}" in banner
+    # Innocence: the banner must not silently name the module's own default
+    # REPO_ROOT/DEFAULT_CONFIG when an explicit override was passed.
+    assert str(lhf.REPO_ROOT) not in banner or repo.resolve() == lhf.REPO_ROOT
+    assert str(lhf.DEFAULT_CONFIG) not in banner or cfg.resolve() == lhf.DEFAULT_CONFIG
+
+
 def test_main_exit_bitmask_diverged_plus_undeclared(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
 ) -> None:

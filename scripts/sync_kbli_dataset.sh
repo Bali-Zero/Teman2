@@ -31,7 +31,7 @@
 #       M5/balizero). Replaced with a physical copy of canonical.
 #
 # OUT OF SCOPE (handled by the native-app deploy script, not the repo):
-#   ~/Desktop/kbli-navigator-app/Resources/KBLI_2025_FINAL_CLEAN.json
+#   ~/Desktop/logo/kbli-navigator-app/Resources/KBLI_2025_FINAL_CLEAN.json
 #     — the standalone macOS app (OUTSIDE this repo, NOT apps/kbli-navigator/ above).
 #       deploy/install-3mac.sh copies it from the app's own Resources/. If you change
 #       canonical, re-run the app build+deploy to refresh it.
@@ -155,13 +155,23 @@ if [[ "$MODE" == "--check" ]]; then
 fi
 
 # ── native-app fleet notice (local only — never CI, never --check) ─────────────────
-# The macOS KBLI Navigator (~/Desktop/kbli-navigator-app, OUTSIDE this repo) ships its
+# The macOS KBLI Navigator (~/Desktop/logo/kbli-navigator-app, OUTSIDE this repo) ships its
 # own copy of the dataset; its build refreshes from canonical, but only a deploy pushes
 # it to the 3-Mac fleet + the team zip. This block makes the drift VISIBLE at exactly
 # the moment canonical changes (this script is the mandatory step after any change),
 # instead of relying on someone remembering (superscar #2: costruito ≠ armato).
-APP_REPO="${KBLI_APP_REPO:-$HOME/Desktop/kbli-navigator-app}"
-APP_BUNDLE_DIR="${KBLI_APP_BUNDLE_DIR:-$HOME/Desktop/KBLI Navigator.app}"
+# 2026-08-09: the old default ($HOME/Desktop/kbli-navigator-app) was DEAD -- the repo
+# actually lives at $HOME/Desktop/logo/kbli-navigator-app, so this notice self-skipped
+# on M5 silently (an absent app_repo is treated as "nothing to check here", the correct
+# behavior for Pro/Mini/CI -- but wrong when the repo is simply at a different path).
+# APP_BUNDLE_DIR now names the app-split's INTERNAL variant (the only one the fleet
+# ever installs -- see kbli-navigator-app/build.sh --variant). TRANSITION: the fleet's
+# actually-installed copies still carry the OLD "KBLI Navigator.app" name until the
+# NEXT run of install-3mac.sh (a separate, later step) -- until then this notice will
+# correctly report "no .app on <host> to check" rather than silently comparing against
+# a path nothing writes to anymore.
+APP_REPO="${KBLI_APP_REPO:-$HOME/Desktop/logo/kbli-navigator-app}"
+APP_BUNDLE_DIR="${KBLI_APP_BUNDLE_DIR:-$HOME/Desktop/KBLI Navigator - INTERNAL.app}"
 if [[ "$MODE" == "sync" && -z "${CI:-}" ]]; then
   # The verdict itself lives in scripts/lib/kbli_fleet_notice.sh so it can be pointed at a
   # fake world and tested (guilt AND innocence) — inline, behind $HOME and `-z $CI`, it was

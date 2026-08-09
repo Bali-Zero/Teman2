@@ -629,6 +629,17 @@ def main(argv: Optional[list[str]] = None) -> int:
     run_check = args.check or not args.discover
     run_discover = args.discover or not args.check
 
+    # Resolution is deliberate (worktree-hardened against W81, see
+    # _canonical_repo_root's docstring) but was previously SILENT — an
+    # invocation from inside a worktree with no explicit --config/--repo-root
+    # gave zero indication it was reading the main checkout, not the
+    # worktree's own files. Printed unconditionally, before any check/discover
+    # work, so a stale-looking result is never mistaken for a checked one.
+    resolved_config = args.config.resolve()
+    resolved_repo_root = args.repo_root.resolve()
+    if not args.json:
+        print(f"[resolved] config={resolved_config} repo-root={resolved_repo_root}")
+
     label = machine_label()
     config = load_config(args.config)
     pairs = merge_pairs(config["pairs"], proprioception_pairs(args.repo_root))
@@ -701,6 +712,8 @@ def main(argv: Optional[list[str]] = None) -> int:
                 {
                     "schema": 1,
                     "machine": label,
+                    "resolved_config": str(resolved_config),
+                    "resolved_repo_root": str(resolved_repo_root),
                     "check_breaches": breaches,
                     "check_stale_checkout": stale_checkout,
                     "check_skipped_live_absent": skipped_pairs,

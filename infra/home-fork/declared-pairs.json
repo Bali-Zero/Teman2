@@ -681,6 +681,18 @@
       "repo": "scripts/intel-lake-nb-pusher-a2/intel-lake-nb-pusher-standalone.py",
       "_note": "PROMOTED 2026-08-09 (organ ward-round, round 2): #3891's auth-refresh cure had landed on a file the cron never runs — LaunchAgent com.balizero.intel-lake-nb-pusher.15min -> ~/scripts/intel-lake-nb-pusher-cron.sh executes ~/scripts/intel-lake-nb-pusher-standalone.py, an undeclared HOME copy that had diverged from the repo canon by 71 lines. The HOME copy was AHEAD: it carries the _NB_UUID_REMAP/_NB_UUID_ORPHAN block (zero-profile -> default-profile UUID remap, live since 2026-06-10, plus --profile default on every nlm call) and the 'could not add url source' -> network error classification — none of that had ever reached the repo. Neither side was complete. This pair is the UNION: HOME content as the base (it is the live canon; overwriting it from the stale repo file would have been a W106b regression) with ONLY the #3891 auth-refresh startup-gate patch re-applied on top (verified by diff: union file minus HOME == exactly the auth-refresh block). Live HOME copy still needs manual sync post-merge — do NOT treat this pair as aligned until the operator re-copies and sha256-verifies.",
       "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/intel-lake-outbox-drain.py",
+      "repo": "scripts/intel-lake-outbox-drain/intel-lake-outbox-drain.py",
+      "machines": ["m5", "pro"],
+      "_note": "Declared 2026-08-09 while moving this drain onto the tg_notify gateway. The LaunchAgent com.balizero.intel-lake.outbox-drain.minute runs the FLAT HOME copy (~/scripts/), not the repo's subdirectory path, and the pair was undeclared — so the merge alone would have left the running code on the old raw sender while the repo claimed it was migrated (the W107 delivery gotcha). Measured on all three the same day: present and byte-identical to origin/main on M5 and Pro, absent on Mini (0 plist, 0 crontab there). M5's copy exists but is NOT armed (0 plist, 0 crontab) — declared anyway so a future divergence is seen rather than discovered; Mini deliberately excluded rather than 'all', which would make --check chase a pair that is not there."
+    },
+    {
+      "live": "~/scripts/runtime-reconcile.sh",
+      "repo": "scripts/runtime-reconcile.sh",
+      "machines": ["pro"],
+      "_note": "UNDECLARED until 2026-08-10, found while migrating its Telegram sender: com.nuzantara.runtime-reconcile.plist on Pro invokes /Users/nuzantara/scripts/runtime-reconcile.sh, a real file and not a symlink, so merging alone leaves the organ on the old code (W107 delivery gotcha). Measured the same day: the live copy was sha256 30216b454a60106b, byte-identical to origin/main — so it was aligned, not forked, and the risk was the NEXT change, which is exactly the one that declared it. The script's own header says 'install the live copy under ~/scripts via the P1 installer'; that sentence was the only thing that knew about the pair, and a sentence in a header is not a lint."
     }
   ],
   "allow": [
