@@ -142,6 +142,11 @@ def test_english_homographs_never_decide_a_language_on_their_own() -> None:
     One of them alone is a coincidence, not a language — so they may reinforce
     a verdict but never produce one. Guarding the property, not the instances.
     """
+    # Assert the declaration itself, or the loop below passes vacuously the
+    # moment someone empties the table — which is exactly the change it exists
+    # to catch.
+    assert LATIN_HOMOGRAPHS == {"ITALIAN": ["come"], "FRENCH": ["comment"]}
+
     for language, homographs in LATIN_HOMOGRAPHS.items():
         for word in homographs:
             assert detect_query_language(f"Please {word} on the tax filing") != language
