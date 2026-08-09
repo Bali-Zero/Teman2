@@ -1,10 +1,18 @@
 # DECISION RECORD — `com.balizero.nuzantara-repo-sync` writes the M5 main checkout the standing M5 doctrine calls read-only
 
-> **Status: OPEN. No option below has been executed by this record.** This document exists so
-> that a future session grepping `nuzantara-repo-sync` lands on the full picture — both positions,
-> the measurement, and who is positioned to close it — instead of re-discovering the conflict from
-> scratch. Owner of the open call: **Zero** (M5 is his interactive workstation; the daemon is a
-> personal `~/.local/bin/` script, not repo canon — see §No repo canon below).
+> **Status: CLOSED 2026-08-08 — Option A (RETIRE) executed on M5.** See §Closure at the bottom
+> for what was re-measured, what was run, and how it was proven. The rest of this document is
+> preserved as written on 2026-08-07 so the reasoning that led here stays auditable — with one
+> exception, marked inline: the record's claim that `Desktop/nuzantara` is a symlink is CORRECT
+> and the ledger entry that contradicted it was wrong.
+>
+> _Superseded header (2026-08-07):_ ~~Status: OPEN. No option below has been executed by this
+> record. Owner of the open call: **Zero**.~~ That owner assignment was itself the phantom-operator
+> lane the doctrine forbids — unloading a `launchd` job is repo/infra work a session owns, not one
+> of the true operator-only categories (physical, GUI, TCC, consent, credential, Legge 5). This
+> document still exists so that a future session grepping `nuzantara-repo-sync` lands on the full
+> picture — both positions, the measurement, and now the close — instead of re-discovering the
+> conflict from scratch.
 
 ## The conflict, in one sentence
 
@@ -125,3 +133,86 @@ this record is itself subject to Rule 1 (every number here is a measurement of 2
 expires). If the numbers still show 0 pushes and 0 repo canon, Option A remains the lower-risk
 close. If either has changed — a push has happened, or the script has since been promoted from
 somewhere else — that change is the new finding, not this one.
+
+---
+
+## Closure — 2026-08-08, Option A (RETIRE) executed
+
+### The instruction above was followed: every row re-measured first
+
+| Measurement                                              | 2026-08-07 (this record) | 2026-08-08 (at close)                                  |
+| -------------------------------------------------------- | ------------------------ | ------------------------------------------------------ |
+| `launchctl` runs                                         | 1133                     | **1315** (+182, consistent with 300s over ~15h)        |
+| `OK pushed` — ever                                       | 0                        | **0**                                                  |
+| `OK pulled`                                              | 334                      | **334** (no successful pull since 2026-08-04 07:47:17) |
+| commits behind                                           | 121                      | **179**, still growing one cycle at a time             |
+| dirty entries in the checkout                            | 20                       | **22**                                                 |
+| repo canon under `scripts/`, `infra/`, `apps/*/scripts/` | 0                        | **0**                                                  |
+| `declared-pairs.json` entries                            | 0                        | **0**                                                  |
+| present on Pro / Mini                                    | absent, both             | **absent, both**                                       |
+
+The closing rule this record wrote for itself — _"if the numbers still show 0 pushes and 0 repo
+canon, Option A remains the lower-risk close"_ — holds on both sides.
+
+### One correction, and it runs the opposite way from what the ledger assumed
+
+`.claude/skills/modus/PENDING-ARMS.md` carried a competing claim: that `~/Desktop/nuzantara` is
+_"a real, separate checkout (different inode from `~/nuzantara`)"_ — RETRACTED[desktop-nuzantara-is-a-separate-checkout]. **This record was right and
+that line was wrong**, measured rather than argued:
+
+```
+$ ls -ld ~/Desktop/nuzantara
+lrwxr-xr-x  /Users/balizero/Desktop/nuzantara -> /Users/balizero/nuzantara
+
+$ stat -f '%d %i %N  type=%HT' ~/Desktop/nuzantara ~/nuzantara     # WITHOUT -L
+16777233 166687231 /Users/balizero/Desktop/nuzantara  type=Symbolic Link
+16777233 758478    /Users/balizero/nuzantara          type=Directory
+
+$ stat -L -f '%d %i %N' ~/Desktop/nuzantara ~/nuzantara            # follows the link
+16777233 758478 /Users/balizero/Desktop/nuzantara
+16777233 758478 /Users/balizero/nuzantara
+
+$ git -C ~/Desktop/nuzantara rev-parse --absolute-git-dir
+/Users/balizero/nuzantara/.git
+```
+
+`stat` without `-L` reports the **link's own** inode, so comparing that against a directory's
+inode manufactures a difference that does not exist. The form (two inodes) lied about the entity
+(one checkout) — the same shape as constraint #2 of the handoff this record follows on from.
+
+It matters because it makes the risk **larger**, not smaller: the daemon was never aimed at a side
+copy it could churn harmlessly. It was aimed at the main checkout, and the 22 tracked edits that
+have been postponing it since 2026-08-04 are live sibling work in that checkout. The moment they
+cleared, an unattended `git merge --ff-only origin/main` would have landed on top of them.
+
+### What was run
+
+```
+launchctl disable gui/501/com.balizero.nuzantara-repo-sync    # persistent, survives reboot
+launchctl bootout  gui/501/com.balizero.nuzantara-repo-sync   # state was 'not running' → no detached children
+mv ~/Library/LaunchAgents/com.balizero.nuzantara-repo-sync.plist{,.retired-20260808}
+```
+
+`bootout` is used here only because the job was measured `state = not running` first — the fleet
+rule against `bootout` on a job with detached children stands unchanged. The plist is renamed with
+the `.retired-<date>` suffix the reconciler already protects for 30 days, so it is recoverable, and
+the script at `~/.local/bin/nuzantara-repo-sync` is left untouched: Option A deletes nothing else.
+Reversal is `launchctl enable` plus renaming the plist back.
+
+### PROVE-LIVE — the outcome, never the exit code
+
+- `launchctl print gui/501/com.balizero.nuzantara-repo-sync` → **RC=113**, no longer loaded.
+- `scripts/launchagent_reconcile.py` → **`HOME-fork target (superscar #1) (0)`**, down from 1, with
+  `Zombie loaded` still 0 — the disable/bootout/rename left no orphan label behind.
+- The daemon's own log stops growing across more than two 300-second tick windows. This is the one
+  that actually proves it is dead; the two above prove only that launchd agrees.
+
+### What is deliberately NOT done here
+
+- The M5 main checkout is **not** pulled, cleaned or otherwise touched. It is behind by design, and
+  its dirty entries are live sibling work (superscar #5).
+- The CLAUDE.md "Agent Worktree Discipline" invariant is **not** amended. Option A exists precisely
+  because retiring the daemon removes the conflict without carving an exception into the doctrine.
+- The script is **not** promoted to repo canon, so it never gets the first review Option B would
+  have required — and that review is not free: the last HOME-only script promoted without one,
+  `api_server.py`, drew 7 CodeQL high alerts and a production DSN in cleartext on first look.

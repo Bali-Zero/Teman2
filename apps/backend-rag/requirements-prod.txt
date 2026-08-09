@@ -3,9 +3,9 @@
 # Last updated: 2026-01-18 - Security updates: python-jose, fastapi, openai, requests
 
 # Core Framework
-fastapi!=0.136.3,>=0.140.7  # Upgraded for starlette 0.50+; exclude 0.136.3 (MAL-2026-4750 supply-chain malware injecting 'fastar' dep)
+fastapi!=0.136.3,>=0.141.1  # Upgraded for starlette 0.50+; exclude 0.136.3 (MAL-2026-4750 supply-chain malware injecting 'fastar' dep)
 starlette>=1.3.1,<1.4.0  # Security fix: CVE-2026-48818/48817 (fix 1.1.0), CVE-2026-54282 (1.3.0), CVE-2026-54283 (1.3.1); supersedes PYSEC-2026-161 / GHSA-86qp-5c8j-p5mr; keep prod on the suite-tested 1.x line.
-uvicorn[standard]>=0.51.0  # Upgraded for async improvements
+uvicorn[standard]>=0.52.1  # Upgraded for async improvements
 pydantic>=2.12.5
 pydantic-settings>=2.14.2
 python-multipart>=0.0.31  # Security fix: arbitrary file write
@@ -20,7 +20,7 @@ qdrant-client>=1.18.0,<1.19.0  # Match Qdrant server 1.12.x; avoid client/server
 # AI API Clients (optimized for resolution speed)
 openai>=2.46.0  # Upgraded for httpx 0.28+ (proxies parameter removed)
 anthropic>=0.120.0  # Updated for httpx 0.28+ compatibility
-google-genai>=2.14.0  # Unified SDK (replaces google-generativeai)
+google-genai>=2.16.0  # Unified SDK (replaces google-generativeai)
 google-api-python-client>=2.198.0
 google-auth>=2.56.2
 google-auth-oauthlib>=1.1.0
@@ -31,13 +31,13 @@ google-cloud-storage>=3.13.0
 # scripts/wr2_draft_generator.py to upload hero images to the warroom
 # bucket. No backend module imports it; pinned here so production venv
 # rebuilds (Pro `nuzantara-deploy` worktree) stay self-sufficient.
-boto3>=1.43.57
+boto3>=1.43.63
 
 langchain>=1.3.14
 langchain-core>=1.4.9
 langchain-anthropic>=1.4.8
 langchain-openai>=1.3.5
-langgraph>=1.2.9
+langgraph>=1.2.10
 langgraph-checkpoint-postgres>=3.1.1  # CVE-2026-71433 in 3.1.0
 h2>=4.4.1  # transitive via httpx; CVE-2026-71554 in 4.4.0
 
@@ -48,7 +48,7 @@ presidio-anonymizer>=2.2.362
 # Document Processing (lightweight)
 openpyxl>=3.1.5  # CVE-2023-43515 fixed in 3.1.5
 email-validator>=2.3.0
-pypdf>=6.15.0  # Security fix: CVE-2026-31826 memory exhaustion
+pypdf>=6.15.0  # Security: CVE-2026-71852 (patched 6.15.0). Floor was 6.13.3 for CVE-2026-31826; the bump kept the old CVE's name on the new number
 reportlab>=5.0.0  # PDF generation for invoices (lightweight alternative to WeasyPrint)
 beautifulsoup4>=4.15.0  # Security and stability updates
 python-magic>=0.4.27  # MIME type detection from file content
@@ -77,7 +77,7 @@ passlib[bcrypt]>=1.7.4
 # Database
 asyncpg>=0.31.0  # Performance and security improvements
 psycopg2-binary>=2.9.9
-redis>=8.0.1  # Security updates and new features
+redis>=8.1.0  # Security updates and new features
 sqlmodel>=0.0.39  # Bug fixes and compatibility updates
 
 # Compression
@@ -126,16 +126,16 @@ apscheduler==3.11.3
 
 # Security: setuptools fixes for CVE-2024-6345, PYSEC-2025-49, PYSEC-2022-43012
 setuptools>=83.0.0
-langsmith>=0.10.10  # Observability: @traceable on RAG nodes + KG nodes
+langsmith>=0.10.15  # Observability: @traceable on RAG nodes + KG nodes
 
 # Langfuse + OpenInference instrumentation (PR #312, prod runtime — was
 # missing in requirements-prod.txt so observability silently no-op'd in
 # production even with LANGFUSE_*_KEY secrets set on Fly).
 # Phase 0 of OpenLLMetry expansion. See docs/oss-injections-2026-04-26.md.
-langfuse>=4.14.1,<5.0.0  # LLM observability, OTEL-based v2+
-openinference-instrumentation-anthropic>=1.0.6  # Anthropic SDK auto-trace
-openinference-instrumentation-google-genai>=1.2.0  # Auto-trace Gemini SDK
-openinference-instrumentation-openai>=0.1.52  # Auto-trace OpenAI-compat (DeepSeek, Ollama)
+langfuse>=4.14.2,<5.0.0  # LLM observability, OTEL-based v2+
+openinference-instrumentation-anthropic>=1.1.0  # Anthropic SDK auto-trace
+openinference-instrumentation-google-genai>=1.3.0  # Auto-trace Gemini SDK
+openinference-instrumentation-openai>=0.1.53  # Auto-trace OpenAI-compat (DeepSeek, Ollama)
 
 # Fuzzy name matching for accounting bank-statement reconciliation (P1).
 # MUST stay in sync with requirements.txt — the prod Docker image installs from

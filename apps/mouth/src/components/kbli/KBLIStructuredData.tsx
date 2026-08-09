@@ -2,6 +2,7 @@ import type { KBLICode } from "@/lib/kbli-types";
 import { buildKbliFaq } from "@/lib/kbli-faq";
 import { isLicensingVerificationPending } from "@/lib/kbli-provenance";
 import { pmaCapShape } from "@/lib/kbli-pma-shape";
+import { pmaSourceAttributionStructured } from "@/lib/kbli-pma-source";
 
 /**
  * The TERBATAS ownership clause for structured data.
@@ -62,9 +63,16 @@ export function KBLICodeJsonLd({
   // green light the data cannot support.
   const pmaBasisUntraceable =
     code.provenance?.pma.status === "untraceable_basis";
+  // Source-aware (kbli-pma-source.ts, shared with kbli-faq.ts's pmaSourceNote
+  // — one classifier for one fact, never reinvented per surface): the Perpres
+  // crosswalk-pending caveat is only true for codes the Perpres annexes
+  // actually govern. The six insurance codes this fix-pack adjudicates under
+  // PP 14/2018 Pasal 5(1) jo. PP 3/2020 are NOT among them, and the old
+  // hardcoded clause attributed their 80% cap to the wrong instrument in the
+  // JSON-LD Google ingests.
   const pmaAttribution = pmaBasisUntraceable
     ? " — our sources record no KBLI-2020 predecessor for this code, so we cannot trace the basis of this ownership verdict; confirm it at oss.go.id before relying on it"
-    : " per Perpres 10/2021 as amended (crosswalk to KBLI 2025 pending)";
+    : pmaSourceAttributionStructured(code.pma.source);
   const pmaLabel = `${
     code.pma.status === "open"
       ? `100% foreign ownership allowed (TERBUKA)${baliNat}`

@@ -124,14 +124,25 @@ def test_the_real_47222_is_cured():
     )
 
 
-def test_47221_is_byte_untouched():
+def test_47221_is_untouched_by_the_47222_cure():
     """The innocence that matters most here: 47221 (alcoholic) and 47222
-    (non-alcoholic) sit next to each other and the cure must not bleed."""
+    (non-alcoholic) sit next to each other and THIS cure must not bleed onto
+    47221. `pma_nota` is this cure's own untouched-fields witness — it never
+    appears in this cure's spec, so it stays byte-identical no matter what.
+
+    2026-08-08: 47221's OWN `pma_kondisi` was separately corrected by
+    `cure_canonical_47221_kondisi.py` (item 4 of the sector-law brief) — the
+    copy-paste "Kemitraan dengan UMKM/Koperasi" it used to carry (bled from
+    47222, which is what THIS test file's own header docstring names as the
+    dangerous failure mode) is gone now for a REASON, not because this
+    cure's own scope reached it.
+    """
     _, records, _ = mod.load(mod.CANONICAL)
     by_code = {str(r.get("kode_kbli_2025")): r for r in records}
     rec = by_code["47221"]
     assert rec.get("pma_nota") == "Perdagangan eceran minuman beralkohol"
-    assert rec.get("pma_kondisi") == "Kemitraan dengan UMKM/Koperasi"
+    assert rec.get("pma_kondisi") != "Kemitraan dengan UMKM/Koperasi"
+    assert "Jaringan distribusi" in (rec.get("pma_kondisi") or "")
 
 
 def test_the_real_cure_is_a_clean_noop_without_writing():

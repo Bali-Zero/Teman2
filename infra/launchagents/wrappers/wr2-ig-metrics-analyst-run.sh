@@ -45,6 +45,111 @@ if [ "$POLL_SECS" -lt 1 ]; then
   POLL_SECS=1
 fi
 
+# --- FAILURE GATEWAY (2026-08-08) ---------------------------------------------
+# Until today this wrapper had ZERO gateway references and no voice at all.
+# launchd invokes it DIRECTLY (`/bin/bash <script>` in
+# com.balizero.wr2.ig-metrics-analyst.weekly — no cron-runner.sh, no
+# wr2-cron-wrapper.sh), so nothing wrote a receipt and nothing read its exit
+# code; `missed_runs_alerter` watches WarRoom DB rows, not launchd labels, and
+# knows nothing about this job; and no probe watches the freshness of its output
+# dir. Three consecutive weekly runs died with no surface anywhere able to
+# notice — W81/W108 in its plainest form.
+#
+# Routed through the ONE gateway (tg_notify.py owns token resolution, tiering and
+# dedup), like the sibling wr2-external-bench-run.sh. Two deliberate choices:
+#   - the interpreter is ABSOLUTE (W108): the alarm must not share a failure mode
+#     with what it reports, and launchd hands this job a PATH whose FIRST entry is
+#     a user-writable ~/.local/bin;
+#   - a missing gateway is LOGGED, never silent — "armed at nothing" and "fired"
+#     must not look the same afterwards. That branch writes its own line and no
+#     `notify rc=`, because there was no call to have an rc; whenever the gateway
+#     IS invoked, its rc is written whether it worked or not.
+# It can never be the thing that kills the run — and getting that right needed the
+# final log line to be written BEFORE errexit is restored: with `set -e` back on, a
+# `$LOG` that has become unwritable (full disk, wrong owner) would abort the
+# CALLER from inside the reporting code, which is the alarm killing the run it came
+# to report. The gateway itself is bounded, so this cannot hang: tg_notify.py
+# calls `urlopen(..., timeout=6)` and its relay fallback `subprocess.run(...,
+# timeout=15)` — measured, not assumed.
+NOTIFIED=0
+notify_failure() {
+  local msg="$1"
+  local dedup="$2"
+  local gateway notify_py rc had_errexit=0
+  NOTIFIED=1
+  # Disarm for the WHOLE body, not just around the gateway call: the
+  # gateway-MISSING branch writes to $ERR and returns, and with errexit still
+  # armed an unwritable $ERR would abort the caller from inside the alarm too.
+  case $- in *e*) had_errexit=1 ;; esac
+  set +e
+  notify_py=/opt/homebrew/bin/python3
+  [ -x "$notify_py" ] || notify_py=/usr/bin/python3
+  gateway="$(dirname "$0")/tg_notify.py"
+  [ -f "$gateway" ] || gateway="${HOME}/nuzantara/scripts/tg_notify.py"
+  if [ ! -f "$gateway" ]; then
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] gateway MISSING (${gateway}) — alert NOT sent: ${msg}" >> "$ERR"
+    if [ "$had_errexit" -eq 1 ]; then set -e; fi
+    return 0
+  fi
+  "$notify_py" "$gateway" --tier p0 --source wr2-ig-metrics-analyst \
+    --dedup-key "$dedup" -- "$msg" >> "$LOG" 2>&1
+  rc=$?
+  # Order matters: log FIRST, restore errexit AFTER. Reversed, an unwritable $LOG
+  # aborts the caller from inside the alarm.
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] telegram notify rc=${rc} (gateway=${gateway}, python=${notify_py})" >> "$LOG"
+  if [ "$had_errexit" -eq 1 ]; then set -e; fi
+  return 0
+}
+
+# Voice of last resort. Naming the two KNOWN failure exits is not enough: under
+# `set -e` this script can also die at any un-guarded line — a failing `mkdir`,
+# `python3` absent so the pre-flight assignment aborts, `mktemp` failing because
+# TMPDIR does not exist — and every one of those was as silent as the errexit bug
+# this commit cures. Curing only the exits I happened to think of is the W107
+# mistake (one mouth out of five) at the scale of a single organ. So: any non-zero
+# exit that has NOT already spoken gets a message naming that it died WITHOUT a
+# diagnosis, which is a different and more alarming fact than a named failure.
+#
+# Deliberate limit, declared rather than hidden — and stated by MEASUREMENT,
+# because the first version of this very comment was false. It claimed a
+# non-integer WR2_IG_METRICS_POLL_SECS would make `[ … -lt 1 ]` fail and errexit
+# take the script out before any voice existed. It does not: that test sits inside
+# an `if`, where errexit is EXEMPT (measured: `set -e; P=nope; if [ "$P" -lt 1 ];`
+# prints to stderr, rc=0, script alive). The same test OUTSIDE an `if` exits 2.
+# So the sentence written to be MORE precise was the wrong one — the correct
+# statement is narrow: the ONLY thing above this trap that can kill the script is
+# the bare `mkdir -p "$LOGDIR"`. A bad POLL_SECS survives to
+# `$((elapsed + sleep_step))`, which is BELOW the trap and therefore has a voice.
+on_exit_voice() {
+  local rc="$1"
+  if [ "$rc" -eq 0 ] || [ "$NOTIFIED" -eq 1 ]; then
+    return 0
+  fi
+  notify_failure "⚠️ wr2-ig-metrics-analyst exited ${rc} with NO diagnosis on $(hostname -s) — it died outside every path that knows how to explain itself. Weekly IG-insights amendment NOT produced. See ${LOG} / ${ERR}" \
+    "wr2-ig-metrics-analyst:undiagnosed:$(date +%Y-W%V):$(hostname -s)"
+  return 0
+}
+# Per-signal exit codes, and HUP included. launchd's own path is SIGTERM, but a
+# manual run over a dropped ssh gets SIGHUP, which nothing trapped before today:
+# the shell dies, the EXIT trap reads `$?` as 0 (measured — a bash killed by a
+# signal runs its EXIT trap with `$?` = 0) and the voice stays silent for a run cut
+# off mid-flight. Codes are conventional 128+signum instead of the old blanket 130
+# (which is SIGINT's, and was reported for SIGTERM too), so the launchd status
+# names what actually happened. SIGKILL stays outside any trap by definition —
+# declared, not covered.
+signal_exit() {
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] killed by SIG${1} — exiting ${2}" >> "$ERR"
+  on_exit_voice "$2"
+  exit "$2"
+}
+# Installed HERE, before the first line that can fail, and re-installed later by
+# cleanup_active_claude (which REPLACES these and therefore has to carry the voice
+# itself — a `trap ... EXIT` written later silently unarms this one).
+trap 'on_exit_voice $?' EXIT
+trap 'signal_exit HUP 129' HUP
+trap 'signal_exit INT 130' INT
+trap 'signal_exit TERM 143' TERM
+
 echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] wr2-ig-metrics-analyst starting" >> "$LOG"
 
 # Source secrets for Gemini OAuth + any future env
@@ -65,10 +170,26 @@ try:
     n = sum(1 for i in items if i.get('state') in ('published', 'published_with_edits') and (i.get('engagement_metrics') or {}).get('likes') is not None)
     print(n)
 except Exception as e:
-    print(0)
+    # NOT 0 (2026-08-08). Printing 0 on any exception made 'the queue file is
+    # gone / moved / corrupt' indistinguishable from 'fewer than 10 carousels
+    # published', and the second of those exits 0 in silence after writing an
+    # insufficient-data stub. So a broken path would have parked this organ in a
+    # permanent, well-documented, entirely wrong 'not enough data yet' — the
+    # W114 shape, where an empty measurement means either 'all present' or 'the
+    # check never ran'. Name the cause and let the caller alarm.
+    print('ERR:%s' % type(e).__name__)
 ")
 
 echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] published-with-metrics count: $PUBLISHED_COUNT" >> "$LOG"
+
+case "$PUBLISHED_COUNT" in
+  ERR:*)
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] pre-flight could NOT read the review queue (${PUBLISHED_COUNT}) — this is not 'no data', it is 'no measurement'" >> "$ERR"
+    notify_failure "⚠️ wr2-ig-metrics-analyst: review queue UNREADABLE (${PUBLISHED_COUNT}) on $(hostname -s) — cannot tell 'not enough data' from 'no file'. Amendment NOT produced." \
+      "wr2-ig-metrics-analyst:queue-unreadable:$(date +%Y-W%V):$(hostname -s)"
+    exit 66
+    ;;
+esac
 
 if [ "$PUBLISHED_COUNT" -lt 10 ]; then
   STUB="${HOME}/.claude/skills/bali-zero-brand/_proposed-amendments/$(date +%Y-%m-%d)-ig-insights-insufficient-data.md"
@@ -107,13 +228,36 @@ fi
 # first process of its own job so `set -m` gives it its own process group
 # (PGID == its own PID), and the watchdog kills the WHOLE group
 # (`kill -- -$PGID`, TERM then KILL) — no descendant can outlive the timeout.
+#
+# 2026-08-08 errexit fix (W101, fourth generation). Read the tenses here: this
+# paragraph describes the code AS IT WAS, because after the fix the subshell exits
+# agy's own status and a healthy probe therefore exits 0. As written before today,
+# the probe subshell ran under this script's own `set -e`, and a subshell INHERITS
+# errexit — and BOTH of its exits were non-zero by construction:
+#   - agy DOWN -> `wait "$AGY_PID"` returned agy's own non-zero code;
+#   - agy UP   -> `wait "$WATCHDOG_PID"` returned 143, the watchdog WE just killed.
+# So the block aborted the entire script, always, and nothing after it ever ran.
+# Measured on the live log (Pro): the 2026-07-19, 07-26 and 08-02 runs each stop
+# dead between "published-with-metrics count" and the health-check verdict —
+# zero further lines, .err.log untouched since 2026-06-23, last complete run
+# 2026-06-28. The DOWN branch — the local-fallback hint, the whole reason this
+# probe exists — was unreachable on the exact path it was written for.
+# Fix: disarm errexit around the probe (OUTSIDE *and* INSIDE — the subshell
+# inherits it) and judge by the CAPTURED rc, never by having survived the line.
 GEMINI_HINT=""
-AGY=/Users/nuzantara/.local/bin/agy
+# Overridable ONLY so the corpus can drive the probe; the default is the live Pro
+# path and is what every real run uses. Without the override the guilt test is
+# unwritable on M5, where this path does not exist at all (user `balizero`), so
+# `[ -x ]` is false, the whole block is skipped, and the dev machine is
+# structurally incapable of reproducing the red (W108 GOTCHA).
+AGY="${WR2_IG_AGY_BIN:-/Users/nuzantara/.local/bin/agy}"
 if [ -x "$AGY" ]; then
   AGY_PROMPT="$(mktemp "${TMPDIR:-/tmp}/wr2-ig-agy-prompt.XXXXXX")"
   AGY_TMP="$(mktemp "${TMPDIR:-/tmp}/wr2-ig-agy-health.XXXXXX")"
   echo "reply with exactly: AGYUP" > "$AGY_PROMPT"
+  set +e
   (
+    set +e
     set -m
     "$AGY" -p --print-timeout 20s < "$AGY_PROMPT" > "$AGY_TMP" 2>&1 &
     AGY_PID=$!
@@ -125,15 +269,29 @@ if [ -x "$AGY" ]; then
     ) &
     WATCHDOG_PID=$!
     wait "$AGY_PID" 2>/dev/null
+    AGY_RC=$?
     kill "$WATCHDOG_PID" 2>/dev/null
     wait "$WATCHDOG_PID" 2>/dev/null
+    # Propagate agy's OWN status, not the watchdog reap's: without this explicit
+    # exit the captured rc is always the `wait` on the watchdog we killed (143),
+    # which says nothing about the thing being probed.
+    exit "$AGY_RC"
   ) 2>/dev/null
+  AGY_PROBE_RC=$?
+  set -e
   AGY_OUT="$(cat "$AGY_TMP" 2>/dev/null || true)"
   rm -f "$AGY_PROMPT" "$AGY_TMP"
-  if printf '%s' "$AGY_OUT" | grep -qi 'AGYUP'; then
-    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] gemini health-check: UP" >> "$LOG"
+  # BOTH conditions, not just the answer. Logging `probe_rc` without judging it
+  # would have been decoration: agy can print `AGYUP` and then exit non-zero, or
+  # be killed mid-flight by the 25s watchdog having already emitted the token, and
+  # the old test called both of those UP — then the agent walks into a Gemini that
+  # is not there, which is the whole failure this probe exists to prevent. This is
+  # also what makes the watchdog-timeout path correct for free: a killed agy exits
+  # by signal, so rc != 0 and the verdict is DOWN.
+  if [ "$AGY_PROBE_RC" -eq 0 ] && printf '%s' "$AGY_OUT" | grep -qi 'AGYUP'; then
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] gemini health-check: UP (probe_rc=0)" >> "$LOG"
   else
-    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] gemini health-check: DOWN (agy not logged in / unreachable) — instructing local fallback" >> "$LOG"
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] gemini health-check: DOWN (agy not logged in / unreachable, probe_rc=${AGY_PROBE_RC}) — instructing local fallback" >> "$LOG"
     GEMINI_HINT=" IMPORTANT: agy/Gemini is NOT available right now (auth required or unreachable). DO NOT call agy at Step 2 — skip it and use the LOCAL statistical fallback (Python/jq on the corpus) directly, and mark partial:true. Do not block waiting for Gemini."
   fi
 else
@@ -149,12 +307,34 @@ CLAUDE_PROMPT="Use the wr2-ig-metrics-analyst agent to run the weekly IG metrics
 CLAUDE_BIN="${WR2_IG_CLAUDE_BIN:-$(command -v claude || true)}"
 if [ -z "$CLAUDE_BIN" ]; then
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] claude binary not found" >> "$ERR"
+  notify_failure "⚠️ wr2-ig-metrics-analyst: claude binary not found (exit=127) on $(hostname -s). Weekly IG-insights amendment NOT produced." \
+    "wr2-ig-metrics-analyst:nobin:$(date +%Y-W%V):$(hostname -s)"
   exit 127
 fi
 MAX_CLAUDE_ATTEMPTS=7
 DEFAULT_ACCOUNT_TIMEOUT_SECS=$((TIMEOUT_SECS / MAX_CLAUDE_ATTEMPTS))
 if [ "$DEFAULT_ACCOUNT_TIMEOUT_SECS" -lt 1 ]; then
   DEFAULT_ACCOUNT_TIMEOUT_SECS=1
+fi
+# MEASURED FLOOR, not arithmetic (2026-08-08). `TIMEOUT_SECS / MAX_CLAUDE_ATTEMPTS`
+# is 7200/7 = 1028s, and the only successful full run in this organ's whole log
+# took **1065s** (2026-06-28: `starting` 22:07:00 -> `done` 22:24:45) — the last
+# run that actually worked would be SIGTERM'd 37 seconds before finishing. That
+# never bit because the errexit bug killed the script before the cascade was ever
+# reached; curing that bug is exactly what makes this ceiling reachable for the
+# first time, and shipping the cure without this would have revived the organ into
+# a louder corpse: killed at 17 min on all seven seats, then a weekly P0.
+# The aggregate is already bounded by CASCADE_DEADLINE and run_claude_account
+# clamps each attempt to what remains, so the per-attempt number does not need to
+# divide the total — it needs to exceed a real run. 2700s is ~2.5x the observed
+# worst case with room for the corpus to grow (45 -> 50 published carousels since).
+# What re-measures it: the `starting` / `done (exit=…)` pair in this organ's log.
+ACCOUNT_TIMEOUT_MIN_SECS="${WR2_IG_METRICS_ACCOUNT_TIMEOUT_MIN_SECS:-2700}"
+if [ "$DEFAULT_ACCOUNT_TIMEOUT_SECS" -lt "$ACCOUNT_TIMEOUT_MIN_SECS" ]; then
+  DEFAULT_ACCOUNT_TIMEOUT_SECS="$ACCOUNT_TIMEOUT_MIN_SECS"
+fi
+if [ "$DEFAULT_ACCOUNT_TIMEOUT_SECS" -gt "$TIMEOUT_SECS" ]; then
+  DEFAULT_ACCOUNT_TIMEOUT_SECS="$TIMEOUT_SECS"
 fi
 ACCOUNT_TIMEOUT_SECS="${WR2_IG_METRICS_ACCOUNT_TIMEOUT_SECS:-$DEFAULT_ACCOUNT_TIMEOUT_SECS}"
 if [ "$ACCOUNT_TIMEOUT_SECS" -lt 1 ]; then
@@ -175,16 +355,34 @@ terminate_claude_group() {
 }
 
 cleanup_active_claude() {
-  trap - EXIT INT TERM
+  # First line, before anything can clobber it: this is also the script's exit
+  # status when we get here from the EXIT trap.
+  local rc="${1:-$?}"
+  trap - EXIT HUP INT TERM
   if [ -n "$ACTIVE_CLAUDE_PGID" ]; then
     terminate_claude_group "$ACTIVE_CLAUDE_PGID"
   fi
   if [ -n "$ACTIVE_CLAUDE_PID" ]; then
     wait "$ACTIVE_CLAUDE_PID" 2>/dev/null || true
   fi
+  # This trap REPLACED the early `trap 'on_exit_voice $?' EXIT`, so it has to
+  # carry the voice or installing it would have unarmed it — a cure that deletes
+  # another cure by being written later in the file.
+  on_exit_voice "$rc"
+  if [ -n "${1:-}" ]; then
+    exit "$rc"
+  fi
 }
 trap cleanup_active_claude EXIT
-trap 'cleanup_active_claude; exit 130' INT TERM
+# An explicit code, never `$?`: on an external SIGTERM (the 28h hang of 2026-07-14
+# was killed exactly that way) `$?` can be 0, and a voice that reads 0 stays quiet
+# for the single incident that most needs reporting. One trap per signal so the
+# reported status names the signal (the old single line reported SIGINT's 130 for
+# a SIGTERM too), and HUP is covered here as well as in the early phase — these
+# lines REPLACE the early traps, so anything missing from them is unarmed.
+trap 'cleanup_active_claude 129' HUP
+trap 'cleanup_active_claude 130' INT
+trap 'cleanup_active_claude 143' TERM
 
 claude_stderr_retryable() {
   local stderr_file="$1"
@@ -399,6 +597,11 @@ if [ "$CLAUDE_EXIT" -eq 98 ]; then
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] all Claude OAuth accounts unavailable" >> "$ERR"
 fi
 
-echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] wr2-ig-metrics-analyst done" >> "$LOG"
+echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] wr2-ig-metrics-analyst done (exit=${CLAUDE_EXIT})" >> "$LOG"
+
+if [ "$CLAUDE_EXIT" -ne 0 ]; then
+  notify_failure "⚠️ wr2-ig-metrics-analyst FAILED (exit=${CLAUDE_EXIT}) on $(hostname -s). Weekly IG-insights amendment NOT produced — see ${ERR}" \
+    "wr2-ig-metrics-analyst:$(date +%Y-W%V):$(hostname -s)"
+fi
 
 exit "$CLAUDE_EXIT"

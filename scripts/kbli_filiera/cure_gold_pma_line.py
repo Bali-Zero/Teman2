@@ -228,6 +228,40 @@ AUTHORED_SENTENCES = {
         ),
         "why": "canonical's own locator (Lampiran II line 3731, DIALOKASIKAN column) is a pure reservation — 0% foreign, not a 49% partnership cap; the gold sentence had read a different column",
     },
+    # 2026-08-08 sector-law adjudication (item 1 + item 2 of the same brief).
+    "41011": {
+        "field": "whatYouNeed",
+        "old": (
+            "**PMA:** Open up to 67% foreign ownership — a local partner "
+            "holds the remainder."
+        ),
+        "new": (
+            "**PMA:** 100% foreign ownership open at the PT PMA / Usaha "
+            "Besar tier — no cap. The sederhana/madya residential-building "
+            "segment (gedung tempat tinggal sederhana dan menengah, "
+            "including toserba, toko, ruko, and warung) is allocated to "
+            "Koperasi/UMKM under Perpres 49/2021 Lampiran II p.6 — a "
+            "segment reservation inside this code, not a closure of the "
+            "whole code."
+        ),
+        "why": "canonical stays TERBUKA/100/pma_cap_verified=false — 67% was never sourced; Lampiran II p.6 (dialokasikan column, segment-qualified bucket) allocates only the sederhana/madya residential-building slice to Koperasi/UMKM, not the whole code",
+    },
+    "65121": {
+        "field": "whatYouNeed",
+        "old": (
+            "**PMA:** Historically 80% cap on foreign ownership for "
+            "**acquisitions** of existing insurers. For **new "
+            "establishment**, check current Perpres — PMA percentage may "
+            "be limited. Verify with OJK before proceeding."
+        ),
+        "new": (
+            "**PMA:** Capped at 80% of paid-up capital (PP 14/2018 Pasal "
+            "5(1)) — general, not acquisition-only; listed insurers "
+            "(perseroan terbuka) are exempt, and pre-2018 foreign holdings "
+            "above 80% are grandfathered."
+        ),
+        "why": "canonical now cures 65121 to TERBATAS/80 under PP 14/2018 Pasal 5(1) jo. PP 3/2020 (Perpres 10/2021 Pasal 11(2) carves insurance out to sector law) — the old sentence guessed at an acquisition-only, uncertain regime instead of citing the actual instrument",
+    },
 }
 
 

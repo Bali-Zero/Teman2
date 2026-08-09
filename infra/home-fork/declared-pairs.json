@@ -57,7 +57,7 @@
     {
       "live": "~/scripts/wr2-ig-metrics-analyst-run.sh",
       "repo": "infra/launchagents/wrappers/wr2-ig-metrics-analyst-run.sh",
-      "_note": "Promoted to repo canon 2026-07-06 (healer tick) to close the sonnet-5 runtime-proof gap (PENDING-ARMS 2026-07-03): live copy called `claude` directly with no 'used: <tier>' log line. Repo canon adds explicit provenance logging only — same invocation, same model. Live HOME copy on Pro still needs manual sync (healer is read-only on Pro).",
+      "_note": "Promoted to repo canon 2026-07-06 (healer tick) to close the sonnet-5 runtime-proof gap (PENDING-ARMS 2026-07-03): live copy called `claude` directly with no 'used: <tier>' log line. Repo canon adds explicit provenance logging only — same invocation, same model. The old tail of this note — 'Live HOME copy on Pro still needs manual sync' — was measurably FALSE on 2026-08-08: canon, origin/main and Pro's live copy were all sha256 308915627885cf8c, byte-identical. A note that names a pending action which has since happened sends the next reader to realign a copy that is already aligned (W106: a frozen measurement inside the very registry that arbitrates the pair). Corrected, and the reason to keep the pair declared is unchanged: today's errexit cure (the agy health-check subshell inherited errexit and aborted the script on BOTH its exits — three silent dead runs 2026-07-19/26 and 08-02) lands in the canon, so the live copy MUST be re-copied after merge or the two diverge for real. Merging alone leaves the organ dead (W107 delivery gotcha: this live path is a real file, not a symlink).",
       "machines": ["pro"]
     },
     {
@@ -356,8 +356,8 @@
     {
       "live": "~/.openclaw/bin/wr2/wr2-script-wrapper.sh",
       "repo": "infra/openclaw/wr2/wr2-script-wrapper.sh",
-      "_note": "WR2 deep audit 2026-07-14 (§4): was byte-identical to the repo twin (e8e22fe1 both) but UNDECLARED, so lint_home_fork.py --check was blind to it and identical-today was luck, not enforcement.",
-      "machines": ["pro"]
+      "_note": "WR2 deep audit 2026-07-14 (§4): was byte-identical to the repo twin (e8e22fe1 both) but UNDECLARED, so lint_home_fork.py --check was blind to it and identical-today was luck, not enforcement. 2026-08-06: widened pro -> all. The file EXISTS on Mini too (measured: ~/.openclaw/bin/wr2/wr2-script-wrapper.sh present, 0 plists invoking it), so scoping the pair to pro left a real copy that the lint could never look at — the same shape W107 found for cron-runner, where the divergence was real and the risk was not. Inert-today is not a reason to be unwatched: the failure-voice cure of this date has to reach both copies or the next machine to start invoking it runs a mute wrapper.",
+      "machines": ["all"]
     },
     {
       "live": "~/.openclaw/bin/wr2/wr2-cron-wrapper.sh",
@@ -645,6 +645,18 @@
       "repo": "scripts/auth_sentinel_cron.sh",
       "machines": ["m5"],
       "_note": "Found diverged on 2026-08-07 by a single line (the ~/Desktop path PR #2499 cured on 2026-07-16 had not reached this live copy) and realigned by the auth-sentinel item in the same pending-arms batch. Re-verified sha256-identical to the repo twin 2026-08-07 before this pair was declared (STRICT ORDERING: a pair is only declared after its live sync is proven, per family #1's own antidote — declaring an unsynced pair arms a permanent red on M5). Was UNDECLARED in both surfaces (0 hits in this file and in scripts/proprioception.py's home_fork_scripts args) — until today only scripts/launchagent_reconcile.py caught drift here, and only generically (plist->wrapper diff), not via a dedicated home-fork pair."
+    },
+    {
+      "live": "~/scripts/nb-agents-daily-dr.sh",
+      "repo": "scripts/nb-agents-daily-dr.sh",
+      "_note": "PROMOTED 2026-08-08. Was HOME-only and undeclared while carrying three cures made live on 2026-08-07 (empty nlm alias -> hardcoded NB id; the flat-vs-{value:} JSON shape; a slug step whose error text became the FILENAME, `otloggedinleaserunlogin`). Promoted together with the fix that made its `claude` call reachable at all: under `bash -lc`, the shell its crontab line uses, `claude` is not on PATH and no OAuth seat is in the env, so the bare invocation degraded to the default slug every night. Now routes through scripts/lib/claude_seat.sh. Live consumer: crontab 07:30 daily via cron-state.sh.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/lib/claude_seat.sh",
+      "repo": "scripts/lib/claude_seat.sh",
+      "_note": "NEW 2026-08-08, shipped with the promotion above. Sourceable OAuth-seat helper: resolves the claude binary absolutely (~/.local/bin is on neither the login-shell nor the cron PATH) and rotates the numbered seats, EXTRACTING the refusal classifier from cron-agent.sh rather than copying it — two tools that must agree on 'did this seat refuse' do not get two answers. Deliberately has no bare-keychain fallback: that rung answered 0 of 905 attempts and cannot work in a non-GUI session. Delivered next to ~/scripts/cron-agent.sh, which is the wrapper it extracts from in the delivered layout.",
+      "machines": ["pro"]
     }
   ],
   "allow": [

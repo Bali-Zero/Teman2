@@ -85,6 +85,9 @@ jobs:
               scripts/tests/test_home_fork_stale_side_attribution.py|\
               scripts/tests/test_home_fork_skipped_visibility.py|\
               scripts/tests/test_proprioception_home_fork_merge.py|\
+              scripts/tests/test_proprioception_remedy_selection.py|\
+              scripts/tests/test_proprioception_self_code_staleness.py|\
+              scripts/tests/test_proprioception_executed_code_currency.py|\
               scripts/tests/test_secrets_permissions_audit.py|\
               scripts/tests/test_pending_arms_report.py|\
               scripts/tests/test_lint_plist_keepalive.py|\
@@ -130,8 +133,12 @@ jobs:
               scripts/tests/test_wa_session_liveness.py|\
               infra/launchagents/wrappers/wa-session-liveness.sh|\
               scripts/tests/test_wa_session_liveness_wrapper.sh|\
+              infra/launchagents/wrappers/wr2-ig-metrics-analyst-run.sh|\
+              scripts/tests/test_wr2_ig_metrics_analyst_wrapper.sh|\
               infra/launchagents/wrappers/cron-agent.sh|\
               scripts/tests/test_cron_agent_oauth_cascade.sh|\
+              scripts/lib/claude_seat.sh|\
+              scripts/tests/test_claude_seat_helper.sh|\
               scripts/tests/test_cron_agent_alert_verdict.sh|\
               scripts/ci/prepush_tip_drift.sh|\
               .husky/pre-commit|\
@@ -153,6 +160,9 @@ jobs:
               scripts/test_offsite_verify.sh|\
               scripts/fly-pg-backup.sh|\
               scripts/wr2-cron-wrapper.sh|\
+              scripts/test_wr2_wrapper_alert.sh|\
+              infra/openclaw/wr2/wr2-script-wrapper.sh|\
+              scripts/test_wr2_script_wrapper_alert.sh|\
               scripts/cron-wrapper.sh|\
               scripts/cron-state.sh|\
               scripts/test_cron_state_alert.sh|\
@@ -234,6 +244,9 @@ jobs:
             scripts/tests/test_home_fork_stale_side_attribution.py \
             scripts/tests/test_home_fork_skipped_visibility.py \
             scripts/tests/test_proprioception_home_fork_merge.py \
+            scripts/tests/test_proprioception_remedy_selection.py \
+            scripts/tests/test_proprioception_self_code_staleness.py \
+            scripts/tests/test_proprioception_executed_code_currency.py \
             scripts/tests/test_secrets_permissions_audit.py \
             scripts/tests/test_pending_arms_report.py \
             scripts/tests/test_lint_plist_keepalive.py \
@@ -408,6 +421,28 @@ jobs:
           # that bit you is half a fix.
           bash scripts/test_cron_runner_alert.sh
 
+      - name: WR2 wrapper failure-voice corpora (BOTH wrappers, 9 + 8 launchd jobs)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # Two files, one family, and both were unarmed until now.
+          #
+          # #3686 gave wr2-cron-wrapper.sh a voice and shipped a 10-case corpus
+          # that NO workflow ran — measured on origin/main the same morning:
+          # `grep -r test_wr2_wrapper_alert .github/` returned 0. The path was in
+          # the sentinel list (added by #3231, whose own title is "arm the corpus
+          # that ran nowhere") but no step invoked it. Built ≠ armed, on the very
+          # PR that cured a built-but-unarmed guardian.
+          #
+          # The trigger-symmetry meta-test could not catch it: it asserts
+          # loop ⊆ sentinel one-way, deliberately, because the sentinel also
+          # lists SUBJECTS under test. A corpus, though, is never a subject.
+          #
+          # wr2-script-wrapper.sh is the sibling W107 would have predicted:
+          # eight launchd jobs, every exit mute, and a terminal `exec` that made
+          # a trap impossible. Both corpora run here so neither can rot alone.
+          bash scripts/test_wr2_wrapper_alert.sh
+          bash scripts/test_wr2_script_wrapper_alert.sh
+
       - name: One voice per cron failure (payload + wrapper must not both send)
         if: steps.paths.outputs.relevant == 'true'
         run: |
@@ -460,6 +495,27 @@ jobs:
           # the mutant survived — to judge a guard it has to be the only thing broken.
           bash scripts/tests/test_wa_session_liveness_wrapper.sh
 
+      - name: wr2-ig-metrics-analyst wrapper corpus (errexit-fatal probe + no voice)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # The weekly analyst died three consecutive runs (2026-07-19, 07-26,
+          # 08-02) and no surface anywhere could notice. Two independent causes:
+          #   - its agy health-check lives in a SUBSHELL, which inherits errexit,
+          #     and both of that subshell's exits are non-zero by construction
+          #     (agy down -> agy's code; agy UP -> 143, the watchdog it killed
+          #     itself), so the block aborted the whole script ALWAYS and the DOWN
+          #     branch — the local-fallback hint, its only reason to exist — was
+          #     unreachable on the exact path it was written for (W101, 4th gen);
+          #   - launchd invokes it DIRECTLY (no cron-runner, no wr2-cron-wrapper),
+          #     so no receipt, no reader of its exit code, and missed_runs_alerter
+          #     watches WarRoom rows and not launchd labels (W81/W108).
+          # Armed HERE and not left to the scripts/tests sweep, which is
+          # continue-on-error and gates nothing — the superscar #2 shape. The
+          # probe binary is env-overridable ONLY so this corpus can drive it: the
+          # default path does not exist on a runner (or on M5), so without the
+          # override every machine is structurally unable to reproduce the red.
+          bash scripts/tests/test_wr2_ig_metrics_analyst_wrapper.sh
+
       - name: OAuth seat cascade corpus (a dead seat must be skipped, not fatal)
         if: steps.paths.outputs.relevant == 'true'
         run: |
@@ -476,6 +532,24 @@ jobs:
           # half runs the wrapper in a fake world (W107) so "did not rotate" is
           # distinguishable from "never got there".
           bash scripts/tests/test_cron_agent_oauth_cascade.sh
+
+      - name: Claude seat helper corpus (a plain script must reach a live seat)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # Measured on Pro 2026-08-08 under `bash -lc` — the shell 27 of its 135
+          # crontab lines use: `claude` is not on PATH (the binary is in
+          # ~/.local/bin) and no OAuth seat is in the environment. The fallback
+          # everyone assumed covered this does not exist — the bare keychain
+          # identity was tried 905 times across ~/logs/cron-agent/ and succeeded
+          # 0 times, because reading the keychain secret needs `-g`, which
+          # returns rc=36 in any non-GUI session. An interactive login cannot
+          # fix that; cron is never a GUI session.
+          #
+          # The helper therefore has NO bare fallback and fails loudly instead.
+          # It also does not reimplement the refusal rule: it extracts the live
+          # classifier out of cron-agent.sh, so the two cannot drift into
+          # different answers to the same question. This corpus pins both.
+          bash scripts/tests/test_claude_seat_helper.sh
 
       - name: Cron-agent alert verdict corpus (a lost alert must not buy silence)
         if: steps.paths.outputs.relevant == 'true'

@@ -654,6 +654,20 @@ def run_selftest(registry_path: Optional[Path] = None) -> int:
                         "no peer-to-peer: Centralized > Independent confirms the rule (Kim et al.)",
                         "Table 5: Decentralized 0.477 > Centralized 0.463; no single architecture dominates",
                     ),
+                    # The probe states ONE of the pattern's two phrases, not both:
+                    # scan_text reports per match, so a probe carrying `separate
+                    # checkout` AND `different inode` would flag twice and fail an
+                    # assertion that is about the guard biting, not about arithmetic.
+                    "desktop-nuzantara-is-a-separate-checkout": (
+                        # Context comes from `repo-sync`, not from the pre-2026-07-16
+                        # home location the claim is about: spelling that path here
+                        # would hardcode it into a payload and trip the
+                        # tcc-desktop-paths lint (superscar #1) — which is exactly what
+                        # the first draft of this probe did. Another disjunct of
+                        # context_pattern exercises the guard just as well.
+                        "the repo-sync target is a separate checkout, so the cron writes a side copy",
+                        "it is a symlink: stat -L gives 758478 for both, and both git-dirs are ~/nuzantara/.git",
+                    ),
                 }.get(c.id, (None, None))
                 if probe is None:
                     expect(f"production claim `{c.id}` has no generated probe — add one", False)
