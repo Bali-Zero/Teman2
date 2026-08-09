@@ -2,6 +2,7 @@
 import { useRef, useState, useEffect } from "react";
 import { Upload } from "lucide-react";
 import { useVaultUpload } from "@/hooks/useVaultUpload";
+import { UPLOAD_ACCEPT, UPLOAD_FORMAT_LABEL } from "@/lib/vault/uploadLimits";
 
 interface Props {
   practiceId?: number | string | null;
@@ -12,7 +13,7 @@ export function VaultUploadZone({ practiceId, onDone }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [purpose, setPurpose] = useState("");
-  const { state, upload, reset } = useVaultUpload();
+  const { state, upload, reset, retry, canRetry } = useVaultUpload();
 
   useEffect(() => {
     if (state.status === "done") {
@@ -75,6 +76,12 @@ export function VaultUploadZone({ practiceId, onDone }: Props) {
         <p className="text-sm text-[var(--bz-text-2)] mb-3">
           Drag & drop here, or
         </p>
+        <p
+          id="vault-upload-formats"
+          className="text-xs text-[var(--bz-text-3)] mb-3"
+        >
+          {UPLOAD_FORMAT_LABEL}
+        </p>
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
@@ -85,9 +92,11 @@ export function VaultUploadZone({ practiceId, onDone }: Props) {
         <input
           ref={inputRef}
           type="file"
+          accept={UPLOAD_ACCEPT}
           className="sr-only"
           onChange={(e) => handleFiles(e.target.files)}
           aria-label="Choose file to upload"
+          aria-describedby="vault-upload-formats"
         />
         {state.status === "uploading" && (
           <p role="status" className="text-xs text-[var(--bz-text-2)] mt-3">
@@ -95,14 +104,24 @@ export function VaultUploadZone({ practiceId, onDone }: Props) {
           </p>
         )}
         {state.status === "error" && (
-          <p role="alert" className="text-xs text-[var(--state-danger)] mt-3">
-            {state.message}
-          </p>
+          <div role="alert" className="mt-3 space-y-2">
+            <p className="text-xs text-[var(--state-danger)]">
+              {state.message}
+            </p>
+            {canRetry && (
+              <button
+                type="button"
+                onClick={retry}
+                className="text-xs font-medium text-[var(--bz-copper-text)] underline underline-offset-2"
+              >
+                Retry upload
+              </button>
+            )}
+          </div>
         )}
         {state.status === "done" && (
           <p role="status" className="text-xs text-[var(--state-success)] mt-3">
             Uploaded: {state.file.name}
-            {!state.processing.virus_clean && " (flagged)"}
           </p>
         )}
       </div>

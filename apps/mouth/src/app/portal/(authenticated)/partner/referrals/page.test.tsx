@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockGetMyReferrals } = vi.hoisted(() => ({
   mockGetMyReferrals: vi.fn(),
@@ -24,6 +24,10 @@ const REFERRALS = [
 ];
 
 describe("PartnerReferralsPage (WS3 day pass)", () => {
+  beforeEach(() => {
+    mockGetMyReferrals.mockReset();
+  });
+
   it("renders the day masthead and a token-surfaced table", async () => {
     mockGetMyReferrals.mockResolvedValue(REFERRALS);
     const { container } = render(<PartnerReferralsPage />);
@@ -63,5 +67,20 @@ describe("PartnerReferralsPage (WS3 day pass)", () => {
     expect(html).not.toContain("divide-white/10");
     expect(html).not.toContain("text-white");
     expect(html).not.toContain("text-gray-");
+  });
+
+  it("shows a safe outage state and retries the referrals request", async () => {
+    mockGetMyReferrals
+      .mockRejectedValueOnce(new Error("private database detail"))
+      .mockResolvedValueOnce(REFERRALS);
+    render(<PartnerReferralsPage />);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Referrals are temporarily unavailable");
+    expect(alert).not.toHaveTextContent("private database detail");
+
+    fireEvent.click(screen.getByRole("button", { name: "Try Again" }));
+    expect(await screen.findByText("Client A")).toBeInTheDocument();
+    expect(mockGetMyReferrals).toHaveBeenCalledTimes(2);
   });
 });

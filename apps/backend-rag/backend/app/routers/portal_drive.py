@@ -24,12 +24,39 @@ def _get_drive_service() -> ServiceAccountDriveService:
     return ServiceAccountDriveService()
 
 
+def _client_safe_drive_projection(result: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Allowlist the Drive metadata that may cross the client API boundary."""
+    if result is None:
+        return None
+
+    raw_folders = result.get("folders", [])
+    folders = raw_folders if isinstance(raw_folders, list) else []
+    safe_folders = [
+        {"name": folder["name"]}
+        for folder in folders
+        if isinstance(folder, dict) and isinstance(folder.get("name"), str)
+    ]
+
+    projection: dict[str, Any] = {
+        # File access is served through the authenticated document proxy.
+        # Raw Drive file metadata must never cross this boundary.
+        "files": [],
+        "folders": safe_folders,
+        "total_files": result.get("total_files", 0),
+    }
+    for key in ("root_name", "total_size_bytes", "message"):
+        if key in result:
+            projection[key] = result[key]
+
+    return projection
+
+
 async def _list_client_drive_files(
     pool: asyncpg.Pool,
     drive_service: ServiceAccountDriveService,
     client_id: int,
 ) -> dict[str, Any] | None:
-    """Return a client-safe projection of the configured Drive folder."""
+    """Load the configured Drive structure for final client-safe projection."""
     async with pool.acquire() as conn:
         folder_id = await conn.fetchval(
             "SELECT google_drive_folder_id FROM clients WHERE id = $1 AND deleted_at IS NULL",
@@ -70,7 +97,7 @@ async def list_drive_files(
     """List files in the client's Google Drive folder."""
     try:
         result = await _list_client_drive_files(db_pool, drive_service, client["client_id"])
-        return {"success": True, "data": result}
+        return {"success": True, "data": _client_safe_drive_projection(result)}
     except Exception as e:
         logger.error(f"Failed to list Drive files for client {client['client_id']}: {e}")
         raise HTTPException(status_code=500, detail="Failed to load documents from Drive")

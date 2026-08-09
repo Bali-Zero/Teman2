@@ -121,6 +121,24 @@ class Logger {
     }
   }
 
+  /**
+   * Return the minimal diagnostic context that may leave the browser or be
+   * persisted locally. Free-form metadata, user identifiers and notes are
+   * intentionally excluded because they can contain credentials, email
+   * addresses, URLs, document identifiers, or other client data.
+   */
+  private toTransportSafeContext(context: LogContext): LogContext {
+    const safeContext: LogContext = {};
+
+    if (context.component) safeContext.component = context.component;
+    if (context.action) safeContext.action = context.action;
+    if (context.itemType) safeContext.itemType = context.itemType;
+    if (context.code !== undefined) safeContext.code = context.code;
+    if (context.reason) safeContext.reason = context.reason;
+
+    return safeContext;
+  }
+
   debug(message: string, context: LogContext = {}): void {
     if (!this.isDevelopment) return; // Skip debug logs in production
     const entry = this.createEntry(LogLevel.DEBUG, message, context);
@@ -158,19 +176,11 @@ class Logger {
    */
   private sendToSentry(entry: LogEntry): void {
     try {
+      const safeContext = this.toTransportSafeContext(entry.context);
+
       // Set context for Sentry
-      if (entry.context && Object.keys(entry.context).length > 0) {
-        Sentry.setContext("log_context", {
-          component: entry.context.component,
-          action: entry.context.action,
-          user: entry.context.user,
-          itemId: entry.context.itemId,
-          itemType: entry.context.itemType,
-          code: entry.context.code,
-          reason: entry.context.reason,
-          note: entry.context.note,
-          metadata: entry.context.metadata,
-        });
+      if (Object.keys(safeContext).length > 0) {
+        Sentry.setContext("log_context", { ...safeContext });
       }
 
       // Send to Sentry based on level
@@ -179,7 +189,7 @@ class Logger {
         Sentry.captureException(entry.error, {
           extra: {
             message: entry.message,
-            context: entry.context,
+            context: safeContext,
             timestamp: entry.timestamp,
           },
           tags: {
@@ -195,9 +205,8 @@ class Logger {
         Sentry.captureMessage(entry.message, {
           level: entry.level === LogLevel.ERROR ? "error" : "warning",
           extra: {
-            context: entry.context,
+            context: safeContext,
             timestamp: entry.timestamp,
-            stack: entry.stack,
           },
           tags: {
             component: entry.context.component || "unknown",
@@ -224,9 +233,8 @@ class Logger {
         timestamp: entry.timestamp,
         level: entry.level,
         message: entry.message,
-        context: entry.context,
-        error: entry.error ? entry.error.message : undefined,
-        stack: entry.stack,
+        context: this.toTransportSafeContext(entry.context),
+        errorType: entry.error?.name,
       });
 
       // Keep only last 50 errors

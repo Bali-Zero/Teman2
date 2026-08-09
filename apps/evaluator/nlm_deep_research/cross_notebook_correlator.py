@@ -40,6 +40,7 @@ import time
 import urllib.request
 from dataclasses import dataclass, field
 from typing import Any
+from apps.evaluator.nlm_deep_research.nlm_bridge import nlm_error_reason
 
 logger = logging.getLogger(__name__)
 
@@ -185,7 +186,7 @@ def _query_notebook_sync(notebook_id: str, query: str) -> tuple[str | None, str 
             timeout=NLM_QUERY_TIMEOUT,
         )
         if result.returncode != 0:
-            return None, result.stderr.strip()[:200]
+            return None, nlm_error_reason(result)
         return result.stdout.strip(), None
     except subprocess.TimeoutExpired:
         return None, f"timeout after {NLM_QUERY_TIMEOUT}s"

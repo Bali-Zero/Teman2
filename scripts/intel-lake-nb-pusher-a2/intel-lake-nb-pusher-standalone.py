@@ -47,10 +47,11 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import asyncpg
 
@@ -62,6 +63,24 @@ logger = logging.getLogger("intel-lake-nb-pusher")
 
 METRICS_PATH = Path.home() / "logs" / "intel-lake-nb-pusher.metrics.json"
 NLM_CLI = Path.home() / ".local" / "bin" / "nlm"
+
+# ─── NB UUID remap (zero-profile UUIDs -> default-profile UUIDs, 2026-06-10) ─
+# The `zero` NLM profile is dead; the live profile is `default` whose
+# NB-INTEL notebooks have NEW UUIDs. Translate the old (stored) UUID to
+# the new one BEFORE every `nlm source add`. Orphan UUIDs (no default-side
+# equivalent) are skipped to avoid repeated NOT_FOUND churn.
+_NB_UUID_REMAP = {
+    "caec5b82-287c-464f-844f-02e2c8f04c21": "9d262101-abeb-4e15-af9c-c38e028c62fe",  # Press
+    "78b45ad8-ddce-4bd8-bdf0-3b45800897da": "7fb12c9c-4e12-4a8d-9bd1-c5b857bf310f",  # Tax
+    # Probe sandbox: zero-profile 1e33e107 -> default-profile NB-PROBE-SANDBOX-2026-05
+    # (writable, verified 2026-06-10). Remap runs BEFORE the orphan check below,
+    # so the e2e-probe (hop4) now delivers to a real default NB and passes.
+    "1e33e107-4064-48cd-b09d-f7f0a52b31ea": "7e6ae978-136c-4c96-bed5-9fab6f39176f",  # Probe sandbox
+}
+_NB_UUID_ORPHAN = {
+    "1e33e107-4064-48cd-b09d-f7f0a52b31ea",  # no default-profile equivalent
+}
+
 BATCH_SIZE = 10
 NLM_TIMEOUT_SECONDS = 60
 SLEEP_BETWEEN_ITEMS_S = 5
@@ -100,6 +119,10 @@ def _classify_nlm_error(stderr: str, stdout: str, returncode: int) -> str:
         return "timeout"
     if any(k in tl for k in ("network", "timeout", "connection", "unreachable")):
         return "network"
+    # NLM URL add failure (e.g. RFC 2606 .test TLD probe URLs, dead links,
+    # paywalls) — surface as "network" so text fallback fires.
+    if "could not add url source" in tl or "check the url is accessible" in tl:
+        return "network"
     return "unknown"
 
 
@@ -136,7 +159,7 @@ def _nlm_check_auth() -> bool:
     """Fail-fast auth check at startup."""
     try:
         result = subprocess.run(
-            [str(NLM_CLI), "login", "--check"],
+            [str(NLM_CLI), "login", "--check", "--profile", "default"],
             capture_output=True,
             text=True,
             timeout=15,
@@ -148,10 +171,17 @@ def _nlm_check_auth() -> bool:
 
 def _nlm_push_url(notebook_id: str, url: str, title: str | None = None) -> tuple[bool, str, str]:
     """Try URL push. Returns (ok, error_class, error_text)."""
+    # Remap stored (zero-profile / legacy) UUIDs to their default-profile
+    # equivalents BEFORE the orphan check, so a UUID that now has a real
+    # default NB (e.g. the probe sandbox) is delivered, not skipped.
+    notebook_id = _NB_UUID_REMAP.get(notebook_id, notebook_id)
+    if notebook_id in _NB_UUID_ORPHAN:
+        logger.info("skip orphan notebook (no default-profile UUID): %s", notebook_id)
+        return False, "not_found", "skip orphan notebook"
     cmd = [
         "/usr/bin/env",
         "timeout",
-        "--kill-after=5",
+        f"--kill-after=5",
         str(NLM_TIMEOUT_SECONDS),
         str(NLM_CLI),
         "source",
@@ -159,6 +189,8 @@ def _nlm_push_url(notebook_id: str, url: str, title: str | None = None) -> tuple
         notebook_id,
         "--url",
         url,
+        "--profile",
+        "default",
     ]
     if title:
         cmd.extend(["--title", title])
@@ -176,13 +208,20 @@ def _nlm_push_url(notebook_id: str, url: str, title: str | None = None) -> tuple
 
 def _nlm_push_text(notebook_id: str, title: str, body: str) -> tuple[bool, str, str]:
     """Fallback to text push via temp file."""
+    # Remap stored (zero-profile / legacy) UUIDs to their default-profile
+    # equivalents BEFORE the orphan check, so a UUID that now has a real
+    # default NB (e.g. the probe sandbox) is delivered, not skipped.
+    notebook_id = _NB_UUID_REMAP.get(notebook_id, notebook_id)
+    if notebook_id in _NB_UUID_ORPHAN:
+        logger.info("skip orphan notebook (no default-profile UUID): %s", notebook_id)
+        return False, "not_found", "skip orphan notebook"
     tmp = Path(f"/tmp/nlm_push_{uuid4().hex[:8]}.txt")
     try:
         tmp.write_text(body)
         cmd = [
             "/usr/bin/env",
             "timeout",
-            "--kill-after=5",
+            f"--kill-after=5",
             str(NLM_TIMEOUT_SECONDS),
             str(NLM_CLI),
             "source",
@@ -192,6 +231,8 @@ def _nlm_push_text(notebook_id: str, title: str, body: str) -> tuple[bool, str, 
             str(tmp),
             "--title",
             title[:100],
+            "--profile",
+            "default",
         ]
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=NLM_TIMEOUT_SECONDS + 10)
         if r.returncode == 0:
@@ -385,13 +426,23 @@ async def main() -> int:
         "errored": 0,
     }
 
-    # Auth fail-fast
+    # Auth fail-fast — but arm the existing headless refresh before giving up.
+    # _try_headless_auth_refresh() previously only fired mid-batch on a
+    # per-item auth_expired error; the startup gate short-circuited to
+    # return 2 unconditionally, so 1067 failed runs since May never once
+    # attempted the refresh they had the machinery for.
     if not _nlm_check_auth():
-        msg = "🔴 intel-lake-nb-pusher: nlm auth invalid. Run `nlm login --clear` interactively."
-        logger.error(msg)
-        _telegram_send(msg)
-        _write_metrics(metrics, auth_ok=False)
-        return 2
+        logger.warning("nlm auth invalid at startup — attempting headless refresh")
+        refreshed = _try_headless_auth_refresh()
+        logger.info("headless auth refresh attempt: %s", "OK" if refreshed else "FAILED")
+        auth_ok_after_refresh = refreshed and _nlm_check_auth()
+        logger.info("nlm auth recheck after refresh: %s", "OK" if auth_ok_after_refresh else "STILL INVALID")
+        if not auth_ok_after_refresh:
+            msg = "🔴 intel-lake-nb-pusher: nlm auth invalid. Run `nlm login --clear` interactively."
+            logger.error(msg)
+            _telegram_send(msg)
+            _write_metrics(metrics, auth_ok=False)
+            return 2
 
     try:
         pool = await asyncpg.create_pool(_resolve_database_url(), min_size=1, max_size=2, timeout=10)

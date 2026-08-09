@@ -22,6 +22,7 @@ from backend.app.routers.crm_enhanced import (
     _auto_ocr_visa,
     _dispatch_ocr_by_folder,
 )
+from backend.app.routers.documents_proxy import assert_drive_file_belongs_to_client
 from backend.app.utils.crm_utils import verify_client_access
 from backend.app.utils.logging_utils import get_logger
 from backend.core.cache import invalidate_cache
@@ -133,6 +134,8 @@ async def create_document(
     """
     async with pool.acquire() as conn:
         await verify_client_access(client_id, current_user, conn, allow_assigned=True, write=True)
+        if data.file_id:
+            await assert_drive_file_belongs_to_client(data.file_id, client_id, conn)
         # Sanitize date field - convert string to date object for asyncpg
         expiry_date = None
         if data.expiry_date:
@@ -275,6 +278,8 @@ async def create_documents_bulk(
         async with conn.transaction():
             for doc in documents:
                 try:
+                    if doc.file_id:
+                        await assert_drive_file_belongs_to_client(doc.file_id, client_id, conn)
                     # Sanitize expiry_date: convert string to date object
                     expiry_date = None
                     if doc.expiry_date:
@@ -400,6 +405,8 @@ async def update_document(
 
     async with pool.acquire() as conn:
         await verify_client_access(client_id, current_user, conn, allow_assigned=True, write=True)
+        if data.file_id:
+            await assert_drive_file_belongs_to_client(data.file_id, client_id, conn)
         result = await conn.execute(
             f"""
             UPDATE documents

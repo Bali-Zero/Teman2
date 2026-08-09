@@ -120,6 +120,33 @@ export const portalNavigation: NavSection[] = [
   },
 ];
 
+export const partnerPortalNavigation: NavSection[] = [
+  {
+    items: [
+      {
+        title: "Dashboard",
+        href: "/portal/partner/dashboard",
+        icon: "Home",
+      },
+      {
+        title: "Referrals",
+        href: "/portal/partner/referrals",
+        icon: "Users",
+      },
+      {
+        title: "Commissions",
+        href: "/portal/partner/commissions",
+        icon: "Receipt",
+      },
+      {
+        title: "Profile",
+        href: "/portal/partner/profile",
+        icon: "UserCircle",
+      },
+    ],
+  },
+];
+
 // Route titles for breadcrumbs and page titles
 export const routeTitles: Record<string, string> = {
   "/dashboard": "Dashboard",

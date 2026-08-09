@@ -26,6 +26,8 @@ logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/portal/notifications/prefs", tags=["portal-notifications"])
 
+_PREFS_UNAVAILABLE_DETAIL = "Notification preferences are temporarily unavailable"
+
 
 # E.164 without the leading '+' (up to 15 digits, first digit 1-9).
 _E164_RE = re.compile(r"^[1-9]\d{6,14}$")
@@ -63,7 +65,7 @@ async def get_prefs(
 ) -> dict[str, Any]:
     user_id = client.get("user_id")
     if not user_id:
-        return _default_prefs()
+        raise HTTPException(status_code=400, detail="missing user_id")
     async with pool.acquire() as conn:
         try:
             row = await conn.fetchrow(
@@ -74,9 +76,12 @@ async def get_prefs(
                 """,
                 user_id,
             )
-        except Exception as e:
-            logger.warning("prefs fetch failed: %s", e)
-            return _default_prefs()
+        except Exception as exc:
+            logger.warning("prefs fetch failed: %s", exc)
+            raise HTTPException(
+                status_code=503,
+                detail=_PREFS_UNAVAILABLE_DETAIL,
+            ) from exc
     if not row:
         return _default_prefs()
     return {
@@ -120,12 +125,12 @@ async def put_prefs(
                 payload.wa_enabled,
                 payload.wa_phone,
             )
-        except Exception as e:
-            logger.error("prefs upsert failed: %s", e)
+        except Exception as exc:
+            logger.error("prefs upsert failed: %s", exc)
             raise HTTPException(
                 status_code=503,
-                detail="notification_prefs unavailable — run migration 110",
-            ) from e
+                detail=_PREFS_UNAVAILABLE_DETAIL,
+            ) from exc
 
     return {
         "email_enabled": payload.email_enabled,

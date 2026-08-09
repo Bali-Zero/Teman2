@@ -24,13 +24,26 @@ export function usePortalNotifications() {
       queryClient.invalidateQueries({ queryKey: ["portal", "notifications"] }),
   });
 
+  const isQueryError = query.isError || query.data?.degraded === true;
+
   return {
     notifications: query.data?.notifications ?? [],
     unreadCount: query.data?.unread_count ?? 0,
     isLoading: query.isLoading,
+    isError: isQueryError,
+    isRetrying: isQueryError && query.isFetching,
     isMarkingRead: markRead.isPending,
     isMarkingAllRead: markAllRead.isPending,
+    isMarkReadError: markRead.isError,
+    isMarkAllReadError: markAllRead.isError,
     markRead: markRead.mutate,
     markAllRead: markAllRead.mutate,
+    retry: () => void query.refetch(),
+    retryMarkRead: () => {
+      if (typeof markRead.variables === "number") {
+        markRead.mutate(markRead.variables);
+      }
+    },
+    retryMarkAllRead: () => markAllRead.mutate(),
   };
 }

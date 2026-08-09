@@ -27,8 +27,7 @@ from backend.app.utils.logging_utils import get_logger
 logger = get_logger(__name__)
 
 DISCLAIMER = (
-    "AI summary of your Bali Zero records — not legal advice. "
-    "Always confirm with your case officer."
+    "Summary of your Bali Zero records — not legal advice. Always confirm with your case officer."
 )
 
 # Numeric/date tokens we require the polished text to preserve verbatim.
@@ -58,9 +57,7 @@ def build_deterministic_recap(
         parts.append(f"There is 1 thing that needs you: {label}.")
     else:
         first = open_actions[0].get("title") or open_actions[0].get("label") or "an item"
-        parts.append(
-            f"There are {n_actions} things that need you — starting with {first}."
-        )
+        parts.append(f"There are {n_actions} things that need you — starting with {first}.")
 
     if upcoming_deadlines:
         d = upcoming_deadlines[0]
@@ -136,10 +133,14 @@ async def build_recap(
     upcoming_deadlines: list[dict[str, Any]],
     unread_messages: int,
     client_name: str | None = None,
-    polish: bool = True,
+    polish: bool = False,
 ) -> dict[str, Any]:
     """
     Build the full recap object for the portal dashboard.
+
+    The client-facing request path is deterministic by default. Local prose
+    polishing is deliberately opt-in so an unavailable or saturated Ollama
+    process can never add latency to the portal dashboard.
 
     Returns:
         {
