@@ -21,9 +21,8 @@
  *     GET returns `NotificationPrefsOut` = `{ email_enabled, wa_enabled,
  *     wa_phone: str | None }`. PUT accepts `NotificationPrefsIn` with same
  *     fields (wa_phone validated against E.164 without the leading '+').
- *     When migration 110 is missing, PUT raises HTTP 503 with
- *     `{ "detail": "notification_prefs unavailable — run migration 110" }`.
- *     GET silently falls back to `_default_prefs()` on read failure (no 503).
+ *     Database read and write failures return a client-safe HTTP 503 instead
+ *     of exposing schema details or presenting unverified defaults.
  *
  * IMPORTANT: `UserProfile` includes many legacy/compat fields (id+user_id,
  * language+language_preference, metadata+meta_json) because the Pydantic
@@ -31,7 +30,7 @@
  * optional so either is valid.
  */
 
-import { z } from "zod";
+import { z } from "@/lib/zod";
 
 // ============================================
 // LANGUAGE ENUM
@@ -213,32 +212,3 @@ export const NotificationPrefsInput = z
     }
   });
 export type NotificationPrefsInput = z.infer<typeof NotificationPrefsInput>;
-
-// ============================================
-// MIGRATION-MISSING ERROR (503)
-// ============================================
-
-/**
- * FastAPI 503 body raised by PUT when the `notification_prefs` table
- * is missing (migration 110 not yet applied):
- *   `{ "detail": "notification_prefs unavailable — run migration 110" }`.
- *
- * Exposed as a schema so hooks can distinguish "migration missing"
- * (graceful degradation, keep UI alive) from genuine 5xx errors.
- */
-export const MigrationMissingError = z.object({
-  detail: z.string(),
-});
-export type MigrationMissingError = z.infer<typeof MigrationMissingError>;
-
-/**
- * Heuristic check — the BE message contains the literal "migration 110".
- * We also treat any HTTP 503 from the prefs PUT as "migration missing" in
- * the hook layer, since there is no other reason the router raises 503.
- */
-export function isMigrationMissingMessage(msg: string | undefined): boolean {
-  if (!msg) return false;
-  return (
-    /migration\s+110/i.test(msg) || /notification_prefs unavailable/i.test(msg)
-  );
-}

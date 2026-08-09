@@ -4,8 +4,9 @@ Redis Manager — Centralized Redis connection pool for Nuzantara backend.
 Single source of truth for all Redis connections. Components import from here
 instead of creating their own redis.from_url() connections.
 
-Graceful degradation: if Redis is unavailable, all consumers fall back to
-their existing in-memory alternatives.
+Graceful degradation: if Redis is unavailable, ordinary cache consumers fall
+back to their existing in-memory alternatives. Security consumers may fail
+closed instead.
 
 Auto-reconnect: if Redis goes down, a background task retries with exponential
 backoff (30s → 60s → 120s → 300s max). Rate limiting becomes distributed again
@@ -95,11 +96,15 @@ class RedisManager:
             self._available = False
             return
 
-        # Initialize sync client (for RateLimiter middleware)
+        # Publish the pair atomically. Authentication uses both paths (sync
+        # dependency and async middleware/WebSocket), so exposing only one
+        # client would make the same JWT succeed or fail depending on route.
+        sync_client: Any | None = None
         try:
             import redis as sync_redis
+            import redis.asyncio as aioredis
 
-            self._sync_client = sync_redis.from_url(
+            sync_client = sync_redis.from_url(
                 redis_url,
                 decode_responses=True,
                 socket_connect_timeout=5,
@@ -107,18 +112,9 @@ class RedisManager:
                 retry_on_timeout=True,
                 max_connections=5,
             )
-            self._sync_client.ping()
-            self._stats["connections_created"] += 1
-            logger.info("Redis sync client connected")
-        except Exception as e:
-            logger.warning("Redis sync client unavailable: %s", e)
-            self._sync_client = None
+            sync_client.ping()
 
-        # Initialize async client (for all async components)
-        try:
-            import redis.asyncio as aioredis
-
-            self._async_client = aioredis.from_url(
+            async_client = aioredis.from_url(
                 redis_url,
                 decode_responses=True,
                 socket_connect_timeout=5,
@@ -126,17 +122,20 @@ class RedisManager:
                 retry_on_timeout=True,
                 max_connections=10,
             )
-            self._stats["connections_created"] += 1
-            logger.info("Redis async client connected")
+
+            self._sync_client = sync_client
+            self._async_client = async_client
+            self._available = True
+            self._stats["connections_created"] += 2
+            logger.info("RedisManager initialized — sync and async clients available")
         except Exception as e:
-            logger.warning("Redis async client unavailable: %s", e)
+            logger.warning("Redis client pair unavailable: %s", e)
+            if sync_client is not None:
+                with contextlib.suppress(Exception):
+                    sync_client.close()
+            self._sync_client = None
             self._async_client = None
-
-        self._available = self._sync_client is not None or self._async_client is not None
-
-        if self._available:
-            logger.info("RedisManager initialized — Redis available")
-        else:
+            self._available = False
             logger.warning("RedisManager initialized — Redis unavailable, using fallbacks")
             # Start background reconnect loop
             self._start_reconnect_loop()
@@ -277,11 +276,14 @@ class RedisManager:
             if self._available:
                 break  # Already restored by another path
 
+            async_client: Any | None = None
+            sync_client: Any | None = None
             try:
                 import redis as sync_redis
                 import redis.asyncio as aioredis
 
-                # Restore async client first (ping proves connectivity)
+                # Validate both clients before publishing either one. This
+                # prevents auth split-brain between sync and async routes.
                 async_client = aioredis.from_url(
                     self._redis_url,
                     decode_responses=True,
@@ -291,34 +293,31 @@ class RedisManager:
                     max_connections=10,
                 )
                 await async_client.ping()
+
+                sync_client = sync_redis.from_url(
+                    self._redis_url,
+                    decode_responses=True,
+                    socket_connect_timeout=5,
+                    socket_timeout=5,
+                    retry_on_timeout=True,
+                    max_connections=5,
+                )
+                await asyncio.to_thread(sync_client.ping)
+
                 self._async_client = async_client
-                self._stats["connections_created"] += 1
-
-                # Restore sync client so rate-limiter becomes distributed again
-                try:
-                    sync_client = sync_redis.from_url(
-                        self._redis_url,
-                        decode_responses=True,
-                        socket_connect_timeout=5,
-                        socket_timeout=5,
-                        retry_on_timeout=True,
-                        max_connections=5,
-                    )
-                    sync_client.ping()
-                    self._sync_client = sync_client
-                    self._stats["connections_created"] += 1
-                    logger.info("Redis sync client restored — rate limiting is now distributed")
-                except Exception as sync_err:
-                    logger.warning(
-                        "Redis sync client restore failed (async-only mode): %s", sync_err
-                    )
-                    self._sync_client = None
-
+                self._sync_client = sync_client
                 self._available = True
+                self._stats["connections_created"] += 2
                 logger.info("Redis reconnected successfully — distributed rate limiting restored")
                 return
             except Exception as e:
                 logger.warning("Redis reconnect failed: %s", e)
+                if sync_client is not None:
+                    with contextlib.suppress(Exception):
+                        sync_client.close()
+                if async_client is not None:
+                    with contextlib.suppress(Exception):
+                        await async_client.close()
 
         logger.debug("Redis reconnect loop exited")
 

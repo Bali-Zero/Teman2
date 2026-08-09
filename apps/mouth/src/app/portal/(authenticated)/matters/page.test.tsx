@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 const { mockUsePortalMatters } = vi.hoisted(() => ({
@@ -70,7 +70,7 @@ describe("PortalMattersPage", () => {
     expect(container.innerHTML).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
   });
 
-  it("keeps the masthead on the loading and error states", () => {
+  it("keeps the masthead on the loading state", () => {
     mockUsePortalMatters.mockReturnValue({
       data: undefined,
       isLoading: true,
@@ -83,19 +83,34 @@ describe("PortalMattersPage", () => {
     );
     expect(screen.getByTestId("portal-list-skeleton")).toBeInTheDocument();
     unmount();
+  });
 
+  it("keeps failures client-safe and retries the real query", () => {
+    const refetch = vi.fn();
     mockUsePortalMatters.mockReturnValue({
       data: undefined,
       isLoading: false,
       isError: true,
-      error: new Error("boom"),
+      error: new Error("postgres host and stack detail"),
+      refetch,
     });
     render(<PortalMattersPage />);
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
       "Your matters",
     );
     expect(screen.getByText("Unable to load matters")).toBeInTheDocument();
-    expect(screen.getByText("boom")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "We could not verify your matters. Check your connection and try again.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("postgres host and stack detail"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("No open matters")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(refetch).toHaveBeenCalledTimes(1);
   });
 
   it("renders the empty state when there are no open matters", () => {

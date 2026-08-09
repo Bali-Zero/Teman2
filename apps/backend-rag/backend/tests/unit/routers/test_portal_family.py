@@ -105,7 +105,7 @@ async def test_list_family_splits_adults_and_minors() -> None:
 
 
 @pytest.mark.asyncio
-async def test_list_family_graceful_on_missing_table() -> None:
+async def test_list_family_fails_closed_on_database_error() -> None:
     mock_conn = AsyncMock()
     mock_conn.fetch.side_effect = Exception("relation 'client_family_members' does not exist")
 
@@ -127,5 +127,5 @@ async def test_list_family_graceful_on_missing_table() -> None:
 
     tc = TestClient(app)
     r = tc.get("/api/portal/family")
-    assert r.status_code == 200
-    assert r.json() == {"adults": [], "minors": []}
+    assert r.status_code == 500
+    assert r.json() == {"detail": "Failed to load family data"}

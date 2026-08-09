@@ -13,33 +13,45 @@
  * values). No hardcoded hexes.
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   getMyReferrals,
   type PartnerReferral,
 } from "@/lib/api/partners/partners";
+import { PartnerLoadError } from "../PartnerLoadError";
 
 export default function PartnerReferralsPage() {
   const [referrals, setReferrals] = useState<PartnerReferral[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [unavailable, setUnavailable] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setUnavailable(false);
+    try {
+      const data = await getMyReferrals();
+      if (!Array.isArray(data)) throw new Error("Invalid referrals response");
+      setReferrals(data);
+    } catch {
+      setReferrals([]);
+      setUnavailable(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    getMyReferrals()
-      .then((data) => setReferrals(Array.isArray(data) ? data : []))
-      .catch((e: unknown) =>
-        setError(e instanceof Error ? e.message : String(e)),
-      )
-      .finally(() => setLoading(false));
-  }, []);
+    void load();
+  }, [load]);
 
   if (loading)
     return <div className="p-6 text-[var(--tx-secondary)]">Loading...</div>;
-  if (error)
+  if (unavailable)
     return (
-      <div className="p-6" style={{ color: "var(--state-danger)" }}>
-        Error: {error}
-      </div>
+      <PartnerLoadError
+        title="Referrals are temporarily unavailable"
+        onRetry={load}
+      />
     );
 
   return (

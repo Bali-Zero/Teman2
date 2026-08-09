@@ -23,11 +23,9 @@
  *    There is NO `mime_type`, `drive_file_id`, `preview_url`, `download_url`,
  *    or `uploaded_at`/`uploaded_by` in the list response.
  *
- * 2. `scan_status` is NOT exposed on the list endpoint. The VirusScanner
- *    returns `{clean, threats, scanner}` during upload and raises on threat
- *    (no status is persisted or echoed to the client). We therefore do NOT
- *    model a `scan_status` field on `VaultFile`. If the BE later exposes one,
- *    add it as an optional enum — do not gate parsing on its presence.
+ * 2. Scan/OCR/storage internals are NOT exposed to portal clients. The upload
+ *    endpoint returns only the client-safe document projection. Do not add
+ *    `processing`, OCR text/previews, Drive IDs/URLs, or storage paths here.
  *
  * 3. `documents.status` has NO CHECK constraint at the DB level. Known
  *    values observed in code: "received" (insert default on portal upload),
@@ -49,7 +47,7 @@
  *    when present, but historically some rows may be null — tolerate it.
  */
 
-import { z } from "zod";
+import { z } from "@/lib/zod";
 
 // ============================================
 // SCAN STATUS (future-proof, currently unused in list response)
@@ -140,36 +138,24 @@ export type VaultListResponse = z.infer<typeof VaultListResponse>;
 // ============================================
 
 /**
- * Inner `processing` block returned by the upload endpoint.
- * Mirrors `documents.py:491-495`.
- */
-export const VaultUploadProcessing = z.object({
-  virus_clean: z.boolean(),
-  ocr_pages: z.number().int().nonnegative().nullable().optional(),
-  drive_uploaded: z.boolean(),
-});
-export type VaultUploadProcessing = z.infer<typeof VaultUploadProcessing>;
-
-/**
  * Inner `data` payload of the upload response.
  * Mirrors the dict returned at `documents.py:478-496`.
  *
- * Note: the upload response shape is a SUPERSET of the list-item shape but
- * intentionally modelled separately because it has different fields
- * (`extracted_text_preview`, `processing`) and lacks `downloadable`,
- * `practice_id`, `practice_name`.
+ * The backend deliberately projects the response onto fields safe for portal
+ * clients. Keep this object strict so accidental OCR, scan, Drive, or storage
+ * metadata fails closed instead of becoming available to UI consumers.
  */
-export const VaultUploadedFile = z.object({
-  id: z.number().int().nonnegative(),
-  type: z.string(),
-  name: z.string(),
-  status: z.string().nullable().optional(),
-  size_kb: z.number().int().nonnegative().nullable().optional(),
-  created_at: z.string(),
-  expiry_date: z.string().nullable().optional(),
-  extracted_text_preview: z.string().nullable().optional(),
-  processing: VaultUploadProcessing,
-});
+export const VaultUploadedFile = z
+  .object({
+    id: z.number().int().nonnegative(),
+    type: z.string(),
+    name: z.string(),
+    status: z.string().nullable().optional(),
+    size_kb: z.number().int().nonnegative().nullable().optional(),
+    created_at: z.string(),
+    expiry_date: z.string().nullable().optional(),
+  })
+  .strict();
 export type VaultUploadedFile = z.infer<typeof VaultUploadedFile>;
 
 /**

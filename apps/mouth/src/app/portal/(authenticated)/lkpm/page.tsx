@@ -14,7 +14,7 @@
  * (lkpm/submit and lkpm/[quarter] are out of this slice).
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Loader2,
   FileText,
@@ -34,6 +34,7 @@ import type {
   LKPMReceipt,
 } from "@/lib/api/portal/portal.types";
 import { formatIDR } from "@balizero/core/utils";
+import { Button } from "@/components/ui/button";
 
 // Day card surface (GARUDA Day concept .panel): white card on warm paper,
 // hairline warm border, soft navy shadow (near-invisible on dark).
@@ -88,40 +89,68 @@ export default function LKPMPage() {
   const [deadlines, setDeadlines] = useState<LKPMDeadline[]>([]);
   const [receipts, setReceipts] = useState<LKPMReceipt[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [initialLoadFailed, setInitialLoadFailed] = useState(false);
+  const [receiptsLoadFailed, setReceiptsLoadFailed] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
+      setInitialLoadFailed(false);
+      setReceiptsLoadFailed(false);
       // Portal context — clientId comes from the authenticated session.
       // All three endpoints cascade via client_company_links server-side.
-      const [historyData, deadlineData, receiptData] = await Promise.all([
-        api.get<{ success: boolean; items: LKPMDraftSummary[] }>(
-          "/api/v1/lkpm/history/me",
-        ),
-        api.get<{ success: boolean; deadlines: LKPMDeadline[] }>(
-          "/api/v1/lkpm/deadlines",
-        ),
-        api
-          .get<{
+      const [historyResult, deadlineResult, receiptResult] =
+        await Promise.allSettled([
+          api.get<{ success: boolean; items: LKPMDraftSummary[] }>(
+            "/api/v1/lkpm/history/me",
+          ),
+          api.get<{ success: boolean; deadlines: LKPMDeadline[] }>(
+            "/api/v1/lkpm/deadlines",
+          ),
+          api.get<{
             success: boolean;
             items: LKPMReceipt[];
-          }>("/api/v1/lkpm/receipts/me")
-          .catch(() => ({ success: false, items: [] as LKPMReceipt[] })),
-      ]);
-      setHistory(historyData.items ?? []);
-      setDeadlines(deadlineData.deadlines ?? []);
-      setReceipts(receiptData.items ?? []);
+          }>("/api/v1/lkpm/receipts/me"),
+        ]);
+
+      if (
+        historyResult.status === "rejected" ||
+        deadlineResult.status === "rejected"
+      ) {
+        throw (
+          (historyResult.status === "rejected" && historyResult.reason) ||
+          (deadlineResult.status === "rejected" && deadlineResult.reason) ||
+          new Error("LKPM report data unavailable")
+        );
+      }
+
+      setHistory(historyResult.value.items ?? []);
+      setDeadlines(deadlineResult.value.deadlines ?? []);
+
+      if (receiptResult.status === "fulfilled") {
+        setReceipts(receiptResult.value.items ?? []);
+      } else {
+        setReceipts([]);
+        setReceiptsLoadFailed(true);
+        error("Failed to load OSS receipts", "Please try again later");
+        logger.error(
+          "Failed to load portal LKPM receipts",
+          {},
+          receiptResult.reason as Error,
+        );
+      }
     } catch (err) {
+      setInitialLoadFailed(true);
       error("Failed to load LKPM data", "Please try again later");
       logger.error("Failed to load portal LKPM data", {}, err as Error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [error]);
+
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
 
   if (isLoading) {
     return (
@@ -199,6 +228,46 @@ export default function LKPMPage() {
     );
   }
 
+  if (initialLoadFailed) {
+    return (
+      <div className="space-y-6 animate-in fade-in duration-500">
+        <LkpmMasthead />
+        <section
+          role="alert"
+          aria-labelledby="lkpm-load-error-title"
+          className="flex min-h-[40vh] flex-col items-center justify-center rounded-xl border p-8 text-center"
+          style={{
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
+          }}
+        >
+          <AlertTriangle
+            aria-hidden="true"
+            className="mb-4 h-12 w-12"
+            style={{ color: "var(--bz-copper-text)" }}
+          />
+          <h2
+            id="lkpm-load-error-title"
+            className="text-xl font-semibold"
+            style={{ color: "var(--tx-pure)" }}
+          >
+            Unable to load LKPM reports
+          </h2>
+          <p
+            className="mt-2 max-w-sm text-sm"
+            style={{ color: "var(--tx-secondary)" }}
+          >
+            We couldn&apos;t verify your LKPM records. Check your connection and
+            try again.
+          </p>
+          <Button className="mt-5" onClick={() => void loadData()}>
+            Retry
+          </Button>
+        </section>
+      </div>
+    );
+  }
+
   const nextDeadline = deadlines.find((d) => !d.is_overdue);
 
   return (
@@ -208,6 +277,7 @@ export default function LKPMPage() {
         <LkpmMasthead />
         <Link
           href="/portal/lkpm/submit"
+          prefetch={false}
           className="px-4 py-2 rounded-lg text-sm font-medium text-white flex items-center gap-2 shrink-0"
           style={{ background: "var(--bz-accent-warm)" }}
         >
@@ -284,6 +354,41 @@ export default function LKPMPage() {
       </section>
 
       {/* OSS Tanda Terima (receipts per kegiatan usaha) — shareholder cascade */}
+      {receiptsLoadFailed && (
+        <section
+          role="alert"
+          aria-labelledby="lkpm-receipts-load-error-title"
+          className="rounded-xl border p-6"
+          style={PORTAL_CARD_STYLE}
+        >
+          <div className="flex items-start gap-3">
+            <AlertTriangle
+              aria-hidden="true"
+              className="mt-0.5 h-5 w-5 shrink-0"
+              style={{ color: "var(--state-warning)" }}
+            />
+            <div>
+              <h2
+                id="lkpm-receipts-load-error-title"
+                className="text-lg font-semibold"
+              >
+                Unable to load OSS receipts
+              </h2>
+              <p className="mt-1 text-sm" style={{ color: "var(--bz-text-2)" }}>
+                We couldn&apos;t verify your OSS submission receipts. Check your
+                connection and try again.
+              </p>
+              <Button
+                className="mt-4"
+                variant="outline"
+                onClick={() => void loadData()}
+              >
+                Retry receipts
+              </Button>
+            </div>
+          </div>
+        </section>
+      )}
       {receipts.length > 0 && <ReceiptsSection receipts={receipts} />}
 
       {/* Help Notice */}
@@ -465,9 +570,9 @@ function ReceiptsSection({ receipts }: { receipts: LKPMReceipt[] }) {
                                 {r.tanggal_diterima ?? "—"}
                               </td>
                               <td className="px-3 py-2">
-                                {r.file_drive_url ? (
+                                {r.download_url ? (
                                   <a
-                                    href={r.file_drive_url}
+                                    href={r.download_url}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     style={{
@@ -614,14 +719,20 @@ function ReportCard({
 
   if (isOrange) {
     return (
-      <Link href={`/portal/lkpm/${report.quarter}?year=${report.year}`}>
+      <Link
+        href={`/portal/lkpm/${report.quarter}?year=${report.year}`}
+        prefetch={false}
+      >
         {cardContent}
       </Link>
     );
   }
 
   return (
-    <Link href={`/portal/lkpm/${report.quarter}?year=${report.year}`}>
+    <Link
+      href={`/portal/lkpm/${report.quarter}?year=${report.year}`}
+      prefetch={false}
+    >
       {cardContent}
     </Link>
   );

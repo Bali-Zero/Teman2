@@ -10,6 +10,7 @@ export interface BackendLoginResponse {
     expiresIn: number;
     user: UserProfile;
     csrfToken?: string; // CSRF token for httpOnly cookie auth
+    redirectTo?: string;
   };
 }
 
@@ -18,4 +19,5 @@ export interface LoginResponse {
   access_token: string;
   token_type: string;
   user: UserProfile;
+  redirectTo?: string;
 }

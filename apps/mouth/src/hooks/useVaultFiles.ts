@@ -14,7 +14,7 @@ type HttpError = { status?: number };
  * surface as SWR errors rather than partial UI.
  *
  * Note: the list endpoint does NOT expose `scan_status`. Scan results are
- * only emitted (as `processing.virus_clean`) by the upload endpoint — see
+ * handled server-side and is not exposed to portal clients — see
  * `useVaultUpload`.
  */
 export function useVaultFiles(): SWRResponse<VaultFile[], Error> {

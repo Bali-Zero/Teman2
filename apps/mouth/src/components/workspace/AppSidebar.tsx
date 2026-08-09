@@ -188,6 +188,9 @@ export function AppSidebar({
       <Link
         key={item.href}
         href={item.href}
+        // Protected RSC prefetches can race portal auth hydration in WebKit.
+        // Explicit clicks keep normal client-side navigation semantics.
+        prefetch={isPortal ? false : undefined}
         className={sharedClassName}
         style={sharedStyle}
       >
@@ -231,6 +234,8 @@ export function AppSidebar({
       >
         <Link
           href={isPortal ? "/portal" : "/dashboard"}
+          // Apply the same protected-route rule to the workspace home link.
+          prefetch={isPortal ? false : undefined}
           aria-label="Bali Zero — workspace home"
           className="flex items-center justify-center rounded-full transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bz-base)]"
         >

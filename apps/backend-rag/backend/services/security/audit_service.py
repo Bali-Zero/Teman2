@@ -5,7 +5,6 @@ Logs security-sensitive events to security_audit_log table.
 Best-effort: DB errors are logged but never propagate.
 """
 
-import json
 import logging
 from typing import Any
 
@@ -37,7 +36,11 @@ class SecurityAuditService:
         Log a security event. Best-effort — never raises.
         """
         try:
-            details_json = json.dumps(details) if details else None
+            # The application pool registers a jsonb codec with
+            # ``encoder=json.dumps``. Bind the Python mapping directly so the
+            # codec serializes it exactly once; pre-serializing here stores a
+            # JSON string scalar instead of a queryable JSON object.
+            details_payload = details if details else None
 
             await conn.execute(
                 """
@@ -54,7 +57,7 @@ class SecurityAuditService:
                 ip_address,
                 user_agent,
                 success,
-                details_json,
+                details_payload,
             )
         except Exception as e:
             logger.error("S03-S2: Security audit log failed: %s (action=%s)", e, action)

@@ -3,24 +3,36 @@
 import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, FolderOpen, MessageCircle, User } from "lucide-react";
+import {
+  CircleDollarSign,
+  FolderOpen,
+  Home,
+  MessageCircle,
+  User,
+  Users,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 
 const POLL_INTERVAL = 30000; // 30 seconds
 
-export function PortalBottomNav() {
+interface PortalBottomNavProps {
+  readonly variant?: "client" | "partner";
+}
+
+export function PortalBottomNav({ variant = "client" }: PortalBottomNavProps) {
   const pathname = usePathname();
   const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchUnreadCount = useCallback(async () => {
+    if (variant === "partner") return;
     try {
       const data = await api.portal.getMessages(1, 0);
       setUnreadCount(data.unreadCount);
     } catch (err) {
       // Silently fail - not critical for nav
     }
-  }, []);
+  }, [variant]);
 
   // Initial fetch
   useEffect(() => {
@@ -40,17 +52,41 @@ export function PortalBottomNav() {
     }
   }, [pathname, fetchUnreadCount]);
 
-  const tabs = [
-    { name: "Home", href: "/portal", icon: Home },
-    { name: "Vault", href: "/portal/vault", icon: FolderOpen },
-    {
-      name: "Messages",
-      href: "/portal/messages",
-      icon: MessageCircle,
-      badge: unreadCount,
-    },
-    { name: "Profile", href: "/portal/profile", icon: User },
-  ];
+  const tabs =
+    variant === "partner"
+      ? [
+          {
+            name: "Home",
+            href: "/portal/partner/dashboard",
+            icon: Home,
+          },
+          {
+            name: "Referrals",
+            href: "/portal/partner/referrals",
+            icon: Users,
+          },
+          {
+            name: "Commissions",
+            href: "/portal/partner/commissions",
+            icon: CircleDollarSign,
+          },
+          {
+            name: "Profile",
+            href: "/portal/partner/profile",
+            icon: User,
+          },
+        ]
+      : [
+          { name: "Home", href: "/portal", icon: Home },
+          { name: "Vault", href: "/portal/vault", icon: FolderOpen },
+          {
+            name: "Messages",
+            href: "/portal/messages",
+            icon: MessageCircle,
+            badge: unreadCount,
+          },
+          { name: "Profile", href: "/portal/profile", icon: User },
+        ];
 
   // Only show on mobile
   return (
@@ -69,6 +105,9 @@ export function PortalBottomNav() {
             <Link
               key={tab.name}
               href={tab.href}
+              // Mobile links are still mounted when CSS hides this nav on
+              // desktop, so prevent protected RSC prefetches in every profile.
+              prefetch={false}
               aria-current={isActive ? "page" : undefined}
               aria-label={tab.name}
               className={cn(

@@ -13,6 +13,7 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
+from backend.app.utils.logging_utils import sanitize_log_path
 from backend.middleware.visa_oracle_privacy import (
     get_or_create_private_request_id,
     is_private_visa_evaluation,
@@ -69,6 +70,7 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
             )
         )
         request.state.request_id = request_id
+        log_path = sanitize_log_path(request.url.path)
 
         # Record start time
         start_time = time.time()
@@ -106,7 +108,7 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
                 if duration_ms > settings.latency_alert_threshold_ms and not skip_latency:
                     # Cooldown: only send one alert per path per 5 minutes
                     now = time.time()
-                    path_key = request.url.path
+                    path_key = log_path
                     last_sent = self._latency_alert_last_sent.get(path_key, 0)
                     if now - last_sent >= LATENCY_ALERT_COOLDOWN_SECONDS:
                         self._latency_alert_last_sent[path_key] = now
@@ -114,7 +116,7 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
                             await alert_service.send_latency_alert(
                                 duration_ms=duration_ms,
                                 method=request.method,
-                                path=request.url.path,
+                                path=log_path,
                                 threshold_ms=settings.latency_alert_threshold_ms,
                                 request_id=request_id,
                                 user_agent=(
@@ -148,7 +150,7 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
                     await alert_service.send_http_error_alert(
                         status_code=500,
                         method=request.method,
-                        path=request.url.path,
+                        path=log_path,
                         error_detail=(
                             "Visa Oracle evaluation failed" if private_evaluation else str(exc)
                         ),
@@ -187,8 +189,9 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
         """
         status_code = response.status_code
         method = request.method
-        path = request.url.path
-        private_evaluation = is_private_visa_evaluation(method, path)
+        raw_path = request.url.path
+        path = sanitize_log_path(raw_path)
+        private_evaluation = is_private_visa_evaluation(method, raw_path)
         user_agent = None if private_evaluation else request.headers.get("user-agent", "Unknown")
 
         # Suppress noisy logs for known non-critical patterns
