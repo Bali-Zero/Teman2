@@ -308,18 +308,33 @@ jobs:
             --cov-branch \
             --cov-report=xml:coverage.xml \
             --junit-xml=test-results-unit.xml \
-            --tb=short -x 2>&1 | tee pytest-output.log
-          PYTEST_RC=$?
+            --tb=short -x 2>&1 | tee pytest-output.log || PYTEST_RC=$?
           # Measurement-only (round-3 queue-acceleration plan, L3): the
           # "Run unit tests" step is the confirmed grown step (July→August
           # median +5.4min). --durations=50 (was 10) + this summary tail
           # surfaces the slowest tests directly in the run's Job Summary
           # so the next lever can be picked with evidence, without a
           # separate artifact download. No test selection/step is changed.
+          #
+          # errexit-immune capture (house W101 antidote): `run:` steps
+          # execute under `bash -e`. A bare `PYTEST_RC=$?` on the line
+          # right after a failing pipe is dead code — errexit aborts the
+          # script ON that failing pipeline before the next line ever
+          # runs, so the RC capture, the summary tail, and the final
+          # `exit` would all be skipped on exactly the red runs where the
+          # durations are wanted most (proven locally: a failing pytest
+          # under `bash -e -c` never reaches the line after the pipe).
+          # `|| PYTEST_RC=$?` keeps errexit from tripping on the pipeline
+          # itself; `set -o pipefail` (kept, above) still makes tee's own
+          # rc=0 not mask a red suite. `awk` pattern tolerates the count
+          # pytest sandwiches into the header (`slowest 50 durations`,
+          # not `slowest durations`) — verified against real pytest
+          # --durations=50 output.
+          PYTEST_RC=${PYTEST_RC:-0}
           {
             echo '## Slowest test durations (top 50)'
             echo '```'
-            awk '/slowest durations/,0' pytest-output.log
+            awk '/slowest [0-9]+ durations|slowest durations/,0' pytest-output.log
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
           exit "$PYTEST_RC"
