@@ -229,6 +229,11 @@ def test_cron_sensor_nlm_deep_research_alias_reads_run_nb2_pipeline_receipt(monk
     from cell.sensors import cron_sensor as cron_sensor_module
     from cell.sensors.cron_sensor import CronSensor
 
+    # Pin the real pointer: a revert to the dead ~/.cron-agent path must go red
+    # even though the rest of this test monkeypatches the alias table.
+    real_alias = cron_sensor_module._JOB_STATE_ALIASES["nlm_deep_research"]
+    assert real_alias == [os.path.expanduser("~/.agent/decisions/state/run_nb2_pipeline.last.json")]
+
     with tempfile.TemporaryDirectory() as tmpdir:
         alias_target = os.path.join(tmpdir, "run_nb2_pipeline.last.json")
         with open(alias_target, "w") as f:
