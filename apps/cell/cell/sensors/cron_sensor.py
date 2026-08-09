@@ -16,12 +16,17 @@ from typing import Any
 logger = logging.getLogger("cell.sensors.cron")
 
 _STATE_DIR = os.path.expanduser("~/.agent/decisions/state")
-_CRON_AGENT_DIR = os.path.expanduser("~/.cron-agent")
 _CRON_AGENT_PYTHON_DIR = os.path.expanduser("~/.cron-agent-python")
 
 _JOB_STATE_ALIASES: dict[str, list[str]] = {
+    # nlm_deep_research (the ~/.cron-agent/nlm-deep-research.state.json cron)
+    # was deliberately DISABLED 2026-08-07 as a duplicate of run_nb2_pipeline
+    # (cure #3726). Its old state file is now frozen forever, which made this
+    # alias a permanent false-red. Repoint it to the receipt the surviving
+    # job actually writes, so freshness tracks the live duplicate instead of
+    # the retired one.
     "nlm_deep_research": [
-        os.path.join(_CRON_AGENT_DIR, "nlm-deep-research.state.json"),
+        os.path.join(_STATE_DIR, "run_nb2_pipeline.last.json"),
     ],
     "system_doctor": [
         os.path.join(_CRON_AGENT_PYTHON_DIR, "system-doctor.state.json"),

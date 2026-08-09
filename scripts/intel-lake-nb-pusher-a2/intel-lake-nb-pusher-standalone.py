@@ -385,13 +385,23 @@ async def main() -> int:
         "errored": 0,
     }
 
-    # Auth fail-fast
+    # Auth fail-fast — but arm the existing headless refresh before giving up.
+    # _try_headless_auth_refresh() previously only fired mid-batch on a
+    # per-item auth_expired error; the startup gate short-circuited to
+    # return 2 unconditionally, so 1067 failed runs since May never once
+    # attempted the refresh they had the machinery for.
     if not _nlm_check_auth():
-        msg = "🔴 intel-lake-nb-pusher: nlm auth invalid. Run `nlm login --clear` interactively."
-        logger.error(msg)
-        _telegram_send(msg)
-        _write_metrics(metrics, auth_ok=False)
-        return 2
+        logger.warning("nlm auth invalid at startup — attempting headless refresh")
+        refreshed = _try_headless_auth_refresh()
+        logger.info("headless auth refresh attempt: %s", "OK" if refreshed else "FAILED")
+        auth_ok_after_refresh = refreshed and _nlm_check_auth()
+        logger.info("nlm auth recheck after refresh: %s", "OK" if auth_ok_after_refresh else "STILL INVALID")
+        if not auth_ok_after_refresh:
+            msg = "🔴 intel-lake-nb-pusher: nlm auth invalid. Run `nlm login --clear` interactively."
+            logger.error(msg)
+            _telegram_send(msg)
+            _write_metrics(metrics, auth_ok=False)
+            return 2
 
     try:
         pool = await asyncpg.create_pool(_resolve_database_url(), min_size=1, max_size=2, timeout=10)
