@@ -1,9 +1,10 @@
 # Bali Zero Magazine
 
-Private editorial observatory for Bali Zero, built on
+Public editorial observatory for Bali Zero, built on
 [vinext](https://github.com/cloudflare/vinext) and OpenAI Sites. It publishes a
 morning edition plus breaking updates from the existing intelligence collectors,
-with Research and Operations rooms nested behind the magazine front page.
+with ChatGPT-protected Research and Operations rooms nested behind the public
+magazine front page.
 
 ## Prerequisites
 
@@ -22,7 +23,7 @@ This starter does not use `wrangler.jsonc`.
 ## Included Shape
 
 - `app/` contains the editorial, research, operations, and machine-ingress routes
-- `.openai/hosting.json` binds the private Sites project to D1 and R2
+- `.openai/hosting.json` binds the public Sites project to D1 and R2
 - `db/schema.ts` and `drizzle/` define the publication and control-plane model
 - `worker/` applies response-security headers at the edge
 - `vite.config.ts` simulates the Sites bindings for local development
@@ -81,6 +82,14 @@ anonymous-compatible.
 SIWC establishes identity only; it does not prove workspace membership. Use the
 Sites hosting platform's access policy controls for workspace-wide restrictions,
 or enforce explicit server-side membership or allowlist checks.
+
+This app keeps the magazine, story, edition, and story-media routes public. The
+Research and Operations rooms, their JSON APIs, and direct digest media require
+the derived actor key to be present in `ROLE_ALLOWLIST_JSON` as an `analyst` or
+`operator`. An authenticated account that is not in that allowlist remains a
+reader and cannot access internal data. `ACTOR_KEY_SECRET` must be configured
+before privileged memberships are enabled; never store email addresses in the
+allowlist.
 
 Use SIWC for account pages, user-specific dashboards, saved records, and write
 actions tied to the current ChatGPT user. Leave public content anonymous.
