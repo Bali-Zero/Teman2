@@ -81,8 +81,24 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
   _"Non ho capito niente di quello che mi hai scritto"_, _"Selamat pagi, berapa biaya untuk
   membuat PT PMA?"_, Russian, German and Spanish — while it DOES catch _"Ciao, ho bisogno di
   rinnovare il mio KITAS"_ → `it` and _"Saya mau perpanjang KITAS…"_ → `id`. It is
-  marker-based and misses ordinary phrasings. `_apology_text('auto')` then misses the dict and
-  falls back to `_APOLOGY_TEXTS['en']`.
+  marker-based and misses ordinary phrasings: its Italian list is
+  `ciao/come/cosa/sono/voglio/posso/grazie/quando/dove/perché`, and "buongiorno", "quanto",
+  "costa", "aprire" are not in it.
+  - **Do NOT "fix" the fallback — it is deliberate and says so.** `_apology_text`'s own comment
+    reads _"'auto'/unknown falls back to English via the .get(..., default) below, mirroring
+    whatsapp_ack.ack_text()'s pattern. Deliberately NOT a new translation subsystem"_. The
+    fallback behaves exactly as designed; **what is wrong is the input it is handed**. An
+    earlier draft of this entry implied the `.get` "missed the dict" by accident — it does not.
+  - **The same class was cured yesterday on ONE consumer and not swept.** The detector's
+    docstring carries a 2026-08-10 correction: `'auto'` is "a real, frequently-returned value"
+    and callers were written against a vocabulary the function does not emit — measured then on
+    `_add_emotional_acknowledgment`, which was defaulting to Italian. The other consumers
+    (`wa_outbox_worker` apology + ack, `nurturing_message`) were not revisited. Curing one
+    consumer of a shared detector moves which caller is wrong; it does not reduce the count.
+  - **Where the cure belongs**: the detector's markers, not any consumer's fallback. Cyrillic
+    (ru/uk) is decidable by SCRIPT and cannot false-positive on Latin text — that is the
+    cheapest real win; Italian/Indonesian need higher-signal markers. Not done here: it is a
+    shared function with ~4 consumers and deserves its own change and its own gate.
   - The table itself holds only `en/id/it/ru/uk`, so **German and Spanish are English by
     construction** — that part is the known stub gap, the news is IT/ID/RU failing anyway.
   - This is the C4 apology the client gets _after_ `_maybe_send_ack` has already promised
