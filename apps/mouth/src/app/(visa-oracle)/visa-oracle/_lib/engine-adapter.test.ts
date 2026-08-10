@@ -288,11 +288,29 @@ describe("Visa Oracle authoritative outcome adapter", () => {
 
 describe("support reasons are sentences, not machine codes", () => {
   const HERE = path.dirname(fileURLToPath(import.meta.url));
-  const PACK = path.resolve(
+  const PACKS_DIR = path.resolve(
     HERE,
     "../../../../../../..",
-    "apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-005.source.json",
+    "apps/backend-rag/backend/services/visa_engine/contracts/packs",
   );
+
+  /**
+   * Every production pack, not just the one that happens to be active. Pinning
+   * a single filename made this tripwire blind to the pack being authored:
+   * seq-6 raised the SUPPORT reason count from 13 to 58 and this test stayed
+   * green throughout, because it was still reading seq-5. A pack is written
+   * before it is activated, so the check has to cover the ones on disk.
+   */
+  function productionPackFiles(): string[] {
+    const files = fs
+      .readdirSync(PACKS_DIR)
+      .filter((name) => /^rulepack-prod-\d+\.source\.json$/.test(name))
+      .map((name) => path.join(PACKS_DIR, name));
+    if (files.length === 0) {
+      throw new Error(`no production packs found under ${PACKS_DIR}`);
+    }
+    return files;
+  }
 
   function supportReasonCodesInPack(): string[] {
     const codes = new Set<string>();
@@ -310,7 +328,9 @@ describe("support reasons are sentences, not machine codes", () => {
       }
       Object.values(record).forEach(walk);
     };
-    walk(JSON.parse(fs.readFileSync(PACK, "utf-8")));
+    productionPackFiles().forEach((file) => {
+      walk(JSON.parse(fs.readFileSync(file, "utf-8")));
+    });
     return [...codes].sort();
   }
 
@@ -338,13 +358,38 @@ describe("support reasons are sentences, not machine codes", () => {
     );
   });
 
+  it("states the Article 60(2) KITAP prerequisites without inventing status tenure", () => {
+    const copy =
+      SUPPORT_REASON_COPY.KITAP_TWO_YEAR_MARRIAGE_AND_INTEGRATION_NOT_VERIFIED;
+    expect(copy.en).toMatch(/two years of marriage/i);
+    expect(copy.en).toMatch(/signed Pernyataan Integrasi/i);
+    expect(copy.en).toMatch(/not verified/i);
+    expect(copy.en).not.toMatch(/two years on this status/i);
+    expect(copy.id).toMatch(/dua tahun/i);
+    expect(copy.id).toMatch(/Pernyataan Integrasi/i);
+  });
+
+  it("states Article 61 rights while separating employment from self-employment", () => {
+    const copy = SUPPORT_REASON_COPY.SPOUSAL_WORK_ARTICLE_61_CONTEXT;
+    expect(copy.en).toMatch(/Article 61/i);
+    expect(copy.en).toMatch(/work and\/or conduct business/i);
+    expect(copy.en).toMatch(/employment/i);
+    expect(copy.en).toMatch(/self-employment|business/i);
+    expect(copy.en).toMatch(/does not verify/i);
+    expect(copy.en).not.toMatch(/only with.*Kemenaker/i);
+    expect(copy.id).toMatch(/Pasal 61/i);
+    expect(copy.id).toMatch(/pekerjaan dan\/atau usaha/i);
+  });
+
   /**
    * The tripwire: a future pack that adds a SUPPORT reason without copy would
    * print a machine code at a real reader. Fail here first, naming the codes.
    */
-  it("has copy for every SUPPORT reason code the live pack can emit", () => {
+  it("has copy for every SUPPORT reason code any production pack can emit", () => {
     const codes = supportReasonCodesInPack();
-    expect(codes.length).toBeGreaterThan(0);
+    // Guard the guard: a glob that silently matched nothing, or a pack whose
+    // rules stopped parsing, would make the assertion below vacuously true.
+    expect(codes.length).toBeGreaterThanOrEqual(13);
     expect(codes.filter((code) => !(code in SUPPORT_REASON_COPY))).toEqual([]);
   });
 });
