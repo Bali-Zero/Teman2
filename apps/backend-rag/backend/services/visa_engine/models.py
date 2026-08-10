@@ -1025,7 +1025,8 @@ class ApplicantFactsData(BaseModel):
     #
     # FOLLOW-UP (remove the default, restore the 41-required invariant) once
     # the interview ships and no client sends a 40-key body. Pinned by
-    # ``test_sponsor_type_rollout_default`` — that test names this comment.
+    # ``test_sponsor_type_rollout.py::TestSponsorTypeRolloutDefault`` — that
+    # test class names this comment.
     sponsor_type: Annotated[
         SponsorTypeFact,
         Field(alias="sponsor.type", default=_SPONSOR_TYPE_ROLLOUT_DEFAULT),
