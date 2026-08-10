@@ -1,0 +1,360 @@
+name: Harness floor & gate publisher
+
+# PR-3 of the fleet-order program (research/operations/2026-08-10-fleet-order-spec.md §4/§7;
+# research/operations/2026-08-09-harness-v2-teman2.md §1/§6).
+#
+# TWO responsibilities live in one job because they share one contract: `harness/fable-gate` must
+# be a SAFE required status check. GitHub branch protection has no per-label required-check
+# scoping — a status only ever published manually (by scripts/harness_fable_gate.py, run by a real
+# Gear-3 Fable gate session) would leave that context "Expected — Waiting for status" FOREVER on
+# every ordinary PR if it were simply added to required_status_checks. So this workflow is ALSO the
+# DEFAULT PUBLISHER: on any PR that is not declaring Gear-3 (no evidence/brief.yml, or a brief
+# declaring gear < 3), it self-publishes a neutral `harness/fable-gate` success — the same pattern
+# "Hot-zone enforcement" already uses (unconditionally required, internally a no-op for PRs it does
+# not apply to). Only a Gear-3 brief is left PENDING for the real gate session to publish for real.
+#
+# Floor recompute (harness-v2 §1 "il modello può solo alzare la classe, mai abbassarla sotto il
+# floor"): the deterministic floor is computed ONCE, unconditionally (brief or not — adversarial-
+# review finding 2026-08-10: the first cut of this workflow only computed the floor when a brief was
+# present, so a hot-zone diff with NO evidence/brief.yml sailed through on the "not applicable"
+# default-success path — exactly the downgrade-below-floor case rule 6 exists to catch), via
+# scripts/evidence_pack_lint.py's compute_floor() through --print-floor (one source of truth, not a
+# second copy of the pattern list baked into this YAML; see that script's own docstring for the
+# declared, unavoidable duplication against hot-zone-pr-gate.yml's bash case-block). A hot-zone diff
+# (floor 3) with no brief FAILS this job outright — it does not default to success.
+#
+# When a brief IS present, its declared `gear` must be >= that floor.
+#
+# On a Gear-3 brief, this workflow ALSO validates evidence/pack.yml itself (adversarial-review
+# finding 2026-08-10: the first cut only checked the brief's declared `gear` field and never ran
+# evidence_pack_lint.py against the actual pack — a malformed/incomplete Evidence Pack could sit
+# there indefinitely while `harness/fable-gate` stayed merely "pending", never caught). A pack that
+# fails evidence_pack_lint.py FAILS this job — the real gate session should never be evaluating a
+# structurally broken pack in the first place.
+#
+# SENTINEL PATTERN (same as hot-zone-pr-gate.yml / guard-conformance.yml): NO top-level
+# pull_request paths filter — always triggers so it can be a required check without the
+# pending-forever trap. A PR with no evidence/brief.yml and a floor < 3 resolves internally to a
+# trivial pass.
+#
+# KILL SWITCH: `vars.HARNESS_ENFORCEMENT` (named to match harness-v2-teman2.md §10's documented
+# switch — adversarial-review finding 2026-08-10: an earlier draft used a workflow-local name that
+# matched nothing anyone would ever set). Disabling it does NOT leave `harness/fable-gate` merely
+# unpublished: once this check is a required status, "kill switch enabled" must never be WORSE than
+# normal operation, so this step publishes a default success itself before exiting (graceful
+# bypass) — the first cut of the kill switch skipped every remaining step including the publish,
+# which would have deadlocked every PR the moment the context became required.
+#
+# ARMING NOTE (operator/session): adding `harness/fable-gate` to branch protection's
+# required_status_checks is a branch-protection change — tracked in modus PENDING-ARMS. As of
+# 2026-08-10 this promotion is BLOCKED, not merely pending: (a) `harness/fable-gate` is a classic
+# commit-status (posted via `gh api .../statuses/<sha>`), and a manually-posted status on a PR's
+# real head SHA does not carry over to the merge_group's synthetic test-merge SHA — requiring it
+# would deadlock the merge queue for every Gear-3 PR; (b) on a public repo, a fork PR's default
+# GITHUB_TOKEN is read-only, so the `gh api` write in the "no brief" / "gear < 3" default-publish
+# steps below can fail for external contributors, which the same required-check promotion would
+# turn into a hard block rather than today's harmless failed step. Both need a design decision
+# (synthetic-SHA relay strategy; fork-PR write-permission strategy) before the flip is safe.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  merge_group:
+
+concurrency:
+  group: harness-floor-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
+
+permissions:
+  contents: read
+  pull-requests: read
+  statuses: write
+
+jobs:
+  harness-floor:
+    name: Harness floor recompute
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # -----------------------------------------------------------------
+      # Step 0 — kill switch. Graceful bypass: publish the SAME default
+      # success this workflow would publish for an ordinary non-Gear-3 PR,
+      # then exit — never worse than normal operation once the context is
+      # required (see header note).
+      # -----------------------------------------------------------------
+      - name: Kill switch
+        id: kill_switch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -u
+          if [[ "${{ vars.HARNESS_ENFORCEMENT }}" == "false" ]]; then
+            echo "::notice::HARNESS_ENFORCEMENT=false — publishing default harness/fable-gate=success (graceful bypass) and exiting"
+            gh api "repos/${{ github.repository }}/statuses/${SHA}" \
+              -f state=success \
+              -f context='harness/fable-gate' \
+              -f description='HARNESS_ENFORCEMENT=false — kill switch bypass' \
+              > /dev/null || echo "::warning::kill-switch bypass publish failed (e.g. fork PR read-only token) — context stays unpublished"
+            echo "disabled=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "disabled=false" >> "$GITHUB_OUTPUT"
+
+      # -----------------------------------------------------------------
+      # Step 1 — checkout the BASE ref (anti pull_request_target trap, same
+      # as hot-zone-pr-gate.yml); enough history for the merge-base diff.
+      # -----------------------------------------------------------------
+      - name: Checkout base ref
+        if: steps.kill_switch.outputs.disabled != 'true'
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+          fetch-depth: 0
+          filter: blob:none
+
+      - name: Set up Python
+        if: steps.kill_switch.outputs.disabled != 'true'
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install linter dependency (PyYAML)
+        if: steps.kill_switch.outputs.disabled != 'true'
+        run: python3 -m pip install --quiet pyyaml
+
+      # -----------------------------------------------------------------
+      # Step 2 — enumerate changed files, merge-base anchored (never a
+      # two-dot diff — that is the W102 lie). Reuses the canonical
+      # enumerator so this workflow and hot-zone-pr-gate.yml never disagree
+      # about "what did this PR touch".
+      # -----------------------------------------------------------------
+      - name: Enumerate changed files (merge-base anchored)
+        if: steps.kill_switch.outputs.disabled != 'true'
+        id: diff
+        env:
+          BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -u
+          if ! CHANGED=$(bash scripts/ci/hotzone_changed_files.sh "$BASE_SHA" "$HEAD_SHA" "${PR_NUMBER:-}"); then
+            echo "::error::Could not determine the changed-file set — failing closed"
+            exit 1
+          fi
+          printf '%s\n' "$CHANGED" > /tmp/changed-files.txt
+          echo "--- Changed files ---"
+          cat /tmp/changed-files.txt
+          echo "---------------------"
+
+      # -----------------------------------------------------------------
+      # Step 3 — compute the deterministic floor UNCONDITIONALLY (brief or
+      # not). Adversarial-review finding 2026-08-10: the first cut only
+      # computed this INSIDE the "brief present" branch, so a hot-zone diff
+      # with no evidence/brief.yml at all skipped the floor check entirely
+      # and fell through to the "not applicable, publish success" default —
+      # precisely the downgrade-below-floor this rule exists to catch.
+      # -----------------------------------------------------------------
+      - name: Compute deterministic floor from diff
+        if: steps.kill_switch.outputs.disabled != 'true'
+        id: detfloor
+        run: |
+          set -u
+          # BOOTSTRAP WINDOW (same pattern as hot-zone-pr-gate.yml's own
+          # `test_hotzone_changed_files.sh` self-test, and same reasoning:
+          # this step checks out the BASE ref, which does not carry
+          # scripts/evidence_pack_lint.py until the very PR that introduces
+          # it (this one) actually merges. Not a disarm vector — once the
+          # script is on main, every future PR's base checkout has it, and
+          # no PR can make it disappear from HEAD without also removing it
+          # from base after merge. Found live on this PR's own first CI run
+          # ("No such file or directory") — a real gap the local sandbox
+          # simulation could not have caught, since the sandbox always had
+          # the file.
+          if [[ ! -f scripts/evidence_pack_lint.py ]]; then
+            echo "::notice::scripts/evidence_pack_lint.py not in base checkout yet (bootstrap run) — floor defaults to 1, permissive, for THIS run only"
+            echo "floor=1" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          FLOOR=$(python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/changed-files.txt)
+          echo "floor=$FLOOR" >> "$GITHUB_OUTPUT"
+          echo "deterministic floor for this diff: $FLOOR"
+
+      # -----------------------------------------------------------------
+      # Step 4 — does this PR carry evidence/brief.yml at HEAD? FAIL CLOSED
+      # (adversarial-review finding 2026-08-10) if the HEAD commit itself
+      # cannot be resolved after a fetch attempt — that is "cannot verify",
+      # never "no brief". The original `git fetch ... || true` swallowed
+      # fetch failures and let an unresolvable commit read as "file legit-
+      # imately absent from that tree", silently defaulting to success on a
+      # PR this workflow never actually inspected.
+      # -----------------------------------------------------------------
+      - name: Does this PR carry evidence/brief.yml?
+        if: steps.kill_switch.outputs.disabled != 'true'
+        id: brief
+        env:
+          HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha }}
+        run: |
+          set -u
+          git fetch --no-tags --depth=200 origin "$HEAD_SHA" >/dev/null 2>&1 || true
+          if ! git cat-file -e "${HEAD_SHA}^{commit}" 2>/dev/null; then
+            echo "::error::HEAD commit ${HEAD_SHA} could not be resolved after fetch — failing closed (cannot verify whether evidence/brief.yml exists, this is NOT the same as 'no brief')"
+            exit 1
+          fi
+          if git cat-file -e "$HEAD_SHA:evidence/brief.yml" 2>/dev/null; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+            git show "$HEAD_SHA:evidence/brief.yml" > /tmp/brief.yml
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::no evidence/brief.yml at HEAD — not a harness-gated task (pending the floor check below)"
+          fi
+
+      # -----------------------------------------------------------------
+      # Step 5a — no brief, and the diff does NOT hit the floor: genuinely
+      # not a harness task. Publish the default neutral status so
+      # `harness/fable-gate` can safely be a required check without
+      # bricking ordinary PRs.
+      # -----------------------------------------------------------------
+      - name: Publish default harness/fable-gate (no brief, floor < 3 — not applicable)
+        if: |
+          steps.kill_switch.outputs.disabled != 'true' &&
+          steps.brief.outputs.present != 'true' &&
+          steps.detfloor.outputs.floor != '3'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -u
+          gh api "repos/${{ github.repository }}/statuses/${SHA}" \
+            -f state=success \
+            -f context='harness/fable-gate' \
+            -f description='not a harness task (no evidence/brief.yml, floor below Gear-3) — fable-gate not applicable' \
+            > /dev/null
+          echo "::notice::published default harness/fable-gate=success (no brief, floor < 3)"
+
+      # -----------------------------------------------------------------
+      # Step 5b — no brief, but the diff DOES hit the deterministic floor
+      # (hot-zone path touched): this is the downgrade-below-floor case.
+      # FAIL — do not default to success just because no brief exists to
+      # compare against (adversarial-review finding 2026-08-10).
+      # -----------------------------------------------------------------
+      - name: FAIL — hot-zone diff with no evidence/brief.yml
+        if: |
+          steps.kill_switch.outputs.disabled != 'true' &&
+          steps.brief.outputs.present != 'true' &&
+          steps.detfloor.outputs.floor == '3'
+        run: |
+          echo "::error::this diff touches a hot-zone path (deterministic floor 3) but carries no evidence/brief.yml — a Gear-3-floor diff requires a brief+pack (harness-v2-teman2.md §1/§5), it cannot silently pass as 'not a harness task'"
+          exit 1
+
+      # -----------------------------------------------------------------
+      # Step 6 — brief present: compare its declared gear to the floor
+      # already computed in step 3 (single source of truth, not a second
+      # invocation). FAILS (and therefore skips every step below, including
+      # any fable-gate publish) if the brief declares LESS than the floor —
+      # the model may only raise the gear, never lower it under the floor.
+      # -----------------------------------------------------------------
+      - name: Compare declared gear to the deterministic floor
+        if: steps.kill_switch.outputs.disabled != 'true' && steps.brief.outputs.present == 'true'
+        id: gearcheck
+        run: |
+          set -u
+          GEAR=$(python3 -c "import yaml; print(yaml.safe_load(open('/tmp/brief.yml')).get('gear',''))")
+          FLOOR="${{ steps.detfloor.outputs.floor }}"
+          echo "declared gear: $GEAR — deterministic floor: $FLOOR"
+          # evidence/brief.yml is PR-authored content — GEAR is attacker-controlled input.
+          # Validate it is exactly one of "1"/"2"/"3" BEFORE any arithmetic or use as a
+          # commit-status field, rather than let a malformed value silently coerce to 0
+          # in the `(( ))` arithmetic context below.
+          if [[ ! "$GEAR" =~ ^[123]$ ]]; then
+            echo "::error::evidence/brief.yml 'gear' must be exactly 1, 2 or 3 — got '${GEAR}'"
+            exit 1
+          fi
+          echo "gear=$GEAR" >> "$GITHUB_OUTPUT"
+          if (( GEAR < FLOOR )); then
+            echo "::error::declared gear $GEAR is BELOW the deterministic floor $FLOOR (hot-zone hit) — the brief must declare gear>=$FLOOR"
+            exit 1
+          fi
+
+      # -----------------------------------------------------------------
+      # Step 7a — floor satisfied, but this is not a Gear-3 task: the
+      # Fable verdict gate does not apply (harness-v2 §6 — Gear 2 closes
+      # with an Opus verdict + AI-review + CI, Gear 1 with CI alone).
+      # Publish the default neutral status so a Gear-1/2 harness task is
+      # never blocked waiting on a gate it was never meant to pass through.
+      # -----------------------------------------------------------------
+      - name: Publish default harness/fable-gate (gear < 3 — not applicable)
+        if: |
+          steps.kill_switch.outputs.disabled != 'true' &&
+          steps.brief.outputs.present == 'true' &&
+          steps.gearcheck.outputs.gear != '3'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          GEAR: ${{ steps.gearcheck.outputs.gear }}
+        run: |
+          set -u
+          gh api "repos/${{ github.repository }}/statuses/${SHA}" \
+            -f state=success \
+            -f context='harness/fable-gate' \
+            -f description="gear ${GEAR} — fable-gate is Gear-3 only, not applicable" \
+            > /dev/null
+          echo "::notice::published default harness/fable-gate=success (gear ${GEAR} < 3)"
+
+      # -----------------------------------------------------------------
+      # Step 7b — Gear-3, floor satisfied: validate the ACTUAL Evidence
+      # Pack (evidence/pack.yml), not just the brief's declared gear field.
+      # Adversarial-review finding 2026-08-10: the first cut of this
+      # workflow never ran evidence_pack_lint.py against the real pack, so
+      # a malformed/incomplete pack could sit PENDING indefinitely without
+      # ever being caught structurally. Builds a small tree with brief.yml
+      # + pack.yml at the SAME relative layout the linter expects
+      # (brief_ref: "evidence/brief.yml" resolves against --repo-root), so
+      # this reuses the exact same check_* rules a local run would.
+      # -----------------------------------------------------------------
+      - name: Gear-3 — validate evidence/pack.yml against the Evidence Pack contract
+        if: |
+          steps.kill_switch.outputs.disabled != 'true' &&
+          steps.brief.outputs.present == 'true' &&
+          steps.gearcheck.outputs.gear == '3'
+        id: packlint
+        env:
+          HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha }}
+        run: |
+          set -u
+          # Same bootstrap-window exemption as the floor-computation step
+          # above (this job checks out BASE, which lacks the script until
+          # this very PR merges) — NOTICE, not a crash, and not reachable
+          # by any PR after this one.
+          if [[ ! -f scripts/evidence_pack_lint.py ]]; then
+            echo "::notice::scripts/evidence_pack_lint.py not in base checkout yet (bootstrap run) — pack validation skipped for THIS run only"
+            exit 0
+          fi
+          mkdir -p /tmp/evidence-check/evidence
+          if ! git cat-file -e "$HEAD_SHA:evidence/pack.yml" 2>/dev/null; then
+            echo "::error::gear 3 declared in evidence/brief.yml but evidence/pack.yml is missing at HEAD — a Gear-3 task needs both"
+            exit 1
+          fi
+          git show "$HEAD_SHA:evidence/pack.yml" > /tmp/evidence-check/evidence/pack.yml
+          cp /tmp/brief.yml /tmp/evidence-check/evidence/brief.yml
+          python3 scripts/evidence_pack_lint.py \
+            /tmp/evidence-check/evidence/pack.yml \
+            --repo-root /tmp/evidence-check \
+            --changed-files-file /tmp/changed-files.txt
+
+      # -----------------------------------------------------------------
+      # Step 7c — Gear-3, floor satisfied, pack conformant: this workflow
+      # deliberately does NOT publish anything for harness/fable-gate. It
+      # stays pending until the real gate session runs
+      # scripts/harness_fable_gate.py with an actual verdict — that is the
+      # entire point of the required check.
+      # -----------------------------------------------------------------
+      - name: Gear-3 — pack conformant, fable-gate left for the real gate session
+        if: |
+          steps.kill_switch.outputs.disabled != 'true' &&
+          steps.brief.outputs.present == 'true' &&
+          steps.gearcheck.outputs.gear == '3'
+        run: |
+          echo "::notice::gear 3 declared, floor satisfied, evidence/pack.yml conformant — harness/fable-gate is intentionally NOT auto-published; scripts/harness_fable_gate.py must post a real verdict before this PR can merge"
