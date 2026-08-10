@@ -223,7 +223,7 @@ def test_plan_for_allowlisted_command_returns_none_without_backend_venv(tmp_path
     )
 
 
-def test_plan_for_admin_dashboard_lint_is_shell_free(tmp_path: Path) -> None:
+def test_plan_for_admin_dashboard_lint_is_shell_free(tmp_path: Path, fake_npm: str) -> None:
     plan = plan_for_allowlisted_command(
         ADMIN_DASHBOARD_LINT_COMMAND,
         repo_root=tmp_path,
@@ -232,7 +232,7 @@ def test_plan_for_admin_dashboard_lint_is_shell_free(tmp_path: Path) -> None:
 
     assert plan is not None
     assert plan.command == ADMIN_DASHBOARD_LINT_COMMAND
-    assert plan.argv[0].endswith("/npm")
+    assert plan.argv[0] == fake_npm
     assert plan.argv[1:] == ["run", "lint"]
     assert plan.cwd == tmp_path / "apps" / "admin-dashboard"
     assert plan.env is not None
