@@ -45,8 +45,21 @@ def test_trace_golden_vector_and_observed_clock_invariance() -> None:
 
     # Golden vector: changes require an explicit review of the canonical
     # trace contract, not an automatic fixture rewrite.
+    #
+    # Moved 2026-08-10 (`acad1aff…` -> `73aa8af1…`) when `sponsor.type` joined
+    # the fact vocabulary. Reviewed, and the reason is recorded here because a
+    # golden literal that changes without a recorded cause is indistinguishable
+    # from one that was rubber-stamped: `facts_hmac` is an HMAC over
+    # `canonical_fact_payload`, which is `facts.model_dump(by_alias=True)` —
+    # the WHOLE snapshot, not the subset some rule happened to read. So every
+    # persona gaining one `UNKNOWN` key necessarily moves it. Measured, not
+    # assumed: zero of the 84 trace nodes name `sponsor.type` (no rule reads
+    # it yet), and all 23 personas' expected decisions still replay unchanged.
+    # If this literal ever moves again while the node set or a persona's
+    # decision ALSO changed, that is a behaviour change wearing a fixture's
+    # clothes — do not update the number, find out what evaluated differently.
     assert (
-        first.trace.sha256() == "acad1aff01ef5be32a0832cb06d9e2b7d2a7f4b6cdb73ea7105a1554900a557e"
+        first.trace.sha256() == "73aa8af1b255b1cf9b788a5fa3803de655999e9f77010253d4cc63c67a46619d"
     )
     assert first.decision.trace_sha256 == first.trace.sha256()
     assert second.trace == first.trace
