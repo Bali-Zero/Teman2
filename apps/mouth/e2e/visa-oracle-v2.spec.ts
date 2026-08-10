@@ -358,6 +358,12 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
       page.getByRole("heading", { name: /only purpose for the trip/i }),
     ).toBeVisible();
     await page.getByRole("button", { name: /yes — one main purpose/i }).click();
+    await expect(
+      page.getByRole("heading", { name: /who sponsors your stay/i }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: /an employer.*company in indonesia/i })
+      .click();
     await page
       .getByRole("button", { name: /yes, an indonesian entity pays me/i })
       .click();
@@ -367,6 +373,7 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
       }),
     ).toBeVisible();
 
+    await page.getByRole("button", { name: /^back$/i }).click();
     await page.getByRole("button", { name: /^back$/i }).click();
     await page.getByRole("button", { name: /^back$/i }).click();
     await page.getByRole("button", { name: /^back$/i }).click();
