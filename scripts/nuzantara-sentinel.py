@@ -939,6 +939,74 @@ MAX_RUN_DURATION_S = 240  # D1.7: abort if single run exceeds 4 minutes
 BLIND_LOOP_STATE_FILE = os.path.expanduser("~/.agent/decisions/blind_loop_counter.json")
 BLIND_LOOP_ALERT_CYCLES = int(os.getenv("SENTINEL_BLIND_LOOP_CYCLES", "3"))
 
+# Round-3 DLQ hygiene (2026-08-10): dlq_autopilot.py's sweep_terminal_corpses()
+# archives (never deletes) entries stuck TERMINAL, moving them out of
+# ~/.agent/decisions/dlq.json into this file. See that function's docstring
+# for the full class-audit of readers — this module is two of the three.
+DLQ_TERMINAL_ARCHIVE_PATH = os.path.expanduser("~/.agent/decisions/dlq_terminal_archive.json")
+
+
+def _load_dlq_terminal_job_names() -> set:
+    """Union of job names TERMINAL in the live DLQ queue and archived-TERMINAL.
+
+    W53 (2026-05-23) built this set from dlq.json alone to gate re-escalation
+    of jobs dlq_autopilot already gave up on (max_attempts reached). Once the
+    round-3 terminal-corpse sweep starts archiving those entries OUT of
+    dlq.json, a live-only read would silently forget every archived job — the
+    W53 gate in process_job() would stop suppressing it, AND
+    repairer.add_to_dlq's "TERMINAL stays TERMINAL" preserved-status re-add
+    (W61) would find no existing live entry to preserve status from, re-arming
+    the exact storm-loop TERMINAL exists to stop the moment that job fails
+    again. Unioning with the archive keeps both guards alive for the life of
+    the job (an operator's `dlq requeue <job>` is what actually clears it —
+    from either the live queue or the archive, see dlq_autopilot.py).
+
+    Never raises: a read failure on either file degrades to "no names from
+    that source" (same fail-open posture the original inline code had for
+    dlq.json — logged, not fatal).
+    """
+    names: set = set()
+    try:
+        dlq_data = json.loads(open(os.path.expanduser("~/.agent/decisions/dlq.json")).read())
+        dlq_list = dlq_data.get("queue", dlq_data if isinstance(dlq_data, list) else [])
+        names |= {
+            e.get("job") for e in dlq_list
+            if isinstance(e, dict) and e.get("status") == "TERMINAL" and e.get("job")
+        }
+    except Exception as _e:
+        logger.warning(f"W53 DLQ TERMINAL gate: failed to load dlq.json ({_e}); no live names")
+    try:
+        archive_data = json.loads(open(DLQ_TERMINAL_ARCHIVE_PATH).read())
+        archive = archive_data.get("archive", []) if isinstance(archive_data, dict) else []
+        names |= {
+            e.get("job") for e in archive
+            if isinstance(e, dict) and e.get("job")
+        }
+    except FileNotFoundError:
+        pass  # no archive yet (pre-round-3, or nothing archived so far) — not an error
+    except Exception as _e:
+        logger.warning(f"W53 DLQ TERMINAL gate: failed to load dlq_terminal_archive.json ({_e})")
+    return names
+
+
+def _dlq_archived_terminal_count() -> int:
+    """Count of entries in dlq_terminal_archive.json (round-3 DLQ hygiene).
+
+    0 — not -1 — on a missing/corrupt file: an empty/absent archive is the
+    true state before the first terminal-sweep ever runs, not a read failure.
+    Feeds dlq_terminal / dlq_phase_distribution["TERMINAL"] in run_sentinel()
+    so the W70 blind-heal-loop alert doesn't silently go dark the moment
+    corpses move out of the live dlq.json.
+    """
+    try:
+        archive_data = json.loads(open(DLQ_TERMINAL_ARCHIVE_PATH).read())
+        archive = archive_data.get("archive", []) if isinstance(archive_data, dict) else []
+        return len(archive)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return 0
+    except Exception:
+        return 0
+
 
 def _check_blind_heal_loop(status_obj: dict) -> None:
     """W70: alert when the heal-loop is parked-but-idle for N cycles.
@@ -1049,18 +1117,13 @@ def run_sentinel() -> None:
     # once per sentinel cycle (DLQ doesn't mutate during a single cycle from
     # sentinel's perspective). Empty set on read failure → behavior identical
     # to pre-W53 (graceful degradation, no new failure mode introduced).
-    dlq_terminal_set: set = set()
-    try:
-        _dlq_path = os.path.expanduser("~/.agent/decisions/dlq.json")
-        _dlq_data = json.loads(open(_dlq_path).read())
-        _dlq_list = _dlq_data.get("queue", _dlq_data if isinstance(_dlq_data, list) else [])
-        dlq_terminal_set = {
-            e.get("job") for e in _dlq_list
-            if isinstance(e, dict) and e.get("status") == "TERMINAL" and e.get("job")
-        }
-        logger.info(f"W53 DLQ TERMINAL gate: {len(dlq_terminal_set)} jobs suppressed from escalation")
-    except Exception as _e:
-        logger.warning(f"W53 DLQ TERMINAL gate: failed to load dlq.json ({_e}); falling back to no suppression")
+    # Round-3 (2026-08-10): unions live dlq.json with dlq_terminal_archive.json
+    # — see _load_dlq_terminal_job_names().
+    dlq_terminal_set = _load_dlq_terminal_job_names()
+    logger.info(
+        f"W53 DLQ TERMINAL gate: {len(dlq_terminal_set)} jobs suppressed from "
+        f"escalation (live+archived)"
+    )
 
     results = {}
     timed_out = False
@@ -1092,6 +1155,16 @@ def run_sentinel() -> None:
     except Exception:
         dlq_entries = -1
         dlq_terminal = -1
+
+    # Round-3 DLQ hygiene (2026-08-10): archived TERMINAL corpses are still
+    # unresolved (an operator hasn't `dlq requeue`d them) — they only moved
+    # out of the live dlq.json. Without this, dlq_terminal would silently drop
+    # to (near) zero the moment dlq_autopilot's sweep archives a batch, and the
+    # W70 blind-heal-loop alert below would go permanently dark even though
+    # nothing was actually resolved. See _dlq_archived_terminal_count().
+    dlq_archived_terminal = _dlq_archived_terminal_count()
+    if dlq_terminal >= 0:
+        dlq_terminal += dlq_archived_terminal
 
     log_entry = {
         "ts": time.time(),
@@ -1136,6 +1209,10 @@ def run_sentinel() -> None:
                 dlq_phase_distribution[job_phase] = dlq_phase_distribution.get(job_phase, 0) + 1
             else:
                 dlq_phase_distribution["abandoned_legacy"] += 1
+        # Round-3 DLQ hygiene: fold in archived TERMINAL corpses too (see
+        # dlq_archived_terminal above) — same reasoning, this bucket must not
+        # silently shrink just because the sweep relocated the entries.
+        dlq_phase_distribution["TERMINAL"] += dlq_archived_terminal
     except Exception:
         pass
 

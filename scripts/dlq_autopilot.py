@@ -44,6 +44,10 @@ _GATEWAY_VERDICT_RE = re.compile(r"^tg_notify:\s*(\S+)", re.MULTILINE)
 HOME = Path.home()
 AGENT_DIR = HOME / ".agent" / "decisions"
 DLQ_FILE = AGENT_DIR / "dlq.json"
+# Round-3 DLQ hygiene (2026-08-10): extends W81b's unconditional ok-corpse-sweep
+# to the TERMINAL corpse class (see sweep_terminal_corpses() below). Archive,
+# never delete — the operator's post-mortem trail survives a sweep.
+DLQ_TERMINAL_ARCHIVE_FILE = AGENT_DIR / "dlq_terminal_archive.json"
 REGISTRY_FILE = AGENT_DIR / "job_registry.json"
 LOCKS_DIR = AGENT_DIR / "locks"
 LOCK_FILE = LOCKS_DIR / "dlq_autopilot.lock"
@@ -206,6 +210,20 @@ def save_dlq(queue: list) -> None:
     tmp.replace(DLQ_FILE)
 
 
+def load_dlq_archive() -> list:
+    try:
+        return json.loads(DLQ_TERMINAL_ARCHIVE_FILE.read_text()).get("archive", [])
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+
+
+def save_dlq_archive(archive: list) -> None:
+    DLQ_TERMINAL_ARCHIVE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    tmp = DLQ_TERMINAL_ARCHIVE_FILE.with_suffix(".tmp")
+    tmp.write_text(json.dumps({"archive": archive}, indent=2))
+    tmp.replace(DLQ_TERMINAL_ARCHIVE_FILE)
+
+
 def load_registry() -> dict:
     try:
         return json.loads(REGISTRY_FILE.read_text()).get("jobs", {})
@@ -295,6 +313,65 @@ def sweep_recovered_corpses(queue: list) -> tuple[list, list]:
         else:
             kept.append(entry)
     return kept, cleared
+
+
+# Statuses this sweep treats as a permanent dead end. process_entry()'s D0.1
+# guard only ever WRITES "TERMINAL" (see below), but the set exists so a future
+# terminal-synonym status doesn't require re-deriving this logic from scratch —
+# class-not-instance, per the W107 lesson ("cured one wrapper of five").
+TERMINAL_STATUSES = {"TERMINAL"}
+
+
+def sweep_terminal_corpses(queue: list) -> tuple[list, list]:
+    """Archive (never delete) DLQ entries stuck in a terminal status.
+
+    W81b's sweep_recovered_corpses() above unconditionally drains entries whose
+    job has since recovered (state=ok). This is the OTHER corpse class: entries
+    that reached max_attempts and were marked TERMINAL by process_entry()'s D0.1
+    guard. Those are *correctly* never auto-healed again, but they were never
+    meant to live in dlq.json FOREVER either — every tick, process_entry() logs
+    "status=TERMINAL — skipping" for each one (the 2026-05-19 ops-hardening fix
+    at the top of this file exists because that exact line flooded error.log at
+    12.7 MB/day), and a live queue where 100% of entries are corpses buries any
+    fresh entry from a human or tool glancing at dlq.json (round-3 DLQ hygiene,
+    2026-08-10: 21/21 live entries were TERMINAL).
+
+    This sweep moves each TERMINAL entry, UNMODIFIED plus an archive stamp, into
+    DLQ_TERMINAL_ARCHIVE_FILE and drops it from the live queue so it never
+    reaches process_entry() again — archive, not delete: the full error_summary/
+    log_tail/classification survive for a post-mortem, on-disk and greppable.
+
+    CLASS-AUDIT (do not repeat the "cured 1-of-5 wrappers" mistake, W107): three
+    OTHER call sites read dlq.json expecting to find TERMINAL entries there and
+    must keep working once this sweep starts archiving them:
+      - this module's own `clear <job>` / `requeue <job>` CLI (both fall back to
+        the archive below when the live queue has no match)
+      - nuzantara-sentinel.py's W53 escalation-suppression gate + the W70
+        blind-heal-loop counter (both union live TERMINAL job-names with the
+        archive — see that file's dlq_terminal_set / dlq_terminal)
+      - chronic_failure_digest.py's `dlq=TERMINAL` cross-ref tag (unions too)
+    Skipping any of these silently re-arms the W61 storm-loop that TERMINAL
+    status exists to stop dead (repairer.add_to_dlq's "TERMINAL stays TERMINAL"
+    preserved-status re-add would never fire for an archived job that fails
+    again, since it would find no existing live entry to preserve status from).
+
+    Returns (kept_entries, archived_entries) — archived_entries are FULL dicts
+    (not just job names), ready to append to the archive file. Pure function:
+    callers own persistence (mirrors sweep_recovered_corpses's contract), which
+    also makes this trivially unit-testable without touching disk.
+    """
+    kept: list = []
+    archived: list = []
+    for entry in queue:
+        if entry.get("status") in TERMINAL_STATUSES:
+            archived.append({
+                **entry,
+                "archived_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "archived_by": "dlq_autopilot_terminal_sweep",
+            })
+        else:
+            kept.append(entry)
+    return kept, archived
 
 
 # ── Telegram ──────────────────────────────────────────────────────────────────
@@ -1019,6 +1096,28 @@ def run_autopilot() -> None:
                 f"🧹 DLQ corpse-sweep: drained {len(swept)} recovered job(s): "
                 f"{', '.join(swept[:8])}"
             )
+
+        # Round-3 DLQ hygiene (2026-08-10): archive the OTHER corpse class —
+        # entries stuck TERMINAL. See sweep_terminal_corpses() for why this is
+        # archive-not-delete and the class-audit of downstream readers it
+        # depends on staying correct. Archive FIRST, then shrink the live
+        # queue: if the process dies between the two writes, the worst case is
+        # a duplicate row appended to the archive on the next tick, never a
+        # lost one.
+        queue, terminal_archived = sweep_terminal_corpses(queue)
+        if terminal_archived:
+            save_dlq_archive(load_dlq_archive() + terminal_archived)
+            save_dlq(queue)
+            archived_jobs = [e.get("job", "") for e in terminal_archived]
+            logger.info(
+                f"terminal-archive: archived {len(terminal_archived)} TERMINAL "
+                f"entries: {archived_jobs}"
+            )
+            send_telegram(
+                f"🗄️ DLQ TERMINAL archive: archived {len(terminal_archived)} "
+                f"corpse(s): {', '.join(archived_jobs[:8])}"
+            )
+
         registry = load_registry()
         logger.info(f"DLQ entries: {len(queue)}")
 
@@ -1130,7 +1229,18 @@ def requeue_terminal(job_id: str) -> int:
     (save_dlq) and the same dlq_autopilot.lock as the autopilot itself, so a
     concurrent autopilot tick can't interleave a half-written queue.
 
-    Returns 0 on success, 1 if no matching TERMINAL entry, 2 if lock busy.
+    Round-3 DLQ hygiene (2026-08-10): a TERMINAL entry may no longer be in the
+    live queue at all — sweep_terminal_corpses() archives it. If the live queue
+    has no match, fall back to DLQ_TERMINAL_ARCHIVE_FILE: the MOST RECENT
+    archived record for this job (a job can be archived more than once over its
+    lifetime) is restored into the live queue with status cleared, exactly as
+    the live-entry path does, and removed from the archive. Without this
+    fallback, requeue would wrongly report "not found" for exactly the corpses
+    this sweep exists to declutter — and requeue is the recovery command every
+    TERMINAL Telegram alert names.
+
+    Returns 0 on success, 1 if no matching TERMINAL entry (live or archived),
+    2 if lock busy.
     """
     fd = acquire_lock()
     if fd is None:
@@ -1148,8 +1258,31 @@ def requeue_terminal(job_id: str) -> int:
                 entry["requeued_by"] = "operator"
                 matched += 1
         if matched == 0:
-            print(f"No TERMINAL entry found for '{job_id}' in DLQ")
-            return 1
+            archive = load_dlq_archive()
+            archive_matches = [i for i, e in enumerate(archive) if e.get("job") == job_id]
+            if not archive_matches:
+                print(f"No TERMINAL entry found for '{job_id}' in DLQ or archive")
+                return 1
+            restored = archive.pop(archive_matches[-1])  # most recent archived record
+            restored.pop("status", None)
+            restored.pop("archived_at", None)
+            restored.pop("archived_by", None)
+            restored["autopilot_attempts"] = 0
+            restored.pop("first_abandoned_at", None)
+            restored["requeued_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            restored["requeued_by"] = "operator"
+            queue.append(restored)
+            save_dlq_archive(archive)
+            save_dlq(queue)
+            print(
+                f"Requeued 1 archived TERMINAL entry for '{job_id}' "
+                f"(restored from archive, status cleared, autopilot_attempts=0) — "
+                f"will get a diagnostic pass next tick"
+            )
+            logger.info(
+                f"dlq_requeue_manual: {job_id} re-armed from TERMINAL ARCHIVE by operator"
+            )
+            return 0
         save_dlq(queue)
         print(
             f"Requeued {matched} TERMINAL entry/entries for '{job_id}' "
@@ -1173,7 +1306,20 @@ if __name__ == "__main__":
         queue = [e for e in queue if not (e["job"] == job_id and e.get("status") == "TERMINAL")]
         after = len(queue)
         if before == after:
-            print(f"No TERMINAL entry found for '{job_id}' in DLQ")
+            # Round-3 DLQ hygiene: not in the live queue — check the terminal
+            # archive (sweep_terminal_corpses may have already moved it there).
+            archive = load_dlq_archive()
+            before_a = len(archive)
+            archive = [e for e in archive if e.get("job") != job_id]
+            if len(archive) == before_a:
+                print(f"No TERMINAL entry found for '{job_id}' in DLQ or archive")
+            else:
+                save_dlq_archive(archive)
+                print(
+                    f"Cleared archived TERMINAL entry for '{job_id}' "
+                    f"({before_a - len(archive)} removed)"
+                )
+                logger.info(f"dlq_clear_manual: {job_id} removed from TERMINAL archive by operator")
         else:
             save_dlq(queue)
             print(f"Cleared TERMINAL entry for '{job_id}' from DLQ ({before - after} removed)")
@@ -1186,6 +1332,12 @@ if __name__ == "__main__":
         if _cleared:
             save_dlq(_kept)
         print(f"corpse-sweep: cleared {len(_cleared)} recovered entries: {_cleared}")
-        print(f"remaining: {len(_kept)}")
+        _kept2, _terminal_archived = sweep_terminal_corpses(_kept)
+        if _terminal_archived:
+            save_dlq_archive(load_dlq_archive() + _terminal_archived)
+            save_dlq(_kept2)
+        _archived_jobs = [e.get("job", "") for e in _terminal_archived]
+        print(f"terminal-archive: archived {len(_terminal_archived)} TERMINAL entries: {_archived_jobs}")
+        print(f"remaining: {len(_kept2)}")
     else:
         run_autopilot()

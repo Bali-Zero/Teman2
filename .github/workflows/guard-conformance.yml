@@ -157,6 +157,19 @@ jobs:
           set -euo pipefail
           python3 infra/claude-hooks/test_w105_nested_worktree_removal.py
 
+      # W117 (2026-08-10): the git-verb channel could not see an ssh-dispatched
+      # DISCARD at all — _strip_noise() empties the quoted payload by design
+      # (W83), so `ssh pro 'cd ~/nuzantara && git reset --hard'` reached the
+      # verdict as no_blocked_verb and the remote-dispatch exemption was never
+      # consulted. That command, run to realign Pro's main checkout, destroyed
+      # 159 intel-publish-ledger entries + 24 open escalations — runtime state
+      # no commit holds, which is exactly why scripts/pro/pro-git-pull.sh exists.
+      - name: W117 ssh-dispatched discard of a remote main checkout
+        if: steps.relevant.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          python3 infra/claude-hooks/test_w117_remote_discard.py
+
       # Property/fuzz corpus (445 generated command shapes across both
       # decision channels of worktree_isolation.py) — the reusable harness
       # this same superscar #3 family motivated after 5 hand-written
