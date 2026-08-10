@@ -22,6 +22,8 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 
 ## 1. LIVE STATE (last update 2026-08-10 — keep current)
 
+- TRACK BOT-KBLI claimed by M5/2026-08-11
+
 - **🧪 BATTERY v5 — THE FOUR OPEN BETA CURES, RE-MEASURED 13 DAYS LATER (2026-08-10).** The
   2026-07-28 team beta left four cures open and nobody had asked whether they were still
   true. 14 questions, prod container, synthetic senders. Script: session scratchpad
