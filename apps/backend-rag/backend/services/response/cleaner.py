@@ -468,6 +468,36 @@ _PREAMBLE_PATTERNS: tuple[str, ...] = (
     # ("Waiting for your passport scan, we can start the application." -> "").
     r"^Waiting for (your|user) (next |new )?"
     r"(quer(y|ies)|input|response|message|instruction)s?\b[^.]*\.\s*",
+    # ── The monologue the TOKEN strip left standing (measured 2026-08-11) ──
+    # `_MARKER_PATTERNS` removes the literal `internal_monologue`; it deliberately
+    # does NOT guess where an untagged monologue ends. That was right, and it was
+    # not enough: probing the Indonesian paid-up-capital ask (probe 35, prod,
+    # `ctx=1 ev=0.85` — retrieval had SUCCEEDED) returned 6,214 characters opening
+    # `internal_monologue The user is asking for the minimum paid-up capital for
+    # PT PMA. I need to find this information **ONLY** within the provided
+    # <verified_data>. Let's examine the provided RAG results.` Stripping the token
+    # shortened that by 20 characters and shipped the rest. These three peel the
+    # SENTENCES, from the preamble position only — where the answer has not started.
+    #
+    # Third person about the reader: a client-facing answer never calls the person
+    # it is addressing "the user". The VERB is load-bearing, not decoration —
+    # `^The user\b` alone eats "The user manual for OSS is published by BKPM."
+    # (in LEGITIMATE_ANSWER_FRAGMENTS for exactly this reason).
+    r"^(Okay[,.]?\s*)?[Tt]he user (is asking|is requesting|asks|wants|would like|"
+    r"needs|is inquiring|is looking)\b[^.]*\.\s*",
+    # Naming the store it was told to consult. The lookahead is the load-bearing
+    # half, same idiom as the CRITICAL/IMPORTANT pattern above: without it this
+    # deletes "I need to find the missing page of your akta." — a real request to
+    # a client. The object must be the MACHINERY, never a client document.
+    r"^I need to (find|locate|look for|search for)\b"
+    r"(?=[^\n]*\b(verified[ _]data|provided context|search results|RAG results|"
+    r"knowledge base|the provided|retrieved (context|results))\b)"
+    r"[^.]*\.\s*",
+    # Announcing the inspection of a retrieval store. The qualifier is REQUIRED:
+    # unqualified, this deletes "Let's review the results of your tax assessment."
+    r"^Let'?s (examine|look at|review|inspect) the "
+    r"(provided |retrieved )?(RAG|search|retrieval|vector|verified[ _]data)"
+    r"\s*(results|chunks)?\b[^.]*\.\s*",
 )
 
 # DROPPED, not moved — each was measured deleting ordinary consultant English

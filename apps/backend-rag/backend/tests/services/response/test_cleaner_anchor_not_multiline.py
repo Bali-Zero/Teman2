@@ -60,6 +60,13 @@ LEGITIMATE_ANSWER_FRAGMENTS = [
     "I need to answer based on the akta you sent - page 2 lists the directors.",
     "The company must appoint at least one director and one commissioner.",
     "Your NIB already covers KBLI 68111, so no new registration is needed.",
+    # The three traps guarding the 2026-08-11 monologue-sentence patterns. Each
+    # one shares the OPENING of a pattern and must survive it: only the verb, the
+    # lookahead and the qualifier tell them apart.
+    "The user manual for OSS is published by BKPM.",
+    "I need to find the missing page of your akta before we file.",
+    "I need your passport scan to proceed with the application.",
+    "Let's review the results of your tax assessment together.",
 ]
 
 
@@ -176,6 +183,28 @@ MONOLOGUE_CASES = [
         "don't need additional thoughts",
     ),
     ("But there are still things I am unsure about. The fee is IDR 12.", "still things I am"),
+    # GUILT for the sentences the token-strip left standing. The first is the
+    # shape MEASURED in production on 2026-08-11 (probe 35, Indonesian paid-up
+    # ask, ctx=1 ev=0.85 — retrieval had succeeded), reproduced with its literal
+    # token so the marker strip and the sentence strip are exercised together.
+    (
+        "internal_monologue The user is asking for the minimum paid-up capital "
+        "for PT PMA. The paid-up capital is IDR 2.5 billion.",
+        "The user is asking",
+    ),
+    (
+        "Okay, the user wants to know about visa extension. You may extend once.",
+        "the user wants to know",
+    ),
+    (
+        "I need to find this information only within the provided verified_data. "
+        "The fee is IDR 12,000,000.",
+        "I need to find this information",
+    ),
+    (
+        "Let's examine the provided RAG results. LKPM is filed quarterly.",
+        "Let's examine the provided RAG results",
+    ),
 ]
 
 
