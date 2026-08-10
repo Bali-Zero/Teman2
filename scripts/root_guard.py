@@ -38,6 +38,11 @@ WHITELIST_FILES: set[str] = {
     "AGENTS.md",
     "GEMINI.md",
     "codex.md",
+    # fleet-order per-CLI door files (human/prompt-referenced; see AGENTS.md
+    # §17 + FLEET_TOPOLOGY.json) — NOT auto-discovered by their CLIs yet,
+    # see PENDING-ARMS.
+    "kimi.md",
+    "qwen.md",
     # Standard project files
     "README.md",
     "LICENSE",
@@ -61,6 +66,9 @@ WHITELIST_FILES: set[str] = {
     "FOLLOWUPS.md",
     # SSOT config
     "MODEL_TOPOLOGY.json",
+    # Agent-topology SSOT, sibling of MODEL_TOPOLOGY.json above (fleet-order
+    # landing 2026-08-10) — cloud fleet accounts/role-chains.
+    "FLEET_TOPOLOGY.json",
     # Entry launcher
     "sentinel",
     # Symlinks (organizational)

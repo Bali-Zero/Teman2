@@ -38,6 +38,25 @@ CASES = {
     "git checkout main": True,
     "git stash": True,
     "git reset --hard": True,
+    # W117 class-audit (2026-08-10): `clean` and `restore` were never in this
+    # enumeration, so five shapes of the SAME damage passed in the main checkout
+    # while reset/checkout/stash blocked. Both letter tests read the flag CLUSTER,
+    # not a string ending in the letter — the first draft let `--force` through
+    # and blocked `-ndf`, which git treats as a dry run (form vs entity, #3).
+    "git clean -fd": True,
+    "git clean -fdx": True,
+    "git clean -f": True,
+    "git clean --force": True,
+    "git clean -xdf": True,
+    "git restore apps/": True,
+    "git restore --staged .": True,
+    # ... and the read-only probes stay spared (W85's rule, applied to `clean`):
+    "git clean -n": False,
+    "git clean --dry-run": False,
+    "git clean -fdn": False,
+    "git clean -ndf": False,
+    "git clean -n -d": False,
+    "git clean -x": False,
     # must ALLOW
     'git commit -m "x"': False,
     'git commit -m "add a feature"': False,

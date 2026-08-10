@@ -6,10 +6,10 @@
 > active rule requires shadow-period + zero false-positives + human-gate
 > (P7 §3.4). Kill-switch: `LESSON_HARVESTER_OFF=1`.
 
-- scars scanned: **11**
+- scars scanned: **12**
 - mechanical candidates (recurring ≥3): **7**
 - consultive (single-occurrence): **1**
-- rejected (no objective anchor, G1): **3**
+- rejected (no objective anchor, G1): **4**
 
 ## Recurring patterns (the objective recurrence signal, G4)
 
@@ -21,7 +21,7 @@
 - `W77` × 3
 - `W79` × 3
 - `W82` × 4
-- `W83` × 3
+- `W83` × 4
 
 ## Mechanical candidates (→ scar_replay pipeline, gated)
 
@@ -41,4 +41,5 @@
 
 - 🐛 W111 (P2 STRUCTURAL): `gh run rerun` rigioca un merge-ref STANTIO — «ho rilanciato il check» non è «l'ho testato contro main di adesso» — no objective anchor (G1)
 - 🐛 W112 (P1 STRUCTURAL): il formattatore è uno scrittore che nessuno controlla, e giudica per FORMA — no objective anchor (G1)
+- 🐛 W117 (P0 STRUCTURAL): la guardia non aveva un buco — non poteva VEDERE il gesto, e a fidarmi del ramo sbagliato avrei scritto codice morto — no objective anchor (G1)
 - 🚨 P0 SECURITY: `apps/cell/.env` holds prod superuser password in cleartext, readable by plain `cat` (2026-06-03) — no objective anchor (G1)

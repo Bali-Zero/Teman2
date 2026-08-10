@@ -231,19 +231,24 @@ def _classify(src: str) -> str:
     return "not-a-caller"
 
 
+# (fixture, verdetto atteso, cosa si rompe se sbaglia). Tabella e non una catena
+# di `if`, così il numero di casi è MISURATO e stampabile: la riga di successo
+# nomina il selftest, e "è girato" non si confonde con "è stato saltato".
+_SELFTEST_CASES: list[tuple[str, str, str]] = [
+    (_GUILTY_BARE, "blind", "un chiamante cieco NON viene colto"),
+    (_GUILTY_PARSE_RC0, "blind", "parse+log+returncode viene assolto"),
+    (_GUILTY_PARSE_TRUE, "blind", "parse+log+True viene assolto"),
+    (_INNOCENT_SEMANTIC, "reading", "un chiamante corretto viene accusato"),
+    (_BYSTANDER, "not-a-caller", "un subprocess estraneo al gateway viene giudicato"),
+]
+
+
 def selftest() -> list[str]:
-    failures = []
-    if _classify(_GUILTY_BARE) != "blind":
-        failures.append("selftest: un chiamante cieco NON viene colto")
-    if _classify(_GUILTY_PARSE_RC0) != "blind":
-        failures.append("selftest: parse+log+returncode viene assolto")
-    if _classify(_GUILTY_PARSE_TRUE) != "blind":
-        failures.append("selftest: parse+log+True viene assolto")
-    if _classify(_INNOCENT_SEMANTIC) != "reading":
-        failures.append("selftest: un chiamante corretto viene accusato")
-    if _classify(_BYSTANDER) != "not-a-caller":
-        failures.append("selftest: un subprocess estraneo al gateway viene giudicato")
-    return failures
+    return [
+        f"selftest: {why}"
+        for fixture, expected, why in _SELFTEST_CASES
+        if _classify(fixture) != expected
+    ]
 
 
 def main() -> int:
@@ -262,7 +267,17 @@ def main() -> int:
               file=sys.stderr)
         return 2
 
-    print(f"gateway callers: {len(reading)} leggono il verdetto, {len(blind)} ciechi")
+    # Name the selftest in the SUCCESS line, not only in the failure path. It
+    # runs unconditionally above, but a reader who cannot see that in the output
+    # cannot tell "the self-check passed" from "the self-check was skipped" —
+    # measured 2026-08-10: a PROVE-LIVE run of this guard passed a `--selftest`
+    # flag that does not exist, got byte-identical output, and read that as
+    # evidence the selftest had been silently ignored. A probe must declare what
+    # it verified (the same class as W107's "the probe can have the disease").
+    print(
+        f"gateway callers: {len(reading)} leggono il verdetto, {len(blind)} ciechi"
+        f" (selftest classificatore: {len(_SELFTEST_CASES)} casi OK)"
+    )
     if blind:
         print("\nUn chiamante che ignora il verdetto non distingue una CONSEGNA da un", file=sys.stderr)
         print("RIFIUTO: il gateway esce 0 anche su deduped / p0_overflow_spooled /", file=sys.stderr)

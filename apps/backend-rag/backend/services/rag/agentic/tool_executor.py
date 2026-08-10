@@ -28,6 +28,10 @@ from backend.services.agents.confirmation_service import (
     ConfirmationTimeout,
 )
 from backend.services.agents.tool_authorizer import ToolAuthorizer
+from backend.services.rag.agentic._tool_denial import (
+    ANONYMOUS_DENIAL_OBSERVATION,
+    denial_observation,
+)
 from backend.services.tools.definitions import BaseTool, ToolCall
 
 logger = logging.getLogger(__name__)
@@ -71,7 +75,14 @@ def _strip_reserved_args(arguments: dict[str, Any]) -> dict[str, Any]:
 # did. This constant is the fixed, non-diagnostic string every anonymous
 # caller gets instead — it names no tool, no control, no internal system,
 # so the model has nothing interesting to narrate.
-_ANONYMOUS_DENIAL_OBSERVATION = "This capability is not available in this conversation."
+#
+# MOVED to _tool_denial.py (2026-08-10) and re-exported here under the
+# original names, so every existing call site and test is untouched. The
+# string had to become readable by ONE MORE consumer: _reasoning_evidence,
+# which was scoring this exact denial as a successful tool call worth 0.85
+# evidence. A denial is now recognised by the module that mints it instead of
+# being guessed at from its prose — see _tool_denial.py for the measurement.
+_ANONYMOUS_DENIAL_OBSERVATION = ANONYMOUS_DENIAL_OBSERVATION
 
 
 def _denial_observation(agent_role: Any | None, detail: str) -> str:
@@ -96,9 +107,7 @@ def _denial_observation(agent_role: Any | None, detail: str) -> str:
     reason, PII-free — only the string handed back to the LLM is redacted
     here.
     """
-    if agent_role is None:
-        return _ANONYMOUS_DENIAL_OBSERVATION
-    return f"Tool execution denied: {detail}"
+    return denial_observation(agent_role, detail)
 
 
 # Module-level singletons — set by service_initializer.py at app startup.
