@@ -1,9 +1,9 @@
 brief_ref: evidence/brief.yml
 plan_ref: "PR #4007 — runtime worktree dependency repair"
 diff:
-  files: 10
-  insertions: 0
-  deletions: 0
+  files: 13
+  insertions: 1137
+  deletions: 130
   hotzone_hits:
     - ".github/workflows/broker-hygiene.yml"
 receipts:
@@ -56,9 +56,11 @@ residual_risks:
   - "PROVE-LIVE still requires the declared HOME-fork sync and the next scheduled nightly run after an external operator merges the PR"
   - "the dormant M5 nightly payload remains deliberately outside this PR's activation scope"
 sources:
-  - "scripts/agent_start.py::SYMLINK_TARGETS"
+  - "scripts/codex_automation_lib.sh"
   - "scripts/codex/codex-nightly-autofix-ci.sh"
+  - ".husky/pre-push"
+  - ".github/CODEOWNERS"
   - "infra/home-fork/declared-pairs.json"
   - "research/operations/2026-08-09-harness-v2-teman2.md §1/§5/§6"
 pii_scan: clean
-size_tokens: 1131
+size_tokens: 1024

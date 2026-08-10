@@ -3,11 +3,11 @@ gear: 3
 l_level: L3
 gate_class: fable
 objective: |
-  Make the Codex nightly autofix runtime worktree usable by linking the same
-  untracked dependencies as the interactive worktree broker, repairing both
-  missing and stale links, and refusing to claim readiness when link setup
-  fails. Reconcile the PR with current main and carry executable regression
-  coverage plus the required Gear-3 evidence artifacts.
+  Make the Codex nightly autofix runtime worktree usable without allowing an
+  unattended failed-branch repair to act on the primary checkout, borrow host
+  secrets, or control its outer push. Repair stale virtual-environment links,
+  reject ambiguous runtime and run provenance, and carry executable
+  trust-boundary regression coverage plus the required Gear-3 evidence.
 constraints:
   - ".github/workflows/broker-hygiene.yml is a CODEOWNERS Tier-1 hot-zone; actionlint must pass and no existing gate may be weakened"
   - "unattended runtime setup may link only the backend virtual environment from the primary checkout; it must never link dotenv files, node_modules, or Husky dispatchers"
