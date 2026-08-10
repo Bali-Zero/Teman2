@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # ai-dispatch.sh v3 — Nuzantara Federation CLI (3-tier: agents/services/pipelines)
 #
-# Works on both Pro and Air. Auto-detects available CLIs.
+# Works on both Pro and Air-M5. Auto-detects available CLIs.
 #
 # AGENTS (autonomous, dispatchable):
-#   Gemini CLI (3.1 Pro)   = Il Consigliere — 1M ctx, Google Search
-#   Codex CLI (GPT-5.4)    = Il Soldato — sandbox kernel-level
-#   Claude CLI (Opus 4.6)  = Il Giudice — review, red team (read-only)
-#   DeepSeek R1 (API)      = Il Pensatore — deep chain-of-thought
-#   Aider (OpenRouter)     = RETIRED pending route reconciliation/canary
+#   Gemini via agy         = Il Consigliere — Google Search + review
+#   Codex CLI (config model)  = Il Soldato — sandbox kernel-level
+#   Claude CLI (account model)= Il Giudice — review, red team (read-only)
+#   DeepSeek direct API    = RETIRED — topology-managed doors only
+#   Aider provider route   = RETIRED pending reconciliation/canary
 #
 # SERVICES (stateless, called by orchestrator):
 #   NotebookLM (nlm CLI)   = L'Oracolo — grounded citations
@@ -406,7 +406,7 @@ run_codex() {
     local timeout="${3:-180}"
     require_codex
     check_safety "$prompt"
-    log "Codex GPT-5.4 → sandbox=$sandbox"
+    log "Codex CLI → sandbox=$sandbox [model selected by active config/profile]"
 
     local start_time exit_code output
     start_time=$(date +%s)
@@ -516,8 +516,8 @@ run_claude() {
     while IFS= read -r provider_var; do
         case "$provider_var" in
             CLAUDE_CODE_OAUTH_TOKEN*|CLAUDE_CODE_USE_*|ANTHROPIC_*|AWS_*|VERTEX_AI_*|\
-            OPENAI_*|OPENROUTER_*|GEMINI_*|GOOGLE_API_KEY|\
-            GOOGLE_APPLICATION_CREDENTIALS|CLOUD_ML_REGION|DEEPSEEK_*|\
+            OPENAI_*|OPENROUTER_*|DEEPSEEK_*|GEMINI_*|GOOGLE_API_KEY|\
+            GOOGLE_APPLICATION_CREDENTIALS|CLOUD_ML_REGION|\
             TOGETHER_*|FIREWORKS_*|MISTRAL_*|COHERE_*|GROQ_*|XAI_*|PERPLEXITY_*)
                 oauth_env+=(-u "$provider_var")
                 ;;
@@ -553,7 +553,7 @@ run_claude() {
         local attempt_timeout=$(( remaining / attempts_left ))
         [ "$attempt_timeout" -lt 1 ] && attempt_timeout=1
 
-        log "Claude Code (Opus 4.6) → $mode [token=$label, tools=$allowed_tools]"
+        log "Claude Code → $mode [model=account/config default, token=$label, tools=$allowed_tools]"
 
         local start_time exit_code output attempt_out attempt_err
         start_time=$(date +%s)
@@ -730,7 +730,7 @@ case "$CMD" in
         json_output "research" "$duration" "$output" "$ec"
         ;;
 
-    # EXPLORE: Gemini 1M ctx for codebase investigation (cached 24h)
+    # EXPLORE: config-selected Antigravity model for codebase investigation (cached 24h)
     explore)
         [ -z "$PROMPT" ] && { err "Usage: ai-dispatch.sh explore \"question\""; exit 1; }
         check_safety "$PROMPT"
@@ -762,80 +762,14 @@ case "$CMD" in
         echo "$result"
         ;;
 
-    # REASONING: DeepSeek R1 671b via API — deep chain-of-thought reasoning
-    # Injects Nuzantara system context for grounded answers
-    # Best for: architecture decisions, migration strategies, complex debugging
+    # REASONING: legacy direct DeepSeek API route — retired and fail-closed.
+    # FLEET_TOPOLOGY owns the current reasoner chain; this command is not wired
+    # to its local or TP1 probation doors and must never spend via api.deepseek.com.
     reasoning)
         [ -z "$PROMPT" ] && { err "Usage: ai-dispatch.sh reasoning \"complex problem\""; exit 1; }
-        check_safety "$PROMPT"
-        CONTEXT_FILE="$PROJECT_ROOT/scripts/nuzantara_system_context.md"
-        start=$(date +%s)
-
-        if [ -z "${DEEPSEEK_API_KEY:-}" ]; then
-            err "DEEPSEEK_API_KEY not set. Export it or add to .env"
-            exit 1
-        fi
-
-        log "DeepSeek R1 671b → reasoning [max_tokens=8192, with Nuzantara context]"
-
-        # Pass user-controlled data as argv; never interpolate it into Python source.
-        output=$(python3 - "$CONTEXT_FILE" "$PROMPT" 2>&1 <<'PY'
-import os
-import sys
-from pathlib import Path
-
-import httpx
-
-context_path = Path(sys.argv[1])
-ctx = context_path.read_text(encoding="utf-8") if context_path.is_file() else ""
-prompt = sys.argv[2]
-messages = [{"role": "user", "content": prompt}]
-if ctx:
-    messages.insert(0, {"role": "system", "content": ctx})
-
-r = httpx.post(
-    "https://api.deepseek.com/chat/completions",
-    headers={
-        "Authorization": f"Bearer {os.environ['DEEPSEEK_API_KEY']}",
-        "Content-Type": "application/json",
-    },
-    json={
-        "model": "deepseek-v4-pro",  # legacy alias routed to V4-Flash
-        "messages": messages,
-        "max_tokens": 8192,
-        "temperature": 0,
-    },
-    timeout=180,
-)
-
-d = r.json()
-if "error" in d:
-    error_message = d["error"].get("message", "unknown")
-    print(f"ERROR: {error_message}", file=sys.stderr)
-    sys.exit(1)
-
-msg = d["choices"][0]["message"]
-reasoning = msg.get("reasoning_content", "")
-answer = msg.get("content", "")
-u = d.get("usage", {})
-
-# Output reasoning summary + answer
-if reasoning:
-    details = u.get("completion_tokens_details", {})
-    print(
-        f"[Reasoning: {len(reasoning)} chars, "
-        f"{details.get('reasoning_tokens', '?')} tokens]"
-    )
-print(answer)
-cost = (u.get("prompt_tokens", 0) * 0.55 + u.get("completion_tokens", 0) * 2.19) / 1_000_000
-print(f"[Cost: ${cost:.4f}]")
-PY
-        ) && ec=0 || ec=$?
-
-        duration=$(( $(date +%s) - start ))
-        prompt_hash=$(echo "$PROMPT" | shasum -a 256 | cut -d' ' -f1)
-        audit_log "reasoning" "$prompt_hash" "$duration" "$ec"
-        json_output "reasoning" "$duration" "$output" "$ec"
+        err "BLOCKED: DEEPSEEK_DIRECT_API_RETIRED — api.deepseek.com is not an armed fleet door"
+        err "Use the reasoner chain in FLEET_TOPOLOGY.json; TP1 remains probation-only."
+        exit 2
         ;;
 
     # WEBSEARCH: Exa deep web search with full content + citations (Brave fallback)
@@ -944,7 +878,7 @@ PY
             err "  (\"massive repo cleanup — untrack 739 files\"); the wrapper survived, the backend did not."
             err "  No live system depends on this command (verified 2026-06-07: no hook/cron/LaunchAgent/code invokes it)."
             err "  Until it is rebuilt, run the preflight MANUALLY: the 4-LLM panel in CLAUDE.md §6"
-            err "  (Gemini agy + Codex + DeepSeek + optional NB-1). Restoring the automated gate is a FASE-3 task."
+            err "  (Gemini agy + Codex + Kimi K3 + optional NB-1). Restoring the automated gate is a FASE-3 task."
             audit_log "preflight-${LEVEL}" "$(echo "$TASK" | shasum -a 256 | cut -d' ' -f1)" "0" "127"
             exit 127
         fi
@@ -1283,13 +1217,22 @@ for m, count in machines.most_common():
     # ║  INFO                                           ║
     # ╚══════════════════════════════════════════════════╝
 
-    status)
-        echo "=== AI Dispatch v3 — Federation [$MACHINE] ==="
+    status|status-auth)
+        audit_args=()
+        if [ "$CMD" = "status-auth" ]; then
+            echo "=== AI Dispatch v3 — Local auth scope (invoked from $MACHINE) ==="
+            warn "  Checking one effective local auth/security context only."
+            warn "  Run status-auth locally on each host; profiles/accounts are not enumerated."
+            audit_args+=(--check-auth)
+        else
+            echo "=== AI Dispatch v3 — Fleet scope pro,m5 (invoked from $MACHINE) ==="
+            audit_args+=(--fleet --roles pro,m5)
+        fi
         echo ""
-        echo "Canonical Pro/M5 LLM client audit:"
+        echo "Canonical LLM client audit:"
         audit_rc=0
         if [ -x "$PROJECT_ROOT/scripts/llm_fleet_audit.py" ]; then
-            "$PROJECT_ROOT/scripts/llm_fleet_audit.py" --fleet --roles pro,m5 --check-auth || audit_rc=$?
+            "$PROJECT_ROOT/scripts/llm_fleet_audit.py" "${audit_args[@]}" || audit_rc=$?
         else
             warn "  scripts/llm_fleet_audit.py MISSING"
             audit_rc=2
@@ -1322,7 +1265,7 @@ ai-dispatch.sh v3 — Nuzantara Federation (3-tier: agents/services/pipelines)
 
 AGENTS — Autonomous runtimes (dispatchable, accept open-ended tasks):
 ┌─────────────────────────────────────────────────────────────────────┐
-│ GEMINI (read-only, 1M context, $0):                                │
+│ GEMINI COMMANDS (routed through agy, read-only):                   │
 │   explore            "question"     Codebase analysis (cached 24h) │
 │   search             "query"        Google grounded web search     │
 │   redteam            "solution"     Adversarial pre-deploy review  │
@@ -1342,13 +1285,13 @@ AGENTS — Autonomous runtimes (dispatchable, accept open-ended tasks):
 │   codex-fix-batch    "pattern"      Batch fix multiple tests       │
 │   codex-migrate      "desc"         Alembic migration in sandbox   │
 │                                                                     │
-│ CLAUDE CLI (read-only, Opus 4.6, $0 Max plan):                    │
+│ CLAUDE CLI (read-only, account/config model, $0 Max plan):        │
 │   claude-review      "prompt"       Deep code review               │
-│   claude-redteam     "solution"     Red team (Opus reasoning)      │
+│   claude-redteam     "solution"     Red team (account/config model)│
 │   claude-explain     "question"     Explain code/architecture      │
 │                                                                     │
-│ DEEPSEEK R1 (671b, chain-of-thought, ¢):                          │
-│   reasoning          "problem"      Deep reasoning + Nuz context   │
+│ DIRECT DEEPSEEK API (RETIRED — not an armed fleet door):          │
+│   reasoning          "problem"      BLOCKED; use topology chain    │
 │                                                                     │
 │ AGY / SWARM COMMANDER (Antigravity Gemini, bounded):               │
 │   agy-flash          "prompt"       Gemini 3.5 Flash High review   │
@@ -1383,7 +1326,7 @@ PIPELINES — Scheduled/triggered workflows (NOT dispatchable):
 PREFLIGHT SDD — Mandatory pre-implementation spec (auto-triggered by orchestrator):
 ┌─────────────────────────────────────────────────────────────────────┐
 │   preflight      "task"    L2 default (45 min): explore+search→NLM │
-│   preflight-l1   "task"    L1 quick (10-15 min): explore→reasoning │
+│   preflight-l1   "task"    L1 quick (10-15 min): explore→agy-pro  │
 │   preflight-l2   "task"    L2 full (45 min): +NLM gate + redteam   │
 │   preflight-l3   "task"    L3 deep (90 min): +sandbox + HITL        │
 │                                                                     │
@@ -1402,7 +1345,10 @@ CACHE & METRICS:
   stats / archive                 Audit log analytics + cleanup
 
 INFO:
-  status                          System status + CLI versions + peer check
+  status                          Pro/M5 versions/presence; no auth probes
+  status-auth                     Local selected binary + one effective auth context
+                                  Run locally per host; does not enumerate profiles/accounts
+                                  Exit 1 means declared drift; 2 means audit error
   help                            This guide
 
 DELEGATION CHECKPOINT (ask before every task):
@@ -1410,19 +1356,19 @@ DELEGATION CHECKPOINT (ask before every task):
   2. Domain question (visa/tax)?   → oracolo-nb "immigration" "question"
   3. Need web info with citations? → websearch (Exa/Brave, full content)
   4. Deep research needed?         → research "topic" deep
-  5. Explore >5 files in code?     → explore (Gemini 1M ctx)
+  5. Explore >5 files in code?     → explore (Antigravity config model)
   6. Need Google Search grounded?  → search (Gemini)
-  7. Complex architecture problem? → reasoning (DeepSeek R1 671b)
+  7. Complex architecture problem? → follow FLEET_TOPOLOGY reasoner chain
   8. Risky change to the repo?     → sandbox (Codex isolated)
   9. Critical deploy coming?       → redteam + claude-redteam
  10. Need bounded cloud swarm?      → swarm-commander + agy-pro
   All "No"? → Do it yourself. Don't delegate for sport.
 
-MODELS:
-  Gemini cascade: 3.1 Pro (1M) → 2.5 Pro → 2.5 Flash (auto-fallback 429)
-  Agy: Gemini 3.5 Flash High (fast) / Gemini 3.1 Pro High (deep) via Swarm Commander
-  Codex: GPT-5.4 (sandbox kernel-level)
-  DeepSeek: R1 671b ($0.55/M in, $2.19/M out)
+MODELS (routing SSOT: FLEET_TOPOLOGY.json):
+  Agy: Gemini 3.5 Flash High (fast) / Gemini 3.1 Pro High (deep)
+  Codex: active config/profile selects the model; dispatcher does not override it
+  Claude: active account/config selects the model; dispatcher does not use --model
+  DeepSeek direct API: RETIRED; TP1 door is probation-only and not wired here
   Aider: RETIRED pending topology reconciliation and provider canary
   NLM: Google AI Ultra (9 notebooks, 600 sources each)
 
@@ -1431,7 +1377,7 @@ SECURITY:
   ✓ Gemini: --sandbox --approval-mode plan (read-only absolute)
   ✓ Agy: --sandbox + --print-timeout + external timeout + prompt-hash audit
   ✓ Codex: --sandbox (read-only or workspace-write)
-  ✓ Timeout: 120s Gemini, 180-300s Codex, 180s DeepSeek
+  ✓ Timeout: 120s Gemini/agy, 180-300s Codex
   ✓ Protected files: fly.toml, dependencies.py, .env — readable not writable
   ✗ NEVER: --yolo, --dangerously-bypass, danger-full-access
 HELP

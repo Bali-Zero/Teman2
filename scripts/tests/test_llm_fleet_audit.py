@@ -7,6 +7,8 @@ import importlib.util
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -95,6 +97,14 @@ def executable(path: Path, body: str = "#!/bin/sh\necho 1.2.3\n") -> Path:
     return path
 
 
+def copied_dispatcher(tmp_path: Path) -> Path:
+    target = tmp_path / "scripts" / "ai-dispatch.sh"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(REPO / "scripts" / "ai-dispatch.sh", target)
+    target.chmod(0o755)
+    return target
+
+
 class FakeRunner:
     def __init__(self, versions: dict[str, str], auth_rc: int = 0) -> None:
         self.versions = versions
@@ -133,6 +143,7 @@ def audit_one(
         home=tmp_path,
         check_auth=check_auth,
         runner=effective_runner,
+        auth_runner=effective_runner,
     )
 
 
@@ -235,16 +246,31 @@ def test_checked_in_manifest_contains_no_email_address() -> None:
 
 def test_ai_dispatch_status_delegates_to_roster_audit_not_stale_peer_logic() -> None:
     text = (REPO / "scripts" / "ai-dispatch.sh").read_text(encoding="utf-8")
-    status_block = text.split("    status)", maxsplit=1)[1].split(
+    status_block = text.split("    status|status-auth)", maxsplit=1)[1].split(
         "    help|*)", maxsplit=1
     )[0]
-    assert 'llm_fleet_audit.py" --fleet --roles pro,m5' in status_block
-    assert "--check-auth" in status_block
+    assert "audit_args+=(--fleet --roles pro,m5)" in status_block
+    assert 'if [ "$CMD" = "status-auth" ]' in status_block
+    assert "audit_args+=(--check-auth)" in status_block
+    assert "one effective local auth/security context only" in status_block
+    assert "profiles/accounts are not enumerated" in status_block
+    assert 'llm_fleet_audit.py" "${audit_args[@]}"' in status_block
     assert "Air decommission" not in status_block
     assert 'exit "$audit_rc"' in status_block
     assert text.count("AIDER_ROUTE_RETIRED") == 2
+    assert text.count("DEEPSEEK_DIRECT_API_RETIRED") == 1
+    assert "https://api.deepseek.com" not in text
+    assert "httpx.post" not in text
     assert "openrouter/deepseek/deepseek-chat-v3-0324" not in text
     assert "openrouter/anthropic/claude-sonnet-4" not in text
+    assert "GPT-5.4" not in text
+    assert "Opus 4.6" not in text
+    assert "GPT-5.6 family" not in text
+    assert "Opus 5" not in text
+    assert "Opus reasoning" not in text
+    assert "Gemini 1M ctx" not in text
+    assert "model=account/config default" in text
+    assert "active config/profile selects the model" in text
 
 
 def test_ai_dispatch_python_bridges_do_not_interpolate_user_input() -> None:
@@ -253,12 +279,160 @@ def test_ai_dispatch_python_bridges_do_not_interpolate_user_input() -> None:
     assert "prompt = '''$PROMPT'''" not in text
     assert "query = '''$PROMPT'''" not in text
     assert "count = int('$count')" not in text
-    assert 'python3 - "$CONTEXT_FILE" "$PROMPT"' in text
     assert 'python3 - "$PROMPT" "$count"' in text
     python_blocks = re.findall(r"<<'PY'\n(.*?)\nPY\n", text, flags=re.DOTALL)
-    assert len(python_blocks) == 3
+    assert len(python_blocks) == 2
     for index, source in enumerate(python_blocks):
         compile(source, f"ai-dispatch-heredoc-{index}.py", "exec")
+
+
+@pytest.mark.parametrize(
+    ("command", "expected_args", "expected_scope"),
+    [
+        ("status", ["--fleet", "--roles", "pro,m5"], "Fleet scope pro,m5"),
+        ("status-auth", ["--check-auth"], "Local auth scope"),
+    ],
+)
+def test_ai_dispatch_auth_probe_requires_explicit_status_command(
+    tmp_path: Path,
+    command: str,
+    expected_args: list[str],
+    expected_scope: str,
+) -> None:
+    dispatcher = copied_dispatcher(tmp_path)
+    capture = tmp_path / f"{command}.args"
+    executable(
+        tmp_path / "scripts" / "llm_fleet_audit.py",
+        '#!/bin/sh\nprintf \'%s\\0\' "$@" > "$AI_DISPATCH_CAPTURE"\n',
+    )
+    env = os.environ.copy()
+    env["AI_DISPATCH_CAPTURE"] = str(capture)
+    result = subprocess.run(
+        [str(dispatcher), command],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    args = [part.decode() for part in capture.read_bytes().split(b"\0") if part]
+    assert args == expected_args
+    assert expected_scope in result.stdout
+
+
+def test_ai_dispatch_websearch_passes_hostile_prompt_as_one_argv(
+    tmp_path: Path,
+) -> None:
+    dispatcher = copied_dispatcher(tmp_path)
+    capture = tmp_path / "python.args"
+    fake_python = executable(
+        tmp_path / "bin" / "python3",
+        """#!/bin/sh
+if [ "$1" = "-" ]; then
+    printf '%s\\0' "$@" > "$AI_DISPATCH_CAPTURE"
+    while IFS= read -r _; do :; done
+    printf '%s\n' bridge-ok
+    exit 0
+fi
+exec /usr/bin/python3 "$@"
+""",
+    )
+    payload = "q''' $(printf SHOULD_NOT_RUN) `id`\nnext-line"
+    env = os.environ.copy()
+    env["AI_DISPATCH_CAPTURE"] = str(capture)
+    env["PATH"] = f"{fake_python.parent}:{env['PATH']}"
+    result = subprocess.run(
+        [str(dispatcher), "websearch", payload, "7"],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    args = [part.decode() for part in capture.read_bytes().split(b"\0") if part]
+    assert args == ["-", payload, "7"]
+
+
+@pytest.mark.parametrize("count", ["0", "21", "100", "1x", "-1"])
+def test_ai_dispatch_websearch_rejects_invalid_count_before_python(
+    tmp_path: Path, count: str
+) -> None:
+    dispatcher = copied_dispatcher(tmp_path)
+    marker = tmp_path / "python-ran"
+    fake_python = executable(
+        tmp_path / "bin" / "python3",
+        '#!/bin/sh\nprintf ran > "$AI_DISPATCH_CAPTURE"\n',
+    )
+    env = os.environ.copy()
+    env["AI_DISPATCH_CAPTURE"] = str(marker)
+    env["PATH"] = f"{fake_python.parent}:{env['PATH']}"
+    result = subprocess.run(
+        [str(dispatcher), "websearch", "safe query", count],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+    )
+    assert result.returncode == 1
+    assert "Count must be an integer between 1 and 20" in result.stderr
+    assert not marker.exists()
+
+
+def test_ai_dispatch_direct_deepseek_route_is_fail_closed(tmp_path: Path) -> None:
+    dispatcher = copied_dispatcher(tmp_path)
+    result = subprocess.run(
+        [str(dispatcher), "reasoning", "architecture question"],
+        cwd=tmp_path,
+        env=os.environ.copy(),
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+    )
+    assert result.returncode == 2
+    assert "DEEPSEEK_DIRECT_API_RETIRED" in result.stderr
+
+
+def test_ai_dispatch_claude_drops_deepseek_provider_environment(
+    tmp_path: Path,
+) -> None:
+    dispatcher = copied_dispatcher(tmp_path)
+    fake_claude = executable(
+        tmp_path / "bin" / "claude",
+        """#!/bin/sh
+if env | grep -q '^DEEPSEEK_'; then
+    printf '%s\n' leaked-provider-environment
+    exit 70
+fi
+printf '%s\n' isolated-provider-environment
+""",
+    )
+    env = os.environ.copy()
+    env["PATH"] = f"{fake_claude.parent}:{env['PATH']}"
+    env["CLAUDE_CODE_OAUTH_TOKEN_1"] = "test-only-token"
+    env["DEEPSEEK_API_KEY"] = "test-only-secret"
+    env["DEEPSEEK_BASE_URL"] = "https://example.invalid"
+    env["AI_DISPATCH_CLAUDE_TIMEOUT"] = "5"
+
+    result = subprocess.run(
+        [str(dispatcher), "claude-explain", "safe question"],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "isolated-provider-environment" in result.stdout
+    assert "leaked-provider-environment" not in result.stdout
 
 
 def test_manifest_rejects_command_injection_in_version_args() -> None:
@@ -831,6 +1005,24 @@ def test_auth_is_default_off_and_when_enabled_exposes_only_boolean(
     assert "do-not-emit" not in serialized
 
 
+def test_production_auth_runner_discards_provider_output_before_it_is_emitted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    observed: dict[str, Any] = {}
+
+    def fake_run(argv: list[str], **kwargs: Any) -> subprocess.CompletedProcess[bytes]:
+        observed.update(kwargs)
+        return subprocess.CompletedProcess(argv, 0, stdout=b"identity", stderr=b"token")
+
+    monkeypatch.setattr(lfa.subprocess, "run", fake_run)
+    result = lfa.subprocess_auth_runner(["/reviewed/tool", "auth", "status"], 3)
+    assert result == lfa.CommandResult(returncode=0)
+    assert observed["stdout"] is subprocess.DEVNULL
+    assert observed["stderr"] is subprocess.DEVNULL
+    assert "capture_output" not in observed
+    assert "text" not in observed
+
+
 def test_failed_auth_probe_is_fail_visible_when_requested(tmp_path: Path) -> None:
     binary = executable(tmp_path / ".local" / "bin" / "tool")
     runner = FakeRunner({str(binary.resolve()): "tool 1.2.3"}, auth_rc=1)
@@ -1041,71 +1233,24 @@ def test_remote_reply_cannot_self_declare_arbitrary_path_as_reviewed() -> None:
     assert result["summary"]["compliant"] is False
 
 
-def test_remote_reply_requires_auth_boolean_when_requested() -> None:
+def test_remote_auth_probe_is_rejected_before_runner() -> None:
     node = {"name": "m5", "hostname": "air-m5", "ssh_alias": "air"}
     raw_client = client(auth=True)
     checked_manifest = manifest(raw_client)
-    peer = peer_host_report(
-        checked_manifest,
-        [peer_client_report(raw_client)],
-        check_auth=True,
-    )
 
     def remote_runner(argv: Sequence[str], script_source: str, timeout: float) -> Any:
-        return lfa.CommandResult(0, stdout=json.dumps(peer))
+        raise AssertionError("peer auth unexpectedly invoked the SSH runner")
 
-    result = lfa._probe_remote(
-        node,
-        checked_manifest,
-        script_source="# probe",
-        check_auth=True,
-        command_timeout=1,
-        ssh_timeout=2,
-        runner=remote_runner,
-    )
-    assert result["probe_status"] == "INVALID_REPLY_SCHEMA"
-    assert result["summary"]["compliant"] is False
-
-
-@pytest.mark.parametrize(
-    ("authenticated", "returncode", "expected_status", "expected_compliant"),
-    [
-        (True, 0, "ALIGNED", True),
-        (False, 1, "AUTH_REQUIRED", False),
-    ],
-)
-def test_remote_reply_accepts_recomputed_auth_verdict(
-    authenticated: bool,
-    returncode: int,
-    expected_status: str,
-    expected_compliant: bool,
-) -> None:
-    node = {"name": "m5", "hostname": "air-m5", "ssh_alias": "air"}
-    raw_client = client(auth=True)
-    checked_manifest = manifest(raw_client)
-    reported = peer_client_report(raw_client)
-    reported.update(
-        authenticated=authenticated,
-        status=expected_status,
-        compliant=expected_compliant,
-    )
-    peer = peer_host_report(checked_manifest, [reported], check_auth=True)
-
-    def remote_runner(argv: Sequence[str], script_source: str, timeout: float) -> Any:
-        return lfa.CommandResult(returncode, stdout=json.dumps(peer))
-
-    result = lfa._probe_remote(
-        node,
-        checked_manifest,
-        script_source="# probe",
-        check_auth=True,
-        command_timeout=1,
-        ssh_timeout=2,
-        runner=remote_runner,
-    )
-    assert result["probe_status"] == "ANSWERED"
-    assert result["clients"][0]["status"] == expected_status
-    assert result["summary"]["compliant"] is expected_compliant
+    with pytest.raises(lfa.AuditConfigError, match="forbidden across SSH"):
+        lfa._probe_remote(
+            node,
+            checked_manifest,
+            script_source="# probe",
+            check_auth=True,
+            command_timeout=1,
+            ssh_timeout=2,
+            runner=remote_runner,
+        )
 
 
 def test_fleet_report_includes_peer_noncompliance_and_parity_drift(
@@ -1149,6 +1294,31 @@ def test_fleet_report_includes_peer_noncompliance_and_parity_drift(
     assert report["summary"]["parity_drift"] == ["tool"]
     assert report["summary"]["compliant"] is False
     assert "VERDICT: DRIFT" in lfa.render_table(report)
+
+
+def test_fleet_auth_is_rejected_before_any_local_or_remote_probe() -> None:
+    nodes = [
+        {"name": "pro", "hostname": "nuzantara", "ssh_alias": "pro"},
+        {"name": "m5", "hostname": "air-m5", "ssh_alias": "air"},
+    ]
+
+    def local_runner(argv: Sequence[str], timeout: float) -> Any:
+        raise AssertionError("fleet auth unexpectedly ran a local probe")
+
+    def remote_runner(argv: Sequence[str], script_source: str, timeout: float) -> Any:
+        raise AssertionError("fleet auth unexpectedly ran a remote probe")
+
+    with pytest.raises(lfa.AuditConfigError, match="SSH security sessions"):
+        lfa.audit_fleet(
+            manifest(client(auth=True)),
+            nodes,
+            ["pro", "m5"],
+            local_role="pro",
+            script_source="# probe",
+            check_auth=True,
+            local_runner=local_runner,
+            remote_runner=remote_runner,
+        )
 
 
 def test_main_returns_nonzero_for_required_missing(
@@ -1213,6 +1383,23 @@ def test_main_rejects_local_host_role_override(
     )
     assert rc == 2
     assert "reserved for internal peer probes" in capsys.readouterr().err
+
+
+def test_main_rejects_auth_inside_internal_peer_protocol(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    rc = lfa.main(
+        [
+            "--probe-payload",
+            lfa._manifest_payload(manifest(client(auth=True))),
+            "--host-role",
+            "m5",
+            "--check-auth",
+            "--json",
+        ]
+    )
+    assert rc == 2
+    assert "cannot run --check-auth" in capsys.readouterr().err
 
 
 def test_probe_script_streams_over_stdin_without_peer_file_dependency(

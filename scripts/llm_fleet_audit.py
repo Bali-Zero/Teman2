@@ -204,6 +204,22 @@ def subprocess_runner(argv: Sequence[str], timeout: float) -> CommandResult:
     )
 
 
+def subprocess_auth_runner(argv: Sequence[str], timeout: float) -> CommandResult:
+    """Run a bounded auth probe without retaining provider output anywhere."""
+
+    try:
+        completed = subprocess.run(
+            list(argv),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+            timeout=timeout,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return CommandResult(returncode=124)
+    return CommandResult(returncode=completed.returncode)
+
+
 def subprocess_remote_runner(
     argv: Sequence[str], script_source: str, timeout: float
 ) -> CommandResult:
@@ -602,6 +618,7 @@ def _evaluate_client(
     *,
     check_auth: bool,
     runner: CommandRunner,
+    auth_runner: CommandRunner | None = None,
     timeout: float,
 ) -> dict[str, Any]:
     presence = str(client["host_policy"][role])
@@ -720,7 +737,7 @@ def _evaluate_client(
         result["authenticated"] = _auth_boolean(
             client,
             selected["path"],
-            runner=runner,
+            runner=auth_runner or runner,
             timeout=timeout,
         )
     if check_auth and result["authenticated"] is False:
@@ -739,6 +756,7 @@ def audit_host(
     home: Path | None = None,
     check_auth: bool = False,
     runner: CommandRunner = subprocess_runner,
+    auth_runner: CommandRunner = subprocess_auth_runner,
     timeout: float = DEFAULT_COMMAND_TIMEOUT,
 ) -> dict[str, Any]:
     """Audit one host against its role-specific policy."""
@@ -780,6 +798,7 @@ def audit_host(
                 paths,
                 check_auth=check_auth,
                 runner=runner,
+                auth_runner=auth_runner,
                 timeout=timeout,
             )
             for raw_client, paths in resolved_clients
@@ -836,6 +855,12 @@ def _probe_remote(
     ssh_timeout: float,
     runner: RemoteRunner,
 ) -> dict[str, Any]:
+    if check_auth:
+        raise AuditConfigError(
+            "peer auth probes are forbidden across SSH security sessions; "
+            "run --check-auth locally on the peer"
+        )
+
     def failed(status: str) -> dict[str, Any]:
         return {
             "host": {"role": node["name"], "hostname": node["hostname"]},
@@ -861,8 +886,6 @@ def _probe_remote(
         "--timeout",
         str(command_timeout),
     ]
-    if check_auth:
-        argv.append("--check-auth")
     result = runner(argv, script_source, ssh_timeout)
     try:
         decoded = json.loads(result.stdout)
@@ -1127,7 +1150,13 @@ def audit_fleet(
     local_runner: CommandRunner = subprocess_runner,
     remote_runner: RemoteRunner = subprocess_remote_runner,
 ) -> dict[str, Any]:
-    """Audit selected roster roles, using SSH only for peers."""
+    """Audit selected roster roles, using SSH only for non-auth peer probes."""
+
+    if check_auth:
+        raise AuditConfigError(
+            "fleet auth probes are unreliable across SSH security sessions; "
+            "run --check-auth locally on each host"
+        )
 
     requested = set(roles)
     known = {node["name"] for node in nodes}
@@ -1245,7 +1274,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--check-auth",
         action="store_true",
-        help="run declared read-only auth probes; outputs are suppressed and only booleans remain",
+        help=(
+            "check one effective local auth context; incompatible with --fleet; "
+            "provider output is discarded and only booleans remain"
+        ),
     )
     parser.add_argument(
         "--timeout",
@@ -1262,6 +1294,11 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
+        if args.probe_payload and args.check_auth:
+            raise AuditConfigError(
+                "an internal peer probe cannot run --check-auth; "
+                "run it locally outside the SSH probe protocol"
+            )
         manifest = (
             _manifest_from_payload(args.probe_payload)
             if args.probe_payload
