@@ -144,6 +144,24 @@ Gemini independently reviewed the implementation in repeated read-only passes. I
 
 Two objections did not survive code inspection: the lookup tool is a process singleton rather than a per-request construction, and a safe channel abstention intentionally keeps the minimal response scaffold required by the WhatsApp dispatcher. The final Gemini grounding scan found no remaining high- or medium-severity source-grounding defect in the reviewed diff. The production benchmark below remains the independent acceptance gate; this review does not substitute for it.
 
+A later committed-diff pass by the same independent Gemini seat (`agy`,
+2026-08-11) initially returned
+`BLOCK` after identifying a production-only startup failure in
+`_default_kbli_dataset_path()`: eagerly evaluating `module_path.parents[6]`
+works in the deeper monorepo path but raises `IndexError` in the shallower
+`/app/backend/services/rag/agentic/tools.py` Fly layout. The explicit-path unit
+tests did not exercise that resolver.
+
+The blocker was corrected in this PR by walking available parents and adding a
+shallow-Fly-layout regression test. The reviewer also challenged the
+start-anchored internal-monologue detector as narrower than a general leak
+detector. That objection does not survive as a blocker: this guard intentionally
+contains the exact observed leading private marker and returns a safe localized
+abstention; broad matching of arbitrary prefixes such as `Thought:` would add
+a false-positive client-content filter without production evidence. No exemption
+is claimed. The production "After" benchmark remains explicitly pending and is
+not represented as complete here.
+
 ## After
 
 Pending the identical post-deploy production run.
