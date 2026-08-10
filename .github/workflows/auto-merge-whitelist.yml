@@ -100,7 +100,7 @@ jobs:
           AUTHOR: ${{ steps.pr.outputs.author }} # attacker-controlled login → env, not inline
         run: |
           case "$AUTHOR" in
-            dependabot|dependabot[bot]|github-actions|github-actions[bot]|Balizero1987)
+            "dependabot"|"dependabot[bot]"|"github-actions"|"github-actions[bot]"|"Balizero1987")
               echo "Author '$AUTHOR' is allowlisted."
               echo "match=true" >> "$GITHUB_OUTPUT"
               ;;
