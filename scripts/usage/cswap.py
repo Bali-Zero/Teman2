@@ -29,9 +29,17 @@ concrete ways this proxy misleads, stated rather than hidden:
 seat looks closer to its ceiling than the others", not a measurement of the
 ceiling itself — there is no ceiling to measure.
 
+PRIVACY: `seat_map.json` is tracked in a PUBLIC repo (Bali-Zero/Teman2) and
+holds ONLY profile-dir -> seat-id mapping. `cswap fingerprint`'s output —
+real personal identities (emails) — is written to a LOCAL file only
+(~/.config/cswap/fingerprints.json, 0600) and this tool never writes
+anything back into seat_map.json. Same scar class as the committed-team-PINs
+incident: a value that reaches a tracked path is exposed the moment it's
+pushed, not just if someone later reads it wrong.
+
 Commands:
   cswap list                          show seats + fingerprint identity + 5h/7d consumption
-  cswap fingerprint                   ARM: run `claude auth status` per profile, record identity
+  cswap fingerprint                   ARM: run `claude auth status` per profile, record identity LOCALLY
   cswap run <seat-or-dir> [-- cmd...]  exec a command (default: interactive `claude`) under that seat
   cswap auto [--print] [--activate] [--exclude SEAT ...]
                                        pick the least-loaded eligible seat (hysteresis + lock)
@@ -90,10 +98,6 @@ def _now_iso() -> str:
     return _now().isoformat(timespec="seconds")
 
 
-def _today_str() -> str:
-    return _now().strftime("%Y-%m-%d")
-
-
 # --------------------------------------------------------------- seat map
 
 
@@ -110,12 +114,23 @@ def load_seat_map(path: Path) -> dict[str, Any]:
         raise SystemExit(f"[cswap] seat map unreadable ({e}): {path}")
 
 
-def save_seat_map(path: Path, data: dict[str, Any]) -> None:
-    # ensure_ascii=False: the original file carries literal UTF-8 (em-dashes,
-    # §) in its _doc/claude_profiles prose. Without this, re-saving would
-    # \u-escape every such byte on the FIRST fingerprint run, producing a
-    # noisy diff across unrelated fields this command never touches.
+# cswap NEVER writes to seat_map.json. That file is tracked in a PUBLIC repo
+# (Bali-Zero/Teman2) and holds only profile-dir -> seat-id mapping; fingerprint
+# IDENTITIES (real personal emails) go to a LOCAL, gitignored-by-construction
+# file instead (see _write_json_local / cmd_fingerprint below) — same scar
+# class as the committed-team-PINs incident (2026-07-27): a secret/PII value
+# that reaches a tracked path is exposed the moment it's pushed, not just if
+# someone later reads it wrong.
+def _write_json_local(path: Path, data: dict[str, Any]) -> None:
+    """Writer for cswap's OWN local state (~/.config/cswap/*.json) — never
+    for seat_map.json. ensure_ascii=False preserves literal UTF-8 (an
+    orgName, an em-dash) instead of \\u-escaping it."""
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+    try:
+        os.chmod(path, 0o600)
+    except OSError:
+        pass  # best-effort permission tightening; not the primary guard
 
 
 def is_eligible(seat_id: str) -> bool:
@@ -267,10 +282,28 @@ def fingerprint_one(profile_dir: Path, runner: AuthStatusRunner = _run_auth_stat
     }
 
 
-def cmd_fingerprint(seat_map_path: Path, runner: AuthStatusRunner = _run_auth_status) -> int:
+def _default_fingerprints_path() -> Path:
+    return _state_dir() / "fingerprints.json"
+
+
+def load_local_fingerprints(path: Path) -> dict[str, Any]:
+    try:
+        return json.loads(path.read_text())
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def cmd_fingerprint(seat_map_path: Path, fingerprints_path: Optional[Path] = None,
+                     runner: AuthStatusRunner = _run_auth_status) -> int:
+    """ARMING command. Writes identities to a LOCAL file
+    (~/.config/cswap/fingerprints.json, 0600) — NEVER into seat_map.json.
+    That file is tracked in a public repo (Bali-Zero/Teman2); a real personal
+    email must never land there (same scar class as the committed-team-PINs
+    incident). seat_map.json is only ever READ here, never written."""
     seat_map = load_seat_map(seat_map_path)
     profiles = seat_map.get("claude_profiles") or {}
-    fingerprints = seat_map.setdefault("fingerprints", {})
+    fp_path = fingerprints_path or _default_fingerprints_path()
+    fingerprints = load_local_fingerprints(fp_path)
     checked = 0
     for pdir_str, seat_id in profiles.items():
         pdir = Path(os.path.expanduser(pdir_str))
@@ -281,19 +314,19 @@ def cmd_fingerprint(seat_map_path: Path, runner: AuthStatusRunner = _run_auth_st
         fingerprints[pdir_str] = result
         checked += 1
         emit(f"[cswap fingerprint] {seat_id:24s} {pdir_str:22s} -> {result['identity']}")
-    seat_map["_status"] = f"armed-{_today_str()}"
-    save_seat_map(seat_map_path, seat_map)
-    emit(f"[cswap fingerprint] {checked}/{len(profiles)} profiles fingerprinted -> {seat_map_path}")
+    _write_json_local(fp_path, fingerprints)
+    emit(f"[cswap fingerprint] {checked}/{len(profiles)} profiles fingerprinted "
+         f"-> {fp_path} (local only, never committed)")
     return 0
 
 
 # --------------------------------------------------------------- list
 
 
-def cmd_list(seat_map_path: Path) -> int:
+def cmd_list(seat_map_path: Path, fingerprints_path: Optional[Path] = None) -> int:
     seat_map = load_seat_map(seat_map_path)
     profiles = seat_map.get("claude_profiles") or {}
-    fingerprints = seat_map.get("fingerprints") or {}
+    fingerprints = load_local_fingerprints(fingerprints_path or _default_fingerprints_path())
     now = _now()
     for pdir_str, seat_id in profiles.items():
         pdir = Path(os.path.expanduser(pdir_str))
@@ -338,8 +371,7 @@ def load_state(path: Path) -> dict[str, Any]:
 
 
 def save_state(path: Path, state: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(state, indent=2) + "\n")
+    _write_json_local(path, state)
 
 
 def _pid_alive(pid: int) -> bool:
@@ -517,12 +549,16 @@ def build_parser() -> argparse.ArgumentParser:
         description="Rotate CLAUDE_CONFIG_DIR across the Anthropic MAX/Team seats mapped in seat_map.json.",
     )
     p.add_argument("--seat-map", default=str(_default_seat_map_path()),
-                    help="path to seat_map.json (default: alongside this script)")
+                    help="path to seat_map.json (default: alongside this script; mapping ONLY, "
+                         "never touched by this tool — no identity is ever written here)")
+    p.add_argument("--fingerprints", default=None,
+                    help="path to the LOCAL fingerprints file (default: ~/.config/cswap/fingerprints.json)")
     sub = p.add_subparsers(dest="command", required=True)
 
     sub.add_parser("list", help="show seats, fingerprint identity, 5h/7d local consumption")
     sub.add_parser("fingerprint",
-                    help="ARM: run `claude auth status` per mapped profile and record identities")
+                    help="ARM: run `claude auth status` per mapped profile, record identities "
+                         "LOCALLY (never into the tracked seat_map.json)")
 
     p_run = sub.add_parser("run", help="exec a command with CLAUDE_CONFIG_DIR set to the resolved seat")
     p_run.add_argument("seat_or_dir", help="seat id (A1/A2/A3/AZ) or a literal profile directory")
@@ -542,11 +578,12 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     seat_map_path = Path(args.seat_map)
+    fingerprints_path = Path(args.fingerprints) if args.fingerprints else None
 
     if args.command == "list":
-        return cmd_list(seat_map_path)
+        return cmd_list(seat_map_path, fingerprints_path)
     if args.command == "fingerprint":
-        return cmd_fingerprint(seat_map_path)
+        return cmd_fingerprint(seat_map_path, fingerprints_path)
     if args.command == "run":
         return cmd_run(seat_map_path, args.seat_or_dir, args.cmd)
     if args.command == "auto":

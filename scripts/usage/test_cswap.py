@@ -331,7 +331,8 @@ def test_fingerprint_one_never_writes_a_secret_shaped_raw_line(tmp_path):
     seat_map_path.write_text(json.dumps({
         "claude_profiles": {str(tmp_path): "AZ"},
     }))
-    cswap.cmd_fingerprint(seat_map_path, runner=runner)
+    fp_path = tmp_path / "fingerprints.json"
+    cswap.cmd_fingerprint(seat_map_path, fingerprints_path=fp_path, runner=runner)
     on_disk = seat_map_path.read_text()
     assert "sk-ant" not in on_disk
 
@@ -346,40 +347,93 @@ def test_fingerprint_one_innocence_plain_prose_line_is_not_redacted():
     assert "REDACTED" not in result["identity"]
 
 
-def test_save_seat_map_preserves_literal_utf8(tmp_path):
+def test_write_json_local_preserves_literal_utf8(tmp_path):
     """Regression pin: json.dumps() defaults to ensure_ascii=True, which
-    would \\u-escape every em-dash/§ in the real seat_map.json's prose on
-    the FIRST fingerprint run — a noisy diff across fields this command
-    never touches. save_seat_map must round-trip UTF-8 literally."""
-    path = tmp_path / "seat_map.json"
-    cswap.save_seat_map(path, {"_doc": "profili — mappa §3.1"})
+    would \\u-escape any em-dash/§ an identity/orgName string carries.
+    _write_json_local (used by both cmd_fingerprint and save_state) must
+    round-trip UTF-8 literally instead."""
+    path = tmp_path / "local.json"
+    cswap._write_json_local(path, {"_doc": "profili — mappa §3.1"})
     raw = path.read_bytes()
     assert "—".encode() in raw
     assert "§".encode() in raw
     assert b"\\u2014" not in raw
 
 
-def test_cmd_fingerprint_skips_missing_dirs_and_flips_status(tmp_path, capsys):
+def test_write_json_local_chmods_0600(tmp_path):
+    path = tmp_path / "local.json"
+    cswap._write_json_local(path, {"a": 1})
+    assert oct(path.stat().st_mode & 0o777) == "0o600"
+
+
+def test_cmd_fingerprint_skips_missing_dirs_and_writes_local_only(tmp_path, capsys):
     az = tmp_path / "az"
     az.mkdir()
-    seat_map_path = tmp_path / "seat_map.json"
-    seat_map_path.write_text(json.dumps({
-        "_status": "UNARMED_until_fingerprint",
+    seat_map_before = json.dumps({
+        "_status": "mapping only — see local fingerprints",
         "claude_profiles": {
             str(az): "AZ",
             str(tmp_path / "nonexistent"): "A1",
         },
-    }))
+    })
+    seat_map_path = tmp_path / "seat_map.json"
+    seat_map_path.write_text(seat_map_before)
+    fp_path = tmp_path / "fingerprints.json"
     runner = lambda _pdir: _fake_proc(  # noqa: E731
         stdout=json.dumps({"loggedIn": True, "email": "x@y.z", "subscriptionType": "max"}))
-    rc = cswap.cmd_fingerprint(seat_map_path, runner=runner)
+    rc = cswap.cmd_fingerprint(seat_map_path, fingerprints_path=fp_path, runner=runner)
     assert rc == 0
     out = capsys.readouterr().out
     assert "SKIP A1" in out
-    written = json.loads(seat_map_path.read_text())
-    assert written["_status"].startswith("armed-")
-    assert str(az) in written["fingerprints"]
-    assert str(tmp_path / "nonexistent") not in written["fingerprints"]
+
+    # seat_map.json is untouched — cmd_fingerprint never writes to it.
+    assert seat_map_path.read_text() == seat_map_before
+
+    written = json.loads(fp_path.read_text())
+    assert str(az) in written
+    assert str(tmp_path / "nonexistent") not in written
+
+
+def test_cmd_fingerprint_never_writes_identity_into_the_tracked_seat_map(tmp_path):
+    """Team-lead ruling 2026-08-11: seat_map.json is tracked in the PUBLIC
+    Bali-Zero/Teman2 repo — a real personal email must NEVER land there
+    (same scar class as the committed-team-PINs incident). Guilt: the local
+    fingerprints file legitimately carries the email. Innocence: the tracked
+    seat_map.json stays byte-identical to before the run."""
+    az = tmp_path / "az"
+    az.mkdir()
+    seat_map_before = json.dumps({"_doc": "mapping only", "claude_profiles": {str(az): "AZ"}})
+    seat_map_path = tmp_path / "seat_map.json"
+    seat_map_path.write_text(seat_map_before)
+    fp_path = tmp_path / "fingerprints.json"
+    real_email = "kaiser198719871987@gmail.com"
+    runner = lambda _pdir: _fake_proc(  # noqa: E731
+        stdout=json.dumps({"loggedIn": True, "email": real_email, "subscriptionType": "max"}))
+
+    rc = cswap.cmd_fingerprint(seat_map_path, fingerprints_path=fp_path, runner=runner)
+    assert rc == 0
+
+    # guilt: the tracked seat_map.json must be byte-for-byte unchanged.
+    assert seat_map_path.read_text() == seat_map_before
+    assert real_email not in seat_map_path.read_text()
+
+    # innocence: the LOCAL fingerprints file legitimately carries it, 0600.
+    local_raw = fp_path.read_text()
+    assert real_email in local_raw
+    assert oct(fp_path.stat().st_mode & 0o777) == "0o600"
+
+
+def test_cmd_list_reads_identity_from_local_fingerprints_not_seat_map(tmp_path, capsys):
+    az = tmp_path / "az"
+    az.mkdir()
+    seat_map_path = tmp_path / "seat_map.json"
+    seat_map_path.write_text(json.dumps({"claude_profiles": {str(az): "AZ"}}))
+    fp_path = tmp_path / "fingerprints.json"
+    fp_path.write_text(json.dumps({str(az): {"identity": "someone@example.com (max)"}}))
+
+    rc = cswap.cmd_list(seat_map_path, fp_path)
+    assert rc == 0
+    assert "someone@example.com" in capsys.readouterr().out
 
 
 # --------------------------------------------------------------- run wiring (no execvpe in tests)

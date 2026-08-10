@@ -1,6 +1,6 @@
 {
-  "_doc": "Local profile dir -> seat mapping, per FLEET_TOPOLOGY.json accounts + research/operations/2026-08-10-fleet-order-spec.md §3.1. UNARMED until fingerprinted at cswap arming.",
-  "_status": "armed-2026-08-11",
+  "_doc": "Local profile dir -> seat mapping, per FLEET_TOPOLOGY.json accounts + research/operations/2026-08-10-fleet-order-spec.md §3.1.",
+  "_status": "mapping only — this file is tracked in the PUBLIC Bali-Zero/Teman2 repo and carries NO identities. Run `cswap fingerprint` to populate ~/.config/cswap/fingerprints.json (local, 0600, never committed) with real auth-status results.",
   "claude_profiles": {
     "~/.claude": "AZ",
     "~/.claude-kaiser": "A2",
@@ -12,43 +12,5 @@
   "codex_homes": {
     "~/.codex": "O1",
     "~/.codex-o2": "O2"
-  },
-  "fingerprints": {
-    "~/.claude": {
-      "identity": "not logged in (authMethod=none)",
-      "checked_at": "2026-08-11T00:58:35+08:00",
-      "rc": 1,
-      "parse_status": "ok"
-    },
-    "~/.claude-kaiser": {
-      "identity": "not logged in (authMethod=none)",
-      "checked_at": "2026-08-11T00:58:35+08:00",
-      "rc": 1,
-      "parse_status": "ok"
-    },
-    "~/.claude-acct2": {
-      "identity": "not logged in (authMethod=none)",
-      "checked_at": "2026-08-11T00:58:36+08:00",
-      "rc": 1,
-      "parse_status": "ok"
-    },
-    "~/.claude-acct3": {
-      "identity": "not logged in (authMethod=none)",
-      "checked_at": "2026-08-11T00:58:36+08:00",
-      "rc": 1,
-      "parse_status": "ok"
-    },
-    "~/.claude-acct4": {
-      "identity": "not logged in (authMethod=none)",
-      "checked_at": "2026-08-11T00:58:37+08:00",
-      "rc": 1,
-      "parse_status": "ok"
-    },
-    "~/.claude-zero-team": {
-      "identity": "not logged in (authMethod=none)",
-      "checked_at": "2026-08-11T00:58:38+08:00",
-      "rc": 1,
-      "parse_status": "ok"
-    }
   }
 }

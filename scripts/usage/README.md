@@ -50,7 +50,7 @@ the Team Premium gate-primary seat and this M5's default `~/.claude`.
 
 ```bash
 python3 scripts/usage/cswap.py list                          # seats + fingerprint identity + 5h/7d consumption
-python3 scripts/usage/cswap.py fingerprint                    # ARM: claude auth status per profile -> seat_map.json
+python3 scripts/usage/cswap.py fingerprint                    # ARM: claude auth status per profile -> LOCAL fingerprints.json only
 python3 scripts/usage/cswap.py run A2 -- claude -p "..."       # exec under A2's CLAUDE_CONFIG_DIR (default cmd: interactive `claude`)
 python3 scripts/usage/cswap.py auto --print                   # pick least-loaded eligible seat, print its dir only
 python3 scripts/usage/cswap.py auto --activate                # same, and remember the choice (hysteresis state)
@@ -114,12 +114,15 @@ different call paths — don't collapse one into the other.
 ### Arming (per machine)
 
 ```bash
-python3 scripts/usage/cswap.py fingerprint   # writes identities into seat_map.json's new "fingerprints" key
+python3 scripts/usage/cswap.py fingerprint   # writes identities to ~/.config/cswap/fingerprints.json (LOCAL, 0600, never committed)
 python3 scripts/usage/cswap.py list          # verify identities + dirs before relying on `auto`
 ```
 
-`fingerprint` never writes a token/secret-shaped string into `seat_map.json`
-even on the raw-first-line fallback path (defensive redaction, tested in
+`seat_map.json` is tracked in the **public** `Bali-Zero/Teman2` repo and
+carries ONLY profile-dir → seat-id mapping — `fingerprint` never writes an
+identity (a real personal email) there. It also never writes a
+token/secret-shaped string into the local fingerprints file either, even on
+the raw-first-line fallback path (defensive redaction, tested in
 `scripts/usage/test_cswap.py`) — cicatrix-superscar.md family #4, secret in
 the clear.
 
