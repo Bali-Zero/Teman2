@@ -125,9 +125,26 @@ class TestPublicSourcesToleratesForeignShapes:
         "'search_query': 'PT PMA', 'results': {}}"
     )
 
+    # A THIRD shape, measured the same day on the capability-refusal path
+    # ("can you check my client files?"): not a dict, not even a dict repr —
+    # a plain human-readable sentence. Kept as its own named case because it
+    # is what makes the guard a general one: non-dict entries are not a
+    # pricing quirk, the field simply has no single shape.
+    CAPABILITY_REFUSAL_SHAPED = "This capability is not available in this conversation."
+
     def test_a_stringified_dict_does_not_raise(self) -> None:
         """GUILT: before the isinstance guard this raised AttributeError."""
         assert public_sources([self.PRICING_SHAPED]) == []
+
+    def test_a_bare_sentence_source_does_not_raise(self) -> None:
+        """GUILT, second live shape — the capability-refusal path."""
+        assert public_sources([self.CAPABILITY_REFUSAL_SHAPED]) == []
+
+    def test_both_live_non_dict_shapes_together_leave_the_real_source(self) -> None:
+        """INNOCENCE across shapes: two different foreign entries, one real."""
+        legit = {"title": "Imigrasi C1 page", "url": "https://www.imigrasi.go.id/c1"}
+        sources = [self.PRICING_SHAPED, legit, self.CAPABILITY_REFUSAL_SHAPED]
+        assert public_sources(sources) == [legit]
 
     @pytest.mark.parametrize("foreign", [None, 42, ["nested"], ("a", "b")])
     def test_no_scalar_or_sequence_shape_raises(self, foreign: object) -> None:
