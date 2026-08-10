@@ -51,6 +51,102 @@ from backend.prompts.zantara_core_v4 import today_wita_string
 logger = logging.getLogger(__name__)
 
 
+# --- Identity fast-path: the pattern that fires NAMES the language ----------
+#
+# The assistant-identity trigger used to be ONE fully anchored regex:
+#     r"^(chi|who|cosa|what)\s+(sei|are)\s*(you|tu)?\??$"
+# — whole-string, two languages, and no `siapa` at all. Anything a human
+# actually types ("Chi ti ha creato e come ti chiami?", "siapa kamu?",
+# "who made you?") fell through to retrieval, found nothing, scored evidence
+# 0.0 and was DISCARDED by the abstain gate — which on WhatsApp means the
+# client hears NOTHING (`wa_inbox_bot.py` raises on abstain). Measured live
+# 2026-08-09 on "Chi ti ha creato e come ti chiami?": the correct answer was
+# produced, abstain=True, 0 sources, nothing sent. Superscar #3, UNDER-match.
+#
+# Two rules hold every pattern below honest:
+#
+# 1. Unanchored on the LEFT, but the ask must END there (or end a clause).
+#    That is what keeps "Who are you going to assign to my case?" and "What
+#    are your office hours?" out. A blacklist of continuations would only ever
+#    catch the continuations someone already thought of (W113).
+# 2. The pattern that fires DECLARES the language of the answer. The loose
+#    marker lists in `check_identity_questions` cannot: they are bare
+#    substrings, so "Which visa?" contains "chi" and used to be answered in
+#    Italian, and the brand name — which is language-neutral and appears in
+#    every language's question — made "Zantara, who are you?" Italian too.
+#    Those lists now decide nothing except the "who am I?" branch, where there
+#    is no per-language pattern to read the language off.
+_IDENTITY_CLAUSE_END = r"(?=\s*[?!.,;]|\s*$)"
+_ID_PARTICLE = r"(?:\s+(?:sih|dong|nih|ya|kah))?"
+
+_ASSISTANT_IDENTITY_PATTERNS: tuple[tuple[str, str], ...] = (
+    ("ITALIAN", r"\bchi\s+sei(?:\s+tu)?"),
+    ("ITALIAN", r"\bcosa\s+sei(?:\s+tu)?"),
+    ("ITALIAN", r"\bchi\s+ti\s+ha\s+(?:creato|creata|fatto|fatta|programmato|programmata)"),
+    ("ITALIAN", r"\bcome\s+ti\s+chiami"),
+    ("ITALIAN", r"\bqual\s+(?:è|e')\s+il\s+tuo\s+nome"),
+    # Trailing \b as well as the clause-end lookahead: "what are YOUR office
+    # hours" must be out for TWO independent reasons, not one.
+    ("ENGLISH", r"\bwho\s+are\s+you\b"),
+    ("ENGLISH", r"\bwhat\s+are\s+you\b"),
+    ("ENGLISH", r"\bwho\s+(?:made|created|built|designed|developed|wrote)\s+you\b"),
+    ("ENGLISH", r"\bwhat(?:'s|s|\s+is)\s+your\s+name\b"),
+    # `_ID_PARTICLE`: "siapa kamu SIH?" is how the question is actually typed —
+    # a discourse particle is not a continuation, so it must not close the
+    # clause-end door (the Indonesian equivalent of the optional "tu" above).
+    ("INDONESIAN", r"\bsiapa\s+(?:kamu|kau|anda|lu|elo)" + _ID_PARTICLE),
+    ("INDONESIAN", r"\bkamu\s+siapa" + _ID_PARTICLE),
+    ("INDONESIAN", r"\bsiapa\s+nama\s+(?:kamu|mu|anda)" + _ID_PARTICLE),
+    ("INDONESIAN", r"\bnama\s+kamu\s+siapa" + _ID_PARTICLE),
+    (
+        "INDONESIAN",
+        r"\bsiapa\s+yang\s+(?:membuat|menciptakan|bikin)\s+(?:kamu|mu|anda)" + _ID_PARTICLE,
+    ),
+    ("RUSSIAN", r"\bкто\s+ты"),
+    ("UKRAINIAN", r"\bхто\s+ти"),
+)
+
+# "Tell me about yourself" / "What can you do?" — same rule, own answers.
+_SELF_DESCRIPTION_PATTERNS: tuple[tuple[str, str], ...] = (
+    ("ITALIAN", r"parlami\s+(di\s+)?te"),
+    ("ITALIAN", r"cosa\s+sai\s+fare"),
+    ("ITALIAN", r"che\s+cosa\s+sai\s+fare"),
+    ("ITALIAN", r"cosa\s+puoi\s+(fare|aiutarmi)"),
+    ("ITALIAN", r"come\s+(mi\s+)?puoi\s+aiutare"),
+    ("ENGLISH", r"tell\s+me\s+about\s+(yourself|you)"),
+    ("ENGLISH", r"what\s+can\s+you\s+do"),
+    ("ENGLISH", r"what\s+are\s+you\s+capable"),
+    ("ENGLISH", r"how\s+can\s+you\s+help"),
+    ("INDONESIAN", r"apa\s+yang\s+(bisa|kamu)\s+(kamu\s+)?lakukan"),
+    ("INDONESIAN", r"bisa\s+bantu\s+apa"),
+)
+
+
+def _compile_tagged(
+    patterns: tuple[tuple[str, str], ...], suffix: str = ""
+) -> tuple[tuple[str, re.Pattern[str]], ...]:
+    return tuple((lang, re.compile(p + suffix)) for lang, p in patterns)
+
+
+_ASSISTANT_IDENTITY_RES = _compile_tagged(_ASSISTANT_IDENTITY_PATTERNS, _IDENTITY_CLAUSE_END)
+_SELF_DESCRIPTION_RES = _compile_tagged(_SELF_DESCRIPTION_PATTERNS)
+
+
+def _first_language_match(
+    text: str, compiled: tuple[tuple[str, re.Pattern[str]], ...]
+) -> str | None:
+    """Return the language tag of the first pattern that matches, or None."""
+    for language, pattern in compiled:
+        if pattern.search(text):
+            return language
+    return None
+
+
+def _contains_any_word(text: str, words: list[str]) -> bool:
+    """Whole-word membership. ``"chi" in "which visa"`` is True; this is not."""
+    return any(re.search(rf"\b{re.escape(w)}\b", text) for w in words)
+
+
 def _safe_template_fill(template: str, **kwargs: str) -> str:
     """Fill only the known {placeholder} tokens in ZANTARA_MASTER_TEMPLATE,
     leaving every other brace in the text untouched.
@@ -1042,13 +1138,16 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
         is_cyrillic = any("\u0400" <= c <= "\u04ff" for c in query)
         is_ukrainian = any(w in query_lower for w in ["привіт", "як", "дякую", "хто я"])
         is_russian = any(w in query_lower for w in ["привет", "как", "спасибо", "кто я"])
-        is_italian = any(
-            w in query_lower
-            for w in ["chi", "sono", "cosa", settings.COMPANY_NAME.lower(), "zantara"]
-        )
-        is_indonesian = any(
-            w in query_lower
-            for w in ["siapa", "aku", "saya", "apa", "gimana", "bagaimana", "gue", "lu"]
+        # WHOLE WORDS. This marker list now decides ONE thing — the language of
+        # the "who am I?" answer below, the only branch with no per-language
+        # pattern to read the language off. As a bare substring it read
+        # "J(apa)n" and "va(lu)e" as Indonesian. Its Italian twin was deleted
+        # rather than fixed: every branch that consulted it now takes its
+        # language from the pattern that fired (see the module-scope block),
+        # and it carried the brand name, which is language-neutral.
+        is_indonesian = _contains_any_word(
+            query_lower,
+            ["siapa", "aku", "saya", "apa", "gimana", "bagaimana", "gue", "lu"],
         )
 
         # User identity ("Who am I?")
@@ -1118,28 +1217,15 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
             # Italian default
             return "Non ho ancora informazioni salvate su di te. Dimmi 2-3 dettagli (nome, obiettivo, tempistiche) e li terrò a mente."
 
-        # Identity patterns
-        if re.search(r"^(chi|who|cosa|what)\s+(sei|are)\s*(you|tu)?\??$", query_lower):
-            if is_italian and not is_cyrillic:
-                return f"Sono Zantara, l'intelligenza specializzata di {settings.COMPANY_NAME}. Ti aiuto con visa, business e questioni legali in Indonesia."
-            return f"I'm Zantara, {settings.COMPANY_NAME}'s specialized AI. I help with visas, business setup, and legal topics in Indonesia."
+        # Assistant identity ("Who are you?", "Chi ti ha creato?", "siapa kamu?")
+        identity_language = _first_language_match(query_lower, _ASSISTANT_IDENTITY_RES)
+        if identity_language:
+            return self.assistant_identity_answer(identity_language)
 
         # Self-description patterns ("Tell me about yourself", "What can you do?")
-        self_patterns = [
-            r"parlami\s+(di\s+)?te",
-            r"cosa\s+sai\s+fare",
-            r"che\s+cosa\s+sai\s+fare",
-            r"tell\s+me\s+about\s+(yourself|you)",
-            r"what\s+can\s+you\s+do",
-            r"what\s+are\s+you\s+capable",
-            r"cosa\s+puoi\s+(fare|aiutarmi)",
-            r"come\s+(mi\s+)?puoi\s+aiutare",
-            r"how\s+can\s+you\s+help",
-            r"apa\s+yang\s+(bisa|kamu)\s+(kamu\s+)?lakukan",
-            r"bisa\s+bantu\s+apa",
-        ]
-        if any(re.search(p, query_lower) for p in self_patterns):
-            if is_indonesian:
+        self_language = _first_language_match(query_lower, _SELF_DESCRIPTION_RES)
+        if self_language:
+            if self_language == "INDONESIAN":
                 return (
                     f"Gue Zantara, AI-nya {settings.COMPANY_NAME}! 🤖\n\n"
                     "Yang bisa gue bantu:\n"
@@ -1152,7 +1238,7 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
                     "• **Web Search**: Kalau butuh info di luar knowledge base, gue bisa cari di internet! 🌐\n\n"
                     "Tanya aja, bro! 💪"
                 )
-            if is_italian and not is_cyrillic:
+            if self_language == "ITALIAN":
                 return (
                     f"Sono Zantara, l'AI di {settings.COMPANY_NAME}! 🤖\n\n"
                     "Ecco cosa posso fare:\n"
@@ -1180,15 +1266,15 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
 
         # Company patterns ("What does Bali Zero do?")
         company_name_safe = re.escape(settings.COMPANY_NAME.lower())
-        company_patterns = [
-            r"^(cosa)\s+(fa)\s+(" + company_name_safe + r")\??$",
-            r"^(parlami)\s+(di)\s+(" + company_name_safe + r")\??$",
-            r"^(what)\s+(does)\s+(" + company_name_safe + r")\s+(do)\??$",
-            r"^(tell\s+me)\s+(about)\s+(" + company_name_safe + r")\??$",
-        ]
-        for pattern in company_patterns:
+        company_patterns = (
+            ("ITALIAN", r"^(cosa)\s+(fa)\s+(" + company_name_safe + r")\??$"),
+            ("ITALIAN", r"^(parlami)\s+(di)\s+(" + company_name_safe + r")\??$"),
+            ("ENGLISH", r"^(what)\s+(does)\s+(" + company_name_safe + r")\s+(do)\??$"),
+            ("ENGLISH", r"^(tell\s+me)\s+(about)\s+(" + company_name_safe + r")\??$"),
+        )
+        for language, pattern in company_patterns:
             if re.search(pattern, query_lower):
-                if is_italian and not is_cyrillic:
+                if language == "ITALIAN":
                     return (
                         f"{settings.COMPANY_NAME} è una consulenza specializzata in visa, KITAS, setup aziendale (PT PMA) "
                         "e questioni legali per stranieri in Indonesia."
@@ -1199,6 +1285,42 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
                 )
 
         return None
+
+    def assistant_identity_answer(self, language: str) -> str:
+        """One sentence per language, chosen by the identity pattern that fired.
+
+        `language` is NEVER guessed from the query's loose markers: a
+        language-neutral brand name ("Zantara, who are you?") must not flip the
+        reply to Italian, which is exactly what the old marker list did.
+        Any language declared in `_ASSISTANT_IDENTITY_PATTERNS` must have a
+        branch here — pinned by a test, because the failure mode of forgetting
+        one is silent (an Indonesian asker gets an English sentence).
+        """
+        company = settings.COMPANY_NAME
+        if language == "ITALIAN":
+            return (
+                f"Sono Zantara, l'intelligenza specializzata di {company}. "
+                "Ti aiuto con visa, business e questioni legali in Indonesia."
+            )
+        if language == "INDONESIAN":
+            return (
+                f"Gue Zantara, AI-nya {company}. "
+                "Gue bantu soal visa, setup bisnis, dan urusan legal di Indonesia."
+            )
+        if language == "RUSSIAN":
+            return (
+                f"Я Zantara, специализированный ИИ {company}. "
+                "Помогаю с визами, открытием бизнеса и юридическими вопросами в Индонезии."
+            )
+        if language == "UKRAINIAN":
+            return (
+                f"Я Zantara, спеціалізований ШІ {company}. "
+                "Допомагаю з візами, відкриттям бізнесу та юридичними питаннями в Індонезії."
+            )
+        return (
+            f"I'm Zantara, {company}'s specialized AI. "
+            "I help with visas, business setup, and legal topics in Indonesia."
+        )
 
     def build_proactive_prompt(
         self,
