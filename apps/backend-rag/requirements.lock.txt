@@ -2951,9 +2951,9 @@ pluggy==1.6.0 \
     # via
     #   pytest
     #   pytest-cov
-portalocker==2.10.1 \
-    --hash=sha256:53a5984ebc86a025552264b459b46a2086e269b21823cb572f8f28ee759e45bf \
-    --hash=sha256:ef1bf844e878ab08aee7e40184156e1151f228f103aa5c6bd0724cc330960f8f
+portalocker==4.1.0 \
+    --hash=sha256:91d0ff02d6f5f9a2dbf1ef1367ddb05b83136b2676707a1b2c8746f1f0dcd992 \
+    --hash=sha256:d985a430d265adf31adf12bc0bf3501aea59efc495e9104c057e5dfb7394c226
     # via qdrant-client
 pre-commit==4.6.1 \
     --hash=sha256:03e809865c7d178b9979d06c761fcbfe6808fdaded8581a745bb110e52050421 \
