@@ -66,10 +66,33 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
   str runs scored `evidence` 0.6 / 0.6 / 0.4, dict runs mostly 0.85. `orchestrator_response.py:48`
   types it `list[Any]`, so this is declared, not drift. **Nothing crashes**:
   `pipeline.py::_normalize_citations` guards with `if not isinstance(src, dict): continue`.
-  The open question — NOT yet measured, do not report it as a finding — is whether the str path
-  therefore reaches the client with **zero citations**, on a bot whose product is grounded
-  answers with citations. Probe written (`p27.py`); it reports "hypothesis NOT TESTED" rather
-  than a zero if the endpoint turns out not to expose `citations` at all.
+  The open question was whether the str path therefore reaches the client with **zero
+  citations**. **Probed, and the answer is that this surface cannot answer it**: across 12 calls
+  the response carries **no `citations` key at all** (0/12), so the normalizer's behaviour is
+  invisible from `/api/agentic-rag/query`. **Hypothesis NOT TESTED — not disproved.** Whoever
+  picks this up must measure it where the citation pipeline actually runs (the web-chat surface),
+  not here. Without that control the probe would have printed "0 citations on str runs" and it
+  would have read as a confirmed finding.
+
+- **🌍 THE APOLOGY AND ACK THE OUTBOX WORKER SENDS ARE IN ENGLISH FOR 6 OF 9 SAMPLED
+  NON-ENGLISH MESSAGES (2026-08-11).** `wa_outbox_worker` derives the language with
+  `backend.services.communication.detect_language`, and measured on nine realistic client
+  openers it returns **`'auto'`** for _"Buongiorno, quanto costa aprire una PT PMA a Bali?"_,
+  _"Non ho capito niente di quello che mi hai scritto"_, _"Selamat pagi, berapa biaya untuk
+  membuat PT PMA?"_, Russian, German and Spanish — while it DOES catch _"Ciao, ho bisogno di
+  rinnovare il mio KITAS"_ → `it` and _"Saya mau perpanjang KITAS…"_ → `id`. It is
+  marker-based and misses ordinary phrasings. `_apology_text('auto')` then misses the dict and
+  falls back to `_APOLOGY_TEXTS['en']`.
+  - The table itself holds only `en/id/it/ru/uk`, so **German and Spanish are English by
+    construction** — that part is the known stub gap, the news is IT/ID/RU failing anyway.
+  - This is the C4 apology the client gets _after_ `_maybe_send_ack` has already promised
+    someone is checking. Wrong language on the promise AND on the apology.
+  - **Trap for whoever fixes it**: there are TWO language vocabularies in this lane —
+    `detect_language` → `'it'`, and `get_localized_stub` → `'ITALIAN'`. Verified:
+    `get_localized_stub(..., 'it')` returns the **ENGLISH** text with no warning, as do `'IT'`
+    and `'italian'`. Wiring one into the other emits English under Italian and says nothing.
+    Pinned by `test_an_unknown_language_name_must_not_silently_become_an_english_apology`
+    (branch `backend-rag-wa-escalation-lane`), which goes red the day the two converge.
 
 - **🔬 TWO OF MY OWN INSTRUMENTS LIED, AND BOTH ARE WORTH KNOWING BEFORE YOU REUSE THEM.**
   (a) The probe prints `collections_queried EMPTY on ALL = LLM-picks-collections stage down
