@@ -27,7 +27,34 @@ TODAY=$(date +%Y-%m-%d)
 YESTERDAY=$(date -v-1d +%Y-%m-%d 2>/dev/null || date -d "yesterday" +%Y-%m-%d)
 TODAY_LOG="$LOG_DIR/nb-agents-daily-dr-$TODAY.log"
 
+# The redirect below sends BOTH streams to the day log for the rest of the run,
+# which is what a daily report wants — and it is also the reason 13 consecutive
+# Telegram alerts (2026-07-28 → 08-09) could only say "Exit: 1". The invoking
+# `cron-state.sh` builds its alert from what it captures on the child's stderr;
+# once this line runs, nothing reaches it. Ten of those thirteen mornings the day
+# log held, verbatim, "Authentication expired. Run 'nlm login' ..." — the cause
+# was on disk, naming its own cure, and the channel carried an exit code.
+#
+# So keep a handle on the REAL stderr FIRST, and give the cause a way out.
+# No `|| true` here on purpose: `exec` with only redirections is a special
+# builtin, so `||` cannot protect it under `set -e` (W108) — the guard would be
+# theatre. It also cannot realistically fail.
+exec 3>&2
 exec >>"$TODAY_LOG" 2>&1
+
+# Bounded on purpose: the alert has a character budget, and a wall of log is how
+# a real cause gets scrolled past. Three lines is what a phone notification shows.
+_emit_cause_to_cron () {
+  _rc=$?
+  if [ "$_rc" -eq 0 ]; then return 0; fi
+  {
+    printf 'nb-agents-daily-dr exit %s — tail of %s:\n' "$_rc" "$TODAY_LOG"
+    grep -v '^[[:space:]]*$' "$TODAY_LOG" 2>/dev/null | tail -n 3
+  } >&3 2>/dev/null || true
+  return 0
+}
+trap _emit_cause_to_cron EXIT
+
 echo "============================================================"
 echo "[$(date '+%Y-%m-%d %H:%M:%S %Z')] NB-AGENTS daily adaptive DR"
 echo "============================================================"
@@ -136,6 +163,19 @@ data = json.loads(raw[start:])
 # query — the third of three stacked defects, each hidden by the one before it.
 # Accept both shapes, and if neither carries an answer say WHICH keys arrived.
 v = data["value"] if isinstance(data.get("value"), dict) else data
+# The CLI reports its OWN failures as {"status": "error", "error": "<msg>"}, and
+# that message names its own cure. Measured 2026-08-10: six byte-identical
+# 227-byte payloads (3,4,5,6,8,9 Aug) all read "Query failed: Authentication
+# expired. Run 'nlm login' in your terminal to re-authenticate." — while this
+# branch turned the one useful line into a complaint about JSON SHAPE, pointing
+# whoever read the alert at a parser bug that does not exist. A diagnosis that
+# names the wrong thing is worse than no diagnosis (W106: the cure and its
+# message were written from the same belief and expire together).
+# Gated on "answer" not in v so a SUCCESSFUL payload that happens to carry an
+# "error" key is never hijacked into a failure.
+err = v.get("error") or data.get("error")
+if "answer" not in v and err:
+    raise SystemExit("nlm query failed: %s" % err)
 if "answer" not in v:
     raise SystemExit(
         "unexpected nlm JSON shape - top-level keys: %s" % sorted(data)[:12]
