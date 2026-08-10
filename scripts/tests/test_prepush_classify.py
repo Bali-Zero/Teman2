@@ -54,11 +54,10 @@ _spec.loader.exec_module(pc)  # type: ignore[union-attr]
 
 def test_edge_allowlist_prefixes_have_no_trailing_slash() -> None:
     """v2 (round-1 red-team): ALLOWLIST_INNOCENT_PREFIXES (bare-prefix, no
-    suffix scoping) was REMOVED entirely — ALLOWLIST_PREFIX_SUFFIX_PAIRS is
-    now the ONLY allowlist mechanism in the module. This test asserts that
-    single-mechanism invariant directly (no leftover bare-prefix list to
-    accidentally reintroduce), plus the original prefix/suffix hygiene
-    checks."""
+    suffix scoping) was REMOVED entirely. Directory rules remain suffix-
+    scoped; exact files use equality in ALLOWLIST_EXACT_PATHS. This test
+    asserts that no leftover bare-prefix list can reintroduce extension-
+    blindness, plus the original directory prefix/suffix hygiene checks."""
     assert not hasattr(pc, "ALLOWLIST_INNOCENT_PREFIXES"), (
         "the bare-prefix allowlist was removed in v2 (round-1 MUST-FIX) — "
         "its reappearance would reintroduce the extension-blindness bug"
@@ -1121,6 +1120,14 @@ def test_innocence_root_gitignore_skips() -> None:
     assert unknown == []
 
 
+def test_guilt_root_gitignore_descendant_forces_full() -> None:
+    """A file-shaped exact rule must not become a directory-prefix rule."""
+    path = ".gitignore/probe.gitignore"
+    verdict, unknown = pc.classify([path])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == [path]
+
+
 def test_innocence_home_fork_declared_pairs_skips() -> None:
     """The HOME-fork guard's pair registry (superscar #1) — the only tracked
     file under infra/home-fork/ today, 31 commits in its lifetime."""
@@ -1264,28 +1271,21 @@ def test_allowlist_version_bumped_to_6_for_the_v6_entries() -> None:
     """The skip-banner logs the version that approved a skip; a rules change
     without a bump makes the log line unattributable."""
     assert pc.ALLOWLIST_VERSION >= 6
-    assert (".gitignore", (".gitignore",)) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
+    assert ".gitignore" in pc.ALLOWLIST_EXACT_PATHS
+    assert (".gitignore", (".gitignore",)) not in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
     assert ("infra/home-fork", (".json",)) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
 
 
-def test_edge_v6_added_no_second_allowlist_mechanism() -> None:
-    """ANTI-DRIFT. The odd-looking `(".gitignore", (".gitignore",))` shape is
-    the price of keeping ONE uniform mechanism. The tempting "tidy" is a
-    second exact-match allowlist container — which is exactly what the v2
-    MUST-FIX removed (`ALLOWLIST_INNOCENT_PREFIXES`). Same self-check as
-    test_edge_allowlist_prefixes_have_no_trailing_slash, one generation on.
-    """
-    for forbidden in (
-        "ALLOWLIST_INNOCENT_PREFIXES",
-        "ALLOWLIST_EXACT_PATHS",
-        "ALLOWLIST_INNOCENT_EXACT_PATHS",
-        "ROOT_LEVEL_INNOCENT_EXACT",
-    ):
-        assert not hasattr(pc, forbidden), (
-            f"{forbidden} exists — a second allowlist mechanism reintroduces the "
-            "class of bug v2 removed; express exact matches through "
-            "ALLOWLIST_PREFIX_SUFFIX_PAIRS instead"
-        )
+def test_edge_exact_file_rules_use_dedicated_exact_path_set() -> None:
+    """File-shaped rules must never share directory-prefix semantics."""
+    expected = {
+        ".gitignore",
+        "apps/wa-mirror/package.json",
+        "apps/wa-mirror/package-lock.json",
+        "apps/organism/organism/organs_registry.yaml",
+    }
+    assert pc.ALLOWLIST_EXACT_PATHS == expected
+    assert expected.isdisjoint(prefix for prefix, _ in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS)
 
 
 # ---------------------------------------------------------------------------
@@ -1401,15 +1401,14 @@ def test_merge_base_range_excludes_mains_files_while_remote_sha_range_does_not(
 
 
 # ---------------------------------------------------------------------------
-# The REASON LABEL (added 2026-07-27, after proving v6 live on main).
+# The REASON LABEL (added 2026-07-27, then separated by rule shape in v8).
 #
-# The matching condition `(path == prefix or path.startswith(prefix + "/"))`
-# is ONE mechanism covering two different rule shapes. It classifies both
-# correctly, but the reason string rendered `<prefix>/**` for BOTH — so the
-# v6 root-exact entry printed `.gitignore/** (.gitignore)`, naming a
-# `.gitignore/` DIRECTORY that does not exist and cannot exist as a rule
-# here. Discovered by reading the shipped tool's real output during
-# PROVE-LIVE, not from the diff.
+# The old shared matcher covered both exact files and directory descendants.
+# Its reason string originally rendered `<prefix>/**` for BOTH — so the v6
+# root-exact entry printed `.gitignore/** (.gitignore)`, naming a directory
+# rule the allowlist did not intend. v8 makes the model explicit: exact files
+# live in ALLOWLIST_EXACT_PATHS and directory rules live in
+# ALLOWLIST_PREFIX_SUFFIX_PAIRS.
 #
 # Why this is worth pinning rather than shrugging at: the message is the
 # only thing a human reads when asking "why was my suite skipped / why was
@@ -1420,8 +1419,8 @@ def test_merge_base_range_excludes_mains_files_while_remote_sha_range_does_not(
 # W106: the verdict was right and the DIAGNOSIS was anchored to the wrong
 # thing, and the diagnosis is what the next reader acts on.
 #
-# These tests are about the LABEL only. The verdict tests above are the
-# regression guard that this cosmetic change moved no classification.
+# The label tests below ensure diagnostics still identify the rule shape;
+# the descendant guilt tests separately pin the v8 path-boundary verdict.
 # ---------------------------------------------------------------------------
 
 
@@ -1472,26 +1471,20 @@ def test_label_change_moved_no_verdict_for_either_v6_class() -> None:
 
 
 def test_label_every_allowlist_entry_gets_a_reason_naming_its_own_prefix() -> None:
-    """Sweep the WHOLE table rather than only the entry that bit us (the
+    """Sweep the WHOLE directory table rather than only one entry (the
     SYMMETRY clause from the fly-backup scar: a fix that covers only the case
     that bit you is half a fix). For each entry, a representative matching
-    path must produce a reason that names that entry's prefix and does not
-    invent a directory for exact-match entries."""
+    descendant must produce a reason that names that entry's prefix."""
     for prefix, suffixes in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS:
         suffix = suffixes[0]
-        exact_shaped = prefix.endswith(suffix)
-        sample = prefix if exact_shaped else f"{prefix}/probe{suffix}"
+        sample = f"{prefix}/probe{suffix}"
         reason = pc._innocent_reason(sample)
         if reason is None:
             # A NEVER_INNOCENT_* net legitimately outranks the table for some
             # samples; that is a different rule, not a label defect.
             continue
         assert prefix in reason, f"reason {reason!r} does not name its prefix {prefix!r}"
-        if sample == prefix:
-            assert "/**" not in reason, (
-                f"entry {prefix!r} matched EXACTLY but was labelled with a "
-                f"directory glob: {reason!r}"
-            )
+        assert "/**" in reason, f"directory entry {prefix!r} lost its glob: {reason!r}"
 
 
 # ===========================================================================
@@ -1580,6 +1573,22 @@ def test_innocence_wa_mirror_package_files_skip() -> None:
     assert unknown == []
 
 
+def test_guilt_wa_mirror_package_json_descendant_forces_full() -> None:
+    """The exact package manifest rule must not bless descendants."""
+    path = "apps/wa-mirror/package.json/probe.json"
+    verdict, unknown = pc.classify([path])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == [path]
+
+
+def test_guilt_wa_mirror_package_lock_json_descendant_forces_full() -> None:
+    """The exact lockfile rule must not bless descendants."""
+    path = "apps/wa-mirror/package-lock.json/probe.json"
+    verdict, unknown = pc.classify([path])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == [path]
+
+
 def test_guilt_wa_mirror_tree_outside_the_two_exact_files_forces_full() -> None:
     """The wa-mirror allowlist is TWO exact files, not the tree. Any other
     file under apps/wa-mirror/ — including a same-directory sibling that
@@ -1610,6 +1619,14 @@ def test_innocence_organs_registry_yaml_skips() -> None:
     verdict, unknown = pc.classify(["apps/organism/organism/organs_registry.yaml"])
     assert verdict == pc.VERDICT_SKIP
     assert unknown == []
+
+
+def test_guilt_organs_registry_yaml_descendant_forces_full() -> None:
+    """The exact registry rule must not bless a file-shaped directory."""
+    path = "apps/organism/organism/organs_registry.yaml/probe.yaml"
+    verdict, unknown = pc.classify([path])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == [path]
 
 
 def test_guilt_organs_registry_lookalikes_force_full() -> None:
@@ -1660,19 +1677,13 @@ def test_label_exact_match_wa_mirror_and_organs_registry_do_not_invent_a_directo
         assert reason == f"{path} (exact match)"
 
 
-def test_allowlist_version_bumped_to_7_for_the_v7_entries() -> None:
+def test_allowlist_version_bumped_to_8_for_the_exact_path_fix() -> None:
     """The skip-banner logs the version that approved a skip; a rules change
     without a bump makes the log line unattributable."""
-    assert pc.ALLOWLIST_VERSION >= 7
+    assert pc.ALLOWLIST_VERSION >= 8
     assert ("scripts/tests", (".py", ".sh")) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
     assert ("scripts", (".md",)) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
-    assert ("apps/wa-mirror/package.json", (".json",)) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
-    assert (
-        "apps/wa-mirror/package-lock.json",
-        (".json",),
-    ) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
-    assert (
-        "apps/organism/organism/organs_registry.yaml",
-        (".yaml",),
-    ) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
+    assert "apps/wa-mirror/package.json" in pc.ALLOWLIST_EXACT_PATHS
+    assert "apps/wa-mirror/package-lock.json" in pc.ALLOWLIST_EXACT_PATHS
+    assert "apps/organism/organism/organs_registry.yaml" in pc.ALLOWLIST_EXACT_PATHS
     assert ".husky/pre-commit" in pc.NEVER_INNOCENT_EXACT_PATHS
