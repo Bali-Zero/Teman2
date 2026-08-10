@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- TEMPLATE — non armare finché seat_usage_collector.py non è testato sui log reali.
+     All'arming: spostare in infra/launchagents/, sostituire __REPO__ col runtime home
+     (convenzione W69: ~/nuzantara-deploy), installare col pattern wrapper esistente.
+     Nessun secret in questo file (convenzione cost-ledger bridge). -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.nuzantara.seat-usage</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/python3</string>
+    <string>__REPO__/scripts/usage/seat_usage_collector.py</string>
+    <string>--out</string>
+    <string>__HOME__/.agent/cost-ledger/seat_usage_snapshot.json</string>
+  </array>
+  <key>StartInterval</key><integer>1800</integer>
+  <key>KeepAlive</key><false/>
+  <key>StandardOutPath</key><string>__HOME__/logs/seat-usage.log</string>
+  <key>StandardErrorPath</key><string>__HOME__/logs/seat-usage.err.log</string>
+</dict>
+</plist>

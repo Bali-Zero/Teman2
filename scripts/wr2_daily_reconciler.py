@@ -37,7 +37,6 @@ import asyncio
 import logging
 import os
 import subprocess
-import re
 import sys
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -47,14 +46,10 @@ from typing import Any
 _REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_REPO))
 
+from scripts.tg_gateway_verdict import extract_gateway_verdict, gateway_delivered  # noqa: E402
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("wr2.daily_reconciler")
-
-# The gateway exits 0 even when it REFUSES (deduped / p0_overflow_spooled /
-# p0_unsent_spooled all mean "not sent to Telegram now"), so the exit code
-# reads every refusal as a delivery. The verdict is on stderr — read it (W104).
-_GATEWAY_VERDICT_RE = re.compile(r"^tg_notify:\s*(\S+)", re.MULTILINE)
-
 
 WITA = timezone(timedelta(hours=8))
 ORGAN_ID = "pro.wr2_daily_carousel"
@@ -165,9 +160,9 @@ def _tg_notify(tier: str, dedup_key: str, text: str) -> bool:
              "--source", "wr2-daily-reconciler", "--dedup-key", dedup_key, text],
             capture_output=True, text=True, timeout=30,
         )
-        m = _GATEWAY_VERDICT_RE.search(res.stderr or "")
-        logger.info("tg_notify: %s", m.group(1) if m else f"NESSUN verdetto rc={res.returncode}")
-        return res.returncode == 0
+        verdict = extract_gateway_verdict(res.stderr)
+        logger.info("tg_notify: %s", verdict or f"NESSUN verdetto rc={res.returncode}")
+        return res.returncode == 0 and gateway_delivered(verdict)
     except Exception as exc:  # noqa: BLE001
         logger.warning("tg_notify failed: %s", exc)
         return False

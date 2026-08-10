@@ -5,6 +5,7 @@
 
 <!-- DOCSYNC:QUICK_NUMBERS_START -->
 `330 routers · 693 services · 1327 tests · 12 Qdrant collections · 104,154 vectors · 108,068 KG nodes`
+`330 routers · 693 services · 1326 tests · 12 Qdrant collections · 104,154 vectors · 108,068 KG nodes`
 <!-- DOCSYNC:QUICK_NUMBERS_END -->
 
 > **Role split:** `CLAUDE.md` = how to act (rules, delegation, language, deploy QA). This file = how to build (architecture, code patterns, debugging, workflows).

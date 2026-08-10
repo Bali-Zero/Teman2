@@ -21,8 +21,9 @@ from typing import Any
 
 from backend.services.misc.clarification_service import ClarificationService
 from backend.services.rag.agentic.prompt_builder import SystemPromptBuilder
+from backend.services.rag.agentic.query_helpers import detect_query_language
 from backend.services.rag.agentic.schema import CoreResult
-from backend.services.response.cleaner import OUT_OF_DOMAIN_RESPONSES, is_out_of_domain
+from backend.services.response.cleaner import get_out_of_domain_response, is_out_of_domain
 
 logger = logging.getLogger(__name__)
 
@@ -181,13 +182,16 @@ class QueryGates:
         """
         out_of_domain, reason = is_out_of_domain(query)
         if out_of_domain and reason:
-            logger.info("Query rejected as out-of-domain: %s", reason)
-            answer_text = OUT_OF_DOMAIN_RESPONSES.get(reason, OUT_OF_DOMAIN_RESPONSES["unknown"])
+            language = detect_query_language(query)
+            logger.info("Query rejected as out-of-domain: %s (language=%s)", reason, language)
+            # Localized: this gate fires BEFORE retrieval, so until 2026-08-10 a
+            # client who never wrote a word of Italian was refused in Italian.
+            answer_text = get_out_of_domain_response(reason, language)
             return GateResult(
                 triggered=True,
                 response=answer_text,
                 gate_name="out_of_domain",
-                metadata={"reason": reason},
+                metadata={"reason": reason, "language": language},
             )
         return GateResult(triggered=False)
 

@@ -52,24 +52,22 @@ import json
 import logging
 import os
 import subprocess
-import re
 import sys
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import asyncpg
 
+_REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(_REPO))
+
+from scripts.tg_gateway_verdict import extract_gateway_verdict, gateway_delivered  # noqa: E402
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
 )
 logger = logging.getLogger("wa_liveness_alarm")
-
-# The gateway exits 0 even when it REFUSES (deduped / p0_overflow_spooled /
-# p0_unsent_spooled all mean "not sent to Telegram now"), so the exit code
-# reads every refusal as a delivery. The verdict is on stderr — read it (W104).
-_GATEWAY_VERDICT_RE = re.compile(r"^tg_notify:\s*(\S+)", re.MULTILINE)
-
 
 STATE_DIR = Path.home() / ".cell-bridge-state"
 LOCK_FILE = STATE_DIR / "wa_liveness_alarm.lock"
@@ -206,13 +204,13 @@ def _send_telegram(text: str, dedup_key: str = "") -> bool:
             cmd,
             capture_output=True, text=True, timeout=30,
         )
-        m = _GATEWAY_VERDICT_RE.search(proc.stderr or "")
+        verdict = extract_gateway_verdict(proc.stderr)
         logger.info("[wa_liveness] tg_notify: %s",
-                    m.group(1) if m else f"NESSUN verdetto rc={proc.returncode}")
+                    verdict or f"NESSUN verdetto rc={proc.returncode}")
         if proc.returncode != 0:
             logger.warning("[wa_liveness] tg_notify exit=%s: %s", proc.returncode, proc.stderr[:200])
             return False
-        return True
+        return gateway_delivered(verdict)
     except Exception as exc:  # noqa: BLE001
         logger.warning("[wa_liveness] telegram send failed: %s", exc)
         return False

@@ -54,6 +54,7 @@ from typing import Any, NamedTuple
 
 # --- sys.path so backend.* and the renderer package import regardless of launchd cwd
 _REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(_REPO))
 sys.path.insert(0, str(_REPO / "apps" / "backend-rag"))
 sys.path.insert(0, str(_REPO / "scripts"))
 
@@ -61,6 +62,7 @@ import asyncpg  # noqa: E402
 
 import wr2_orchestrator_metrics as wom  # noqa: E402  (B11: per-step observability, fail-open)
 from backend.services.canva_renderer_v2 import _pg  # noqa: E402
+from scripts.tg_gateway_verdict import extract_gateway_verdict, gateway_delivered  # noqa: E402
 from wr2_html_renderer.claude_vision import VisionTransient  # noqa: E402
 
 # ── C2 runtime provenance (deploy-fork content-gate) — fail-open on any error ──
@@ -96,48 +98,49 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 logger = logging.getLogger("wr2_html_apply")
 
-# The gateway exits 0 even when it REFUSES (deduped / p0_overflow_spooled /
-# p0_unsent_spooled all mean "not sent to Telegram now"), so the exit code
-# reads every refusal as a delivery. The verdict is on stderr — read it (W104).
-_GATEWAY_VERDICT_RE = re.compile(r"^tg_notify:\s*(\S+)", re.MULTILINE)
-
-
 MAX_DRAFTS_PER_RUN = 1
 DEFAULT_RECIPIENTS = ["6282230102328", "628213454726"]  # Antonello +62 822-3010-2328, Damar +62 821-3454-726
 TELEGRAM_OWNER_CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
 
 
 # ── ops alert (NOT the carousel link — operational signal only, C6/L3) ──────────
-def _tg_notify(tier: str, dedup_key: str, text: str) -> bool:
+def _tg_notify(tier: str, dedup_key: str, text: str) -> bool | None:
     """Route a notification through the tg_notify gateway (tier router + digest +
-    anti-noise, PR #2067). Spool-based and fast; returns True when the gateway
-    accepted the message. NEVER raises — visibility must not break the render."""
+    anti-noise, PR #2067).
+
+    ``True`` means Telegram delivered now; ``False`` is a recognized non-delivery
+    verdict that the gateway has handled; ``None`` means the gateway was missing,
+    failed, or returned malformed output and the legacy fallback may run.
+    NEVER raises — visibility must not break the render.
+    """
     try:
         import subprocess
 
         script = _REPO / "scripts" / "tg_notify.py"
         if not script.is_file():
-            return False
+            return None
         cmd = [
             sys.executable, str(script),
             "--tier", tier, "--source", "wr2-html-apply",
             "--dedup-key", dedup_key, text,
         ]
         res = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-        m = _GATEWAY_VERDICT_RE.search(res.stderr or "")
+        verdict = extract_gateway_verdict(res.stderr)
         logger.info("tg_notify[%s]: %s", dedup_key,
-                    m.group(1) if m else f"NESSUN verdetto rc={res.returncode}")
-        return res.returncode == 0
+                    verdict or f"NESSUN verdetto rc={res.returncode}")
+        if res.returncode != 0 or verdict is None:
+            return None
+        return gateway_delivered(verdict)
     except Exception as exc:  # noqa: BLE001
         logger.warning("tg_notify failed (%s): %s", dedup_key, exc)
-        return False
+        return None
 
 
 async def _ops_alert(text: str, *, tier: str = "p0", dedup_key: str = "wr2-html-ops") -> None:
     """Operational alert. Primary path = tg_notify gateway (R8 cure: raw sendMessage
     to the owner chat is one of 206 unread senders — the gateway tiers/dedups/digests).
     Legacy direct Telegram kept ONLY as fallback when the gateway is absent."""
-    if _tg_notify(tier, dedup_key, text):
+    if _tg_notify(tier, dedup_key, text) is not None:
         return
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     if not token:
