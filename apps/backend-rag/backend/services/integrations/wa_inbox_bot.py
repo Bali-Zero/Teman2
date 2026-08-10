@@ -20,9 +20,19 @@ Safety contract (mirrors the worker's expectations in wa_outbox_worker.py):
     * Feature flag ``WA_INBOX_BOT_AUTOREPLY`` (default OFF) — when off, this
       raises so the worker marks the row failed/retry, NEVER a wrong send. Arm
       it via a Fly secret only when ready.
-    * On ABSTAIN or any RAG error → raise. The worker has a retry/backoff guard
+    * On any RAG ERROR → raise. The worker has a retry/backoff guard
       (MAX_ATTEMPTS) and then marks ``failed`` — the operator can take over the
       thread. We NEVER fabricate a reply or send an empty/placeholder body.
+    * On ABSTAIN → **send the localized refusal and tell a human** (changed
+      2026-08-11, Zero's ruling "rifiuto + avviso a un umano"). This used to
+      raise as well, and the contract sentence that lived here said the operator
+      would take over the thread. Measured, that operator did not come: of 28
+      threads, 26 had at least one failed row and exactly 4 were ever touched by
+      a human. So the client's whole experience of an abstain was silence — and
+      the message being discarded was, on the cases probed live, the persona
+      telling them the team had been notified and would reply within the hour.
+      Refusing out loud and actually notifying is strictly closer to true than
+      both halves of that.
     * The 24h Meta customer-care window is enforced by the worker AFTER us, so
       we do not re-check it here.
 
@@ -44,7 +54,10 @@ import httpx
 from backend.app.core.config import settings
 from backend.app.rag_proxy import get_rag_worker_url
 from backend.channels.format import format_rich_text
+from backend.services.integrations.human_escalation_notifier import notify_human_telegram
 from backend.services.integrations.wa_bot_outcomes import BotStandingCondition
+from backend.services.rag.agentic._reasoning_stubs import get_localized_stub
+from backend.services.rag.agentic.query_helpers import detect_query_language
 
 logger = logging.getLogger("zantara.backend")
 
@@ -299,9 +312,12 @@ async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
             buys is a distinct line in the ledger. (Measured 2026-07-27: 49 of
             the 52 give-ups ever recorded were one of these two, all filed under
             the same sentinel as a genuine crash. See ``wa_bot_outcomes``.)
-        RuntimeError: RAG abstained, or returned an empty answer. The worker's
-            guard turns this into a retry/backoff and eventually ``failed`` —
-            never a wrong send.
+        RuntimeError: the RAG returned an EMPTY answer. The worker's guard
+            turns this into a retry/backoff and eventually ``failed`` — never a
+            wrong send. **An abstain no longer raises** (2026-08-11): it used to,
+            and the client got silence while the discarded message was the
+            persona promising a callback nobody performed. It now returns the
+            localized refusal and tells a human.
         httpx errors propagate (also caught by the worker guard) → retry.
     """
     if not is_bot_autoreply_enabled():
@@ -355,17 +371,79 @@ async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
         data = resp.json()
 
     if data.get("abstain"):
-        # RAG refused — do not guess. Let the worker park it; operator can take over.
-        raise RuntimeError(
-            f"wa-inbox bot: RAG abstained for thread {thread_id} "
-            f"(reason={data.get('abstain_reason')!r})"
+        # RAG refused. Until 2026-08-11 this raised, the worker burned five
+        # retries and the client got SILENCE — while the answer being discarded
+        # was, on the measured cases, the persona telling the client that the
+        # team had been notified and would reply within one business hour. That
+        # promise is taught by the prompt's ESCALATION section, and nothing on
+        # this path performed it: the message was a promise nobody kept, thrown
+        # away before anyone could read it.
+        #
+        # Zero's ruling (2026-08-10): "rifiuto + avviso a un umano". So: send
+        # the localized refusal, and actually tell a human. The two halves ship
+        # together on purpose — un-silencing WITHOUT the notification would
+        # have converted a silence into a lie.
+        accepted = await notify_human_telegram(
+            phone=phone,
+            # Body withheld: routing a new trigger through the cleartext
+            # payload would widen the §14 exposure. The thread ref is what
+            # makes the omission workable.
+            message_text=None,
+            reason="rag_abstain",
+            thread_ref=str(thread_id),
         )
+        language = detect_query_language(query)
+        logger.info(
+            "wa-inbox bot: abstain on thread %s (reason=%r, lang=%s) — "
+            "localized stub returned, human notified=%s",
+            thread_id,
+            data.get("abstain_reason"),
+            language,
+            accepted,
+        )
+        # The copy asserts only what happened: `accepted` means Telegram took
+        # the message, so the stub may say the request was flagged — never that
+        # someone will reply.
+        return get_localized_stub("abstain_flagged" if accepted else "abstain", language)
 
     answer = (data.get("answer") or "").strip()
     if not answer:
         raise RuntimeError(f"wa-inbox bot: empty RAG answer for thread {thread_id}")
 
-    # Strip an [ESCALATE] marker if the persona emitted one (mirror whatsapp_chat.py).
+    # This line used to strip [ESCALATE] and call nothing, under a comment
+    # claiming to "mirror whatsapp_chat.py" — it mirrored the FORM and not the
+    # EFFECT. Now it notifies.
+    #
+    # INERT TODAY, ON PURPOSE — say it plainly rather than let a reader assume
+    # coverage. **No prompt in this backend asks the model to emit the token**
+    # (grepped 2026-08-11: the only occurrences are the two places that look for
+    # it), and a live probe saw it 0/14. So this branch cannot fire yet. It is
+    # here because the alternative — a second escalation path invented later —
+    # is how this file and whatsapp_chat.py drifted apart in the first place.
+    #
+    # It exists for the case `abstain` provably cannot catch: a message that
+    # asks a real question AND asks for a person retrieves an answer, does not
+    # abstain, and reaches nobody (measured 2026-08-11: 2 of 4 such messages did
+    # not abstain, and all 4 promised the client a callback).
+    #
+    # ARMING IT IS A SEPARATE CHANGE, and NOT just a prompt line: the prompt is
+    # shared by every consumer, and `blog_ask.py` / `agentic_rag.py` /
+    # `channels/web` return the answer with NO strip at all (0 occurrences of
+    # the token in any of them). Teaching the model to emit it without first
+    # moving the strip somewhere central would print an internal token to blog
+    # readers. Tracked in PENDING-ARMS.
+    if "[ESCALATE]" in answer:
+        accepted = await notify_human_telegram(
+            phone=phone,
+            message_text=None,
+            reason="persona_escalate_marker",
+            thread_ref=str(thread_id),
+        )
+        logger.info(
+            "wa-inbox bot: persona escalation marker on thread %s — human notified=%s",
+            thread_id,
+            accepted,
+        )
     answer = answer.replace("[ESCALATE]", "").strip()
     if not answer:
         raise RuntimeError(f"wa-inbox bot: answer empty after ESCALATE strip, thread {thread_id}")

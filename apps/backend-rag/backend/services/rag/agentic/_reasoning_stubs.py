@@ -103,6 +103,55 @@ STUB_MESSAGES: dict[str, dict[str, str]] = {
             "я спробую ще раз із ними."
         ),
     },
+    # Same refusal, for the one case where the promise is now backed: a human
+    # WAS told. Added 2026-08-11 with the WA-inbox escalation lane — rule 2 of
+    # this module's docstring says "promote it to a real promise only together
+    # with the routing that backs it", and this key exists only because the
+    # routing landed in the same change.
+    #
+    # It asserts the flagging and NOTHING downstream of it. No "will reply", no
+    # "within one business hour": the caller selects this key from a boolean
+    # that means "Telegram accepted the message", which is not evidence that a
+    # person is on shift, has read it, or owns it. The prompt's own escalation
+    # example does promise an hour — that SLA is a staffing commitment, not a
+    # code property, and it is deliberately absent here.
+    "abstain_flagged": {
+        "ITALIAN": (
+            "Su questo non ho una fonte certa e preferisco non tirare a indovinare: "
+            "con permessi e scadenze una risposta sbagliata costa. "
+            "L'ho segnalata al team di Bali Zero. "
+            "Se intanto mi mandi un documento o una data di riferimento, "
+            "posso riprovare con quelli."
+        ),
+        "ENGLISH": (
+            "I don't have a reliable source for this one, and I'd rather not guess — "
+            "with permits and deadlines a wrong answer is expensive. "
+            "I've flagged it to the Bali Zero team. "
+            "If you can send me a document or a reference date in the meantime, "
+            "I can try again with those."
+        ),
+        "INDONESIAN": (
+            "Untuk yang ini saya tidak punya sumber yang pasti, dan saya lebih baik "
+            "tidak menebak — untuk izin dan tenggat waktu, jawaban yang salah itu mahal. "
+            "Sudah saya teruskan ke tim Bali Zero. "
+            "Sementara itu, kalau Anda kirim dokumen atau tanggal acuan, "
+            "saya bisa coba lagi dengan itu."
+        ),
+        "RUSSIAN": (
+            "По этому вопросу у меня нет надёжного источника, и я предпочитаю не гадать: "
+            "когда речь идёт о разрешениях и сроках, неверный ответ обходится дорого. "
+            "Я передал вопрос команде Bali Zero. "
+            "Если пока пришлёте документ или дату, на которую опираетесь, "
+            "я попробую ещё раз с ними."
+        ),
+        "UKRAINIAN": (
+            "Щодо цього я не маю надійного джерела і волію не вгадувати: "
+            "коли йдеться про дозволи та строки, неправильна відповідь дорого коштує. "
+            "Я передав це команді Bali Zero. "
+            "Якщо тим часом надішлете документ або дату, на яку спираєтесь, "
+            "я спробую ще раз із ними."
+        ),
+    },
     "abstain_detailed": {
         "ITALIAN": (
             "Per questa domanda specifica non ho informazioni verificate sufficienti "
