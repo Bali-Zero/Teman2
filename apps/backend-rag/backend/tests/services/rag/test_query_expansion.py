@@ -225,20 +225,75 @@ class TestTranslationVariants:
     async def test_llm_translate_validation_failure_falls_back(self, expander):
         """When `generate_structured` raises `LLMStructuredOutputError`,
         `_llm_translate` swallows it and returns an empty variants set —
-        keeping the dictionary-only path of `translate_variants` intact."""
+        keeping the dictionary-only path of `translate_variants` intact —
+        without logging the exception message, which can echo client text."""
         from backend.llm.genai_client import LLMStructuredOutputError
 
+        unsafe_message = "input_value=CLIENT_TEXT_SENTINEL_MUST_NOT_APPEAR"
         mock_client = MagicMock()
         mock_client.generate_structured = AsyncMock(
-            side_effect=LLMStructuredOutputError("schema validation failed twice")
+            side_effect=LLMStructuredOutputError(
+                unsafe_message,
+                reason="SCHEMA_VALIDATION",
+            )
         )
 
-        with patch.object(expander, "_get_genai_client", return_value=mock_client):
+        with (
+            patch.object(expander, "_get_genai_client", return_value=mock_client),
+            patch("backend.services.rag.query_expansion.logger.debug") as debug_log,
+        ):
             variants = await expander._llm_translate(
                 "what does Bali Zero do for foreign investors", ["id"]
             )
 
         assert variants == set()
+        debug_log.assert_called_once_with(
+            "LLM translation failed schema validation (reason=%s)",
+            "SCHEMA_VALIDATION",
+        )
+        assert unsafe_message not in repr(debug_log.call_args)
+
+    @pytest.mark.asyncio
+    async def test_llm_translate_rejects_untrusted_failure_reason(self, expander):
+        from backend.llm.genai_client import LLMStructuredOutputError
+
+        unsafe_reason = "BLOCKED_CLIENT_TEXT_SENTINEL_MUST_NOT_APPEAR"
+        mock_client = MagicMock()
+        mock_client.generate_structured = AsyncMock(
+            side_effect=LLMStructuredOutputError("unsafe message", reason=unsafe_reason)
+        )
+
+        with (
+            patch.object(expander, "_get_genai_client", return_value=mock_client),
+            patch("backend.services.rag.query_expansion.logger.debug") as debug_log,
+        ):
+            variants = await expander._llm_translate("foreign investment guide", ["id"])
+
+        assert variants == set()
+        debug_log.assert_called_once_with(
+            "LLM translation failed schema validation (reason=%s)",
+            "UNATTRIBUTED",
+        )
+        assert unsafe_reason not in repr(debug_log.call_args)
+
+    @pytest.mark.asyncio
+    async def test_llm_translate_unexpected_failure_logs_type_only(self, expander):
+        unsafe_message = "CLIENT_TEXT_SENTINEL_MUST_NOT_APPEAR"
+        mock_client = MagicMock()
+        mock_client.generate_structured = AsyncMock(side_effect=RuntimeError(unsafe_message))
+
+        with (
+            patch.object(expander, "_get_genai_client", return_value=mock_client),
+            patch("backend.services.rag.query_expansion.logger.debug") as debug_log,
+        ):
+            variants = await expander._llm_translate("foreign investment guide", ["id"])
+
+        assert variants == set()
+        debug_log.assert_called_once_with(
+            "LLM translation failed (unexpected=%s)",
+            "RuntimeError",
+        )
+        assert unsafe_message not in repr(debug_log.call_args)
 
     @pytest.mark.asyncio
     async def test_llm_translate_no_client_returns_empty(self, expander):
