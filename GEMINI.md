@@ -211,3 +211,15 @@ Workspace (storico): `~/.openclaw/workspace/autonomous/seo-guardian/`
 - `CLAUDE.md` — regole progetto complete (fonte primaria, PIÙ DETTAGLIATO di questo file)
 - `docs/AI_ONBOARDING.md` — onboarding
 - `PRICING_REFERENCE.md`, `VISA_TYPES_REFERENCE.md` — prezzi e visa
+
+---
+
+## Conduttore e flotta (2026-08-09)
+
+Gemini CLI è DEPRECATO (2026-06-18) — la porta Google è **agy/Antigravity**. Quando Zero avvia agy come orchestratore interattivo vale AGENTS.md §17: stessa legge, altra porta.
+
+- Dispatch agenti secondo `FLEET_TOPOLOGY.json`; Evidence Pack; mai merge a mano (PR → required checks → auto-merge → CI deploy).
+- Verdetto Gear-2 da famiglia diversa dal builder; Gear-3 sempre check Fable.
+- Fence agy invariata (MODEL_TOPOLOGY notes): candidate-only, no KG writes, no merge identità, no credenziali, no scraping account privati.
+- Quota AI Ultra: refresh ~5h + cap settimanali; overage a crediti = spesa per-token → richiede GO di Zero.
+- PII: mai. Quote cliente: mai. Legge 5: mai pubblicare.

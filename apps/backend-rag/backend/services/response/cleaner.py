@@ -9,29 +9,268 @@ logger = logging.getLogger(__name__)
 # OUT-OF-DOMAIN DETECTION
 # ============================================================================
 
-OUT_OF_DOMAIN_RESPONSES = {
-    "personal_data": (
-        "Non ho accesso a dati personali di terze persone come codici fiscali, "
-        "numeri di telefono o indirizzi privati. Posso aiutarti con informazioni "
-        "su visa, business setup o questioni legali in Indonesia?"
-    ),
-    "realtime_info": (
-        "Non ho accesso a informazioni in tempo reale come meteo, news o risultati sportivi. "
-        "Per queste informazioni ti consiglio di consultare fonti aggiornate. "
-        "Posso invece aiutarti con visa, KITAS, o business in Indonesia?"
-    ),
-    "off_topic": (
-        f"Questo argomento è fuori dalla mia area di competenza. Sono Zantara, "
-        f"l'assistente AI di {settings.COMPANY_NAME}, specializzato in visa, immigrazione, "
-        "setup aziendale (PT PMA) e questioni legali per stranieri in Indonesia. "
-        "Come posso aiutarti in questi ambiti?"
-    ),
-    "unknown": (
-        "Non ho informazioni specifiche su questo argomento. "
-        "Posso aiutarti con visa, KITAS, setup PT PMA/Lokal, "
-        "o altre questioni business in Indonesia?"
-    ),
+# These four strings were ITALIAN-ONLY until 2026-08-10, on a gate that fires
+# BEFORE retrieval on every channel: an English or Indonesian client asking a
+# blocked question read a refusal in a language they had not written in.
+#
+# `{company}` is filled at call time, so a test can move COMPANY_NAME without
+# re-importing this module.
+#
+# WHY A SECOND TABLE AND NOT `_reasoning_stubs.STUB_MESSAGES`: that module is the
+# refusal-copy SSOT and would be the right home, but `cleaner` cannot import it.
+# `query_gates` imports THIS module, and reaching `backend.services.rag.agentic.
+# _reasoning_stubs` executes that package's `__init__`, which pulls the
+# orchestrator and lands back here mid-import. So the COPY is duplicated by
+# necessity while the LANGUAGE SET is not: `test_out_of_domain_language_coverage`
+# imports `PROTOCOL_LANGUAGES` from that same SSOT and derives the detector's
+# vocabulary from its AST, exactly as the stub table's own test does. Adding a
+# language to `detect_query_language` fails both tables or neither.
+_OUT_OF_DOMAIN_BY_LANGUAGE: dict[str, dict[str, str]] = {
+    "personal_data": {
+        "ITALIAN": (
+            "Non ho accesso a dati personali di terze persone come codici fiscali, "
+            "numeri di telefono o indirizzi privati. Posso aiutarti con informazioni "
+            "su visa, business setup o questioni legali in Indonesia?"
+        ),
+        "ENGLISH": (
+            "I don't have access to other people's personal data — tax codes, phone "
+            "numbers or private addresses. I can help with visas, business setup or "
+            "legal questions in Indonesia. What do you need?"
+        ),
+        "INDONESIAN": (
+            "Saya tidak punya akses ke data pribadi orang lain seperti NPWP, nomor "
+            "telepon, atau alamat pribadi. Saya bisa bantu soal visa, pendirian usaha, "
+            "atau pertanyaan hukum di Indonesia. Ada yang bisa saya bantu?"
+        ),
+        "RUSSIAN": (
+            "У меня нет доступа к персональным данным третьих лиц — налоговым номерам, "
+            "телефонам или домашним адресам. Могу помочь с визами, открытием компании "
+            "или юридическими вопросами в Индонезии. Что вас интересует?"
+        ),
+        "UKRAINIAN": (
+            "Я не маю доступу до персональних даних третіх осіб — податкових номерів, "
+            "телефонів чи домашніх адрес. Можу допомогти з візами, відкриттям компанії "
+            "або юридичними питаннями в Індонезії. Що вас цікавить?"
+        ),
+    },
+    "realtime_info": {
+        "ITALIAN": (
+            "Non ho accesso a informazioni in tempo reale come meteo, news o risultati sportivi. "
+            "Per queste informazioni ti consiglio di consultare fonti aggiornate. "
+            "Posso invece aiutarti con visa, KITAS, o business in Indonesia?"
+        ),
+        "ENGLISH": (
+            "I don't have access to live figures like market prices or exchange rates — "
+            "I'd be quoting a number I cannot verify. For those, check a live source. "
+            "I can help with visas, KITAS or doing business in Indonesia instead."
+        ),
+        "INDONESIAN": (
+            "Saya tidak punya akses ke angka real-time seperti harga pasar atau kurs — "
+            "saya akan menyebut angka yang tidak bisa saya verifikasi. Untuk itu, silakan "
+            "cek sumber langsung. Saya bisa bantu soal visa, KITAS, atau usaha di Indonesia."
+        ),
+        "RUSSIAN": (
+            "У меня нет доступа к данным в реальном времени — котировкам или курсам валют: "
+            "я назвал бы цифру, которую не могу проверить. Для этого лучше смотреть "
+            "актуальный источник. А с визами, KITAS или бизнесом в Индонезии — помогу."
+        ),
+        "UKRAINIAN": (
+            "Я не маю доступу до даних у реальному часі — котирувань чи курсів валют: "
+            "я назвав би цифру, яку не можу перевірити. Для цього краще дивитися "
+            "актуальне джерело. А з візами, KITAS чи бізнесом в Індонезії — допоможу."
+        ),
+    },
+    "off_topic": {
+        "ITALIAN": (
+            "Questo argomento è fuori dalla mia area di competenza. Sono Zantara, "
+            "l'assistente AI di {company}, specializzato in visa, immigrazione, "
+            "setup aziendale (PT PMA) e questioni legali per stranieri in Indonesia. "
+            "Come posso aiutarti in questi ambiti?"
+        ),
+        "ENGLISH": (
+            "That one is outside what I work on. I'm Zantara, the AI assistant at "
+            "{company}: visas, immigration, company setup (PT PMA) and legal matters "
+            "for foreigners in Indonesia. Anything there I can help with?"
+        ),
+        "INDONESIAN": (
+            "Topik itu di luar bidang saya. Saya Zantara, asisten AI dari {company}: "
+            "visa, imigrasi, pendirian perusahaan (PT PMA), dan urusan hukum untuk "
+            "orang asing di Indonesia. Ada yang bisa saya bantu di situ?"
+        ),
+        "RUSSIAN": (
+            "Эта тема вне моей области. Я Zantara, AI-ассистент {company}: визы, "
+            "иммиграция, регистрация компании (PT PMA) и юридические вопросы для "
+            "иностранцев в Индонезии. Могу чем-то помочь в этих темах?"
+        ),
+        "UKRAINIAN": (
+            "Ця тема поза моєю сферою. Я Zantara, AI-асистент {company}: візи, "
+            "імміграція, реєстрація компанії (PT PMA) та юридичні питання для "
+            "іноземців в Індонезії. Чи можу допомогти в цих темах?"
+        ),
+    },
+    "unknown": {
+        "ITALIAN": (
+            "Non ho informazioni specifiche su questo argomento. "
+            "Posso aiutarti con visa, KITAS, setup PT PMA/Lokal, "
+            "o altre questioni business in Indonesia?"
+        ),
+        "ENGLISH": (
+            "I don't have specific information on that. I can help with visas, KITAS, "
+            "setting up a PT PMA or a local PT, and other business matters in Indonesia."
+        ),
+        "INDONESIAN": (
+            "Saya tidak punya informasi spesifik soal itu. Saya bisa bantu soal visa, "
+            "KITAS, pendirian PT PMA atau PT lokal, dan urusan usaha lain di Indonesia."
+        ),
+        "RUSSIAN": (
+            "По этой теме у меня нет конкретной информации. Могу помочь с визами, KITAS, "
+            "регистрацией PT PMA или локальной PT и другими бизнес-вопросами в Индонезии."
+        ),
+        "UKRAINIAN": (
+            "З цієї теми в мене немає конкретної інформації. Можу допомогти з візами, "
+            "KITAS, реєстрацією PT PMA чи локальної PT та іншими бізнес-питаннями в Індонезії."
+        ),
+    },
 }
+
+
+def get_out_of_domain_response(reason: str, language: str = "ITALIAN") -> str:
+    """Refusal copy for ``reason``, in ``language``.
+
+    Fallback order mirrors ``get_localized_stub``: requested language → ENGLISH →
+    the ``unknown`` refusal. An unmapped language degrading to ENGLISH is
+    deliberate and declared; an unmapped language degrading to ITALIAN — which is
+    what shipping the raw table did — is not.
+    """
+    by_language = _OUT_OF_DOMAIN_BY_LANGUAGE.get(reason) or _OUT_OF_DOMAIN_BY_LANGUAGE["unknown"]
+    text = by_language.get(language) or by_language["ENGLISH"]
+    return text.format(company=settings.COMPANY_NAME)
+
+
+#: Back-compat: the Italian column, formatted, under the name callers already
+#: import. Derived, never re-typed — a second copy of this copy would drift.
+OUT_OF_DOMAIN_RESPONSES = {
+    reason: get_out_of_domain_response(reason, "ITALIAN") for reason in _OUT_OF_DOMAIN_BY_LANGUAGE
+}
+
+
+# Capitalised words that are NOT people. The cost of a missing entry here is a
+# polite refusal on a rare phrasing — the safe direction; the cost of not having
+# the distinction at all was measured on 2026-08-10 as 6 legitimate business
+# questions blocked out of 9.
+_NON_PERSON_CAPITALS = frozenset(
+    {
+        # legal forms and documents
+        "pt",
+        "cv",
+        "pma",
+        "pmdn",
+        "kitas",
+        "kitap",
+        "kbli",
+        "npwp",
+        "nib",
+        "oss",
+        "bpjs",
+        "lkpm",
+        "spt",
+        "voa",
+        "nomor",
+        "no",
+        # places
+        "bali",
+        "indonesia",
+        "denpasar",
+        "jakarta",
+        "badung",
+        "gianyar",
+        "ubud",
+        "canggu",
+        "kerobokan",
+        "seminyak",
+        # institutions and counterparties
+        "societa",
+        "società",
+        "azienda",
+        "impresa",
+        "company",
+        "office",
+        "ufficio",
+        "kantor",
+        "immigration",
+        "immigrazione",
+        "imigrasi",
+        "tribunale",
+        "court",
+        "pengadilan",
+        "notaio",
+        "notary",
+        "notaris",
+        "banca",
+        "bank",
+        "consolato",
+        "consulate",
+        "ambasciata",
+        "embassy",
+        "agenzia",
+        "agency",
+        "ministero",
+        "ministry",
+        "kementerian",
+        "bkpm",
+        "kemenkumham",
+        "zero",
+    }
+)
+
+# An explicit third-party PERSON. `sindaco/presidente/ministro` keep the older
+# rule's intent; the rest are how a real request for someone else's data reads.
+_PERSON_REFERENCE_RE = re.compile(
+    r"\b(sig\.?|signor[ae]?|mr\.?|mrs\.?|ms\.?|"
+    r"(?:il |la )?(?:mio|mia|tuo|tua|suo|sua|nostro|nostra|vostro|vostra)\s+client[ei]|"
+    r"(?:your|my|his|her|their)\s+client|"
+    r"un cliente|qualcuno|someone|somebody|"
+    r"sindaco|presidente|ministro)\b"
+)
+
+_TITLECASE_TOKEN_RE = re.compile(r"\b([A-Z][a-zà-ÿ]{2,})\b")
+
+
+def _names_a_person(query: str, object_start: int) -> bool:
+    """True when the OBJECT of "<attribute> of <object>" is a natural person.
+
+    This is the entity test the old patterns lacked. They matched
+    ``indirizzo (di|del|della) \\w+`` and so refused "l'indirizzo della società
+    registrata" and "the phone number of the immigration office" as third-party
+    personal data, while "il codice fiscale di Mario Rossi" — the only shape the
+    rule exists for — matched for exactly the same reason.
+
+    Two independent signals, either is enough:
+      * an explicit person reference anywhere in the query ("il mio cliente",
+        "mr", "il sindaco");
+      * a Title-cased token IN THE OBJECT that is not a known institution,
+        place, legal form or document.
+
+    ``object_start`` is not a detail: the first pass of this cure scanned the
+    WHOLE query for capitals and blocked 12 of 14 legitimate questions, because
+    the first word of a sentence is capitalised too — a second form-test dressed
+    up as an entity test. The window therefore begins at the object and stops at
+    the end of the clause, so a capitalised word in a following sentence
+    ("…della società? Grazie Zantara") cannot vote either.
+
+    Case is read from the ORIGINAL text, never from ``.lower()``: `PT PMA`,
+    `CV` and `LKPM` are all-caps acronyms and never match `[A-Z][a-zà-ÿ]{2,}`.
+
+    Declared limit: a capitalised institution nobody listed in
+    ``_NON_PERSON_CAPITALS`` still reads as a person. That fails toward the
+    refusal, which is the direction to fail in.
+    """
+    if _PERSON_REFERENCE_RE.search(query.lower()):
+        return True
+    clause = re.split(r"[?.!\n;]", query[object_start:], maxsplit=1)[0]
+    return any(
+        token.lower() not in _NON_PERSON_CAPITALS for token in _TITLECASE_TOKEN_RE.findall(clause)
+    )
 
 
 def is_out_of_domain(query: str) -> tuple[bool, str | None]:
@@ -40,18 +279,31 @@ def is_out_of_domain(query: str) -> tuple[bool, str | None]:
     """
     query_lower = query.lower()
 
-    # Personal data of third parties
+    # Personal data of third parties.
+    #
+    # The shape is necessary but NOT sufficient: these patterns describe
+    # "<attribute> of <object>", and whether that is a privacy question depends
+    # entirely on what the object IS. Superscar #3 — the guard has to name the
+    # entity, not the form. `_names_a_person` is the second half of the test and
+    # the default without it is PASSTHROUGH, so a business question reaches
+    # retrieval instead of a canned Italian refusal.
+    #
+    # The group is the OBJECT — the thing whose data is being asked for. It is
+    # what `_names_a_person` reads; the surrounding shape only says WHERE to look.
     personal_data_patterns = [
-        r"codice fiscale (di|del|della|dello) \w+",
-        r"numero (di )?telefono (di|del|della) \w+",
-        r"indirizzo (di|del|della) \w+",
-        r"email (di|del|della) \w+",
-        r"tax (code|id|number) of \w+",
-        r"phone number of \w+",
+        r"codice fiscale (?:di|del|della|dello) (\w+)",
+        r"numero (?:di )?telefono (?:di|del|della) (\w+)",
+        r"indirizzo (?:di|del|della) (\w+)",
+        r"email (?:di|del|della) (\w+)",
+        r"tax (?:code|id|number) of (\w+)",
+        r"phone number of (\w+)",
     ]
 
     for pattern in personal_data_patterns:
-        if re.search(pattern, query_lower):
+        # Matched on the ORIGINAL string so `match.start(1)` indexes the text
+        # whose capitalisation `_names_a_person` reads.
+        match = re.search(pattern, query, re.IGNORECASE)
+        if match and _names_a_person(query, match.start(1)):
             return True, "personal_data"
 
     # Real-time FINANCIAL information (blocked - cannot verify)
