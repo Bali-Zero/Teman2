@@ -55,6 +55,47 @@ async def test_nonexistent_2025_code_is_explicitly_absent_not_semantically_mappe
 
 
 @pytest.mark.asyncio
+async def test_missing_dataset_is_unavailable_not_a_false_code_absence(tmp_path):
+    tool = KBLICanonicalLookupTool(dataset_path=tmp_path / "missing.json")
+
+    payload = json.loads(await tool.execute(code="51101"))
+
+    assert payload == {
+        "found": False,
+        "code": "51101",
+        "error": "DATASET_UNAVAILABLE",
+        "source": {"dataset": "KBLI_2025_FINAL_CLEAN.json"},
+    }
+
+
+@pytest.mark.asyncio
+async def test_null_scale_list_is_tolerated(tmp_path):
+    dataset = tmp_path / "kbli.json"
+    dataset.write_text(
+        json.dumps(
+            {
+                "data": [
+                    {
+                        "kode_kbli_2025": "99999",
+                        "judul": "Synthetic schema-edge record",
+                        "per_skala": [
+                            {"skala_usaha": None, "kategori_risiko": "Rendah"}
+                        ],
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    tool = KBLICanonicalLookupTool(dataset_path=dataset)
+
+    payload = json.loads(await tool.execute(code="99999"))
+
+    assert payload["found"] is True
+    assert payload["risk_at_large_scale"] == []
+
+
+@pytest.mark.asyncio
 async def test_lookup_carries_bali_moratorium_verdict_verbatim():
     tool = KBLICanonicalLookupTool(dataset_path=_DATASET)
 
@@ -83,6 +124,7 @@ def test_prompt_requires_exact_lookup_and_locks_curated_legal_traps():
     from backend.prompts.zantara_core_v4 import TOOL_USAGE_POLICY
 
     assert "CALL kbli_lookup(code=\"...\") FIRST" in TOOL_USAGE_POLICY
+    assert "error=DATASET_UNAVAILABLE" in TOOL_USAGE_POLICY
     assert "Rp2.500.000.000" in TOOL_USAGE_POLICY
     assert "Rp10.000.000.000" in TOOL_USAGE_POLICY
     assert "NEVER describe Rp10.000.000.000 as paid-up capital" in TOOL_USAGE_POLICY

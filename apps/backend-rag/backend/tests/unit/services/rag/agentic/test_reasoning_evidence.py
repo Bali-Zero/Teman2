@@ -6,8 +6,9 @@ Policy under test: `detect_trusted_tool_usage` gains an optional
 one of the 4 "quotable" tools (get_pricing, crm_query, timesheet, calculator)
 must also share a literal numeric token with `final_answer` before it grants
 trust — this catches the LLM citing a trusted tool while writing a number the
-tool never returned. Non-quotable structured/exact tools (team_knowledge,
-kbli_lookup) and the `final_answer=None` case preserve unconditional trust.
+tool never returned. Non-quotable structured/exact tools (team_knowledge and
+successful exact kbli_lookup results) and the `final_answer=None` case preserve
+unconditional trust.
 Semantic vector search is intentionally absent from the production allowlist:
 successful-but-irrelevant retrieval must take the relevance-score path.
 """
@@ -216,6 +217,29 @@ class TestNonQuotableStructuredToolsUnconditionalTrust:
             final_answer="KBLI 51101 has a restricted foreign ownership regime.",
         )
         assert result is True
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "observation",
+        (
+            '{"found": false, "code": "68200", '
+            '"reason": "CODE_NOT_IN_KBLI_2025_CANONICAL"}',
+            '{"found": false, "code": "51101", "error": "DATASET_UNAVAILABLE"}',
+            "not-json but long enough to cross the trusted observation threshold safely",
+            '["valid", "json", "but", "not", "a", "canonical", "record"]',
+        ),
+    )
+    def test_unsuccessful_kbli_lookup_never_grants_trust(self, observation):
+        step = _make_step("kbli_lookup", observation)
+
+        assert (
+            detect_trusted_tool_usage(
+                [step],
+                _TRUSTED_TOOL_NAMES,
+                final_answer="KBLI 68200 is fully open to foreign ownership.",
+            )
+            is False
+        )
 
     @pytest.mark.unit
     def test_vector_search_is_not_on_the_trusted_allowlist(self):

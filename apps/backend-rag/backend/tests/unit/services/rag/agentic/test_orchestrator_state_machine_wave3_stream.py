@@ -566,28 +566,18 @@ class TestStreamErrorEvents:
 
 
 # ============================================================================
-# Group 5 — Stream-only trusted-context widening (I-S5, S17, S18)
+# Group 5 — Context prose cannot widen trust (I-S5, S17, S18)
 # ============================================================================
 
 
-class TestStreamContextWidening:
-    """I-S5 / S17 / S18: `detect_trusted_context_markers` and
-    `detect_substantial_context` are STREAM-ONLY flippers. We lock their
-    contract: when they return True and evidence is low, the policy gate
-    treats the query as trusted (no Tier1 regen, no abstain stub).
-    """
+class TestStreamContextDoesNotWidenTrust:
+    """Context markers and length are not execution-backed evidence."""
 
     @pytest.mark.asyncio
-    async def test_trusted_context_markers_flip_trusted_and_bypass_policy(self, engine):
-        """I-S5 + S17: with low evidence but marker hit → trusted=True →
-        low-evidence policy gate does NOT fire; existing answer survives.
-
-        Contrast sync: the same low-evidence + no-trusted-tools combo would
-        trigger Tier1 regen (§R22). In stream, context markers save us.
-        """
+    async def test_context_marker_text_does_not_bypass_policy(self, engine):
         state = AgentState(query="q", max_steps=1, current_step=0, intent_type="simple")
         state.skip_rag = False
-        state.context_gathered = ["some context chunk"]
+        state.context_gathered = ["pricing: some unverified context chunk"]
         state.final_answer = "ORIGINAL LLM ANSWER"  # seed so the guard "has answer" trips
 
         gateway = _mk_gateway(
@@ -620,32 +610,16 @@ class TestStreamContextWidening:
                 "backend.services.rag.agentic.reasoning.detect_trusted_tool_usage",
                 return_value=False,
             ),
-            patch(
-                "backend.services.rag.agentic.reasoning.detect_trusted_context_markers",
-                return_value=(True, ["pricing_marker"]),
-            ),
-            patch(
-                "backend.services.rag.agentic.reasoning.detect_substantial_context",
-                return_value=False,
-            ),
         ):
             await _run_stream(engine, gateway, state)
 
-        # trusted_tools_used was flipped to True by the markers-flip (§S17)
-        assert state.trusted_tools_used is True
-        # Original answer preserved (policy gate skipped, no abstain stub)
-        assert "ORIGINAL LLM ANSWER" in state.final_answer
+        assert state.trusted_tools_used is False
 
     @pytest.mark.asyncio
-    async def test_substantial_context_flip_when_no_markers(self, engine):
-        """I-S5 + S18: marker miss + substantial context → trusted=True.
-
-        This path is the second of the two stream-only widenings. Sync pipeline
-        does neither; streaming does both sequentially.
-        """
+    async def test_long_context_does_not_bypass_policy(self, engine):
         state = AgentState(query="q", max_steps=1, current_step=0, intent_type="simple")
         state.skip_rag = False
-        state.context_gathered = ["a very long context chunk ..."]
+        state.context_gathered = ["x" * 1_000]
         state.final_answer = "Another LLM answer"
 
         gateway = _mk_gateway(
@@ -675,19 +649,10 @@ class TestStreamContextWidening:
                 "backend.services.rag.agentic.reasoning.detect_trusted_tool_usage",
                 return_value=False,
             ),
-            patch(
-                "backend.services.rag.agentic.reasoning.detect_trusted_context_markers",
-                return_value=(False, []),  # markers miss
-            ),
-            patch(
-                "backend.services.rag.agentic.reasoning.detect_substantial_context",
-                return_value=True,  # substantial context hit
-            ),
         ):
             await _run_stream(engine, gateway, state)
 
-        # trusted_tools_used flipped by substantial-context flipper (S18)
-        assert state.trusted_tools_used is True
+        assert state.trusted_tools_used is False
 
 
 # ============================================================================

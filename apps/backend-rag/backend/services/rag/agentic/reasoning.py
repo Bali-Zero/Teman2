@@ -41,8 +41,8 @@ from backend.services.llm_clients.pricing import TokenUsage
 from backend.services.rag.agentic._reasoning_evidence import (
     compute_evidence_score,
     detect_quotable_relevance_veto,
-    detect_substantial_context,
-    detect_trusted_context_markers,
+    detect_substantial_context,  # noqa: F401 - compatibility seam, no trust widening
+    detect_trusted_context_markers,  # noqa: F401 - compatibility seam, no trust widening
     detect_trusted_tool_usage,
     emit_low_confidence_event,
 )
@@ -1368,28 +1368,10 @@ Make it feel natural and helpful, not forced.
         # Yield evidence score event
         yield {"type": "evidence_score", "data": {"score": evidence_score}}
 
-        # ==================== STREAM-ONLY PRE-FLIPPERS ====================
-        # INTENTIONAL divergence from the sync pipeline (SCAR §U5):
-        # streaming is more permissive about trusted-path detection because
-        # it doesn't always traverse the step-level `detect_trusted_tool_usage`
-        # signal (early-exits can bypass it). Two extra widenings:
-        #   1. detect_trusted_context_markers: scan joined context for
-        #      pricing/team/KG markers (tool output echoed back).
-        #   2. detect_substantial_context: total context length > threshold
-        #      implies the LLM had evidence to work with.
-        # Docstrings in _reasoning_evidence.py explicitly flag these as
-        # streaming-only fallbacks — do NOT mirror into the sync pipeline
-        # without a deliberate review of the resulting behavior change.
-        if not trusted_tools_used:
-            marker_hit, _ = detect_trusted_context_markers(state.context_gathered)
-            if marker_hit:
-                trusted_tools_used = True
-
-        if not trusted_tools_used and detect_substantial_context(state.context_gathered):
-            trusted_tools_used = True
-
         # ==================== SHARED TRUST BOUNDARY ====================
-        # Same execution-backed contract as the sync pipeline.
+        # Same execution-backed contract as the sync pipeline. Context
+        # length or marker prose alone cannot promote an answer to trusted:
+        # semantic retrieval must pass the source/query relevance score.
         trusted_tools_used = apply_shared_trusted_flippers(
             trusted_tools_used=trusted_tools_used,
             final_answer=state.final_answer,

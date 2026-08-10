@@ -27,6 +27,7 @@ Public API:
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 from collections.abc import Iterable
@@ -150,6 +151,23 @@ def detect_trusted_tool_usage(
         tool_name = getattr(action, "tool_name", None)
         if tool_name not in trusted_names:
             continue
+        if tool_name == "kbli_lookup":
+            try:
+                kbli_payload = json.loads(observation)
+            except (TypeError, json.JSONDecodeError):
+                logger.info(
+                    "🚫 [%s] kbli_lookup returned an unparseable observation — "
+                    "not counted as trusted-tool evidence",
+                    log_prefix,
+                )
+                continue
+            if not isinstance(kbli_payload, dict) or kbli_payload.get("found") is not True:
+                logger.info(
+                    "🚫 [%s] kbli_lookup did not return a canonical record — "
+                    "not counted as trusted-tool evidence",
+                    log_prefix,
+                )
+                continue
         if is_denial_observation(observation):
             # A REFUSED call is not a successful one. The checks below scan
             # prose for failure words, and the anonymous denial deliberately

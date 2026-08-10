@@ -315,7 +315,7 @@ class KBLICanonicalLookupTool(BaseTool):
 
     def __init__(self, dataset_path: str | Path | None = None) -> None:
         resolved_path = Path(dataset_path) if dataset_path is not None else _default_kbli_dataset_path()
-        self._eye = KBLIEye(db_path=str(resolved_path))
+        self._eye = KBLIEye(db_path=str(resolved_path.resolve()))
 
     @property
     def name(self) -> str:
@@ -357,6 +357,16 @@ class KBLICanonicalLookupTool(BaseTool):
                 }
             )
 
+        if not self._eye.data:
+            return json.dumps(
+                {
+                    "found": False,
+                    "code": clean_code,
+                    "error": "DATASET_UNAVAILABLE",
+                    "source": source,
+                }
+            )
+
         record = next(
             (
                 item
@@ -375,13 +385,18 @@ class KBLICanonicalLookupTool(BaseTool):
                 }
             )
 
-        large_scale_risks = sorted(
-            {
-                str(scope.get("kategori_risiko"))
-                for scope in record.get("per_skala", [])
-                if "Besar" in scope.get("skala_usaha", []) and scope.get("kategori_risiko")
-            }
-        )
+        large_scale_risks: set[str] = set()
+        for scope in record.get("per_skala", []) or []:
+            if not isinstance(scope, dict):
+                continue
+            scales = scope.get("skala_usaha") or []
+            if isinstance(scales, str):
+                scales = [scales]
+            elif not isinstance(scales, (list, tuple, set)):
+                scales = [scales]
+            risk = scope.get("kategori_risiko")
+            if "Besar" in scales and risk:
+                large_scale_risks.add(str(risk))
         payload = {
             "found": True,
             "code": clean_code,
@@ -393,7 +408,7 @@ class KBLICanonicalLookupTool(BaseTool):
                 "official_basis": record.get("pma_official_basis"),
                 "cap_verified": bool(record.get("pma_cap_verified")),
             },
-            "risk_at_large_scale": large_scale_risks,
+            "risk_at_large_scale": sorted(large_scale_risks),
             "bali": record.get("l4_bali"),
             "source": source,
         }

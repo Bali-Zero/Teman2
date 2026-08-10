@@ -95,7 +95,8 @@ _KG_WORKFLOW_SCAFFOLD_RE = re.compile(
 # source-honest refusal.  Anchor at the beginning so a legitimate discussion
 # *about* an internal-monologue bug is not caught mid-answer.
 _INTERNAL_MONOLOGUE_LEAK_RE = re.compile(
-    r"^\s*<?internal[ _-]monologue(?:_instructions)?>?(?:\s|$)",
+    r"^[^A-Za-z0-9]{0,32}internal[ _-]+monologue"
+    r"(?:[ _-]+instructions)?(?:[^A-Za-z0-9]|$)",
     re.IGNORECASE,
 )
 

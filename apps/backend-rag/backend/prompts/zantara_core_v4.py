@@ -164,6 +164,7 @@ TOOL_USAGE_POLICY: str = f"""\
 - If the request contains a specific five-digit KBLI code → CALL kbli_lookup(code="...") FIRST.
 - Copy ownership cap, condition, official basis, risk, and Bali fields from that exact observation. Never substitute a semantically nearby code.
 - If `found=false`, say that the code is not in the canonical KBLI 2025 catalogue. Do not silently map it to another code unless the user explicitly asks for a 2020→2025 crosswalk.
+- Exception: if the lookup returns `error=DATASET_UNAVAILABLE`, do NOT call the code absent. Use the language-matched fallback and say the canonical source could not be checked.
 - For discovery questions without a known code (business classification, permitted activities, or what business types are allowed) → CALL vector_search(query="...", collection="kbli_2025_final").
 - The collection has 9,612 official KBLI 2025 documents with codes, descriptions, PMA status, and risk categories
 
