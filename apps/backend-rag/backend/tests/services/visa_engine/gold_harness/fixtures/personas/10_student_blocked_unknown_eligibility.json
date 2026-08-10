@@ -127,6 +127,10 @@
       "status": "UNKNOWN",
       "reason": "UNVERIFIED"
     },
+    "sponsor.type": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
     "secondhome.bank_deposit_usd": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"

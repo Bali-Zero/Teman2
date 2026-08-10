@@ -313,6 +313,75 @@
         }
       }
     },
+    "evidence_pack_lint": {
+      "_doc": "PR-3 of the fleet-order program (harness-v2-teman2.md §5 / fleet-order-spec.md §4). scripts/evidence_pack_lint.py validates an Evidence Pack YAML against 6 rules — each `check_*` function IS a guard in the superscar #3 sense (it accepts/rejects an artifact on a structural signal), so it ships with the same guilt+innocence discipline as bridge_reply_guards/wr2_editorial_pregate rather than being exempted as 'just a schema check'.",
+      "source": "scripts/evidence_pack_lint.py",
+      "census": {
+        "method": "ast-def-prefix",
+        "prefix": "check_"
+      },
+      "test_file": "scripts/tests/test_evidence_pack_lint.py",
+      "guards": {
+        "check_receipts_have_provenance": {
+          "scar": ["harness-v2-5"],
+          "guilt": [
+            "test_receipts_guilt_missing_field_rejected",
+            "test_receipts_guilt_empty_on_gear3_rejected"
+          ],
+          "innocence": [
+            "test_receipts_innocence_complete_receipt_passes",
+            "test_receipts_innocence_empty_on_gear1_passes"
+          ]
+        },
+        "check_dissent_nonempty_on_gear3": {
+          "scar": ["harness-v2-5"],
+          "guilt": [
+            "test_dissent_guilt_zero_dissent_on_gear3_rejected",
+            "test_dissent_guilt_missing_field_rejected",
+            "test_dissent_guilt_entry_missing_fields_rejected",
+            "test_dissent_guilt_invalid_status_rejected"
+          ],
+          "innocence": [
+            "test_dissent_innocence_empty_on_gear2_passes",
+            "test_dissent_innocence_nonempty_on_gear3_passes",
+            "test_dissent_innocence_structured_entry_passes"
+          ]
+        },
+        "check_pii_scan_clean": {
+          "scar": ["harness-v2-5"],
+          "guilt": ["test_pii_scan_guilt_dirty_value_rejected"],
+          "innocence": ["test_pii_scan_innocence_clean_value_passes"]
+        },
+        "check_size_budget": {
+          "scar": ["harness-v2-5"],
+          "guilt": ["test_size_guilt_oversize_rejected"],
+          "innocence": ["test_size_innocence_at_cap_passes"]
+        },
+        "check_brief_ref_exists": {
+          "scar": ["harness-v2-5"],
+          "guilt": [
+            "test_brief_ref_guilt_missing_key_rejected",
+            "test_brief_ref_guilt_dangling_path_rejected",
+            "test_brief_ref_guilt_absolute_path_rejected",
+            "test_brief_ref_guilt_path_traversal_rejected",
+            "test_brief_ref_guilt_directory_rejected"
+          ],
+          "innocence": ["test_brief_ref_innocence_resolves_and_loads"]
+        },
+        "check_gear_floor": {
+          "scar": ["fleet-order-spec-4", "W102"],
+          "guilt": [
+            "test_gear_floor_guilt_declared_below_floor_rejected",
+            "test_gear_floor_guilt_bool_type_rejected",
+            "test_gear_floor_guilt_float_type_rejected"
+          ],
+          "innocence": [
+            "test_gear_floor_innocence_declared_at_or_above_floor_passes",
+            "test_gear_floor_innocence_skipped_without_changed_files"
+          ]
+        }
+      }
+    },
     "wr2_editorial_pregate": {
       "_doc": "WR2 editorial-intelligence Phase 2 — deterministic zero-LLM pre-gate (7 check_* functions). Built in the org's most recidivist scar territory (#3, 8+ prior instances) by design, per the ratified spec's own hard requirement (2026-07-21-editorial-intelligence-design.md §2 'Il Critico — SDOPPIATO': 'NESSUN gate ship senza corpus guilt+innocence registrato'). Enforced here with the SAME shape as bridge_reply_guards (check_bridge, labeled 'wr2-pregate' in violation messages) rather than a bespoke checker.",
       "source": "scripts/wr2_editorial_pregate.py",

@@ -336,7 +336,10 @@ class TestSnapshotOrderInvariance:
         shuffled_items = list(snapshot.values.items())
         random.Random(seed).shuffle(shuffled_items)
         # Anti-vacuity: the evaluator's actual input mapping really was
-        # permuted (37 entries, fixed seeds).
+        # permuted (every path the registry derives, fixed seeds). Carries no
+        # count on purpose — it said 37 while the snapshot held 44, i.e. it had
+        # been stale across two vertical additions without anything noticing,
+        # and the assertion below is what actually proves the permutation.
         assert [path for path, _ in shuffled_items] != list(snapshot.values), (
             f"persona {persona.id} / seed={seed}: snapshot shuffle did not permute the "
             "FactSnapshot.values order"

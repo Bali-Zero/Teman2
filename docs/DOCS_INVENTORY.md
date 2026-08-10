@@ -625,7 +625,7 @@ _`last_touched_date` / `orphan_eligible_on` / `orphan_flipped_on` are P3-prime d
 | docs/runbooks/l5-2-phase2b-auto-trigger.md | LIVE | 2026-05-26 | 2026-08-24 | — | 1 | 0 | no | — | — |
 | docs/runbooks/lead-intent-matcher.md | LIVE | 2026-08-04 | 2026-11-02 | — | 1 | 0 | no | — | — |
 | docs/runbooks/m5-local-postgres.md | LIVE | 2026-06-11 | 2026-09-09 | — | 1 | 0 | no | — | — |
-| docs/runbooks/merge-queue-discipline.md | LIVE | 2026-08-05 | 2026-11-03 | — | 1 | 0 | no | — | — |
+| docs/runbooks/merge-queue-discipline.md | LIVE | 2026-08-10 | 2026-11-08 | — | 1 | 0 | no | — | — |
 | docs/runbooks/my-balizero-first-client-onboarding.md | LIVE | 2026-06-25 | 2026-09-23 | — | 2 | 0 | no | — | — |
 | docs/runbooks/openclaw-whatsapp-eval-loop.md | LIVE | 2026-05-30 | 2026-08-28 | — | 1 | 0 | no | — | — |
 | docs/runbooks/openclaw-zantara-scientific-team.md | LIVE | 2026-05-30 | 2026-08-28 | — | 2 | 0 | no | — | — |
