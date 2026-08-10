@@ -11,6 +11,8 @@ on:
       - "package.json"
       - "scripts/docs_sync.py"
       - "scripts/tests/test_docs_sync_atlas.py"
+      - "scripts/ci/docs_sync_gate.sh"
+      - "scripts/tests/test_docs_sync_gate_failclosed.sh"
       - "scripts/automation_catalog.json"
       - "README.md"
       - "INDEX.md"
@@ -32,6 +34,8 @@ on:
       - "package.json"
       - "scripts/docs_sync.py"
       - "scripts/tests/test_docs_sync_atlas.py"
+      - "scripts/ci/docs_sync_gate.sh"
+      - "scripts/tests/test_docs_sync_gate_failclosed.sh"
       - "scripts/automation_catalog.json"
       - "README.md"
       - "INDEX.md"
@@ -69,20 +73,16 @@ jobs:
         with:
           python-version: "3.11"
 
+      # The gate proves itself before it judges anyone (the hot-zone gate does
+      # the same). Cheap, and it is what makes the fail-closed behaviour below
+      # more than an assertion in a comment.
+      - name: Gate self-test (guilt + innocence)
+        run: bash scripts/tests/test_docs_sync_gate_failclosed.sh
+
       - name: Check docs are in sync
-        run: |
-          if [ ! -f scripts/docs_sync.py ]; then
-            echo "scripts/docs_sync.py is absent — skipping docs-sync check."
-            echo "Restore the script or remove this workflow to re-enable the gate."
-            exit 0
-          fi
-          python scripts/docs_sync.py --check
+        run: bash scripts/ci/docs_sync_gate.sh check
 
       - name: Run docs_sync unit tests
         run: |
-          if [ ! -f scripts/tests/test_docs_sync_atlas.py ]; then
-            echo "no docs_sync tests present — skipping."
-            exit 0
-          fi
           python -m pip install --quiet pytest
-          python -m pytest scripts/tests/test_docs_sync_atlas.py -q
+          bash scripts/ci/docs_sync_gate.sh test
