@@ -532,7 +532,7 @@ export default async function KBLICodePage({
                       {article.title}
                     </p>
                     <span className="text-[11px] text-[var(--kbli-text-muted)]">
-                      kita.balizero.com
+                      balizero.com
                     </span>
                   </div>
                 </a>
@@ -1061,7 +1061,7 @@ export default async function KBLICodePage({
                       {article.title}
                     </p>
                     <span className="text-[11px] text-[var(--kbli-text-muted)]">
-                      kita.balizero.com
+                      balizero.com
                     </span>
                   </div>
                 </a>

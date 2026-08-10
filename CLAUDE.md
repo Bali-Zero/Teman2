@@ -100,6 +100,8 @@ User writes **colloquial Italian** — translate to precise technical action int
 
 **Kimi seat (added 2026-07-19, Zero GO)**: Moonshot **Kimi K3** + **kimi-for-coding 2.7** via `kimi` CLI (`~/.kimi-code/bin/kimi`, Allegro flat subscription, OAuth device-code login — no API key). Invocation: `kimi -p "..." -m kimi-code/k3` (reasoning/refuter) · `-m kimi-code/kimi-for-coding` (coding) · `-m kimi-code/kimi-for-coding-highspeed` (grunt). Cross-family council/second-opinion seat and flat-quota implementation relief; probed by `scripts/arsenal_probe.py` (seat `kimi`). Armed on all three machines 2026-07-19. Never the final gate.
 
+**Fleet order (accounts, role chains, gate taxonomy) — SSOT, 2026-08-10:** `FLEET_TOPOLOGY.json` (repo root) + `research/operations/2026-08-10-fleet-order-spec.md`. No restatement here — one SSOT. Kimi/qwen doors `kimi.md` / `qwen.md` are **door files (human/prompt-referenced only)** — NOT auto-loaded by their CLIs (Kimi CLI reads `AGENTS.md`; Qwen reads case-sensitive `QWEN.md`).
+
 > **Fable-paid contingency — ACTIVE (Zero decision 2026-07-12: "non voglio pagare")** (research:
 > `research/operations/2026-07-11-fable-paywall-routing.md`, report + blind A/B, Codex adversarial
 > review). Scope is ONLY non-final-gate interactive work — architecture/red-team/council synthesis and
