@@ -436,6 +436,22 @@ class FactPath(str, Enum):
     STUDY_LEVEL = "study.level"
     STUDY_ADMISSION_CONFIRMED = "study.admission_confirmed"
     STUDY_SPONSOR_CONFIRMED = "study.sponsor_confirmed"
+    # sponsor.* — WHO the sponsor is, as a category. Deliberately NOT under
+    # family.*: `family.sponsor_confirmed` and its siblings describe a family
+    # relationship, while this is the sponsor CATEGORY and applies to
+    # employment, study and investment routes just as much.
+    #
+    # Why it exists: every product record already declares `sponsor_types`
+    # (models.py, `sponsor_types: tuple[SponsorType, ...]`), so the pack has
+    # always known that E23V wants a GOVERNMENT sponsor and E23U an INDIVIDUAL
+    # one — but nothing ever asked the applicant, so no rule could test it. The
+    # consequence, measured 2026-08-10 on rulepack-prod-006: four products
+    # (E23U, E23V, E30E, E30F) are unreachable and deliberately fail closed,
+    # because the only alternatives were to offer them to everyone with the
+    # purpose (a diplomat's household route to any employee) or to wall the
+    # whole answer for everyone with the purpose. Neither is acceptable; the
+    # missing fact is.
+    SPONSOR_TYPE = "sponsor.type"
     # secondhome.* — E33 Second Home vertical (bank-route scope, owner decision
     # 2026-07-23): the qualifying-basis facts the base E33 / E33E / E33F
     # eligibility rules test. ``bank_deposit_*`` is one deposit, evidenced as

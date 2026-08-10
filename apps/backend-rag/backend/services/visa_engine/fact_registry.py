@@ -295,6 +295,18 @@ _DEFAULT_SPECS: tuple[FactSpec, ...] = (
     ),
     _spec(FactPath.FAMILY_SPONSOR_STATUS_CODE, FactValueKind.STRING, "product_code"),
     _spec(FactPath.FAMILY_MARRIAGE_REGISTERED, FactValueKind.BOOLEAN, "boolean"),
+    # sponsor.type — allowed_values mirror enums.SponsorType exactly. They are
+    # spelled out rather than derived so that adding a member to the enum is a
+    # deliberate two-line change here as well: a silently-widened fact is how a
+    # rule starts accepting a value no product was ever written for.
+    _spec(
+        FactPath.SPONSOR_TYPE,
+        FactValueKind.STRING,
+        "sponsor_type_enum",
+        allowed_values=frozenset(
+            {"NONE", "INDIVIDUAL", "EMPLOYER", "EDUCATION", "INVESTMENT", "GOVERNMENT"}
+        ),
+    ),
     _spec(FactPath.FAMILY_SPONSOR_CONFIRMED, FactValueKind.BOOLEAN, "boolean"),
     _spec(
         FactPath.STUDY_LEVEL,

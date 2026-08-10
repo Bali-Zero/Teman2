@@ -598,7 +598,7 @@ def build_gold_compiled_pack() -> CompiledRulePack:
 
 _UNKNOWN_NOT_ASKED = {"status": "UNKNOWN", "reason": "NOT_ASKED"}
 
-#: Every one of the 40 fact paths defaulted to a KNOWN, "safe/neutral" value —
+#: Every one of the 41 fact paths defaulted to a KNOWN, "safe/neutral" value —
 #: a fully-answered, boring baseline applicant (adult, non-calling-country,
 #: no violations, offshore, non-onshore-conversion) that no rule in
 #: ``_build_rules`` flags. Every persona overrides only its OWN distinguishing
@@ -651,10 +651,15 @@ _BASELINE_FACTS: dict[str, dict[str, Any]] = {
     "study.level": _UNKNOWN_NOT_ASKED,
     "study.admission_confirmed": _UNKNOWN_NOT_ASKED,
     "study.sponsor_confirmed": _UNKNOWN_NOT_ASKED,
+    # sponsor.type: UNKNOWN by default — no rule in ``_build_rules``
+    # references this path yet, so it never influences the evaluator-suite
+    # personas; it exists here only because ``ApplicantFactsData`` requires
+    # all 41 keys.
+    "sponsor.type": _UNKNOWN_NOT_ASKED,
     # secondhome.* (E33 vertical): UNKNOWN by default — no rule in
     # ``_build_rules`` references these paths, so they never influence the
     # evaluator-suite personas; they exist here only because
-    # ``ApplicantFactsData`` requires all 40 keys.
+    # ``ApplicantFactsData`` requires all 41 keys.
     "secondhome.bank_deposit_usd": _UNKNOWN_NOT_ASKED,
     "secondhome.bank_deposit_at_state_bank": _UNKNOWN_NOT_ASKED,
     "secondhome.bank_deposit_in_own_name": _UNKNOWN_NOT_ASKED,

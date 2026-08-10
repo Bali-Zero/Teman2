@@ -325,6 +325,7 @@
         "study.level",
         "study.admission_confirmed",
         "study.sponsor_confirmed",
+        "sponsor.type",
         "secondhome.bank_deposit_usd",
         "secondhome.bank_deposit_at_state_bank",
         "secondhome.bank_deposit_in_own_name",
