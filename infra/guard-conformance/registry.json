@@ -480,6 +480,43 @@
           ]
         }
       }
+    },
+    "required_workflow_conformance": {
+      "_doc": "Merge-OS v2 Wave 0 trap-disarm (research/operations/2026-08-10-merge-os-v2-submission-system.md §4 Wave 0, Codex F12). scripts/ci/check_required_workflow_conformance.py reads infra/required.d/contexts.json and fails if a required context's defining workflow lacks a merge_group: trigger or carries a top-level pull_request.paths: filter — the exact defect docs-sync.yml and migration-lint.yml shipped (cured same PR): a required check gated by a top-level paths: filter never even starts a run on an innocent PR, so GitHub shows it 'Expected — waiting' forever. Each check_* function IS a guard in the superscar #3 sense, same shape as evidence_pack_lint.py/wr2_editorial_pregate.py.",
+      "source": "scripts/ci/check_required_workflow_conformance.py",
+      "census": {
+        "method": "ast-def-prefix",
+        "prefix": "check_"
+      },
+      "test_file": "scripts/tests/test_check_required_workflow_conformance.py",
+      "guards": {
+        "check_merge_group_trigger": {
+          "scar": ["Codex-F12"],
+          "guilt": ["test_guilt_missing_merge_group_flagged"],
+          "innocence": ["test_innocence_merge_group_present_passes"]
+        },
+        "check_no_pull_request_paths_filter": {
+          "scar": ["Codex-F12"],
+          "guilt": ["test_guilt_toplevel_pr_paths_filter_flagged"],
+          "innocence": [
+            "test_innocence_pull_request_without_paths_passes",
+            "test_innocence_push_paths_filter_is_out_of_scope"
+          ]
+        },
+        "check_context_workflow_file_exists": {
+          "scar": ["Codex-F12"],
+          "guilt": ["test_guilt_missing_workflow_file_flagged"],
+          "innocence": ["test_innocence_real_workflow_file_passes"]
+        },
+        "check_allowlist_entry_has_reason": {
+          "scar": ["Codex-F12"],
+          "guilt": [
+            "test_guilt_empty_allowlist_reason_flagged",
+            "test_guilt_missing_allowlist_reason_flagged"
+          ],
+          "innocence": ["test_innocence_real_allowlist_reason_passes"]
+        }
+      }
     }
   }
 }

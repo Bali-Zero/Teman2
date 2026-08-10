@@ -4389,52 +4389,53 @@ PUBLISHED: 2026-06-23
 This whole series has shown you locked doors one at a time — the villa, the café, the minimarket, the consulting firm. This final article steps back and counts them. How much of the Bali business map is actually walled off to foreign investment? Not as a slogan, but as a number you can audit.
 
 KONTEN:
-Seluruh seri ini telah menunjukkan kepada Anda pintu-pintu terkunci satu per satu — villa, kafe, minimarket, perusahaan konsultasi. Artikel terakhir ini mundur sejenak dan menghitungnya. Berapa banyak peta bisnis Bali yang sebenarnya terkunci untuk investasi asing? Bukan sebagai slogan, tetapi sebagai angka yang dapat diaudit.
+Serangkaian artikel ini telah menunjukkan kepada Anda pintu-pintu tertutup satu per satu — villa, kafe, minimarket, perusahaan konsultan. Artikel terakhir ini mundur sejenak dan menghitungnya. Seberapa besar peta bisnis Bali sebenarnya terkunci dari investasi asing? Bukan sebagai slogan, tetapi sebagai angka yang dapat diaudit.
 
-Jadi kami menghitungnya. Dan karena hal yang jujur untuk dilakukan adalah menunjukkan pekerjaan kami, berikut adalah tepat apa yang kami ukur — dan di mana perkiraan awal kami ternyata terlalu tinggi.
+Jadi kami menghitungnya. Dan karena hal yang jujur adalah menunjukkan pekerjaan kami, berikut adalah tepat apa yang kami ukur — dan di mana perkiraan awal kami ternyata terlalu tinggi.
 
 ## Metode
 
-Kami mengambil dataset klasifikasi 2025 yang telah dibersihkan — file ground-truth yang sama yang setiap artikel dalam seri ini merujuk kode terhadapnya — dan menghitung secara mekanis setiap kode yang membawa keputusan status Bali. Dataset berisi **1.559 kode terklasifikasi**, masing-masing ditandai apakah PT PMA milik asing dapat mendaftarkannya di Bali (sebuah flag sederhana `blocked: true / false` yang berasal dari status nasional kode dan kelas risiko OSS-nya di bawah moratorium 13 Mei 2026).
+Kami mengambil dataset klasifikasi 2025 yang telah dibersihkan — file yang sama yang menjadi dasar setiap artikel dalam rangkaian ini — dan menghitung secara mekanis setiap kode yang memiliki keputusan status Bali. Dataset ini berisi **1.559 kode terklasifikasi**, masing-masing ditandai apakah PT PMA milik asing dapat mendaftarkannya di Bali (sebuah flag sederhana `blocked: true / false` yang berasal dari status nasional kode tersebut dan kelas risiko OSS-nya di bawah moratorium 13 Mei 2026).
 
 Perhitungan ini bukan sekadar perasaan. Ini adalah filter atas sebuah file.
 
 ## Angkanya
 
-**Dari 1.559 kode KBLI terklasifikasi, 465 diblokir untuk PT PMA asing di Bali. Itu adalah 29,8% — hampir satu dari tiga.**
+**Dari 1.559 kode KBLI terklasifikasi, 518 diblokir untuk PT PMA asing di Bali. Itu adalah 33,2% — sedikit lebih dari satu dari tiga.**
 
-Itulah headline yang jujur. Bukan "setengah ekonomi," bukan angka menakutkan — tetapi juga bukan angka kecil. **Hampir sepertiga** dari aktivitas bisnis yang mungkin secara wajar dipertimbangkan oleh seorang asing, pada tahun 2026 di Bali, tidak dapat diakses oleh kepemilikan asing.
+Itulah headline yang jujur. Bukan "setengah perekonomian," bukan angka menakutkan — tetapi juga bukan angka kecil. **Hampir sepertiga** dari aktivitas bisnis yang mungkin dipertimbangkan secara wajar oleh seorang asing, pada tahun 2026 di Bali, tidak tersedia untuk kepemilikan asing.
 
-Dan berikut adalah bagian yang paling sering disembunyikan oleh perhitungan: 465 tersebut terbagi menjadi jenis-jenis *tidak* yang berbeda —
+Dan berikut adalah bagian yang paling sering disembunyikan oleh perhitungan: 518 tersebut terbagi menjadi jenis-jenis _tidak_ yang berbeda —
 
-- **373 — diblokir oleh kelas risiko** (`BLOCCATO_CLASSE_RISCHIO`): terbuka secara nasional, tetapi risiko rendah/sedang-rendah, sehingga moratorium menangkapnya. Ini adalah kategori dominan — kafe, pengecer perhiasan, pengecer umum.
-- **63 — diblokir menunggu tinjauan cakupan OSS** (`NEEDS_REVIEW_NO_OSS_SCOPE`): sistem menunjukkan tidak ada cakupan pendaftaran yang jelas; anggap sebagai diblokir hingga diverifikasi langsung.
-- **20 — diblokir oleh "tidak ada skala besar"** (`CHIUSO_PMA_NO_BESAR`): cadangan untuk UMKM, tidak ada slot Usaha Besar, sehingga PMA (besar menurut hukum) tidak dapat mendaftar. Ini adalah jebakan eksak villa.
-- **8 — ditutup sepenuhnya** (`TERTUTUP`): cadangan untuk warga negara Indonesia, 0% asing — keluarga minimarket.
-- **1 — ditutup secara spesifik** (`CHIUSO_BALI`): penutupan konsultasi awal (70209).
+- **372 — diblokir oleh kelas risiko** (`BLOCCATO_CLASSE_RISCHIO`): hampir semua terbuka secara nasional, tetapi risiko rendah/medium-rendah, sehingga moratorium menangkapnya. Ini adalah kategori dominan — kafe, wholesaler perhiasan, retailer umum.
+- **48 — diblokir oleh moratorium atas alasan lain** (`CHIUSO_MORATORIA_BALI`): permintaan Gubernur yang sama, dicapai melalui jalur yang berbeda.
+- **68 — ditutup atas aktivitas itu sendiri** (`TERTUTUP`): 62 di antaranya memiliki 0% kepemilikan asing dalam katalog, sehingga pertanyaan Bali tidak muncul. Enam lainnya adalah jebakan — katalog menyatakan 100%, tetapi profesi atau cadangan menutupnya tetap: konsultasi hukum (69102), notaris (69104), praktik medis solo dan spesialis (86201, 86202), minimarket (47112), pertanian tanaman pangan pokok (01111).
+- **17 — tidak dapat dinyatakan posisi Bali** (`NON_CLASSIFICABILE`): kami tidak memiliki baris lisensi yang diverifikasi untuk kode tersebut, sehingga kami tidak akan menyatakan satu. Anggap sebagai diblokir hingga diverifikasi langsung.
+- **7 — cadangan untuk koperasi dan UMKM** (`CHIUSO_PMA_NO_BESAR`): dialokasikan dalam Lampiran II Perpres 10/2021 sebagaimana diubah oleh 49/2021, sehingga PT PMA tidak dapat mengambil _bidang usaha_. Ini adalah jebakan villa yang tepat.
+- **6 — sisanya**: 2 ditutup oleh regulator sektornya sendiri, 2 bergantung pada cakupan, 2 di bawah penutupan yang diumumkan Bali sendiri (70209 dan satu yang diusulkan).
 
-Dinding-dinding itu bukan satu dinding. Mereka adalah lima dinding berbeda, dan seorang asing bisa mengenai salah satunya.
+Dinding-dinding itu bukan satu dinding. Mereka adalah enam dinding yang berbeda, dan seorang asing bisa mengenai salah satunya.
 
 ## Di mana perkiraan kami sendiri terlalu tinggi
 
-Awalnya dalam merencanakan seri ini kami membawa angka kerja "sekitar 945 kode, sekitar 39% diblokir." Kami memperbaikinya secara publik, karena sebuah seri yang dibangun atas dasar *verifikasi-bukan-anggapan* tidak dapat diam-diam mempertahankan angka yang tidak lagi dapat dibela.
+Awalnya dalam merencanakan rangkaian ini, kami membawa angka kerja "sekitar 945 kode, sekitar 39% diblokir." Kami memperbaikinya secara publik, karena rangkaian yang dibangun atas _verifikasi-bukan-anggapan_ tidak dapat diam-diam mempertahankan angka yang tidak lagi dapat dibela.
 
-Angka 945/39% berasal dari **perhitungan yang lebih besar dan lebih longgar** — ekspor OSS penuh 2.422 baris, yang mencakup beberapa baris cakupan dan sub-skala per aktivitas, sehingga satu kode bisnis dapat muncul beberapa kali. Menghitung pada tingkat granularitas ini menggelembungkan baik pembilang maupun penyebut dan mencampur baris cakupan dengan kode aktivitas. Saat kami menghitung pada tingkat yang sebenarnya penting bagi seorang pendiri — **satu keputusan per kode bisnis**, di antara 1.559 kode yang telah dibersihkan — tingkatnya stabil pada **29,8%.**
+Angka 945/39% berasal dari **perhitungan yang lebih besar dan lebih longgar** — ekspor OSS lengkap 2.422 baris, yang mencakup beberapa baris cakupan dan sub-skala per aktivitas, sehingga satu kode bisnis dapat muncul beberapa kali. Menghitung pada tingkat granularitas ini menggelembungkan baik pembilang maupun penyebut dan mencampur baris cakupan dengan kode aktivitas. Saat kami menghitung pada tingkat yang benar-benar penting bagi seorang pendiri — **satu keputusan per kode bisnis**, di antara 1.559 kode yang telah dibersihkan — tingkatnya stabil pada **33,2%.**
 
-Kedua pernyataan menggambarkan realitas yang sama (blok struktural besar terhadap investasi asing berisiko rendah). Namun angka yang dapat Anda pertahankan, kode demi kode, adalah **465 dari 1.559 — 29,8%**, bukan 39%. Angka yang lebih rendah itu lebih jujur, dan masih cukup besar untuk mengubah hampir setiap rencana seorang asing.
+Kedua pernyataan menggambarkan realitas yang sama (blok struktural yang besar terhadap investasi asing berisiko rendah). Namun, angka yang dapat Anda pertahankan, kode demi kode, adalah **518 dari 1.559 — 33,2%**, bukan 39%. Angka ini sudah berubah sekali sejak rangkaian dimulai: ini adalah filter atas dataset, dan dataset tersebut terus diperbaiki. Angka ini masih jauh di bawah 39%, dan masih cukup besar untuk mengubah hampir setiap rencana seorang asing.
 
 ## Apa yang sebenarnya dikatakan peta
 
 Dua interpretasi mengikuti dari perhitungan ini, dan keduanya menunjuk ke arah yang sama:
 
-- **Hampir sepertiga tertutup** berarti jangan mengasumsikan ide Anda dapat didaftarkan. Tingkat dasar "diblokir" cukup tinggi sehingga harapan bukanlah strategi.
-- **Lebih dari dua pertiga terbuka** (1.094 kode bertahan) berarti pintu yang Anda inginkan *mungkin* dapat ditemukan — biasanya sebagai saudara yang lebih berisiko dari kode yang pertama kali Anda tuju. Pivot lebih sering ada daripada tidak.
+- **Hampir sepertiga tertutup** berarti jangan berasumsi ide Anda dapat didaftarkan. Tingkat dasar "diblokir" cukup tinggi sehingga harapan bukanlah strategi.
+- **Sedikit lebih dari dua pertiga terbuka** (1.041 kode bertahan) berarti pintu yang Anda inginkan _mungkin_ dapat ditemukan — biasanya sebagai versi berisiko lebih tinggi dari kode yang pertama kali Anda tuju. Pivot sering kali ada.
 
-Peta ini bukan "Bali tertutup." Ini adalah "Bali tertutup untuk versi *mudah, berisiko rendah* dari sebagian besar hal, dan terbuka untuk versi *serius, berisiko lebih tinggi* dari banyak hal tersebut." Kalimat tunggal ini, didukung oleh 465 kode yang dihitung, adalah seluruh moratorium dalam satu baris.
+Peta ini bukan "Bali tertutup." Ini adalah "Bali tertutup untuk versi _mudah, berisiko rendah_ dari sebagian besar hal, dan terbuka untuk versi _serius, berisiko lebih tinggi_ dari banyak hal tersebut." Kalimat tunggal ini, didukung oleh 518 kode yang dihitung, adalah seluruh moratorium dalam satu baris.
 
-Kami akan terus memperbarui perhitungan ini seiring data OSS dan moratorium berkembang — dan kami akan terus menunjukkan aritmetikanya, karena saat sebuah angka tidak dapat direproduksi dari file, itu berhenti menjadi jurnalisme dan mulai menjadi rumor.
+Kami akan memperbarui perhitungan ini seiring data OSS dan moratorium berkembang — dan kami akan terus menunjukkan aritmetikanya, karena saat sebuah angka tidak dapat direproduksi dari file, ia berhenti menjadi jurnalisme dan mulai menjadi rumor.
 
-*Jangan menerima agregat atas keyakinan — periksa kode Anda sendiri terhadap perhitungan langsung di Bali Zero KBLI Navigator di balizero.com, di mana status nasional setiap kode dan keputusan Bali berdampingan, diambil dari data yang sama yang dihitung artikel ini.*
+_Jangan menerima agregat atas keyakinan — periksa kode Anda sendiri terhadap perhitungan langsung di Bali Zero KBLI Navigator di balizero.com, di mana status nasional setiap kode dan keputusan Bali berdampingan, diambil dari data yang sama yang dihitung artikel ini._
 
 ---
 TITLE: The IT Escape Route
