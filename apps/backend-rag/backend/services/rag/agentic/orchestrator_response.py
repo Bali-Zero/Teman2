@@ -113,6 +113,17 @@ class OrchestratorResponseBuilder:
                 abstain,
             )
 
+        # The main ReAct path never filled either of these, so every response it
+        # produced reported "0 steps, 0 tools" — including ones that had just
+        # retrieved eight sources. Both are read straight off the state that
+        # produced the answer.
+        steps_taken = int(getattr(state, "current_step", 0) or 0)
+        tools_called = [
+            step.action.tool_name
+            for step in getattr(state, "steps", []) or []
+            if getattr(step, "action", None) and getattr(step.action, "tool_name", None)
+        ]
+
         return CoreResult(
             answer=state.final_answer,
             sources=sources,
@@ -123,6 +134,8 @@ class OrchestratorResponseBuilder:
             is_ambiguous=False,
             entities=extracted_entities,
             model_used=model_used,
+            steps_taken=steps_taken,
+            tools_called=tools_called,
             prompt_tokens=token_usage.prompt_tokens,
             completion_tokens=token_usage.completion_tokens,
             total_tokens=token_usage.total_tokens,
