@@ -38,9 +38,11 @@ from __future__ import annotations
 
 import datetime as _dt
 import json
+import math
 import os
 import subprocess
 import sys
+import time
 
 REPO = os.environ.get("QUEUE_DOCTOR_REPO", "Bali-Zero/Teman2")
 LOCK = os.environ.get("QUEUE_DOCTOR_LOCK", "/tmp/nuzantara-prepush-backend-suite.lock")
@@ -156,12 +158,21 @@ def probe_p0_spool() -> None:
         _cannot_verify("P0 spool", "QUEUE_DOCTOR_SSH is empty — spool host not probed")
         return
     today = _dt.date.today().isoformat()
-    # counts only: wc/grep -c on the spool host; no message body crosses the wire.
+    # Counts only: wc/grep -c on the spool host; no message body crosses the wire.
+    # Test every source before reading it. A missing archive is not the same as
+    # an archive containing zero P0 events, and a missing pending file is not an
+    # empty queue.
     script = (
         f'P={SPOOL}; '
-        f'printf "pending %s\\n" "$(wc -l < "$P/pending.jsonl" 2>/dev/null || echo MISSING)"; '
-        f'printf "last_flush %s\\n" "$(cat "$P/last_flush.json" 2>/dev/null || echo MISSING)"; '
-        f'printf "p0_today %s\\n" "$(grep -c "{today}" "$P/archive-p0.jsonl" 2>/dev/null || echo 0)"'
+        'if [ -f "$P/pending.jsonl" ]; then '
+        'printf "pending %s\\n" "$(wc -l < "$P/pending.jsonl")"; '
+        'else printf "pending MISSING\\n"; fi; '
+        'if [ -f "$P/last_flush.json" ]; then '
+        'printf "last_flush %s\\n" "$(cat "$P/last_flush.json")"; '
+        'else printf "last_flush MISSING\\n"; fi; '
+        'if [ -f "$P/archive-p0.jsonl" ]; then '
+        f'printf "p0_today %s\\n" "$(grep -c "{today}" "$P/archive-p0.jsonl" || true)"; '
+        'else printf "p0_today MISSING\\n"; fi'
     )
     rc, out, err = _run(["ssh", "-o", "ConnectTimeout=8", SSH_HOST, script], timeout=25)
     if rc != 0:
@@ -171,10 +182,33 @@ def probe_p0_spool() -> None:
         line.split(None, 1) for line in out.splitlines() if " " in line
     )
     pending = fields.get("pending", "MISSING").strip()
+    p0_today = fields.get("p0_today", "MISSING").strip()
+    last_flush_raw = fields.get("last_flush", "MISSING").strip()
+    if not pending.isdigit() or not p0_today.isdigit() or last_flush_raw == "MISSING":
+        invalid = [
+            name
+            for name, value in (
+                ("pending", pending),
+                ("last_flush", last_flush_raw),
+                ("p0_today", p0_today),
+            )
+            if value == "MISSING" or (name != "last_flush" and not value.isdigit())
+        ]
+        _cannot_verify("P0 spool", f"missing or invalid counters: {', '.join(invalid)}")
+        return
+    try:
+        last_flush = json.loads(last_flush_raw)
+        last_flush_ts = float(last_flush["ts"])
+        if not math.isfinite(last_flush_ts) or last_flush_ts <= 0:
+            raise ValueError("ts must be a positive finite epoch")
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        _cannot_verify("P0 spool", f"invalid last_flush metadata: {type(exc).__name__}")
+        return
+    age_min = max(0.0, (time.time() - last_flush_ts) / 60)
     print(f"  pending (waiting for digest flush): {pending}")
-    print(f"  last flush: {fields.get('last_flush', 'MISSING').strip()[:120]}")
-    print(f"  P0 archived today: {fields.get('p0_today', '?').strip()}")
-    if pending.isdigit() and int(pending) > 50:
+    print(f"  last flush age: {age_min:.0f} min")
+    print(f"  P0 archived today: {p0_today}")
+    if int(pending) > 50:
         print("  ATTENTION: pending should DRAIN at each flush — a growing file means the")
         print("  digest sender is failing (its _restore_pending() re-queues on failure).")
 

@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Consumi Flotta — Nuzantara</title>
+<style>
+  .viz-root {
+    color-scheme: light;
+    --surface-1:#fcfcfb; --page:#f9f9f7;
+    --ink-1:#0b0b0b; --ink-2:#52514e; --muted:#898781;
+    --grid:#e1e0d9; --baseline:#c3c2b7; --ring:rgba(11,11,11,0.10);
+    --s-gemini:#2a78d6; --s-claude:#eb6834; --s-emb:#1baf7a; --s-openrouter:#eda100;
+    --st-good:#0ca30c; --st-warn:#fab219; --st-serious:#ec835a; --st-critical:#d03b3b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      color-scheme: dark;
+      --surface-1:#1a1a19; --page:#0d0d0d;
+      --ink-1:#ffffff; --ink-2:#c3c2b7; --muted:#898781;
+      --grid:#2c2c2a; --baseline:#383835; --ring:rgba(255,255,255,0.10);
+      --s-gemini:#3987e5; --s-claude:#d95926; --s-emb:#199e70; --s-openrouter:#c98500;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --surface-1:#1a1a19; --page:#0d0d0d;
+    --ink-1:#ffffff; --ink-2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --baseline:#383835; --ring:rgba(255,255,255,0.10);
+    --s-gemini:#3987e5; --s-claude:#d95926; --s-emb:#199e70; --s-openrouter:#c98500;
+  }
+  * { box-sizing:border-box; margin:0; }
+  body.viz-root { background:var(--page); color:var(--ink-1);
+    font-family:system-ui,-apple-system,"Segoe UI",sans-serif; padding:20px 16px 48px; }
+  .wrap { max-width:1040px; margin:0 auto; }
+  header h1 { font-size:1.25rem; font-weight:650; }
+  header .sub { color:var(--ink-2); font-size:.82rem; margin-top:4px; }
+  .grid-tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin:18px 0; }
+  .tile { background:var(--surface-1); border:1px solid var(--ring); border-radius:10px; padding:12px 14px; }
+  .tile .k { font-size:.72rem; color:var(--ink-2); letter-spacing:.02em; }
+  .tile .v { font-size:1.45rem; font-weight:650; margin-top:2px; }
+  .tile .n { font-size:.72rem; color:var(--muted); margin-top:2px; }
+  .card { background:var(--surface-1); border:1px solid var(--ring); border-radius:12px; padding:16px; margin:14px 0; }
+  .card h2 { font-size:.95rem; font-weight:650; margin-bottom:2px; }
+  .card .hint { font-size:.75rem; color:var(--ink-2); margin-bottom:10px; }
+  .legend { display:flex; flex-wrap:wrap; gap:12px; font-size:.78rem; color:var(--ink-2); margin:6px 0 10px; }
+  .legend .it { display:flex; align-items:center; gap:6px; }
+  .dot { width:9px; height:9px; border-radius:3px; display:inline-block; }
+  #chart { width:100%; }
+  .alert { display:flex; gap:10px; align-items:flex-start; border:1px solid var(--ring);
+    border-left-width:4px; border-radius:8px; padding:10px 12px; margin:8px 0; background:var(--surface-1); font-size:.83rem; }
+  .alert .ic { font-size:1rem; line-height:1.2; }
+  .alert b { font-weight:650; }
+  .alert.critical { border-left-color:var(--st-critical); }
+  .alert.warning { border-left-color:var(--st-warn); }
+  table { width:100%; border-collapse:collapse; font-size:.8rem; }
+  th { text-align:left; color:var(--ink-2); font-weight:600; padding:6px 8px; border-bottom:1px solid var(--grid); }
+  td { padding:6px 8px; border-bottom:1px solid var(--grid); font-variant-numeric:tabular-nums; }
+  td.num, th.num { text-align:right; }
+  .seats { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:10px; }
+  .seat { border:1px solid var(--ring); border-radius:10px; padding:11px 12px; background:var(--surface-1); }
+  .seat .who { font-weight:650; font-size:.83rem; }
+  .seat .lane { color:var(--ink-2); font-size:.74rem; margin:3px 0 8px; }
+  .badge { display:inline-flex; align-items:center; gap:5px; font-size:.68rem; border:1px solid var(--ring);
+    border-radius:999px; padding:2px 8px; color:var(--ink-2); }
+  .badge.live { border-color:var(--st-good); }
+  .badge .bdot { width:7px; height:7px; border-radius:50%; background:var(--muted); }
+  .badge.live .bdot { background:var(--st-good); }
+  .seat .metrics { font-size:.72rem; color:var(--muted); margin-top:6px; line-height:1.5; }
+  #tooltip { position:fixed; pointer-events:none; background:var(--surface-1); color:var(--ink-1);
+    border:1px solid var(--ring); border-radius:8px; padding:8px 10px; font-size:.75rem;
+    box-shadow:0 4px 14px rgba(0,0,0,.18); display:none; z-index:10; min-width:150px; }
+  #tooltip .t { font-weight:650; margin-bottom:4px; }
+  #tooltip .r { display:flex; justify-content:space-between; gap:14px; }
+  #tooltip .r span:last-child { font-variant-numeric:tabular-nums; }
+  details summary { cursor:pointer; font-size:.8rem; color:var(--ink-2); margin:8px 0; }
+  footer { color:var(--muted); font-size:.72rem; margin-top:22px; line-height:1.6; }
+  .src { color:var(--ink-2); }
+</style>
+</head>
+<body class="viz-root">
+<div class="wrap">
+  <header>
+    <h1>Consumi Flotta — Nuzantara</h1>
+    <div class="sub" id="genat"></div>
+  </header>
+
+  <div class="grid-tiles" id="tiles"></div>
+
+  <section class="card">
+    <h2>Spesa API per giorno — ultimi 30 giorni (USD)</h2>
+    <div class="hint">Fonte viva: ledger <code>llm_cost_events</code> (Postgres produzione, migrazione 117). Giorni WITA.</div>
+    <div class="legend" id="legend"></div>
+    <div id="chart"></div>
+    <details><summary>Vista tabellare giornaliera</summary><div id="dayTableWrap"></div></details>
+  </section>
+
+  <section class="card">
+    <h2>Segnali</h2>
+    <div class="hint">Generati dai dati del ledger, non a mano.</div>
+    <div id="alerts"></div>
+  </section>
+
+  <section class="card">
+    <h2>Provider API — 30 giorni</h2>
+    <div id="provTableWrap"></div>
+  </section>
+
+  <section class="card">
+    <h2>Seat abbonamenti — l'altra metà del cielo</h2>
+    <div class="hint">Le quote degli abbonamenti (finestre 5h, cap settimanali, crediti) non hanno API pubbliche:
+      si misurano dai log locali delle CLI sul Mac. Il collector <code>scripts/usage/seat_usage_collector.py</code>
+      popola queste card quando viene armato (PENDING-ARMS).</div>
+    <div class="seats" id="seats"></div>
+  </section>
+
+  <footer>
+    <div class="src"><b>Fonti:</b> Postgres prod <code>llm_cost_events</code> (API a consumo) · FLEET_TOPOLOGY.json (seat e corsie) ·
+      collector seat (da armare: log CLI Claude ×4 profili, Codex ×2 CODEX_HOME, agy, kimi, crediti Token Plan post PROBE-1).</div>
+    <div>Le spese degli abbonamenti flat (Max, Team, ChatGPT Pro, AI Ultra, Allegro, Token Plan) sono fisse per definizione:
+      qui si misura il <i>consumo</i> delle loro quote, non dollari variabili. I dollari variabili veri sono nel grafico sopra.</div>
+  </footer>
+</div>
+<div id="tooltip"></div>
+
+<script>
+window.__SNAPSHOT__ = {
+  "generated_at": "2026-08-09T13:05:00+08:00",
+  "source": "llm_cost_events (Fly PG, prod) — query live via MCP read-only",
+  "series_order": ["gemini", "claude_oauth", "openai_embeddings", "openrouter"],
+  "series_labels": {"gemini":"Gemini API","claude_oauth":"Claude OAuth","openai_embeddings":"OpenAI embeddings","openrouter":"OpenRouter"},
+  "totals_30d": {
+    "usd": 52.90, "calls": 7543, "errors": 413,
+    "by_provider": [
+      {"p":"gemini","usd":51.31,"tok_in":32643781,"tok_out":516554,"calls":2585,"errors":103,"last":"2026-08-09 20:26 WITA"},
+      {"p":"claude_oauth","usd":1.58,"tok_in":1232781,"tok_out":114377,"calls":568,"errors":10,"last":"2026-08-09 13:11 WITA"},
+      {"p":"openai_embeddings","usd":0.01,"tok_in":275254,"tok_out":0,"calls":4090,"errors":0,"last":"2026-08-09 13:00 WITA"},
+      {"p":"openrouter","usd":0.00,"tok_in":0,"tok_out":0,"calls":300,"errors":300,"last":"2026-07-28 10:51 WITA"}
+    ]
+  },
+  "daily": [
+    {"d":"10/07","gemini":0.0021,"claude_oauth":0.0102,"openai_embeddings":0,"openrouter":0},
+    {"d":"11/07","gemini":0.0155,"claude_oauth":0.0062,"openai_embeddings":0.0006,"openrouter":0},
+    {"d":"12/07","gemini":0.0140,"claude_oauth":0.0190,"openai_embeddings":0,"openrouter":0},
+    {"d":"13/07","gemini":0.0059,"claude_oauth":0.0133,"openai_embeddings":0,"openrouter":0},
+    {"d":"14/07","gemini":0.0126,"claude_oauth":0.0784,"openai_embeddings":0,"openrouter":0},
+    {"d":"15/07","gemini":0.0028,"claude_oauth":0.0080,"openai_embeddings":0,"openrouter":0},
+    {"d":"16/07","gemini":0.0043,"claude_oauth":0.0163,"openai_embeddings":0,"openrouter":0},
+    {"d":"17/07","gemini":0.1653,"claude_oauth":0.0369,"openai_embeddings":0.0001,"openrouter":0},
+    {"d":"18/07","gemini":0.4310,"claude_oauth":0.0409,"openai_embeddings":0.0001,"openrouter":0},
+    {"d":"19/07","gemini":0.7955,"claude_oauth":0,"openai_embeddings":0.0011,"openrouter":0},
+    {"d":"20/07","gemini":0.6694,"claude_oauth":0.0572,"openai_embeddings":0,"openrouter":0,"err":{"openrouter":1}},
+    {"d":"21/07","gemini":2.2220,"claude_oauth":0.1565,"openai_embeddings":0.0001,"openrouter":0,"err":{"openrouter":11}},
+    {"d":"22/07","gemini":0.3376,"claude_oauth":0.0471,"openai_embeddings":0,"openrouter":0},
+    {"d":"23/07","gemini":0.2871,"claude_oauth":0.0362,"openai_embeddings":0,"openrouter":0},
+    {"d":"24/07","gemini":0.8697,"claude_oauth":0.0091,"openai_embeddings":0,"openrouter":0},
+    {"d":"25/07","gemini":7.9908,"claude_oauth":0.0772,"openai_embeddings":0.0020,"openrouter":0},
+    {"d":"26/07","gemini":12.5338,"claude_oauth":0.0845,"openai_embeddings":0.0006,"openrouter":0,"err":{"openrouter":35}},
+    {"d":"27/07","gemini":0,"claude_oauth":0.0880,"openai_embeddings":0,"openrouter":0,"err":{"gemini":34,"openrouter":29}},
+    {"d":"28/07","gemini":16.2240,"claude_oauth":0.0478,"openai_embeddings":0.0005,"openrouter":0,"err":{"openrouter":224}},
+    {"d":"29/07","gemini":0.5952,"claude_oauth":0.0484,"openai_embeddings":0,"openrouter":0},
+    {"d":"30/07","gemini":0.4133,"claude_oauth":0.0117,"openai_embeddings":0,"openrouter":0},
+    {"d":"31/07","gemini":0.1779,"claude_oauth":0.0049,"openai_embeddings":0,"openrouter":0},
+    {"d":"01/08","gemini":1.0665,"claude_oauth":0.0646,"openai_embeddings":0,"openrouter":0},
+    {"d":"02/08","gemini":0.3827,"claude_oauth":0.0518,"openai_embeddings":0,"openrouter":0},
+    {"d":"03/08","gemini":1.1610,"claude_oauth":0.0618,"openai_embeddings":0,"openrouter":0},
+    {"d":"04/08","gemini":0.1393,"claude_oauth":0.0511,"openai_embeddings":0,"openrouter":0},
+    {"d":"05/08","gemini":1.6928,"claude_oauth":0.0051,"openai_embeddings":0,"openrouter":0,"err":{"claude_oauth":2}},
+    {"d":"06/08","gemini":1.1850,"claude_oauth":0.1522,"openai_embeddings":0,"openrouter":0},
+    {"d":"07/08","gemini":1.0909,"claude_oauth":0.1656,"openai_embeddings":0,"openrouter":0},
+    {"d":"08/08","gemini":0.2547,"claude_oauth":0.0498,"openai_embeddings":0,"openrouter":0},
+    {"d":"09/08","gemini":0.5639,"claude_oauth":0.0760,"openai_embeddings":0,"openrouter":0,"partial":true}
+  ],
+  "seats": [
+    {"id":"A1","who":"antonellosiano — Max 20x","lane":"interattiva / architetto","status":"pending"},
+    {"id":"A2","who":"kaiser1987… — Max 20x","lane":"subagenti / build + Cowork","status":"pending"},
+    {"id":"A3","who":"applevisionpro1987 — Max 20x","lane":"cron / batch (donatore)","status":"pending"},
+    {"id":"AZ","who":"zero — Team Premium","lane":"GATE primary (allowance Fable)","status":"pending"},
+    {"id":"O1","who":"antonellosiano — ChatGPT Pro","lane":"refuter (Codex Sol)","status":"pending"},
+    {"id":"O2","who":"zero — ChatGPT Pro","lane":"builder Terra/Luna","status":"pending"},
+    {"id":"G1","who":"Google AI Ultra","lane":"agy / NotebookLM / Antigravity","status":"pending"},
+    {"id":"K1","who":"Kimi Allegro","lane":"K3 revisore / kimi-for-coding","status":"pending"},
+    {"id":"TP1","who":"Alibaba Token Plan","lane":"Qwen · GLM · MiniMax (crediti)","status":"pending"}
+  ],
+  "alerts": [
+    {"level":"critical","icon":"⛔","title":"OpenRouter: 300 chiamate, 300 errori (100%)",
+     "body":"Lane aider_fix morta dal ritiro DeepSeek — ultimo evento 28/07. Da riconciliare in MODEL_TOPOLOGY v3 (già in PENDING-ARMS)."},
+    {"level":"warning","icon":"⚠️","title":"Gemini: $36.7 in 4 giorni (25–28/07) = 72% della spesa mensile",
+     "body":"Spike da carichi swarm/batch, incluso un giorno (27/07) con 34/34 chiamate fallite e retry-storm il 28/07 ($16.22). Il cost-breaker esiste: verificare che la soglia copra questo pattern."},
+    {"level":"warning","icon":"👁","title":"Il ledger vede solo le API a consumo",
+     "body":"Il grosso del lavoro (sessioni Claude, Codex, agy, kimi su abbonamento) non passa dal ledger: si accende col collector seat (PENDING-ARMS)."}
+  ]
+};
+
+(function(){
+  const S = window.__SNAPSHOT__;
+  const CLR = {gemini:"var(--s-gemini)", claude_oauth:"var(--s-claude)", openai_embeddings:"var(--s-emb)", openrouter:"var(--s-openrouter)"};
+  const fmtU = v => "$" + v.toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fmtI = v => v.toLocaleString("it-IT");
+
+  document.getElementById("genat").textContent =
+    "Snapshot: " + S.generated_at.replace("T"," ").slice(0,16) + " WITA · " + S.source;
+
+  // Hero tiles
+  const today = S.daily[S.daily.length-1];
+  const todayUsd = S.series_order.reduce((a,k)=>a+(today[k]||0),0);
+  const tiles = [
+    {k:"Spesa API 30 giorni", v:fmtU(S.totals_30d.usd), n:"solo per-token; abbonamenti esclusi"},
+    {k:"Oggi (parziale)", v:fmtU(todayUsd), n:today.d + " WITA"},
+    {k:"Chiamate 30g", v:fmtI(S.totals_30d.calls), n:"tutte le lane API"},
+    {k:"Errori 30g", v:fmtI(S.totals_30d.errors), n:"di cui 300 openrouter (100%)"},
+    {k:"Seat abbonamenti", v:"9", n:"in attesa del collector (0 live)"}
+  ];
+  document.getElementById("tiles").innerHTML = tiles.map(t =>
+    `<div class="tile"><div class="k">${t.k}</div><div class="v">${t.v}</div><div class="n">${t.n}</div></div>`).join("");
+
+  // Legend
+  document.getElementById("legend").innerHTML = S.series_order.map(k =>
+    `<span class="it"><span class="dot" style="background:${CLR[k]}"></span>${S.series_labels[k]}</span>`).join("");
+
+  // Stacked daily bar chart (SVG)
+  const D = S.daily, W = 1000, H = 300, padL = 46, padB = 26, padT = 18, padR = 8;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const maxV = Math.max(...D.map(d => S.series_order.reduce((a,k)=>a+(d[k]||0),0)));
+  const yMax = Math.ceil(maxV / 4) * 4 || 1;
+  const bw = plotW / D.length;
+  const barW = Math.max(6, bw - 4);
+  const y = v => padT + plotH * (1 - v / yMax);
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Spesa API giornaliera per provider, ultimi 30 giorni">`;
+  // gridlines + y labels
+  for (let g = 0; g <= 4; g++) {
+    const gv = yMax * g / 4, gy = y(gv);
+    svg += `<line x1="${padL}" y1="${gy}" x2="${W-padR}" y2="${gy}" stroke="var(--grid)" stroke-width="1"/>`;
+    svg += `<text x="${padL-6}" y="${gy+3}" text-anchor="end" font-size="10" fill="var(--muted)">$${gv}</text>`;
+  }
+  // bars
+  D.forEach((d, i) => {
+    const x = padL + i * bw + (bw - barW) / 2;
+    let acc = 0, segs = "";
+    const tot = S.series_order.reduce((a,k)=>a+(d[k]||0),0);
+    S.series_order.forEach(k => {
+      const v = d[k] || 0; if (v <= 0) return;
+      const y1 = y(acc + v), h = Math.max(y(acc) - y1 - (acc>0?2:0), 1);
+      const isTop = (acc + v) >= tot - 1e-9;
+      const r = isTop ? 3 : 0;
+      segs = `<path d="M${x},${y(acc)-(acc>0?2:0)} L${x},${y1+r} Q${x},${y1} ${x+r},${y1} L${x+barW-r},${y1} Q${x+barW},${y1} ${x+barW},${y1+r} L${x+barW},${y(acc)-(acc>0?2:0)} Z" fill="${CLR[k]}"/>` + segs;
+      acc += v;
+    });
+    svg += `<g class="daycol" data-i="${i}">${segs}<rect x="${padL + i*bw}" y="${padT}" width="${bw}" height="${plotH}" fill="transparent"/></g>`;
+    if ((i % 5 === 0) || i === D.length-1)
+      svg += `<text x="${x+barW/2}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--muted)">${d.d}</text>`;
+    if (tot === maxV)
+      svg += `<text x="${x+barW/2}" y="${y(tot)-6}" text-anchor="middle" font-size="10" font-weight="600" fill="var(--ink-2)">${fmtU(tot)}</text>`;
+  });
+  svg += `<line x1="${padL}" y1="${y(0)}" x2="${W-padR}" y2="${y(0)}" stroke="var(--baseline)" stroke-width="1"/>`;
+  svg += `</svg>`;
+  document.getElementById("chart").innerHTML = svg;
+
+  // Tooltip
+  const tip = document.getElementById("tooltip");
+  document.querySelectorAll(".daycol").forEach(g => {
+    g.addEventListener("mousemove", e => {
+      const d = D[+g.dataset.i];
+      const tot = S.series_order.reduce((a,k)=>a+(d[k]||0),0);
+      let rows = S.series_order.filter(k => (d[k]||0) > 0 || (d.err && d.err[k]))
+        .map(k => `<div class="r"><span><span class="dot" style="background:${CLR[k]};width:7px;height:7px;"></span> ${S.series_labels[k]}</span><span>${fmtU(d[k]||0)}${d.err && d.err[k] ? " · "+d.err[k]+" err" : ""}</span></div>`).join("");
+      tip.innerHTML = `<div class="t">${d.d}${d.partial ? " (parziale)" : ""} — ${fmtU(tot)}</div>` + (rows || "<div class='r'><span>nessuna spesa</span></div>");
+      tip.style.display = "block";
+      tip.style.left = Math.min(e.clientX + 14, window.innerWidth - 190) + "px";
+      tip.style.top = (e.clientY + 12) + "px";
+    });
+    g.addEventListener("mouseleave", () => tip.style.display = "none");
+  });
+
+  // Daily table (relief rule / table view)
+  let dt = `<table><thead><tr><th>Giorno</th>${S.series_order.map(k=>`<th class="num">${S.series_labels[k]}</th>`).join("")}<th class="num">Totale</th></tr></thead><tbody>`;
+  D.forEach(d => {
+    const tot = S.series_order.reduce((a,k)=>a+(d[k]||0),0);
+    dt += `<tr><td>${d.d}${d.partial?" *":""}</td>${S.series_order.map(k=>`<td class="num">${(d[k]||0).toFixed(4)}</td>`).join("")}<td class="num"><b>${tot.toFixed(4)}</b></td></tr>`;
+  });
+  dt += "</tbody></table>";
+  document.getElementById("dayTableWrap").innerHTML = dt;
+
+  // Alerts
+  document.getElementById("alerts").innerHTML = S.alerts.map(a =>
+    `<div class="alert ${a.level}"><span class="ic">${a.icon}</span><div><b>${a.title}</b><br>${a.body}</div></div>`).join("");
+
+  // Provider table
+  let pt = `<table><thead><tr><th>Provider</th><th class="num">USD 30g</th><th class="num">Token in</th><th class="num">Token out</th><th class="num">Chiamate</th><th class="num">Errori</th><th>Ultimo evento</th></tr></thead><tbody>`;
+  S.totals_30d.by_provider.forEach(r => {
+    pt += `<tr><td><span class="dot" style="background:${CLR[r.p]}"></span> ${S.series_labels[r.p]}</td><td class="num">${fmtU(r.usd)}</td><td class="num">${fmtI(r.tok_in)}</td><td class="num">${fmtI(r.tok_out)}</td><td class="num">${fmtI(r.calls)}</td><td class="num">${r.errors ? "<b>"+fmtI(r.errors)+"</b>" : "0"}</td><td>${r.last}</td></tr>`;
+  });
+  pt += "</tbody></table>";
+  document.getElementById("provTableWrap").innerHTML = pt;
+
+  // Seats
+  document.getElementById("seats").innerHTML = S.seats.map(s => {
+    const live = s.status === "live";
+    const m = live && s.metrics ? s.metrics :
+      "finestra 5h: — · settimana: — · token/oggi: —";
+    return `<div class="seat"><div class="who">${s.id} · ${s.who}</div><div class="lane">${s.lane}</div>
+      <span class="badge ${live?"live":""}"><span class="bdot"></span>${live?"dati live":"collector da armare"}</span>
+      <div class="metrics">${m}</div></div>`;
+  }).join("");
+
+  // Live snapshot override (when served next to the collector output)
+  fetch("seat_usage_snapshot.json").then(r => r.ok ? r.json() : null).then(j => {
+    if (!j) return;
+    // Minimal live merge: seats with metrics
+    if (j.seats) {
+      const map = Object.fromEntries(j.seats.map(x => [x.id, x]));
+      S.seats.forEach(s => { if (map[s.id] && map[s.id].metrics) { s.status = "live"; s.metrics = map[s.id].metrics; } });
+      document.getElementById("seats").innerHTML = S.seats.map(s => {
+        const live = s.status === "live";
+        return `<div class="seat"><div class="who">${s.id} · ${s.who}</div><div class="lane">${s.lane}</div>
+          <span class="badge ${live?"live":""}"><span class="bdot"></span>${live?"dati live":"collector da armare"}</span>
+          <div class="metrics">${live ? s.metrics : "finestra 5h: — · settimana: — · token/oggi: —"}</div></div>`;
+      }).join("");
+    }
+  }).catch(()=>{});
+})();
+</script>
+</body>
+</html>

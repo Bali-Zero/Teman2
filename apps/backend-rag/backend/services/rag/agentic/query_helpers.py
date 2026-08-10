@@ -9,6 +9,7 @@ Contains:
 """
 
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -50,41 +51,209 @@ RECALL_TRIGGERS = [
     "yang kita bahas",
 ]
 
-# Indonesian language markers for detection
+# Indonesian language markers for detection.
+#
+# MATCHED AS WHOLE WORDS, never as bare substrings (see INDONESIAN_MARKER_RE below).
+# Measured 2026-08-10 on the real inbound WhatsApp corpus (188 messages) plus a
+# 20-question English domain corpus: the previous `marker in query_lower` scan
+# misclassified 11 of those 20 plain-English questions as Indonesian, because
+# "st(anda)rd", "m(anda)tory", "va(lu)e", "so(lu)tion", "inc(lu)de", "J(apa)n"
+# and "cap(a)city" all embed a marker mid-word. An English speaker so classified
+# is routed down the Indonesian branch and therefore receives NO language
+# instruction at all — one of the two paths to the observed reply-language drift.
 INDONESIAN_MARKERS = [
-    "apa",
-    "bagaimana",
-    "siapa",
-    "dimana",
-    "kapan",
-    "mengapa",
-    "yang",
-    "dengan",
-    "untuk",
-    "dari",
-    "saya",
+    # "ada" is deliberately absent: Ada is also a proper name. One ambiguous
+    # token must not route an otherwise-English client question to Indonesian;
+    # genuine Indonesian sentences containing "ada" carry another marker.
     "aku",
-    "kamu",
     "anda",
+    "apa",
+    "atau",
+    "bagaimana",
+    "banget",
+    "beberapa",
+    "belum",
+    "berapa",
+    "biaya",
     "bisa",
-    "mau",
-    "ingin",
-    "perlu",
-    "tolong",
-    "halo",
-    "selamat",
-    "terima kasih",
+    "boleh",
+    "buat",
+    "bulan",
+    "dari",
+    "dengan",
+    "dimana",
+    "dong",
+    "gak",
     "gimana",
     "gue",
     "gw",
-    "lu",
-    "dong",
-    "nih",
-    "banget",
+    "hari",
+    "harga",
+    "ingin",
+    "izin",
+    "jelas",
+    "jelaskan",
+    "juga",
+    "kalau",
+    "kalo",
+    "kamu",
+    "kapan",
+    "keluar",
+    "kena",
+    "kenapa",
     "keren",
+    "lagi",
+    "lu",
     "mantap",
-    "boleh",
+    "masih",
+    "mau",
+    "mengapa",
+    "mohon",
+    "nggak",
+    "nih",
+    "pajak",
+    "perlu",
+    "punya",
+    "sama",
+    "saya",
+    "selamat",
+    "siapa",
+    "sudah",
+    "tahun",
+    "terima kasih",
+    "tidak",
+    "tolong",
+    "untuk",
+    "urus",
+    "yang",
 ]
+
+# Indonesian is agglutinative on the right: "apa" legitimately appears as
+# "apakah", "harga" as "harganya", "bisa" as "bisalah". A plain \b…\b match
+# would therefore be an UNDER-match twin of the over-match it fixes — measured:
+# on the same 188-message corpus a bare word-boundary matcher LOST 12 genuine
+# Indonesian messages, 11 of them on "berapa" ("how much", i.e. the pricing
+# question). Allowing the enclitic suffixes keeps those while still refusing
+# any marker that merely sits inside a longer stem.
+_INDONESIAN_ENCLITICS = r"(?:kah|nya|lah|pun|ku|mu)?"
+
+
+def _whole_word_matcher(markers: list[str], suffix: str = "") -> re.Pattern[str]:
+    """Compile markers so they match as WORDS, never inside a longer stem."""
+    alternation = "|".join(re.escape(m) for m in sorted(markers, key=len, reverse=True))
+    return re.compile(rf"\b(?:{alternation}){suffix}\b")
+
+
+INDONESIAN_MARKER_RE = _whole_word_matcher(INDONESIAN_MARKERS, _INDONESIAN_ENCLITICS)
+
+# The same bare-substring defect lived in every Latin-script branch, and it is
+# not theoretical: "in(come) tax" reads as ITALIAN and "com(merci)al licence" as
+# FRENCH. The team beta test of 2026-07-28 recorded two English questions
+# answered wholly in Italian with correct content — this is a mechanism that
+# produces exactly that.
+#
+# Whole-word matching alone is not enough here, because two markers are also
+# ordinary ENGLISH words: Italian "come" and French "comment". A single one of
+# those is a coincidence, not a language — so they are HOMOGRAPHS and never
+# decide on their own; they add one signal only after a decisive marker names
+# the same language. To keep the recall that "come"/"comment" used to carry
+# ("come funziona…", "comment ça marche"), the decisive lists are widened with
+# the function words a real question in that language brings along.
+#
+# Order is preserved from the original (Italian → French → Spanish → German) as
+# the tie-break after signal counting, so equal evidence resolves as before.
+_LATIN_MARKERS: list[tuple[str, list[str], list[str]]] = [
+    (
+        "ITALIAN",
+        # Decisive — none of these is an English word. "non" is deliberately
+        # absent: \b makes it match "non-resident" / "non-profit", which this
+        # domain says constantly.
+        # "una" is deliberately absent: it is Italian AND Spanish, and Italian is
+        # tested first, so it would answer a Spanish question in Italian. A marker
+        # shared by two candidate languages decides neither.
+        # "il" is deliberately absent too: it is an Italian article and a French
+        # pronoun, so it cannot be decisive before the French signal check.
+        [
+            "ciao",
+            "cosa",
+            "voglio",
+            "posso",
+            "grazie",
+            "perché",
+            "quanto",
+            "quale",
+            "quali",
+            "sono",
+            "della",
+            "vorrei",
+            "devo",
+            "per favore",
+            "che",
+            "anche",
+            "gli",
+            "funziona",
+            "essere",
+            "ottenere",
+        ],
+        ["come"],  # homograph: English "come"
+    ),
+    (
+        "FRENCH",
+        [
+            "bonjour",
+            "pourquoi",
+            "merci",
+            "s'il vous",
+            "combien",
+            "quel",
+            "quelle",
+            "est-ce",
+            "vous",
+            "je",
+            "ça",
+            "c'est",
+            "votre",
+            "nous",
+            "faut",
+            "avec",
+            "dans",
+            "être",
+            "obtenir",
+        ],
+        ["comment"],  # homograph: English "comment"
+    ),
+    ("SPANISH", ["hola", "cómo", "como estas", "gracias", "por qué"], []),
+    ("GERMAN", ["hallo", "wie geht", "danke", "warum", "können"], []),
+]
+
+LATIN_MARKER_RES: list[tuple[str, re.Pattern[str]]] = [
+    (language, _whole_word_matcher(decisive)) for language, decisive, _homographs in _LATIN_MARKERS
+]
+_BY_LANGUAGE = dict(LATIN_MARKER_RES)
+ITALIAN_MARKER_RE = _BY_LANGUAGE["ITALIAN"]
+FRENCH_MARKER_RE = _BY_LANGUAGE["FRENCH"]
+SPANISH_MARKER_RE = _BY_LANGUAGE["SPANISH"]
+GERMAN_MARKER_RE = _BY_LANGUAGE["GERMAN"]
+
+# Kept reachable so a test can assert these never decide alone.
+LATIN_HOMOGRAPHS: dict[str, list[str]] = {
+    language: homographs for language, _decisive, homographs in _LATIN_MARKERS if homographs
+}
+LATIN_HOMOGRAPH_RES: dict[str, re.Pattern[str]] = {
+    language: _whole_word_matcher(homographs) for language, homographs in LATIN_HOMOGRAPHS.items()
+}
+
+
+def _latin_marker_score(query: str, language: str) -> int:
+    """Count distinct decisive signals, then one supported homograph signal."""
+    decisive_matches = {match.group(0) for match in _BY_LANGUAGE[language].finditer(query)}
+    if not decisive_matches:
+        return 0
+
+    homograph_re = LATIN_HOMOGRAPH_RES.get(language)
+    homograph_bonus = int(homograph_re is not None and homograph_re.search(query) is not None)
+    return len(decisive_matches) + homograph_bonus
+
 
 # Model Tiers
 TIER_FLASH = 0
@@ -110,9 +279,8 @@ def detect_query_language(query: str) -> str:
 
     query_lower = query.lower()
 
-    # Check Indonesian first
-    indo_count = sum(1 for marker in INDONESIAN_MARKERS if marker in query_lower)
-    if indo_count >= 1:
+    # Check Indonesian first — WHOLE WORDS (+ enclitics) only, never substrings.
+    if INDONESIAN_MARKER_RE.search(query_lower):
         return "INDONESIAN"
 
     # Chinese detection (contains Chinese characters)
@@ -129,28 +297,63 @@ def detect_query_language(query: str) -> str:
             return "UKRAINIAN"
         return "RUSSIAN"
 
-    # Italian
-    if any(
-        word in query_lower
-        for word in ["ciao", "come", "cosa", "voglio", "posso", "grazie", "perché"]
-    ):
+    # Latin-script markers, WHOLE WORDS only — see _LATIN_MARKERS for why.
+    # Compare evidence before applying the historical order: otherwise one weak
+    # early marker can mask several later signals from the actual language.
+    #
+    # Written as literal returns on purpose, NOT as a loop over LATIN_MARKER_RES:
+    # `test_reasoning_stubs_language_coverage` derives the set of languages this
+    # function can emit by walking its AST for returned string constants, so that
+    # a new language cannot be added without either a translated stub or an
+    # explicit declaration. A loop returning a variable makes those four
+    # languages invisible to that guard — and it passes, quietly covering less.
+    latin_scores = {
+        "ITALIAN": _latin_marker_score(query_lower, "ITALIAN"),
+        "FRENCH": _latin_marker_score(query_lower, "FRENCH"),
+        "SPANISH": _latin_marker_score(query_lower, "SPANISH"),
+        "GERMAN": _latin_marker_score(query_lower, "GERMAN"),
+    }
+    best_latin_score = max(latin_scores.values())
+
+    if best_latin_score and latin_scores["ITALIAN"] == best_latin_score:
         return "ITALIAN"
 
-    # French
-    if any(
-        word in query_lower for word in ["bonjour", "comment", "pourquoi", "merci", "s'il vous"]
-    ):
+    if best_latin_score and latin_scores["FRENCH"] == best_latin_score:
         return "FRENCH"
 
-    # Spanish
-    if any(word in query_lower for word in ["hola", "cómo", "como estas", "gracias", "por qué"]):
+    if best_latin_score and latin_scores["SPANISH"] == best_latin_score:
         return "SPANISH"
 
-    # German
-    if any(word in query_lower for word in ["hallo", "wie geht", "danke", "warum", "können"]):
+    if best_latin_score and latin_scores["GERMAN"] == best_latin_score:
         return "GERMAN"
 
     return "ENGLISH"  # Default to English
+
+
+# How each detector verdict is NAMED back to the model.
+#
+# Module-level on purpose: it must cover every value `detect_query_language` can
+# return, and that invariant is only testable if the map is reachable from a
+# test. It previously lived inside the wrapper as a literal, and ENGLISH — the
+# detector's DEFAULT return, i.e. the largest bucket — was missing from it. The
+# instruction therefore read "YOUR ENTIRE RESPONSE MUST BE IN the user's
+# language": a self-reference naming no language and constraining nothing. That
+# is one of the two paths to the reply-language drift seen in prod on
+# 2026-07-30 (Indonesian question, French answer).
+#
+# "UNKNOWN" is deliberately absent: it is unreachable from the wrapper, which
+# bails on the same `len(query.strip()) < 2` condition that produces it.
+LANGUAGE_DISPLAY_NAMES = {
+    "CHINESE": "CHINESE (中文)",
+    "ARABIC": "ARABIC (العربية)",
+    "UKRAINIAN": "UKRAINIAN (Українська)",
+    "RUSSIAN": "RUSSIAN (Русский)",
+    "ITALIAN": "ITALIAN (Italiano)",
+    "FRENCH": "FRENCH (Français)",
+    "SPANISH": "SPANISH (Español)",
+    "GERMAN": "GERMAN (Deutsch)",
+    "ENGLISH": "ENGLISH",
+}
 
 
 def wrap_query_with_language_instruction(query: str) -> str:
@@ -183,17 +386,8 @@ Pertanyaan User:
 """
         return tool_instruction + query
 
-    # NOT Indonesian - add explicit instruction
-    lang_display = {
-        "CHINESE": "CHINESE (中文)",
-        "ARABIC": "ARABIC (العربية)",
-        "UKRAINIAN": "UKRAINIAN (Українська)",
-        "RUSSIAN": "RUSSIAN (Русский)",
-        "ITALIAN": "ITALIAN (Italiano)",
-        "FRENCH": "FRENCH (Français)",
-        "SPANISH": "SPANISH (Español)",
-        "GERMAN": "GERMAN (Deutsch)",
-    }.get(detected_lang, "the user's language")
+    # NOT Indonesian - add explicit instruction.
+    lang_display = LANGUAGE_DISPLAY_NAMES.get(detected_lang, "the user's language")
 
     language_instruction = f"""
 🔴 LANGUAGE: {lang_display}

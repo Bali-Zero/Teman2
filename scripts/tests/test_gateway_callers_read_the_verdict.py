@@ -42,10 +42,20 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 ROOTS = ("scripts", "apps", "infra")
-SUBPROCESS_CALL = re.compile(r"subprocess\.(run|call|Popen|check_output)")
-# The three ways a caller can demonstrably be reading the verdict: the literal
-# marker, the shared compiled regex, or a constant named for it.
-READS_VERDICT = re.compile(r"tg_notify:|_GATEWAY_VERDICT_RE|VERDICT")
+SUBPROCESS_CALL = re.compile(
+    r"(?:subprocess\.(?:run|call|Popen|check_output)|asyncio\.create_subprocess_exec)"
+)
+# Reading is necessary but not sufficient: the verdict must affect the returned
+# success value.  The old guard accepted `parse; log; return rc == 0`, which is
+# exactly the refusal-as-delivery bug it was meant to prevent.
+READS_VERDICT = re.compile(
+    r"tg_notify:|_GATEWAY_VERDICT_RE|VERDICT|extract_gateway_verdict|gateway_delivered"
+)
+SEMANTIC_VERDICT_USE = re.compile(
+    r"verdict|outcome|match|_GATEWAY_VERDICT_RE|tg_notify:|"
+    r"extract_gateway_verdict|gateway_delivered",
+    re.IGNORECASE,
+)
 
 
 def _is_excluded(p: Path) -> bool:
@@ -58,6 +68,80 @@ def _is_excluded(p: Path) -> bool:
         or "/.venv/" in sp
         or "/site-packages/" in sp
     )
+
+
+def _subprocess_lines(node: ast.AST, src: str) -> list[int]:
+    lines: list[int] = []
+    for child in ast.walk(node):
+        if not isinstance(child, ast.Call):
+            continue
+        call_src = ast.get_source_segment(src, child) or ""
+        if SUBPROCESS_CALL.search(call_src):
+            lines.append(child.lineno)
+    return lines
+
+
+def _return_is_guarded_by_verdict(
+    node: ast.Return,
+    parents: dict[ast.AST, ast.AST],
+    src: str,
+) -> bool:
+    parent = parents.get(node)
+    while parent is not None and not isinstance(parent, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        if isinstance(parent, ast.If):
+            test_src = ast.get_source_segment(src, parent.test) or ""
+            if SEMANTIC_VERDICT_USE.search(test_src):
+                return True
+        parent = parents.get(parent)
+    return False
+
+
+def _returncode_zero_means_success(node: ast.AST) -> bool:
+    """Whether an expression converts ``returncode == 0`` into success."""
+    if isinstance(node, ast.Compare):
+        values = [node.left, *node.comparators]
+        has_returncode = any(
+            isinstance(value, ast.Attribute) and value.attr == "returncode"
+            for value in values
+        )
+        has_zero = any(isinstance(value, ast.Constant) and value.value == 0 for value in values)
+        return has_returncode and has_zero and any(isinstance(op, ast.Eq) for op in node.ops)
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
+        return isinstance(node.operand, ast.Attribute) and node.operand.attr == "returncode"
+    return any(_returncode_zero_means_success(child) for child in ast.iter_child_nodes(node))
+
+
+def _reads_verdict_semantically(node: ast.AST, body: str, src: str) -> bool:
+    """Reject verdict theatre: parsing/logging followed by blind success."""
+    if not READS_VERDICT.search(body):
+        return False
+
+    subprocess_lines = _subprocess_lines(node, src)
+    if not subprocess_lines:
+        return False
+    first_subprocess = min(subprocess_lines)
+    parents = {
+        child: parent
+        for parent in ast.walk(node)
+        for child in ast.iter_child_nodes(parent)
+    }
+
+    for child in ast.walk(node):
+        if not isinstance(child, ast.Return) or child.value is None:
+            continue
+        # Dry-run / local-dedupe returns before the gateway call are unrelated.
+        if child.lineno <= first_subprocess:
+            continue
+        return_src = ast.get_source_segment(src, child.value) or ""
+        if _returncode_zero_means_success(child.value) and not SEMANTIC_VERDICT_USE.search(return_src):
+            return False
+        if (
+            isinstance(child.value, ast.Constant)
+            and child.value.value is True
+            and not _return_is_guarded_by_verdict(child, parents, src)
+        ):
+            return False
+    return True
 
 
 def find_callers() -> tuple[list[str], list[str]]:
@@ -83,19 +167,19 @@ def find_callers() -> tuple[list[str], list[str]]:
                 if not SUBPROCESS_CALL.search(body) or "tg_notify" not in body:
                     continue
                 label = f"{p.relative_to(REPO)}::{node.name}"
-                (reading if READS_VERDICT.search(body) else blind).append(label)
+                (reading if _reads_verdict_semantically(node, body, src) else blind).append(label)
     return blind, reading
 
 
 # ── the guard proves itself before it judges anyone (guilt AND innocence) ──────
-_GUILTY = '''
+_GUILTY_BARE = '''
 import subprocess, sys
 def send(msg):
     gateway = "/x/tg_notify.py"
     return subprocess.run([sys.executable, gateway, msg]).returncode == 0
 '''
 
-_INNOCENT = '''
+_GUILTY_PARSE_RC0 = '''
 import re, subprocess, sys
 _GATEWAY_VERDICT_RE = re.compile(r"^tg_notify:\\s*(\\S+)", re.MULTILINE)
 def send(msg):
@@ -104,6 +188,26 @@ def send(msg):
     m = _GATEWAY_VERDICT_RE.search(p.stderr or "")
     print(f"verdict: {m.group(1) if m else 'none'}")
     return p.returncode == 0
+'''
+
+_GUILTY_PARSE_TRUE = '''
+import re, subprocess, sys
+_GATEWAY_VERDICT_RE = re.compile(r"^tg_notify:\\s*(\\S+)", re.MULTILINE)
+def send(msg):
+    gateway = "/x/tg_notify.py"
+    p = subprocess.run([sys.executable, gateway, msg], capture_output=True, text=True)
+    m = _GATEWAY_VERDICT_RE.search(p.stderr or "")
+    print(f"verdict: {m.group(1) if m else 'none'}")
+    return True
+'''
+
+_INNOCENT_SEMANTIC = '''
+import subprocess, sys
+def send(msg):
+    gateway = "/x/tg_notify.py"
+    p = subprocess.run([sys.executable, gateway, msg], capture_output=True, text=True)
+    verdict = extract_gateway_verdict(p.stderr)
+    return p.returncode == 0 and gateway_delivered(verdict)
 '''
 
 # A neighbour that must NOT be caught: shells out, never touches the gateway.
@@ -123,15 +227,19 @@ def _classify(src: str) -> str:
         body = "\n".join(lines[node.lineno - 1 : node.end_lineno])
         if not SUBPROCESS_CALL.search(body) or "tg_notify" not in body:
             continue
-        return "reading" if READS_VERDICT.search(body) else "blind"
+        return "reading" if _reads_verdict_semantically(node, body, src) else "blind"
     return "not-a-caller"
 
 
 def selftest() -> list[str]:
     failures = []
-    if _classify(_GUILTY) != "blind":
+    if _classify(_GUILTY_BARE) != "blind":
         failures.append("selftest: un chiamante cieco NON viene colto")
-    if _classify(_INNOCENT) != "reading":
+    if _classify(_GUILTY_PARSE_RC0) != "blind":
+        failures.append("selftest: parse+log+returncode viene assolto")
+    if _classify(_GUILTY_PARSE_TRUE) != "blind":
+        failures.append("selftest: parse+log+True viene assolto")
+    if _classify(_INNOCENT_SEMANTIC) != "reading":
         failures.append("selftest: un chiamante corretto viene accusato")
     if _classify(_BYSTANDER) != "not-a-caller":
         failures.append("selftest: un subprocess estraneo al gateway viene giudicato")
