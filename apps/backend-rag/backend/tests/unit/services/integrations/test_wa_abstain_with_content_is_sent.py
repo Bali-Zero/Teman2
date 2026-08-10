@@ -42,8 +42,22 @@ REAL_ANSWER = (
 ) * 3
 
 
-def _payload(answer: str, reason: str = "low_evidence") -> dict:
-    return {"abstain": True, "abstain_reason": reason, "answer": answer}
+def _payload(
+    answer: str,
+    reason: str = "low_evidence",
+    *,
+    context_length: int = 2,
+    evidence_score: float = 0.12,
+) -> dict:
+    """A grounded abstain by default: evidence WAS retrieved and scored below the
+    domain threshold. That is the only shape this path may send."""
+    return {
+        "abstain": True,
+        "abstain_reason": reason,
+        "answer": answer,
+        "context_length": context_length,
+        "evidence_score": evidence_score,
+    }
 
 
 # ── the helper: what counts as worth sending ────────────────────────────────
@@ -108,6 +122,45 @@ def test_what_it_returns_is_what_gets_sent() -> None:
     out = _abstain_answer_worth_sending(_payload(answer))
     assert "SUGGESTED WORKFLOW" not in out
     assert "PT PMA" in out
+
+
+def test_an_ungrounded_abstain_is_never_sent_however_fluent() -> None:
+    """The verdict of a two-seat adversarial review, pinned.
+
+    Both seats rejected the first version of this rule independently: length
+    measures fluency, not support, so a long answer written from parametric
+    memory with nothing retrieved is exactly what a length gate lets through —
+    and on immigration/tax advice a disclaimer does not neutralise a wrong
+    capital requirement.
+
+    Measured shape: of 7 live abstains, the 2 carrying junk had
+    context_length == 0. This asserts the general rule, not those two strings.
+    """
+    # fluent, on-topic, long — and ungrounded
+    assert _abstain_answer_worth_sending(
+        _payload(REAL_ANSWER, context_length=0, evidence_score=0.0)
+    ) == ""
+    # context but no score, and score but no context: both are ungrounded
+    assert _abstain_answer_worth_sending(
+        _payload(REAL_ANSWER, context_length=3, evidence_score=0.0)
+    ) == ""
+    assert _abstain_answer_worth_sending(
+        _payload(REAL_ANSWER, context_length=0, evidence_score=0.5)
+    ) == ""
+    # a missing/garbage field is treated as ungrounded, never as permission
+    assert _abstain_answer_worth_sending(
+        {"abstain": True, "answer": REAL_ANSWER}
+    ) == ""
+    assert _abstain_answer_worth_sending(
+        _payload(REAL_ANSWER, context_length="?", evidence_score="?")
+    ) == ""
+
+
+def test_a_grounded_abstain_is_still_sent() -> None:
+    """INNOCENCE for the grounding gate: it must not swallow the case the fix exists for."""
+    assert _abstain_answer_worth_sending(
+        _payload(REAL_ANSWER, context_length=1, evidence_score=0.12)
+    )
 
 
 # ── the copy ────────────────────────────────────────────────────────────────

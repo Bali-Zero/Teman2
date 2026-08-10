@@ -117,6 +117,37 @@ def _abstain_answer_worth_sending(data: dict[str, Any]) -> str:
     inspected — an earlier shape that returned a bool and let the caller re-derive
     the text is how two code paths end up disagreeing about the same message.
     """
+    # GROUNDING FIRST, length second. Added after a two-seat adversarial review
+    # (Codex gpt-5.6-sol xhigh + Gemini 3.1 Pro, briefed to refute, reviewed
+    # independently) returned the same verdict on the first version of this
+    # function: gating on text length alone "measures fluency, not support" and
+    # "can preferentially release the most confidently hallucinated answer" —
+    # on immigration/tax advice, where a wrong capital requirement or overstay
+    # rule carries real liability and a disclaimer does not neutralise it.
+    #
+    # They are right, and this module's OWN measurements say so too. Of the 7
+    # abstains observed across 16 cold questions, the 5 carrying real answers
+    # all had retrieved context (`context_length` 1-2); the 2 carrying junk had
+    # `context_length == 0` — "Je suis prêt pour votre prochaine question." and
+    # a Russian "I already provided the basic information". `context_length == 0`
+    # with `evidence_score == 0.0` is the signature of the model writing from
+    # parametric memory with nothing retrieved behind it. That is the one shape
+    # that must never reach a client, and length cannot tell it apart.
+    #
+    # So this sends only the case the label gate exists FOR: evidence was
+    # retrieved, and scored below the domain threshold. It never sends the case
+    # where there was no evidence at all.
+    try:
+        context_length = int(data.get("context_length") or 0)
+    except (TypeError, ValueError):
+        context_length = 0
+    try:
+        evidence = float(data.get("evidence_score") or 0.0)
+    except (TypeError, ValueError):
+        evidence = 0.0
+    if context_length <= 0 or evidence <= 0.0:
+        return ""
+
     raw = (data.get("answer") or "").strip()
     if len(raw) < _ABSTAIN_MIN_SENDABLE_CHARS:
         return ""
