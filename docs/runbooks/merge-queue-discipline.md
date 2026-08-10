@@ -148,8 +148,10 @@ Full list: see `.github/CODEOWNERS`.
 1. **Drain.** Confirm no PR is actively mid-merge-race against `main` (`gh pr list --search
 "is:open"` review; the point is to flip enforcement at a quiet moment, not to reach literal zero
    open PRs — open PRs are fine, they will simply start entering the queue once armed).
-2. **PR-B merged.** The sibling PR that makes all 25 required-check workflows `merge_group`-ready
-   (they must fire correctly on the synthetic queue-branch event, not only on `pull_request`) must
+2. **PR-B merged.** The sibling PR that makes all required-check workflows `merge_group`-ready
+   (**26** as measured 2026-08-10 — re-derive via the §2 live query before citing, this count
+   moves as CI grows) (they must fire correctly on the synthetic queue-branch event, not only on
+   `pull_request`) must
    be on `main` _before_ enforcement flips. Flipping first would mean the queue immediately blocks
    on required checks that never report against a `merge_group` event — the exact "required check
    produces ZERO jobs blocks the PR forever" trap (cicatrix scar
@@ -258,7 +260,8 @@ every 10 minutes and has already been proven against live data to catch exactly 
 gh pr view <N> --json statusCheckRollup --jq '.statusCheckRollup[] | select(.conclusion != "SUCCESS")'
 ```
 
-If the rollup shows **fewer contexts than the 25 required** (§2) and none of the missing ones are
+If the rollup shows **fewer contexts than required** (§2 — **26** as measured 2026-08-10, run the
+live query there, do not cite this number) and none of the missing ones are
 red — they are simply absent — this is the "required check never reported" class, not a red check to
 chase. `merge-queue-watch.yml` distinguishes this case explicitly in its alert text.
 
