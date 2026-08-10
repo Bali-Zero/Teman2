@@ -17,11 +17,12 @@ adversarial_review: codex
 
 # Merge-OS v2 — the submission system, rewritten after refutation
 
-> **Status: SPEC, ready for wave-by-wave arming.** v1 (Cowork-M5 draft, same day) was refuted by
-> two cross-family seats — Codex sol found the v1 plan unarmable in every wave; Qwen 3.8 Max
-> concurred on waves 1-2. This v2 folds in all 26 confirmed findings. The delta log (§6) records
-> every change against v1 so the next reviewer attacks the CORRECTIONS, not the retired claims
-> (W113: the replacement assertion is a new claim — this file points its next refuter at itself).
+> **Status: SPEC UNDER REFUTATION — this document authorizes no wave to arm.** v1
+> (Cowork-M5 draft, same day) was refuted by two cross-family seats — Codex sol found the v1
+> plan unarmable in every wave; Qwen 3.8 Max concurred on waves 1-2. This v2 folds in those 26
+> confirmed findings, while a post-rewrite review found four further blockers and produced the
+> corrections in §6.1. Those corrections are new claims (W113) and remain unarmed until an
+> independent refuter passes them. Wave 3 has the additional hard isolation gate in §2.2.
 
 ## 0. What survives from v1 (the sound core)
 
@@ -109,12 +110,29 @@ groups on every push** — at ~50 merges/day that is throughput collapse, plus c
 races, plus an R2-untested commit on main (violating the design's own principle 1), plus every
 push-triggered workflow firing on bot noise (Codex F5/F6/F7, Qwen F1/F8). v2 shape:
 
-- **`docs-sync-heal` opens a PR and arms it** (`gh pr merge --auto`), exactly like any other
-  actor. It passes R1+R2 like everyone; the queue serializes it; no bypass actor exists at all
-  (Wave prerequisite deleted — Codex F12's ruleset-capability doubt becomes moot).
-- **Debounce by construction:** at most ONE open heal PR at a time (the organ finds its previous
-  PR by branch name and updates it instead of opening a second); the organ runs on a 15-min
-  schedule on Pro, not per-merge; it no-ops when drift is zero.
+- **`docs-sync-heal` first opens a DRAFT, unarmed PR.** While that candidate is draft and has
+  never been armed, the organ may update its branch from current `main` and regenerate it. The
+  organ runs on a 15-min schedule on Pro, not per-merge; it no-ops when drift is zero. No bypass
+  actor exists at all.
+- **Freeze before arm; an armed head is immutable.** After R1 is green, the organ records the
+  candidate head SHA and transitions it to ready only once. From that point through every queue
+  state, it MUST NOT push, rebase, regenerate, or otherwise move the branch. `mq arm` records the
+  same SHA, and the existing post-arm watcher dequeues + alerts on any mismatch. The scheduler
+  never "updates the previous PR" after this freeze point, so it cannot eject its own entry.
+- **One live attempt, terminal retry only:** at most one mutable candidate or frozen attempt may
+  be open. `MERGED`, `CLOSED`, or confirmed queue `EJECTED` are terminal. After `MERGED`, the next
+  schedule no-ops if content hashes match. After `CLOSED`/`EJECTED`, the organ closes the old
+  frozen attempt without changing its head, creates a new uniquely named draft branch from the
+  then-current `main`, regenerates there, and repeats R1 plus the isolation gate. It never reuses
+  or force-updates a head that the queue has observed.
+- **A heal attempt enters R2 alone or does not arm.** Before the ready/arm transition, the organ
+  must prove that (a) no queued or in-flight entry changes any `docs_sync.py` input or generated
+  block and (b) an explicit queue-isolation mechanism will build and merge the heal as a
+  one-entry group. The isolation mechanism must exclude new admissions until that attempt is
+  terminal; a best-effort empty-queue snapshot is not sufficient. The generated tree is derived
+  from the exact `main` SHA recorded after the queue drain. If native GitHub merge queue cannot
+  guarantee single-entry isolation, Wave 3 remains BLOCKED and the organ MUST NOT mark ready,
+  call `gh pr merge --auto`, or otherwise arm. This is fail-closed: no isolation proof, no heal.
 - **Anti-loop by content identity, not block type:** the organ compares the HASH of the
   regenerated blocks against what is already on main/its open PR — a `docs_sync.py` that emits
   timestamps or unsorted output would otherwise heal forever (Qwen F8). Determinism of
@@ -130,12 +148,14 @@ push-triggered workflow firing on bot noise (Codex F5/F6/F7, Qwen F1/F8). v2 sha
 ## 3. The rest of the doctrine (v1 ideas, hardened where hit)
 
 - **Regola A with the diff SPECIFIED** (Qwen F6): on `merge_group`, migration-lint and the
-  tg-gateway anti-regrowth lint diff `github.event.merge_group.head_sha` against its
-  **merge-base with main** — the cumulative group tree, never the individual PR base. Honest
-  attribution caveat (Codex F20): a colliding group FAILS and native GitHub does not bisect —
-  the queue blocks the landing (the invariant holds) but naming the culprit PR remains a manual
-  step aided by `mq why-red`. That is still strictly better than today, where the collision
-  lands on main first.
+  tg-gateway anti-regrowth lint read the immutable event pair
+  `github.event.merge_group.base_sha` and `github.event.merge_group.head_sha`, then diff exactly
+  `base_sha..head_sha`. They never recompute a merge-base against moving `main`; a missing or
+  unresolvable event SHA fails closed. This is the cumulative group tree, never the individual
+  PR base. Honest attribution caveat (Codex F20): a colliding group FAILS and native GitHub does
+  not bisect — the queue blocks the landing (the invariant holds) but naming the culprit PR
+  remains a manual step aided by `mq why-red`. That is still strictly better than today, where
+  the collision lands on main first.
 - **Differential flake verdict with a valid control** (Codex F9): stage 2 re-runs failed tests
   against **the exact merge-base SHA of the failing group** (recorded from the event payload),
   never against moving `origin/main`; a group-interaction failure (A+B) is by definition
@@ -146,10 +166,11 @@ push-triggered workflow firing on bot noise (Codex F5/F6/F7, Qwen F1/F8). v2 sha
   ≥50 runs), never touches tests markered `critical` (auth/payment/PII gates — those get a P0
   ledger line instead), caps total quarantined coverage at 2% of the suite, and every quarantine
   is a PR (visible, revertable), not a config mutation. 14-day SLA unchanged.
-- **Security cadence decoupled from PR volume** (both refuters): security.yml gains
-  `schedule: daily 03:17 WITA` as backstop; full scan stays in `merge_group`; the `push: main`
-  duplicate is dropped only AFTER the daily schedule is live (order is load-bearing). Quiet-week
-  CVE window: closed by construction.
+- **Security cadence decoupled from PR volume** (both refuters): security.yml gains a daily
+  GitHub Actions schedule at 03:17 WITA, whose required UTC cron is exactly
+  `cron: '17 19 * * *'` (19:17 UTC is 03:17 WITA the following day). Full scan stays in
+  `merge_group`; the `push: main` duplicate is dropped only AFTER the daily schedule is live
+  (order is load-bearing). Quiet-week CVE window: closed by construction.
 - **Rearm bounded** (Codex F18): launchd-on-Pro trigger (GH scheduler measured unreliable)
   gains a retry ceiling (3 per entry), exponential backoff, and a circuit breaker (≥3 identical
   INFRA failures in 30 min ⇒ stop + P0 alert instead of requeue-storming a GitHub outage).
@@ -201,13 +222,18 @@ threshold: ≤2%/week total, alarm at 1.5% — v1's 3%-vs-2% contradiction remov
 merge_group guilt case (classifier disabled ⇒ heavy jobs still ran) proven in CI.
 *Rollback:* var flip + drain procedure; two-phase context rule.
 
-**Wave 3 — doctrine (weeks 3-4).**
-Regola A in queue (migration-lint + tg-gateway, diff specified §3); heal-as-PR organ (§2.2);
-`.secrets.baseline` diff-scoping (L2); PR-side docs-sync downgrade.
+**Wave 3 — doctrine (weeks 3-4; BLOCKED pending isolation proof).**
+Regola A in queue (migration-lint + tg-gateway, immutable event diff specified §3);
+heal-as-PR organ (§2.2); `.secrets.baseline` diff-scoping (L2); PR-side docs-sync downgrade.
+Wave 3 MUST NOT arm until an independent refuter passes §2.2 and a real queue probe proves the
+single-entry isolation mechanism; inability to guarantee isolation is a stop condition, not a
+degradation mode.
 *Acceptance:* guilt test — two scratch PRs with the same migration number: the group is blocked
 before main (attribution manual, landing blocked); W86 innocence test — two router PRs merge
-without touching docs-sync; heal PR observed opening, queueing, merging, and NOT reopening on
-zero drift (content-hash anti-loop guilt test: injected timestamp ⇒ red).
+without touching docs-sync; heal lifecycle proves mutable draft → frozen SHA → isolated
+one-entry group → terminal state, with no write after freeze; a concurrent docs-affecting entry
+blocks arming; ejection creates a new draft without moving the frozen head; zero drift does not
+reopen; content-hash anti-loop guilt test (injected timestamp ⇒ red).
 
 **Wave 4 — flake + adaptivity (week 5+).**
 Differential verdict (exact-base control, cached stage-2); quarantine with floors; bounded
@@ -236,7 +262,7 @@ renumbering; no ML test selection at this scale). Added by refutation:
 
 | # | v1 said | v2 says | forced by |
 |---|---|---|---|
-| 1 | heal bot pushes main via bypass actor | heal is a queued, auto-armed PR; no bypass actors exist | Codex F5/F6/F7, Qwen F1/F8 (queue reset, races, R2 bypass, push-automation noise, timestamp loop) |
+| 1 | heal bot pushes main via bypass actor | heal is a draft PR, frozen before an explicitly isolated arm; no bypass actors exist | Codex F5/F6/F7, Qwen F1/F8 (queue reset, races, R2 bypass, push-automation noise, timestamp loop) |
 | 2 | Risk 5: gating over-match = "cost only, the queue covers" | heavy jobs unconditional on merge_group; guilt corpus includes the merge_group case | Codex F1 (fail-open authority removal) |
 | 3 | fan-in single context + "names don't change" + matrix shards | individual contexts stay; no renames; sharding out | Codex F2/F8, Qwen F3; test-summary comment re-read on origin/main |
 | 4 | 43-min suite, 40% savings, SLOs from priors | measured 25.7 min; baseline organ (Wave 1) sets every target | Codex F15/F16, Qwen F5; round-3 L3 measurement |
@@ -254,6 +280,15 @@ renumbering; no ML test selection at this scale). Added by refutation:
 | 16 | kill switch = var flip | fail-open-to-expensive semantics + drain procedure + two-phase context rule | Codex F14, Qwen F7 |
 | 17 | (absent) | classifier promoted to judge-tier protection when it gates R1 | Codex F4 (partially pre-covered by CODEOWNERS-TIER1 on workflows) |
 
+### 6.1 Post-rewrite correction log (new claims, pending independent refutation)
+
+| # | v2 rewrite said | corrected protocol | disposition |
+|---|---|---|---|
+| P1 | find one open heal PR, update it, and auto-arm it | update only while draft/unarmed; freeze once; never move a queue-observed head; retry on a new draft only after terminal state | self-ejection loop removed |
+| P2 | queue serialization alone makes derived state safe | require no docs-affecting queued/in-flight entries plus explicit single-entry isolation; otherwise Wave 3 stays blocked and no arm occurs | cumulative-group stale-tree hazard fail-closed |
+| P3 | diff group head against a merge-base recomputed with main | diff the immutable event `base_sha..head_sha`; missing SHAs fail closed | moving-control race removed |
+| P4 | schedule daily at 03:17 WITA | GitHub cron is UTC: `17 19 * * *` | executable schedule specified |
+
 ## 7. Residual risks (declared, not hidden)
 
 1. **Later red discovery for agent PRs** remains: an agent PR whose author skipped R0 discovers
@@ -267,9 +302,9 @@ renumbering; no ML test selection at this scale). Added by refutation:
 4. **Group-interaction blocks stay manual to attribute** (native queue has no bisection). `mq
    why-red` narrows it; if measured attribution cost exceeds ~2 operator-interventions/week,
    the bisection organ (v1 Wave-3 option) gets its own spec + refute round.
-5. **This v2 has not itself been refuted post-rewrite.** The delta log (§6) is the refuter's
-   target map: the corrections are new claims (W113). One cross-family pass on §2 and §4 before
-   Wave 2 arms; Waves 0-1 are observational/trap-disarm and may arm after ordinary R1 review.
+5. **This v2 has not passed post-rewrite refutation.** The delta logs (§6 and §6.1) are the
+   refuter's target map: every correction is a new claim (W113). No wave is authorized to arm by
+   this document. Wave 3 additionally requires a real, independently reviewed isolation probe.
 
 ## Adversarial review
 
@@ -285,6 +320,7 @@ trigger. Three refuter claims were themselves corrected by re-grounding on origi
 acceptance (Codex F4 partially pre-covered by CODEOWNERS-TIER1; test-summary/required-set
 facts re-read from the live files; the queue-reset mechanics confirmed, not assumed).
 
-Open by declaration (§7.5): this v2 text has not itself been refuted post-rewrite — the §6
-delta log is the target map for one cross-family pass on §2 and §4 before Wave 2 arms.
-Waves 0-1 are observational/trap-disarm and proceed after ordinary R1 review.
+Open by declaration (§7.5): this v2 text has not passed post-rewrite refutation. The §6 and
+§6.1 delta logs are the target map for an independent cross-family pass. Until that pass, this
+document is descriptive only and authorizes no arming; Wave 3 also remains blocked until its
+single-entry isolation mechanism is demonstrated against the live queue.
