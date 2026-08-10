@@ -132,6 +132,13 @@ WHITELIST_DIRS: set[str] = {
     # diff list. Currently: vendor/evoskill/ — EvoSkill v1.1.0 stripped of
     # Anthropic deps per CLAUDE.md hard rule. See PR #721.
     "vendor",
+    # Evidence Pack contract (harness-v2-teman2.md §5 / fleet-order-spec.md
+    # §4/§7, PR-3 fleet-order): evidence/brief.yml + evidence/pack.yml, the
+    # canonical repo-root-relative paths the doctrine itself names verbatim
+    # ("YAML, nel PR body o `evidence/brief.yml`") — validated by
+    # scripts/evidence_pack_lint.py and consumed by
+    # .github/workflows/harness-floor.yml. Not a scratch/dump dir.
+    "evidence",
 }
 
 # Allowed tracked dotfiles directories.

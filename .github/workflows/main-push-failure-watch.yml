@@ -175,6 +175,14 @@ on:
       # header comment already states the list is deliberately
       # over-inclusive for exactly this reason.
       - Prettier (changed files)
+      # Added with the workflow itself (PR-3, fleet-order, 2026-08-10):
+      # harness-floor.yml triggers on pull_request/merge_group only — same
+      # non-reachable-but-still-required-for-coverage shape as actionlint /
+      # hot-zone-enforcement / Prettier (changed files) above. check_watcher_
+      # coverage.py's contract is name-set membership, not alert-path
+      # reachability (see its own docstring); caught by that gate on this
+      # PR's own first CI run, exactly the self-conformance it exists for.
+      - Harness floor & gate publisher
     types: [completed]
   # Task #41 (2026-07-26): see the `verdict-liveness` job below for why this
   # exists — a reactive workflow_run watcher structurally cannot see the

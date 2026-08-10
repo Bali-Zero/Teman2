@@ -1,7 +1,7 @@
 {
   "persona_id": "13_diaspora_second_home",
   "narrative": "Dutch-passport former Indonesian national returning under the Second Home track (base E33 bank-deposit route), applying offshore.",
-  "notes": "Diaspora/ex-WNI framing is carried in the narrative, not a dedicated fact: the closed 43-path FactPath vocabulary has no 'former citizen' flag, so the scenario is modeled as any foreign-nationality applicant declaring SECOND_HOME purpose with a qualifying own-name USD 150,000 deposit at a state-owned (BUMN) Indonesian bank (above the USD 130,000 threshold) -- the product-level mechanics are identical to a non-diaspora Second Home applicant by design. The applicant is 55 on GOLD_EFFECTIVE_AT: the E33E/E33F 55-59 BERSYARAT review rule (hr-e33e-e33f-age-band-55-59) does NOT fire here because it is purpose-guarded to RETIREMENT, so the senior products resolve mechanically UNSUPPORTED (no purpose overlap).",
+  "notes": "Diaspora/ex-WNI framing is carried in the narrative, not a dedicated fact: the closed 44-path FactPath vocabulary has no 'former citizen' flag, so the scenario is modeled as any foreign-nationality applicant declaring SECOND_HOME purpose with a qualifying own-name USD 150,000 deposit at a state-owned (BUMN) Indonesian bank (above the USD 130,000 threshold) -- the product-level mechanics are identical to a non-diaspora Second Home applicant by design. The applicant is 55 on GOLD_EFFECTIVE_AT: the E33E/E33F 55-59 BERSYARAT review rule (hr-e33e-e33f-age-band-55-59) does NOT fire here because it is purpose-guarded to RETIREMENT, so the senior products resolve mechanically UNSUPPORTED (no purpose overlap).",
   "facts": {
     "person.birth_date": {
       "status": "KNOWN",
@@ -124,6 +124,10 @@
       "reason": "NOT_ASKED"
     },
     "study.sponsor_confirmed": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
+    "sponsor.type": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },

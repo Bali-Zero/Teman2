@@ -176,6 +176,40 @@ CASES: list[tuple[str, bool, str]] = [
         False,
         "no ssh at all — this channel must stay silent",
     ),
+    # ---- HEREDOCS: the 10th over-match and the twin it would have birthed ----
+    # The channel bit its OWN commit message on 2026-08-10: prose that NAMES the
+    # gesture, inside a body handed to `git commit -F -`, was read AS the gesture.
+    # Whether a body is code or data is a property of its CONSUMER, so the pair of
+    # cases below must disagree while sharing an identical body.
+    (
+        "git commit -F - <<'EOF'\n"
+        "docs: ssh pro 'cd ~/nuzantara && git reset --hard origin/main' cost 159 entries\n"
+        "EOF",
+        False,
+        "prose about the gesture in a commit-message body is prose (over-match)",
+    ),
+    (
+        "cat <<'EOF' > /tmp/runbook.md\n"
+        "Never run: ssh pro 'cd ~/nuzantara && git clean -fdx'\n"
+        "EOF",
+        False,
+        "a runbook warning against the gesture is not the gesture",
+    ),
+    (
+        "ssh pro <<'EOF'\ncd ~/nuzantara\ngit reset --hard origin/main\nEOF",
+        True,
+        "heredoc DISPATCHED to ssh is a real remote command (the under-match twin)",
+    ),
+    (
+        "bash <<'EOF'\nssh pro 'cd ~/nuzantara && git reset --hard'\nEOF",
+        True,
+        "a shell executes its body, so the ssh inside it still dispatches",
+    ),
+    (
+        "ssh pro <<'EOF'\ncd ~/nuzantara\ngit pull --ff-only\nEOF",
+        False,
+        "heredoc-dispatched ff-only pull stays exempt like its one-line form",
+    ),
 ]
 
 
