@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Merge-OS v2 Wave 1 baseline organ — LaunchAgent TEMPLATE.
+
+     research/operations/2026-08-10-merge-os-v2-submission-system.md §4 "Wave 1 — the
+     baseline organ (7 days, NO behavior change)".
+
+     NOT INSTALLED BY THIS PR. This is a template only — arming it on Pro (copying to
+     ~/Library/LaunchAgents/, `launchctl bootstrap`, and verifying the first receipt) is
+     a separate ALIGN-FLEET step the orchestrator drives, tracked in
+     .claude/skills/modus/PENDING-ARMS.md (scar family #2 "esiste != armato" —
+     built != armed, declared here rather than silently assumed).
+
+     Placeholder <NUZANTARA_USER> must be substituted with the target machine's actual
+     user (nuzantara on Pro/Mini, balizero on M5) at install time — no user-specific path
+     is hardcoded in this template (cf. cicatrix-superscar.md family #1, HOME-fork
+     drift: a plist with someone else's username baked in is exactly that disease). -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nuzantara.queue-baseline</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>-lc</string>
+        <string>/Users/&lt;NUZANTARA_USER&gt;/nuzantara/infra/launchagents/wrappers/queue-baseline.sh &gt;&gt; /Users/&lt;NUZANTARA_USER&gt;/logs/queue-baseline.log 2&gt;&amp;1</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>3</integer>
+        <key>Minute</key>
+        <integer>40</integer>
+    </dict>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>/Users/&lt;NUZANTARA_USER&gt;/logs/queue-baseline.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/&lt;NUZANTARA_USER&gt;/logs/queue-baseline.error.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/&lt;NUZANTARA_USER&gt;</string>
+        <key>PATH</key>
+        <string>/Users/&lt;NUZANTARA_USER&gt;/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+    <key>KeepAlive</key>
+    <false/>
+</dict>
+</plist>

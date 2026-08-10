@@ -64,10 +64,27 @@ pointed the domains at". This script now looks for that build first and promotes
 instead of creating a second deployment of the same tree (~6 min + build minutes). It falls
 back to building when there is genuinely nothing READY for the commit.
 
+THE TARGET IS NOT main HEAD (2026-08-10)
+----------------------------------------
+The promote-first path above was correct and still almost never fired, because it looked for
+a build of `main HEAD`. This repo lands ~40 PRs a day and almost none touch the frontend, so
+HEAD is nearly always a commit Vercel deliberately SKIPPED — there is never a READY build for
+it, and production can never equal it. Both of this script's good outcomes were unreachable.
+
+Measured the day it was found: production served a 4h50m-old build; a READY, never-aliased
+`target=production` build for the newest frontend commit was sitting on Vercel; `--dry-run`
+reported "no READY build for this commit" and the default run would have bought a 6-minute
+rebuild instead of a 3-second promote. The alarm that fires in this situation — the Frontend
+Live Sentinel — had ALREADY been fixed for exactly this on 2026-07-28 ("does production
+INCLUDE this commit, not does it EQUAL this sha"); the cure was simply never taught the same
+rule. Two tools answering "which commit must production serve?" now share one definition and
+a test that reads one out of the other.
+
 Usage:
-    python3 scripts/vercel_prod_deploy.py            # promote (or, failing that, deploy) main HEAD
+    python3 scripts/vercel_prod_deploy.py            # promote (or, failing that, deploy) the newest bundle-relevant commit
     python3 scripts/vercel_prod_deploy.py --force    # act even if production is already current
     python3 scripts/vercel_prod_deploy.py --dry-run  # report the gap and the plan, change nothing
+    python3 scripts/vercel_prod_deploy.py --ref SHA  # override the target commit
 """
 from __future__ import annotations
 
@@ -89,6 +106,25 @@ AUTH_JSON = "~/Library/Application Support/com.vercel.cli/auth.json"
 
 BUILD_TIMEOUT_S = 600
 POLL_S = 20
+
+# Paths that can change what the browser receives. This is the SAME question the Frontend
+# Live Sentinel asks in `.github/workflows/frontend-live-sentinel.yml`, and the two must give
+# the same answer: that workflow raises the alarm, this script is its cure, and a cure aimed
+# at a different commit than the alarm is not a cure. Pinned by
+# scripts/tests/test_vercel_prod_deploy_target_rule.py, which reads the list back out of the
+# workflow — so editing one without the other fails CI rather than drifting quietly.
+#
+# apps/mouth/e2e is excluded: those specs run in CI and never reach the bundle, so demanding
+# a deploy for them manufactures work with no user-visible referent.
+#
+# A THIRD file also decides what reaches the bundle — scripts/ci/vercel_should_build.sh, the
+# Vercel Ignored Build Step — and it deliberately does NOT exclude e2e. That asymmetry is
+# correct and must not be "tidied": that script is fail-open by construction (a build we did
+# not need costs minutes; a build we needed and skipped freezes eight domains), so it errs
+# toward building. This pair errs toward not nagging. Same paths, opposite safe directions —
+# they are not the same question and must not be merged into one constant.
+BUNDLE_PATHS = ("apps/mouth", "packages", "package.json", "package-lock.json", "vercel.json")
+BUNDLE_EXCLUDE = (":(exclude)apps/mouth/e2e",)
 
 
 def _read_auth() -> dict:
@@ -218,6 +254,60 @@ def _main_head() -> str:
     return out.stdout.strip()
 
 
+def _git(*args: str) -> str | None:
+    """stdout on success, None on ANY failure. Never conflate the two: `git fetch` succeeds
+    with empty stdout, so an empty string is a result and None is 'could not look'."""
+    try:
+        out = subprocess.run(["git", *args], capture_output=True, text=True, check=True)
+    except Exception:  # noqa: BLE001 — missing git, not a repo, network: all mean "unknown"
+        return None
+    return out.stdout.strip()
+
+
+def _deploy_relevant_head() -> tuple[str, str]:
+    """The newest commit on main that can change the built app, plus how it was obtained.
+
+    NOT main HEAD. This repo lands ~40 PRs a day and almost none of them touch the frontend,
+    so main HEAD is nearly always a commit that cannot change the bundle. Asking whether
+    production runs THAT sha made two answers impossible: 'production is current' (unreachable
+    unless HEAD happens to be a frontend commit) and 'a READY build already exists' (there is
+    never one for a skipped commit). Measured 2026-08-10: production had been serving a
+    4h50m-old build while a READY, never-aliased production build for the newest frontend
+    commit sat on Vercel; this script's --dry-run said 'no READY build for this commit' and
+    would have spent a 6-minute rebuild instead of a 3-second promote.
+
+    Degrades to main HEAD — the old behaviour — when git cannot answer, and SAYS so. Being
+    unable to look is not evidence that no frontend commit exists.
+    """
+    if _git("fetch", "--no-tags", "--quiet", "origin", "main") is None:
+        return _main_head(), "main HEAD — git fetch failed, could not filter by path"
+    sha = _git("log", "-1", "--format=%H", "origin/main", "--", *BUNDLE_PATHS, *BUNDLE_EXCLUDE)
+    if sha is None:
+        return _main_head(), "main HEAD — git log failed, could not filter by path"
+    if not sha:
+        return _main_head(), "main HEAD — no commit in history touches a bundle path"
+    return sha, "newest bundle-relevant commit on main"
+
+
+def _production_includes(target: str, live: str | None) -> bool:
+    """Does production already carry this commit? Production may legitimately be AHEAD of the
+    target and must never be nagged for that; it may never be behind.
+
+    Ancestry is normally a proxy that lies (W88) — here it does not, for the reason the
+    sentinel states: both shas live on main's linear history. Anything that cannot be placed
+    in that history fails CLOSED (act), because 'I could not check' is not 'it is fine'.
+    """
+    if not live:
+        return False
+    if live == target:
+        return True
+    rc = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", target, live], capture_output=True, text=True
+    )
+    # 0 = ancestor, 1 = not, 128 = an object we do not have. Only 0 is currency.
+    return rc.returncode == 0
+
+
 def _served_commit() -> str | None:
     """What commit is production actually running? None on any failure — a failed probe is
     never evidence of health."""
@@ -310,13 +400,17 @@ def main() -> int:
     parser.add_argument("--ref", default=None, help="commit sha to deploy (default: main HEAD)")
     args = parser.parse_args()
 
-    sha = args.ref or _main_head()
+    if args.ref:
+        sha, how = args.ref, "--ref override"
+    else:
+        sha, how = _deploy_relevant_head()
     live = _served_commit()
-    print(f"main HEAD       : {sha}")
+    print(f"target commit   : {sha}")
+    print(f"  chosen as     : {how}")
     print(f"production runs : {live}")
 
-    if live == sha and not args.force:
-        print("production is already serving this commit — nothing to do")
+    if _production_includes(sha, live) and not args.force:
+        print("production already includes this commit — nothing to do")
         return 0
     # Prefer promoting an existing READY build for this exact commit over rebuilding it.
     existing = _ready_deployment_for(sha)

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import shutil
 import subprocess
 from pathlib import Path
 
@@ -12,10 +11,12 @@ from backend.services.autonomous_lab.command_policy import (
     CommandExecutionPlan,
     admin_dashboard_lint_env,
     autonomous_lab_pytest_env,
+    expected_env_for_allowlisted_command,
     git_diff_check_env,
     plan_for_allowlisted_command,
 )
 from backend.services.autonomous_lab.sandbox_runner import LocalWorktreeSandboxRunner
+from backend.tests.unit.services.autonomous_lab.conftest import FAKE_NPM
 
 
 def test_command_policy_uses_only_backend_venv_and_minimal_env(tmp_path: Path) -> None:
@@ -45,8 +46,8 @@ def test_command_policy_uses_only_backend_venv_and_minimal_env(tmp_path: Path) -
     assert plan.argv[0] == str(backend_root / ".venv" / "bin" / "pytest")
 
 
-def test_admin_dashboard_lint_plan_is_shell_free_and_exact() -> None:
-    repo_root = Path(__file__).resolve().parents[7]
+def test_admin_dashboard_lint_plan_is_shell_free_and_exact(tmp_path: Path, fake_npm: str) -> None:
+    repo_root = tmp_path
 
     plan = plan_for_allowlisted_command(
         ADMIN_DASHBOARD_LINT_COMMAND,
@@ -58,9 +59,51 @@ def test_admin_dashboard_lint_plan_is_shell_free_and_exact() -> None:
     assert plan.cwd == repo_root / "apps" / "admin-dashboard"
     assert plan.env is not None
     assert plan.env["CI"] == "true"
-    assert "PATH" in plan.env
-    assert plan.argv[0].endswith("/npm")
+    assert plan.env["PATH"].split(":")[0] == "/fake/toolchain/bin"
+    assert plan.argv[0] == fake_npm
     assert plan.argv[1:] == ["run", "lint"]
+
+
+def test_admin_dashboard_lint_plan_is_none_when_npm_is_absent(
+    tmp_path: Path, absent_npm: None
+) -> None:
+    """Pro and Mini have no npm: the policy must decline, not build a broken plan."""
+    plan = plan_for_allowlisted_command(
+        ADMIN_DASHBOARD_LINT_COMMAND,
+        repo_root=tmp_path,
+        backend_root=tmp_path / "apps" / "backend-rag",
+    )
+
+    assert plan is None
+    assert expected_env_for_allowlisted_command(ADMIN_DASHBOARD_LINT_COMMAND) is None
+
+
+def test_sandbox_runner_refuses_admin_dashboard_lint_when_npm_is_absent(
+    tmp_path: Path, absent_npm: None
+) -> None:
+    """The runner refuses rather than executing an argv it cannot validate."""
+
+    def fake_run(argv: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        raise AssertionError("the runner must not execute a plan it cannot validate")
+
+    admin_root = tmp_path / "apps" / "admin-dashboard"
+    admin_root.mkdir(parents=True)
+    plan = CommandExecutionPlan(
+        command=ADMIN_DASHBOARD_LINT_COMMAND,
+        argv=[FAKE_NPM, "run", "lint"],
+        cwd=admin_root,
+        env=admin_dashboard_lint_env(FAKE_NPM),
+    )
+    runner = LocalWorktreeSandboxRunner(repo_root=tmp_path, run_func=fake_run)
+
+    receipt = runner.run(plan).to_receipt()
+
+    assert receipt["allowed"] is False
+    assert receipt["executed"] is False
+    # The receipt fingerprints the refusal string, so the reason is only
+    # readable at its source. Asserting the fingerprint would pin an opaque
+    # constant; asserting the reason pins the behaviour.
+    assert runner._plan_refusal_reason(plan) == "executable_not_found"
 
 
 def test_sandbox_runner_executes_shell_free_and_hashes_output(tmp_path: Path) -> None:
@@ -97,7 +140,7 @@ def test_sandbox_runner_executes_shell_free_and_hashes_output(tmp_path: Path) ->
     assert "RAW_PRIVATE_SENTENCE_SHOULD_NOT_APPEAR" not in str(receipt)
 
 
-def test_sandbox_runner_executes_admin_dashboard_lint_shape(tmp_path: Path) -> None:
+def test_sandbox_runner_executes_admin_dashboard_lint_shape(tmp_path: Path, fake_npm: str) -> None:
     calls: list[tuple[list[str], dict]] = []
 
     def fake_run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
@@ -106,21 +149,19 @@ def test_sandbox_runner_executes_admin_dashboard_lint_shape(tmp_path: Path) -> N
 
     admin_root = tmp_path / "apps" / "admin-dashboard"
     admin_root.mkdir(parents=True)
-    npm = shutil.which("npm")
-    assert npm is not None
     plan = CommandExecutionPlan(
         command=ADMIN_DASHBOARD_LINT_COMMAND,
-        argv=[npm, "run", "lint"],
+        argv=[fake_npm, "run", "lint"],
         cwd=admin_root,
-        env=admin_dashboard_lint_env(npm),
+        env=admin_dashboard_lint_env(fake_npm),
     )
     runner = LocalWorktreeSandboxRunner(repo_root=tmp_path, run_func=fake_run)
 
     receipt = runner.run(plan).to_receipt()
 
-    assert calls[0][0] == [npm, "run", "lint"]
+    assert calls[0][0] == [fake_npm, "run", "lint"]
     assert calls[0][1]["cwd"] == admin_root
-    assert calls[0][1]["env"] == admin_dashboard_lint_env(npm)
+    assert calls[0][1]["env"] == admin_dashboard_lint_env(fake_npm)
     assert receipt["allowed"] is True
     assert receipt["executed"] is True
 
