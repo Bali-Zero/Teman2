@@ -48,7 +48,7 @@ import uuid
 from collections.abc import Mapping
 from datetime import date, datetime, timedelta, timezone
 from types import MappingProxyType
-from typing import Annotated, Literal
+from typing import Annotated, Final, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -862,6 +862,21 @@ class KnownStudyLevel(BaseModel):
     value: StudyLevel
 
 
+class KnownSponsorType(BaseModel):
+    """The sponsor CATEGORY, reusing the same enum the product records declare.
+
+    Reusing `SponsorType` rather than minting an applicant-side twin is the
+    point: a rule can then compare the applicant's answer against the product's
+    own `sponsor_types` without a mapping table in between, and a mapping table
+    is where the two sides drift apart.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    status: Literal["KNOWN"]
+    value: SponsorType
+
+
 BooleanFact = Annotated[UnknownFact | KnownBoolean, Field(discriminator="status")]
 DateFact = Annotated[UnknownFact | KnownDate, Field(discriminator="status")]
 StringFact = Annotated[UnknownFact | KnownString, Field(discriminator="status")]
@@ -881,20 +896,38 @@ ApplicationChannelFact = Annotated[
 RelationFact = Annotated[UnknownFact | KnownRelation, Field(discriminator="status")]
 ProposedRoleFact = Annotated[UnknownFact | KnownProposedRole, Field(discriminator="status")]
 StudyLevelFact = Annotated[UnknownFact | KnownStudyLevel, Field(discriminator="status")]
+SponsorTypeFact = Annotated[UnknownFact | KnownSponsorType, Field(discriminator="status")]
 
 
 # ---------------------------------------------------------------------------
-# ApplicantFacts (spec §2) — the 40 applicant-collected fact paths, each
+# ApplicantFacts (spec §2) — the 41 applicant-collected fact paths, each
 # typed per its own *Fact union above. Field names use Python-safe
 # identifiers with the dotted wire name as the Pydantic alias (same pattern
 # as ``TimeRange.from_``/``alias="from"``) since a dotted path cannot be a
 # Python attribute name.
 # ---------------------------------------------------------------------------
 
+# Transitional default for ``sponsor.type`` ONLY — see the field's own comment
+# in ``ApplicantFactsData``. Named rather than inlined so the tripwire test can
+# assert against the same object the model uses, and so grepping this constant
+# finds every place the transition is still open.
+#
+# It is a built ``UnknownFact``, NOT the dict literal it looks like on the
+# wire: this model does not validate defaults (``validate_default`` is unset,
+# so it inherits False), and a raw dict here would sail through construction
+# and then blow up as an ``AttributeError`` in every consumer that reads
+# ``.status`` — but only on the 40-key payloads, i.e. only in production,
+# only during the rollout window this default exists to protect. Frozen, so
+# one shared instance is safe to hand to every request.
+_SPONSOR_TYPE_ROLLOUT_DEFAULT: Final[UnknownFact] = UnknownFact(
+    status="UNKNOWN", reason="NOT_ASKED"
+)
+
 
 class ApplicantFactsData(BaseModel):
     """``ApplicantFacts.facts`` (spec §2) — ``additionalProperties: false``
-    with all 40 keys required. Field order mirrors ``enums.FactPath``'s
+    with all keys required except the one transitional field documented on
+    ``sponsor_type`` below. Field order mirrors ``enums.FactPath``'s
     ``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/
     ``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``
     grouping.
@@ -971,6 +1004,33 @@ class ApplicantFactsData(BaseModel):
     study_level: Annotated[StudyLevelFact, Field(alias="study.level")]
     study_admission_confirmed: Annotated[BooleanFact, Field(alias="study.admission_confirmed")]
     study_sponsor_confirmed: Annotated[BooleanFact, Field(alias="study.sponsor_confirmed")]
+    # The ONE field on this model that is not required, and deliberately so:
+    # this is a two-sided rollout, not a permanent exception.
+    #
+    # ``VisaOracleEvaluateRequest`` IS this model (``api_models.py``), so the
+    # HTTP request body and the internal fact vocabulary are the same closed
+    # object. That makes adding a required key breaking in BOTH deploy
+    # directions: with the backend live first the already-deployed interview
+    # sends 40 keys and fails ``Field required``; with the frontend live first
+    # it sends 41 and fails ``extra_forbidden`` — and the second direction
+    # cannot be fixed from this side at all. The evaluate call is awaited on
+    # the render path for every visitor (``OracleShell.tsx``), so neither
+    # window is invisible.
+    #
+    # Accepting the key's ABSENCE as "not asked" is therefore the only thing
+    # that makes an ordered rollout possible: ship this model, deploy it, then
+    # teach the interview to ask. Note the default asserts UNKNOWN, never a
+    # value — an absent fact still becomes a QUESTION, never a silent answer,
+    # which is the invariant the closed vocabulary exists to protect.
+    #
+    # FOLLOW-UP (remove the default, restore the 41-required invariant) once
+    # the interview ships and no client sends a 40-key body. Pinned by
+    # ``test_sponsor_type_rollout.py::TestSponsorTypeRolloutDefault`` — that
+    # test class names this comment.
+    sponsor_type: Annotated[
+        SponsorTypeFact,
+        Field(alias="sponsor.type", default=_SPONSOR_TYPE_ROLLOUT_DEFAULT),
+    ]
     # secondhome.* — E33 Second Home vertical (2026-07-23). USD amounts use
     # NonNegativeIntegerFact, NOT MoneyFact: ``KnownMoney`` is documented as
     # an IDR amount (spec §2 ``KnownMoney``), and these three are USD.
