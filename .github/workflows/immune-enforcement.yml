@@ -224,6 +224,14 @@ jobs:
               apps/evaluator/nlm_deep_research/tests/test_run_verdict.py|\
               apps/evaluator/nlm_deep_research/tests/test_calendar_skip_marker_class.py|\
               .claude/skills/modus/PENDING-ARMS.md|\
+              scripts/ci/required_context_map.py|\
+              scripts/ci/snapshot_required_contexts.py|\
+              scripts/ci/check_required_workflow_conformance.py|\
+              scripts/tests/test_required_context_map.py|\
+              scripts/tests/test_check_required_workflow_conformance.py|\
+              infra/required.d/contexts.json|\
+              infra/guard-conformance/registry.json|\
+              infra/guard-conformance/check_guard_conformance.py|\
               .github/workflows/immune-enforcement.yml|\
               .github/workflows/*.yml|\
               .github/workflows/*.yaml)
@@ -325,7 +333,9 @@ jobs:
             scripts/tests/test_immune_enforcement_trigger_symmetry.py \
             scripts/tests/test_drive_watchdog_fly_path.py \
             scripts/tests/test_drive_watchdog_tier_ratchet.py \
-            scripts/test_lint_test_reward_hacking.py ; do
+            scripts/test_lint_test_reward_hacking.py \
+            scripts/tests/test_required_context_map.py \
+            scripts/tests/test_check_required_workflow_conformance.py ; do
             if [ -f "$t" ]; then
               echo "::group::$t"
               python -m pytest "$t" -q || fail=1
@@ -730,6 +740,17 @@ jobs:
           # absent status is CANNOT-VERIFY rather than success — a blind check is not a
           # clean check.
           bash scripts/ci/test_telegram_verdict.sh
+
+      - name: Required-workflow conformance (Merge-OS v2 Wave 0, Codex F12)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # infra/required.d/contexts.json + scripts/ci/check_required_workflow_conformance.py
+          # shipped together, docs-sync.yml/migration-lint.yml cured same PR. The
+          # guilt+innocence corpus above (test_check_required_workflow_conformance.py)
+          # proves the CHECKER can still bite; this step proves the REAL repo tree is
+          # clean today — a censused guard that no workflow actually runs against
+          # live data is theater (W81).
+          python3 scripts/ci/check_required_workflow_conformance.py
 
       - name: declared-pairs.json is valid JSON with sane shape
         if: steps.paths.outputs.relevant == 'true'
