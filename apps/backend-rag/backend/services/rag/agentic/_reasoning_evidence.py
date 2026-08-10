@@ -9,12 +9,13 @@ Public API:
     - EVIDENCE_SCORE_TRUSTED_TOOL: high-confidence score assigned when a
       trusted tool produced substantial output.
     - detect_trusted_tool_usage: walk AgentState steps, return True if any
-      step used a trusted tool with non-error, non-empty observation.
+      step used an explicitly trusted structured/exact tool with non-error,
+      non-empty observation. Semantic vector retrieval is intentionally not
+      on that caller-owned allowlist and follows relevance scoring instead.
     - detect_quotable_relevance_veto: hard-veto signal (independent of
       detect_trusted_tool_usage's OR-semantics) for callers that need to
-      stop the shared trust flippers (_reasoning_policy.py) from
-      re-granting trust after a quotable tool's own output goes unreflected
-      in final_answer. See its docstring for why this exists.
+      stop an unrelated trusted step from masking a quotable tool mismatch.
+      See its docstring for why this exists.
     - detect_trusted_context_markers: scan context_gathered strings for
       pricing/team/KG markers (streaming pipeline fallback).
     - detect_substantial_context: return True if total context length
@@ -45,7 +46,9 @@ _SUBSTANTIAL_CONTEXT_THRESHOLD: int = 200
 # be checked against for literal overlap. `team_knowledge`/`vector_search`
 # return free-text/qualitative content with no reliable literal to anchor on —
 # they are deliberately excluded and keep unconditional trust (see
-# detect_trusted_tool_usage below).
+# detect_trusted_tool_usage below). Semantic ``vector_search`` is not in the
+# production trusted-tool allowlist at all: a successful but irrelevant hit
+# must be scored by source/query relevance, never granted a flat 0.85.
 _QUOTABLE_TOOL_NAMES: frozenset[str] = frozenset(
     {"get_pricing", "crm_query", "timesheet", "calculator"}
 )
@@ -124,9 +127,8 @@ def detect_trusted_tool_usage(
     does not pass it.
 
     When ``final_answer`` IS supplied, a qualifying step for a tool NOT in
-    ``_QUOTABLE_TOOL_NAMES`` (team_knowledge, vector_search — free-text,
-    nothing literal to check) still grants trust unconditionally, exactly
-    as before. For a qualifying step on one of the 4 quotable tools
+    ``_QUOTABLE_TOOL_NAMES`` (for example team_knowledge or exact
+    kbli_lookup) still grants trust. For a qualifying step on one of the 4 quotable tools
     (get_pricing, crm_query, timesheet, calculator), trust additionally
     requires that the observation's literal numeric tokens (see
     ``_extract_literal_tokens``) overlap with ``final_answer``'s — i.e. the
@@ -223,21 +225,15 @@ def detect_quotable_relevance_veto(
     quotable tool with no extractable literal), it returns True even when a
     DIFFERENT quotable-tool step's own output goes unreflected in
     final_answer. That's correct for its purpose (deciding the base trust
-    signal) but leaves a gap: `apply_shared_trusted_flippers`
-    (_reasoning_policy.py) applies two more permissive heuristics
-    afterwards — a bare pricing-marker-in-answer check and an
-    LLM-had-tools-available check — neither of which has any visibility
-    into per-tool literal overlap. A quotable tool whose number/amount was
-    NOT reflected in final_answer (i.e. the LLM likely reported a
-    hallucinated figure instead of the tool's real one) would still get
-    re-trusted by those flippers on the back of an unrelated marker or the
-    mere presence of tools, silently undoing the relevance check.
+    signal) but leaves a gap: a different qualifying step can still set the
+    aggregate trust flag even when a quotable tool's number/amount was NOT
+    reflected in final_answer (i.e. the LLM likely reported a hallucinated
+    figure instead of the tool's real one).
 
-    Callers should compute this once per pipeline (same inputs as
-    ``detect_trusted_tool_usage``) and force ``trusted_tools_used = False``
-    after ``apply_shared_trusted_flippers`` runs when this returns True —
-    a confirmed per-tool mismatch is stronger negative evidence than the
-    flippers' generic heuristics are positive evidence, so it should win.
+    Callers should compute this once per pipeline and force
+    ``trusted_tools_used = False`` after all trust inputs are combined when
+    this returns True. A confirmed per-tool mismatch is stronger negative
+    evidence than an unrelated successful step is positive evidence.
 
     Returns False (no veto) when final_answer is falsy — mirrors
     ``detect_trusted_tool_usage``'s own safe default for the caller that
@@ -284,7 +280,7 @@ def detect_quotable_relevance_veto(
         if not (observation_tokens & _extract_literal_tokens(final_answer)):
             logger.info(
                 "🚫 [%s] %s output not reflected in final_answer — "
-                "veto on trust flippers",
+                "veto on aggregate trust",
                 log_prefix,
                 tool_name,
             )

@@ -91,9 +91,9 @@ _TRUSTED_TOOL_NAMES: frozenset[str] = frozenset(
         "calculator",
         "crm_query",
         "get_pricing",
+        "kbli_lookup",
         "team_knowledge",
         "timesheet",
-        "vector_search",
     },
 )
 
@@ -595,8 +595,10 @@ class ReasoningEngine:
             set_span_attribute("tools_executed", tool_execution_counter.get("count", 0))
 
         # ==================== TRUSTED TOOLS CHECK ====================
-        # Check if trusted tools (calculator, pricing, team, crm) were used successfully.
-        # These tools provide their own evidence and don't need KB sources.
+        # Check if structured/exact trusted tools (calculator, pricing, team,
+        # CRM, exact KBLI) were used successfully. Semantic vector retrieval is
+        # deliberately excluded: source scores + query/context relevance must
+        # pass calculate_evidence_score instead of receiving a flat 0.85.
         # Also honour state.trusted_tools_used set by early-exit paths (e.g. CRM).
         trusted_tools_used = getattr(
             state, "trusted_tools_used", False
@@ -604,8 +606,7 @@ class ReasoningEngine:
             state.steps, _TRUSTED_TOOL_NAMES, final_answer=state.final_answer
         )
         # Hard veto: a quotable tool's own output going unreflected in
-        # final_answer must survive `apply_shared_trusted_flippers` below —
-        # those flippers have no per-tool literal-overlap visibility (see
+        # final_answer must outweigh any unrelated successful step (see
         # detect_quotable_relevance_veto docstring).
         relevance_veto = detect_quotable_relevance_veto(
             state.steps, final_answer=state.final_answer
@@ -652,20 +653,17 @@ class ReasoningEngine:
 
             set_span_status("ok")
 
-        # ==================== TRUSTED FLIPPERS (SHARED) ====================
-        # Pricing-in-answer + LLM-had-tools checks — identical in both
-        # sync and streaming pipelines. Extracted to _reasoning_policy.py
-        # so the two pipelines cannot drift on this predicate (SCAR §U5).
+        # ==================== SHARED TRUST BOUNDARY ====================
+        # Preserve execution-backed trust. Answer wording and configured
+        # tools are deliberately not evidence (BOT-KBLI grounding policy).
         trusted_tools_used = apply_shared_trusted_flippers(
             trusted_tools_used=trusted_tools_used,
             final_answer=state.final_answer,
             llm_gateway=llm_gateway,
         )
         if relevance_veto:
-            # A confirmed quotable-tool/final_answer mismatch outweighs the
-            # flippers' generic heuristics — force the low-evidence path
-            # below to actually run rather than being skipped on a
-            # re-granted (and unearned) trust flag.
+            # A confirmed quotable-tool/final_answer mismatch outweighs an
+            # unrelated trust input and forces the low-evidence path.
             trusted_tools_used = False
 
         state.trusted_tools_used = trusted_tools_used
@@ -1334,8 +1332,7 @@ Make it feel natural and helpful, not forced.
         )
         # Hard veto (mirrors the sync pipeline) — see detect_quotable_relevance_veto
         # docstring. Computed once here and enforced below, AFTER every
-        # trust-widening step in this pipeline (stream-only pre-flippers +
-        # shared flippers), so none of them can silently undo a confirmed
+        # trust-widening step in this pipeline, so none can silently undo a confirmed
         # quotable-tool/final_answer mismatch.
         relevance_veto = detect_quotable_relevance_veto(
             state.steps, final_answer=state.final_answer, log_prefix="Trusted Tools - Stream"
@@ -1391,9 +1388,8 @@ Make it feel natural and helpful, not forced.
         if not trusted_tools_used and detect_substantial_context(state.context_gathered):
             trusted_tools_used = True
 
-        # ==================== TRUSTED FLIPPERS (SHARED) ====================
-        # Same helper as the sync pipeline — pricing-in-answer + has-tools.
-        # Extracted so the two pipelines cannot drift on this pair.
+        # ==================== SHARED TRUST BOUNDARY ====================
+        # Same execution-backed contract as the sync pipeline.
         trusted_tools_used = apply_shared_trusted_flippers(
             trusted_tools_used=trusted_tools_used,
             final_answer=state.final_answer,
