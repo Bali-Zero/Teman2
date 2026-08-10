@@ -532,10 +532,9 @@ async def build_eval_set(pool: asyncpg.Pool, size: int = EVAL_SET_SIZE) -> list[
     both_sql = f"""
         WITH eligible AS (
             SELECT c.conversation_id, c.client_id, c.practice_id
-            FROM whatsapp_conversations c
+            FROM whatsapp_conversations c TABLESAMPLE SYSTEM (1)
             WHERE c.client_id IS NOT NULL
               AND c.practice_id IS NOT NULL
-            ORDER BY random()
             LIMIT $1
         )
         {base_select}
@@ -544,10 +543,9 @@ async def build_eval_set(pool: asyncpg.Pool, size: int = EVAL_SET_SIZE) -> list[
     client_only_sql = f"""
         WITH eligible AS (
             SELECT c.conversation_id, c.client_id, c.practice_id
-            FROM whatsapp_conversations c
+            FROM whatsapp_conversations c TABLESAMPLE SYSTEM (1)
             WHERE c.client_id IS NOT NULL
               AND NOT (c.conversation_id = ANY($2::bigint[]))
-            ORDER BY random()
             LIMIT $1
         )
         {base_select}

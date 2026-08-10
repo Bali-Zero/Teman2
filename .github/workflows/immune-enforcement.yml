@@ -256,6 +256,25 @@ jobs:
           python scripts/lint_retracted_claims.py --selftest
           python scripts/lint_retracted_claims.py --all
 
+      - name: Gateway callers must read the VERDICT, not the exit code
+        # Same reasoning as the lint above, same deliberate absence of a paths
+        # gate: this guard's SUBJECT is every Python caller of tg_notify.py, and
+        # the PR shape it exists to catch is a NEW caller added anywhere in the
+        # tree. Gating it on "did an immune path change?" would arm it against
+        # paths its subject never touches (W81).
+        #
+        # It matters because `tg_notify.py` exits 0 on six outcomes and three of
+        # them mean "not sent to Telegram now" (deduped / p0_overflow_spooled /
+        # p0_unsent_spooled), so `returncode == 0` reads a refusal as a delivery.
+        # Measured 2026-08-10, after the sender-consolidation batches: SEVEN live
+        # callers were blind that way. Fixing only the one that prompted the
+        # census would have left six — W107 exactly.
+        #
+        # The script self-tests before it judges (guilt, innocence, and a
+        # bystander subprocess that must NOT be caught) and exits 2 rather than
+        # reporting a clean tree it did not earn.
+        run: python3 scripts/tests/test_gateway_callers_read_the_verdict.py
+
       - name: Unit tests (guilt + innocence per tool)
         if: steps.paths.outputs.relevant == 'true'
         run: |
