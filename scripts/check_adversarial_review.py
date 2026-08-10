@@ -96,6 +96,9 @@ KNOWN_SEATS = {
     "grok",
     "nlm",
     "notebooklm",
+    # Qwen 3.8 Max (TP1 Token Plan wing seat) — ratified by Zero 2026-08-10.
+    "qwen-3.8-max",
+    "qwen",
 }
 
 FRONTMATTER_KEY_RE = re.compile(r"^adversarial_review\s*:\s*(.*)$", re.IGNORECASE)
