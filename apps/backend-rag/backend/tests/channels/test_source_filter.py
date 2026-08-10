@@ -9,6 +9,8 @@ Author: Claude Sonnet 5
 Date: 2026-07-18
 """
 
+import pytest
+
 from backend.channels.source_filter import public_sources
 
 
@@ -103,3 +105,74 @@ class TestPublicSourcesEdgeCases:
 
     def test_empty_list_returns_empty_list(self) -> None:
         assert public_sources([]) == []
+
+
+class TestPublicSourcesToleratesForeignShapes:
+    """The `sources` field carries more than one shape, so this must not crash.
+
+    `agentic_rag.py:474` declares `sources: list[Any]`. Measured live
+    2026-08-10 on /api/agentic-rag/query, two shapes came back from the same
+    endpoint in one session: the retrieval path returns
+    {title,url,collection,score,snippet} dicts, and the PricingTool path
+    returns `str(dict)` Python reprs. `"...".get(...)` is an AttributeError,
+    and all four live channel formatters (web, instagram, telegram, whatsapp)
+    call `public_sources`.
+    """
+
+    # Verbatim prefix of what the pricing path actually emitted (str, not JSON).
+    PRICING_SHAPED = (
+        "{'official_notice': '\U0001f512 PREZZI UFFICIALI BALI ZERO 2026', "
+        "'search_query': 'PT PMA', 'results': {}}"
+    )
+
+    # A THIRD shape, measured the same day on the capability-refusal path
+    # ("can you check my client files?"): not a dict, not even a dict repr —
+    # a plain human-readable sentence. Kept as its own named case because it
+    # is what makes the guard a general one: non-dict entries are not a
+    # pricing quirk, the field simply has no single shape.
+    CAPABILITY_REFUSAL_SHAPED = "This capability is not available in this conversation."
+
+    def test_a_stringified_dict_does_not_raise(self) -> None:
+        """GUILT: before the isinstance guard this raised AttributeError."""
+        assert public_sources([self.PRICING_SHAPED]) == []
+
+    def test_a_bare_sentence_source_does_not_raise(self) -> None:
+        """GUILT, second live shape — the capability-refusal path."""
+        assert public_sources([self.CAPABILITY_REFUSAL_SHAPED]) == []
+
+    def test_both_live_non_dict_shapes_together_leave_the_real_source(self) -> None:
+        """INNOCENCE across shapes: two different foreign entries, one real."""
+        legit = {"title": "Imigrasi C1 page", "url": "https://www.imigrasi.go.id/c1"}
+        sources = [self.PRICING_SHAPED, legit, self.CAPABILITY_REFUSAL_SHAPED]
+        assert public_sources(sources) == [legit]
+
+    @pytest.mark.parametrize("foreign", [None, 42, ["nested"], ("a", "b")])
+    def test_no_scalar_or_sequence_shape_raises(self, foreign: object) -> None:
+        assert public_sources([foreign]) == []
+
+    def test_a_legitimate_source_survives_beside_a_foreign_one(self) -> None:
+        """INNOCENCE — the load-bearing half.
+
+        A guard that skips non-dicts is worthless if it also swallows the real
+        source sitting next to one. This is what distinguishes the fix from
+        `except AttributeError: return []`.
+        """
+        legit = {
+            "title": "Imigrasi B1 page",
+            "url": "https://www.imigrasi.go.id/wna/daftar-visa-indonesia/B1",
+        }
+        assert public_sources([self.PRICING_SHAPED, legit, None]) == [legit]
+
+    def test_the_existing_filtering_rules_still_apply_around_a_foreign_entry(
+        self,
+    ) -> None:
+        """INNOCENCE: skipping non-dicts must not weaken the internal blocklist."""
+        legit = {"title": "Official gazette", "url": "https://peraturan.go.id/x"}
+        sources = [
+            self.PRICING_SHAPED,
+            {"title": "Document", "url": "https://example.com/doc"},  # generic
+            {"title": "notebooklm export", "url": "https://example.com/nb"},  # internal
+            {"title": "No link here"},  # no url
+            legit,
+        ]
+        assert public_sources(sources) == [legit]

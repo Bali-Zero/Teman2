@@ -139,6 +139,26 @@ BLOCKED_SUBCMD_RE = re.compile(
     r"(checkout|switch|stash(?!\s+(?:list|show)\b)|reset|merge|rebase|pull)\b"
     r"|\bgit\s+commit\s+(?:[^\s]+\s+)*(?:-[A-Za-z]*a|--all\b)"  # commit -a / -am / -a -m / --all
     r"|\bgit\s+add\s+(?:-A|-a|--all|\.)"  # add -A / add -a / add --all / add .
+    # W117 class-audit (2026-08-10): the enumeration above never included `clean`
+    # or `restore`, so five shapes of the SAME damage — `git clean -f|-fd|-fdx`,
+    # `git restore <path>`, `git restore --staged .` — passed inside the main
+    # checkout while `reset --hard` / `checkout -- .` / `stash` blocked. Measured
+    # after the remote direction was cured: fixing only the direction that bit me
+    # would just move WHICH verb destroys Pro's runtime state in silence (W107).
+    # `clean` is enumerated by INTENT, not by bare token (W85): a forcing flag is
+    # required, and the read-only probes `-n` / `--dry-run` are spared — note
+    # `git clean -fdn` IS a dry run, so the lookahead must win over the -f test.
+    # Both letter tests read the flag CLUSTER, not a string that ENDS in the
+    # letter. The first draft got this wrong in both directions and measurement
+    # said so: `--force` escaped (an under-match, no single-dash cluster) and
+    # `-ndf` blocked (an over-match: the `n` test demanded `n\b`, which a cluster
+    # spells only when `n` happens to come last). Form vs entity, family #3.
+    # Declared limit: a stray ` -n…` elsewhere in the same segment spares the
+    # command — erring toward NOT blocking on an exotic shape, never the reverse.
+    r"|\bgit\s+(?:-c\s+\S+\s+)*(?:-C\s+\S+\s+)?clean\b"
+    r"(?![^;&|\n]*(?:--dry-run\b|\s-[A-Za-z]*n))"  # -n anywhere in a cluster, or --dry-run
+    r"[^;&|\n]*(?:--force\b|\s-[A-Za-z]*f)"  # --force, or -f anywhere in a cluster
+    r"|\bgit\s+(?:-c\s+\S+\s+)*(?:-C\s+\S+\s+)?restore\b"  # discards the worktree copy
 )
 
 # Extract `git -C <path>` target.
@@ -146,6 +166,36 @@ GIT_C_RE = re.compile(r"\bgit\s+(?:-c\s+\S+\s+)*-C\s+(\S+)")
 
 # Extract `cd <path> && git ...` target.
 CD_GIT_RE = re.compile(r"\bcd\s+(\S+)\s*(?:&&|;)\s*git\b")
+
+# W117 (2026-08-10): a git verb that DISCARDS uncommitted working-tree content,
+# carried to ANOTHER host by an ssh dispatch, is invisible to the git-verb
+# channel below. MEASURED, not reasoned: `_strip_noise()` empties quoted text by
+# design (W83, so `grep "git pull"` is not read as a command), so
+# `ssh pro 'cd ~/nuzantara && git reset --hard origin/main'` reaches
+# _git_verb_verdict() as *no_blocked_verb* — the remote-dispatch exemption is
+# never even consulted. (An earlier draft of this cure sat inside that exemption
+# branch; it would have been dead code on the only path it exists for — W116.)
+# That gap bit on 2026-08-10: exactly that command, run against Pro's main
+# checkout to realign it, destroyed 159 entries of the intel publish ledger
+# (whose loss RE-PUBLISHES already-published articles) and 24 open escalations.
+# Both are runtime state that no commit holds: `runtime_state_allowlist.json`
+# names them, and `scripts/pro/pro-git-pull.sh` exists PRECISELY to realign that
+# checkout while keeping them. So this channel re-reads the ssh payload on
+# purpose and refuses the discarding verbs there.
+#   Deliberately NOT narrowed here: `ssh pro git pull` stays exempt, _strip_noise
+#   is untouched, and a payload naming a REMOTE `.worktrees/` path is allowed — a
+#   worktree carries no runtime state, which is also the cheap way out when this
+#   block is wrong (never `AGENT_WORKTREE_ENFORCEMENT=false`).
+REMOTE_DISCARD_RE = re.compile(
+    r"\bgit\s+(?:-c\s+\S+\s+)*(?:-C\s+\S+\s+)?"
+    # `[^;&|\n]*?` excludes \n on purpose: W84 was born of a class that ate
+    # newlines and fused two commands into one phantom target.
+    r"(?:reset\b[^;&|\n]*?--hard\b"  # reset --hard (flags may sit before it)
+    r"|checkout\s+(?:--(?:\s|$)|\.(?=\s|$)|-f\b)"  # checkout -- / checkout . / -f
+    r"|restore\b"  # git restore discards the worktree copy by default
+    r"|clean\s+[^;&|\n]*?-\S*f"  # clean -f / -fd / -fdx
+    r"|stash(?!\s+(?:list|show)\b)\b)"  # W85: read-only stash verbs stay out
+)
 
 # W83: a remote dispatch carries the git op to ANOTHER host — this checkout is
 # never touched. The dispatcher must be the FIRST real token of a command
@@ -1018,6 +1068,81 @@ def _probe_log(payload: dict, decision: str):
         pass
 
 
+def _ssh_payloads(cmd: str) -> list[str]:
+    """Command payloads an ssh dispatch carries to another host — quote
+    DELIMITERS dropped, content KEPT. That is the deliberate opposite of
+    _strip_noise(), which empties quoted text (see REMOTE_DISCARD_RE).
+
+    Per ssh occurrence this yields two candidates, each scanned independently:
+    the unquoted head cut at the first shell separator (so
+    `ssh pro hostname && git reset --hard` does NOT attribute the LOCAL reset to
+    the remote — that one belongs to the git-verb channel and its own message),
+    and every quoted span. Callers must still _strip_noise() each candidate, so
+    a verb quoted INSIDE the payload (`ssh pro 'echo "git reset --hard"'`) is
+    not read as a command.
+
+    Declared limit: a payload assembled by shell expansion (`ssh pro "$CMD"`)
+    is unreadable here and is not covered by this channel.
+    """
+    out: list[str] = []
+    for m in re.finditer(r"\bssh\b", cmd):
+        rest = cmd[m.end() :]
+        out.append(re.split(r"[;&|\n]", rest, maxsplit=1)[0])
+        for q in re.finditer(r"'([^']*)'|\"([^\"]*)\"", rest):
+            out.append(q.group(1) if q.group(1) is not None else q.group(2))
+    return out
+
+
+def _names_main_checkout(path_token: str) -> bool:
+    """True when a path token names a spot INSIDE a nuzantara main checkout.
+
+    Component-wise, not basename-only: `~/nuzantara/apps` is inside the main
+    checkout and a `git reset --hard` there discards the WHOLE worktree, so
+    judging by the last component alone would under-match (family #3, the
+    UNDER-match twin). A `.worktrees` component wins and makes this False —
+    that is a worktree, not the main checkout.
+
+    Declared limit: this is a NAME test. The path lives on another host, so no
+    stat/signature check is possible here (unlike _is_nuzantara_root, which
+    reads the local FS); a differently-named remote clone is not recognised.
+    """
+    parts = [p for p in path_token.strip("'\"").replace("\\", "/").split("/") if p]
+    if ".worktrees" in parts:
+        return False
+    return "nuzantara" in parts
+
+
+def _remote_discard_on_main(cmd: str) -> str | None:
+    """The offending path token when an ssh-dispatched git verb would DISCARD
+    uncommitted content in a remote main checkout, else None (W117).
+
+    Fail-closed when the payload names no path at all: a bare
+    `ssh pro 'git reset --hard'` runs in the remote login shell, whose cwd this
+    process cannot know, and the discarding verbs are exactly the ones whose
+    damage is not recoverable from git. Naming a `.worktrees/` path is the cheap
+    way to say "I mean a worktree".
+    """
+    for payload in _ssh_payloads(cmd):
+        scan = _strip_noise(payload)
+        if not REMOTE_DISCARD_RE.search(scan):
+            continue
+        paths = re.findall(r"\bcd\s+(\S+)", scan) + GIT_C_RE.findall(scan)
+        if not paths:
+            return "<remote cwd not named>"
+        # The `.worktrees` exemption lives in _names_main_checkout() and NOWHERE
+        # ELSE. An earlier draft also short-circuited the whole payload when ANY
+        # named path was a worktree; a mutation survived against it, and the
+        # survivor was not a missing test but a REDUNDANT guard that was also an
+        # under-match: `cd <worktree> && git -C ~/nuzantara reset --hard` names
+        # both, and the short-circuit waved the main-checkout reset through
+        # (measured 2026-08-10). One rule, one home — judge EVERY named path.
+        for p in paths:
+            if _names_main_checkout(p):
+                return p
+        # every named path is some other repo — not ours to police
+    return None
+
+
 class GitVerbVerdict(NamedTuple):
     """Result of the git-verb decision path, factored out of main() so BOTH
     the live hook AND guard_fuzz_harness.py call the SAME logic — the 6th
@@ -1145,6 +1270,34 @@ def main():
     # Quick exit: cmd doesn't look git-mutating
     if "git" not in cmd:
         sys.exit(0)
+
+    # --- W117: ssh-dispatched DISCARD of a remote main checkout ---
+    # Runs before the git-verb channel because that channel cannot see this at
+    # all (the payload is quoted, so _strip_noise empties it) and because the
+    # diagnosis differs: this is not a sibling race, it is unrecoverable
+    # runtime state. A wrong message sends the reader away from the cause (W106).
+    remote_discard = _remote_discard_on_main(cmd)
+    if remote_discard is not None:
+        _increment_block_counter()
+        _probe_log(payload, "block_remote_discard_main")
+        sys.stderr.write(
+            f"WORKTREE ISOLATION VIOLATION (ssh-dispatched discard of a MAIN checkout)\n"
+            f"  remote target: {remote_discard}\n"
+            f"  command: {cmd[:200]}\n\n"
+            f"Reason: this discards UNCOMMITTED content in a remote main checkout.\n"
+            f"  That checkout is the sole writer of runtime state no commit holds —\n"
+            f"  the intel publish ledger (losing it RE-PUBLISHES published articles)\n"
+            f"  and the escalations board. See infra/claude-hooks/runtime_state_allowlist.json.\n"
+            f"  On 2026-08-10 exactly this command cost 159 ledger entries + 24 escalations.\n\n"
+            f"Resolution:\n"
+            f"  - To REALIGN the checkout: scripts/pro/pro-git-pull.sh — it backs up and\n"
+            f"    RESTORES those files around the fast-forward, which is the whole point.\n"
+            f"  - If you really do mean a worktree, name it: the exemption is a path with\n"
+            f"    a '.worktrees' component (a worktree carries no runtime state).\n\n"
+            f"Do NOT reach for AGENT_WORKTREE_ENFORCEMENT=false here — it disarms every\n"
+            f"channel of this hook, and this is the one whose damage git cannot undo.\n"
+        )
+        sys.exit(2)
 
     verdict = _git_verb_verdict(cmd, cwd)
 

@@ -642,7 +642,7 @@ fly deploy --strategy rolling
 
 ---
 
-**Last Updated:** 2026-07-19 (external-agent contract + Kimi onboarding; was 2026-03-28)
+**Last Updated:** 2026-08-10 (fleet topology, conductor-as-role, continuity ladder; was 2026-07-19)
 **Maintained by:** Bali Zero AI Team
 
 ---
@@ -742,3 +742,39 @@ Per interrogarla:
 - In alternativa (sempre disponibile, zero dipendenze): leggi i `.md` direttamente col path sopra, o `grep -rl "<termine>" <memory-dir>/*.md`.
 
 Codex NON carica la memory in automatico (a differenza di Claude che ha i SessionStart hook): leggi `MEMORY.md` + i `.md` rilevanti col path quando ti serve contesto storico del progetto.
+
+## 17. Fleet, Conductor & Continuity (2026-08-09)
+
+Binding roster + corrections: research/operations/2026-08-10-fleet-order-spec.md
+
+**SSOT files:** cloud fleet = `FLEET_TOPOLOGY.json` (repo root) · local Ollama = `MODEL_TOPOLOGY.json` (unchanged) · rationale + four-groups study = `research/operations/2026-08-09-quattro-gruppi-e-continuita.md` · roles roster = FLOTTA-LLM doc referenced there.
+
+### 17.1 Conductor is a ROLE, not a model
+
+- Zero may start the interactive session with **any frontier orchestrator**: Claude (Fable/Opus/Sonnet), Codex (Sol/Terra/Luna), agy/Antigravity, Kimi. Whoever conducts inherits the **same law**: this file, the harness (gears, Evidence Pack, verdicts), CLAUDE.md invariants. Same law, different door.
+- The conductor **orchestrates and dispatches** agents per `FLEET_TOPOLOGY.json` role chains, assembles the Evidence Pack, and arms the mechanical ship path: PR → required checks → armed auto-merge → `fly-deploy.yml` on `main`. **No conductor hand-merges around checks.**
+- Generator≠grader lifts to family level: the **Gear-2 verdict comes from a different family than the main builder**. Gear-3 verdict = **Fable check, no exceptions**, regardless of who conducts.
+- Client-facing outputs (quotes, comms) remain **Anthropic-interactive-only**. PII remains **local-only**. Legge 5 unchanged.
+- **REVIEW-È-INVOCABILE** (ruling Zero 2026-08-10, `research/operations/2026-08-10-fleet-order-spec.md` §3.2/§4): "serve review" is a dispatch instruction, never a parking state — "chi conduce non aspetta i grader: li convoca". The conductor invokes the grader per the role chains (§17.2 below / `FLEET_TOPOLOGY.json`) the moment a diff exists to judge; a PR is never parked on "waiting for review" without the grader having been dispatched.
+
+### 17.2 Continuity ladder — no line ever stops
+
+When a seat hits quota or dies, escalate IN ORDER and log each hop in the task evidence:
+
+1. **Rotate account, same model** (zero quality loss): Anthropic ×4 via OAuth profile swap (cswap-style), OpenAI ×2 via `CODEX_HOME=~/.codex-o2`.
+2. **Substitute model within the role** per `FLEET_TOPOLOGY.json` chain (builder: sonnet→codex→glm · refuter: sol→k3→gemini · grunt: haiku→local…).
+3. **Cross-family fallback**, marked `degraded_execution: true` in the Evidence Pack (the gate sees it).
+4. **Queue, never silent-stop**: chain fully dead → park in PENDING-ARMS with reason + timestamp.
+
+**Carve-outs (special ladders):**
+- **Gear-3 harness gate (ruling Zero 2026-08-09):** Fable 5 first, rotating across ALL Anthropic accounts (AZ→A2→A3→A1); only when NO account can run Fable → **Opus 5 `effort=max`** as gate, with `gate_degraded: fable→opus` recorded in the verdict check and Evidence Pack. All Anthropic accounts dead → queue. Never pay per-token to unblock.
+- **WR2 on-disk content gate: UNCHANGED** — unconditionally Fable, no fallback of any kind, window dead → SUSPEND. Zero's Gear-3 ruling does NOT extend to this lane.
+- PII lanes = local models only → queue. Client-facing = Anthropic interactive only.
+
+### 17.3 Account-lane mapping (lanes with borrowing, not round-robin)
+
+Lanes are **home assignments, not fences**: each lane drains its home account first, then borrows automatically from the least-loaded other account — nothing sits idle, no line ever stops. Mapping (see `FLEET_TOPOLOGY.json` → `accounts`): **A1** antonellosiano interactive/architect · **A2** kaiser1987… subagents/build+Cowork · **A3** applevisionpro1987 cron/batch, **designated donor** (cron auto-pauses to free its window when the gate calls) · **AZ** zero (Team seat Premium) **gate primary** — the dedicated Fable weekly allowance lives here · **O1** antonellosiano (ChatGPT Pro) refuter-primary · **O2** zero (ChatGPT Pro) builders+refuter-backup.
+
+### 17.4 Spend order
+
+Flat subscriptions → Token Plan credits → local. Anything per-token (incl. Google overage credits) requires Zero's explicit GO (CLAUDE.md §5). Note: §15 above is 4.6-era; for 5-family API gotchas (thinking on by default, `max_tokens` covers thinking+answer, no temperature knob, min-cacheable 512, tokenizer ≈+30%) see CLAUDE.md §«5-family» and the fleet research doc.
