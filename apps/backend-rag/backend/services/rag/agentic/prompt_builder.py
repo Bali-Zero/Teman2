@@ -906,6 +906,34 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
             settings.COMPANY_NAME.lower(),
             "zerosphere",
             "kintsugi",
+            # Added 2026-08-10 after measuring 9 false positives in 20 real
+            # questions: every one of these is agency vocabulary that was
+            # missing here, so a sentence built around it could be captured by
+            # a casual pattern and answered with a canned brush-off. `visto`
+            # is the Italian for visa and was simply absent.
+            "lkpm",
+            "laporan",
+            "report",
+            "spt",
+            "bpjs",
+            "efin",
+            "visto",
+            "visti",
+            "lease",
+            "zoning",
+            "property",
+            "properti",
+            "villa",
+            "cliente",
+            "client",
+            "pratica",
+            "notaio",
+            "appointment",
+            "scadenza",
+            "clause",
+            "clausola",
+            "document",
+            "dokumen",
         ]
 
         for keyword in business_keywords:
@@ -927,24 +955,42 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
         # If it doesn't match casual patterns, safe default is to ASSUME BUSINESS/RAG.
         # It is better to search and find nothing than to hallucinate.
 
-        # Casual conversation patterns (Explicit Whitelist)
+        # Casual conversation patterns (Explicit Whitelist).
+        #
+        # A false positive here does NOT produce a worse answer — it produces a
+        # CANNED BRUSH-OFF ("Got it! 😊 If you have questions about visas…")
+        # instead of retrieval. That is how a team member asked the same LKPM
+        # question four times in a row and got the identical smiley four times.
+        # Measured 2026-08-10: 9 of 20 realistic business questions were
+        # captured; 0 of 8 genuinely casual ones were missed. The gate was
+        # nowhere near its precision/recall trade-off — it was simply wrong.
+        #
+        # Every entry is now \b-anchored (superscar #3: "sunset" must not be
+        # read out of "Sunset clause"), and three groups were DELETED rather
+        # than narrowed, because they are ordinary business vocabulary in this
+        # domain and no wording of them can be made safe:
+        #   - preference words (best / recommend / prefer / migliore / suka):
+        #     "What is the BEST KBLI for a surf school?" is not small talk.
+        #   - day-and-mood words (today / oggi / hari ini / lagi / mood /
+        #     vibes): "Is the LKPM report due TODAY?" is the reported case.
+        #   - place-and-season words inside the weather group (beach / pantai /
+        #     spiaggia / surf / sunset / sunrise / tempo): "PANTAI Berawa
+        #     zoning" is a place name and "SUNSET clause" is contract law.
+        # What remains is casual INTENT with no business twin.
         casual_patterns = [
             # Food/restaurants
-            r"(ristorante|restaurant|makan|mangiare|food|cibo|warung|cafe|bar|dinner|lunch|breakfast)",
+            r"\b(ristorante|restaurant|makan|mangiare|food|cibo|warung|cafe|bar|dinner|lunch|breakfast)\b",
             # Music/Life
-            r"(music|musica|lagu|song|concert|spotify|playlist|hobby|sport|palestra|gym)",
+            r"\b(music|musica|lagu|song|concert|spotify|playlist|hobby|sport|palestra|gym)\b",
             # Personal greetings/status
-            r"(come stai|how are you|apa kabar|gimana kabar|cosa fai|what do you do|che fai)",
-            r"(preferisci|prefer|suka|like|favorite|favorito|best|migliore|consiglia|recommend)",
-            # Weather
-            r"(weather|cuaca|meteo|tempo|beach|pantai|spiaggia|surf|sunset|sunrise)",
+            r"\b(come stai|how are you|apa kabar|gimana kabar|cosa fai|what do you do|che fai)\b",
+            # Weather — the meteorological words only.
+            r"\b(weather|cuaca|meteo)\b",
             # Emotional states (Indonesian Jaksel style)
-            r"(bosen|bosan|capek|cape|lelah|seneng|senang|sedih|kesel|marah|happy|sad|tired)",
-            r"(gabut|mager|males|santai|chill|relax|stress|pusing|galau|anxious)",
+            r"\b(bosen|bosan|capek|cape|lelah|seneng|senang|sedih|kesel|marah|happy|sad|tired)\b",
+            r"\b(gabut|mager|males|santai|chill|relax|stress|pusing|galau|anxious)\b",
             # Emotional states (Italian)
-            r"(stanco|annoiato|felice|triste|arrabbiato|rilassato|stressato|contento)",
-            # Casual statements about day/mood
-            r"(hari ini|today|oggi|lagi|feeling|mood|vibes)",
+            r"\b(stanco|annoiato|felice|triste|arrabbiato|rilassato|stressato|contento)\b",
             # General Chatters
             # General Chatters (Removed context-dependent 'si', 'no', 'yes' to allow RAG/LLM reasoning)
             r"^(ok|bene|good|great|thanks|grazie|terima kasih|cool|wow|haha|wkwk|lol)$",
