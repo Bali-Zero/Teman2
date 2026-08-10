@@ -5,7 +5,7 @@
 > `python scripts/docs_sync.py`. The `docs-sync.yml` CI gate fails if stale.
 
 <!-- DOCSYNC:RUNBOOKS_INDEX_START -->
-**Runbooks:** 53 (git-tracked in `docs/runbooks/`)
+**Runbooks:** 54 (git-tracked in `docs/runbooks/`)
 
 | Runbook | Title |
 | ------- | ----- |
@@ -53,6 +53,7 @@
 | [`visa-engine-key-ceremony.md`](visa-engine-key-ceremony.md) | Visa Engine — Ed25519 Key Ceremony (2026-07-19) |
 | [`visa-oracle-privacy-enforce-gate.md`](visa-oracle-privacy-enforce-gate.md) | Visa Oracle privacy and ENFORCE gate |
 | [`visa-oracle-retention-operations.md`](visa-oracle-retention-operations.md) | Visa Oracle retention operations |
+| [`vision-deck.md`](vision-deck.md) | Vision Deck — spatial control room for Apple Vision Pro |
 | [`voice-concierge-local-audio.md`](voice-concierge-local-audio.md) | Runbook — Voice concierge local audio |
 | [`wa-media-pull-worker.md`](wa-media-pull-worker.md) | Runbook — WhatsApp media PULL worker (Anello 1, sovereign-local) |
 | [`wa-mirror-account-relink.md`](wa-mirror-account-relink.md) | Runbook — wa-mirror account re-link (QR) |
