@@ -1,0 +1,16 @@
+{
+  "_doc": "Local profile dir -> seat mapping, per FLEET_TOPOLOGY.json accounts + research/operations/2026-08-10-fleet-order-spec.md §3.1. UNARMED until fingerprinted at cswap arming.",
+  "_status": "UNARMED_until_fingerprint — run claude auth status under each CLAUDE_CONFIG_DIR at cswap arming and record identities (spec §3.1)",
+  "claude_profiles": {
+    "~/.claude": "AZ",
+    "~/.claude-kaiser": "A2",
+    "~/.claude-acct2": "A1",
+    "~/.claude-acct3": "A3",
+    "~/.claude-acct4": "orphan (no seat exists — verify and retire at arming; RESOLVED 2026-08-10: Anthropic estate is 3 MAX + 1 Team Premium, no A4 — spec §3.1)",
+    "~/.claude-zero-team": "AZ-legacy-verify"
+  },
+  "codex_homes": {
+    "~/.codex": "O1",
+    "~/.codex-o2": "O2"
+  }
+}
