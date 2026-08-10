@@ -515,7 +515,7 @@ async def assign_lead(state: LeadAssignmentState, db_pool: "asyncpg.Pool") -> Le
                   AND tm.role IN ({role_placeholders})
                   AND LOWER(tm.department) = LOWER(${len(role_list) + 1})
                 GROUP BY tm.email, tm.full_name, tm.department
-                ORDER BY COUNT(p.id) ASC, RANDOM()
+                ORDER BY COUNT(p.id) ASC, tm.email ASC
                 LIMIT 1
                 """,
                 *role_list,
@@ -552,7 +552,7 @@ async def assign_lead(state: LeadAssignmentState, db_pool: "asyncpg.Pool") -> Le
                 WHERE tm.active = true
                   AND tm.role IN ({role_placeholders})
                 GROUP BY tm.email, tm.full_name, tm.department
-                ORDER BY COUNT(p.id) ASC, RANDOM()
+                ORDER BY COUNT(p.id) ASC, tm.email ASC
                 LIMIT 1
                 """,
                 *role_list,
