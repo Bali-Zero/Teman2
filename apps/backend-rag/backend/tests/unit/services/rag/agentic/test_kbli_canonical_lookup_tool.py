@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from backend.services.rag.agentic import tools as tools_module
 from backend.services.rag.agentic.tools import KBLICanonicalLookupTool
 
 _REPO_ROOT = next(
@@ -15,6 +16,13 @@ _REPO_ROOT = next(
     if (parent / "data/source_documents/KBLI_2025_FINAL_CLEAN.json").is_file()
 )
 _DATASET = _REPO_ROOT / "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
+
+
+def test_default_dataset_path_tolerates_shallow_fly_layout(monkeypatch):
+    monkeypatch.setattr(tools_module, "__file__", "/app/backend/services/rag/agentic/tools.py")
+    assert tools_module._default_kbli_dataset_path() == Path(
+        "/app/source_documents/KBLI_2025_FINAL_CLEAN.json"
+    )
 
 
 @pytest.mark.asyncio

@@ -289,18 +289,18 @@ class VectorSearchTool(BaseTool):
 def _default_kbli_dataset_path() -> Path:
     """Resolve the canonical KBLI dataset in local and Fly layouts."""
     module_path = Path(__file__).resolve()
-    candidates = (
-        # Fly image: /app/backend/.../tools.py + /app/source_documents/...
-        module_path.parents[4] / "source_documents/KBLI_2025_FINAL_CLEAN.json",
-        # Monorepo: <root>/apps/backend-rag/backend/.../tools.py + <root>/data/...
-        module_path.parents[6] / "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
-    )
-    for candidate in candidates:
-        if candidate.is_file():
-            return candidate
+    for parent in module_path.parents:
+        for relative_path in (
+            Path("source_documents/KBLI_2025_FINAL_CLEAN.json"),
+            Path("data/source_documents/KBLI_2025_FINAL_CLEAN.json"),
+        ):
+            candidate = parent / relative_path
+            if candidate.is_file():
+                return candidate
     # KBLIEye will log the missing-dataset failure and return an explicit
-    # DATABASE_NOT_LOADED state. Keep the expected Fly path in that log.
-    return candidates[0]
+    # DATABASE_NOT_LOADED state. Keep the expected Fly path in that log,
+    # without indexing beyond the shallower /app container hierarchy.
+    return Path("/app/source_documents/KBLI_2025_FINAL_CLEAN.json")
 
 
 class KBLICanonicalLookupTool(BaseTool):
