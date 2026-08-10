@@ -1,3 +1,13 @@
+---
+date: 2026-08-10
+domain: infra
+adversarial_review: agy
+reviewed_base_sha: 7e833cfaa787b7e15cae85d35c4a3bfbc179a9ec
+reviewed_head_sha: cf0e38076a80ba1c65ba269a2fb1e71298cfcab3
+reviewed_code_patch_sha256: 11de0d13f38988cad4029392235f6d2275ae6d110c9631f62a8daa76026fe633
+review_input_report_blob_sha256: 8c827dbc2697d08fe0852e86bbfc6154dfd077899b544f9998d56fcc713c2e8f
+---
+
 # Differential Review: PR #3965 Exact-Path Follow-Up
 
 ## Executive Summary
@@ -9,9 +19,61 @@ could incorrectly return `skip-backend`. The fix separates exact files from
 directory rules and adds four regression tests that were observed RED before
 the implementation.
 
-Review verdict: **PASS after the recorded gates**. No unresolved blocker was
-found in the child diff. The required CI backend suite remains independent of
-this local optimization.
+Code-review verdict: **PASS after the recorded gates and the byte-bound
+independent review below**. The reviewer found two low-severity report/gate
+defects; both are corrected in this follow-up. No blocker survives in the child
+code diff. The required CI backend suite remains independent of this local
+optimization.
+
+## Adversarial review
+
+The reviewing seat was `agy` (Gemini 3.1 Pro through the Antigravity CLI),
+independent from the Codex authoring seat. It received only the exact diff from
+base `7e833cfaa787b7e15cae85d35c4a3bfbc179a9ec` through reviewed head
+`cf0e38076a80ba1c65ba269a2fb1e71298cfcab3`. The code-only binary patch supplied
+to it had SHA-256
+`11de0d13f38988cad4029392235f6d2275ae6d110c9631f62a8daa76026fe633`; the
+committed pre-follow-up report blob in that input had SHA-256
+`8c827dbc2697d08fe0852e86bbfc6154dfd077899b544f9998d56fcc713c2e8f`.
+Those hashes bind the review to bytes rather than a moving branch name.
+
+The reviewer returned **PASS** on the implementation with two low-severity
+documentation/gate findings:
+
+1. This report lacked the R1 frontmatter and `adversarial_review` declaration.
+   The frontmatter and this section resolve that finding.
+2. The F-1 fixed-location citations were imprecise. The reviewer correctly
+   challenged them, although its proposed replacement numbers were
+   diff-relative rather than full-file lines. A direct numbered reread of the
+   reviewed blob established the exact locations now recorded below:
+   `scripts/prepush_classify.py:323`, `scripts/prepush_classify.py:747`, and
+   `scripts/prepush_classify.py:752`.
+
+The review independently verified the path-boundary defect, the separation of
+exact and directory matching, fail-closed precedence, test structure, and hook
+protection. It did **not** execute the tests; the RED/GREEN and full-suite counts
+in this report remain execution evidence from the authoring lane, not output
+attributed to the reviewer.
+
+Two objections survive by design: the classifier remains path-string-only and
+does not inspect Git file modes or symlink targets, while required PR CI still
+runs independently; and the two Python files retain pre-existing Ruff-format
+debt so this stacked cure does not hide its semantic change inside a bulk
+reformat.
+
+### Stacked-CI baseline drift (not introduced by this child)
+
+The child CI also exposed an inherited `gateway (anti-regrowth lint)` failure.
+The child and exact parent carry the same `grandfathered.json` blob
+(`02ef47ecd9db708de8c9bd690d29c8ffa10be284`), while current `main` carries
+`7624b44e772de6b31709d3bb9bfdc4cfaa6da8c3` after PR #3924 migrated both healer
+senders to the Telegram gateway. On the exact parent snapshot, both healer
+scripts still call `api.telegram.org` directly, so deleting only their two
+grandfather entries would create two genuine anti-regrowth offenders. Importing
+#3924 would touch five unrelated runtime/registry/test files (+166/-75) and
+change parent semantics. This child therefore does not mask the failure; the
+parent/base must be refreshed through its own owner before terminal CI can be
+green.
 
 ## What Changed
 
@@ -42,8 +104,8 @@ design record so it no longer recommends the defective shared matcher.
 
 - Severity: Medium
 - Location in parent: `scripts/prepush_classify.py`, old shared match branch
-- Fixed locations: `scripts/prepush_classify.py:317`,
-  `scripts/prepush_classify.py:747`, and `scripts/prepush_classify.py:751`
+- Fixed locations: `scripts/prepush_classify.py:323`,
+  `scripts/prepush_classify.py:747`, and `scripts/prepush_classify.py:752`
 - Root cause: the parent evaluated every entry with
   `path == prefix or path.startswith(prefix + "/")`. The second arm is valid
   for a directory prefix but invalid for a file-shaped prefix.
