@@ -81,6 +81,8 @@ def _make_fake_gh(
     repo: str,
     runs: list[dict],
     timing_ms_by_id: dict[int, int],
+    run_duration_ms_by_id: dict[int, int] | None = None,
+    reported_run_total: int | None = None,
     merged_prs: list[dict] | None = None,
     jobs_by_id: dict[int, list[dict]] | None = None,
     pr_view_by_number: dict[int, dict] | None = None,
@@ -90,6 +92,8 @@ def _make_fake_gh(
     module issues, matched by exact argv content (the real shapes the module builds).
     """
     merged_prs = merged_prs if merged_prs is not None else []
+    run_duration_ms_by_id = run_duration_ms_by_id or {}
+    reported_run_total = len(runs) if reported_run_total is None else reported_run_total
     jobs_by_id = jobs_by_id or {}
     pr_view_by_number = pr_view_by_number or {}
     automerge_by_pr = automerge_by_pr or {}
@@ -97,12 +101,19 @@ def _make_fake_gh(
     def fake_run(cmd, **kwargs):  # noqa: ANN001, ANN003 — mirrors subprocess.run's own loose signature
         assert cmd[0] == "gh", f"unexpected non-gh subprocess call: {cmd}"
         if cmd[1] == "api" and len(cmd) > 2 and cmd[2] == f"repos/{repo}/actions/runs":
-            return _proc(cmd, 0, json.dumps({"workflow_runs": runs}))
+            return _proc(
+                cmd,
+                0,
+                json.dumps({"total_count": reported_run_total, "workflow_runs": runs}),
+            )
         if cmd[1] == "api" and len(cmd) > 2 and cmd[2].endswith("/timing"):
             run_id = int(cmd[2].split("/")[-2])
             if run_id not in timing_ms_by_id:
                 return _proc(cmd, 1, "", f"404 run {run_id} not found")
-            return _proc(cmd, 0, json.dumps({"billable": {"UBUNTU": {"total_ms": timing_ms_by_id[run_id]}}}))
+            payload = {"billable": {"UBUNTU": {"total_ms": timing_ms_by_id[run_id]}}}
+            if run_id in run_duration_ms_by_id:
+                payload["run_duration_ms"] = run_duration_ms_by_id[run_id]
+            return _proc(cmd, 0, json.dumps(payload))
         if cmd[1] == "api" and len(cmd) > 2 and cmd[2].endswith("/jobs"):
             run_id = int(cmd[2].split("/")[-2])
             return _proc(cmd, 0, json.dumps({"jobs": jobs_by_id.get(run_id, [])}))
@@ -138,6 +149,83 @@ def _make_fake_gh(
 def _fail_everything(cmd, **kwargs):  # noqa: ANN001, ANN003
     assert cmd[0] == "gh"
     return _proc(cmd, 1, "", "HTTP 403: API rate limit exceeded for installation")
+
+
+def test_list_workflow_runs_reports_server_side_pagination_shortfall(monkeypatch):
+    runs = [_mk_run(1, "push"), _mk_run(2, "pull_request")]
+    fake = _make_fake_gh(
+        qbp.DEFAULT_REPO,
+        runs,
+        timing_ms_by_id={},
+        reported_run_total=17_648,
+    )
+    monkeypatch.setattr(qbp.subprocess, "run", fake)
+
+    fetched, reported_total, errors = qbp.list_workflow_runs(
+        qbp.DEFAULT_REPO,
+        date(2026, 8, 9),
+    )
+
+    assert [run["id"] for run in fetched] == [1, 2]
+    assert reported_total == 17_648
+    assert errors == [
+        "list_workflow_runs pagination shortfall: "
+        "fetched=2 reported_total=17648; record is partial"
+    ]
+
+
+def test_list_workflow_runs_combines_all_pages_and_deduplicates_ids(monkeypatch):
+    pages = [
+        {"total_count": 3, "workflow_runs": [_mk_run(1, "push"), _mk_run(2, "push")]},
+        # The live endpoint can emit zero after reporting the real total on page one.
+        {"total_count": 0, "workflow_runs": [_mk_run(2, "push"), _mk_run(3, "push")]},
+    ]
+
+    def fake_run(cmd, **kwargs):  # noqa: ANN001, ANN003
+        return _proc(cmd, 0, "".join(json.dumps(page) for page in pages))
+
+    monkeypatch.setattr(qbp.subprocess, "run", fake_run)
+
+    fetched, reported_total, errors = qbp.list_workflow_runs(
+        qbp.DEFAULT_REPO,
+        date(2026, 8, 9),
+    )
+
+    assert [run["id"] for run in fetched] == [1, 2, 3]
+    assert reported_total == 3
+    assert errors == []
+
+
+def test_public_repo_timing_falls_back_to_run_duration_ms(monkeypatch):
+    fake = _make_fake_gh(
+        qbp.DEFAULT_REPO,
+        runs=[],
+        timing_ms_by_id={7001: 0},
+        run_duration_ms_by_id={7001: 90_000},
+    )
+    monkeypatch.setattr(qbp.subprocess, "run", fake)
+
+    minutes, source, error = qbp.fetch_run_timing_minutes(qbp.DEFAULT_REPO, 7001)
+
+    assert minutes == pytest.approx(1.5)
+    assert source == "run_duration"
+    assert error is None
+
+
+def test_nonzero_billable_timing_wins_over_run_duration(monkeypatch):
+    fake = _make_fake_gh(
+        qbp.DEFAULT_REPO,
+        runs=[],
+        timing_ms_by_id={7002: 120_000},
+        run_duration_ms_by_id={7002: 600_000},
+    )
+    monkeypatch.setattr(qbp.subprocess, "run", fake)
+
+    minutes, source, error = qbp.fetch_run_timing_minutes(qbp.DEFAULT_REPO, 7002)
+
+    assert minutes == pytest.approx(2.0)
+    assert source == "billable"
+    assert error is None
 
 
 # ---------------------------------------------------------------------------
@@ -183,6 +271,12 @@ def test_attribution_even_split_and_unattributed_group_minutes(monkeypatch):
     assert record["unattributed_group_minutes"] == pytest.approx(15.0)
     assert record["unattributed_pr_minutes"] == pytest.approx(0.0)
     assert record["total_runner_minutes"] == pytest.approx(40.0 + 20.0 + 30.0 + 15.0)
+    assert record["timing_sources"]["billable"] == {"runs": 4, "minutes": 105.0}
+    assert record["run_collection"] == {
+        "reported_total": 4,
+        "fetched": 4,
+        "complete": True,
+    }
     assert record["counts"]["runs_seen"] == 4
     assert record["counts"]["pull_request_runs"] == 2
     assert record["counts"]["merge_group_runs"] == 2
@@ -254,6 +348,26 @@ def test_non_pr_non_merge_group_run_counts_toward_slot_utilization_only(monkeypa
     assert record["slot_utilization"]["runner_minutes_today"] == pytest.approx(5.0)
 
 
+def test_public_repo_duration_fallback_populates_runner_minutes(monkeypatch):
+    day = date(2026, 8, 9)
+    runs = [_mk_run(3002, "schedule")]
+    fake = _make_fake_gh(
+        qbp.DEFAULT_REPO,
+        runs,
+        timing_ms_by_id={3002: 0},
+        run_duration_ms_by_id={3002: 5 * 60_000},
+        merged_prs=[],
+    )
+    monkeypatch.setattr(qbp.subprocess, "run", fake)
+
+    record = qbp.build_record(qbp.DEFAULT_REPO, day)
+
+    assert record["errors"] == []
+    assert record["other_event_minutes"] == pytest.approx(5.0)
+    assert record["total_runner_minutes"] == pytest.approx(5.0)
+    assert record["timing_sources"]["run_duration"] == {"runs": 1, "minutes": 5.0}
+
+
 # ---------------------------------------------------------------------------
 # 2. Empty-day record still carries the schema with zeros and empty errors.
 # ---------------------------------------------------------------------------
@@ -273,6 +387,16 @@ def test_empty_day_record_carries_full_schema_with_zeros(monkeypatch):
     assert record["unattributed_pr_minutes"] == 0.0
     assert record["other_event_minutes"] == 0.0
     assert record["total_runner_minutes"] == 0.0
+    assert record["timing_sources"] == {
+        "billable": {"runs": 0, "minutes": 0.0},
+        "run_duration": {"runs": 0, "minutes": 0.0},
+        "billable_zero_without_duration": {"runs": 0, "minutes": 0.0},
+    }
+    assert record["run_collection"] == {
+        "reported_total": 0,
+        "fetched": 0,
+        "complete": True,
+    }
     assert record["queue_transit_minutes"] == {}
     assert record["queue_transit_p50_minutes"] is None
     assert record["queue_transit_p95_minutes"] is None
