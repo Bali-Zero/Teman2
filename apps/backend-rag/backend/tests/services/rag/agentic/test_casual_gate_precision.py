@@ -46,9 +46,7 @@ BUSINESS_QUESTIONS = [
 
 
 @pytest.mark.parametrize("query", BUSINESS_QUESTIONS)
-def test_business_questions_are_not_brushed_off(
-    builder: SystemPromptBuilder, query: str
-) -> None:
+def test_business_questions_are_not_brushed_off(builder: SystemPromptBuilder, query: str) -> None:
     assert builder.check_casual_conversation(query) is False
     assert builder.get_casual_response(query) is None
 
@@ -70,9 +68,7 @@ CASUAL_MESSAGES = [
 
 
 @pytest.mark.parametrize("query", CASUAL_MESSAGES)
-def test_small_talk_still_gets_a_direct_answer(
-    builder: SystemPromptBuilder, query: str
-) -> None:
+def test_small_talk_still_gets_a_direct_answer(builder: SystemPromptBuilder, query: str) -> None:
     assert builder.check_casual_conversation(query) is True
     assert builder.get_casual_response(query) is not None
 
