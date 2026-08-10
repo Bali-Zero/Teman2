@@ -132,6 +132,49 @@ gate this module exists to skip:
   the direct `echo ... | python3 scripts/prepush_classify.py` runs logged
   in the task #43 PR body.
 
+v9 EXTENSION (2026-08-11): `.txt` added to the two content trees that
+already admit `.md` — `docs/**` and `research/**` — plus a
+belt-and-suspenders basename net for the requirements family.
+
+  The trigger is a measured incident, not a hypothetical. PR #4002 carried
+  three files: one `research/**/*.md` and two verbatim refutation
+  transcripts under `research/operations/refutations/*.txt`. The two
+  `.txt` alone flipped the verdict to `full`, and that diff then queued
+  behind this machine's suite lock for **75 minutes and timed out with the
+  suite never starting — twice** — before landing on a third attempt 72
+  minutes in. None of the three files can be opened by
+  `pytest backend/tests/`. A transcript is prose; `.txt` is the RIGHT
+  format for it (renaming it `.md` to satisfy this classifier would both
+  game the gate and hand a verbatim record to Prettier — W112), so the
+  classifier is what had to change.
+
+  Innocence measured on disk in the branch worktree, not argued:
+    - 11 tracked `.txt` under `research/`, 25 under `docs/`. NONE is mode
+      100755 — the executable-outlier hazard that forced v2's extension
+      scoping (`research/` has 14 real `.py` files) does not recur for
+      this suffix.
+    - No test under `apps/backend-rag/backend/tests/` opens a `.txt`
+      living in either tree. Every `research/**` path appearing in that
+      suite is a `.md` string in a docstring or fixture; every `.txt`
+      reference is the requirements family at the APP root
+      (`apps/backend-rag/requirements*.txt`, read by
+      `test_lock_honors_requirements.py`), which is outside both prefixes
+      and therefore unreachable by a `docs`/`research` prefix rule.
+
+  WHY THE BASENAME NET SHIPS IN THE SAME CHANGE: the requirements family
+  is the one `.txt` class in this repo a backend test really does read,
+  and W98 is the scar proving it matters (Dependabot regenerated a lock
+  past the manifest's anti-malware `!=` pin and shipped it to prod). No
+  allowlist prefix can reach those files TODAY. The entry is not about
+  today — it is the same self-paranoia NEVER_INNOCENT_EXACT_PATHS applies
+  to `.husky/pre-push`: now that `.txt` is an admitted suffix anywhere, a
+  future prefix broadening must not be able to swallow a dependency
+  manifest. Pinned by
+  test_guilt_requirements_family_under_an_allowlisted_prefix_forces_full,
+  which asserts the HYPOTHETICAL (`docs/requirements.txt`) rather than
+  today's layout — a guilt test that only asserts the current tree stops
+  being a guilt test the moment the tree moves.
+
 CONTRACT
 --------
 Input:  a list of repo-relative file paths, one per line, via:
@@ -275,7 +318,13 @@ VERDICT_SKIP = "skip-backend"
 # valid Git paths such as `apps/wa-mirror/package.json/probe.json` and
 # `.gitignore/probe.gitignore`. Exact files now require string equality;
 # directory rules retain descendant + suffix semantics.
-ALLOWLIST_VERSION = 8
+# v9 (2026-08-11): `.txt` added to the existing `docs`/`research` directory
+# entries — the class that cost PR #4002 two 75-minute lock timeouts for two
+# verbatim refutation transcripts — and, in the same change, the requirements
+# family added to NEVER_INNOCENT_BASENAMES so the newly-admitted suffix cannot
+# later be broadened into a manifest a backend test actually reads (W98).
+# Measurement in the module-docstring "v9 EXTENSION" section above.
+ALLOWLIST_VERSION = 9
 
 # ---------------------------------------------------------------------------
 # NEVER_INNOCENT_EXACT_PATHS — checked FIRST, unconditionally, before any
@@ -310,6 +359,18 @@ NEVER_INNOCENT_BASENAMES: frozenset[str] = frozenset(
         "docker-compose.yml",
         "docker-compose.yaml",
         ".env.example",
+        # v9: the dependency manifests + their locks. `.txt` became an
+        # admitted suffix in v9 (docs/**, research/**); these four are the
+        # one `.txt` class a backend test really reads
+        # (test_lock_honors_requirements.py, the W98 tripwire), so they are
+        # nailed down directory-independently BEFORE any future prefix
+        # broadening can reach them. Redundant today — no allowlist prefix
+        # covers apps/backend-rag/ — and deliberately so: that is what
+        # "belt-and-suspenders" means in this block.
+        "requirements.txt",
+        "requirements.lock.txt",
+        "requirements-prod.txt",
+        "requirements-prod.lock.txt",
     }
 )
 
@@ -661,8 +722,12 @@ ALLOWLIST_EXACT_PATHS: frozenset[str] = frozenset(
 # that must match an exact-file rule or a directory prefix AND suffix to skip.
 # ---------------------------------------------------------------------------
 ALLOWLIST_PREFIX_SUFFIX_PAIRS: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("docs", (".md",)),
-    ("research", (".md",)),
+    # v9: `.txt` alongside `.md`. Measured innocent (11 research / 25 docs
+    # tracked `.txt`, none executable, none opened by backend/tests/) — see
+    # the module docstring's "v9 EXTENSION". The requirements family is
+    # nailed shut in NEVER_INNOCENT_BASENAMES, checked first.
+    ("docs", (".md", ".txt")),
+    ("research", (".md", ".txt")),
     (".claude/skills", (".md",)),
     (".claude/rules", (".md",)),
     (".claude/commands", (".md",)),
