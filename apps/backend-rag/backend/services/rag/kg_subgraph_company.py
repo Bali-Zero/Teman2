@@ -42,7 +42,15 @@ class CompanyState(TypedDict, total=False):
     # Company-specific fields
     company_type: str | None  # "pt_pma", "perorangan", "cv", "pt_lokal"
     is_foreign_investor: bool
-    capital_amount: int | None  # in IDR
+    # Two DIFFERENT figures, and conflating them is client-facing misinformation:
+    # `capital_amount` is the INVESTMENT PLAN value (nilai investasi, >10bn per
+    # KBLI per location for a PT PMA — assets and working capital, land and
+    # buildings excluded), while `paid_up_amount` is the money that must actually
+    # be DEPOSITED and shown in the deed (modal disetor, 2.5bn since BKPM 5/2025).
+    # Telling a founder to "prepare minimum capital: Rp 10,000,000,000" reads as
+    # the second and is wrong by a factor of four.
+    capital_amount: int | None  # in IDR — investment plan value, NOT paid-up
+    paid_up_amount: int | None  # in IDR — modal disetor, the cash actually deposited
     kbli_codes: list[str]  # Business classification codes
     licensing_requirements: list[dict]  # NIB, OSS, sector licenses
     shareholders: list[dict]  # For PT PMA
@@ -389,10 +397,19 @@ async def get_capital_requirements_node(state: CompanyState, db_pool: asyncpg.Po
     # Hardcoded knowledge (can be queried from KG)
     capital_reqs = {
         "pt_pma": {
-            "min_capital": 10_000_000_000,  # 10B IDR
-            "paid_up_min": 2_500_000_000,  # 2.5B IDR
+            # NOT stale, and NOT the same number: >10bn is the investment PLAN
+            # value required per KBLI per location, 2.5bn is the capital that must
+            # be paid up. Perka BKPM 5/2025 abrogated 4/2021 and set paid-up at
+            # 2.5bn while leaving the >10bn investment threshold in force. A blind
+            # sweep replacing "10 billion" with "2.5 billion" is therefore WRONG.
+            "min_capital": 10_000_000_000,  # 10B IDR — investment plan, per KBLI per location
+            "paid_up_min": 2_500_000_000,  # 2.5B IDR — modal disetor (Perka BKPM 5/2025)
             "currency": "IDR",
-            "notes": "Foreign investment minimum as per BKPM regulations",
+            "notes": (
+                "PT PMA: investment plan value above IDR 10bn per KBLI per location "
+                "(land and buildings excluded); paid-up capital IDR 2.5bn "
+                "(Perka BKPM 5/2025, which abrogated 4/2021)"
+            ),
         },
         "pt_lokal": {
             "min_capital": 50_000_000,  # 50M IDR
@@ -424,9 +441,12 @@ async def get_capital_requirements_node(state: CompanyState, db_pool: asyncpg.Po
     )
 
     state["capital_amount"] = requirements.get("min_capital")
+    state["paid_up_amount"] = requirements.get("paid_up_min")
 
     logger.info(
-        f"✅ [Company Subgraph] Capital requirements: {requirements.get('min_capital', 'N/A')} IDR",
+        "✅ [Company Subgraph] Capital requirements: investment plan "
+        f"{requirements.get('min_capital', 'N/A')} IDR, paid-up "
+        f"{requirements.get('paid_up_min', 'N/A')} IDR",
     )
 
     return state
@@ -459,6 +479,7 @@ async def synthesize_company_workflow_node(state: CompanyState) -> CompanyState:
     company_type = state.get("company_type", "unknown")
     is_foreign = state.get("is_foreign_investor", False)
     capital = state.get("capital_amount")
+    paid_up = state.get("paid_up_amount")
 
     steps = []
 
@@ -475,16 +496,32 @@ async def synthesize_company_workflow_node(state: CompanyState) -> CompanyState:
         },
     )
 
-    # Step 2: Capital preparation
+    # Step 2: Capital preparation.
+    #
+    # This string is read by clients: the whatsapp/web answer quotes the workflow
+    # verbatim. "Prepare minimum capital: Rp 10,000,000,000" names the INVESTMENT
+    # PLAN value but reads as cash to deposit, which is 2.5bn (BKPM 5/2025) — a
+    # 4x overstatement on the single number a founder budgets against. Both
+    # figures are in `capital_reqs` two functions up; only one was ever surfaced.
     if capital:
+        action = f"Plan a total investment value of at least Rp {capital:,}"
+        if paid_up:
+            action += f", of which Rp {paid_up:,} must be paid up (modal disetor)"
         steps.append(
             {
                 "step": 2,
-                "action": f"Prepare minimum capital: Rp {capital:,}",
+                "action": action,
                 "entity_id": "capital_requirement",
                 "details": {
-                    "amount": capital,
+                    "investment_plan_amount": capital,
+                    "paid_up_amount": paid_up,
                     "currency": "IDR",
+                    # Kept unchanged as a non-breaking precaution, NOT because a
+                    # reader was found: grepping the backend turns up no consumer
+                    # of this key, and the renderer at orchestrator_core.py:906
+                    # reads only `action` plus requirement/location/processing_time.
+                    # Whatever it meant, it was always the investment plan value.
+                    "amount": capital,
                 },
             },
         )

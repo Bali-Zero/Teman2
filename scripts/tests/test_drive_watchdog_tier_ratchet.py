@@ -605,6 +605,15 @@ def test_the_condition_actually_reaches_the_dedup_key_on_the_wire(
 
     class _Result:
         returncode = 0
+        # subprocess.run(..., capture_output=True, text=True) ALWAYS returns a
+        # CompletedProcess carrying .stderr; a fake without it is not a thinner
+        # CompletedProcess, it is a different object. Adding the verdict read to
+        # _send_telegram made the gap visible: the fake raised AttributeError,
+        # the caller's `except` swallowed it, and the function reported "not
+        # sent" for a send that worked — the fake and the code were wrong
+        # together, which is why the test stayed green while the fake was unfaithful (W114).
+        stderr = "tg_notify: spooled\n"
+        stdout = ""
 
     def fake_run(cmd, **kw):
         calls.append(cmd)
