@@ -8,7 +8,7 @@
 #   Codex CLI (GPT-5.4)    = Il Soldato — sandbox kernel-level
 #   Claude CLI (Opus 4.6)  = Il Giudice — review, red team (read-only)
 #   DeepSeek R1 (API)      = Il Pensatore — deep chain-of-thought
-#   Aider (OpenRouter)     = Il Mercenario — multi-model coding
+#   Aider (OpenRouter)     = RETIRED pending route reconciliation/canary
 #
 # SERVICES (stateless, called by orchestrator):
 #   NotebookLM (nlm CLI)   = L'Oracolo — grounded citations
@@ -311,20 +311,6 @@ require_claude() {
     if ! command -v claude &>/dev/null; then
         err "Claude CLI not installed."
         exit 1
-    fi
-}
-
-require_aider() {
-    if ! command -v aider &>/dev/null; then
-        err "Aider not installed. Install: pip install aider-chat"
-        exit 1
-    fi
-    # Load API keys from master env if not already set
-    if [ -z "$OPENROUTER_API_KEY" ] && [ -f "$HOME/Desktop/NUZANTARA_ENV_KEYS.env" ]; then
-        export OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY "$HOME/Desktop/NUZANTARA_ENV_KEYS.env" | cut -d= -f2)
-    fi
-    if [ -z "$DEEPSEEK_API_KEY" ] && [ -f "$HOME/Desktop/NUZANTARA_ENV_KEYS.env" ]; then
-        export DEEPSEEK_API_KEY=$(grep DEEPSEEK_API_KEY "$HOME/Desktop/NUZANTARA_ENV_KEYS.env" | cut -d= -f2)
     fi
 }
 
@@ -792,51 +778,59 @@ case "$CMD" in
 
         log "DeepSeek R1 671b → reasoning [max_tokens=8192, with Nuzantara context]"
 
-        # Inject system context + user prompt
-        SYSTEM_CTX=""
-        if [ -f "$CONTEXT_FILE" ]; then
-            SYSTEM_CTX=$(cat "$CONTEXT_FILE")
-        fi
+        # Pass user-controlled data as argv; never interpolate it into Python source.
+        output=$(python3 - "$CONTEXT_FILE" "$PROMPT" 2>&1 <<'PY'
+import os
+import sys
+from pathlib import Path
 
-        output=$(python3 -c "
-import httpx, json, os, sys
+import httpx
 
-ctx = '''$SYSTEM_CTX'''
-prompt = '''$PROMPT'''
+context_path = Path(sys.argv[1])
+ctx = context_path.read_text(encoding="utf-8") if context_path.is_file() else ""
+prompt = sys.argv[2]
+messages = [{"role": "user", "content": prompt}]
+if ctx:
+    messages.insert(0, {"role": "system", "content": ctx})
 
-r = httpx.post('https://api.deepseek.com/chat/completions',
-    headers={'Authorization': f'Bearer {os.environ[\"DEEPSEEK_API_KEY\"]}', 'Content-Type': 'application/json'},
-    json={
-        'model': 'deepseek-v4-pro',  # was 'deepseek-reasoner' — legacy alias silently routes to V4-Flash (cicatrix 2026-05-24)
-        'messages': [
-            {'role': 'system', 'content': ctx} if ctx else None,
-            {'role': 'user', 'content': prompt}
-        ] if not ctx else [
-            {'role': 'system', 'content': ctx},
-            {'role': 'user', 'content': prompt}
-        ],
-        'max_tokens': 8192,
-        'temperature': 0
+r = httpx.post(
+    "https://api.deepseek.com/chat/completions",
+    headers={
+        "Authorization": f"Bearer {os.environ['DEEPSEEK_API_KEY']}",
+        "Content-Type": "application/json",
     },
-    timeout=180
+    json={
+        "model": "deepseek-v4-pro",  # legacy alias routed to V4-Flash
+        "messages": messages,
+        "max_tokens": 8192,
+        "temperature": 0,
+    },
+    timeout=180,
 )
 
 d = r.json()
-if 'error' in d:
-    print(f'ERROR: {d[\"error\"].get(\"message\",\"unknown\")}', file=sys.stderr)
+if "error" in d:
+    error_message = d["error"].get("message", "unknown")
+    print(f"ERROR: {error_message}", file=sys.stderr)
     sys.exit(1)
 
-msg = d['choices'][0]['message']
-reasoning = msg.get('reasoning_content', '')
-answer = msg.get('content', '')
-u = d.get('usage', {})
+msg = d["choices"][0]["message"]
+reasoning = msg.get("reasoning_content", "")
+answer = msg.get("content", "")
+u = d.get("usage", {})
 
 # Output reasoning summary + answer
 if reasoning:
-    print(f'[Reasoning: {len(reasoning)} chars, {u.get(\"completion_tokens_details\",{}).get(\"reasoning_tokens\",\"?\")} tokens]')
+    details = u.get("completion_tokens_details", {})
+    print(
+        f"[Reasoning: {len(reasoning)} chars, "
+        f"{details.get('reasoning_tokens', '?')} tokens]"
+    )
 print(answer)
-print(f'[Cost: \${(u.get(\"prompt_tokens\",0)*0.55 + u.get(\"completion_tokens\",0)*2.19)/1000000:.4f}]')
-" 2>&1) && ec=0 || ec=$?
+cost = (u.get("prompt_tokens", 0) * 0.55 + u.get("completion_tokens", 0) * 2.19) / 1_000_000
+print(f"[Cost: ${cost:.4f}]")
+PY
+        ) && ec=0 || ec=$?
 
         duration=$(( $(date +%s) - start ))
         prompt_hash=$(echo "$PROMPT" | shasum -a 256 | cut -d' ' -f1)
@@ -850,50 +844,63 @@ print(f'[Cost: \${(u.get(\"prompt_tokens\",0)*0.55 + u.get(\"completion_tokens\"
         [ -z "$PROMPT" ] && { err "Usage: ai-dispatch.sh websearch \"query\" [count]"; exit 1; }
         check_safety "$PROMPT"
         count="${EXTRA:-5}"
+        case "$count" in
+            ''|*[!0-9]*)
+                err "Count must be an integer between 1 and 20"
+                exit 1
+                ;;
+        esac
+        if [ "${#count}" -gt 2 ] || [ "$count" -lt 1 ] || [ "$count" -gt 20 ]; then
+            err "Count must be an integer between 1 and 20"
+            exit 1
+        fi
         start=$(date +%s)
         # Exa via Claude Code MCP — we call it via a Python one-liner that hits the MCP
         # Since ai-dispatch.sh can't call MCP tools directly, we use a bridge
         log "Exa Web Search → $PROMPT (top $count results)"
 
         # Try Exa first via Python MCP bridge
-        output=$(python3 -c "
-import json, subprocess, sys
+        output=$(python3 - "$PROMPT" "$count" 2>&1 <<'PY'
+import json
+import os
+import sys
+import urllib.parse
+import urllib.request
 
 # Use the nlm CLI's MCP client or direct HTTP — simplest: use Claude Code's MCP
 # Since we can't call MCP from bash directly, we use Brave CLI as primary
 # and document that Exa should be used from Claude Code sessions
 
-query = '''$PROMPT'''
-count = int('$count')
+query = sys.argv[1]
+count = int(sys.argv[2])
 
 # Brave Search via API (BRAVE_API_KEY should be in env)
-import os
-api_key = os.environ.get('BRAVE_API_KEY', '')
+api_key = os.environ.get("BRAVE_API_KEY", "")
 if api_key:
-    import urllib.request, urllib.parse
-    params = urllib.parse.urlencode({'q': query, 'count': count})
+    params = urllib.parse.urlencode({"q": query, "count": count})
     req = urllib.request.Request(
-        f'https://api.search.brave.com/res/v1/web/search?{params}',
-        headers={'Accept': 'application/json', 'X-Subscription-Token': api_key}
+        f"https://api.search.brave.com/res/v1/web/search?{params}",
+        headers={"Accept": "application/json", "X-Subscription-Token": api_key},
     )
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
             data = json.loads(resp.read())
-            results = data.get('web', {}).get('results', [])
-            for r in results[:count]:
-                print(f'## {r.get(\"title\", \"\")}')
-                print(f'URL: {r.get(\"url\", \"\")}')
-                print(f'{r.get(\"description\", \"\")}')
+            results = data.get("web", {}).get("results", [])
+            for result in results[:count]:
+                print(f"## {result.get('title', '')}")
+                print(f"URL: {result.get('url', '')}")
+                print(result.get("description", ""))
                 print()
             sys.exit(0)
     except Exception as e:
-        print(f'Brave API error: {e}', file=sys.stderr)
+        print(f"Brave API error: {e}", file=sys.stderr)
 
 # Fallback: no API key or error — print instructions
-print('NOTE: websearch works best from Claude Code (uses Exa MCP with full content).')
-print('From bash, set BRAVE_API_KEY for Brave Search API.')
-print(f'Query: {query}')
-" 2>&1) && ec=0 || ec=$?
+print("NOTE: websearch works best from Claude Code (uses Exa MCP with full content).")
+print("From bash, set BRAVE_API_KEY for Brave Search API.")
+print(f"Query: {query}")
+PY
+        ) && ec=0 || ec=$?
 
         duration=$(( $(date +%s) - start ))
         prompt_hash=$(echo "$PROMPT" | shasum -a 256 | cut -d' ' -f1)
@@ -1209,40 +1216,19 @@ $ANALYSIS" 2>&1) || true
         ;;
 
     # ╔══════════════════════════════════════════════════╗
-    # ║  AIDER — Multi-model coding (OpenRouter/DeepSeek)║
+    # ║  AIDER — RETIRED pending route canary            ║
     # ╚══════════════════════════════════════════════════╝
 
     aider-fix)
         [ -z "$PROMPT" ] && { err "Usage: ai-dispatch.sh aider-fix \"file and what to fix\""; exit 1; }
-        require_aider
-        check_safety "$PROMPT"
-        log "Aider → DeepSeek V3 (via OpenRouter)"
-        start=$(date +%s)
-        # Inject Nuzantara context via --read flag
-        CTX_FLAG=""
-        [ -f "$PROJECT_ROOT/scripts/nuzantara_system_context.md" ] && CTX_FLAG="--read $PROJECT_ROOT/scripts/nuzantara_system_context.md"
-        output=$(run_with_timeout 180 aider --model openrouter/deepseek/deepseek-chat-v3-0324 $CTX_FLAG --message "$PROMPT" --yes --no-git 2>&1) && ec=0 || ec=$?
-        duration=$(( $(date +%s) - start ))
-        save_output "aider-fix" "$output" "$duration"
-        prompt_hash=$(echo "$PROMPT" | shasum -a 256 | cut -d' ' -f1)
-        audit_log "aider-fix" "$prompt_hash" "$duration" "$ec"
-        echo "$output"
+        err "BLOCKED: AIDER_ROUTE_RETIRED — aider-fix awaits topology reconciliation and an approved provider canary"
+        exit 2
         ;;
 
     aider-refactor)
         [ -z "$PROMPT" ] && { err "Usage: ai-dispatch.sh aider-refactor \"what to refactor\""; exit 1; }
-        require_aider
-        check_safety "$PROMPT"
-        log "Aider → Claude Sonnet (via OpenRouter) for refactoring"
-        start=$(date +%s)
-        CTX_FLAG=""
-        [ -f "$PROJECT_ROOT/scripts/nuzantara_system_context.md" ] && CTX_FLAG="--read $PROJECT_ROOT/scripts/nuzantara_system_context.md"
-        output=$(run_with_timeout 300 aider --model openrouter/anthropic/claude-sonnet-4 $CTX_FLAG --message "$PROMPT" --yes --no-git 2>&1) && ec=0 || ec=$?
-        duration=$(( $(date +%s) - start ))
-        save_output "aider-refactor" "$output" "$duration"
-        prompt_hash=$(echo "$PROMPT" | shasum -a 256 | cut -d' ' -f1)
-        audit_log "aider-refactor" "$prompt_hash" "$duration" "$ec"
-        echo "$output"
+        err "BLOCKED: AIDER_ROUTE_RETIRED — aider-refactor awaits topology reconciliation and an approved provider canary"
+        exit 2
         ;;
 
     # ╔══════════════════════════════════════════════════╗
@@ -1298,14 +1284,16 @@ for m, count in machines.most_common():
     # ╚══════════════════════════════════════════════════╝
 
     status)
-        echo "=== AI Dispatch v2 — Federation [$MACHINE] ==="
+        echo "=== AI Dispatch v3 — Federation [$MACHINE] ==="
         echo ""
-        echo -n "  Claude Code (Re):           " && (command claude --version 2>/dev/null || echo "NOT INSTALLED")
-        echo -n "  Gemini CLI (Consigliere):    " && (command gemini --version 2>/dev/null || echo "NOT INSTALLED")
-        echo -n "  Agy CLI (Swarm adjunct):     " && ("$AGY_BIN" --help >/dev/null 2>&1 && echo "INSTALLED" || echo "NOT INSTALLED")
-        echo -n "  Codex CLI (Soldato):         " && (command codex --version 2>/dev/null || echo "NOT INSTALLED")
-        echo -n "  Aider (Mercenario):          " && (aider --version 2>/dev/null || echo "NOT INSTALLED")
-        echo -n "  Ollama (Locale):             " && (ollama --version 2>/dev/null || echo "NOT INSTALLED")
+        echo "Canonical Pro/M5 LLM client audit:"
+        audit_rc=0
+        if [ -x "$PROJECT_ROOT/scripts/llm_fleet_audit.py" ]; then
+            "$PROJECT_ROOT/scripts/llm_fleet_audit.py" --fleet --roles pro,m5 --check-auth || audit_rc=$?
+        else
+            warn "  scripts/llm_fleet_audit.py MISSING"
+            audit_rc=2
+        fi
         echo ""
         echo "Config files:"
         [ -f "$PROJECT_ROOT/CLAUDE.md" ] && ok "  CLAUDE.md ✓" || warn "  CLAUDE.md MISSING"
@@ -1324,15 +1312,7 @@ for m, count in machines.most_common():
         else
             ok "  gemini alias is clean"
         fi
-        echo ""
-        echo "Peer machine:"
-        peer=""
-        if [ "$MACHINE" = "pro" ]; then peer="mini"; else peer="pro"; fi  # pro peer = mini since Air decommission 2026-05-05
-        if ssh -o ConnectTimeout=2 "$peer" 'echo "reachable"' 2>/dev/null; then
-            ok "  $peer: REACHABLE"
-        else
-            warn "  $peer: UNREACHABLE"
-        fi
+        exit "$audit_rc"
         ;;
 
     help|*)
@@ -1377,9 +1357,9 @@ AGENTS — Autonomous runtimes (dispatchable, accept open-ended tasks):
 │   swarm-commander    "task"         Decompose lanes/tools/limits    │
 │   Add third arg dry-run to validate without executing agy.          │
 │                                                                     │
-│ AIDER (OpenRouter/DeepSeek, $):                                    │
-│   aider-fix          "prompt"       Fix with DeepSeek V3 (fast)    │
-│   aider-refactor     "prompt"       Refactor with Claude Sonnet    │
+│ AIDER (RETIRED — provider route disabled):                         │
+│   aider-fix          "prompt"       RETIRED pending route canary    │
+│   aider-refactor     "prompt"       RETIRED pending route canary    │
 └─────────────────────────────────────────────────────────────────────┘
 
 SERVICES — Stateless tools called by orchestrator (NOT dispatchable):
@@ -1443,7 +1423,7 @@ MODELS:
   Agy: Gemini 3.5 Flash High (fast) / Gemini 3.1 Pro High (deep) via Swarm Commander
   Codex: GPT-5.4 (sandbox kernel-level)
   DeepSeek: R1 671b ($0.55/M in, $2.19/M out)
-  Aider: DeepSeek V3 (fast) / Claude Sonnet (refactor) via OpenRouter
+  Aider: RETIRED pending topology reconciliation and provider canary
   NLM: Google AI Ultra (9 notebooks, 600 sources each)
 
 SECURITY:
