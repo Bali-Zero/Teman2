@@ -90,7 +90,18 @@ async def test_run_sends_and_logs(monkeypatch) -> None:
 
     # Preload the import so `from backend.services.integrations.whatsapp_service import whatsapp_service`
     # inside run() picks our stub.
-    sys.modules["backend.services.integrations.whatsapp_service"] = fake_module
+    #
+    # `monkeypatch.setitem`, NOT a bare assignment. A bare assignment leaves this
+    # bare ModuleType — which carries ONLY `whatsapp_service` — installed in
+    # sys.modules for the REST OF THE SESSION, so any later test that patches a
+    # different attribute of the real module dies with "does not have the
+    # attribute". Caught 2026-08-11 on the pre-push suite: it took out
+    # test_whatsapp_send_fits_limit's `patch(f"{SVC}.get_localized_stub")`, which
+    # passes on its own and passes under full COLLECTION — only a full RUN, where
+    # this test actually executes first, reproduces it.
+    monkeypatch.setitem(
+        sys.modules, "backend.services.integrations.whatsapp_service", fake_module
+    )
 
     with patch.object(mod.asyncpg, "connect", new=AsyncMock(return_value=mock_conn)):
         code = await run(dry_run=False)
