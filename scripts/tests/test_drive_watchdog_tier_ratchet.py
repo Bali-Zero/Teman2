@@ -238,7 +238,7 @@ def test_a_freshly_refreshed_row_never_speaks(wd, monkeypatch):
     assert _saved_health(wd) == wd.HEALTH_OK
 
 
-def test_a_frozen_row_is_a_digest_note_not_a_critical(wd, monkeypatch):
+def test_a_spooled_frozen_row_digest_advances_the_ratchet_once(wd, monkeypatch):
     """The signal that WOULD have caught the real outage — at the volume it
     deserves.
 
@@ -253,26 +253,36 @@ def test_a_frozen_row_is_a_digest_note_not_a_critical(wd, monkeypatch):
     p0 would be wrong too: this cannot tell "revoked" from "unused", and the
     ground truth is the consumer's own failure. Digest.
     """
-    sent: list[tuple[str, str]] = []
+    calls: list[list[str]] = []
+
+    class _Result:
+        returncode = 0
+        stderr = "tg_notify: spooled\n"
+        stdout = ""
+
+    def fake_run(cmd: list[str], **kwargs: object) -> _Result:
+        calls.append(cmd)
+        return _Result()
+
     monkeypatch.setattr(wd, "_check_drive_token_via_fly", lambda: _idle_rows(wd))
-    monkeypatch.setattr(
-        wd,
-        "_send_telegram",
-        lambda text, bot_token, condition="alert", tier="p0": (
-            sent.append((tier, text)),
-            True,
-        )[1],
-    )
+    monkeypatch.setattr(wd.subprocess, "run", fake_run)
 
     assert wd.main() == 0
-    assert len(sent) == 1, sent
-    tier, text = sent[0]
+    assert len(calls) == 1, calls
+    cmd = calls[0]
+    tier = cmd[cmd.index("--tier") + 1]
+    text = cmd[-1]
     assert tier == "digest", f"a staleness note went out at {tier}"
     assert "invalid_grant" in text, (
         "the note must tell the reader where the PROOF is — the consumer's "
         "log — since this verdict alone cannot distinguish revoked from unused"
     )
     assert _saved_health(wd) == wd.HEALTH_STALE_REFRESH
+
+    assert wd.main() == 0
+    assert len(calls) == 1, (
+        "the accepted digest was enqueued again — its ratchet never advanced"
+    )
 
 
 def test_an_actionable_fact_in_the_bundle_pulls_the_whole_message_to_p0(
@@ -612,7 +622,7 @@ def test_the_condition_actually_reaches_the_dedup_key_on_the_wire(
         # the caller's `except` swallowed it, and the function reported "not
         # sent" for a send that worked — the fake and the code were wrong
         # together, which is why the test stayed green while the fake was unfaithful (W114).
-        stderr = "tg_notify: spooled\n"
+        stderr = "tg_notify: sent\n"
         stdout = ""
 
     def fake_run(cmd, **kw):
