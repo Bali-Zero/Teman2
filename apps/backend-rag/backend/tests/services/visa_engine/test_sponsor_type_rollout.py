@@ -127,11 +127,15 @@ class TestSponsorTypeRolloutDefault:
 class TestSponsorTypeIsUsableByARule:
     """A fact no rule can reference is a fact that was never really shipped.
 
-    This is the reason ``sponsor.type`` exists at all: four products
-    (E23U, E23V, E30E, E30F) already declare the sponsor categories they
-    want in their own ``sponsor_types``, and are unreachable purely because
-    nothing ever asks the applicant. The rules that close that gap ship in a
-    later pack; what has to be true FIRST — and is what these assert — is
+    Measured against ``rulepack-prod-006``, ``sponsor.type`` plus the purpose
+    already collected makes six of the eleven currently unreachable products
+    uniquely identifiable: E23U, E23V, E28C, E33A, E33B and E33C. Sponsor
+    type alone is not sufficient, while E28B/E28D/E28F and E30E/E30F still
+    collide. This is capability evidence, not legal eligibility evidence:
+    the rules ship in a later pack and must be grounded independently. The
+    reachability sweep must be re-run against that pack rather than freezing
+    this snapshot as a permanent count. What has to be true FIRST — and is
+    what these assertions prove — is
     that such a rule compiles, and that a typo in it is caught before the
     pack is ever signed rather than at evaluation time.
     """

@@ -445,13 +445,15 @@ class FactPath(str, Enum):
     # Why it exists: every product record already declares `sponsor_types`
     # (models.py, `sponsor_types: tuple[SponsorType, ...]`), so the pack has
     # always known that E23V wants a GOVERNMENT sponsor and E23U an INDIVIDUAL
-    # one — but nothing ever asked the applicant, so no rule could test it. The
-    # consequence, measured 2026-08-10 on rulepack-prod-006: four products
-    # (E23U, E23V, E30E, E30F) are unreachable and deliberately fail closed,
-    # because the only alternatives were to offer them to everyone with the
-    # purpose (a diplomat's household route to any employee) or to wall the
-    # whole answer for everyone with the purpose. Neither is acceptable; the
-    # missing fact is.
+    # one — but nothing ever asked the applicant, so no rule could test it.
+    # Measured 2026-08-10 against rulepack-prod-006, this fact together with
+    # the already-collected purpose makes six of the eleven currently
+    # unreachable products uniquely identifiable: E23U, E23V, E28C, E33A,
+    # E33B and E33C. Sponsor type alone is not sufficient, and five products
+    # still collide (E28B/E28D/E28F and E30E/E30F). The future pack must add
+    # legally grounded rules before any product becomes reachable; re-run the
+    # reachability sweep against the then-current pack rather than treating
+    # this snapshot as a permanent count.
     SPONSOR_TYPE = "sponsor.type"
     # secondhome.* — E33 Second Home vertical (bank-route scope, owner decision
     # 2026-07-23): the qualifying-basis facts the base E33 / E33E / E33F
