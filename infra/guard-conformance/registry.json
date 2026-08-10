@@ -318,18 +318,27 @@
       "guards": {
         "check_receipts_have_provenance": {
           "scar": ["harness-v2-5"],
-          "guilt": ["test_receipts_guilt_missing_field_rejected"],
-          "innocence": ["test_receipts_innocence_complete_receipt_passes"]
+          "guilt": [
+            "test_receipts_guilt_missing_field_rejected",
+            "test_receipts_guilt_empty_on_gear3_rejected"
+          ],
+          "innocence": [
+            "test_receipts_innocence_complete_receipt_passes",
+            "test_receipts_innocence_empty_on_gear1_passes"
+          ]
         },
         "check_dissent_nonempty_on_gear3": {
           "scar": ["harness-v2-5"],
           "guilt": [
             "test_dissent_guilt_zero_dissent_on_gear3_rejected",
-            "test_dissent_guilt_missing_field_rejected"
+            "test_dissent_guilt_missing_field_rejected",
+            "test_dissent_guilt_entry_missing_fields_rejected",
+            "test_dissent_guilt_invalid_status_rejected"
           ],
           "innocence": [
             "test_dissent_innocence_empty_on_gear2_passes",
-            "test_dissent_innocence_nonempty_on_gear3_passes"
+            "test_dissent_innocence_nonempty_on_gear3_passes",
+            "test_dissent_innocence_structured_entry_passes"
           ]
         },
         "check_pii_scan_clean": {
@@ -346,13 +355,20 @@
           "scar": ["harness-v2-5"],
           "guilt": [
             "test_brief_ref_guilt_missing_key_rejected",
-            "test_brief_ref_guilt_dangling_path_rejected"
+            "test_brief_ref_guilt_dangling_path_rejected",
+            "test_brief_ref_guilt_absolute_path_rejected",
+            "test_brief_ref_guilt_path_traversal_rejected",
+            "test_brief_ref_guilt_directory_rejected"
           ],
           "innocence": ["test_brief_ref_innocence_resolves_and_loads"]
         },
         "check_gear_floor": {
           "scar": ["fleet-order-spec-4", "W102"],
-          "guilt": ["test_gear_floor_guilt_declared_below_floor_rejected"],
+          "guilt": [
+            "test_gear_floor_guilt_declared_below_floor_rejected",
+            "test_gear_floor_guilt_bool_type_rejected",
+            "test_gear_floor_guilt_float_type_rejected"
+          ],
           "innocence": [
             "test_gear_floor_innocence_declared_at_or_above_floor_passes",
             "test_gear_floor_innocence_skipped_without_changed_files"

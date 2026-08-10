@@ -18,23 +18,51 @@ WHAT IT VALIDATES (an Evidence Pack YAML, default path evidence/pack.yml):
                         missing any field is not a receipt, it is an unverified
                         OPINION wearing a receipt's shape — REJECTED so the
                         author either completes it or moves the claim out of
-                        `receipts:` (harness-v2 §5 "Anti-Goodhart").
+                        `receipts:` (harness-v2 §5 "Anti-Goodhart"). On a
+                        Gear-3 pack, receipts must also be NON-EMPTY (symmetric
+                        with rule 2 — an Evidence Pack with zero evidence at
+                        the gear where it matters most is a defective pack,
+                        not an innocent one; adversarial-review finding
+                        2026-08-10, was previously accepted at any gear).
   2. dissent         — MANDATORY field (harness-v2 §5: "campo OBBLIGATORIO, non
                         opzionale"), must be a list. On a Gear-3 pack (declared
                         by the referenced brief) it must be non-empty: zero
                         dissent on Gear-3 is "consenso sospetto" — either no
                         refuter actually tried, or none were independent
                         (harness-v2 §5). Gear 1/2 may carry an empty list.
+                        Every entry is structurally validated too —
+                        {seat, objection, status∈{CONFIRMED,PLAUSIBLE,RETRACTED}}
+                        — `dissent: [{}]` used to pass on length alone
+                        (adversarial-review finding 2026-08-10).
   3. pii_scan        — must equal the literal string "clean" (Law 2 / UU PDP).
+                        This validates the PACK'S DECLARED state, deliberately
+                        NOT an independent PII/secret re-scan — a real scanner
+                        is a separate tool (e.g. secrets_permissions_audit.py,
+                        the fleet-order-spec §5 redaction pre-pass); the
+                        Evidence Pack's own anti-Goodhart defense against a
+                        false "clean" is receipts + dissent + the gate's
+                        spot-check right, not this linter re-deriving PII
+                        status from scratch (harness-v2 §5).
   4. size            — approx tokens = len(raw bytes)/4 <= 30_000 (harness-v2
                         §5 hard cap — protects the Fable gate's weekly
                         allowance and forces compression of EVIDENCE, not more
-                        narration).
-  5. brief_ref       — must be present and resolve to a real file relative to
-                        the repo root (the pack is not self-contained by
-                        design; it references the Task Brief that assigned the
-                        grader before any code was written).
-  6. gear >= floor   — the brief's declared `gear` must be >= the DETERMINISTIC
+                        narration). Checked on the RAW BYTES *before*
+                        yaml.safe_load ever runs — checking only after parsing
+                        protects nothing against an oversized/adversarial
+                        input (adversarial-review finding 2026-08-10).
+  5. brief_ref       — must be present, a REPO-RELATIVE path (an absolute path
+                        or a `..`-escape is rejected — pathlib's `/` operator
+                        silently discards the left operand when the right is
+                        absolute, a real path-confinement bug found by
+                        adversarial review 2026-08-10), confined under
+                        repo_root, and resolve to a real FILE (not a
+                        directory — `brief_ref: "."` used to raise an
+                        uncaught IsADirectoryError).
+  6. gear >= floor   — the brief's declared `gear` must be a genuine `int`
+                        (not `true`/`1.0` — Python's bare `in` on a tuple of
+                        ints treats `bool`/`float` as equal, so `gear: true`
+                        used to pass; adversarial-review finding 2026-08-10)
+                        and must be >= the DETERMINISTIC
                         floor computed from the PR's changed-file set against
                         the hot-zone list (fleet-order-spec.md §4 "Floor note":
                         "gear classification is the DETERMINISTIC FLOOR
@@ -171,18 +199,26 @@ def approx_tokens(raw: bytes) -> int:
 # scripts/tests/test_evidence_pack_lint.py (superscar #3).
 
 
-def check_receipts_have_provenance(pack: dict[str, Any]) -> list[str]:
+def check_receipts_have_provenance(pack: dict[str, Any], gear: int | None = None) -> list[str]:
     """GUILT: a receipts[] entry missing cmd/exit/ts/seat is an OPINION wearing
-    a receipt's shape — rejected. INNOCENCE: a fully-shaped receipt passes,
-    and a pack with NO receipts key at all is not this rule's problem (an
-    empty evidence pack may legitimately have no claims yet — other rules
-    still gate it)."""
+    a receipt's shape — rejected. GUILT: on a Gear-3 pack, receipts entirely
+    missing or empty is rejected too — symmetric with the dissent rule below;
+    an "Evidence Pack" with zero evidence defeats its own purpose at the gear
+    where it matters most (adversarial-review finding, 2026-08-10). INNOCENCE:
+    a fully-shaped receipt passes; on Gear 1/2 a pack with NO receipts key at
+    all is not this rule's problem (an empty evidence pack may legitimately
+    have no claims yet — other rules still gate it)."""
     violations: list[str] = []
     receipts = pack.get("receipts")
     if receipts is None:
-        return violations
+        receipts = []
     if not isinstance(receipts, list):
         return [f"receipts: must be a list, got {type(receipts).__name__}"]
+    if gear == 3 and len(receipts) == 0:
+        violations.append(
+            "receipts: empty/missing on a Gear-3 pack — an Evidence Pack with "
+            "zero receipts carries no evidence"
+        )
     for idx, entry in enumerate(receipts):
         if not isinstance(entry, dict):
             violations.append(f"receipts[{idx}]: must be a mapping, got {type(entry).__name__}")
@@ -198,11 +234,19 @@ def check_receipts_have_provenance(pack: dict[str, Any]) -> list[str]:
     return violations
 
 
+DISSENT_REQUIRED_FIELDS = ("seat", "objection", "status")
+DISSENT_VALID_STATUSES = ("CONFIRMED", "PLAUSIBLE", "RETRACTED")
+
+
 def check_dissent_nonempty_on_gear3(pack: dict[str, Any], gear: int | None) -> list[str]:
     """GUILT: the `dissent` key absent entirely (mandatory field, any gear);
-    GUILT: `dissent: []` on a Gear-3 pack ("consenso sospetto"). INNOCENCE: an
-    empty dissent list on Gear 1/2 is fine (brief's own stated edge case) —
-    the field only has to be NON-EMPTY once the task is Gear-3."""
+    GUILT: `dissent: []` on a Gear-3 pack ("consenso sospetto"); GUILT: a
+    dissent entry missing seat/objection/status, or carrying a status outside
+    {CONFIRMED, PLAUSIBLE, RETRACTED} — `dissent: [{}]` used to pass this
+    check purely on length (adversarial-review finding, 2026-08-10; the
+    receipts rule already validated per-entry shape, this one didn't).
+    INNOCENCE: an empty dissent list on Gear 1/2 is fine (brief's own stated
+    edge case); a fully-shaped entry with a valid status passes on Gear-3."""
     if "dissent" not in pack:
         return ["dissent: field is missing — mandatory on every Evidence Pack (harness-v2 §5)"]
     dissent = pack["dissent"]
@@ -211,7 +255,21 @@ def check_dissent_nonempty_on_gear3(pack: dict[str, Any], gear: int | None) -> l
     if gear == 3 and len(dissent) == 0:
         return ["dissent: consenso sospetto — zero dissent entries on a Gear-3 pack "
                 "(either no refuter tried, or none were independent)"]
-    return []
+    violations: list[str] = []
+    for idx, entry in enumerate(dissent):
+        if not isinstance(entry, dict):
+            violations.append(f"dissent[{idx}]: must be a mapping, got {type(entry).__name__}")
+            continue
+        missing = [f for f in DISSENT_REQUIRED_FIELDS if not str(entry.get(f, "")).strip()]
+        if missing:
+            violations.append(f"dissent[{idx}]: missing/empty field(s) {missing}")
+            continue
+        if entry.get("status") not in DISSENT_VALID_STATUSES:
+            violations.append(
+                f"dissent[{idx}]: status must be one of {DISSENT_VALID_STATUSES}, "
+                f"got {entry.get('status')!r}"
+            )
+    return violations
 
 
 def check_pii_scan_clean(pack: dict[str, Any]) -> list[str]:
@@ -237,20 +295,31 @@ def check_size_budget(raw: bytes) -> list[str]:
 def check_brief_ref_exists(
     pack: dict[str, Any], repo_root: Path
 ) -> tuple[list[str], dict[str, Any] | None]:
-    """GUILT: brief_ref missing from the pack, or pointing at a file absent on
-    disk. INNOCENCE: brief_ref present and resolvable loads and returns the
-    referenced brief (a dict) for downstream rules (gear floor, dissent gear
-    gate) to consume."""
+    """GUILT: brief_ref missing from the pack; pointing at a file absent on
+    disk; an ABSOLUTE path or one escaping repo_root via `..` (pathlib's `/`
+    operator silently DISCARDS the left side when the right side is absolute
+    — `Path(repo_root) / "/etc/passwd"` resolves to `/etc/passwd`, a real
+    path-confinement bug this repo's own py/path-injection scar class exists
+    to catch, found by adversarial review 2026-08-10); or a DIRECTORY rather
+    than a file (`brief_ref: "."` used to raise an uncaught IsADirectoryError
+    — now rejected cleanly). INNOCENCE: brief_ref present, relative, confined
+    under repo_root, and resolvable to a real file loads and returns the
+    referenced brief (a dict) for downstream rules to consume."""
     brief_ref = pack.get("brief_ref")
     if not brief_ref or not isinstance(brief_ref, str):
         return (["brief_ref: missing or not a string"], None)
-    brief_path = repo_root / brief_ref
-    if not brief_path.exists():
+    if Path(brief_ref).is_absolute():
+        return ([f"brief_ref: '{brief_ref}' must be a repo-relative path, not absolute"], None)
+    repo_root_resolved = repo_root.resolve()
+    brief_path = (repo_root / brief_ref).resolve()
+    if repo_root_resolved not in (brief_path, *brief_path.parents):
+        return ([f"brief_ref: '{brief_ref}' escapes repo_root (path traversal)"], None)
+    if not brief_path.is_file():
         return ([f"brief_ref: '{brief_ref}' does not resolve to a file on disk"], None)
     try:
         brief = yaml.safe_load(brief_path.read_text(encoding="utf-8"))
-    except yaml.YAMLError as exc:
-        return ([f"brief_ref: '{brief_ref}' is not valid YAML: {exc}"], None)
+    except (OSError, yaml.YAMLError) as exc:
+        return ([f"brief_ref: '{brief_ref}' could not be read/parsed: {exc}"], None)
     if not isinstance(brief, dict):
         return ([f"brief_ref: '{brief_ref}' did not parse to a mapping"], None)
     return ([], brief)
@@ -258,17 +327,22 @@ def check_brief_ref_exists(
 
 def check_gear_floor(brief: dict[str, Any] | None, changed_files: list[str] | None) -> list[str]:
     """GUILT: the brief's declared gear is below the deterministic floor
-    computed from the PR's changed files. INNOCENCE: gear >= floor passes;
-    gear ABOVE the floor always passes too (the model may only raise, never
-    lower, the floor — harness-v2 §1 monotonia). When changed_files is None
-    the check is explicitly SKIPPED (see module docstring) rather than
-    silently treated as passing without evidence — the caller prints the
-    NOTICE, this function just declines to add a violation."""
+    computed from the PR's changed files; GUILT: gear is not a genuine int
+    (`gear: true` or `gear: 1.0` used to pass — Python's `bool`/`float` are
+    `==`-equal to `int` members of VALID_GEARS via bare `in`, so
+    `True in (1,2,3)` is True; found by adversarial review 2026-08-10, fixed
+    with an explicit `type(gear) is int` check). INNOCENCE: gear >= floor
+    passes; gear ABOVE the floor always passes too (the model may only
+    raise, never lower, the floor — harness-v2 §1 monotonia). When
+    changed_files is None the check is explicitly SKIPPED (see module
+    docstring) rather than silently treated as passing without evidence —
+    the caller prints the NOTICE, this function just declines to add a
+    violation."""
     if brief is None:
         return []  # already flagged by check_brief_ref_exists
     gear = brief.get("gear")
-    if gear not in VALID_GEARS:
-        return [f"brief.gear: must be one of {VALID_GEARS}, got {gear!r}"]
+    if type(gear) is not int or gear not in VALID_GEARS:
+        return [f"brief.gear: must be exactly one of {VALID_GEARS} (int), got {gear!r}"]
     if changed_files is None:
         return []
     floor = compute_floor(changed_files)
@@ -293,6 +367,16 @@ def lint(
         raw = pack_path.read_bytes()
     except OSError as exc:
         return 2, [f"BLIND: could not read evidence pack: {exc}"]
+
+    # Size is checked on the RAW BYTES before yaml.safe_load ever runs (moved
+    # here, adversarial review 2026-08-10): checking size only after parsing
+    # protects nothing — an oversized/adversarial YAML has already paid the
+    # full parse cost (and any amplification a crafted anchor/alias tree can
+    # cause) before this function ever sees a violation. Short-circuit.
+    size_violation = check_size_budget(raw)
+    if size_violation:
+        return 1, size_violation
+
     try:
         pack = yaml.safe_load(raw)
     except yaml.YAMLError as exc:
@@ -300,16 +384,17 @@ def lint(
     if not isinstance(pack, dict):
         return 2, ["BLIND: evidence pack YAML did not parse to a mapping"]
 
-    violations: list[str] = []
-    violations += check_receipts_have_provenance(pack)
-    violations += check_pii_scan_clean(pack)
-    violations += check_size_budget(raw)
-
+    # brief_ref resolves FIRST — receipts/dissent's gear-3-specific rules need
+    # a STRICTLY validated gear (never a bool/float that happens to == 3).
     brief_violations, brief = check_brief_ref_exists(pack, repo_root)
-    violations += brief_violations
+    raw_gear = brief.get("gear") if isinstance(brief, dict) else None
+    gear = raw_gear if type(raw_gear) is int and raw_gear in VALID_GEARS else None
 
-    gear = brief.get("gear") if isinstance(brief, dict) else None
-    violations += check_dissent_nonempty_on_gear3(pack, gear if isinstance(gear, int) else None)
+    violations: list[str] = []
+    violations += check_receipts_have_provenance(pack, gear)
+    violations += check_pii_scan_clean(pack)
+    violations += brief_violations
+    violations += check_dissent_nonempty_on_gear3(pack, gear)
     violations += check_gear_floor(brief, changed_files)
 
     if changed_files is None:
@@ -494,6 +579,94 @@ def selftest() -> int:
         })
         rc, viol = lint(root / "evidence" / "pack.yml", root, ["docs/readme.md"])
         check("innocence: gear 1 on non-hotzone diff passes", rc == 0 and viol == [])
+
+        # ---- guilt: empty/missing receipts on a Gear-3 pack --------------------
+        write(root / "evidence" / "brief.yml", {"task_id": "x", "gear": 3, "grader": "y"})
+        write(root / "evidence" / "pack.yml", {
+            "brief_ref": "evidence/brief.yml",
+            "dissent": [{"seat": "codex-sol", "objection": "x", "status": "PLAUSIBLE"}],
+            "pii_scan": "clean",
+        })
+        rc, viol = lint(root / "evidence" / "pack.yml", root, None)
+        check("guilt: empty receipts on gear-3 rejected", rc == 1)
+        check("innocence: empty receipts on gear-1 is not this rule's problem",
+              check_receipts_have_provenance({}, gear=1) == [])
+        check("innocence: empty receipts on gear-3 IS this rule's problem",
+              check_receipts_have_provenance({}, gear=3) != [])
+
+        # ---- guilt: dissent entry missing structured fields --------------------
+        write(root / "evidence" / "pack.yml", {
+            "brief_ref": "evidence/brief.yml",
+            "receipts": [good_receipt],
+            "dissent": [{}],
+            "pii_scan": "clean",
+        })
+        rc, viol = lint(root / "evidence" / "pack.yml", root, None)
+        check("guilt: dissent[{}] (missing fields) rejected", rc == 1)
+
+        # ---- guilt: dissent entry with an invalid status ------------------------
+        write(root / "evidence" / "pack.yml", {
+            "brief_ref": "evidence/brief.yml",
+            "receipts": [good_receipt],
+            "dissent": [{"seat": "codex-sol", "objection": "x", "status": "APPROVED"}],
+            "pii_scan": "clean",
+        })
+        rc, viol = lint(root / "evidence" / "pack.yml", root, None)
+        check("guilt: dissent status outside the closed set rejected", rc == 1)
+
+        # ---- innocence: fully-structured dissent entry passes -------------------
+        write(root / "evidence" / "pack.yml", {
+            "brief_ref": "evidence/brief.yml",
+            "receipts": [good_receipt],
+            "dissent": [{"seat": "codex-sol", "objection": "x", "status": "CONFIRMED"}],
+            "pii_scan": "clean",
+        })
+        rc, viol = lint(root / "evidence" / "pack.yml", root, None)
+        check("innocence: fully-structured dissent entry passes", rc == 0 and viol == [])
+
+        # ---- guilt: brief_ref is an absolute path (path-confinement) ------------
+        absolute_target = root / "evidence" / "brief.yml"
+        write(root / "evidence" / "pack.yml", {
+            "brief_ref": str(absolute_target),
+            "receipts": [good_receipt], "dissent": [], "pii_scan": "clean",
+        })
+        write(root / "evidence" / "brief.yml", {"task_id": "x", "gear": 1, "grader": "y"})
+        rc, viol = lint(root / "evidence" / "pack.yml", root, None)
+        check("guilt: absolute brief_ref rejected", rc == 1)
+        check("guilt: message names absolute path", any("absolute" in v for v in viol))
+
+        # ---- guilt: brief_ref escapes repo_root via .. --------------------------
+        outside = root.parent / "outside-secret.yml"
+        outside.write_text(yaml.safe_dump({"task_id": "x", "gear": 1, "grader": "y"}), encoding="utf-8")
+        write(root / "evidence" / "pack.yml", {
+            "brief_ref": f"../{outside.name}",
+            "receipts": [good_receipt], "dissent": [], "pii_scan": "clean",
+        })
+        rc, viol = lint(root / "evidence" / "pack.yml", root, None)
+        check("guilt: brief_ref path-traversal escape rejected", rc == 1)
+        outside.unlink()
+
+        # ---- guilt: brief_ref names a directory, not a file ---------------------
+        write(root / "evidence" / "pack.yml", {
+            "brief_ref": "evidence",
+            "receipts": [good_receipt], "dissent": [], "pii_scan": "clean",
+        })
+        write(root / "evidence" / "brief.yml", {"task_id": "x", "gear": 1, "grader": "y"})
+        rc, viol = lint(root / "evidence" / "pack.yml", root, None)
+        check("guilt: brief_ref naming a directory rejected (no crash)", rc == 1)
+
+        # ---- guilt: gear is a bool/float, not a genuine int (type coercion) -----
+        write(root / "evidence" / "brief.yml", {"task_id": "x", "gear": True, "grader": "y"})
+        write(root / "evidence" / "pack.yml", {
+            "brief_ref": "evidence/brief.yml",
+            "receipts": [good_receipt], "dissent": [], "pii_scan": "clean",
+        })
+        rc, viol = lint(root / "evidence" / "pack.yml", root, None)
+        check("guilt: gear=true (bool) rejected despite True==1", rc == 1)
+
+        write(root / "evidence" / "brief.yml", {"task_id": "x", "gear": 1.0, "grader": "y"})
+        rc, viol = lint(root / "evidence" / "pack.yml", root, None)
+        check("guilt: gear=1.0 (float) rejected despite 1.0==1", rc == 1)
 
         # ---- blind-scan guard: pack file missing -------------------------------
         rc, viol = lint(root / "evidence" / "nope.yml", root, None)
