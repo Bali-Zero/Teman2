@@ -518,6 +518,35 @@ Two things NOT to do when you see this:
 
 ---
 
+## 6sexies. `mq.sh` — the queue-ops wrapper (Merge-OS v2 Wave 0)
+
+`scripts/mq.sh` wraps `scripts/queue_doctor.py` and `gh`; it never reimplements either. Spec:
+`research/operations/2026-08-10-merge-os-v2-submission-system.md` §3/§4 Wave 0. State lives at
+`~/.nuzantara-mq/armed/<PR>.json` (dir mode 0700), overridable via `MQ_STATE_DIR`/`MQ_REPO`.
+
+| Verb                               | Does                                                                                                                                                                                                                            |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mq status [--all\|PR...]`         | Wraps `queue_doctor.py` — the three-queue snapshot (§ merge queue, pre-push lock, P0 spool), verbatim output                                                                                                                    |
+| `mq why-red <PR>`                  | Name/bucket/link of every non-passing **required** check, plus any required-by-branch-protection check `gh` never reported at all (the "required check never reported" class, §6 Step 1 above)                                  |
+| `mq arm <PR>`                      | Records the current head SHA to the state file, then bare `gh pr merge <PR> --auto` — **never `--squash`**, which silently arms nothing once the queue governs `main` (§Session discipline above, PR #3347)                     |
+| `mq watch <PR> [--timeout-mins N]` | The **post-arm watcher** — see below. Default ceiling 120 min, polls every 60s                                                                                                                                                  |
+| `mq requeue <PR>`                  | `--disable-auto` then re-arm — the standing cure for a queue ejection (§6 Step 2b above)                                                                                                                                        |
+| `mq dequeue <PR>`                  | `--disable-auto` and drop the local state file (does **not** remove an already-building queue entry — see the `--disable-auto` no-op trap at §Step 3b above; use the GraphQL `dequeuePullRequest` mutation there for that case) |
+| `mq handoff`                       | `mq status` output + every armed-state file, paste-ready for a session handoff                                                                                                                                                  |
+
+**The post-arm-watcher rule (spec §3, Codex F13):** "no push after arm" cannot be a preflight
+guarantee — `mq arm` returns before any future push could happen, so it cannot see one. `mq watch`
+is what enforces it: it records nothing itself, only reads the SHA `mq arm` already wrote, and on
+every poll compares it against the PR's live head. A mismatch means someone pushed to an armed
+branch (§Session discipline above: "post-arm commits remain orphaned") — `mq watch` dequeues
+(`--disable-auto`) and alerts loudly rather than let a stale queued attempt merge. It exits `0` on
+`MERGED`, `4` on `CLOSED`, `3` on a detected head-move (after dequeuing), `2` on reaching its
+ceiling with no verdict (an honest NO-VERDICT, never a fabricated "clean").
+
+Tests: `scripts/tests/test_mq_sh.sh` (fake `gh` on `PATH`, no network).
+
+---
+
 ## 7. Rollback (disable the merge queue)
 
 ```bash
