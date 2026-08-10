@@ -42,15 +42,21 @@ CLI:
   --degraded       sets gate_degraded: fable->opus in the description
   --description    free-text appended to the auto-generated description
                     (e.g. a one-line reason, a PENDING-ARMS pointer)
-  --conditions-ref  for PASS-WITH-CONDITIONS: where the ledger entry with
-                    owner+deadline lives — appended to the description as a
-                    reminder, not enforced (this script has no ledger access)
+  --conditions-ref  REQUIRED for PASS-WITH-CONDITIONS: where the ledger entry
+                    with owner+deadline lives (e.g. a PENDING-ARMS.md
+                    pointer) — appended to the description. This script has
+                    no ledger access so it cannot verify the entry EXISTS,
+                    but it refuses to publish a PWC with no pointer at all:
+                    harness-v2 §6 calls PWC-without-enforcement "la falla da
+                    cui passa tutto" (adversarial-review finding 2026-08-10 —
+                    this flag used to be optional even for PWC).
   --dry-run        print the `gh api` invocation instead of running it
                    (used by tests — no network, no auth required)
 
 Exit codes:
   0  published (or, with --dry-run, printed) successfully
-  1  usage error (bad --verdict, missing --sha) or `gh api` call failed
+  1  usage error (bad --verdict, missing --sha, PWC without
+     --conditions-ref) or `gh api` call failed
 """
 
 from __future__ import annotations
@@ -133,6 +139,19 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--conditions-ref", default=None)
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
+
+    # harness-v2 §6: PASS-WITH-CONDITIONS without an enforced conditions
+    # pointer is "la falla da cui passa tutto" — refuse to publish one with
+    # no --conditions-ref rather than silently post a bare PWC (adversarial-
+    # review finding 2026-08-10).
+    if args.verdict == "PASS-WITH-CONDITIONS" and not args.conditions_ref:
+        print(
+            "harness_fable_gate: --verdict PASS-WITH-CONDITIONS requires "
+            "--conditions-ref (a PENDING-ARMS.md pointer for the "
+            "owner+deadline entry) — refusing to publish an unenforceable PWC",
+            file=sys.stderr,
+        )
+        return 1
 
     state = VERDICT_STATE[args.verdict]
     description = build_description(args.verdict, args.degraded, args.description, args.conditions_ref)

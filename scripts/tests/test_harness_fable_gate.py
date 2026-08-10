@@ -105,3 +105,43 @@ def test_cli_dry_run_marks_degraded_and_block_as_failure():
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "state=failure" in proc.stdout
     assert "gate_degraded" in proc.stdout
+
+
+def test_cli_rejects_pwc_without_conditions_ref():
+    """GUILT (adversarial-review 2026-08-10): PASS-WITH-CONDITIONS with no
+    --conditions-ref is an unenforceable PWC — harness-v2 §6 calls that
+    shape 'la falla da cui passa tutto'. Must refuse, not silently publish."""
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPTS / "harness_fable_gate.py"),
+         "--verdict", "PASS-WITH-CONDITIONS", "--sha", "deadbeef",
+         "--repo", "acme/example", "--dry-run"],
+        capture_output=True, text=True, timeout=30,
+    )
+    assert proc.returncode != 0
+    assert "--conditions-ref" in proc.stderr
+
+
+def test_cli_accepts_pwc_with_conditions_ref():
+    """INNOCENCE: the same verdict WITH a --conditions-ref publishes
+    normally."""
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPTS / "harness_fable_gate.py"),
+         "--verdict", "PASS-WITH-CONDITIONS", "--sha", "deadbeef",
+         "--repo", "acme/example", "--conditions-ref", "PENDING-ARMS.md#L900",
+         "--dry-run"],
+        capture_output=True, text=True, timeout=30,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "state=success" in proc.stdout
+
+
+def test_cli_conditions_ref_not_required_for_other_verdicts():
+    """INNOCENCE: PASS/BLOCK/etc without --conditions-ref are unaffected —
+    the new guard is scoped to PASS-WITH-CONDITIONS only."""
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPTS / "harness_fable_gate.py"),
+         "--verdict", "PASS", "--sha", "deadbeef", "--repo", "acme/example",
+         "--dry-run"],
+        capture_output=True, text=True, timeout=30,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
