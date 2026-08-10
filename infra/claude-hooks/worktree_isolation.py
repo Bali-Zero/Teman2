@@ -139,6 +139,26 @@ BLOCKED_SUBCMD_RE = re.compile(
     r"(checkout|switch|stash(?!\s+(?:list|show)\b)|reset|merge|rebase|pull)\b"
     r"|\bgit\s+commit\s+(?:[^\s]+\s+)*(?:-[A-Za-z]*a|--all\b)"  # commit -a / -am / -a -m / --all
     r"|\bgit\s+add\s+(?:-A|-a|--all|\.)"  # add -A / add -a / add --all / add .
+    # W117 class-audit (2026-08-10): the enumeration above never included `clean`
+    # or `restore`, so five shapes of the SAME damage — `git clean -f|-fd|-fdx`,
+    # `git restore <path>`, `git restore --staged .` — passed inside the main
+    # checkout while `reset --hard` / `checkout -- .` / `stash` blocked. Measured
+    # after the remote direction was cured: fixing only the direction that bit me
+    # would just move WHICH verb destroys Pro's runtime state in silence (W107).
+    # `clean` is enumerated by INTENT, not by bare token (W85): a forcing flag is
+    # required, and the read-only probes `-n` / `--dry-run` are spared — note
+    # `git clean -fdn` IS a dry run, so the lookahead must win over the -f test.
+    # Both letter tests read the flag CLUSTER, not a string that ENDS in the
+    # letter. The first draft got this wrong in both directions and measurement
+    # said so: `--force` escaped (an under-match, no single-dash cluster) and
+    # `-ndf` blocked (an over-match: the `n` test demanded `n\b`, which a cluster
+    # spells only when `n` happens to come last). Form vs entity, family #3.
+    # Declared limit: a stray ` -n…` elsewhere in the same segment spares the
+    # command — erring toward NOT blocking on an exotic shape, never the reverse.
+    r"|\bgit\s+(?:-c\s+\S+\s+)*(?:-C\s+\S+\s+)?clean\b"
+    r"(?![^;&|\n]*(?:--dry-run\b|\s-[A-Za-z]*n))"  # -n anywhere in a cluster, or --dry-run
+    r"[^;&|\n]*(?:--force\b|\s-[A-Za-z]*f)"  # --force, or -f anywhere in a cluster
+    r"|\bgit\s+(?:-c\s+\S+\s+)*(?:-C\s+\S+\s+)?restore\b"  # discards the worktree copy
 )
 
 # Extract `git -C <path>` target.
