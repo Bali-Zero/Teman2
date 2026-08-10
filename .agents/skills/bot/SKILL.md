@@ -58,7 +58,23 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
   high-stakes question whose answer the organism HAS (BKPM 5/2025: paid-up PMA = **2.5 mld**, and
   the >10 mld per-KBLI-per-lokasi rule survives). The grounding gate shipped this same day would
   correctly refuse to send that text (`context_length == 0`), so the client gets the stub — but the
-  stub is not the defect. **Retrieval returning zero for this question is.** Not yet diagnosed.
+  stub is not the defect. **Retrieval returning zero for this question is.**
+  - **SHARPENED the same day, and it refutes the reading above.** Asked the SAME FACT five ways
+    (English abstract / English concrete / English naming the number / `Berapa modal disetor
+minimum untuk PT PMA?` / Italian), **four of five retrieve fine** and give the correct 2.5 mld
+    — the Indonesian one even cites Peraturan BKPM 5/2025 by name. The only `ctx==0` is the
+    **canonical English phrasing**, the one a client is most likely to type. So this is **not an
+    absent fact and not a broken KB**: it is a recall gap on one wording, and the wording it misses
+    is the likeliest one. A cure aimed at "the fact is missing" would have been aimed at nothing.
+  - **And the ctx=0 body is FALSE CONTINUITY, twice.** With `conversation_history: []` the two runs
+    produced _"I hope that explanation clarifies the distinction between paid-up capital and the
+    total investment plan…"_ (263 chars) and _"Would you also like to know about the full PT PMA
+    company setup process…?"_ — both are the CLOSING line of a conversation that never happened.
+    Same class as the monologue leak, on a different path. The grounding gate shipped this same day
+    refuses to send either (`context_length == 0`), which is exactly what it was built for.
+  - **Third finding in the same five, unrelated to capital:** the ITALIAN wording was answered in
+    ENGLISH, `ctx=1`, `evidence=0.85` — retrieval fine, language wrong. Third independent
+    reproduction of drift today, and the second where retrieval SUCCEEDED.
 - **🗣️ LANGUAGE DRIFT IS QUESTION-DEPENDENT, NOT LANGUAGE-DEPENDENT — reproduced 2026-08-11.**
   "What is the corporate income tax rate in Indonesia?" asked in ENGLISH came back **wholly in
   Italian** ("Per l'imposta sul reddito delle società (PPh Badan)…"), with correct content, ctx=2,
