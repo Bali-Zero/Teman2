@@ -25,9 +25,23 @@ runbook or any vision-deck automation:
 
 - `https://nuzantara.tail461666.ts.net/` → `127.0.0.1:18789` (OpenClaw Control) — **pre-existing, untouched**
 - Public Funnel `:8443` → `127.0.0.1:8789` (FastAPI) — **pre-existing, untouched, PUBLIC — never confuse with the tailnet-only paths below**
-- `https://nuzantara.tail461666.ts.net/deck/` → static `infra/vision-deck/` (directly, or via a local HTTP server on `18790` if `tailscale serve --set-path` cannot target a directory) — **new, this pilot**
-- `https://nuzantara.tail461666.ts.net/cinema/` → `127.0.0.1:18791` (`python3 -m http.server` over `~/vision-cinema/`) — **new, this pilot**
+- `https://nuzantara.tail461666.ts.net/deck/` → `127.0.0.1:18890` (`python3 -m http.server` over `infra/vision-deck/`) — **new, this pilot**
+- `https://nuzantara.tail461666.ts.net/cinema/` → `127.0.0.1:18891` (`python3 -m http.server` over `~/vision-cinema/`) — **new, this pilot**
 - `https://nuzantara.tail461666.ts.net/term/` → `127.0.0.1:7681` (`ttyd`) — **new, this pilot**
+
+**Directory-serve confirmed NOT supported on this Mac** (proven live, not hypothetical): `tailscale serve --bg --set-path /deck <directory>` fails with
+`error: failed apply web serve: Path serving is not supported on macOS due to sandbox restrictions.` —
+the App Store / GUI-installed `tailscaled` variant on macOS cannot target a directory directly.
+Every path here is `python -m http.server` fronted, always. Don't re-attempt directory-serve
+expecting a different result without first switching to the open-source `tailscaled` distribution
+(see the error message's own link, https://tailscale.com/kb/1065/macos-variants) — that switch is
+out of scope for this pilot.
+
+**Ports 18790/18791 are NOT free on Pro — do not reuse them.** The pilot's original design used
+`18790`/`18791`; live on 2026-08-11 those turned out to be already bound by unrelated pre-existing
+services (`18790` = `~/venvs/nlm-bridge` uvicorn NotebookLM bridge, `18791` =
+`~/scripts/automap/automap_server.py`). Neither was touched. The pilot uses `18890`/`18891`
+instead — always `lsof -i :<port>` before reusing/reassigning a port in this stack.
 
 Verify the full live mount table any time with:
 
@@ -41,22 +55,29 @@ The two backing services that are plain processes (not `tailscale serve` targeti
 a directory directly) run inside `tmux` so they survive the SSH/interactive session
 that started them:
 
-| tmux session                                            | Command                                                                                                  | Purpose                                   |
-| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| `vision-deck-srv` (only if directory-serve unsupported) | `python3 -m http.server 18790 --directory /Users/nuzantara/nuzantara/infra/vision-deck --bind 127.0.0.1` | Serves the deck HTML                      |
-| `vision-cinema-srv`                                     | `python3 -m http.server 18791 --directory /Users/nuzantara/vision-cinema --bind 127.0.0.1`               | Serves the editorial QA directory listing |
-| `vision-term`                                           | `ttyd -p 7681 --interface 127.0.0.1 -W zsh`                                                              | Terminal cockpit                          |
+| tmux session                                                                | Command                                                                                            | Purpose                                   |
+| --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `vision-deck-srv` (always — directory-serve confirmed unsupported on macOS) | `python3 -m http.server 18890 --directory <vision-deck content path — see below> --bind 127.0.0.1` | Serves the deck HTML                      |
+| `vision-cinema-srv`                                                         | `python3 -m http.server 18891 --directory /Users/nuzantara/vision-cinema --bind 127.0.0.1`         | Serves the editorial QA directory listing |
+| `vision-term`                                                               | `ttyd -p 7681 --interface 127.0.0.1 -W zsh`                                                        | Terminal cockpit                          |
 
 List them: `tmux ls`. Attach: `tmux attach -t <name>`. Kill one: `tmux kill-session -t <name>`.
 
 ## Content update path
 
-- **Deck** (`/deck/`): if `tailscale serve --set-path` targets the directory directly,
-  editing `infra/vision-deck/index.html` on **main** (after merge) updates the deck live —
-  no restart needed, it's a static file read on each request. If instead a
-  `python -m http.server` is fronting it, same story (it reads from disk on each request) —
-  just make sure the merged commit landed in `/Users/nuzantara/nuzantara` (the main checkout,
-  not a worktree — cicatrix #1 HOME-fork discipline).
+- **Deck** (`/deck/`): `python -m http.server` reads from disk on every request, so editing
+  `infra/vision-deck/index.html` and having it land in the directory `vision-deck-srv` actually
+  points at is enough — no restart needed. **Known gap, live 2026-08-11**: at pilot-arm time the
+  MAIN checkout's working tree (`/Users/nuzantara/nuzantara/infra/vision-deck/`) did not yet have
+  the merged files on disk (checkout was behind `origin/main`, and per cicatrix #1 HOME-fork
+  discipline an agent does not `git pull` the main checkout unilaterally) — `vision-deck-srv` was
+  pointed at the **worktree** copy (`.worktrees/ops-avp-tailnet/infra/vision-deck/`) instead,
+  verified byte-identical to `origin/main` at arm time. **This means the served deck will silently
+  go stale relative to `origin/main` the moment anyone edits `infra/vision-deck/` on main without
+  re-pointing `vision-deck-srv`** — check `tmux capture-pane -t vision-deck-srv -p` or the tmux
+  command line (`ps -ef | grep http.server`) to see which directory is actually being served
+  before assuming an edit went live. Re-pointing to the main checkout once it catches up is
+  tracked as a PENDING-ARMS item, not yet done.
 - **Cinema** (`/cinema/`): symlinks in `~/vision-cinema/` point at the live WR2/WR3 output
   roots (`apps/war-room/output/carousel/`, `apps/war-room/output/episode/`) — new carousels/
   episodes appear automatically, no re-arming needed.
@@ -69,14 +90,16 @@ tailscale's local state), but the **backing tmux sessions do not survive a full 
 After a Pro reboot:
 
 ```bash
-# 1. Recreate the cinema HTTP server
-tmux new -d -s vision-cinema-srv "python3 -m http.server 18791 --directory /Users/nuzantara/vision-cinema --bind 127.0.0.1"
+# 1. Recreate the deck HTTP server — point at wherever the current merged content
+#    actually lives on disk (main checkout if it's caught up, otherwise a worktree —
+#    see "Content update path" above); this example assumes the main checkout is current
+tmux new -d -s vision-deck-srv "python3 -m http.server 18890 --directory /Users/nuzantara/nuzantara/infra/vision-deck --bind 127.0.0.1"
 
-# 2. Recreate the terminal cockpit
+# 2. Recreate the cinema HTTP server
+tmux new -d -s vision-cinema-srv "python3 -m http.server 18891 --directory /Users/nuzantara/vision-cinema --bind 127.0.0.1"
+
+# 3. Recreate the terminal cockpit
 tmux new -d -s vision-term "ttyd -p 7681 --interface 127.0.0.1 -W zsh"
-
-# 3. (only if deck needed its own http.server — check `tailscale serve status` first)
-tmux new -d -s vision-deck-srv "python3 -m http.server 18790 --directory /Users/nuzantara/nuzantara/infra/vision-deck --bind 127.0.0.1"
 
 # 4. Re-verify all serve mounts are intact (should already be, tailscale persists them)
 tailscale serve status
