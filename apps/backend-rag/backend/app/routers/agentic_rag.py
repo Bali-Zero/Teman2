@@ -679,7 +679,13 @@ async def query_agentic_rag(
             execution_time=result.timings.get("total", 0.0),
             route_used=result.route_used,
             tools_called=len(result.tools_called),
-            total_steps=len(result.tools_called),
+            # HONESTY FIX (2026-08-10): this was `len(result.tools_called)` —
+            # the same number as the line above, under a name promising the
+            # ReAct step count. Both read 0 on the main path (nothing populated
+            # `tools_called` there), so the two fields a person reaches for to
+            # ask "did the loop run out of budget?" were identical AND empty on
+            # healthy and degenerate responses alike.
+            total_steps=result.steps_taken,
             debug_info={
                 "model": result.model_used,
                 "cache_hit": result.cache_hit,

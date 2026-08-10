@@ -136,7 +136,7 @@ def plan_for_allowlisted_command(
             env=git_diff_check_env(),
         )
     if normalized == ADMIN_DASHBOARD_LINT_COMMAND:
-        npm = _npm_executable()
+        npm = npm_executable()
         if npm is None:
             return None
         return CommandExecutionPlan(
@@ -162,7 +162,16 @@ def _pytest_executable(backend_root: Path) -> str | None:
     return None
 
 
-def _npm_executable() -> str | None:
+def npm_executable() -> str | None:
+    """Resolve npm once, for every consumer.
+
+    This is the single answer to "where is npm" — the planner
+    (`plan_for_allowlisted_command`), the env builder
+    (`expected_env_for_allowlisted_command`) and the sandbox runner's argv
+    validator all call THIS, so they can never disagree about the path they
+    are respectively building and checking. Returns None when npm is absent
+    (Pro and Mini have no node toolchain), which every caller degrades on.
+    """
     return shutil.which("npm")
 
 
@@ -170,16 +179,21 @@ def autonomous_lab_pytest_env() -> dict[str, str]:
     """Return the minimal environment needed by the autonomous-lab pytest suite."""
     return {
         "CI": "true",
-        "PATH": _tool_path_with_optional_executable(_npm_executable()),
+        "PATH": _tool_path_with_optional_executable(npm_executable()),
         "PYTHONPATH": ".",
     }
 
 
-def admin_dashboard_lint_env(npm_executable: str) -> dict[str, str]:
-    """Return the minimal environment needed for npm's env-node shebang."""
+def admin_dashboard_lint_env(npm_path: str) -> dict[str, str]:
+    """Return the minimal environment needed for npm's env-node shebang.
+
+    Takes the resolved path as an argument — it must be the SAME one the argv
+    was built from, so callers pass `npm_executable()`'s result rather than
+    resolving npm a second time here.
+    """
     return {
         "CI": "true",
-        "PATH": _tool_path_with_optional_executable(npm_executable),
+        "PATH": _tool_path_with_optional_executable(npm_path),
     }
 
 
@@ -203,7 +217,7 @@ def expected_env_for_allowlisted_command(command: str) -> dict[str, str] | None:
     if normalized == PYTEST_AUTONOMOUS_LAB_COMMAND:
         return autonomous_lab_pytest_env()
     if normalized == ADMIN_DASHBOARD_LINT_COMMAND:
-        npm = _npm_executable()
+        npm = npm_executable()
         if npm is None:
             return None
         return admin_dashboard_lint_env(npm)
@@ -232,6 +246,7 @@ __all__ = [
     "is_allowed_lab_command",
     "is_allowed_verification_command",
     "is_allowed_worktree_command",
+    "npm_executable",
     "plan_for_allowlisted_command",
     "refusal_reason",
     "require_safe_command_arg",
