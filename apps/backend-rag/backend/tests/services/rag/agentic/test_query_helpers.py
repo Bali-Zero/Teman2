@@ -24,8 +24,7 @@ def test_detect_query_language_handles_supported_markers_and_defaults() -> None:
     assert detect_query_language("hola gracias") == "SPANISH"
     assert detect_query_language("hallo danke") == "GERMAN"
     assert (
-        detect_query_language("\u041f\u0440\u0438\u0432\u0456\u0442, \u044f\u043a?")
-        == "UKRAINIAN"
+        detect_query_language("\u041f\u0440\u0438\u0432\u0456\u0442, \u044f\u043a?") == "UKRAINIAN"
     )
     assert detect_query_language("\u041f\u0440\u0438\u0432\u0435\u0442") == "RUSSIAN"
     assert detect_query_language("\u0645\u0631\u062d\u0628\u0627") == "ARABIC"
@@ -92,6 +91,11 @@ def test_english_question_embedding_a_marker_is_not_indonesian(query: str, why: 
     assert detect_query_language(query) == "ENGLISH", why
 
 
+def test_ambiguous_indonesian_marker_does_not_override_english_context() -> None:
+    """A client name that happens to be an Indonesian word is not a verdict."""
+    assert detect_query_language("Is Ada eligible for a KITAS?") == "ENGLISH"
+
+
 # INNOCENCE: the obvious cure — a plain \b…\b match — is an UNDER-match twin.
 # Measured on the real 188-message inbound corpus, it lost 12 genuine Indonesian
 # messages, 11 of them on "berapa" (the pricing question). These must stay.
@@ -120,9 +124,12 @@ def test_real_indonesian_still_detected(query: str) -> None:
     ("query", "expected"),
     [
         ("Come funziona il KITAS investor?", "ITALIAN"),
+        ("Come ottenere un KITAS?", "ITALIAN"),
         ("Ciao, quanto costa un E33G?", "ITALIAN"),
         ("Vorrei aprire una PT PMA, cosa serve?", "ITALIAN"),
         ("Comment ça marche, le KITAS?", "FRENCH"),
+        ("Comment obtenir un KITAS ?", "FRENCH"),
+        ("Il faut combien de temps pour obtenir un KITAS ?", "FRENCH"),
         ("Bonjour, combien coûte le KITAS?", "FRENCH"),
         ("Hola, gracias por la info", "SPANISH"),
         # Cross-language collision: "una" is Italian AND Spanish, and Italian is
@@ -133,6 +140,19 @@ def test_real_indonesian_still_detected(query: str) -> None:
     ],
 )
 def test_real_latin_language_still_detected(query: str, expected: str) -> None:
+    assert detect_query_language(query) == expected
+
+
+@pytest.mark.parametrize(
+    ("query", "expected"),
+    [
+        ("Comment obtenir un KITAS, ciao", "FRENCH"),
+        ("Come ottenere un KITAS, bonjour", "ITALIAN"),
+    ],
+)
+def test_supported_homograph_pair_outranks_one_conflicting_marker(
+    query: str, expected: str
+) -> None:
     assert detect_query_language(query) == expected
 
 
