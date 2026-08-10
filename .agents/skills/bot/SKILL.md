@@ -22,6 +22,52 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 
 ## 1. LIVE STATE (last update 2026-08-11 — keep current)
 
+- **🔢 THE LONGEST ANSWER IS NOT A LONG ANSWER — IT IS 6,823 COPIES OF ONE LINE (2026-08-11,
+  measured live, cured in `orchestrator_core._format_workflow_for_prompt`).** Probing ten core
+  service questions cold (one run each, `channel=whatsapp`, generic questions, no client PII),
+  nine came back between 116 and 2,799 characters and one — "What is LKPM and how often must I
+  file it?" — came back **123,745 characters**. Structure, not length, is the finding: **6,835
+  lines, 13 distinct, of which 6,823 CONSECUTIVE copies of the literal `?. Unknown action`**,
+  reproduced byte-for-byte on a second run (125,084 chars, the same 6,823).
+  - **Cause: two step vocabularies that never agreed** (the shape of W114, not a schema that
+    drifted). Censused across the repo instead of inferred from the producer that bit: six
+    producers emit `{"step": n, "action": …}` (`kg_subgraph_visa|company|tax|property`,
+    `kg_langgraph_orchestrator`, `personalized_workflow`); **one** — `kg_graph_nodes.py`, the
+    `source: "graph_traversal"` path — emits `{"step_id", "title", "entity_type", "relationship",
+"depth"}`. Zero overlap, so **every graph_traversal step was unreadable by construction**, and
+    the default `.get("action", "Unknown action")` turned "I cannot read this" into output. That
+    same producer is the only UNBOUNDED one: one step per traversed entity.
+  - **It is not only a client defect.** `_format_workflow_for_prompt`'s own docstring says the
+    block feeds the SYSTEM PROMPT, so those ~124k characters are also paid for on the way IN, on
+    every query that reaches the path — relevant to the Gemini prepay depleting for the 4th time
+    on 2026-08-10, though no one has yet attributed a share of that burn to this.
+  - **Cured at the reader** (both vocabularies; an unreadable step renders nothing; an all-unreadable
+    list is not dressed up as a workflow; capped at 12 with the drop DECLARED — W97). **NOT cured:
+    the KG returning 6,823 "steps" for one question.** Do not read the cure as having fixed that.
+- **🔎 `ctx=1` IS THE NORM, NOT THE EXCEPTION — 6 of 10 core questions retrieve ≤1 chunk
+  (2026-08-11).** Same ten-question probe: `context_length` min 0, max 4, **≤1 on 6/10**, while
+  `evidence_score` sat at **0.85 on 7/10**. Note what that pair means before building on it: a high
+  evidence score is NOT a claim about retrieval depth, so the two numbers do not corroborate each
+  other and a dashboard reading only evidence would call this healthy. One run each — this sizes
+  the question, it does not settle it (the same question measured 1,364 / 13,671 / 2,123 chars on
+  three runs earlier in this loop; this surface is stochastic).
+- **🚫 "What is the minimum paid-up capital for a PT PMA?" RETURNS NOTHING AND ANSWERS WITH A
+  QUESTION (2026-08-11).** `ctx=0`, `evidence=0.0`, `abstain=true`, `abstain_reason=no_relevant_context`
+  — and the 116-character body the client would see is _"Would you also like to know about the full
+  PT PMA company setup process, including other requirements and timelines?"_. A high-frequency,
+  high-stakes question whose answer the organism HAS (BKPM 5/2025: paid-up PMA = **2.5 mld**, and
+  the >10 mld per-KBLI-per-lokasi rule survives). The grounding gate shipped this same day would
+  correctly refuse to send that text (`context_length == 0`), so the client gets the stub — but the
+  stub is not the defect. **Retrieval returning zero for this question is.** Not yet diagnosed.
+- **🗣️ LANGUAGE DRIFT IS QUESTION-DEPENDENT, NOT LANGUAGE-DEPENDENT — reproduced 2026-08-11.**
+  "What is the corporate income tax rate in Indonesia?" asked in ENGLISH came back **wholly in
+  Italian** ("Per l'imposta sul reddito delle società (PPh Badan)…"), with correct content, ctx=2,
+  evidence 0.85 — i.e. retrieval SUCCEEDED. This is the beta-test finding (Dewa Ayu, two English
+  questions answered in Italian) reproduced on a different question. It also corrects the reading
+  that probe 28 licensed: that probe asked ONE question in eight languages and got 16/16 right, so
+  "no drift" was a statement about that question, never about the bot. **Vary the question, not
+  just the language, or you will keep measuring the wrong axis.**
+
 - **🧪 TWO ADVERSARIAL SEATS + WEB RESEARCH ON THE FOUR OPEN WEAKNESSES (2026-08-11). The most
   useful result is where they DISAGREE — read that first.**
   - **The panel said: fix the monologue leak at the generation layer (Gemini `response_schema`
