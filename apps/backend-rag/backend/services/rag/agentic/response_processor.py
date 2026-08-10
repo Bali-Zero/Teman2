@@ -90,10 +90,40 @@ def _format_as_numbered_list(text: str, language: str) -> str:
         "id": ["siapkan", "cari", "ajukan", "isi", "kirim", "tunggu", "ambil"],
     }
 
-    verbs = action_verbs.get(language, action_verbs["en"])
-    actionable_sentences = [
-        s for s in sentences if any(verb in s.lower() for verb in verbs) and len(s) > 20
-    ]
+    # No verb list for this language -> do not reformat. Running the ENGLISH
+    # list over a Russian answer is not a neutral default, it is a guess about
+    # a language we have no vocabulary for.
+    verbs = action_verbs.get(language)
+    if not verbs:
+        return text
+
+    # Word-boundary, not substring (superscar #3): bare `in` makes the
+    # Indonesian "isi" fire inside "revisi", "efisiensi", "administrasi".
+    verb_re = re.compile(r"\b(?:" + "|".join(re.escape(v) for v in verbs) + r")\w*", re.IGNORECASE)
+    # No length floor. The old `len(s) > 20` was a proxy for "is this a real
+    # step", and combined with the conservation guard below it turns a short
+    # but genuine step ("Find the office", 15 chars) into a dropped sentence,
+    # which then declines a list that is entirely steps. The "every sentence
+    # must be actionable" rule is the real filter; a length is not.
+    actionable_sentences = [s for s in sentences if verb_re.search(s)]
+
+    # CONSERVATION GUARD. This function used to return ONLY the sentences it
+    # liked, silently discarding every other sentence of a correct answer.
+    # Measured 2026-08-10 on a 5-sentence procedural answer, in all three
+    # supported languages: 56% / 57% / 61% of the answer deleted, and what
+    # went with it was the Bali Zero service fee and the overstay penalty —
+    # while the client received a tidy numbered list that reads COMPLETE.
+    # Formatting may reorder nothing and drop nothing: if any substantive
+    # sentence is not part of the list, leave the answer alone.
+    substantive = [s for s in sentences if s.strip()]
+    if len(actionable_sentences) != len(substantive):
+        logger.debug(
+            "[post_process] declining to renumber: %d of %d sentences are not steps, "
+            "reformatting would drop the rest",
+            len(substantive) - len(actionable_sentences),
+            len(substantive),
+        )
+        return text
 
     if len(actionable_sentences) >= 2:
         # Format as numbered list
@@ -115,13 +145,24 @@ def _has_emotional_acknowledgment(text: str, language: str) -> bool:
     """
     text_lower = text.lower()[:200]  # Check first 200 chars
 
+    # Same five keys `detect_language()` emits, mirroring _APOLOGY_TEXTS /
+    # _ACK_TEXTS in wa_outbox_worker. The table used to carry three and fall
+    # back to English, so a Russian answer was searched for English keywords,
+    # never matched, and was therefore always judged to be missing its
+    # acknowledgment.
     acknowledgment_keywords = {
         "it": ["capisco", "tranquillo", "aiuto", "soluzione", "possibilità"],
         "en": ["understand", "don't worry", "help", "solution", "possible"],
         "id": ["mengerti", "tenang", "bantuan", "solusi", "kemungkinan"],
+        "ru": ["понимаю", "не волнуйтесь", "помощь", "решение", "возможно"],
+        "uk": ["розумію", "не хвилюйтеся", "допомога", "рішення", "можливо"],
     }
 
-    keywords = acknowledgment_keywords.get(language, acknowledgment_keywords["en"])
+    keywords = acknowledgment_keywords.get(language)
+    if not keywords:
+        # Unknown language: we cannot tell whether the acknowledgment is there,
+        # and claiming it is missing is what makes the caller prepend one.
+        return True
     return any(keyword in text_lower for keyword in keywords)
 
 
@@ -140,9 +181,19 @@ def _add_emotional_acknowledgment(text: str, language: str) -> str:
         "it": "Capisco la frustrazione, ma tranquillo - quasi ogni situazione ha una soluzione. ",
         "en": "I understand the frustration, but don't worry - almost every situation has a solution. ",
         "id": "Saya mengerti frustrasinya, tapi tenang - hampir setiap situasi ada solusinya. ",
+        "ru": "Понимаю ваше беспокойство, но не волнуйтесь - почти для любой ситуации есть решение. ",
+        "uk": "Розумію ваше занепокоєння, але не хвилюйтеся - майже для кожної ситуації є рішення. ",
     }
 
-    acknowledgment = acknowledgments.get(language, acknowledgments["it"])
+    # `detect_language()` also returns "auto" when no marker matched — a value
+    # its own Literal did not admit until this diff. The old default was
+    # ITALIAN, so an unrecognised language got an Italian sentence grafted onto
+    # the front of its answer; measured reachable end-to-end on a Russian
+    # message (lang='ru', emotional=True) before "ru" was added below. There is
+    # no safe language to guess: prepend nothing rather than the wrong tongue.
+    acknowledgment = acknowledgments.get(language)
+    if not acknowledgment:
+        return text
 
     # Don't add if already present
     if acknowledgment.lower()[:20] not in text.lower()[:200]:

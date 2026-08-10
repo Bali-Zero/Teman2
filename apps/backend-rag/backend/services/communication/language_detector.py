@@ -17,7 +17,7 @@ import re
 from typing import Any, Literal
 
 
-def detect_language(text: str) -> Literal["it", "en", "id", "uk", "ru"]:
+def detect_language(text: str) -> Literal["it", "en", "id", "uk", "ru", "auto"]:
     """
     Detect language from query text with Italian focus.
 
@@ -25,7 +25,13 @@ def detect_language(text: str) -> Literal["it", "en", "id", "uk", "ru"]:
         text: User query text
 
     Returns:
-        Language code: "it" (Italian), "en" (English), or "id" (Indonesian)
+        One of "it", "en", "id", "uk", "ru", or **"auto"** when no marker
+        matched. "auto" is a real, frequently-returned value — the annotation
+        omitted it and the docstring listed only three of the six, so callers
+        were written against a vocabulary this function does not emit and
+        silently took their own `.get(...)` default instead (measured
+        2026-08-10: `_add_emotional_acknowledgment` defaulted to Italian).
+        `get_language_instruction` below has always had an "auto" entry.
     """
     if not text:
         return "it"
