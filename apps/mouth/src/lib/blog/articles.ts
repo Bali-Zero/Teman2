@@ -12,6 +12,7 @@ import path from "path";
 import matter from "gray-matter";
 import { unstable_cache } from "next/cache";
 import type { Article, ArticleListItem, ArticleCategory } from "./types";
+import { CATEGORY_MAP, normalizeCategory } from "./categories";
 
 const ARTICLES_PATH = path.join(process.cwd(), "src/content/articles");
 const ARTICLE_FOLDER_NAMES = Object.freeze([
@@ -37,40 +38,10 @@ const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL ||
   "https://nuzantara-rag.fly.dev";
 
-/**
- * Map folder/frontmatter categories to valid ArticleCategory
- * This handles legacy naming and folder structure differences
- */
-const CATEGORY_MAP: Record<string, ArticleCategory> = {
-  // Canonical categories
-  visas: "visas",
-  business: "business",
-  taxes: "taxes",
-  property: "property",
-  living: "living",
-  trends: "trends",
-  // Backward compat (old category names)
-  immigration: "visas",
-  lifestyle: "living",
-  tech: "trends",
-  bali_news: "living",
-  // Folder mappings (14 folders → 7 categories)
-  tax: "taxes",
-  "tax-legal": "taxes",
-  "digital-nomad": "living",
-  "bali-news": "living",
-  business_regulations: "business",
-  emerging_trends: "trends",
-  social_media: "trends",
-  news: "business",
-  // Backend compatibility
-  general: "business",
-  legal: "taxes",
-};
+// The folder→category table lives in `./categories` so the build-time AI-export
+// generator can read the same one; this module imports `next/cache`, which that
+// script cannot. See that file's header for what the duplicate cost us.
 
-function normalizeCategory(rawCategory: string): ArticleCategory {
-  return CATEGORY_MAP[rawCategory] || "living";
-}
 
 /**
  * Coerce a raw `tags` value (from MDX frontmatter or the backend `ai_tags`
