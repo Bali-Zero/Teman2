@@ -298,6 +298,9 @@ def _send_telegram(
     expired SA key — actionable now, Drive polling either already broke or
     breaks tomorrow. bot_token guard kept for callers still passing an empty
     token (dry-run/test harnesses).
+
+    A digest is accepted when the gateway durably queues it (or recognizes an
+    already queued duplicate). A p0 is accepted only when Telegram received it.
     """
     if DRY_RUN:
         print(f"[DRY RUN] Telegram: {text[:120]}...")
@@ -340,7 +343,11 @@ def _send_telegram(
         )
         verdict = extract_gateway_verdict(proc.stderr)
         log(f"tg_notify: {verdict or f'NESSUN verdetto rc={proc.returncode}'}")
-        return proc.returncode == 0 and gateway_delivered(verdict)
+        return proc.returncode == 0 and (
+            verdict in {"spooled", "deduped"}
+            if tier == "digest"
+            else gateway_delivered(verdict)
+        )
     except Exception as e:
         log(f"Telegram fallito: {e}")
         return False

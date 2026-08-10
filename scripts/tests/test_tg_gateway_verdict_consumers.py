@@ -105,6 +105,10 @@ def _call_consumer(
 
     if name == "wa_session":
         monkeypatch.setattr(wa_session, "REPO", tmp_path)
+        # The production fallback prepends REPO/scripts for launchd. Keep that
+        # mutation inside this test so a later ``import tg_notify`` cannot load
+        # our empty fake gateway from tmp_path.
+        monkeypatch.setattr(sys, "path", list(sys.path))
         real_import = builtins.__import__
 
         def fail_sentinel_import(
@@ -154,6 +158,38 @@ def test_consumers_fail_closed_unless_gateway_delivered(
         assert actual is None
     else:
         assert actual is delivered
+
+
+@pytest.mark.parametrize(
+    ("stderr", "returncode", "accepted"),
+    [
+        ("tg_notify: spooled\n", 0, True),
+        ("tg_notify: deduped\n", 0, True),
+        ("tg_notify: sent\n", 0, False),
+        ("tg_notify: logged\n", 0, False),
+        ("tg_notify: p0_overflow_spooled\n", 0, False),
+        ("tg_notify: p0_unsent_spooled\n", 0, False),
+        ("tg_notify: internal error (disk full) — best-effort spooled\n", 0, False),
+        ("tg_notify: spooled\n", 1, False),
+    ],
+)
+def test_drive_digest_accepts_only_durable_queue_verdicts(
+    stderr: str,
+    returncode: int,
+    accepted: bool,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    _gateway_file(tmp_path)
+    monkeypatch.setattr(drive, "DRY_RUN", False)
+    monkeypatch.setattr(drive, "PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *args, **kwargs: _Result(stderr, returncode),
+    )
+
+    assert drive._send_telegram("body", "token", tier="digest") is accepted
 
 
 class _FakeAsyncClient:
