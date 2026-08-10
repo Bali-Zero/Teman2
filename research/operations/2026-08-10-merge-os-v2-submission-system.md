@@ -12,7 +12,7 @@ sources:
   - research/operations/2026-07-26-ci-pr-latency-the-excursus-is-cheap-the-slots-are-not.md
   - docs/runbooks/merge-queue-discipline.md
   - "external: Google TAP (SWE-book ch.23) · Micco ICST 2017 · Meta arXiv 1810.05286 · Chromium CQ · Uber SubmitQueue EuroSys 2019 · Zuul gating · bors.tech · Aviator/Mergify batching docs · Dropbox Athena · DORA"
-adversarial_review: codex
+adversarial_review: agy
 ---
 
 # Merge-OS v2 — the submission system, rewritten after refutation
@@ -319,6 +319,11 @@ finding that forced it) is §6; what was deliberately NOT absorbed is declared i
 trigger. Three refuter claims were themselves corrected by re-grounding on origin/main before
 acceptance (Codex F4 partially pre-covered by CODEOWNERS-TIER1; test-summary/required-set
 facts re-read from the live files; the queue-reset mechanics confirmed, not assumed).
+
+Post-rewrite correction pass (2026-08-10): an independent AGY/Gemini read-only review attacked
+the five scoped invariants changed in §2.2, §3, §4, and §6.1 and returned PASS with no P0/P1
+finding. That scoped result verifies this corrective diff; it does not substitute for the
+full-plan cross-family refutation still required by §7.5.
 
 Open by declaration (§7.5): this v2 text has not passed post-rewrite refutation. The §6 and
 §6.1 delta logs are the target map for an independent cross-family pass. Until that pass, this
