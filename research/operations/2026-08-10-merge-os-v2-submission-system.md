@@ -75,7 +75,16 @@ this). The v2 shape:
   The guilt corpus MUST include the merge_group case: *a merge_group run in which the classifier
   errors/returns empty still runs every heavy job*. Over-match on the PR side costs money;
   under-match on the queue side removes the authority — the corpus is written with failure
-  pointing in the economic direction only on `pull_request`.
+  pointing in the economic direction only on `pull_request`. **Wiring hazard (round 2, GLM
+  PLAUSIBLE-CONCERN):** `tests.yml`'s classifier job currently runs `if: github.event_name ==
+  'pull_request'` only — it does not run on `merge_group` at all. If the v2 implementation wires
+  the classifier's output the natural way, via a downstream job declaring `needs: <classifier
+  job>`, GitHub Actions' skip-propagation rule applies: a job whose `needs:` dependency was
+  skipped is itself skipped unless its own `if:` begins with `always()`. Without `always()`, the
+  bare-expression guilt test above can pass while the *wired* shape still goes dark on
+  `merge_group` — the job never reaches its `if:` because it was skipped upstream. The guilt
+  corpus MUST test the wired (`needs:`-based) implementation shape, not only the bare expression
+  in isolation, or it certifies a property the real workflow does not have.
 - **No context renames, no fan-in migration, no matrix sharding.** The 26 required contexts stay
   the individual job names; PR-side innocent skips satisfy them via skip=success (the sentinel
   semantics the repo already uses on 17+ workflows). v1's "fan-in as the single required
@@ -95,12 +104,40 @@ this). The v2 shape:
 - **The judge is protected at the same tier as the workflows.** `scripts/prepush_classify.py`
   (already NEVER_INNOCENT for the local gate) is added to the hot-zone/CODEOWNERS-TIER1 set the
   moment it becomes the R1 judge: a PR must not be able to weaken the classifier that judges it
-  (Codex F4 — `.github/workflows/` already has this protection; the classifier inherits it).
-- **Kill switch, two layers with honest semantics:** repo var `MERGEOS_RING_GATING=off` flips
-  new runs to today's behavior (unset/typo value ⇒ gating OFF — fail-open to the EXPENSIVE
-  direction, never to skip); the documented drain procedure (pause queue, let in-flight groups
-  finish, then flip) covers the in-flight window that a var flip cannot reach (Qwen F7, Codex F14).
-  Rollback rule: a workflow job is never deleted while its context is required — two-phase, always.
+  (Codex F4). **Correction (round 2, GLM CONFIRMED-DEFECT on the parenthetical):** as of
+  2026-08-10, `scripts/prepush_classify.py` is protected by NEITHER `.github/CODEOWNERS` (only
+  the default `*` no-owner rule applies to it) NOR `hot-zone-pr-gate.yml`'s hot-zone match list
+  (which covers `.github/workflows/*`, `.github/CODEOWNERS`, and a handful of named scripts, but
+  not this one) — its presence in `prepush_classify.py`'s own `NEVER_INNOCENT_EXACT_PATHS` is a
+  different, local-hook-only mechanism (forces the *local* pre-push gate to full-suite when this
+  file changes) and has nothing to do with CODEOWNERS-gated PR review. It does **not** inherit
+  protection from `.github/workflows/`'s sibling coverage. Both entries — a hot-zone match-list
+  line and a CODEOWNERS line — must be ADDED explicitly as part of the wave that promotes the
+  classifier to R1 judge; this is new work, not an existing property to rely on.
+- **Kill switch, two layers with honest semantics — opt-in expression, spelled out (round 2,
+  Codex CONFIRMED-DEFECT + GLM independent derivation, identical mechanism, no shared context):**
+  the `if:` expression MUST be written as an explicit opt-in check, never an opt-out one. Ring
+  gating is active **only** when `vars.MERGEOS_RING_GATING == 'on'`; every other value — unset
+  (`vars.UNSET_VAR` evaluates to `''` in Actions), empty, `'off'`, or any typo — evaluates the
+  check to false, so gating is OFF and the full suite runs. Truth table:
+
+  | `MERGEOS_RING_GATING` | gating state | heavy jobs on `pull_request` |
+  |---|---|---|
+  | `'on'` | ACTIVE | classifier decides |
+  | unset / `''` | OFF (fail-open) | always run |
+  | `'off'` | OFF (fail-open) | always run |
+  | any typo | OFF (fail-open) | always run |
+
+  **Why the opt-in form is mandatory, not stylistic:** the obvious opt-out expression
+  (`vars.MERGEOS_RING_GATING == 'off'`) inverts the fail-open guarantee. Under that reading,
+  unset and any typo evaluate the equality to `false`, so the "gating off" branch never fires —
+  on a `pull_request` where the classifier says "not needed," the heavy job is *skipped*, the
+  cheap direction, which is the exact opposite of "fail-open to the EXPENSIVE direction, never to
+  skip." Only `!= 'on'` (equivalently, requiring the literal `'on'` string to enable) produces the
+  intended behavior: unset/typo/`off` all evaluate true, heavy jobs run. The documented drain
+  procedure (pause queue, let in-flight groups finish, then flip) still covers the in-flight
+  window that a var flip cannot reach (Qwen F7, Codex F14). Rollback rule: a workflow job is
+  never deleted while its context is required — two-phase, always.
 
 ### 2.2 The heal bot becomes a heal PR (nothing pushes past the queue)
 
@@ -205,21 +242,35 @@ real PRs; post-arm watcher demonstrably dequeues a moved head (guilt test on a s
 *Rollback:* revert; no gate semantics changed.
 
 **Wave 1 — the baseline organ (7 days, NO behavior change).**
-Nightly probe (Pro) records: billed minutes/PR (Actions billing API, not wall-clock), queue
-transit p50/p95, ejection rate BY CLASS (INFRA/CODE/FLAKE) and BY AUTHOR CLASS (human / agent /
-bot — Codex F16's split), heal-drift frequency, slot utilization. Plus the L3 durations data
-(already flowing once the round-3 PR merges).
-*Acceptance:* 7 consecutive daily records; the −X% targets of later waves get their measured
+Nightly probe (Pro) records: billed minutes/PR, queue transit p50/p95, ejection rate BY CLASS
+(INFRA/CODE/FLAKE) and BY AUTHOR CLASS (human / agent / bot — Codex F16's split), heal-drift
+frequency, slot utilization. Plus the L3 durations data (already flowing once the round-3 PR
+merges). **Attribution formula required (round 2, Codex CONFIRMED-DEFECT — F6):** GitHub's
+Actions billing/usage endpoints report AGGREGATE usage (by repo/org/runner OS), never a per-PR
+ledger — a day mixing a scheduled scan, several PR runs, and a merge-group run produces one
+total with no built-in allocation back to individual PRs. "Billed minutes/PR" is therefore not a
+value the billing API hands over directly; it MUST be computed as: per-run billable minutes via
+`GET /repos/{owner}/{repo}/actions/runs/{run_id}/timing` summed over every run attached to the
+PR (its own `pull_request` runs plus any `merge_group` run it was part of), with a DECLARED
+allocation rule for merge-group runs that cover N queued PRs at once (e.g. divide the
+merge-group run's billed minutes evenly across its N member PRs, or attribute in full to each —
+either is acceptable, but the rule must be written down and applied consistently before any
+Wave-2 target is set against it).
+*Acceptance:* 7 consecutive daily records, each carrying billed/PR computed via the attribution
+formula above (not the raw aggregate); the −X% targets of later waves get their measured
 denominators. Every later SLO becomes falsifiable here or does not exist.
 
 **Wave 2 — capacity (week 2).**
 Ring-gating per §2.1 (fail-closed by event, bots always-full, judge protected, two-layer kill
 switch) on tests.yml first; security.yml only after its daily schedule is live; then the
 `push: main` dedupe (pusher ≠ queue-bot) for both.
-*Acceptance:* billed/PR down vs Wave-1 baseline (target set FROM the baseline, not from v1's
-40%); zero pending-forever; CODE-ejection rate consistent with the global SLO (single coherent
-threshold: ≤2%/week total, alarm at 1.5% — v1's 3%-vs-2% contradiction removed, Codex F16);
-merge_group guilt case (classifier disabled ⇒ heavy jobs still ran) proven in CI.
+*Acceptance:* billed/PR down vs Wave-1 baseline, computed via the same attribution formula the
+baseline organ used (target set FROM the baseline, not from v1's 40%; without the formula this
+criterion has no denominator and is not directly measurable — round 2, Codex F6); zero
+pending-forever; CODE-ejection rate consistent with the global SLO (single coherent threshold:
+≤2%/week total, alarm at 1.5% — v1's 3%-vs-2% contradiction removed, Codex F16); merge_group
+guilt case (classifier disabled ⇒ heavy jobs still ran) proven in CI against the WIRED
+(`needs:`-based) implementation shape, not only the bare expression (round 2, GLM).
 *Rollback:* var flip + drain procedure; two-phase context rule.
 
 **Wave 3 — doctrine (weeks 3-4; BLOCKED pending isolation proof).**
@@ -289,6 +340,42 @@ renumbering; no ML test selection at this scale). Added by refutation:
 | P3 | diff group head against a merge-base recomputed with main | diff the immutable event `base_sha..head_sha`; missing SHAs fail closed | moving-control race removed |
 | P4 | schedule daily at 03:17 WITA | GitHub cron is UTC: `17 19 * * *` | executable schedule specified |
 
+### 6.2 Round-2 cross-family refutation (2026-08-10) — four confirmed defects folded
+
+**Date:** 2026-08-10. **Seats:** GLM 5.2 (`claude-glm`, agentic file-read against origin/main
+extracts) + Codex gpt-5.6-terra (effort medium, `--sandbox read-only`, pasted §2/§4 + condensed
+grounding). Both seats' file citations were spot-checked against the actual extracted
+origin/main files by the orchestrating lane; no fabricated quotes found. Kimi was not invoked —
+the ≥1-non-Claude-seat cascade rule was already satisfied at seat 1 by two independent seats.
+Full synthesis: `v2-refute-synthesis.md` (this session's scratchpad).
+
+Four findings changed this document (folded above, this row is the index):
+
+| # | v2 (pre-round-2) said | v2 (post-round-2) says | forced by |
+|---|---|---|---|
+| 18 | kill switch named `MERGEOS_RING_GATING=off`, semantics described in prose only | explicit opt-in expression `!= 'on'` spelled out as a truth table; the natural opt-out reading (`== 'off'`) inverts the fail-open guarantee when unset | Codex CONFIRMED-DEFECT, independently derived by GLM (F1) |
+| 19 | classifier "inherits" `.github/workflows/`'s CODEOWNERS/hot-zone protection | as of 2026-08-10, `scripts/prepush_classify.py` is in NEITHER set — both a hot-zone-match-list line and a CODEOWNERS line must be added, not inherited | GLM CONFIRMED-DEFECT on the parenthetical (F4) |
+| 20 | guilt corpus tests the bare `merge_group \|\| classifier` expression | guilt corpus must ALSO test the wired (`needs:`-based) shape — a skipped classifier job skips its dependents unless `always()` guards them, silently defeating the "heavy jobs run unconditionally on merge_group" guarantee | GLM PLAUSIBLE-CONCERN (F2) |
+| 21 | "billed minutes/PR (Actions billing API, not wall-clock)" stated as directly available | Actions billing endpoints are aggregate, no per-PR attribution; an explicit formula (per-run `timing` API summed per PR + declared merge-group allocation rule) is required before Wave 2's "billed/PR down" acceptance criterion has a denominator | Codex CONFIRMED-DEFECT (F6) |
+
+**Two clean validations (no defect, folded as reinforcement not correction):** the
+`docs-sync.yml`/`migration-lint.yml` `paths:`-filter-hangs-Expected-forever gotcha (§4 Wave 0) was
+independently confirmed real by both seats via direct file inspection — the strongest validation
+of the spec's own diagnosis in either round. The matrix-sharding-breaks-context-name mechanism
+(§2.1, "no matrix sharding … any future ruleset topology change is a declared two-phase
+transition") was also confirmed technically correct by GLM; Codex additionally flagged that the
+"never a side effect" promise is currently prose, not a CI guardrail — recommended as a
+follow-up lint (context-string diff against workflow `name:`/matrix definitions), not required
+for Wave 0/2.
+
+**One scope-boundary note (not a defect):** Codex flagged that no wave in §4 states
+`security.yml`'s cron cadence changes from weekly to daily, having been given only §2+§4 as
+scope. §3 ("Security cadence decoupled from PR volume") already specifies this — outside round
+2's mandated review scope, not a gap in the document.
+
+The orchestrator re-verified all four CONFIRMED findings against `origin/main` before this fold
+landed.
+
 ## 7. Residual risks (declared, not hidden)
 
 1. **Later red discovery for agent PRs** remains: an agent PR whose author skipped R0 discovers
@@ -305,6 +392,13 @@ renumbering; no ML test selection at this scale). Added by refutation:
 5. **This v2 has not passed post-rewrite refutation.** The delta logs (§6 and §6.1) are the
    refuter's target map: every correction is a new claim (W113). No wave is authorized to arm by
    this document. Wave 3 additionally requires a real, independently reviewed isolation probe.
+6. **The Wave-3 isolation proof must be adversarial, not observational (round 2, both seats — F5
+   sharpened).** A single successful trial of the heal-as-PR single-entry isolation mechanism
+   does not prove isolation — it could simply be a lucky empty-queue moment. The eventual
+   isolation-proof experiment that unblocks Wave 3 (§2.2, §4 Wave 3 acceptance) must be an
+   adversarial admission-race test: deliberately racing another PR into the isolation window
+   while the heal attempt is mid-admission, and confirming the mechanism actually excludes it —
+   never a passive observation that the queue happened to be quiet.
 
 ## Adversarial review
 
@@ -329,3 +423,13 @@ Open by declaration (§7.5): this v2 text has not passed post-rewrite refutation
 §6.1 delta logs are the target map for an independent cross-family pass. Until that pass, this
 document is descriptive only and authorizes no arming; Wave 3 also remains blocked until its
 single-entry isolation mechanism is demonstrated against the live queue.
+
+**Round 2 (2026-08-10):** GLM 5.2 + Codex gpt-5.6-terra, identical mandate (§2 + §4), independent
+runs. Verdicts: 4 CONFIRMED-DEFECT / 3 PLAUSIBLE-CONCERN / 2 clean validations (out of 9 findings
+total, one further scope-boundary note). The four confirmed defects are folded into this document
+(§2.1 kill-switch expression, §2.1 classifier-protection parenthetical, §2.1 guilt-corpus wiring
+requirement, §4 Wave 1/2 billing attribution formula) and indexed at §6.2. The orchestrator
+re-verified all four against `origin/main` before folding. This closes the round-2 gap opened by
+§7.5 for those four items; the full-plan cross-family refutation obligation in §7.5 otherwise
+stands, and Wave 3 remains BLOCKED pending its isolation proof (now additionally required to be
+adversarial per §7.6).

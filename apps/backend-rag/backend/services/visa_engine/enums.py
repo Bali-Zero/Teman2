@@ -381,14 +381,15 @@ class Environment(str, Enum):
 
 
 # ---------------------------------------------------------------------------
-# FactPath — the closed 43-path fact vocabulary (40 applicant + 3 derived; spec §2 ``FactPath``)
+# FactPath — the closed 44-path fact vocabulary (41 applicant + 3 derived; spec §2 ``FactPath``)
 # ---------------------------------------------------------------------------
 
 
 class FactPath(str, Enum):
-    """Every fact path the engine may ever reference — 40 applicant-collected
+    """Every fact path the engine may ever reference — 41 applicant-collected
     + 3 derived (spec §2 ``ApplicantFactPath`` + ``FactPath``, extended by the
-    ``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23).
+    ``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, and
+    by ``sponsor.type`` for the sponsor-category question, 2026-08-10).
 
     Closed by design (spec §5.2): a Condition's ``fact`` field and a Rule's
     ``required_facts`` array are both typed against this enum, so a rule
@@ -436,6 +437,24 @@ class FactPath(str, Enum):
     STUDY_LEVEL = "study.level"
     STUDY_ADMISSION_CONFIRMED = "study.admission_confirmed"
     STUDY_SPONSOR_CONFIRMED = "study.sponsor_confirmed"
+    # sponsor.* — WHO the sponsor is, as a category. Deliberately NOT under
+    # family.*: `family.sponsor_confirmed` and its siblings describe a family
+    # relationship, while this is the sponsor CATEGORY and applies to
+    # employment, study and investment routes just as much.
+    #
+    # Why it exists: every product record already declares `sponsor_types`
+    # (models.py, `sponsor_types: tuple[SponsorType, ...]`), so the pack has
+    # always known that E23V wants a GOVERNMENT sponsor and E23U an INDIVIDUAL
+    # one — but nothing ever asked the applicant, so no rule could test it.
+    # Measured 2026-08-10 against rulepack-prod-006, this fact together with
+    # the already-collected purpose makes six of the eleven currently
+    # unreachable products uniquely identifiable: E23U, E23V, E28C, E33A,
+    # E33B and E33C. Sponsor type alone is not sufficient, and five products
+    # still collide (E28B/E28D/E28F and E30E/E30F). The future pack must add
+    # legally grounded rules before any product becomes reachable; re-run the
+    # reachability sweep against the then-current pack rather than treating
+    # this snapshot as a permanent count.
+    SPONSOR_TYPE = "sponsor.type"
     # secondhome.* — E33 Second Home vertical (bank-route scope, owner decision
     # 2026-07-23): the qualifying-basis facts the base E33 / E33E / E33F
     # eligibility rules test. ``bank_deposit_*`` is one deposit, evidenced as
@@ -458,7 +477,7 @@ class FactPath(str, Enum):
     DERIVED_HAS_INDONESIAN_CITIZENSHIP = "derived.has_indonesian_citizenship"
 
 
-#: The 40 applicant-collected paths (everything except ``derived.*``).
+#: The 41 applicant-collected paths (everything except ``derived.*``).
 APPLICANT_FACT_PATHS: frozenset[FactPath] = frozenset(
     path for path in FactPath if not path.value.startswith("derived.")
 )
