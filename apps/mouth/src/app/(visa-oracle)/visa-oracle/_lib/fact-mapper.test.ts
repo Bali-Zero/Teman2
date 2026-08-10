@@ -27,11 +27,17 @@ import {
 } from "./tree";
 
 // ---------------------------------------------------------------------------
-// The 40-key contract, extracted from models.py itself (never hand-typed —
+// The backend contract, extracted from models.py itself (never hand-typed —
 // test acceptance criterion #1). The only dotted `Field(alias="a.b")`
 // occurrences in models.py live inside `ApplicantFactsData`; every other
 // `alias=` in the file (`TimeRange.from_`) has no dot, so the dotted-alias
-// regex below can only ever match the 40 ApplicantFactsData fields.
+// regex below can only ever match ApplicantFactsData fields.
+//
+// `sponsor.type` is deliberately omitted from the deployed frontend request
+// during its ordered-rollout window. The backend accepts its absence as
+// UNKNOWN until the interview question ships; the backend tripwire
+// `test_sponsor_type_is_the_only_optional_field` prevents another field from
+// silently joining this exception.
 // ---------------------------------------------------------------------------
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -46,6 +52,14 @@ function extractApplicantFactPathsFromModelsPy(): string[] {
   const source = fs.readFileSync(MODELS_PY, "utf-8");
   const matches = source.matchAll(/alias="([a-z_]+\.[a-z_]+)"/g);
   return Array.from(matches, (m) => m[1]);
+}
+
+const ORDERED_ROLLOUT_OPTIONAL_PATHS = new Set(["sponsor.type"]);
+
+function requiredFrontendFactPaths(): string[] {
+  return extractApplicantFactPathsFromModelsPy().filter(
+    (path) => !ORDERED_ROLLOUT_OPTIONAL_PATHS.has(path),
+  );
 }
 
 const ASSESSMENT_ID = "11111111-1111-4111-8111-111111111111";
@@ -98,14 +112,19 @@ function representativeAnswer(question: OracleQuestion): string {
   return answer.key;
 }
 
-describe("mapOracleFactsToApplicantFacts — 40-key contract (acceptance test 1)", () => {
-  const expectedPaths = extractApplicantFactPathsFromModelsPy();
+describe("mapOracleFactsToApplicantFacts — staged contract (acceptance test 1)", () => {
+  const backendPaths = extractApplicantFactPathsFromModelsPy();
+  const expectedPaths = requiredFrontendFactPaths();
 
-  it("sanity: the extractor itself found 40 dotted paths in models.py", () => {
+  it("sanity: sponsor.type is the only backend path omitted during rollout", () => {
+    expect(backendPaths.length).toBe(41);
+    expect(
+      backendPaths.filter((path) => !expectedPaths.includes(path)),
+    ).toEqual(["sponsor.type"]);
     expect(expectedPaths.length).toBe(40);
   });
 
-  it("emits EXACTLY the 40 dotted keys models.py declares — no extra key, no missing key", () => {
+  it("emits exactly the 40 currently deployed frontend keys", () => {
     const result = mapFacts({});
     const actualKeys = Object.keys(result.facts).sort();
     expect(actualKeys).toEqual([...expectedPaths].sort());
