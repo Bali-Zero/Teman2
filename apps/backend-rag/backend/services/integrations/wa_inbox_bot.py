@@ -97,6 +97,39 @@ _KG_WORKFLOW_SCAFFOLD_RE = re.compile(
 )
 
 
+# An abstain payload is worth sending when it actually contains an answer.
+# Measured 2026-08-11 across 16 cold questions in 8 languages: 7 came back
+# `abstain=true`, and 3 of those carried a complete on-topic answer. The old
+# consumer discarded all 7.
+#
+# Deliberately NOT a quality judgement — this module cannot re-score evidence and
+# must not try. It asks one thing: is there prose here, or only the residue of a
+# refusal? The floor is length, because the refusal shapes the RAG emits are
+# short ("Je suis prêt pour votre prochaine question." — 43 chars, measured) and
+# a real answer to any question this bot receives is not.
+_ABSTAIN_MIN_SENDABLE_CHARS = 200
+
+
+def _abstain_answer_worth_sending(data: dict[str, Any]) -> str:
+    """The answer text inside an abstain payload, or "" if there is none worth sending.
+
+    Returns the CLEANED, formatted text so the caller ships exactly what it
+    inspected — an earlier shape that returned a bool and let the caller re-derive
+    the text is how two code paths end up disagreeing about the same message.
+    """
+    raw = (data.get("answer") or "").strip()
+    if len(raw) < _ABSTAIN_MIN_SENDABLE_CHARS:
+        return ""
+    cleaned = _strip_kg_workflow_scaffold(raw)
+    cleaned = format_rich_text(cleaned, "whatsapp")
+    # Re-check AFTER cleaning: the scaffold strip and the channel formatter can
+    # both shrink the text, and a payload that was only scaffold must not be
+    # rescued by its own length before the scaffold was removed.
+    if len(cleaned.strip()) < _ABSTAIN_MIN_SENDABLE_CHARS:
+        return ""
+    return cleaned.strip()
+
+
 def _strip_kg_workflow_scaffold(answer: str) -> str:
     """Remove the internal KG-workflow diagnostics block, if present.
 
@@ -405,9 +438,31 @@ async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
             language,
             accepted,
         )
-        # The copy asserts only what happened: `accepted` means Telegram took
-        # the message, so the stub may say the request was flagged — never that
-        # someone will reply.
+        # Zero's ruling (2026-08-11), on measurement: an abstain does NOT mean
+        # "no content". Probed live across 16 cold questions in 8 languages,
+        # SEVEN came back flagged `abstain=true` and three of those carried a
+        # complete, on-topic answer — the two German ones and an Indonesian one
+        # opened straight into the real PT PMA steps. Sending the stub instead
+        # would throw away a written answer and hand the client a refusal.
+        #
+        # This does NOT touch the abstain gates. Their generation-vs-label
+        # divergence is panel-ruled and tripwire-tested (CLAUDE.md §9) — the
+        # label gate MARKS confidence, it does not decide whether advice may
+        # exist. Reading the label as "discard the text" was this consumer's
+        # error, not the gate's.
+        substantive = _abstain_answer_worth_sending(data)
+        if substantive:
+            logger.info(
+                "wa-inbox bot: abstain on thread %s carried %d chars of answer — "
+                "sending it with the caution note rather than the stub",
+                thread_id,
+                len(substantive),
+            )
+            return substantive + get_localized_stub("low_confidence_note", language)
+
+        # Nothing usable in the payload: the copy asserts only what happened.
+        # `accepted` means Telegram took the message, so the stub may say the
+        # request was flagged — never that someone will reply.
         return get_localized_stub("abstain_flagged" if accepted else "abstain", language)
 
     answer = (data.get("answer") or "").strip()

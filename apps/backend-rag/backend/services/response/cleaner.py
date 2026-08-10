@@ -369,6 +369,22 @@ _MARKER_PATTERNS: tuple[str, ...] = (
     r"^ACTION:\s*No tool call needed[^.]*\.\s*",
     r"^vector_search\([^)]*\)\s*",
     r"^User Query:\s*[^\n]*\n*",
+    # `internal_monologue` — the model emitting the name of the section the
+    # system prompt tells it to run SILENTLY (`<internal_monologue_instructions>`
+    # in zantara_core.py). Measured live 2026-08-11: 2 of 16 cold answers opened
+    # with the literal token, one continuing "The previous answer was rejected
+    # because it included detailed inf…" — the machinery, verbatim, to a client.
+    #
+    # Tagged form: remove the WHOLE block, because the closing tag says where it
+    # ends. Bare form: remove ONLY the token. Nothing marks where an untagged
+    # monologue stops, and guessing a boundary would eat the answer — the two
+    # leaked answers ran straight from the monologue into real content. Opening
+    # on a machine token is the part we can fix without inventing an ending.
+    # `<?` and `</?` BOTH optional: the leak measured in production carries NO
+    # tag at all ("internal_monologue The user is asking…"). A first draft made
+    # the `<` mandatory and matched nothing — the guard missed the only shape it
+    # was written for, and its own bare-leak test is what caught that.
+    r"^(?:</?)?internal_monologue(?:_instructions)?>?\s*:?\s*",
     # Prefix-only strips: the marker goes, the sentence after it stays.
     r"^Final Answer:\s*",
     r"^FINAL ANSWER:\s*",
@@ -482,6 +498,17 @@ _MARKER_RE = tuple(re.compile(p, re.IGNORECASE | re.MULTILINE) for p in _MARKER_
 _PREAMBLE_RE = tuple(re.compile(p, re.IGNORECASE) for p in _PREAMBLE_PATTERNS)
 _ANYWHERE_RE = tuple(re.compile(p, re.IGNORECASE) for p in _ANYWHERE_PATTERNS)
 
+# Separate tuple: this one needs DOTALL to span the newlines inside a leaked
+# block, and DOTALL must NOT be given to the patterns above (their `.*?\n` would
+# stop meaning "this line only"). Non-greedy + an explicit closing tag, so it can
+# never swallow past the block it opened.
+_BLOCK_RE = (
+    re.compile(
+        r"<internal_monologue(?:_instructions)?>.*?</internal_monologue(?:_instructions)?>",
+        re.IGNORECASE | re.DOTALL,
+    ),
+)
+
 # A response can open with several stacked preamble sentences; each pass peels
 # at most one per pattern, so re-run until nothing changes (bounded).
 _PREAMBLE_MAX_PASSES = 5
@@ -510,6 +537,8 @@ def clean_response(response: str) -> str:
         return ""
 
     cleaned = response
+    for regex in _BLOCK_RE:
+        cleaned = regex.sub("", cleaned)
     for regex in _ANYWHERE_RE:
         cleaned = regex.sub("", cleaned)
     for regex in _MARKER_RE:

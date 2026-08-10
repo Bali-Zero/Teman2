@@ -189,6 +189,40 @@ STUB_MESSAGES: dict[str, dict[str, str]] = {
             "Запитайте про конкретний пункт — розкажу докладніше.)_"
         ),
     },
+    # WHAT THE ``low_confidence_note`` TEXT IS FOR (2026-08-11)
+    # --------------------------------------------------------
+    # Appended when the WhatsApp path sends an answer that came back flagged
+    # `abstain=true`. Measured across 16 cold questions in 8 languages: 7 were
+    # flagged and 3 of those carried a complete, on-topic answer — the old
+    # consumer discarded all 7 and the client got silence with the answer
+    # already written.
+    #
+    # The copy says the sources were not fully verified and that a colleague is
+    # re-checking. It does NOT promise a reply, a time, or a correction: the
+    # abstain path notifies Telegram, and "Telegram accepted a message" is not
+    # "a person will answer you". Same rule as `abstain_flagged`.
+    "low_confidence_note": {
+        "ITALIAN": (
+            "\n\n_(Questa risposta si appoggia a fonti che non ho potuto "
+            "verificare del tutto: un collega di Bali Zero la sta ricontrollando.)_"
+        ),
+        "ENGLISH": (
+            "\n\n_(This answer rests on sources I could not fully verify: "
+            "a Bali Zero colleague is double-checking it.)_"
+        ),
+        "INDONESIAN": (
+            "\n\n_(Jawaban ini berdasarkan sumber yang belum sepenuhnya bisa "
+            "saya verifikasi: rekan Bali Zero sedang memeriksanya kembali.)_"
+        ),
+        "RUSSIAN": (
+            "\n\n_(Этот ответ опирается на источники, которые я не смогла "
+            "полностью проверить: коллега из Bali Zero их перепроверяет.)_"
+        ),
+        "UKRAINIAN": (
+            "\n\n_(Ця відповідь спирається на джерела, які я не змогла повністю "
+            "перевірити: колега з Bali Zero їх перевіряє.)_"
+        ),
+    },
     "abstain_detailed": {
         "ITALIAN": (
             "Per questa domanda specifica non ho informazioni verificate sufficienti "
