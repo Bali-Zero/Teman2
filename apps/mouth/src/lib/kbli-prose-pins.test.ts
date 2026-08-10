@@ -218,10 +218,7 @@ describe("KBLI prose pins — published aggregates agree with the canonical", ()
       "465 dari 1.559",
     ];
     for (const claim of CLAIMS) {
-      const text = fs.readFileSync(
-        path.join(ARTICLE_DIR, claim.file),
-        "utf-8",
-      );
+      const text = fs.readFileSync(path.join(ARTICLE_DIR, claim.file), "utf-8");
       for (const dead of SUPERSEDED) {
         expect(
           text.includes(dead),
