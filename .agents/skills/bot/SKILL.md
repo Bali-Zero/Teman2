@@ -22,6 +22,66 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 
 ## 1. LIVE STATE (last update 2026-08-11 — keep current)
 
+- **✂️ A REPLY TOO LONG FOR WHATSAPP IS CUT MID-WORD AND NOTHING SAYS SO — measured at ~10% of
+  ORDINARY questions, worst case 13,671 chars (2026-08-11).** `whatsapp_service.send_message`
+  enforces the Cloud API's 4,096-char body limit with `text[:4096]`: a silent cut, mid-word, with
+  no marker. Two live probes (37 everyday client questions, cold start, no history,
+  `channel=whatsapp`, no client PII) crossed it four times — **"What is Hak Pakai and how long
+  does it last?" returned 13,671 chars, so 9,575 (70% of the answer) would vanish**; "How long
+  does company registration take?" 7,837 (−3,741); "KITAS investor requirements" 6,841 (−2,745);
+  "difference between KITAS and KITAP" 4,520 (−424). Production agrees at a lower rate on a much
+  smaller sample: 4 of 311 bot replies, worst 7,521.
+  - **It is not a fixed set of long questions — it is a fixed rate of long RUNS.** The Hak Pakai
+    question asked three times returned **1,364 / 13,671 / 2,123** chars. A spot check will miss
+    it; the cure has to be unconditional, not aimed at "the long ones".
+  - **Lower bound, stated as such**: the live bot ships up to 12 prior turns
+    (`_HISTORY_TURNS = 12`), which can only make answers longer.
+  - Cure in flight (PR-B, branch `backend-rag-wa-escalation-lane`): cut at a boundary + a short
+    localized note. **The note deliberately never promises the remainder** — nothing retains it,
+    so "ask me to continue" would be the same class of lie the abstain path used to tell.
+  - **A dependency was itself broken**: `utils/message_chunker.chunk_message` promised in its
+    docstring "each within max_length" while its line-splitting branch appended a whole
+    over-long line — so text with no `\n\n` and no `\n`, i.e. an ordinary LLM paragraph, came
+    back as ONE oversized chunk. Instagram's limit is 1,000, where that overflows four times
+    likelier.
+
+- **🎲 ABSTAIN FIRES ~1 TIME IN 3 ON QUESTIONS THE BOT ANSWERS WELL — it is not only an outage
+  symptom (2026-08-11).** A 20-question probe recorded 4 abstains and they read like KB gaps.
+  Re-asking the three main ones three times each says otherwise: **4 abstains in 12
+  observations** — PT PMA setup 1/4, Hak Pakai 1/4, "Qual è la differenza tra KITAS e KITAP?"
+  2/4. The non-abstaining runs are not marginal: the Italian KITAS/KITAP question retrieves **8
+  sources from `visa_oracle` at `evidence_score 0.85`** two runs out of three, and on the third
+  returns `abstain=true`, `context_length=0`, `evidence_score=0.0`,
+  `abstain_reason="no_relevant_context"`. Same question, same payload, no history either time.
+  - **Why this matters more than the depletion**: on today's Meta path an abstain is
+    `raise RuntimeError` → 5 retries → silence. The credit depletion made that 100% for 34h; this
+    makes it ~33% **every day**, on the agency's core questions. Do NOT file the discarded-abstain
+    defect as outage-only.
+  - **Phrasing moves the retrieval path**: _"PT PMA company registration requirements"_ scores
+    `evidence 0.4`; _"What are the requirements to open a PT PMA in Indonesia?"_ scores `0.85`
+    across three collections. Measured, not cured.
+
+- **🔀 `sources` COMES BACK AS DICTS ON SOME RUNS AND PLAIN STRINGS ON OTHERS — same question
+  (2026-08-11).** Census over 17 answers: **dict 13, str 3**, and the shape tracks the score —
+  str runs scored `evidence` 0.6 / 0.6 / 0.4, dict runs mostly 0.85. `orchestrator_response.py:48`
+  types it `list[Any]`, so this is declared, not drift. **Nothing crashes**:
+  `pipeline.py::_normalize_citations` guards with `if not isinstance(src, dict): continue`.
+  The open question — NOT yet measured, do not report it as a finding — is whether the str path
+  therefore reaches the client with **zero citations**, on a bot whose product is grounded
+  answers with citations. Probe written (`p27.py`); it reports "hypothesis NOT TESTED" rather
+  than a zero if the endpoint turns out not to expose `citations` at all.
+
+- **🔬 TWO OF MY OWN INSTRUMENTS LIED, AND BOTH ARE WORTH KNOWING BEFORE YOU REUSE THEM.**
+  (a) The probe prints `collections_queried EMPTY on ALL = LLM-picks-collections stage down
+(outage signature)` — it read empty on all 17 answers **which all answered**, so the field is
+  simply not exposed in that response payload. That legend was written from the depletion
+  post-mortem and would hand the next reader a false P0. (b) Its `DETERMINISTIC` verdict is
+  scoped to its own three runs and is **contradicted** by the earlier probe where the same three
+  questions abstained; only pooling the two gives the 4-in-12 above. A repeatability verdict
+  computed inside one run cannot see the run beside it. (c) An earlier version died on the first
+  row with `'str' object has no attribute 'get'` — the heterogeneity above. **A probe must
+  survive the shape it exists to observe**; it now records the shape instead of dying on it.
+
 - **🔴 GEMINI PREPAY CREDITS DEPLETED — FOURTH TIME, AND IT IS LIVE (2026-08-10 ~17:50Z).**
   Measured on the prod machine, not inferred from symptoms: a 9-token call returns
   `429 RESOURCE_EXHAUSTED — "Your prepayment credits are depleted"`, `llm_gateway` logs
