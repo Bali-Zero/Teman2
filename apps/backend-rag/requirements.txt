@@ -72,8 +72,8 @@ h2>=4.4.1  # transitive via httpx; CVE-2026-71554 affects 4.4.0. Named here
 #   ON PURPOSE even though nothing imports it directly: a floor that lives only
 #   in the lock is not a constraint, it is a snapshot (W98).
 langchain-core>=1.5.3  # Updated 2026-03-14: patch fixes for streaming + callbacks
-langchain-anthropic>=1.5.3  # Required for KG LangGraph orchestrator
-langchain-openai>=1.4.1  # Required for KG LangGraph orchestrator fallback
+langchain-anthropic>=1.5.4  # Required for KG LangGraph orchestrator
+langchain-openai>=1.4.2  # Required for KG LangGraph orchestrator fallback
 langsmith>=0.10.15  # Observability: @traceable on RAG nodes + KG nodes
 # langchain-google-genai removed to resolve conflicts
 

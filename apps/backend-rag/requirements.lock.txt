@@ -1814,9 +1814,9 @@ jsonschema-specifications==2025.9.1 \
     --hash=sha256:98802fee3a11ee76ecaca44429fda8a41bff98b00a0f2838151b113f210cc6fe \
     --hash=sha256:b540987f239e745613c7a9176f3edb72b832a4ac465cf02712288397832b5e8d
     # via jsonschema
-langchain-anthropic==1.5.3 \
-    --hash=sha256:48a7e4fc3856c42f9dcb4396ba112afcdd8dee21b70a402bc43283c970de3941 \
-    --hash=sha256:b1b72b7c9e4bf5c044660629ebbcb79cef18c140fdc80174750eb86de13ec8bc
+langchain-anthropic==1.5.4 \
+    --hash=sha256:113cb9bdac3169f2da65ea395dedb290e30dc6f899d01c205ba88aa88a2a02c2 \
+    --hash=sha256:730a9cb1ad384c9f1642840469c1ebbf20237066b1635f5d4fa9876e365fceaf
     # via -r requirements.txt
 langchain-core==1.5.3 \
     --hash=sha256:48b56fa580277209594dd7baf837f5b9a2a3651613f34ff9fb1728b429df015f \
@@ -1829,9 +1829,9 @@ langchain-core==1.5.3 \
     #   langgraph-checkpoint
     #   langgraph-prebuilt
     #   langgraph-sdk
-langchain-openai==1.4.1 \
-    --hash=sha256:6d16be615d997db80294731b8e768783f1fb8e0313668e64acd50cd68acbad20 \
-    --hash=sha256:8528bb34cc78fdfd2d895573c7917f9441cbb82db5f18ae0e6b3b75d95bdefb3
+langchain-openai==1.4.2 \
+    --hash=sha256:4ece4ba6ed662e903d7deb9bf864b22687a2b4934d84e4acde90eb446f2d5052 \
+    --hash=sha256:88208c5bc32dd95d21129a0d6f0ac3f6af380eed46b9fa0944c06c18ea325a49
     # via -r requirements.txt
 langchain-protocol==0.0.18 \
     --hash=sha256:70b53a86fbf9cedc863555effe44da192ab02d556ddbf2cf95b8873adcf41b5a \
