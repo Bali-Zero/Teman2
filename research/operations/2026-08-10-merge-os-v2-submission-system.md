@@ -17,12 +17,19 @@ adversarial_review: agy
 
 # Merge-OS v2 — the submission system, rewritten after refutation
 
-> **Status: SPEC UNDER REFUTATION — this document authorizes no wave to arm.** v1
-> (Cowork-M5 draft, same day) was refuted by two cross-family seats — Codex sol found the v1
-> plan unarmable in every wave; Qwen 3.8 Max concurred on waves 1-2. This v2 folds in those 26
-> confirmed findings, while a post-rewrite review found four further blockers and produced the
-> corrections in §6.1. Those corrections are new claims (W113) and remain unarmed until an
-> independent refuter passes them. Wave 3 has the additional hard isolation gate in §2.2.
+> **Status: REFUTED — BLOCKED. This document authorizes no wave to arm.** The post-rewrite
+> cross-family pass that §7.5 demanded RAN on 2026-08-10 and both seats returned **BLOCK**:
+> Codex `gpt-5.6-sol` (effort xhigh) with 7 P0/P1 findings, and Gemini via `agy` with 2 P0.
+> **They converge independently on the same P0**: Wave 0's own path-filter cure creates a
+> deterministic false-green migration gate. Verdicts, evidence and the seat-availability
+> record are in **§8**; transcripts in `research/operations/refutations/`.
+>
+> History: v1 (Cowork-M5 draft, same day) was refuted by two cross-family seats — Codex sol
+> found the v1 plan unarmable in every wave; Qwen 3.8 Max concurred on waves 1-2. This v2 folds
+> in those 26 confirmed findings, while a post-rewrite review found four further blockers and
+> produced the corrections in §6.1. Those corrections were new claims (W113) — §8 is the
+> independent pass over them, and it did not clear them. Wave 3 additionally still has the hard
+> isolation gate in §2.2.
 
 ## 0. What survives from v1 (the sound core)
 
@@ -329,3 +336,108 @@ Open by declaration (§7.5): this v2 text has not passed post-rewrite refutation
 §6.1 delta logs are the target map for an independent cross-family pass. Until that pass, this
 document is descriptive only and authorizes no arming; Wave 3 also remains blocked until its
 single-entry isolation mechanism is demonstrated against the live queue.
+
+---
+
+## 8. Post-rewrite refutation — the pass §7.5 demanded (2026-08-10, VERDICT: BLOCK)
+
+Two seats, identical mandate, independent runs, both told to re-read the repository rather than
+trust this document's own `file:line` citations (W65). Transcripts committed verbatim under
+`research/operations/refutations/` — a verdict nobody can read is not a verdict.
+
+| seat | family | verdict | findings |
+|---|---|---|---|
+| Codex `gpt-5.6-sol`, effort xhigh | OpenAI | **BLOCK (F1–F7)** | 2 P0 · 5 P1 · 1 P2 · 4 UNVERIFIABLE |
+| Gemini via `agy` (sandboxed) | Google | **BLOCK (F1, F2)** | 2 P0 · 2 P1 · 3 UNVERIFIABLE |
+
+### 8.1 The convergence — two families, one P0
+
+Codex F2 and agy F1 are the **same defect**, found independently: **Wave 0's path-filter cure
+produces a deterministic false-green migration gate.** Wave 0 adds `merge_group` to
+`migration-lint.yml` while the immutable event-SHA diff of §3 is deferred to Wave 3. That
+workflow reads `github.event.pull_request.base.sha` / `.head.sha` (`:59-60`), which are **empty
+on a `merge_group` event**; the diff is closed with `|| true` (`:62`) so the failure is
+swallowed; every downstream step is gated on `steps.changed.outputs.files != ''`. Squawk never
+runs and the job reports SUCCESS. A destructive migration lands on main through a green gate.
+
+Confirmed by the conductor against the live file this session, not accepted on either seat's
+word. **This is the single most load-bearing correction in the pass**: it falsifies the wave the
+plan calls "safe subset", by the exact mechanism the plan was written to prevent.
+
+### 8.2 Codex — the other survivors
+
+- **F1 [P0]** "On `merge_group`, heavy jobs run UNCONDITIONALLY" is false once heavy jobs consume
+  the classifier via `needs: changes`: that job is `if: github.event_name == 'pull_request'`
+  (`tests.yml:91`), so on `merge_group` it is skipped and the implicit `success()` suppresses its
+  dependents. (Conductor's note: no heavy job carries `needs: changes` **today** — this is the
+  hazard Wave 2 would introduce, not a live defect.)
+- **F3 [P1]** The judge-tier correction protects the wrong classifier: R1 enforcement runs
+  `scripts/ci/change_map.py` (`tests.yml:108-136`), not `scripts/prepush_classify.py`; neither
+  `change_map.py` nor its corpus is CODEOWNERS-protected.
+- **F4 [P1]** The docs-sync downgrade still lets the judge and its corpus be **deleted** green:
+  `docs-sync.yml:72-79` exits 0 when `scripts/docs_sync.py` is missing, `:81-88` likewise for its
+  test. (Observed live this session in the gate's own run log.)
+- **F5 [P1]** §2.2's exact-tree isolation needs an exclusive-admission primitive that
+  `setup_merge_queue_ruleset.sh` does not expose — and it contradicts "no wave requires queue
+  downtime".
+- **F6 [P1]** The `critical`-marker quarantine exclusion is vacuous: `pytest.ini:72` registers the
+  marker and **no test applies it**, so auth gates are quarantinable.
+- **F7 [P1]** "3 retries per entry" bounds nothing — ejection consumes the auto-merge request and
+  the rearm creates a NEW entry, resetting the counter.
+- **F8 [P2]** §1's radiography contradicts its own source: 25.7 − 18 is 7.7, not the claimed
+  +5.4; the cited round-3 report says 25.1 and 47.3 merges/day.
+
+### 8.3 agy — the other survivors
+
+- **F2 [P0]** The heal-PR freeze rule creates a **perpetual stale-tree loop**: docs regenerated at
+  main `M0` land on `M1` after an in-flight PR merges, `docs_sync.py --check` fails on the result,
+  and the organ opens another heal PR — forever, or starves waiting for an empty queue.
+- **F3 [P1]** Wave 1's "ejection rate BY AUTHOR CLASS" is unmeasurable: a `merge_group` batch of up
+  to 5 PRs is attributed to `github-actions[bot]`, and the document itself concedes native GitHub
+  does not bisect.
+- **F4 [P1]** Removing top-level `paths:` **ejects innocent PRs**: a pure-CSS PR that skipped
+  docs-sync at R1 runs it unconditionally at R2 and dies on pre-existing main drift.
+
+> F4 was demonstrated the same hour, by accident: the PR that opened this document's ledger row
+> touched one markdown file and was failed by `check-docs-sync` on a two-integer drift
+> (`1331` → `1333 tests`) it did not cause. Both open regen PRs were themselves stuck — #3995
+> `CONFLICTING`, #3968 failing the very gate it exists to satisfy. The mechanism agy predicts for
+> the queue is already live on the PR ref.
+
+### 8.4 What both seats refused to certify
+
+Every number in §1 that comes from runner telemetry — 25.7 min, 21.7 min pytest, the 16-run
+sample, ~12.85 runner-h/day, ~49/day main-push duplicates — is **UNVERIFIABLE from the repository**
+(both seats, independently). agy adds a sharper one: the frontmatter's claim of a prior refutation
+by "Codex … (20 findings)" and "Qwen 3.8 Max (12 findings)" **had no transcript in the repo**.
+That is why this section commits its own. Wave 1 exists precisely to replace these with measured
+denominators; until it runs, no later wave's target is falsifiable.
+
+### 8.5 Seat availability — measured, because it changed the pass
+
+The pair is Codex + Gemini and **not** the documented Codex + Kimi, for reasons that are facts
+about the fleet on 2026-08-10, not preferences:
+
+- **Kimi K3 — dead on both machines.** M5: `403 You've reached your usage limit for this billing
+  cycle` (subscription-level, so not an M5-vs-Pro difference). Pro: `auth.login_required`, the
+  device-code login was never done there.
+- **Qwen 3.8 Max — unusable as a refuter, and its liveness note is stale.** The seat replies
+  `PONG` rc=0 (so `arsenal_probe.py:656-662`'s "seat UNARMED, operator rotation pending" is
+  wrong — the Keychain token exists), but on the real mandate it produced **271 bytes and exit 0,
+  twice**, while short prompts work. Asked a grounded question — "which line holds
+  `pull_request.base.sha`?" — it answered **49**; the line is **59**. And `qwen -m` validates
+  nothing: `-m definitely-not-a-model-xyz9` also returns `PONG` rc=0, so **no invocation of that
+  CLI proves which model served** (W113 class: the provenance sentence is itself a claim).
+- **GLM has no CLI** — it is an HTTP seat (`api.z.ai`, Keychain `glm-coding-plan-token`), so the
+  documented cascade GLM → Kimi → Codex cannot be walked with CLI calls.
+- **agy's parentage is declared, per W100**: this is the same seat that gave the scoped PASS
+  recorded in §6.1. Its findings here are a *different* scope (the full plan, refute mandate), but
+  it is not an untouched family, and that must not be laundered into "two independent families
+  agreed" without this sentence attached.
+
+### 8.6 Consequence
+
+**No wave arms.** Wave 0 is not a safe subset as written — its migration-lint item is the
+converged P0, and its docs-sync item is F4's ejection vector. The next move is a v3 that
+disposes of F1–F7/F1–F4 finding-by-finding, not a partial arm of "the easy parts": the easy part
+is the one both seats broke.
