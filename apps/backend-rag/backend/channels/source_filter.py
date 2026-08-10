@@ -75,6 +75,27 @@ def public_sources(sources: list[dict[str, Any]] | None) -> list[dict[str, Any]]
 
     filtered: list[dict[str, Any]] = []
     for source in sources:
+        if not isinstance(source, dict):
+            # The annotation says list[dict], but the field this is fed from is
+            # declared `sources: list[Any]` (agentic_rag.py:474) and genuinely
+            # carries two shapes. Measured live 2026-08-10 on
+            # /api/agentic-rag/query: the retrieval path returns
+            # {title,url,collection,score,snippet} dicts, while the PricingTool
+            # path returns `str(dict)` Python reprs
+            # ("{'official_notice': '🔒 PREZZI UFFICIALI…', 'results': {…}}").
+            # `"...".get` is an AttributeError, and all four live channel
+            # formatters (web, instagram, telegram, whatsapp) call this — so a
+            # pricing-shaped list reaching a formatter takes the reply down.
+            # Skipped, never rendered: a non-dict has no url to vet, so it can
+            # never be client-safe. Logged rather than dropped in silence — the
+            # real cure is upstream, one shape per field.
+            logger.warning(
+                "public_sources: skipping non-dict source of type %s — "
+                "the sources field is carrying more than one shape",
+                type(source).__name__,
+            )
+            continue
+
         title = str(source.get("title") or "")
         url = str(source.get("url") or "")
 
