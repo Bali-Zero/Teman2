@@ -2,7 +2,7 @@
 
 Source: ``research/visa/2026-07-17-visa-oracle-v2-round2-codex-engine-
 concretization.md`` §1 (module layout, ``fact_registry.py``) and §2
-(``ApplicantFacts.facts`` — the 40 collected paths + the 3 ``derived.*``
+(``ApplicantFacts.facts`` — the 41 collected paths + the 3 ``derived.*``
 paths this catalog also carries).
 
 Why this exists alongside ``enums.FactPath``: ``FactPath`` is the *closed
@@ -150,7 +150,8 @@ def _spec(
 #: Default catalog seeded 1:1 from spec §2 ``ApplicantFacts.facts.properties``
 #: (35 entries) plus the 3 ``derived.*`` paths from spec §2 ``FactPath``,
 #: plus the 5 ``secondhome.*`` paths added for the E33 Second Home vertical
-#: (2026-07-23, bank-route owner scope) — 43 entries total.
+#: (2026-07-23, bank-route owner scope), plus ``sponsor.type`` added so the
+#: interview can ask who the sponsor is (2026-08-10) — 44 entries total.
 #: PII classification rationale: immigration status/violation history and
 #: investment capital amounts are SENSITIVE (UU PDP heightened-treatment
 #: analogues per CLAUDE.md §14 — closest to "criminal"/"financial" data in

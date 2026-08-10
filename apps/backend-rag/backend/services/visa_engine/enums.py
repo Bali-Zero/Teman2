@@ -381,14 +381,15 @@ class Environment(str, Enum):
 
 
 # ---------------------------------------------------------------------------
-# FactPath — the closed 43-path fact vocabulary (40 applicant + 3 derived; spec §2 ``FactPath``)
+# FactPath — the closed 44-path fact vocabulary (41 applicant + 3 derived; spec §2 ``FactPath``)
 # ---------------------------------------------------------------------------
 
 
 class FactPath(str, Enum):
-    """Every fact path the engine may ever reference — 40 applicant-collected
+    """Every fact path the engine may ever reference — 41 applicant-collected
     + 3 derived (spec §2 ``ApplicantFactPath`` + ``FactPath``, extended by the
-    ``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23).
+    ``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, and
+    by ``sponsor.type`` for the sponsor-category question, 2026-08-10).
 
     Closed by design (spec §5.2): a Condition's ``fact`` field and a Rule's
     ``required_facts`` array are both typed against this enum, so a rule
@@ -474,7 +475,7 @@ class FactPath(str, Enum):
     DERIVED_HAS_INDONESIAN_CITIZENSHIP = "derived.has_indonesian_citizenship"
 
 
-#: The 40 applicant-collected paths (everything except ``derived.*``).
+#: The 41 applicant-collected paths (everything except ``derived.*``).
 APPLICANT_FACT_PATHS: frozenset[FactPath] = frozenset(
     path for path in FactPath if not path.value.startswith("derived.")
 )
