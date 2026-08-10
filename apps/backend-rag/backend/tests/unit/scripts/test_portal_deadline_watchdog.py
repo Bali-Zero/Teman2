@@ -28,8 +28,16 @@ async def test_iter_due_returns_empty_when_query_fails() -> None:
 async def test_log_sent_tolerates_insert_failure() -> None:
     conn = AsyncMock()
     conn.execute.side_effect = Exception("notification_log missing")
-    # should not raise
+
+    # "should not raise" was the whole test, and a test whose only assertion is
+    # its own survival cannot tell "swallowed the error" from "never ran": delete
+    # the INSERT entirely and it stays green. Flagged RH005 by the anti-reward-
+    # hacking linter while this file was open for the sys.modules fix — the same
+    # class of defect being cured elsewhere in this branch, so it gets its
+    # assertion rather than a suppression.
     await _log_sent(conn, "uuid", "practice:1")
+
+    assert conn.execute.await_count == 1, "the insert must have been attempted"
 
 
 @pytest.mark.asyncio
