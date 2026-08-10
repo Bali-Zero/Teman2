@@ -1068,6 +1068,41 @@ def _probe_log(payload: dict, decision: str):
         pass
 
 
+# A heredoc body is EXECUTED by these consumers and is inert data for every other
+# one (`git commit -F -`, `cat > file`, `tee`, `jq`, `mail`). Default is KEEP — an
+# unrecognised consumer is treated as an interpreter, so a hole needs a new name to
+# open, while the over-match needs a recognised sink to close.
+HEREDOC_EXECUTES_RE = re.compile(
+    r"\b(?:ssh|bash|sh|zsh|dash|ksh|fish|python3?|perl|ruby|node|env|xargs|eval)\b"
+)
+HEREDOC_START_RE = re.compile(r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
+
+
+def _heredocs(cmd: str) -> list[tuple[str, str, tuple[int, int]]]:
+    """Every heredoc as (consumer_text, body_text, body_span).
+
+    `consumer_text` is what precedes `<<` on that line — the thing that will
+    receive the body — because whether a body is CODE or DATA is a property of
+    its consumer, not of the body's own contents.
+    """
+    out: list[tuple[str, str, tuple[int, int]]] = []
+    for m in HEREDOC_START_RE.finditer(cmd):
+        line_start = cmd.rfind("\n", 0, m.start()) + 1
+        consumer = cmd[line_start : m.start()]
+        delim = m.group(2)
+        nl = cmd.find("\n", m.end())
+        if nl == -1:
+            continue  # heredoc announced but no body in this command string
+        body_start = nl + 1
+        body_end = len(cmd)
+        for line_m in re.finditer(r"^[ \t]*(\S+)[ \t]*$", cmd[body_start:], re.MULTILINE):
+            if line_m.group(1) == delim:
+                body_end = body_start + line_m.start()
+                break
+        out.append((consumer, cmd[body_start:body_end], (body_start, body_end)))
+    return out
+
+
 def _ssh_payloads(cmd: str) -> list[str]:
     """Command payloads an ssh dispatch carries to another host — quote
     DELIMITERS dropped, content KEPT. That is the deliberate opposite of
@@ -1122,7 +1157,24 @@ def _remote_discard_on_main(cmd: str) -> str | None:
     damage is not recoverable from git. Naming a `.worktrees/` path is the cheap
     way to say "I mean a worktree".
     """
-    for payload in _ssh_payloads(cmd):
+    # A heredoc body handed to a DATA sink is prose, not a command. Without this
+    # the channel bit its own commit message: writing ABOUT the gesture inside
+    # `git commit -F - <<'EOF' … EOF` was read AS the gesture (10th over-match on
+    # this guard, 2026-08-10 — and a guard annoying enough to be disarmed turns a
+    # #3 into a #2). Stripping blindly would birth the under-match twin (W94), so
+    # a body its consumer EXECUTES is kept, and one consumed by `ssh` is added as
+    # a payload in its own right — `ssh pro <<'EOF' … EOF` was never caught before.
+    heredocs = _heredocs(cmd)
+    scan_src = cmd
+    extra_payloads: list[str] = []
+    for consumer, body, (start, end) in reversed(heredocs):
+        if HEREDOC_EXECUTES_RE.search(consumer):
+            if re.search(r"\bssh\b", consumer):
+                extra_payloads.append(body)
+            continue
+        scan_src = scan_src[:start] + scan_src[end:]
+
+    for payload in _ssh_payloads(scan_src) + extra_payloads:
         scan = _strip_noise(payload)
         if not REMOTE_DISCARD_RE.search(scan):
             continue

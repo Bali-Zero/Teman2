@@ -261,6 +261,7 @@
       },
       "exempt": {
         "infra/claude-hooks/dispatch_nudge.py": "advisory transcript reminder (CLAUDE.md §7 T1.1) — emits a nudge, never blocks a command; no block/allow contract to test",
+        "infra/claude-hooks/prove_live_installed_hook.py": "not a hook: it PROVES one. Feeds the real PreToolUse payload to the INSTALLED ~/.claude/hooks/worktree_isolation.py and reads its verdict — the gap CI structurally cannot cover, since every suite here judges the repo copy while the deciding file is a real copy under $HOME (W81: merged != armed). It carries its own 17-case guilt+innocence corpus and its own two cannot-verify exits (kill-switch set, hook absent), and it must NEVER be added to a CI step: ~/.claude/hooks does not exist on a runner, so it would exit 2 there by construction.",
         "scripts/hooks/check_import_chain.sh": "shell preflight, not a command-matching guard on model output",
         "scripts/hooks/check_protected_files.sh": "static path blocklist, exercised by hot-zone-pr-gate CI",
         "scripts/hooks/escalations_alert_sessionstart.sh": "SessionStart injector, never blocks",
