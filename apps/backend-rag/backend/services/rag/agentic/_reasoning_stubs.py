@@ -152,6 +152,43 @@ STUB_MESSAGES: dict[str, dict[str, str]] = {
             "я спробую ще раз із ними."
         ),
     },
+    # WHAT THE ``truncated_tail`` TEXT IS FOR (2026-08-11)
+    # ----------------------------------------------------
+    # WhatsApp's Cloud API refuses a body over 4096 characters, and
+    # `whatsapp_service.send_message` enforces that with `text[:4096]` — a
+    # silent cut, mid-word, with nothing telling the client it happened.
+    # Measured: 4 of 311 production bot replies were cut this way (max 7521
+    # chars), and a live probe got 5097 characters back for the single word
+    # "kitas" — so this is not an exotic case, one word reaches it.
+    #
+    # This suffix is appended to the FIRST clean chunk. It says only what is
+    # true — the answer was shortened — and invites a follow-up the bot can
+    # actually serve (a specific point). It deliberately does NOT say "ask me
+    # to continue": nothing retains the remainder, so continuation is a
+    # promise this path cannot keep, and tonight's other cure exists precisely
+    # because a promise nothing performs is worse than a plain limit.
+    "truncated_tail": {
+        "ITALIAN": (
+            "\n\n_(Ho accorciato la risposta per stare nel limite di WhatsApp. "
+            "Chiedimi di un punto specifico e te lo approfondisco.)_"
+        ),
+        "ENGLISH": (
+            "\n\n_(I shortened this to fit WhatsApp's message limit. "
+            "Ask me about a specific point and I'll go deeper on it.)_"
+        ),
+        "INDONESIAN": (
+            "\n\n_(Saya persingkat jawabannya agar muat di batas pesan WhatsApp. "
+            "Tanyakan poin tertentu dan saya jelaskan lebih detail.)_"
+        ),
+        "RUSSIAN": (
+            "\n\n_(Я сократил ответ, чтобы он поместился в лимит WhatsApp. "
+            "Спросите про конкретный пункт — расскажу подробнее.)_"
+        ),
+        "UKRAINIAN": (
+            "\n\n_(Я скоротив відповідь, щоб вона вмістилася в ліміт WhatsApp. "
+            "Запитайте про конкретний пункт — розкажу докладніше.)_"
+        ),
+    },
     "abstain_detailed": {
         "ITALIAN": (
             "Per questa domanda specifica non ho informazioni verificate sufficienti "

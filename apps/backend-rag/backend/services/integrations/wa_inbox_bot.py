@@ -58,6 +58,7 @@ from backend.services.integrations.human_escalation_notifier import notify_human
 from backend.services.integrations.wa_bot_outcomes import BotStandingCondition
 from backend.services.rag.agentic._reasoning_stubs import get_localized_stub
 from backend.services.rag.agentic.query_helpers import detect_query_language
+from backend.utils.message_chunker import chunk_message
 
 logger = logging.getLogger("zantara.backend")
 
@@ -95,6 +96,48 @@ _KG_WORKFLOW_SCAFFOLD_RE = re.compile(
     r"\s*##\s+SUGGESTED WORKFLOW \(from .*?" + re.escape(_KG_WORKFLOW_TRAILER),
     re.DOTALL,
 )
+
+
+def _fit_to_whatsapp_limit(answer: str, language: str) -> str:
+    """Cut an over-long reply at a boundary and say so, in the client's language.
+
+    Until 2026-08-11 this path only logged a warning and let
+    `whatsapp_service.send_message` do `text[:4096]` — a silent cut, mid-word,
+    with nothing telling the client anything was removed. Measured: 4 of 311
+    production bot replies were cut that way (worst 7521 chars, so ~3400
+    characters deleted), and a live probe got 5097 characters back for the
+    single word "kitas" — one word reaches it.
+
+    The budget is computed from the SUFFIX, not assumed from the chunker's
+    default margin: `chunk_message`'s 4000 leaves 96 characters, the marker is
+    longer than that, and a cure that overflows the limit it exists to respect
+    would be its own bug.
+
+    Fails OPEN. If anything here misbehaves the caller keeps the untouched
+    answer and `send_message` truncates exactly as it does today — a worse
+    message, never a lost one.
+    """
+    # Self-guarding, NOT caller-guarded. The one call site checks the length
+    # first, so this looks redundant — it is not: without it the function
+    # appends "I shortened this" to an answer it did not shorten, which is a
+    # lie about the message the client is holding, and it would fire the day
+    # a second caller appears or the caller's condition drifts. Its own
+    # innocence test caught exactly that during development.
+    if len(answer) <= _WHATSAPP_HARD_SEND_LIMIT:
+        return answer
+
+    try:
+        tail = get_localized_stub("truncated_tail", language)
+        budget = _WHATSAPP_HARD_SEND_LIMIT - len(tail)
+        chunks = chunk_message(answer, max_length=budget)
+        if not chunks or not chunks[0]:
+            return answer
+        return chunks[0] + tail
+    # Broad on purpose: this is presentation. No failure of it may be the
+    # reason a client gets nothing instead of a truncated something.
+    except Exception as exc:
+        logger.warning("wa-inbox bot: could not fit reply to WhatsApp limit: %s", exc)
+        return answer
 
 
 def _strip_kg_workflow_scaffold(answer: str) -> str:
@@ -472,15 +515,19 @@ async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
     post_format_len = len(answer)
 
     if post_format_len > _WHATSAPP_HARD_SEND_LIMIT:
+        answer = _fit_to_whatsapp_limit(answer, detect_query_language(query))
         logger.warning(
-            "wa-inbox bot: reply for thread %s is %d chars post-format (%d "
-            "pre-format), exceeds WhatsApp's %d-char single-message limit — "
-            "whatsapp_service.py will hard-truncate it on send. Chunked "
-            "sending is out of scope for this change.",
+            "wa-inbox bot: reply for thread %s was %d chars post-format (%d "
+            "pre-format), over WhatsApp's %d-char body limit — cut at a "
+            "boundary and marked, now %d chars. Multi-message sending is NOT "
+            "this change: the outbox row is fenced per message, so splitting "
+            "one reply across several sends needs partial-delivery semantics "
+            "the worker does not have.",
             thread_id,
             post_format_len,
             pre_format_len,
             _WHATSAPP_HARD_SEND_LIMIT,
+            len(answer),
         )
 
     logger.info(
