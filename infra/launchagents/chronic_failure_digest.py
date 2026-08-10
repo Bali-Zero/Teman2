@@ -47,6 +47,13 @@ SNAPSHOT_DIR = Path(
 STATE_DIR = Path(os.environ.get("STATE_DIR", HOME / ".agent" / "decisions"))
 CIRCUIT_BREAKERS = STATE_DIR / "circuit_breakers.json"
 DLQ = STATE_DIR / "dlq.json"
+# Round-3 DLQ hygiene (2026-08-10): dlq_autopilot.py's sweep_terminal_corpses()
+# archives (never deletes) TERMINAL entries out of DLQ into this file. Without
+# reading it too, the `dlq=TERMINAL` cross-ref tag below would silently stop
+# appearing for archived jobs — cosmetic (the chronic-failure line itself
+# still fires from the audit snapshots, independent of DLQ), but worth
+# keeping honest. See scripts/dlq_autopilot.py::sweep_terminal_corpses().
+DLQ_TERMINAL_ARCHIVE = STATE_DIR / "dlq_terminal_archive.json"
 
 THRESHOLD = int(os.environ.get("CHRONIC_DIGEST_THRESHOLD", "3"))
 WINDOW = int(os.environ.get("CHRONIC_DIGEST_WINDOW", "8"))
@@ -233,9 +240,14 @@ def load_breakers() -> dict[str, str]:
 
 
 def load_dlq_terminal() -> dict[str, str]:
-    """Map job-name → DLQ status for TERMINAL (permanently abandoned) jobs."""
-    data = load_json(DLQ)
+    """Map job-name → DLQ status for TERMINAL (permanently abandoned) jobs.
+
+    Unions the live queue with dlq_terminal_archive.json (round-3 DLQ hygiene,
+    2026-08-10) — an archived job is still permanently abandoned, it just no
+    longer lives in dlq.json's queue.
+    """
     out: dict[str, str] = {}
+    data = load_json(DLQ)
     queue = []
     if isinstance(data, dict):
         queue = data.get("queue") or []
@@ -249,6 +261,11 @@ def load_dlq_terminal() -> dict[str, str]:
             job = entry.get("job")
             if job:
                 out[str(job)] = status
+    archive_data = load_json(DLQ_TERMINAL_ARCHIVE)
+    archive = archive_data.get("archive", []) if isinstance(archive_data, dict) else []
+    for entry in archive:
+        if isinstance(entry, dict) and entry.get("job"):
+            out.setdefault(str(entry["job"]), "TERMINAL")
     return out
 
 
