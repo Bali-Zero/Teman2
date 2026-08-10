@@ -221,7 +221,6 @@ class TestUpdateClientProfile:
         ):
             data = ClientProfileUpdate(
                 avatar_url="x",
-                google_drive_folder_id="d",
                 date_of_birth="1990-01-01",
                 passport_expiry="2028-01-01",
                 company_name="Test Co",
@@ -248,6 +247,23 @@ class TestUpdateClientProfile:
                     current_user=admin_user,
                 )
             assert exc_info.value.status_code == 400
+
+    def test_google_drive_folder_id_is_not_a_settable_field(self) -> None:
+        """Guilt-shaped regression (adversarial review, 2026-08-09): this
+        column is the trust anchor `assert_drive_file_belongs_to_client`
+        checks new document `file_id`s against. Accepting it from a generic
+        profile PATCH let any caller with write access to a client set it to
+        an arbitrary folder id, poisoning the anchor the new write guard
+        relies on. `extra="ignore"` is Pydantic's default, so a caller that
+        still sends the field gets silently dropped rather than erroring —
+        that is the point: the model must never expose this as an attribute
+        the router code could read."""
+        from backend.app.routers.crm_enhanced import ClientProfileUpdate
+
+        data = ClientProfileUpdate.model_validate(
+            {"avatar_url": "x", "google_drive_folder_id": "attacker-controlled-folder"}
+        )
+        assert not hasattr(data, "google_drive_folder_id")
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,15 @@
+{
+  "date": "2026-07-29T09:05:07.349637",
+  "phase_1_articles": {
+    "submitted_today": 200,
+    "total_submitted": 2425,
+    "total_failed": 691,
+    "quota_remaining": 0,
+    "status": "COMPLETED"
+  },
+  "phase_2_kbli": {
+    "status": "SKIPPED",
+    "reason": "Quota exhausted",
+    "backlog": 0
+  }
+}

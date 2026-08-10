@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 const { mockUseParams, mockUsePortalMatter } = vi.hoisted(() => ({
@@ -112,6 +112,36 @@ describe("PortalMatterDetailPage", () => {
 
     expect(screen.getByText("Visa Renewal")).toBeInTheDocument();
     expect(screen.getByText("No approved summary yet")).toBeInTheDocument();
+  });
+
+  it("keeps failures client-safe and retries the real matter query", () => {
+    const refetch = vi.fn();
+    mockUseParams.mockReturnValue({ id: "9" });
+    mockUsePortalMatter.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: new Error("workspace snapshot table detail"),
+      refetch,
+    });
+
+    render(<PortalMatterDetailPage />);
+
+    expect(screen.getByText("Unable to load matter")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "We could not verify this matter. Check your connection and try again.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("workspace snapshot table detail"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("No approved summary yet"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(refetch).toHaveBeenCalledTimes(1);
   });
 
   it("uses semantic day-theme tokens (WS3), never dark hardcoded colors", () => {

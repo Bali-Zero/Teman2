@@ -171,12 +171,12 @@ If you're a tax resident freelancing for **international clients only**:
   calculateResult={(values) => {
     const income = Number(values.annual);
     const expenses = Number(values.expenses);
-    const net = income - expenses;
+    const netIncome = income - expenses;
 
     const ptkpMap = { 'TK0': 54000000, 'K0': 58500000, 'K1': 63000000, 'K2': 67500000 };
     const ptkp = ptkpMap[values.status];
 
-    let taxable = Math.max(0, net - ptkp);
+    let taxable = Math.max(0, netIncome - ptkp);
     let tax = 0;
     let remaining = taxable;
 
@@ -186,14 +186,14 @@ If you're a tax resident freelancing for **international clients only**:
     if (remaining > 0) { const b4 = Math.min(remaining, 4500000000); tax += b4 * 0.30; remaining -= b4; }
     if (remaining > 0) { tax += remaining * 0.35; }
 
-    const effectiveRate = net > 0 ? ((tax / net) * 100).toFixed(1) : 0;
+    const effectiveRate = netIncome > 0 ? ((tax / netIncome) * 100).toFixed(1) : 0;
 
     return {
       total: tax,
       breakdown: [
         { label: "Gross Income", amount: income },
         { label: "Expenses", amount: -expenses },
-        { label: "Net Income", amount: net },
+        { label: "Net Income", amount: netIncome },
         { label: "PTKP Deduction", amount: -ptkp },
         { label: "Taxable Income", amount: taxable },
         { label: "Annual Tax", amount: tax }

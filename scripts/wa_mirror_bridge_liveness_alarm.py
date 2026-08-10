@@ -58,6 +58,11 @@ from zoneinfo import ZoneInfo
 
 import asyncpg
 
+_REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(_REPO))
+
+from scripts.tg_gateway_verdict import extract_gateway_verdict, gateway_delivered  # noqa: E402
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
@@ -199,10 +204,13 @@ def _send_telegram(text: str, dedup_key: str = "") -> bool:
             cmd,
             capture_output=True, text=True, timeout=30,
         )
+        verdict = extract_gateway_verdict(proc.stderr)
+        logger.info("[wa_liveness] tg_notify: %s",
+                    verdict or f"NESSUN verdetto rc={proc.returncode}")
         if proc.returncode != 0:
             logger.warning("[wa_liveness] tg_notify exit=%s: %s", proc.returncode, proc.stderr[:200])
             return False
-        return True
+        return gateway_delivered(verdict)
     except Exception as exc:  # noqa: BLE001
         logger.warning("[wa_liveness] telegram send failed: %s", exc)
         return False

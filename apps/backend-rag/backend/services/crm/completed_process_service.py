@@ -184,36 +184,38 @@ class CompletedProcessService:
                     filename=doc["filename"],
                     mime_type=doc.get("mime_type", "application/pdf"),
                 )
-
-                if result.get("success"):
-                    uploaded.append(
-                        {
-                            "filename": doc["filename"],
-                            "file_url": result["file_url"],
-                        },
-                    )
-
-                    # Save to database
-                    await self._save_final_document_record(
-                        client_id=client_data["id"],
-                        filename=doc["filename"],
-                        drive_file_id=result["file_id"],
-                        drive_file_url=result["file_url"],
-                    )
-                else:
-                    failed.append(
-                        {
-                            "filename": doc["filename"],
-                            "reason": f"drive_api: {result.get('error', 'unknown')}",
-                        }
-                    )
-                    logger.error(
-                        f"Drive upload returned success=False for {doc['filename']}: {result}",
-                    )
-
             except Exception as e:
                 logger.error(f"Failed to upload {doc['filename']}: {e}")
                 failed.append({"filename": doc["filename"], "reason": f"exception: {e}"})
+                continue
+
+            if result.get("success"):
+                uploaded.append(
+                    {
+                        "filename": doc["filename"],
+                        "file_url": result["file_url"],
+                    },
+                )
+                # final-document DB record intentionally removed 2026-08-08:
+                # client_documents never existed in prod; when this feature is
+                # wired (final_documents currently has zero live callers — see
+                # trigger_on_completed), write to `documents` with an explicit
+                # column mapping (drive_file_id has no direct column on
+                # `documents`). Previously this called _save_final_document_record
+                # from *inside* the same try/except as the Drive upload, so a DB
+                # failure landed the doc in both `uploaded` (already appended)
+                # and `failed` (via the outer except) — moving the upload call
+                # into its own try/except (above) fixes that double-count too.
+            else:
+                failed.append(
+                    {
+                        "filename": doc["filename"],
+                        "reason": f"drive_api: {result.get('error', 'unknown')}",
+                    }
+                )
+                logger.error(
+                    f"Drive upload returned success=False for {doc['filename']}: {result}",
+                )
 
         return uploaded, failed
 
@@ -457,29 +459,9 @@ P.S. Save our contact info for future needs—we're always here to help! 😊
             )
             raise
 
-    async def _save_final_document_record(
-        self,
-        client_id: int,
-        filename: str,
-        drive_file_id: str,
-        drive_file_url: str,
-    ) -> None:
-        """Save final document record."""
-        async with self.db_pool.acquire() as conn:
-            await conn.execute(
-                """
-                INSERT INTO client_documents (
-                    client_id, filename, document_type,
-                    drive_file_id, drive_file_url, uploaded_by, is_final,
-                    uploaded_at
-                )
-                VALUES ($1, $2, 'final_document', $3, $4, 'system', true, NOW())
-                """,
-                client_id,
-                filename,
-                drive_file_id,
-                drive_file_url,
-            )
+    # NOTE (2026-08-08): _save_final_document_record was removed here — see
+    # the comment in _upload_final_documents above for why and what a real
+    # implementation needs (documents table, explicit column mapping).
 
     async def _fetch_practice_data(self, practice_id: int) -> dict | None:
         """Fetch practice data from database."""

@@ -14,6 +14,38 @@ function getBackendUrl(): string {
 }
 const BACKEND_URL = getBackendUrl();
 
+interface LoginUpstreamPayload {
+  message?: string;
+  data?: {
+    token?: unknown;
+    csrfToken?: unknown;
+    expiresIn?: number;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+async function parseUpstreamPayload(
+  upstream: Response,
+): Promise<LoginUpstreamPayload | null> {
+  const responseBody = await upstream.text();
+
+  if (!responseBody.trim()) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(responseBody) as LoginUpstreamPayload;
+  } catch {
+    logger.warn("Login upstream returned a non-JSON response", {
+      component: "LoginRoute",
+      action: "parseUpstreamResponse",
+      code: upstream.status,
+    });
+    return null;
+  }
+}
+
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const body = await req.json();
@@ -25,31 +57,57 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       body: JSON.stringify(body),
     });
 
-    const data = await upstream.json();
+    const data = await parseUpstreamPayload(upstream);
 
-    if (!upstream.ok || !data?.data?.token) {
-      return NextResponse.json(data, { status: upstream.status });
+    if (!upstream.ok) {
+      return NextResponse.json(
+        data ?? {
+          success: false,
+          message: "Login service unavailable",
+        },
+        { status: upstream.status },
+      );
     }
 
-    const { user, expiresIn } = data.data;
+    if (!data?.data?.token) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid response from login service",
+        },
+        { status: 502 },
+      );
+    }
+
+    const { expiresIn } = data.data;
     // Strip whitespace/newlines — backend may include trailing \n in token values
     const token = String(data.data.token).replace(/\s+/g, "");
     const csrfToken = data.data.csrfToken
       ? String(data.data.csrfToken).replace(/\s+/g, "")
       : undefined;
     // Strip any whitespace/newlines from env var values
-    const cookieDomain = (
-      process.env.COOKIE_DOMAIN ||
-      (process.env.NODE_ENV === "production" ? ".balizero.com" : "localhost")
-    ).replace(/\s+/g, "");
+    const requestHostname = req.nextUrl.hostname.toLowerCase();
+    const isLoopback = ["localhost", "127.0.0.1", "::1"].includes(
+      requestHostname,
+    );
+    const isProdlikeLoopback =
+      process.env.MY_PORTAL_PRODLIKE_ENFORCE_MIDDLEWARE === "1" && isLoopback;
+    const cookieDomain = isProdlikeLoopback
+      ? ""
+      : (
+          process.env.COOKIE_DOMAIN ||
+          (process.env.NODE_ENV === "production" ? ".balizero.com" : "")
+        ).replace(/\s+/g, "");
+    const domainAttribute = cookieDomain ? `; Domain=${cookieDomain}` : "";
     const maxAge = expiresIn || 86400;
-    const isSecure = process.env.NODE_ENV === "production";
+    const isSecure =
+      process.env.NODE_ENV === "production" && !isProdlikeLoopback;
 
     // Build cookie attributes — all values explicitly stripped of whitespace
     const secure = isSecure ? "; Secure" : "";
     const tokenCookie =
       `nz_access_token=${token}` +
-      `; Domain=${cookieDomain}` +
+      domainAttribute +
       `; HttpOnly` +
       `; Max-Age=${maxAge}` +
       `; Path=/` +
@@ -57,7 +115,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       secure;
     const csrfCookieStr = csrfToken
       ? `nz_csrf_token=${csrfToken}` +
-        `; Domain=${cookieDomain}` +
+        domainAttribute +
         `; Max-Age=${maxAge}` +
         `; Path=/` +
         `; SameSite=Lax` +
@@ -67,7 +125,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     logger.info("Login successful, cookies set", {
       component: "LoginRoute",
       action: "login",
-      user: user?.email,
     });
 
     // Build headers as array of tuples to avoid any Headers.append newline issues
@@ -82,18 +139,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       { status: 200, headers: headerTuples },
     ) as unknown as NextResponse;
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
     logger.error(
       "Login route error",
       {
         component: "LoginRoute",
         action: "login",
-        metadata: { errMsg, backendUrl: BACKEND_URL },
       },
       error instanceof Error ? error : new Error(String(error)),
     );
     return NextResponse.json(
-      { success: false, message: "Internal server error", debug: errMsg },
+      { success: false, message: "Internal server error" },
       { status: 500 },
     );
   }

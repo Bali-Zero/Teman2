@@ -44,12 +44,14 @@ class TestLegalConstants:
         """Test legal type pattern matching"""
         assert LEGAL_TYPE_PATTERN.search("UNDANG-UNDANG REPUBLIK INDONESIA")
         assert LEGAL_TYPE_PATTERN.search("PERATURAN PEMERINTAH")
+        assert LEGAL_TYPE_PATTERN.search("PERATURAN PRESIDEN NOMOR 43 TAHUN 2011")
         assert LEGAL_TYPE_PATTERN.search("KEPUTUSAN PRESIDEN")
 
     def test_legal_type_abbrev(self):
         """Test legal type abbreviations"""
         assert LEGAL_TYPE_ABBREV["UNDANG-UNDANG"] == "UU"
         assert LEGAL_TYPE_ABBREV["PERATURAN PEMERINTAH"] == "PP"
+        assert LEGAL_TYPE_ABBREV["PERATURAN PRESIDEN"] == "Perpres"
         assert LEGAL_TYPE_ABBREV["KEPUTUSAN PRESIDEN"] == "Keppres"
 
     def test_number_pattern(self):

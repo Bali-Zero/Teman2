@@ -26,9 +26,10 @@ import asyncio
 import fcntl
 import logging
 import os
+import re
+import subprocess
 import sys
 import urllib.parse
-import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -139,21 +140,79 @@ def _reset_503_counter() -> None:
             pass
 
 
-def _send_telegram_alert(msg: str) -> None:
-    """CORR-G6: best-effort Telegram alert on 3 consecutive 503."""
-    bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
-    chat_id = os.getenv("TELEGRAM_OWNER_CHAT_ID", "1125336968")
-    if not bot_token:
+_GATEWAY_VERDICT_RE = re.compile(r"^tg_notify:\s*(\S+)", re.MULTILINE)
+
+
+def _find_gateway() -> Path | None:
+    """Locate scripts/tg_notify.py — from the checkout this file sits in first.
+
+    `parents[3]` walks scripts → cell → apps → repo root, which is where this
+    shim actually runs from (`~/nuzantara/apps/cell/scripts/`). The `~/nuzantara`
+    fallback covers a copy executed from anywhere else, so the alarm does not
+    die with the location (superscar #1).
+    """
+    for candidate in (
+        Path(__file__).resolve().parents[3] / "scripts" / "tg_notify.py",
+        Path.home() / "nuzantara" / "scripts" / "tg_notify.py",
+    ):
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def _send_telegram_alert(msg: str, *, dedup_key: str) -> None:
+    """CORR-G6: route an alert through the tg_notify gateway.
+
+    Why the gateway and not a raw POST. This shim runs every 450s, and the
+    503 branch fires whenever the consecutive-failure counter is at or above
+    three — the counter keeps CLIMBING, so a Fly outage used to mean one
+    Telegram per run, 192 a day, all restating the same fact, with no cooldown
+    anywhere in this file. The gateway collapses a repeated `dedup_key` on its
+    6/24/72/168h ladder, counts the message against the P0 budget, and records
+    it in the ledger — none of which a direct sendMessage can do.
+
+    `dedup_key` is required rather than defaulted: the two callers report two
+    different conditions (a 503 streak, an orphaned stream gap) and folding
+    them onto one key would let the noisy one silence the rare one.
+    """
+    gateway = _find_gateway()
+    if gateway is None:
+        # Loud in the log rather than silent: an alert that could not be sent
+        # must still leave a trace of not having been sent (W108).
+        logger.warning("[skills_bridge] no tg_notify gateway — alert NOT sent: %s", msg)
         return
+    cmd = [
+        # Absolute interpreter: the alarm must not share a failure mode with
+        # the thing it reports (W108).
+        sys.executable,
+        str(gateway),
+        "--tier",
+        "p0",
+        "--source",
+        "skills-bridge-consumer",
+        "--dedup-key",
+        dedup_key,
+        "--",
+        msg,
+    ]
     try:
-        data = urllib.parse.urlencode({"chat_id": chat_id, "text": msg}).encode()
-        urllib.request.urlopen(
-            f"https://api.telegram.org/bot{bot_token}/sendMessage",
-            data=data,
-            timeout=5,
+        proc = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=30, check=False
         )
-    except Exception as e:
-        logger.warning("[skills_bridge] Telegram alert failed: %s", e)
+    except (subprocess.TimeoutExpired, OSError) as e:
+        logger.warning("[skills_bridge] tg_notify unreachable: %s", e)
+        return
+    # Verdict on stderr, never the exit code — the gateway exits 0 by design,
+    # so a refusal read through returncode looks like a success (W104).
+    match = _GATEWAY_VERDICT_RE.search(proc.stderr or "")
+    if match:
+        logger.info("[skills_bridge] tg_notify: %s (%s)", match.group(1), dedup_key)
+    else:
+        tail = " ".join((proc.stderr or "").split())[-160:]
+        logger.warning(
+            "[skills_bridge] tg_notify printed no verdict (rc=%s): %s",
+            proc.returncode, tail or "<empty>",
+        )
 
 
 async def _xadd_events(
@@ -221,7 +280,12 @@ async def run_one_poll(
         if n >= 3:
             _send_telegram_alert(
                 f"⚠️ skills_bridge_consumer: Fly returned 503 {n} times "
-                "consecutively. Check Fly app health + Upstash connectivity."
+                "consecutively. Check Fly app health + Upstash connectivity.",
+                # The key names the CONDITION, never the measurement: `n` is in
+                # the TEXT because a human wants to know how bad it is, and out
+                # of the KEY because a counter that climbs every 450s would mint
+                # a fresh key per firing and defeat the dedup window entirely.
+                dedup_key="skills-bridge:503-streak",
             )
         return 1
     if resp.status_code != 200:
@@ -248,7 +312,10 @@ async def run_one_poll(
         _save_last_id("$")
         _send_telegram_alert(
             f"🚨 skills_bridge: stream gap. {last_id} < {stream_lowest_id}. "
-            "Reset last_id to $ — events orphaned. Investigate Fly Upstash MAXLEN."
+            "Reset last_id to $ — events orphaned. Investigate Fly Upstash MAXLEN.",
+            # Its own key: an orphaned-events gap is rare and must not be
+            # swallowed by a 503 storm holding the shared window open.
+            dedup_key="skills-bridge:stream-gap",
         )
         return 1
 

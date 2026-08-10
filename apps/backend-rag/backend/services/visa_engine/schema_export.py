@@ -89,6 +89,7 @@ seven official ones.
 
 from __future__ import annotations
 
+import copy
 import json
 from pathlib import Path
 from typing import Any
@@ -96,6 +97,10 @@ from typing import Any
 from pydantic import BaseModel, TypeAdapter
 from pydantic.json_schema import models_json_schema
 
+from backend.services.visa_engine.api_models import (
+    VisaOracleEvaluateRequest,
+    VisaOracleEvaluateResponse,
+)
 from backend.services.visa_engine.ast import Condition
 from backend.services.visa_engine.models import (
     ApplicantFacts,
@@ -118,6 +123,14 @@ _ENTRYPOINT_MODELS: dict[str, type[BaseModel]] = {
     "decision.schema.json": Decision,
     "price-quote.schema.json": PriceQuote,
     "source-record.schema.json": SourceRecord,
+}
+
+# Public HTTP envelope.  It is not one of spec section 2's seven pure-engine
+# entrypoints, but exporting it alongside them gives frontend generators one
+# reviewed schema instead of a hand-maintained DTO.
+_API_ENTRYPOINT_MODELS: dict[str, type[BaseModel]] = {
+    "visa-oracle-evaluate-request.schema.json": VisaOracleEvaluateRequest,
+    "visa-oracle-evaluate-response.schema.json": VisaOracleEvaluateResponse,
 }
 
 #: Non-spec extra this package also finds useful to export standalone
@@ -265,6 +278,7 @@ _ALLOF_INJECTIONS: dict[str, list[dict[str, Any]]] = {
                     "decision_id": _UUID_INLINE,
                     "public_id": {"type": "string", "pattern": "^[a-z0-9]{16,20}$"},
                     "rule_pack": {"$ref": "#/$defs/RulePackRef"},
+                    "facts_fingerprint": {"$ref": "#/$defs/Fingerprint"},
                     "candidates": {"minItems": 1},
                     "missing_facts": {"maxItems": 0},
                     "review_reasons": {"maxItems": 0},
@@ -281,6 +295,7 @@ _ALLOF_INJECTIONS: dict[str, list[dict[str, Any]]] = {
                     "decision_id": _UUID_INLINE,
                     "public_id": {"type": "string", "pattern": "^[a-z0-9]{16,20}$"},
                     "rule_pack": {"$ref": "#/$defs/RulePackRef"},
+                    "facts_fingerprint": {"$ref": "#/$defs/Fingerprint"},
                     "missing_facts": {"minItems": 1},
                     "review_reasons": {"maxItems": 0},
                     "no_path_reasons": {"maxItems": 0},
@@ -295,6 +310,7 @@ _ALLOF_INJECTIONS: dict[str, list[dict[str, Any]]] = {
                     "decision_id": _UUID_INLINE,
                     "public_id": {"type": "string", "pattern": "^[a-z0-9]{16,20}$"},
                     "rule_pack": {"$ref": "#/$defs/RulePackRef"},
+                    "facts_fingerprint": {"$ref": "#/$defs/Fingerprint"},
                     "missing_facts": {"maxItems": 0},
                     "review_reasons": {"minItems": 1},
                     "no_path_reasons": {"maxItems": 0},
@@ -309,6 +325,7 @@ _ALLOF_INJECTIONS: dict[str, list[dict[str, Any]]] = {
                     "decision_id": _UUID_INLINE,
                     "public_id": {"type": "string", "pattern": "^[a-z0-9]{16,20}$"},
                     "rule_pack": {"$ref": "#/$defs/RulePackRef"},
+                    "facts_fingerprint": {"$ref": "#/$defs/Fingerprint"},
                     "missing_facts": {"maxItems": 0},
                     "review_reasons": {"maxItems": 0},
                     "no_path_reasons": {"minItems": 1},
@@ -326,6 +343,7 @@ _ALLOF_INJECTIONS: dict[str, list[dict[str, Any]]] = {
                     "no_path_reasons": {"maxItems": 0},
                     "quotes": {"maxItems": 0},
                     "outage": {"type": "object"},
+                    "facts_fingerprint": {"type": "null"},
                 }
             },
         },
@@ -333,25 +351,73 @@ _ALLOF_INJECTIONS: dict[str, list[dict[str, Any]]] = {
 }
 
 
-def _inject_allof_conditionals(contract_defs: dict[str, Any]) -> None:
-    """Mutate ``contract_defs`` in place, attaching each entry of
-    ``_ALLOF_INJECTIONS`` to its named ``$def`` — see module docstring for
+def _rewrite_local_refs(value: Any, *, ref_template: str) -> Any:
+    """Deep-copy one schema fragment while adapting local model refs."""
+
+    if isinstance(value, dict):
+        rewritten = {
+            key: _rewrite_local_refs(item, ref_template=ref_template) for key, item in value.items()
+        }
+        ref = rewritten.get("$ref")
+        if isinstance(ref, str) and ref.startswith("#/$defs/"):
+            rewritten["$ref"] = ref_template.format(model=ref.rsplit("/", 1)[-1])
+        return rewritten
+    if isinstance(value, list):
+        return [_rewrite_local_refs(item, ref_template=ref_template) for item in value]
+    return copy.deepcopy(value)
+
+
+def inject_allof_conditionals(
+    schema_registry: dict[str, Any],
+    *,
+    registry_key: str = "$defs",
+    ref_template: str = "#/$defs/{model}",
+    target_names: tuple[str, ...] | None = None,
+) -> None:
+    """Attach reviewed state/cross-field conditionals to a schema registry.
+
+    The same source fragments feed the standalone JSON-Schema contract and
+    FastAPI's OpenAPI component registry. ``ref_template`` is the only
+    dialect-specific input, preventing the public Decision shape from
+    silently losing its five state conditionals or growing a second copy.
+
+    Mutates ``schema_registry`` in place, attaching each selected entry of
+    ``_ALLOF_INJECTIONS`` to its named model — see module docstring for
     why Pydantic's generator cannot produce these on its own and
     ``_UUID_INLINE``/``_SHA256_HEX_INLINE`` for why the spec's own ``$ref``
     forms had to be substituted with inline shapes.
 
-    ``contract_defs`` is ``models_json_schema``'s raw return shape: a
-    single-key dict ``{"$defs": {name: schema, ...}}`` — NOT the flat
-    ``{name: schema, ...}`` mapping the name might suggest.
+    ``target_names=None`` means every reviewed model and remains strict: a
+    missing target raises. OpenAPI selects only ``Decision`` because the
+    public endpoint does not expose ``Rule``/``RulePackPayload`` directly.
     """
-    defs = contract_defs["$defs"]
-    for def_name, allof_blocks in _ALLOF_INJECTIONS.items():
+
+    defs = schema_registry[registry_key]
+    selected = target_names or tuple(_ALLOF_INJECTIONS)
+    for def_name in selected:
         if def_name not in defs:
             raise KeyError(
-                f"expected $defs/{def_name} in the generated contract — "
+                f"expected {registry_key}/{def_name} in the generated schema — "
                 "a model rename/removal broke the allOf injection target"
             )
-        defs[def_name]["allOf"] = allof_blocks
+        defs[def_name]["allOf"] = _rewrite_local_refs(
+            _ALLOF_INJECTIONS[def_name],
+            ref_template=ref_template,
+        )
+
+
+def inject_openapi_decision_conditionals(openapi_schema: dict[str, Any]) -> None:
+    """Inject Visa Decision state invariants into a FastAPI OpenAPI document."""
+
+    components = openapi_schema.get("components")
+    if not isinstance(components, dict) or not isinstance(components.get("schemas"), dict):
+        raise KeyError("OpenAPI document is missing components/schemas")
+    inject_allof_conditionals(
+        components,
+        registry_key="schemas",
+        ref_template="#/components/schemas/{model}",
+        target_names=("Decision",),
+    )
 
 
 def build_schemas() -> dict[str, dict[str, Any]]:
@@ -361,16 +427,25 @@ def build_schemas() -> dict[str, dict[str, Any]]:
     function ``export_schemas`` and the test suite both build on this.
     """
     key_map, contract_defs = models_json_schema(
-        [(model, "validation") for model in _ENTRYPOINT_MODELS.values()],
+        [
+            (model, "validation")
+            for model in (*_ENTRYPOINT_MODELS.values(), *_API_ENTRYPOINT_MODELS.values())
+        ],
         ref_template="#/$defs/{model}",
     )
     contract_defs = dict(contract_defs)
-    _inject_allof_conditionals(contract_defs)
+    inject_allof_conditionals(contract_defs)
 
     schemas: dict[str, dict[str, Any]] = {}
     schemas["contract.schema.json"] = _with_envelope(dict(contract_defs), "contract.schema.json")
 
     for filename, model in _ENTRYPOINT_MODELS.items():
+        def_ref = key_map[(model, "validation")]
+        ref_name = def_ref["$ref"].rsplit("/", 1)[-1]
+        entrypoint_schema = {"$ref": f"contract.schema.json#/$defs/{ref_name}"}
+        schemas[filename] = _with_envelope(entrypoint_schema, filename)
+
+    for filename, model in _API_ENTRYPOINT_MODELS.items():
         def_ref = key_map[(model, "validation")]
         ref_name = def_ref["$ref"].rsplit("/", 1)[-1]
         entrypoint_schema = {"$ref": f"contract.schema.json#/$defs/{ref_name}"}

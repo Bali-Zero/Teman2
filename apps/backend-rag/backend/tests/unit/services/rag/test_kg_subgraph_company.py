@@ -54,6 +54,7 @@ def _base_state(**overrides):
         "company_type": None,
         "is_foreign_investor": False,
         "capital_amount": None,
+        "paid_up_amount": None,
         "kbli_codes": [],
         "licensing_requirements": [],
         "shareholders": [],
@@ -391,9 +392,10 @@ class TestPmaEligibilityVocabulary:
         result = await check_pma_eligibility_node(state, mock_db_pool)
         detail = result["licensing_requirements"][-1]["details"][0]
         assert detail["eligibility_state"] == expected_state
-        assert detail["eligible"] is {"open": True, "closed": False, "undetermined": None}[
-            expected_state
-        ]
+        assert (
+            detail["eligible"]
+            is {"open": True, "closed": False, "undetermined": None}[expected_state]
+        )
 
     @pytest.mark.asyncio
     async def test_truthiness_hazard_is_documented_by_a_failing_consumer(self, mock_db_pool):
@@ -510,6 +512,36 @@ class TestGetCapitalRequirements:
         assert req["details"]["min_capital"] == 10_000_000_000
 
     @pytest.mark.asyncio
+    async def test_pt_pma_carries_the_paid_up_figure_not_only_the_investment_plan(
+        self, mock_db_pool
+    ):
+        """The dict always held both; only `min_capital` was copied into state,
+        so the paid-up figure could never reach the client-facing workflow."""
+        state = _base_state(company_type="pt_pma", is_foreign_investor=True)
+        result = await get_capital_requirements_node(state, mock_db_pool)
+
+        assert result["capital_amount"] == 10_000_000_000
+        assert result["paid_up_amount"] == 2_500_000_000
+
+    @pytest.mark.asyncio
+    async def test_pt_pma_exposes_strict_threshold_and_regulatory_exceptions(self, mock_db_pool):
+        """The machine-readable threshold must not turn ``>10bn`` into ``>=10bn``.
+
+        Permeninvesthil/Kepala BKPM 5/2025 Article 26(2) uses ``lebih
+        besar`` and Articles 26(3)-(8) change the calculation basis for
+        specified sectors, assets, locations, and special economic zones.
+        """
+        state = _base_state(company_type="pt_pma", is_foreign_investor=True)
+        result = await get_capital_requirements_node(state, mock_db_pool)
+        requirement = result["licensing_requirements"][-1]["details"]
+
+        assert result["investment_threshold_strict"] is True
+        assert requirement["investment_threshold_strict"] is True
+        assert "Articles 26(3)-(8)" in requirement["notes"]
+        assert "exceptions" in requirement["notes"].lower()
+        assert "Article 26(10)" in requirement["notes"]
+
+    @pytest.mark.asyncio
     async def test_pt_lokal_capital(self, mock_db_pool):
         state = _base_state(company_type="pt_lokal")
         result = await get_capital_requirements_node(state, mock_db_pool)
@@ -558,6 +590,99 @@ class TestSynthesizeCompanyWorkflow:
         assert len(wf["steps"]) == 5
         assert wf["confidence"] > 0
         assert "confidence_breakdown" in wf
+
+    @pytest.mark.asyncio
+    async def test_capital_step_does_not_present_the_investment_plan_as_cash(self):
+        """GUILT — this string reaches clients verbatim through the KG workflow.
+
+        It used to read "Prepare minimum capital: Rp 10,000,000,000". Both
+        figures live side by side in `capital_reqs`; only the investment-plan
+        one was surfaced, and "prepare capital" reads as money to deposit —
+        4x the real paid-up requirement (IDR 2.5bn, Permeninvesthil/Kepala
+        BKPM 5/2025).
+        """
+        state = _base_state(
+            company_type="pt_pma",
+            is_foreign_investor=True,
+            capital_amount=10_000_000_000,
+            paid_up_amount=2_500_000_000,
+            kbli_codes=["kbli:62011"],
+        )
+        result = await synthesize_company_workflow_node(state)
+        capital_step = next(
+            s for s in result["workflow"]["steps"] if s["entity_id"] == "capital_requirement"
+        )
+
+        assert "Prepare minimum capital" not in capital_step["action"]
+        # Both numbers present, each named for what it is.
+        assert "greater than Rp 10,000,000,000" in capital_step["action"]
+        assert "2,500,000,000" in capital_step["action"]
+        assert "investment" in capital_step["action"].lower()
+        assert "paid up" in capital_step["action"].lower()
+        assert capital_step["details"]["paid_up_amount"] == 2_500_000_000
+        assert capital_step["details"]["investment_plan_amount"] == 10_000_000_000
+
+    @pytest.mark.asyncio
+    async def test_pt_pma_action_uses_strict_threshold_and_separate_paid_up_requirement(self):
+        """The client copy must preserve both independent Article 26 requirements."""
+        state = _base_state(
+            company_type="pt_pma",
+            is_foreign_investor=True,
+            capital_amount=10_000_000_000,
+            paid_up_amount=2_500_000_000,
+            investment_threshold_strict=True,
+        )
+        result = await synthesize_company_workflow_node(state)
+        capital_step = next(
+            s for s in result["workflow"]["steps"] if s["entity_id"] == "capital_requirement"
+        )
+        action = capital_step["action"]
+
+        assert "greater than Rp 10,000,000,000" in action
+        assert "at least Rp 10,000,000,000" not in action
+        assert "Separately, place and pay up at least Rp 2,500,000,000" in action
+        assert "of which" not in action
+        assert "Different sector-specific capital rules" in action
+        assert "investment-basis exceptions may apply" in action
+        assert capital_step["details"]["investment_threshold_strict"] is True
+
+    @pytest.mark.asyncio
+    async def test_the_10bn_investment_threshold_is_not_stale_and_must_survive(self):
+        """INNOCENCE — the sibling error is deleting the 10bn as 'outdated'.
+
+        Permeninvesthil/Kepala BKPM 5/2025 changed the PAID-UP figure to 2.5bn and left the
+        >10bn investment-plan threshold per KBLI per location in force. A sweep
+        that rewrites every "10 billion" to "2.5 billion" breaks this.
+        """
+        state = _base_state(
+            company_type="pt_pma",
+            is_foreign_investor=True,
+            capital_amount=10_000_000_000,
+            paid_up_amount=2_500_000_000,
+        )
+        result = await synthesize_company_workflow_node(state)
+        capital_step = next(
+            s for s in result["workflow"]["steps"] if s["entity_id"] == "capital_requirement"
+        )
+        assert "10,000,000,000" in capital_step["action"]
+
+    @pytest.mark.asyncio
+    async def test_capital_step_survives_a_missing_paid_up_figure(self):
+        """A company type with an investment floor but no paid-up rule must not
+        crash, and must not invent one."""
+        state = _base_state(
+            company_type="pt_lokal",
+            is_foreign_investor=False,
+            capital_amount=50_000_000,
+            paid_up_amount=None,
+        )
+        result = await synthesize_company_workflow_node(state)
+        capital_step = next(
+            s for s in result["workflow"]["steps"] if s["entity_id"] == "capital_requirement"
+        )
+        assert "50,000,000" in capital_step["action"]
+        assert "paid up" not in capital_step["action"].lower()
+        assert capital_step["details"]["paid_up_amount"] is None
 
     @pytest.mark.asyncio
     async def test_cv_workflow_no_capital_step(self):

@@ -68,7 +68,7 @@
 
 ### Postgres (Fly `nuzantara-postgres`)
 
-Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`garuda_indexer_state`, `publication_history`/`publication_assets`, `crm_clients`/`crm_practices`, `conversations`/`messages`, `google_drive_tokens`, `system_settings`, `lkpm_receipts`, `routing_stats`/`failed_queries`, `post_publish_queue`.
+Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `publication_history`/`publication_assets`, `crm_clients`/`crm_practices`, `conversations`/`messages`, `google_drive_tokens`, `system_settings`, `lkpm_receipts`, `routing_stats`/`failed_queries`, `post_publish_queue`.
 
 ### Filesystem state
 
@@ -108,7 +108,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 | `autonomous-lab` |  |
 | `backend-rag` | **Production-Ready AI-Powered RAG System for Business Intelligence** |
 | `bali-intel-scraper` | Intelligence pipeline for Bali Zero news and regulatory updates. |
-| `bali-zero-magazine` | Private editorial observatory for Bali Zero, built on |
+| `bali-zero-magazine` | Public editorial observatory for Bali Zero, built on |
 | `cell` |  |
 | `cell-observatory-collector` | Pro-local Python service that listens to `cell_pulse_observed` PG channel, |
 | `crm-cell` | Sprint 3 W2 — light cell wrapping the existing CRM modules |
@@ -170,7 +170,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 ### LaunchAgents — copertura documentale
 
 <!-- DOCSYNC:AUTOMATION_COVERAGE_START -->
-`132 plist tracked in infra/launchagents/ · 103 documented in automation_catalog.json + AUTOMATIONS_REFERENCE.md (78% coverage)`
+`135 plist tracked in infra/launchagents/ · 106 documented in automation_catalog.json + AUTOMATIONS_REFERENCE.md (79% coverage)`
 <!-- DOCSYNC:AUTOMATION_COVERAGE_END -->
 
 Runbook operativi: indice auto-generato in [docs/runbooks/README.md](docs/runbooks/README.md).

@@ -188,6 +188,90 @@ def test_node_modules_symlink_does_not_mask_real_wip(fake_repo):
     assert mod._worktree_has_wip(wt) is True
 
 
+def _seed_mouth_workspace(repo, mod):
+    """Give the fake repo a TRACKED file under apps/mouth, then the nested
+    node_modules dir in main.
+
+    The tracked file is not decoration — it is what makes the fixture
+    representative, and leaving it out makes every assertion below vacuous.
+    `git status --porcelain` COLLAPSES untracked directories to their shallowest
+    untracked ancestor: with nothing tracked under apps/, git reports `?? apps/`
+    and never `?? apps/mouth/node_modules`, so the BROKER_GENERATED_FILES entry
+    can neither help (innocence fails) nor be needed (guilt passes for the wrong
+    reason — `?? apps/` trips WIP no matter what the exemption says). Measured
+    both worlds side by side on 2026-08-07 before writing this. The real repo
+    tracks apps/mouth/src/**, so it is always the rich world.
+    """
+    (repo / "apps" / "mouth" / "src").mkdir(parents=True, exist_ok=True)
+    (repo / "apps" / "mouth" / "src" / "page.tsx").write_text("export {}\n")
+    (repo / ".gitignore").write_text("node_modules/\n")
+    _commit_in_worktree(repo, mod, ".", "seed mouth workspace")
+    subprocess.run(
+        ["git", "push", "origin", "main"], cwd=repo, check=True, capture_output=True
+    )
+    nm = repo / "apps" / "mouth" / "node_modules"
+    nm.mkdir(parents=True, exist_ok=True)
+    (nm / "placeholder.txt").write_text("x\n")
+    return nm
+
+
+def test_mouth_node_modules_is_symlinked_into_worktree(fake_repo):
+    """This is an npm WORKSPACE monorepo: a workspace package's own deps are
+    installed NESTED (`apps/mouth/node_modules/<pkg>`), not hoisted to the root.
+    Node resolves upward from the importing file, so symlinking ONLY the root
+    node_modules leaves `recharts` unresolvable and `npm run typecheck` — the
+    command the pre-commit hook runs on any staged apps/mouth TS/TSX — dies with
+    TS2307. Measured 2026-08-07: 5 of 37 live worktrees had this directory, each
+    because someone ran the install by hand.
+    """
+    mod, repo = fake_repo
+    nm = _seed_mouth_workspace(repo, mod)
+
+    wt = mod.cmd_create("mouth", "mouth-nm-link", ttl_minutes=5)
+    link = wt / "apps" / "mouth" / "node_modules"
+    assert link.is_symlink()
+    assert link.resolve() == nm.resolve()
+
+
+def test_mouth_node_modules_symlink_not_counted_as_wip(fake_repo):
+    """Innocence, and it reproduces the MINI condition on purpose.
+
+    On M5 and Pro this symlink reads as ignored only because a BARE
+    `node_modules` line sits in their `.git/info/exclude` — a local, untracked,
+    per-machine file. Mini has no such line (measured 2026-08-07: 0 matches),
+    and the repo's own .gitignore carries only the directory-only
+    `node_modules/`, which does not match a symlink-to-a-directory. This fake
+    repo has no local exclude either, so it stands in for Mini: without the
+    BROKER_GENERATED_FILES entry the worktree would read `?? apps/mouth/
+    node_modules` forever and `--cleanup` would WARN-skip it on every run.
+    """
+    mod, repo = fake_repo
+    _seed_mouth_workspace(repo, mod)
+
+    wt = mod.cmd_create("mouth", "mouth-nm-innocent", ttl_minutes=5)
+    assert (wt / "apps" / "mouth" / "node_modules").is_symlink()
+    # Premise check: git must actually be reporting the FULL path here, not a
+    # collapsed `?? apps/`. Without this the assertion below could pass in a
+    # world where the exemption is never consulted.
+    porcelain = subprocess.run(
+        ["git", "status", "--porcelain"], cwd=wt, capture_output=True, text=True
+    ).stdout
+    assert "apps/mouth/node_modules" in porcelain or porcelain.strip() == "", porcelain
+    assert mod._worktree_has_wip(wt) is False
+
+
+def test_mouth_node_modules_exemption_does_not_mask_real_wip(fake_repo):
+    """Guilt: the new exemption must not swallow genuine WIP — including WIP
+    that lives INSIDE apps/mouth, next to the exempted path rather than at the
+    repo root, which is where a too-broad prefix match would go wrong."""
+    mod, repo = fake_repo
+    _seed_mouth_workspace(repo, mod)
+
+    wt = mod.cmd_create("mouth", "mouth-nm-guilty", ttl_minutes=5)
+    (wt / "apps" / "mouth" / "src" / "real_work.tsx").write_text("// uncommitted\n")
+    assert mod._worktree_has_wip(wt) is True
+
+
 def test_husky_shim_dir_symlinked_into_worktree(fake_repo):
     """`.husky/_` must reach every worktree or the pre-push gate is OFF there.
 
@@ -792,6 +876,140 @@ def test_branch_in_origin_main_unmerged_content_refuses_reap(fake_repo):
     assert mod._branch_in_origin_main(wt) is False
 
 
+def test_branch_in_origin_main_mode_only_change_refuses_reap(fake_repo):
+    """PENDING-ARMS 2026-08-09 (opened 'while curing two broker defects'):
+    blob-only comparison (`git rev-parse <ref>:<path>`) is blind to a MODE
+    change — `chmod +x` on a file whose bytes are unchanged reads as
+    already-merged and gets reaped although the mode flip is the branch's
+    only real change. The ls-tree entry (mode+type+blob) comparison must
+    catch it."""
+    mod, repo = fake_repo
+    wt = mod.cmd_create("wr2", "modeonly", ttl_minutes=5)
+
+    (wt / "deploy.sh").write_text("echo hi\n")
+    os.chmod(wt / "deploy.sh", 0o755)
+    _commit_in_worktree(wt, mod, "deploy.sh", "chmod +x deploy.sh")
+
+    # origin/main gets the SAME bytes, but non-executable — mode-only diff.
+    (repo / "deploy.sh").write_text("echo hi\n")
+    subprocess.run(["git", "add", "deploy.sh"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@e", "-c", "user.name=T", "commit", "-m", "add deploy.sh"],
+        cwd=repo,
+        check=True,
+    )
+    subprocess.run(["git", "push", "origin", "main"], cwd=repo, check=True)
+    subprocess.run(["git", "fetch", "origin"], cwd=wt, check=True)
+
+    # Guilt: blob matches, mode does not — must NOT read as merged.
+    assert mod._branch_in_origin_main(wt) is False
+
+
+def test_branch_in_origin_main_matching_mode_is_reapable(fake_repo):
+    """Innocence twin of the mode-only guilt case: when origin/main's copy
+    has the SAME mode (both executable) and the same content, the ls-tree
+    entry comparison must not spuriously refuse — proving the fix targets
+    mode DIVERGENCE, not the mere presence of an executable bit."""
+    mod, repo = fake_repo
+    wt = mod.cmd_create("wr2", "modematch", ttl_minutes=5)
+
+    (wt / "deploy.sh").write_text("echo hi\n")
+    os.chmod(wt / "deploy.sh", 0o755)
+    _commit_in_worktree(wt, mod, "deploy.sh", "chmod +x deploy.sh")
+
+    (repo / "deploy.sh").write_text("echo hi\n")
+    os.chmod(repo / "deploy.sh", 0o755)
+    subprocess.run(["git", "add", "deploy.sh"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@e", "-c", "user.name=T", "commit", "-m", "add deploy.sh +x"],
+        cwd=repo,
+        check=True,
+    )
+    subprocess.run(["git", "push", "origin", "main"], cwd=repo, check=True)
+    subprocess.run(["git", "fetch", "origin"], cwd=wt, check=True)
+
+    assert mod._branch_in_origin_main(wt) is True
+
+
+def _declare_union_ledger(repo: Path) -> None:
+    """Commit a `.gitattributes` declaring LEDGER.md merge=union, plus a base
+    LEDGER.md, to the main repo (pre-worktree) so a worktree created after
+    this inherits both — mirrors `.claude/skills/modus/PENDING-ARMS.md`'s
+    real declaration without coupling the test to that file's live content."""
+    (repo / ".gitattributes").write_text("LEDGER.md merge=union\n")
+    (repo / "LEDGER.md").write_text("- base line\n")
+    subprocess.run(["git", "add", ".gitattributes", "LEDGER.md"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@e", "-c", "user.name=T", "commit", "-m", "declare union ledger"],
+        cwd=repo,
+        check=True,
+    )
+    subprocess.run(["git", "push", "origin", "main"], cwd=repo, check=True)
+
+
+def test_branch_in_origin_main_union_path_growing_superset_is_reapable(fake_repo):
+    """PENDING-ARMS 2026-08-09 (the reaper's-16-of-36-worktrees finding): a
+    branch that appended one line to a declared merge=union path must still
+    read as merged once origin/main carries that line PLUS more lines other
+    lanes appended after — exact blob equality can never hold again for an
+    append-only ledger, so the right question is line-SUBSET, not equality."""
+    mod, repo = fake_repo
+    _declare_union_ledger(repo)
+    wt = mod.cmd_create("wr2", "uniongrow", ttl_minutes=5)
+
+    with (wt / "LEDGER.md").open("a") as f:
+        f.write("- branch line\n")
+    _commit_in_worktree(wt, mod, "LEDGER.md", "append branch line")
+
+    # Not merged yet — blob genuinely differs (branch has a line main lacks).
+    assert mod._branch_in_origin_main(wt) is False
+
+    # Simulate: the branch's PR merged (its line lands on main), AND two more
+    # lanes appended after it — main is now a strict superset.
+    subprocess.run(["git", "checkout", "main"], cwd=repo, check=True)
+    with (repo / "LEDGER.md").open("a") as f:
+        f.write("- branch line\n- other lane 1\n- other lane 2\n")
+    subprocess.run(["git", "add", "LEDGER.md"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@e", "-c", "user.name=T", "commit", "-m", "3 more ledger lines"],
+        cwd=repo,
+        check=True,
+    )
+    subprocess.run(["git", "push", "origin", "main"], cwd=repo, check=True)
+    subprocess.run(["git", "fetch", "origin"], cwd=wt, check=True)
+
+    # Superset: every line the branch has is present on origin/main → reapable.
+    assert mod._branch_in_origin_main(wt) is True
+
+
+def test_branch_in_origin_main_union_path_missing_line_refuses_reap(fake_repo):
+    """Innocence twin: if the branch's own ledger line is genuinely ABSENT
+    from origin/main (its PR never actually landed — only OTHER lanes
+    touched the ledger), the subset check must still refuse to reap."""
+    mod, repo = fake_repo
+    _declare_union_ledger(repo)
+    wt = mod.cmd_create("wr2", "unionmissing", ttl_minutes=5)
+
+    with (wt / "LEDGER.md").open("a") as f:
+        f.write("- branch line never merged\n")
+    _commit_in_worktree(wt, mod, "LEDGER.md", "append branch line")
+
+    # Other lanes append DIFFERENT lines — the branch's own line is absent.
+    subprocess.run(["git", "checkout", "main"], cwd=repo, check=True)
+    with (repo / "LEDGER.md").open("a") as f:
+        f.write("- other lane 1\n- other lane 2\n")
+    subprocess.run(["git", "add", "LEDGER.md"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@e", "-c", "user.name=T", "commit", "-m", "2 ledger lines, unrelated"],
+        cwd=repo,
+        check=True,
+    )
+    subprocess.run(["git", "push", "origin", "main"], cwd=repo, check=True)
+    subprocess.run(["git", "fetch", "origin"], cwd=wt, check=True)
+
+    assert mod._branch_in_origin_main(wt) is False
+
+
 # ---------------------------------------------------------------------------
 # list — orphan detection (W62 ANTIBODY #2)
 # ---------------------------------------------------------------------------
@@ -1115,3 +1333,343 @@ def test_does_not_refuse_a_sibling_of_an_existing_worktree(repo_with_worktree):
     root, _wt = repo_with_worktree
     mod = _load_module(root)
     assert mod._refuse_if_nested(root / ".worktrees" / "ops-existing-sibling") is None
+
+
+# ---------------------------------------------------------------------------
+# Root derivation from OUTSIDE the tree — the silent-empty-inventory scar
+# (2026-08-08). The signature guard protected only the git-derived answer; the
+# `return script_dir` fallback was bare, so a copy run from /tmp reported an
+# EMPTY worktree inventory instead of failing. W84: cannot-verify read as clean.
+# ---------------------------------------------------------------------------
+
+
+def _seed_task_metadata(wt: Path, task_id: str = "existing") -> None:
+    """Make a raw `git worktree add` directory VISIBLE to `--list`.
+
+    `--list` enumerates worktrees that carry `.agent-task.json`, not directories.
+    Without this the inventory reads empty for a CORRECT root too, and the whole
+    probe measures the poverty of its own fixture rather than the defect (W108).
+    """
+    (wt / ".agent-task.json").write_text(json.dumps({
+        "task_id": task_id,
+        "lane": "ops",
+        "branch": "b/existing",
+        "host": "test-host",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "ttl_minutes": 60,
+        "pid": os.getpid(),
+        "base_branch": "main",
+        "worktree_path": str(wt),
+    }, indent=2))
+
+
+def _derive_probe(script: Path, *, cwd: Path, env_extra: dict | None = None):
+    """Run a COPY of the broker out-of-process and report what it derived.
+
+    A subprocess is the faithful oracle here: the defect is entirely about what
+    `__file__`, the cwd and the environment look like to a fresh interpreter, and
+    an in-process import cannot reproduce any of it.
+
+    The env is built explicitly rather than inherited so a stray NUZ_REPO_ROOT —
+    `infra/claude-hooks/test_hook_innocence.py` sets it via bare `os.environ`,
+    not monkeypatch — can never decide the outcome of these tests.
+    """
+    env = {k: v for k, v in os.environ.items() if k != "NUZ_REPO_ROOT"}
+    env.update(env_extra or {})
+    return subprocess.run(
+        [sys.executable, str(script), "--list"],
+        cwd=str(cwd), capture_output=True, text=True, timeout=60, env=env,
+    )
+
+
+@pytest.fixture
+def out_of_tree_copy(repo_with_worktree, tmp_path):
+    """The broker copied OUTSIDE any repo, plus a HOME that is not the checkout.
+
+    Mirrors the real m5 invocation `git show origin/main:scripts/agent_start.py >
+    /tmp/x.py && python3 /tmp/x.py` — the documented way to run CURRENT code on a
+    machine whose main checkout is deliberately never pulled (W106b).
+
+    The copy is nested one level down so `Path(__file__).resolve().parents[1]` is
+    a signature-less temp dir, exactly as `/tmp/x.py` makes it `/`.
+    """
+    root, wt = repo_with_worktree
+    _seed_task_metadata(wt)
+    outside = tmp_path / "outside" / "pkg"
+    outside.mkdir(parents=True)
+    copy = outside / "agent_start.py"
+    shutil.copy2(SCRIPT_PATH, copy)
+    home = tmp_path / "elsewhere-home"
+    home.mkdir()
+    return copy, outside, home, root, wt
+
+
+def test_an_out_of_tree_copy_refuses_instead_of_reporting_an_empty_inventory(out_of_tree_copy):
+    """THE SCAR (guilt). Before the cure this exited 0 printing "(no active
+    worktrees under .worktrees/)" while a real worktree sat in the real repo.
+
+    That is the worst available failure for a safety organ: an empty inventory is
+    indistinguishable from a clean one, so the reaper reports nothing to do and the
+    reader believes it. Asserting only "non-zero exit" would be too weak — the
+    point is that it must NOT emit the reassuring sentence.
+    """
+    copy, outside, home, _root, _wt = out_of_tree_copy
+    res = _derive_probe(copy, cwd=outside, env_extra={"HOME": str(home)})
+
+    assert res.returncode != 0, (
+        "an out-of-tree copy that cannot find the checkout exited 0 — "
+        f"stdout={res.stdout!r}"
+    )
+    assert "no active worktrees" not in res.stdout.lower(), (
+        "it printed the CLEAN-inventory sentence while looking in the wrong place: "
+        f"{res.stdout!r}"
+    )
+    combined = (res.stdout + res.stderr)
+    assert "NUZ_REPO_ROOT" in combined, "the refusal must name the way out"
+
+
+def test_an_out_of_tree_copy_finds_the_real_worktrees_via_the_escape_hatch(out_of_tree_copy):
+    """The POSITIVE CONTROL, and the reason the cure is a cure rather than a louder
+    failure: with NUZ_REPO_ROOT the /tmp invocation now WORKS.
+
+    Without this assertion the test above is satisfied by a broker that always
+    refuses. It also pins the escape hatch that previously stopped at
+    `proprioception.py` and the two hooks and never reached this script.
+    """
+    copy, outside, home, root, _wt = out_of_tree_copy
+    res = _derive_probe(
+        copy, cwd=outside, env_extra={"HOME": str(home), "NUZ_REPO_ROOT": str(root)}
+    )
+    assert res.returncode == 0, res.stderr[-800:]
+    assert "b/existing" in res.stdout, (
+        f"the real worktree was not listed: stdout={res.stdout!r}"
+    )
+
+
+def test_an_out_of_tree_copy_falls_back_to_the_home_checkout(out_of_tree_copy, tmp_path):
+    """Candidate 4. With HOME pointing at a directory that IS the checkout, a /tmp
+    copy resolves with no env var at all — machine-agnostic (Pro /Users/nuzantara,
+    m5 /Users/balizero), the same last resort the worktree hooks already use.
+    """
+    copy, outside, _home, root, _wt = out_of_tree_copy
+    home = tmp_path / "home-with-repo"
+    home.mkdir()
+    (home / "nuzantara").symlink_to(root)
+
+    res = _derive_probe(copy, cwd=outside, env_extra={"HOME": str(home)})
+    assert res.returncode == 0, res.stderr[-800:]
+    assert "b/existing" in res.stdout, res.stdout
+
+
+def test_an_override_that_is_not_the_repo_is_named_not_silently_replaced(
+    out_of_tree_copy, tmp_path
+):
+    """GUILT for the override branch. Run from a place where OTHER candidates would
+    succeed, so "it worked" would hide the fact that it worked on a DIFFERENT repo
+    than the one named. Silently retargeting is precisely what the signature guard
+    exists to prevent — doing it to an explicit request is worse, not better.
+    """
+    copy, _outside, home, root, _wt = out_of_tree_copy
+    bogus = tmp_path / "not-the-repo"
+    bogus.mkdir()
+
+    res = _derive_probe(
+        copy, cwd=root, env_extra={"HOME": str(home), "NUZ_REPO_ROOT": str(bogus)}
+    )
+    assert res.returncode != 0, (
+        f"a bogus override was silently ignored; stdout={res.stdout!r}"
+    )
+    assert str(bogus) in (res.stdout + res.stderr), "the refusal must name the bad root"
+
+
+def test_innocence_an_in_repo_run_is_untouched_by_the_new_chain(repo_with_worktree):
+    """INNOCENCE. The ordinary invocation — cwd inside the checkout, no env — must
+    keep resolving via git exactly as before. The fail-loud branch is unreachable
+    for every real consumer (they all `cd <root> && python3 scripts/agent_start.py`).
+    """
+    root, wt = repo_with_worktree
+    _seed_task_metadata(wt)
+    shutil.copy2(SCRIPT_PATH, root / "scripts" / "agent_start.py")
+    res = _derive_probe(root / "scripts" / "agent_start.py", cwd=root)
+    assert res.returncode == 0, res.stderr[-800:]
+    assert "b/existing" in res.stdout, res.stdout
+
+
+# ---------------------------------------------------------------------------
+# release: the W88 content fallback must not be gated on base == "main"
+# ---------------------------------------------------------------------------
+
+
+def _commit_in(path: Path, name: str, body: str, msg: str):
+    (path / name).write_text(body)
+    subprocess.run(["git", "add", name], cwd=path, check=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@e", "-c", "user.name=T", "commit", "-m", msg],
+        cwd=path, check=True, capture_output=True,
+    )
+
+
+def test_release_reaps_a_stacked_branch_whose_base_was_deleted(fake_repo):
+    """GUILT. A branch created off `feature/x` — since squash-merged and its base
+    DELETED — was refused even with every authored file byte-identical on
+    origin/main, because the content fallback was gated on `base == "main"`.
+
+    The harm is not the friction. The refusal's own suggested way out is --force,
+    which deletes unconditionally AND skips the uncommitted-WIP guard — so an
+    over-strict check hands you the nuclear option and turns a #3 into a #2 (W105).
+    Content-on-origin/main is sufficient proof whatever the recorded base was.
+    """
+    mod, repo = fake_repo
+    subprocess.run(["git", "checkout", "-b", "feature/x"], cwd=repo, check=True,
+                   capture_output=True)
+    subprocess.run(["git", "push", "-u", "origin", "feature/x"], cwd=repo, check=True,
+                   capture_output=True)
+    subprocess.run(["git", "checkout", "main"], cwd=repo, check=True, capture_output=True)
+
+    wt = mod.cmd_create("wr2", "rel-stacked", base_branch="feature/x")
+    _commit_in(wt, "stacked.txt", "stacked content\n", "wip")
+
+    # The stack lands on main by squash, then the base branch is deleted — the
+    # ordinary end of a stacked PR.
+    _commit_in(repo, "stacked.txt", "stacked content\n", "squash merge of the stack")
+    subprocess.run(["git", "push", "origin", "main"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(["git", "branch", "-D", "feature/x"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(["git", "push", "origin", "--delete", "feature/x"], cwd=repo, check=True,
+                   capture_output=True)
+    subprocess.run(["git", "fetch", "origin", "--prune"], cwd=wt, check=True, capture_output=True)
+
+    rc = mod.cmd_release("rel-stacked")  # must NOT need --force
+    assert rc == 0
+    assert not wt.exists()
+
+
+def test_innocence_a_stacked_branch_with_real_work_is_still_refused(fake_repo):
+    """INNOCENCE, and the one that matters: widening the content check must not
+    turn --release into "delete anything whose base disappeared". Content that is
+    NOT on origin/main is still protected, deleted base or not.
+    """
+    mod, repo = fake_repo
+    subprocess.run(["git", "checkout", "-b", "feature/y"], cwd=repo, check=True,
+                   capture_output=True)
+    subprocess.run(["git", "push", "-u", "origin", "feature/y"], cwd=repo, check=True,
+                   capture_output=True)
+    subprocess.run(["git", "checkout", "main"], cwd=repo, check=True, capture_output=True)
+
+    wt = mod.cmd_create("wr2", "rel-stacked-live", base_branch="feature/y")
+    _commit_in(wt, "live.txt", "work that never landed\n", "wip")
+
+    subprocess.run(["git", "branch", "-D", "feature/y"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(["git", "push", "origin", "--delete", "feature/y"], cwd=repo, check=True,
+                   capture_output=True)
+    subprocess.run(["git", "fetch", "origin", "--prune"], cwd=wt, check=True, capture_output=True)
+
+    with pytest.raises(SystemExit) as exc:
+        mod.cmd_release("rel-stacked-live")
+    assert wt.exists(), "a worktree holding unlanded work was removed"
+    msg = str(exc.value)
+    assert "feature/y" in msg and "no longer exists" in msg, (
+        "the refusal must name the DELETED BASE as the cause; blaming the merge "
+        f"sends the reader to fix something that is not broken (W106). Got: {msg}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Round 2 — every test below exists because an independent refuter found the
+# first cure incomplete. A cure written in answer to an objection is a NEW
+# claim, and gets its own proof (W113).
+# ---------------------------------------------------------------------------
+
+
+def test_an_override_pointing_at_a_worktree_resolves_to_the_main_checkout(
+    out_of_tree_copy,
+):
+    """A linked worktree carries `scripts/agent_start.py` — it IS a checkout of this
+    repo. So the signature alone answers "is this a checkout", never "is this THE
+    main one", and NUZ_REPO_ROOT=<worktree> would have been accepted, nesting
+    `.worktrees` inside a worktree (W63 — the shape the signature was added to stop).
+    """
+    copy, outside, home, root, wt = out_of_tree_copy
+    # The premise, asserted rather than assumed: the worktree really does carry
+    # the signature, so the signature test alone CANNOT tell it from the main
+    # checkout. Without this the test could pass for the wrong reason.
+    assert (wt / "scripts" / "agent_start.py").is_file()
+
+    res = _derive_probe(
+        copy, cwd=outside, env_extra={"HOME": str(home), "NUZ_REPO_ROOT": str(wt)}
+    )
+    assert res.returncode == 0, res.stderr[-800:]
+    # It resolved to the MAIN checkout, so it sees the main checkout's inventory.
+    assert "b/existing" in res.stdout, (
+        "pointing at a worktree did not resolve to the main checkout: "
+        f"stdout={res.stdout!r}"
+    )
+
+
+def test_an_out_of_tree_script_uses_the_repo_the_caller_is_standing_in(out_of_tree_copy):
+    """git was asked only where the SCRIPT sits, so `cd <repo> && python3 /tmp/x.py`
+    answered about /tmp and raised — ignoring the repo the caller was standing in.
+    That is the exact m5 invocation, and refusing it would have replaced a silent
+    wrong answer with a loud wrong refusal.
+    """
+    copy, _outside, home, root, _wt = out_of_tree_copy
+    res = _derive_probe(copy, cwd=root, env_extra={"HOME": str(home)})
+    assert res.returncode == 0, (
+        "an out-of-tree copy run from INSIDE the checkout refused; "
+        f"stderr={res.stderr[-500:]}"
+    )
+    assert "b/existing" in res.stdout, res.stdout
+
+
+def test_release_refuses_when_head_is_not_the_branch_being_deleted(fake_repo):
+    """GUILT for the entity-vs-location hole. The content proof is read off the
+    worktree's HEAD, but the command then runs `git branch -D <meta.branch>` — a
+    different entity the moment HEAD is detached. Detach at origin/main and the
+    proof passes instantly while the registered branch still holds unmerged work,
+    so --release would DESTROY it. Cannot-ask must not read as proven (W84).
+    """
+    mod, repo = fake_repo
+    wt = mod.cmd_create("wr2", "rel-detached")
+    _commit_in(wt, "unlanded.txt", "work that never landed\n", "wip")
+    branch = [m for m in mod._iter_metadata() if m.task_id == "rel-detached"][0].branch
+
+    subprocess.run(["git", "checkout", "--detach", "origin/main"], cwd=wt, check=True,
+                   capture_output=True)
+
+    with pytest.raises(SystemExit):
+        mod.cmd_release("rel-detached")
+
+    still = subprocess.run(["git", "branch", "--list", branch], cwd=repo,
+                           capture_output=True, text=True, check=True)
+    assert branch in still.stdout, f"the unmerged branch {branch} was deleted"
+    assert wt.exists()
+
+
+def test_innocence_a_stacked_branch_on_a_LIVE_base_is_not_judged_against_main(fake_repo):
+    """INNOCENCE for the narrowing. The first draft dropped the `base == "main"` gate
+    outright; the refuter produced the case that breaks: a child branch can match
+    origin/main by content while its diff against its LIVE base is the whole point
+    of its existence. main-relative proof is only meaningful when main is the
+    integration target — i.e. base IS main, or base is GONE. A live non-main base
+    keeps the strict ancestry rule.
+    """
+    mod, repo = fake_repo
+    subprocess.run(["git", "checkout", "-b", "feature/live"], cwd=repo, check=True,
+                   capture_output=True)
+    _commit_in(repo, "flag.txt", "X\n", "base diverges from main")
+    subprocess.run(["git", "push", "-u", "origin", "feature/live"], cwd=repo, check=True,
+                   capture_output=True)
+    subprocess.run(["git", "checkout", "main"], cwd=repo, check=True, capture_output=True)
+
+    wt = mod.cmd_create("wr2", "rel-child", base_branch="feature/live")
+    # The child restores what main has — content-identical to origin/main, yet its
+    # real change (undoing the base's X) is nowhere upstream.
+    subprocess.run(["git", "rm", "-q", "flag.txt"], cwd=wt, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@e", "-c", "user.name=T", "commit", "-m", "undo base"],
+        cwd=wt, check=True, capture_output=True,
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        mod.cmd_release("rel-child")
+    assert wt.exists()
+    assert "feature/live" in str(exc.value)

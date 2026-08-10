@@ -20,8 +20,8 @@ export function StoryCard({ story, variant = "domain" }: StoryCardProps) {
           }`}
         >
           {story.imageAvailable ? (
-            // The authenticated same-origin route must not pass through an
-            // optimizer, because optimizer requests do not carry the viewer.
+            // The public same-origin route resolves only media associated with
+            // a currently visible, published story.
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={`/api/story-media/${encodeURIComponent(story.slug)}`}

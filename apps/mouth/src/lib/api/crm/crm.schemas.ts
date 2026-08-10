@@ -5,7 +5,7 @@
  * Types are derived from these schemas via z.infer<>.
  */
 
-import { z } from "zod";
+import { z } from "@/lib/zod";
 
 // ============================================
 // SHARED ENUMS & CONSTANTS

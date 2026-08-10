@@ -11,6 +11,7 @@ import importlib.util
 import json
 import plistlib
 import subprocess
+import xml.parsers.expat
 from pathlib import Path
 
 import pytest
@@ -255,6 +256,37 @@ def test_discover_unparseable_plist_is_error_not_finding(tmp_path: Path) -> None
     assert len(errors) == 1 and "broken.plist" in errors[0]
 
 
+def test_discover_innocence_double_dash_comment_plist_recovered(tmp_path: Path) -> None:
+    """Guard against the 2026-08-07 Pro blind spot: strict Expat rejects a
+    `<!-- ... -->` comment body containing a literal `--` (e.g. `--apply`),
+    but macOS's own `plutil` accepts the exact same file (it's what launchd
+    itself loads). The census must recover the payload via plutil, not lose
+    the whole plist's coverage to `errors`."""
+    if subprocess.run(["which", "plutil"], capture_output=True).returncode != 0:
+        pytest.skip("plutil not available on this platform")
+    home, repo = make_env(tmp_path)
+    agents = home / "Library/LaunchAgents"
+    agents.mkdir(parents=True)
+    (agents / "commented.plist").write_text(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+        "<!-- ENFORCING since 2026-05-30: --apply added after review -->\n"
+        "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" "
+        "\"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"
+        "<plist version=\"1.0\"><dict>\n"
+        "  <key>Label</key><string>com.example.commented</string>\n"
+        "  <key>ProgramArguments</key><array>\n"
+        f"    <string>{home}/scripts/undeclared.sh</string>\n"
+        "  </array>\n"
+        "</dict></plist>\n"
+    )
+    with pytest.raises(xml.parsers.expat.ExpatError):  # sanity: really Expat-invalid
+        plistlib.loads((agents / "commented.plist").read_bytes())
+    errors: list[str] = []
+    findings = lhf.discover_undeclared([agents], "", home, repo, set(), [], errors)
+    assert errors == []
+    assert any("undeclared.sh" in f for f in findings)
+
+
 # ---------------------------------------------------------------- exit contract
 
 
@@ -275,6 +307,54 @@ def test_main_exit_0_clean(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
         "--plist-dir", str(home / "Library/LaunchAgents"), "--json",
     ])
     assert rc == 0
+
+
+def test_main_json_includes_resolved_paths(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    """The main-checkout resolution is deliberate (W81 worktree-hardening) but
+    was previously silent — a caller could not tell which config/repo-root
+    was actually read. `resolved_config`/`resolved_repo_root` make it visible
+    without changing the resolution itself."""
+    home, repo = make_env(tmp_path)
+    (repo / "scripts/run.sh").write_text("same\n")
+    (home / "scripts/run.sh").write_text("same\n")
+    cfg = _write_config(tmp_path, [{"live": "~/scripts/run.sh", "repo": "scripts/run.sh"}])
+    monkeypatch.setattr(lhf.subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(a, 0, "", ""))
+    rc = lhf.main([
+        "--config", str(cfg), "--home", str(home), "--repo-root", str(repo),
+        "--plist-dir", str(home / "Library/LaunchAgents"), "--json",
+    ])
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["resolved_config"] == str(cfg.resolve())
+    assert payload["resolved_repo_root"] == str(repo.resolve())
+
+
+def test_main_text_prints_resolved_banner(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    """A worktree-cwd invocation with an explicit --config/--repo-root must
+    name THOSE paths in the banner, not the module-level default — the
+    banner's whole purpose is to make the actually-resolved paths visible."""
+    home, repo = make_env(tmp_path)
+    (repo / "scripts/run.sh").write_text("same\n")
+    (home / "scripts/run.sh").write_text("same\n")
+    cfg = _write_config(tmp_path, [{"live": "~/scripts/run.sh", "repo": "scripts/run.sh"}])
+    monkeypatch.setattr(lhf.subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(a, 0, "", ""))
+    rc = lhf.main([
+        "--config", str(cfg), "--home", str(home), "--repo-root", str(repo),
+        "--plist-dir", str(home / "Library/LaunchAgents"),
+    ])
+    assert rc == 0
+    out = capsys.readouterr().out
+    banner = next(line for line in out.splitlines() if line.startswith("[resolved]"))
+    assert f"config={cfg.resolve()}" in banner
+    assert f"repo-root={repo.resolve()}" in banner
+    # Innocence: the banner must not silently name the module's own default
+    # REPO_ROOT/DEFAULT_CONFIG when an explicit override was passed.
+    assert str(lhf.REPO_ROOT) not in banner or repo.resolve() == lhf.REPO_ROOT
+    assert str(lhf.DEFAULT_CONFIG) not in banner or cfg.resolve() == lhf.DEFAULT_CONFIG
 
 
 def test_main_exit_bitmask_diverged_plus_undeclared(

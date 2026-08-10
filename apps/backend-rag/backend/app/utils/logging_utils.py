@@ -6,6 +6,7 @@ with structured context support for observability.
 """
 
 import logging
+import re
 import time
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
@@ -22,6 +23,20 @@ LOG_LEVELS = {
     "ERROR": logging.ERROR,
     "CRITICAL": logging.CRITICAL,
 }
+
+_MAGIC_LINK_VERIFY_PREFIX = "/api/auth/verify-magic/"
+_MAGIC_LINK_VERIFY_PATTERN = re.compile(
+    r"^/+api/+auth/+verify-magic(?:/+|%2f)",
+    flags=re.IGNORECASE,
+)
+
+
+def sanitize_log_path(path: str) -> str:
+    """Redact credentials embedded in route path parameters before logging."""
+    path_text = str(path)
+    if _MAGIC_LINK_VERIFY_PATTERN.match(path_text):
+        return f"{_MAGIC_LINK_VERIFY_PREFIX}[REDACTED]"
+    return path_text
 
 
 def get_logger(name: str) -> logging.Logger:

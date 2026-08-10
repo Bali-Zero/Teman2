@@ -5,8 +5,8 @@ Returns the client's "matters" — a normalized view of practices (visa, company
 tax, property) shaped for the MatterCard UI component.
 
 No migration required: builds the matter list at query time from the existing
-`practices` table joined with `practice_types`. Graceful degradation keeps
-empty-list semantics when the tables/columns are missing.
+`practices` table joined with `practice_types`. Database failures stay distinct
+from a verified empty matter list so the client can present a truthful retry.
 
 Matter shape matches @balizero/core MatterCardProps:
   { id, title, type, progress, pending_docs, next_deadline, next_step }
@@ -302,9 +302,8 @@ async def list_matters(
     pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
     client_id = client["client_id"]
-    matters: list[dict[str, Any]] = []
-    async with pool.acquire() as conn:
-        try:
+    try:
+        async with pool.acquire() as conn:
             rows = await conn.fetch(
                 """
                 SELECT p.id,
@@ -323,12 +322,14 @@ async def list_matters(
                 """,
                 client_id,
             )
-            matters = [_shape_matter(r) for r in rows]
-        except Exception as e:  # table/column may not yet exist in dev
-            logger.warning("matters list fetch failed: %s", e)
-            matters = []
+    except (asyncpg.PostgresError, asyncpg.InterfaceError) as exc:
+        logger.error("matters list fetch failed", exc_info=True)
+        raise HTTPException(
+            status_code=503,
+            detail="Matters are temporarily unavailable",
+        ) from exc
 
-    return {"matters": matters}
+    return {"matters": [_shape_matter(row) for row in rows]}
 
 
 @router.get("/{matter_id}")
@@ -338,36 +339,36 @@ async def get_matter_detail(
     pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
     client_id = client["client_id"]
-    async with pool.acquire() as conn:
-        row = await conn.fetchrow(
-            """
-            SELECT p.id,
-                   pt.name AS title,
-                   pt.category,
-                   p.status,
-                   p.missing_documents,
-                   p.expiry_date,
-                   p.updated_at
-            FROM practices p
-            JOIN practice_types pt ON pt.id = p.practice_type_id
-            WHERE p.id = $1
-              AND p.client_id = $2
-              AND (p.client_visible IS TRUE OR p.client_visible IS NULL)
-              AND p.status NOT IN ('cancelled', 'rejected')
-            """,
-            matter_id,
-            client_id,
-        )
+    try:
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT p.id,
+                       pt.name AS title,
+                       pt.category,
+                       p.status,
+                       p.missing_documents,
+                       p.expiry_date,
+                       p.updated_at
+                FROM practices p
+                JOIN practice_types pt ON pt.id = p.practice_type_id
+                WHERE p.id = $1
+                  AND p.client_id = $2
+                  AND (p.client_visible IS TRUE OR p.client_visible IS NULL)
+                  AND p.status NOT IN ('cancelled', 'rejected')
+                """,
+                matter_id,
+                client_id,
+            )
 
-        if row is None:
-            raise HTTPException(status_code=404, detail="Matter not found")
+            if row is None:
+                raise HTTPException(status_code=404, detail="Matter not found")
 
-        matter = _shape_matter_detail(row)
+            matter = _shape_matter_detail(row)
 
-        rows = []
-        category = str(row["category"] or "").lower()
-        if category == "company":
-            try:
+            rows = []
+            category = str(row["category"] or "").lower()
+            if category == "company":
                 rows = await conn.fetch(
                     """
                     WITH active_company_scope AS (
@@ -398,9 +399,14 @@ async def get_matter_detail(
                     """,
                     client_id,
                 )
-            except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
-                logger.warning("approved intelligence fetch failed: %s", e)
-                rows = []
+    except HTTPException:
+        raise
+    except (asyncpg.PostgresError, asyncpg.InterfaceError) as exc:
+        logger.error("matter detail fetch failed", exc_info=True)
+        raise HTTPException(
+            status_code=503,
+            detail="Matter details are temporarily unavailable",
+        ) from exc
 
     matter["approved_intelligence"] = _client_safe_intelligence_from_rows(
         [dict(row) for row in rows]

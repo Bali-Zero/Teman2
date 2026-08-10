@@ -982,6 +982,43 @@
       "title": "ApplicationChannel",
       "type": "string"
     },
+    "AvailabilityAssessmentDTO": {
+      "additionalProperties": false,
+      "properties": {
+        "observed_at": {
+          "format": "date-time",
+          "title": "Observed At",
+          "type": "string"
+        },
+        "reason_code": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9_]{0,127}$",
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "source_refs": {
+          "default": [],
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": "Source Refs",
+          "type": "array"
+        },
+        "status": {
+          "$ref": "#/$defs/AvailabilityStatus"
+        }
+      },
+      "required": ["status", "reason_code", "observed_at"],
+      "title": "AvailabilityAssessmentDTO",
+      "type": "object"
+    },
+    "AvailabilityStatus": {
+      "enum": ["AVAILABLE", "UNAVAILABLE", "UNKNOWN"],
+      "title": "AvailabilityStatus",
+      "type": "string"
+    },
     "BetweenCondition": {
       "additionalProperties": false,
       "description": "Inclusive ``[lower, upper]`` range (spec \u00a74.1).",
@@ -1106,6 +1143,288 @@
         "reason_codes"
       ],
       "title": "Candidate",
+      "type": "object"
+    },
+    "CandidateAvailabilityDTO": {
+      "additionalProperties": false,
+      "description": "Three product concepts that must never be collapsed into one flag.",
+      "properties": {
+        "bali_zero_service_availability": {
+          "$ref": "#/$defs/AvailabilityAssessmentDTO"
+        },
+        "legal_eligibility": {
+          "const": "SUPPORTED",
+          "title": "Legal Eligibility",
+          "type": "string"
+        },
+        "operational_availability": {
+          "$ref": "#/$defs/AvailabilityAssessmentDTO"
+        }
+      },
+      "required": [
+        "legal_eligibility",
+        "operational_availability",
+        "bali_zero_service_availability"
+      ],
+      "title": "CandidateAvailabilityDTO",
+      "type": "object"
+    },
+    "CandidateDisplayDTO": {
+      "additionalProperties": false,
+      "properties": {
+        "availability": {
+          "$ref": "#/$defs/CandidateAvailabilityDTO"
+        },
+        "documentation": {
+          "$ref": "#/$defs/CandidateDocumentationDTO"
+        },
+        "name": {
+          "$ref": "#/$defs/ProductNames"
+        },
+        "pricing": {
+          "$ref": "#/$defs/CandidatePricingDTO"
+        },
+        "processing_timeline": {
+          "$ref": "#/$defs/CandidateProcessingTimelineDTO"
+        },
+        "product_code": {
+          "maxLength": 32,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9-]{0,31}$",
+          "title": "Product Code",
+          "type": "string"
+        },
+        "product_version_id": {
+          "format": "uuid",
+          "title": "Product Version Id",
+          "type": "string"
+        },
+        "rank": {
+          "maximum": 256,
+          "minimum": 1,
+          "title": "Rank",
+          "type": "integer"
+        },
+        "stay_policy": {
+          "$ref": "#/$defs/CandidateStayPolicyDTO"
+        },
+        "tagline": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProductNames"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "product_code",
+        "product_version_id",
+        "rank",
+        "name",
+        "tagline",
+        "stay_policy",
+        "documentation",
+        "processing_timeline",
+        "availability",
+        "pricing"
+      ],
+      "title": "CandidateDisplayDTO",
+      "type": "object"
+    },
+    "CandidateDocumentationDTO": {
+      "additionalProperties": false,
+      "description": "Verified document content, with UNKNOWN distinct from a verified empty list.",
+      "properties": {
+        "checklist": {
+          "items": {
+            "$ref": "#/$defs/ProductNames"
+          },
+          "title": "Checklist",
+          "type": "array"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "title": "Observed At",
+          "type": "string"
+        },
+        "reason_code": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9_]{0,127}$",
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "requirements": {
+          "items": {
+            "$ref": "#/$defs/ProductNames"
+          },
+          "title": "Requirements",
+          "type": "array"
+        },
+        "status": {
+          "$ref": "#/$defs/DocumentationStatus"
+        }
+      },
+      "required": [
+        "status",
+        "reason_code",
+        "observed_at",
+        "requirements",
+        "checklist"
+      ],
+      "title": "CandidateDocumentationDTO",
+      "type": "object"
+    },
+    "CandidatePricingDTO": {
+      "additionalProperties": false,
+      "description": "Pricing status kept separate from all three eligibility/availability axes.",
+      "properties": {
+        "catalog_last_updated": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Catalog Last Updated"
+        },
+        "catalog_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Catalog Sha256"
+        },
+        "evaluated_at": {
+          "format": "date-time",
+          "title": "Evaluated At",
+          "type": "string"
+        },
+        "reason_code": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9_]{0,127}$",
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "row_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Row Sha256"
+        },
+        "status": {
+          "$ref": "#/$defs/PricingAvailabilityStatus"
+        }
+      },
+      "required": [
+        "status",
+        "reason_code",
+        "evaluated_at",
+        "catalog_last_updated"
+      ],
+      "title": "CandidatePricingDTO",
+      "type": "object"
+    },
+    "CandidateProcessingTimelineDTO": {
+      "additionalProperties": false,
+      "description": "Operational processing estimate anchored to a disclosed calendar date.",
+      "properties": {
+        "anchor_date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Anchor Date"
+        },
+        "estimated_completion_from": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Estimated Completion From"
+        },
+        "estimated_completion_to": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Estimated Completion To"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "title": "Observed At",
+          "type": "string"
+        },
+        "reason_code": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9_]{0,127}$",
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/ProcessingTimelineStatus"
+        }
+      },
+      "required": [
+        "status",
+        "reason_code",
+        "observed_at",
+        "anchor_date",
+        "estimated_completion_from",
+        "estimated_completion_to"
+      ],
+      "title": "CandidateProcessingTimelineDTO",
+      "type": "object"
+    },
+    "CandidateStayPolicyDTO": {
+      "additionalProperties": false,
+      "description": "Legal stay/extension policy, never a processing-time estimate.",
+      "properties": {
+        "extension": {
+          "$ref": "#/$defs/ExtensionPolicy"
+        },
+        "stay": {
+          "$ref": "#/$defs/StayPolicy"
+        }
+      },
+      "required": ["stay", "extension"],
+      "title": "CandidateStayPolicyDTO",
       "type": "object"
     },
     "ClockAnchor": {
@@ -1237,6 +1556,9 @@
                 "format": "uuid",
                 "type": "string"
               },
+              "facts_fingerprint": {
+                "$ref": "#/$defs/Fingerprint"
+              },
               "missing_facts": {
                 "maxItems": 0
               },
@@ -1272,6 +1594,9 @@
               "decision_id": {
                 "format": "uuid",
                 "type": "string"
+              },
+              "facts_fingerprint": {
+                "$ref": "#/$defs/Fingerprint"
               },
               "missing_facts": {
                 "minItems": 1
@@ -1309,6 +1634,9 @@
                 "format": "uuid",
                 "type": "string"
               },
+              "facts_fingerprint": {
+                "$ref": "#/$defs/Fingerprint"
+              },
               "missing_facts": {
                 "maxItems": 0
               },
@@ -1345,6 +1673,9 @@
                 "format": "uuid",
                 "type": "string"
               },
+              "facts_fingerprint": {
+                "$ref": "#/$defs/Fingerprint"
+              },
               "missing_facts": {
                 "maxItems": 0
               },
@@ -1379,6 +1710,9 @@
             "properties": {
               "candidates": {
                 "maxItems": 0
+              },
+              "facts_fingerprint": {
+                "type": "null"
               },
               "missing_facts": {
                 "maxItems": 0
@@ -1442,7 +1776,14 @@
           "type": "string"
         },
         "facts_fingerprint": {
-          "$ref": "#/$defs/Fingerprint"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Fingerprint"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "missing_facts": {
           "items": {
@@ -1572,6 +1913,29 @@
         "TEMPORARILY_UNAVAILABLE"
       ],
       "title": "DecisionState",
+      "type": "string"
+    },
+    "DisclosedReviewFlag": {
+      "description": "UI disclosures not representable by the signed RulePack vocabulary.\n\nThese are abstention inputs, never eligibility facts.  Keeping them in a\nseparate closed enum prevents a free-text field from becoming an\naccidental legal-rule channel.",
+      "enum": [
+        "CRIMINAL_RECORD",
+        "HEALTH_CONCERN",
+        "PRIOR_VISA_REFUSAL",
+        "NOT_CERTAIN",
+        "PEP_OR_SANCTIONS",
+        "SOURCE_OF_FUNDS_UNCLEAR",
+        "DIPLOMATIC_PASSPORT",
+        "AMBIGUOUS_SPONSOR",
+        "ACTIVITY_BOUNDARY",
+        "MULTI_PURPOSE_TRIP",
+        "CONFLICTING_IMMIGRATION_STATUS"
+      ],
+      "title": "DisclosedReviewFlag",
+      "type": "string"
+    },
+    "DocumentationStatus": {
+      "enum": ["AVAILABLE", "UNKNOWN"],
+      "title": "DocumentationStatus",
       "type": "string"
     },
     "EffectAddScore": {
@@ -1725,6 +2089,11 @@
       "title": "EqCondition",
       "type": "object"
     },
+    "EvaluateResponseMode": {
+      "enum": ["CURATED", "ENGINE"],
+      "title": "EvaluateResponseMode",
+      "type": "string"
+    },
     "ExtensionPolicy": {
       "additionalProperties": false,
       "properties": {
@@ -1750,6 +2119,34 @@
           "minimum": 0,
           "title": "Maximum Extensions",
           "type": "integer"
+        },
+        "reason_code": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason Code"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "enum": ["VERIFIED", "UNKNOWN"],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Status"
         }
       },
       "required": ["allowed", "maximum_extensions", "days_per_extension"],
@@ -2694,6 +3091,12 @@
       "title": "PriceQuote",
       "type": "object"
     },
+    "PricingAvailabilityStatus": {
+      "description": "Whether one exact, all-inclusive Bali Zero quote can be rendered.",
+      "enum": ["AVAILABLE", "CONTACT_REQUIRED", "UNAVAILABLE", "UNKNOWN"],
+      "title": "PricingAvailabilityStatus",
+      "type": "string"
+    },
     "PricingKey": {
       "additionalProperties": false,
       "properties": {
@@ -2712,6 +3115,11 @@
       "required": ["category", "item_key"],
       "title": "PricingKey",
       "type": "object"
+    },
+    "ProcessingTimelineStatus": {
+      "enum": ["AVAILABLE", "UNKNOWN"],
+      "title": "ProcessingTimelineStatus",
+      "type": "string"
     },
     "ProductNames": {
       "additionalProperties": false,
@@ -3383,6 +3791,41 @@
       "title": "RuleStage",
       "type": "string"
     },
+    "SourceApplicabilityDTO": {
+      "additionalProperties": false,
+      "properties": {
+        "effective_at": {
+          "format": "date-time",
+          "title": "Effective At",
+          "type": "string"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "title": "Observed At",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/SourceApplicabilityStatus"
+        }
+      },
+      "required": ["status", "effective_at", "observed_at"],
+      "title": "SourceApplicabilityDTO",
+      "type": "object"
+    },
+    "SourceApplicabilityStatus": {
+      "description": "Signed bitemporal/status applicability, distinct from freshness.",
+      "enum": [
+        "APPLICABLE",
+        "NOT_YET_EFFECTIVE",
+        "EXPIRED",
+        "SUPERSEDED",
+        "REVOKED",
+        "UNAVAILABLE",
+        "UNKNOWN"
+      ],
+      "title": "SourceApplicabilityStatus",
+      "type": "string"
+    },
     "SourceAuthorityType": {
       "enum": [
         "PRIMARY_LAW",
@@ -3393,6 +3836,72 @@
         "PRICING_CATALOG"
       ],
       "title": "SourceAuthorityType",
+      "type": "string"
+    },
+    "SourceFreshnessDTO": {
+      "additionalProperties": false,
+      "properties": {
+        "evaluated_at": {
+          "format": "date-time",
+          "title": "Evaluated At",
+          "type": "string"
+        },
+        "max_age_seconds": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Age Seconds"
+        },
+        "reason_code": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9_]{0,127}$",
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/SourceFreshnessStatus"
+        },
+        "verified_at": {
+          "format": "date-time",
+          "title": "Verified At",
+          "type": "string"
+        }
+      },
+      "required": ["status", "reason_code", "evaluated_at", "verified_at"],
+      "title": "SourceFreshnessDTO",
+      "type": "object"
+    },
+    "SourceFreshnessPolicy": {
+      "additionalProperties": false,
+      "description": "Signed, source-specific external re-verification policy.\n\nThe literal discriminator keeps the policy vocabulary closed.  A future\npolicy basis therefore requires an explicit contract revision instead of\nbeing silently interpreted as a max-age rule.",
+      "properties": {
+        "kind": {
+          "const": "MAX_AGE_SINCE_VERIFIED_AT",
+          "title": "Kind",
+          "type": "string"
+        },
+        "max_age_seconds": {
+          "minimum": 1,
+          "title": "Max Age Seconds",
+          "type": "integer"
+        }
+      },
+      "required": ["kind", "max_age_seconds"],
+      "title": "SourceFreshnessPolicy",
+      "type": "object"
+    },
+    "SourceFreshnessStatus": {
+      "description": "External re-verification state under an explicit freshness policy.",
+      "enum": ["CURRENT", "STALE", "UNKNOWN"],
+      "title": "SourceFreshnessStatus",
       "type": "string"
     },
     "SourceLocator": {
@@ -3447,6 +3956,17 @@
             }
           ],
           "title": "Document Number"
+        },
+        "freshness_policy": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SourceFreshnessPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "jurisdiction": {
           "const": "ID",
@@ -3557,6 +4077,120 @@
         "supersedes_source_record_id"
       ],
       "title": "SourceRecord",
+      "type": "object"
+    },
+    "SourceRecordDTO": {
+      "additionalProperties": false,
+      "description": "Resolved source projection required by the public outcome.",
+      "properties": {
+        "applicability": {
+          "$ref": "#/$defs/SourceApplicabilityDTO"
+        },
+        "authority_type": {
+          "$ref": "#/$defs/SourceAuthorityType"
+        },
+        "canonical_url": {
+          "title": "Canonical Url",
+          "type": "string"
+        },
+        "document_number": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Document Number"
+        },
+        "freshness": {
+          "$ref": "#/$defs/SourceFreshnessDTO"
+        },
+        "is_primary_authority": {
+          "title": "Is Primary Authority",
+          "type": "boolean"
+        },
+        "legal_period_from": {
+          "format": "date-time",
+          "title": "Legal Period From",
+          "type": "string"
+        },
+        "legal_period_to": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Legal Period To"
+        },
+        "locators": {
+          "items": {
+            "$ref": "#/$defs/SourceLocator"
+          },
+          "title": "Locators",
+          "type": "array"
+        },
+        "publisher": {
+          "title": "Publisher",
+          "type": "string"
+        },
+        "recorded_period_from": {
+          "format": "date-time",
+          "title": "Recorded Period From",
+          "type": "string"
+        },
+        "retrieved_at": {
+          "format": "date-time",
+          "title": "Retrieved At",
+          "type": "string"
+        },
+        "source_key": {
+          "title": "Source Key",
+          "type": "string"
+        },
+        "source_record_id": {
+          "format": "uuid",
+          "title": "Source Record Id",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/SourceStatus"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "verified_at": {
+          "format": "date-time",
+          "title": "Verified At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_record_id",
+        "source_key",
+        "title",
+        "publisher",
+        "authority_type",
+        "is_primary_authority",
+        "status",
+        "document_number",
+        "canonical_url",
+        "locators",
+        "legal_period_from",
+        "legal_period_to",
+        "recorded_period_from",
+        "retrieved_at",
+        "verified_at",
+        "applicability",
+        "freshness"
+      ],
+      "title": "SourceRecordDTO",
       "type": "object"
     },
     "SourceStatus": {
@@ -3696,6 +4330,83 @@
       ],
       "title": "ViolationType",
       "type": "string"
+    },
+    "VisaOracleDisplayDTO": {
+      "additionalProperties": false,
+      "properties": {
+        "candidates": {
+          "items": {
+            "$ref": "#/$defs/CandidateDisplayDTO"
+          },
+          "maxItems": 256,
+          "title": "Candidates",
+          "type": "array"
+        }
+      },
+      "required": ["candidates"],
+      "title": "VisaOracleDisplayDTO",
+      "type": "object"
+    },
+    "VisaOracleEvaluateRequest": {
+      "additionalProperties": false,
+      "description": "Canonical facts plus conservative, non-eligibility review flags.\n\nThe extra field defaults to the empty tuple, so every existing\n``ApplicantFacts`` request remains wire-compatible.",
+      "properties": {
+        "assessment_id": {
+          "format": "uuid",
+          "title": "Assessment Id",
+          "type": "string"
+        },
+        "collected_at": {
+          "format": "date-time",
+          "title": "Collected At",
+          "type": "string"
+        },
+        "disclosed_review_flags": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/DisclosedReviewFlag"
+          },
+          "maxItems": 11,
+          "title": "Disclosed Review Flags",
+          "type": "array"
+        },
+        "facts": {
+          "$ref": "#/$defs/ApplicantFactsData"
+        },
+        "schema_version": {
+          "const": "1.0.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": ["schema_version", "assessment_id", "collected_at", "facts"],
+      "title": "VisaOracleEvaluateRequest",
+      "type": "object"
+    },
+    "VisaOracleEvaluateResponse": {
+      "additionalProperties": false,
+      "description": "Stable response envelope consumed by the frontend engine adapter.",
+      "properties": {
+        "decision": {
+          "$ref": "#/$defs/Decision"
+        },
+        "display": {
+          "$ref": "#/$defs/VisaOracleDisplayDTO"
+        },
+        "mode": {
+          "$ref": "#/$defs/EvaluateResponseMode"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRecordDTO"
+          },
+          "title": "Sources",
+          "type": "array"
+        }
+      },
+      "required": ["mode", "decision", "sources", "display"],
+      "title": "VisaOracleEvaluateResponse",
+      "type": "object"
     },
     "VisaProductCategory": {
       "enum": [

@@ -170,6 +170,42 @@ class TestLegalIngestRouter:
         assert response.status_code == 200
 
     @patch("backend.app.routers.legal_ingest.get_legal_service")
+    def test_ingest_passes_historical_provenance_to_service(
+        self, mock_get_service, client, allowed_root
+    ):
+        mock_service = MagicMock()
+        mock_service.ingest_legal_document = AsyncMock(
+            return_value={
+                "success": True,
+                "book_title": "Perpres 43/2011",
+                "chunks_created": 2,
+                "legal_metadata": {},
+                "structure": {},
+                "message": "Document ingested successfully",
+                "drive_archive": {"status": "reused"},
+            },
+        )
+        mock_get_service.return_value = mock_service
+
+        response = client.post(
+            "/api/legal/ingest",
+            json={
+                "file_path": str(allowed_root / "document.pdf"),
+                "retrieval_scope": "historical_only",
+                "source_url": "https://www.peraturan.go.id/id/perpres-no-43-tahun-2011",
+                "effective_date": "2011-07-18",
+                "observed_at": "2026-08-05T00:00:00Z",
+            },
+        )
+
+        assert response.status_code == 200
+        kwargs = mock_service.ingest_legal_document.await_args.kwargs
+        assert kwargs["retrieval_scope"] == "historical_only"
+        assert kwargs["source_url"] == "https://www.peraturan.go.id/id/perpres-no-43-tahun-2011"
+        assert kwargs["effective_date"].isoformat() == "2011-07-18"
+        assert kwargs["observed_at"].isoformat() == "2026-08-05T00:00:00+00:00"
+
+    @patch("backend.app.routers.legal_ingest.get_legal_service")
     def test_ingest_legal_document_error(self, mock_get_service, client, allowed_root):
         """Test ingesting legal document with service error"""
 

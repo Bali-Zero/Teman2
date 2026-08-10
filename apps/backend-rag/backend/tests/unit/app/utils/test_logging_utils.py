@@ -20,6 +20,7 @@ from backend.app.utils.logging_utils import (
     log_error,
     log_success,
     log_warning,
+    sanitize_log_path,
 )
 
 
@@ -33,6 +34,34 @@ class TestLogLevels:
         assert LOG_LEVELS["WARNING"] == logging.WARNING
         assert LOG_LEVELS["ERROR"] == logging.ERROR
         assert LOG_LEVELS["CRITICAL"] == logging.CRITICAL
+
+
+class TestSanitizeLogPath:
+    """Credentials carried in route parameters must never enter logs."""
+
+    def test_preserves_ordinary_path(self):
+        assert sanitize_log_path("/api/portal/dashboard") == "/api/portal/dashboard"
+
+    def test_redacts_magic_link_token(self):
+        raw_token = "synthetic-magic-link-token"
+
+        sanitized = sanitize_log_path(f"/api/auth/verify-magic/{raw_token}")
+
+        assert sanitized == "/api/auth/verify-magic/[REDACTED]"
+        assert raw_token not in sanitized
+
+    def test_redacts_magic_link_token_with_case_or_repeated_slashes(self):
+        raw_token = "synthetic-magic-link-token"
+
+        for path in (
+            f"/API/Auth/Verify-Magic/{raw_token}",
+            f"//api//auth//verify-magic//{raw_token}",
+            f"/api/auth/verify-magic%2F{raw_token}",
+        ):
+            sanitized = sanitize_log_path(path)
+
+            assert sanitized == "/api/auth/verify-magic/[REDACTED]"
+            assert raw_token not in sanitized
 
 
 class TestGetLogger:

@@ -67,6 +67,12 @@ import type {
   MessageContextStore,
   WaMirrorAccount,
 } from "./message_capture.js";
+import {
+  downStates,
+  onConnected,
+  onDisconnected,
+  thresholdMs,
+} from "./down-alarm.js";
 import { queueMediaDownload } from "./media.js";
 import { normalizePhone, phoneDigits } from "./phone.js";
 import { sendTelegramAlert } from "./telegram.js";
@@ -504,10 +510,20 @@ async function handleConnectionUpdate(
       );
     }
     logger.info({ sessionId: ctx.sessionId }, "wa-mirror session connected");
-    await sendTelegramAlert(`wa-mirror connected: ${ctx.account.name}`, logger, {
-      tier: "digest",
-      dedupKey: `wa-bridge:connected:${ctx.account.name}`,
-    });
+    // A connect is only news if it CLOSES an incident we announced. 725 bare
+    // `connected` lines in 30 days told a reader nothing they could act on —
+    // see down-alarm.ts for the measurement.
+    const recovery = onConnected(downStates, ctx.account.name, Date.now());
+    if (recovery.speak) {
+      await sendTelegramAlert(
+        `wa-mirror recovered: ${ctx.account.name} after ${recovery.downMinutes}m down`,
+        logger,
+        {
+          tier: "digest",
+          dedupKey: `wa-bridge:recovered:${ctx.account.name}`,
+        },
+      );
+    }
 
     // CICATRIX 2026-05-25: refresh pre-keys on every connect.
     // Pre-fix: bridge initial pairing seeded ~30 prekeys, all consumed over time.
@@ -579,13 +595,27 @@ async function handleConnectionUpdate(
       },
       "wa-mirror session closed",
     );
-    await sendTelegramAlert(
-      `wa-mirror disconnected: ${ctx.account.name}; reason=${reason}; reconnect_attempt=${deps.attempt}`,
-      logger,
-      // W67: reconnect storms flood this path — dedup collapses a flap wave
-      // into one digest entry per account per 6h window.
-      { tier: "digest", dedupKey: `wa-bridge:disconnected:${ctx.account.name}` },
+    // A close is held SILENTLY and only speaks if the line stays down past the
+    // threshold (default 25m = p90 of the measured recovery distribution). The
+    // terminal case is excluded INSIDE onDisconnected (see down-alarm.ts):
+    // `index.ts` announces the logout as p0 and stops retrying, so arming the
+    // still-down clock would re-announce, 25 minutes later, a fault already
+    // reported and already known to be unrecoverable by waiting.
+    const down = onDisconnected(
+      downStates,
+      ctx.account.name,
+      Date.now(),
+      thresholdMs(),
+      { terminal },
     );
+    if (down.speak) {
+      await sendTelegramAlert(
+        `wa-mirror DOWN: ${ctx.account.name} for ${down.downMinutes}m and not recovering ` +
+          `(reason=${reason}; reconnect_attempt=${deps.attempt})`,
+        logger,
+        { tier: "p0", dedupKey: `wa-bridge:down:${ctx.account.name}` },
+      );
+    }
 
     if (terminal) {
       // Device removed from the phone's Linked Devices — needs a fresh QR.

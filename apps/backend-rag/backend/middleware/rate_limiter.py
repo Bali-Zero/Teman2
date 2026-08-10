@@ -16,6 +16,10 @@ from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from backend.app.utils.logging_utils import sanitize_log_path
+from backend.middleware.visa_oracle_privacy import is_private_visa_evaluation
+from backend.services.pii.violation_store import hash_subject
+
 logger = logging.getLogger(__name__)
 
 # In-memory rate limit storage (fallback) with eviction
@@ -192,7 +196,7 @@ class RateLimiter:
                     "backend": "memory",
                 }
 
-        except Exception as e:
+        except Exception as exc:
             # Redis call raised mid-flight. Record the error and use the
             # half-limit in-memory fallback for THIS request. We intentionally
             # do NOT flip self.redis_available to False here — the existing
@@ -200,8 +204,12 @@ class RateLimiter:
             # fail-safe). The `_try_recover` cooldown path above handles the
             # other failure mode: Redis was down at boot and comes back.
             self.metrics["redis_errors"] += 1
-            self._last_error = f"{type(e).__name__}: {e}"
-            logger.warning("Rate limit Redis error, falling back to in-memory: %s", e)
+            error_type = type(exc).__name__
+            self._last_error = error_type
+            logger.warning(
+                "Rate limit Redis error, falling back to in-memory: %s",
+                error_type,
+            )
             # Fail-safe: in-memory with half limit so a Redis outage doesn't
             # multiply effective capacity by the number of replicas.
             safe_limit = max(1, limit // 2)
@@ -288,18 +296,27 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         # Find matching rate limit
         limit, window = self._get_rate_limit(request.url.path)
+        log_path = sanitize_log_path(request.url.path)
 
         # Fail-open if the limiter malfunctions beyond its internal Redis fallback —
         # a hot-path middleware bug must not take the whole API offline.
-        rate_limit_key = f"ratelimit:{user_id}:{request.url.path}"
+        subject_reference = hash_subject(user_id) or "unknown"
+        rate_limit_key = f"ratelimit:{subject_reference}:{log_path}"
         try:
             allowed, info = rate_limiter.is_allowed(rate_limit_key, limit, window)
-        except Exception:
-            logger.exception(f"Rate limiter failure, failing open for {request.url.path}")
+        except Exception as exc:
+            logger.error(
+                "Rate limiter failure, failing open for %s (%s)",
+                log_path,
+                type(exc).__name__,
+            )
             return await call_next(request)
 
         if not allowed:
-            logger.warning(f"⚠️ Rate limit exceeded: {user_id} on {request.url.path}")
+            if is_private_visa_evaluation(request.method, request.url.path):
+                logger.warning("Visa Oracle evaluation rate limit exceeded")
+            else:
+                logger.warning("Rate limit exceeded on %s", log_path)
             return JSONResponse(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 content={

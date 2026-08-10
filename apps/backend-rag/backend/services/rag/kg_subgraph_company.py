@@ -42,7 +42,18 @@ class CompanyState(TypedDict, total=False):
     # Company-specific fields
     company_type: str | None  # "pt_pma", "perorangan", "cv", "pt_lokal"
     is_foreign_investor: bool
-    capital_amount: int | None  # in IDR
+    # Two DIFFERENT figures, and conflating them is client-facing misinformation:
+    # `capital_amount` is the INVESTMENT PLAN threshold (nilai investasi), while
+    # `paid_up_amount` is placed/paid-up company capital (modal
+    # ditempatkan/disetor). For PT PMA the general rule is >10bn per five-digit
+    # KBLI per project location, with statutory sector/activity exceptions, plus
+    # at least 2.5bn placed/paid up per PT under Permeninvesthil/Kepala BKPM
+    # 5/2025 Article 26.
+    # Telling a founder to "prepare minimum capital: Rp 10,000,000,000" reads as
+    # the second and is wrong by a factor of four.
+    capital_amount: int | None  # in IDR — investment plan value, NOT paid-up
+    paid_up_amount: int | None  # in IDR — modal ditempatkan/disetor
+    investment_threshold_strict: bool  # True means amount is an exclusive lower bound
     kbli_codes: list[str]  # Business classification codes
     licensing_requirements: list[dict]  # NIB, OSS, sector licenses
     shareholders: list[dict]  # For PT PMA
@@ -389,10 +400,24 @@ async def get_capital_requirements_node(state: CompanyState, db_pool: asyncpg.Po
     # Hardcoded knowledge (can be queried from KG)
     capital_reqs = {
         "pt_pma": {
-            "min_capital": 10_000_000_000,  # 10B IDR
-            "paid_up_min": 2_500_000_000,  # 2.5B IDR
+            # NOT stale, and NOT the same number: >10bn is the investment PLAN
+            # value under the general rule, while 2.5bn is separate company
+            # capital that must be placed/paid up. Permeninvesthil/Kepala BKPM
+            # 5/2025 Article 26 preserves the >10bn threshold, introduces
+            # calculation exceptions, and sets placed/paid-up capital at 2.5bn.
+            "min_capital": 10_000_000_000,  # exclusive investment-plan threshold
+            "investment_threshold_strict": True,
+            "paid_up_min": 2_500_000_000,  # modal ditempatkan/disetor
             "currency": "IDR",
-            "notes": "Foreign investment minimum as per BKPM regulations",
+            "notes": (
+                "Permeninvesthil/Kepala BKPM 5/2025 Article 26(2): the general "
+                "PT PMA rule is total investment greater than IDR 10bn, excluding "
+                "land and buildings, per five-digit KBLI per project location. "
+                "Articles 26(3)-(8) provide sector/activity, asset, location, and "
+                "special-economic-zone exceptions. Separately, Article 26(10) "
+                "requires placed/paid-up capital of at least IDR 2.5bn per PT, "
+                "unless another regulation provides otherwise."
+            ),
         },
         "pt_lokal": {
             "min_capital": 50_000_000,  # 50M IDR
@@ -424,9 +449,13 @@ async def get_capital_requirements_node(state: CompanyState, db_pool: asyncpg.Po
     )
 
     state["capital_amount"] = requirements.get("min_capital")
+    state["paid_up_amount"] = requirements.get("paid_up_min")
+    state["investment_threshold_strict"] = requirements.get("investment_threshold_strict", False)
 
     logger.info(
-        f"✅ [Company Subgraph] Capital requirements: {requirements.get('min_capital', 'N/A')} IDR",
+        "✅ [Company Subgraph] Capital requirements: investment plan "
+        f"{requirements.get('min_capital', 'N/A')} IDR, paid-up "
+        f"{requirements.get('paid_up_min', 'N/A')} IDR",
     )
 
     return state
@@ -459,6 +488,8 @@ async def synthesize_company_workflow_node(state: CompanyState) -> CompanyState:
     company_type = state.get("company_type", "unknown")
     is_foreign = state.get("is_foreign_investor", False)
     capital = state.get("capital_amount")
+    paid_up = state.get("paid_up_amount")
+    investment_threshold_strict = state.get("investment_threshold_strict", company_type == "pt_pma")
 
     steps = []
 
@@ -475,16 +506,42 @@ async def synthesize_company_workflow_node(state: CompanyState) -> CompanyState:
         },
     )
 
-    # Step 2: Capital preparation
+    # Step 2: Capital preparation.
+    #
+    # This string is read by clients: the whatsapp/web answer quotes the workflow
+    # verbatim. "Prepare minimum capital: Rp 10,000,000,000" names the INVESTMENT
+    # PLAN value but reads as cash to deposit, which is 2.5bn (BKPM 5/2025) — a
+    # 4x overstatement on the single number a founder budgets against. Both
+    # figures are in `capital_reqs` two functions up; only one was ever surfaced.
     if capital:
+        comparison = "greater than" if investment_threshold_strict else "at least"
+        action = f"Plan a total investment value {comparison} Rp {capital:,}"
+        if paid_up:
+            action += (
+                f". Separately, place and pay up at least Rp {paid_up:,} as company capital "
+                "(modal ditempatkan/disetor, meaning placed and paid up)"
+            )
+        if company_type == "pt_pma":
+            action += (
+                ". Different sector-specific capital rules and the Article 26 "
+                "investment-basis exceptions may apply."
+            )
         steps.append(
             {
                 "step": 2,
-                "action": f"Prepare minimum capital: Rp {capital:,}",
+                "action": action,
                 "entity_id": "capital_requirement",
                 "details": {
-                    "amount": capital,
+                    "investment_plan_amount": capital,
+                    "investment_threshold_strict": investment_threshold_strict,
+                    "paid_up_amount": paid_up,
                     "currency": "IDR",
+                    # Kept unchanged as a non-breaking precaution, NOT because a
+                    # reader was found: grepping the backend turns up no consumer
+                    # of this key, and the renderer at orchestrator_core.py:906
+                    # reads only `action` plus requirement/location/processing_time.
+                    # Whatever it meant, it was always the investment plan value.
+                    "amount": capital,
                 },
             },
         )

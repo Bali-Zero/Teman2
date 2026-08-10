@@ -1,0 +1,339 @@
+{
+  "compiler": "cure_prose_national_openness",
+  "_why": "Twenty-five cap-0 codes whose `whoThisIsFor` addressed a foreign reader with no denial anywhere in the field. Found by a cross-family review seat reading the CURED pages, not by any predicate in this lane: an invitation carries no percentage and no openness word, so neither `editorial_record_conformance` (which needs an openness claim beside a national-scope word) nor L10 (which needs a number) can see it. Ten of the twenty-five sit on codes this lane had already declared cured.\n\nFour did worse than invite: they named BALI as the obstacle and pointed the reader at another province — on codes closed NATIONALLY. `10722` did it while `l4_bali.blocked` is False, i.e. it invented the local restriction it blamed. `22121` called itself 'one of the doors that stays open in Bali' at a 0% ceiling.\n\nThe sixteen government codes name their PRIVATE SIBLING, which is the actual answer to the question the reader is asking — `85315` is closed, `85316` (Pendidikan Menengah Atas Umum Swasta) is 100% open. Every sibling is asserted 100%/TERBUKA and has its title read from the dataset before it is named; a code printed in client copy is a claim. `84146` is the one government code with no private equivalent, and says so.\n\nNOT included: `99000`, which the selection predicate flagged and which is already correct — it says in terms that the code is 'not for private foreign entrepreneurs seeking to set up a company in Bali'. The probe over-matched; the text is right, and it is left untouched rather than rewritten to match a pattern (W107: the probe that measures a disease can carry it).\n\nTwo findings from the cross-family grader (Codex GPT-5.6) changed the copy: `59121` said 'state bodies AND THE ENTITIES THEY MANDATE', a class the record does not name (its judul is 'oleh Pemerintah'); and `85315` offered an 'accreditation agreement' as an operating route, which is not what accreditation is. Both are gone — the second replaced by the sibling code, which is a fact rather than a paraphrase of one.",
+  "codes": {
+    "10214": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "Koperasi dan UMKM"
+      },
+      "fields": {
+        "whoThisIsFor": {
+          "old_sha256": "ff427713755e74ef047a63bd6ee0ca7d646057fdc52768a8485c19214e876fb8",
+          "old_excerpt": "A foreign entrepreneur aiming to produce and sell traditional Indonesian pindang fish products, typically for domestic distribution.",
+          "new": "Indonesian-owned processors of pindang fish. The activity is reserved to cooperatives and Indonesian MSMEs by Perpres 49/2021, so foreign shareholding is 0% and a PT PMA cannot register it anywhere in Indonesia — the reservation is national, and moving the company to another province does not lift it. A foreign food business's route here is as a buyer or distributor of a domestic producer's output, not as its owner."
+        }
+      }
+    },
+    "10722": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "Koperasi dan UMKM"
+      },
+      "fields": {
+        "whoThisIsFor": {
+          "old_sha256": "f41e2f34b9495be0e9e45d647e33ced2b483778f54b70d5cfde0a2921440f38e",
+          "old_excerpt": "Foreign entrepreneurs who want to produce authentic palm sugar products using local raw materials, but must consider other Indonesian regions until Ba",
+          "new": "Indonesian-owned palm-sugar producers. The activity is reserved to cooperatives and Indonesian MSMEs by Perpres 49/2021, so foreign shareholding is 0% and a PT PMA cannot register it anywhere in Indonesia — the reservation is national, and moving the company to another province does not lift it. A foreign buyer can contract with a domestic producer for supply or private-label output; it cannot own the production company."
+        }
+      }
+    },
+    "22121": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "Koperasi dan UMKM"
+      },
+      "fields": {
+        "whoThisIsFor": {
+          "old_sha256": "b0f44c5b0271c29bf18413c628bffdfafb88b658ff2ddce65e59f4a590c7e319",
+          "old_excerpt": "A foreign entrepreneur who can meet the higher-risk licensing requirements — one of the doors that stays open in Bali.",
+          "new": "Indonesian-owned smoked-rubber processors. The activity is reserved to cooperatives and Indonesian MSMEs by Perpres 49/2021, so foreign shareholding is 0% and a PT PMA cannot register it anywhere in Indonesia — the reservation is national, and moving the company to another province does not lift it. A foreign rubber trader or manufacturer buys from a domestic processor or contracts its output; ownership is not on the table."
+        }
+      }
+    },
+    "41016": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "Koperasi dan UMKM"
+      },
+      "fields": {
+        "whoThisIsFor": {
+          "old_sha256": "974027bce0ac8225e2d9f5c5bb85e0308ef0e41e32dbf97affb0147e5e19c7c2",
+          "old_excerpt": "Construction-minded foreign entrepreneurs who want to build, maintain, or renovate educational facilities in Bali and can handle location-specific per",
+          "new": "Indonesian-owned contractors building educational facilities. The activity is reserved to cooperatives and Indonesian MSMEs by Perpres 49/2021, so foreign shareholding is 0% and a PT PMA cannot register it anywhere in Indonesia — the reservation is national, and moving the company to another province does not lift it. A foreign construction group participates as a technical partner, designer or supplier to the Indonesian contractor that holds the licence."
+        }
+      }
+    },
+    "41018": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "Koperasi dan UMKM"
+      },
+      "fields": {
+        "whoThisIsFor": {
+          "old_sha256": "3a836cc6b42098c5b173067323475a2b6136f8689df7767c202134ebd2dfac9b",
+          "old_excerpt": "Foreign construction companies or developers targeting entertainment or sports venue projects in Bali.",
+          "new": "Indonesian-owned contractors building entertainment and sports venues. The activity is reserved to cooperatives and Indonesian MSMEs by Perpres 49/2021, so foreign shareholding is 0% and a PT PMA cannot register it anywhere in Indonesia — the reservation is national, and moving the company to another province does not lift it. A foreign developer's route is through a domestic contractor — as client, designer or specialist subcontractor — not by holding this code."
+        }
+      }
+    },
+    "41020": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "Koperasi dan UMKM"
+      },
+      "fields": {
+        "whoThisIsFor": {
+          "old_sha256": "33a21d8f6e591bac4c8be0f2920db440db34245c9dbdd08b4f073510035a30fc",
+          "old_excerpt": "Foreign entrepreneurs bringing modular, off-site manufactured building systems to Bali for fast-track construction projects.",
+          "new": "Indonesian-owned prefabricated-building contractors. The activity is reserved to cooperatives and Indonesian MSMEs by Perpres 49/2021, so foreign shareholding is 0% and a PT PMA cannot register it anywhere in Indonesia — the reservation is national, and moving the company to another province does not lift it. A foreign modular-systems company sells or licenses its systems to the Indonesian contractor; it cannot be the contractor."
+        }
+      }
+    },
+    "59121": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERTUTUP"
+      },
+      "fields": {
+        "whoThisIsFor": {
+          "old_sha256": "b32bcc17993f78b34c4e3fc23fd7c9c42c374bc60b504e1b7f2dfc7663823217",
+          "old_excerpt": "This suits foreign entrepreneurs with post-production expertise who aim to contract with government agencies, but the current Bali moratorium means th",
+          "new": "Indonesian government bodies running film and video post-production. This KBLI is the STATE-run version of the activity, and it is closed to investment: foreign shareholding is 0%, in Bali and everywhere else, so no PT PMA can hold it. The privately-run equivalent is code 59122 — Aktivitas Pascaproduksi Film, Video, dan Program Televisi oleh Swasta — and that one is fully open to foreign ownership; it is where a post-production house registers."
+        }
+      }
+    },
+    "59131": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERTUTUP"
+      },
+      "fields": {
+        "whoThisIsFor": {
+          "old_sha256": "499f0f711bd4080867ca87b1d936cbdc338cfe90323e6046a297eb8974d4ced8",
+          "old_excerpt": "This is intended for foreign government bodies or state-owned broadcasters seeking to distribute content through Indonesian government channels, not f",
+          "new": "Indonesian government bodies distributing film, video and television content. This KBLI is the STATE-run version of the activity, and it is closed to investment: foreign shareholding is 0%, in Bali and everywhere else, so no PT PMA can hold it. The privately-run equivalent is code 59132 — Aktivitas Distribusi Film, Video. dan Program Televisi oleh Swasta — and that one is fully open to foreign ownership; it is where a distributor registers."
+        }
+      }
+    },
+    "60311": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERTUTUP"
+      },
+      "fields": {
+        "whoThisIsFor": {
+          "old_sha256": "283e428b34f36c585960bcc517f1c17be6faf46354a66cf13b5942a26883178a",
+          "old_excerpt": "A foreign entrepreneur who already holds a government partnership or public-service media contract and wants to establish a Bali-based news agency ful",
+          "new": "Indonesian government news agencies. This KBLI is the STATE-run version of the activity, and it is closed to investment: foreign shareholding is 0%, in Bali and everywhere else, so no PT PMA can hold it. The privately-run equivalent is code 60312 — Aktivitas Kantor Berita oleh Swasta — and that one is fully open to foreign ownership; it is where a news organisation registers."
+        }
+      }
+    },
+    "84146": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERTUTUP"
+      },
+      "fields": {
+        "whoThisIsFor": {
+          "old_sha256": "a06842288d68eb74224f8edfca89c3f4e957c07fc6d7d6679f72d70750e1de10",
+          "old_excerpt": "This is for a foreign entity that is structurally tied to a government mandate in trade or tourism — for example, an official tourism promotion partne",
+          "new": "Indonesian government institutions in trade and tourism administration. This KBLI is the STATE-run version of the activity, and it is closed to investment: foreign shareholding is 0%, in Bali and everywhere else, so no PT PMA can hold it. There is no privately-run equivalent of this code: it describes a government function rather than a service with a market version, so there is no adjacent code to register instead."
+        }
+      }
+    },
+    "85101": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERTUTUP"
+      },
+      "fields": {
+        "whoThisIsFor": {
+          "old_sha256": "05e4367f345729dd7bae78ae5b641da51a31eb0fc5ce02d270d44c125b2edae6",
+          "old_excerpt": "Foreign entrepreneurs who intend to run a kindergarten through a government mandate, public-private partnership, or similar arrangement in collaborati",
+          "new": "Indonesian state kindergartens. This KBLI is the STATE-run version of the activity, and it is closed to investment: foreign shareholding is 0%, in Bali and everywhere else, so no PT PMA can hold it. The privately-run equivalent is code 85102 — Pendidikan Taman Kanak-Kanak Umum Swasta — and that one is fully open to foreign ownership; it is where an education group registers."
+        }
+      }
+    },
+    "85311": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERTUTUP"
+      },
+      "fields": {
+        "whoThisIsFor": {
+          "old_sha256": "79e70e44d93cd496276469ab3f8f8101e2c59f3418c6e1efed1b038b136ede3a",
+          "old_excerpt": "Foreign educational organizations or investors seeking to collaborate with the Indonesian government to run public junior secondary schools or state-b",
+          "new": "Indonesian state junior secondary schools. This KBLI is the STATE-run version of the activity, and it is closed to investment: foreign shareholding is 0%, in Bali and everywhere else, so no PT PMA can hold it. The privately-run equivalent is code 85312 — Pendidikan Menengah Pertama Umum Swasta — and that one is fully open to foreign ownership; it is where an education group registers."
+        }
+      }
+    },
+    "85315": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERTUTUP"
+      },
+      "fields": {
+        "whoThisIsFor": {
+          "old_sha256": "66e477f327546dc3b6e41f01c399cdd470b6d48b8a858e1089efc63f8575e92a",
+          "old_excerpt": "Foreign education operators looking to establish or partner with state-accredited upper secondary schools or equivalency programs within government fr",
+          "new": "Indonesian state upper secondary schools. This KBLI is the STATE-run version of the activity, and it is closed to investment: foreign shareholding is 0%, in Bali and everywhere else, so no PT PMA can hold it. The privately-run equivalent is code 85316 — Pendidikan Menengah Atas Umum Swasta — and that one is fully open to foreign ownership; it is where an education group registers."
+        }
+      }
+    },
+    "85321": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERTUTUP"
+      },
+      "fields": {
+        "whoThisIsFor": {
+          "old_sha256": "c78a2ea6194147e2971f5334d51057c2e0e1a15be5de5e3655f2507f986c6a63",
+          "old_excerpt": "Foreign investors or educational institutions aiming to collaborate with the Indonesian government to build or manage state vocational high schools, e",
+          "new": "Indonesian state vocational high schools. This KBLI is the STATE-run version of the activity, and it is closed to investment: foreign shareholding is 0%, in Bali and everywhere else, so no PT PMA can hold it. The privately-run equivalent is code 85322 — Pendidikan Menengah Kejuruan Umum Swasta — and that one is fully open to foreign ownership; it is where a vocational-education group registers."
+        }
+      }
+    },
+    "85401": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERTUTUP"
+      },
+      "fields": {
+        "whoThisIsFor": {
+          "old_sha256": "a53708ee6ee4027d7bcfb3431d0daac595d06cdbc5d496556bef939a91f7d52a",
+          "old_excerpt": "Foreign education groups or investors aiming to establish or co-manage a state-recognized university or specialized higher education institution in pa",
+          "new": "Indonesian state universities. This KBLI is the STATE-run version of the activity, and it is closed to investment: foreign shareholding is 0%, in Bali and everywhere else, so no PT PMA can hold it. The privately-run equivalent is code 85402 — Pendidikan Tinggi Umum Swasta — and that one is fully open to foreign ownership; it is where a university or education investor registers."
+        }
+      }
+    },
+    "85403": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERTUTUP"
+      },
+      "fields": {
+        "whoThisIsFor": {
+          "old_sha256": "30bf9107e8e90f2dc445cd6e01cead753e4effb6e0f9a5a40a8fc599f535ebb9",
+          "old_excerpt": "Foreign educational foundations or investors aiming to establish a religiously-integrated university or higher learning institution in Bali, blending ",
+          "new": "Indonesian state religious universities. This KBLI is the STATE-run version of the activity, and it is closed to investment: foreign shareholding is 0%, in Bali and everywhere else, so no PT PMA can hold it. The privately-run equivalent is code 85404 — Pendidikan Tinggi Keagamaan Swasta — and that one is fully open to foreign ownership; it is where an educational foundation registers."
+        }
+      }
+    },
+    "85550": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERTUTUP"
+      },
+      "fields": {
+        "whoThisIsFor": {
+          "old_sha256": "ba10c4cbe343dcfc1d0b242466545c9b5a7c642790ecb0faa527ea89d9bf8609",
+          "old_excerpt": "Foreign entrepreneurs seeking to establish or partner with government-linked training centers, offering vocational courses and skill-building programs",
+          "new": "Indonesian government training centres. This KBLI is the STATE-run version of the activity, and it is closed to investment: foreign shareholding is 0%, in Bali and everywhere else, so no PT PMA can hold it. The privately-run equivalent is code 85599 — Pendidikan Lainnya Swasta — and that one is fully open to foreign ownership; it is where a training provider registers."
+        }
+      }
+    },
+    "85560": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERTUTUP"
+      },
+      "fields": {
+        "whoThisIsFor": {
+          "old_sha256": "5d38ccebdd189aba489234ed00e4342c34472b8de29e61882000cc2c4cc6c8cf",
+          "old_excerpt": "This suits a foreign training provider or ed-tech firm that wants to partner with Indonesian government bodies to deliver official vocational skill pr",
+          "new": "Indonesian government vocational training bodies. This KBLI is the STATE-run version of the activity, and it is closed to investment: foreign shareholding is 0%, in Bali and everywhere else, so no PT PMA can hold it. The private equivalents are codes 85571-85579, private vocational training split by field, and those are fully open to foreign ownership; that is where a training provider or ed-tech firm registers."
+        }
+      }
+    },
+    "87201": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERTUTUP"
+      },
+      "fields": {
+        "whoThisIsFor": {
+          "old_sha256": "a0178ca3d72aa169b67a46213e6cf93f7e663f8b1e534f68fe6f3439379dcbaf",
+          "old_excerpt": "Foreign social-service organizations or healthcare operators experienced in residential mental health or addiction treatment who plan to work through ",
+          "new": "Indonesian state residential care for mental health and addiction. This KBLI is the STATE-run version of the activity, and it is closed to investment: foreign shareholding is 0%, in Bali and everywhere else, so no PT PMA can hold it. The privately-run equivalent is code 87202 — Aktivitas Perawatan untuk Orang yang Hidup dengan atau Memiliki Diagnosis Penyandang Disabilitas Mental atau Penyalahgunaan Obat Terlarang Berbasis Residensial oleh Lembaga Kesejahteraan Sosial (LKS) — and that one is fully open to foreign ownership; it is where a healthcare operator registers."
+        }
+      }
+    },
+    "87301": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERTUTUP"
+      },
+      "fields": {
+        "whoThisIsFor": {
+          "old_sha256": "4a19287124104aefb5c240f6856034f6c28a6bc980ecaa9c9c9ff64e0fe1ec84",
+          "old_excerpt": "Foreign entrepreneurs looking to set up or partner in government-regulated assisted-living or nursing facilities for seniors or physically disabled in",
+          "new": "Indonesian state residential care for the elderly and people with disabilities. This KBLI is the STATE-run version of the activity, and it is closed to investment: foreign shareholding is 0%, in Bali and everywhere else, so no PT PMA can hold it. The privately-run equivalent is code 87302 — Aktivitas Sosial untuk Lanjut Usia atau Penyandang Disabilitas Fisik oleh Lembaga Kesejahteraan Sosial (LKS) — and that one is fully open to foreign ownership; it is where a care operator registers."
+        }
+      }
+    },
+    "91111": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERTUTUP"
+      },
+      "fields": {
+        "whoThisIsFor": {
+          "old_sha256": "7ff30e08e91de420df402b48f364658a3316ab25f23994ac5a7264d785868334",
+          "old_excerpt": "Foreign entrepreneurs or organizations providing library management, digital archiving, or government documentation services that aim to partner with ",
+          "new": "Indonesian government libraries. This KBLI is the STATE-run version of the activity, and it is closed to investment: foreign shareholding is 0%, in Bali and everywhere else, so no PT PMA can hold it. The privately-run equivalent is code 91112 — Aktivitas Perpustakaan Swasta — and that one is fully open to foreign ownership; it is where a library-services company registers."
+        }
+      }
+    },
+    "91211": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERTUTUP"
+      },
+      "fields": {
+        "whoThisIsFor": {
+          "old_sha256": "f280b6314dd8c476cfcfc6be68502acd7019832afdee4a257ccecba3a54ab057",
+          "old_excerpt": "A foreign entrepreneur experienced in cultural management, curation, or heritage tourism who plans to manage a museum asset in collaboration with a go",
+          "new": "Indonesian government-run museums. This KBLI is the STATE-run version of the activity, and it is closed to investment: foreign shareholding is 0%, in Bali and everywhere else, so no PT PMA can hold it. The privately-run equivalent is code 91212 — Museum yang Dikelola Swasta — and that one is fully open to foreign ownership; it is where a museum or heritage operator registers."
+        }
+      }
+    },
+    "91221": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERTUTUP"
+      },
+      "fields": {
+        "whoThisIsFor": {
+          "old_sha256": "e845fb2a1560968f5a9d57eb7a361815ef4d39283986404c29eb35767a3409c8",
+          "old_excerpt": "Foreign entrepreneurs seeking to collaborate with Indonesian government authorities to operate, preserve, or support official heritage sites, such as ",
+          "new": "Indonesian government-managed heritage sites and monuments. This KBLI is the STATE-run version of the activity, and it is closed to investment: foreign shareholding is 0%, in Bali and everywhere else, so no PT PMA can hold it. The privately-run equivalent is code 91222 — Aktivitas Situs Bersejarah dan Monumen yang Dikelola Swasta — and that one is fully open to foreign ownership; it is where a heritage-management group registers."
+        }
+      }
+    },
+    "95220": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "Koperasi dan UMKM"
+      },
+      "fields": {
+        "whoThisIsFor": {
+          "old_sha256": "94c2ab611145d1ab42c1a55bc1a8e0838de4b42e0eefb82dee40aa9170e18634",
+          "old_excerpt": "Foreign entrepreneurs who plan to offer hands-on repair and maintenance services for household and garden equipment, but must consider that Bali is pr",
+          "new": "Indonesian-owned repair shops for household and garden equipment. The activity is reserved to cooperatives and Indonesian MSMEs by Perpres 49/2021, so foreign shareholding is 0% and a PT PMA cannot register it anywhere in Indonesia — the reservation is national, and moving the company to another province does not lift it. A foreign brand's route here is a service agreement with a domestic workshop, not a PMA of its own."
+        }
+      }
+    },
+    "95299": {
+      "expect": {
+        "pma_max_asing": 0,
+        "pma_status": "TERBATAS",
+        "pma_kondisi_contains": "Koperasi dan UMKM"
+      },
+      "fields": {
+        "whoThisIsFor": {
+          "old_sha256": "dd7cb978b6749458e7500b270f61f8f3faf8135255a05816f0222bded767f2f4",
+          "old_excerpt": "This suits a foreign entrepreneur with hands-on technical repair skills who wants to open a general personal and household goods repair workshop in ar",
+          "new": "Indonesian-owned repair workshops for personal and household goods. The activity is reserved to cooperatives and Indonesian MSMEs by Perpres 49/2021, so foreign shareholding is 0% and a PT PMA cannot register it anywhere in Indonesia — the reservation is national, and moving the company to another province does not lift it. A foreign operator can supply, train or franchise a domestic workshop; it cannot own one under this code, in Bali or outside it."
+        }
+      }
+    }
+  }
+}

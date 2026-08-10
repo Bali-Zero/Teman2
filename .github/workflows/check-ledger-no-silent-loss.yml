@@ -1,0 +1,100 @@
+# Residual arming step for the PENDING-ARMS entry opened 2026-08-02
+# ("merge=union on this ledger makes GitHub call EVERY ledger-touching PR
+# conflicted, while every git client merges it cleanly — and the documented
+# escape fails too"). Runbook: docs/runbooks/merge-queue-discipline.md
+# §6quinquies. Script: scripts/check_ledger_no_silent_loss.py.
+#
+# `.gitattributes` declares PENDING-ARMS.md `merge=union`, correct for an
+# append-only registry — but GitHub's own mergeability computation ignores
+# .gitattributes drivers and can report `mergeable: false` / DIRTY on a PR
+# that `git merge` resolves cleanly in both directions. The danger this
+# check exists for: a session reading that false DIRTY as a real conflict
+# and hand-resolving it by keeping one side, silently dropping the other
+# side's rows.
+#
+# NON-REQUIRED by design (same posture as check-kbli-dataset-sync.yml): the
+# check cannot distinguish "accidentally dropped" from "legitimately closed
+# — arming PROVEN live" using git history alone (both are just a line
+# present at merge-base and absent at HEAD). It only flags rows untouched
+# by ANY PR since the branch diverged, which narrows but does not eliminate
+# false positives on a rare legitimate closure. Promoting this to a
+# required branch-protection check is a separate, later, operator-only
+# action (repo/branch-protection settings, CLAUDE.md §13) — build first,
+# observe over a dry-run window, promote after.
+#
+# Path-scoped: only runs when the ledger, this script, or this workflow
+# changes — a PR that touches none of them has nothing to check.
+
+name: check-ledger-no-silent-loss
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - ".claude/skills/modus/PENDING-ARMS.md"
+      - "scripts/check_ledger_no_silent_loss.py"
+      - "scripts/pending_arms_report.py"
+      - "scripts/tests/test_check_ledger_no_silent_loss.py"
+      - ".github/workflows/check-ledger-no-silent-loss.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-ledger-no-silent-loss-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-ledger-no-silent-loss:
+    name: check-ledger-no-silent-loss
+    runs-on: ubuntu-latest
+    # Floor is the CHECKOUT, not the script (scripts/lint_workflow_timeout_floor.py).
+    timeout-minutes: 10
+    steps:
+      # Checkout PR HEAD (not base), fetch full history. Deliberately the
+      # OPPOSITE of hot-zone-pr-gate.yml's base-anchored checkout: that gate
+      # runs its enumerator from BASE's copy on purpose (self-protection — a
+      # hot-zone PR must not be able to disarm the gate that judges it, see
+      # that file's own comment). This check has no such adversarial
+      # concern (it is non-required/dry-run by design) and its own script +
+      # test file are introduced BY THIS VERY PR — checking out base.sha
+      # would leave `scripts/check_ledger_no_silent_loss.py` and its test
+      # physically absent from the working tree on this bootstrap PR,
+      # which is exactly what happened: "ERROR: file or directory not
+      # found" on PR #3838's own first run (self-test step, exit 4),
+      # non-blocking only because this check itself is non-required.
+      - name: Checkout PR head
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Fetch PR base
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=200 origin "$BASE_SHA"
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install pytest
+        run: python -m pip install --quiet pytest
+
+      - name: Self-test the guard (guilt AND innocence)
+        run: |
+          set -uo pipefail
+          python -m pytest scripts/tests/test_check_ledger_no_silent_loss.py -q
+
+      - name: No silent loss across the ledger merge
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -uo pipefail
+          python scripts/check_ledger_no_silent_loss.py \
+            --base-ref "$BASE_SHA" --head-ref "$HEAD_SHA"
+        continue-on-error: true # dry-run posture — see header comment

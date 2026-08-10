@@ -36,6 +36,7 @@ def _portal_user(**over: object) -> dict[str, object]:
         "full_name": "Client One",
         "name": "Client One",
         "role": "client",
+        "linked_client_id": 42,
         "portal_access": True,
         "active": True,
         **over,
@@ -65,6 +66,7 @@ async def test_request_mints_token_for_active_portal_client() -> None:
     insert_args = conn.execute.call_args.args
     assert insert_args[2] == _hash_token(result["token"])  # token_hash positional ($2)
     assert result["token"] not in insert_args
+    assert "linked_client_id IS NOT NULL" in conn.fetchrow.call_args.args[0]
 
 
 @pytest.mark.asyncio
@@ -135,6 +137,10 @@ async def test_verify_consumes_token_and_returns_user() -> None:
     assert user is not None
     assert user["email"] == "client@example.com"
     assert user["role"] == "client"
+    assert user["client_id"] == 42
+    assert user["portal_access"] is True
+    assert "linked_client_id" in conn.fetchrow.call_args_list[1].args[0]
+    assert "linked_client_id IS NOT NULL" in conn.fetchrow.call_args_list[1].args[0]
     # token marked used (single-use)
     assert "UPDATE magic_link_tokens SET used_at" in conn.execute.call_args.args[0]
 
@@ -155,9 +161,7 @@ async def test_verify_rejects_unknown_token() -> None:
 async def test_verify_rejects_already_used_token() -> None:
     conn = AsyncMock()
     conn.transaction = MagicMock(return_value=_AsyncCtx())
-    conn.fetchrow = AsyncMock(
-        return_value=_valid_token_row(used_at=datetime.now(timezone.utc))
-    )
+    conn.fetchrow = AsyncMock(return_value=_valid_token_row(used_at=datetime.now(timezone.utc)))
     conn.execute = AsyncMock()
     service = _service_with_conn(conn)
 
@@ -170,9 +174,7 @@ async def test_verify_rejects_expired_token() -> None:
     conn = AsyncMock()
     conn.transaction = MagicMock(return_value=_AsyncCtx())
     conn.fetchrow = AsyncMock(
-        return_value=_valid_token_row(
-            expires_at=datetime.now(timezone.utc) - timedelta(minutes=1)
-        )
+        return_value=_valid_token_row(expires_at=datetime.now(timezone.utc) - timedelta(minutes=1))
     )
     conn.execute = AsyncMock()
     service = _service_with_conn(conn)

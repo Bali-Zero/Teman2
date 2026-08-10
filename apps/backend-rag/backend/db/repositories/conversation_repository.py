@@ -7,6 +7,13 @@ from datetime import datetime, timedelta, timezone
 
 from backend.app.utils.json_utils import to_jsonb
 from backend.app.utils.logging_utils import get_logger, log_error, log_success
+from backend.core.retention_policy import (
+    ALLOW_CLOCK_DELETE_ENV,
+    RETENTION_MIN_DAYS,
+    RetentionPolicyViolation,
+    clock_delete_allowed,
+    enforce_retention_floor,
+)
 from backend.db.base_repository import BaseRepository
 from backend.services.common.cache import cache_invalidating
 
@@ -42,7 +49,14 @@ class ConversationRepository(BaseRepository):
             conversation_id if successful, None otherwise
         """
         try:
-            async with self.db_pool.acquire() as conn:
+            # Suppressed, not fixed: SIM117 (combine the two `async with`)
+            # predates this branch on origin/main and is inherited here only
+            # because the staged-file lint gate is per FILE, not per line.
+            # Combining them is a correct but 78-line pure re-indentation of a
+            # hot path, which does not belong in a retention-policy diff.
+            # (This comment must not open with the suppression keyword — ruff
+            # reads that as a blanket directive on the comment's own line.)
+            async with self.db_pool.acquire() as conn:  # noqa: SIM117
                 async with conn.transaction():
                     # Check if conversation exists for this session
                     existing = await conn.fetchrow(
@@ -166,16 +180,33 @@ class ConversationRepository(BaseRepository):
             "zantara:conversations:*",
         ]
     )
-    async def cleanup_old_conversations(self, days: int = 30) -> int:
+    async def cleanup_old_conversations(self, days: int = RETENTION_MIN_DAYS) -> int:
         """
         Delete conversations older than specified days
 
         Args:
-            days: Number of days to keep (default: 30)
+            days: Number of days to keep (default: the 5-year retention floor)
 
         Returns:
             Number of conversations deleted
+
+        Raises:
+            RetentionPolicyViolation: if `days` is below the floor, or if timed
+                deletion is disabled (it is, by default — see
+                backend/core/retention_policy.py). This is the ONLY thing here
+                that escapes: the `except Exception` below returns 0, so a
+                refusal raised inside it would reach the caller as a successful
+                "0 rows deleted". The guards therefore sit above the try.
         """
+        enforce_retention_floor("days", days)
+        if not clock_delete_allowed():
+            raise RetentionPolicyViolation(
+                "Clock-driven deletion of conversations is disabled by policy "
+                f"('non cancellare', 2026-08-08). Set {ALLOW_CLOCK_DELETE_ENV}=1 to re-enable "
+                "deliberately. Per-subject erasure (DELETE /api/conversations/clear) is a "
+                "separate path and is NOT affected by this."
+            )
+
         try:
             cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
 
@@ -209,16 +240,25 @@ class ConversationRepository(BaseRepository):
             "zantara:conversations:*",
         ]
     )
-    async def anonymize_user_data(self, days: int = 7) -> int:
+    async def anonymize_user_data(self, days: int = RETENTION_MIN_DAYS) -> int:
         """
         Anonymize user_id for conversations older than specified days
 
         Args:
-            days: Number of days before anonymization (default: 7)
+            days: Number of days before anonymization (default: the 5-year floor)
 
         Returns:
             Number of conversations anonymized
+
+        Raises:
+            RetentionPolicyViolation: if `days` is below the floor. Anonymising
+                at 7 days — the previous default — destroys the five-year
+                reconstruction requirement within a week, which is why this is
+                floored even though it is not a deletion. Raised above the try
+                for the same reason as the sibling method.
         """
+        enforce_retention_floor("days", days)
+
         try:
             cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
 

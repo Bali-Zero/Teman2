@@ -498,9 +498,9 @@ class Settings(BaseSettings):
     )
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_hours: int = 1  # S03: reduced from 24h to 1h
-    jwt_enforce_expiry: bool = False  # S03: Phase 1 audit mode, flip to True for Phase 2
-
-    enable_token_revocation: bool = False  # S03-S2: Redis-backed token revocation
+    # Emergency availability lever. Production keeps this enabled; disabling it
+    # explicitly trades session revocation for authentication availability.
+    enable_token_revocation: bool = True
 
     @field_validator("jwt_secret_key", mode="before")
     @classmethod
@@ -1045,6 +1045,10 @@ class Settings(BaseSettings):
     google_drive_root_folder_id: str | None = (
         None  # Set via GOOGLE_DRIVE_ROOT_FOLDER_ID env var (team root folder)
     )
+    # Dedicated legal archive. This is intentionally distinct from the generic
+    # Drive root because primary legal sources require controlled retention.
+    legal_drive_root_folder_id: str | None = None  # LEGAL_DRIVE_ROOT_FOLDER_ID
+    legal_drive_impersonate_user: str | None = None  # LEGAL_DRIVE_IMPERSONATE_USER
     gdrive_individuals_folder_id: str | None = (
         None  # Set via GDRIVE_INDIVIDUALS_FOLDER_ID env var (parent for individual clients)
     )

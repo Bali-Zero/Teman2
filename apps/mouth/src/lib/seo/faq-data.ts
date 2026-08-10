@@ -3,6 +3,13 @@
  * Used for FAQ schema markup and AI context
  */
 
+import { getExactSnapshotPrice } from "@/lib/pricing-snapshot";
+
+const SECOND_HOME_PRICE = getExactSnapshotPrice(
+  "kitas_permits",
+  "E33 Second Home (5 Years)",
+);
+
 export interface FAQItem {
   question: string;
   answer: string;
@@ -146,8 +153,9 @@ export const SECOND_HOME_FAQS: FAQItem[] = [
   },
   {
     question: "How much does the Second Home Visa cost with Bali Zero?",
-    answer:
-      "IDR 39,000,000 all-inclusive for the base E33 — one figure, everything included. The fit memo that assesses your route is free.",
+    answer: SECOND_HOME_PRICE
+      ? `${SECOND_HOME_PRICE} all-inclusive for the base E33 — one figure, everything included. The fit memo that assesses your route is free.`
+      : "The current all-inclusive price is available through Bali Zero's official pricing flow. The fit memo that assesses your route is free.",
     category: "visas",
   },
 ];

@@ -43,7 +43,166 @@ session reads this corner; it does not browse `research/`.
 Also stale in `20-the-honest-map-blocked-bali-codes.md` and its `_INDEX.md` row: the blocked count
 is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
-## 1. LIVE STATE (last update 2026-08-05 — keep current)
+## 1. LIVE STATE (last update 2026-08-09 — keep current)
+
+**🟢 2026-08-09 — THE macOS APP IS NOW TWO APPS FROM ONE CODEBASE (Zero's ruling), FLEET-INSTALLED AND
+PROVEN — AND THE FLEET GUARD'S REFERENCE WAS THE LIAR (W106b).**
+
+**The ruling (Zero, 2026-08-09):** two apps, one codebase, variant decided at build time
+(`build.sh --variant internal|bkpm` → `BZVariant` Info.plist key → `Sources/Variant.swift`, single
+runtime source of truth):
+
+- **"KBLI Navigator - INTERNAL.app"** — everything: 20 articles, balizero.com links, chat. Fleet + team
+  installer.
+- **"KBLI Navigator - BKPM.app"** — book only (2 PDFs + 13 chapters); the 20 articles EXCLUDED from the
+  bundle at build time; ZERO balizero.com links (verified 0 hits in Resources); chat KEPT — Zero: "we
+  need it perfect at answering KBLI questions". Zip staged at `build/KBLI-Navigator-BKPM.zip`
+  (~113MB) — hand-off is Zero's call (Legge 5).
+
+**Shipped and PROVEN, not merely reported.** App repo (real path
+`/Users/balizero/Desktop/logo/kbli-navigator-app`, M5, no git remote — local commits are complete
+actions): the split (`0e1e723`/`5c10772`/`50e1a8f`/`cb65abe`), an SDK fix (`77b1ddb`), a dataset refresh
+from `origin/main` (`a18c148`), and the `check-fleet.sh` W106b fix (`91d91eb`). Real universal builds
+(x86_64+arm64) run on Pro — **M5 has no Xcode** (CLT-only; SwiftUI macros can't expand; `build.sh`
+exits 3 there) — via a build-farm pattern: rsync repo → `pro:/tmp/kbli-app-build`, build, rsync `build/`
+back. SDK scar: a bare `xcrun --show-sdk-path` resolves the CLT SDK on Pro against Xcode's macro
+plugin → use `xcrun --sdk macosx`. Second build scar: `rm -rf $BUILD_DIR` used to wipe the OTHER
+variant's bundle; now scoped per-app.
+
+Fleet install (all 3 Macs): INTERNAL lives on each Desktop, the old "KBLI Navigator.app" moved to each
+machine's Trash (reversible). Install scars: macOS `openrsync` fails on remote paths with SPACES → use
+tar-over-ssh; **Mini's `~/Desktop` is iCloud-Drive-synced** — the file provider re-attaches xattrs that
+break `codesign` in place → sign in `/tmp`, then `mv` (signature survives). `deploy/check-fleet.sh`
+final run: **exit 0, all four surfaces aligned on `a5721756d5b2`** (= `origin/main:data/source_documents/
+KBLI_2025_FINAL_CLEAN.json`).
+
+**The W106b twist, worth more than the fix.** Post-install, `check-fleet.sh` cried DRIFT on all 3
+machines. Chasing the hashes proved the INVERSE: the installed fleet carried `origin/main`'s CURRENT
+dataset; the "canonical" reference was M5's by-design-behind main checkout (235 commits, Aug-4 dataset
+`a9a461b41b50`) — and the tool's own printed remedy (rebuild+reinstall from M5) would have REGRESSED
+the fleet 4 days. Worse: Phase 1's own `chore(data): refresh dataset from canonical` commit (`c5f277a`)
+had already consumed that stale checkout and regressed the app repo's Resources — the fleet was saved
+only by the accident that the build ran on Pro, whose checkout was current. Cures: `check-fleet.sh` now
+anchors on `git show origin/main:…` after a refs-only fetch (fetch failure → CANNOT-VERIFY exit 3,
+never phantom drift; `--local-canonical` escape hatch documented offline-dev-only), and its "unreachable
+≠ aligned" note now prints ONLY when ssh actually failed (it used to be a static string on every
+mismatch). PR #3907 (MERGED): the fleet-notice pointed at the dead pre-move path
+`~/Desktop/kbli-navigator-app` (the repo had moved into `logo/`), so it silently self-skipped on M5.
+PR #3909 (armed `--auto`): `sync_kbli_dataset.sh` now REFUSES sync mode from a checkout with branch
+`main` checked out (exit 4) — deliberately NOT an origin-anchored read: tracing the callers showed the
+script is a PROPAGATOR of freshly-written local canonical edits (cure compilers write then propagate),
+so an origin/main read would discard every cure at its own apply step. The implementer refuted the
+orchestrator's first design with that evidence and shipped the branch-guard instead, with the
+false-positive pinned by a test.
+
+**Honest gaps — the BKPM app is NOT yet a hand-to-BKPM deliverable.**
+
+1. Chat still talks to the OLD brain (OpenClaw `zantara-kbli` on Mini via ssh): fleet-only reachability,
+   no retrieval — cold KBLI questions get "I don't have FONTI" refusals. This is Phase 2's job (below).
+2. Ad-hoc signature: on a non-fleet Mac, Gatekeeper requires right-click-open; a clean external
+   hand-off wants Developer ID + notarization — Zero decision, `operator[business]`, not started.
+3. No human has GUI-opened the two new apps yet (bundles proven by content; native GUI QA = 30 seconds
+   of Zero's eyes).
+
+**NEXT — Phase 2 "the chat perfect on KBLI" (DESIGNED, awaiting Zero's GO — do not start without it):**
+one brain only: a new `KBLIBrainClient` (Swift, URLSession) → prod `chat_kbli` (the cured brain:
+canonical + 314 gold + `kbli_documents` + the exact-code retrieval fix), current code-card context
+rides with the question; API key read from a LOCAL file, never bundled, chat hides gracefully where the
+key is absent (a BKPM Mac); fallback chain HTTP → legacy ssh path → honest offline message; a
+**~25-question KBLI benchmark** (from the 78-question team test + cured traps: 51101→49%, 79122→0%,
+25200, moratorium, paid-up 2.5 mld, SLHS) run against old and new brain, scored against canonical,
+before/after report in-repo. Out of scope: notarization; `kbli_documents` content (that's the
+8-phantoms/25-drafts/312-rows ratification packages already on Zero's desk).
+
+**Also open (small, Zero-gated):** Mini Desktop residue `kbli-2025-navigator/` — a Feb-2026 React
+prototype (8MB, not a git repo) carrying a cleartext `GEMINI_API_KEY` in `.env.local` (superscar
+family #4): trash-or-keep is asked; revoking the key in Google AI Studio is `operator[credential]`, low
+urgency. (The June fossil "KBLI Navigator (nativa congelata 28-6).app" was already trashed on Zero's
+order.)
+
+**🟢 2026-08-09 — GOLD FULL-POPULATION LIVE: 314 codes (from 3 pilots), G1-G5 all innocent — but only
+after G2 caught a real production bug and forced a same-day fix.** The morning attempt (314 = 322 minus
+8 phantom codes, see below) applied cleanly but POST-MEASURE found **G2 violated and reproducible**: on
+bare-code queries 3 of 10 sampled gold codes (56101/47721/85312) returned the GOLD point at rank1 with
+the BPS twin ABSENT from the top-5. Root cause: `_get_kbli_payload_from_qdrant`'s exact-code fast-path
+(`kbli_notebook.py`) scrolled Qdrant with `limit:1` and no `order_by` — with two points now sharing one
+`kode_kbli`, the winner was a per-code coin-flip on the two points' unrelated deterministic UUIDs
+(10/10 correlation confirmed empirically), zero relation to score/doc_type. Same-day rollback per a
+pre-declared contract, then the real fix: the filter now POSITIVELY selects `doc_type==kbli_bps` instead
+of excluding gold (#3863, deployed v4057, proven live in-container and on the search surface). Re-apply
+then measured G1-G5 all clean, G2 15/15 including the 3 ex-violators (#3865). Open, orthogonal:
+8 phantom codes in `kbli-gold-content.ts` with no 2025 counterpart (excluded from this apply,
+re-keying decision is `operator[business]`), and the `sektor`/`section` payload field remains unreliable
+(unscoped, tracked separately).
+
+**🟢 2026-08-08 (late evening) — THE INDEXERS CAN NOW RUN WHERE THEIR CREDENTIALS LIVE, AND THE FIRST
+THREE GOLD EDITORIAL POINTS EXIST.** Three PRs, each forced by proving the previous one: #3823
+(marker-walk root resolution + the three data files INTO the image — which took two build-context
+rounds of its own), #3832 (the gold indexer was BORN broken: a nested `metadata` write against the
+flat payload, in the file's birth commit — it had never completed a single run, so `doc_type=kbli_gold`
+was 0 points, measured), #3839 (the SAME disease in the stats/sample blocks it had never reached — four
+more sites, swept to a true grep-zero). Applied inside Fly: canonical reindex
+`--only 64995,64210,49296,46415,46496` (5/5 upserted, collection steady at 1559) and gold
+`--only 64995,64210,49296` (the first 3 gold points ever). PROVEN by content, three independent
+instruments: the deployed canonical's 64995 carries the honest no-predecessor sentence;
+`kbli_qdrant_pma_sync --layer whatchanged` dry-run in-container reports **5/5 "already agrees with
+canonical"**; `search_kbli` on an editorial query ("IDXCarbon…") returns the GOLD point FIRST (0.666 vs
+0.546 for its BPS twin) with the Quick Answer visible. Characterized, no action needed: on a code
+carrying both points the sync tool REFUSES the gold one ("carries no 'whatchanged' block — REFUSING to
+rewrite prose we cannot locate") — the refusal semantics were already right.
+**Deliberately NOT done: the other 319 gold entries.** Populating the whole class changes retrieval
+semantics for every consumer of `kbli_2025_final_hybrid` — that is its own ledgered decision with its
+own verification pass, not a night's slip-in.
+Lessons paid for (bodies in the PRs): the root `.dockerignore` is a WHITELIST — a new COPY's source
+must be re-included or the production image stops building, and the non-required Snyk build gate is
+what caught it pre-merge; `source_documents` at repo root is a TRACKED SYMLINK Docker COPY does not
+follow — COPY from the real `data/source_documents/` path; a script that exists but never ran can be
+broken in TWO phases, and a fix that stops at the first crash site is half a fix (W101 symmetry — the
+class census found 4 more sites, and the census probe itself first under-matched on quote style, W107).
+
+**🟢 2026-08-08 — PENDING-ARMS "4 contradicted-predecessor adjudications" (2026-07-25) CLOSED: 2 of 4
+CONFIRMED and live on every surface, 2 stay genuinely disputed BY DESIGN. Merged as #3778
+(`58a3d01e28`), Vercel promote HTTP 201, proven live by content on `/kbli/49296` (49424) and
+`/kbli/64210` (64200).** The 2026-07-25 line asked to
+"adjudicate which layer holds the true 2020 origin for each of the 4" (`46415`/`46496`/`49296`/`64210`).
+Re-measured against the FULL BPS 2020-to-2025 crosswalk relation file
+(`data/kbli-filiera/phase0/bps_crosswalk.json::relation`, all 1,559 codes) instead of canonical's own
+`bps_2020_ancestors` field, which PR #3082's populate step only ever wrote for OSS-native codes
+(`_l2_status is null`) — `49296` and `64210` have `_l2_status: "no_oss_risk"`, so their corroboration
+was invisible to any probe reading only the canonical field.
+
+- **`49296` → CONFIRMED to `49424`.** PP 28/2025 lampiran (100% title match) AND the official BPS
+  crosswalk table (Lampiran 10, printed page 386) both name `49424` — two structurally independent
+  sources agreeing by membership, same standard as the Lampiran III cross-instrument check
+  (2026-08-02, §F2). Canonical + gold `whatChanged` rewritten to a cited confirmed sentence.
+- **`64210` → CONFIRMED to `64200`.** Same pattern, BPS Lampiran 10 printed page 398, 95% title
+  match. Canonical + gold rewritten.
+- **`46415`/`46496` → STAY UNCONFIRMED, correctly.** The two sources genuinely disagree on both
+  (e.g. `46415`: pp28/`kbli_2020_source` says `46694`, BPS says `46419`) — picking a winner here is
+  the exact disease this lane exists to cure (per the original line's own text). No canonical change.
+- **Separate defect found and fixed while investigating `46496`:** gold's `whatChanged` used a
+  different sentence template ("Previous code(s): NNNNN") that the original `_NAMED_PREDECESSOR`
+  regex (anchored to "KBLI 2020: NNNNN") never scanned — a guard UNDER-match (superscar #3/W82
+  family). Gold (which WINS over canonical on the rendered page —
+  `kbli-data.server.ts::transformCode`) kept serving a false-confident, uncited predecessor claim
+  that canonical had already honestly disclaimed. Realigned gold to canonical's exact honest text.
+
+New compiler `scripts/kbli_filiera/cure_whatchanged_corroborated_predecessor.py` (spec-driven,
+facts-basis-guarded — re-derives the corroboration premise from live data before writing, refuses on
+drift; 14 tests). Applied to canonical + gold + the 3 synced consumer copies + the
+`kbli-dataset-version.json` sidecar sha256.
+
+**KG APPLIED AND PROVEN 2026-08-08, post-merge:** `kg_whatchanged_cure.py` run inside the Fly image
+with the spec pinned to the merge SHA (`58a3d01e28`) — dry-run AND apply both reported
+`already_cured=2 drift=0`: the two nodes ALREADY carried the cured text (an earlier apply had landed;
+both rows hold the `_whatChanged_cure` archive key, which only a real `--apply` writes), so this apply
+was an idempotent no-op. Verified by INDEPENDENT read-only SQL on prod, not by the script's report:
+`kbli:49296` / `kbli:64210` `properties.whatChanged` equal the spec text verbatim (49424 / page 386,
+64200 / page 398). Qdrant `kbli_2025_final` and `kbli_documents` (`chat_kbli`) were checked and do
+**NOT** carry this specific false claim for any of the 4 codes — verified via read-only Postgres MCP
+query, no action needed there. Also fixed while in the file: the badge visible-caption defect
+(`BaliStatusBadge` hover-only `reason` text, invisible on mobile/touch) — client-facing, merged with
+#3778, the caption is live.
 
 **🟢 2026-08-06 — THE BOT/MCP HALF IS SHIPPED, SYNCED AND PROVEN LIVE (#3648, `b5dd5f37ca`). Both
 web surfaces were already live (#3645/#3646); this closes the third.** Every step measured, none

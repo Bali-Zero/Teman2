@@ -29,6 +29,7 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from apps.evaluator.nlm_deep_research.nlm_bridge import nlm_error_reason
 
 logger = logging.getLogger(__name__)
 
@@ -179,7 +180,7 @@ def _query_notebook(notebook_id: str, query: str, timeout: int = NLM_QUERY_TIMEO
             capture_output=True, text=True, timeout=timeout,
         )
         if result.returncode != 0:
-            logger.error("nlm query failed for %s: %s", notebook_id, result.stderr.strip()[:200])
+            logger.error("nlm query failed for %s: %s", notebook_id, nlm_error_reason(result))
             return None
         return result.stdout.strip() or None
     except subprocess.TimeoutExpired:
@@ -600,7 +601,7 @@ def _add_source_to_notebook(notebook_id: str, title: str, content: str, timeout:
             capture_output=True, text=True, timeout=timeout,
         )
         if result.returncode != 0:
-            logger.error("nlm source add failed for %s: %s", notebook_id[:8], result.stderr.strip()[:200])
+            logger.error("nlm source add failed for %s: %s", notebook_id[:8], nlm_error_reason(result))
             return False
         logger.info("Added source '%s' to notebook %s", title[:50], notebook_id[:8])
         return True

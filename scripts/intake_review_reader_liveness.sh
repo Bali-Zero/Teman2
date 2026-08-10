@@ -57,27 +57,33 @@ mkdir -p "$(dirname "$STATE_FILE")" "$(dirname "$LOG_FILE")"
 now_ts() { date +%s; }
 log() { echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] $*" >>"$LOG_FILE"; }
 
-# --- Telegram helper (canonical pattern, identical to supervisor_liveness_watchdog.sh) ---
+# --- Telegram helper — through the tg_notify gateway (2026-08-09) ---
+#
+# This file used to open with "canonical pattern, identical to
+# supervisor_liveness_watchdog.sh". They WERE twins, and then the twin was
+# migrated to the gateway and this one was not — so the comment asserting they
+# were identical outlived the fact by weeks, on a watchdog that runs every 300s
+# (288 raw sends a day at worst, no dedup, no budget, no ledger). Curing one of
+# two twins does not halve the problem; it only moves which one is unguarded
+# (W106b). Both are on the gateway now, and both resolve an ABSOLUTE interpreter.
 send_telegram() {
-  local msg="$1"
-  if [ -f "$HOME/.nuzantara-secrets.env" ]; then
-    set -a
-    # shellcheck disable=SC1091
-    source "$HOME/.nuzantara-secrets.env" 2>/dev/null || true
-    set +a
-  fi
-  local TOKEN="${TELEGRAM_BOT_TOKEN:-${CELL_TELEGRAM_BOT_TOKEN:-}}"
-  local CHAT_ID="${TELEGRAM_OWNER_CHAT_ID:-${TELEGRAM_ZERO_CHAT_ID:-1125336968}}"
-  if [ -z "$TOKEN" ] || [ -z "$CHAT_ID" ]; then
-    log "telegram: skipped (no token/chat_id available)"
+  local msg="$1" gateway py
+  gateway="$(dirname "$0")/tg_notify.py"
+  [ -f "$gateway" ] || gateway="$HOME/nuzantara/scripts/tg_notify.py"
+  if [ ! -f "$gateway" ]; then
+    log "telegram: NO GATEWAY at $gateway — alert NOT sent: $msg"
     return 0
   fi
-  curl -fsS --max-time "$CURL_TIMEOUT_S" -X POST \
-    "https://api.telegram.org/bot${TOKEN}/sendMessage" \
-    --data-urlencode "chat_id=${CHAT_ID}" \
-    --data-urlencode "text=${msg}" \
-    --data-urlencode "parse_mode=Markdown" \
-    >/dev/null 2>&1 || log "telegram: send failed"
+  # Absolute interpreter, not `python3` from PATH: this watchdog reports on a
+  # sick environment, and the alarm must not share its failure mode (W108).
+  for py in /usr/bin/python3 /opt/homebrew/bin/python3 /usr/local/bin/python3; do
+    [ -x "$py" ] || continue
+    "$py" "$gateway" --tier p0 --source intake-review-reader-liveness \
+      --dedup-key "intake-review-reader:stalled:$(hostname -s)" -- "$msg" \
+      >>"$LOG_FILE" 2>&1 || log "telegram: gateway send failed"
+    return 0
+  done
+  log "telegram: no usable python3 — alert NOT sent: $msg"
 }
 
 # --- State ---
@@ -152,11 +158,15 @@ if [ "$SINCE" -lt "$COOLDOWN_S" ]; then
 fi
 
 log "ALERT: reader DEAD on port ${PROBE_PORT} (curl code=${CODE} = connection refused/timeout)"
+# Plain text, no backticks: the raw curl this replaced passed parse_mode=Markdown,
+# and the gateway sends without a parse_mode — the five backtick spans would have
+# reached Zero as literal characters. Adding parse_mode to the shared gateway
+# instead would re-render every other organ's message, so the text moves, not it.
 ALERT_MSG="🚨 intake-review reader DOWN
-Probe: \`http://${PROBE_HOST}:${PROBE_PORT}/\` → \`${CODE}\` (connection refused/timeout)
-Effect: \`kita.balizero.com/review\` is DOWN.
-Label: \`${READER_LABEL}\`
-Check: \`tail ~/logs/intake-review-reader.log\` (likely venv dep / import crash under KeepAlive).
+Probe: http://${PROBE_HOST}:${PROBE_PORT}/ → ${CODE} (connection refused/timeout)
+Effect: kita.balizero.com/review is DOWN.
+Label: ${READER_LABEL}
+Check: tail ~/logs/intake-review-reader.log (likely venv dep / import crash under KeepAlive).
 Guardian: segnalatore only (auto-heal handled separately)."
 
 if [ "$DRY_RUN" = "1" ]; then

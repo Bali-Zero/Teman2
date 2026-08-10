@@ -1,0 +1,119 @@
+# rclone filter for nuzantara codebase → Drive sync
+# Syntax: + include, - exclude (first match wins)
+# Reference: https://rclone.org/filtering/
+#
+# Source of truth: scripts/nuzantara-drive-sync.filter (repo). After edits,
+# copy to ~/scripts/nuzantara-drive-sync.filter on Pro (HOME-fork discipline,
+# scar family #1/W50-52 — the sync script itself, nuzantara-drive-sync.sh,
+# is still HOME-only; this filter is the first piece promoted out of that
+# state, 2026-08-08).
+
+# ── Hard secrets exclude (defense in depth)
+- .env
+- .env.*
+- *.env
+- *.env.bak
+- *.env.bak.*
+- .nuzantara-secrets.env*
+- .nuzantara-backend-secrets.env*
+- .ai_keys.env*
+- .langfuse-secrets.env*
+- .git-credentials
+- *.key
+- *.pem
+- *.p12
+- *.pfx
+- credentials.json
+- *credentials*.json
+- *credential*.json
+- service-account*.json
+- *service-account*.json
+- *service_account*.json
+- *-sa.json
+- .nuzantara-drive-sa.json
+- .canva_tokens.json
+- google-credentials*
+- google_credentials*
+- kbli-indexer*.json
+- .secrets/**
+- .secrets.baseline
+- secrets/**
+- .ssh/**
+- .gnupg/**
+- .aws/**
+- .gcloud/**
+- .config/gcloud/**
+- env.combined*
+- *.token
+- *.tokens
+- .auth/**
+- auth.json
+- reference_mini_credentials.md
+
+# ── Worktrees (deploy + codex sandboxes — redundant with main)
+- .worktrees/**
+- worktrees/**
+
+# ── WA-mirror session state (Baileys pre-keys/tokens — high-churn, 36k+ files,
+#    regenerated continuously; syncing them drove a 16h+ Google Drive
+#    "Queries per minute" quota storm on 2026-08-07, see
+#    ~/.cache/nuzantara-drive-sync/launchd.stdout.log. Not secrets in the .env
+#    sense, but volatile runtime state with no business reason to live on
+#    Drive — never re-add without a churn-rate check first.)
+- apps/wa-mirror/sessions/**
+
+# ── Local Claude Code state (contains real JWTs in permission allowlist)
+- .claude/settings.local.json
+- .claude/settings.local.sync-conflict-*.json
+- .claude/.session*
+
+# ── AI dispatch transcripts (contain raw secrets caught during reviews)
+- ai-dispatch-output/**
+
+# ── NotebookLM dumps (derived, regeneratable, contain bundled secrets)
+- tmp_notebooklm/**
+
+# ── Build artifacts / dependencies
+- node_modules/**
+- .venv/**
+- venv/**
+- env/**
+- __pycache__/**
+- *.pyc
+- *.pyo
+- .pytest_cache/**
+- .mypy_cache/**
+- .ruff_cache/**
+- .next/**
+- .nuxt/**
+- dist/**
+- build/**
+- out/**
+- target/**
+- .turbo/**
+- .cache/**
+- .parcel-cache/**
+
+# ── VCS internals
+- .git/**
+- .hg/**
+- .svn/**
+
+# ── OS / IDE noise
+- .DS_Store
+- Thumbs.db
+- .idea/**
+- .vscode/**
+- *.swp
+- *.swo
+
+# ── Heavy / non-source
+- *.log
+- *.sqlite
+- *.sqlite3
+- *.db-journal
+- coverage/**
+- .nyc_output/**
+
+# ── Default include everything else
++ **

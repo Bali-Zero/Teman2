@@ -15,6 +15,8 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -124,55 +126,89 @@ def main() -> int:
     return 0
 
 
-_ALERT_STATE_PATH = Path.home() / "logs" / "intel-lake-outbox-drain.alert-state.json"
-_ALERT_COOLDOWN_S = 30 * 60  # 30 min between alerts
+_GATEWAY_VERDICT_RE = re.compile(r"^tg_notify:\s*(\S+)", re.MULTILINE)
+
+
+def _find_gateway() -> Path | None:
+    """Locate scripts/tg_notify.py from EITHER place this file runs from.
+
+    Two, because this drain has two homes: the repo keeps it one directory
+    down (`scripts/intel-lake-outbox-drain/`) while the LaunchAgent runs
+    `~/scripts/intel-lake-outbox-drain.py`, a flat HOME copy with no
+    `tg_notify.py` beside it (superscar #1). Sibling first, then the
+    repo-shaped parent, then the checkout — so the alarm survives whichever
+    copy is executing instead of dying with the fork.
+    """
+    here = Path(__file__).resolve().parent
+    for candidate in (
+        here / "tg_notify.py",
+        here.parent / "tg_notify.py",
+        Path.home() / "nuzantara" / "scripts" / "tg_notify.py",
+    ):
+        if candidate.is_file():
+            return candidate
+    return None
 
 
 def _alert_rejected(rejected: int, accepted: int, total: int) -> None:
-    """Send Telegram alert if rejected > 0, debounced 30min.
+    """Hand a backend-rejection alert to the tg_notify gateway.
 
-    Reads/writes a state file with the last-alert timestamp. The first alert
-    fires immediately; subsequent alerts for the same condition wait at
-    least 30min to avoid spamming during a backend regression.
+    This runs every 60s, so it is one of the loudest possible senders in the
+    fleet: a backend regression that rejects rows for an hour is 60 firings
+    of the same fact. It used to hold that back with a private 30-minute
+    state file and then POST straight to Telegram's sendMessage endpoint —
+    outside the gateway's tier router, budget, digest and escalation ladder, and
+    invisible to the ledger that exists to answer "how much did the organism
+    send today?".
+
+    The local cooldown is gone rather than kept: `--dedup-key` names the
+    CONDITION (this organ, rejections) and the gateway's ladder is both wider
+    and smarter than a flat 30 minutes. Deliberately NOT keyed on the counts —
+    a key carrying `{rejected}/{total}` would mint a fresh one on every
+    fluctuation and defeat every window (the defect #3677 cured at the
+    sentinel).
     """
-    import json as _json
-    import time as _time
-    import urllib.parse as _up
-    import urllib.request as _ur
-
-    token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-    chat = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "")
-    if not (token and chat):
-        return
-
-    now = _time.time()
-    state: dict[str, Any] = {}
-    try:
-        if _ALERT_STATE_PATH.exists():
-            state = _json.loads(_ALERT_STATE_PATH.read_text())
-    except Exception:
-        state = {}
-    last_alert = float(state.get("last_alert_at", 0))
-    if now - last_alert < _ALERT_COOLDOWN_S:
-        return  # debounced
-
     text = (
         f"\U0001F534 intel-lake-outbox-drain: {rejected}/{total} items REJECTED by backend "
         f"(accepted={accepted}). Check intel_lake_audit_log on Fly for root cause."
     )
+    gateway = _find_gateway()
+    if gateway is None:
+        # Loud in the log rather than silent: an alert that cannot be sent must
+        # still leave a trace of not having been sent (W108).
+        logger.warning("tg_notify gateway not found — alert NOT sent: %s", text)
+        return
+    cmd = [
+        # Absolute interpreter (sys.executable), never a PATH lookup: the
+        # alarm must not share a failure mode with the thing it reports (W108).
+        sys.executable,
+        str(gateway),
+        "--tier",
+        "p0",
+        "--source",
+        "intel-lake-outbox-drain",
+        "--dedup-key",
+        "intel-lake-outbox:rejected",
+        "--",
+        text,
+    ]
     try:
-        data = _up.urlencode({"chat_id": chat, "text": text}).encode()
-        _ur.urlopen(
-            f"https://api.telegram.org/bot{token}/sendMessage",
-            data=data,
-            timeout=10,
+        proc = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=30, check=False
         )
-        state["last_alert_at"] = now
-        _ALERT_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        _ALERT_STATE_PATH.write_text(_json.dumps(state))
-        logger.info("Telegram alert sent (rejected=%s)", rejected)
-    except Exception as e:
-        logger.warning("Telegram alert failed: %s", e)
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        logger.warning("tg_notify unreachable (%s): %s", type(exc).__name__, exc)
+        return
+    # The gateway always exits 0 on purpose and prints its verdict on stderr;
+    # reading the exit code would take every refusal for a success (W104).
+    match = _GATEWAY_VERDICT_RE.search(proc.stderr or "")
+    if match:
+        logger.info("tg_notify: %s (rejected=%s)", match.group(1), rejected)
+    else:
+        tail = " ".join((proc.stderr or "").split())[-160:]
+        logger.warning(
+            "tg_notify printed no verdict (rc=%s): %s", proc.returncode, tail or "<empty>"
+        )
 
 
 if __name__ == "__main__":

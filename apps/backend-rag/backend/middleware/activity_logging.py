@@ -18,9 +18,11 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
-from backend.app.utils.logging_utils import get_logger
+from backend.app.utils.logging_utils import get_logger, sanitize_log_path
 from backend.middleware.correlation import get_correlation_id
+from backend.middleware.visa_oracle_privacy import is_private_visa_evaluation
 from backend.services.monitoring.activity_logger import activity_logger
+from backend.services.pii.violation_store import hash_subject
 
 logger = get_logger(__name__)
 
@@ -115,12 +117,19 @@ class ActivityLoggingMiddleware(BaseHTTPMiddleware):
         Returns:
             Response
         """
+        # The anonymous payload contains sensitive immigration, nationality
+        # and family facts. Keep its exact public route out of persistent API
+        # and session audit trails; HybridAuth emits aggregate counters.
+        if is_private_visa_evaluation(request.method, request.url.path):
+            return await call_next(request)
+
         # Skip logging for excluded paths
         if not self._should_log(request.url.path):
             return await call_next(request)
 
         # Capture start time
         start_time = time.time()
+        log_path = sanitize_log_path(request.url.path)
 
         # Extract request metadata
         user_email = None  # Extracted after auth middleware runs (see finally block)
@@ -154,11 +163,13 @@ class ActivityLoggingMiddleware(BaseHTTPMiddleware):
         except Exception as e:
             error_message = str(e)
             logger.error(
-                f"❌ Request failed: {request.method} {request.url.path}",
+                "❌ Request failed: %s %s",
+                request.method,
+                log_path,
                 exc_info=True,
                 extra={
                     "method": request.method,
-                    "path": request.url.path,
+                    "path": log_path,
                     "user_email": user_email,
                     "error": str(e),
                 },
@@ -190,7 +201,7 @@ class ActivityLoggingMiddleware(BaseHTTPMiddleware):
                 # Log the API call
                 await activity_logger.log_api_call(
                     method=request.method,
-                    endpoint=request.url.path,
+                    endpoint=log_path,
                     response_status=status_code,
                     response_time_ms=response_time_ms,
                     user_email=user_email,
@@ -220,12 +231,15 @@ class ActivityLoggingMiddleware(BaseHTTPMiddleware):
             # Log slow requests
             if response_time_ms > 1000:
                 logger.debug(
-                    f"⏱️ Slow request: {request.method} {request.url.path} ({response_time_ms}ms)",
+                    "⏱️ Slow request: %s %s (%sms)",
+                    request.method,
+                    log_path,
+                    response_time_ms,
                     extra={
                         "method": request.method,
-                        "path": request.url.path,
+                        "path": log_path,
                         "response_time_ms": response_time_ms,
-                        "user_email": user_email,
+                        "user_email": hash_subject(user_email),
                     },
                 )
 

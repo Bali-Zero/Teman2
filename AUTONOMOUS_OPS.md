@@ -154,19 +154,19 @@ write to either table directly outside the runner.
 
 ## Guardrails that make this safe
 
-| Guardrail                                                                        | Status                                             | Notes                                                                                                                                               |
-| -------------------------------------------------------------------------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GitHub branch protection on `main`: require CI green + disable force push        | ✅ Active (2026-04-21)                             | Required checks: "E2E Tests (Playwright)", "MCP Server Tests". Backend/Frontend not yet in required list (pre-existing red on main — separate fix). |
-| `fly-deploy.yml`: pre-deploy-gate → migrations → deploy → health → auto-rollback | ✅ Active (see `.github/workflows/fly-deploy.yml`) | Sibling job catches upstream crash (scar 2026-04-18)                                                                                                |
-| `deploy-failure-alert` sends Telegram on any deploy failure                      | ✅ Active                                          | Covers crash before health check                                                                                                                    |
-| Daily `pg_dump` → Tigris                                                         | ✅ Active                                          | `~/scripts/fly-pg-backup.sh`, retention 30d                                                                                                         |
-| Monthly restore drill                                                            | ⚠️ Manual, not yet automated                       | Ticket to add cron later                                                                                                                            |
-| `PreToolUse` hook blocks edits to `fly.toml`, `.env.production`, `package.json`  | ✅ Active in `~/.claude/settings.json`             |                                                                                                                                                     |
-| Hotfix audit log `shared/hotfix_audit.jsonl` + Telegram notifier                 | ✅ Active (2026-04-21)                             | `~/.claude/scripts/hotfix-notify.sh` wired into `PostToolUse` Bash hook                                                                             |
-| Post-deploy health + Telegram notifier                                           | ✅ Active (2026-04-21)                             | `scripts/post-deploy-verify.sh <PR_NUMBER>`                                                                                                         |
-| Post-deploy browser QA (kita + 7 subdomains)                                     | ✅ Active (manual invocation by Claude)            | Per `CLAUDE.md §11` Deploy Lifecycle. No dedicated script — Claude uses `mcp__claude-in-chrome__*` directly                                         |
-| MOS auto-save for decisions                                                      | ✅ Active                                          | `~/.claude/scripts/mos-auto-save.sh`                                                                                                                |
-| Federation orchestrator + Consiglio v1 red-team on architectural changes         | ✅ Implemented, triggered case-by-case             | Not blocking gate yet                                                                                                                               |
+| Guardrail                                                                        | Status                                                       | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GitHub branch protection on `main`: require CI green + disable force push        | ✅ Active (2026-04-21) · required set re-measured 2026-08-08 | **26** required contexts — including `Backend Tests (Python)` and `Frontend Tests (Next.js) (mouth, true)`, which this row wrongly described as absent until 2026-08-08. `enforce_admins=true`, `allow_force_pushes=false`, `strict=false`, no required reviewers. Required checks come **only** from classic branch protection; the `merge-queue-main` ruleset contributes `merge_queue` and nothing else. **This count is a MEASUREMENT and it expires — re-derive it, never quote it from here:** `gh api repos/Bali-Zero/Teman2/branches/main/protection/required_status_checks --jq '.contexts'`. Deliberately NOT required: the `Test Summary` umbrella, `Evaluator Critical Tests`, `Shared Core Package Tests`, `Frontend Tests (Next.js) (admin-dashboard, false)` — see L2.1 below. |
+| `fly-deploy.yml`: pre-deploy-gate → migrations → deploy → health → auto-rollback | ✅ Active (see `.github/workflows/fly-deploy.yml`)           | Sibling job catches upstream crash (scar 2026-04-18)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `deploy-failure-alert` sends Telegram on any deploy failure                      | ✅ Active                                                    | Covers crash before health check                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Daily `pg_dump` → Tigris                                                         | ✅ Active                                                    | `~/scripts/fly-pg-backup.sh`, retention 30d                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Monthly restore drill                                                            | ⚠️ Manual, not yet automated                                 | Ticket to add cron later                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `PreToolUse` hook blocks edits to `fly.toml`, `.env.production`, `package.json`  | ✅ Active in `~/.claude/settings.json`                       |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Hotfix audit log `shared/hotfix_audit.jsonl` + Telegram notifier                 | ✅ Active (2026-04-21)                                       | `~/.claude/scripts/hotfix-notify.sh` wired into `PostToolUse` Bash hook                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Post-deploy health + Telegram notifier                                           | ✅ Active (2026-04-21)                                       | `scripts/post-deploy-verify.sh <PR_NUMBER>`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Post-deploy browser QA (kita + 7 subdomains)                                     | ✅ Active (manual invocation by Claude)                      | Per `CLAUDE.md §11` Deploy Lifecycle. No dedicated script — Claude uses `mcp__claude-in-chrome__*` directly                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| MOS auto-save for decisions                                                      | ✅ Active                                                    | `~/.claude/scripts/mos-auto-save.sh`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Federation orchestrator + Consiglio v1 red-team on architectural changes         | ✅ Implemented, triggered case-by-case                       | Not blocking gate yet                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 
 ---
 
@@ -176,17 +176,54 @@ write to either table directly outside the runner.
 
 - [x] `AUTONOMOUS_OPS.md` exists and is referenced in `CLAUDE.md §2`
 - [x] `git push`, `gh pr *`, `gh workflow *`, `gh run *` are in `allow` in `~/.claude/settings.json`
-- [x] GitHub branch protection on `main` blocks force push + requires CI green (2 required checks active: "E2E Tests (Playwright)", "MCP Server Tests")
+- [x] GitHub branch protection on `main` blocks force push + requires CI green (2 required checks active **as of 2026-04-21**: "E2E Tests (Playwright)", "MCP Server Tests" — the set has grown to 26 since; this line is the historical gate record, the Guardrails row above is the current state)
 - [x] Hotfix audit log + Telegram notifier deployed
 - [x] Post-deploy verify script + browser QA pattern documented
 
 All gates closed 2026-04-21. L2 active.
 
-### Next evolution — L2.1 (not yet scheduled)
+### Next evolution — L2.1 (audited 2026-08-08)
 
-- [ ] Fix pre-existing main red: Backend Tests (Python) + Frontend Tests (Next.js) (mouth)
-- [ ] Promote both to required status checks on `main`
-- [ ] Automated monthly pg_dump restore drill
+- [x] Fix pre-existing main red: Backend Tests (Python) + Frontend Tests (Next.js) (mouth)
+      — the **April-baseline** red is gone: 7 consecutive completed `tests.yml` runs on `main`
+      (push + schedule) had both suites `success` — runs `31191329103`, `31191947694`,
+      `31193920821`, `31199357765`, `31200063796`, `31201042279`, `31203107670`. It was cured
+      **before** this audit, not by it; which change cured it was not established here.
+      **Caveat, and it is the point:** `main` went red again _during_ this audit —
+      run `31211274124` (19:23Z), `Backend Tests (Python)`, failing step `pip-audit`,
+      `pypdf 6.14.2` / CVE-2026-71852. That is a **different, external** red: the same
+      `headSha b81c7b0` passed at 18:40Z and failed at 19:18Z with no code change between,
+      because the failing input is a live vulnerability-advisory lookup, not the diff. Fix in
+      flight as PR #3780 (`pypdf` → 6.15.0). Read the run-ID list above as a measurement with
+      a timestamp, never as a standing property of `main`.
+- [x] Promote both to required status checks on `main`
+      — **found already required**, not performed by this audit. Both context strings match the
+      job names `tests.yml` actually emits (`backend-tests` → `Backend Tests (Python)`;
+      `frontend-tests` is a matrix, so its leg reports as `Frontend Tests (Next.js) (mouth, true)`),
+      and both are reported on the `merge_group` ref too — `tests.yml` carries a `merge_group:`
+      trigger, so a required context cannot silently go unreported inside the queue.
+- [ ] Automated monthly pg_dump restore drill — **still open**, untouched by this audit.
+
+**Residual gap (operator decision, not yet taken).** Three suites `tests.yml` runs are still
+outside the required set: `Evaluator Critical Tests`, `Shared Core Package Tests`, and the
+`Frontend Tests (Next.js) (admin-dashboard, false)` matrix leg. A PR can regress any of them and
+still auto-merge. One context closes all three: `Test Summary`, which `needs:` all six suites,
+runs `if: always()`, reads the real `needs.*.result` values and calls `core.setFailed` when any
+is `failure`/`cancelled` (a `skipped` job counts as satisfied, so it cannot deadlock a
+path-filtered PR). It was made honest on 2026-07-20 and is deliberately still not required.
+
+**Open question this audit did NOT settle — enforcement, as distinct from configuration.** The
+PENDING-ARMS line opened 2026-07-27 (PR #3227 merged with required checks not green) is still
+open. Two of its three candidate causes are now excluded — no ruleset supersedes the contexts,
+and no configured context string fails to match an emitted check-run name — leaving
+auto-merge-against-a-superseded-head. Note also that its own prescribed proof ("re-run the
+measurement on the next merged SHA") is **not a sound probe under a merge queue**: the gate is
+evaluated on the queue ref, while the merge commit accumulates _post-merge_ push-triggered runs,
+which the 13 non-`tests.yml` required workflows cancel on the next push by design
+(`cancel-in-progress: ${{ github.event_name != 'merge_group' }}` is `true` for a push to `main`).
+Measured 2026-08-08 on four recent merges: two read 0/26 not-green, two read 3/26, and the
+difference tracks _when the sample was taken_, not gate behaviour. Only an adversarial canary
+decides this.
 
 ---
 
@@ -205,6 +242,26 @@ All gates closed 2026-04-21. L2 active.
 
 ## Change log
 
+- **2026-08-08** — L2.1 audited. **Nothing was promoted: both targets were found already
+  required**, and the Guardrails row claiming otherwise had been wrong for an unknown
+  stretch — this file, not the configuration, was the stale artifact. Corrected here: 26
+  required contexts, `Backend Tests (Python)` and `Frontend Tests (Next.js) (mouth, true)`
+  among them, both also reported on the `merge_group` ref.
+  **Enforcement was proven adversarially**, not assumed: canary PR #3781 (one test file,
+  closed and branch-deleted after the observation) was armed for auto-merge _after_ a
+  required context had already gone red, and GitHub held it — `state: OPEN`,
+  `mergedAt: null`, `mergeStateStatus: BLOCKED`, sustained across repeated sampling.
+  Two limits stated plainly: the red came from `pip-audit`, not from the canary
+  assertion, so the canary's own mechanism never ran; and this tests the steady state,
+  **not** the race that the 2026-07-27 PENDING-ARMS line recorded (#3227's checks
+  cancelled two seconds before its merge) — that line stays open. Settled in passing:
+  all 26 required contexts reported on a single-test-file PR, so none sits mute behind a
+  `paths:` filter. Method note worth keeping: the probe that line prescribes (re-measure
+  required contexts on the next merged SHA) is **not sound under a merge queue** — the
+  merge commit accumulates post-merge runs that most required workflows cancel by design;
+  two of four sampled merges read "3 not green" purely as a function of when the sample
+  was taken. Still open and NOT closed by this audit: the monthly restore drill, the three
+  unrequired suites (see L2.1 above), and enforcement-under-race.
 - **2026-07-19** — Re-certified by Antonello (routine 30-day refresh after the
   2026-06-11 certification lapsed). Level 2 unchanged.
 - **2026-04-21** — File created by Claude at Zero's request. Level 1 active

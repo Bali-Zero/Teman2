@@ -36,9 +36,17 @@ if str(backend_path) not in sys.path:
 from backend.services.llm_clients.pricing import TokenUsage
 from backend.services.rag.agentic import orchestrator_core as orchestrator_core_module
 from backend.services.rag.agentic.orchestrator import AgenticRAGOrchestrator
+from backend.services.rag.agentic.orchestrator_core import OrchestratorCore
 from backend.services.rag.agentic.orchestrator_response import OrchestratorResponseBuilder
 from backend.services.rag.agentic.query_gates import QueryGates
-from backend.services.rag.agentic.schema import CoreResult
+from backend.services.rag.agentic.schema import (
+    AnalyticsReceiptStatus,
+    CoreResult,
+    EvidenceProvenance,
+    FinalizationStatus,
+    ProducerOrigin,
+    TrustedBypassReason,
+)
 from backend.services.tools.definitions import AgentState, BaseTool
 
 # ---------------------------------------------------------------------------
@@ -248,6 +256,271 @@ def orch(_mock_db_pool, _stub_final_state):
         yield orchestrator
 
 
+_FINALIZATION_FIELDS = {
+    "finalization_status",
+    "producer_origin",
+    "evidence_provenance",
+    "trusted_bypass_reason",
+    "analytics_receipt",
+}
+
+
+def _legacy_payload(result: CoreResult) -> dict:
+    return result.model_dump(exclude=_FINALIZATION_FIELDS)
+
+
+def _legacy_bytes(result: CoreResult) -> bytes:
+    return result.model_dump_json(exclude=_FINALIZATION_FIELDS).encode("utf-8")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "producer",
+    ["gate", "faq", "semantic_cache", "multi_agent", "specialized_router", "kg", "react"],
+)
+async def test_real_producer_parent_payload_is_byte_invariant_after_finalization(
+    orch,
+    producer: str,
+) -> None:
+    """Run each real outer branch and preserve the canonical parent payload.
+
+    Collaborators are deterministic doubles, but the producer branches and
+    shared wrapper are the real implementation. The explicit field snapshots
+    below are the pre-finalization shapes from parent ``b81c7b077``; the full
+    dict and JSON comparisons then prove the finalizer only adds its five fields.
+    """
+    core = orch.core
+    query = "What is a KITAS?"
+    extracted_entities = {"domain": "visa"}
+    core.db_pool = None
+    core._query_planner = None
+    core.prepare_query_context = AsyncMock(
+        return_value=(
+            {"profile": None},
+            [],
+            extracted_entities,
+            "",
+            None,
+        ),
+    )
+    core.query_gates.prompt_builder.check_greetings.return_value = None
+    core.check_faq_cache = AsyncMock(return_value=None)
+    core.check_semantic_cache = AsyncMock(return_value=None)
+    core._inject_curated_qa_grounding = AsyncMock(return_value="")
+    core._multi_agent_coordinator = None
+    core._specialized_router = None
+    core._surface_router = None
+    core.kg_langgraph_orchestrator = None
+    core._log_query_analytics = AsyncMock(return_value=AnalyticsReceiptStatus.SKIPPED)
+
+    expected_origin: ProducerOrigin
+    expected_trust: TrustedBypassReason | None = None
+    expected_provenance: EvidenceProvenance | None
+    expected_parent_fields: dict
+
+    if producer == "gate":
+        core.query_gates.prompt_builder.check_greetings.return_value = "Hello from parent"
+        expected_origin = ProducerOrigin.QUERY_GATE
+        expected_trust = TrustedBypassReason.DETERMINISTIC_QUERY_GATE
+        expected_provenance = None
+        expected_parent_fields = {
+            "answer": "Hello from parent",
+            "sources": [],
+            "model_used": "greeting-gate",
+            "route_used": None,
+            "evidence_score": 1.0,
+            "document_count": 0,
+            "workflow": None,
+            "reasoning": None,
+            "tools_called": [],
+        }
+    elif producer == "faq":
+        faq_cache = MagicMock()
+        faq_cache.get = AsyncMock(
+            return_value={
+                "answer": "FAQ parent answer",
+                "metadata": {"source": "team_qa", "domain": "visa"},
+            },
+        )
+        core.faq_cache = faq_cache
+        core.check_faq_cache = OrchestratorCore.check_faq_cache.__get__(core)
+        expected_origin = ProducerOrigin.FAQ_CACHE
+        expected_provenance = EvidenceProvenance.FAQ_CACHE
+        expected_parent_fields = {
+            "answer": "FAQ parent answer",
+            "sources": [{"type": "faq_cache", "source": "team_qa", "domain": "visa"}],
+            "model_used": "faq_cache",
+            "route_used": None,
+            "evidence_score": 0.0,
+            "document_count": 0,
+            "workflow": None,
+            "reasoning": None,
+            "tools_called": [],
+        }
+    elif producer == "semantic_cache":
+        core.semantic_cache = MagicMock()
+        core.semantic_cache.get_cached_result = AsyncMock(
+            return_value={
+                "cache_hit": "semantic",
+                "result": {
+                    "answer": "Semantic parent answer",
+                    "sources": [{"source": "semantic-parent"}],
+                },
+            },
+        )
+        core.retriever = None
+        core.check_semantic_cache = OrchestratorCore.check_semantic_cache.__get__(core)
+        expected_origin = ProducerOrigin.SEMANTIC_CACHE
+        expected_provenance = EvidenceProvenance.SEMANTIC_CACHE
+        expected_parent_fields = {
+            "answer": "Semantic parent answer",
+            "sources": [{"source": "semantic-parent"}],
+            "model_used": "cache",
+            "route_used": None,
+            "evidence_score": 0.0,
+            "document_count": 1,
+            "workflow": None,
+            "reasoning": None,
+            "tools_called": [],
+        }
+    elif producer == "multi_agent":
+        query = "How much does a KITAS cost and how long does it take?"
+        coordinator = MagicMock()
+        coordinator.process = AsyncMock(return_value={"final_answer": "MA parent answer"})
+        core._multi_agent_coordinator = coordinator
+        expected_origin = ProducerOrigin.MULTI_AGENT_COORDINATOR
+        expected_provenance = None
+        expected_parent_fields = {
+            "answer": "MA parent answer",
+            "sources": [],
+            "model_used": "multi-agent-coordinator",
+            "route_used": None,
+            "evidence_score": 0.0,
+            "document_count": 0,
+            "workflow": None,
+            "reasoning": None,
+            "tools_called": ["legal_agent", "financial_agent", "timeline_agent"],
+        }
+    elif producer == "specialized_router":
+        router = MagicMock()
+        router.detect_autonomous_research.return_value = True
+        router.route_autonomous_research = AsyncMock(
+            return_value={
+                "response": "SSR parent answer",
+                "model": "autonomous-research",
+                "category": "autonomous_research",
+                "autonomous_research": {
+                    "sources_consulted": [{"source": "nested-only"}],
+                    "confidence": 0.73,
+                },
+            },
+        )
+        core._specialized_router = router
+        expected_origin = ProducerOrigin.SPECIALIZED_SERVICE_ROUTER
+        expected_provenance = None
+        expected_parent_fields = {
+            "answer": "SSR parent answer",
+            "sources": [],
+            "model_used": "autonomous-research",
+            "route_used": None,
+            "evidence_score": 0.0,
+            "document_count": 0,
+            "workflow": None,
+            "reasoning": None,
+            "tools_called": ["autonomous_research"],
+        }
+    elif producer == "kg":
+        core._surface_router = MagicMock()
+        core._surface_router.decide.return_value = MagicMock(
+            is_kg_surface=True,
+            confidence=0.91,
+        )
+        kg_orchestrator = MagicMock()
+        kg_orchestrator.app = object()
+        kg_orchestrator.query = AsyncMock(return_value={"reasoning": "KG parent reasoning"})
+        core.kg_langgraph_orchestrator = kg_orchestrator
+        expected_origin = ProducerOrigin.KNOWLEDGE_GRAPH
+        expected_provenance = EvidenceProvenance.KNOWLEDGE_GRAPH
+        expected_parent_fields = {
+            "answer": "KG parent reasoning",
+            "sources": [
+                {
+                    "type": "kg",
+                    "source": "neo4j_knowledge_graph",
+                    "domain": "kg",
+                    "surface": "kg",
+                },
+            ],
+            "model_used": "kg_langgraph",
+            "route_used": None,
+            "evidence_score": 0.0,
+            "document_count": 0,
+            "workflow": None,
+            "reasoning": None,
+            "tools_called": ["kg_langgraph"],
+        }
+    else:
+        state = AgentState(query=query, intent_type="business_complex")
+        state.final_answer = "ReAct parent answer"
+        state.sources = []
+        state.steps = []
+        state.evidence_score = 0.8
+        state.trusted_tools_used = True
+        core.routing_manager.route_query = AsyncMock(return_value=("flash", False, state))
+        core.execute_react_loop = AsyncMock(
+            return_value=(state, "gemini-parent", TokenUsage(), 0.01),
+        )
+        expected_origin = ProducerOrigin.REACT_PIPELINE
+        expected_provenance = None
+        expected_parent_fields = {
+            "answer": "ReAct parent answer",
+            "sources": [],
+            "model_used": "gemini-parent",
+            "route_used": None,
+            "evidence_score": 0.8,
+            "document_count": 0,
+            "workflow": None,
+            "reasoning": None,
+            "tools_called": [],
+        }
+
+    with patch.object(
+        orchestrator_core_module,
+        "_MULTI_AGENT_COORDINATOR_ENABLED",
+        producer == "multi_agent",
+    ):
+        context = await core._process_query_core_unfinalized(
+            query=query,
+            user_id="contract-user",
+            conversation_history=None,
+            start_time=0.0,
+        )
+
+    assert context.producer_origin is expected_origin
+    for field, expected in expected_parent_fields.items():
+        assert getattr(context.result, field) == expected
+
+    before_dict = _legacy_payload(context.result)
+    before_bytes = _legacy_bytes(context.result)
+    answer_bytes = context.result.answer.encode("utf-8")
+    sources_before = context.result.model_dump(include={"sources"})
+    core._process_query_core_unfinalized = AsyncMock(return_value=context)
+    finalized = await core.process_query_core(
+        query=query,
+        user_id="contract-user",
+        conversation_history=None,
+        start_time=0.0,
+    )
+
+    assert _legacy_payload(finalized) == before_dict
+    assert _legacy_bytes(finalized) == before_bytes
+    assert finalized.answer.encode("utf-8") == answer_bytes
+    assert finalized.model_dump(include={"sources"}) == sources_before
+    assert finalized.producer_origin is expected_origin
+    assert finalized.evidence_provenance is expected_provenance
+    assert finalized.trusted_bypass_reason is expected_trust
+
+
 # =============================================================================
 # O2 — QueryPlanner active mode
 # =============================================================================
@@ -357,6 +630,9 @@ class TestMultiAgent:
 
         assert result.model_used == "multi-agent-coordinator"
         assert "Rp 15M" in result.answer
+        assert result.producer_origin is ProducerOrigin.MULTI_AGENT_COORDINATOR
+        assert result.evidence_provenance is None
+        assert result.finalization_status is FinalizationStatus.SHADOW_INCOMPLETE
         mock_coord.process.assert_called_once()
         # ReAct loop MUST NOT have been invoked
         orch.reasoning_engine.execute_react_loop.assert_not_called()
@@ -381,6 +657,9 @@ class TestMultiAgent:
             return_value={"final_answer": "ungrounded multi-agent answer"},
         )
         orch.core._multi_agent_coordinator = mock_coord
+        orch.core._log_query_analytics = AsyncMock(
+            return_value=AnalyticsReceiptStatus.WRITTEN,
+        )
 
         result = await orch.process_query(
             "How much does a KITAS cost and how long does it take?",
@@ -390,6 +669,13 @@ class TestMultiAgent:
         mock_coord.process.assert_not_awaited()
         assert result.model_used != "multi-agent-coordinator"
         assert "ungrounded multi-agent answer" not in result.answer
+        # Parent contract: the sync ReAct result did not populate route_used.
+        assert result.route_used is None
+        assert result.producer_origin is ProducerOrigin.REACT_PIPELINE
+        assert result.evidence_provenance is None
+        assert result.finalization_status is FinalizationStatus.SHADOW_INCOMPLETE
+        assert result.analytics_receipt is AnalyticsReceiptStatus.WRITTEN
+        assert orch.core._log_query_analytics.call_args.kwargs["response_generated"] is True
         orch.reasoning_engine.execute_react_loop.assert_called_once()
 
     async def test_multi_agent_exception_falls_back_to_react(self, orch):
@@ -444,6 +730,10 @@ class TestSpecializedRouter:
                 "response": "Research findings on KBLI 62011",
                 "model": "autonomous-research",
                 "category": "autonomous_research",
+                "autonomous_research": {
+                    "sources_consulted": 5,
+                    "confidence": 0.73,
+                },
             },
         )
         orch.core._specialized_router = ssr
@@ -452,6 +742,14 @@ class TestSpecializedRouter:
 
         assert result.model_used == "autonomous-research"
         assert "Research findings" in result.answer
+        assert result.sources == []
+        # Parent contract: nested SSR research metadata was not copied into
+        # public CoreResult fields.
+        assert result.document_count == 0
+        assert result.evidence_score == 0.0
+        assert result.producer_origin is ProducerOrigin.SPECIALIZED_SERVICE_ROUTER
+        assert result.evidence_provenance is None
+        assert result.finalization_status is FinalizationStatus.SHADOW_INCOMPLETE
         ssr.route_autonomous_research.assert_called_once()
         orch.reasoning_engine.execute_react_loop.assert_not_called()
 

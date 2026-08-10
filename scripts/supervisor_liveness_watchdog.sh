@@ -55,13 +55,26 @@ log() { echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] $*" >>"$LOG_FILE"; }
 # Supervisor dead = organism down → tier p0 (immediate, daily budget).
 # Gateway owns token resolution (env → secrets file → relay) + 6h dedup.
 send_telegram() {
-  local msg="$1"
-  local gateway
+  local msg="$1" gateway py
   gateway="$(dirname "$0")/tg_notify.py"
   [ -f "$gateway" ] || gateway="$HOME/nuzantara/scripts/tg_notify.py"
-  python3 "$gateway" --tier p0 --source supervisor-liveness \
-    --dedup-key "supervisor-liveness:$(hostname -s)" -- "$msg" \
-    >/dev/null 2>&1 || log "telegram: gateway send failed"
+  if [ ! -f "$gateway" ]; then
+    log "telegram: NO GATEWAY at $gateway — alert NOT sent: $msg"
+    return 0
+  fi
+  # Absolute interpreter and a logged outcome, brought up to the same form as
+  # its twin intake_review_reader_liveness.sh. `python3` from PATH makes the
+  # alarm share the failure mode of the sick environment it reports on, and
+  # `>/dev/null` threw away the gateway's verdict, so "did not send" and "sent"
+  # left the same trace: none (W108).
+  for py in /usr/bin/python3 /opt/homebrew/bin/python3 /usr/local/bin/python3; do
+    [ -x "$py" ] || continue
+    "$py" "$gateway" --tier p0 --source supervisor-liveness \
+      --dedup-key "supervisor-liveness:$(hostname -s)" -- "$msg" \
+      >>"$LOG_FILE" 2>&1 || log "telegram: gateway send failed"
+    return 0
+  done
+  log "telegram: no usable python3 — alert NOT sent: $msg"
 }
 
 # --- Read state ---

@@ -1,9 +1,6 @@
 "use client";
 
-import useSWR from "swr";
-import { PRICING_FALLBACK } from "@/components/book/book-data";
-
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+import { getExactSnapshotPrice } from "@/lib/pricing-snapshot";
 
 interface PricingResult {
   price: string | null;
@@ -12,32 +9,19 @@ interface PricingResult {
 }
 
 /**
- * Fetch a live price by SSOT service key. Pass `null` to skip the fetch
- * entirely (e.g. a package with no live pricing wired yet) — SWR treats a
- * `null` key as "don't fetch", so no network call is made and `price` is
- * always `null` in that case.
+ * Resolve an exact PricingTool row from the generated, parity-tested snapshot.
+ * A missing category/key or a non-scalar IDR amount abstains with `null`.
  */
-export function usePricingData(serviceKey: string | null): PricingResult {
-  const { data, error, isLoading } = useSWR(
-    serviceKey
-      ? `/api/pricing/calculate?service=${encodeURIComponent(serviceKey)}`
-      : null,
-    fetcher,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-      shouldRetryOnError: false,
-      fallbackData: serviceKey
-        ? { price: PRICING_FALLBACK[serviceKey] ?? null }
-        : undefined,
-    },
-  );
-
+export function usePricingData(
+  serviceKey: string | null,
+  category: string | null = null,
+): PricingResult {
   return {
     price:
-      (serviceKey ? (data?.price ?? PRICING_FALLBACK[serviceKey]) : null) ??
-      null,
-    isLoading,
-    isError: !!error,
+      serviceKey && category
+        ? getExactSnapshotPrice(category, serviceKey)
+        : null,
+    isLoading: false,
+    isError: false,
   };
 }

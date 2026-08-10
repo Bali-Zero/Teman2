@@ -34,6 +34,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger("dlq_autopilot")
 
+# The gateway exits 0 even when it REFUSES (deduped / p0_overflow_spooled /
+# p0_unsent_spooled all mean "not sent to Telegram now"), so the exit code
+# reads every refusal as a delivery. The verdict is on stderr — read it (W104).
+_GATEWAY_VERDICT_RE = re.compile(r"^tg_notify:\s*(\S+)", re.MULTILINE)
+
+
 # ── Paths ──────────────────────────────────────────────────────────────────────
 HOME = Path.home()
 AGENT_DIR = HOME / ".agent" / "decisions"
@@ -306,9 +312,12 @@ def send_telegram(message: str, tier: str = "digest", dedup_key: str = "") -> No
         cmd += ["--dedup-key", dedup_key]
     cmd += ["--", f"🤖 DLQAutopilot | {message}"]
     try:
-        subprocess.run(cmd, capture_output=True, timeout=30)
-    except Exception:
-        pass
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("tg_notify unreachable: %s", exc)
+        return
+    m = _GATEWAY_VERDICT_RE.search(proc.stderr or "")
+    logger.info("tg_notify: %s", m.group(1) if m else f"NESSUN verdetto rc={proc.returncode}")
 
 
 # ── Claude CLI token chain (multi-account fallback) ──────────────────────────
@@ -628,8 +637,13 @@ def escalate_to_claude_code(
     reasoning: dict | None,
     aider_failure: str | None = None,
     bypass_cooldown: bool = False,
-) -> None:
+    notify: bool = True,
+) -> str | None:
     """Write a claude_tasks JSON file and send Telegram alert.
+
+    Returns the task file's NAME (not path) when one was written, else None —
+    so a caller that suppresses this function's own alert can still name the
+    file in its own message.
 
     S3 (2026-06-02): unless ``bypass_cooldown`` is True, this is gated by the
     per-job 4h escalation cooldown (sentinel_lib.alerter). A job already
@@ -640,6 +654,17 @@ def escalate_to_claude_code(
     lives in the DLQ entry + the SQLite mirror, and the eventual TERMINAL
     transition escalates with ``bypass_cooldown=True`` so the operator always
     gets the one signal that matters.
+
+    ``notify=False`` writes the task file, the federation JSONL and the cooldown
+    mark exactly as before but leaves the Telegram send to the caller. It exists
+    for ONE caller: the TERMINAL branch, which used to produce two p0 alerts for
+    a single event — this function's "Escalated to Claude Code: <job>" and then
+    the branch's own "TERMINAL: <job> reached N attempts", same job, same
+    second, both saying "this is stuck, a human must act". Measured on the live
+    spool 2026-08-08: eleven jobs went terminal in one night and offered 22 p0
+    records, 11 identical pairs. The information was never duplicated — the
+    escalation names the task file and the terminal line names the recovery
+    command — so the cure is one message carrying both, not dropping one.
     """
     job = entry["job"]
 
@@ -651,7 +676,7 @@ def escalate_to_claude_code(
             f"skipping claude_tasks file + JSONL append + Telegram"
         )
         _record_suppressed(job)
-        return
+        return None
 
     CLAUDE_TASKS_DIR.mkdir(parents=True, exist_ok=True)
     task_file = CLAUDE_TASKS_DIR / f"{job}_{int(time.time())}.json"
@@ -692,18 +717,21 @@ def escalate_to_claude_code(
         "task_file": str(task_file.name),
     })
 
-    send_telegram(
-        f"🔴 Escalated to Claude Code: `{job}`\n"
-        f"Error: {entry.get('error_summary', '(empty)')[:80]}\n"
-        f"Task file: {task_file.name}",
-        tier="p0",
-        dedup_key=f"dlq-escalation:{job}",
-    )
+    if notify:
+        send_telegram(
+            f"🔴 Escalated to Claude Code: `{job}`\n"
+            f"Error: {entry.get('error_summary', '(empty)')[:80]}\n"
+            f"Task file: {task_file.name}",
+            tier="p0",
+            dedup_key=f"dlq-escalation:{job}",
+        )
 
     # S3: record the escalation so subsequent ticks within 4h are suppressed.
     # (Mirrors what the sentinel alerter does for its own Telegram alerts.)
     if not bypass_cooldown:
         _mark_escalation_sent(job)
+
+    return task_file.name
 
 
 def _record_suppressed(job: str) -> None:
@@ -765,11 +793,14 @@ def process_entry(entry: dict, registry: dict) -> str:
         # S3: TERMINAL is a state-change — the one signal the operator must
         # always receive. Bypass the cooldown so it is never suppressed by the
         # repeated escalations during the climb to max_attempts.
-        escalate_to_claude_code(entry, None, bypass_cooldown=True)
+        task_name = escalate_to_claude_code(
+            entry, None, bypass_cooldown=True, notify=False,
+        )
         send_telegram(
             f"🛑 TERMINAL: `{job}` reached {max_attempts} autopilot attempts with no fix.\n"
             f"Error: {error[:80]}\n"
-            f"Manual intervention required. Run: `dlq clear {job}` after resolving.",
+            + (f"Task file: {task_name}\n" if task_name else "")
+            + f"Manual intervention required. Run: `dlq clear {job}` after resolving.",
             tier="p0",
             dedup_key=f"dlq-terminal:{job}",
         )

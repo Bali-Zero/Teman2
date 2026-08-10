@@ -1,334 +1,499 @@
-import { act } from "react";
-import { fireEvent, render, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { StrictMode } from "react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const emitVisaOracleTelemetry = vi.hoisted(() => vi.fn());
+const nonReversibleHash = vi.hoisted(() =>
+  vi.fn(async (value: string) =>
+    value.startsWith("{") ? "e".repeat(64) : "i".repeat(64),
+  ),
+);
+vi.mock("../_lib/telemetry", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../_lib/telemetry")>();
+  return { ...original, emitVisaOracleTelemetry, nonReversibleHash };
+});
+
+import {
+  createInterviewSnapshot,
+  flowReducer,
+  initialFlowState,
+  type FlowState,
+} from "../_lib/flow";
+import { VISA_ORACLE_IDENTITY_KEY } from "../_lib/evaluation-identity-store";
+import {
+  VISA_ORACLE_RESUME_KEY,
+  saveInterviewResume,
+} from "../_lib/resume-store";
+import { makeVisaOracleResponse } from "../_lib/visa-oracle-test-fixture";
+import { translate } from "../_lib/i18n";
 import { OracleShell } from "./OracleShell";
-import { mapOracleFactsToApplicantFacts } from "../_lib/fact-mapper";
 
-/**
- * SHADOW-mode invisibility (mandate acceptance test 5 — the load-bearing
- * one): drives the mock interview to the verdict screen twice — once with
- * `fetch` mocked to resolve 200, once mocked to REJECT — and asserts the
- * rendered container HTML is byte-identical between the two runs.
- *
- * Path driven (offshore tourist, short stay, no review-gate flags — reaches
- * SUPPORTED_CANDIDATES, the richest verdict render: VerdictReveal + the
- * full OutcomeSheet, not just an early-abstain state):
- *   framing -> in_indonesia="no" (skips permit_expiry entirely) ->
- *   category="tourism" -> tourism_duration="short" -> review_gate="none"
- *   -> confirmation -> verdict.
- *
- * This test file is NOT one of the mandate's explicitly enumerated NEW
- * files — it exists because acceptance test 5 cannot be satisfied any
- * other way (it requires driving `OracleShell` itself, the one place the
- * two new one-shot effects interact). See the shipped report for this
- * note.
- */
+const ANSWERS = [
+  ["in_indonesia", "no"],
+  ["overstay_days", "0"],
+  ["nationalities", "US"],
+  ["birth_date", "1990-01-01"],
+  ["category", "tourism"],
+  ["trip_scope", "single"],
+  ["stay_days", "30"],
+  ["entry_pattern", "SINGLE"],
+  ["review_gate", "none"],
+] as const;
+type FixtureState = NonNullable<Parameters<typeof makeVisaOracleResponse>[0]>;
 
-const SEE_MY_OPTIONS = "See my options";
+function verdictSnapshot(): ReturnType<typeof createInterviewSnapshot> {
+  let state: FlowState = flowReducer(initialFlowState(), { type: "ADVANCE" });
+  for (const [questionId, value] of ANSWERS) {
+    state = flowReducer(state, { type: "ANSWER", questionId, value });
+  }
+  state = flowReducer(state, { type: "ADVANCE" });
+  expect(state.history[state.history.length - 1]).toEqual({ kind: "verdict" });
+  return createInterviewSnapshot(state, new Date());
+}
 
-async function driveToVerdict(container: HTMLElement): Promise<void> {
-  const scope = within(container);
-
-  fireEvent.click(scope.getByRole("button", { name: "Start" }));
-  fireEvent.click(
-    scope.getByRole("button", { name: "No, I’m planning ahead" }),
+function installVerdictResume(): void {
+  expect(saveInterviewResume(verdictSnapshot(), { now: new Date() })).toBe(
+    true,
   );
-  fireEvent.click(scope.getByRole("button", { name: "Tourism & short visit" }));
-  fireEvent.click(scope.getByRole("button", { name: "Up to 30 days" }));
-  fireEvent.click(scope.getByLabelText("None of these apply to me"));
-  fireEvent.click(scope.getByRole("button", { name: SEE_MY_OPTIONS })); // review-gate continue
-  fireEvent.click(scope.getByRole("button", { name: SEE_MY_OPTIONS })); // ConfirmationCard confirm
+}
 
-  // The verdict render triggers OracleShell's two one-shot effects
-  // (frozenToday, then the SHADOW POST) across an extra internal render
-  // pass. `fireEvent`'s own `act()` wrapping already flushes React to
-  // quiescence synchronously, but this drains any leftover microtask
-  // defensively before the DOM is read.
-  await act(async () => {
-    await Promise.resolve();
-    await Promise.resolve();
+function engineFetch(
+  state: FixtureState = "SUPPORTED_CANDIDATES",
+  mode: "ENGINE" | "CURATED" = "ENGINE",
+) {
+  const response = makeVisaOracleResponse(state);
+  response.mode = mode;
+  return vi.fn<typeof fetch>(
+    async () =>
+      new Response(JSON.stringify(response), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+  );
+}
+
+function engineErrorResponse(status: number): Response {
+  return new Response(JSON.stringify({ error: `HTTP ${status}` }), {
+    status,
+    headers: { "content-type": "application/json" },
   });
 }
 
-describe("OracleShell — SHADOW mode is invisible to the render path", () => {
+async function expectStateHeading(state: FixtureState) {
+  expect(
+    await screen.findByRole("heading", {
+      name: translate("en", `verdict.headline.${state}`),
+    }),
+  ).toBeInTheDocument();
+}
+
+async function completeFreshInterview(): Promise<void> {
+  fireEvent.click(await screen.findByRole("button", { name: /^start$/i }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: /planning ahead/i }),
+  );
+
+  fireEvent.change(await screen.findByRole("spinbutton"), {
+    target: { value: "0" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: /^continue$/i }));
+
+  fireEvent.change(await screen.findByRole("combobox"), {
+    target: { value: "US" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: /^add country$/i }));
+  fireEvent.click(screen.getByRole("button", { name: /^continue$/i }));
+
+  const birthDate =
+    document.querySelector<HTMLInputElement>('input[type="date"]');
+  expect(birthDate).not.toBeNull();
+  fireEvent.change(birthDate!, { target: { value: "1990-01-01" } });
+  fireEvent.click(screen.getByRole("button", { name: /see my options/i }));
+
+  fireEvent.click(
+    await screen.findByRole("button", { name: /tourism.*short visit/i }),
+  );
+  fireEvent.click(
+    await screen.findByRole("button", { name: /one main purpose/i }),
+  );
+  fireEvent.change(await screen.findByRole("spinbutton"), {
+    target: { value: "30" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: /^continue$/i }));
+  fireEvent.click(await screen.findByRole("button", { name: /^one entry$/i }));
+  fireEvent.click(
+    await screen.findByRole("checkbox", { name: /none of these apply/i }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: /see my options/i }));
+
+  await screen.findByRole("heading", { name: /here.s what you told us/i });
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: translate("en", "confirmation.cta"),
+    }),
+  );
+}
+
+describe("OracleShell authoritative evaluate integration", () => {
   const originalFetch = global.fetch;
+
+  beforeEach(() => {
+    window.sessionStorage.clear();
+    window.localStorage.clear();
+    emitVisaOracleTelemetry.mockReset();
+    nonReversibleHash.mockClear();
+    vi.stubEnv("NEXT_PUBLIC_VISA_ORACLE_MODE", "ENGINE");
+    installVerdictResume();
+  });
 
   afterEach(() => {
     global.fetch = originalFetch;
+    vi.unstubAllEnvs();
     vi.restoreAllMocks();
   });
 
-  it("renders byte-identical verdict HTML whether the shadow POST resolves 200 or rejects", async () => {
-    global.fetch = vi
-      .fn()
-      .mockResolvedValue(new Response("{}", { status: 200 }));
-    const resolvedRun = render(<OracleShell />);
-    await driveToVerdict(resolvedRun.container);
-    // Sanity: the shadow POST really fired on this run — otherwise this
-    // test would trivially pass without ever exercising the invariant it
-    // claims to test.
-    expect(global.fetch).toHaveBeenCalledTimes(1);
-    const resolvedHtml = resolvedRun.container.innerHTML;
-    resolvedRun.unmount();
+  it.each([
+    "SUPPORTED_CANDIDATES",
+    "NEEDS_INPUT",
+    "HUMAN_REVIEW_REQUIRED",
+    "NO_SUPPORTED_PATH",
+    "TEMPORARILY_UNAVAILABLE",
+  ] as const)("renders the real ENGINE state %s", async (state) => {
+    global.fetch = engineFetch(state);
+    render(<OracleShell />);
 
-    global.fetch = vi.fn().mockRejectedValue(new Error("network down"));
-    const rejectedRun = render(<OracleShell />);
-    await driveToVerdict(rejectedRun.container);
-    expect(global.fetch).toHaveBeenCalledTimes(1);
-    const rejectedHtml = rejectedRun.container.innerHTML;
-    rejectedRun.unmount();
-
-    expect(rejectedHtml).toBe(resolvedHtml);
+    await expectStateHeading(state);
+    expect(global.fetch).toHaveBeenCalledOnce();
+    if (state === "SUPPORTED_CANDIDATES") {
+      expect(screen.getByText("Visit Visa C1")).toBeInTheDocument();
+    } else {
+      expect(screen.queryByText("Visit Visa C1")).toBeNull();
+    }
+    if (state !== "TEMPORARILY_UNAVAILABLE") {
+      await waitFor(() =>
+        expect(
+          window.sessionStorage.getItem(VISA_ORACLE_RESUME_KEY),
+        ).toBeNull(),
+      );
+    }
   });
 
-  it("renders byte-identical verdict HTML whether the shadow POST resolves or fetch itself throws synchronously", async () => {
-    global.fetch = vi
-      .fn()
-      .mockResolvedValue(new Response("{}", { status: 200 }));
-    const resolvedRun = render(<OracleShell />);
-    await driveToVerdict(resolvedRun.container);
-    const resolvedHtml = resolvedRun.container.innerHTML;
-    resolvedRun.unmount();
+  it("never renders candidates from CURATED/SHADOW and still submits once", async () => {
+    vi.stubEnv("NEXT_PUBLIC_VISA_ORACLE_MODE", "SHADOW");
+    global.fetch = engineFetch("SUPPORTED_CANDIDATES", "CURATED");
+    render(<OracleShell />);
 
-    global.fetch = vi.fn(() => {
-      throw new Error("fetch is not available");
-    });
-    const throwingRun = render(<OracleShell />);
-    await driveToVerdict(throwingRun.container);
-    const throwingHtml = throwingRun.container.innerHTML;
-    throwingRun.unmount();
-
-    expect(throwingHtml).toBe(resolvedHtml);
+    expect(
+      await screen.findByRole("heading", {
+        name: translate("en", "verdict.provenance_headline.SHADOW"),
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Visit Visa C1")).toBeNull();
+    expect(global.fetch).toHaveBeenCalledOnce();
   });
 
-  it("reaches the SUPPORTED_CANDIDATES verdict screen on this path (sanity the drive is real, not a stub)", async () => {
-    global.fetch = vi
-      .fn()
-      .mockResolvedValue(new Response("{}", { status: 200 }));
-    const { container, unmount } = render(<OracleShell />);
-    await driveToVerdict(container);
-    expect(container.querySelector(".oracle-outcome")).not.toBeNull();
-    unmount();
-  });
-});
+  it("fails closed for a CURATED response in ENGINE mode", async () => {
+    global.fetch = engineFetch("SUPPORTED_CANDIDATES", "CURATED");
+    render(<OracleShell />);
 
-/**
- * SHADOW dedupe truth table (bug fix, 2026-07-27): exactly one SHADOW POST
- * per (interview attempt x distinct WIRE payload). Two independent review
- * rounds found the dedupe key wrong in both of its dimensions — CONTENT
- * (keyed on raw UI facts instead of the mapped wire payload the engine
- * actually receives) and LIFETIME (a `useRef` that outlives RESTART, so a
- * second honest interview with the same answers produced no second row).
- * `OracleShell.tsx`'s own dedupe-effect docstring carries the full fix
- * rationale and the attempt-identity design; these four tests drive the
- * REAL component through every row of the table that motivated it.
- */
-describe("OracleShell — SHADOW dedupe truth table (attempt x wire payload)", () => {
-  const originalFetch = global.fetch;
-
-  afterEach(() => {
-    global.fetch = originalFetch;
-    vi.restoreAllMocks();
+    expect(
+      await screen.findByRole("heading", {
+        name: translate("en", "verdict.provenance_headline.CLIENT_GUARD"),
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Visit Visa C1")).toBeNull();
   });
 
-  /**
-   * category="remote" path with `remote_clients="foreign"` — the one path
-   * that visits `remote_income`, the load-bearing no-FactPath field row C
-   * needs. `review_gate` is always answered "none" here so it never
-   * becomes a second confound alongside `remote_income`.
-   */
-  async function driveRemoteToVerdict(
-    container: HTMLElement,
-    remoteIncomeLabel: string,
-  ): Promise<void> {
-    const scope = within(container);
-    fireEvent.click(scope.getByRole("button", { name: "Start" }));
-    fireEvent.click(
-      scope.getByRole("button", { name: "No, I’m planning ahead" }),
+  // The PIN-gated internal preview. Its innocence case is the test directly
+  // above: without `internalMode`, the very same CURATED response must still
+  // fail closed and show no candidates.
+  it("internal preview renders the real decision from a CURATED response", async () => {
+    global.fetch = engineFetch("SUPPORTED_CANDIDATES", "CURATED");
+    render(<OracleShell internalMode />);
+
+    expect(await screen.findByText("Visit Visa C1")).toBeInTheDocument();
+    // Never show an engine decision without saying what it is.
+    expect(screen.getByText(/INTERNAL PREVIEW/)).toBeInTheDocument();
+  });
+
+  it("internal preview is decided before the frontend SHADOW branch", async () => {
+    // Ordering is deliberate: a SHADOW-configured frontend would otherwise
+    // swallow the decision the tester unlocked specifically to see.
+    vi.stubEnv("NEXT_PUBLIC_VISA_ORACLE_MODE", "SHADOW");
+    global.fetch = engineFetch("SUPPORTED_CANDIDATES", "CURATED");
+    render(<OracleShell internalMode />);
+
+    expect(await screen.findByText("Visit Visa C1")).toBeInTheDocument();
+  });
+
+  it("public traffic never sees the internal preview notice", async () => {
+    global.fetch = engineFetch("SUPPORTED_CANDIDATES");
+    render(<OracleShell />);
+
+    await expectStateHeading("SUPPORTED_CANDIDATES");
+    expect(screen.queryByText(/INTERNAL PREVIEW/)).toBeNull();
+  });
+
+  it("never claims no evaluation was submitted when the engine adapter rejects one review-hold citation", async () => {
+    const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
+    response.sources[0].canonical_url = "https://imigrasi.go.id.evil.test/x";
+    response.decision.review_reasons[0].source_refs = [
+      response.sources[0].source_record_id,
+    ];
+    global.fetch = vi.fn<typeof fetch>(
+      async () =>
+        new Response(JSON.stringify(response), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
     );
-    fireEvent.click(scope.getByRole("button", { name: "Remote worker" }));
+    render(<OracleShell />);
+
+    await expectStateHeading("HUMAN_REVIEW_REQUIRED");
+    expect(
+      screen.getByText(translate("en", "outcome.human_review_body")),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/no evaluation was submitted/i)).toBeNull();
+    expect(screen.queryByText("Client safety hold")).toBeNull();
+  });
+
+  it("never claims no evaluation was submitted when strict parsing rejects an unrelated field", async () => {
+    const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
+    const raw = JSON.parse(JSON.stringify(response)) as Record<string, unknown>;
+    (raw.sources as Array<Record<string, unknown>>)[0].is_primary_authority =
+      null;
+    global.fetch = vi.fn<typeof fetch>(
+      async () =>
+        new Response(JSON.stringify(raw), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    render(<OracleShell />);
+
+    await expectStateHeading("HUMAN_REVIEW_REQUIRED");
+    expect(screen.queryByText(/no evaluation was submitted/i)).toBeNull();
+    expect(screen.queryByText("Client safety hold")).toBeNull();
+  });
+
+  it("keeps automatic network retry byte-identical and renders no fabricated result", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => {
+      throw new TypeError("network down");
+    });
+    global.fetch = fetchMock;
+    render(<OracleShell />);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: translate("en", "verdict.provenance_headline.NETWORK_FAILURE"),
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Visit Visa C1")).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const first = fetchMock.mock.calls[0][1];
+    const second = fetchMock.mock.calls[1][1];
+    expect(second?.body).toBe(first?.body);
+    expect(new Headers(second?.headers).get("Idempotency-Key")).toBe(
+      new Headers(first?.headers).get("Idempotency-Key"),
+    );
+  });
+
+  it("keeps an exhausted HTTP 429 operationally retryable", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => engineErrorResponse(429));
+    global.fetch = fetchMock;
+    render(<OracleShell />);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: translate("en", "verdict.provenance_headline.NETWORK_FAILURE"),
+      }),
+    ).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(
+      screen.getByRole("button", { name: "Retry verified evaluation" }),
+    ).toBeVisible();
+  });
+
+  it.each([409, 422])(
+    "keeps HTTP %s non-retryable after the client guard",
+    async (status) => {
+      const fetchMock = vi.fn<typeof fetch>(async () =>
+        engineErrorResponse(status),
+      );
+      global.fetch = fetchMock;
+      render(<OracleShell />);
+
+      expect(
+        await screen.findByRole("heading", {
+          name: translate("en", "verdict.provenance_headline.CLIENT_GUARD"),
+        }),
+      ).toBeInTheDocument();
+      expect(fetchMock).toHaveBeenCalledOnce();
+      expect(
+        screen.queryByRole("button", { name: "Retry verified evaluation" }),
+      ).toBeNull();
+    },
+  );
+
+  it("keeps resume-off retry identity in memory and never writes its fact hash to sessionStorage", async () => {
+    window.sessionStorage.clear();
+    const identityValuesSeenByFetch: Array<string | null> = [];
+    let attempt = 0;
+    const response = makeVisaOracleResponse("SUPPORTED_CANDIDATES");
+    const fetchMock = vi.fn<typeof fetch>(async () => {
+      attempt += 1;
+      identityValuesSeenByFetch.push(
+        window.sessionStorage.getItem(VISA_ORACLE_IDENTITY_KEY),
+      );
+      if (attempt === 1) throw new TypeError("network down");
+      return new Response(JSON.stringify(response), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    });
+    global.fetch = fetchMock;
+    render(
+      <StrictMode>
+        <OracleShell />
+      </StrictMode>,
+    );
+
+    await completeFreshInterview();
+    await expectStateHeading("SUPPORTED_CANDIDATES");
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const first = fetchMock.mock.calls[0][1];
+    const second = fetchMock.mock.calls[1][1];
+    expect(second?.body).toBe(first?.body);
+    expect(new Headers(second?.headers).get("Idempotency-Key")).toBe(
+      new Headers(first?.headers).get("Idempotency-Key"),
+    );
+    expect(identityValuesSeenByFetch).toEqual([null, null]);
+    expect(window.sessionStorage.getItem(VISA_ORACLE_IDENTITY_KEY)).toBeNull();
+  });
+
+  it("replays a byte-identical resume-on evaluation after a remount", async () => {
+    const fetchMock = engineFetch("TEMPORARILY_UNAVAILABLE");
+    global.fetch = fetchMock;
+    const firstMount = render(<OracleShell />);
+    await expectStateHeading("TEMPORARILY_UNAVAILABLE");
+    expect(
+      window.sessionStorage.getItem(VISA_ORACLE_IDENTITY_KEY),
+    ).not.toBeNull();
+
+    firstMount.unmount();
+    render(<OracleShell />);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await expectStateHeading("TEMPORARILY_UNAVAILABLE");
+
+    const first = fetchMock.mock.calls[0][1];
+    const reload = fetchMock.mock.calls[1][1];
+    expect(reload?.body).toBe(first?.body);
+    expect(new Headers(reload?.headers).get("Idempotency-Key")).toBe(
+      new Headers(first?.headers).get("Idempotency-Key"),
+    );
+  });
+
+  it("rotates assessment and idempotency identity on explicit TEMP retry", async () => {
+    const fetchMock = engineFetch("TEMPORARILY_UNAVAILABLE");
+    global.fetch = fetchMock;
+    render(<OracleShell />);
+    await expectStateHeading("TEMPORARILY_UNAVAILABLE");
+
     fireEvent.click(
-      scope.getByRole("button", {
-        name: "Abroad — they pay me from outside Indonesia",
+      screen.getByRole("button", { name: "Retry verified evaluation" }),
+    );
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    const first = fetchMock.mock.calls[0][1];
+    const second = fetchMock.mock.calls[1][1];
+    expect(new Headers(second?.headers).get("Idempotency-Key")).not.toBe(
+      new Headers(first?.headers).get("Idempotency-Key"),
+    );
+    expect(
+      (JSON.parse(String(second?.body)) as { assessment_id: string })
+        .assessment_id,
+    ).not.toBe(
+      (JSON.parse(String(first?.body)) as { assessment_id: string })
+        .assessment_id,
+    );
+  });
+
+  it("clears a retryable resume when the interview is restarted", async () => {
+    global.fetch = engineFetch("TEMPORARILY_UNAVAILABLE");
+    render(<OracleShell />);
+    await expectStateHeading("TEMPORARILY_UNAVAILABLE");
+    expect(
+      window.sessionStorage.getItem(VISA_ORACLE_RESUME_KEY),
+    ).not.toBeNull();
+    expect(
+      window.sessionStorage.getItem(VISA_ORACLE_IDENTITY_KEY),
+    ).not.toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /start over/i }));
+    expect(window.sessionStorage.getItem(VISA_ORACLE_RESUME_KEY)).toBeNull();
+    expect(window.sessionStorage.getItem(VISA_ORACLE_IDENTITY_KEY)).toBeNull();
+    expect(
+      await screen.findByRole("button", { name: /^start$/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("survives StrictMode effect replacement with one final authority and no spinner", async () => {
+    const fetchMock = engineFetch();
+    global.fetch = fetchMock;
+    render(
+      <StrictMode>
+        <OracleShell />
+      </StrictMode>,
+    );
+
+    await expectStateHeading("SUPPORTED_CANDIDATES");
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(
+      screen.queryByText("Checking the verified Visa Oracle engine…"),
+    ).toBeNull();
+  });
+
+  it("starts a fresh evaluation after leaving and revisiting the same verdict", async () => {
+    const fetchMock = engineFetch();
+    global.fetch = fetchMock;
+    render(<OracleShell />);
+    await expectStateHeading("SUPPORTED_CANDIDATES");
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit answers" }));
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: translate("en", "confirmation.cta"),
       }),
     );
-    fireEvent.click(scope.getByRole("button", { name: remoteIncomeLabel }));
-    fireEvent.click(scope.getByLabelText("None of these apply to me"));
-    fireEvent.click(scope.getByRole("button", { name: SEE_MY_OPTIONS })); // review-gate continue
-    fireEvent.click(scope.getByRole("button", { name: SEE_MY_OPTIONS })); // ConfirmationCard confirm
 
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-  }
-
-  it("A: reaches verdict once, nothing else -> exactly 1 POST", async () => {
-    global.fetch = vi
-      .fn()
-      .mockResolvedValue(new Response("{}", { status: 200 }));
-    const { container } = render(<OracleShell />);
-
-    await driveToVerdict(container);
-
-    expect(global.fetch).toHaveBeenCalledTimes(1);
-  });
-
-  it("B: edits an answer that CHANGES the wire payload and re-confirms -> 2 POSTs, the 2nd carrying the new value", async () => {
-    global.fetch = vi
-      .fn()
-      .mockResolvedValue(new Response("{}", { status: 200 }));
-    const { container } = render(<OracleShell />);
-    const scope = within(container);
-
-    await driveToVerdict(container);
-    expect(global.fetch).toHaveBeenCalledTimes(1);
-
-    // Verdict screen's "Edit answers" link -> back to the confirmation
-    // screen, every fact still in place.
-    fireEvent.click(scope.getByRole("button", { name: "Edit answers" }));
-
-    // Jump back to the "category" question via THAT row's own "Edit"
-    // button (several rows on screen each have one). Scoped to the
-    // confirmation content, not the whole container — `LivingTree`'s
-    // sidebar renders the same "Tourism & short visit" leaf text
-    // alongside the confirmation card.
-    const content = container.querySelector(
-      ".oracle-main__content",
-    ) as HTMLElement;
-    const categoryValue = within(content).getByText("Tourism & short visit");
-    const categoryRow = categoryValue.closest(
-      ".oracle-confirmation__row",
-    ) as HTMLElement;
-    fireEvent.click(within(categoryRow).getByRole("button", { name: "Edit" }));
-
-    // Materially different category: tourism -> work — `intent.purposes`
-    // DOES have a FactPath, so the wire payload genuinely changes.
-    fireEvent.click(scope.getByRole("button", { name: "Work & employment" }));
-    fireEvent.click(
-      scope.getByRole("button", { name: "No, I’m paid from abroad" }),
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await expectStateHeading("SUPPORTED_CANDIDATES");
+    const first = fetchMock.mock.calls[0][1];
+    const second = fetchMock.mock.calls[1][1];
+    expect(new Headers(second?.headers).get("Idempotency-Key")).not.toBe(
+      new Headers(first?.headers).get("Idempotency-Key"),
     );
-    fireEvent.click(scope.getByLabelText("None of these apply to me"));
-    fireEvent.click(scope.getByRole("button", { name: SEE_MY_OPTIONS })); // review-gate continue
-    fireEvent.click(scope.getByRole("button", { name: SEE_MY_OPTIONS })); // ConfirmationCard confirm
-
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-
-    expect(global.fetch).toHaveBeenCalledTimes(2);
-
-    const fetchMock = global.fetch as unknown as ReturnType<typeof vi.fn>;
-    const firstBody = JSON.parse(fetchMock.mock.calls[0][1].body as string);
-    const secondBody = JSON.parse(fetchMock.mock.calls[1][1].body as string);
-
-    // The FIRST post carried the original (tourism) answer...
-    expect(firstBody.facts["intent.purposes"]).toEqual({
-      status: "KNOWN",
-      value: ["TOURISM"],
-    });
-    // ...and the SECOND post carries the edited (work) answer — never a
-    // repeat of the pre-edit one.
-    expect(secondBody.facts["intent.purposes"]).toEqual({
-      status: "KNOWN",
-      value: ["EMPLOYMENT"],
-    });
-  });
-
-  it("C: edits ONLY remote_income (no FactPath) and re-confirms -> still 1 POST, wire payload provably identical", async () => {
-    global.fetch = vi
-      .fn()
-      .mockResolvedValue(new Response("{}", { status: 200 }));
-    const { container } = render(<OracleShell />);
-    const scope = within(container);
-
-    await driveRemoteToVerdict(container, "Yes, comfortably above it");
-    expect(global.fetch).toHaveBeenCalledTimes(1);
-
-    fireEvent.click(scope.getByRole("button", { name: "Edit answers" }));
-
-    const content = container.querySelector(
-      ".oracle-main__content",
-    ) as HTMLElement;
-    const incomeValue = within(content).getByText("Yes, comfortably above it");
-    const incomeRow = incomeValue.closest(
-      ".oracle-confirmation__row",
-    ) as HTMLElement;
-    fireEvent.click(within(incomeRow).getByRole("button", { name: "Edit" }));
-
-    // ONLY remote_income changes here — review_gate is re-answered
-    // identically ("none"), so the ONLY variable between the two
-    // confirmations is a field with no FactPath at all.
-    fireEvent.click(
-      scope.getByRole("button", { name: "No, it doesn’t clear the floor" }),
+    expect(
+      (JSON.parse(String(second?.body)) as { assessment_id: string })
+        .assessment_id,
+    ).not.toBe(
+      (JSON.parse(String(first?.body)) as { assessment_id: string })
+        .assessment_id,
     );
-    fireEvent.click(scope.getByLabelText("None of these apply to me"));
-    fireEvent.click(scope.getByRole("button", { name: SEE_MY_OPTIONS })); // review-gate continue
-    fireEvent.click(scope.getByRole("button", { name: SEE_MY_OPTIONS })); // ConfirmationCard confirm
-
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-
-    // The suppression claim: still exactly 1 POST, never a 2nd.
-    expect(global.fetch).toHaveBeenCalledTimes(1);
-
-    // Prove the suppression is CORRECT, not incidental: independently map
-    // both raw-fact states the UI just walked through (remote_income
-    // "above" vs "below", everything else held constant) to their wire
-    // payloads via the SAME pure mapper the component uses, and assert
-    // they're deep-equal — remote_income really has zero wire
-    // representation, exactly as fact-mapper.ts's own docstring claims.
-    const commonFacts = {
-      in_indonesia: "no",
-      category: "remote",
-      remote_clients: "foreign",
-      review_gate: "none",
-    };
-    const collectedAt = new Date("2026-07-27T00:00:00.000Z");
-    const aboveWire = mapOracleFactsToApplicantFacts(
-      { ...commonFacts, remote_income: "above" },
-      { assessmentId: "test-above", collectedAt },
-    ).facts;
-    const belowWire = mapOracleFactsToApplicantFacts(
-      { ...commonFacts, remote_income: "below" },
-      { assessmentId: "test-below", collectedAt },
-    ).facts;
-    expect(belowWire).toEqual(aboveWire);
-
-    // And the one POST that DID fire actually carries that predicted wire
-    // payload — the suppression really is of an already-sent identical
-    // payload, not a coincidence independent of what was sent.
-    const fetchMock = global.fetch as unknown as ReturnType<typeof vi.fn>;
-    const sentBody = JSON.parse(fetchMock.mock.calls[0][1].body as string);
-    expect(sentBody.facts).toEqual(aboveWire);
   });
 
-  it("D: restarts and retraces the SAME answers to a new verdict -> 2 POSTs, two genuinely separate interviews", async () => {
-    global.fetch = vi
-      .fn()
-      .mockResolvedValue(new Response("{}", { status: 200 }));
-    const { container } = render(<OracleShell />);
-    const scope = within(container);
+  it("uses only a hash of the random assessment UUID for telemetry", async () => {
+    global.fetch = engineFetch();
+    render(<OracleShell />);
+    await expectStateHeading("SUPPORTED_CANDIDATES");
 
-    await driveToVerdict(container);
-    expect(global.fetch).toHaveBeenCalledTimes(1);
-
-    // "Start over" -> RESTART -> back to "framing" — then retrace the
-    // EXACT SAME answers as the first attempt.
-    fireEvent.click(scope.getByRole("button", { name: "Start over" }));
-    await driveToVerdict(container);
-
-    expect(global.fetch).toHaveBeenCalledTimes(2);
-
-    const fetchMock = global.fetch as unknown as ReturnType<typeof vi.fn>;
-    const firstBody = JSON.parse(fetchMock.mock.calls[0][1].body as string);
-    const secondBody = JSON.parse(fetchMock.mock.calls[1][1].body as string);
-    // Same retraced answers -> the SAME wire payload — yet still a
-    // SECOND honest row, because it's a genuinely separate interview
-    // attempt, never suppressed as a "duplicate" of the first.
-    expect(secondBody.facts).toEqual(firstBody.facts);
+    const engineEvent = emitVisaOracleTelemetry.mock.calls.find(
+      ([event]) => event.event === "visa_oracle_v2_engine_result",
+    )?.[0];
+    expect(engineEvent?.correlationHash).toBe("i".repeat(64));
+    expect(engineEvent?.correlationHash).not.toBe("e".repeat(64));
+    expect(nonReversibleHash).toHaveBeenCalledWith(
+      expect.stringMatching(/^[0-9a-f-]{36}$/),
+    );
   });
 });

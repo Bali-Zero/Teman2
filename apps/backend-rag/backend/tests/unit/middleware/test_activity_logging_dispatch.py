@@ -108,6 +108,37 @@ async def test_excluded_prefix_is_not_logged(
     logger_mock.log_api_call.assert_not_called()
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status_code", [200, 400, 500])
+async def test_private_visa_evaluation_never_enters_persistent_audit_trail(
+    middleware: ActivityLoggingMiddleware,
+    monkeypatch: pytest.MonkeyPatch,
+    status_code: int,
+) -> None:
+    logger_mock = MagicMock()
+    logger_mock.log_api_call = AsyncMock()
+    logger_mock.log_session = AsyncMock()
+    monkeypatch.setattr("backend.middleware.activity_logging.activity_logger", logger_mock)
+    request = _make_request(
+        path="/api/visa-oracle/evaluate",
+        method="POST",
+        user={"email": "sensitive@example.test"},
+        headers={
+            "User-Agent": "sensitive-passport-agent",
+            "X-Correlation-ID": "caller-controlled-id",
+        },
+        cookies={"session_id": "sensitive-session"},
+        query_params={"request_category": "family"},
+        client_host="203.0.113.91",
+        request_body={"person": {"nationalities": ["GN"]}},
+    )
+    response = _make_response(status_code)
+
+    assert await middleware.dispatch(request, AsyncMock(return_value=response)) is response
+    logger_mock.log_api_call.assert_not_called()
+    logger_mock.log_session.assert_not_called()
+
+
 # ---------------------------------------------------------------------------
 # Happy path
 # ---------------------------------------------------------------------------
@@ -179,6 +210,24 @@ async def test_get_requests_do_not_forward_request_body(
 
     kwargs = logger_mock.log_api_call.await_args.kwargs
     assert kwargs["request_body"] is None
+
+
+@pytest.mark.asyncio
+async def test_magic_link_token_is_redacted_from_activity_endpoint(
+    middleware: ActivityLoggingMiddleware, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The API audit endpoint field must not persist a magic-link credential."""
+    raw_token = "synthetic-magic-link-token"
+    logger_mock = MagicMock()
+    logger_mock.log_api_call = AsyncMock()
+    monkeypatch.setattr("backend.middleware.activity_logging.activity_logger", logger_mock)
+
+    request = _make_request(path=f"/api/auth/verify-magic/{raw_token}")
+    await middleware.dispatch(request, AsyncMock(return_value=_make_response(200)))
+
+    kwargs = logger_mock.log_api_call.await_args.kwargs
+    assert kwargs["endpoint"] == "/api/auth/verify-magic/[REDACTED]"
+    assert raw_token not in str(kwargs)
 
 
 # ---------------------------------------------------------------------------

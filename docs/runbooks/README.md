@@ -5,7 +5,7 @@
 > `python scripts/docs_sync.py`. The `docs-sync.yml` CI gate fails if stale.
 
 <!-- DOCSYNC:RUNBOOKS_INDEX_START -->
-**Runbooks:** 50 (git-tracked in `docs/runbooks/`)
+**Runbooks:** 53 (git-tracked in `docs/runbooks/`)
 
 | Runbook | Title |
 | ------- | ----- |
@@ -38,6 +38,7 @@
 | [`openclaw-whatsapp-eval-loop.md`](openclaw-whatsapp-eval-loop.md) | OpenClaw WhatsApp Eval Loop |
 | [`openclaw-zantara-scientific-team.md`](openclaw-zantara-scientific-team.md) | OpenClaw/Zantara WhatsApp Scientific Team |
 | [`organism-digest.md`](organism-digest.md) | Organism digest — the session-boot "what changed" receptor |
+| [`portal-auth-session-operations.md`](portal-auth-session-operations.md) | Portal authentication and session operations |
 | [`prod-crm-smoke.md`](prod-crm-smoke.md) | Production CRM Smoke Runbook |
 | [`proprioception-boundary-recon.md`](proprioception-boundary-recon.md) | Proprioception — the boundary-reconciliation organ |
 | [`qdrant-estate-reconciliation.md`](qdrant-estate-reconciliation.md) | Qdrant estate reconciliation — defined vs live (TAC-2 A6) |
@@ -50,6 +51,8 @@
 | [`synthetic-probe-cleanup.md`](synthetic-probe-cleanup.md) | Runbook — Synthetic probe cleanup emergency |
 | [`telegram-notification-gateway.md`](telegram-notification-gateway.md) | Telegram notification gateway — tg_notify / tg_digest_flush / lint |
 | [`visa-engine-key-ceremony.md`](visa-engine-key-ceremony.md) | Visa Engine — Ed25519 Key Ceremony (2026-07-19) |
+| [`visa-oracle-privacy-enforce-gate.md`](visa-oracle-privacy-enforce-gate.md) | Visa Oracle privacy and ENFORCE gate |
+| [`visa-oracle-retention-operations.md`](visa-oracle-retention-operations.md) | Visa Oracle retention operations |
 | [`voice-concierge-local-audio.md`](voice-concierge-local-audio.md) | Runbook — Voice concierge local audio |
 | [`wa-media-pull-worker.md`](wa-media-pull-worker.md) | Runbook — WhatsApp media PULL worker (Anello 1, sovereign-local) |
 | [`wa-mirror-account-relink.md`](wa-mirror-account-relink.md) | Runbook — wa-mirror account re-link (QR) |

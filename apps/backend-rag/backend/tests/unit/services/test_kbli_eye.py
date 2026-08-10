@@ -196,11 +196,28 @@ def test_umkm_reserved_is_tri_state_and_rare(records: list[dict]) -> None:
     cure's one-heir proof could not reach them; they were decided on the reverse
     direction instead (each absorbs no OTHER 2020 code) by two independent
     cross-family lanes. `None` again does not move, and for the same reason.
+
+    1455 -> 1453 / 89 -> 91 on 2026-08-07 (#3749): the 21021/22 adjudication
+    flip (RENAMED -> PLAIN, Perpres 49/2021 Lampiran III caps both at 0%
+    foreign) moves both codes out of TERBUKA. Neither is named reserved
+    (no `UMKM only` kondisi, no `DIALOKASIKAN` marker), so they leave the
+    `False` population and land in `None` — undetermined, same as every
+    other TERBUKA-exit that carries no UMKM basis. `True` does not move.
+
+    1453 -> 1447 / 91 -> 97 on 2026-08-08 (sector-law brief): the asuransi/
+    reasuransi PP 14/2018 Pasal 5(1) cure (`cure_canonical_asuransi_pp14_cap.py`)
+    flips six codes (65111, 65112, 65121, 65122, 65201, 65202 — Perpres 10/2021
+    Pasal 11(2) carves financial/banking bidang usaha out to sector law, so the
+    Perpres's own annexes never governed them) from TERBUKA/100 to TERBATAS/80.
+    None carries a `UMKM only` kondisi or a `DIALOKASIKAN` marker — the cap is a
+    sector-law ownership ceiling, not a K-UMKM reservation — so all six leave
+    `False` (TERBUKA) and land in `None` (undetermined), same shape as every
+    other TERBUKA-exit with no UMKM basis. `True` does not move.
     """
     verdicts = [KBLIEye._umkm_reserved(r) for r in records]
     assert verdicts.count(True) == 15
-    assert verdicts.count(False) == 1455
-    assert verdicts.count(None) == 89
+    assert verdicts.count(False) == 1447
+    assert verdicts.count(None) == 97
     # The counts above are population pins and will move again with the data.
     # This one is the invariant underneath them, and it must not: `False` means
     # exactly "TERBUKA and not named as reserved" — never a guess from silence.
@@ -241,11 +258,25 @@ def test_the_cure_only_ever_shrinks_the_rejected_bucket(records: list[dict]) -> 
     # of TERBUKA *and* sets its cap to 0 in the same write. The four are the SPLIT
     # HEIRS — 96210 barbering, 96220 beauty salons, 96100 laundries, 55105 one-star
     # hotels — whose 2020 ancestor fanned out, so the prior cure had to leave them.
-    # The DIFFERENCE is unchanged at 27 across both moves, and that is the real
-    # content of this test's name: nothing new became wrongly-rejected.
-    assert len(old_rejected) == 104
-    assert len(new_rejected) == 77
-    assert len(old_rejected - new_rejected) == 27
+    # 2026-08-07 (#3749): both grew by the same two more (104->106, 77->79) —
+    # 21021/22 (RENAMED -> PLAIN) leave TERBUKA *and* their adjudicated cap is
+    # 0%, same both-buckets-move shape as the split heirs above.
+    # The DIFFERENCE is unchanged at 27 across all three moves, and that is the
+    # real content of this test's name: nothing new became wrongly-rejected.
+    # 2026-08-08 (sector-law brief): old_rejected grows by 6 (106->112) — the
+    # asuransi/reasuransi PP 14/2018 cure moves 65111/65112/65121/65122/65201/
+    # 65202 out of TERBUKA. new_rejected does NOT move (stays 79): their
+    # adjudicated cap is 80%, not 0% — an 80% sector-law ceiling is a real
+    # restriction but not a REJECTION-grade one. So, for the first time, the
+    # DIFFERENCE itself moves: 27 -> 33. This is not "something new became
+    # wrongly-rejected" (the invariant below still holds — new_rejected is
+    # still a subset of old_rejected) — it is six codes moving from "wrongly
+    # unrestricted" (TERBUKA, when the record's real cap is 80%) to "correctly
+    # restricted but not rejected" (TERBATAS/80%, which get a WARNING elsewhere
+    # in this module, not a REJECTED).
+    assert len(old_rejected) == 112
+    assert len(new_rejected) == 79
+    assert len(old_rejected - new_rejected) == 33
     # The counts above move with the data; THIS is the property that must not.
     assert new_rejected <= old_rejected, "the cure must never REJECT something new"
 

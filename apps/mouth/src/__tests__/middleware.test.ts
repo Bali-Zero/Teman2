@@ -103,6 +103,23 @@ describe("Middleware - Multi-domain Routing", () => {
       expect(response.headers.get("x-pathname")).toBe("/login");
     });
 
+    it("can enforce the production portal guard in the isolated QA runtime", () => {
+      vi.stubEnv("MY_PORTAL_PRODLIKE_ENFORCE_MIDDLEWARE", "1");
+      try {
+        const request = createRequest(
+          "http://127.0.0.1:3101/portal/process?view=active",
+        );
+        const response = proxy(request);
+
+        expect(response.status).toBe(307);
+        expect(response.headers.get("location")).toBe(
+          "http://127.0.0.1:3101/portal/login-upgraded?redirect=%2Fportal%2Fprocess%3Fview%3Dactive",
+        );
+      } finally {
+        vi.unstubAllEnvs();
+      }
+    });
+
     it("should allow all routes on fly.dev", () => {
       const request = createRequest("https://app.fly.dev/clients");
       const response = proxy(request);
@@ -113,13 +130,53 @@ describe("Middleware - Multi-domain Routing", () => {
   });
 
   describe("Portal Domain (my.balizero.com)", () => {
-    it("should allow /portal routes on portal domain", () => {
+    it("redirects an anonymous protected deep link before the client renders", () => {
       const request = createRequest("https://my.balizero.com/portal/dashboard");
+      const response = proxy(request);
+
+      expect(response.status).toBe(307);
+      expect(response.headers.get("location")).toBe(
+        "https://my.balizero.com/portal/login-upgraded?redirect=%2Fportal%2Fdashboard",
+      );
+    });
+
+    it("preserves the protected path and query in the login redirect", () => {
+      const request = createRequest(
+        "https://my.balizero.com/portal/vault?folder=annual",
+      );
+      const response = proxy(request);
+
+      expect(response.status).toBe(307);
+      expect(response.headers.get("location")).toBe(
+        "https://my.balizero.com/portal/login-upgraded?redirect=%2Fportal%2Fvault%3Ffolder%3Dannual",
+      );
+    });
+
+    it("allows protected portal routes when the httpOnly session cookie exists", () => {
+      const request = createRequest(
+        "https://my.balizero.com/portal/dashboard",
+        { cookie: "nz_access_token=synthetic-session-token" },
+      );
       const response = proxy(request);
 
       expect(response.status).not.toBe(301);
       expect(response.status).not.toBe(307);
       expect(response.headers.get("x-pathname")).toBe("/portal/dashboard");
+    });
+
+    it.each([
+      "/portal/login",
+      "/portal/login-upgraded",
+      "/portal/forgot-password",
+      "/portal/register",
+      "/portal/magic-link",
+      "/portal/magic?token=synthetic",
+    ])("allows public portal route %s without a session", (path) => {
+      const request = createRequest(`https://my.balizero.com${path}`);
+      const response = proxy(request);
+
+      expect(response.status).not.toBe(301);
+      expect(response.status).not.toBe(307);
     });
 
     it("should redirect root to /portal/login on portal domain", () => {
@@ -152,6 +209,26 @@ describe("Middleware - Multi-domain Routing", () => {
       expect(response.headers.get("location")).toBe(
         "https://balizero.com/services?type=visa",
       );
+    });
+
+    it("does not classify a lookalike hostname as the portal domain", () => {
+      const request = createRequest("https://notmy.balizero.com/private");
+      const response = proxy(request);
+
+      expect(response.status).not.toBe(301);
+      expect(response.status).not.toBe(307);
+    });
+
+    it("normalizes a host port before exact portal classification", () => {
+      const request = createRequest(
+        "https://my.balizero.com:8443/portal/dashboard",
+        { cookie: "nz_access_token=synthetic-session-token" },
+      );
+      const response = proxy(request);
+
+      expect(response.status).not.toBe(301);
+      expect(response.status).not.toBe(307);
+      expect(response.headers.get("x-pathname")).toBe("/portal/dashboard");
     });
   });
 
@@ -448,6 +525,26 @@ describe("Middleware - Multi-domain Routing", () => {
 
       expect(response.status).not.toBe(307);
       expect(response.headers.get("x-pathname")).toBe("/chat/conversation/123");
+    });
+
+    it.each([
+      ["notkita.balizero.com", "/dashboard"],
+      ["mail.evil.test", "/inbox"],
+    ])("does not classify lookalike app host %s", (host, path) => {
+      const response = proxy(createRequest(`https://${host}${path}`));
+
+      expect(response.headers.get("X-Robots-Tag")).not.toBe(
+        "noindex, nofollow",
+      );
+    });
+
+    it("does not classify a lookalike visa hostname", () => {
+      const response = proxy(
+        createRequest("https://evilvisa.balizero.com/quiz"),
+      );
+
+      expect(response.status).not.toBe(302);
+      expect(response.headers.get("location")).toBeNull();
     });
   });
 

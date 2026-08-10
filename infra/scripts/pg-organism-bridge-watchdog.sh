@@ -50,12 +50,33 @@ organism_alert() {
   return 0
 }
 
-# telegram_backup <text> — best-effort operator backup, never the primary channel.
+# telegram_backup <dedup_key> <text> — operator backup, never the primary channel.
+#
+# Through the tg_notify gateway since 2026-08-09. This watchdog runs every 300s,
+# so a bridge that stays down is 288 firings of one fact per day; the raw curl it
+# used to run had no dedup, no budget and no ledger entry, and its `|| true`
+# swallowed the outcome so a refusal looked exactly like a delivery. The gateway
+# collapses a repeated key on its escalation ladder and records what it decided.
 telegram_backup() {
-  [ -n "${TELEGRAM_BOT_TOKEN:-}" ] || return 0
-  curl -sS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-    -d "chat_id=${TELEGRAM_OWNER_CHAT_ID:-1125336968}" \
-    -d "text=$1" >> "$LOG" 2>&1 || true
+  local _key="$1" _msg="$2" _gw _py
+  # Sibling first, then the checkout: the alarm must not die with the copy that
+  # happens to be executing (superscar #1).
+  _gw="$(dirname "$0")/../../scripts/tg_notify.py"
+  [ -f "$_gw" ] || _gw="$HOME/nuzantara/scripts/tg_notify.py"
+  if [ ! -f "$_gw" ]; then
+    echo "$(date) tg_notify gateway not found — alert NOT sent: $_msg" >> "$LOG"
+    return 0
+  fi
+  # Absolute interpreters, never a PATH lookup: the alarm must not share a
+  # failure mode with the thing it reports (W108).
+  for _py in /usr/bin/python3 /opt/homebrew/bin/python3 /usr/local/bin/python3; do
+    [ -x "$_py" ] || continue
+    "$_py" "$_gw" --tier p0 --source "pg-organism-bridge-watchdog" \
+      --dedup-key "$_key" -- "$_msg" >> "$LOG" 2>&1 || true
+    return 0
+  done
+  echo "$(date) no usable python3 — alert NOT sent: $_msg" >> "$LOG"
+  return 0
 }
 
 # Step A: bridge process alive
@@ -63,7 +84,10 @@ PID=$(pgrep -f "pg-to-organism-bridge.py" | head -1 || true)
 if [ -z "$PID" ]; then
   echo "$(date) ALERT: pg-organism-bridge NOT RUNNING — Symbiosis SPOF" >> "$LOG"
   organism_alert "critical" "pro.pg_organism_bridge" "bridge process NOT RUNNING — Symbiosis SPOF (the heartbeat writer for core organs is down)"
-  telegram_backup "⚠️ pg-organism-bridge DOWN ($(date +%H:%M)) — Symbiosis SPOF"
+  # Key names the CONDITION; the clock stays in the text, where a human wants
+  # it, and out of the key, where it would mint a new one every 5 minutes.
+  telegram_backup "pg-organism-bridge:down" \
+    "⚠️ pg-organism-bridge DOWN ($(date +%H:%M)) — Symbiosis SPOF"
   emit_self_heartbeat "degraded" "bridge down"
   exit 0
 fi
@@ -96,7 +120,11 @@ LAG_MIN=$(( LAG_MS / 60000 ))
 if [ "$LAG_MIN" -gt 30 ]; then
   echo "$(date) ALERT: bridge alive (PID=$PID) but stream lag ${LAG_MIN}min > 30min threshold" >> "$LOG"
   organism_alert "warning" "pro.pg_organism_bridge" "bridge alive (PID=$PID) but organism:events stream STALE ${LAG_MIN}min > 30min threshold"
-  telegram_backup "⚠️ pg-organism-bridge alive but stream STALE (${LAG_MIN}min, threshold 30min)"
+  # Distinct key from the down case: "alive but stale" is a different fault and
+  # must not be swallowed by a window the down-alert is holding open. `LAG_MIN`
+  # is a measurement — text yes, key no.
+  telegram_backup "pg-organism-bridge:stream-stale" \
+    "⚠️ pg-organism-bridge alive but stream STALE (${LAG_MIN}min, threshold 30min)"
   emit_self_heartbeat "degraded" "stream lag ${LAG_MIN}min"
 else
   echo "$(date) OK: PID=$PID last_event_lag=${LAG_MIN}min" >> "$LOG"

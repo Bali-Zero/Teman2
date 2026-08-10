@@ -22,6 +22,7 @@ from backend.middleware.rate_limiter import (
     _evict_stale_keys,
     _rate_limit_storage,
 )
+from backend.services.pii.violation_store import hash_subject
 
 # ---------------------------------------------------------------------------
 # _get_rate_limit pattern matching
@@ -205,9 +206,10 @@ async def test_dispatch_allowed_sets_rate_limit_headers(
     assert response.headers["X-RateLimit-Limit"] == "100"
     assert response.headers["X-RateLimit-Remaining"] == "42"
     assert response.headers["X-RateLimit-Reset"] == "1234567890"
-    # The key must be user-scoped, not IP-scoped, when user has email
+    # The key stays user-scoped without persisting the raw email.
     kwargs_key = limiter_mock.is_allowed.call_args.args[0]
-    assert "u@bali.com" in kwargs_key
+    assert "u@bali.com" not in kwargs_key
+    assert hash_subject("u@bali.com") in kwargs_key
 
 
 @pytest.mark.asyncio
@@ -234,6 +236,63 @@ async def test_dispatch_denied_returns_429_with_retry_after(
 
 
 @pytest.mark.asyncio
+async def test_dispatch_denied_redacts_magic_token_and_client_ip_from_log(
+    middleware: RateLimitMiddleware, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    raw_token = "synthetic-magic-link-token"
+    raw_ip = "203.0.113.5"
+    limiter_mock = MagicMock()
+    limiter_mock.is_allowed = MagicMock(
+        return_value=(False, {"limit": 120, "remaining": 0, "reset": 1111})
+    )
+    logger_mock = MagicMock()
+    monkeypatch.setattr("backend.middleware.rate_limiter.rate_limiter", limiter_mock)
+    monkeypatch.setattr("backend.middleware.rate_limiter.logger", logger_mock)
+
+    request = _make_request(
+        f"/API/Auth/Verify-Magic/{raw_token}",
+        user=None,
+        client_host=raw_ip,
+    )
+
+    response = await middleware.dispatch(request, AsyncMock())
+    rendered_log = " ".join(str(value) for value in logger_mock.warning.call_args.args)
+    rate_limit_key = limiter_mock.is_allowed.call_args.args[0]
+
+    assert response.status_code == 429
+    assert "/api/auth/verify-magic/[REDACTED]" in rendered_log
+    assert raw_token not in rendered_log
+    assert raw_ip not in rendered_log
+    assert raw_token not in rate_limit_key
+    assert raw_ip not in rate_limit_key
+
+
+@pytest.mark.asyncio
+async def test_private_visa_429_log_omits_client_identity(
+    middleware: RateLimitMiddleware,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    limiter_mock = MagicMock()
+    limiter_mock.is_allowed = MagicMock(
+        return_value=(False, {"limit": 30, "remaining": 0, "reset": 1111})
+    )
+    monkeypatch.setattr("backend.middleware.rate_limiter.rate_limiter", limiter_mock)
+    request = _make_request(
+        "/api/visa-oracle/evaluate",
+        client_host="203.0.113.91",
+    )
+    request.method = "POST"
+
+    with caplog.at_level("WARNING"):
+        response = await middleware.dispatch(request, AsyncMock())
+
+    assert response.status_code == 429
+    assert "203.0.113.91" not in caplog.text
+    assert "Visa Oracle evaluation rate limit exceeded" in caplog.text
+
+
+@pytest.mark.asyncio
 async def test_dispatch_uses_ip_when_no_authenticated_user(
     middleware: RateLimitMiddleware, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -248,7 +307,8 @@ async def test_dispatch_uses_ip_when_no_authenticated_user(
     await middleware.dispatch(request, AsyncMock(return_value=response))
 
     kwargs_key = limiter_mock.is_allowed.call_args.args[0]
-    assert "203.0.113.5" in kwargs_key
+    assert "203.0.113.5" not in kwargs_key
+    assert hash_subject("203.0.113.5") in kwargs_key
 
 
 @pytest.mark.asyncio
@@ -270,3 +330,36 @@ async def test_dispatch_fails_open_when_limiter_raises(
 
     assert result is response
     call_next.assert_awaited_once_with(request)
+
+
+@pytest.mark.asyncio
+async def test_dispatch_failure_redacts_magic_token_and_client_ip_from_log(
+    middleware: RateLimitMiddleware, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    raw_token = "synthetic-magic-link-token"
+    raw_ip = "203.0.113.5"
+    limiter_mock = MagicMock()
+    limiter_mock.is_allowed = MagicMock(
+        side_effect=RuntimeError(f"storage exploded for {raw_ip} and {raw_token}")
+    )
+    logger_mock = MagicMock()
+    monkeypatch.setattr("backend.middleware.rate_limiter.rate_limiter", limiter_mock)
+    monkeypatch.setattr("backend.middleware.rate_limiter.logger", logger_mock)
+
+    request = _make_request(
+        f"//api//auth//verify-magic//{raw_token}",
+        user=None,
+        client_host=raw_ip,
+    )
+    response = MagicMock(headers={})
+
+    result = await middleware.dispatch(request, AsyncMock(return_value=response))
+    rendered_log = " ".join(str(value) for value in logger_mock.error.call_args.args)
+    rate_limit_key = limiter_mock.is_allowed.call_args.args[0]
+
+    assert result is response
+    assert "/api/auth/verify-magic/[REDACTED]" in rendered_log
+    assert raw_token not in rendered_log
+    assert raw_ip not in rendered_log
+    assert raw_token not in rate_limit_key
+    assert raw_ip not in rate_limit_key

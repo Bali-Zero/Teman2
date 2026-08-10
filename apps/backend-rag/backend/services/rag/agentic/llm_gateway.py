@@ -63,7 +63,11 @@ from backend.app.utils.tracing import set_span_attribute, set_span_status, trace
 from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient, get_genai_client, types
 from backend.llm.metrics_emitter import emit_llm_metric
 from backend.services.llm_clients.openrouter_client import ModelTier, OpenRouterClient
-from backend.services.llm_clients.pricing import TokenUsage, create_token_usage
+from backend.services.llm_clients.pricing import (
+    TokenUsage,
+    create_token_usage,
+    extract_gemini_usage,
+)
 from backend.services.rag.agentic.chat_session import ChatSession, MockChatSession
 
 logger = logging.getLogger(__name__)
@@ -944,13 +948,9 @@ class LLMGateway:
                 pass
 
             # Extract token usage
-            prompt_tokens = 0
-            completion_tokens = 0
-            if hasattr(response, "usage_metadata") and response.usage_metadata:
-                prompt_tokens = getattr(response.usage_metadata, "prompt_token_count", 0) or 0
-                completion_tokens = (
-                    getattr(response.usage_metadata, "candidates_token_count", 0) or 0
-                )
+            prompt_tokens, completion_tokens, cached_tokens, thinking_tokens = (
+                extract_gemini_usage(getattr(response, "usage_metadata", None))
+            )
 
             # Indestructible cost ledger (see
             # backend/services/observability/llm_cost_recorder.py). This call
@@ -963,16 +963,23 @@ class LLMGateway:
                 from backend.services.llm_clients.pricing import calculate_cost
                 from backend.services.observability import record_llm_call
 
-                cost_usd = calculate_cost(prompt_tokens, completion_tokens, model_name)
+                cost_usd = calculate_cost(
+                    prompt_tokens,
+                    completion_tokens,
+                    model_name,
+                    cached_tokens=cached_tokens,
+                    thinking_tokens=thinking_tokens,
+                )
                 await record_llm_call(
                     provider="gemini",
                     model=model_name,
                     input_tokens=prompt_tokens,
-                    output_tokens=completion_tokens,
+                    output_tokens=completion_tokens + thinking_tokens,
                     cost_usd=cost_usd,
                     success=True,
                     latency_ms=round((time.perf_counter() - _llm_call_t0) * 1000),
                     endpoint="rag.gateway.chat",
+                    cache_hit_tokens=cached_tokens,
                 )
             except Exception as rec_exc:
                 logger.warning("llm_cost recorder failed for gateway: %s", rec_exc)
@@ -981,6 +988,10 @@ class LLMGateway:
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
                 model=model_name,
+                # Same counters the ledger row above just recorded: the spend
+                # cap and the ledger must price one call one way.
+                cached_tokens=cached_tokens,
+                thinking_tokens=thinking_tokens,
             )
             return text_content, response, token_usage
 
@@ -1022,13 +1033,9 @@ class LLMGateway:
                 raise
 
             # Extract token usage from response
-            prompt_tokens = 0
-            completion_tokens = 0
-            if hasattr(response, "usage_metadata") and response.usage_metadata:
-                prompt_tokens = getattr(response.usage_metadata, "prompt_token_count", 0) or 0
-                completion_tokens = (
-                    getattr(response.usage_metadata, "candidates_token_count", 0) or 0
-                )
+            prompt_tokens, completion_tokens, cached_tokens, thinking_tokens = (
+                extract_gemini_usage(getattr(response, "usage_metadata", None))
+            )
 
             # Indestructible cost ledger (see
             # backend/services/observability/llm_cost_recorder.py). Same raw
@@ -1038,16 +1045,23 @@ class LLMGateway:
                 from backend.services.llm_clients.pricing import calculate_cost
                 from backend.services.observability import record_llm_call
 
-                cost_usd = calculate_cost(prompt_tokens, completion_tokens, model_name)
+                cost_usd = calculate_cost(
+                    prompt_tokens,
+                    completion_tokens,
+                    model_name,
+                    cached_tokens=cached_tokens,
+                    thinking_tokens=thinking_tokens,
+                )
                 await record_llm_call(
                     provider="gemini",
                     model=model_name,
                     input_tokens=prompt_tokens,
-                    output_tokens=completion_tokens,
+                    output_tokens=completion_tokens + thinking_tokens,
                     cost_usd=cost_usd,
                     success=True,
                     latency_ms=round((time.perf_counter() - _llm_call_t0) * 1000),
                     endpoint="rag.gateway.chat",
+                    cache_hit_tokens=cached_tokens,
                 )
             except Exception as rec_exc:
                 logger.warning("llm_cost recorder failed for gateway: %s", rec_exc)
@@ -1056,6 +1070,10 @@ class LLMGateway:
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
                 model=model_name,
+                # Same counters the ledger row above just recorded: the spend
+                # cap and the ledger must price one call one way.
+                cached_tokens=cached_tokens,
+                thinking_tokens=thinking_tokens,
             )
 
             # Log token usage for monitoring

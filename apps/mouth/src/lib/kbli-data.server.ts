@@ -14,6 +14,9 @@ import { resolveLicenseType } from "./kbli-derive";
 import { resolvePmaCap } from "./kbli-pma-cap";
 import { perpresCitation } from "./kbli-perpres-locator";
 import { deriveProvenance } from "./kbli-provenance";
+import { riskDispute } from "./kbli-risk-dispute";
+import { perpresSlice } from "./kbli-perpres-slice";
+import { getSectionFromCode } from "./kbli-section";
 
 // Section names mapping
 const SECTION_NAMES_EN: Record<string, string> = {
@@ -246,7 +249,14 @@ function transformCode(
   gold: Record<string, KBLIGoldContent>,
 ): KBLICode {
   const code = raw.kode_kbli_2025;
-  const section = (raw.sektor_id || "?").charAt(0);
+  // Mandate 12 fix (2026-08-09, PENDING-ARMS.md "sektor_id is not a
+  // malformed KBLI section"): the section is derived from the code's
+  // 2-digit prefix, the same single source of truth kbli-data.ts uses —
+  // NEVER from `sektor_id`, which is a PP28/2025 Lampiran locator (almost
+  // always starting with the roman numeral "I") and collapsed 1318/1559
+  // codes onto the single fake section "I". An unmapped prefix returns
+  // null (honest "unknown"), not a silent default to any letter.
+  const section = getSectionFromCode(code);
   const goldEntry = gold[code];
 
   // Merge intel: gold content takes precedence for the editorial fields. EXCEPTION:
@@ -295,7 +305,7 @@ function transformCode(
     titleEn: raw.judul,
     description: raw.uraian || "",
     section,
-    sectionName: SECTION_NAMES_EN[section] || section,
+    sectionName: section ? SECTION_NAMES_EN[section] || section : null,
     pma: {
       status: mapPmaStatus(raw.pma_status),
       maxForeign: resolvePmaCap(raw),
@@ -362,6 +372,11 @@ function transformCode(
         }
       : undefined,
     provenance: deriveProvenance(raw),
+    riskDispute: riskDispute(code) ?? undefined,
+    // Same dual-reader discipline as riskDispute above — set in BOTH
+    // transforms (kbli-data.ts is the one the page actually consumes) or the
+    // two readers disagree on the 14 slice-disclosure codes.
+    perpresSlice: perpresSlice(code) ?? undefined,
     tier: goldEntry ? "gold" : "bronze",
     keywords: [],
   };

@@ -5,7 +5,7 @@ Target: >95% coverage
 
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -80,6 +80,29 @@ class TestRequestTracingMiddleware:
         assert result.headers["X-Request-ID"] == "existing-request-id"
 
     @pytest.mark.asyncio
+    async def test_dispatch_redacts_magic_link_token_from_trace(self, middleware):
+        """Credential-bearing route parameters must not enter stored traces."""
+        raw_token = "synthetic-magic-link-token"
+        mock_request = MagicMock()
+        mock_request.headers.get.return_value = "magic-link-correlation"
+        mock_request.state = MagicMock()
+        mock_request.method = "GET"
+        mock_request.url.path = f"/api/auth/verify-magic/{raw_token}"
+        mock_request.query_params = {}
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.headers = {}
+
+        result = await middleware.dispatch(mock_request, AsyncMock(return_value=mock_response))
+        trace = RequestTracingMiddleware.get_trace("magic-link-correlation")
+
+        assert result == mock_response
+        assert trace is not None
+        assert trace["path"] == "/api/auth/verify-magic/[REDACTED]"
+        assert raw_token not in str(trace)
+
+    @pytest.mark.asyncio
     async def test_dispatch_with_exception(self, middleware):
         """Test dispatch with exception"""
         mock_request = MagicMock()
@@ -101,6 +124,54 @@ class TestRequestTracingMiddleware:
         assert trace is not None
         assert trace["error"] is not None
         assert trace["status_code"] == 500
+
+    @pytest.mark.asyncio
+    async def test_private_visa_trace_ignores_caller_ids_and_query_values(self, middleware):
+        mock_request = MagicMock()
+        mock_request.headers.get.side_effect = lambda name: {
+            "X-Request-Id": "passport-raw-request-id",
+            "X-Correlation-ID": "family-raw-correlation-id",
+        }.get(name)
+        mock_request.state = MagicMock()
+        mock_request.method = "POST"
+        mock_request.url.path = "/api/visa-oracle/evaluate"
+        mock_request.query_params = {"request_category": "diaspora"}
+        response = MagicMock(status_code=200, headers={})
+
+        async def call_next(_request):
+            return response
+
+        result = await middleware.dispatch(mock_request, call_next)
+
+        generated_id = result.headers["X-Request-ID"]
+        assert generated_id not in {
+            "passport-raw-request-id",
+            "family-raw-correlation-id",
+        }
+        trace = RequestTracingMiddleware.get_trace(generated_id)
+        assert trace is not None
+        assert trace["query_params"] == {}
+        assert "diaspora" not in repr(trace)
+
+    @pytest.mark.asyncio
+    async def test_private_visa_trace_drops_exception_message(self, middleware):
+        mock_request = MagicMock()
+        mock_request.headers.get.return_value = "caller-id"
+        mock_request.state = MagicMock()
+        mock_request.method = "POST"
+        mock_request.url.path = "/api/visa-oracle/evaluate"
+        mock_request.query_params = {"request_category": "family"}
+
+        async def raise_sensitive(_request):
+            raise ValueError("passport GN family payload")
+
+        with pytest.raises(ValueError, match="passport GN"):
+            await middleware.dispatch(mock_request, raise_sensitive)
+
+        trace = RequestTracingMiddleware.get_trace(mock_request.state.request_id)
+        assert trace is not None
+        assert trace["error"] == {"type": "ValueError"}
+        assert "passport" not in repr(trace)
 
     def test_store_trace(self, middleware):
         """Test storing trace"""
@@ -156,8 +227,10 @@ class TestRequestTracingMiddleware:
 
     def test_add_step_no_trace(self, middleware):
         """Test adding step when trace doesn't exist"""
-        # Should not raise error
         RequestTracingMiddleware.add_step("non-existent", "step1", 10.5)
+        assert RequestTracingMiddleware.get_trace("non-existent") is None
+
+        assert RequestTracingMiddleware.get_trace("non-existent") is None
 
     def test_get_trace(self, middleware):
         """Test getting trace"""

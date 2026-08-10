@@ -60,9 +60,11 @@ jobs:
 
           should_alert() {
             local key="$1"
-            local last=$(grep "^${key}:" "$STATE" 2>/dev/null | tail -1 | cut -d: -f2)
+            local last
+            last=$(grep "^${key}:" "$STATE" 2>/dev/null | tail -1 | cut -d: -f2)
             if [ -z "$last" ]; then return 0; fi
-            local age=$(( NOW - last ))
+            local age
+            age=$(( NOW - last ))
             [ "$age" -ge "$COOLDOWN_SECONDS" ]
           }
 
@@ -90,7 +92,23 @@ jobs:
           machines = d.get("Machines", []) or []
           total = len(machines)
           started = sum(1 for m in machines if m.get("state") == "started")
-          bad = [m.get("state", "?") for m in machines if m.get("state") != "started"]
+          expected_stopped = sum(
+              1
+              for m in machines
+              if m.get("state") == "stopped"
+              and (m.get("config") or {}).get("standbys")
+          )
+          unexpected_stopped = sum(
+              1
+              for m in machines
+              if m.get("state") == "stopped"
+              and not (m.get("config") or {}).get("standbys")
+          )
+          bad = [
+              m.get("state", "?")
+              for m in machines
+              if m.get("state") not in ("started", "stopped")
+          ]
           unhealthy = 0
           for m in machines:
               for c in (m.get("checks") or []):
@@ -133,9 +151,20 @@ jobs:
                       oom.append(f"{machine_id}:{group}:{event_sig}")
                   if last_exit is None and "exit_code" in ee and ee.get("exit_code") is not None:
                       last_exit = exit_code
-              if m.get("state") == "stopped" and last_exit is not None and str(last_exit) != "0":
+              is_expected_standby = bool((m.get("config") or {}).get("standbys"))
+              if (
+                  m.get("state") == "stopped"
+                  and not is_expected_standby
+                  and last_exit is not None
+                  and str(last_exit) != "0"
+              ):
                   crashed.append(machine_id)
-          print(f"total={total}|started={started}|bad={','.join(bad) or 'none'}|unhealthy={unhealthy}|crashed={','.join(crashed) or 'none'}|oom={','.join(oom) or 'none'}")
+          print(
+              f"total={total}|started={started}|expected_stopped={expected_stopped}|"
+              f"unexpected_stopped={unexpected_stopped}|bad={','.join(bad) or 'none'}|"
+              f"unhealthy={unhealthy}|crashed={','.join(crashed) or 'none'}|"
+              f"oom={','.join(oom) or 'none'}"
+          )
           PY
           )
             echo "[$app] $SUMMARY"
@@ -146,15 +175,15 @@ jobs:
               fi
               continue
             fi
-            STARTED=$(echo "$SUMMARY" | tr '|' '\n' | grep ^started= | cut -d= -f2)
-            TOTAL=$(echo "$SUMMARY" | tr '|' '\n' | grep ^total= | cut -d= -f2)
+            EXPECTED_STOPPED=$(echo "$SUMMARY" | tr '|' '\n' | grep ^expected_stopped= | cut -d= -f2)
+            UNEXPECTED_STOPPED=$(echo "$SUMMARY" | tr '|' '\n' | grep ^unexpected_stopped= | cut -d= -f2)
             BAD=$(echo "$SUMMARY" | tr '|' '\n' | grep ^bad= | cut -d= -f2)
             UNHEALTHY=$(echo "$SUMMARY" | tr '|' '\n' | grep ^unhealthy= | cut -d= -f2)
             CRASHED=$(echo "$SUMMARY" | tr '|' '\n' | grep ^crashed= | cut -d= -f2)
             OOM=$(echo "$SUMMARY" | tr '|' '\n' | grep ^oom= | cut -d= -f2)
-            if [ "${STARTED:-0}" -lt "${TOTAL:-1}" ]; then
+            if [ "${UNEXPECTED_STOPPED:-0}" -gt 0 ] || [ "${BAD:-none}" != "none" ]; then
               if should_alert "${app}_state"; then
-                ALERTS="${ALERTS}🔴 <b>${app}</b>: $((TOTAL-STARTED))/${TOTAL} machines NOT started (${BAD})"$'\n'
+                ALERTS="${ALERTS}🔴 <b>${app}</b>: unexpected stopped=${UNEXPECTED_STOPPED:-0}, bad states=${BAD}; expected standbys=${EXPECTED_STOPPED:-0}"$'\n'
                 mark_alerted "${app}_state"
               fi
             fi

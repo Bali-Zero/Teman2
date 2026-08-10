@@ -63,6 +63,7 @@ async def close_kbli_http_client() -> None:
     await _kbli_http_client.aclose()
     _kbli_http_client = None
 
+
 router = APIRouter(prefix="/kbli-notebook", tags=["KBLI Notebook"])
 
 # =============================================================================
@@ -274,7 +275,32 @@ async def kbli_llm_health() -> Any:
 
 
 async def _get_kbli_payload_from_qdrant(code: str) -> dict | None:
-    """Fetch Qdrant payload for a specific KBLI code (by exact match on kode_kbli)."""
+    """Fetch Qdrant payload for a specific KBLI code (by exact match on kode_kbli).
+
+    Selects the canonical BPS record POSITIVELY (doc_type == kbli_bps) rather than
+    excluding kbli_gold. Since 2026-08-09 a code can carry a second Qdrant point
+    (doc_type=kbli_gold, same kode_kbli — index_kbli_gold_content.py::build_payload
+    writes the identical field this filter matches on) sharing this exact query.
+    With `limit: 1` below and no `order_by`, Qdrant used to return whichever of the
+    two points has the smaller internal point ID — and the BPS/gold point IDs are
+    md5-hash UUIDs of two UNRELATED strings ("kbli_2025_bps::<code>" in
+    reindex_kbli_2025_final.py::deterministic_uuid() vs "kbli_gold_editorial::<code>"
+    in index_kbli_gold_content.py::deterministic_uuid()), so which one sorted first
+    was a per-code coin-flip with zero relation to score, recency, or doc_type —
+    measured empirically at 10/10 correlation between "smaller UUID" and the
+    observed winner on a 10-code sample during the 2026-08-09 gold-314 apply, 3 of
+    which flipped to gold-first with the twin BPS record vanishing entirely from
+    `/search` results (not merely demoted: the semantic-search branch below
+    separately drops any hit sharing this code once `exact_result` is chosen, so
+    the losing twin was excluded twice over).
+    A NEGATIVE filter (exclude kbli_gold) would have fixed today's known culprit
+    but left the same coin-flip primed for the next new doc_type this collection
+    grows; a POSITIVE selection of the entity this endpoint's contract actually
+    promises -- "the canonical BPS record for this code" -- stays correct by
+    construction regardless of what else gets indexed later. Honest edge: a code
+    with no BPS point (e.g. a gold-only orphan) now correctly falls through to
+    not-found instead of serving gold content as if it were canonical.
+    """
     headers = {"Content-Type": "application/json"}
     if settings.qdrant_api_key:
         headers["api-key"] = settings.qdrant_api_key
@@ -289,7 +315,23 @@ async def _get_kbli_payload_from_qdrant(code: str) -> dict | None:
             "metadata.kode_kbli_2025",
         ):
             payload = {
-                "filter": {"must": [{"key": filter_key, "match": {"value": code}}]},
+                "filter": {
+                    "must": [
+                        {"key": filter_key, "match": {"value": code}},
+                        # Flat vs legacy-nested doc_type, same dual-key idiom used
+                        # by reindex_kbli_2025_final.py's own delete/count filters
+                        # and by this router's _payload_value() reader.
+                        {
+                            "should": [
+                                {"key": "doc_type", "match": {"value": "kbli_bps"}},
+                                {
+                                    "key": "metadata.doc_type",
+                                    "match": {"value": "kbli_bps"},
+                                },
+                            ],
+                        },
+                    ],
+                },
                 "limit": 1,
                 "with_payload": True,
             }

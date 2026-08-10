@@ -11,13 +11,15 @@
         "data/kbli-filiera/**",
         "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
         "data/source_documents/KBLI_2025_OSS_GROUND_TRUTH.json",
-        "apps/mouth/data/perpres-locators.json"
+        "apps/mouth/data/perpres-locators.json",
+        "apps/mouth/data/kbli-risk-disputes.json",
+        "apps/mouth/data/kbli-perpres-slice-disclosures.json"
       ]
     },
     {
       "id": "kbli-gold-editorial",
       "owner": "GARUDA-FILIERA program — editorial layer. Registered 2026-07-25: the canonical dataset above was protected while this file, which OVERRIDES it on every rendered page (kbli-data.server.ts::transformCode takes whatItMeans/whatYouNeed/whatChanged/baliContext/zantaraOpener/youllAlsoNeed from gold whenever a gold entry exists), was not. The guarded file was the one that loses; the unguarded file was the one clients read.",
-      "compilers": "scripts/kbli_filiera/ (cure_whatchanged_false_renumber.py, cure_l23_whatchanged_language.py), plus the legacy one-shot writers scripts/kbli_gold_phantom_remap_apply.py, scripts/kbli_audit_patcher.py, scripts/kbli_enrich_write.py",
+      "compilers": "scripts/kbli_filiera/ (cure_whatchanged_false_renumber.py, cure_l23_whatchanged_language.py, cure_gold_pma_line.py, cure_gold_90200_whatchanged.py, cure_whatchanged_corroborated_predecessor.py, cure_gold_65121_sector_law_sweep.py), plus the legacy one-shot writers scripts/kbli_gold_phantom_remap_apply.py, scripts/kbli_audit_patcher.py, scripts/kbli_enrich_write.py",
       "protected": ["apps/mouth/data/kbli-gold-all.json"]
     }
   ]

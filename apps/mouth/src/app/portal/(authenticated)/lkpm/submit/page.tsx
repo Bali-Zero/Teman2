@@ -20,6 +20,7 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { logger } from "@/lib/logger";
+import { ApiError } from "@/lib/api/error-handler";
 
 type Lang = "en" | "id";
 
@@ -197,8 +198,23 @@ export default function LKPMSubmitPage() {
       );
       router.push(`/portal/lkpm/${result.quarter}?year=${result.year}`);
     } catch (err) {
-      error("Submission failed", "Please check your data and try again");
-      logger.error("LKPM submission failed", {}, err as Error);
+      if (err instanceof ApiError && err.statusCode === 409) {
+        error(
+          "Report already locked",
+          "Approved or submitted reports cannot be replaced. Contact your Bali Zero team if a correction is needed.",
+        );
+        logger.warn("LKPM submission blocked by report lifecycle", {
+          component: "LKPMSubmitPage",
+          action: "submit_locked_report",
+        });
+      } else {
+        error("Submission failed", "Please check your data and try again");
+        logger.error("LKPM submission failed", {
+          component: "LKPMSubmitPage",
+          action: "submit_draft",
+          reason: "unavailable",
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -219,7 +235,12 @@ export default function LKPMSubmitPage() {
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Header — day masthead: copper rule + Cormorant serif in --tx-pure */}
       <section className="flex items-center gap-3">
-        <Link href="/portal/lkpm">
+        <Link
+          href="/portal/lkpm"
+          prefetch={false}
+          aria-label="Back to LKPM reports"
+          className={`rounded ${FIELD_FOCUS_CLASS}`}
+        >
           <ArrowLeft
             className="w-5 h-5"
             style={{ color: "var(--bz-text-2)" }}

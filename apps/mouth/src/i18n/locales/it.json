@@ -261,6 +261,7 @@
       "errors": {
         "invalid_credentials": "Email o PIN non corretti. Riprova.",
         "account_locked": "Account bloccato per sicurezza. Contatta team@balizero.com.",
+        "portal_unavailable": "L'accesso al portale non è disponibile per questo account. Contatta team@balizero.com.",
         "rate_limited": "Troppi tentativi. Riprova tra {{seconds}} secondi.",
         "invalid_2fa": "Codice 2FA non valido.",
         "network_error": "Connessione persa. Verifica la rete e riprova.",
@@ -271,7 +272,7 @@
     },
     "forgot_password": {
       "title": "Recupera accesso",
-      "sent": "Abbiamo ricevuto la tua richiesta. Il team ti contatterà."
+      "instructions": "Contatta il nostro team per recuperare l'accesso. Non è stata ancora inviata alcuna richiesta."
     }
   },
   "book": {
@@ -383,7 +384,7 @@
       "q5": "La mia famiglia può aggregarsi con il visto Second Home?",
       "a5": "È disponibile un add-on famiglia — i familiari idonei possono aggregarsi tramite i percorsi per dipendenti. Regole e costi aggiornati vengono confermati individualmente nel fit memo gratuito.",
       "q6": "Quanto costa il visto Second Home con Bali Zero?",
-      "a6": "IDR 39.000.000 tutto incluso per l'E33 base — una cifra sola, tutto compreso. Il fit memo che valuta il tuo percorso è gratuito."
+      "a6": "{{price}} tutto incluso per l'E33 base — una cifra sola, tutto compreso. Il fit memo che valuta il tuo percorso è gratuito."
     },
     "cta": {
       "title": "Inizia con un fit memo gratuito",

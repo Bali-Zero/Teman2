@@ -5,6 +5,11 @@ description: "Corner for Visa Oracle v2 — the immigration Decision Tree rebuil
 
 # VISA ORACLE v2 — Decision Tree (corner /visaoracle)
 
+> **CURRENT HANDOFF (read first):** `CURRENT_STATE.md` contains the canonical
+> 2026-08-07 repository/production state, reviewed SHAs, gate matrix, evidence,
+> open operational blockers and safe resume sequence. Its production verdict is
+> **NO-GO / SHADOW** even though repository G0–G6 passed on the frozen baseline.
+
 ## Mission
 
 Rebuild the Visa Oracle immigration funnel as Bali Zero's flagship public tool: an interactive
@@ -140,6 +145,98 @@ hook-enforced); Sonnet implements; research outputs persisted under `research/vi
 as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
 ## LIVE STATE (update on every state change — whoever changes state updates this section)
+
+- 2026-08-07 (Mini, Visa Oracle V2 completion): **REPOSITORY CANDIDATE G0–G6 PASS;
+  PRODUCTION REMAINS NO-GO/SHADOW.** Exact independently reviewed delivery
+  `e15fc1b84501cbdc2e023497b3e1af298f51034f`, baseline `cd343655c`, verdict
+  0 BLOCKER / 0 MEDIUM. Migration 267 closes atomic complete-set legal-period
+  correction; `activate_pack` now binds separation to real `session_user` and
+  rejects the same-login/two-`SET ROLE` attack. Privacy Policy V1, exact
+  PricingTool, retention scheduler artifacts, official Calling Visa archive,
+  five-state UI and real backend authority are repository-ready. Mini/Pro were
+  out of sync at handoff and the branch was behind later `main`; do not merge or
+  ENFORCE before sync/rebase, impacted G5/G6, role/migration provisioning,
+  analytics TTL proof, DPIA, production smoke and kill-switch drill. Full state:
+  `.agents/skills/visaoracle/CURRENT_STATE.md`.
+
+- 2026-08-08 (Mini, night 07→08, operational gates executed): **ONLINE IN
+  SHADOW — every operational blocker from the prior entry now proven green
+  in real production, except the 2 that stay Zero-only (DPIA, analytics TTL)
+  and ENFORCE itself.** PR #3732 merged to `main` (`63234a12a`). D1 roles
+  provisioned; P0 outage (D1 broke `FOR SHARE` in 3 migration-264 triggers)
+  diagnosed and hand-cured same night, PR #3766 open to codify as migration
+  268 (idempotent catch-up, not a new prod change). Privacy Policy V1
+  registered; retention scheduler installed on Mini and later flipped
+  `APPLY=true` (real deletions, confirmed healthy from 16:01:37Z). Cell
+  sensor + Telegram P0-on-failure alerting both confirmed armed (a benign
+  false page fired once during a DSN test bug, worth mentioning to Zero, not
+  a real incident).
+
+  Cameroon/Guinea Calling Visa fix activated as `rulepack-prod-003` (seq 3,
+  version `2026.8.8`, `rule_pack_id 37be33e4-8fbb-55bc-8fe2-7dcb23eab979`,
+  activation `783f5fcc-d7cd-4cc5-ba22-c6724d4a3bf1`, reason
+  `g1-calling-visa-retroactive-fix`, 16:34:34Z). `rulepack-prod-002` (the
+  first attempt, seq 2, `valid_period.from=2026-08-06`) was signed and
+  inserted but the bitemporal guard refused activation twice — its
+  legal_period did not fully cover `prod-001`'s still-open
+  `[2026-07-25, ∞)`; its row is now permanently inert (append-only, sequence
+  unique per env/jurisdiction/domain). Fix: re-signed identical content as
+  seq 3 with `valid_period.from=2026-07-25` (retroactive — the official
+  CM/GN removal sources predate the whole contested window). New
+  `rule_pack_id` convention adopted (historical one not reconstructable from
+  2 samples): `uuid5(NAMESPACE_URL,
+"https://balizero.com/visa-oracle/rule-pack/<ENV>/<JURISDICTION>/<DOMAIN>/<sequence>")`.
+  A mandatory pre-activation semantic diff caught one change outside the
+  expected CM/GN/NE scope (`LIMITED_STAY.extension_policy.allowed
+true→false`) — verified deliberate (G1 packet point 9, fail-closed
+  `UNKNOWN` invariant), Zero-approved, not a defect.
+
+  Live smoke 3/3 (16:37:16–16:37:37Z), all citing `sequence=3/version
+2026.8.8`: Cameroon → normal document path, no more `CALLING_VISA_REVIEW`
+  (the fix); **Nigeria → still `CALLING_VISA_REVIEW` only** (positive
+  control, mechanism stays armed); Italy → unchanged baseline. Freshness gap
+  closed: all 28 sources now `CURRENT` (19 portal @ 7d, 9 primary-law @
+  365d) vs the previously-active pack's `freshness_policy=null` on every
+  source. Independent post-activation DB re-verification (separate
+  operator): 2 activation rows, seq 3 current, seq 1 closed with no gap.
+
+  Kill-switch drill executed both directions and proven (not just
+  rehearsed): `SHADOW→OFF` 16:10:50Z, verified `EVALUATE_SURFACE_DISABLED`
+  by 16:12:28Z; `OFF→SHADOW` 16:12:43Z, verified restored by 16:13:44Z, all
+  4 machines consistent — this doubles as the rollback proof. Engine
+  confirmed live `VISA_ENGINE_EVALUATE_MODE=SHADOW`; ENFORCE was never
+  requested or flipped, remains blocked on the DPIA/analytics-TTL items.
+  Full evidence: `.agents/skills/visaoracle/CURRENT_STATE.md` §"Production
+  operational verification"; memory
+  `ops_visa_oracle_pack003_gates_proven_2026_08_08.md`.
+
+- 2026-08-08 (Mini, second entry same day — 0%-conclusive-rate diagnosis): **ROOT
+  CAUSE FOUND for the prod ledger's 6,610/6,610 `HUMAN_REVIEW_REQUIRED` (0%
+  conclusive).** Not a fact-collection gap — a live SHADOW `evaluate` call
+  (`mode:CURATED`, innocuous) with ALL 40 facts supplied (IT/TOURISM/10d/valid
+  passport) still returned `HUMAN_REVIEW_REQUIRED`, citing 15 review reasons, all
+  `hr.d1-*`/`hr.d2-*`/`hr.d12-*` (multiple-entry e-visa siblings), zero mention of B1.
+  Mechanism: 31/63 `PRODUCTS`-scoped `HUMAN_REVIEW` rules in the active pack (seq 3,
+  content = `rulepack-prod-002.source.json`) are keyed on `intent.purposes` alone
+  (± `stay_days`) — always TRUE for the declared purpose, regardless of which
+  product route the applicant actually wants (D1/D2/D12 don't even check
+  `intent.entry_pattern`/purpose-specificity) — and `evaluator.py:1391-1397`'s
+  documented precedence ("REVIEW beats SUPPORTED unconditionally", `enums.py:41-47`)
+  lets ANY one reviewed sibling product mask a fully-eligible B1 candidate in the
+  same purpose-set. Systemic, not TOURISM-specific — the 31-rule pattern spans
+  EMPLOYMENT/STUDY/FAMILY/TOURISM/BUSINESS/INVESTMENT categories, explaining the
+  ledger's near-100% abstention across all purposes, not just tourism. Full
+  root-cause write-up + ordered fix list (RulePack seq-4: narrow D1/D2/D12 scope +
+  add VOA-eligible-nationality gate to `el.b1.tourism`, currently absent) in
+  `.agents/skills/visaoracle/HANDOFF-2026-08-08-voa-conclusive-rate.md`. Deploy
+  pipeline note (unrelated to this diagnosis, found while checking state): PR #3766
+  (migration 268, retention-binding `SECURITY DEFINER`) merged to main
+  (`9d27f0f84`), but its post-merge Fly deploy **failed** — `must be owner of
+function public.bind_visa_evaluate_idempotency_retention_policy` (least-privilege
+  ownership gap on the release-command role) — no fix PR open yet as of this commit;
+  does not block the RulePack-only fix above (pack changes go through
+  `activate_pack.py`, not a schema migration). GATE STATUS (ENFORCE) unchanged: 🔴
+  RED, DPIA/analytics-TTL still Zero-only.
 
 - 2026-07-17: corner created. Round 1 research lanes in flight (Gemini/Codex/GLM/web). Worktree
   `mouth-visa-oracle` active. No PR — worktree-only until operator-analyzed final draft.
@@ -339,7 +436,7 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   (find-my-way/hono/prisma, 3 high — infra-lane fix needed on main, not the visa lane).
   R1-gate lesson recorded: `adversarial_review:` accepts only gate seats
   (agy/codex/gemini/glm/gpt-5.5/grok/kimi*/nlm) + `human-*`/`exempt-\*`, and every research
-  file needs a `## Adversarial review` body section with surviving-objection dispositions.
+file needs a `## Adversarial review` body section with surviving-objection dispositions.
   GATE STATUS unchanged: 🔴 RED.
 - 2026-07-24 (M5, Kimi orchestrator, evening): **WAVE 1 100% on main + W2 KICKED OFF** (Zero:
   "parti ora"). Wave 0+1 all merged: #3032 (funnel resurrected, live-smoked 201), #3033,

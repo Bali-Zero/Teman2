@@ -380,3 +380,298 @@ def test_twin_does_not_block_the_event_loop_on_a_cold_token(monkeypatch):
     src = inspect.getsource(crm_enhanced._download_drive_file)
     assert "asyncio.to_thread" in src
     assert "drive_service.credentials.refresh(" not in src
+
+
+# --- the write-side twin: registering a NEW file_id, not reading one --------
+#
+# THE DEFECT (PENDING-ARMS 2026-08-01, named in `_assert_file_is_ours`'s own
+# docstring as the gap it deliberately does not close). `POST
+# .../clients/{client_id}/documents` (+ its bulk and company twins) stored the
+# caller-supplied Drive `file_id` verbatim, no provenance check at all. The
+# read guard above bounds a LOOKUP to "any client/company the CRM already
+# holds" — correct there, because the caller already holds a row that put the
+# file there. It is the wrong question for a WRITE: a caller with access to
+# client A could register a file belonging to client B and then read it back
+# through the proxy above, since the registry itself would now vouch for it.
+#
+# What is pinned here is the one property the read guard's `_FOLDER_REGISTERED_SQL`
+# cannot express: SCOPED ownership. A file registered to (or owned by) ANY
+# client is not enough — it must resolve to the ONE client/company being
+# written to.
+
+
+class _FakeDriveFileClient:
+    """Answers Drive `GET .../files/{id}` from a small id -> parents world,
+    for BOTH the top-level metadata fetch and the ancestor-walk's per-folder
+    lookups — same shape as `_tree_fetcher` above, but as an httpx.AsyncClient
+    substitute since the write guard opens its own client rather than
+    accepting one."""
+
+    def __init__(
+        self,
+        world: dict[str, list[str]],
+        statuses: dict[str, int] | None = None,
+        transport_errors: set[str] | None = None,
+    ):
+        self._world = world
+        self._statuses = statuses or {}
+        self._transport_errors = transport_errors or set()
+        self.calls: list[str] = []
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+    async def get(self, url, params=None, headers=None, **_kwargs):
+        fid = url.rsplit("/", 1)[-1]
+        self.calls.append(fid)
+        if fid in self._transport_errors:
+            import httpx
+
+            raise httpx.ConnectError("simulated transport failure")
+        status = self._statuses.get(fid, 200)
+        if status != 200:
+            return _FakeResponse(status, {})
+        return _FakeResponse(200, {"parents": self._world.get(fid, [])})
+
+
+class _FakeAcquireSelf:
+    def __init__(self, target):
+        self._target = target
+
+    async def __aenter__(self):
+        return self._target
+
+    async def __aexit__(self, *exc):
+        return False
+
+
+class _FakeOwnerPool:
+    """Answers the client/company SCOPED-ownership queries — the whole point
+    of the write guard is that this predicate takes an owner id, unlike the
+    read guard's `_FOLDER_REGISTERED_SQL`.
+
+    Despite the name, this doubles as the ALREADY-OPEN CONNECTION the guard
+    now takes directly (2026-08-09, adversarial review finding: a nested
+    `db_pool.acquire()` while the caller already holds one from the same
+    bounded pool is a real deadlock at pool saturation, not just latency —
+    see `_assert_file_descends_from_owner`'s docstring). `acquire_calls`
+    proves the guard never re-acquires: every call site now passes its own
+    `conn` straight through."""
+
+    def __init__(
+        self,
+        mod,
+        client_folders: dict[int, set[str]] | None = None,
+        company_folders: dict[int, set[str]] | None = None,
+    ):
+        self._mod = mod
+        self._client_folders = client_folders or {}
+        self._company_folders = company_folders or {}
+        self.calls: list[tuple[str, tuple]] = []
+        self.acquire_calls = 0
+
+    def acquire(self):  # pragma: no cover - must never be called by the guard
+        self.acquire_calls += 1
+        return _FakeAcquireSelf(self)
+
+    async def fetchrow(self, sql, *args):
+        self.calls.append((sql, args))
+        owner_id, folder_ids = args
+        if sql is self._mod._CLIENT_OWNS_FOLDER_SQL:
+            owned = self._client_folders.get(owner_id, set())
+        elif sql is self._mod._COMPANY_OWNS_FOLDER_SQL:
+            owned = self._company_folders.get(owner_id, set())
+        else:
+            raise AssertionError(f"unexpected query: {sql[:60]}")
+        return (1,) if owned.intersection(folder_ids) else None
+
+
+def _patch_drive_client(monkeypatch, mod, fake_client):
+    async def _token():
+        return "tok"
+
+    monkeypatch.setattr(mod, "_get_drive_access_token", _token)
+    monkeypatch.setattr(mod.httpx, "AsyncClient", lambda **_k: fake_client)
+
+
+@pytest.mark.asyncio
+async def test_write_guard_innocence_a_file_directly_under_the_owning_client_passes(
+    mod, monkeypatch
+):
+    fake_client = _FakeDriveFileClient({"fileA0001Z": ["client-1-folder"]})
+    _patch_drive_client(monkeypatch, mod, fake_client)
+    conn = _FakeOwnerPool(mod, client_folders={1: {"client-1-folder"}})
+    await mod.assert_drive_file_belongs_to_client("fileA0001Z", 1, conn)
+    assert conn.acquire_calls == 0
+
+
+@pytest.mark.asyncio
+async def test_write_guard_innocence_a_file_nested_under_the_owning_client_passes(
+    mod, monkeypatch
+):
+    """Mirrors the read guard's own two-level test: a fresh upload/browser file
+    sitting in `<client>/01_Immigration/Actual Visa/…` must still be provable —
+    the write guard cannot be stricter than the thing it authorises for."""
+    fake_client = _FakeDriveFileClient(
+        {"fileA0001Z": ["actual-visa"], "actual-visa": ["immigration"], "immigration": ["client-1-folder"]}
+    )
+    _patch_drive_client(monkeypatch, mod, fake_client)
+    pool = _FakeOwnerPool(mod, client_folders={1: {"client-1-folder"}})
+    await mod.assert_drive_file_belongs_to_client("fileA0001Z", 1, pool)
+    assert fake_client.calls == ["fileA0001Z", "actual-visa", "immigration"]
+
+
+@pytest.mark.asyncio
+async def test_write_guard_guilt_a_file_under_a_different_clients_folder_is_refused(
+    mod, monkeypatch
+):
+    """THE case the read guard's own registry check cannot express: this file
+    IS a legitimately client-owned Drive file — just not THIS client's."""
+    fake_client = _FakeDriveFileClient({"fileA0001Z": ["client-2-folder"]})
+    _patch_drive_client(monkeypatch, mod, fake_client)
+    pool = _FakeOwnerPool(
+        mod, client_folders={1: {"client-1-folder"}, 2: {"client-2-folder"}}
+    )
+    with pytest.raises(HTTPException) as exc:
+        await mod.assert_drive_file_belongs_to_client("fileA0001Z", 1, pool)
+    assert exc.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_write_guard_guilt_a_registry_hit_for_another_client_still_refuses(
+    mod, monkeypatch
+):
+    """The strongest version of the case above: prove the write guard does NOT
+    fall back to "is this file registered ANYWHERE" the way the read guard's
+    `_file_is_registered` half does. A file with no discoverable parents at all
+    (the exact shape that legitimately passes the READ guard once it is
+    registered) must still be refused here — nothing registers it for THIS
+    client, and the write guard never consults `_REGISTERED_FILE_SQL`."""
+    fake_client = _FakeDriveFileClient({"fileA0001Z": []})
+    _patch_drive_client(monkeypatch, mod, fake_client)
+    pool = _FakeOwnerPool(mod, client_folders={1: {"client-1-folder"}})
+    with pytest.raises(HTTPException) as exc:
+        await mod.assert_drive_file_belongs_to_client("fileA0001Z", 1, pool)
+    assert exc.value.status_code == 403
+    assert not any(sql is mod._REGISTERED_FILE_SQL for sql, _ in getattr(pool, "calls", []))
+
+
+@pytest.mark.asyncio
+async def test_write_guard_guilt_a_failed_metadata_fetch_denies_rather_than_permits(
+    mod, monkeypatch
+):
+    fake_client = _FakeDriveFileClient({}, statuses={"fileA0001Z": 404})
+    _patch_drive_client(monkeypatch, mod, fake_client)
+    pool = _FakeOwnerPool(mod, client_folders={1: {"client-1-folder"}})
+    with pytest.raises(HTTPException) as exc:
+        await mod.assert_drive_file_belongs_to_client("fileA0001Z", 1, pool)
+    assert exc.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_write_guard_guilt_a_transport_error_denies_rather_than_500s(mod, monkeypatch):
+    """The top-level metadata fetch previously had no `try/except` around it
+    (unlike `_drive_parent_fetcher._fetch`, which already caught
+    `httpx.HTTPError`) — a timeout/connect-error there propagated uncaught
+    past the guard's intended fail-closed 403, surfacing as a raw 500 in
+    `create_document` (no local try/except) instead of a clean refusal."""
+    fake_client = _FakeDriveFileClient({}, transport_errors={"fileA0001Z"})
+    _patch_drive_client(monkeypatch, mod, fake_client)
+    pool = _FakeOwnerPool(mod, client_folders={1: {"client-1-folder"}})
+    with pytest.raises(HTTPException) as exc:
+        await mod.assert_drive_file_belongs_to_client("fileA0001Z", 1, pool)
+    assert exc.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_write_guard_guilt_a_malformed_id_never_reaches_the_network(mod, monkeypatch):
+    async def _explode():  # pragma: no cover - must never run
+        raise AssertionError("a token was minted for a malformed id")
+
+    monkeypatch.setattr(mod, "_get_drive_access_token", _explode)
+    pool = _FakeOwnerPool(mod, client_folders={1: {"client-1-folder"}})
+    with pytest.raises(HTTPException) as exc:
+        await mod.assert_drive_file_belongs_to_client("../../../etc/passwd", 1, pool)
+    assert exc.value.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_write_guard_company_variant_scopes_to_the_specific_company(mod, monkeypatch):
+    fake_client = _FakeDriveFileClient({"fileA0001Z": ["company-2-folder"]})
+    _patch_drive_client(monkeypatch, mod, fake_client)
+    pool = _FakeOwnerPool(
+        mod, company_folders={1: {"company-1-folder"}, 2: {"company-2-folder"}}
+    )
+    with pytest.raises(HTTPException) as exc:
+        await mod.assert_drive_file_belongs_to_company("fileA0001Z", 1, pool)
+    assert exc.value.status_code == 403
+
+    # And the matching company IS authorised.
+    await mod.assert_drive_file_belongs_to_company("fileA0001Z", 2, pool)
+
+
+class _BareConn:
+    """A connection with `fetchrow` and deliberately NO `acquire` at all — the
+    strongest proof the guard treats its third argument as an already-open
+    connection, not a pool: a real `asyncpg.Connection` has no `.acquire()`
+    either, so if the guard ever called it, this fake would raise
+    `AttributeError` instead of silently degrading."""
+
+    def __init__(self, mod, client_folders: dict[int, set[str]]):
+        self._mod = mod
+        self._client_folders = client_folders
+
+    async def fetchrow(self, sql, *args):
+        owner_id, folder_ids = args
+        assert sql is self._mod._CLIENT_OWNS_FOLDER_SQL
+        owned = self._client_folders.get(owner_id, set())
+        return (1,) if owned.intersection(folder_ids) else None
+
+
+@pytest.mark.asyncio
+async def test_write_guard_never_acquires_a_second_connection_from_the_pool(
+    mod, monkeypatch
+):
+    """Guilt-shaped regression for the adversarial-review finding: a guard
+    that still called `db_pool.acquire()` while the caller already holds a
+    connection from the same bounded pool would deadlock at pool saturation
+    (every in-flight request holding its outer connection idle across the
+    Drive round-trip, with no free slot left for the guard's own acquire).
+    A bare connection object with no `acquire` proves the call never
+    happens — an `AttributeError` here means the regression came back."""
+    fake_client = _FakeDriveFileClient({"fileA0001Z": ["client-1-folder"]})
+    _patch_drive_client(monkeypatch, mod, fake_client)
+    conn = _BareConn(mod, client_folders={1: {"client-1-folder"}})
+    await mod.assert_drive_file_belongs_to_client("fileA0001Z", 1, conn)
+
+
+def test_write_guard_queries_scope_by_owner_id_unlike_the_read_guards_registry(mod):
+    """The one structural property that makes this a different guard, not a
+    copy: both new queries filter on the owner's own primary key."""
+    assert "id = $1" in mod._CLIENT_OWNS_FOLDER_SQL
+    assert "google_drive_folder_id" in mod._CLIENT_OWNS_FOLDER_SQL
+    assert "drive_folder_id" in mod._CLIENT_OWNS_FOLDER_SQL
+    assert "id = $1" in mod._COMPANY_OWNS_FOLDER_SQL
+    assert "tax_dept_folder_id" in mod._COMPANY_OWNS_FOLDER_SQL
+
+
+def test_write_guard_is_actually_wired_into_all_four_call_sites():
+    """A guard defined and not called is the failure mode this whole triage was
+    about (see `test_both_handlers_are_guarded` above) — same check for the
+    write side's four sites: client create, client bulk create, client PATCH
+    (added 2026-08-09 — the adversarial review found this one unguarded:
+    `PATCH .../documents/{doc_id}` writes `documents.file_id` through the same
+    column the original three sites protect), company create."""
+    import inspect
+
+    from backend.app.modules.crm import company_router
+    from backend.app.routers import crm_enhanced_documents
+
+    client_src = inspect.getsource(crm_enhanced_documents)
+    assert client_src.count("await assert_drive_file_belongs_to_client(") >= 3
+
+    company_src = inspect.getsource(company_router)
+    assert "await assert_drive_file_belongs_to_company(" in company_src
