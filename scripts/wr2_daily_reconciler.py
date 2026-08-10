@@ -46,6 +46,8 @@ from typing import Any
 _REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_REPO))
 
+from scripts.tg_gateway_verdict import extract_gateway_verdict, gateway_delivered  # noqa: E402
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("wr2.daily_reconciler")
 
@@ -156,9 +158,11 @@ def _tg_notify(tier: str, dedup_key: str, text: str) -> bool:
         res = subprocess.run(
             [sys.executable, str(script), "--tier", tier,
              "--source", "wr2-daily-reconciler", "--dedup-key", dedup_key, text],
-            capture_output=True, timeout=30,
+            capture_output=True, text=True, timeout=30,
         )
-        return res.returncode == 0
+        verdict = extract_gateway_verdict(res.stderr)
+        logger.info("tg_notify: %s", verdict or f"NESSUN verdetto rc={res.returncode}")
+        return res.returncode == 0 and gateway_delivered(verdict)
     except Exception as exc:  # noqa: BLE001
         logger.warning("tg_notify failed: %s", exc)
         return False

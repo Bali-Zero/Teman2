@@ -77,6 +77,23 @@ run() { # run <expected: BUILD|SKIP> <label> ; env vars come from the caller
   fi
 }
 
+run_log_safe() { # run_log_safe <expected> <label> <required-log-fragment> <sentinel>...
+  local want="$1" label="$2" required="$3" output got rc sentinel safe=1
+  shift 3
+  output=$( ( cd "$WORK" && bash "$SCRIPT" >/dev/null ) 2>&1 ); rc=$?
+  case $rc in 1) got=BUILD ;; 0) got=SKIP ;; *) got="rc=$rc" ;; esac
+  for sentinel in "$@"; do
+    [[ "$output" != *"$sentinel"* ]] || safe=0
+  done
+  if [ "$got" = "$want" ] && [[ "$output" == *"$required"* ]] && [ "$safe" -eq 1 ]; then
+    PASS=$((PASS+1)); printf '  ok    %-58s %s\n' "$label" "$got"
+  else
+    FAIL=$((FAIL+1))
+    printf '  FAIL  %-58s want %s without sentinel, got %s; log=%s\n' \
+      "$label" "$want" "$got" "$output"
+  fi
+}
+
 echo "=== GUILT: a build is genuinely needed"
 
 git -C "$WORK" checkout -q -b feat/frontend main
@@ -186,6 +203,50 @@ PREV=$(git -C "$WORK" rev-parse HEAD)
 commit "apps/mouth/app/late.tsx" "frontend arrives later in the branch"
 VERCEL_GIT_COMMIT_REF=docs/ledger VERCEL_GIT_PREVIOUS_SHA="$PREV" \
   run BUILD "second deploy, frontend delta"
+
+echo
+echo "=== NO-ORIGIN CONTAINER: Vercel's clone has no usable origin at all (measured 2026-08-10)"
+# The live failure was not an unreachable origin but a MISSING one: `fatal: 'origin' does not
+# appear to be a git repository` on every first deployment, so the fail-open bought a full
+# build each time. These cases delete the remote AND the tracking ref, so a SKIP can only come
+# from the URL-fallback fetch (SHOULD_BUILD_FETCH_URL stands in for the constructed GitHub URL).
+git -C "$WORK" checkout -q -b docs/noorigin main
+commit "research/operations/no-origin-note.md" "docs only, container without origin"
+git -C "$WORK" update-ref -d refs/remotes/origin/main
+git -C "$WORK" remote remove origin
+VERCEL_GIT_COMMIT_REF=docs/noorigin VERCEL_GIT_PREVIOUS_SHA= SHOULD_BUILD_FETCH_URL="$UPSTREAM" \
+  run SKIP "no origin remote, URL fallback resolves -> docs-only skips"
+
+# The override is an operational seam. A credentialed URL (or any sensitive locator) must
+# never be echoed into build logs on either success or failure.
+FETCH_SENTINEL=SAFE_FETCH_TARGET_93af
+PRIVATE_UPSTREAM="$ROOT/$FETCH_SENTINEL/upstream.git"
+mkdir -p "$(dirname "$PRIVATE_UPSTREAM")"
+git clone -q --bare "$UPSTREAM" "$PRIVATE_UPSTREAM"
+VERCEL_GIT_COMMIT_REF=docs/noorigin VERCEL_GIT_PREVIOUS_SHA= SHOULD_BUILD_FETCH_URL="$PRIVATE_UPSTREAM" \
+  run_log_safe SKIP "URL fallback succeeds without logging its target" "from url -> merge-base" "$FETCH_SENTINEL"
+
+git -C "$WORK" checkout -q -b feat/noorigin main
+commit "apps/mouth/app/no-origin.tsx" "frontend, container without origin"
+VERCEL_GIT_COMMIT_REF=feat/noorigin VERCEL_GIT_PREVIOUS_SHA= SHOULD_BUILD_FETCH_URL="$UPSTREAM" \
+  run BUILD "no origin remote, URL fallback resolves, frontend delta (guilt)"
+
+git -C "$WORK" checkout -q -b docs/nourl main
+commit "docs/no-url.md" "docs only, and nothing fetchable at all"
+VERCEL_GIT_COMMIT_REF=docs/nourl VERCEL_GIT_PREVIOUS_SHA= SHOULD_BUILD_FETCH_URL="$ROOT/$FETCH_SENTINEL/does-not-exist.git" \
+  run_log_safe BUILD "dead URL fails open without logging its target" "cannot fetch main from origin or URL" "$FETCH_SENTINEL"
+
+# Git can normalize a failed HTTP locator before echoing it (for example, stripping userinfo
+# while retaining the query string), so exact-string replacement is not a sufficient redactor.
+FETCH_USERINFO_SENTINEL=SENTINEL_USERINFO_8c17
+FETCH_QUERY_SENTINEL=SENTINEL_QUERY_5e62
+CRED_FETCH_URL="http://sentinel-user:${FETCH_USERINFO_SENTINEL}@127.0.0.1:1/repo.git?access_token=${FETCH_QUERY_SENTINEL}"
+VERCEL_GIT_COMMIT_REF=docs/nourl VERCEL_GIT_PREVIOUS_SHA= SHOULD_BUILD_FETCH_URL="$CRED_FETCH_URL" \
+  run_log_safe BUILD "normalized HTTP errors never leak credentials" \
+  "origin fetch failed | URL fetch failed" "$FETCH_USERINFO_SENTINEL" "$FETCH_QUERY_SENTINEL"
+
+git -C "$WORK" remote add origin "$UPSTREAM"
+git -C "$WORK" fetch -q origin main:refs/remotes/origin/main
 
 echo
 echo "=== THE EXIT CONTRACT: nothing may leave this script with a status other than 0 or 1"

@@ -85,9 +85,9 @@ if [ -z "$BASE" ]; then
   # The guard was safe (it built too much, never too little) but effectively inert on its main case.
   #
   # Worse, the reason was unknowable: the fetch's stderr went to /dev/null, so the log said
-  # "cannot fetch" and nothing else. A fail-open branch that does not say WHY it opened cannot
-  # be repaired from its own evidence. So: cheapest-first resolution, each path announcing
-  # itself, and the fetch's actual error surfaced.
+  # "cannot fetch" and nothing else. A fail-open branch that does not say WHICH stage opened
+  # cannot be repaired from its own evidence. So: cheapest-first resolution, each stage
+  # announcing itself without replaying Git stderr, which may contain an authenticated URL.
   if [ "$REF" = "$PROD_BRANCH" ]; then
     log "production branch with no previous deployment -> BUILD (never risk a stale production)"
     exit 1
@@ -117,19 +117,45 @@ if [ -z "$BASE" ]; then
   fi
 
   # (3) Only now pay for the network — and keep the error, which is the whole point.
+  #
+  # The named remote is tried first, but it is NOT how this resolves on Vercel: measured live
+  # on 2026-08-10 (deployment C1BqEsSc…, branch agent/air-m5/ops/tg-senders-batch2), the build
+  # container's clone has no usable `origin` at all —
+  #     fatal: 'origin' does not appear to be a git repository
+  # — so every first deployment fell through to fail-open and bought a full 1,755-page build:
+  # the exact 89%-of-waste case this block exists to close, inert for a second reason after
+  # the 2026-07-30 rework fixed the first. The cure is to fetch the production branch straight
+  # from the repository URL that Vercel itself advertises in the build env
+  # (VERCEL_GIT_REPO_OWNER/SLUG; the repo is public, an anonymous fetch suffices).
+  # SHOULD_BUILD_FETCH_URL overrides the constructed URL — test seam and emergency lever.
+  # Every failure still exits 1 (BUILD), with each failed transport named. Git stderr is never
+  # logged because it can normalize and repeat credentials or query tokens from the fetch URL.
   if [ -z "$BASE" ]; then
-    if fetch_err=$(git fetch --no-tags --depth=200 origin "$PROD_BRANCH" 2>&1); then
-      if BASE=$(git merge-base FETCH_HEAD HEAD 2>/dev/null) && [ -n "$BASE" ]; then
-        log "fetched $PROD_BRANCH -> merge-base ${BASE:0:9}"
-      else
-        BASE=
-        log "fetched $PROD_BRANCH but no merge-base (shallow clone?) -> BUILD (fail-open)"
+    fetched=
+    if git fetch --no-tags --depth=200 origin "$PROD_BRANCH" >/dev/null 2>&1; then
+      fetched=origin
+    else
+      FETCH_URL="${SHOULD_BUILD_FETCH_URL:-}"
+      if [ -z "$FETCH_URL" ] && [ -n "${VERCEL_GIT_REPO_OWNER:-}" ] && [ -n "${VERCEL_GIT_REPO_SLUG:-}" ]; then
+        FETCH_URL="https://github.com/${VERCEL_GIT_REPO_OWNER}/${VERCEL_GIT_REPO_SLUG}.git"
+      fi
+      if [ -z "$FETCH_URL" ]; then
+        log "cannot fetch $PROD_BRANCH (no origin, no repo env to build a URL) -> BUILD (fail-open). origin fetch failed"
         exit 1
       fi
+      if git fetch --no-tags --depth=200 "$FETCH_URL" "$PROD_BRANCH" >/dev/null 2>&1; then
+        # The override is an operational seam and may contain credentials or another
+        # sensitive locator. The fetch target must never be copied into Vercel logs.
+        fetched=url
+      else
+        log "cannot fetch $PROD_BRANCH from origin or URL -> BUILD (fail-open). origin fetch failed | URL fetch failed"
+        exit 1
+      fi
+    fi
+    if BASE=$(git merge-base FETCH_HEAD HEAD 2>/dev/null) && [ -n "$BASE" ]; then
+      log "fetched $PROD_BRANCH from $fetched -> merge-base ${BASE:0:9}"
     else
-      # One line, truncated: enough to diagnose auth vs network vs missing remote, without
-      # dumping a wall of git output into every build log.
-      log "cannot fetch $PROD_BRANCH -> BUILD (fail-open). git said: $(printf '%s' "$fetch_err" | tr '\n' ' ' | cut -c1-200)"
+      log "fetched $PROD_BRANCH from $fetched but no merge-base (shallow clone?) -> BUILD (fail-open)"
       exit 1
     fi
   fi

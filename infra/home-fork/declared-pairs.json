@@ -1,34 +1,34 @@
 {
-  "_doc": "Declared HOME-executed script copies and their git-tracked twins (superscar #1 HOME-fork drift). Consumed by scripts/lint_home_fork.py --check (sha256 live vs repo) and --discover (a HOME-executed payload NOT listed here and NOT allow-matched is an UNDECLARED finding). Overlapping SSOT note: scripts/proprioception.py DEFAULT_REGISTRY 'home_fork_scripts' declares its own pairs \u2014 lint_home_fork.py merges them at runtime (best-effort import) so the two lists cannot silently drift; add NEW pairs HERE. Paths use ~ (expanded per-machine: balizero on M5, nuzantara on Pro/Mini). 'machines': m5|pro|mini|all.",
+  "_doc": "Declared HOME-executed script copies and their git-tracked twins (superscar #1 HOME-fork drift). Consumed by scripts/lint_home_fork.py --check (sha256 live vs repo) and --discover (a HOME-executed payload NOT listed here and NOT allow-matched is an UNDECLARED finding). Overlapping SSOT note: scripts/proprioception.py DEFAULT_REGISTRY 'home_fork_scripts' declares its own pairs — lint_home_fork.py merges them at runtime (best-effort import) so the two lists cannot silently drift; add NEW pairs HERE. Paths use ~ (expanded per-machine: balizero on M5, nuzantara on Pro/Mini). 'machines': m5|pro|mini|all.",
   "pairs": [
     {
       "live": "~/.fly/bin/fly_pg_tunnel_supervisor.sh",
       "repo": "scripts/fly_pg_tunnel_supervisor.sh",
       "machines": ["m5"],
-      "_note": "Measured on all three machines 2026-08-06 (the skipped-pairs diagnostic of #3681, first live run, is what surfaced it): this live path exists on M5 only. Was 'all', which made --check chase a pair that is not there on Pro/Mini \u2014 the same mistake the regulatory-watcher entry already records. On Pro the payload runs from a repo path (the LaunchAgent's ProgramArguments name no plist references it on Pro at all), not from a HOME copy, so there is nothing to mirror there."
+      "_note": "Measured on all three machines 2026-08-06 (the skipped-pairs diagnostic of #3681, first live run, is what surfaced it): this live path exists on M5 only. Was 'all', which made --check chase a pair that is not there on Pro/Mini — the same mistake the regulatory-watcher entry already records. On Pro the payload runs from a repo path (the LaunchAgent's ProgramArguments name no plist references it on Pro at all), not from a HOME copy, so there is nothing to mirror there."
     },
     {
       "live": "~/.nuzantara-cron/agent_worktree_cleanup_cron.sh",
       "repo": "scripts/agent_worktree_cleanup_cron.sh",
       "machines": ["m5"],
-      "_note": "Measured on all three machines 2026-08-06 (the skipped-pairs diagnostic of #3681, first live run, is what surfaced it): this live path exists on M5 only. Was 'all', which made --check chase a pair that is not there on Pro/Mini \u2014 the same mistake the regulatory-watcher entry already records. On Pro the payload runs from a repo path (the LaunchAgent's ProgramArguments name ~/nuzantara/scripts/agent_worktree_cleanup_cron.sh), not from a HOME copy, so there is nothing to mirror there."
+      "_note": "Measured on all three machines 2026-08-06 (the skipped-pairs diagnostic of #3681, first live run, is what surfaced it): this live path exists on M5 only. Was 'all', which made --check chase a pair that is not there on Pro/Mini — the same mistake the regulatory-watcher entry already records. On Pro the payload runs from a repo path (the LaunchAgent's ProgramArguments name ~/nuzantara/scripts/agent_worktree_cleanup_cron.sh), not from a HOME copy, so there is nothing to mirror there."
     },
     {
       "live": "~/.nuzantara-cron/verify_connectome_run.sh",
       "repo": "scripts/verify_connectome_run.sh",
       "machines": ["m5"],
-      "_note": "Measured on all three machines 2026-08-06 (the skipped-pairs diagnostic of #3681, first live run, is what surfaced it): this live path exists on M5 only. Was 'all', which made --check chase a pair that is not there on Pro/Mini \u2014 the same mistake the regulatory-watcher entry already records. On Pro the payload runs from a repo path (the LaunchAgent's ProgramArguments name ~/nuzantara-deploy/scripts/verify_connectome_run.sh), not from a HOME copy, so there is nothing to mirror there."
+      "_note": "Measured on all three machines 2026-08-06 (the skipped-pairs diagnostic of #3681, first live run, is what surfaced it): this live path exists on M5 only. Was 'all', which made --check chase a pair that is not there on Pro/Mini — the same mistake the regulatory-watcher entry already records. On Pro the payload runs from a repo path (the LaunchAgent's ProgramArguments name ~/nuzantara-deploy/scripts/verify_connectome_run.sh), not from a HOME copy, so there is nothing to mirror there."
     },
     {
       "live": "~/scripts/regulatory-watcher-run.sh",
       "repo": "infra/launchagents/wrappers/regulatory-watcher-run.sh",
-      "_note": "Pro=active cron (heartbeat pro.regulatory_watcher_daily); M5=dormant aligned copy (workstation, no cron). NOT Mini \u2014 a Mini cron would be active-active split-brain (superscar #10) on the same delta the #2009 lock guards. Was 'all', which made lint --check chase a nonexistent Mini pair (false drift). Verified by content 2026-07-06.",
+      "_note": "Pro=active cron (heartbeat pro.regulatory_watcher_daily); M5=dormant aligned copy (workstation, no cron). NOT Mini — a Mini cron would be active-active split-brain (superscar #10) on the same delta the #2009 lock guards. Was 'all', which made lint --check chase a nonexistent Mini pair (false drift). Verified by content 2026-07-06.",
       "machines": ["pro", "m5"]
     },
     {
       "live": "~/.claude/agents/regulatory-watcher.md",
       "repo": ".claude/agents/regulatory-watcher.md",
-      "_note": "Task #95 (2026-07-27, defects 3+4): the Tier-1 workflow spec PROMPT_CLAUDE (in the wrapper above) literally instructs 'Read ~/.claude/agents/regulatory-watcher.md for full spec' \u2014 this HOME file was never repo-tracked before, so the schema/URL fixes landing here had no way to reach the live cron without a manual sync. Promoted to repo canon alongside its wrapper pair. Corrected 2026-08-07: this entry previously asserted 'same machine scope for the same reason (Pro=active, M5=dormant aligned copy, no Mini)' \u2014 that sentence, written while narrating the other two machines, was itself an unverified claim (W113: a replacement assertion written while correcting something else is unverified by default). Mini in fact HAS this file, sha256 4335975443\u2026 identical across repo canon, Pro, M5 AND Mini (re-verified 2026-08-07). Scope widened to include mini \u2014 no consumer-scope reasoning survives the correction, the file simply exists in the same place on all four copies.",
+      "_note": "Task #95 (2026-07-27, defects 3+4): the Tier-1 workflow spec PROMPT_CLAUDE (in the wrapper above) literally instructs 'Read ~/.claude/agents/regulatory-watcher.md for full spec' — this HOME file was never repo-tracked before, so the schema/URL fixes landing here had no way to reach the live cron without a manual sync. Promoted to repo canon alongside its wrapper pair. Corrected 2026-08-07: this entry previously asserted 'same machine scope for the same reason (Pro=active, M5=dormant aligned copy, no Mini)' — that sentence, written while narrating the other two machines, was itself an unverified claim (W113: a replacement assertion written while correcting something else is unverified by default). Mini in fact HAS this file, sha256 4335975443… identical across repo canon, Pro, M5 AND Mini (re-verified 2026-08-07). Scope widened to include mini — no consumer-scope reasoning survives the correction, the file simply exists in the same place on all four copies.",
       "machines": ["pro", "m5", "mini"]
     },
     {
@@ -51,19 +51,19 @@
     {
       "live": "~/scripts/codex/nightly-autofix-ci.sh",
       "repo": "scripts/codex/codex-nightly-autofix-ci.sh",
-      "_note": "Hourly codex auto-fix generator (plist com.nuzantara.codex-autofix-ci, StartCalendarInterval Minute=15, via cron-runner.sh). Declared 2026-07-06 together with the recursion-brake fix \u2014 was an UNDECLARED live payload (family #1); basenames differ by history.",
+      "_note": "Hourly codex auto-fix generator (plist com.nuzantara.codex-autofix-ci, StartCalendarInterval Minute=15, via cron-runner.sh). Declared 2026-07-06 together with the recursion-brake fix — was an UNDECLARED live payload (family #1); basenames differ by history.",
       "machines": ["pro"]
     },
     {
       "live": "~/scripts/wr2-ig-metrics-analyst-run.sh",
       "repo": "infra/launchagents/wrappers/wr2-ig-metrics-analyst-run.sh",
-      "_note": "Promoted to repo canon 2026-07-06 (healer tick) to close the sonnet-5 runtime-proof gap (PENDING-ARMS 2026-07-03): live copy called `claude` directly with no 'used: <tier>' log line. Repo canon adds explicit provenance logging only \u2014 same invocation, same model. The old tail of this note \u2014 'Live HOME copy on Pro still needs manual sync' \u2014 was measurably FALSE on 2026-08-08: canon, origin/main and Pro's live copy were all sha256 308915627885cf8c, byte-identical. A note that names a pending action which has since happened sends the next reader to realign a copy that is already aligned (W106: a frozen measurement inside the very registry that arbitrates the pair). Corrected, and the reason to keep the pair declared is unchanged: today's errexit cure (the agy health-check subshell inherited errexit and aborted the script on BOTH its exits \u2014 three silent dead runs 2026-07-19/26 and 08-02) lands in the canon, so the live copy MUST be re-copied after merge or the two diverge for real. Merging alone leaves the organ dead (W107 delivery gotcha: this live path is a real file, not a symlink). WIDENED 2026-08-09 (PENDING-ARMS 2026-08-08 entry): M5 carried an inert third variant, 353 lines behind canon (missing the B7 wall-clock timeout among other cures) but 0 crontab/LaunchAgent references there, so nothing was running the ancestor. Same reasoning as the external-bench pair below (W107: declare an inert-but-live copy so a future drift on it is visible, not silent). Also the SAME DAY canon moved again \u2014 PR #3876 retrofitted this wrapper with genuine gene conformance (heartbeat, kill-switch, single-instance PIDFILE, spawn-hardening), changing its sha256 to 292f5dcefabff8; the earlier '308915627885cf8c byte-identical' claim above is now itself stale in the other direction (a fact this pair's own history already lived once, per W106) \u2014 M5's copy was re-synced to the NEW canon (292f5dce...) in the same session that widened this declaration, so both machines started from a verified-current baseline rather than declaring a pair already known to drift.",
+      "_note": "Promoted to repo canon 2026-07-06 (healer tick) to close the sonnet-5 runtime-proof gap (PENDING-ARMS 2026-07-03): live copy called `claude` directly with no 'used: <tier>' log line. Repo canon adds explicit provenance logging only — same invocation, same model. The old tail of this note — 'Live HOME copy on Pro still needs manual sync' — was measurably FALSE on 2026-08-08: canon, origin/main and Pro's live copy were all sha256 308915627885cf8c, byte-identical. A note that names a pending action which has since happened sends the next reader to realign a copy that is already aligned (W106: a frozen measurement inside the very registry that arbitrates the pair). Corrected, and the reason to keep the pair declared is unchanged: today's errexit cure (the agy health-check subshell inherited errexit and aborted the script on BOTH its exits — three silent dead runs 2026-07-19/26 and 08-02) lands in the canon, so the live copy MUST be re-copied after merge or the two diverge for real. Merging alone leaves the organ dead (W107 delivery gotcha: this live path is a real file, not a symlink). WIDENED 2026-08-09 (PENDING-ARMS 2026-08-08 entry): M5 carried an inert third variant, 353 lines behind canon (missing the B7 wall-clock timeout among other cures) but 0 crontab/LaunchAgent references there, so nothing was running the ancestor. Same reasoning as the external-bench pair below (W107: declare an inert-but-live copy so a future drift on it is visible, not silent). Also the SAME DAY canon moved again — PR #3876 retrofitted this wrapper with genuine gene conformance (heartbeat, kill-switch, single-instance PIDFILE, spawn-hardening), changing its sha256 to 292f5dcefabff8; the earlier '308915627885cf8c byte-identical' claim above is now itself stale in the other direction (a fact this pair's own history already lived once, per W106) — M5's copy was re-synced to the NEW canon (292f5dce...) in the same session that widened this declaration, so both machines started from a verified-current baseline rather than declaring a pair already known to drift.",
       "machines": ["pro", "m5"]
     },
     {
       "live": "~/scripts/wr2-external-bench-run.sh",
       "repo": "infra/launchagents/wrappers/wr2-external-bench-run.sh",
-      "_note": "Promoted to repo canon 2026-08-08 \u2014 was an UNDECLARED live payload (family #1) driving plist com.balizero.wr2.external-bench.monthly. PRO is canon, chosen on CONTENT and not on convenience: the M5 copy diverged (110 vs 129 lines) and was the poorer one \u2014 Pro carries the WR2_BENCH_FORCE escape, the WR2_BENCH_TIMEOUT/DEBUG knobs, a newer model pin, and a CRITICAL EXECUTION RULE block written after the 2026-06-11 post-mortem (async launch exited success with zero output). mtimes are IDENTICAL on both machines (2026-07-16 11:14, the TCC relocation touched everything), so the timestamp could not decide direction and the content did. M5 is declared as well because its copy exists and is inert (0 cron/launchd references there) \u2014 declaring it is what makes a future drift on the dead copy visible instead of silent.",
+      "_note": "Promoted to repo canon 2026-08-08 — was an UNDECLARED live payload (family #1) driving plist com.balizero.wr2.external-bench.monthly. PRO is canon, chosen on CONTENT and not on convenience: the M5 copy diverged (110 vs 129 lines) and was the poorer one — Pro carries the WR2_BENCH_FORCE escape, the WR2_BENCH_TIMEOUT/DEBUG knobs, a newer model pin, and a CRITICAL EXECUTION RULE block written after the 2026-06-11 post-mortem (async launch exited success with zero output). mtimes are IDENTICAL on both machines (2026-07-16 11:14, the TCC relocation touched everything), so the timestamp could not decide direction and the content did. M5 is declared as well because its copy exists and is inert (0 cron/launchd references there) — declaring it is what makes a future drift on the dead copy visible instead of silent.",
       "machines": ["pro", "m5"]
     },
     {
@@ -212,13 +212,13 @@
     {
       "live": "~/scripts/dropbox-intake-sync.sh",
       "repo": "scripts/dropbox_intake_sync.sh",
-      "_note": "W3 launchagent-canon reconcile (2026-07-18): live was UNDECLARED (basename mismatch \u2014 hyphen vs underscore is an INTENTIONAL rename done by infra/launchagents/install_dropbox_intake.sh's `install -m 0755 ... dropbox-intake-sync.sh`, not a fork). Confirmed byte-identical.",
+      "_note": "W3 launchagent-canon reconcile (2026-07-18): live was UNDECLARED (basename mismatch — hyphen vs underscore is an INTENTIONAL rename done by infra/launchagents/install_dropbox_intake.sh's `install -m 0755 ... dropbox-intake-sync.sh`, not a fork). Confirmed byte-identical.",
       "machines": ["pro"]
     },
     {
       "live": "~/scripts/nuzantara-drive-sync.filter",
       "repo": "scripts/nuzantara-drive-sync.filter",
-      "_note": "Promoted 2026-08-08 after a 16h+ Google Drive 'Queries per minute' quota storm (2026-08-07): nuzantara-drive-sync.sh syncs the wa-mirror Baileys session dir (36k+ high-churn pre-key files) to Drive on every run \u2014 fixed by excluding apps/wa-mirror/sessions/** in this filter. The filter was previously genuinely HOME-only (no repo twin existed to declare \u2014 an entry with no repo side would have been fiction, per superscar #1's own definition of a pair). This entry closes that gap for the filter; nuzantara-drive-sync.sh itself (the script that consumes it) is STILL HOME-only and undeclared \u2014 a separate promotion, out of scope here.",
+      "_note": "Promoted 2026-08-08 after a 16h+ Google Drive 'Queries per minute' quota storm (2026-08-07): nuzantara-drive-sync.sh syncs the wa-mirror Baileys session dir (36k+ high-churn pre-key files) to Drive on every run — fixed by excluding apps/wa-mirror/sessions/** in this filter. The filter was previously genuinely HOME-only (no repo twin existed to declare — an entry with no repo side would have been fiction, per superscar #1's own definition of a pair). This entry closes that gap for the filter; nuzantara-drive-sync.sh itself (the script that consumes it) is STILL HOME-only and undeclared — a separate promotion, out of scope here.",
       "machines": ["pro"]
     },
     {
@@ -286,7 +286,7 @@
     {
       "live": "~/scripts/wr2-contract-test.sh",
       "repo": "infra/launchagents/wrappers/wr2-contract-test.sh",
-      "_note": "W89 class-audit (2026-07-11, PENDING-ARMS ledger ~68): BG-ceiling env + anti-background prompt sentence + provenance log line added. Manual forensic harness, no scheduler \u2014 dormant but was undeclared HOME-only.",
+      "_note": "W89 class-audit (2026-07-11, PENDING-ARMS ledger ~68): BG-ceiling env + anti-background prompt sentence + provenance log line added. Manual forensic harness, no scheduler — dormant but was undeclared HOME-only.",
       "machines": ["pro"]
     },
     {
@@ -298,7 +298,7 @@
     {
       "live": "~/bin/wr2-queue-pull.sh",
       "repo": "infra/launchagents/wrappers/wr2-queue-pull.sh",
-      "_note": "M5 queue/carousel mirror puller (plist com.balizero.wr2.queue-pull; lives in ~/bin per W84 TCC-on-Desktop). Declared 2026-07-13 with the re-render verb PR (WR2_PULL_CHECKSUM one-shot mode) \u2014 was an UNDECLARED live payload (family #1).",
+      "_note": "M5 queue/carousel mirror puller (plist com.balizero.wr2.queue-pull; lives in ~/bin per W84 TCC-on-Desktop). Declared 2026-07-13 with the re-render verb PR (WR2_PULL_CHECKSUM one-shot mode) — was an UNDECLARED live payload (family #1).",
       "machines": ["m5"]
     },
     {
@@ -309,7 +309,7 @@
     {
       "live": "~/scripts/lib/heartbeat.sh",
       "repo": "scripts/lib/heartbeat.sh",
-      "_note": "Undeclared until 2026-07-29, and named only in passing \u2014 the trampoline entry below says it lives at ~/scripts/lib 'same reasoning as heartbeat.sh', so the fork was known and never censused: no lint could have seen it drift. Measured the day it was declared: Pro's live copy sha256-identical to origin/main; M5 and Mini have no copy at all (hence pro-only, not 'all' \u2014 an 'all' here makes --check chase a nonexistent pair and report false drift, the mistake the regulatory-watcher entry above records).",
+      "_note": "Undeclared until 2026-07-29, and named only in passing — the trampoline entry below says it lives at ~/scripts/lib 'same reasoning as heartbeat.sh', so the fork was known and never censused: no lint could have seen it drift. Measured the day it was declared: Pro's live copy sha256-identical to origin/main; M5 and Mini have no copy at all (hence pro-only, not 'all' — an 'all' here makes --check chase a nonexistent pair and report false drift, the mistake the regulatory-watcher entry above records).",
       "machines": ["pro"]
     },
     {
@@ -321,7 +321,7 @@
     {
       "live": "~/scripts/curiosity-batch.sh",
       "repo": "scripts/curiosity-batch.sh",
-      "_note": "W84 trampoline sweep (2026-07-14): canon REPO resolution was dirname-based (BASH_SOURCE), which broke when deployed to ~/scripts \u2014 fixed to REPO_ROOT-aware ($HOME/Desktop/nuzantara default). Also wired the shared trampoline lib before any ~/Desktop access.",
+      "_note": "W84 trampoline sweep (2026-07-14): canon REPO resolution was dirname-based (BASH_SOURCE), which broke when deployed to ~/scripts — fixed to REPO_ROOT-aware ($HOME/Desktop/nuzantara default). Also wired the shared trampoline lib before any ~/Desktop access.",
       "machines": ["pro"]
     },
     {
@@ -339,7 +339,7 @@
     {
       "live": "~/scripts/audit-launchd-daily.sh",
       "repo": "infra/launchagents/wrappers/audit-launchd-daily.sh",
-      "_note": "W84 trampoline sweep (2026-07-14): promoted to canon + trampoline block (cheap insurance \u2014 wrapper/payload currently have no hard ~/Desktop dependency, verified against the live plist set) + REPO_ROOT default de-hardcoded to $HOME. Was an UNDECLARED live payload (family #1).",
+      "_note": "W84 trampoline sweep (2026-07-14): promoted to canon + trampoline block (cheap insurance — wrapper/payload currently have no hard ~/Desktop dependency, verified against the live plist set) + REPO_ROOT default de-hardcoded to $HOME. Was an UNDECLARED live payload (family #1).",
       "machines": ["pro"]
     },
     {
@@ -356,13 +356,13 @@
     {
       "live": "~/.openclaw/bin/wr2/wr2-script-wrapper.sh",
       "repo": "infra/openclaw/wr2/wr2-script-wrapper.sh",
-      "_note": "WR2 deep audit 2026-07-14 (\u00a74): was byte-identical to the repo twin (e8e22fe1 both) but UNDECLARED, so lint_home_fork.py --check was blind to it and identical-today was luck, not enforcement. 2026-08-06: widened pro -> all. The file EXISTS on Mini too (measured: ~/.openclaw/bin/wr2/wr2-script-wrapper.sh present, 0 plists invoking it), so scoping the pair to pro left a real copy that the lint could never look at \u2014 the same shape W107 found for cron-runner, where the divergence was real and the risk was not. Inert-today is not a reason to be unwatched: the failure-voice cure of this date has to reach both copies or the next machine to start invoking it runs a mute wrapper.",
+      "_note": "WR2 deep audit 2026-07-14 (§4): was byte-identical to the repo twin (e8e22fe1 both) but UNDECLARED, so lint_home_fork.py --check was blind to it and identical-today was luck, not enforcement. 2026-08-06: widened pro -> all. The file EXISTS on Mini too (measured: ~/.openclaw/bin/wr2/wr2-script-wrapper.sh present, 0 plists invoking it), so scoping the pair to pro left a real copy that the lint could never look at — the same shape W107 found for cron-runner, where the divergence was real and the risk was not. Inert-today is not a reason to be unwatched: the failure-voice cure of this date has to reach both copies or the next machine to start invoking it runs a mute wrapper.",
       "machines": ["all"]
     },
     {
       "live": "~/.openclaw/bin/wr2/wr2-cron-wrapper.sh",
       "repo": "scripts/wr2-cron-wrapper.sh",
-      "_note": "WR2 deep audit 2026-07-14 (\u00a74): the HOME copy (f17092b3) had DIVERGED from the repo copy (3cd52391) on the same machine \u2014 oracle/connector/newsletter were running the stale fork. Declared so --check catches this class of drift going forward. RESOLVED same day: the live copy self-realigned via a routine pull (mtime 14:05 WITA), re-verified read-only on Pro 2026-07-14 ~15:30 WITA \u2014 sha 3cd52391 both sides, byte-identical. No manual sync pending. Consumers verified via ProgramArguments grep: com.balizero.wr2.{oracle,connector,newsletter,dossier-compiler,learner-nightly,measurer,sla-worker,strategos,trend-hunter} + com.balizero.sota.m13-* all exec ~/.openclaw/bin/wr2/wr2-cron-wrapper.sh (NOT ~/scripts/, which does not exist on Pro). Mini fact (measured 2026-08-07, deliberately NOT added to machines): Mini also has a copy at this live path, sha256 3f07eed7d2\u2026 \u2014 DIFFERENT from both the repo canon and Pro's live copy (03486087a6\u2026) \u2014 and it is an inert ancestor: 0 crontab entries and 0 LaunchAgent plist references to wr2-cron-wrapper on Mini (Pro has 36). Declaring 'mini' here would manufacture a permanent red on a fork nothing invokes; do not add it unless something on Mini starts executing this path.",
+      "_note": "WR2 deep audit 2026-07-14 (§4): the HOME copy (f17092b3) had DIVERGED from the repo copy (3cd52391) on the same machine — oracle/connector/newsletter were running the stale fork. Declared so --check catches this class of drift going forward. RESOLVED same day: the live copy self-realigned via a routine pull (mtime 14:05 WITA), re-verified read-only on Pro 2026-07-14 ~15:30 WITA — sha 3cd52391 both sides, byte-identical. No manual sync pending. Consumers verified via ProgramArguments grep: com.balizero.wr2.{oracle,connector,newsletter,dossier-compiler,learner-nightly,measurer,sla-worker,strategos,trend-hunter} + com.balizero.sota.m13-* all exec ~/.openclaw/bin/wr2/wr2-cron-wrapper.sh (NOT ~/scripts/, which does not exist on Pro). Mini fact (measured 2026-08-07, deliberately NOT added to machines): Mini also has a copy at this live path, sha256 3f07eed7d2… — DIFFERENT from both the repo canon and Pro's live copy (03486087a6…) — and it is an inert ancestor: 0 crontab entries and 0 LaunchAgent plist references to wr2-cron-wrapper on Mini (Pro has 36). Declaring 'mini' here would manufacture a permanent red on a fork nothing invokes; do not add it unless something on Mini starts executing this path.",
       "machines": ["pro"]
     },
     {
@@ -384,13 +384,13 @@
     {
       "live": "~/scripts/launchd-liveness-detector.sh",
       "repo": "infra/launchagents/wrappers/launchd-liveness-detector.sh",
-      "_note": "liveness-detector-arm-0717 (PENDING-ARMS, not yet installed): declared pre-emptively so lint_home_fork.py --discover does not flag the future HOME-fork copy as undeclared once operator[control-plane] installs it. Pro-only by design (per-host launchd/log state \u2014 a Mini copy would need its own instance, not a shared one, cf. superscar #10 active-active).",
+      "_note": "liveness-detector-arm-0717 (PENDING-ARMS, not yet installed): declared pre-emptively so lint_home_fork.py --discover does not flag the future HOME-fork copy as undeclared once operator[control-plane] installs it. Pro-only by design (per-host launchd/log state — a Mini copy would need its own instance, not a shared one, cf. superscar #10 active-active).",
       "machines": ["pro"]
     },
     {
       "live": "~/.claude/hooks/worktree_isolation.py",
       "repo": "infra/claude-hooks/worktree_isolation.py",
-      "_note": "worktree-isolation guard (superscar #3, most-scarred guard in the organism). install via infra/claude-hooks/install_worktree_hooks.sh (self-verifying vaccine + rollback), NOT install_phase_aware.sh which skips it. Declared 2026-07-17 after an 11-day fleet-wide drift went unnoticed (no pair existed) \u2014 superscar #1 antidote applied to the guard itself.",
+      "_note": "worktree-isolation guard (superscar #3, most-scarred guard in the organism). install via infra/claude-hooks/install_worktree_hooks.sh (self-verifying vaccine + rollback), NOT install_phase_aware.sh which skips it. Declared 2026-07-17 after an 11-day fleet-wide drift went unnoticed (no pair existed) — superscar #1 antidote applied to the guard itself.",
       "machines": ["all"]
     },
     {
@@ -429,31 +429,31 @@
     {
       "live": "~/scripts/cron-agent-python/agent_job.py",
       "repo": "scripts/cron-agent-python/agent_job.py",
-      "_note": "W104 promotion (2026-07-25). Shared base class every job imports (send_telegram, backend_api, run ledger, redis event bus). STRUCTURALLY INVISIBLE to lint_home_fork --discover, which only resolves payloads named by a plist/crontab \u2014 an imported module is never an entry point, so the most load-bearing file in the tree could never be flagged. Declared explicitly for that reason.",
+      "_note": "W104 promotion (2026-07-25). Shared base class every job imports (send_telegram, backend_api, run ledger, redis event bus). STRUCTURALLY INVISIBLE to lint_home_fork --discover, which only resolves payloads named by a plist/crontab — an imported module is never an entry point, so the most load-bearing file in the tree could never be flagged. Declared explicitly for that reason.",
       "machines": ["pro"]
     },
     {
       "live": "~/scripts/cron-agent-python/log_anomaly_detector.py",
       "repo": "scripts/cron-agent-python/log_anomaly_detector.py",
-      "_note": "W104 promotion (2026-07-25): the cured job \u2014 positional log freshness + dedup that grades the redis REPLY instead of the exit code. Same lint blind spot as agent_job.py (exec'd via run.sh, never named directly).",
+      "_note": "W104 promotion (2026-07-25): the cured job — positional log freshness + dedup that grades the redis REPLY instead of the exit code. Same lint blind spot as agent_job.py (exec'd via run.sh, never named directly).",
       "machines": ["pro"]
     },
     {
       "live": "~/scripts/cron-agent-python/intel_radar_daily_digest.py",
       "repo": "scripts/cron-agent-python/intel_radar_daily_digest.py",
-      "_note": "W104 promotion (2026-07-25): the one tree payload --discover DID flag (executed straight from com.balizero.intel-radar-daily-digest.plist, bypassing run.sh \u2014 which is why agent_job.py now derives REDISCLI_AUTH at import time too).",
+      "_note": "W104 promotion (2026-07-25): the one tree payload --discover DID flag (executed straight from com.balizero.intel-radar-daily-digest.plist, bypassing run.sh — which is why agent_job.py now derives REDISCLI_AUTH at import time too).",
       "machines": ["pro"]
     },
     {
       "live": "~/scripts/cron-agent-python/curiosity_batch.py",
       "repo": "scripts/cron-agent-python/curiosity_batch.py",
-      "_note": "W104 sweep (2026-07-25): was the ONLY file of this tree already tracked (promoted by #1510) and it had DRIFTED \u2014 undeclared, so --check was blind to it. Divergence was comment-only (1 hunk, code byte-identical): live still carried the pre-#1510 note about a plaintext DB-password fallback that #1510 had stripped as a cicatrix-#4 leak. Verified no credential in the live copy, then realigned live from repo canon.",
+      "_note": "W104 sweep (2026-07-25): was the ONLY file of this tree already tracked (promoted by #1510) and it had DRIFTED — undeclared, so --check was blind to it. Divergence was comment-only (1 hunk, code byte-identical): live still carried the pre-#1510 note about a plaintext DB-password fallback that #1510 had stripped as a cicatrix-#4 leak. Verified no credential in the live copy, then realigned live from repo canon.",
       "machines": ["pro"]
     },
     {
       "live": "~/scripts/garuda-consumer.sh",
       "repo": "infra/launchagents/wrappers/garuda-consumer.sh",
-      "_note": "W104 class-audit (2026-07-25): armed by com.garuda.consumer.daily, was UNDECLARED. Its `if ! redis-cli ping` preflight was decorative \u2014 redis-cli exits 0 on NOAUTH \u2014 so the gate passed unauthenticated. Now grades the reply (== PONG) AND exports REDISCLI_AUTH, because tightening the gate without supplying the credential would have taken the cron offline. guilt/innocence/scar-pin proven live 3/3.",
+      "_note": "W104 class-audit (2026-07-25): armed by com.garuda.consumer.daily, was UNDECLARED. Its `if ! redis-cli ping` preflight was decorative — redis-cli exits 0 on NOAUTH — so the gate passed unauthenticated. Now grades the reply (== PONG) AND exports REDISCLI_AUTH, because tightening the gate without supplying the credential would have taken the cron offline. guilt/innocence/scar-pin proven live 3/3.",
       "machines": ["pro"]
     },
     {
@@ -465,13 +465,13 @@
     {
       "live": "~/scripts/cron-agent-python/daily_ops.py",
       "repo": "scripts/cron-agent-python/daily_ops.py",
-      "_note": "task #17 promotion (2026-07-26): part of the 15-file cron-agent-python census (16 crontab lines through run.sh, only log-anomaly-detector had a repo twin before this). Reads client_name via a runtime .get() accessor, no hardcoded identity \u2014 pattern+structural double-pass clean.",
+      "_note": "task #17 promotion (2026-07-26): part of the 15-file cron-agent-python census (16 crontab lines through run.sh, only log-anomaly-detector had a repo twin before this). Reads client_name via a runtime .get() accessor, no hardcoded identity — pattern+structural double-pass clean.",
       "machines": ["pro"]
     },
     {
       "live": "~/scripts/cron-agent-python/pajak_monitor.py",
       "repo": "scripts/cron-agent-python/pajak_monitor.py",
-      "_note": "task #17 promotion (2026-07-26). Fixed in the same commit: a hardcoded absolute path /Users/nuzantara/scripts (fingerprints the ops host's username/home layout, this organism's own HOME-fork anti-pattern) \u2014 now derived from __file__.",
+      "_note": "task #17 promotion (2026-07-26). Fixed in the same commit: a hardcoded absolute path /Users/nuzantara/scripts (fingerprints the ops host's username/home layout, this organism's own HOME-fork anti-pattern) — now derived from __file__.",
       "machines": ["pro"]
     },
     {
@@ -501,7 +501,7 @@
     {
       "live": "~/scripts/cron-agent-python/system_doctor.py",
       "repo": "scripts/cron-agent-python/system_doctor.py",
-      "_note": "task #17 promotion (2026-07-26). Clean on both passes. Its single rule (telegram_alert side-effect AND status==\"ok\" simultaneously) gates tech_orchestrator's deploy path \u2014 see #20.",
+      "_note": "task #17 promotion (2026-07-26). Clean on both passes. Its single rule (telegram_alert side-effect AND status==\"ok\" simultaneously) gates tech_orchestrator's deploy path — see #20.",
       "machines": ["pro"]
     },
     {
@@ -513,13 +513,13 @@
     {
       "live": "~/scripts/cron-agent-python/oss_monitor.py",
       "repo": "scripts/cron-agent-python/oss_monitor.py",
-      "_note": "task #17 promotion (2026-07-26). Fixed in the same commit: a hardcoded absolute path /Users/nuzantara/scripts \u2014 now derived from __file__, same fix as pajak_monitor.py/imigrasi_monitor.py.",
+      "_note": "task #17 promotion (2026-07-26). Fixed in the same commit: a hardcoded absolute path /Users/nuzantara/scripts — now derived from __file__, same fix as pajak_monitor.py/imigrasi_monitor.py.",
       "machines": ["pro"]
     },
     {
       "live": "~/scripts/cron-agent-python/imigrasi_monitor.py",
       "repo": "scripts/cron-agent-python/imigrasi_monitor.py",
-      "_note": "task #17 promotion (2026-07-26). Fixed in the same commit: a hardcoded absolute path /Users/nuzantara/scripts \u2014 now derived from __file__, same fix as pajak_monitor.py/oss_monitor.py.",
+      "_note": "task #17 promotion (2026-07-26). Fixed in the same commit: a hardcoded absolute path /Users/nuzantara/scripts — now derived from __file__, same fix as pajak_monitor.py/oss_monitor.py.",
       "machines": ["pro"]
     },
     {
@@ -537,37 +537,37 @@
     {
       "live": "~/scripts/cron-agent-python/tdd_pipeline.py",
       "repo": "scripts/cron-agent-python/tdd_pipeline.py",
-      "_note": "task #17/#42 promotion (2026-07-26). Fixed in the same commit: success path logged only a hash via log_step() while the failure path logged plaintext \u2014 3mo/14 runs/18 successful writes into the live checkout, none reconstructable. Added its own explicit plaintext success log (filename + tests_added + test path, none PII) mirroring the failure branch's shape; shared log_step() hashing left untouched (used by PII-handling siblings). Uses --dangerously-skip-permissions unattended \u2014 see #42.",
+      "_note": "task #17/#42 promotion (2026-07-26). Fixed in the same commit: success path logged only a hash via log_step() while the failure path logged plaintext — 3mo/14 runs/18 successful writes into the live checkout, none reconstructable. Added its own explicit plaintext success log (filename + tests_added + test path, none PII) mirroring the failure branch's shape; shared log_step() hashing left untouched (used by PII-handling siblings). Uses --dangerously-skip-permissions unattended — see #42.",
       "machines": ["pro"]
     },
     {
       "live": "~/scripts/cron-agent-python/vision_doc_extractor.py",
       "repo": "scripts/cron-agent-python/vision_doc_extractor.py",
-      "_note": "task #17 promotion (2026-07-26). Redacted in the same commit: NB_OPS_ID_DEFAULT (a NotebookLM UUID) and a hardcoded Telegram chat id were fallback literals with no credential SHAPE (invisible to pattern scans, only a docstring said what they pointed to) \u2014 both now env-required, fail loud when unset. Also noted (not fixed): _push_to_nb2() shells out to an nlm CLI binary that does not exist on Pro \u2014 dormant, 0/620 runs ever exercised it, same fail-open-by-never-exercised shape as tech_orchestrator's diff gate.",
+      "_note": "task #17 promotion (2026-07-26). Redacted in the same commit: NB_OPS_ID_DEFAULT (a NotebookLM UUID) and a hardcoded Telegram chat id were fallback literals with no credential SHAPE (invisible to pattern scans, only a docstring said what they pointed to) — both now env-required, fail loud when unset. Also noted (not fixed): _push_to_nb2() shells out to an nlm CLI binary that does not exist on Pro — dormant, 0/620 runs ever exercised it, same fail-open-by-never-exercised shape as tech_orchestrator's diff gate.",
       "machines": ["pro"]
     },
     {
       "live": "~/scripts/cron-agent-python/tech_orchestrator.py",
       "repo": "scripts/cron-agent-python/tech_orchestrator.py",
-      "_note": "task #17/#20 promotion (2026-07-26). Fixed in the same commit: diff_size_check()'s subprocess.run had no check=True, so a nonzero git-diff returncode never raised and empty stdout on failure was byte-identical to a genuinely clean tree \u2014 safe:True either way. Dormant in practice (0/3067 runs over 3.5mo acted) but a proven fail-open behind a door nobody has opened yet. Now returns safe:False with the git error surfaced. correlate() itself deliberately untouched. Meta-finding across this census: tech_orchestrator (3067 runs/0 actions), vision_doc_extractor (620/0), tdd_pipeline (42 attempts/18) \u2014 2 of 3 never once entered their own core execution path in 3+ months, each hiding a latent defect nobody could discover because the trigger never fired.",
+      "_note": "task #17/#20 promotion (2026-07-26). Fixed in the same commit: diff_size_check()'s subprocess.run had no check=True, so a nonzero git-diff returncode never raised and empty stdout on failure was byte-identical to a genuinely clean tree — safe:True either way. Dormant in practice (0/3067 runs over 3.5mo acted) but a proven fail-open behind a door nobody has opened yet. Now returns safe:False with the git error surfaced. correlate() itself deliberately untouched. Meta-finding across this census: tech_orchestrator (3067 runs/0 actions), vision_doc_extractor (620/0), tdd_pipeline (42 attempts/18) — 2 of 3 never once entered their own core execution path in 3+ months, each hiding a latent defect nobody could discover because the trigger never fired.",
       "machines": ["pro"]
     },
     {
       "live": "~/scripts/fly-backup.sh",
       "repo": "infra/scripts/fly-backup.sh",
-      "_note": "2026-07-27: the live copy had DIVERGED \u2014 13 extra lines sourcing ~/Desktop/secretkey.env as a secondary credentials location, added 2026-05-27. That file no longer exists, so the block could never fire; realigned to a symlink after the nightly run completed. Declared so the next divergence is caught instead of discovered.",
+      "_note": "2026-07-27: the live copy had DIVERGED — 13 extra lines sourcing ~/Desktop/secretkey.env as a secondary credentials location, added 2026-05-27. That file no longer exists, so the block could never fire; realigned to a symlink after the nightly run completed. Declared so the next divergence is caught instead of discovered.",
       "machines": ["pro"]
     },
     {
       "live": "~/scripts/fly-pg-backup.sh",
       "repo": "scripts/fly-pg-backup.sh",
-      "_note": "2026-07-27: already a symlink, declared alongside its caller. This is the payload BOTH nightly runs execute (03:00 via fly-backup.sh, 03:20 via cron-wrapper.sh), so a fork here means production loses its Postgres backup \u2014 the W106 shape.",
+      "_note": "2026-07-27: already a symlink, declared alongside its caller. This is the payload BOTH nightly runs execute (03:00 via fly-backup.sh, 03:20 via cron-wrapper.sh), so a fork here means production loses its Postgres backup — the W106 shape.",
       "machines": ["pro"]
     },
     {
       "live": "~/scripts/cron-state.sh",
       "repo": "scripts/cron-state.sh",
-      "_note": "2026-07-27: a REAL file, byte-identical to the repo copy that day \u2014 the most dangerous shape of #1, because identical today reads as 'not a fork'. 27 Pro cron jobs invoke it, including the 03:00 Postgres backup, and the failure-alert added the same day is exactly the change that would have diverged it.",
+      "_note": "2026-07-27: a REAL file, byte-identical to the repo copy that day — the most dangerous shape of #1, because identical today reads as 'not a fork'. 27 Pro cron jobs invoke it, including the 03:00 Postgres backup, and the failure-alert added the same day is exactly the change that would have diverged it.",
       "machines": ["pro"]
     },
     {
@@ -580,55 +580,55 @@
       "live": "~/Library/LaunchAgents/com.balizero.zoho-mail-loop.daily.plist",
       "repo": "infra/launchagents/com.balizero.zoho-mail-loop.daily.plist",
       "machines": ["pro"],
-      "_note": "Pro-only singleton by design, not fleet redundancy: scripts/zoho-mail-loop.sh hardcodes ORGAN_ID=\"pro.zoho_mail_loop\", and its single-instance lock (/tmp/zoho-mail-loop.lock) is per-machine only \u2014 a second copy on Mini would not be blocked by that lock and would draft/move against the SAME live Zoho mailbox concurrently (scar family #10, active-active split-brain). `machines: [\"all\"]` was a declaration mismatch, not a deployment: the plist has never actually been installed on Mini (lint_home_fork.py --check reports it absent there, not drifted) \u2014 corrected before any tick reads the absence as something to realign."
+      "_note": "Pro-only singleton by design, not fleet redundancy: scripts/zoho-mail-loop.sh hardcodes ORGAN_ID=\"pro.zoho_mail_loop\", and its single-instance lock (/tmp/zoho-mail-loop.lock) is per-machine only — a second copy on Mini would not be blocked by that lock and would draft/move against the SAME live Zoho mailbox concurrently (scar family #10, active-active split-brain). `machines: [\"all\"]` was a declaration mismatch, not a deployment: the plist has never actually been installed on Mini (lint_home_fork.py --check reports it absent there, not drifted) — corrected before any tick reads the absence as something to realign."
     },
     {
       "live": "~/scripts/wa-mirror-launcher/_lib.sh",
       "repo": "apps/wa-mirror/scripts/_lib.sh",
       "machines": ["pro"],
-      "_note": "wa-mirror launcher. The repo's supervise-launcher.sh \u2014 what the LaunchAgent actually runs \u2014 delegates to ~/scripts/wa-mirror-launcher/start-all.sh BY DESIGN, so the HOME copy is the EXECUTED one and its repo twin drifted unwatched. Declared 2026-08-06. AT DECLARATION THE LIVE COPY IS BEHIND THE REPO: it lacks the W77 lifecycle gate (get_expected_status/get_assigned_node). The lint is EXPECTED to report this on pro until the live side is realigned FROM the repo."
+      "_note": "wa-mirror launcher. The repo's supervise-launcher.sh — what the LaunchAgent actually runs — delegates to ~/scripts/wa-mirror-launcher/start-all.sh BY DESIGN, so the HOME copy is the EXECUTED one and its repo twin drifted unwatched. Declared 2026-08-06. AT DECLARATION THE LIVE COPY IS BEHIND THE REPO: it lacks the W77 lifecycle gate (get_expected_status/get_assigned_node). The lint is EXPECTED to report this on pro until the live side is realigned FROM the repo."
     },
     {
       "live": "~/scripts/wa-mirror-launcher/start-all.sh",
       "repo": "apps/wa-mirror/scripts/start-all.sh",
       "machines": ["pro"],
-      "_note": "wa-mirror launcher. The repo's supervise-launcher.sh \u2014 what the LaunchAgent actually runs \u2014 delegates to ~/scripts/wa-mirror-launcher/start-all.sh BY DESIGN, so the HOME copy is the EXECUTED one and its repo twin drifted unwatched. Declared 2026-08-06. AT DECLARATION THE LIVE COPY IS BEHIND THE REPO: it lacks the W77 expected_status/assigned_node gate, so the executed launcher cannot honour the roster's declared intent \u2014 the family #10 (split-brain) antidote is unreachable from the code path that runs. Realign live FROM repo."
+      "_note": "wa-mirror launcher. The repo's supervise-launcher.sh — what the LaunchAgent actually runs — delegates to ~/scripts/wa-mirror-launcher/start-all.sh BY DESIGN, so the HOME copy is the EXECUTED one and its repo twin drifted unwatched. Declared 2026-08-06. AT DECLARATION THE LIVE COPY IS BEHIND THE REPO: it lacks the W77 expected_status/assigned_node gate, so the executed launcher cannot honour the roster's declared intent — the family #10 (split-brain) antidote is unreachable from the code path that runs. Realign live FROM repo."
     },
     {
       "live": "~/scripts/wa-mirror-launcher/start-one.sh",
       "repo": "apps/wa-mirror/scripts/start-one.sh",
       "machines": ["pro"],
-      "_note": "wa-mirror launcher. The repo's supervise-launcher.sh \u2014 what the LaunchAgent actually runs \u2014 delegates to ~/scripts/wa-mirror-launcher/start-all.sh BY DESIGN, so the HOME copy is the EXECUTED one and its repo twin drifted unwatched. Declared 2026-08-06. In sync at declaration."
+      "_note": "wa-mirror launcher. The repo's supervise-launcher.sh — what the LaunchAgent actually runs — delegates to ~/scripts/wa-mirror-launcher/start-all.sh BY DESIGN, so the HOME copy is the EXECUTED one and its repo twin drifted unwatched. Declared 2026-08-06. In sync at declaration."
     },
     {
       "live": "~/scripts/wa-mirror-launcher/stop-all.sh",
       "repo": "apps/wa-mirror/scripts/stop-all.sh",
       "machines": ["pro"],
-      "_note": "wa-mirror launcher. The repo's supervise-launcher.sh \u2014 what the LaunchAgent actually runs \u2014 delegates to ~/scripts/wa-mirror-launcher/start-all.sh BY DESIGN, so the HOME copy is the EXECUTED one and its repo twin drifted unwatched. Declared 2026-08-06. In sync at declaration."
+      "_note": "wa-mirror launcher. The repo's supervise-launcher.sh — what the LaunchAgent actually runs — delegates to ~/scripts/wa-mirror-launcher/start-all.sh BY DESIGN, so the HOME copy is the EXECUTED one and its repo twin drifted unwatched. Declared 2026-08-06. In sync at declaration."
     },
     {
       "live": "~/scripts/wa-mirror-launcher/stop-one.sh",
       "repo": "apps/wa-mirror/scripts/stop-one.sh",
       "machines": ["pro"],
-      "_note": "wa-mirror launcher. The repo's supervise-launcher.sh \u2014 what the LaunchAgent actually runs \u2014 delegates to ~/scripts/wa-mirror-launcher/start-all.sh BY DESIGN, so the HOME copy is the EXECUTED one and its repo twin drifted unwatched. Declared 2026-08-06. In sync at declaration."
+      "_note": "wa-mirror launcher. The repo's supervise-launcher.sh — what the LaunchAgent actually runs — delegates to ~/scripts/wa-mirror-launcher/start-all.sh BY DESIGN, so the HOME copy is the EXECUTED one and its repo twin drifted unwatched. Declared 2026-08-06. In sync at declaration."
     },
     {
       "live": "~/scripts/wa-mirror-launcher/status.sh",
       "repo": "apps/wa-mirror/scripts/status.sh",
       "machines": ["pro"],
-      "_note": "wa-mirror launcher. The repo's supervise-launcher.sh \u2014 what the LaunchAgent actually runs \u2014 delegates to ~/scripts/wa-mirror-launcher/start-all.sh BY DESIGN, so the HOME copy is the EXECUTED one and its repo twin drifted unwatched. Declared 2026-08-06. The repo side was brought up to the live M4 (2026-07-20) logged-out detection in the same commit as this declaration, so the pair is in sync from day one."
+      "_note": "wa-mirror launcher. The repo's supervise-launcher.sh — what the LaunchAgent actually runs — delegates to ~/scripts/wa-mirror-launcher/start-all.sh BY DESIGN, so the HOME copy is the EXECUTED one and its repo twin drifted unwatched. Declared 2026-08-06. The repo side was brought up to the live M4 (2026-07-20) logged-out detection in the same commit as this declaration, so the pair is in sync from day one."
     },
     {
       "live": "~/scripts/wa-mirror-launcher/api_server.py",
       "repo": "apps/wa-mirror/scripts/api_server.py",
       "machines": ["m5"],
-      "_note": "wa-mirror launcher. The repo's supervise-launcher.sh \u2014 what the LaunchAgent actually runs \u2014 delegates to ~/scripts/wa-mirror-launcher/start-all.sh BY DESIGN, so the HOME copy is the EXECUTED one and its repo twin drifted unwatched. Declared 2026-08-06. Never tracked before 2026-08-06. Rescoped pro->m5 the same day: Pro's live copy was moved to ~/scripts/.attic-20260806/ (sha-identical to what #3671 committed), so the declared path is empty there; M5 still has one and it was still the PRE-CURE file \u2014 14253B, no roster_account(), the startswith() containment, and a hardcoded production DSN at mode 0644 \u2014 i.e. #3671 cured the repo and left the running copy vulnerable. Realigned to origin/main 2026-08-06 (0 credential literals, roster_account present). The html twin of this pair was REMOVED, not rescoped: after Pro's attic it exists on no machine, and a declared pair with no live copy anywhere is the false-drift chase this file already warns about."
+      "_note": "wa-mirror launcher. The repo's supervise-launcher.sh — what the LaunchAgent actually runs — delegates to ~/scripts/wa-mirror-launcher/start-all.sh BY DESIGN, so the HOME copy is the EXECUTED one and its repo twin drifted unwatched. Declared 2026-08-06. Never tracked before 2026-08-06. Rescoped pro->m5 the same day: Pro's live copy was moved to ~/scripts/.attic-20260806/ (sha-identical to what #3671 committed), so the declared path is empty there; M5 still has one and it was still the PRE-CURE file — 14253B, no roster_account(), the startswith() containment, and a hardcoded production DSN at mode 0644 — i.e. #3671 cured the repo and left the running copy vulnerable. Realigned to origin/main 2026-08-06 (0 credential literals, roster_account present). The html twin of this pair was REMOVED, not rescoped: after Pro's attic it exists on no machine, and a declared pair with no live copy anywhere is the false-drift chase this file already warns about."
     },
     {
       "live": "~/Library/LaunchAgents/com.nuzantara.web-lead-funnel.plist",
       "repo": "infra/launchagents/com.nuzantara.web-lead-funnel.plist",
       "machines": ["pro"],
-      "_note": "Installed on Pro 2026-08-06 and declared in the SAME step, so the copy never gets a chance to drift unwatched \u2014 installing a live plist without declaring its pair is how superscar #1 is created rather than cured. Pro only: the arrival half of this funnel lives in the Pro's local wa-mirror Postgres."
+      "_note": "Installed on Pro 2026-08-06 and declared in the SAME step, so the copy never gets a chance to drift unwatched — installing a live plist without declaring its pair is how superscar #1 is created rather than cured. Pro only: the arrival half of this funnel lives in the Pro's local wa-mirror Postgres."
     },
     {
       "live": "~/scripts/claude-settings-change-alert.sh",
@@ -644,7 +644,7 @@
       "live": "~/.nuzantara-cron/auth_sentinel_cron.sh",
       "repo": "scripts/auth_sentinel_cron.sh",
       "machines": ["m5"],
-      "_note": "Found diverged on 2026-08-07 by a single line (the ~/Desktop path PR #2499 cured on 2026-07-16 had not reached this live copy) and realigned by the auth-sentinel item in the same pending-arms batch. Re-verified sha256-identical to the repo twin 2026-08-07 before this pair was declared (STRICT ORDERING: a pair is only declared after its live sync is proven, per family #1's own antidote \u2014 declaring an unsynced pair arms a permanent red on M5). Was UNDECLARED in both surfaces (0 hits in this file and in scripts/proprioception.py's home_fork_scripts args) \u2014 until today only scripts/launchagent_reconcile.py caught drift here, and only generically (plist->wrapper diff), not via a dedicated home-fork pair."
+      "_note": "Found diverged on 2026-08-07 by a single line (the ~/Desktop path PR #2499 cured on 2026-07-16 had not reached this live copy) and realigned by the auth-sentinel item in the same pending-arms batch. Re-verified sha256-identical to the repo twin 2026-08-07 before this pair was declared (STRICT ORDERING: a pair is only declared after its live sync is proven, per family #1's own antidote — declaring an unsynced pair arms a permanent red on M5). Was UNDECLARED in both surfaces (0 hits in this file and in scripts/proprioception.py's home_fork_scripts args) — until today only scripts/launchagent_reconcile.py caught drift here, and only generically (plist->wrapper diff), not via a dedicated home-fork pair."
     },
     {
       "live": "~/scripts/nb-agents-daily-dr.sh",
@@ -655,38 +655,44 @@
     {
       "live": "~/scripts/lib/claude_seat.sh",
       "repo": "scripts/lib/claude_seat.sh",
-      "_note": "NEW 2026-08-08, shipped with the promotion above. Sourceable OAuth-seat helper: resolves the claude binary absolutely (~/.local/bin is on neither the login-shell nor the cron PATH) and rotates the numbered seats, EXTRACTING the refusal classifier from cron-agent.sh rather than copying it \u2014 two tools that must agree on 'did this seat refuse' do not get two answers. Deliberately has no bare-keychain fallback: that rung answered 0 of 905 attempts and cannot work in a non-GUI session. Delivered next to ~/scripts/cron-agent.sh, which is the wrapper it extracts from in the delivered layout.",
+      "_note": "NEW 2026-08-08, shipped with the promotion above. Sourceable OAuth-seat helper: resolves the claude binary absolutely (~/.local/bin is on neither the login-shell nor the cron PATH) and rotates the numbered seats, EXTRACTING the refusal classifier from cron-agent.sh rather than copying it — two tools that must agree on 'did this seat refuse' do not get two answers. Deliberately has no bare-keychain fallback: that rung answered 0 of 905 attempts and cannot work in a non-GUI session. Delivered next to ~/scripts/cron-agent.sh, which is the wrapper it extracts from in the delivered layout.",
       "machines": ["pro"]
     },
     {
       "live": "~/Library/LaunchAgents/com.balizero.wr2.external-bench.monthly.plist",
       "repo": "infra/launchagents/com.balizero.wr2.external-bench.monthly.plist",
-      "_note": "PROMOTED 2026-08-09 (PENDING-ARMS 2026-08-08 entry). Was undeclared while both its wrapper (~/scripts/wr2-external-bench-run.sh, promoted 2026-08-08) and this schedule lived on Pro alone \u2014 the two ARE the same superscar #1 finding, only the wrapper got closed first. Fixed in the same commit: the XML comment's 'Per agent spec at ~/.claude/agents/wr2-external-bench.md' was stale documentation, not a runtime path \u2014 the wrapper cd's into ${HOME}/nuzantara before invoking claude and passes the spec path as a RELATIVE --append-system-prompt reference, so it always resolved against the repo checkout's .claude/agents/, never against ~/.claude/agents/ (attic'd 2026-08-08). Nothing was broken at runtime; the comment now says what the code actually does.",
+      "_note": "PROMOTED 2026-08-09 (PENDING-ARMS 2026-08-08 entry). Was undeclared while both its wrapper (~/scripts/wr2-external-bench-run.sh, promoted 2026-08-08) and this schedule lived on Pro alone — the two ARE the same superscar #1 finding, only the wrapper got closed first. Fixed in the same commit: the XML comment's 'Per agent spec at ~/.claude/agents/wr2-external-bench.md' was stale documentation, not a runtime path — the wrapper cd's into ${HOME}/nuzantara before invoking claude and passes the spec path as a RELATIVE --append-system-prompt reference, so it always resolved against the repo checkout's .claude/agents/, never against ~/.claude/agents/ (attic'd 2026-08-08). Nothing was broken at runtime; the comment now says what the code actually does.",
       "machines": ["pro"]
     },
     {
       "live": "~/Library/LaunchAgents/com.balizero.wr2.ig-metrics-analyst.weekly.plist",
       "repo": "infra/launchagents/com.balizero.wr2.ig-metrics-analyst.weekly.plist",
-      "_note": "PROMOTED 2026-08-09 (PENDING-ARMS 2026-08-08 entry). Same shape and same day as the external-bench.monthly pair above: wrapper (~/scripts/wr2-ig-metrics-analyst-run.sh) was promoted 2026-08-08, this schedule was left behind. Same comment-staleness fix applied \u2014 the spec-path reference resolves against the repo checkout, not the attic'd ~/.claude/agents/.",
+      "_note": "PROMOTED 2026-08-09 (PENDING-ARMS 2026-08-08 entry). Same shape and same day as the external-bench.monthly pair above: wrapper (~/scripts/wr2-ig-metrics-analyst-run.sh) was promoted 2026-08-08, this schedule was left behind. Same comment-staleness fix applied — the spec-path reference resolves against the repo checkout, not the attic'd ~/.claude/agents/.",
       "machines": ["pro"]
     },
     {
       "live": "~/.openclaw/bin/guardian-board-report",
       "repo": "infra/openclaw/guardian-board-report",
-      "_note": "PROMOTED 2026-08-09 (organ ward-round). Was HOME-only and undeclared, invoked by plist com.nuzantara.openclaw.guardian-board (daily 08:30). Promoted together with a fix: the flat 120s subprocess timeout in run_tool() applied to every MCP tool call including guardian_risk_score (RBAC/API-contract/cache/dead-code scoring across the full codebase), which was seen degraded (timeout) 3 times in the last 15 runs. Repo canon adds a per-tool timeout override (guardian_risk_score -> 240s), all other tools stay at 120s. Live HOME copy still needs manual sync post-merge \u2014 do NOT treat this pair as aligned until the operator re-copies and sha256-verifies.",
+      "_note": "PROMOTED 2026-08-09 (organ ward-round). Was HOME-only and undeclared, invoked by plist com.nuzantara.openclaw.guardian-board (daily 08:30). Promoted together with a fix: the flat 120s subprocess timeout in run_tool() applied to every MCP tool call including guardian_risk_score (RBAC/API-contract/cache/dead-code scoring across the full codebase), which was seen degraded (timeout) 3 times in the last 15 runs. Repo canon adds a per-tool timeout override (guardian_risk_score -> 240s), all other tools stay at 120s. Live HOME copy still needs manual sync post-merge — do NOT treat this pair as aligned until the operator re-copies and sha256-verifies.",
       "machines": ["pro"]
     },
     {
       "live": "~/scripts/intel-lake-nb-pusher-standalone.py",
       "repo": "scripts/intel-lake-nb-pusher-a2/intel-lake-nb-pusher-standalone.py",
-      "_note": "PROMOTED 2026-08-09 (organ ward-round, round 2): #3891's auth-refresh cure had landed on a file the cron never runs \u2014 LaunchAgent com.balizero.intel-lake-nb-pusher.15min -> ~/scripts/intel-lake-nb-pusher-cron.sh executes ~/scripts/intel-lake-nb-pusher-standalone.py, an undeclared HOME copy that had diverged from the repo canon by 71 lines. The HOME copy was AHEAD: it carries the _NB_UUID_REMAP/_NB_UUID_ORPHAN block (zero-profile -> default-profile UUID remap, live since 2026-06-10, plus --profile default on every nlm call) and the 'could not add url source' -> network error classification \u2014 none of that had ever reached the repo. Neither side was complete. This pair is the UNION: HOME content as the base (it is the live canon; overwriting it from the stale repo file would have been a W106b regression) with ONLY the #3891 auth-refresh startup-gate patch re-applied on top (verified by diff: union file minus HOME == exactly the auth-refresh block). Live HOME copy still needs manual sync post-merge \u2014 do NOT treat this pair as aligned until the operator re-copies and sha256-verifies.",
+      "_note": "PROMOTED 2026-08-09 (organ ward-round, round 2): #3891's auth-refresh cure had landed on a file the cron never runs — LaunchAgent com.balizero.intel-lake-nb-pusher.15min -> ~/scripts/intel-lake-nb-pusher-cron.sh executes ~/scripts/intel-lake-nb-pusher-standalone.py, an undeclared HOME copy that had diverged from the repo canon by 71 lines. The HOME copy was AHEAD: it carries the _NB_UUID_REMAP/_NB_UUID_ORPHAN block (zero-profile -> default-profile UUID remap, live since 2026-06-10, plus --profile default on every nlm call) and the 'could not add url source' -> network error classification — none of that had ever reached the repo. Neither side was complete. This pair is the UNION: HOME content as the base (it is the live canon; overwriting it from the stale repo file would have been a W106b regression) with ONLY the #3891 auth-refresh startup-gate patch re-applied on top (verified by diff: union file minus HOME == exactly the auth-refresh block). Live HOME copy still needs manual sync post-merge — do NOT treat this pair as aligned until the operator re-copies and sha256-verifies.",
       "machines": ["pro"]
     },
     {
       "live": "~/scripts/intel-lake-outbox-drain.py",
       "repo": "scripts/intel-lake-outbox-drain/intel-lake-outbox-drain.py",
       "machines": ["m5", "pro"],
-      "_note": "Declared 2026-08-09 while moving this drain onto the tg_notify gateway. The LaunchAgent com.balizero.intel-lake.outbox-drain.minute runs the FLAT HOME copy (~/scripts/), not the repo's subdirectory path, and the pair was undeclared \u2014 so the merge alone would have left the running code on the old raw sender while the repo claimed it was migrated (the W107 delivery gotcha). Measured on all three the same day: present and byte-identical to origin/main on M5 and Pro, absent on Mini (0 plist, 0 crontab there). M5's copy exists but is NOT armed (0 plist, 0 crontab) \u2014 declared anyway so a future divergence is seen rather than discovered; Mini deliberately excluded rather than 'all', which would make --check chase a pair that is not there."
+      "_note": "Declared 2026-08-09 while moving this drain onto the tg_notify gateway. The LaunchAgent com.balizero.intel-lake.outbox-drain.minute runs the FLAT HOME copy (~/scripts/), not the repo's subdirectory path, and the pair was undeclared — so the merge alone would have left the running code on the old raw sender while the repo claimed it was migrated (the W107 delivery gotcha). Measured on all three the same day: present and byte-identical to origin/main on M5 and Pro, absent on Mini (0 plist, 0 crontab there). M5's copy exists but is NOT armed (0 plist, 0 crontab) — declared anyway so a future divergence is seen rather than discovered; Mini deliberately excluded rather than 'all', which would make --check chase a pair that is not there."
+    },
+    {
+      "live": "~/scripts/runtime-reconcile.sh",
+      "repo": "scripts/runtime-reconcile.sh",
+      "machines": ["pro"],
+      "_note": "UNDECLARED until 2026-08-10, found while migrating its Telegram sender: com.nuzantara.runtime-reconcile.plist on Pro invokes /Users/nuzantara/scripts/runtime-reconcile.sh, a real file and not a symlink, so merging alone leaves the organ on the old code (W107 delivery gotcha). Measured the same day: the live copy was sha256 30216b454a60106b, byte-identical to origin/main — so it was aligned, not forked, and the risk was the NEXT change, which is exactly the one that declared it. The script's own header says 'install the live copy under ~/scripts via the P1 installer'; that sentence was the only thing that knew about the pair, and a sentence in a header is not a lint."
     }
   ],
   "allow": [

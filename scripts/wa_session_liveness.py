@@ -57,6 +57,10 @@ from pathlib import Path
 from typing import Optional, Sequence
 
 REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO))
+
+from scripts.tg_gateway_verdict import extract_gateway_verdict, gateway_delivered  # noqa: E402
+
 
 DEFAULT_STALE_HOURS = 72
 
@@ -232,12 +236,18 @@ def send_to_gateway(message: str, host: str, dedup_suffix: str = "") -> bool:
         gateway = REPO / "scripts" / "tg_notify.py"
         if not gateway.exists():
             return False
-        subprocess.run(
-            [sys.executable, str(gateway), "--tier", "p0", "--source", "wa-session-liveness",
-             "--dedup-key", f"wa-session-{host}{dedup_suffix}", message],
-            check=False,
-        )
-        return True
+        try:
+            proc = subprocess.run(
+                [sys.executable, str(gateway), "--tier", "p0", "--source", "wa-session-liveness",
+                 "--dedup-key", f"wa-session-{host}{dedup_suffix}", message],
+                check=False, capture_output=True, text=True,
+            )
+        except Exception as exc:  # noqa: BLE001 — notification failure is fail-closed
+            print(f"tg_notify: ERRORE subprocess ({type(exc).__name__})", file=sys.stderr)
+            return False
+        verdict = extract_gateway_verdict(proc.stderr)
+        print(f"tg_notify: {verdict or f'NESSUN verdetto rc={proc.returncode}'}", file=sys.stderr)
+        return proc.returncode == 0 and gateway_delivered(verdict)
 
 
 def emit_alert(stale: Sequence[LineStatus], host: str, stale_hours: float) -> bool:

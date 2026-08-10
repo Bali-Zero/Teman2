@@ -3,6 +3,7 @@ import {
   WorkspaceAccessRequired,
 } from "@/components/magazine-shell";
 import { ResearchWorkbench } from "@/components/research-workbench";
+import { requireChatGPTUser } from "@/app/chatgpt-auth";
 import { authorize, parseRoleAllowlist } from "@/lib/server/authorization";
 import { requireMagazineViewer } from "@/lib/server/magazine-read-model";
 import { publicResearchJob } from "@/lib/server/research-http";
@@ -13,9 +14,13 @@ import {
 import { getMagazineBindings } from "@/lib/server/runtime-bindings";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default async function ResearchPage() {
-  const viewer = await requireMagazineViewer();
+  await requireChatGPTUser("/research");
+  const viewer = await requireMagazineViewer("internal:read");
   if (viewer === null)
     return (
       <MagazineShell eyebrow="Private workspace">
@@ -43,3 +48,4 @@ export default async function ResearchPage() {
     </MagazineShell>
   );
 }
+import type { Metadata } from "next";

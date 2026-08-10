@@ -4,7 +4,9 @@
 #
 # Batch 1 (2026-08-09, #3913): six organs, ~2,350 wake-ups a day.
 # Batch 2 (2026-08-10): post_publish_poller.py (288/day) and
-# runtime-reconcile.sh (48/day). The poller is a special case worth naming: its
+# runtime-reconcile.sh (48/day); batch 3 the two healer twins, whose raw
+# sender was byte-identical in both files — curing one only moves which one is
+# unguarded (W106b). The poller is a special case worth naming: its
 # LaunchAgent passes no TELEGRAM_BOT_TOKEN, so its raw POST returned at the
 # first `if not TELEGRAM_BOT_TOKEN` and the organ was MUTE. Migrating it GIVES
 # it a voice, which is why its tier is `digest` by deliberate choice — five
@@ -47,6 +49,8 @@ MIGRATED=(
   "scripts/supervisor_liveness_watchdog.sh"
   "apps/bali-intel-scraper/scripts/post_publish_poller.py"
   "scripts/runtime-reconcile.sh"
+  "infra/healer/healer-run.sh"
+  "infra/launchagents/wrappers/pro-healer.sh"
 )
 
 echo "── struttura (tutti e ${#MIGRATED[@]})"
@@ -238,6 +242,12 @@ mv "$FAKE/nuzantara/scripts/tg_notify.hidden" "$FAKE/nuzantara/scripts/tg_notify
 # organ would be scored mute for the harness's poverty, not its own (W108).
 _extra_env() {
   case "$1" in
+    healer-run.sh|pro-healer.sh)
+      # Both healers log through a `log` helper and stamp their source outside
+      # the extracted function.
+      echo "TG_SOURCE=harness-probe"
+      echo 'log() { printf "%s\n" "$*" >> "$LOG"; }'
+      ;;
     runtime-reconcile.sh)
       echo "ALERT_STAMP=$FAKE/rr_stamp"
       echo "ALERT_COOLDOWN_SEC=0"
@@ -262,7 +272,11 @@ run_shell_sender() {
     # Extract the function verbatim, from its opening line to the closing brace
     # in column 1 — running the REAL body, not a paraphrase of it.
     awk "/^${fn}\(\) \{/,/^\}/" "$REPO_ROOT/$rel"
-    if [ "$fn" = "telegram_backup" ]; then
+    if [ "$fn" = "telegram" ]; then
+      # tier, dedup-key, text — the healers make the tier explicit at the call
+      # site, because which alerts deserve a P0 slot is a decision, not a default.
+      echo "$fn p0 'probe:key' 'messaggio di prova'"
+    elif [ "$fn" = "telegram_backup" ]; then
       echo "$fn 'probe:key' 'messaggio di prova'"
     else
       echo "$fn 'messaggio di prova'"
@@ -292,6 +306,8 @@ run_shell_sender "scripts/cost_breaker_deadman.sh" "tg_alert" "cost-breaker-dead
 run_shell_sender "scripts/intake_review_reader_liveness.sh" "send_telegram" "intake-review-reader:stalled:${HOST}"
 run_shell_sender "scripts/supervisor_liveness_watchdog.sh" "send_telegram" "supervisor-liveness:${HOST}"
 run_shell_sender "scripts/runtime-reconcile.sh" "alert" "runtime-reconcile:invariant-breach"
+run_shell_sender "infra/healer/healer-run.sh" "telegram" "probe:key"
+run_shell_sender "infra/launchagents/wrappers/pro-healer.sh" "telegram" "probe:key"
 
 # ── W108, proven by behaviour instead of by spelling ──────────────────────────
 # A POISONED python3 goes first on PATH. An organ that resolves its interpreter
@@ -321,7 +337,11 @@ poisoned_still_reaches() {
     echo "LOG=$FAKE/harness.log"
     _extra_env "$base"
     awk "/^${fn}\(\) \{/,/^\}/" "$REPO_ROOT/$rel"
-    if [ "$fn" = "telegram_backup" ]; then
+    if [ "$fn" = "telegram" ]; then
+      # tier, dedup-key, text — the healers make the tier explicit at the call
+      # site, because which alerts deserve a P0 slot is a decision, not a default.
+      echo "$fn p0 'probe:key' 'con PATH avvelenato'"
+    elif [ "$fn" = "telegram_backup" ]; then
       echo "$fn 'probe:key' 'con PATH avvelenato'"
     else
       echo "$fn 'con PATH avvelenato'"
@@ -340,6 +360,8 @@ poisoned_still_reaches "scripts/cost_breaker_deadman.sh" "tg_alert"
 poisoned_still_reaches "scripts/intake_review_reader_liveness.sh" "send_telegram"
 poisoned_still_reaches "scripts/supervisor_liveness_watchdog.sh" "send_telegram"
 poisoned_still_reaches "scripts/runtime-reconcile.sh" "alert"
+poisoned_still_reaches "infra/healer/healer-run.sh" "telegram"
+poisoned_still_reaches "infra/launchagents/wrappers/pro-healer.sh" "telegram"
 
 # Same discriminator for the Python organs: sys.executable is absolute by
 # construction, a literal "python3" is not.
@@ -388,7 +410,11 @@ shell_fail_loud() {
     echo "LOG=$logf"
     _extra_env "$base"
     awk "/^${fn}\(\) \{/,/^\}/" "$REPO_ROOT/$rel"
-    if [ "$fn" = "telegram_backup" ]; then
+    if [ "$fn" = "telegram" ]; then
+      # tier, dedup-key, text — the healers make the tier explicit at the call
+      # site, because which alerts deserve a P0 slot is a decision, not a default.
+      echo "$fn p0 'probe:key' 'nessun gateway'"
+    elif [ "$fn" = "telegram_backup" ]; then
       echo "$fn 'probe:key' 'nessun gateway'"
     else
       echo "$fn 'nessun gateway'"
@@ -408,7 +434,22 @@ shell_fail_loud "scripts/cost_breaker_deadman.sh" "tg_alert"
 shell_fail_loud "scripts/intake_review_reader_liveness.sh" "send_telegram"
 shell_fail_loud "scripts/supervisor_liveness_watchdog.sh" "send_telegram"
 shell_fail_loud "scripts/runtime-reconcile.sh" "alert"
+shell_fail_loud "infra/healer/healer-run.sh" "telegram"
+shell_fail_loud "infra/launchagents/wrappers/pro-healer.sh" "telegram"
 mv "$FAKE/nuzantara/scripts/tg_notify.hidden" "$FAKE/nuzantara/scripts/tg_notify.py"
+
+echo
+echo "── il tier è scritto al call-site, e la riga di routine è digest"
+# The healers' routine "run completato" line fires every run — 10/day between
+# them, pure noise when nothing is wrong — and is the one alert that must NOT
+# take a P0 slot. Exactly one `digest` call site per healer: asserting == 1
+# (not > 0) means flipping it to p0 makes this go red, which a bare presence
+# count would not.
+for rel in infra/healer/healer-run.sh infra/launchagents/wrappers/pro-healer.sh; do
+  base="$(basename "$rel")"
+  n=$(grep -c 'telegram digest ' "$REPO_ROOT/$rel" || true)
+  check "$base: una sola riga di routine a digest" "$n" "1"
+done
 
 echo
 echo "── il registro grandfathered si è RIDOTTO"
@@ -416,7 +457,7 @@ echo "── il registro grandfathered si è RIDOTTO"
 # bases block each other with zero shared lines (W109b), which is why this
 # migration ships as one sequential PR per batch and never in parallel.
 count=$(python3 -c "import json;print(len(json.load(open('$REPO_ROOT/infra/tg-gateway/grandfathered.json'))['files']))")
-if [ "$count" -le 146 ]; then ok "registro a $count voci (≤146)"; else bad "registro CRESCIUTO a $count"; fi
+if [ "$count" -le 144 ]; then ok "registro a $count voci (≤144)"; else bad "registro CRESCIUTO a $count"; fi
 
 echo
 echo "════ PASS=$PASS FAIL=$FAIL"

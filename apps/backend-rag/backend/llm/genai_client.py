@@ -52,7 +52,178 @@ class LLMStructuredOutputError(Exception):
     Callers may catch this and fall back to legacy non-structured paths;
     `query_expansion._llm_translate` does so to keep the dictionary-only
     expansion path alive when the LLM round-trips an unparseable result.
+
+    `reason` carries the closed-vocabulary cause (see
+    `_structured_failure_reason`) OUT OF BAND of the message. The message
+    embeds the pydantic ValidationError, whose `input_value=...` can echo
+    client PII from the prompt — which is why `verification_service` refuses
+    to log `str(exc)` at all. `reason` is enum-only and therefore safe to
+    log, so a caller can name the cause without touching the unsafe text.
     """
+
+    def __init__(self, message: str = "", *, reason: str = "") -> None:
+        super().__init__(message)
+        self.reason = _sanitize_structured_failure_reason(reason)
+
+
+# `llm_cost_events.error_class` is varchar(64) and the recorder isolates its
+# sinks: an over-long value raises only on the Postgres write, so JSONL and
+# Prometheus keep the event while the SQL ledger silently loses it. Losing
+# exactly the failure rows makes the failure rate read as ZERO — a diagnostic
+# that hides what it diagnoses. Every composed error_class is clamped here.
+ERROR_CLASS_MAX_LEN = 64
+
+# Closed vocabulary for WHY a structured call produced no schema-valid JSON.
+# Values are short by construction so `LLMStructuredOutputError:<reason>` fits
+# the column with room to spare, and stable so the ledger can be grouped on
+# them. NEVER put model text in here — see _structured_failure_reason.
+STRUCTURED_FAILURE_NO_CANDIDATES = "NO_CANDIDATES"
+STRUCTURED_FAILURE_MAX_TOKENS = "MAX_TOKENS"
+STRUCTURED_FAILURE_EMPTY_TEXT = "EMPTY_TEXT"
+STRUCTURED_FAILURE_INVALID_JSON = "INVALID_JSON"
+STRUCTURED_FAILURE_SCHEMA_VALIDATION = "SCHEMA_VALIDATION"
+STRUCTURED_FAILURE_UNATTRIBUTED = "UNATTRIBUTED"
+STRUCTURED_FAILURE_BLOCKED_PREFIX = "BLOCKED_"
+STRUCTURED_FAILURE_BLOCKED_REASONS = frozenset(
+    {
+        "BLOCKED_SAFETY",
+        "BLOCKED_RECITATION",
+        "BLOCKED_LANGUAGE",
+        "BLOCKED_OTHER",
+        "BLOCKED_BLOCKLIST",
+        "BLOCKED_PROHIBITED_CONTENT",
+        "BLOCKED_SPII",
+        "BLOCKED_MALFORMED_FUNCTION_CALL",
+        "BLOCKED_IMAGE_SAFETY",
+        "BLOCKED_UNEXPECTED_TOOL_CALL",
+        "BLOCKED_IMAGE_PROHIBITED_CONTENT",
+        "BLOCKED_NO_IMAGE",
+        "BLOCKED_IMAGE_RECITATION",
+        "BLOCKED_IMAGE_OTHER",
+        "BLOCKED_MODEL_ARMOR",
+        "BLOCKED_JAILBREAK",
+    }
+)
+
+
+def _sanitize_structured_failure_reason(reason: object) -> str:
+    """Return only a bounded member of the structured-failure vocabulary.
+
+    ``LLMStructuredOutputError`` is public and callers can construct it
+    directly, so the constructor must enforce the same PII-safe vocabulary
+    that ``_structured_failure_reason`` emits. Unknown values become the stable
+    ``UNATTRIBUTED`` label rather than arbitrary logged text.
+    """
+    if not isinstance(reason, str):
+        return STRUCTURED_FAILURE_UNATTRIBUTED
+
+    if reason in {
+        STRUCTURED_FAILURE_NO_CANDIDATES,
+        STRUCTURED_FAILURE_MAX_TOKENS,
+        STRUCTURED_FAILURE_EMPTY_TEXT,
+        STRUCTURED_FAILURE_INVALID_JSON,
+        STRUCTURED_FAILURE_SCHEMA_VALIDATION,
+        STRUCTURED_FAILURE_UNATTRIBUTED,
+    }:
+        return reason
+
+    if reason in STRUCTURED_FAILURE_BLOCKED_REASONS:
+        return reason
+
+    return STRUCTURED_FAILURE_UNATTRIBUTED
+
+
+def _enum_name(value: object) -> str:
+    """Best-effort short name for an SDK enum, int, or string.
+
+    google-genai returns `FinishReason.MAX_TOKENS` (an enum with `.name`), but
+    older/proto paths hand back a bare int or the fully-qualified `str()`.
+    Normalise all three so the ledger groups on one spelling.
+    """
+    if value is None:
+        return ""
+    name = getattr(value, "name", None)
+    if isinstance(name, str) and name:
+        return name
+    text = str(value)
+    # `FinishReason.MAX_TOKENS` -> `MAX_TOKENS`; a bare int stays as-is.
+    return text.rsplit(".", 1)[-1]
+
+
+def _clamp_error_class(value: str) -> str:
+    """Keep a composed error_class inside the column. See ERROR_CLASS_MAX_LEN."""
+    return value[:ERROR_CLASS_MAX_LEN]
+
+
+def _structured_failure_reason(
+    response: object,
+    raw_text: str,
+    validation_error: object | None = None,
+) -> str:
+    """Name why a structured call yielded nothing schema-valid.
+
+    Four causes arrive at the ledger indistinguishable today — the model was
+    safety-blocked, it hit `max_output_tokens` mid-thought, it emitted malformed
+    JSON, or it emitted valid JSON that did not match the schema. They want
+    different fixes. The ledger recorded only `LLMStructuredOutputError` for
+    all of them, which is why 10 live verifier failures over 7 days could not
+    be attributed.
+
+    PII boundary (UU PDP / SYMBIOSIS Law 2, the same rule the verifier's own
+    except-block already follows): this returns ONLY enum names off the
+    response envelope. The model's text and the pydantic ValidationError —
+    both of which can echo client PII back out of the prompt — never enter
+    the returned string. `raw_text` is parsed locally only to distinguish
+    malformed JSON from schema-invalid JSON; it is never returned or logged.
+    The distinction comes from Pydantic's own terminal error metadata rather
+    than reparsing with stdlib JSON, whose accepted input is not identical.
+    """
+    candidates = getattr(response, "candidates", None) or []
+
+    # A prompt-level block has no candidates at all; the reason lives on
+    # prompt_feedback instead, so read it before giving up on the envelope.
+    if not candidates:
+        feedback = getattr(response, "prompt_feedback", None)
+        block = getattr(feedback, "block_reason", None) if feedback else None
+        if block is not None:
+            return _sanitize_structured_failure_reason(
+                f"{STRUCTURED_FAILURE_BLOCKED_PREFIX}{_enum_name(block)}"
+            )
+        return STRUCTURED_FAILURE_NO_CANDIDATES
+
+    finish = _enum_name(getattr(candidates[0], "finish_reason", None))
+
+    # An abnormal termination outranks whatever text survived it. A response
+    # cut off by MAX_TOKENS or SAFETY often carries a PARTIAL answer, and
+    # partial JSON never validates — reading that stub as INVALID_JSON would
+    # name the symptom (bad shape) and bury the cause (it was cut off).
+    if finish == "MAX_TOKENS":
+        return STRUCTURED_FAILURE_MAX_TOKENS
+    # STOP with no text is not a block — it is an empty answer, and saying
+    # "BLOCKED_STOP" would invent a cause. Only non-STOP terminations name one.
+    if finish and finish not in {"STOP", "UNSPECIFIED", "FINISH_REASON_UNSPECIFIED"}:
+        return _sanitize_structured_failure_reason(f"{STRUCTURED_FAILURE_BLOCKED_PREFIX}{finish}")
+
+    # Normal termination: distinguish malformed JSON from valid JSON that
+    # failed Pydantic schema validation. Use the parser that actually rejected
+    # the response: stdlib json.loads() accepts some inputs (for example lone
+    # UTF-16 surrogates) that pydantic-core correctly reports as json_invalid.
+    # Inspect only the closed error `type`; never read, return, or log `input`.
+    if raw_text.strip():
+        errors_method = getattr(validation_error, "errors", None)
+        if callable(errors_method):
+            try:
+                error_details = errors_method(include_input=False)
+            except Exception:
+                error_details = []
+            if any(
+                isinstance(detail, dict) and detail.get("type") == "json_invalid"
+                for detail in error_details
+            ):
+                return STRUCTURED_FAILURE_INVALID_JSON
+            return STRUCTURED_FAILURE_SCHEMA_VALIDATION
+        return STRUCTURED_FAILURE_UNATTRIBUTED
+    return STRUCTURED_FAILURE_EMPTY_TEXT
 
 
 # Try to import new SDK
@@ -382,8 +553,8 @@ class GenAIClient:
             latency_ms = round((time.perf_counter() - t0) * 1000)
             from backend.services.llm_clients.pricing import extract_gemini_usage
 
-            prompt_tokens, completion_tokens, cached_tokens, thinking_tokens = (
-                extract_gemini_usage(getattr(response, "usage_metadata", None))
+            prompt_tokens, completion_tokens, cached_tokens, thinking_tokens = extract_gemini_usage(
+                getattr(response, "usage_metadata", None)
             )
             success = True
             logger.info(
@@ -541,6 +712,11 @@ class GenAIClient:
 
         attempt_prompt: str | list = contents
         last_validation_err: ValidationError | None = None
+        # Bound before the loop so the failure path can attribute a cause even
+        # if the loop body never runs (max_retries < 0). A None response reads
+        # as NO_CANDIDATES, which is honest rather than a NameError.
+        response: Any = None
+        raw_text = ""
 
         t0 = time.perf_counter()
         prompt_tokens = 0
@@ -614,10 +790,34 @@ class GenAIClient:
                             else [contents, {"role": "user", "parts": [{"text": feedback}]}]
                         )
 
-            error_class = "LLMStructuredOutputError"
+            # Name the cause in the ledger, not just the symptom. `response`
+            # and `raw_text` are the LAST attempt's — the terminal state is the
+            # one worth attributing. Enum names only; see
+            # _structured_failure_reason for the PII boundary.
+            failure_reason = _structured_failure_reason(
+                response,
+                raw_text,
+                last_validation_err,
+            )
+            error_class = _clamp_error_class(f"LLMStructuredOutputError:{failure_reason}")
+            logger.warning(
+                "LLM structured call failed to validate",
+                extra={
+                    "provider": "gemini",
+                    "model": model,
+                    "schema": response_schema.__name__,
+                    "reason": failure_reason,
+                    "attempts": max_retries + 1,
+                    "completion_tokens": completion_tokens,
+                    "thinking_tokens": thinking_tokens,
+                    "max_output_tokens": max_output_tokens,
+                },
+            )
             raise LLMStructuredOutputError(
                 f"Model failed to produce {response_schema.__name__}-valid JSON "
-                f"after {max_retries + 1} attempt(s): {last_validation_err}"
+                f"after {max_retries + 1} attempt(s) [{failure_reason}]: "
+                f"{last_validation_err}",
+                reason=failure_reason,
             )
         except LLMStructuredOutputError:
             raise
