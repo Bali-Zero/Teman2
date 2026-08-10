@@ -162,6 +162,22 @@ jobs:
         id: detfloor
         run: |
           set -u
+          # BOOTSTRAP WINDOW (same pattern as hot-zone-pr-gate.yml's own
+          # `test_hotzone_changed_files.sh` self-test, and same reasoning:
+          # this step checks out the BASE ref, which does not carry
+          # scripts/evidence_pack_lint.py until the very PR that introduces
+          # it (this one) actually merges. Not a disarm vector — once the
+          # script is on main, every future PR's base checkout has it, and
+          # no PR can make it disappear from HEAD without also removing it
+          # from base after merge. Found live on this PR's own first CI run
+          # ("No such file or directory") — a real gap the local sandbox
+          # simulation could not have caught, since the sandbox always had
+          # the file.
+          if [[ ! -f scripts/evidence_pack_lint.py ]]; then
+            echo "::notice::scripts/evidence_pack_lint.py not in base checkout yet (bootstrap run) — floor defaults to 1, permissive, for THIS run only"
+            echo "floor=1" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           FLOOR=$(python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/changed-files.txt)
           echo "floor=$FLOOR" >> "$GITHUB_OUTPUT"
           echo "deterministic floor for this diff: $FLOOR"
@@ -308,6 +324,14 @@ jobs:
           HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha }}
         run: |
           set -u
+          # Same bootstrap-window exemption as the floor-computation step
+          # above (this job checks out BASE, which lacks the script until
+          # this very PR merges) — NOTICE, not a crash, and not reachable
+          # by any PR after this one.
+          if [[ ! -f scripts/evidence_pack_lint.py ]]; then
+            echo "::notice::scripts/evidence_pack_lint.py not in base checkout yet (bootstrap run) — pack validation skipped for THIS run only"
+            exit 0
+          fi
           mkdir -p /tmp/evidence-check/evidence
           if ! git cat-file -e "$HEAD_SHA:evidence/pack.yml" 2>/dev/null; then
             echo "::error::gear 3 declared in evidence/brief.yml but evidence/pack.yml is missing at HEAD — a Gear-3 task needs both"
