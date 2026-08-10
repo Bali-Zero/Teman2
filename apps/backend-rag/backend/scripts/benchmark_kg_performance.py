@@ -109,7 +109,7 @@ async def benchmark_bfs_traversal(pool: asyncpg.Pool, n: int = 10) -> dict:
         rows = await conn.fetch(
             """
             SELECT DISTINCT e.source_entity_id
-            FROM kg_edges TABLESAMPLE SYSTEM (1) AS e
+            FROM kg_edges AS e TABLESAMPLE SYSTEM (1)
             WHERE e.relationship_type IN ('REQUIRES', 'ENABLES', 'PART_OF')
             LIMIT $1
             """,

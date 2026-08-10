@@ -130,7 +130,7 @@ async def test_assign_lead_updates_client_with_department_match(
     assert conn.executed[0][1] == ("consultant@example.com", 10)
     query, args = conn.last_fetchrow
     assert "RANDOM()" not in query
-    assert "MD5(tm.email" in query
+    assert "MD5(tm.email || $11::text)" in query
     assert args[-1] == 10
 
 
@@ -159,7 +159,7 @@ async def test_assign_lead_fallback_uses_client_specific_tiebreak(
 
     query, args = conn.last_fetchrow
     assert "RANDOM()" not in query
-    assert "MD5(tm.email" in query
+    assert "MD5(tm.email || $10::text)" in query
     assert args[-1] == 10
     assert result["assigned_lead"] == "advisor@example.com"
     assert conn.executed[0][1] == ("advisor@example.com", 10)
