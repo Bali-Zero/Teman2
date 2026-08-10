@@ -63,9 +63,9 @@ describe("normalizeCategory", () => {
 describe("publicSlug", () => {
   it("returns the base slug for every language variant", () => {
     for (const locale of LOCALE_SUFFIXES) {
-      expect(publicSlug(`the-honest-map-blocked-bali-codes.${locale}.mdx`)).toBe(
-        "the-honest-map-blocked-bali-codes",
-      );
+      expect(
+        publicSlug(`the-honest-map-blocked-bali-codes.${locale}.mdx`),
+      ).toBe("the-honest-map-blocked-bali-codes");
     }
     expect(publicSlug("the-honest-map-blocked-bali-codes.mdx")).toBe(
       "the-honest-map-blocked-bali-codes",
@@ -93,9 +93,7 @@ describe("publicSlug", () => {
   it("never produces a slug that no .mdx file backs", () => {
     const folders = fs
       .readdirSync(ARTICLES_PATH)
-      .filter((f) =>
-        fs.statSync(path.join(ARTICLES_PATH, f)).isDirectory(),
-      );
+      .filter((f) => fs.statSync(path.join(ARTICLES_PATH, f)).isDirectory());
     for (const folder of folders) {
       const files = fs
         .readdirSync(path.join(ARTICLES_PATH, folder))

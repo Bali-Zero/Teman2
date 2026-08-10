@@ -42,7 +42,6 @@ const BACKEND_URL =
 // generator can read the same one; this module imports `next/cache`, which that
 // script cannot. See that file's header for what the duplicate cost us.
 
-
 /**
  * Coerce a raw `tags` value (from MDX frontmatter or the backend `ai_tags`
  * field) into a guaranteed `string[]`. Both sources are untrusted at runtime:
