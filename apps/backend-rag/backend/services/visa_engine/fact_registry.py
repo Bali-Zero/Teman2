@@ -2,7 +2,7 @@
 
 Source: ``research/visa/2026-07-17-visa-oracle-v2-round2-codex-engine-
 concretization.md`` §1 (module layout, ``fact_registry.py``) and §2
-(``ApplicantFacts.facts`` — the 40 collected paths + the 3 ``derived.*``
+(``ApplicantFacts.facts`` — the 41 collected paths + the 3 ``derived.*``
 paths this catalog also carries).
 
 Why this exists alongside ``enums.FactPath``: ``FactPath`` is the *closed
@@ -150,7 +150,8 @@ def _spec(
 #: Default catalog seeded 1:1 from spec §2 ``ApplicantFacts.facts.properties``
 #: (35 entries) plus the 3 ``derived.*`` paths from spec §2 ``FactPath``,
 #: plus the 5 ``secondhome.*`` paths added for the E33 Second Home vertical
-#: (2026-07-23, bank-route owner scope) — 43 entries total.
+#: (2026-07-23, bank-route owner scope), plus ``sponsor.type`` added so the
+#: interview can ask who the sponsor is (2026-08-10) — 44 entries total.
 #: PII classification rationale: immigration status/violation history and
 #: investment capital amounts are SENSITIVE (UU PDP heightened-treatment
 #: analogues per CLAUDE.md §14 — closest to "criminal"/"financial" data in
@@ -295,6 +296,18 @@ _DEFAULT_SPECS: tuple[FactSpec, ...] = (
     ),
     _spec(FactPath.FAMILY_SPONSOR_STATUS_CODE, FactValueKind.STRING, "product_code"),
     _spec(FactPath.FAMILY_MARRIAGE_REGISTERED, FactValueKind.BOOLEAN, "boolean"),
+    # sponsor.type — allowed_values mirror enums.SponsorType exactly. They are
+    # spelled out rather than derived so that adding a member to the enum is a
+    # deliberate two-line change here as well: a silently-widened fact is how a
+    # rule starts accepting a value no product was ever written for.
+    _spec(
+        FactPath.SPONSOR_TYPE,
+        FactValueKind.STRING,
+        "sponsor_type_enum",
+        allowed_values=frozenset(
+            {"NONE", "INDIVIDUAL", "EMPLOYER", "EDUCATION", "INVESTMENT", "GOVERNMENT"}
+        ),
+    ),
     _spec(FactPath.FAMILY_SPONSOR_CONFIRMED, FactValueKind.BOOLEAN, "boolean"),
     _spec(
         FactPath.STUDY_LEVEL,
