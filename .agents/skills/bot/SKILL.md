@@ -22,6 +22,70 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 
 ## 1. LIVE STATE (last update 2026-08-11 — keep current)
 
+- **🧪 TWO ADVERSARIAL SEATS + WEB RESEARCH ON THE FOUR OPEN WEAKNESSES (2026-08-11). The most
+  useful result is where they DISAGREE — read that first.**
+  - **The panel said: fix the monologue leak at the generation layer (Gemini `response_schema`
+    separating thought from reply), not with a cleaner regex.** Both Codex gpt-5.6-sol and Gemini
+    3.1 Pro said it independently. **The research REFUTES that as currently actionable**:
+    `googleapis/python-genai` **issue #2121** documents that thought content arrives inside
+    `part.text` with a literal `THOUGHT:` prefix while **`part.thought` is `false`/`null` on every
+    part** — so a client that correctly checks the structured flag still gets fooled, because the
+    flag is wrong at the source. Google closed it "not planned". Live `<think>`/`<final>` tag
+    leakage is open across three independent frameworks (openclaw #15353, #48587) as of Feb-Mar
+    2026, and is reported to worsen under high context usage. **So the cleaner regex is a
+    workaround for a documented upstream bug, not a design shortcut** — do not rip it out for the
+    "proper" fix until #2121 moves. Also on this stack: with thinking disabled a model can emit a
+    tool call as plain visible text, no error.
+  - **Where both seats AGREED, and they were right — the abstain-with-content rule as first
+    shipped was WRONG.** Gating the send on TEXT LENGTH "measures fluency, not support" (Codex)
+    and "a disclaimer does not mitigate bad legal advice" (Gemini). Corrected: send only when
+    evidence was actually RETRIEVED (`context_length > 0` AND `evidence_score > 0`), which is also
+    what this corner's own numbers said — the 5 useful abstains had ctx 1-2, the 2 junk ones had
+    ctx 0. Shipped on `backend-rag-wa-escalation-lane`, mutation-verified.
+  - **On whether a caution label is enough for regulated advice, the honest answer is NOBODY
+    KNOWS.** The research found **no controlled study** comparing suppress vs caution-label vs
+    human-route with harm as the outcome in a legal/medical/financial context. What IS measured:
+    confident-but-wrong AI advice collapsed users' willingness to say "I don't know" from **44% to
+    3%** and their accuracy from **27% to 9%** while stated confidence rose 30%→76% (trivia
+    domain, not domain-matched). And **there is no regulatory requirement that AI advice carry a
+    confidence disclaimer** — EU AI Act Art. 86, FDA CDS 2026, NAIC and FINRA all impose
+    transparency/oversight, none specifies a confidence element. Do not cite one.
+  - **Non-determinism (finding 2/3) has named mechanisms, and one is architectural**: an
+    LLM as the EXCLUSIVE collection gate is the wrong design at this scale (Codex) — use a
+    deterministic domain→collection map with mandatory collections, let the LLM only ADD. Plus:
+    ANN/HNSW traversal can omit true neighbours entirely, so the retrieved SET varies, not just
+    its order; temperature 0 is not determinism (request batching flips tokens); an uncalibrated
+    `evidence_score` bucketing to 0.85/0.6/0.0 must not drive safety decisions until calibrated.
+    Measured cure: hybrid BM25+dense with RRF fusion, recall@10 **65-78% → 91%**; hybrid+rerank
+    **+17.4% Recall@5** over RRF alone. **Also demanded and NOT yet built: a reason code on empty
+    retrieval** — `ROUTER_SELECTED_NONE` / `TIMEOUT` / `FILTER_ZERO_RESULTS` / `TOOL_ERROR` must
+    never all collapse into "evidence 0".
+  - **Caching: the cheap win is doing nothing, correctly.** Implicit caching is ON by default
+    since Gemini 2.5, costs no storage fee, and strictly dominates explicit caching below ~3.6-4.8
+    calls/hour. Our 9,507-token prefix clears every documented minimum. The ONE requirement is
+    that the static prefix sit at the very start of every request, **byte-identical**, before any
+    per-call content — otherwise the match silently fails and the discount is zero. That is the
+    thing to verify, not a caching feature to build.
+  - **False continuity is the weakest-evidenced of the four**: no academic source, no named
+    taxonomy, one OpenAI bug acknowledgment without published mechanism. Treat any causal claim as
+    OUR hypothesis to test. Codex's lead is the sharpest available: the phrase we saw — "The
+    previous answer was rejected because…" — fingerprints **retry/evaluator context
+    contamination**, i.e. a failed attempt being appended into the next generation, NOT a generic
+    persona tic. Ruling out long-term memory (done) does not rule that out. **Next step: dump the
+    fully assembled Gemini request for a retry, not the app-level `conversation_history`.**
+  - **Blind spots the whole probe set cannot see BY CONSTRUCTION** (Codex's list, worth keeping):
+    factual correctness (on-topic ≠ correct — needs an expert-labelled claim benchmark with
+    effective dates); multi-turn corruption and session bleed (every probe is cold); cross-client
+    authorization on a SHARED number; prompt injection via retrieved documents; actual WhatsApp
+    delivery (an endpoint 200 is not a delivered message); escalation abandonment (Telegram
+    accepting ≠ a human acting); burst load; noisy real inputs (voice notes, typos,
+    code-switching); provider/model degradation.
+  - **And a correction to my own numbers**: reporting "~10% of ordinary questions exceed the
+    limit" next to production's "4/311 ≈ 1.3%" is a contradiction unless the populations differ —
+    repeated runs of three questions are a REPEATABILITY test, not a prevalence estimate, and I
+    presented them as one. Separately, "~0% cache hits" contradicts the 14.5-17% in the same
+    breath: cached TOKENS and cache-HIT requests are different measures. Both corrected here.
+
 - **✂️ A REPLY TOO LONG FOR WHATSAPP IS CUT MID-WORD AND NOTHING SAYS SO — measured at ~10% of
   ORDINARY questions, worst case 13,671 chars (2026-08-11).** `whatsapp_service.send_message`
   enforces the Cloud API's 4,096-char body limit with `text[:4096]`: a silent cut, mid-word, with
