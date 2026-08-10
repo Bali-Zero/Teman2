@@ -31,6 +31,8 @@ import re
 from collections.abc import Iterable
 from typing import Any
 
+from backend.services.rag.agentic._tool_denial import is_denial_observation
+
 logger = logging.getLogger(__name__)
 
 EVIDENCE_SCORE_TRUSTED_TOOL: float = 0.85
@@ -146,6 +148,18 @@ def detect_trusted_tool_usage(
         tool_name = getattr(action, "tool_name", None)
         if tool_name not in trusted_names:
             continue
+        if is_denial_observation(observation):
+            # A REFUSED call is not a successful one. The checks below scan
+            # prose for failure words, and the anonymous denial deliberately
+            # contains none of them while being 54 chars — 4 over the floor —
+            # so it used to score 0.85, the highest evidence in the system.
+            # Measured in prod 2026-08-10; see _tool_denial.py.
+            logger.info(
+                "🚫 [%s] %s was DENIED — not counted as trusted-tool evidence",
+                log_prefix,
+                tool_name,
+            )
+            continue
         obs_lower = observation.lower()
         has_content = (
             "error" not in obs_lower
@@ -241,6 +255,18 @@ def detect_quotable_relevance_veto(
         tool_name = getattr(action, "tool_name", None)
         if tool_name not in quotable:
             continue
+        # NOT given the denial check that detect_trusted_tool_usage above
+        # got, and this asymmetry is deliberate — measured, not overlooked.
+        # The symmetric change reads right ("a denial carries no output, so
+        # there is nothing to have quoted") but for the denial that actually
+        # bit us it is a NO-OP: `_extract_literal_tokens` finds no number in
+        # "This capability is not available in this conversation.", so the
+        # `if not observation_tokens: continue` below already skips it. The
+        # only case it would change is an authenticated denial whose *detail*
+        # carries a 3+ digit number ("...quota 1000 exceeded"), and there it
+        # would SUPPRESS a veto — i.e. loosen a guard, in a case nobody has
+        # measured. This function's job is to block trust, so the safe
+        # default is to leave it blocking.
         obs_lower = observation.lower()
         has_content = (
             "error" not in obs_lower
