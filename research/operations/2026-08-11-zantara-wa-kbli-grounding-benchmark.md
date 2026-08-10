@@ -1,3 +1,15 @@
+---
+date: 2026-08-11
+domain: operations
+client_case: none
+track: BOT-KBLI
+adversarial_review: gemini
+sources:
+  - data/source_documents/KBLI_2025_FINAL_CLEAN.json
+  - https://jdih-storage.bkpm.go.id/jdih/jdih/2025Permeninvesthil005-.pdf
+  - https://jdih.kemkes.go.id/storage/documents/pdfs/2025permenkes011.pdf
+---
+
 # Zantara WhatsApp KBLI grounding benchmark
 
 Date: 2026-08-11
@@ -119,6 +131,18 @@ The wider battery exposed four independent channel/grounding failures:
 - Q17 cited a fabricated `UU No. 4 Tahun 2026` for PT capital.
 
 Non-empty source arrays did not imply source fidelity: several answers cited material unrelated to the claim, while the shared policy could set `trusted_tools_used` merely because tools were configured or monetary-looking prose appeared in the answer. This is the measured `has tool => strict-abstain disarmed` defect fixed by the lane.
+
+## Adversarial review
+
+Gemini independently reviewed the implementation in repeated read-only passes. It raised the following material objections; all survived objections were fixed before this report was signed:
+
+- a canonical record whose `per_skala` field is null or malformed could crash the exact-code tool; the tool now treats non-collection values as an empty scale list;
+- an unavailable canonical dataset was indistinguishable from a genuine code absence; exact lookup now returns a distinct `dataset_unavailable` error so the prompt can abstain instead of asserting non-existence;
+- a negative, unparseable, or non-object exact lookup observation could still earn tool trust; only a successful canonical record can now do so;
+- streaming context markers and context length could independently widen trust despite failed retrieval; those paths no longer set `trusted_tools_used`;
+- private reasoning markers could bypass the channel filter through alternate delimiters; the WhatsApp boundary now rejects the full payload with a delimiter-agnostic marker check.
+
+Two objections did not survive code inspection: the lookup tool is a process singleton rather than a per-request construction, and a safe channel abstention intentionally keeps the minimal response scaffold required by the WhatsApp dispatcher. The final Gemini grounding scan found no remaining high- or medium-severity source-grounding defect in the reviewed diff. The production benchmark below remains the independent acceptance gate; this review does not substitute for it.
 
 ## After
 
