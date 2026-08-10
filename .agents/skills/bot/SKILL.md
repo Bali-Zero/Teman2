@@ -22,6 +22,64 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 
 ## 1. LIVE STATE (last update 2026-08-10 — keep current)
 
+- **🧪 BATTERY v5 — THE FOUR OPEN BETA CURES, RE-MEASURED 13 DAYS LATER (2026-08-10).** The
+  2026-07-28 team beta left four cures open and nobody had asked whether they were still
+  true. 14 questions, prod container, synthetic senders. Script: session scratchpad
+  `wa_probe5.py`. Verdicts, worst first:
+  - **Cure #2 is HALF alive — do NOT say "the land-tenure defect persists".** Hak Pakai still
+    answers **25+20+20 = 65 years** (truth 30+20+30 = **80**), the exact number Dea caught;
+    **HGB now answers 80, correctly.** Worse than the figure: that answer carries
+    `abstain=True`, `evidence=0.0`, **`sources: []`** and still prints
+    `📜 Source: Golden Route: Buy Property as Foreigner in Indonesia` — the client reads a
+    provenance the response object does not have. And **the same question in Indonesian
+    abstains honestly**. `hak pakai` has **0 occurrences in the whole repo** (real `grep`, not
+    the shell's ugrep-with-`--ignore-files`), so no repo-side audit can ever see this — same
+    shape as the tax_genius finding.
+  - **Cure #1 is 3-of-4 — the fourth is SILENCE, and it is now explained.**
+    `crm-direct`/`crm-id`/`crm-assumed` all refuse honestly, naming the missing access.
+    `crm-indirect` ("Any deadlines I should worry about for my clients this week?") returns a
+    **0-character answer, 5 times out of 5** — deterministic. Chain from the prod log:
+    QueryPlanner calls it `domain=greeting, collections=[]` → model calls `crm_query` →
+    authorizer denies → **the denial is scored as a successful tool run worth 0.85** (cured,
+    see below) → `LLMGateway: Empty response … FinishReason.STOP` ×3 → nothing. On WhatsApp
+    `wa_inbox_bot` raises, so the client gets 5 retries then silence + apology.
+  - **NEW, client-visible: the model's INTERNAL MONOLOGUE ships.** 2 of 4 runs of the
+    chart-of-accounts question open with the literal token
+    `internal_monologue The user is asking about…` (2689 and 4044 chars), survive
+    `format_rich_text`, and would be sent. The prompt says "silently check"; the model
+    labels it anyway. The other 14 battery questions showed **zero** — it concentrates on
+    this question / on long answers. `zantara_core.py` is OFF-LIMITS: cure at the channel
+    boundary, with `_strip_kg_workflow_scaffold`'s precedent.
+  - **Self-consistency fails on one fact.** "What is the fine per day for overstaying?" →
+    full answer, Rp 1,000,000/day, `src=8`, cites PP 45/2024. "If I overstay by one day, how
+    much do I pay?" → `abstain=True`, `src=0`, 83 chars that are _only_
+    "Would you like me to explain…" — zero content. The personal phrasing, the one a client
+    actually uses, retrieves nothing.
+  - **`evidence_score` is a 3-valued flag, and 1.0 arrives with ZERO sources.** Across 14
+    probes: `0.85`×9, `0.0`×4, **`1.0`×1** — the 1.0 is the out-of-domain surf question that
+    gets the `Got it! 😊` brush-off with `src=0`.
+  - Held up well, worth not re-litigating: **0 language drift, 0 markdown leak, 0 bare
+    citations** in 14 answers; a nonexistent KBLI code (`99999`) is correctly refused;
+    median latency **21.2s**, max 40.5s — better than the 57s/73s of 2026-07-30.
+  - **Probe gotcha that cost real time:** v5's `as_whatsapp()` returned
+    `SILENCE:empty-after-scaffold-strip` for _any_ empty text, including answers that
+    arrived empty with the stripper never removing a byte. It named a cause it had not
+    checked, and nearly sent a cure to the wrong function. Attribute emptiness by measuring
+    length before AND after each stage.
+
+- **🚫 A DENIED TOOL CALL SCORED 0.85 — the highest evidence in the system (2026-08-10, CURED).**
+  `tool_authz decision=deny (principal_present=False)` was followed by
+  `[Trusted Tools] crm_query used successfully (obs_len=54) … score=0.85`. **`obs_len=54` is
+  exactly `len(_ANONYMOUS_DENIAL_OBSERVATION)`.** It passed because the gate judged the
+  observation's PROSE (no "error"/"not found"/"no relevant") and LENGTH (floor 50) — and the
+  denial string is bland _by design_: P0-DENY (2026-07-25) rewrote it to "name no tool, no
+  control, no internal system". That blandness is what a failure-word scan cannot see, and 54
+  clears the floor by four characters. Cured by recognising a denial against the **one function
+  that mints it** (`_tool_denial.py`), never against its prose. **The twin site
+  (`detect_quotable_relevance_veto`) deliberately did NOT get the same check** — on the measured
+  denial it is a no-op, and the only case it changes would suppress a veto. Do not "restore
+  symmetry" there without a measurement; the asymmetry is documented at the site.
+
 - **🎯 12-QUESTION DEFECT BATTERY, RUN INSIDE THE PROD CONTAINER (2026-08-10).** Fired at
   `RAG_WORKER_URL` with the exact payload `wa_inbox_bot.py` sends (`channel=whatsapp`,
   `max_steps=2`, empty history), synthetic questions, synthetic phone numbers. 12/12 HTTP 200.

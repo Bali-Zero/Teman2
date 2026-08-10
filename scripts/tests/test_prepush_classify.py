@@ -54,11 +54,10 @@ _spec.loader.exec_module(pc)  # type: ignore[union-attr]
 
 def test_edge_allowlist_prefixes_have_no_trailing_slash() -> None:
     """v2 (round-1 red-team): ALLOWLIST_INNOCENT_PREFIXES (bare-prefix, no
-    suffix scoping) was REMOVED entirely — ALLOWLIST_PREFIX_SUFFIX_PAIRS is
-    now the ONLY allowlist mechanism in the module. This test asserts that
-    single-mechanism invariant directly (no leftover bare-prefix list to
-    accidentally reintroduce), plus the original prefix/suffix hygiene
-    checks."""
+    suffix scoping) was REMOVED entirely. Directory rules remain suffix-
+    scoped; exact files use equality in ALLOWLIST_EXACT_PATHS. This test
+    asserts that no leftover bare-prefix list can reintroduce extension-
+    blindness, plus the original directory prefix/suffix hygiene checks."""
     assert not hasattr(pc, "ALLOWLIST_INNOCENT_PREFIXES"), (
         "the bare-prefix allowlist was removed in v2 (round-1 MUST-FIX) — "
         "its reappearance would reintroduce the extension-blindness bug"
@@ -245,13 +244,17 @@ def test_guilt_launchagents_python_script_suffix_mismatch() -> None:
     assert unknown == ["infra/launchagents/chronic_failure_digest.py"]
 
 
-def test_guilt_scripts_tests_shell_script_suffix_mismatch() -> None:
-    """scripts/tests/ is scoped to .py ONLY (v3) — the 1 real .sh file
-    verified living in that directory must not be swept in by a
-    directory-only rule."""
+def test_innocence_scripts_tests_shell_script_now_skips_v7() -> None:
+    """v7: scripts/tests/ widened from .py-only (v3) to .py AND .sh. This is
+    the same real file the pre-v7 guilt test used
+    (test_guilt_scripts_tests_shell_script_suffix_mismatch), now moved to
+    innocence because the rule it demonstrated changed — a basename-only
+    grep for all 17 real .sh files in this directory across
+    apps/backend-rag/backend/ found zero hits, same structurally-unreachable
+    argument v3 already established for the .py files here."""
     verdict, unknown = pc.classify(["scripts/tests/test_prepush_failclosed.sh"])
-    assert verdict == pc.VERDICT_FULL
-    assert unknown == ["scripts/tests/test_prepush_failclosed.sh"]
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
 
 
 def test_guilt_scripts_tests_conftest_still_forced_full() -> None:
@@ -1117,6 +1120,14 @@ def test_innocence_root_gitignore_skips() -> None:
     assert unknown == []
 
 
+def test_guilt_root_gitignore_descendant_forces_full() -> None:
+    """A file-shaped exact rule must not become a directory-prefix rule."""
+    path = ".gitignore/probe.gitignore"
+    verdict, unknown = pc.classify([path])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == [path]
+
+
 def test_innocence_home_fork_declared_pairs_skips() -> None:
     """The HOME-fork guard's pair registry (superscar #1) — the only tracked
     file under infra/home-fork/ today, 31 commits in its lifetime."""
@@ -1260,28 +1271,21 @@ def test_allowlist_version_bumped_to_6_for_the_v6_entries() -> None:
     """The skip-banner logs the version that approved a skip; a rules change
     without a bump makes the log line unattributable."""
     assert pc.ALLOWLIST_VERSION >= 6
-    assert (".gitignore", (".gitignore",)) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
+    assert ".gitignore" in pc.ALLOWLIST_EXACT_PATHS
+    assert (".gitignore", (".gitignore",)) not in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
     assert ("infra/home-fork", (".json",)) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
 
 
-def test_edge_v6_added_no_second_allowlist_mechanism() -> None:
-    """ANTI-DRIFT. The odd-looking `(".gitignore", (".gitignore",))` shape is
-    the price of keeping ONE uniform mechanism. The tempting "tidy" is a
-    second exact-match allowlist container — which is exactly what the v2
-    MUST-FIX removed (`ALLOWLIST_INNOCENT_PREFIXES`). Same self-check as
-    test_edge_allowlist_prefixes_have_no_trailing_slash, one generation on.
-    """
-    for forbidden in (
-        "ALLOWLIST_INNOCENT_PREFIXES",
-        "ALLOWLIST_EXACT_PATHS",
-        "ALLOWLIST_INNOCENT_EXACT_PATHS",
-        "ROOT_LEVEL_INNOCENT_EXACT",
-    ):
-        assert not hasattr(pc, forbidden), (
-            f"{forbidden} exists — a second allowlist mechanism reintroduces the "
-            "class of bug v2 removed; express exact matches through "
-            "ALLOWLIST_PREFIX_SUFFIX_PAIRS instead"
-        )
+def test_edge_exact_file_rules_use_dedicated_exact_path_set() -> None:
+    """File-shaped rules must never share directory-prefix semantics."""
+    expected = {
+        ".gitignore",
+        "apps/wa-mirror/package.json",
+        "apps/wa-mirror/package-lock.json",
+        "apps/organism/organism/organs_registry.yaml",
+    }
+    assert pc.ALLOWLIST_EXACT_PATHS == expected
+    assert expected.isdisjoint(prefix for prefix, _ in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS)
 
 
 # ---------------------------------------------------------------------------
@@ -1397,15 +1401,14 @@ def test_merge_base_range_excludes_mains_files_while_remote_sha_range_does_not(
 
 
 # ---------------------------------------------------------------------------
-# The REASON LABEL (added 2026-07-27, after proving v6 live on main).
+# The REASON LABEL (added 2026-07-27, then separated by rule shape in v8).
 #
-# The matching condition `(path == prefix or path.startswith(prefix + "/"))`
-# is ONE mechanism covering two different rule shapes. It classifies both
-# correctly, but the reason string rendered `<prefix>/**` for BOTH — so the
-# v6 root-exact entry printed `.gitignore/** (.gitignore)`, naming a
-# `.gitignore/` DIRECTORY that does not exist and cannot exist as a rule
-# here. Discovered by reading the shipped tool's real output during
-# PROVE-LIVE, not from the diff.
+# The old shared matcher covered both exact files and directory descendants.
+# Its reason string originally rendered `<prefix>/**` for BOTH — so the v6
+# root-exact entry printed `.gitignore/** (.gitignore)`, naming a directory
+# rule the allowlist did not intend. v8 makes the model explicit: exact files
+# live in ALLOWLIST_EXACT_PATHS and directory rules live in
+# ALLOWLIST_PREFIX_SUFFIX_PAIRS.
 #
 # Why this is worth pinning rather than shrugging at: the message is the
 # only thing a human reads when asking "why was my suite skipped / why was
@@ -1416,8 +1419,8 @@ def test_merge_base_range_excludes_mains_files_while_remote_sha_range_does_not(
 # W106: the verdict was right and the DIAGNOSIS was anchored to the wrong
 # thing, and the diagnosis is what the next reader acts on.
 #
-# These tests are about the LABEL only. The verdict tests above are the
-# regression guard that this cosmetic change moved no classification.
+# The label tests below ensure diagnostics still identify the rule shape;
+# the descendant guilt tests separately pin the v8 path-boundary verdict.
 # ---------------------------------------------------------------------------
 
 
@@ -1468,23 +1471,219 @@ def test_label_change_moved_no_verdict_for_either_v6_class() -> None:
 
 
 def test_label_every_allowlist_entry_gets_a_reason_naming_its_own_prefix() -> None:
-    """Sweep the WHOLE table rather than only the entry that bit us (the
+    """Sweep the WHOLE directory table rather than only one entry (the
     SYMMETRY clause from the fly-backup scar: a fix that covers only the case
     that bit you is half a fix). For each entry, a representative matching
-    path must produce a reason that names that entry's prefix and does not
-    invent a directory for exact-match entries."""
+    descendant must produce a reason that names that entry's prefix."""
     for prefix, suffixes in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS:
         suffix = suffixes[0]
-        exact_shaped = prefix.endswith(suffix)
-        sample = prefix if exact_shaped else f"{prefix}/probe{suffix}"
+        sample = f"{prefix}/probe{suffix}"
         reason = pc._innocent_reason(sample)
         if reason is None:
             # A NEVER_INNOCENT_* net legitimately outranks the table for some
             # samples; that is a different rule, not a label defect.
             continue
         assert prefix in reason, f"reason {reason!r} does not name its prefix {prefix!r}"
-        if sample == prefix:
-            assert "/**" not in reason, (
-                f"entry {prefix!r} matched EXACTLY but was labelled with a "
-                f"directory glob: {reason!r}"
-            )
+        assert "/**" in reason, f"directory entry {prefix!r} lost its glob: {reason!r}"
+
+
+# ===========================================================================
+# v7 (2026-08-10) — round-3 queue-acceleration replay of 60 recently-merged
+# PRs found ~28 avoidable FULL suites/week from paths that are innocent but
+# not yet listed. Four new allowlist entries + one NEVER_INNOCENT_EXACT_PATHS
+# addition, each independently innocence-verified against
+# apps/backend-rag/backend/ (see the module docstring's "v7" section for the
+# full method per entry). Also: `scripts` (.md), `apps/wa-mirror/package.json`,
+# `apps/wa-mirror/package-lock.json`, `apps/organism/organism/
+# organs_registry.yaml`, and the scripts/tests widening to `.sh` above.
+# ===========================================================================
+
+
+def test_innocence_scripts_md_root_and_nested_skip() -> None:
+    """The shapes this entry exists for: a root-level scripts/*.md doc and a
+    nested one (including scripts/tests/fixtures/, verified to contain only
+    .md — the same directory this PR also widened for .sh)."""
+    for path in (
+        "scripts/AGENTS.md",
+        "scripts/nuzantara_system_context.md",
+        "scripts/harness/README.md",
+        "scripts/tests/fixtures/docs_audit/README.md",
+    ):
+        verdict, unknown = pc.classify([path])
+        assert verdict == pc.VERDICT_SKIP, f"{path} should skip, got {verdict}"
+        assert unknown == []
+
+
+def test_guilt_scripts_md_lookalike_prefix_forces_full() -> None:
+    """#3's recurring disease: a prefix check without a boundary anchor
+    over-matches. `scriptsarchive` is not `scripts`."""
+    verdict, unknown = pc.classify(["scriptsarchive/experiment/foo.md"])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == ["scriptsarchive/experiment/foo.md"]
+
+
+def test_guilt_scripts_non_md_suffix_still_forces_full() -> None:
+    """Suffix scoping is the mechanism — a .json or .py under scripts/ is not
+    admitted just because its directory now has an .md rule."""
+    for path in (
+        "scripts/agent_start.py",
+        "scripts/ci/telegram_verdict.sh",  # already innocent via scripts/ci, unaffected
+    ):
+        verdict, unknown = pc.classify([path])
+        # scripts/ci/telegram_verdict.sh is innocent via the PRE-EXISTING
+        # scripts/ci (.sh) rule, not the new .md one — sanity that the new
+        # entry did not somehow break the old one.
+        if path.endswith(".sh"):
+            assert verdict == pc.VERDICT_SKIP
+        else:
+            assert verdict == pc.VERDICT_FULL
+            assert unknown == [path]
+
+
+def test_guilt_root_scripts_shell_script_still_forces_full_v7() -> None:
+    """v7 investigated widening to a blanket scripts (.sh) entry covering
+    root-level scripts/*.sh, and REJECTED it: a real backend test reads a
+    root-level script's content and asserts on it —
+    test_openclaw_whatsapp_bridge_script.py::test_run_script_uses_installed_bridge_app_dir
+    read_text()s scripts/run_openclaw_whatsapp_bridge.sh and checks two
+    substrings. Root-level scripts/*.sh (outside scripts/ci/ and
+    scripts/tests/, both separately allowlisted) must keep forcing full."""
+    verdict, unknown = pc.classify(["scripts/run_openclaw_whatsapp_bridge.sh"])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == ["scripts/run_openclaw_whatsapp_bridge.sh"]
+
+    verdict2, unknown2 = pc.classify(["scripts/pg.sh"])
+    assert verdict2 == pc.VERDICT_FULL
+    assert unknown2 == ["scripts/pg.sh"]
+
+
+def test_innocence_wa_mirror_package_files_skip() -> None:
+    verdict, unknown = pc.classify(["apps/wa-mirror/package.json"])
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+    verdict, unknown = pc.classify(["apps/wa-mirror/package-lock.json"])
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+    verdict, unknown = pc.classify(
+        ["apps/wa-mirror/package.json", "apps/wa-mirror/package-lock.json"]
+    )
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+
+def test_guilt_wa_mirror_package_json_descendant_forces_full() -> None:
+    """The exact package manifest rule must not bless descendants."""
+    path = "apps/wa-mirror/package.json/probe.json"
+    verdict, unknown = pc.classify([path])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == [path]
+
+
+def test_guilt_wa_mirror_package_lock_json_descendant_forces_full() -> None:
+    """The exact lockfile rule must not bless descendants."""
+    path = "apps/wa-mirror/package-lock.json/probe.json"
+    verdict, unknown = pc.classify([path])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == [path]
+
+
+def test_guilt_wa_mirror_tree_outside_the_two_exact_files_forces_full() -> None:
+    """The wa-mirror allowlist is TWO exact files, not the tree. Any other
+    file under apps/wa-mirror/ — including a same-directory sibling that
+    merely shares the .json suffix — must still force full."""
+    for path in (
+        "apps/wa-mirror/src/bridge/index.ts",
+        "apps/wa-mirror/tsconfig.json",
+        "apps/wa-mirror/other-package.json",
+        "apps/wa-mirror/package.json.bak",
+    ):
+        verdict, unknown = pc.classify([path])
+        assert verdict == pc.VERDICT_FULL, f"{path} must force full"
+        assert unknown == [path]
+
+
+def test_guilt_wa_mirror_mixed_with_backend_forces_full() -> None:
+    verdict, unknown = pc.classify(
+        [
+            "apps/wa-mirror/package.json",
+            "apps/backend-rag/backend/services/rag/reasoning.py",
+        ]
+    )
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == ["apps/backend-rag/backend/services/rag/reasoning.py"]
+
+
+def test_innocence_organs_registry_yaml_skips() -> None:
+    verdict, unknown = pc.classify(["apps/organism/organism/organs_registry.yaml"])
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+
+def test_guilt_organs_registry_yaml_descendant_forces_full() -> None:
+    """The exact registry rule must not bless a file-shaped directory."""
+    path = "apps/organism/organism/organs_registry.yaml/probe.yaml"
+    verdict, unknown = pc.classify([path])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == [path]
+
+
+def test_guilt_organs_registry_lookalikes_force_full() -> None:
+    """Root-EXACT: a sibling file in the SAME directory, a wrong extension on
+    the SAME basename, and a shallower nesting of the SAME basename must all
+    still force full — the rule matches one literal path, not a directory or
+    a basename."""
+    for path in (
+        "apps/organism/organism/other_registry.yaml",
+        "apps/organism/organism/organs_registry.yml",
+        "apps/organism/organs_registry.yaml",
+    ):
+        verdict, unknown = pc.classify([path])
+        assert verdict == pc.VERDICT_FULL, f"{path} must force full"
+        assert unknown == [path]
+
+
+def test_guilt_organs_registry_mixed_with_backend_forces_full() -> None:
+    verdict, unknown = pc.classify(
+        [
+            "apps/organism/organism/organs_registry.yaml",
+            "apps/backend-rag/backend/services/rag/reasoning.py",
+        ]
+    )
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == ["apps/backend-rag/backend/services/rag/reasoning.py"]
+
+
+def test_guilt_pre_commit_hook_self_edit() -> None:
+    """.husky/pre-commit is the sibling hook to .husky/pre-push — same class
+    (mandate 'paranoia'): a git hook whose own logic must never silently skip
+    the local verification it enforces."""
+    verdict, unknown = pc.classify([".husky/pre-commit"])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == [".husky/pre-commit"]
+
+
+def test_label_exact_match_wa_mirror_and_organs_registry_do_not_invent_a_directory() -> None:
+    """Same label discipline as the v6 .gitignore fix: a root-EXACT entry
+    must render '(exact match)', never a directory glob."""
+    for path in (
+        "apps/wa-mirror/package.json",
+        "apps/wa-mirror/package-lock.json",
+        "apps/organism/organism/organs_registry.yaml",
+    ):
+        reason = pc._innocent_reason(path)
+        assert reason is not None
+        assert reason == f"{path} (exact match)"
+
+
+def test_allowlist_version_bumped_to_8_for_the_exact_path_fix() -> None:
+    """The skip-banner logs the version that approved a skip; a rules change
+    without a bump makes the log line unattributable."""
+    assert pc.ALLOWLIST_VERSION >= 8
+    assert ("scripts/tests", (".py", ".sh")) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
+    assert ("scripts", (".md",)) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
+    assert "apps/wa-mirror/package.json" in pc.ALLOWLIST_EXACT_PATHS
+    assert "apps/wa-mirror/package-lock.json" in pc.ALLOWLIST_EXACT_PATHS
+    assert "apps/organism/organism/organs_registry.yaml" in pc.ALLOWLIST_EXACT_PATHS
+    assert ".husky/pre-commit" in pc.NEVER_INNOCENT_EXACT_PATHS

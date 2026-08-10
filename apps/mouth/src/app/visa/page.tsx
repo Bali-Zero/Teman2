@@ -39,12 +39,10 @@ export default function VisaEntryPage() {
           zIndex: 0,
         }}
       >
-        <video
-          muted
-          loop
-          playsInline
-          preload="none"
-          poster="/video/bali-ambient-poster.jpg"
+        <img
+          aria-hidden
+          alt=""
+          src="/video/bali-ambient-poster.jpg"
           style={{
             position: "absolute",
             inset: 0,
@@ -55,9 +53,7 @@ export default function VisaEntryPage() {
             mixBlendMode: "screen",
             filter: "hue-rotate(200deg) brightness(0.7) contrast(1.4)",
           }}
-        >
-          <source src="/video/bali-ambient-loop.mp4" type="video/mp4" />
-        </video>
+        />
       </div>
 
       <div

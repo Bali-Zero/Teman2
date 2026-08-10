@@ -755,6 +755,7 @@ Binding roster + corrections: research/operations/2026-08-10-fleet-order-spec.md
 - The conductor **orchestrates and dispatches** agents per `FLEET_TOPOLOGY.json` role chains, assembles the Evidence Pack, and arms the mechanical ship path: PR → required checks → armed auto-merge → `fly-deploy.yml` on `main`. **No conductor hand-merges around checks.**
 - Generator≠grader lifts to family level: the **Gear-2 verdict comes from a different family than the main builder**. Gear-3 verdict = **Fable check, no exceptions**, regardless of who conducts.
 - Client-facing outputs (quotes, comms) remain **Anthropic-interactive-only**. PII remains **local-only**. Legge 5 unchanged.
+- **REVIEW-È-INVOCABILE** (ruling Zero 2026-08-10, `research/operations/2026-08-10-fleet-order-spec.md` §3.2/§4): "serve review" is a dispatch instruction, never a parking state — "chi conduce non aspetta i grader: li convoca". The conductor invokes the grader per the role chains (§17.2 below / `FLEET_TOPOLOGY.json`) the moment a diff exists to judge; a PR is never parked on "waiting for review" without the grader having been dispatched.
 
 ### 17.2 Continuity ladder — no line ever stops
 

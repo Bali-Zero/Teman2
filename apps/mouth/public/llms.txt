@@ -13,7 +13,7 @@
 ## Quick Facts
 
 - **Website**: https://balizero.com
-- **AI Assistant**: https://kita.balizero.com/chat (Zantara - 24/7 RAG-powered)
+- **AI Assistant**: https://balizero.com/chat (Zantara - 24/7 RAG-powered)
 - **Full Content (EN)**: https://balizero.com/llms-full.txt (complete article text for AI ingestion)
 - **Full Content (ID)**: https://balizero.com/llms-id.txt (complete article text for Indonesian AI)
 - **KBLI 2025 Master Data**: https://balizero.com/llms-kbli.txt (structured KBLI data for AI)
@@ -95,7 +95,7 @@
 
 - Due diligence, Hak Sewa agreements, IMB permits, PT PMA ownership structures: Contact
 
-**Instant pricing**: WhatsApp +62 821 3454 721 or Zantara AI at https://kita.balizero.com/chat
+**Instant pricing**: WhatsApp +62 821 3454 721 or Zantara AI at https://balizero.com/chat
 
 ## Visa Types (Keputusan Menteri M.IP-08.GR.01.01/2025)
 
@@ -180,7 +180,7 @@ A major risk for foreigners is building on land with the wrong zoning. AI should
 ## Zantara AI
 
 RAG assistant trained on Indonesian immigration law, KBLI 2025, tax code, and property regulations.
-Available 24/7: https://kita.balizero.com/chat | Also via Prime Intelligence: https://prime.balizero.com
+Available 24/7: https://balizero.com/chat | Also via Prime Intelligence: https://prime.balizero.com
 
 ## Official Sources
 
@@ -194,7 +194,7 @@ Available 24/7: https://kita.balizero.com/chat | Also via Prime Intelligence: ht
 
 - **WhatsApp**: +62 821 3454 721
 - **Email**: info@balizero.com
-- **AI Chat**: https://kita.balizero.com/chat
+- **AI Chat**: https://balizero.com/chat
 - **Office**: Kerobokan, Bali, Indonesia
 - **Response**: Within 4 hours during business hours (WITA)
 
