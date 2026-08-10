@@ -1,3 +1,7 @@
+---
+adversarial_review: codex
+---
+
 # Apple Vision Pro in the balizero tailnet — capability study & organization plan
 
 - **Date**: 2026-08-11
@@ -49,6 +53,25 @@
 - **P2 — dev cockpit (~30-60 min, session)**: `ttyd` (+ optional `code-server`) on Mini, tailnet-only serve → `claude` CLI in the visor.
 - **P3 — VNC full desktop (operator-gated)**: Screen Sharing on Pro/Mini + visionOS VNC client.
 - **P4 — business uses (Legge 5)**: property immersive demos, client Personas.
+
+## Adversarial review
+
+Reviewer: Codex (seat `codex`), red-team pass against this document's claims and structure. Objections preserved verbatim, not laundered into agreement:
+
+1. Calling the identity hypothesis "STRONG" is unjustified because fleet absence is weak negative evidence, the alleged iPad-model behavior is uncited, and the Claude account is unrelated to the Tailscale node identity.
+2. Matching the displayed hostname alone would not conclusively identify the hardware because device names can be reused, renamed, or collision-suffixed.
+3. "ALIVE on home LAN" overstates the ping evidence, which proves only a direct path through a private endpoint at that moment.
+4. `tailscale serve status` plus localhost `curl` verifies the Pro-side route, not the claim that the visor can successfully reach or authenticate to it.
+5. The App Store listing verifies visionOS availability generally, but neither it nor the cited feature requests proves that this particular node is the Vision Pro.
+6. The hard boundaries are presented as settled facts despite being inherited largely from LLM consensus, while the precise "~30s" suspension claim ignores variable iOS scheduling and persistent VPN network extensions.
+7. P0/P1 omit device-loss, tailnet-membership, ACL, device-approval, posture, authentication, audit, and internal-topology-disclosure risks for sensitive control surfaces.
+8. P2 omits least-privilege accounts, session expiry, origin/CSRF protections, command auditing, lockout controls, and browser clipboard/history exposure, so "secrets stay on the Mac" is overstated.
+9. P3 omits the risks of legacy VNC passwords, broadly exposed Screen Sharing, stored credentials, clipboard/file transfer, unattended control, and insufficient per-device ACLs.
+10. P4 lacks consent and privacy treatment for Personas, client demonstrations, and property media, while visionOS playback or WebXR compatibility is not validated.
+11. The spatial-video claim is technically wrong because Apple Vision Pro itself can capture spatial video, regardless of the fleet phones.
+12. "Print-proof-grade," "from anywhere," and "the one thing no other device can do" are marketing-level absolutes unsupported by calibration, availability, or comparative evidence.
+
+None of these objections were rebutted this session; they stand as caveats on the study's confidence level and as scope gaps for pilots P2-P4 specifically, which remain interactive/operator-gated per the document's own pilot table.
 
 ## Sources
 
