@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import shutil
 import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from backend.services.autonomous_lab import command_policy
 from backend.services.autonomous_lab.command_policy import (
     ADMIN_DASHBOARD_LINT_COMMAND,
     GENERIC_GIT_DIFF_CHECK_COMMAND,
@@ -227,7 +227,7 @@ class LocalWorktreeSandboxRunner:
             return None
 
         if command == ADMIN_DASHBOARD_LINT_COMMAND:
-            npm = shutil.which("npm")
+            npm = command_policy.npm_executable()
             if npm is None:
                 return "executable_not_found"
             if cwd != (self.repo_root / "apps" / "admin-dashboard").resolve():
