@@ -86,6 +86,114 @@ concurrency:
   cancel-in-progress: ${{ (github.event_name == 'schedule' || github.ref != 'refs/heads/main') && github.event_name != 'merge_group' }}
 
 jobs:
+  changes:
+    name: Change map (shadow)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      map: ${{ steps.classify.outputs.map }}
+      run_all: ${{ steps.classify.outputs.run_all || 'true' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # Shadow only: a corpus failure is recorded as run_all=true and does not
+      # alter any live job. This becomes enforcing only in a later PR after the
+      # 20-30 PR observation window has proved guilt and innocence live.
+      - name: Verify change-map guilt and innocence corpus
+        id: classifier-tests
+        continue-on-error: true
+        run: python3 scripts/ci/test_change_map.py
+
+      - name: Enumerate and classify this PR's files
+        id: classify
+        continue-on-error: true
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
+          CLASSIFIER_TEST_OUTCOME: ${{ steps.classifier-tests.outcome }}
+        run: |
+          set -uo pipefail
+          CHANGED_FILE="$RUNNER_TEMP/change-map-changed-files.txt"
+
+          if [ "$CLASSIFIER_TEST_OUTCOME" != "success" ]; then
+            echo "::warning::change-map corpus failed; shadow recommendation defaults to all jobs"
+            printf '%s\n' '__CHANGE_MAP_ENUMERATION_ERROR__' > "$CHANGED_FILE"
+          elif ! bash scripts/ci/hotzone_changed_files.sh \
+            "$BASE_SHA" "$HEAD_SHA" "$PR_NUMBER" > "$CHANGED_FILE"; then
+            echo "::warning::changed-file enumeration failed; shadow recommendation defaults to all jobs"
+            printf '%s\n' '__CHANGE_MAP_ENUMERATION_ERROR__' > "$CHANGED_FILE"
+          fi
+
+          MAP_JSON="$(python3 scripts/ci/change_map.py < "$CHANGED_FILE")"
+          RUN_ALL="$(MAP_JSON="$MAP_JSON" python3 -c 'import json, os; print(str(json.loads(os.environ["MAP_JSON"])["run_all"]).lower())')"
+          echo "map=$MAP_JSON" >> "$GITHUB_OUTPUT"
+          echo "run_all=$RUN_ALL" >> "$GITHUB_OUTPUT"
+          echo "::notice::change-map shadow: $MAP_JSON"
+
+      - name: Publish shadow recommendation
+        if: always()
+        env:
+          MAP_JSON: ${{ steps.classify.outputs.map }}
+          CLASSIFIER_TEST_OUTCOME: ${{ steps.classifier-tests.outcome }}
+          CLASSIFY_OUTCOME: ${{ steps.classify.outcome }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+
+          raw = os.environ.get("MAP_JSON", "")
+          if raw:
+              result = json.loads(raw)
+          else:
+              result = {
+                  "reason": "classifier_runtime_failure",
+                  "run_all": True,
+                  "suggested_jobs": [
+                      "backend-tests",
+                      "mcp-tests",
+                      "evaluator-critical-tests",
+                      "frontend-tests",
+                      "packages-core-tests",
+                      "e2e-tests",
+                  ],
+                  "would_skip": [],
+                  "unknown_paths": [],
+              }
+
+          lines = [
+              "## Change map — shadow only",
+              "",
+              f"- Classifier corpus: `{os.environ['CLASSIFIER_TEST_OUTCOME']}`",
+              f"- Classification step: `{os.environ['CLASSIFY_OUTCOME']}`",
+              f"- Conservative fallback: `{str(result['run_all']).lower()}`",
+              f"- Reason: `{result['reason']}`",
+              f"- Would run: `{', '.join(result['suggested_jobs']) or 'none'}`",
+              f"- Would skip: `{', '.join(result['would_skip']) or 'none'}`",
+          ]
+          if result.get("unknown_paths"):
+              lines.extend(
+                  ["", "Unclassified paths (therefore all jobs):", ""]
+                  + [f"- `{path}`" for path in result["unknown_paths"]]
+              )
+          lines.extend(
+              [
+                  "",
+                  "No job was skipped. These recommendations are logs for the 20-30 PR observation window.",
+              ]
+          )
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+              summary.write("\n".join(lines) + "\n")
+          PY
+
   backend-tests:
     name: Backend Tests (Python)
     runs-on: ubuntu-latest
@@ -296,18 +404,48 @@ jobs:
           REDIS_URL: redis://localhost:6379
         run: |
           cd apps/backend-rag
+          set -o pipefail
           PYTHONPATH=.:../crm-cell pytest \
             backend/tests/ \
             tests/test_sentry_lazy_import.py \
             tests/test_sentry_pii_redaction.py \
             tests/kb/test_politics_hierarchical.py \
-            -q -ra --no-header --durations=10 \
+            -q -ra --no-header --durations=50 \
             --ignore=backend/tests/e2e \
             --cov=backend \
             --cov-branch \
             --cov-report=xml:coverage.xml \
             --junit-xml=test-results-unit.xml \
-            --tb=short -x
+            --tb=short -x 2>&1 | tee pytest-output.log || PYTEST_RC=$?
+          # Measurement-only (round-3 queue-acceleration plan, L3): the
+          # "Run unit tests" step is the confirmed grown step (July→August
+          # median +5.4min). --durations=50 (was 10) + this summary tail
+          # surfaces the slowest tests directly in the run's Job Summary
+          # so the next lever can be picked with evidence, without a
+          # separate artifact download. No test selection/step is changed.
+          #
+          # errexit-immune capture (house W101 antidote): `run:` steps
+          # execute under `bash -e`. A bare `PYTEST_RC=$?` on the line
+          # right after a failing pipe is dead code — errexit aborts the
+          # script ON that failing pipeline before the next line ever
+          # runs, so the RC capture, the summary tail, and the final
+          # `exit` would all be skipped on exactly the red runs where the
+          # durations are wanted most (proven locally: a failing pytest
+          # under `bash -e -c` never reaches the line after the pipe).
+          # `|| PYTEST_RC=$?` keeps errexit from tripping on the pipeline
+          # itself; `set -o pipefail` (kept, above) still makes tee's own
+          # rc=0 not mask a red suite. `awk` pattern tolerates the count
+          # pytest sandwiches into the header (`slowest 50 durations`,
+          # not `slowest durations`) — verified against real pytest
+          # --durations=50 output.
+          PYTEST_RC=${PYTEST_RC:-0}
+          {
+            echo '## Slowest test durations (top 50)'
+            echo '```'
+            awk '/slowest [0-9]+ durations|slowest durations/,0' pytest-output.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$PYTEST_RC"
 
       - name: Check coverage threshold
         run: |

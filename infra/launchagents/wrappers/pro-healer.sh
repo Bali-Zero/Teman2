@@ -10,6 +10,7 @@ ORGAN_ID="pro.healer"
 LOG_DIR="$HOME/logs/pro-healer"
 LOG="$LOG_DIR/run.log"
 mkdir -p "$LOG_DIR"
+TG_SOURCE="healer-pro"
 SIDECAR_DIR="$HOME/.organism/last_seen"
 PIDFILE="/tmp/nuzantara-pro-healer.pid"
 
@@ -53,10 +54,32 @@ fi
 echo $$ > "$PIDFILE"
 trap 'rm -f "$PIDFILE"' EXIT
 
-telegram() { # $1 text — best-effort, never blocks the run
-    [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_OWNER_CHAT_ID:-}" ] && return 0
-    curl -sS -m 15 "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-        -d chat_id="${TELEGRAM_OWNER_CHAT_ID}" --data-urlencode text="$1" >/dev/null 2>&1 || true
+telegram() { # $1 tier, $2 dedup-key, $3 text — through the tg_notify gateway
+    # Was a raw POST guarded by `[ -z "$TELEGRAM_BOT_TOKEN" ] && return 0` and
+    # ending in `>/dev/null 2>&1 || true`: in the token-poor environment of
+    # launchd it did nothing AND left no trace of doing nothing (W108). The
+    # gateway owns credential resolution, the tier router and the dedup ladder,
+    # so no secret passes through this script and a standing fault is one
+    # message per window instead of one per run.
+    local tier="$1" key="$2" text="$3" gateway py
+    gateway="$(dirname "$0")/../../../scripts/tg_notify.py"
+    [ -f "$gateway" ] || gateway="$HOME/nuzantara/scripts/tg_notify.py"
+    if [ ! -f "$gateway" ]; then
+        log "NO GATEWAY at $gateway — alert NOT sent: ${text:0:80}"
+        return 0
+    fi
+    # Absolute interpreter, never PATH: this script heals a machine that is
+    # already sick, so its alarm must not share a failure mode with what it
+    # reports (W108).
+    for py in /usr/bin/python3 /opt/homebrew/bin/python3 /usr/local/bin/python3; do
+        [ -x "$py" ] || continue
+        # Verdict on stderr — the gateway exits 0 by design, so an exit code
+        # would read every refusal as a success (W104).
+        log "tg_notify[$key]: $("$py" "$gateway" --tier "$tier" --source "$TG_SOURCE" \
+            --dedup-key "$key" -- "$text" 2>&1 | tail -1)"
+        return 0
+    done
+    log "no absolute python3 — alert NOT sent: ${text:0:80}"
 }
 
 # ---- G6_spawn_hardened: headless claude with the 4 gotchas cured ------------
@@ -194,7 +217,7 @@ PY
 )
     if [ -n "$NEW_DEAD" ]; then
         ACTIONABLE=1; REASONS="${REASONS}arsenal:${NEW_DEAD} "
-        telegram "🔌 ARSENALE (Pro): seat morto rilevato — ${NEW_DEAD}. Dettaglio: ~/.organism/arsenal/last.json (docs/runbooks/arsenal-probe.md)"
+        telegram p0 "healer-pro:arsenal-seat-dead" "🔌 ARSENALE (Pro): seat morto rilevato — ${NEW_DEAD}. Dettaglio: ~/.organism/arsenal/last.json (docs/runbooks/arsenal-probe.md)"
     fi
 fi
 
@@ -266,9 +289,9 @@ TAIL=$(tail -c 600 "$SESSION_LOG" 2>/dev/null | tr '\n' ' ' | tr -s ' ')
 log "session exit=$RC — tail: ${TAIL:0:300}"
 if [ $RC -eq 0 ]; then
     heartbeat "ok" "session done: ${REASONS}"
-    telegram "🩹 HEALER-PRO: run completato su ${REASONS}. Esito: ${TAIL:0:400}"
+    telegram digest "healer-pro:run-complete" "🩹 HEALER-PRO: run completato su ${REASONS}. Esito: ${TAIL:0:400}"
 else
     heartbeat "degraded" "session exit=$RC"
-    telegram "⚠️ HEALER-PRO: sessione uscita $RC su ${REASONS}. Log: $SESSION_LOG"
+    telegram p0 "healer-pro:session-exit" "⚠️ HEALER-PRO: sessione uscita $RC su ${REASONS}. Log: $SESSION_LOG"
 fi
 exit 0

@@ -2,6 +2,7 @@ export type Role = "reader" | "analyst" | "operator";
 
 export type Permission =
   | "magazine:read"
+  | "internal:read"
   | "research:create"
   | "research:cancel-own"
   | "ops:read"
@@ -35,9 +36,15 @@ const READ_ONLY_ROLE_ALLOWLIST: RoleAllowlist = {
 
 const ROLE_PERMISSIONS: Readonly<Record<Role, ReadonlySet<Permission>>> = {
   reader: new Set(["magazine:read"]),
-  analyst: new Set(["magazine:read", "research:create", "research:cancel-own"]),
+  analyst: new Set([
+    "magazine:read",
+    "internal:read",
+    "research:create",
+    "research:cancel-own",
+  ]),
   operator: new Set([
     "magazine:read",
+    "internal:read",
     "ops:read",
     "ops:create",
     "story:quarantine",

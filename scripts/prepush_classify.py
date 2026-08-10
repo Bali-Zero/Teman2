@@ -33,10 +33,11 @@ inputs, CONVERGED findings):
   `.claude/skills/x/run.sh`, `.claude/skills/x/deploy.py` all read as
   "skip-backend" on pathname alone. Verified LIVE (not hypothetical): this
   repo's docs/ tree has 7 real `.sh` files and 8 real `.py` files today;
-  research/ has 14 real `.py` files. Fix: EVERY allowlist entry is now
-  suffix-scoped through the single `ALLOWLIST_PREFIX_SUFFIX_PAIRS`
-  mechanism — a path must match prefix AND end in an explicitly-listed
-  extension. docs/research/.claude-content-dirs are scoped to `.md` ONLY
+  research/ has 14 real `.py` files. Fix: every DIRECTORY allowlist entry
+  is suffix-scoped through `ALLOWLIST_PREFIX_SUFFIX_PAIRS` — a path must be
+  a descendant of the directory prefix AND end in an explicitly-listed
+  extension. Exact files use `ALLOWLIST_EXACT_PATHS` and cannot match
+  descendants. docs/research/.claude-content-dirs are scoped to `.md` ONLY
   (verified: 100% of files under .claude/{skills,rules,commands,agents}
   are already .md: 12/12, 7/7, 5/5, 15/15; docs/research are dominated by
   .md with the aforementioned executable outliers now correctly excluded).
@@ -199,7 +200,8 @@ ERROR_SENTINEL = "__PREPUSH_DIFF_ERROR__"
 VERDICT_FULL = "full"
 VERDICT_SKIP = "skip-backend"
 
-# Bump whenever ALLOWLIST_PREFIX_SUFFIX_PAIRS / NEVER_INNOCENT_* change, so a
+# Bump whenever ALLOWLIST_PREFIX_SUFFIX_PAIRS / ALLOWLIST_EXACT_PATHS /
+# NEVER_INNOCENT_* change, so a
 # skip-banner log line ("allowlist vN") is attributable to a specific
 # version of the rules that approved it (mandate point 5: "elenca i file E
 # la allowlist-version che li ha approvati").
@@ -267,12 +269,18 @@ VERDICT_SKIP = "skip-backend"
 # therefore stays unknown -> full, unchanged — see
 # test_guilt_root_scripts_shell_script_still_forces_full_v7 in the test
 # corpus, which pins exactly this file as the reason.
-ALLOWLIST_VERSION = 7
+# v8 (2026-08-10): split exact-file entries into ALLOWLIST_EXACT_PATHS.
+# The shared v7 matcher treated every prefix as either the path itself OR a
+# directory ancestor. For file-shaped prefixes that admitted synthetic but
+# valid Git paths such as `apps/wa-mirror/package.json/probe.json` and
+# `.gitignore/probe.gitignore`. Exact files now require string equality;
+# directory rules retain descendant + suffix semantics.
+ALLOWLIST_VERSION = 8
 
 # ---------------------------------------------------------------------------
 # NEVER_INNOCENT_EXACT_PATHS — checked FIRST, unconditionally, before any
 # allowlist matching. Belt-and-suspenders self-paranoia (mandate, explicit):
-# these three MUST always force `full` even if a future edit accidentally
+# these paths MUST always force `full` even if a future edit accidentally
 # broadens an allowlist entry to swallow one of them.
 # ---------------------------------------------------------------------------
 NEVER_INNOCENT_EXACT_PATHS: frozenset[str] = frozenset(
@@ -306,13 +314,29 @@ NEVER_INNOCENT_BASENAMES: frozenset[str] = frozenset(
 )
 
 # ---------------------------------------------------------------------------
-# ALLOWLIST_PREFIX_SUFFIX_PAIRS — the ONE, UNIFORM allowlist mechanism.
-# Every entry is (dir-prefix, allowed-suffixes) — a path is innocent ONLY if
-# it matches the prefix AND ends in one of the listed suffixes. There is NO
-# bare-prefix-only entry anywhere in this module (round-1 MUST-FIX: v1 had
-# one — `ALLOWLIST_INNOCENT_PREFIXES` — and it is exactly what let
-# `docs/a/b.sh` / `.claude/skills/x/run.sh` / `.claude/skills/x/deploy.py`
-# read as innocent on pathname alone).
+# ALLOWLIST_EXACT_PATHS — file rules use equality, never prefix matching.
+# Keeping this separate from directory rules is load-bearing: Git permits a
+# commit to replace a file with a directory of the same name, so a path like
+# `.gitignore/probe.gitignore` is syntactically valid even though `.gitignore`
+# is a file in the current checkout.
+# ---------------------------------------------------------------------------
+ALLOWLIST_EXACT_PATHS: frozenset[str] = frozenset(
+    {
+        ".gitignore",
+        "apps/wa-mirror/package.json",
+        "apps/wa-mirror/package-lock.json",
+        "apps/organism/organism/organs_registry.yaml",
+    }
+)
+
+# ---------------------------------------------------------------------------
+# ALLOWLIST_PREFIX_SUFFIX_PAIRS — directory rules only. Every entry is
+# (directory-prefix, allowed-suffixes): a path is innocent ONLY if it is a
+# descendant of that directory AND ends in one of the listed suffixes.
+# There is NO bare-prefix-only entry anywhere in this module (round-1
+# MUST-FIX: v1 had one — `ALLOWLIST_INNOCENT_PREFIXES` — and it is exactly
+# what let `docs/a/b.sh` / `.claude/skills/x/run.sh` /
+# `.claude/skills/x/deploy.py` read as innocent on pathname alone).
 #
 # Every entry re-verified against the actual repo tree 2026-07-18 (never
 # assumed — "verify against actual data, never presume", CLAUDE.md golden
@@ -514,20 +538,17 @@ NEVER_INNOCENT_BASENAMES: frozenset[str] = frozenset(
 #                       `apps/backend-rag/backend/data/.gitignore`, i.e.
 #                       INSIDE the tree whose tests we would be skipping. A
 #                       basename rule would have admitted it. This entry
-#                       cannot: the prefix test is satisfied only by
-#                       `path == ".gitignore"` (or a path under a
-#                       `.gitignore/` DIRECTORY, which does not and cannot
-#                       exist here), so every nested `.gitignore` still
-#                       falls to "unknown -> full".
-#                       ON THE SHAPE `(".gitignore", (".gitignore",))` —
-#                       prefix = the file, suffix = its own name. It looks
-#                       odd on purpose: it is how the ONE uniform mechanism
-#                       expresses an exact root-level match, and using it
-#                       means v6 adds ZERO new code paths to
-#                       `_innocent_reason`. Do not "tidy" it into a second
-#                       exact-match allowlist set — a second mechanism is
-#                       precisely what the v2 MUST-FIX removed. Pinned by
+#                       cannot: v8 stores it in ALLOWLIST_EXACT_PATHS and
+#                       requires `path == ".gitignore"`, so every nested
+#                       `.gitignore` and every descendant of a directory
+#                       named `.gitignore` falls to "unknown -> full".
+#                       The latter is not merely theoretical: Git permits a
+#                       commit to delete the file and add a directory with
+#                       the same name. The v6 shared prefix matcher admitted
+#                       `.gitignore/probe.gitignore`; v8's dedicated exact
+#                       set closes that path-boundary defect. Pinned by
 #                       test_innocence_root_gitignore_skips (innocence) +
+#                       test_guilt_root_gitignore_descendant_forces_full +
 #                       test_guilt_nested_gitignore_under_backend_forces_full
 #                       (guilt).
 #                       Innocence MEASURED with the v5 anchored method: 3
@@ -565,7 +586,7 @@ NEVER_INNOCENT_BASENAMES: frozenset[str] = frozenset(
 #   PRs found ~28 avoidable FULL suites/week from paths that are innocent but
 #   not yet listed. Four classes added, each independently innocence-verified
 #   against `apps/backend-rag/backend/` (directory-anchored grep for
-#   directory-shaped entries, exact-basename grep for the two root-EXACT file
+#   directory-shaped entries, exact-basename grep for the three exact-file
 #   entries):
 #
 #   scripts               Scoped to `.md` ONLY. 36 real .md files under
@@ -584,10 +605,9 @@ NEVER_INNOCENT_BASENAMES: frozenset[str] = frozenset(
 #                         same guard-over-match failure mode
 #                         cicatrix-superscar.md #3 warns a *test* of
 #                         innocence against, not just the guard itself.
-#   apps/wa-mirror/package.json       Root-EXACT (same shape as the v6
-#   apps/wa-mirror/package-lock.json  `.gitignore` entry: prefix == the full
-#                         file path, suffix == its own extension). TWO
-#                         separate entries, each admitting exactly one file
+#   apps/wa-mirror/package.json       Root-EXACT entries in
+#   apps/wa-mirror/package-lock.json  ALLOWLIST_EXACT_PATHS. TWO separate
+#                         entries, each admitting exactly one file
 #                         — the wa-mirror TREE (bridge/, scripts/, src) stays
 #                         OFF the allowlist and keeps forcing full; only its
 #                         npm dependency manifest and lockfile are innocent
@@ -601,7 +621,7 @@ NEVER_INNOCENT_BASENAMES: frozenset[str] = frozenset(
 #                         event_bus.py — all about the DB-side `wa_mirror`
 #                         table/event contract, none of them reference the
 #                         npm package files).
-#   apps/organism/organism/organs_registry.yaml  Root-EXACT, same shape.
+#   apps/organism/organism/organs_registry.yaml  Root-EXACT in the same set.
 #                         Zero matches for `organs_registry` anywhere under
 #                         apps/backend-rag/backend/ — this repo's ONE
 #                         instance of that filename (verified: `find . -iname
@@ -638,7 +658,7 @@ NEVER_INNOCENT_BASENAMES: frozenset[str] = frozenset(
 # does not exist as a repo-tracked path (verified). `.gitmodules` does not
 # exist either — Sol's submodule concern is currently moot; structurally
 # safe if one is added later, since a submodule path is just another string
-# that must match an allowlist entry (prefix AND suffix) to be skipped.
+# that must match an exact-file rule or a directory prefix AND suffix to skip.
 # ---------------------------------------------------------------------------
 ALLOWLIST_PREFIX_SUFFIX_PAIRS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("docs", (".md",)),
@@ -653,17 +673,10 @@ ALLOWLIST_PREFIX_SUFFIX_PAIRS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("apps/mouth/src", (".ts", ".tsx", ".css")),
     (".agents/skills", (".md",)),
     ("scripts/ci", (".sh",)),
-    # v6 — root .gitignore, matched EXACTLY (prefix == the file, suffix ==
-    # its own name). Deliberately not a basename rule: 22 .gitignore files
-    # are tracked, one of them inside apps/backend-rag/backend/data/.
-    (".gitignore", (".gitignore",)),
     ("infra/home-fork", (".json",)),
-    # v7 — see the "v7 (2026-08-10)" table section above for innocence
-    # evidence on each of the 4 entries below.
+    # v7 directory additions. File-shaped v6/v7 additions live in
+    # ALLOWLIST_EXACT_PATHS as of v8.
     ("scripts", (".md",)),
-    ("apps/wa-mirror/package.json", (".json",)),
-    ("apps/wa-mirror/package-lock.json", (".json",)),
-    ("apps/organism/organism/organs_registry.yaml", (".yaml",)),
 )
 
 
@@ -674,8 +687,8 @@ def _normalize(path: str) -> str:
 
     Only the OUTER quote layer is stripped; the escaped bytes inside are
     left as-is. That is sufficient for prefix matching here because every
-    entry in ALLOWLIST_PREFIX_SUFFIX_PAIRS is a plain-ASCII leading path
-    component, which git's quoting never mangles — only the specific
+    entry in ALLOWLIST_PREFIX_SUFFIX_PAIRS and ALLOWLIST_EXACT_PATHS uses
+    plain ASCII, which git's quoting never mangles — only the specific
     special byte further into the filename gets escaped.
 
     Does NOT resolve `..` segments or reject embedded newlines — those are
@@ -731,26 +744,12 @@ def _innocent_reason(path: str) -> str | None:
     basename = path.rsplit("/", 1)[-1]
     if basename in NEVER_INNOCENT_BASENAMES:
         return None
+    if path in ALLOWLIST_EXACT_PATHS:
+        return f"{path} (exact match)"
     if "/" not in path and path.endswith(".md"):
         return "root-level *.md"
     for prefix, suffixes in ALLOWLIST_PREFIX_SUFFIX_PAIRS:
-        if (path == prefix or path.startswith(prefix + "/")) and path.endswith(suffixes):
-            # The MATCH condition above is one uniform mechanism (v6 kept it
-            # deliberately so — see the table's v6 section). Only the human-facing
-            # LABEL branches, because the two arms of that `or` describe different
-            # rules and one string cannot honestly name both:
-            #   - `path == prefix` is an EXACT file rule. Rendering it as
-            #     `<prefix>/**` invents a DIRECTORY that does not exist — the v6
-            #     `.gitignore` entry printed `.gitignore/** (.gitignore)`, which
-            #     reads as "any .gitignore under a .gitignore/ directory" and
-            #     actively misleads anyone asking whether a NESTED .gitignore
-            #     skips (it does not — that is the whole point of root-exact).
-            #   - `path.startswith(prefix + "/")` really is a directory rule.
-            # Same defect class as W106's anchored diagnosis: the verdict was
-            # right, the explanation named the wrong thing, and the explanation
-            # is what the next reader acts on.
-            if path == prefix:
-                return f"{prefix} (exact match)"
+        if path.startswith(prefix + "/") and path.endswith(suffixes):
             return f"{prefix}/** ({'/'.join(suffixes)})"
     return None
 
