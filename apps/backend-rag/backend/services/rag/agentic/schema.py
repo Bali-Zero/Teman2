@@ -102,6 +102,16 @@ class CoreResult(BaseModel):
     document_count: int = 0
     context_used: int = 0
     tools_called: list[str] = Field(default_factory=list)
+    # How many ReAct steps the loop actually consumed. Distinct from
+    # len(tools_called): a step can produce a thought with no tool call, and a
+    # fast-path answers with tools but no loop at all. Before this field existed
+    # the API's `total_steps` was wired to `len(result.tools_called)` — the same
+    # number under a name that promised a different one, and both read 0 on the
+    # main path because nothing populated `tools_called` there either. That made
+    # a live 2026-08-10 investigation into WhatsApp silences untestable: the two
+    # fields a person reaches for to ask "did the loop run out of budget?" could
+    # not answer, and read identically on healthy and degenerate responses.
+    steps_taken: int = 0
 
     # Token usage tracking
     prompt_tokens: int = 0
