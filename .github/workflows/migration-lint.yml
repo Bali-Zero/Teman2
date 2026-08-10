@@ -15,11 +15,24 @@ name: Migration Lint (Squawk)
 # at PR-check time, ~2 hours earlier than the pre-deploy gate would catch
 # the same class of issues.
 
+# SENTINEL PATTERN (2026-08-11 — Merge-OS v2 Wave 0 trap-disarm,
+# research/operations/2026-08-10-merge-os-v2-submission-system.md §4 Wave 0,
+# Codex F12). This workflow used to gate on a top-level `paths:` filter and
+# had no `merge_group` trigger. That is a trap: a required check whose
+# WORKFLOW is `paths:`-filtered never even STARTS a run on a PR outside
+# those paths — there is no skipped/neutral run to satisfy the check, so
+# GitHub shows the context "Expected — waiting for status to be reported"
+# forever, hard-blocking an innocent PR. Adding `merge_group:` alone would
+# not have fixed this — the PR-side context would still hang; the top-level
+# `paths:` itself has to go. Fix, same shape as guard-conformance.yml /
+# immune-enforcement.yml / frontend-typecheck.yml: no top-level `paths:` —
+# the workflow ALWAYS triggers, so it is required-safe by construction.
+# Relevance (did this diff touch a migration file at all) is decided INSIDE
+# the "Detect added/modified migrations" step below (job-level change
+# detection); on a path-miss PR the job ends success (skip = success).
 on:
-  pull_request:
-    paths:
-      - "apps/backend-rag/backend/db/migrations_v2/**.sql"
-      - ".github/workflows/migration-lint.yml"
+  pull_request: # NO top-level paths: — always trigger (job decides relevance)
+  merge_group:
   workflow_dispatch: {}
 
 concurrency:
@@ -54,12 +67,47 @@ jobs:
 
       - name: Detect added/modified migrations on this PR
         id: changed
+        env:
+          # Immutable event-pair SHAs, never a moving `main` recompute —
+          # merge_group.base_sha/head_sha for the queue, pull_request.*.sha
+          # for a PR. Merge-base anchored via scripts/ci/hotzone_changed_files.sh
+          # (three-dot semantics), never a two-dot diff against a possibly-
+          # stale `pull_request.base.sha` (scar W102, PR #3057).
+          BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          # Diff against the PR base (origin/main by default for pull_request).
-          base="${{ github.event.pull_request.base.sha }}"
-          head="${{ github.event.pull_request.head.sha }}"
-          files=$(git diff --name-only --diff-filter=AM "$base...$head" -- \
-                  'apps/backend-rag/backend/db/migrations_v2/*.sql' || true)
+          set -uo pipefail
+          # workflow_dispatch has no base/head event pair to diff — preserve
+          # the pre-existing graceful "nothing auto-detected" behaviour
+          # rather than failing a manual, no-PR-context run.
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "files=" >> "$GITHUB_OUTPUT"
+            echo "::notice::workflow_dispatch has no PR/merge_group SHA pair — nothing auto-detected"
+            exit 0
+          fi
+          if [ ! -f scripts/ci/hotzone_changed_files.sh ]; then
+            echo "::error::enumerator missing — refusing to guess the changed set"
+            exit 1
+          fi
+          CHANGED="$(bash scripts/ci/hotzone_changed_files.sh "$BASE_SHA" "$HEAD_SHA" "$PR_NUMBER")"
+          ENUM_RC=$?
+          if [ "$ENUM_RC" -ne 0 ]; then
+            echo "::error::could not determine the changed set (rc=$ENUM_RC) — failing rather than skipping"
+            exit 1
+          fi
+          # --diff-filter=AM semantics preserved: only migration files that
+          # still EXIST in this tree are candidates (a deleted/renamed-away
+          # file has nothing for squawk to lint — same [ -f ] discipline as
+          # prettier-changed-files.yml). No leading/trailing whitespace on
+          # any line here — the squawk loop below word-splits this list.
+          CANDIDATES="$(printf '%s\n' "$CHANGED" | grep -E '^apps/backend-rag/backend/db/migrations_v2/.*\.sql$' || true)"
+          files=""
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            [ -f "$f" ] && files="${files:+$files$'\n'}$f"
+          done <<< "$CANDIDATES"
           echo "Changed migration files:"
           echo "$files"
           # Output for downstream step. If no migrations changed, skip lint.
