@@ -5,10 +5,10 @@
   "_enforcement": "none",
   "recurrence_threshold": 3,
   "totals": {
-    "scars_scanned": 11,
+    "scars_scanned": 12,
     "mechanical_candidates": 7,
     "consultive": 1,
-    "rejected_no_anchor": 3
+    "rejected_no_anchor": 4
   },
   "recurring_patterns": {
     "w_numbers": {
@@ -19,7 +19,7 @@
       "W77": 3,
       "W79": 3,
       "W82": 4,
-      "W83": 3
+      "W83": 4
     },
     "families": {}
   },
@@ -204,6 +204,10 @@
     },
     {
       "title": "🐛 W112 (P1 STRUCTURAL): il formattatore è uno scrittore che nessuno controlla, e giudica per FORMA",
+      "reason": "no objective anchor (G1)"
+    },
+    {
+      "title": "🐛 W117 (P0 STRUCTURAL): la guardia non aveva un buco — non poteva VEDERE il gesto, e a fidarmi del ramo sbagliato avrei scritto codice morto",
       "reason": "no objective anchor (G1)"
     },
     {
