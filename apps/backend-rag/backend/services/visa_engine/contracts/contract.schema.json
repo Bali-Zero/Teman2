@@ -209,7 +209,7 @@
     },
     "ApplicantFactsData": {
       "additionalProperties": false,
-      "description": "``ApplicantFacts.facts`` (spec \u00a72) \u2014 ``additionalProperties: false``\nwith all 40 keys required. Field order mirrors ``enums.FactPath``'s\n``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/\n``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``\ngrouping.\n\n``populate_by_name=False`` (PR1b item 4): every wire key here is a dotted\n``FactPath`` string (e.g. ``\"person.birth_date\"``) that cannot be a\nPython attribute name, so each field carries a Python-safe name\n(``person_birth_date``) purely to exist in the class body, with the\ndotted string as its ``alias``. Allowing the Python name to *also*\npopulate the model would let a caller construct\n``ApplicantFactsData(person_birth_date=...)`` directly \u2014 a name that\nnever appears on the wire (every real payload is alias-keyed JSON/dict),\nso accepting it is pure smuggling surface with no legitimate caller.",
+      "description": "``ApplicantFacts.facts`` (spec \u00a72) \u2014 ``additionalProperties: false``\nwith all keys required except the one transitional field documented on\n``sponsor_type`` below. Field order mirrors ``enums.FactPath``'s\n``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/\n``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``\ngrouping.\n\n``populate_by_name=False`` (PR1b item 4): every wire key here is a dotted\n``FactPath`` string (e.g. ``\"person.birth_date\"``) that cannot be a\nPython attribute name, so each field carries a Python-safe name\n(``person_birth_date``) purely to exist in the class body, with the\ndotted string as its ``alias``. Allowing the Python name to *also*\npopulate the model would let a caller construct\n``ApplicantFactsData(person_birth_date=...)`` directly \u2014 a name that\nnever appears on the wire (every real payload is alias-keyed JSON/dict),\nso accepting it is pure smuggling surface with no legitimate caller.",
       "properties": {
         "commercial.service_fee_budget_idr": {
           "discriminator": {
@@ -786,6 +786,28 @@
             }
           ],
           "title": "Secondhome.Qualifying Property Value Usd"
+        },
+        "sponsor.type": {
+          "default": {
+            "reason": "NOT_ASKED",
+            "status": "UNKNOWN"
+          },
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownSponsorType",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownSponsorType"
+            }
+          ],
+          "title": "Sponsor.Type"
         },
         "study.admission_confirmed": {
           "discriminator": {
@@ -2154,7 +2176,7 @@
       "type": "object"
     },
     "FactPath": {
-      "description": "Every fact path the engine may ever reference \u2014 40 applicant-collected\n+ 3 derived (spec \u00a72 ``ApplicantFactPath`` + ``FactPath``, extended by the\n``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23).\n\nClosed by design (spec \u00a75.2): a Condition's ``fact`` field and a Rule's\n``required_facts`` array are both typed against this enum, so a rule\nthat references an unknown fact path is a Pydantic ``ValidationError``\nat parse time, not a runtime surprise. ``fact_registry.py`` layers typed\nmetadata (value kind, PII class, commercial flag) on top of this same\nvocabulary \u2014 see that module's docstring for why both exist.",
+      "description": "Every fact path the engine may ever reference \u2014 41 applicant-collected\n+ 3 derived (spec \u00a72 ``ApplicantFactPath`` + ``FactPath``, extended by the\n``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, and\nby ``sponsor.type`` for the sponsor-category question, 2026-08-10).\n\nClosed by design (spec \u00a75.2): a Condition's ``fact`` field and a Rule's\n``required_facts`` array are both typed against this enum, so a rule\nthat references an unknown fact path is a Pydantic ``ValidationError``\nat parse time, not a runtime surprise. ``fact_registry.py`` layers typed\nmetadata (value kind, PII class, commercial flag) on top of this same\nvocabulary \u2014 see that module's docstring for why both exist.",
       "enum": [
         "person.birth_date",
         "person.nationalities",
@@ -2187,6 +2209,7 @@
         "study.level",
         "study.admission_confirmed",
         "study.sponsor_confirmed",
+        "sponsor.type",
         "secondhome.bank_deposit_usd",
         "secondhome.bank_deposit_at_state_bank",
         "secondhome.bank_deposit_in_own_name",
@@ -2606,6 +2629,23 @@
       },
       "required": ["status", "value"],
       "title": "KnownRelation",
+      "type": "object"
+    },
+    "KnownSponsorType": {
+      "additionalProperties": false,
+      "description": "The sponsor CATEGORY, reusing the same enum the product records declare.\n\nReusing `SponsorType` rather than minting an applicant-side twin is the\npoint: a rule can then compare the applicant's answer against the product's\nown `sponsor_types` without a mapping table in between, and a mapping table\nis where the two sides drift apart.",
+      "properties": {
+        "status": {
+          "const": "KNOWN",
+          "title": "Status",
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/SponsorType"
+        }
+      },
+      "required": ["status", "value"],
+      "title": "KnownSponsorType",
       "type": "object"
     },
     "KnownString": {
