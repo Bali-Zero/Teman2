@@ -358,6 +358,29 @@ describe("support reasons are sentences, not machine codes", () => {
     );
   });
 
+  it("states the Article 60(2) KITAP prerequisites without inventing status tenure", () => {
+    const copy =
+      SUPPORT_REASON_COPY.KITAP_TWO_YEAR_MARRIAGE_AND_INTEGRATION_NOT_VERIFIED;
+    expect(copy.en).toMatch(/two years of marriage/i);
+    expect(copy.en).toMatch(/signed Pernyataan Integrasi/i);
+    expect(copy.en).toMatch(/not verified/i);
+    expect(copy.en).not.toMatch(/two years on this status/i);
+    expect(copy.id).toMatch(/dua tahun/i);
+    expect(copy.id).toMatch(/Pernyataan Integrasi/i);
+  });
+
+  it("states Article 61 rights while separating employment from self-employment", () => {
+    const copy = SUPPORT_REASON_COPY.SPOUSAL_WORK_ARTICLE_61_CONTEXT;
+    expect(copy.en).toMatch(/Article 61/i);
+    expect(copy.en).toMatch(/work and\/or conduct business/i);
+    expect(copy.en).toMatch(/employment/i);
+    expect(copy.en).toMatch(/self-employment|business/i);
+    expect(copy.en).toMatch(/does not verify/i);
+    expect(copy.en).not.toMatch(/only with.*Kemenaker/i);
+    expect(copy.id).toMatch(/Pasal 61/i);
+    expect(copy.id).toMatch(/pekerjaan dan\/atau usaha/i);
+  });
+
   /**
    * The tripwire: a future pack that adds a SUPPORT reason without copy would
    * print a machine code at a real reader. Fail here first, naming the codes.

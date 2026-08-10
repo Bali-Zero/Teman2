@@ -2,238 +2,194 @@
 date: 2026-08-10
 domain: visa
 adversarial_review: codex
-adversarial_review_note: "gpt-5.6-sol at xhigh, 2026-08-10, read-only sandbox — 8 findings against DRAFT 2, verdict DO-NOT-SHIP. Two CRITICAL and one HIGH were reproduced independently against the real evaluator and are cured in draft 3, which is what this document describes; one LOW (rule_pack_id off-convention) was checked and DOES NOT HOLD. Draft 2's own review was the in-house `devils-advocate` agent, which is pinned `model: sonnet` — the same family as the generator, and it passed the pack that this one rejected. The earlier note here called that agent 'DeepSeek-backed', repeating its stale description rather than its pin; provenance of a review is a claim like any other."
+adversarial_review_candidate_sha256: a973d69a8bbfdc880ef905c2c15dfaf69938741c30f0d3137f0a7391b517e63c
+adversarial_review_note: "TWO independent Codex reviews, different scopes, different verdicts. (a) Current-diff red-team on candidate a973d69a…: PASS, zero blockers. (b) gpt-5.6-sol at xhigh pointed at the PACK SEMANTICS of a parallel draft: DO-NOT-SHIP, 8 findings, 2 CRITICAL — one of which (E33F offered to an under-55 applicant) is present in the diff that (a) passed, because it is not something the diff introduced. A review scoped to what changed cannot see a defect that was already there. One of (b)'s findings, a rule_pack_id said to be off-convention, was rechecked and DOES NOT HOLD."
 client_case: none (Visa Oracle V2 rule pack seq-6)
 sources:
-  - rulepack-prod-005.source.json (seq-5, ACTIVE in SHADOW since 2026-08-09)
-  - rulepack-prod-006.source.json (seq-6, this document — unsigned, unactivated)
-  - evaluator.py (REVIEW>SUPPORTED precedence :1381-1394; union coverage :650-678)
-  - models.py:1262 (Decision forbids review_reasons on SUPPORTED_CANDIDATES)
-  - research/visa/2026-08-09-visa-oracle-decision-tree-audit.md (the prior audit this reverses in part)
-  - offline harness — real evaluate(), real prod packs, synthetic facts only
+  - rulepack-prod-005.source.json (seq-5)
+  - rulepack-prod-006.source.json (seq-6, unsigned and unactivated)
+  - evaluator.py (review precedence and union coverage)
+  - backend/tests/services/visa_engine/test_prod_sequence6_semantics.py
+  - backend/tests/services/visa_engine/test_seq6_refuter_witnesses.py
+  - https://peraturan.bpk.go.id/Home/Download/28550/UU%206%20Tahun%202011.pdf
 ---
 
 # seq-6 — a requirement is a condition, not a proof
 
-Zero, 2026-08-09, on a live production result that offered a clean Albanian remote worker
-nothing at all: *"NON VA BENE!!!! DEVE DARE OPZIONE"*, then *"ma non voglio solo e33g! ma tu
-non hai lavorato su 38 visti"*. This is the pack that answers the second sentence.
+Seq-5 can return `HUMAN_REVIEW_REQUIRED` with no candidates as soon as a review
+rule fires. Several such rules select only an audience (for example, a stated
+purpose); they do not test the requirement named by their reason code. Turning
+all of those rules into support is also unsafe: eligibility coverage is a union,
+so a purpose-only condition can manufacture a route when no genuine eligibility
+gate passed.
 
-## The defect in seq-5
+## Evidence boundary
 
-`evaluator.py:1381-1394` returns `HUMAN_REVIEW_REQUIRED` — carrying review reasons and **no
-candidates** — the moment ONE product proves REVIEW, and `models.py:1262` forbids
-`review_reasons` on a `SUPPORTED_CANDIDATES` decision. The two together mean a single
-triggered wall deletes all 38 products from the answer, including products that proved fully
-supported. Measured by building, for each product, the applicant its own eligibility rules
-describe: **seq-5 reaches 5 products out of 38**.
+An earlier draft of this note reported a 4,000-applicant fuzz run, exact
+reachability ratios, and a 23-persona gold result. No checked-in harness or
+current-head report reproduces those figures. They are withdrawn and are not
+merge evidence for seq-6.
 
-Of the 67 HUMAN_REVIEW rules, most detect nothing. `hr.d2-funds-usd-2000` is literally
-`intent.purposes intersects [BUSINESS_MEETINGS]` and reads no funds fact. `hr.e30-living-cost-2000`
-is the STUDY purpose alone. `hr.e23-prohibited-hr-roles` is the EMPLOYMENT purpose alone and
-never consults `investment.proposed_role`, which the pack does carry — and `ProposedRole`
-(`enums.py:281-286`) has no HR value, so it never could. Their `when` selects an audience,
-not a defect. Twelve more name a money or qualification threshold the engine has no fact to
-test at all: there is no income field anywhere in `work.*`, which is why the USD 60k rule
-behind E33G could only ever hand every qualifying remote worker to a human.
+The evidence retained here is deliberately smaller and reproducible: the
+sanctioned compiler, real evaluator counterexamples, and focused frontend copy
+tests. This correction does not claim corpus-scale fuzz or gold coverage.
 
-The pack already carried the distinction the engine ignores: exactly 4 of the 67 are
-`safety_critical`, and the review precedence never reads that field (it is consulted only by
-`_apply_safety_critical_source_hold`, about source freshness).
+## What the corrected seq-6 does
 
-## The first draft, and why it was wrong
+1. A converted requirement may add a candidate reason only when it is conjoined
+   with that product's genuine eligibility gate. It cannot supply coverage on
+   its own.
+2. A generic employee can receive the base E23 route, but not E23U or E23V.
+   Seq-6 does not claim that job title, KBLI, RPTKA, or Kepmenaker restrictions
+   were checked because the interview has no facts that prove those checks and
+   the affected rules had no authoritative labour source.
+3. A generic student can receive the generic/higher-education routes supported
+   by their facts, but not the KEK-only E30E or exchange-only E30F routes. Those
+   specialisations remain unavailable until mutually exclusive discriminator
+   facts exist.
+4. Mixed-marriage KITAP copy follows Article 60(2) of UU 6/2011: two years of
+   marriage plus a signed `Pernyataan Integrasi`. It does not infer two years on
+   an immigration status and explicitly says those prerequisites were not
+   verified.
+5. Spouse-work copy follows Article 61 without erasing the statutory right to
+   work and/or conduct business. It separates the assessment scope for
+   employment and self-employment/business and makes no categorical Kemenaker
+   denial.
+6. The Article 60(2)/61 rules cite an append-only `PRIMARY_LAW` record for the
+   official BPK PDF. The verified PDF SHA-256 is
+   `63708ca9b50ac067834a50c395385fdc6abda22e6e51def88983cd1ad685edc4`.
 
-Draft 1 converted 59 rules to `ELIGIBILITY`/`SUPPORT` and was refuted. Eligibility coverage
-is a **union**: `evaluator.py:650-678` builds `covered` from every TRUE support rule and
-declares SUPPORTED on `purposes <= covered`. A converted requirement, true for anyone with
-the purpose, was therefore enough **on its own** to carry a product whose real gate was FALSE.
+7. A rule that reads a fact which genuinely DISQUALIFIES one product belongs in
+   `HARD_FILTER`, which is a third box the first drafts did not use. As
+   `HUMAN_REVIEW` it deletes every candidate; as `SUPPORT` it asserts an
+   eligibility the fact denies. E33E already had `hf.e33e.age-below-55`; E33F did
+   not, so `el.e33f.age-under-55` — support, true exactly when the applicant is
+   UNDER the statutory 55 — offered the retirement KITAS to a 46-year-old, and
+   with the age unestablished offered it without asking. `hf.e33f.age-below-55`
+   mirrors the E33E filter, `on_unknown` included, so a missing age produces a
+   question.
+8. Three rules are deleted because none of them can do what its id claims.
+   `el.d12-long-stay-review` conjoins `stay_days > 365` with the D12 gate's
+   `stay_days <= 180` and is therefore unsatisfiable; the product was already
+   unreachable for such a request, so what was lost is the explicit signal, and
+   dead code carries no signal. `hr.e30a-minor-consent` fires on STUDY plus being
+   a minor and tests neither consent nor a guardian, so it blanked the answer for
+   a 16-year-old with admission, a study sponsor and a confirmed guardian;
+   `review.minor-without-guardian`, which tests the thing, stays.
 
-Measured over 4000 fuzzed applicants: **1235 of 2033 emitted candidates (60.7%)** rested on
-no rule that had tested eligibility. Concretely — a 200-day business traveller offered D2,
-whose gate caps stay at 60 days; a tourist offered D12, the investment visa, as their only
-option; an unmarried applicant with no Indonesian sponsor offered the spouse KITAS E31A;
-`intent.requested_product_code == "E33A"` serving as the entire proof of E33A.
+The final source pack contains 104 rules, including 15 `HUMAN_REVIEW` rules. It
+remains unsigned and unactivated.
 
-The metric used to defend draft 1 ("0 options lost across 43 personas") measured the wrong
-direction. A change of this shape **cannot** lose options; it can only manufacture them. The
-number that needed reporting was false gains.
+Points 1-6 and the E23U/E23V and E30E/E30F removals come from the M5 lane
+(PR #3954); points 7-8 from the Mini lane. The two were written in the same
+window against the same file and neither contained the other — each closed
+something the other missed. This section is the union, and both lanes' focused
+suites pass against it (`test_prod_sequence6_semantics.py` 3 passed,
+`test_seq6_refuter_witnesses.py` 8 passed).
 
-## The second draft, and why it was wrong too
+## Reproducible regression evidence
 
-Draft 2 — the conjunction fix above — was reviewed by the in-house `devils-advocate` agent
-and passed. That agent is pinned `model: sonnet`: the same family as the generator. A
-cross-family seat (gpt-5.6-sol, xhigh, read-only sandbox) pointed at the same pack returned
-**DO-NOT-SHIP** with eight findings, and the two CRITICAL ones were reproduced here against
-the real evaluator before anything was changed:
+The focused evaluator suite executes the canonical source through
+`load_rule_pack_payload`, `build_compiled_pack`, and `evaluate`; it does not scan
+JSON strings. It proves these counterexamples:
 
-- **A requirement that reads a disqualifying threshold is not a requirement.**
-  `review.e33f.age-under-55` tests `RETIREMENT ∧ age < 55`. Converted to SUPPORT, it made a
-  46-year-old eligible for the retirement KITAS, and with the age unestablished the product
-  was offered without the question ever being asked. The same shape hit E33E, E31J and D12.
-  The triage had two boxes, wall and support, and the right answer for these was a third.
-- **A conjunction is only as strong as the gate it conjoins.** E23U and E23V were "gated" by
-  `EMPLOYMENT ∧ a confirmed Indonesian work sponsor` — true of every ordinary employee. The
-  cure that made a requirement unable to carry a product on its own did nothing here,
-  because the gate itself proved nothing. The refutation of draft 1 said a requirement must
-  not be the proof; it did not say the proof must be adequate, and that is the gap.
+- generic `EMPLOYMENT` + Indonesian entity + sponsor: E23 is present; E23U/E23V
+  and the unverified labour reason codes are absent;
+- generic undergraduate + admission + sponsor: E30/E30B are present; E30E/E30F
+  are absent;
+- E31A onshore-conversion assessment: the two corrected reason codes are
+  emitted and both resolve only to the primary UU 6/2011 record with Article
+  60(2) and Article 61 locators.
 
-One HIGH inverted the mandate outright: `hr.e30a-minor-consent` was KEPT as a wall on the
-grounds that guardian consent is not a document reminder — but it never tests consent, so a
-16-year-old with admission, a study sponsor and a confirmed guardian still got a blank
-answer. One LOW (a `rule_pack_id` allegedly off-convention) was checked and **does not
-hold**: recomputing the UUIDv5 from the canonical sequence URL reproduces the stored id
-exactly. A refuter is not a verdict either.
+Local focused results on 2026-08-10:
 
-The lesson generalises past this pack: **the in-family reviewer passed the pack the
-cross-family one rejected**, which is the failure mode the arsenal already has a scar for.
-The seat's name in the frontmatter of a research file is therefore load-bearing, not
-paperwork.
+- canonical compiler: zero errors;
+- evaluator regression file: 3 passed;
+- Ruff on the evaluator regression file: passed;
+- adapter Vitest file: 21 passed.
 
-## What seq-6 does
-
-1. Every converted rule is **conjoined with its product's genuine seq-5 eligibility gate**
-   and takes that gate's `covered_purposes`. It can only be TRUE where the gate is TRUE, and
-   contributes no coverage the gate did not earn. The requirement still reaches the
-   applicant — as a reason on a candidate the gate approved.
-2. Rules scoped to several products are **split per product**, since each product has its own
-   gate and one conjunction cannot serve several. 113 rules become 115.
-3. Two safety-critical HARD_FILTERs, `hf.e30a-level-band` and `hf.e30b-level-band`, gain an
-   `intent.purposes intersects [STUDY]` guard. Their `when` was `study.level not_in [...]`
-   with no purpose test, so for anyone who never mentioned studying both products returned
-   UNKNOWN and the decision degraded to asking a tourist for their study level. seq-5 does
-   this too; removing the walls is what makes it the answer people see, so the guard ships
-   with them.
-
-4. **Four rules move to `HARD_FILTER`** — the box the first two drafts did not have. A rule
-   that tests a fact which genuinely disqualifies ONE product belongs there: it removes that
-   product and leaves the other 37 standing. As `HUMAN_REVIEW` it walls the whole answer; as
-   `SUPPORT` it asserts an eligibility the fact denies. `review.e33f.age-under-55`,
-   `review.e33e.age-55-59-disputed-band`, `hr.e31j-dependency-age` and
-   `hr.d12-long-stay-review` all read a threshold the applicant can fail, and draft 2 had
-   converted them to `SUPPORT` — so a 46-year-old was offered the retirement KITAS. Their
-   `on_unknown` is `NEEDS_INPUT`, which is what makes a missing age produce a QUESTION
-   instead of a silent offer.
-5. **E23U and E23V leave the offer set entirely.** E23U is a foreign diplomat's household
-   assistant, E23V is a trade/economic office posting; the contract carries no fact that
-   tells either apart from an ordinary E23. Their four review rules are literally
-   `intent.purposes intersects [EMPLOYMENT]` — as walls they would wall every employed
-   applicant, as supports they offered both products to any engineer with an Indonesian
-   sponsor. Their generic seq-5 gates are dropped with them. Nine products are now
-   out of reach, not seven.
-
-Fifteen walls remain: the 4 `safety_critical` gates, 4 prohibitions that test the violating
-fact, and 7 belonging to products with no eligibility rule at all (below). Guardian consent
-is no longer among them: `hr.e30a-minor-consent` fires on `STUDY ∧ is_minor` and never looks
-at consent or a guardian — the global `family.sponsor_confirmed` rule is what actually checks
-that — so keeping it walled the whole answer for a 16-year-old who had everything in order.
-
-## Measured
-
-| | seq-5 | seq-6 |
-|---|---|---|
-| products carrying at least one eligibility rule | 5 / 38 reachable | **29 / 38** |
-| HUMAN_REVIEW rules | 67 | **15** |
-| product-scoped HARD_FILTER exclusions minted | — | 4 |
-| `backend/tests/services/visa_engine` | pass | **pass (rc 0)** |
-| `test_seq6_refuter_witnesses.py` | — | **8 / 8** |
-
-Every number in that table is re-derivable from the repo: the counts by reading the pack,
-the last two by running the suites. That is deliberate and it is a change from draft 2,
-whose headline claims rested on scratch scripts nobody else had. Two of them are worth
-naming as withdrawn rather than quietly dropped:
-
-- **"27 / 38 reachable"** contradicted this document's own list of unreachable products,
-  which implied 31. Neither number survives: the true count for the pack as shipped is
-  **29**, pinned by `test_reachability_is_what_the_document_claims`.
-- **"0 of 771 candidates supported by no eligibility rule"** came from a fuzz harness that
-  was never committed, so it cannot be re-run by a reader — the adversarial seat said so
-  explicitly. It is withdrawn rather than restated. What replaces it is narrower and real:
-  the invariant that every converted rule literally contains its product's gate as a
-  conjunct is asserted by the generator, and the four ways that invariant was NOT enough
-  are now tests.
-
-Safety gates verified still walling: calling visa, active overstay, citizenship divergence,
-minor without guardian. Level bands verified still discriminating: a PRIMARY-level student
-gets E30A and never E30B; an UNDERGRADUATE gets E30B and never E30A.
-
-## What this reverses, deliberately
-
-`research/visa/2026-08-09-visa-oracle-decision-tree-audit.md` concluded, after its own
-adversarial round and after Zero's direct pushback, that **BUSINESS (D2)** document review
-was *"intended verification, not a defect — no seq-5 change"* and that **EMPLOYMENT (E23/U/V)**
-review was *"legitimate: government/RPTKA verification"*. seq-6 removes both walls. Zero
-confirmed the reversal on 2026-08-10: *"per D2 ed E23 non voglio nessun muro"*. The
-verification itself is not removed — it becomes a stated condition on an offered product
-instead of a blank screen.
-
-## Open, and not papered over
-
-- **Nine products remain unreachable**: E28B, E28C, E28D, E28F, E33A, E33B, E33C have **no
-  eligibility rule at all**, so there is nothing to conjoin with, and the pack has no fact
-  for a USD investment band or a government invitation. E23U and E23V were added to that
-  list by this draft: they HAD a gate, but one so generic it could not tell them apart from
-  an ordinary E23. Converting any of their review rules would make the applicant's own
-  request the entire proof — the defect that sank draft 1. Reaching them needs new facts in
-  the interview contract, not new rules over the facts we have.
-- **An ABSENT fact and an UNKNOWN one are answered differently, and only one of them asks.**
-  With the age declared unknown the engine returns `NEEDS_INPUT` naming `person.birth_date`;
-  with the key simply not present it returns `NO_SUPPORTED_PATH` and asks nothing. Neither
-  produces a false offer, so this is not the CRITICAL — but an applicant the interview never
-  asked about age gets a blank answer rather than a question. Pinned, not fixed, by
-  `test_deleting_the_age_key_is_not_the_same_as_declaring_it_unknown`.
-- **Excluding E33E for the 55-59 band is deliberately conservative.** The source calls that
-  band disputed, not disqualifying. With only four effect types available, the honest
-  choices were to assert eligibility in a disputed band, to wall the whole answer, or to
-  drop that one product — and a 55-59 applicant still reaches E33F, so dropping it costs
-  them an option they would not otherwise lose. If the band is later resolved in the
-  applicant's favour, this exclusion is the line to delete.
-- **The four exclusion reason codes have no client-facing copy.** `SUPPORT_REASON_COPY` in
-  the mouth adapter covers reasons that appear ON an offer; a product removed by a
-  HARD_FILTER carries its reason nowhere the applicant sees. So today a 46-year-old is
-  correctly not offered E33F and is told nothing about why.
-- **The E30 family cannot be told apart.** A student is offered E30, E30B, E30E and E30F
-  together, each with its correct caveat ("KEK institutions only", "exchange programmes
-  only"), because no interview fact distinguishes them. The 2026-08-09 audit already named
-  this; seq-6 turns a blank wall into four captioned options, which is better and is not
-  right.
-- **Four sibling HARD_FILTERs have the same missing purpose guard** as the two fixed here:
-  `hf.e31e-adult-excluded`, `hf.e31e-married-excluded`, `hf.d12-onshore-conversion-excluded`,
-  `hf.e33f.sponsor-required`. Not fixed in this pack.
-- **`ELIGIBILITY_RULE_PRESENCE_ONLY` (`compiler.py:131-135`) did not catch draft 1**, because
-  `_PRESENCE_ONLY_OPERATORS` is only `{known, unknown}`. A check that rejects a SUPPORT rule
-  whose `when`, with every `intent.purposes` leaf removed, is vacuously true would have
-  failed all 59 conversions and blocked that pack at authoring time. Recommended, not built.
-- **Fifteen reason codes and 59 rule ids were renamed.** No live consumer references the old
-  ones, but Decisions persisted under seq-1..5 carry them, so historical replay keyed on a
-  rule id will not resolve against this pack.
+These results are focused regression evidence, not a claim of whole-suite,
+fuzz, gold, or production behaviour.
 
 ## Adversarial review
 
-Seat: **codex** (`gpt-5.6-sol`, `model_reasoning_effort=xhigh`, `--sandbox read-only`),
-2026-08-10, pointed at draft 2 of this pack with instructions to refute and to cite
-file:line. Eight findings, verdict **DO-NOT-SHIP**. Every one was re-checked here against
-the pack and the real evaluator before being accepted or rejected — a refuter's citation is
-a lead, not a fact.
+An independent Codex red-team reviewed composite candidate
+`a973d69a8bbfdc880ef905c2c15dfaf69938741c30f0d3137f0a7391b517e63c`
+and returned `PASS`: zero blockers, P0/P1 findings, or other findings.
 
-| # | severity | finding | disposition |
-|---|---|---|---|
-| 1 | CRITICAL | E23U/E23V gates are generic (`EMPLOYMENT` + any confirmed Indonesian sponsor), so the conjunction cure does not bite | **accepted, cured** — both products taken out of reach; `test_ordinary_employee_is_not_offered_the_diplomatic_or_trade_office_routes` |
-| 4 | CRITICAL | age/threshold rules (E33F, E33E, E31J, D12) converted to SUPPORT can be silently ignored — a 46-year-old is offered E33F, and with no age it is offered without asking | **accepted, cured** — all four moved to product-scoped `HARD_FILTER` with `on_unknown: NEEDS_INPUT`; two tests |
-| 5 | HIGH | `hr.e30a-minor-consent` kept as a wall although it tests neither consent nor guardian, so a compliant 16-year-old still gets a blank answer | **accepted, cured** — converted; `test_a_compliant_minor_is_not_walled_out_of_the_whole_answer` |
-| 6 | MEDIUM | the converted D12 long-stay rule is unsatisfiable (`stay > 365 ∧ stay ≤ 180`) — the signal was lost, not moved | **accepted, cured** — same HARD_FILTER move as #4 |
-| 7 | MEDIUM | the reachability headline (27/38) contradicts this document's own list of unreachable products; `0/771` is not reproducible because its harness is not in the repo | **accepted** — recounted to 29/38 and pinned by a test; the 771 claim is withdrawn, see *Measured* |
-| 2 | — | no finding: no product gains a literal purpose value | noted; it does not cure #1, and the report says so |
-| 3 | — | no finding: the E30A/E30B level bands still discriminate correctly | independently re-probed, agrees |
-| 8 | LOW | `rule_pack_id` allegedly violates the UUIDv5-from-canonical-URL convention | **REJECTED** — recomputing `uuid5(NAMESPACE_URL, ".../2026.8.10/seq-6")` reproduces the stored `e04a21e7-8716-584b-90ac-de3b5c192330` exactly |
+The reviewer independently confirmed the net rule delta (-15), the fail-closed
+absence of E23U/E23V/E30E/E30F rules, and preservation of generic E23 and
+E30/E30A/E30B support. They downloaded the official BPK PDF, reproduced its
+SHA-256, verified the Article 60(2)/61 text and locators, and checked that the
+relevant amendment sections in UU 11/2020 and UU 63/2024 do not amend those
+articles. They also verified the old-key UI aliases and corrected caveated
+copy.
 
-Not raised by the seat and still open: the ABSENT-vs-UNKNOWN asymmetry, the conservatism of
-the E33E band exclusion, and the missing client-facing copy for exclusion reasons — all
-three are in *Open, and not papered over* rather than here, because nobody found them for me.
+On the reviewed bytes, the canonical compiler reported zero errors; the
+evaluator suite passed 3/3; the adapter Vitest suite passed 21/21; Ruff,
+Prettier, and `git diff --check` passed; and the post-gate composite rehash was
+unchanged. The surviving residual risk is deliberate: the special routes stay
+dormant until explicit discriminator facts and sourced eligibility rules are
+added in a new reviewed pack.
+
+### Second review, different scope, opposite verdict
+
+A second Codex seat (`gpt-5.6-sol`, `xhigh`, read-only) was pointed not at the
+diff but at the PACK SEMANTICS of a parallel draft, with instructions to refute
+and cite file:line. It returned **DO-NOT-SHIP**, 8 findings. Two were CRITICAL
+and both were reproduced against the real evaluator before anything was changed:
+
+- **E23U/E23V were gated by `EMPLOYMENT` plus any confirmed Indonesian sponsor**,
+  which every ordinary employee satisfies. The M5 lane had already reached the
+  same conclusion independently; the two cures agree.
+- **A requirement that reads a disqualifying threshold is not a requirement.**
+  `el.e33f.age-under-55` is support and is true exactly when the applicant is
+  under the statutory 55, so a 46-year-old was offered the retirement KITAS.
+  **This finding survived the diff-scoped review above** — not because that
+  review was careless, but because the defect was not introduced by the diff it
+  read. Its `PASS` and this `DO-NOT-SHIP` are both correct answers to different
+  questions, and only one of the two questions is "is the artifact right".
+
+One HIGH (`hr.e30a-minor-consent` walls a compliant minor) is cured in point 8.
+Two MEDIUM concerned withdrawn numbers and are addressed in *Evidence boundary*.
+One LOW claimed the `rule_pack_id` violates the UUIDv5-from-canonical-URL
+convention; recomputing it reproduces the stored id exactly, so it is
+**rejected**. A refuter is a lead, not a verdict.
+
+Worth recording beyond this pack: the review that passed the draft on which the
+CRITICAL was found was the in-house `devils-advocate` agent, which is pinned
+`model: sonnet` — the same family as the generator, and its description still
+advertises a different model than its pin. The seat named in a research file's
+frontmatter is load-bearing, and so is its scope.
+
+## Residual boundaries
+
+- E23U/E23V and E30E/E30F are intentionally fail-closed until the interview
+  schema carries the facts that distinguish them and the rule pack cites the
+  authority needed for each legal claim.
+- **An ABSENT fact and an UNKNOWN one are answered differently, and only one of
+  them asks.** With the age declared unknown the engine returns `NEEDS_INPUT`
+  naming `person.birth_date`; with the key simply not present it returns
+  `NO_SUPPORTED_PATH` and asks nothing. Neither produces a false offer, but an
+  applicant the interview never asked about age gets a blank answer rather than
+  a question. Pinned, not fixed, by
+  `test_deleting_the_age_key_is_not_the_same_as_declaring_it_unknown`.
+- **A product removed by a `HARD_FILTER` carries no client-facing reason.**
+  `SUPPORT_REASON_COPY` covers reasons that appear ON an offer, so a 46-year-old
+  is correctly not offered E33F and is told nothing about why.
+- **`el.e33e.age-55-59-disputed-band` and `el.e31j-dependency-age` remain
+  support**, i.e. they assert eligibility in a band the source calls disputed
+  and for an adult sibling. Both are the M5 lane's deliberate advisor-check
+  framing and were left as authored rather than overridden from a parallel lane;
+  they are named here so the choice is visible rather than inherited.
+- This pack does not decide employer-side labour compliance. A later change
+  must add explicit facts and current authoritative labour sources before it
+  can claim RPTKA, job-title, KBLI, or restricted-role verification.
+- Historical packs remain immutable. The frontend keeps the old spouse-work
+  and KITAP reason keys as aliases, but renders the corrected, non-categorical
+  copy for persisted decisions.
 
 ## Activation prerequisite
 
-`bundle.py:966-993` requires `previous_payload_sha256` to equal the currently-active pack's
-payload hash. seq-6 declares seq-5's. **seq-5 exists only as `.source.json`** — the last
-signed bundle in the repo is `rulepack-prod-004.signed.json` — so seq-5 must be signed
-byte-identically to its source and activated before seq-6 can be. Signing and activation are
-separate, irreversible steps and are Zero's.
+The pack is source-only. Signing and activation are separate operator steps;
+this correction neither signs nor activates seq-6.

@@ -225,7 +225,12 @@ def test_reachability_is_what_the_document_claims():
     }
     reachable = {codes[pid] for pid in supported}
     assert len(codes) == 38
-    assert len(reachable) == 29, sorted(reachable)
+    assert len(reachable) == 27, sorted(reachable)
+    # E30E (KEK-only) and E30F (exchange-only) are on this list because the sibling
+    # lane made them unreachable in the same window this file was written: no
+    # interview fact distinguishes them from the generic study routes, so offering
+    # them was the same self-certification as E23U/E23V. That cure is theirs, and
+    # this assertion is how it stops being silently revertible by mine.
     assert sorted(set(codes.values()) - reachable) == [
         "E23U",
         "E23V",
@@ -233,6 +238,8 @@ def test_reachability_is_what_the_document_claims():
         "E28C",
         "E28D",
         "E28F",
+        "E30E",
+        "E30F",
         "E33A",
         "E33B",
         "E33C",
