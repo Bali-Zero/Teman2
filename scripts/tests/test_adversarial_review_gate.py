@@ -157,6 +157,17 @@ def test_innocence_valid_seat_and_section(tmp_path):
     assert v.ok is True
 
 
+def test_innocence_qwen_seat_accepted(tmp_path):
+    p = _write(
+        tmp_path,
+        "research/operations/x.md",
+        "---\ndate: 2026-08-10\nadversarial_review: qwen-3.8-max\n---\n\n"
+        "# Title\n\n## Adversarial review\n\nnone survived, 2 raised\n",
+    )
+    v = car.evaluate_file(p)
+    assert v.ok is True
+
+
 def test_innocence_human_seat_accepted(tmp_path):
     p = _write(
         tmp_path,
