@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NUZANTARA — Vision Deck</title>
+<style>
+  :root {
+    --bg-0: #06070a;
+    --bg-1: #0d1016;
+    --panel: rgba(255, 255, 255, 0.045);
+    --panel-border: rgba(255, 255, 255, 0.09);
+    --panel-hover: rgba(255, 255, 255, 0.09);
+    --text-hi: #f4f6fa;
+    --text-mid: #b7bfcc;
+    --text-lo: #6d7484;
+    --accent-ops: #6ea8fe;
+    --accent-cinema: #f2a154;
+    --accent-term: #6ee7b7;
+    --accent-exp: #c792ea;
+    --divider: rgba(255, 255, 255, 0.07);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    background:
+      radial-gradient(1200px 700px at 12% -8%, rgba(110, 168, 254, 0.10), transparent 60%),
+      radial-gradient(1000px 700px at 100% 10%, rgba(199, 146, 234, 0.08), transparent 55%),
+      linear-gradient(180deg, var(--bg-0) 0%, var(--bg-1) 100%);
+    color: var(--text-hi);
+    font-family: -apple-system, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 72px 64px 96px;
+  }
+
+  header.hero {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 64px;
+  }
+
+  .eyebrow {
+    font-size: 15px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--text-lo);
+    font-weight: 600;
+  }
+
+  h1 {
+    font-size: 56px;
+    line-height: 1.05;
+    margin: 0;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    background: linear-gradient(120deg, #ffffff 0%, #c9d3e6 55%, #8fa3c9 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .subtitle {
+    font-size: 20px;
+    color: var(--text-mid);
+    max-width: 60ch;
+    line-height: 1.5;
+    margin-top: 4px;
+  }
+
+  section.deck-section {
+    margin-bottom: 56px;
+  }
+
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    margin-bottom: 26px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--divider);
+  }
+
+  .section-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex: none;
+  }
+
+  .section-head h2 {
+    font-size: 26px;
+    margin: 0;
+    font-weight: 650;
+    letter-spacing: -0.005em;
+  }
+
+  .section-count {
+    font-size: 14px;
+    color: var(--text-lo);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 28px;
+  }
+
+  a.card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 22px;
+    min-height: 168px;
+    padding: 34px 32px;
+    border-radius: 28px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    text-decoration: none;
+    color: inherit;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
+  }
+
+  a.card:hover, a.card:focus-visible {
+    transform: translateY(-4px) scale(1.012);
+    background: var(--panel-hover);
+    border-color: rgba(255, 255, 255, 0.22);
+    box-shadow: 0 22px 50px rgba(0, 0, 0, 0.4);
+    outline: none;
+  }
+
+  a.card:active {
+    transform: translateY(-1px) scale(0.995);
+  }
+
+  .card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .card-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    flex: none;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .card-arrow {
+    font-size: 20px;
+    color: var(--text-lo);
+    transition: transform 0.18s ease, color 0.18s ease;
+  }
+
+  a.card:hover .card-arrow {
+    transform: translate(3px, -3px);
+    color: var(--text-hi);
+  }
+
+  .card-name {
+    font-size: 23px;
+    font-weight: 650;
+    letter-spacing: -0.005em;
+    color: var(--text-hi);
+    margin: 0 0 6px;
+  }
+
+  .card-desc {
+    font-size: 15.5px;
+    color: var(--text-mid);
+    line-height: 1.45;
+    margin: 0;
+  }
+
+  .card.placeholder {
+    opacity: 0.55;
+    border-style: dashed;
+  }
+
+  .card.placeholder .card-name { color: var(--text-mid); }
+  .card.placeholder:hover { transform: none; box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28); }
+
+  .badge {
+    display: inline-block;
+    font-size: 11.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-lo);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    padding: 4px 10px;
+    margin-top: 8px;
+    width: fit-content;
+  }
+
+  footer {
+    margin-top: 72px;
+    padding-top: 28px;
+    border-top: 1px solid var(--divider);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    color: var(--text-lo);
+    font-size: 14px;
+    letter-spacing: 0.02em;
+  }
+
+  footer .dot-pulse {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent-term);
+    margin-right: 8px;
+    box-shadow: 0 0 0 0 rgba(110, 231, 183, 0.6);
+    animation: pulse 2.4s infinite;
+  }
+
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(110, 231, 183, 0.5); }
+    70% { box-shadow: 0 0 0 10px rgba(110, 231, 183, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(110, 231, 183, 0); }
+  }
+
+  @media (max-width: 1180px) {
+    .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .wrap { padding: 56px 40px 80px; }
+    h1 { font-size: 44px; }
+  }
+
+  @media (max-width: 720px) {
+    .grid { grid-template-columns: 1fr; }
+    .wrap { padding: 40px 24px 64px; }
+    h1 { font-size: 34px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="eyebrow">Bali Zero · Nuzantara</div>
+    <h1>NUZANTARA — Vision Deck</h1>
+    <p class="subtitle">Spatial control room for the organism. Open a card as its own window, arrange the room, work at wall scale.</p>
+  </header>
+
+  <section class="deck-section">
+    <div class="section-head">
+      <span class="section-dot" style="background: var(--accent-ops);"></span>
+      <h2>OPS</h2>
+      <span class="section-count">9 surfaces</span>
+    </div>
+    <div class="grid">
+
+      <a class="card" href="https://nuzantara.tail461666.ts.net/" target="_blank" rel="noopener">
+        <div class="card-top">
+          <div class="card-icon">🛰️</div>
+          <div class="card-arrow">↗</div>
+        </div>
+        <div>
+          <p class="card-name">OpenClaw Control</p>
+          <p class="card-desc">The organism's own control surface — agents, daemons, live state.</p>
+        </div>
+      </a>
+
+      <a class="card" href="https://kita.balizero.com" target="_blank" rel="noopener">
+        <div class="card-top">
+          <div class="card-icon">🏢</div>
+          <div class="card-arrow">↗</div>
+        </div>
+        <div>
+          <p class="card-name">Kita</p>
+          <p class="card-desc">Internal ops hub — CRM, cases, team workflows.</p>
+        </div>
+      </a>
+
+      <a class="card" href="https://my.balizero.com" target="_blank" rel="noopener">
+        <div class="card-top">
+          <div class="card-icon">👤</div>
+          <div class="card-arrow">↗</div>
+        </div>
+        <div>
+          <p class="card-name">My</p>
+          <p class="card-desc">Client-facing self-service portal.</p>
+        </div>
+      </a>
+
+      <a class="card" href="https://prime.balizero.com" target="_blank" rel="noopener">
+        <div class="card-top">
+          <div class="card-icon">⚙️</div>
+          <div class="card-arrow">↗</div>
+        </div>
+        <div>
+          <p class="card-name">Prime</p>
+          <p class="card-desc">Admin / operations console.</p>
+        </div>
+      </a>
+
+      <a class="card" href="https://zantara.balizero.com" target="_blank" rel="noopener">
+        <div class="card-top">
+          <div class="card-icon">💬</div>
+          <div class="card-arrow">↗</div>
+        </div>
+        <div>
+          <p class="card-name">Zantara</p>
+          <p class="card-desc">The RAG assistant — web chat front door.</p>
+        </div>
+      </a>
+
+      <a class="card" href="https://calendar.balizero.com" target="_blank" rel="noopener">
+        <div class="card-top">
+          <div class="card-icon">📅</div>
+          <div class="card-arrow">↗</div>
+        </div>
+        <div>
+          <p class="card-name">Calendar</p>
+          <p class="card-desc">Team scheduling and deadlines.</p>
+        </div>
+      </a>
+
+      <a class="card" href="https://mail.balizero.com" target="_blank" rel="noopener">
+        <div class="card-top">
+          <div class="card-icon">✉️</div>
+          <div class="card-arrow">↗</div>
+        </div>
+        <div>
+          <p class="card-name">Mail</p>
+          <p class="card-desc">Zoho-backed mail surface.</p>
+        </div>
+      </a>
+
+      <a class="card" href="https://drive.balizero.com" target="_blank" rel="noopener">
+        <div class="card-top">
+          <div class="card-icon">🗂️</div>
+          <div class="card-arrow">↗</div>
+        </div>
+        <div>
+          <p class="card-name">Drive</p>
+          <p class="card-desc">Document store and client files.</p>
+        </div>
+      </a>
+
+      <a class="card" href="https://knowledge.balizero.com" target="_blank" rel="noopener">
+        <div class="card-top">
+          <div class="card-icon">📚</div>
+          <div class="card-arrow">↗</div>
+        </div>
+        <div>
+          <p class="card-name">Knowledge</p>
+          <p class="card-desc">KBLI / regulatory / editorial knowledge base.</p>
+        </div>
+      </a>
+
+    </div>
+  </section>
+
+  <section class="deck-section">
+    <div class="section-head">
+      <span class="section-dot" style="background: var(--accent-cinema);"></span>
+      <h2>CINEMA</h2>
+      <span class="section-count">editorial QA</span>
+    </div>
+    <div class="grid">
+
+      <a class="card" href="/cinema/" target="_blank" rel="noopener">
+        <div class="card-top">
+          <div class="card-icon">🎬</div>
+          <div class="card-arrow">↗</div>
+        </div>
+        <div>
+          <p class="card-name">Cinema — Editorial QA</p>
+          <p class="card-desc">WR2 carousels &amp; WR3 episodes at wall scale — color, typography, pacing review.</p>
+          <span class="badge">tailnet-only</span>
+        </div>
+      </a>
+
+    </div>
+  </section>
+
+  <section class="deck-section">
+    <div class="section-head">
+      <span class="section-dot" style="background: var(--accent-term);"></span>
+      <h2>TERMINALE</h2>
+      <span class="section-count">dev cockpit</span>
+    </div>
+    <div class="grid">
+
+      <a class="card" href="/term/" target="_blank" rel="noopener">
+        <div class="card-top">
+          <div class="card-icon">⌨️</div>
+          <div class="card-arrow">↗</div>
+        </div>
+        <div>
+          <p class="card-name">Terminal — Pro</p>
+          <p class="card-desc">Full shell on Pro via ttyd — the real <code>claude</code> CLI, from anywhere on the tailnet.</p>
+          <span class="badge">tailnet-only</span>
+        </div>
+      </a>
+
+    </div>
+  </section>
+
+  <section class="deck-section">
+    <div class="section-head">
+      <span class="section-dot" style="background: var(--accent-exp);"></span>
+      <h2>ESPERIENZE</h2>
+      <span class="section-count">coming next</span>
+    </div>
+    <div class="grid">
+
+      <a class="card placeholder" href="#" onclick="return false;">
+        <div class="card-top">
+          <div class="card-icon">🧭</div>
+        </div>
+        <div>
+          <p class="card-name">Guida esperienze — in arrivo</p>
+          <p class="card-desc">Spatial / immersive experiences land here in a second pass.</p>
+        </div>
+      </a>
+
+    </div>
+  </section>
+
+  <footer>
+    <div><span class="dot-pulse"></span>tailnet-only · served from Pro</div>
+    <div>NUZANTARA · Bali Zero</div>
+  </footer>
+
+</div>
+</body>
+</html>
