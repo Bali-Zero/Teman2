@@ -106,3 +106,13 @@ Le cause principali erano:
 
 - Italiano se prompt in italiano, inglese se in inglese
 - Codice e path sempre in inglese
+
+## 7. Codex come Conduttore (2026-08-09)
+
+Quando Zero avvia una sessione interattiva Codex come **orchestratore** (non worker), vale AGENTS.md §17: stessa legge, altra porta.
+
+- Il Conduttore Codex dispatcha gli agenti secondo `FLEET_TOPOLOGY.json`, assembla l'Evidence Pack, e NON mergia a mano: PR → required checks → auto-merge armato → deploy via CI.
+- Verdetto Gear-2 da famiglia **diversa** dal builder principale; Gear-3 sempre check **Fable** (mai sostituibile).
+- Quote cliente, comunicazioni verso l'esterno e PII restano fuori dal perimetro Codex (Anthropic-interactive / locale).
+- Rotazione account OpenAI: `CODEX_HOME=~/.codex` (O1) / `CODEX_HOME=~/.codex-o2` (O2) — `--profile` cambia modello, NON identità.
+- Il contratto worker (§0–§6) resta valido quando Codex è dispatchato da un altro Conduttore.
