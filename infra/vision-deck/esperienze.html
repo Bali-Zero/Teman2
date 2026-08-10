@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NUZANTARA — Esperienze Vision Pro</title>
+<style>
+  :root {
+    --bg-0: #06070a;
+    --bg-1: #0d1016;
+    --panel: rgba(255, 255, 255, 0.045);
+    --panel-border: rgba(255, 255, 255, 0.09);
+    --panel-hover: rgba(255, 255, 255, 0.09);
+    --text-hi: #f4f6fa;
+    --text-mid: #b7bfcc;
+    --text-lo: #6d7484;
+    --accent-exp: #c792ea;
+    --accent-hero: #f2a154;
+    --accent-warn: #f2c14e;
+    --divider: rgba(255, 255, 255, 0.07);
+    --chip-bg: rgba(255, 255, 255, 0.05);
+    --chip-border: rgba(255, 255, 255, 0.08);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    background:
+      radial-gradient(1200px 700px at 12% -8%, rgba(199, 146, 234, 0.10), transparent 60%),
+      radial-gradient(1000px 700px at 100% 10%, rgba(242, 161, 84, 0.07), transparent 55%),
+      linear-gradient(180deg, var(--bg-0) 0%, var(--bg-1) 100%);
+    color: var(--text-hi);
+    font-family: -apple-system, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 56px 64px 96px;
+  }
+
+  .backlink {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    color: var(--text-mid);
+    text-decoration: none;
+    padding: 8px 16px 8px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--panel-border);
+    background: var(--panel);
+    margin-bottom: 32px;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  .backlink:hover { color: var(--text-hi); border-color: rgba(255,255,255,0.22); }
+
+  header.hero { display: flex; flex-direction: column; gap: 14px; margin-bottom: 40px; }
+
+  .eyebrow {
+    font-size: 15px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--text-lo);
+    font-weight: 600;
+  }
+
+  h1 {
+    font-size: 48px;
+    line-height: 1.08;
+    margin: 0;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    background: linear-gradient(120deg, #ffffff 0%, #d9c2ef 55%, #c792ea 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .subtitle { font-size: 19px; color: var(--text-mid); max-width: 68ch; line-height: 1.55; }
+
+  nav.quicknav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 28px 0 8px;
+  }
+  nav.quicknav a {
+    font-size: 13.5px;
+    color: var(--text-mid);
+    text-decoration: none;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--panel-border);
+    background: var(--panel);
+    white-space: nowrap;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  nav.quicknav a:hover { color: var(--text-hi); border-color: rgba(255,255,255,0.22); }
+
+  section.deck-section { margin-top: 60px; margin-bottom: 8px; scroll-margin-top: 24px; }
+
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    margin-bottom: 26px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--divider);
+  }
+  .section-dot { width: 12px; height: 12px; border-radius: 50%; flex: none; background: var(--accent-exp); }
+  .section-head h2 { font-size: 25px; margin: 0; font-weight: 650; letter-spacing: -0.005em; }
+  .section-note { font-size: 14.5px; color: var(--text-lo); }
+
+  /* ── Prima serata hero ── */
+  .hero-panel {
+    border-radius: 32px;
+    padding: 40px 40px 34px;
+    background: linear-gradient(160deg, rgba(242,161,84,0.10), rgba(199,146,234,0.05));
+    border: 1px solid rgba(242,161,84,0.22);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+  }
+  .hero-panel h2 { font-size: 30px; margin: 0 0 8px; font-weight: 700; }
+  .hero-panel .section-note { margin-bottom: 26px; }
+
+  .steps { display: flex; flex-direction: column; gap: 18px; }
+  .step {
+    display: flex;
+    gap: 22px;
+    align-items: flex-start;
+    padding: 22px 24px;
+    border-radius: 22px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+  }
+  .step-num {
+    flex: none;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-hero), #e08a3a);
+    color: #1a1105;
+    font-weight: 800;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .step-body .step-title { font-size: 19px; font-weight: 650; margin: 0 0 4px; }
+  .step-body .step-desc { font-size: 15px; color: var(--text-mid); line-height: 1.5; margin: 0; }
+  .bonus-line {
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px dashed rgba(255,255,255,0.12);
+    font-size: 14.5px;
+    color: var(--text-mid);
+  }
+  .bonus-line strong { color: var(--text-hi); }
+
+  /* ── Item card grid ── */
+  .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
+
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 26px 26px 24px;
+    border-radius: 24px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.26);
+    transition: transform 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+  }
+  .card:hover { transform: translateY(-3px); background: var(--panel-hover); border-color: rgba(255,255,255,0.2); }
+
+  .card-name { font-size: 18.5px; font-weight: 650; margin: 0; letter-spacing: -0.005em; }
+  .card-desc { font-size: 14.5px; color: var(--text-mid); line-height: 1.48; margin: 0; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .chip {
+    font-size: 12.5px;
+    color: var(--text-lo);
+    background: var(--chip-bg);
+    border: 1px solid var(--chip-border);
+    border-radius: 999px;
+    padding: 5px 11px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .chip.price { color: #a9e6c6; border-color: rgba(169,230,198,0.18); }
+  .chip.where { color: #9fc2f2; border-color: rgba(159,194,242,0.18); }
+
+  .unverified {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 650;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: #1a1503;
+    background: var(--accent-warn);
+    border-radius: 8px;
+    padding: 4px 9px;
+    width: fit-content;
+  }
+
+  .list-note {
+    font-size: 14px;
+    color: var(--text-lo);
+    line-height: 1.6;
+    margin: 18px 0 0;
+    padding: 14px 18px;
+    border-left: 2px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.02);
+    border-radius: 0 12px 12px 0;
+  }
+
+  footer {
+    margin-top: 72px;
+    padding-top: 28px;
+    border-top: 1px solid var(--divider);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    color: var(--text-lo);
+    font-size: 14px;
+  }
+
+  @media (max-width: 1180px) {
+    .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .wrap { padding: 44px 40px 80px; }
+    h1 { font-size: 38px; }
+  }
+  @media (max-width: 720px) {
+    .grid { grid-template-columns: 1fr; }
+    .wrap { padding: 32px 22px 60px; }
+    h1 { font-size: 30px; }
+    .step { flex-direction: column; gap: 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <a class="backlink" href="index.html">← Vision Deck</a>
+
+  <header class="hero">
+    <div class="eyebrow">Bali Zero · Nuzantara</div>
+    <h1>Esperienze Vision Pro</h1>
+    <p class="subtitle">Guida curata alle esperienze più immersive e belle del catalogo — agosto 2026, visionOS 26.x baseline. Le voci marcate <span class="unverified" style="position:relative; top:-1px;">unverified</span> non sono ancora confermate nelle fonti: trattale come tali, non come fatti.</p>
+
+    <nav class="quicknav">
+      <a href="#prima-serata">🌟 Prima serata</a>
+      <a href="#immersive-video">Apple Immersive Video</a>
+      <a href="#system">System delights</a>
+      <a href="#cinema">Cinema &amp; streaming</a>
+      <a href="#musica">Musica &amp; concerti</a>
+      <a href="#natura">Natura / spazio</a>
+      <a href="#giochi">Giochi</a>
+      <a href="#sport">Sport</a>
+      <a href="#youtube">YouTube &amp; 360°</a>
+    </nav>
+  </header>
+
+  <section class="deck-section" id="prima-serata">
+    <div class="hero-panel">
+      <h2>🌟 Prima serata</h2>
+      <p class="section-note">L'itinerario in 5 tappe — gratis + massimo effetto wow, nell'ordine giusto per la prima sera con il visore.</p>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <p class="step-title">Encounter Dinosaurs</p>
+            <p class="step-desc">Built-in, gratis, 5 min — parti da qui: preinstallata, zero setup, fa capire subito "cosa può fare" il dispositivo agli ospiti o a te stesso. Il miglior primo assaggio.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <p class="step-title">Tour De Force</p>
+            <p class="step-desc">Apple Immersive, gratis — passa subito a un video immersivo VERO (180° 8K): motociclismo MotoGP dentro il casco. Fa capire la differenza tra "demo AR" e immersive video reale.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <p class="step-title">Bono: Stories of Surrender (Immersive)</p>
+            <p class="step-desc">Gratis con trial/TV+, 86 min — o guarda solo i primi 15–20 min stasera. Il capolavoro assoluto del catalogo: se hai tempo per una sola cosa "cinema-grade" stasera, è questa. Ti mette letteralmente sul palco.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <p class="step-title">Elevated</p>
+            <p class="step-desc">Apple Immersive, incluso TV+ — chiudi la parte "video" con il momento natura: voli aerei su Hawaii, Svizzera e Maine narrati da Tim Robbins. Perfetto per rilassarsi dopo l'intensità di Bono.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <p class="step-title">Space Vision</p>
+            <p class="step-desc">Gratis/freemium — finale contemplativo: spegni le luci di casa (con l'Ambiente) e chiudi la serata fluttuando nel cosmo con dati NASA reali. Il modo più bello di "atterrare" prima di togliere il visore.</p>
+          </div>
+        </div>
+      </div>
+
+      <p class="bonus-line"><strong>Bonus se hai ancora energia</strong>: prova rapidamente Synth Riders (Apple Arcade) per la componente attiva/fisica, e apri YouTube → tab Spatial per farti un'idea della libreria infinita di 360° gratis disponibile ogni sera dopo questa.</p>
+    </div>
+  </section>
+
+  <section class="deck-section" id="immersive-video">
+    <div class="section-head">
+      <span class="section-dot"></span>
+      <h2>Apple Immersive Video</h2>
+      <span class="section-note">180°, 8K per occhio, spatial audio — la vera killer-feature, 47 titoli nel catalogo al 21/5/2026</span>
+    </div>
+    <div class="grid">
+
+      <div class="card">
+        <p class="card-name">Bono: Stories of Surrender</p>
+        <p class="card-desc">Primo lungometraggio immersivo mai girato (86 min) — 8K, spatial audio, ti mette letteralmente sul palco con Bono. Il capolavoro del catalogo.</p>
+        <div class="chip-row"><span class="chip price">💰 Gratis con Apple TV+ (trial 7gg)</span><span class="chip where">📍 App TV → Apple Immersive</span></div>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Submerged</p>
+        <p class="card-desc">Primo film SCRIPTED girato in Apple Immersive: equipaggio di sommergibile WWII sotto attacco silurante, dal regista Oscar di <em>All Quiet on the Western Front</em>.</p>
+        <div class="chip-row"><span class="chip price">💰 Incluso Apple TV+</span><span class="chip where">📍 App TV → Apple Immersive</span></div>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Metallica (Immersive concert film)</p>
+        <p class="card-desc">Accesso senza precedenti alla band durante il finale del tour M72 a Città del Messico — sei praticamente sul palco.</p>
+        <div class="chip-row"><span class="chip price">💰 Incluso Apple TV+</span><span class="chip where">📍 App TV → Apple Immersive</span></div>
+      </div>
+
+      <div class="card">
+        <p class="card-name">A Night at the BBC Proms</p>
+        <p class="card-desc">Primo concerto di musica classica in formato Apple Immersive: Lukas Sternath esegue il Concerto per pianoforte di Grieg con la BBC Symphony Orchestra.</p>
+        <div class="chip-row"><span class="chip price">💰 Incluso Apple TV+</span><span class="chip where">📍 App TV → Apple Immersive</span></div>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Prehistoric Planet Immersive</p>
+        <p class="card-desc">Rilasciato 27/3/2026 — ti immerge nella vita quotidiana dei dinosauri, scenografie spettacolari, dal team di Jon Favreau.</p>
+        <div class="chip-row"><span class="chip price">💰 Incluso Apple TV+</span><span class="chip where">📍 App TV → Apple Immersive</span></div>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Elevated</p>
+        <p class="card-desc">Tour aerei mozzafiato su Hawaii, Svizzera e Maine, narrati dal premio Oscar Tim Robbins — fa sembrare piatti i documentari natura tradizionali.</p>
+        <div class="chip-row"><span class="chip price">💰 Incluso Apple TV+</span><span class="chip where">📍 App TV → Apple Immersive</span></div>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Adventure (serie)</p>
+        <p class="card-desc">Ice Dive, Highlining, Parkour — atleti d'élite in location spettacolari, vertigine reale, non simulata.</p>
+        <div class="chip-row"><span class="chip price">💰 Incluso Apple TV+</span><span class="chip where">📍 App TV → Apple Immersive</span></div>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Wild Life: Orangutans</p>
+        <p class="card-desc">Ti lega emotivamente a giovani oranghi in un centro di riabilitazione nel Borneo.</p>
+        <div class="chip-row"><span class="chip price">💰 Incluso Apple TV+</span><span class="chip where">📍 App TV → Apple Immersive</span></div>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Tour De Force (CANAL+ × MotoGP)</p>
+        <p class="card-desc">Motociclismo da dentro il casco — gratis, ottimo primo assaggio del formato immersivo.</p>
+        <div class="chip-row"><span class="chip price">💰 Gratis</span><span class="chip where">📍 App TV → Apple Immersive</span></div>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Boundless</p>
+        <p class="card-desc">Kayak nelle acque gelide della Norvegia.</p>
+        <div class="chip-row"><span class="chip price">💰 Incluso Apple TV+</span><span class="chip where">📍 App TV → Apple Immersive</span></div>
+      </div>
+
+    </div>
+    <p class="list-note">⚠️ La maggior parte richiede <strong>Apple TV+</strong> ($9.99–12.99/mese secondo fonte — prezzo in transizione nel 2026, verifica in-app). Solo <em>Bono</em> e <em>Tour De Force</em> risultano esplicitamente gratis anche senza abbonamento.</p>
+  </section>
+
+  <section class="deck-section" id="system">
+    <div class="section-head">
+      <span class="section-dot"></span>
+      <h2>System-level delights</h2>
+      <span class="section-note">Novità di sistema visionOS 26 che valgono la pena configurare subito</span>
+    </div>
+    <div class="grid">
+
+      <div class="card">
+        <p class="card-name">Spatial Scenes (foto→3D con AI)</p>
+        <p class="card-desc">Generative AI converte foto piatte in scene spaziali multi-prospettiva — ti sporgi e "guardi dietro" i soggetti. Funziona anche sui panorami (nuovo in 26).</p>
+        <div class="chip-row"><span class="chip where">📍 Foto → seleziona foto/panorama → icona spatial</span></div>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Widget persistenti nello spazio</p>
+        <p class="card-desc">Decora la tua stanza virtuale con panorami e foto spaziali come widget fissi.</p>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Mac Virtual Display migliorato</p>
+        <p class="card-desc">Trascina un oggetto 3D da un'app di rendering sul Mac direttamente nel tuo spazio, senza passaggi file. Ottimo per CAD/3D.</p>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Personas più naturali</p>
+        <p class="card-desc">Texture e movimento facciale sensibilmente migliorati rispetto al lancio.</p>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Supporto 180°/360°/wide-FOV nativo</p>
+        <p class="card-desc">Insta360, GoPro, Canon — importa le tue riprese action-cam direttamente, senza convertitori.</p>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Controller PS VR2 Sense</p>
+        <p class="card-desc">Supportati — sblocca una nuova classe di giochi con input a due mani precisi.</p>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Control Center ridisegnato</p>
+        <p class="card-desc">Ambiente, Guest User, Travel Mode, Mac Virtual Display tutti a un tocco.</p>
+      </div>
+
+      <div class="card">
+        <span class="unverified">unverified</span>
+        <p class="card-name">visionOS 27 beta</p>
+        <p class="card-desc">Foveated streaming per sviluppatori, miglioramenti minori — nulla di rivoluzionario ancora confermato per il pubblico finale ad agosto 2026.</p>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Spatial Video personale</p>
+        <p class="card-desc">Con iPhone 15 Pro o successivo (incl. 17 Pro) puoi girare Spatial Video 1080p/30fps e rivederle sul visore — probabilmente l'esperienza più emotivamente potente: i tuoi ricordi, non contenuti di terzi.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="deck-section" id="cinema">
+    <div class="section-head">
+      <span class="section-dot"></span>
+      <h2>Cinema &amp; streaming</h2>
+      <span class="section-note">Il maxischermo definitivo</span>
+    </div>
+    <div class="grid">
+
+      <div class="card">
+        <p class="card-name">Disney+ Theater</p>
+        <p class="card-desc">Ambiente immersivo ispirato all'iconico El Capitan Theatre di Hollywood — ci guardi dentro i contenuti Disney+.</p>
+        <div class="chip-row"><span class="chip where">📍 App Disney+ → Ambienti</span></div>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Catalogo 3D Disney+</p>
+        <p class="card-desc">42 film Disney in 3D veri (non conversioni): Avatar: The Way of Water, Black Panther, Inside Out, The Lion King (2019), e ora Avatar: Fire and Ash (dal 24/6/2026). 4K HDR + surround.</p>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Super Mario Galaxy Movie (2026)</p>
+        <p class="card-desc">Disponibile in 3D per acquisto/noleggio via app TV.</p>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Apple TV app — "Watch on the (Really) Big Screen"</p>
+        <p class="card-desc">Ambiente cinema virtuale nativo per QUALSIASI contenuto Apple TV+/iTunes, non solo immersive video.</p>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Max/HBO Max &amp; Apple TV+</p>
+        <p class="card-desc">Entrambi con audio spaziale, schermo virtuale ridimensionabile.</p>
+      </div>
+
+    </div>
+    <p class="list-note">💡 Per "il modo migliore di guardare film" in generale: Disney+ Theater e l'ambiente cinema di Apple TV app sono i due riferimenti — schermo praticamente IMAX, buio controllato, zero riflessi.</p>
+  </section>
+
+  <section class="deck-section" id="musica">
+    <div class="section-head">
+      <span class="section-dot"></span>
+      <h2>Musica &amp; concerti</h2>
+      <span class="section-note"></span>
+    </div>
+    <div class="grid">
+
+      <div class="card">
+        <p class="card-name">Metallica (Apple Immersive)</p>
+        <p class="card-desc">Il concerto immersivo di punta — vedi sezione Apple Immersive Video sopra.</p>
+      </div>
+
+      <div class="card">
+        <p class="card-name">A Night at the BBC Proms</p>
+        <p class="card-desc">Primo classical immersive — vedi sezione Apple Immersive Video sopra.</p>
+      </div>
+
+      <div class="card">
+        <p class="card-name">ARR Immersive (A.R. Rahman)</p>
+        <p class="card-desc">Lanciata 22/7/2026 — app dedicata con tre performance di danza Kathak fuse con composizioni occidentali classiche (Clair de Lune, Rachmaninoff, Für Elise), più una sezione "ARR Live".</p>
+        <div class="chip-row"><span class="chip where">📍 App Store: "ARR Immersive"</span></div>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Blue Frog Immersive</p>
+        <p class="card-desc">Lanciata 29/4/2026 — invece di ricreare la scala di uno stadio, ti mette a un metro dagli artisti nello studio caldo e acusticamente ricco di Blue Frog: Sugaray Rayford, Miss Emily, Dawson Gray, The Wild Blue Herons, un tributo agli Steely Dan.</p>
+        <div class="chip-row"><span class="chip where">📍 App Store: "Blue Frog Immersive"</span></div>
+        <span class="unverified">unverified prezzo</span>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="deck-section" id="natura">
+    <div class="section-head">
+      <span class="section-dot"></span>
+      <h2>Natura / spazio / educazione</h2>
+      <span class="section-note">Quelle da "wow"</span>
+    </div>
+    <div class="grid">
+
+      <div class="card">
+        <p class="card-name">Space Vision</p>
+        <p class="card-desc">App di astronomia interamente immersiva, powered by dati NASA — ti "trasporti" nel cosmo invece di guardarlo, con SharePlay per esplorare in gruppo.</p>
+        <div class="chip-row"><span class="chip where">📍 App Store: "Space Vision"</span></div>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Elevated</p>
+        <p class="card-desc">La scelta migliore per paesaggi mozzafiato — vedi sezione Apple Immersive Video.</p>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Prehistoric Planet Immersive</p>
+        <p class="card-desc">La scelta migliore per "spazio-natura fantastica" — vedi sezione Apple Immersive Video.</p>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Encounter Dinosaurs</p>
+        <p class="card-desc">Preinstallata su ogni Vision Pro, Jon Favreau executive producer — dinosauri a grandezza naturale nella tua stanza. Ottima demo "wow" per ospiti.</p>
+        <div class="chip-row"><span class="chip price">💰 Gratis, built-in</span></div>
+      </div>
+
+      <div class="card">
+        <p class="card-name">JigSpace</p>
+        <p class="card-desc">Non è "bello" in senso cinematico ma è la migliore app educativa AR/3D: presentazioni esplose e sezioni di oggetti reali (motori, corpo umano, ecc.).</p>
+        <div class="chip-row"><span class="chip price">💰 Gratis con acquisti in-app</span></div>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="deck-section" id="giochi">
+    <div class="section-head">
+      <span class="section-dot"></span>
+      <h2>Giochi &amp; interattivo</h2>
+      <span class="section-note">Solo i davvero belli</span>
+    </div>
+    <div class="grid">
+
+      <div class="card">
+        <p class="card-name">Synth Riders</p>
+        <p class="card-desc">Rhythm-game ibrido dance: intrecci le mani tra fasci di sfere colorate schivando muri. Fedeltà visiva altissima — consigliata come prima esperienza gaming.</p>
+        <div class="chip-row"><span class="chip price">💰 Incluso Apple Arcade</span></div>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Blackbox</p>
+        <p class="card-desc">Puzzle game "fenomenale", enigmi fisici tattili resi con un design minimale elegantissimo.</p>
+        <div class="chip-row"><span class="chip price">💰 $20</span></div>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Demeo</p>
+        <p class="card-desc">RPG da tavolo multiplayer in VR, tabellone che prende vita davanti a te.</p>
+        <div class="chip-row"><span class="chip price">💰 $39.99</span></div>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Resident Evil Village</p>
+        <p class="card-desc">La conversione horror AAA più impressionante su visionOS.</p>
+        <span class="unverified">unverified prezzo</span>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Spatial Ops: Campaign Edition</p>
+        <p class="card-desc">Sfrutta la risoluzione 4K per portali nemici che spuntano da ogni angolo della stanza — integrazione ambientale ottima.</p>
+      </div>
+
+      <div class="card">
+        <p class="card-name">iRacing</p>
+        <p class="card-desc">Arrivata maggio 2026, richiede visionOS 26.4 — sim-racing con "immersione e fedeltà mai viste prima" nel genere. Probabilmente la miglior demo di "presenza" del catalogo giochi.</p>
+      </div>
+
+      <div class="card">
+        <span class="unverified">unverified</span>
+        <p class="card-name">In arrivo 2026</p>
+        <p class="card-desc">No Man's Sky (versione spaziale nativa, inizio 2026), Assassin's Creed Nexus, Civilization VII Spatial, Beat Saber (autunno 2026) — date non confermate al 100%.</p>
+      </div>
+
+    </div>
+    <p class="list-note">⚠️ Circa il 70% dei "giochi" nel catalogo Vision Pro sono in realtà porting da iPad in modalità finestra piatta — i titoli sopra sono la minoranza genuinamente spaziale/immersiva.</p>
+  </section>
+
+  <section class="deck-section" id="sport">
+    <div class="section-head">
+      <span class="section-dot"></span>
+      <h2>Sport</h2>
+      <span class="section-note">Immersivo dal vivo</span>
+    </div>
+    <div class="grid">
+
+      <div class="card">
+        <p class="card-name">NBA / Spectrum Front Row (Apple Immersive)</p>
+        <p class="card-desc">Dal 9/1/2026, partite selezionate dei Lakers con 7 angolazioni (tavolo punteggi, sotto canestro, vista alta, tunnel giocatori, cabina trasmissione, roaming bordocampo). Live ristretto geograficamente (Southern California, Hawaii, parte del Nevada incl. Las Vegas) — replay/highlights disponibili nazionalmente e in mercati internazionali selezionati. Richiede NBA ID.</p>
+        <div class="chip-row"><span class="chip where">📍 App "NBA" o "Spectrum SportsNet"</span></div>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Tour De Force (MotoGP × CANAL+)</p>
+        <p class="card-desc">Gratis — motociclismo in prima persona. Vedi sezione Apple Immersive Video.</p>
+      </div>
+
+      <div class="card">
+        <p class="card-name">World of Red Bull — Backcountry Skiing</p>
+        <p class="card-desc">Disponibile da dicembre 2025 — freeskiing estremo a Revelstoke, Canada, con Logan Pehota, Finn Bilous, Paddy Graham.</p>
+        <div class="chip-row"><span class="chip price">💰 Incluso Apple TV+</span></div>
+      </div>
+
+      <div class="card">
+        <p class="card-name">World of Red Bull — Big-Wave Surfing</p>
+        <p class="card-desc">Teahupo'o, Tahiti — annunciato per il 2026.</p>
+        <span class="unverified">unverified data rilascio</span>
+      </div>
+
+      <div class="card">
+        <p class="card-name">F1 immersivo</p>
+        <p class="card-desc">Apple è partner broadcast esclusivo USA per la F1 dal 2026 e ha promesso "nuovi modi di goderti i contenuti F1" — nessuna conferma ufficiale di un vero catalogo F1 immersive live trovata al momento della ricerca (agosto 2026). Quello che ESISTE ed è verificato: iRacing (sim-racing) e il Multiview F1 (fino a 5 feed contemporanei) nell'app TV.</p>
+        <span class="unverified">unverified — catalogo F1 immersive live</span>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="deck-section" id="youtube">
+    <div class="section-head">
+      <span class="section-dot"></span>
+      <h2>Ecosistema spatial &amp; 360°</h2>
+      <span class="section-note">Lo stato dell'arte</span>
+    </div>
+    <div class="grid">
+
+      <div class="card">
+        <p class="card-name">YouTube nativo</p>
+        <p class="card-desc">Dopo 2 anni di attesa, l'app ufficiale è arrivata il 12/2/2026. Supporta video standard, 180°, 360°, VR180, 3D, Shorts, con un tab "Spatial" dedicato. Su Vision Pro con chip M5 guardi in 8K. Include iscrizioni, playlist, cronologia — app completa, non un wrapper web.</p>
+        <div class="chip-row"><span class="chip where">📍 App Store: "YouTube"</span></div>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Riprese di terze parti</p>
+        <p class="card-desc">visionOS 26 supporta nativamente 180°/360°/wide-FOV da Insta360, GoPro, Canon — importa e guarda le tue action-cam senza convertitori.</p>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Apple Immersive Video Utility</p>
+        <p class="card-desc">App gratuita per Mac + Vision Pro pensata per i creator che vogliono editare/gestire contenuti immersivi propri (rilasciata aprile 2025, ancora rilevante nel 2026).</p>
+        <div class="chip-row"><span class="chip price">💰 Gratis</span></div>
+      </div>
+
+      <div class="card">
+        <p class="card-name">Fonti gratuite di footage immersivo</p>
+        <p class="card-desc">Il tab "Spatial" di YouTube è oggi la fonte più ricca e gratuita di 360°/8K generato dalla community — prima del native YouTube l'ecosistema third-party era frammentato, ora è la via maestra.</p>
+      </div>
+
+    </div>
+    <p class="list-note">Risposta diretta a "si può guardare bene YouTube 360/8K su AVP nel 2026?": <strong>sì, nativamente, dal 12/2/2026</strong>, con supporto 8K sul modello M5. Prima di quella data serviva un browser/wrapper scomodo — ora è un'app di prima classe.</p>
+  </section>
+
+  <footer>
+    <div>tailnet-only · served from Pro</div>
+    <div>NUZANTARA · Bali Zero · guida verificata agosto 2026</div>
+  </footer>
+
+</div>
+</body>
+</html>

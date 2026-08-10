@@ -45,6 +45,8 @@ is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
 ## 1. LIVE STATE (last update 2026-08-09 — keep current)
 
+**TRACK DESIGN — D1 shipped (5609abb) · D2 shipped (6ce988a) — verdict-on-top supersedes the 2026-06-30 order per Zero 2026-08-11.**
+
 **🟢 2026-08-09 — THE macOS APP IS NOW TWO APPS FROM ONE CODEBASE (Zero's ruling), FLEET-INSTALLED AND
 PROVEN — AND THE FLEET GUARD'S REFERENCE WAS THE LIAR (W106b).**
 
