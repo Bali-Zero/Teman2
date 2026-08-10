@@ -596,3 +596,55 @@ Liveness of the watcher itself is checked opportunistically: GitHub's own workfl
 (`scripts/ci/setup_merge_queue_ruleset.sh --status`, or `gh run list --workflow=merge-queue-watch.yml
 --limit 5` to confirm recent runs exist at all). Building a watcher-for-the-watcher is out of scope
 here — noted as a real gap, not quietly assumed away.
+
+---
+
+## Baseline organ (Wave 1)
+
+Merge-OS v2 Wave 1 (`research/operations/2026-08-10-merge-os-v2-submission-system.md` §4 —
+"the baseline organ (7 days, NO behavior change)"). This organ changes nothing about how PRs
+are gated, run, or merged — it only _records_ what already happened, once per UTC day, so
+Wave 2's "−X% billed/PR" acceptance criterion has a measured denominator instead of a guess
+(spec §1: "savings claim ... unknown until the baseline organ runs").
+
+**What it records**, into `~/.nuzantara-mq/baseline/YYYY-MM-DD.json` on Pro:
+
+- billed minutes per PR (see allocation rule below)
+- queue transit p50/p95 for PRs merged that day (auto-merge `enabledAt` → `mergedAt`, via
+  GraphQL `autoMergeRequest.enabledAt`; a PR whose `enabledAt` cannot be read lands in
+  `transit_unmeasured_prs`, never guessed)
+- ejection count by class (INFRA/CODE — FLAKE stays 0 by construction until Wave 4's
+  differential-flake verdict exists as ground truth) and by author class (human/agent/bot)
+- slot utilization: the day's total runner-minutes against a fixed weekly-capacity constant
+  (`≈97k slot-min/wk ≈ 48%` — round-3 system-wide measurement, 2026-08-09/10 window; a
+  snapshot, not re-measured live by this organ)
+
+Heal-drift frequency (also named in spec §4 Wave 1) is intentionally NOT recorded — it is a
+property of the heal-as-PR mechanism (spec §2.2), which is Wave 3 and does not exist yet.
+
+**Declared attribution rule** (spec §4, Codex CONFIRMED-DEFECT F6): GitHub's Actions
+billing/usage endpoints report aggregate usage only, never a per-PR ledger. "Billed
+minutes/PR" is computed as per-run billable minutes (`GET .../actions/runs/{id}/timing`)
+summed over every run attached to a PR — its own `pull_request`-event runs plus any
+`merge_group`-event run it was a member of. A `merge_group` run covering N member PRs
+divides its minutes **evenly** across the N (the even-split option the spec declares
+acceptable, as opposed to attributing the full amount to each). Membership is parsed
+best-effort from the run's `head_branch`/`display_title`; when it cannot be derived, or a
+`pull_request`-event run has an empty `pull_requests[]` (a known GitHub API gap for
+fork-origin runs), the minutes are never dropped — they land in
+`unattributed_group_minutes` / `unattributed_pr_minutes` respectively (scar family #2,
+"esiste ≠ armato" — no silent caps).
+
+**Fail-visible by construction**: every `gh` API denial, timeout, or unparseable response is
+appended to the record's `errors[]` array. A record is always written — even a total-failure
+day — but `errors[]` non-empty makes the probe (and the wrapper that invokes it) exit
+non-zero, so a failed night is never mistaken for a quiet one.
+
+**Built, not armed** (scar family #2): `scripts/queue_baseline_probe.py` +
+`infra/launchagents/wrappers/queue-baseline.sh` +
+`infra/launchagents/com.nuzantara.queue-baseline.plist.template` land in this PR, but the
+plist is a template, not installed. Installing it on Pro (`launchctl bootstrap`) and
+verifying the first live receipt is a separate ALIGN-FLEET step tracked in
+`.claude/skills/modus/PENDING-ARMS.md`. Wave 1's own acceptance criterion — 7 consecutive
+daily records, each carrying billed/PR computed via the attribution rule above — cannot be
+satisfied until that arming happens.
