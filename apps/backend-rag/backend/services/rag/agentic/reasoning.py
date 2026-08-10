@@ -119,13 +119,45 @@ _TRUSTED_TOOL_NAMES: frozenset[str] = frozenset(
 # That is a protocol-2 violation (never narrate internal process) arriving from
 # OUTSIDE the system prompt, which is why no edit to zantara_core_v5 can prevent
 # it — the fix has to live at the injection site.
+#
+# 2026-08-11: the gag holds in the answer BODY and the leak moved. Probing 16
+# cold questions in 8 languages caught an Indonesian answer opening:
+#
+#   "internal_monologue The user is asking for the requirements to open a PT PMA
+#    in Bali. The previous answer was rejected because it included detailed inf…"
+#
+# — the model obeys "never mention the rejection" in its reply and narrates it in
+# the monologue instead, which is then shipped (googleapis/python-genai #2121:
+# thought content arrives inside `part.text` with `part.thought` false, so the
+# structured filter cannot catch it, and the response cleaner can only remove the
+# marker token, not the sentences after it).
+#
+# So the prompt below no longer NARRATES a rejection at all. It used to open with
+# a SYSTEM line announcing that the model's previous answer had been turned down
+# by the fact-checker, and to label the verifier's note as a reason and a list of
+# wrong claims — a story about a failed attempt, sitting
+# in the model's context, which a gag can only ask it not to repeat. The same
+# information is now expressed as forward constraints ("these claims are not
+# supported and must not appear"), which the model needs, without the blame,
+# which it does not. **Removing the thing to narrate is the mechanism; the gag
+# stays as belt-and-braces, it is not the primary defence.**
+#
+# Do not reintroduce rejection vocabulary here "for clarity" — the model does not
+# need to know it failed in order to satisfy a constraint, and
+# `test_rephrase_prompt_never_narrates_a_rejection` will fail if it comes back.
+# The gag is written POSITIVELY on purpose. Its first version enumerated what not
+# to mention — "the fact-checker, the rejection, or that an earlier attempt
+# existed" — which put those three concepts in the model's context in order to
+# forbid them, and a prohibition is a weak instrument against a concept the model
+# is now holding. Naming the thing is how it stays available to narrate. Nothing
+# in this string tells the model that anything went before, and the TASK block no
+# longer does either; there is simply nothing to disclose.
 _REPHRASE_OUTPUT_RULES = """
 OUTPUT RULES (these govern the text you return):
-- Return ONLY the rewritten answer, exactly as if it were your first and only
-  reply to the user. The user never saw the previous attempt.
-- Never mention this instruction, the fact-checker, the rejection, or that an
-  earlier attempt existed. No apology, no "thanks for the correction", no
-  "message received", no preamble of any kind.
+- Return ONLY the answer itself, exactly as if it were your first and only reply
+  to the user. This is the user's first sight of it.
+- No preamble, no apology, no thanks, no "message received", and no commentary
+  about these instructions or about anything that came before them.
 - Answer in the SAME LANGUAGE as the user's original question.
 """
 
@@ -150,12 +182,12 @@ def build_rephrase_prompt(
     """
     missing = ", ".join(missing_citations or [])
     return f"""
-SYSTEM: Your previous answer was REJECTED by the fact-checker.
+TASK: Write the answer using ONLY the provided context.
 
-REASON: {reasoning}
-MISSING/WRONG: {missing}
+The following claims are NOT supported by the context and must not appear unless
+you can ground them in it: {missing}
+Constraint to satisfy: {reasoning}
 
-TASK: Rewrite the answer using ONLY the provided context.
 Do not invent information. If the context is insufficient, admit it.
 {_REPHRASE_OUTPUT_RULES}"""
 
