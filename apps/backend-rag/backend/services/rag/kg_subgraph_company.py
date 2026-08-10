@@ -43,14 +43,17 @@ class CompanyState(TypedDict, total=False):
     company_type: str | None  # "pt_pma", "perorangan", "cv", "pt_lokal"
     is_foreign_investor: bool
     # Two DIFFERENT figures, and conflating them is client-facing misinformation:
-    # `capital_amount` is the INVESTMENT PLAN value (nilai investasi, >10bn per
-    # KBLI per location for a PT PMA — assets and working capital, land and
-    # buildings excluded), while `paid_up_amount` is the money that must actually
-    # be DEPOSITED and shown in the deed (modal disetor, 2.5bn since BKPM 5/2025).
+    # `capital_amount` is the INVESTMENT PLAN threshold (nilai investasi), while
+    # `paid_up_amount` is placed/paid-up company capital (modal
+    # ditempatkan/disetor). For PT PMA the general rule is >10bn per five-digit
+    # KBLI per project location, with statutory sector/activity exceptions, plus
+    # at least 2.5bn placed/paid up per PT under Permeninvesthil/Kepala BKPM
+    # 5/2025 Article 26.
     # Telling a founder to "prepare minimum capital: Rp 10,000,000,000" reads as
     # the second and is wrong by a factor of four.
     capital_amount: int | None  # in IDR — investment plan value, NOT paid-up
-    paid_up_amount: int | None  # in IDR — modal disetor, the cash actually deposited
+    paid_up_amount: int | None  # in IDR — modal ditempatkan/disetor
+    investment_threshold_strict: bool  # True means amount is an exclusive lower bound
     kbli_codes: list[str]  # Business classification codes
     licensing_requirements: list[dict]  # NIB, OSS, sector licenses
     shareholders: list[dict]  # For PT PMA
@@ -398,17 +401,22 @@ async def get_capital_requirements_node(state: CompanyState, db_pool: asyncpg.Po
     capital_reqs = {
         "pt_pma": {
             # NOT stale, and NOT the same number: >10bn is the investment PLAN
-            # value required per KBLI per location, 2.5bn is the capital that must
-            # be paid up. Perka BKPM 5/2025 abrogated 4/2021 and set paid-up at
-            # 2.5bn while leaving the >10bn investment threshold in force. A blind
-            # sweep replacing "10 billion" with "2.5 billion" is therefore WRONG.
-            "min_capital": 10_000_000_000,  # 10B IDR — investment plan, per KBLI per location
-            "paid_up_min": 2_500_000_000,  # 2.5B IDR — modal disetor (Perka BKPM 5/2025)
+            # value under the general rule, while 2.5bn is separate company
+            # capital that must be placed/paid up. Permeninvesthil/Kepala BKPM
+            # 5/2025 Article 26 preserves the >10bn threshold, introduces
+            # calculation exceptions, and sets placed/paid-up capital at 2.5bn.
+            "min_capital": 10_000_000_000,  # exclusive investment-plan threshold
+            "investment_threshold_strict": True,
+            "paid_up_min": 2_500_000_000,  # modal ditempatkan/disetor
             "currency": "IDR",
             "notes": (
-                "PT PMA: investment plan value above IDR 10bn per KBLI per location "
-                "(land and buildings excluded); paid-up capital IDR 2.5bn "
-                "(Perka BKPM 5/2025, which abrogated 4/2021)"
+                "Permeninvesthil/Kepala BKPM 5/2025 Article 26(2): the general "
+                "PT PMA rule is total investment greater than IDR 10bn, excluding "
+                "land and buildings, per five-digit KBLI per project location. "
+                "Articles 26(3)-(8) provide sector/activity, asset, location, and "
+                "special-economic-zone exceptions. Separately, Article 26(10) "
+                "requires placed/paid-up capital of at least IDR 2.5bn per PT, "
+                "unless another regulation provides otherwise."
             ),
         },
         "pt_lokal": {
@@ -442,6 +450,7 @@ async def get_capital_requirements_node(state: CompanyState, db_pool: asyncpg.Po
 
     state["capital_amount"] = requirements.get("min_capital")
     state["paid_up_amount"] = requirements.get("paid_up_min")
+    state["investment_threshold_strict"] = requirements.get("investment_threshold_strict", False)
 
     logger.info(
         "✅ [Company Subgraph] Capital requirements: investment plan "
@@ -480,6 +489,7 @@ async def synthesize_company_workflow_node(state: CompanyState) -> CompanyState:
     is_foreign = state.get("is_foreign_investor", False)
     capital = state.get("capital_amount")
     paid_up = state.get("paid_up_amount")
+    investment_threshold_strict = state.get("investment_threshold_strict", company_type == "pt_pma")
 
     steps = []
 
@@ -504,9 +514,18 @@ async def synthesize_company_workflow_node(state: CompanyState) -> CompanyState:
     # 4x overstatement on the single number a founder budgets against. Both
     # figures are in `capital_reqs` two functions up; only one was ever surfaced.
     if capital:
-        action = f"Plan a total investment value of at least Rp {capital:,}"
+        comparison = "greater than" if investment_threshold_strict else "at least"
+        action = f"Plan a total investment value {comparison} Rp {capital:,}"
         if paid_up:
-            action += f", of which Rp {paid_up:,} must be paid up (modal disetor)"
+            action += (
+                f". Separately, place and pay up at least Rp {paid_up:,} as company capital "
+                "(modal ditempatkan/disetor, meaning placed and paid up)"
+            )
+        if company_type == "pt_pma":
+            action += (
+                ". Different sector-specific capital rules and the Article 26 "
+                "investment-basis exceptions may apply."
+            )
         steps.append(
             {
                 "step": 2,
@@ -514,6 +533,7 @@ async def synthesize_company_workflow_node(state: CompanyState) -> CompanyState:
                 "entity_id": "capital_requirement",
                 "details": {
                     "investment_plan_amount": capital,
+                    "investment_threshold_strict": investment_threshold_strict,
                     "paid_up_amount": paid_up,
                     "currency": "IDR",
                     # Kept unchanged as a non-breaking precaution, NOT because a

@@ -51,18 +51,15 @@ import json
 import os
 import socket
 import sys
-import re
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional, Sequence
 
 REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO))
 
-# The gateway exits 0 even when it REFUSES (deduped / p0_overflow_spooled /
-# p0_unsent_spooled all mean "not sent to Telegram now"), so the exit code
-# reads every refusal as a delivery. The verdict is on stderr — read it (W104).
-_GATEWAY_VERDICT_RE = re.compile(r"^tg_notify:\s*(\S+)", re.MULTILINE)
+from scripts.tg_gateway_verdict import extract_gateway_verdict, gateway_delivered  # noqa: E402
 
 
 DEFAULT_STALE_HOURS = 72
@@ -239,15 +236,18 @@ def send_to_gateway(message: str, host: str, dedup_suffix: str = "") -> bool:
         gateway = REPO / "scripts" / "tg_notify.py"
         if not gateway.exists():
             return False
-        proc = subprocess.run(
-            [sys.executable, str(gateway), "--tier", "p0", "--source", "wa-session-liveness",
-             "--dedup-key", f"wa-session-{host}{dedup_suffix}", message],
-            check=False, capture_output=True, text=True,
-        )
-        m = _GATEWAY_VERDICT_RE.search(proc.stderr or "")
-        print(f"tg_notify: {m.group(1) if m else f'NESSUN verdetto rc={proc.returncode}'}",
-              file=sys.stderr)
-        return True
+        try:
+            proc = subprocess.run(
+                [sys.executable, str(gateway), "--tier", "p0", "--source", "wa-session-liveness",
+                 "--dedup-key", f"wa-session-{host}{dedup_suffix}", message],
+                check=False, capture_output=True, text=True,
+            )
+        except Exception as exc:  # noqa: BLE001 — notification failure is fail-closed
+            print(f"tg_notify: ERRORE subprocess ({type(exc).__name__})", file=sys.stderr)
+            return False
+        verdict = extract_gateway_verdict(proc.stderr)
+        print(f"tg_notify: {verdict or f'NESSUN verdetto rc={proc.returncode}'}", file=sys.stderr)
+        return proc.returncode == 0 and gateway_delivered(verdict)
 
 
 def emit_alert(stale: Sequence[LineStatus], host: str, stale_hours: float) -> bool:

@@ -27,21 +27,19 @@ import json
 import os
 import socket
 import subprocess
-import re
 import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Optional
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from scripts.tg_gateway_verdict import extract_gateway_verdict, gateway_delivered  # noqa: E402
+
 WITA = timezone(timedelta(hours=8))
 
-# The gateway exits 0 even when it REFUSES (deduped / p0_overflow_spooled /
-# p0_unsent_spooled all mean "not sent to Telegram now"), so the exit code
-# reads every refusal as a delivery. The verdict is on stderr — read it (W104).
-_GATEWAY_VERDICT_RE = re.compile(r"^tg_notify:\s*(\S+)", re.MULTILINE)
-
-PROJECT_ROOT = Path(__file__).parent.parent
 BACKEND_ENV = PROJECT_ROOT / "apps" / "backend-rag" / ".env"
 
 # Telegram — stessa config di expiry_alerter.py
@@ -300,6 +298,9 @@ def _send_telegram(
     expired SA key — actionable now, Drive polling either already broke or
     breaks tomorrow. bot_token guard kept for callers still passing an empty
     token (dry-run/test harnesses).
+
+    A digest is accepted when the gateway durably queues it (or recognizes an
+    already queued duplicate). A p0 is accepted only when Telegram received it.
     """
     if DRY_RUN:
         print(f"[DRY RUN] Telegram: {text[:120]}...")
@@ -340,9 +341,13 @@ def _send_telegram(
              "--dedup-key", dedup_key, "--", text],
             capture_output=True, text=True, timeout=30,
         )
-        m = _GATEWAY_VERDICT_RE.search(proc.stderr or "")
-        log(f"tg_notify: {m.group(1) if m else f'NESSUN verdetto rc={proc.returncode}'}")
-        return proc.returncode == 0
+        verdict = extract_gateway_verdict(proc.stderr)
+        log(f"tg_notify: {verdict or f'NESSUN verdetto rc={proc.returncode}'}")
+        return proc.returncode == 0 and (
+            verdict in {"spooled", "deduped"}
+            if tier == "digest"
+            else gateway_delivered(verdict)
+        )
     except Exception as e:
         log(f"Telegram fallito: {e}")
         return False

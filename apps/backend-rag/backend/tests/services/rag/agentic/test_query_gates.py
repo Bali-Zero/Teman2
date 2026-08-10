@@ -114,15 +114,15 @@ def test_check_out_of_domain_gate_uses_cleaner_reason(
     monkeypatch.setattr(module, "is_out_of_domain", lambda query: (True, "medical"))
     monkeypatch.setattr(
         module,
-        "OUT_OF_DOMAIN_RESPONSES",
-        {"medical": "medical blocked", "unknown": "unknown blocked"},
+        "get_out_of_domain_response",
+        lambda reason, language: f"{reason} blocked in {language}",
     )
 
     result = make_gates().check_out_of_domain_gate("diagnose this rash")
 
     assert result.triggered is True
-    assert result.response == "medical blocked"
-    assert result.metadata == {"reason": "medical"}
+    assert result.response == "medical blocked in ENGLISH"
+    assert result.metadata == {"reason": "medical", "language": "ENGLISH"}
 
 
 def test_run_all_gates_returns_first_triggered_gate() -> None:
