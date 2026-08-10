@@ -20,7 +20,64 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 - **Bali Zero team**: work-support assistant. Check-in via WA (opens the free Meta 24h window),
   CRM nudges, PII-light briefings. Persona = "assistente operativo interno", not sales.
 
-## 1. LIVE STATE (last update 2026-08-10 — keep current)
+## 1. LIVE STATE (last update 2026-08-11 — keep current)
+
+- **🔴 GEMINI PREPAY CREDITS DEPLETED — FOURTH TIME, AND IT IS LIVE (2026-08-10 ~17:50Z).**
+  Measured on the prod machine, not inferred from symptoms: a 9-token call returns
+  `429 RESOURCE_EXHAUSTED — "Your prepayment credits are depleted"`, `llm_gateway` logs
+  `All Gemini models failed`, and the OpenRouter fallback refuses by design
+  (`OPENROUTER_ENABLED` off, PII boundary). **Window is tight, not estimated**: a 10-turn probe
+  answered normally at **17:46Z** (5-90s latencies); 11 calls at **17:53Z** all came back
+  degraded in 1-4s — either the localized abstain stub (274 chars) or the crash stub
+  ("I'm hitting a technical problem", 97-120 chars, in the asker's language).
+  - **The sentinel did NOT miss it — say that before blaming it.** `cron-llm-credit-sentinel.yml`
+    ran at **17:09Z** and got a real PONG (`state=ok`, 7 in / 2 out). Real cadence is ~1h
+    (GitHub `schedule` is best-effort), so a gap of up to an hour is the design, not a fault.
+  - **Top-up is `operator[business]`**: AI Studio, project `nuzantara` no. **930328104463**.
+    Escalated to Zero by hand via the Telegram gateway. **Send that P0 from Pro, not M5** —
+    on M5 `tg_notify.py` finds no token and spools `p0_unsent` (fail-visible, but nobody reads
+    it at once); the same command on Pro returned `sent`.
+  - **Client harm so far: none, and say so.** `meta_inbox_messages` has **0 messages in the
+    last 12 hours** — the bot is not public and it was night in Bali. The next client to write
+    is the one who gets nothing.
+  - **Noted, not a defect today**: the sentinel probes with `PRIMARY_MODEL_NAME=gemini-2.5-flash`
+    while the RAG's default is `gemini-3.5-flash`. Same prepay balance, so a depletion is
+    account-level and both see it — do not "fix" this without a reason.
+
+- **🧵 PROBE 22 — THE FIRST MULTI-TURN MEASUREMENT (2026-08-11, before the depletion).** Every
+  earlier probe sent `conversation_history: []`; the live bot ships **12 turns**
+  (`wa_inbox_bot._HISTORY_TURNS`), so everything measured until now was cold-start. Four
+  conversations, 10 turns, 10/10 HTTP 200, history carried forward exactly as the bot does.
+  - **The message the WA path throws away sometimes PROMISES A CALLBACK, on a shape probe 21
+    never tested.** Frustration turn ("I don't understand anything you're saying") →
+    `abstain=True`, `context_length=0`, answer = _"Certainly. I will proceed with connecting
+    you to our team."_ `ESCALATION_PROTOCOL` lists frustration as a trigger; nothing performs it.
+  - **And it sometimes is UNGROUNDED ADVICE.** LKPM, second ask: `abstain=True`,
+    `context_length=0`, **2 057 characters** of specific filing procedure written from model
+    memory. This is the measured argument for the in-flight cure sending a localized **stub**
+    rather than the answer — "send the low-confidence answer" (question #31, Zero's call) would
+    ship exactly this. The cure does not pre-empt #31 in either direction.
+  - **Loop escalation never fires.** Same question ×4 → four DIFFERENT answers (247 439 / 2 057
+    / 4 873 / 3 586 chars), zero escalation, though the protocol lists "same question 3+ times".
+    **The beta test's _identical_ brush-off ×4 did NOT reproduce** — that behaviour is not
+    stable; the missing escalation is.
+  - **A 247 439-character answer** — 33× the longest reply production has ever sent (**7 521**,
+    measured) and 60× WhatsApp's 4 096 body limit, which `whatsapp_service.py` enforces by
+    hard-truncating. **Not yet reproducible, and for a reason unrelated to the question**: the
+    follow-up probe ran during the depletion above, so it measured the outage. Re-probe after
+    the top-up before theorising.
+  - **The 2026-07-30 correction-as-query defect did not reproduce as a wrong answer**: "in
+    italiano per favore" after a C7A question returned an Italian _clarifying question_
+    (D7A vs C7), on-subject. One run — this sizes a shape, not a rate.
+  - **Internal monologue can arrive as the answer** — 2 of the 10 turns began literally
+    `internal_monologue\nThe user asked "How much?"…`, and nothing on this path strips it
+    (`_strip_kg_workflow_scaffold` is anchored on the KG block's two literals). **Never observed
+    in production: 0 of 311 outbound bot messages** carry the token or the planning phrases.
+    Reachable on the endpoint, not an incident — and the follow-up probe could NOT size it,
+    because it ran during the outage (`0/8` there measures the outage's poverty, W107).
+  - **Measurement trap, mine**: the probe's "promises a contact" detector matched the literal
+    `connect you` and scored the frustration case **False** against _"connecting you"_ — an
+    under-match in my own instrument (family #3). The finding came from re-reading the answer.
 
 - **🧪 BATTERY v5 — THE FOUR OPEN BETA CURES, RE-MEASURED 13 DAYS LATER (2026-08-10).** The
   2026-07-28 team beta left four cures open and nobody had asked whether they were still
