@@ -1,0 +1,407 @@
+"""Tests for scripts/queue_baseline_probe.py — Merge-OS v2 Wave 1 baseline organ.
+
+Module is imported via importlib.util.spec_from_file_location (not a package import)
+because scripts/ is a flat bag of standalone tools, not a Python package (mirrors
+scripts/tests/test_arsenal_probe.py / test_home_fork_stale_side_attribution.py).
+
+NO network anywhere in this file. Every `gh` invocation is intercepted at the real
+subprocess boundary the module crosses — `monkeypatch.setattr(qbp.subprocess, "run",
+fake_run)` — per scar W114 ("the fake belongs at the boundary the REAL code crosses",
+not at a hand-rolled wrapper one layer up that could itself drift from the real call
+shape). `fake_run` pattern-matches on the exact argv the module builds.
+
+Three scenarios required by the Wave-1 mandate (research/operations/
+2026-08-10-merge-os-v2-submission-system.md §4):
+  1. attribution math on a fixture day — 2 PR runs + 1 merge_group run of 3 members
+     (even split) + 1 merge_group run with undecipherable membership (unattributed).
+  2. an empty day still carries the FULL schema, zeros everywhere, errors == [].
+  3. an API-denial fixture proves the silent-empty-on-failure case is IMPOSSIBLE —
+     errors[] is populated and main()'s exit code is non-zero, while the record is
+     still written to disk (never skipped).
+Plus a handful of pure-function unit tests for the sub-mechanisms those three
+scenarios lean on (guilt+innocence per scar family #3 where the function is a
+classifier).
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import json
+import subprocess
+import sys
+from datetime import date
+from pathlib import Path
+from types import ModuleType
+
+import pytest
+
+MODULE_PATH = Path(__file__).resolve().parent.parent / "queue_baseline_probe.py"
+
+
+def _load_module() -> ModuleType:
+    spec = importlib.util.spec_from_file_location("queue_baseline_probe", MODULE_PATH)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+qbp = _load_module()
+
+
+# ---------------------------------------------------------------------------
+# Fixture builders
+# ---------------------------------------------------------------------------
+
+
+def _mk_run(
+    run_id: int,
+    event: str,
+    conclusion: str = "success",
+    pull_requests: list[dict] | None = None,
+    head_branch: str | None = None,
+    display_title: str | None = None,
+) -> dict:
+    return {
+        "id": run_id,
+        "event": event,
+        "conclusion": conclusion,
+        "pull_requests": pull_requests or [],
+        "head_branch": head_branch,
+        "display_title": display_title,
+    }
+
+
+def _proc(cmd: list[str], rc: int, out: str, err: str = "") -> subprocess.CompletedProcess:
+    return subprocess.CompletedProcess(cmd, rc, out, err)
+
+
+def _make_fake_gh(
+    repo: str,
+    runs: list[dict],
+    timing_ms_by_id: dict[int, int],
+    merged_prs: list[dict] | None = None,
+    jobs_by_id: dict[int, list[dict]] | None = None,
+    pr_view_by_number: dict[int, dict] | None = None,
+    automerge_by_pr: dict[int, str] | None = None,
+):
+    """Builds a `subprocess.run`-compatible fake that answers every `gh` shape this
+    module issues, matched by exact argv content (the real shapes the module builds).
+    """
+    merged_prs = merged_prs if merged_prs is not None else []
+    jobs_by_id = jobs_by_id or {}
+    pr_view_by_number = pr_view_by_number or {}
+    automerge_by_pr = automerge_by_pr or {}
+
+    def fake_run(cmd, **kwargs):  # noqa: ANN001, ANN003 — mirrors subprocess.run's own loose signature
+        assert cmd[0] == "gh", f"unexpected non-gh subprocess call: {cmd}"
+        if cmd[1] == "api" and len(cmd) > 2 and cmd[2] == f"repos/{repo}/actions/runs":
+            return _proc(cmd, 0, json.dumps({"workflow_runs": runs}))
+        if cmd[1] == "api" and len(cmd) > 2 and cmd[2].endswith("/timing"):
+            run_id = int(cmd[2].split("/")[-2])
+            if run_id not in timing_ms_by_id:
+                return _proc(cmd, 1, "", f"404 run {run_id} not found")
+            return _proc(cmd, 0, json.dumps({"billable": {"UBUNTU": {"total_ms": timing_ms_by_id[run_id]}}}))
+        if cmd[1] == "api" and len(cmd) > 2 and cmd[2].endswith("/jobs"):
+            run_id = int(cmd[2].split("/")[-2])
+            return _proc(cmd, 0, json.dumps({"jobs": jobs_by_id.get(run_id, [])}))
+        if cmd[1] == "pr" and cmd[2] == "list":
+            return _proc(cmd, 0, json.dumps(merged_prs))
+        if cmd[1] == "pr" and cmd[2] == "view":
+            number = int(cmd[3])
+            info = pr_view_by_number.get(number)
+            if info is None:
+                return _proc(cmd, 1, "", f"404 pr {number}")
+            return _proc(cmd, 0, json.dumps(info))
+        if cmd[1] == "api" and len(cmd) > 2 and cmd[2] == "graphql":
+            number = None
+            for i, tok in enumerate(cmd):
+                if tok == "-F" and cmd[i + 1].startswith("number="):
+                    number = int(cmd[i + 1].split("=", 1)[1])
+            enabled_at = automerge_by_pr.get(number)
+            payload = {
+                "data": {
+                    "repository": {
+                        "pullRequest": {
+                            "autoMergeRequest": ({"enabledAt": enabled_at} if enabled_at else None)
+                        }
+                    }
+                }
+            }
+            return _proc(cmd, 0, json.dumps(payload))
+        raise AssertionError(f"unexpected gh invocation in fixture: {cmd}")
+
+    return fake_run
+
+
+def _fail_everything(cmd, **kwargs):  # noqa: ANN001, ANN003
+    assert cmd[0] == "gh"
+    return _proc(cmd, 1, "", "HTTP 403: API rate limit exceeded for installation")
+
+
+# ---------------------------------------------------------------------------
+# 1. Attribution math — 2 PR runs + 1 merge_group of 3 members (even split) +
+#    1 merge_group with undecipherable membership (unattributed_group_minutes).
+# ---------------------------------------------------------------------------
+
+
+def test_attribution_even_split_and_unattributed_group_minutes(monkeypatch):
+    day = date(2026, 8, 9)
+    runs = [
+        _mk_run(1001, "pull_request", pull_requests=[{"number": 100}]),
+        _mk_run(1002, "pull_request", pull_requests=[{"number": 200}]),
+        _mk_run(
+            1003,
+            "merge_group",
+            head_branch="gh-readonly-queue/main/pr-100-abc123",
+            display_title="Merge group: #100, #200, #300 into main",
+        ),
+        _mk_run(
+            1004,
+            "merge_group",
+            head_branch="gh-readonly-queue/main/deadbeefdeadbeef00000000",
+            display_title="Merge group into main",
+        ),
+    ]
+    timing_ms = {1001: 40 * 60_000, 1002: 20 * 60_000, 1003: 30 * 60_000, 1004: 15 * 60_000}
+    fake = _make_fake_gh(qbp.DEFAULT_REPO, runs, timing_ms, merged_prs=[])
+    monkeypatch.setattr(qbp.subprocess, "run", fake)
+
+    record = qbp.build_record(qbp.DEFAULT_REPO, day)
+
+    assert record["errors"] == []
+    # PR 100 and 200 each get their own PR-run minutes PLUS an even 1/3 share of the
+    # 3-member merge_group run (30 / 3 = 10 each); PR 300 only exists via the group.
+    assert record["billed_minutes_per_pr"] == {
+        "100": pytest.approx(40.0 + 10.0),
+        "200": pytest.approx(20.0 + 10.0),
+        "300": pytest.approx(10.0),
+    }
+    # The second merge_group run's membership is NOT derivable (no pr-N / #N anywhere)
+    # — its minutes must land here, never be dropped (scar family #2, no silent caps).
+    assert record["unattributed_group_minutes"] == pytest.approx(15.0)
+    assert record["unattributed_pr_minutes"] == pytest.approx(0.0)
+    assert record["total_runner_minutes"] == pytest.approx(40.0 + 20.0 + 30.0 + 15.0)
+    assert record["counts"]["runs_seen"] == 4
+    assert record["counts"]["pull_request_runs"] == 2
+    assert record["counts"]["merge_group_runs"] == 2
+
+
+def test_pull_request_run_with_empty_pull_requests_field_is_unattributed_not_dropped(monkeypatch):
+    """Known GitHub API gap: a `pull_request`-event run from a forked repo can carry
+    an empty `pull_requests[]`. That must not silently vanish — it goes to
+    unattributed_pr_minutes, distinct from the merge_group bucket.
+    """
+    day = date(2026, 8, 9)
+    runs = [_mk_run(2001, "pull_request", pull_requests=[])]
+    fake = _make_fake_gh(qbp.DEFAULT_REPO, runs, {2001: 12 * 60_000}, merged_prs=[])
+    monkeypatch.setattr(qbp.subprocess, "run", fake)
+
+    record = qbp.build_record(qbp.DEFAULT_REPO, day)
+
+    assert record["errors"] == []
+    assert record["billed_minutes_per_pr"] == {}
+    assert record["unattributed_pr_minutes"] == pytest.approx(12.0)
+    assert record["unattributed_group_minutes"] == pytest.approx(0.0)
+
+
+def test_ejection_counted_even_when_its_own_timing_fetch_fails(monkeypatch):
+    """An ejected merge_group run's minutes may be unattributable (timing fetch 404s),
+    but that must NEVER silently undercount the ejection itself — only the billing
+    minutes have a gap, and that gap is separately visible in errors[].
+    """
+    day = date(2026, 8, 9)
+    runs = [
+        _mk_run(
+            5001,
+            "merge_group",
+            conclusion="failure",
+            head_branch="gh-readonly-queue/main/pr-500-abc123",
+        )
+    ]
+    fake = _make_fake_gh(
+        qbp.DEFAULT_REPO,
+        runs,
+        timing_ms_by_id={},  # 5001 deliberately absent -> timing fetch fails
+        merged_prs=[],
+        jobs_by_id={5001: [{"name": "Backend Tests (Python)", "conclusion": "failure"}]},
+        pr_view_by_number={500: {"author": {"login": "someone"}, "headRefName": "fix/x"}},
+    )
+    monkeypatch.setattr(qbp.subprocess, "run", fake)
+
+    record = qbp.build_record(qbp.DEFAULT_REPO, day)
+
+    assert record["ejections"]["total"] == 1
+    assert record["ejections"]["by_class"]["CODE"] == 1
+    assert record["ejections"]["by_author_class"]["human"] == 1
+    # The timing gap for run 5001 is visible, not swallowed.
+    assert any("timing fetch failed" in e or "404" in e for e in record["errors"])
+    assert record["billed_minutes_per_pr"] == {}
+
+
+def test_non_pr_non_merge_group_run_counts_toward_slot_utilization_only(monkeypatch):
+    day = date(2026, 8, 9)
+    runs = [_mk_run(3001, "schedule")]
+    fake = _make_fake_gh(qbp.DEFAULT_REPO, runs, {3001: 5 * 60_000}, merged_prs=[])
+    monkeypatch.setattr(qbp.subprocess, "run", fake)
+
+    record = qbp.build_record(qbp.DEFAULT_REPO, day)
+
+    assert record["errors"] == []
+    assert record["billed_minutes_per_pr"] == {}
+    assert record["other_event_minutes"] == pytest.approx(5.0)
+    assert record["slot_utilization"]["runner_minutes_today"] == pytest.approx(5.0)
+
+
+# ---------------------------------------------------------------------------
+# 2. Empty-day record still carries the schema with zeros and empty errors.
+# ---------------------------------------------------------------------------
+
+
+def test_empty_day_record_carries_full_schema_with_zeros(monkeypatch):
+    day = date(2026, 8, 9)
+    fake = _make_fake_gh(qbp.DEFAULT_REPO, runs=[], timing_ms_by_id={}, merged_prs=[])
+    monkeypatch.setattr(qbp.subprocess, "run", fake)
+
+    record = qbp.build_record(qbp.DEFAULT_REPO, day)
+
+    assert record["errors"] == []
+    assert record["date"] == day.isoformat()
+    assert record["billed_minutes_per_pr"] == {}
+    assert record["unattributed_group_minutes"] == 0.0
+    assert record["unattributed_pr_minutes"] == 0.0
+    assert record["other_event_minutes"] == 0.0
+    assert record["total_runner_minutes"] == 0.0
+    assert record["queue_transit_minutes"] == {}
+    assert record["queue_transit_p50_minutes"] is None
+    assert record["queue_transit_p95_minutes"] is None
+    assert record["transit_unmeasured_prs"] == []
+    assert record["ejections"] == {
+        "by_class": {"INFRA": 0, "CODE": 0, "FLAKE": 0},
+        "by_author_class": {"human": 0, "agent": 0, "bot": 0, "unknown": 0},
+        "total": 0,
+    }
+    assert record["counts"] == {
+        "runs_seen": 0,
+        "merge_group_runs": 0,
+        "pull_request_runs": 0,
+        "other_runs": 0,
+        "prs_merged_today": 0,
+    }
+    assert record["slot_utilization"]["runner_minutes_today"] == 0.0
+    assert record["slot_utilization"]["weekly_capacity_slot_minutes"] == pytest.approx(
+        qbp.WEEKLY_CI_CAPACITY_SLOT_MINUTES
+    )
+
+
+def test_empty_day_end_to_end_via_main_writes_file_and_exits_zero(tmp_path, monkeypatch):
+    day = date(2026, 8, 9)
+    fake = _make_fake_gh(qbp.DEFAULT_REPO, runs=[], timing_ms_by_id={}, merged_prs=[])
+    monkeypatch.setattr(qbp.subprocess, "run", fake)
+
+    out_dir = tmp_path / "baseline"
+    rc = qbp.main(["--repo", qbp.DEFAULT_REPO, "--date", day.isoformat(), "--out-dir", str(out_dir)])
+
+    assert rc == 0
+    record_path = out_dir / f"{day.isoformat()}.json"
+    assert record_path.exists()
+    on_disk = json.loads(record_path.read_text())
+    assert on_disk["errors"] == []
+    assert on_disk["counts"]["runs_seen"] == 0
+    pointer = json.loads((out_dir / ".last-run-pointer.json").read_text())
+    assert pointer["date"] == day.isoformat()
+    assert pointer["errors_count"] == 0
+
+
+# ---------------------------------------------------------------------------
+# 3. API-denial fixture — silent-empty-on-failure must be IMPOSSIBLE.
+# ---------------------------------------------------------------------------
+
+
+def test_api_denial_produces_record_with_errors_never_silent(monkeypatch):
+    day = date(2026, 8, 9)
+    monkeypatch.setattr(qbp.subprocess, "run", _fail_everything)
+
+    record = qbp.build_record(qbp.DEFAULT_REPO, day)
+
+    # Guilt: under total API denial, an empty errors[] must be IMPOSSIBLE.
+    assert record["errors"] != []
+    assert all(isinstance(e, str) and e.strip() for e in record["errors"])
+    # The schema is still fully present (never a partial/malformed record).
+    assert record["billed_minutes_per_pr"] == {}
+    assert record["counts"]["runs_seen"] == 0
+
+
+def test_api_denial_end_to_end_via_main_nonzero_exit_but_record_on_disk(tmp_path, monkeypatch):
+    day = date(2026, 8, 9)
+    monkeypatch.setattr(qbp.subprocess, "run", _fail_everything)
+
+    out_dir = tmp_path / "baseline"
+    rc = qbp.main(["--repo", qbp.DEFAULT_REPO, "--date", day.isoformat(), "--out-dir", str(out_dir)])
+
+    # Fail-visible (W101 discipline): the wrapper's rc-based alerting depends on this.
+    assert rc == 1
+    record_path = out_dir / f"{day.isoformat()}.json"
+    assert record_path.exists(), "the record must be written even when everything failed"
+    on_disk = json.loads(record_path.read_text())
+    assert on_disk["errors"] != []
+
+
+# ---------------------------------------------------------------------------
+# Pure-function unit tests — the mechanisms the three scenarios above lean on.
+# ---------------------------------------------------------------------------
+
+
+def test_extract_merge_group_pr_numbers_from_head_branch():
+    run = _mk_run(1, "merge_group", head_branch="gh-readonly-queue/main/pr-4821-abcdef0123")
+    assert qbp.extract_merge_group_pr_numbers(run) == [4821]
+
+
+def test_extract_merge_group_pr_numbers_from_display_title():
+    run = _mk_run(1, "merge_group", display_title="Merge #10, #20 and #30 into main")
+    assert qbp.extract_merge_group_pr_numbers(run) == [10, 20, 30]
+
+
+def test_extract_merge_group_pr_numbers_innocence_no_numbers_anywhere():
+    run = _mk_run(1, "merge_group", head_branch="gh-readonly-queue/main/deadbeef", display_title="Merge group into main")
+    assert qbp.extract_merge_group_pr_numbers(run) == []
+
+
+def test_percentile_p50_p95_linear_interpolation():
+    values = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
+    assert qbp.percentile(values, 50) == pytest.approx(5.5)
+    assert qbp.percentile(values, 95) == pytest.approx(9.55)
+
+
+def test_percentile_empty_is_none_never_zero():
+    assert qbp.percentile([], 50) is None
+
+
+def test_classify_ejection_cancelled_run_is_infra():
+    run = _mk_run(1, "merge_group", conclusion="cancelled")
+    assert qbp.classify_ejection(run, jobs=[]) == "INFRA"
+
+
+def test_classify_ejection_failed_run_with_setup_job_failure_is_infra():
+    run = _mk_run(1, "merge_group", conclusion="failure")
+    jobs = [{"name": "Set up job", "conclusion": "failure"}, {"name": "pytest", "conclusion": "skipped"}]
+    assert qbp.classify_ejection(run, jobs) == "INFRA"
+
+
+def test_classify_ejection_innocence_failed_run_with_ordinary_test_failure_is_code():
+    run = _mk_run(1, "merge_group", conclusion="failure")
+    jobs = [{"name": "Backend Tests (Python)", "conclusion": "failure"}]
+    assert qbp.classify_ejection(run, jobs) == "CODE"
+
+
+def test_classify_author_agent_branch_wins_over_login():
+    assert qbp.classify_author("agent/air-m5/ops/x", "some-human") == "agent"
+
+
+def test_classify_author_bot_login():
+    assert qbp.classify_author("dependabot/npm_and_yarn/foo", "dependabot[bot]") == "bot"
+
+
+def test_classify_author_innocence_ordinary_human():
+    assert qbp.classify_author("fix/typo", "antonellosiano") == "human"
