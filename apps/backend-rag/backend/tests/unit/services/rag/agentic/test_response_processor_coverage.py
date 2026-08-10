@@ -265,10 +265,20 @@ class TestAddEmotionalAcknowledgment:
         assert result.count("Capisco la frustrazione") == 1
 
     def test_add_emotional_acknowledgment_unknown_language(self):
-        """Test with unknown language defaults to Italian"""
+        """An unknown language gets NO acknowledgment rather than an Italian one.
+
+        EXPECTATION INVERTED 2026-08-10. This test used to assert
+        `result.startswith("Capisco la frustrazione")` for language "fr",
+        with the comment "Defaults to Italian" — it encoded the defect as the
+        contract. `detect_language()` emits six values ("it"/"en"/"id"/"uk"/
+        "ru"/"auto") against a three-entry table, so the Italian default was
+        reachable in production: measured on a Russian message that classified
+        as lang='ru' with emotional content, before "ru" copy existed. Grafting
+        an Italian sentence onto the front of a French or Russian answer is a
+        worse outcome than prepending nothing, so the function now declines.
+        """
         text = "Here is the solution."
-        result = _add_emotional_acknowledgment(text, "fr")
-        assert result.startswith("Capisco la frustrazione")  # Defaults to Italian
+        assert _add_emotional_acknowledgment(text, "fr") == text
 
     def test_add_emotional_acknowledgment_partial_match(self):
         """Test that partial match prevents duplicate"""

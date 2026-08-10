@@ -34,6 +34,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger("dlq_autopilot")
 
+# The gateway exits 0 even when it REFUSES (deduped / p0_overflow_spooled /
+# p0_unsent_spooled all mean "not sent to Telegram now"), so the exit code
+# reads every refusal as a delivery. The verdict is on stderr — read it (W104).
+_GATEWAY_VERDICT_RE = re.compile(r"^tg_notify:\s*(\S+)", re.MULTILINE)
+
+
 # ── Paths ──────────────────────────────────────────────────────────────────────
 HOME = Path.home()
 AGENT_DIR = HOME / ".agent" / "decisions"
@@ -383,9 +389,12 @@ def send_telegram(message: str, tier: str = "digest", dedup_key: str = "") -> No
         cmd += ["--dedup-key", dedup_key]
     cmd += ["--", f"🤖 DLQAutopilot | {message}"]
     try:
-        subprocess.run(cmd, capture_output=True, timeout=30)
-    except Exception:
-        pass
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("tg_notify unreachable: %s", exc)
+        return
+    m = _GATEWAY_VERDICT_RE.search(proc.stderr or "")
+    logger.info("tg_notify: %s", m.group(1) if m else f"NESSUN verdetto rc={proc.returncode}")
 
 
 # ── Claude CLI token chain (multi-account fallback) ──────────────────────────

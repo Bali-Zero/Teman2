@@ -74,9 +74,13 @@ PAYLOADS = {
 
 
 def _elapsed(rx: re.Pattern, text: str) -> float:
-    start = time.perf_counter()
+    # Regex complexity is CPU work. Wall time also counts time when another process has
+    # pre-empted pytest, which turned ordinary linear scans into apparent 3-5x growth on
+    # shared developer machines. Process CPU time preserves genuine backtracking cost
+    # while excluding scheduler wait; the absolute and ratio thresholds stay unchanged.
+    start = time.process_time()
     rx.findall(text)
-    return time.perf_counter() - start
+    return time.process_time() - start
 
 
 # Repetitions for the RATIO verdict only. Timing noise is strictly additive — the
@@ -595,6 +599,7 @@ _LINEAR_CONTROL_MAX_RATIO = 2.5
 # stands down 0 of 60 times under load while sitting far above the 0.7 of the false red.
 _LINEAR_CONTROL_MIN_RATIO = 1.2
 
+
 SWEEP_PREFIXES = (
     "",
     "\n",
@@ -703,6 +708,18 @@ class TestRatioConfirmation:
     this change — the branch that fired falsely was also the branch with no proof it fires
     truly — and it is on the ledger. These tests cover the DECISION.
     """
+
+    def test_elapsed_measures_regex_cpu_not_scheduler_wait(self) -> None:
+        """A pre-empted worker must not turn a linear regex into a security verdict."""
+
+        class SleepingPattern:
+            @staticmethod
+            def findall(text: str) -> list[str]:
+                del text
+                time.sleep(0.03)
+                return []
+
+        assert _elapsed(SleepingPattern(), "payload") < 0.01
 
     def test_elapsed_min_takes_the_minimum_not_the_first_or_the_mean(self, monkeypatch):
         """Load only ever ADDS time, so the minimum is the estimator — first and mean are not.

@@ -6,6 +6,7 @@ import { parseStoryPacket } from "../lib/contracts/publication.ts";
 import { readStoryDetail } from "../lib/server/magazine-read-model.ts";
 import { createPublicationRepository } from "../lib/server/publication-repository.ts";
 import { runWithMagazineBindings } from "../lib/server/runtime-bindings.ts";
+import { hmacSha256Hex } from "../lib/server/security.ts";
 import {
   MemoryR2Bucket,
   SqliteD1Database,
@@ -142,14 +143,30 @@ async function publishVisibleAsset({
   return { db, media, metadata, secondAssetId, story };
 }
 
-async function getMedia(handler, digest, bindings, authenticated = true) {
+async function getMedia(
+  handler,
+  digest,
+  bindings,
+  authenticated = true,
+  internalMember = true,
+) {
+  const email = "internal@balizero.com";
   const headers = authenticated
-    ? { "oai-authenticated-user-email": "reader@balizero.com" }
+    ? { "oai-authenticated-user-email": email }
     : {};
   const request = new Request(`https://magazine.example/api/media/${digest}`, {
     headers,
   });
-  return runWithMagazineBindings(bindings, () =>
+  const runtime = { ...bindings };
+  if (authenticated && internalMember) {
+    const actorKey = await hmacSha256Hex(runtime.ACTOR_KEY_SECRET, email);
+    runtime.ROLE_ALLOWLIST_JSON = JSON.stringify({
+      version: "roles.media.test.v1",
+      analysts: [actorKey],
+      operators: [],
+    });
+  }
+  return runWithMagazineBindings(runtime, () =>
     handler(request, { params: Promise.resolve({ digest }) }),
   );
 }
@@ -167,18 +184,15 @@ async function getStoryMedia(handler, slug, bindings, authenticated = true) {
   );
 }
 
-test("story media route serves the approved image without exposing its digest in HTML", async () => {
+test("public story media route serves only approved published media without exposing its digest", async () => {
   const handler = await loadStoryRoute();
   const { db, media, metadata, story } = await publishVisibleAsset();
   const bindings = runtimeBindings(db, media);
 
-  assert.equal(
-    (await getStoryMedia(handler, story.slug, bindings, false)).status,
-    401,
-  );
-  const response = await getStoryMedia(handler, story.slug, bindings);
+  const response = await getStoryMedia(handler, story.slug, bindings, false);
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("content-type"), "image/png");
+  assert.equal(response.headers.get("cache-control"), "no-store");
   assert.equal((await response.text()).includes(metadata.sha256), false);
   assert.equal(
     (await getStoryMedia(handler, "missing-story", bindings)).status,
@@ -204,6 +218,14 @@ test(
     const anonymous = await getMedia(handler, metadata.sha256, bindings, false);
     assert.equal(anonymous.status, 401);
     assert.equal((await anonymous.text()).includes(metadata.sha256), false);
+    const outsider = await getMedia(
+      handler,
+      metadata.sha256,
+      bindings,
+      true,
+      false,
+    );
+    assert.equal(outsider.status, 401);
 
     const response = await getMedia(handler, metadata.sha256, bindings);
     assert.equal(response.status, 200);

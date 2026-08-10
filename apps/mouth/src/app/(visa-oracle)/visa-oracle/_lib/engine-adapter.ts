@@ -26,6 +26,16 @@ import type {
 
 const text = (en: string, id: string): LocalizedText => ({ en, id });
 
+const SPOUSAL_WORK_ARTICLE_61_COPY = text(
+  "Article 61 of UU 6/2011 allows qualifying mixed-marriage stay-permit holders to work and/or conduct business to support themselves or their family. This assessment does not verify the separate requirements, if any, for employment or self-employment/business.",
+  "Pasal 61 UU 6/2011 memperbolehkan pemegang izin tinggal yang memenuhi kategori perkawinan campur untuk melakukan pekerjaan dan/atau usaha guna memenuhi kebutuhan hidupnya dan/atau keluarganya. Penilaian ini tidak memverifikasi persyaratan terpisah, jika ada, untuk hubungan kerja atau usaha mandiri.",
+);
+
+const KITAP_TWO_YEAR_MARRIAGE_AND_INTEGRATION_COPY = text(
+  "Article 60(2) of UU 6/2011 requires two years of marriage and a signed Pernyataan Integrasi for a mixed-marriage KITAP. These prerequisites are not verified by this assessment.",
+  "Pasal 60 ayat (2) UU 6/2011 mensyaratkan usia perkawinan mencapai dua tahun dan Pernyataan Integrasi yang ditandatangani untuk KITAP perkawinan campur. Penilaian ini belum memverifikasi kedua prasyarat tersebut.",
+);
+
 const NEXT_STEPS: OutcomeNextSteps = [
   {
     id: "review-decision",
@@ -52,8 +62,281 @@ const NEXT_STEPS: OutcomeNextSteps = [
 
 const PUBLIC_ID = /^[a-z0-9]{16,20}$/;
 
+/**
+ * Human-readable copy for the pack's SUPPORT reason codes — the "why this
+ * path is supported" line. Without it the UI printed the bare machine code
+ * (`Verified reason: B1_VOA_ELIGIBLE`) on every candidate of every product.
+ *
+ * Each sentence is derived from the rule's own `when` clause and may claim
+ * NOTHING the rule did not test. `PURPOSE_PRODUCT_MATCH` is deliberately
+ * generic: 16 rules share that one code — employment, six family relations,
+ * D1/D2/D12 multi-entry and study — so any specific sentence would be false
+ * for fifteen of them.
+ *
+ * Unknown codes keep the existing `Verified reason: <code>` form rather than
+ * degrading to a generic sentence: a code we have not written copy for is
+ * still information, and silently blanking it would hide a new rule instead
+ * of surfacing it. (The REVIEW map above chooses the opposite fallback on
+ * purpose — there, a wrong-sounding specific is worse than a safe generic.)
+ */
+export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
+  A1_BVK_ELIGIBLE: text(
+    "Your nationality is on the visa-free (BVK) list for tourism or transit, and your stay is 30 days or less.",
+    "Kewarganegaraan Anda ada dalam daftar bebas visa (BVK) untuk wisata atau transit, dan masa tinggal Anda 30 hari atau kurang.",
+  ),
+  B1_VOA_ELIGIBLE: text(
+    "Your nationality is on the Visa on Arrival list for tourism, and your stay is 30 days or less.",
+    "Kewarganegaraan Anda ada dalam daftar Visa on Arrival untuk wisata, dan masa tinggal Anda 30 hari atau kurang.",
+  ),
+  C1_VISIT_ELIGIBLE: text(
+    "A tourism or family visit with a stay of 60 days or less.",
+    "Kunjungan wisata atau keluarga dengan masa tinggal 60 hari atau kurang.",
+  ),
+  C2_BUSINESS_ELIGIBLE: text(
+    "Business meetings or investment, with a confirmed sponsor and a stay of 60 days or less.",
+    "Pertemuan bisnis atau investasi, dengan penjamin terkonfirmasi dan masa tinggal 60 hari atau kurang.",
+  ),
+  C6_SOCIAL_ELIGIBLE: text(
+    "A social or other stated purpose, with a confirmed sponsor and a stay of 60 days or less.",
+    "Tujuan sosial atau lainnya, dengan penjamin terkonfirmasi dan masa tinggal 60 hari atau kurang.",
+  ),
+  E28A_INVESTMENT_ELIGIBLE: text(
+    "You committed to a PT PMA as shareholder-director or shareholder-commissioner, with paid-up capital of IDR 2.5 billion or more.",
+    "Anda berkomitmen pada PT PMA sebagai pemegang saham-direktur atau pemegang saham-komisaris, dengan modal disetor minimal Rp 2,5 miliar.",
+  ),
+  E33E_RETIREMENT_ELIGIBLE: text(
+    "Retirement, age 55 or over, with a deposit of USD 50,000 or more held in your own name at a state bank.",
+    "Pensiun, usia 55 tahun ke atas, dengan deposito minimal USD 50.000 atas nama sendiri di bank BUMN.",
+  ),
+  E33F_RETIREMENT_ELIGIBLE: text(
+    "Retirement with passive income of USD 3,000 per month or more and a confirmed sponsor.",
+    "Pensiun dengan penghasilan pasif minimal USD 3.000 per bulan dan penjamin terkonfirmasi.",
+  ),
+  E33_DEPOSIT_BASIS_ELIGIBLE: text(
+    "Second Home on the deposit basis: USD 130,000 or more held in your own name at a state bank.",
+    "Rumah Kedua berbasis deposito: minimal USD 130.000 atas nama sendiri di bank BUMN.",
+  ),
+  E33_PROPERTY_BASIS_ELIGIBLE: text(
+    "Second Home on the property basis: qualifying property valued at USD 1,000,000 or more.",
+    "Rumah Kedua berbasis properti: properti memenuhi syarat senilai minimal USD 1.000.000.",
+  ),
+  REMOTE_WORK_ELIGIBLE: text(
+    "You work remotely for a non-Indonesian employer, serve no Indonesian clients, and take no Indonesian-source compensation.",
+    "Anda bekerja jarak jauh untuk pemberi kerja non-Indonesia, tidak melayani klien Indonesia, dan tidak menerima kompensasi dari sumber Indonesia.",
+  ),
+  BRIDGING_DESTINATION_STATED: text(
+    "You named a destination status other than the bridging permit itself, so a bridging route can be assessed.",
+    "Anda menyebut status tujuan selain izin peralihan itu sendiri, sehingga jalur peralihan dapat dinilai.",
+  ),
+  PURPOSE_PRODUCT_MATCH: text(
+    "Your stated purpose and the circumstances you confirmed match what this visa covers.",
+    "Tujuan yang Anda nyatakan dan keadaan yang Anda konfirmasi sesuai dengan cakupan visa ini.",
+  ),
+
+  // --- Requirements ------------------------------------------------------
+  // Until rule pack seq-6 these were HUMAN_REVIEW rules, so an applicant who
+  // matched one was shown nothing at all. They never detected a defect: most
+  // test only the purpose (`hr.d2-funds-usd-2000` is literally
+  // `intent.purposes intersects [BUSINESS_MEETINGS]` and reads no funds
+  // fact). They are conditions attached to an offer, and the sentence must
+  // read as one -- it may still claim NOTHING the rule did not test, so none
+  // of these says the applicant HAS met the requirement.
+  CV_REQUIRED: text(
+    "You will need to provide a CV with your application.",
+    "Anda perlu melampirkan CV pada permohonan Anda.",
+  ),
+  ITINERARY_REQUIRED: text(
+    "You will need to provide a travel itinerary with your application.",
+    "Anda perlu melampirkan rencana perjalanan pada permohonan Anda.",
+  ),
+  SUPPORT_LETTER_REQUIRED: text(
+    "You will need a support letter with your application.",
+    "Anda memerlukan surat dukungan pada permohonan Anda.",
+  ),
+  PASSPORT_VALIDITY_6_MONTHS_REQUIRED: text(
+    "Your passport must be valid for at least 6 months on the date you enter.",
+    "Paspor Anda harus berlaku minimal 6 bulan pada tanggal Anda masuk.",
+  ),
+  PROOF_OF_FUNDS_D1: text(
+    "You will need to show proof of funds of USD 2,000 or more.",
+    "Anda perlu menunjukkan bukti dana minimal USD 2.000.",
+  ),
+  PROOF_OF_FUNDS_D2: text(
+    "You will need to show proof of funds of USD 2,000 or more.",
+    "Anda perlu menunjukkan bukti dana minimal USD 2.000.",
+  ),
+  PROOF_OF_FUNDS_D12: text(
+    "You will need to show proof of funds of USD 5,000 or more.",
+    "Anda perlu menunjukkan bukti dana minimal USD 5.000.",
+  ),
+  REQ_FUNDS_2000: text(
+    "You will need to show proof of funds of USD 2,000 or more.",
+    "Anda perlu menunjukkan bukti dana minimal USD 2.000.",
+  ),
+  LIVING_COST_USD2000: text(
+    "You will need to show living costs of USD 2,000 or more for your studies.",
+    "Anda perlu menunjukkan biaya hidup minimal USD 2.000 untuk masa studi Anda.",
+  ),
+  REQ_SPONSOR_ITAS_ITAP: text(
+    "Your sponsor must hold a valid ITAS or ITAP.",
+    "Penjamin Anda harus memiliki ITAS atau ITAP yang berlaku.",
+  ),
+  REQ_SPONSOR_MIXED_MARRIAGE: text(
+    "This route runs through a mixed-marriage sponsor, whose status we verify.",
+    "Jalur ini melalui penjamin perkawinan campur, yang statusnya kami verifikasi.",
+  ),
+  REQ_MIXED_MARRIAGE_PARENTS: text(
+    "This route requires a mixed-marriage parent relationship, which we verify from your documents.",
+    "Jalur ini memerlukan hubungan orang tua perkawinan campur, yang kami verifikasi dari dokumen Anda.",
+  ),
+  REQ_STEP_PARENT_RELATION: text(
+    "This route requires a step-parent relationship, which we verify from your documents.",
+    "Jalur ini memerlukan hubungan orang tua tiri, yang kami verifikasi dari dokumen Anda.",
+  ),
+  MINOR_CONSENT_GUARDIAN: text(
+    "As the applicant is a minor, guardian consent is required.",
+    "Karena pemohon masih di bawah umur, diperlukan persetujuan wali.",
+  ),
+  // Keep the old key safe for persisted seq-5 decisions while seq-6 emits
+  // the Article 61-specific key below.
+  SPOUSAL_WORK_KEMENAKER_CAVEAT: SPOUSAL_WORK_ARTICLE_61_COPY,
+  SPOUSAL_WORK_ARTICLE_61_CONTEXT: SPOUSAL_WORK_ARTICLE_61_COPY,
+  REQUIRED_RPTKA_APPROVAL: text(
+    "Your employer must obtain RPTKA approval before this permit can be issued.",
+    "Pemberi kerja Anda harus memperoleh persetujuan RPTKA sebelum izin ini dapat diterbitkan.",
+  ),
+  REQUIRED_DIPLOMAT_SPONSOR: text(
+    "This permit requires a diplomatic mission as sponsor.",
+    "Izin ini memerlukan perwakilan diplomatik sebagai penjamin.",
+  ),
+  REQUIRED_KDEI_SPONSOR: text(
+    "This permit requires KDEI as sponsor.",
+    "Izin ini memerlukan KDEI sebagai penjamin.",
+  ),
+  JABATAN_MUST_MATCH_KBLI: text(
+    "Your job title must match the company's KBLI business activity.",
+    "Jabatan Anda harus sesuai dengan bidang usaha KBLI perusahaan.",
+  ),
+  PROHIBITED_HR_ROLES_KEPMENAKER_349_2019: text(
+    "Some human-resources roles are closed to foreign nationals under Kepmenaker 349/2019 — we check your specific job title against that list.",
+    "Sebagian jabatan sumber daya manusia tertutup bagi warga negara asing menurut Kepmenaker 349/2019 — kami memeriksa jabatan Anda terhadap daftar tersebut.",
+  ),
+  E23_REQUIRED_FOR_OPERATIONAL_WORK_EVEN_IF_DIRECTOR: text(
+    "Operational work needs this work permit even when you are a shareholder-director or shareholder-commissioner.",
+    "Pekerjaan operasional memerlukan izin kerja ini meskipun Anda pemegang saham-direktur atau pemegang saham-komisaris.",
+  ),
+  RESTRICTED_TO_DOMESTIC_HELPER: text(
+    "This permit covers domestic-helper roles only.",
+    "Izin ini hanya mencakup pekerjaan asisten rumah tangga.",
+  ),
+  KEK_INSTITUTION_ONLY: text(
+    "This permit covers study at a KEK-based institution only.",
+    "Izin ini hanya mencakup studi di lembaga berbasis KEK.",
+  ),
+  EXCHANGE_PROGRAM_ONLY: text(
+    "This permit covers exchange programmes only.",
+    "Izin ini hanya mencakup program pertukaran.",
+  ),
+  STUDY_PERMIT_KEMDIKBUD: text(
+    "You will need a Kemdikbud study permit (izin belajar).",
+    "Anda memerlukan izin belajar dari Kemdikbud.",
+  ),
+  C2_CORPORATE_SPONSOR_TYPE_VERIFICATION: text(
+    "We verify that your sponsor is the right type of company for this visa.",
+    "Kami memverifikasi bahwa penjamin Anda adalah jenis perusahaan yang tepat untuk visa ini.",
+  ),
+  GOVT_INVITATION_REQUIRED: text(
+    "This route requires an invitation from a central government body.",
+    "Jalur ini memerlukan undangan dari instansi pemerintah pusat.",
+  ),
+  GUARANTEE_VALUE_MUST_BE_MAINTAINED: text(
+    "The deposit or property value behind this permit must be maintained for as long as you hold it.",
+    "Nilai deposito atau properti yang mendasari izin ini harus dipertahankan selama izin berlaku.",
+  ),
+  // The alias prevents historical seq-5 decisions from rendering the old,
+  // incorrect "two years on this status" statement.
+  KITAP_CONVERSION_TWO_YEAR_DOOR: KITAP_TWO_YEAR_MARRIAGE_AND_INTEGRATION_COPY,
+  KITAP_TWO_YEAR_MARRIAGE_AND_INTEGRATION_NOT_VERIFIED:
+    KITAP_TWO_YEAR_MARRIAGE_AND_INTEGRATION_COPY,
+  BRIDGING_SOURCE_STATUS_VERIFY: text(
+    "We verify your current immigration status before a bridging route can be filed.",
+    "Kami memverifikasi status keimigrasian Anda saat ini sebelum jalur peralihan dapat diajukan.",
+  ),
+  BRIDGING_OVERSTAY_SHIELD_PAYMENT_CHECK: text(
+    "We check whether an overstay payment is due before the bridging permit shields your stay.",
+    "Kami memeriksa apakah ada pembayaran overstay yang terutang sebelum izin peralihan melindungi masa tinggal Anda.",
+  ),
+
+  // --- Advisor checks ----------------------------------------------------
+  // Each names a threshold the engine has NO fact to test -- there is no
+  // income field anywhere in `work.*`, and none for the Golden Visa USD
+  // bands. Before seq-6 these rules walled the applicant instead of saying
+  // so. Zero's ruling (2026-08-09): offer the route and name the check.
+  // Where the figure is not in the rule itself it is deliberately NOT stated
+  // here rather than guessed.
+  E33G_INCOME_60K_ADVISOR_CHECK: text(
+    "This route asks for annual income of USD 60,000 or more. We confirm the figure and the evidence with one of our advisors.",
+    "Jalur ini mensyaratkan penghasilan tahunan minimal USD 60.000. Kami memastikan angka dan buktinya bersama konsultan kami.",
+  ),
+  E28B_USD_THRESHOLD_ADVISOR_CHECK: text(
+    "This Golden Visa route has a minimum investment threshold in USD. We confirm the current figure and your evidence with one of our advisors.",
+    "Jalur Golden Visa ini memiliki ambang investasi minimum dalam USD. Kami memastikan angka terkini dan bukti Anda bersama konsultan kami.",
+  ),
+  E28C_USD_THRESHOLD_ADVISOR_CHECK: text(
+    "This Golden Visa route has a minimum investment threshold in USD. We confirm the current figure, the instrument, and your evidence with one of our advisors.",
+    "Jalur Golden Visa ini memiliki ambang investasi minimum dalam USD. Kami memastikan angka terkini, instrumennya, dan bukti Anda bersama konsultan kami.",
+  ),
+  E28D_USD_THRESHOLD_TURNOVER_ADVISOR_CHECK: text(
+    "This Golden Visa route has a minimum investment and turnover threshold. We confirm the current figures and your evidence with one of our advisors.",
+    "Jalur Golden Visa ini memiliki ambang investasi dan omzet minimum. Kami memastikan angka terkini dan bukti Anda bersama konsultan kami.",
+  ),
+  E28F_IKN_THRESHOLD_ADVISOR_CHECK: text(
+    "This IKN route has its own investment threshold. We confirm the current figure and your evidence with one of our advisors.",
+    "Jalur IKN ini memiliki ambang investasi tersendiri. Kami memastikan angka terkini dan bukti Anda bersama konsultan kami.",
+  ),
+  E33B_EXPERTISE_QUALIFICATION_ADVISOR_CHECK: text(
+    "This route is judged on your professional qualifications. We review them with one of our advisors before filing.",
+    "Jalur ini dinilai berdasarkan kualifikasi profesional Anda. Kami meninjaunya bersama konsultan kami sebelum pengajuan.",
+  ),
+  E33E_DEPOSIT_INCOME_BASIS_ADVISOR_CHECK: text(
+    "This route can be met on a deposit basis or a passive-income basis. We work out which one fits you with one of our advisors.",
+    "Jalur ini dapat dipenuhi berbasis deposito atau penghasilan pasif. Kami menentukan mana yang sesuai untuk Anda bersama konsultan kami.",
+  ),
+  E33E_AGE_55_59_ADVISOR_CHECK: text(
+    "Between 55 and 59 the age requirement for this route is read differently by different offices. We check how it currently applies to you.",
+    "Antara usia 55 dan 59, persyaratan usia jalur ini ditafsirkan berbeda oleh kantor yang berbeda. Kami memeriksa penerapannya untuk Anda saat ini.",
+  ),
+  E33F_AGE_UNDER_55_ADVISOR_CHECK: text(
+    "Under 55 this route is discretionary. We check whether it is open to you before filing.",
+    "Di bawah usia 55, jalur ini bersifat diskresioner. Kami memeriksa apakah jalur ini terbuka untuk Anda sebelum pengajuan.",
+  ),
+  E33_PROPERTY_QUALIFICATION_ADVISOR_CHECK: text(
+    "Whether your property qualifies for this route depends on how it is held and valued. We check it with one of our advisors.",
+    "Apakah properti Anda memenuhi syarat untuk jalur ini bergantung pada bentuk kepemilikan dan penilaiannya. Kami memeriksanya bersama konsultan kami.",
+  ),
+  E31F_ADULT_AGE_ADVISOR_CHECK: text(
+    "For an adult dependant, eligibility depends on age and relationship together. We check how it applies to you.",
+    "Untuk tanggungan dewasa, kelayakan bergantung pada usia dan hubungan keluarga bersama-sama. Kami memeriksa penerapannya untuk Anda.",
+  ),
+  E31J_DEPENDENCY_AGE_ADVISOR_CHECK: text(
+    "Dependency at this age is assessed case by case. We check how it applies to you.",
+    "Status ketergantungan pada usia ini dinilai per kasus. Kami memeriksa penerapannya untuk Anda.",
+  ),
+  D12_CUMULATIVE_STAY_ADVISOR_CHECK: text(
+    "Long or repeated stays are counted cumulatively. We check your total against the limit with one of our advisors.",
+    "Masa tinggal panjang atau berulang dihitung secara kumulatif. Kami memeriksa total Anda terhadap batasnya bersama konsultan kami.",
+  ),
+  BRIDGING_T3_WINDOW_ADVISOR_CHECK: text(
+    "The filing window for this bridging route is tight. We check your dates with one of our advisors.",
+    "Jendela pengajuan jalur peralihan ini sempit. Kami memeriksa tanggal Anda bersama konsultan kami.",
+  ),
+};
+
 function reasonMessage(code: string): LocalizedText {
-  return text(`Verified reason: ${code}`, `Alasan terverifikasi: ${code}`);
+  return (
+    SUPPORT_REASON_COPY[code] ??
+    text(`Verified reason: ${code}`, `Alasan terverifikasi: ${code}`)
+  );
 }
 
 function reason(

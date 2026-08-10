@@ -532,16 +532,39 @@ async def build_eval_set(pool: asyncpg.Pool, size: int = EVAL_SET_SIZE) -> list[
     both_sql = f"""
         WITH eligible AS (
             SELECT c.conversation_id, c.client_id, c.practice_id
+            FROM whatsapp_conversations c TABLESAMPLE SYSTEM (1)
+            WHERE c.client_id IS NOT NULL
+              AND c.practice_id IS NOT NULL
+            LIMIT $1
+        )
+        {base_select}
+    """
+
+    both_fallback_sql = f"""
+        WITH eligible AS (
+            SELECT c.conversation_id, c.client_id, c.practice_id
             FROM whatsapp_conversations c
             WHERE c.client_id IS NOT NULL
               AND c.practice_id IS NOT NULL
+              AND NOT (c.conversation_id = ANY($2::bigint[]))
             ORDER BY random()
             LIMIT $1
         )
         {base_select}
     """
 
-    client_only_sql = f"""
+    client_sample_sql = f"""
+        WITH eligible AS (
+            SELECT c.conversation_id, c.client_id, c.practice_id
+            FROM whatsapp_conversations c TABLESAMPLE SYSTEM (1)
+            WHERE c.client_id IS NOT NULL
+              AND NOT (c.conversation_id = ANY($2::bigint[]))
+            LIMIT $1
+        )
+        {base_select}
+    """
+
+    client_fallback_sql = f"""
         WITH eligible AS (
             SELECT c.conversation_id, c.client_id, c.practice_id
             FROM whatsapp_conversations c
@@ -556,10 +579,23 @@ async def build_eval_set(pool: asyncpg.Pool, size: int = EVAL_SET_SIZE) -> list[
     async with pool.acquire() as conn:
         rows_both = await conn.fetch(both_sql, size)
         rows = list(rows_both)
+        # SYSTEM sampling may return no blocks or too few eligible rows. Fall
+        # back only for the shortfall so the fast path keeps its cost benefit
+        # without violating the caller's requested-size contract.
         if len(rows) < size:
             already = [int(r["conversation_id"]) for r in rows]
             remaining = size - len(rows)
-            extra = await conn.fetch(client_only_sql, remaining, already)
+            extra = await conn.fetch(both_fallback_sql, remaining, already)
+            rows = rows + list(extra)
+        if len(rows) < size:
+            already = [int(r["conversation_id"]) for r in rows]
+            remaining = size - len(rows)
+            extra = await conn.fetch(client_sample_sql, remaining, already)
+            rows = rows + list(extra)
+        if len(rows) < size:
+            already = [int(r["conversation_id"]) for r in rows]
+            remaining = size - len(rows)
+            extra = await conn.fetch(client_fallback_sql, remaining, already)
             rows = rows + list(extra)
 
     out: list[dict[str, Any]] = []
