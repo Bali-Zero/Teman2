@@ -1,112 +1,64 @@
 brief_ref: evidence/brief.yml
-plan_ref: "research/operations/2026-08-10-fleet-order-spec.md §7 (PR-3 landing plan)"
+plan_ref: "PR #4007 — runtime worktree dependency repair"
 diff:
-  files: 9
-  insertions: 1847
-  deletions: 3
+  files: 10
+  insertions: 0
+  deletions: 0
   hotzone_hits:
-    - ".github/workflows/guard-conformance.yml"
-    - ".github/workflows/harness-floor.yml"
+    - ".github/workflows/broker-hygiene.yml"
 receipts:
-  - claim: "evidence_pack_lint.py's own embedded guilt+innocence corpus passes"
-    cmd: "python3 scripts/evidence_pack_lint.py --selftest"
+  - claim: "the executable guilt and innocence corpus rejects fake, nested, primary-alias, stale-link, and parent-symlink runtime worktrees while preserving the valid registered worktree case"
+    cmd: "bash scripts/tests/test_codex_runtime_worktree_deps.sh"
     exit: 0
-    ts: "2026-08-10T04:12:39Z"
-    seat: "sonnet-5"
-  - claim: "pytest guilt+innocence suites for both new scripts pass (48 tests)"
-    cmd: "python3 -m pytest scripts/tests/test_evidence_pack_lint.py scripts/tests/test_harness_fable_gate.py -q"
+    ts: "2026-08-11T00:00:00Z"
+    seat: "codex"
+  - claim: "the selector rejects untrusted provenance and only accepts a trusted same-repository event whose REST metadata matches the listed branch and immutable SHA"
+    cmd: "python3 scripts/tests/test_codex_autofix_selector.py"
     exit: 0
-    ts: "2026-08-10T04:12:39Z"
-    seat: "sonnet-5"
-  - claim: "every censused guard has guilt+innocence proofs, no phantom refs, all armed in CI"
-    cmd: "python3 infra/guard-conformance/check_guard_conformance.py"
+    ts: "2026-08-11T00:00:00Z"
+    seat: "codex"
+  - claim: "the unattended push uses only a pre-push bundle copied from a pinned trusted commit and rejects tampering to every transitive bundle member"
+    cmd: "bash scripts/tests/test_codex_trusted_prepush_bundle.sh"
     exit: 0
-    ts: "2026-08-10T04:12:39Z"
-    seat: "sonnet-5"
-  - claim: "both new/modified workflow files are actionlint-clean"
-    cmd: "actionlint .github/workflows/harness-floor.yml .github/workflows/guard-conformance.yml"
+    ts: "2026-08-11T00:00:00Z"
+    seat: "codex"
+  - claim: "the modified shell entrypoints parse and pass error-level shellcheck"
+    cmd: "bash -n scripts/codex_automation_lib.sh scripts/codex/codex-nightly-autofix-ci.sh .husky/pre-push scripts/tests/test_codex_runtime_worktree_deps.sh scripts/tests/test_codex_trusted_prepush_bundle.sh && shellcheck -S error scripts/codex_automation_lib.sh scripts/codex/codex-nightly-autofix-ci.sh .husky/pre-push scripts/tests/test_codex_runtime_worktree_deps.sh scripts/tests/test_codex_trusted_prepush_bundle.sh"
     exit: 0
-    ts: "2026-08-10T04:12:39Z"
-    seat: "sonnet-5"
-  - claim: "docs_sync contract (test count in AI_ONBOARDING.md) has no drift"
+    ts: "2026-08-11T00:00:00Z"
+    seat: "codex"
+  - claim: "the canonical documentation counters have no drift after reconciling current main"
     cmd: "python3 scripts/docs_sync.py --check"
     exit: 0
-    ts: "2026-08-10T04:12:39Z"
-    seat: "sonnet-5"
-  - claim: "the Gear-3 pack-lint CI step's logic (temp evidence/ tree + evidence_pack_lint.py --repo-root ... --changed-files-file ...) rejects a defective pack and accepts a conformant one, simulated end-to-end outside the sandbox"
-    cmd: "python3 scripts/evidence_pack_lint.py /tmp/evidence-check-sim/evidence/pack.yml --repo-root /tmp/evidence-check-sim --changed-files-file /tmp/sim-changed.txt"
-    exit: 0
-    ts: "2026-08-10T04:10:00Z"
-    seat: "sonnet-5"
+    ts: "2026-08-11T00:00:00Z"
+    seat: "codex"
 tests:
-  cmd: "python3 -m pytest scripts/tests/test_evidence_pack_lint.py scripts/tests/test_harness_fable_gate.py -q"
-  passed: 48
+  cmd: "bash scripts/tests/test_codex_runtime_worktree_deps.sh && bash scripts/tests/test_codex_trusted_prepush_bundle.sh && python3 scripts/tests/test_codex_autofix_selector.py"
+  passed: 68
   failed: 0
 static:
   lint: ok
   typecheck: n/a
   build: n/a
 runtime_proof:
-  - "no live/consumer-facing surface changes in this PR — CI workflow + linter scripts only, no deploy required; PROVE-LIVE tracked in the PR body as observing harness-floor.yml's own run on this PR"
+  - "a runtime path nested under, equal to, or resolving to the primary checkout is rejected"
+  - "a foreign standalone repository and a parent-component symlink escape are rejected"
+  - "only the backend virtual environment is linked, and absent or mismatched managed links are removed rather than retained"
+  - "the runner accepts only trusted actor plus triggering actor, same repository, an explicit event allowlist, an allowed branch namespace, and a metadata-verified immutable SHA"
+  - "the unattended push executes a pre-push hook and all its helpers from an origin/main-pinned bundle; a branch hook and tampered bundle members are rejected"
 dissent:
-  - seat: codex-sol
-    objection: "L'assenza del brief disattiva proprio il floor che dovrebbe imporlo — un PR hot-zone poteva omettere evidence/brief.yml e ottenere default-success senza mai consultare il diff"
+  - seat: red-team
+    objection: "The original repair accepted nested primary paths and links to dotenv files, node_modules, and Husky dispatchers; an unattended failed-branch runner could therefore act on the primary checkout, read host secrets, or execute a branch-controlled pre-push hook."
     status: CONFIRMED
-    repro: "harness-floor.yml:112/137 pre-fix; fixed by computing the floor unconditionally and FAILing a floor-3 diff with no brief"
-  - seat: codex-sol
-    objection: "Il vero Evidence Pack linter non viene mai eseguito sul PR — solo --print-floor sul brief, mai evidence_pack_lint.py sul pack reale"
-    status: CONFIRMED
-    repro: "harness-floor.yml:158 pre-fix; fixed by adding a Gear-3-only step that fetches pack.yml+brief.yml and runs evidence_pack_lint.py for real"
-  - seat: codex-sol
-    objection: "harness_fable_gate.py non prova chi abbia emesso il verdetto — qualunque credenziale con statuses:write può pubblicare PASS su qualunque SHA"
-    status: CONFIRMED
-    repro: "harness_fable_gate.py:104-146; NOT fixed in this PR — doctrine-level trust boundary, ledgered as a residual risk blocking branch-protection promotion"
-  - seat: codex-sol
-    objection: "I Gear 3 entrano in deadlock nella merge queue: il verdetto umano vive sul head SHA del PR, ma merge_group crea un head_sha sintetico che nessun dispatcher ripubblica"
-    status: CONFIRMED
-    repro: "harness-floor.yml (Gear-3 branch leaves the context unpublished, by design); NOT fixed — the primary reason branch-protection promotion is reported BLOCKED"
-  - seat: codex-sol
-    objection: "compute_floor() restituisce solo 1 o 3, mai 2 — le categorie Gear-2/Gear-3-per-contenuto del contratto ratificato non sono mai mecanizzate, e il gear-3 labeler citato dal brief è assente"
-    status: CONFIRMED
-    repro: "evidence_pack_lint.py:153 (compute_floor); not a defect — the function's own docstring documents the floor as a deterministic LOWER BOUND only, and a gear-3 labeler was not among this PR's explicit deliverables per pr3-brief.md"
-  - seat: codex-sol
-    objection: "PASS-WITH-CONDITIONS è trattato come successo senza condizioni obbligatorie — --conditions-ref era opzionale e non enforced"
-    status: CONFIRMED
-    repro: "harness_fable_gate.py:65/74-90 pre-fix; fixed by requiring --conditions-ref when --verdict PASS-WITH-CONDITIONS (exit 1 otherwise)"
-  - seat: codex-sol
-    objection: "Il rilevamento del brief fallisce aperto — git fetch ... || true ignora errori transitori, e l'assenza dell'oggetto Git viene letta come 'brief assente'"
-    status: CONFIRMED
-    repro: 'harness-floor.yml:121 pre-fix; fixed by requiring the HEAD commit to resolve (git cat-file -e "$HEAD_SHA^{commit}") before accepting ''no brief'' as a conclusion'
-  - seat: codex-sol
-    objection: "Il kill switch è disallineato dal nome documentato (HARNESS_FLOOR_ENFORCEMENT_ENABLED vs HARNESS_ENFORCEMENT) e, se armato, blocca tutti i PR non pubblicando il default"
-    status: CONFIRMED
-    repro: "harness-floor.yml:53 pre-fix; fixed by renaming to HARNESS_ENFORCEMENT and publishing the default success from the kill-switch step itself"
-  - seat: codex-sol
-    objection: "Il parser YAML accetta gear con tipi sbagliati — gear: true e gear: 1.0 passavano perché Python tratta bool/float come == int"
-    status: CONFIRMED
-    repro: "evidence_pack_lint.py:259 pre-fix (gear not in (1,2,3)); fixed with an explicit type(gear) is int check"
-  - seat: codex-sol
-    objection: "brief_ref non è confinato al repository (path assoluti e ../ accettati) e può causare IsADirectoryError non gestita"
-    status: CONFIRMED
-    repro: "evidence_pack_lint.py:237 pre-fix; fixed with absolute-path rejection, repo_root confinement, and .is_file() instead of .exists()"
-  - seat: codex-sol
-    objection: "Le sei regole sono più deboli del contratto dichiarato: receipts assenti accettati, pii_scan è autocertificazione, dissent: [{}] passa su Gear 3, size controllata dopo yaml.safe_load"
-    status: CONFIRMED
-    repro: "evidence_pack_lint.py various pre-fix line ranges; receipts/dissent/size-ordering FIXED, pii_scan self-certification is a documented deliberate scope boundary (module docstring rule 3 — a real scanner is a separate tool)"
-  - seat: codex-sol
-    objection: "I test del publisher (test_harness_fable_gate.py) sono coverage non armata — nessun workflow li esegue"
-    status: CONFIRMED
-    repro: "guard-conformance.yml:19 pre-fix path filter; fixed by adding a real pytest-executing step (not registered as a guard — it's a publisher, per its own docstring)"
-  - seat: codex-sol
-    objection: "I PR da fork/Dependabot possono non ottenere il default status perché il GITHUB_TOKEN di default è spesso read-only su repository pubblici"
-    status: PLAUSIBLE
-    repro: "reproducibility depends on repo settings, per Codex's own labeling; NOT fixed — contributes to blocking branch-protection promotion alongside findings #3 and #4"
+    repro: "The expanded executable corpus reproduced each path escape, retained stale link, and branch-hook execution condition against the original PR head."
+    resolution: "Require exact registered-worktree identity, canonical parent containment, a venv-only runtime dependency set, fail-closed provenance, an explicit workspace-write sandbox, and a bundle copied plus reverified from a trusted main commit immediately before push."
 residual_risks:
-  - "branch-protection promotion of harness/fable-gate is BLOCKED (dissent entries #3/#4/#13) — see PR body for the full reasoning"
-  - "single-refuter quorum (Codex only, GLM unavailable on M5) instead of harness-v2 §4's literal 2-refuter Gear-3 quorum — pre-authorized by the dispatching brief for this task specifically, not a general precedent"
-  - "pii_scan below is a declared/self-certified state, not an independently re-scanned one, by this PR's own design (see dissent entry above)"
+  - "PROVE-LIVE still requires the declared HOME-fork sync and the next scheduled nightly run after an external operator merges the PR"
+  - "the dormant M5 nightly payload remains deliberately outside this PR's activation scope"
 sources:
+  - "scripts/agent_start.py::SYMLINK_TARGETS"
+  - "scripts/codex/codex-nightly-autofix-ci.sh"
+  - "infra/home-fork/declared-pairs.json"
   - "research/operations/2026-08-09-harness-v2-teman2.md §1/§5/§6"
-  - "research/operations/2026-08-10-fleet-order-spec.md §4/§7"
 pii_scan: clean
-size_tokens: 1966
+size_tokens: 1131
