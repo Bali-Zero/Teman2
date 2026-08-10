@@ -108,7 +108,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `publication_histor
 | `autonomous-lab` |  |
 | `backend-rag` | **Production-Ready AI-Powered RAG System for Business Intelligence** |
 | `bali-intel-scraper` | Intelligence pipeline for Bali Zero news and regulatory updates. |
-| `bali-zero-magazine` | Private editorial observatory for Bali Zero, built on |
+| `bali-zero-magazine` | Public editorial observatory for Bali Zero, built on |
 | `cell` |  |
 | `cell-observatory-collector` | Pro-local Python service that listens to `cell_pulse_observed` PG channel, |
 | `crm-cell` | Sprint 3 W2 — light cell wrapping the existing CRM modules |
