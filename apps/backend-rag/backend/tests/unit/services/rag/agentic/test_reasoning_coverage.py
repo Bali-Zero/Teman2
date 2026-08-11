@@ -341,8 +341,8 @@ class TestEvidenceScoring:
             assert result_state.final_answer in abstain_texts
 
     @pytest.mark.asyncio
-    async def test_pricing_data_in_answer_trusts_output(self, engine):
-        """If final_answer contains pricing markers, trusted_tools_used = True."""
+    async def test_pricing_data_in_answer_does_not_trust_output(self, engine):
+        """Pricing prose without executed retrieval does not earn trust."""
         state = AgentState(query="quanto costa?", max_steps=1, current_step=0)
         state.final_answer = "Costa Rp 5.000.000 per il servizio"
         state.skip_rag = False
@@ -385,11 +385,11 @@ class TestEvidenceScoring:
                 model_tier=1,
                 tool_execution_counter={"count": 0},
             )
-            assert result_state.trusted_tools_used is True
+            assert result_state.trusted_tools_used is False
 
     @pytest.mark.asyncio
-    async def test_llm_with_tools_available_trusts_output(self, engine):
-        """If LLM had _gemini_tools and produced answer, trusted_tools_used = True."""
+    async def test_llm_with_tools_available_does_not_trust_output(self, engine):
+        """Configured _gemini_tools without execution do not earn trust."""
         state = AgentState(query="hello", max_steps=1, current_step=0)
         state.final_answer = "Hello! How can I help?"
         state.skip_rag = False
@@ -432,7 +432,7 @@ class TestEvidenceScoring:
                 model_tier=1,
                 tool_execution_counter={"count": 0},
             )
-            assert result_state.trusted_tools_used is True
+            assert result_state.trusted_tools_used is False
 
     @pytest.mark.asyncio
     async def test_skip_rag_bypasses_evidence_check(self, engine):
@@ -633,7 +633,8 @@ class TestTrustedToolNames:
 
         assert "calculator" in _TRUSTED_TOOL_NAMES
         assert "get_pricing" in _TRUSTED_TOOL_NAMES
-        assert "vector_search" in _TRUSTED_TOOL_NAMES
+        assert "kbli_lookup" in _TRUSTED_TOOL_NAMES
+        assert "vector_search" not in _TRUSTED_TOOL_NAMES
         assert "team_knowledge" in _TRUSTED_TOOL_NAMES
         assert "timesheet" in _TRUSTED_TOOL_NAMES
 

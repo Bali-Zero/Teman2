@@ -22,6 +22,74 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 
 ## 1. LIVE STATE (last update 2026-08-11 — keep current)
 
+- **📚 HALF THE CURATED GROUNDING STORE IS SERVED, UNREVIEWABLE, AND CANNOT BE WITHDRAWN
+  (2026-08-11).** The `curated_qa` Qdrant collection holds **808 points**. Exactly **396** map to a
+  row in `apps/backend-rag/data/curated_qa/*.jsonl` (verified by recomputing
+  `_stable_point_id(question, domain)` for every row — all 396 present, none missing). The other
+  **412 map to nothing on disk**: all `domain=visa`, all `source_date` in 2026-07, **61 of them in
+  the verbatim class `JELAS`**. They carry none of the Phase-0 payload fields (`batch_id`,
+  `active`, `invalidated_at`, `verbatim_eligible`, `client_specific`), and no manifest references
+  them — `curated_qa_drift_report.py` reports `21 files, in_sync=21, zero source_missing`, so the
+  disk↔manifest view is clean and blind to all of this.
+  - **They ARE served.** `orchestrator_core._inject_curated_qa_grounding` filters with
+    `metadata.get("active", True) is False` — missing `active` means active, deliberately ("a
+    pre-Phase-0 point written before this rail existed — treated as active, not silently
+    dropped"). Every one of the 412 lacks the field.
+  - **They cannot be withdrawn.** `curated_qa_regen_trigger.quarantine_row` takes a corpus ROW and
+    derives its target via `_stable_point_id`. A point with no row on disk can never be selected,
+    so a regulatory delta can invalidate the 396 tracked answers and leave anything untracked
+    serving the superseded fact indefinitely.
+  - **Sampled, not assumed**: the 9 orphans that assert a land-tenure duration read substantively
+    CORRECT (E33/Second Home, SHM-Sarusun, USD 1M threshold). This is a governance gap, not a
+    proven wrong answer — do NOT sell it as the cause of the beta's Hak Pakai 65 / HGB 70 error.
+  - **REFUTED, so nobody re-derives it**: the elegant hypothesis that the 412 are id-derivation
+    twins of the current rows (the `domain:` prefix was folded into the digest later — the
+    FATAL-1 note in `_stable_point_id`) is FALSE. Recomputing all 396 rows under three older
+    derivations matched **zero** live points. They are different questions, not old copies.
+  - **`faq_committed` is `false` on all 21 manifests**, so the exact-match FAQ sink — the one that
+    bypasses the abstain gate — carries none of this corpus. The abstain-bypass exposure is
+    currently theoretical; the grounding exposure is live.
+  - Countable from now on: `scripts/curated_qa_serving_audit.py` (pure reporter, never writes).
+
+- **🕳️ THE WEBHOOK ROUTER'S FALLBACK BRANCH WAS DEAD FOR ~5 MONTHS, AND NOTHING NOTICED BECAUSE
+  NOTHING EVER RAN IT (2026-08-11, PR #4081).** `whatsapp_chat.process_whatsapp_message` answers
+  from OpenClaw when it responds and from the RAG orchestrator when it does not. The second path
+  could not execute at all, for two independent reasons, both live on `origin/main`:
+  (a) `whatsapp_persona.build_system_prompt` had its `time_of_day` parameter renamed
+  `_time_of_day` on **2026-03-17**, against a call site written **2026-02-07** that still passed
+  `time_of_day=` → `TypeError`; (b) `get_orchestrator(request)` was called **without `await`**
+  though it is `async def` → `'coroutine' object has no attribute 'process_query'`. Both land in
+  the same `except Exception`, so the client would have received `"Ops, errore tecnico 😬"`
+  instead of the RAG answer.
+  - **Bounded — do NOT retell this as an outage.** That error reply is persisted to
+    `conversation_messages`, and it appears **0 times against 154 outbound WhatsApp messages in
+    July**. The branch has never actually been taken and no client was hit. It was a hole in the
+    net under "OpenClaw did not answer", not a live failure.
+  - **How it was found, because the method is the transferable part**: not by reading, but by
+    driving. A mutation run on a new formatting cure showed the fallback call site could be
+    DELETED with nothing turning red — the corpus only ever drove the OpenClaw branch. Writing the
+    test that reaches the other branch is what made both `TypeError`s appear. A keyword mismatch
+    and a missing `await` are invisible to imports, to ruff, and to every test that drives only
+    the sibling branch.
+  - Guard now armed: `test_the_persona_builder_accepts_every_keyword_the_router_passes` AST-reads
+    the router's ACTUAL keywords and binds them against the signature, so the next rename on
+    either side fails in CI. Class audit for other un-awaited `async def` calls across routers /
+    deps / integrations / channels: 12 candidates, **all 12 verified false positives** — no second
+    instance, bounded to what that heuristic can see.
+
+- **🎠 THE BIGGEST ERROR CLASS IN THE BOT'S LEDGER IS BY DESIGN AND IS NOT CLIENT-FACING — check
+  before treating it as the top problem (2026-08-11).** `meta_inbox_messages.error` ranks:
+  `24h_window_closed` **84** · `superseded_by_coalescing` 62 · `bot_generate_failed_after_5_attempts`
+  60 · 2 others. The 84 look alarming and are not client questions at all: 4 distinct threads, all
+  bodies exactly 89 chars, prefix `"Carousel pronto: https://drive.google.com/"` — they are **WR2
+  carousel-ready notifications**, and `wr2_html_render_apply.py` says so verbatim next to the send:
+  _"WA above stays best-effort (24h-window may be closed for months); THIS is the delivery leg the
+  human actually sees"_ (the Telegram P0 + review-queue entry). Thread 30 retried 45 times over 49
+  days — exactly the "closed for months" the comment predicts.
+  - The real (small) defect is the **ledger's readability**, same shape already recorded for the
+    give-up sentinel: a deliberately best-effort leg and a genuine failure are spelled identically,
+    so the error ranking mis-ranks the bot's problems for whoever reads it next.
+
 - **📊 WHAT CLIENTS ACTUALLY ASK — 993 REAL TEAM CONVERSATIONS, AND THE RANKING CORRECTS OUR OWN
   PROBING (2026-08-11).** Zero handed the session a Case Captain intelligence pack derived from the
   team's WhatsApp history (`~/Desktop/WA-Case-Captain-Intelligence-2026-08-11`, local, `0600`,
@@ -377,6 +445,8 @@ minimum untuk PT PMA?` / Italian), **four of five retrieve fine** and give the c
     `connect you` and scored the frustration case **False** against _"connecting you"_ — an
     under-match in my own instrument (family #3). The finding came from re-reading the answer.
 
+- TRACK BOT-KBLI claimed by M5/2026-08-11
+
 - **🧪 BATTERY v5 — THE FOUR OPEN BETA CURES, RE-MEASURED 13 DAYS LATER (2026-08-10).** The
   2026-07-28 team beta left four cures open and nobody had asked whether they were still
   true. 14 questions, prod container, synthetic senders. Script: session scratchpad
@@ -689,6 +759,44 @@ RuntimeError(...)` before a message is ever composed. Its docstring states it as
   **Zero abstains, ever.** So the discard is a LATENT defect: real in the code, never yet fired
   in production. Current state is healthy — week of 19 July: **0 generation failures on 13
   inbound** (small sample, stated as such).
+
+  > ### ⛔ THE TWO SENTENCES ABOVE ARE NO LONGER TRUE — "zero abstains, ever" DIED THE NEXT DAY
+  >
+  > **Re-classified 2026-08-11 over the whole history, not just up to 07-27.** This bullet was
+  > written on 2026-07-27. The team beta was **07-28**. The discard is not latent: it **fired
+  > six times in production that morning**, threads 249 / 250 / 252 / 255 / 259 / 263, all
+  > between 02:02 and 02:29Z, every one of them
+  > `wa-inbox bot: RAG abstained for thread <n> (reason='no_relevant_context')`. A seventh row
+  > the same morning is thread 270, `answer empty after workflow-scaffold strip`, which the same
+  > `raise` discards by the same route.
+  >
+  > **What the asker experienced, measured rather than inferred:** each of the six threads DID
+  > get an outbound eventually — at **+11, +12, +16, +23, +32 and +38 minutes**. Not permanent
+  > silence, so do not upgrade this to "clients were abandoned". But nothing arrived while the
+  > retry ladder burned, and whether those later replies answered the abstained question or a
+  > subsequent one in the thread is NOT established here — do not assert either.
+  >
+  > **The cost is new information, and it is the part the 07-27 analysis could not have had.**
+  > That analysis correctly established that the 44 `not enabled in v1` give-ups were CHEAP —
+  > `is_bot_autoreply_enabled()` is the first statement of `generate_bot_reply`, so those five
+  > attempts were no-ops. **Abstain is the opposite case.** The `raise` sits at
+  > `wa_inbox_bot.py:357`, _after_ the `/api/agentic-rag/query` round-trip inside the P9
+  > semaphore — so every retry is a FULL RAG call. Six abstains plus one empty-after-strip, five
+  > attempts each: **~35 complete RAG round-trips that could not have produced anything**, on the
+  > single day this bot has ever carried real load, inside the window the Gemini prepay was being
+  > drained. The retry ladder cannot rescue an abstain the way it can rescue a flag flipped
+  > mid-backoff: the same query against the same KB abstains again.
+  >
+  > **This does NOT reopen the ladder on its own.** Skipping retries or suppressing the apology
+  > is still forbidden below without its own evidence, and the send-or-stay-silent half is still
+  > a Legge-5 call for Zero. What changes is that the call is no longer being made about a
+  > hypothetical: it has fired, on real people, and it costs ~5 full generations per occurrence.
+  >
+  > _And the lesson is the one this very bullet already taught, one layer up: its own method note
+  > says two disagreeing probes are what caught a wrong number. Here nothing disagreed — the
+  > classification was simply run before the event it would have caught. A measurement is stamped
+  > with the day it was taken, and this file did not carry that stamp where it mattered._
+
   _Method note: the first classifying query returned "0 abstains" AND a second returned "0
   failures per week", which contradicted a count of 52. The bug was mine — `split_part(error,':')`
   meant the stored value has a suffix, so `error = '<sentinel>'` matched nothing. Two of my own
