@@ -1,3 +1,7 @@
+---
+adversarial_review: codex
+---
+
 # Research Capture — "Anima Indonesiana" per KBLI Navigator
 
 **Data**: 2026-08-11
@@ -11,15 +15,18 @@
 
 ## 1. Visi Indonesia Emas 2045 — pilastri, linguaggio visivo, retorica ufficiale
 
-La **Golden Indonesia 2045 Vision** (Visi Indonesia Emas 2045) è stata formulata dal Kementerian PPN/Bappenas e lanciata da Joko Widodo il 9 maggio 2019, per il centenario dell'indipendenza (1945→2045). È il quadro dentro cui il governo attuale (Prabowo) inquadra RPJPN 2025-2045.
+La **Golden Indonesia 2045 Vision** (Visi Indonesia Emas 2045) è stata formulata dal Kementerian PPN/Bappenas e lanciata da Joko Widodo il 9 maggio 2019, per il centenario dell'indipendenza (1945→2045).
 
-**I quattro pilastri ufficiali**:
-1. Sviluppo umano e padronanza di scienza/tecnologia
-2. Sviluppo economico sostenibile
-3. Sviluppo equo (pemerataan)
-4. Rafforzamento della resilienza nazionale e della governance
+⚠️ **Correzione post-review (adversarial review Codex, 2026-08-11)**: la stesura originale fondeva due framework **distinti** — vanno citati separatamente, mai come sinonimi:
 
-Ancorati esplicitamente a Pancasila e alla Costituzione del '45. La visione finale: **"Negara Nusantara Berdaulat, Maju, dan Berkelanjutan"** (Stato-Arcipelago Sovrano, Avanzato e Sostenibile), attuata via 8 agenda pembangunan, 17 arah pembangunan, 45 indikator utama.
+- **Visi Indonesia 2045** (Kementerian PPN/Bappenas, 2019): motto **"Indonesia Berdaulat, Maju, Adil dan Makmur"**, **quattro pilastri ufficiali**:
+  1. Sviluppo umano e padronanza di scienza/tecnologia
+  2. Sviluppo economico sostenibile
+  3. Sviluppo equo (pemerataan)
+  4. Rafforzamento della resilienza nazionale e della governance
+- **RPJPN 2025-2045** (Legge/UU 59/2024 — il piano di sviluppo di lungo termine formalizzato per legge, veicolo con cui il governo attuale/Prabowo dà seguito legislativo alla visione 2019): motto **"NKRI yang Bersatu, Berdaulat, Maju, dan Berkelanjutan"**, attuato via lo schema **8 agenda pembangunan / 17 arah pembangunan / 45 indikator utama**.
+
+Entrambi ancorati esplicitamente a Pancasila e alla Costituzione del '45 — ma sono due documenti distinti, con titoli, motto e data di adozione diversi.
 
 **Target economici 2045**: 5ª economia mondiale, GDP ~$7.3 trilioni, reddito pro capite ~$25.000, uscita dalla middle-income trap.
 
@@ -29,7 +36,7 @@ Ancorati esplicitamente a Pancasila e alla Costituzione del '45. La visione fina
 - **Garuda** compare nei materiali ufficiali come richiamo identitario ma quasi mai come la riproduzione fedele e integrale dell'emblema di Stato (che è regolamentato per legge, vedi §2) — più spesso come silhouette alare astratta o motivo di sfondo.
 - Il logo ufficiale "Indonesia Emas 2045" è un lettering/monogramma, non un'illustrazione pittorica.
 
-**Nota d'uso per KBLI Navigator**: il logo "Indonesia Emas 2045" e il claim stesso sono di proprietà/uso istituzionale Bappenas — non vanno riprodotti o citati come se l'app fosse un prodotto governativo. Ciò che si può prendere in prestito legittimamente è il **registro visivo** (oro, arco ascendente, sobrietà tipografica), non il logo.
+**Nota d'uso per KBLI Navigator**: il logo "Indonesia Emas 2045" e il claim stesso sono di proprietà/uso istituzionale Bappenas — non vanno riprodotti o citati come se l'app fosse un prodotto governativo. Ciò che si può prendere in prestito legittimamente è il **registro visivo** (oro, arco ascendente, sobrietà tipografica), non il logo. ⚠️ *Fonte primaria mancante — non usare come base legale*: l'affermazione di "proprietà" del logo/claim è un'inferenza dal contesto istituzionale (lancio Bappenas/governativo), non la verifica di una registrazione HKI/marchio effettiva — la prudenza operativa (non riprodurlo, non citarlo) resta comunque la linea giusta indipendentemente dallo status IP esatto, che non è stato accertato qui.
 
 Fonti: [Golden Indonesia 2045 Vision — Wikipedia](https://en.wikipedia.org/wiki/Golden_Indonesia_2045_Vision) · [Bappenas — Visi Indonesia 2045](https://www.bappenas.go.id/tags-berita/340) · [Bappenas — Peluncuran RPJPN 2025-2045](https://bappenas.go.id/id/berita/luncurkan-rancangan-akhir-rpjpn-2025-2045-presiden-paparkan-visi-indonesia-emas-2045-c29Ju) · [indonesia2045.go.id](https://indonesia2045.go.id/) · [ACLC KPK — The Vision of Indonesia 2045](https://aclc.kpk.go.id/learning-materials/governance/infographics/the-vision-of-indonesia-2045) · [Indonesia Emas 2045 — Brands of the World](https://www.brandsoftheworld.com/logo/indonesia-emas-2045)
 
@@ -40,7 +47,7 @@ Fonti: [Golden Indonesia 2045 Vision — Wikipedia](https://en.wikipedia.org/wik
 ### Padi & Kapas (riso e cotone) — sila kelima Pancasila
 Simbolo della quinta sila ("Keadilan sosial bagi seluruh rakyat Indonesia" — giustizia sociale per tutto il popolo indonesiano). Il **padi** (riso) rappresenta la disponibilità di cibo, la **kapas** (cotone) la disponibilità di vestiario: i due bisogni primari, la cui soddisfazione è precondizione della prosperità. È letteralmente **il simbolo civico della giustizia economica** nella filosofia di Stato — non un ornamento decorativo ma il segno ufficiale della sila che parla di benessere/equità sociale.
 
-Rilevanza diretta per KBLI Navigator: un navigatore di codici che classificano l'attività economica nazionale è, concettualmente, uno strumento al servizio della stessa "giustizia sociale/economica" che padi & kapas rappresentano. Rischio di appropriazione: **basso** — è un simbolo civico/costituzionale di uso comune (compare su monete, francobolli, materiale scolastico), non sacro né riservato.
+Rilevanza diretta per KBLI Navigator: un navigatore di codici che classificano l'attività economica nazionale è, concettualmente, uno strumento al servizio della stessa "giustizia sociale/economica" che padi & kapas rappresentano. Rischio di appropriazione: **basso** — è un simbolo civico/costituzionale di uso comune (compare su monete, francobolli, materiale scolastico), non sacro né riservato. ⚠️ **Correzione post-review**: "basso" non "zero" — essendo iconografia ufficiale della Pancasila (sila kelima), davanti a un'audience istituzionale (BKPM) resta un rischio residuo di **alone quasi-governativo** (l'app potrebbe apparire come emanazione statale). Va quindi usato **mai in forma di stemma/scudo** (che evocherebbe l'emblema di Stato) — solo come motivo lineare/botanico isolato.
 
 Fonti: [Kompas — Lambang Sila Ke-5: Padi dan Kapas](https://www.kompas.com/skola/read/2021/04/28/171416069/lambang-sila-ke-5-padi-dan-kapas) · [Bobo/Grid — Makna Simbol Padi dan Kapas](https://bobo.grid.id/read/083858936/makna-simbol-padi-dan-kapas-dalam-sila-ke-5-pancasila-materi-kelas-4-sd?page=all)
 
@@ -50,14 +57,14 @@ Simbolo della quarta sila ("Kerakyatan yang dipimpin oleh hikmat kebijaksanaan d
 Fonti: [Kompas — Lambang Sila Ke-4: Kepala Banteng](https://www.kompas.com/skola/read/2021/04/28/142716669/lambang-sila-ke-4-kepala-banteng) · [Kumparan — Makna Lambang Sila Keempat](https://kumparan.com/ragam-info/mengenal-makna-lambang-sila-keempat-pancasila-lengkap-dengan-contohnya-218s9v40bKm)
 
 ### Garuda Pancasila — limiti d'uso legali
-Regolato dalla **Legge n. 24/2009** su Bandiera, Lingua e Simboli di Stato. Art. 51: l'emblema va usato in documenti statali, atti governativi, passaporti, diplomi, documenti ufficiali. Art. 57: **vietato** danneggiarlo/oltraggiarlo, e vietato **creare un emblema uguale o simile** per uso di privati, partiti, associazioni, organizzazioni o aziende. Sanzione fino a 1 anno di carcere o 100 milioni IDR di multa. Nel 2024 la registrazione del logo Garuda sulla maglia della nazionale di calcio (registrato da un privato) ha generato una controversia pubblica proprio su questo punto — dimostra quanto il tema sia sensibile anche quando l'uso è "patriottico" e non commerciale predatorio.
+Regolato dalla **Legge n. 24/2009** su Bandiera, Lingua e Simboli di Stato. Art. 51: l'emblema va usato in documenti statali, atti governativi, passaporti, diplomi, documenti ufficiali. Art. 57: **vietato** danneggiarlo/oltraggiarlo, e vietato **creare un emblema uguale o simile** per uso di privati, partiti, associazioni, organizzazioni o aziende. ⚠️ **Correzione post-review**: le sanzioni penali originarie (artt. 66-71 UU 24/2009) sono state **sostituite dal 2026 dal Kitab Undang-Undang Hukum Pidana (KUHP)** — art. 236: fino a 3 anni di carcere per vilipendio del simbolo di Stato; art. 237(b-c): multa di **categoria II**, max Rp10 milioni (non più "1 anno/100 milioni IDR"). Questo quadro sanzionatorio è **oggetto di revisione costituzionale pendente** — non definitivamente assestato. Il **divieto d'uso** (Art. 57) resta comunque in vigore indipendentemente dalla pena applicabile. Nel 2024 la registrazione del logo Garuda sulla maglia della nazionale di calcio (registrato da un privato) ha generato una controversia pubblica proprio su questo punto — dimostra quanto il tema sia sensibile anche quando l'uso è "patriottico" e non commerciale predatorio.
 
-**Implicazione diretta per il Navigator**: **non riprodurre l'emblema di Stato** (Garuda con scudo Pancasila, motto Bhinneka Tunggal Ika) in nessuna forma stilizzata riconoscibile. Ciò che resta lecito: evocare la *silhouette alare* in modo estremamente astratto (un'ala, non l'uccello completo con scudo), oppure — meglio — evitare del tutto la Garuda e usare simboli economico-civici minori (padi/kapas, tumpal, motivi tessili) che non sono protetti come emblema di Stato.
+**Implicazione diretta per il Navigator**: **non riprodurre l'emblema di Stato** (Garuda con scudo Pancasila, motto Bhinneka Tunggal Ika) in nessuna forma stilizzata riconoscibile. ⚠️ **Correzione post-review**: non esiste un *safe harbour* legislativo per una silhouette alare "abbastanza astratta" — la somiglianza (Art. 57) si valuta **concretamente caso per caso**, non per una soglia di astrazione dichiarata a priori. Linea operativa per il Navigator: **nessuna evocazione alare/Garuda in nessuna forma, senza parere legale preventivo** — si usano solo simboli economico-civici minori (padi/kapas, tumpal, motivi tessili) che non sono protetti come emblema di Stato.
 
 Fonti: [Hukumonline — Hukumnya Penggunaan Lambang Garuda Pancasila pada Produk Komersial](https://www.hukumonline.com/klinik/a/hukumnya-penggunaan-lambang-garuda-pancasila-pada-produk-komersial-lt4e9d6aaa12e80/) · [Kompas — Hal yang Dilarang Dilakukan terhadap Lambang Negara](https://nasional.kompas.com/read/2022/05/26/02300051/hal-yang-dilarang-dilakukan-terhadap-lambang-negara) · [detik — Penggunaan Lambang Negara RI dalam Undang-Undang](https://news.detik.com/berita/d-6858216/penggunaan-lambang-negara-ri-dalam-undang-undang-cek-di-sini) · [Kontroversi Logo Garuda Jersey Timnas — Jawa Pos](https://www.jawapos.com/sepak-bola/014775344/kontroversi-logo-garuda-di-jersey-timnas-indonesia-didaftarkan-personal-begini-aturan-undang-undangnya)
 
 ### Pinisi (nave a vela sud-sulawesi)
-Riconosciuta UNESCO nel 2017 come "The Art of Boatbuilding in South Sulawesi" (patrimonio culturale immateriale). Costruita dai maestri d'ascia Konjo di Ara (Bulukumba), usata storicamente da Bugis e Makassar come **nave da carico/commercio** — non da guerra né da culto. È l'icona per eccellenza del commercio marittimo arcipelagico indonesiano: rilevanza tematica diretta per un'app di classificazione economica (KBLI = attività economiche, il pinisi = veicolo storico dello scambio economico tra le isole).
+Riconosciuta UNESCO nel 2017 come "The Art of Boatbuilding in South Sulawesi" (patrimonio culturale immateriale). Costruita dai maestri d'ascia Konjo di Ara (Bulukumba), usata storicamente da Bugis e Makassar come **nave da carico/commercio**. ⚠️ *Fonte primaria mancante — non usare come base legale*: l'affermazione "non da guerra né da culto" poggia su Wikipedia + un blog di viaggio (§Fonti), non su una fonte etnostorica primaria — trattarla come caratterizzazione prevalente/divulgativa, non come fatto storico accertato in modo esaustivo. È comunque l'icona per eccellenza del commercio marittimo arcipelagico indonesiano: rilevanza tematica diretta per un'app di classificazione economica (KBLI = attività economiche, il pinisi = veicolo storico dello scambio economico tra le isole).
 
 Fonti: [Wikipedia — Pinisi](https://en.wikipedia.org/wiki/Pinisi) · [Kraken Travel — Indonesian Pinisi Boats](https://kraken.travel/story/pinisi-boats/)
 
@@ -70,7 +77,7 @@ Fonti: [Wikipedia — Wawasan Nusantara](https://en.wikipedia.org/wiki/Wawasan_N
 
 ## 3. Design system delle rupiah (serie 2022) — il miglior precedente di eleganza economico-istituzionale
 
-La serie 2022 (lanciata 17 agosto 2022, 77° anniversario indipendenza) è stata premiata dalla **International Association of Currency Affairs (IACA)** come miglior nuova serie di banconote al mondo. Tema: **"Uniting Diversity"** (Persatuan dalam Keberagaman). Fronte = eroe nazionale + fiore; retro = danza tradizionale + paesaggio/fauna naturale. Ogni taglio ha un colore dominante distintivo per riconoscibilità immediata.
+La serie 2022 (lanciata 17 agosto 2022, 77° anniversario indipendenza) è stata premiata nel 2023 dalla **International Association of Currency Affairs (IACA)** con il premio **"Best New Banknote or Banknote Series"** (formulazione precisa — non genericamente "miglior serie al mondo"). ⚠️ **Correzione post-review**: il tema **ufficiale** della serie, dichiarato da Bank Indonesia, è **"Bersatu Dalam Rupiah, Berdaulat di NKRI"** ("Uniti nella Rupiah, Sovrani nella NKRI") — "Uniting Diversity"/Persatuan dalam Keberagaman era il framing usato nella candidatura al premio IACA, non il tema ufficiale della serie. Fronte = eroe nazionale; retro = danza tradizionale + paesaggio/flora (coerente con la tabella sotto: i fiori compaiono sul **retro**, non sul fronte). Ogni taglio ha un colore dominante distintivo per riconoscibilità immediata.
 
 **Tabella completa delle 7 denominazioni** (fronte: eroe; retro: danza — paesaggio/flora):
 
@@ -97,8 +104,8 @@ Fonti: [Currency Affairs / IACA — Indonesia 2022 Rupiah Banknote Series](https
 ### Batik — motivi e restrizioni (Giava centrale, "batik larangan")
 Il **batik** indonesiano è Patrimonio Culturale Immateriale UNESCO dal **2009** (tecnica, simbolismo, ruolo rituale dalla nascita alla morte).
 
-- **Kawung**: cerchi geometrici che richiamano la sezione della palma da zucchero (aren), XIII secolo. Simboleggia autocontrollo interiore, saggezza, purezza. Storicamente riservato alle famiglie reali; oggi ampiamente indossato/usato senza le stesse restrizioni formali del parang. **Rischio: basso-medio** — resta percepito come "nobile" ma non genera controversie nell'uso quotidiano/commerciale moderato.
-- **Parang (in particolare Parang Rusak)**: dal 1785 (Sultano Hamengku Buwono I) è il **primo motivo formalmente vietato** ai non reali nelle corti di Yogyakarta e Surakarta; un regolamento coloniale del 1927 ("Rijksblad van Djokjakarta") disciplinava chi potesse indossare quali motivi. Il Parang Rusak Barong (>10cm) resta riservato a Re e Principe ereditario nelle corti tuttora esistenti. **Rischio: alto** — va evitato o usato solo in forma estremamente astratta/irriconoscibile, mai come pattern-a-nome "parang".
+- **Kawung**: cerchi geometrici che richiamano la sezione della palma da zucchero (aren), XIII secolo. Simboleggia autocontrollo interiore, saggezza, purezza. Storicamente riservato alle famiglie reali. ⚠️ **Correzione post-review**: NON è "ormai di uso comune/sicuro" — il **Kraton di Yogyakarta lo elenca tuttora tra i batik larangan** (motivi vietati), riservato all'uso per i Sentana Dalem (i parenti stretti del Sultano). **Rischio: medio** (declassato da "basso-medio") — usabile **solo** come griglia geometrica astratta di cerchi, mai come pattern tessile riconoscibile o nominato "kawung".
+- **Parang (in particolare Parang Rusak)**: ⚠️ **Correzione post-review**: il divieto del 1785 (Sultano Hamengku Buwono I, "primo motivo formalmente vietato" ai non reali) riguarda **specificamente il Kraton di Yogyakarta** — non va generalizzato al Kraton di Surakarta, che ha una tradizione/regolamentazione distinta e non condivide la stessa fonte storica di quel divieto. Il regolamento coloniale del 1927 ("Rijksblad van Djokjakarta") disciplinava comunque chi potesse indossare quali motivi nel contesto giavanese. Il Parang Rusak Barong (>10cm) resta riservato a Re e Principe ereditario nella corte di Yogyakarta tuttora esistente. **Rischio: alto** — motivo da **evitare del tutto**, mai come pattern-a-nome "parang" in nessuna forma, nemmeno astratta.
 - **Mega Mendung**: nuvole a gradazioni concentriche, Cirebon, influenza cinese (le nuvole rappresentano nirvana/trascendenza nella cultura cinese, poi reinterpretate localmente). Significa pazienza, calma, chiarezza mentale in mezzo alla tempesta. Anch'esso storicamente riservato ai re, **oggi liberamente indossato da tutti**. Metafora particolarmente calzante per un navigatore che porta ordine/calma dentro 1.559 codici (la "tempesta" burocratica). **Rischio: basso**, se astratto (non riprodurre il repeat-pattern tessile riconoscibile, ma solo la logica ad archi concentrici).
 - **Truntum**: create da una consorte reale di Solo, simbolo di amore eterno/speranza, portato dai genitori degli sposi ai matrimoni. Poco pertinente al registro economico-istituzionale — da scartare per il Navigator.
 
@@ -109,12 +116,12 @@ Fonti: [UNESCO ICH — Indonesian Batik](https://ich.unesco.org/en/RL/indonesian
 ### Songket e Tenun Ikat
 **Songket**: tessuto broccato a mano (seta/cotone) con fili d'oro/argento, motivi che evocano ricchezza e grandezza, tradizionalmente per cerimonie reali/matrimoni (Sumatra, Bali, Kalimantan). Il richiamo "oro" è tematicamente coerente con "Indonesia Emas", ma l'uso di *fili metallici dorati intrecciati* come motivo digitale rischia di scivolare nel kitsch se reso troppo letterale (oro lucido, effetto "gioiello").
 
-**Tenun Ikat**: tessuto artigianale su telaio tradizionale, diffuso nelle isole esterne (NTT/Flores/Sumba/Sumatra), pattern geometrici ottenuti per resist-dyeing dei fili *prima* della tessitura. A differenza del batik giavanese, l'ikat **non ha una storia di riserva regale/di corte** paragonabile al parang — è tessuto "del popolo" (rakyat) delle isole periferiche. Questo lo rende culturalmente più sicuro da evocare in un contesto istituzionale nazionale (non regionale/dinastico), e la sua logica intrinsecamente geometrica (ordito/trama) si presta bene a diventare un pattern UI (griglia, weave a bassa opacità).
+**Tenun Ikat**: tessuto artigianale su telaio tradizionale, diffuso nelle isole esterne (NTT/Flores/Sumba/Sumatra), pattern geometrici ottenuti per resist-dyeing dei fili *prima* della tessitura. A differenza del batik giavanese, l'ikat **non ha una storia di riserva regale/di corte** paragonabile al parang — è descritto come tessuto "del popolo" (rakyat) delle isole periferiche. ⚠️ *Fonte primaria mancante — non usare come base legale*: questa caratterizzazione poggia su Wikipedia + un blog di moda (§Fonti), non su una fonte etnostorica/legale primaria — trattarla come descrizione divulgativa plausibile, non come fatto accertato in modo esaustivo. Resta comunque culturalmente più sicuro da evocare in un contesto istituzionale nazionale (non regionale/dinastico) rispetto al batik giavanese, e la sua logica intrinsecamente geometrica (ordito/trama) si presta bene a diventare un pattern UI (griglia, weave a bassa opacità).
 
 Fonti: [Wikipedia — Songket](https://en.wikipedia.org/wiki/Songket) · [Wikipedia — Tenun](https://en.wikipedia.org/wiki/Tenun) · [Fromnusa — Indonesian Fashion: How Heritage Textiles Are Shaping Modern Style](https://fromnusa.com/blogs/news/indonesian-fashion-heritage-textiles-modern-style)
 
 ### Tumpal — il motivo più "sicuro" in assoluto
-Bordo triangolare (fila di triangoli, detto anche "pucuk rebung"/germoglio di bambù o "lawi ayam"), di origine pre-induista/austronesiana, diffuso in **tutto** l'arcipelago (non riservato a una corte o regione), simboleggia crescita, fertilità, la montagna sacra (Meru), forza vitale. Compare come bordo su kain/sarong in praticamente ogni tradizione tessile indonesiana — è il motivo più trasversale e meno "di proprietà" di un singolo gruppo. Perfetto come elemento geometrico puro (divisori, bordi di card, rule tra sezioni).
+Bordo triangolare (fila di triangoli, detto anche "pucuk rebung"/germoglio di bambù o "lawi ayam"), di origine pre-induista/austronesiana, diffuso in **tutto** l'arcipelago (non riservato a una corte o regione), simboleggia crescita, fertilità, la montagna sacra (Meru), forza vitale. Compare come bordo su kain/sarong in praticamente ogni tradizione tessile indonesiana — descritto come il motivo più trasversale e meno "di proprietà" di un singolo gruppo. ⚠️ *Fonte primaria mancante — non usare come base legale*: l'affermazione "pan-indonesiano/più sicuro" poggia su un paper Academia.edu + un glossario commerciale (§Fonti), non su un censimento etnografico esaustivo — trattarla come caratterizzazione plausibile e ampiamente condivisa, non come fatto verificato in ogni tradizione regionale. Resta comunque, sulla base di queste fonti, un buon candidato come elemento geometrico puro (divisori, bordi di card, rule tra sezioni).
 
 Fonti: [Academia.edu — The Tumpal Border: Histories and Interpretations](https://www.academia.edu/118097974/The_Tumpal_Border_Histories_and_Interpretations) · [Mandarin Mansion Glossary — Tumpal](https://www.mandarinmansion.com/glossary/tumpal)
 
@@ -150,25 +157,25 @@ Fonti: [Tandfonline — Sacred and profane kriya in the island of Bali](https://
 
 Criterio: pertinenza tematica (economia/prosperità/nazione) × sicurezza culturale (non regale/non sacro/non protetto per legge) × traducibilità in decorativo sobrio (line-art / alpha bassa / watermark, mai pattern a piena saturazione).
 
-1. **Padi & Kapas (riso e cotone, sila kelima Pancasila)**
+1. **Padi & Kapas (riso e cotone, sila kelima Pancasila)** — **Rischio: basso** (non zero: iconografia ufficiale Pancasila, rischio residuo di alone quasi-governativo davanti a BKPM)
    *Significato*: cibo e vestiario, cioè la giustizia sociale/economica come fondamento della Repubblica.
    *Perché è adatto/sicuro*: simbolo civico, non regale né sacro; uso comune e non controverso; è tematicamente il simbolo *più* pertinente possibile a un'app che classifica l'attività economica nazionale.
-   *Come renderlo sobrio*: un rametto di riso stilizzato in line-art monocromatica (1px), usato come piccolo ornamento d'angolo in intestazioni/report PDF, o come motivo a bassissima opacità (3-5%) nel footer/watermark — mai a colori, mai come illustrazione centrale.
+   *Come renderlo sobrio*: un rametto di riso stilizzato in line-art monocromatica (1px), usato come piccolo ornamento d'angolo in intestazioni/report PDF, o come motivo a bassissima opacità (3-5%) nel footer/watermark — mai a colori, mai come illustrazione centrale, **mai in forma di stemma/scudo**.
 
 2. **Tumpal (bordo triangolare geometrico)**
    *Significato*: crescita, fertilità, montagna sacra/forza vitale — motivo pan-indonesiano, non attribuibile a una singola corte o regione.
    *Perché è adatto/sicuro*: il più "neutro" di tutti i motivi tessili indonesiani — nessuna storia di riserva regale, presente in quasi ogni tradizione tessile dell'arcipelago.
    *Come renderlo sobrio*: fila sottile di triangoli come rule/divisore tra sezioni di contenuto (es. tra categorie KBLI), 1px stroke, nessun riempimento colorato.
 
-3. **Estetica guilloché "in stile rupiah 2022"** (non un motivo, ma una texture/registro)
-   *Significato*: il precedente istituzionale più autorevole di "eleganza economica indonesiana" (premiato IACA).
-   *Perché è adatto/sicuro*: non è un simbolo culturale specifico da appropriarsi, ma un **linguaggio tecnico** (hairline engraving, micro-pattern geometrico regolare) — zero rischio culturale, massima resa "documento ufficiale".
-   *Come renderlo sobrio*: micro-pattern di linee sottilissime e regolari (non i motivi di sicurezza reali, che sono protetti) come sfondo di card/header, opacità 4-8%, monocromatico sul colore di superficie.
+3. **Estetica guilloché "in stile rupiah 2022"** (non un motivo, ma una texture/registro) — **Rischio: minimo, non zero**
+   *Significato*: il precedente istituzionale più autorevole di "eleganza economica indonesiana" (premio IACA 2023 "Best New Banknote or Banknote Series").
+   *Perché è adatto*: non è un simbolo culturale specifico da appropriarsi, ma un **linguaggio tecnico** (hairline engraving, micro-pattern geometrico regolare) — rischio culturale minimo, massima resa "documento ufficiale". ⚠️ *Fonte primaria mancante — non usare come base legale*: l'assenza di rischio sul fronte "sicurezza commerciale" (imitazione di elementi da banconota) non è stata verificata contro una fonte legale primaria — trattare come giudizio prudenziale, non come conclusione legale accertata.
+   *Come renderlo sobrio*: micro-pattern di linee sottilissime e regolari **astratto**, mai una composizione che imiti da vicino il layout/i motivi di sicurezza reali di una banconota (i motivi reali sono protetti, e un'imitazione troppo fedele rischia un'associazione indebita con la valuta ufficiale) — usato come sfondo di card/header, opacità 4-8%, monocromatico sul colore di superficie.
 
-4. **Kawung (cerchi geometrici, sezione di palma da zucchero)**
-   *Significato*: autocontrollo, saggezza, purezza; storicamente regale ma oggi di uso comune.
-   *Perché è adatto/sicuro*: rischio medio-basso (era "larangan" ma non ha lo stesso peso simbolico/legale del parang oggi); la sua struttura a cerchi in griglia offset è visivamente affine a una "matrice di codici".
-   *Come renderlo sobrio*: pattern di cerchi concentrici minuscoli, alpha 3-5%, solo come texture di sfondo per pannelli vuoti/empty-state — mai come stampa a piena intensità che lo renda riconoscibile come "batik".
+4. **Kawung (cerchi geometrici, sezione di palma da zucchero)** — **Rischio: medio** (non basso: il Kraton Yogyakarta lo elenca tuttora tra i batik larangan)
+   *Significato*: autocontrollo, saggezza, purezza; storicamente riservato alle famiglie reali — a Yogyakarta l'uso per i Sentana Dalem resta tuttora regolamentato.
+   *Perché è adatto solo con cautela*: NON è un motivo "di uso comune non controverso"; la sua struttura a cerchi in griglia offset è visivamente affine a una "matrice di codici", ma va ridotto alla sola logica geometrica astratta.
+   *Come renderlo sobrio*: **solo** griglia di cerchi concentrici minuscoli come pura geometria, alpha 3-5%, texture di sfondo per pannelli vuoti/empty-state — mai come stampa a piena intensità che lo renda riconoscibile come "kawung"/"batik".
 
 5. **Tenun ikat (intreccio geometrico astratto)**
    *Significato*: tessuto "del popolo" delle isole esterne (NTT, Sumatra, ecc.), nessuna esclusiva di corte.
@@ -187,20 +194,49 @@ Criterio: pertinenza tematica (economia/prosperità/nazione) × sicurezza cultur
 
 8. **Arco dorato ascendente 1945→2045** (device grafico astratto, non il logo ufficiale)
    *Significato*: eco del registro visivo "Indonesia Emas 2045" — il secolo dell'indipendenza come traiettoria di crescita.
-   *Perché è adatto/sicuro*: è un *device* generico (linea/arco con gradiente oro), non il logo protetto della campagna Bappenas — comunica "stiamo nello stesso racconto nazionale" senza appropriarsi del marchio governativo.
-   *Come renderlo sobrio*: sottile linea di progresso/accent-bar con gradiente oro tenue, usabile in un grafico o in una progress-bar, mai come badge "Indonesia Emas 2045" apposto sull'interfaccia.
+   *Perché è adatto/sicuro*: è un *device* generico (linea/arco), non il logo protetto della campagna Bappenas — comunica "stiamo nello stesso racconto nazionale" senza appropriarsi del marchio governativo.
+   *Come renderlo sobrio*: ⚠️ **Correzione post-review (coerenza con §6 anti-pattern #2)**: **linea sottile in oro spento/tenue a tinta piatta**, MAI gradiente dorato (il gradiente pesante è esplicitamente l'anti-pattern "kitsch dorato") — usabile come accent-bar o rule in un grafico/progress-bar, mai come badge "Indonesia Emas 2045" apposto sull'interfaccia.
 
 9. **Mega Mendung astratto (arco di nuvole concentriche, non il repeat-pattern tessile)**
    *Significato*: calma dentro la tempesta — metafora diretta per "un navigatore che porta ordine dentro 1.559 codici".
    *Perché è adatto/sicuro*: oggi di uso comune (non più riservato ai re), ma da tenere **ben astratto** per non scivolare in "stampa batik decorativa".
    *Come renderlo sobrio*: 2-3 archi concentrici stilizzati (non il repeat a griglia) come piccolo elemento grafico isolato, ad es. accanto a un messaggio di stato "tutto risolto"/nessun errore — non come sfondo esteso.
 
-10. **Fregio geometrico ispirato ai rilievi di Borobudur** (bassa priorità, usare con cautela)
+10. **Fregio geometrico ispirato ai rilievi di Borobudur** (bassa priorità — **cautela ALTA**)
     *Significato*: profondità civilizzazionale, ampiamente usata in contesti istituzionali indonesiani (francobolli, passaporti).
-    *Perché è "adatto con cautela"*: patrimonio UNESCO, non regale né settario — ma il rischio di scivolare nel cliché "tempio" è alto se reso pittoricamente.
-    *Come renderlo sobrio*: **solo** la fascia ornamentale geometrica ripetuta (meandro/loto astratto), mai una scena narrativa/pittorica del tempio — e solo se serve davvero un tocco "profondità storica" in una sezione editoriale, non nell'app quotidiana.
+    *Perché richiede cautela ALTA*: ⚠️ **Correzione post-review**: Borobudur **non è "non settario"** — è un **monumento buddhista** (patrimonio UNESCO), un simbolo religioso specifico, non un'icona civica neutra come tumpal o padi/kapas. Il rischio non è solo estetico ("cliché tempio") ma di **appropriazione di un simbolo religioso** in un contesto istituzionale/economico laico con audience anche BKPM — va trattato come candidato marginale, non come opzione a bassa frizione.
+    *Come renderlo sobrio, se comunque usato*: **solo** la fascia ornamentale geometrica ripetuta (meandro/loto astratto, senza alcun riferimento identificabile al tempio o all'iconografia buddhista), mai una scena narrativa/pittorica — e solo per materiale editoriale occasionale con revisione dedicata, mai nell'app quotidiana.
 
-**Raccomandazione d'insieme**: per un tool funzionale (tabella/ricerca di 1.559 codici), i motivi #1-3 (padi & kapas, tumpal, guilloché) sono i più sicuri da implementare per primi — pertinenza economica diretta, zero rischio culturale, e già testati come registro dal precedente rupiah. I motivi #6-8 (arcipelago, pinisi, arco dorato) sono ottimi per schermate "About"/onboarding dove serve raccontare la missione. I motivi #4-5 e #9 vanno bene come texture di sfondo a bassissima intensità. Il #10 è opzionale/da valutare solo per materiale editoriale, non per l'interfaccia primaria.
+**Raccomandazione d'insieme** (rivista post-review, coerenza risk-rating): per un tool funzionale (tabella/ricerca di 1.559 codici), i motivi #1-3 (padi & kapas, tumpal, guilloché) sono i più sicuri da implementare per primi — pertinenza economica diretta, **rischio culturale basso/minimo (mai zero)**, e già testati come registro dal precedente rupiah. I motivi #6-8 (arcipelago, pinisi, arco dorato — linea piatta in oro spento, mai gradiente) sono ottimi per schermate "About"/onboarding dove serve raccontare la missione. Il #5 (tenun ikat) e il #9 (Mega Mendung astratto) vanno bene come texture di sfondo a bassissima intensità. Il #4 (kawung) è **rischio medio**: solo come griglia geometrica astratta, mai come pattern tessile riconoscibile, data la sua permanenza tra i batik larangan del Kraton Yogyakarta. Il #10 (Borobudur) è **cautela ALTA** (simbolo religioso, non icona civica neutra) — opzionale, solo per materiale editoriale con revisione dedicata, mai per l'interfaccia primaria. Il Parang **non compare in questa lista candidati** (non lo era già nella stesura originale): va evitato del tutto (§4, §6).
+
+---
+
+## Adversarial review
+
+**Seat**: Codex GPT-5.6-sol (`xhigh` effort), 2026-08-11 — mandato di refutazione (generator≠grader: Codex non è l'autore di questo documento).
+**Verdetto**: **6 REFUTED / 4 WEAKEN / 4 HOLDS** su 14 claim esaminati.
+
+**Correzioni applicate** (11, tutte inline nel corpo sopra):
+1. REFUTED — Sanzione Garuda (artt. 66-71 UU 24/2009) obsoleta: sostituita dal 2026 dal KUHP (art. 236 fino a 3 anni per vilipendio; art. 237(b-c) multa categoria II, max Rp10 milioni), revisione costituzionale pendente. Il divieto d'uso (Art. 57) resta invariato.
+2. REFUTED — Rimossa l'affermazione di safe-harbour "silhouette alare estremamente astratta resta lecita": non esiste safe harbour legislativo, la somiglianza si valuta concretamente caso per caso. Il progetto usa solo l'ARCO, mai forme aviarie.
+3. WEAKEN — Padi & kapas: da "zero rischio" a "**basso** rischio" — iconografia ufficiale Pancasila, rischio residuo di alone quasi-governativo davanti a BKPM; mai in forma di stemma/scudo.
+4. WEAKEN — Parang: il divieto 1785 (HB I) è specifico del Kraton di **Yogyakarta**, non generalizzato a Surakarta; resta comunque motivo da **evitare del tutto**.
+5. HOLDS (parziale) — "Migliore serie al mondo" → formulazione precisa: premio IACA 2023 "**Best New Banknote or Banknote Series**".
+6. REFUTED — Tema ufficiale BI serie 2022 = **"Bersatu Dalam Rupiah, Berdaulat di NKRI"**; "Uniting Diversity" era il framing della candidatura IACA, non il tema ufficiale. Corretta anche l'incoerenza fiori fronte/retro (i fiori sono sul **retro**, coerente con la tabella).
+7. WEAKEN — Kawung declassato a **rischio medio**: il Kraton Yogyakarta lo elenca tuttora tra i batik larangan (Sentana Dalem); usabile solo come griglia geometrica astratta, mai come pattern tessile riconoscibile.
+8. REFUTED — Separati **Visi Indonesia 2045** (Bappenas 2019, "Berdaulat, Maju, Adil dan Makmur", 4 pilastri) e **RPJPN 2025-2045** (UU 59/2024, "NKRI yang Bersatu, Berdaulat, Maju, dan Berkelanjutan", schema 8/17/45) — due framework distinti, non vanno fusi.
+9. REFUTED — Borobudur **non** è "non settario": è un monumento buddhista (UNESCO) — declassato a **cautela ALTA** (simbolo religioso), candidato marginale.
+10. REFUTED — Eliminate tutte le etichette "zero rischio" residue (minimo = basso/minimo, mai zero); allineate le note su kawung/guilloché/arco alla sezione anti-pattern (arco = linea sottile oro spento a tinta piatta, MAI gradiente dorato; guilloché astratto, MAI composizioni che imitino da vicino una banconota reale).
+11. WEAKEN — Marcati esplicitamente **"fonte primaria mancante — non usare come base legale"** i claim con fonti deboli (Wikipedia/Academia.edu/blog): tumpal pan-indonesiano/più sicuro, ikat "del popolo", pinisi non-da-guerra/culto, proprietà del claim/logo Bappenas, assenza di rischio "sicurezza commerciale" del guilloché.
+
+**Claim che restano flaggati "fonte primaria mancante"** (non rimossi, solo segnalati inline — punto 11 sopra):
+- Tumpal come motivo "pan-indonesiano" e il più sicuro in assoluto (§4, Tumpal).
+- Tenun ikat come tessuto "del popolo" senza storia di riserva regale (§4, Songket e Tenun Ikat).
+- Pinisi storicamente "non da guerra né da culto" (§2, Pinisi).
+- Proprietà/status IP del logo e claim "Indonesia Emas 2045" attribuita a Bappenas (§1, Nota d'uso).
+- Assenza di rischio "sicurezza commerciale" dell'estetica guilloché in stile rupiah (candidato #3).
+
+Le refutazioni sopra **non invalidano l'implementazione D4 già spedita**: nessuna forma aviaria in nessun asset, l'arco è reso come linea sottile (non gradiente), il guilloché è astratto (non una composizione da banconota), e il kawung non è usato.
 
 ---
 
