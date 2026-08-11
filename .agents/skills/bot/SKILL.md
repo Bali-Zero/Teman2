@@ -689,6 +689,44 @@ RuntimeError(...)` before a message is ever composed. Its docstring states it as
   **Zero abstains, ever.** So the discard is a LATENT defect: real in the code, never yet fired
   in production. Current state is healthy — week of 19 July: **0 generation failures on 13
   inbound** (small sample, stated as such).
+
+  > ### ⛔ THE TWO SENTENCES ABOVE ARE NO LONGER TRUE — "zero abstains, ever" DIED THE NEXT DAY
+  >
+  > **Re-classified 2026-08-11 over the whole history, not just up to 07-27.** This bullet was
+  > written on 2026-07-27. The team beta was **07-28**. The discard is not latent: it **fired
+  > six times in production that morning**, threads 249 / 250 / 252 / 255 / 259 / 263, all
+  > between 02:02 and 02:29Z, every one of them
+  > `wa-inbox bot: RAG abstained for thread <n> (reason='no_relevant_context')`. A seventh row
+  > the same morning is thread 270, `answer empty after workflow-scaffold strip`, which the same
+  > `raise` discards by the same route.
+  >
+  > **What the asker experienced, measured rather than inferred:** each of the six threads DID
+  > get an outbound eventually — at **+11, +12, +16, +23, +32 and +38 minutes**. Not permanent
+  > silence, so do not upgrade this to "clients were abandoned". But nothing arrived while the
+  > retry ladder burned, and whether those later replies answered the abstained question or a
+  > subsequent one in the thread is NOT established here — do not assert either.
+  >
+  > **The cost is new information, and it is the part the 07-27 analysis could not have had.**
+  > That analysis correctly established that the 44 `not enabled in v1` give-ups were CHEAP —
+  > `is_bot_autoreply_enabled()` is the first statement of `generate_bot_reply`, so those five
+  > attempts were no-ops. **Abstain is the opposite case.** The `raise` sits at
+  > `wa_inbox_bot.py:357`, _after_ the `/api/agentic-rag/query` round-trip inside the P9
+  > semaphore — so every retry is a FULL RAG call. Six abstains plus one empty-after-strip, five
+  > attempts each: **~35 complete RAG round-trips that could not have produced anything**, on the
+  > single day this bot has ever carried real load, inside the window the Gemini prepay was being
+  > drained. The retry ladder cannot rescue an abstain the way it can rescue a flag flipped
+  > mid-backoff: the same query against the same KB abstains again.
+  >
+  > **This does NOT reopen the ladder on its own.** Skipping retries or suppressing the apology
+  > is still forbidden below without its own evidence, and the send-or-stay-silent half is still
+  > a Legge-5 call for Zero. What changes is that the call is no longer being made about a
+  > hypothetical: it has fired, on real people, and it costs ~5 full generations per occurrence.
+  >
+  > _And the lesson is the one this very bullet already taught, one layer up: its own method note
+  > says two disagreeing probes are what caught a wrong number. Here nothing disagreed — the
+  > classification was simply run before the event it would have caught. A measurement is stamped
+  > with the day it was taken, and this file did not carry that stamp where it mattered._
+
   _Method note: the first classifying query returned "0 abstains" AND a second returned "0
   failures per week", which contradicted a count of 52. The bug was mine — `split_part(error,':')`
   meant the stored value has a suffix, so `error = '<sentinel>'` matched nothing. Two of my own
