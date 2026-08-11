@@ -117,6 +117,13 @@ export function LatestNews({
                 boxShadow: `var(--rp-card-shadow, 0 10px 40px rgba(0,0,0,0.25), 0 0 30px color-mix(in srgb, ${accent} 15%, transparent))`,
               }}
             >
+              {/* P0.1 fix: outer div (h-44 md:h-36 relative overflow-hidden) provides the
+                  sizing context. containerClassName="h-full w-full" makes BZImage's internal
+                  wrapper fill that box fully — its own `relative` is then valid and
+                  next/image fill resolves against the real pixel height, not 0.
+                  Previously "absolute inset-0" conflicted with BZImage's forced `relative`,
+                  collapsing the inner box to 0 height. "h-full w-full" avoids that conflict.
+                  BZImage is kept (not replaced) to preserve the PR #2511 onError fallback. */}
               <div className="h-44 md:h-36 relative overflow-hidden">
                 {cover ? (
                   <BZImage
@@ -125,7 +132,7 @@ export function LatestNews({
                     fill
                     sizes="(max-width: 768px) 100vw, 50vw"
                     className="object-cover transition-opacity duration-300"
-                    containerClassName="absolute inset-0"
+                    containerClassName="h-full w-full"
                     aria-hidden={true}
                   />
                 ) : (
@@ -136,6 +143,7 @@ export function LatestNews({
                     }}
                   />
                 )}
+                {/* Bottom scrim for text legibility */}
                 <div
                   className="absolute inset-0"
                   style={{
@@ -143,15 +151,16 @@ export function LatestNews({
                       "linear-gradient(0deg, rgba(0,0,0,0.55) 0%, transparent 60%)",
                   }}
                 />
+                {/* P1 fix: solid navy bg (≈8:1 on any photo) replaces translucent color-mix
+                    which measured 1.91–3.31:1 for white 11px text. */}
                 <div
-                  className="absolute top-3 left-3 inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full"
+                  className="absolute top-3 left-3 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full"
                   style={{
-                    background: `color-mix(in srgb, ${accent} 32%, rgba(0,0,0,0.55))`,
-                    border: `1px solid color-mix(in srgb, ${accent} 55%, transparent)`,
+                    background: "rgba(30,56,99,0.88)",
+                    border: "1px solid rgba(255,255,255,0.18)",
                     color: "#ffffff",
                     backdropFilter: "blur(8px)",
                     WebkitBackdropFilter: "blur(8px)",
-                    boxShadow: `0 0 12px color-mix(in srgb, ${accent} 40%, transparent)`,
                   }}
                 >
                   <span
@@ -209,15 +218,16 @@ export function LatestNews({
 
 function MetaRow({ date, readTime }: { date: string; readTime: string }) {
   return (
+    // P2: 12px floor (was 10px). P4: whitespace-nowrap prevents "4 min" wrapping to two lines.
     <div
-      className="flex items-center gap-3 text-[10px]"
+      className="flex items-center gap-3 text-[12px] flex-wrap"
       style={{ color: "var(--text-tertiary)" }}
     >
-      <span className="inline-flex items-center gap-1">
+      <span className="inline-flex items-center gap-1 whitespace-nowrap">
         <MetaIcon Icon={Calendar} /> {date}
       </span>
-      <span>·</span>
-      <span className="inline-flex items-center gap-1">
+      <span aria-hidden>·</span>
+      <span className="inline-flex items-center gap-1 whitespace-nowrap">
         <MetaIcon Icon={Clock} /> {readTime}
       </span>
     </div>

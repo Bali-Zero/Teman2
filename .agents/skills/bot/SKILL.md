@@ -22,6 +22,147 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 
 ## 1. LIVE STATE (last update 2026-08-11 — keep current)
 
+- **📚 HALF THE CURATED GROUNDING STORE IS SERVED, UNREVIEWABLE, AND CANNOT BE WITHDRAWN
+  (2026-08-11).** The `curated_qa` Qdrant collection holds **808 points**. Exactly **396** map to a
+  row in `apps/backend-rag/data/curated_qa/*.jsonl` (verified by recomputing
+  `_stable_point_id(question, domain)` for every row — all 396 present, none missing). The other
+  **412 map to nothing on disk**: all `domain=visa`, all `source_date` in 2026-07, **61 of them in
+  the verbatim class `JELAS`**. They carry none of the Phase-0 payload fields (`batch_id`,
+  `active`, `invalidated_at`, `verbatim_eligible`, `client_specific`), and no manifest references
+  them — `curated_qa_drift_report.py` reports `21 files, in_sync=21, zero source_missing`, so the
+  disk↔manifest view is clean and blind to all of this.
+  - **They ARE served.** `orchestrator_core._inject_curated_qa_grounding` filters with
+    `metadata.get("active", True) is False` — missing `active` means active, deliberately ("a
+    pre-Phase-0 point written before this rail existed — treated as active, not silently
+    dropped"). Every one of the 412 lacks the field.
+  - **They cannot be withdrawn.** `curated_qa_regen_trigger.quarantine_row` takes a corpus ROW and
+    derives its target via `_stable_point_id`. A point with no row on disk can never be selected,
+    so a regulatory delta can invalidate the 396 tracked answers and leave anything untracked
+    serving the superseded fact indefinitely.
+  - **Sampled, not assumed**: the 9 orphans that assert a land-tenure duration read substantively
+    CORRECT (E33/Second Home, SHM-Sarusun, USD 1M threshold). This is a governance gap, not a
+    proven wrong answer — do NOT sell it as the cause of the beta's Hak Pakai 65 / HGB 70 error.
+  - **REFUTED, so nobody re-derives it**: the elegant hypothesis that the 412 are id-derivation
+    twins of the current rows (the `domain:` prefix was folded into the digest later — the
+    FATAL-1 note in `_stable_point_id`) is FALSE. Recomputing all 396 rows under three older
+    derivations matched **zero** live points. They are different questions, not old copies.
+  - **`faq_committed` is `false` on all 21 manifests**, so the exact-match FAQ sink — the one that
+    bypasses the abstain gate — carries none of this corpus. The abstain-bypass exposure is
+    currently theoretical; the grounding exposure is live.
+  - Countable from now on: `scripts/curated_qa_serving_audit.py` (pure reporter, never writes).
+
+- **🕳️ THE WEBHOOK ROUTER'S FALLBACK BRANCH WAS DEAD FOR ~5 MONTHS, AND NOTHING NOTICED BECAUSE
+  NOTHING EVER RAN IT (2026-08-11, PR #4081).** `whatsapp_chat.process_whatsapp_message` answers
+  from OpenClaw when it responds and from the RAG orchestrator when it does not. The second path
+  could not execute at all, for two independent reasons, both live on `origin/main`:
+  (a) `whatsapp_persona.build_system_prompt` had its `time_of_day` parameter renamed
+  `_time_of_day` on **2026-03-17**, against a call site written **2026-02-07** that still passed
+  `time_of_day=` → `TypeError`; (b) `get_orchestrator(request)` was called **without `await`**
+  though it is `async def` → `'coroutine' object has no attribute 'process_query'`. Both land in
+  the same `except Exception`, so the client would have received `"Ops, errore tecnico 😬"`
+  instead of the RAG answer.
+  - **Bounded — do NOT retell this as an outage.** That error reply is persisted to
+    `conversation_messages`, and it appears **0 times against 154 outbound WhatsApp messages in
+    July**. The branch has never actually been taken and no client was hit. It was a hole in the
+    net under "OpenClaw did not answer", not a live failure.
+  - **How it was found, because the method is the transferable part**: not by reading, but by
+    driving. A mutation run on a new formatting cure showed the fallback call site could be
+    DELETED with nothing turning red — the corpus only ever drove the OpenClaw branch. Writing the
+    test that reaches the other branch is what made both `TypeError`s appear. A keyword mismatch
+    and a missing `await` are invisible to imports, to ruff, and to every test that drives only
+    the sibling branch.
+  - Guard now armed: `test_the_persona_builder_accepts_every_keyword_the_router_passes` AST-reads
+    the router's ACTUAL keywords and binds them against the signature, so the next rename on
+    either side fails in CI. Class audit for other un-awaited `async def` calls across routers /
+    deps / integrations / channels: 12 candidates, **all 12 verified false positives** — no second
+    instance, bounded to what that heuristic can see.
+
+- **🎠 THE BIGGEST ERROR CLASS IN THE BOT'S LEDGER IS BY DESIGN AND IS NOT CLIENT-FACING — check
+  before treating it as the top problem (2026-08-11).** `meta_inbox_messages.error` ranks:
+  `24h_window_closed` **84** · `superseded_by_coalescing` 62 · `bot_generate_failed_after_5_attempts`
+  60 · 2 others. The 84 look alarming and are not client questions at all: 4 distinct threads, all
+  bodies exactly 89 chars, prefix `"Carousel pronto: https://drive.google.com/"` — they are **WR2
+  carousel-ready notifications**, and `wr2_html_render_apply.py` says so verbatim next to the send:
+  _"WA above stays best-effort (24h-window may be closed for months); THIS is the delivery leg the
+  human actually sees"_ (the Telegram P0 + review-queue entry). Thread 30 retried 45 times over 49
+  days — exactly the "closed for months" the comment predicts.
+  - The real (small) defect is the **ledger's readability**, same shape already recorded for the
+    give-up sentinel: a deliberately best-effort leg and a genuine failure are spelled identically,
+    so the error ranking mis-ranks the bot's problems for whoever reads it next.
+
+- **📊 WHAT CLIENTS ACTUALLY ASK — 993 REAL TEAM CONVERSATIONS, AND THE RANKING CORRECTS OUR OWN
+  PROBING (2026-08-11).** Zero handed the session a Case Captain intelligence pack derived from the
+  team's WhatsApp history (`~/Desktop/WA-Case-Captain-Intelligence-2026-08-11`, local, `0600`,
+  read-only — **not in the repo, and it must not be**). Verified before use, not believed: 14/14
+  sha256 in its manifest match, **zero client PII** across every md/json (pattern-scanned), the
+  sqlite carries **no raw-chat column**, and all **7 acceptance gates hold with 0 violations**
+  (including "0 assets simultaneously generator- and grader-eligible"). Of 12,270 candidates,
+  **0 are production-eligible, 0 authorise `send_whatsapp`, 0 a CRM mutation, 0 an automated HR
+  action** — the whole registry is review-only by construction.
+  - **The client-topic ranking (`DOMAIN`, out of 3,439 classified):** IMMIGRATION **709** ·
+    FOLLOW_UP_STATUS **550** · DOCUMENT_OPERATIONS **533** · PAYMENTS **392** · CORPORATE **346** ·
+    PRICING_SALES **314** · COMPLAINT_RETENTION 172 · TAX_ACCOUNTING 162 · PROPERTY 139.
+  - **It found a hole in MY measurement, which is the point of having it.** Every probe campaign
+    this session covered immigration / corporate / tax / property / KBLI / compliance and
+    **zero** document-operations and **zero** payments — 27% of what clients actually ask, never
+    measured, and invisible until the real distribution named it. A probe set built from what the
+    engineer finds interesting will mis-rank the product every time.
+  - **896 candidates are `CURATED_QA_STAGING`**, every one of them flagged
+    `synthetic_rewrite_required` AND `independent_review_required` (896/896 both). That is the
+    lane that could close the recall gap logged below — but nothing here is ingestible as-is, and
+    the safety claim the design rests on is REAL and already armed in code:
+    `apps/backend-rag/scripts/curated_qa_source_allowlist.py` carries
+    `FORBIDDEN_SOURCE_MARKERS = ("meta_inbox_messages",)` with case-insensitive guilt tests.
+  - **⚠️ THREE OF THE PACK'S 15 CITED IMPLEMENTATION SURFACES ARE WRONG — checked against
+    `origin/main`, not against a checkout.** `curated_qa_source_allowlist.py` is under
+    `apps/backend-rag/scripts/`, NOT `backend/services/rag/`; `curated_qa_pricing_detector.py` is
+    under `backend/services/misc/`, NOT `backend/services/rag/`; and
+    **`scripts/whatsapp_corpus/compile_team_dashboard_assets.py` EXISTS NOWHERE ON `origin/main`
+    — it is a phantom**, cited as the "existing review-only registry pattern", i.e. as the very
+    precedent the registry design claims to follow. Nothing in this repo generates that document,
+    so the citations cannot be fixed at a generator: **re-grep every path before building on it.**
+
+- **🚨 THE #2 CLIENT TOPIC IS THE ONE CAPABILITY THE BOT DOES NOT HAVE — AND IT ASKS FOR PASSPORT
+  NUMBERS (2026-08-11, 9 synthetic questions, no client PII).** Probing the two classes the
+  ranking exposed as unmeasured, plus the no-CRM class asked **three times** (the beta-test claim
+  "four behaviours" is a claim about VARIANCE — one run cannot test it):
+  - **FOLLOW_UP_STATUS (550 conversations, 16% of the corpus).** Three identical asks →
+    `ctx=0, evidence=0.0, abstain=true` all three, and lengths **240 / 429 / 1,721** — a 7×
+    spread on one question. All three solicit **full name, passport number or application ID**,
+    which the bot has no CRM to look anything up with: it invites a client to send identity
+    documents into a channel where nothing will consume them. A second batch (6 runs, fresh
+    subject each, `max_steps` 1/2/3) reproduced the solicitation **6/6 — so 9 of 9 across both
+    batteries.** That is the stable defect on this class.
+  - **What did NOT survive re-measurement, and the correction matters more than the finding.**
+    Two of the first three opened with "I **still** need…" on a FIRST message with
+    `conversation_history: []`, and an earlier draft of this entry called that "the
+    false-continuity defect, third reproduction today". The hypothesis under test was that the
+    ReAct loop narrates its OWN failed retrieval step back to the client (the class cured in
+    `reasoning.py` this morning), which predicts the wording tracks `max_steps`. **It does not:
+    0/6, including 2/2 at `max_steps=2` — the exact setting that produced it twice an hour
+    earlier.** Memory contamination was already ruled out by construction (every probe gets its
+    own fresh subject). So on this class the false continuity is a **stochastic wording, not a
+    structural defect**, and nothing in the loop should be "fixed" for it. Whether the drift seen
+    on OTHER shapes is the same nothing is unmeasured — do not generalise this either way.
+  - **Already blocked on WhatsApp, and not by luck** — `wa_inbox_bot._abstain_answer_worth_sending`
+    (PR #4050, written this morning after a two-seat adversarial review) refuses to send when
+    `context_length <= 0 or evidence <= 0.0`, which is exactly this shape. The gate was written
+    against a different measurement and covers this one. **Open question, NOT established:** no
+    channel adapter contains a single reference to `abstain` (measured: 0 across every file in
+    `channels/`), but I did not establish that any non-WhatsApp surface renders this payload —
+    `instagram_chat.py` (284 lines) produces no RAG answer at all. Measure it before curing it.
+  - **DOCUMENT_OPERATIONS (533, #3): hedge-then-generalize.** Retrieval SUCCEEDS (`ctx=8`) and the
+    answer still opens "the specific list of documents … is not detailed in the provided context",
+    then answers anyway from general knowledge. The asks are about OUR intake requirements
+    ("original akta or is a scan enough?" → `ctx=1`, answered with generic Indonesian practice) —
+    a business fact, not a legal one, and generic practice is not an answer to it.
+  - **PAYMENTS (392, #4): one honest, one gap, one off-target.** "How do I pay you?" → an honest
+    352-char refusal that routes to the team (the shape we want). "Do your prices include VAT?" →
+    honest KB gap. But **"can I pay in two instalments?" was answered about PT PMA capital
+    deposits** — the client asked about paying Bali Zero, the bot answered about paying the state.
+    Same class as the beta test's chart-of-accounts miss, on the 4th-most-common topic.
+  - Health on this batch: **9/9 answered, 0 over the 4,096 limit**, 15–56s.
+
 - **🔢 THE LONGEST ANSWER IS NOT A LONG ANSWER — IT IS 6,823 COPIES OF ONE LINE (2026-08-11,
   measured live, cured in `orchestrator_core._format_workflow_for_prompt`).** Probing ten core
   service questions cold (one run each, `channel=whatsapp`, generic questions, no client PII),
@@ -304,6 +445,8 @@ minimum untuk PT PMA?` / Italian), **four of five retrieve fine** and give the c
     `connect you` and scored the frustration case **False** against _"connecting you"_ — an
     under-match in my own instrument (family #3). The finding came from re-reading the answer.
 
+- TRACK BOT-KBLI claimed by M5/2026-08-11
+
 - **🧪 BATTERY v5 — THE FOUR OPEN BETA CURES, RE-MEASURED 13 DAYS LATER (2026-08-10).** The
   2026-07-28 team beta left four cures open and nobody had asked whether they were still
   true. 14 questions, prod container, synthetic senders. Script: session scratchpad
@@ -541,6 +684,49 @@ minimum untuk PT PMA?` / Italian), **four of five retrieve fine** and give the c
   question, so a reply may address a nudge ("ci sei?") instead of the substantive ask. Bounded by
   the 12-turn window, unobserved in prod.
 
+  **RE-MEASURED 2026-08-11 — the verdict HOLDS, but the numbers above are stale by 7×, and a
+  stale number inside a "DO NOT RE-OPEN" is what buys the next session an afternoon.** The entry
+  was written on 07-27; the team beta was 07-28, and the population exploded the next day.
+  Lifetime `superseded_by_coalescing` is now **62 rows, not 9** — and the mid-backoff share, the
+  case this entry concedes is not the intended one, went from **2 of 9 (22%)** to **32 of 62
+  (52%)**: `attempts` 0→30 · 1→4 · 2→12 · 3→10 · 4→6. So the reassuring ratio is gone.
+  **The second premise is what still carries it, and it was re-tested, not assumed: all 32
+  killed mid-backoff had an outbound reply in the same thread within 30 minutes, and ZERO were
+  never answered.** Re-open only if that second number ever moves — the attempts ratio alone is
+  not the finding.
+
+- **📊 THE BETA WEEK IS THE ONLY LOAD TEST THIS BOT HAS EVER HAD — and half the outbox rows
+  failed (measured 2026-08-11 on 27/07–05/08, 131 rows).** `done` 68 · `failed` 63. The failure
+  breakdown is the point: **53 = `superseded_by_coalescing`** (benign per the entry above),
+  8 = `bot_generate_failed_after_5_attempts`, 2 = `24h_window_closed`. Read the sentinel before
+  reading "48% failed" as an outage — most of it is bursts being merged, working as designed.
+  Client-visible latency in that week: **median 302s, p90 990s** (inbound→first outbound, ≥15
+  chars, capped at 2h). The p90 tracks `RETRY_BACKOFF_BASE_SECONDS = 30` compounding across five
+  attempts (30/60/120/240/480 ≈ 15.5 min), so ~10% of beta messages needed several attempts.
+  Note this is a DIFFERENT measure from the `sent_at − created_at` figures elsewhere in this
+  file: this one is the wait the human actually experiences.
+
+  **NOT a defect, killed here so nobody re-finds it:** a first pass read "35 of 224 inbound
+  (15.6%) never answered". Decomposed: **34 are simply the last message in their thread** (there
+  is no reply yet because there is no reply yet) and 1 is a sub-15-char ack. **Genuinely dropped
+  substantive questions: ZERO**, in both the bot-off and bot-on eras. The 15.6% measured thread
+  endings, not silence.
+
+- **🔇 ZERO TRAFFIC SINCE 2026-08-05 17:39Z (measured 08-11).** Six days, no inbound, no
+  outbound. Everything merged after that date — the two language-detector fixes (#3959 08-09,
+  #3969 08-10) and everything shipped on 08-11 — is **merged, not proven live**. There is no
+  post-fix corpus to evaluate and there will not be one until traffic returns AND the Gemini
+  prepay is topped up (`operator[business]`, project `nuzantara`, number 930328104463). Do not
+  read the absence of new drift reports as evidence a language fix worked.
+
+- **📎 THE INTERNAL FILENAME REACHED REAL RECIPIENTS — 6 outbound messages (measured 08-11).**
+  `[CURATED {source_ref} {date}]` handed the model an internal filename as the only "source" it
+  had, and the model cited it: `CURATED FINAL.md#Q16` / `#Q17` printed into WhatsApp threads on
+  07-24 and 07-28 (five of the six on beta day, so mostly colleagues — but nothing in the code
+  path distinguishes a colleague from a client). Sizing: **808/808 live Qdrant points carry an
+  internal `source_ref` and zero carry a citable regulation name**. Cure in PR #4067 — the header
+  now says the section is not citable and the refs move to the log line.
+
 - **🗣️ IN FLIGHT — PR #3260 (abstain voice + per-sender WA memory).** Two client-facing gaps:
   (a) the refusal copy now names the stake, says a Bali Zero colleague must look at it, and asks
   for a document or a reference date — and it deliberately does NOT promise "a colleague will
@@ -573,6 +759,44 @@ RuntimeError(...)` before a message is ever composed. Its docstring states it as
   **Zero abstains, ever.** So the discard is a LATENT defect: real in the code, never yet fired
   in production. Current state is healthy — week of 19 July: **0 generation failures on 13
   inbound** (small sample, stated as such).
+
+  > ### ⛔ THE TWO SENTENCES ABOVE ARE NO LONGER TRUE — "zero abstains, ever" DIED THE NEXT DAY
+  >
+  > **Re-classified 2026-08-11 over the whole history, not just up to 07-27.** This bullet was
+  > written on 2026-07-27. The team beta was **07-28**. The discard is not latent: it **fired
+  > six times in production that morning**, threads 249 / 250 / 252 / 255 / 259 / 263, all
+  > between 02:02 and 02:29Z, every one of them
+  > `wa-inbox bot: RAG abstained for thread <n> (reason='no_relevant_context')`. A seventh row
+  > the same morning is thread 270, `answer empty after workflow-scaffold strip`, which the same
+  > `raise` discards by the same route.
+  >
+  > **What the asker experienced, measured rather than inferred:** each of the six threads DID
+  > get an outbound eventually — at **+11, +12, +16, +23, +32 and +38 minutes**. Not permanent
+  > silence, so do not upgrade this to "clients were abandoned". But nothing arrived while the
+  > retry ladder burned, and whether those later replies answered the abstained question or a
+  > subsequent one in the thread is NOT established here — do not assert either.
+  >
+  > **The cost is new information, and it is the part the 07-27 analysis could not have had.**
+  > That analysis correctly established that the 44 `not enabled in v1` give-ups were CHEAP —
+  > `is_bot_autoreply_enabled()` is the first statement of `generate_bot_reply`, so those five
+  > attempts were no-ops. **Abstain is the opposite case.** The `raise` sits at
+  > `wa_inbox_bot.py:357`, _after_ the `/api/agentic-rag/query` round-trip inside the P9
+  > semaphore — so every retry is a FULL RAG call. Six abstains plus one empty-after-strip, five
+  > attempts each: **~35 complete RAG round-trips that could not have produced anything**, on the
+  > single day this bot has ever carried real load, inside the window the Gemini prepay was being
+  > drained. The retry ladder cannot rescue an abstain the way it can rescue a flag flipped
+  > mid-backoff: the same query against the same KB abstains again.
+  >
+  > **This does NOT reopen the ladder on its own.** Skipping retries or suppressing the apology
+  > is still forbidden below without its own evidence, and the send-or-stay-silent half is still
+  > a Legge-5 call for Zero. What changes is that the call is no longer being made about a
+  > hypothetical: it has fired, on real people, and it costs ~5 full generations per occurrence.
+  >
+  > _And the lesson is the one this very bullet already taught, one layer up: its own method note
+  > says two disagreeing probes are what caught a wrong number. Here nothing disagreed — the
+  > classification was simply run before the event it would have caught. A measurement is stamped
+  > with the day it was taken, and this file did not carry that stamp where it mattered._
+
   _Method note: the first classifying query returned "0 abstains" AND a second returned "0
   failures per week", which contradicted a count of 52. The bug was mine — `split_part(error,':')`
   meant the stored value has a suffix, so `error = '<sentinel>'` matched nothing. Two of my own

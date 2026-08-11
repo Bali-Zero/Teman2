@@ -128,6 +128,41 @@ async def test_assign_lead_updates_client_with_department_match(
     assert result["assigned_lead_name"] == "Consultant Name"
     assert "Department: setup" in result["assignment_reason"]
     assert conn.executed[0][1] == ("consultant@example.com", 10)
+    query, args = conn.last_fetchrow
+    assert "RANDOM()" not in query
+    assert "MD5(tm.email || $11::text)" in query
+    assert args[-1] == 10
+
+
+@pytest.mark.asyncio
+async def test_assign_lead_fallback_uses_client_specific_tiebreak(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_invalidate_crm_stats() -> None:
+        return None
+
+    monkeypatch.setattr(assignment_module, "invalidate_crm_stats", fake_invalidate_crm_stats)
+    state = base_state()
+    state["client_data"]["practice_type_code"] = "general"
+    conn = FakeConn(
+        fetchrows=[
+            {
+                "email": "advisor@example.com",
+                "full_name": "Advisor Name",
+                "department": "advisory",
+                "active_practices": 0,
+            }
+        ]
+    )
+
+    result = await assign_lead(state, FakePool(conn))
+
+    query, args = conn.last_fetchrow
+    assert "RANDOM()" not in query
+    assert "MD5(tm.email || $10::text)" in query
+    assert args[-1] == 10
+    assert result["assigned_lead"] == "advisor@example.com"
+    assert conn.executed[0][1] == ("advisor@example.com", 10)
 
 
 @pytest.mark.asyncio

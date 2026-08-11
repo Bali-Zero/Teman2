@@ -45,9 +45,10 @@ export function HeroBlueprint() {
           }}
         />
 
-        {/* Big BALI ZERO logo — top-right on desktop, below nav on mobile */}
+        {/* Big BALI ZERO logo — top-right on desktop, below nav on mobile.
+            P4: md:top-8 (32px) sat behind the 56px fixed nav. Fixed to md:top-[68px]. */}
         <div
-          className="absolute top-[68px] right-4 md:top-8 md:right-8 lg:top-12 lg:right-16 pointer-events-none z-10 hero-logo"
+          className="absolute top-[68px] right-4 md:top-[68px] md:right-8 lg:top-[80px] lg:right-16 pointer-events-none z-10 hero-logo"
           style={{
             filter: "drop-shadow(0 4px 24px rgba(0,0,0,0.55))",
           }}
@@ -55,8 +56,10 @@ export function HeroBlueprint() {
           <BZLogo variant="full" size={120} priority />
         </div>
 
-        {/* Copy overlay — centered on mobile, left-aligned on desktop */}
-        <div className="absolute inset-0 flex items-end md:items-center pb-8 md:pb-0">
+        {/* Copy overlay — centered on mobile, left-aligned on desktop.
+            P0.3: pt-14 offsets content below the 56px fixed navbar.
+            Without this the h1 sat at top:8px — entirely behind the nav bar. */}
+        <div className="absolute inset-0 flex items-end md:items-center pb-8 md:pb-0 pt-14">
           <div className="w-full max-w-[1400px] mx-auto px-6 md:px-10 lg:px-16">
             <div className="max-w-[640px]">
               {/* Dateline */}

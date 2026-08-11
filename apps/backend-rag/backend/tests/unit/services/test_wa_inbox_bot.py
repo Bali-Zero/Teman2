@@ -3,7 +3,8 @@
 Covers the Option-B safety contract:
   - feature flag OFF (default) → raises (worker marks failed/retry, no send).
   - no customer message in thread → raises.
-  - RAG abstain → raises (never guess).
+  - RAG abstain → returns a localized, source-honest refusal and discards
+    any untrusted answer text (never guess, never go silent).
   - empty RAG answer → raises.
   - happy path → returns the RAG answer, sends the correct payload to the
     RAG worker (query = latest customer msg, history oldest→newest, channel).
@@ -15,7 +16,7 @@ from __future__ import annotations
 import asyncio
 from contextlib import asynccontextmanager
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import asyncpg
 import pytest
@@ -119,7 +120,7 @@ async def test_no_customer_message_raises(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_abstain_answers_the_client_instead_of_raising(monkeypatch):
+async def test_abstain_returns_safe_localized_reply_and_discards_raw_answer(monkeypatch):
     """CONTRACT CHANGED 2026-08-11 — this test used to be `test_abstain_raises`.
 
     It asserted that an abstain raises RuntimeError so "the operator can take
@@ -137,16 +138,81 @@ async def test_abstain_answers_the_client_instead_of_raising(monkeypatch):
     file so the change of contract is visible where the old one was.
     """
     monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
-    _mock_rag(monkeypatch, {"abstain": True, "abstain_reason": "low_evidence", "answer": ""})
+    _mock_rag(
+        monkeypatch,
+        {
+            "abstain": True,
+            "abstain_reason": "low_evidence",
+            # A labelled-abstain payload may still carry fluent but ungrounded
+            # model text. The WA boundary must ignore it completely.
+            "answer": "Il capitale versato obbligatorio e' Rp 10.000.000.000.",
+        },
+    )
     pool = _Pool(_ROWS_NEWEST_FIRST)
 
-    with patch(
-        "backend.services.integrations.wa_inbox_bot.notify_human_telegram",
-        new=AsyncMock(return_value=True),
-    ):
-        answer = await wa_inbox_bot.generate_bot_reply(pool, _thread())
+    answer = await wa_inbox_bot.generate_bot_reply(pool, _thread())
 
     assert answer.strip(), "an abstain must not send the client an empty body"
+    assert "non ho una fonte certa" in answer
+    assert "10.000.000.000" not in answer
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "marker",
+    (
+        "internal_monologue\n",
+        "<internal_monologue>\n",
+        "<internal_monologue_instructions>\n",
+        "internal_monologue: ",
+        "<internal_monologue>: ",
+        "<internal-monologue-instructions>Thinking ",
+        "<internal_monologue>Thinking ",
+        "[INTERNAL_MONOLOGUE] Thinking ",
+        "(internal monologue): Thinking ",
+        "**internal_monologue** Thinking ",
+        "`internal_monologue` Thinking ",
+        "[**internal_monologue**] Thinking ",
+        "<**internal_monologue_instructions**> Thinking ",
+        "*internal_monologue* Thinking ",
+        "_[internal_monologue]_ Thinking ",
+        "<!-- internal_monologue --> Thinking ",
+        "</internal_monologue> Thinking ",
+        '"internal_monologue" Thinking ',
+        "{internal_monologue} Thinking ",
+    ),
+)
+async def test_internal_monologue_marker_returns_safe_reply(monkeypatch, marker):
+    """A private-prompt leak is discarded wholesale, never sent to WhatsApp."""
+    _mock_rag(
+        monkeypatch,
+        {
+            "abstain": False,
+            "answer": marker
+            + "I should inspect the tools first.\nFinal Answer: KBLI 51101 is unrestricted.",
+        },
+    )
+    monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
+    pool = _Pool(_ROWS_NEWEST_FIRST)
+
+    answer = await wa_inbox_bot.generate_bot_reply(pool, _thread())
+
+    assert "non ho una fonte certa" in answer
+    assert "internal_monologue" not in answer
+    assert "51101 is unrestricted" not in answer
+
+
+@pytest.mark.asyncio
+async def test_internal_monologue_words_mid_answer_are_not_overmatched(monkeypatch):
+    """Only the private marker at payload start is a leak signal."""
+    raw_answer = "Il log tecnico menziona internal_monologue, ma la risposta cliente resta valida."
+    _mock_rag(monkeypatch, {"abstain": False, "answer": raw_answer})
+    monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
+    pool = _Pool(_ROWS_NEWEST_FIRST)
+
+    answer = await wa_inbox_bot.generate_bot_reply(pool, _thread())
+
+    assert answer == raw_answer
 
 
 @pytest.mark.asyncio
@@ -253,14 +319,17 @@ async def test_markdown_and_kg_scaffold_stripped_for_whatsapp_client(monkeypatch
 async def test_kg_workflow_scaffold_stripped_when_answer_is_only_scaffold(monkeypatch):
     """Guilt, edge case: if the RAG answer is NOTHING but the KG workflow
     block (no separate main answer — the KG fast-path shape), stripping it
-    must leave nothing, and generate_bot_reply must raise rather than ever
-    send an empty message — mirrors the existing empty-answer guards."""
+    must never send internal diagnostics or leave the client in silence.
+    Return the same localized, source-honest refusal used for a formal RAG
+    abstention."""
     _mock_rag(monkeypatch, {"abstain": False, "answer": _KG_WORKFLOW_BLOCK.strip()})
     monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
     pool = _Pool(_ROWS_NEWEST_FIRST)
 
-    with pytest.raises(RuntimeError, match="empty after workflow-scaffold strip"):
-        await wa_inbox_bot.generate_bot_reply(pool, _thread())
+    answer = await wa_inbox_bot.generate_bot_reply(pool, _thread())
+
+    assert "non ho una fonte certa" in answer
+    assert "SUGGESTED WORKFLOW" not in answer
 
 
 @pytest.mark.asyncio

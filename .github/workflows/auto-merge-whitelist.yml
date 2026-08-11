@@ -3,8 +3,7 @@
 # Auto-enables `gh pr merge --auto --squash` for PRs that match ALL of:
 #   1. Branch name matches whitelist pattern (docs/auto-sync-*, dependabot/*, chore/fmt-*)
 #   2. Author is dependabot[bot] or github-actions[bot] (or owner @Balizero1987 explicit)
-#   3. Diff does NOT touch CODEOWNERS-protected paths (workflows, fly.toml, migrations,
-#      auth, billing, pricing, launchagents)
+#   3. Diff does NOT touch any CODEOWNERS Tier-1 path
 #
 # Reference: docs/runbooks/merge-queue-discipline.md §3
 # SOTA brief: research/operations/2026-05-24-sota-multi-agent-repo-architecture-synthesis.md
@@ -100,7 +99,7 @@ jobs:
           AUTHOR: ${{ steps.pr.outputs.author }} # attacker-controlled login → env, not inline
         run: |
           case "$AUTHOR" in
-            dependabot|dependabot[bot]|github-actions|github-actions[bot]|Balizero1987)
+            "dependabot[bot]"|"github-actions[bot]"|"Balizero1987")
               echo "Author '$AUTHOR' is allowlisted."
               echo "match=true" >> "$GITHUB_OUTPUT"
               ;;
@@ -115,28 +114,66 @@ jobs:
         if: steps.author_check.outputs.match == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ steps.pr.outputs.number }}
+          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          PR='${{ steps.pr.outputs.number }}'
-          FILES="$(gh pr view "$PR" --repo ${{ github.repository }} --json files --jq '.files[].path')"
-          # Protected path patterns — keep in sync with .github/CODEOWNERS
+          if ! [[ "$PR" =~ ^[0-9]+$ ]]; then
+            echo "::error::Invalid PR number '$PR' — failing closed."
+            exit 1
+          fi
+          if ! EXPECTED_FILES="$(gh api "repos/$REPO/pulls/$PR" --jq '.changed_files')"; then
+            echo "::error::Unable to read PR #$PR metadata — failing closed."
+            exit 1
+          fi
+          if ! [[ "$EXPECTED_FILES" =~ ^[0-9]+$ ]]; then
+            echo "::error::Invalid changed_files count '$EXPECTED_FILES' — failing closed."
+            exit 1
+          fi
+          if ! FILES="$(gh api --paginate "repos/$REPO/pulls/$PR/files?per_page=100" --jq '.[].filename')"; then
+            echo "::error::Unable to enumerate files for PR #$PR — failing closed."
+            exit 1
+          fi
+          ACTUAL_FILES=0
+          if [[ -n "$FILES" ]]; then
+            ACTUAL_FILES="$(awk 'END { print NR }' <<< "$FILES")"
+          fi
+          if [[ "$ACTUAL_FILES" -ne "$EXPECTED_FILES" ]]; then
+            echo "::error::PR file enumeration mismatch: expected $EXPECTED_FILES, got $ACTUAL_FILES — failing closed."
+            exit 1
+          fi
+          # Tier-1 CODEOWNERS patterns; the regression test fails on drift.
           PROTECTED=(
             '^\.github/workflows/'
             '^\.github/CODEOWNERS$'
             '^\.github/dependabot\.yml$'
+            '^\.github/actions/'
             '^fly\.toml$'
             '^apps/backend-rag/fly\.toml$'
             '^apps/backend-rag/Dockerfile$'
+            '^infra/launchagents/'
+            '^docs/infra/launchagents/'
             '^apps/backend-rag/backend/db/migrations_v2/'
             '^apps/backend-rag/backend/db/migration_manager\.py$'
+            '^scripts/verify_the_verifiers\.py$'
+            '^scripts/verify_the_verifiers_gates\.yaml$'
+            '^scripts/tests/test_verify_the_verifiers\.py$'
+            '^\.github/verify-the-verifiers\.sha256$'
+            '^scripts/token_lint\.py$'
+            '^scripts/tests/test_token_lint\.py$'
+            '^scripts/tests/conftest\.py$'
+            '^scripts/conftest\.py$'
+            '^conftest\.py$'
             '^apps/backend-rag/backend/app/auth/'
             '^apps/backend-rag/backend/app/core/config\.py$'
             '^apps/backend-rag/backend/services/auth/'
             '^apps/backend-rag/backend/services/invoicing/'
             '^apps/backend-rag/backend/services/pricing/'
             '^apps/backend-rag/backend/services/billing/'
-            '^infra/launchagents/'
-            '^docs/infra/launchagents/'
+            '^apps/backend-rag/backend/core/embeddings\.py$'
+            '^apps/backend-rag/backend/services/rag/agentic/'
+            '^apps/backend-rag/backend/kb/'
+            '^apps/backend-rag/backend/services/lead_capture/'
           )
           violation=""
           while IFS= read -r f; do
@@ -159,10 +196,18 @@ jobs:
         if: steps.path_check.outputs.match == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+          PR: ${{ steps.pr.outputs.number }}
+          REPO: ${{ github.repository }}
         run: |
-          PR='${{ steps.pr.outputs.number }}'
+          set -euo pipefail
+          if ! [[ "$EXPECTED_HEAD" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Invalid expected head SHA — refusing to arm auto-merge."
+            exit 1
+          fi
           echo "Enabling auto-merge --squash for PR #$PR"
-          gh pr merge "$PR" --repo ${{ github.repository }} --auto --squash --delete-branch || {
+          gh pr merge "$PR" --repo "$REPO" --auto --squash --delete-branch \
+            --match-head-commit "$EXPECTED_HEAD" || {
             echo "::warning::Auto-merge enable failed (possibly already enabled, or required checks not configured yet)."
             exit 0
           }

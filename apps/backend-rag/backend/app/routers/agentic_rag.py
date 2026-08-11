@@ -476,6 +476,26 @@ class AgenticQueryResponse(BaseModel):
     execution_time: float
     route_used: str | None
     tools_called: int = 0
+    # The NAMES behind that count. `CoreResult.tools_called` has been a
+    # `list[str]` all along (schema.py) and orchestrator_response.py fills it
+    # from the ReAct steps' `action.tool_name` — this response model was the
+    # only place the names died, collapsed by `len()` one line below.
+    #
+    # Not cosmetic. On 2026-08-11 an ordinary question ("quanto costa aprire una
+    # PT PMA e quanto tempo ci vuole?") answered correctly in 4 of 6 identical
+    # runs and returned `abstain` in 2 — the abstaining run carrying the RIGHT
+    # number in its answer, and abstain is RAISED on the WhatsApp path
+    # (wa_inbox_bot.py), so the client gets silence. The runs differed only in
+    # `tools_called`: 1 on the abstains, 2-4 on the answers. Which tool that
+    # single call was could not be named from outside — a count cannot be
+    # cross-checked against `_TRUSTED_TOOL_NAMES`, and three probes were spent
+    # inferring it. This field is what makes the next such question answerable.
+    #
+    # ADDED, never a change of meaning: `tools_called` keeps its int type and
+    # its name, because live consumers read it as a number
+    # (backend/scripts/stress_test_zantara.py). A shared field re-typed from one
+    # side is exactly the drift family this repo keeps paying for.
+    tools_used: list[str] = Field(default_factory=list)
     total_steps: int = 0
     debug_info: dict | None = None
     ab_test: dict | None = None  # A/B test variant info
@@ -625,6 +645,20 @@ async def query_agentic_rag(
             # FACTS read and the memory-save dispatch on the per-sender
             # subject instead of the shared wa-mirror-internal identity.
             query_kwargs["memory_subject"] = wa_memory_subject
+        if request.channel is not None:
+            # The comment on `AgenticQueryRequest.channel` above says it is
+            # "still used for the WA prompt overlay elsewhere". That was true
+            # of `/stream` (line ~1041) and FALSE here — and here is where the
+            # WhatsApp inbox bot actually lands, sending `"channel":
+            # "whatsapp"` on every call. Its 150-word budget was declared and
+            # dropped; measured on the live worker the same question answers
+            # ~611-875 chars with the overlay against ~1900-1964 without.
+            # Safe to take from the body despite being client-settable:
+            # `build_channel_context` is a closed lookup over CHANNEL_CONFIGS
+            # and returns "" for anything it does not know, so no caller text
+            # can reach the system prompt through this field. It still
+            # participates in NO trust decision (see the note above).
+            query_kwargs["channel"] = request.channel
 
         # Langfuse POC: wrap the heavy orchestrator call. Anthropic SDK calls
         # made inside are auto-traced via OpenInference instrumentation, so
@@ -679,6 +713,7 @@ async def query_agentic_rag(
             execution_time=result.timings.get("total", 0.0),
             route_used=result.route_used,
             tools_called=len(result.tools_called),
+            tools_used=[t for t in (result.tools_called or []) if isinstance(t, str)],
             # HONESTY FIX (2026-08-10): this was `len(result.tools_called)` —
             # the same number as the line above, under a name promising the
             # ReAct step count. Both read 0 on the main path (nothing populated

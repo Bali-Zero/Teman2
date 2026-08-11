@@ -362,6 +362,9 @@ def main(argv: list[str] | None = None) -> int:
         wf_text,
         label="required-workflow-conformance",
     )
+    violations += check_bridge(
+        registry["surfaces"]["casual_conversation_gate"], wf_text, label="casual-gate"
+    )
     violations += check_simple_surfaces(registry, wf_text)
 
     bridge_count = len(registry["surfaces"]["bridge_reply_guards"]["guards"])
