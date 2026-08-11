@@ -432,7 +432,7 @@ def test_the_tip_drift_check_is_not_silent_when_it_passes() -> None:
     where it is easy to forget, so it is pinned here rather than trusted."""
     text = _hook_text()
     m = re.search(
-        r"TIP_OUT=\$\(sh scripts/ci/prepush_tip_drift\.sh.*?\n\s*case \"\$TIP_RC\" in\n(.*?)\n\s*esac",
+        r'TIP_OUT=\$\(sh "\$PREPUSH_TIP_DRIFT_SCRIPT".*?\n\s*case "\$TIP_RC" in\n(.*?)\n\s*esac',
         text,
         re.DOTALL,
     )
@@ -444,6 +444,18 @@ def test_the_tip_drift_check_is_not_silent_when_it_passes() -> None:
         "the tip-drift SUCCESS arm must print $TIP_OUT. Swallowing it makes a "
         "verified push look exactly like one where the check never ran."
     )
+
+
+def test_unattended_prepush_helper_paths_are_rooted_in_the_pinned_bundle() -> None:
+    """A failed branch must not provide the gate helpers for its own outer push."""
+    code = _hook_code()
+    assert 'PREPUSH_TRUST_ROOT="${NUZ_PREPUSH_TRUST_ROOT:-$(pwd -P)}"' in code
+    assert 'PREPUSH_CLASSIFIER="$PREPUSH_TRUST_ROOT/scripts/prepush_classify.py"' in code
+    assert 'PREPUSH_SUITE_LOCK_SOURCE="$PREPUSH_TRUST_ROOT/scripts/prepush_suite_lock.sh"' in code
+    assert 'PREPUSH_TIP_DRIFT_SCRIPT="$PREPUSH_TRUST_ROOT/scripts/ci/prepush_tip_drift.sh"' in code
+    assert '"$PYTHON_BIN" "$PREPUSH_CLASSIFIER"' in code
+    assert 'PREPUSH_SUITE_LOCK_SCRIPT="$PREPUSH_SUITE_LOCK_SOURCE"' in code
+    assert 'sh "$PREPUSH_TIP_DRIFT_SCRIPT"' in code
 
 
 if __name__ == "__main__":

@@ -61,7 +61,7 @@ export function Footer() {
 
   return (
     <footer
-      className="pt-12 md:pt-20 pb-[80px] sm:pb-8 px-5 md:px-10"
+      className="pt-12 md:pt-20 pb-[80px] sm:pb-8 md:pb-16 px-5 md:px-10"
       style={{
         background: "var(--footer-bg)",
         borderTop: "1px solid var(--footer-border)",
@@ -174,23 +174,24 @@ export function Footer() {
             © 2026 Bali Zero. All rights reserved.
           </span>
           <div className="flex items-center gap-x-5 gap-y-2 flex-wrap justify-end">
+            {/* P4: py-3 -my-3 expands hit area to ~44px without changing visual spacing */}
             <a
               href="/v2/privacy"
-              className="text-[11px]"
+              className="text-[11px] py-3 -my-3"
               style={{ color: "var(--text-tertiary)" }}
             >
               Privacy Policy
             </a>
             <a
               href="/v2/terms"
-              className="text-[11px]"
+              className="text-[11px] py-3 -my-3"
               style={{ color: "var(--text-tertiary)" }}
             >
               Terms of Service
             </a>
             <a
               href="/v2/cookies"
-              className="text-[11px]"
+              className="text-[11px] py-3 -my-3"
               style={{ color: "var(--text-tertiary)" }}
             >
               Cookie Policy

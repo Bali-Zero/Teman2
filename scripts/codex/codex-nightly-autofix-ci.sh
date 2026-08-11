@@ -29,6 +29,11 @@ STATE_FILE="${STATE_DIR}/codex_autofix_ci.state"
 LOG_DIR="${CODEX_AUTOFIX_LOG_DIR:-${HOME}/logs/codex-autofix-ci}"
 TELEGRAM_NOTIFY="${HOME}/.claude/scripts/hotfix-notify.sh"
 CODEX_AUTOMATION_LIB="${CODEX_AUTOMATION_LIB:-${HOME}/scripts/codex/automation-lib.sh}"
+GH_BIN="${CODEX_AUTOFIX_GH_BIN:-gh}"
+# Comma-separated exact GitHub logins.  Do not use shell-glob matching here:
+# actor data is remote input and a wildcard is not a principal.
+TRUSTED_ACTORS="${CODEX_AUTOFIX_TRUSTED_ACTORS:-Balizero1987}"
+CANONICAL_REPO="${CODEX_AUTOFIX_CANONICAL_REPO:-}"
 
 mkdir -p "$STATE_DIR" "$LOG_DIR"
 # shellcheck source=/Users/nuzantara/scripts/codex/automation-lib.sh
@@ -59,6 +64,34 @@ is_uint() {
     case "${1:-}" in
         ""|*[!0-9]*) return 1 ;;
         *) return 0 ;;
+    esac
+}
+is_commit_sha() {
+    local candidate="${1:-}"
+
+    [ "${#candidate}" -eq 40 ] || return 1
+    case "$candidate" in
+        *[!0123456789abcdefABCDEF]*) return 1 ;;
+        *) return 0 ;;
+    esac
+}
+is_trusted_actor() {
+    local candidate="${1:-}"
+
+    [ -n "$candidate" ] || return 1
+    case ",$TRUSTED_ACTORS," in
+        *,"$candidate",*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+is_autofix_branch_namespace() {
+    case "${1:-}" in
+        agent/*|feature/*|feat/*|fix/*|chore/*|docs/*|refactor/*|test/*|perf/*|build/*|ci/*)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
     esac
 }
 codex_state() {
@@ -127,17 +160,19 @@ if [ "${CODEX_AUTOFIX_DRY_RUN:-0}" != "1" ] &&
     exit 0
 fi
 
-# Last 24h failures, json: id, name, conclusion, headBranch, headSha, displayTitle, createdAt
+# Last 24h failures, json: id, name, conclusion, headBranch, headSha, displayTitle,
+# createdAt, event.  Provenance fields are retrieved per-run below: `gh run list`
+# does not expose the full actor/fork record we must verify before unattended work.
 if [ -n "${CODEX_AUTOFIX_FAILED_RUNS_JSON:-}" ]; then
     FAILED_RUNS="$CODEX_AUTOFIX_FAILED_RUNS_JSON"
 elif [ -n "${CODEX_AUTOFIX_FAILED_RUNS_JSON_FILE:-}" ]; then
     FAILED_RUNS=$(cat "$CODEX_AUTOFIX_FAILED_RUNS_JSON_FILE")
 else
-    FAILED_RUNS=$(gh run list \
+    FAILED_RUNS=$("$GH_BIN" run list \
         --repo "$REPO_SLUG" \
         --status failure \
         --limit 20 \
-        --json databaseId,name,headBranch,headSha,displayTitle,createdAt \
+        --json databaseId,name,headBranch,headSha,displayTitle,createdAt,event \
         2>/dev/null || echo "[]")
 fi
 
@@ -145,6 +180,15 @@ if [ "$FAILED_RUNS" = "[]" ] || [ -z "$FAILED_RUNS" ]; then
     log "No failed runs found"
     codex_state idle no_failed_runs "No failed GitHub Actions runs found" "" "$REPO_ROOT"
     exit 0
+fi
+
+if [ -z "$CANONICAL_REPO" ]; then
+    CANONICAL_REPO=$("$GH_BIN" api "repos/$REPO_SLUG" --jq '.full_name' 2>/dev/null || true)
+fi
+if [ -z "$CANONICAL_REPO" ] || [ "$CANONICAL_REPO" = "null" ]; then
+    log "Cannot establish canonical repository for autofix provenance. Failing closed."
+    codex_state blocked provenance_repository_unavailable "Canonical repository unavailable" "" "$REPO_ROOT"
+    exit 1
 fi
 
 # ───────────────────────────────────────────────────────────────
@@ -170,6 +214,57 @@ while IFS= read -r run_json; do
         fi
     fi
 
+    branch=$(printf '%s\n' "$run_json" | jq -r '.branch')
+    sha=$(printf '%s\n' "$run_json" | jq -r '.sha')
+    event=$(printf '%s\n' "$run_json" | jq -r '.event')
+    actor=$(printf '%s\n' "$run_json" | jq -r '.actor_login')
+    triggering_actor=$(printf '%s\n' "$run_json" | jq -r '.triggering_actor_login')
+    head_repository=$(printf '%s\n' "$run_json" | jq -r '.head_repository')
+
+    # The REST action-run object is the authority for provenance.  Hermetic
+    # tests may inject the same complete fields, but real `gh run list` output
+    # lacks actor/fork data and must be supplemented rather than trusted.
+    if [ -z "$actor" ] || [ -z "$triggering_actor" ] || [ -z "$head_repository" ]; then
+        if ! run_metadata=$("$GH_BIN" api "repos/$REPO_SLUG/actions/runs/$run_id" 2>/dev/null); then
+            log "Skipping run $run_id: provenance lookup failed"
+            continue
+        fi
+        actor=$(printf '%s\n' "$run_metadata" | jq -r '.actor.login // empty')
+        triggering_actor=$(printf '%s\n' "$run_metadata" | jq -r '.triggering_actor.login // empty')
+        head_repository=$(printf '%s\n' "$run_metadata" | jq -r '.head_repository.full_name // empty')
+        event=$(printf '%s\n' "$run_metadata" | jq -r '.event // empty')
+        metadata_branch=$(printf '%s\n' "$run_metadata" | jq -r '.head_branch // empty')
+        metadata_sha=$(printf '%s\n' "$run_metadata" | jq -r '.head_sha // empty')
+        if [ "$metadata_branch" != "$branch" ] || [ "$metadata_sha" != "$sha" ]; then
+            log "Skipping run $run_id: provenance branch or SHA disagrees with listing"
+            continue
+        fi
+    fi
+
+    if ! is_autofix_branch_namespace "$branch"; then
+        log "Skipping run $run_id: branch namespace is not sanctioned"
+        continue
+    fi
+    if ! is_commit_sha "$sha"; then
+        log "Skipping run $run_id: malformed failed SHA"
+        continue
+    fi
+    case "$event" in
+        push|pull_request) ;;
+        *)
+            log "Skipping run $run_id: event $event is not sanctioned"
+            continue
+            ;;
+    esac
+    if [ "$head_repository" != "$CANONICAL_REPO" ]; then
+        log "Skipping run $run_id: head repository is not canonical"
+        continue
+    fi
+    if ! is_trusted_actor "$actor" || ! is_trusted_actor "$triggering_actor"; then
+        log "Skipping run $run_id: actor provenance is not trusted"
+        continue
+    fi
+
     ELIGIBLE_RUN_JSON="$run_json"
     break
 # RECURSION BRAKE (2026-07-06): never select a failure on one of our OWN
@@ -192,7 +287,11 @@ done < <(printf '%s\n' "$FAILED_RUNS" | jq -c --arg now "$NOW_EPOCH" --arg coold
         branch: (.headBranch // ""),
         sha: (.headSha // ""),
         title: (.displayTitle // ""),
-        created_at: (.createdAt // "")
+        created_at: (.createdAt // ""),
+        event: (.event // ""),
+        actor_login: (.actor.login // .actorLogin // ""),
+        triggering_actor_login: (.triggering_actor.login // .triggeringActorLogin // ""),
+        head_repository: (.head_repository.full_name // .headRepositoryFullName // "")
     }
 ' | head -10)
 
@@ -222,13 +321,29 @@ if [ "${CODEX_AUTOFIX_DRY_RUN:-0}" = "1" ]; then
     exit 0
 fi
 
+# Freeze a complete pre-push hook bundle from a reviewed main commit BEFORE
+# checking out the failed branch.  The branch under repair is untrusted input
+# for this unattended process; it must not choose the hook or the three gate
+# helpers that decide whether its outer push is permitted.
+if ! git -C "$PRIMARY_REPO_ROOT" fetch origin main --quiet; then
+    log "Cannot refresh trusted main for the pre-push bundle. Failing closed."
+    codex_state blocked trusted_hook_fetch_failed "Could not refresh trusted main" "$FIX_BRANCH" "$REPO_ROOT"
+    exit 1
+fi
+if ! TRUSTED_PREPUSH_HOOKS=$(codex_auto_prepare_trusted_prepush \
+    "$PRIMARY_REPO_ROOT" "$STATE_DIR" "origin/main"); then
+    log "Cannot prepare a verified trusted pre-push bundle. Failing closed."
+    codex_state blocked trusted_hook_prepare_failed "Could not prepare trusted pre-push bundle" "$FIX_BRANCH" "$REPO_ROOT"
+    exit 1
+fi
+
 # ───────────────────────────────────────────────────────────────
 # Get failure context: workflow logs for the run
 # ───────────────────────────────────────────────────────────────
 RUN_LOG_FILE="${LOG_DIR}/run-${RUN_ID}.log"
 log "Fetching workflow logs to $RUN_LOG_FILE"
 
-gh run view "$RUN_ID" --repo "$REPO_SLUG" --log-failed > "$RUN_LOG_FILE" 2>&1 || {
+"$GH_BIN" run view "$RUN_ID" --repo "$REPO_SLUG" --log-failed > "$RUN_LOG_FILE" 2>&1 || {
     log "Failed to fetch logs for run $RUN_ID"
     codex_state blocked log_fetch_failed "Failed to fetch logs for run $RUN_ID; cap not consumed" "" "$REPO_ROOT"
     notify "🔴 Codex autofix: failed to fetch logs for run $RUN_ID"
@@ -283,6 +398,15 @@ if ! FETCH_OUTPUT=$(git fetch origin "$BRANCH" 2>&1); then
     exit 0
 fi
 printf '%s\n' "$FETCH_OUTPUT" | head -5
+
+FETCHED_SHA=$(git rev-parse FETCH_HEAD 2>/dev/null || true)
+if [ "$FETCHED_SHA" != "$SHA" ]; then
+    log "Fetched branch no longer matches failed SHA; skipping without checkout."
+    codex_state skipped branch_sha_changed "Fetched $BRANCH at $FETCHED_SHA, expected $SHA" "$FIX_BRANCH" "$REPO_ROOT"
+    notify "⚠️ Codex autofix: branch $BRANCH moved since failed run $RUN_ID"
+    restore_stash
+    exit 0
+fi
 
 git checkout --detach FETCH_HEAD 2>&1 | head -3 || {
     log "Cannot checkout $BRANCH (likely deleted). Skipping."
@@ -345,10 +469,11 @@ If you cannot fix the failure cleanly, write the reason to /tmp/codex-autofix-${
 EOF
 )
 
-log "Launching Codex (timeout ${CODEX_TIMEOUT}s, profile=xhigh)..."
+log "Launching Codex (timeout ${CODEX_TIMEOUT}s, isolated workspace-write sandbox)..."
 
 if timeout "$CODEX_TIMEOUT" env -u OPENAI_API_KEY -u OPENAI_BASE_URL -u OPENAI_ORG_ID -u OPENAI_PROJECT \
-    codex --profile xhigh exec "$CODEX_PROMPT" > "${LOG_DIR}/codex-output-${RUN_ID}.log" 2>&1; then
+    codex --ignore-user-config --sandbox workspace-write --ephemeral --cd "$REPO_ROOT" \
+    exec "$CODEX_PROMPT" > "${LOG_DIR}/codex-output-${RUN_ID}.log" 2>&1; then
     log "Codex completed"
 else
     rc=$?
@@ -382,9 +507,15 @@ fi
 # ───────────────────────────────────────────────────────────────
 # Push fix branch + open PR
 # ───────────────────────────────────────────────────────────────
-log "Codex committed $COMMITS_AHEAD changes. Pushing $FIX_BRANCH..."
+log "Codex committed $COMMITS_AHEAD changes. Pushing $FIX_BRANCH with pinned trusted hooks..."
 
-if ! git push -u origin "$FIX_BRANCH" 2>&1 | head -10; then
+if ! codex_auto_verify_trusted_prepush "$PRIMARY_REPO_ROOT" "$TRUSTED_PREPUSH_HOOKS"; then
+    log "Trusted pre-push bundle changed or cannot be verified. Refusing push."
+    codex_state blocked trusted_hook_verify_failed "Trusted pre-push bundle cannot be verified" "$FIX_BRANCH" "$REPO_ROOT"
+    exit 1
+fi
+
+if ! git -c core.hooksPath="$TRUSTED_PREPUSH_HOOKS" push -u origin "$FIX_BRANCH" 2>&1 | head -10; then
     log "Push failed"
     codex_state blocked push_failed "Push failed for $FIX_BRANCH" "$FIX_BRANCH" "$REPO_ROOT"
     notify "🔴 Codex autofix: push failed for $FIX_BRANCH"
@@ -417,7 +548,7 @@ python3 ~/nuzantara/scripts/codex_tri_llm_review.py --pr <this-pr-number>
 EOF
 )
 
-if PR_URL=$(gh pr create \
+if PR_URL=$("$GH_BIN" pr create \
     --repo "$REPO_SLUG" \
     --base "$BRANCH" \
     --head "$FIX_BRANCH" \

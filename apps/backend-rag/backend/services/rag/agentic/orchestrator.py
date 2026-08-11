@@ -352,6 +352,7 @@ class AgenticRAGOrchestrator:
         max_steps: int | None = None,
         agent_role: Any | None = None,
         memory_subject: str | None = None,
+        channel: str | None = None,
     ) -> CoreResult:
         """
         Process query with full RAG pipeline - Delegates to OrchestratorCore.
@@ -389,6 +390,18 @@ class AgenticRAGOrchestrator:
                 value at both ends, never re-derived. None (every caller
                 except the trusted WA bot with the salt provisioned) is a
                 complete no-op.
+            channel: Delivery channel (`whatsapp`, `instagram`, `voice`, …).
+                `stream_query` has accepted this since the overlays were
+                written; this NON-streaming twin never did, so the WhatsApp
+                bot — which sends `"channel": "whatsapp"` on every call and
+                reaches the backend HERE — declared a 150-word budget that
+                was silently dropped. Forwarded to
+                `OrchestratorCore.process_query_core`, which appends the
+                channel context block to the system prompt. None (every
+                other caller) leaves the prompt byte-identical to today's:
+                unlike the streaming path there is deliberately NO
+                `or "webapp"` default, because defaulting here would reshape
+                every existing caller of this method.
 
         Returns:
             CoreResult with answer, sources, and metadata
@@ -425,6 +438,7 @@ class AgenticRAGOrchestrator:
                 max_steps=max_steps,
                 agent_role=agent_role,
                 memory_subject=memory_subject,
+                channel=channel,
             )
 
             # 🧠 MEMORY PERSISTENCE: Save facts in background (Sync Path Fix)
