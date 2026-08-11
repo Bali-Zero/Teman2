@@ -485,6 +485,20 @@ _PREAMBLE_PATTERNS: tuple[str, ...] = (
     # (in LEGITIMATE_ANSWER_FRAGMENTS for exactly this reason).
     r"^(Okay[,.]?\s*)?[Tt]he user (is asking|is requesting|asks|wants|would like|"
     r"needs|is inquiring|is looking)\b[^.]*\.\s*",
+    # …and the same sentence hiding BEHIND an echo of the question. Measured 20
+    # minutes after the pattern above was written, which is why it is here:
+    # repeating the identical ask six times, one run answered
+    # `What are your office opening hours?\n\nThe user is asking for office
+    # opening hours. This information is not pres…` — the echo occupies
+    # start-of-string, so a `^`-anchored rule cannot see the monologue behind it.
+    # The question line is consumed ONLY when a monologue sentence follows it:
+    # deleting a leading question on its own would eat "What is the difference
+    # between a KITAS and a KITAP?", a real answer opener already pinned in
+    # LEGITIMATE_ANSWER_FRAGMENTS. Bounded length so this cannot swallow a
+    # paragraph that merely happens to contain a question mark.
+    r"^[^\n]{0,200}\?\s*\n+\s*(Okay[,.]?\s*)?[Tt]he user "
+    r"(is asking|is requesting|asks|wants|would like|needs|is inquiring|"
+    r"is looking)\b[^.]*\.\s*",
     # Naming the store it was told to consult. The lookahead is the load-bearing
     # half, same idiom as the CRITICAL/IMPORTANT pattern above: without it this
     # deletes "I need to find the missing page of your akta." — a real request to

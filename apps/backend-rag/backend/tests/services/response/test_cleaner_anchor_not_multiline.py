@@ -205,6 +205,14 @@ MONOLOGUE_CASES = [
         "Let's examine the provided RAG results. LKPM is filed quarterly.",
         "Let's examine the provided RAG results",
     ),
+    # MEASURED shape (probe 37 rep 6, prod): the monologue hides behind an echo
+    # of the question, so start-of-string belongs to the echo and not to it.
+    (
+        "What are your office opening hours?\n\n"
+        "The user is asking for office opening hours. "
+        "Our office is open Monday to Friday, 09:00 to 17:00 WITA.",
+        "The user is asking",
+    ),
 ]
 
 
