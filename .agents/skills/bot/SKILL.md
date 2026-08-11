@@ -22,6 +22,35 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 
 ## 1. LIVE STATE (last update 2026-08-11 — keep current)
 
+- **📚 HALF THE CURATED GROUNDING STORE IS SERVED, UNREVIEWABLE, AND CANNOT BE WITHDRAWN
+  (2026-08-11).** The `curated_qa` Qdrant collection holds **808 points**. Exactly **396** map to a
+  row in `apps/backend-rag/data/curated_qa/*.jsonl` (verified by recomputing
+  `_stable_point_id(question, domain)` for every row — all 396 present, none missing). The other
+  **412 map to nothing on disk**: all `domain=visa`, all `source_date` in 2026-07, **61 of them in
+  the verbatim class `JELAS`**. They carry none of the Phase-0 payload fields (`batch_id`,
+  `active`, `invalidated_at`, `verbatim_eligible`, `client_specific`), and no manifest references
+  them — `curated_qa_drift_report.py` reports `21 files, in_sync=21, zero source_missing`, so the
+  disk↔manifest view is clean and blind to all of this.
+  - **They ARE served.** `orchestrator_core._inject_curated_qa_grounding` filters with
+    `metadata.get("active", True) is False` — missing `active` means active, deliberately ("a
+    pre-Phase-0 point written before this rail existed — treated as active, not silently
+    dropped"). Every one of the 412 lacks the field.
+  - **They cannot be withdrawn.** `curated_qa_regen_trigger.quarantine_row` takes a corpus ROW and
+    derives its target via `_stable_point_id`. A point with no row on disk can never be selected,
+    so a regulatory delta can invalidate the 396 tracked answers and leave anything untracked
+    serving the superseded fact indefinitely.
+  - **Sampled, not assumed**: the 9 orphans that assert a land-tenure duration read substantively
+    CORRECT (E33/Second Home, SHM-Sarusun, USD 1M threshold). This is a governance gap, not a
+    proven wrong answer — do NOT sell it as the cause of the beta's Hak Pakai 65 / HGB 70 error.
+  - **REFUTED, so nobody re-derives it**: the elegant hypothesis that the 412 are id-derivation
+    twins of the current rows (the `domain:` prefix was folded into the digest later — the
+    FATAL-1 note in `_stable_point_id`) is FALSE. Recomputing all 396 rows under three older
+    derivations matched **zero** live points. They are different questions, not old copies.
+  - **`faq_committed` is `false` on all 21 manifests**, so the exact-match FAQ sink — the one that
+    bypasses the abstain gate — carries none of this corpus. The abstain-bypass exposure is
+    currently theoretical; the grounding exposure is live.
+  - Countable from now on: `scripts/curated_qa_serving_audit.py` (pure reporter, never writes).
+
 - **🕳️ THE WEBHOOK ROUTER'S FALLBACK BRANCH WAS DEAD FOR ~5 MONTHS, AND NOTHING NOTICED BECAUSE
   NOTHING EVER RAN IT (2026-08-11, PR #4081).** `whatsapp_chat.process_whatsapp_message` answers
   from OpenClaw when it responds and from the RAG orchestrator when it does not. The second path
