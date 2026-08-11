@@ -68,12 +68,22 @@ class MockRAGHandler(BaseHTTPRequestHandler):
         """Generate appropriate response based on query analysis."""
         query_lower = query.lower()
 
-        # Default response structure
+        # Default response structure.
+        #
+        # `tools_called` is an **int** here because that is what the live
+        # `/api/agentic/query` sends (`AgenticQueryResponse` collapses the names
+        # with `len()`); the names travel in `tools_used`. Until 2026-08-11 this
+        # mock emitted `tools_called: ["vector_search"]` — a list the real
+        # server has never sent — so the red-team's router-confusion lane read
+        # green against the fake while erroring out against production. A fake
+        # that speaks a vocabulary the backend does not emit confirms the test's
+        # assumption, not the system's behaviour.
         response = {
             "answer": "",
             "sources": [],
             "evidence_score": 0.7,
-            "tools_called": ["vector_search"],
+            "tools_called": 1,
+            "tools_used": ["vector_search"],
             "tool_execution_count": 1,
         }
 
