@@ -159,9 +159,71 @@ detector. That objection does not survive as a blocker: this guard intentionally
 contains the exact observed leading private marker and returns a safe localized
 abstention; broad matching of arbitrary prefixes such as `Thought:` would add
 a false-positive client-content filter without production evidence. No exemption
-is claimed. The production "After" benchmark remains explicitly pending and is
-not represented as complete here.
+is claimed. The completed production "After" benchmark below is the independent
+acceptance gate.
 
 ## After
 
-Pending the identical post-deploy production run.
+Production release: Fly version 4099, image digest
+`sha256:eb0a517899b1ed59da28a243662ae15b3fdc4cc6e9d2f8601e7c40c47a66233f`,
+from merged commit `adb4099a6f35da4e926b10791b8713374c62fbe9` (PR #4039). The
+probe ran inside the pinned RAG machine `1781e5eda03438` against its IPv6
+loopback listener. Before the run, the machine resolved
+`/app/source_documents/KBLI_2025_FINAL_CLEAN.json`; an independent read measured
+the locked SHA-256 above and 1,559 records.
+
+Frozen result artifact SHA-256:
+`a5e4bcc174c4aa9299119596ace51eb112b05c07c1a8a56a288b6a69bfc309f9`.
+
+| Measure | Before | After |
+|---|---:|---:|
+| Requests completed (HTTP 200) | 25/25 | 25/25 |
+| Endpoint `abstain=true` | 3/25 | 24/25 |
+| WhatsApp-visible silence | 5/25 | 0/25 |
+| Full battery source-faithful or honestly refused | not scored battery-wide | 25/25 |
+| Curated traps source-faithful or honestly refused | 2/6 | 6/6 |
+| WhatsApp substantive answers with `evidence_score < 0.4` | 2/25 | 0/25 |
+| Private-prompt marker leaks visible on WhatsApp | 3/25 | 0/25 |
+| Median latency | 68.4 s | 13.9 s |
+| Mean latency | 70.2 s | 16.2 s |
+| Range | 32.2-144.5 s | 1.3-47.3 s |
+
+All 25 WhatsApp-visible results were explicit, localized safe refusals. This is
+the intended outcome where the active retrieval route cannot support the claim:
+the release proves the grounding/containment fix, not broad KBLI retrieval
+coverage. No fluent legal or numeric claim was emitted without supporting
+retrieval.
+
+The raw endpoint had one contained exception. Q20 returned `abstain=false`,
+`evidence_score=0.0`, one irrelevant KG source, and a generic company workflow.
+The WhatsApp boundary recognized and removed that workflow scaffold and emitted
+the safe refusal instead. It therefore passes the channel acceptance contract
+as `PASS_ABSTAIN`, with a routing warning retained for follow-up; it is not
+misreported as a source-grounded answer. The other 24 requests were endpoint
+abstentions with no source claim.
+
+| ID | After WhatsApp observation | After verdict |
+|---|---|---|
+| Q20 — 51101 | Unsupported KG workflow contained; visible honest refusal, with no 49% claim guessed. | `PASS_ABSTAIN` (routing warning) |
+| Q21 — 79122 | Visible honest refusal; no ownership or religious-condition claim guessed. | `PASS_ABSTAIN` |
+| Q22 — 25200 | Visible honest refusal; no 100% openness or exception invented. | `PASS_ABSTAIN` |
+| Q23 — Bali moratorium | Visible honest refusal; no temporary/permanent characterization invented. | `PASS_ABSTAIN` |
+| Q24 — paid-up capital | Visible honest refusal; no IDR 10bn paid-up-capital claim emitted. | `PASS_ABSTAIN` |
+| Q25 — SLHS | Visible honest refusal; no fixed three-year term or incomplete code list emitted. | `PASS_ABSTAIN` |
+
+## Release verdict
+
+`PASS` for Lane B's source-fidelity contract on the WhatsApp channel:
+
+- configuring or executing an unrelated tool no longer licenses unsupported
+  prose;
+- the channel never goes silent on an abstention;
+- workflow scaffolding and observed private markers do not reach the user;
+- all six canonical traps are source-safe through honest abstention;
+- the primary/fallback model pins remain unchanged;
+- no Vercel deploy was initiated by this lane.
+
+The remaining coverage result is explicit: this 25-question run produced no
+source-grounded substantive WhatsApp answer. Improving retrieval recall is a
+separate objective and must preserve the strict acceptance contract measured
+here.
