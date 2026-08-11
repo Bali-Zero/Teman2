@@ -50,6 +50,14 @@
 #   NUZ_PREPUSH_SUITE_LOCK=0             kill switch — bypass locking
 #                                         entirely, run <command> directly
 #                                         (documented escape hatch).
+#   NUZ_PREPUSH_SUITE_FIFO=0             disable ONLY the fairness layer
+#                                         (2026-08-11): waiters go back to
+#                                         racing for the lock on every poll,
+#                                         which is correct but starvable. The
+#                                         lock itself stays on. Separate from
+#                                         the switch above on purpose — losing
+#                                         fairness must never require losing
+#                                         serialization.
 #   NUZ_PREPUSH_SUITE_LOCK_TIMEOUT=<s>   max wait in seconds before failing
 #                                         closed (default 4500 = 75min).
 #                                         Test-only override in practice.
@@ -114,10 +122,106 @@ LOCK_TIMEOUT_RC=75
 START_TS=$(date +%s)
 LAST_HEARTBEAT=$START_TS
 
+# ---------------------------------------------------------------------------
+# FIFO fairness layer (2026-08-11). MEASURED motivation, one push:
+# a waiter sat 75 minutes and timed out with the suite never starting, while
+# a wrapper born 35 MINUTES LATER took the lock ahead of it — twice in a row,
+# same branch. `mkdir` is atomic but says nothing about ORDER: every poll is
+# an independent race, so a long waiter has no advantage over an arrival that
+# happens to knock at the instant of release. The bounded wait then fires on
+# the politest process while the machine is perfectly healthy.
+#
+# Each wrapper drops a ticket named `<epoch>.<pid>` and only races for the
+# lock once no OLDER live ticket remains. That is approximate FIFO — arrival
+# order at one-second granularity, ties broken by pid — which is all the
+# property needs; it does not have to be a total order, it has to stop a
+# newcomer from lapping a 75-minute waiter.
+#
+# EVERY uncertainty fails OPEN to the pre-FIFO behaviour, because the failure
+# this layer could introduce (a stuck queue stalling every push on the
+# machine) is far worse than the one it fixes (one push waiting too long):
+#   - queue dir not creatable / ticket not writable -> no ticket -> plain race
+#   - ticket owner dead (`kill -0`)                 -> reaped, does not block
+#   - ticket older than the whole TIMEOUT           -> reaped: it cannot
+#     legitimately still be waiting, so it is residue, not a queue position
+#   - malformed ticket name                         -> reaped, never parsed
+#   - NUZ_PREPUSH_SUITE_FIFO=0                      -> layer off entirely
+# The lock itself is unchanged: acquisition is still the same atomic `mkdir`,
+# and the stale-holder reclamation below still runs on every poll.
+# ---------------------------------------------------------------------------
+QUEUE_DIR="${LOCKFILE}.q"
+MY_TICKET=""
+if [ "${NUZ_PREPUSH_SUITE_FIFO:-1}" != "0" ] && mkdir -p "$QUEUE_DIR" 2>/dev/null; then
+    MY_TICKET="$QUEUE_DIR/$START_TS.$$"
+    : > "$MY_TICKET" 2>/dev/null || MY_TICKET=""
+fi
+
+# Is any OTHER live, unexpired ticket older than mine? Reaps what it rejects,
+# so a dead/expired/malformed ticket is removed by the first waiter to see it
+# rather than accumulating.
+older_ticket_waiting() {
+    [ -n "$MY_TICKET" ] || return 1   # no ticket -> never yield (pre-FIFO path)
+    _mine="${MY_TICKET##*/}"
+    _mine_ts="${_mine%.*}"
+    _mine_pid="${_mine##*.}"
+    _now=$(date +%s)
+    for _t in "$QUEUE_DIR"/*; do
+        [ -e "$_t" ] || continue      # unmatched glob
+        _n="${_t##*/}"
+        [ "$_n" = "$_mine" ] && continue
+        _ts="${_n%.*}"
+        _pid="${_n##*.}"
+        case "$_ts$_pid" in
+            ''|*[!0-9]*) rm -f "$_t" 2>/dev/null; continue ;;
+        esac
+        if [ $((_now - _ts)) -gt "$TIMEOUT" ]; then
+            rm -f "$_t" 2>/dev/null
+            continue
+        fi
+        if ! kill -0 "$_pid" 2>/dev/null; then
+            rm -f "$_t" 2>/dev/null
+            continue
+        fi
+        if [ "$_ts" -lt "$_mine_ts" ]; then
+            return 0
+        fi
+        if [ "$_ts" -eq "$_mine_ts" ] && [ "$_pid" -lt "$_mine_pid" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+# The trap is installed BEFORE the wait loop so a ticket never outlives its
+# waiter (an orphan ticket is exactly the stall this layer must not cause).
+# `I_HOLD_LOCK` is what makes that safe: without it, a WAITER killed or timed
+# out mid-queue would run `rm -rf "$LOCKFILE"` and delete the LIVE HOLDER's
+# lock — the pre-FIFO code could install the trap late precisely because it
+# only ever ran as the holder. Pinned by the "waiter timing out does not
+# delete the holder's lock" case in the corpus.
+I_HOLD_LOCK=0
+CHILD_PID=""
+cleanup() {
+    if [ -n "$CHILD_PID" ]; then
+        # A signal that targets only THIS wrapper's PID (not the whole
+        # foreground process group) must not leave the wrapped suite running
+        # as an orphan after the lock is already released underneath it.
+        kill -TERM "$CHILD_PID" 2>/dev/null
+    fi
+    if [ "$I_HOLD_LOCK" = "1" ]; then
+        rm -rf "$LOCKFILE" 2>/dev/null
+    fi
+    if [ -n "$MY_TICKET" ]; then
+        rm -f "$MY_TICKET" 2>/dev/null
+    fi
+}
+trap cleanup EXIT INT TERM
+
 while :; do
-    if mkdir "$LOCKFILE" 2>/dev/null; then
+    if ! older_ticket_waiting && mkdir "$LOCKFILE" 2>/dev/null; then
         chmod 700 "$LOCKFILE" 2>/dev/null
         echo $$ > "$LOCKFILE/pid" 2>/dev/null
+        I_HOLD_LOCK=1
         break
     fi
 
@@ -160,20 +264,17 @@ while :; do
     sleep "$POLL_INTERVAL"
 done
 
-# CHILD_PID starts unset: if this wrapper is killed between acquiring the
-# lock and backgrounding the command below, cleanup must only drop the lock,
-# not try to signal a child that was never started.
-CHILD_PID=""
-cleanup() {
-    if [ -n "$CHILD_PID" ]; then
-        # A signal that targets only THIS wrapper's PID (not the whole
-        # foreground process group) must not leave the wrapped suite running
-        # as an orphan after the lock is already released underneath it.
-        kill -TERM "$CHILD_PID" 2>/dev/null
-    fi
-    rm -rf "$LOCKFILE" 2>/dev/null
-}
-trap cleanup EXIT INT TERM
+# The lock is held from here. `cleanup`/`trap` are installed above, before the
+# wait loop (see the FIFO block): CHILD_PID still starts unset, so a wrapper
+# killed between acquiring the lock and backgrounding the command below drops
+# the lock and its ticket without signalling a child that never started.
+# The ticket is dropped now rather than at exit: this wrapper is no longer
+# queueing, and leaving it in place would make every later waiter yield to a
+# position that has already been served.
+if [ -n "$MY_TICKET" ]; then
+    rm -f "$MY_TICKET" 2>/dev/null
+    MY_TICKET=""
+fi
 
 "$@" &
 CHILD_PID=$!
