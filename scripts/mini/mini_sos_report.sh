@@ -32,7 +32,8 @@ set -u
 
 SOS_DEADLINE="2026-08-25"
 SOS_HOST="mini-pro2"
-MARKER="$HOME/.nuzantara-sos-inbound-2026-08-11.delivered"
+MARKER="$HOME/.nuzantara-sos-inbound-2026-08-11.delivered-v2"
+CURE_MARKER="$HOME/.nuzantara-sos-inbound-2026-08-11.cure-attempted-v2"
 LOG_FILE="$HOME/logs/mini-sos-report.log"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"; }
@@ -40,7 +41,16 @@ log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"; }
 # Guard 1 — node. This file ships to every machine in the repo; only the
 # patient runs it. mini-git-pull.sh has no node guard of its own, and its
 # test harness runs it with a synthetic HOME, so the guard must live here.
-if [ "$(hostname -s | tr '[:upper:]' '[:lower:]')" != "$SOS_HOST" ]; then
+# The hostname is a NAME and names drift; the Tailscale address is the identity
+# this whole rescue is addressed to, and it is the one I can verify from the
+# outside (the Pro reads it from `tailscale status --json`). Accept either, so a
+# machine renamed at some point in its life is still recognised as the patient.
+# It cannot misfire elsewhere: the Pro and M5 hold different Tailscale IPs.
+SOS_TSIP="100.93.236.6"
+_is_patient=0
+[ "$(hostname -s 2>/dev/null | tr '[:upper:]' '[:lower:]')" = "$SOS_HOST" ] && _is_patient=1
+ifconfig 2>/dev/null | grep -q "inet $SOS_TSIP\b" && _is_patient=1
+if [ "$_is_patient" != "1" ]; then
     exit 0
 fi
 
@@ -50,11 +60,15 @@ if [ "$(date +%Y-%m-%d)" \> "$SOS_DEADLINE" ]; then
     exit 0
 fi
 
-# Guard 3 — deliver once. The marker is written only after a report actually
-# lands on the Pro, so a failed exfiltration retries on the next pull instead
-# of going quiet (a probe whose silence is indistinguishable from success is
-# worse than no probe).
-if [ -f "$MARKER" ]; then
+# Guard 3 — do the work once each, and track the two halves SEPARATELY. The
+# report marker is written only after a report actually lands on the Pro (a
+# probe whose silence is indistinguishable from success is worse than no
+# probe); the cure marker is written when the cure has been ATTEMPTED, acted
+# or not. Two markers rather than one because the halves arrived on different
+# days: a single marker set by the first delivery would have made the cure
+# added afterwards permanently unreachable — dead code on the only path it
+# exists for, which is a mistake this repo has made often enough to name.
+if [ -f "$MARKER" ] && [ -f "$CURE_MARKER" ]; then
     exit 0
 fi
 
@@ -130,6 +144,134 @@ if sudo -n true 2>/dev/null; then
 else
     echo "NO — round 2 is limited to unprivileged actions" >> "$OUT"
 fi
+
+# --- THE MEASUREMENT THAT SEPARATES THE TWO REMAINING CAUSES.
+# Watched from the Pro, an inbound connection to this host completes the
+# three-way handshake and then never ACKs a byte (send-queue frozen at 57
+# across 20+ seconds, then FIN_WAIT_2). Two mechanisms produce that and they
+# need opposite cures:
+#
+#   (a) the application firewall accepts and then terminates -> cure is local,
+#       and the section above already took it if the measurement agreed;
+#   (b) tailscaled terminates the TCP connection in userspace and then fails
+#       to hand it to the local service -- e.g. the network extension lost the
+#       macOS Local Network grant. Then the firewall is innocent and flipping
+#       it changes nothing.
+#
+# One test tells them apart, and only this host can run it: dial the SAME port
+# two ways. Over loopback the packet never touches tailscaled; over this host's
+# OWN Tailscale address it goes through the userspace path that a remote peer
+# uses. loopback OK + tailscale-IP FAIL is (b), proven from the inside, and no
+# amount of firewall work would have fixed it. Both failing points back at the
+# host. This costs four seconds and is the difference between curing the cause
+# and curing the first thing that looked plausible.
+section "self-test: loopback vs own tailscale IP"
+for PORT in 22 5900; do
+    for ADDR in 127.0.0.1 100.93.236.6; do
+        if nc -z -G 3 -w 3 "$ADDR" "$PORT" </dev/null >/dev/null 2>&1; then
+            echo "  $ADDR:$PORT  OPEN" >> "$OUT"
+        else
+            echo "  $ADDR:$PORT  FAIL (rc=$?)" >> "$OUT"
+        fi
+    done
+done
+probe "tailscale prefs (netstack/userspace?)" sh -c 'tailscale debug prefs 2>&1 | head -30'
+probe "tailscaled process"                    sh -c 'ps ax -o pid,etime,command | grep -i "[t]ailscale" | head -5'
+
+# --- CONDITIONAL CURE -------------------------------------------------------
+# The header still says the probe cures nothing; that was true of round 1 and
+# is now narrowed rather than repealed. It restarts nothing — Tailscale is the
+# only remaining channel into this host and a restart that failed to come back
+# turns a reachability outage into a site visit. What it may do is flip ONE
+# setting, and only when the measurement taken seconds earlier in this same run
+# says that setting is the disease. That is not a blind cure: if the condition
+# does not hold, nothing happens and the report says so.
+#
+# Why only the firewall's block-all, when three plausible causes exist: the
+# other two are already contradicted by the evidence. A port scan of this host
+# distinguishes listening ports (22, 5900, 6379, 11434 — handshake completes,
+# then reset) from non-listening ones (5432, 8000, 60000 — refused outright).
+# So sshd and screensharingd ARE running and ARE bound; "the service is off"
+# cannot be the cause, and enabling it would be acting against measurement.
+# Block-all is the only candidate that produces exactly this signature:
+# accept, then terminate, uniformly, for every listening service, outbound
+# untouched, surviving reboots.
+section "cure attempt"
+if [ -f "$CURE_MARKER" ]; then
+    echo "already attempted at $(cat "$CURE_MARKER" 2>/dev/null) — not repeating" >> "$OUT"
+elif ! sudo -n true 2>/dev/null; then
+    echo "SKIPPED — no passwordless root; every cure for a firewall needs it," >> "$OUT"
+    echo "and a repo-shipped script must never carry a password." >> "$OUT"
+    date -u +%Y-%m-%dT%H:%M:%SZ > "$CURE_MARKER" 2>/dev/null
+else
+    FW=/usr/libexec/ApplicationFirewall/socketfilterfw
+
+    # Stealth mode first, because it is the setting the outside evidence
+    # actually names. From the Pro: `tailscale ping` answers (52ms) but
+    # `tailscale ping --icmp` gets nothing, while the same ICMP command
+    # against M5 answers in 7ms — a positive control, so the instrument is
+    # not the problem. Taildrop to this host also succeeds, so tailscaled is
+    # healthy and can act locally. Packets therefore ARRIVE, tailscaled
+    # injects them, and this machine's OS refuses to answer. Tailscale's own
+    # help text names that state: "if tailscale ping works but a normal ping
+    # does not, one side's operating system firewall is blocking packets."
+    # Silent drop of ICMP is stealth mode specifically — block-all alone
+    # would still let the kernel answer a ping.
+    #
+    # Turning it off is also what gives us PROOF without waiting for a
+    # report: the moment stealth is off, ICMP from the Pro starts answering,
+    # and that is visible from outside within seconds.
+    STEALTH_BEFORE="$(sudo -n "$FW" --getstealthmode 2>&1)"
+    echo "measured stealth before: $STEALTH_BEFORE" >> "$OUT"
+    case "$STEALTH_BEFORE" in
+        *disabled*|*DISABLED*|*off*|*OFF*)
+            echo "stealth already off — not the cause of the ICMP silence." >> "$OUT" ;;
+        *enabled*|*ENABLED*|*on*|*ON*)
+            echo "stealth is ON — turning it off (reverse: --setstealthmode on)" >> "$OUT"
+            sudo -n "$FW" --setstealthmode off >> "$OUT" 2>&1 || \
+                echo "(--setstealthmode off failed, rc=$?)" >> "$OUT"
+            echo "stealth after: $(sudo -n "$FW" --getstealthmode 2>&1)" >> "$OUT" ;;
+        *)
+            echo "stealth: UNRECOGNISED output — no action." >> "$OUT" ;;
+    esac
+
+    BLOCKALL_BEFORE="$(sudo -n "$FW" --getblockall 2>&1)"
+    echo "measured before: $BLOCKALL_BEFORE" >> "$OUT"
+    # Three-way, and the ORDER is load-bearing: DISABLED contains ENABLED as a
+    # substring, so a naive *ENABLED* test reads "off" as "on" and would flip
+    # a setting that was already correct. Test the negative first, and treat
+    # anything we do not recognise as UNKNOWN — never as consent to act.
+    case "$BLOCKALL_BEFORE" in
+        *DISABLED*|*disabled*)
+            echo "VERDICT: block-all is already off — it is NOT the cause." >> "$OUT"
+            echo "No action taken. The cause is elsewhere; read the sections above." >> "$OUT"
+            ;;
+        *ENABLED*|*enabled*)
+            echo "VERDICT: block-all is ON — this is the disease. Turning it off." >> "$OUT"
+            echo "(Only 'block all incoming' is cleared; the firewall itself stays" >> "$OUT"
+            echo " on, per-app rules intact. Reverse with: socketfilterfw --setblockall on)" >> "$OUT"
+            sudo -n "$FW" --setblockall off >> "$OUT" 2>&1 || \
+                echo "(--setblockall off failed, rc=$?)" >> "$OUT"
+            echo "measured after: $(sudo -n "$FW" --getblockall 2>&1)" >> "$OUT"
+            ;;
+        *)
+            echo "VERDICT: UNRECOGNISED output — taking no action deliberately." >> "$OUT"
+            echo "Acting on a string I cannot parse is how a cure breaks a healthy host." >> "$OUT"
+            ;;
+    esac
+    date -u +%Y-%m-%dT%H:%M:%SZ > "$CURE_MARKER" 2>/dev/null
+fi
+
+# --- did it work? Ask the OTHER side. This host cannot test its own inbound
+#     path — from in here every port looks open — so the proof has to come
+#     from a machine that is actually blocked, and the Pro is both blocked and
+#     reachable outbound. This is the difference between "I ran the fix" and
+#     "the fix worked": a command's exit code reports the command, a connect
+#     from outside reports the machine.
+section "inbound proof, measured FROM the Pro"
+ssh -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new pro \
+    'for p in 22 5900; do nc -z -G 5 -w 5 100.93.236.6 $p </dev/null >/dev/null 2>&1; echo "port $p from pro: rc=$?"; done' \
+    >> "$OUT" 2>&1 || echo "(could not reach the Pro to run the proof)" >> "$OUT"
 
 # --- exfiltrate over the direction that still works.
 REMOTE_NAME="mini-sos-$(date +%Y%m%d-%H%M%S).txt"
