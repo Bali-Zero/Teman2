@@ -377,6 +377,8 @@ minimum untuk PT PMA?` / Italian), **four of five retrieve fine** and give the c
     `connect you` and scored the frustration case **False** against _"connecting you"_ — an
     under-match in my own instrument (family #3). The finding came from re-reading the answer.
 
+- TRACK BOT-KBLI claimed by M5/2026-08-11
+
 - **🧪 BATTERY v5 — THE FOUR OPEN BETA CURES, RE-MEASURED 13 DAYS LATER (2026-08-10).** The
   2026-07-28 team beta left four cures open and nobody had asked whether they were still
   true. 14 questions, prod container, synthetic senders. Script: session scratchpad
