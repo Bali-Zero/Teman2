@@ -93,6 +93,32 @@ each is a distinct, explicit action requiring its own Zero go-ahead.
 > `SUPPORTED_CANDIDATES` [B1, C1]; NG negative control keeps
 > `CALLING_VISA_REVIEW` with no B1. **EVALUATE_MODE stays SHADOW; ENFORCE remains NO-GO.**
 
+> **UPDATE 2026-08-11 — `prod-007` (sequence 7) is now the active PRODUCTION
+> RulePack, superseding `prod-006`.** Activated through the two-login ceremony
+> (`activate_pack.py --yes`; ephemeral roles `visa_pack_writer_ceremony_260811` /
+> `visa_activation_ceremony_260811` minted and dropped same session).
+> `rule_pack_id 453ee842-7f35-5d77-b460-31d67e2784c2`, activation
+> `3b849e1f-be39-4211-bfc9-395caef875c9`, `payload_sha256 3d068aef…9719f82`,
+> `previous_payload_sha256 9691534c…3ca83f6` (the real prod-006 hash — chain
+> intact), reason `seq7-shadow-activation-260811`. DB-verified: the runtime's
+> real predicate (`legal_period @> now() AND system_period @> now()`) resolves
+> to exactly one open activation — seq-7; `prod-006` closed at 2026-08-10
+> 21:54:58 UTC, no gap/overlap. Content is **data-only**: 104 rules, identical
+> to `prod-006` — the sole change is `E28C` `sponsor_types`
+> `INDIVIDUAL → NONE` (plus the matching locator update on
+> `source_record 9248b1d7`), no new rule — "the gate that does not exist"
+> (`research/visa/2026-08-11-seq7-sponsor-semantics-and-the-gate-that-does-not-exist.md`).
+> Prove-live: the IT/TOURISM/10d case still returns `SUPPORTED_CANDIDATES`
+> [B1, C1], now served by `sequence 7`; the NG negative control still returns
+> `HUMAN_REVIEW_REQUIRED` with no B1. **Declared shadow-ledger contamination
+> from this ceremony's own replay probes**: 2 rows recorded with
+> `traffic_source=real` (the IT and NG replay `evaluate` calls used to prove
+> the activation) plus 1 further replay attempt that was rejected with
+> HTTP 422 (validation failure, not persisted as a ledger row) — noted here so
+> a future volume/G-a read on the shadow evidence ledger does not mistake
+> these rows for genuine end-user traffic. **EVALUATE_MODE stays SHADOW;
+> ENFORCE remains NO-GO.**
+
 ## Product contract
 
 - The guarantee is **zero unsupported recommendations**, not zero errors.

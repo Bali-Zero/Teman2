@@ -300,6 +300,193 @@ else
     note_fail "tripwire — .husky/pre-push does not classify rc=75; saturation still reads as 'tests FAILED'"
 fi
 
+
+# ===========================================================================
+# FIFO fairness layer (2026-08-11). Measured trigger: one waiter sat 75
+# minutes, timed out with the suite never starting, and a wrapper born 35
+# MINUTES LATER took the lock ahead of it — twice on the same branch. mkdir is
+# atomic but says nothing about order.
+#
+# The cases below split the same way as the rest of this file: the fairness
+# property itself (guilt), then every fail-open path, because the failure this
+# layer could introduce — a stuck queue stalling every push on the machine —
+# is worse than the one it fixes.
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# Case F1 (guilt, THE fairness property): the lock is FREE, but an older LIVE
+# ticket is queued. A younger wrapper must YIELD — under the pre-FIFO code it
+# would take the free lock instantly, which is exactly the lapping that cost a
+# real push 75 minutes.
+#
+# The older ticket's owner is a REAL live process (a `sleep` we spawn and
+# later kill), not a plausible-looking number: `kill -0` is what the layer
+# actually asks, so the test must give it a real answer.
+# ---------------------------------------------------------------------------
+LOCKF1="$WORKDIR/fifo-yield.lock"
+QF1="$LOCKF1.q"
+mkdir -p "$QF1"
+sleep 30 &
+OLD_OWNER=$!
+OLD_TS=$(( $(date +%s) - 60 ))
+: > "$QF1/$OLD_TS.$OLD_OWNER"
+
+"$SCRIPT" "$LOCKF1" sh -c 'echo jumped' > "$WORKDIR/f1.out" 2>&1 &
+YOUNGER=$!
+sleep 4
+if kill -0 "$YOUNGER" 2>/dev/null && ! grep -q jumped "$WORKDIR/f1.out" 2>/dev/null; then
+    note_pass "fifo guilt — younger waiter yielded to an older live ticket even with the lock FREE"
+else
+    note_fail "fifo guilt — younger waiter took a free lock ahead of an older live ticket (out: $(cat "$WORKDIR/f1.out" 2>/dev/null))"
+fi
+
+# ...and once the older ticket's owner dies, the younger one must proceed —
+# the yield is a queue position, not a wedge.
+kill "$OLD_OWNER" 2>/dev/null
+wait "$OLD_OWNER" 2>/dev/null
+sleep 5
+if grep -q jumped "$WORKDIR/f1.out" 2>/dev/null; then
+    note_pass "fifo guilt — younger waiter proceeded once the older ticket's owner died"
+else
+    note_fail "fifo guilt — younger waiter still blocked after the older ticket's owner died (WEDGE)"
+fi
+wait "$YOUNGER" 2>/dev/null
+
+# ---------------------------------------------------------------------------
+# Case F2 (innocence): with the layer ON and no contender, a single acquirer
+# must still run immediately. A fairness layer that adds latency to the
+# uncontended path would be paid on every push on every machine.
+# ---------------------------------------------------------------------------
+LOCKF2="$WORKDIR/fifo-solo.lock"
+T0=$(date +%s)
+OUTF2="$("$SCRIPT" "$LOCKF2" sh -c 'echo solo')"
+RCF2=$?
+ELAPSEDF2=$(( $(date +%s) - T0 ))
+if [ "$OUTF2" = "solo" ] && [ "$RCF2" -eq 0 ] && [ "$ELAPSEDF2" -le 3 ]; then
+    note_pass "fifo innocence — uncontended acquirer still immediate (${ELAPSEDF2}s)"
+else
+    note_fail "fifo innocence — uncontended acquirer delayed/broken (${ELAPSEDF2}s, rc=$RCF2, out='$OUTF2')"
+fi
+if [ -d "$LOCKF2.q" ] && [ -n "$(ls -A "$LOCKF2.q" 2>/dev/null)" ]; then
+    note_fail "fifo innocence — ticket left behind after a normal exit: $(ls -A "$LOCKF2.q")"
+else
+    note_pass "fifo innocence — no ticket left behind after a normal exit"
+fi
+
+# ---------------------------------------------------------------------------
+# Case F3 (fail-open, dead owner): a ticket whose owner is dead must be reaped,
+# not obeyed. Same guaranteed-dead-PID discipline as Case 3.
+# ---------------------------------------------------------------------------
+LOCKF3="$WORKDIR/fifo-deadticket.lock"
+QF3="$LOCKF3.q"
+mkdir -p "$QF3"
+sh -c 'exit 0' &
+DEAD_T=$!
+wait "$DEAD_T" 2>/dev/null
+: > "$QF3/$(( $(date +%s) - 60 )).$DEAD_T"
+T0=$(date +%s)
+OUTF3="$("$SCRIPT" "$LOCKF3" sh -c 'echo past-dead' 2>&1)"
+ELAPSEDF3=$(( $(date +%s) - T0 ))
+if printf '%s' "$OUTF3" | grep -q 'past-dead' && [ "$ELAPSEDF3" -le 5 ]; then
+    note_pass "fifo fail-open — dead-owner ticket reaped, waiter proceeded (${ELAPSEDF3}s)"
+else
+    note_fail "fifo fail-open — dead-owner ticket blocked the waiter (${ELAPSEDF3}s, out='$OUTF3')"
+fi
+
+# ---------------------------------------------------------------------------
+# Case F4 (fail-open, expired): a ticket older than the whole timeout cannot
+# legitimately still be waiting — it is residue. It must not block even though
+# its owner IS alive.
+# ---------------------------------------------------------------------------
+LOCKF4="$WORKDIR/fifo-expired.lock"
+QF4="$LOCKF4.q"
+mkdir -p "$QF4"
+sleep 30 &
+LIVE_OLD=$!
+: > "$QF4/$(( $(date +%s) - 99999 )).$LIVE_OLD"
+T0=$(date +%s)
+OUTF4="$("$SCRIPT" "$LOCKF4" sh -c 'echo past-expired' 2>&1)"
+ELAPSEDF4=$(( $(date +%s) - T0 ))
+kill "$LIVE_OLD" 2>/dev/null
+wait "$LIVE_OLD" 2>/dev/null
+if printf '%s' "$OUTF4" | grep -q 'past-expired' && [ "$ELAPSEDF4" -le 5 ]; then
+    note_pass "fifo fail-open — expired ticket (live owner) reaped, waiter proceeded (${ELAPSEDF4}s)"
+else
+    note_fail "fifo fail-open — expired ticket blocked the waiter (${ELAPSEDF4}s, out='$OUTF4')"
+fi
+
+# ---------------------------------------------------------------------------
+# Case F5 (fail-open, malformed): a ticket name that does not parse must be
+# reaped, never interpreted. Arithmetic on a non-numeric field would abort the
+# wrapper under some shells — a queue that can be poisoned by one bad filename
+# is worse than no queue.
+# ---------------------------------------------------------------------------
+LOCKF5="$WORKDIR/fifo-malformed.lock"
+QF5="$LOCKF5.q"
+mkdir -p "$QF5"
+: > "$QF5/not-a-ticket"
+: > "$QF5/abc.def"
+T0=$(date +%s)
+OUTF5="$("$SCRIPT" "$LOCKF5" sh -c 'echo past-malformed' 2>&1)"
+ELAPSEDF5=$(( $(date +%s) - T0 ))
+if printf '%s' "$OUTF5" | grep -q 'past-malformed' && [ "$ELAPSEDF5" -le 5 ]; then
+    note_pass "fifo fail-open — malformed tickets reaped, waiter proceeded (${ELAPSEDF5}s)"
+else
+    note_fail "fifo fail-open — malformed ticket blocked the waiter (${ELAPSEDF5}s, out='$OUTF5')"
+fi
+
+# ---------------------------------------------------------------------------
+# Case F6 (kill switch): NUZ_PREPUSH_SUITE_FIFO=0 turns the fairness layer off
+# WITHOUT turning the lock off — losing fairness must never require losing
+# serialization. With the layer off, the older live ticket of F1 is ignored.
+# ---------------------------------------------------------------------------
+LOCKF6="$WORKDIR/fifo-killswitch.lock"
+QF6="$LOCKF6.q"
+mkdir -p "$QF6"
+sleep 30 &
+BLOCKER=$!
+: > "$QF6/$(( $(date +%s) - 60 )).$BLOCKER"
+T0=$(date +%s)
+OUTF6="$(NUZ_PREPUSH_SUITE_FIFO=0 "$SCRIPT" "$LOCKF6" sh -c 'echo fifo-off' 2>&1)"
+ELAPSEDF6=$(( $(date +%s) - T0 ))
+kill "$BLOCKER" 2>/dev/null
+wait "$BLOCKER" 2>/dev/null
+if printf '%s' "$OUTF6" | grep -q 'fifo-off' && [ "$ELAPSEDF6" -le 5 ]; then
+    note_pass "fifo kill switch — NUZ_PREPUSH_SUITE_FIFO=0 ignores the queue (${ELAPSEDF6}s)"
+else
+    note_fail "fifo kill switch — layer still active with NUZ_PREPUSH_SUITE_FIFO=0 (${ELAPSEDF6}s, out='$OUTF6')"
+fi
+
+# ---------------------------------------------------------------------------
+# Case F7 (SAFETY — the bug this layer could have introduced): the trap now
+# runs in WAITERS too, because a ticket must never outlive its waiter. A
+# waiter that gives up must therefore NOT delete the live HOLDER's lock. Drop
+# the `I_HOLD_LOCK` guard from cleanup() and this case goes red while every
+# other case stays green.
+#
+# Driven through a real timeout (1s) against a real live holder.
+# ---------------------------------------------------------------------------
+LOCKF7="$WORKDIR/fifo-holdersafety.lock"
+mkdir -p "$LOCKF7"
+sleep 30 &
+HOLDER7=$!
+echo "$HOLDER7" > "$LOCKF7/pid"
+NUZ_PREPUSH_SUITE_LOCK_TIMEOUT=1 NUZ_PREPUSH_SUITE_LOCK_POLL=1 \
+    "$SCRIPT" "$LOCKF7" sh -c 'echo should-not-run' > "$WORKDIR/f7.out" 2>&1
+RCF7=$?
+if [ "$RCF7" -eq 75 ] && [ -d "$LOCKF7" ] && [ "$(cat "$LOCKF7/pid" 2>/dev/null)" = "$HOLDER7" ]; then
+    note_pass "fifo safety — a timing-out WAITER left the live holder's lock intact (rc=$RCF7)"
+else
+    note_fail "fifo safety — waiter destroyed or altered the holder's lock (rc=$RCF7, lock exists: $([ -d "$LOCKF7" ] && echo yes || echo NO), pid file: '$(cat "$LOCKF7/pid" 2>/dev/null)')"
+fi
+if [ -d "$LOCKF7.q" ] && [ -n "$(ls -A "$LOCKF7.q" 2>/dev/null)" ]; then
+    note_fail "fifo safety — timing-out waiter left its ticket behind: $(ls -A "$LOCKF7.q")"
+else
+    note_pass "fifo safety — timing-out waiter removed its own ticket"
+fi
+kill "$HOLDER7" 2>/dev/null
+wait "$HOLDER7" 2>/dev/null
+
 echo "---"
 echo "$pass passed, $fail failed"
 

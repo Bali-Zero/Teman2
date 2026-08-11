@@ -1687,3 +1687,150 @@ def test_allowlist_version_bumped_to_8_for_the_exact_path_fix() -> None:
     assert "apps/wa-mirror/package-lock.json" in pc.ALLOWLIST_EXACT_PATHS
     assert "apps/organism/organism/organs_registry.yaml" in pc.ALLOWLIST_EXACT_PATHS
     assert ".husky/pre-commit" in pc.NEVER_INNOCENT_EXACT_PATHS
+
+
+# ===========================================================================
+# v9 (2026-08-11) — `.txt` under docs/** and research/**, plus the
+# requirements-family basename net.
+#
+# The trigger was measured, not imagined: PR #4002's three files (one
+# research `.md`, two verbatim refutation transcripts `.txt`) forced `full`
+# and then lost TWO 75-minute lock waits to timeout before landing on a
+# third attempt. Innocence for the suffix was measured on disk — 11 tracked
+# `.txt` under research/, 25 under docs/, none mode-100755, and no test in
+# apps/backend-rag/backend/tests/ opens one.
+#
+# The guilt half is deliberately HYPOTHETICAL where it matters. No allowlist
+# prefix reaches apps/backend-rag/ today, so a guilt test written against
+# today's tree would pass with the basename net deleted. The one below puts
+# a requirements manifest INSIDE an allowlisted prefix — the exact shape a
+# future broadening would create — so it fails if the net is removed.
+# ===========================================================================
+
+
+def test_innocence_research_txt_transcript_skips() -> None:
+    """The literal file that started v9 — a verbatim refuter transcript."""
+    verdict, unknown = pc.classify(
+        ["research/operations/refutations/2026-08-10-mergeos-v2-codex-sol.txt"]
+    )
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+
+def test_innocence_pr_4002_real_diff_skips() -> None:
+    """PR #4002's ACTUAL three-file diff, verbatim.
+
+    Under v8 this returned `full` and paid two 75-minute lock timeouts. The
+    regression this pins is the whole reason v9 exists — assert the real
+    file list, not a hand-made stand-in.
+    """
+    verdict, unknown = pc.classify(
+        [
+            "research/operations/2026-08-10-merge-os-v2-submission-system.md",
+            "research/operations/refutations/2026-08-10-mergeos-v2-agy-gemini.txt",
+            "research/operations/refutations/2026-08-10-mergeos-v2-codex-sol.txt",
+        ]
+    )
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+
+def test_innocence_docs_txt_skips() -> None:
+    """SYMMETRY (W101-recidiva): docs/** and research/** are one class. A
+    fix that only covers the tree that bit us is half a fix."""
+    verdict, unknown = pc.classify(["docs/notes/scratch.txt"])
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+
+def test_guilt_requirements_family_under_an_allowlisted_prefix_forces_full() -> None:
+    """THE load-bearing guilt test for v9.
+
+    Delete the requirements entries from NEVER_INNOCENT_BASENAMES and this
+    is the only BEHAVIOURAL test that goes red — measured, not asserted:
+    the mutation kills exactly this test plus
+    test_allowlist_version_bumped_to_9, and that one asserts the constant
+    rather than the behaviour. The paths are hypothetical ON PURPOSE — the
+    real manifests live at apps/backend-rag/, which no prefix reaches
+    today, so asserting the real tree would prove nothing about the net
+    (W98 is the scar that makes the net worth having).
+    """
+    for path in (
+        "docs/requirements.txt",
+        "research/requirements.txt",
+        "docs/requirements.lock.txt",
+        "research/requirements-prod.txt",
+        "docs/requirements-prod.lock.txt",
+    ):
+        verdict, unknown = pc.classify([path])
+        assert verdict == pc.VERDICT_FULL, f"{path} must never read as innocent"
+        assert unknown == [path]
+
+
+def test_guilt_real_requirements_manifests_still_force_full() -> None:
+    """The manifests as they actually live today (read by the W98 tripwire
+    test_lock_honors_requirements.py) — unchanged by v9."""
+    for path in (
+        "apps/backend-rag/requirements.txt",
+        "apps/backend-rag/requirements.lock.txt",
+    ):
+        verdict, unknown = pc.classify([path])
+        assert verdict == pc.VERDICT_FULL
+        assert unknown == [path]
+
+
+def test_guilt_txt_outside_docs_and_research_forces_full() -> None:
+    """v9 widened exactly two prefixes. `.txt` is not innocent by extension
+    anywhere else — least of all inside the tree whose tests get skipped."""
+    for path in (
+        "apps/backend-rag/backend/data/seed.txt",
+        "scripts/notes.txt",
+        "notes.txt",
+        ".claude/skills/modus/notes.txt",
+    ):
+        verdict, unknown = pc.classify([path])
+        assert verdict == pc.VERDICT_FULL, f"{path} must not be innocent"
+        assert unknown == [path]
+
+
+def test_guilt_research_txt_mixed_with_backend_forces_full() -> None:
+    """Composition: one innocent transcript does not launder a backend file."""
+    verdict, unknown = pc.classify(
+        [
+            "research/operations/refutations/2026-08-10-mergeos-v2-codex-sol.txt",
+            "apps/backend-rag/backend/services/rag/reasoning.py",
+        ]
+    )
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == ["apps/backend-rag/backend/services/rag/reasoning.py"]
+
+
+def test_guilt_traversal_out_of_research_with_txt_forces_full() -> None:
+    """HARDENING-2 still holds for the newly-admitted suffix."""
+    path = "research/../apps/backend-rag/backend/x.txt"
+    verdict, unknown = pc.classify([path])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == [path]
+
+
+def test_allowlist_version_bumped_to_9_for_the_txt_entries() -> None:
+    """The skip-banner logs the version that approved a skip; a rules change
+    without a bump makes the log line unattributable."""
+    assert pc.ALLOWLIST_VERSION >= 9
+    assert ("docs", (".md", ".txt")) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
+    assert ("research", (".md", ".txt")) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
+    for name in (
+        "requirements.txt",
+        "requirements.lock.txt",
+        "requirements-prod.txt",
+        "requirements-prod.lock.txt",
+    ):
+        assert name in pc.NEVER_INNOCENT_BASENAMES
+
+
+def test_edge_v9_added_no_second_allowlist_mechanism() -> None:
+    """v9 widened existing entries and one basename set. It must not have
+    introduced a third matching path (the v1 bare-prefix mistake)."""
+    for _prefix, suffixes in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS:
+        assert suffixes, "no bare-prefix (suffix-less) entry may exist"
+        assert all(s.startswith(".") for s in suffixes)
