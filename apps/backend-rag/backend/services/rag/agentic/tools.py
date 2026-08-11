@@ -25,6 +25,7 @@ from typing import Any
 import httpx
 
 from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
+from backend.services.kbli_eye import KBLIEye
 from backend.services.pricing.pricing_service import get_pricing_service
 from backend.services.rag.vision_rag import VisionRAGService
 from backend.services.tools.definitions import BaseTool
@@ -60,7 +61,7 @@ async def close_agentic_tools_client() -> None:
 AVAILABLE_COLLECTIONS = [
     "visa_oracle",
     "legal_unified",
-    "kbli_2025_final",  # KBLI 2025 - 1,563 BPS codes + 304 gold editorial (BPS Reg. 7/2025 + PP28/2025)
+    "kbli_2025_final",  # KBLI 2025 - 1,559 canonical BPS codes + gold editorial
     "tax_genius",
     "bali_zero_pricing_hybrid",
     "training_conversations_hybrid",  # Migrated to hybrid format Dec 2025
@@ -97,7 +98,7 @@ class VectorSearchTool(BaseTool):
             "**OPTIONALLY specify a collection** ONLY for focused single-topic queries:\n"
             "- visa_oracle: Visas, KITAS, KITAP, immigration, stay permits\n"
             "- legal_unified: Laws, company types (PT, CV, Firma), regulations\n"
-            "- kbli_2025_final: Business classification codes (KBLI 2025, BPS 7/2025 + PP28/2025), 1,563 codes with licensing detail, PMA status\n"
+            "- kbli_2025_final: Business classification codes (KBLI 2025, BPS 7/2025 + PP28/2025), 1,559 codes with licensing detail, PMA status\n"
             "- tax_genius: Taxes, PPh, PPN, NPWP, fiscal matters\n"
             "- bali_zero_pricing_hybrid: Official Bali Zero service pricing and costs\n"
             "- training_conversations_hybrid: Procedures, practical examples, FAQs\n"
@@ -283,6 +284,135 @@ class VectorSearchTool(BaseTool):
             content_str = "\n\n".join(formatted_texts)
             set_span_status("ok")
             return json.dumps({"content": content_str, "sources": sources_metadata})
+
+
+def _default_kbli_dataset_path() -> Path:
+    """Resolve the canonical KBLI dataset in local and Fly layouts."""
+    module_path = Path(__file__).resolve()
+    for parent in module_path.parents:
+        for relative_path in (
+            Path("source_documents/KBLI_2025_FINAL_CLEAN.json"),
+            Path("data/source_documents/KBLI_2025_FINAL_CLEAN.json"),
+        ):
+            candidate = parent / relative_path
+            if candidate.is_file():
+                return candidate
+    # KBLIEye will log the missing-dataset failure and return an explicit
+    # DATABASE_NOT_LOADED state. Keep the expected Fly path in that log,
+    # without indexing beyond the shallower /app container hierarchy.
+    return Path("/app/source_documents/KBLI_2025_FINAL_CLEAN.json")
+
+
+class KBLICanonicalLookupTool(BaseTool):
+    """Exact lookup against the versioned KBLI 2025 canonical dataset.
+
+    Semantic search remains useful for discovering codes from a business
+    description. It is the wrong primitive once a five-digit code is already
+    present: a near neighbour can outrank the requested record. This tool is
+    deliberately exact and returns a compact subset of the canonical record
+    needed for ownership, risk, and Bali-moratorium answers.
+    """
+
+    def __init__(self, dataset_path: str | Path | None = None) -> None:
+        resolved_path = Path(dataset_path) if dataset_path is not None else _default_kbli_dataset_path()
+        self._eye = KBLIEye(db_path=str(resolved_path.resolve()))
+
+    @property
+    def name(self) -> str:
+        return "kbli_lookup"
+
+    @property
+    def description(self) -> str:
+        return (
+            "Look up one exact five-digit code in the canonical KBLI 2025 catalogue. "
+            "ALWAYS use this before vector_search when the user supplies a specific "
+            "five-digit KBLI code. Returns exact PMA ownership cap/condition/source, "
+            "large-scale OSS risk, and Bali moratorium fields. If found=false, do not "
+            "invent or silently map the code to a semantic neighbour."
+        )
+
+    @property
+    def parameters_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "description": "Exact five-digit KBLI 2025 code, for example 51101",
+                }
+            },
+            "required": ["code"],
+        }
+
+    async def execute(self, code: str, **kwargs) -> str:
+        clean_code = str(code or "").strip()
+        source = {"dataset": "KBLI_2025_FINAL_CLEAN.json"}
+        if len(clean_code) != 5 or not clean_code.isdigit():
+            return json.dumps(
+                {
+                    "found": False,
+                    "code": clean_code,
+                    "reason": "INVALID_KBLI_CODE_FORMAT",
+                    "source": source,
+                }
+            )
+
+        if not self._eye.data:
+            return json.dumps(
+                {
+                    "found": False,
+                    "code": clean_code,
+                    "error": "DATASET_UNAVAILABLE",
+                    "source": source,
+                }
+            )
+
+        record = next(
+            (
+                item
+                for item in self._eye.data
+                if str(item.get("kode_kbli_2025", "")).strip() == clean_code
+            ),
+            None,
+        )
+        if record is None:
+            return json.dumps(
+                {
+                    "found": False,
+                    "code": clean_code,
+                    "reason": "CODE_NOT_IN_KBLI_2025_CANONICAL",
+                    "source": source,
+                }
+            )
+
+        large_scale_risks: set[str] = set()
+        for scope in record.get("per_skala", []) or []:
+            if not isinstance(scope, dict):
+                continue
+            scales = scope.get("skala_usaha") or []
+            if isinstance(scales, str):
+                scales = [scales]
+            elif not isinstance(scales, (list, tuple, set)):
+                scales = [scales]
+            risk = scope.get("kategori_risiko")
+            if "Besar" in scales and risk:
+                large_scale_risks.add(str(risk))
+        payload = {
+            "found": True,
+            "code": clean_code,
+            "title": record.get("judul"),
+            "pma": {
+                "status": record.get("pma_status"),
+                "max_foreign_ownership_percent": record.get("pma_max_asing"),
+                "condition": record.get("pma_kondisi"),
+                "official_basis": record.get("pma_official_basis"),
+                "cap_verified": bool(record.get("pma_cap_verified")),
+            },
+            "risk_at_large_scale": sorted(large_scale_risks),
+            "bali": record.get("l4_bali"),
+            "source": source,
+        }
+        return json.dumps(payload, ensure_ascii=False)
 
 
 class CalculatorTool(BaseTool):

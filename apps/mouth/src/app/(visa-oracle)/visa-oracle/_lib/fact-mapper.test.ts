@@ -12,6 +12,7 @@ import {
   mapOracleFactsToApplicantFacts,
   mapPurposes,
   mapRemoteClientsDerived,
+  mapSponsorType,
   mapStayDays,
   mapViolationHistory,
   requestCategoryForFacts,
@@ -19,6 +20,7 @@ import {
   type FactValue,
   type UnknownReasonWire,
 } from "./fact-mapper";
+import { getCategoryQuestionIds } from "./flow";
 import {
   CATEGORY_KEYS,
   QUESTIONS,
@@ -27,11 +29,20 @@ import {
 } from "./tree";
 
 // ---------------------------------------------------------------------------
-// The 40-key contract, extracted from models.py itself (never hand-typed —
+// The backend contract, extracted from models.py itself (never hand-typed —
 // test acceptance criterion #1). The only dotted `Field(alias="a.b")`
 // occurrences in models.py live inside `ApplicantFactsData`; every other
 // `alias=` in the file (`TimeRange.from_`) has no dot, so the dotted-alias
-// regex below can only ever match the 40 ApplicantFactsData fields.
+// regex below can only ever match ApplicantFactsData fields.
+//
+// `sponsor.type` used to be deliberately omitted from the deployed frontend
+// request during its ordered-rollout window (the `sponsor_category`
+// interview question did not exist yet). That window is now closed: the
+// question ships (see tree.ts/flow.ts), and this mapper emits `sponsor.type`
+// on every call like every other key — KNOWN when answered, otherwise an
+// explicit UNKNOWN (NOT_ASKED by default), never omitted. The key is still
+// optional on the wire (models.py keeps a transitional default so older
+// 40-key clients don't 422) but the frontend contract is now the full 41.
 // ---------------------------------------------------------------------------
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -98,29 +109,31 @@ function representativeAnswer(question: OracleQuestion): string {
   return answer.key;
 }
 
-describe("mapOracleFactsToApplicantFacts — 40-key contract (acceptance test 1)", () => {
-  const expectedPaths = extractApplicantFactPathsFromModelsPy();
+describe("mapOracleFactsToApplicantFacts — full contract (acceptance test 1)", () => {
+  const backendPaths = extractApplicantFactPathsFromModelsPy();
 
-  it("sanity: the extractor itself found 40 dotted paths in models.py", () => {
-    expect(expectedPaths.length).toBe(40);
+  it("sanity: the backend contract has 41 fact paths, sponsor.type included", () => {
+    expect(backendPaths.length).toBe(41);
+    expect(backendPaths).toContain("sponsor.type");
   });
 
-  it("emits EXACTLY the 40 dotted keys models.py declares — no extra key, no missing key", () => {
+  it("emits exactly the 41 backend fact-path keys, sponsor.type included", () => {
     const result = mapFacts({});
     const actualKeys = Object.keys(result.facts).sort();
-    expect(actualKeys).toEqual([...expectedPaths].sort());
+    expect(actualKeys).toEqual([...backendPaths].sort());
   });
 
-  it("still emits exactly those 40 keys on a fully-answered interview (no extra keys sneak in)", () => {
+  it("still emits exactly those 41 keys on a fully-answered interview (no extra keys sneak in)", () => {
     const result = mapFacts({
       in_indonesia: "yes",
       permit_expiry: "2026-08-01",
       category: "work",
+      sponsor_category: "EMPLOYER",
       work_payer: "yes",
       review_gate: "none",
     });
     const actualKeys = Object.keys(result.facts).sort();
-    expect(actualKeys).toEqual([...expectedPaths].sort());
+    expect(actualKeys).toEqual([...backendPaths].sort());
   });
 });
 
@@ -243,6 +256,74 @@ describe("mapCurrentStatusExpiry — permit_expiry -> immigration.current_status
       status: "UNKNOWN",
       reason: "NOT_PROVIDED",
     });
+  });
+});
+
+describe("mapSponsorType — sponsor_category -> sponsor.type", () => {
+  it("never asked -> UNKNOWN NOT_ASKED (the pre-existing default value)", () => {
+    expect(mapSponsorType({})).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_ASKED",
+    });
+    expect(mapFacts({}).facts["sponsor.type"]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_ASKED",
+    });
+  });
+
+  it("unsure -> UNKNOWN UNVERIFIED", () => {
+    expect(mapSponsorType({ sponsor_category: "unsure" })).toEqual({
+      status: "UNKNOWN",
+      reason: "UNVERIFIED",
+    });
+  });
+
+  it.each([
+    "NONE",
+    "INDIVIDUAL",
+    "EMPLOYER",
+    "EDUCATION",
+    "INVESTMENT",
+    "GOVERNMENT",
+  ] as const)("%s -> KNOWN with that exact value", (value) => {
+    expect(mapSponsorType({ sponsor_category: value })).toEqual({
+      status: "KNOWN",
+      value,
+    });
+  });
+
+  it("is reachable (and answers KNOWN) on every category branch that asks it", () => {
+    // The categories where the sponsor discriminates (design choice, see
+    // FIXED_CATEGORY_QUESTIONS/getCategoryQuestionIds in flow.ts): work,
+    // remote, study, invest, retirement, family. Derived from the flow
+    // graph itself, not hardcoded, so this test breaks if a branch's
+    // question list changes without this describe block being revisited.
+    const categoriesAsking = CATEGORY_KEYS.filter((category) =>
+      getCategoryQuestionIds({ category }).includes("sponsor_category"),
+    );
+    expect([...categoriesAsking].sort()).toEqual(
+      ["family", "invest", "remote", "retirement", "study", "work"].sort(),
+    );
+    for (const category of categoriesAsking) {
+      const result = mapFacts({ category, sponsor_category: "EMPLOYER" });
+      expect(result.facts["sponsor.type"]).toEqual({
+        status: "KNOWN",
+        value: "EMPLOYER",
+      });
+    }
+  });
+
+  it("is never asked on categories where the sponsor doesn't discriminate", () => {
+    for (const category of [
+      "tourism",
+      "business",
+      "diaspora",
+      "other",
+    ] as const) {
+      expect(getCategoryQuestionIds({ category })).not.toContain(
+        "sponsor_category",
+      );
+    }
   });
 });
 

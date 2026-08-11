@@ -20,9 +20,10 @@ Safety contract (mirrors the worker's expectations in wa_outbox_worker.py):
     * Feature flag ``WA_INBOX_BOT_AUTOREPLY`` (default OFF) — when off, this
       raises so the worker marks the row failed/retry, NEVER a wrong send. Arm
       it via a Fly secret only when ready.
-    * On ABSTAIN or any RAG error → raise. The worker has a retry/backoff guard
-      (MAX_ATTEMPTS) and then marks ``failed`` — the operator can take over the
-      thread. We NEVER fabricate a reply or send an empty/placeholder body.
+    * On ABSTAIN → discard the model's answer field and return the localized
+      source-honest refusal from the reasoning SSOT. This keeps the channel
+      safe without silently abandoning the client. Transport/empty-response
+      errors still raise into the worker's retry/backoff guard.
     * The 24h Meta customer-care window is enforced by the worker AFTER us, so
       we do not re-check it here.
 
@@ -44,7 +45,10 @@ import httpx
 from backend.app.core.config import settings
 from backend.app.rag_proxy import get_rag_worker_url
 from backend.channels.format import format_rich_text
+from backend.services.integrations.human_escalation_notifier import notify_human_telegram
 from backend.services.integrations.wa_bot_outcomes import BotStandingCondition
+from backend.services.rag.agentic._reasoning_stubs import get_localized_stub
+from backend.services.rag.agentic.query_helpers import detect_query_language
 
 logger = logging.getLogger("zantara.backend")
 
@@ -83,6 +87,20 @@ _KG_WORKFLOW_SCAFFOLD_RE = re.compile(
     re.DOTALL,
 )
 
+# The 2026-08-11 KBLI baseline caught Gemini starting otherwise client-visible
+# answers with the prompt's private XML section name (three of 25 probes).
+# Do not try to recover a "final" paragraph from such a payload: the leaked
+# block has no guaranteed delimiter and any guessed split could still expose
+# chain-of-thought or unsupported claims.  At the WhatsApp boundary the safe
+# behavior is to discard the entire payload and serve the normal localized
+# source-honest refusal.  Anchor at the beginning so a legitimate discussion
+# *about* an internal-monologue bug is not caught mid-answer.
+_INTERNAL_MONOLOGUE_LEAK_RE = re.compile(
+    r"^[^A-Za-z0-9]{0,32}internal[ _-]+monologue"
+    r"(?:[ _-]+instructions)?(?:[^A-Za-z0-9]|$)",
+    re.IGNORECASE,
+)
+
 
 def _strip_kg_workflow_scaffold(answer: str) -> str:
     """Remove the internal KG-workflow diagnostics block, if present.
@@ -91,6 +109,23 @@ def _strip_kg_workflow_scaffold(answer: str) -> str:
     (the common case).
     """
     return _KG_WORKFLOW_SCAFFOLD_RE.sub("", answer).strip()
+
+
+def _safe_abstain_reply(query: str) -> str:
+    """Return the reasoning engine's localized, source-honest refusal.
+
+    This is intentionally derived from the customer query, never from the
+    endpoint's ``answer`` field: a low-evidence response can still contain
+    fluent unsupported claims even when the endpoint correctly labels it
+    ``abstain=true``.
+    """
+    language = detect_query_language(query)
+    return get_localized_stub("abstain", language)
+
+
+def _starts_with_internal_monologue_leak(answer: str) -> bool:
+    """Return whether a model payload opens with a private prompt marker."""
+    return bool(_INTERNAL_MONOLOGUE_LEAK_RE.match(answer))
 
 
 # Mirrors backend/services/integrations/whatsapp_service.py's `text[:4096]`
@@ -299,9 +334,9 @@ async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
             buys is a distinct line in the ledger. (Measured 2026-07-27: 49 of
             the 52 give-ups ever recorded were one of these two, all filed under
             the same sentinel as a genuine crash. See ``wa_bot_outcomes``.)
-        RuntimeError: RAG abstained, or returned an empty answer. The worker's
-            guard turns this into a retry/backoff and eventually ``failed`` —
-            never a wrong send.
+        RuntimeError: RAG returned an empty transport-level answer. The
+            worker's guard turns this into retry/backoff. Semantic abstention
+            is returned to the customer as a localized safe reply instead.
         httpx errors propagate (also caught by the worker guard) → retry.
     """
     if not is_bot_autoreply_enabled():
@@ -354,29 +389,64 @@ async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
         resp.raise_for_status()
         data = resp.json()
 
+    # Why a human needs to look at this thread, or None. Set at most once —
+    # every later site guards on `is None`, so the FIRST (most specific) cause
+    # is the one reported rather than whichever check happens to run last.
+    human_reason: str | None = None
+
     if data.get("abstain"):
-        # RAG refused — do not guess. Let the worker park it; operator can take over.
-        raise RuntimeError(
-            f"wa-inbox bot: RAG abstained for thread {thread_id} "
-            f"(reason={data.get('abstain_reason')!r})"
+        # Never surface the endpoint's raw answer on this branch. The baseline
+        # caught an abstain-labelled payload that still asserted Rp 10bn.
+        logger.info(
+            "wa-inbox bot: serving localized safe abstention for thread %s (reason=%r)",
+            thread_id,
+            data.get("abstain_reason"),
         )
+        answer = _safe_abstain_reply(query)
+        human_reason = "rag_abstain"
+    else:
+        answer = (data.get("answer") or "").strip()
+        if not answer:
+            raise RuntimeError(f"wa-inbox bot: empty RAG answer for thread {thread_id}")
 
-    answer = (data.get("answer") or "").strip()
-    if not answer:
-        raise RuntimeError(f"wa-inbox bot: empty RAG answer for thread {thread_id}")
+        if _starts_with_internal_monologue_leak(answer):
+            logger.warning(
+                "wa-inbox bot: internal-monologue marker at start of RAG output "
+                "for thread %s; discarding payload and serving safe abstention",
+                thread_id,
+            )
+            answer = _safe_abstain_reply(query)
+            if human_reason is None:
+                human_reason = "internal_monologue_leak"
 
-    # Strip an [ESCALATE] marker if the persona emitted one (mirror whatsapp_chat.py).
-    answer = answer.replace("[ESCALATE]", "").strip()
-    if not answer:
-        raise RuntimeError(f"wa-inbox bot: answer empty after ESCALATE strip, thread {thread_id}")
+        # Strip an [ESCALATE] marker if the persona emitted one (mirror whatsapp_chat.py).
+        #
+        # Until now this MIRRORED THE FORM AND NOT THE EFFECT: `whatsapp_chat.py`
+        # captures the same marker, strips it, sends the answer and then calls
+        # `notify_human_telegram`. This module deleted the marker and called
+        # nothing — the persona asked for a human and the request was erased in
+        # transit. Verified on main before this change: zero telegram/notify
+        # references in the whole file.
+        if "[ESCALATE]" in answer and human_reason is None:
+            human_reason = "persona_escalate_marker"
+        answer = answer.replace("[ESCALATE]", "").strip()
+        if not answer:
+            raise RuntimeError(
+                f"wa-inbox bot: answer empty after ESCALATE strip, thread {thread_id}"
+            )
 
-    # Remove internal KG-workflow diagnostics before the answer ever reaches
-    # the channel formatter — see _strip_kg_workflow_scaffold docstring.
-    answer = _strip_kg_workflow_scaffold(answer)
-    if not answer:
-        raise RuntimeError(
-            f"wa-inbox bot: answer empty after workflow-scaffold strip, thread {thread_id}"
-        )
+        # Remove internal KG-workflow diagnostics before the answer ever reaches
+        # the channel formatter — see _strip_kg_workflow_scaffold docstring.
+        answer = _strip_kg_workflow_scaffold(answer)
+        if not answer:
+            logger.info(
+                "wa-inbox bot: workflow-only RAG output for thread %s; "
+                "serving localized safe abstention",
+                thread_id,
+            )
+            if human_reason is None:
+                human_reason = "workflow_only_output"
+            answer = _safe_abstain_reply(query)
 
     # Channel boundary: convert the orchestrator's generic markdown into
     # WhatsApp-safe formatting (*bold*, unicode bullets, no raw ##/**/[N]
@@ -411,4 +481,31 @@ async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
         post_format_len,
         pre_format_len,
     )
+
+    if human_reason is not None:
+        # One call site rather than four, because all four upstream causes mean
+        # the same thing operationally: the client did not get an answer to what
+        # they asked (or explicitly asked for a person). `accepted` is named for
+        # what it proves and no more — Telegram took the message. It does NOT
+        # mean a person is on shift, has read it, or owns the thread, and the
+        # copy the client reads is deliberately unchanged by this branch, so
+        # nothing here can turn into a promise of a reply.
+        #
+        # Body withheld on purpose (`message_text=None`): routing a NEW trigger
+        # through the cleartext payload would widen exactly the third-party
+        # exposure CLAUDE.md §14 constrains. The thread ref is what makes the
+        # omission workable — the notified human can open the thread.
+        accepted = await notify_human_telegram(
+            phone=phone,
+            message_text=None,
+            reason=human_reason,
+            thread_ref=str(thread_id),
+        )
+        logger.info(
+            "wa-inbox bot: thread %s needs a human (reason=%s), telegram accepted=%s",
+            thread_id,
+            human_reason,
+            accepted,
+        )
+
     return answer

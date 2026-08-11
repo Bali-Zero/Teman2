@@ -148,8 +148,10 @@ Full list: see `.github/CODEOWNERS`.
 1. **Drain.** Confirm no PR is actively mid-merge-race against `main` (`gh pr list --search
 "is:open"` review; the point is to flip enforcement at a quiet moment, not to reach literal zero
    open PRs — open PRs are fine, they will simply start entering the queue once armed).
-2. **PR-B merged.** The sibling PR that makes all 25 required-check workflows `merge_group`-ready
-   (they must fire correctly on the synthetic queue-branch event, not only on `pull_request`) must
+2. **PR-B merged.** The sibling PR that makes all required-check workflows `merge_group`-ready
+   (**26** as measured 2026-08-10 — re-derive via the §2 live query before citing, this count
+   moves as CI grows) (they must fire correctly on the synthetic queue-branch event, not only on
+   `pull_request`) must
    be on `main` _before_ enforcement flips. Flipping first would mean the queue immediately blocks
    on required checks that never report against a `merge_group` event — the exact "required check
    produces ZERO jobs blocks the PR forever" trap (cicatrix scar
@@ -258,7 +260,8 @@ every 10 minutes and has already been proven against live data to catch exactly 
 gh pr view <N> --json statusCheckRollup --jq '.statusCheckRollup[] | select(.conclusion != "SUCCESS")'
 ```
 
-If the rollup shows **fewer contexts than the 25 required** (§2) and none of the missing ones are
+If the rollup shows **fewer contexts than required** (§2 — **26** as measured 2026-08-10, run the
+live query there, do not cite this number) and none of the missing ones are
 red — they are simply absent — this is the "required check never reported" class, not a red check to
 chase. `merge-queue-watch.yml` distinguishes this case explicitly in its alert text.
 
@@ -515,6 +518,35 @@ Two things NOT to do when you see this:
 
 ---
 
+## 6sexies. `mq.sh` — the queue-ops wrapper (Merge-OS v2 Wave 0)
+
+`scripts/mq.sh` wraps `scripts/queue_doctor.py` and `gh`; it never reimplements either. Spec:
+`research/operations/2026-08-10-merge-os-v2-submission-system.md` §3/§4 Wave 0. State lives at
+`~/.nuzantara-mq/armed/<PR>.json` (dir mode 0700), overridable via `MQ_STATE_DIR`/`MQ_REPO`.
+
+| Verb                               | Does                                                                                                                                                                                                                            |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mq status [--all\|PR...]`         | Wraps `queue_doctor.py` — the three-queue snapshot (§ merge queue, pre-push lock, P0 spool), verbatim output                                                                                                                    |
+| `mq why-red <PR>`                  | Name/bucket/link of every non-passing **required** check, plus any required-by-branch-protection check `gh` never reported at all (the "required check never reported" class, §6 Step 1 above)                                  |
+| `mq arm <PR>`                      | Records the current head SHA to the state file, then bare `gh pr merge <PR> --auto` — **never `--squash`**, which silently arms nothing once the queue governs `main` (§Session discipline above, PR #3347)                     |
+| `mq watch <PR> [--timeout-mins N]` | The **post-arm watcher** — see below. Default ceiling 120 min, polls every 60s                                                                                                                                                  |
+| `mq requeue <PR>`                  | `--disable-auto` then re-arm — the standing cure for a queue ejection (§6 Step 2b above)                                                                                                                                        |
+| `mq dequeue <PR>`                  | `--disable-auto` and drop the local state file (does **not** remove an already-building queue entry — see the `--disable-auto` no-op trap at §Step 3b above; use the GraphQL `dequeuePullRequest` mutation there for that case) |
+| `mq handoff`                       | `mq status` output + every armed-state file, paste-ready for a session handoff                                                                                                                                                  |
+
+**The post-arm-watcher rule (spec §3, Codex F13):** "no push after arm" cannot be a preflight
+guarantee — `mq arm` returns before any future push could happen, so it cannot see one. `mq watch`
+is what enforces it: it records nothing itself, only reads the SHA `mq arm` already wrote, and on
+every poll compares it against the PR's live head. A mismatch means someone pushed to an armed
+branch (§Session discipline above: "post-arm commits remain orphaned") — `mq watch` dequeues
+(`--disable-auto`) and alerts loudly rather than let a stale queued attempt merge. It exits `0` on
+`MERGED`, `4` on `CLOSED`, `3` on a detected head-move (after dequeuing), `2` on reaching its
+ceiling with no verdict (an honest NO-VERDICT, never a fabricated "clean").
+
+Tests: `scripts/tests/test_mq_sh.sh` (fake `gh` on `PATH`, no network).
+
+---
+
 ## 7. Rollback (disable the merge queue)
 
 ```bash
@@ -564,3 +596,55 @@ Liveness of the watcher itself is checked opportunistically: GitHub's own workfl
 (`scripts/ci/setup_merge_queue_ruleset.sh --status`, or `gh run list --workflow=merge-queue-watch.yml
 --limit 5` to confirm recent runs exist at all). Building a watcher-for-the-watcher is out of scope
 here — noted as a real gap, not quietly assumed away.
+
+---
+
+## Baseline organ (Wave 1)
+
+Merge-OS v2 Wave 1 (`research/operations/2026-08-10-merge-os-v2-submission-system.md` §4 —
+"the baseline organ (7 days, NO behavior change)"). This organ changes nothing about how PRs
+are gated, run, or merged — it only _records_ what already happened, once per UTC day, so
+Wave 2's "−X% billed/PR" acceptance criterion has a measured denominator instead of a guess
+(spec §1: "savings claim ... unknown until the baseline organ runs").
+
+**What it records**, into `~/.nuzantara-mq/baseline/YYYY-MM-DD.json` on Pro:
+
+- billed minutes per PR (see allocation rule below)
+- queue transit p50/p95 for PRs merged that day (auto-merge `enabledAt` → `mergedAt`, via
+  GraphQL `autoMergeRequest.enabledAt`; a PR whose `enabledAt` cannot be read lands in
+  `transit_unmeasured_prs`, never guessed)
+- ejection count by class (INFRA/CODE — FLAKE stays 0 by construction until Wave 4's
+  differential-flake verdict exists as ground truth) and by author class (human/agent/bot)
+- slot utilization: the day's total runner-minutes against a fixed weekly-capacity constant
+  (`≈97k slot-min/wk ≈ 48%` — round-3 system-wide measurement, 2026-08-09/10 window; a
+  snapshot, not re-measured live by this organ)
+
+Heal-drift frequency (also named in spec §4 Wave 1) is intentionally NOT recorded — it is a
+property of the heal-as-PR mechanism (spec §2.2), which is Wave 3 and does not exist yet.
+
+**Declared attribution rule** (spec §4, Codex CONFIRMED-DEFECT F6): GitHub's Actions
+billing/usage endpoints report aggregate usage only, never a per-PR ledger. "Billed
+minutes/PR" is computed as per-run billable minutes (`GET .../actions/runs/{id}/timing`)
+summed over every run attached to a PR — its own `pull_request`-event runs plus any
+`merge_group`-event run it was a member of. A `merge_group` run covering N member PRs
+divides its minutes **evenly** across the N (the even-split option the spec declares
+acceptable, as opposed to attributing the full amount to each). Membership is parsed
+best-effort from the run's `head_branch`/`display_title`; when it cannot be derived, or a
+`pull_request`-event run has an empty `pull_requests[]` (a known GitHub API gap for
+fork-origin runs), the minutes are never dropped — they land in
+`unattributed_group_minutes` / `unattributed_pr_minutes` respectively (scar family #2,
+"esiste ≠ armato" — no silent caps).
+
+**Fail-visible by construction**: every `gh` API denial, timeout, or unparseable response is
+appended to the record's `errors[]` array. A record is always written — even a total-failure
+day — but `errors[]` non-empty makes the probe (and the wrapper that invokes it) exit
+non-zero, so a failed night is never mistaken for a quiet one.
+
+**Built, not armed** (scar family #2): `scripts/queue_baseline_probe.py` +
+`infra/launchagents/wrappers/queue-baseline.sh` +
+`infra/launchagents/com.nuzantara.queue-baseline.plist.template` land in this PR, but the
+plist is a template, not installed. Installing it on Pro (`launchctl bootstrap`) and
+verifying the first live receipt is a separate ALIGN-FLEET step tracked in
+`.claude/skills/modus/PENDING-ARMS.md`. Wave 1's own acceptance criterion — 7 consecutive
+daily records, each carrying billed/PR computed via the attribution rule above — cannot be
+satisfied until that arming happens.

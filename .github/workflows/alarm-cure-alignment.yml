@@ -33,6 +33,9 @@ on:
       - "scripts/log_size_watchdog.sh"
       - "infra/launchagents/wrappers/log-rotate-run.sh"
       - "scripts/tests/test_log_watchdog_dead_zone.py"
+      # Same study, one step further: an alarm must also name its CAUSE.
+      - "scripts/nb-agents-daily-dr.sh"
+      - "scripts/tests/test_nb_agents_cause_escapes.sh"
       - ".github/workflows/alarm-cure-alignment.yml"
   workflow_dispatch: {}
 
@@ -58,3 +61,23 @@ jobs:
 
       - name: The watchdog still parses
         run: bash -n scripts/log_size_watchdog.sh
+
+  cause-escapes:
+    name: a failing daily job names its cause where the alerter can read it
+    # Second half of the same study. `nb-agents-daily-dr` failed 13 days running
+    # and sent 13 P0s saying "Exit: 1" while the day log held, verbatim,
+    # "Authentication expired. Run 'nlm login' ...". Two independent defects: the
+    # script redirects its own stderr for the whole run (so cron-state.sh, which
+    # builds the alert from the child's stderr, captures nothing), and the parse
+    # branch discarded the CLI's own error in favour of a complaint about JSON
+    # shape. Fixing either alone leaves the organ mute, so both are pinned here.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: The wrapper still parses
+        run: bash -n scripts/nb-agents-daily-dr.sh
+
+      - name: Cause escapes the self-redirect AND names the right thing
+        run: bash scripts/tests/test_nb_agents_cause_escapes.sh

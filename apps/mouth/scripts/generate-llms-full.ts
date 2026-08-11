@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
 import { buildKbliCorpus } from "../src/lib/kbli-llms-corpus";
+import { articleUrl, normalizeCategory } from "../src/lib/blog/categories";
 
 /**
  * AI Master Data Generator
@@ -61,10 +62,13 @@ async function generate() {
 
       if (frontmatter.status === "draft" || frontmatter.noIndex) continue;
 
+      // Category and slug both come from `../src/lib/blog/categories` — the same
+      // table the site routes with. Deriving them from the folder name and the
+      // raw filename here is what published ~1,600 dead URLs: see that file.
       const articleData = {
         title: frontmatter.title,
-        category,
-        url: `https://balizero.com/${category}/${file.replace(".mdx", "").replace(".id", "")}`,
+        category: normalizeCategory(category),
+        url: articleUrl(category, file),
         publishedAt: frontmatter.publishedAt || new Date().toISOString(),
         excerpt: frontmatter.excerpt || frontmatter.description || "",
         content: content.trim(),

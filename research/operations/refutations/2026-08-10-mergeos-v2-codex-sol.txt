@@ -1,0 +1,116 @@
+F1 [P0] The “unconditional” merge_group branch can still skip every heavy job through implicit needs-success gating.
+    QUOTE: "On `merge_group`, heavy jobs run UNCONDITIONALLY."
+    WHY WRONG: The existing classifier is a PR-only job. Once heavy jobs consume its outputs through `needs: changes`, the skipped dependency suppresses downstream jobs unless their condition explicitly includes `always()`. The proposed `if: github.event_name == 'merge_group' || ...` omits it.
+    EVIDENCE: research/operations/2026-08-10-merge-os-v2-submission-system.md:72-78 makes the unconditional claim. .github/workflows/tests.yml:89-98 makes `changes` PR-only. .github/workflows/tests.yml:981-991 demonstrates that this repository uses `if: always()` when a job must run despite skipped/failed dependencies. .github/workflows/tests.yml:1032-1045 treats `skipped` as non-failure.
+    SCENARIO: A `merge_group` starts; `changes` is skipped; `backend-tests` has `needs: changes` and the proposed event condition; implicit `success()` is false, so `backend-tests` is skipped before the event disjunct can rescue it. Its required context reports skipped/success and the untested group lands.
+
+F2 [P0] Wave 0 creates a deterministic false-green migration gate for merge_group events.
+    QUOTE: "REMOVE `paths:` + job-level gating (else PR context hangs Expected)"
+    WHY WRONG: Wave 0 adds `merge_group`, but the immutable event-SHA diff is deferred to Wave 3. The current migration workflow reads only `pull_request.*` SHAs and absorbs diff failure with `|| true`. On `merge_group`, the file list is empty and every Squawk step skips successfully.
+    EVIDENCE: research/operations/2026-08-10-merge-os-v2-submission-system.md:195-205 adds the event in Wave 0 while claiming no gate-semantic change; its correct event diff is postponed to Wave 3 at :225-227. .github/workflows/migration-lint.yml:55-70 reads `github.event.pull_request.base.sha`/`head.sha` and suppresses diff failure; :72-83 skips setup and lint on an empty list; :182-185 emits a successful skip notice.
+    SCENARIO: During Wave 0, a merge group contains a new migration with a Squawk-blocked destructive statement. Both PR SHAs resolve empty, `files=""`, Squawk never runs, `Lint` goes green, and the migration lands.
+
+F3 [P1] The judge-tier correction protects the wrong classifier.
+    QUOTE: "`scripts/prepush_classify.py` (already NEVER_INNOCENT for the local gate) is added to the hot-zone/CODEOWNERS-TIER1 set the moment it becomes the R1 judge"
+    WHY WRONG: The classifier currently positioned for R1 enforcement is `scripts/ci/change_map.py`, not `scripts/prepush_classify.py`. Neither `change_map.py` nor its corpus is in CODEOWNERS. Protecting the local pre-push classifier does not protect the workflow’s actual decision code.
+    EVIDENCE: .github/workflows/tests.yml:108-136 executes `scripts/ci/test_change_map.py` and `scripts/ci/change_map.py`. scripts/ci/change_map.py:54-60 contains the self-classification rules. .github/CODEOWNERS:20-30 protects workflows and GitHub configuration but not either change-map file.
+    SCENARIO: A PR changes backend code plus `change_map.py` and its corpus so those paths classify innocent. The PR-head workflow executes the modified judge, skips the heavy jobs, and all skipped required contexts succeed without owner review.
+
+F4 [P1] The docs-sync correction still permits deletion of both the judge and its corpus to pass green.
+    QUOTE: "The PR-side docs-sync check still downgrades as in v1: from byte-equality on global counts to 'no hand edits inside generated blocks' + sentinel-conformity."
+    WHY WRONG: The actual workflow explicitly returns success when `docs_sync.py` is absent and separately returns success when its unit test is absent. Removing top-level path filters does not cure this self-deletion bypass.
+    EVIDENCE: .github/workflows/docs-sync.yml:72-79 exits 0 when `scripts/docs_sync.py` is missing; :81-88 exits 0 when `test_docs_sync_atlas.py` is missing. No protection for either path appears in .github/CODEOWNERS:20-30.
+    SCENARIO: A PR deletes `scripts/docs_sync.py` and `scripts/tests/test_docs_sync_atlas.py`. Job-level detection correctly starts the required workflow, both remaining checks deliberately exit 0, and the PR lands after removing the entire docs-sync authority.
+
+F5 [P1] P2 moves the stale-tree defect into a nonexistent exclusive-admission primitive and contradicts the no-downtime theorem.
+    QUOTE: "No wave requires queue downtime."
+    WHY WRONG: Exact-tree isolation requires draining the queue and excluding new admissions through the heal’s terminal state. The repository’s only control surface toggles the whole ruleset; its normal configuration concurrently builds five entries and merges four. There is no scoped one-entry admission lock.
+    EVIDENCE: scripts/ci/setup_merge_queue_ruleset.sh:16-21 says ruleset updates replace the whole object; :34-49 exposes only status/enable/disable/apply; :94-108 configures `max_entries_to_build=5` and `max_entries_to_merge=4`. docs/runbooks/merge-queue-discipline.md:365-378 confirms those queue parameters. The proposed exclusion requirement is at research/operations/2026-08-10-merge-os-v2-submission-system.md:128-135.
+    SCENARIO: After drain at main SHA S0, the heal regenerates and runs R1/R2. If admissions remain open, another PR advances main and the heal is stale. If admissions are blocked until terminal, every ordinary PR waits through heal R1 and R2—queue downtime. If neither is allowed, continuous traffic starves Wave 3 forever.
+
+F6 [P1] The critical-test quarantine exclusion and its acceptance criterion are vacuous.
+    QUOTE: "never touches tests markered `critical` (auth/payment/PII gates — those get a P0 ledger line instead)"
+    WHY WRONG: The marker is registered, but the repository contains no `pytest.mark.critical` applications. Concrete authentication gates are unmarked. Wave 4 can therefore report “no false-quarantine of a critical-markered test” without exercising a single protected test.
+    EVIDENCE: apps/backend-rag/pytest.ini:72 merely registers the marker. apps/backend-rag/tests/test_internal_api_auth.py:14-18 begins an authentication-gate class without any critical marker; :17-31 verifies API-key enforcement. A repository-wide search of both backend test trees returned zero critical-marker applications.
+    SCENARIO: The API-key enforcement test fails 5 times in 50 runs. It satisfies the quarantine floors and is not marker-protected, so it can be quarantined. Wave 4 still passes because the set of critical-markered tests is empty.
+
+F7 [P1] “Three retries per entry” does not bound rearming because every rearm creates a new entry.
+    QUOTE: "gains a retry ceiling (3 per entry), exponential backoff, and a circuit breaker (≥3 identical INFRA failures in 30 min ⇒ stop + P0 alert instead of requeue-storming a GitHub outage)."
+    WHY WRONG: GitHub consumes the old auto-merge request on ejection; the script then arms the PR again. A counter keyed to queue entry resets on every attempt. The identical-failure breaker also misses a storm whose infrastructure symptoms alternate.
+    EVIDENCE: scripts/ci/queue_rearm.sh:5-11 documents consumption of the old auto-merge request; :164-187 searches successive merge-group runs for the PR; :222-231 directly re-arms it with `gh pr merge --auto`. No durable PR/SHA retry ledger exists.
+    SCENARIO: One PR is successively ejected for Docker timeout, missing queue ref, runner shutdown, then repeats. Every new queue entry has retry count 1, and no identical cause reaches three within 30 minutes. The loop remains unbounded.
+
+F8 [P2] The “corrected radiography” contradicts its named source and its own arithmetic.
+    QUOTE: "18→25.7 min in 3.5 weeks, ALL inside pytest (+5.4 min; every other step flat ±6s)"
+    WHY WRONG: 25.7−18 is 7.7, not 5.4. The cited round-3 report says 25.1, not 25.7, and provides neither the claimed 21.7-minute pytest value nor the claimed 16-run sample. It also reports 47.3 merges/day, not a measured 49.
+    EVIDENCE: research/operations/2026-08-10-queue-acceleration-round3-system-wide.md:17-20 reports 47/day and approximately 40 slot-min; :29-32 reports 47.3/day and 18→25.1 minutes. The contradictory claims appear in research/operations/2026-08-10-merge-os-v2-submission-system.md:48-57.
+    SCENARIO: Capacity and savings calculations consume 25.7 minutes and an unexplained 30 PR/day while the cited source supplies 25.1 and 47.3 merges/day. The resulting baseline is presented as measured even though its inputs are mixed, absent, or arithmetically inconsistent.
+
+VERDICT: BLOCK (F1, F2, F3, F4, F5, F6, F7)
+
+UNVERIFIABLE:
+    U1: The current “26 required contexts,” their exact individual names, and `Test Summary`’s current exclusion require the live branch-protection API. docs/runbooks/merge-queue-discipline.md:69-82 explicitly says the count drifts and the live query is authoritative; the workflow comment at .github/workflows/tests.yml:1016-1021 is dated 2026-07-20, not current proof.
+    U2: The “16 real runs,” “21.7 min pytest,” and 30-PR/day input are absent from the named round-3 source; no raw jobs-API receipt is committed.
+    U3: The claimed dead Telegram secret, 124-minute scheduler gaps, billed-minutes-per-PR API denominator, “few/day” heal rate, and future heartbeat/circuit-breaker behavior have no verifiable repository receipts.
+    U4: Whether native GitHub merge queue offers a scoped single-entry isolation primitive cannot be established from the repository; the current local control script does not implement one.
+
+
+tokens used
+236.366
+F1 [P0] The “unconditional” merge_group branch can still skip every heavy job through implicit needs-success gating.
+    QUOTE: "On `merge_group`, heavy jobs run UNCONDITIONALLY."
+    WHY WRONG: The existing classifier is a PR-only job. Once heavy jobs consume its outputs through `needs: changes`, the skipped dependency suppresses downstream jobs unless their condition explicitly includes `always()`. The proposed `if: github.event_name == 'merge_group' || ...` omits it.
+    EVIDENCE: research/operations/2026-08-10-merge-os-v2-submission-system.md:72-78 makes the unconditional claim. .github/workflows/tests.yml:89-98 makes `changes` PR-only. .github/workflows/tests.yml:981-991 demonstrates that this repository uses `if: always()` when a job must run despite skipped/failed dependencies. .github/workflows/tests.yml:1032-1045 treats `skipped` as non-failure.
+    SCENARIO: A `merge_group` starts; `changes` is skipped; `backend-tests` has `needs: changes` and the proposed event condition; implicit `success()` is false, so `backend-tests` is skipped before the event disjunct can rescue it. Its required context reports skipped/success and the untested group lands.
+
+F2 [P0] Wave 0 creates a deterministic false-green migration gate for merge_group events.
+    QUOTE: "REMOVE `paths:` + job-level gating (else PR context hangs Expected)"
+    WHY WRONG: Wave 0 adds `merge_group`, but the immutable event-SHA diff is deferred to Wave 3. The current migration workflow reads only `pull_request.*` SHAs and absorbs diff failure with `|| true`. On `merge_group`, the file list is empty and every Squawk step skips successfully.
+    EVIDENCE: research/operations/2026-08-10-merge-os-v2-submission-system.md:195-205 adds the event in Wave 0 while claiming no gate-semantic change; its correct event diff is postponed to Wave 3 at :225-227. .github/workflows/migration-lint.yml:55-70 reads `github.event.pull_request.base.sha`/`head.sha` and suppresses diff failure; :72-83 skips setup and lint on an empty list; :182-185 emits a successful skip notice.
+    SCENARIO: During Wave 0, a merge group contains a new migration with a Squawk-blocked destructive statement. Both PR SHAs resolve empty, `files=""`, Squawk never runs, `Lint` goes green, and the migration lands.
+
+F3 [P1] The judge-tier correction protects the wrong classifier.
+    QUOTE: "`scripts/prepush_classify.py` (already NEVER_INNOCENT for the local gate) is added to the hot-zone/CODEOWNERS-TIER1 set the moment it becomes the R1 judge"
+    WHY WRONG: The classifier currently positioned for R1 enforcement is `scripts/ci/change_map.py`, not `scripts/prepush_classify.py`. Neither `change_map.py` nor its corpus is in CODEOWNERS. Protecting the local pre-push classifier does not protect the workflow’s actual decision code.
+    EVIDENCE: .github/workflows/tests.yml:108-136 executes `scripts/ci/test_change_map.py` and `scripts/ci/change_map.py`. scripts/ci/change_map.py:54-60 contains the self-classification rules. .github/CODEOWNERS:20-30 protects workflows and GitHub configuration but not either change-map file.
+    SCENARIO: A PR changes backend code plus `change_map.py` and its corpus so those paths classify innocent. The PR-head workflow executes the modified judge, skips the heavy jobs, and all skipped required contexts succeed without owner review.
+
+F4 [P1] The docs-sync correction still permits deletion of both the judge and its corpus to pass green.
+    QUOTE: "The PR-side docs-sync check still downgrades as in v1: from byte-equality on global counts to 'no hand edits inside generated blocks' + sentinel-conformity."
+    WHY WRONG: The actual workflow explicitly returns success when `docs_sync.py` is absent and separately returns success when its unit test is absent. Removing top-level path filters does not cure this self-deletion bypass.
+    EVIDENCE: .github/workflows/docs-sync.yml:72-79 exits 0 when `scripts/docs_sync.py` is missing; :81-88 exits 0 when `test_docs_sync_atlas.py` is missing. No protection for either path appears in .github/CODEOWNERS:20-30.
+    SCENARIO: A PR deletes `scripts/docs_sync.py` and `scripts/tests/test_docs_sync_atlas.py`. Job-level detection correctly starts the required workflow, both remaining checks deliberately exit 0, and the PR lands after removing the entire docs-sync authority.
+
+F5 [P1] P2 moves the stale-tree defect into a nonexistent exclusive-admission primitive and contradicts the no-downtime theorem.
+    QUOTE: "No wave requires queue downtime."
+    WHY WRONG: Exact-tree isolation requires draining the queue and excluding new admissions through the heal’s terminal state. The repository’s only control surface toggles the whole ruleset; its normal configuration concurrently builds five entries and merges four. There is no scoped one-entry admission lock.
+    EVIDENCE: scripts/ci/setup_merge_queue_ruleset.sh:16-21 says ruleset updates replace the whole object; :34-49 exposes only status/enable/disable/apply; :94-108 configures `max_entries_to_build=5` and `max_entries_to_merge=4`. docs/runbooks/merge-queue-discipline.md:365-378 confirms those queue parameters. The proposed exclusion requirement is at research/operations/2026-08-10-merge-os-v2-submission-system.md:128-135.
+    SCENARIO: After drain at main SHA S0, the heal regenerates and runs R1/R2. If admissions remain open, another PR advances main and the heal is stale. If admissions are blocked until terminal, every ordinary PR waits through heal R1 and R2—queue downtime. If neither is allowed, continuous traffic starves Wave 3 forever.
+
+F6 [P1] The critical-test quarantine exclusion and its acceptance criterion are vacuous.
+    QUOTE: "never touches tests markered `critical` (auth/payment/PII gates — those get a P0 ledger line instead)"
+    WHY WRONG: The marker is registered, but the repository contains no `pytest.mark.critical` applications. Concrete authentication gates are unmarked. Wave 4 can therefore report “no false-quarantine of a critical-markered test” without exercising a single protected test.
+    EVIDENCE: apps/backend-rag/pytest.ini:72 merely registers the marker. apps/backend-rag/tests/test_internal_api_auth.py:14-18 begins an authentication-gate class without any critical marker; :17-31 verifies API-key enforcement. A repository-wide search of both backend test trees returned zero critical-marker applications.
+    SCENARIO: The API-key enforcement test fails 5 times in 50 runs. It satisfies the quarantine floors and is not marker-protected, so it can be quarantined. Wave 4 still passes because the set of critical-markered tests is empty.
+
+F7 [P1] “Three retries per entry” does not bound rearming because every rearm creates a new entry.
+    QUOTE: "gains a retry ceiling (3 per entry), exponential backoff, and a circuit breaker (≥3 identical INFRA failures in 30 min ⇒ stop + P0 alert instead of requeue-storming a GitHub outage)."
+    WHY WRONG: GitHub consumes the old auto-merge request on ejection; the script then arms the PR again. A counter keyed to queue entry resets on every attempt. The identical-failure breaker also misses a storm whose infrastructure symptoms alternate.
+    EVIDENCE: scripts/ci/queue_rearm.sh:5-11 documents consumption of the old auto-merge request; :164-187 searches successive merge-group runs for the PR; :222-231 directly re-arms it with `gh pr merge --auto`. No durable PR/SHA retry ledger exists.
+    SCENARIO: One PR is successively ejected for Docker timeout, missing queue ref, runner shutdown, then repeats. Every new queue entry has retry count 1, and no identical cause reaches three within 30 minutes. The loop remains unbounded.
+
+F8 [P2] The “corrected radiography” contradicts its named source and its own arithmetic.
+    QUOTE: "18→25.7 min in 3.5 weeks, ALL inside pytest (+5.4 min; every other step flat ±6s)"
+    WHY WRONG: 25.7−18 is 7.7, not 5.4. The cited round-3 report says 25.1, not 25.7, and provides neither the claimed 21.7-minute pytest value nor the claimed 16-run sample. It also reports 47.3 merges/day, not a measured 49.
+    EVIDENCE: research/operations/2026-08-10-queue-acceleration-round3-system-wide.md:17-20 reports 47/day and approximately 40 slot-min; :29-32 reports 47.3/day and 18→25.1 minutes. The contradictory claims appear in research/operations/2026-08-10-merge-os-v2-submission-system.md:48-57.
+    SCENARIO: Capacity and savings calculations consume 25.7 minutes and an unexplained 30 PR/day while the cited source supplies 25.1 and 47.3 merges/day. The resulting baseline is presented as measured even though its inputs are mixed, absent, or arithmetically inconsistent.
+
+VERDICT: BLOCK (F1, F2, F3, F4, F5, F6, F7)
+
+UNVERIFIABLE:
+    U1: The current “26 required contexts,” their exact individual names, and `Test Summary`’s current exclusion require the live branch-protection API. docs/runbooks/merge-queue-discipline.md:69-82 explicitly says the count drifts and the live query is authoritative; the workflow comment at .github/workflows/tests.yml:1016-1021 is dated 2026-07-20, not current proof.
+    U2: The “16 real runs,” “21.7 min pytest,” and 30-PR/day input are absent from the named round-3 source; no raw jobs-API receipt is committed.
+    U3: The claimed dead Telegram secret, 124-minute scheduler gaps, billed-minutes-per-PR API denominator, “few/day” heal rate, and future heartbeat/circuit-breaker behavior have no verifiable repository receipts.
+    U4: Whether native GitHub merge queue offers a scoped single-entry isolation primitive cannot be established from the repository; the current local control script does not implement one.
+
+

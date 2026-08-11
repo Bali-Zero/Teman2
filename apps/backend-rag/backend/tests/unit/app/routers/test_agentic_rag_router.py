@@ -157,6 +157,150 @@ class TestAgenticRagRouter:
             assert result.answer == "test answer"
 
     @pytest.mark.asyncio
+    async def test_query_endpoint_surfaces_tool_names_and_keeps_the_count(
+        self, mock_orchestrator, mock_current_user
+    ):
+        """The response must carry tool NAMES, and still carry the count.
+
+        `tools_called` has always been `len(result.tools_called)` — a number.
+        Measured 2026-08-11 on the live worker, that made an abstaining run
+        indistinguishable from outside: `tools_called: 1` names nothing, so
+        "why did one tool call yield evidence 0.0" could not be answered
+        without guessing. `tools_used` carries the names.
+
+        Both halves are asserted deliberately. Replacing the count with the
+        list would be the tidier-looking change and would break every existing
+        consumer that reads it as a number (`stress_test_zantara.py`, the
+        red-team evaluator's older payload path, the analytics rows).
+        """
+        mock_orchestrator.process_query.return_value.tools_called = [
+            "get_pricing",
+            "vector_search",
+        ]
+
+        mock_ab_manager = MagicMock()
+        mock_ab_manager.metrics_tracker = MagicMock()
+        mock_ab_manager.metrics_tracker.record_query_metrics = AsyncMock()
+        mock_ab_manager.assign_variant = MagicMock(return_value="control")
+        mock_ab_manager.get_variant_config = MagicMock(return_value={})
+
+        with (
+            patch(
+                "backend.app.routers.agentic_rag.get_current_user",
+                return_value=mock_current_user,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_orchestrator",
+                return_value=mock_orchestrator,
+            ),
+            patch("backend.app.routers.agentic_rag.get_optional_database_pool", return_value=None),
+            patch(
+                "backend.app.routers.agentic_rag.get_ab_test_manager",
+                return_value=mock_ab_manager,
+            ),
+        ):
+            from backend.app.routers.agentic_rag import query_agentic_rag
+
+            result = await query_agentic_rag(
+                request=AgenticQueryRequest(query="Quanto costa una PT PMA?"),
+                current_user=mock_current_user,
+                orchestrator=mock_orchestrator,
+                db_pool=None,
+            )
+
+        assert result.tools_used == ["get_pricing", "vector_search"]
+        assert result.tools_called == 2
+
+    @pytest.mark.asyncio
+    async def test_query_endpoint_forwards_the_declared_channel(
+        self, mock_orchestrator, mock_current_user
+    ):
+        """GUILT: `channel` reaches the orchestrator on the NON-streaming path.
+
+        `/stream` has forwarded it since the overlays existed; this endpoint
+        never did — and this is the endpoint `wa_inbox_bot.py` calls, sending
+        `"channel": "whatsapp"` on every message. The field was accepted by
+        the request model, documented as "still used for the WA prompt overlay
+        elsewhere", and dropped here.
+        """
+        mock_ab_manager = MagicMock()
+        mock_ab_manager.metrics_tracker = MagicMock()
+        mock_ab_manager.metrics_tracker.record_query_metrics = AsyncMock()
+        mock_ab_manager.assign_variant = MagicMock(return_value="control")
+        mock_ab_manager.get_variant_config = MagicMock(return_value={})
+
+        with (
+            patch(
+                "backend.app.routers.agentic_rag.get_current_user",
+                return_value=mock_current_user,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_orchestrator",
+                return_value=mock_orchestrator,
+            ),
+            patch("backend.app.routers.agentic_rag.get_optional_database_pool", return_value=None),
+            patch(
+                "backend.app.routers.agentic_rag.get_ab_test_manager",
+                return_value=mock_ab_manager,
+            ),
+        ):
+            from backend.app.routers.agentic_rag import query_agentic_rag
+
+            await query_agentic_rag(
+                request=AgenticQueryRequest(query="berapa lama KITAS?", channel="whatsapp"),
+                current_user=mock_current_user,
+                orchestrator=mock_orchestrator,
+                db_pool=None,
+            )
+
+        assert mock_orchestrator.process_query.await_args.kwargs["channel"] == "whatsapp"
+
+    @pytest.mark.asyncio
+    async def test_query_endpoint_omits_channel_when_the_caller_declares_none(
+        self, mock_orchestrator, mock_current_user
+    ):
+        """INNOCENCE: a caller that declares no channel must not acquire one.
+
+        The kwarg is absent, not `None`-and-defaulted: `process_query_core`
+        deliberately has no `or "webapp"` fallback on this path, so a caller
+        that says nothing keeps a byte-identical system prompt. Pinning the
+        ABSENCE here is what makes a future "just default it like /stream
+        does" edit fail CI instead of silently reshaping every existing
+        non-streaming caller's answers.
+        """
+        mock_ab_manager = MagicMock()
+        mock_ab_manager.metrics_tracker = MagicMock()
+        mock_ab_manager.metrics_tracker.record_query_metrics = AsyncMock()
+        mock_ab_manager.assign_variant = MagicMock(return_value="control")
+        mock_ab_manager.get_variant_config = MagicMock(return_value={})
+
+        with (
+            patch(
+                "backend.app.routers.agentic_rag.get_current_user",
+                return_value=mock_current_user,
+            ),
+            patch(
+                "backend.app.routers.agentic_rag.get_orchestrator",
+                return_value=mock_orchestrator,
+            ),
+            patch("backend.app.routers.agentic_rag.get_optional_database_pool", return_value=None),
+            patch(
+                "backend.app.routers.agentic_rag.get_ab_test_manager",
+                return_value=mock_ab_manager,
+            ),
+        ):
+            from backend.app.routers.agentic_rag import query_agentic_rag
+
+            await query_agentic_rag(
+                request=AgenticQueryRequest(query="What is a KITAS?"),
+                current_user=mock_current_user,
+                orchestrator=mock_orchestrator,
+                db_pool=None,
+            )
+
+        assert "channel" not in mock_orchestrator.process_query.await_args.kwargs
+
+    @pytest.mark.asyncio
     async def test_query_endpoint_with_conversation_history(
         self,
         mock_orchestrator,

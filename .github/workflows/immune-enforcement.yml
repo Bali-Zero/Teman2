@@ -224,6 +224,16 @@ jobs:
               apps/evaluator/nlm_deep_research/tests/test_run_verdict.py|\
               apps/evaluator/nlm_deep_research/tests/test_calendar_skip_marker_class.py|\
               .claude/skills/modus/PENDING-ARMS.md|\
+              scripts/ci/required_context_map.py|\
+              scripts/ci/snapshot_required_contexts.py|\
+              scripts/ci/check_required_workflow_conformance.py|\
+              scripts/tests/test_required_context_map.py|\
+              scripts/tests/test_check_required_workflow_conformance.py|\
+              infra/required.d/contexts.json|\
+              infra/guard-conformance/registry.json|\
+              infra/guard-conformance/check_guard_conformance.py|\
+              scripts/verify_tailnet_node.sh|\
+              scripts/tests/test_verify_tailnet_node.sh|\
               .github/workflows/immune-enforcement.yml|\
               .github/workflows/*.yml|\
               .github/workflows/*.yaml)
@@ -325,7 +335,9 @@ jobs:
             scripts/tests/test_immune_enforcement_trigger_symmetry.py \
             scripts/tests/test_drive_watchdog_fly_path.py \
             scripts/tests/test_drive_watchdog_tier_ratchet.py \
-            scripts/test_lint_test_reward_hacking.py ; do
+            scripts/test_lint_test_reward_hacking.py \
+            scripts/tests/test_required_context_map.py \
+            scripts/tests/test_check_required_workflow_conformance.py ; do
             if [ -f "$t" ]; then
               echo "::group::$t"
               python -m pytest "$t" -q || fail=1
@@ -731,6 +743,17 @@ jobs:
           # clean check.
           bash scripts/ci/test_telegram_verdict.sh
 
+      - name: Required-workflow conformance (Merge-OS v2 Wave 0, Codex F12)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # infra/required.d/contexts.json + scripts/ci/check_required_workflow_conformance.py
+          # shipped together, docs-sync.yml/migration-lint.yml cured same PR. The
+          # guilt+innocence corpus above (test_check_required_workflow_conformance.py)
+          # proves the CHECKER can still bite; this step proves the REAL repo tree is
+          # clean today — a censused guard that no workflow actually runs against
+          # live data is theater (W81).
+          python3 scripts/ci/check_required_workflow_conformance.py
+
       - name: declared-pairs.json is valid JSON with sane shape
         if: steps.paths.outputs.relevant == 'true'
         run: |
@@ -807,6 +830,25 @@ jobs:
 
       # The two ledger gates below run on EVERY PR (cheap: parse one markdown
       # file) — they are the reason this check is required at all.
+      # A node's IDENTITY in a tailnet is its MagicDNS name — never HostName, never an
+      # ssh alias (#1 alias-drift + #2 Esiste≠Armato). The 2026-05 laptop-handoff
+      # runbook verified retained remote access with `ssh air 'tailscale status'`, a
+      # command that CANNOT fail: on Pro both `air` and `air-ts` resolve to M5, so it
+      # answered green from the verifier itself for three months while the handed-over
+      # machine was never in the tailnet at all.
+      #
+      # The corpus pins both halves of the cure. Guilt: the name resolving to THIS
+      # machine is its own verdict (exit 4 — never 0, never a plain absence), an
+      # unreadable status is CANNOT-VERIFY (2) and never folded into absent (3), and a
+      # peer whose device-reported HostName is exactly the wanted name does NOT satisfy
+      # it. Innocence: a node whose HostName is "localhost" — two of six live nodes —
+      # is still found, by DNSName. Mutation-verified 4/4: each cure reverted turns the
+      # matching case red. Named here because in this repo a scripts/tests/ corpus runs
+      # only because a workflow says so.
+      - name: Tailnet node verifier keys on DNSName, not HostName or an ssh alias
+        if: steps.paths.outputs.relevant == 'true'
+        run: bash scripts/tests/test_verify_tailnet_node.sh
+
       - name: PENDING-ARMS ledger parses (report smoke, exit 0 signaler)
         run: |
           if [ -f scripts/pending_arms_report.py ]; then
