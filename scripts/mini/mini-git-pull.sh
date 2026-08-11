@@ -324,6 +324,65 @@ if ! git merge-base --is-ancestor HEAD "$TARGET_REF" 2>/dev/null; then
     log "  content-identical self-heal did not complete; falling back to alert"
   fi
 
+  # 2026-08-12 hardening (generalizes the block above; recurring shape seen
+  # 2026-07-11, 2026-08-09, 2026-08-10, 2026-08-11 — same disease each time):
+  # the whole-tree check above only fires when HEAD's ENTIRE tree already
+  # matches $TARGET_REF, i.e. ahead-N-behind-0. It CANNOT fire on the far
+  # more common shape — ahead N *and* behind M (M>0) — because M legitimate
+  # upstream commits also differ from HEAD's tree, so the whole-repo diff is
+  # never empty even though the one local-only commit is itself harmless
+  # (this is exactly what happened here: a local-only nb-curator report
+  # commit landed on this checkout, the SAME content was independently
+  # promoted to origin/main under a different sha via a PR, and by the time
+  # anyone looked the checkout had also fallen dozens of commits further
+  # behind — so the old check could never engage and this cron alerted on
+  # cooldown indefinitely with no path to recovery short of an interactive
+  # reset). Same W88 discipline, narrowed correctly: verify by CONTENT only
+  # the paths HEAD's local-only commit(s) (merge-base..HEAD) actually
+  # touched. If EVERY one of those paths already matches $TARGET_REF's
+  # current content, `reset --hard $TARGET_REF` provably discards nothing —
+  # paths it did not touch are untouched by this decision; they simply gain
+  # the legitimate upstream advance, which is the whole point of the pull.
+  # Same clean-tree requirement, same lock, same telegram_alert. Falls
+  # through unchanged if the merge-base is unknown, no paths were touched,
+  # or any touched path still genuinely differs.
+  if [ "${SELFHEAL_OK:-0}" != "1" ]; then
+    MERGE_BASE=$(git merge-base HEAD "$TARGET_REF" 2>/dev/null)
+    if [ -n "$MERGE_BASE" ] \
+       && git diff --quiet HEAD 2>/dev/null \
+       && git diff --quiet --cached HEAD 2>/dev/null; then
+      TOUCHED_PATHS=()
+      while IFS= read -r -d '' _p; do
+        TOUCHED_PATHS+=("$_p")
+      done < <(git diff --name-only -z "$MERGE_BASE" HEAD 2>/dev/null)
+      if [ "${#TOUCHED_PATHS[@]}" -gt 0 ] \
+         && git diff --quiet HEAD "$TARGET_REF" -- "${TOUCHED_PATHS[@]}" 2>/dev/null; then
+        log "  every path HEAD's local-only commit(s) touched already matches $TARGET_REF (ahead+behind shape, ${#TOUCHED_PATHS[@]} path(s)) — attempting narrow self-heal"
+        SELFHEAL_OK=0
+        if command -v flock >/dev/null 2>&1; then
+          exec 9>/tmp/repo-mutating.lock
+          if flock --exclusive --timeout 30 9; then
+            if git reset --hard --quiet "$TARGET_REF" 2>>"$LOG_FILE"; then
+              SELFHEAL_OK=1
+            fi
+            flock -u 9 2>/dev/null || true
+          else
+            log "WARN: could not acquire repo-mutating lock for narrow self-heal, skip this tick"
+          fi
+        else
+          log "WARN: flock not installed; skipping narrow self-heal (unsafe without lock)"
+        fi
+        if [ "$SELFHEAL_OK" = "1" ]; then
+          log "OK ahead+behind divergence resolved (narrow content-check): reset to $(git rev-parse --short HEAD) (was ${LOCAL:0:9})"
+          telegram_alert "diverged-selfheal-narrow" \
+            "Mini main HEAD had local-only commit(s) diverged from ${TARGET_REF}, but every path they touched already matched target content — auto-reset, no content lost (${LOCAL:0:9} -> $(git rev-parse --short HEAD))."
+          exit 0
+        fi
+        log "  narrow self-heal did not complete; falling back to alert"
+      fi
+    fi
+  fi
+
   telegram_alert "diverged" \
     "Mini main HEAD diverged from ${TARGET_REF} (local=${LOCAL:0:9} vs remote=${REMOTE:0:9}). Manual rebase needed."
   exit 1
