@@ -27,6 +27,7 @@ from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from backend.app.core.config import settings
+from backend.channels.format import format_rich_text
 
 # `notify_human_telegram` now lives in
 # `backend/services/integrations/human_escalation_notifier.py` so the WhatsApp
@@ -362,6 +363,30 @@ async def process_whatsapp_message(
                     )
                 openclaw_response = guarded_openclaw_response.reply
 
+                # Channel boundary. `format_rich_text` converts the model's
+                # generic markdown into what WhatsApp actually renders and
+                # drops bare citation markers — measured on 2026-07-28, the
+                # team beta: 18 of that day's 66 bot replies reached a reader
+                # carrying raw `[1]`…`[8]`. The formatter was armed on
+                # 2026-07-25 (#3118) and deployed well before that day, but
+                # only inside `wa_inbox_bot.py`; this router — which is what
+                # answers the webhook — never called it.
+                #
+                # BEFORE chunking, not per chunk: `chunk_message` splits on
+                # length, so a boundary can land inside a `**bold**` pair and
+                # leave each half unconvertible.
+                #
+                # AFTER `sanitize_whatsapp_kbli_reply`, so the KBLI guard keeps
+                # seeing exactly the text it sees today.
+                #
+                # Only the model's answer is formatted, never the canned
+                # messages this router also sends (`welcome_msg`,
+                # `escalation_msg`, `ack_text(...)`, ...). Those are a
+                # different entity: the citation strip removes `[<digits>]`,
+                # which in a template can be a reference or invoice number
+                # rather than a citation.
+                openclaw_response = format_rich_text(openclaw_response, "whatsapp")
+
                 chunks = whatsapp_service.chunk_message(openclaw_response, max_length=4000)
 
                 for i, chunk in enumerate(chunks):
@@ -431,7 +456,11 @@ async def process_whatsapp_message(
             # --- DIRECT RAG: Query with Gemini 2.5 Flash ---
             from backend.app.dependencies import get_orchestrator
 
-            orchestrator = get_orchestrator(request)
+            # `get_orchestrator` is `async def` (backend/app/deps/orchestrator.py)
+            # — it lazily builds the singleton under a lock. Without the await
+            # this binds a coroutine and the next line dies on
+            # `'coroutine' object has no attribute 'process_query'`.
+            orchestrator = await get_orchestrator(request)
             wa_user_id = f"whatsapp_{phone}"
             session_id = f"wa_session_{phone}"
 
@@ -495,6 +524,11 @@ async def process_whatsapp_message(
                     guarded_response.reason,
                 )
             response_text = guarded_response.reply
+
+            # Channel boundary — same reasoning as the OpenClaw branch above
+            # (format the model's answer before chunking, after the KBLI guard,
+            # and never the canned messages).
+            response_text = format_rich_text(response_text, "whatsapp")
 
             # Split into chunks if too long for WhatsApp
             chunks = whatsapp_service.chunk_message(response_text, max_length=4000)

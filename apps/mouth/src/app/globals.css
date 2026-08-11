@@ -932,7 +932,28 @@ main,
   }
 }
 
-/* ── v2 hero — responsive aspect + gradient + logo sizing ───────────── */
+/* ── v2 hero — responsive aspect + gradient + logo sizing ————————— */
+
+/* Shared image scrim token — P1: single definition applied to hero, featured
+   carousel, founder cards, and trust strip. Any element that puts text over
+   a photo should use this. */
+:root {
+  --img-scrim: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.78) 0%,
+    rgba(0, 0, 0, 0.35) 45%,
+    rgba(0, 0, 0, 0) 75%
+  );
+  --nav-h: 3.5rem; /* = h-14 = 56px — used by any hero that needs to clear the fixed nav */
+}
+
+/* prefers-reduced-motion: disable cross-fade transitions on the news carousel */
+@media (prefers-reduced-motion: reduce) {
+  .news-carousel-img-fade {
+    transition: none !important;
+  }
+}
+
 .hero-aspect {
   aspect-ratio: 4 / 5;
   min-height: 560px;
@@ -1044,7 +1065,9 @@ main,
 @media (min-width: 768px) {
   .fab-whatsapp,
   .fab-zantara {
-    bottom: 32px;
+    /* P0.5: raised from 32px — the FAB at 32px overlapped footer legal links.
+       52px clears the legal row + the footer border with breathing room. */
+    bottom: 52px;
     height: 60px;
     padding-left: 10px;
     padding-right: 24px;
@@ -1067,6 +1090,20 @@ main,
   grid-template-columns: 1fr !important;
   gap: 2rem !important;
 }
+
+/* P4: focus-visible rings for Rumah Putih cards, links, pills, and the FAB.
+   Scope to the homepage light surface so existing dark portal rings are untouched. */
+#top a:focus-visible,
+#top button:focus-visible {
+  outline: 2px solid #1e3863;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+#zantara-fab:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.9);
+  outline-offset: 3px;
+}
+
 @media (min-width: 640px) {
   .footer-grid {
     grid-template-columns: 1fr 1fr !important;

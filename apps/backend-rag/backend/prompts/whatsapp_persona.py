@@ -36,11 +36,27 @@ def build_system_prompt(
     client_profile: dict | None = None,
     is_first_message: bool = False,
     detected_language: str | None = None,
-    _time_of_day: str | None = None,
+    time_of_day: str | None = None,  # noqa: ARG001 - see below, the name is load-bearing
 ) -> str:
     """
     Build a dynamic system prompt for each WhatsApp message.
     Kept short and natural — less rules = more natural output.
+
+    `time_of_day` is accepted and deliberately unused today, but its NAME is
+    part of a live contract: `whatsapp_chat.process_whatsapp_message` — the
+    only production caller — passes it by keyword. It was renamed to
+    `_time_of_day` on 2026-03-17 against a call site written on 2026-02-07,
+    and from that day every fallback-RAG WhatsApp reply raised
+    `TypeError: unexpected keyword argument 'time_of_day'` and answered the
+    client "Ops, errore tecnico 😬" instead. Nothing caught it for ~5 months
+    because no test ever executed that branch (measured: the error reply
+    appears 0 times in `conversation_messages` against 154 outbound WhatsApp
+    messages in July — the branch is the net under OpenClaw failing, and it
+    had a hole in it the whole time).
+
+    Do not re-prefix this with an underscore to silence an unused-argument
+    lint. `test_whatsapp_router_formats_llm_answers.py` now binds the router's
+    actual keywords against this signature and fails if the two drift again.
     """
     profile = client_profile or {}
     interests = profile.get("interests", [])

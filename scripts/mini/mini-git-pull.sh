@@ -284,6 +284,46 @@ if ! git merge-base --is-ancestor HEAD "$TARGET_REF" 2>/dev/null; then
   fi
   log "WARN: HEAD diverged from $TARGET_REF (not ff-able)."
   log "  local=$LOCAL  remote=$REMOTE"
+
+  # 2026-08-11 hardening (W88 discipline — verify by CONTENT, never by SHA-ancestor
+  # alone): "diverged" can mean either (a) genuine conflicting local work, or
+  # (b) a local commit whose content already landed on the target ref under a
+  # DIFFERENT sha (squash-merge, rework, or the recurring case of a cron job —
+  # e.g. nb-curator — committing a report directly on this main checkout that
+  # later got superseded by the same content merged via a PR). In case (b),
+  # HEAD's tree is byte-identical to the target ref's tree despite the
+  # divergent history, so resetting to the target ref discards zero content.
+  # Self-heal ONLY when the whole-repo diff is empty (not just the file the
+  # local commit touched) AND the working tree carries no uncommitted
+  # tracked/staged changes to lose. If either fails, fall through to the
+  # existing telegram_alert path unchanged.
+  if git diff --quiet HEAD "$TARGET_REF" 2>/dev/null \
+     && git diff --quiet HEAD 2>/dev/null \
+     && git diff --quiet --cached HEAD 2>/dev/null; then
+    log "  content-identical to $TARGET_REF (different history, same tree) — attempting self-heal"
+    SELFHEAL_OK=0
+    if command -v flock >/dev/null 2>&1; then
+      exec 9>/tmp/repo-mutating.lock
+      if flock --exclusive --timeout 30 9; then
+        if git reset --hard --quiet "$TARGET_REF" 2>>"$LOG_FILE"; then
+          SELFHEAL_OK=1
+        fi
+        flock -u 9 2>/dev/null || true
+      else
+        log "WARN: could not acquire repo-mutating lock for content-identical self-heal, skip this tick"
+      fi
+    else
+      log "WARN: flock not installed; skipping content-identical self-heal (unsafe without lock)"
+    fi
+    if [ "$SELFHEAL_OK" = "1" ]; then
+      log "OK content-identical divergence resolved: reset to $(git rev-parse --short HEAD) (was ${LOCAL:0:9})"
+      telegram_alert "diverged-selfheal" \
+        "Mini main HEAD had diverged from ${TARGET_REF} but content was identical (local=${LOCAL:0:9}, same tree as remote=${REMOTE:0:9} under a different history) — auto-reset, no content lost."
+      exit 0
+    fi
+    log "  content-identical self-heal did not complete; falling back to alert"
+  fi
+
   telegram_alert "diverged" \
     "Mini main HEAD diverged from ${TARGET_REF} (local=${LOCAL:0:9} vs remote=${REMOTE:0:9}). Manual rebase needed."
   exit 1
@@ -408,4 +448,18 @@ if [ "$STASHED" = "1" ]; then
       "stash pop conflict on Mini after ff-pull to ${NEW_HEAD}. \`git status\` + \`git stash list\` on Mini."
     # Don't exit error — pull succeeded. Conflict is a separate issue.
   fi
+fi
+
+# ---- SOS probe (temporary, 2026-08-11) -------------------------------------
+# Every INBOUND connection to this host has been reset ~250 ms after the
+# handshake since 2026-08-10 (sshd, VNC, redis, ollama, ARD alike) while this
+# pull's own outbound SSH works perfectly, a power-cycle changed nothing, and
+# the site has no keyboard. This pull is therefore the only proven-live code
+# path into the Mini, so it carries a read-only probe that reports out through
+# the SSH direction that still works. The probe cures nothing on purpose (see
+# its header) and runs last, fail-open, so it can neither block nor fail the
+# pull. Remove this block together with the probe once the Mini is reachable.
+if [ -f "$REPO/scripts/mini/mini_sos_report.sh" ]; then
+  /bin/bash "$REPO/scripts/mini/mini_sos_report.sh" || \
+    log "  SOS probe exited non-zero (ignored — the pull is what matters)"
 fi

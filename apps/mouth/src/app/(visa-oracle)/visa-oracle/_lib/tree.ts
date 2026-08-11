@@ -38,11 +38,7 @@ export type QuestionDecisionMapping =
   | { kind: "REVIEW_ONLY"; factPaths: readonly string[] };
 
 export type QuestionGroup =
-  | "location"
-  | "identity"
-  | "intent"
-  | "details"
-  | "review";
+  "location" | "identity" | "intent" | "details" | "review";
 
 export interface OracleQuestion {
   id: string;
@@ -318,6 +314,49 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "MULTIPLE", labelI18nKey: "q.entry_pattern.opt.MULTIPLE" },
     ],
     whyWeAsk: { i18nKey: "why.entry_pattern" },
+    notSure: { mode: "human-review" },
+  },
+  /** WHO sponsors the stay, as a category. This is distinct from the
+   * family/work/study "is the sponsor confirmed?" booleans elsewhere in
+   * this file, and it is not the sponsor's identity either — just the
+   * category. Maps to the single optional `sponsor.type`
+   * FactPath (spec staged-rollout field). No rule in the currently
+   * active pack reads it yet; the question exists to collect the fact
+   * ahead of the rules that will (design doc §4, category-conditional
+   * questions). Asked only where the category makes the sponsor
+   * discriminating — see `FIXED_CATEGORY_QUESTIONS`/`getCategoryQuestionIds`
+   * in flow.ts for exactly which categories include it. */
+  sponsor_category: {
+    id: "sponsor_category",
+    i18nKey: "q.sponsor_category",
+    kind: "choice",
+    group: "details",
+    decisionMapping: {
+      kind: "FACT",
+      factPaths: ["sponsor.type"],
+    },
+    sensitive: false,
+    options: [
+      { key: "NONE", labelI18nKey: "q.sponsor_category.opt.NONE" },
+      {
+        key: "INDIVIDUAL",
+        labelI18nKey: "q.sponsor_category.opt.INDIVIDUAL",
+      },
+      { key: "EMPLOYER", labelI18nKey: "q.sponsor_category.opt.EMPLOYER" },
+      {
+        key: "EDUCATION",
+        labelI18nKey: "q.sponsor_category.opt.EDUCATION",
+      },
+      {
+        key: "INVESTMENT",
+        labelI18nKey: "q.sponsor_category.opt.INVESTMENT",
+      },
+      {
+        key: "GOVERNMENT",
+        labelI18nKey: "q.sponsor_category.opt.GOVERNMENT",
+      },
+    ],
+    whyWeAsk: { i18nKey: "why.sponsor_category" },
     notSure: { mode: "human-review" },
   },
   business_activity: {
