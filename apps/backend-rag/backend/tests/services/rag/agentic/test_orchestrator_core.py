@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from backend.prompts import channel_overlays
 from backend.services.llm_clients.pricing import TokenUsage
 from backend.services.rag.agentic import orchestrator_core
 from backend.services.rag.agentic.orchestrator_core import OrchestratorCore
@@ -261,7 +262,14 @@ async def test_prepare_react_execution_stamps_agent_role_and_channel(monkeypatch
     core.prompt_builder = SimpleNamespace(
         build_system_prompt=lambda **kwargs: f"PROMPT:{kwargs['additional_context']}",
     )
-    monkeypatch.setattr(orchestrator_core, "build_channel_context", lambda channel: f"{channel}:ctx")
+    # Patched at its DEFINITION (`channel_overlays`), not at an import alias in
+    # `orchestrator_core`: since 2026-08-11 this path calls the shared
+    # `apply_channel_overlay` helper, so the real append logic runs underneath
+    # this stub. The expected prompt below is byte-identical to what this test
+    # asserted when the three lines were inline here — that identity is the
+    # point: the streaming path's output must not move when the non-streaming
+    # twin gains the same overlay.
+    monkeypatch.setattr(channel_overlays, "build_channel_context", lambda channel: f"{channel}:ctx")
 
     model_tier, deep_think, prepared_state, prompt = await core.prepare_react_execution(
         query="question",
@@ -278,3 +286,36 @@ async def test_prepare_react_execution_stamps_agent_role_and_channel(monkeypatch
     assert prepared_state is state
     assert prepared_state.agent_role == "ops"
     assert prompt == "PROMPT:KG\n\nwhatsapp:ctx"
+
+
+@pytest.mark.asyncio
+async def test_prepare_react_execution_defaults_an_absent_channel_to_webapp(monkeypatch) -> None:
+    """The STREAMING path's `or "webapp"` default, pinned from its own side.
+
+    Its non-streaming twin deliberately has NO such default (see
+    test_channel_overlay_nonstreaming.py). The asymmetry is the whole design
+    decision of 2026-08-11 — this path has always defaulted, that one has
+    never applied any overlay — so both halves need a test, or "tidying them
+    into agreement" only breaks whichever side happens to be unpinned.
+    """
+    state = AgentState(query="question")
+    core = make_core()
+    core.routing_manager = SimpleNamespace(
+        route_query=AsyncMock(return_value=("flash", False, state)),
+    )
+    core.prompt_builder = SimpleNamespace(
+        build_system_prompt=lambda **kwargs: f"PROMPT:{kwargs['additional_context']}",
+    )
+    monkeypatch.setattr(channel_overlays, "build_channel_context", lambda channel: f"{channel}:ctx")
+
+    _, _, _, prompt = await core.prepare_react_execution(
+        query="question",
+        user_context={"profile": None},
+        history=[],
+        extracted_entities={},
+        kg_context_str="KG",
+        channel=None,
+        agent_role=None,
+    )
+
+    assert prompt == "PROMPT:KG\n\nwebapp:ctx"
