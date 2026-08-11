@@ -1,47 +1,39 @@
 name: Docs Sync Check
 
+# SENTINEL PATTERN (2026-08-11 — Merge-OS v2 Wave 0 trap-disarm,
+# research/operations/2026-08-10-merge-os-v2-submission-system.md §4 Wave 0,
+# Codex F12). This workflow used to gate on a top-level `paths:` filter on
+# BOTH `pull_request` and `push`, and had no `merge_group` trigger at all.
+# That is a trap, not an optimization: a required check whose WORKFLOW is
+# `paths:`-filtered never even STARTS a run on a PR outside those paths —
+# there is no skipped/neutral run to satisfy the check, so GitHub shows the
+# context "Expected — waiting for status to be reported" forever, and an
+# innocent PR is hard-blocked. Adding `merge_group:` alone would not have
+# fixed this — the PR-side context would still hang; the top-level `paths:`
+# itself has to go (confirmed independently by two cross-family adversarial
+# seats against this exact file, §6.2 of the spec above).
+#
+# Fix, same shape as guard-conformance.yml / immune-enforcement.yml /
+# frontend-typecheck.yml / prettier-changed-files.yml: no top-level `paths:`
+# anywhere in `on:` — the workflow ALWAYS triggers, so it is required-safe
+# by construction. Relevance is decided INSIDE the job (job-level change
+# detection, "Docs-sync-relevant paths in this diff?" below); on a path-miss
+# PR the job ends success (skip = success, the sentinel semantics this repo
+# already uses on 17+ workflows) instead of never running at all.
+#
+# The changed-file set is enumerated from the MERGE-BASE via the existing
+# scripts/ci/hotzone_changed_files.sh, never a two-dot `git diff BASE HEAD`:
+# `pull_request.base.sha` is main's CURRENT tip, so a PR behind main would be
+# blamed for every file main gained since the branch point (scar W102, which
+# hard-blocked innocent PR #3057 the same way). That helper exits 3 when it
+# cannot determine the changed set — this job treats that as FAILURE, never
+# as "nothing changed, skip" (a blind-empty read would be a disarmed gate
+# that still reports green — superscar #2 "esiste ≠ armato").
 on:
-  pull_request:
-    paths:
-      - "apps/backend-rag/backend/app/setup/router_registration.py"
-      - "apps/backend-rag/backend/services/**"
-      - "apps/backend-rag/backend/tests/**"
-      - "apps/backend-rag/backend/channels/**"
-      - "apps/*/README.md"
-      - "package.json"
-      - "scripts/docs_sync.py"
-      - "scripts/tests/test_docs_sync_atlas.py"
-      - "scripts/automation_catalog.json"
-      - "README.md"
-      - "INDEX.md"
-      - "docs/AI_ONBOARDING.md"
-      - "docs/AUTOMATIONS_REFERENCE.md"
-      - "docs/runbooks/**"
-      - "infra/workflows/**"
-      - "infra/launchagents/**"
-      - ".claude/skills/**"
-      - ".github/workflows/docs-sync.yml"
+  pull_request: # NO top-level paths: — always trigger (job decides relevance)
   push:
     branches: [main]
-    paths:
-      - "apps/backend-rag/backend/app/setup/router_registration.py"
-      - "apps/backend-rag/backend/services/**"
-      - "apps/backend-rag/backend/tests/**"
-      - "apps/backend-rag/backend/channels/**"
-      - "apps/*/README.md"
-      - "package.json"
-      - "scripts/docs_sync.py"
-      - "scripts/tests/test_docs_sync_atlas.py"
-      - "scripts/automation_catalog.json"
-      - "README.md"
-      - "INDEX.md"
-      - "docs/AI_ONBOARDING.md"
-      - "docs/AUTOMATIONS_REFERENCE.md"
-      - "docs/runbooks/**"
-      - "infra/workflows/**"
-      - "infra/launchagents/**"
-      - ".claude/skills/**"
-      - ".github/workflows/docs-sync.yml"
+  merge_group:
 
 concurrency:
   group: docs-sync-${{ github.ref }}
@@ -64,25 +56,59 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # full history so the merge-base diff below resolves
+          filter: blob:none
+
+      - name: Docs-sync-relevant paths in this diff?
+        id: relevant
+        env:
+          BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha || github.event.after || github.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          if [ ! -f scripts/ci/hotzone_changed_files.sh ]; then
+            echo "::error::enumerator missing — refusing to guess the changed set"
+            exit 1
+          fi
+          CHANGED="$(bash scripts/ci/hotzone_changed_files.sh "$BASE_SHA" "$HEAD_SHA" "$PR_NUMBER")"
+          ENUM_RC=$?
+          if [ "$ENUM_RC" -ne 0 ]; then
+            echo "::error::could not determine the changed set (rc=$ENUM_RC) — failing rather than skipping"
+            exit 1
+          fi
+          RELEVANT=false
+          if printf '%s\n' "$CHANGED" | grep -qE \
+            '^apps/backend-rag/backend/app/setup/router_registration\.py$|^apps/backend-rag/backend/services/|^apps/backend-rag/backend/tests/|^apps/backend-rag/backend/channels/|^apps/[^/]+/README\.md$|^package\.json$|^scripts/docs_sync\.py$|^scripts/tests/test_docs_sync_atlas\.py$|^scripts/ci/docs_sync_gate\.sh$|^scripts/tests/test_docs_sync_gate_failclosed\.sh$|^scripts/automation_catalog\.json$|^README\.md$|^INDEX\.md$|^docs/AI_ONBOARDING\.md$|^docs/AUTOMATIONS_REFERENCE\.md$|^docs/runbooks/|^infra/workflows/|^infra/launchagents/|^\.claude/skills/|^\.github/workflows/docs-sync\.yml$'; then
+            RELEVANT=true
+          fi
+          echo "relevant=$RELEVANT" >> "$GITHUB_OUTPUT"
+          echo "::notice::docs-sync relevant=$RELEVANT ($(printf '%s\n' "$CHANGED" | grep -c .) changed files)"
 
       - uses: actions/setup-python@v7
+        if: steps.relevant.outputs.relevant == 'true'
         with:
           python-version: "3.11"
 
+      # The gate proves itself before it judges anyone (the hot-zone gate does
+      # the same). Cheap, and it is what makes the fail-closed behaviour below
+      # more than an assertion in a comment.
+      - name: Gate self-test (guilt + innocence)
+        if: steps.relevant.outputs.relevant == 'true'
+        run: bash scripts/tests/test_docs_sync_gate_failclosed.sh
+
       - name: Check docs are in sync
-        run: |
-          if [ ! -f scripts/docs_sync.py ]; then
-            echo "scripts/docs_sync.py is absent — skipping docs-sync check."
-            echo "Restore the script or remove this workflow to re-enable the gate."
-            exit 0
-          fi
-          python scripts/docs_sync.py --check
+        if: steps.relevant.outputs.relevant == 'true'
+        run: bash scripts/ci/docs_sync_gate.sh check
 
       - name: Run docs_sync unit tests
+        if: steps.relevant.outputs.relevant == 'true'
         run: |
-          if [ ! -f scripts/tests/test_docs_sync_atlas.py ]; then
-            echo "no docs_sync tests present — skipping."
-            exit 0
-          fi
           python -m pip install --quiet pytest
-          python -m pytest scripts/tests/test_docs_sync_atlas.py -q
+          bash scripts/ci/docs_sync_gate.sh test
+
+      - name: Not docs-sync-relevant
+        if: steps.relevant.outputs.relevant != 'true'
+        run: echo "::notice::no docs-sync-relevant path in this diff; check skipped (sentinel success)"

@@ -209,7 +209,7 @@
     },
     "ApplicantFactsData": {
       "additionalProperties": false,
-      "description": "``ApplicantFacts.facts`` (spec \u00a72) \u2014 ``additionalProperties: false``\nwith all 40 keys required. Field order mirrors ``enums.FactPath``'s\n``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/\n``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``\ngrouping.\n\n``populate_by_name=False`` (PR1b item 4): every wire key here is a dotted\n``FactPath`` string (e.g. ``\"person.birth_date\"``) that cannot be a\nPython attribute name, so each field carries a Python-safe name\n(``person_birth_date``) purely to exist in the class body, with the\ndotted string as its ``alias``. Allowing the Python name to *also*\npopulate the model would let a caller construct\n``ApplicantFactsData(person_birth_date=...)`` directly \u2014 a name that\nnever appears on the wire (every real payload is alias-keyed JSON/dict),\nso accepting it is pure smuggling surface with no legitimate caller.",
+      "description": "``ApplicantFacts.facts`` (spec \u00a72) \u2014 ``additionalProperties: false``\nwith all keys required except the one transitional field documented on\n``sponsor_type`` below. Field order mirrors ``enums.FactPath``'s\n``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/\n``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``\ngrouping.\n\n``populate_by_name=False`` (PR1b item 4): every wire key here is a dotted\n``FactPath`` string (e.g. ``\"person.birth_date\"``) that cannot be a\nPython attribute name, so each field carries a Python-safe name\n(``person_birth_date``) purely to exist in the class body, with the\ndotted string as its ``alias``. Allowing the Python name to *also*\npopulate the model would let a caller construct\n``ApplicantFactsData(person_birth_date=...)`` directly \u2014 a name that\nnever appears on the wire (every real payload is alias-keyed JSON/dict),\nso accepting it is pure smuggling surface with no legitimate caller.",
       "properties": {
         "commercial.service_fee_budget_idr": {
           "discriminator": {
@@ -786,6 +786,28 @@
             }
           ],
           "title": "Secondhome.Qualifying Property Value Usd"
+        },
+        "sponsor.type": {
+          "default": {
+            "reason": "NOT_ASKED",
+            "status": "UNKNOWN"
+          },
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownSponsorType",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownSponsorType"
+            }
+          ],
+          "title": "Sponsor.Type"
         },
         "study.admission_confirmed": {
           "discriminator": {
@@ -2154,7 +2176,7 @@
       "type": "object"
     },
     "FactPath": {
-      "description": "Every fact path the engine may ever reference \u2014 40 applicant-collected\n+ 3 derived (spec \u00a72 ``ApplicantFactPath`` + ``FactPath``, extended by the\n``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23).\n\nClosed by design (spec \u00a75.2): a Condition's ``fact`` field and a Rule's\n``required_facts`` array are both typed against this enum, so a rule\nthat references an unknown fact path is a Pydantic ``ValidationError``\nat parse time, not a runtime surprise. ``fact_registry.py`` layers typed\nmetadata (value kind, PII class, commercial flag) on top of this same\nvocabulary \u2014 see that module's docstring for why both exist.",
+      "description": "Every fact path the engine may ever reference \u2014 41 applicant-collected\n+ 3 derived (spec \u00a72 ``ApplicantFactPath`` + ``FactPath``, extended by the\n``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, and\nby ``sponsor.type`` for the sponsor-category question, 2026-08-10).\n\nClosed by design (spec \u00a75.2): a Condition's ``fact`` field and a Rule's\n``required_facts`` array are both typed against this enum, so a rule\nthat references an unknown fact path is a Pydantic ``ValidationError``\nat parse time, not a runtime surprise. ``fact_registry.py`` layers typed\nmetadata (value kind, PII class, commercial flag) on top of this same\nvocabulary \u2014 see that module's docstring for why both exist.",
       "enum": [
         "person.birth_date",
         "person.nationalities",
@@ -2187,6 +2209,7 @@
         "study.level",
         "study.admission_confirmed",
         "study.sponsor_confirmed",
+        "sponsor.type",
         "secondhome.bank_deposit_usd",
         "secondhome.bank_deposit_at_state_bank",
         "secondhome.bank_deposit_in_own_name",
@@ -2606,6 +2629,23 @@
       },
       "required": ["status", "value"],
       "title": "KnownRelation",
+      "type": "object"
+    },
+    "KnownSponsorType": {
+      "additionalProperties": false,
+      "description": "The sponsor CATEGORY, reusing the same enum the product records declare.\n\nReusing `SponsorType` rather than minting an applicant-side twin is the\npoint: a rule can then compare the applicant's answer against the product's\nown `sponsor_types` without a mapping table in between, and a mapping table\nis where the two sides drift apart.",
+      "properties": {
+        "status": {
+          "const": "KNOWN",
+          "title": "Status",
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/SponsorType"
+        }
+      },
+      "required": ["status", "value"],
+      "title": "KnownSponsorType",
       "type": "object"
     },
     "KnownString": {
@@ -4199,6 +4239,7 @@
       "type": "string"
     },
     "SponsorType": {
+      "description": "The sponsor CATEGORY a product record declares (``sponsor_types``,\n``models.VisaProductVersion``) and an applicant answers (``sponsor.type``,\n``FactPath.SPONSOR_TYPE``). Reused as the same closed vocabulary on both\nsides deliberately (``contract.schema.json``'s own description: \"a rule\ncan then compare the applicant's answer against the product's own\n``sponsor_types`` without a mapping table in between\").\n\nPer-value semantics were undocumented before the W3 sponsor-rules\nfactbase (``research/visa/2026-08-11-w3-sponsor-rules-factbase.md``)\nfound that gap load-bearing: two ambiguous product-record mappings\n(E23V government-vs-employer, E28C individual-vs-none) were judgment\ncalls with no written definition to appeal to. Citations below are\nPermenkumham 22/2023 (jo. 11/2024) unless noted.\n\nNONE: self-filed \u2014 no external/statutory Penjamin is identified; the\n    applicant furnishes ``Jaminan Keimigrasian`` (an immigration\n    guarantee) instead of a third party's sponsorship attestation.\n    \"No Penjamin\" and \"Jaminan Keimigrasian\" are not interchangeable\n    terms \u2014 do not conflate them when citing this value. Verbatim,\n    explicit basis: Pasal 58(1) huruf b, \"tanpa Penjamin\" (E33B). Also\n    the resolved mapping for E28C (seq-7, superseding the prior\n    ``INDIVIDUAL``/self-sponsor encoding), Pasal 39(1) / 40(1):\n    \"diajukan oleh Orang Asing\" (never \"...atau Penjamin\"), huruf b\n    requires \"bukti Jaminan Keimigrasian\", never \"bukti penjaminan dari\n    Penjamin\" \u2014 a structural absence rather than an explicit \"tanpa\n    Penjamin\" clause, weaker evidence than E33B's but pointing the same\n    direction (factbase \u00a73).\nINDIVIDUAL: a natural person stands as Penjamin (e.g. a family sponsor,\n    or an individual employer). Distinct from NONE (no Penjamin exists)\n    and from EMPLOYER (the Penjamin is a corporate entity). Has no\n    currently-verified Pasal-level citation of its own in the six\n    products the factbase covers; do not treat its use elsewhere in this\n    pack as implying one.\nEMPLOYER: the Penjamin is a company/corporate entity \u2014 the ordinary work\n    route (E23 and siblings), tested today via\n    ``work.employer_is_indonesian_entity`` rather than this fact.\nEDUCATION: the Penjamin is an educational institution (STUDY-purpose\n    routes).\nINVESTMENT: the sponsor is the applicant's own investment vehicle/venture\n    (e.g. the E28A PT PMA pathway) \u2014 the applicant is economically their\n    own guarantor through the investment, distinct from GOVERNMENT and\n    EMPLOYER.\nGOVERNMENT: the Penjamin is a central-government instansi. Verbatim,\n    explicit basis in two products: Pasal 57(1) huruf b, \"bukti\n    penjaminan dari Penjamin, yang merupakan pemerintah pusat\" (E33A);\n    Pasal 59(1) huruf b, \"bukti penjaminan dari penjamin dari instansi\n    pemerintah pusat\" (E33C). Confirming the value here does not by\n    itself license a SUPPORT/ELIGIBILITY rule keyed on it alone \u2014 see\n    the factbase and ``research/visa/2026-08-11-seq7-sponsor-semantics\n    -and-the-gate-that-does-not-exist.md`` for why E33A/E33C have no\n    eligibility gate this fact can safely be conjoined with today.",
       "enum": [
         "NONE",
         "INDIVIDUAL",

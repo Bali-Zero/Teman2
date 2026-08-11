@@ -1,6 +1,6 @@
 {
-  "_doc": "Local profile dir -> seat mapping, per FLEET_TOPOLOGY.json accounts + research/operations/2026-08-10-fleet-order-spec.md §3.1. UNARMED until fingerprinted at cswap arming.",
-  "_status": "UNARMED_until_fingerprint — run claude auth status under each CLAUDE_CONFIG_DIR at cswap arming and record identities (spec §3.1)",
+  "_doc": "Local profile dir -> seat mapping, per FLEET_TOPOLOGY.json accounts + research/operations/2026-08-10-fleet-order-spec.md §3.1.",
+  "_status": "mapping only — this file is tracked in the PUBLIC Bali-Zero/Teman2 repo and carries NO identities. Run `cswap fingerprint` to populate ~/.config/cswap/fingerprints.json (local, 0600, never committed) with real auth-status results.",
   "claude_profiles": {
     "~/.claude": "AZ",
     "~/.claude-kaiser": "A2",

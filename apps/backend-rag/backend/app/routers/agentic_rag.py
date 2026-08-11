@@ -476,6 +476,26 @@ class AgenticQueryResponse(BaseModel):
     execution_time: float
     route_used: str | None
     tools_called: int = 0
+    # The NAMES behind that count. `CoreResult.tools_called` has been a
+    # `list[str]` all along (schema.py) and orchestrator_response.py fills it
+    # from the ReAct steps' `action.tool_name` — this response model was the
+    # only place the names died, collapsed by `len()` one line below.
+    #
+    # Not cosmetic. On 2026-08-11 an ordinary question ("quanto costa aprire una
+    # PT PMA e quanto tempo ci vuole?") answered correctly in 4 of 6 identical
+    # runs and returned `abstain` in 2 — the abstaining run carrying the RIGHT
+    # number in its answer, and abstain is RAISED on the WhatsApp path
+    # (wa_inbox_bot.py), so the client gets silence. The runs differed only in
+    # `tools_called`: 1 on the abstains, 2-4 on the answers. Which tool that
+    # single call was could not be named from outside — a count cannot be
+    # cross-checked against `_TRUSTED_TOOL_NAMES`, and three probes were spent
+    # inferring it. This field is what makes the next such question answerable.
+    #
+    # ADDED, never a change of meaning: `tools_called` keeps its int type and
+    # its name, because live consumers read it as a number
+    # (backend/scripts/stress_test_zantara.py). A shared field re-typed from one
+    # side is exactly the drift family this repo keeps paying for.
+    tools_used: list[str] = Field(default_factory=list)
     total_steps: int = 0
     debug_info: dict | None = None
     ab_test: dict | None = None  # A/B test variant info
@@ -679,7 +699,14 @@ async def query_agentic_rag(
             execution_time=result.timings.get("total", 0.0),
             route_used=result.route_used,
             tools_called=len(result.tools_called),
-            total_steps=len(result.tools_called),
+            tools_used=[t for t in (result.tools_called or []) if isinstance(t, str)],
+            # HONESTY FIX (2026-08-10): this was `len(result.tools_called)` —
+            # the same number as the line above, under a name promising the
+            # ReAct step count. Both read 0 on the main path (nothing populated
+            # `tools_called` there), so the two fields a person reaches for to
+            # ask "did the loop run out of budget?" were identical AND empty on
+            # healthy and degenerate responses alike.
+            total_steps=result.steps_taken,
             debug_info={
                 "model": result.model_used,
                 "cache_hit": result.cache_hit,

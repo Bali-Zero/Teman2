@@ -317,6 +317,59 @@ class VisaProductStatus(str, Enum):
 
 
 class SponsorType(str, Enum):
+    """The sponsor CATEGORY a product record declares (``sponsor_types``,
+    ``models.VisaProductVersion``) and an applicant answers (``sponsor.type``,
+    ``FactPath.SPONSOR_TYPE``). Reused as the same closed vocabulary on both
+    sides deliberately (``contract.schema.json``'s own description: "a rule
+    can then compare the applicant's answer against the product's own
+    ``sponsor_types`` without a mapping table in between").
+
+    Per-value semantics were undocumented before the W3 sponsor-rules
+    factbase (``research/visa/2026-08-11-w3-sponsor-rules-factbase.md``)
+    found that gap load-bearing: two ambiguous product-record mappings
+    (E23V government-vs-employer, E28C individual-vs-none) were judgment
+    calls with no written definition to appeal to. Citations below are
+    Permenkumham 22/2023 (jo. 11/2024) unless noted.
+
+    NONE: self-filed — no external/statutory Penjamin is identified; the
+        applicant furnishes ``Jaminan Keimigrasian`` (an immigration
+        guarantee) instead of a third party's sponsorship attestation.
+        "No Penjamin" and "Jaminan Keimigrasian" are not interchangeable
+        terms — do not conflate them when citing this value. Verbatim,
+        explicit basis: Pasal 58(1) huruf b, "tanpa Penjamin" (E33B). Also
+        the resolved mapping for E28C (seq-7, superseding the prior
+        ``INDIVIDUAL``/self-sponsor encoding), Pasal 39(1) / 40(1):
+        "diajukan oleh Orang Asing" (never "...atau Penjamin"), huruf b
+        requires "bukti Jaminan Keimigrasian", never "bukti penjaminan dari
+        Penjamin" — a structural absence rather than an explicit "tanpa
+        Penjamin" clause, weaker evidence than E33B's but pointing the same
+        direction (factbase §3).
+    INDIVIDUAL: a natural person stands as Penjamin (e.g. a family sponsor,
+        or an individual employer). Distinct from NONE (no Penjamin exists)
+        and from EMPLOYER (the Penjamin is a corporate entity). Has no
+        currently-verified Pasal-level citation of its own in the six
+        products the factbase covers; do not treat its use elsewhere in this
+        pack as implying one.
+    EMPLOYER: the Penjamin is a company/corporate entity — the ordinary work
+        route (E23 and siblings), tested today via
+        ``work.employer_is_indonesian_entity`` rather than this fact.
+    EDUCATION: the Penjamin is an educational institution (STUDY-purpose
+        routes).
+    INVESTMENT: the sponsor is the applicant's own investment vehicle/venture
+        (e.g. the E28A PT PMA pathway) — the applicant is economically their
+        own guarantor through the investment, distinct from GOVERNMENT and
+        EMPLOYER.
+    GOVERNMENT: the Penjamin is a central-government instansi. Verbatim,
+        explicit basis in two products: Pasal 57(1) huruf b, "bukti
+        penjaminan dari Penjamin, yang merupakan pemerintah pusat" (E33A);
+        Pasal 59(1) huruf b, "bukti penjaminan dari penjamin dari instansi
+        pemerintah pusat" (E33C). Confirming the value here does not by
+        itself license a SUPPORT/ELIGIBILITY rule keyed on it alone — see
+        the factbase and ``research/visa/2026-08-11-seq7-sponsor-semantics
+        -and-the-gate-that-does-not-exist.md`` for why E33A/E33C have no
+        eligibility gate this fact can safely be conjoined with today.
+    """
+
     NONE = "NONE"
     INDIVIDUAL = "INDIVIDUAL"
     EMPLOYER = "EMPLOYER"
@@ -381,14 +434,15 @@ class Environment(str, Enum):
 
 
 # ---------------------------------------------------------------------------
-# FactPath — the closed 43-path fact vocabulary (40 applicant + 3 derived; spec §2 ``FactPath``)
+# FactPath — the closed 44-path fact vocabulary (41 applicant + 3 derived; spec §2 ``FactPath``)
 # ---------------------------------------------------------------------------
 
 
 class FactPath(str, Enum):
-    """Every fact path the engine may ever reference — 40 applicant-collected
+    """Every fact path the engine may ever reference — 41 applicant-collected
     + 3 derived (spec §2 ``ApplicantFactPath`` + ``FactPath``, extended by the
-    ``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23).
+    ``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, and
+    by ``sponsor.type`` for the sponsor-category question, 2026-08-10).
 
     Closed by design (spec §5.2): a Condition's ``fact`` field and a Rule's
     ``required_facts`` array are both typed against this enum, so a rule
@@ -436,6 +490,46 @@ class FactPath(str, Enum):
     STUDY_LEVEL = "study.level"
     STUDY_ADMISSION_CONFIRMED = "study.admission_confirmed"
     STUDY_SPONSOR_CONFIRMED = "study.sponsor_confirmed"
+    # sponsor.* — WHO the sponsor is, as a category. Deliberately NOT under
+    # family.*: `family.sponsor_confirmed` and its siblings describe a family
+    # relationship, while this is the sponsor CATEGORY and applies to
+    # employment, study and investment routes just as much.
+    #
+    # Why it exists: every product record already declares `sponsor_types`
+    # (models.py, `sponsor_types: tuple[SponsorType, ...]`) — but nothing
+    # ever asked the applicant, so no rule could test it.
+    #
+    # CORRECTED 2026-08-11 (W3 sponsor-rules factbase,
+    # research/visa/2026-08-11-w3-sponsor-rules-factbase.md): an earlier
+    # version of this comment claimed the pack had "always known that E23V
+    # wants a GOVERNMENT sponsor and E23U an INDIVIDUAL one" and that "the
+    # future pack must add legally grounded rules before any product becomes
+    # reachable" — both overclaimed. E23U/E23V have no dedicated Permenkumham
+    # Pasal at all (confirmed by full-text search of 22/2023 and 11/2024);
+    # their `sponsor_types` values in the pack are Bali Zero working
+    # hypotheses, not statutory readings, and remain UNRESOLVED. For
+    # E33A/E33B/E33C the sponsor category IS statutorily verbatim
+    # (Pasal 57/58/59) — but sponsor.type alone does not supply a safe
+    # eligibility gate for any of the three: E33A/E33C's substantive
+    # requirement (a confirmed central-government invitation) has no fact
+    # path and cannot be checked, and E33B's (certification/university/GPA/
+    # cooperation-commitment) is the factbase's largest gap. An eligibility
+    # rule keyed only on sponsor.type for these three is either dead code
+    # (masked by the existing HUMAN_REVIEW rule whenever its own condition
+    # holds) or a manufactured offer (SUPPORTED for purposes the review rule
+    # does not police) — reproduced empirically against the real evaluator,
+    # not just reasoned about; see the factbase and the seq-7 research note.
+    # Measured 2026-08-10 against rulepack-prod-006, sponsor.type together
+    # with the already-collected purpose would, IF a safe gate existed,
+    # uniquely identify six of the eleven then-unreachable products: E23U,
+    # E23V, E28C, E33A, E33B and E33C (five more still collide: E28B/E28D/
+    # E28F and E30E/E30F). Unblocking any of them needs new, legally grounded
+    # discriminator facts — not merely this one — so treat that count as a
+    # ceiling on what sponsor.type alone could ever help with, not a
+    # forecast of imminent reachability. Re-run the reachability sweep
+    # against the then-current pack rather than treating either snapshot as
+    # permanent.
+    SPONSOR_TYPE = "sponsor.type"
     # secondhome.* — E33 Second Home vertical (bank-route scope, owner decision
     # 2026-07-23): the qualifying-basis facts the base E33 / E33E / E33F
     # eligibility rules test. ``bank_deposit_*`` is one deposit, evidenced as
@@ -458,7 +552,7 @@ class FactPath(str, Enum):
     DERIVED_HAS_INDONESIAN_CITIZENSHIP = "derived.has_indonesian_citizenship"
 
 
-#: The 40 applicant-collected paths (everything except ``derived.*``).
+#: The 41 applicant-collected paths (everything except ``derived.*``).
 APPLICANT_FACT_PATHS: frozenset[FactPath] = frozenset(
     path for path in FactPath if not path.value.startswith("derived.")
 )
