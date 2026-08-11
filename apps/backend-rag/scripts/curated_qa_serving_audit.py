@@ -34,11 +34,22 @@ So the corpus README's claim that the on-disk files are "the audit trail
 behind the safety invariant" holds for 396 of 808 points. This script is what
 makes the other half countable.
 
-NOT a hypothesis this script tested and confirmed: an earlier guess that the
-412 were id-derivation twins of the current rows (the `domain:` prefix was
-added to the digest later, as `_stable_point_id`'s FATAL-1 note records) was
-REFUTED — recomputing every disk row under three older derivations matched
-zero live points. They are different questions, not old copies of these ones.
+TWO MEASUREMENTS ABOUT THEIR IDs, and only both together are the truth:
+
+- REFUTED: the guess that the 412 are id-derivation TWINS of the current rows
+  (the `domain:` prefix was added to the digest later — `_stable_point_id`'s
+  FATAL-1 note). Recomputing every disk row under three older derivations
+  matched **zero** live points. They are different questions, not old copies
+  of these ones.
+- CONFIRMED, and it is what constrains any cure: **412 of 412 carry the
+  legacy id** — `uuid5(sha256(question))`, no domain prefix — verified
+  against each point's own payload. So the obvious cure, "export their
+  questions back to a corpus file so review and quarantine can reach them",
+  **does not work and fails quietly**: `quarantine_row` would compute the NEW
+  id, not find it, log "Qdrant point not found for regulatory flag" and
+  return — leaving a NEW point beside the old one and the orphan still
+  serving. Stating only the refutation would read as "the derivation is not
+  the issue", which is the opposite of what the second measurement shows.
 
 Pure reporter — it never writes, never deletes, never flags a point.
 Withdrawing or re-homing an orphan is a judgment call about vetted client
@@ -62,8 +73,10 @@ from __future__ import annotations
 import argparse
 import asyncio
 import collections
+import hashlib
 import json
 import sys
+import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -96,11 +109,45 @@ class Audit:
     matched: int = 0
     orphans: int = 0
     orphans_reachable: int = 0  # orphan AND served (not explicitly inactive)
+    orphans_old_derivation: int = 0  # orphan whose id predates the FATAL-1 rule
     rows_on_disk: int = 0
     rows_not_served: list[str] = field(default_factory=list)
     orphan_domains: dict[str, int] = field(default_factory=dict)
     orphan_classes: dict[str, int] = field(default_factory=dict)
     problems: list[str] = field(default_factory=list)
+
+
+def _legacy_point_id(question: str) -> str:
+    """The pre-FATAL-1 id: sha256 of the QUESTION ALONE, no domain prefix.
+
+    Kept here — and nowhere else — because it is the only way to tell an
+    orphan that the current rule could address from one it structurally
+    cannot. This is a FORENSIC constant, never an id to write with.
+    """
+    return str(
+        uuid.uuid5(
+            uuid.NAMESPACE_URL, hashlib.sha256(question.strip().lower().encode()).hexdigest()
+        )
+    )
+
+
+def _is_old_derivation(point_id: str, payload: dict[str, Any]) -> bool:
+    """True when this point's id is the legacy digest of its own question.
+
+    Why it is worth reporting: the obvious cure for an orphan is "export its
+    question back to a corpus file so review and quarantine can reach it".
+    For an old-derivation point that DOES NOT WORK, and it fails quietly —
+    `quarantine_row` computes `_stable_point_id(question, domain)` (the new
+    rule), gets an id this point does not have, logs "Qdrant point not found
+    for regulatory flag" and returns. You would end up with a NEW point
+    beside the old one and the orphan still serving.
+
+    Measured on prod 2026-08-11: **412 of 412** orphans are old-derivation.
+    """
+    question = payload.get("text") or ""
+    if not question:
+        return False
+    return _legacy_point_id(str(question)) == point_id
 
 
 def _point_is_served(payload: dict[str, Any]) -> bool:
@@ -201,6 +248,8 @@ def audit(points: list[dict], disk_ids: dict[str, str]) -> Audit:
         out.orphans += 1
         if _point_is_served(payload):
             out.orphans_reachable += 1
+        if _is_old_derivation(pid, payload):
+            out.orphans_old_derivation += 1
         domains[str(payload.get("domain"))] += 1
         classes[str(payload.get("confidence_class"))] += 1
 
@@ -226,6 +275,13 @@ def render(a: Audit) -> str:
             f"    by domain: {a.orphan_domains}",
             f"    by class:  {a.orphan_classes}",
         ]
+        if a.orphans_old_derivation:
+            lines += [
+                f"    {a.orphans_old_derivation} carry the LEGACY id (question-only digest).",
+                "    Exporting their questions to a corpus file will NOT reach them:",
+                "    quarantine_row computes the current id, misses, logs 'point not",
+                "    found' and returns — you get a duplicate and the orphan keeps serving.",
+            ]
         verbatim = a.orphan_classes.get(VERBATIM_CLASS, 0)
         if verbatim:
             lines.append(
@@ -298,6 +354,7 @@ def main(argv: list[str] | None = None) -> int:
                     "matched": a.matched,
                     "orphans": a.orphans,
                     "orphans_reachable": a.orphans_reachable,
+                    "orphans_old_derivation": a.orphans_old_derivation,
                     "rows_not_served": a.rows_not_served,
                     "orphan_domains": a.orphan_domains,
                     "orphan_classes": a.orphan_classes,
