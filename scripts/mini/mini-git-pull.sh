@@ -449,3 +449,17 @@ if [ "$STASHED" = "1" ]; then
     # Don't exit error — pull succeeded. Conflict is a separate issue.
   fi
 fi
+
+# ---- SOS probe (temporary, 2026-08-11) -------------------------------------
+# Every INBOUND connection to this host has been reset ~250 ms after the
+# handshake since 2026-08-10 (sshd, VNC, redis, ollama, ARD alike) while this
+# pull's own outbound SSH works perfectly, a power-cycle changed nothing, and
+# the site has no keyboard. This pull is therefore the only proven-live code
+# path into the Mini, so it carries a read-only probe that reports out through
+# the SSH direction that still works. The probe cures nothing on purpose (see
+# its header) and runs last, fail-open, so it can neither block nor fail the
+# pull. Remove this block together with the probe once the Mini is reachable.
+if [ -f "$REPO/scripts/mini/mini_sos_report.sh" ]; then
+  /bin/bash "$REPO/scripts/mini/mini_sos_report.sh" || \
+    log "  SOS probe exited non-zero (ignored — the pull is what matters)"
+fi
