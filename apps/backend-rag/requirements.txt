@@ -5,30 +5,30 @@
 
 # Core Framework
 fastapi!=0.136.3,>=0.141.1  # Upgraded for starlette 0.50+; exclude 0.136.3 (MAL-2026-4750 supply-chain malware injecting 'fastar' dep)
-starlette>=1.3.1,<1.4.0  # Security fix: CVE-2026-48818/48817 (fix 1.1.0), CVE-2026-54282 (1.3.0), CVE-2026-54283 (1.3.1); supersedes PYSEC-2026-161 / GHSA-86qp-5c8j-p5mr; keep dev lock on the suite-tested 1.x line.
+starlette>=1.6.0,<1.7.0  # Security fix: CVE-2026-48818/48817 (fix 1.1.0), CVE-2026-54282 (1.3.0), CVE-2026-54283 (1.3.1); supersedes PYSEC-2026-161 / GHSA-86qp-5c8j-p5mr; keep dev lock on the suite-tested 1.x line.
 uvicorn[standard]>=0.52.1  # Upgraded for async improvements
 sentry-sdk[fastapi]>=2.66.1  # Error monitoring
 pydantic>=2.12.5  # Compatible with MCP 1.25+, google-genai 1.56+
-pydantic-settings>=2.14.2  # Compatible with pydantic 2.12+
+pydantic-settings>=2.15.0  # Compatible with pydantic 2.12+
 python-multipart>=0.0.31  # Security fix: arbitrary file write (CVE-2024-47874)
 
 # Vector Database
-qdrant-client>=1.18.0,<1.19.0  # Match Qdrant server 1.12.x; avoid client/server minor-drift warnings.
+qdrant-client>=1.19.0,<1.20.0  # Match Qdrant server 1.12.x; avoid client/server minor-drift warnings.
 
 # Google Cloud Integration (Core for v5.3 Hybrid) - Use compatible versions
-google-genai>=2.16.0  # Unified SDK with MCP support
+google-genai>=2.17.0  # Unified SDK with MCP support
 google-api-python-client>=2.198.0
-google-auth>=2.56.2
+google-auth>=2.56.3
 google-auth-oauthlib>=1.1.0
-google-auth-httplib2>=0.1.1
-google-cloud-storage>=3.13.0
+google-auth-httplib2>=0.4.1
+google-cloud-storage>=3.13.1
 google-cloud-aiplatform>=1.163.0  # Now compatible with OTEL (protobuf 5.x)
 
 # Tigris (S3-compatible) — used by scripts/wr2_image_generator.py +
 # scripts/wr2_draft_generator.py to upload hero images to the warroom
 # bucket. No backend module imports it; pinned here so production venv
 # rebuilds (Pro `nuzantara-deploy` worktree) stay self-sufficient.
-boto3>=1.43.63
+boto3>=1.43.67
 
 # AI/ML - UPGRADED FOR HTTPX 0.28+ COMPATIBILITY
 openai>=2.53.0  # Upgraded for httpx 0.28+ (proxies parameter removed)
@@ -36,9 +36,9 @@ anthropic>=0.120.2  # Upgraded for httpx 0.28+ compatibility
 # PyTorch - Explicitly specify compatible version to avoid RuntimeError with sentence-transformers
 # PyTorch 2.2.0+ required for transformers compatibility (register_pytree_node)
 torch>=2.13.0  # Security: RCE via torch.load fixed in 2.6.0 (CVE-2025-32434)
-sentence-transformers>=5.6.1  # Updated 2026-03-14: tested compatible, CrossEncoder API stable, sparse embeddings support
+sentence-transformers>=5.7.0  # Updated 2026-03-14: tested compatible, CrossEncoder API stable, sparse embeddings support
 transformers>=5.5.0  # Security: HIGH GHSA-fgcw-684q-jj6r (<5.5.0) + GHSA-29pf-2h5f-8g72 (<5.3.0), fixed 5.5.0
-huggingface-hub>=1.26.0,<2.0  # transformers>=5.5.0 requires hub>=1.5.0,<2.0; sentence-transformers itself has no upper cap (verified via wheel METADATA)
+huggingface-hub>=1.27.0,<2.0  # transformers>=5.5.0 requires hub>=1.5.0,<2.0; sentence-transformers itself has no upper cap (verified via wheel METADATA)
 tiktoken>=0.5.0  # For accurate token estimation (optional, has fallback)
 
 # PII Detection (UU PDP compliance)
@@ -63,7 +63,7 @@ python-magic>=0.4.27  # MIME type detection from file content
 
 # LangChain Ecosystem
 langgraph>=1.2.10
-langgraph-checkpoint-postgres>=3.1.1  # PostgreSQL checkpointing for stateful workflows
+langgraph-checkpoint-postgres>=3.1.2  # PostgreSQL checkpointing for stateful workflows
 # ^ floor is 3.1.1, not 2.0.0: CVE-2026-71433 affects 3.1.0 and pip-audit fails the
 #   build on it. The constraint belongs HERE and not only in the lock — a lock regen
 #   resolves against the manifest, so a floor left at 2.0.0 lets the vulnerable
@@ -74,7 +74,7 @@ h2>=4.4.1  # transitive via httpx; CVE-2026-71554 affects 4.4.0. Named here
 langchain-core>=1.5.3  # Updated 2026-03-14: patch fixes for streaming + callbacks
 langchain-anthropic>=1.5.4  # Required for KG LangGraph orchestrator
 langchain-openai>=1.4.2  # Required for KG LangGraph orchestrator fallback
-langsmith>=0.10.15  # Observability: @traceable on RAG nodes + KG nodes
+langsmith>=0.10.17  # Observability: @traceable on RAG nodes + KG nodes
 # langchain-google-genai removed to resolve conflicts
 
 # HTTP/Network - UPGRADED TO RESOLVE CONFLICTS
@@ -82,7 +82,7 @@ httpx>=0.28.1,<1.0.0  # Upgraded for google-genai compatibility (requires >=0.28
 requests>=2.32.4  # Security: .netrc credential leak fix
 aiohttp>=3.14.3  # Security: zip bomb, directory traversal, DoS fixes
 urllib3>=2.0.0  # Required by selenium, types-requests
-sse-starlette>=3.4.6  # Updated 2026-03-14: SSE disconnect handling improvements
+sse-starlette>=3.4.8  # Updated 2026-03-14: SSE disconnect handling improvements
 
 # Web Scraping (Peraturan Spider & Putusan Spider)
 playwright>=1.62.0  # Security and browser updates
@@ -115,7 +115,7 @@ packaging>=26.3,<27  # Compatible with langchain-core if needed
 
 # Development & Quality Tools
 pre-commit>=4.6.1  # Security and performance updates
-ruff>=0.16.1
+ruff>=0.16.2
 pytest>=9.1.1  # Upgraded for better async support
 pytest-asyncio>=1.4.0  # Major upgrade for improved async testing
 pytest-cov>=7.1.0  # Upgraded for coverage improvements
@@ -131,14 +131,14 @@ opentelemetry-sdk>=1.44.0
 opentelemetry-instrumentation-fastapi>=0.65b0
 opentelemetry-exporter-otlp-proto-grpc>=1.44.0
 opentelemetry-exporter-otlp-proto-http>=1.44.0  # For Grafana Cloud (HTTP + auth)
-googleapis-common-protos>=1.63.0  # Fix pkg_resources deprecation warning
+googleapis-common-protos>=1.75.1  # Fix pkg_resources deprecation warning
 
 # Langfuse POC (observability) - kill-switch via LANGFUSE_ENABLED env var
 # Added 2026-04-21 in feat/observability-langfuse-poc (see apps/backend-rag/README.md)
-langfuse>=4.14.2,<5.0.0  # LLM observability, OTEL-based v2+
-openinference-instrumentation-anthropic>=1.1.0  # Auto-trace Anthropic calls
-openinference-instrumentation-google-genai>=1.3.0  # Auto-trace google-genai SDK (Gemini)
-openinference-instrumentation-openai>=0.1.53  # Auto-trace OpenAI-compat (DeepSeek, Ollama)
+langfuse>=4.14.3,<5.0.0  # LLM observability, OTEL-based v2+
+openinference-instrumentation-anthropic>=1.1.2  # Auto-trace Anthropic calls
+openinference-instrumentation-google-genai>=1.4.0  # Auto-trace google-genai SDK (Gemini)
+openinference-instrumentation-openai>=0.1.54  # Auto-trace OpenAI-compat (DeepSeek, Ollama)
 
 # Data Processing
 datasets>=5.0.1
@@ -157,14 +157,18 @@ pdfminer.six>=20251107  # Match pdfplumber requirement
 # here so Fly/CI install it (was Pro-only, 2026-06-20).
 python-docx>=1.1.0
 
-# Protocol Buffers - Pin to 5.x (compatible with OTEL + Google packages)
-protobuf>=5.27.0,<6.0.0
+# Protocol Buffers - was pinned to 5.x for OTEL + Google package compat; that
+# ceiling is now stale — requirements-prod.txt has run protobuf 6.33.6 in
+# production since 2026-05-19 (uv migration pilot, PR #777) with no reported
+# issue, and current googleapis-common-protos/google-api-core releases require
+# protobuf>=6.33.5. Widen the dev lock to match prod instead of pinning below it.
+protobuf>=5.27.0,<7.0.0
 
 # XML/HTML Processing - UPGRADED
 lxml>=6.1.1  # Required by trafilatura, htmldate
 
 # Agentic RAG Dependencies
-pymupdf>=1.28.0  # For PDF rendering in Vision Service
+pymupdf>=1.28.2  # For PDF rendering in Vision Service
 scikit-learn>=1.3.0  # For cosine similarity in Golden Router
 
 # Notification Services

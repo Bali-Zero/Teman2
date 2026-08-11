@@ -134,7 +134,13 @@ fi
 # --- exfiltrate over the direction that still works.
 REMOTE_NAME="mini-sos-$(date +%Y%m%d-%H%M%S).txt"
 DELIVERED=0
-for TARGET in pro nuzantara@100.107.22.111; do
+# M5 is third and not decorative: on 2026-08-12 04:53 the Pro rebooted and came
+# up at the login window, so its Tailscale — an App Store build that lives in
+# the user's GUI session — never started, and BOTH of the first two targets are
+# Tailscale addresses of that same host. A rescue whose only exit depends on one
+# machine being logged in is not a rescue. M5 already authorises the same key
+# and its sshd listens; the loop stops at whichever answers first.
+for TARGET in pro nuzantara@100.107.22.111 nuzantara@100.110.186.116; do
     if ssh -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new \
            "$TARGET" "cat > /tmp/$REMOTE_NAME && cp /tmp/$REMOTE_NAME /tmp/mini-sos-latest.txt" \
            < "$OUT" 2>>"$LOG_FILE"; then
