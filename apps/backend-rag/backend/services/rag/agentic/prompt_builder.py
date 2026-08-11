@@ -333,6 +333,16 @@ def _match_is_business_phrasing(query_lower: str, label: str, start: int, end: i
     return bool(re.search(evidence, clause))
 
 
+def _word_anchored(*alternations: str) -> tuple[re.Pattern[str], ...]:
+    """Compile each alternation so it can only match WHOLE words.
+
+    The casual-conversation whitelist used bare substrings, so `bar` matched
+    inside `kabar` (Indonesian for "news") — see the block comment above
+    `SystemPromptBuilder.check_casual_conversation`.
+    """
+    return tuple(re.compile(rf"\b(?:{alt})\b") for alt in alternations)
+
+
 class SystemPromptBuilder:
     """
     Builds dynamic system prompts with caching for performance.
@@ -982,6 +992,85 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
 
         return None
 
+    # ------------------------------------------------------------------
+    # Casual-conversation whitelist — TWO TIERS.
+    #
+    # Measured 2026-08-11 against 20 sentences a Bali Zero client actually
+    # writes on WhatsApp: **17 of them** were classified as chit-chat and got
+    # the canned "Got it! 😊 If you have questions about visas, business…"
+    # brush-off — no retrieval, no tools, no escalation. Three defects, one
+    # family (superscar #3 — the guard matched a FORM, not an entity):
+    #
+    #   1. bare substring. `bar` fires inside `kabar` — Indonesian for NEWS,
+    #      i.e. the exact word a client uses to chase a file ("belum ada
+    #      kabar") — and inside `sabar`, `gambar`, `lembar`; `oggi` fires
+    #      inside `soggiorno`. Every pattern below is now word-anchored.
+    #   2. homograph with a business twin. `tempo` sat in the WEATHER group,
+    #      but on this number "quanto tempo ci vuole" is the commonest
+    #      timeline question there is; `today`/`oggi`/`hari ini` mark urgency
+    #      far more often than small talk. They are gone (weather keeps the
+    #      Italian idiom "che tempo fa", which has no business reading).
+    #   3. right word, wrong register. `best`/`migliore`/`recommend`/`like`
+    #      ARE the consulting conversation — "I would like to proceed", "what
+    #      is the best option". The whole preference group is removed;
+    #      `musik` was added so genuine "suka musik apa?" still lands.
+    #
+    # The mood words stay, because a client who writes only "capek banget"
+    # deserves a warm reply rather than a retrieval attempt that ends in
+    # silence. But they no longer decide alone: "sono stanco di aspettare,
+    # quando arriva il documento?" is a COMPLAINT, and a brush-off is the one
+    # answer it must never get. This is the W115 shape — a marker that has a
+    # twin in ordinary language must STEP ASIDE, not veto.
+    #
+    # Deliberate asymmetry, stated so nobody "tidies" it: DECISIVE and MOOD
+    # are word-anchored (over-matching there stonewalls a paying client),
+    # while _SERVICE_REQUEST matches as a substring on purpose (`kirim`
+    # catches `dikirim`, `aspett` catches `aspettare`) — over-matching THERE
+    # only pushes a message towards retrieval, which this method's own older
+    # comment already calls the safe default.
+    # ------------------------------------------------------------------
+
+    _CASUAL_DECISIVE: tuple[re.Pattern[str], ...] = _word_anchored(
+        # Food / places to eat and drink
+        r"ristorante|restaurant|makan|mangiare|food|cibo|warung|kuliner|cafe|bar"
+        r"|dinner|lunch|breakfast",
+        # Music / leisure
+        r"music|musik|musica|lagu|song|concert|spotify|playlist|hobby|sport|palestra|gym",
+        # Greetings and how-are-you
+        r"come stai|how are you|apa kabar|gimana kabar|kabar baik|cosa fai"
+        r"|what do you do|che fai",
+        # Weather / nature ("che tempo fa" only — bare `tempo` is a timeline question)
+        r"weather|cuaca|meteo|che tempo fa|beach|pantai|spiaggia|surf|sunset|sunrise",
+        # Jaksel slang with no business reading
+        r"gabut|mager|males|santai|chill|galau",
+    ) + (
+        # Bare acknowledgements — anchored to the WHOLE message on purpose.
+        re.compile(
+            r"^(ok|bene|good|great|thanks|grazie|terima kasih|cool|wow|haha|wkwk|lol)$",
+        ),
+    )
+
+    _CASUAL_MOOD: tuple[re.Pattern[str], ...] = _word_anchored(
+        r"bosen|bosan|capek|cape|lelah|seneng|senang|sedih|kesel|marah|pusing"
+        r"|happy|sad|tired|stress|stressed|anxious|relax"
+        r"|stanco|annoiato|felice|triste|arrabbiato|rilassato|stressato|contento"
+        r"|feeling|mood|vibes",
+    )
+
+    # Substring by design (see the asymmetry note above).
+    _SERVICE_REQUEST: tuple[re.Pattern[str], ...] = (
+        re.compile(
+            r"tolong|mohon|minta|bisa|kapan|kirim|urus|proses|dokumen|berkas|surat"
+            r"|paspor|bayar|biaya|jadwal|kantor|jawaban|konfirmasi|selesai|belum"
+            r"|tunggu|lama|gimana caranya"
+            r"|please|could you|can you|when|send|document|passport|invoice|payment"
+            r"|status|apply|application|proceed|wait|still|update|deadline"
+            r"|per favore|potresti|puoi|quando|invia|manda|documento|passaporto"
+            r"|pratica|risposta|aspett|attesa|scadenza|ufficio|conferma|pagare|costo"
+            r"|ancora|bisogno",
+        ),
+    )
+
     def check_casual_conversation(self, query: str, context: dict[str, Any] = None) -> bool:
         """
         Detect if query is a casual/lifestyle question that doesn't need RAG tools.
@@ -1081,30 +1170,17 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
         # If it doesn't match casual patterns, safe default is to ASSUME BUSINESS/RAG.
         # It is better to search and find nothing than to hallucinate.
 
-        # Casual conversation patterns (Explicit Whitelist)
-        casual_patterns = [
-            # Food/restaurants
-            r"(ristorante|restaurant|makan|mangiare|food|cibo|warung|cafe|bar|dinner|lunch|breakfast)",
-            # Music/Life
-            r"(music|musica|lagu|song|concert|spotify|playlist|hobby|sport|palestra|gym)",
-            # Personal greetings/status
-            r"(come stai|how are you|apa kabar|gimana kabar|cosa fai|what do you do|che fai)",
-            r"(preferisci|prefer|suka|like|favorite|favorito|best|migliore|consiglia|recommend)",
-            # Weather
-            r"(weather|cuaca|meteo|tempo|beach|pantai|spiaggia|surf|sunset|sunrise)",
-            # Emotional states (Indonesian Jaksel style)
-            r"(bosen|bosan|capek|cape|lelah|seneng|senang|sedih|kesel|marah|happy|sad|tired)",
-            r"(gabut|mager|males|santai|chill|relax|stress|pusing|galau|anxious)",
-            # Emotional states (Italian)
-            r"(stanco|annoiato|felice|triste|arrabbiato|rilassato|stressato|contento)",
-            # Casual statements about day/mood
-            r"(hari ini|today|oggi|lagi|feeling|mood|vibes)",
-            # General Chatters
-            # General Chatters (Removed context-dependent 'si', 'no', 'yes' to allow RAG/LLM reasoning)
-            r"^(ok|bene|good|great|thanks|grazie|terima kasih|cool|wow|haha|wkwk|lol)$",
-        ]
+        # Casual conversation whitelist — see _CASUAL_DECISIVE / _CASUAL_MOOD.
+        if any(p.search(query_lower) for p in self._CASUAL_DECISIVE):
+            return True
 
-        return any(re.search(pattern, query_lower) for pattern in casual_patterns)
+        # A mood word alone does NOT make a message casual. It is casual only
+        # when nothing else in the message asks for service — see the class
+        # docstring on _CASUAL_MOOD for why, and for the measurement.
+        if any(p.search(query_lower) for p in self._CASUAL_MOOD):
+            return not any(p.search(query_lower) for p in self._SERVICE_REQUEST)
+
+        return False
 
     def get_casual_response(self, query: str, context: dict[str, Any] = None) -> str | None:
         """

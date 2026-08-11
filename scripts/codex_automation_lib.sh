@@ -115,12 +115,52 @@ codex_auto_notify() {
         > /dev/null 2>&1 || true
 }
 
+# A bare `git worktree add` copies no UNTRACKED state, so the runtime worktree has
+# no `apps/backend-rag/.venv`. The path-aware pre-push gate needs that venv to run
+# the backend suite and is FAIL-CLOSED: suite required + unrunnable = refuse, with
+# "PUSH NOT VERIFIED LOCALLY". Measured on Pro 2026-08-10: nightly_autofix_ci died
+# at the push on 11 of 14 days while its 14 Telegram alerts said only "Exit: 1"
+# (the gate's own message even names the cure: "symlink it from the main checkout,
+# or create the worktree via scripts/agent_start.py").
+#
+# Same target list as scripts/agent_start.py::SYMLINK_TARGETS — that set was chosen
+# and reviewed for agent worktrees, and a second opinion here would just be a second
+# thing to drift. Keep them in step.
+CODEX_RUNTIME_LINKS="${CODEX_RUNTIME_LINKS:-apps/backend-rag/.venv apps/backend-rag/.env node_modules apps/mouth/node_modules .husky/_}"
+
+codex_auto_link_runtime_deps() {
+    local primary_repo="${1:?primary repo required}"
+    local runtime_repo="${2:?runtime repo required}"
+    local rel target link
+
+    for rel in $CODEX_RUNTIME_LINKS; do
+        target="$primary_repo/$rel"
+        link="$runtime_repo/$rel"
+        # Nothing to lend: a machine without the venv must not gain a dangling link,
+        # which would make the gate's "no venv" check pass and its pytest fail later.
+        [ -e "$target" ] || continue
+        # A link left over from an older primary path is worse than none.
+        if [ -L "$link" ] && [ ! -e "$link" ]; then
+            rm -f "$link"
+        fi
+        [ -e "$link" ] && continue
+        mkdir -p "$(dirname "$link")" 2>/dev/null || true
+        ln -s "$target" "$link" 2>/dev/null || true
+    done
+}
+
 codex_auto_ensure_runtime_worktree() {
     local primary_repo="${1:?primary repo required}"
     local runtime_repo="${2:?runtime repo required}"
     local base_ref="${3:-origin/main}"
 
     if git -C "$runtime_repo" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        # REPAIR, not just accept. Linking only on create would have healed nothing:
+        # the worktree that has been failing for 11 days already exists, so it takes
+        # this branch every run and would keep its missing venv forever. This is the
+        # half that matters (W116: a cure on a path the failing case never reaches is
+        # dead code).
+        codex_auto_link_runtime_deps "$primary_repo" "$runtime_repo"
         return 0
     fi
 
@@ -132,4 +172,5 @@ codex_auto_ensure_runtime_worktree() {
     mkdir -p "$(dirname "$runtime_repo")"
     git -C "$primary_repo" fetch origin main >/dev/null 2>&1 || true
     git -C "$primary_repo" worktree add --detach "$runtime_repo" "$base_ref" >/dev/null
+    codex_auto_link_runtime_deps "$primary_repo" "$runtime_repo"
 }

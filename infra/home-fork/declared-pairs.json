@@ -51,8 +51,14 @@
     {
       "live": "~/scripts/codex/nightly-autofix-ci.sh",
       "repo": "scripts/codex/codex-nightly-autofix-ci.sh",
-      "_note": "Hourly codex auto-fix generator (plist com.nuzantara.codex-autofix-ci, StartCalendarInterval Minute=15, via cron-runner.sh). Declared 2026-07-06 together with the recursion-brake fix — was an UNDECLARED live payload (family #1); basenames differ by history.",
+      "_note": "Hourly codex auto-fix generator (plist com.nuzantara.codex-autofix-ci, StartCalendarInterval Minute=15, via cron-runner.sh). Declared 2026-07-06 together with the recursion-brake fix — was an UNDECLARED live payload (family #1); basenames differ by history. NOT widened to m5 on 2026-08-10 although the live file is there too: measured, M5's copy DIVERGES (4a3efb73 vs repo/Pro 72037815) while being dormant (no codex plist, 0 crontab hits) — a real fork whose risk is nil, exactly the Mini precedent in W107. Widening it here would only paint this PR red for someone else's divergence; it is a ledger row of its own.",
       "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/codex/automation-lib.sh",
+      "repo": "scripts/codex_automation_lib.sh",
+      "_note": "Shared helper sourced by the codex nightly wrappers above (CODEX_AUTOMATION_LIB default). UNDECLARED until 2026-08-10, which is why nightly_autofix_ci could be fixed in the repo and stay dead live: the live file is a REAL file on both machines (not a symlink), so a merge alone leaves it inert (W107 delivery gotcha). Declared with the runtime-worktree venv-link cure, where a repo-only fix would have shipped nothing. machines=pro+m5: measured byte-identical on both 2026-08-10; the M5 copy is dormant (no plist/crontab) but kept in step so a future arming there does not start from a fork. Mini was powered off and could not be measured — deliberately not declared rather than guessed.",
+      "machines": ["pro", "m5"]
     },
     {
       "live": "~/scripts/wr2-ig-metrics-analyst-run.sh",

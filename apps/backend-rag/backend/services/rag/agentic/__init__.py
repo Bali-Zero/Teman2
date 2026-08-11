@@ -66,6 +66,7 @@ from .tools import (
     CalculatorTool,
     CRMTool,
     ImageGenerationTool,
+    KBLICanonicalLookupTool,
     PricingTool,
     TeamKnowledgeTool,
     TimeSheetTool,
@@ -87,6 +88,7 @@ __all__ = [
     "FormatStage",
     "GraphTraversalTool",
     "ImageGenerationTool",
+    "KBLICanonicalLookupTool",
     "KGAgenticOrchestrator",
     "PostProcessingStage",
     "PricingTool",
@@ -143,16 +145,17 @@ def create_agentic_rag(
         Configured AgenticRAGOrchestrator instance
 
     Tool Priority:
-        1. VectorSearchTool (primary knowledge base search)
-        2. PricingTool (official Bali Zero pricing)
-        3. TeamKnowledgeTool (team member queries)
-        4. KnowledgeGraphTool (structured knowledge graph)
-        5. CalculatorTool (numerical computations)
-        6. VisionTool (visual document analysis)
-        7. ImageGenerationTool (AI image generation)
-        8. WebSearchTool (web search for out-of-KB queries via Brave)
-        9. CRMTool (live client/practice database queries)
-        10. TimeSheetTool (team timesheet management)
+        1. KBLICanonicalLookupTool (exact five-digit KBLI source)
+        2. VectorSearchTool (semantic knowledge base search)
+        3. PricingTool (official Bali Zero pricing)
+        4. TeamKnowledgeTool (team member queries)
+        5. KnowledgeGraphTool (structured knowledge graph)
+        6. CalculatorTool (numerical computations)
+        7. VisionTool (visual document analysis)
+        8. ImageGenerationTool (AI image generation)
+        9. WebSearchTool (web search for out-of-KB queries via Brave)
+        10. CRMTool (live client/practice database queries)
+        11. TimeSheetTool (team timesheet management)
     """
     logger.debug("create_agentic_rag: Initializing tools...")
 
@@ -164,19 +167,22 @@ def create_agentic_rag(
     # We pass the ai_client later if needed, but for now we use the factory's db_pool
     kg_builder = KnowledgeGraphBuilder(search_service=retriever, db_pool=db_pool)
 
-    # IMPORTANT: vector_search comes first to be the default tool
+    # Exact lookup comes first: explicit KBLI codes must not be answered from
+    # a semantically nearby vector result. Vector search remains the default
+    # discovery tool for activity descriptions without a known code.
     # ZANTARA LEAN STRATEGY (Dec 2025): Reduced to essential tools only.
     tools = [
-        VectorSearchTool(retriever, user_level=3),  # FIRST: Primary tool for knowledge base search
-        PricingTool(),  # SECOND: Official Pricing
-        TeamKnowledgeTool(db_pool),  # THIRD: Team member queries
-        KnowledgeGraphTool(kg_builder),  # FOURTH: Structured Knowledge Graph (NEW)
-        CalculatorTool(),  # FIFTH: Math safety
-        VisionTool(),  # SIXTH: Document analysis
-        ImageGenerationTool(),  # SEVENTH: Image generation (Imagen)
-        WebSearchTool(),  # EIGHTH: Web search for out-of-KB queries (Brave)
-        CRMTool(db_pool),  # NINTH: CRM database queries (client stats, search, practices)
-        TimeSheetTool(),  # TENTH: Timesheet Management
+        KBLICanonicalLookupTool(),
+        VectorSearchTool(retriever, user_level=3),
+        PricingTool(),
+        TeamKnowledgeTool(db_pool),
+        KnowledgeGraphTool(kg_builder),
+        CalculatorTool(),
+        VisionTool(),
+        ImageGenerationTool(),
+        WebSearchTool(),
+        CRMTool(db_pool),
+        TimeSheetTool(),
     ]
 
     # WA team-assistant Phase 2 (Zero GO 2026-07-20, flag-gated, default OFF):

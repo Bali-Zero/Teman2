@@ -890,11 +890,31 @@ async def test_notify_zero_conversation_log_sends_message():
 @pytest.mark.asyncio
 async def test_notify_human_telegram_no_chat_id():
     """Should return early when no admin_telegram_chat_id."""
+    # The function moved to `human_escalation_notifier` (2026-08-11) so the WA
+    # inbox bot can reach it too. It is still importable from the router, but it
+    # now reads `settings`/`telegram_bot` from ITS OWN module — patching the
+    # router's globals no longer reaches them, so the patch target moved with it.
     from backend.app.routers.whatsapp_chat import notify_human_telegram
 
-    with patch("backend.app.routers.whatsapp_chat.settings") as mock_settings:
+    mock_telegram = MagicMock()
+    mock_telegram.send_message = AsyncMock()
+
+    with (
+        patch(
+            "backend.services.integrations.human_escalation_notifier.settings"
+        ) as mock_settings,
+        patch(
+            "backend.services.integrations.human_escalation_notifier.telegram_bot",
+            mock_telegram,
+        ),
+    ):
         mock_settings.admin_telegram_chat_id = None
         await notify_human_telegram(phone="62123", message_text="Help!")
+
+    # "Should return early" was the docstring's whole claim and nothing checked
+    # it: with no telegram patched and nothing asserted, this test passed on a
+    # function that sent. Surviving the call is not the property.
+    mock_telegram.send_message.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -906,8 +926,13 @@ async def test_notify_human_telegram_with_context():
     mock_telegram.send_message = AsyncMock()
 
     with (
-        patch("backend.app.routers.whatsapp_chat.settings") as mock_settings,
-        patch("backend.app.routers.whatsapp_chat.telegram_bot", mock_telegram),
+        patch(
+            "backend.services.integrations.human_escalation_notifier.settings"
+        ) as mock_settings,
+        patch(
+            "backend.services.integrations.human_escalation_notifier.telegram_bot",
+            mock_telegram,
+        ),
     ):
         mock_settings.admin_telegram_chat_id = "1125336968"
         await notify_human_telegram(
