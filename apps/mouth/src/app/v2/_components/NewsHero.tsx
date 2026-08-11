@@ -60,16 +60,20 @@ export function NewsHero({ articles }: { articles: ArticleListItem[] }) {
   if (slides.length === 0) return null;
 
   return (
+    // P0.2 fix: remove md:h-[88vh] overflow-hidden. At 88vh=867px the left column
+    // (5 stories ≈1030px) was hidden behind overflow:hidden — 472px invisible.
+    // min-h lets it grow; overflow-hidden moves only to the photo column.
     <section
       id="news"
-      className="relative md:h-[88vh] overflow-hidden scroll-mt-20"
+      className="relative md:min-h-[88vh] scroll-mt-20"
       style={{ background: "var(--surface-base)" }}
     >
       {/* B2R2 mobile: the 32/68 two-col grid stacks — photo card first
           (it carries the active title), numbered story list below, both
           full-width. Desktop (md+) is byte-identical to before. */}
-      <div className="grid grid-cols-1 md:grid-cols-[32%_68%] h-full">
-        {/* Left — numbered index */}
+      <div className="grid grid-cols-1 md:grid-cols-[32%_68%]">
+        {/* Left — numbered index. P0.2: flex flex-col, no h-full constraint
+            (grows with content; all 5 stories visible at every viewport height). */}
         <div className="order-2 md:order-1 flex flex-col justify-center px-5 py-10 md:px-12 md:py-16">
           <div
             className="text-[11px] font-semibold uppercase tracking-widest mb-8"
@@ -144,11 +148,10 @@ export function NewsHero({ articles }: { articles: ArticleListItem[] }) {
           </ol>
         </div>
 
-        {/* Right — image + large title. MYTHOS B2R: on the light homepage
-            the photography stays a deliberate dark island (FT pattern),
-            inset + rounded into a photo card via --rp-photo-*; /news + /v2
-            keep the flush full-bleed layout (inset 0, radius 0). */}
-        <div className="order-1 md:order-2 relative h-[55vh] md:h-full">
+        {/* Right — image + large title. P0.2: sticky so photo stays in view
+            while the story list grows below md breakpoint. overflow-hidden
+            moved HERE (not on the section) so clip only affects the photo box. */}
+        <div className="order-1 md:order-2 relative h-[55vh] md:sticky md:top-14 md:self-start md:max-h-[calc(88vh-3.5rem)] md:overflow-hidden">
           <div
             className="absolute overflow-hidden"
             style={{
@@ -159,35 +162,59 @@ export function NewsHero({ articles }: { articles: ArticleListItem[] }) {
             {slides.map((s, i) => {
               const accent = CATEGORY_ACCENT[s.category] || "#d4a017";
               return (
+                // P0.4 fix: the whole Link was transitioning opacity — both headline
+                // and pill were 50% visible during the 1000ms cross-fade, creating
+                // overlapping ghost text. Now only the image fades; text/pill are
+                // in a separate non-transitioning layer that swaps instantly.
+                // inactive slides: visibility:hidden (delayed) prevents AT reading
+                // invisible text and stops any residual pixel-bleed.
                 <Link
                   href={`/${s.category}/${s.slug}`}
                   key={s.id}
                   aria-hidden={i !== active}
                   tabIndex={i === active ? 0 : -1}
-                  className="absolute inset-0 transition-opacity duration-1000 group"
+                  className="absolute inset-0 group"
                   style={{
-                    opacity: i === active ? 1 : 0,
+                    // visibility delayed so it hides AFTER the opacity fade completes
+                    visibility: i === active ? "visible" : "hidden",
+                    transition: i === active ? "none" : "visibility 0s 0.3s",
                     pointerEvents: i === active ? "auto" : "none",
                   }}
                 >
-                  <div className="absolute inset-0 flex items-center justify-center bg-[var(--surface-muted)]">
-                    <span className="text-[var(--text-tertiary)] text-[11px] font-semibold uppercase tracking-[0.15em]">
-                      {s.category ?? "Bali Zero"}
-                    </span>
-                  </div>
-                  <Image
-                    src={s.coverImage as string}
-                    alt={s.title || ""}
-                    fill
-                    sizes="(max-width: 768px) 100vw, 900px"
-                    quality={75}
-                    loading={i === 0 ? "eager" : "lazy"}
-                    priority={i === 0}
-                    className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none";
+                  {/* P0.4: placeholder hidden once the real image is visible.
+                      Previously it showed through during load on every slide. */}
+                  {i !== active ? null : (
+                    <div className="absolute inset-0 flex items-center justify-center bg-[var(--surface-muted)]">
+                      <span className="text-[var(--text-tertiary)] text-[11px] font-semibold uppercase tracking-[0.15em]">
+                        {s.category ?? "Bali Zero"}
+                      </span>
+                    </div>
+                  )}
+                  {/* P0.4: image-only fade wrapper. opacity here, NOT on the Link.
+                      Duration 300ms (was 1000ms). prefers-reduced-motion disables. */}
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      opacity: i === active ? 1 : 0,
+                      transition: "opacity 0.3s ease",
                     }}
-                  />
+                  >
+                    <Image
+                      src={s.coverImage as string}
+                      alt={s.title || ""}
+                      fill
+                      // P3: corrected sizes — this is a 68vw portrait slot, not 900px wide
+                      sizes="(max-width: 768px) 100vw, 68vw"
+                      quality={75}
+                      loading={i === 0 ? "eager" : "lazy"}
+                      priority={i === 0}
+                      className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                      }}
+                    />
+                  </div>
+                  {/* Scrim */}
                   <div
                     className="absolute inset-0"
                     style={{
@@ -195,6 +222,7 @@ export function NewsHero({ articles }: { articles: ArticleListItem[] }) {
                         "linear-gradient(0deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.42) 55%, rgba(0,0,0,0.05) 100%)",
                     }}
                   />
+                  {/* Text overlay — outside the fading div so it swaps instantly (no ghost overlap) */}
                   <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12 md:pr-16">
                     <div
                       className="inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-widest mb-5"
