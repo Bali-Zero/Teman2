@@ -22,6 +22,45 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 
 ## 1. LIVE STATE (last update 2026-08-11 — keep current)
 
+- **🕳️ THE WEBHOOK ROUTER'S FALLBACK BRANCH WAS DEAD FOR ~5 MONTHS, AND NOTHING NOTICED BECAUSE
+  NOTHING EVER RAN IT (2026-08-11, PR #4081).** `whatsapp_chat.process_whatsapp_message` answers
+  from OpenClaw when it responds and from the RAG orchestrator when it does not. The second path
+  could not execute at all, for two independent reasons, both live on `origin/main`:
+  (a) `whatsapp_persona.build_system_prompt` had its `time_of_day` parameter renamed
+  `_time_of_day` on **2026-03-17**, against a call site written **2026-02-07** that still passed
+  `time_of_day=` → `TypeError`; (b) `get_orchestrator(request)` was called **without `await`**
+  though it is `async def` → `'coroutine' object has no attribute 'process_query'`. Both land in
+  the same `except Exception`, so the client would have received `"Ops, errore tecnico 😬"`
+  instead of the RAG answer.
+  - **Bounded — do NOT retell this as an outage.** That error reply is persisted to
+    `conversation_messages`, and it appears **0 times against 154 outbound WhatsApp messages in
+    July**. The branch has never actually been taken and no client was hit. It was a hole in the
+    net under "OpenClaw did not answer", not a live failure.
+  - **How it was found, because the method is the transferable part**: not by reading, but by
+    driving. A mutation run on a new formatting cure showed the fallback call site could be
+    DELETED with nothing turning red — the corpus only ever drove the OpenClaw branch. Writing the
+    test that reaches the other branch is what made both `TypeError`s appear. A keyword mismatch
+    and a missing `await` are invisible to imports, to ruff, and to every test that drives only
+    the sibling branch.
+  - Guard now armed: `test_the_persona_builder_accepts_every_keyword_the_router_passes` AST-reads
+    the router's ACTUAL keywords and binds them against the signature, so the next rename on
+    either side fails in CI. Class audit for other un-awaited `async def` calls across routers /
+    deps / integrations / channels: 12 candidates, **all 12 verified false positives** — no second
+    instance, bounded to what that heuristic can see.
+
+- **🎠 THE BIGGEST ERROR CLASS IN THE BOT'S LEDGER IS BY DESIGN AND IS NOT CLIENT-FACING — check
+  before treating it as the top problem (2026-08-11).** `meta_inbox_messages.error` ranks:
+  `24h_window_closed` **84** · `superseded_by_coalescing` 62 · `bot_generate_failed_after_5_attempts`
+  60 · 2 others. The 84 look alarming and are not client questions at all: 4 distinct threads, all
+  bodies exactly 89 chars, prefix `"Carousel pronto: https://drive.google.com/"` — they are **WR2
+  carousel-ready notifications**, and `wr2_html_render_apply.py` says so verbatim next to the send:
+  _"WA above stays best-effort (24h-window may be closed for months); THIS is the delivery leg the
+  human actually sees"_ (the Telegram P0 + review-queue entry). Thread 30 retried 45 times over 49
+  days — exactly the "closed for months" the comment predicts.
+  - The real (small) defect is the **ledger's readability**, same shape already recorded for the
+    give-up sentinel: a deliberately best-effort leg and a genuine failure are spelled identically,
+    so the error ranking mis-ranks the bot's problems for whoever reads it next.
+
 - **📊 WHAT CLIENTS ACTUALLY ASK — 993 REAL TEAM CONVERSATIONS, AND THE RANKING CORRECTS OUR OWN
   PROBING (2026-08-11).** Zero handed the session a Case Captain intelligence pack derived from the
   team's WhatsApp history (`~/Desktop/WA-Case-Captain-Intelligence-2026-08-11`, local, `0600`,
