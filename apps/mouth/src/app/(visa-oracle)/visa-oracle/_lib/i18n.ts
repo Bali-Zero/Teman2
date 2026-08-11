@@ -123,6 +123,19 @@ const en = {
   "why.entry_pattern":
     "The engine receives SINGLE or MULTIPLE exactly as selected.",
 
+  "q.sponsor_category": "Who sponsors your stay in Indonesia?",
+  "q.sponsor_category.hint":
+    "Choose the party that provides or backs your permit, not who pays your day-to-day bills.",
+  "q.sponsor_category.opt.NONE": "No sponsor — I qualify on my own",
+  "q.sponsor_category.opt.INDIVIDUAL":
+    "An individual (a family or personal sponsor)",
+  "q.sponsor_category.opt.EMPLOYER": "An employer — a company in Indonesia",
+  "q.sponsor_category.opt.EDUCATION": "An educational institution",
+  "q.sponsor_category.opt.INVESTMENT": "An investment or company I own",
+  "q.sponsor_category.opt.GOVERNMENT": "A government body",
+  "why.sponsor_category":
+    "The sponsor category is recorded as its own exact fact. No rule in the current pack reads it yet — this only prepares the ground for rules that will.",
+
   "q.business_activity": "What will you mainly do on the business trip?",
   "q.business_activity.hint":
     "Describe the activity, not a visa name. This is context for a human reviewer only.",
@@ -498,6 +511,7 @@ const en = {
   "tree.category": "Category",
   "tree.trip_scope": "Purpose overlap",
   "tree.entry_pattern": "Entry pattern",
+  "tree.sponsor_category": "Sponsor category",
   "tree.business_activity": "Business activity",
   "tree.work_payer": "Who pays you",
   "tree.work_indonesia_compensation": "Payment source",
@@ -840,6 +854,21 @@ const id: Record<Keys, string> = {
   "q.entry_pattern.opt.MULTIPLE": "Lebih dari satu kali masuk",
   "why.entry_pattern":
     "Mesin menerima SINGLE atau MULTIPLE persis seperti pilihan Anda.",
+
+  "q.sponsor_category":
+    "Siapa yang mensponsori masa tinggal Anda di Indonesia?",
+  "q.sponsor_category.hint":
+    "Pilih pihak yang menyediakan atau menjamin izin Anda, bukan yang membiayai kebutuhan sehari-hari Anda.",
+  "q.sponsor_category.opt.NONE":
+    "Tidak ada sponsor — saya memenuhi syarat sendiri",
+  "q.sponsor_category.opt.INDIVIDUAL":
+    "Perorangan (sponsor keluarga atau pribadi)",
+  "q.sponsor_category.opt.EMPLOYER": "Pemberi kerja — perusahaan di Indonesia",
+  "q.sponsor_category.opt.EDUCATION": "Institusi pendidikan",
+  "q.sponsor_category.opt.INVESTMENT": "Investasi atau perusahaan milik saya",
+  "q.sponsor_category.opt.GOVERNMENT": "Instansi pemerintah",
+  "why.sponsor_category":
+    "Kategori sponsor dicatat sebagai fakta tersendiri. Belum ada aturan dalam rule pack saat ini yang membacanya — ini hanya menyiapkan data untuk aturan yang akan datang.",
 
   "q.business_activity": "Apa kegiatan utama Anda dalam perjalanan bisnis?",
   "q.business_activity.hint":
@@ -1212,6 +1241,7 @@ const id: Record<Keys, string> = {
   "tree.category": "Kategori",
   "tree.trip_scope": "Tujuan tumpang tindih",
   "tree.entry_pattern": "Pola masuk",
+  "tree.sponsor_category": "Kategori sponsor",
   "tree.business_activity": "Kegiatan bisnis",
   "tree.work_payer": "Siapa yang menggaji",
   "tree.work_indonesia_compensation": "Sumber pembayaran",

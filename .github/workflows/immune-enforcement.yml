@@ -232,6 +232,8 @@ jobs:
               infra/required.d/contexts.json|\
               infra/guard-conformance/registry.json|\
               infra/guard-conformance/check_guard_conformance.py|\
+              scripts/verify_tailnet_node.sh|\
+              scripts/tests/test_verify_tailnet_node.sh|\
               .github/workflows/immune-enforcement.yml|\
               .github/workflows/*.yml|\
               .github/workflows/*.yaml)
@@ -828,6 +830,25 @@ jobs:
 
       # The two ledger gates below run on EVERY PR (cheap: parse one markdown
       # file) — they are the reason this check is required at all.
+      # A node's IDENTITY in a tailnet is its MagicDNS name — never HostName, never an
+      # ssh alias (#1 alias-drift + #2 Esiste≠Armato). The 2026-05 laptop-handoff
+      # runbook verified retained remote access with `ssh air 'tailscale status'`, a
+      # command that CANNOT fail: on Pro both `air` and `air-ts` resolve to M5, so it
+      # answered green from the verifier itself for three months while the handed-over
+      # machine was never in the tailnet at all.
+      #
+      # The corpus pins both halves of the cure. Guilt: the name resolving to THIS
+      # machine is its own verdict (exit 4 — never 0, never a plain absence), an
+      # unreadable status is CANNOT-VERIFY (2) and never folded into absent (3), and a
+      # peer whose device-reported HostName is exactly the wanted name does NOT satisfy
+      # it. Innocence: a node whose HostName is "localhost" — two of six live nodes —
+      # is still found, by DNSName. Mutation-verified 4/4: each cure reverted turns the
+      # matching case red. Named here because in this repo a scripts/tests/ corpus runs
+      # only because a workflow says so.
+      - name: Tailnet node verifier keys on DNSName, not HostName or an ssh alias
+        if: steps.paths.outputs.relevant == 'true'
+        run: bash scripts/tests/test_verify_tailnet_node.sh
+
       - name: PENDING-ARMS ledger parses (report smoke, exit 0 signaler)
         run: |
           if [ -f scripts/pending_arms_report.py ]; then

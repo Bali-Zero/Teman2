@@ -1,34 +1,40 @@
-task_id: ops-fleet-order-pr3
+task_id: ops-codex-runtime-worktree-deps-pr4007
 gear: 3
 l_level: L3
 gate_class: fable
 objective: |
-  Ship PR-3 (enforcement) of the fleet-order program: scripts/evidence_pack_lint.py
-  (Evidence Pack contract, 6 rules, guild+innocence corpus), its guard-conformance
-  registration, .github/workflows/harness-floor.yml (deterministic floor recompute +
-  default harness/fable-gate publisher), scripts/harness_fable_gate.py (verdict
-  publisher, no verdict logic), and the PENDING-ARMS closure for PR-1's residual
-  item. Verifiable via the acceptance commands below and the PR body's test plan.
+  Make the Codex nightly autofix runtime worktree usable without allowing an
+  unattended failed-branch repair to act on the primary checkout, borrow host
+  secrets, or control its outer push. Repair stale virtual-environment links,
+  reject ambiguous runtime and run provenance, and carry executable
+  trust-boundary regression coverage plus the required Gear-3 evidence.
 constraints:
-  - ".github/workflows/ is CODEOWNERS-TIER1 hot-zone — actionlint must pass, no gate weakened"
-  - "generator≠grader (CLAUDE.md §6): independent adversarial review before merge"
-  - "no Anthropic SDK / ANTHROPIC_API_KEY anywhere (CLAUDE.md §5)"
-  - "PENDING-ARMS.md is merge=union — append-only, never edit existing lines"
+  - ".github/workflows/broker-hygiene.yml is a CODEOWNERS Tier-1 hot-zone; actionlint must pass and no existing gate may be weakened"
+  - "unattended runtime setup may link only the backend virtual environment from the primary checkout; it must never link dotenv files, node_modules, or Husky dispatchers"
+  - "a real directory already present in the runtime worktree must never be replaced"
+  - "the runtime must be a distinct registered worktree, and every managed link must remain confined beneath its canonical root"
+  - "the failed-branch runner must reject untrusted provenance and run its pre-push gate from a bundle pinned to origin/main, not from the failed branch"
+  - "no force push, merge, auto-merge change, deployment, or live HOME-file mutation in this task"
 acceptance:
-  - "python3 scripts/evidence_pack_lint.py --selftest exits 0 (32/32 guilt+innocence checks)"
-  - "python3 -m pytest scripts/tests/test_evidence_pack_lint.py scripts/tests/test_harness_fable_gate.py -q exits 0 (48 passed)"
-  - "python3 infra/guard-conformance/check_guard_conformance.py reports 0 violations"
-  - "actionlint .github/workflows/harness-floor.yml .github/workflows/guard-conformance.yml exits 0"
+  - "bash scripts/tests/test_codex_runtime_worktree_deps.sh reports all runtime confinement guilt and innocence cases passed"
+  - "bash scripts/tests/test_codex_trusted_prepush_bundle.sh proves branch-controlled hooks and all transitive gate helpers cannot affect the unattended push"
+  - "python3 scripts/tests/test_codex_autofix_selector.py proves untrusted actor, triggering actor, fork, event, namespace, and SHA metadata are rejected"
+  - "bash -n and shellcheck pass for the library and executable regression corpus"
+  - "actionlint .github/workflows/broker-hygiene.yml exits 0"
+  - "infra/home-fork/declared-pairs.json parses as valid JSON"
   - "python3 scripts/docs_sync.py --check reports no drift"
+  - "python3 scripts/evidence_pack_lint.py validates this pack against the merge-base changed-file set"
 consumer_map:
-  - "any future PR carrying evidence/brief.yml — harness-floor.yml recomputes its deterministic floor and, on Gear-3, validates its evidence/pack.yml for real"
-  - "any future PR touching a guard-conformance-registered surface — guard-conformance.yml executes the evidence_pack_lint.py and harness_fable_gate.py pytest steps"
-  - "a real Gear-3 Fable gate session, once branch-protection promotion unblocks — scripts/harness_fable_gate.py is the only sanctioned way to publish its verdict"
+  - "scripts/codex/codex-nightly-autofix-ci.sh calls codex_auto_ensure_runtime_worktree before scanning or fixing CI failures"
+  - ".github/workflows/broker-hygiene.yml runs the regression corpus when the library or test changes"
+  - "the nightly runtime has a narrower dependency contract than the interactive broker because it checks out failed branch content without a human session"
+  - "infra/home-fork/declared-pairs.json makes the repo helper visible to the HOME-fork reconciliation machinery"
 risks:
-  - "branch-protection promotion of harness/fable-gate is reported BLOCKED, not merely pending — merge-queue synthetic-SHA relay (finding #4), verdict-identity/provenance attestation (finding #3), and fork-PR read-only-token risk (finding #13) are unresolved design gaps this PR does not close; see PR body + PENDING-ARMS"
-  - "this task ran with ONE independent refuter (Codex, family-diverse from the Sonnet builder), not harness-v2 §4's literal Gear-3 quorum of two — GLM (the planned second refuter) is not present on this machine (M5); the dispatching brief pre-authorized this single-refuter fallback explicitly for this task, it is not a silent shortcut"
+  - "a Git merge does not itself update the declared live HOME copy; host reconciliation remains an operator/automation delivery step"
+  - "the backend virtual environment remains a shared host dependency; only a trusted actor and same-repository run can make the unattended runner execute branch code inside the explicit workspace-write sandbox"
+  - "the regression corpus uses disposable local Git repositories and does not prove a production LaunchAgent invocation"
 grader: codex-sol
 budget:
   seats: [sonnet-5, codex-sol]
-  fable_gate_est_tokens: 0
+  fable_gate_est_tokens: 1200
 pii: none
