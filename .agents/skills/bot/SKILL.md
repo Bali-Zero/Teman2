@@ -614,6 +614,49 @@ minimum untuk PT PMA?` / Italian), **four of five retrieve fine** and give the c
   question, so a reply may address a nudge ("ci sei?") instead of the substantive ask. Bounded by
   the 12-turn window, unobserved in prod.
 
+  **RE-MEASURED 2026-08-11 — the verdict HOLDS, but the numbers above are stale by 7×, and a
+  stale number inside a "DO NOT RE-OPEN" is what buys the next session an afternoon.** The entry
+  was written on 07-27; the team beta was 07-28, and the population exploded the next day.
+  Lifetime `superseded_by_coalescing` is now **62 rows, not 9** — and the mid-backoff share, the
+  case this entry concedes is not the intended one, went from **2 of 9 (22%)** to **32 of 62
+  (52%)**: `attempts` 0→30 · 1→4 · 2→12 · 3→10 · 4→6. So the reassuring ratio is gone.
+  **The second premise is what still carries it, and it was re-tested, not assumed: all 32
+  killed mid-backoff had an outbound reply in the same thread within 30 minutes, and ZERO were
+  never answered.** Re-open only if that second number ever moves — the attempts ratio alone is
+  not the finding.
+
+- **📊 THE BETA WEEK IS THE ONLY LOAD TEST THIS BOT HAS EVER HAD — and half the outbox rows
+  failed (measured 2026-08-11 on 27/07–05/08, 131 rows).** `done` 68 · `failed` 63. The failure
+  breakdown is the point: **53 = `superseded_by_coalescing`** (benign per the entry above),
+  8 = `bot_generate_failed_after_5_attempts`, 2 = `24h_window_closed`. Read the sentinel before
+  reading "48% failed" as an outage — most of it is bursts being merged, working as designed.
+  Client-visible latency in that week: **median 302s, p90 990s** (inbound→first outbound, ≥15
+  chars, capped at 2h). The p90 tracks `RETRY_BACKOFF_BASE_SECONDS = 30` compounding across five
+  attempts (30/60/120/240/480 ≈ 15.5 min), so ~10% of beta messages needed several attempts.
+  Note this is a DIFFERENT measure from the `sent_at − created_at` figures elsewhere in this
+  file: this one is the wait the human actually experiences.
+
+  **NOT a defect, killed here so nobody re-finds it:** a first pass read "35 of 224 inbound
+  (15.6%) never answered". Decomposed: **34 are simply the last message in their thread** (there
+  is no reply yet because there is no reply yet) and 1 is a sub-15-char ack. **Genuinely dropped
+  substantive questions: ZERO**, in both the bot-off and bot-on eras. The 15.6% measured thread
+  endings, not silence.
+
+- **🔇 ZERO TRAFFIC SINCE 2026-08-05 17:39Z (measured 08-11).** Six days, no inbound, no
+  outbound. Everything merged after that date — the two language-detector fixes (#3959 08-09,
+  #3969 08-10) and everything shipped on 08-11 — is **merged, not proven live**. There is no
+  post-fix corpus to evaluate and there will not be one until traffic returns AND the Gemini
+  prepay is topped up (`operator[business]`, project `nuzantara`, number 930328104463). Do not
+  read the absence of new drift reports as evidence a language fix worked.
+
+- **📎 THE INTERNAL FILENAME REACHED REAL RECIPIENTS — 6 outbound messages (measured 08-11).**
+  `[CURATED {source_ref} {date}]` handed the model an internal filename as the only "source" it
+  had, and the model cited it: `CURATED FINAL.md#Q16` / `#Q17` printed into WhatsApp threads on
+  07-24 and 07-28 (five of the six on beta day, so mostly colleagues — but nothing in the code
+  path distinguishes a colleague from a client). Sizing: **808/808 live Qdrant points carry an
+  internal `source_ref` and zero carry a citable regulation name**. Cure in PR #4067 — the header
+  now says the section is not citable and the refs move to the log line.
+
 - **🗣️ IN FLIGHT — PR #3260 (abstain voice + per-sender WA memory).** Two client-facing gaps:
   (a) the refusal copy now names the stake, says a Bali Zero colleague must look at it, and asks
   for a document or a reference date — and it deliberately does NOT promise "a colleague will
