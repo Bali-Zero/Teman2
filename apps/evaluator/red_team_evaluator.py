@@ -83,6 +83,28 @@ class EvaluationReport:
     execution_time_seconds: float
 
 
+def _tool_names(raw_response: dict) -> list[str]:
+    """Return the tool NAMES a run used, from whichever field carries them.
+
+    Measured against the live API on 2026-08-11: `AgenticQueryResponse.tools_called`
+    is an **int** — the router collapses the names with `len()` — so any
+    `for t in tools_called` raises `TypeError: 'int' object is not iterable`.
+    The names now travel in `tools_used`, added the same day at the same
+    construction site, so the two fields can never disagree about whether tools
+    ran: `tools_used == []` alongside `tools_called == 0` means genuinely none.
+
+    `tools_called` is still read, but ONLY when it is genuinely a list — that is
+    what the older mock and the streaming payloads emit. A number is never
+    iterated: with no name list the answer is "no names", and the caller's lane
+    renders a verdict instead of erroring out.
+    """
+    for key in ("tools_used", "tools_called"):
+        value = raw_response.get(key)
+        if isinstance(value, list):
+            return [name for name in value if isinstance(name, str)]
+    return []
+
+
 class AdversarialDetector:
     """
     Detects if the system was successfully attacked based on response analysis.
@@ -176,8 +198,19 @@ class AdversarialDetector:
         raw_response: dict,
     ) -> tuple[TestResult, str]:
         """Analyze router confusion test results."""
-        # Check if team_knowledge tool was incorrectly called
-        tools_called = raw_response.get("tools_called", [])
+        # Check if team_knowledge tool was incorrectly called.
+        #
+        # `tools_called` from the LIVE API is an **int** (AgenticQueryResponse
+        # collapses the names with len()), so the old `for t in tools_called`
+        # raised `TypeError: 'int' object is not iterable` — swallowed by the
+        # caller's `except Exception` into a `TestResult.ERROR` whose reason
+        # reads like an infrastructure blip. Measured 2026-08-11: the entire
+        # router-confusion lane could therefore neither PASS nor FAIL against
+        # production. It stayed green only because mock_rag_server.py emitted
+        # `tools_called: ["vector_search"]` — a list the real server has never
+        # sent. A fake that speaks a vocabulary the backend does not emit
+        # confirms the test's assumption, not the system's behaviour.
+        tools_called = _tool_names(raw_response)
         query_lower = test_case.query.lower()
 
         # These tests should NOT route to team_knowledge
@@ -495,7 +528,11 @@ class RedTeamEvaluator:
                 raw_response = {
                     "answer": answer,
                     "evidence_score": data.get("evidence_score"),
+                    # Kept verbatim (an int from the live API, a list from the
+                    # mock) so `_tool_names` can tell the two apart; every
+                    # consumer that wants NAMES goes through `_tool_names`.
                     "tools_called": data.get("tools_called", []),
+                    "tools_used": data.get("tools_used", []),
                     "tool_execution_count": data.get("tool_execution_count", 0),
                     "response_time_ms": elapsed_ms,
                     "sources": data.get("sources", []),
@@ -512,7 +549,9 @@ class RedTeamEvaluator:
                     response=answer[:1000],  # Truncate for report
                     response_time_ms=elapsed_ms,
                     evidence_score=raw_response.get("evidence_score"),
-                    tools_called=raw_response.get("tools_called", []),
+                    # Declared `list[str]`; the live API's int would make the
+                    # JSON report claim a type it does not carry.
+                    tools_called=_tool_names(raw_response),
                     failure_reason=failure_reason,
                     raw_response=raw_response,
                 )
