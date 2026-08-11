@@ -157,8 +157,12 @@ pdfminer.six>=20251107  # Match pdfplumber requirement
 # here so Fly/CI install it (was Pro-only, 2026-06-20).
 python-docx>=1.1.0
 
-# Protocol Buffers - Pin to 5.x (compatible with OTEL + Google packages)
-protobuf>=5.27.0,<6.0.0
+# Protocol Buffers - was pinned to 5.x for OTEL + Google package compat; that
+# ceiling is now stale — requirements-prod.txt has run protobuf 6.33.6 in
+# production since 2026-05-19 (uv migration pilot, PR #777) with no reported
+# issue, and current googleapis-common-protos/google-api-core releases require
+# protobuf>=6.33.5. Widen the dev lock to match prod instead of pinning below it.
+protobuf>=5.27.0,<7.0.0
 
 # XML/HTML Processing - UPGRADED
 lxml>=6.1.1  # Required by trafilatura, htmldate
