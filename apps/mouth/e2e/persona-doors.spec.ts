@@ -74,7 +74,7 @@ test.describe("persona doors homepage page Page", () => {
     const bg = await primary.evaluate(
       (el) => getComputedStyle(el).backgroundColor,
     );
-    expect(bg).toBe("rgb(255, 45, 76)");
+    expect(bg).toBe("rgb(208, 16, 51)");
   });
 
   test("doors band contains no red primary styling", async ({ page }) => {

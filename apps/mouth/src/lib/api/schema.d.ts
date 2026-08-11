@@ -18038,8 +18038,7 @@ export interface components {
       channel?: string | null;
       /** Conversation History */
       conversation_history?:
-        | components["schemas"]["ConversationMessageInput"][]
-        | null;
+        components["schemas"]["ConversationMessageInput"][] | null;
       /** Conversation Id */
       conversation_id?: number | null;
       /**
@@ -18398,6 +18397,16 @@ export interface components {
       "secondhome.qualifying_property_value_usd":
         | components["schemas"]["UnknownFact"]
         | components["schemas"]["KnownNonNegativeInteger"];
+      /**
+       * Sponsor.Type
+       * @default {
+       *       "status": "UNKNOWN",
+       *       "reason": "NOT_ASKED"
+       *     }
+       */
+      "sponsor.type":
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownSponsorType"];
       /** Study.Admission Confirmed */
       "study.admission_confirmed":
         | components["schemas"]["UnknownFact"]
@@ -20575,9 +20584,10 @@ export interface components {
     };
     /**
      * FactPath
-     * @description Every fact path the engine may ever reference — 40 applicant-collected
+     * @description Every fact path the engine may ever reference — 41 applicant-collected
      *     + 3 derived (spec §2 ``ApplicantFactPath`` + ``FactPath``, extended by the
-     *     ``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23).
+     *     ``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, and
+     *     by ``sponsor.type`` for the sponsor-category question, 2026-08-10).
      *
      *     Closed by design (spec §5.2): a Condition's ``fact`` field and a Rule's
      *     ``required_facts`` array are both typed against this enum, so a rule
@@ -20619,6 +20629,7 @@ export interface components {
       | "study.level"
       | "study.admission_confirmed"
       | "study.sponsor_confirmed"
+      | "sponsor.type"
       | "secondhome.bank_deposit_usd"
       | "secondhome.bank_deposit_at_state_bank"
       | "secondhome.bank_deposit_in_own_name"
@@ -21573,6 +21584,23 @@ export interface components {
        */
       status: "KNOWN";
       value: components["schemas"]["RelationType"];
+    };
+    /**
+     * KnownSponsorType
+     * @description The sponsor CATEGORY, reusing the same enum the product records declare.
+     *
+     *     Reusing `SponsorType` rather than minting an applicant-side twin is the
+     *     point: a rule can then compare the applicant's answer against the product's
+     *     own `sponsor_types` without a mapping table in between, and a mapping table
+     *     is where the two sides drift apart.
+     */
+    KnownSponsorType: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      status: "KNOWN";
+      value: components["schemas"]["SponsorType"];
     };
     /** KnownString */
     KnownString: {
@@ -22655,8 +22683,7 @@ export interface components {
        * @description Previous messages in this conversation for context continuity
        */
       conversation_history?:
-        | components["schemas"]["ConversationMessage"][]
-        | null;
+        components["schemas"]["ConversationMessage"][] | null;
       /**
        * Domain Hint
        * @description Optional domain hint for routing
@@ -22911,8 +22938,7 @@ export interface components {
       email?: string | null;
       /** Entity Type */
       entity_type?:
-        | ("individual" | "corporate_pt" | "corporate_cv" | "foreign")
-        | null;
+        ("individual" | "corporate_pt" | "corporate_cv" | "foreign") | null;
       /** Ewallet Number */
       ewallet_number?: string | null;
       /** Ewallet Type */
@@ -23275,10 +23301,7 @@ export interface components {
      * @enum {string}
      */
     PricingAvailabilityStatus:
-      | "AVAILABLE"
-      | "CONTACT_REQUIRED"
-      | "UNAVAILABLE"
-      | "UNKNOWN";
+      "AVAILABLE" | "CONTACT_REQUIRED" | "UNAVAILABLE" | "UNKNOWN";
     /** PricingCalculateRequest */
     PricingCalculateRequest: {
       /**
@@ -23712,12 +23735,7 @@ export interface components {
      * @enum {string}
      */
     RelationType:
-      | "SPOUSE"
-      | "CHILD"
-      | "PARENT"
-      | "SIBLING"
-      | "DEPENDENT"
-      | "OTHER";
+      "SPOUSE" | "CHILD" | "PARENT" | "SIBLING" | "DEPENDENT" | "OTHER";
     /**
      * RenameRequest
      * @description Request to rename a file/folder.
@@ -24720,6 +24738,17 @@ export interface components {
       voice: string | null;
     };
     /**
+     * SponsorType
+     * @enum {string}
+     */
+    SponsorType:
+      | "NONE"
+      | "INDIVIDUAL"
+      | "EMPLOYER"
+      | "EDUCATION"
+      | "INVESTMENT"
+      | "GOVERNMENT";
+    /**
      * StatusResponse
      * @description System status response.
      */
@@ -24863,11 +24892,7 @@ export interface components {
        * @enum {string}
        */
       sensitivity:
-        | "internal"
-        | "company"
-        | "person"
-        | "financial"
-        | "credential";
+        "internal" | "company" | "person" | "financial" | "credential";
     };
     /** TaxCompanyPilotDuplicateCandidate */
     TaxCompanyPilotDuplicateCandidate: {
@@ -24994,8 +25019,7 @@ export interface components {
       readiness?: components["schemas"]["TaxCompanyPilotReadiness"] | null;
       tax_member: components["schemas"]["TaxCompanyPilotTaxMember"];
       workspace_ai?:
-        | components["schemas"]["TaxCompanyPilotWorkspaceAiSnapshot"]
-        | null;
+        components["schemas"]["TaxCompanyPilotWorkspaceAiSnapshot"] | null;
       /**
        * Workspace Mode
        * @default team_read_only
@@ -25034,11 +25058,7 @@ export interface components {
        * @enum {string}
        */
       relationship_confidence:
-        | "confirmed"
-        | "high"
-        | "medium"
-        | "low"
-        | "unconfirmed";
+        "confirmed" | "high" | "medium" | "low" | "unconfirmed";
       /** Role */
       role?: string | null;
       /**
@@ -25068,11 +25088,7 @@ export interface components {
        * @enum {string}
        */
       relationship_confidence:
-        | "confirmed"
-        | "high"
-        | "medium"
-        | "low"
-        | "unconfirmed";
+        "confirmed" | "high" | "medium" | "low" | "unconfirmed";
       /** Risk Flags */
       risk_flags?: string[];
       /** Tax Owner */
@@ -26521,8 +26537,7 @@ export interface components {
     WorkspaceQueryRequest: {
       /** Conversation History */
       conversation_history?:
-        | components["schemas"]["ConversationMessageInput"][]
-        | null;
+        components["schemas"]["ConversationMessageInput"][] | null;
       /** Conversation Id */
       conversation_id?: number | null;
       /**
@@ -27062,10 +27077,7 @@ export interface components {
      * @enum {string}
      */
     backend__services__garuda_flow__intake__Purpose:
-      | "tourism"
-      | "family"
-      | "transit"
-      | "business-meeting";
+      "tourism" | "family" | "transit" | "business-meeting";
     /**
      * Purpose
      * @enum {string}
@@ -42336,8 +42348,7 @@ export interface operations {
     requestBody?: {
       content: {
         "application/json":
-          | components["schemas"]["PublishToSiteRequest"]
-          | null;
+          components["schemas"]["PublishToSiteRequest"] | null;
       };
     };
     responses: {

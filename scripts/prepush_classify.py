@@ -37,10 +37,11 @@ inputs, CONVERGED findings):
   is suffix-scoped through `ALLOWLIST_PREFIX_SUFFIX_PAIRS` — a path must be
   a descendant of the directory prefix AND end in an explicitly-listed
   extension. Exact files use `ALLOWLIST_EXACT_PATHS` and cannot match
-  descendants. docs/research/.claude-content-dirs are scoped to `.md` ONLY
-  (verified: 100% of files under .claude/{skills,rules,commands,agents}
-  are already .md: 12/12, 7/7, 5/5, 15/15; docs/research are dominated by
-  .md with the aforementioned executable outliers now correctly excluded).
+  descendants. The .claude content dirs are scoped to `.md` ONLY (verified:
+  100% of files under .claude/{skills,rules,commands,agents} are already
+  .md: 12/12, 7/7, 5/5, 15/15); docs/** and research/** admit `.md` AND
+  `.txt` since v9 — see the "v9 EXTENSION" section below for the measurement
+  — with the aforementioned executable outliers still correctly excluded.
   `infra/launchagents/**` keeps `.plist`/`.sh` as a DECLARED, deliberate
   choice (these launchd wrapper scripts never touch the pytest backend
   suite) — not an accident of a bare-prefix glob, the same suffix-scoped
@@ -406,9 +407,14 @@ ALLOWLIST_EXACT_PATHS: frozenset[str] = frozenset(
 # exactly the gap round-1 red-team caught):
 #
 #   docs/**               940 .md but ALSO 8 .py + 7 .sh among the
-#                         outliers today -> scoped to `.md` ONLY.
+#                         outliers today -> scoped to `.md` + `.txt` (v9,
+#                         2026-08-11; 25 tracked .txt, none executable,
+#                         none read by backend/ or tests/). The .py/.sh
+#                         outliers stay excluded — that is the whole point
+#                         of suffix-scoping, and .txt does not weaken it.
 #   research/**           602 .md but ALSO 14 .py among the outliers
-#                         today -> scoped to `.md` ONLY.
+#                         today -> scoped to `.md` + `.txt` (v9, same
+#                         measurement: 11 tracked .txt, same exclusions).
 #   .claude/skills/**     12/12 files are .md -> scoped to `.md`.
 #   .claude/rules/**       7/7 files are .md -> scoped to `.md`.
 #   .claude/commands/**    5/5 files are .md -> scoped to `.md`.

@@ -11,6 +11,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import plistlib
+import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -751,3 +752,93 @@ def test_parse_plist_genuinely_corrupt_returns_none(tmp_path):
     p = tmp_path / "corrupt.plist"
     p.write_text("this is not xml and not a plist")
     assert lar.parse_plist(p) is None
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# origin/main attribution (W106b) — a checkout N commits behind must not
+# read as a HOME-fork when the LIVE copy already matches the fleet's copy.
+# Twin of test_home_fork_stale_side_attribution.py's git fixture, adapted to
+# reconcile()'s API (agents_dir/repo_dir/loaded_labels, not declared pairs).
+# ─────────────────────────────────────────────────────────────────────────
+
+def _git(repo, *args):
+    subprocess.run(["git", "-C", str(repo), *args], check=True,
+                    capture_output=True, timeout=30)
+
+
+def _git_world(tmp_path):
+    """A fake HOME + a REAL git repo whose origin/main can diverge from the
+    working tree, mirroring a checkout that trails the fleet."""
+    home = tmp_path / "home"
+    agents = home / "Library" / "LaunchAgents"
+    agents.mkdir(parents=True)
+    repo = tmp_path / "repo"
+    (repo / "infra" / "launchagents").mkdir(parents=True)
+    (repo / "scripts").mkdir(parents=True)
+    _git(repo, "init", "-q", "-b", "main")
+    _git(repo, "config", "user.email", "t@example.invalid")
+    _git(repo, "config", "user.name", "t")
+    return {"home": home, "agents": agents, "repo": repo}
+
+
+def _publish_origin_main(repo, rel, content):
+    """Commit `content` at `rel`, then stamp refs/remotes/origin/main at HEAD
+    — the working tree keeps whatever is on disk; only the ref moves."""
+    p = repo / rel
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(content)
+    _git(repo, "add", rel)
+    _git(repo, "commit", "-qm", "publish")
+    head = subprocess.run(
+        ["git", "-C", str(repo), "rev-parse", "HEAD"],
+        capture_output=True, text=True, check=True, timeout=30,
+    ).stdout.strip()
+    _git(repo, "update-ref", "refs/remotes/origin/main", head)
+
+
+def test_checkout_stale_target_not_flagged_as_home_fork(tmp_path):
+    """The bug this PR fixes: origin/main moved the canon forward, the LOCAL
+    checkout has not caught up, but the LIVE copy already matches origin/main.
+    Must land in checkout_stale_target, NEVER home_fork_target — flagging it
+    as a fork and 'realigning' would overwrite a current file with a stale
+    one (the exact W106b damage shape)."""
+    w = _git_world(tmp_path)
+    rel = "scripts/wrapper.sh"
+    _publish_origin_main(w["repo"], rel, "#!/bin/sh\necho origin-version\n")
+    # Now let the LOCAL checkout drift behind: an older commit's content,
+    # simulating a checkout that never pulled origin/main's latest.
+    (w["repo"] / rel).write_text("#!/bin/sh\necho stale-checkout-version\n")
+    live = w["home"] / ".nuzantara-cron" / "wrapper.sh"
+    live.parent.mkdir(parents=True)
+    live.write_text("#!/bin/sh\necho origin-version\n")  # matches origin/main
+    write_plist(
+        w["agents"] / "com.balizero.uptodate.plist",
+        "com.balizero.uptodate",
+        program_args=[str(live)],
+    )
+    r = run_reconcile(w, loaded=None)
+    assert r["home_fork_target"] == []
+    assert [h["label"] for h in r["checkout_stale_target"]] == ["com.balizero.uptodate"]
+    assert r["checkout_stale_target"][0]["canon"] == rel
+
+
+def test_home_fork_still_flagged_when_live_diverges_from_origin_too(tmp_path):
+    """Guilt case: origin/main and the local checkout agree (checkout is
+    current), but the LIVE copy genuinely differs — a real fork, not a
+    checkout-staleness artifact. Must stay in home_fork_target."""
+    w = _git_world(tmp_path)
+    rel = "scripts/wrapper.sh"
+    _publish_origin_main(w["repo"], rel, "#!/bin/sh\necho repo-version\n")
+    (w["repo"] / rel).write_text("#!/bin/sh\necho repo-version\n")  # current
+    live = w["home"] / ".nuzantara-cron" / "wrapper.sh"
+    live.parent.mkdir(parents=True)
+    live.write_text("#!/bin/sh\necho drifted-version\n")
+    write_plist(
+        w["agents"] / "com.balizero.realfork.plist",
+        "com.balizero.realfork",
+        program_args=[str(live)],
+    )
+    r = run_reconcile(w, loaded=None)
+    assert r["checkout_stale_target"] == []
+    assert [h["label"] for h in r["home_fork_target"]] == ["com.balizero.realfork"]
+    assert "DIVERGED from canon" in r["home_fork_target"][0]["detail"]
