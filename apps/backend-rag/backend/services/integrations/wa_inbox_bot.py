@@ -45,6 +45,7 @@ import httpx
 from backend.app.core.config import settings
 from backend.app.rag_proxy import get_rag_worker_url
 from backend.channels.format import format_rich_text
+from backend.services.integrations.human_escalation_notifier import notify_human_telegram
 from backend.services.integrations.wa_bot_outcomes import BotStandingCondition
 from backend.services.rag.agentic._reasoning_stubs import get_localized_stub
 from backend.services.rag.agentic.query_helpers import detect_query_language
@@ -388,6 +389,11 @@ async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
         resp.raise_for_status()
         data = resp.json()
 
+    # Why a human needs to look at this thread, or None. Set at most once —
+    # every later site guards on `is None`, so the FIRST (most specific) cause
+    # is the one reported rather than whichever check happens to run last.
+    human_reason: str | None = None
+
     if data.get("abstain"):
         # Never surface the endpoint's raw answer on this branch. The baseline
         # caught an abstain-labelled payload that still asserted Rp 10bn.
@@ -397,6 +403,7 @@ async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
             data.get("abstain_reason"),
         )
         answer = _safe_abstain_reply(query)
+        human_reason = "rag_abstain"
     else:
         answer = (data.get("answer") or "").strip()
         if not answer:
@@ -409,8 +416,19 @@ async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
                 thread_id,
             )
             answer = _safe_abstain_reply(query)
+            if human_reason is None:
+                human_reason = "internal_monologue_leak"
 
         # Strip an [ESCALATE] marker if the persona emitted one (mirror whatsapp_chat.py).
+        #
+        # Until now this MIRRORED THE FORM AND NOT THE EFFECT: `whatsapp_chat.py`
+        # captures the same marker, strips it, sends the answer and then calls
+        # `notify_human_telegram`. This module deleted the marker and called
+        # nothing — the persona asked for a human and the request was erased in
+        # transit. Verified on main before this change: zero telegram/notify
+        # references in the whole file.
+        if "[ESCALATE]" in answer and human_reason is None:
+            human_reason = "persona_escalate_marker"
         answer = answer.replace("[ESCALATE]", "").strip()
         if not answer:
             raise RuntimeError(
@@ -426,6 +444,8 @@ async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
                 "serving localized safe abstention",
                 thread_id,
             )
+            if human_reason is None:
+                human_reason = "workflow_only_output"
             answer = _safe_abstain_reply(query)
 
     # Channel boundary: convert the orchestrator's generic markdown into
@@ -461,4 +481,31 @@ async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
         post_format_len,
         pre_format_len,
     )
+
+    if human_reason is not None:
+        # One call site rather than four, because all four upstream causes mean
+        # the same thing operationally: the client did not get an answer to what
+        # they asked (or explicitly asked for a person). `accepted` is named for
+        # what it proves and no more — Telegram took the message. It does NOT
+        # mean a person is on shift, has read it, or owns the thread, and the
+        # copy the client reads is deliberately unchanged by this branch, so
+        # nothing here can turn into a promise of a reply.
+        #
+        # Body withheld on purpose (`message_text=None`): routing a NEW trigger
+        # through the cleartext payload would widen exactly the third-party
+        # exposure CLAUDE.md §14 constrains. The thread ref is what makes the
+        # omission workable — the notified human can open the thread.
+        accepted = await notify_human_telegram(
+            phone=phone,
+            message_text=None,
+            reason=human_reason,
+            thread_ref=str(thread_id),
+        )
+        logger.info(
+            "wa-inbox bot: thread %s needs a human (reason=%s), telegram accepted=%s",
+            thread_id,
+            human_reason,
+            accepted,
+        )
+
     return answer
