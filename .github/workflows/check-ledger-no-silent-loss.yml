@@ -12,6 +12,15 @@
 # and hand-resolving it by keeping one side, silently dropping the other
 # side's rows.
 #
+# Second invariant, added 2026-08-12: the remedy this check prescribes for
+# the first one (`git merge origin/main`) is itself how rows get
+# DUPLICATED — union keeps both versions of any hunk both sides edited, and
+# an open row whose body is updated in place on both sides lands twice.
+# Measured on origin/main the day it was added: 401 open rows, 398 distinct
+# identities, 3 pairs — one of them disagreeing with itself on the OWNER
+# field. Baseline is "copies must not GROW vs main/merge-base", not "zero
+# duplicates", so those inherited pairs do not paint every ledger PR red.
+#
 # NON-REQUIRED by design (same posture as check-kbli-dataset-sync.yml): the
 # check cannot distinguish "accidentally dropped" from "legitimately closed
 # — arming PROVEN live" using git history alone (both are just a line
@@ -89,7 +98,7 @@ jobs:
           set -uo pipefail
           python -m pytest scripts/tests/test_check_ledger_no_silent_loss.py -q
 
-      - name: No silent loss across the ledger merge
+      - name: No silent loss and no silent duplication across the ledger merge
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
