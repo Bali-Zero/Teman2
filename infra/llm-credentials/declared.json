@@ -1,0 +1,28 @@
+{
+  "_comment": [
+    "Credentials ALLOWED to make successful Gemini (generativelanguage) calls on the",
+    "Google project that funds the production bot. Read by scripts/llm_provider_reconcile.py.",
+    "",
+    "Entries carry sha256(credential_uid)[:16], NOT the uid itself: this repo is public, and",
+    "an infrastructure identifier does not need to travel with it. The uid is not a secret",
+    "(it authenticates nothing) — this is minimisation, not secrecy.",
+    "",
+    "To declare a credential you have decided is legitimate:",
+    "  python3 -c \"import hashlib;print(hashlib.sha256('<uid>'.encode()).hexdigest()[:16])\"",
+    "and add it below WITH a label saying what spends on it and who owns it.",
+    "",
+    "WHY THIS FILE EXISTS (2026-08-12): a dev key created on M5 for a verifier A/B made 5,344",
+    "successful billable calls over three days, none of them visible to the cost ledger, and",
+    "drained the prepay balance the production WhatsApp bot spends from — the bot went silent.",
+    "Every repo-side cost check reads the ledger, so every one of them was blind by",
+    "construction. Google's Cloud Monitoring is the independent observer."
+  ],
+  "credentials": [
+    {
+      "sha256_16": "ddea903c496cd26c",
+      "label": "Gemini_API_Key — production backend (nuzantara-rag on Fly). The ONE key the cost ledger proxies.",
+      "owner": "backend-rag",
+      "declared": "2026-08-12"
+    }
+  ]
+}
