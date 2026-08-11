@@ -11,8 +11,16 @@ import { Star, Users, ShieldCheck, Clock } from "lucide-react";
 export function TrustBar(): React.ReactElement {
   return (
     <>
-      {/* Desktop inline variant — single minimal row */}
-      <div className="hidden md:flex items-center gap-6 flex-wrap text-[9px] leading-tight text-[#475372]">
+      {/* Desktop inline variant — P1/P2: raised from 9px to 12px.
+          Text is inside the hero's dark scrim overlay; text-shadow adds
+          safety on lighter photo patches (was ~1.5:1 without it). */}
+      <div
+        className="hidden md:flex items-center gap-6 flex-wrap text-[12px] leading-tight"
+        style={{
+          color: "rgba(255,255,255,0.82)",
+          textShadow: "0 1px 8px rgba(0,0,0,0.7)",
+        }}
+      >
         <span className="inline-flex items-center gap-1">
           <Star size={10} className="fill-current text-[#fbbf24]" />
           <span>4.9 ★ · 627 Reviews</span>
