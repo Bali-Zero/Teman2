@@ -629,6 +629,7 @@ class OrchestratorCore:
                 return ""
 
             blocks: list[str] = []
+            injected_refs: list[str] = []
             for hit in search_result.get("results", []):
                 if not isinstance(hit, dict):
                     continue
@@ -662,9 +663,30 @@ class OrchestratorCore:
                     # here (the harvester skips them for the Qdrant sink too),
                     # but skip defensively rather than inject an empty block.
                     continue
+                # `source_ref` is INTERNAL PROVENANCE and deliberately does NOT
+                # go into the prompt. It used to: the label read
+                # `[CURATED {source_ref} {source_date}]`, and since
+                # `zantara_core.py` orders the model to cite its source
+                # ("📜 Sumber: [Nama Peraturan], Pasal [X]"), the model
+                # obediently cited what it had been handed. Measured live on
+                # 2026-08-11: four of eight probed answers printed
+                # `📜 Sumber: … ; CURATED FINAL-v2.md#Q7` to the client — an
+                # internal repo artifact offered as a legal source.
+                #
+                # It is not a corner case. Scrolled the whole live collection:
+                # **808 of 808** points carry an internal-looking `source_ref`
+                # (`FINAL.md#Q1` … `#Q14`, 456 distinct) and ZERO carry a
+                # citable regulation name. So there is nothing here a client
+                # may ever see, and removing it loses no citation — the
+                # regulation the answer rests on is named inside `answer`
+                # itself, which is what the model should cite.
+                #
+                # It goes to the log instead, where provenance actually gets
+                # used (debugging "which vetted row produced this answer").
                 source_ref = metadata.get("source_ref", "unknown")
                 source_date = metadata.get("source_date", "unknown")
-                blocks.append(f"[CURATED {source_ref} {source_date}]\n{answer}")
+                injected_refs.append(str(source_ref))
+                blocks.append(f"[CURATED · vetted {source_date}]\n{answer}")
 
             if not blocks:
                 return ""
@@ -677,11 +699,20 @@ class OrchestratorCore:
                 pass
 
             logger.info(
-                "✅ [CuratedQA] Injected %d curated evidence block(s) for query",
+                "✅ [CuratedQA] Injected %d curated evidence block(s) for query (refs: %s)",
                 len(blocks),
+                ", ".join(injected_refs),
             )
             return (
                 "\n\n--- CURATED KNOWLEDGE (high-priority, pre-vetted evidence) ---\n"
+                # Second line of defence, and the reason it is phrased as a
+                # prohibition rather than a description: the blocks below no
+                # longer CONTAIN an internal identifier, so the only thing left
+                # for the model to mistake for a source is the `[CURATED …]`
+                # marker itself. Say so once here rather than per block.
+                "These are internal pre-vetted answers, not published sources. "
+                "Never cite this section, the word CURATED, or any marker from "
+                "it — cite only the regulation named inside the text.\n"
                 + "\n\n".join(blocks)
             )
         except Exception as e:
