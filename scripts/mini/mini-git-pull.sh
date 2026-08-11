@@ -216,6 +216,33 @@ cd "$REPO" 2>/dev/null || { log "FATAL: $REPO not found"; exit 1; }
 # Sane PATH under launchd (no shell rc files sourced).
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
+# ---- SOS probe (temporary, 2026-08-11) -------------------------------------
+# Every INBOUND connection to this host has been reset ~250 ms after the
+# handshake since 2026-08-10 (sshd, VNC, redis, ollama, ARD alike) while this
+# pull's own outbound SSH works perfectly, a power-cycle changed nothing, and
+# the site has no keyboard. This pull is therefore the only proven-live code
+# path into the Mini, so it carries a probe that reports out through the SSH
+# direction that still works.
+#
+# IT RUNS HERE, NOT AT THE END, AND THAT PLACEMENT IS THE WHOLE POINT. The
+# first version sat after the pull logic and therefore below FOUR early exits —
+# not on main, both fetches failed, already-up-to-date (by far the common case:
+# ~287 of every 288 daily ticks), local-ahead. A rescue instrument that only
+# fires when main happens to move is not a rescue instrument, it is a
+# side-effect of unrelated merge traffic. Here it runs on every tick that gets
+# past the single-instance lock, which is what "every 5 minutes" was supposed
+# to mean. (Second time in one day I built an instrument structurally incapable
+# of reporting the thing it was built for — cf. the merge monitor that only
+# watched for success and so could not distinguish a red PR from a slow one.)
+#
+# Fail-open by construction: it can neither block nor fail the pull, which
+# remains this script's actual job. Remove this block together with the probe
+# once the Mini is reachable again.
+if [ -f "$REPO/scripts/mini/mini_sos_report.sh" ]; then
+  /bin/bash "$REPO/scripts/mini/mini_sos_report.sh" || \
+    log "  SOS probe exited non-zero (ignored — the pull is what matters)"
+fi
+
 # Skip if not on main — Mini may be temporarily on a feature branch.
 BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
 if [ "$BRANCH" != "main" ]; then
@@ -448,18 +475,4 @@ if [ "$STASHED" = "1" ]; then
       "stash pop conflict on Mini after ff-pull to ${NEW_HEAD}. \`git status\` + \`git stash list\` on Mini."
     # Don't exit error — pull succeeded. Conflict is a separate issue.
   fi
-fi
-
-# ---- SOS probe (temporary, 2026-08-11) -------------------------------------
-# Every INBOUND connection to this host has been reset ~250 ms after the
-# handshake since 2026-08-10 (sshd, VNC, redis, ollama, ARD alike) while this
-# pull's own outbound SSH works perfectly, a power-cycle changed nothing, and
-# the site has no keyboard. This pull is therefore the only proven-live code
-# path into the Mini, so it carries a read-only probe that reports out through
-# the SSH direction that still works. The probe cures nothing on purpose (see
-# its header) and runs last, fail-open, so it can neither block nor fail the
-# pull. Remove this block together with the probe once the Mini is reachable.
-if [ -f "$REPO/scripts/mini/mini_sos_report.sh" ]; then
-  /bin/bash "$REPO/scripts/mini/mini_sos_report.sh" || \
-    log "  SOS probe exited non-zero (ignored — the pull is what matters)"
 fi
