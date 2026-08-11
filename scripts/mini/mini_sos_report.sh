@@ -41,7 +41,16 @@ log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"; }
 # Guard 1 — node. This file ships to every machine in the repo; only the
 # patient runs it. mini-git-pull.sh has no node guard of its own, and its
 # test harness runs it with a synthetic HOME, so the guard must live here.
-if [ "$(hostname -s | tr '[:upper:]' '[:lower:]')" != "$SOS_HOST" ]; then
+# The hostname is a NAME and names drift; the Tailscale address is the identity
+# this whole rescue is addressed to, and it is the one I can verify from the
+# outside (the Pro reads it from `tailscale status --json`). Accept either, so a
+# machine renamed at some point in its life is still recognised as the patient.
+# It cannot misfire elsewhere: the Pro and M5 hold different Tailscale IPs.
+SOS_TSIP="100.93.236.6"
+_is_patient=0
+[ "$(hostname -s 2>/dev/null | tr '[:upper:]' '[:lower:]')" = "$SOS_HOST" ] && _is_patient=1
+ifconfig 2>/dev/null | grep -q "inet $SOS_TSIP\b" && _is_patient=1
+if [ "$_is_patient" != "1" ]; then
     exit 0
 fi
 
