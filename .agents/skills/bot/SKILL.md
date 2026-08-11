@@ -22,6 +22,79 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 
 ## 1. LIVE STATE (last update 2026-08-11 — keep current)
 
+- **📊 WHAT CLIENTS ACTUALLY ASK — 993 REAL TEAM CONVERSATIONS, AND THE RANKING CORRECTS OUR OWN
+  PROBING (2026-08-11).** Zero handed the session a Case Captain intelligence pack derived from the
+  team's WhatsApp history (`~/Desktop/WA-Case-Captain-Intelligence-2026-08-11`, local, `0600`,
+  read-only — **not in the repo, and it must not be**). Verified before use, not believed: 14/14
+  sha256 in its manifest match, **zero client PII** across every md/json (pattern-scanned), the
+  sqlite carries **no raw-chat column**, and all **7 acceptance gates hold with 0 violations**
+  (including "0 assets simultaneously generator- and grader-eligible"). Of 12,270 candidates,
+  **0 are production-eligible, 0 authorise `send_whatsapp`, 0 a CRM mutation, 0 an automated HR
+  action** — the whole registry is review-only by construction.
+  - **The client-topic ranking (`DOMAIN`, out of 3,439 classified):** IMMIGRATION **709** ·
+    FOLLOW_UP_STATUS **550** · DOCUMENT_OPERATIONS **533** · PAYMENTS **392** · CORPORATE **346** ·
+    PRICING_SALES **314** · COMPLAINT_RETENTION 172 · TAX_ACCOUNTING 162 · PROPERTY 139.
+  - **It found a hole in MY measurement, which is the point of having it.** Every probe campaign
+    this session covered immigration / corporate / tax / property / KBLI / compliance and
+    **zero** document-operations and **zero** payments — 27% of what clients actually ask, never
+    measured, and invisible until the real distribution named it. A probe set built from what the
+    engineer finds interesting will mis-rank the product every time.
+  - **896 candidates are `CURATED_QA_STAGING`**, every one of them flagged
+    `synthetic_rewrite_required` AND `independent_review_required` (896/896 both). That is the
+    lane that could close the recall gap logged below — but nothing here is ingestible as-is, and
+    the safety claim the design rests on is REAL and already armed in code:
+    `apps/backend-rag/scripts/curated_qa_source_allowlist.py` carries
+    `FORBIDDEN_SOURCE_MARKERS = ("meta_inbox_messages",)` with case-insensitive guilt tests.
+  - **⚠️ THREE OF THE PACK'S 15 CITED IMPLEMENTATION SURFACES ARE WRONG — checked against
+    `origin/main`, not against a checkout.** `curated_qa_source_allowlist.py` is under
+    `apps/backend-rag/scripts/`, NOT `backend/services/rag/`; `curated_qa_pricing_detector.py` is
+    under `backend/services/misc/`, NOT `backend/services/rag/`; and
+    **`scripts/whatsapp_corpus/compile_team_dashboard_assets.py` EXISTS NOWHERE ON `origin/main`
+    — it is a phantom**, cited as the "existing review-only registry pattern", i.e. as the very
+    precedent the registry design claims to follow. Nothing in this repo generates that document,
+    so the citations cannot be fixed at a generator: **re-grep every path before building on it.**
+
+- **🚨 THE #2 CLIENT TOPIC IS THE ONE CAPABILITY THE BOT DOES NOT HAVE — AND IT ASKS FOR PASSPORT
+  NUMBERS (2026-08-11, 9 synthetic questions, no client PII).** Probing the two classes the
+  ranking exposed as unmeasured, plus the no-CRM class asked **three times** (the beta-test claim
+  "four behaviours" is a claim about VARIANCE — one run cannot test it):
+  - **FOLLOW_UP_STATUS (550 conversations, 16% of the corpus).** Three identical asks →
+    `ctx=0, evidence=0.0, abstain=true` all three, and lengths **240 / 429 / 1,721** — a 7×
+    spread on one question. All three solicit **full name, passport number or application ID**,
+    which the bot has no CRM to look anything up with: it invites a client to send identity
+    documents into a channel where nothing will consume them. A second batch (6 runs, fresh
+    subject each, `max_steps` 1/2/3) reproduced the solicitation **6/6 — so 9 of 9 across both
+    batteries.** That is the stable defect on this class.
+  - **What did NOT survive re-measurement, and the correction matters more than the finding.**
+    Two of the first three opened with "I **still** need…" on a FIRST message with
+    `conversation_history: []`, and an earlier draft of this entry called that "the
+    false-continuity defect, third reproduction today". The hypothesis under test was that the
+    ReAct loop narrates its OWN failed retrieval step back to the client (the class cured in
+    `reasoning.py` this morning), which predicts the wording tracks `max_steps`. **It does not:
+    0/6, including 2/2 at `max_steps=2` — the exact setting that produced it twice an hour
+    earlier.** Memory contamination was already ruled out by construction (every probe gets its
+    own fresh subject). So on this class the false continuity is a **stochastic wording, not a
+    structural defect**, and nothing in the loop should be "fixed" for it. Whether the drift seen
+    on OTHER shapes is the same nothing is unmeasured — do not generalise this either way.
+  - **Already blocked on WhatsApp, and not by luck** — `wa_inbox_bot._abstain_answer_worth_sending`
+    (PR #4050, written this morning after a two-seat adversarial review) refuses to send when
+    `context_length <= 0 or evidence <= 0.0`, which is exactly this shape. The gate was written
+    against a different measurement and covers this one. **Open question, NOT established:** no
+    channel adapter contains a single reference to `abstain` (measured: 0 across every file in
+    `channels/`), but I did not establish that any non-WhatsApp surface renders this payload —
+    `instagram_chat.py` (284 lines) produces no RAG answer at all. Measure it before curing it.
+  - **DOCUMENT_OPERATIONS (533, #3): hedge-then-generalize.** Retrieval SUCCEEDS (`ctx=8`) and the
+    answer still opens "the specific list of documents … is not detailed in the provided context",
+    then answers anyway from general knowledge. The asks are about OUR intake requirements
+    ("original akta or is a scan enough?" → `ctx=1`, answered with generic Indonesian practice) —
+    a business fact, not a legal one, and generic practice is not an answer to it.
+  - **PAYMENTS (392, #4): one honest, one gap, one off-target.** "How do I pay you?" → an honest
+    352-char refusal that routes to the team (the shape we want). "Do your prices include VAT?" →
+    honest KB gap. But **"can I pay in two instalments?" was answered about PT PMA capital
+    deposits** — the client asked about paying Bali Zero, the bot answered about paying the state.
+    Same class as the beta test's chart-of-accounts miss, on the 4th-most-common topic.
+  - Health on this batch: **9/9 answered, 0 over the 4,096 limit**, 15–56s.
+
 - **🔢 THE LONGEST ANSWER IS NOT A LONG ANSWER — IT IS 6,823 COPIES OF ONE LINE (2026-08-11,
   measured live, cured in `orchestrator_core._format_workflow_for_prompt`).** Probing ten core
   service questions cold (one run each, `channel=whatsapp`, generic questions, no client PII),
