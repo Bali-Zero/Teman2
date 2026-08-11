@@ -147,6 +147,26 @@ async def _tell_a_human(*, phone: str, reason: str, thread_id: Any) -> bool:
     ``False`` also covers "suppressed by the 30-minute per-thread dedup", so it
     never means "nobody was ever told about this thread" — which is also why
     the outbox worker's five retries produce one alert, not five.
+
+    **Scope, declared rather than left to be inferred: 3 of the 5 exits that
+    raise out of ``generate_bot_reply`` call this.** The three are the
+    ``RuntimeError`` ones — "we tried and produced nothing". The two
+    ``BotStandingCondition`` exits (feature flag off; no customer message in
+    the loaded window) deliberately do NOT, because that exception class
+    exists precisely to say "standing condition, not an incident": the
+    flag-off branch alone accounts for 44 of the give-ups recorded in
+    ``meta_inbox_messages`` (3-19 June, the bot simply switched off), and
+    alerting on those is the noise the per-thread dedup exists to prevent.
+    If that judgement is ever revisited, revisit it here — do not add a
+    fourth call site and leave this paragraph saying three.
+
+    Why this is worth having at all, measured on the live tables rather than
+    argued: 40 threads, **32** with at least one bot give-up, and **4** ever
+    touched by a human (``handling_version > 0``, max 1) in the whole history.
+    The five threads silenced on 2026-07-28 — the team-beta day — carry 34
+    give-ups between them and ``handling_version = 0`` on every one. The
+    module docstring's "the operator can take over the thread" was never
+    honoured on the threads that invoked it.
     """
     try:
         accepted = await notify_human_telegram(
