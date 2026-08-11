@@ -169,7 +169,7 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
         facts?: Record<string, unknown>;
       };
       expect(body.assessment_id).toMatch(/^[0-9a-f-]{36}$/);
-      expect(Object.keys(body.facts ?? {})).toHaveLength(40);
+      expect(Object.keys(body.facts ?? {})).toHaveLength(41);
 
       if (state === "SUPPORTED_CANDIDATES") {
         await expect(page.getByText("Visit Visa C1")).toBeVisible();
