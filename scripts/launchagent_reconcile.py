@@ -455,6 +455,31 @@ def _is_under(path: Path, root: Path) -> bool:
         return False
 
 
+def origin_main_blob(root: Path, rel: str) -> Optional[bytes]:
+    """Bytes of `origin/main:<rel>` — the fleet's copy, never this checkout's.
+
+    W106b (2026-07-27→08-08): comparing a HOME payload against the LOCAL
+    checkout mistakes checkout staleness for a real fork. A checkout N
+    commits behind origin/main makes every file origin/main touched in that
+    window look "diverged" from a live copy that already matches the fleet.
+    lint_home_fork.origin_main_sha and proprioception.origin_main_sha carry
+    the identical helper for the identical reason — pinned as twins by
+    test_home_fork_stale_side_attribution.py; if you change the attribution
+    rule here, change those too (superscar #9: three tools, one lesson,
+    don't cure only one — that is how this gap survived until now).
+    """
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(root), "show", f"origin/main:{rel}"],
+            capture_output=True, timeout=15,
+        )
+        if proc.returncode != 0:
+            return None
+        return proc.stdout
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+
+
 # ─────────────────────────────────────────────────────────────────────────
 # The reconcile pass
 # ─────────────────────────────────────────────────────────────────────────
@@ -534,6 +559,7 @@ def reconcile(
 
     broken_target = []
     home_fork_target = []
+    checkout_stale_target = []
     canon_paired = []
     repo_divergent = []
     repo_symlinked = []
@@ -588,12 +614,37 @@ def reconcile(
                 # the disease this whole tool exists to catch (superscar #1).
                 pass
             else:
-                detail = (
-                    f"DIVERGED from canon {canon.relative_to(repo_root)}" if canon is not None
-                    else "no repo canon (basename not found under scripts/, infra/, or apps/*/scripts/)"
-                )
-                home_fork_target.append({"label": label, "file": f.name, "target": t,
-                                         "detail": detail})
+                # Before crying HOME-fork: is the live copy actually current
+                # (matches origin/main) while it's only THIS checkout that's
+                # behind? filecmp above already proved live != local canon —
+                # this asks the fleet's copy, not the checkout's, which side
+                # is stale (W106b).
+                canon_rel = canon.relative_to(repo_root).as_posix() if canon is not None else None
+                checkout_stale = False
+                if canon_rel is not None:
+                    upstream = origin_main_blob(repo_root, canon_rel)
+                    if upstream is not None:
+                        try:
+                            live_bytes = rp.read_bytes()
+                        except OSError:
+                            live_bytes = None
+                        checkout_stale = live_bytes is not None and live_bytes == upstream
+                if checkout_stale:
+                    checkout_stale_target.append({
+                        "label": label, "file": f.name, "target": t, "canon": canon_rel,
+                        "detail": (
+                            f"the LIVE copy already matches origin/main:{canon_rel} — "
+                            "this checkout is behind, not the live copy a fork. Update "
+                            "the checkout; do NOT realign the live copy from it."
+                        ),
+                    })
+                else:
+                    detail = (
+                        f"DIVERGED from canon {canon.relative_to(repo_root)}" if canon is not None
+                        else "no repo canon (basename not found under scripts/, infra/, or apps/*/scripts/)"
+                    )
+                    home_fork_target.append({"label": label, "file": f.name, "target": t,
+                                             "detail": detail})
             break
 
         twin = repo_infra / f.name
@@ -625,6 +676,7 @@ def reconcile(
         "present_not_loaded": present_not_loaded,
         "broken_target": broken_target,
         "home_fork_target": home_fork_target,
+        "checkout_stale_target": checkout_stale_target,
         "canon_paired": canon_paired,
         "repo_divergent": repo_divergent,
         "repo_symlinked": repo_symlinked,
@@ -702,6 +754,11 @@ def render_markdown(report: dict, verdicts) -> str:
     section(
         "HOME-fork target (superscar #1)", report["home_fork_target"],
         lambda h: f"- `{h['label']}` → `{h['target']}` ({h.get('detail', 'under $HOME, outside repo/deploy, not a repo symlink')})",
+    )
+    section(
+        "Checkout-stale target (not a fork — W106b: this checkout is behind origin/main)",
+        report.get("checkout_stale_target", []),
+        lambda h: f"- `{h['label']}` → `{h['target']}` (matches `origin/main:{h['canon']}`)",
     )
     section(
         "Canon-paired HOME target (byte-identical to repo canon — W84-safe placement, not a fork)",
@@ -812,6 +869,7 @@ def main(argv=None) -> int:
             f"{len(report['present_not_loaded'])} not-loaded, "
             f"{len(report['broken_target'])} broken-target, "
             f"{len(report['home_fork_target'])} home-fork, "
+            f"{len(report.get('checkout_stale_target', []))} checkout-stale, "
             f"{len(report.get('canon_paired', []))} canon-paired, "
             f"{len(report['repo_divergent'])} repo-divergent. "
             f"Report: {out}"
