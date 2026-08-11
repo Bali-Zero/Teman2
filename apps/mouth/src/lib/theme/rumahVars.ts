@@ -52,6 +52,10 @@ export const RUMAH_VARS = {
   "--rp-glow": "none",
   "--rp-photo-inset": "24px",
   "--rp-photo-radius": "16px",
+  // P1 contrast fix: #FF2D4C (global token) = 3.66:1 on white — fails AA for 15px text.
+  // #D01033 = 4.64:1 on white, passes 4.5:1. Scoped here so only homepage + blog pages
+  // see the darker red; portal/other pages keep the global #FF2D4C token.
+  "--cta-primary-bg": "#D01033",
 } as CSSProperties;
 
 /**
