@@ -32,8 +32,8 @@ set -u
 
 SOS_DEADLINE="2026-08-25"
 SOS_HOST="mini-pro2"
-MARKER="$HOME/.nuzantara-sos-inbound-2026-08-11.delivered"
-CURE_MARKER="$HOME/.nuzantara-sos-inbound-2026-08-11.cure-attempted"
+MARKER="$HOME/.nuzantara-sos-inbound-2026-08-11.delivered-v2"
+CURE_MARKER="$HOME/.nuzantara-sos-inbound-2026-08-11.cure-attempted-v2"
 LOG_FILE="$HOME/logs/mini-sos-report.log"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"; }
@@ -135,6 +135,39 @@ if sudo -n true 2>/dev/null; then
 else
     echo "NO — round 2 is limited to unprivileged actions" >> "$OUT"
 fi
+
+# --- THE MEASUREMENT THAT SEPARATES THE TWO REMAINING CAUSES.
+# Watched from the Pro, an inbound connection to this host completes the
+# three-way handshake and then never ACKs a byte (send-queue frozen at 57
+# across 20+ seconds, then FIN_WAIT_2). Two mechanisms produce that and they
+# need opposite cures:
+#
+#   (a) the application firewall accepts and then terminates -> cure is local,
+#       and the section above already took it if the measurement agreed;
+#   (b) tailscaled terminates the TCP connection in userspace and then fails
+#       to hand it to the local service -- e.g. the network extension lost the
+#       macOS Local Network grant. Then the firewall is innocent and flipping
+#       it changes nothing.
+#
+# One test tells them apart, and only this host can run it: dial the SAME port
+# two ways. Over loopback the packet never touches tailscaled; over this host's
+# OWN Tailscale address it goes through the userspace path that a remote peer
+# uses. loopback OK + tailscale-IP FAIL is (b), proven from the inside, and no
+# amount of firewall work would have fixed it. Both failing points back at the
+# host. This costs four seconds and is the difference between curing the cause
+# and curing the first thing that looked plausible.
+section "self-test: loopback vs own tailscale IP"
+for PORT in 22 5900; do
+    for ADDR in 127.0.0.1 100.93.236.6; do
+        if nc -z -G 3 -w 3 "$ADDR" "$PORT" </dev/null >/dev/null 2>&1; then
+            echo "  $ADDR:$PORT  OPEN" >> "$OUT"
+        else
+            echo "  $ADDR:$PORT  FAIL (rc=$?)" >> "$OUT"
+        fi
+    done
+done
+probe "tailscale prefs (netstack/userspace?)" sh -c 'tailscale debug prefs 2>&1 | head -30'
+probe "tailscaled process"                    sh -c 'ps ax -o pid,etime,command | grep -i "[t]ailscale" | head -5'
 
 # --- CONDITIONAL CURE -------------------------------------------------------
 # The header still says the probe cures nothing; that was true of round 1 and
