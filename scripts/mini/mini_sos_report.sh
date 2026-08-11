@@ -205,6 +205,36 @@ elif ! sudo -n true 2>/dev/null; then
     date -u +%Y-%m-%dT%H:%M:%SZ > "$CURE_MARKER" 2>/dev/null
 else
     FW=/usr/libexec/ApplicationFirewall/socketfilterfw
+
+    # Stealth mode first, because it is the setting the outside evidence
+    # actually names. From the Pro: `tailscale ping` answers (52ms) but
+    # `tailscale ping --icmp` gets nothing, while the same ICMP command
+    # against M5 answers in 7ms — a positive control, so the instrument is
+    # not the problem. Taildrop to this host also succeeds, so tailscaled is
+    # healthy and can act locally. Packets therefore ARRIVE, tailscaled
+    # injects them, and this machine's OS refuses to answer. Tailscale's own
+    # help text names that state: "if tailscale ping works but a normal ping
+    # does not, one side's operating system firewall is blocking packets."
+    # Silent drop of ICMP is stealth mode specifically — block-all alone
+    # would still let the kernel answer a ping.
+    #
+    # Turning it off is also what gives us PROOF without waiting for a
+    # report: the moment stealth is off, ICMP from the Pro starts answering,
+    # and that is visible from outside within seconds.
+    STEALTH_BEFORE="$(sudo -n "$FW" --getstealthmode 2>&1)"
+    echo "measured stealth before: $STEALTH_BEFORE" >> "$OUT"
+    case "$STEALTH_BEFORE" in
+        *disabled*|*DISABLED*|*off*|*OFF*)
+            echo "stealth already off — not the cause of the ICMP silence." >> "$OUT" ;;
+        *enabled*|*ENABLED*|*on*|*ON*)
+            echo "stealth is ON — turning it off (reverse: --setstealthmode on)" >> "$OUT"
+            sudo -n "$FW" --setstealthmode off >> "$OUT" 2>&1 || \
+                echo "(--setstealthmode off failed, rc=$?)" >> "$OUT"
+            echo "stealth after: $(sudo -n "$FW" --getstealthmode 2>&1)" >> "$OUT" ;;
+        *)
+            echo "stealth: UNRECOGNISED output — no action." >> "$OUT" ;;
+    esac
+
     BLOCKALL_BEFORE="$(sudo -n "$FW" --getblockall 2>&1)"
     echo "measured before: $BLOCKALL_BEFORE" >> "$OUT"
     # Three-way, and the ORDER is load-bearing: DISABLED contains ENABLED as a
