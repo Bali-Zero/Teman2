@@ -1,0 +1,127 @@
+// Tailscale ACL for tailnet `balizero` (tail461666.ts.net) — policy as code.
+//
+// STATUS: PROPOSED. Not yet applied. The tailnet currently runs the DEFAULT allow-all policy;
+// applying this file is an operator[GUI] action (admin console → Access Controls), because the
+// fleet holds no Tailscale API token and the CLI cannot read or write ACLs. Ledger:
+// .claude/skills/modus/PENDING-ARMS.md.
+//
+// WHY THIS FILE EXISTS
+// Measured on the live tailnet 2026-08-11, from M5, with `tailscale debug netmap`:
+//   * the packet filter is ONE rule — every node → 0.0.0.0/0 ports 0-65535, TCP+UDP+ICMP;
+//   * `tailscale serve` on Pro publishes, TAILNET-WIDE and with no authentication,
+//     https://nuzantara.tail461666.ts.net/term → 127.0.0.1:7681, which is
+//     `ttyd -p 7681 --interface 127.0.0.1 -W zsh`: `-W` is WRITABLE and there is no `-c`
+//     credential flag. GET /term answered 200 from another node.
+// So today ANY device that joins this tailnet gets an unauthenticated, writable zsh shell on
+// Pro as user `nuzantara` — the machine that holds the wa-mirror raw PII, the CRM runtime and
+// ~/.nuzantara-secrets.env. That is acceptable while every node is Zero's own. It stops being
+// acceptable the moment a teammate's daily-driver laptop joins, which is what this policy is
+// for: the CRM's own RBAC (team sees only assigned_to rows) would be bypassed at the network
+// layer, and UU PDP / SYMBIOSIS Law 2 do not bend for convenience.
+//
+// ORDERING IS LOAD-BEARING: apply this policy BEFORE any team device joins. Join-then-restrict
+// leaves a window in which the device holds that shell.
+//
+// WHAT THIS CHANGES FOR THE EXISTING FLEET: nothing at the packet layer. Rule 1 reproduces
+// today's flat behaviour for every device owned by a tailnet member — which is all six current
+// nodes (M5, Pro, Mini, two iPhones, Apple Vision Pro, all owned by antonellosiano@).
+//
+// ONE DELIBERATE NARROWING, declared rather than slipped in: the compiled SSH policy in effect
+// today is `action: accept` with `sshUsers {"*": "=", "root": "root"}` and agent + local +
+// remote port forwarding, principals = every node IP. That grants passwordless ROOT over
+// Tailscale SSH from any tailnet device, with no re-authentication. It is currently LATENT — no
+// node runs the Tailscale SSH server (`RunSSH: false` on M5; Pro advertises no SSH host key, so
+// `tailscale ssh nuzantara@nuzantara` fails with "No ED25519 host key is known"; Mini could not
+// be measured at all — its inbound path is unusable, see README). Because it is latent, dropping
+// the root grant
+// costs zero operational disruption today and disarms it before someone runs `tailscale up
+// --ssh` and arms it by accident. Fleet SSH in daily use is OpenSSH on port 22 with keys, which
+// rule 1 leaves untouched.
+//
+// VALIDATION LIMIT, stated rather than implied: this file was checked three ways — it parses as
+// JSON with the line comments stripped; no `dst` anywhere contains `autogroup:member` (src-only per
+// the ACL syntax reference); and `tag:team-device` appears in no rule's `src`. That is grammar and
+// intent, NOT acceptance. There is no Tailscale API token on the fleet and no offline validator, so
+// the ONLY authority on whether this policy is accepted is the admin console at save time. It
+// validates the `tests` block too. If it refuses, read its message before editing anything here —
+// an earlier draft of this same file used `autogroup:member` as a dst in both `acls` and `ssh`,
+// which the console would have rejected outright.
+{
+  // Magic IPs are stable per node and are not secrets. Used by the `tests` block below.
+  "hosts": {
+    "pro":  "100.107.22.111",
+    "mini": "100.93.236.6",
+    "m5":   "100.110.186.116"
+  },
+
+  // A tagged device is owned by the TAILNET, not by a user, so it is deliberately excluded
+  // from `autogroup:member` — that exclusion is the whole mechanism of rule 2.
+  "tagOwners": {
+    "tag:team-device": ["autogroup:admin"]
+  },
+
+  "acls": [
+    // 1. The existing fleet keeps exactly today's flat reachability among itself.
+    //    The owner is named explicitly rather than written as `autogroup:member:*`: per the ACL
+    //    syntax reference, `autogroup:member` is valid in `src` only, and an autogroup as a `dst`
+    //    is limited to `autogroup:internet` / `autogroup:self` (the latter carrying its own
+    //    src-shape condition). A user is unambiguously valid on BOTH sides, and here it is exact:
+    //    all six current nodes are owned by this one account. If `zero@balizero.com` or the other
+    //    admin ever registers a device, it needs its own rule — they own none today.
+    {
+      "action": "accept",
+      "src":    ["antonellosiano@gmail.com"],
+      "dst":    ["antonellosiano@gmail.com:*"]
+    },
+
+    // 2. A team device is a DESTINATION for support, never a source. This is the direction the
+    //    2026-05-02 decision actually asked for ("Bali Zero retains remote access se serve"):
+    //    we reach the laptop, the laptop does not reach the infrastructure. There is
+    //    deliberately NO rule with `tag:team-device` as src, so it can initiate nothing inside
+    //    the tailnet — no :443/term shell, no Redis, no OpenClaw Control, no sshd, no Ollama.
+    //    5900 is Screen Sharing, per the handoff runbook's on-demand support path.
+    {
+      "action": "accept",
+      "src":    ["antonellosiano@gmail.com"],
+      "dst":    ["tag:team-device:22", "tag:team-device:5900"]
+    }
+  ],
+
+  // Tailscale SSH: preserved for the fleet, root removed (see the note above), and never
+  // granted toward or from tag:team-device. `dst` is `autogroup:self` — an ssh dst takes a user,
+  // a tag or an autogroup, and `autogroup:self` is the shape Tailscale's own default policy uses
+  // with an `autogroup:member` src. It resolves to exactly the fleet here, since every node is
+  // owned by the same account.
+  "ssh": [
+    {
+      "action": "accept",
+      "src":    ["autogroup:member"],
+      "dst":    ["autogroup:self"],
+      "users":  ["autogroup:nonroot"]
+    }
+  ],
+
+  // The console validates these on save. They pin the two properties that matter, in both
+  // directions — a policy shipped with only "accept" tests is the same half-guard mistake the
+  // handoff runbook made (it could report success, never failure).
+  "tests": [
+    {
+      "src":    "antonellosiano@gmail.com",
+      "accept": ["pro:22", "pro:443", "pro:6379", "pro:18789", "mini:22", "mini:11434", "m5:22"]
+    },
+    {
+      // The laptop must not be able to open anything on the fleet — least of all pro:443,
+      // which is where the unauthenticated writable shell lives.
+      "src":  "tag:team-device",
+      "deny": ["pro:443", "pro:22", "pro:6379", "pro:18789", "mini:22", "mini:11434", "m5:22"]
+    }
+  ]
+
+  // NOT TESTED HERE, and the reason is stated rather than hidden: the accept direction toward
+  // the laptop (member → tag:team-device:22) cannot be expressed as a test until the node
+  // exists, because ACL tests need a concrete destination host. Add
+  //   {"src": "antonellosiano@gmail.com", "accept": ["team-laptop-01:22", "team-laptop-01:5900"]}
+  // with `"team-laptop-01": "<its magic IP>"` in `hosts` immediately after enrollment —
+  // that is step 5 of infra/tailscale/enroll-team-device.md, and it is the test that proves
+  // the support path works rather than assuming it.
+}

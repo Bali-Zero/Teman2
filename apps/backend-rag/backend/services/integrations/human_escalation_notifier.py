@@ -17,60 +17,132 @@ does not exist: a direct service→router import is **not** circular today
 (importing `wa_inbox_bot` then `whatsapp_chat` in one interpreter succeeds).
 The reason to extract is layering and drift, not an ImportError.
 
-Two properties deliberately preserved rather than "improved" here, because a
-no-behaviour-change extraction is only worth trusting if it changes nothing:
+Three things the WA-inbox trigger added on 2026-08-11, each because the lane is
+only worth having if the caller can tell what actually happened:
 
-* **The phone is masked, the body is not.** The notification carries
-  ``+{phone[:4]}***{phone[-2:]}`` but the client's full message and the last six
-  conversation turns in cleartext. That is a live third-party exposure
-  (CLAUDE.md §14); any NEW trigger routed here should pass a narrow payload
-  rather than widen it, and that choice belongs to the PR that adds the trigger.
-* **It fails silently.** The send is wrapped in ``except Exception`` and only
-  logs, so a caller cannot tell "a human was told" from "the telling died" —
-  for a lane whose whole purpose is the former, that is the disease itself.
-  Fixing it changes behaviour and needs its own test; it is not smuggled in
-  here.
+* **It returns whether Telegram ACCEPTED the message.** The send used to be
+  wrapped in ``except Exception`` returning ``None``, so a caller could not tell
+  "a human was told" from "the telling died". The boolean is named for what it
+  proves and no more: **``True`` means Telegram accepted a message**, not that a
+  person is on shift, has read it, or owns it. Client-facing copy may say the
+  request was flagged; it may never promise a reply on this boolean.
+* **The body can be withheld.** ``message_text=None`` sends the masked phone,
+  the reason and the thread reference, and says the body was deliberately left
+  out — the WA-inbox trigger uses it, because routing a new trigger through the
+  cleartext payload would widen exactly the third-party exposure CLAUDE.md §14
+  constrains. The router keeps passing the body; that behaviour is unchanged and
+  pinned by a test.
+* **One notification per thread per window.** Without it a client sending ten
+  out-of-domain messages produces ten alerts. In-process TTL map, and it fails
+  **open** — a duplicate alert is a nuisance, a suppressed one is the disease.
+  Declared limit: the API runs on more than one Fly machine, so the real bound
+  is one-per-process-per-window, not exactly one.
+
+Still deliberately unchanged: the phone is masked but the ROUTER's payload still
+carries the client's full message and last six turns in cleartext.
 """
 
 from __future__ import annotations
 
 import logging
-from typing import Any
+import time
 
 from backend.app.core.config import settings
 from backend.services.integrations.telegram_bot_service import telegram_bot
 
 logger = logging.getLogger(__name__)
 
+#: How long a thread stays "already escalated" for dedup purposes.
+ESCALATION_DEDUP_WINDOW_S = 30 * 60
+
+#: thread_ref -> monotonic timestamp of the last accepted notification.
+#: Bounded by _prune_dedup below so a long-lived process cannot grow it forever.
+_recent_escalations: dict[str, float] = {}
+_DEDUP_MAX_ENTRIES = 2048
+
+
+def _prune_dedup(now: float) -> None:
+    """Drop entries older than the window; hard-cap the map as a backstop."""
+    stale = [k for k, ts in _recent_escalations.items() if now - ts >= ESCALATION_DEDUP_WINDOW_S]
+    for k in stale:
+        _recent_escalations.pop(k, None)
+    if len(_recent_escalations) > _DEDUP_MAX_ENTRIES:
+        # Oldest-first eviction. Reaching this means the window is mis-sized or
+        # traffic exploded; either way, dropping the oldest is the safe side —
+        # it can only cause an EXTRA alert, never a suppressed one.
+        for k, _ in sorted(_recent_escalations.items(), key=lambda kv: kv[1])[:512]:
+            _recent_escalations.pop(k, None)
+
+
+def _already_escalated(thread_ref: str | None) -> bool:
+    """True if this thread was notified inside the window.
+
+    Fails OPEN on any surprise: an exception here must never be the reason a
+    human was not told.
+    """
+    if not thread_ref:
+        return False
+    try:
+        now = time.monotonic()
+        _prune_dedup(now)
+        last = _recent_escalations.get(thread_ref)
+        return last is not None and (now - last) < ESCALATION_DEDUP_WINDOW_S
+    # Broad on purpose: dedup is a convenience, and no failure of it may ever be
+    # the reason a human was not told.
+    except Exception as exc:
+        logger.warning("escalation dedup check failed, notifying anyway: %s", exc)
+        return False
+
 
 async def notify_human_telegram(
     phone: str,
-    message_text: str,
+    message_text: str | None,
     sender_name: str | None = None,
     reason: str = "personal_contact",
     client_profile: dict | None = None,
     conversation_history: list[dict] | None = None,
-) -> Any:
+    thread_ref: str | None = None,
+) -> bool:
     """
-    Send Telegram notification to admin with FULL context.
+    Tell a human that a WhatsApp conversation needs them.
 
     Args:
         phone: Sender phone number
-        message_text: Message content
+        message_text: Message content, or None to withhold the body on purpose
         sender_name: Optional sender name
         reason: Escalation reason
         client_profile: Client profile dict (interests, language, etc.)
         conversation_history: Recent conversation messages
+        thread_ref: Meta-inbox thread id — enables per-thread dedup and gives
+            the recipient something to open when the body is withheld
+
+    Returns:
+        True if Telegram ACCEPTED the message on THIS call. Not evidence that a
+        human read it, owns it, or will reply — see the module docstring.
+        A dedup-suppressed call returns False even though the thread was
+        notified minutes ago: the value answers "did this call send", and a
+        caller that phrases client copy from it then says nothing about
+        flagging on the follow-up message, which is the safe way to be wrong.
     """
     if not settings.admin_telegram_chat_id:
         logger.warning("Admin Telegram chat ID not configured, skipping notification")
-        return
+        return False
+
+    if _already_escalated(thread_ref):
+        logger.info(
+            "escalation for thread %s suppressed: already notified within %ss",
+            thread_ref,
+            ESCALATION_DEDUP_WINDOW_S,
+        )
+        return False
 
     reason_emoji = {
         "personal_contact": "👤",
         "explicit_request": "🤚",
         "personal_context": "💬",
         "ai_escalation": "🤖➡️👤",
+        "rag_abstain": "🚫📚",
+        "persona_escalate_marker": "🙋",
     }
 
     emoji = reason_emoji.get(reason, "📩")
@@ -108,13 +180,25 @@ async def notify_human_telegram(
 
     convo_section = "\n".join(convo_lines) if convo_lines else "Nessuna storia"
 
+    # The body is withheld, not missing: say so, and give the recipient the one
+    # thing that makes the omission workable — which thread to open.
+    if message_text is None:
+        message_section = (
+            "_(testo del cliente non incluso di proposito — apri il thread "
+            f"{thread_ref or '?'} nella console WA Meta)_"
+        )
+    else:
+        message_section = message_text
+
+    thread_line = f"\n**Thread:** {thread_ref}" if thread_ref else ""
+
     notification_text = f"""{emoji} **WhatsApp Escalation**
 
 **Da:** {display_name} (+{phone[:4]}***{phone[-2:] if len(phone) > 4 else ""})
-**Motivo:** {reason.replace("_", " ").title()}
+**Motivo:** {reason.replace("_", " ").title()}{thread_line}
 
 **Messaggio:**
-{message_text}
+{message_section}
 
 **Profilo Cliente:**
 {profile_section}
@@ -135,5 +219,12 @@ Rispondi direttamente su WhatsApp!
         logger.info("Telegram notification sent for WhatsApp escalation from %s", phone)
     except Exception as e:
         logger.error("Failed to send Telegram notification: %s", e)
+        return False
+
+    if thread_ref:
+        # Recorded only AFTER an accepted send, so a failed attempt does not
+        # start a window that suppresses the retry.
+        _recent_escalations[thread_ref] = time.monotonic()
+    return True
 
 

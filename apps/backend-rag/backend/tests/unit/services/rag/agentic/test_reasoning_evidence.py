@@ -6,10 +6,11 @@ Policy under test: `detect_trusted_tool_usage` gains an optional
 one of the 4 "quotable" tools (get_pricing, crm_query, timesheet, calculator)
 must also share a literal numeric token with `final_answer` before it grants
 trust — this catches the LLM citing a trusted tool while writing a number the
-tool never returned. Non-quotable tools (team_knowledge, vector_search) and
-the `final_answer=None` case preserve the original unconditional-trust
-behavior exactly (backward compatibility + the declared streaming crm_query
-early-exit limitation).
+tool never returned. Non-quotable structured/exact tools (team_knowledge and
+successful exact kbli_lookup results) and the `final_answer=None` case preserve
+unconditional trust.
+Semantic vector search is intentionally absent from the production allowlist:
+successful-but-irrelevant retrieval must take the relevance-score path.
 """
 
 from typing import Any
@@ -46,7 +47,7 @@ def _make_step(tool_name: str, observation: str | None) -> Any:
 
 
 _TRUSTED_TOOL_NAMES = frozenset(
-    {"calculator", "crm_query", "get_pricing", "team_knowledge", "timesheet", "vector_search"}
+    {"calculator", "crm_query", "get_pricing", "kbli_lookup", "team_knowledge", "timesheet"}
 )
 
 
@@ -186,7 +187,7 @@ class TestQuotableToolMatchTrusted:
         assert result is True
 
 
-class TestNonQuotableToolsUnconditionalTrust:
+class TestNonQuotableStructuredToolsUnconditionalTrust:
     @pytest.mark.unit
     def test_team_knowledge_no_overlap_still_trusted(self):
         obs = (
@@ -203,19 +204,56 @@ class TestNonQuotableToolsUnconditionalTrust:
         assert result is True
 
     @pytest.mark.unit
-    def test_vector_search_no_overlap_still_trusted(self):
+    def test_exact_kbli_lookup_no_overlap_still_trusted(self):
         obs = (
-            "Found 3 matching regulations: KITAS requires sponsor letter, "
-            "health insurance, and valid passport with 18+ months validity."
+            '{"found": true, "code": "51101", "pma": '
+            '{"max_foreign_ownership_percent": 49, "condition": "single majority"}}'
         )
         assert len(obs) > 50
+        step = _make_step("kbli_lookup", obs)
+        result = detect_trusted_tool_usage(
+            [step],
+            _TRUSTED_TOOL_NAMES,
+            final_answer="KBLI 51101 has a restricted foreign ownership regime.",
+        )
+        assert result is True
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "observation",
+        (
+            '{"found": false, "code": "68200", '
+            '"reason": "CODE_NOT_IN_KBLI_2025_CANONICAL"}',
+            '{"found": false, "code": "51101", "error": "DATASET_UNAVAILABLE"}',
+            "not-json but long enough to cross the trusted observation threshold safely",
+            '["valid", "json", "but", "not", "a", "canonical", "record"]',
+        ),
+    )
+    def test_unsuccessful_kbli_lookup_never_grants_trust(self, observation):
+        step = _make_step("kbli_lookup", observation)
+
+        assert (
+            detect_trusted_tool_usage(
+                [step],
+                _TRUSTED_TOOL_NAMES,
+                final_answer="KBLI 68200 is fully open to foreign ownership.",
+            )
+            is False
+        )
+
+    @pytest.mark.unit
+    def test_vector_search_is_not_on_the_trusted_allowlist(self):
+        obs = (
+            "Found a high-scoring but unrelated visa regulation with enough "
+            "text to pass the old observation-length guard."
+        )
         step = _make_step("vector_search", obs)
         result = detect_trusted_tool_usage(
             [step],
             _TRUSTED_TOOL_NAMES,
-            final_answer="You need a sponsor letter and health insurance.",
+            final_answer="KBLI 51101 permits 100 percent foreign ownership.",
         )
-        assert result is True
+        assert result is False
 
 
 class TestFinalAnswerNoneBackwardCompatible:
@@ -254,7 +292,7 @@ class TestQuotableToolNoCheckableLiteral:
 
 class TestMultiStepOrSemantics:
     @pytest.mark.unit
-    def test_one_failing_quotable_step_one_passing_non_quotable_step_trusted(self):
+    def test_one_failing_quotable_step_vector_retrieval_does_not_restore_trust(self):
         failing_obs = (
             '{"service": "PT PMA Setup", "price": 5000000, "notes": '
             '"includes notary and OSS registration fees for the full process"}'
@@ -271,7 +309,7 @@ class TestMultiStepOrSemantics:
             _TRUSTED_TOOL_NAMES,
             final_answer="The requirements are a sponsor letter and health insurance.",
         )
-        assert result is True
+        assert result is False
 
     @pytest.mark.unit
     def test_one_failing_quotable_step_one_passing_quotable_step_trusted(self):
@@ -309,24 +347,18 @@ class TestMultiStepOrSemantics:
 
 
 # ============================================================
-# detect_quotable_relevance_veto — the flipper-bypass fix
+# detect_quotable_relevance_veto — aggregate-trust mismatch guard
 # ============================================================
 #
-# apply_shared_trusted_flippers (_reasoning_policy.py) can re-grant trust
-# via generic heuristics (pricing-marker-in-answer, LLM-had-tools) that have
-# no per-tool literal-overlap visibility. This veto is the signal reasoning.py
-# uses to force trusted_tools_used back to False after those flippers run,
-# so a confirmed quotable-tool/final_answer mismatch cannot be silently
-# undone. See reasoning.py's two call sites (sync + streaming).
+# A separate qualifying step can grant aggregate trust even when a quotable
+# tool's own output is contradicted. This veto forces trusted_tools_used back
+# to False after trust inputs are combined, so the mismatch wins.
 
 
 class TestQuotableRelevanceVetoGuilt:
     @pytest.mark.unit
     def test_mismatched_pricing_number_vetoes_even_with_pricing_marker_in_answer(self):
-        """The exact bypass scenario: final_answer contains a pricing marker
-        ('Rp ') that would satisfy detect_pricing_data_in_answer and flip
-        trust back True — the veto must still fire because the NUMBER itself
-        doesn't match the tool's real output."""
+        """A monetary claim must still match the executed pricing tool."""
         obs = (
             '{"service": "PT PMA Setup", "price": 5000000, "notes": '
             '"includes notary and OSS registration fees for the full process"}'
@@ -351,11 +383,8 @@ class TestQuotableRelevanceVetoGuilt:
 
     @pytest.mark.unit
     def test_veto_fires_even_when_another_step_independently_qualifies(self):
-        """detect_trusted_tool_usage's OR-semantics would return True here
-        (vector_search step qualifies unconditionally) — but the veto is a
-        SEPARATE signal: a confirmed mismatch on the pricing step must still
-        be reported so the caller can override the flippers' re-grant,
-        regardless of what the base trust signal decided."""
+        """Vector retrieval cannot restore trust, and the independent veto
+        still reports the confirmed pricing mismatch."""
         mismatched_pricing_obs = (
             '{"service": "PT PMA Setup", "price": 5000000, "notes": '
             '"includes notary and OSS registration fees for the full process"}'
@@ -376,7 +405,7 @@ class TestQuotableRelevanceVetoGuilt:
             [pricing_step, vector_step],
             final_answer="The requirements are a sponsor letter and health insurance.",
         )
-        assert base_trust is True
+        assert base_trust is False
         assert veto is True
 
 
