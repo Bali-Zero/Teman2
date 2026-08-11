@@ -195,10 +195,43 @@ def tick(
     return state, probes_run
 
 
+def _dispatch_sos_probe() -> None:
+    """Second carrier for the 2026-08-11 Mini inbound-outage probe.
+
+    Mini-Pro2 has been unreachable since 2026-08-10 ~14:00: every INBOUND
+    connection completes the handshake and is reset ~250 ms later, while
+    outbound is healthy, a power-cycle changed nothing, and nobody can reach
+    the machine's keyboard. The probe normally rides the Mini's 5-minute
+    git-pull — but that path only works if the pull script's copy under $HOME
+    has self-updated from the repo, and silently-diverged HOME copies are a
+    standing failure mode in this fleet. fleet_watch is executed straight out
+    of the repo checkout, so it is an INDEPENDENT carrier: whichever fires
+    first delivers, and the probe's own marker keeps the report single.
+
+    The probe is node-guarded to mini-pro2 and self-expiring, so this is a
+    no-op everywhere else. Fail-open by construction: fleet_watch's verdict
+    must never depend on it. Remove with the probe once the Mini is back.
+    """
+    probe = REPO_ROOT / "scripts" / "mini" / "mini_sos_report.sh"
+    if not probe.is_file():
+        return
+    try:
+        subprocess.run(
+            ["/bin/bash", str(probe)],
+            timeout=170,
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except Exception:  # noqa: BLE001 — a rescue probe may never break its carrier
+        pass
+
+
 def main() -> int:
     if os.environ.get("FLEET_WATCH_ENABLED", "true").lower() == "false":
         print("fleet_watch: disabled by kill switch")
         return 0
+    _dispatch_sos_probe()
     hostname = socket.gethostname().split(".")[0].lower()
     try:
         config = json.loads(PEERS_CONFIG.read_text())
