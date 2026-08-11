@@ -19,14 +19,45 @@ was added to prevent, and exactly the kind of loss no git-level conflict
 marker would ever flag (a clean three-way merge with a wrong resolution
 produces no conflict at all).
 
-INVARIANT (deliberately narrow — see below): a row present at BOTH the
-branch's own merge-base AND on current origin/main — i.e. a row NEITHER
-this branch NOR any other PR has touched since this branch was created —
-must still be present on the branch's own HEAD. If it isn't, nothing on
-either side asked for its removal, so its disappearance can only be an
-artifact of how the branch's tree was produced (the exact "hand-resolved a
-false conflict, kept one side's whole file" incident this check exists
-for). A PR that doesn't touch the ledger at all is skipped entirely.
+INVARIANT 1 — NO LOSS (deliberately narrow — see below): a row present at
+BOTH the branch's own merge-base AND on current origin/main — i.e. a row
+NEITHER this branch NOR any other PR has touched since this branch was
+created — must still be present on the branch's own HEAD. If it isn't,
+nothing on either side asked for its removal, so its disappearance can
+only be an artifact of how the branch's tree was produced (the exact
+"hand-resolved a false conflict, kept one side's whole file" incident this
+check exists for). A PR that doesn't touch the ledger at all is skipped
+entirely.
+
+INVARIANT 2 — NO GROWTH IN COPIES (added 2026-08-12, after the cure this
+file prescribes produced the damage): `merge=union` does not only PRESERVE
+both sides, it DUPLICATES them. On a hunk BOTH sides changed — the normal
+shape of this ledger, where an open row's body is edited in place as work
+progresses — union keeps both versions, so one row becomes two: a stale
+copy and a live copy, adjacent, indistinguishable to every reader and
+counted twice by `pending_arms_report.py`. Measured on 2026-08-11 while
+landing one single row: 377 rows on main, 377 at the merge-base, 378 on
+the branch, **379 after the prescribed `git merge origin/main`**. Measured
+again on 2026-08-12 on plain `origin/main`: 401 open rows, 398 distinct
+identities, **3 identities carrying two copies each** — and they are not
+harmless twins. One of them ("The consent that SYMBIOSIS Law 2 now leans
+on is DECIDED…", lines 885 and 886) has a DIFFERENT owner field in each
+copy: the stale one says `session for (3)`, the live one `session for (3)
+and (4)`. A reader who lands on the stale copy acts on a narrower scope
+than the one the ledger actually agreed.
+
+So: no identity may appear MORE times on HEAD than it already does on
+origin/main or at the merge-base. Baseline is `max(main, base)` and not
+zero — the three duplicates above are already on main and are not this
+branch's doing; the invariant is that copies must not GROW. A brand-new
+row (one copy, absent from both references) is the normal case and is
+never flagged; a new row that lands twice is.
+
+The first invariant catches a resolution that keeps too little. The second
+catches the recommended remedy for the first keeping too much. They are
+the two directions of the same defect and neither substitutes for the
+other: the loss check is set-based by construction (`stable - head`), so
+it is blind to duplication no matter how bad it gets.
 
 Why not simply "every row on origin/main must be in HEAD"? Because this
 ledger's own header sanctions a real, intentional action: "Remove a line
@@ -52,12 +83,18 @@ genuine loss.
 
 Pure signaler: reads three git refs (origin/main, merge-base, working tree),
 prints a verdict, never writes anything.
+
+Exit codes are a bitmask so a branch that manages both defects at once
+reports both instead of hiding one behind the other: 0 clean · 1 rows LOST ·
+2 rows DUPLICATED · 3 both · 4 CANNOT-VERIFY (a ref would not read; never
+silently treated as clean).
 """
 
 from __future__ import annotations
 
 import argparse
 import sys
+from collections import Counter
 from datetime import date
 from pathlib import Path
 from typing import List, Optional, Set, Tuple
@@ -82,6 +119,15 @@ def entry_key(entry: Entry) -> EntryKey:
 
 def entry_keys(entries: List[Entry]) -> Set[EntryKey]:
     return {entry_key(e) for e in entries}
+
+
+def entry_key_counts(entries: List[Entry]) -> "Counter[EntryKey]":
+    """Multiset, NOT a set. `entry_keys()` above answers "is this identity
+    present?" and is the right question for the loss invariant; it is the
+    WRONG question for the duplication one, and silently so — a set cannot
+    represent the defect at all. Kept side by side deliberately so the next
+    reader sees which invariant each shape serves."""
+    return Counter(entry_key(e) for e in entries)
 
 
 def _format_key(key: EntryKey) -> str:
@@ -142,9 +188,13 @@ def check(
         print(f"CANNOT-VERIFY: {exc}")
         return 4
 
-    main_keys = entry_keys(main_entries)
-    base_keys = entry_keys(base_entries)
-    head_keys = entry_keys(head_entries)
+    main_counts = entry_key_counts(main_entries)
+    base_counts = entry_key_counts(base_entries)
+    head_counts = entry_key_counts(head_entries)
+
+    main_keys = set(main_counts)
+    base_keys = set(base_counts)
+    head_keys = set(head_counts)
 
     # Untouched by ANYONE since this branch diverged: present at the branch's
     # own starting point AND still present on current main. Nothing on either
@@ -152,7 +202,24 @@ def check(
     stable_keys = base_keys & main_keys
     missing = sorted(stable_keys - head_keys, key=lambda k: (k[0] or date.min, k[1]))
 
+    # Invariant 2: copies must not GROW. Baseline is the larger of the two
+    # references — main's already-duplicated rows are not this branch's doing,
+    # and a branch that started from a duplicated base is not guilty either.
+    # `>= 2` keeps the ordinary case (a brand-new row, one copy, absent from
+    # both references) out of the verdict: that is 1 > 0 and must never flag.
+    grown = sorted(
+        (
+            (key, count, max(main_counts.get(key, 0), base_counts.get(key, 0)))
+            for key, count in head_counts.items()
+            if count >= 2 and count > max(main_counts.get(key, 0), base_counts.get(key, 0))
+        ),
+        key=lambda item: (item[0][0] or date.min, item[0][1]),
+    )
+
+    verdict = 0
+
     if missing:
+        verdict |= 1
         print(
             f"FAIL (non-blocking, dry-run — see workflow): {len(missing)} open ledger row(s) "
             "untouched by any PR since this branch diverged (present at merge-base AND on "
@@ -168,15 +235,50 @@ def check(
             "PENDING-ARMS.md, that is EXPECTED (server-side mergeability does not apply "
             ".gitattributes drivers) and is NOT a real conflict — do not hand-resolve. Fix: "
             "`git merge origin/main` locally (the union driver applies correctly "
-            "client-side), then push. See the PENDING-ARMS.md entry opened 2026-08-02 "
+            "client-side), then push — AND THEN RE-RUN THIS CHECK on the merged result, "
+            "because that same merge is what produces the duplication this script's second "
+            "invariant exists for (union keeps BOTH versions of any row both sides edited). "
+            "A clean landing moves the row count by exactly +<your new rows> / -0; if it "
+            "moved by more, rebuild the branch as origin/main plus your own delta instead of "
+            "merging. See the PENDING-ARMS.md entry opened 2026-08-02 "
             "('merge=union on this ledger...') and docs/runbooks/merge-queue-discipline.md "
             "§6quinquies."
         )
-        return 1
 
+    if grown:
+        verdict |= 2
+        print(
+            f"FAIL (non-blocking, dry-run — see workflow): {len(grown)} ledger identity/ies "
+            "appear MORE times on this branch's HEAD than on origin/main or at the "
+            "merge-base:"
+        )
+        for key, count, baseline in grown:
+            print(f"  - {_format_key(key)}  ({count} copies on HEAD, {baseline} on the references)")
+        print(
+            "\nThis is the other edge of `merge=union`: on a hunk BOTH sides changed — an "
+            "open row whose body was edited in place here AND on main — it keeps both "
+            "versions, so one row lands twice. The copies are adjacent and near-identical, "
+            "so nothing looks wrong in the diff, but the stale one stays in the registry "
+            "asserting whatever it said before (measured on origin/main 2026-08-12: two "
+            "copies of the same row disagreeing on the OWNER field). Fix: keep exactly one "
+            "copy — the one carrying the newer body — or rebuild the branch as origin/main "
+            "plus your own delta. Do NOT resolve this by re-merging: the merge is the cause."
+        )
+
+    if verdict:
+        return verdict
+
+    duplicated_on_main = sum(c - 1 for c in main_counts.values() if c > 1)
+    note = (
+        f" ({duplicated_on_main} extra copy/ies already present on origin/main — "
+        "pre-existing, not this branch's doing, and therefore this check's baseline)"
+        if duplicated_on_main
+        else ""
+    )
     print(
-        f"OK: {len(head_keys)} open row(s) on HEAD, {len(main_keys)} on origin/main, "
-        f"{len(stable_keys)} row(s) untouched-by-anyone all survived — no silent loss."
+        f"OK: {sum(head_counts.values())} open row(s) on HEAD ({len(head_keys)} distinct), "
+        f"{sum(main_counts.values())} on origin/main, {len(stable_keys)} row(s) "
+        f"untouched-by-anyone all survived, and no identity gained a copy{note}."
     )
     return 0
 
