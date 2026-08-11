@@ -106,3 +106,35 @@ def build_channel_context(channel: str) -> str:
         lines.append(f"Extra: {config.extra_instructions}")
     lines.append("</channel_context>")
     return "\n".join(lines)
+
+
+def apply_channel_overlay(system_prompt: str, channel: str | None) -> str:
+    """Append the channel context block to an assembled system prompt.
+
+    The append itself is three lines, and until 2026-08-11 those three lines
+    lived inline in ``_prepare_react_loop`` — which the STREAMING path calls
+    and the non-streaming ``process_query_core`` does not. Measured
+    consequence on the live worker, same question, same path, two runs each:
+
+        channel="whatsapp"  ->  611 / 875 chars
+        channel="webapp"    -> 1348 / 2163 chars
+        channel omitted     -> 1964 / 1900 chars
+
+    The WhatsApp inbox bot sends ``"channel": "whatsapp"`` on every call and
+    reaches the backend through the NON-streaming endpoint, so its 150-word
+    budget was declared and never applied: production replies measure a median
+    of 1586 characters against inbound client messages whose median is 57.
+
+    Owning the rule here — rather than as a copied pair of lines — is the
+    point: two call sites that must agree about "what does a channel do to a
+    prompt" should not each carry their own answer.
+
+    A falsy or unknown channel leaves the prompt untouched, so a caller that
+    declares nothing is unchanged.
+    """
+    if not channel:
+        return system_prompt
+    block = build_channel_context(channel)
+    if not block:
+        return system_prompt
+    return f"{system_prompt}\n\n{block}"

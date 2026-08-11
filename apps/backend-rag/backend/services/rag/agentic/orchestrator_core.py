@@ -26,7 +26,7 @@ from langsmith import traceable
 from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
 from backend.db.repositories.query_analytics_repository import QueryAnalyticsRepository
 from backend.db.repositories.workflow_analytics_repository import WorkflowAnalyticsRepository
-from backend.prompts.channel_overlays import build_channel_context
+from backend.prompts.channel_overlays import apply_channel_overlay
 from backend.services.common.background import spawn
 from backend.services.llm_clients.pricing import TokenUsage
 from backend.services.rag.agentic.entity_extractor import EntityExtractionService
@@ -1257,6 +1257,7 @@ class OrchestratorCore:
         max_steps: int | None = None,
         agent_role: Any | None = None,
         memory_subject: str | None = None,
+        channel: str | None = None,
     ) -> CoreResult:
         """Run the core pipeline and cross the shared finalization boundary."""
         analytics_claimed = False
@@ -1282,6 +1283,7 @@ class OrchestratorCore:
             max_steps=max_steps,
             agent_role=agent_role,
             memory_subject=memory_subject,
+            channel=channel,
         )
         return self._finalize_process_context(
             context,
@@ -1303,6 +1305,7 @@ class OrchestratorCore:
         max_steps: int | None = None,
         agent_role: Any | None = None,
         memory_subject: str | None = None,
+        channel: str | None = None,
     ) -> FinalizationContext:
         """
         Unfinalized implementation; only ``process_query_core`` may call it.
@@ -1586,6 +1589,21 @@ class OrchestratorCore:
             additional_context=system_context_for_prompt,
             conversation_history=optimized_history,
         )
+
+        # Channel overlay — the streaming twin has done this since it was
+        # written; this path never did, so `"channel": "whatsapp"` (which the
+        # WhatsApp inbox bot sends on every call, and which only reaches the
+        # backend through THIS endpoint) was accepted and dropped. See
+        # `apply_channel_overlay` for the measurement.
+        #
+        # NO `or "webapp"` default here, unlike the streaming twin: this path
+        # has never applied any overlay, so defaulting would silently reshape
+        # every existing non-streaming caller's answers. A caller that declares
+        # nothing keeps exactly today's prompt; a caller that declares a channel
+        # gets it honoured. The asymmetry is the conservative choice, not an
+        # oversight — do not "tidy" the two defaults into agreement without
+        # measuring what it does to the undeclared callers.
+        system_prompt = apply_channel_overlay(system_prompt, channel)
 
         # 6. Create chat session
         chat = self.llm_gateway.create_chat_with_history(
@@ -2205,10 +2223,13 @@ class OrchestratorCore:
             conversation_history=history,
         )
 
-        # Inject channel overlay (website, webapp, whatsapp, etc.)
-        channel_context = build_channel_context(channel or "webapp")
-        if channel_context:
-            system_prompt += f"\n\n{channel_context}"
+        # Inject channel overlay (website, webapp, whatsapp, etc.).
+        #
+        # The `or "webapp"` default is this path's and is DELIBERATELY not
+        # shared with the non-streaming twin below — see the note at that call
+        # site. Behaviour here is unchanged from before `apply_channel_overlay`
+        # existed.
+        system_prompt = apply_channel_overlay(system_prompt, channel or "webapp")
 
         # 🔍 DEBUG: Log full context breakdown
         logger.debug("🔍 [ORCHESTRATOR DEBUG] ===== CONTEXT BREAKDOWN =====")

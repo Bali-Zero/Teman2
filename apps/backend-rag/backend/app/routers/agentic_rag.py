@@ -645,6 +645,20 @@ async def query_agentic_rag(
             # FACTS read and the memory-save dispatch on the per-sender
             # subject instead of the shared wa-mirror-internal identity.
             query_kwargs["memory_subject"] = wa_memory_subject
+        if request.channel is not None:
+            # The comment on `AgenticQueryRequest.channel` above says it is
+            # "still used for the WA prompt overlay elsewhere". That was true
+            # of `/stream` (line ~1041) and FALSE here — and here is where the
+            # WhatsApp inbox bot actually lands, sending `"channel":
+            # "whatsapp"` on every call. Its 150-word budget was declared and
+            # dropped; measured on the live worker the same question answers
+            # ~611-875 chars with the overlay against ~1900-1964 without.
+            # Safe to take from the body despite being client-settable:
+            # `build_channel_context` is a closed lookup over CHANNEL_CONFIGS
+            # and returns "" for anything it does not know, so no caller text
+            # can reach the system prompt through this field. It still
+            # participates in NO trust decision (see the note above).
+            query_kwargs["channel"] = request.channel
 
         # Langfuse POC: wrap the heavy orchestrator call. Anthropic SDK calls
         # made inside are auto-traced via OpenInference instrumentation, so
