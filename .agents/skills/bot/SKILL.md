@@ -20,7 +20,289 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 - **Bali Zero team**: work-support assistant. Check-in via WA (opens the free Meta 24h window),
   CRM nudges, PII-light briefings. Persona = "assistente operativo interno", not sales.
 
-## 1. LIVE STATE (last update 2026-08-10 — keep current)
+## 1. LIVE STATE (last update 2026-08-11 — keep current)
+
+- **🔢 THE LONGEST ANSWER IS NOT A LONG ANSWER — IT IS 6,823 COPIES OF ONE LINE (2026-08-11,
+  measured live, cured in `orchestrator_core._format_workflow_for_prompt`).** Probing ten core
+  service questions cold (one run each, `channel=whatsapp`, generic questions, no client PII),
+  nine came back between 116 and 2,799 characters and one — "What is LKPM and how often must I
+  file it?" — came back **123,745 characters**. Structure, not length, is the finding: **6,835
+  lines, 13 distinct, of which 6,823 CONSECUTIVE copies of the literal `?. Unknown action`**,
+  reproduced byte-for-byte on a second run (125,084 chars, the same 6,823).
+  - **Cause: two step vocabularies that never agreed** (the shape of W114, not a schema that
+    drifted). Censused across the repo instead of inferred from the producer that bit: six
+    producers emit `{"step": n, "action": …}` (`kg_subgraph_visa|company|tax|property`,
+    `kg_langgraph_orchestrator`, `personalized_workflow`); **one** — `kg_graph_nodes.py`, the
+    `source: "graph_traversal"` path — emits `{"step_id", "title", "entity_type", "relationship",
+"depth"}`. Zero overlap, so **every graph_traversal step was unreadable by construction**, and
+    the default `.get("action", "Unknown action")` turned "I cannot read this" into output. That
+    same producer is the only UNBOUNDED one: one step per traversed entity.
+  - **It is not only a client defect.** `_format_workflow_for_prompt`'s own docstring says the
+    block feeds the SYSTEM PROMPT, so those ~124k characters are also paid for on the way IN, on
+    every query that reaches the path — relevant to the Gemini prepay depleting for the 4th time
+    on 2026-08-10, though no one has yet attributed a share of that burn to this.
+  - **Cured at the reader** (both vocabularies; an unreadable step renders nothing; an all-unreadable
+    list is not dressed up as a workflow; capped at 12 with the drop DECLARED — W97). **NOT cured:
+    the KG returning 6,823 "steps" for one question.** Do not read the cure as having fixed that.
+- **🔎 `ctx=1` IS THE NORM, NOT THE EXCEPTION — 6 of 10 core questions retrieve ≤1 chunk
+  (2026-08-11).** Same ten-question probe: `context_length` min 0, max 4, **≤1 on 6/10**, while
+  `evidence_score` sat at **0.85 on 7/10**. Note what that pair means before building on it: a high
+  evidence score is NOT a claim about retrieval depth, so the two numbers do not corroborate each
+  other and a dashboard reading only evidence would call this healthy. One run each — this sizes
+  the question, it does not settle it (the same question measured 1,364 / 13,671 / 2,123 chars on
+  three runs earlier in this loop; this surface is stochastic).
+- **🚫 "What is the minimum paid-up capital for a PT PMA?" RETURNS NOTHING AND ANSWERS WITH A
+  QUESTION (2026-08-11).** `ctx=0`, `evidence=0.0`, `abstain=true`, `abstain_reason=no_relevant_context`
+  — and the 116-character body the client would see is _"Would you also like to know about the full
+  PT PMA company setup process, including other requirements and timelines?"_. A high-frequency,
+  high-stakes question whose answer the organism HAS (BKPM 5/2025: paid-up PMA = **2.5 mld**, and
+  the >10 mld per-KBLI-per-lokasi rule survives). The grounding gate shipped this same day would
+  correctly refuse to send that text (`context_length == 0`), so the client gets the stub — but the
+  stub is not the defect. **Retrieval returning zero for this question is.**
+  - **SHARPENED the same day, and it refutes the reading above.** Asked the SAME FACT five ways
+    (English abstract / English concrete / English naming the number / `Berapa modal disetor
+minimum untuk PT PMA?` / Italian), **four of five retrieve fine** and give the correct 2.5 mld
+    — the Indonesian one even cites Peraturan BKPM 5/2025 by name. The only `ctx==0` is the
+    **canonical English phrasing**, the one a client is most likely to type. So this is **not an
+    absent fact and not a broken KB**: it is a recall gap on one wording, and the wording it misses
+    is the likeliest one. A cure aimed at "the fact is missing" would have been aimed at nothing.
+  - **And the ctx=0 body is FALSE CONTINUITY, twice.** With `conversation_history: []` the two runs
+    produced _"I hope that explanation clarifies the distinction between paid-up capital and the
+    total investment plan…"_ (263 chars) and _"Would you also like to know about the full PT PMA
+    company setup process…?"_ — both are the CLOSING line of a conversation that never happened.
+    Same class as the monologue leak, on a different path. The grounding gate shipped this same day
+    refuses to send either (`context_length == 0`), which is exactly what it was built for.
+  - **Third finding in the same five, unrelated to capital:** the ITALIAN wording was answered in
+    ENGLISH, `ctx=1`, `evidence=0.85` — retrieval fine, language wrong. Third independent
+    reproduction of drift today, and the second where retrieval SUCCEEDED.
+- **🗣️ LANGUAGE DRIFT IS QUESTION-DEPENDENT, NOT LANGUAGE-DEPENDENT — reproduced 2026-08-11.**
+  "What is the corporate income tax rate in Indonesia?" asked in ENGLISH came back **wholly in
+  Italian** ("Per l'imposta sul reddito delle società (PPh Badan)…"), with correct content, ctx=2,
+  evidence 0.85 — i.e. retrieval SUCCEEDED. This is the beta-test finding (Dewa Ayu, two English
+  questions answered in Italian) reproduced on a different question. It also corrects the reading
+  that probe 28 licensed: that probe asked ONE question in eight languages and got 16/16 right, so
+  "no drift" was a statement about that question, never about the bot. **Vary the question, not
+  just the language, or you will keep measuring the wrong axis.**
+
+- **🧪 TWO ADVERSARIAL SEATS + WEB RESEARCH ON THE FOUR OPEN WEAKNESSES (2026-08-11). The most
+  useful result is where they DISAGREE — read that first.**
+  - **The panel said: fix the monologue leak at the generation layer (Gemini `response_schema`
+    separating thought from reply), not with a cleaner regex.** Both Codex gpt-5.6-sol and Gemini
+    3.1 Pro said it independently. **The research REFUTES that as currently actionable**:
+    `googleapis/python-genai` **issue #2121** documents that thought content arrives inside
+    `part.text` with a literal `THOUGHT:` prefix while **`part.thought` is `false`/`null` on every
+    part** — so a client that correctly checks the structured flag still gets fooled, because the
+    flag is wrong at the source. Google closed it "not planned". Live `<think>`/`<final>` tag
+    leakage is open across three independent frameworks (openclaw #15353, #48587) as of Feb-Mar
+    2026, and is reported to worsen under high context usage. **So the cleaner regex is a
+    workaround for a documented upstream bug, not a design shortcut** — do not rip it out for the
+    "proper" fix until #2121 moves. Also on this stack: with thinking disabled a model can emit a
+    tool call as plain visible text, no error.
+  - **Where both seats AGREED, and they were right — the abstain-with-content rule as first
+    shipped was WRONG.** Gating the send on TEXT LENGTH "measures fluency, not support" (Codex)
+    and "a disclaimer does not mitigate bad legal advice" (Gemini). Corrected: send only when
+    evidence was actually RETRIEVED (`context_length > 0` AND `evidence_score > 0`), which is also
+    what this corner's own numbers said — the 5 useful abstains had ctx 1-2, the 2 junk ones had
+    ctx 0. Shipped on `backend-rag-wa-escalation-lane`, mutation-verified.
+  - **On whether a caution label is enough for regulated advice, the honest answer is NOBODY
+    KNOWS.** The research found **no controlled study** comparing suppress vs caution-label vs
+    human-route with harm as the outcome in a legal/medical/financial context. What IS measured:
+    confident-but-wrong AI advice collapsed users' willingness to say "I don't know" from **44% to
+    3%** and their accuracy from **27% to 9%** while stated confidence rose 30%→76% (trivia
+    domain, not domain-matched). And **there is no regulatory requirement that AI advice carry a
+    confidence disclaimer** — EU AI Act Art. 86, FDA CDS 2026, NAIC and FINRA all impose
+    transparency/oversight, none specifies a confidence element. Do not cite one.
+  - **Non-determinism (finding 2/3) has named mechanisms, and one is architectural**: an
+    LLM as the EXCLUSIVE collection gate is the wrong design at this scale (Codex) — use a
+    deterministic domain→collection map with mandatory collections, let the LLM only ADD. Plus:
+    ANN/HNSW traversal can omit true neighbours entirely, so the retrieved SET varies, not just
+    its order; temperature 0 is not determinism (request batching flips tokens); an uncalibrated
+    `evidence_score` bucketing to 0.85/0.6/0.0 must not drive safety decisions until calibrated.
+    Measured cure: hybrid BM25+dense with RRF fusion, recall@10 **65-78% → 91%**; hybrid+rerank
+    **+17.4% Recall@5** over RRF alone. **Also demanded and NOT yet built: a reason code on empty
+    retrieval** — `ROUTER_SELECTED_NONE` / `TIMEOUT` / `FILTER_ZERO_RESULTS` / `TOOL_ERROR` must
+    never all collapse into "evidence 0".
+  - **Caching: the cheap win is doing nothing, correctly.** Implicit caching is ON by default
+    since Gemini 2.5, costs no storage fee, and strictly dominates explicit caching below ~3.6-4.8
+    calls/hour. Our 9,507-token prefix clears every documented minimum. The ONE requirement is
+    that the static prefix sit at the very start of every request, **byte-identical**, before any
+    per-call content — otherwise the match silently fails and the discount is zero. That is the
+    thing to verify, not a caching feature to build.
+  - **False continuity is the weakest-evidenced of the four**: no academic source, no named
+    taxonomy, one OpenAI bug acknowledgment without published mechanism. Treat any causal claim as
+    OUR hypothesis to test. Codex's lead is the sharpest available: the phrase we saw — "The
+    previous answer was rejected because…" — fingerprints **retry/evaluator context
+    contamination**, i.e. a failed attempt being appended into the next generation, NOT a generic
+    persona tic. Ruling out long-term memory (done) does not rule that out. **Next step: dump the
+    fully assembled Gemini request for a retry, not the app-level `conversation_history`.**
+  - **Blind spots the whole probe set cannot see BY CONSTRUCTION** (Codex's list, worth keeping):
+    factual correctness (on-topic ≠ correct — needs an expert-labelled claim benchmark with
+    effective dates); multi-turn corruption and session bleed (every probe is cold); cross-client
+    authorization on a SHARED number; prompt injection via retrieved documents; actual WhatsApp
+    delivery (an endpoint 200 is not a delivered message); escalation abandonment (Telegram
+    accepting ≠ a human acting); burst load; noisy real inputs (voice notes, typos,
+    code-switching); provider/model degradation.
+  - **And a correction to my own numbers**: reporting "~10% of ordinary questions exceed the
+    limit" next to production's "4/311 ≈ 1.3%" is a contradiction unless the populations differ —
+    repeated runs of three questions are a REPEATABILITY test, not a prevalence estimate, and I
+    presented them as one. Separately, "~0% cache hits" contradicts the 14.5-17% in the same
+    breath: cached TOKENS and cache-HIT requests are different measures. Both corrected here.
+
+- **✂️ A REPLY TOO LONG FOR WHATSAPP IS CUT MID-WORD AND NOTHING SAYS SO — measured at ~10% of
+  ORDINARY questions, worst case 13,671 chars (2026-08-11).** `whatsapp_service.send_message`
+  enforces the Cloud API's 4,096-char body limit with `text[:4096]`: a silent cut, mid-word, with
+  no marker. Two live probes (37 everyday client questions, cold start, no history,
+  `channel=whatsapp`, no client PII) crossed it four times — **"What is Hak Pakai and how long
+  does it last?" returned 13,671 chars, so 9,575 (70% of the answer) would vanish**; "How long
+  does company registration take?" 7,837 (−3,741); "KITAS investor requirements" 6,841 (−2,745);
+  "difference between KITAS and KITAP" 4,520 (−424). Production agrees at a lower rate on a much
+  smaller sample: 4 of 311 bot replies, worst 7,521.
+  - **It is not a fixed set of long questions — it is a fixed rate of long RUNS.** The Hak Pakai
+    question asked three times returned **1,364 / 13,671 / 2,123** chars. A spot check will miss
+    it; the cure has to be unconditional, not aimed at "the long ones".
+  - **Lower bound, stated as such**: the live bot ships up to 12 prior turns
+    (`_HISTORY_TURNS = 12`), which can only make answers longer.
+  - Cure in flight (PR-B, branch `backend-rag-wa-escalation-lane`): cut at a boundary + a short
+    localized note. **The note deliberately never promises the remainder** — nothing retains it,
+    so "ask me to continue" would be the same class of lie the abstain path used to tell.
+  - **A dependency was itself broken**: `utils/message_chunker.chunk_message` promised in its
+    docstring "each within max_length" while its line-splitting branch appended a whole
+    over-long line — so text with no `\n\n` and no `\n`, i.e. an ordinary LLM paragraph, came
+    back as ONE oversized chunk. Instagram's limit is 1,000, where that overflows four times
+    likelier.
+
+- **🎲 ABSTAIN FIRES ~1 TIME IN 3 ON QUESTIONS THE BOT ANSWERS WELL — it is not only an outage
+  symptom (2026-08-11).** A 20-question probe recorded 4 abstains and they read like KB gaps.
+  Re-asking the three main ones three times each says otherwise: **4 abstains in 12
+  observations** — PT PMA setup 1/4, Hak Pakai 1/4, "Qual è la differenza tra KITAS e KITAP?"
+  2/4. The non-abstaining runs are not marginal: the Italian KITAS/KITAP question retrieves **8
+  sources from `visa_oracle` at `evidence_score 0.85`** two runs out of three, and on the third
+  returns `abstain=true`, `context_length=0`, `evidence_score=0.0`,
+  `abstain_reason="no_relevant_context"`. Same question, same payload, no history either time.
+  - **Why this matters more than the depletion**: on today's Meta path an abstain is
+    `raise RuntimeError` → 5 retries → silence. The credit depletion made that 100% for 34h; this
+    makes it ~33% **every day**, on the agency's core questions. Do NOT file the discarded-abstain
+    defect as outage-only.
+  - **Phrasing moves the retrieval path**: _"PT PMA company registration requirements"_ scores
+    `evidence 0.4`; _"What are the requirements to open a PT PMA in Indonesia?"_ scores `0.85`
+    across three collections. Measured, not cured.
+
+- **🔀 `sources` COMES BACK AS DICTS ON SOME RUNS AND PLAIN STRINGS ON OTHERS — same question
+  (2026-08-11).** Census over 17 answers: **dict 13, str 3**, and the shape tracks the score —
+  str runs scored `evidence` 0.6 / 0.6 / 0.4, dict runs mostly 0.85. `orchestrator_response.py:48`
+  types it `list[Any]`, so this is declared, not drift. **Nothing crashes**:
+  `pipeline.py::_normalize_citations` guards with `if not isinstance(src, dict): continue`.
+  The open question was whether the str path therefore reaches the client with **zero
+  citations**. **Probed, and the answer is that this surface cannot answer it**: across 12 calls
+  the response carries **no `citations` key at all** (0/12), so the normalizer's behaviour is
+  invisible from `/api/agentic-rag/query`. **Hypothesis NOT TESTED — not disproved.** Whoever
+  picks this up must measure it where the citation pipeline actually runs (the web-chat surface),
+  not here. Without that control the probe would have printed "0 citations on str runs" and it
+  would have read as a confirmed finding.
+
+- **🌍 THE APOLOGY AND ACK THE OUTBOX WORKER SENDS ARE IN ENGLISH FOR 6 OF 9 SAMPLED
+  NON-ENGLISH MESSAGES (2026-08-11).** `wa_outbox_worker` derives the language with
+  `backend.services.communication.detect_language`, and measured on nine realistic client
+  openers it returns **`'auto'`** for _"Buongiorno, quanto costa aprire una PT PMA a Bali?"_,
+  _"Non ho capito niente di quello che mi hai scritto"_, _"Selamat pagi, berapa biaya untuk
+  membuat PT PMA?"_, Russian, German and Spanish — while it DOES catch _"Ciao, ho bisogno di
+  rinnovare il mio KITAS"_ → `it` and _"Saya mau perpanjang KITAS…"_ → `id`. It is
+  marker-based and misses ordinary phrasings: its Italian list is
+  `ciao/come/cosa/sono/voglio/posso/grazie/quando/dove/perché`, and "buongiorno", "quanto",
+  "costa", "aprire" are not in it.
+  - **Do NOT "fix" the fallback — it is deliberate and says so.** `_apology_text`'s own comment
+    reads _"'auto'/unknown falls back to English via the .get(..., default) below, mirroring
+    whatsapp_ack.ack_text()'s pattern. Deliberately NOT a new translation subsystem"_. The
+    fallback behaves exactly as designed; **what is wrong is the input it is handed**. An
+    earlier draft of this entry implied the `.get` "missed the dict" by accident — it does not.
+  - **The same class was cured yesterday on ONE consumer and not swept.** The detector's
+    docstring carries a 2026-08-10 correction: `'auto'` is "a real, frequently-returned value"
+    and callers were written against a vocabulary the function does not emit — measured then on
+    `_add_emotional_acknowledgment`, which was defaulting to Italian. The other consumers
+    (`wa_outbox_worker` apology + ack, `nurturing_message`) were not revisited. Curing one
+    consumer of a shared detector moves which caller is wrong; it does not reduce the count.
+  - **Where the cure belongs**: the detector's markers, not any consumer's fallback. Cyrillic
+    (ru/uk) is decidable by SCRIPT and cannot false-positive on Latin text — that is the
+    cheapest real win; Italian/Indonesian need higher-signal markers. Not done here: it is a
+    shared function with ~4 consumers and deserves its own change and its own gate.
+  - The table itself holds only `en/id/it/ru/uk`, so **German and Spanish are English by
+    construction** — that part is the known stub gap, the news is IT/ID/RU failing anyway.
+  - This is the C4 apology the client gets _after_ `_maybe_send_ack` has already promised
+    someone is checking. Wrong language on the promise AND on the apology.
+  - **Trap for whoever fixes it**: there are TWO language vocabularies in this lane —
+    `detect_language` → `'it'`, and `get_localized_stub` → `'ITALIAN'`. Verified:
+    `get_localized_stub(..., 'it')` returns the **ENGLISH** text with no warning, as do `'IT'`
+    and `'italian'`. Wiring one into the other emits English under Italian and says nothing.
+    Pinned by `test_an_unknown_language_name_must_not_silently_become_an_english_apology`
+    (branch `backend-rag-wa-escalation-lane`), which goes red the day the two converge.
+
+- **🔬 TWO OF MY OWN INSTRUMENTS LIED, AND BOTH ARE WORTH KNOWING BEFORE YOU REUSE THEM.**
+  (a) The probe prints `collections_queried EMPTY on ALL = LLM-picks-collections stage down
+(outage signature)` — it read empty on all 17 answers **which all answered**, so the field is
+  simply not exposed in that response payload. That legend was written from the depletion
+  post-mortem and would hand the next reader a false P0. (b) Its `DETERMINISTIC` verdict is
+  scoped to its own three runs and is **contradicted** by the earlier probe where the same three
+  questions abstained; only pooling the two gives the 4-in-12 above. A repeatability verdict
+  computed inside one run cannot see the run beside it. (c) An earlier version died on the first
+  row with `'str' object has no attribute 'get'` — the heterogeneity above. **A probe must
+  survive the shape it exists to observe**; it now records the shape instead of dying on it.
+
+- **🔴 GEMINI PREPAY CREDITS DEPLETED — FOURTH TIME, AND IT IS LIVE (2026-08-10 ~17:50Z).**
+  Measured on the prod machine, not inferred from symptoms: a 9-token call returns
+  `429 RESOURCE_EXHAUSTED — "Your prepayment credits are depleted"`, `llm_gateway` logs
+  `All Gemini models failed`, and the OpenRouter fallback refuses by design
+  (`OPENROUTER_ENABLED` off, PII boundary). **Window is tight, not estimated**: a 10-turn probe
+  answered normally at **17:46Z** (5-90s latencies); 11 calls at **17:53Z** all came back
+  degraded in 1-4s — either the localized abstain stub (274 chars) or the crash stub
+  ("I'm hitting a technical problem", 97-120 chars, in the asker's language).
+  - **The sentinel did NOT miss it — say that before blaming it.** `cron-llm-credit-sentinel.yml`
+    ran at **17:09Z** and got a real PONG (`state=ok`, 7 in / 2 out). Real cadence is ~1h
+    (GitHub `schedule` is best-effort), so a gap of up to an hour is the design, not a fault.
+  - **Top-up is `operator[business]`**: AI Studio, project `nuzantara` no. **930328104463**.
+    Escalated to Zero by hand via the Telegram gateway. **Send that P0 from Pro, not M5** —
+    on M5 `tg_notify.py` finds no token and spools `p0_unsent` (fail-visible, but nobody reads
+    it at once); the same command on Pro returned `sent`.
+  - **Client harm so far: none, and say so.** `meta_inbox_messages` has **0 messages in the
+    last 12 hours** — the bot is not public and it was night in Bali. The next client to write
+    is the one who gets nothing.
+  - **Noted, not a defect today**: the sentinel probes with `PRIMARY_MODEL_NAME=gemini-2.5-flash`
+    while the RAG's default is `gemini-3.5-flash`. Same prepay balance, so a depletion is
+    account-level and both see it — do not "fix" this without a reason.
+
+- **🧵 PROBE 22 — THE FIRST MULTI-TURN MEASUREMENT (2026-08-11, before the depletion).** Every
+  earlier probe sent `conversation_history: []`; the live bot ships **12 turns**
+  (`wa_inbox_bot._HISTORY_TURNS`), so everything measured until now was cold-start. Four
+  conversations, 10 turns, 10/10 HTTP 200, history carried forward exactly as the bot does.
+  - **The message the WA path throws away sometimes PROMISES A CALLBACK, on a shape probe 21
+    never tested.** Frustration turn ("I don't understand anything you're saying") →
+    `abstain=True`, `context_length=0`, answer = _"Certainly. I will proceed with connecting
+    you to our team."_ `ESCALATION_PROTOCOL` lists frustration as a trigger; nothing performs it.
+  - **And it sometimes is UNGROUNDED ADVICE.** LKPM, second ask: `abstain=True`,
+    `context_length=0`, **2 057 characters** of specific filing procedure written from model
+    memory. This is the measured argument for the in-flight cure sending a localized **stub**
+    rather than the answer — "send the low-confidence answer" (question #31, Zero's call) would
+    ship exactly this. The cure does not pre-empt #31 in either direction.
+  - **Loop escalation never fires.** Same question ×4 → four DIFFERENT answers (247 439 / 2 057
+    / 4 873 / 3 586 chars), zero escalation, though the protocol lists "same question 3+ times".
+    **The beta test's _identical_ brush-off ×4 did NOT reproduce** — that behaviour is not
+    stable; the missing escalation is.
+  - **A 247 439-character answer** — 33× the longest reply production has ever sent (**7 521**,
+    measured) and 60× WhatsApp's 4 096 body limit, which `whatsapp_service.py` enforces by
+    hard-truncating. **Not yet reproducible, and for a reason unrelated to the question**: the
+    follow-up probe ran during the depletion above, so it measured the outage. Re-probe after
+    the top-up before theorising.
+  - **The 2026-07-30 correction-as-query defect did not reproduce as a wrong answer**: "in
+    italiano per favore" after a C7A question returned an Italian _clarifying question_
+    (D7A vs C7), on-subject. One run — this sizes a shape, not a rate.
+  - **Internal monologue can arrive as the answer** — 2 of the 10 turns began literally
+    `internal_monologue\nThe user asked "How much?"…`, and nothing on this path strips it
+    (`_strip_kg_workflow_scaffold` is anchored on the KG block's two literals). **Never observed
+    in production: 0 of 311 outbound bot messages** carry the token or the planning phrases.
+    Reachable on the endpoint, not an incident — and the follow-up probe could NOT size it,
+    because it ran during the outage (`0/8` there measures the outage's poverty, W107).
+  - **Measurement trap, mine**: the probe's "promises a contact" detector matched the literal
+    `connect you` and scored the frustration case **False** against _"connecting you"_ — an
+    under-match in my own instrument (family #3). The finding came from re-reading the answer.
 
 - **🧪 BATTERY v5 — THE FOUR OPEN BETA CURES, RE-MEASURED 13 DAYS LATER (2026-08-10).** The
   2026-07-28 team beta left four cures open and nobody had asked whether they were still
