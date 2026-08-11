@@ -29,6 +29,24 @@
 /.github/CODEOWNERS                                  @Balizero1987
 /.github/actions/                                    @Balizero1987
 
+# Unattended Codex autofix trust boundary — the consumer checks out and tests
+# a failed branch without an interactive operator.  Its runtime helper,
+# provenance selector, pinned pre-push bundle and their executable proofs are
+# therefore Tier-1 alongside the workflow that schedules them.
+/scripts/codex_automation_lib.sh                     @Balizero1987
+/scripts/codex/codex-nightly-autofix-ci.sh           @Balizero1987
+/scripts/tests/test_codex_runtime_worktree_deps.sh   @Balizero1987
+/scripts/tests/test_codex_autofix_selector.py        @Balizero1987
+/scripts/tests/test_codex_trusted_prepush_bundle.sh  @Balizero1987
+/.husky/pre-push                                     @Balizero1987
+/scripts/prepush_classify.py                         @Balizero1987
+/scripts/prepush_suite_lock.sh                       @Balizero1987
+/scripts/ci/prepush_tip_drift.sh                     @Balizero1987
+/scripts/tests/test_prepush_classify.py              @Balizero1987
+/scripts/tests/test_prepush_honest_verdict.py        @Balizero1987
+/scripts/tests/test_prepush_suite_lock.sh            @Balizero1987
+/scripts/tests/test_prepush_tip_drift.sh             @Balizero1987
+
 # ---------------------------------------------------------------------------
 # Deploy / infra config — TIER 1
 # ---------------------------------------------------------------------------

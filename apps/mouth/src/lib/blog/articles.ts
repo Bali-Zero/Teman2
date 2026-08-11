@@ -142,16 +142,45 @@ function cleanExcerpt(text: string | null): string {
  * Skips all heading lines (## ...) and their immediate content blocks,
  * picks the first paragraph longer than 60 characters.
  */
-function extractBodyExcerpt(body: string): string {
+export function extractBodyExcerpt(body: string): string {
   if (!body) return "";
 
   // Split into lines and process
   const lines = body.split("\n");
   let inHeadingBlock = false;
+  // Depth of the JSX component we are inside, if any. A component's OPENING
+  // line is not the whole component — see the skip rule below.
+  let jsxDepth = 0;
   const paragraphLines: string[] = [];
 
   for (const line of lines) {
     const trimmed = line.trim();
+
+    // A JSX block spans MANY lines, and only its first one starts with `<`:
+    //
+    //     <InfoCard
+    //       title="Quick Summary"
+    //       items={[{ label: "Should I Worry?", value: "Yes" }]}
+    //     />
+    //
+    // Skipping on `^<[A-Z]` alone therefore dropped `<InfoCard` and accepted
+    // everything after it as prose. Measured live 2026-08-11: 52 articles whose
+    // meta description — the sentence Google prints under the link — read
+    // `title="Quick Summary" items={[ { label: "Should I Worry?", value: "Yes" }…`.
+    // So the block is tracked to its close, not just recognised at its start.
+    if (jsxDepth > 0) {
+      jsxDepth += (trimmed.match(/\{/g) || []).length;
+      jsxDepth -= (trimmed.match(/\}/g) || []).length;
+      if (/\/>\s*$|^<\/[A-Za-z]/.test(trimmed) && jsxDepth <= 1) jsxDepth = 0;
+      continue;
+    }
+    if (/^<[A-Z]/.test(trimmed)) {
+      // Self-closing on its own line is over immediately; otherwise stay inside.
+      const opens = (trimmed.match(/\{/g) || []).length;
+      const closes = (trimmed.match(/\}/g) || []).length;
+      jsxDepth = /\/>\s*$/.test(trimmed) ? 0 : 1 + opens - closes;
+      continue;
+    }
 
     // New heading encountered — reset block accumulator and skip
     if (/^#{1,6}\s/.test(trimmed)) {

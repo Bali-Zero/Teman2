@@ -39,6 +39,7 @@ type MaritalStatus = KnownValue<"person.marital_status">;
 type ProposedRole = KnownValue<"investment.proposed_role">;
 type FamilyRelation = KnownValue<"family.relation_to_sponsor">;
 type StudyLevel = KnownValue<"study.level">;
+type SponsorTypeValue = KnownValue<"sponsor.type">;
 
 const NOT_ASKED: UnknownReasonWire = "NOT_ASKED";
 const UNVERIFIED: UnknownReasonWire = "UNVERIFIED";
@@ -200,6 +201,14 @@ const CURRENT_STATUS_CODES = [
   "ITK_FROM_VISIT_D",
   "ITK_PERALIHAN",
 ] as const;
+const SPONSOR_TYPES = [
+  "NONE",
+  "INDIVIDUAL",
+  "EMPLOYER",
+  "EDUCATION",
+  "INVESTMENT",
+  "GOVERNMENT",
+] as const satisfies readonly SponsorTypeValue[];
 
 export const CATEGORY_TO_PURPOSE: Partial<Record<CategoryKey, Purpose>> = {
   tourism: "TOURISM",
@@ -389,6 +398,22 @@ function mapCurrentStatusCode(facts: OracleFacts): FactValue<string> {
   return enumFact(facts.current_status_code, CURRENT_STATUS_CODES);
 }
 
+/**
+ * `sponsor.type` is the ONE backend fact path that ships with a default
+ * (`UNKNOWN`/`NOT_ASKED`, models.py `_SPONSOR_TYPE_ROLLOUT_DEFAULT`) rather
+ * than being strictly required — but this mapper still emits it on every
+ * call, unconditionally, same as every other key. A fact that was never
+ * asked and a key that was never sent are not the same thing to the
+ * engine: only an explicit UNKNOWN can ever produce a follow-up question,
+ * an omitted key cannot. See fact-mapper.test.ts's "staged contract"
+ * describe block for the acceptance criteria this replaced.
+ */
+export function mapSponsorType(
+  facts: OracleFacts,
+): FactValue<SponsorTypeValue> {
+  return enumFact(facts.sponsor_category, SPONSOR_TYPES);
+}
+
 function mapFamilySponsorStatus(facts: OracleFacts): FactValue<string> {
   if (facts.family_sponsor_confirmed === "no") {
     return unknownFact(NOT_APPLICABLE);
@@ -483,6 +508,7 @@ export function mapOracleFactsToApplicantFacts(
     "study.level": enumFact(facts.study_level, STUDY_LEVELS),
     "study.admission_confirmed": booleanFact(facts.study_admission_confirmed),
     "study.sponsor_confirmed": booleanFact(facts.study_sponsor_confirmed),
+    "sponsor.type": mapSponsorType(facts),
     "secondhome.bank_deposit_usd": integerFact(
       facts.secondhome_deposit_usd,
       0,

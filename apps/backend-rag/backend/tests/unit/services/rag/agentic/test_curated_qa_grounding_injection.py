@@ -122,6 +122,17 @@ async def test_disabled_via_env_returns_empty_string(monkeypatch) -> None:
 
 @pytest.mark.asyncio
 async def test_hit_above_threshold_is_prepended_with_source_tag() -> None:
+    """The block carries the vetting DATE and the CURATED marker — and, since
+    2026-08-11, deliberately NOT the internal `source_ref`.
+
+    The assertion on `E33-DEFINITIVE-CHATKB-2026-07-15.md#Q1` that used to live
+    here pinned the defect: `zantara_core.py` orders the model to cite its
+    source, so handing it a repo filename produced
+    `📜 Sumber: … ; CURATED FINAL-v2.md#Q7` in four of eight live answers
+    probed that day. The date stays (it is real vetting metadata and names no
+    artifact); the filename is now logged instead. See
+    `test_curated_qa_source_ref_is_not_citable.py` for the guilt/innocence pair.
+    """
     core = make_core()
     core.retriever = SimpleNamespace(
         search_collection=AsyncMock(
@@ -138,7 +149,7 @@ async def test_hit_above_threshold_is_prepended_with_source_tag() -> None:
         )
 
     assert "The E33 deposit is USD 130,000." in result
-    assert "E33-DEFINITIVE-CHATKB-2026-07-15.md#Q1" in result
+    assert "E33-DEFINITIVE-CHATKB-2026-07-15.md#Q1" not in result
     assert "2026-07-15" in result
     assert "CURATED" in result
     mock_counter.inc.assert_called_once()
