@@ -62,7 +62,7 @@ narrow_selfheal_safe() {
   while IFS= read -r -d '' _p; do
     touched+=("$_p")
   done < <(git diff --name-only -z "$merge_base" HEAD 2>/dev/null)
-  [ "${#touched[@]}" -gt 0 ] || return 1
+  [ "${#touched[@]}" -eq 0 ] && return 0
   git diff --quiet HEAD "$target_ref" -- "${touched[@]}" 2>/dev/null
 }
 
@@ -147,9 +147,11 @@ else
   pass "scenario C: uncommitted tracked change correctly refused"
 fi
 
-# --- scenario D: ahead 0 (no local-only commits, TOUCHED_PATHS empty) ----
-# — e.g. a detached/odd state where merge-base equals HEAD. Must refuse
-# (nothing to prove safe; falls through to the existing alert unchanged).
+# --- scenario D: ahead 0 (merge-base equals HEAD, no local-only commits) -
+# HEAD is a pure ancestor of target (a plain fast-forward point). touched
+# is trivially empty (diff of a commit against itself). Resetting here
+# discards NOTHING — HEAD has zero commits not already in target — so this
+# is provably safe too, for the same 2026-08-12 reason as scenario E below.
 REPO_D="$WORKDIR/d"
 mk_repo "$REPO_D"
 (
@@ -161,9 +163,33 @@ mk_repo "$REPO_D"
   git checkout -q master 2>/dev/null || git checkout -q main
 )
 if (cd "$REPO_D" && narrow_selfheal_safe target); then
-  fail "scenario D: should have refused (no local-only touched paths to verify)"
+  pass "scenario D: merge-base==HEAD (pure ancestor, zero local commits) correctly identified as safe"
 else
-  pass "scenario D: empty touched-paths set correctly refused"
+  fail "scenario D: should have detected safety (HEAD has zero commits unique from target, nothing to lose)"
+fi
+
+# --- scenario E: ahead 1 (local-only commit touches ZERO files), behind 1 -
+# the real-world disease this predicate exists to cure (2026-08-12,
+# recurring 2026-07-11..2026-08-11, 850 refused ticks): an empty merge
+# commit (or any --allow-empty local-only commit) leaves TOUCHED_PATHS
+# empty while merge-base != HEAD. Must be identified as safe — there is no
+# content in that commit to discard.
+REPO_E="$WORKDIR/e"
+mk_repo "$REPO_E"
+(
+  cd "$REPO_E"
+  git commit -q --allow-empty -m base
+  BASE=$(git rev-parse HEAD)
+  git commit -q --allow-empty -m "local-only empty merge commit (no file changes)"
+  git checkout -q -b target "$BASE"
+  echo "unrelated" >other.txt
+  git add -A && git commit -q -m "target has 1 legit unrelated commit"
+  git checkout -q master 2>/dev/null || git checkout -q main
+)
+if (cd "$REPO_E" && narrow_selfheal_safe target); then
+  pass "scenario E: local-only commit touching zero files (empty merge) correctly identified as safe"
+else
+  fail "scenario E: should have detected safety (zero-touched-paths empty commit — the documented disease)"
 fi
 
 echo
