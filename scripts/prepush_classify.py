@@ -176,6 +176,41 @@ belt-and-suspenders basename net for the requirements family.
   today's layout — a guilt test that only asserts the current tree stops
   being a guilt test the moment the tree moves.
 
+v10 EXTENSION (2026-08-12): two directory rules added — `infra/claude-hooks`
+(.py) and `infra/guard-conformance` (.json) — for PR #4125-shaped diffs that
+touch only the claude-hooks test/guard corpus and its conformance registry.
+
+  Measured, not assumed, safe: `grep -rn "claude_hooks\\|claude-hooks" apps/`
+  returns exactly two hits repo-wide, and BOTH are prose, not imports — a
+  docstring in
+  `apps/backend-rag/backend/tests/unit/services/sota_loop/test_m13_weekly_repo_root.py`
+  (~line 16) and a comment in
+  `apps/backend-rag/backend/services/sota_loop/m13_weekly.py` (~line 48),
+  each explaining why their own git-root derivation deliberately differs
+  from the hook's. No conftest anywhere under `apps/` adds `infra/` to
+  `sys.path`, so nothing collected by `pytest backend/tests/` can import a
+  module from either new prefix.
+
+  Coverage is not lost by skipping the backend suite for these paths —
+  three CI workflows already run the claude-hooks corpus independently of
+  this classifier: `guard-conformance.yml`, `hook-innocence-gate.yml`,
+  `kbli-filiera-vault-compilers.yml`. `skip-backend` only ever skips
+  `pytest backend/tests/` (see `.husky/pre-push`); it has no power to
+  disarm any of those three.
+
+  INVESTIGATED AND REJECTED (v10): a blanket `scripts/**/*.py` covering the
+  repo-root `scripts/` tree wholesale, on the theory that if the
+  claude-hooks test/tooling scripts are safe, the rest of `scripts/` should
+  be too. Rejected — the backend suite PROVABLY imports `scripts.*`: ~20
+  files under `apps/backend-rag/backend/tests/unit/scripts/` do
+  `from scripts.curated_qa_harvest import ...`,
+  `from scripts.drive_token_watchdog import ...`, and similar. Allowlisting
+  `scripts/**` would be a textbook W82 under-match (cicatrix-superscar.md
+  #3): a change to one of those scripts would skip the very suite that
+  tests it. The existing `scripts/tests` (.py/.sh) and `scripts/ci` (.sh)
+  entries keep their narrower, previously-measured scope, unchanged by this
+  extension.
+
 CONTRACT
 --------
 Input:  a list of repo-relative file paths, one per line, via:
@@ -325,7 +360,16 @@ VERDICT_SKIP = "skip-backend"
 # family added to NEVER_INNOCENT_BASENAMES so the newly-admitted suffix cannot
 # later be broadened into a manifest a backend test actually reads (W98).
 # Measurement in the module-docstring "v9 EXTENSION" section above.
-ALLOWLIST_VERSION = 9
+# v10 (2026-08-12): added infra/claude-hooks (.py) and infra/guard-
+# conformance (.json) — two directory classes measured (not assumed)
+# structurally incapable of affecting `pytest backend/tests/`, and already
+# independently covered by three dedicated CI workflows
+# (guard-conformance.yml, hook-innocence-gate.yml,
+# kbli-filiera-vault-compilers.yml). Rejected in the same change: a blanket
+# `scripts/**/*.py` widening, which the backend suite provably imports from
+# (~20 files under apps/backend-rag/backend/tests/unit/scripts/).
+# Measurement in the module-docstring "v10 EXTENSION" section above.
+ALLOWLIST_VERSION = 10
 
 # ---------------------------------------------------------------------------
 # NEVER_INNOCENT_EXACT_PATHS — checked FIRST, unconditionally, before any
@@ -748,6 +792,10 @@ ALLOWLIST_PREFIX_SUFFIX_PAIRS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # v7 directory additions. File-shaped v6/v7 additions live in
     # ALLOWLIST_EXACT_PATHS as of v8.
     ("scripts", (".md",)),
+    # v10: infra/claude-hooks (.py) + infra/guard-conformance (.json) — see
+    # the module docstring's "v10 EXTENSION" section.
+    ("infra/claude-hooks", (".py",)),
+    ("infra/guard-conformance", (".json",)),
 )
 
 
