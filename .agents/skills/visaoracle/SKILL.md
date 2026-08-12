@@ -436,7 +436,7 @@ function public.bind_visa_evaluate_idempotency_retention_policy` (least-privileg
   (find-my-way/hono/prisma, 3 high — infra-lane fix needed on main, not the visa lane).
   R1-gate lesson recorded: `adversarial_review:` accepts only gate seats
   (agy/codex/gemini/glm/gpt-5.5/grok/kimi*/nlm) + `human-*`/`exempt-\*`, and every research
-file needs a `## Adversarial review` body section with surviving-objection dispositions.
+  file needs a `## Adversarial review` body section with surviving-objection dispositions.
   GATE STATUS unchanged: 🔴 RED.
 - 2026-07-24 (M5, Kimi orchestrator, evening): **WAVE 1 100% on main + W2 KICKED OFF** (Zero:
   "parti ora"). Wave 0+1 all merged: #3032 (funnel resurrected, live-smoked 201), #3033,
