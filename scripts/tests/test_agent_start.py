@@ -57,6 +57,14 @@ def fake_home(tmp_path, monkeypatch):
     home.mkdir()
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.delenv("AGENT_BROKER_ENABLED", raising=False)
+    # RAM admission gate (2026-08-13) reads the REAL machine's swap/load by
+    # default — and the dev machine this suite runs on is routinely the exact
+    # memory-distressed state the gate exists to catch. Every pre-existing
+    # cmd_create() test call in this file is about worktree/branch mechanics,
+    # not the admission gate, so it must not be at the mercy of live machine
+    # state. Bypass here; the gate's own tests (below) explicitly clear this
+    # and inject sampler values instead of reading the real machine.
+    monkeypatch.setenv("AGENT_RAM_ADMISSION_OVERRIDE", "1")
     return home
 
 
@@ -398,6 +406,195 @@ def test_create_blocked_by_kill_switch(fake_repo, monkeypatch):
     with pytest.raises(SystemExit) as exc:
         mod.cmd_create("wr2", "killed")
     assert "disabled" in str(exc.value).lower()
+
+
+# ---------------------------------------------------------------------------
+# RAM admission gate (2026-08-13) — check_ram_admission() + its cmd_create hook
+#
+# The samplers are INJECTED via monkeypatch, never reading the real machine:
+# the real machine's swap/load changes under our feet (it is, right now, the
+# exact crisis this gate targets) and a test that reads it live would be
+# flaky by construction. `fake_home` sets AGENT_RAM_ADMISSION_OVERRIDE=1 for
+# every other test in this file; each test below explicitly clears it.
+# ---------------------------------------------------------------------------
+
+
+def _clear_ram_override(monkeypatch):
+    monkeypatch.delenv("AGENT_RAM_ADMISSION_OVERRIDE", raising=False)
+
+
+def test_ram_admission_refuses_when_swap_and_load_both_over_threshold(fake_repo, monkeypatch):
+    """Guilt: the tonight-on-M5 shape — swap and load both far over threshold."""
+    mod, _ = fake_repo
+    _clear_ram_override(monkeypatch)
+    monkeypatch.setattr(mod, "_sample_swap_usage", lambda: (10801.0, 11264.0))  # 95.9%
+    monkeypatch.setattr(mod, "_sample_load_ratio", lambda: (157.0, 10))  # 15.7x/core
+
+    admit, reason = mod.check_ram_admission()
+    assert admit is False
+    assert "REFUSED" in reason
+    assert "95.9" in reason
+    assert "15.7" in reason
+
+
+def test_ram_admission_admits_when_both_normal(fake_repo, monkeypatch):
+    """Innocence: an ordinary-load machine (Pro-shaped: high swap floor, low
+    load ratio) is admitted."""
+    mod, _ = fake_repo
+    _clear_ram_override(monkeypatch)
+    monkeypatch.setattr(mod, "_sample_swap_usage", lambda: (500.0, 11264.0))  # 4.4%
+    monkeypatch.setattr(mod, "_sample_load_ratio", lambda: (2.0, 10))  # 0.2x/core
+
+    admit, reason = mod.check_ram_admission()
+    assert admit is True
+    assert "OK" in reason
+
+
+def test_ram_admission_swap_alone_over_threshold_still_admits(fake_repo, monkeypatch):
+    """Innocence, AND not OR: measured live 2026-08-13 that Mini sits at ~94%
+    swap while genuinely calm (load ~0.3x/core) — swap alone must never
+    refuse, or every calm machine on this fleet would be rejected forever."""
+    mod, _ = fake_repo
+    _clear_ram_override(monkeypatch)
+    monkeypatch.setattr(mod, "_sample_swap_usage", lambda: (10800.0, 11264.0))  # 95.9%
+    monkeypatch.setattr(mod, "_sample_load_ratio", lambda: (3.0, 10))  # 0.3x/core, calm
+
+    admit, _reason = mod.check_ram_admission()
+    assert admit is True
+
+
+def test_ram_admission_load_alone_over_threshold_still_admits(fake_repo, monkeypatch):
+    """Innocence, AND not OR, other side: high load with normal swap (e.g. a
+    genuine CPU-bound burst with headroom in RAM) must not refuse either."""
+    mod, _ = fake_repo
+    _clear_ram_override(monkeypatch)
+    monkeypatch.setattr(mod, "_sample_swap_usage", lambda: (500.0, 11264.0))  # 4.4%
+    monkeypatch.setattr(mod, "_sample_load_ratio", lambda: (60.0, 10))  # 6x/core
+
+    admit, _reason = mod.check_ram_admission()
+    assert admit is True
+
+
+def test_ram_admission_fails_open_when_swap_sampler_raises(fake_repo, monkeypatch, caplog):
+    """Guilt-of-the-gate/innocence-of-the-lane: an exception from the sampler
+    (not just a returned None) must not crash cmd_create — it degrades to
+    fail-open, and the degradation is logged."""
+    import logging
+
+    mod, _ = fake_repo
+    _clear_ram_override(monkeypatch)
+
+    def _boom():
+        raise RuntimeError("simulated sysctl explosion")
+
+    monkeypatch.setattr(mod, "_sample_swap_usage", _boom)
+    monkeypatch.setattr(mod, "_sample_load_ratio", lambda: (500.0, 10))  # would refuse if reached
+
+    with caplog.at_level(logging.WARNING, logger="agent_broker"):
+        admit, reason = mod.check_ram_admission()
+    assert admit is True
+    assert "could not measure" in reason.lower()
+    assert any("swap sampler raised" in r.message for r in caplog.records)
+
+
+def test_ram_admission_fails_open_when_sampler_returns_none(fake_repo, monkeypatch):
+    """The anticipated failure path (sysctl absent / bad output) also fails
+    open, distinct from the exception path above."""
+    mod, _ = fake_repo
+    _clear_ram_override(monkeypatch)
+    monkeypatch.setattr(mod, "_sample_swap_usage", lambda: None)
+    monkeypatch.setattr(mod, "_sample_load_ratio", lambda: (500.0, 10))
+
+    admit, reason = mod.check_ram_admission()
+    assert admit is True
+    assert "could not measure" in reason.lower()
+
+
+def test_ram_admission_override_bypasses_even_when_distressed(fake_repo, monkeypatch):
+    mod, _ = fake_repo
+    monkeypatch.setenv("AGENT_RAM_ADMISSION_OVERRIDE", "1")
+    monkeypatch.setattr(mod, "_sample_swap_usage", lambda: (10801.0, 11264.0))
+    monkeypatch.setattr(mod, "_sample_load_ratio", lambda: (157.0, 10))
+
+    admit, reason = mod.check_ram_admission()
+    assert admit is True
+    assert "bypassed" in reason.lower()
+
+
+def test_ram_admission_thresholds_configurable_via_env(fake_repo, monkeypatch):
+    """A caller can tighten or loosen the bar without touching code."""
+    mod, _ = fake_repo
+    _clear_ram_override(monkeypatch)
+    # These values would PASS under the built-in defaults (swap 91% < ordinary
+    # would need >=90 AND load must be >=5x — here load is only 1x) but a
+    # tightened load threshold of 0.5x/core must catch it.
+    monkeypatch.setattr(mod, "_sample_swap_usage", lambda: (10250.0, 11264.0))  # 91.0%
+    monkeypatch.setattr(mod, "_sample_load_ratio", lambda: (10.0, 10))  # 1.0x/core
+    monkeypatch.setenv("AGENT_RAM_ADMISSION_LOAD_RATIO_MAX", "0.5")
+
+    admit, _reason = mod.check_ram_admission()
+    assert admit is False
+
+
+def test_ram_admission_malformed_threshold_env_falls_back_to_default(fake_repo, monkeypatch):
+    mod, _ = fake_repo
+    _clear_ram_override(monkeypatch)
+    monkeypatch.setattr(mod, "_sample_swap_usage", lambda: (500.0, 11264.0))
+    monkeypatch.setattr(mod, "_sample_load_ratio", lambda: (2.0, 10))
+    monkeypatch.setenv("AGENT_RAM_ADMISSION_SWAP_PCT_MAX", "not-a-number")
+
+    # Must not raise; falls back to default and admits (values are calm).
+    admit, _reason = mod.check_ram_admission()
+    assert admit is True
+
+
+def test_cmd_create_refused_by_ram_gate_raises_dedicated_exit_code(fake_repo, monkeypatch):
+    """Integration: cmd_create itself raises SystemExit(RAM_ADMISSION_EXIT_CODE)
+    — a distinct code from the generic exit-1 every other validation error in
+    this file uses — and never reaches git/worktree creation."""
+    mod, repo = fake_repo
+    _clear_ram_override(monkeypatch)
+    monkeypatch.setattr(mod, "_sample_swap_usage", lambda: (10801.0, 11264.0))
+    monkeypatch.setattr(mod, "_sample_load_ratio", lambda: (157.0, 10))
+
+    with pytest.raises(SystemExit) as exc:
+        mod.cmd_create("wr2", "ram-refused")
+    assert exc.value.code == mod.RAM_ADMISSION_EXIT_CODE
+    assert not (repo / ".worktrees" / "wr2-ram-refused").exists()
+
+
+def test_cmd_create_succeeds_when_ram_gate_admits(fake_repo, monkeypatch):
+    """Integration innocence twin: a healthy-machine sample lets create proceed
+    exactly as before this gate existed."""
+    mod, repo = fake_repo
+    _clear_ram_override(monkeypatch)
+    monkeypatch.setattr(mod, "_sample_swap_usage", lambda: (500.0, 11264.0))
+    monkeypatch.setattr(mod, "_sample_load_ratio", lambda: (2.0, 10))
+
+    out = mod.cmd_create("wr2", "ram-admitted")
+    assert out.is_dir()
+    assert out == repo / ".worktrees" / "wr2-ram-admitted"
+
+
+def test_ram_admission_locale_comma_decimal_is_parsed_via_lc_all_c(fake_repo, monkeypatch):
+    """Regression for the locale gotcha found writing this gate: under
+    it_IT.UTF-8, `sysctl vm.swapusage` renders decimals with a COMMA
+    ("used = 10858,38M"). `_sample_swap_usage` forces LC_ALL=C on the
+    subprocess so the output is always period-decimal regardless of the
+    caller's session locale — this proves it empirically against the REAL
+    sysctl binary (only this one test touches the real machine; it asserts
+    the PARSE succeeds and shape is sane, not any specific value)."""
+    import shutil
+
+    mod, _ = fake_repo
+    if shutil.which("sysctl") is None:
+        pytest.skip("sysctl not available on this host")
+
+    sample = mod._sample_swap_usage()
+    assert sample is not None
+    used_mb, total_mb = sample
+    assert 0.0 <= used_mb <= total_mb
+    assert total_mb > 0.0
 
 
 # ---------------------------------------------------------------------------
