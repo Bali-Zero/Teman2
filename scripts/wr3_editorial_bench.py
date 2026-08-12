@@ -172,14 +172,23 @@ def phase2_agy_ingest(corpus_file: str, workdir: Path) -> tuple[str, TierTelemet
 
     t0 = time.time()
     try:
-        with open(corpus_file, "rb") as fin:
-            result = subprocess.run(
-                [str(AGY_BIN), "-p", "--print-timeout", "10m", prompt],
-                stdin=fin,
-                capture_output=True,
-                text=True,
-                timeout=AGY_TIMEOUT_SEC,
-            )
+        # `-p`/`--print` TAKES A VALUE (measured live 2026-08-13, both forms
+        # exit 0): the earlier form bound the literal string "--print-timeout"
+        # as the prompt and left "10m" + the real instructions as stray
+        # positionals — agy never read the corpus from stdin either. The
+        # corpus is metadata-only (yt-dlp --flat-playlist, a few KB), so it
+        # travels inline as part of -p's own argv value. NOTE: agy v1.1.12
+        # has no stdin path, so this is now `ps`-visible while the process
+        # runs — low-sensitivity here (public YouTube video metadata for 15
+        # editorial brands, no client data).
+        corpus_text = Path(corpus_file).read_text(encoding="utf-8", errors="replace")
+        full_prompt = f"{prompt}\n\n--- CORPUS ---\n{corpus_text}"
+        result = subprocess.run(
+            [str(AGY_BIN), "-p", full_prompt, "--print-timeout", "10m"],
+            capture_output=True,
+            text=True,
+            timeout=AGY_TIMEOUT_SEC,
+        )
         tel.wall_seconds = round(time.time() - t0, 1)
         if result.returncode == 0:
             out_file.write_text(result.stdout, encoding="utf-8")

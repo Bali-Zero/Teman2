@@ -131,6 +131,15 @@ _AUTH_RE = re.compile(
     r"unauthori[sz]ed|(?:error\D*)?401",
     re.IGNORECASE,
 )
+# agy's headless auto-deny is a LYING SUCCESS (exit 0): a tool call needing
+# interactive permission gets auto-denied and agy still exits 0 with a
+# jetski/"no output produced" message instead of a real answer (measured live
+# 2026-08-13). Judge it as a tier failure so the cascade falls through instead
+# of consuming the denial text as if it were Gemini's response.
+_AGY_AUTO_DENY_RE = re.compile(
+    r"auto-denied|headless mode cannot prompt|no output produced",
+    re.IGNORECASE,
+)
 _SECRET_DIAGNOSTIC_RE = re.compile(
     r"(?i)\b(?:bearer|oauth[_ -]?token|access[_ -]?token)\b"
     r"(\s*[:=]\s*|\s+)\S+"
@@ -537,8 +546,15 @@ async def _dispatch_gemini_cli(
     """Run the existing Gemini OAuth fallback in an isolated child session."""
     agy = shutil.which("agy")
     if agy:
-        cmd = [agy, "-p", "--print-timeout", f"{timeout_s}s"]
-        stdin_payload = prompt.encode()
+        # `-p`/`--print` TAKES A VALUE (measured live 2026-08-13, both forms
+        # exit 0): a piped/stdin prompt with `-p` immediately followed by
+        # another flag binds that flag's literal text as the prompt and is
+        # never read. Prompt is `-p`'s own argv value; --print-timeout stays
+        # a separate flag with its own value.
+        # NOTE: agy v1.1.12 has no stdin path, so the WR3 episode prompt is
+        # now `ps`-visible while the process runs (PR body has the details).
+        cmd = [agy, "-p", prompt, "--print-timeout", f"{timeout_s}s"]
+        stdin_payload = None
     else:
         legacy = shutil.which("gemini")
         if legacy is None:
@@ -591,6 +607,10 @@ async def _dispatch_gemini_cli(
     if not stdout_text.strip():
         raise CascadeExhaustedError(
             f"{contract.name}: Gemini returned empty output"
+        )
+    if _AGY_AUTO_DENY_RE.search(f"{stdout_text}\n{stderr_text}"):
+        raise CascadeExhaustedError(
+            f"{contract.name}: Gemini auto-denied a tool call in headless mode"
         )
 
     return DispatchResult(

@@ -425,8 +425,16 @@ try_gemini() {
     echo "  [try] Gemini $label" >&2
     build_isolated_provider_env
     if [ "$bin" = "$agy_bin" ]; then
+        # `-p`/`--print` TAKES A VALUE (measured live 2026-08-13, both forms exit
+        # 0): `-p --print-timeout 5m` binds the literal string "--print-timeout"
+        # as the prompt and leaves "5m" a stray positional — agy never reads
+        # $PROMPT_FILE from stdin. Prompt must be `-p`'s own argv value;
+        # --print-timeout stays a separate flag with its own value.
+        # NOTE: agy v1.1.12 has no stdin path, so the prompt now travels on
+        # argv — visible via `ps` to every other user on this machine while
+        # the process runs (see PR body for the PII disclosure this forces).
         run_bounded "$tmpout" "$tmperr" "$label" \
-            "${ISOLATED_PROVIDER_ENV[@]}" "$bin" -p --print-timeout 5m
+            "${ISOLATED_PROVIDER_ENV[@]}" "$bin" -p "$PROMPT" --print-timeout 5m
         exit_code=$?
     else
         run_bounded "$tmpout" "$tmperr" "$label" \
@@ -439,6 +447,17 @@ try_gemini() {
         echo "  [exhausted] $label quota" >&2
         rm -f "$tmpout" "$tmperr"
         return 98
+    fi
+    # agy's headless auto-deny is a LYING SUCCESS: a tool call needing interactive
+    # permission gets auto-denied and agy still exits 0 with a jetski/"no output
+    # produced" message instead of a real answer (measured live 2026-08-13). Judge
+    # it as a tier failure so the cascade falls through instead of consuming the
+    # denial text as if it were Gemini's response.
+    if grep -qiE 'auto-denied|headless mode cannot prompt|no output produced' \
+        "$tmpout" "$tmperr" 2>/dev/null; then
+        echo "  [error] $label auto-denied a tool call in headless mode" >&2
+        rm -f "$tmpout" "$tmperr"
+        return 96
     fi
     if [ "$exit_code" -ne 0 ]; then
         echo "  [error] $label exit=$exit_code" >&2
