@@ -1,0 +1,17 @@
+{
+  "job": "kbli_surface_conformance",
+  "entry": {
+    "host": "Nuzantara",
+    "type": "launchagent",
+    "label": "com.nuzantara.kbli-surface-conformance.daily",
+    "schedule_seconds": 86400,
+    "staleness_threshold_s": 90000,
+    "restart_cmd": "launchctl kickstart -k gui/501/com.nuzantara.kbli-surface-conformance.daily",
+    "test_cmd": "test -x /Users/nuzantara/nuzantara/infra/launchagents/wrappers/kbli-surface-conformance-run.sh",
+    "is_idempotent": true,
+    "critical": true,
+    "repair_scope": "LOCAL",
+    "max_attempts": 1,
+    "_note": "Daily 08:20 WITA read-only KBLI surface detector. Sentinel enforces staleness_threshold_s from the cron-runner receipt; organism expected_hb_seconds is registry metadata validated separately."
+  }
+}

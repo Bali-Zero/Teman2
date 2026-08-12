@@ -135,7 +135,7 @@ alert_failure() {  # alert_failure <job_key> <exit_code> <start_ts> <end_ts> <ta
     gateway="$(dirname "$0")/tg_notify.py"
     [ -f "$gateway" ] || gateway="$HOME/nuzantara/scripts/tg_notify.py"
     [ -f "$gateway" ] || return 0
-    python3 "$gateway" \
+    /usr/bin/python3 "$gateway" \
         --tier p0 \
         --source "cron:${job_key}" \
         --dedup-key "cron-fail:${job_key}" \
