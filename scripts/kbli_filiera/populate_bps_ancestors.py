@@ -1,9 +1,11 @@
-"""Batch-B migration step (2) — bulk-populate `bps_2020_ancestors` (mechanical-only).
+"""Bulk-populate `bps_2020_ancestors` from the gate-certified BPS relation.
 
 Writes the additive canonical field `bps_2020_ancestors` (design §2.2) onto the
 **1,338 Batch-B codes** — the OSS-native population, identified by `_l2_status is
-None`. Batch A's 221 no-scope codes (`_l2_status == "no_oss_risk"`) are explicitly
-OUT of scope for this field and are never touched (design §2.2, §2.4).
+None` — by default. Batch A's 221 no-scope codes
+(`_l2_status == "no_oss_risk"`) were explicitly deferred by the original design
+(§2.2, §2.4). They are included only with the visible second-pass opt-in
+`--include-batch-a`; the default population is deliberately unchanged.
 
 The edge set for each code is copied VERBATIM from the Phase-0 crosswalk relation
 artifact (`data/kbli-filiera/phase0/bps_crosswalk.json`), which the acceptance gate
@@ -30,9 +32,14 @@ it mutates the canonical (atomic tmp+replace), then runs `sync_kbli_dataset.sh s
 to propagate to the consumer copies and bumps the mouth sidecar sha256 — the exact
 flow `cure_canonical_collisions.py` uses.
 
-    python scripts/kbli_filiera/populate_bps_ancestors.py            # dry-run (default)
-    python scripts/kbli_filiera/populate_bps_ancestors.py --apply    # mutate + sync + sidecar
+    python scripts/kbli_filiera/populate_bps_ancestors.py
+        # dry-run the original Batch-B population (default)
+    python scripts/kbli_filiera/populate_bps_ancestors.py --include-batch-a
+        # dry-run the deliberate second pass
+    python scripts/kbli_filiera/populate_bps_ancestors.py --include-batch-a --apply
+        # mutate + sync + sidecar
 """
+
 from __future__ import annotations
 
 import argparse
@@ -52,21 +59,30 @@ from kbli_filiera import vault_common as common  # noqa: E402
 logger = common.setup_logger("populate_bps_ancestors")
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_CANONICAL = REPO_ROOT / "data" / "source_documents" / "KBLI_2025_FINAL_CLEAN.json"
+DEFAULT_CANONICAL = (
+    REPO_ROOT / "data" / "source_documents" / "KBLI_2025_FINAL_CLEAN.json"
+)
 DEFAULT_RELATION = REPO_ROOT / "data" / "kbli-filiera" / "phase0" / "bps_crosswalk.json"
-DEFAULT_GATE_REPORT = REPO_ROOT / "data" / "kbli-filiera" / "phase0" / "gate_report.json"
+DEFAULT_GATE_REPORT = (
+    REPO_ROOT / "data" / "kbli-filiera" / "phase0" / "gate_report.json"
+)
 SYNC_SCRIPT = REPO_ROOT / "scripts" / "sync_kbli_dataset.sh"
 SIDECAR_PATH = REPO_ROOT / "apps" / "mouth" / "data" / "kbli-dataset-version.json"
-SIDECAR_DATASET_PATH = REPO_ROOT / "apps" / "mouth" / "data" / "KBLI_2025_FINAL_CLEAN.json"
+SIDECAR_DATASET_PATH = (
+    REPO_ROOT / "apps" / "mouth" / "data" / "KBLI_2025_FINAL_CLEAN.json"
+)
 
 CODE_FIELD = "kode_kbli_2025"
 FIELD = "bps_2020_ancestors"
 
-# Batch membership markers (design §2.4). Batch B is the OSS-native population that
-# gets this field; Batch A is out of scope for it.
-BATCH_B_MARKER = None            # _l2_status is None
-BATCH_A_MARKER = "no_oss_risk"   # _l2_status == "no_oss_risk"
-EXPECTED_BATCH_B = 1338          # design-pinned; --expect-batch-b overrides on a real catalog change
+# Batch membership markers (design §2.4). Batch B remains the default population;
+# Batch A is the explicitly opted-in second pass authorized after the original defer.
+BATCH_B_MARKER = None  # _l2_status is None
+BATCH_A_MARKER = "no_oss_risk"  # _l2_status == "no_oss_risk"
+EXPECTED_BATCH_B = (
+    1338  # design-pinned; --expect-batch-b overrides on a real catalog change
+)
+EXPECTED_BATCH_A = 221  # deferred population; checked only when explicitly included
 
 # Every bulk-written entry is mechanical-only / not-adjudicated (design §2.2).
 ADJUDICATION_STATUS = "mechanical-only"
@@ -104,21 +120,48 @@ def load_relation_artifact(path: Path) -> tuple[dict[str, dict[str, Any]], str]:
     if not isinstance(relation, dict) or not relation:
         raise PopulateError(f"{path}: 'relation' missing or empty")
     if not isinstance(digest, str) or len(digest) != 64:
-        raise PopulateError(f"{path}: manifest.output_relation_digest missing or not a sha256")
+        raise PopulateError(
+            f"{path}: manifest.output_relation_digest missing or not a sha256"
+        )
     for code, rec in relation.items():
         if set(rec.keys()) != {"codes", "sebagian", "source_locator"}:
-            raise PopulateError(f"{path}: relation[{code!r}] has unexpected keys {sorted(rec.keys())}")
+            raise PopulateError(
+                f"{path}: relation[{code!r}] has unexpected keys {sorted(rec.keys())}"
+            )
         codes, sebagian, sl = rec["codes"], rec["sebagian"], rec["source_locator"]
-        if not isinstance(codes, list) or not isinstance(sebagian, list) or not isinstance(sl, list):
-            raise PopulateError(f"{path}: relation[{code!r}] codes/sebagian/source_locator must be lists")
+        if (
+            not isinstance(codes, list)
+            or not isinstance(sebagian, list)
+            or not isinstance(sl, list)
+        ):
+            raise PopulateError(
+                f"{path}: relation[{code!r}] codes/sebagian/source_locator must be lists"
+            )
+        if not codes:
+            raise PopulateError(
+                f"{path}: relation[{code!r}] has EMPTY ancestry — refusing a silent empty edge write"
+            )
         if len(codes) != len(sebagian):
             raise PopulateError(
                 f"{path}: relation[{code!r}] len(codes)={len(codes)} != len(sebagian)={len(sebagian)}"
+            )
+        if len(codes) != len(sl):
+            raise PopulateError(
+                f"{path}: relation[{code!r}] len(codes)={len(codes)} != "
+                f"len(source_locator)={len(sl)} — every ancestor needs its own checkable locator"
             )
         for loc in sl:
             if not isinstance(loc, dict):
                 raise PopulateError(
                     f"{path}: relation[{code!r}] source_locator entry is not an object: {loc!r}"
+                )
+            expected_locator_keys = {"lampiran", "pdf_page", "printed_page"}
+            if set(loc) != expected_locator_keys or any(
+                loc.get(key) is None for key in expected_locator_keys
+            ):
+                raise PopulateError(
+                    f"{path}: relation[{code!r}] has an incomplete source_locator {loc!r}; "
+                    "lampiran/pdf_page/printed_page are all required"
                 )
     # Content-bind the digest: recompute it from the relation itself with the parser's
     # OWN canonicalization (single source of truth, no duplicated algorithm) and refuse
@@ -145,10 +188,12 @@ def assert_gate_certifies(gate_report_path: Path, relation_digest: str) -> None:
         raise PopulateError(f"gate report not found: {gate_report_path}")
     gate = json.loads(gate_report_path.read_text(encoding="utf-8"))
     verdict = gate.get("verdict")
+    aggregate_passes = (gate.get("aggregate") or {}).get("passes")
     gate_digest = gate.get("parser_run_digest")
-    if verdict != "PASS":
+    if verdict != "PASS" or aggregate_passes is not True:
         raise PopulateError(
-            f"acceptance gate verdict is {verdict!r}, not 'PASS' — refusing to populate "
+            f"acceptance gate is not a full PASS (verdict={verdict!r}, "
+            f"aggregate.passes={aggregate_passes!r}) — refusing to populate "
             f"(re-run bps_phase0_gate.py until the parse clears §1.4)"
         )
     if gate_digest != relation_digest:
@@ -189,12 +234,16 @@ def run_sync_script() -> None:
     sys.stdout.write(result.stdout)
     sys.stderr.write(result.stderr)
     if result.returncode != 0:
-        raise PopulateError(f"sync_kbli_dataset.sh sync failed with exit {result.returncode}")
+        raise PopulateError(
+            f"sync_kbli_dataset.sh sync failed with exit {result.returncode}"
+        )
 
 
 def update_sidecar() -> None:
     if not SIDECAR_DATASET_PATH.exists():
-        raise PopulateError(f"sidecar dataset copy missing: {SIDECAR_DATASET_PATH} (sync must run first)")
+        raise PopulateError(
+            f"sidecar dataset copy missing: {SIDECAR_DATASET_PATH} (sync must run first)"
+        )
     digest = hashlib.sha256(SIDECAR_DATASET_PATH.read_bytes()).hexdigest()
     sidecar = json.loads(SIDECAR_PATH.read_text(encoding="utf-8"))
     before = dict(sidecar)
@@ -203,15 +252,25 @@ def update_sidecar() -> None:
     # on every --apply (the recovery-safe reconcile below) must be a true no-op when
     # nothing changed.
     if before.get("datasetSha256") == f"sha256:{digest}":
-        logger.info("sidecar already current (%s) — no write", before.get("datasetSha256"))
+        logger.info(
+            "sidecar already current (%s) — no write", before.get("datasetSha256")
+        )
         return
     sidecar["datasetSha256"] = f"sha256:{digest}"
     sidecar["lastModified"] = date.today().isoformat()
     SIDECAR_PATH.write_text(
         json.dumps(sidecar, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
-    logger.info("sidecar updated: %s -> %s", before.get("datasetSha256"), sidecar["datasetSha256"])
-    logger.info("sidecar lastModified: %s -> %s", before.get("lastModified"), sidecar["lastModified"])
+    logger.info(
+        "sidecar updated: %s -> %s",
+        before.get("datasetSha256"),
+        sidecar["datasetSha256"],
+    )
+    logger.info(
+        "sidecar lastModified: %s -> %s",
+        before.get("lastModified"),
+        sidecar["lastModified"],
+    )
 
 
 def plan_and_apply(
@@ -222,8 +281,15 @@ def plan_and_apply(
     *,
     expected_batch_b: int,
     do_apply: bool,
+    include_batch_a: bool = False,
+    expected_batch_a: int = EXPECTED_BATCH_A,
 ) -> tuple[int, list[str]]:
-    """Populate FIELD on every Batch-B record lacking it. Returns (n_populated, problems).
+    """Populate FIELD on the selected records. Returns (n_populated, problems).
+
+    Batch B is always selected, preserving the original default. Batch A joins the
+    target set only when ``include_batch_a`` is true. Existing entries in BOTH
+    populations are still inspected on every run: an old/different digest must stay
+    loud even when that population is not selected for new writes.
 
     When do_apply is False the record dicts are not mutated (pure classification) —
     the caller writes nothing. When True, records are mutated in place (the field is
@@ -236,8 +302,10 @@ def plan_and_apply(
     # carrying some other _l2_status is skipped by both branches — that "which batch does
     # this get?" ambiguity must halt a bulk write, not be sailed past silently.
     unclassified = [
-        r for r in records
-        if r.get("_l2_status") is not BATCH_B_MARKER and r.get("_l2_status") != BATCH_A_MARKER
+        r
+        for r in records
+        if r.get("_l2_status") is not BATCH_B_MARKER
+        and r.get("_l2_status") != BATCH_A_MARKER
     ]
     if unclassified:
         seen = sorted({str(r.get("_l2_status")) for r in unclassified})
@@ -254,26 +322,57 @@ def plan_and_apply(
             f"(catalog changed? re-run with --expect-batch-b {len(batch_b)} to acknowledge)"
         )
 
+    # The second-pass opt-in binds to the exact deferred population. The default
+    # does not enforce this count so tiny fixture runs and the original Batch-B
+    # workflow remain unchanged.
+    if include_batch_a and len(batch_a) != expected_batch_a:
+        problems.append(
+            f"Batch-A population is {len(batch_a)}, expected {expected_batch_a} "
+            f"(catalog changed? re-run with --expect-batch-a {len(batch_a)} to acknowledge)"
+        )
+
     to_populate: list[dict[str, Any]] = []
     already_same = 0
     already_diff: list[str] = []
-    for rec in batch_b:
+    selected_ids = {id(rec) for rec in batch_b}
+    if include_batch_a:
+        selected_ids.update(id(rec) for rec in batch_a)
+
+    # Inspect both recognized populations so a stale pre-existing entry is always
+    # loud. Only selected records lacking the field are candidates for a write.
+    for rec in [*batch_b, *batch_a]:
         code = rec.get(CODE_FIELD)
-        existing = rec.get(FIELD)
-        if isinstance(existing, dict):
+        if FIELD in rec:
+            existing = rec[FIELD]
+            if not isinstance(existing, dict):
+                problems.append(
+                    f"code {code!r} already carries malformed {FIELD}={existing!r} "
+                    "(not overwritten)"
+                )
+                continue
             # Idempotent: never clobber. A stale digest is a loud report, not an overwrite.
             if existing.get("parser_run_digest") == digest:
                 already_same += 1
             else:
                 already_diff.append(str(code))
             continue
+        if id(rec) not in selected_ids:
+            continue
         anc = relation.get(code)
         if anc is None:
-            problems.append(f"Batch-B code {code!r} absent from certified relation — cannot populate")
+            population = (
+                "Batch-A" if rec.get("_l2_status") == BATCH_A_MARKER else "Batch-B"
+            )
+            problems.append(
+                f"{population} code {code!r} absent from certified relation — cannot populate"
+            )
             continue
         if not anc["codes"]:
+            population = (
+                "Batch-A" if rec.get("_l2_status") == BATCH_A_MARKER else "Batch-B"
+            )
             problems.append(
-                f"Batch-B code {code!r} has EMPTY ancestry in the relation — a new-in-2025 code "
+                f"{population} code {code!r} has EMPTY ancestry in the relation — a new-in-2025 code "
                 f"needs an explicit decision, not a silent empty write (rule #9)"
             )
             continue
@@ -281,22 +380,20 @@ def plan_and_apply(
 
     if already_diff:
         problems.append(
-            f"{len(already_diff)} Batch-B code(s) already carry {FIELD} with a DIFFERENT "
+            f"{len(already_diff)} code(s) already carry {FIELD} with a DIFFERENT "
             f"parser_run_digest (not overwritten): {sorted(already_diff)[:10]}"
             + ("…" if len(already_diff) > 10 else "")
         )
 
-    # Post-condition (W97 anti-scope-creep): Batch-A must NEVER carry the field.
-    contaminated_a = [str(r.get(CODE_FIELD)) for r in batch_a if FIELD in r]
-    if contaminated_a:
-        problems.append(
-            f"{len(contaminated_a)} Batch-A (no-scope) code(s) carry {FIELD} — out-of-scope "
-            f"contamination: {sorted(contaminated_a)[:10]}"
-        )
-
     logger.info(
-        "Batch-B=%d Batch-A=%d | to-populate=%d already(same-digest)=%d already(diff-digest)=%d",
-        len(batch_b), len(batch_a), len(to_populate), already_same, len(already_diff),
+        "Batch-B=%d Batch-A=%d include-Batch-A=%s | to-populate=%d "
+        "already(same-digest)=%d already(diff-digest)=%d",
+        len(batch_b),
+        len(batch_a),
+        include_batch_a,
+        len(to_populate),
+        already_same,
+        len(already_diff),
     )
 
     if do_apply:
@@ -310,13 +407,54 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    ap.add_argument("--canonical", type=Path, default=DEFAULT_CANONICAL, help="canonical dataset to mutate")
-    ap.add_argument("--relation", type=Path, default=DEFAULT_RELATION, help="Phase-0 crosswalk relation artifact")
-    ap.add_argument("--gate-report", type=Path, default=DEFAULT_GATE_REPORT, help="Phase-0 acceptance gate report")
-    ap.add_argument("--as-of", default=date.today().isoformat(), help="adjudicated_at date (default: today)")
-    ap.add_argument("--expect-batch-b", type=int, default=EXPECTED_BATCH_B,
-                    help=f"expected Batch-B population (default: {EXPECTED_BATCH_B})")
-    ap.add_argument("--apply", action="store_true", help="mutate the canonical (default: dry-run, writes nothing)")
+    ap.add_argument(
+        "--canonical",
+        type=Path,
+        default=DEFAULT_CANONICAL,
+        help="canonical dataset to mutate",
+    )
+    ap.add_argument(
+        "--relation",
+        type=Path,
+        default=DEFAULT_RELATION,
+        help="Phase-0 crosswalk relation artifact",
+    )
+    ap.add_argument(
+        "--gate-report",
+        type=Path,
+        default=DEFAULT_GATE_REPORT,
+        help="Phase-0 acceptance gate report",
+    )
+    ap.add_argument(
+        "--as-of",
+        default=date.today().isoformat(),
+        help="adjudicated_at date (default: today)",
+    )
+    ap.add_argument(
+        "--expect-batch-b",
+        type=int,
+        default=EXPECTED_BATCH_B,
+        help=f"expected Batch-B population (default: {EXPECTED_BATCH_B})",
+    )
+    ap.add_argument(
+        "--include-batch-a",
+        action="store_true",
+        help=(
+            "explicitly include the 221 deferred no_oss_risk records as a deliberate "
+            "second pass (default remains Batch-B only)"
+        ),
+    )
+    ap.add_argument(
+        "--expect-batch-a",
+        type=int,
+        default=EXPECTED_BATCH_A,
+        help=f"expected Batch-A population when opted in (default: {EXPECTED_BATCH_A})",
+    )
+    ap.add_argument(
+        "--apply",
+        action="store_true",
+        help="mutate the canonical (default: dry-run, writes nothing)",
+    )
     args = ap.parse_args(argv)
 
     relation, digest = load_relation_artifact(args.relation)
@@ -329,27 +467,48 @@ def main(argv: list[str] | None = None) -> int:
     dataset = json.loads(raw_text)
     records: list[dict[str, Any]] = dataset["data"]
 
-    print(f"populate_bps_ancestors.py — canonical={args.canonical} relation={args.relation}")
-    print(f"certified digest = {digest[:16]}…  as_of = {args.as_of}  indent = {indent}  "
-          f"mode = {'APPLY' if args.apply else 'DRY-RUN'}")
+    print(
+        f"populate_bps_ancestors.py — canonical={args.canonical} relation={args.relation}"
+    )
+    population = (
+        "Batch-B + explicit Batch-A second pass"
+        if args.include_batch_a
+        else "Batch-B only"
+    )
+    print(
+        f"certified digest = {digest[:16]}…  as_of = {args.as_of}  indent = {indent}  "
+        f"mode = {'APPLY' if args.apply else 'DRY-RUN'}  population = {population}"
+    )
     print("-" * 78)
 
     n_populate, problems = plan_and_apply(
-        records, relation, digest, args.as_of,
-        expected_batch_b=args.expect_batch_b, do_apply=args.apply,
+        records,
+        relation,
+        digest,
+        args.as_of,
+        expected_batch_b=args.expect_batch_b,
+        do_apply=args.apply,
+        include_batch_a=args.include_batch_a,
+        expected_batch_a=args.expect_batch_a,
     )
 
     print("-" * 78)
-    print(f"summary: {n_populate} record(s) to populate with {FIELD}, {len(problems)} problem(s)")
+    print(
+        f"summary: {n_populate} record(s) to populate with {FIELD}, {len(problems)} problem(s)"
+    )
     for p in problems:
         logger.error(p)
 
     if not args.apply:
-        print("DRY RUN — no files written. Re-run with --apply to mutate the canonical.")
+        print(
+            "DRY RUN — no files written. Re-run with --apply to mutate the canonical."
+        )
         return 1 if problems else 0
 
     if problems:
-        logger.error("problems present — refusing to write (fix the artifacts and re-run)")
+        logger.error(
+            "problems present — refusing to write (fix the artifacts and re-run)"
+        )
         return 1
 
     if n_populate:
@@ -358,12 +517,16 @@ def main(argv: list[str] | None = None) -> int:
             with tmp_path.open("w", encoding="utf-8") as f:
                 json.dump(dataset, f, ensure_ascii=False, indent=indent)
             tmp_path.replace(args.canonical)
-            logger.info("wrote %d populated record(s) to %s", n_populate, args.canonical)
+            logger.info(
+                "wrote %d populated record(s) to %s", n_populate, args.canonical
+            )
         except Exception:
             tmp_path.unlink(missing_ok=True)
             raise
     else:
-        logger.info("nothing new to populate — reconciling consumers + sidecar from canonical")
+        logger.info(
+            "nothing new to populate — reconciling consumers + sidecar from canonical"
+        )
 
     # Always reconcile on --apply (both steps are idempotent no-ops when already in sync).
     # This lets a re-run RECOVER a prior partial apply where the canonical was written but

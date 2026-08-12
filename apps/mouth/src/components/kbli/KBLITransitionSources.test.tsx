@@ -44,15 +44,14 @@ describe("KBLITransitionSources — BPS-authoritative transition disclosure", ()
     expect(container.querySelector('a[href="/kbli/01122"]')).toBeNull();
   });
 
-  it("guilt: PP28-only 01287 renders a BPS gap before its licensing citation", () => {
+  it("guilt: cured Batch-A 01287 renders the BPS edge before its licensing citation", () => {
     const code = getCode("01287")!;
     render(<KBLITransitionSources transition={code.transition} />);
-    expect(screen.getByText("BPS crosswalk gap")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "No official BPS 2020 → 2025 crosswalk ancestor is recorded for this code. This is an ancestry data gap, not evidence that no KBLI 2020 predecessor existed.",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Authoritative BPS crosswalk")).toBeInTheDocument();
+    expect(screen.getByTestId("bps-transition-source")).toHaveTextContent(
+      "Official BPS 2020 → 2025 crosswalk ancestors: 01287",
+    );
+    expect(screen.queryByText("BPS crosswalk gap")).toBeNull();
     expect(screen.getByTestId("pp28-transition-source")).toHaveTextContent(
       "01287",
     );
@@ -68,10 +67,14 @@ describe("KBLITransitionSources — BPS-authoritative transition disclosure", ()
     );
   });
 
-  it("innocence: neither-source 64995 renders only the meaningful BPS gap", () => {
+  it("innocence: 64995 renders only its authoritative BPS ancestor", () => {
     const code = getCode("64995")!;
     render(<KBLITransitionSources transition={code.transition} />);
-    expect(screen.getByText("BPS crosswalk gap")).toBeInTheDocument();
+    expect(screen.getByText("Authoritative BPS crosswalk")).toBeInTheDocument();
+    expect(screen.getByTestId("bps-transition-source")).toHaveTextContent(
+      "64999",
+    );
+    expect(screen.queryByText("BPS crosswalk gap")).toBeNull();
     expect(screen.queryByTestId("pp28-transition-source")).toBeNull();
     expect(
       screen.getByRole("region", {

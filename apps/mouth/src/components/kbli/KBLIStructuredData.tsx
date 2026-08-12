@@ -56,11 +56,10 @@ export function KBLICodeJsonLd({
   //
   // The attribution is DERIVED, not fixed. "Crosswalk to KBLI 2025 pending" tells a
   // reader — and Google, and every AI answer built on this JSON-LD — that a basis
-  // exists and only the mapping is unfinished. That is true for the codes with a
-  // authoritative BPS-recorded KBLI-2020 origin. For the 221 that record none, there is nothing to
-  // crosswalk from, and the same sentence would overstate what we can show. Same
-  // principle as the Bali qualifiers above: never let the structured data carry a
-  // green light the data cannot support.
+  // exists and only the mapping is unfinished. That is true only for codes with
+  // an authoritative BPS-recorded KBLI-2020 origin. If a future or defensive
+  // input records none, there is nothing to crosswalk from and the same sentence
+  // would overstate what we can show. The current canonical has no such gap.
   const pmaBasisUntraceable =
     code.provenance?.pma.status === "untraceable_basis";
   // Source-aware (kbli-pma-source.ts, shared with kbli-faq.ts's pmaSourceNote

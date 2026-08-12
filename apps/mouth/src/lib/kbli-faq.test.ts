@@ -179,18 +179,17 @@ describe("buildKbliFaq — BPS-authoritative transition populations", () => {
     expect(answer).not.toContain("previous code");
   });
 
-  it("guilt: PP28-only 01287 declares the BPS gap and emits no audit-in-progress claim anywhere", () => {
+  it("guilt: cured Batch-A 01287 cites its BPS ancestor and never emits the old gap", () => {
     const code = getCode("01287") as KBLICode;
-    expect(code.provenance?.pma.status).toBe("untraceable_basis");
-    expect(code.provenance?.pma.vintage).toBeNull();
+    expect(code.provenance?.pma.status).toBe("pending_crosswalk");
+    expect(code.provenance?.pma.vintage).toBe("2020");
     const faq = buildKbliFaq(code);
     expect(transitionAnswer("01287")).toContain(
-      "No official BPS 2020 → 2025 crosswalk ancestor is recorded for this code. This is an ancestry data gap, not evidence that no KBLI 2020 predecessor existed.",
+      "According to the official BPS 2020 → 2025 crosswalk, KBLI 01287 has recorded KBLI 2020 ancestor(s) 01287.",
     );
-    expect(transitionAnswer("01287")).toContain(
-      "PP 28/2025 licensing-source codes recorded for this page: 01287",
+    expect(JSON.stringify(faq)).not.toContain(
+      "No official BPS 2020 → 2025 crosswalk ancestor is recorded",
     );
-    expect(JSON.stringify(faq)).not.toContain("crosswalk audit in progress");
   });
 
   it("innocence: BPS-only 01122 keeps its BPS transition answer and pending PMA vintage", () => {
@@ -208,12 +207,14 @@ describe("buildKbliFaq — BPS-authoritative transition populations", () => {
     );
   });
 
-  it("innocence: neither-source 64995 gets only the BPS gap answer", () => {
+  it("innocence: 64995 keeps no PP28 source but now cites its BPS ancestor", () => {
     const code = getCode("64995") as KBLICode;
     expect(code.transition.pp28LicensingSourceCodes).toEqual([]);
-    expect(code.provenance?.pma.status).toBe("untraceable_basis");
+    expect(code.provenance?.pma.status).toBe("pending_crosswalk");
     const answer = transitionAnswer("64995");
-    expect(answer).toContain("BPS 2020 → 2025 crosswalk ancestor");
+    expect(answer).toContain(
+      "According to the official BPS 2020 → 2025 crosswalk, KBLI 64995 has recorded KBLI 2020 ancestor(s) 64999.",
+    );
     expect(answer).not.toContain("PP 28/2025 licensing-source codes");
   });
 });

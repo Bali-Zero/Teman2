@@ -125,22 +125,26 @@ describe("kbli-data", () => {
       );
     });
 
-    it("leaves bpsCrosswalk undefined on a PP28-only code and keeps its licensing sources", () => {
-      // 01287 is _l2_status: no_oss_risk → out of Batch-B scope, no field.
+    it("surfaces the deliberate Batch-A BPS ancestry pass without conflating its PP28 source", () => {
+      // 01287 is _l2_status: no_oss_risk. The original Batch-B program
+      // explicitly deferred it; the opt-in Batch-A pass now copies the
+      // independently gate-certified BPS edge while preserving PP28's role.
       const code = getCode("01287");
       expect(code).toBeDefined();
-      expect(code?.transition.bpsCrosswalk).toBeUndefined();
+      expect(code?.transition.bpsCrosswalk).toEqual({
+        codes: ["01287"],
+        adjudicationStatus: "mechanical-only",
+        inheritanceVerdict: "not-adjudicated",
+      });
       expect(code?.transition.pp28LicensingSourceCodes).toEqual(["01287"]);
     });
 
-    it("carries bpsCrosswalk on exactly the 1,338 OSS-native codes and never with an empty codes list", () => {
+    it("carries bpsCrosswalk on all 1,559 codes and never with an empty codes list", () => {
       const codes = getAllCodes();
       const withBps = codes.filter((c) => c.transition.bpsCrosswalk);
-      // EXPECTED_BATCH_B in scripts/kbli_filiera/populate_bps_ancestors.py — the
-      // frontend surface is content-bound to the same OSS-native count. If a
-      // future cure changes Batch-B membership, this breaking is a feature: it
-      // forces re-verification of the honesty framing on both sides.
-      expect(withBps.length).toBe(1338);
+      // 1,338 default Batch-B records + the deliberate 221-record Batch-A
+      // second pass. A count change must force a new program decision.
+      expect(withBps.length).toBe(1559);
       // Never render an empty/degenerate crosswalk element.
       for (const c of withBps) {
         const bps = c.transition.bpsCrosswalk!;
@@ -159,7 +163,7 @@ describe("kbli-data", () => {
       ).toBe(true);
     });
 
-    it("pins the full 1,559-code source partition and the 560 conflicting-list population", () => {
+    it("pins the full 1,559-code source partition after the Batch-A ancestry pass", () => {
       const codes = getAllCodes();
       let both = 0;
       let pp28Only = 0;
@@ -185,18 +189,18 @@ describe("kbli-data", () => {
 
       expect(codes).toHaveLength(1559);
       expect({ both, pp28Only, bpsOnly, neither, differingBoth }).toEqual({
-        both: 1263,
-        pp28Only: 121,
-        bpsOnly: 75,
-        neither: 100,
-        differingBoth: 560,
+        both: 1384,
+        pp28Only: 0,
+        bpsOnly: 175,
+        neither: 0,
+        differingBoth: 620,
       });
-      expect(both + bpsOnly).toBe(1338);
-      expect(pp28Only + neither).toBe(221);
+      expect(both + bpsOnly).toBe(1559);
+      expect(pp28Only + neither).toBe(0);
       expect(both + pp28Only).toBe(1384);
     });
 
-    it("pins all 317 wrong-vintage BPS link traps and the 36 removed PP28 links", () => {
+    it("pins all 359 wrong-vintage BPS link traps and the 36 removed PP28 links", () => {
       const codes = getAllCodes();
       const live2025Codes = new Set(codes.map((code) => code.code));
       const bpsVintageLinkTraps = codes.flatMap((code) =>
@@ -210,7 +214,7 @@ describe("kbli-data", () => {
         ),
       );
 
-      expect(bpsVintageLinkTraps).toHaveLength(317);
+      expect(bpsVintageLinkTraps).toHaveLength(359);
       expect(pp28VintageLinkTraps).toHaveLength(36);
     });
   });

@@ -34,15 +34,12 @@ describe("TransitionBadge — dark-theme tokens", () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it("innocence: 01287 has no BPS ancestry and still renders no Direct Match badge", () => {
+  it("guilt: cured 01287 has BPS ancestry and renders its Direct Match badge", () => {
     const code = getCode("01287")!;
     expect(code.transition.mappingStatus).toBe("MATCH_LANGSUNG");
-    expect(code.transition.bpsCrosswalk?.codes ?? []).toHaveLength(0);
-    const { container } = render(
-      <TransitionBadge transition={code.transition} />,
-    );
-    expect(container.firstChild).toBeNull();
-    expect(screen.queryByText("Direct Match")).toBeNull();
+    expect(code.transition.bpsCrosswalk?.codes).toEqual(["01287"]);
+    render(<TransitionBadge transition={code.transition} />);
+    expect(screen.getByText("Direct Match")).toBeInTheDocument();
   });
 
   it("guilt: 03300 has sixteen BPS ancestors and renders no New in 2025 badge", () => {

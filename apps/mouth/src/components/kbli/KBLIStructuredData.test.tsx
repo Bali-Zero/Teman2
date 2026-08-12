@@ -61,21 +61,21 @@ describe("KBLICodeJsonLd — pmaAttribution is source-aware (item E)", () => {
   });
 });
 
-describe("structured data — untraceable BPS ancestry", () => {
-  it("guilt: 01287 emits the BPS-specific gap and no audit-in-progress claim in either JSON-LD block", () => {
+describe("structured data — Batch-A BPS ancestry cure", () => {
+  it("guilt: 01287 emits pending-crosswalk attribution and no obsolete gap in either JSON-LD block", () => {
     const code = getCode("01287") as KBLICode;
-    expect(code.provenance?.pma.status).toBe("untraceable_basis");
+    expect(code.provenance?.pma.status).toBe("pending_crosswalk");
 
     const article = JSON.stringify(jsonLdOf(code));
     const faq = JSON.stringify(faqJsonLdOf(code));
-    expect(article).toContain(
+    expect(article).toContain("crosswalk to KBLI 2025 pending");
+    expect(faq).toContain("recorded KBLI 2020 ancestor(s) 01287");
+    expect(article).not.toContain(
       "The official BPS crosswalk records no KBLI-2020 predecessor",
     );
-    expect(faq).toContain(
+    expect(faq).not.toContain(
       "No official BPS 2020 → 2025 crosswalk ancestor is recorded",
     );
-    expect(article).not.toContain("crosswalk audit in progress");
-    expect(faq).not.toContain("crosswalk audit in progress");
   });
 
   it("innocence: a BPS-ancestry code keeps the pending-crosswalk attribution", () => {
