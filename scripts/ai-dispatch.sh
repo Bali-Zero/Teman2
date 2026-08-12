@@ -346,10 +346,16 @@ run_gemini() {
     local start_time exit_code output
     start_time=$(date +%s)
 
-    # agy reads the prompt from STDIN (the prod pattern in nb-curator-daily.sh and
-    # wr3_reflexion_synthesis.py); flags after -p are agy flags, NOT the prompt.
+    # `-p`/`--print` TAKES A VALUE (measured live 2026-08-13, both forms exit 0:
+    # a piped/stdin prompt with `-p` immediately followed by another flag binds
+    # that flag's literal text as the prompt and never reads stdin — a lying
+    # success, not a graceful failure). Pass the prompt as `-p`'s own argv
+    # value; --print-timeout stays a separate flag with its own value.
+    # NOTE: agy v1.1.12 has no stdin path, so the prompt (whatever the caller
+    # passed to review/scan/redteam/explore/investigate/search/docs/explain/
+    # vision) is now `ps`-visible while the process runs (see PR body).
     log "Antigravity (agy) → $mode [print mode, timeout=${timeout}s]"
-    output=$(printf '%s' "${framing}${prompt}" | run_with_timeout "$timeout" "$AGY_BIN" -p --print-timeout "${timeout}s" 2>&1) && exit_code=0 || exit_code=$?
+    output=$(run_with_timeout "$timeout" "$AGY_BIN" -p "${framing}${prompt}" --print-timeout "${timeout}s" 2>&1) && exit_code=0 || exit_code=$?
 
     local duration=$(( $(date +%s) - start_time ))
     save_output "gemini-$mode" "$output" "$duration"

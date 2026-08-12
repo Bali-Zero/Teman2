@@ -458,12 +458,17 @@ class TestCallGeminiCli:
             mock_popen.assert_called_once()
             args = mock_popen.call_args[0][0]
             kwargs = mock_popen.call_args.kwargs
+            # `-p`/`--print` TAKES A VALUE (measured live 2026-08-13, both forms
+            # exit 0) — the prompt must be -p's own argv value, never piped on
+            # stdin (a piped prompt with -p immediately followed by another
+            # flag binds that flag's literal text as the prompt and is never
+            # read: a lying success, not a graceful failure).
             assert args[0] == worker.GEMINI_CLI
             assert args[1] == "-p"
-            assert args[2] == "--print-timeout"
-            assert args[3].endswith("s")
-            assert "hello prompt" not in args
-            assert kwargs["stdin"] is not None
+            assert args[2] == "hello prompt"
+            assert args[3] == "--print-timeout"
+            assert args[4].endswith("s")
+            assert kwargs["stdin"] is subprocess.DEVNULL
             assert kwargs["stdout"] is not subprocess.PIPE
             assert kwargs["stderr"] is not subprocess.PIPE
             assert kwargs["start_new_session"] is True

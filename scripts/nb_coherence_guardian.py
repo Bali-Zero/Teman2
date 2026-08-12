@@ -469,11 +469,20 @@ def _prompt_cross_nb(nbs: list[dict[str, Any]]) -> list[tuple[str, str]]:
 # agy invocation + JSON extraction
 # --------------------------------------------------------------------------- #
 def _run_agy(prompt: str) -> tuple[str, str | None]:
-    """Call agy with the prompt on stdin. Returns (stdout, error_or_None)."""
+    """Call agy with the prompt as -p's argv value. Returns (stdout, error_or_None).
+
+    `-p`/`--print` TAKES A VALUE (measured live 2026-08-13, both forms exit 0):
+    a cmd of ["agy", "-p", "--model", AGY_MODEL] binds the literal string
+    "--model" as the prompt and leaves AGY_MODEL a stray positional — agy
+    never reads a piped `input=`. Prompt must be `-p`'s own argv value.
+
+    NOTE: agy v1.1.12 has no stdin path, so the prompt (NB coherence-check
+    text, drawn from NotebookLM source content) is now `ps`-visible while the
+    process runs (see PR body for the PII disclosure this forces).
+    """
     try:
         proc = subprocess.run(
-            ["agy", "-p", "--model", AGY_MODEL],
-            input=prompt,
+            ["agy", "-p", prompt, "--model", AGY_MODEL],
             capture_output=True,
             text=True,
             timeout=AGY_TIMEOUT_S,

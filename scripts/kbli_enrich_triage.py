@@ -62,10 +62,15 @@ def run_gemini_batch(batch_id: int, codes: list[dict], output_dir: Path) -> Path
 
     try:
         if _IS_AGY:
-            # agy: prompt on stdin via -p flag.
+            # `-p`/`--print` TAKES A VALUE (measured live 2026-08-13, both
+            # forms exit 0): a piped/stdin prompt with -p immediately
+            # followed by another flag binds that flag's literal text as the
+            # prompt and is never read. Prompt is -p's own argv value.
+            # NOTE: agy v1.1.12 has no stdin path, so the KBLI triage batch
+            # prompt is now `ps`-visible while the process runs — low
+            # sensitivity here (public KBLI codes/descriptions, no client data).
             result = subprocess.run(
-                [GEMINI_BIN, "-p", "--print-timeout", "5m"],
-                input=prompt,
+                [GEMINI_BIN, "-p", prompt, "--print-timeout", "5m"],
                 capture_output=True, text=True, timeout=310,
                 cwd=str(Path(__file__).parent.parent),
             )

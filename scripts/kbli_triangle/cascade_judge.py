@@ -120,9 +120,15 @@ def gemini_refute(s: dict, proposal: dict) -> dict | None:
         'Reply with ONLY one JSON object on the last line: {"refuted": true|false, "reason": "..."}'
     )
     try:
+        # `-p`/`--print` TAKES A VALUE (measured live 2026-08-13, both forms exit
+        # 0): `-p --print-timeout 3m` binds the literal string "--print-timeout"
+        # as the prompt and leaves "3m" a stray positional — agy never reads the
+        # piped `input=`. Prompt must be `-p`'s own argv value.
+        # NOTE: agy v1.1.12 has no stdin path, so the prompt (KBLI record +
+        # proposal JSON) is now `ps`-visible while the process runs (PR body).
         p = subprocess.run(
-            ["agy", "-p", "--print-timeout", "3m"],
-            input=prompt, capture_output=True, text=True, timeout=240,
+            ["agy", "-p", prompt, "--print-timeout", "3m"],
+            capture_output=True, text=True, timeout=240,
         )
         return _extract_json(p.stdout)
     except Exception as e:

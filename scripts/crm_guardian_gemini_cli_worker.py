@@ -1097,9 +1097,19 @@ def call_gemini_cli(
     Raises subprocess.TimeoutExpired on timeout, CalledProcessError on
     non-zero exit. Caller is responsible for retry/backoff logic.
 
-    The prompt is passed via stdin while `-p/--print` selects non-interactive
-    mode. This mirrors the stable local agent pattern and avoids argv limits
-    on large CRM inventories.
+    The prompt is `-p`'s own argv value. `-p`/`--print` TAKES A VALUE (measured
+    live 2026-08-13, both forms exit 0): the earlier stdin-based form —
+    `["agy", "-p", "--print-timeout", f"{timeout_seconds}s"]` fed the prompt on
+    stdin — bound the literal string "--print-timeout" as the prompt and left
+    the timeout a stray positional; agy never read stdin, so this worker never
+    actually delivered a CRM prompt through this path.
+
+    NOTE (PII exposure, flagged not resolved — see PR body): agy v1.1.12 has
+    no stdin path, so this prompt is now `ps`-visible to every other user on
+    this machine while the process runs. This prompt is CRM/client document
+    content by construction (OCR text, Drive listings, client_id) — the same
+    exposure class as the W115 cicatrix on draft.py. No workaround is applied
+    here; the owner decides whether/how to mitigate.
     """
     if not Path(GEMINI_CLI).exists():
         raise RuntimeError(
@@ -1110,7 +1120,7 @@ def call_gemini_cli(
     # agy does NOT support `-m model` (prints help instead). Model is fixed to
     # CLI default (Gemini 3.1 Pro under Google AI Ultra OAuth). The legacy
     # `model` argument is accepted for back-compat but ignored when CLI=agy.
-    cmd = [GEMINI_CLI, "-p", "--print-timeout", f"{timeout_seconds}s"]
+    cmd = [GEMINI_CLI, "-p", prompt, "--print-timeout", f"{timeout_seconds}s"]
 
     LOG.info(
         "Calling agy CLI (model=%s[ignored-on-agy] prompt_len=%d timeout=%ds)",
@@ -1123,6 +1133,9 @@ def call_gemini_cli(
     # the CRM queue remains stuck in "running". Redirecting to files lets us
     # wait on the direct process only and still retain diagnostics on failure.
     capture_id = uuid.uuid4().hex
+    # prompt_path is a diagnostic dump only (unlinked on success below) — the
+    # prompt itself now travels as cmd's own -p argv value, not via stdin.
+    # Explicit DEVNULL keeps agy from ever blocking on an inherited stdin.
     prompt_path = RAW_DUMP_DIR / f"agy_prompt_{capture_id}.txt"
     stdout_path = RAW_DUMP_DIR / f"agy_stdout_{capture_id}.txt"
     stderr_path = RAW_DUMP_DIR / f"agy_stderr_{capture_id}.txt"
@@ -1130,13 +1143,12 @@ def call_gemini_cli(
     proc: subprocess.Popen[str] | None = None
     try:
         with (
-            prompt_path.open("r", encoding="utf-8") as stdin_fh,
             stdout_path.open("w+", encoding="utf-8") as stdout_fh,
             stderr_path.open("w+", encoding="utf-8") as stderr_fh,
         ):
             proc = subprocess.Popen(
                 cmd,
-                stdin=stdin_fh,
+                stdin=subprocess.DEVNULL,
                 stdout=stdout_fh,
                 stderr=stderr_fh,
                 text=True,
