@@ -10,7 +10,6 @@
 
 import { useCallback, useEffect, useMemo, useReducer } from "react";
 import {
-  BEHAVIORAL_CATEGORIES,
   CATEGORY_KEYS,
   QUESTIONS,
   REVIEW_GATE_ITEMS,
@@ -842,8 +841,25 @@ export function isEditableTreeStep(step: TreeStep): boolean {
 function behavioralSteps(
   facts: OracleFacts,
 ): { id: string; labelI18nKey: string }[] {
-  const category = facts.category as CategoryKey | undefined;
-  if (!category || !BEHAVIORAL_CATEGORIES.has(category)) return [];
+  // Trunk entries only make sense once "category" has an answer at all —
+  // before that, computeNextNode can't have routed past it either. But the
+  // answer doesn't have to be a real `CategoryKey`: the category question
+  // has `notSure: { mode: "human-review" }` (tree.ts), so a real interview
+  // can leave `facts.category === "unsure"` (flowReducer's SKIP action,
+  // reachable from any language's "Not sure?" affordance). `getCategoryQuestionIds`
+  // is already the graph's single source of truth for "what comes next" in
+  // that case too — it falls back to `["stay_days"]` for any category that
+  // isn't a recognized `CategoryKey` (tree.ts, same fallback `computeNextNode`'s
+  // "trip_scope" case relies on). The old `BEHAVIORAL_CATEGORIES.has(category)`
+  // guard here duplicated that check and disagreed with it: for "unsure" it
+  // returned `[]` while `getCategoryQuestionIds` still returns `["stay_days"]`,
+  // so the live node (e.g. "stay_days") was absent from `order` in
+  // `getTreeSteps` above — `currentIdx` came back -1, every trunk entry read
+  // "pending", and the sr-only nav rendered a completely empty `<ol>` for
+  // that step (and every step after it) — language-independent; the same
+  // empty nav reproduces in English under the identical fact-state. Delegate
+  // to `getCategoryQuestionIds` unconditionally instead of re-deciding here.
+  if (facts.category === undefined) return [];
   return getCategoryQuestionIds(facts).map((id) => ({
     id,
     labelI18nKey: `tree.${id}`,
