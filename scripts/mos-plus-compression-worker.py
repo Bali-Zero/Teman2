@@ -21,6 +21,16 @@ Safeguards:
   - Redactor pre-LLM: scrub password/token/key patterns BEFORE LLM call
   - JSON validation: skip if response missing required fields
   - TTL cleanup: discard raw>7d unpromoted
+  - Retry cap: a row failing synthesis MAX_ROW_RETRIES times is discarded
+    instead of retried forever (cascade-fix 2026-08-13)
+  - Ollama-down alert: pages via tg_notify after
+    OLLAMA_ALERT_AFTER_CONSECUTIVE_FAILS consecutive local-tier failures
+    (cascade-fix 2026-08-13)
+
+Ollama endpoint: MOS_PLUS_OLLAMA_URL env override, default is Mini's
+Tailscale IP — see the OLLAMA_HOST comment below for why (cascade-fix
+2026-08-13; this worker used to default to localhost, contended by
+translate-articles.py's cron on the same machine).
 
 Scheduled: every 10min via launchd. NOT inline.
 """
@@ -38,17 +48,44 @@ import pathlib
 DB_PATH = os.path.expanduser("~/.claude/memory.db")
 ERR_LOG = os.path.expanduser("~/.claude/state/mos-plus-compression.log")
 COUNTER_FILE = os.path.expanduser("~/.claude/state/mos-plus-daily-calls.json")
+OLLAMA_HEALTH_FILE = os.path.expanduser("~/.claude/state/mos-plus-ollama-health.json")
 
 CLAUDE_BIN = os.path.expanduser("~/.local/bin/claude")
 AGY_BIN = os.path.expanduser("~/.local/bin/agy")
 CODEX_BIN = "/opt/homebrew/bin/codex"
-OLLAMA_URL = "http://localhost:11434/api/generate"
+
+# Cascade-fix 2026-08-13 (superscar #1+#2): was hardcoded to localhost, which
+# Pro's Ollama cannot serve under load — `aisingapore/…-32B-IT:q4_k_m` sits
+# resident at 24.6GB/48GB, reloaded hourly by scripts/translate-articles.py's
+# cron (contention flagged, NOT fixed here — different surface). Measured
+# 2026-08-13: Pro times out at 180s+ on a 3-word prompt; Mini (the fleet's
+# dedicated Ollama workhorse per CLAUDE.md §Machines "Modo B") answers the
+# same qwen3.5:9b model in ~2.4s. Same env-override pattern already used by
+# WR2_IMAGE_VLM_URL / MATA_GARUDA_KG_BASE_URL (infra/home-fork/declared-
+# pairs.json) — a dedicated var, not the shared OLLAMA_HOST some other
+# scripts read, so setting one never silently retargets the other.
+OLLAMA_HOST = os.environ.get("MOS_PLUS_OLLAMA_URL", "http://100.93.236.6:11434")
+OLLAMA_URL = f"{OLLAMA_HOST}/api/generate"
 
 BATCH_SIZE = 20
 MAX_RUN_SEC = 300
 DAILY_CAP_CLOUD = 50
 BATCH_LONG_CTX_THRESHOLD = 50
 LLM_TIMEOUT = 90
+
+# Cascade-fix 2026-08-13 (superscar #2 — was: unbounded retry, `failed +=
+# obs_count; continue` retried the SAME sid forever. Measured: raw_observations
+# backlog 5,022→7,162 in one day while a single sid retried every tick for
+# ~18h straight). A row that fails synthesis this many times stops being
+# retried and is discarded instead — see _discard_rows_over_retry_cap().
+MAX_ROW_RETRIES = 10
+
+# Cascade-fix 2026-08-13: page after this many CONSECUTIVE failed calls to
+# the local Ollama tier (ollama_local or ollama_fallback) — ~30min at the
+# plist's StartInterval=600s. Below this, a single blip stays silent (not
+# every transient timeout is an outage); at/above it, the failure that was
+# invisible for 18h+ gets a voice. See _record_ollama_health().
+OLLAMA_ALERT_AFTER_CONSECUTIVE_FAILS = 3
 
 TIER_IMPORTANCE_CAP = {
     "claude_haiku": 7,
@@ -197,6 +234,125 @@ def call_ollama(prompt: str) -> str | None:
         return None
 
 
+# ---------------------------------------------------------------------------
+# Cascade-fix 2026-08-13: Ollama consecutive-failure tracking + alert.
+# The two functions below are pure (dict in, dict/bool out) — no disk, no
+# network — so guilt/innocence tests exercise them directly without mocking
+# subprocess or sqlite. _record_ollama_health() is the only caller that
+# touches OLLAMA_HEALTH_FILE / the gateway.
+# ---------------------------------------------------------------------------
+
+_TG_STATUS_RE = re.compile(r"tg_notify:\s*(\S+)")
+
+
+def _next_ollama_health_state(state: dict, success: bool) -> dict:
+    """Pure transition: success resets the streak, failure extends it."""
+    if success:
+        return {"consecutive_fails": 0}
+    return {"consecutive_fails": state.get("consecutive_fails", 0) + 1}
+
+
+def _should_alert_ollama_down(consecutive_fails: int) -> bool:
+    """Pure predicate — the guilt/innocence boundary the tests pin."""
+    return consecutive_fails >= OLLAMA_ALERT_AFTER_CONSECUTIVE_FAILS
+
+
+def _load_ollama_health() -> dict:
+    if os.path.exists(OLLAMA_HEALTH_FILE):
+        try:
+            return json.load(open(OLLAMA_HEALTH_FILE))
+        except Exception:
+            pass
+    return {"consecutive_fails": 0}
+
+
+def _save_ollama_health(state: dict) -> None:
+    try:
+        pathlib.Path(OLLAMA_HEALTH_FILE).parent.mkdir(parents=True, exist_ok=True)
+        json.dump(state, open(OLLAMA_HEALTH_FILE, "w"))
+    except Exception as e:
+        _log(f"ollama health state save: {e}")
+
+
+def _send_ollama_down_alert(consecutive_fails: int) -> None:
+    """Best-effort page via the ONE Telegram gateway (scripts/tg_notify.py,
+    cicatrix-superscar #3 anti-regrowth: never call the raw Telegram API).
+    Absolute interpreter (sys.executable — the binary this process is
+    actually running under, not python3 re-resolved via PATH after sourcing
+    a venv, cicatrix W108), rc + gateway outcome always logged, and this
+    function must NEVER raise into the caller — family #2: a broken alert
+    must not become a second reason the worker dies silently."""
+    gateway = pathlib.Path(__file__).resolve().parent / "tg_notify.py"
+    if not gateway.exists():  # HOME-fork copy running ahead of a repo sync (#1)
+        gateway = pathlib.Path.home() / "nuzantara" / "scripts" / "tg_notify.py"
+    text = (
+        f"mos-plus-compression: Ollama tier unreachable for {consecutive_fails} "
+        f"consecutive attempts (endpoint={OLLAMA_HOST}). raw_observations "
+        f"backlog is growing — check Mini reachability / model load."
+    )
+    argv = [
+        sys.executable, str(gateway),
+        "--tier", "p0", "--source", "mos-plus-compression",
+        "--dedup-key", "mos-plus-ollama-tier-down",
+    ]
+    try:
+        r = subprocess.run(argv, input=text, capture_output=True, text=True, timeout=30)
+        m = _TG_STATUS_RE.search(r.stderr or "")
+        outcome = m.group(1) if m else "unparseable"
+        _log(f"ollama-down alert via tg_notify rc={r.returncode} outcome={outcome}")
+    except Exception as e:
+        _log(f"ollama-down alert subprocess error: {e}")
+
+
+def _record_ollama_health(success: bool) -> None:
+    """Call once per ollama-tier attempt (local or fallback). Updates the
+    persisted streak and fires the alert exactly when the streak crosses
+    OLLAMA_ALERT_AFTER_CONSECUTIVE_FAILS — never below it."""
+    state = _next_ollama_health_state(_load_ollama_health(), success)
+    _save_ollama_health(state)
+    if not success and _should_alert_ollama_down(state["consecutive_fails"]):
+        _send_ollama_down_alert(state["consecutive_fails"])
+
+
+def _discard_rows_over_retry_cap(conn: sqlite3.Connection, ids: list[int]) -> int:
+    """A row that has failed synthesis MAX_ROW_RETRIES times stops being
+    retried forever (was: unconditional `continue`, family #2 — the same
+    sid got requeued and retried on every 10min tick with no ceiling).
+    Returns how many rows this call discarded, for the caller's own log."""
+    if not ids:
+        return 0
+    placeholders = ",".join("?" * len(ids))
+    rows = conn.execute(
+        f"SELECT id FROM raw_observations WHERE id IN ({placeholders}) AND retry_count >= ?",
+        (*ids, MAX_ROW_RETRIES),
+    ).fetchall()
+    over_ids = [r["id"] for r in rows]
+    if over_ids:
+        conn.executemany(
+            "UPDATE raw_observations SET discarded_at=datetime('now'), "
+            "discard_reason='max_retries_exceeded' WHERE id=?",
+            [(i,) for i in over_ids],
+        )
+        conn.commit()
+    return len(over_ids)
+
+
+def _bump_retry_and_discard_over_cap(conn: sqlite3.Connection, obs_use: list, sid: str, reason: str) -> int:
+    """Shared tail of both failure branches in main()'s per-session loop
+    (unreachable/timed-out tier, and a tier that answered but unparseably) —
+    same cap, same discard, one place instead of two copies drifting apart."""
+    ids = [o["id"] for o in obs_use]
+    conn.executemany(
+        "UPDATE raw_observations SET retry_count = retry_count + 1 WHERE id=?",
+        [(i,) for i in ids],
+    )
+    conn.commit()
+    n_discarded = _discard_rows_over_retry_cap(conn, ids)
+    if n_discarded:
+        _log(f"sid={sid[:8]} discarded {n_discarded} row(s) over retry cap ({MAX_ROW_RETRIES}, reason={reason})")
+    return n_discarded
+
+
 def detect_code_heavy(obs_block: str) -> bool:
     """Heuristic: more than 2 Bash tool calls with code-like content."""
     bash_count = obs_block.count("post_tool_use/Bash:")
@@ -230,7 +386,12 @@ def call_tier(tier: str, prompt: str) -> str | None:
     if tier == "codex_gpt55":
         return call_codex_gpt55(prompt)
     if tier in ("ollama_local", "ollama_fallback"):
-        return call_ollama(prompt)
+        result = call_ollama(prompt)
+        # Cascade-fix 2026-08-13: this is the ONE call site both the direct
+        # choice AND the ollama_fallback retry (below, in main()) go through,
+        # so a single hook here sees every ollama-tier attempt.
+        _record_ollama_health(result is not None)
+        return result
     return None
 
 
@@ -269,6 +430,18 @@ def main():
     except sqlite3.Error as e:
         _log(f"db connect: {e}")
         sys.exit(1)
+
+    # Cascade-fix 2026-08-13: per-row retry counter (idempotent — sqlite has
+    # no `ADD COLUMN IF NOT EXISTS`; catch the duplicate-column error instead
+    # of doing our own schema-version bookkeeping for one column).
+    try:
+        conn.execute(
+            "ALTER TABLE raw_observations ADD COLUMN retry_count INTEGER NOT NULL DEFAULT 0"
+        )
+        conn.commit()
+    except sqlite3.OperationalError as e:
+        if "duplicate column" not in str(e).lower():
+            raise
 
     # F6 amendment: TTL cleanup first (raw>7d unpromoted)
     try:
@@ -309,7 +482,7 @@ def main():
     for r in rows:
         sessions.setdefault(r["session_id"], []).append(r)
 
-    promoted = skipped = failed = 0
+    promoted = skipped = failed = discarded_retry_cap = 0
     for sid, obs in sessions.items():
         if time.time() - t0 > MAX_RUN_SEC:
             _log(f"MAX_RUN_SEC hit, exit partial (promoted={promoted})")
@@ -341,6 +514,7 @@ def main():
 
         if not output:
             failed += obs_count
+            discarded_retry_cap += _bump_retry_and_discard_over_cap(conn, obs_use, sid, "call fail")
             continue
 
         counter[tier] = counter.get(tier, 0) + 1
@@ -348,6 +522,7 @@ def main():
         if not summary:
             _log(f"sid={sid[:8]} tier={tier} parse fail")
             failed += obs_count
+            discarded_retry_cap += _bump_retry_and_discard_over_cap(conn, obs_use, sid, "parse fail")
             continue
 
         if summary.get("content", "").strip().upper() == "SKIP":
@@ -384,7 +559,10 @@ def main():
 
     save_counter(counter)
     conn.close()
-    _log(f"done: promoted={promoted} skipped={skipped} failed={failed} elapsed={int(time.time()-t0)}s counter={counter}")
+    _log(
+        f"done: promoted={promoted} skipped={skipped} failed={failed} "
+        f"discarded_retry_cap={discarded_retry_cap} elapsed={int(time.time()-t0)}s counter={counter}"
+    )
     sys.exit(0)
 
 
