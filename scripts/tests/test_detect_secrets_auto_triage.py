@@ -215,8 +215,9 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     """Sanity: the KBLI gold-set rule is path-scoped to kbli-gold-all.json
     only — not the other KBLI files, which stay on the closed-writer-set
     path rules in AUTO_APPROVE_RULES."""
-    assert len(CONTENT_KEYED_RULES) == 6  # +1: infra/llm-credentials/declared.json sha256_16 (2026-08-12)
+    assert len(CONTENT_KEYED_RULES) == 7  # +1: infra/llm-credentials/declared.json sha256_16 (2026-08-12)
     # +1: apps/backend-rag/backend/scripts/visa_engine/gold_replay_driver.py public_key (2026-08-13)
+    # +1: research/visa/2026-08-12-gold-replay-live-report.json payload_sha256 (2026-08-13)
     path_pat, _content_pat, reason = CONTENT_KEYED_RULES[1]
     assert path_pat.search(KBLI_GOLD_ALL)
     assert not path_pat.search("apps/mouth/data/KBLI_2025_FINAL_CLEAN.json")
@@ -592,6 +593,120 @@ def test_innocence_gold_replay_driver_ride_along_statement_not_approved() -> Non
     assert content_pat.match(compound) is None
 
 
+# --- gold replay driver live-run report payload_sha256 rule (2026-08-13) ---
+#
+# Context: the G-b gold replay driver's live-run report
+# (research/visa/2026-08-12-gold-replay-live-report.json) repeats
+# `payload_sha256` once per persona/pack observation — the content-derived
+# sha256 of a PUBLIC signed RulePack payload, the same class of value as the
+# AUTO_APPROVE_RULES `contracts/packs/rulepack-*.json` rule, just embedded in
+# a research/ run report rather than the pack artifact itself. `Detect
+# Secrets` flagged it as an unaudited "Hex High Entropy String".
+#
+# Content-keyed rather than a path-only research/*.json rule because this
+# file's directory (research/visa/) can carry other ad-hoc JSON with
+# different content in the future. Approval requires the line to be exactly
+# `"payload_sha256": "<64 lowercase hex>"[,]`, end-anchored — same discipline
+# as every other rule in this list.
+#
+# This rule shipped (PR #4131 / commit 07073a297) with no guilt/innocence
+# tests of its own — exactly the gap that let a same-day merge-of-main
+# collide it with `infra/llm-credentials/declared.json`'s rule at the same
+# list index (both additions correct individually, colliding only in
+# position; see the reordering above and cicatrix-superscar #9). The second
+# collision, with main's gold_replay_driver.py rule landing at the same
+# index via PR #4130, is resolved the same way: both rules kept, this one
+# moved to CONTENT_KEYED_RULES[6].
+
+GOLD_REPLAY_LIVE_REPORT = "research/visa/2026-08-12-gold-replay-live-report.json"
+
+
+def test_gold_replay_live_report_rule_registered_and_scoped_to_exactly_one_file() -> (
+    None
+):
+    path_pat, _content_pat, reason = CONTENT_KEYED_RULES[6]
+    assert path_pat.search(GOLD_REPLAY_LIVE_REPORT)
+    assert not path_pat.search(
+        "research/visa/2026-08-12-gold-replay-live-report.json.bak"
+    )
+    assert not path_pat.search("research/visa/2026-08-13-some-other-report.json")
+    assert "never a credential" in reason
+
+
+def test_guilt_gold_replay_live_report_real_line_is_approved() -> None:
+    """The exact finding shape CI flagged, read live off disk via classify()
+    at the file's first payload_sha256 occurrence (line 8) — so this fails if
+    the file is renamed, the field is reshaped, or the rule is removed, not
+    merely if someone edits a string literal in this test."""
+    auto, reason = classify(GOLD_REPLAY_LIVE_REPORT, 8)
+    assert auto, f"the real payload_sha256 finding must be approved (got {reason!r})"
+    assert "never a credential" in reason
+
+
+def test_innocence_gold_replay_live_report_wrong_key_name_not_approved() -> None:
+    """Line 9 is `rule_pack_id` — a UUID, not a sha256, and not this rule's
+    key name either way. Nothing but the payload_sha256 line gets a pass."""
+    auto, _reason = classify(GOLD_REPLAY_LIVE_REPORT, 9)
+    assert not auto
+
+
+def test_innocence_gold_replay_live_report_wrong_key_name_same_hex_shape_not_approved() -> (
+    None
+):
+    """Keyed on the field NAME, not on hex shape: the same 64-hex value under
+    a different assignment target must still be flagged."""
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[6]
+    fake_line = (
+        '    "rulepack_signature": '
+        '"3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82"'
+    )
+    assert content_pat.match(fake_line) is None
+
+
+def test_innocence_gold_replay_live_report_wrong_length_not_approved() -> None:
+    """63 or 65 hex chars must not match — the shape is exactly 64, a real
+    sha256, not 'roughly hex-shaped'."""
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[6]
+    assert (
+        content_pat.match(
+            '    "payload_sha256": '
+            '"3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f8"'
+        )
+        is None
+    )  # 63
+    assert (
+        content_pat.match(
+            '    "payload_sha256": '
+            '"3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82a"'
+        )
+        is None
+    )  # 65
+
+
+def test_innocence_gold_replay_live_report_uppercase_hex_not_approved() -> None:
+    """Uppercase hex must not match — the driver only ever emits lowercase
+    (hashlib.hexdigest always does); an uppercase variant is a shape a real
+    pasted credential could take that this rule's own output never would."""
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[6]
+    fake_line = (
+        '    "payload_sha256": '
+        '"3D068AEF2DCA40F1EFB74BDD3F8859E767C000282AB8299AC7F277B0B9719F82"'
+    )
+    assert content_pat.match(fake_line) is None
+
+
+def test_innocence_gold_replay_live_report_ride_along_statement_not_approved() -> None:
+    """End-anchored: a legitimate payload_sha256 line followed by anything
+    else on the same line must not launder the ride-along."""
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[6]
+    compound = (
+        '    "payload_sha256": '
+        '"3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82", '
+        '"api_key": "sk-realsecretvalue1234567890ABCDEF"'
+    )
+    assert content_pat.match(compound) is None
+
+
 def test_innocence_gold_replay_driver_same_shape_in_another_file_not_approved() -> None:
     """Path-scoped: the identical line in a different file gets no pass from
     this rule."""
@@ -599,3 +714,12 @@ def test_innocence_gold_replay_driver_same_shape_in_another_file_not_approved() 
         "apps/backend-rag/backend/scripts/visa_engine/other.py", 86
     )
     assert not (auto and "trust root" in reason)
+
+
+def test_innocence_gold_replay_live_report_same_shape_in_another_file_not_approved() -> (
+    None
+):
+    """Path-scoped: the identical line shape in a different file gets no
+    pass from this rule."""
+    auto, reason = classify("research/visa/some_other_report.json", 8)
+    assert not (auto and "never a credential" in reason)
