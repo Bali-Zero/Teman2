@@ -79,6 +79,16 @@ BESAR_DERIVED_STATUSES = frozenset(
 # Tiers that survive the Bali moratorium (resolve_kbli_l4_needs_review.py).
 HIGH_RISK_TIERS = frozenset({"Tinggi", "Menengah Tinggi"})
 
+# Open-status families whose stored Bali conclusion is supported by an OSS
+# risk tier on a Besar licensing row.  Rule 2 uses this family to verify tier
+# support; rule 4 uses the same allow-list before deriving ``open``.  Keep this
+# structural: prose such as "Besar scale is Tinggi" is an audit trail, not
+# evidence that the row still exists on the record.
+OPEN_TIER_DERIVED_STATUSES = frozenset(
+    {"APERTO_BALI_RISCHIO_ALTO", "OK_or_HIGHER_RISK"}
+)
+VERDICT_STATES = frozenset({"blocked", "open", "unknown", "provisional"})
+
 
 def disputed_keys(record: dict[str, Any]) -> list[str]:
     return sorted(k for k in record if k.startswith("per_skala_disputed"))
@@ -97,6 +107,91 @@ def besar_risk(record: dict[str, Any]) -> str | None:
         if any("besar" in (s or "").lower() for s in scales):
             return (row.get("kategori_risiko") or "").strip()
     return None
+
+
+def besar_risks(record: dict[str, Any]) -> tuple[str, ...]:
+    """Risk-tier multiset carried by every surviving Besar row.
+
+    ``besar_risk`` intentionally preserves the first-row rule used by the
+    older #1814 adjudicator.  New state checks need the whole per-scope family:
+    an ``OK_or_HIGHER_RISK`` verdict is healthy only when at least one Besar
+    row survives and every surviving Besar scope is high risk.  Duplicates and
+    empty/missing tiers are retained so any row deletion or non-supporting row
+    changes the pinned facts basis.  Sorting makes the multiset stable in specs.
+    """
+    tiers: list[str] = []
+    for row in record.get("per_skala") or []:
+        scales = row.get("skala_usaha") or []
+        if isinstance(scales, str):
+            scales = [scales]
+        if not any("besar" in (scale or "").lower() for scale in scales):
+            continue
+        tier = (row.get("kategori_risiko") or "").strip()
+        tiers.append(tier)
+    return tuple(sorted(tiers))
+
+
+def open_supporting_tier_absent(record: dict[str, Any]) -> bool:
+    """Whether an APERTO/OK verdict has lost its own licensing-tier basis.
+
+    This is the audit's disowned-tier predicate, re-derived from the record:
+    no code list and no prose matching.  A healthy open verdict needs one or
+    more surviving Besar rows and every such row must carry a high-risk tier.
+    Empty rows, a missing Besar row, or a low-risk Besar scope mean the stored
+    open conclusion is not supported by the record's own licensing rows.
+    """
+    status = (record.get("l4_bali") or {}).get("status")
+    if status not in OPEN_TIER_DERIVED_STATUSES:
+        return False
+    tiers = besar_risks(record)
+    return not tiers or any(tier not in HIGH_RISK_TIERS for tier in tiers)
+
+
+def verdict_state_facts(record: dict[str, Any]) -> dict[str, Any]:
+    """The complete live premise used to derive ``l4_bali.verdict_state``.
+
+    The emitter pins this object in the spec and the compiler recomputes it
+    before writing.  The exact surviving Besar tiers are included beside the
+    Boolean predicate so a licensing-basis mutation cannot hide behind a
+    coincidentally unchanged final state.
+    """
+    l4 = record.get("l4_bali")
+    if not isinstance(l4, dict):
+        raise ValueError("l4_bali missing or not an object")
+    blocked = l4.get("blocked")
+    if not isinstance(blocked, bool):
+        raise ValueError("l4_bali.blocked missing or not Boolean")
+    return {
+        "status": l4.get("status"),
+        "blocked": blocked,
+        "confidence": l4.get("confidence"),
+        "needs_review": l4.get("needs_review"),
+        "supporting_tier_absent": open_supporting_tier_absent(record),
+        "supporting_besar_tiers": list(besar_risks(record)),
+    }
+
+
+def derive_verdict_state(record: dict[str, Any]) -> str:
+    """Derive the additive four-state Bali verdict without changing blocked.
+
+    Ordering is the contract: NON_CLASSIFICABILE is always unknown (including
+    the conservatively retained ``blocked=true`` rows); a disowned open tier or
+    any non-final epistemic marker is provisional; only then can ``blocked``
+    derive blocked, or an explicitly allow-listed open-family status derive
+    open.  Every other unblocked status remains provisional.
+    """
+    facts = verdict_state_facts(record)
+    if facts["status"] == "NON_CLASSIFICABILE":
+        return "unknown"
+    if facts["supporting_tier_absent"]:
+        return "provisional"
+    if facts["needs_review"] is True or facts["confidence"] != "HIGH":
+        return "provisional"
+    if facts["blocked"]:
+        return "blocked"
+    if facts["status"] in OPEN_TIER_DERIVED_STATUSES:
+        return "open"
+    return "provisional"
 
 
 def status_matches_surviving_rows(status: str | None, record: dict[str, Any]) -> bool | None:
