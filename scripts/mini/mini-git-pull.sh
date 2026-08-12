@@ -386,8 +386,19 @@ if ! git merge-base --is-ancestor HEAD "$TARGET_REF" 2>/dev/null; then
   # paths it did not touch are untouched by this decision; they simply gain
   # the legitimate upstream advance, which is the whole point of the pull.
   # Same clean-tree requirement, same lock, same telegram_alert. Falls
-  # through unchanged if the merge-base is unknown, no paths were touched,
-  # or any touched path still genuinely differs.
+  # through unchanged if the merge-base is unknown or a touched path still
+  # genuinely differs.
+  #
+  # 2026-08-12: zero-touched-paths is ALSO safe, not a fall-through case.
+  # A local-only commit that changes no files (e.g. an empty merge commit
+  # produced when something here merges origin/main instead of
+  # fast-forwarding) has, by definition, nothing to lose on reset — the
+  # `-eq 0 ||` short-circuit below fires before the unsafe
+  # "${TOUCHED_PATHS[@]}" expansion is ever reached. Order matters: bash
+  # 3.2 under `set -u` raises unbound-variable on that expansion when the
+  # array is empty, so the length check MUST be first and MUST short-
+  # circuit (`||`), never `-gt 0 &&` (which silently refused this case
+  # instead of crashing — 850 refused ticks 2026-05-10..2026-08-12).
   if [ "${SELFHEAL_OK:-0}" != "1" ]; then
     MERGE_BASE=$(git merge-base HEAD "$TARGET_REF" 2>/dev/null)
     if [ -n "$MERGE_BASE" ] \
@@ -397,8 +408,8 @@ if ! git merge-base --is-ancestor HEAD "$TARGET_REF" 2>/dev/null; then
       while IFS= read -r -d '' _p; do
         TOUCHED_PATHS+=("$_p")
       done < <(git diff --name-only -z "$MERGE_BASE" HEAD 2>/dev/null)
-      if [ "${#TOUCHED_PATHS[@]}" -gt 0 ] \
-         && git diff --quiet HEAD "$TARGET_REF" -- "${TOUCHED_PATHS[@]}" 2>/dev/null; then
+      if [ "${#TOUCHED_PATHS[@]}" -eq 0 ] \
+         || git diff --quiet HEAD "$TARGET_REF" -- "${TOUCHED_PATHS[@]}" 2>/dev/null; then
         log "  every path HEAD's local-only commit(s) touched already matches $TARGET_REF (ahead+behind shape, ${#TOUCHED_PATHS[@]} path(s)) — attempting narrow self-heal"
         SELFHEAL_OK=0
         if command -v flock >/dev/null 2>&1; then

@@ -335,7 +335,7 @@ function transformCode(
     })),
     transition: {
       mappingStatus: raw.status_mapping,
-      previousCodes: raw.pp28_sources || [],
+      pp28LicensingSourceCodes: raw.pp28_sources || [],
       mappingNote: raw.mapping_note || undefined,
       aggregationNote: raw.aggregation_note || undefined,
       bpsCrosswalk: raw.bps_2020_ancestors

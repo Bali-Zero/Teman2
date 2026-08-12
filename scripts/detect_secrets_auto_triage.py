@@ -198,6 +198,28 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "docs/runbooks/visa-engine-key-ceremony.md — a trust root read at "
         "replay time, never a credential (private key is off-repo)",
     ),
+    # LLM credential registry: `sha256_16` is a 16-hex TRUNCATION of the
+    # sha256 of a Google API credential's UID — an opaque identifier Google
+    # already publishes in Cloud Monitoring's `credential_id` label, never the
+    # key material. The file exists precisely SO THAT this repo (public) can
+    # name which key is authorised without carrying one: a spending audit that
+    # had to store keys to recognise them would be worse than the problem it
+    # solves. The truncation is one-way and 16 hex characters wide, so it
+    # cannot be expanded back into anything.
+    #
+    # Content-keyed on the key NAME and the exact VALUE SHAPE, end-anchored to
+    # the line (optional trailing comma): the whole line must be
+    # `"sha256_16": "<16 lowercase hex>"[,]`. A real credential pasted into
+    # this file on any other line, or onto this key in any other shape, stays
+    # unaudited for human review.
+    (
+        re.compile(r"^infra/llm-credentials/declared\.json$"),
+        re.compile(r'^\s*"sha256_16"\s*:\s*"[0-9a-f]{16}"\s*,?\s*$'),
+        "LLM credential registry: sha256_16 is a one-way 16-hex truncation of "
+        "a Google credential UID (an identifier Google itself exposes as "
+        "`credential_id` in Cloud Monitoring), never key material — the file "
+        "exists so a PUBLIC repo can name an authorised key without holding it",
+    ),
 ]
 
 # Each rule is (pattern, reason). The pattern matches the file path

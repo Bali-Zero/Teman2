@@ -109,9 +109,7 @@ export function KBLICard({ code, showTransition = false }: KBLICardProps) {
             verificationPending={isLicensingVerificationPending(code)}
           />
         )}
-        {showTransition && code.transition.mappingStatus && (
-          <TransitionBadge status={code.transition.mappingStatus} />
-        )}
+        {showTransition && <TransitionBadge transition={code.transition} />}
       </div>
     </Link>
   );

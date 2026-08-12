@@ -215,7 +215,7 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     """Sanity: the KBLI gold-set rule is path-scoped to kbli-gold-all.json
     only — not the other KBLI files, which stay on the closed-writer-set
     path rules in AUTO_APPROVE_RULES."""
-    assert len(CONTENT_KEYED_RULES) == 4  # +1: infra/vcr/expected_claims.yaml certified_hash (#3575)
+    assert len(CONTENT_KEYED_RULES) == 5  # +1: infra/llm-credentials/declared.json sha256_16 (2026-08-12)
     path_pat, _content_pat, reason = CONTENT_KEYED_RULES[1]
     assert path_pat.search(KBLI_GOLD_ALL)
     assert not path_pat.search("apps/mouth/data/KBLI_2025_FINAL_CLEAN.json")
@@ -420,3 +420,99 @@ def test_innocence_shell_script_outside_tests_dir_not_approved_by_this_rule() ->
         "a .sh file outside a tests?/ dir must not be approved by the "
         f"tests-tree rule (got: auto={auto}, reason={reason!r})"
     )
+
+
+# --- LLM credential registry sha256_16 rule (2026-08-12) --------------------
+#
+# Context: `infra/llm-credentials/declared.json` names WHICH Google API
+# credentials are authorised to spend, so `scripts/llm_provider_reconcile.py`
+# can ask Google (not our own ledger) whether an undeclared key is billing.
+# The whole point of the file is that a PUBLIC repo can name a key without
+# holding one, so it stores a one-way 16-hex truncation of the credential's
+# UID — an identifier Google itself exposes as `credential_id` in Cloud
+# Monitoring. Detect Secrets read that truncation as a "Hex High Entropy
+# String" and blocked PR #4098 on `declared.json:22`.
+#
+# Content-keyed, same discipline as the rules above: approval needs the line
+# to be exactly `"sha256_16": "<16 lowercase hex>"[,]`, end-anchored. The
+# guilt case below reads the REAL line off disk through classify(), because
+# unlike the KBLI rule this file exists in this checkout — so the test proves
+# the rule fires on the actual finding CI rejected, not on a copy of it.
+
+LLM_CREDENTIALS_DECLARED = "infra/llm-credentials/declared.json"
+
+
+def test_llm_credentials_rule_registered_and_scoped_to_exactly_one_file() -> None:
+    path_pat, _content_pat, reason = CONTENT_KEYED_RULES[4]
+    assert path_pat.search(LLM_CREDENTIALS_DECLARED)
+    assert not path_pat.search("infra/llm-credentials/declared.json.bak")
+    assert not path_pat.search("infra/other/declared.json")
+    assert "never key material" in reason
+
+
+def test_guilt_the_real_line_ci_rejected_is_approved() -> None:
+    """The exact finding that made `Detect Secrets` red on PR #4098.
+
+    Read live off disk via classify(), so this fails if the file is renamed,
+    the field is reshaped, or the rule is removed — not merely if someone
+    edits a string literal in this test.
+    """
+    auto, reason = classify(LLM_CREDENTIALS_DECLARED, 22)
+    assert auto, f"the real sha256_16 finding must be approved (got {reason!r})"
+    assert "never key material" in reason
+
+
+def test_innocence_the_label_line_in_the_same_file_is_not_approved() -> None:
+    """Line 23 is the human-readable `label`. Nothing but the fingerprint line
+    gets a pass, so a credential pasted anywhere else in this file still stops
+    the gate."""
+    auto, _reason = classify(LLM_CREDENTIALS_DECLARED, 23)
+    assert not auto
+
+
+def test_innocence_llm_credentials_wrong_key_name_not_approved() -> None:
+    """Keyed on the field NAME, not on hex shape: the same 16-hex value under
+    `api_key` must still be flagged."""
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[4]
+    assert content_pat.match('      "api_key": "ddea903c496cd26c"') is None
+
+
+def test_innocence_llm_credentials_real_credential_shape_not_approved() -> None:
+    """A real credential assigned to `sha256_16` must not ride in on the key
+    name. `AIza...` is Google's own API-key prefix — the exact shape this
+    file exists to avoid ever holding."""
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[4]
+    assert content_pat.match('      "sha256_16": "AIzaSyD-1234567890abcdefg"') is None
+
+
+def test_innocence_llm_credentials_wrong_length_not_approved() -> None:
+    """Exactly 16, not 'roughly hex-shaped'. A full 64-hex sha256 is also
+    rejected: this field is defined as the truncation, and a full digest here
+    would mean some other writer produced it."""
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[4]
+    assert content_pat.match('      "sha256_16": "ddea903c496cd26"') is None  # 15
+    assert content_pat.match('      "sha256_16": "ddea903c496cd26ca"') is None  # 17
+    assert content_pat.match('      "sha256_16": "%s"' % ("a" * 64)) is None  # full digest
+
+
+def test_innocence_llm_credentials_uppercase_hex_not_approved() -> None:
+    """`credential_fingerprint()` emits lowercase (hashlib.hexdigest always
+    does), so uppercase can only come from another writer — a shape a real
+    pasted credential could take and this cure's output never would."""
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[4]
+    assert content_pat.match('      "sha256_16": "DDEA903C496CD26C"') is None
+
+
+def test_innocence_llm_credentials_ride_along_statement_not_approved() -> None:
+    """End-anchored: a legitimate fingerprint followed by anything else on the
+    same line must not launder the ride-along."""
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[4]
+    compound = '      "sha256_16": "ddea903c496cd26c", "api_key": "AIzaSyD-1234567890abcd"'
+    assert content_pat.match(compound) is None
+
+
+def test_innocence_llm_credentials_same_shape_in_another_file_not_approved() -> None:
+    """Path-scoped: the identical line in a different file gets no pass from
+    this rule."""
+    auto, reason = classify("infra/other/declared.json", 22)
+    assert not (auto and "never key material" in reason)

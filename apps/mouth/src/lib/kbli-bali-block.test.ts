@@ -49,7 +49,11 @@ function toKbliCodeForFaq(r: RawRecord): KBLICode {
     titleEnIsReal: false,
     section: "A",
     licensing: [],
-    transition: { mappingStatus: null, mappingNote: null, previousCodes: [] },
+    transition: {
+      mappingStatus: null,
+      mappingNote: null,
+      pp28LicensingSourceCodes: [],
+    },
     pma: {
       status:
         r.pma_status === "TERBUKA"
