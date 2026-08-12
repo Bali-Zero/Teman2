@@ -635,6 +635,18 @@ fork-origin runs), the minutes are never dropped — they land in
 `unattributed_group_minutes` / `unattributed_pr_minutes` respectively (scar family #2,
 "esiste ≠ armato" — no silent caps).
 
+For this public repository the timing endpoint's billable OS buckets are present but zero.
+The organ therefore falls back to the same response's `run_duration_ms` and records the
+choice under `timing_sources.run_duration`; this is effective runner consumption, not a
+monetary charge. Private-repo non-zero billable buckets still win. A zero-billable response
+without `run_duration_ms` is recorded explicitly as `billable_zero_without_duration` (the
+normal shape for a skipped run), never inferred to carry hidden duration.
+
+The runs census is independently fail-visible. The organ compares the unique run IDs fetched
+across every `--paginate` page with GitHub's `total_count`. If GitHub stops at its server-side
+cap, the record carries `run_collection.complete=false` plus a numeric shortfall in
+`errors[]`; exactly 1,000 fetched runs can no longer masquerade as the whole day.
+
 **Fail-visible by construction**: every `gh` API denial, timeout, or unparseable response is
 appended to the record's `errors[]` array. A record is always written — even a total-failure
 day — but `errors[]` non-empty makes the probe (and the wrapper that invokes it) exit

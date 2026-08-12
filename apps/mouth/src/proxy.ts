@@ -363,9 +363,11 @@ export function proxy(request: NextRequest) {
       rewriteUrl.pathname = "/chat";
       const rewriteResponse = NextResponse.rewrite(rewriteUrl);
       rewriteResponse.headers.set("x-pathname", pathname);
+      rewriteResponse.headers.set("X-Robots-Tag", "noindex, nofollow");
       return rewriteResponse;
     }
     // All other routes (/login, /api, etc.) pass through as-is
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
     return response;
   }
 
