@@ -1,3 +1,7 @@
+---
+adversarial_review: codex
+---
+
 # CHAPTER: The Content Creator
 
 **1. The Dream**
@@ -24,7 +28,7 @@ The consultant winced—an actual, physical wince—when Theo's deck reached sli
 
 Theo's mouth opened and closed. "Hold on. The successor's blocked too?"
 
-"74199—'other specialized design'—has no Large-Enterprise scale row in the OSS system. It's effectively reserved for small and micro local enterprises. A PT PMA is, by law, a Large Enterprise. So a foreign-owned company can't register 74199 in Bali *or anywhere in Indonesia*. You'd be chasing a dead 2020 code into a blocked 2025 one. A phantom leading you to a wall." He closed the deck gently, the way you'd close a sick patient's chart. "Forget 74149 forever. It is the single most common piece of bad code-advice still floating around the creator world, and it has cost people real money."
+"74199—'other specialized design'—is nationally open to foreign ownership; no reservation touches it. What blocks it is Bali itself: its OSS risk class is low, and low and medium-low risk codes are exactly the band the Governor asked BKPM to close to new foreign registrations in January 2026. So a foreign-owned company can't register 74199 *in Bali* today. You'd be chasing a dead 2020 code into a Bali-blocked 2025 one. A phantom leading you to a wall." He closed the deck gently, the way you'd close a sick patient's chart. "Forget 74149 forever. It is the single most common piece of bad code-advice still floating around the creator world, and it has cost people real money."
 
 "So I don't have a code at all?"
 
@@ -50,7 +54,7 @@ Here is the verified, ground-truth reality.
 >
 > **THE PHANTOM — DO NOT REGISTER**
 > *   **74149 — (retired 2020 code):**
->     *   *Status:* **DOES NOT EXIST in the 2025 KBLI.** It is a dead code from the old 2020 system. Its closest 2025 descendant is 74199 ("other specialized design")—which is itself **BLOCKED** for any PMA (no Large-Enterprise scale row; reserved for local micro/small enterprises). Never register against 74149. Never let anyone "map" you onto it.
+>     *   *Status:* **DOES NOT EXIST in the 2025 KBLI.** It is a dead code from the old 2020 system. Its closest 2025 descendant is 74199 ("other specialized design")—nationally open to foreign ownership, but **BLOCKED in Bali** by the risk-tier moratorium (its OSS risk class is low). Never register against 74149. Never let anyone "map" you onto it.
 >
 > **THE THREE REAL CODES — THREE DIFFERENT FATES**
 > *   **59112 — Aktivitas Produksi Film, Video, dan Program Televisi oleh Swasta (Film/Video/TV Production):**
@@ -119,3 +123,12 @@ Theo's instinct was to lean his whole body against one door — to force 59112 o
 > The principle underneath all four routes is the same one that exorcised the phantom in the first place: **register the business you actually run, named correctly, scoped honestly.** Theo's confusion — *what do I actually DO???* — stops being an existential crisis and becomes the single most valuable business decision he will make, because the classification system rewards the creator who can name his real engine and punishes the one who tries to register a vibe. The way through is not a clever code. It is an honest answer to the question he started with.
 
 *Before you sign anything, scan to check the live status of KBLI 59112 — and of the genuine open alternatives 60203, 60202, 18202, and 58190 — on the Nuzantara platform.*
+
+## Adversarial review
+
+- Seat: Codex `gpt-5.6-sol` (reasoning xhigh), refute stance, cross-family — reviewed the
+  2026-08-12 retraction-cure diff touching this file, verified against
+  `KBLI_2025_FINAL_CLEAN.json` (the cured dataset).
+- Outcome: FIX-FIRST → fixed in this same PR. 10 findings (9 confirmed/accommodated, 1 HOLDS): 96220 national status corrected to TERBATAS 0% (measured); 55201/55203 restated as the same Annex II entry 48 (sub-rows *Pondok Wisata* / *Vila*); the annex stated as a national instrument (articles 01/02); honest-map wording corrected (33.2% = almost exactly one in three; all but FOUR of the 372 nationally open; 1,041 = "not blocked", not "open"); surf-coliving guest-house-scope reading stated as OSS's call, not the founder's certainty; stale ID fact-sheet row (55203 "tanpa Besar") cured. Every fix re-measured against KBLI_2025_FINAL_CLEAN.json before applying.
+- Note: this section and the `adversarial_review` frontmatter key are R1-gate metadata;
+  the book/PDF composer strips the frontmatter block and this section from rendered output.

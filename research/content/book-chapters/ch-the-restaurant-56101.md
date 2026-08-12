@@ -1,3 +1,7 @@
+---
+adversarial_review: codex
+---
+
 # CHAPTER: The Restaurant
 
 **1. The Dream**
@@ -48,7 +52,7 @@ Here is the verified, ground-truth reality.
 >
 > **THE LOCKED DOOR RIGHT NEXT TO IT**
 > *   **56303 — Aktivitas Rumah Minum/Kafe (Café / Drinking Establishment):** **BLOCKED** for new PMA in Bali (moratorium 13 May 2026). Drinks-led venues fall in the low/medium-low risk band the province sealed.
-> *   **56304 — Aktivitas Kedai Minuman (Beverage Stall):** **CLOSED** to PMA—no Besar (large) scale exists, so it is reserved for local UMKM.
+> *   **56304 — Aktivitas Kedai Minuman (Beverage Stall):** **BLOCKED** in Bali—its risk class (medium-low) falls inside the band the moratorium closes to new foreign registrations.
 >
 > **THE LESSON IN THE NUMBERS**
 > *   "Food and beverage" is not one decision. A restaurant and a café are two different KBLI codes with two opposite verdicts. Pick the wrong one and the dream dies at the OSS counter; pick the right one and the door swings open.
@@ -110,3 +114,12 @@ Marco's door was already open—but an open door is not a permanent fixture. It 
 The principle underneath all six routes is the same one that saved Marco's dream: in Bali, the unit of truth is the five-digit code, and the moratorium is not a wall to be tunneled under—it is a map of which businesses the island actually wants. The honest path forward is never to make one open code pretend to be a closed one; it is to keep your real activity flush against the code you hold, and to reach the next ambition by opening the *next* door that is genuinely open—each with its own permits earned in daylight. Stay inside your code, grow into adjacent open codes, and partner (never front) for the ones that are closed. Do that, and the door Marco walked through doesn't just stay open—it leads somewhere.
 
 *Before you sign anything, scan to check the live status of KBLI 56101—and of every adjacent code you intend to grow into (56301, 56210, 56290, 10750, 10710, 46333)—on the Nuzantara platform.*
+
+## Adversarial review
+
+- Seat: Codex `gpt-5.6-sol` (reasoning xhigh), refute stance, cross-family — reviewed the
+  2026-08-12 retraction-cure diff touching this file, verified against
+  `KBLI_2025_FINAL_CLEAN.json` (the cured dataset).
+- Outcome: FIX-FIRST → fixed in this same PR. 10 findings (9 confirmed/accommodated, 1 HOLDS): 96220 national status corrected to TERBATAS 0% (measured); 55201/55203 restated as the same Annex II entry 48 (sub-rows *Pondok Wisata* / *Vila*); the annex stated as a national instrument (articles 01/02); honest-map wording corrected (33.2% = almost exactly one in three; all but FOUR of the 372 nationally open; 1,041 = "not blocked", not "open"); surf-coliving guest-house-scope reading stated as OSS's call, not the founder's certainty; stale ID fact-sheet row (55203 "tanpa Besar") cured. Every fix re-measured against KBLI_2025_FINAL_CLEAN.json before applying.
+- Note: this section and the `adversarial_review` frontmatter key are R1-gate metadata;
+  the book/PDF composer strips the frontmatter block and this section from rendered output.
