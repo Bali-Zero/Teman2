@@ -20,15 +20,48 @@ against the REAL evaluator (never re-derived by hand):
     independently-TRUE HUMAN_REVIEW rule that was always true underneath it
     but never reached (the short-circuit returned EXCLUDED before the review
     stage ever ran) -- so EXCLUDED's legal successor set includes REVIEW, not
-    just BLOCKED_UNKNOWN. It never includes SUPPORTED or UNSUPPORTED
-    (reaching those requires clearing BOTH the hard-filter AND human-review
-    stages with no unknowns, which de-knowing a fact those very stages
-    depend on cannot produce). This nuance is provable, not a modeling
-    shortcut: every HARD_FILTER/HUMAN_REVIEW rule in the designed gold pack
-    is ``safety_critical=True`` by construction (see ``gold_rule_pack.json``),
-    which is exactly what stops a de-knowed fact from ever silently falling
-    all the way through to an eligibility-based SUPPORTED/UNSUPPORTED
-    verdict.
+    just BLOCKED_UNKNOWN.
+
+    Updated 2026-08-12 alongside the ``adapter.py`` review/input on_unknown
+    split (see that module's docstring fix 2): the same "unmask" nuance also
+    applies to SUPPORTED and UNSUPPORTED. Both require clearing the
+    HARD_FILTER and HUMAN_REVIEW stages with no *consequential* (on_unknown
+    != NO_EFFECT) unknowns before the ELIGIBILITY stage is ever consulted --
+    but a GLOBAL HUMAN_REVIEW rule can be sitting there, resolved definitely
+    FALSE against the persona's fully-KNOWN facts, without depending on any
+    fact the ELIGIBILITY-covering rules themselves reference (e.g.
+    ``hr-calling-visa`` keys only on ``person.nationalities``, unrelated to
+    most products' own SUPPORT conditions). De-knowing exactly that
+    unrelated fact turns the review rule's condition UNKNOWN, and since it
+    declares ``on_unknown=HUMAN_REVIEW`` it escalates straight to REVIEW --
+    reached AFTER the stage that produced the original SUPPORTED/UNSUPPORTED
+    verdict was already past, so it silently overrides it. Empirically this
+    fires on essentially every persona's C1 product (nationalities is a
+    HARD_FILTER/HUMAN_REVIEW input nearly everywhere but rarely an
+    ELIGIBILITY one). SUPPORTED and UNSUPPORTED's legal successor sets both
+    now include REVIEW for this reason.
+
+    BLOCKED_UNKNOWN is NO LONGER strictly absorbing either, for the same
+    root cause one precedence tier over: ``evaluate_product``'s own
+    docstring (see ``adapter.py``) is explicit that
+    ``on_unknown=HUMAN_REVIEW`` unknowns from the HARD_FILTER/HUMAN_REVIEW
+    stages are checked, and win, BEFORE ``on_unknown=NEEDS_INPUT`` unknowns
+    from those same two stages -- which are themselves checked BEFORE
+    anything ELIGIBILITY-stage-driven (SUPPORTED/UNSUPPORTED/an
+    ELIGIBILITY-stage BLOCKED_UNKNOWN). So a BLOCKED_UNKNOWN baseline caused
+    by an ELIGIBILITY-stage unknown (e.g. persona 10's E30, blocked on
+    ``study.sponsor_confirmed``) can still be pre-empted by de-knowing an
+    UNRELATED fact that unmasks a HARD_FILTER/HUMAN_REVIEW-stage
+    ``on_unknown=HUMAN_REVIEW`` rule (persona 10's KR nationality, known
+    and not calling-visa-listed in the baseline, resolves ``hr-calling-visa``
+    FALSE; de-knowing it makes that rule's own condition UNKNOWN, which
+    escalates straight to REVIEW ahead of the eligibility-stage block that
+    was already there) -- moving BLOCKED_UNKNOWN -> REVIEW. This is not
+    "resolving" BLOCKED_UNKNOWN toward more certainty (which would violate
+    monotonicity); REVIEW is a DIFFERENT non-decisive verdict that simply
+    sits earlier in ``evaluate_product``'s own total precedence order, and
+    removing information can still move you earlier in that order, just
+    never all the way to a decisive SUPPORTED/EXCLUDED/UNSUPPORTED.
 
 (b) **Fact-order invariance** -- shuffling the insertion order of the
     ``FactSnapshot.values`` mapping never changes any outcome. A dict/
@@ -79,9 +112,11 @@ _SHUFFLE_SEEDS = (0, 1, 2)
 
 #: Legal successor states for each baseline proof state after de-knowing
 #: exactly one fact (see the module docstring's "Monotonicity" section for
-#: the empirically-caught EXCLUDED -> REVIEW nuance). ``BLOCKED_UNKNOWN`` is
-#: an absorbing state: once reached, no further de-knowing can move away
-#: from it (removing information never re-adds certainty).
+#: the empirically-caught EXCLUDED -> REVIEW nuance, and the 2026-08-12
+#: update for SUPPORTED/UNSUPPORTED -> REVIEW and BLOCKED_UNKNOWN -> REVIEW).
+#: ``BLOCKED_UNKNOWN`` can still only ever move to another non-decisive
+#: verdict (REVIEW or itself) -- removing information never re-adds enough
+#: certainty to reach a decisive SUPPORTED/EXCLUDED/UNSUPPORTED.
 _ALLOWED_DEKNOW_TRANSITIONS: dict[adapter.ProofState, frozenset[adapter.ProofState]] = {
     adapter.ProofState.EXCLUDED: frozenset(
         {adapter.ProofState.EXCLUDED, adapter.ProofState.REVIEW, adapter.ProofState.BLOCKED_UNKNOWN}
@@ -90,12 +125,22 @@ _ALLOWED_DEKNOW_TRANSITIONS: dict[adapter.ProofState, frozenset[adapter.ProofSta
         {adapter.ProofState.REVIEW, adapter.ProofState.BLOCKED_UNKNOWN}
     ),
     adapter.ProofState.SUPPORTED: frozenset(
-        {adapter.ProofState.SUPPORTED, adapter.ProofState.BLOCKED_UNKNOWN}
+        {
+            adapter.ProofState.SUPPORTED,
+            adapter.ProofState.REVIEW,
+            adapter.ProofState.BLOCKED_UNKNOWN,
+        }
     ),
     adapter.ProofState.UNSUPPORTED: frozenset(
-        {adapter.ProofState.UNSUPPORTED, adapter.ProofState.BLOCKED_UNKNOWN}
+        {
+            adapter.ProofState.UNSUPPORTED,
+            adapter.ProofState.REVIEW,
+            adapter.ProofState.BLOCKED_UNKNOWN,
+        }
     ),
-    adapter.ProofState.BLOCKED_UNKNOWN: frozenset({adapter.ProofState.BLOCKED_UNKNOWN}),
+    adapter.ProofState.BLOCKED_UNKNOWN: frozenset(
+        {adapter.ProofState.BLOCKED_UNKNOWN, adapter.ProofState.REVIEW}
+    ),
 }
 
 
