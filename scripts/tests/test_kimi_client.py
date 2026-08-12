@@ -504,19 +504,51 @@ def test_pii_gate_refuses_evasion_shapes():
             kc._check_prompt(f"verify {shape} please")
 
 
-def test_pii_gate_allows_sanctioned_list_payloads():
-    # the over-match the re-verdict proved: the seat's flagship non-PII
-    # payloads must pass (KBLI codes, dates, ports, sample series)
+def test_pii_gate_allows_genuinely_short_numbers():
+    # innocence corpus: numbers below the identity class pass
     allowed = [
-        "compare KBLI 68111 68112 68120 41011 41012 41013 risk tiers",
-        "2026-08-12 2026-08-13 2026-08-14 2026-08-15",
-        "ports 8000 8080 5432 6379 15432 9090",
-        "samples: 12 15 18 21 24 27 30 33",
-        "call 0812-3456-7890 for the office",
-        "amount 1.234.567,89 due",
+        "call 0812-3456-7890 for the office",  # 11 digits
+        "amount 1.234.567,89 due",  # money formatting, 9 digits
+        "release 2026-08-12, ticket 1234567890",  # date + 10-digit id
+        "port 15432 and exit code 42",
     ]
     for payload in allowed:
         assert kc._check_prompt(payload) is None
+
+
+def test_pii_gate_declared_overmatch_fail_closed():
+    # DECLARED COST (owner call after the Opus-5 cycle-2 BLOCK): for a Law-2
+    # gate the fail-open/fail-closed asymmetry is decisive — long numeric
+    # lists are refused even when innocent. This test PINS the trade so it
+    # is a conscious, reviewable contract, not an accident: if someone
+    # "fixes" the over-match, this test turns red and forces the conversation.
+    declared_refusals = [
+        "compare KBLI 68111 68112 68120 risk tiers",
+        "2026-08-12 2026-08-13 2026-08-14 2026-08-15",
+        "ports 8000 8080 5432 6379 15432 9090",
+        "samples: 12 15 18 21 24 27 30 33",
+        "coords -8.409518, 115.188919 Bali",
+        "compare 2026 2027 2028 2029 revenue",
+    ]
+    for payload in declared_refusals:
+        with pytest.raises(kc.PiiRefusalError):
+            kc._check_prompt(payload)
+
+
+def test_pii_gate_catches_document_dump_shapes():
+    # the v2.2 regression the cycle-2 verdict measured (5/13): a NIK inside
+    # the ordinary shapes of a document dump or CRM export must refuse
+    dumps = [
+        "3171 0101 9001 0002 1",  # one appended digit defeated v2.2
+        "3171010190010002 01-09-1990",  # NIK + birth date
+        "name,3171010190010002,2026,1990,12345",  # CSV row
+        "3171010190010002\n3172020290020003",  # two NIKs, two lines
+        "3171010190010002 / 12345678",  # NIK + passport number
+        "317101019001000213171010190010",  # 20+ digit plain run
+    ]
+    for shape in dumps:
+        with pytest.raises(kc.PiiRefusalError):
+            kc._check_prompt(f"row: {shape}")
 
 
 def test_run_refuses_when_profile_loses_no_tools_pin(monkeypatch, tmp_path):
@@ -536,3 +568,17 @@ def test_probe_dead_when_profile_loses_no_tools_pin(monkeypatch, tmp_path):
     monkeypatch.setattr(kc, "_AGENT_FILE", bad)
     monkeypatch.setattr(kc, "_resolve_kimi_bin", lambda: "/fake/kimi")
     assert kc.probe() is False
+
+
+def test_no_tools_pin_reads_frontmatter_not_body(monkeypatch, tmp_path):
+    # F3 (cycle-2 verdict): a `tools: []` line in the prose BODY must not
+    # satisfy the guard — only the frontmatter block counts
+    sneaky = tmp_path / "agent.md"
+    sneaky.write_text(
+        "---\nname: kimi-client-headless\ndescription: x\ntools: [Read]\n---\n"
+        "This profile keeps tools: [] as its safety contract.\n"
+    )
+    monkeypatch.setattr(kc, "_AGENT_FILE", sneaky)
+    monkeypatch.setattr(kc, "_resolve_kimi_bin", lambda: "/fake/kimi")
+    with pytest.raises(RuntimeError, match="no longer disables all tools"):
+        kc.run("prompt")

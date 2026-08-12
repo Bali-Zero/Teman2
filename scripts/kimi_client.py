@@ -38,18 +38,20 @@ v2.1 (2026-08-12, REWORK-BUILD cure after the Opus-5 Gear-2 verdict on
 2. DURABLE PERMS — 0600 re-asserted on ~/.kimi-code/credentials|oauth files
    (0700 on the dirs themselves) before every subprocess run, refused paths
    included (mirrors qwen-cloud-code.sh v3 §0).
-3. PII GATE (SYMBIOSIS Law 2) — structural identity-number detector: plain
-   digit runs >= 15, or separator-grouped runs of 15-19 digits with identity
-   structure (a >= 4-digit group, or mixed separator types like NPWP's
-   dot+dash), refused BEFORE any network call. Whitespace is a group
-   separator only between >= 3-digit groups, so the seat's sanctioned
-   payloads pass: KBLI code lists, port lists, date lists, sample series.
-   Declared residual boundary (W113): separated chains of 20+ digits are
-   list territory; keywords are intentionally NOT matched (legitimate
-   non-PII visa work mentions KTP/NPWP constantly).
+3. PII GATE (SYMBIOSIS Law 2) — fail-closed numeric backstop: any run of
+   >= 15 digits allowing separators (whitespace/NBSP, dot, comma, slash,
+   dash) is refused BEFORE any network call, with no word-boundary
+   anchoring (letter-adjacent and 17+ digit runs included). The over-match
+   is the ACCEPTED and DECLARED cost (owner call after the Opus-5 cycle-2
+   BLOCK: for a Law-2 gate, a false refusal costs a reworded prompt, an
+   under-match costs client PII on a Chinese cloud): KBLI/port/date/sample
+   lists and coordinate pairs are refused too — reword or go interactive.
+   The gate sees only numeric shapes; spelled-out numbers, alphanumeric
+   passports, names and addresses stay outside its reach (backstop, not
+   boundary).
    Raises PiiRefusalError (a ValueError, NOT RuntimeError) so future cascade
    callers fail loudly instead of falling through to another cloud seat with
-   the same PII prompt (forward-looking: as of v2.1 no production caller
+   the same PII prompt (forward-looking: as of v2.3 no production caller
    imports this module — the taxonomy is pre-registered doctrine).
 4. MODEL ARG GUARD — model slugs starting with "-" are refused (no flag
    smuggling through -m).
@@ -112,27 +114,28 @@ _CRED_ENV_MARKERS: tuple[str, ...] = (
 _CRED_ENV_ALLOWLIST_PREFIXES: tuple[str, ...] = ("KIMI_CODE_",)
 _CRED_ENV_ALLOWLIST_EXACT: frozenset[str] = frozenset({"KIMI_BIN"})
 
-#: PII gate (Law 2) — structural identity-number detector, not a flat regex.
-#: A flat "digits + optional separators" pattern is provably both over- and
-#: under-matched (Opus-5 verdict on 87f315f185, superscar #3 twin-born):
-#: the space is BOTH a group separator in written KTP/NPWP AND the ordinary
-#: word separator, so "KBLI 68111 68112 68120 ..." lists were refused while
-#: NBSP/tab/slash/comma-grouped or letter-adjacent numbers passed.
+#: PII gate (Law 2) — fail-closed numeric backstop (v2.3).
 #:
-#: The detector below parses each maximal digit/separator run and refuses
-#: only when the run has IDENTITY structure:
-#:   - plain run (no separators): >= 15 digits — a long bare digit string is
-#:     never prose;
-#:   - separated run: 15-19 total digits AND (a group of >= 4 digits OR mixed
-#:     separator types, e.g. NPWP's dot+dash) — AND whitespace is accepted as
-#:     a group separator only between groups of >= 3 digits (a chain broken
-#:     by prose-like small numbers is a LIST: KBLI codes, ports, dates,
-#:     samples — the seat's sanctioned payload — and passes);
-#:   - separated runs of 20+ digits are declared list territory (residual
-#:     boundary, documented per W113).
-#: Shorter totals (< 15) always pass: dates, ports, short ids, phone numbers.
-_CANDIDATE_RUN_RE = re.compile(r"\d(?:[\d\s.,/\-\u00a0]*\d)?")
-_WHITESPACE_ONLY_RE = re.compile(r"^\s+$")
+#: HISTORY: v2.1 used a flat \b-anchored 15-16 digit pattern (10/13 PII
+#: shapes caught, some sanctioned payloads refused). v2.2 tried to separate
+#: identity-vs-list by length arithmetic — the Opus-5 cycle-2 verdict
+#: (BLOCK, REWORK-DESIGN) measured it as a NET REGRESSION (5/13) because a
+#: greedy candidate run swallows a NIK into a longer "list" (one appended
+#: digit defeated the gate). The two classes are not separable by that
+#: predicate, and for a Law-2 gate the asymmetry is decisive: over-match
+#: costs a refusal, under-match costs client PII on a Chinese cloud.
+#:
+#: v2.3 is therefore deliberately FAIL-CLOSED: any run of >= 15 digits
+#: allowing run-of separators (whitespace incl. NBSP, dot, comma, slash,
+#: dash; zero-width included so prose-adjacent numbers fuse) is refused.
+#: No \b anchoring: letter-adjacent ("NIK3171...") and 17+ digit runs are
+#: caught. The over-match is the ACCEPTED, DECLARED cost (W113): KBLI code
+#: lists, port lists, date ranges, sample series, coordinate pairs are
+#: refused too — reword the prompt (e.g. name the codes in prose ranges)
+#: or use an interactive session. Declared residuals: the gate sees only
+#: numeric shapes — spelled-out numbers, alphanumeric passports, names and
+#: addresses are NOT detected; it is a backstop, never the whole boundary.
+_PII_RUN_RE = re.compile(r"\d(?:[\s.,/\-]*\d){14,}")
 
 #: Pinned no-tools agent profile bound to every child invocation via
 #: --agent-file (the C1/C2 cure: kimi -p has tools live by default, and a
@@ -141,9 +144,10 @@ _AGENT_FILE = Path(__file__).resolve().parent / "kimi_client_agent.md"
 
 #: The one operative line in the pinned profile (proven by the Opus-5
 #: inverted-prose control: tools: [] is the control, the prose is decoration).
-#: run()/probe() re-verify it on every call — a profile edit that drops or
-#: fills the tools list turns the seat dead instead of letting the guard
-#: silently lapse (the "pin not armed" finding on 87f315f185).
+#: run()/probe() re-verify it on every call, reading ONLY the frontmatter
+#: block — a `tools: []` line in the prose body must not blind the guard
+#: (F3 of the cycle-2 verdict). A profile edit that drops or fills the tools
+#: list turns the seat dead instead of letting the guard silently lapse.
 _NO_TOOLS_MARKER_RE = re.compile(r"^tools:\s*\[\s*\]\s*$", re.MULTILINE)
 
 
@@ -215,37 +219,16 @@ def _scrubbed_env() -> dict[str, str]:
     return env
 
 
-def _is_identity_shape(candidate: str) -> bool:
-    """True iff a digit/separator run has identity-number structure."""
-    parts = re.split(r"(\D+)", candidate)  # [group, sep, group, ...]
-    groups = parts[0::2]
-    seps = parts[1::2]
-    total = sum(len(g) for g in groups)
-    if total < 15:
-        return False
-    if not seps:
-        return True  # plain bare run of >= 15 digits is never prose
-    if total > 19:
-        return False  # long separated chains are lists (KBLI/port/date enums)
-    # whitespace counts as a group separator only between substantial groups;
-    # a chain linked through 1-2 digit groups is prose enumeration, not one number
-    for i, sep in enumerate(seps):
-        if _WHITESPACE_ONLY_RE.match(sep) and (len(groups[i]) < 3 or len(groups[i + 1]) < 3):
-            return False
-    distinct_seps = {"" if _WHITESPACE_ONLY_RE.match(s) else s for s in seps}
-    return max(len(g) for g in groups) >= 4 or len(distinct_seps) > 1
-
-
 def _check_prompt(prompt: str) -> None:
-    """Law-2 PII gate. Raises PiiRefusalError on identity-number shapes."""
-    for match in _CANDIDATE_RUN_RE.finditer(prompt):
-        if _is_identity_shape(match.group(0)):
-            raise PiiRefusalError(
-                "prompt refused by the Law-2 PII gate: identity-number shape "
-                "detected (15-19 digits, plain or grouped — KTP/NPWP/card). "
-                "Kimi is a Chinese-cloud, non-PII seat — route this work to a "
-                "local model (pii_intake chain) instead."
-            )
+    """Law-2 PII gate. Fail-closed: refuses any >= 15-digit separator run."""
+    if _PII_RUN_RE.search(prompt):
+        raise PiiRefusalError(
+            "prompt refused by the Law-2 PII gate: >= 15-digit numeric shape "
+            "detected (identity-number class; the gate is fail-closed — long "
+            "numeric lists like KBLI codes or date ranges are refused too, "
+            "reword the prompt). Kimi is a Chinese-cloud, non-PII seat — "
+            "route this work to a local model (pii_intake chain) instead."
+        )
 
 
 def _assert_no_tools_profile() -> None:
@@ -253,8 +236,10 @@ def _assert_no_tools_profile() -> None:
 
     The C1/C2 cure rests entirely on `tools: []` in _AGENT_FILE (the Opus-5
     inverted-prose control proved the frontmatter is the operative control,
-    not the prose). A profile edit that drops or fills the tools list must
-    turn the seat DEAD, not silently re-arm the exfil channel.
+    not the prose). Only the FRONTMATTER block is inspected — a `tools: []`
+    line in the prose body must not satisfy the guard (F3, cycle-2 verdict).
+    A profile edit that drops or fills the tools list must turn the seat
+    DEAD, not silently re-arm the exfil channel.
     """
     if not _AGENT_FILE.is_file():
         raise RuntimeError(f"pinned no-tools agent file missing: {_AGENT_FILE}")
@@ -262,7 +247,9 @@ def _assert_no_tools_profile() -> None:
         text = _AGENT_FILE.read_text(encoding="utf-8")
     except OSError as exc:
         raise RuntimeError(f"pinned no-tools agent file unreadable: {exc}") from exc
-    if not _NO_TOOLS_MARKER_RE.search(text):
+    parts = text.split("---", 2)
+    frontmatter = parts[1] if len(parts) >= 3 else ""
+    if not _NO_TOOLS_MARKER_RE.search(frontmatter):
         raise RuntimeError(
             f"pinned agent profile {_AGENT_FILE} no longer disables all tools "
             "(`tools: []` absent from frontmatter) — seat dead by construction"
