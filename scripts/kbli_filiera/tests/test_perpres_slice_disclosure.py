@@ -50,12 +50,23 @@ def _with_real_manual_codes(
     must therefore also supply valid entries for the hand-authored codes and
     the two adjacent-not-contained codes, or an unrelated check fires before
     the scenario under test is ever reached."""
-    base_canonical = [_record("30111"), _record("30113"), _record("20235"), _record("30303")]
+    base_canonical = [
+        _record("30111"),
+        _record("30113"),
+        _record("20235"),
+        _record("30303"),
+        _record("51103"),
+        _record("60103"),
+        _record("60203"),
+    ]
     base_adjudication = {
         "30111": (BROADER, "real"),
         "30113": (BROADER, "real"),
         "20235": (BROADER, ADJACENT_NOT_CONTAINED["20235"]),
         "30303": (BROADER, ADJACENT_NOT_CONTAINED["30303"]),
+        "51103": (BROADER, ADJACENT_NOT_CONTAINED["51103"]),
+        "60103": (BROADER, ADJACENT_NOT_CONTAINED["60103"]),
+        "60203": (BROADER, ADJACENT_NOT_CONTAINED["60203"]),
     }
     return base_canonical + canonical, {**base_adjudication, **adjudication}
 
@@ -182,34 +193,39 @@ class TestManualRowsTrackAdjudication:
 
 
 # ---------------------------------------------------------------------------
-# ADJACENT_NOT_CONTAINED — 20235/30303 are excluded because their OWN
-# ADJUDICATION reason says the annex activity is a neighbour, not a slice
-# actually inside the code. Guilt/innocence on both the exclusion itself and
-# its drift-protection (same shape as TestManualRowsTrackAdjudication above).
+# ADJACENT_NOT_CONTAINED — 20235, 30303, 51103, 60103 and 60203 are excluded
+# because their OWN ADJUDICATION reason says the annex activity is a neighbour,
+# not a slice actually inside the code. Guilt/innocence on the exclusion itself
+# and its drift-protection (same shape as TestManualRowsTrackAdjudication above).
 # ---------------------------------------------------------------------------
 
 
 class TestAdjacentNotContained:
-    def test_pin_the_exclusion_set_is_exactly_these_two_codes(self):
-        assert set(ADJACENT_NOT_CONTAINED) == {"20235", "30303"}
+    def test_pin_the_exclusion_set_is_exactly_these_five_codes(self):
+        assert set(ADJACENT_NOT_CONTAINED) == {"20235", "30303", "51103", "60103", "60203"}
 
     def test_guilt_excluded_codes_are_absent_from_general_rows(self):
         from apply_perpres_foreign_caps import ADJUDICATION
 
         rows = general_rows(load_canonical(), ADJUDICATION)
-        assert "20235" not in rows
-        assert "30303" not in rows
+        for code in ADJACENT_NOT_CONTAINED:
+            assert code not in rows
 
     def test_innocence_sibling_codes_under_the_same_ancestor_still_appear(self):
         # 20235 shares ancestor "20232" with 20232 itself; 30303 shares
-        # ancestor "30300" with 30301/30302 — the exclusion must remove ONLY
-        # the named code, not the whole ancestor family.
+        # ancestor "30300" with 30301/30302; 60103/60203 descend from
+        # broadcasting ancestors alongside 60102/60202 — the exclusion must
+        # remove ONLY the named codes, not the whole ancestor family. (51103's
+        # air-transport siblings 51101/51102 are whole-code restricted, not
+        # BROADER, so they never reach the general derivation.)
         from apply_perpres_foreign_caps import ADJUDICATION
 
         rows = general_rows(load_canonical(), ADJUDICATION)
         assert "20232" in rows
         assert "30301" in rows
         assert "30302" in rows
+        assert "60102" in rows
+        assert "60202" in rows
 
     def test_guilt_verdict_drift_raises(self):
         canonical, adjudication = _with_real_manual_codes(
@@ -237,6 +253,25 @@ class TestAdjacentNotContained:
             verdict, live_reason = ADJUDICATION[code]
             assert verdict == BROADER, code
             assert live_reason == reason, code
+
+    def test_adjacent_not_contained_codes_never_reach_the_inside_this_code_sentence(
+        self, real_disclosures
+    ):
+        # GUILT: a code the adjudication calls adjacent-not-contained must
+        # never reach the client-facing "one specific activity INSIDE this
+        # code" sentence (kbli-faq.ts). The exclusion exists precisely because
+        # the annex activity is NOT inside the code. These three were the
+        # false-restriction regression in commit 599f4a91d.
+        for code in ("51103", "60103", "60203"):
+            assert code not in real_disclosures
+        # INNOCENCE: the map is not empty — a genuinely-contained BROADER code
+        # still carries its slice row, so this pin cannot be satisfied by
+        # silently dropping every disclosure.
+        assert "13133" in real_disclosures
+        rows = real_disclosures["13133"]
+        assert len(rows) == 1
+        assert rows[0]["bidangUsaha"] == "Industri batik cap"
+        assert rows[0]["foreignCapPct"] == 0
 
 
 # ---------------------------------------------------------------------------
@@ -280,10 +315,11 @@ def real_disclosures():
 
 class TestRealCatalogue:
     def test_population_count(self, real_disclosures):
-        # 11 general BROADER codes (15 BROADER-adjudicated minus 20235/30303,
-        # excluded as adjacent-not-contained) + 30111 (2 rows) + 30113 (1 row).
-        assert len(real_disclosures) == 15
-        assert sum(len(rows) for rows in real_disclosures.values()) == 16
+        # 7 general BROADER codes (12 BROADER-adjudicated minus 20235/30303/
+        # 51103/60103/60203, excluded as adjacent-not-contained) + 30111
+        # (2 rows) + 30113 (1 row).
+        assert len(real_disclosures) == 12
+        assert sum(len(rows) for rows in real_disclosures.values()) == 13
 
     def test_20235_and_30303_never_appear(self, real_disclosures):
         # Their own ADJUDICATION reason says the annex activity is a
