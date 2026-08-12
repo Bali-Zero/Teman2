@@ -445,17 +445,6 @@ export function proxy(request: NextRequest) {
       return NextResponse.rewrite(rewriteUrl);
     }
 
-    // SEO: Block indexing for zantara subdomain (internal app)
-    // robots.txt override
-    if (pathname === "/robots.txt") {
-      return new NextResponse("User-agent: *\nDisallow: /", {
-        headers: {
-          "Content-Type": "text/plain",
-          "Cache-Control": "public, max-age=3600",
-        },
-      });
-    }
-
     // Add X-Robots-Tag header to all responses from zantara subdomain
     response.headers.set("X-Robots-Tag", "noindex, nofollow");
 

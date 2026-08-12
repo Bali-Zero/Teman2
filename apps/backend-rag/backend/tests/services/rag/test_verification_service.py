@@ -436,3 +436,81 @@ class TestVerificationServiceWithLLM:
         prompt = call_args.kwargs.get("contents", call_args.args[0] if call_args.args else "")
         assert "[Source 1]" in prompt
         assert "[Source 2]" in prompt
+
+
+# --- VERIFIER_ENABLED cost lever (2026-08-12) -------------------------------
+#
+# Why this switch exists, measured on the live ledger rather than assumed:
+# over 2026-08-10..11 `rag.verifier` was 682 calls / $5.26 of $14.69 total
+# Gemini spend — 36% — firing IN ADDITION to every chat call and invisible to
+# the client. There was no way to turn it off short of editing code, so the
+# owner could not act on that number.
+#
+# The switch reuses the ALREADY-PROVEN no-verdict shape (a round-2 red-team fix
+# established that a dead verifier must never mint a false "verified"), so this
+# corpus asserts the two properties that make it safe: it really stops the
+# spend (no client is ever constructed, so it cannot bill by any path), and it
+# never claims an answer was verified.
+#
+# It is DELIBERATELY default-ON: absence of the variable changes nothing.
+
+
+def _fresh_service():
+    from backend.services.rag.verification_service import VerificationService
+
+    return VerificationService()
+
+
+@pytest.mark.asyncio
+async def test_guilt_disabled_verifier_makes_no_call_and_claims_no_verdict(monkeypatch):
+    monkeypatch.setenv("VERIFIER_ENABLED", "0")
+    service = _fresh_service()
+
+    result = await service.verify_response(
+        query="quanto costa un KITAS?",
+        draft_answer="IDR 12.000.000",
+        context_chunks=["chunk"],
+    )
+
+    assert result.verdict_available is False, "a disabled verifier must never claim a verdict"
+    assert "DISABLED" in result.reasoning
+    # The spend property: no client is constructed at all, so there is no path
+    # by which a disabled verifier can bill.
+    assert service._get_genai_client() is None
+
+
+@pytest.mark.asyncio
+async def test_guilt_the_disabled_reason_does_not_blame_the_model(monkeypatch):
+    """A switched-off service must not report itself as broken.
+
+    Reusing the 'model unavailable' string would send whoever reads this at
+    07:30 hunting a fault that does not exist.
+    """
+    monkeypatch.setenv("VERIFIER_ENABLED", "off")
+    result = await _fresh_service().verify_response(
+        query="q", draft_answer="a", context_chunks=["c"]
+    )
+    assert "unavailable) —" not in result.reasoning
+    assert "VERIFIER_ENABLED" in result.reasoning
+
+
+@pytest.mark.parametrize("value", ["0", "false", "FALSE", "no", "off", " Off "])
+def test_guilt_every_documented_falsy_spelling_turns_it_off(monkeypatch, value):
+    """The falsy set is copied from main_api's switch on purpose: an operator
+    who learnt one spelling must not find this switch silently still ON."""
+    monkeypatch.setenv("VERIFIER_ENABLED", value)
+    assert _fresh_service()._enabled is False
+
+
+def test_innocence_unset_env_leaves_the_verifier_on(monkeypatch):
+    """Default ON — shipping this switch must change nothing by itself."""
+    monkeypatch.delenv("VERIFIER_ENABLED", raising=False)
+    assert _fresh_service()._enabled is True
+
+
+@pytest.mark.parametrize("value", ["1", "true", "yes", "on", "", "banana"])
+def test_innocence_anything_not_in_the_falsy_set_leaves_it_on(monkeypatch, value):
+    """Fail-ON for unrecognised input: a typo must not silently disable a
+    quality gate. The cost lever is the LOUD direction, never the quiet one."""
+    monkeypatch.setenv("VERIFIER_ENABLED", value)
+    assert _fresh_service()._enabled is True
