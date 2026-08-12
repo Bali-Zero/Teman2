@@ -614,6 +614,33 @@ function public.bind_visa_evaluate_idempotency_retention_policy` (least-privileg
   ENFORCE remains NO-GO** (DPIA/analytics-TTL unchanged). Probe cost: 4 rows in `visa_decisions` labelled
   `traffic_source='real'` (known collector-contamination class). PR #3983 (sponsor.type seam) was armed in
   the merge queue at the time of writing — separate entry when it lands.
+- 2026-08-12 (M5→Mini, custody widened on Zero's explicit "copia tutto su mini"): **the private signing
+  keys now exist on BOTH M5 and Mini.** The 2026-07-19 entries above ("private-key custody M5 … not on
+  Pro/Mini", "AUTHORING claimed by M5 … bound to M5 by key custody") remain true as of THEIR date and are
+  false as of this one — read them as history, not as current custody. All five files under
+  `~/.config/nuzantara/visa-signing/` were COPIED, not moved: `2026-07-prod-1.ed25519.pem`,
+  `2026-07-test-1.ed25519.pem`, `activation-operator-password`, `driver-token`,
+  `facts-fingerprint-keys.json` — sha256 identical on both machines, every file `0600`, directory `0700`.
+  Proven functional rather than merely present: the prod PEM loads on Mini as an `Ed25519PrivateKey` and
+  derives the identical public key `819a28d67cccb11a705a0c381c2cd5ff6618c54d156ede4531f2d678ecc07210`, and
+  the mode passes the check `sign_pack.py` enforces (it refuses any key file looser than 0600, fstat'd on
+  the same fd it reads). All ten `backend.scripts.visa_engine.*` modules resolve in Mini's venv and
+  `activate_pack.py --help` runs there, so the ceremony can now be driven from Mini. Nothing broke because
+  no EXECUTABLE guard ever bound signing to M5 — the M5-only claim lived purely in prose (this log and
+  `research/visa/2026-07-23-architect-state-analysis.md:123`). **Caveat recorded, deliberately not
+  changed:** Mini's `~/.config/nuzantara` parent is `0755` where M5's is `0700`; `visa-signing` itself is
+  `0700` on both, so the key material is unreadable to another local user, but the directory's existence
+  is not hidden. **Why this happened now:** the Mini-only retention scheduler (`APPLY=true`) had been dead
+  ~8h. flyctl rejects its OWN stored token 720h after `last_login` even when that token still
+  authenticates — the same string exported as `FLY_API_TOKEN` worked throughout, while the config path
+  answered `no access token available. Please login`, i.e. it accuses an ABSENT credential while holding a
+  working one. Mini crossed that line 2026-08-11 20:40 WITA; a standing `flyctl proxy` masked it until the
+  07:04 reboot killed the process. Cured on Mini with an app-scoped `FLY_API_TOKEN` in
+  `~/.nuzantara-secrets.env` — the env path skips the clock entirely, so `flyctl auth login` is NOT the
+  cure, it only restarts the same 30-day countdown. Pro crosses the same line 2026-08-26 03:49 WITA; its
+  nightly PG backup is immune (`infra/scripts/fly-backup.sh` sources the secrets file itself), other Pro
+  fly consumers were unaudited at the time of writing. The 8h of silence was a SECOND, independent defect:
+  `scripts/cron-wrapper.sh` swallowed every failure alert (PR #4119).
 
 ## TRACKS — parallel work groups (multi-session coordination)
 
