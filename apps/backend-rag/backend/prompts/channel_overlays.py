@@ -41,7 +41,36 @@ CHANNEL_CONFIGS: dict[str, ChannelConfig] = {
         markdown=False,
         emoji=True,
         progressive=False,
-        extra_instructions="NO markdown. Plain text only. Short, direct.",
+        # "Short, direct." was not obeyed, and that is measured, not suspected:
+        # across 37 live questions ~10% of answers crossed WhatsApp's 4096-char
+        # limit, worst case 13,671 characters for "What is Hak Pakai and how long
+        # does it last?" — roughly 2,000 words against a 150-word budget.
+        #
+        # Two things changed here, both aimed at the reason a soft budget fails.
+        # A word count is not a shape the model can check while writing, so the
+        # instruction now names the SHAPE it should produce; and the limit is
+        # restated as a hard physical fact (the platform refuses the message)
+        # rather than a preference, because "max words" reads as style guidance
+        # next to a question that deserves a thorough answer.
+        #
+        # This is a prompt change, so it is a nudge with a measurable outcome and
+        # NOT a guarantee. The guarantee is `whatsapp_service.fit_to_whatsapp_limit`,
+        # which cuts at a boundary and says so. Do not remove that on the strength
+        # of this: the same question measured 1,364 / 13,671 / 2,123 characters on
+        # three runs, so any single observation of "it got shorter" is noise.
+        extra_instructions=(
+            "NO markdown. Plain text only. "
+            "HARD LIMIT: WhatsApp REFUSES any message over 4096 characters — "
+            "anything past that is physically deleted, so a long answer reaches "
+            "the client decapitated. "
+            "Answer in AT MOST 5 short paragraphs or 7 bullet points. "
+            "Lead with the direct answer in the first sentence, then only what "
+            "this person must do next. "
+            "Do NOT restate the question, do NOT list every exception, do NOT add "
+            "background the client did not ask for. "
+            "If the full picture does not fit, give the essentials and offer to go "
+            "deeper on one point — that is better than an answer cut mid-word."
+        ),
     ),
     "instagram": ChannelConfig(
         name="instagram",
@@ -106,3 +135,35 @@ def build_channel_context(channel: str) -> str:
         lines.append(f"Extra: {config.extra_instructions}")
     lines.append("</channel_context>")
     return "\n".join(lines)
+
+
+def apply_channel_overlay(system_prompt: str, channel: str | None) -> str:
+    """Append the channel context block to an assembled system prompt.
+
+    The append itself is three lines, and until 2026-08-11 those three lines
+    lived inline in ``_prepare_react_loop`` — which the STREAMING path calls
+    and the non-streaming ``process_query_core`` does not. Measured
+    consequence on the live worker, same question, same path, two runs each:
+
+        channel="whatsapp"  ->  611 / 875 chars
+        channel="webapp"    -> 1348 / 2163 chars
+        channel omitted     -> 1964 / 1900 chars
+
+    The WhatsApp inbox bot sends ``"channel": "whatsapp"`` on every call and
+    reaches the backend through the NON-streaming endpoint, so its 150-word
+    budget was declared and never applied: production replies measure a median
+    of 1586 characters against inbound client messages whose median is 57.
+
+    Owning the rule here — rather than as a copied pair of lines — is the
+    point: two call sites that must agree about "what does a channel do to a
+    prompt" should not each carry their own answer.
+
+    A falsy or unknown channel leaves the prompt untouched, so a caller that
+    declares nothing is unchanged.
+    """
+    if not channel:
+        return system_prompt
+    block = build_channel_context(channel)
+    if not block:
+        return system_prompt
+    return f"{system_prompt}\n\n{block}"

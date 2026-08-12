@@ -27,6 +27,24 @@ from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from backend.app.core.config import settings
+from backend.channels.format import format_rich_text
+
+# `notify_human_telegram` now lives in
+# `backend/services/integrations/human_escalation_notifier.py` so the WhatsApp
+# INBOX BOT (a background service) can reach the same notifier instead of
+# growing a second copy — the two paths already drifted once, which is how
+# `wa_inbox_bot.py` ended up stripping `[ESCALATE]` and telling nobody.
+#
+# Re-exported here under its original name, so the two call sites below and any
+# `patch("backend.app.routers.whatsapp_chat.notify_human_telegram")` still work.
+# What does NOT survive the move — measured, an earlier version of this comment
+# claimed otherwise and the suite disproved it: the function now reads
+# `settings` and `telegram_bot` from ITS OWN module, so patching THIS module's
+# globals no longer reaches its dependencies. Patch
+# `...human_escalation_notifier.settings` instead.
+from backend.services.integrations.human_escalation_notifier import (
+    notify_human_telegram,
+)
 from backend.services.integrations.openclaw_whatsapp_bridge import ask_openclaw_whatsapp
 from backend.services.integrations.telegram_bot_service import telegram_bot
 from backend.services.integrations.wa_outbox_worker import (
@@ -138,100 +156,6 @@ _Log automatico - ogni conversazione viene tracciata_
         )
     except Exception as e:
         logger.error("Failed to send conversation log to Zero: %s", e)
-
-
-async def notify_human_telegram(
-    phone: str,
-    message_text: str,
-    sender_name: str | None = None,
-    reason: str = "personal_contact",
-    client_profile: dict | None = None,
-    conversation_history: list[dict] | None = None,
-) -> Any:
-    """
-    Send Telegram notification to admin with FULL context.
-
-    Args:
-        phone: Sender phone number
-        message_text: Message content
-        sender_name: Optional sender name
-        reason: Escalation reason
-        client_profile: Client profile dict (interests, language, etc.)
-        conversation_history: Recent conversation messages
-    """
-    if not settings.admin_telegram_chat_id:
-        logger.warning("Admin Telegram chat ID not configured, skipping notification")
-        return
-
-    reason_emoji = {
-        "personal_contact": "👤",
-        "explicit_request": "🤚",
-        "personal_context": "💬",
-        "ai_escalation": "🤖➡️👤",
-    }
-
-    emoji = reason_emoji.get(reason, "📩")
-    display_name = sender_name or "Unknown"
-
-    # Build profile summary
-    profile_lines = []
-    if client_profile:
-        lang = client_profile.get("detected_language", "?")
-        interests = client_profile.get("interests", [])
-        visas = client_profile.get("visa_discussed", [])
-        client_type = client_profile.get("client_type", "?")
-        msg_count = client_profile.get("message_count", 0)
-        first_contact = client_profile.get("first_contact", "?")
-
-        profile_lines.append(f"🗣 Lingua: {lang}")
-        if interests:
-            profile_lines.append(f"💡 Interessi: {', '.join(interests)}")
-        if visas:
-            profile_lines.append(f"🛂 Visa discussi: {', '.join(visas)}")
-        profile_lines.append(f"👤 Tipo: {client_type}")
-        profile_lines.append(f"💬 Messaggi: {msg_count}")
-        profile_lines.append(f"📅 Primo contatto: {first_contact}")
-
-    profile_section = "\n".join(profile_lines) if profile_lines else "Nessun profilo salvato"
-
-    # Build conversation summary (last 6 messages)
-    convo_lines = []
-    if conversation_history:
-        recent = conversation_history[-6:]
-        for msg in recent:
-            role = "👤" if msg.get("role") == "user" else "🤖"
-            content = msg.get("content", "")[:150]
-            convo_lines.append(f"{role} {content}")
-
-    convo_section = "\n".join(convo_lines) if convo_lines else "Nessuna storia"
-
-    notification_text = f"""{emoji} **WhatsApp Escalation**
-
-**Da:** {display_name} (+{phone[:4]}***{phone[-2:] if len(phone) > 4 else ""})
-**Motivo:** {reason.replace("_", " ").title()}
-
-**Messaggio:**
-{message_text}
-
-**Profilo Cliente:**
-{profile_section}
-
-**Ultimi messaggi:**
-{convo_section}
-
----
-Rispondi direttamente su WhatsApp!
-"""
-
-    try:
-        await telegram_bot.send_message(
-            chat_id=settings.admin_telegram_chat_id,
-            text=notification_text,
-            parse_mode="Markdown",
-        )
-        logger.info("Telegram notification sent for WhatsApp escalation from %s", phone)
-    except Exception as e:
-        logger.error("Failed to send Telegram notification: %s", e)
 
 
 async def process_whatsapp_message(
@@ -439,6 +363,30 @@ async def process_whatsapp_message(
                     )
                 openclaw_response = guarded_openclaw_response.reply
 
+                # Channel boundary. `format_rich_text` converts the model's
+                # generic markdown into what WhatsApp actually renders and
+                # drops bare citation markers — measured on 2026-07-28, the
+                # team beta: 18 of that day's 66 bot replies reached a reader
+                # carrying raw `[1]`…`[8]`. The formatter was armed on
+                # 2026-07-25 (#3118) and deployed well before that day, but
+                # only inside `wa_inbox_bot.py`; this router — which is what
+                # answers the webhook — never called it.
+                #
+                # BEFORE chunking, not per chunk: `chunk_message` splits on
+                # length, so a boundary can land inside a `**bold**` pair and
+                # leave each half unconvertible.
+                #
+                # AFTER `sanitize_whatsapp_kbli_reply`, so the KBLI guard keeps
+                # seeing exactly the text it sees today.
+                #
+                # Only the model's answer is formatted, never the canned
+                # messages this router also sends (`welcome_msg`,
+                # `escalation_msg`, `ack_text(...)`, ...). Those are a
+                # different entity: the citation strip removes `[<digits>]`,
+                # which in a template can be a reference or invoice number
+                # rather than a citation.
+                openclaw_response = format_rich_text(openclaw_response, "whatsapp")
+
                 chunks = whatsapp_service.chunk_message(openclaw_response, max_length=4000)
 
                 for i, chunk in enumerate(chunks):
@@ -491,7 +439,10 @@ async def process_whatsapp_message(
                 phone,
             )
 
-            from backend.prompts.whatsapp_persona import build_system_prompt
+            from backend.prompts.whatsapp_persona import (
+                build_priming_turns,
+                build_system_prompt,
+            )
 
             # Build dynamic WhatsApp persona instructions
             whatsapp_persona_instructions = build_system_prompt(
@@ -505,7 +456,11 @@ async def process_whatsapp_message(
             # --- DIRECT RAG: Query with Gemini 2.5 Flash ---
             from backend.app.dependencies import get_orchestrator
 
-            orchestrator = get_orchestrator(request)
+            # `get_orchestrator` is `async def` (backend/app/deps/orchestrator.py)
+            # — it lazily builds the singleton under a lock. Without the await
+            # this binds a coroutine and the next line dies on
+            # `'coroutine' object has no attribute 'process_query'`.
+            orchestrator = await get_orchestrator(request)
             wa_user_id = f"whatsapp_{phone}"
             session_id = f"wa_session_{phone}"
 
@@ -513,18 +468,18 @@ async def process_whatsapp_message(
             # This guides Zantara's base persona to be more WhatsApp-natural
             enhanced_history = []
             if ctx["is_first_message"]:
-                # Add persona instructions as first "context" message
-                enhanced_history.append(
-                    {
-                        "role": "user",
-                        "content": f"[CONTESTO WHATSAPP]\n{whatsapp_persona_instructions}\n\nRispondi sempre come Zan di Bali Zero, naturalmente su WhatsApp (no markdown, tono umano).",
-                    },
-                )
-                enhanced_history.append(
-                    {
-                        "role": "assistant",
-                        "content": "Capito, rispondo come Zan su WhatsApp - tono naturale, niente markdown, focus su visa e business a Bali.",
-                    },
+                # Add persona instructions as first "context" message.
+                # The pair is built in the CLIENT'S language: both halves used
+                # to be hardcoded Italian, including the assistant turn, so the
+                # model's most recent precedent for how it speaks here was
+                # Italian before the client had said a word — while the persona
+                # itself is written four times over precisely so that never
+                # happens. See build_priming_turns' docstring.
+                enhanced_history.extend(
+                    build_priming_turns(
+                        whatsapp_persona_instructions,
+                        ctx["detected_language"],
+                    ),
                 )
 
             enhanced_history.extend(ctx["conversation_history"])
@@ -569,6 +524,11 @@ async def process_whatsapp_message(
                     guarded_response.reason,
                 )
             response_text = guarded_response.reply
+
+            # Channel boundary — same reasoning as the OpenClaw branch above
+            # (format the model's answer before chunking, after the KBLI guard,
+            # and never the canned messages).
+            response_text = format_rich_text(response_text, "whatsapp")
 
             # Split into chunks if too long for WhatsApp
             chunks = whatsapp_service.chunk_message(response_text, max_length=4000)
@@ -695,8 +655,7 @@ async def process_whatsapp_message_and_mark_processed(
         )
     except Exception as exc:
         logger.warning(
-            "WhatsApp webhook: failed to mark inbound row processed "
-            "(message_id=%s): %s",
+            "WhatsApp webhook: failed to mark inbound row processed (message_id=%s): %s",
             message_id,
             exc,
         )
@@ -1042,7 +1001,9 @@ async def _handle_meta_inbox_message(
         except Exception:
             # Best-effort (C5): a failed read-receipt must never break
             # ingestion or the already-enqueued bot reply.
-            logger.warning("meta-inbox: mark_message_read failed for wamid=%s", wamid, exc_info=True)
+            logger.warning(
+                "meta-inbox: mark_message_read failed for wamid=%s", wamid, exc_info=True
+            )
 
 
 async def _resolve_webhook_id(conn: Any, wamid: str) -> int | None:
@@ -1117,7 +1078,8 @@ async def _ingest_meta_inbox_media(raw_payload: dict[str, Any], request: Request
                     published += 1
         logger.info(
             "meta-inbox media handoff: found=%d published=%d (PULL: no download on Fly)",
-            len(official), published,
+            len(official),
+            published,
         )
     except Exception as exc:
         logger.error("meta-inbox media handoff failed: %s", exc, exc_info=True)
@@ -1313,8 +1275,7 @@ async def whatsapp_webhook(
     # 200 is never delayed). The target number does NOT use the inline triage
     # flow below — its bot replies are generated by the wa_outbox worker.
     meta_inbox_in_payload = any(
-        change.field == "messages"
-        and _change_phone_number_id(change) == META_INBOX_PHONE_NUMBER_ID
+        change.field == "messages" and _change_phone_number_id(change) == META_INBOX_PHONE_NUMBER_ID
         for entry in webhook.entry
         for change in entry.changes
     )

@@ -51,6 +51,102 @@ from backend.prompts.zantara_core_v4 import today_wita_string
 logger = logging.getLogger(__name__)
 
 
+# --- Identity fast-path: the pattern that fires NAMES the language ----------
+#
+# The assistant-identity trigger used to be ONE fully anchored regex:
+#     r"^(chi|who|cosa|what)\s+(sei|are)\s*(you|tu)?\??$"
+# — whole-string, two languages, and no `siapa` at all. Anything a human
+# actually types ("Chi ti ha creato e come ti chiami?", "siapa kamu?",
+# "who made you?") fell through to retrieval, found nothing, scored evidence
+# 0.0 and was DISCARDED by the abstain gate — which on WhatsApp means the
+# client hears NOTHING (`wa_inbox_bot.py` raises on abstain). Measured live
+# 2026-08-09 on "Chi ti ha creato e come ti chiami?": the correct answer was
+# produced, abstain=True, 0 sources, nothing sent. Superscar #3, UNDER-match.
+#
+# Two rules hold every pattern below honest:
+#
+# 1. Unanchored on the LEFT, but the ask must END there (or end a clause).
+#    That is what keeps "Who are you going to assign to my case?" and "What
+#    are your office hours?" out. A blacklist of continuations would only ever
+#    catch the continuations someone already thought of (W113).
+# 2. The pattern that fires DECLARES the language of the answer. The loose
+#    marker lists in `check_identity_questions` cannot: they are bare
+#    substrings, so "Which visa?" contains "chi" and used to be answered in
+#    Italian, and the brand name — which is language-neutral and appears in
+#    every language's question — made "Zantara, who are you?" Italian too.
+#    Those lists now decide nothing except the "who am I?" branch, where there
+#    is no per-language pattern to read the language off.
+_IDENTITY_CLAUSE_END = r"(?=\s*[?!.,;]|\s*$)"
+_ID_PARTICLE = r"(?:\s+(?:sih|dong|nih|ya|kah))?"
+
+_ASSISTANT_IDENTITY_PATTERNS: tuple[tuple[str, str], ...] = (
+    ("ITALIAN", r"\bchi\s+sei(?:\s+tu)?"),
+    ("ITALIAN", r"\bcosa\s+sei(?:\s+tu)?"),
+    ("ITALIAN", r"\bchi\s+ti\s+ha\s+(?:creato|creata|fatto|fatta|programmato|programmata)"),
+    ("ITALIAN", r"\bcome\s+ti\s+chiami"),
+    ("ITALIAN", r"\bqual\s+(?:è|e')\s+il\s+tuo\s+nome"),
+    # Trailing \b as well as the clause-end lookahead: "what are YOUR office
+    # hours" must be out for TWO independent reasons, not one.
+    ("ENGLISH", r"\bwho\s+are\s+you\b"),
+    ("ENGLISH", r"\bwhat\s+are\s+you\b"),
+    ("ENGLISH", r"\bwho\s+(?:made|created|built|designed|developed|wrote)\s+you\b"),
+    ("ENGLISH", r"\bwhat(?:'s|s|\s+is)\s+your\s+name\b"),
+    # `_ID_PARTICLE`: "siapa kamu SIH?" is how the question is actually typed —
+    # a discourse particle is not a continuation, so it must not close the
+    # clause-end door (the Indonesian equivalent of the optional "tu" above).
+    ("INDONESIAN", r"\bsiapa\s+(?:kamu|kau|anda|lu|elo)" + _ID_PARTICLE),
+    ("INDONESIAN", r"\bkamu\s+siapa" + _ID_PARTICLE),
+    ("INDONESIAN", r"\bsiapa\s+nama\s+(?:kamu|mu|anda)" + _ID_PARTICLE),
+    ("INDONESIAN", r"\bnama\s+kamu\s+siapa" + _ID_PARTICLE),
+    (
+        "INDONESIAN",
+        r"\bsiapa\s+yang\s+(?:membuat|menciptakan|bikin)\s+(?:kamu|mu|anda)" + _ID_PARTICLE,
+    ),
+    ("RUSSIAN", r"\bкто\s+ты"),
+    ("UKRAINIAN", r"\bхто\s+ти"),
+)
+
+# "Tell me about yourself" / "What can you do?" — same rule, own answers.
+_SELF_DESCRIPTION_PATTERNS: tuple[tuple[str, str], ...] = (
+    ("ITALIAN", r"parlami\s+(di\s+)?te"),
+    ("ITALIAN", r"cosa\s+sai\s+fare"),
+    ("ITALIAN", r"che\s+cosa\s+sai\s+fare"),
+    ("ITALIAN", r"cosa\s+puoi\s+(fare|aiutarmi)"),
+    ("ITALIAN", r"come\s+(mi\s+)?puoi\s+aiutare"),
+    ("ENGLISH", r"tell\s+me\s+about\s+(yourself|you)"),
+    ("ENGLISH", r"what\s+can\s+you\s+do"),
+    ("ENGLISH", r"what\s+are\s+you\s+capable"),
+    ("ENGLISH", r"how\s+can\s+you\s+help"),
+    ("INDONESIAN", r"apa\s+yang\s+(bisa|kamu)\s+(kamu\s+)?lakukan"),
+    ("INDONESIAN", r"bisa\s+bantu\s+apa"),
+)
+
+
+def _compile_tagged(
+    patterns: tuple[tuple[str, str], ...], suffix: str = ""
+) -> tuple[tuple[str, re.Pattern[str]], ...]:
+    return tuple((lang, re.compile(p + suffix)) for lang, p in patterns)
+
+
+_ASSISTANT_IDENTITY_RES = _compile_tagged(_ASSISTANT_IDENTITY_PATTERNS, _IDENTITY_CLAUSE_END)
+_SELF_DESCRIPTION_RES = _compile_tagged(_SELF_DESCRIPTION_PATTERNS)
+
+
+def _first_language_match(
+    text: str, compiled: tuple[tuple[str, re.Pattern[str]], ...]
+) -> str | None:
+    """Return the language tag of the first pattern that matches, or None."""
+    for language, pattern in compiled:
+        if pattern.search(text):
+            return language
+    return None
+
+
+def _contains_any_word(text: str, words: list[str]) -> bool:
+    """Whole-word membership. ``"chi" in "which visa"`` is True; this is not."""
+    return any(re.search(rf"\b{re.escape(w)}\b", text) for w in words)
+
+
 def _safe_template_fill(template: str, **kwargs: str) -> str:
     """Fill only the known {placeholder} tokens in ZANTARA_MASTER_TEMPLATE,
     leaving every other brace in the text untouched.
@@ -331,6 +427,16 @@ def _match_is_business_phrasing(query_lower: str, label: str, start: int, end: i
         # different phrase in the same clause does not exempt this one.
         return bool(re.compile(evidence).match(query_lower, start))
     return bool(re.search(evidence, clause))
+
+
+def _word_anchored(*alternations: str) -> tuple[re.Pattern[str], ...]:
+    """Compile each alternation so it can only match WHOLE words.
+
+    The casual-conversation whitelist used bare substrings, so `bar` matched
+    inside `kabar` (Indonesian for "news") — see the block comment above
+    `SystemPromptBuilder.check_casual_conversation`.
+    """
+    return tuple(re.compile(rf"\b(?:{alt})\b") for alt in alternations)
 
 
 class SystemPromptBuilder:
@@ -982,6 +1088,85 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
 
         return None
 
+    # ------------------------------------------------------------------
+    # Casual-conversation whitelist — TWO TIERS.
+    #
+    # Measured 2026-08-11 against 20 sentences a Bali Zero client actually
+    # writes on WhatsApp: **17 of them** were classified as chit-chat and got
+    # the canned "Got it! 😊 If you have questions about visas, business…"
+    # brush-off — no retrieval, no tools, no escalation. Three defects, one
+    # family (superscar #3 — the guard matched a FORM, not an entity):
+    #
+    #   1. bare substring. `bar` fires inside `kabar` — Indonesian for NEWS,
+    #      i.e. the exact word a client uses to chase a file ("belum ada
+    #      kabar") — and inside `sabar`, `gambar`, `lembar`; `oggi` fires
+    #      inside `soggiorno`. Every pattern below is now word-anchored.
+    #   2. homograph with a business twin. `tempo` sat in the WEATHER group,
+    #      but on this number "quanto tempo ci vuole" is the commonest
+    #      timeline question there is; `today`/`oggi`/`hari ini` mark urgency
+    #      far more often than small talk. They are gone (weather keeps the
+    #      Italian idiom "che tempo fa", which has no business reading).
+    #   3. right word, wrong register. `best`/`migliore`/`recommend`/`like`
+    #      ARE the consulting conversation — "I would like to proceed", "what
+    #      is the best option". The whole preference group is removed;
+    #      `musik` was added so genuine "suka musik apa?" still lands.
+    #
+    # The mood words stay, because a client who writes only "capek banget"
+    # deserves a warm reply rather than a retrieval attempt that ends in
+    # silence. But they no longer decide alone: "sono stanco di aspettare,
+    # quando arriva il documento?" is a COMPLAINT, and a brush-off is the one
+    # answer it must never get. This is the W115 shape — a marker that has a
+    # twin in ordinary language must STEP ASIDE, not veto.
+    #
+    # Deliberate asymmetry, stated so nobody "tidies" it: DECISIVE and MOOD
+    # are word-anchored (over-matching there stonewalls a paying client),
+    # while _SERVICE_REQUEST matches as a substring on purpose (`kirim`
+    # catches `dikirim`, `aspett` catches `aspettare`) — over-matching THERE
+    # only pushes a message towards retrieval, which this method's own older
+    # comment already calls the safe default.
+    # ------------------------------------------------------------------
+
+    _CASUAL_DECISIVE: tuple[re.Pattern[str], ...] = _word_anchored(
+        # Food / places to eat and drink
+        r"ristorante|restaurant|makan|mangiare|food|cibo|warung|kuliner|cafe|bar"
+        r"|dinner|lunch|breakfast",
+        # Music / leisure
+        r"music|musik|musica|lagu|song|concert|spotify|playlist|hobby|sport|palestra|gym",
+        # Greetings and how-are-you
+        r"come stai|how are you|apa kabar|gimana kabar|kabar baik|cosa fai"
+        r"|what do you do|che fai",
+        # Weather / nature ("che tempo fa" only — bare `tempo` is a timeline question)
+        r"weather|cuaca|meteo|che tempo fa|beach|pantai|spiaggia|surf|sunset|sunrise",
+        # Jaksel slang with no business reading
+        r"gabut|mager|males|santai|chill|galau",
+    ) + (
+        # Bare acknowledgements — anchored to the WHOLE message on purpose.
+        re.compile(
+            r"^(ok|bene|good|great|thanks|grazie|terima kasih|cool|wow|haha|wkwk|lol)$",
+        ),
+    )
+
+    _CASUAL_MOOD: tuple[re.Pattern[str], ...] = _word_anchored(
+        r"bosen|bosan|capek|cape|lelah|seneng|senang|sedih|kesel|marah|pusing"
+        r"|happy|sad|tired|stress|stressed|anxious|relax"
+        r"|stanco|annoiato|felice|triste|arrabbiato|rilassato|stressato|contento"
+        r"|feeling|mood|vibes",
+    )
+
+    # Substring by design (see the asymmetry note above).
+    _SERVICE_REQUEST: tuple[re.Pattern[str], ...] = (
+        re.compile(
+            r"tolong|mohon|minta|bisa|kapan|kirim|urus|proses|dokumen|berkas|surat"
+            r"|paspor|bayar|biaya|jadwal|kantor|jawaban|konfirmasi|selesai|belum"
+            r"|tunggu|lama|gimana caranya"
+            r"|please|could you|can you|when|send|document|passport|invoice|payment"
+            r"|status|apply|application|proceed|wait|still|update|deadline"
+            r"|per favore|potresti|puoi|quando|invia|manda|documento|passaporto"
+            r"|pratica|risposta|aspett|attesa|scadenza|ufficio|conferma|pagare|costo"
+            r"|ancora|bisogno",
+        ),
+    )
+
     def check_casual_conversation(self, query: str, context: dict[str, Any] = None) -> bool:
         """
         Detect if query is a casual/lifestyle question that doesn't need RAG tools.
@@ -1060,6 +1245,34 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
             settings.COMPANY_NAME.lower(),
             "zerosphere",
             "kintsugi",
+            # Added 2026-08-10 after measuring 9 false positives in 20 real
+            # questions: every one of these is agency vocabulary that was
+            # missing here, so a sentence built around it could be captured by
+            # a casual pattern and answered with a canned brush-off. `visto`
+            # is the Italian for visa and was simply absent.
+            "lkpm",
+            "laporan",
+            "report",
+            "spt",
+            "bpjs",
+            "efin",
+            "visto",
+            "visti",
+            "lease",
+            "zoning",
+            "property",
+            "properti",
+            "villa",
+            "cliente",
+            "client",
+            "pratica",
+            "notaio",
+            "appointment",
+            "scadenza",
+            "clause",
+            "clausola",
+            "document",
+            "dokumen",
         ]
 
         for keyword in business_keywords:
@@ -1081,30 +1294,29 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
         # If it doesn't match casual patterns, safe default is to ASSUME BUSINESS/RAG.
         # It is better to search and find nothing than to hallucinate.
 
-        # Casual conversation patterns (Explicit Whitelist)
-        casual_patterns = [
-            # Food/restaurants
-            r"(ristorante|restaurant|makan|mangiare|food|cibo|warung|cafe|bar|dinner|lunch|breakfast)",
-            # Music/Life
-            r"(music|musica|lagu|song|concert|spotify|playlist|hobby|sport|palestra|gym)",
-            # Personal greetings/status
-            r"(come stai|how are you|apa kabar|gimana kabar|cosa fai|what do you do|che fai)",
-            r"(preferisci|prefer|suka|like|favorite|favorito|best|migliore|consiglia|recommend)",
-            # Weather
-            r"(weather|cuaca|meteo|tempo|beach|pantai|spiaggia|surf|sunset|sunrise)",
-            # Emotional states (Indonesian Jaksel style)
-            r"(bosen|bosan|capek|cape|lelah|seneng|senang|sedih|kesel|marah|happy|sad|tired)",
-            r"(gabut|mager|males|santai|chill|relax|stress|pusing|galau|anxious)",
-            # Emotional states (Italian)
-            r"(stanco|annoiato|felice|triste|arrabbiato|rilassato|stressato|contento)",
-            # Casual statements about day/mood
-            r"(hari ini|today|oggi|lagi|feeling|mood|vibes)",
-            # General Chatters
-            # General Chatters (Removed context-dependent 'si', 'no', 'yes' to allow RAG/LLM reasoning)
-            r"^(ok|bene|good|great|thanks|grazie|terima kasih|cool|wow|haha|wkwk|lol)$",
-        ]
+        # Casual conversation whitelist — see _CASUAL_DECISIVE / _CASUAL_MOOD.
+        #
+        # This used to be an inline `casual_patterns` list rewritten by this
+        # same PR (2026-08-10) to add \b word-boundary anchors and drop three
+        # over-matching groups (preference words / day-mood words / non-meteo
+        # weather words). origin/main landed a newer, measured-later fix
+        # (2026-08-11) for the identical bug — `_CASUAL_DECISIVE`/`_CASUAL_MOOD`
+        # class attributes — that supersedes it: same word-boundary discipline,
+        # plus it keeps mood/day words alive but gates them behind
+        # `_SERVICE_REQUEST` (W115 shape: a marker with an ordinary-language
+        # twin must step aside, not veto) instead of deleting them outright.
+        # Reintroducing the older list here would be a regression against a
+        # fix that landed after this one was measured.
+        if any(p.search(query_lower) for p in self._CASUAL_DECISIVE):
+            return True
 
-        return any(re.search(pattern, query_lower) for pattern in casual_patterns)
+        # A mood word alone does NOT make a message casual. It is casual only
+        # when nothing else in the message asks for service — see the class
+        # docstring on _CASUAL_MOOD for why, and for the measurement.
+        if any(p.search(query_lower) for p in self._CASUAL_MOOD):
+            return not any(p.search(query_lower) for p in self._SERVICE_REQUEST)
+
+        return False
 
     def get_casual_response(self, query: str, context: dict[str, Any] = None) -> str | None:
         """
@@ -1284,13 +1496,16 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
         is_cyrillic = any("\u0400" <= c <= "\u04ff" for c in query)
         is_ukrainian = any(w in query_lower for w in ["привіт", "як", "дякую", "хто я"])
         is_russian = any(w in query_lower for w in ["привет", "как", "спасибо", "кто я"])
-        is_italian = any(
-            w in query_lower
-            for w in ["chi", "sono", "cosa", settings.COMPANY_NAME.lower(), "zantara"]
-        )
-        is_indonesian = any(
-            w in query_lower
-            for w in ["siapa", "aku", "saya", "apa", "gimana", "bagaimana", "gue", "lu"]
+        # WHOLE WORDS. This marker list now decides ONE thing — the language of
+        # the "who am I?" answer below, the only branch with no per-language
+        # pattern to read the language off. As a bare substring it read
+        # "J(apa)n" and "va(lu)e" as Indonesian. Its Italian twin was deleted
+        # rather than fixed: every branch that consulted it now takes its
+        # language from the pattern that fired (see the module-scope block),
+        # and it carried the brand name, which is language-neutral.
+        is_indonesian = _contains_any_word(
+            query_lower,
+            ["siapa", "aku", "saya", "apa", "gimana", "bagaimana", "gue", "lu"],
         )
 
         # User identity ("Who am I?")
@@ -1360,28 +1575,15 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
             # Italian default
             return "Non ho ancora informazioni salvate su di te. Dimmi 2-3 dettagli (nome, obiettivo, tempistiche) e li terrò a mente."
 
-        # Identity patterns
-        if re.search(r"^(chi|who|cosa|what)\s+(sei|are)\s*(you|tu)?\??$", query_lower):
-            if is_italian and not is_cyrillic:
-                return f"Sono Zantara, l'intelligenza specializzata di {settings.COMPANY_NAME}. Ti aiuto con visa, business e questioni legali in Indonesia."
-            return f"I'm Zantara, {settings.COMPANY_NAME}'s specialized AI. I help with visas, business setup, and legal topics in Indonesia."
+        # Assistant identity ("Who are you?", "Chi ti ha creato?", "siapa kamu?")
+        identity_language = _first_language_match(query_lower, _ASSISTANT_IDENTITY_RES)
+        if identity_language:
+            return self.assistant_identity_answer(identity_language)
 
         # Self-description patterns ("Tell me about yourself", "What can you do?")
-        self_patterns = [
-            r"parlami\s+(di\s+)?te",
-            r"cosa\s+sai\s+fare",
-            r"che\s+cosa\s+sai\s+fare",
-            r"tell\s+me\s+about\s+(yourself|you)",
-            r"what\s+can\s+you\s+do",
-            r"what\s+are\s+you\s+capable",
-            r"cosa\s+puoi\s+(fare|aiutarmi)",
-            r"come\s+(mi\s+)?puoi\s+aiutare",
-            r"how\s+can\s+you\s+help",
-            r"apa\s+yang\s+(bisa|kamu)\s+(kamu\s+)?lakukan",
-            r"bisa\s+bantu\s+apa",
-        ]
-        if any(re.search(p, query_lower) for p in self_patterns):
-            if is_indonesian:
+        self_language = _first_language_match(query_lower, _SELF_DESCRIPTION_RES)
+        if self_language:
+            if self_language == "INDONESIAN":
                 return (
                     f"Gue Zantara, AI-nya {settings.COMPANY_NAME}! 🤖\n\n"
                     "Yang bisa gue bantu:\n"
@@ -1394,7 +1596,7 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
                     "• **Web Search**: Kalau butuh info di luar knowledge base, gue bisa cari di internet! 🌐\n\n"
                     "Tanya aja, bro! 💪"
                 )
-            if is_italian and not is_cyrillic:
+            if self_language == "ITALIAN":
                 return (
                     f"Sono Zantara, l'AI di {settings.COMPANY_NAME}! 🤖\n\n"
                     "Ecco cosa posso fare:\n"
@@ -1422,15 +1624,15 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
 
         # Company patterns ("What does Bali Zero do?")
         company_name_safe = re.escape(settings.COMPANY_NAME.lower())
-        company_patterns = [
-            r"^(cosa)\s+(fa)\s+(" + company_name_safe + r")\??$",
-            r"^(parlami)\s+(di)\s+(" + company_name_safe + r")\??$",
-            r"^(what)\s+(does)\s+(" + company_name_safe + r")\s+(do)\??$",
-            r"^(tell\s+me)\s+(about)\s+(" + company_name_safe + r")\??$",
-        ]
-        for pattern in company_patterns:
+        company_patterns = (
+            ("ITALIAN", r"^(cosa)\s+(fa)\s+(" + company_name_safe + r")\??$"),
+            ("ITALIAN", r"^(parlami)\s+(di)\s+(" + company_name_safe + r")\??$"),
+            ("ENGLISH", r"^(what)\s+(does)\s+(" + company_name_safe + r")\s+(do)\??$"),
+            ("ENGLISH", r"^(tell\s+me)\s+(about)\s+(" + company_name_safe + r")\??$"),
+        )
+        for language, pattern in company_patterns:
             if re.search(pattern, query_lower):
-                if is_italian and not is_cyrillic:
+                if language == "ITALIAN":
                     return (
                         f"{settings.COMPANY_NAME} è una consulenza specializzata in visa, KITAS, setup aziendale (PT PMA) "
                         "e questioni legali per stranieri in Indonesia."
@@ -1441,6 +1643,42 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
                 )
 
         return None
+
+    def assistant_identity_answer(self, language: str) -> str:
+        """One sentence per language, chosen by the identity pattern that fired.
+
+        `language` is NEVER guessed from the query's loose markers: a
+        language-neutral brand name ("Zantara, who are you?") must not flip the
+        reply to Italian, which is exactly what the old marker list did.
+        Any language declared in `_ASSISTANT_IDENTITY_PATTERNS` must have a
+        branch here — pinned by a test, because the failure mode of forgetting
+        one is silent (an Indonesian asker gets an English sentence).
+        """
+        company = settings.COMPANY_NAME
+        if language == "ITALIAN":
+            return (
+                f"Sono Zantara, l'intelligenza specializzata di {company}. "
+                "Ti aiuto con visa, business e questioni legali in Indonesia."
+            )
+        if language == "INDONESIAN":
+            return (
+                f"Gue Zantara, AI-nya {company}. "
+                "Gue bantu soal visa, setup bisnis, dan urusan legal di Indonesia."
+            )
+        if language == "RUSSIAN":
+            return (
+                f"Я Zantara, специализированный ИИ {company}. "
+                "Помогаю с визами, открытием бизнеса и юридическими вопросами в Индонезии."
+            )
+        if language == "UKRAINIAN":
+            return (
+                f"Я Zantara, спеціалізований ШІ {company}. "
+                "Допомагаю з візами, відкриттям бізнесу та юридичними питаннями в Індонезії."
+            )
+        return (
+            f"I'm Zantara, {company}'s specialized AI. "
+            "I help with visas, business setup, and legal topics in Indonesia."
+        )
 
     def build_proactive_prompt(
         self,

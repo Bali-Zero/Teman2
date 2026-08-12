@@ -515,11 +515,12 @@ async def assign_lead(state: LeadAssignmentState, db_pool: "asyncpg.Pool") -> Le
                   AND tm.role IN ({role_placeholders})
                   AND LOWER(tm.department) = LOWER(${len(role_list) + 1})
                 GROUP BY tm.email, tm.full_name, tm.department
-                ORDER BY COUNT(p.id) ASC, RANDOM()
+                ORDER BY COUNT(p.id) ASC, MD5(tm.email || ${len(role_list) + 2}::text)
                 LIMIT 1
                 """,
                 *role_list,
                 target_department,
+                state["client_id"],
             )
 
         if lead:
@@ -552,10 +553,11 @@ async def assign_lead(state: LeadAssignmentState, db_pool: "asyncpg.Pool") -> Le
                 WHERE tm.active = true
                   AND tm.role IN ({role_placeholders})
                 GROUP BY tm.email, tm.full_name, tm.department
-                ORDER BY COUNT(p.id) ASC, RANDOM()
+                ORDER BY COUNT(p.id) ASC, MD5(tm.email || ${len(role_list) + 1}::text)
                 LIMIT 1
                 """,
                 *role_list,
+                state["client_id"],
             )
             if lead:
                 state["assigned_lead"] = lead["email"]

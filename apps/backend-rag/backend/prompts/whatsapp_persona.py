@@ -36,11 +36,27 @@ def build_system_prompt(
     client_profile: dict | None = None,
     is_first_message: bool = False,
     detected_language: str | None = None,
-    _time_of_day: str | None = None,
+    time_of_day: str | None = None,  # noqa: ARG001 - see below, the name is load-bearing
 ) -> str:
     """
     Build a dynamic system prompt for each WhatsApp message.
     Kept short and natural — less rules = more natural output.
+
+    `time_of_day` is accepted and deliberately unused today, but its NAME is
+    part of a live contract: `whatsapp_chat.process_whatsapp_message` — the
+    only production caller — passes it by keyword. It was renamed to
+    `_time_of_day` on 2026-03-17 against a call site written on 2026-02-07,
+    and from that day every fallback-RAG WhatsApp reply raised
+    `TypeError: unexpected keyword argument 'time_of_day'` and answered the
+    client "Ops, errore tecnico 😬" instead. Nothing caught it for ~5 months
+    because no test ever executed that branch (measured: the error reply
+    appears 0 times in `conversation_messages` against 154 outbound WhatsApp
+    messages in July — the branch is the net under OpenClaw failing, and it
+    had a hole in it the whole time).
+
+    Do not re-prefix this with an underscore to silence an unused-argument
+    lint. `test_whatsapp_router_formats_llm_answers.py` now binds the router's
+    actual keywords against this signature and fails if the two drift again.
     """
     profile = client_profile or {}
     interests = profile.get("interests", [])
@@ -123,7 +139,15 @@ def build_system_prompt(
             "software. If you don't know something, say \"let me check with "
             'the team and get back to you" or answer with what you know. '
             "NEVER ask the client to give you information about regulations — "
-            "you are the expert."
+            "you are the expert. "
+            "THE ONE THING YOU MAY ALWAYS SAY: when the question is about "
+            "something only Bali Zero's internal records can answer — the "
+            "status of their file, a deadline on their case, a document we "
+            'hold — and you cannot see it, say so as a consultant would: "I '
+            "don't have that in front of me right now, let me check with the "
+            "team and come back to you.\" NEVER state that a client's "
+            "situation is fine, handled or up to date unless the verified "
+            "data in this conversation says so."
         ),
         "it": (
             'REGOLA CRITICA: Non dire MAI al cliente che "non hai accesso", '
@@ -131,7 +155,15 @@ def build_system_prompt(
             '"non posso cercare". Tu sei un consulente esperto, non un software. '
             'Se non conosci qualcosa, dì "verifico col team e ti faccio sapere" '
             "oppure rispondi con quello che sai sull'argomento. Non chiedere MAI "
-            "al cliente di darti informazioni su regolamenti — sei tu l'esperto."
+            "al cliente di darti informazioni su regolamenti — sei tu l'esperto. "
+            "L'UNICA COSA CHE PUOI SEMPRE DIRE: quando la domanda riguarda "
+            "qualcosa che solo gli archivi interni di Bali Zero possono sapere "
+            "— lo stato della sua pratica, una scadenza sul suo caso, un "
+            "documento che custodiamo noi — e tu non lo vedi, dillo come lo "
+            "direbbe un consulente: \"adesso non ce l'ho davanti, verifico col "
+            'team e ti faccio sapere". Non dire MAI che la situazione di un '
+            "cliente è a posto, sistemata o in regola se non lo dicono i dati "
+            "verificati in questa conversazione."
         ),
         "id": (
             'ATURAN KRITIS: JANGAN PERNAH bilang ke klien "saya tidak punya '
@@ -140,7 +172,15 @@ def build_system_prompt(
             'perangkat lunak. Jika tidak tahu sesuatu, katakan "saya cek dengan '
             'tim dan akan kabari Anda" atau jawab dengan yang Anda ketahui. '
             "JANGAN PERNAH minta klien memberikan informasi tentang regulasi — "
-            "Anda yang ahlinya."
+            "Anda yang ahlinya. "
+            "SATU HAL YANG SELALU BOLEH ANDA KATAKAN: kalau pertanyaannya "
+            "tentang sesuatu yang hanya catatan internal Bali Zero yang tahu — "
+            "status berkasnya, tenggat waktu pada kasusnya, dokumen yang kami "
+            "simpan — dan Anda tidak bisa melihatnya, katakan seperti seorang "
+            'konsultan: "saat ini tidak ada di depan saya, saya cek dengan tim '
+            'dan akan kabari Anda." JANGAN PERNAH bilang bahwa urusan klien '
+            "sudah aman, sudah beres, atau sudah lengkap kecuali data "
+            "terverifikasi dalam percakapan ini memang mengatakannya."
         ),
         "de": (
             'KRITISCHE REGEL: Sagen Sie dem Kunden NIEMALS "ich habe keinen '
@@ -148,7 +188,15 @@ def build_system_prompt(
             'nicht geladen" oder "ich kann nicht suchen". Sie sind ein '
             "Experte, keine Software. Wenn Sie etwas nicht wissen, sagen Sie "
             '"ich kläre das mit dem Team und melde mich" oder antworten mit '
-            "dem, was Sie wissen."
+            "dem, was Sie wissen. "
+            "DAS EINE, WAS SIE IMMER SAGEN DÜRFEN: Wenn es um etwas geht, das "
+            "nur die internen Unterlagen von Bali Zero wissen können — der "
+            "Stand seiner Akte, eine Frist in seinem Fall, ein Dokument bei "
+            "uns — und Sie es nicht sehen, sagen Sie es wie ein Berater: "
+            '"das habe ich gerade nicht vorliegen, ich kläre das mit dem Team '
+            'und melde mich." Behaupten Sie NIEMALS, die Sache eines Kunden '
+            "sei in Ordnung, erledigt oder aktuell, wenn die geprüften Daten "
+            "in diesem Gespräch das nicht sagen."
         ),
     }
     expert_rule = expert_rules.get(lang, expert_rules["en"])
@@ -188,6 +236,80 @@ def build_system_prompt(
 {pricing_reminder}"""
 
     return prompt
+
+
+def build_priming_turns(
+    system_prompt: str,
+    detected_language: str | None = None,
+) -> list[dict[str, str]]:
+    """Build the user/assistant turn pair that primes the WhatsApp persona.
+
+    ``whatsapp_chat.py`` injects the persona as a fake first exchange in the
+    conversation history rather than as a system prompt. Until 2026-08-11 both
+    halves of that exchange were hardcoded ITALIAN — including the assistant
+    turn, i.e. the model's own most recent precedent for "how I speak here"
+    was an Italian sentence, planted before the client had said a word.
+
+    That contradicted, twenty lines away, the whole reason ``expert_rules``
+    above is written four times over: its comment says the block is "kept
+    multilingual so an English-speaking client never sees Italian instructions
+    in their system context". The persona was assembled with that care and the
+    caller then stapled Italian onto it.
+
+    The pair only fires on ``is_first_message``, which is exactly the shape of
+    the 2026-07-28 team beta: thirteen people writing for the first time, two
+    English questions answered wholly in Italian with correct content. Stated
+    as a candidate mechanism, not a proven one — this path is the FALLBACK
+    taken when the OpenClaw bridge returns nothing, and the bridge is
+    configured in production (measured 2026-08-11), so what share of real
+    traffic reaches it is NOT established here.
+
+    Args:
+        system_prompt: the assembled persona, already language-aware.
+        detected_language: the client's language; unknown values fall back to
+            English, the same rule every other block in this module uses.
+
+    Returns:
+        The two history turns, in the client's language.
+    """
+    lang = detected_language or "en"
+
+    framings: dict[str, tuple[str, str, str]] = {
+        # (header, closing instruction, the assistant's acknowledgement)
+        "en": (
+            "[WHATSAPP CONTEXT]",
+            "Always reply as Zan from Bali Zero, naturally, on WhatsApp (no markdown, human tone).",
+            "Understood — I'll reply as Zan on WhatsApp: natural tone, no "
+            "markdown, focused on visas and doing business in Bali.",
+        ),
+        "it": (
+            "[CONTESTO WHATSAPP]",
+            "Rispondi sempre come Zan di Bali Zero, naturalmente su WhatsApp "
+            "(no markdown, tono umano).",
+            "Capito, rispondo come Zan su WhatsApp - tono naturale, niente "
+            "markdown, focus su visa e business a Bali.",
+        ),
+        "id": (
+            "[KONTEKS WHATSAPP]",
+            "Selalu balas sebagai Zan dari Bali Zero, dengan natural, di "
+            "WhatsApp (tanpa markdown, nada manusiawi).",
+            "Mengerti — saya balas sebagai Zan di WhatsApp: nada natural, "
+            "tanpa markdown, fokus ke visa dan bisnis di Bali.",
+        ),
+        "de": (
+            "[WHATSAPP-KONTEXT]",
+            "Antworten Sie immer als Zan von Bali Zero, natürlich, auf "
+            "WhatsApp (kein Markdown, menschlicher Ton).",
+            "Verstanden — ich antworte als Zan auf WhatsApp: natürlicher Ton, "
+            "kein Markdown, Fokus auf Visa und Geschäft auf Bali.",
+        ),
+    }
+    header, closing, acknowledgement = framings.get(lang, framings["en"])
+
+    return [
+        {"role": "user", "content": f"{header}\n{system_prompt}\n\n{closing}"},
+        {"role": "assistant", "content": acknowledgement},
+    ]
 
 
 # For backward compatibility — defaults to English (same default as

@@ -1,14 +1,13 @@
 """
 Policy-enforced tests for ABSTAIN bypass in the RAG reasoning engine.
 
-These tests enforce the three-layer bypass as CONTRACT — any code change
+These tests enforce the evidence bypass contract — any code change
 that breaks them is a regression, not just a refactor.
 
 Architecture (DO NOT CHANGE — test only):
   Layer 1 — IntentClassifier: GENERAL_TASK_KEYWORDS → skip_rag=True → bypasses ABSTAIN
   Layer 2a — Trusted Tools: _TRUSTED_TOOL_NAMES executed successfully → trusted_tools_used=True
-  Layer 2b — Pricing Markers: Rp/IDR/USD/juta in final_answer → trusted_tools_used=True
-  Layer 2c — Tools Available: _gemini_tools set on gateway + final_answer → trusted_tools_used=True
+  Layer 2b — Non-evidence guard: prose and configured tools cannot create trust
   Layer 3 — ABSTAIN Decision: triggers ONLY when all bypass conditions are False
 """
 
@@ -253,10 +252,10 @@ class TestTrustedToolDetection:
         assert trusted is False
 
     @pytest.mark.unit
-    def test_vector_search_trusted(self):
+    def test_vector_search_requires_relevance_scoring(self):
         """
-        POLICY: vector_search with a valid >50 char result → trusted_tools_used=True.
-        WHY: vector_search retrieves KB content directly — its output IS evidence.
+        POLICY: vector_search success alone does not grant the flat trusted score.
+        WHY: a semantically wrong document is retrieval, but it is not evidence.
         """
         obs = (
             "Found 3 matching regulations: KITAS requires sponsor letter, "
@@ -265,147 +264,95 @@ class TestTrustedToolDetection:
         assert len(obs) > 50
         step = _make_step("vector_search", obs)
         trusted, score = self._run_trusted_check([step])
+        assert trusted is False
+        assert score == 0.0
+
+    @pytest.mark.unit
+    def test_exact_kbli_lookup_is_trusted(self):
+        """An exact canonical-code observation is deterministic evidence."""
+        obs = (
+            '{"found": true, "code": "51101", "pma": '
+            '{"max_foreign_ownership_percent": 49, "condition": "single majority"}}'
+        )
+        step = _make_step("kbli_lookup", obs)
+        trusted, score = self._run_trusted_check([step])
         assert trusted is True
         assert score == 0.85
 
+    @pytest.mark.unit
+    def test_successful_but_irrelevant_vector_hit_stays_below_abstain_gate(self):
+        """Tripwire for the measured 0.85 successful-wrong-retrieval defect."""
+        from backend.services.rag.agentic._reasoning_evidence import compute_evidence_score
+
+        query = "Untuk KBLI 51101 berapa batas kepemilikan asing?"
+        irrelevant = (
+            "The D12 visa requires a passport and sponsor documents. "
+            "Immigration may request additional evidence for the stay permit."
+        )
+        score = compute_evidence_score(
+            trusted_tools_used=False,
+            sources=[{"score": 0.91}],
+            context_gathered=[irrelevant],
+            query=query,
+        )
+        assert score < 0.15
+
+    @pytest.mark.unit
+    def test_relevant_vector_hit_can_pass_through_relevance_path(self):
+        from backend.services.rag.agentic._reasoning_evidence import compute_evidence_score
+
+        query = "Untuk KBLI 51101 berapa batas kepemilikan asing?"
+        relevant = (
+            "KBLI 51101 angkutan udara berjadwal has a foreign ownership cap "
+            "of 49 percent and a special national shareholder condition."
+        )
+        score = compute_evidence_score(
+            trusted_tools_used=False,
+            sources=[{"score": 0.91}],
+            context_gathered=[relevant],
+            query=query,
+        )
+        assert score >= 0.15
+
 
 # ============================================================
-# Class 3 — Pricing Markers in Final Answer (Layer 2b)
+# Class 3 — Non-evidence must not bypass (Layer 2b)
 # ============================================================
 
 
-class TestPricingMarkersInAnswer:
-    """
-    Policy: If state.final_answer contains any pricing marker (rp, idr, usd, juta...)
-    → trusted_tools_used=True even without tool steps.
-    This covers Gemini answering directly from system prompt context.
-    """
-
-    def _check_pricing_markers(self, final_answer: str) -> bool:
-        """Replicate Layer 2b logic from reasoning.py."""
-        answer_lower = final_answer.lower()
-        return any(
-            marker in answer_lower
-            for marker in [
-                "rp ",
-                "rp.",
-                "idr ",
-                "usd ",
-                "20.000.000",
-                "15.000.000",
-                "10.000.000",
-                "5.000.000",
-                "juta",
-            ]
+class TestNonEvidenceDoesNotBypass:
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "answer",
+        [
+            "The KITAS processing fee is IDR 15.000.000.",
+            "Biaya setup PT PMA sekitar 45 juta rupiah.",
+            "Monthly tax compliance is USD 500.",
+        ],
+    )
+    def test_monetary_prose_is_not_retrieval_evidence(self, answer):
+        from backend.services.rag.agentic._reasoning_policy import (
+            apply_shared_trusted_flippers,
         )
 
-    @pytest.mark.unit
-    def test_idr_marker_sets_trusted(self):
-        """
-        POLICY: Final answer containing "idr 15.000.000" → trusted_tools_used=True.
-        WHY: Specific IDR amounts indicate real pricing data in the answer.
-        """
-        answer = "The KITAS processing fee is idr 15.000.000 for the first year."
-        assert self._check_pricing_markers(answer) is True
-
-    @pytest.mark.unit
-    def test_rp_marker_sets_trusted(self):
-        """
-        POLICY: Final answer containing "rp 5.000.000" → trusted_tools_used=True.
-        WHY: 'Rp' is the standard Indonesian Rupiah notation used in Bali Zero prices.
-        """
-        answer = "The document legalization costs rp 5.000.000 at the notary."
-        assert self._check_pricing_markers(answer) is True
-
-    @pytest.mark.unit
-    def test_usd_marker_sets_trusted(self):
-        """
-        POLICY: Final answer containing "usd 500" → trusted_tools_used=True.
-        WHY: USD prices appear in expat service packages; must not ABSTAIN on these.
-        """
-        answer = "Monthly retainer for tax compliance is usd 500 per month."
-        assert self._check_pricing_markers(answer) is True
-
-    @pytest.mark.unit
-    def test_juta_marker_sets_trusted(self):
-        """
-        POLICY: Final answer containing "juta" (Indonesian for million) → trusted.
-        WHY: Clients and staff use Indonesian numerical shorthand in answers.
-        """
-        answer = "Biaya setup PT PMA sekitar 45 juta rupiah sudah termasuk notaris."
-        assert self._check_pricing_markers(answer) is True
-
-    @pytest.mark.unit
-    def test_no_pricing_markers_not_trusted(self):
-        """
-        POLICY: Answer with no pricing markers is NOT auto-trusted via Layer 2b.
-        WHY: Generic text answers must go through evidence scoring; only specific
-        factual pricing data bypasses it.
-        """
-        answer = "You need a sponsor letter, health insurance, and a valid passport."
-        assert self._check_pricing_markers(answer) is False
-
-
-# ============================================================
-# Class 4 — Tools Available Bypass (Layer 2c)
-# ============================================================
-
-
-class TestToolsAvailableBypass:
-    """
-    Policy: If LLM gateway has _gemini_tools (non-empty) AND state.final_answer
-    is set → trusted_tools_used=True. The LLM had the opportunity to call tools
-    and chose to answer directly — trust its judgment.
-    """
-
-    def _check_tools_available_bypass(self, gateway: Any, final_answer: str | None) -> bool:
-        """Replicate Layer 2c logic from reasoning.py lines 663-669."""
-        has_tools = hasattr(gateway, "_gemini_tools") and bool(gateway._gemini_tools)
-        if has_tools and final_answer:
-            return True
-        return False
-
-    @pytest.mark.unit
-    def test_gemini_tools_set_bypasses(self):
-        """
-        POLICY: gateway._gemini_tools=[tool1, tool2] + final_answer → bypass ABSTAIN.
-        WHY: If LLM was given tools and chose to answer, it's a deliberate choice —
-        not a knowledge gap. Forcing ABSTAIN here punishes confident LLMs.
-        """
-        gw = _make_gateway(gemini_tools=[MagicMock(), MagicMock()])
-        result = self._check_tools_available_bypass(gw, "The answer is X.")
-        assert result is True
-
-    @pytest.mark.unit
-    def test_gemini_tools_empty_no_bypass(self):
-        """
-        POLICY: gateway._gemini_tools=[] (empty list) → no bypass.
-        WHY: Empty tools list means LLM had no tools configured — the answer
-        was not tool-informed, evidence scoring must proceed.
-        """
-        gw = _make_gateway(gemini_tools=[])
-        result = self._check_tools_available_bypass(gw, "The answer is X.")
+        result = apply_shared_trusted_flippers(
+            trusted_tools_used=False,
+            final_answer=answer,
+            llm_gateway=_make_gateway(gemini_tools=[]),
+        )
         assert result is False
 
     @pytest.mark.unit
-    def test_gemini_tools_none_no_bypass(self):
-        """
-        POLICY: gateway._gemini_tools=None → no bypass.
-        WHY: None means tools were not configured; bool(None) is False.
-        """
-        gw = _make_gateway(gemini_tools=None)
-        result = self._check_tools_available_bypass(gw, "The answer is X.")
-        assert result is False
+    def test_configured_tools_without_execution_are_not_evidence(self):
+        from backend.services.rag.agentic._reasoning_policy import (
+            apply_shared_trusted_flippers,
+        )
 
-    @pytest.mark.unit
-    def test_no_gemini_tools_attr_no_bypass(self):
-        """
-        POLICY: If gateway has NO _gemini_tools attribute at all → no bypass.
-        WHY: hasattr guard is required; attribute absence means different gateway
-        type (e.g., Ollama) with no tool support.
-        """
-        gw = _make_gateway(has_attr=False)
-        result = self._check_tools_available_bypass(gw, "The answer is X.")
+        result = apply_shared_trusted_flippers(
+            trusted_tools_used=False,
+            final_answer="The answer is X.",
+            llm_gateway=_make_gateway(gemini_tools=[MagicMock(), MagicMock()]),
+        )
         assert result is False
 
 
@@ -772,16 +719,15 @@ class TestStreamingPathParity:
 class TestApplySharedTrustedFlippers:
     """
     U5 (Wave 2): Both ReAct pipelines (sync + streaming) call the same
-    helper `apply_shared_trusted_flippers` for the *shared* portion of
-    trusted-path detection: pricing-in-answer + LLM-had-tools. The
-    streaming path has extra pre-flippers (context markers, substantial
-    context) that are INTENTIONALLY not mirrored to sync (SCAR §U5).
+    helper `apply_shared_trusted_flippers` at the shared policy boundary.
+    The helper may preserve trust earned from an executed tool, but answer
+    wording and configured tool availability are not retrieval evidence.
 
     These tests lock in:
     - Helper honors early-True (never flips True→False).
-    - Pricing markers set trusted=True on empty-tools gateway.
-    - Has-tools + final_answer sets trusted=True on no-pricing answer.
-    - Empty final_answer + no pricing keeps trusted=False.
+    - Pricing markers alone do not create trust.
+    - Merely configuring tools does not create trust.
+    - Empty final_answer keeps trusted=False.
     """
 
     @pytest.mark.unit
@@ -800,9 +746,8 @@ class TestApplySharedTrustedFlippers:
         assert result is True
 
     @pytest.mark.unit
-    def test_pricing_marker_flips_true(self):
-        """Pricing markers in final_answer set trusted=True even with
-        empty gateway tools."""
+    def test_pricing_marker_does_not_create_trust(self):
+        """A fluent monetary claim is content, not proof of retrieval."""
         from backend.services.rag.agentic._reasoning_policy import (
             apply_shared_trusted_flippers,
         )
@@ -813,12 +758,11 @@ class TestApplySharedTrustedFlippers:
             final_answer="The cost is Rp 20.000.000 for PT PMA setup.",
             llm_gateway=gw,
         )
-        assert result is True
+        assert result is False
 
     @pytest.mark.unit
-    def test_has_tools_flips_true_without_pricing(self):
-        """LLM had tools + non-empty final_answer → trusted=True, even
-        when no pricing marker is present."""
+    def test_configured_tools_do_not_create_trust(self):
+        """The opportunity to call a tool is not evidence that one ran."""
         from backend.services.rag.agentic._reasoning_policy import (
             apply_shared_trusted_flippers,
         )
@@ -829,7 +773,7 @@ class TestApplySharedTrustedFlippers:
             final_answer="Requirements for KITAS are passport, sponsor, application form.",
             llm_gateway=gw,
         )
-        assert result is True
+        assert result is False
 
     @pytest.mark.unit
     def test_no_pricing_no_tools_stays_false(self):
@@ -848,10 +792,7 @@ class TestApplySharedTrustedFlippers:
 
     @pytest.mark.unit
     def test_empty_answer_with_tools_does_not_flip(self):
-        """Edge case: has-tools check requires non-empty final_answer.
-        Tools available + empty answer → do NOT set trusted=True.
-        The has-tools flipper is guarded on `if state.final_answer`.
-        """
+        """Tools available + empty answer must not create trust."""
         from backend.services.rag.agentic._reasoning_policy import (
             apply_shared_trusted_flippers,
         )

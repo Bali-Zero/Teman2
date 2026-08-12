@@ -57,7 +57,9 @@ class PublicEndpoint:
             if len(prefix_parts) != len(path_parts):
                 return False
             return all(
-                bool(actual) if expected.startswith("{") and expected.endswith("}") else actual == expected
+                bool(actual)
+                if expected.startswith("{") and expected.endswith("}")
+                else actual == expected
                 for expected, actual in zip(prefix_parts, path_parts, strict=True)
             )
         return path.startswith(self.prefix)
@@ -374,11 +376,62 @@ _PREVIEW = (
         Category.PREVIEW,
         "Article preview pages for Telegram approval — no indexing, public preview",
     ),
+    # REMOVED 2026-08-12 (P0, measured live): "/api/dashboard/map/" was a PREFIX
+    # entry, so every route the dashboard router ever mounts inherited public
+    # access — including `GET /api/dashboard/map/clients/geo`, which ran
+    # `SELECT id, full_name, email, phone, status, address FROM clients WHERE
+    # status='active' LIMIT 500` with no principal and no ownership filter. An
+    # anonymous request from the public internet answered HTTP 200 with 500
+    # client rows (500 names, 274 phones, 164 emails, 110 addresses).
+    #
+    # The blanket prefix IS the defect, not just the one route: it also left
+    # `POST /api/dashboard/map/analytics/log-lookup` writable anonymously with a
+    # caller-supplied `user_email`, i.e. forgeable attribution. A router that can
+    # reach the `clients` table must never sit behind a prefix entry — if a
+    # specific route here genuinely needs to be public, add THAT path, never the
+    # prefix, and never one that shares a router with client data.
+    #
+    # The three entries below are NOT new public access: they restore, per-route,
+    # the posture the 2026-07-17 mutating-routes audit had already justified one
+    # by one (`research/operations/2026-07-17-mutating-routes-authz-ledger.md`
+    # lines 233-235, category `preview`). That audit read THIS router and cleared
+    # these three as stateless compute — and never named `GET /clients/geo`,
+    # because its scope was mutating methods only. The client book was invisible
+    # to an audit that read the file it lives in: the scope was the METHOD, not
+    # the DATA. Hence per-route entries — the granularity the audit's own
+    # verdicts were written at, which the prefix silently over-delivered.
     PublicEndpoint(
-        "/api/dashboard/map/",
+        "/api/dashboard/map/validate-property",
         Category.PREVIEW,
-        "Streamlit dashboard — KBLI validation, client geo, risk zones, stats",
+        "Stateless KBLI/zoning compute for the property map — no DB read or "
+        "write, no PII in or out (cleared per-route by the 2026-07-17 audit)",
+        match="exact",
     ),
+    PublicEndpoint(
+        "/api/dashboard/map/gistaru-zone",
+        Category.PREVIEW,
+        "Stateless geo/zone lookup for the property map — no DB read or write "
+        "(cleared per-route by the 2026-07-17 audit)",
+        match="exact",
+    ),
+    PublicEndpoint(
+        "/api/dashboard/map/analyze-investment",
+        Category.PREVIEW,
+        "Stateless investment compute — verified no DB write (cleared per-route "
+        "by the 2026-07-17 audit). Its KBLI block degrades to state=ERROR in "
+        "prod because the dataset is not in the image (kbli-navigator L2.11b)",
+        match="exact",
+    ),
+    # `POST /api/dashboard/map/analytics/log-lookup` is DELIBERATELY absent: it
+    # is the one route here that WRITES (CREATE TABLE IF NOT EXISTS + INSERT),
+    # and it attributed each row to a `user_email` taken from the request body,
+    # so anonymous access meant an unauthenticated writer could file lookups
+    # under any employee's name. The 2026-07-17 audit cleared it as "telemetry
+    # insert only, same shape as /api/metrics/frontend" — but that endpoint
+    # carries no PII, and an email IS an identifier, so the shapes were never
+    # the same. It now takes the acting email from the authenticated principal.
+    # Measured before closing it (prod, 2026-08-12): 5 rows, 1 distinct email,
+    # all written 2026-03-02 and none since — no live consumer to break.
 )
 
 _FUNNEL = (
@@ -542,8 +595,7 @@ _VISA_ORACLE = (
     PublicEndpoint(
         "/api/visa/voa",
         Category.VISA_ORACLE,
-        "GARUDA VOA request funnel submission — anonymous eligibility + Safe "
-        "Clock verdict, no PII",
+        "GARUDA VOA request funnel submission — anonymous eligibility + Safe Clock verdict, no PII",
         match="exact",
     ),
     PublicEndpoint(

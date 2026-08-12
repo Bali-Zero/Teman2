@@ -124,6 +124,124 @@ def test_innocence_a_legitimate_edit_in_place_is_not_a_removal(tmp_path):
     assert check(ledger, NOW) == 0
 
 
+def test_guilt_the_prescribed_merge_duplicates_a_row_both_sides_edited(tmp_path):
+    """The incident of 2026-08-11, reproduced end-to-end through the REAL
+    `git merge` with the REAL union driver — not a hand-written double line.
+
+    Both sides edit entry A in place (the ordinary shape of this ledger: a
+    row's body is updated as work progresses). Union keeps both versions,
+    so the branch lands 3 rows where main and base have 2. The loss check
+    is happy — nothing disappeared — and that is exactly why it cannot see
+    this.
+    """
+    repo = _init_repo(tmp_path)
+    (repo / ".gitattributes").write_text("PENDING-ARMS.md merge=union\n", encoding="utf-8")
+    ledger = _write_ledger(repo, [ENTRY_A, ENTRY_B])
+    _commit(repo, "seed A+B")
+    _mark_as_origin_main(repo)
+    _git(["checkout", "-q", "-b", "feature"], repo)
+
+    _git(["checkout", "-q", "main"], repo)
+    _write_ledger(repo, [ENTRY_A + " — amended on main", ENTRY_B])
+    _commit(repo, "main: edit A in place")
+    _mark_as_origin_main(repo)
+
+    _git(["checkout", "-q", "feature"], repo)
+    _write_ledger(repo, [ENTRY_A + " — amended on the branch", ENTRY_B])
+    _commit(repo, "feature: edit A in place too")
+    _git(["merge", "-q", "main", "-m", "merge main"], repo)
+
+    # Precondition: the union driver really did duplicate A (if this ever
+    # stops being true the test below would pass vacuously — W116).
+    assert ledger.read_text(encoding="utf-8").count("**Entry A**") == 2
+
+    assert check(ledger, NOW) == 2
+
+
+def test_guilt_a_branch_that_lands_the_same_new_row_twice(tmp_path):
+    """Two open rows with one identity are indistinguishable to every
+    reader and counted twice by pending_arms_report — flag it even though
+    no merge was involved and nothing was lost.
+    """
+    repo = _init_repo(tmp_path)
+    ledger = _write_ledger(repo, [ENTRY_A])
+    _commit(repo, "seed A")
+    _mark_as_origin_main(repo)
+    _git(["checkout", "-q", "-b", "feature"], repo)
+
+    _write_ledger(repo, [ENTRY_A, ENTRY_C, ENTRY_C + " (second copy)"], )
+    _commit(repo, "feature: adds C twice")
+
+    assert check(ledger, NOW) == 2
+
+
+def test_guilt_both_defects_at_once_report_both(tmp_path):
+    """A branch can lose one row and duplicate another in the same tree;
+    the bitmask must not hide either behind the other.
+    """
+    repo = _init_repo(tmp_path)
+    ledger = _write_ledger(repo, [ENTRY_A, ENTRY_B])
+    _commit(repo, "seed A+B")
+    _mark_as_origin_main(repo)
+    _git(["checkout", "-q", "-b", "feature"], repo)
+
+    _write_ledger(repo, [ENTRY_B, ENTRY_B + " (duplicated)"])  # A lost, B doubled
+    _commit(repo, "feature: loses A and doubles B")
+
+    assert check(ledger, NOW) == 3
+
+
+def test_innocence_a_row_already_duplicated_on_main_is_not_this_branch_s_fault(tmp_path):
+    """main carries 3 such pairs TODAY (measured 2026-08-12). A baseline of
+    zero would paint every ledger-touching PR red for someone else's
+    duplication and the signal would be ignored within a week.
+    """
+    repo = _init_repo(tmp_path)
+    ledger = _write_ledger(repo, [ENTRY_A, ENTRY_A + " (stale copy)", ENTRY_B])
+    _commit(repo, "seed with a pre-existing duplicate")
+    _mark_as_origin_main(repo)
+    _git(["checkout", "-q", "-b", "feature"], repo)
+
+    _write_ledger(repo, [ENTRY_A, ENTRY_A + " (stale copy)", ENTRY_B, ENTRY_C])
+    _commit(repo, "feature: adds C, leaves the inherited duplicate alone")
+
+    assert check(ledger, NOW) == 0
+
+
+def test_innocence_adding_a_brand_new_row_is_the_ordinary_case(tmp_path):
+    """1 copy > 0 on both references, and it must NEVER flag — this is what
+    every ledger PR does. Without the `>= 2` clause the guard would fail
+    100% of legitimate uses.
+    """
+    repo = _init_repo(tmp_path)
+    ledger = _write_ledger(repo, [ENTRY_A, ENTRY_B])
+    _commit(repo, "seed A+B")
+    _mark_as_origin_main(repo)
+    _git(["checkout", "-q", "-b", "feature"], repo)
+
+    _write_ledger(repo, [ENTRY_A, ENTRY_B, ENTRY_C])
+    _commit(repo, "feature: appends one new row")
+
+    assert check(ledger, NOW) == 0
+
+
+def test_innocence_removing_a_duplicate_copy_is_the_cure_not_the_disease(tmp_path):
+    """Landing the fix — collapsing an inherited pair back to one live row —
+    must read clean on BOTH invariants: the identity is still present (no
+    loss) and its copies went down, not up.
+    """
+    repo = _init_repo(tmp_path)
+    ledger = _write_ledger(repo, [ENTRY_A, ENTRY_A + " (stale copy)", ENTRY_B])
+    _commit(repo, "seed with a pre-existing duplicate")
+    _mark_as_origin_main(repo)
+    _git(["checkout", "-q", "-b", "feature"], repo)
+
+    _write_ledger(repo, [ENTRY_A, ENTRY_B])
+    _commit(repo, "feature: keeps the live copy only")
+
+    assert check(ledger, NOW) == 0
+
+
 def test_innocence_a_pr_that_never_touches_the_ledger_is_skipped(tmp_path):
     """Main independently closing A after this branch diverged must not be
     read as THIS branch's loss — the branch never touched the file at all.

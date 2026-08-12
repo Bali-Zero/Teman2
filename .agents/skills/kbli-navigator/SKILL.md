@@ -43,7 +43,22 @@ session reads this corner; it does not browse `research/`.
 Also stale in `20-the-honest-map-blocked-bali-codes.md` and its `_INDEX.md` row: the blocked count
 is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
-## 1. LIVE STATE (last update 2026-08-09 — keep current)
+## 1. LIVE STATE (last update 2026-08-11 — keep current)
+
+**TRACK DESIGN — D1 shipped (5609abb) · D2 shipped (6ce988a) — verdict-on-top supersedes the 2026-06-30 order per Zero 2026-08-11.**
+
+**App macOS — design wave D1→D4d SHIPPED+GATED (2026-08-11)**: palette Proposta · shell nativa (sidebar
+source-list, search primo quadrante, tema sistema+override ☀/☾, EN/ID trailing) · a11y (Dynamic Type
+~190 call-site, VoiceOver, Increase Contrast) · claim ritrattato no-Usaha-Besar rimosso dal template
+Swift (verdictBanner legge la l4.reason curata) · search bilingue (titoli EN matchati) · "Anima
+Indonesiana": costellazione Nusantara completa accanto al codice + campo guilloché densità-banconota
+(hero/footer/sidebar), empty states decorati, About window cerimoniale — firmata da Zero sui render,
+prova post-install a diff zero-pixel. App-repo M5 (no remote) commit `0f40cb9`, bundle M5=Pro identici,
+Mini da riallineare quando torna in rete. Metodo consolidato: varianti su render → scelta Zero sui PNG →
+ship → diff pixel post-install. Research capture design:
+`research/design/2026-08-11-kbli-navigator-indonesian-soul.md` (PR #4053, review avversariale Codex
+inclusa). Restano: hand-off BKPM bloccato su refresh contenuti Lane C + rebuild lane design; chicchi
+padi About (decisione Zero).
 
 **🟢 2026-08-09 — THE macOS APP IS NOW TWO APPS FROM ONE CODEBASE (Zero's ruling), FLEET-INSTALLED AND
 PROVEN — AND THE FLEET GUARD'S REFERENCE WAS THE LIAR (W106b).**

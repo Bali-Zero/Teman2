@@ -222,8 +222,80 @@ _LATIN_MARKERS: list[tuple[str, list[str], list[str]]] = [
         ],
         ["comment"],  # homograph: English "comment"
     ),
-    ("SPANISH", ["hola", "cómo", "como estas", "gracias", "por qué"], []),
-    ("GERMAN", ["hallo", "wie geht", "danke", "warum", "können"], []),
+    # Spanish and German used to carry FIVE markers each, and all five were
+    # greetings or courtesies ("hola"/"gracias", "hallo"/"danke"). A client who
+    # opens with a business question instead of a greeting — which is what a
+    # business question looks like — scored ZERO and fell to the ENGLISH
+    # default. Measured 2026-08-10: "Welche Dokumente brauche ich, um eine PT
+    # PMA zu gruenden?" → ENGLISH, and the wrapper below then ordered the model
+    # "YOUR ENTIRE RESPONSE MUST BE IN ENGLISH (English)".
+    #
+    # These rows now carry function words too, held to the same anti-homograph
+    # rule the Italian and French rows document above: a marker shared with
+    # English or with another candidate language decides neither, so it is not
+    # a marker. Deliberately absent for that reason — German "die"/"was"/"man"/
+    # "hat"/"war" (all English words), Spanish "una"/"como"/"con" (shared with
+    # Italian), "para" (also an Indonesian plural marker).
+    (
+        "SPANISH",
+        [
+            "hola",
+            "cómo",
+            "como estas",
+            "gracias",
+            "por qué",
+            "necesito",
+            "quiero",
+            "puedo",
+            "quisiera",
+            "cuánto",
+            "cuál",
+            "dónde",
+            "qué",
+            "documentos",
+            "empresa",
+            "extranjero",
+            "trámite",
+            "ustedes",
+            "abrir",
+            "están",
+            "también",
+        ],
+        [],
+    ),
+    (
+        "GERMAN",
+        [
+            "hallo",
+            "wie geht",
+            "danke",
+            "warum",
+            "können",
+            "ich",
+            "nicht",
+            "und",
+            "eine",
+            "einen",
+            "für",
+            "möchte",
+            "brauche",
+            "benötige",
+            "welche",
+            "muss",
+            "kann",
+            "haben",
+            "sind",
+            "oder",
+            "auch",
+            "sehr",
+            "bitte",
+            "dokumente",
+            "unternehmen",
+            "gründen",
+            "wie",
+        ],
+        [],
+    ),
 ]
 
 LATIN_MARKER_RES: list[tuple[str, re.Pattern[str]]] = [

@@ -8,6 +8,7 @@ Provides:
 - Dashboard aggregation queries (failed queries, collection hit rates, volume, satisfaction)
 """
 
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -15,6 +16,19 @@ from backend.app.utils.logging_utils import get_logger, log_error, log_success
 from backend.db.base_repository import BaseRepository
 
 logger = get_logger(__name__)
+
+_DISABLED_VALUES = {"0", "false", "no", "off"}
+
+
+def response_retention_enabled() -> bool:
+    """Whether `log_query` persists the answer alongside the question.
+
+    Read from the environment on every call (no redeploy needed to flip it),
+    and it defaults to ON. Shipping it OFF would be a scar of its own — the
+    ledger is full of organs that were built, defaulted to dark, and were
+    still dark months later (family #2).
+    """
+    return os.getenv("QUERY_ANALYTICS_STORE_RESPONSE", "1").strip().lower() not in _DISABLED_VALUES
 
 
 class QueryAnalyticsRepository(BaseRepository):
@@ -35,6 +49,7 @@ class QueryAnalyticsRepository(BaseRepository):
         token_usage_total: int = 0,
         cost_usd: float = 0.0,
         error_message: str | None = None,
+        response_text: str | None = None,
     ) -> str | None:
         """
         Log a RAG query execution to the analytics table.
@@ -58,6 +73,28 @@ class QueryAnalyticsRepository(BaseRepository):
             # Regression fixed 2026-05-14.
             metadata = {"user_email": user_id} if user_id else {}
 
+            # Keep the answer, not just the assertion that there was one.
+            #
+            # Measured 2026-08-11 over the window since the previous credit
+            # top-up: 304 rows written by this method, 229 of them carrying
+            # `response_generated = true`, and ALL 229 with `response_text`
+            # NULL — because this INSERT never named the column. Historically
+            # the same: 4,373 rows in March 2026, zero answers; 1,573 in
+            # April, zero. The only rows in the table that carry an answer
+            # come from the OTHER writer (`oracle_database.store_query_analytics`),
+            # whose column list is nearly disjoint from this one.
+            #
+            # The consequence is not cosmetic. With no answer corpus, every
+            # evaluation of answer quality has to generate NEW paid traffic:
+            # one night of probing cost ~500,000 IDR and left three answers
+            # on disk. Keeping them makes the next evaluation free.
+            #
+            # Deliberately NOT truncated: a capped corpus measures the cap
+            # (W97). One production answer has been observed at 247,439
+            # characters — that is exactly the defect a corpus should catch,
+            # and a 4k cap would hide it.
+            store_response = response_retention_enabled()
+
             async with self.db_pool.acquire() as conn:
                 row = await conn.fetchrow(
                     """
@@ -65,8 +102,9 @@ class QueryAnalyticsRepository(BaseRepository):
                         query_text, query_hash, session_id, metadata,
                         collections_queried, chunks_retrieved_count,
                         response_generated, model_used, execution_time_ms,
-                        token_usage_total, cost_usd, error_message
-                    ) VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, $9, $10, $11, $12)
+                        token_usage_total, cost_usd, error_message,
+                        response_text
+                    ) VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, $9, $10, $11, $12, $13)
                     RETURNING id
                     """,
                     query_text,
@@ -81,6 +119,7 @@ class QueryAnalyticsRepository(BaseRepository):
                     token_usage_total,
                     cost_usd,
                     error_message,
+                    response_text if store_response else None,
                 )
 
                 query_id = str(row["id"]) if row else None

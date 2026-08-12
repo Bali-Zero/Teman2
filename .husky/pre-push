@@ -1,3 +1,26 @@
+#!/bin/sh
+# A normal developer push executes this checked-out hook and resolves its
+# helpers from the current worktree.  The unattended autofix runner instead
+# sets NUZ_PREPUSH_TRUST_ROOT to a pinned bundle from reviewed main: it is
+# deliberately repairing a failed branch, so that branch must not supply the
+# classifier, suite lock, or tip-drift verifier governing its outer push.
+PREPUSH_TRUST_ROOT="${NUZ_PREPUSH_TRUST_ROOT:-$(pwd -P)}"
+case "$PREPUSH_TRUST_ROOT" in
+    /*) ;;
+    *)
+        echo "❌ pre-push trusted root must be absolute; refusing push."
+        exit 1
+        ;;
+esac
+PREPUSH_CLASSIFIER="$PREPUSH_TRUST_ROOT/scripts/prepush_classify.py"
+PREPUSH_SUITE_LOCK_SOURCE="$PREPUSH_TRUST_ROOT/scripts/prepush_suite_lock.sh"
+PREPUSH_TIP_DRIFT_SCRIPT="$PREPUSH_TRUST_ROOT/scripts/ci/prepush_tip_drift.sh"
+if [ ! -f "$PREPUSH_CLASSIFIER" ] || [ ! -x "$PREPUSH_SUITE_LOCK_SOURCE" ] || \
+    [ ! -x "$PREPUSH_TIP_DRIFT_SCRIPT" ]; then
+    echo "❌ pre-push trusted helper bundle is incomplete; refusing push."
+    exit 1
+fi
+
 echo "🔍 Running pre-push hooks..."
 
 # Test suite runs in pre-commit hook (type checking + linting + import chain).
@@ -206,7 +229,7 @@ else
         # verdict); the classifier's stderr (loud human-readable banner)
         # flows straight through to this hook's own stderr, unredirected.
         VERDICT_RC=0
-        VERDICT_OUTPUT="$("$PYTHON_BIN" scripts/prepush_classify.py < "$UNION_FILE")" || VERDICT_RC=$?
+        VERDICT_OUTPUT="$("$PYTHON_BIN" "$PREPUSH_CLASSIFIER" < "$UNION_FILE")" || VERDICT_RC=$?
         rm -f "$UNION_FILE"
 
         if [ "$VERDICT_RC" != "0" ]; then
@@ -319,7 +342,7 @@ PRE_PUSH_DB="${PRE_PUSH_TEST_DB:-nuzantara_test}"
 #
 # Kill switch: NUZ_PREPUSH_SUITE_LOCK=0 disables the lock entirely (straight
 # to unserialized behavior, i.e. today's).
-PREPUSH_SUITE_LOCK_SCRIPT="$(pwd)/scripts/prepush_suite_lock.sh"
+PREPUSH_SUITE_LOCK_SCRIPT="$PREPUSH_SUITE_LOCK_SOURCE"
 PREPUSH_SUITE_LOCKFILE="/tmp/nuzantara-prepush-backend-suite.lock"
 if ! "$PG_ISREADY" -h 127.0.0.1 -p 5432 -q 2>/dev/null; then
     echo "⏭️  SKIP Python tests — no local PostgreSQL on 127.0.0.1:5432."
@@ -615,9 +638,9 @@ fi
 # Errexit-immune capture on purpose: a bare `TIP_RC=$(...)` under this hook's
 # `sh -e` would abort here on the very exit code it exists to read — W101, the
 # scar whose fourth instance shipped the same week.
-if [ -n "${PREPUSH_REFS:-}" ] && [ -x scripts/ci/prepush_tip_drift.sh ]; then
+if [ -n "${PREPUSH_REFS:-}" ] && [ -x "$PREPUSH_TIP_DRIFT_SCRIPT" ]; then
     TIP_RC=0
-    TIP_OUT=$(sh scripts/ci/prepush_tip_drift.sh "$PREPUSH_REFS" 2>&1) || TIP_RC=$?
+    TIP_OUT=$(sh "$PREPUSH_TIP_DRIFT_SCRIPT" "$PREPUSH_REFS" 2>&1) || TIP_RC=$?
     case "$TIP_RC" in
         0)
             # Print the receipt. Measured on this check's OWN first real push:

@@ -26,7 +26,7 @@ from langsmith import traceable
 from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
 from backend.db.repositories.query_analytics_repository import QueryAnalyticsRepository
 from backend.db.repositories.workflow_analytics_repository import WorkflowAnalyticsRepository
-from backend.prompts.channel_overlays import build_channel_context
+from backend.prompts.channel_overlays import apply_channel_overlay
 from backend.services.common.background import spawn
 from backend.services.llm_clients.pricing import TokenUsage
 from backend.services.rag.agentic.entity_extractor import EntityExtractionService
@@ -629,6 +629,7 @@ class OrchestratorCore:
                 return ""
 
             blocks: list[str] = []
+            injected_refs: list[str] = []
             for hit in search_result.get("results", []):
                 if not isinstance(hit, dict):
                     continue
@@ -662,9 +663,30 @@ class OrchestratorCore:
                     # here (the harvester skips them for the Qdrant sink too),
                     # but skip defensively rather than inject an empty block.
                     continue
+                # `source_ref` is INTERNAL PROVENANCE and deliberately does NOT
+                # go into the prompt. It used to: the label read
+                # `[CURATED {source_ref} {source_date}]`, and since
+                # `zantara_core.py` orders the model to cite its source
+                # ("📜 Sumber: [Nama Peraturan], Pasal [X]"), the model
+                # obediently cited what it had been handed. Measured live on
+                # 2026-08-11: four of eight probed answers printed
+                # `📜 Sumber: … ; CURATED FINAL-v2.md#Q7` to the client — an
+                # internal repo artifact offered as a legal source.
+                #
+                # It is not a corner case. Scrolled the whole live collection:
+                # **808 of 808** points carry an internal-looking `source_ref`
+                # (`FINAL.md#Q1` … `#Q14`, 456 distinct) and ZERO carry a
+                # citable regulation name. So there is nothing here a client
+                # may ever see, and removing it loses no citation — the
+                # regulation the answer rests on is named inside `answer`
+                # itself, which is what the model should cite.
+                #
+                # It goes to the log instead, where provenance actually gets
+                # used (debugging "which vetted row produced this answer").
                 source_ref = metadata.get("source_ref", "unknown")
                 source_date = metadata.get("source_date", "unknown")
-                blocks.append(f"[CURATED {source_ref} {source_date}]\n{answer}")
+                injected_refs.append(str(source_ref))
+                blocks.append(f"[CURATED · vetted {source_date}]\n{answer}")
 
             if not blocks:
                 return ""
@@ -677,11 +699,20 @@ class OrchestratorCore:
                 pass
 
             logger.info(
-                "✅ [CuratedQA] Injected %d curated evidence block(s) for query",
+                "✅ [CuratedQA] Injected %d curated evidence block(s) for query (refs: %s)",
                 len(blocks),
+                ", ".join(injected_refs),
             )
             return (
                 "\n\n--- CURATED KNOWLEDGE (high-priority, pre-vetted evidence) ---\n"
+                # Second line of defence, and the reason it is phrased as a
+                # prohibition rather than a description: the blocks below no
+                # longer CONTAIN an internal identifier, so the only thing left
+                # for the model to mistake for a source is the `[CURATED …]`
+                # marker itself. Say so once here rather than per block.
+                "These are internal pre-vetted answers, not published sources. "
+                "Never cite this section, the word CURATED, or any marker from "
+                "it — cite only the regulation named inside the text.\n"
                 + "\n\n".join(blocks)
             )
         except Exception as e:
@@ -1203,6 +1234,7 @@ class OrchestratorCore:
                 token_usage=token_usage,
                 timings=timings,
                 response_generated=bool(result.answer) and not result.abstain,
+                response_text=result.answer,
             )
             try:
                 spawn(
@@ -1257,6 +1289,7 @@ class OrchestratorCore:
         max_steps: int | None = None,
         agent_role: Any | None = None,
         memory_subject: str | None = None,
+        channel: str | None = None,
     ) -> CoreResult:
         """Run the core pipeline and cross the shared finalization boundary."""
         analytics_claimed = False
@@ -1282,6 +1315,7 @@ class OrchestratorCore:
             max_steps=max_steps,
             agent_role=agent_role,
             memory_subject=memory_subject,
+            channel=channel,
         )
         return self._finalize_process_context(
             context,
@@ -1303,6 +1337,7 @@ class OrchestratorCore:
         max_steps: int | None = None,
         agent_role: Any | None = None,
         memory_subject: str | None = None,
+        channel: str | None = None,
     ) -> FinalizationContext:
         """
         Unfinalized implementation; only ``process_query_core`` may call it.
@@ -1587,6 +1622,21 @@ class OrchestratorCore:
             conversation_history=optimized_history,
         )
 
+        # Channel overlay — the streaming twin has done this since it was
+        # written; this path never did, so `"channel": "whatsapp"` (which the
+        # WhatsApp inbox bot sends on every call, and which only reaches the
+        # backend through THIS endpoint) was accepted and dropped. See
+        # `apply_channel_overlay` for the measurement.
+        #
+        # NO `or "webapp"` default here, unlike the streaming twin: this path
+        # has never applied any overlay, so defaulting would silently reshape
+        # every existing non-streaming caller's answers. A caller that declares
+        # nothing keeps exactly today's prompt; a caller that declares a channel
+        # gets it honoured. The asymmetry is the conservative choice, not an
+        # oversight — do not "tidy" the two defaults into agreement without
+        # measuring what it does to the undeclared callers.
+        system_prompt = apply_channel_overlay(system_prompt, channel)
+
         # 6. Create chat session
         chat = self.llm_gateway.create_chat_with_history(
             history_to_use=optimized_history,
@@ -1777,6 +1827,7 @@ class OrchestratorCore:
             token_usage=token_usage,
             timings=timings,
             response_generated=bool(result.answer) and not result.abstain,
+            response_text=result.answer,
         )
 
         return FinalizationContext(
@@ -2015,10 +2066,17 @@ class OrchestratorCore:
         timings: dict[str, float],
         response_generated: bool,
         error_message: str | None = None,
+        response_text: str | None = None,
     ) -> AnalyticsReceiptStatus:
         """
         Persist query execution data to query_analytics table.
         Return a closed, non-PII receipt; failures never block the response.
+
+        `response_text` is the answer itself. It was in hand at every call
+        site — `response_generated` is literally computed from it — and was
+        dropped on the floor until 2026-08-11, which left the table asserting
+        that an answer existed while keeping nothing of it. See the comment
+        in `QueryAnalyticsRepository.log_query`.
         """
         if not self.db_pool:
             return AnalyticsReceiptStatus.SKIPPED
@@ -2037,6 +2095,7 @@ class OrchestratorCore:
                 token_usage_total=token_usage.total_tokens,
                 cost_usd=token_usage.cost_usd,
                 error_message=error_message,
+                response_text=response_text,
             )
             if query_id is None:
                 logger.warning("Query analytics returned no receipt (non-critical)")
@@ -2205,10 +2264,13 @@ class OrchestratorCore:
             conversation_history=history,
         )
 
-        # Inject channel overlay (website, webapp, whatsapp, etc.)
-        channel_context = build_channel_context(channel or "webapp")
-        if channel_context:
-            system_prompt += f"\n\n{channel_context}"
+        # Inject channel overlay (website, webapp, whatsapp, etc.).
+        #
+        # The `or "webapp"` default is this path's and is DELIBERATELY not
+        # shared with the non-streaming twin below — see the note at that call
+        # site. Behaviour here is unchanged from before `apply_channel_overlay`
+        # existed.
+        system_prompt = apply_channel_overlay(system_prompt, channel or "webapp")
 
         # 🔍 DEBUG: Log full context breakdown
         logger.debug("🔍 [ORCHESTRATOR DEBUG] ===== CONTEXT BREAKDOWN =====")
