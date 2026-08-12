@@ -182,8 +182,10 @@ NOTA_OVERRIDE: dict[str, str] = {
 # Pinisi is not an unmanned vehicle, so it does NOT inherit entry 8. Both
 # slices are disclosed per-row by `perpres_slice_disclosure_relation.py`,
 # which hand-authors its own rows for these two codes (see MANUAL_SLICE_ROWS
-# there) — never derived from this dict, because the derivation that works
-# for the other 12 BROADER codes (one ancestor -> one annex row) does not
+# there) — never derived from this dict, because the general one-ancestor ->
+# one-annex-row derivation runs only on the other 10 BROADER codes
+# (17 total minus the 2 MANUAL_SLICE_ROWS codes minus the 5 ADJACENT_NOT_CONTAINED
+# exclusions) and therefore does not
 # distinguish 30111's two rows from 30113's one. `plan()` below is unaffected:
 # its `divergent` set comes only from `result["disagree"]`, and 30111/30113
 # live in `result["ambiguous"]`, so adding them here plans no patch — verified
