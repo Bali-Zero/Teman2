@@ -14,6 +14,7 @@ Cicatrix family: T1.1 dispatch reminder, W33 kill-switch pattern.
 import json
 import os
 import pathlib
+import re
 import sys
 
 # Phase-aware (STEP 3): path-safe import of _phase. Missing _phase → "never plan"
@@ -27,12 +28,47 @@ except Exception:
 
 HARD_BLOCK_THRESHOLD = 800
 RECENT_LINES = 300
-DISPATCH_KEYWORDS = (
-    '"name":"TaskCreate"', '"name": "TaskCreate"',
-    '"subagent_type"',
-    '"name":"Task"', '"name": "Task"',
+
+# Tool names that mean "a subagent was dispatched". `Agent` is the CURRENT
+# harness tool; `Task`/`TaskCreate` are its predecessors, kept so an older
+# transcript still reads correctly. Measured 2026-08-12 on live M5 transcripts:
+# the quoted forms of Task/TaskCreate score ZERO occurrences ever, while
+# `"name":"Agent"` is what a real dispatch actually writes — this gate spent
+# an unknown stretch of its life with 4 of its 5 keywords pointing at a
+# vocabulary the harness had stopped emitting.
+DISPATCH_TOOLS = ("Agent", "Task", "TaskCreate")
+# JSON spacing is not ours to assume: match `"name":"Agent"` and `"name": "Agent"`.
+DISPATCH_TOOL_RE = re.compile(
+    r'"(?:name|tool_name)"\s*:\s*"(?:%s)"' % "|".join(DISPATCH_TOOLS)
 )
+# Secondary positive signals. `subagent_type` is an OPTIONAL parameter — a
+# dispatch that omits it defaults to general-purpose and would be invisible if
+# this were the only detector, which is what the pre-2026-08-12 list relied on.
+# `isSidechain` is the harness's own record that a subagent turn happened.
+DISPATCH_MARKERS = ('"subagent_type"', '"isSidechain":true', '"isSidechain": true')
+
+# If a transcript contains none of these, we are not reading the format we
+# think we are reading, and "zero dispatch" is unproven rather than false.
+TRANSCRIPT_SHAPE_MARKERS = ('"tool_use"', '"tool_result"', '"role":"assistant"',
+                            '"role": "assistant"')
+
 GATED_TOOLS = {"Bash", "Edit", "Write"}
+
+
+def dispatch_count(text):
+    """Positive evidence that a subagent was dispatched in `text`."""
+    return len(DISPATCH_TOOL_RE.findall(text)) + sum(text.count(m) for m in DISPATCH_MARKERS)
+
+
+def transcript_is_recognizable(text):
+    """False when the transcript does not look like a transcript we can parse.
+
+    A gate that cannot read its evidence must not convict on it (W106b:
+    cannot-verify is not a verdict). Without this, the day the transcript
+    format changes is the day this gate blocks every Bash/Edit/Write on the
+    machine for a reason that is not true.
+    """
+    return any(m in text for m in TRANSCRIPT_SHAPE_MARKERS)
 
 
 def main():
@@ -67,17 +103,24 @@ def main():
     if total_lines <= HARD_BLOCK_THRESHOLD:
         sys.exit(0)
 
-    recent = "\n".join(lines[-RECENT_LINES:])
-    dispatch_count = sum(recent.count(kw) for kw in DISPATCH_KEYWORDS)
+    if not transcript_is_recognizable(full_text):
+        print(
+            "[ORCHESTRATE-GATE] transcript format not recognized — cannot tell "
+            "whether a subagent was dispatched, so NOT blocking. If this persists, "
+            "the gate's detector needs re-measuring against a live transcript.",
+            file=sys.stderr,
+        )
+        sys.exit(0)
 
-    if dispatch_count > 0:
+    recent = "\n".join(lines[-RECENT_LINES:])
+    if dispatch_count(recent) > 0:
         sys.exit(0)
 
     msg = (
         f"\n[ORCHESTRATE-GATE] Session {total_lines} lines, zero subagent "
         f"dispatch in last {RECENT_LINES} lines. Direct {tool_name} BLOCKED.\n"
         f"Choose: (a) Agent(subagent_type=Explore|backend-verifier|frontend-browser|"
-        f"nb-curator|mcp-health|spalla-review|general-purpose, ...) "
+        f"nb-curator|mcp-health|spalla-review|general-purpose, model=\"sonnet\", ...) "
         f"or (b) `export ORCHESTRATE_GATE_OFF=1` if intentional direct work.\n"
     )
     print(msg, file=sys.stderr)

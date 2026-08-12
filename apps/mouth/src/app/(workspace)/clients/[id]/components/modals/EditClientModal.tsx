@@ -404,6 +404,18 @@ export function EditClientModal({
           />
         </div>
         <div className="md:col-span-2">
+          <label className="block text-sm font-medium mb-1.5">Address</label>
+          <textarea
+            rows={2}
+            value={formData.address}
+            onChange={(e) =>
+              setFormData({ ...formData, address: e.target.value })
+            }
+            className={inputClass}
+            placeholder="Full residential or business address"
+          />
+        </div>
+        <div className="md:col-span-2">
           <label className="block text-sm font-medium mb-1.5">Tags</label>
           <input
             type="text"

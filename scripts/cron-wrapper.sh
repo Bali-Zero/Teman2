@@ -281,7 +281,12 @@ if [ $EXIT_CODE -ne 0 ]; then
     # Prefer the sentence the job named for itself over five lines of raw tail;
     # fall back to the tail when it did not name one. The receipt above keeps
     # the raw tail either way — only this human-facing body changes.
-    LAST_LINES=$(printf '%s' "$OUTPUT" | grep -a "^${CRON_ALERT_MARKER}" | tail -1)
+    # `|| LAST_LINES=""` is load-bearing, not defensive style. This file runs under
+    # `set -euo pipefail` (line 21): when the job named no sentence, `grep` exits 1,
+    # pipefail propagates it, and a NAKED assignment aborts the whole script right
+    # here — before send_telegram below. The else-branch that falls back to the raw
+    # tail was unreachable on exactly the path it exists for (W101).
+    LAST_LINES=$(printf '%s' "$OUTPUT" | grep -a "^${CRON_ALERT_MARKER}" | tail -1) || LAST_LINES=""
     if [ -n "$LAST_LINES" ]; then
         LAST_LINES="${LAST_LINES#"$CRON_ALERT_MARKER"}"
         LAST_LINES="${LAST_LINES# }"

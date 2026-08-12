@@ -351,17 +351,19 @@ export function OverviewTab({
               )}
 
               {/* Address */}
-              {client.address && (
-                <>
-                  <div className="border-t border-[var(--bz-border)]" />
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
-                      Address
-                    </p>
-                    <p className="text-sm font-medium">{client.address}</p>
-                  </div>
-                </>
-              )}
+              <div className="border-t border-[var(--bz-border)]" />
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
+                  Address
+                </p>
+                <p className="text-sm font-medium">
+                  {client.address || (
+                    <span className="text-[var(--bz-text-2)] italic text-xs">
+                      Not provided
+                    </span>
+                  )}
+                </p>
+              </div>
 
               {/* Strategic Recap — primary intelligent auto-summary (bold + distinct) */}
               {(client as any).strategic_recap && (
