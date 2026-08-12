@@ -23,11 +23,39 @@ from httpx import ASGITransport, AsyncClient
 
 @pytest.fixture
 def app_with_overrides():
-    """Return FastAPI app with minimal dependency overrides (no auth/db needed for dashboard)."""
+    """Return the FastAPI app.
+
+    NOTE (2026-08-12): this fixture used to say "no auth needed for dashboard".
+    That was never a property of the router — it was a property of the
+    `/api/dashboard/map/` PREFIX entry in PUBLIC_ENDPOINTS, which made every
+    route here anonymous, `GET /clients/geo` included. That route answered an
+    anonymous request with 500 client rows, so the prefix is gone (P0) and every
+    route on this router now requires a credential. Tests that exercise handler
+    branches must present one — see `auth_headers`.
+    """
     from backend.app.main_cloud import app
 
     yield app
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def auth_headers(monkeypatch):
+    """Headers that authenticate through the REAL HybridAuthMiddleware.
+
+    Deliberately not a `dependency_overrides` shim: the middleware rejects
+    before dependencies resolve, so an override would leave these tests
+    measuring a 401. Configuring the admin key and sending `X-Debug-Key`
+    exercises the same code path a real caller does, and yields a principal
+    with `role: "admin"` — a CRM admin by `is_crm_admin`, so `/clients/geo`
+    returns the whole book (ownership scoping for non-admins is asserted in
+    tests/security/test_dashboard_map_not_public.py).
+    """
+    from backend.app.core.config import settings
+
+    key = "test-admin-key-dashboard-coverage"
+    monkeypatch.setattr(settings, "admin_api_key", key, raising=False)
+    return {"X-Debug-Key": key}
 
 
 # ---------------------------------------------------------------------------
@@ -199,7 +227,7 @@ class TestGistaruZone:
 
 class TestClientsGeo:
     @pytest.mark.asyncio
-    async def test_clients_geo_success(self, app_with_overrides):
+    async def test_clients_geo_success(self, app_with_overrides, auth_headers):
         """Returns clients list when DB pool is available."""
         mock_pool = MagicMock()
         mock_conn = AsyncMock()
@@ -226,7 +254,7 @@ class TestClientsGeo:
         async with AsyncClient(
             transport=ASGITransport(app=app_with_overrides), base_url="http://test"
         ) as ac:
-            response = await ac.get("/api/dashboard/map/clients/geo")
+            response = await ac.get("/api/dashboard/map/clients/geo", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -234,14 +262,14 @@ class TestClientsGeo:
         assert data["total"] == 1
 
     @pytest.mark.asyncio
-    async def test_clients_geo_no_pool(self, app_with_overrides):
+    async def test_clients_geo_no_pool(self, app_with_overrides, auth_headers):
         """Returns empty clients list with error when DB pool is unavailable."""
         app_with_overrides.state.db_pool = None
 
         async with AsyncClient(
             transport=ASGITransport(app=app_with_overrides), base_url="http://test"
         ) as ac:
-            response = await ac.get("/api/dashboard/map/clients/geo")
+            response = await ac.get("/api/dashboard/map/clients/geo", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -249,7 +277,7 @@ class TestClientsGeo:
         assert "error" in data
 
     @pytest.mark.asyncio
-    async def test_clients_geo_db_error(self, app_with_overrides):
+    async def test_clients_geo_db_error(self, app_with_overrides, auth_headers):
         """Returns empty clients with error string when DB raises exception."""
         mock_pool = MagicMock()
         mock_conn = AsyncMock()
@@ -263,7 +291,7 @@ class TestClientsGeo:
         async with AsyncClient(
             transport=ASGITransport(app=app_with_overrides), base_url="http://test"
         ) as ac:
-            response = await ac.get("/api/dashboard/map/clients/geo")
+            response = await ac.get("/api/dashboard/map/clients/geo", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -277,12 +305,14 @@ class TestClientsGeo:
 
 class TestRiskZones:
     @pytest.mark.asyncio
-    async def test_risk_zones_structure(self, app_with_overrides):
+    async def test_risk_zones_structure(self, app_with_overrides, auth_headers):
         """Returns static risk zones with correct structure."""
         async with AsyncClient(
             transport=ASGITransport(app=app_with_overrides), base_url="http://test"
         ) as ac:
-            response = await ac.get("/api/dashboard/map/compliance/risk-zones")
+            response = await ac.get(
+                "/api/dashboard/map/compliance/risk-zones", headers=auth_headers
+            )
 
         assert response.status_code == 200
         data = response.json()
@@ -291,12 +321,14 @@ class TestRiskZones:
         assert len(data["zones"]) == 3
 
     @pytest.mark.asyncio
-    async def test_risk_zones_levels(self, app_with_overrides):
+    async def test_risk_zones_levels(self, app_with_overrides, auth_headers):
         """Risk zones contain HIGH, MEDIUM, LOW levels."""
         async with AsyncClient(
             transport=ASGITransport(app=app_with_overrides), base_url="http://test"
         ) as ac:
-            response = await ac.get("/api/dashboard/map/compliance/risk-zones")
+            response = await ac.get(
+                "/api/dashboard/map/compliance/risk-zones", headers=auth_headers
+            )
 
         data = response.json()
         levels = {z["level"] for z in data["zones"]}
@@ -309,36 +341,106 @@ class TestRiskZones:
 
 
 class TestAnalyticsLogLookup:
-    @pytest.mark.asyncio
-    async def test_log_lookup_success(self, app_with_overrides):
-        """Logs a lookup event and returns logged=True."""
-        mock_pool = MagicMock()
+    """This route stopped being anonymous on 2026-08-12 (P0).
+
+    It was reachable through the `/api/dashboard/map/` PREFIX entry in
+    PUBLIC_ENDPOINTS, and it both WRITES to the database and names a person —
+    the acting `user_email` arrived in the request BODY, so any caller could
+    file lookups under any employee's name. The fixture's promise of "no auth
+    needed for dashboard" was a description of that prefix, not of this route.
+    """
+
+    @staticmethod
+    def _pool_capturing_params(app):
+        """A pool whose conn records the params each execute() received."""
+        captured: list[tuple] = []
+
+        async def _execute(sql, *params):
+            captured.append(params)
+
         mock_conn = AsyncMock()
-        mock_conn.execute = AsyncMock(return_value=None)
+        mock_conn.execute = AsyncMock(side_effect=_execute)
         acquire_cm = MagicMock()
         acquire_cm.__aenter__ = AsyncMock(return_value=mock_conn)
         acquire_cm.__aexit__ = AsyncMock(return_value=False)
+        mock_pool = MagicMock()
         mock_pool.acquire = MagicMock(return_value=acquire_cm)
-        app_with_overrides.state.db_pool = mock_pool
+        app.state.db_pool = mock_pool
+        return captured
+
+    @pytest.mark.asyncio
+    async def test_log_lookup_success(self, app_with_overrides, auth_headers):
+        """Logs a lookup event and returns logged=True."""
+        self._pool_capturing_params(app_with_overrides)
 
         async with AsyncClient(
             transport=ASGITransport(app=app_with_overrides), base_url="http://test"
         ) as ac:
             response = await ac.post(
                 "/api/dashboard/map/analytics/log-lookup",
-                json={
-                    "user_email": "user@test.com",
-                    "kbli_code": "55203",
-                    "location": "Bali",
-                },
+                json={"kbli_code": "55203", "location": "Bali"},
+                headers=auth_headers,
             )
 
         assert response.status_code == 200
-        data = response.json()
-        assert data["logged"] is True
+        assert response.json()["logged"] is True
 
     @pytest.mark.asyncio
-    async def test_log_lookup_no_pool(self, app_with_overrides):
+    async def test_a_body_supplied_email_is_not_the_attributed_identity(
+        self, app_with_overrides, auth_headers
+    ):
+        """GUILT: the forgeable field is inert.
+
+        `user_email` is gone from the model, so Pydantic ignores it — but
+        "ignored" has to be PROVEN at the INSERT, not assumed from the schema:
+        the whole defect was that this string became the attributed identity.
+        """
+        captured = self._pool_capturing_params(app_with_overrides)
+
+        async with AsyncClient(
+            transport=ASGITransport(app=app_with_overrides), base_url="http://test"
+        ) as ac:
+            response = await ac.post(
+                "/api/dashboard/map/analytics/log-lookup",
+                json={"user_email": "victim@balizero.com", "kbli_code": "55203"},
+                headers=auth_headers,
+            )
+
+        assert response.status_code == 200
+        inserts = [p for p in captured if p]
+        assert inserts, "the INSERT never ran — this test would pass vacuously"
+        attributed = inserts[-1][0]
+        # `auth_headers` authenticates as the admin-key principal, whose email
+        # the middleware sets to "admin@internal" — the point is that the
+        # attributed value tracks the PRINCIPAL, whoever it is, never the body.
+        assert attributed == "admin@internal", (
+            "the acting identity came from somewhere other than the principal"
+        )
+        assert attributed != "victim@balizero.com", (
+            "a body-supplied email was attributed the lookup — forgeable attribution is back"
+        )
+
+    @pytest.mark.asyncio
+    async def test_log_lookup_rejects_anonymous(self, app_with_overrides):
+        """GUILT: no principal, no write. This is the P0 half at the HTTP layer."""
+        app_with_overrides.dependency_overrides.clear()
+        captured = self._pool_capturing_params(app_with_overrides)
+
+        async with AsyncClient(
+            transport=ASGITransport(app=app_with_overrides), base_url="http://test"
+        ) as ac:
+            response = await ac.post(
+                "/api/dashboard/map/analytics/log-lookup",
+                json={"user_email": "anyone@balizero.com", "kbli_code": "55203"},
+            )
+
+        assert response.status_code in (401, 403), (
+            f"an anonymous caller reached a DB-writing route (got {response.status_code})"
+        )
+        assert captured == [], "an unauthenticated request still wrote to the DB"
+
+    @pytest.mark.asyncio
+    async def test_log_lookup_no_pool(self, app_with_overrides, auth_headers):
         """Returns logged=False when DB pool unavailable."""
         app_with_overrides.state.db_pool = None
 
@@ -347,23 +449,12 @@ class TestAnalyticsLogLookup:
         ) as ac:
             response = await ac.post(
                 "/api/dashboard/map/analytics/log-lookup",
-                json={"user_email": "user@test.com"},
+                json={"kbli_code": "55203"},
+                headers=auth_headers,
             )
 
         assert response.status_code == 200
         assert response.json()["logged"] is False
-
-    @pytest.mark.asyncio
-    async def test_log_lookup_missing_email(self, app_with_overrides):
-        """Missing required user_email → 422."""
-        async with AsyncClient(
-            transport=ASGITransport(app=app_with_overrides), base_url="http://test"
-        ) as ac:
-            response = await ac.post(
-                "/api/dashboard/map/analytics/log-lookup",
-                json={"kbli_code": "55203"},
-            )
-        assert response.status_code == 422
 
 
 # ---------------------------------------------------------------------------
@@ -373,7 +464,7 @@ class TestAnalyticsLogLookup:
 
 class TestDashboardStats:
     @pytest.mark.asyncio
-    async def test_stats_success(self, app_with_overrides):
+    async def test_stats_success(self, app_with_overrides, auth_headers):
         """Returns aggregate stats with correct keys."""
         mock_pool = MagicMock()
         mock_conn = AsyncMock()
@@ -387,7 +478,7 @@ class TestDashboardStats:
         async with AsyncClient(
             transport=ASGITransport(app=app_with_overrides), base_url="http://test"
         ) as ac:
-            response = await ac.get("/api/dashboard/map/stats")
+            response = await ac.get("/api/dashboard/map/stats", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -396,14 +487,14 @@ class TestDashboardStats:
         assert "map_lookups_24h" in data
 
     @pytest.mark.asyncio
-    async def test_stats_no_pool(self, app_with_overrides):
+    async def test_stats_no_pool(self, app_with_overrides, auth_headers):
         """Returns zeros with error when pool unavailable."""
         app_with_overrides.state.db_pool = None
 
         async with AsyncClient(
             transport=ASGITransport(app=app_with_overrides), base_url="http://test"
         ) as ac:
-            response = await ac.get("/api/dashboard/map/stats")
+            response = await ac.get("/api/dashboard/map/stats", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -411,7 +502,7 @@ class TestDashboardStats:
         assert "error" in data
 
     @pytest.mark.asyncio
-    async def test_stats_db_error(self, app_with_overrides):
+    async def test_stats_db_error(self, app_with_overrides, auth_headers):
         """Returns zeros with error string when DB raises exception."""
         mock_pool = MagicMock()
         mock_conn = AsyncMock()
@@ -425,7 +516,7 @@ class TestDashboardStats:
         async with AsyncClient(
             transport=ASGITransport(app=app_with_overrides), base_url="http://test"
         ) as ac:
-            response = await ac.get("/api/dashboard/map/stats")
+            response = await ac.get("/api/dashboard/map/stats", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
