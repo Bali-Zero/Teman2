@@ -711,6 +711,12 @@
       "repo": "scripts/runtime-reconcile.sh",
       "machines": ["pro"],
       "_note": "UNDECLARED until 2026-08-10, found while migrating its Telegram sender: com.nuzantara.runtime-reconcile.plist on Pro invokes /Users/nuzantara/scripts/runtime-reconcile.sh, a real file and not a symlink, so merging alone leaves the organ on the old code (W107 delivery gotcha). Measured the same day: the live copy was sha256 30216b454a60106b, byte-identical to origin/main — so it was aligned, not forked, and the risk was the NEXT change, which is exactly the one that declared it. The script's own header says 'install the live copy under ~/scripts via the P1 installer'; that sentence was the only thing that knew about the pair, and a sentence in a header is not a lint."
+    },
+    {
+      "live": "~/scripts/mos-plus-compression-worker.py",
+      "repo": "scripts/mos-plus-compression-worker.py",
+      "machines": [],
+      "_note": "Promoted 2026-08-13 (superscar #1 — was UNDECLARED and 100% HOME-fork: 0 hits for mos-plus in `git ls-tree -r origin/main`, live only on Pro under com.balizero.mos-plus.compression, StartInterval=600). Repo canon at promotion is BYTE-IDENTICAL to the live Pro copy (sha256 082c7134265fe0f7…, verified via `ssh pro cat` immediately before writing this file) — the same commit that adds this pair also carries the cascade fix (env-configurable Ollama endpoint defaulting to Mini + retry cap + consecutive-fail alert), so canon and live diverge again right away. `machines` is deliberately EMPTY, not `[\"pro\"]`: per this file's own STRICT ORDERING rule (see the runtime-reconcile.sh entry above and the wa-mirror-attention-classifier entries) a pair is only declared machine-applicable AFTER its live sync is proven, or `--check` arms a permanent red for a gap this PR itself creates. `discover_undeclared` matches on `pair['live']` regardless of `machines` (lint_home_fork.py:702, `declared_lives = {p['live'] for p in pairs}`), so this entry already suppresses the undeclared-payload finding on Pro even though `--check` skips it. Widen to `[\"pro\"]` once the fixed file is actually copied onto Pro's `~/scripts/mos-plus-compression-worker.py` AND re-verified sha256-identical — not before."
     }
   ],
   "allow": [
