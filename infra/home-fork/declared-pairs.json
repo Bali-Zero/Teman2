@@ -405,6 +405,12 @@
       "machines": ["all"]
     },
     {
+      "live": "~/.claude/hooks/orchestrate_gate.py",
+      "repo": "infra/claude-hooks/orchestrate_gate.py",
+      "_note": "Undeclared until 2026-08-12, so the HOME-fork lint reported clean over a pair it was never looking at (W107: census the producers, not the one that bit you). Installed by infra/claude-hooks/install_phase_aware.sh. Its dispatch detector went stale against the harness's tool vocabulary with no guard watching either copy.",
+      "machines": ["all"]
+    },
+    {
       "live": "~/.claude/hooks/host_boundary.py",
       "repo": "infra/claude-hooks/host_boundary.py",
       "_note": "Undeclared until 2026-08-12, and the live copy had carried 25 lines of ~/.claude carve-outs since 2026-06-16 that the repo never saw — live work never promoted, the dangerous direction of superscar #1. install_phase_aware.sh, the sanctioned deploy path, would have overwritten them and silently re-blocked the agent's own memory directory. Promoted and pinned by test_host_boundary_carveout.py.",
