@@ -14,6 +14,16 @@
   },
   "services": {
     "single_entry_visas": {
+      "A1 Visa-Free Tourism": {
+        "name": "A1 Visa-Free Tourism",
+        "price": "0 IDR",
+        "tier_range": null,
+        "duration": "30 days",
+        "validity": "Single entry, non-extendable",
+        "notes": "No Bali Zero service fee — visa-free arrival under the Visit Visa Exemption Facility.",
+        "description_en": "Visa-free entry under the Indonesian Visit Visa Exemption Facility for eligible nationalities, single entry, valid 30 days, not extendable. Tourism and transit only — no work, business, study or journalism.",
+        "icon_id": "visa-free"
+      },
       "B1 Visa on Arrival (VOA)": {
         "name": "B1 Visa on Arrival (VOA)",
         "price": "790.000 IDR",
@@ -63,6 +73,16 @@
         "notes": "",
         "description_en": "Business visa, single entry, valid 60 days. Suited to business meetings, negotiations and non-employment activities.",
         "icon_id": "visa-business"
+      },
+      "C6 Social Activity": {
+        "name": "C6 Social Activity",
+        "price": "2.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Social activity visit visa, single entry, valid 60 days. For social, cultural or humanitarian activities sponsored by an individual or organisation — no paid employment or business meetings.",
+        "icon_id": "visa-social"
       },
       "C7A,B,C Music/Art": {
         "name": "C7A,B,C — Music/Art",
@@ -346,6 +366,16 @@
         "validity": "5 years",
         "notes": "All-inclusive price. Senior 55+ route: USD 50,000 deposit at a state-owned Indonesian bank plus USD 3,000/month passive income. Aligned to the de-facto senior pricing pending owner review.",
         "description_en": "Second Home Visa / KITAS senior route (E33E) for applicants 55+ holding a USD 50,000 deposit in their own name at a state-owned Indonesian bank plus proven USD 3,000/month passive income. Valid 5 years; non-working residency. Onshore process via Altus.",
+        "icon_id": "kitas-investor"
+      },
+      "E33E Second Home Senior (Extend)": {
+        "name": "E33E Second Home Senior (Extend)",
+        "price": "10.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "All-inclusive price. Onshore annual extension of an existing E33E senior permit (deposit/income proof re-validated).",
+        "description_en": "Onshore annual extension of an existing E33E Second Home senior permit. USD 50,000 deposit and USD 3,000/month passive income proof are re-validated at each extension.",
         "icon_id": "kitas-investor"
       },
       "E33F Second Home Senior (1 Year, Offshore)": {
