@@ -57,7 +57,7 @@ export function KBLICodeJsonLd({
   // The attribution is DERIVED, not fixed. "Crosswalk to KBLI 2025 pending" tells a
   // reader — and Google, and every AI answer built on this JSON-LD — that a basis
   // exists and only the mapping is unfinished. That is true for the codes with a
-  // recorded KBLI-2020 origin. For the 100 that record none, there is nothing to
+  // authoritative BPS-recorded KBLI-2020 origin. For the 221 that record none, there is nothing to
   // crosswalk from, and the same sentence would overstate what we can show. Same
   // principle as the Bali qualifiers above: never let the structured data carry a
   // green light the data cannot support.
@@ -71,7 +71,7 @@ export function KBLICodeJsonLd({
   // hardcoded clause attributed their 80% cap to the wrong instrument in the
   // JSON-LD Google ingests.
   const pmaAttribution = pmaBasisUntraceable
-    ? " — our sources record no KBLI-2020 predecessor for this code, so we cannot trace the basis of this ownership verdict; confirm it at oss.go.id before relying on it"
+    ? " — The official BPS crosswalk records no KBLI-2020 predecessor for this code, so we cannot trace the basis of this ownership verdict; confirm it at oss.go.id before relying on it"
     : pmaSourceAttributionStructured(code.pma.source);
   const pmaLabel = `${
     code.pma.status === "open"

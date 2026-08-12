@@ -263,10 +263,11 @@ export interface KBLIProvenance {
    *
    * `status` used to be the literal `"pending_crosswalk"`, i.e. a CONSTANT the type
    * made impossible to contradict: all 1,559 codes received the same provenance
-   * verdict. That is right for the 1,459 codes with a recorded KBLI-2020 origin —
+   * verdict. That is right for the 1,338 codes with an authoritative BPS-recorded
+   * KBLI-2020 origin —
    * the annexes are 2020-vintage and the per-code crosswalk audit is genuinely
-   * pending. It is NOT right for the 100 codes that record no 2020 ancestry at all
-   * (no `bps_2020_ancestors.codes`, no `pp28_sources`): "crosswalk pending" tells a
+   * pending. It is NOT right for the 221 codes whose
+   * `bps_2020_ancestors.codes` list is empty: "crosswalk pending" tells a
    * reader a basis exists and only the mapping is unfinished, which is a stronger
    * claim than we can support. For those, `untraceable_basis` + `vintage: null`.
    *
@@ -309,12 +310,14 @@ export interface KBLIBpsAncestorsRaw {
 /** Transition information from KBLI 2020 to 2025 */
 export interface KBLITransition {
   mappingStatus: KBLIMappingStatus;
-  previousCodes: string[];
+  /** KBLI-2020-numbered rows used as PP 28/2025 licensing sources.
+   * This is NOT an ancestry/predecessor relation. */
+  pp28LicensingSourceCodes: string[];
   kbli2020Source?: string;
   mappingNote?: string;
   aggregationNote?: string;
-  /** Gate-verified BPS 2020→2025 crosswalk ancestors (provenance-only, additive; distinct
-   *  from the legacy `previousCodes` which is sourced from the unstable `pp28_sources`). */
+  /** Authoritative BPS 2020→2025 crosswalk ancestors. Mechanical provenance
+   * only: their licensing-inheritance verdict remains unadjudicated. */
   bpsCrosswalk?: {
     codes: string[];
     adjudicationStatus: string;

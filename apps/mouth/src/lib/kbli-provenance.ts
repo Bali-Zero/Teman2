@@ -103,18 +103,17 @@ export function licensingContentInheritedFrom(code: KBLICode): string[] | null {
  *   `_l2_source` value, is treated as unaudited, never silently promoted to
  *   verified.
  */
-/** Does the record carry ANY recorded KBLI-2020 ancestry?
+/** Does the official BPS crosswalk record KBLI-2020 ancestry?
  *
  * Structured markers only (cicatrix #3 — never prose), and by ENTITY rather than
  * truthiness: `bps_2020_ancestors` is an object, so a bare `if (raw.bps_2020_ancestors)`
- * would read an empty `{}` as "has ancestry". Both channels count, because the two
- * crosswalk layers are independent: BPS records 1,338 of 1,559, and 121 more are
- * traceable only through `pp28_sources`.
+ * would read an empty `{}` as "has ancestry". `pp28_sources` deliberately does
+ * not count: it records which KBLI-2020-numbered PP 28 rows supplied licensing
+ * content, not official predecessor identity.
  */
-function hasRecorded2020Ancestry(raw: KBLIRawCode): boolean {
+function hasAuthoritativeBps2020Ancestry(raw: KBLIRawCode): boolean {
   const bps = raw.bps_2020_ancestors?.codes;
-  if (Array.isArray(bps) && bps.length > 0) return true;
-  return (raw.pp28_sources ?? []).length > 0;
+  return Array.isArray(bps) && bps.length > 0;
 }
 
 /**
@@ -144,14 +143,16 @@ export function pp28ContentInheritedFrom(raw: KBLIRawCode): string[] | null {
 /** Provenance of the foreign-ownership verdict — DERIVED, not a constant.
  *
  * The Perpres 10/2021 + 49/2021 annexes are KBLI-2020-vintage across the catalog
- * (FATAL-2), so a code with a recorded 2020 origin is honestly described as
+ * (FATAL-2), so a code with an authoritative BPS-recorded 2020 origin is
+ * honestly described as
  * "vintage 2020, per-code crosswalk audit pending". A code with NO recorded 2020
- * origin cannot be: there is nothing to crosswalk FROM, and saying the crosswalk is
+ * BPS origin cannot be: there is nothing authoritative to crosswalk FROM, and
+ * saying the crosswalk is
  * pending would imply a basis we cannot show. Neither branch claims the verdict is
  * wrong — both describe what our sources can and cannot trace.
  */
 function pmaProvenance(raw: KBLIRawCode): KBLIProvenance["pma"] {
-  const traceable = hasRecorded2020Ancestry(raw);
+  const traceable = hasAuthoritativeBps2020Ancestry(raw);
   return {
     source: raw.pma_source ?? null,
     vintage: traceable ? "2020" : null,

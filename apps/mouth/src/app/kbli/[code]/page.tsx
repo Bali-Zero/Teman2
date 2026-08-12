@@ -36,9 +36,9 @@ import { LicensingSection } from "@/components/kbli/LicensingSection";
 import { KBLIBaliContext } from "@/components/kbli/KBLIBaliContext";
 import { KBLIEditorial } from "@/components/kbli/KBLIEditorial";
 import { KBLIYoullAlsoNeed } from "@/components/kbli/KBLIYoullAlsoNeed";
+import { KBLITransitionSources } from "@/components/kbli/KBLITransitionSources";
 import { getRelatedArticle } from "@/lib/kbli-articles";
 import { GOLD_HERO_IMAGES } from "@/lib/kbli-hero-images";
-import Link from "next/link";
 import { MarkdownClient } from "@/components/kbli/MarkdownClient";
 import { KBLIPageTracker } from "@/components/kbli/KBLIPageTracker";
 import { KBLIConsultationCTA } from "@/components/kbli/KBLIConsultationCTA";
@@ -373,7 +373,7 @@ export default async function KBLICodePage({
                     verificationPending={isLicensingVerificationPending(kbli)}
                   />
                 )}
-                <TransitionBadge status={kbli.transition.mappingStatus} />
+                <TransitionBadge transition={kbli.transition} />
                 {kbli.baliL4 && (
                   <BaliStatusBadge
                     status={kbli.baliL4.status}
@@ -910,115 +910,7 @@ export default async function KBLICodePage({
                 </>
               )}
 
-              {/* Transition note */}
-              {kbli.transition.previousCodes.length > 0 && (
-                <div
-                  className="flex items-start gap-3 rounded-xl p-4"
-                  style={{
-                    background: "var(--kbli-bg-elevated)",
-                    border: "1px solid var(--kbli-border)",
-                  }}
-                >
-                  <span
-                    className="mt-0.5 shrink-0 inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold"
-                    style={{
-                      background: "rgba(139, 156, 247, 0.1)",
-                      color: "var(--kbli-accent2)",
-                      border: "1px solid rgba(139, 156, 247, 0.2)",
-                    }}
-                  >
-                    2020 → 2025
-                  </span>
-                  <div className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
-                    <span>Previous codes (KBLI 2020): </span>
-                    {kbli.transition.previousCodes.map((c, i) => (
-                      <span key={c}>
-                        {/* A 2020 code only gets a link when it still exists as a
-                            2025 code — dynamicParams=false turns every other
-                            /kbli/<oldcode> into a hard 404. */}
-                        {getCode(c) ? (
-                          <Link
-                            href={`/kbli/${c}`}
-                            className="font-mono font-bold text-[var(--kbli-accent)] hover:text-[var(--kbli-accent-hover)]"
-                          >
-                            {c}
-                          </Link>
-                        ) : (
-                          <span className="font-mono font-bold text-[var(--foreground-secondary)]">
-                            {c}
-                          </span>
-                        )}
-                        {i < kbli.transition.previousCodes.length - 1 && ", "}
-                      </span>
-                    ))}
-                    {kbli.transition.mappingNote && (
-                      <span className="ml-1 text-[var(--foreground-muted)]">
-                        — {kbli.transition.mappingNote}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Official BPS 2020↔2025 crosswalk ancestors (gate-verified provenance —
-                  additive, DISTINCT from the pp28-sourced "Previous codes" above; the
-                  legacy list stays untouched. Batch-B step 4, 2026-07-25). Shown only for
-                  the OSS-native codes that carry the field. */}
-              {kbli.transition.bpsCrosswalk &&
-                kbli.transition.bpsCrosswalk.codes.length > 0 && (
-                  <div
-                    className="mt-3 flex items-start gap-3 rounded-xl p-4"
-                    style={{
-                      background: "var(--kbli-bg-elevated)",
-                      border: "1px solid var(--kbli-border)",
-                    }}
-                  >
-                    <span
-                      className="mt-0.5 shrink-0 inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold"
-                      style={{
-                        background: "rgba(139, 156, 247, 0.1)",
-                        color: "var(--kbli-accent2)",
-                        border: "1px solid rgba(139, 156, 247, 0.2)",
-                      }}
-                    >
-                      BPS crosswalk
-                    </span>
-                    <div className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
-                      <span>
-                        Official BPS 2020 → 2025 crosswalk ancestors:{" "}
-                      </span>
-                      {kbli.transition.bpsCrosswalk.codes.map((c, i) => (
-                        // key includes the index: the data has zero duplicate
-                        // ancestor codes today, but this stays unique if a future
-                        // crosswalk re-run ever repeats one.
-                        <span key={`${c}-${i}`}>
-                          {/* Rendered as PLAIN TEXT — never a link. These are
-                              KBLI-2020 identifiers, but /kbli/<c> is a 2025 page.
-                              317 of these ancestor codes coincide with an
-                              UNRELATED 2025 code, so a link would land the client
-                              on a different-vintage activity (KBLI2020:X ≠
-                              KBLI2025:X = client harm); the remainder are just
-                              self-links. Linking is never useful and sometimes
-                              harmful, so we never link a crosswalk ancestor. */}
-                          <span className="font-mono font-bold text-[var(--foreground-secondary)]">
-                            {c}
-                          </span>
-                          {i <
-                            (kbli.transition.bpsCrosswalk?.codes.length ?? 0) -
-                              1 && ", "}
-                        </span>
-                      ))}
-                      <p className="mt-2 text-[11px] text-[var(--foreground-muted)]">
-                        Source: the BPS 2020↔2025 conversion table, mechanically
-                        extracted and acceptance-gate verified. It shows which
-                        2020 codes map to this 2025 code —{" "}
-                        <strong>provenance only, not a licensing claim</strong>:
-                        the regulatory regime of these predecessor codes has not
-                        been adjudicated as transferring.
-                      </p>
-                    </div>
-                  </div>
-                )}
+              <KBLITransitionSources transition={kbli.transition} />
 
               {/* Article card for non-Gold pages */}
               {article && (

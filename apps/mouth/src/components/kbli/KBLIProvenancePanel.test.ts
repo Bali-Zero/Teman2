@@ -32,6 +32,14 @@ const baliRow = (code: string) => {
   return row!;
 };
 
+const pmaRow = (code: string) => {
+  const kbli = getCode(code) as KBLICode;
+  expect(kbli).toBeDefined();
+  return buildRows(kbli, kbli.provenance as KBLIProvenance).find(
+    (row) => row.layer === "Foreign ownership (PMA)",
+  )!;
+};
+
 const MORATORIUM_RULE = "Bali province blocks ALL";
 const RISK_TIER_BASIS = "derived from the risk tier";
 
@@ -106,5 +114,26 @@ describe("the Bali provenance row attributes the verdict to what produced it", (
       expect(row.detail, `code ${c.code}`).not.toContain(RISK_TIER_BASIS);
       expect(row.source, `code ${c.code}`).not.toContain(MORATORIUM_RULE);
     }
+  });
+});
+
+describe("the PMA provenance row follows authoritative BPS ancestry", () => {
+  it("guilt: PP28-only 01287 renders the BPS-specific declared gap", () => {
+    const row = pmaRow("01287");
+    expect(row.verdict).toBe("gap");
+    expect(row.vintage).toBe("—");
+    expect(row.detail).toContain(
+      "The official BPS crosswalk records no KBLI-2020 predecessor",
+    );
+    expect(row.detail).not.toContain("audit of this layer is in progress");
+  });
+
+  it("innocence: a BPS-ancestry code keeps the pending 2020-vintage row", () => {
+    const row = pmaRow("01111");
+    expect(row.verdict).toBe("pending");
+    expect(row.vintage).toBe("KBLI 2020");
+    expect(row.detail).toContain(
+      "crosswalk audit of this layer is in progress",
+    );
   });
 });

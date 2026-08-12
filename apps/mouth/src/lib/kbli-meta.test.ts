@@ -97,7 +97,7 @@ function makeCode(overrides: Partial<KBLICode> = {}): KBLICode {
     licensing: makeLicensing(),
     transition: {
       mappingStatus: "MATCH_LANGSUNG",
-      previousCodes: [],
+      pp28LicensingSourceCodes: [],
       kbli2020Source: null,
       mappingNote: null,
       aggregationNote: null,
