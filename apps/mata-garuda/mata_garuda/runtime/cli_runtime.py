@@ -32,6 +32,7 @@ import signal
 import subprocess
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Optional
 
 logger = logging.getLogger("mata_garuda.runtime")
@@ -127,7 +128,39 @@ def provider_cli_env(provider: str, token: str = "") -> dict[str, str]:
         for key, value in source.items():
             if key.startswith("OPENAI_") and key != "OPENAI_API_KEY":
                 env[key] = value
+        # ...and CODEX_HOME must name a seat that is actually logged in,
+        # alternating between the two ChatGPT Pro subscriptions. Measured
+        # 2026-08-12 on Pro, where the Mata Garuda agents run: the default
+        # ~/.codex answers 401 while ~/.codex-acct2 is live.
+        seat = _codex_seat_home()
+        if seat:
+            env["CODEX_HOME"] = seat
     return env
+
+
+def _codex_seat_home() -> str | None:
+    """A logged-in CODEX_HOME, via scripts/lib/codex_seat.py.
+
+    Loaded by path: this package is installed and run without the repo root on
+    sys.path, and a missing helper must degrade to codex's own default seat
+    rather than break provider isolation.
+    """
+    helper = (
+        Path(__file__).resolve().parents[4] / "scripts" / "lib" / "codex_seat.py"
+    )
+    if not helper.is_file():
+        return None
+    try:
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("_codex_seat", helper)
+        if spec is None or spec.loader is None:
+            return None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.codex_seat_pick()
+    except Exception:  # noqa: BLE001 — a seat hint may never break a provider
+        return None
 
 
 def _run_process_group(

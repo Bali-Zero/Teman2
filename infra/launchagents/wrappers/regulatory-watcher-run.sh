@@ -37,6 +37,27 @@ export NLM_PROFILE=default
 # without homebrew on PATH (proved live 2026-07-06 05:09).
 export PATH="/opt/homebrew/bin:$HOME/.local/bin:/usr/local/bin:$PATH"
 
+# Which ChatGPT Pro seat tier 3 uses.
+#
+# TWO candidate paths on purpose, and the second is the load-bearing one HERE:
+# the live copy of this wrapper on Pro is a REAL FILE at ~/scripts (a declared
+# HOME-fork pair, family #1), not a symlink into the checkout — so the
+# script-relative path resolves to /Users/scripts/lib/... and finds nothing,
+# and the cure would have been inert on the one machine that needs it. The
+# script-relative path still comes first so a worktree tests its OWN lib.
+#
+# Missing lib degrades to codex's own default seat, i.e. the pre-2026-08-12
+# behaviour. A bare `source` of an absent file is a special builtin that EXITS
+# the shell under set -e, hence the [ -f ] guard rather than an `|| true`.
+codex_seat_pick() { :; }
+for _seat_lib in "${0:A:h}/../../../scripts/lib/codex_seat.sh" \
+                 "$HOME/nuzantara/scripts/lib/codex_seat.sh"; do
+    if [ -f "$_seat_lib" ]; then
+        source "$_seat_lib"
+        break
+    fi
+done
+
 mkdir -p "$HOME/nuzantara/research/regulatory" "$HOME/logs"
 
 LOG="$HOME/logs/regulatory-watcher.log"
@@ -417,7 +438,22 @@ if [ $SUCCESS -eq 0 ]; then
     # `</dev/null` is load-bearing: codex blocks reading an open stdin (proved
     # live 2026-07-06 09:20 "Reading additional input from stdin..."); cron/ssh
     # contexts run from $HOME which is not a trusted repo → --skip-git-repo-check.
-    /opt/homebrew/bin/codex exec --sandbox workspace-write --skip-git-repo-check "$PROMPT_GENERIC" </dev/null >"$TMPOUT" 2>&1
+    #
+    # CODEX_HOME picks a seat that is actually logged in, alternating between
+    # the two ChatGPT Pro subscriptions. Measured 2026-08-12: on Pro — this
+    # wrapper's own machine — the default ~/.codex answers 401, so this tier
+    # produced nothing while a paid live seat sat one variable away. Empty means
+    # "no seat at all", and then codex is left to its own default rather than
+    # being handed an empty CODEX_HOME.
+    CODEX_SEAT="$(codex_seat_pick 2>/dev/null || true)"
+    typeset -a CODEX_SEAT_ENV
+    CODEX_SEAT_ENV=()
+    if [ -n "$CODEX_SEAT" ]; then
+        CODEX_SEAT_ENV=(CODEX_HOME="$CODEX_SEAT")
+        echo "[$(date)] codex seat: $CODEX_SEAT" >> "$LOG"
+    fi
+    env "${CODEX_SEAT_ENV[@]}" \
+        /opt/homebrew/bin/codex exec --sandbox workspace-write --skip-git-repo-check "$PROMPT_GENERIC" </dev/null >"$TMPOUT" 2>&1
     EXIT=$?
     if [ $EXIT -eq 0 ] && ! grep -qE "usage.limit|quota|exhausted" "$TMPOUT" && ensure_full_delta "$TMPOUT"; then
         SUCCESS=1

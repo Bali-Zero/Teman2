@@ -545,6 +545,11 @@
           ]
         }
       }
+    },
+    "codex_seat_census": {
+      "scar": ["W107", "W104"],
+      "delegated_to": "scripts/tests/test_codex_seat_lib.py",
+      "note": "Census guard (2026-08-12): every file in the tree that invokes `codex exec` must resolve a seat through scripts/lib/codex_seat.sh|.py, so a NEW call site fails here instead of on Pro at 03:00 — W107, curing one wrapper of five only changes WHICH caller dies on a dead seat. Guilt+innocence for the detector itself in test_the_census_detector_tells_an_invocation_from_prose: guilt = argv and shell invocations in both quote styles are seen; innocence = a docstring merely naming the command, `mycodex exec` and `codex execute-plan` are not (the first draft matched prose, and an exemption list padded with false positives is a list nobody reads). Census verdict in test_no_call_site_invokes_codex_without_choosing_a_seat; every exemption carries a written reason. Why it exists: measured on all three machines by REPLY and not by exit code (W104) — Pro's default ~/.codex answers 401 while a paid, logged-in seat sat one env var away, and the second ChatGPT Pro subscription was touched by nothing anywhere. Armed per-PR by immune-enforcement.yml."
     }
   }
 }

@@ -133,6 +133,15 @@ def _fake_fleet(
             f"{provider_body}",
         )
 
+    # A logged-in primary Codex seat is the normal state of a real machine, and
+    # since 2026-08-12 try_codex refuses a CODEX_HOME with no auth.json (a dir
+    # without one is not a seat — codex would fall through to an interactive
+    # login cron can never complete). Model that here so the fake fleet keeps
+    # describing a working machine; tests that want the SECOND seat, or none,
+    # add or remove these files themselves.
+    (home / ".codex").mkdir(parents=True, exist_ok=True)
+    (home / ".codex" / "auth.json").write_text("{}", encoding="utf-8")
+
     env = {
         "HOME": str(home),
         "PATH": "/usr/bin:/bin",
@@ -935,3 +944,152 @@ def test_organ_birth_imprints_claude_only_cascade() -> None:
         check=False,
     )
     assert syntax.returncode == 0, syntax.stderr
+
+
+# ------------------------------------------- two ChatGPT Pro seats (2026-08-12)
+# Two Pro subscriptions are paid for. Until today exactly one was ever consumed:
+# no wrapper had ever set CODEX_HOME (measured: zero occurrences), and
+# ~/.codex-acct2 had no auth.json on any machine. The second subscription was
+# buying nothing.
+
+_CODEX_SEAT_PROBE = (
+    # No ${...} anywhere in this template: it goes through str.format(), which
+    # reads ${CODEX_HOME:-none} as a replacement field and raises KeyError.
+    "seat=none\n"
+    'if [ -n "$CODEX_HOME" ]; then seat=$(basename "$CODEX_HOME"); fi\n'
+    'case " $* " in\n'
+    '  *" -m gpt-5.3-codex-spark "*)\n'
+    '    printf "codex-spark:%s\\n" "$seat" >> "$CALL_LOG"\n'
+    "    {spark_body}\n"
+    "    ;;\n"
+    "  *)\n"
+    '    printf "codex-primary:%s\\n" "$seat" >> "$CALL_LOG"\n'
+    "    {primary_body}\n"
+    "    ;;\n"
+    "esac\n"
+)
+
+_EXHAUSTED = 'printf "You have hit your weekly limit\\n" >&2\nexit 1'
+
+
+def _two_seats(tmp_path: Path, primary_body: str, spark_body: str = _EXHAUSTED):
+    call_log, _, env = _fake_fleet(
+        tmp_path,
+        _default_bodies(),
+        provider_bodies={
+            "agy": "exit 1",
+            "kimi": "exit 1",
+            "codex": _CODEX_SEAT_PROBE.format(
+                spark_body=spark_body, primary_body=primary_body
+            ),
+            "ollama": 'printf "ollama-answer\\n"\nexit 0',
+        },
+    )
+    second = Path(env["HOME"]) / ".codex-acct2"
+    second.mkdir(parents=True, exist_ok=True)
+    (second / "auth.json").write_text("{}", encoding="utf-8")
+    return call_log, env
+
+
+def test_guilt_an_exhausted_first_seat_moves_to_the_second_subscription(
+    tmp_path: Path,
+) -> None:
+    """The whole point: seat 1 dry must not mean 'cross to another provider'
+    while a second PAID ChatGPT Pro subscription sits untouched."""
+    call_log, env = _two_seats(
+        tmp_path,
+        primary_body=(
+            'if [ "$seat" = ".codex-acct2" ]; then\n'
+            '  printf "acct2-answer\\n"\n  exit 0\n'
+            "else\n"
+            f"  {_EXHAUSTED}\n"
+            "fi"
+        ),
+    )
+
+    result = _run_cascade(env, "prompt")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "acct2-answer\n"
+    lines = call_log.read_text(encoding="utf-8").splitlines()
+    assert "codex-primary:.codex" in lines
+    assert "codex-primary:.codex-acct2" in lines
+    # Both buckets of seat 1 are drained before seat 2 is touched...
+    assert "codex-spark:.codex" in lines
+    # ...and the second subscription keeps us inside paid seats.
+    assert "nonclaude-ollama" not in lines, lines
+
+
+def test_innocence_a_single_seat_behaves_exactly_as_before(tmp_path: Path) -> None:
+    """One logged-in seat: no phantom second attempt, no crash on the missing dir."""
+    call_log, _, env = _fake_fleet(
+        tmp_path,
+        _default_bodies(),
+        provider_bodies={
+            "agy": "exit 1",
+            "kimi": "exit 1",
+            "codex": _CODEX_SEAT_PROBE.format(
+                spark_body='printf "spark\\n"\nexit 0',
+                primary_body='printf "one-seat-answer\\n"\nexit 0',
+            ),
+            "ollama": 'printf "ollama-answer\\n"\nexit 0',
+        },
+    )
+    # no ~/.codex-acct2 at all
+    result = _run_cascade(env, "prompt")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "one-seat-answer\n"
+    lines = call_log.read_text(encoding="utf-8").splitlines()
+    assert lines.count("codex-primary:.codex") == 1, lines
+    assert not any(l.endswith(":.codex-acct2") for l in lines), lines
+
+
+def test_rotation_alternates_which_seat_goes_first(tmp_path: Path) -> None:
+    """Without rotation seat 1 absorbs everything and seat 2 is a reserve tank,
+    not a second tank — so the two weekly buckets never drain evenly."""
+    firsts = []
+    for run in ("a", "b"):
+        (tmp_path / run).mkdir()
+        call_log, env = _two_seats(
+            tmp_path / run,
+            primary_body='printf "answer\\n"\nexit 0',
+        )
+        # one shared rotation counter across both runs, in tmp (never ~/.cache)
+        env["CODEX_SEAT_STATE_FILE"] = str(tmp_path / "rotation")
+        result = _run_cascade(env, "prompt")
+        assert result.returncode == 0, result.stderr
+        primaries = [
+            l for l in call_log.read_text(encoding="utf-8").splitlines()
+            if l.startswith("codex-primary:")
+        ]
+        firsts.append(primaries[0])
+
+    assert firsts[0] != firsts[1], (
+        f"both runs opened on the same seat ({firsts[0]}) — the counter is not rotating"
+    )
+
+
+def test_a_directory_without_auth_json_is_not_a_seat(tmp_path: Path) -> None:
+    """codex with no credential falls through to an interactive login cron can
+    never complete, so the attempt burns a cascade slot to produce nothing."""
+    call_log, _, env = _fake_fleet(
+        tmp_path,
+        _default_bodies(),
+        provider_bodies={
+            "agy": "exit 1",
+            "kimi": "exit 1",
+            "codex": _CODEX_SEAT_PROBE.format(
+                spark_body="exit 0", primary_body='printf "should-not-run\\n"\nexit 0'
+            ),
+            "ollama": 'printf "ollama-answer\\n"\nexit 0',
+        },
+    )
+    (Path(env["HOME"]) / ".codex" / "auth.json").unlink()
+
+    result = _run_cascade(env, "prompt")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "ollama-answer\n"
+    lines = call_log.read_text(encoding="utf-8").splitlines()
+    assert not any(l.startswith("codex-") for l in lines), lines

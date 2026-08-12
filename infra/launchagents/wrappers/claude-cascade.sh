@@ -511,10 +511,16 @@ codex_attempt() {
     tmpout="$REPLY"
     new_temp_file
     tmperr="$REPLY"
+    local -a seat_env
+    seat_env=()
+    if [ -n "${CODEX_SEAT_HOME:-}" ]; then
+        seat_env=("CODEX_HOME=$CODEX_SEAT_HOME")
+        label="$label [${CODEX_SEAT_HOME:t}]"
+    fi
     echo "  [try] $label" >&2
     build_isolated_provider_env
     run_bounded "$tmpout" "$tmperr" "$label" \
-        "${ISOLATED_PROVIDER_ENV[@]}" \
+        "${ISOLATED_PROVIDER_ENV[@]}" "${seat_env[@]}" \
         "$codex_bin" exec "${model_args[@]}" --sandbox read-only --skip-git-repo-check "$PROMPT"
     exit_code=$?
     if retryable_failure_detected "$tmpout" "$tmperr" "$exit_code"; then
@@ -538,6 +544,40 @@ codex_attempt() {
     return 0
 }
 
+# Which ChatGPT Pro seats are actually usable — and in which order.
+#
+# The list itself lives in scripts/lib/codex_seat.sh, with the measurement that
+# justifies it. It is NOT restated here: two copies of a seat list is how a
+# machine's second subscription becomes invisible to one caller and not the
+# other. `${0:A}` resolves the symlink first — on Pro ~/scripts/claude-cascade.sh
+# points into the checkout, so $0 alone would look for the lib under ~/scripts.
+#
+# If the lib cannot be found we degrade to exactly today's behaviour (the single
+# default seat) and say so, loudly. Degrading to "no codex at all" would turn a
+# missing file into a lost provider tier; degrading silently would hide a
+# HOME-fork (family #1) rather than surface it.
+CODEX_SEAT_LIB=""
+for _seat_lib in "${0:A:h}/../../../scripts/lib/codex_seat.sh" \
+                 "$HOME/nuzantara/scripts/lib/codex_seat.sh"; do
+    [ -f "$_seat_lib" ] && { CODEX_SEAT_LIB="$_seat_lib"; break; }
+done
+if [ -n "$CODEX_SEAT_LIB" ]; then
+    . "$CODEX_SEAT_LIB"
+else
+    echo "  [warn] codex_seat.sh not found (looked next to this wrapper and under ~/nuzantara) — falling back to the single default seat" >&2
+    codex_seat_dirs() { [ -f "$HOME/.codex/auth.json" ] && printf '%s\n' "$HOME/.codex"; }
+    codex_seat_offset() { printf '0'; }
+fi
+
+codex_seat_homes() {
+    CODEX_SEAT_HOMES=("${(@f)$(codex_seat_dirs)}")
+    # No seats at all still yields one EMPTY element from the substitution, and
+    # an empty CODEX_HOME reads as "use the default" — the opposite of "none".
+    if [ ${#CODEX_SEAT_HOMES[@]} -eq 1 ] && [ -z "${CODEX_SEAT_HOMES[1]}" ]; then
+        CODEX_SEAT_HOMES=()
+    fi
+}
+
 try_codex() {
     local codex_bin="$HOME/.local/bin/codex"
     [ ! -x "$codex_bin" ] && codex_bin="/opt/homebrew/bin/codex"
@@ -547,10 +587,11 @@ try_codex() {
         return 99
     fi
 
-    # First attempt uses the default model from ~/.codex/config.toml (gpt-5.6-sol).
-    codex_attempt "$codex_bin" ""
-    local rc=$?
-    [ "$rc" -ne 98 ] && return "$rc"
+    codex_seat_homes
+    if [ ${#CODEX_SEAT_HOMES[@]} -eq 0 ]; then
+        echo "  [skip] tier4 codex — no logged-in seat (no auth.json under any of ${CODEX_SEAT_DIRS:-~/.codex, ~/.codex-o2, ~/.codex-acct2})" >&2
+        return 99
+    fi
 
     # gpt-5.3-codex-spark bills against a weekly bucket SEPARATE from the
     # gpt-5.6-* family, so an exhausted primary says nothing about Spark's
@@ -559,9 +600,29 @@ try_codex() {
     # bucket and crosses the provider boundary for no reason.
     # Kill switch: export CLAUDE_CASCADE_CODEX_SPARK_MODEL="" to disable.
     local spark_model="${CLAUDE_CASCADE_CODEX_SPARK_MODEL-gpt-5.3-codex-spark}"
-    [ -z "$spark_model" ] && return 98
-    echo "  [retry] tier4 codex — primary bucket exhausted, trying $spark_model (separate weekly quota)" >&2
-    codex_attempt "$codex_bin" "$spark_model"
+    local n=${#CODEX_SEAT_HOMES[@]}
+    local off i idx rc
+    off=$(codex_seat_offset)
+
+    # Both buckets of seat A, then both buckets of seat B. Exhaustion (98) is
+    # the ONLY verdict that moves on: any other outcome — an answer, an error,
+    # a timeout — belongs to the caller, because retrying a broken call on a
+    # second account just breaks it twice and spends the other subscription.
+    for (( i = 0; i < n; i++ )); do
+        idx=$(( (off + i) % n + 1 ))          # zsh arrays are 1-based
+        CODEX_SEAT_HOME="${CODEX_SEAT_HOMES[idx]}"
+        codex_attempt "$codex_bin" ""
+        rc=$?
+        [ "$rc" -ne 98 ] && { unset CODEX_SEAT_HOME; return "$rc"; }
+        if [ -n "$spark_model" ]; then
+            echo "  [retry] tier4 codex — primary bucket exhausted on this seat, trying $spark_model (separate weekly quota)" >&2
+            codex_attempt "$codex_bin" "$spark_model"
+            rc=$?
+            [ "$rc" -ne 98 ] && { unset CODEX_SEAT_HOME; return "$rc"; }
+        fi
+    done
+    unset CODEX_SEAT_HOME
+    return 98
 }
 
 try_ollama() {

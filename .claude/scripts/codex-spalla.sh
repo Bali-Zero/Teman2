@@ -48,8 +48,25 @@ if ! command -v codex >/dev/null 2>&1; then
     exit 4
 fi
 
+# Pick a seat that is actually logged in, alternating between the two ChatGPT
+# Pro subscriptions, BEFORE asking codex whether it is logged in — the question
+# is answered per CODEX_HOME. Measured 2026-08-12 on Pro: the default ~/.codex
+# answers 401 while ~/.codex-acct2 is live, so the gate below would have
+# refused with a paid seat one variable away. A `source` of a missing file is a
+# special builtin and would EXIT under this file's set -e, hence [ -f ].
+CODEX_SEAT_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../scripts/lib" 2>/dev/null && pwd)/codex_seat.sh"
+if [ -f "$CODEX_SEAT_LIB" ]; then
+    # shellcheck disable=SC1090
+    . "$CODEX_SEAT_LIB"
+    CODEX_SEAT="$(codex_seat_pick 2>/dev/null || true)"
+    if [ -n "$CODEX_SEAT" ]; then
+        export CODEX_HOME="$CODEX_SEAT"
+        echo "[spalla] codex seat: $CODEX_SEAT" >&2
+    fi
+fi
+
 if ! codex login status 2>&1 | grep -qi "Logged in using ChatGPT"; then
-    echo "ERROR: codex CLI not logged in via ChatGPT OAuth. Run: codex login" >&2
+    echo "ERROR: codex CLI not logged in via ChatGPT OAuth (CODEX_HOME=${CODEX_HOME:-\$HOME/.codex}). Run: codex login" >&2
     echo "(Hard rule: do NOT set OPENAI_API_KEY — use OAuth only.)" >&2
     exit 5
 fi
