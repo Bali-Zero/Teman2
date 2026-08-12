@@ -11,6 +11,7 @@ boundary is monkeypatched.
 from __future__ import annotations
 
 import importlib.util
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -272,3 +273,116 @@ def test_main_run_failure_exits_1(monkeypatch, capsys):
     code = kc.main(["hello"])
     assert code == 1
     assert "kimi exploded" in capsys.readouterr().err
+
+
+# ---------------------------------------------------------------------------
+# v2 hardening — env scrub, PII gate, model guard, durable perms
+# (standard: qwen-cloud-code.sh v3 — "a prompt instruction is NOT a control")
+# ---------------------------------------------------------------------------
+
+
+def test_scrubbed_env_drops_credential_markers(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-x")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "tok")
+    monkeypatch.setenv("FLY_API_TOKEN", "fly")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://x")
+    monkeypatch.setenv("GITHUB_TOKEN", "ghp_x")
+    env = kc._scrubbed_env()
+    for leaked in ("ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN", "FLY_API_TOKEN", "DATABASE_URL", "GITHUB_TOKEN"):
+        assert leaked not in env
+    assert env.get("PATH") == os.environ.get("PATH")
+
+
+def test_scrubbed_env_keeps_kimi_code_knobs_and_kimi_bin(monkeypatch):
+    monkeypatch.setenv("KIMI_CODE_EXPERIMENTAL_FLAG", "1")
+    monkeypatch.setenv("KIMI_BIN", "/custom/kimi")
+    env = kc._scrubbed_env()
+    assert env.get("KIMI_CODE_EXPERIMENTAL_FLAG") == "1"
+    assert env.get("KIMI_BIN") == "/custom/kimi"
+
+
+def test_run_child_gets_scrubbed_env(monkeypatch):
+    captured = {}
+
+    def fake_run(cmd, **kwargs):
+        captured.update(kwargs)
+        return _FakeCompleted(0, "ok\n", "")
+
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-x")
+    monkeypatch.setattr(kc, "_resolve_kimi_bin", lambda: "/fake/kimi")
+    monkeypatch.setattr(kc.subprocess, "run", fake_run)
+    kc.run("prompt")
+    assert "env" in captured
+    assert "OPENAI_API_KEY" not in captured["env"]
+
+
+def test_probe_child_gets_scrubbed_env(monkeypatch):
+    captured = {}
+
+    def fake_run(cmd, **kwargs):
+        captured.update(kwargs)
+        return _FakeCompleted(0, "PONG\n", "")
+
+    monkeypatch.setenv("JWT_SECRET", "jwt")
+    monkeypatch.setattr(kc, "_resolve_kimi_bin", lambda: "/fake/kimi")
+    monkeypatch.setattr(kc.subprocess, "run", fake_run)
+    kc.probe()
+    assert "env" in captured
+    assert "JWT_SECRET" not in captured["env"]
+
+
+def test_pii_gate_refuses_16_digit_run():
+    # synthetic 16-digit fixture with no keyword adjacency, so the repo's own
+    # Law-2 pre-commit gate (keyword+digits) does not match this file statically
+    with pytest.raises(kc.PiiRefusalError):
+        kc._check_prompt("client id 3201234567890124 please check")
+
+
+def test_pii_gate_allows_normal_visa_language():
+    # keywords alone are NOT PII — legitimate non-PII work mentions them
+    assert kc._check_prompt("explain KTP and NPWP requirements for a PT PMA") is None
+    assert kc._check_prompt("shorter ids like 1234567890 are fine") is None
+
+
+def test_pii_refusal_is_value_error_not_runtime_error():
+    # cascades treat RuntimeError as "dead seat -> next tier"; a PII refusal
+    # must NOT fall through to another cloud seat with the same prompt.
+    assert issubclass(kc.PiiRefusalError, ValueError)
+    assert not issubclass(kc.PiiRefusalError, RuntimeError)
+
+
+def test_run_pii_prompt_raises_before_subprocess(monkeypatch):
+    def fail_run(cmd, **kwargs):  # pragma: no cover - must never be reached
+        raise AssertionError("subprocess must not run for a refused prompt")
+
+    monkeypatch.setattr(kc.subprocess, "run", fail_run)
+    with pytest.raises(kc.PiiRefusalError):
+        kc.run("id 3201234567890124")
+
+
+def test_model_guard_refuses_flag_smuggling():
+    with pytest.raises(ValueError, match="must not start with"):
+        kc._check_model("--yolo")
+    kc._check_model("kimi-code/k3")
+
+
+def test_assert_credential_perms_chmods_0600(monkeypatch, tmp_path):
+    state = tmp_path / "credentials"
+    state.mkdir()
+    secret = state / "kimi-code.json"
+    secret.write_text("{}")
+    secret.chmod(0o644)
+    monkeypatch.setattr(kc, "_KIMI_STATE_DIRS", (state,))
+    kc._assert_credential_perms()
+    assert (secret.stat().st_mode & 0o777) == 0o600
+
+
+def test_assert_credential_perms_missing_dir_never_raises(monkeypatch, tmp_path):
+    monkeypatch.setattr(kc, "_KIMI_STATE_DIRS", (tmp_path / "absent",))
+    kc._assert_credential_perms()
+
+
+def test_main_pii_refusal_exits_2(capsys):
+    code = kc.main(["id 3201234567890124"])
+    assert code == 2
+    assert "REFUSED" in capsys.readouterr().err
