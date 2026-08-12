@@ -99,12 +99,28 @@ def test_acks_in_under_200ms(client: TestClient, mock_db_pool):
     callers (Meta) receive the 200 ACK before background processing starts —
     but FastAPI's ``TestClient`` runs the whole ASGI call, background task
     included, before returning control to ``client.post()``. Left unmocked,
-    this test measured `get_orchestrator`'s lazy-singleton cold-start
-    (first-ever call constructs `AgenticRAGOrchestrator`, ~8s empirically —
-    warm calls are ~5ms) instead of the sub-200ms ack path it claims to
-    guard: name, docstring and comment all said 200ms while the assertion
-    had been silently widened to 1500ms to stop the red, which stopped
-    hiding the real defect that the test was measuring the wrong thing.
+    this test measured `get_orchestrator`'s lazy-singleton cold-start — the
+    first call constructs `AgenticRAGOrchestrator` — instead of the ack path
+    it claims to guard.
+
+    Measured on M5 2026-08-12, unmocked, six runs: 2454 / 2898 / 3545 / 3090
+    / 3013 / 2645 ms. Deterministic, and identical at load-average 56 and at
+    13, so it was never machine contention; it blocked every backend-suite
+    push from this machine. With the background task mocked the same call is
+    ~20ms — a 10x margin under the 200ms this test's name has always claimed.
+
+    Note the cold-start does not disappear, it RELOCATES: whichever test
+    first drives the unmocked path now pays it (measured 15.5s on
+    ``test_persists_payload_to_inbound_webhooks`` in the same run). That test
+    asserts no timing, so it is harmless there — but do not add a latency
+    assertion to a test in this file without mocking the background task
+    first, or it inherits this same trap.
+
+    Do NOT widen the 200ms again to silence a red. The threshold was already
+    widened once, to 1500ms, and that is what kept this hidden: name,
+    docstring and comment all still said 200ms, so four places disagreed and
+    the assertion was the only one that had moved. A red here means either
+    the mock was dropped or the ack path genuinely gained synchronous work.
     """
     payload = _whatsapp_payload()
 
