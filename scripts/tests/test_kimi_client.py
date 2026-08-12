@@ -382,7 +382,95 @@ def test_assert_credential_perms_missing_dir_never_raises(monkeypatch, tmp_path)
     kc._assert_credential_perms()
 
 
-def test_main_pii_refusal_exits_2(capsys):
+def test_main_pii_refusal_exits_3(capsys):
+    # refusals are exit 3, distinct from usage errors (2) and runtime failures (1)
     code = kc.main(["id 3201234567890124"])
-    assert code == 2
+    assert code == 3
     assert "REFUSED" in capsys.readouterr().err
+
+
+# ---------------------------------------------------------------------------
+# v2.1 — REWORK-BUILD cures from the Opus-5 Gear-2 verdict on 182c82d069
+# ---------------------------------------------------------------------------
+
+
+def test_pii_gate_refuses_separator_grouped_shapes():
+    # C3: documents and OCR near-always group KTP/NPWP with separators;
+    # a plain-only pattern was the under-match. Keyword kept apart from the
+    # digits so the repo's own Law-2 pre-commit gate does not match statically.
+    grouped = [
+        "3171 0101 9001 0002",
+        "3171-0101-9001-0002",
+        "3171.0101.9001.0002",
+        "01.234.567.8-901.234",  # 15-digit NPWP written form
+    ]
+    for shape in grouped:
+        with pytest.raises(kc.PiiRefusalError):
+            kc._check_prompt(f"check id {shape}")
+
+
+def test_pii_gate_still_allows_short_runs():
+    # dates, ports, short ids, local phone-length numbers all pass
+    assert kc._check_prompt("release 2026-08-12 on port 8000, ticket 1234567890") is None
+    assert kc._check_prompt("call 0812-3456-7890 for the office") is None
+
+
+def test_no_tools_agent_file_exists_and_disables_all_tools():
+    # C1/C2: the pinned profile must exist next to the wrapper and carry
+    # an empty tools allowlist (tools: [] = all tools disabled)
+    assert kc._AGENT_FILE.is_file()
+    text = kc._AGENT_FILE.read_text()
+    assert "tools: []" in text
+
+
+def test_run_binds_no_tools_agent_file(monkeypatch):
+    captured = {}
+
+    def fake_run(cmd, **kwargs):
+        captured["cmd"] = cmd
+        return _FakeCompleted(0, "ok\n", "")
+
+    monkeypatch.setattr(kc, "_resolve_kimi_bin", lambda: "/fake/kimi")
+    monkeypatch.setattr(kc.subprocess, "run", fake_run)
+    kc.run("hello")
+    cmd = captured["cmd"]
+    assert "--agent-file" in cmd
+    assert cmd[cmd.index("--agent-file") + 1] == str(kc._AGENT_FILE)
+
+
+def test_probe_binds_no_tools_agent_file(monkeypatch):
+    captured = {}
+
+    def fake_run(cmd, **kwargs):
+        captured["cmd"] = cmd
+        return _FakeCompleted(0, "PONG\n", "")
+
+    monkeypatch.setattr(kc, "_resolve_kimi_bin", lambda: "/fake/kimi")
+    monkeypatch.setattr(kc.subprocess, "run", fake_run)
+    assert kc.probe() is True
+    assert "--agent-file" in captured["cmd"]
+
+
+def test_run_missing_agent_file_raises_runtime_error(monkeypatch):
+    monkeypatch.setattr(kc, "_resolve_kimi_bin", lambda: "/fake/kimi")
+    monkeypatch.setattr(kc, "_AGENT_FILE", Path("/does/not/exist/agent.md"))
+    with pytest.raises(RuntimeError, match="agent file missing"):
+        kc.run("prompt")
+
+
+def test_probe_missing_agent_file_returns_false(monkeypatch):
+    monkeypatch.setattr(kc, "_resolve_kimi_bin", lambda: "/fake/kimi")
+    monkeypatch.setattr(kc, "_AGENT_FILE", Path("/does/not/exist/agent.md"))
+    assert kc.probe() is False
+
+
+def test_assert_credential_perms_chmods_dir_0700(monkeypatch, tmp_path):
+    # P1 from the review: the directory itself must not stay enumerable
+    state = tmp_path / "oauth"
+    state.mkdir()
+    state.chmod(0o755)
+    (state / "kimi-code").write_text("x")
+    monkeypatch.setattr(kc, "_KIMI_STATE_DIRS", (state,))
+    kc._assert_credential_perms()
+    assert (state.stat().st_mode & 0o777) == 0o700
+    assert ((state / "kimi-code").stat().st_mode & 0o777) == 0o600

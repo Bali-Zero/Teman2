@@ -14,6 +14,21 @@ standard "a prompt instruction is NOT a control"
 (research/operations/2026-08-08-qwen-code-seat-integration-and-system-review.md
 §5, mirrored from scripts/qwen-cloud-code.sh v3):
 
+v2.1 (2026-08-12, REWORK-BUILD cure after the Opus-5 Gear-2 verdict on
+182c82d069 — three CONFIRMED blockers):
+
+0. NO-TOOLS CHILD (C1+C2, the headline fix) — every invocation binds
+   scripts/kimi_client_agent.md via --agent-file: `tools: []` disables ALL
+   tools in the child (enforced at execution, not just hidden from the
+   model). kimi -p is an agent with tools live BY DEFAULT and can read any
+   file under cwd and echo it to the cloud — a digit-free prompt sails
+   through the prompt gate while the filesystem leaks around it (proven
+   with a canary by the Opus-5 grader). With tools disabled the wrapper is
+   prompt-in/prompt-out; tasks that genuinely need repo reads belong to an
+   interactive kimi session in a worktree, not to this wrapper. This also
+   subsume-fixes the missing approval-mode injection (C2): with no tools
+   there is nothing to approve, yolo or otherwise.
+
 1. ENV SCRUB (zero-trust, kimi.md §1) — the child process never inherits
    infrastructure credentials. Any inherited variable whose name carries a
    credential marker (API_KEY/TOKEN/SECRET/PASSWORD/DATABASE_URL/…) is
@@ -21,17 +36,24 @@ standard "a prompt instruction is NOT a control"
    Kimi authenticates via its own OAuth store under ~/.kimi-code and needs
    nothing else.
 2. DURABLE PERMS — 0600 re-asserted on ~/.kimi-code/credentials|oauth files
-   before every subprocess run, refused paths included (mirrors
-   qwen-cloud-code.sh v3 §0).
-3. PII GATE (SYMBIOSIS Law 2) — a prompt containing a 16-digit identity
-   number run (KTP/NPWP shape) is refused BEFORE any network call.
-   High-precision by design: keywords are intentionally NOT matched
-   (legitimate non-PII visa work mentions KTP/NPWP constantly).
-   Raises PiiRefusalError (a ValueError, NOT RuntimeError) so cascade
-   callers fail loudly instead of falling through to another cloud seat
-   with the same PII prompt.
+   (0700 on the dirs themselves) before every subprocess run, refused paths
+   included (mirrors qwen-cloud-code.sh v3 §0).
+3. PII GATE (SYMBIOSIS Law 2) — a prompt containing a 15–16 digit identity
+   number shape (KTP/NPWP/card), with or without the customary space/dot/
+   dash group separators, is refused BEFORE any network call. Deliberately
+   narrow: keywords are NOT matched (legitimate non-PII visa work mentions
+   KTP/NPWP constantly) and shorter digit runs (dates, ids, ports, local
+   phone numbers) pass.
+   Raises PiiRefusalError (a ValueError, NOT RuntimeError) so future cascade
+   callers fail loudly instead of falling through to another cloud seat with
+   the same PII prompt (forward-looking: as of v2.1 no production caller
+   imports this module — the taxonomy is pre-registered doctrine).
 4. MODEL ARG GUARD — model slugs starting with "-" are refused (no flag
    smuggling through -m).
+
+DECLARED RESIDUAL (parity with qwen-cloud-code.sh v3 §3): kimi -p persists a
+resumable session transcript under ~/.kimi-code/sessions/; retention control
+is harness state, not wrapper state.
 
 HARD RULE — Chinese cloud (SYMBIOSIS Law 2, non-negotiable): NEVER pass
 client PII (KTP, passport, NPWP, akta, CRM rows, any UU PDP-regulated field)
@@ -88,11 +110,20 @@ _CRED_ENV_ALLOWLIST_PREFIXES: tuple[str, ...] = ("KIMI_CODE_",)
 _CRED_ENV_ALLOWLIST_EXACT: frozenset[str] = frozenset({"KIMI_BIN"})
 
 #: High-precision PII shapes refused before any network call (Law 2).
-#: 16 consecutive digits = KTP / NPWP / card-number shape. Deliberately
-#: narrow: no keyword matching, no shorter numbers (dates, ids, ports).
+#: 15-16 digits, each optionally followed by a space/dot/dash group
+#: separator — catches KTP/NPWP both plain and in their customary written
+#: groupings (documents and OCR almost always group them; a plain-only
+#: pattern was the C3 under-match in the 182c82d069 review). Deliberately
+#: narrow: no keyword matching, no shorter runs (dates, ids, ports, local
+#: phone numbers pass).
 _PII_PATTERNS: tuple[re.Pattern[str], ...] = (
-    re.compile(r"\b\d{16}\b"),
+    re.compile(r"\b\d(?:[ .-]?\d){14,15}\b"),
 )
+
+#: Pinned no-tools agent profile bound to every child invocation via
+#: --agent-file (the C1/C2 cure: kimi -p has tools live by default, and a
+#: reading child is an exfil channel around the prompt gate).
+_AGENT_FILE = Path(__file__).resolve().parent / "kimi_client_agent.md"
 
 
 class PiiRefusalError(ValueError):
@@ -119,7 +150,7 @@ def _resolve_kimi_bin() -> str | None:
 
 
 def _assert_credential_perms() -> None:
-    """Re-assert 0600 on Kimi OAuth state files. Never raises.
+    """Re-assert 0600 on Kimi OAuth state files, 0700 on the dirs. Never raises.
 
     Mirrors qwen-cloud-code.sh v3 §0: durable perms are re-asserted on every
     invocation, including runs that will be refused later, so a refusal never
@@ -129,6 +160,7 @@ def _assert_credential_perms() -> None:
         try:
             if not state_dir.is_dir():
                 continue
+            state_dir.chmod(0o700)
             for entry in state_dir.iterdir():
                 if entry.is_file():
                     entry.chmod(0o600)
@@ -167,9 +199,10 @@ def _check_prompt(prompt: str) -> None:
     for pattern in _PII_PATTERNS:
         if pattern.search(prompt):
             raise PiiRefusalError(
-                "prompt refused by the Law-2 PII gate: 16-digit identity-number "
-                "shape detected (KTP/NPWP). Kimi is a Chinese-cloud, non-PII seat "
-                "— route this work to a local model (pii_intake chain) instead."
+                "prompt refused by the Law-2 PII gate: 15-16 digit identity-number "
+                "shape detected (KTP/NPWP, separators tolerated). Kimi is a "
+                "Chinese-cloud, non-PII seat — route this work to a local model "
+                "(pii_intake chain) instead."
             )
 
 
@@ -191,9 +224,12 @@ def probe(timeout: float = 60.0) -> bool:
     if not binp:
         logger.warning("kimi_client.probe: kimi binary not found")
         return False
+    if not _AGENT_FILE.is_file():
+        logger.warning("kimi_client.probe: pinned agent file missing: %s", _AGENT_FILE)
+        return False
     try:
         result = subprocess.run(
-            [binp, "-m", DEFAULT_MODEL, "-p", PONG_PROMPT],
+            [binp, "-m", DEFAULT_MODEL, "-p", PONG_PROMPT, "--agent-file", str(_AGENT_FILE)],
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -217,9 +253,13 @@ def run(
     Raises PiiRefusalError (ValueError) when the Law-2 gate refuses the
     prompt — loudly, so cascades do NOT fall through to another cloud seat
     with the same prompt. Raises RuntimeError (with a stderr excerpt) on a
-    missing binary, a non-zero exit, or a timeout — the caller decides how
-    to degrade (e.g. a cascade fallback treats this as a dead seat, never a
-    crash of the whole run).
+    missing binary, a missing pinned agent file, a non-zero exit, or a
+    timeout — the caller decides how to degrade (e.g. a cascade fallback
+    treats this as a dead seat, never a crash of the whole run).
+
+    The child is always bound to scripts/kimi_client_agent.md (tools: [] —
+    no filesystem, no shell, no network beyond the model call), so ``cwd``
+    is only the session's nominal directory, never a data channel.
     """
     _assert_credential_perms()
     _check_model(model)
@@ -227,9 +267,11 @@ def run(
     binp = _resolve_kimi_bin()
     if not binp:
         raise RuntimeError("kimi binary not found (KIMI_BIN unset, ~/.kimi-code/bin/kimi absent, not on PATH)")
+    if not _AGENT_FILE.is_file():
+        raise RuntimeError(f"pinned no-tools agent file missing: {_AGENT_FILE}")
     try:
         result = subprocess.run(
-            [binp, "-m", model, "-p", prompt],
+            [binp, "-m", model, "-p", prompt, "--agent-file", str(_AGENT_FILE)],
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -275,12 +317,11 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         output = run(args.prompt, model=args.model)
-    except PiiRefusalError as exc:
+    except (PiiRefusalError, ValueError) as exc:
+        # refusals (Law-2 gate, model guard) are exit 3 — distinct from usage
+        # errors (2) and runtime failures (1)
         print(f"kimi_client: REFUSED: {exc}", file=sys.stderr)
-        return 2
-    except ValueError as exc:
-        print(f"kimi_client: REFUSED: {exc}", file=sys.stderr)
-        return 2
+        return 3
     except RuntimeError as exc:
         print(f"kimi_client: error: {exc}", file=sys.stderr)
         return 1
