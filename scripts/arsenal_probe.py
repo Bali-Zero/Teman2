@@ -81,7 +81,7 @@ CONTEXT_LIMITED = {CONTEXT_AUTH, CRED_UNAVAILABLE, NOT_INSTALLED}
 
 # deepseek RETIRED 2026-07-19 (owner order, pre-auth revoked — never top up) —
 # replacement seat kimi already present.
-ALL_SEATS = ["claude", "glm", "kimi", "agy", "codex", "ollama", "nlm", "qwen-cloud-code"]
+ALL_SEATS = ["claude", "glm", "kimi", "agy", "codex", "codex-spark", "ollama", "nlm", "qwen-cloud-code", "jules"]
 
 REQUIRED_SEATS = {
     # kimi PONG-proven on all three machines 2026-07-19 (mini device-code
@@ -111,6 +111,8 @@ DEFAULT_TIMEOUTS = {
     "kimi": 15,
     "agy": 15,
     "codex": 15,
+    "codex-spark": 15,
+    "jules": 15,
     "ollama": 15,
     "nlm": 15,
     "qwen-cloud-code": 15,
@@ -573,6 +575,53 @@ def probe_codex(timeout: float) -> tuple[str, str, int]:
     return status, ev, latency_ms
 
 
+
+def probe_codex_spark(timeout: float) -> tuple[str, str, int]:
+    t0 = time.monotonic()
+    binp, via_path = resolve_bin("codex", ["/opt/homebrew/bin/codex"])
+    if not binp:
+        return NOT_INSTALLED, "codex binary not found (checked $PATH + common install dirs)", 0
+    res = run_probe_cmd(
+        [binp, "exec", "-m", "gpt-5.3-codex-spark", "--sandbox", "read-only", "--skip-git-repo-check", PONG_PROMPT],
+        timeout=timeout,
+    )
+    latency_ms = int((time.monotonic() - t0) * 1000)
+    ev = _path_note(via_path) + evidence_tail(res.stdout + " " + res.stderr)
+    live = "PONG" in res.stdout
+    if res.timed_out and not live:
+        return TIMEOUT, ev or "probe timed out", latency_ms
+    status = classify_generic(res.stdout + res.stderr, live, "codex", is_ssh_context())
+    return status, ev, latency_ms
+
+
+
+def probe_jules(timeout: float) -> tuple[str, str, int]:
+    t0 = time.monotonic()
+    binp, via_path = resolve_bin("python3")
+    if not binp:
+        return NOT_INSTALLED, "python3 binary not found", 0
+    res = run_probe_cmd(
+        [binp, "scripts/jules_dispatch.py", "list-sources"],
+        timeout=timeout,
+    )
+    latency_ms = int((time.monotonic() - t0) * 1000)
+    ev = _path_note(via_path) + evidence_tail(res.stdout + " " + res.stderr)
+
+    live = False
+    if res.returncode == 0:
+        lines = [line for line in res.stdout.splitlines() if line.strip()]
+        if len(lines) > 0:
+            live = True
+
+    if res.timed_out and not live:
+        return TIMEOUT, ev or "probe timed out", latency_ms
+
+    status = LIVE if live else AUTH_DEAD # Assuming auth dead for now if it fails, or maybe classify_generic?
+    # Wait, the prompt says: "Healthy means rc=0 AND at least one source line. Never print or embed the API key; the existing scrub() must cover the evidence tail."
+    status = classify_generic(res.stdout + res.stderr, live, "jules", is_ssh_context())
+    return status, ev, latency_ms
+
+
 def probe_ollama(timeout: float, live_gen: bool = False) -> tuple[str, str, int]:
     t0 = time.monotonic()
     # ollama ships via Homebrew (/opt/homebrew/bin/ollama on Apple Silicon) but had NO
@@ -681,6 +730,8 @@ PROBE_FUNCS: dict[str, Callable[..., tuple[str, str, int]]] = {
     "kimi": probe_kimi,
     "agy": probe_agy,
     "codex": probe_codex,
+    "codex-spark": probe_codex_spark,
+    "jules": probe_jules,
     "ollama": probe_ollama,
     "nlm": probe_nlm,
     "qwen-cloud-code": probe_qwen_cloud_code,
