@@ -160,6 +160,64 @@ describe("buildKbliFaq", () => {
   });
 });
 
+describe("buildKbliFaq — BPS-authoritative transition populations", () => {
+  function transitionAnswer(codeValue: string): string {
+    const code = getCode(codeValue) as KBLICode;
+    const entry = buildKbliFaq(code).find((item) =>
+      item.question.startsWith("How did KBLI"),
+    );
+    expect(entry).toBeDefined();
+    return entry!.answer;
+  }
+
+  it("guilt: conflicting 01138 cites BPS ancestry, never PP28 as predecessor", () => {
+    const answer = transitionAnswer("01138");
+    expect(answer).toContain(
+      "According to the official BPS 2020 → 2025 crosswalk, KBLI 01138 has recorded KBLI 2020 ancestor(s) 01283. This is provenance only, not a licensing claim; no predecessor licensing regime is asserted to transfer.",
+    );
+    expect(answer).not.toContain("01122");
+    expect(answer).not.toContain("previous code");
+  });
+
+  it("guilt: PP28-only 01287 declares the BPS gap and emits no audit-in-progress claim anywhere", () => {
+    const code = getCode("01287") as KBLICode;
+    expect(code.provenance?.pma.status).toBe("untraceable_basis");
+    expect(code.provenance?.pma.vintage).toBeNull();
+    const faq = buildKbliFaq(code);
+    expect(transitionAnswer("01287")).toContain(
+      "No official BPS 2020 → 2025 crosswalk ancestor is recorded for this code. This is an ancestry data gap, not evidence that no KBLI 2020 predecessor existed.",
+    );
+    expect(transitionAnswer("01287")).toContain(
+      "PP 28/2025 licensing-source codes recorded for this page: 01287",
+    );
+    expect(JSON.stringify(faq)).not.toContain("crosswalk audit in progress");
+  });
+
+  it("innocence: BPS-only 01122 keeps its BPS transition answer and pending PMA vintage", () => {
+    const code = getCode("01122") as KBLICode;
+    expect(code.transition.pp28LicensingSourceCodes).toEqual([]);
+    expect(code.provenance?.pma).toMatchObject({
+      status: "pending_crosswalk",
+      vintage: "2020",
+    });
+    expect(transitionAnswer("01122")).toContain(
+      "According to the official BPS 2020 → 2025 crosswalk",
+    );
+    expect(transitionAnswer("01122")).not.toContain(
+      "PP 28/2025 licensing-source codes",
+    );
+  });
+
+  it("innocence: neither-source 64995 gets only the BPS gap answer", () => {
+    const code = getCode("64995") as KBLICode;
+    expect(code.transition.pp28LicensingSourceCodes).toEqual([]);
+    expect(code.provenance?.pma.status).toBe("untraceable_basis");
+    const answer = transitionAnswer("64995");
+    expect(answer).toContain("BPS 2020 → 2025 crosswalk ancestor");
+    expect(answer).not.toContain("PP 28/2025 licensing-source codes");
+  });
+});
+
 // =============================================================================
 // The FAQ was the FIFTH render site of the Bali-block cause — and the one that
 // leaves the page.

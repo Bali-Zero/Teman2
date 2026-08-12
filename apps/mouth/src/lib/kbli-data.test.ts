@@ -26,7 +26,7 @@ describe("kbli-data", () => {
         }),
         licensing: expect.any(Array),
         transition: expect.objectContaining({
-          previousCodes: expect.any(Array),
+          pp28LicensingSourceCodes: expect.any(Array),
         }),
         tier: expect.stringMatching(/^(gold|silver|bronze)$/),
         keywords: expect.any(Array),
@@ -105,8 +105,8 @@ describe("kbli-data", () => {
 
   // Batch-B step 4 (2026-07-25): the additive `bps_2020_ancestors` canonical
   // field surfaces as `transition.bpsCrosswalk`, DISTINCT from the pp28-sourced
-  // `previousCodes`. These are the guilt+innocence + no-regression tripwires.
-  describe("bps_2020_ancestors → transition.bpsCrosswalk (additive, no regression)", () => {
+  // `pp28LicensingSourceCodes`. These are the guilt+innocence + no-regression tripwires.
+  describe("authoritative BPS ancestry and PP28 licensing sources stay separate", () => {
     it("derives bpsCrosswalk on an OSS-native Batch-B code and shows the honest mechanical-only status", () => {
       // 01111 is OSS-native (_l2_status is null) and carries the field.
       const code = getCode("01111");
@@ -118,16 +118,19 @@ describe("kbli-data", () => {
       // imply a licensing/regime transfer. Mechanical presence ≠ inheritance.
       expect(bps?.adjudicationStatus).toBe("mechanical-only");
       expect(bps?.inheritanceVerdict).toBe("not-adjudicated");
-      // Regression guard: the legacy pp28-sourced list is UNTOUCHED alongside it.
-      expect(Array.isArray(code?.transition.previousCodes)).toBe(true);
+      // Regression guard: the PP28 licensing-source list remains visible under
+      // its true role alongside BPS ancestry.
+      expect(Array.isArray(code?.transition.pp28LicensingSourceCodes)).toBe(
+        true,
+      );
     });
 
-    it("leaves bpsCrosswalk undefined on a Batch-A (no_oss_risk) code and keeps previousCodes intact", () => {
+    it("leaves bpsCrosswalk undefined on a PP28-only code and keeps its licensing sources", () => {
       // 01287 is _l2_status: no_oss_risk → out of Batch-B scope, no field.
       const code = getCode("01287");
       expect(code).toBeDefined();
       expect(code?.transition.bpsCrosswalk).toBeUndefined();
-      expect(Array.isArray(code?.transition.previousCodes)).toBe(true);
+      expect(code?.transition.pp28LicensingSourceCodes).toEqual(["01287"]);
     });
 
     it("carries bpsCrosswalk on exactly the 1,338 OSS-native codes and never with an empty codes list", () => {
@@ -147,14 +150,68 @@ describe("kbli-data", () => {
       }
     });
 
-    it("never clobbers previousCodes — every code still exposes it as an array", () => {
-      // The change is purely additive; previousCodes must remain present and an
-      // array on ALL codes (both those that gained bpsCrosswalk and those that
-      // did not), never turned undefined by the new derivation.
+    it("every code exposes PP28 licensing sources under the hard-renamed field", () => {
       const codes = getAllCodes();
       expect(
-        codes.every((c) => Array.isArray(c.transition.previousCodes)),
+        codes.every((c) =>
+          Array.isArray(c.transition.pp28LicensingSourceCodes),
+        ),
       ).toBe(true);
+    });
+
+    it("pins the full 1,559-code source partition and the 560 conflicting-list population", () => {
+      const codes = getAllCodes();
+      let both = 0;
+      let pp28Only = 0;
+      let bpsOnly = 0;
+      let neither = 0;
+      let differingBoth = 0;
+
+      for (const code of codes) {
+        const pp28 = code.transition.pp28LicensingSourceCodes;
+        const bps = code.transition.bpsCrosswalk?.codes ?? [];
+        if (pp28.length > 0 && bps.length > 0) {
+          both++;
+          if (
+            [...new Set(pp28)].sort().join(",") !==
+            [...new Set(bps)].sort().join(",")
+          ) {
+            differingBoth++;
+          }
+        } else if (pp28.length > 0) pp28Only++;
+        else if (bps.length > 0) bpsOnly++;
+        else neither++;
+      }
+
+      expect(codes).toHaveLength(1559);
+      expect({ both, pp28Only, bpsOnly, neither, differingBoth }).toEqual({
+        both: 1263,
+        pp28Only: 121,
+        bpsOnly: 75,
+        neither: 100,
+        differingBoth: 560,
+      });
+      expect(both + bpsOnly).toBe(1338);
+      expect(pp28Only + neither).toBe(221);
+      expect(both + pp28Only).toBe(1384);
+    });
+
+    it("pins all 317 wrong-vintage BPS link traps and the 36 removed PP28 links", () => {
+      const codes = getAllCodes();
+      const live2025Codes = new Set(codes.map((code) => code.code));
+      const bpsVintageLinkTraps = codes.flatMap((code) =>
+        (code.transition.bpsCrosswalk?.codes ?? []).filter(
+          (ancestor) => ancestor !== code.code && live2025Codes.has(ancestor),
+        ),
+      );
+      const pp28VintageLinkTraps = codes.flatMap((code) =>
+        code.transition.pp28LicensingSourceCodes.filter(
+          (source) => source !== code.code && live2025Codes.has(source),
+        ),
+      );
+
+      expect(bpsVintageLinkTraps).toHaveLength(317);
+      expect(pp28VintageLinkTraps).toHaveLength(36);
     });
   });
 });

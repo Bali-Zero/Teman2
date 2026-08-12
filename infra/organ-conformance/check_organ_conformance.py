@@ -23,6 +23,7 @@ Usage:
   python3 infra/organ-conformance/check_organ_conformance.py [--json] [--repo ROOT]
   python3 infra/organ-conformance/check_organ_conformance.py --update-baseline
 """
+
 from __future__ import annotations
 
 import argparse
@@ -32,6 +33,7 @@ import plistlib
 import re
 import subprocess
 import sys
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Optional
 
@@ -41,11 +43,18 @@ REGISTRY_REL = "apps/organism/organism/organs_registry.yaml"
 PAIRS_REL = "infra/home-fork/declared-pairs.json"
 KEEPALIVE_LINT_REL = "scripts/lint_plist_keepalive.py"
 
+# Generic launchd runners whose argv contract is ``runner payload [args...]``.
+# Content genes belong to the payload, not to the receipt/process supervisor.
+# Match repo-relative paths exactly: similarly named payloads are ordinary wrappers.
+KNOWN_CONTENT_RUNNERS: frozenset[str] = frozenset({"scripts/cron-runner.sh"})
+
 # --- gene detection patterns (definitions live in genes.json; logic lives here) ---
 RE_HEARTBEAT = re.compile(r"organism_heartbeat|\.organism/last_seen|heartbeat\(\)\s*\{")
 RE_KILL_SWITCH = re.compile(r"\b[A-Z][A-Z0-9_]*_ENABLED\b")
 RE_SET_U = re.compile(r"^\s*set\s+-[a-zA-Z]*u", re.MULTILINE)
-RE_CLAUDE_SPAWN = re.compile(r"claude[\"']?\s+-p\b|CLAUDE_BIN[\"']?\s+-p\b|\bclaude\b.*--print\b")
+RE_CLAUDE_SPAWN = re.compile(
+    r"claude[\"']?\s+-p\b|CLAUDE_BIN[\"']?\s+-p\b|\bclaude\b.*--print\b"
+)
 RE_STRICT_MCP = re.compile(r"--strict-mcp-config")
 RE_STDIN_NULL = re.compile(r"<\s*/dev/null")
 RE_TCC_STRATEGY = re.compile(r"SSH_CONNECTION|TRAMPOLINED|ssh\s+.*localhost")
@@ -70,11 +79,21 @@ def _git_tracked_plists(repo_root: Path, roots: list[str]) -> list[Path]:
     # scanned too — an author running the gate before `git add` would otherwise get
     # a false green on the very organ being born (found live 2026-07-06, pro.healer).
     out = subprocess.run(
-        ["git", "-C", str(repo_root), "ls-files", "--cached", "--others",
-         "--exclude-standard", "--"]
+        [
+            "git",
+            "-C",
+            str(repo_root),
+            "ls-files",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+            "--",
+        ]
         + [f"{r}/**/*.plist" for r in roots]
         + [f"{r}/*.plist" for r in roots],
-        capture_output=True, text=True, check=False,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     seen: set[str] = set()
     paths: list[Path] = []
@@ -96,14 +115,142 @@ def _first_path_token(argv: list[str]) -> Optional[str]:
 def _pair_declared(pairs: dict[str, Any], token: str) -> bool:
     """True if a HOME payload token matches a declared live pair (tail match:
     '~/scripts/x.sh' and '/Users/u/scripts/x.sh' both end 'scripts/x.sh')."""
+
     def _tail(p: str) -> str:
         p = re.sub(r"^(~|\$HOME|/Users/[^/]+)/", "", p)
         return p
+
     token_tail = _tail(token)
     for pair in pairs.get("pairs", []):
         if _tail(str(pair.get("live", ""))) == token_tail:
             return True
     return False
+
+
+@lru_cache(maxsize=None)
+def _repo_alias_roots(repo_root: Path) -> tuple[Path, ...]:
+    """Return exact filesystem roots that identify this Git repository.
+
+    A launchd plist can name the canonical checkout while the gate runs from a
+    linked worktree. Git's common directory identifies that canonical checkout;
+    preserving the complete relative path lets the checker inspect the current
+    worktree's file without any basename widening.
+    """
+    resolved_root = repo_root.resolve()
+    roots = [resolved_root]
+    out = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(resolved_root),
+            "rev-parse",
+            "--path-format=absolute",
+            "--git-common-dir",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if out.returncode == 0:
+        common_dir = Path(out.stdout.strip()).resolve()
+        if common_dir.name == ".git" and common_dir.parent not in roots:
+            roots.append(common_dir.parent)
+    return tuple(roots)
+
+
+def _resolve_repo_file_strict(arg: str, repo_root: Path, ka_mod: Any) -> Optional[Path]:
+    """Resolve a direct path token only when its canonical file is in the repo.
+
+    Unlike keepalive's compatibility resolver, this intentionally has no
+    basename bridge. Relative paths are rooted at the repository; absolute
+    paths, ``.``/``..`` segments, and symlinks are canonicalized before the
+    repository-boundary check.
+    """
+    if not ka_mod._looks_like_path(arg) or arg.startswith("~"):
+        return None
+
+    resolved_root = repo_root.resolve()
+    token_path = Path(arg)
+    if token_path.is_absolute():
+        relative: Optional[Path] = None
+        for alias_root in _repo_alias_roots(resolved_root):
+            try:
+                relative = token_path.relative_to(alias_root)
+                break
+            except ValueError:
+                continue
+        if relative is None:
+            return None
+        candidate = resolved_root / relative
+    else:
+        candidate = resolved_root / token_path
+    try:
+        resolved = candidate.resolve(strict=True)
+        resolved.relative_to(resolved_root)
+    except (OSError, RuntimeError, ValueError):
+        return None
+    return resolved if resolved.is_file() else None
+
+
+def _resolve_content_wrapper(
+    argv: list[str],
+    repo_root: Path,
+    basename_index: dict[str, list[Path]],
+    ka_mod: Any,
+) -> tuple[Optional[Path], Optional[str]]:
+    """Resolve the file whose content genes describe the organ's behavior.
+
+    KeepAlive lint intentionally classifies the first repo-resolvable file that
+    launchd spawns. This gate has a different entity boundary: for an explicit
+    generic runner, it must inspect the next path-like argv token (the payload).
+    A declared but unresolvable payload remains fail-closed; a runner with no
+    later path-like token is itself the executable content and stays selected.
+    """
+    wrapper, reason = ka_mod.resolve_wrapper(argv, repo_root, basename_index)
+
+    # Runner recognition is deliberately independent of keepalive's basename
+    # compatibility bridge. The first argv file that resolves strictly inside
+    # this repo is what launchd hands to its interpreter; only exact canonical
+    # equality with a declared runner opens the payload hop.
+    strict_wrapper_index: Optional[int] = None
+    strict_wrapper: Optional[Path] = None
+    for index, arg in enumerate(argv):
+        candidate = _resolve_repo_file_strict(arg, repo_root, ka_mod)
+        if candidate is not None:
+            strict_wrapper_index = index
+            strict_wrapper = candidate
+            break
+
+    known_runner_paths = {
+        candidate
+        for relative in KNOWN_CONTENT_RUNNERS
+        if (candidate := _resolve_repo_file_strict(relative, repo_root, ka_mod))
+        is not None
+    }
+    if strict_wrapper is None or strict_wrapper not in known_runner_paths:
+        return wrapper, reason
+
+    if strict_wrapper_index is None:  # pragma: no cover - assignment invariant
+        return strict_wrapper, reason
+
+    payload_token = next(
+        (
+            arg
+            for arg in argv[strict_wrapper_index + 1 :]
+            if ka_mod._looks_like_path(arg)
+        ),
+        None,
+    )
+    if payload_token is None:
+        return strict_wrapper, reason
+
+    payload = _resolve_repo_file_strict(payload_token, repo_root, ka_mod)
+    if payload is None:
+        return (
+            None,
+            f"known-runner payload not-resolvable-in-repo: {payload_token}",
+        )
+    return payload, None
 
 
 def analyze_plist(
@@ -117,7 +264,13 @@ def analyze_plist(
 ) -> dict[str, Any]:
     """Return {path, label, missing: [gene..], advisory: [gene..], notes: [..]}."""
     rel = str(plist_path.relative_to(repo_root))
-    result: dict[str, Any] = {"path": rel, "label": None, "missing": [], "advisory": [], "notes": []}
+    result: dict[str, Any] = {
+        "path": rel,
+        "label": None,
+        "missing": [],
+        "advisory": [],
+        "notes": [],
+    }
 
     try:
         payload = plistlib.loads(plist_path.read_bytes())
@@ -159,12 +312,16 @@ def analyze_plist(
         result["missing"].append("G3_declared_pair")
 
     # Resolve wrapper text (repo canon) for content genes
-    wrapper, reason = ka_mod.resolve_wrapper(argv, repo_root, basename_index)
+    wrapper, reason = _resolve_content_wrapper(argv, repo_root, basename_index, ka_mod)
     text = ""
     if wrapper is not None:
         try:
             text = wrapper.read_text(encoding="utf-8", errors="replace")
-            result["wrapper"] = str(wrapper.relative_to(repo_root)) if wrapper.is_relative_to(repo_root) else str(wrapper)
+            result["wrapper"] = (
+                str(wrapper.relative_to(repo_root))
+                if wrapper.is_relative_to(repo_root)
+                else str(wrapper)
+            )
         except OSError:
             result["notes"].append(f"wrapper unreadable: {wrapper}")
     elif ka_mod._has_inline_shell_flag(argv):
@@ -172,10 +329,14 @@ def analyze_plist(
         text = " ".join(argv)
         result["wrapper"] = "<inline>"
     else:
-        result["notes"].append(f"wrapper unresolved ({reason}) — content genes unverifiable")
+        result["notes"].append(
+            f"wrapper unresolved ({reason}) — content genes unverifiable"
+        )
 
     if text:
-        is_bash = "<inline>" in str(result.get("wrapper", "")) or str(result.get("wrapper", "")).endswith(".sh")
+        is_bash = "<inline>" in str(result.get("wrapper", "")) or str(
+            result.get("wrapper", "")
+        ).endswith(".sh")
         if not RE_HEARTBEAT.search(text):
             result["missing"].append("G2_heartbeat")
         if not RE_KILL_SWITCH.search(text):
@@ -210,7 +371,9 @@ def run(repo_root: Path) -> dict[str, Any]:
         return {"errors": [f"genes.json unreadable: {exc}"], "exit": 4}
 
     registry_path = repo_root / REGISTRY_REL
-    registry_text = registry_path.read_text(encoding="utf-8") if registry_path.exists() else ""
+    registry_text = (
+        registry_path.read_text(encoding="utf-8") if registry_path.exists() else ""
+    )
     if not registry_text:
         return {"errors": [f"registry missing: {REGISTRY_REL}"], "exit": 4}
 
@@ -241,7 +404,13 @@ def run(repo_root: Path) -> dict[str, Any]:
 
     for plist_path in sorted(plists):
         organ = analyze_plist(
-            plist_path, repo_root, ka_mod, ka_index, registry_text, pairs, keepalive_failed
+            plist_path,
+            repo_root,
+            ka_mod,
+            ka_index,
+            registry_text,
+            pairs,
+            keepalive_failed,
         )
         organs.append(organ)
         if "malformed" in organ:
@@ -308,7 +477,9 @@ def update_baseline(repo_root: Path) -> int:
 
 def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Organ conformance-at-birth gate")
-    parser.add_argument("--repo", default=None, help="repo root (default: git toplevel of this file)")
+    parser.add_argument(
+        "--repo", default=None, help="repo root (default: git toplevel of this file)"
+    )
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--update-baseline", action="store_true")
     args = parser.parse_args(argv)
@@ -318,7 +489,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     else:
         out = subprocess.run(
             ["git", "-C", str(HERE), "rev-parse", "--show-toplevel"],
-            capture_output=True, text=True, check=False,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         repo_root = Path(out.stdout.strip() or ".").resolve()
 
