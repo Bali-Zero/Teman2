@@ -412,6 +412,13 @@ class OrchestratorStreamingCore:
 
                 if self.core.db_pool:
                     repo = QueryAnalyticsRepository(self.core.db_pool)
+                    # The streamed answer is not accumulated here — it does
+                    # not have to be. `reasoning.py` streams `state.final_answer`
+                    # in 20-char chunks, so by this point the whole text is on
+                    # the state object that was passed into the loop. Reading it
+                    # back is what keeps this third writer symmetric with the two
+                    # non-streaming ones; covering only the path that bit you is
+                    # half a fix (W101-recidiva).
                     await repo.log_query(
                         query_text=query,
                         user_id=user_id,
@@ -421,6 +428,7 @@ class OrchestratorStreamingCore:
                         response_generated=len(sources) > 0,
                         model_used=model_tier,
                         execution_time_ms=int(execution_time * 1000),
+                        response_text=getattr(state, "final_answer", None),
                     )
             except Exception as analytics_err:
                 logger.warning(

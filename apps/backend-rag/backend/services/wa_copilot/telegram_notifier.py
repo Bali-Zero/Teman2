@@ -58,6 +58,10 @@ from typing import Any
 import asyncpg
 import httpx
 
+from backend.core.secret_log_redaction import install_telegram_token_redaction
+
+install_telegram_token_redaction()
+
 logger = logging.getLogger(__name__)
 
 NOTIFIER_VERSION = "v1-2026-05-25"
