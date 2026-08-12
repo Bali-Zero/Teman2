@@ -10,6 +10,9 @@ import httpx
 
 from backend.app.core.config import settings
 from backend.app.core.constants import HttpTimeoutConstants
+from backend.core.secret_log_redaction import install_telegram_token_redaction
+
+install_telegram_token_redaction()
 
 logger = logging.getLogger(__name__)
 

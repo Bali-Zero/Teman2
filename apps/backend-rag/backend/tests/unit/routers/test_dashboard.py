@@ -406,7 +406,10 @@ class TestClientsGeo:
         request = MagicMock()
         request.app.state.db_pool = pool
 
-        result = await get_clients_geo(request)
+        # An admin principal: the map's actual audience, and the case that must
+        # keep returning the whole book (ownership scoping is covered by
+        # tests/security/test_dashboard_map_not_public.py).
+        result = await get_clients_geo(request, current_user={"email": "zero@balizero.com"})
         assert result["total"] == 1
         assert len(result["clients"]) == 1
 
@@ -417,7 +420,7 @@ class TestClientsGeo:
         request = MagicMock()
         request.app.state.db_pool = None
 
-        result = await get_clients_geo(request)
+        result = await get_clients_geo(request, current_user={"email": "zero@balizero.com"})
         assert result["clients"] == []
         assert "error" in result
 
@@ -436,7 +439,7 @@ class TestClientsGeo:
         request = MagicMock()
         request.app.state.db_pool = pool
 
-        result = await get_clients_geo(request)
+        result = await get_clients_geo(request, current_user={"email": "zero@balizero.com"})
         assert "error" in result
 
 
@@ -484,8 +487,8 @@ class TestLogLookup:
         request = MagicMock()
         request.app.state.db_pool = pool
 
-        req = LogLookupRequest(user_email="test@balizero.com", kbli_code="55111")
-        result = await log_lookup(req, request)
+        req = LogLookupRequest(kbli_code="55111")
+        result = await log_lookup(req, request, current_user={"email": "zero@balizero.com"})
         assert result["logged"] is True
 
     @pytest.mark.asyncio
@@ -495,8 +498,8 @@ class TestLogLookup:
         request = MagicMock()
         request.app.state.db_pool = None
 
-        req = LogLookupRequest(user_email="test@balizero.com")
-        result = await log_lookup(req, request)
+        req = LogLookupRequest()
+        result = await log_lookup(req, request, current_user={"email": "zero@balizero.com"})
         assert result["logged"] is False
 
     @pytest.mark.asyncio
@@ -514,7 +517,9 @@ class TestLogLookup:
         request = MagicMock()
         request.app.state.db_pool = pool
 
-        result = await log_lookup(LogLookupRequest(user_email="t@b.com"), request)
+        result = await log_lookup(
+            LogLookupRequest(), request, current_user={"email": "zero@balizero.com"}
+        )
         assert result["logged"] is False
 
 
@@ -745,8 +750,12 @@ class TestModuleConstants:
         vp = ValidatePropertyRequest(kbli_code="55111")
         assert vp.is_pma is True
 
-        ll = LogLookupRequest(user_email="x@y.com")
-        assert ll.user_email == "x@y.com"
+        # `user_email` was REMOVED from this model on 2026-08-12: the acting
+        # identity now comes from the authenticated principal, never the body.
+        # Asserting its absence is the point — a body field cannot come back
+        # without turning this red.
+        ll = LogLookupRequest(kbli_code="55111")
+        assert not hasattr(ll, "user_email")
 
         ai = AnalyzeInvestmentRequest(lat=-8.0, lon=115.0)
         assert ai.lat == -8.0
