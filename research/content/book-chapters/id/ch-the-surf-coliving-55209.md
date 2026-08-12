@@ -47,7 +47,7 @@ Inilah kenyataan yang terverifikasi, sesuai kebenaran di lapangan.
 > *   **68127 — Office Building Management (tempat coworking bernaung):** **DIUSULKAN UNTUK DITUTUP** bagi PMA asing di Bali (klaster real estate). Bukan rumah yang bersih untuk separuh ruang-kerja juga.
 >
 > **PINTU-PINTU AKOMODASI YANG BERTETANGGA**
-> *   **55201 Homestay — TERTUTUP untuk PMA (alokasi Lampiran II; model pemilik-menghuni).** **55203 Villa — TERTUTUP untuk PMA (alokasi Lampiran II).** **55101–55106 Hotel Bintang/Non-bintang — TERBUKA tapi bergantung lingkup (BLOCCATO_DIPENDE_SCOPE).**
+> *   **55201 Homestay — TERTUTUP untuk PMA (alokasi Lampiran II; model pemilik-menghuni).** **55203 Villa — TERTUTUP untuk PMA (alokasi Lampiran II).** **55101–55106 Hotel Bintang/Non-bintang — TERBUKA tapi bergantung lingkup: lingkup yang Anda deklarasikan menentukan putusannya — kecuali 55105 Hotel Bintang Satu, dialokasikan untuk Koperasi dan UMKM (0% asing).**
 >
 > **PELAJARAN DARI ANGKA-ANGKA**
 > *   Bidang usaha yang dicadangkan tertutup untuk setiap PMA, besar atau kecil. Ukuran Anda yang sederhana tidak membebaskan Anda; klasifikasi PMA Anda yang menjerat Anda.

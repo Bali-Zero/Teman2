@@ -47,7 +47,7 @@ Here is the verified, ground-truth reality.
 > *   **68127 — Office Building Management (where coworking lives):** **PROPOSED FOR CLOSURE** to foreign PMA in Bali (real-estate cluster). Not a clean home for the work-space half either.
 >
 > **THE NEIGHBOURING ACCOMMODATION DOORS**
-> *   **55201 Homestay — CLOSED (Annex II allocation; owner-resident model).** **55203 Villa — CLOSED (Annex II allocation).** **55101–55106 Star/Non-star Hotels — OPEN but scope-dependent (BLOCCATO_DIPENDE_SCOPE).**
+> *   **55201 Homestay — CLOSED (Annex II allocation; owner-resident model).** **55203 Villa — CLOSED (Annex II allocation).** **55101–55106 Star/Non-star Hotels — OPEN but scope-dependent: the scope you declare decides the verdict — except 55105 One-Star Hotels, allocated to cooperatives and MSMEs (0% foreign).**
 >
 > **THE LESSON IN THE NUMBERS**
 > *   A reserved *bidang usaha* is closed to every PMA, big or small. Your modest size does not exempt you; your PMA classification condemns you.
