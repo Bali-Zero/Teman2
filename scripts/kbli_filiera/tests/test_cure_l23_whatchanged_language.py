@@ -12,7 +12,9 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import re
 from collections import Counter
+from collections.abc import Iterable
 from pathlib import Path
 
 import pytest
@@ -712,19 +714,118 @@ def test_top_level_guilt_on_the_real_values(mod, rules, before, expected):
     assert mod.cure_text(before, rules, Counter(), normalize_whitespace=True) == expected
 
 
+def _spacify(match: re.Match) -> str:
+    return " " * len(match.group(0))
+
+
+def _neutralize_parse_noise(text: str) -> str:
+    """Replace comments and double-quoted/template string bodies with spaces.
+
+    Braces inside strings or comments must not be counted as JSX-expression
+    delimiters. Single-quoted strings are left untouched because JSX text often
+    contains apostrophes.
+    """
+    text = re.sub(r'"[^"\\]*(?:\\.[^"\\]*)*"', _spacify, text)
+    text = re.sub(r"`[^`\\]*(?:\\.[^`\\]*)*`", _spacify, text, flags=re.S)
+    text = re.sub(r"//.*?$", _spacify, text, flags=re.M)
+    text = re.sub(r"/\*.*?\*/", _spacify, text, flags=re.S)
+    return text
+
+
+def _mapping_note_guard_state(candidates: Iterable[Path]) -> tuple[bool, list[str]]:
+    """Scan TSX surfaces for truthiness-guarded mappingNote renders.
+
+    Returns (has_guard, violations). A violation is any JSX expression that
+    renders mappingNote without a truthiness guard at the top of that
+    expression. Both `mappingNote && (...)` and `mappingNote ? (...) : ...`
+    are accepted as guards.
+    """
+    guard_start = re.compile(r"^[\s\w.]*\bmappingNote\b\s*(&&|\?)")
+    violations: list[str] = []
+    has_guard = False
+
+    for path in candidates:
+        if not path.exists():
+            violations.append(f"{path}: candidate surface does not exist")
+            continue
+
+        original = path.read_text(encoding="utf-8")
+        text = _neutralize_parse_noise(original)
+        stack: list[int] = []
+        open_to_close: dict[int, int] = {}
+        i = 0
+        n = len(text)
+
+        while i < n:
+            char = text[i]
+            if char == "{":
+                stack.append(i)
+                i += 1
+            elif char == "}":
+                if stack:
+                    opening = stack.pop()
+                    open_to_close[opening] = i
+                i += 1
+            elif text.startswith("mappingNote", i):
+                # Word-boundary checks (we cannot rely on \b because we are
+                # scanning byte-by-byte).
+                prev_ok = i == 0 or not text[i - 1].isalnum()
+                next_ok = i + 11 >= n or not text[i + 11].isalnum()
+                if prev_ok and next_ok and stack:
+                    # An occurrence is guarded if ANY brace expression that
+                    # encloses it is a truthiness guard on mappingNote. This
+                    # covers the rendered value inside `{mappingNote && (...)}`.
+                    guarded = False
+                    for opening in reversed(stack):
+                        close = open_to_close.get(opening, n - 1)
+                        content = text[opening + 1 : close].strip()
+                        if guard_start.match(content):
+                            has_guard = True
+                            guarded = True
+                            break
+
+                    if not guarded:
+                        inner = stack[-1]
+                        close = open_to_close.get(inner, n - 1)
+                        content = text[inner + 1 : close]
+                        offset = i - inner - 1
+                        tail = content[offset + 11 :].lstrip()
+                        is_type_or_property = tail.startswith(":") or (
+                            tail.startswith("?") and not re.match(r"^\?\s*\(", tail)
+                        )
+                        if not is_type_or_property:
+                            line = original[:i].count("\n") + 1
+                            violations.append(
+                                f"{path}:{line}: mappingNote rendered without a truthiness guard "
+                                f"(acceptable forms: `mappingNote && (...)` or `mappingNote ? (...) : ...`)"
+                            )
+                i += 11
+            else:
+                i += 1
+
+    return has_guard, violations
+
+
 def test_the_debris_records_render_nothing_rather_than_a_dangling_dash(mod):
     """Emptying `mapping_note` must not leave "— " on the page.
 
-    Asserted against the FRONTEND SOURCE, not assumed: both consumers guard on
-    truthiness, so an empty string renders nothing. If either guard is ever
-    removed, 88 pages would show a bare em-dash and this test says so.
+    Asserted against the FRONTEND SOURCE by ENTITY, not by file path: the
+    crosswalk row moved from page.tsx into KBLITransitionSources.tsx in #4133,
+    but the truthiness guard moved with it. This test scans every surface that
+    can render mappingNote and fails if any render is unguarded or if the
+    render disappeared entirely.
     """
-    page = (REPO_ROOT / "apps" / "mouth" / "src" / "app" / "kbli" / "[code]" / "page.tsx").read_text(
-        encoding="utf-8"
+    page = REPO_ROOT / "apps" / "mouth" / "src" / "app" / "kbli" / "[code]" / "page.tsx"
+    components = sorted(
+        (REPO_ROOT / "apps" / "mouth" / "src" / "components" / "kbli").glob("*.tsx")
     )
-    faq = (REPO_ROOT / "apps" / "mouth" / "src" / "lib" / "kbli-faq.ts").read_text(encoding="utf-8")
-    assert "kbli.transition.mappingNote && (" in page, "the crosswalk row lost its truthiness guard"
-    assert "code.transition.mappingNote ?" in faq, "the FAQ answer lost its truthiness guard"
+    has_guard, violations = _mapping_note_guard_state([page, *components])
+    assert not violations, "mappingNote rendered without a truthiness guard:\n" + "\n".join(violations)
+    assert has_guard, (
+        "no truthiness guard for mappingNote found on any scanned surface; "
+        "a render that vanished entirely is also a regression. "
+        "Acceptable guard forms: `mappingNote && (...)` or `mappingNote ? (...) : ...`"
+    )
 
 
 def test_top_level_pass_is_canonical_only_because_gold_has_no_such_fields(mod, gold_payload):
