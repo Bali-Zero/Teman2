@@ -25,7 +25,16 @@ the patch is evidence, the landing lane is ours.
 
 ```bash
 python3 scripts/jules_dispatch.py list-sources
-python3 scripts/jules_dispatch.py new --prompt "..." [--source sources/github/Balizero1987/Teman2] [--branch main] [--title ...]
+python3 scripts/jules_dispatch.py new --prompt "..." [--source sources/github/Bali-Zero/Teman2] [--branch main] [--title ...]
+# `new` first checks the source is one Jules can actually see and REFUSES (exit 3)
+# with the visible list if it is not. Escape: --skip-source-check.
+#
+# 2026-08-12 — if that refusal fires naming only unrelated repos, the cause is
+# almost certainly this: the repo moved from the personal account `Balizero1987`
+# to the `Bali-Zero` ORG, and a GitHub App installation does NOT follow a repo
+# transfer. Re-install the app on the owning org and grant it the repo:
+#   https://github.com/apps/google-labs-jules/installations/new
+# then re-run `list-sources` — the fix is on GitHub's side, never in this file.
 python3 scripts/jules_dispatch.py status sessions/<id>
 python3 scripts/jules_dispatch.py activities sessions/<id> [--limit 30]
 python3 scripts/jules_dispatch.py --selftest   # offline guilt+innocence (6 checks)
