@@ -132,6 +132,72 @@ note_pass "extraction — path-aware block extracted from the live hook ($block_
 # $3 = PREPUSH_FULL env value (or unset)
 # $4 = PREPUSH_PATHAWARE env value (or unset)
 # $5 = classifier stub verdict ("full" | "skip-backend" | "crash")
+# The extracted block runs exactly three git operations — `git fetch origin
+# main`, `git merge-base origin/main <local_sha>`, `git diff <base>
+# <local_sha>`. Pointing them at the AMBIENT checkout makes this test's
+# meaning depend on that checkout's history, and that is not a hypothetical:
+# measured 2026-08-13 on PR #4142, `prepush-guards` runs under
+# actions/checkout with `fetch-depth: 1`, so there is no common ancestor,
+# `merge-base` fails honestly, and the block leaves through its fail-closed
+# branch WITHOUT ever consulting the classifier.
+#
+# The damage is not the red — it is that RESULT_RUN_BACKEND=0 is ALSO what
+# fail-closed produces, so every case asserting 0 was satisfied by the wrong
+# world and passed for a reason it does not name. Only Case 7's mutant, which
+# needs the classifier's verdict to be READ, could tell the two apart.
+#
+# So the harness builds the world it needs instead of borrowing one: a
+# throwaway repo whose `origin` is itself, carrying a real `main` and a real
+# branch commit on top. Identical in CI and locally, offline-safe (Law 6),
+# and independent of how any workflow happens to check the repository out.
+make_throwaway_repo() {
+    _r="$1"
+    git init -q "$_r"
+    git -C "$_r" symbolic-ref HEAD refs/heads/main
+    # Inherited global config must not reach in: a global core.hooksPath
+    # would run THIS repo's hooks inside the fixture, and commit signing
+    # would fail the fixture on a machine that has it on.
+    git -C "$_r" config core.hooksPath "$_r/.git/hooks"
+    git -C "$_r" config commit.gpgsign false
+    git -C "$_r" config user.email prepush-fixture@example.invalid
+    git -C "$_r" config user.name  "prepush fixture"
+
+    : > "$_r/base.txt"
+    git -C "$_r" add base.txt
+    git -C "$_r" commit -qm "fixture base"
+
+    # `origin` is the fixture itself, so `git fetch origin main` succeeds with
+    # no network and materialises a real refs/remotes/origin/main for
+    # merge-base to anchor on.
+    git -C "$_r" remote add origin "$_r"
+    git -C "$_r" fetch -q origin main
+
+    git -C "$_r" checkout -q -b test-branch
+    mkdir -p "$_r/apps/backend-rag/backend"
+    : > "$_r/apps/backend-rag/backend/touched.py"
+    git -C "$_r" add apps/backend-rag/backend/touched.py
+    git -C "$_r" commit -qm "fixture branch commit"
+}
+
+# A case whose MEANING is "the classifier ran and its verdict was honoured"
+# must say so, or it is satisfied by the fail-closed world too — every one of
+# those worlds also ends at PREPUSH_RUN_BACKEND=0.
+#
+# The list below is the block's COMPLETE set of bail-outs that happen BEFORE
+# a verdict is read, enumerated by reading the block's own `echo`s rather
+# than recalled — a partial enumeration here would just relocate the blind
+# spot. It deliberately excludes the two messages printed AFTER the
+# classifier ran (`classifier exited N`, `unrecognized classifier output`):
+# those mean the verdict WAS reached, and Case 4 depends on that difference.
+reached_the_classifier() {
+    ! printf '%s\n' "$1" | grep -qE \
+        "this gate only trusts 'origin' as the diff baseline|\
+mktemp failed|\
+'git fetch origin main' failed|\
+could not safely compute the changed-file diff|\
+no python3/python on PATH to run the classifier"
+}
+
 run_pathaware_block_with_text() {
     _text="$1"
     _remote="$2"
@@ -140,6 +206,9 @@ run_pathaware_block_with_text() {
     _verdict="$5"
 
     _td="$(mktemp -d)"
+    _repo="$_td/repo"
+    mkdir -p "$_repo"
+    make_throwaway_repo "$_repo"
     _classifier="$_td/classify.py"
     case "$_verdict" in
         crash)
@@ -151,13 +220,14 @@ run_pathaware_block_with_text() {
     esac
 
     _refs="$_td/refs"
-    _head="$(git -C "$REPO_ROOT" rev-parse HEAD)"
-    printf 'refs/heads/test-branch %s refs/heads/test-branch %s\n' "$_head" "$_head" > "$_refs"
+    _head="$(git -C "$_repo" rev-parse test-branch)"
+    _base="$(git -C "$_repo" rev-parse main)"
+    printf 'refs/heads/test-branch %s refs/heads/test-branch %s\n' "$_head" "$_base" > "$_refs"
 
     _out="$_td/script.sh"
     {
         echo 'set -e'
-        echo "cd \"$REPO_ROOT\""
+        echo "cd \"$_repo\""
         echo "PREPUSH_RUN_BACKEND=0"
         echo "PREPUSH_CLASSIFIER=\"$_classifier\""
         echo "PREPUSH_REFS=\"$_refs\""
@@ -180,8 +250,10 @@ run_pathaware_block() {
 }
 
 out2="$(run_pathaware_block origin "" "" full)"
-if printf '%s\n' "$out2" | grep -q '^RESULT_RUN_BACKEND=0$'; then
-    note_pass "GUILT — classifier verdict 'full' (backend WAS touched) still leaves PREPUSH_RUN_BACKEND=0 by default"
+if ! reached_the_classifier "$out2"; then
+    note_fail "GUILT — the block gave up BEFORE reading the verdict (fail-closed diff/fetch), so a 0 here means nothing: $out2"
+elif printf '%s\n' "$out2" | grep -q '^RESULT_RUN_BACKEND=0$'; then
+    note_pass "GUILT — classifier verdict 'full' (backend WAS touched) still leaves PREPUSH_RUN_BACKEND=0 by default, AND the block demonstrably reached the verdict to do it"
 else
     note_fail "GUILT — expected PREPUSH_RUN_BACKEND=0 on a 'full' verdict, got: $out2"
 fi
@@ -192,8 +264,10 @@ fi
 # behaviour, unperturbed by this diff.
 # ---------------------------------------------------------------------------
 out3="$(run_pathaware_block origin "" "" skip-backend)"
-if printf '%s\n' "$out3" | grep -q '^RESULT_RUN_BACKEND=0$'; then
-    note_pass "innocence — classifier verdict 'skip-backend' still leaves PREPUSH_RUN_BACKEND=0 (unchanged behaviour)"
+if ! reached_the_classifier "$out3"; then
+    note_fail "innocence — the block gave up BEFORE reading the verdict (fail-closed diff/fetch), so a 0 here means nothing: $out3"
+elif printf '%s\n' "$out3" | grep -q '^RESULT_RUN_BACKEND=0$'; then
+    note_pass "innocence — classifier verdict 'skip-backend' still leaves PREPUSH_RUN_BACKEND=0 (unchanged behaviour), verdict demonstrably reached"
 else
     note_fail "innocence — expected PREPUSH_RUN_BACKEND=0 on a 'skip-backend' verdict, got: $out3"
 fi
@@ -207,15 +281,20 @@ fi
 # stage) and PREPUSH_RUN_BACKEND must still read 0.
 # ---------------------------------------------------------------------------
 out4="$(run_pathaware_block origin "" "" crash)"
-if printf '%s\n' "$out4" | grep -q '^RESULT_RUN_BACKEND=0$'; then
+if ! reached_the_classifier "$out4"; then
+    note_fail "innocence — the block gave up BEFORE running the classifier, so this says nothing about a CRASHING one: $out4"
+elif printf '%s\n' "$out4" | grep -q '^RESULT_RUN_BACKEND=0$'; then
     note_pass "innocence — a crashing/ambiguous classifier still leaves PREPUSH_RUN_BACKEND=0 (CI is the real gate now, not local ambiguity-driven full-run)"
 else
     note_fail "innocence — expected PREPUSH_RUN_BACKEND=0 on a crashing classifier, got: $out4"
 fi
-if printf '%s\n' "$out4" | grep -qi 'fail.closed'; then
-    note_pass "innocence — the ambiguity is still reported (a 'fail closed' diagnostic line is still printed)"
+# Anchored on the CLASSIFIER's own diagnostic, not on any 'fail closed' text:
+# the block prints that phrase from five pre-verdict bail-outs too, so a loose
+# match here is satisfied by a run that never reached the classifier at all.
+if printf '%s\n' "$out4" | grep -q 'classifier exited 3'; then
+    note_pass "innocence — the ambiguity is still reported, and by the classifier's OWN diagnostic (exit code named), not by a generic 'fail closed' line any bail-out would print"
 else
-    note_fail "innocence — no 'fail closed' diagnostic was printed for a crashing classifier: $out4"
+    note_fail "innocence — no 'classifier exited 3' diagnostic was printed for a crashing classifier: $out4"
 fi
 
 # ---------------------------------------------------------------------------
@@ -256,10 +335,15 @@ fi
 # `diff` confirms the mutation actually attached (measured scar, same
 # night: a "surviving mutant" that turned out to be a substitution that was
 # never applied — read the diff BEFORE trusting the mutant's exit code).
+#
+# The anchor is an ASCII-only SUBSTRING matched with awk's index(), not the
+# whole line matched with `==`: the line it targets ends in a multi-byte
+# em-dash, and an exact-line anchor makes attachment depend on the awk
+# implementation and locale. Keep every mutation anchor here ASCII-only.
 # ---------------------------------------------------------------------------
-_mutation_anchor='        # VERDICT_OUTPUT = "full": PREPUSH_RUN_BACKEND stays at its default —'
+_mutation_anchor='# VERDICT_OUTPUT = "full": PREPUSH_RUN_BACKEND stays at its default'
 mutated_guilt_block="$(printf '%s\n' "$block_text" | awk -v anchor="$_mutation_anchor" '
-    $0 == anchor { print "        [ \"$VERDICT_OUTPUT\" = \"full\" ] && PREPUSH_RUN_BACKEND=1" }
+    index($0, anchor) > 0 { print "        [ \"$VERDICT_OUTPUT\" = \"full\" ] && PREPUSH_RUN_BACKEND=1" }
     { print }
 ')"
 
@@ -274,7 +358,9 @@ else
     note_pass "mutation setup — confirmed via diff: the mutation added exactly 1 line (a 'full' verdict forcing PREPUSH_RUN_BACKEND=1 again, the pre-diff behaviour)"
 
     out7="$(run_pathaware_block_with_text "$mutated_guilt_block" origin "" "" full)"
-    if printf '%s\n' "$out7" | grep -q '^RESULT_RUN_BACKEND=1$'; then
+    if ! reached_the_classifier "$out7"; then
+        note_fail "mutation inconclusive — the mutated block gave up BEFORE reading the verdict, so the mutation could not possibly fire and this proves nothing about Case 2. This is exactly the CI failure of 2026-08-13 (shallow checkout, no merge-base): $out7"
+    elif printf '%s\n' "$out7" | grep -q '^RESULT_RUN_BACKEND=1$'; then
         note_pass "mutation kills — Case 2's exact scenario against the mutated block reports RESULT_RUN_BACKEND=1 (the pre-diff regression), proving Case 2 would have failed against this shape — it is not vacuously true"
     else
         note_fail "mutation survived — Case 2's scenario against the mutated block still reports 0, expected the mutation to flip it to 1: $out7"
