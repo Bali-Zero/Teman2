@@ -20,7 +20,37 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 - **Bali Zero team**: work-support assistant. Check-in via WA (opens the free Meta 24h window),
   CRM nudges, PII-light briefings. Persona = "assistente operativo interno", not sales.
 
-## 1. LIVE STATE (last update 2026-08-11 — keep current)
+## 1. LIVE STATE (last update 2026-08-12 — keep current)
+
+- **🔇 THE ONLY EXITS THAT LEAVE THE CLIENT SILENT WERE THE ONLY ONES THAT TOLD NOBODY
+  (2026-08-12, CURED).** `generate_bot_reply` notifies a human at the BOTTOM of the function,
+  and three of its five exits are `raise` statements that jump straight over it. So every path
+  that produced a reply notified, and the three that leave the client with NOTHING notified
+  nobody — the contract inverted. Sharpest instance: the empty-after-`[ESCALATE]`-strip raise
+  sits **two statements after** `human_reason = "persona_escalate_marker"`, so the client asked
+  for a human and the request died with the message. Cure: `_tell_a_human` called immediately
+  before each of the three; the raise itself is UNCHANGED, so the worker still parks and retries
+  and nothing new is sent to the client. Per-thread dedup (30 min) means five retries produce one
+  alert.
+  - **What this is worth, measured live, not argued:** `meta_inbox_threads` = **40** threads,
+    **32** with at least one bot give-up, **4** ever touched by a human (`handling_version > 0`,
+    max 1). The corner previously carried "28 / 26 / 4" — the human-touch count has **not moved**
+    while give-ups grew. The five threads silenced on **2026-07-28** (team-beta day) carry 34
+    give-ups between them and `handling_version = 0` on every one.
+  - **Declared scope: 3 of 5, on purpose.** The two `BotStandingCondition` exits (flag off; no
+    customer message in window) are NOT notified — that class means "standing condition, not
+    incident", and the flag-off branch alone is 44 of the recorded give-ups (3-19 June).
+  - **Latency of the cure vs reality:** `empty RAG answer` has **never** appeared in the
+    `meta_inbox_messages` give-up ledger, and the `[ESCALATE]` marker is emitted by no prompt.
+    Both cured paths are real in code and unobserved on WhatsApp — do not cite this entry as
+    evidence that clients were being silenced by _those two_; the evidence above is about what
+    happens when any give-up occurs.
+  - **CORRECTS the 2026-07-27 bullet below** (`§ "THE WHATSAPP PATH THROWS THE REFUSAL AWAY"`),
+    which still reads **"Zero abstains, ever."** True the day it was written; **false since
+    2026-07-28**, when five threads gave up with the error
+    `RAG abstained for thread N (reason='no_relevant_context')`.
+    That specific hole was closed on 2026-08-11 by #4039
+    (`_safe_abstain_reply` + `human_reason="rag_abstain"`); this entry closes the rest of the class.
 
 - **📚 HALF THE CURATED GROUNDING STORE IS SERVED, UNREVIEWABLE, AND CANNOT BE WITHDRAWN
   (2026-08-11).** The `curated_qa` Qdrant collection holds **808 points**. Exactly **396** map to a
@@ -756,7 +786,13 @@ RuntimeError(...)` before a message is ever composed. Its docstring states it as
   the sentinel `bot_generate_failed_after_5_attempts:`, and classifying all 52 give-ups gives:
   **44 = `wa-inbox bot auto-reply not enabled in v1`** (2-18 June — the bot was simply switched
   off), 5 = `no customer message in thread <n>`, 2 = RAG `500` (12 July), 1 = `401 Unauthorized`.
-  **Zero abstains, ever.** So the discard is a LATENT defect: real in the code, never yet fired
+  **Zero abstains, ever.** _[STALE since 2026-07-28 — see the 2026-08-12 entry at the top of §1:
+  five threads (249/250/252/259/263) gave up with the error
+  `RAG abstained for thread N (reason='no_relevant_context')`
+  on the team-beta day, so the defect below stopped being latent
+  the day after this was written. Cured 2026-08-11 by #4039. The counts in the paragraph above —
+  28/26/4 — are also stale: re-measured 2026-08-12 they are **40 / 32 / 4**, i.e. the
+  human-touch number never moved.]_ So the discard is a LATENT defect: real in the code, never yet fired
   in production. Current state is healthy — week of 19 July: **0 generation failures on 13
   inbound** (small sample, stated as such).
 

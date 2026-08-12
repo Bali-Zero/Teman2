@@ -26,6 +26,27 @@ OGNI agent session (subagent dispatch / cron-spawned claude / parallel Claude Co
 
 Quick start: `python scripts/agent_start.py --lane <X> --task-id <Y>` → cd output path → spawn agent. Kill switch `AGENT_BROKER_ENABLED=false`. Runbook: `docs/runbooks/agent-worktree-broker.md`. SOTA panel reference: `research/operations/2026-05-24-sota-multi-agent-repo-architecture-synthesis.md`.
 
+## Agent PR Contract (Merge-OS v2 Wave 0)
+
+These seven rules apply to every agent-produced PR. They govern lifecycle discipline; they do
+not grant a role authority that its own contract withholds (for example, an external builder
+still does not arm, merge, or deploy). The operational commands are documented in
+`docs/runbooks/merge-queue-discipline.md`.
+
+1. **One PR, one concern.** Target no more than about 400 net lines when the nature of the work
+   permits it.
+2. **Arm means freeze.** After `mq arm`, the branch is read-only. Put every follow-up in a new
+   PR created from a fresh `origin/main`.
+3. **Never rerun a check without repointing the ref.** Use `mq requeue`; never use a bare
+   `gh run rerun`.
+4. **Never commit while a push is in flight.** Judge the push by its captured return code, not
+   by a background-task summary.
+5. **Serialize Dependabot PRs that share a lockfile.** Arm them one at a time.
+6. **Use a dedicated worktree and make the claim commit first.** Branches use the
+   `agent/<host>/<lane>/...` namespace.
+7. **After merge, run `mq handoff`.** The merged branch is dead; its successor starts from a
+   fresh `origin/main`.
+
 ## 2. Behavior & Autonomous Ops
 
 **DO NOT ask the user to write code.** Act first, ask if blocked. Use `Edit`/`Write`/`Bash` without asking permission.

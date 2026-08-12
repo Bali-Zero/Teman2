@@ -351,6 +351,7 @@ const FIXED_CATEGORY_QUESTIONS: Record<CategoryKey, readonly string[]> = {
     "entry_pattern",
   ],
   work: [
+    "sponsor_category",
     "work_payer",
     "work_indonesia_compensation",
     "work_sponsor_confirmed",
@@ -358,6 +359,7 @@ const FIXED_CATEGORY_QUESTIONS: Record<CategoryKey, readonly string[]> = {
     "stay_days",
   ],
   remote: [
+    "sponsor_category",
     "remote_clients",
     "remote_compensation",
     "remote_employer_country",
@@ -368,6 +370,7 @@ const FIXED_CATEGORY_QUESTIONS: Record<CategoryKey, readonly string[]> = {
   invest: [],
   retirement: [],
   study: [
+    "sponsor_category",
     "study_level",
     "study_admission_confirmed",
     "study_sponsor_confirmed",
@@ -405,7 +408,12 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
                 "secondhome_own_name",
               ]
             : [];
-    return ["investment_vehicle", ...branchQuestions, "stay_days"];
+    return [
+      "sponsor_category",
+      "investment_vehicle",
+      ...branchQuestions,
+      "stay_days",
+    ];
   }
 
   if (category === "retirement") {
@@ -425,7 +433,12 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
             : branch === "family_sponsor"
               ? ["secondhome_passive_income_usd", "family_sponsor_confirmed"]
               : [];
-    return ["retirement_basis", ...branchQuestions, "stay_days"];
+    return [
+      "sponsor_category",
+      "retirement_basis",
+      ...branchQuestions,
+      "stay_days",
+    ];
   }
 
   if (category === "family") {
@@ -435,6 +448,7 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
       facts.family_sponsor_nationalities !== "unsure" &&
       !sponsorCodes.includes("ID");
     return [
+      "sponsor_category",
       "family_relation",
       "marital_status",
       "family_sponsor_nationalities",

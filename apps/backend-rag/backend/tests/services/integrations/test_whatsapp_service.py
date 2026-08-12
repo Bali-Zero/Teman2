@@ -86,7 +86,21 @@ async def test_send_message_strips_plus_truncates_and_adds_reply_context() -> No
         "Content-Type": "application/json",
     }
     assert post["json"]["to"] == "6281234567890"
-    assert post["json"]["text"] == {"body": "x" * 4096}
+    # Truncation is now BOUNDARY-AWARE AND VISIBLE, so this no longer asserts a
+    # bare `[:4096]` slice. That old assertion pinned the exact defect this
+    # branch removes: a hard slice cut mid-word and told the recipient nothing,
+    # so a decapitated answer read as a complete one. Measured live: ~10% of
+    # ordinary questions crossed the limit, worst case 13,671 characters — and
+    # on 2026-08-11 one came back at 123,745.
+    #
+    # What must hold is asserted, not the exact string: within the platform
+    # limit, a genuine PREFIX of what was asked for (nothing invented), and
+    # carrying a marker so the cut is visible.
+    body = post["json"]["text"]["body"]
+    assert len(body) <= 4096
+    assert body != "x" * 5000
+    assert body.rstrip("…").strip() == "x" * len(body.rstrip("…").strip())
+    assert body.endswith("…"), "a truncated body must say that it was truncated"
     assert post["json"]["context"] == {"message_id": "reply-1"}
 
 

@@ -1,3 +1,7 @@
+---
+adversarial_review: codex
+---
+
 # CHAPTER: The Yoga & Retreat Studio
 
 **1. The Dream**
@@ -47,9 +51,9 @@ Here is the verified, ground-truth reality.
 >     *   *What it covers:* Non-degree training, camps, and immersions in sport and recreation—explicitly including yoga teacher trainings, surf schools, and recreational instruction.
 >
 > **THE MINEFIELD — THE LODGING**
-> *   **55203 — Villa:** **CLOSED** to PMA (no Besar scale / reserved for UMKM).
-> *   **55201 — Homestay (Pondok Wisata):** **CLOSED** (reserved for Indonesian citizens).
-> *   **55209 — Other Short-Term Accommodation:** **CLOSED** to PMA (no Besar scale).
+> *   **55203 — Villa:** **CLOSED** to PMA (allocated to cooperatives/MSMEs — Perpres 10/2021 as amended by 49/2021, Annex II).
+> *   **55201 — Homestay (Pondok Wisata):** **CLOSED** to PMA (same Annex II allocation; owner-resident model).
+> *   **55209 — Other Short-Term Accommodation:** **scope-dependent.** The Annex II reservation reaches only the *Guest House* sub-activity named in it (Perpres 10/2021 Pasal 5(5)); the rest of the code depends on the scope you declare — verify live on OSS.
 >
 > **THE LESSON IN THE NUMBERS**
 > *   Your retreat is two businesses: teaching (open) and lodging (mostly closed). Keep them separate. Own the program; partner for the property.
@@ -115,3 +119,12 @@ Each adjacent code below reads as registrable for a foreign-owned PMA in Bali in
 The principle underneath all five routes is the seam itself: **own what travels, partner for what is rooted.** The program, the curriculum, the brand, the certificate, the package — these move with you and the island has, for now, left their doors open. The beds, the land, the lodging — these are rooted, finite, and reserved, and the way through is never to own them under your own blocked code but to source them from someone who holds the licence. The retreat founders who finish are the ones who built the open half with conviction and refused to staple the closed half to it. Keep the seam clean and confirm each door live, and it stays open; blur it once and the whole structure inherits the lock.
 
 *Before you sign anything, scan to check the live status of KBLI 85510 — and of the routes around it (79121, 82990, 56210, 56101, 85691, 85692) plus the blocked accommodation codes (55203, 55201, 55209) — on the Nuzantara platform, remembering that each registrable code carries its own OSS risk tier and sector permits to confirm at registration.*
+
+## Adversarial review
+
+- Seat: Codex `gpt-5.6-sol` (reasoning xhigh), refute stance, cross-family — reviewed the
+  2026-08-12 retraction-cure diff touching this file, verified against
+  `KBLI_2025_FINAL_CLEAN.json` (the cured dataset).
+- Outcome: FIX-FIRST → fixed in this same PR. 10 findings (9 confirmed/accommodated, 1 HOLDS): 96220 national status corrected to TERBATAS 0% (measured); 55201/55203 restated as the same Annex II entry 48 (sub-rows *Pondok Wisata* / *Vila*); the annex stated as a national instrument (articles 01/02); honest-map wording corrected (33.2% = almost exactly one in three; all but FOUR of the 372 nationally open; 1,041 = "not blocked", not "open"); surf-coliving guest-house-scope reading stated as OSS's call, not the founder's certainty; stale ID fact-sheet row (55203 "tanpa Besar") cured. Every fix re-measured against KBLI_2025_FINAL_CLEAN.json before applying.
+- Note: this section and the `adversarial_review` frontmatter key are R1-gate metadata;
+  the book/PDF composer strips the frontmatter block and this section from rendered output.

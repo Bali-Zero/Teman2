@@ -165,6 +165,25 @@ run_under_runner
 check "un invio"                                "$(yes_if "$(sends)" 1)"
 check "il corpo e' la coda grezza (fallback)"   "$(body_has "$NOISE")"
 
+echo "SIMMETRIA — lo stesso payload muto, ma sotto cron-wrapper (W101, 2026-08-12)"
+# INNOCENZA 3 qui sopra gira SOLO sotto cron-runner, che ha `set -uo pipefail`.
+# cron-wrapper ha `set -euo pipefail`, e la riga che rilegge il marcatore e' una
+# pipeline NUDA: senza marcatore `grep` esce 1, pipefail lo propaga, errexit aborta
+# lo script PRIMA di send_telegram. Il ramo di fallback alla coda grezza esisteva,
+# non poteva scattare.
+#
+# Misurato vivo su Mini prima della cura: visa-oracle-retention e' fallito 31 volte
+# di fila in ~8h (exit 75 dal suo shim, che non stampa il marcatore) e nello spool
+# Telegram della macchina compare ZERO volte — mentre 8 altre sorgenti ci arrivavano,
+# quindi il gateway funzionava. Il caso-che-funziona (col marcatore) era gia' provato
+# sotto ENTRAMBI i wrapper; il caso-che-rompe sotto uno solo. Un corpus asimmetrico
+# copre la forma, non la classe: e' la lezione W107 ripetuta dentro il test scritto
+# per chiuderla.
+PAYLOAD_BODY=':' build_world
+run_under_wrapper 0
+check "un invio anche senza marcatore"          "$(yes_if "$(sends)" 1)"
+check "il corpo e' la coda grezza (fallback)"   "$(body_has "$NOISE")"
+
 echo "INNOCENZA 4 — un job che riesce non dice niente"
 PAYLOAD_BODY=':' build_world
 JOB_EXIT=0 run_under_runner

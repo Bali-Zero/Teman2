@@ -363,9 +363,11 @@ export function proxy(request: NextRequest) {
       rewriteUrl.pathname = "/chat";
       const rewriteResponse = NextResponse.rewrite(rewriteUrl);
       rewriteResponse.headers.set("x-pathname", pathname);
+      rewriteResponse.headers.set("X-Robots-Tag", "noindex, nofollow");
       return rewriteResponse;
     }
     // All other routes (/login, /api, etc.) pass through as-is
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
     return response;
   }
 
@@ -443,17 +445,6 @@ export function proxy(request: NextRequest) {
       const rewriteUrl = request.nextUrl.clone();
       rewriteUrl.pathname = rewritePath;
       return NextResponse.rewrite(rewriteUrl);
-    }
-
-    // SEO: Block indexing for zantara subdomain (internal app)
-    // robots.txt override
-    if (pathname === "/robots.txt") {
-      return new NextResponse("User-agent: *\nDisallow: /", {
-        headers: {
-          "Content-Type": "text/plain",
-          "Cache-Control": "public, max-age=3600",
-        },
-      });
     }
 
     // Add X-Robots-Tag header to all responses from zantara subdomain

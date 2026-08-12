@@ -25,6 +25,7 @@ from typing import Any
 
 import asyncpg
 
+from backend.core.secret_log_redaction import install_telegram_token_redaction
 from backend.services.federation_alerts.approval import (
     is_admin_chat_id,
     verify_callback_token,
@@ -37,6 +38,8 @@ from backend.services.federation_alerts.notifier import (
     edit_message_after_decision,
 )
 from backend.services.federation_alerts.repository import FederationAlertRepo
+
+install_telegram_token_redaction()
 
 logger = logging.getLogger(__name__)
 

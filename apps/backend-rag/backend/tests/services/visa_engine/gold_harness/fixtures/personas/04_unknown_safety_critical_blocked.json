@@ -1,7 +1,7 @@
 {
   "persona_id": "04_unknown_safety_critical_blocked",
   "narrative": "Applicant whose passport nationality could not be captured during intake; the safety-critical gap blocks every path pending clarification.",
-  "notes": "",
+  "notes": "Fixed 2026-08-12 (adapter.py alignment): person.nationalities UNKNOWN makes the GLOBAL hr-calling-visa HUMAN_REVIEW rule's own condition UNKNOWN; hr-calling-visa declares on_unknown=HUMAN_REVIEW, so this now correctly escalates straight to REVIEW (a human must look) rather than falling to BLOCKED_UNKNOWN (asking the applicant for more facts) -- on_unknown=HUMAN_REVIEW outranks on_unknown=NEEDS_INPUT within one stage, mirroring evaluator.py's own on_unknown-policy precedence. This is GLOBAL scope, so every product's own stage loop reaches the identical escalation independently (not only the pre-pass), and the GLOBAL decision is HUMAN_REVIEW_REQUIRED, not NEEDS_INPUT.",
   "facts": {
     "person.birth_date": {
       "status": "KNOWN",
@@ -169,14 +169,13 @@
     }
   },
   "expected": {
-    "global_state": "NEEDS_INPUT",
-    "global_missing_facts": ["person.nationalities"],
+    "global_state": "HUMAN_REVIEW_REQUIRED",
+    "global_reason_codes": ["CALLING_VISA_REVIEW"],
     "products": {},
     "default": {
       "kind": "DOMINANT_GLOBAL",
-      "state": "BLOCKED_UNKNOWN",
-      "reason_codes": []
-    },
-    "default_missing_facts": ["person.nationalities"]
+      "state": "REVIEW",
+      "reason_codes": ["CALLING_VISA_REVIEW"]
+    }
   }
 }

@@ -54,6 +54,21 @@ PROTECTED_FILES = [
     _HOME / ".zshenv",
     _HOME / ".zshrc",
 ]
+
+# --- CARVE-OUT (2026-06-16): liberati dentro ~/.claude perché NON sono control-plane né credenziali.
+# scripts/ = strumenti dell'agente · projects/.../memory/ = la sua memoria. Scriverci non disarma
+# guardrail (hooks/settings restano blindati) né tocca secret. Risolve l'over-block "tutto ~/.claude e' sacro".
+UNPROTECTED_SUBPATHS = [
+    _HOME / ".claude" / "scripts",
+    _HOME / ".claude" / "projects",      # la memoria (MEMORY.md + i .md) vive qui
+    _HOME / ".claude" / "venvs",
+    # CARVE-OUT (2026-06-23): output di apprendimento agent WR2 (proposte amendment, lessons
+    # Reflexion, observations). NON control-plane — sono i RISULTATI che gli agent DEVONO scrivere.
+    # L'over-block faceva girare ig-metrics-analyst/reflexion senza persistere l'output.
+    _HOME / ".claude" / "skills" / "bali-zero-brand" / "_proposed-amendments",
+    _HOME / ".claude" / "skills" / "bali-zero-brand" / "_lessons",
+    _HOME / ".claude" / "skills" / "bali-zero-brand" / "_observations",
+]
 # Secret-ISH read targets → WARN only (visibility, not block).
 SECRET_READ_HINTS = (
     ".env", "secrets", "id_rsa", "id_ed25519", "credentials",
@@ -139,6 +154,16 @@ def _resolve_target(path_str: str, cwd: str) -> pathlib.Path | None:
 
 def _is_protected(resolved: pathlib.Path) -> bool:
     """True if a resolved path is a protected file or under a protected dir."""
+    # carve-out: scripts/memory/venvs sotto ~/.claude sono mani+quaderno, non cervello+chiavi
+    for u in UNPROTECTED_SUBPATHS:
+        try:
+            if resolved == u or resolved.is_relative_to(u):
+                return False
+        except AttributeError:
+            try:
+                resolved.relative_to(u); return False
+            except ValueError:
+                pass
     if resolved in PROTECTED_FILES:
         return True
     for d in PROTECTED_DIRS:

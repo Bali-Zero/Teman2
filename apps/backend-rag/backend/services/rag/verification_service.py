@@ -20,6 +20,22 @@ from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient, LLMStructured
 logger = logging.getLogger(__name__)
 
 
+def _verifier_enabled() -> bool:
+    """Read the VERIFIER_ENABLED lever. Default ON — absence changes nothing.
+
+    Falsy set copied from `main_api._wa_outbox_scheduler_enabled` rather than
+    invented: an operator who has learnt that `0`/`false`/`no`/`off` turns one
+    switch off in this codebase must not discover that a different switch
+    silently accepts only one of them and stays ON for the rest.
+    """
+    return os.getenv("VERIFIER_ENABLED", "true").strip().lower() not in {
+        "0",
+        "false",
+        "no",
+        "off",
+    }
+
+
 class VerificationStatus(str, Enum):
     """
     Verification status for RAG-generated responses.
@@ -106,9 +122,29 @@ class VerificationService:
         # scripts/verifier_model_ab.py) — default behavior is UNCHANGED.
         self.model_name = os.getenv("VERIFIER_MODEL", "gemini-3.5-flash")
         logger.info("🛡️ [VerificationService] verifier model: %s", self.model_name)
+        # Cost lever, default ON so behaviour is unchanged unless someone asks.
+        # Measured 2026-08-12 on the live ledger: over 2026-08-10..11 this
+        # service was 682 calls / $5.26 of $14.69 total Gemini spend — 36% —
+        # and it fires IN ADDITION to every chat call, invisible to the client.
+        # Until now there was no way to turn it off short of editing code, so
+        # the owner could not act on that number. Whether it SHOULD be off is a
+        # product judgement (answer quality vs cost) and is deliberately not
+        # decided here: this only builds the switch.
+        self._enabled = _verifier_enabled()
+        if not self._enabled:
+            logger.warning(
+                "🛡️ [VerificationService] DISABLED via VERIFIER_ENABLED — "
+                "answers ship with verdict_available=False, never a false 'verified'"
+            )
 
     def _get_genai_client(self) -> GenAIClient | None:
-        """Lazy load GenAI client."""
+        """Lazy load GenAI client. Returns None when the service is switched off.
+
+        Gating HERE and not only in `verify_response` means a disabled verifier
+        never even constructs a client, so it cannot spend by any other path.
+        """
+        if not self._enabled:
+            return None
         if self._genai_client is None and settings.google_api_key and GENAI_AVAILABLE:
             try:
                 self._genai_client = GenAIClient(api_key=settings.google_api_key)
@@ -133,6 +169,22 @@ class VerificationService:
         """
         Verify if the draft answer is supported by the context chunks.
         """
+        if not self._enabled:
+            # Same no-verdict SHAPE as the unavailable branch below — that path
+            # is already proven not to mint a false "verified" — but with its
+            # own honest reason. Reusing the "model unavailable" string here
+            # would tell whoever reads this at 07:30 that the model broke, when
+            # in fact someone switched it off on purpose.
+            return VerificationResult(
+                is_valid=True,
+                status=VerificationStatus.PARTIALLY_VERIFIED,
+                score=0.5,
+                reasoning=(
+                    "Verification DISABLED (VERIFIER_ENABLED is off) — verdict unavailable."
+                ),
+                verdict_available=False,
+            )
+
         client = self._get_genai_client()
         if not client or not client.is_available:
             # No verdict path, same as the others below (round-2 red-team

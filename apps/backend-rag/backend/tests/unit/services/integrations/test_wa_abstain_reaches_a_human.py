@@ -56,6 +56,38 @@ def _thread(thread_id: int = 42, phone: str = "621234567890") -> dict:
     return {"thread_id": thread_id, "counterpart_phone": phone}
 
 
+async def _run_expecting_silence(
+    payload: dict,
+    *,
+    query: str = "Any deadlines I should worry about for my clients this week?",
+    notifier: AsyncMock | None = None,
+):
+    """Drive generate_bot_reply for a payload whose path ends in a ``raise``.
+
+    ``_run`` cannot serve these cases: the exception unwinds past its return
+    statement, so the notifier mock it built is unreachable — which is a small
+    echo of the defect under test, where the ``raise`` also unwinds past the
+    notification at the bottom of the function.
+
+    Returns (notifier_mock, the raised exception).
+    """
+    from backend.services.integrations import wa_inbox_bot
+
+    notifier = notifier if notifier is not None else AsyncMock(return_value=True)
+    client = AsyncMock()
+    client.post = AsyncMock(return_value=_Resp(payload))
+
+    with (
+        patch(f"{BOT}.is_bot_autoreply_enabled", return_value=True),
+        patch(f"{BOT}._load_thread_context", AsyncMock(return_value=(query, []))),
+        patch(f"{BOT}._get_rag_client", AsyncMock(return_value=client)),
+        patch(f"{BOT}.notify_human_telegram", notifier),
+        pytest.raises(RuntimeError) as excinfo,
+    ):
+        await wa_inbox_bot.generate_bot_reply(None, _thread())
+    return notifier, excinfo.value
+
+
 async def _run(payload: dict, *, query: str = "What documents do I need for a KITAS?"):
     """Drive generate_bot_reply against a canned RAG payload.
 
@@ -97,9 +129,7 @@ class TestGuiltAHumanIsTold:
 
         Byte-identical answer: escalating is additive, it never edits the reply.
         """
-        reply, notifier = await _run(
-            {"abstain": False, "answer": "Here is your answer.[ESCALATE]"}
-        )
+        reply, notifier = await _run({"abstain": False, "answer": "Here is your answer.[ESCALATE]"})
 
         notifier.assert_awaited_once()
         assert notifier.await_args.kwargs["reason"] == "persona_escalate_marker"
@@ -182,9 +212,7 @@ class TestPIIThePayloadIsNotWidened:
 class TestInnocenceTheOrdinaryPathIsUntouched:
     @pytest.mark.asyncio
     async def test_a_normal_answer_notifies_nobody(self) -> None:
-        reply, notifier = await _run(
-            {"abstain": False, "answer": "A KITAS needs X, Y, Z."}
-        )
+        reply, notifier = await _run({"abstain": False, "answer": "A KITAS needs X, Y, Z."})
 
         notifier.assert_not_awaited()
         assert "KITAS needs X, Y, Z" in reply
@@ -208,8 +236,99 @@ class TestInnocenceTheOrdinaryPathIsUntouched:
 
     @pytest.mark.asyncio
     async def test_an_empty_answer_still_raises(self) -> None:
-        """The retry ladder survives for the failures it was built for: an empty
-        answer is a broken generation, not a refusal, and must still park the
-        row rather than notify and send."""
+        """The retry ladder survives for the failures it was built for.
+
+        CORRECTED 2026-08-12. This docstring used to say the row is parked
+        "rather than notify and send", while the body only ever asserted the
+        raise — so the notify half was an unenforced intention, and it is now
+        deliberately the opposite (see ``TestGuiltSilenceAlsoTellsAHuman``):
+        the 2026-08-10 battery measured a 0-character answer 5 times out of 5
+        on the same question, so no retry rescues that class and a person is
+        the only thing that can.
+
+        What this test still protects is the OTHER half, unchanged: the call
+        still raises, so the worker still parks the row and NOTHING new is
+        sent to the client. Notifying is additive, never a send.
+        """
         with pytest.raises(RuntimeError):
             await _run({"abstain": False, "answer": "   "})
+
+
+class TestGuiltSilenceAlsoTellsAHuman:
+    """The three exits that leave the client with NOTHING.
+
+    Until this change they were the only exits that told nobody. The
+    notification sits at the bottom of ``generate_bot_reply`` and a ``raise``
+    jumps over it, so every path that produced a reply notified and every path
+    that produced silence did not — the contract inverted, since silence is
+    the outcome that most needs a person.
+    """
+
+    @pytest.mark.asyncio
+    async def test_an_empty_rag_answer_tells_a_human_before_raising(self) -> None:
+        notifier, exc = await _run_expecting_silence({"abstain": False, "answer": "   "})
+
+        notifier.assert_awaited_once()
+        assert notifier.await_args.kwargs["reason"] == "empty_rag_answer"
+        assert notifier.await_args.kwargs["thread_ref"] == "42"
+        assert "empty RAG answer" in str(exc)
+
+    @pytest.mark.asyncio
+    async def test_an_escalate_only_payload_reports_the_request_not_the_emptiness(
+        self,
+    ) -> None:
+        """The sharpest case, and the reason the generic reason is a fallback.
+
+        The persona asked for a human and the payload was nothing else. The
+        raise used to erase the message AND the request together; the reason
+        reported must be the request (first cause wins, as everywhere else),
+        not "the text came out empty".
+        """
+        notifier, exc = await _run_expecting_silence({"abstain": False, "answer": "[ESCALATE]"})
+
+        notifier.assert_awaited_once()
+        assert notifier.await_args.kwargs["reason"] == "persona_escalate_marker"
+        assert "after ESCALATE strip" in str(exc)
+
+    @pytest.mark.asyncio
+    async def test_an_answer_that_formats_to_nothing_tells_a_human(self) -> None:
+        """A real input, not a patched formatter.
+
+        ``[1]`` is a bare trailing RAG citation marker, which
+        ``format.py::_BARE_CITATION_RE`` strips BY DESIGN — measured, not
+        assumed. An answer that is only that marker survives every earlier
+        check and then formats to the empty string.
+        """
+        notifier, exc = await _run_expecting_silence({"abstain": False, "answer": "[1]"})
+
+        notifier.assert_awaited_once()
+        assert notifier.await_args.kwargs["reason"] == "empty_after_channel_format"
+        assert "after channel formatting" in str(exc)
+
+
+class TestInnocenceTheNotifierCannotMakeThingsWORSE:
+    @pytest.mark.asyncio
+    async def test_a_failing_notifier_does_not_replace_the_real_cause(self) -> None:
+        """The cause an operator debugs must stay the cause.
+
+        The notification now runs immediately before the raise, so a Telegram
+        outage sits directly in the path of the real error. It must not turn
+        "empty RAG answer" into a connection stack trace — `pytest.raises`
+        inside the helper is the assertion: a leaked ConnectionError fails here.
+        """
+        boom = AsyncMock(side_effect=ConnectionError("telegram down"))
+        _, exc = await _run_expecting_silence({"abstain": False, "answer": "   "}, notifier=boom)
+
+        assert isinstance(exc, RuntimeError)
+        assert "empty RAG answer" in str(exc)
+
+    @pytest.mark.asyncio
+    async def test_the_silent_paths_withhold_the_client_message_too(self) -> None:
+        """The §14 rule is not weaker on the paths added here."""
+        secret = "my passport number is very much not for telegram"
+        notifier, _ = await _run_expecting_silence(
+            {"abstain": False, "answer": "   "}, query=secret
+        )
+
+        assert notifier.await_args.kwargs["message_text"] is None
+        assert secret not in repr(notifier.await_args)

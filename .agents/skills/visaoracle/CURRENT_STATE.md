@@ -76,6 +76,23 @@ each is a distinct, explicit action requiring its own Zero go-ahead.
 > of a business-visit review). **EVALUATE_MODE stays SHADOW; ENFORCE remains NO-GO.**
 > The Bali Zero team's 38-scheda manual SHADOW test runs against this corrected tree.
 
+> **UPDATE 2026-08-10 — `prod-006` (sequence 6) is now the active PRODUCTION
+> RulePack, superseding `prod-005`.** Activated under Zero's "tutte in sequenza"
+> go-ahead through the two-login ceremony (`activate_pack.py --yes` on Pro over
+> `fly proxy` → `nuzantara-postgres`; ephemeral roles
+> `visa_pack_writer_ceremony_260810` / `visa_activation_ceremony_260810` minted via
+> stdin→psql — pw never in argv — and dropped same session).
+> `rule_pack_id e04a21e7-8716-584b-90ac-de3b5c192330`, activation
+> `4c25cfbb-748e-404c-b639-1213304695da`, `payload_sha256 9691534c…3ca83f6`,
+> `previous_payload_sha256 ebc19f5c…aaad322e` (the real prod-005 hash — chain
+> intact), reason `seq6-shadow-activation-260810`. Content: 104 rules / 15
+> HUMAN_REVIEW ("a requirement is a condition, not a proof", #3940): hr/review→el
+> conversions conjoined to each product's genuine gate, E23U/E23V/E30E/E30F
+> fail-closed, `hf.e33f.age-below-55` closes the under-55 retirement-offer
+> CRITICAL. Prove-live: the HANDOFF-2026-08-08 IT/TOURISM/10d case now returns
+> `SUPPORTED_CANDIDATES` [B1, C1]; NG negative control keeps
+> `CALLING_VISA_REVIEW` with no B1. **EVALUATE_MODE stays SHADOW; ENFORCE remains NO-GO.**
+
 > **UPDATE 2026-08-11 — `prod-007` (sequence 7) is now the active PRODUCTION
 > RulePack, superseding `prod-006`.** Activated through the two-login ceremony
 > (`activate_pack.py --yes`; ephemeral roles `visa_pack_writer_ceremony_260811` /

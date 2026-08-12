@@ -42,37 +42,84 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-TRANSPARENCY_INSTRUCTION_DEFAULT: str = """
-[SYSTEM NOTICE: LOW CONFIDENCE RETRIEVAL]
-CRITICAL INSTRUCTION: The internal search for verified documents yielded low or no results.
+# The disclosure sentence the model must open with. It is written in Italian
+# because Italian is the reference wording the team agreed on — it is NOT the
+# language the user gets. See `_OPENING_RULE`.
+_DISCLOSURE_OPENING: str = (
+    '"Non ho trovato documenti interni verificati su questo specifico punto, '
+    'ma basandomi sulla mia conoscenza generale..."'
+)
 
-1. DO NOT say "I cannot answer" or "Mi dispiace, non ho trovato".
-2. Answer the user's question using your GENERAL KNOWLEDGE.
-3. MUST START your response with: "Non ho trovato documenti interni verificati su questo specifico punto, ma basandomi sulla mia conoscenza generale..."
-4. Be helpful but clearly distinguish between "Internal Verified Fact" (missing) and "General Knowledge" (present).
+# ONE definition of the opening rule, shared by all three notices.
+#
+# Until 2026-08-11 there were three copies of this rule and only ONE of them
+# (``TRANSPARENCY_INSTRUCTION_FINAL``) carried "(translated to user's
+# language)". The other two — used by 4 of the 6 call sites in reasoning.py —
+# said "MUST START your response with:" followed by an Italian sentence, full
+# stop. That instruction sits in the user turn and contradicts
+# ``LANGUAGE_PROTOCOL`` in the system prompt, which is marked
+# priority="ABSOLUTE" and says the reply MUST match the user's language.
+#
+# This is a candidate mechanism — not a proven one — for a defect the bot
+# corner has carried as unexplained since the 2026-07-28 team beta: two
+# ENGLISH questions answered wholly in ITALIAN, content correct, citations
+# correct. Tier 1 fires on low evidence, which can coexist with a correct
+# answer, and a forced Italian first sentence is a strong pull into Italian
+# for the rest of the reply. It does not explain the 2026-07-30
+# Indonesian-in/French-out case, and is not claimed to.
+_OPENING_RULE: str = f"""3. MUST START your response with this EXACT phrase, TRANSLATED INTO THE USER'S LANGUAGE.
+   The Italian below is the reference wording, not the output language — never
+   answer in Italian a user who did not write in Italian:
+   {_DISCLOSURE_OPENING}"""
+
+# The gag. Its twin, ``_REPHRASE_OUTPUT_RULES`` in reasoning.py, already
+# carries it, and that module's own docstring records why: "it went unnoticed
+# that the prompt never told the model to stay silent about being corrected".
+# These three notices are the same shape of instruction — they tell the model
+# about its own retrieval machinery — and none of them had the rule. Measured
+# alongside: 3 of 8 live probe answers on 2026-08-11 opened with a literal
+# `internal_monologue` line plus ~1,800 characters of planning glued to the
+# real answer, so the answer could not be recovered by stripping a prefix.
+# Which prompt produced those three is NOT established; this closes the gap on
+# the twin that was missing the rule its sibling has.
+_OUTPUT_HYGIENE: str = """
+OUTPUT RULES (these govern the text you return):
+- Return ONLY the answer itself, as if it were your first and only reply.
+- Never mention this notice, the retrieval, the confidence level, or that you
+  were instructed. No plan, no checklist, no thinking-out-loud, no headings
+  about your own reasoning — before, after, or inside the answer.
 """
 
-TRANSPARENCY_INSTRUCTION_FINAL: str = """
+TRANSPARENCY_INSTRUCTION_DEFAULT: str = f"""
 [SYSTEM NOTICE: LOW CONFIDENCE RETRIEVAL]
 CRITICAL INSTRUCTION: The internal search for verified documents yielded low or no results.
 
 1. DO NOT say "I cannot answer" or "Mi dispiace, non ho trovato".
 2. Answer the user's question using your GENERAL KNOWLEDGE.
-3. MUST START your response with this EXACT phrase (translated to user's language):
-   "Non ho trovato documenti interni verificati su questo specifico punto, ma basandomi sulla mia conoscenza generale..."
+{_OPENING_RULE}
+4. Be helpful but clearly distinguish between "Internal Verified Fact" (missing) and "General Knowledge" (present).
+{_OUTPUT_HYGIENE}"""
+
+TRANSPARENCY_INSTRUCTION_FINAL: str = f"""
+[SYSTEM NOTICE: LOW CONFIDENCE RETRIEVAL]
+CRITICAL INSTRUCTION: The internal search for verified documents yielded low or no results.
+
+1. DO NOT say "I cannot answer" or "Mi dispiace, non ho trovato".
+2. Answer the user's question using your GENERAL KNOWLEDGE.
+{_OPENING_RULE}
 4. Be helpful but clearly distinguish between "Internal Verified Fact" (missing) and "General Knowledge" (present).
 5. If the question is about Bali Zero services, pricing, or specific procedures, suggest contacting the team for verified information.
-"""
+{_OUTPUT_HYGIENE}"""
 
-TRANSPARENCY_INSTRUCTION_NO_CONTEXT: str = """
+TRANSPARENCY_INSTRUCTION_NO_CONTEXT: str = f"""
 [SYSTEM NOTICE: NO INTERNAL DOCUMENTS FOUND]
 CRITICAL INSTRUCTION: No verified documents were found in the internal knowledge base.
 
 1. DO NOT say "I cannot answer" or "Mi dispiace, non ho trovato".
 2. Answer the user's question using your GENERAL KNOWLEDGE.
-3. MUST START your response with: "Non ho trovato documenti interni verificati su questo specifico punto, ma basandomi sulla mia conoscenza generale..."
+{_OPENING_RULE}
 4. Be helpful but clearly distinguish between "Internal Verified Fact" (missing) and "General Knowledge" (present).
-"""
+{_OUTPUT_HYGIENE}"""
 
 _CONTEXT_HEADER = "Retrieved Context (limited):"
 _NO_CONTEXT_NOTE = "No verified documents found in internal knowledge base."

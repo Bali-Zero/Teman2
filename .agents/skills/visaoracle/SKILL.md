@@ -436,7 +436,7 @@ function public.bind_visa_evaluate_idempotency_retention_policy` (least-privileg
   (find-my-way/hono/prisma, 3 high — infra-lane fix needed on main, not the visa lane).
   R1-gate lesson recorded: `adversarial_review:` accepts only gate seats
   (agy/codex/gemini/glm/gpt-5.5/grok/kimi*/nlm) + `human-*`/`exempt-\*`, and every research
-file needs a `## Adversarial review` body section with surviving-objection dispositions.
+  file needs a `## Adversarial review` body section with surviving-objection dispositions.
   GATE STATUS unchanged: 🔴 RED.
 - 2026-07-24 (M5, Kimi orchestrator, evening): **WAVE 1 100% on main + W2 KICKED OFF** (Zero:
   "parti ora"). Wave 0+1 all merged: #3032 (funnel resurrected, live-smoked 201), #3033,
@@ -595,6 +595,52 @@ file needs a `## Adversarial review` body section with surviving-objection dispo
   lane "evidence". Same shape as the earlier two refutations this session: a property verified at one end of
   a pipe, asserted about the whole pipe. And: **before executing a step, grep the runbooks for a recorded
   decision about it** — the 07-24 rationale was one file away.
+
+- 2026-08-10 (Pro, seq-6 activation): **SEQ-6 IS THE ACTIVE PRODUCTION PACK (SHADOW).** Signed on M5 (kid
+  `prod-2026-07-1`, `payload_sha256 9691534c15e95821…3ca83f6`, from a detached worktree at origin/main),
+  activated via the proven two-login ceremony (ephemeral roles
+  `visa_pack_writer_ceremony_260810`/`visa_activation_ceremony_260810`, minted via stdin→psql and dropped
+  same session; `activation_id 4c25cfbb-748e-404c-b639-1213304695da`, reason
+  `seq6-shadow-activation-260810`). Pre-activation semantic diff seq5→seq6 verified rule-by-rule
+  (113−54+45=104; every delta inside the declared perimeter, incl. the 3 within-stage changes: E30E/E30F
+  removed from generic student support, e30a/e30b level-band filters conjoined to STUDY). DB verified with
+  the runtime predicate (`legal_period @> now() AND system_period @> now()`): exactly ONE open activation
+  — seq-6; seq-5 `system_period` closed the same instant, no gap. **PROVE-LIVE:** IT/TOURISM/10d full-facts
+  → `SUPPORTED_CANDIDATES` [B1, C1] (the exact 6,610/6,610-abstention case from HANDOFF-2026-08-08);
+  incomplete facts → `NEEDS_INPUT` naming `immigration.overstay_days`; negative control NG →
+  `CALLING_VISA_REVIEW`, no B1. The engine binds per-request: seq-6 served with NO deploy. Ops notes:
+  postgres-flex user `postgres` authenticates with `OPERATOR_PASSWORD` (`SU_PASSWORD` belongs to
+  `flypgadmin`); psql inside the machine via TCP :5433 (no unix socket). **EVALUATE_MODE stays SHADOW;
+  ENFORCE remains NO-GO** (DPIA/analytics-TTL unchanged). Probe cost: 4 rows in `visa_decisions` labelled
+  `traffic_source='real'` (known collector-contamination class). PR #3983 (sponsor.type seam) was armed in
+  the merge queue at the time of writing — separate entry when it lands.
+- 2026-08-12 (M5→Mini, custody widened on Zero's explicit "copia tutto su mini"): **the private signing
+  keys now exist on BOTH M5 and Mini.** The 2026-07-19 entries above ("private-key custody M5 … not on
+  Pro/Mini", "AUTHORING claimed by M5 … bound to M5 by key custody") remain true as of THEIR date and are
+  false as of this one — read them as history, not as current custody. All five files under
+  `~/.config/nuzantara/visa-signing/` were COPIED, not moved: `2026-07-prod-1.ed25519.pem`,
+  `2026-07-test-1.ed25519.pem`, `activation-operator-password`, `driver-token`,
+  `facts-fingerprint-keys.json` — sha256 identical on both machines, every file `0600`, directory `0700`.
+  Proven functional rather than merely present: the prod PEM loads on Mini as an `Ed25519PrivateKey` and
+  derives the identical public key `819a28d67cccb11a705a0c381c2cd5ff6618c54d156ede4531f2d678ecc07210`, and
+  the mode passes the check `sign_pack.py` enforces (it refuses any key file looser than 0600, fstat'd on
+  the same fd it reads). All ten `backend.scripts.visa_engine.*` modules resolve in Mini's venv and
+  `activate_pack.py --help` runs there, so the ceremony can now be driven from Mini. Nothing broke because
+  no EXECUTABLE guard ever bound signing to M5 — the M5-only claim lived purely in prose (this log and
+  `research/visa/2026-07-23-architect-state-analysis.md:123`). **Caveat recorded, deliberately not
+  changed:** Mini's `~/.config/nuzantara` parent is `0755` where M5's is `0700`; `visa-signing` itself is
+  `0700` on both, so the key material is unreadable to another local user, but the directory's existence
+  is not hidden. **Why this happened now:** the Mini-only retention scheduler (`APPLY=true`) had been dead
+  ~8h. flyctl rejects its OWN stored token 720h after `last_login` even when that token still
+  authenticates — the same string exported as `FLY_API_TOKEN` worked throughout, while the config path
+  answered `no access token available. Please login`, i.e. it accuses an ABSENT credential while holding a
+  working one. Mini crossed that line 2026-08-11 20:40 WITA; a standing `flyctl proxy` masked it until the
+  07:04 reboot killed the process. Cured on Mini with an app-scoped `FLY_API_TOKEN` in
+  `~/.nuzantara-secrets.env` — the env path skips the clock entirely, so `flyctl auth login` is NOT the
+  cure, it only restarts the same 30-day countdown. Pro crosses the same line 2026-08-26 03:49 WITA; its
+  nightly PG backup is immune (`infra/scripts/fly-backup.sh` sources the secrets file itself), other Pro
+  fly consumers were unaudited at the time of writing. The 8h of silence was a SECOND, independent defect:
+  `scripts/cron-wrapper.sh` swallowed every failure alert (PR #4119).
 
 ## TRACKS — parallel work groups (multi-session coordination)
 
