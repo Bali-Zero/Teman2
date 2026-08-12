@@ -37,7 +37,7 @@ function makeCode(
     ],
     transition: {
       mappingStatus: "MATCH_LANGSUNG",
-      previousCodes: [],
+      pp28LicensingSourceCodes: [],
     },
     tier: "bronze",
     keywords: [],

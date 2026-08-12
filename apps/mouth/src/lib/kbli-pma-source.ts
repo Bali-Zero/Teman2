@@ -1,3 +1,5 @@
+import type { KBLIProvenance } from "./kbli-types";
+
 // =============================================================================
 // kbli-pma-source.ts — attribute the PMA ownership verdict to the instrument
 // the RECORD actually names, not to a hardcoded default.
@@ -48,19 +50,31 @@ const PERPRES_CROSSWALK_NOTE_STRUCTURED =
  * The FAQ-prose PMA source note, appended verbatim to the visible answer
  * (and, via the same builder, the FAQPage JSON-LD).
  *
- * - Perpres-sourced (1,553 of 1,559 codes, unchanged behaviour): the existing
- *   note verbatim, crosswalk caveat included.
+ * - Perpres-sourced with BPS ancestry: the existing note verbatim, crosswalk
+ *   caveat included.
+ * - Perpres-sourced without BPS ancestry: cite the instrument and the explicit
+ *   BPS gap, never claim that a crosswalk audit is in progress.
  * - Any other named source (the six sector-law-adjudicated insurance codes
  *   today; open to any future per-code primary-source adjudication): cite
- *   that source directly, with no crosswalk caveat — the caveat is specific
- *   to the Perpres annexes predating KBLI 2025, and asserting it about an
- *   unrelated instrument would be a new, unverified claim.
+ *   that source directly. If its BPS basis is untraceable, append the same
+ *   explicit BPS-gap caveat already emitted by the JSON-LD surface.
  * - No recorded source at all (`null` — not observed live today, but the
  *   field is nullable): no note, rather than a fabricated one.
  */
-export function pmaSourceNoteFaq(source: string | null): string {
+export function pmaSourceNoteFaq(
+  source: string | null,
+  provenanceStatus: KBLIProvenance["pma"]["status"],
+): string {
   if (!source) return "";
-  if (isPerpresSource(source)) return PERPRES_CROSSWALK_NOTE_FAQ;
+  if (isPerpresSource(source)) {
+    if (provenanceStatus === "untraceable_basis") {
+      return " (Source: Perpres 10/2021 as amended by Perpres 49/2021 — The official BPS crosswalk records no KBLI-2020 predecessor for this code; confirm the verdict at oss.go.id before relying on it.)";
+    }
+    return PERPRES_CROSSWALK_NOTE_FAQ;
+  }
+  if (provenanceStatus === "untraceable_basis") {
+    return ` (Source: ${source}. The official BPS crosswalk records no KBLI-2020 predecessor for this code; confirm the verdict at oss.go.id before relying on it.)`;
+  }
   return ` (Source: ${source}.)`;
 }
 
