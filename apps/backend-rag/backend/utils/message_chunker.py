@@ -67,7 +67,45 @@ def chunk_message(text: str, max_length: int = 4000) -> list[str]:
     if current_chunk.strip():
         chunks.append(current_chunk.strip())
 
-    return chunks
+    # Make the return contract above TRUE. Until 2026-08-11 the docstring
+    # promised "each within max_length" while the line-splitting branch did
+    # `current_chunk = line + "\n"` unconditionally — so a single line longer
+    # than max_length was appended whole. Text with no `\n\n` and no `\n` (one
+    # long paragraph, which is an ordinary LLM answer shape) came back in ONE
+    # oversized chunk, and every caller then handed it straight to a platform
+    # that refuses it: WhatsApp truncates at 4096, and Instagram's limit is
+    # 1000, where the overflow is four times likelier.
+    #
+    # Only oversized chunks are touched; every other chunk passes through
+    # byte-identical, so no existing caller sees a different split.
+    result: list[str] = []
+    for chunk in chunks:
+        if len(chunk) <= max_length:
+            result.append(chunk)
+        else:
+            result.extend(_split_oversized(chunk, max_length))
+    return result
+
+
+def _split_oversized(chunk: str, max_length: int) -> list[str]:
+    """Break a chunk no boundary could shrink into pieces within max_length.
+
+    Cuts at the last space that fits, so a word is not severed; falls back to a
+    hard cut only when there is no whitespace at all in the window (a URL, or a
+    script that does not space-separate). That fallback is deliberate: an
+    oversized chunk is rejected or silently truncated by the platform, which is
+    worse than a cut word.
+    """
+    pieces: list[str] = []
+    while len(chunk) > max_length:
+        cut = chunk.rfind(" ", 0, max_length + 1)
+        if cut <= 0:
+            cut = max_length
+        pieces.append(chunk[:cut].rstrip())
+        chunk = chunk[cut:].lstrip()
+    if chunk:
+        pieces.append(chunk)
+    return pieces
 
 
 # Platform-specific convenience functions

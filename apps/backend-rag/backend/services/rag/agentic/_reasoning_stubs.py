@@ -103,6 +103,126 @@ STUB_MESSAGES: dict[str, dict[str, str]] = {
             "я спробую ще раз із ними."
         ),
     },
+    # Same refusal, for the one case where the promise is now backed: a human
+    # WAS told. Added 2026-08-11 with the WA-inbox escalation lane — rule 2 of
+    # this module's docstring says "promote it to a real promise only together
+    # with the routing that backs it", and this key exists only because the
+    # routing landed in the same change.
+    #
+    # It asserts the flagging and NOTHING downstream of it. No "will reply", no
+    # "within one business hour": the caller selects this key from a boolean
+    # that means "Telegram accepted the message", which is not evidence that a
+    # person is on shift, has read it, or owns it. The prompt's own escalation
+    # example does promise an hour — that SLA is a staffing commitment, not a
+    # code property, and it is deliberately absent here.
+    "abstain_flagged": {
+        "ITALIAN": (
+            "Su questo non ho una fonte certa e preferisco non tirare a indovinare: "
+            "con permessi e scadenze una risposta sbagliata costa. "
+            "L'ho segnalata al team di Bali Zero. "
+            "Se intanto mi mandi un documento o una data di riferimento, "
+            "posso riprovare con quelli."
+        ),
+        "ENGLISH": (
+            "I don't have a reliable source for this one, and I'd rather not guess — "
+            "with permits and deadlines a wrong answer is expensive. "
+            "I've flagged it to the Bali Zero team. "
+            "If you can send me a document or a reference date in the meantime, "
+            "I can try again with those."
+        ),
+        "INDONESIAN": (
+            "Untuk yang ini saya tidak punya sumber yang pasti, dan saya lebih baik "
+            "tidak menebak — untuk izin dan tenggat waktu, jawaban yang salah itu mahal. "
+            "Sudah saya teruskan ke tim Bali Zero. "
+            "Sementara itu, kalau Anda kirim dokumen atau tanggal acuan, "
+            "saya bisa coba lagi dengan itu."
+        ),
+        "RUSSIAN": (
+            "По этому вопросу у меня нет надёжного источника, и я предпочитаю не гадать: "
+            "когда речь идёт о разрешениях и сроках, неверный ответ обходится дорого. "
+            "Я передал вопрос команде Bali Zero. "
+            "Если пока пришлёте документ или дату, на которую опираетесь, "
+            "я попробую ещё раз с ними."
+        ),
+        "UKRAINIAN": (
+            "Щодо цього я не маю надійного джерела і волію не вгадувати: "
+            "коли йдеться про дозволи та строки, неправильна відповідь дорого коштує. "
+            "Я передав це команді Bali Zero. "
+            "Якщо тим часом надішлете документ або дату, на яку спираєтесь, "
+            "я спробую ще раз із ними."
+        ),
+    },
+    # WHAT THE ``truncated_tail`` TEXT IS FOR (2026-08-11)
+    # ----------------------------------------------------
+    # WhatsApp's Cloud API refuses a body over 4096 characters, and
+    # `whatsapp_service.send_message` enforces that with `text[:4096]` — a
+    # silent cut, mid-word, with nothing telling the client it happened.
+    # Measured: 4 of 311 production bot replies were cut this way (max 7521
+    # chars), and a live probe got 5097 characters back for the single word
+    # "kitas" — so this is not an exotic case, one word reaches it.
+    #
+    # This suffix is appended to the FIRST clean chunk. It says only what is
+    # true — the answer was shortened — and invites a follow-up the bot can
+    # actually serve (a specific point). It deliberately does NOT say "ask me
+    # to continue": nothing retains the remainder, so continuation is a
+    # promise this path cannot keep, and tonight's other cure exists precisely
+    # because a promise nothing performs is worse than a plain limit.
+    "truncated_tail": {
+        "ITALIAN": (
+            "\n\n_(Ho accorciato la risposta per stare nel limite di WhatsApp. "
+            "Chiedimi di un punto specifico e te lo approfondisco.)_"
+        ),
+        "ENGLISH": (
+            "\n\n_(I shortened this to fit WhatsApp's message limit. "
+            "Ask me about a specific point and I'll go deeper on it.)_"
+        ),
+        "INDONESIAN": (
+            "\n\n_(Saya persingkat jawabannya agar muat di batas pesan WhatsApp. "
+            "Tanyakan poin tertentu dan saya jelaskan lebih detail.)_"
+        ),
+        "RUSSIAN": (
+            "\n\n_(Я сократил ответ, чтобы он поместился в лимит WhatsApp. "
+            "Спросите про конкретный пункт — расскажу подробнее.)_"
+        ),
+        "UKRAINIAN": (
+            "\n\n_(Я скоротив відповідь, щоб вона вмістилася в ліміт WhatsApp. "
+            "Запитайте про конкретний пункт — розкажу докладніше.)_"
+        ),
+    },
+    # WHAT THE ``low_confidence_note`` TEXT IS FOR (2026-08-11)
+    # --------------------------------------------------------
+    # Appended when the WhatsApp path sends an answer that came back flagged
+    # `abstain=true`. Measured across 16 cold questions in 8 languages: 7 were
+    # flagged and 3 of those carried a complete, on-topic answer — the old
+    # consumer discarded all 7 and the client got silence with the answer
+    # already written.
+    #
+    # The copy says the sources were not fully verified and that a colleague is
+    # re-checking. It does NOT promise a reply, a time, or a correction: the
+    # abstain path notifies Telegram, and "Telegram accepted a message" is not
+    # "a person will answer you". Same rule as `abstain_flagged`.
+    "low_confidence_note": {
+        "ITALIAN": (
+            "\n\n_(Questa risposta si appoggia a fonti che non ho potuto "
+            "verificare del tutto: un collega di Bali Zero la sta ricontrollando.)_"
+        ),
+        "ENGLISH": (
+            "\n\n_(This answer rests on sources I could not fully verify: "
+            "a Bali Zero colleague is double-checking it.)_"
+        ),
+        "INDONESIAN": (
+            "\n\n_(Jawaban ini berdasarkan sumber yang belum sepenuhnya bisa "
+            "saya verifikasi: rekan Bali Zero sedang memeriksanya kembali.)_"
+        ),
+        "RUSSIAN": (
+            "\n\n_(Этот ответ опирается на источники, которые я не смогла "
+            "полностью проверить: коллега из Bali Zero их перепроверяет.)_"
+        ),
+        "UKRAINIAN": (
+            "\n\n_(Ця відповідь спирається на джерела, які я не змогла повністю "
+            "перевірити: колега з Bali Zero їх перевіряє.)_"
+        ),
+    },
     "abstain_detailed": {
         "ITALIAN": (
             "Per questa domanda specifica non ho informazioni verificate sufficienti "
