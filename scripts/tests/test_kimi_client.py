@@ -582,3 +582,37 @@ def test_no_tools_pin_reads_frontmatter_not_body(monkeypatch, tmp_path):
     monkeypatch.setattr(kc, "_resolve_kimi_bin", lambda: "/fake/kimi")
     with pytest.raises(RuntimeError, match="no longer disables all tools"):
         kc.run("prompt")
+
+
+# ---------------------------------------------------------------------------
+# v2.3.1 — the two one-line cures prescribed by the owner-resolved review
+# (N1 unicode separator artifacts, N2 frontmatter anchored at byte 0)
+# ---------------------------------------------------------------------------
+
+
+def test_pii_gate_refuses_unicode_separator_artifacts():
+    # N1: document dumps and OCR carry exactly these — soft hyphen,
+    # zero-width space/joiners, the Unicode dash family, FEFF
+    shapes = [
+        "3171­0101­9001­0002",   # soft hyphen U+00AD
+        "3171​0101​9001​0002",   # zero-width space U+200B
+        "3171‍0101‍9001‍0002",   # zero-width joiner U+200D
+        "3171–0101–9001–0002",   # en dash U+2013
+        "3171—0101—9001—0002",   # em dash U+2014
+        "3171﻿0101﻿9001﻿0002",   # FEFF
+    ]
+    for shape in shapes:
+        with pytest.raises(kc.PiiRefusalError):
+            kc._check_prompt(f"verify {shape}")
+
+
+def test_no_tools_pin_requires_frontmatter_at_byte_zero(monkeypatch, tmp_path):
+    # N2: prose followed by a decoy --- block must NOT parse as frontmatter
+    decoy = tmp_path / "agent.md"
+    decoy.write_text(
+        "Some prose first.\n---\ntools: []\n---\nname: x\ntools: [Read, Bash]\n"
+    )
+    monkeypatch.setattr(kc, "_AGENT_FILE", decoy)
+    monkeypatch.setattr(kc, "_resolve_kimi_bin", lambda: "/fake/kimi")
+    with pytest.raises(RuntimeError, match="no longer disables all tools"):
+        kc.run("prompt")

@@ -126,16 +126,23 @@ _CRED_ENV_ALLOWLIST_EXACT: frozenset[str] = frozenset({"KIMI_BIN"})
 #: costs a refusal, under-match costs client PII on a Chinese cloud.
 #:
 #: v2.3 is therefore deliberately FAIL-CLOSED: any run of >= 15 digits
-#: allowing run-of separators (whitespace incl. NBSP, dot, comma, slash,
-#: dash; zero-width included so prose-adjacent numbers fuse) is refused.
-#: No \b anchoring: letter-adjacent ("NIK3171...") and 17+ digit runs are
-#: caught. The over-match is the ACCEPTED, DECLARED cost (W113): KBLI code
-#: lists, port lists, date ranges, sample series, coordinate pairs are
-#: refused too — reword the prompt (e.g. name the codes in prose ranges)
-#: or use an interactive session. Declared residuals: the gate sees only
-#: numeric shapes — spelled-out numbers, alphanumeric passports, names and
-#: addresses are NOT detected; it is a backstop, never the whole boundary.
-_PII_RUN_RE = re.compile(r"\d(?:[\s.,/\-]*\d){14,}")
+#: allowing run-of separators is refused. The separator class covers ASCII
+#: whitespace AND NBSP, dot, comma, slash, ASCII dash, soft hyphen
+#: (U+00AD), zero-width space/joiners (U+200B-200D), the Unicode dash
+#: family (U+2010-2015) and the BOM/zero-width no-break space (FEFF) —
+#: document dumps and OCR carry exactly these artifacts (N1 of the
+#: owner-resolved review: an earlier draft claimed this coverage without
+#: having it). No \b anchoring: letter-adjacent ("NIK3171...") and 17+
+#: digit runs are caught. The over-match is the ACCEPTED, DECLARED cost
+#: (W113): KBLI code lists, port lists, date ranges, sample series,
+#: coordinate pairs are refused too — reword the prompt (e.g. name the
+#: codes in prose ranges) or use an interactive session. Declared
+#: residuals: the gate sees only numeric shapes — spelled-out numbers,
+#: alphanumeric passports, names and addresses are NOT detected; it is a
+#: backstop, never the whole boundary.
+_PII_RUN_RE = re.compile(
+    r"\d(?:[\s.,/\-\u00ad\u200b-\u200d\u2010-\u2015\ufeff]*\d){14,}"
+)
 
 #: Pinned no-tools agent profile bound to every child invocation via
 #: --agent-file (the C1/C2 cure: kimi -p has tools live by default, and a
@@ -247,7 +254,9 @@ def _assert_no_tools_profile() -> None:
         text = _AGENT_FILE.read_text(encoding="utf-8")
     except OSError as exc:
         raise RuntimeError(f"pinned no-tools agent file unreadable: {exc}") from exc
-    parts = text.split("---", 2)
+    # The frontmatter fence must be at byte 0 (N2 of the owner-resolved
+    # review): prose followed by a decoy `---` block must not parse.
+    parts = text.split("---", 2) if text.startswith("---") else []
     frontmatter = parts[1] if len(parts) >= 3 else ""
     if not _NO_TOOLS_MARKER_RE.search(frontmatter):
         raise RuntimeError(
