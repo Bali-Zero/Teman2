@@ -1,7 +1,7 @@
 {
   "persona_id": "03_overstay_hard_filter_exclusion",
   "narrative": "Overstayer whose 91 days beyond permit trigger a hard exclusion from every product.",
-  "notes": "",
+  "notes": "Fixed 2026-08-12 (adapter.py alignment): the GLOBAL hr-active-overstay HUMAN_REVIEW rule also fires TRUE here (currently_in_indonesia=true AND violation_history includes OVERSTAY) and, per the frozen precedence table, HUMAN_REVIEW_REQUIRED outranks NO_SUPPORTED_PATH unconditionally -- the GLOBAL pre-pass evaluates this independently of any per-product outcome, so it wins the GLOBAL decision even though hf-overstay-hard's HARD_FILTER still (correctly) short-circuits every individual product's own proof to EXCLUDED before its review stage is ever reached. Global state and per-product proof state are allowed to diverge this way by design.",
   "facts": {
     "person.birth_date": {
       "status": "KNOWN",
@@ -169,8 +169,8 @@
     }
   },
   "expected": {
-    "global_state": "NO_SUPPORTED_PATH",
-    "global_reason_codes": ["OVERSTAY_EXCEEDS_HARD_LIMIT"],
+    "global_state": "HUMAN_REVIEW_REQUIRED",
+    "global_reason_codes": ["ACTIVE_OVERSTAY_REVIEW"],
     "products": {},
     "default": {
       "kind": "DOMINANT_GLOBAL",

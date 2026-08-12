@@ -746,6 +746,37 @@ def test_probe_codex_401_is_auth_dead(monkeypatch):
     assert status == ap.AUTH_DEAD
 
 
+
+def test_probe_codex_spark_pong_is_live(monkeypatch):
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/opt/homebrew/bin/codex", True))
+    monkeypatch.setattr(ap.subprocess, "run", lambda cmd, **kwargs: _FakeProc(0, "PONG\n", ""))
+    status, ev, latency = ap.probe_codex_spark(timeout=5)
+    assert status == ap.LIVE
+
+
+def test_probe_codex_spark_401_is_auth_dead(monkeypatch):
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/opt/homebrew/bin/codex", True))
+    monkeypatch.setattr(
+        ap.subprocess, "run", lambda cmd, **kwargs: _FakeProc(1, "", "401 token_revoked")
+    )
+    status, ev, latency = ap.probe_codex_spark(timeout=5)
+    assert status == ap.AUTH_DEAD
+
+
+def test_probe_jules_sources_is_live(monkeypatch):
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/usr/bin/python3", True))
+    monkeypatch.setattr(ap.subprocess, "run", lambda cmd, **kwargs: _FakeProc(0, "source1\nsource2\n", ""))
+    status, ev, latency = ap.probe_jules(timeout=5)
+    assert status == ap.LIVE
+
+
+def test_probe_jules_no_sources_is_unknown_err(monkeypatch):
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/usr/bin/python3", True))
+    monkeypatch.setattr(ap.subprocess, "run", lambda cmd, **kwargs: _FakeProc(0, "", ""))
+    status, ev, latency = ap.probe_jules(timeout=5)
+    assert status == ap.UNKNOWN_ERR
+
+
 def test_deepseek_retired_not_in_all_seats_or_probe_funcs():
     # DeepSeek V4 Pro API retired 2026-07-19 (owner order, pre-auth revoked —
     # never top up). Guilt-style: it must not resurface as a probeable seat.

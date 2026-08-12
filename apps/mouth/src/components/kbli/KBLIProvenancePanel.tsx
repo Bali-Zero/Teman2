@@ -124,7 +124,7 @@ export function buildRows(kbli: KBLICode, prov: KBLIProvenance): SourceRow[] {
           vintage: "—",
           verdict: "gap",
           detail:
-            "Our sources record no KBLI-2020 predecessor for this code, so we cannot trace how the investment-list verdict shown here was assigned to it. The value is served as-is, not as a verified determination — confirm it at oss.go.id before relying on it.",
+            "The official BPS crosswalk records no KBLI-2020 predecessor for this code, so we cannot trace how the investment-list verdict shown here was assigned to it. The value is served as-is, not as a verified determination — confirm it at oss.go.id before relying on it.",
         }
       : {
           layer: "Foreign ownership (PMA)",

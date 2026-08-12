@@ -230,7 +230,14 @@ describe("deriveProvenance — innocence corpus", () => {
 
   it("PMA layer is a vintage disclosure on every state, source passed through", () => {
     const prov = deriveProvenance(
-      makeRaw({ _l2_source: "OSS_RBA_resiko_2025" }),
+      makeRaw({
+        _l2_source: "OSS_RBA_resiko_2025",
+        bps_2020_ancestors: {
+          codes: ["99999"],
+          adjudication_status: "mechanical-only",
+          inheritance_verdict: "not-adjudicated",
+        },
+      }),
     );
     expect(prov.pma.vintage).toBe("2020");
     expect(prov.pma.source).toBe("Perpres 10/2021, 49/2021");
@@ -353,15 +360,14 @@ describe("deriveProvenance — PMA basis traceability (guilt + innocence)", () =
     expect(prov.pma.vintage).toBe("2020");
   });
 
-  it("INNOCENCE: pp28-only ancestry still counts — the two layers are independent", () => {
-    // 1,338 of 1,559 are traceable through BPS; a further 121 only through
-    // pp28_sources. Requiring BPS alone would flag those 121 as untraceable and
-    // put a declared gap on pages that have a recorded origin.
+  it("GUILT: PP28-only licensing sources do not establish ancestry", () => {
+    // PP28 identifies the regulatory rows used as licensing sources. It is not
+    // the official identity relation and cannot make a PMA basis traceable.
     const prov = deriveProvenance(
       makeRaw({ pp28_sources: ["01111"], bps_2020_ancestors: undefined }),
     );
-    expect(prov.pma.status).toBe("pending_crosswalk");
-    expect(prov.pma.vintage).toBe("2020");
+    expect(prov.pma.status).toBe("untraceable_basis");
+    expect(prov.pma.vintage).toBeNull();
   });
 });
 
@@ -379,15 +385,13 @@ describe("deriveProvenance — PMA traceability on the real dataset", () => {
     const untraceable = parsed.data.filter(
       (r) => deriveProvenance(r).pma.status === "untraceable_basis",
     );
-    // Pinned so a change that silently widens or narrows this set fails loudly
-    // rather than quietly re-labelling pages. Measured 2026-07-26.
-    expect(untraceable.length).toBe(100);
-    // Every one of them is BPS_ONLY — the status says "BPS crosswalk" while the
-    // ancestor list is empty, which is exactly why the basis cannot be traced.
+    // The 121 PP28-only codes join the 100 neither-source codes. Pinned so a
+    // change cannot silently re-label pages.
+    expect(untraceable.length).toBe(221);
     for (const r of untraceable) {
-      expect(r.status_mapping, `code ${r.kode_kbli_2025}`).toBe("BPS_ONLY");
+      expect(r.bps_2020_ancestors?.codes ?? []).toHaveLength(0);
     }
-    // And the rest of the catalog is unaffected: no code loses its vintage.
+    // And the BPS-present population keeps the vintage disclosure.
     for (const r of parsed.data) {
       const prov = deriveProvenance(r);
       if (prov.pma.status === "pending_crosswalk") {

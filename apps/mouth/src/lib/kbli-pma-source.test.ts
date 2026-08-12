@@ -10,13 +10,13 @@ const SECTOR_LAW_SOURCE =
 
 describe("pmaSourceNoteFaq", () => {
   it("innocence: a Perpres-sourced code keeps the existing crosswalk note verbatim", () => {
-    expect(pmaSourceNoteFaq(PERPRES_SOURCE)).toBe(
+    expect(pmaSourceNoteFaq(PERPRES_SOURCE, "pending_crosswalk")).toBe(
       " (Source: Perpres 10/2021 as amended by Perpres 49/2021 — the investment-list annexes predate KBLI 2025; per-code crosswalk audit in progress.)",
     );
   });
 
   it("guilt: a record whose pma_source names PP 14/2018 renders that, not Perpres", () => {
-    const note = pmaSourceNoteFaq(SECTOR_LAW_SOURCE);
+    const note = pmaSourceNoteFaq(SECTOR_LAW_SOURCE, "pending_crosswalk");
     expect(note).toContain("PP 14/2018");
     expect(note).not.toContain("crosswalk audit in progress");
     // The sector-law source string itself MENTIONS Perpres 10/2021 (naming
@@ -27,7 +27,24 @@ describe("pmaSourceNoteFaq", () => {
   });
 
   it("no source recorded: no note, never a fabricated one", () => {
-    expect(pmaSourceNoteFaq(null)).toBe("");
+    expect(pmaSourceNoteFaq(null, "untraceable_basis")).toBe("");
+  });
+
+  it("guilt: untraceable Perpres records cite the source without claiming an audit is in progress", () => {
+    const note = pmaSourceNoteFaq(PERPRES_SOURCE, "untraceable_basis");
+    expect(note).toContain(
+      "The official BPS crosswalk records no KBLI-2020 predecessor",
+    );
+    expect(note).not.toContain("crosswalk audit in progress");
+  });
+
+  it("guilt: an untraceable non-Perpres basis also carries the BPS-gap caveat", () => {
+    const note = pmaSourceNoteFaq(SECTOR_LAW_SOURCE, "untraceable_basis");
+    expect(note).toContain(`Source: ${SECTOR_LAW_SOURCE}.`);
+    expect(note).toContain(
+      "The official BPS crosswalk records no KBLI-2020 predecessor",
+    );
+    expect(note).not.toContain("crosswalk audit in progress");
   });
 });
 

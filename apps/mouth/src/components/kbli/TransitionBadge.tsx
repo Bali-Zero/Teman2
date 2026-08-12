@@ -1,4 +1,4 @@
-import type { KBLIMappingStatus } from "@/lib/kbli-types";
+import type { KBLIMappingStatus, KBLITransition } from "@/lib/kbli-types";
 
 const LABELS: Record<KBLIMappingStatus, string> = {
   MATCH_LANGSUNG: "Direct Match",
@@ -22,11 +22,21 @@ const COLORS: Record<KBLIMappingStatus, string> = {
 };
 
 interface TransitionBadgeProps {
-  status: KBLIMappingStatus;
+  transition: Pick<KBLITransition, "mappingStatus" | "bpsCrosswalk">;
 }
 
-export function TransitionBadge({ status }: TransitionBadgeProps) {
+export function TransitionBadge({ transition }: TransitionBadgeProps) {
+  const status = transition.mappingStatus;
+  // mappingStatus was derived from the legacy PP28 matching layer on every
+  // PP28-only code. Without an authoritative BPS ancestor it would place a
+  // "Direct Match"/"Renumbered" claim beside the BPS-gap disclosure.
+  if ((transition.bpsCrosswalk?.codes.length ?? 0) === 0) return null;
   if (!status) return null;
+  const label = LABELS[status];
+  // `BPS_ONLY` is legacy mapping metadata, not proof that the activity is new.
+  // When official BPS ancestors exist (03300 has sixteen), rendering "New in
+  // 2025" would contradict the adjacent authoritative crosswalk card.
+  if (label === "New in 2025") return null;
   const color = COLORS[status];
   return (
     <span
@@ -37,7 +47,7 @@ export function TransitionBadge({ status }: TransitionBadgeProps) {
         backgroundColor: `color-mix(in srgb, ${color} 12%, transparent)`,
       }}
     >
-      {LABELS[status]}
+      {label}
     </span>
   );
 }
