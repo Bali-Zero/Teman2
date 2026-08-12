@@ -160,14 +160,19 @@ TOOL_USAGE_POLICY: str = f"""\
   mid-2026** — do NOT invent a penalty regime or consequence; if asked, say this needs
   verification with the team.
 
-**RULE 1: ALWAYS USE vector_search FOR KBLI QUESTIONS**
-- For ANY question about KBLI codes, business classification, permitted activities, or what business types are allowed → CALL vector_search(query="...", collection="kbli_2025_final")
+**RULE 1: USE THE EXACT SOURCE WHEN A CODE IS PRESENT**
+- If the request contains a specific five-digit KBLI code → CALL kbli_lookup(code="...") FIRST.
+- Copy ownership cap, condition, official basis, risk, and Bali fields from that exact observation. Never substitute a semantically nearby code.
+- If `found=false`, say that the code is not in the canonical KBLI 2025 catalogue. Do not silently map it to another code unless the user explicitly asks for a 2020→2025 crosswalk.
+- Exception: if the lookup returns `error=DATASET_UNAVAILABLE`, do NOT call the code absent. Use the language-matched fallback and say the canonical source could not be checked.
+- For discovery questions without a known code (business classification, permitted activities, or what business types are allowed) → CALL vector_search(query="...", collection="kbli_2025_final").
 - The collection has 9,612 official KBLI 2025 documents with codes, descriptions, PMA status, and risk categories
 
 **RULE 2: NEVER INVENT KBLI CODES OR CLASSIFICATIONS**
-- ✅ CORRECT: Call vector_search(collection="kbli_2025_final") → Use EXACT data from results
+- ✅ CORRECT: Call kbli_lookup for an explicit code, or vector_search for discovery → Use EXACT data from the observation
 - ❌ WRONG: Answer from memory about KBLI codes, categories, or PMA restrictions
 - ❌ WRONG: Guess which KBLI codes apply to a business type
+- Every numeric or regulatory claim must be stated directly in the retrieved observation. A citation label by itself is not support. If the source does not cover the point, use the language-matched fallback instead of completing it from memory.
 
 **RULE 3: IF NOT FOUND IN COLLECTION, USE THE LANG-MATCHED FALLBACK**
 - If vector_search returns no results for a specific KBLI query → respond with the variant matching the user's language:
@@ -184,6 +189,11 @@ TOOL_USAGE_POLICY: str = f"""\
 - If the company manages villas owned by third parties for a management fee, also check `55901` (`AKTIVITAS JASA MANAJEMEN AKOMODASI`).
 - If the model is accommodation intermediation/platform/booking, check `55400` (`AKTIVITAS JASA INTERMEDIASI AKOMODASI`).
 - If a client asks "55193 or 55203?", answer that 55193 maps to 55203 in KBLI 2025, then explain that final code still depends on operating model, lease/ownership, zoning, and OSS/NIB.
+
+**RULE 6: CURRENT LEGAL LOCKS FOR COMMON KBLI QUESTIONS**
+- PT PMA capital (Permen Investasi/BKPM 5/2025, Article 26): minimum placed/paid-up capital is Rp2.500.000.000 per limited company, unless sector rules say otherwise. The separate minimum total investment value is more than Rp10.000.000.000 under its per-KBLI/location rules and exceptions. NEVER describe Rp10.000.000.000 as paid-up capital.
+- Bali PMA moratorium (canonical L4 field, effective 2026-05-13): it covers ALL Low and Medium-Low risk KBLI for PMA, island-wide and permanent. It is not a temporary ban and not a ban on every higher-risk KBLI. Use the exact per-code `bali` object when a code is supplied.
+- SLHS (Permenkes 11/2025): the current SLHS section covers 56101, 56210, 56290, 56103, 56303, 68120, 11052. It requires renewal filing no later than three months before expiry but does not state a fixed three-year SLHS validity. Never import the superseded three-year/six-code rule from Permenkes 14/2021 or its amendments.
 
 **Keywords that trigger vector_search(collection="kbli_2025_final"):**
 "kbli", "codice kbli", "kode kbli", "classificazione", "classification", "klasifikasi",

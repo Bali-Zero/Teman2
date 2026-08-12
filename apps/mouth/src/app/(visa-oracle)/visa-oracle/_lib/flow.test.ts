@@ -70,6 +70,7 @@ const CATEGORY_CASES: ReadonlyArray<{
   {
     category: "work",
     branch: [
+      ["sponsor_category", "EMPLOYER"],
       ["work_payer", "yes"],
       ["work_indonesia_compensation", "yes"],
       ["work_sponsor_confirmed", "yes"],
@@ -80,6 +81,7 @@ const CATEGORY_CASES: ReadonlyArray<{
   {
     category: "invest",
     branch: [
+      ["sponsor_category", "INVESTMENT"],
       ["investment_vehicle", "pt_pma"],
       ["investment_pt_pma", "yes"],
       ["investment_capital_idr", "1000000000"],
@@ -91,6 +93,7 @@ const CATEGORY_CASES: ReadonlyArray<{
   {
     category: "remote",
     branch: [
+      ["sponsor_category", "NONE"],
       ["remote_clients", "foreign"],
       ["remote_compensation", "no"],
       ["remote_employer_country", "US"],
@@ -101,6 +104,7 @@ const CATEGORY_CASES: ReadonlyArray<{
   {
     category: "family",
     branch: [
+      ["sponsor_category", "INDIVIDUAL"],
       ["family_relation", "SPOUSE"],
       ["marital_status", "MARRIED"],
       ["family_sponsor_nationalities", "ID"],
@@ -112,6 +116,7 @@ const CATEGORY_CASES: ReadonlyArray<{
   {
     category: "retirement",
     branch: [
+      ["sponsor_category", "NONE"],
       ["retirement_basis", "passive_income"],
       ["secondhome_passive_income_usd", "3000"],
       ["family_sponsor_confirmed", "yes"],
@@ -121,6 +126,7 @@ const CATEGORY_CASES: ReadonlyArray<{
   {
     category: "study",
     branch: [
+      ["sponsor_category", "EDUCATION"],
       ["study_level", "POSTGRADUATE"],
       ["study_admission_confirmed", "yes"],
       ["study_sponsor_confirmed", "yes"],
@@ -187,6 +193,7 @@ describe("retirement evidence branches", () => {
     [
       "bank_deposit",
       [
+        "sponsor_category",
         "retirement_basis",
         "secondhome_deposit_usd",
         "secondhome_state_bank",
@@ -198,6 +205,7 @@ describe("retirement evidence branches", () => {
     [
       "passive_income",
       [
+        "sponsor_category",
         "retirement_basis",
         "secondhome_passive_income_usd",
         "family_sponsor_confirmed",
@@ -207,6 +215,7 @@ describe("retirement evidence branches", () => {
     [
       "family_sponsor",
       [
+        "sponsor_category",
         "retirement_basis",
         "secondhome_passive_income_usd",
         "family_sponsor_confirmed",
@@ -257,6 +266,7 @@ describe("retirement evidence branches", () => {
     ({ basis, answers }) => {
       let state = startOffshore("retirement");
       state = answer(state, "trip_scope", "single");
+      state = answer(state, "sponsor_category", "NONE");
       state = answer(state, "retirement_basis", basis);
       for (const [questionId, value] of answers) {
         state = answer(state, questionId, value);
@@ -268,6 +278,7 @@ describe("retirement evidence branches", () => {
   it("prunes deposit evidence when the retirement basis changes", () => {
     let state = startOffshore("retirement");
     state = answer(state, "trip_scope", "single");
+    state = answer(state, "sponsor_category", "NONE");
     state = answer(state, "retirement_basis", "bank_deposit");
     state = answer(state, "secondhome_deposit_usd", "100000");
     state = answer(state, "secondhome_state_bank", "yes");
@@ -360,12 +371,14 @@ describe("editing, pruning and branch projection", () => {
   it("editing category removes stale descendants from the abandoned branch", () => {
     let state = startOffshore("work");
     state = answer(state, "trip_scope", "single");
+    state = answer(state, "sponsor_category", "EMPLOYER");
     state = answer(state, "work_payer", "yes");
     state = answer(state, "work_indonesia_compensation", "yes");
     expect(state.facts.work_payer).toBe("yes");
 
     state = reduce(state, { type: "EDIT", questionId: "category" });
     state = answer(state, "category", "tourism");
+    expect(state.facts.sponsor_category).toBeUndefined();
     expect(state.facts.work_payer).toBeUndefined();
     expect(state.facts.work_indonesia_compensation).toBeUndefined();
     expectQuestion(state, "trip_scope");
@@ -578,9 +591,11 @@ describe("attempt and verdict navigation", () => {
   it("SELECT_CATEGORY reuses the interview and prunes the prior branch", () => {
     let state = startOffshore("work");
     state = answer(state, "trip_scope", "single");
+    state = answer(state, "sponsor_category", "EMPLOYER");
     state = answer(state, "work_payer", "yes");
     state = reduce(state, { type: "SELECT_CATEGORY", category: "study" });
     expect(state.facts.category).toBe("study");
+    expect(state.facts.sponsor_category).toBeUndefined();
     expect(state.facts.work_payer).toBeUndefined();
     expectQuestion(state, "trip_scope");
   });
