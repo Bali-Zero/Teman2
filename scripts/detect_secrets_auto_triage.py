@@ -220,6 +220,28 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "docs/runbooks/visa-engine-key-ceremony.md — a trust root read at "
         "replay time, never a credential (private key is off-repo)",
     ),
+    # research/visa/2026-08-12-gold-replay-live-report.json: the G-b gold
+    # replay driver's live-run report. `payload_sha256` (repeated once per
+    # persona/pack observation, 23x in this file, all the same value) is the
+    # content-derived sha256 of a PUBLIC signed RulePack payload — the same
+    # class of value as the AUTO_APPROVE_RULES `contracts/packs/rulepack-*.json`
+    # rule above (content/payload hashes of public legal documents), just
+    # embedded in a research/ run report rather than the pack artifact itself.
+    # Not covered by the existing `research/.*\.md$` path rule because this is
+    # a `.json` report, not markdown. Content-keyed rather than a path-only
+    # research/*.json rule because this file's directory (research/visa/) can
+    # carry other ad-hoc JSON in the future with different content; narrowed
+    # to a `"payload_sha256": "<64-hex>"` line, end-anchored.
+    (
+        re.compile(
+            r"(^|/)research/visa/2026-08-12-gold-replay-live-report\.json$"
+        ),
+        re.compile(r'^\s*"payload_sha256"\s*:\s*"[0-9a-f]{64}"\s*,?\s*$'),
+        "gold replay driver live-run report: payload_sha256 is the "
+        "content-derived sha256 of a public signed RulePack payload "
+        "(same class as the contracts/packs/rulepack-*.json rule above), "
+        "never a credential",
+    ),
 ]
 
 # Each rule is (pattern, reason). The pattern matches the file path

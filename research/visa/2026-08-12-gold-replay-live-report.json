@@ -1,0 +1,991 @@
+{
+  "gate": "G-b",
+  "generated_at": "2026-08-12T15:12:11.210812+00:00",
+  "mode": "live",
+  "overall_pass": false,
+  "pack": {
+    "consistent_across_personas": true,
+    "payload_sha256": "3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82",
+    "rule_pack_id": "453ee842-7f35-5d77-b460-31d67e2784c2",
+    "sequence": 7,
+    "version": "2026.8.11"
+  },
+  "pack_source": {
+    "endpoint": "https://nuzantara-rag.fly.dev/api/visa-oracle/evaluate",
+    "kind": "live_endpoint",
+    "pack_metadata_source": "each endpoint response decision.rule_pack"
+  },
+  "packs_observed": [
+    {
+      "payload_sha256": "3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82",
+      "rule_pack_id": "453ee842-7f35-5d77-b460-31d67e2784c2",
+      "sequence": 7,
+      "version": "2026.8.11"
+    }
+  ],
+  "persona_count": 20,
+  "personas": [
+    {
+      "actual": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [
+          "CITIZENSHIP_LIST_DIVERGENCE"
+        ],
+        "state": "HUMAN_REVIEW_REQUIRED"
+      },
+      "differences": [
+        {
+          "actual": [],
+          "expected": [
+            "APPLICANT_IS_INDONESIAN_CITIZEN"
+          ],
+          "field": "no_path_reason_codes",
+          "persona_id": 1
+        },
+        {
+          "actual": [
+            "CITIZENSHIP_LIST_DIVERGENCE"
+          ],
+          "expected": [],
+          "field": "review_reason_codes",
+          "persona_id": 1
+        },
+        {
+          "actual": "HUMAN_REVIEW_REQUIRED",
+          "expected": "NO_SUPPORTED_PATH",
+          "field": "state",
+          "persona_id": 1
+        }
+      ],
+      "divergence": true,
+      "expected": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [
+          "APPLICANT_IS_INDONESIAN_CITIZEN"
+        ],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "NO_SUPPORTED_PATH"
+      },
+      "explanation": null,
+      "label": "ID citizen excluded outright",
+      "pack": {
+        "payload_sha256": "3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82",
+        "rule_pack_id": "453ee842-7f35-5d77-b460-31d67e2784c2",
+        "sequence": 7,
+        "version": "2026.8.11"
+      },
+      "persona_id": 1
+    },
+    {
+      "actual": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [
+          "CALLING_VISA_REVIEW",
+          "CITIZENSHIP_LIST_DIVERGENCE"
+        ],
+        "state": "HUMAN_REVIEW_REQUIRED"
+      },
+      "differences": [
+        {
+          "actual": [
+            "CALLING_VISA_REVIEW",
+            "CITIZENSHIP_LIST_DIVERGENCE"
+          ],
+          "expected": [
+            "CITIZENSHIP_EVIDENCE_CONFLICT"
+          ],
+          "field": "review_reason_codes",
+          "persona_id": 2
+        }
+      ],
+      "divergence": true,
+      "expected": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [
+          "CITIZENSHIP_EVIDENCE_CONFLICT"
+        ],
+        "state": "HUMAN_REVIEW_REQUIRED"
+      },
+      "explanation": null,
+      "label": "conflicting nationality evidence -> human review",
+      "pack": {
+        "payload_sha256": "3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82",
+        "rule_pack_id": "453ee842-7f35-5d77-b460-31d67e2784c2",
+        "sequence": 7,
+        "version": "2026.8.11"
+      },
+      "persona_id": 2
+    },
+    {
+      "actual": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [
+          "CALLING_VISA_REVIEW"
+        ],
+        "state": "HUMAN_REVIEW_REQUIRED"
+      },
+      "differences": [],
+      "divergence": false,
+      "expected": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [
+          "CALLING_VISA_REVIEW"
+        ],
+        "state": "HUMAN_REVIEW_REQUIRED"
+      },
+      "explanation": null,
+      "label": "calling-visa nationality -> human review",
+      "pack": {
+        "payload_sha256": "3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82",
+        "rule_pack_id": "453ee842-7f35-5d77-b460-31d67e2784c2",
+        "sequence": 7,
+        "version": "2026.8.11"
+      },
+      "persona_id": 3
+    },
+    {
+      "actual": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [
+          "ACTIVE_OVERSTAY"
+        ],
+        "state": "HUMAN_REVIEW_REQUIRED"
+      },
+      "differences": [],
+      "divergence": false,
+      "expected": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [
+          "ACTIVE_OVERSTAY"
+        ],
+        "state": "HUMAN_REVIEW_REQUIRED"
+      },
+      "explanation": null,
+      "label": "active overstay -> human review",
+      "pack": {
+        "payload_sha256": "3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82",
+        "rule_pack_id": "453ee842-7f35-5d77-b460-31d67e2784c2",
+        "sequence": 7,
+        "version": "2026.8.11"
+      },
+      "persona_id": 4
+    },
+    {
+      "actual": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [
+          "MINOR_WITHOUT_CONFIRMED_GUARDIAN",
+          "MINOR_GUARDIAN_PRIVACY_REVIEW"
+        ],
+        "state": "HUMAN_REVIEW_REQUIRED"
+      },
+      "differences": [
+        {
+          "actual": [
+            "MINOR_WITHOUT_CONFIRMED_GUARDIAN",
+            "MINOR_GUARDIAN_PRIVACY_REVIEW"
+          ],
+          "expected": [
+            "MINOR_WITHOUT_CONFIRMED_GUARDIAN"
+          ],
+          "field": "review_reason_codes",
+          "persona_id": 5
+        }
+      ],
+      "divergence": true,
+      "expected": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [
+          "MINOR_WITHOUT_CONFIRMED_GUARDIAN"
+        ],
+        "state": "HUMAN_REVIEW_REQUIRED"
+      },
+      "explanation": null,
+      "label": "minor without confirmed guardian -> human review",
+      "pack": {
+        "payload_sha256": "3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82",
+        "rule_pack_id": "453ee842-7f35-5d77-b460-31d67e2784c2",
+        "sequence": 7,
+        "version": "2026.8.11"
+      },
+      "persona_id": 5
+    },
+    {
+      "actual": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [
+          "MINOR_GUARDIAN_PRIVACY_REVIEW"
+        ],
+        "state": "HUMAN_REVIEW_REQUIRED"
+      },
+      "differences": [
+        {
+          "actual": [],
+          "expected": [
+            "E31"
+          ],
+          "field": "candidate_products",
+          "persona_id": 6
+        },
+        {
+          "actual": [
+            "MINOR_GUARDIAN_PRIVACY_REVIEW"
+          ],
+          "expected": [],
+          "field": "review_reason_codes",
+          "persona_id": 6
+        },
+        {
+          "actual": "HUMAN_REVIEW_REQUIRED",
+          "expected": "SUPPORTED_CANDIDATES",
+          "field": "state",
+          "persona_id": 6
+        }
+      ],
+      "divergence": true,
+      "expected": {
+        "candidate_products": [
+          "E31"
+        ],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "SUPPORTED_CANDIDATES"
+      },
+      "explanation": null,
+      "label": "minor child with confirmed family sponsor -> E31",
+      "pack": {
+        "payload_sha256": "3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82",
+        "rule_pack_id": "453ee842-7f35-5d77-b460-31d67e2784c2",
+        "sequence": 7,
+        "version": "2026.8.11"
+      },
+      "persona_id": 6
+    },
+    {
+      "actual": {
+        "candidate_products": [
+          "C1",
+          "E31A",
+          "E31B",
+          "E31D"
+        ],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "SUPPORTED_CANDIDATES"
+      },
+      "differences": [
+        {
+          "actual": [
+            "C1",
+            "E31A",
+            "E31B",
+            "E31D"
+          ],
+          "expected": [
+            "E31"
+          ],
+          "field": "candidate_products",
+          "persona_id": 7
+        }
+      ],
+      "divergence": true,
+      "expected": {
+        "candidate_products": [
+          "E31"
+        ],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "SUPPORTED_CANDIDATES"
+      },
+      "explanation": null,
+      "label": "adult spouse, registered marriage, confirmed sponsor -> E31",
+      "pack": {
+        "payload_sha256": "3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82",
+        "rule_pack_id": "453ee842-7f35-5d77-b460-31d67e2784c2",
+        "sequence": 7,
+        "version": "2026.8.11"
+      },
+      "persona_id": 7
+    },
+    {
+      "actual": {
+        "candidate_products": [
+          "C1",
+          "E31D"
+        ],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "SUPPORTED_CANDIDATES"
+      },
+      "differences": [
+        {
+          "actual": [
+            "C1",
+            "E31D"
+          ],
+          "expected": [],
+          "field": "candidate_products",
+          "persona_id": 8
+        },
+        {
+          "actual": [],
+          "expected": [
+            "family.marriage_registered"
+          ],
+          "field": "missing_facts",
+          "persona_id": 8
+        },
+        {
+          "actual": "SUPPORTED_CANDIDATES",
+          "expected": "NEEDS_INPUT",
+          "field": "state",
+          "persona_id": 8
+        }
+      ],
+      "divergence": true,
+      "expected": {
+        "candidate_products": [],
+        "missing_facts": [
+          "family.marriage_registered"
+        ],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "NEEDS_INPUT"
+      },
+      "explanation": null,
+      "label": "same as #7 but marriage_registered unverified -> needs input",
+      "pack": {
+        "payload_sha256": "3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82",
+        "rule_pack_id": "453ee842-7f35-5d77-b460-31d67e2784c2",
+        "sequence": 7,
+        "version": "2026.8.11"
+      },
+      "persona_id": 8
+    },
+    {
+      "actual": {
+        "candidate_products": [
+          "D12"
+        ],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "SUPPORTED_CANDIDATES"
+      },
+      "differences": [
+        {
+          "actual": [
+            "D12"
+          ],
+          "expected": [],
+          "field": "candidate_products",
+          "persona_id": 9
+        },
+        {
+          "actual": [],
+          "expected": [
+            "DIRECT_ONSHORE_CONVERSION_UNSUPPORTED"
+          ],
+          "field": "no_path_reason_codes",
+          "persona_id": 9
+        },
+        {
+          "actual": "SUPPORTED_CANDIDATES",
+          "expected": "NO_SUPPORTED_PATH",
+          "field": "state",
+          "persona_id": 9
+        }
+      ],
+      "divergence": true,
+      "expected": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [
+          "DIRECT_ONSHORE_CONVERSION_UNSUPPORTED"
+        ],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "NO_SUPPORTED_PATH"
+      },
+      "explanation": null,
+      "label": "investor direct onshore conversion -> unsupported",
+      "pack": {
+        "payload_sha256": "3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82",
+        "rule_pack_id": "453ee842-7f35-5d77-b460-31d67e2784c2",
+        "sequence": 7,
+        "version": "2026.8.11"
+      },
+      "persona_id": 9
+    },
+    {
+      "actual": {
+        "candidate_products": [
+          "D12"
+        ],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "SUPPORTED_CANDIDATES"
+      },
+      "differences": [
+        {
+          "actual": [
+            "D12"
+          ],
+          "expected": [],
+          "field": "candidate_products",
+          "persona_id": 10
+        },
+        {
+          "actual": [],
+          "expected": [
+            "STATUS_BRIDGING_REVIEW"
+          ],
+          "field": "review_reason_codes",
+          "persona_id": 10
+        },
+        {
+          "actual": "SUPPORTED_CANDIDATES",
+          "expected": "HUMAN_REVIEW_REQUIRED",
+          "field": "state",
+          "persona_id": 10
+        }
+      ],
+      "divergence": true,
+      "expected": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [
+          "STATUS_BRIDGING_REVIEW"
+        ],
+        "state": "HUMAN_REVIEW_REQUIRED"
+      },
+      "explanation": null,
+      "label": "same investor facts via status bridging -> human review",
+      "pack": {
+        "payload_sha256": "3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82",
+        "rule_pack_id": "453ee842-7f35-5d77-b460-31d67e2784c2",
+        "sequence": 7,
+        "version": "2026.8.11"
+      },
+      "persona_id": 10
+    },
+    {
+      "actual": {
+        "candidate_products": [
+          "E33G"
+        ],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "SUPPORTED_CANDIDATES"
+      },
+      "differences": [],
+      "divergence": false,
+      "expected": {
+        "candidate_products": [
+          "E33G"
+        ],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "SUPPORTED_CANDIDATES"
+      },
+      "explanation": null,
+      "label": "clean remote worker, no local footprint -> E33G",
+      "pack": {
+        "payload_sha256": "3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82",
+        "rule_pack_id": "453ee842-7f35-5d77-b460-31d67e2784c2",
+        "sequence": 7,
+        "version": "2026.8.11"
+      },
+      "persona_id": 11
+    },
+    {
+      "actual": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [
+          "LOCAL_MARKET_ACTIVITY_REVIEW"
+        ],
+        "state": "HUMAN_REVIEW_REQUIRED"
+      },
+      "differences": [],
+      "divergence": false,
+      "expected": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [
+          "LOCAL_MARKET_ACTIVITY_REVIEW"
+        ],
+        "state": "HUMAN_REVIEW_REQUIRED"
+      },
+      "explanation": null,
+      "label": "remote worker serving Indonesian clients -> human review",
+      "pack": {
+        "payload_sha256": "3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82",
+        "rule_pack_id": "453ee842-7f35-5d77-b460-31d67e2784c2",
+        "sequence": 7,
+        "version": "2026.8.11"
+      },
+      "persona_id": 12
+    },
+    {
+      "actual": {
+        "candidate_products": [],
+        "missing_facts": [
+          "work.serves_indonesian_clients"
+        ],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "NEEDS_INPUT"
+      },
+      "differences": [],
+      "divergence": false,
+      "expected": {
+        "candidate_products": [],
+        "missing_facts": [
+          "work.serves_indonesian_clients"
+        ],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "NEEDS_INPUT"
+      },
+      "explanation": null,
+      "label": "remote worker, local-clients fact unprovided -> needs input",
+      "pack": {
+        "payload_sha256": "3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82",
+        "rule_pack_id": "453ee842-7f35-5d77-b460-31d67e2784c2",
+        "sequence": 7,
+        "version": "2026.8.11"
+      },
+      "persona_id": 13
+    },
+    {
+      "actual": {
+        "candidate_products": [
+          "E33G"
+        ],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "SUPPORTED_CANDIDATES"
+      },
+      "differences": [],
+      "divergence": false,
+      "expected": {
+        "candidate_products": [
+          "E33G"
+        ],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "SUPPORTED_CANDIDATES"
+      },
+      "explanation": null,
+      "label": "tourism + remote-work purposes -> E33G only, never C1",
+      "pack": {
+        "payload_sha256": "3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82",
+        "rule_pack_id": "453ee842-7f35-5d77-b460-31d67e2784c2",
+        "sequence": 7,
+        "version": "2026.8.11"
+      },
+      "persona_id": 14
+    },
+    {
+      "actual": {
+        "candidate_products": [],
+        "missing_facts": [
+          "intent.requested_product_code"
+        ],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "NEEDS_INPUT"
+      },
+      "differences": [
+        {
+          "actual": [],
+          "expected": [
+            "E23"
+          ],
+          "field": "candidate_products",
+          "persona_id": 15
+        },
+        {
+          "actual": [
+            "intent.requested_product_code"
+          ],
+          "expected": [],
+          "field": "missing_facts",
+          "persona_id": 15
+        },
+        {
+          "actual": "NEEDS_INPUT",
+          "expected": "SUPPORTED_CANDIDATES",
+          "field": "state",
+          "persona_id": 15
+        }
+      ],
+      "divergence": true,
+      "expected": {
+        "candidate_products": [
+          "E23"
+        ],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "SUPPORTED_CANDIDATES"
+      },
+      "explanation": null,
+      "label": "tourism + employment purposes -> E23 only, never C1",
+      "pack": {
+        "payload_sha256": "3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82",
+        "rule_pack_id": "453ee842-7f35-5d77-b460-31d67e2784c2",
+        "sequence": 7,
+        "version": "2026.8.11"
+      },
+      "persona_id": 15
+    },
+    {
+      "actual": {
+        "candidate_products": [
+          "D12"
+        ],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "SUPPORTED_CANDIDATES"
+      },
+      "differences": [
+        {
+          "actual": [
+            "D12"
+          ],
+          "expected": [],
+          "field": "candidate_products",
+          "persona_id": 16
+        },
+        {
+          "actual": [],
+          "expected": [
+            "INVESTMENT_CAPITAL_BELOW_FIXTURE_MINIMUM"
+          ],
+          "field": "no_path_reason_codes",
+          "persona_id": 16
+        },
+        {
+          "actual": "SUPPORTED_CANDIDATES",
+          "expected": "NO_SUPPORTED_PATH",
+          "field": "state",
+          "persona_id": 16
+        }
+      ],
+      "divergence": true,
+      "expected": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [
+          "INVESTMENT_CAPITAL_BELOW_FIXTURE_MINIMUM"
+        ],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "NO_SUPPORTED_PATH"
+      },
+      "explanation": null,
+      "label": "investor capital 1 IDR below minimum -> no supported path",
+      "pack": {
+        "payload_sha256": "3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82",
+        "rule_pack_id": "453ee842-7f35-5d77-b460-31d67e2784c2",
+        "sequence": 7,
+        "version": "2026.8.11"
+      },
+      "persona_id": 16
+    },
+    {
+      "actual": {
+        "candidate_products": [
+          "D12"
+        ],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "SUPPORTED_CANDIDATES"
+      },
+      "differences": [
+        {
+          "actual": [
+            "D12"
+          ],
+          "expected": [
+            "E28A"
+          ],
+          "field": "candidate_products",
+          "persona_id": 17
+        }
+      ],
+      "divergence": true,
+      "expected": {
+        "candidate_products": [
+          "E28A"
+        ],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "SUPPORTED_CANDIDATES"
+      },
+      "explanation": null,
+      "label": "investor at fixture minimum, low budget never filters -> E28A",
+      "pack": {
+        "payload_sha256": "3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82",
+        "rule_pack_id": "453ee842-7f35-5d77-b460-31d67e2784c2",
+        "sequence": 7,
+        "version": "2026.8.11"
+      },
+      "persona_id": 17
+    },
+    {
+      "actual": {
+        "candidate_products": [],
+        "missing_facts": [
+          "intent.purposes"
+        ],
+        "no_path_reason_codes": [],
+        "notice_codes": [
+          "OBSOLETE_PRODUCT_CODE",
+          "OBSOLETE_PRODUCT_CODE",
+          "OBSOLETE_PRODUCT_CODE"
+        ],
+        "review_reason_codes": [],
+        "state": "NEEDS_INPUT"
+      },
+      "differences": [
+        {
+          "actual": [
+            "OBSOLETE_PRODUCT_CODE",
+            "OBSOLETE_PRODUCT_CODE",
+            "OBSOLETE_PRODUCT_CODE"
+          ],
+          "expected": [
+            "OBSOLETE_PRODUCT_CODE"
+          ],
+          "field": "notice_codes",
+          "persona_id": 18
+        }
+      ],
+      "divergence": true,
+      "expected": {
+        "candidate_products": [],
+        "missing_facts": [
+          "intent.purposes"
+        ],
+        "no_path_reason_codes": [],
+        "notice_codes": [
+          "OBSOLETE_PRODUCT_CODE"
+        ],
+        "review_reason_codes": [],
+        "state": "NEEDS_INPUT"
+      },
+      "explanation": null,
+      "label": "obsolete code requested, purposes not provided -> needs input + notice",
+      "pack": {
+        "payload_sha256": "3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82",
+        "rule_pack_id": "453ee842-7f35-5d77-b460-31d67e2784c2",
+        "sequence": 7,
+        "version": "2026.8.11"
+      },
+      "persona_id": 18
+    },
+    {
+      "actual": {
+        "candidate_products": [
+          "B1",
+          "C1"
+        ],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [
+          "OBSOLETE_PRODUCT_CODE",
+          "OBSOLETE_PRODUCT_CODE",
+          "OBSOLETE_PRODUCT_CODE"
+        ],
+        "review_reason_codes": [],
+        "state": "SUPPORTED_CANDIDATES"
+      },
+      "differences": [
+        {
+          "actual": [
+            "B1",
+            "C1"
+          ],
+          "expected": [
+            "C1"
+          ],
+          "field": "candidate_products",
+          "persona_id": 19
+        },
+        {
+          "actual": [
+            "OBSOLETE_PRODUCT_CODE",
+            "OBSOLETE_PRODUCT_CODE",
+            "OBSOLETE_PRODUCT_CODE"
+          ],
+          "expected": [
+            "OBSOLETE_PRODUCT_CODE"
+          ],
+          "field": "notice_codes",
+          "persona_id": 19
+        }
+      ],
+      "divergence": true,
+      "expected": {
+        "candidate_products": [
+          "C1"
+        ],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [
+          "OBSOLETE_PRODUCT_CODE"
+        ],
+        "review_reason_codes": [],
+        "state": "SUPPORTED_CANDIDATES"
+      },
+      "explanation": null,
+      "label": "obsolete code requested, complete tourism facts -> C1 + notice",
+      "pack": {
+        "payload_sha256": "3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82",
+        "rule_pack_id": "453ee842-7f35-5d77-b460-31d67e2784c2",
+        "sequence": 7,
+        "version": "2026.8.11"
+      },
+      "persona_id": 19
+    },
+    {
+      "actual": {
+        "candidate_products": [],
+        "missing_facts": [],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [
+          "BRIDGING_FROM_VISIT_ITK_PROHIBITED",
+          "BRIDGING_TO_BRIDGING_PROHIBITED"
+        ],
+        "state": "HUMAN_REVIEW_REQUIRED"
+      },
+      "differences": [
+        {
+          "actual": [],
+          "expected": [
+            "immigration.current_status_code",
+            "immigration.overstay_days"
+          ],
+          "field": "missing_facts",
+          "persona_id": 20
+        },
+        {
+          "actual": [
+            "BRIDGING_FROM_VISIT_ITK_PROHIBITED",
+            "BRIDGING_TO_BRIDGING_PROHIBITED"
+          ],
+          "expected": [],
+          "field": "review_reason_codes",
+          "persona_id": 20
+        },
+        {
+          "actual": "HUMAN_REVIEW_REQUIRED",
+          "expected": "NEEDS_INPUT",
+          "field": "state",
+          "persona_id": 20
+        }
+      ],
+      "divergence": true,
+      "expected": {
+        "candidate_products": [],
+        "missing_facts": [
+          "immigration.current_status_code",
+          "immigration.overstay_days"
+        ],
+        "no_path_reason_codes": [],
+        "notice_codes": [],
+        "review_reason_codes": [],
+        "state": "NEEDS_INPUT"
+      },
+      "explanation": null,
+      "label": "onshore conversion wanted, status+overstay both unprovided",
+      "pack": {
+        "payload_sha256": "3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82",
+        "rule_pack_id": "453ee842-7f35-5d77-b460-31d67e2784c2",
+        "sequence": 7,
+        "version": "2026.8.11"
+      },
+      "persona_id": 20
+    }
+  ],
+  "report_schema_version": "1.0.0",
+  "summary": {
+    "explained_divergences": 0,
+    "personas_match": 6,
+    "personas_total": 20,
+    "personas_with_divergence": 14,
+    "unexplained_divergences": 14
+  }
+}

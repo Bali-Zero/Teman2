@@ -26,6 +26,7 @@
 # beside it, which records argv instead of sending. (The wrapper OVERWRITES $PATH on
 # line 11, so shadowing python3 via PATH cannot work — a stub placed there is silently
 # outranked. The sibling-first gateway lookup is what makes this testable at all.)
+# shellcheck disable=SC2016
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -51,8 +52,17 @@ check () {  # check <name> <condition-result>
 }
 has () { grep -qx -- "$1" "$TMP/gateway.argv" 2>/dev/null && echo 0 || echo 1; }
 
+# W108: this is a static arm because PATH shadowing cannot exercise the branch:
+# cron-runner deliberately overwrites PATH. Only the gateway failure path is
+# pinned to the immutable system interpreter; receipt serialization keeps its
+# existing graceful `command -v python3` fallback contract.
+check "gateway failure path usa /usr/bin/python3 assoluto" \
+    "$(grep -Fq '/usr/bin/python3 "$gateway"' "$WRAPPER" && echo 0 || echo 1)"
+check "nessun interprete PATH-resolved sul gateway" \
+    "$([ "$(grep -Ec '^[[:space:]]*python3[[:space:]]+"\$gateway"' "$WRAPPER")" = "0" ] && echo 0 || echo 1)"
+
 run_case () {  # run_case <args...> ; sets RC. STUB_RC / NO_STUB tune the gateway.
-    rm -rf "$TMP/run" "$TMP/state" "$TMP/home" "$TMP/gateway.argv"
+    rm -rf "${TMP:?}/run" "${TMP:?}/state" "${TMP:?}/home" "${TMP:?}/gateway.argv"
     mkdir -p "$TMP/run" "$TMP/state" "$TMP/home"
     cp "$WRAPPER" "$TMP/run/cron-runner.sh"
     [ -n "${NO_STUB:-}" ] || mkstub "${STUB_RC:-0}"
