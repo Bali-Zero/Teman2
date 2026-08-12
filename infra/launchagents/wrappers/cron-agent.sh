@@ -390,6 +390,41 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
         return 0
     fi
 
+    # ── No-op suppression (P2) ────────────────────────────────────────────────
+    # The cheapest agent turn is the one that never runs. A job whose INPUT has
+    # not changed since its last successful run re-derives the same answer at
+    # full context price. Opt-in per job, because only the job knows what its
+    # input is: set CRON_AGENT_SKIP_IF_UNCHANGED to a shell command whose STDOUT
+    # is a cheap fingerprint of that input (a `git rev-parse HEAD`, a row count,
+    # an `ls -la | sha256`). Unchanged fingerprint => skip the LLM, exit 0.
+    #
+    # Deliberately opt-in and deliberately NOT hashing the prompt file: a prompt
+    # that never changes is the norm, so keying on it would silence every job
+    # after its first run. Fail-open by construction — if the fingerprint command
+    # errors or prints nothing we run the agent, because "I could not measure the
+    # input" must never be read as "the input is unchanged" (W106b: cannot-verify
+    # is not a verdict).
+    if [[ -n "${CRON_AGENT_SKIP_IF_UNCHANGED:-}" ]]; then
+        local fp_file="$STATE_DIR/${JOB_NAME}.input-fingerprint"
+        local fp_now fp_rc
+        fp_now="$(eval "$CRON_AGENT_SKIP_IF_UNCHANGED" 2>/dev/null)"; fp_rc=$?
+        if [[ $fp_rc -ne 0 || -z "$fp_now" ]]; then
+            log "no-op check: fingerprint command failed (rc=$fp_rc) or empty — running the agent (fail-open)"
+        else
+            fp_now="$(printf '%s' "$fp_now" | shasum | awk '{print $1}')"
+            if [[ -f "$fp_file" && "$(cat "$fp_file" 2>/dev/null)" == "$fp_now" ]]; then
+                log "SKIP: input fingerprint unchanged ($fp_now) — agent not invoked"
+                echo "[no-op] input unchanged since last run; agent skipped"
+                save_state "noop" 0 0
+                return 0
+            fi
+            # Store AFTER the run succeeds, not here: a crash mid-run must not
+            # convince the next tick that the work was already done.
+            NOOP_FINGERPRINT_FILE="$fp_file"
+            NOOP_FINGERPRINT_VALUE="$fp_now"
+        fi
+    fi
+
     # Five numbered seats, then legacy and keychain fallback.
     local tokens=()
     local labels=()
@@ -475,8 +510,36 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
         local cron_model="${CLAUDE_CRON_MODEL:-claude-haiku-4-5-20251001}"
         local claude_bin="${CRON_AGENT_CLAUDE_BIN:-claude}"
         local timeout_bin="${CRON_AGENT_TIMEOUT_BIN:-timeout}"
+
+        # ── Context diet (P1, measured on M5 2026-08-12) ──────────────────────
+        # A cron turn is a one-shot prompt, but it was paying the FULL interactive
+        # boot context on every invocation: measured 55,881-91,679 tokens of
+        # context for a task whose prompt is a few hundred. Two flags cut what a
+        # cron can never use, and neither changes what the model is asked to do:
+        #
+        #   --disable-slash-commands  drops the skill descriptions. Measured
+        #       -11,087 tokens (55,881 -> 44,794) and again -11,038 in a second
+        #       run. Innocence checked before enabling: all 12 cron prompt files
+        #       on Pro were scanned for skill invocations — the only `/token`
+        #       hits are FILE PATHS (/tmp/..., /Users/...), zero real skills.
+        #   --exclude-dynamic-system-prompt-sections  moves cwd/env/memory-paths/
+        #       git-status OUT of the cached prefix. Small on its own (~300), but
+        #       those are exactly the per-run-varying bytes that break prefix
+        #       identity — the measured baseline swung 55,881 vs 91,679 between
+        #       two identical runs, which is cache thrashing, not real work.
+        #
+        # NOT used: --bare. It skips credential resolution, so with an OAuth seat
+        # it returns "Not logged in" and 0 tokens — a zero that means the request
+        # never ran (the pre-existing comment above says the same).
+        # Kill switch: CRON_AGENT_CONTEXT_DIET=0 restores the old invocation.
+        local diet_args=()
+        if [[ "${CRON_AGENT_CONTEXT_DIET:-1}" != "0" ]]; then
+            diet_args+=(--disable-slash-commands --exclude-dynamic-system-prompt-sections)
+        fi
+
         "${env_args[@]}" "$timeout_bin" "$attempt_timeout" "$claude_bin" -p --model "$cron_model" \
             --permission-mode bypassPermissions \
+            ${diet_args[@]+"${diet_args[@]}"} \
             --max-budget-usd "${CLAUDE_CRON_MAX_BUDGET_USD:-5}" "$prompt" \
             >"$attempt_out" 2>"$attempt_err" && exit_code=0 || exit_code=$?
         output="$(cat "$attempt_out")"
@@ -534,6 +597,14 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
         # numbered/legacy/keychain fallback slots actually answered.
         log "[cron-agent] used: tier2-claude-${labels[$idx]} (exit=0)"
         save_state "ok" 0 "$duration"
+        # P2: persist the input fingerprint ONLY on a real success, so the next
+        # tick can skip. Written here and nowhere else — a crashed or refused run
+        # must leave the previous fingerprint (or none) in place, or the job would
+        # skip work it never actually did.
+        if [[ -n "${NOOP_FINGERPRINT_FILE:-}" && -n "${NOOP_FINGERPRINT_VALUE:-}" ]]; then
+            printf '%s' "$NOOP_FINGERPRINT_VALUE" > "$NOOP_FINGERPRINT_FILE"
+            log "no-op check: fingerprint stored ($NOOP_FINGERPRINT_VALUE)"
+        fi
     elif [[ $exit_code -eq 124 ]]; then
         # M4 (2026-07-20): report the slots ACTUALLY tried — the loop can break
         # before exhausting all fallbacks, and "all 3 tokens tried" was false

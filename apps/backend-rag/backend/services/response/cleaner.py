@@ -369,6 +369,22 @@ _MARKER_PATTERNS: tuple[str, ...] = (
     r"^ACTION:\s*No tool call needed[^.]*\.\s*",
     r"^vector_search\([^)]*\)\s*",
     r"^User Query:\s*[^\n]*\n*",
+    # `internal_monologue` — the model emitting the name of the section the
+    # system prompt tells it to run SILENTLY (`<internal_monologue_instructions>`
+    # in zantara_core.py). Measured live 2026-08-11: 2 of 16 cold answers opened
+    # with the literal token, one continuing "The previous answer was rejected
+    # because it included detailed inf…" — the machinery, verbatim, to a client.
+    #
+    # Tagged form: remove the WHOLE block, because the closing tag says where it
+    # ends. Bare form: remove ONLY the token. Nothing marks where an untagged
+    # monologue stops, and guessing a boundary would eat the answer — the two
+    # leaked answers ran straight from the monologue into real content. Opening
+    # on a machine token is the part we can fix without inventing an ending.
+    # `<?` and `</?` BOTH optional: the leak measured in production carries NO
+    # tag at all ("internal_monologue The user is asking…"). A first draft made
+    # the `<` mandatory and matched nothing — the guard missed the only shape it
+    # was written for, and its own bare-leak test is what caught that.
+    r"^(?:</?)?internal_monologue(?:_instructions)?>?\s*:?\s*",
     # Prefix-only strips: the marker goes, the sentence after it stays.
     r"^Final Answer:\s*",
     r"^FINAL ANSWER:\s*",
@@ -452,6 +468,50 @@ _PREAMBLE_PATTERNS: tuple[str, ...] = (
     # ("Waiting for your passport scan, we can start the application." -> "").
     r"^Waiting for (your|user) (next |new )?"
     r"(quer(y|ies)|input|response|message|instruction)s?\b[^.]*\.\s*",
+    # ── The monologue the TOKEN strip left standing (measured 2026-08-11) ──
+    # `_MARKER_PATTERNS` removes the literal `internal_monologue`; it deliberately
+    # does NOT guess where an untagged monologue ends. That was right, and it was
+    # not enough: probing the Indonesian paid-up-capital ask (probe 35, prod,
+    # `ctx=1 ev=0.85` — retrieval had SUCCEEDED) returned 6,214 characters opening
+    # `internal_monologue The user is asking for the minimum paid-up capital for
+    # PT PMA. I need to find this information **ONLY** within the provided
+    # <verified_data>. Let's examine the provided RAG results.` Stripping the token
+    # shortened that by 20 characters and shipped the rest. These three peel the
+    # SENTENCES, from the preamble position only — where the answer has not started.
+    #
+    # Third person about the reader: a client-facing answer never calls the person
+    # it is addressing "the user". The VERB is load-bearing, not decoration —
+    # `^The user\b` alone eats "The user manual for OSS is published by BKPM."
+    # (in LEGITIMATE_ANSWER_FRAGMENTS for exactly this reason).
+    r"^(Okay[,.]?\s*)?[Tt]he user (is asking|is requesting|asks|wants|would like|"
+    r"needs|is inquiring|is looking)\b[^.]*\.\s*",
+    # …and the same sentence hiding BEHIND an echo of the question. Measured 20
+    # minutes after the pattern above was written, which is why it is here:
+    # repeating the identical ask six times, one run answered
+    # `What are your office opening hours?\n\nThe user is asking for office
+    # opening hours. This information is not pres…` — the echo occupies
+    # start-of-string, so a `^`-anchored rule cannot see the monologue behind it.
+    # The question line is consumed ONLY when a monologue sentence follows it:
+    # deleting a leading question on its own would eat "What is the difference
+    # between a KITAS and a KITAP?", a real answer opener already pinned in
+    # LEGITIMATE_ANSWER_FRAGMENTS. Bounded length so this cannot swallow a
+    # paragraph that merely happens to contain a question mark.
+    r"^[^\n]{0,200}\?\s*\n+\s*(Okay[,.]?\s*)?[Tt]he user "
+    r"(is asking|is requesting|asks|wants|would like|needs|is inquiring|"
+    r"is looking)\b[^.]*\.\s*",
+    # Naming the store it was told to consult. The lookahead is the load-bearing
+    # half, same idiom as the CRITICAL/IMPORTANT pattern above: without it this
+    # deletes "I need to find the missing page of your akta." — a real request to
+    # a client. The object must be the MACHINERY, never a client document.
+    r"^I need to (find|locate|look for|search for)\b"
+    r"(?=[^\n]*\b(verified[ _]data|provided context|search results|RAG results|"
+    r"knowledge base|the provided|retrieved (context|results))\b)"
+    r"[^.]*\.\s*",
+    # Announcing the inspection of a retrieval store. The qualifier is REQUIRED:
+    # unqualified, this deletes "Let's review the results of your tax assessment."
+    r"^Let'?s (examine|look at|review|inspect) the "
+    r"(provided |retrieved )?(RAG|search|retrieval|vector|verified[ _]data)"
+    r"\s*(results|chunks)?\b[^.]*\.\s*",
 )
 
 # DROPPED, not moved — each was measured deleting ordinary consultant English
@@ -482,6 +542,17 @@ _MARKER_RE = tuple(re.compile(p, re.IGNORECASE | re.MULTILINE) for p in _MARKER_
 _PREAMBLE_RE = tuple(re.compile(p, re.IGNORECASE) for p in _PREAMBLE_PATTERNS)
 _ANYWHERE_RE = tuple(re.compile(p, re.IGNORECASE) for p in _ANYWHERE_PATTERNS)
 
+# Separate tuple: this one needs DOTALL to span the newlines inside a leaked
+# block, and DOTALL must NOT be given to the patterns above (their `.*?\n` would
+# stop meaning "this line only"). Non-greedy + an explicit closing tag, so it can
+# never swallow past the block it opened.
+_BLOCK_RE = (
+    re.compile(
+        r"<internal_monologue(?:_instructions)?>.*?</internal_monologue(?:_instructions)?>",
+        re.IGNORECASE | re.DOTALL,
+    ),
+)
+
 # A response can open with several stacked preamble sentences; each pass peels
 # at most one per pattern, so re-run until nothing changes (bounded).
 _PREAMBLE_MAX_PASSES = 5
@@ -510,6 +581,8 @@ def clean_response(response: str) -> str:
         return ""
 
     cleaned = response
+    for regex in _BLOCK_RE:
+        cleaned = regex.sub("", cleaned)
     for regex in _ANYWHERE_RE:
         cleaned = regex.sub("", cleaned)
     for regex in _MARKER_RE:

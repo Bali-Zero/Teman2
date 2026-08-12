@@ -222,7 +222,11 @@
         },
         "infra/claude-hooks/host_boundary.py": {
           "symbols": {},
-          "tests": ["infra/claude-hooks/test_host_boundary.py"]
+          "tests": [
+            "infra/claude-hooks/test_host_boundary.py",
+            "infra/claude-hooks/test_host_boundary_carveout.py"
+          ],
+          "note": "The carve-out half (UNPROTECTED_SUBPATHS) lived only in the live ~/.claude copy from 2026-06-16 until it was promoted on 2026-08-12; test_host_boundary.py never named it, so it passed with or without. test_host_boundary_carveout.py pins both directions — the freed subpaths stay writable, the control plane stays shut — and is mutation-verified: emptying UNPROTECTED_SUBPATHS kills exactly the three cases that carry weight (memory, scripts, venvs)."
         },
         "infra/claude-hooks/_phase.py": {
           "symbols": {},

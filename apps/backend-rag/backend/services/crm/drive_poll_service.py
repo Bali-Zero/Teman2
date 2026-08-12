@@ -22,11 +22,14 @@ import asyncpg
 from googleapiclient.errors import HttpError
 
 from backend.core.cache import invalidate_crm_stats
+from backend.core.secret_log_redaction import install_telegram_token_redaction
 from backend.services.crm.document_categorizer import auto_categorize_document
 from backend.services.crm_guardian.summary_queue import (
     enqueue_client,
     enqueue_clients_for_company_folder,
 )
+
+install_telegram_token_redaction()
 
 logger = logging.getLogger(__name__)
 

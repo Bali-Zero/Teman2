@@ -206,3 +206,57 @@ claude_seat_run() {
     _claude_seat_cleanup
     return 1
 }
+
+# ── Interactive seat selection ────────────────────────────────────────────────
+# The rotation above (claude_seat_run) is for one-shot `-p` calls. An INTERACTIVE
+# session is a long-lived TUI that cannot rotate its own auth mid-flight, so the
+# fallback there is: pick a LIVE seat BEFORE launch. Same refusal classifier, so
+# "live vs capped" is decided the one cured way, never a second guess.
+
+# _claude_seat_probe <bin> <token>   (token "" = default/keychain seat)
+#   rc 0 = the seat answered (live); rc 1 = it refused (capped/auth). No value printed.
+_claude_seat_probe() {
+    local bin="$1" tok="$2" out err rc part
+    local -a env_args=()
+    while IFS= read -r -d '' part; do env_args+=("$part"); done < <(claude_oauth_env "$tok")
+    out="$(mktemp "${TMPDIR:-/tmp}/claude-seat-probe-out.XXXXXX")"
+    err="$(mktemp "${TMPDIR:-/tmp}/claude-seat-probe-err.XXXXXX")"
+    "${env_args[@]}" "$bin" -p "reply PONG only" \
+        --model "${CLAUDE_SEAT_PROBE_MODEL:-claude-sonnet-4-6}" < /dev/null > "$out" 2> "$err"
+    rc=$?
+    if claude_retryable_files "$out" "$err" "$rc"; then rm -f "$out" "$err"; return 1; fi
+    rm -f "$out" "$err"
+    [ "$rc" -eq 0 ]
+}
+
+# claude_seat_pick — echo a selector for the first LIVE seat.
+#   stdout: "default"  (bare keychain/Team seat answers — used in a GUI/interactive
+#                        session; NOT usable under cron, proven 0-for-905)
+#         | "token_N"  (numbered OAuth seat N is live)
+#   rc 1 = every seat refused (caller SUSPENDS — never downgrades to a weaker model)
+#   rc 2 = setup failure (no classifier / no binary)
+# Set CLAUDE_SEAT_TRY_DEFAULT=0 to skip the Team seat and go straight to the MAX
+# rotation (the MAX seats have a rolling 5h window, no weekly ceiling — better for
+# sustained interactive work once the Team seat's weekly cap is the bottleneck).
+claude_seat_pick() {
+    _claude_seat_load_classifier || return 2
+    _claude_seat_load_secrets
+    local bin; bin="$(_claude_seat_binary)" || { echo "claude_seat: no claude binary" >&2; return 2; }
+    if [ "${CLAUDE_SEAT_TRY_DEFAULT:-1}" = "1" ]; then
+        if _claude_seat_probe "$bin" ""; then echo "default"; return 0; fi
+        echo "claude_seat: default seat refused — trying numbered seats" >&2
+    fi
+    local i var tok seen=() dup existing
+    for i in 1 2 3 4 5; do
+        var="CLAUDE_CODE_OAUTH_TOKEN_${i}"; tok="${!var:-}"
+        [ -z "$tok" ] && continue
+        dup=0
+        for existing in ${seen[@]+"${seen[@]}"}; do [ "$existing" = "$tok" ] && dup=1; done
+        [ "$dup" -eq 1 ] && continue
+        seen+=("$tok")
+        if _claude_seat_probe "$bin" "$tok"; then echo "token_${i}"; return 0; fi
+        echo "claude_seat: token_${i} refused — rotating" >&2
+    done
+    echo "claude_seat: no live seat (default + numbered all refused) — SUSPEND, do not downgrade" >&2
+    return 1
+}

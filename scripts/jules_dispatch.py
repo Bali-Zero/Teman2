@@ -39,7 +39,17 @@ import urllib.error
 import urllib.request
 
 BASE = "https://jules.googleapis.com/v1alpha"
-DEFAULT_SOURCE = "sources/github/Balizero1987/Teman2"
+# The repo was transferred from the personal account `Balizero1987` to the
+# `Bali-Zero` ORGANISATION. git and the GitHub API follow that with a redirect,
+# so nothing local broke and nobody noticed — but **a GitHub App installation
+# does not follow a transfer**: it stays bound to the account it was installed
+# on. Jules' installation sat on `Balizero1987`, so the moment Teman2 left that
+# account Jules stopped being able to see it, and every dispatch aimed here was
+# aimed at nothing. Measured 2026-08-12: `list-sources` returned four unrelated
+# repos (last pushed February and April) and not this one, while the arm itself
+# was healthy — selftest 6/6, API rc=0. Six weeks idle, zero alarms, because
+# nothing calls this arm on a schedule.
+DEFAULT_SOURCE = "sources/github/Bali-Zero/Teman2"
 DEFAULT_BRANCH = "main"
 KEYCHAIN_SERVICE = "jules-api-key"
 TIMEOUT_S = 30
@@ -121,7 +131,44 @@ def cmd_list_sources(key: str, as_json: bool) -> int:
     return 0
 
 
+def visible_sources(key: str) -> set[str] | None:
+    """Source names Jules can currently see, or None if that is unknowable.
+
+    ADVISORY, never authoritative. `api_call` reports and `sys.exit(1)`s on any
+    HTTP or network failure, which is the right behaviour for a command the
+    caller asked for — but this lookup is a pre-flight the caller did NOT ask
+    for, and a transient blip must not turn into a refusal to work. So the exit
+    is caught and converted to "unknowable": scar W106b — a guard that cannot
+    verify must say so, not render a verdict. The POST that follows remains the
+    real authority; this only buys a legible error instead of an opaque one.
+    """
+    try:
+        data = api_call("GET", "sources", key)
+    except SystemExit:
+        return None
+    return {s.get("name") for s in data.get("sources", []) if s.get("name")}
+
+
 def cmd_new(key: str, args: argparse.Namespace) -> int:
+    # Pre-flight: refuse a source Jules cannot see. Without this the arm sat
+    # six weeks pointed at a repo that had moved organisation, and the only
+    # symptom was an opaque API error nobody was there to read.
+    if not args.skip_source_check:
+        known = visible_sources(key)
+        if known is None:
+            print("jules_dispatch: [warn] could not list sources — dispatching "
+                  "UNVERIFIED (the POST below is the real check)", file=sys.stderr)
+        elif args.source not in known:
+            print(f"jules_dispatch: REFUSING — Jules cannot see {args.source!r}.",
+                  file=sys.stderr)
+            print("It currently sees:", file=sys.stderr)
+            for name in sorted(known):
+                print(f"  {name}", file=sys.stderr)
+            print("First thing to check: a GitHub App installation does NOT follow a "
+                  "repo transfer between accounts/orgs. Re-install the app on the "
+                  "owning org and grant it this repo, then re-run list-sources.",
+                  file=sys.stderr)
+            return 3
     body = {
         "prompt": args.prompt,
         "sourceContext": {
@@ -222,6 +269,8 @@ def main() -> int:
     p_new.add_argument("--branch", default=DEFAULT_BRANCH)
     p_new.add_argument("--title", default="")
     p_new.add_argument("--require-plan-approval", action="store_true")
+    p_new.add_argument("--skip-source-check", action="store_true",
+                       help="dispatch without checking the source is visible to Jules")
     p_new.add_argument("--json", action="store_true")
 
     p_st = sub.add_parser("status")

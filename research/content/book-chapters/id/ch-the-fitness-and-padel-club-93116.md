@@ -1,3 +1,7 @@
+---
+adversarial_review: codex
+---
+
 # BAB: The Fitness & Padel Club (Klub Kebugaran & Padel)
 
 **1. Impian**
@@ -22,7 +26,7 @@ Kepastian Lukas berkedip. "Maksudnya?"
 
 Lukas membuka kode-kode fasilitas olahraga yang telah ia riset. "Baik. Lupakan kotak gym-nya. Lapangan padel—itu fasilitas olahraga. 93114, 93124, 93199. Apa statusnya?"
 
-Konsultan itu mengangguk pelan. "Sekarang Anda berada di wilayah yang lebih jujur tapi lebih berantakan. Beberapa kode fasilitas olahraga dan klub itu—kode lapangan, kode 'fasilitas olahraga lainnya'—membawa status *perlu ditinjau* (needs review) dalam data kami: mereka tidak punya baris skala OSS yang bersih, yang berarti putusan moratorium tidak ditentukan secara bersih dan kelayakan pendaftarannya benar-benar tidak pasti, bukan sebuah 'ya' yang bersih. Itu bukan lampu hijau; itu lampu kuning yang berkedip. Anda akan membangun fasilitas multi-lapangan di atas kode-kode yang status PMA-asingnya belum terselesaikan—dan 'belum terselesaikan' adalah fondasi yang berbahaya untuk beton yang sudah dituang."
+Konsultan itu mengangguk pelan. "Sekarang Anda berada di wilayah yang lebih jujur tapi lebih berantakan. Beberapa kode fasilitas olahraga dan klub itu—kode lapangan, kode 'fasilitas olahraga lainnya'—membawa derivasi *masih dalam peninjauan* dalam data kami: pembacaan saat ini mengatakan kelas risiko skala-besar mereka cukup tinggi untuk selamat dari moratorium, tetapi derivasinya masih diverifikasi, belum final. Itu bukan lampu hijau yang bersih; itu lampu kuning yang berkedip. Anda akan membangun fasilitas multi-lapangan di atas kode-kode yang status PMA-asingnya masih layak dicek langsung di OSS—dan 'masih diverifikasi' adalah fondasi yang tipis untuk beton yang sudah dituang."
 
 "Jadi tren kebugaran paling panas di pulau ini," kata Lukas pelan, "entah diblokir atau belum terselesaikan bagi orang asing."
 
@@ -44,9 +48,9 @@ Inilah kenyataan yang terverifikasi, berbasis fakta-dasar.
 >     *   *Status Bali:* **DIBLOKIR** untuk PMA baru (moratorium 13 Mei 2026). Pada skala Besar, risiko OSS adalah Rendah/Menengah-Rendah pada setiap cakupan—di dalam pita yang tersegel.
 >
 > **PINTU-PINTU KUNING — LAPANGAN & KLUB**
-> *   **93114 — Fasilitas Lapangan (Courts/Fields):** *perlu ditinjau* — tidak ada baris skala OSS yang bersih; kelayakan pendaftaran PMA-asing belum terselesaikan.
-> *   **93124 — Klub Tenis Lapangan (Racquet Club):** *perlu ditinjau* — status belum terselesaikan yang sama (rumah alami terdekat bagi klub padel).
-> *   **93127 — Klub Kebugaran/Fitness Dan Binaraga (Fitness/Bodybuilding Club):** *perlu ditinjau* — belum terselesaikan.
+> *   **93114 — Fasilitas Lapangan (Courts/Fields):** *kuning* — pembacaan saat ini: terbuka pada risiko tinggi (selamat dari moratorium), tetapi derivasinya masih dalam peninjauan; verifikasi langsung di OSS.
+> *   **93124 — Klub Tenis Lapangan (Racquet Club):** *kuning* — pembacaan saat ini: terbuka pada risiko tinggi, derivasi masih dalam peninjauan (rumah alami terdekat bagi klub padel); verifikasi langsung di OSS.
+> *   **93127 — Klub Kebugaran/Fitness Dan Binaraga (Fitness/Bodybuilding Club):** *kuning-merah* — pembacaan saat ini: diblokir oleh moratorium (risiko menengah-rendah pada skala besar), derivasi masih dalam peninjauan.
 > *   **93199 — Aktivitas Lainnya Berkaitan dengan Olahraga (Other Sports Activities):** *perlu ditinjau* — belum terselesaikan.
 >
 > **PELAJARAN DI BALIK ANGKA**
@@ -109,3 +113,12 @@ Ia menulis di papan tulis.
 Prinsip yang dibutuhkan Lukas adalah kebalikan dari yang ia bawa saat masuk. Ia mengira permintaan yang meledak membuka pintu; di Bali, permintaan yang sekasat-mata ini justru yang *menutup* pintu. Jalan keluarnya bukanlah menemukan nama yang lebih pintar untuk bisnis yang tertutup — melainkan bertanya, dengan jujur, *mana dari hal-hal yang sungguh saya lakukan yang legal untuk saya miliki di sini*, lalu membangun itu. Lukas tidak bisa memiliki pusat kebugaran asing di Pererenan. Tapi ia bisa memiliki akademi yang melatih para anggotanya, suite pemulihan yang menyembuhkan mereka, bar tempat mereka berkumpul, arena tempat mereka bermain — dan, dengan mitra lokal yang sungguhan, sebuah saham di lantai itu sendiri. Itu adalah kerajaan yang lebih kecil, lebih bersih, dan lebih bisa dipertahankan daripada yang ada di spreadsheet-nya, dan itu adalah kerajaan yang benar-benar bisa ia pertahankan.
 
 *Sebelum Anda menandatangani apa pun, pindai untuk memeriksa status terkini KBLI 93116 terhadap rute-rute terbuka — 93113, 85510, 96230, 56101, dan 56301 — di platform Nuzantara, dan konfirmasikan izin sektoral yang dituntut masing-masing.*
+
+## Adversarial review
+
+- Seat: Codex `gpt-5.6-sol` (reasoning xhigh), refute stance, cross-family — reviewed the
+  2026-08-12 retraction-cure diff touching this file, verified against
+  `KBLI_2025_FINAL_CLEAN.json` (the cured dataset).
+- Outcome: FIX-FIRST → fixed in this same PR. 10 findings (9 confirmed/accommodated, 1 HOLDS): 96220 national status corrected to TERBATAS 0% (measured); 55201/55203 restated as the same Annex II entry 48 (sub-rows *Pondok Wisata* / *Vila*); the annex stated as a national instrument (articles 01/02); honest-map wording corrected (33.2% = almost exactly one in three; all but FOUR of the 372 nationally open; 1,041 = "not blocked", not "open"); surf-coliving guest-house-scope reading stated as OSS's call, not the founder's certainty; stale ID fact-sheet row (55203 "tanpa Besar") cured. Every fix re-measured against KBLI_2025_FINAL_CLEAN.json before applying.
+- Note: this section and the `adversarial_review` frontmatter key are R1-gate metadata;
+  the book/PDF composer strips the frontmatter block and this section from rendered output.

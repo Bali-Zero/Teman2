@@ -24,8 +24,11 @@ from pathlib import Path
 
 import asyncpg
 
+from backend.core.secret_log_redaction import install_telegram_token_redaction
 from backend.services.measurer.m13_feedback_loop import M13FeedbackLoop
 from backend.services.sota_loop._promote import promote_research_output
+
+install_telegram_token_redaction()
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("sota.m13.weekly")

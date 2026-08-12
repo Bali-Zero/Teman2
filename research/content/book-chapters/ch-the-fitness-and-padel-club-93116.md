@@ -1,3 +1,7 @@
+---
+adversarial_review: codex
+---
+
 # CHAPTER: The Fitness & Padel Club
 
 **1. The Dream**
@@ -22,7 +26,7 @@ Lukas's certainty flickered. "Meaning?"
 
 Lukas pulled up the sport-facility codes he'd researched. "Fine. Forget the gym box. The padel courts—those are sport facilities. 93114, 93124, 93199. What's the status?"
 
-The consultant nodded slowly. "Now you're in more honest but messier territory. Several of those sport-facility and club codes—the lapangan (court/field) codes, the 'other sports facility' codes—carry a *needs-review* status in our data: they have no clean OSS scale row, which means the moratorium verdict isn't cleanly determined and the registrability is genuinely uncertain rather than a clean yes. That's not a green light; it's a flashing amber. You'd be building a multi-court facility on codes whose foreign-PMA status is unresolved—and 'unresolved' is a dangerous foundation for poured concrete."
+The consultant nodded slowly. "Now you're in more honest but messier territory. Several of those sport-facility and club codes—the lapangan (court/field) codes, the 'other sports facility' codes—carry an *under-review* derivation in our data: the current read says their large-scale risk class is high enough to survive the moratorium, but the derivation is still being verified rather than settled. That's not a clean green light; it's a flashing amber. You'd be building a multi-court facility on codes whose foreign-PMA status still deserves a live OSS check—and 'still being verified' is a thin foundation for poured concrete."
 
 "So the single hottest fitness trend on the island," Lukas said slowly, "is either blocked or unresolved for a foreigner."
 
@@ -44,9 +48,9 @@ Here is the verified, ground-truth reality.
 >     *   *Bali Status:* **BLOCKED** for new PMA (moratorium 13 May 2026). At Besar scale, OSS risk is Rendah/Menengah-Rendah on every scope—inside the sealed band.
 >
 > **THE AMBER DOORS — THE COURTS & CLUBS**
-> *   **93114 — Fasilitas Lapangan (Courts/Fields):** *needs review* — no clean OSS scale row; foreign-PMA registrability unresolved.
-> *   **93124 — Klub Tenis Lapangan (Racquet Club):** *needs review* — same unresolved status (the closest natural home for a padel club).
-> *   **93127 — Klub Kebugaran/Fitness Dan Binaraga (Fitness/Bodybuilding Club):** *needs review* — unresolved.
+> *   **93114 — Fasilitas Lapangan (Courts/Fields):** *amber* — current read: open at high risk (survives the moratorium), but the derivation is still under review; verify live on OSS.
+> *   **93124 — Klub Tenis Lapangan (Racquet Club):** *amber* — current read: open at high risk, derivation under review (the closest natural home for a padel club); verify live on OSS.
+> *   **93127 — Klub Kebugaran/Fitness Dan Binaraga (Fitness/Bodybuilding Club):** *amber-red* — current read: blocked by the moratorium (medium-low risk at large scale), derivation under review.
 > *   **93199 — Aktivitas Lainnya Berkaitan dengan Olahraga (Other Sports Activities):** *needs review* — unresolved.
 >
 > **THE LESSON IN THE NUMBERS**
@@ -109,3 +113,12 @@ She wrote on the whiteboard.
 The principle Lukas needed was the inverse of the one he walked in with. He had assumed that booming demand opens doors; in Bali, demand this visible is what *closes* them. The way through is not to find a cleverer name for the closed business — it is to ask, honestly, *which of the things I actually do is legal for me to own here*, and to build that. Lukas could not own a foreign fitness center in Pererenan. But he could own the academy that trains its members, the recovery suite that heals them, the bar where they gather, the arena where they play — and, with a genuine local partner, a stake in the floor itself. That is a smaller, cleaner, more defensible empire than the one on his spreadsheet, and it is one he can actually keep.
 
 *Before you sign anything, scan to check the live status of KBLI 93116 against the open routes — 93113, 85510, 96230, 56101, and 56301 — on the Nuzantara platform, and confirm the sector permit each one demands.*
+
+## Adversarial review
+
+- Seat: Codex `gpt-5.6-sol` (reasoning xhigh), refute stance, cross-family — reviewed the
+  2026-08-12 retraction-cure diff touching this file, verified against
+  `KBLI_2025_FINAL_CLEAN.json` (the cured dataset).
+- Outcome: FIX-FIRST → fixed in this same PR. 10 findings (9 confirmed/accommodated, 1 HOLDS): 96220 national status corrected to TERBATAS 0% (measured); 55201/55203 restated as the same Annex II entry 48 (sub-rows *Pondok Wisata* / *Vila*); the annex stated as a national instrument (articles 01/02); honest-map wording corrected (33.2% = almost exactly one in three; all but FOUR of the 372 nationally open; 1,041 = "not blocked", not "open"); surf-coliving guest-house-scope reading stated as OSS's call, not the founder's certainty; stale ID fact-sheet row (55203 "tanpa Besar") cured. Every fix re-measured against KBLI_2025_FINAL_CLEAN.json before applying.
+- Note: this section and the `adversarial_review` frontmatter key are R1-gate metadata;
+  the book/PDF composer strips the frontmatter block and this section from rendered output.

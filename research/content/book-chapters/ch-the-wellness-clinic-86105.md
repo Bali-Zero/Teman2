@@ -1,3 +1,7 @@
+---
+adversarial_review: codex
+---
+
 # CHAPTER: The Wellness Clinic
 
 **1. The Dream**
@@ -30,7 +34,7 @@ The consultant's expression changed. He pulled up **96220.**
 
 "Right. The lounge."
 
-"The lounge is blocked," he said. "Not by the moratorium, this time—by something more fundamental. In the OSS system, 96220 has *no Large-Enterprise scale row at all.* The activity is reserved for small and micro local enterprises—Perpres 49/2021, the list of fields kept for UMKM. A PT PMA is, by definition and by law, a Large Enterprise. So a foreign-owned company simply *cannot* register 96220. There's no door to walk through. The category was deliberately set aside for Balinese small businesses, and a foreign PMA doesn't fit through it anywhere in Indonesia, let alone in Bali."
+"The lounge is blocked," he said. "Not by the moratorium, this time—by something more fundamental. Beauty care is one of the lines of business that Annex II of Perpres 10/2021, as amended by Perpres 49/2021, explicitly *allocates* to cooperatives and small local enterprises—the *dialokasikan* column, page 16, entry 57, *salon kecantikan*. A reserved *bidang usaha* is not something a PT PMA can take—at any scale, with any amount of capital. There's no door to walk through. The category was deliberately set aside for small local businesses, and a foreign PMA doesn't fit through it anywhere in Indonesia, let alone in Bali."
 
 Elena sat very still. "So I can run a medical clinic—the harder, riskier, more regulated thing—but I cannot run a nail-and-lash lounge."
 
@@ -44,7 +48,7 @@ Here is the verified, ground-truth reality.
 
 > ### THE KBLI BATTLEGROUND: WELLNESS — CLINICAL vs COSMETIC
 >
-> *Crucial context: both codes below are 100% open to foreign investment on the National Investment List. The divergence is structural and provincial—the Bali Moratorium (Governor letter B.27.000/642/PM/DPMPTSP, effective 13 May 2026) blocks every "low" and "medium-low" risk class for PMAs island-wide; and separately, some activities have no Large-Enterprise scale at all, reserving them for local UMKM.*
+> *Crucial context: both codes below are 100% open to foreign investment on the National Investment List. The divergence is structural and provincial—the Bali Moratorium (Governor letter B.27.000/642/PM/DPMPTSP, effective 13 May 2026) blocks every "low" and "medium-low" risk class for PMAs island-wide; and separately, some lines of business are allocated to cooperatives/MSMEs by Annex II of Perpres 10/2021 as amended by 49/2021, reserving them for local small enterprise.*
 >
 > **THE CLINIC — ALIVE**
 > *   **86105 — Aktivitas Klinik Swasta (Private Clinic):**
@@ -54,12 +58,12 @@ Here is the verified, ground-truth reality.
 >
 > **THE BEAUTY LOUNGE — CLOSED TO PMA**
 > *   **96220 — Aktivitas Perawatan Kecantikan dan Perawatan Kecantikan Lainnya (Beauty Care):**
->     *   *National Status:* 100% PMA Open.
->     *   *Bali Status:* **BLOCKED — closed to any PMA.** The OSS system has no Large-Enterprise scale row for this code; the activity is reserved for small/micro enterprises (Perpres 49/2021 Annex). A PT PMA, being a Large Enterprise by law, cannot register it—in Bali or anywhere in Indonesia.
+>     *   *National Status:* TERBATAS — 0% foreign ownership in the catalogue (the annex allocation made visible).
+>     *   *Bali Status:* **BLOCKED — closed to any PMA.** Allocated to cooperatives and MSMEs by Annex II of Perpres 10/2021 as amended by 49/2021 (p.16, entry 57, *salon kecantikan*, *dialokasikan*). A reserved *bidang usaha* is closed to a PT PMA—in Bali or anywhere in Indonesia.
 >     *   *Scope note:* Explicitly the *non-medical* beauty work—nail studios, lash extensions, manicure/pedicure, beautician services "not performed by a medical specialist."
 >
 > **THE DIVIDING LINE**
-> *   The border is not "medical vs spa." It is **"must a doctor perform it?"** If the activity is genuinely clinical (doctor-led, regulated), it tends to be high-risk and foreign-ownable. If it's cosmetic and non-medical, it tends to be reserved for local micro-enterprise—off-limits to a PMA.
+> *   The border is not "medical vs spa." It is **"must a doctor perform it?"** If the activity is genuinely clinical (doctor-led, regulated), it tends to be high-risk and foreign-ownable. If it's beautician work, it sits under a *bidang usaha* the Perpres annex reserves by name (*salon kecantikan*)—off-limits to a PMA. The reservation names lines of business, not "cosmetic work" as a category: SPA services (96230), for instance, clear the moratorium at clinic-grade risk.
 
 **4. The Money**
 
@@ -118,3 +122,12 @@ Because 86105 is open, the discipline here is not "find a way around a wall." It
 The principle underneath all five routes is the same one the dividing line taught: **reach the goal through the door that fits the activity, not the door that fits the marketing.** Elena can be a doctor in paradise, can build a SPA wing, can put her name on a product line, and can partner cleanly with a Balinese owner for the work the island has set aside for its own — all at once, all legal, all under licences that match what each room actually does. What she cannot do is collapse them back into one undifferentiated "wellness" code and hope the OSS system doesn't notice. The integrated dream survives; it just lives in a building with honest internal walls.
 
 *Before you sign anything, scan to check the live status of your open routes — KBLI 86105 (clinic), 96230 (SPA), 86991 and 86992 (allied and traditional health), and 20232 / 21022 (cosmetics and natural-product manufacturing) — alongside the blocked 96220, on the Nuzantara platform.*
+
+## Adversarial review
+
+- Seat: Codex `gpt-5.6-sol` (reasoning xhigh), refute stance, cross-family — reviewed the
+  2026-08-12 retraction-cure diff touching this file, verified against
+  `KBLI_2025_FINAL_CLEAN.json` (the cured dataset).
+- Outcome: FIX-FIRST → fixed in this same PR. 10 findings (9 confirmed/accommodated, 1 HOLDS): 96220 national status corrected to TERBATAS 0% (measured); 55201/55203 restated as the same Annex II entry 48 (sub-rows *Pondok Wisata* / *Vila*); the annex stated as a national instrument (articles 01/02); honest-map wording corrected (33.2% = almost exactly one in three; all but FOUR of the 372 nationally open; 1,041 = "not blocked", not "open"); surf-coliving guest-house-scope reading stated as OSS's call, not the founder's certainty; stale ID fact-sheet row (55203 "tanpa Besar") cured. Every fix re-measured against KBLI_2025_FINAL_CLEAN.json before applying.
+- Note: this section and the `adversarial_review` frontmatter key are R1-gate metadata;
+  the book/PDF composer strips the frontmatter block and this section from rendered output.
