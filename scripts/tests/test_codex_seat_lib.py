@@ -155,6 +155,39 @@ def test_an_unwritable_state_file_degrades_to_a_fixed_order_not_a_failure(
     assert picks == [".codex", ".codex"], picks
 
 
+def test_a_process_keeps_one_seat_so_its_health_check_speaks_for_its_work(
+    tmp_path: Path,
+) -> None:
+    """The counter advances on every read, so an unmemoised pick hands a
+    different seat to each subprocess of one run — and a pre-flight probe then
+    answers for a seat the real work never touches. The post-publish poller is
+    exactly that shape: probe codex, and only if it passes, spend the tick."""
+    import importlib.util
+
+    _seat(tmp_path, ".codex")
+    _seat(tmp_path, ".codex-acct2")
+    spec = importlib.util.spec_from_file_location(
+        "_codex_seat_under_test", LIB.with_suffix(".py")
+    )
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    env = {**os.environ, "HOME": str(tmp_path)}
+    env["CODEX_SEAT_STATE_FILE"] = str(tmp_path / "rotation")
+    old = dict(os.environ)
+    os.environ.update(env)
+    try:
+        picks = [mod.codex_seat_pick() for _ in range(3)]
+        moved = mod.codex_seat_pick(refresh=True)
+    finally:
+        os.environ.clear()
+        os.environ.update(old)
+
+    assert len(set(picks)) == 1, picks
+    assert moved != picks[0], (moved, picks[0])
+
+
 def test_the_census_detector_tells_an_invocation_from_prose() -> None:
     """Guilt and innocence for the census's own two patterns.
 

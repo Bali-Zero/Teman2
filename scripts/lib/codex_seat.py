@@ -49,18 +49,32 @@ def codex_seat_dirs() -> list[str]:
     return [line for line in _call("codex_seat_dirs").splitlines() if line.strip()]
 
 
-def codex_seat_pick() -> str | None:
+_PICKED: list[str | None] = []
+
+
+def codex_seat_pick(refresh: bool = False) -> str | None:
     """An absolute ``CODEX_HOME`` for a seat that is logged in, or ``None``.
 
     ``None`` means "no seat found" and callers must leave ``CODEX_HOME`` unset —
     an EMPTY ``CODEX_HOME`` reads to codex as "use the default", which is the
     opposite instruction.
 
+    ONE SEAT PER PROCESS, memoised. The rotation counter advances on every read,
+    so an unmemoised call would hand a different seat to each subprocess of the
+    same run — and then a caller's pre-flight health check speaks for a seat the
+    real work never used. The post-publish poller is exactly that shape: it
+    probes codex and, only if the probe passes, spends the tick generating
+    covers. A probe that answers for the other subscription is not a probe.
+    Pass ``refresh=True`` to deliberately move to the next seat.
+
     Never raises: a missing lib, a missing shell or a shell that misbehaves all
     degrade to ``None``, i.e. codex's own default seat — exactly the behaviour
     every caller had before this file existed.
     """
-    return _call("codex_seat_pick").strip() or None
+    if refresh or not _PICKED:
+        _PICKED.clear()
+        _PICKED.append(_call("codex_seat_pick").strip() or None)
+    return _PICKED[0]
 
 
 def codex_seat_env(env: dict[str, str] | None = None) -> dict[str, str]:
