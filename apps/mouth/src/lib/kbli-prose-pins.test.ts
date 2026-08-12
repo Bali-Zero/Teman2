@@ -112,8 +112,8 @@ describe("KBLI prose pins — published aggregates agree with the canonical", ()
           expect: [group(c.total, ","), group(c.blocked, ",")],
         },
         {
-          what: "survivor count",
-          re: /\(([\d,]+) codes survive\)/,
+          what: "not-blocked count",
+          re: /\(([\d,]+) codes carry no blocked flag/,
           expect: [group(c.open, ",")],
         },
         {
@@ -143,8 +143,8 @@ describe("KBLI prose pins — published aggregates agree with the canonical", ()
           expect: [group(c.total, "."), group(c.blocked, ".")],
         },
         {
-          what: "survivor count",
-          re: /\(([\d.]+) codici sopravvissuti\)/,
+          what: "not-blocked count",
+          re: /\(([\d.]+) codici senza flag di blocco/,
           expect: [group(c.open, ".")],
         },
         {
@@ -165,8 +165,8 @@ describe("KBLI prose pins — published aggregates agree with the canonical", ()
           expect: [group(c.total, "."), group(c.blocked, ".")],
         },
         {
-          what: "survivor count",
-          re: /\(([\d.]+) kode bertahan\)/,
+          what: "not-blocked count",
+          re: /\(([\d.]+) kode tanpa penanda blokir/,
           expect: [group(c.open, ".")],
         },
         {
@@ -216,6 +216,13 @@ describe("KBLI prose pins — published aggregates agree with the canonical", ()
       "465 of 1,559",
       "465 su 1.559",
       "465 dari 1.559",
+      // Retracted 2026-08-12 by the Codex adversarial review: the 1,041 are the
+      // codes that carry no blocked flag, NOT codes that "survive" — 70 of them
+      // are scope-dependent and a handful unclassified, so the survival reading
+      // over-promises. The locution is banned in every language, at any number.
+      "codes survive",
+      "codici sopravvissuti",
+      "kode bertahan",
     ];
     for (const claim of CLAIMS) {
       const text = fs.readFileSync(path.join(ARTICLE_DIR, claim.file), "utf-8");
