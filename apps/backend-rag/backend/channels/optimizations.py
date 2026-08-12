@@ -23,6 +23,10 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from backend.core.secret_log_redaction import install_telegram_token_redaction
+
+install_telegram_token_redaction()
+
 logger = logging.getLogger(__name__)
 
 

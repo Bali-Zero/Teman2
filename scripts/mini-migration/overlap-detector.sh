@@ -64,7 +64,17 @@ SYSTEM_FILTER='com\.apple|com\.google|com\.openai|com\.openssh|homebrew\.mxcl|co
 # Two instances share no state and cannot corrupt each other (#10 does not
 # apply). They are LOGGED as allowed-dual (visible, never silent — W82: a
 # suppression you cannot see is a blind spot) but do not alert.
-ALLOWED_DUAL='^com\.balizero\.mlx-server$|^com\.nuzantara\.local-livekit-server$|^com\.nuzantara\.local-livekit-worker$'
+#
+# com.balizero.wr2control (2026-08-12, verified against apps/wr2-control-app):
+# NOT loopback-scoped like the entries above — a different but equally valid
+# justification. Pro runs the app in `work` mode against the LIVE authoritative
+# queue (apps/war-room/output); Mini runs it with `--ambient` (deploy/install-mini.sh,
+# deploy/com.balizero.wr2control.plist) against a DISCONNECTED, one-shot-synced
+# local copy (~/.wr2-warroom-sync/output) for the office-TV editorial wall. Even
+# if a human at the Mini interacts and triggers a write, it lands in that dead-end
+# mirror, never back into Pro's live queue — no shared mutable state, #10 does not
+# apply. Logged as allowed-dual per the same W82 visibility rule.
+ALLOWED_DUAL='^com\.balizero\.mlx-server$|^com\.nuzantara\.local-livekit-server$|^com\.nuzantara\.local-livekit-worker$|^com\.balizero\.wr2control$'
 
 PRO_TMP=$(mktemp -t overlap-pro.XXXX)
 MINI_TMP=$(mktemp -t overlap-mini.XXXX)

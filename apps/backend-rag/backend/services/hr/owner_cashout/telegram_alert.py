@@ -13,6 +13,10 @@ import os
 
 import httpx
 
+from backend.core.secret_log_redaction import install_telegram_token_redaction
+
+install_telegram_token_redaction()
+
 logger = logging.getLogger(__name__)
 
 OWNER_CHAT_ID = "1125336968"  # Zero's @zero0101010101010 chat w/ @Balizerobot

@@ -1,3 +1,7 @@
+---
+adversarial_review: codex
+---
+
 # BAB: Studio Yoga & Retreat
 
 **1. Impian**
@@ -47,9 +51,9 @@ Inilah kenyataan yang terverifikasi dan berdasar fakta lapangan.
 >     *   *Apa yang dicakup:* Pelatihan non-gelar, camp, dan imersi di bidang olahraga dan rekreasi—secara eksplisit termasuk pelatihan guru yoga, sekolah surfing, dan instruksi rekreasi.
 >
 > **LADANG RANJAU — PENGINAPAN**
-> *   **55203 — Villa:** **TERTUTUP** untuk PMA (tidak ada skala Besar / dicadangkan untuk UMKM).
-> *   **55201 — Homestay (Pondok Wisata):** **TERTUTUP** (dicadangkan untuk warga negara Indonesia).
-> *   **55209 — Penginapan Jangka Pendek Lainnya:** **TERTUTUP** untuk PMA (tidak ada skala Besar).
+> *   **55203 — Villa:** **TERTUTUP** untuk PMA (dialokasikan untuk koperasi/UMKM — Perpres 10/2021 sebagaimana diubah dengan 49/2021, Lampiran II).
+> *   **55201 — Homestay (Pondok Wisata):** **TERTUTUP** untuk PMA (alokasi Lampiran II yang sama; model pemilik-menghuni).
+> *   **55209 — Penginapan Jangka Pendek Lainnya:** **tergantung ruang lingkup.** Pencadangan Lampiran II hanya menjangkau sub-aktivitas *Guest House* yang disebut di dalamnya (Perpres 10/2021 Pasal 5(5)); sisanya bergantung pada ruang lingkup yang dideklarasikan — verifikasi langsung di OSS.
 >
 > **PELAJARAN DALAM ANGKA-ANGKA**
 > *   Retret Anda adalah dua bisnis: pengajaran (terbuka) dan penginapan (sebagian besar tertutup). Pisahkan keduanya. Miliki programnya; bermitra untuk propertinya.
@@ -115,3 +119,12 @@ Setiap kode berdekatan di bawah ini terbaca sebagai dapat didaftarkan untuk PMA 
 Prinsip yang mendasari kelima rute itu adalah jahitan itu sendiri: **miliki apa yang berkelana, bermitra untuk apa yang berakar.** Program, kurikulum, merek, sertifikat, paket — semua ini bergerak bersama Anda dan pulau itu, untuk saat ini, membiarkan pintu-pintunya terbuka. Tempat tidur, tanah, penginapan — ini berakar, terbatas, dan dicadangkan, dan jalan keluarnya tidak pernah dengan memilikinya di bawah kode Anda sendiri yang diblokir melainkan dengan memperolehnya dari seseorang yang memegang lisensinya. Para pendiri retret yang selesai adalah mereka yang membangun separuh yang terbuka dengan keyakinan dan menolak mensteples separuh yang tertutup padanya. Jaga jahitan tetap bersih dan konfirmasikan setiap pintu secara langsung, maka ia tetap terbuka; kaburkan sekali saja dan seluruh struktur mewarisi kuncinya.
 
 *Sebelum Anda menandatangani apa pun, pindai untuk memeriksa status terkini KBLI 85510 — dan rute-rute di sekelilingnya (79121, 82990, 56210, 56101, 85691, 85692) plus kode-kode akomodasi yang diblokir (55203, 55201, 55209) — di platform Nuzantara, dengan mengingat bahwa setiap kode yang dapat didaftarkan membawa tingkat risiko OSS dan izin sektoralnya sendiri untuk dikonfirmasi pada saat pendaftaran.*
+
+## Adversarial review
+
+- Seat: Codex `gpt-5.6-sol` (reasoning xhigh), refute stance, cross-family — reviewed the
+  2026-08-12 retraction-cure diff touching this file, verified against
+  `KBLI_2025_FINAL_CLEAN.json` (the cured dataset).
+- Outcome: FIX-FIRST → fixed in this same PR. 10 findings (9 confirmed/accommodated, 1 HOLDS): 96220 national status corrected to TERBATAS 0% (measured); 55201/55203 restated as the same Annex II entry 48 (sub-rows *Pondok Wisata* / *Vila*); the annex stated as a national instrument (articles 01/02); honest-map wording corrected (33.2% = almost exactly one in three; all but FOUR of the 372 nationally open; 1,041 = "not blocked", not "open"); surf-coliving guest-house-scope reading stated as OSS's call, not the founder's certainty; stale ID fact-sheet row (55203 "tanpa Besar") cured. Every fix re-measured against KBLI_2025_FINAL_CLEAN.json before applying.
+- Note: this section and the `adversarial_review` frontmatter key are R1-gate metadata;
+  the book/PDF composer strips the frontmatter block and this section from rendered output.

@@ -6,7 +6,7 @@
   2. NLM Deep Research (Gemini) — trova normative aggiornate sul web
   3. Gemini CLI search — verifica vigenza delle leggi (Google Search grounded)
   4. NLM Oracolo (notebook di dominio) — citazioni precise dai PDF legali caricati
-  5. DeepSeek R1 — ragionamento su coerenza legale e contraddizioni
+  5. Reasoning gate — fail-closed finché il topology adapter non è armato
   6. Claude CLI — assembla documento T2 con [CLAIM-ID] markers (Max subscription)
   7. auto_verifier — CRAG-light: verifica fedeltà ≥95% di ogni citazione
 
@@ -14,7 +14,7 @@ Each model contributes its strength:
   - NLM Deep Research: 40+ web sources, autonomous Gemini research
   - Gemini Search: Google Search grounded, verifies current law status
   - NLM Oracolo: citations directly from uploaded legal PDFs
-  - DeepSeek R1: chain-of-thought for legal reasoning & contradiction detection
+  - Reasoning gate: blocks until a topology adapter is armed; explicit opt-out only
   - Claude CLI: final T2 assembly with [CLAIM-ID] markers
   - auto_verifier: CRAG-light faithfulness check on every cited claim
 
@@ -109,7 +109,7 @@ RESEARCH CONTEXT (from multi-model analysis):
 LEGAL GROUNDING (from NLM notebooks — PDF citations):
 {oracolo_context}
 
-LEGAL REASONING (DeepSeek R1 chain-of-thought):
+LEGAL REASONING (present only when a topology adapter is armed):
 {reasoning_context}
 
 CRITICAL RULES:
@@ -256,43 +256,18 @@ def step_nlm_oracolo(domain: str, topic: str, skip: bool) -> str:
     return ""
 
 
-def step_deepseek_reasoning(
-    domain: str,
-    topic: str,
-    claims_db: dict[str, dict[str, Any]],
-    search_context: str,
-    oracolo_context: str,
-    skip: bool,
-) -> str:
-    """Step 5: DeepSeek R1 671b — chain-of-thought legal reasoning."""
+def step_reasoning_gate(skip: bool) -> str:
+    """Block generation until a topology adapter exists or an operator opts out."""
     if skip:
-        logger.info("  [SKIP] DeepSeek R1 reasoning")
+        logger.warning("  [EXPLICIT SKIP] Topology reasoning layer disabled by operator")
         return ""
-    print("\nStep 5: DeepSeek R1 671b — legal reasoning & contradiction detection...")
-
-    # Build a focused reasoning prompt
-    claims_sample = "\n".join(
-        f"[{cid}] {c['claim']}" for cid, c in list(claims_db.items())[:30]
+    logger.error(
+        "Required reasoning adapter is not armed; aborting verified generation "
+        "before any provider call. The legacy direct DeepSeek dispatcher route "
+        "is retired. Use "
+        "--skip-reasoning only to proceed explicitly without this layer."
     )
-    reasoning_prompt = (
-        f"Domain: Indonesian {domain} law. Topic: {topic}\n\n"
-        f"I have {len(claims_db)} normative claims extracted from official Indonesian legal texts.\n"
-        f"Sample claims:\n{claims_sample}\n\n"
-        f"Search context summary:\n{search_context[:1000] if search_context else 'Not available'}\n\n"
-        f"Legal citations from official PDFs:\n{oracolo_context[:1000] if oracolo_context else 'Not available'}\n\n"
-        f"Task: Analyze these claims and context. Identify:\n"
-        f"1. Any contradictions between claims or with search results\n"
-        f"2. Which claims are most legally critical for a client guide\n"
-        f"3. Any gaps — important legal facts not covered by the claims_db\n"
-        f"4. Recommended structure for an operational guide on: {topic}\n"
-        f"Be precise and legally grounded. Reference specific Indonesian regulations."
-    )
-    output = run_dispatch("reasoning", reasoning_prompt, timeout=180)
-    if output:
-        print(f"  DeepSeek R1: {len(output)} chars of legal reasoning")
-        return output
-    print("  DeepSeek R1 unavailable — proceeding without reasoning layer")
-    return ""
+    raise SystemExit(2)
 
 
 _GEN_RATE_LIMIT_RE = re.compile(
@@ -546,13 +521,24 @@ def main() -> None:
     parser.add_argument("--skip-research", action="store_true", help="Skip NLM Deep Research (faster)")
     parser.add_argument("--skip-search", action="store_true", help="Skip Gemini search (faster)")
     parser.add_argument("--skip-oracolo", action="store_true", help="Skip NLM Oracolo (faster)")
-    parser.add_argument("--skip-reasoning", action="store_true", help="Skip DeepSeek R1 reasoning (faster)")
+    parser.add_argument(
+        "--skip-reasoning",
+        action="store_true",
+        help="Explicitly accept generation while the required topology adapter is unarmed",
+    )
     parser.add_argument("--skip-telegram", action="store_true", help="Skip Telegram human review")
     args = parser.parse_args()
 
+    # The topology reasoner adapter is not armed. Enforce the explicit opt-out
+    # before research, search, NLM, generation, or any other provider call.
+    reasoning_context = step_reasoning_gate(args.skip_reasoning)
+
     print(f"\nVerified Generation Pipeline — {args.domain} / {args.topic}")
     print("=" * 70)
-    print("Models: NLM Deep Research → Gemini Search → NLM Oracolo → DeepSeek R1 → Claude → CRAG")
+    print(
+        "Models: NLM Deep Research → Gemini Search → NLM Oracolo → "
+        "Reasoning gate → Claude → CRAG"
+    )
 
     # Step 1: Load claims_db
     print("\nStep 1: Loading claims_db...")
@@ -568,12 +554,7 @@ def main() -> None:
     # Step 4: NLM Oracolo (domain legal PDF citations)
     oracolo_context = step_nlm_oracolo(args.domain, args.topic, args.skip_oracolo)
 
-    # Step 5: DeepSeek R1 reasoning (legal coherence & contradiction detection)
-    reasoning_context = step_deepseek_reasoning(
-        args.domain, args.topic, claims_db,
-        search_context, oracolo_context,
-        args.skip_reasoning,
-    )
+    # Step 5: the gate was evaluated before Step 1 and yielded explicit opt-out context.
 
     # Step 6: Claude CLI assembles T2 document with all context
     existing_text: str | None = None

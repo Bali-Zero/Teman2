@@ -11,6 +11,10 @@ import os
 import urllib.parse
 import urllib.request
 
+from backend.core.secret_log_redaction import install_telegram_token_redaction
+
+install_telegram_token_redaction()
+
 logger = logging.getLogger(__name__)
 
 

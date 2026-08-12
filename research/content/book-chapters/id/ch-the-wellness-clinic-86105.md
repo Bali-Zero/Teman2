@@ -1,3 +1,7 @@
+---
+adversarial_review: codex
+---
+
 # BAB: Klinik Wellness
 
 **1. Impian**
@@ -30,7 +34,7 @@ Ekspresi konsultan itu berubah. Ia membuka **96220.**
 
 "Benar. Lounge-nya."
 
-"Lounge-nya diblokir," katanya. "Kali ini bukan oleh moratorium—melainkan oleh sesuatu yang lebih mendasar. Dalam sistem OSS, 96220 *sama sekali tidak punya baris skala Usaha Besar.* Aktivitas ini disediakan untuk usaha lokal kecil dan mikro—Perpres 49/2021, daftar bidang yang dicadangkan untuk UMKM. Sebuah PT PMA, menurut definisi dan menurut hukum, adalah Usaha Besar. Jadi sebuah perusahaan milik asing sama sekali *tidak bisa* mendaftarkan 96220. Tidak ada pintu untuk dilewati. Kategori ini sengaja disisihkan untuk usaha kecil orang Bali, dan sebuah PMA asing tidak bisa masuk melaluinya di mana pun di Indonesia, apalagi di Bali."
+"Lounge-nya diblokir," katanya. "Kali ini bukan oleh moratorium—melainkan oleh sesuatu yang lebih mendasar. Perawatan kecantikan adalah salah satu bidang usaha yang oleh Lampiran II Perpres 10/2021, sebagaimana diubah dengan Perpres 49/2021, secara eksplisit *dialokasikan* untuk koperasi dan usaha kecil lokal—kolom *dialokasikan*, halaman 16, butir 57, *salon kecantikan*. Bidang usaha yang dicadangkan bukanlah sesuatu yang bisa diambil sebuah PT PMA—pada skala apa pun, dengan modal berapa pun. Tidak ada pintu untuk dilewati. Kategori ini sengaja disisihkan untuk usaha kecil lokal, dan sebuah PMA asing tidak bisa masuk melaluinya di mana pun di Indonesia, apalagi di Bali."
 
 Elena duduk sangat diam. "Jadi saya bisa menjalankan sebuah klinik medis—hal yang lebih sulit, lebih berisiko, lebih teregulasi—tetapi saya tidak bisa menjalankan sebuah nail-and-lash lounge."
 
@@ -44,7 +48,7 @@ Inilah kenyataan yang terverifikasi, ground-truth.
 
 > ### MEDAN PERTEMPURAN KBLI: WELLNESS — KLINIS vs KOSMETIK
 >
-> *Konteks penting: kedua kode di bawah ini 100% terbuka untuk investasi asing pada Daftar Investasi Nasional. Perbedaannya bersifat struktural dan provinsial—Moratorium Bali (surat Gubernur B.27.000/642/PM/DPMPTSP, berlaku 13 Mei 2026) memblokir setiap kelas risiko "rendah" dan "menengah rendah" untuk PMA di seluruh pulau; dan, secara terpisah, beberapa aktivitas sama sekali tidak punya skala Usaha Besar, sehingga mencadangkannya untuk UMKM lokal.*
+> *Konteks penting: kedua kode di bawah ini 100% terbuka untuk investasi asing pada Daftar Investasi Nasional. Perbedaannya bersifat struktural dan provinsial—Moratorium Bali (surat Gubernur B.27.000/642/PM/DPMPTSP, berlaku 13 Mei 2026) memblokir setiap kelas risiko "rendah" dan "menengah rendah" untuk PMA di seluruh pulau; dan, secara terpisah, beberapa bidang usaha dialokasikan untuk koperasi/UMKM oleh Lampiran II Perpres 10/2021 sebagaimana diubah dengan 49/2021, sehingga mencadangkannya untuk usaha kecil lokal.*
 >
 > **KLINIK — HIDUP**
 > *   **86105 — Aktivitas Klinik Swasta (Private Clinic):**
@@ -54,12 +58,12 @@ Inilah kenyataan yang terverifikasi, ground-truth.
 >
 > **BEAUTY LOUNGE — TERTUTUP UNTUK PMA**
 > *   **96220 — Aktivitas Perawatan Kecantikan dan Perawatan Kecantikan Lainnya (Beauty Care):**
->     *   *Status Nasional:* 100% Terbuka untuk PMA.
->     *   *Status Bali:* **DIBLOKIR — tertutup untuk PMA mana pun.** Sistem OSS tidak memiliki baris skala Usaha Besar untuk kode ini; aktivitas ini dicadangkan untuk usaha kecil/mikro (Lampiran Perpres 49/2021). Sebuah PT PMA, yang menurut hukum adalah Usaha Besar, tidak bisa mendaftarkannya—di Bali maupun di mana pun di Indonesia.
+>     *   *Status Nasional:* TERBATAS — 0% kepemilikan asing dalam katalog (alokasi lampiran yang dibuat kasatmata).
+>     *   *Status Bali:* **DIBLOKIR — tertutup untuk PMA mana pun.** Dialokasikan untuk koperasi dan UMKM oleh Lampiran II Perpres 10/2021 sebagaimana diubah dengan 49/2021 (hlm. 16, butir 57, *salon kecantikan*, *dialokasikan*). Bidang usaha yang dicadangkan tertutup bagi PT PMA—di Bali maupun di mana pun di Indonesia.
 >     *   *Catatan ruang lingkup:* Secara eksplisit adalah pekerjaan kecantikan *non-medis*—studio kuku, eyelash extension, manikur/pedikur, layanan beautician yang "tidak dilakukan oleh dokter spesialis."
 >
 > **GARIS PEMBATAS**
-> *   Batasnya bukanlah "medis vs spa." Melainkan **"apakah seorang dokter harus melakukannya?"** Jika aktivitasnya benar-benar klinis (dipimpin dokter, teregulasi), ia cenderung berisiko tinggi dan dapat dimiliki asing. Jika ia kosmetik dan non-medis, ia cenderung dicadangkan untuk usaha mikro lokal—terlarang bagi PMA.
+> *   Batasnya bukanlah "medis vs spa." Melainkan **"apakah seorang dokter harus melakukannya?"** Jika aktivitasnya benar-benar klinis (dipimpin dokter, teregulasi), ia cenderung berisiko tinggi dan dapat dimiliki asing. Jika ia pekerjaan salon kecantikan, ia berada di bawah bidang usaha yang dicadangkan lampiran Perpres berdasarkan nama (*salon kecantikan*)—terlarang bagi PMA. Pencadangan itu menyebut bidang usaha, bukan "pekerjaan kosmetik" sebagai kategori: layanan SPA (96230), misalnya, lolos moratorium pada tingkat risiko setara klinik.
 
 **4. Soal Uang**
 
@@ -118,3 +122,12 @@ Karena 86105 terbuka, disiplin di sini bukanlah "cari cara mengakali tembok." Me
 Prinsip di bawah kelima rute ini sama dengan yang diajarkan garis pembatas: **jangkau tujuan melalui pintu yang cocok dengan aktivitasnya, bukan pintu yang cocok dengan pemasaran.** Elena bisa menjadi dokter di surga, bisa membangun sayap SPA, bisa menaruh namanya pada sebuah lini produk, dan bisa bermitra secara bersih dengan pemilik orang Bali untuk pekerjaan yang telah disisihkan pulau ini bagi warganya sendiri — semuanya sekaligus, semuanya legal, semuanya di bawah izin yang cocok dengan apa yang sebenarnya dilakukan tiap ruangan. Yang tidak bisa ia lakukan adalah meruntuhkan semuanya kembali menjadi satu kode "wellness" yang tak terbedakan dan berharap sistem OSS tidak menyadarinya. Impian terpadu itu bertahan; ia hanya hidup di sebuah bangunan dengan dinding-dinding internal yang jujur.
 
 *Sebelum Anda menandatangani apa pun, pindai untuk memeriksa status terkini rute-rute terbuka Anda — KBLI 86105 (klinik), 96230 (SPA), 86991 dan 86992 (kesehatan terkait dan tradisional), serta 20232 / 21022 (manufaktur kosmetik dan produk alami) — bersama 96220 yang diblokir, di platform Nuzantara.*
+
+## Adversarial review
+
+- Seat: Codex `gpt-5.6-sol` (reasoning xhigh), refute stance, cross-family — reviewed the
+  2026-08-12 retraction-cure diff touching this file, verified against
+  `KBLI_2025_FINAL_CLEAN.json` (the cured dataset).
+- Outcome: FIX-FIRST → fixed in this same PR. 10 findings (9 confirmed/accommodated, 1 HOLDS): 96220 national status corrected to TERBATAS 0% (measured); 55201/55203 restated as the same Annex II entry 48 (sub-rows *Pondok Wisata* / *Vila*); the annex stated as a national instrument (articles 01/02); honest-map wording corrected (33.2% = almost exactly one in three; all but FOUR of the 372 nationally open; 1,041 = "not blocked", not "open"); surf-coliving guest-house-scope reading stated as OSS's call, not the founder's certainty; stale ID fact-sheet row (55203 "tanpa Besar") cured. Every fix re-measured against KBLI_2025_FINAL_CLEAN.json before applying.
+- Note: this section and the `adversarial_review` frontmatter key are R1-gate metadata;
+  the book/PDF composer strips the frontmatter block and this section from rendered output.

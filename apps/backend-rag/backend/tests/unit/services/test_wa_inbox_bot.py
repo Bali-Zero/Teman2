@@ -121,6 +121,22 @@ async def test_no_customer_message_raises(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_abstain_returns_safe_localized_reply_and_discards_raw_answer(monkeypatch):
+    """CONTRACT CHANGED 2026-08-11 — this test used to be `test_abstain_raises`.
+
+    It asserted that an abstain raises RuntimeError so "the operator can take
+    over the thread". Measured, that operator did not come: of 28 threads, 26 had
+    at least one failed outbox row and exactly 4 were ever touched by a human. So
+    the raise cost the client five retries and silence, and it did that on more
+    than outages — re-asking the three core questions across two live probes gave
+    4 abstains in 12 observations, on questions answered with 8 sources at
+    evidence 0.85 the other times.
+
+    The abstain path now returns a localized refusal AND notifies a human. Full
+    guilt/innocence for the new behaviour — including that an ordinary answer
+    notifies nobody, and that an EMPTY answer still raises — lives in
+    test_wa_abstain_reaches_a_human.py; this keeps the old test's position in the
+    file so the change of contract is visible where the old one was.
+    """
     monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
     _mock_rag(
         monkeypatch,
@@ -136,6 +152,7 @@ async def test_abstain_returns_safe_localized_reply_and_discards_raw_answer(monk
 
     answer = await wa_inbox_bot.generate_bot_reply(pool, _thread())
 
+    assert answer.strip(), "an abstain must not send the client an empty body"
     assert "non ho una fonte certa" in answer
     assert "10.000.000.000" not in answer
 

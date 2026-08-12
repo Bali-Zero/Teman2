@@ -43,7 +43,31 @@ session reads this corner; it does not browse `research/`.
 Also stale in `20-the-honest-map-blocked-bali-codes.md` and its `_INDEX.md` row: the blocked count
 is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
-## 1. LIVE STATE (last update 2026-08-11 — keep current)
+## 1. LIVE STATE (last update 2026-08-12 — keep current)
+
+**🟢 2026-08-12 — CONTENT CURE SHIPPED, BKPM ZIP REBUILT: the pre-retraction editorial payload is gone
+from every surface.** Lane C absorbed: `KBLI-2025-Content/` articles+chapters refreshed from the
+post-retraction canon (app-repo `6616dfd`→`1366376`→`5c55a31`), then a REAL cross-family adversarial
+review (Codex gpt-5.6-sol xhigh, refute stance, 10 findings each re-measured on the dataset) fixed the
+canon itself — 96220 is TERBATAS 0% (not "National: open"), 55201/55203 sit on the SAME Annex II entry
+48 (sub-rows _Pondok Wisata_/_Vila_), honest-map arithmetic corrected (33.2% = almost exactly one in
+three; all but FOUR of the 372 nationally open; 1,041 = "not blocked") — applied to monorepo masters
+`research/content/` EN+ID + `apps/mouth` 5 slugs × en/it/id (branch
+`agent/nuzantara/docs/threshold-book-truth`, commits `32f2cb1f0`+`93056fe95`, R1 armed on all 22
+research files) and to the app bundle (`5c55a31`, `bf8b26a`). Book PDFs recomposed from the cured
+masters (EN 106pp / ID 116pp, 0 retracted patterns, "as amended by"×5 / "sebagaimana diubah dengan"×6,
+visual QA on rendered pages) and installed (`fde504d`); both variants rebuilt on Pro, INTERNAL
+reinstalled M5+Pro (bundle-wide parity `21fd5e6a…`, relative paths, quit+relaunch both), **BKPM zip
+rebuilt** (`build/KBLI-Navigator-BKPM.zip`, sha `c6c62fc8…`, ~106MB — PDFs inside the zip verified by
+hash, 0 articles). The PDF verifier also caught a NEW defect: internal label `BLOCCATO_DIPENDE_SCOPE`
+naked in the surf chapter prose + "55101–55106 OPEN" false for 55105 (Hotel Bintang Satu, TERBATAS 0%)
+— cured in masters and bundle. Traps for the next lane: mouth translations carry `source_sha256` of the
+EN body — hand-patching EN makes them "stale" and `translate_hourly` would RE-TRANSLATE over the
+hand-cured it/id (cure: `--stamp-baseline`); Pro's pre-push gate REJECTS a push if you commit on the
+branch while a push from it is in flight (fix: re-run the push). Mini: INTERNAL app measured ABSENT
+from its Desktop 12/8 ~09:30 (contradicts the 9/8 "all 3 Macs" — possibly lost in the 11/8 wedge or an
+iCloud eviction), host unreachable again minutes later — realign when it is back. **Hand-off BKPM is now
+gated ONLY by the honest gaps below (chat brain, signature, GUI QA) + Legge 5 — no content blocker.**
 
 **TRACK DESIGN — D1 shipped (5609abb) · D2 shipped (6ce988a) — verdict-on-top supersedes the 2026-06-30 order per Zero 2026-08-11.**
 
@@ -57,8 +81,8 @@ prova post-install a diff zero-pixel. App-repo M5 (no remote) commit `0f40cb9`, 
 Mini da riallineare quando torna in rete. Metodo consolidato: varianti su render → scelta Zero sui PNG →
 ship → diff pixel post-install. Research capture design:
 `research/design/2026-08-11-kbli-navigator-indonesian-soul.md` (PR #4053, review avversariale Codex
-inclusa). Restano: hand-off BKPM bloccato su refresh contenuti Lane C + rebuild lane design; chicchi
-padi About (decisione Zero).
+inclusa). Restano: chicchi padi About (decisione Zero). (Il blocco hand-off BKPM da refresh contenuti è RISOLTO
+2026-08-12 — vedi il blocco CONTENT CURE sopra.)
 
 **🟢 2026-08-09 — THE macOS APP IS NOW TWO APPS FROM ONE CODEBASE (Zero's ruling), FLEET-INSTALLED AND
 PROVEN — AND THE FLEET GUARD'S REFERENCE WAS THE LIAR (W106b).**

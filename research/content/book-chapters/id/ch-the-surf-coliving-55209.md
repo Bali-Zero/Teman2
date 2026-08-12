@@ -1,3 +1,7 @@
+---
+adversarial_review: codex
+---
+
 # BAB: The Surf-Coliving
 
 **1. Impian**
@@ -14,15 +18,15 @@ Ia datang ke kantor sang konsultan dengan celana board, garam laut masih melekat
 
 "Diblokir?"
 
-"Secara efektif tertutup untuk PMA, ya—tapi karena alasan yang lebih struktural ketimbang kafe atau gym. 55209 *tidak punya skala Usaha Besar*. Tidak ada baris 'usaha besar' di tabel OSS untuknya. Di bawah Perpres 49/2021, itu berarti aktivitas ini disediakan bagi usaha mikro, kecil, dan menengah—UMKM. Dan inilah bagian yang menjebak setiap orang asing: sebuah PT PMA *menurut hukum* diklasifikasikan sebagai usaha besar (Besar), tidak peduli seberapa kecil operasi nyata Anda. Jadi kompleks coliving dua belas kamar dan jaringan hotel lima ratus kamar berada di perahu yang sama: jika aktivitas tersebut tidak punya skala Besar, sebuah PMA tidak bisa mendaftarkannya. Bukan karena provinsi suatu hari bangun lalu memblokirnya seperti kafe. Tapi karena aktivitas itu memang sejak awal tak pernah tersedia bagi usaha besar, dan Anda—sebagai PMA—*adalah* usaha besar di mata hukum."
+"Secara efektif tertutup untuk model yang barusan Anda gambarkan—tapi karena alasan yang lebih halus ketimbang kafe atau gym. Pencadangan yang menggigit di sini ditulis berdasarkan *nama*, bukan berdasarkan kode. Lampiran II Perpres 10/2021, sebagaimana diubah dengan Perpres 49/2021, mengalokasikan penginapan *Guest House* untuk koperasi dan usaha kecil lokal—dan Pasal 5(5) Perpres yang sama membatasi pencadangan itu tepat pada aktivitas yang disebut dalam lampiran, bukan pada seluruh kode KBLI di sekitarnya. 55209 adalah kode tempat aktivitas bernama itu tinggal. Jadi pertanyaan yang sebenarnya diajukan OSS kepada Anda adalah: *apa ruang lingkup Anda?* Jika ruang lingkup yang Anda deklarasikan terbaca sebagai model guest-house—kamar-kamar, fasilitas bersama, menginap singkat—Anda berdiri di atas garis yang dicadangkan, dan sebuah PT PMA tidak bisa mengambil bidang usaha yang dicadangkan; dan apakah ruang lingkup Anda terbaca seperti itu adalah keputusan OSS, bukan keputusan Anda. Dan inilah bagian yang menjebak setiap orang asing: sebuah PT PMA *menurut hukum* adalah usaha besar (Besar), tidak peduli seberapa kecil operasi nyata Anda—Anda tidak bisa mengecilkan diri untuk lolos dari pencadangan yang dibuat demi melindungi yang kecil."
 
 Finn mengernyit. "Tapi kecil sekali. Dua belas kamar. Saya kebalikan dari korporasi besar."
 
-"*Operasi* Anda kecil. *Klasifikasi hukum* Anda tidak. Inilah jebakan paling berlawanan dengan intuisi dalam hukum perusahaan Indonesia, dan ia membunuh lebih banyak impian akomodasi kecil ketimbang moratorium. Kode-kode yang disediakan untuk UMKM—homestay (55201), villa (55203), kode coliving ini (55209)—disisihkan untuk usaha kecil Indonesia. Orang asing hanya bisa beroperasi lewat PMA. Sebuah PMA otomatis Besar. Besar adalah persis apa yang dikecualikan oleh kode-kode ini. Besarnya impian Anda tidak relevan; struktur kendaraan Anda adalah segalanya."
+"*Operasi* Anda kecil. *Klasifikasi hukum* Anda tidak. Inilah jebakan paling berlawanan dengan intuisi dalam hukum perusahaan Indonesia, dan ia membunuh lebih banyak impian akomodasi kecil ketimbang moratorium. Garis-garis yang dicadangkan—homestay (55201), villa (55203), dan ruang lingkup guest-house dari kode coliving ini (55209)—disisihkan untuk usaha kecil Indonesia. Orang asing hanya bisa beroperasi lewat PMA. Sebuah PMA otomatis Besar. Besar adalah persis apa yang dikecualikan oleh pencadangan bagi yang kecil. Besarnya impian Anda tidak relevan; struktur kendaraan Anda adalah segalanya."
 
 "Jadi separuh akomodasinya mati."
 
-"Separuh akomodasinya, yang dimiliki oleh PMA Anda, mati. Tapi seperti para pendiri retreat, bisnis Anda sebenarnya dua bisnis yang dijahit menjadi satu—penginapan dan coworking—dan keduanya punya vonis yang berbeda, dan masing-masing buruk dengan caranya sendiri. Mari kita lihat keduanya sebelum Anda putus asa, karena bentuk jalan-pintasnya bergantung pada jahitan di antara keduanya."
+"Separuh akomodasinya, yang dimiliki oleh PMA Anda dan dideklarasikan sebagaimana adanya, praktis mati—OSS harus membaca ruang lingkup Anda sebagai sesuatu yang lain dari garis guest-house yang dicadangkan, dan mempertaruhkan sewa yang terkunci pada pembacaan itu bukanlah sebuah rencana. Tapi seperti para pendiri retreat, bisnis Anda sebenarnya dua bisnis yang dijahit menjadi satu—penginapan dan coworking—dan keduanya punya vonis yang berbeda, dan masing-masing buruk dengan caranya sendiri. Mari kita lihat keduanya sebelum Anda putus asa, karena bentuk jalan-pintasnya bergantung pada jahitan di antara keduanya."
 
 **3. Cetak Biru: Lembar Fakta Coliving**
 
@@ -32,26 +36,26 @@ Inilah kenyataan yang terverifikasi, sesuai kebenaran di lapangan.
 
 > ### MEDAN PERTEMPURAN KBLI: COLIVING & SINGGAH SINGKAT
 >
-> *Konteks penting: semua kode di bawah ini 100% terbuka di Daftar Investasi Nasional. Hambatannya adalah hukum skala struktural (reservasi UMKM) ditambah moratorium real estate.*
+> *Konteks penting: semua kode di bawah ini 100% terbuka di Daftar Investasi Nasional. Hambatannya adalah pencadangan Lampiran II Perpres (bidang usaha yang dialokasikan untuk koperasi/UMKM) ditambah moratorium Bali.*
 >
-> **PINTU YANG TERTUTUP SECARA STRUKTURAL — PENGINAPAN**
+> **PINTU YANG DICADANGKAN — PENGINAPAN**
 > *   **55209 — Aktivitas Penyediaan Akomodasi Jangka Pendek Lainnya (Other Short-Term Accommodation):**
 >     *   *Status Nasional:* 100% Terbuka untuk PMA.
->     *   *Status Bali:* **TERTUTUP untuk PMA.** OSS tidak punya baris skala Usaha Besar → disediakan untuk UMKM (Perpres 49/2021, Lampiran II). Sebuah PT PMA adalah Besar menurut hukum dan tidak bisa mendaftarkannya—tidak peduli seberapa kecil operasinya.
+>     *   *Status Bali:* **TERGANTUNG RUANG LINGKUP — garis yang dicadangkan membelah tengah kode ini.** Lampiran II Perpres 10/2021 sebagaimana diubah dengan 49/2021 (hlm. 15, butir 48) mengalokasikan penginapan *Guest House* untuk koperasi/UMKM, dan Pasal 5(5) membatasi pencadangan itu hanya pada aktivitas yang disebut. Sebuah PT PMA tidak bisa mengambil ruang lingkup guest-house yang dicadangkan; apakah sisa kode ini terbuka bergantung pada ruang lingkup yang benar-benar dideklarasikan—verifikasi langsung di OSS sebelum berkomitmen.
 >
 > **SEPARUH COWORKING**
 > *   **68127 — Office Building Management (tempat coworking bernaung):** **DIUSULKAN UNTUK DITUTUP** bagi PMA asing di Bali (klaster real estate). Bukan rumah yang bersih untuk separuh ruang-kerja juga.
 >
 > **PINTU-PINTU AKOMODASI YANG BERTETANGGA**
-> *   **55201 Homestay — TERTUTUP (disediakan untuk WNI).** **55203 Villa — TERTUTUP (tanpa Besar).** **55101–55106 Hotel Bintang/Non-bintang — TERBUKA tapi bergantung lingkup (BLOCCATO_DIPENDE_SCOPE).**
+> *   **55201 Homestay — TERTUTUP untuk PMA (alokasi Lampiran II; model pemilik-menghuni).** **55203 Villa — TERTUTUP untuk PMA (alokasi Lampiran II).** **55101–55106 Hotel Bintang/Non-bintang — TERBUKA tapi bergantung lingkup: lingkup yang Anda deklarasikan menentukan putusannya — kecuali 55105 Hotel Bintang Satu, dialokasikan untuk Koperasi dan UMKM (0% asing).**
 >
 > **PELAJARAN DARI ANGKA-ANGKA**
-> *   "Tanpa skala Besar" = tertutup untuk setiap PMA, besar atau kecil. Ukuran Anda yang sederhana tidak membebaskan Anda; klasifikasi PMA Anda yang menjerat Anda.
-> *   Sebuah PMA *selalu* usaha besar menurut hukum. Kode-kode yang disediakan untuk UMKM terlarang menurut definisi, bukan karena moratorium.
+> *   Bidang usaha yang dicadangkan tertutup untuk setiap PMA, besar atau kecil. Ukuran Anda yang sederhana tidak membebaskan Anda; klasifikasi PMA Anda yang menjerat Anda.
+> *   Sebuah PMA *selalu* usaha besar menurut hukum. Garis-garis yang dicadangkan Lampiran II terlarang menurut definisi, bukan karena moratorium.
 
 **4. Soal Uang**
 
-Pembangunan coliving itu berat—sewa atau pembelian kompleks, penataan interior dua belas kamar, ruang kerja, dapur, kolam, ditambah modal disetor minimum yang wajib dikomitkan setiap PMA. Tapi tidak seperti kafe (di mana uang sudah siap dan hanya kodenya yang diblokir), sang pendiri coliving menghadapi masalah yang sungguh tak bisa dipecahkan uang, karena penghalangnya struktural, bukan finansial. Anda bisa datang dengan sepuluh juta dolar dan tetap tidak bisa mendaftarkan 55209 sebagai PMA, karena hambatannya adalah klasifikasi hukum Anda, bukan saldo bank Anda.
+Pembangunan coliving itu berat—sewa atau pembelian kompleks, penataan interior dua belas kamar, ruang kerja, dapur, kolam, ditambah modal disetor minimum yang wajib dikomitkan setiap PMA. Tapi tidak seperti kafe (di mana uang sudah siap dan hanya kodenya yang diblokir), sang pendiri coliving menghadapi masalah yang sungguh tak bisa dipecahkan uang, karena penghalangnya adalah sebuah pencadangan, bukan harga. Anda bisa datang dengan sepuluh juta dolar dan tetap tidak bisa mengambil ruang lingkup guest-house dari 55209 sebagai PMA, karena hambatannya adalah garis yang oleh Perpres dicadangkan untuk usaha kecil lokal, bukan saldo bank Anda.
 
 Inilah yang membuat jebakan skala-UMKM begitu kejam: tidak ada jumlah modal yang mengubah PMA berklasifikasi Besar menjadi usaha kecil yang dituntut oleh kode tersebut. Satu-satunya jalan nyata ke jenis akomodasi kecil semacam ini adalah dengan *mengubah struktur penginapannya*—dan pilihan jujur yang ada sempit. Kode-kode akomodasi yang benar-benar terbuka adalah *hotel* (55101–55106), yang membawa syarat lingkupnya sendiri dan mengisyaratkan operasi yang jauh lebih besar, lebih formal ketimbang kompleks selancar dua belas kamar. Naik *skala* ke kategori hotel yang jelas dapat didaftarkan, bermitra dengan penyedia akomodasi lokal yang berlisensi, atau memisahkan bisnis sehingga PMA hanya memiliki lapisan coworking/komunitas/pendidikan yang terbuka sementara tempat tidurnya berada pada mitra yang berlisensi sah—inilah langkah-langkah yang nyata. Tak satu pun dari mereka adalah "daftarkan kompleks kecil saya" sederhana yang dibayangkan Finn saat masuk.
 
@@ -59,7 +63,7 @@ Jebakan klasik—*dirikan nominee lokal untuk memegang akomodasi UMKM sementara 
 
 **5. Lini Masa**
 
-Untuk 55209 di bawah sebuah PMA, tidak ada lini masa—bukan karena provinsi lambat, melainkan karena langkah pertama (PMA berklasifikasi Besar mendaftarkan aktivitas yang disediakan untuk UMKM) secara struktural mustahil. Anda tidak bisa menjadwalkan apa yang dilarang oleh hukum skala. Pertanyaan lini masa Finn yang sebenarnya bersifat arsitektural: Apakah saya menaikkan skala visi ke kategori hotel sejati (55101–55106) yang *bisa* didaftarkan oleh PMA—dengan menerima pembangunan yang lebih besar, lebih formal, lebih padat modal ketimbang kompleks intim yang saya bayangkan? Apakah saya menjaga PMA hanya pada lapisan-lapisan yang terbuka (komunitas, program, coworking jika ia bertahan) dan menyerahkan urusan tempat tidur seluruhnya lewat kemitraan? Atau apakah saya menerima bahwa "kompleks coliving kecil milik asing" itu, sebagai struktur hukum yang bersih, sekadar bukan sesuatu yang saat ini diizinkan oleh hukum?
+Untuk ruang lingkup guest-house dari 55209 di bawah sebuah PMA, tidak ada lini masa—bukan karena provinsi lambat, melainkan karena langkah pertama (sebuah PMA mengambil bidang usaha yang oleh Perpres dicadangkan untuk usaha kecil lokal) mustahil secara hukum. Anda tidak bisa menjadwalkan apa yang dilarang oleh pencadangan itu. Pertanyaan lini masa Finn yang sebenarnya bersifat arsitektural: Apakah saya menaikkan skala visi ke kategori hotel sejati (55101–55106) yang *bisa* didaftarkan oleh PMA—dengan menerima pembangunan yang lebih besar, lebih formal, lebih padat modal ketimbang kompleks intim yang saya bayangkan? Apakah saya menjaga PMA hanya pada lapisan-lapisan yang terbuka (komunitas, program, coworking jika ia bertahan) dan menyerahkan urusan tempat tidur seluruhnya lewat kemitraan? Atau apakah saya menerima bahwa "kompleks coliving kecil milik asing" itu, sebagai struktur hukum yang bersih, sekadar bukan sesuatu yang saat ini diizinkan oleh hukum?
 
 Ini bukan pertanyaan "berapa lama". Ini pertanyaan "bisnis ini sebenarnya diizinkan menjadi apa"—dan impian surf-coliving, lebih dari kebanyakan impian lain, memaksa sang pendiri memilih antara naik skala menuju legalitas atau menurunkan ambisi ke model program-dan-kemitraan.
 
@@ -75,7 +79,7 @@ Jebakan yang nyaris merenggut Finn ke dalam sewa yang terkunci adalah perangkap 
 
 Jebakan kedua adalah perangkap penggabungan yang ia bagi dengan pendiri retreat: memperlakukan "surf-coliving" sebagai satu bisnis padahal ia setidaknya dua kode (penginapan + coworking), masing-masing dengan vonisnya sendiri yang buruk, tak satu pun di antaranya merupakan pintu terbuka yang bersih. "Ini bisnis coliving" bukanlah pernyataan yang dapat didaftarkan; ia adalah frasa pemasaran yang menutupi tumpukan pertanyaan hukum yang terpisah.
 
-Pelajaran krusialnya: di Bali, *klasifikasi hukum* Anda bisa mendiskualifikasi Anda dari sebuah bisnis tidak peduli seberapa kecil atau seberapa baik pendanaan Anda. Sebuah PMA selalu usaha besar, dan usaha besar dilarang dari kode-kode yang disediakan untuk UMKM menurut definisi—bukan oleh moratorium, bukan oleh kelas risiko, melainkan oleh struktur dasar hukum itu sendiri. Sebelum Anda jatuh pada keintiman sebuah impian akomodasi kecil, tanyakan pertanyaan yang sama sekali tidak ada hubungannya dengan uang atau pesona: *apakah kode ini bahkan punya skala Besar yang bisa ditempati PMA?* Jika tidak, pintunya memang tak pernah terbuka bagi Anda, dan satu-satunya jalan keluar adalah mengubah bentuk impian—naik ke kategori hotel, atau menyamping ke memiliki pengalaman sementara pulau menjaga tempat tidurnya.
+Pelajaran krusialnya: di Bali, *klasifikasi hukum* Anda bisa mendiskualifikasi Anda dari sebuah bisnis tidak peduli seberapa kecil atau seberapa baik pendanaan Anda. Sebuah PMA selalu usaha besar, dan usaha besar dilarang dari garis-garis yang dicadangkan menurut definisi—bukan oleh moratorium, bukan oleh kelas risiko, melainkan oleh alokasi eksplisit dalam aturan penanaman modal. Sebelum Anda jatuh pada keintiman sebuah impian akomodasi kecil, tanyakan pertanyaan yang sama sekali tidak ada hubungannya dengan uang atau pesona: *apakah bidang usaha ini dialokasikan untuk usaha kecil lokal dalam lampiran Perpres?* Jika ya, pintunya memang tak pernah terbuka bagi Anda, dan satu-satunya jalan keluar adalah mengubah bentuk impian—naik ke kategori hotel, atau menyamping ke memiliki pengalaman sementara pulau menjaga tempat tidurnya.
 
 **8. Jalan Keluar**
 
@@ -109,3 +113,12 @@ Finn datang ingin memiliki sebuah bangunan penuh tempat tidur. Hukum berkata tem
 Prinsip yang harus diresapi Finn adalah prinsip yang telah diisyaratkan pulau ini sejak awal: **berhentilah mencoba memiliki bagian yang dicadangkan, dan milikilah bagian yang memang milikmu.** Tempat tidur, dalam skala kecil, adalah milik orang Bali by design — itu tidak bisa dinegosiasikan dan tidak layak diperjuangkan. Tapi ombak, sekolah, program, meja, merek, komunitas — setiap hal magnetis yang membuat visinya lebih dari sekadar rumah tamu — semua itu adalah aktivitas yang secara hukum *bisa* dipegang sebuah PMA, begitu masing-masing lolos dengan syaratnya sendiri. Versi yang tahan lama dari impian surf-coliving bukanlah seorang asing yang diam-diam memiliki kompleks penuh kamar. Ia adalah seorang asing yang memiliki *alasan orang-orang datang*, bermitra dengan orang-orang lokal yang memiliki tempat mereka tidur. Itu bukan penurunan derajat impian. Itu adalah satu-satunya versi darinya yang akan diizinkan pulau ini untuk ia pertahankan — dan satu-satunya yang bisa membuatnya tidur nyenyak di dalamnya.
 
 *Sebelum Anda menandatangani apa pun, pindai untuk memeriksa status terkini KBLI 55209 terhadap rute-rute terbuka kandidat — 93297 (water tourism), 85510 (sport & recreation education), 79121 (travel agency) dan 56101 (food service) — dan konfirmasikan, untuk masing-masing, baik izin sektoral yang dituntutnya maupun tingkat risiko OSS live serta syarat lingkup Bali-nya, di platform Nuzantara.*
+
+## Adversarial review
+
+- Seat: Codex `gpt-5.6-sol` (reasoning xhigh), refute stance, cross-family — reviewed the
+  2026-08-12 retraction-cure diff touching this file, verified against
+  `KBLI_2025_FINAL_CLEAN.json` (the cured dataset).
+- Outcome: FIX-FIRST → fixed in this same PR. 10 findings (9 confirmed/accommodated, 1 HOLDS): 96220 national status corrected to TERBATAS 0% (measured); 55201/55203 restated as the same Annex II entry 48 (sub-rows *Pondok Wisata* / *Vila*); the annex stated as a national instrument (articles 01/02); honest-map wording corrected (33.2% = almost exactly one in three; all but FOUR of the 372 nationally open; 1,041 = "not blocked", not "open"); surf-coliving guest-house-scope reading stated as OSS's call, not the founder's certainty; stale ID fact-sheet row (55203 "tanpa Besar") cured. Every fix re-measured against KBLI_2025_FINAL_CLEAN.json before applying.
+- Note: this section and the `adversarial_review` frontmatter key are R1-gate metadata;
+  the book/PDF composer strips the frontmatter block and this section from rendered output.

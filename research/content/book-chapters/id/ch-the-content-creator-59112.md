@@ -1,3 +1,7 @@
+---
+adversarial_review: codex
+---
+
 # BAB: Sang Content Creator
 
 **1. Impian**
@@ -24,7 +28,7 @@ Konsultan itu meringis—sebuah ringisan yang sungguhan dan fisik—ketika deck 
 
 Mulut Theo terbuka dan menutup. "Tunggu dulu. Penerusnya juga diblokir?"
 
-"74199—'desain khusus lainnya'—tidak memiliki baris skala Usaha Besar di dalam sistem OSS. Praktisnya kode itu dicadangkan untuk usaha lokal kecil dan mikro. Sebuah PT PMA, menurut hukum, adalah Usaha Besar. Jadi perusahaan milik asing tidak bisa mendaftarkan 74199 di Bali *maupun di mana pun di Indonesia*. Kamu akan mengejar kode 2020 yang sudah mati menuju kode 2025 yang diblokir. Sebuah hantu yang menuntunmu ke tembok." Ia menutup deck itu dengan lembut, seperti cara orang menutup rekam medis pasien yang sakit. "Lupakan 74149 selamanya. Itu adalah satu nasihat-kode buruk yang paling sering beredar di dunia kreator, dan itu sudah membuat orang kehilangan uang sungguhan."
+"74199—'desain khusus lainnya'—secara nasional terbuka bagi kepemilikan asing; tidak ada pencadangan yang menyentuhnya. Yang memblokirnya adalah Bali sendiri: kelas risiko OSS-nya rendah, dan kode berisiko rendah dan menengah-rendah adalah persis pita yang diminta Gubernur kepada BKPM untuk ditutup bagi pendaftaran asing baru pada Januari 2026. Jadi perusahaan milik asing tidak bisa mendaftarkan 74199 *di Bali* hari ini. Kamu akan mengejar kode 2020 yang sudah mati menuju kode 2025 yang diblokir di Bali. Sebuah hantu yang menuntunmu ke tembok." Ia menutup deck itu dengan lembut, seperti cara orang menutup rekam medis pasien yang sakit. "Lupakan 74149 selamanya. Itu adalah satu nasihat-kode buruk yang paling sering beredar di dunia kreator, dan itu sudah membuat orang kehilangan uang sungguhan."
 
 "Jadi aku sama sekali tidak punya kode?"
 
@@ -50,7 +54,7 @@ Inilah kenyataan yang terverifikasi dan berbasis fakta-dasar.
 >
 > **SANG HANTU — JANGAN DAFTARKAN**
 > *   **74149 — (kode 2020 yang sudah pensiun):**
->     *   *Status:* **TIDAK ADA dalam KBLI 2025.** Ini adalah kode mati dari sistem 2020 yang lama. Keturunan 2025 terdekatnya adalah 74199 ("desain khusus lainnya")—yang dengan sendirinya **DIBLOKIR** bagi PMA mana pun (tidak ada baris skala Usaha Besar; dicadangkan untuk usaha mikro/kecil lokal). Jangan pernah mendaftar dengan 74149. Jangan pernah biarkan siapa pun "memetakan" kamu ke kode itu.
+>     *   *Status:* **TIDAK ADA dalam KBLI 2025.** Ini adalah kode mati dari sistem 2020 yang lama. Keturunan 2025 terdekatnya adalah 74199 ("desain khusus lainnya")—secara nasional terbuka bagi kepemilikan asing, tetapi **DIBLOKIR di Bali** oleh moratorium kelas-risiko (kelas risiko OSS-nya rendah). Jangan pernah mendaftar dengan 74149. Jangan pernah biarkan siapa pun "memetakan" kamu ke kode itu.
 >
 > **TIGA KODE NYATA — TIGA NASIB BERBEDA**
 > *   **59112 — Aktivitas Produksi Film, Video, dan Program Televisi oleh Swasta (Produksi Film/Video/TV):**
@@ -119,3 +123,12 @@ Naluri Theo adalah menyandarkan seluruh tubuhnya pada satu pintu—memaksa 59112
 > Prinsip yang mendasari keempat jalur ini sama dengan prinsip yang mengusir sang hantu sejak awal: **daftarkan bisnis yang sungguh-sungguh kamu jalankan, diberi nama dengan benar, dilingkupi dengan jujur.** Kebingungan Theo—*apa sebenarnya yang AKU KERJAKAN???*—berhenti menjadi krisis eksistensial dan menjadi satu keputusan bisnis paling berharga yang akan ia buat, karena sistem klasifikasi memberi imbalan kepada kreator yang mampu menamai mesin sejatinya dan menghukum kreator yang mencoba mendaftarkan sebuah suasana. Jalan keluarnya bukanlah sebuah kode yang pintar. Itu adalah sebuah jawaban yang jujur atas pertanyaan yang ia bawa sejak awal.
 
 *Sebelum Anda menandatangani apa pun, pindai untuk memeriksa status terkini KBLI 59112—dan alternatif-alternatif terbuka yang asli 60203, 60202, 18202, dan 58190—di platform Nuzantara.*
+
+## Adversarial review
+
+- Seat: Codex `gpt-5.6-sol` (reasoning xhigh), refute stance, cross-family — reviewed the
+  2026-08-12 retraction-cure diff touching this file, verified against
+  `KBLI_2025_FINAL_CLEAN.json` (the cured dataset).
+- Outcome: FIX-FIRST → fixed in this same PR. 10 findings (9 confirmed/accommodated, 1 HOLDS): 96220 national status corrected to TERBATAS 0% (measured); 55201/55203 restated as the same Annex II entry 48 (sub-rows *Pondok Wisata* / *Vila*); the annex stated as a national instrument (articles 01/02); honest-map wording corrected (33.2% = almost exactly one in three; all but FOUR of the 372 nationally open; 1,041 = "not blocked", not "open"); surf-coliving guest-house-scope reading stated as OSS's call, not the founder's certainty; stale ID fact-sheet row (55203 "tanpa Besar") cured. Every fix re-measured against KBLI_2025_FINAL_CLEAN.json before applying.
+- Note: this section and the `adversarial_review` frontmatter key are R1-gate metadata;
+  the book/PDF composer strips the frontmatter block and this section from rendered output.

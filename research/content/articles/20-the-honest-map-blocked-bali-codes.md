@@ -4,12 +4,12 @@ domain: compliance
 client_case: none
 kbli_codes:
   - "Dataset-wide measurement, not a single code. Source: KBLI_2025_FINAL_CLEAN.json (1,559 records with an l4_bali Bali-status verdict)."
-  - "Measured: 465 of 1,559 records flagged l4_bali.blocked == true → 29.8% blocked for PMA in Bali."
+  - "Measured: 518 of 1,559 records flagged l4_bali.blocked == true → 33.2% blocked for PMA in Bali."
   - "55203 (Aktivitas Vila) and 56303 (Kafe) used as illustrative blocked codes; 56301 (Bar) as a surviving sibling."
 status: published-draft
-methodology: "Counted records where l4_bali.blocked == true across all 1,559 classified records; reported measured figure, not the editorial plan's earlier 945/39% estimate (which counted a larger 2,422-row OSS scope set)."
+methodology: "Counted records where l4_bali.blocked == true across all 1,559 classified records; reported measured figure (518 → 33.2%), not the editorial plan's earlier 945/39% estimate (which counted a larger 2,422-row OSS scope set)."
+adversarial_review: codex
 ---
-
 # The Honest Map: Nearly a Third of Bali Business Codes Are Blocked for PMA
 
 This whole series has shown you locked doors one at a time — the villa, the café, the minimarket, the consulting firm. This final article steps back and counts them. How much of the Bali business map is actually walled off to foreign investment? Not as a slogan, but as a number you can audit.
@@ -24,37 +24,47 @@ The count is not a vibe. It is a filter over a file.
 
 ## The number
 
-**Of 1,559 classified KBLI codes, 465 are blocked for a foreign PT PMA in Bali. That is 29.8% — just under one in three.**
+**Of 1,559 classified KBLI codes, 518 are blocked for a foreign PT PMA in Bali. That is 33.2% — almost exactly one in three.**
 
 That is the honest headline. Not "half the economy," not a scare figure — but not small either. **Nearly a third** of the business activities a foreigner might reasonably consider are, in 2026 Bali, off-limits to foreign ownership.
 
-And here is the part most counts hide: those 465 break down into distinct *kinds* of "no" —
+And here is the part most counts hide: those 518 break down into distinct _kinds_ of "no" —
 
-- **373 — blocked by risk class** (`BLOCCATO_CLASSE_RISCHIO`): nationally open, but low/medium-low risk, so the moratorium catches them. This is the dominant category — the café, the jewellery wholesaler, the general retailer.
-- **63 — blocked pending OSS scope review** (`NEEDS_REVIEW_NO_OSS_SCOPE`): the system shows no clear registrable scope; treat as blocked until verified live.
-- **20 — blocked by "no large-scale row"** (`CHIUSO_PMA_NO_BESAR`): reserved for UMKM, no Usaha Besar slot, so a PMA (large by law) cannot register. This is the villa's exact trap.
-- **8 — closed outright** (`TERTUTUP`): reserved for Indonesian nationals, 0% foreign — the minimarket family.
-- **1 — specifically closed** (`CHIUSO_BALI`): the early consulting closure (70209).
+- **372 — blocked by risk class** (`BLOCCATO_CLASSE_RISCHIO`): all but four nationally open, but low/medium-low risk, so the moratorium catches them. This is the dominant category — the café, the jewellery wholesaler, the general retailer.
+- **48 — blocked by the moratorium on other grounds** (`CHIUSO_MORATORIA_BALI`): the same Governor's request, reached by a different route.
+- **68 — closed on the activity itself** (`TERTUTUP`): 62 of them carry 0% foreign ownership in the catalogue, so no Bali question arises. The other 6 are the trap — the catalogue says 100%, but the profession or a reservation closes them anyway: legal consultancy (69102), notaries (69104), solo medical and specialist practice (86201, 86202), the minimarket (47112), staple-crop agriculture (01111).
+- **17 — no Bali position can be stated** (`NON_CLASSIFICABILE`): we hold no verified licensing rows for the code, so we will not assert one. Treat as blocked until verified live.
+- **7 — reserved for cooperatives and MSMEs** (`CHIUSO_PMA_NO_BESAR`): allocated in Annex II of Perpres 10/2021 as amended by 49/2021, so a PT PMA cannot take the _bidang usaha_. This is the villa's exact trap.
+- **6 — the remainder**: 2 closed by their own sector regulator, 2 scope-dependent, 2 under Bali's own announced closures (70209 and one proposed).
 
-The walls are not one wall. They are five different walls, and a foreigner can hit any of them.
+The walls are not one wall. They are six different walls, and a foreigner can hit any of them.
 
 ## Where our own estimate was too high
 
-Early in planning this series we carried a working figure of "about 945 codes, roughly 39% blocked." We are correcting it in public, because a series built on *verify-don't-presume* cannot quietly keep a number it can no longer defend.
+Early in planning this series we carried a working figure of "about 945 codes, roughly 39% blocked." We are correcting it in public, because a series built on _verify-don't-presume_ cannot quietly keep a number it can no longer defend.
 
-The 945/39% figure came from a **larger, looser count** — the full 2,422-row OSS export, which includes multiple scope and sub-scale rows per activity, so a single business code can appear several times. Counting at that granularity inflates both the numerator and the denominator and mixes scope-rows with activity-codes. When we count at the level that actually matters to a founder — **one verdict per business code**, across the 1,559 cleaned codes — the rate settles at **29.8%.**
+The 945/39% figure came from a **larger, looser count** — the full 2,422-row OSS export, which includes multiple scope and sub-scale rows per activity, so a single business code can appear several times. Counting at that granularity inflates both the numerator and the denominator and mixes scope-rows with activity-codes. When we count at the level that actually matters to a founder — **one verdict per business code**, across the 1,559 cleaned codes — the rate settles at **33.2%.**
 
-Both statements describe the same reality (a large, structural block on low-risk foreign investment). But the figure you can stand behind, code-by-code, is **465 of 1,559 — 29.8%**, not 39%. The lower number is the more honest one, and it is still big enough to reshape almost every foreigner's plan.
+Both statements describe the same reality (a large, structural block on low-risk foreign investment). But the figure you can stand behind, code-by-code, is **518 of 1,559 — 33.2%**, not 39%. This figure has already moved once since the series began: it is a filter over a dataset, and the dataset gets corrected. It is still well below 39%, and still big enough to reshape almost every foreigner's plan.
 
 ## What the map actually tells you
 
 Two readings follow from the count, and they point the same way:
 
 - **Nearly a third closed** means do not assume your idea is registrable. The base rate of "blocked" is high enough that hope is not a strategy.
-- **Just over two-thirds open** (1,094 codes survive) means the door you want is *probably* findable — usually as the higher-risk sibling of the code you first reached for. The pivot exists more often than not.
+- **Just over two-thirds not blocked** (1,041 codes carry no blocked flag — though 70 of them are scope-dependent and a handful unclassified) means the door you want is _probably_ findable — usually as the higher-risk sibling of the code you first reached for. The pivot exists more often than not.
 
-The map is not "Bali is closed." It is "Bali is closed to the *easy, low-risk* version of most things, and open to the *serious, higher-risk* version of many of them." That single sentence, backed by 465 counted codes, is the whole moratorium in one line.
+The map is not "Bali is closed." It is "Bali is closed to the _easy, low-risk_ version of most things, and open to the _serious, higher-risk_ version of many of them." That single sentence, backed by 518 counted codes, is the whole moratorium in one line.
 
 We will keep this count current as the OSS data and the moratorium evolve — and we will keep showing the arithmetic, because the moment a number can't be reproduced from the file, it stops being journalism and starts being a rumour.
 
-*Don't take the aggregate on faith — check your own exact code against the live count on the Bali Zero KBLI Navigator at balizero.com, where every code's national status and Bali verdict sit side by side, drawn from the same data this article counted.*
+_Don't take the aggregate on faith — check your own exact code against the live count on the Bali Zero KBLI Navigator at balizero.com, where every code's national status and Bali verdict sit side by side, drawn from the same data this article counted._
+
+## Adversarial review
+
+- Seat: Codex `gpt-5.6-sol` (reasoning xhigh), refute stance, cross-family — reviewed the
+  2026-08-12 retraction-cure diff touching this file, verified against
+  `KBLI_2025_FINAL_CLEAN.json` (the cured dataset).
+- Outcome: FIX-FIRST → fixed in this same PR. 10 findings (9 confirmed/accommodated, 1 HOLDS): 96220 national status corrected to TERBATAS 0% (measured); 55201/55203 restated as the same Annex II entry 48 (sub-rows *Pondok Wisata* / *Vila*); the annex stated as a national instrument (articles 01/02); honest-map wording corrected (33.2% = almost exactly one in three; all but FOUR of the 372 nationally open; 1,041 = "not blocked", not "open"); surf-coliving guest-house-scope reading stated as OSS's call, not the founder's certainty; stale ID fact-sheet row (55203 "tanpa Besar") cured. Every fix re-measured against KBLI_2025_FINAL_CLEAN.json before applying.
+- Note: this section and the `adversarial_review` frontmatter key are R1-gate metadata;
+  the book/PDF composer strips the frontmatter block and this section from rendered output.
