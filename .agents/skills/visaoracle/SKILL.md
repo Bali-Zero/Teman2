@@ -436,7 +436,7 @@ function public.bind_visa_evaluate_idempotency_retention_policy` (least-privileg
   (find-my-way/hono/prisma, 3 high — infra-lane fix needed on main, not the visa lane).
   R1-gate lesson recorded: `adversarial_review:` accepts only gate seats
   (agy/codex/gemini/glm/gpt-5.5/grok/kimi*/nlm) + `human-*`/`exempt-\*`, and every research
-file needs a `## Adversarial review` body section with surviving-objection dispositions.
+  file needs a `## Adversarial review` body section with surviving-objection dispositions.
   GATE STATUS unchanged: 🔴 RED.
 - 2026-07-24 (M5, Kimi orchestrator, evening): **WAVE 1 100% on main + W2 KICKED OFF** (Zero:
   "parti ora"). Wave 0+1 all merged: #3032 (funnel resurrected, live-smoked 201), #3033,
@@ -595,6 +595,25 @@ file needs a `## Adversarial review` body section with surviving-objection dispo
   lane "evidence". Same shape as the earlier two refutations this session: a property verified at one end of
   a pipe, asserted about the whole pipe. And: **before executing a step, grep the runbooks for a recorded
   decision about it** — the 07-24 rationale was one file away.
+
+- 2026-08-10 (Pro, seq-6 activation): **SEQ-6 IS THE ACTIVE PRODUCTION PACK (SHADOW).** Signed on M5 (kid
+  `prod-2026-07-1`, `payload_sha256 9691534c15e95821…3ca83f6`, from a detached worktree at origin/main),
+  activated via the proven two-login ceremony (ephemeral roles
+  `visa_pack_writer_ceremony_260810`/`visa_activation_ceremony_260810`, minted via stdin→psql and dropped
+  same session; `activation_id 4c25cfbb-748e-404c-b639-1213304695da`, reason
+  `seq6-shadow-activation-260810`). Pre-activation semantic diff seq5→seq6 verified rule-by-rule
+  (113−54+45=104; every delta inside the declared perimeter, incl. the 3 within-stage changes: E30E/E30F
+  removed from generic student support, e30a/e30b level-band filters conjoined to STUDY). DB verified with
+  the runtime predicate (`legal_period @> now() AND system_period @> now()`): exactly ONE open activation
+  — seq-6; seq-5 `system_period` closed the same instant, no gap. **PROVE-LIVE:** IT/TOURISM/10d full-facts
+  → `SUPPORTED_CANDIDATES` [B1, C1] (the exact 6,610/6,610-abstention case from HANDOFF-2026-08-08);
+  incomplete facts → `NEEDS_INPUT` naming `immigration.overstay_days`; negative control NG →
+  `CALLING_VISA_REVIEW`, no B1. The engine binds per-request: seq-6 served with NO deploy. Ops notes:
+  postgres-flex user `postgres` authenticates with `OPERATOR_PASSWORD` (`SU_PASSWORD` belongs to
+  `flypgadmin`); psql inside the machine via TCP :5433 (no unix socket). **EVALUATE_MODE stays SHADOW;
+  ENFORCE remains NO-GO** (DPIA/analytics-TTL unchanged). Probe cost: 4 rows in `visa_decisions` labelled
+  `traffic_source='real'` (known collector-contamination class). PR #3983 (sponsor.type seam) was armed in
+  the merge queue at the time of writing — separate entry when it lands.
 
 ## TRACKS — parallel work groups (multi-session coordination)
 
