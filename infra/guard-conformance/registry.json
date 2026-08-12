@@ -234,8 +234,8 @@
         },
         "infra/claude-hooks/orchestrate_gate.py": {
           "symbols": {},
-          "tests": [],
-          "also_covered_by": ["vaccine"]
+          "tests": ["infra/claude-hooks/test_orchestrate_gate_vocab.py"],
+          "note": "Was censused with tests:[] and excused by also_covered_by:vaccine. Measured 2026-08-12 against live M5 transcripts: 4 of its 5 dispatch keywords named Task/TaskCreate and scored ZERO occurrences ever, and the 5th (subagent_type) is an OPTIONAL parameter — so the guard was blind to the live Agent tool and would have kept blocking a caller who had just dispatched. Now matches Agent/Task/TaskCreate by tool name (JSON-spacing tolerant) plus isSidechain, and refuses to convict on a transcript whose shape it cannot recognize (W106b: cannot-verify is not a verdict). Corpus is mutation-verified — restoring the dead vocabulary kills 4 tests."
         },
         "infra/claude-hooks/stadio_zero_nudge.py": {
           "symbols": {},
