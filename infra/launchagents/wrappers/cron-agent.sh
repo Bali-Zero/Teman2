@@ -46,6 +46,10 @@ LOCK_FILE="$STATE_DIR/${JOB_NAME}.lock"
 STATE_FILE="$STATE_DIR/${JOB_NAME}.state.json"
 COOLDOWN_FILE="$STATE_DIR/${JOB_NAME}.cooldown"
 SECRETS_FILE="$HOME/.nuzantara-secrets.env"
+# Repo-tracked job->fingerprint map (P2 no-op suppression, arm-without-crontab-edit).
+# Deploy convention: this is a plain copy of infra/launchagents/cron-agent-fingerprints.json,
+# same as cron-agent.sh itself is a HOME-fork copy of its repo source (declared-pairs.json).
+FINGERPRINT_MAP="${CRON_AGENT_FINGERPRINT_MAP:-$STATE_DIR/fingerprints.json}"
 
 mkdir -p "$LOG_DIR" "$STATE_DIR"
 
@@ -404,10 +408,23 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
     # errors or prints nothing we run the agent, because "I could not measure the
     # input" must never be read as "the input is unchanged" (W106b: cannot-verify
     # is not a verdict).
-    if [[ -n "${CRON_AGENT_SKIP_IF_UNCHANGED:-}" ]]; then
+    #
+    # Source of the fingerprint command: an explicit CRON_AGENT_SKIP_IF_UNCHANGED
+    # env var wins when set (per-invocation override, e.g. for manual testing).
+    # Otherwise fall back to FINGERPRINT_MAP, a repo-tracked job->command table —
+    # this is what lets a job get armed by merging a PR, with zero crontab edits
+    # (16 HOME-fork crontab lines would otherwise all need the env var pasted in).
+    # Missing map file, missing jq, malformed JSON, or no entry for this job all
+    # resolve to "no fingerprint configured" — same as today, never a skip.
+    local skip_cmd="${CRON_AGENT_SKIP_IF_UNCHANGED:-}"
+    if [[ -z "$skip_cmd" && -f "$FINGERPRINT_MAP" ]] && command -v jq >/dev/null 2>&1; then
+        skip_cmd="$(jq -r --arg job "$JOB_NAME" '.[$job] // empty' "$FINGERPRINT_MAP" 2>/dev/null)"
+        [[ -n "$skip_cmd" ]] && log "no-op check: using repo-mapped fingerprint for $JOB_NAME"
+    fi
+    if [[ -n "$skip_cmd" ]]; then
         local fp_file="$STATE_DIR/${JOB_NAME}.input-fingerprint"
         local fp_now fp_rc
-        fp_now="$(eval "$CRON_AGENT_SKIP_IF_UNCHANGED" 2>/dev/null)"; fp_rc=$?
+        fp_now="$(eval "$skip_cmd" 2>/dev/null)"; fp_rc=$?
         if [[ $fp_rc -ne 0 || -z "$fp_now" ]]; then
             log "no-op check: fingerprint command failed (rc=$fp_rc) or empty — running the agent (fail-open)"
         else

@@ -298,7 +298,13 @@
     {
       "live": "~/scripts/cron-agent.sh",
       "repo": "infra/launchagents/wrappers/cron-agent.sh",
-      "_note": "W89 class-audit (2026-07-11, PENDING-ARMS ledger ~68): run_agent() gets BG-ceiling env + anti-background prompt sentence + provenance log line. Live crontab consumer of the 'agent' tier: weekly-dep-audit, seo-guardian-weekly, conversation-cleanup, indexing-daily, learning-pipeline (verified via `crontab -l` on Pro 2026-07-11).",
+      "_note": "W89 class-audit (2026-07-11, PENDING-ARMS ledger ~68): run_agent() gets BG-ceiling env + anti-background prompt sentence + provenance log line. Live crontab consumer of the 'agent' tier: weekly-dep-audit, seo-guardian-weekly, conversation-cleanup, indexing-daily, learning-pipeline (verified via `crontab -l` on Pro 2026-07-11). 2026-08-12 (arm-p1p2-fingerprints): re-verified only 6 of the 16 grep hits for 'cron-agent.sh' in crontab are live invocations (10 are comments/disabled lines) — cell-weekly-report and nlm-nb1-daily-refresh run the exec tier and never reach P2's fingerprint check; weekly-dep-audit, seo-guardian-weekly, indexing-daily got FINGERPRINT_MAP support added (reads its job entry when CRON_AGENT_SKIP_IF_UNCHANGED is unset); learning-pipeline stays unarmed by design (its prompt forbids reading any file, so there is no input to fingerprint).",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/.cron-agent/fingerprints.json",
+      "repo": "infra/launchagents/cron-agent-fingerprints.json",
+      "_note": "2026-08-12 (arm-p1p2-fingerprints, PR pending): job->CRON_AGENT_SKIP_IF_UNCHANGED-command map read by cron-agent.sh's run_agent() (FINGERPRINT_MAP, default $STATE_DIR/fingerprints.json) when the env var itself is unset — arms P2 no-op suppression (PR #4108) for weekly-dep-audit, seo-guardian-weekly and indexing-daily without touching any of the ~16 crontab lines that invoke cron-agent.sh. Deploy is a plain copy alongside the wrapper's own HOME-fork copy, same install step. Not yet installed on Pro as of this entry — until then lint_home_fork will report this pair as repo-ahead (declared, expected, not silent drift).",
       "machines": ["pro"]
     },
     {
