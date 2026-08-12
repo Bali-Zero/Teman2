@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -22,6 +23,12 @@ _SHELL_CODEX_EXEC = re.compile(r"(^|[|&;(]|\s)(\S*/)?codex\s+exec\b")
 
 LIB = Path(__file__).resolve().parents[2] / "scripts" / "lib" / "codex_seat.sh"
 
+# `sh` is the portable default: it exists on every machine and on the CI
+# runner. zsh and bash are parametrised because real callers use them —
+# claude-cascade.sh and regulatory-watcher-run.sh are zsh, the supervisor is
+# bash 3.2 — and a shell that is genuinely absent is SKIPPED with its name in
+# the reason, never silently dropped: "9 passed" must not be able to mean
+# "the shell that matters was never run".
 SHELLS = ("sh", "bash", "zsh")
 
 
@@ -33,7 +40,7 @@ def _seat(home: Path, name: str, *, logged_in: bool = True) -> Path:
     return d
 
 
-def _run(home: Path, snippet: str, shell: str = "zsh", **env: str) -> str:
+def _run(home: Path, snippet: str, shell: str = "sh", **env: str) -> str:
     full = {**os.environ, "HOME": str(home), **env}
     full.pop("CODEX_SEAT_DIRS", None)
     full.pop("CODEX_SEAT_STATE_FILE", None)
@@ -57,6 +64,8 @@ def test_guilt_the_last_seat_in_the_list_is_not_dropped(
     a list without a trailing newline silently loses its final entry — and the
     final entry is the second subscription, i.e. exactly the thing this lib
     exists to reach. Lived on 2026-08-12 before this test existed."""
+    if shutil.which(shell) is None:
+        pytest.skip(f"{shell} not installed on this machine — coverage NOT claimed")
     for name in (".codex", ".codex-o2", ".codex-acct2"):
         _seat(tmp_path, name)
 

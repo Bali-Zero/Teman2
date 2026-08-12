@@ -688,6 +688,14 @@ jobs:
           # `codex exec` that forgets to resolve a seat fails HERE. Armed in
           # this required workflow and not left to the scripts/tests sweep,
           # which is continue-on-error and gates nothing (W108).
+          # zsh is NOT on the ubuntu runner, and both corpora need it: the lib is
+          # sourced from zsh callers and claude-cascade.sh IS a zsh script. Both
+          # suites skip-with-reason when zsh is absent rather than erroring, so
+          # without this install they would report green while never exercising
+          # the shell that actually runs them — coverage theatre. Installing it
+          # keeps the skip a machine-local courtesy and never a CI escape.
+          sudo apt-get update -qq && sudo apt-get install -y -qq zsh
+          command -v zsh >/dev/null || { echo "::error::zsh unavailable — the shell corpora would skip, refusing to report green"; exit 1; }
           python -m pip install --quiet pytest
           python -m pytest scripts/tests/test_codex_seat_lib.py -q
           python -m pytest scripts/tests/test_claude_cascade_shell.py -q

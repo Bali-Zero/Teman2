@@ -9,7 +9,18 @@ import time
 from pathlib import Path
 from types import ModuleType
 
+import shutil
+
 import pytest
+
+# claude-cascade.sh IS a zsh script — there is no portable way to exercise it
+# without zsh. On a machine that lacks it the whole corpus SKIPS with the
+# reason naming zsh, rather than erroring with FileNotFoundError or, worse,
+# quietly counting as covered. CI installs zsh so this never triggers there.
+pytestmark = pytest.mark.skipif(
+    shutil.which("zsh") is None,
+    reason="zsh not installed — cascade coverage NOT claimed on this machine",
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
