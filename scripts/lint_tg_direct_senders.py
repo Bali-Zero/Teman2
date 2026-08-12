@@ -66,6 +66,14 @@ GATEWAY_ALLOWLIST = {
     # container, so on CI that same contract IS the W104 silence. The CI arm
     # inverts it: read the reply, fail the step loudly, no spool.
     "scripts/ci/telegram_notify.sh",
+    # Redacts bot tokens FROM logs (#4102) — never sends. Its docstring
+    # writes the URL as a worked example of what to strip, and its test
+    # builds a FAKE_URL constant + a simulated traceback line to prove the
+    # redaction filter catches a token even inside an exception message.
+    # Zero requests.post/httpx calls in either file — the bare-substring
+    # PATTERN match is on prose *about* the pattern, not code using it.
+    "apps/backend-rag/backend/core/secret_log_redaction.py",
+    "apps/backend-rag/backend/tests/core/test_telegram_token_never_reaches_a_log.py",
 }
 
 
