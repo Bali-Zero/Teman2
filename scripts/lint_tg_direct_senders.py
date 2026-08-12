@@ -58,6 +58,13 @@ GATEWAY_ALLOWLIST = {
     "scripts/lint_tg_direct_senders.py",  # this lint (pattern is its constant)
     "scripts/tests/test_tg_gateway.py",   # the gateway's own test fixtures
     "scripts/tests/test_agent_job_telegram_gateway.py",  # asserts the string's ABSENCE
+    # Same shape as the line above, from the other direction: this test proves the bot
+    # token never survives into a log line, so it needs a fixture URL shaped like the
+    # real one AND it greps the tree for the bare literal itself. A file that polices
+    # the string has to be able to name it. Added 2026-08-12 after #4102 landed and
+    # turned every open PR red — the module it shipped, `secret_log_redaction.py`, was
+    # cured the other way (defanged host), because a redactor has no reason to be exempt.
+    "apps/backend-rag/backend/tests/core/test_telegram_token_never_reaches_a_log.py",
     ".github/workflows/tg-gateway.yml",   # the gateway's own CI job (names it in a comment)
     # The CI arm of the same family. It is NOT a second gateway: tg_notify.py
     # answers to a machine with a spool that a flusher drains later, so its

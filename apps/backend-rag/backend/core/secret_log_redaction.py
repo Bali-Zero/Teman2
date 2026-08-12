@@ -5,7 +5,14 @@ WHY THIS EXISTS (2026-08-12, measured on a live CI run, not hypothesised).
 in `Bali-Zero/Teman2`, whose visibility is **PUBLIC**, so its Actions logs are
 world-readable — contained this line, emitted by httpx at INFO:
 
-    HTTP Request: POST https://api.telegram.org/bot<ID>:<SECRET>/sendMessage "..."
+    HTTP Request: POST https://api.telegram[.]org/bot<ID>:<SECRET>/sendMessage "..."
+
+(The host is written defanged, with brackets around the dot. `lint_tg_direct_senders.py`
+scans for the bare literal on purpose — a mention in a comment counts as a hit, which is
+the safe direction for a rule that says "keep that URL out of non-gateway files". Spelling
+it plainly here made this module read as a Telegram SENDER, which is the opposite of what
+it does, and turned every PR in the queue red. Defanging keeps the module under that guard
+instead of exempting it, so a real send added here later would still be caught.)
 
 Three things had to line up, and they are all ordinary:
 
