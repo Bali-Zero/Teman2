@@ -347,7 +347,9 @@ import os
 import pathlib
 import sys
 
-dump_path = pathlib.Path(sys.stdin.read().strip())
+# agy's real -p/--print TAKES A VALUE (measured live 2026-08-13) — the prompt
+# arrives as the argv token following -p, never on stdin.
+dump_path = pathlib.Path(sys.argv[sys.argv.index("-p") + 1].strip())
 dump_path.write_text(json.dumps(dict(os.environ)), encoding="utf-8")
 print("gemini-safe")
 """,

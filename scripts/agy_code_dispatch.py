@@ -173,7 +173,16 @@ def run(
         #   5. the dispatcher never commits/pushes — promotion stays operator-gated.
         # Pass --no-skip-permissions to require interactive approval for sensitive runs.
         cmd.append("--dangerously-skip-permissions")
-    cmd += ["-p", "--print-timeout", f"{timeout_s}s"]
+    # `-p`/`--print` TAKES A VALUE (measured live 2026-08-13, both forms exit
+    # 0): `-p --print-timeout {timeout_s}s` binds the literal string
+    # "--print-timeout" as the prompt and leaves the duration a stray
+    # positional — agy never reads a piped `input=`. Prompt must be `-p`'s
+    # own argv value. NOTE: agy v1.1.12 has no stdin path, so the governed
+    # coding-task prompt is now `ps`-visible while the process runs — a task
+    # description can reference a client case (see PR body for the PII
+    # disclosure this forces).
+    cmd += ["-p", governed, "--print-timeout", f"{timeout_s}s"]
+    prompt_arg_index = len(cmd) - 3  # cmd[-4:] == ["-p", governed, "--print-timeout", f"{timeout_s}s"]
 
     # agy must NEVER see the paid Anthropic key — Claude is consumed via AI Ultra OAuth.
     env = dict(os.environ)
@@ -181,7 +190,9 @@ def run(
 
     start = time.monotonic()
     if dry_run:
-        print(f"DRY_RUN cmd: {' '.join(cmd)}")
+        cmd_preview = list(cmd)
+        cmd_preview[prompt_arg_index] = "<prompt omitted>"
+        print(f"DRY_RUN cmd: {' '.join(cmd_preview)}")
         print(f"DRY_RUN cwd: {worktree}")
         print("DRY_RUN prompt (governed, first 400 chars):")
         print(governed[:400])
@@ -190,7 +201,6 @@ def run(
     try:
         completed = subprocess.run(
             cmd,
-            input=governed,
             capture_output=True,
             text=True,
             timeout=timeout_s + 10,

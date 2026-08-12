@@ -1039,10 +1039,12 @@ by construction; `check-fleet.sh` is correct and **nothing executes it**; and on
 re-stamps `com.apple.FinderInfo` within ~20s so an ad-hoc signature there cannot stay valid (NOT called
 breakage — `spctl` rejects all three machines equally, which is what ad-hoc signing means).
 
-**🟡 STILL OPEN — 14 codes deliberately unadjudicated.** 12 BROADER + 2 RENAMED, where the 2025 code
-is wider than the _bidang usaha_ the instrument restricts. A cap there is a per-code decision, not a
-deduction; `--strict` on `perpres_foreign_cap_relation.py` stays disarmed until they are ruled on
-(arming a gate on a live backlog is its own defect).
+**🟡 STILL OPEN — 12 BROADER codes deliberately unadjudicated.** Their 2025 code is wider than the
+_bidang usaha_ the instrument restricts, so a cap remains a per-code decision, not a deduction;
+`--strict` on `perpres_foreign_cap_relation.py` stays disarmed until they are ruled on (arming a gate
+on a live backlog is its own defect). **RESOLVED 2026-08-12:** the 2 RENAMED codes `21021`/`21022`
+are now `TERBATAS`, 0% foreign ownership, on Perpres 49/2021 Annex III entries #5/#6 respectively.
+Evidence/implementation pointer: `scripts/kbli_filiera/apply_perpres_foreign_caps.py:93-121`.
 
 **🟡 `operator[business]` — whether any client already advised on one of these codes should be
 reached back to.** Not a technical question, and not a session's to answer.

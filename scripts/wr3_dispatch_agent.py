@@ -168,9 +168,15 @@ async def _dispatch_gemini_cli(
     agy = shutil.which("agy")
     if agy:
         cli = agy
-        # agy: prompt on stdin via -p flag.
-        cmd = [cli, "-p", "--print-timeout", f"{timeout_s}s"]
-        stdin_payload = prompt.encode()
+        # `-p`/`--print` TAKES A VALUE (measured live 2026-08-13, both forms
+        # exit 0): a piped/stdin prompt with `-p` immediately followed by
+        # another flag binds that flag's literal text as the prompt and is
+        # never read — a lying success, not a graceful failure. Prompt is
+        # `-p`'s own argv value; --print-timeout stays a separate flag.
+        # NOTE: agy v1.1.12 has no stdin path, so the WR3 episode prompt is
+        # now `ps`-visible while the process runs (PR body has the details).
+        cmd = [cli, "-p", prompt, "--print-timeout", f"{timeout_s}s"]
+        stdin_payload = None
     else:
         legacy = shutil.which("gemini")
         if legacy is None:
@@ -199,14 +205,26 @@ async def _dispatch_gemini_cli(
         ) from e
 
     duration_ms = int((asyncio.get_event_loop().time() - started) * 1000)
+    combined = f"{stdout.decode('utf-8', 'replace')}\n{stderr.decode('utf-8', 'replace')}".lower()
     if proc.returncode != 0:
-        text = stderr.decode("utf-8", "replace").lower()
-        if "quota" in text or "429" in text or "rate" in text or "terminalquotaerror" in text:
+        if "quota" in combined or "429" in combined or "rate" in combined or "terminalquotaerror" in combined:
             raise CascadeExhaustedError(
-                f"{contract.name}: Gemini quota exhausted (stderr={text[:200]})"
+                f"{contract.name}: Gemini quota exhausted (stderr={combined[:200]})"
             )
         raise WR3DispatchError(
-            f"{contract.name}: Gemini exit {proc.returncode} stderr={text[:200]}"
+            f"{contract.name}: Gemini exit {proc.returncode} stderr={combined[:200]}"
+        )
+    # agy's headless auto-deny is a LYING SUCCESS (exit 0): a tool call needing
+    # interactive permission gets auto-denied and agy still exits 0 with a
+    # jetski/"no output produced" message instead of a real answer (measured
+    # live 2026-08-13). Judge it as exhausted so the cascade falls through
+    # instead of consuming the denial text as if it were Gemini's response.
+    if any(
+        marker in combined
+        for marker in ("auto-denied", "headless mode cannot prompt", "no output produced")
+    ):
+        raise CascadeExhaustedError(
+            f"{contract.name}: Gemini auto-denied a tool call in headless mode"
         )
 
     return DispatchResult(
