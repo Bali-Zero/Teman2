@@ -116,15 +116,18 @@ class KnownUngatedMutation:
 INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
     # ── Auth flows: must be reachable BEFORE the caller has a credential ──
     IntentionalPublicMutation(
-        "POST", "/api/auth/login",
+        "POST",
+        "/api/auth/login",
         "Login endpoint — cannot require the credential it is issuing.",
     ),
     IntentionalPublicMutation(
-        "POST", "/api/auth/team/login",
+        "POST",
+        "/api/auth/team/login",
         "Team member login — same as above, initial authentication step.",
     ),
     IntentionalPublicMutation(
-        "POST", "/api/auth/request-magic-link",
+        "POST",
+        "/api/auth/request-magic-link",
         "Passwordless magic-link request (FASE 6) — enumeration-safe by design "
         "per public_endpoints.py; an unauthenticated client asks for a link.",
     ),
@@ -137,7 +140,8 @@ INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
     #    design), but see the ledger's "claimed-vs-actual" section + PENDING-ARMS
     #    — the verification gap is the real, separate, higher-priority issue.
     IntentionalPublicMutation(
-        "POST", "/webhook/whatsapp",
+        "POST",
+        "/webhook/whatsapp",
         "Meta WhatsApp webhook. VERIFIED 2026-07-17: whatsapp_chat.py "
         "_verify_whatsapp_signature DOES check X-Hub-Signature-256 HMAC-SHA256 "
         "when WHATSAPP_APP_SECRET is set — BUT its own docstring says "
@@ -147,7 +151,8 @@ INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
         "state, but a landmine — see PENDING-ARMS.",
     ),
     IntentionalPublicMutation(
-        "POST", "/webhook/instagram",
+        "POST",
+        "/webhook/instagram",
         "Meta Instagram webhook. VERIFIED 2026-07-17: instagram_chat.py's "
         "GET handshake DOES check INSTAGRAM_VERIFY_TOKEN, but the POST "
         "handler (webhook_router.post, line 167) has ZERO signature check — "
@@ -155,7 +160,8 @@ INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
         "payload at all. The registry reason overclaims — see PENDING-ARMS.",
     ),
     IntentionalPublicMutation(
-        "POST", "/webhook/telegram",
+        "POST",
+        "/webhook/telegram",
         "Telegram bot webhook. VERIFIED 2026-07-17: telegram_webhook.py's "
         "POST handler (line 252) has NO secret-token check (Telegram's own "
         "X-Telegram-Bot-Api-Secret-Token mechanism is never verified) — any "
@@ -164,100 +170,117 @@ INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
     ),
     # ── Bridge (Pro<->Fly): X-Bridge-Auth hmac.compare_digest in-router ──
     IntentionalPublicMutation(
-        "POST", "/api/bridge/ingest/article",
+        "POST",
+        "/api/bridge/ingest/article",
         "Pro<->Fly bridge (Phase 1 Sinapsi) — X-Bridge-Auth hmac.compare_digest "
         "against BRIDGE_API_KEY, rejects unauthorized with 401/503 in-router.",
     ),
     IntentionalPublicMutation(
-        "POST", "/api/bridge/ingest/enrichment",
+        "POST",
+        "/api/bridge/ingest/enrichment",
         "Same bridge HMAC auth as ingest/article.",
     ),
     IntentionalPublicMutation(
-        "POST", "/api/bridge/intake-gate/doc-counts",
+        "POST",
+        "/api/bridge/intake-gate/doc-counts",
         "Same bridge HMAC auth as ingest/article.",
     ),
     IntentionalPublicMutation(
-        "POST", "/api/bridge/wa-media/ack",
+        "POST",
+        "/api/bridge/wa-media/ack",
         "Same bridge HMAC auth as ingest/article.",
     ),
     # ── wa-mirror / Intel Lake: scoped X-*-Key headers checked in-router ──
     IntentionalPublicMutation(
-        "POST", "/api/crm/clients/upsert-by-phone",
+        "POST",
+        "/api/crm/clients/upsert-by-phone",
         "wa-mirror CRM lead upsert — X-CRM-Write-Key + "
         "WA_MIRROR_CRM_WRITE_ENABLED checked in-router (crm_clients.py).",
     ),
     IntentionalPublicMutation(
-        "POST", "/api/crm/internal/clients/{client_id}/documents/upload",
-        "wa-mirror intake document upload — same X-CRM-Write-Key gate as "
-        "upsert-by-phone.",
+        "POST",
+        "/api/crm/internal/clients/{client_id}/documents/upload",
+        "wa-mirror intake document upload — same X-CRM-Write-Key gate as upsert-by-phone.",
     ),
     IntentionalPublicMutation(
-        "POST", "/api/intel/lake/observations",
-        "Intel Lake ingest — X-Producer-Token checked in-router "
-        "(env INTEL_LAKE_PRODUCER_TOKEN).",
+        "POST",
+        "/api/intel/lake/observations",
+        "Intel Lake ingest — X-Producer-Token checked in-router (env INTEL_LAKE_PRODUCER_TOKEN).",
     ),
     IntentionalPublicMutation(
-        "POST", "/api/intel/lake/observations-batch",
+        "POST",
+        "/api/intel/lake/observations-batch",
         "Same X-Producer-Token gate as observations.",
     ),
     # ── HR: per-incident token IS the auth (secrets.compare_digest) ──
     IntentionalPublicMutation(
-        "POST", "/api/hr/late-reply/{incident_id}",
+        "POST",
+        "/api/hr/late-reply/{incident_id}",
         "Late check-in reply form — per-incident token via "
         "secrets.compare_digest, no PII collected. Token IS the auth.",
     ),
     # ── Client portal: token-based, pre-account by design ──
     IntentionalPublicMutation(
-        "POST", "/api/portal/invite/complete",
+        "POST",
+        "/api/portal/invite/complete",
         "Client registration completion — the invite token is the "
         "credential; there is no account yet to authenticate as.",
     ),
     # ── Funnel / lead-gen: anonymous-by-design, no PII beyond session_id ──
     IntentionalPublicMutation(
-        "POST", "/api/lead/capture",
+        "POST",
+        "/api/lead/capture",
         "Anonymous WhatsApp handoff CTA — writes lead_intents "
         "(source/context/utm/fingerprint only, no PII), 8KB cap in-router.",
     ),
     IntentionalPublicMutation(
-        "POST", "/api/funnel/session/touch",
+        "POST",
+        "/api/funnel/session/touch",
         "Pre-auth lead cookie touch — anonymous UUID, no PII.",
     ),
     IntentionalPublicMutation(
-        "POST", "/api/funnel/session/convert",
+        "POST",
+        "/api/funnel/session/convert",
         "Lead->client conversion bridge invoked by the portal login flow "
         "itself (session_id + client_id only).",
     ),
     IntentionalPublicMutation(
-        "POST", "/api/analytics/funnel-event",
+        "POST",
+        "/api/analytics/funnel-event",
         "11 whitelisted funnel events (packages/core/analytics/funnel-view.ts) "
         "— session_id only, no PII.",
     ),
     IntentionalPublicMutation(
-        "POST", "/api/prime/v2/analyze",
+        "POST",
+        "/api/prime/v2/analyze",
         "PRIME NEXUS Layer 2 — explicitly declared 'public, rate-limited' "
         "investment analysis over public zone data.",
     ),
     IntentionalPublicMutation(
-        "POST", "/api/prime/v2/resolve",
+        "POST",
+        "/api/prime/v2/resolve",
         "PRIME NEXUS Layer 1 — explicitly declared public spatial "
         "resolution over public zone data.",
     ),
     # ── Anonymous product quizzes: stateless scoring / IP-hash rate limit ──
     IntentionalPublicMutation(
-        "POST", "/api/v1/visa-oracle/recommend",
+        "POST",
+        "/api/v1/visa-oracle/recommend",
         "Anonymous visa quiz — pure scoring logic, no user data persisted.",
     ),
     IntentionalPublicMutation(
-        "POST", "/api/v1/visa-oracle/chat",
+        "POST",
+        "/api/v1/visa-oracle/chat",
         "Anonymous visa Q&A — rate-limited by IP hash, no PII collected.",
     ),
     IntentionalPublicMutation(
-        "POST", "/api/v1/visa-oracle/handoff",
-        "WhatsApp/Telegram handoff link builder — no state mutation beyond "
-        "a notification.",
+        "POST",
+        "/api/v1/visa-oracle/handoff",
+        "WhatsApp/Telegram handoff link builder — no state mutation beyond a notification.",
     ),
     IntentionalPublicMutation(
-        "POST", "/api/v1/kbli-notebook/chat",
+        "POST",
+        "/api/v1/kbli-notebook/chat",
         "KBLI Explorer — public business-classification chat, no PII.",
     ),
     # ── Visa Check v1 funnel (routers/visa_check.py): anonymous wizard,
@@ -265,21 +288,25 @@ INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
     #    mounted but never registered in PUBLIC_ENDPOINTS). The result-page
     #    hash IS the access token; per-IP rate-limited via the /api/ bucket. ──
     IntentionalPublicMutation(
-        "POST", "/api/visa/check/start",
+        "POST",
+        "/api/visa/check/start",
         "Branch selector — pure yes/no routing, nothing persisted.",
     ),
     IntentionalPublicMutation(
-        "POST", "/api/visa/clock",
+        "POST",
+        "/api/visa/clock",
         "Clock submission — anonymous overstay-timeline insert "
         "(visa_type/entry_date/client_fingerprint only, no PII).",
     ),
     IntentionalPublicMutation(
-        "POST", "/api/visa/match",
+        "POST",
+        "/api/visa/match",
         "Match submission — anonymous visa-recommendation insert "
         "(nationality/purpose/duration/budget only, no PII).",
     ),
     IntentionalPublicMutation(
-        "POST", "/api/visa/voa",
+        "POST",
+        "/api/visa/voa",
         "VOA request submission — anonymous B1 eligibility insert "
         "(case type/nationality/dates/purpose/travellers/self-pay only, no PII). "
         "Same shape and rationale as the visa/match and visa/clock siblings above: "
@@ -289,7 +316,8 @@ INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
     #    anonymous by design (the v2 interview runs pre-account). Engine
     #    evaluation + SHADOW audit row; abuse controls verified in-router. ──
     IntentionalPublicMutation(
-        "POST", "/api/visa-oracle/evaluate",
+        "POST",
+        "/api/visa-oracle/evaluate",
         "Visa Oracle v2 evaluate read-path (W1) — anonymous canonical-facts "
         "evaluation, mode=CURATED envelope (SHADOW era). Controls: dedicated "
         "30/min rate-limit bucket, 32KB body cap, application/json-only, "
@@ -299,23 +327,27 @@ INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
     ),
     # ── Marketing: explicit registry rows, standard opt-in/opt-out shape ──
     IntentionalPublicMutation(
-        "POST", "/api/blog/ask",
+        "POST",
+        "/api/blog/ask",
         "AskZantara widget on public blog articles — public Q&A feature, "
         "explicit registry row (shadowed by the broader /api/blog/ prefix "
         "match, but the specific row documents deliberate intent).",
     ),
     IntentionalPublicMutation(
-        "POST", "/api/blog/newsletter/subscribe",
+        "POST",
+        "/api/blog/newsletter/subscribe",
         "Public marketing opt-in — explicit registry row.",
     ),
     IntentionalPublicMutation(
-        "POST", "/api/blog/newsletter/confirm",
+        "POST",
+        "/api/blog/newsletter/confirm",
         "Double opt-in confirmation — DOES check a real confirmation_token "
         "column server-side (newsletter.py ~line 304-320), unlike its "
         "unsubscribe sibling below.",
     ),
     IntentionalPublicMutation(
-        "POST", "/api/blog/newsletter/unsubscribe",
+        "POST",
+        "/api/blog/newsletter/unsubscribe",
         "Opt-out — legal requirement to stay reachable without a session. "
         "VERIFIED 2026-07-17: the registry reason says 'token-based "
         "verification' but UnsubscribeRequest.token (newsletter.py:141) is "
@@ -326,57 +358,71 @@ INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
         "'token-based' claim is currently false — see PENDING-ARMS.",
     ),
     IntentionalPublicMutation(
-        "POST", "/api/news/subscribe",
+        "POST",
+        "/api/news/subscribe",
         "Same public opt-in shape as /api/blog/newsletter/subscribe "
         "(news.py:480) — no auth Depends, but the action itself (add an "
         "email to a mailing list) carries the same risk profile as the "
         "already-explicit blog equivalent.",
     ),
     IntentionalPublicMutation(
-        "POST", "/api/news/unsubscribe",
+        "POST",
+        "/api/news/unsubscribe",
         "Same public opt-out shape as /api/blog/newsletter/unsubscribe "
         "(news.py:512) — legal requirement to stay reachable unauthenticated.",
     ),
     # ── Observability: no-PII, best-effort ingestion, explicit registry row ──
     IntentionalPublicMutation(
-        "POST", "/api/metrics/frontend",
+        "POST",
+        "/api/metrics/frontend",
         "Best-effort frontend browser metrics ingestion — no PII, no auth "
         "header, explicit registry row.",
     ),
-    # ── Streamlit public map/KBLI dashboard: read-only compute or telemetry,
-    #    already covered in spirit by the /api/dashboard/map/ registry reason
-    #    ("KBLI validation, client geo, risk zones, stats") ──
+    # ── Streamlit public map/KBLI dashboard: read-only compute only.
+    #    These three now carry their OWN per-route entries in PUBLIC_ENDPOINTS.
+    #    The `/api/dashboard/map/` PREFIX entry that used to cover them was
+    #    removed on 2026-08-12 (P0): it also made `GET .../clients/geo` public,
+    #    and that route answered an anonymous request with 500 client rows.
+    #    "Covered in spirit by the prefix reason" was the whole problem — a
+    #    reason string describing four routes cannot gate a fifth one. ──
     IntentionalPublicMutation(
-        "POST", "/api/dashboard/map/validate-property",
+        "POST",
+        "/api/dashboard/map/validate-property",
         "Stateless KBLI compliance check (dashboard.py:747) — no DB write, "
         "returns an audit verdict only. Matches the registry reason "
         "verbatim ('KBLI validation').",
     ),
     IntentionalPublicMutation(
-        "POST", "/api/dashboard/map/gistaru-zone",
+        "POST",
+        "/api/dashboard/map/gistaru-zone",
         "Stateless GISTARU RDTR zone lookup (dashboard.py:778) — no DB "
         "write, read-only geo compute. Matches registry reason "
         "('client geo').",
     ),
     IntentionalPublicMutation(
-        "POST", "/api/dashboard/map/analyze-investment",
+        "POST",
+        "/api/dashboard/map/analyze-investment",
         "Stateless BATARA+KBLI+ROI compute (dashboard.py:994, verified: no "
         "INSERT/UPDATE in the handler) — matches registry reason "
         "('risk zones, stats').",
     ),
-    IntentionalPublicMutation(
-        "POST", "/api/dashboard/map/analytics/log-lookup",
-        "Telemetry-only insert into analytics_map_lookups (dashboard.py:882) "
-        "— same shape/risk as the already-explicit /api/metrics/frontend "
-        "(no PII beyond an optional user_email field the caller supplies "
-        "voluntarily, no read-back exposed here).",
-    ),
+    # REMOVED 2026-08-12 — `POST /api/dashboard/map/analytics/log-lookup` is no
+    # longer public, so leaving the row here would fail the anti-decay gate
+    # (test_no_stale_justified_entries). Its justification was also wrong on its
+    # own terms: "no PII beyond an optional user_email field the caller supplies
+    # voluntarily" describes an EMAIL — an identifier — as not-PII, and
+    # "voluntarily" is doing the work of "unverifiably", since an anonymous
+    # caller supplying the acting identity is forgeable attribution, not
+    # telemetry. It is now gated by Depends(get_current_user) and takes the
+    # email from the principal. The comparison to /api/metrics/frontend never
+    # held: that endpoint names no person.
     # ── Admin mutations that are PUBLIC at the middleware layer but are
     #    INDEPENDENTLY re-gated inside the router via a real Depends() that
     #    does not rely on request.state.user — verified 2026-07-17 by reading
     #    the dependency chain, not assumed from the docstring. ──
     IntentionalPublicMutation(
-        "POST", "/api/knowledge/visa/",
+        "POST",
+        "/api/knowledge/visa/",
         "Docstring says 'ADMIN ONLY' — VERIFIED: Depends(get_admin_user) -> "
         "Depends(get_current_user) (backend/app/deps/auth.py:29) falls back "
         "to independently validating the Authorization Bearer JWT itself "
@@ -388,11 +434,13 @@ INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
         "PENDING-ARMS security hole.",
     ),
     IntentionalPublicMutation(
-        "PUT", "/api/knowledge/visa/{visa_id}",
+        "PUT",
+        "/api/knowledge/visa/{visa_id}",
         "Same Depends(get_admin_user) verified chain as POST /api/knowledge/visa/.",
     ),
     IntentionalPublicMutation(
-        "POST", "/preview/upload",
+        "POST",
+        "/preview/upload",
         "Docstring says scraper-only — VERIFIED: Depends(verify_internal_api_key) "
         "(preview.py:46) is a real in-router dependency, independent of the "
         "middleware's public-path skip.",
@@ -409,39 +457,51 @@ INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
 # forcing the delete). Full detail + severity: the ledger PENDING-ARMS lines.
 KNOWN_UNGATED_PUBLIC_MUTATIONS: tuple[KnownUngatedMutation, ...] = (
     KnownUngatedMutation(
-        "POST", "/api/news", "operator[business]",
+        "POST",
+        "/api/news",
+        "operator[business]",
         "ledger:PENDING-ARMS news.py",
         "news.py:290 create_news — zero Depends beyond DB pool; INSERTs "
         "news_items with status='approved' (auto-approved). Anyone can inject "
         "content onto the public balizero.com news feed. HIGH.",
     ),
     KnownUngatedMutation(
-        "POST", "/api/news/bulk", "operator[business]",
+        "POST",
+        "/api/news/bulk",
+        "operator[business]",
         "ledger:PENDING-ARMS news.py",
         "news.py:351 create_news_bulk — bulk version of the above, N articles "
         "per call, same zero-auth. HIGH.",
     ),
     KnownUngatedMutation(
-        "POST", "/api/news/{news_id}/image", "operator[business]",
+        "POST",
+        "/api/news/{news_id}/image",
+        "operator[business]",
         "ledger:PENDING-ARMS news.py",
         "news.py:414 update_news_image — anyone can overwrite the image_url of "
         "ANY news item with an arbitrary URL (defacement/hotlink). HIGH.",
     ),
     KnownUngatedMutation(
-        "PATCH", "/api/news/{news_id}/status", "operator[business]",
+        "PATCH",
+        "/api/news/{news_id}/status",
+        "operator[business]",
         "ledger:PENDING-ARMS news.py",
         "news.py:442 update_news_status — anyone can flip ANY news item between "
         "pending/approved/rejected/archived (unpublish live / approve pending). HIGH.",
     ),
     KnownUngatedMutation(
-        "POST", "/api/blog/newsletter/log", "operator[business]",
+        "POST",
+        "/api/blog/newsletter/log",
+        "operator[business]",
         "ledger:PENDING-ARMS newsletter.py",
         "newsletter.py:564 log_newsletter_send — docstring says '(admin "
         "endpoint)' but zero Depends; anyone can insert fake newsletter_send_log "
         "rows (pollutes internal delivery reporting). MEDIUM.",
     ),
     KnownUngatedMutation(
-        "PATCH", "/api/blog/newsletter/preferences", "operator[business]",
+        "PATCH",
+        "/api/blog/newsletter/preferences",
+        "operator[business]",
         "ledger:PENDING-ARMS newsletter.py",
         "newsletter.py:434 update_preferences — zero Depends; anyone who knows/"
         "guesses a subscriber email or numeric id can change their "
@@ -457,7 +517,9 @@ _KNOWN_UNGATED_INDEX: dict[tuple[str, str], KnownUngatedMutation] = {
     (e.method, e.path): e for e in KNOWN_UNGATED_PUBLIC_MUTATIONS
 }
 # A public mutating route is "accounted for" if it is in EITHER registry.
-_ACCOUNTED: frozenset[tuple[str, str]] = frozenset(_JUSTIFIED_INDEX) | frozenset(_KNOWN_UNGATED_INDEX)
+_ACCOUNTED: frozenset[tuple[str, str]] = frozenset(_JUSTIFIED_INDEX) | frozenset(
+    _KNOWN_UNGATED_INDEX
+)
 
 # Structural heuristic for an auth-principal dependency name (subset of the
 # live inventory used by test_route_authz_coverage.py). Used ONLY by the
@@ -604,7 +666,9 @@ def test_known_ungated_entries_are_still_live_public_and_ungated(app: FastAPI) -
     public, or (c) has gained a real auth ``Depends`` (i.e. it got fixed). This
     forbids the list from silently outliving the holes it records, so it can
     only shrink toward zero as Zero adjudicates each one."""
-    live: dict[tuple[str, str], object] = {(m, path): route for m, path, route in _iter_mutating(app)}
+    live: dict[tuple[str, str], object] = {
+        (m, path): route for m, path, route in _iter_mutating(app)
+    }
 
     stale: list[str] = []
     for e in KNOWN_UNGATED_PUBLIC_MUTATIONS:
@@ -614,7 +678,9 @@ def test_known_ungated_entries_are_still_live_public_and_ungated(app: FastAPI) -
             stale.append(f"{e.method} {e.path} — route no longer exists (delete the entry)")
             continue
         if find_entry(e.path) is None:
-            stale.append(f"{e.method} {e.path} — no longer public (prefix narrowed → delete the entry)")
+            stale.append(
+                f"{e.method} {e.path} — no longer public (prefix narrowed → delete the entry)"
+            )
             continue
         if _route_has_auth_dep(route):
             stale.append(
@@ -637,11 +703,11 @@ def test_no_stale_justified_entries(app: FastAPI) -> None:
     """ANTI-DECAY: a justified-safe row whose route no longer exists, or is no
     longer public, is stale — delete it (mirrors route_risk_registry.py's own
     `test_no_dead_registry_entries`)."""
-    live_public = {
-        (m, path) for m, path, _ in _iter_mutating(app) if find_entry(path) is not None
-    }
+    live_public = {(m, path) for m, path, _ in _iter_mutating(app) if find_entry(path) is not None}
     stale = [
-        f"{e.method} {e.path}" for e in INTENTIONALLY_PUBLIC_MUTATIONS if (e.method, e.path) not in live_public
+        f"{e.method} {e.path}"
+        for e in INTENTIONALLY_PUBLIC_MUTATIONS
+        if (e.method, e.path) not in live_public
     ]
     assert not stale, (
         "INTENTIONALLY_PUBLIC_MUTATIONS entries that match no LIVE public "

@@ -219,6 +219,12 @@ nuzantara_laws/apps/scraper/data/raw_laws_local/Unified_Knowledge_Base/
 
 # Node
 node_modules/
+# No trailing slash too: catches a `node_modules` SYMLINK (e.g. a worktree
+# sharing deps with the main checkout via `ln -s`), which the directory-only
+# pattern above does not match — that gap is how two self-referential
+# symlinks got committed at repo root and apps/mouth/ in PR #4095, breaking
+# every npm-based CI job (root is a *file* to npm, not a directory).
+node_modules
 .pnpm-store/
 .pnpm-debug.log
 

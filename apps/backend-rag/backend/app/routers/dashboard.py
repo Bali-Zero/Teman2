@@ -12,9 +12,11 @@ from typing import Any
 from urllib.parse import urlencode
 
 import httpx
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
+from backend.app.dependencies import get_current_user
+from backend.app.deps.crm_access import get_crm_user_filter
 from backend.services.kbli_eye import KBLIEye
 
 logger = logging.getLogger(__name__)
@@ -44,7 +46,12 @@ class ValidatePropertyRequest(BaseModel):
 
 
 class LogLookupRequest(BaseModel):
-    user_email: str
+    # `user_email` REMOVED 2026-08-12: this route was anonymously reachable via
+    # the `/api/dashboard/map/` prefix entry, so the acting identity arrived from
+    # the request BODY — any caller could file a lookup under any employee's
+    # name. The email now comes from the authenticated principal, and the field
+    # is gone from the schema so forgery is impossible by construction rather
+    # than by a validation rule someone can relax later.
     property_code: str | None = None
     kbli_code: str | None = None
     location: str | None = None
@@ -801,26 +808,49 @@ async def gistaru_zone_lookup(req: GistaruLookupRequest) -> dict[str, Any]:
 
 
 @router.get("/clients/geo")
-async def get_clients_geo(request: Request) -> dict[str, Any]:
+async def get_clients_geo(
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
     """
     Returns active clients with address info for CRM map layer.
     Uses asyncpg pool from app state.
+
+    Authorization is TWO layers and both are load-bearing (P0, 2026-08-12):
+
+    1. A principal is required. Until today this took only `request: Request`,
+       and `/api/dashboard/map/` was a prefix entry in PUBLIC_ENDPOINTS — so an
+       anonymous GET from the public internet returned 500 client rows with
+       names, phones, emails and addresses. Measured live, not inferred.
+    2. The CRM ownership filter still applies to the authenticated caller. A
+       team member may only see rows where `assigned_to` matches
+       (`CLAUDE.md` §13); admins get the unfiltered set. Removing the public
+       entry alone would have left every authenticated team member able to read
+       all 1,244 clients from a route that exists to draw a map.
     """
     pool = getattr(request.app.state, "db_pool", None)
     if pool is None:
         logger.warning("Dashboard clients/geo: db_pool not available")
         return {"clients": [], "error": "Database pool not available"}
 
+    assigned_filter = get_crm_user_filter(current_user)
+    params: list[Any] = []
+    where_clause = "WHERE status = 'active'"
+    if assigned_filter:
+        where_clause = "WHERE status = 'active' AND assigned_to = $1"
+        params = [assigned_filter]
+
     try:
         async with pool.acquire() as conn:
             rows = await conn.fetch(
-                """
+                f"""
                 SELECT id, full_name, email, phone, status, address
                 FROM clients
-                WHERE status = 'active'
+                {where_clause}
                 ORDER BY full_name
                 LIMIT 500
                 """,
+                *params,
             )
             clients: list[dict[str, Any]] = [
                 {
@@ -880,11 +910,22 @@ async def get_risk_zones() -> dict[str, list[dict[str, Any]]]:
 
 
 @router.post("/analytics/log-lookup")
-async def log_lookup(req: LogLookupRequest, request: Request) -> dict[str, Any]:
+async def log_lookup(
+    req: LogLookupRequest,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
     """
     Log a map lookup event for analytics tracking.
     Creates the analytics table on first use (idempotent).
+
+    The acting email comes from the authenticated principal, NEVER from the
+    request body: this route both writes to the database and names a person, so
+    an anonymous caller with a body-supplied email could attribute lookups to
+    any employee. It is deliberately NOT in PUBLIC_ENDPOINTS — see the comment
+    on the removed `/api/dashboard/map/` prefix entry there.
     """
+    acting_email = (current_user.get("email") or "").strip().lower() or None
     pool = getattr(request.app.state, "db_pool", None)
     if pool is None:
         logger.warning("Dashboard analytics/log: db_pool not available")
@@ -911,17 +952,17 @@ async def log_lookup(req: LogLookupRequest, request: Request) -> dict[str, Any]:
                     (user_email, property_code, kbli_code, location, notes)
                 VALUES ($1, $2, $3, $4, $5)
                 """,
-                req.user_email,
+                acting_email,
                 req.property_code,
                 req.kbli_code,
                 req.location,
                 req.notes,
             )
-            logger.info(
-                "Dashboard analytics logged: user=%s kbli=%s",
-                req.user_email,
-                req.kbli_code,
-            )
+            # The email is deliberately NOT logged: Sentry's LoggingIntegration
+            # turns every logger call into a breadcrumb, and its redaction works
+            # by KEY, so an identifier interpolated into a MESSAGE ships in the
+            # clear (measured 2026-08-02). The kbli code is not an identifier.
+            logger.info("Dashboard analytics logged: kbli=%s", req.kbli_code)
             return {"logged": True}
     except Exception as e:
         logger.error("Dashboard analytics/log failed: %s", e, exc_info=True)

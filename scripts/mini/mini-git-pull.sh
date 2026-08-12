@@ -216,6 +216,48 @@ cd "$REPO" 2>/dev/null || { log "FATAL: $REPO not found"; exit 1; }
 # Sane PATH under launchd (no shell rc files sourced).
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
+# ---- heartbeat (temporary, 2026-08-12) -------------------------------------
+# I have been reasoning about this host instead of measuring it. Three things
+# are unknown and all three are answerable with one line down the channel that
+# is already proven to work (the Mini opened Pro:22 at 05:58:46, seen in
+# netstat from the Pro side): does this script actually run, what is this
+# machine's REAL short hostname — the SOS probe's node guard compares against
+# a literal "mini-pro2" and exits 0 in silence if it differs, which is
+# indistinguishable from every other failure — and which commit is checked out
+# here. Unconditional, before every guard and every exit, so its silence means
+# "the script did not run" and nothing else.
+ssh -o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new \
+    -o IdentitiesOnly=yes -i "$HOME/.ssh/id_ed25519" pro \
+    "echo \"$(date '+%F %T') host=$(hostname -s) head=$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null) branch=$(git -C "$REPO" rev-parse --abbrev-ref HEAD 2>/dev/null)\" >> /tmp/mini-heartbeat.log" \
+    >/dev/null 2>&1 || log "  heartbeat to pro failed (ignored)"
+
+# ---- SOS probe (temporary, 2026-08-11) -------------------------------------
+# Every INBOUND connection to this host has been reset ~250 ms after the
+# handshake since 2026-08-10 (sshd, VNC, redis, ollama, ARD alike) while this
+# pull's own outbound SSH works perfectly, a power-cycle changed nothing, and
+# the site has no keyboard. This pull is therefore the only proven-live code
+# path into the Mini, so it carries a probe that reports out through the SSH
+# direction that still works.
+#
+# IT RUNS HERE, NOT AT THE END, AND THAT PLACEMENT IS THE WHOLE POINT. The
+# first version sat after the pull logic and therefore below FOUR early exits —
+# not on main, both fetches failed, already-up-to-date (by far the common case:
+# ~287 of every 288 daily ticks), local-ahead. A rescue instrument that only
+# fires when main happens to move is not a rescue instrument, it is a
+# side-effect of unrelated merge traffic. Here it runs on every tick that gets
+# past the single-instance lock, which is what "every 5 minutes" was supposed
+# to mean. (Second time in one day I built an instrument structurally incapable
+# of reporting the thing it was built for — cf. the merge monitor that only
+# watched for success and so could not distinguish a red PR from a slow one.)
+#
+# Fail-open by construction: it can neither block nor fail the pull, which
+# remains this script's actual job. Remove this block together with the probe
+# once the Mini is reachable again.
+if [ -f "$REPO/scripts/mini/mini_sos_report.sh" ]; then
+  /bin/bash "$REPO/scripts/mini/mini_sos_report.sh" || \
+    log "  SOS probe exited non-zero (ignored — the pull is what matters)"
+fi
+
 # Skip if not on main — Mini may be temporarily on a feature branch.
 BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
 if [ "$BRANCH" != "main" ]; then
@@ -322,6 +364,65 @@ if ! git merge-base --is-ancestor HEAD "$TARGET_REF" 2>/dev/null; then
       exit 0
     fi
     log "  content-identical self-heal did not complete; falling back to alert"
+  fi
+
+  # 2026-08-12 hardening (generalizes the block above; recurring shape seen
+  # 2026-07-11, 2026-08-09, 2026-08-10, 2026-08-11 — same disease each time):
+  # the whole-tree check above only fires when HEAD's ENTIRE tree already
+  # matches $TARGET_REF, i.e. ahead-N-behind-0. It CANNOT fire on the far
+  # more common shape — ahead N *and* behind M (M>0) — because M legitimate
+  # upstream commits also differ from HEAD's tree, so the whole-repo diff is
+  # never empty even though the one local-only commit is itself harmless
+  # (this is exactly what happened here: a local-only nb-curator report
+  # commit landed on this checkout, the SAME content was independently
+  # promoted to origin/main under a different sha via a PR, and by the time
+  # anyone looked the checkout had also fallen dozens of commits further
+  # behind — so the old check could never engage and this cron alerted on
+  # cooldown indefinitely with no path to recovery short of an interactive
+  # reset). Same W88 discipline, narrowed correctly: verify by CONTENT only
+  # the paths HEAD's local-only commit(s) (merge-base..HEAD) actually
+  # touched. If EVERY one of those paths already matches $TARGET_REF's
+  # current content, `reset --hard $TARGET_REF` provably discards nothing —
+  # paths it did not touch are untouched by this decision; they simply gain
+  # the legitimate upstream advance, which is the whole point of the pull.
+  # Same clean-tree requirement, same lock, same telegram_alert. Falls
+  # through unchanged if the merge-base is unknown, no paths were touched,
+  # or any touched path still genuinely differs.
+  if [ "${SELFHEAL_OK:-0}" != "1" ]; then
+    MERGE_BASE=$(git merge-base HEAD "$TARGET_REF" 2>/dev/null)
+    if [ -n "$MERGE_BASE" ] \
+       && git diff --quiet HEAD 2>/dev/null \
+       && git diff --quiet --cached HEAD 2>/dev/null; then
+      TOUCHED_PATHS=()
+      while IFS= read -r -d '' _p; do
+        TOUCHED_PATHS+=("$_p")
+      done < <(git diff --name-only -z "$MERGE_BASE" HEAD 2>/dev/null)
+      if [ "${#TOUCHED_PATHS[@]}" -gt 0 ] \
+         && git diff --quiet HEAD "$TARGET_REF" -- "${TOUCHED_PATHS[@]}" 2>/dev/null; then
+        log "  every path HEAD's local-only commit(s) touched already matches $TARGET_REF (ahead+behind shape, ${#TOUCHED_PATHS[@]} path(s)) — attempting narrow self-heal"
+        SELFHEAL_OK=0
+        if command -v flock >/dev/null 2>&1; then
+          exec 9>/tmp/repo-mutating.lock
+          if flock --exclusive --timeout 30 9; then
+            if git reset --hard --quiet "$TARGET_REF" 2>>"$LOG_FILE"; then
+              SELFHEAL_OK=1
+            fi
+            flock -u 9 2>/dev/null || true
+          else
+            log "WARN: could not acquire repo-mutating lock for narrow self-heal, skip this tick"
+          fi
+        else
+          log "WARN: flock not installed; skipping narrow self-heal (unsafe without lock)"
+        fi
+        if [ "$SELFHEAL_OK" = "1" ]; then
+          log "OK ahead+behind divergence resolved (narrow content-check): reset to $(git rev-parse --short HEAD) (was ${LOCAL:0:9})"
+          telegram_alert "diverged-selfheal-narrow" \
+            "Mini main HEAD had local-only commit(s) diverged from ${TARGET_REF}, but every path they touched already matched target content — auto-reset, no content lost (${LOCAL:0:9} -> $(git rev-parse --short HEAD))."
+          exit 0
+        fi
+        log "  narrow self-heal did not complete; falling back to alert"
+      fi
+    fi
   fi
 
   telegram_alert "diverged" \
@@ -448,18 +549,4 @@ if [ "$STASHED" = "1" ]; then
       "stash pop conflict on Mini after ff-pull to ${NEW_HEAD}. \`git status\` + \`git stash list\` on Mini."
     # Don't exit error — pull succeeded. Conflict is a separate issue.
   fi
-fi
-
-# ---- SOS probe (temporary, 2026-08-11) -------------------------------------
-# Every INBOUND connection to this host has been reset ~250 ms after the
-# handshake since 2026-08-10 (sshd, VNC, redis, ollama, ARD alike) while this
-# pull's own outbound SSH works perfectly, a power-cycle changed nothing, and
-# the site has no keyboard. This pull is therefore the only proven-live code
-# path into the Mini, so it carries a read-only probe that reports out through
-# the SSH direction that still works. The probe cures nothing on purpose (see
-# its header) and runs last, fail-open, so it can neither block nor fail the
-# pull. Remove this block together with the probe once the Mini is reachable.
-if [ -f "$REPO/scripts/mini/mini_sos_report.sh" ]; then
-  /bin/bash "$REPO/scripts/mini/mini_sos_report.sh" || \
-    log "  SOS probe exited non-zero (ignored — the pull is what matters)"
 fi
