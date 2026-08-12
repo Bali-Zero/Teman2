@@ -40,6 +40,7 @@ on:
       - "scripts/tests/test_prepush_failclosed.sh"
       - "scripts/tests/test_prepush_tip_drift.sh"
       - "scripts/tests/test_prepush_suite_lock.sh"
+      - "scripts/tests/test_prepush_default_off.sh"
       - "scripts/tests/test_test_deps_declared.py"
       - "apps/backend-rag/requirements-test.txt"
       - ".github/workflows/tests.yml"
@@ -106,3 +107,15 @@ jobs:
       # would have kept a green board describing a test nobody executes.
       - name: Guard — the suite lock cannot be taken twice
         run: sh scripts/tests/test_prepush_suite_lock.sh
+
+      # 2026-08-13: PREPUSH_RUN_BACKEND's seed flipped 1 -> 0 (measured on M5:
+      # 88 real pushes, 2.3% genuine failures vs 30% pure lock-contention
+      # zero-verdict — see the DEFAULT-OFF comment block in .husky/pre-push).
+      # This corpus proves the flip did not silently disable the escape
+      # hatch (PREPUSH_FULL=1) or the honest-verdict fail-closed guard.
+      # Fetches `origin/main` for real (the extracted block it runs against
+      # does the same `git fetch origin main` the live hook does) — needs
+      # this job's checkout to have `origin` wired up, which actions/checkout
+      # already does.
+      - name: Guard — the backend suite defaults off, and PREPUSH_FULL=1 still forces it
+        run: sh scripts/tests/test_prepush_default_off.sh

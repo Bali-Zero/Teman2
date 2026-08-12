@@ -61,6 +61,12 @@ echo "✅ Skipping full test suite (covered by pre-commit hooks)"
 # DELETION: it legitimately contributes zero files to the diff and is NOT
 # treated as an error.
 #
+# AMENDED 2026-08-13 (DEFAULT-OFF note further below): this paragraph still
+# describes exactly how the classifier VERDICT is computed — that logic is
+# untouched. What changed is what a "full"/fail-closed verdict DOES: it no
+# longer runs the suite locally by itself. See the DEFAULT-OFF block right
+# before `PREPUSH_RUN_BACKEND=0` for why and for the escape hatch.
+#
 # FRESHNESS (added post-panel-review, same day, GLM 5.2 finding): the
 # "new branch" diff range below is computed as `merge-base origin/main
 # local_sha`. A LOCAL `origin/main` ref that has not been fetched recently
@@ -96,9 +102,51 @@ echo "✅ Skipping full test suite (covered by pre-commit hooks)"
 #   PREPUSH_FULL=1        always run the full suite unconditionally,
 #                          bypassing this entire block.
 #   PREPUSH_PATHAWARE=0   disable path-awareness entirely (same net effect
-#                          as PREPUSH_FULL=1). Default: path-awareness ON.
+#                          as PREPUSH_FULL=1). The classifier below still
+#                          runs by default either way (diagnostic verdict) —
+#                          see the DEFAULT-OFF note right below for what
+#                          actually gates local execution now.
 # ============================================================================
-PREPUSH_RUN_BACKEND=1
+
+# ---------------------------------------------------------------------------
+# DEFAULT-OFF (2026-08-13, measured on M5 over 88 real push logs captured in
+# /tmp/*push*.log across ~2.7 days): the backend suite below used to run
+# LOCALLY by default whenever the path-aware classifier's verdict was
+# "full". Of those 88 pushes, only 2 (2.3%) were genuine test failures. 26
+# (30%) — 9 lock-timeout + 17 SIGTERM-killed — produced NO verdict at all:
+# the machine-wide suite lock (below, PREPUSH_SUITE_LOCK_SCRIPT) is
+# single-flight per machine with a 4500s timeout, and each lane costs
+# ~1h50m end-to-end under contention, so from the third concurrent lane on,
+# the failure is arithmetic, not incidental.
+#
+# CI's `Backend Tests (Python)` required check (.github/workflows/tests.yml)
+# is a verified STRICT SUPERSET of what this hook runs: same `backend/tests/`
+# base, same `--ignore=backend/tests/e2e`, PLUS three files this hook never
+# runs (tests/test_sentry_lazy_import.py, tests/test_sentry_pii_redaction.py,
+# tests/kb/test_politics_hierarchical.py), PLUS --cov, PLUS a
+# backend_stability_gate.py step, PLUS REDIS_URL (4 occurrences in
+# tests.yml, 0 in this file). No test that runs ONLY locally was found while
+# looking. So a genuine regression this local suite would have caught, CI
+# catches too, every time — while the 30% zero-verdict tax was pure local
+# cost for zero unique safety benefit.
+#
+# Verdict: PREPUSH_RUN_BACKEND now DEFAULTS TO 0 — the suite below is
+# opt-in only (PREPUSH_FULL=1 or PREPUSH_PATHAWARE=0, both handled right
+# below), never automatic, regardless of what the path-aware classifier
+# decides. The classifier, the machine-wide lock, the Postgres schema
+# clone, and the honest-verdict guard at the bottom of this file are all
+# UNCHANGED and behave exactly as before whenever the suite IS forced —
+# only the trigger that used to fire it automatically is gone. A "full" or
+# fail-closed classifier verdict below still prints its own diagnostic text
+# (it still computes exactly what it always did) but no longer runs pytest
+# by itself; only PREPUSH_FULL=1 / PREPUSH_PATHAWARE=0 do that now.
+#
+# This is a measurement over a SHORT window (2.7 days, opportunistic /tmp
+# capture, not a permanent log) — re-measure before treating "CI is a
+# strict superset" as an eternal truth, and revisit this default if a
+# local-only test is ever added to the suite.
+# ---------------------------------------------------------------------------
+PREPUSH_RUN_BACKEND=0
 
 # ---------------------------------------------------------------------------
 # The pre-push protocol stream, captured ONCE, before any branch below.
@@ -116,8 +164,16 @@ if [ -n "$PREPUSH_REFS" ]; then
 fi
 
 if [ "${PREPUSH_FULL:-0}" = "1" ]; then
+    # Explicit set, not a reliance on the ambient default above: since
+    # PREPUSH_RUN_BACKEND now defaults to 0 (DEFAULT-OFF note above), this
+    # branch is the ONLY thing standing between "PREPUSH_FULL=1" and it
+    # silently doing nothing.
+    PREPUSH_RUN_BACKEND=1
     echo "🧭 PREPUSH_FULL=1 — path-aware gate bypassed, full suite unconditionally."
 elif [ "${PREPUSH_PATHAWARE:-1}" = "0" ]; then
+    # Same reasoning as the PREPUSH_FULL=1 branch above — this flag's own
+    # documented contract ("same net effect as PREPUSH_FULL=1") requires it.
+    PREPUSH_RUN_BACKEND=1
     echo "🧭 PREPUSH_PATHAWARE=0 — path-aware gate disabled, full suite unconditionally."
 else
     ZERO_SHA="0000000000000000000000000000000000000000"
@@ -131,17 +187,17 @@ else
     # diff baseline, so a non-origin remote invalidates all of them before
     # mktemp/fetch/diff are even worth attempting.
     if [ "$1" != "origin" ]; then
-        echo "⚠️  path-aware gate: pushing to remote '$1' (this gate only trusts 'origin' as the diff baseline) — fail-closed to FULL suite."
+        echo "⚠️  path-aware gate: pushing to remote '$1' (this gate only trusts 'origin' as the diff baseline) — fail-closed — but DEFAULT-OFF above means it still needs PREPUSH_FULL=1 to actually run locally."
         DIFF_ERROR=1
     elif [ -z "$UNION_FILE" ]; then
-        echo "⚠️  path-aware gate: mktemp failed — fail-closed to FULL suite."
+        echo "⚠️  path-aware gate: mktemp failed — fail-closed — but DEFAULT-OFF above means it still needs PREPUSH_FULL=1 to actually run locally."
         DIFF_ERROR=1
     elif ! git fetch origin main --quiet >/dev/null 2>&1; then
         # See "FRESHNESS" above. A failed fetch means we cannot vouch for
         # local origin/main's currency, so the new-branch merge-base path
         # below must not be trusted this push — fail closed rather than
         # risk a diff range computed against a stale integration point.
-        echo "⚠️  path-aware gate: 'git fetch origin main' failed (offline? auth?) — cannot trust local origin/main freshness — fail-closed to FULL suite."
+        echo "⚠️  path-aware gate: 'git fetch origin main' failed (offline? auth?) — cannot trust local origin/main freshness — fail-closed — but DEFAULT-OFF above means it still needs PREPUSH_FULL=1 to actually run locally."
         DIFF_ERROR=1
     else
         : > "$UNION_FILE"
@@ -219,10 +275,10 @@ else
     fi
 
     if [ "$DIFF_ERROR" = "1" ]; then
-        echo "⚠️  path-aware gate: could not safely compute the changed-file diff for this push — fail-closed to FULL suite."
+        echo "⚠️  path-aware gate: could not safely compute the changed-file diff for this push — fail-closed — but DEFAULT-OFF above means it still needs PREPUSH_FULL=1 to actually run locally."
         [ -n "$UNION_FILE" ] && rm -f "$UNION_FILE"
     elif [ -z "$PYTHON_BIN" ]; then
-        echo "⚠️  path-aware gate: no python3/python on PATH to run the classifier — fail-closed to FULL suite."
+        echo "⚠️  path-aware gate: no python3/python on PATH to run the classifier — fail-closed — but DEFAULT-OFF above means it still needs PREPUSH_FULL=1 to actually run locally."
         rm -f "$UNION_FILE"
     else
         # Plain command substitution captures ONLY stdout (the machine
@@ -233,13 +289,18 @@ else
         rm -f "$UNION_FILE"
 
         if [ "$VERDICT_RC" != "0" ]; then
-            echo "⚠️  path-aware gate: classifier exited $VERDICT_RC — fail-closed to FULL suite."
+            echo "⚠️  path-aware gate: classifier exited $VERDICT_RC — this would fail closed to the FULL suite, but DEFAULT-OFF (above) means it does not run locally either way. PREPUSH_FULL=1 to run it."
         elif [ "$VERDICT_OUTPUT" = "skip-backend" ]; then
             PREPUSH_RUN_BACKEND=0
         elif [ "$VERDICT_OUTPUT" != "full" ]; then
-            echo "⚠️  path-aware gate: unrecognized classifier output '$VERDICT_OUTPUT' — fail-closed to FULL suite."
+            echo "⚠️  path-aware gate: unrecognized classifier output '$VERDICT_OUTPUT' — this would fail closed to the FULL suite, but DEFAULT-OFF (above) means it does not run locally either way. PREPUSH_FULL=1 to run it."
         fi
-        # VERDICT_OUTPUT = "full": PREPUSH_RUN_BACKEND stays at its default 1.
+        # VERDICT_OUTPUT = "full": PREPUSH_RUN_BACKEND stays at its default —
+        # 0 since 2026-08-13 (DEFAULT-OFF note above). This branch still
+        # computes and prints the classifier's own diagnostic verdict
+        # (whose own stderr banner, e.g. "running FULL suite", describes
+        # ITS internal reasoning — not a promise that pytest runs locally);
+        # only PREPUSH_FULL=1 / PREPUSH_PATHAWARE=0 actually run it now.
     fi
 fi
 
@@ -599,9 +660,16 @@ else
     fi
 fi
 else
-    echo "⏭️  backend suite SKIPPED (path-aware): no backend-relevant paths changed in this push."
-    echo "   Reminder: CI required checks (Backend Tests etc.) still run the FULL suite on the PR —"
-    echo "   this is a local early-warning gate only. Force it anytime: PREPUSH_FULL=1 git push"
+    # Covers every way PREPUSH_RUN_BACKEND can still be 0 here (DEFAULT-OFF,
+    # 2026-08-13, top of this file) — a clean path-aware "skip-backend"
+    # verdict, a "full" verdict, or a fail-closed/ambiguous classifier
+    # outcome all land in this same branch now, so the message must not
+    # claim a specific one of them (it used to, and would have been wrong
+    # for the other two).
+    echo "⏭️  Backend suite SKIPPED locally by default (PREPUSH_RUN_BACKEND=0, see 2026-08-13 DEFAULT-OFF"
+    echo "   note near the top of this file)."
+    echo "   The required CI check 'Backend Tests (Python)' (.github/workflows/tests.yml) is the real"
+    echo "   gate — it always runs the full suite on the PR. Force it locally too: PREPUSH_FULL=1 git push"
 fi
 # Note: Coverage check removed from pre-push (current coverage ~0.67%, target 80% is long-term goal)
 # To check coverage manually: pytest tests/ --cov=. --cov-report=term-missing --cov-fail-under=80
