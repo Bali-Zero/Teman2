@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nuzantara.kbli-surface-conformance.daily</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/nuzantara/scripts/cron-runner.sh</string>
+        <string>/Users/nuzantara/nuzantara/infra/launchagents/wrappers/kbli-surface-conformance-run.sh</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/Users/nuzantara/.local/bin:/opt/homebrew/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>CRON_RUNNER_JOB_NAME</key>
+        <string>kbli_surface_conformance</string>
+        <key>KBLI_SURFACE_CONFORMANCE_ENABLED</key>
+        <string>true</string>
+    </dict>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>8</integer>
+        <key>Minute</key>
+        <integer>20</integer>
+    </dict>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>KeepAlive</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/kbli-conformance/launchd.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/kbli-conformance/launchd.stderr.log</string>
+</dict>
+</plist>

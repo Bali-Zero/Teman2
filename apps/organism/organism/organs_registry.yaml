@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 5742f25d24112e95461883bc6b1547b18c51f598453e8723e24c87128b65a98c
+checksum: ce696568a77fbe5aa38612211f7ff66a3abae0891ae06963bd0e98d70d9a55c1
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2167,6 +2167,30 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.launchd_liveness.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.kbli_surface_conformance
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: infra/launchagents/wrappers/kbli-surface-conformance-run.sh
+  dependencies:
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.kbli-surface-conformance.daily
+  severity_on_silence: critical
+  notes: 'Daily 08:20 WITA read-only canonical-vs-kbli_documents detector. The wrapper
+    writes this direct outcome heartbeat after classifying detector rc and report
+    content. expected_hb_seconds is registry metadata validated here; it does not
+    by itself arm runtime missed-run enforcement. Sentinel separately consumes the
+    cron-runner receipt through its staged job_registry entry. Kill switch: KBLI_SURFACE_CONFORMANCE_ENABLED=false.'
+  cicatrix_refs:
+  - 2026-08-01-kbli-surface-conformance-manual-only
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.kbli_surface_conformance.json
     timestamp_field: ts
     status_field: status
 - id: pro.log_rotate
