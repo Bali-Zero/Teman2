@@ -48,6 +48,15 @@ KEEPALIVE_LINT_REL = "scripts/lint_plist_keepalive.py"
 # Match repo-relative paths exactly: similarly named payloads are ordinary wrappers.
 KNOWN_CONTENT_RUNNERS: frozenset[str] = frozenset({"scripts/cron-runner.sh"})
 
+# Repository identity aliases are resolver policy, not organism gene data, so
+# they live beside the resolver rather than in genes.json. Keeping this small,
+# exact trust boundary in code makes its validation and its guilt/innocence
+# tests change atomically; no basename or user-home pattern is accepted.
+CANONICAL_FLEET_CHECKOUT_ROOTS: tuple[Path, ...] = (
+    Path("/Users/nuzantara/nuzantara"),  # Pro and Mini
+    Path("/Users/balizero/nuzantara"),  # Air-M5
+)
+
 # --- gene detection patterns (definitions live in genes.json; logic lives here) ---
 RE_HEARTBEAT = re.compile(r"organism_heartbeat|\.organism/last_seen|heartbeat\(\)\s*\{")
 RE_KILL_SWITCH = re.compile(r"\b[A-Z][A-Z0-9_]*_ENABLED\b")
@@ -133,11 +142,16 @@ def _repo_alias_roots(repo_root: Path) -> tuple[Path, ...]:
 
     A launchd plist can name the canonical checkout while the gate runs from a
     linked worktree. Git's common directory identifies that canonical checkout;
-    preserving the complete relative path lets the checker inspect the current
-    worktree's file without any basename widening.
+    the declared fleet roots identify it when the gate runs elsewhere (including
+    CI). Preserving the complete relative path lets the checker inspect the
+    current tree's file without any basename widening.
     """
     resolved_root = repo_root.resolve()
     roots = [resolved_root]
+    for fleet_root in CANONICAL_FLEET_CHECKOUT_ROOTS:
+        resolved_fleet_root = fleet_root.resolve()
+        if resolved_fleet_root not in roots:
+            roots.append(resolved_fleet_root)
     out = subprocess.run(
         [
             "git",

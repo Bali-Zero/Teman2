@@ -258,8 +258,14 @@ TMPOUT=$(mktemp)
 AGY_BIN="$HOME/.local/bin/agy"
 BRAIN_USED=""; EXIT=1
 if [ "${NB_CURATOR_BRAIN:-agy}" = "agy" ] && [ -x "$AGY_BIN" ]; then
-    printf '%s' "$MODE_PROMPT" | "$AGY_BIN" --dangerously-skip-permissions \
-        --model "Gemini 3.5 Flash (Medium)" -p --print-timeout 20m \
+    # `-p`/`--print` TAKES A VALUE (measured live 2026-08-13, both forms exit 0):
+    # `-p --print-timeout 20m` binds the literal string "--print-timeout" as the
+    # prompt and leaves "20m" a stray positional — agy never reads stdin. Prompt
+    # must be `-p`'s own argv value; --print-timeout stays a separate flag.
+    # NOTE: agy v1.1.12 has no stdin path, so $MODE_PROMPT is now `ps`-visible
+    # while the process runs (see PR body for the PII disclosure this forces).
+    "$AGY_BIN" --dangerously-skip-permissions \
+        --model "Gemini 3.5 Flash (Medium)" -p "$MODE_PROMPT" --print-timeout 20m \
         > "$TMPOUT" 2>> "$LOG"
     EXIT=$?
     if [ "$EXIT" -eq 0 ] && grep -qE 'SUMMARY:' "$TMPOUT"; then

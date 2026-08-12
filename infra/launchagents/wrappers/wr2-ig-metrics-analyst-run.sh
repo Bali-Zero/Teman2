@@ -299,7 +299,15 @@ if [ -x "$AGY" ]; then
   (
     set +e
     set -m
-    "$AGY" -p --print-timeout 20s < "$AGY_PROMPT" > "$AGY_TMP" 2>&1 &
+    # `-p`/`--print` TAKES A VALUE (measured live 2026-08-13, both forms exit
+    # 0): `-p --print-timeout 20s < file` binds the literal string
+    # "--print-timeout" as the prompt and never reads $AGY_PROMPT from stdin —
+    # this probe was answering NOTHING and therefore reporting DOWN on every
+    # run. Prompt must be `-p`'s own argv value. NOTE: agy v1.1.12 has no
+    # stdin path, so the prompt is now `ps`-visible while the process runs —
+    # harmless here (fixed literal "reply with exactly: AGYUP" health probe,
+    # no client data).
+    "$AGY" -p "$(cat "$AGY_PROMPT")" --print-timeout 20s > "$AGY_TMP" 2>&1 &
     AGY_PID=$!
     (
       sleep 25

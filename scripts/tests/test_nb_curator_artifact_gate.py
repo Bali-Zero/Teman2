@@ -230,10 +230,12 @@ def test_check_mode_never_writes(tmp_path):
 # ------------------------------------------------------- FAKE WORLD (wrapper)
 
 FAKE_AGY = """#!/usr/bin/env python3
-# Fake brain. Reads the prompt on stdin, obeys FAKE_AGY_MODE, prints a SUMMARY.
+# Fake brain. Reads the prompt from argv (the value following -p — agy's real
+# -p/--print TAKES A VALUE, it does not read stdin), obeys FAKE_AGY_MODE, prints
+# a SUMMARY.
 import os, re, sys, pathlib
 
-prompt = sys.stdin.read()
+prompt = sys.argv[sys.argv.index("-p") + 1]
 mode = os.environ.get("FAKE_AGY_MODE", "good")
 m = re.search(r"Write report to: (\\S+)", prompt)
 if m and mode != "noreport":
