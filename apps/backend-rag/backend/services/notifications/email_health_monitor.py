@@ -33,7 +33,10 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any
 
+from backend.core.secret_log_redaction import install_telegram_token_redaction
 from backend.services.notifications.email_http import get_email_client
+
+install_telegram_token_redaction()
 
 if TYPE_CHECKING:
     import asyncpg

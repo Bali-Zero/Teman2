@@ -43,6 +43,31 @@ jobs:
           RC=0
           OUT=$(flyctl ssh console -a nuzantara-rag \
                   -C "python3 -m backend.services.hardening.llm_credit_sentinel_cli" 2>&1) || RC=$?
+          # SECOND, INDEPENDENT guard on a boundary that publishes to the world.
+          # This repository is PUBLIC, so everything echoed below is world-readable
+          # forever. On 2026-08-11 22:05Z this step printed a live Telegram bot token
+          # in cleartext: the sentinel talks to Telegram, Telegram carries the token
+          # IN THE URL PATH, and the CLI's `basicConfig(level=INFO)` turns on httpx's
+          # request logging. GitHub masks only secrets it holds for this run, and this
+          # one comes from the Fly machine's environment, so nothing masked it.
+          #
+          # The primary cure is in the code (backend/core/secret_log_redaction.py,
+          # installed by every Telegram sender). This one is NOT redundant with it:
+          # a Python logging filter can only see records that go through logging, and
+          # an unhandled traceback never does — while httpx error strings quote the
+          # request URL. That channel exists only here, and only this can close it.
+          #
+          # Redacted ONCE at capture, not at each echo: the next person to add an
+          # `echo "$OUT"` should not have to remember. Applied before the STATE/DETAIL
+          # parsing below, which the pattern cannot touch.
+          #
+          # Deliberately NOT errexit-immune, unlike the capture above: if the redactor
+          # fails we want this step DEAD, not echoing an unredacted token. Same shape
+          # as the W101 mistake, opposite correct answer, because the consequence of
+          # continuing is opposite. The alerts themselves are sent from inside the
+          # machine, so a lost cycle costs a status line, not a notification.
+          OUT=$(printf '%s\n' "$OUT" | sed -E 's/(bot[0-9]{5,}):[A-Za-z0-9_-]{20,}/\1:<redacted>/g')
+
           echo "$OUT"
           STATE=$(printf '%s\n' "$OUT" | sed -n 's/^STATE=//p' | tail -1)
 

@@ -28,7 +28,10 @@ from zoneinfo import ZoneInfo
 import httpx
 
 from backend.app.utils.logging_utils import get_logger
+from backend.core.secret_log_redaction import install_telegram_token_redaction
 from backend.services.common.background import get_bg_pool_semaphore
+
+install_telegram_token_redaction()
 
 if TYPE_CHECKING:
     import asyncpg
