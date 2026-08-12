@@ -474,3 +474,65 @@ def test_assert_credential_perms_chmods_dir_0700(monkeypatch, tmp_path):
     kc._assert_credential_perms()
     assert (state.stat().st_mode & 0o777) == 0o700
     assert ((state / "kimi-code").stat().st_mode & 0o777) == 0o600
+
+
+# ---------------------------------------------------------------------------
+# v2.2 — PASS-WITH-CONDITIONS cures (Opus-5 re-verdict on 87f315f185):
+# structural PII gate (over-match killed, evasions closed), runtime pin
+# of the no-tools profile
+# ---------------------------------------------------------------------------
+
+
+def test_pii_gate_refuses_evasion_shapes():
+    # every evasion the re-verdict proved against v2.1: NBSP, tab,
+    # double-space, slash, comma, newline, letter-adjacent, >= 17 digits,
+    # mixed separators
+    NBSP = " "
+    evasions = [
+        f"3171{NBSP}0101{NBSP}9001{NBSP}0002",
+        "3171\t0101\t9001\t0002",
+        "3171  0101  9001  0002",
+        "3171/0101/9001/0002",
+        "3171,0101,9001,0002",
+        "3171\n0101\n9001\n0002",
+        "NIK3171010190010002",  # letter-adjacent: \\b alone never caught this
+        "31710101019010002",  # 17 digits plain
+        "3171 0101-9001 0002",  # mixed separators
+    ]
+    for shape in evasions:
+        with pytest.raises(kc.PiiRefusalError):
+            kc._check_prompt(f"verify {shape} please")
+
+
+def test_pii_gate_allows_sanctioned_list_payloads():
+    # the over-match the re-verdict proved: the seat's flagship non-PII
+    # payloads must pass (KBLI codes, dates, ports, sample series)
+    allowed = [
+        "compare KBLI 68111 68112 68120 41011 41012 41013 risk tiers",
+        "2026-08-12 2026-08-13 2026-08-14 2026-08-15",
+        "ports 8000 8080 5432 6379 15432 9090",
+        "samples: 12 15 18 21 24 27 30 33",
+        "call 0812-3456-7890 for the office",
+        "amount 1.234.567,89 due",
+    ]
+    for payload in allowed:
+        assert kc._check_prompt(payload) is None
+
+
+def test_run_refuses_when_profile_loses_no_tools_pin(monkeypatch, tmp_path):
+    # the "pin not armed" cure: a profile edit that drops `tools: []` must
+    # turn the seat dead, not silently re-arm the exfil channel
+    bad = tmp_path / "agent.md"
+    bad.write_text("---\nname: kimi-client-headless\ndescription: x\n---\nbody\n")
+    monkeypatch.setattr(kc, "_AGENT_FILE", bad)
+    monkeypatch.setattr(kc, "_resolve_kimi_bin", lambda: "/fake/kimi")
+    with pytest.raises(RuntimeError, match="no longer disables all tools"):
+        kc.run("prompt")
+
+
+def test_probe_dead_when_profile_loses_no_tools_pin(monkeypatch, tmp_path):
+    bad = tmp_path / "agent.md"
+    bad.write_text("---\nname: kimi-client-headless\ndescription: x\ntools: [Read]\n---\nbody\n")
+    monkeypatch.setattr(kc, "_AGENT_FILE", bad)
+    monkeypatch.setattr(kc, "_resolve_kimi_bin", lambda: "/fake/kimi")
+    assert kc.probe() is False
