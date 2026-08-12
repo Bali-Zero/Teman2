@@ -44,15 +44,32 @@ ssh pro 'bash -lc "fly secrets set -a nuzantara-rag \
 
 ## Smoke (after redeploy)
 
-1. **No-pack behavior (pre-activation only):** `POST /api/visa-oracle/evaluate` with a
-   minimal valid facts body → expect 200 TEMP shape, `retryable=true`, and **zero** new rows
-   in `visa_decisions`.
-2. **First real row (post-activation):** same call → 200 ENGINE-mode-available response
-   (`mode=CURATED` until ENFORCE is a thing), one `visa_decisions` row with
-   `engine_surface='RECOMMEND'`, `engine_mode='SHADOW'`, `traffic_source='real'`, derived
-   `request_category`, 32-byte fingerprint, `ruleset_activation_id` set.
-3. **Driver check:** same call with `?traffic_source=synthetic_gold` WITHOUT the token →
-   400; with `X-Visa-Driver-Token` → row with `traffic_source='synthetic_gold'`.
+Every operator-run evaluate probe MUST use the wrapper below. It defaults to
+`traffic_source=synthetic_driver` and obtains `X-Visa-Driver-Token` only from the
+0600 custody file; it refuses to send if that file is absent or unreadable. Never use a bare
+`curl` for this endpoint. From `apps/backend-rag`:
+
+```bash
+PYTHONPATH=. .venv/bin/python -m backend.scripts.visa_engine.probe_evaluate \
+  --payload /secure/path/to/minimal-valid-applicant-facts.json
+```
+
+The helper prints the terminal decision state and active RulePack sequence/version. It reads
+the payload from standard input when `--payload` is omitted. `--as-real-i-know-what-i-am-doing`
+is a deliberately loud, exceptional opt-out for a genuinely real-caller test; routine smoke
+must never use it.
+
+1. **No-pack behavior (pre-activation only):** run the helper with a minimal valid facts body
+   → expect 200 TEMP shape, `retryable=true`, and **zero** new rows in `visa_decisions`.
+2. **First synthetic probe (post-activation):** same helper call → 200 ENGINE-mode-available
+   response (`mode=CURATED` until ENFORCE is a thing), one `visa_decisions` row with
+   `engine_surface='RECOMMEND'`, `engine_mode='SHADOW'`,
+   `traffic_source='synthetic_driver'`, derived `request_category`, 32-byte fingerprint, and
+   `ruleset_activation_id` set. It is breadth-only evidence: only organic end-user traffic may
+   create a `traffic_source='real'` row for G-a volume.
+3. **Driver check:** the helper's successful probe is the token-authenticated synthetic check;
+   endpoint tests cover rejection of a missing or invalid token without a manual bare-curl
+   ceremony.
 4. **Collector read-back:** `scripts/visa_shadow_evidence.py` (read-only) shows the rows in
    the right G-a-vol / G-a-breadth buckets.
 
