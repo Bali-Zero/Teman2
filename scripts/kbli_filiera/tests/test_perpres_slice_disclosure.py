@@ -280,10 +280,10 @@ def real_disclosures():
 
 class TestRealCatalogue:
     def test_population_count(self, real_disclosures):
-        # 10 general BROADER codes (12 BROADER-adjudicated minus 20235/30303,
+        # 11 general BROADER codes (15 BROADER-adjudicated minus 20235/30303,
         # excluded as adjacent-not-contained) + 30111 (2 rows) + 30113 (1 row).
-        assert len(real_disclosures) == 12
-        assert sum(len(rows) for rows in real_disclosures.values()) == 13
+        assert len(real_disclosures) == 15
+        assert sum(len(rows) for rows in real_disclosures.values()) == 16
 
     def test_20235_and_30303_never_appear(self, real_disclosures):
         # Their own ADJUDICATION reason says the annex activity is a

@@ -115,12 +115,15 @@ def test_a_code_named_only_through_its_2020_ancestor_is_not_residual(canonical, 
 
 
 def test_the_ancestor_join_is_load_bearing_for_a_hundred_codes(canonical, annexes, prio):
-    """Not one special case: measured, 102 codes reach an annex ONLY through the
+    """Not one special case: measured, 106 codes reach an annex ONLY through the
     crosswalk. A regression that drops the join turns all of them open.
 
     The expected set is derived here WITHOUT calling `ancestors()`. Using the
     module's own reader on both sides would compute the same value twice and
-    agree with itself — a broken reader would still produce a matching 102.
+    agree with itself — a broken reader would still produce a matching 106.
+
+    102 -> 106: Batch-A ancestry populated in this PR adds 51103, 60103, 60203,
+    77397 (all still named-in-annex, none residual).
     """
     umkm, caps = annexes
     annex = umkm | caps
@@ -129,7 +132,7 @@ def test_the_ancestor_join_is_load_bearing_for_a_hundred_codes(canonical, annexe
         if code not in annex
         and {str(c) for c in ((rec.get("bps_2020_ancestors") or {}).get("codes") or [])} & annex
     }
-    assert len(via_ancestor_only) == 102
+    assert len(via_ancestor_only) == 106  # 51103, 60103, 60203, 77397 added
     assert {"55203", "55201", "96210", "96220"} <= via_ancestor_only
     # And the module must actually route them: not one may come back RESIDUAL,
     # which is the only failure that publishes an open default. `47221` lands in
@@ -609,12 +612,16 @@ def test_a_restriction_outranks_a_priority_listing(canonical, annexes, prio):
     assert ev["lampiran_i"] and ev["lampiran_ii"]  # both are still visible
 
 
-def test_the_priority_annex_moved_175_codes_out_of_the_residual_bucket(rep):
+def test_the_priority_annex_moved_177_codes_out_of_the_residual_bucket(rep):
     """The size of the omission, pinned. `residual-besar-observed` was 1055 and
-    is 882; a regression that drops the Lampiran I read restores the wrong 1055
+    is 880; a regression that drops the Lampiran I read restores the wrong 1055
     and every one of those rows starts citing the wrong article again.
+
+    The two that moved are `38222` ("Pengolahan dan Pembuangan Limbah Radioaktif",
+    ancestor 38220) and `39001` ("Aktivitas Penangkapan Karbon", ancestor 39000),
+    which reach Lampiran I through the Batch-A ancestry populated in this PR.
     """
-    assert rep["buckets"]["priority-lampiran-i"] == 175
+    assert rep["buckets"]["priority-lampiran-i"] == 177
     assert rep["annex_codes"]["lampiran_i"] == 194
 
 
@@ -661,19 +668,20 @@ def test_pma_prioritas_disagrees_with_the_operative_annex_in_both_directions(can
     fuses adjacent columns and manufactures five-digit matches; that probe first
     reported `35111` as present, and it is not).
 
-    Latent rather than visible: `isPriority` is carried through
-    `kbli-data.ts:406`, `kbli-data.server.ts:302` and two type modules and has
-    **no render site**, so no page states it today (family #2, exists != armed).
-    Pinned so the divergence cannot drift silently in either direction, and so
-    that whoever wires a priority badge reads this first and takes the set from
-    the instrument rather than from the flag.
+    Latent rather than visible: `isPriority` occurs only in
+    `lib/kbli-types.ts`, `lib/types/kbli.ts`, `lib/kbli-data.ts`,
+    `lib/kbli-data.server.ts` and four test fixtures; measured: **zero JSX use**.
+    So both movements are latent and nothing a client sees changes
+    (family #2, exists != armed). Pinned so the divergence cannot drift silently
+    in either direction, and so that whoever wires a priority badge reads this
+    first and takes the set from the instrument rather than from the flag.
     """
     flagged = {c for c, r in canonical.items() if r.get("pma_prioritas")}
     reached = {c for c, r in canonical.items() if ({c} | ancestors(r)) & prio}
     assert len(flagged) == 18
     assert len(flagged & reached) == 6
     assert len(flagged - reached) == 12
-    assert len(reached - flagged) == 219
+    assert len(reached - flagged) == 221
 
 
 # --------------------------------------------------------------------------

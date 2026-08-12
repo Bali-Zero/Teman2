@@ -106,6 +106,26 @@ def test_a_broader_code_is_never_patched():
     assert ADJUDICATION["10761"][0] == BROADER
 
 
+def test_streaming_and_space_transport_never_inherit_a_broadcasting_or_air_cap():
+    """51103/60103/60203 became divergent only after Batch-A ancestry joined the
+    foreign-cap annex through BPS-2020. They must stay BROADER: their 2025 scope
+    is wider than the restricted activity (air transport / broadcasting
+    institutions), and their candidate ancestors disagree on the cap, so a
+    mis-assigned ancestor would change the value written. 51102 remains PLAIN
+    as a control: the pin is not satisfied by breaking PLAIN altogether.
+    """
+    for code in ("51103", "60103", "60203"):
+        assert ADJUDICATION[code][0] != PLAIN, f"{code} must not be adjudicated PLAIN"
+
+    records = json.loads(CANONICAL.read_text())["data"]
+    planned, _ = plan(records)
+    patched = {p["kbli_2025"] for p in planned}
+    for code in ("51103", "60103", "60203"):
+        assert code not in patched, f"{code} must not be patched"
+
+    assert ADJUDICATION["51102"][0] == PLAIN
+
+
 def test_a_renamed_but_unproven_code_is_never_patched(monkeypatch):
     # 21021/21022 were the live RENAMED examples until 2026-08-07, when
     # primary-source research (UU 17/2023 + Peraturan BPOM 25/2023 + SEB

@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "count": 12,
+    "count": 15,
     "excluded_adjacent_not_contained": {
       "20235": "bespoke perfume is not traditional cosmetics; likely not restricted at all",
       "30303": "spacecraft; the annex restricts military aircraft"
@@ -81,6 +81,14 @@
         "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #7"
       }
     ],
+    "51103": [
+      {
+        "bidangUsaha": "Kegiatan angkutan udara",
+        "condition": "national capital owner must retain single majority",
+        "foreignCapPct": 49,
+        "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #31"
+      }
+    ],
     "58130": [
       {
         "bidangUsaha": "Penerbitan surat kabar, majalah, dan buletin (pers)",
@@ -97,7 +105,23 @@
         "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #34"
       }
     ],
+    "60103": [
+      {
+        "bidangUsaha": "Lembaga Penyiaran Swasta (LPS)",
+        "condition": "0% at establishment; 20% for expansion",
+        "foreignCapPct": 0,
+        "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #34"
+      }
+    ],
     "60202": [
+      {
+        "bidangUsaha": "Lembaga Penyiaran Berlangganan (LPB)",
+        "condition": "0% at establishment; 20% for expansion",
+        "foreignCapPct": 0,
+        "locator": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu) entry #35"
+      }
+    ],
+    "60203": [
       {
         "bidangUsaha": "Lembaga Penyiaran Berlangganan (LPB)",
         "condition": "0% at establishment; 20% for expansion",
