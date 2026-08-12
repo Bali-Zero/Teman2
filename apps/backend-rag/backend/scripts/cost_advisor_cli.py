@@ -26,8 +26,11 @@ import urllib.request
 from decimal import Decimal
 from typing import Any
 
+from backend.core.secret_log_redaction import install_telegram_token_redaction
 from backend.llm.claude_oauth_client import complete_async as claude_complete
 from backend.services.observability.cost_advisor import CostAdvisor
+
+install_telegram_token_redaction()
 
 logger = logging.getLogger(__name__)
 

@@ -1234,6 +1234,7 @@ class OrchestratorCore:
                 token_usage=token_usage,
                 timings=timings,
                 response_generated=bool(result.answer) and not result.abstain,
+                response_text=result.answer,
             )
             try:
                 spawn(
@@ -1826,6 +1827,7 @@ class OrchestratorCore:
             token_usage=token_usage,
             timings=timings,
             response_generated=bool(result.answer) and not result.abstain,
+            response_text=result.answer,
         )
 
         return FinalizationContext(
@@ -2064,10 +2066,17 @@ class OrchestratorCore:
         timings: dict[str, float],
         response_generated: bool,
         error_message: str | None = None,
+        response_text: str | None = None,
     ) -> AnalyticsReceiptStatus:
         """
         Persist query execution data to query_analytics table.
         Return a closed, non-PII receipt; failures never block the response.
+
+        `response_text` is the answer itself. It was in hand at every call
+        site — `response_generated` is literally computed from it — and was
+        dropped on the floor until 2026-08-11, which left the table asserting
+        that an answer existed while keeping nothing of it. See the comment
+        in `QueryAnalyticsRepository.log_query`.
         """
         if not self.db_pool:
             return AnalyticsReceiptStatus.SKIPPED
@@ -2086,6 +2095,7 @@ class OrchestratorCore:
                 token_usage_total=token_usage.total_tokens,
                 cost_usd=token_usage.cost_usd,
                 error_message=error_message,
+                response_text=response_text,
             )
             if query_id is None:
                 logger.warning("Query analytics returned no receipt (non-critical)")

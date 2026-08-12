@@ -24,8 +24,11 @@ import urllib.error
 import urllib.request
 from typing import Any
 
+from backend.core.secret_log_redaction import install_telegram_token_redaction
 from backend.services.federation_alerts.approval import callback_token_prefix
 from backend.services.federation_alerts.approval_models import encode_callback
+
+install_telegram_token_redaction()
 
 logger = logging.getLogger(__name__)
 
