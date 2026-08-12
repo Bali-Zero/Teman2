@@ -436,7 +436,7 @@ function public.bind_visa_evaluate_idempotency_retention_policy` (least-privileg
   (find-my-way/hono/prisma, 3 high — infra-lane fix needed on main, not the visa lane).
   R1-gate lesson recorded: `adversarial_review:` accepts only gate seats
   (agy/codex/gemini/glm/gpt-5.5/grok/kimi*/nlm) + `human-*`/`exempt-\*`, and every research
-  file needs a `## Adversarial review` body section with surviving-objection dispositions.
+file needs a `## Adversarial review` body section with surviving-objection dispositions.
   GATE STATUS unchanged: 🔴 RED.
 - 2026-07-24 (M5, Kimi orchestrator, evening): **WAVE 1 100% on main + W2 KICKED OFF** (Zero:
   "parti ora"). Wave 0+1 all merged: #3032 (funnel resurrected, live-smoked 201), #3033,
@@ -641,6 +641,40 @@ function public.bind_visa_evaluate_idempotency_retention_policy` (least-privileg
   nightly PG backup is immune (`infra/scripts/fly-backup.sh` sources the secrets file itself), other Pro
   fly consumers were unaudited at the time of writing. The 8h of silence was a SECOND, independent defect:
   `scripts/cron-wrapper.sh` swallowed every failure alert (PR #4119).
+
+- 2026-08-12 (Mini, completion pass — LEDGER CORRECTION FIRST): **the ACTIVE pack is sequence 7
+  (`2026.8.11`, `rule_pack_id 453ee842-7f35-5d77-b460-31d67e2784c2`), not seq-6.** Every entry above stops
+  at the 08-10 seq-6 activation, so this file was one activation behind; measured live in-session, not
+  taken on report (`POST /api/visa-oracle/evaluate` → `decision.rule_pack.sequence 7`, `mode CURATED`,
+  all-UNKNOWN payload → `HUMAN_REVIEW_REQUIRED`, the correct fail-closed). Whoever activated seq-7 did not
+  update this section — the standing rule held in the breach.
+  **THREE ITEMS THE LEDGER CARRIED AS OPEN ARE ACTUALLY CLOSED** (verified on disk this session, not
+  inferred): the frontend/backend MODE MISMATCH is a TESTED INVARIANT, not a defect (`OracleShell.tsx`
+  fails closed to `CLIENT_GUARD` on a CURATED response in ENGINE mode, pinned by `OracleShell.test.tsx`);
+  the "authoritative ENGINE render is unbuilt" claim is STALE — `resolve_response_mode()` is a real
+  function (`evaluate_path.py`) and all five ENGINE states render under test; and migration 268's owner
+  gap is closed (PR #3766 merged, file present). Do not re-open these from the 07-28 prose.
+  **STILL GENUINELY OPEN, and worked this session:** (1) G-b replays against a HAND-WRITTEN FIXTURE pack,
+  never the active signed one (`_gold_fixtures.py::build_gold_compiled_pack`), and `shadow_evidence.py`
+  says so itself — the `synthetic_gold` + driver-token plumbing exists but NO consumer was ever built;
+  (2) internal probes land `traffic_source='real'` and contaminate G-a-vol — cured structurally here
+  (`probe_evaluate.py`, defaults to `synthetic_driver`, fails closed without the custody token) instead of
+  being noted in prose for the fourth time; (3) 11/38 products remain unreachable as SUPPORTED for want of
+  discriminating facts — design corpus in `research/visa/2026-08-12-fact-vocabulary-extension-design.md`,
+  whose regulatory citations are GENERIC and are a research lead, NOT authority to author a pack.
+  **NEW OWNER-FACING FINDING (red-team, unresolved):** a pack activation needs no deploy, so a pack can
+  outrun the frontend that must supply its facts; and the ≥1,000-request G-a window is semantically MIXED
+  across pack/schema revisions — if that reading holds, each activation starts a fresh window, which at
+  ~7 organic requests/day bears directly on whether ENFORCE is reachable at all. This is D1 territory,
+  Zero's call, not a session cure.
+  **MEASUREMENT BLOCKED (operator-gated, declared not skipped):** the G-a numbers could not be read from
+  Mini or Pro. Pro's login Keychain is locked and an SSH session cannot unlock it or borrow the console's
+  unlock (`errSecInteractionNotAllowed`); on Mini both local credentials are correctly least-privilege
+  (`visa_activation_operator` and `visa_retention_worker_mini` are both `permission denied for table
+visa_decisions` — the retention worker operates through `SECURITY DEFINER` functions). Unblock is
+  `operator[credential]`: unlock Pro's screen once, or provision a readonly credential on Mini.
+  `VISA_ENGINE_MATCH_MODE` is confirmed ABSENT from all 212 secrets on `nuzantara-rag` (genuinely absent,
+  not set-to-off), so the 07-28 MATCH-vs-RECOMMEND fork is still unexecuted and still owner-gated.
 
 ## TRACKS — parallel work groups (multi-session coordination)
 
