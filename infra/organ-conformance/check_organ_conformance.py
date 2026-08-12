@@ -33,6 +33,7 @@ import plistlib
 import re
 import subprocess
 import sys
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Optional
 
@@ -126,12 +127,69 @@ def _pair_declared(pairs: dict[str, Any], token: str) -> bool:
     return False
 
 
-def _repo_relative_path(path: Path, repo_root: Path) -> Optional[str]:
-    """Return a normalized repo-relative path, or None for external files."""
-    try:
-        return path.resolve().relative_to(repo_root.resolve()).as_posix()
-    except ValueError:
+@lru_cache(maxsize=None)
+def _repo_alias_roots(repo_root: Path) -> tuple[Path, ...]:
+    """Return exact filesystem roots that identify this Git repository.
+
+    A launchd plist can name the canonical checkout while the gate runs from a
+    linked worktree. Git's common directory identifies that canonical checkout;
+    preserving the complete relative path lets the checker inspect the current
+    worktree's file without any basename widening.
+    """
+    resolved_root = repo_root.resolve()
+    roots = [resolved_root]
+    out = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(resolved_root),
+            "rev-parse",
+            "--path-format=absolute",
+            "--git-common-dir",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if out.returncode == 0:
+        common_dir = Path(out.stdout.strip()).resolve()
+        if common_dir.name == ".git" and common_dir.parent not in roots:
+            roots.append(common_dir.parent)
+    return tuple(roots)
+
+
+def _resolve_repo_file_strict(arg: str, repo_root: Path, ka_mod: Any) -> Optional[Path]:
+    """Resolve a direct path token only when its canonical file is in the repo.
+
+    Unlike keepalive's compatibility resolver, this intentionally has no
+    basename bridge. Relative paths are rooted at the repository; absolute
+    paths, ``.``/``..`` segments, and symlinks are canonicalized before the
+    repository-boundary check.
+    """
+    if not ka_mod._looks_like_path(arg) or arg.startswith("~"):
         return None
+
+    resolved_root = repo_root.resolve()
+    token_path = Path(arg)
+    if token_path.is_absolute():
+        relative: Optional[Path] = None
+        for alias_root in _repo_alias_roots(resolved_root):
+            try:
+                relative = token_path.relative_to(alias_root)
+                break
+            except ValueError:
+                continue
+        if relative is None:
+            return None
+        candidate = resolved_root / relative
+    else:
+        candidate = resolved_root / token_path
+    try:
+        resolved = candidate.resolve(strict=True)
+        resolved.relative_to(resolved_root)
+    except (OSError, RuntimeError, ValueError):
+        return None
+    return resolved if resolved.is_file() else None
 
 
 def _resolve_content_wrapper(
@@ -149,34 +207,49 @@ def _resolve_content_wrapper(
     later path-like token is itself the executable content and stays selected.
     """
     wrapper, reason = ka_mod.resolve_wrapper(argv, repo_root, basename_index)
-    if (
-        wrapper is None
-        or _repo_relative_path(wrapper, repo_root) not in KNOWN_CONTENT_RUNNERS
-    ):
-        return wrapper, reason
 
-    runner_index: Optional[int] = None
+    # Runner recognition is deliberately independent of keepalive's basename
+    # compatibility bridge. The first argv file that resolves strictly inside
+    # this repo is what launchd hands to its interpreter; only exact canonical
+    # equality with a declared runner opens the payload hop.
+    strict_wrapper_index: Optional[int] = None
+    strict_wrapper: Optional[Path] = None
     for index, arg in enumerate(argv):
-        candidate, _ = ka_mod.resolve_wrapper([arg], repo_root, basename_index)
-        if candidate is not None and candidate.resolve() == wrapper.resolve():
-            runner_index = index
+        candidate = _resolve_repo_file_strict(arg, repo_root, ka_mod)
+        if candidate is not None:
+            strict_wrapper_index = index
+            strict_wrapper = candidate
             break
 
-    if runner_index is None:  # pragma: no cover - resolver consistency guard
+    known_runner_paths = {
+        candidate
+        for relative in KNOWN_CONTENT_RUNNERS
+        if (candidate := _resolve_repo_file_strict(relative, repo_root, ka_mod))
+        is not None
+    }
+    if strict_wrapper is None or strict_wrapper not in known_runner_paths:
         return wrapper, reason
 
+    if strict_wrapper_index is None:  # pragma: no cover - assignment invariant
+        return strict_wrapper, reason
+
     payload_token = next(
-        (arg for arg in argv[runner_index + 1 :] if ka_mod._looks_like_path(arg)),
+        (
+            arg
+            for arg in argv[strict_wrapper_index + 1 :]
+            if ka_mod._looks_like_path(arg)
+        ),
         None,
     )
     if payload_token is None:
-        return wrapper, reason
+        return strict_wrapper, reason
 
-    payload, payload_reason = ka_mod.resolve_wrapper(
-        [payload_token], repo_root, basename_index
-    )
+    payload = _resolve_repo_file_strict(payload_token, repo_root, ka_mod)
     if payload is None:
-        return None, f"known-runner payload {payload_reason}"
+        return (
+            None,
+            f"known-runner payload not-resolvable-in-repo: {payload_token}",
+        )
     return payload, None
 
 

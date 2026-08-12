@@ -91,6 +91,31 @@ def test_innocence_runner_with_compliant_payload_uses_payload(
     assert "G5_kill_switch" not in organ["missing"]
 
 
+@pytest.mark.parametrize(
+    "runner_token",
+    [
+        "scripts/cron-runner.sh",
+        "./scripts/cron-runner.sh",
+        pytest.param(None, id="absolute-inside-repo"),
+    ],
+)
+def test_innocence_legitimate_runner_spellings_use_payload_genes(
+    fixture_repo: Path,
+    runner_token: str | None,
+) -> None:
+    runner = _write_script(fixture_repo, "scripts/cron-runner.sh", BAD_WRAPPER)
+    payload = _write_script(fixture_repo, "apps/foo/payload.sh", GOOD_WRAPPER)
+
+    organ = _analyze(
+        fixture_repo,
+        ["/bin/bash", runner_token or str(runner), str(payload)],
+    )
+
+    assert organ["wrapper"] == "apps/foo/payload.sh"
+    assert "G2_heartbeat" not in organ["missing"]
+    assert "G5_kill_switch" not in organ["missing"]
+
+
 def test_innocence_non_runner_wrapper_keeps_current_resolution(
     fixture_repo: Path,
 ) -> None:
@@ -142,3 +167,96 @@ def test_unresolvable_first_payload_after_runner_stays_fail_closed(
     assert "wrapper" not in organ
     assert {"G2_heartbeat", "G5_kill_switch"} <= set(organ["missing"])
     assert any("known-runner payload not-resolvable" in note for note in organ["notes"])
+
+
+def test_guilt_external_payload_basename_collision_stays_fail_closed(
+    fixture_repo: Path,
+    tmp_path: Path,
+) -> None:
+    runner = _write_script(fixture_repo, "scripts/cron-runner.sh", GOOD_WRAPPER)
+    _write_script(fixture_repo, "apps/foo/run.sh", GOOD_WRAPPER)
+    external_payload = tmp_path / "outside" / "run.sh"
+    external_payload.parent.mkdir()
+    external_payload.write_text(BAD_WRAPPER, encoding="utf-8")
+
+    organ = _analyze(
+        fixture_repo,
+        ["/bin/bash", str(runner), str(external_payload)],
+    )
+
+    assert "wrapper" not in organ
+    assert {"G2_heartbeat", "G5_kill_switch"} <= set(organ["missing"])
+    assert any(
+        f"known-runner payload not-resolvable-in-repo: {external_payload}" in note
+        for note in organ["notes"]
+    )
+
+
+def test_guilt_duplicate_runner_basename_does_not_hide_real_runner(
+    fixture_repo: Path,
+) -> None:
+    decoy = _write_script(
+        fixture_repo,
+        "apps/aaa/cron-runner.sh",
+        GOOD_WRAPPER,
+    )
+    runner = _write_script(fixture_repo, "scripts/cron-runner.sh", GOOD_WRAPPER)
+    payload = _write_script(fixture_repo, "apps/foo/payload.sh", BAD_WRAPPER)
+    assert str(decoy) < str(runner)
+
+    organ = _analyze(fixture_repo, ["/bin/bash", str(runner), str(payload)])
+
+    assert organ["wrapper"] == "apps/foo/payload.sh"
+    assert {"G2_heartbeat", "G5_kill_switch"} <= set(organ["missing"])
+
+
+@pytest.mark.parametrize("via_symlink", [False, True])
+def test_innocence_runner_normalizes_dotdot_and_symlinks(
+    fixture_repo: Path,
+    via_symlink: bool,
+) -> None:
+    _write_script(fixture_repo, "scripts/cron-runner.sh", BAD_WRAPPER)
+    payload = _write_script(fixture_repo, "apps/foo/payload.sh", GOOD_WRAPPER)
+    if via_symlink:
+        runner_alias = fixture_repo / "apps/runner-link.sh"
+        runner_alias.symlink_to("../scripts/cron-runner.sh")
+        runner_token = "apps/runner-link.sh"
+    else:
+        runner_token = "apps/foo/../../scripts/cron-runner.sh"
+
+    organ = _analyze(
+        fixture_repo,
+        ["/bin/bash", runner_token, str(payload)],
+    )
+
+    assert organ["wrapper"] == "apps/foo/payload.sh"
+    assert "G2_heartbeat" not in organ["missing"]
+    assert "G5_kill_switch" not in organ["missing"]
+
+
+def test_innocence_canonical_checkout_alias_maps_exact_paths_to_worktree(
+    fixture_repo: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _write_script(fixture_repo, "scripts/cron-runner.sh", BAD_WRAPPER)
+    _write_script(fixture_repo, "apps/foo/payload.sh", GOOD_WRAPPER)
+    canonical_checkout = tmp_path / "canonical-checkout"
+    monkeypatch.setattr(
+        coc,
+        "_repo_alias_roots",
+        lambda repo_root: (repo_root.resolve(), canonical_checkout.resolve()),
+    )
+
+    organ = _analyze(
+        fixture_repo,
+        [
+            "/bin/bash",
+            str(canonical_checkout / "scripts/cron-runner.sh"),
+            str(canonical_checkout / "apps/foo/payload.sh"),
+        ],
+    )
+
+    assert organ["wrapper"] == "apps/foo/payload.sh"
+    assert "G2_heartbeat" not in organ["missing"]
+    assert "G5_kill_switch" not in organ["missing"]
