@@ -118,14 +118,16 @@ describe("the Bali provenance row attributes the verdict to what produced it", (
 });
 
 describe("the PMA provenance row follows authoritative BPS ancestry", () => {
-  it("guilt: PP28-only 01287 renders the BPS-specific declared gap", () => {
+  it("guilt: cured Batch-A 01287 renders the pending 2020-vintage row", () => {
     const row = pmaRow("01287");
-    expect(row.verdict).toBe("gap");
-    expect(row.vintage).toBe("—");
+    expect(row.verdict).toBe("pending");
+    expect(row.vintage).toBe("KBLI 2020");
     expect(row.detail).toContain(
+      "crosswalk audit of this layer is in progress",
+    );
+    expect(row.detail).not.toContain(
       "The official BPS crosswalk records no KBLI-2020 predecessor",
     );
-    expect(row.detail).not.toContain("audit of this layer is in progress");
   });
 
   it("innocence: a BPS-ancestry code keeps the pending 2020-vintage row", () => {

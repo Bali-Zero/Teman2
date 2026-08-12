@@ -128,6 +128,16 @@ import json
 import sys
 from pathlib import Path
 
+# Sibling-module import: same sys.path pattern every compiler in this
+# directory uses. The set we need lives in the slice-disclosure module
+# because that is where the foreign-cap adjudication's
+# adjacent-not-contained verdict is already written down (W105).
+_FILIERA_DIR = Path(__file__).resolve().parent
+if str(_FILIERA_DIR) not in sys.path:
+    sys.path.insert(0, str(_FILIERA_DIR))
+
+from perpres_slice_disclosure_relation import ADJACENT_NOT_CONTAINED  # noqa: E402
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CANONICAL = REPO_ROOT / "data" / "source_documents" / "KBLI_2025_FINAL_CLEAN.json"
 UMKM = REPO_ROOT / "data" / "kbli-filiera" / "perpres-umkm-reservation.json"
@@ -297,27 +307,43 @@ def besar_state(record: dict) -> str:
 
 
 def locate(code: str, record: dict, umkm: set[str], caps: set[str],
-           priority: set[str]) -> dict:
+           priority: set[str],
+           adjacent_not_contained: set[str] = frozenset()) -> dict:
     """EVERY locator that names this code, not just the strongest one.
 
     A code can be named twice — `47221` is under Pasal 6(3a) in the body and
     reaches Lampiran II through its 2020 ancestor `47911`. Returning only the
     winning locator would make the second invisible to whoever reads the row.
+
+    For codes the foreign-cap adjudication marks `ADJACENT_NOT_CONTAINED`, an
+    ancestor-mediated Lampiran III hit is NOT treated as naming the code: the
+    adjudication itself says the annex activity is a neighbour in the same
+    ancestor family, not a slice inside this code. The exclusion is scoped to
+    Lampiran III only — Lampiran I priority and Lampiran II UMKM hits keep
+    flowing through normally.
     """
     reach = {code} | ancestors(record)
-    restricting = umkm | caps
+    # Scope the exclusion to ancestor-mediated Lampiran III hits. A code named
+    # by Lampiran III under its OWN 2025 number is unaffected (none of the
+    # current exclusions are in that situation, but the guard is honest).
+    if code in adjacent_not_contained:
+        effective_caps = caps - ancestors(record)
+    else:
+        effective_caps = caps
+    restricting = umkm | effective_caps
     return {
         "body": BODY_TERTUTUP.get(code) or BODY_OTHER_REQUIREMENT.get(code),
         "lampiran_i": sorted(reach & priority),
         "lampiran_ii": sorted(reach & umkm),
-        "lampiran_iii": sorted(reach & caps),
+        "lampiran_iii": sorted(reach & effective_caps),
         "via_ancestor_only": bool((reach & restricting) and code not in restricting),
         "crosswalk": "absent" if not has_crosswalk(record) else "mechanical-only",
     }
 
 
 def classify(code: str, record: dict, umkm: set[str], caps: set[str],
-             priority: set[str], sector_law_carveout: set[str] = frozenset()) -> tuple[str, dict]:
+             priority: set[str], sector_law_carveout: set[str] = frozenset(),
+             adjacent_not_contained: set[str] = frozenset()) -> tuple[str, dict]:
     """Locate one code against the instrument. Returns (bucket, evidence).
 
     Order is load-bearing. The BODY names a code before any annex does; among
@@ -327,7 +353,7 @@ def classify(code: str, record: dict, umkm: set[str], caps: set[str],
     plain words of Pasal 3 ayat (1) huruf d ("tidak termasuk dalam huruf a,
     huruf b, dan huruf c").
     """
-    evidence = locate(code, record, umkm, caps, priority)
+    evidence = locate(code, record, umkm, caps, priority, adjacent_not_contained)
     evidence["besar"] = besar_state(record)
     evidence["besar_basis"] = BESAR_BASIS
     evidence["scales"] = sorted(scales(record))
@@ -448,9 +474,15 @@ def published(record: dict) -> dict:
 
 def report(canonical: dict[str, dict], umkm: set[str], caps: set[str],
            priority: set[str], sector_law_carveout: set[str] = frozenset()) -> dict:
+    # The single source of the adjacent-not-contained verdict. Using the dict
+    # keys keeps us scoped to the exact codes the foreign-cap adjudication
+    # named; importing the dict itself (not re-typing the codes) is the W105
+    # guard against two writers of one verdict.
+    adjacent_not_contained = set(ADJACENT_NOT_CONTAINED)
     buckets: dict[str, list[dict]] = {}
     for code, record in sorted(canonical.items()):
-        bucket, evidence = classify(code, record, umkm, caps, priority, sector_law_carveout)
+        bucket, evidence = classify(code, record, umkm, caps, priority,
+                                    sector_law_carveout, adjacent_not_contained)
         buckets.setdefault(bucket, []).append({"code": code, **published(record), **evidence})
 
     total = sum(len(rows) for rows in buckets.values())

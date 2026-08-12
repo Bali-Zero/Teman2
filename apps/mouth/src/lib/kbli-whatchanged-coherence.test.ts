@@ -124,7 +124,7 @@ function tsxFiles(root: string): string[] {
 }
 
 describe("KBLI whatChanged data-coherence guardian", () => {
-  it("pins the four known false-claim populations at their measured 2026-08-12 counts", () => {
+  it("pins the four known false-claim populations after the 2026-08-13 Batch-A ancestry pass", () => {
     const canonical = (
       JSON.parse(fs.readFileSync(CANONICAL_PATH, "utf8")) as CanonicalDataset
     ).data;
@@ -139,8 +139,8 @@ describe("KBLI whatChanged data-coherence guardian", () => {
         (record) => record.intel_2026?.whatChanged ?? "",
       ),
     ).toEqual({
-      noBpsButClaimsAncestry: 58,
-      namedCodeOutsideBps: 21,
+      noBpsButClaimsAncestry: 0,
+      namedCodeOutsideBps: 14,
     });
     expect(
       contradictionCounts(
@@ -148,8 +148,8 @@ describe("KBLI whatChanged data-coherence guardian", () => {
         (record) => gold[record.kode_kbli_2025]?.whatChanged ?? "",
       ),
     ).toEqual({
-      noBpsButClaimsAncestry: 10,
-      namedCodeOutsideBps: 57,
+      noBpsButClaimsAncestry: 0,
+      namedCodeOutsideBps: 49,
     });
   });
 

@@ -12,10 +12,10 @@ import path from "path";
  * about the one activity they are actually doing.
  *
  * This module does NOT detect or adjudicate anything. The join (ancestor
- * lineage -> annex row), the two hand-authored 30111/30113 rows, the two
- * codes excluded as adjacent-not-contained (20235, 30303 — their own
- * ADJUDICATION reason says the annex activity is a neighbour, not something
- * inside the code) and the refusal conditions that guard all of it (a
+ * lineage -> annex row), the two hand-authored 30111/30113 rows, the five
+ * codes excluded as adjacent-not-contained (20235, 30303, 51103, 60103,
+ * 60203 — their own ADJUDICATION reason says the annex activity is a
+ * neighbour, not something inside the code) and the refusal conditions that guard all of it (a
  * BROADER code missing from the join; a cap outside {0, 49}; a code whose
  * own `pma_status` is not TERBUKA; an adjacent-not-contained exclusion whose
  * ADJUDICATION verdict or reason has drifted) live in

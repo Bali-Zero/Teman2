@@ -3,24 +3,28 @@
 
 WHAT THIS IS
 ------------
-12 codes adjudicated `BROADER` in `apply_perpres_foreign_caps.ADJUDICATION`
-render "100% Open" on `/kbli/<code>` — correctly, on the WHOLE code — while a
-NARROWER bidang usaha inside them carries a Perpres 10/2021 (as amended by
-49/2021) foreign-ownership condition. `13133` (Industri Kain Batik) is 100%
-open as a whole code; "batik cap" (stamped batik) specifically is reserved to
-domestic capital. A client filing under 13133 for stamped-batik production
-would file "100% open" and be wrong about the one activity they are actually
-doing. This module discloses the slice — never re-derives the BROADER verdict
-itself, which is `apply_perpres_foreign_caps.ADJUDICATION`'s call and stays
-there (one SSOT, W105).
+17 codes are adjudicated `BROADER` in `apply_perpres_foreign_caps.ADJUDICATION`
+(measured by counting the entries whose verdict is `BROADER`). They render
+"100% Open" on `/kbli/<code>` — correctly, on the WHOLE code — while a NARROWER
+bidang usaha inside them carries a Perpres 10/2021 (as amended by 49/2021)
+foreign-ownership condition. `13133` (Industri Kain Batik) is 100% open as a
+whole code; "batik cap" (stamped batik) specifically is reserved to domestic
+capital. A client filing under 13133 for stamped-batik production would file
+"100% open" and be wrong about the one activity they are actually doing. This
+module discloses the slice — never re-derives the BROADER verdict itself, which
+is `apply_perpres_foreign_caps.ADJUDICATION`'s call and stays there (one SSOT,
+W105).
 
-Two of those 12 — `20235` and `30303` — are excluded (see
-`ADJACENT_NOT_CONTAINED`): their OWN `ADJUDICATION` reason says the annex
-activity is a NEIGHBOUR in the same ancestor family, not something actually
-inside the code (bespoke perfume is not traditional cosmetics; a spacecraft is
-not a military aircraft). Publishing a slice notice on those two pages would
-assert a containment the adjudication itself denies. That leaves 10 codes
-reached by the general derivation.
+Five of those 17 — `20235`, `30303`, `51103`, `60103` and `60203` — are
+excluded (see `ADJACENT_NOT_CONTAINED`): their OWN `ADJUDICATION` reason says
+the annex activity is a NEIGHBOUR in the same ancestor family, not something
+actually inside the code (bespoke perfume is not traditional cosmetics; a
+spacecraft is not a military aircraft; space transport is not air transport;
+on-demand streaming is not an institutional broadcaster). Publishing a slice
+notice on those pages would assert a containment the adjudication itself denies.
+That leaves 10 codes reached by the general derivation
+(17 BROADER codes − 2 `MANUAL_SLICE_ROWS` codes − 5 `ADJACENT_NOT_CONTAINED`
+codes). The emitted artifact therefore carries 10 + 2 = 12 codes.
 
 Plus the two hand-adjudicated `30111`/`30113` rows (see `MANUAL_SLICE_ROWS`):
 these two are `AMBIGUOUS`, not `DISAGREE`, in `perpres_foreign_cap_relation`'s
@@ -47,7 +51,7 @@ codes rather than silently producing the wrong cross-product.
 
 REFUSES, LOUDLY (never guesses, never silently drops a row)
 -------------------------------------------------------------
-* a BROADER-adjudicated code (excluding the two hand-authored ones and the two
+* a BROADER-adjudicated code (excluding the two hand-authored ones and the five
   adjacent-not-contained exclusions) has no matching row in the join — the
   derivation that is supposed to explain WHY it is BROADER found nothing to
   disclose, which means either the ADJUDICATION entry or the join itself has
@@ -120,24 +124,31 @@ MANUAL_SLICE_ROWS: dict[str, list[tuple[int, str, int, str | None]]] = {
     ],
 }
 
-# Two BROADER-adjudicated codes whose OWN adjudication reason (see ADJUDICATION
+# Five BROADER-adjudicated codes whose OWN adjudication reason (see ADJUDICATION
 # in apply_perpres_foreign_caps.py) says the annex activity is not actually
 # INSIDE the 2025 code — it is a neighbour in the same ancestor family, not a
 # narrower slice of it. `20235` (bespoke perfume) shares ancestor "20232" with
 # `20232` (traditional cosmetics) but the annex restricts traditional
 # cosmetics, not bespoke perfume; `30303` (spacecraft) shares ancestor "30300"
 # with `30301`/`30302` (manned/unmanned military aircraft) but the annex
-# restricts military AIRCRAFT, not spacecraft. Publishing "one specific
-# activity inside this code carries a condition" on these two pages would
-# assert a containment `ADJUDICATION` itself denies — the general
-# ancestor-join below would otherwise include them (same ancestor, same annex
-# row) exactly like their siblings that DO stay. Reasons pulled verbatim from
-# `ADJUDICATION` at import time (never re-typed) so the two texts can never
-# drift from each other; `compute_disclosures()` re-checks both codes are
-# still BROADER with the SAME reason before every run.
+# restricts military AIRCRAFT, not spacecraft; `51103` (space transport) shares
+# ancestor "51109" with `51101`/`51102` (passenger/cargo air transport) but
+# entry 31 restricts air transport, not space transport; `60103` and `60203`
+# (on-demand audio/video streaming) descend from broadcasting ancestors but
+# entries 34/35 restrict institutional broadcaster status, not streaming.
+# Publishing "one specific activity inside this code carries a condition" on
+# these pages would assert a containment `ADJUDICATION` itself denies — the
+# general ancestor-join below would otherwise include them (same ancestor, same
+# annex row) exactly like their siblings that DO stay. Reasons pulled verbatim
+# from `ADJUDICATION` at import time (never re-typed) so the texts can never
+# drift from each other; `compute_disclosures()` re-checks every excluded code
+# is still BROADER with the SAME reason before every run.
 ADJACENT_NOT_CONTAINED: dict[str, str] = {
     "20235": ADJUDICATION["20235"][1],
     "30303": ADJUDICATION["30303"][1],
+    "51103": ADJUDICATION["51103"][1],
+    "60103": ADJUDICATION["60103"][1],
+    "60203": ADJUDICATION["60203"][1],
 }
 
 

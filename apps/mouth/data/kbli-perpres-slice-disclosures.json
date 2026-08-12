@@ -3,7 +3,10 @@
     "count": 12,
     "excluded_adjacent_not_contained": {
       "20235": "bespoke perfume is not traditional cosmetics; likely not restricted at all",
-      "30303": "spacecraft; the annex restricts military aircraft"
+      "30303": "spacecraft; the annex restricts military aircraft",
+      "51103": "transportasi antariksa (space) for passengers; entry 31 restricts 'Kegiatan angkutan udara' — air transport. Its siblings 51101/51102 are the air entries and ARE patched at 49%; space transport is not air transport. Same shape as 30303 (spacecraft vs military aircraft). The 51109 edge is the 2020 residual air bucket that carried space transport before KBLI 2025 gave it its own code",
+      "60103": "on-demand audio distribution and streaming; entry 34 restricts 'Lembaga Penyiaran Swasta', an institutional status under the broadcasting law — already this table's stated basis for refusing 60102, which IS radio broadcasting. Streaming on demand is not penyiaran. Independently: its two candidate ancestors do NOT carry the same cap (60101 has no annex row at all, 60102 has 0%), so a mis-assigned ancestor would change the value written — the same test that licenses the PLAIN verdicts on 50125 and the ferry family forbids it here",
+      "60203": "on-demand video distribution and streaming; entry 35 restricts 'Lembaga Penyiaran Berlangganan' (subscription), an institutional status — already this table's stated basis for refusing 60202. Independently: candidate ancestors 60201 (no annex row) and 60202 (0%) disagree, so the value written would depend on which ancestor is picked"
     },
     "generated_by": "scripts/kbli_filiera/perpres_slice_disclosure_relation.py --emit",
     "instrument": "Perpres 49/2021 Lampiran III (Daftar Bidang Usaha dengan Persyaratan Tertentu)",

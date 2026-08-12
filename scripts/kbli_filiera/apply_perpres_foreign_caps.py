@@ -98,10 +98,29 @@ ADJUDICATION: dict[str, tuple[str, str]] = {
     "30301": (BROADER, "manned aircraft generally; the annex restricts military aircraft"),
     "30302": (BROADER, "unmanned aircraft generally; the annex restricts military aircraft"),
     "30303": (BROADER, "spacecraft; the annex restricts military aircraft"),
+    "51103": (BROADER, "transportasi antariksa (space) for passengers; entry 31 restricts "
+                       "'Kegiatan angkutan udara' — air transport. Its siblings 51101/51102 are the "
+                       "air entries and ARE patched at 49%; space transport is not air transport. "
+                       "Same shape as 30303 (spacecraft vs military aircraft). The 51109 edge is the "
+                       "2020 residual air bucket that carried space transport before KBLI 2025 gave "
+                       "it its own code"),
     "90200": (BROADER, "performing arts generally; the annex restricts 'sanggar seni' (art studios)"),
     "58130": (BROADER, "journals and periodicals; the annex restricts newspapers, magazines and bulletins as PRESS, a narrower press-law category"),
     "60102": (BROADER, "digital radio broadcasting as an activity; the annex restricts 'Lembaga Penyiaran Swasta', an institutional status"),
+    "60103": (BROADER, "on-demand audio distribution and streaming; entry 34 restricts 'Lembaga "
+                       "Penyiaran Swasta', an institutional status under the broadcasting law — "
+                       "already this table's stated basis for refusing 60102, which IS radio "
+                       "broadcasting. Streaming on demand is not penyiaran. Independently: its two "
+                       "candidate ancestors do NOT carry the same cap (60101 has no annex row at "
+                       "all, 60102 has 0%), so a mis-assigned ancestor would change the value "
+                       "written — the same test that licenses the PLAIN verdicts on 50125 and the "
+                       "ferry family forbids it here"),
     "60202": (BROADER, "television programming and broadcasting; the annex restricts 'Lembaga Penyiaran Berlangganan' (subscription)"),
+    "60203": (BROADER, "on-demand video distribution and streaming; entry 35 restricts 'Lembaga "
+                       "Penyiaran Berlangganan' (subscription), an institutional status — already "
+                       "this table's stated basis for refusing 60202. Independently: candidate "
+                       "ancestors 60201 (no annex row) and 60202 (0%) disagree, so the value written "
+                       "would depend on which ancestor is picked"),
     # --- RENAMED -> PLAIN, adjudicated 2026-08-07 on primary-source research
     # (four legs, cited verbatim in NOTA_OVERRIDE below): UU 17/2023 Pasal 1
     # substitutes "Obat Bahan Alam" into the exact definitional slot "obat
@@ -163,8 +182,10 @@ NOTA_OVERRIDE: dict[str, str] = {
 # Pinisi is not an unmanned vehicle, so it does NOT inherit entry 8. Both
 # slices are disclosed per-row by `perpres_slice_disclosure_relation.py`,
 # which hand-authors its own rows for these two codes (see MANUAL_SLICE_ROWS
-# there) — never derived from this dict, because the derivation that works
-# for the other 12 BROADER codes (one ancestor -> one annex row) does not
+# there) — never derived from this dict, because the general one-ancestor ->
+# one-annex-row derivation runs only on the other 10 BROADER codes
+# (17 total minus the 2 MANUAL_SLICE_ROWS codes minus the 5 ADJACENT_NOT_CONTAINED
+# exclusions) and therefore does not
 # distinguish 30111's two rows from 30113's one. `plan()` below is unaffected:
 # its `divergent` set comes only from `result["disagree"]`, and 30111/30113
 # live in `result["ambiguous"]`, so adding them here plans no patch — verified

@@ -70,8 +70,10 @@ export interface KBLIRawCode {
   sektor_id: string | null;
   status_mapping: KBLIMappingStatus;
   pp28_sources: string[];
-  /** BPS 2020↔2025 official crosswalk ancestry (additive canonical field, Batch-B step 2,
-   *  2026-07-25). Present only on the 1,338 OSS-native codes; absent on Batch-A (no-scope). */
+  /** BPS 2020↔2025 official crosswalk ancestry (additive canonical field).
+   * Batch B received it on 2026-07-25; the explicitly deferred 221-code Batch A
+   * received the same gate-certified relation through an opt-in second pass on
+   * 2026-08-13. It remains optional for defensive parsing and test fixtures. */
   bps_2020_ancestors?: KBLIBpsAncestorsRaw;
   pma_status: KBLIPmaRawStatus;
   pma_max_asing: number | "special"; // "special" = open-with-special-conditions (47221-class), no clean %
@@ -263,13 +265,13 @@ export interface KBLIProvenance {
    *
    * `status` used to be the literal `"pending_crosswalk"`, i.e. a CONSTANT the type
    * made impossible to contradict: all 1,559 codes received the same provenance
-   * verdict. That is right for the 1,338 codes with an authoritative BPS-recorded
-   * KBLI-2020 origin —
-   * the annexes are 2020-vintage and the per-code crosswalk audit is genuinely
-   * pending. It is NOT right for the 221 codes whose
+   * verdict. That is right only for codes with an authoritative BPS-recorded
+   * KBLI-2020 origin: the annexes are 2020-vintage and the per-code crosswalk
+   * audit is genuinely pending. It is NOT right for any record whose
    * `bps_2020_ancestors.codes` list is empty: "crosswalk pending" tells a
    * reader a basis exists and only the mapping is unfinished, which is a stronger
-   * claim than we can support. For those, `untraceable_basis` + `vintage: null`.
+   * claim than we can support. For such defensive/future cases,
+   * `untraceable_basis` + `vintage: null`; the current canonical has none.
    *
    * F12 wording: this says our sources record no path to the verdict. It does NOT
    * assert the regulator published nothing, and it does not call the value wrong.

@@ -381,22 +381,18 @@ describe("deriveProvenance — PMA traceability on the real dataset", () => {
     fs.readFileSync(DATA_PATH, "utf-8"),
   ) as KBLIRawDataFile;
 
-  it("pins the untraceable population and its shape", () => {
+  it("pins the cured real dataset: no untraceable ancestry remains", () => {
     const untraceable = parsed.data.filter(
       (r) => deriveProvenance(r).pma.status === "untraceable_basis",
     );
-    // The 121 PP28-only codes join the 100 neither-source codes. Pinned so a
-    // change cannot silently re-label pages.
-    expect(untraceable.length).toBe(221);
-    for (const r of untraceable) {
-      expect(r.bps_2020_ancestors?.codes ?? []).toHaveLength(0);
-    }
-    // And the BPS-present population keeps the vintage disclosure.
+    expect(untraceable).toHaveLength(0);
+    // Every BPS-present record keeps the vintage disclosure.
     for (const r of parsed.data) {
       const prov = deriveProvenance(r);
-      if (prov.pma.status === "pending_crosswalk") {
-        expect(prov.pma.vintage, `code ${r.kode_kbli_2025}`).toBe("2020");
-      }
+      expect(prov.pma.status, `code ${r.kode_kbli_2025}`).toBe(
+        "pending_crosswalk",
+      );
+      expect(prov.pma.vintage, `code ${r.kode_kbli_2025}`).toBe("2020");
     }
   });
 });

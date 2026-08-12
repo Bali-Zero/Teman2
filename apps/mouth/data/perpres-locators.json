@@ -2338,9 +2338,9 @@
    "besar": "observed"
   },
   "20235": {
-   "bucket": "named-in-annex",
-   "basis": "Pasal 3 ayat (1) huruf b / huruf c",
-   "cite": "Perpres 49/2021 Lampiran III (foreign ownership) via KBLI-2020 20232",
+   "bucket": "priority-lampiran-i",
+   "basis": "Pasal 3 ayat (1) huruf a",
+   "cite": "Perpres 49/2021 Lampiran I — priority business field (Pasal 3(1)(a))",
    "besar": "observed"
   },
   "20291": {
@@ -3454,9 +3454,9 @@
    "besar": "observed"
   },
   "30303": {
-   "bucket": "named-in-annex",
-   "basis": "Pasal 3 ayat (1) huruf b / huruf c",
-   "cite": "Perpres 49/2021 Lampiran III (foreign ownership) via KBLI-2020 30300",
+   "bucket": "residual-besar-observed",
+   "basis": "Pasal 3 ayat (1) huruf d + ayat (2)",
+   "cite": "Perpres 10/2021 Pasal 3(1)(d) — no annex names this activity",
    "besar": "observed"
   },
   "30400": {
@@ -3952,9 +3952,9 @@
    "besar": "observed"
   },
   "38222": {
-   "bucket": "residual-besar-unobserved",
-   "basis": "Pasal 3 ayat (1) huruf d + ayat (2)",
-   "cite": "Perpres 10/2021 Pasal 3(1)(d) — no annex names this activity",
+   "bucket": "priority-lampiran-i",
+   "basis": "Pasal 3 ayat (1) huruf a",
+   "cite": "Perpres 49/2021 Lampiran I — priority business field (Pasal 3(1)(a))",
    "besar": "unobserved"
   },
   "38301": {
@@ -3976,9 +3976,9 @@
    "besar": "observed"
   },
   "39001": {
-   "bucket": "residual-besar-unobserved",
-   "basis": "Pasal 3 ayat (1) huruf d + ayat (2)",
-   "cite": "Perpres 10/2021 Pasal 3(1)(d) — no annex names this activity",
+   "bucket": "priority-lampiran-i",
+   "basis": "Pasal 3 ayat (1) huruf a",
+   "cite": "Perpres 49/2021 Lampiran I — priority business field (Pasal 3(1)(a))",
    "besar": "unobserved"
   },
   "39002": {
@@ -7792,9 +7792,9 @@
    "besar": "observed"
   },
   "77397": {
-   "bucket": "residual-besar-unobserved",
-   "basis": "Pasal 3 ayat (1) huruf d + ayat (2)",
-   "cite": "Perpres 10/2021 Pasal 3(1)(d) — no annex names this activity",
+   "bucket": "named-in-annex",
+   "basis": "Pasal 3 ayat (1) huruf b / huruf c",
+   "cite": "Perpres 49/2021 Lampiran II (Koperasi/UMKM) via KBLI-2020 77399",
    "besar": "unobserved"
   },
   "77399": {

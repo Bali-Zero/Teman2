@@ -23,6 +23,7 @@ if _FILIERA_DIR not in sys.path:
     sys.path.insert(0, _FILIERA_DIR)
 
 from perpres_body_default_relation import (  # noqa: E402
+    ADJACENT_NOT_CONTAINED,
     BESAR,
     BODY_OTHER_REQUIREMENT,
     BODY_TERTUTUP,
@@ -114,31 +115,54 @@ def test_a_code_named_only_through_its_2020_ancestor_is_not_residual(canonical, 
     assert ev["via_ancestor_only"] is True
 
 
-def test_the_ancestor_join_is_load_bearing_for_a_hundred_codes(canonical, annexes, prio):
-    """Not one special case: measured, 102 codes reach an annex ONLY through the
+def test_the_ancestor_join_is_load_bearing_for_a_hundred_codes(canonical, annexes, prio, carveout):
+    """Not one special case: measured, 106 codes reach an annex ONLY through the
     crosswalk. A regression that drops the join turns all of them open.
 
     The expected set is derived here WITHOUT calling `ancestors()`. Using the
     module's own reader on both sides would compute the same value twice and
-    agree with itself — a broken reader would still produce a matching 102.
+    agree with itself — a broken reader would still produce a matching 106.
+
+    102 -> 106: Batch-A ancestry populated in this PR adds 51103, 60103, 60203,
+    77397.
+
+    After scoping Lampiran III ancestor hits with the foreign-cap adjudication's
+    adjacent-not-contained set, five of those 106 no longer inherit Lampiran III:
+    51103, 60103, 60203 and 30303 fall back to residual (no annex names THIS
+    code), while 20235 falls through to its ancestor's Lampiran I listing and
+    becomes priority-lampiran-i. 77397 stays named-in-annex via Lampiran II.
     """
     umkm, caps = annexes
+    adjacent_not_contained = set(ADJACENT_NOT_CONTAINED)
     annex = umkm | caps
     via_ancestor_only = {
         code for code, rec in canonical.items()
         if code not in annex
         and {str(c) for c in ((rec.get("bps_2020_ancestors") or {}).get("codes") or [])} & annex
     }
-    assert len(via_ancestor_only) == 102
+    assert len(via_ancestor_only) == 106  # 51103, 60103, 60203, 77397 added
     assert {"55203", "55201", "96210", "96220"} <= via_ancestor_only
-    # And the module must actually route them: not one may come back RESIDUAL,
-    # which is the only failure that publishes an open default. `47221` lands in
-    # `body-other-requirement` rather than `named-in-annex` because the body
-    # outranks an annex — a stricter equality here would have failed on correct
-    # precedence, i.e. asserted the wrong thing about the right behaviour.
-    routed = {code: classify(code, canonical[code], umkm, caps, prio)[0] for code in via_ancestor_only}
-    assert not [c for c, b in routed.items() if b.startswith("residual")]
-    assert set(routed.values()) == {"named-in-annex", "body-other-requirement"}
+    routed = {
+        code: classify(code, canonical[code], umkm, caps, prio, carveout, adjacent_not_contained)[0]
+        for code in via_ancestor_only
+    }
+    # The adjacent-not-contained Lampiran III codes must NOT publish a restriction
+    # the adjudication itself says is a neighbour, not inside the code.
+    for code in ("30303", "51103", "60103", "60203"):
+        assert routed[code].startswith("residual"), (
+            f"{code}: adjacent-not-contained code must not be named-in-annex via Lampiran III"
+        )
+    # 20235's ancestor 20232 is in BOTH Lampiran I and III; after the Lampiran III
+    # exclusion it falls through to priority-lampiran-i, not residual.
+    assert routed["20235"] == "priority-lampiran-i"
+    # For every OTHER code reached only through an ancestor, the crosswalk must
+    # still route to a restricting annex or body list. Dropping the join would
+    # make them residual — the dangerous direction that publishes freedom the
+    # law does not grant. `47221` lands in body-other-requirement because the
+    # body outranks an annex — a stricter equality would fail on correct precedence.
+    non_excluded = via_ancestor_only - set(ADJACENT_NOT_CONTAINED)
+    assert not [c for c in non_excluded if routed[c].startswith("residual")]
+    assert set(routed[c] for c in non_excluded) == {"named-in-annex", "body-other-requirement"}
 
 
 def test_a_body_tertutup_code_is_located_by_the_body_not_by_absence(canonical, annexes, prio):
@@ -291,8 +315,11 @@ def test_the_residual_bucket_is_the_bulk_of_the_catalogue(rep):
     via_the_full_report`, below) route to their own bucket instead of hiding
     in here under the wrong article. 882 - 6 == 876 exactly — the six moved,
     nothing else did.
+
+    876 -> 877: `30303` (spacecraft) is adjacent-not-contained to Lampiran III
+    and now falls back to residual instead of inheriting a foreign-cap citation.
     """
-    assert rep["buckets"]["residual-besar-observed"] == 876
+    assert rep["buckets"]["residual-besar-observed"] == 877
     assert rep["buckets"]["sector-law-carveout"] == 6
 
 
@@ -609,12 +636,20 @@ def test_a_restriction_outranks_a_priority_listing(canonical, annexes, prio):
     assert ev["lampiran_i"] and ev["lampiran_ii"]  # both are still visible
 
 
-def test_the_priority_annex_moved_175_codes_out_of_the_residual_bucket(rep):
+def test_the_priority_annex_moved_177_codes_out_of_the_residual_bucket(rep):
     """The size of the omission, pinned. `residual-besar-observed` was 1055 and
-    is 882; a regression that drops the Lampiran I read restores the wrong 1055
+    is 880; a regression that drops the Lampiran I read restores the wrong 1055
     and every one of those rows starts citing the wrong article again.
+
+    The two that moved are `38222` ("Pengolahan dan Pembuangan Limbah Radioaktif",
+    ancestor 38220) and `39001` ("Aktivitas Penangkapan Karbon", ancestor 39000),
+    which reach Lampiran I through the Batch-A ancestry populated in this PR.
+
+    177 -> 178: `20235` (bespoke perfume) loses its Lampiran III ancestor hit to
+    the adjacent-not-contained exclusion, but its ancestor `20232` is ALSO in
+    Lampiran I, so it falls through to priority-lampiran-i rather than residual.
     """
-    assert rep["buckets"]["priority-lampiran-i"] == 175
+    assert rep["buckets"]["priority-lampiran-i"] == 178
     assert rep["annex_codes"]["lampiran_i"] == 194
 
 
@@ -661,19 +696,20 @@ def test_pma_prioritas_disagrees_with_the_operative_annex_in_both_directions(can
     fuses adjacent columns and manufactures five-digit matches; that probe first
     reported `35111` as present, and it is not).
 
-    Latent rather than visible: `isPriority` is carried through
-    `kbli-data.ts:406`, `kbli-data.server.ts:302` and two type modules and has
-    **no render site**, so no page states it today (family #2, exists != armed).
-    Pinned so the divergence cannot drift silently in either direction, and so
-    that whoever wires a priority badge reads this first and takes the set from
-    the instrument rather than from the flag.
+    Latent rather than visible: `isPriority` occurs only in
+    `lib/kbli-types.ts`, `lib/types/kbli.ts`, `lib/kbli-data.ts`,
+    `lib/kbli-data.server.ts` and four test fixtures; measured: **zero JSX use**.
+    So both movements are latent and nothing a client sees changes
+    (family #2, exists != armed). Pinned so the divergence cannot drift silently
+    in either direction, and so that whoever wires a priority badge reads this
+    first and takes the set from the instrument rather than from the flag.
     """
     flagged = {c for c, r in canonical.items() if r.get("pma_prioritas")}
     reached = {c for c, r in canonical.items() if ({c} | ancestors(r)) & prio}
     assert len(flagged) == 18
     assert len(flagged & reached) == 6
     assert len(flagged - reached) == 12
-    assert len(reached - flagged) == 219
+    assert len(reached - flagged) == 221
 
 
 # --------------------------------------------------------------------------
