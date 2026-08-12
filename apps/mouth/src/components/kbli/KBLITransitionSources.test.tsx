@@ -1,5 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import type { KBLITransition } from "@/lib/kbli-types";
 import { getCode } from "@/lib/kbli-data";
 import { KBLITransitionSources } from "./KBLITransitionSources";
 
@@ -81,5 +82,42 @@ describe("KBLITransitionSources — BPS-authoritative transition disclosure", ()
         name: "KBLI 2020 to 2025 transition sources",
       }),
     ).toBeInTheDocument();
+  });
+
+  it("guilt: a record with no BPS ancestry still renders the honest gap card (synthetic — no live code has this shape)", () => {
+    const cases: Array<[string, KBLITransition]> = [
+      [
+        "absent bpsCrosswalk",
+        {
+          mappingStatus: "",
+          pp28LicensingSourceCodes: [],
+        },
+      ],
+      [
+        "empty bpsCrosswalk codes",
+        {
+          mappingStatus: "",
+          pp28LicensingSourceCodes: [],
+          bpsCrosswalk: {
+            codes: [],
+            adjudicationStatus: "not-adjudicated",
+            inheritanceVerdict: "no-ancestors",
+          },
+        },
+      ],
+    ];
+
+    for (const [label, transition] of cases) {
+      const { unmount } = render(
+        <KBLITransitionSources transition={transition} />,
+      );
+      expect(screen.getByText("BPS crosswalk gap")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "No official BPS 2020 → 2025 crosswalk ancestor is recorded for this code. This is an ancestry data gap, not evidence that no KBLI 2020 predecessor existed.",
+        ),
+      ).toBeInTheDocument();
+      unmount();
+    }
   });
 });
