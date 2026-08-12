@@ -20,10 +20,24 @@ Safety contract (mirrors the worker's expectations in wa_outbox_worker.py):
     * Feature flag ``WA_INBOX_BOT_AUTOREPLY`` (default OFF) — when off, this
       raises so the worker marks the row failed/retry, NEVER a wrong send. Arm
       it via a Fly secret only when ready.
-    * On ABSTAIN → discard the model's answer field and return the localized
-      source-honest refusal from the reasoning SSOT. This keeps the channel
-      safe without silently abandoning the client. Transport/empty-response
-      errors still raise into the worker's retry/backoff guard.
+    * On any RAG ERROR → raise. The worker has a retry/backoff guard
+      (MAX_ATTEMPTS) and then marks ``failed`` — the operator can take over the
+      thread. We NEVER fabricate a reply or send an empty/placeholder body.
+    * On ABSTAIN → **send the localized refusal and tell a human** (changed
+      2026-08-11, Zero's ruling "rifiuto + avviso a un umano"). This used to
+      raise, and the contract sentence that lived here said the operator would
+      take over the thread. Measured, that operator did not come: of 28
+      threads, 26 had at least one failed row and exactly 4 were ever touched by
+      a human. So the client's whole experience of an abstain was silence — and
+      the message being discarded was, on the cases probed live, the persona
+      telling them the team had been notified and would reply within the hour.
+      Refusing out loud and actually notifying is strictly closer to true than
+      both halves of that. The same "tell a human" treatment now also covers a
+      leaked internal-monologue payload, a stripped ``[ESCALATE]`` marker, and a
+      RAG answer that turns out to be pure KG-workflow scaffolding — one choke
+      point, four causes, see ``human_reason`` below. The one thing this does
+      NOT touch is a grounded abstain that still carries a real answer: see
+      ``_abstain_answer_worth_sending``.
     * The 24h Meta customer-care window is enforced by the worker AFTER us, so
       we do not re-check it here.
 
@@ -99,6 +113,70 @@ _INTERNAL_MONOLOGUE_LEAK_RE = re.compile(
     r"(?:[ _-]+instructions)?(?:[^A-Za-z0-9]|$)",
     re.IGNORECASE,
 )
+
+
+# An abstain payload is worth sending when it actually contains an answer.
+# Measured 2026-08-11 across 16 cold questions in 8 languages: 7 came back
+# `abstain=true`, and 3 of those carried a complete on-topic answer. The old
+# consumer discarded all 7.
+#
+# Deliberately NOT a quality judgement — this module cannot re-score evidence and
+# must not try. It asks one thing: is there prose here, or only the residue of a
+# refusal? The floor is length, because the refusal shapes the RAG emits are
+# short ("Je suis prêt pour votre prochaine question." — 43 chars, measured) and
+# a real answer to any question this bot receives is not.
+_ABSTAIN_MIN_SENDABLE_CHARS = 200
+
+
+def _abstain_answer_worth_sending(data: dict[str, Any]) -> str:
+    """The answer text inside an abstain payload, or "" if there is none worth sending.
+
+    Returns the CLEANED, formatted text so the caller ships exactly what it
+    inspected — an earlier shape that returned a bool and let the caller re-derive
+    the text is how two code paths end up disagreeing about the same message.
+    """
+    # GROUNDING FIRST, length second. Added after a two-seat adversarial review
+    # (Codex gpt-5.6-sol xhigh + Gemini 3.1 Pro, briefed to refute, reviewed
+    # independently) returned the same verdict on the first version of this
+    # function: gating on text length alone "measures fluency, not support" and
+    # "can preferentially release the most confidently hallucinated answer" —
+    # on immigration/tax advice, where a wrong capital requirement or overstay
+    # rule carries real liability and a disclaimer does not neutralise it.
+    #
+    # They are right, and this module's OWN measurements say so too. Of the 7
+    # abstains observed across 16 cold questions, the 5 carrying real answers
+    # all had retrieved context (`context_length` 1-2); the 2 carrying junk had
+    # `context_length == 0` — "Je suis prêt pour votre prochaine question." and
+    # a Russian "I already provided the basic information". `context_length == 0`
+    # with `evidence_score == 0.0` is the signature of the model writing from
+    # parametric memory with nothing retrieved behind it. That is the one shape
+    # that must never reach a client, and length cannot tell it apart.
+    #
+    # So this sends only the case the label gate exists FOR: evidence was
+    # retrieved, and scored below the domain threshold. It never sends the case
+    # where there was no evidence at all.
+    try:
+        context_length = int(data.get("context_length") or 0)
+    except (TypeError, ValueError):
+        context_length = 0
+    try:
+        evidence = float(data.get("evidence_score") or 0.0)
+    except (TypeError, ValueError):
+        evidence = 0.0
+    if context_length <= 0 or evidence <= 0.0:
+        return ""
+
+    raw = (data.get("answer") or "").strip()
+    if len(raw) < _ABSTAIN_MIN_SENDABLE_CHARS:
+        return ""
+    cleaned = _strip_kg_workflow_scaffold(raw)
+    cleaned = format_rich_text(cleaned, "whatsapp")
+    # Re-check AFTER cleaning: the scaffold strip and the channel formatter can
+    # both shrink the text, and a payload that was only scaffold must not be
+    # rescued by its own length before the scaffold was removed.
+    if len(cleaned.strip()) < _ABSTAIN_MIN_SENDABLE_CHARS:
+        return ""
+    return cleaned.strip()
 
 
 def _strip_kg_workflow_scaffold(answer: str) -> str:
@@ -194,13 +272,17 @@ async def _tell_a_human(*, phone: str, reason: str, thread_id: Any) -> bool:
     return accepted
 
 
-# Mirrors backend/services/integrations/whatsapp_service.py's `text[:4096]`
-# hard cutoff (WhatsApp Cloud API's message-body limit). Duplicated as a
-# local constant rather than imported — this module's job ends at "the
-# text to send"; the actual truncate+send belongs to whatsapp_service.py
-# (another lane's file, out of scope here). Used only to log non-silently
-# when a reply is about to be truncated downstream, so the eventual
-# chunked-sending work has real data on how often/how badly this happens.
+# Mirrors whatsapp_service.WHATSAPP_BODY_LIMIT (WhatsApp Cloud API's
+# message-body limit). Duplicated as a local constant rather than imported —
+# this module's job ends at "the text to send"; the cut belongs to
+# whatsapp_service.fit_to_whatsapp_limit, which as of 2026-08-11 cuts at a
+# word boundary and marks it instead of severing mid-word. That placement is
+# deliberate and was CORRECTED here: a first version of the cure lived in this
+# module, and a census showed send_message has ~14 non-test call sites (outbox
+# worker, conversations router, compliance alerts, client-value predictor) of
+# which only two chunk beforehand — curing this producer would have left the
+# other eleven severing words. This warning stays because it is the only place
+# that knows the thread id and the pre-format length.
 #
 # NOT derived from backend/prompts/channel_overlays.py's
 # ChannelConfig(name="whatsapp", max_words=150, ...): that number is a
@@ -400,9 +482,15 @@ async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
             buys is a distinct line in the ledger. (Measured 2026-07-27: 49 of
             the 52 give-ups ever recorded were one of these two, all filed under
             the same sentinel as a genuine crash. See ``wa_bot_outcomes``.)
-        RuntimeError: RAG returned an empty transport-level answer. The
-            worker's guard turns this into retry/backoff. Semantic abstention
-            is returned to the customer as a localized safe reply instead.
+        RuntimeError: the RAG returned an empty transport-level answer. The
+            worker's guard turns this into a retry/backoff and eventually
+            ``failed`` — never a wrong send. **An abstain no longer raises**
+            (2026-08-11): it used to, and the client got silence while the
+            discarded message was the persona promising a callback nobody
+            performed. Semantic abstention now returns a localized safe reply
+            (the real answer, when the payload is grounded and carries one —
+            see ``_abstain_answer_worth_sending`` — otherwise the refusal
+            stub) and tells a human.
         httpx errors propagate (also caught by the worker guard) → retry.
     """
     if not is_bot_autoreply_enabled():
@@ -457,8 +545,50 @@ async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
     human_reason: str | None = None
 
     if data.get("abstain"):
+        # Zero's ruling (2026-08-11), on measurement: an abstain does NOT mean
+        # "no content". Probed live across 16 cold questions in 8 languages,
+        # SEVEN came back flagged `abstain=true` and three of those carried a
+        # complete, on-topic answer — the two German ones and an Indonesian one
+        # opened straight into the real PT PMA steps. Sending the stub instead
+        # would throw away a written answer and hand the client a refusal.
+        #
+        # This does NOT touch the abstain gates. Their generation-vs-label
+        # divergence is panel-ruled and tripwire-tested (CLAUDE.md §9) — the
+        # label gate MARKS confidence, it does not decide whether advice may
+        # exist. Reading the label as "discard the text" was this consumer's
+        # error, not the gate's. `_abstain_answer_worth_sending` re-checks
+        # grounding itself (context_length/evidence_score), so this can never
+        # rescue the ungrounded-but-fluent case a length check alone would miss.
+        #
+        # A substantive answer is sent WITHOUT going through `human_reason`
+        # below — the client got a real, on-topic answer, so nothing here is a
+        # refusal that needs a human's eyes.
+        substantive = _abstain_answer_worth_sending(data)
+        if substantive:
+            language = detect_query_language(query)
+            logger.info(
+                "wa-inbox bot: abstain on thread %s carried %d chars of answer — "
+                "sending it with the caution note rather than the stub",
+                thread_id,
+                len(substantive),
+            )
+            return substantive + get_localized_stub("low_confidence_note", language)
+
         # Never surface the endpoint's raw answer on this branch. The baseline
         # caught an abstain-labelled payload that still asserted Rp 10bn.
+        #
+        # RAG refused. Until 2026-08-11 this raised, the worker burned five
+        # retries and the client got SILENCE — while the answer being discarded
+        # was, on the measured cases, the persona telling the client that the
+        # team had been notified and would reply within one business hour. That
+        # promise is taught by the prompt's ESCALATION section, and nothing on
+        # this path performed it: the message was a promise nobody kept, thrown
+        # away before anyone could read it.
+        #
+        # Zero's ruling (2026-08-10): "rifiuto + avviso a un umano". So: send
+        # the localized refusal, and actually tell a human — via the single
+        # `human_reason` choke point below, shared with the other three causes
+        # (internal-monologue leak, [ESCALATE] marker, workflow-only output).
         logger.info(
             "wa-inbox bot: serving localized safe abstention for thread %s (reason=%r)",
             thread_id,
@@ -495,6 +625,25 @@ async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
         # nothing — the persona asked for a human and the request was erased in
         # transit. Verified on main before this change: zero telegram/notify
         # references in the whole file.
+        #
+        # INERT TODAY, ON PURPOSE — say it plainly rather than let a reader assume
+        # coverage. **No prompt in this backend asks the model to emit the token**
+        # (grepped 2026-08-11: the only occurrences are the two places that look for
+        # it), and a live probe saw it 0/14. So this branch cannot fire yet. It is
+        # here because the alternative — a second escalation path invented later —
+        # is how this file and whatsapp_chat.py drifted apart in the first place.
+        #
+        # It exists for the case `abstain` provably cannot catch: a message that
+        # asks a real question AND asks for a person retrieves an answer, does not
+        # abstain, and reaches nobody (measured 2026-08-11: 2 of 4 such messages did
+        # not abstain, and all 4 promised the client a callback).
+        #
+        # ARMING IT IS A SEPARATE CHANGE, and NOT just a prompt line: the prompt is
+        # shared by every consumer, and `blog_ask.py` / `agentic_rag.py` /
+        # `channels/web` return the answer with NO strip at all (0 occurrences of
+        # the token in any of them). Teaching the model to emit it without first
+        # moving the strip somewhere central would print an internal token to blog
+        # readers. Tracked in PENDING-ARMS.
         if "[ESCALATE]" in answer and human_reason is None:
             human_reason = "persona_escalate_marker"
         answer = answer.replace("[ESCALATE]", "").strip()
@@ -548,8 +697,11 @@ async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
         logger.warning(
             "wa-inbox bot: reply for thread %s is %d chars post-format (%d "
             "pre-format), exceeds WhatsApp's %d-char single-message limit — "
-            "whatsapp_service.py will hard-truncate it on send. Chunked "
-            "sending is out of scope for this change.",
+            "whatsapp_service.fit_to_whatsapp_limit will cut it at a boundary "
+            "and mark it on send. This module deliberately does NOT cut: the "
+            "send is the choke point (~14 call sites, only 2 of which chunk), "
+            "so curing it here would cure one producer and leave the rest "
+            "severing words mid-token.",
             thread_id,
             post_format_len,
             pre_format_len,

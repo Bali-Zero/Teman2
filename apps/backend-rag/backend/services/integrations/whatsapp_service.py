@@ -15,8 +15,85 @@ import httpx
 
 from backend.app.core.config import settings
 from backend.app.core.constants import HttpTimeoutConstants
+from backend.services.rag.agentic._reasoning_stubs import get_localized_stub
+from backend.utils.message_chunker import chunk_message
 
 logger = logging.getLogger(__name__)
+
+# WhatsApp Cloud API refuses a text body over this many characters.
+WHATSAPP_BODY_LIMIT = 4096
+
+# What a client sees when we could not name their language. A single ellipsis is
+# understood as "there was more" in every language this bot speaks, and it is the
+# only marker that cannot be WRONG. See fit_to_whatsapp_limit for why the
+# localized sentence is opt-in rather than the default.
+_NEUTRAL_TRUNCATION_MARKER = "…"
+
+
+def fit_to_whatsapp_limit(text: str, language: str | None = None) -> str:
+    """Cut an over-long body at a word boundary and mark it, instead of severing it.
+
+    Until 2026-08-11 ``send_message`` enforced the limit with ``text[:4096]``: a
+    silent cut, mid-word, with nothing telling the recipient anything was
+    removed — they cannot tell a finished answer from a decapitated one.
+
+    Measured live on ordinary client questions (two probes, 37 questions, cold
+    start, no history): **~10% crossed the limit**. Worst case, "What is Hak
+    Pakai and how long does it last?" returned 13,671 characters, so 9,575 —
+    70% of the answer — disappeared. Production agrees at a lower rate on a much
+    smaller sample: 4 of 311 bot replies, worst 7,521. It is not a fixed set of
+    long questions either: that same question asked three times returned
+    1,364 / 13,671 / 2,123 characters.
+
+    **Why this lives here and not in the bot.** A first version of this cure sat
+    in ``wa_inbox_bot``. The pre-existing test for the old behaviour said in its
+    own docstring that truncation is "whatsapp_service.py's job", and a census
+    agreed: ``send_message`` has ~14 non-test call sites — the outbox worker, the
+    conversations router, compliance alerts, the client-value predictor — and
+    only two of them (``whatsapp_chat.py``) chunk beforehand. Curing the bot
+    would have cured one producer and left the rest severing words.
+
+    **Why the localized sentence is opt-in.** ``detect_query_language`` is tuned
+    for QUERIES: measured on an Italian *answer* it returns ``ENGLISH``. So this
+    function cannot infer the recipient's language from the text it is sending,
+    and guessing would put an English apology under an Italian message. Callers
+    that know the language (they saw the incoming message) pass it and their
+    client gets the full sentence; everyone else gets the boundary cut plus a
+    neutral ellipsis, which is strictly better than a severed word and cannot be
+    wrong.
+
+    Neither marker promises the remainder. Nothing retains it, so "ask me to
+    continue" would be a promise this path cannot keep.
+
+    Fails OPEN: if anything here misbehaves the caller keeps the untouched text
+    and the payload builder truncates exactly as it did before — a worse
+    message, never a lost one.
+    """
+    # Self-guarding, not caller-guarded: without this a caller whose condition
+    # drifts would append "I shortened this" to a message it did not shorten,
+    # which is a lie about the text the recipient is holding.
+    if len(text) <= WHATSAPP_BODY_LIMIT:
+        return text
+
+    try:
+        marker = (
+            get_localized_stub("truncated_tail", language)
+            if language
+            else _NEUTRAL_TRUNCATION_MARKER
+        )
+        # Budget from the SUFFIX, never from the chunker's default margin: that
+        # margin is 96 characters and the localized sentence is longer, so a cure
+        # that overflowed the limit it exists to respect would be its own bug.
+        chunks = chunk_message(text, max_length=WHATSAPP_BODY_LIMIT - len(marker))
+        if not chunks or not chunks[0]:
+            return text
+        return chunks[0] + marker
+    # Broad on purpose: this is presentation. No failure of it may be the reason
+    # a recipient gets nothing instead of a truncated something.
+    except Exception as exc:
+        logger.warning("whatsapp: could not fit body to the %d-char limit: %s",
+                       WHATSAPP_BODY_LIMIT, exc)
+        return text
 
 
 class WhatsAppService:
@@ -56,6 +133,7 @@ class WhatsAppService:
         phone: str,
         text: str,
         reply_to_message_id: str | None = None,
+        language: str | None = None,
     ) -> dict[str, Any]:
         """
         Send a WhatsApp message.
@@ -64,6 +142,11 @@ class WhatsAppService:
             phone: Recipient phone number (with country code, no +)
             text: Message text
             reply_to_message_id: Optional message ID to reply to
+            language: Recipient's language, when the caller knows it (it saw the
+                incoming message). Over-long bodies are cut at a word boundary
+                either way; supplying this upgrades the marker from a neutral
+                ellipsis to a sentence saying the reply was shortened. Do NOT
+                guess it from `text` — see fit_to_whatsapp_limit.
 
         Returns:
             WhatsApp API response
@@ -89,7 +172,12 @@ class WhatsAppService:
             "recipient_type": "individual",
             "to": phone,
             "type": "text",
-            "text": {"body": text[:4096]},  # Enforce char limit
+            # Cut at a boundary and mark it, rather than `text[:4096]` severing a
+            # word in silence. fit_to_whatsapp_limit is a no-op below the limit,
+            # so the overwhelming majority of sends are byte-identical to before.
+            # The slice stays as a belt-and-braces guarantee that the payload can
+            # never exceed what the API accepts, even if the fit fails open.
+            "text": {"body": fit_to_whatsapp_limit(text, language)[:WHATSAPP_BODY_LIMIT]},
         }
 
         # Add reply context if provided
