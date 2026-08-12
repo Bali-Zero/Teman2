@@ -1,9 +1,16 @@
 # Vision Deck — spatial control room for Apple Vision Pro
 
-- **Status**: pilot (P1 deck + P2 dev cockpit + cinema editorial QA), Zero-approved 2026-08-11
+- **Status**: reboot-durable (P1 deck + P2 dev cockpit + cinema editorial QA), Zero-approved 2026-08-11, durability shipped 2026-08-12
 - **Machine**: Pro only (Mini was SSH-unreachable at build time — see PENDING-ARMS)
-- **Owner**: session (build+arm), Zero (adoption of durable LaunchAgent)
+- **Owner**: session (build+arm+durability)
 - **Source study**: `research/operations/2026-08-11-apple-vision-pro-tailnet-leverage.md`
+
+**2026-08-12 update**: the pilot originally shipped on raw `tmux` sessions, which died on a
+Pro reboot overnight (confirmed live, not hypothetical — the session found all three tmux
+sessions gone and manually restarted them). Replaced with three user LaunchAgents (see
+"Backing services" below) — this is the durable fix the original PENDING-ARMS row called for.
+The deck HTTP server was also re-pointed from the (reap-eligible, merged-PR) worktree to the
+main checkout path — both PENDING-ARMS rows from 2026-08-11 are now closed.
 
 ## What this is
 
@@ -49,67 +56,73 @@ Verify the full live mount table any time with:
 tailscale serve status
 ```
 
-## tmux sessions
+## Backing services — user LaunchAgents (reboot-durable, shipped 2026-08-12)
 
-The two backing services that are plain processes (not `tailscale serve` targeting
-a directory directly) run inside `tmux` so they survive the SSH/interactive session
-that started them:
+The three backing processes each run as a **user LaunchAgent** in `~/Library/LaunchAgents/`,
+loaded under `gui/$(id -u)` so they start automatically at every GUI login — no manual
+re-arm needed after a reboot:
 
-| tmux session                                                                | Command                                                                                            | Purpose                                   |
-| --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| `vision-deck-srv` (always — directory-serve confirmed unsupported on macOS) | `python3 -m http.server 18890 --directory <vision-deck content path — see below> --bind 127.0.0.1` | Serves the deck HTML                      |
-| `vision-cinema-srv`                                                         | `python3 -m http.server 18891 --directory /Users/nuzantara/vision-cinema --bind 127.0.0.1`         | Serves the editorial QA directory listing |
-| `vision-term`                                                               | `ttyd -p 7681 --interface 127.0.0.1 -W zsh`                                                        | Terminal cockpit                          |
+| Plist                               | Command                                                                                                                    | Purpose                                   |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `com.nuzantara.vision-deck.plist`   | `/opt/homebrew/bin/python3 -m http.server 18890 --directory /Users/nuzantara/nuzantara/infra/vision-deck --bind 127.0.0.1` | Serves the deck HTML (main checkout path) |
+| `com.nuzantara.vision-cinema.plist` | `/opt/homebrew/bin/python3 -m http.server 18891 --directory /Users/nuzantara/vision-cinema --bind 127.0.0.1`               | Serves the editorial QA directory listing |
+| `com.nuzantara.vision-term.plist`   | `/opt/homebrew/bin/ttyd -p 7681 --interface 127.0.0.1 -W zsh`                                                              | Terminal cockpit                          |
 
-List them: `tmux ls`. Attach: `tmux attach -t <name>`. Kill one: `tmux kill-session -t <name>`.
+All three: `RunAtLoad=true`, `KeepAlive=true`, logs at `~/Library/Logs/vision-<name>.log`,
+`PATH` env includes `/opt/homebrew/bin:/usr/bin:/bin`. `KeepAlive=true` is **correct** here
+per cicatrix family #7 (daemon-vs-cron KeepAlive misconfig) precisely because all three are
+long-running blocking servers (`http.server`, `ttyd`) that never exit on their own — the
+family-#7 failure mode is `KeepAlive=true` wrapping a **one-shot** payload, which this is not.
+
+List/inspect: `launchctl list | grep vision`. Manual restart of one: `launchctl kickstart -k
+gui/$(id -u)/com.nuzantara.vision-<name>`. (This is also the standard reboot-survival proof —
+`kickstart -k` simulates the process dying; a LaunchAgent with `KeepAlive=true` relaunches it
+immediately, the same mechanism that fires after a real reboot once the plist is loaded at
+login.)
+
+**Predecessor (retired 2026-08-12)**: this pilot originally shipped on raw `tmux` sessions
+(`vision-deck-srv`/`vision-cinema-srv`/`vision-term`), which do **not** survive a reboot —
+confirmed live when all three died overnight and had to be manually restarted. If `tmux ls`
+ever shows these names again, that's a regression back to the fragile predecessor, not a
+legitimate alternate backing.
 
 ## Content update path
 
 - **Deck** (`/deck/`): `python -m http.server` reads from disk on every request, so editing
-  `infra/vision-deck/index.html` and having it land in the directory `vision-deck-srv` actually
-  points at is enough — no restart needed. **Known gap, live 2026-08-11**: at pilot-arm time the
-  MAIN checkout's working tree (`/Users/nuzantara/nuzantara/infra/vision-deck/`) did not yet have
-  the merged files on disk (checkout was behind `origin/main`, and per cicatrix #1 HOME-fork
-  discipline an agent does not `git pull` the main checkout unilaterally) — `vision-deck-srv` was
-  pointed at the **worktree** copy (`.worktrees/ops-avp-tailnet/infra/vision-deck/`) instead,
-  verified byte-identical to `origin/main` at arm time. **This means the served deck will silently
-  go stale relative to `origin/main` the moment anyone edits `infra/vision-deck/` on main without
-  re-pointing `vision-deck-srv`** — check `tmux capture-pane -t vision-deck-srv -p` or the tmux
-  command line (`ps -ef | grep http.server`) to see which directory is actually being served
-  before assuming an edit went live. Re-pointing to the main checkout once it catches up is
-  tracked as a PENDING-ARMS item, not yet done.
+  `infra/vision-deck/index.html` on the **main checkout**
+  (`/Users/nuzantara/nuzantara/infra/vision-deck/`) is enough — no restart needed. As of
+  2026-08-12 the LaunchAgent serves from the main checkout path directly (not a worktree), so
+  this is the single canonical update path: edit the repo, merge to `origin/main`, and once the
+  main checkout picks up the change (whenever it's next pulled — this pilot does not auto-pull
+  it, per cicatrix #1 HOME-fork discipline) the served content updates on the next request with
+  zero re-arm. If the main checkout ever falls behind `origin/main` on `infra/vision-deck/`
+  specifically, the deck will serve stale content until the checkout catches up — check
+  `git -C /Users/nuzantara/nuzantara diff origin/main -- infra/vision-deck/` to see if that's
+  happening.
 - **Cinema** (`/cinema/`): symlinks in `~/vision-cinema/` point at the live WR2/WR3 output
   roots (`apps/war-room/output/carousel/`, `apps/war-room/output/episode/`) — new carousels/
   episodes appear automatically, no re-arming needed.
 - **Terminal** (`/term/`): live shell, nothing to update.
 
-## Re-arm after reboot (Pro restarts / tmux sessions die)
+## Re-arm after reboot
 
-`tailscale serve --bg` mounts persist across `tailscaled` restarts (they're stored in
-tailscale's local state), but the **backing tmux sessions do not survive a full reboot**.
-After a Pro reboot:
+Nothing to do — the LaunchAgents load automatically at GUI login (that is the entire point
+of the 2026-08-12 durability fix). To verify after a reboot:
 
 ```bash
-# 1. Recreate the deck HTTP server — point at wherever the current merged content
-#    actually lives on disk (main checkout if it's caught up, otherwise a worktree —
-#    see "Content update path" above); this example assumes the main checkout is current
-tmux new -d -s vision-deck-srv "python3 -m http.server 18890 --directory /Users/nuzantara/nuzantara/infra/vision-deck --bind 127.0.0.1"
-
-# 2. Recreate the cinema HTTP server
-tmux new -d -s vision-cinema-srv "python3 -m http.server 18891 --directory /Users/nuzantara/vision-cinema --bind 127.0.0.1"
-
-# 3. Recreate the terminal cockpit
-tmux new -d -s vision-term "ttyd -p 7681 --interface 127.0.0.1 -W zsh"
-
-# 4. Re-verify all serve mounts are intact (should already be, tailscale persists them)
-tailscale serve status
+launchctl list | grep vision                        # all three should show a PID, not "-"
+tailscale serve status                               # mounts persist independently, should already be intact
+curl -sk https://nuzantara.tail461666.ts.net/deck/ | head -c 60
+curl -sk https://nuzantara.tail461666.ts.net/cinema/ | head -c 60
+curl -sk https://nuzantara.tail461666.ts.net/term/ | head -c 60
 ```
 
-**Durable fix pending**: this pilot ships on raw `tmux`, not a `launchd` LaunchAgent —
-see PENDING-ARMS entry (a). A LaunchAgent would survive reboot without the manual
-re-arm above. Not shipped in this pilot pending Zero's adoption decision (KeepAlive
-misconfig is cicatrix family #7 — any LaunchAgent here needs a real blocking loop or
-`StartInterval`, never bare `KeepAlive=true` around a one-shot `python -m http.server`).
+If any LaunchAgent is missing from `launchctl list` (e.g. the plist was removed, or
+`gui/$(id -u)` bootstrap didn't fire at login), reload it manually:
+
+```bash
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.nuzantara.vision-<name>.plist
+```
 
 ## Kill switches
 
@@ -121,12 +134,17 @@ tailscale serve --https=443 --set-path /cinema off
 tailscale serve --https=443 --set-path /term off
 ```
 
-Kill the backing process (stops serving even if `tailscale serve` mount is left armed):
+Kill the backing LaunchAgent (stops serving even if `tailscale serve` mount is left armed).
+`bootout` unloads it until the next login/manual bootstrap; add `disable` to also prevent
+`RunAtLoad` from bringing it back at the next login:
 
 ```bash
-tmux kill-session -t vision-cinema-srv
-tmux kill-session -t vision-term
-tmux kill-session -t vision-deck-srv   # only if it exists
+launchctl bootout gui/$(id -u)/com.nuzantara.vision-deck
+launchctl bootout gui/$(id -u)/com.nuzantara.vision-cinema
+launchctl bootout gui/$(id -u)/com.nuzantara.vision-term
+
+# to also prevent RunAtLoad from reviving it at next login:
+launchctl disable gui/$(id -u)/com.nuzantara.vision-<name>
 ```
 
 Full nuclear option (also removes `/` and `:8443` — **do not use for this pilot's
@@ -158,9 +176,19 @@ tailscale serve reset
 
 ## Related PENDING-ARMS entries (see `.claude/skills/modus/PENDING-ARMS.md`)
 
-- (a) tmux-based serving, not a durable LaunchAgent — adoption pending Zero.
-- (b) `ttyd` has no app-level auth — hardening decision pending.
+- (a) **CLOSED 2026-08-12** — tmux-based serving replaced by three user LaunchAgents
+  (`com.nuzantara.vision-{deck,cinema,term}.plist`); resurrection proven live via
+  `launchctl kickstart -k`.
+- (b) `ttyd` has no app-level auth — hardening decision pending (still open, unaffected
+  by the durability work above).
 - (c) `PENDING-ALIGN:mini` — this cockpit was conceived for Mini (H24 server role)
   but landed on Pro because Mini's sshd was unreachable on 2026-08-11. Should be
   reconsidered once Mini connectivity is restored, per Mini's architecture role
-  (workhorse/H24, Pro = interactive dev).
+  (workhorse/H24, Pro = interactive dev). Still open, unaffected by the durability
+  work above.
+- **CLOSED 2026-08-12** — the separate worktree-reap risk for `vision-deck-srv` (it was
+  serving `infra/vision-deck/` from `.worktrees/ops-avp-tailnet/`, a worktree whose PR
+  #4022 was already merged and therefore reap-eligible) is also closed: the deck
+  LaunchAgent now serves from the main checkout path
+  (`/Users/nuzantara/nuzantara/infra/vision-deck/`), which both files were confirmed
+  present on and byte-identical to at cutover time — no HOME-fork copy was needed.
