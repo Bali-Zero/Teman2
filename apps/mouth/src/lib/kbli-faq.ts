@@ -159,7 +159,10 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
   // insurance codes this fix-pack cures are adjudicated under PP 14/2018
   // Pasal 5(1) jo. PP 3/2020, not the Perpres annexes, and attributing their
   // 80% cap to "Perpres 10/2021" would have named the wrong instrument.
-  const pmaSourceNote = pmaSourceNoteFaq(code.pma.source);
+  const pmaSourceNote = pmaSourceNoteFaq(
+    code.pma.source,
+    code.provenance?.pma.status ?? "untraceable_basis",
+  );
 
   // BROADER-adjudicated codes render "100% open" correctly for the WHOLE
   // code while a narrower bidang usaha inside them carries a Perpres
@@ -261,20 +264,20 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
     },
   ];
 
-  if (code.transition.previousCodes.length > 0) {
-    const mappingStatusNote =
-      code.transition.mappingStatus === "MATCH_LANGSUNG"
-        ? " This is a direct match — the code number and scope remained the same."
-        : code.transition.mappingStatus === "CODICE_RINUMERATO"
-          ? " The code was renumbered but the business activity scope is essentially unchanged."
-          : code.transition.mappingStatus === "MATCH_CON_AGGREGAZIONE"
-            ? " Multiple 2020 codes were merged into this single 2025 code."
-            : "";
-    entries.push({
-      question: `How did KBLI ${code.code} change from KBLI 2020 to 2025?`,
-      answer: `KBLI ${code.code} was mapped from previous code${code.transition.previousCodes.length > 1 ? "s" : ""} ${code.transition.previousCodes.join(", ")} (KBLI 2020).${code.transition.mappingNote ? ` ${code.transition.mappingNote}` : ""}${mappingStatusNote} ${KBLI_2025_MIGRATION_OVERDUE_NOTE}`,
-    });
-  }
+  const bpsCodes = code.transition.bpsCrosswalk?.codes ?? [];
+  const pp28Codes = code.transition.pp28LicensingSourceCodes;
+  const transitionAnswer =
+    bpsCodes.length > 0
+      ? `According to the official BPS 2020 → 2025 crosswalk, KBLI ${code.code} has recorded KBLI 2020 ancestor(s) ${bpsCodes.join(", ")}. This is provenance only, not a licensing claim; no predecessor licensing regime is asserted to transfer.`
+      : `No official BPS 2020 → 2025 crosswalk ancestor is recorded for this code. This is an ancestry data gap, not evidence that no KBLI 2020 predecessor existed.${
+          pp28Codes.length > 0
+            ? ` PP 28/2025 licensing-source codes recorded for this page: ${pp28Codes.join(", ")}. These are licensing citations, not official BPS ancestors.`
+            : ""
+        }`;
+  entries.push({
+    question: `How did KBLI ${code.code} change from KBLI 2020 to 2025?`,
+    answer: `${transitionAnswer} ${KBLI_2025_MIGRATION_OVERDUE_NOTE}`,
+  });
 
   return entries;
 }

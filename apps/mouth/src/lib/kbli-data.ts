@@ -370,7 +370,7 @@ function transformRecord(raw: KBLIRawCode): KBLICode {
 
   const transition: KBLITransition = {
     mappingStatus: raw.status_mapping,
-    previousCodes: raw.pp28_sources ?? [],
+    pp28LicensingSourceCodes: raw.pp28_sources ?? [],
     kbli2020Source: raw.kbli_2020_source,
     mappingNote: raw.mapping_note,
     aggregationNote: raw.aggregation_note,
