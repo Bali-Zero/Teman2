@@ -90,23 +90,41 @@ def _whatsapp_payload(message_id: str = "wamid.ABC123") -> dict:
 
 @pytest.mark.integration
 def test_acks_in_under_200ms(client: TestClient, mock_db_pool):
-    """Webhook returns 200 OK in <200ms even with no-op processing."""
+    """Webhook returns 200 OK in <200ms — measuring the ack-critical path only.
+
+    ``process_whatsapp_message_and_mark_processed`` MUST be mocked here, same
+    as in ``test_duplicate_persist_result_skips_fast_path`` below. Starlette's
+    ``Response.__call__`` awaits ``send()`` (which flushes bytes to the real
+    socket under uvicorn) BEFORE running ``BackgroundTasks``, so production
+    callers (Meta) receive the 200 ACK before background processing starts —
+    but FastAPI's ``TestClient`` runs the whole ASGI call, background task
+    included, before returning control to ``client.post()``. Left unmocked,
+    this test measured `get_orchestrator`'s lazy-singleton cold-start
+    (first-ever call constructs `AgenticRAGOrchestrator`, ~8s empirically —
+    warm calls are ~5ms) instead of the sub-200ms ack path it claims to
+    guard: name, docstring and comment all said 200ms while the assertion
+    had been silently widened to 1500ms to stop the red, which stopped
+    hiding the real defect that the test was measuring the wrong thing.
+    """
     payload = _whatsapp_payload()
 
-    # Patch the signature verification to no-op (no app secret set in test)
-    with patch(
-        "backend.app.routers.whatsapp_chat._verify_whatsapp_signature",
-        return_value=True,
+    with (
+        # Patch the signature verification to no-op (no app secret set in test)
+        patch(
+            "backend.app.routers.whatsapp_chat._verify_whatsapp_signature",
+            return_value=True,
+        ),
+        patch(
+            "backend.app.routers.whatsapp_chat.process_whatsapp_message_and_mark_processed",
+            new_callable=AsyncMock,
+        ),
     ):
         start = time.monotonic()
         resp = client.post("/webhook/whatsapp", json=payload)
         elapsed_ms = (time.monotonic() - start) * 1000
 
     assert resp.status_code == 200
-    # Local TestClient ack should be sub-200ms even on slow CI runners.
-    # The actual production guarantee is enforced by ack-first pattern;
-    # this test asserts no synchronous heavy work.
-    assert elapsed_ms < 1500, f"ack took {elapsed_ms:.0f}ms — possible sync work"
+    assert elapsed_ms < 200, f"ack took {elapsed_ms:.0f}ms — possible sync work"
 
 
 @pytest.mark.integration
