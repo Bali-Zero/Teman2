@@ -1,0 +1,432 @@
+{
+  "schema_version": 1,
+  "_doc": "Non-secret SSOT for installed LLM client placement and release locks only. Account, model-role, gate, and fallback topology remains authoritative in ../../FLEET_TOPOLOGY.json. The audit is observational only: it never installs, updates, authenticates, or reads credential values.",
+  "version_policy": {
+    "mode": "latest-stable",
+    "lock_refreshed_at": "2026-08-11",
+    "tracked_rule": "installed version must equal target_version; a newer unverified version is drift, not an automatic green",
+    "canary_rule": "canary_required entries remain non-compliant until the rollout is independently verified and this manifest is advanced",
+    "heavy_runtime_parity": false
+  },
+  "presence_values": ["required", "allowed", "forbidden"],
+  "alignment_scopes": ["pro-m5", "host-specific"],
+  "clients": [
+    {
+      "id": "codex",
+      "display_name": "Codex CLI",
+      "runtime_class": "light-cloud-client",
+      "alignment_scope": "pro-m5",
+      "require_version_parity": true,
+      "installer": {
+        "kind": "npm",
+        "identity": "@openai/codex"
+      },
+      "binaries": ["codex"],
+      "candidate_paths": [
+        "~/.local/bin/codex",
+        "/opt/homebrew/bin/codex",
+        "/usr/local/bin/codex"
+      ],
+      "version_args": ["--version"],
+      "target_version": "0.147.0",
+      "minimum_version": "0.147.0",
+      "rollout": "tracked",
+      "host_policy": {
+        "pro": "required",
+        "m5": "required",
+        "mini": "allowed"
+      },
+      "auth_probe": ["{binary}", "login", "status"]
+    },
+    {
+      "id": "claude",
+      "display_name": "Claude Code",
+      "runtime_class": "light-cloud-client",
+      "alignment_scope": "pro-m5",
+      "require_version_parity": true,
+      "installer": {
+        "kind": "native",
+        "identity": "claude-code-native",
+        "upstream_package": "@anthropic-ai/claude-code"
+      },
+      "binaries": ["claude"],
+      "candidate_paths": [
+        "~/.local/bin/claude",
+        "/opt/homebrew/bin/claude",
+        "/usr/local/bin/claude"
+      ],
+      "version_args": ["--version"],
+      "target_version": "2.1.226",
+      "minimum_version": "2.1.226",
+      "rollout": "tracked",
+      "host_policy": {
+        "pro": "required",
+        "m5": "required",
+        "mini": "allowed"
+      },
+      "auth_probe": ["{binary}", "auth", "status"]
+    },
+    {
+      "id": "agy",
+      "display_name": "Antigravity CLI",
+      "runtime_class": "light-cloud-client",
+      "alignment_scope": "pro-m5",
+      "require_version_parity": true,
+      "installer": {
+        "kind": "native-self-update",
+        "identity": "agy"
+      },
+      "binaries": ["agy"],
+      "candidate_paths": [
+        "~/.local/bin/agy",
+        "/opt/homebrew/bin/agy",
+        "/usr/local/bin/agy"
+      ],
+      "version_args": ["--version"],
+      "target_version": "1.1.11",
+      "minimum_version": "1.1.11",
+      "rollout": "tracked",
+      "host_policy": {
+        "pro": "required",
+        "m5": "required",
+        "mini": "allowed"
+      }
+    },
+    {
+      "id": "kimi",
+      "display_name": "Kimi Code CLI",
+      "runtime_class": "light-cloud-client",
+      "alignment_scope": "pro-m5",
+      "require_version_parity": true,
+      "installer": {
+        "kind": "github-release",
+        "identity": "MoonshotAI/kimi-code"
+      },
+      "binaries": ["kimi"],
+      "candidate_paths": [
+        "~/.kimi-code/bin/kimi",
+        "~/.local/bin/kimi",
+        "/opt/homebrew/bin/kimi",
+        "/usr/local/bin/kimi"
+      ],
+      "version_args": ["--version"],
+      "target_version": "0.34.0",
+      "minimum_version": "0.34.0",
+      "rollout": "tracked",
+      "host_policy": {
+        "pro": "required",
+        "m5": "required",
+        "mini": "allowed"
+      }
+    },
+    {
+      "id": "nlm",
+      "display_name": "NotebookLM CLI",
+      "runtime_class": "light-cloud-client",
+      "alignment_scope": "pro-m5",
+      "require_version_parity": true,
+      "installer": {
+        "kind": "uv-tool",
+        "identity": "notebooklm-mcp-cli"
+      },
+      "binaries": ["nlm"],
+      "candidate_paths": [
+        "~/.local/bin/nlm",
+        "/opt/homebrew/bin/nlm",
+        "/usr/local/bin/nlm"
+      ],
+      "version_args": ["--version"],
+      "target_version": "0.9.8",
+      "minimum_version": "0.9.8",
+      "rollout": "tracked",
+      "host_policy": {
+        "pro": "required",
+        "m5": "required",
+        "mini": "allowed"
+      },
+      "auth_probe": ["{binary}", "login", "--check"]
+    },
+    {
+      "id": "gemini",
+      "display_name": "Gemini CLI (deprecated fleet door)",
+      "runtime_class": "light-cloud-client",
+      "alignment_scope": "host-specific",
+      "require_version_parity": false,
+      "installer": {
+        "kind": "npm",
+        "identity": "@google/gemini-cli"
+      },
+      "binaries": ["gemini"],
+      "candidate_paths": [
+        "~/.local/bin/gemini",
+        "/opt/homebrew/bin/gemini",
+        "/usr/local/bin/gemini"
+      ],
+      "version_args": ["--version"],
+      "target_version": "0.54.4",
+      "minimum_version": "0.42.0",
+      "rollout": "tracked",
+      "host_policy": {
+        "pro": "allowed",
+        "m5": "allowed",
+        "mini": "allowed"
+      }
+    },
+    {
+      "id": "grok",
+      "display_name": "Grok CLI",
+      "runtime_class": "light-cloud-client",
+      "alignment_scope": "pro-m5",
+      "require_version_parity": true,
+      "installer": {
+        "kind": "native-self-update",
+        "identity": "grok-official-release"
+      },
+      "binaries": ["grok"],
+      "candidate_paths": [
+        "~/.grok/bin/grok",
+        "~/.local/bin/grok",
+        "/opt/homebrew/bin/grok",
+        "/usr/local/bin/grok"
+      ],
+      "version_args": ["--version"],
+      "target_version": "1.0.0",
+      "minimum_version": "1.0.0",
+      "rollout": "tracked",
+      "host_policy": {
+        "pro": "required",
+        "m5": "required",
+        "mini": "allowed"
+      }
+    },
+    {
+      "id": "opencode",
+      "display_name": "OpenCode CLI",
+      "runtime_class": "light-cloud-client",
+      "alignment_scope": "host-specific",
+      "require_version_parity": false,
+      "installer": {
+        "kind": "npm",
+        "identity": "opencode-ai"
+      },
+      "binaries": ["opencode"],
+      "candidate_paths": [
+        "~/.local/bin/opencode",
+        "/opt/homebrew/bin/opencode",
+        "/usr/local/bin/opencode"
+      ],
+      "version_args": ["--version"],
+      "target_version": "1.18.16",
+      "minimum_version": "1.18.16",
+      "rollout": "tracked",
+      "host_policy": {
+        "pro": "allowed",
+        "m5": "required",
+        "mini": "allowed"
+      }
+    },
+    {
+      "id": "qwen",
+      "display_name": "Qwen Code CLI",
+      "runtime_class": "light-cloud-client",
+      "alignment_scope": "host-specific",
+      "require_version_parity": false,
+      "installer": {
+        "kind": "npm",
+        "identity": "@qwen-code/qwen-code"
+      },
+      "usage_guardrail": "per-token execution requires explicit operator GO",
+      "binaries": ["qwen"],
+      "candidate_paths": [
+        "~/.local/bin/qwen",
+        "/opt/homebrew/bin/qwen",
+        "/usr/local/bin/qwen"
+      ],
+      "version_args": ["--version"],
+      "target_version": "0.21.9",
+      "minimum_version": "0.21.9",
+      "rollout": "tracked",
+      "host_policy": {
+        "pro": "allowed",
+        "m5": "required",
+        "mini": "allowed"
+      }
+    },
+    {
+      "id": "jules",
+      "display_name": "Jules CLI",
+      "runtime_class": "light-cloud-client",
+      "alignment_scope": "host-specific",
+      "require_version_parity": false,
+      "installer": {
+        "kind": "npm",
+        "identity": "@google/jules"
+      },
+      "binaries": ["jules"],
+      "candidate_paths": [
+        "~/.local/bin/jules",
+        "/opt/homebrew/bin/jules",
+        "/usr/local/bin/jules"
+      ],
+      "version_args": ["version"],
+      "target_version": "0.1.42",
+      "minimum_version": "0.1.42",
+      "rollout": "tracked",
+      "host_policy": {
+        "pro": "allowed",
+        "m5": "allowed",
+        "mini": "allowed"
+      }
+    },
+    {
+      "id": "pi",
+      "display_name": "Pi Coding Agent",
+      "runtime_class": "light-cloud-client",
+      "alignment_scope": "pro-m5",
+      "require_version_parity": true,
+      "installer": {
+        "kind": "npm",
+        "identity": "@mariozechner/pi-coding-agent"
+      },
+      "binaries": ["pi"],
+      "candidate_paths": [
+        "~/.local/bin/pi",
+        "/opt/homebrew/bin/pi",
+        "/usr/local/bin/pi"
+      ],
+      "version_args": ["--version"],
+      "target_version": "0.73.1",
+      "minimum_version": "0.73.1",
+      "rollout": "tracked",
+      "host_policy": {
+        "pro": "required",
+        "m5": "required",
+        "mini": "allowed"
+      }
+    },
+    {
+      "id": "aider",
+      "display_name": "Aider CLI",
+      "runtime_class": "light-cloud-client",
+      "alignment_scope": "pro-m5",
+      "require_version_parity": true,
+      "installer": {
+        "kind": "uv-tool",
+        "identity": "aider-chat"
+      },
+      "binaries": ["aider"],
+      "candidate_paths": [
+        "~/.local/bin/aider",
+        "/opt/homebrew/bin/aider",
+        "/usr/local/bin/aider"
+      ],
+      "version_args": ["--version"],
+      "target_version": "0.86.2",
+      "minimum_version": "0.86.2",
+      "rollout": "canary_required",
+      "rollout_metadata": {
+        "current_pin": "0.86.2",
+        "candidate": "0.86.2",
+        "blocked_by": "provider/model smoke not run; retired DeepSeek route still needs topology reconciliation",
+        "maintenance_window_required": false
+      },
+      "host_policy": {
+        "pro": "required",
+        "m5": "required",
+        "mini": "allowed"
+      }
+    },
+    {
+      "id": "cline",
+      "display_name": "Cline CLI",
+      "runtime_class": "light-cloud-client",
+      "alignment_scope": "host-specific",
+      "require_version_parity": false,
+      "installer": {
+        "kind": "npm",
+        "identity": "cline"
+      },
+      "binaries": ["cline"],
+      "candidate_paths": [
+        "~/.local/bin/cline",
+        "/opt/homebrew/bin/cline",
+        "/usr/local/bin/cline"
+      ],
+      "version_args": ["--version"],
+      "target_version": "3.0.52",
+      "minimum_version": "2.6.0",
+      "rollout": "canary_required",
+      "rollout_metadata": {
+        "current_pin": "2.6.0",
+        "candidate": "3.0.52",
+        "blocked_by": "official darwin-arm64 3.0.52 package passes registry integrity but fails macOS codesign and Gatekeeper validation",
+        "maintenance_window_required": false
+      },
+      "host_policy": {
+        "pro": "allowed",
+        "m5": "allowed",
+        "mini": "allowed"
+      }
+    },
+    {
+      "id": "ollama",
+      "display_name": "Ollama local runtime",
+      "runtime_class": "heavy-local-runtime",
+      "alignment_scope": "host-specific",
+      "require_version_parity": false,
+      "installer": {
+        "kind": "homebrew",
+        "identity": "ollama"
+      },
+      "binaries": ["ollama"],
+      "candidate_paths": ["/opt/homebrew/bin/ollama", "/usr/local/bin/ollama"],
+      "version_args": ["--version"],
+      "target_version": "0.32.7",
+      "minimum_version": "0.20.2",
+      "rollout": "canary_required",
+      "rollout_metadata": {
+        "current_pin": "0.20.2",
+        "candidate": "0.32.7",
+        "blocked_by": "local-model runtime canary and rollback validation",
+        "maintenance_window_required": true
+      },
+      "host_policy": {
+        "pro": "required",
+        "m5": "forbidden",
+        "mini": "required"
+      }
+    },
+    {
+      "id": "openclaw",
+      "display_name": "OpenClaw runtime",
+      "runtime_class": "daemon-runtime",
+      "alignment_scope": "host-specific",
+      "require_version_parity": false,
+      "installer": {
+        "kind": "npm",
+        "identity": "openclaw"
+      },
+      "binaries": ["openclaw"],
+      "candidate_paths": [
+        "~/.local/bin/openclaw",
+        "/opt/homebrew/bin/openclaw",
+        "/usr/local/bin/openclaw"
+      ],
+      "version_args": ["--version"],
+      "target_version": "2026.7.1-2",
+      "minimum_version": "2026.6.11",
+      "rollout": "canary_required",
+      "rollout_metadata": {
+        "current_pin": "2026.6.11",
+        "candidate": "2026.7.1-2",
+        "blocked_by": "daemon and workflow compatibility canary",
+        "maintenance_window_required": true
+      },
+      "host_policy": {
+        "pro": "required",
+        "m5": "forbidden",
+        "mini": "allowed"
+      }
+    }
+  ]
+}

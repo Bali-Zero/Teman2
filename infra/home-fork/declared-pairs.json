@@ -411,6 +411,12 @@
       "machines": ["all"]
     },
     {
+      "live": "~/.claude/hooks/host_boundary.py",
+      "repo": "infra/claude-hooks/host_boundary.py",
+      "_note": "Undeclared until 2026-08-12, and the live copy had carried 25 lines of ~/.claude carve-outs since 2026-06-16 that the repo never saw — live work never promoted, the dangerous direction of superscar #1. install_phase_aware.sh, the sanctioned deploy path, would have overwritten them and silently re-blocked the agent's own memory directory. Promoted and pinned by test_host_boundary_carveout.py.",
+      "machines": ["all"]
+    },
+    {
       "live": "~/.claude/hooks/runtime_state_allowlist.json",
       "repo": "infra/claude-hooks/runtime_state_allowlist.json",
       "_note": "DATA read by worktree_isolation.py (the ff-only exception's per-machine allowlist). install_worktree_hooks.sh deploys it as 644 alongside the two .py hooks.",

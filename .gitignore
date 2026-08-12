@@ -163,6 +163,9 @@ google_credentials.json
 # Codex CLI local config: MCP server map + hooks carrying absolute /Users
 # paths and Keychain/secret references — machine-local, never versioned.
 .codex/
+# Qwen CLI local config (permissions, computer-use settings) — same class
+# as .codex/.gemini/ above: machine-local, never versioned.
+.qwen/
 .libs/
 **/.claude/settings.local.json
 **/.claude/locks/

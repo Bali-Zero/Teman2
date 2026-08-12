@@ -1,3 +1,7 @@
+---
+adversarial_review: codex
+---
+
 # CHAPTER: The Surf-Coliving
 
 **1. The Dream**
@@ -14,15 +18,15 @@ He came to the consultant's office in board shorts, salt still in his hair, radi
 
 "Blocked?"
 
-"Effectively closed to a PMA, yes—but for a reason more structural than the café or the gym. 55209 has *no Usaha Besar scale*. There is no 'large enterprise' row in the OSS table for it. Under Perpres 49/2021, that means the activity is reserved for micro, small, and medium enterprise—UMKM. And here's the part that catches every foreigner: a PT PMA is *by law* classified as a large (Besar) enterprise, regardless of how small your actual operation is. So a twelve-room coliving compound and a five-hundred-room hotel chain are in the same boat: if the activity has no Besar scale, a PMA cannot register it. It's not that the province woke up one day and blocked it like the café. It's that the activity was never available to a large enterprise in the first place, and you—being a PMA—*are* a large enterprise in the eyes of the law."
+"Effectively closed for the model you just described—but for a subtler reason than the café or the gym. The reservation that bites here is written by *name*, not by code. Annex II of Perpres 10/2021, as amended by Perpres 49/2021, allocates *Guest House* lodging to cooperatives and small local enterprise—and Pasal 5(5) of the same Perpres scopes that reservation to exactly the activity named in the annex, not to the whole KBLI code around it. 55209 is the code where that named activity lives. So the question OSS is really asking you is: *what is your scope?* If the scope you declare reads as the guest-house model—rooms, shared facilities, short stays—you are standing on the reserved line, and a PT PMA cannot take a reserved *bidang usaha*; and whether your scope reads that way is OSS's call, not yours. And here's the part that catches every foreigner: a PT PMA is *by law* a large (Besar) enterprise, regardless of how small your actual operation is—you cannot shrink your way under a reservation built to protect the small."
 
 Finn frowned. "But it's tiny. Twelve rooms. I'm the opposite of a big corporation."
 
-"Your *operation* is tiny. Your *legal classification* is not. This is the single most counterintuitive trap in Indonesian company law, and it kills more small accommodation dreams than the moratorium does. The UMKM-reserved codes—homestay (55201), villa (55203), this coliving code (55209)—were set aside for Indonesian small business. A foreigner can only operate through a PMA. A PMA is automatically Besar. Besar is exactly what these codes exclude. The size of your dream is irrelevant; the structure of your vehicle is everything."
+"Your *operation* is tiny. Your *legal classification* is not. This is the single most counterintuitive trap in Indonesian company law, and it kills more small accommodation dreams than the moratorium does. The reserved lines—homestay (55201), villa (55203), and the guest-house scope of this very coliving code (55209)—were set aside for Indonesian small business. A foreigner can only operate through a PMA. A PMA is automatically Besar. Besar is exactly what a reservation for the small excludes. The size of your dream is irrelevant; the structure of your vehicle is everything."
 
 "So the accommodation half is dead."
 
-"The accommodation half, owned by your PMA, is dead. But like the retreat founders, your business is really two businesses stapled together—lodging and coworking—and they have different, separately ugly verdicts. Let's look at both before you despair, because the shape of the workaround depends on the seam between them."
+"The accommodation half, owned by your PMA and declared as what it actually is, is effectively dead—OSS would have to read your scope as something other than the reserved guest-house line, and betting a locked lease on that reading is not a plan. But like the retreat founders, your business is really two businesses stapled together—lodging and coworking—and they have different, separately ugly verdicts. Let's look at both before you despair, because the shape of the workaround depends on the seam between them."
 
 **3. The Blueprint: The Coliving Fact Sheet**
 
@@ -32,26 +36,26 @@ Here is the verified, ground-truth reality.
 
 > ### THE KBLI BATTLEGROUND: COLIVING & SHORT-STAY
 >
-> *Crucial context: all codes below are 100% open on the National Investment List. The obstacle is structural scale law (UMKM reservation) plus the real-estate moratorium.*
+> *Crucial context: all codes below are 100% open on the National Investment List. The obstacles are the Perpres Annex II reservations (lines of business allocated to cooperatives/MSMEs) plus Bali's moratorium.*
 >
 > **THE STRUCTURALLY CLOSED DOOR — THE LODGING**
 > *   **55209 — Aktivitas Penyediaan Akomodasi Jangka Pendek Lainnya (Other Short-Term Accommodation):**
 >     *   *National Status:* 100% PMA Open.
->     *   *Bali Status:* **CLOSED to PMA.** OSS has no Usaha Besar scale row → reserved for UMKM (Perpres 49/2021, Annex II). A PT PMA is Besar by law and cannot register it—regardless of how small the operation is.
+>     *   *Bali Status:* **SCOPE-DEPENDENT — the reserved line runs through the middle of the code.** Annex II of Perpres 10/2021 as amended by 49/2021 (p.15, entry 48) allocates *Guest House* lodging to cooperatives/MSMEs, and Pasal 5(5) scopes the reservation to the named activity only. A PT PMA cannot take the reserved guest-house scope; whether the rest of the code is open depends on the scope actually declared—verify live on OSS before committing.
 >
 > **THE COWORKING HALF**
 > *   **68127 — Office Building Management (where coworking lives):** **PROPOSED FOR CLOSURE** to foreign PMA in Bali (real-estate cluster). Not a clean home for the work-space half either.
 >
 > **THE NEIGHBOURING ACCOMMODATION DOORS**
-> *   **55201 Homestay — CLOSED (reserved for WNI).** **55203 Villa — CLOSED (no Besar).** **55101–55106 Star/Non-star Hotels — OPEN but scope-dependent (BLOCCATO_DIPENDE_SCOPE).**
+> *   **55201 Homestay — CLOSED (Annex II allocation; owner-resident model).** **55203 Villa — CLOSED (Annex II allocation).** **55101–55106 Star/Non-star Hotels — OPEN but scope-dependent: the scope you declare decides the verdict — except 55105 One-Star Hotels, allocated to cooperatives and MSMEs (0% foreign).**
 >
 > **THE LESSON IN THE NUMBERS**
-> *   "No Besar scale" = closed to every PMA, big or small. Your modest size does not exempt you; your PMA classification condemns you.
-> *   A PMA is *always* a large enterprise in law. UMKM-reserved codes are off-limits by definition, not by moratorium.
+> *   A reserved *bidang usaha* is closed to every PMA, big or small. Your modest size does not exempt you; your PMA classification condemns you.
+> *   A PMA is *always* a large enterprise in law. The Annex II reserved lines are off-limits by definition, not by moratorium.
 
 **4. The Money**
 
-The coliving build is heavy—a compound lease or purchase, twelve rooms of fit-out, a workspace, a kitchen, a pool, plus the minimum paid-up capital every PMA must commit. But unlike the café (where the money was ready and only the code was blocked), the coliving founder faces a problem money genuinely cannot solve, because the barrier is structural, not financial. You could arrive with ten million dollars and still not be able to register 55209 as a PMA, because the obstacle is your legal classification, not your bank balance.
+The coliving build is heavy—a compound lease or purchase, twelve rooms of fit-out, a workspace, a kitchen, a pool, plus the minimum paid-up capital every PMA must commit. But unlike the café (where the money was ready and only the code was blocked), the coliving founder faces a problem money genuinely cannot solve, because the barrier is a reservation, not a price. You could arrive with ten million dollars and still not be able to take the guest-house scope of 55209 as a PMA, because the obstacle is a line the Perpres reserves for local small enterprise, not your bank balance.
 
 This is what makes the UMKM-scale trap so brutal: there is no amount of capital that converts a Besar-classified PMA into the small enterprise the code requires. The only real path into this kind of small accommodation is to *change the structure of the lodging*—and the honest options are narrow. The genuinely open accommodation codes are the *hotels* (55101–55106), which carry their own scope conditions and imply a far larger, more formal operation than a twelve-room surf compound. Scaling *up* into a clearly-registrable hotel category, partnering with a licensed local accommodation provider, or separating the business so the PMA owns only the open coworking/community/education layer while the beds sit with a properly-licensed partner—these are the real moves. None of them is the simple "register my little compound" Finn walked in imagining.
 
@@ -59,7 +63,7 @@ The classic trap—*set up a local nominee to hold the UMKM accommodation while 
 
 **5. The Timeline**
 
-For 55209 under a PMA, there is no timeline—not because the province is slow, but because the first step (a Besar-classified PMA registering a UMKM-reserved activity) is structurally impossible. You cannot schedule what the scale law forbids. Finn's real timeline questions were architectural: Do I scale the vision up into a genuine hotel category (55101–55106) that a PMA *can* register—accepting a bigger, more formal, more capital-intensive build than the intimate compound I imagined? Do I keep the PMA to the open layers (community, programs, coworking if it survives) and partner out the beds entirely? Or do I accept that "small foreign-owned coliving compound" is, as a clean legal structure, simply not a thing the law currently allows?
+For the guest-house scope of 55209 under a PMA, there is no timeline—not because the province is slow, but because the first step (a PMA taking a *bidang usaha* the Perpres reserves for local small enterprise) is legally impossible. You cannot schedule what the reservation forbids. Finn's real timeline questions were architectural: Do I scale the vision up into a genuine hotel category (55101–55106) that a PMA *can* register—accepting a bigger, more formal, more capital-intensive build than the intimate compound I imagined? Do I keep the PMA to the open layers (community, programs, coworking if it survives) and partner out the beds entirely? Or do I accept that "small foreign-owned coliving compound" is, as a clean legal structure, simply not a thing the law currently allows?
 
 These are not "how long" questions. They are "what is this business actually allowed to be" questions—and the surf-coliving dream, more than most, forces the founder to choose between scaling up into legality or scaling the ambition down to a program-and-partnership model.
 
@@ -75,7 +79,7 @@ The pitfall that nearly cost Finn a locked-in lease was the most invisible trap 
 
 The second pitfall is the bundling trap he shared with the retreat founder: treating "surf-coliving" as one business when it is at least two codes (lodging + coworking), each with its own ugly verdict, neither of which is a clean open door. "It's a coliving business" is not a registrable statement; it's a marketing phrase covering a stack of separate legal questions.
 
-The crucial lesson: in Bali, your *legal classification* can disqualify you from a business no matter how small or well-funded you are. A PMA is always a large enterprise, and large enterprises are barred from the UMKM-reserved codes by definition—not by moratorium, not by risk class, but by the basic structure of the law. Before you fall for the intimacy of a small accommodation dream, ask the question that has nothing to do with money or charm: *does this code even have a Besar scale a PMA can occupy?* If it doesn't, the door was never open to you, and the only way through is to change the shape of the dream—up into a hotel category, or sideways into owning the experience while the island keeps the beds.
+The crucial lesson: in Bali, your *legal classification* can disqualify you from a business no matter how small or well-funded you are. A PMA is always a large enterprise, and large enterprises are barred from the reserved lines by definition—not by moratorium, not by risk class, but by an explicit allocation in the investment rules. Before you fall for the intimacy of a small accommodation dream, ask the question that has nothing to do with money or charm: *is this line of business allocated to local small enterprise in the Perpres annex?* If it is, the door was never open to you, and the only way through is to change the shape of the dream—up into a hotel category, or sideways into owning the experience while the island keeps the beds.
 
 **8. The Way Through**
 
@@ -109,3 +113,12 @@ Finn came in wanting to own a building full of beds. The law says the beds, at t
 The principle Finn has to internalise is the one the island has been signalling all along: **stop trying to own the part that's reserved, and own the part that's yours.** The beds, at small scale, are Balinese by design — that is not negotiable and not worth fighting. But the surf, the school, the program, the table, the brand, the community — every magnetic thing that made his vision more than a guesthouse — those are all activities a PMA *can* legally hold, once each is cleared on its own terms. The durable version of the surf-coliving dream is not a foreigner quietly owning a compound full of rooms. It is a foreigner owning the *reason people come*, partnered with the locals who own the place they sleep. That is not a downgrade of the dream. It is the only version of it the island will let him keep — and the only one he can sleep soundly inside.
 
 *Before you sign anything, scan to check the live status of KBLI 55209 against the candidate open routes — 93297 (water tourism), 85510 (sport & recreation education), 79121 (travel agency) and 56101 (food service) — and confirm, for each, both the sector permits it demands and its live OSS risk grade and Bali scope conditions, on the Nuzantara platform.*
+
+## Adversarial review
+
+- Seat: Codex `gpt-5.6-sol` (reasoning xhigh), refute stance, cross-family — reviewed the
+  2026-08-12 retraction-cure diff touching this file, verified against
+  `KBLI_2025_FINAL_CLEAN.json` (the cured dataset).
+- Outcome: FIX-FIRST → fixed in this same PR. 10 findings (9 confirmed/accommodated, 1 HOLDS): 96220 national status corrected to TERBATAS 0% (measured); 55201/55203 restated as the same Annex II entry 48 (sub-rows *Pondok Wisata* / *Vila*); the annex stated as a national instrument (articles 01/02); honest-map wording corrected (33.2% = almost exactly one in three; all but FOUR of the 372 nationally open; 1,041 = "not blocked", not "open"); surf-coliving guest-house-scope reading stated as OSS's call, not the founder's certainty; stale ID fact-sheet row (55203 "tanpa Besar") cured. Every fix re-measured against KBLI_2025_FINAL_CLEAN.json before applying.
+- Note: this section and the `adversarial_review` frontmatter key are R1-gate metadata;
+  the book/PDF composer strips the frontmatter block and this section from rendered output.
