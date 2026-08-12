@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import importlib.util
 import plistlib
+import shutil
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +33,11 @@ BAD_WRAPPER = """#!/bin/bash
 echo "no content genes"
 """
 
+FLEET_CHECKOUT_ROOTS = (
+    Path("/Users/nuzantara/nuzantara"),
+    Path("/Users/balizero/nuzantara"),
+)
+
 
 @pytest.fixture
 def fixture_repo(tmp_path: Path) -> Path:
@@ -47,8 +54,16 @@ def _write_script(repo: Path, relative: str, content: str) -> Path:
     return path
 
 
+def _write_runner_tree(repo: Path, payload_body: str = GOOD_WRAPPER) -> None:
+    for relative in ("scripts", "apps/foo", "infra/launchagents"):
+        (repo / relative).mkdir(parents=True, exist_ok=True)
+    _write_script(repo, "scripts/cron-runner.sh", BAD_WRAPPER)
+    _write_script(repo, "apps/foo/payload.sh", payload_body)
+
+
 def _analyze(fixture_repo: Path, argv: list[str]) -> dict[str, Any]:
     plist_path = fixture_repo / "infra/launchagents/com.test.runner-aware.plist"
+    plist_path.parent.mkdir(parents=True, exist_ok=True)
     label = "com.test.runner-aware"
     plist_path.write_bytes(plistlib.dumps({"Label": label, "ProgramArguments": argv}))
     ka_mod = coc._load_keepalive_module(REPO_ROOT)
@@ -260,3 +275,159 @@ def test_innocence_canonical_checkout_alias_maps_exact_paths_to_worktree(
     assert organ["wrapper"] == "apps/foo/payload.sh"
     assert "G2_heartbeat" not in organ["missing"]
     assert "G5_kill_switch" not in organ["missing"]
+
+
+@pytest.mark.parametrize("canonical_checkout", FLEET_CHECKOUT_ROOTS)
+def test_guilt_canonical_fleet_runner_uses_payload_under_synthetic_root(
+    fixture_repo: Path,
+    canonical_checkout: Path,
+) -> None:
+    """The old verdict inspected cron-runner under a non-alias root.
+
+    fixture_repo is intentionally not a linked worktree of this repository,
+    so no git-common-dir accident can make the canonical fleet path resolvable.
+    """
+    _write_runner_tree(fixture_repo)
+
+    organ = _analyze(
+        fixture_repo,
+        [
+            "/bin/bash",
+            str(canonical_checkout / "scripts/cron-runner.sh"),
+            str(canonical_checkout / "apps/foo/payload.sh"),
+        ],
+    )
+
+    assert organ["wrapper"] == "apps/foo/payload.sh"
+    assert "G2_heartbeat" not in organ["missing"]
+    assert "G5_kill_switch" not in organ["missing"]
+
+
+def test_innocence_fleet_alias_set_is_small_exact_and_auditable() -> None:
+    assert coc.CANONICAL_FLEET_CHECKOUT_ROOTS == FLEET_CHECKOUT_ROOTS
+
+
+def test_innocence_canonical_fleet_payload_without_gene_still_fails(
+    fixture_repo: Path,
+) -> None:
+    _write_runner_tree(fixture_repo, payload_body=BAD_WRAPPER)
+
+    organ = _analyze(
+        fixture_repo,
+        [
+            "/bin/bash",
+            "/Users/nuzantara/nuzantara/scripts/cron-runner.sh",
+            "/Users/nuzantara/nuzantara/apps/foo/payload.sh",
+        ],
+    )
+
+    assert organ["wrapper"] == "apps/foo/payload.sh"
+    assert {"G2_heartbeat", "G5_kill_switch"} <= set(organ["missing"])
+
+
+def test_guilt_missing_canonical_fleet_payload_stays_fail_closed_and_names_token(
+    fixture_repo: Path,
+) -> None:
+    _write_runner_tree(fixture_repo)
+    missing_token = "/Users/nuzantara/nuzantara/apps/foo/missing.sh"
+
+    organ = _analyze(
+        fixture_repo,
+        [
+            "/bin/bash",
+            "/Users/nuzantara/nuzantara/scripts/cron-runner.sh",
+            missing_token,
+        ],
+    )
+
+    assert "wrapper" not in organ
+    assert {"G2_heartbeat", "G5_kill_switch"} <= set(organ["missing"])
+    assert any(missing_token in note for note in organ["notes"])
+
+
+@pytest.mark.parametrize(
+    "external_token",
+    [
+        "/opt/homebrew/bin/something",
+        "/Users/nuzantara/other-repo/x.sh",
+    ],
+)
+def test_innocence_external_absolute_tokens_are_not_fleet_aliases(
+    fixture_repo: Path,
+    external_token: str,
+) -> None:
+    _write_script(fixture_repo, f"apps/foo/{Path(external_token).name}", GOOD_WRAPPER)
+    ka_mod = coc._load_keepalive_module(REPO_ROOT)
+
+    resolved = coc._resolve_repo_file_strict(external_token, fixture_repo, ka_mod)
+
+    assert resolved is None
+
+
+def test_verdict_is_identical_from_main_linked_and_synthetic_roots(
+    tmp_path: Path,
+) -> None:
+    """One closed fixture tree has one verdict, independent of git topology."""
+    main_checkout = tmp_path / "main-checkout"
+    _write_runner_tree(main_checkout)
+    subprocess.run(["git", "init", "-q", str(main_checkout)], check=True)
+    subprocess.run(
+        ["git", "-C", str(main_checkout), "add", "-A"],
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(main_checkout),
+            "-c",
+            "user.name=Organ Conformance Test",
+            "-c",
+            "user.email=organ-conformance@example.invalid",
+            "commit",
+            "-qm",
+            "fixture",
+        ],
+        check=True,
+        capture_output=True,
+    )
+
+    linked_worktree = tmp_path / "linked-worktree"
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(main_checkout),
+            "worktree",
+            "add",
+            "--detach",
+            str(linked_worktree),
+            "HEAD",
+        ],
+        check=True,
+        capture_output=True,
+    )
+
+    synthetic_root = tmp_path / "synthetic-root"
+    shutil.copytree(
+        main_checkout,
+        synthetic_root,
+        ignore=shutil.ignore_patterns(".git"),
+    )
+    subprocess.run(["git", "init", "-q", str(synthetic_root)], check=True)
+
+    argv = [
+        "/bin/bash",
+        "/Users/nuzantara/nuzantara/scripts/cron-runner.sh",
+        "/Users/nuzantara/nuzantara/apps/foo/payload.sh",
+    ]
+    verdicts = [
+        _analyze(root, argv)
+        for root in (main_checkout, linked_worktree, synthetic_root)
+    ]
+
+    assert [
+        (verdict.get("wrapper"), verdict["missing"], verdict["notes"])
+        for verdict in verdicts
+    ] == [("apps/foo/payload.sh", [], [])] * 3
