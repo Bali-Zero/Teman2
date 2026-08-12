@@ -196,6 +196,30 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "`credential_id` in Cloud Monitoring), never key material — the file "
         "exists so a PUBLIC repo can name an authorised key without holding it",
     ),
+    # gold_replay_driver.py: _REPOSITORY_PRODUCTION_SIGNING_KEYS holds the
+    # Ed25519 PUBLIC verification key of the production RulePack signing
+    # keypair (kid=prod-2026-07-1), read at replay time to verify signed
+    # packs offline. The same public key is already published verbatim in
+    # docs/runbooks/visa-engine-key-ceremony.md (a docs/*.md path already
+    # covered by the AUTO_APPROVE_RULES docs rule below) — it is a trust
+    # root, not a secret; the private signing key never touches this repo
+    # (offline key ceremony, off-repo custody per that runbook). Content-
+    # keyed rather than path-only because this is production code with an
+    # open surface for future additions (a real credential accidentally
+    # pasted onto an unrelated line in this file should still be flagged):
+    # the pattern only approves a `"public_key": "<43-char base64url>"`
+    # assignment, matching the exact shape of a 32-byte Ed25519 public key
+    # encoded unpadded base64url, end-anchored to the line.
+    (
+        re.compile(
+            r"(^|/)apps/backend-rag/backend/scripts/visa_engine/gold_replay_driver\.py$"
+        ),
+        re.compile(r'^\s*"public_key"\s*:\s*"[A-Za-z0-9_-]{43}"\s*,?\s*$'),
+        "gold_replay_driver.py: Ed25519 PUBLIC verification key of the "
+        "production RulePack signing keypair, published verbatim in "
+        "docs/runbooks/visa-engine-key-ceremony.md — a trust root read at "
+        "replay time, never a credential (private key is off-repo)",
+    ),
     # research/visa/2026-08-12-gold-replay-live-report.json: the G-b gold
     # replay driver's live-run report. `payload_sha256` (repeated once per
     # persona/pack observation, 23x in this file, all the same value) is the

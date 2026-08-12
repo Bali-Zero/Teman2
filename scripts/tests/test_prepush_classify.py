@@ -1834,3 +1834,108 @@ def test_edge_v9_added_no_second_allowlist_mechanism() -> None:
     for _prefix, suffixes in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS:
         assert suffixes, "no bare-prefix (suffix-less) entry may exist"
         assert all(s.startswith(".") for s in suffixes)
+
+
+# ===========================================================================
+# v10 (2026-08-12) — infra/claude-hooks (.py) + infra/guard-conformance
+# (.json), two new directory entries.
+#
+# Trigger: PR #4125-shaped diffs — touching only the claude-hooks
+# test/guard corpus and its conformance registry — forced `full` under v9
+# despite zero runtime coupling to `pytest backend/tests/` (measured: the
+# only two `apps/`-tree hits for "claude-hooks" are prose, not imports; no
+# conftest adds `infra/` to sys.path) and despite three CI workflows
+# (guard-conformance.yml, hook-innocence-gate.yml,
+# kbli-filiera-vault-compilers.yml) already running that corpus
+# independently of this classifier. See the module docstring's
+# "v10 EXTENSION" section for the full measurement.
+# ===========================================================================
+
+
+def test_innocence_real_pr_4125_file_set_skips() -> None:
+    """PR #4125's actual file set, verbatim.
+
+    Under v9 this returned `full`. `.github/workflows/guard-conformance.yml`
+    and `infra/home-fork/declared-pairs.json` were ALREADY allowlisted (the
+    `.github/workflows` and `infra/home-fork` entries predate v10) — the two
+    new `infra/claude-hooks` (.py) and `infra/guard-conformance` (.json)
+    pairs are the whole delta that flips this set to skip-backend.
+    """
+    verdict, unknown = pc.classify(
+        [
+            ".claude/skills/modus/PENDING-ARMS.md",
+            ".github/workflows/guard-conformance.yml",
+            "infra/claude-hooks/orchestrate_gate.py",
+            "infra/claude-hooks/test_hook_innocence.py",
+            "infra/claude-hooks/test_orchestrate_gate_disarm_notice.py",
+            "infra/claude-hooks/test_orchestrate_gate_vocab.py",
+            "infra/guard-conformance/registry.json",
+            "infra/home-fork/declared-pairs.json",
+        ]
+    )
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+
+def test_guilt_claude_hooks_mixed_with_backend_forces_full() -> None:
+    """Composition: one innocent claude-hooks file does not launder a real
+    backend file riding along in the same push."""
+    verdict, unknown = pc.classify(
+        ["infra/claude-hooks/x.py", "apps/backend-rag/backend/main.py"]
+    )
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == ["apps/backend-rag/backend/main.py"]
+
+
+def test_guilt_scripts_root_py_still_forces_full() -> None:
+    """The v10 REJECTED widening (blanket scripts/**/*.py) stays rejected —
+    infra/claude-hooks admitting .py must not spill onto root scripts/*.py,
+    which the backend suite provably imports from
+    (scripts.curated_qa_harvest, scripts.drive_token_watchdog, ...)."""
+    path = "scripts/curated_qa_harvest.py"
+    verdict, unknown = pc.classify([path])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == [path]
+
+
+def test_guilt_claude_hooks_wrong_suffix_forces_full() -> None:
+    """Suffix scoping holds: infra/claude-hooks admits `.py` only, not
+    `.sh`."""
+    path = "infra/claude-hooks/run.sh"
+    verdict, unknown = pc.classify([path])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == [path]
+
+
+def test_guilt_guard_conformance_wrong_suffix_forces_full() -> None:
+    """Suffix scoping holds: infra/guard-conformance admits `.json` only,
+    not `.py`."""
+    path = "infra/guard-conformance/check.py"
+    verdict, unknown = pc.classify([path])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == [path]
+
+
+def test_guilt_claude_hooks_traversal_escape_forces_full() -> None:
+    """HARDENING-2 still holds for the two new v10 prefixes: `..` cannot
+    escape infra/claude-hooks back onto a real backend file."""
+    path = "infra/claude-hooks/../../apps/backend-rag/backend/main.py"
+    verdict, unknown = pc.classify([path])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == [path]
+
+
+def test_allowlist_version_bumped_to_10_for_the_claude_hooks_entries() -> None:
+    """The skip-banner logs the version that approved a skip; a rules change
+    without a bump makes the log line unattributable."""
+    assert pc.ALLOWLIST_VERSION >= 10
+    assert ("infra/claude-hooks", (".py",)) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
+    assert ("infra/guard-conformance", (".json",)) in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS
+
+
+def test_edge_v10_added_no_second_allowlist_mechanism() -> None:
+    """v10 added two suffix-scoped directory entries. It must not have
+    introduced a third matching path (the v1 bare-prefix mistake)."""
+    for _prefix, suffixes in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS:
+        assert suffixes, "no bare-prefix (suffix-less) entry may exist"
+        assert all(s.startswith(".") for s in suffixes)

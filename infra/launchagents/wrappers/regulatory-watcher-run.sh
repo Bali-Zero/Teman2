@@ -401,9 +401,16 @@ cat "$TMPOUT" >> "$LOG"
 if [ $SUCCESS -eq 0 ]; then
     echo "[$(date)] tier 1 failed/exhausted — falling back to agy (Gemini 3.1 Pro)" >> "$LOG"
     > "$TMPOUT"
-    printf '%s' "$PROMPT_GENERIC" | /Users/nuzantara/.local/bin/agy -p --print-timeout 5m >"$TMPOUT" 2>&1
+    # `-p`/`--print` TAKES A VALUE (measured live 2026-08-13, both forms exit 0):
+    # `-p --print-timeout 5m` binds the literal string "--print-timeout" as the
+    # prompt and leaves "5m" a stray positional — agy never reads stdin. Prompt
+    # must be `-p`'s own argv value; --print-timeout stays a separate flag.
+    # NOTE: agy v1.1.12 has no stdin path, so the prompt now travels on argv —
+    # visible via `ps` to every other user on this machine while the process
+    # runs (see PR body for the PII disclosure this forces).
+    /Users/nuzantara/.local/bin/agy -p "$PROMPT_GENERIC" --print-timeout 5m >"$TMPOUT" 2>&1
     EXIT=$?
-    if [ $EXIT -eq 0 ] && ! grep -qE "quota|limit|429|exhausted|TerminalQuotaError" "$TMPOUT" && ensure_full_delta "$TMPOUT"; then
+    if [ $EXIT -eq 0 ] && ! grep -qiE "quota|limit|429|exhausted|TerminalQuotaError|auto-denied|headless mode cannot prompt|no output produced" "$TMPOUT" && ensure_full_delta "$TMPOUT"; then
         SUCCESS=1
         USED_LLM="gemini-3.1-pro-agy"
     fi

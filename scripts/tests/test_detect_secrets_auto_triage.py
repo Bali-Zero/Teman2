@@ -215,7 +215,8 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     """Sanity: the KBLI gold-set rule is path-scoped to kbli-gold-all.json
     only — not the other KBLI files, which stay on the closed-writer-set
     path rules in AUTO_APPROVE_RULES."""
-    assert len(CONTENT_KEYED_RULES) == 6  # +1: infra/llm-credentials/declared.json sha256_16 (2026-08-12)
+    assert len(CONTENT_KEYED_RULES) == 7  # +1: infra/llm-credentials/declared.json sha256_16 (2026-08-12)
+    # +1: apps/backend-rag/backend/scripts/visa_engine/gold_replay_driver.py public_key (2026-08-13)
     # +1: research/visa/2026-08-12-gold-replay-live-report.json payload_sha256 (2026-08-13)
     path_pat, _content_pat, reason = CONTENT_KEYED_RULES[1]
     assert path_pat.search(KBLI_GOLD_ALL)
@@ -519,6 +520,79 @@ def test_innocence_llm_credentials_same_shape_in_another_file_not_approved() -> 
     assert not (auto and "never key material" in reason)
 
 
+# --- gold_replay_driver.py Ed25519 public_key rule (2026-08-13) ------------
+#
+# Context: CI's "Detect Secrets" gate flagged
+# apps/backend-rag/backend/scripts/visa_engine/gold_replay_driver.py:86 as an
+# unaudited "Base64 High Entropy String" — the Ed25519 PUBLIC verification
+# key of the production RulePack signing keypair (kid=prod-2026-07-1),
+# already published verbatim in docs/runbooks/visa-engine-key-ceremony.md.
+# It is a trust root read at replay time, never a secret; the private key
+# never touches this repo.
+#
+# Content-keyed, same discipline as the rules above: approval needs the line
+# to be exactly `"public_key": "<43-char base64url>"[,]`, end-anchored, so a
+# real credential pasted onto any other line in this production-code file
+# still stops the gate.
+
+GOLD_REPLAY_DRIVER = "apps/backend-rag/backend/scripts/visa_engine/gold_replay_driver.py"
+
+
+def test_gold_replay_driver_rule_registered_and_scoped_to_exactly_one_file() -> None:
+    path_pat, _content_pat, reason = CONTENT_KEYED_RULES[5]
+    assert path_pat.search(GOLD_REPLAY_DRIVER)
+    assert not path_pat.search(
+        "apps/backend-rag/backend/scripts/visa_engine/gold_replay_driver.py.bak"
+    )
+    assert not path_pat.search("apps/backend-rag/backend/scripts/visa_engine/other.py")
+    assert "trust root" in reason
+
+
+def test_guilt_gold_replay_driver_public_key_line_is_approved() -> None:
+    """The exact finding shape that made `Detect Secrets` red: a 32-byte
+    Ed25519 public key, unpadded base64url-encoded (43 chars)."""
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[5]
+    for line in (
+        '    "public_key": "ab3De9FghijKLM12no3PqrstUVwxyz45ABCdefGHI9X"',
+        '        "public_key": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",',
+    ):
+        assert content_pat.match(line), f"must be approved: {line!r}"
+
+
+def test_innocence_gold_replay_driver_wrong_key_name_not_approved() -> None:
+    """Keyed on the field NAME, not on base64 shape: the same 43-char value
+    under a different assignment target must still be flagged."""
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[5]
+    assert (
+        content_pat.match('    "private_key": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"')
+        is None
+    )
+
+
+def test_innocence_gold_replay_driver_wrong_length_not_approved() -> None:
+    """Exactly 43 chars (32-byte Ed25519 key, unpadded base64url) — a shorter
+    or longer value cannot be this key and stays unaudited."""
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[5]
+    assert content_pat.match('    "public_key": "AAAAAAAAAAAAAAAAAAAAAAAA"') is None  # too short
+    assert (
+        content_pat.match(
+            '    "public_key": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"'
+        )
+        is None
+    )  # too long
+
+
+def test_innocence_gold_replay_driver_ride_along_statement_not_approved() -> None:
+    """End-anchored: a legitimate public_key line followed by anything else
+    must not launder the ride-along."""
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[5]
+    compound = (
+        '    "public_key": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", '
+        '"api_key": "ghp_reallivetoken"'
+    )
+    assert content_pat.match(compound) is None
+
+
 # --- gold replay driver live-run report payload_sha256 rule (2026-08-13) ---
 #
 # Context: the G-b gold replay driver's live-run report
@@ -539,7 +613,10 @@ def test_innocence_llm_credentials_same_shape_in_another_file_not_approved() -> 
 # tests of its own — exactly the gap that let a same-day merge-of-main
 # collide it with `infra/llm-credentials/declared.json`'s rule at the same
 # list index (both additions correct individually, colliding only in
-# position; see the reordering above and cicatrix-superscar #9).
+# position; see the reordering above and cicatrix-superscar #9). The second
+# collision, with main's gold_replay_driver.py rule landing at the same
+# index via PR #4130, is resolved the same way: both rules kept, this one
+# moved to CONTENT_KEYED_RULES[6].
 
 GOLD_REPLAY_LIVE_REPORT = "research/visa/2026-08-12-gold-replay-live-report.json"
 
@@ -547,7 +624,7 @@ GOLD_REPLAY_LIVE_REPORT = "research/visa/2026-08-12-gold-replay-live-report.json
 def test_gold_replay_live_report_rule_registered_and_scoped_to_exactly_one_file() -> (
     None
 ):
-    path_pat, _content_pat, reason = CONTENT_KEYED_RULES[5]
+    path_pat, _content_pat, reason = CONTENT_KEYED_RULES[6]
     assert path_pat.search(GOLD_REPLAY_LIVE_REPORT)
     assert not path_pat.search(
         "research/visa/2026-08-12-gold-replay-live-report.json.bak"
@@ -578,7 +655,7 @@ def test_innocence_gold_replay_live_report_wrong_key_name_same_hex_shape_not_app
 ):
     """Keyed on the field NAME, not on hex shape: the same 64-hex value under
     a different assignment target must still be flagged."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[5]
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[6]
     fake_line = (
         '    "rulepack_signature": '
         '"3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82"'
@@ -589,7 +666,7 @@ def test_innocence_gold_replay_live_report_wrong_key_name_same_hex_shape_not_app
 def test_innocence_gold_replay_live_report_wrong_length_not_approved() -> None:
     """63 or 65 hex chars must not match — the shape is exactly 64, a real
     sha256, not 'roughly hex-shaped'."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[5]
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[6]
     assert (
         content_pat.match(
             '    "payload_sha256": '
@@ -610,7 +687,7 @@ def test_innocence_gold_replay_live_report_uppercase_hex_not_approved() -> None:
     """Uppercase hex must not match — the driver only ever emits lowercase
     (hashlib.hexdigest always does); an uppercase variant is a shape a real
     pasted credential could take that this rule's own output never would."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[5]
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[6]
     fake_line = (
         '    "payload_sha256": '
         '"3D068AEF2DCA40F1EFB74BDD3F8859E767C000282AB8299AC7F277B0B9719F82"'
@@ -621,13 +698,22 @@ def test_innocence_gold_replay_live_report_uppercase_hex_not_approved() -> None:
 def test_innocence_gold_replay_live_report_ride_along_statement_not_approved() -> None:
     """End-anchored: a legitimate payload_sha256 line followed by anything
     else on the same line must not launder the ride-along."""
-    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[5]
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[6]
     compound = (
         '    "payload_sha256": '
         '"3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82", '
         '"api_key": "sk-realsecretvalue1234567890ABCDEF"'
     )
     assert content_pat.match(compound) is None
+
+
+def test_innocence_gold_replay_driver_same_shape_in_another_file_not_approved() -> None:
+    """Path-scoped: the identical line in a different file gets no pass from
+    this rule."""
+    auto, reason = classify(
+        "apps/backend-rag/backend/scripts/visa_engine/other.py", 86
+    )
+    assert not (auto and "trust root" in reason)
 
 
 def test_innocence_gold_replay_live_report_same_shape_in_another_file_not_approved() -> (

@@ -552,11 +552,20 @@ def call_llm_synthesis(prompt: str) -> dict | None:
 def _run_tier(tier: str, prompt: str) -> str | None:
     if tier == "claude":
         return _run_claude_fleet(prompt)
-    cmd = ["agy", "-p", "--print-timeout", "5m"]
+    # `-p`/`--print` TAKES A VALUE (measured live 2026-08-13, both forms exit 0):
+    # unlike `claude --print`, agy does NOT read the prompt from stdin — a cmd
+    # of ["agy", "-p", "--print-timeout", "5m"] binds the literal string
+    # "--print-timeout" as the prompt and leaves "5m" a stray positional, and
+    # the piped stdin was never read. Prompt must be `-p`'s own argv value;
+    # _invoke_process is shared with the claude tier below (which DOES read
+    # stdin), so pass "" here rather than double-deliver the prompt.
+    # NOTE: agy v1.1.12 has no stdin path, so the prompt is now `ps`-visible
+    # while the process runs (see PR body for the PII disclosure this forces).
+    cmd = ["agy", "-p", prompt, "--print-timeout", "5m"]
     try:
         returncode, stdout, stderr, timed_out = _invoke_process(
             cmd,
-            prompt,
+            "",
             LLM_TIMEOUT_S,
             _build_gemini_env(),
         )
