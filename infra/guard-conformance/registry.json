@@ -238,8 +238,11 @@
         },
         "infra/claude-hooks/orchestrate_gate.py": {
           "symbols": {},
-          "tests": ["infra/claude-hooks/test_orchestrate_gate_vocab.py"],
-          "note": "Was censused with tests:[] and excused by also_covered_by:vaccine. Measured 2026-08-12 against live M5 transcripts: 4 of its 5 dispatch keywords named Task/TaskCreate and scored ZERO occurrences ever, and the 5th (subagent_type) is an OPTIONAL parameter — so the guard was blind to the live Agent tool and would have kept blocking a caller who had just dispatched. Now matches Agent/Task/TaskCreate by tool name (JSON-spacing tolerant) plus isSidechain, and refuses to convict on a transcript whose shape it cannot recognize (W106b: cannot-verify is not a verdict). Corpus is mutation-verified — restoring the dead vocabulary kills 4 tests."
+          "tests": [
+            "infra/claude-hooks/test_orchestrate_gate_vocab.py",
+            "infra/claude-hooks/test_orchestrate_gate_disarm_notice.py"
+          ],
+          "note": "Was censused with tests:[] and excused by also_covered_by:vaccine. Measured 2026-08-12 against live M5 transcripts: 4 of its 5 dispatch keywords named Task/TaskCreate and scored ZERO occurrences ever, and the 5th (subagent_type) is an OPTIONAL parameter — so the guard was blind to the live Agent tool and would have kept blocking a caller who had just dispatched. Now matches Agent/Task/TaskCreate by tool name (JSON-spacing tolerant) plus isSidechain, and refuses to convict on a transcript whose shape it cannot recognize (W106b: cannot-verify is not a verdict). Corpus is mutation-verified — restoring the dead vocabulary kills 4 tests. Second, independent defect found the same day (lesson_a_disarmed_gate_is_mute_2026_08_12): the kill switch itself (ORCHESTRATE_GATE_OFF=1) produced zero signal when set — it was inherited from a launching shell, written in no file, and a 6400-line/0-dispatch session was never blocked without a trace anywhere. The disarmed path now emits one notice per session (systemMessage + hookSpecificOutput.additionalContext, the latter verified to reach Claude's own context per the current hooks doc) stating the real transcript-line-count/dispatch-count and whether the gate WOULD have blocked — never blocking itself. Mutation-verified: 4 independent targeted mutants (notice fully disabled, would-block claim inverted, once-per-session dedup removed, cannot-verify guard removed) each kill exactly the test(s) that check that property and nothing else; a 5th mutant on the armed-path wording confirms the pre-existing block behaviour stays byte-identical while disarmed."
         },
         "infra/claude-hooks/stadio_zero_nudge.py": {
           "symbols": {},

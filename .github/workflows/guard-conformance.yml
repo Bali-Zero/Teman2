@@ -172,6 +172,27 @@ jobs:
           set -euo pipefail
           python3 infra/claude-hooks/test_w117_remote_discard.py
 
+      # orchestrate_gate.py's own registry entry names two test files; neither
+      # had an explicit executor here — the registry's C4 "armed" check only
+      # requires the path (or an ancestor dir) to appear SOMEWHERE in workflow
+      # text, and this workflow's own path-filter already mentions
+      # infra/claude-hooks/**, which is documented as an accepted limit, not a
+      # substitute for actually running the suite (W81 theater, same as every
+      # other named step in this file). test_orchestrate_gate_vocab.py pins
+      # the dispatch-keyword vocabulary fix (2026-08-12, PR #4111: 4/5
+      # keywords named a tool the harness had stopped emitting).
+      # test_orchestrate_gate_disarm_notice.py pins the second, independent
+      # defect found the same day: the kill switch (ORCHESTRATE_GATE_OFF=1,
+      # inherited from a launching shell, written in no file) produced zero
+      # signal when set — a 6400-line/0-dispatch session ran unblocked with no
+      # trace anywhere (lesson_a_disarmed_gate_is_mute_2026_08_12).
+      - name: orchestrate_gate.py dispatch-vocabulary + disarm-notice suites
+        if: steps.relevant.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          python3 infra/claude-hooks/test_orchestrate_gate_vocab.py
+          python3 infra/claude-hooks/test_orchestrate_gate_disarm_notice.py
+
       # Property/fuzz corpus (445 generated command shapes across both
       # decision channels of worktree_isolation.py) — the reusable harness
       # this same superscar #3 family motivated after 5 hand-written

@@ -10,6 +10,29 @@ Override: env ORCHESTRATE_GATE_OFF=1.
 
 Upgrade di dispatch_nudge.py (soft warn UserPromptSubmit) a hard-block PreToolUse.
 Cicatrix family: T1.1 dispatch reminder, W33 kill-switch pattern.
+
+DISARM AUDIBILITY (2026-08-12, cicatrix family #2 one level up — lesson
+`lesson_a_disarmed_gate_is_mute_2026_08_12`): a session ran ~6400 transcript
+lines with zero subagent dispatch and was never blocked once, because
+ORCHESTRATE_GATE_OFF=1 was inherited from the launching shell's environment —
+written in NO file (not settings.json, not any rc file), unrecoverable at the
+source (macOS won't expose another process's env). The kill switch itself is
+legitimate (W33 escape-hatch pattern) and stays fully functional — this file
+never blocks while disarmed. What changed is that "disarmed" now SAYS SO,
+once per session, on the first gated tool call, stating whether the gate
+WOULD have blocked right now (line count + dispatch count) — "gate off" alone
+is noise, "gate off, and it would be blocking now at 6400 lines / 0 dispatch"
+is signal. Channel picked by measurement (WebFetch of the current Claude Code
+hooks doc, 2026-08-12): PreToolUse `systemMessage` reaches the USER ONLY, not
+Claude's context — it is what dispatch_nudge/premise_gate/stadio_zero_nudge
+already use, so it stays here as a visible-to-operator courtesy, but the
+signal that actually reaches THIS session is
+`hookSpecificOutput.additionalContext` with `permissionDecision: "allow"`,
+which the docs state Claude sees before its next decision. Both are emitted
+together; neither blocks (`permissionDecision` is always "allow" here).
+Cannot-verify (unreadable file / unrecognized transcript shape) stays fully
+silent rather than claim a count it does not have — same discipline as the
+blocking path's W106b guard just below.
 """
 import json
 import os
@@ -54,6 +77,10 @@ TRANSCRIPT_SHAPE_MARKERS = ('"tool_use"', '"tool_result"', '"role":"assistant"',
 
 GATED_TOOLS = {"Bash", "Edit", "Write"}
 
+# Disarm-notice: at most once per session (keyed on transcript basename), so a
+# 6400-line session gets ONE reminder, not one per Bash call.
+STATE_DIR = pathlib.Path.home() / ".agent" / "decisions" / "state"
+
 
 def dispatch_count(text):
     """Positive evidence that a subagent was dispatched in `text`."""
@@ -71,9 +98,107 @@ def transcript_is_recognizable(text):
     return any(m in text for m in TRANSCRIPT_SHAPE_MARKERS)
 
 
+def evaluate_transcript(full_text):
+    """Pure evaluation shared by the BLOCK decision and the DISARM notice.
+
+    One source of truth for "would this gate block right now" — the block
+    path and the notice path can never disagree about it, because they read
+    the same dict. Returns:
+      {"total_lines": int, "recognizable": bool,
+       "dispatch_count": int|None, "would_block": bool|None}
+    `dispatch_count`/`would_block` are None when the transcript shape is not
+    recognized — that is a cannot-verify state, not a "zero dispatch" verdict.
+    """
+    lines = full_text.splitlines()
+    total_lines = len(lines)
+    recognizable = transcript_is_recognizable(full_text)
+    if not recognizable:
+        return {
+            "total_lines": total_lines,
+            "recognizable": False,
+            "dispatch_count": None,
+            "would_block": None,
+        }
+    recent = "\n".join(lines[-RECENT_LINES:])
+    dc = dispatch_count(recent)
+    would_block = total_lines > HARD_BLOCK_THRESHOLD and dc == 0
+    return {
+        "total_lines": total_lines,
+        "recognizable": True,
+        "dispatch_count": dc,
+        "would_block": would_block,
+    }
+
+
+def _read_transcript(transcript_path):
+    """Return the transcript text, or None if it cannot be read (cannot-verify)."""
+    if not transcript_path:
+        return None
+    p = pathlib.Path(transcript_path)
+    if not p.exists():
+        return None
+    try:
+        return p.read_text(errors="ignore")
+    except Exception:
+        return None
+
+
+def _already_notified_disarm(transcript_path):
+    """One disarm-notice per session. Guard file keyed by transcript basename.
+
+    Mirrors premise_gate.py/stadio_zero_nudge.py exactly. On OSError (can't
+    write the guard) we fall back to notifying — better a duplicate notice
+    than the silence this feature exists to end.
+    """
+    try:
+        key = pathlib.Path(transcript_path).name
+        marker = STATE_DIR / f"orchestrate_gate_disarm.{key}.done"
+        if marker.exists():
+            return True
+        STATE_DIR.mkdir(parents=True, exist_ok=True)
+        marker.write_text("1")
+        return False
+    except OSError:
+        return False
+
+
+def build_disarm_notice(tool_name, verdict):
+    """Informative, never decorative: names the counts and the verdict they imply."""
+    total_lines = verdict["total_lines"]
+    dc = verdict["dispatch_count"]
+    if verdict["would_block"]:
+        judgment = (
+            f"WOULD BE BLOCKING this {tool_name} right now — {total_lines} transcript "
+            f"lines (> {HARD_BLOCK_THRESHOLD}) and {dc} subagent dispatch in the last "
+            f"{RECENT_LINES} lines."
+        )
+    else:
+        judgment = (
+            f"would NOT be blocking this {tool_name} right now — {total_lines} transcript "
+            f"lines, {dc} subagent dispatch in the last {RECENT_LINES} lines."
+        )
+    return (
+        "[ORCHESTRATE-GATE] disarmed — ORCHESTRATE_GATE_OFF=1 is set in this process's "
+        "environment (it may be in no file: check `env | grep ORCHESTRATE_GATE_OFF` and "
+        "`launchctl getenv ORCHESTRATE_GATE_OFF`, an inherited shell export leaves neither "
+        f"trace). The gate {judgment} `unset ORCHESTRATE_GATE_OFF` and start a fresh shell "
+        "to re-arm — this notice fires once per session."
+    )
+
+
+def _emit_disarm_notice(notice):
+    print(json.dumps({
+        "systemMessage": notice,
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "allow",
+            "additionalContext": notice,
+        },
+    }))
+
+
 def main():
-    if os.environ.get("ORCHESTRATE_GATE_OFF") == "1":
-        sys.exit(0)
+    disarmed = os.environ.get("ORCHESTRATE_GATE_OFF") == "1"
 
     try:
         payload = json.load(sys.stdin)
@@ -86,45 +211,41 @@ def main():
         sys.exit(0)
 
     transcript_path = payload.get("transcript_path", "")
-    if not transcript_path:
-        sys.exit(0)
+    full_text = _read_transcript(transcript_path)
+    if full_text is None:
+        sys.exit(0)  # cannot-verify: no transcript to read, no claim to make
 
-    p = pathlib.Path(transcript_path)
-    if not p.exists():
-        sys.exit(0)
+    verdict = evaluate_transcript(full_text)
 
-    try:
-        full_text = p.read_text(errors="ignore")
-    except Exception:
-        sys.exit(0)
-
-    lines = full_text.splitlines()
-    total_lines = len(lines)
-    if total_lines <= HARD_BLOCK_THRESHOLD:
-        sys.exit(0)
-
-    if not transcript_is_recognizable(full_text):
-        print(
-            "[ORCHESTRATE-GATE] transcript format not recognized — cannot tell "
-            "whether a subagent was dispatched, so NOT blocking. If this persists, "
-            "the gate's detector needs re-measuring against a live transcript.",
-            file=sys.stderr,
+    if not disarmed:
+        # ARMED — byte-identical to the pre-2026-08-12 behaviour.
+        if not verdict["recognizable"]:
+            print(
+                "[ORCHESTRATE-GATE] transcript format not recognized — cannot tell "
+                "whether a subagent was dispatched, so NOT blocking. If this persists, "
+                "the gate's detector needs re-measuring against a live transcript.",
+                file=sys.stderr,
+            )
+            sys.exit(0)
+        if not verdict["would_block"]:
+            sys.exit(0)
+        msg = (
+            f"\n[ORCHESTRATE-GATE] Session {verdict['total_lines']} lines, zero subagent "
+            f"dispatch in last {RECENT_LINES} lines. Direct {tool_name} BLOCKED.\n"
+            f"Choose: (a) Agent(subagent_type=Explore|backend-verifier|frontend-browser|"
+            f"nb-curator|mcp-health|spalla-review|general-purpose, model=\"sonnet\", ...) "
+            f"or (b) `export ORCHESTRATE_GATE_OFF=1` if intentional direct work.\n"
         )
-        sys.exit(0)
+        print(msg, file=sys.stderr)
+        sys.exit(2)
 
-    recent = "\n".join(lines[-RECENT_LINES:])
-    if dispatch_count(recent) > 0:
+    # DISARMED — never blocks. Say so, once per session, with the real verdict.
+    if not verdict["recognizable"]:
+        sys.exit(0)  # cannot-verify: unrecognized shape, no would-block claim to make
+    if _already_notified_disarm(transcript_path):
         sys.exit(0)
-
-    msg = (
-        f"\n[ORCHESTRATE-GATE] Session {total_lines} lines, zero subagent "
-        f"dispatch in last {RECENT_LINES} lines. Direct {tool_name} BLOCKED.\n"
-        f"Choose: (a) Agent(subagent_type=Explore|backend-verifier|frontend-browser|"
-        f"nb-curator|mcp-health|spalla-review|general-purpose, model=\"sonnet\", ...) "
-        f"or (b) `export ORCHESTRATE_GATE_OFF=1` if intentional direct work.\n"
-    )
-    print(msg, file=sys.stderr)
-    sys.exit(2)
+    _emit_disarm_notice(build_disarm_notice(tool_name, verdict))
+    sys.exit(0)
 
 
 if __name__ == "__main__":
