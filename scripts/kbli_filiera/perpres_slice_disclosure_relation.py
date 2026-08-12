@@ -3,25 +3,28 @@
 
 WHAT THIS IS
 ------------
-12 codes adjudicated `BROADER` in `apply_perpres_foreign_caps.ADJUDICATION`
-render "100% Open" on `/kbli/<code>` — correctly, on the WHOLE code — while a
-NARROWER bidang usaha inside them carries a Perpres 10/2021 (as amended by
-49/2021) foreign-ownership condition. `13133` (Industri Kain Batik) is 100%
-open as a whole code; "batik cap" (stamped batik) specifically is reserved to
-domestic capital. A client filing under 13133 for stamped-batik production
-would file "100% open" and be wrong about the one activity they are actually
-doing. This module discloses the slice — never re-derives the BROADER verdict
-itself, which is `apply_perpres_foreign_caps.ADJUDICATION`'s call and stays
-there (one SSOT, W105).
+17 codes are adjudicated `BROADER` in `apply_perpres_foreign_caps.ADJUDICATION`
+(measured by counting the entries whose verdict is `BROADER`). They render
+"100% Open" on `/kbli/<code>` — correctly, on the WHOLE code — while a NARROWER
+bidang usaha inside them carries a Perpres 10/2021 (as amended by 49/2021)
+foreign-ownership condition. `13133` (Industri Kain Batik) is 100% open as a
+whole code; "batik cap" (stamped batik) specifically is reserved to domestic
+capital. A client filing under 13133 for stamped-batik production would file
+"100% open" and be wrong about the one activity they are actually doing. This
+module discloses the slice — never re-derives the BROADER verdict itself, which
+is `apply_perpres_foreign_caps.ADJUDICATION`'s call and stays there (one SSOT,
+W105).
 
-Five of those 12 — `20235`, `30303`, `51103`, `60103` and `60203` — are
+Five of those 17 — `20235`, `30303`, `51103`, `60103` and `60203` — are
 excluded (see `ADJACENT_NOT_CONTAINED`): their OWN `ADJUDICATION` reason says
 the annex activity is a NEIGHBOUR in the same ancestor family, not something
 actually inside the code (bespoke perfume is not traditional cosmetics; a
 spacecraft is not a military aircraft; space transport is not air transport;
 on-demand streaming is not an institutional broadcaster). Publishing a slice
 notice on those pages would assert a containment the adjudication itself denies.
-That leaves 7 codes reached by the general derivation.
+That leaves 10 codes reached by the general derivation
+(17 BROADER codes − 2 `MANUAL_SLICE_ROWS` codes − 5 `ADJACENT_NOT_CONTAINED`
+codes). The emitted artifact therefore carries 10 + 2 = 12 codes.
 
 Plus the two hand-adjudicated `30111`/`30113` rows (see `MANUAL_SLICE_ROWS`):
 these two are `AMBIGUOUS`, not `DISAGREE`, in `perpres_foreign_cap_relation`'s
@@ -48,7 +51,7 @@ codes rather than silently producing the wrong cross-product.
 
 REFUSES, LOUDLY (never guesses, never silently drops a row)
 -------------------------------------------------------------
-* a BROADER-adjudicated code (excluding the two hand-authored ones and the two
+* a BROADER-adjudicated code (excluding the two hand-authored ones and the five
   adjacent-not-contained exclusions) has no matching row in the join — the
   derivation that is supposed to explain WHY it is BROADER found nothing to
   disclose, which means either the ADJUDICATION entry or the join itself has
