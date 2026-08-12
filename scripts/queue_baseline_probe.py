@@ -45,6 +45,14 @@ DECLARED ATTRIBUTION RULE (spec §4, Codex CONFIRMED-DEFECT F6 — verbatim requ
   are not part of per-PR attribution by construction; their minutes land in
   `other_event_minutes` and still count toward `slot_utilization.runner_minutes_today`.
 
+  TIMING SOURCE: private-repo billing buckets expose non-zero `billable.*.total_ms`; this
+  repository is public, so those buckets are present but zero. In that case the same timing
+  endpoint exposes `run_duration_ms`, which is used as the effective runner duration and
+  recorded under `timing_sources.run_duration`. A run with zero billable milliseconds and no
+  duration (for example a skipped run that never started a job) contributes zero under
+  `timing_sources.billable_zero_without_duration`. This fallback measures runner consumption,
+  not a monetary charge; the source counts in every record keep that distinction explicit.
+
 DECLARED EJECTION HEURISTIC (spec §4 Wave 1 bullet: "heuristic from failed merge_group run
 conclusions/log heads — declare the heuristic in the docstring"):
   A merge_group run whose conclusion is one of {"failure", "cancelled", "timed_out"} counts as
@@ -97,6 +105,11 @@ a day with real zero activity (empty `errors`, zero counts) is a different, legi
 positive record; this script never conflates the two. `main()` returns 0 only when `errors`
 is empty; any non-empty `errors` list makes the process exit 1 so the wrapper's rc-based
 alerting (W101 discipline) sees the failure.
+
+The workflow-runs endpoint is also census-checked: every paginated response's `total_count` is
+compared with the number of unique run IDs actually fetched. GitHub currently caps this query
+at 1,000 results even when `total_count` is larger; any such shortfall is written to `errors[]`
+and `run_collection.complete=false`, never presented as a complete quiet day.
 """
 
 from __future__ import annotations
@@ -111,13 +124,15 @@ import sys
 import traceback
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 logger = logging.getLogger("queue_baseline_probe")
 
 DEFAULT_REPO = "Bali-Zero/Teman2"
 DEFAULT_OUT_DIR = Path.home() / ".nuzantara-mq" / "baseline"
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+
+TimingSource = Literal["billable", "run_duration", "billable_zero_without_duration"]
 
 # round-3 system-wide doc, 2026-08-09/10 measurement window (see module docstring). A snapshot
 # constant, not re-measured live by this script.
@@ -309,8 +324,16 @@ def _parse_concatenated_json(text: str) -> list[dict[str, Any]]:
 # ---------------------------------------------------------------------------
 
 
-def list_workflow_runs(repo: str, day: date) -> tuple[list[dict[str, Any]], list[str]]:
-    """All workflow runs created on `day` (UTC), every page combined."""
+def list_workflow_runs(
+    repo: str,
+    day: date,
+) -> tuple[list[dict[str, Any]], int | None, list[str]]:
+    """Workflow runs created on `day` (UTC), with an explicit census check.
+
+    Returns `(unique_runs, reported_total, errors)`. GitHub can stop pagination at a
+    server-side cap while still reporting a larger `total_count`; that is a partial record,
+    not success, and is therefore returned as an error.
+    """
     created_query = f"{day.isoformat()}..{day.isoformat()}"
     cmd = [
         "gh", "api", f"repos/{repo}/actions/runs",
@@ -323,52 +346,94 @@ def list_workflow_runs(repo: str, day: date) -> tuple[list[dict[str, Any]], list
     try:
         proc = _run_gh(cmd, timeout=GH_TIMEOUT_LIST_RUNS)
     except subprocess.TimeoutExpired as exc:
-        return [], [f"list_workflow_runs timeout: {exc}"]
+        return [], None, [f"list_workflow_runs timeout: {exc}"]
     except OSError as exc:
-        return [], [f"list_workflow_runs OSError: {exc}"]
+        return [], None, [f"list_workflow_runs OSError: {exc}"]
     if proc.returncode != 0:
-        return [], [
+        return [], None, [
             f"list_workflow_runs failed rc={proc.returncode} "
             f"stderr={proc.stderr.strip()[:400]}"
         ]
     try:
         pages = _parse_concatenated_json(proc.stdout)
     except json.JSONDecodeError as exc:
-        return [], [f"list_workflow_runs bad JSON: {exc}"]
-    runs: list[dict[str, Any]] = []
+        return [], None, [f"list_workflow_runs bad JSON: {exc}"]
+
+    reported_totals = {
+        int(page["total_count"])
+        for page in pages
+        if isinstance(page.get("total_count"), int)
+    }
+    reported_total = max(reported_totals) if reported_totals else None
+    # The Actions endpoint reports the real total on the first page but can emit zero on
+    # later `--paginate` pages. Treat zero as a pagination sentinel when a positive total
+    # exists; conflicting positive totals remain fail-visible.
+    positive_reported_totals = {total for total in reported_totals if total > 0}
+    if len(positive_reported_totals) > 1:
+        errors.append(
+            "list_workflow_runs inconsistent positive total_count values across pages: "
+            f"{sorted(positive_reported_totals)}"
+        )
+    if reported_total is None:
+        errors.append("list_workflow_runs response missing integer total_count")
+
+    runs_by_id: dict[int, dict[str, Any]] = {}
+    runs_without_id: list[dict[str, Any]] = []
     for page in pages:
-        runs.extend(page.get("workflow_runs") or [])
-    return runs, errors
+        for run in page.get("workflow_runs") or []:
+            run_id = run.get("id") if isinstance(run, dict) else None
+            if isinstance(run_id, int):
+                runs_by_id[run_id] = run
+            elif isinstance(run, dict):
+                runs_without_id.append(run)
+    runs = [*runs_by_id.values(), *runs_without_id]
+    if reported_total is not None and len(runs) < reported_total:
+        errors.append(
+            "list_workflow_runs pagination shortfall: "
+            f"fetched={len(runs)} reported_total={reported_total}; record is partial"
+        )
+    return runs, reported_total, errors
 
 
-def fetch_run_timing_minutes(repo: str, run_id: int) -> tuple[float | None, str | None]:
-    """GET .../actions/runs/{run_id}/timing -> total billable minutes across all OS buckets.
+def fetch_run_timing_minutes(
+    repo: str,
+    run_id: int,
+) -> tuple[float | None, TimingSource | None, str | None]:
+    """GET .../timing -> minutes, declared timing source, and error.
 
-    Returns (minutes, error). `minutes` is None on failure — the caller must record the
-    error and route the run's contribution to `errors`, never silently treat None as 0.
+    Non-zero billable buckets win. Public repositories report those buckets as zero, so
+    `run_duration_ms` is the declared fallback. If both are zero/absent, the run contributes
+    an explicit zero-duration source (the normal shape for a skipped run).
     """
     cmd = ["gh", "api", f"repos/{repo}/actions/runs/{run_id}/timing"]
     try:
         proc = _run_gh(cmd, timeout=GH_TIMEOUT_SHORT)
     except subprocess.TimeoutExpired as exc:
-        return None, f"timing fetch timeout run={run_id}: {exc}"
+        return None, None, f"timing fetch timeout run={run_id}: {exc}"
     except OSError as exc:
-        return None, f"timing fetch OSError run={run_id}: {exc}"
+        return None, None, f"timing fetch OSError run={run_id}: {exc}"
     if proc.returncode != 0:
-        return None, (
+        return None, None, (
             f"timing fetch failed run={run_id} rc={proc.returncode} "
             f"stderr={proc.stderr.strip()[:300]}"
         )
     try:
         payload = json.loads(proc.stdout)
     except json.JSONDecodeError as exc:
-        return None, f"timing fetch bad JSON run={run_id}: {exc}"
+        return None, None, f"timing fetch bad JSON run={run_id}: {exc}"
     billable = payload.get("billable") or {}
     total_ms = 0
     for _os_name, os_data in billable.items():
         if isinstance(os_data, dict):
             total_ms += int(os_data.get("total_ms") or 0)
-    return total_ms / 60000.0, None
+    if total_ms > 0:
+        return total_ms / 60000.0, "billable", None
+
+    run_duration_ms = payload.get("run_duration_ms")
+    if isinstance(run_duration_ms, (int, float)) and run_duration_ms >= 0:
+        return float(run_duration_ms) / 60000.0, "run_duration", None
+
+    return 0.0, "billable_zero_without_duration", None
 
 
 def fetch_run_jobs(repo: str, run_id: int) -> tuple[list[dict[str, Any]], str | None]:
@@ -509,6 +574,16 @@ def _empty_record(repo: str, day: date) -> dict[str, Any]:
         "unattributed_pr_minutes": 0.0,
         "other_event_minutes": 0.0,
         "total_runner_minutes": 0.0,
+        "timing_sources": {
+            "billable": {"runs": 0, "minutes": 0.0},
+            "run_duration": {"runs": 0, "minutes": 0.0},
+            "billable_zero_without_duration": {"runs": 0, "minutes": 0.0},
+        },
+        "run_collection": {
+            "reported_total": None,
+            "fetched": 0,
+            "complete": False,
+        },
         "queue_transit_minutes": {},
         "queue_transit_p50_minutes": None,
         "queue_transit_p95_minutes": None,
@@ -543,8 +618,13 @@ def build_record(repo: str, day: date) -> dict[str, Any]:
     record = _empty_record(repo, day)
     errors: list[str] = record["errors"]
 
-    runs, run_list_errors = list_workflow_runs(repo, day)
+    runs, reported_total, run_list_errors = list_workflow_runs(repo, day)
     errors.extend(run_list_errors)
+    record["run_collection"] = {
+        "reported_total": reported_total,
+        "fetched": len(runs),
+        "complete": reported_total == len(runs),
+    }
 
     billed_per_pr: dict[str, float] = {}
     unattributed_group: list[float] = []
@@ -576,13 +656,16 @@ def build_record(repo: str, day: date) -> dict[str, Any]:
         if run_id is None:
             errors.append(f"run missing id, skipped: {run.get('name', '?')!r}")
             continue
-        minutes, timing_error = fetch_run_timing_minutes(repo, run_id)
+        minutes, timing_source, timing_error = fetch_run_timing_minutes(repo, run_id)
         if timing_error:
             errors.append(timing_error)
             continue
-        if minutes is None:
-            errors.append(f"timing fetch returned no minutes for run={run_id}, skipped")
+        if minutes is None or timing_source is None:
+            errors.append(f"timing fetch returned incomplete data for run={run_id}, skipped")
             continue
+        source_record = record["timing_sources"][timing_source]
+        source_record["runs"] += 1
+        source_record["minutes"] += minutes
         allocate_run_minutes(run, minutes, billed_per_pr, unattributed_group, unattributed_pr, other_event)
 
     total_runner_minutes = (
