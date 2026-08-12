@@ -430,6 +430,67 @@ describe("editing, pruning and branch projection", () => {
     ).toEqual([{ key: "study", status: "done" }]);
   });
 
+  it("GUILT: answering category with 'Not sure?' still projects the live question into the trunk", () => {
+    // Reproduces the live defect (measured on balizero.com/visa-oracle,
+    // Indonesian interface, "Berapa hari Anda berencana tinggal?" step):
+    // the category question has `notSure: { mode: "human-review" }`
+    // (tree.ts), so a real interview can leave `facts.category === "unsure"`
+    // via flowReducer's SKIP action — not a synthetic value. Before the fix,
+    // `behavioralSteps` bailed to `[]` whenever `category` wasn't a real
+    // `CategoryKey`, so the live node ("stay_days") was absent from
+    // `getTreeSteps`'s `order` array, `currentIdx` came back -1, and EVERY
+    // trunk step — including ones already answered — read "pending". That
+    // is what emptied the sr-only nav `<ol>` entirely (not a missing
+    // translation: `getTreeSteps` never takes a language).
+    let state = startOffshore();
+    expectQuestion(state, "category");
+    state = reduce(state, { type: "SKIP", questionId: "category" });
+    expect(state.facts.category).toBe("unsure");
+    state = answer(state, "trip_scope", "single");
+    expectQuestion(state, "stay_days");
+
+    const { trunk } = getTreeSteps(
+      state.history[state.history.length - 1],
+      state.facts,
+    );
+    const stayDays = trunk.find((s) => s.id === "stay_days");
+    expect(stayDays).toEqual({
+      id: "stay_days",
+      labelI18nKey: "tree.stay_days",
+      status: "current",
+    });
+    // Every step already answered on the way here must read "done", not
+    // "pending" — the whole-nav-blank symptom was every step (not just
+    // "stay_days") losing its real status because `currentIdx` was -1.
+    const alreadyAnswered = ["framing", "in_indonesia", "overstay_days"];
+    for (const id of alreadyAnswered) {
+      expect(trunk.find((s) => s.id === id)?.status).not.toBe("pending");
+    }
+    expect(trunk.find((s) => s.id === "category")?.status).toBe("done");
+  });
+
+  it("INNOCENCE: a real category's trunk projection is unaffected by the 'unsure' fix", () => {
+    // Same shape as the CATEGORY_CASES branches above (tourism: stay_days
+    // then entry_pattern) — pins that delegating `behavioralSteps` straight
+    // to `getCategoryQuestionIds` did not change anything for an actual
+    // `CategoryKey`, only for the "unsure" fallback it previously mishandled.
+    let state = startOffshore("tourism");
+    state = answer(state, "trip_scope", "single");
+    expectQuestion(state, "stay_days");
+
+    const { trunk } = getTreeSteps(
+      state.history[state.history.length - 1],
+      state.facts,
+    );
+    expect(trunk.find((s) => s.id === "stay_days")).toEqual({
+      id: "stay_days",
+      labelI18nKey: "tree.stay_days",
+      status: "current",
+    });
+    expect(trunk.find((s) => s.id === "category")?.status).toBe("done");
+    expect(trunk.find((s) => s.id === "entry_pattern")?.status).toBe("pending");
+  });
+
   it("only completed question steps are editable", () => {
     expect(
       isEditableTreeStep({
