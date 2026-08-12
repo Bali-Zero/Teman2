@@ -1,3 +1,7 @@
+---
+adversarial_review: codex
+---
+
 # CHAPTER: The Specialty Café
 
 **1. The Dream**
@@ -47,7 +51,7 @@ Here is the verified, ground-truth reality.
 >     *   *Why it closed:* At the Besar scale, OSS risk is Rendah/Menengah-Rendah (low / medium-low) on every scope—squarely inside the band the province sealed to reserve for local UMKM.
 >
 > **THE NEIGHBOURING DOORS**
-> *   **56304 — Aktivitas Kedai Minuman (Beverage Stall):** **CLOSED** to PMA entirely—no large (Besar) scale exists, so it is reserved for local micro/small business.
+> *   **56304 — Aktivitas Kedai Minuman (Beverage Stall):** **BLOCKED** in Bali—its risk class (medium-low) falls inside the band the moratorium closes to new foreign registrations.
 > *   **56101 — Restaurant (Food Service in a Permanent Building):** **OPEN.** A food-led, higher-risk venue survives where the drinks-led café does not.
 >
 > **THE LESSON IN THE NUMBERS**
@@ -108,3 +112,12 @@ A blocked code is not the end of the conversation—it is the beginning of the *
 The pattern across all four routes is the same: **move up or sideways into the open part of the value chain, and partner out the blocked part.** Bali blocked the small storefront; it did not block the roast, the brand, the kitchen, the catering, or the craft. The founders who thrive after a blocked code are the ones who ask not "how do I sneak through the locked door?" but "which adjacent open door leads to the same money?" There is almost always one—and finding it is exactly the work a good consultant does before you sign anything.
 
 *Before you sign anything, scan to check the live status of KBLI 56303—and the open routes 56101 and 10761—on the Nuzantara platform.*
+
+## Adversarial review
+
+- Seat: Codex `gpt-5.6-sol` (reasoning xhigh), refute stance, cross-family — reviewed the
+  2026-08-12 retraction-cure diff touching this file, verified against
+  `KBLI_2025_FINAL_CLEAN.json` (the cured dataset).
+- Outcome: FIX-FIRST → fixed in this same PR. 10 findings (9 confirmed/accommodated, 1 HOLDS): 96220 national status corrected to TERBATAS 0% (measured); 55201/55203 restated as the same Annex II entry 48 (sub-rows *Pondok Wisata* / *Vila*); the annex stated as a national instrument (articles 01/02); honest-map wording corrected (33.2% = almost exactly one in three; all but FOUR of the 372 nationally open; 1,041 = "not blocked", not "open"); surf-coliving guest-house-scope reading stated as OSS's call, not the founder's certainty; stale ID fact-sheet row (55203 "tanpa Besar") cured. Every fix re-measured against KBLI_2025_FINAL_CLEAN.json before applying.
+- Note: this section and the `adversarial_review` frontmatter key are R1-gate metadata;
+  the book/PDF composer strips the frontmatter block and this section from rendered output.

@@ -1,3 +1,7 @@
+---
+adversarial_review: codex
+---
+
 # BAB: The Restaurant (Restoran)
 
 **1. Impian**
@@ -48,7 +52,7 @@ Inilah kenyataan yang terverifikasi dan berbasis fakta lapangan.
 >
 > **PINTU TERKUNCI TEPAT DI SEBELAHNYA**
 > *   **56303 — Aktivitas Rumah Minum/Kafe (Café / Drinking Establishment):** **DIBLOKIR** untuk PMA baru di Bali (moratorium 13 Mei 2026). Tempat yang mengandalkan minuman jatuh ke pita risiko rendah/menengah rendah yang ditutup provinsi.
-> *   **56304 — Aktivitas Kedai Minuman (Beverage Stall):** **TERTUTUP** untuk PMA—tidak ada skala Besar, sehingga dicadangkan untuk UMKM lokal.
+> *   **56304 — Aktivitas Kedai Minuman (Beverage Stall):** **DIBLOKIR** di Bali—kelas risikonya (menengah-rendah) jatuh di dalam pita yang ditutup moratorium bagi pendaftaran asing baru.
 >
 > **PELAJARAN DALAM ANGKA-ANGKA**
 > *   "Makanan dan minuman" bukanlah satu keputusan. Sebuah restoran dan sebuah kafe adalah dua kode KBLI yang berbeda dengan dua vonis yang berlawanan. Pilih yang salah dan impian itu mati di loket OSS; pilih yang benar dan pintu itu terbuka lebar.
@@ -110,3 +114,12 @@ Pintu Marco sudah terbuka—tetapi pintu yang terbuka bukanlah perabot permanen.
 Prinsip yang mendasari keenam rute itu sama dengan yang menyelamatkan impian Marco: di Bali, satuan kebenaran adalah kode lima digit, dan moratorium bukanlah tembok untuk ditembus dengan terowongan—ia adalah peta tentang bisnis mana yang sebenarnya diinginkan pulau ini. Jalan ke depan yang jujur tidak pernah membuat satu kode terbuka berpura-pura menjadi kode yang tertutup; melainkan menjaga aktivitas nyata Anda rapat dengan kode yang Anda pegang, dan meraih ambisi berikutnya dengan membuka pintu *berikutnya* yang benar-benar terbuka—masing-masing dengan izinnya sendiri yang diperjuangkan di bawah sinar matahari. Tetaplah di dalam kode Anda, bertumbuhlah ke kode-kode berdampingan yang terbuka, dan bermitralah (jangan pernah jadi kedok) untuk kode yang tertutup. Lakukan itu, dan pintu yang dilalui Marco bukan hanya tetap terbuka—ia menuntun ke suatu tempat.
 
 *Sebelum Anda menandatangani apa pun, pindai untuk memeriksa status terkini KBLI 56101—dan setiap kode berdampingan yang ingin Anda kembangkan (56301, 56210, 56290, 10750, 10710, 46333)—di platform Nuzantara.*
+
+## Adversarial review
+
+- Seat: Codex `gpt-5.6-sol` (reasoning xhigh), refute stance, cross-family — reviewed the
+  2026-08-12 retraction-cure diff touching this file, verified against
+  `KBLI_2025_FINAL_CLEAN.json` (the cured dataset).
+- Outcome: FIX-FIRST → fixed in this same PR. 10 findings (9 confirmed/accommodated, 1 HOLDS): 96220 national status corrected to TERBATAS 0% (measured); 55201/55203 restated as the same Annex II entry 48 (sub-rows *Pondok Wisata* / *Vila*); the annex stated as a national instrument (articles 01/02); honest-map wording corrected (33.2% = almost exactly one in three; all but FOUR of the 372 nationally open; 1,041 = "not blocked", not "open"); surf-coliving guest-house-scope reading stated as OSS's call, not the founder's certainty; stale ID fact-sheet row (55203 "tanpa Besar") cured. Every fix re-measured against KBLI_2025_FINAL_CLEAN.json before applying.
+- Note: this section and the `adversarial_review` frontmatter key are R1-gate metadata;
+  the book/PDF composer strips the frontmatter block and this section from rendered output.
