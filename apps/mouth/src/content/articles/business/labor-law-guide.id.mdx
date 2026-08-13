@@ -74,48 +74,56 @@ ogImage: "/static/insights/business/labor-law-guide.jpg"
 ogType: "article"
 twitterCard: "summary_large_image"
 locale: "id"
-source_sha256: "7ee10bfdfcd9e6223c2a6f15e0e183e4f40e77e0826cde4305347d6b6668f65e"
+source_sha256: "f699ac7f28ee2d960e20d45de4813baf9bbfb0bf5ab065e1fe7b9d357960fdfe"
 ---
 
-# Hukum Ketenagakerjaan di Indonesia 2026: Panduan untuk Pengusaha
+import {
+  ComparisonTable,
+  Calculator,
+  Checklist,
+  InfoCard,
+  AskZantara,
+} from "@/components/insights/interactive";
 
-Hukum ketenagakerjaan Indonesia memiliki persyaratan khusus untuk hubungan kerja. Memahami hal ini sangat penting untuk kepatuhan.
+# Hukum Ketenagakerjaan di Indonesia 2026: Panduan untuk Pemberi Kerja
 
-## Jenis-Jenis Kontrak Kerja
+Hukum ketenagakerjaan Indonesia memiliki persyaratan spesifik untuk hubungan kerja. Memahami ini sangat penting untuk kepatuhan.
+
+## Jenis Kontrak Kerja
 
 <ComparisonTable
   title="Jenis Kontrak"
   description="PKWT vs PKWTT"
   items={[
     {
-      name: 'PKWTT',
-      subtitle: 'Permanen/Tidak Terbatas',
+      name: "PKWTT",
+      subtitle: "Tetap/Tidak Berbatas",
       values: {
-        Durasi: 'Tidak ada tanggal akhir',
-        Pemutusan: 'Dengan alasan + pesangon',
-        Masa Percobaan: 'Maks 3 bulan',
-        'Cocok Untuk': 'Karyawan inti',
+        Duration: "Tidak ada tanggal akhir",
+        Termination: "Dengan alasan + pesangon",
+        Probation: "Maks 3 bulan",
+        "Best For": "Karyawan inti",
       },
       highlight: true,
     },
     {
-      name: 'PKWT',
-      subtitle: 'Jangka Waktu/Kontrak',
+      name: "PKWT",
+      subtitle: "Berbatas/Kontrak",
       values: {
-        Durasi: 'Maks 5 tahun',
-        Pemutusan: 'Pada akhir kontrak',
-        Masa Percobaan: 'Tidak diperbolehkan',
-        'Cocok Untuk': 'Proyek/sementara',
+        Duration: "Maks 5 tahun",
+        Termination: "Pada akhir kontrak",
+        Probation: "Tidak diizinkan",
+        "Best For": "Proyek/sementara",
       },
     },
     {
-      name: 'Freelance',
-      subtitle: 'Bukan Karyawan',
+      name: "Freelance",
+      subtitle: "Bukan karyawan",
       values: {
-        Durasi: 'Per proyek',
-        Pemutusan: 'Per kesepakatan',
-        Masa Percobaan: 'N/A',
-        'Cocok Untuk': 'Tugas spesifik',
+        Duration: "Per proyek",
+        Termination: "Sesuai kesepakatan",
+        Probation: "Tidak berlaku",
+        "Best For": "Tugas spesifik",
       },
     },
   ]}
@@ -123,7 +131,7 @@ Hukum ketenagakerjaan Indonesia memiliki persyaratan khusus untuk hubungan kerja
 
 ---
 
-## PKWT (Kontrak Jangka Waktu)
+## PKWT (Kontrak Berbatas)
 
 <InfoCard variant="warning" title="Keterbatasan PKWT">
 **PKWT hanya dapat digunakan untuk:**
@@ -134,22 +142,22 @@ Hukum ketenagakerjaan Indonesia memiliki persyaratan khusus untuk hubungan kerja
 
 **Tidak dapat digunakan untuk:**
 
-- Posisi permanen
-- Operasi inti yang berkelanjutan
-- Penugasan tanpa batas waktu
+- Posisi tetap
+- Operasional inti yang berkelanjutan
+- Tugas tanpa batas waktu
 
-Pelanggaran: Kontrak otomatis menjadi PKWTT (permanen).
+Pelanggaran: Kontrak secara otomatis menjadi PKWTT (tetap).
 
 </InfoCard>
 
-### Aturan Durasi PKWT
+### Aturan Masa Berlaku PKWT
 
-| Aturan                   | Batas                              |
-| ------------------------ | ---------------------------------- |
-| Durasi awal              | Maks 5 tahun (kumulatif)           |
-| Perpanjangan             | Dalam batas 5 tahun                |
+| Aturan         | Batas                     |
+| ------------ | ------------------------- |
+| Masa awal    | Maks 5 tahun (kumulatif)  |
+| Perpanjangan | Dalam batas 5 tahun       |
 | Tidak ada masa percobaan | Masa percobaan batal jika tertulis |
-| Kompensasi               | Diperlukan pada saat selesai       |
+| Kompensasi   | Dibutuhkan setelah selesai  |
 
 ---
 
@@ -158,9 +166,9 @@ Pelanggaran: Kontrak otomatis menjadi PKWTT (permanen).
 ### Jam Kerja Standar
 
 | Jadwal | Jam/Hari | Hari/Minggu | Total/Minggu |
-| ------ | -------- | ----------- | ------------ |
-| Opsi 1 | 7 jam    | 6 hari      | 42 jam       |
-| Opsi 2 | 8 jam    | 5 hari      | 40 jam       |
+| -------- | --------- | --------- | ---------- |
+| Opsi 1 | 7 jam   | 6 hari    | 42 jam   |
+| Opsi 2 | 8 jam   | 5 hari    | 40 jam   |
 
 ### Aturan Lembur
 
@@ -216,7 +224,7 @@ Pelanggaran: Kontrak otomatis menjadi PKWTT (permanen).
       }
     } else {
       // Akhir pekan/hari libur: perhitungan berbeda
-      // 8 jam pertama: 2x, jam ke-9: 3x, 10+: 4x
+      // 8 jam pertama: 2x, jam ke-9: 3x, jam ke-10+: 4x
       const first8 = Math.min(hours, 8);
       overtime += first8 * hourlyRate * 2;
       if (hours > 8) {
@@ -248,28 +256,31 @@ Pelanggaran: Kontrak otomatis menjadi PKWTT (permanen).
 
 ### Upah Minimum Regional (UMR/UMK)
 
-| Provinsi/Kota | UMR 2026 (Perkiraan) |
-| ------------- | -------------------- |
-| DKI Jakarta   | ~IDR 5.1M            |
-| Bali          | ~IDR 2.9M            |
-| Surabaya      | ~IDR 4.7M            |
-| Bandung       | ~IDR 4.0M            |
-| Semarang      | ~IDR 3.1M            |
+| Provinsi/Kota | UMR 2026 (Kira-kira) |
+| ------------- | ----------------- |
+| DKI Jakarta   | ~IDR 5.1M         |
+| Bali          | ~IDR 2.9M         |
+| Surabaya      | ~IDR 4.7M         |
+| Bandung       | ~IDR 4.0M         |
+| Semarang      | ~IDR 3.1M         |
 
 <InfoCard variant="note" title="Catatan Upah Minimum">
 
-- UMR adalah minimum untuk karyawan tetap - Diperbarui setiap tahun (biasanya
-  Januari) - Upah sektoral mungkin berlaku - Komponen: gaji pokok bisa 75%,
-  tunjangan 25% - Pekerja PKWT berhak atas minimum yang sama
-  </InfoCard>
+- UMR adalah upah minimum untuk karyawan tetap
+- Diperbarui setiap tahun (biasanya Januari)
+- Upah minimum sektoral mungkin berlaku
+- Komponen: gaji pokok bisa 75%, tunjangan 25%
+- Pekerja PKWT berhak atas upah minimum yang sama
+
+</InfoCard>
 
 ---
 
 ## Manfaat Wajib
 
 <Checklist
-  title="Tunjangan Karyawan yang Diwajibkan"
-  description="Kewajiban hukum bagi pengusaha"
+  title="Manfaat Karyawan yang Dibutuhkan"
+  description="Kewajiban hukum untuk pemberi kerja"
   persistKey="benefits-checklist"
   items={[
     {
@@ -282,14 +293,14 @@ Pelanggaran: Kontrak otomatis menjadi PKWTT (permanen).
     {
       id: "bpjs-tk-jkk",
       label: "BPJS JKK (Kecelakaan Kerja)",
-      description: "0.24-1.74% pemberi kerja saja",
+      description: "0.24-1.74% hanya pemberi kerja",
       required: true,
       category: "bpjs",
     },
     {
       id: "bpjs-tk-jkm",
       label: "BPJS JKM (Kematian)",
-      description: "0.3% pemberi kerja saja",
+      description: "0.3% hanya pemberi kerja",
       required: true,
       category: "bpjs",
     },
@@ -316,15 +327,15 @@ Pelanggaran: Kontrak otomatis menjadi PKWTT (permanen).
     },
     {
       id: "thr",
-      label: "THR (Hari Raya Keagamaan)",
+      label: "THR (Hari Raya)",
       description: "1 bulan gaji sebelum hari raya besar",
       required: true,
       category: "bonus",
     },
     {
       id: "maternity",
-      label: "Cuti Melahirkan",
-      description: "3 bulan dengan gaji penuh",
+      label: "Cuti Kehamilan",
+      description: "3 bulan berbayar",
       required: true,
       category: "leave",
     },
@@ -343,37 +354,37 @@ Pelanggaran: Kontrak otomatis menjadi PKWTT (permanen).
 
 ### Cuti Tahunan
 
-| Jenis        | Hak                                           |
-| ------------ | --------------------------------------------- |
-| Cuti tahunan | 12 hari/tahun (setelah 12 bulan)              |
-| Cuti panjang | 2 bulan setelah 6 tahun (beberapa perusahaan) |
-| Hari raya    | Sesuai kesepakatan                            |
+| Jenis              | Hak                             |
+| ----------------- | --------------------------------------- |
+| Cuti tahunan      | 12 hari/tahun (setelah 12 bulan)          |
+| Cuti panjang        | 2 bulan setelah 6 tahun (beberapa perusahaan) |
+| Hari raya         | Sesuai kesepakatan                        |
 
-### Cuti Khusus (Dibayar)
+### Cuti Khusus (Berbayar)
 
-| Acara                          | Hari   |
-| ------------------------------ | ------ |
-| Pernikahan                     | 3 hari |
-| Pernikahan anak                | 2 hari |
-| Sunat                          | 2 hari |
-| Baptis                         | 2 hari |
-| Kematian istri/anak/orang tua  | 2 hari |
-| Kematian anggota keluarga lain | 1 hari |
-| Istri melahirkan/keguguran     | 2 hari |
+| Peristiwa                         | Hari   |
+| ----------------------------- | ------ |
+| Pernikahan                      | 3 hari |
+| Pernikahan anak              | 2 hari |
+| Sunat                  | 2 hari |
+| Pembaptisan                       | 2 hari |
+| Kematian pasangan/anak/orang tua     | 2 hari |
+| Kematian anggota keluarga lain     | 1 hari  |
+| Istri melahirkan/keguguran | 2 hari |
 
-### Cuti Melahirkan/Paternity
+### Cuti Kehamilan/Kepatian
 
-| Jenis Cuti | Durasi                                           | Bayaran    |
-| ---------- | ------------------------------------------------ | ---------- |
-| Melahirkan | 1.5 bulan sebelum + 1.5 bulan setelah melahirkan | Gaji penuh |
-| Keguguran  | 1.5 bulan                                        | Gaji penuh |
-| Paternity  | 2 hari                                           | Gaji penuh |
+| Jenis Cuti  | Durasi                                   | Upah      |
+| ----------- | ------------------------------------------ | -------- |
+| Kehamilan   | 1.5 bulan sebelum + 1.5 bulan setelah melahirkan | Upah penuh |
+| Keguguran | 1.5 bulan                                 | Upah penuh |
+| Kepatian   | 2 hari                                     | Upah penuh |
 
 ---
 
 ## Kontrak Kerja
 
-### Elemen Kontrak yang Diperlukan
+### Elemen Kontrak yang Dibutuhkan
 
 <Checklist
   title="Persyaratan Kontrak"
@@ -383,7 +394,7 @@ Pelanggaran: Kontrak otomatis menjadi PKWTT (permanen).
     {
       id: "names",
       label: "Nama perusahaan dan karyawan",
-      description: "Nama lengkap hukum",
+      description: "Nama lengkap secara hukum",
       required: true,
       category: "parties",
     },
@@ -396,7 +407,7 @@ Pelanggaran: Kontrak otomatis menjadi PKWTT (permanen).
     },
     {
       id: "position",
-      label: "Jabatan/deskripsi pekerjaan",
+      label: "Posisi/deskripsi pekerjaan",
       description: "Peran dan tugas",
       required: true,
       category: "work",
@@ -425,21 +436,21 @@ Pelanggaran: Kontrak otomatis menjadi PKWTT (permanen).
     {
       id: "term",
       label: "Durasi kontrak (jika PKWT)",
-      description: "Tanggal akhir untuk jangka waktu tertentu",
+      description: "Tanggal akhir untuk kontrak berbatas",
       required: false,
       category: "dates",
     },
     {
       id: "signatures",
       label: "Tanda tangan",
-      description: "Kedua belah pihak menandatangani",
+      description: "Kedua pihak menandatangani",
       required: true,
       category: "legal",
     },
   ]}
   categories={[
     { id: "parties", label: "Pihak", color: "blue" },
-    { id: "work", label: "Pekerjaan", color: "green" },
+    { id: "work", label: "Kerja", color: "green" },
     { id: "compensation", label: "Kompensasi", color: "amber" },
     { id: "dates", label: "Tanggal", color: "purple" },
     { id: "legal", label: "Hukum", color: "red" },
@@ -451,7 +462,7 @@ Pelanggaran: Kontrak otomatis menjadi PKWTT (permanen).
 
 ## Peraturan Perusahaan
 
-### Kapan Diperlukan
+### Kapan Dibutuhkan
 
 <InfoCard variant="note" title="Peraturan Perusahaan">
 Perusahaan dengan **10+ karyawan** harus memiliki:
@@ -461,7 +472,7 @@ Atau dengan serikat pekerja:
 
 - **PKB (Perjanjian Kerja Bersama)** - Perjanjian kerja bersama
 
-Harus didaftarkan ke kantor Tenaga Kerja dan diperbarui setiap 2 tahun.
+Harus didaftarkan ke kantor tenaga kerja dan diperbarui setiap 2 tahun.
 
 </InfoCard>
 
@@ -471,13 +482,13 @@ Harus didaftarkan ke kantor Tenaga Kerja dan diperbarui setiap 2 tahun.
 
 ### Persyaratan Pekerja Asing
 
-| Persyaratan | Deskripsi                            |
-| ----------- | ------------------------------------ |
-| RPTKA       | Rencana pemanfaatan pekerja asing    |
-| IMTA        | Izin kerja                           |
-| KITAS       | Izin tinggal                         |
-| Posisi      | Harus merupakan peran yang diizinkan |
-| Pendamping  | Murid Indonesia                      |
+| Persyaratan | Deskripsi                     |
+| ----------- | ------------------------------- |
+| RPTKA       | Rencana pemanfaatan pekerja asing |
+| IMTA        | Izin kerja                     |
+| KITAS       | Izin tinggal                     |
+| Posisi    | Harus posisi yang diizinkan          |
+| Pendamping   | Pendamping Indonesia         |
 
 Lihat: [Panduan Izin Kerja KITAS](/insights/immigration/kitas-work-permit-guide)
 
@@ -485,26 +496,26 @@ Lihat: [Panduan Izin Kerja KITAS](/insights/immigration/kitas-work-permit-guide)
 
 ## Pelanggaran Umum
 
-| Pelanggaran                               | Risiko                       |
-| ----------------------------------------- | ---------------------------- |
-| Tidak ada pendaftaran BPJS                | Denda + pembayaran tunggakan |
-| Di bawah upah minimum                     | Tindakan hukum               |
-| Tidak ada kontrak tertulis                | Kontrak menjadi PKWTT        |
-| Jam kerja berlebihan                      | Hukuman                      |
-| Tidak ada pembayaran THR                  | Tindakan hukum               |
-| Pemutusan hubungan kerja yang tidak tepat | Pesangon + kompensasi        |
+| Pelanggaran               | Risiko                     |
+| ----------------------- | ------------------------ |
+| Tidak terdaftar di BPJS    | Denda + pembayaran mundur     |
+| Di bawah upah minimum      | Tindakan hukum             |
+| Tidak ada kontrak tertulis     | Kontrak menjadi PKWTT   |
+| Jam kerja berlebihan | Denda                |
+| Tidak membayar THR          | Tindakan hukum             |
+| Pemutusan hubungan kerja tidak tepat    | Pesangon + kompensasi |
 
 ---
 
 ## Pertanyaan Umum
 
 <AskZantara
-  context="Hukum ketenagakerjaan Indonesia, hukum perburuhan, BPJS, jam kerja, hak cuti"
-  placeholder="Tanyakan tentang hukum ketenagakerjaan..."
+  context="Hukum ketenagakerjaan Indonesia, hukum kerja, BPJS, jam kerja, hak cuti"
+  placeholder="Tanya tentang hukum ketenagakerjaan..."
   suggestedQuestions={[
     "Berapa kontribusi BPJS?",
-    "Bisakah saya menggunakan PKWT untuk peran permanen?",
-    "Berapa maksimum jam lembur?",
+    "Bisakah saya menggunakan PKWT untuk posisi tetap?",
+    "Apa maksimum jam lembur?",
     "Kapan pembayaran THR jatuh tempo?",
   ]}
 />
@@ -513,6 +524,6 @@ Lihat: [Panduan Izin Kerja KITAS](/insights/immigration/kitas-work-permit-guide)
 
 ## Artikel Terkait
 
-- [Mempekerjakan Karyawan Indonesia](/insights/business/hiring-indonesian-employees)
+- [Merekrut Karyawan Indonesia](/insights/business/hiring-indonesian-employees)
 - [Pemutusan Hubungan Kerja & Pesangon](/insights/business/termination-severance)
 - [Panduan Izin Kerja KITAS](/insights/immigration/kitas-work-permit-guide)

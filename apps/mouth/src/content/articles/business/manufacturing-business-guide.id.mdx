@@ -74,29 +74,38 @@ ogImage: "/static/insights/business/manufacturing-business-guide.jpg"
 ogType: "article"
 twitterCard: "summary_large_image"
 locale: "id"
-source_sha256: "412acda848b668e99faff0a71eece08eaced7d64ec35336c13bf3b69502e93c6"
+source_sha256: "0faab070ff251e6e39c61d626ee889fdf135b1e22b5d8f3d5b224061789966bf"
 ---
 
-# Bisnis Manufaktur di Indonesia 2026: Panduan untuk Investor Asing
+import {
+  JourneyMap,
+  ComparisonTable,
+  Checklist,
+  InfoCard,
+  Calculator,
+  AskZantara,
+} from "@/components/insights/interactive";
 
-Indonesia menawarkan keunggulan manufaktur yang kompetitif dengan sumber daya tenaga kerja yang besar, lokasi strategis, dan pasar domestik yang berkembang. Berikut adalah cara untuk mengatur operasi produksi.
+# Bisnis Manufaktur di Indonesia 2026: Panduan Investor Asing
 
-## Mengapa Manufaktur di Indonesia?
+Indonesia menawarkan manufaktur yang kompetitif dengan tenaga kerja yang besar, lokasi strategis, dan pasar domestik yang berkembang. Berikut cara menetapkan operasi produksi.
+
+## Mengapa Memproduksi di Indonesia?
 
 ### Keuntungan
 
-- **Tenaga kerja**: Lebih dari 130 juta pekerja
-- **Biaya kompetitif**: Lebih rendah dari China, Thailand
-- **Populasi muda**: Usia median 29 tahun
+- **Tenaga kerja**: 130+ juta pekerja
+- **Biaya kompetitif**: Lebih rendah daripada Tiongkok, Thailand
+- **Populasi muda**: Usia median 29
 - **Lokasi strategis**: Akses ke pasar ASEAN
 - **Sumber daya alam**: Bahan baku tersedia
-- **Pasar yang berkembang**: 270 juta konsumen
+- **Pasar berkembang**: 270 juta konsumen
 
 ### Tantangan
 
-- Infrastruktur bervariasi berdasarkan wilayah
+- Infrastruktur bervariasi menurut wilayah
 - Birokrasi bisa lambat
-- Peraturan tenaga kerja menguntungkan pekerja
+- Regulasi tenaga kerja menguntungkan pekerja
 - Upah minimum meningkat setiap tahun
 
 ---
@@ -105,16 +114,16 @@ Indonesia menawarkan keunggulan manufaktur yang kompetitif dengan sumber daya te
 
 <ComparisonTable
   title="Zona Industri Utama"
-  description="Di mana lokasi pabrik Anda"
+  description="Di mana harus menempatkan pabrik Anda"
   items={[
     {
       name: "Jakarta Raya",
       subtitle: "Bekasi, Karawang, Cikarang",
       values: {
-        Infrastruktur: "Sangat Baik",
-        "Biaya Tenaga Kerja": "Lebih Tinggi",
-        Logistik: "Terbaik",
-        "Terbaik Untuk": "Berteknologi tinggi, ekspor",
+        Infrastructure: "Sangat Baik",
+        "Labor Cost": "Lebih Tinggi",
+        Logistics: "Terbaik",
+        "Best For": "High-tech, ekspor",
       },
       highlight: true,
     },
@@ -122,49 +131,47 @@ Indonesia menawarkan keunggulan manufaktur yang kompetitif dengan sumber daya te
       name: "Area Surabaya",
       subtitle: "Zona industri Jawa Timur",
       values: {
-        Infrastruktur: "Baik",
-        "Biaya Tenaga Kerja": "Sedang",
-        Logistik: "Baik",
-        "Terbaik Untuk": "Manufaktur umum",
+        Infrastructure: "Baik",
+        "Labor Cost": "Sedang",
+        Logistics: "Baik",
+        "Best For": "Manufaktur umum",
       },
     },
     {
       name: "Jawa Tengah",
-      subtitle: "Semarang, area Solo",
+      subtitle: "Semarang, Solo",
       values: {
-        Infrastruktur: "Sedang",
-        "Biaya Tenaga Kerja": "Lebih Rendah",
-        Logistik: "Sedang",
-        "Terbaik Untuk": "Padat karya",
+        Infrastructure: "Sedang",
+        "Labor Cost": "Lebih Rendah",
+        Logistics: "Sedang",
+        "Best For": "Intensif tenaga kerja",
       },
     },
     {
       name: "Batam",
       subtitle: "Zona Perdagangan Bebas",
       values: {
-        Infrastruktur: "Baik",
-        "Biaya Tenaga Kerja": "Sedang",
-        Logistik: "Akses Singapura",
-        "Terbaik Untuk": "Elektronik, ekspor",
+        Infrastructure: "Baik",
+        "Labor Cost": "Sedang",
+        Logistics: "Akses Singapura",
+        "Best For": "Elektronik, ekspor",
       },
     },
   ]}
 />
 
-<InfoCard variant="tip" title="Keuntungan Kawasan Industri">
+<InfoCard variant="tip" title="Manfaat Kawasan Industri">
 
-Berlokasi di kawasan industri yang sudah mapan memberikan: - Infrastruktur
-siap pakai (listrik, air, jalan) - Perizinan tata ruang yang sudah disetujui -
-Layanan pendukung - Proses perizinan lebih cepat - Keamanan lebih baik
+Menempatkan bisnis di kawasan industri yang sudah mapan memberikan: - Infrastruktur siap (listrik, air, jalan) - Zoning yang sudah disetujui - Layanan pendukung - Proses perizinan lebih cepat - Keamanan yang lebih baik
 
 </InfoCard>
 
 ---
 
-## Perjalanan Pengaturan Manufaktur
+## Perjalanan Persiapan Manufaktur
 
 <JourneyMap
-  title="Proses Pengaturan Pabrik"
+  title="Proses Persiapan Pabrik"
   description="Dari perencanaan hingga produksi"
   estimatedTotal="6-12 bulan"
   steps={[
@@ -173,70 +180,70 @@ Layanan pendukung - Proses perizinan lebih cepat - Keamanan lebih baik
       title: "Perencanaan Bisnis",
       description: "Kelayakan dan perencanaan",
       duration: "1-2 bulan",
-      status: "diperlukan",
+      status: "required",
       tips: [
-        "Riset pasar",
+        "Penelitian pasar",
         "Perencanaan kapasitas produksi",
-        "Pemetaan rantai pasokan",
+        "Pemetaan rantai pasok",
         "Pencarian lokasi",
       ],
     },
     {
       id: "company",
-      title: "Dirikan PT PMA",
+      title: "Mendirikan PT PMA",
       description: "Pembentukan perusahaan",
       duration: "4-6 minggu",
-      status: "diperlukan",
+      status: "required",
       tips: [
-        "Kode KBLI untuk manufaktur",
-        "Investasi minimum IDR 10M",
-        "Sertakan kegiatan impor/ekspor",
+        "Kode KBLI manufaktur",
+        "Investasi minimal IDR 10B",
+        "Termasuk aktivitas impor/ekspor",
       ],
     },
     {
       id: "location",
-      title: "Amankan Lokasi",
-      description: "Tanah atau sewa pabrik",
+      title: "Mendapatkan Lokasi",
+      description: "Sewa atau beli tanah/pabrik",
       duration: "1-3 bulan",
-      status: "diperlukan",
+      status: "required",
       tips: [
-        "Zona industri lebih disukai",
+        "Zona industri disarankan",
         "Bangun atau beli yang sudah ada",
-        "Analisis sewa vs. beli",
+        "Analisis sewa vs. milik",
       ],
     },
     {
       id: "permits",
-      title: "Dapatkan Izin",
-      description: "Lisensi industri",
+      title: "Mendapatkan Izin",
+      description: "Izin industri",
       duration: "2-4 bulan",
-      status: "diperlukan",
+      status: "required",
       tips: [
         "NIB melalui OSS",
         "Izin lingkungan (AMDAL)",
-        "Izin Mendirikan Bangunan",
-        "Lisensi khusus industri",
+        "Izin bangunan",
+        "Izin spesifik industri",
       ],
     },
     {
       id: "setup",
       title: "Pengaturan Pabrik",
-      description: "Bangun dan lengkapi",
+      description: "Pembangunan dan pemasangan peralatan",
       duration: "3-6 bulan",
-      status: "diperlukan",
+      status: "required",
       tips: [
         "Konstruksi/renovasi",
         "Pemasangan peralatan",
-        "Penyambungan utilitas",
+        "Koneksi utilitas",
         "Sistem keamanan",
       ],
     },
     {
       id: "staff",
-      title: "Rekrut & Latih",
-      description: "Bangun tenaga kerja",
+      title: "Rekrut dan Latih",
+      description: "Membangun tenaga kerja",
       duration: "2-3 bulan",
-      status: "diperlukan",
+      status: "required",
       tips: [
         "Pekerja produksi",
         "Supervisor dan manajer",
@@ -247,14 +254,10 @@ Layanan pendukung - Proses perizinan lebih cepat - Keamanan lebih baik
     {
       id: "production",
       title: "Mulai Produksi",
-      description: "Mulai manufaktur",
-      duration: "Berkelanjutan",
+      description: "Memulai manufaktur",
+      duration: "Ongoing",
       status: "final",
-      tips: [
-        "Produksi percobaan",
-        "Pengendalian kualitas",
-        "Tingkatkan kapasitas",
-      ],
+      tips: ["Produksi uji", "Kontrol kualitas", "Meningkatkan kapasitas"],
     },
   ]}
 />
@@ -264,7 +267,7 @@ Layanan pendukung - Proses perizinan lebih cepat - Keamanan lebih baik
 ## Persyaratan Investasi
 
 <Calculator
-  title="Perkiraan Investasi Manufaktur"
+  title="Estimasi Investasi Manufaktur"
   description="Perhitungan investasi kasar"
   fields={[
     {
@@ -272,7 +275,7 @@ Layanan pendukung - Proses perizinan lebih cepat - Keamanan lebih baik
       label: "Jenis Manufaktur",
       type: "select",
       options: [
-        { value: "light", label: "Manufaktur ringan (perakitan, pengemasan)" },
+        { value: "light", label: "Manufaktur ringan (perakitan, kemasan)" },
         { value: "medium", label: "Manufaktur sedang (barang konsumen)" },
         { value: "heavy", label: "Manufaktur berat (mesin, bahan)" }
       ],
@@ -280,12 +283,12 @@ Layanan pendukung - Proses perizinan lebih cepat - Keamanan lebih baik
     },
     {
       id: "size",
-      label: "Ukuran Pabrik (sqm)",
+      label: "Ukuran Pabrik (m²)",
       type: "select",
       options: [
-        { value: "small", label: "Kecil (&lt;2.000 sqm)" },
-        { value: "medium", label: "Sedang (2.000-5.000 sqm)" },
-        { value: "large", label: "Besar (5.000+ sqm)" }
+        { value: "small", label: "Kecil (<2.000 m²)" },
+        { value: "medium", label: "Sedang (2.000-5.000 m²)" },
+        { value: "large", label: "Besar (5.000+ m²)" }
       ],
       defaultValue: "medium"
     },
@@ -315,7 +318,7 @@ Layanan pendukung - Proses perizinan lebih cepat - Keamanan lebih baik
       "heavy-large": 100000000000
     };
 
-    // Pengganda lokasi
+    // Pengali lokasi
     const locationMult = {
       "jakarta": 1.2,
       "java": 1.0,
@@ -332,10 +335,10 @@ Layanan pendukung - Proses perizinan lebih cepat - Keamanan lebih baik
         { label: "Tanah/Bangunan", amount: adjusted * 0.3 },
         { label: "Peralatan", amount: adjusted * 0.4 },
         { label: "Modal Kerja", amount: adjusted * 0.2 },
-        { label: "Perizinan/Pengaturan", amount: adjusted * 0.1 }
+        { label: "Pengaturan/Izin", amount: adjusted * 0.1 }
       ],
       currency: "IDR",
-      note: `Sekitar USD ${Math.round(adjusted / 16000).toLocaleString()}`
+      note: `Kira-kira USD ${Math.round(adjusted / 16000).toLocaleString()}`
     };
 
 }}
@@ -347,64 +350,64 @@ Layanan pendukung - Proses perizinan lebih cepat - Keamanan lebih baik
 
 <Checklist
   title="Izin Manufaktur"
-  description="Lisensi yang dibutuhkan untuk operasi pabrik"
+  description="Izin yang diperlukan untuk operasi pabrik"
   persistKey="manufacturing-permits"
   items={[
     {
       id: "nib",
-      label: "NIB (Nomor Identitas Bisnis)",
+      label: "NIB (ID Bisnis)",
       description: "Dari sistem OSS",
       required: true,
-      category: "perusahaan",
+      category: "company",
     },
     {
       id: "industrial-license",
       label: "Izin Usaha Industri",
-      description: "Untuk kegiatan manufaktur",
+      description: "Untuk aktivitas manufaktur",
       required: true,
-      category: "industri",
+      category: "industry",
     },
     {
       id: "amdal",
       label: "Izin Lingkungan",
       description: "AMDAL atau UKL-UPL berdasarkan skala",
       required: true,
-      category: "lingkungan",
+      category: "environment",
     },
     {
       id: "imb",
       label: "Izin Mendirikan Bangunan (IMB/PBG)",
-      description: "Untuk pembangunan pabrik",
+      description: "Untuk konstruksi pabrik",
       required: true,
-      category: "bangunan",
+      category: "building",
     },
     {
       id: "safety",
       label: "Izin Keselamatan Operasional",
       description: "Kebakaran, keselamatan mesin",
       required: true,
-      category: "keselamatan",
+      category: "safety",
     },
     {
       id: "api",
       label: "API-P (Produsen Impor)",
       description: "Untuk mengimpor bahan baku",
       required: false,
-      category: "perdagangan",
+      category: "trade",
     },
     {
       id: "sni",
       label: "Sertifikasi SNI",
       description: "Untuk produk tertentu",
       required: false,
-      category: "produk",
+      category: "product",
     },
     {
       id: "halal",
       label: "Sertifikasi Halal",
       description: "Untuk produk makanan/konsumen",
       required: false,
-      category: "produk",
+      category: "product",
     },
   ]}
   categories={[
@@ -425,30 +428,29 @@ Layanan pendukung - Proses perizinan lebih cepat - Keamanan lebih baik
 
 ### Dasar-Dasar Ketenagakerjaan
 
-| Persyaratan          | Detail                                         |
-| -------------------- | ---------------------------------------------- |
-| Upah Minimum         | Provinsi (UMK) - bervariasi IDR 2-5 juta/bulan |
-| BPJS Kesehatan       | Asuransi kesehatan wajib                       |
-| BPJS Ketenagakerjaan | Asuransi tenaga kerja wajib                    |
-| Jam Kerja            | Maksimum 40 jam/minggu                         |
-| Lembur               | 1.5x-4x upah dasar                             |
-| Pesangon             | Kewajiban signifikan                           |
+| Persyaratan          | Rincian                                  |
+| -------------------- | ---------------------------------------- |
+| Upah Minimum         | Provinsi (UMK) - bervariasi IDR 2-5Juta/bulan |
+| BPJS Kesehatan       | Asuransi kesehatan wajib               |
+| BPJS Ketenagakerjaan | Asuransi ketenagakerjaan wajib           |
+| Jam Kerja            | Maksimum 40 jam/minggu                    |
+| Lembur               | 1,5x-4x tarif dasar                        |
+| Pemutusan Hubungan Kerja | Kewajiban signifikan                  |
 
-<InfoCard
-  variant="warning"
-  title="Undang-Undang Ketenagakerjaan Menguntungkan Pekerja"
->
+<InfoCard variant="warning" title="Hukum Ketenagakerjaan Menguntungkan Pekerja">
 
-Undang-undang ketenagakerjaan Indonesia memberikan perlindungan kuat kepada
-pekerja: - Sulit untuk memberhentikan karyawan tetap - Pesangon bisa sangat
-besar (hingga 35 bulan) - Serikat pekerja umum terjadi di bidang manufaktur -
-Mogok bersenjata dilindungi
+Hukum ketenagakerjaan Indonesia memberikan perlindungan kuat bagi pekerja:
+
+- Sulit memutuskan hubungan kerja karyawan tetap
+- Pemutusan hubungan kerja bisa signifikan (hingga 35 bulan)
+- Serikat pekerja umum di industri manufaktur
+- Mogok kerja dilindungi
 
 </InfoCard>
 
-### Pekerja Asing
+### Tenaga Kerja Asing
 
-Terbatas untuk:
+Terbatas pada:
 
 - Spesialis teknis
 - Posisi manajemen
@@ -458,27 +460,27 @@ Persyaratan:
 
 - Persetujuan RPTKA
 - Biaya DKP-TKA
-- Pelatihan mitra Indonesia
+- Pelatihan rekan kerja Indonesia
 
 ---
 
 ## Manufaktur Ekspor
 
-### Manfaat Zona Terikat
+### Manfaat Zona Bebas
 
-Untuk manufaktur yang berfokus pada ekspor:
+Untuk manufaktur berfokus pada ekspor:
 
-- **Penangguhan bea masuk** atas bahan baku
-- **Pengecualian PPN** atas masukan impor
-- **Proses kepabeanan lebih cepat**
+- **Penundaan bea masuk** pada bahan baku
+- **Pengecualian PPN** pada input yang diimpor
+- **Proses bea cukai lebih cepat**
 - **Prosedur yang disederhanakan**
 
 ### Fasilitas KITE
 
 Kemudahan Impor Tujuan Ekspor:
 
-- Penangguhan bea masuk dan pajak untuk produksi ekspor
-- Tersedia di luar zona terikat
+- Penangguhan bea masuk/pajak untuk produksi ekspor
+- Tersedia di luar zona bebas
 - Memerlukan komitmen ekspor
 - Audit rutin
 
@@ -488,11 +490,11 @@ Kemudahan Impor Tujuan Ekspor:
 
 ### Persyaratan AMDAL
 
-Untuk manufaktur skala besar:
+Untuk manufaktur besar:
 
-- Penilaian Dampak Lingkungan
+- Penilaian dampak lingkungan
 - Sebelum konstruksi dimulai
-- Konsultasi masyarakat diperlukan
+- Konsultasi komunitas diperlukan
 - Kewajiban pemantauan berkelanjutan
 
 ### Pengelolaan Limbah
@@ -508,12 +510,12 @@ Untuk manufaktur skala besar:
 
 <AskZantara
   context="Manufaktur Indonesia, pengaturan pabrik, zona industri, produksi ekspor"
-  placeholder="Tanyakan tentang manufaktur..."
+  placeholder="Tanya tentang manufaktur..."
   suggestedQuestions={[
-    "Bagaimana cara menemukan pemasok yang andal di Indonesia?",
-    "Berapa biaya tenaga kerja yang khas?",
-    "Bisakah saya memproduksi hanya untuk ekspor?",
-    "Bagaimana dengan standar pengendalian kualitas?",
+    "Bagaimana cara menemukan pemasok yang dapat diandalkan di Indonesia?",
+    "Apa biaya tenaga kerja yang umum?",
+    "Apakah saya bisa memproduksi hanya untuk ekspor?",
+    "Apa tentang standar kontrol kualitas?",
   ]}
 />
 
@@ -522,5 +524,5 @@ Untuk manufaktur skala besar:
 ## Artikel Terkait
 
 - [Panduan Pendaftaran PT PMA](/insights/business/pt-pma-registration-guide)
-- [Panduan Bisnis Impor-Ekspor](/insights/business/export-import-business-guide)
+- [Panduan Bisnis Ekspor-Impor](/insights/business/export-import-business-guide)
 - [Biaya Izin Kerja](/insights/immigration/work-permit-costs)

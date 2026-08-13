@@ -74,79 +74,88 @@ ogImage: "/static/insights/business/business-licenses-overview.jpg"
 ogType: "article"
 twitterCard: "summary_large_image"
 locale: "it"
-source_sha256: "9df37f8940c88befeca4174faaa41b6adc7dffc2b697d52e49ec2a1df7c9115d"
+source_sha256: "7a2dac71a30710489852ebff4b23689dd115674273ca4c7afa30cda6cf95667c"
 ---
 
-# Licenze Commerciali in Indonesia 2026: Panoramica Completa
+import {
+  DecisionTree,
+  ComparisonTable,
+  Checklist,
+  InfoCard,
+  AskZantara,
+} from "@/components/insights/interactive";
 
-L'Indonesia ha semplificato le licenze commerciali attraverso il sistema OSS (Online Single Submission), ma capire ciò di cui hai bisogno può ancora essere complesso.
+# Licenze per aziende in Indonesia 2026: Panoramica completa
 
-## Quadro Normativo delle Licenze
+L'Indonesia ha semplificato le licenze per le aziende attraverso il sistema OSS (Online Single Submission), ma comprendere ciò di cui hai bisogno può comunque essere complesso. Se stai pianificando di stabilirti a Bali in particolare, la nostra guida sul [clima aziendale a Bali nel 2026](/business/bali-business-climate-2026-what-foreigners-actually-face) copre gli strati regolamentari unici che si applicano sopra il quadro nazionale.
+
+## Framework delle licenze
 
 <InfoCard variant="note" title="Sistema OSS">
-Dall'entrata in vigore della **Legge sulla Creazione di Posti di Lavoro (Legge Omnibus)**, l'Indonesia utilizza il sistema **OSS RBA** (Approccio Basato sul Rischio):
+Da quando è entrata in vigore la **Legge sulle Opportunità di Lavoro (Omnibus Law)**, l'Indonesia utilizza il sistema **OSS RBA** (Approccio basato sul rischio):
 
-- Tutte le attività si registrano tramite OSS
+- Tutte le aziende si registrano attraverso l'OSS
 - Ricevono il **NIB** (Nomor Induk Berusaha)
-- Il livello di rischio determina ulteriori requisiti
-- Licenze settoriali integrate in OSS
-  </InfoCard>
+- Il livello di rischio determina i requisiti ulteriori
+- Le licenze settoriali sono integrate nell'OSS
 
-## Categorie di Licenze
+</InfoCard>
+
+## Categorie di licenza
 
 <DecisionTree
-  title="Di Quali Licenze Hai Bisogno?"
+  title="Quali licenze ti servono?"
   description="Trova i tuoi requisiti di licenza"
   nodes={[
     {
       id: "start",
-      question: "Qual è la tua attività commerciale?",
+      question: "Qual è la tua attività aziendale?",
       options: [
-        { label: "Commercio/vendita al dettaglio", next: "trade" },
-        { label: "Manifattura", next: "manufacture" },
-        { label: "Alimenti e bevande", next: "food" },
+        { label: "Commercio/retail", next: "trade" },
+        { label: "Produzione", next: "manufacture" },
+        { label: "Cibo e bevande", next: "food" },
         { label: "Servizi professionali", next: "services" },
-        { label: "Costruzioni", next: "construction" },
+        { label: "Costruzione", next: "construction" },
       ],
     },
     {
       id: "trade",
       result: {
-        title: "Licenze Commerciali per il Commercio",
+        title: "Licenze per aziende di commercio",
         description:
-          "NIB + SIUP (Licenza Commerciale). Potrebbero essere necessarie licenze di importazione (API-U/API-P) se si importano merci. Classificazione a rischio basso-medio.",
+          "NIB + SIUP (Licenza per il commercio). Potrebbe essere necessaria una licenza per l'importazione (API-U/API-P) se si importano merci. Classificazione a basso o medio rischio.",
       },
     },
     {
       id: "manufacture",
       result: {
-        title: "Licenze di Manifattura",
+        title: "Licenze per produzione",
         description:
-          "NIB + IUI (Licenza Commerciale Industriale) + Permessi ambientali (AMDAL/UKL-UPL) + Permesso di localizzazione. Classificazione a rischio medio-alto.",
+          "NIB + IUI (Licenza per l'industria) + Permessi ambientali (AMDAL/UKL-UPL) + Permesso di localizzazione. Classificazione a medio o alto rischio.",
       },
     },
     {
       id: "food",
       result: {
-        title: "Licenze Commerciali per Alimenti e Bevande",
+        title: "Licenze per aziende di cibo e bevande",
         description:
-          "NIB + TDUP (Licenza Commerciale Turistica) o SIUP + Registrazione BPOM/Sicurezza Alimentare + Certificazione Halal (per alcuni prodotti). Rischio medio.",
+          "NIB + TDUP (Licenza per il turismo) o SIUP + Registrazione BPOM/Sicurezza alimentare + Certificazione Halal (per alcuni prodotti). Rischio medio.",
       },
     },
     {
       id: "services",
       result: {
-        title: "Licenze Commerciali per Servizi",
+        title: "Licenze per servizi",
         description:
-          "Il NIB è spesso sufficiente. Alcuni servizi professionali richiedono certificazioni specifiche. Classificazione a rischio basso-medio.",
+          "Il NIB è spesso sufficiente. Alcuni servizi professionali richiedono certificazioni specifiche. Classificazione a basso o medio rischio.",
       },
     },
     {
       id: "construction",
       result: {
-        title: "Licenze di Costruzione",
+        title: "Licenze per costruzione",
         description:
-          "NIB + SBU (Certificato Commerciale di Costruzione) + SBUJK (specifico per la categoria di costruzione). Rischio medio-alto.",
+          "NIB + SBU (Certificato per l'attività edile) + SBUJK (specifico per la categoria di costruzione). Rischio medio o alto.",
       },
     },
   ]}
@@ -154,50 +163,50 @@ Dall'entrata in vigore della **Legge sulla Creazione di Posti di Lavoro (Legge O
 
 ---
 
-## Licenze Commerciali Fondamentali
+## Licenze aziendali fondamentali
 
 <ComparisonTable
-  title="Licenze Commerciali Essenziali"
-  description="Licenze di cui la maggior parte delle attività ha bisogno"
+  title="Licenze aziendali essenziali"
+  description="Licenze di cui la maggior parte delle aziende ha bisogno"
   items={[
     {
       name: "NIB",
-      subtitle: "Numero di Identificazione Commerciale",
+      subtitle: "Numero di identificazione aziendale",
       values: {
-        Required: "Tutte le attività",
+        Required: "Tutte le aziende",
         "Issued By": "Sistema OSS",
-        Cost: "Gratuito",
+        Cost: "Gratis",
         Validity: "Permanente",
       },
       highlight: true,
     },
     {
       name: "SIUP",
-      subtitle: "Licenza Commerciale per il Commercio",
+      subtitle: "Licenza per il commercio",
       values: {
-        Required: "Società commerciali",
+        Required: "Aziende di commercio",
         "Issued By": "OSS (tramite NIB)",
-        Cost: "Gratuito",
+        Cost: "Gratis",
         Validity: "Per NIB",
       },
     },
     {
       name: "TDP",
-      subtitle: "Registrazione Società",
+      subtitle: "Registrazione aziendale",
       values: {
         Required: "Tutte le PT/CV",
         "Issued By": "OSS (tramite NIB)",
-        Cost: "Gratuito",
+        Cost: "Gratis",
         Validity: "Per NIB",
       },
     },
     {
       name: "NPWP",
-      subtitle: "Identificazione Fiscale",
+      subtitle: "Identificazione fiscale",
       values: {
-        Required: "Tutte le attività",
-        "Issued By": "Ufficio delle Imposte",
-        Cost: "Gratuito",
+        Required: "Tutte le aziende",
+        "Issued By": "Ufficio delle tasse",
+        Cost: "Gratis",
         Validity: "Permanente",
       },
     },
@@ -206,55 +215,55 @@ Dall'entrata in vigore della **Legge sulla Creazione di Posti di Lavoro (Legge O
 
 ---
 
-## Licenze Basate sul Rischio
+## Licenze basate sul rischio
 
-### Classificazione del Rischio
+### Classificazione del rischio
 
-| Livello di Rischio | Requisiti                  | Esempi                                        |
-| ------------------ | -------------------------- | --------------------------------------------- |
-| Basso              | Solo NIB                   | Piccola vendita al dettaglio, servizi di base |
-| Medio-Basso        | NIB + Certificato Standard | Alcune attività commerciali, consulenza       |
-| Medio-Alto         | NIB + Certificato Standard | Servizi di ristorazione, manifattura          |
-| Alto               | NIB + Permesso + Ispezione | Grande industria, pericolose                  |
+| Livello di rischio  | Requisiti               | Esempi                     |
+| ----------- | -------------------------- | ---------------------------- |
+| Basso         | Solo NIB                   | Piccolo retail, servizi di base |
+| Medio-Basso  | NIB + Certificato standard | Alcuni commerci, consulenza    |
+| Medio-Alto | NIB + Certificato standard | Servizio di cibo, produzione  |
+| Alto        | NIB + Permesso + Ispezione  | Grande industria, pericoloso    |
 
-### Come Viene Determinato il Rischio
+### Come si determina il rischio
 
-I fattori includono:
+Fattori includono:
 
-- Settore di attività (codice KBLI)
-- Scala delle operazioni
+- Settore aziendale (codice KBLI)
+- Dimensione delle operazioni
 - Impatto ambientale
 - Rischio per la salute/sicurezza pubblica
 - Valore dell'investimento
 
 ---
 
-## Licenze Settoriali
+## Licenze settoriali
 
-### Permessi Settoriali Comuni
+### Permessi settoriali comuni
 
 <Checklist
-  title="Esempi di Licenze Settoriali"
-  description="Requisiti specifici del settore"
+  title="Esempi di licenze settoriali"
+  description="Requisiti specifici per settore"
   persistKey="sectoral-licenses-checklist"
   items={[
     {
       id: "api",
-      label: "API (ID Importatore)",
+      label: "API (ID importatore)",
       description: "Per l'importazione di merci",
       required: false,
       category: "trade",
     },
     {
       id: "nib-siup",
-      label: "Licenza Commerciale (tramite NIB)",
-      description: "Per le attività commerciali",
+      label: "Licenza per il commercio (tramite NIB)",
+      description: "Per aziende di commercio",
       required: false,
       category: "trade",
     },
     {
       id: "tdup",
-      label: "TDUP (Attività Turistica)",
+      label: "TDUP (Attività turistica)",
       description: "Hotel, tour, ristoranti",
       required: false,
       category: "tourism",
@@ -262,28 +271,28 @@ I fattori includono:
     {
       id: "bpom",
       label: "Registrazione BPOM",
-      description: "Alimenti, farmaci, cosmetici",
+      description: "Cibo, farmaci, cosmetici",
       required: false,
       category: "health",
     },
     {
       id: "halal",
       label: "Certificazione Halal",
-      description: "Alcuni prodotti alimentari",
+      description: "Certei prodotti alimentari",
       required: false,
       category: "health",
     },
     {
       id: "iui",
-      label: "IUI (Licenza Industriale)",
-      description: "Manifattura",
+      label: "IUI (Licenza industriale)",
+      description: "Produzione",
       required: false,
       category: "manufacturing",
     },
     {
       id: "sbu",
-      label: "SBU (Certificato di Costruzione)",
-      description: "Imprese di costruzione",
+      label: "SBU (Certificato edile)",
+      description: "Aziende edili",
       required: false,
       category: "construction",
     },
@@ -298,9 +307,9 @@ I fattori includono:
   categories={[
     { id: "trade", label: "Commercio", color: "blue" },
     { id: "tourism", label: "Turismo", color: "green" },
-    { id: "health", label: "Salute/Alimentare", color: "red" },
-    { id: "manufacturing", label: "Manifattura", color: "amber" },
-    { id: "construction", label: "Costruzioni", color: "purple" },
+    { id: "health", label: "Salute/Cibo", color: "red" },
+    { id: "manufacturing", label: "Produzione", color: "amber" },
+    { id: "construction", label: "Costruzione", color: "purple" },
     { id: "financial", label: "Finanziario", color: "cyan" },
   ]}
   showProgress={false}
@@ -308,96 +317,97 @@ I fattori includono:
 
 ---
 
-## Licenze per Tipo di Attività
+## Licenza per tipo di azienda
 
-### Attività Commerciale/di Importazione
+### Azienda di commercio/importazione
 
-| Licenza                        | Scopo                           |
-| ------------------------------ | ------------------------------- |
-| NIB                            | Registrazione di base           |
-| API-U                          | Importatore generale            |
-| API-P                          | Importatore produttore          |
-| IT (Approvazione Importazione) | Approvazione prodotto specifico |
-| LS (Verifica)                  | Alcune merci                    |
+| Licenza              | Scopo                   |
+| -------------------- | ------------------------- |
+| NIB                  | Registrazione di base         |
+| API-U                | Importatore generale          |
+| API-P                | Importatore produttore         |
+| IT (Approvazione importazione) | Approvazione per prodotti specifici |
+| LS (Verifica)    | Certei prodotti       |
 
-### Ristorante/Caffetteria
+### Ristorante/Caffè
 
-| Licenza               | Scopo                      |
-| --------------------- | -------------------------- |
-| NIB                   | Registrazione di base      |
-| TDUP                  | Licenza attività turistica |
-| Certificato sanitario | Sicurezza alimentare       |
-| BPOM (se si elabora)  | Alimenti confezionati      |
-| Halal (raccomandato)  | Clienti musulmani          |
+| Licenza                                                                        | Scopo                  |
+| ------------------------------------------------------------------------------ | ------------------------ |
+| NIB                                                                            | Registrazione di base        |
+| [TDUP](/business/bali-tourism-business-license-what-you-need-to-start-legally) | Licenza per attività turistica |
+| Certificato sanitario                                                             | Sicurezza alimentare              |
+| BPOM (se si processa)                                                           | Cibo confezionato            |
+| Halal (raccomandato)                                                            | Clienti musulmani         |
 
-### Manifattura
+### Produzione
 
-| Licenza                    | Scopo                      |
-| -------------------------- | -------------------------- |
-| NIB                        | Registrazione di base      |
-| IUI                        | Licenza industriale        |
-| Permesso ambientale        | AMDAL/UKL-UPL              |
-| Permesso di localizzazione | Approvazione uso del suolo |
-| Permesso di costruzione    | IMB/PBG                    |
-| Permesso operativo         | Approvazione finale        |
+| Licenza              | Scopo            |
+| -------------------- | ------------------ |
+| NIB                  | Registrazione di base  |
+| IUI                  | Licenza industriale |
+| Permesso ambientale | AMDAL/UKL-UPL      |
+| Permesso di localizzazione      | Approvazione per l'uso del terreno  |
+| Permesso edilizio      | IMB/PBG            |
+| Permesso operativo   | Approvazione finale     |
 
 ---
 
-## Licenze Ambientali
+## Licenze ambientali
 
-<InfoCard variant="warning" title="Conformità Ambientale">
-La maggior parte delle attività necessita di approvazione ambientale:
+<InfoCard variant="warning" title="Conformità ambientale">
+La maggior parte delle aziende necessita di approvazione ambientale:
 
-**Basso Impatto (SPPL)**
+**Basso impatto (SPPL)**
 
-- Piccola vendita al dettaglio/ufficio
+- Piccolo retail/ufficio
 - Dichiarazione semplice
 
-**Medio Impatto (UKL-UPL)**
+**Medio impatto (UKL-UPL)**
 
-- Attività di medie dimensioni
+- Aziende medie
 - Piano di gestione ambientale
 
-**Alto Impatto (AMDAL)**
+**Alto impatto (AMDAL)**
 
 - Grandi progetti
 - Studio completo di impatto ambientale
 - Consultazione pubblica richiesta
-  </InfoCard>
+
+</InfoCard>
 
 ---
 
-## Localizzazione ed Edilizia
+## Località e costruzione
 
-### Permessi Relativi alla Proprietà
+### Permessi legati alla proprietà
 
-| Permesso                   | Scopo                      | Quando Necessario        |
-| -------------------------- | -------------------------- | ------------------------ |
-| Permesso di Localizzazione | Approvazione uso del suolo | Acquisizione del terreno |
-| IMB/PBG                    | Permesso di costruzione    | Costruzione              |
-| SLF                        | Occupazione dell'edificio  | Gestione dell'edificio   |
-| HO (se applicabile)        | Permesso di disturbo       | Alcune località          |
-
----
-
-## Costi delle Licenze
-
-### Costi Tipici
-
-| Licenza              | Tassa Governativa | Tassa Agente |
-| -------------------- | ----------------- | ------------ |
-| NIB                  | Gratuito          | IDR 2-5M     |
-| NPWP                 | Gratuito          | IDR 1-2M     |
-| Ambientale (SPPL)    | Gratuito-minimo   | IDR 3-5M     |
-| Ambientale (UKL-UPL) | IDR 5-20M         | IDR 20-50M   |
-| Settoriale (varia)   | Varia             | IDR 5-20M    |
+| Permesso             | Scopo            | Quando è necessario        |
+| ------------------ | ------------------ | ------------------ |
+| Permesso di localizzazione    | Approvazione per l'uso del terreno  | Acquisizione del terreno     |
+| IMB/PBG            | Permesso edilizio    | Costruzione       |
+| SLF                | Occupazione edificio | Operazione edificio |
+| HO (se applicabile) | Permesso di disturbo    | Alcune località    |
 
 ---
 
-## Conformità Dopo l'Ottenimento delle Licenze
+## Costi delle licenze
+
+### Costi tipici
+
+| Licenza                 | Tariffa governativa | Tariffa agente  |
+| ----------------------- | -------------- | ---------- |
+| NIB                     | Gratis           | IDR 2-5M   |
+| NPWP                    | Gratis           | IDR 1-2M   |
+| Ambientale (SPPL)    | Gratis-minimo   | IDR 3-5M   |
+| Ambientale (UKL-UPL) | IDR 5-20M      | IDR 20-50M |
+| Settoriale (varia)       | Varia         | IDR 5-20M  |
+
+---
+
+## Conformità dopo l'ottenimento della licenza
 
 <Checklist
-  title="Conformità Continua"
+  title="Conformità continua"
   description="Requisiti dopo l'ottenimento delle licenze"
   persistKey="ongoing-compliance-checklist"
   items={[
@@ -411,35 +421,35 @@ La maggior parte delle attività necessita di approvazione ambientale:
     {
       id: "tax-filing",
       label: "Dichiarazione fiscale mensile/annuale",
-      description: "Tutti gli obblighi fiscali",
+      description: "Tutte le obbligazioni fiscali",
       required: true,
       category: "tax",
     },
     {
       id: "oss-update",
       label: "Aggiornamenti dati OSS",
-      description: "Quando l'attività cambia",
+      description: "Quando l'azienda cambia",
       required: true,
       category: "administrative",
     },
     {
       id: "renewal",
-      label: "Rinnovi delle licenze",
+      label: "Rinnovo delle licenze",
       description: "Prima della scadenza",
       required: true,
       category: "administrative",
     },
     {
       id: "env-report",
-      label: "Rapporti ambientali",
+      label: "Rapporto ambientale",
       description: "Se richiesto dal permesso",
       required: false,
       category: "environmental",
     },
   ]}
   categories={[
-    { id: "reporting", label: "Rendicontazione", color: "blue" },
-    { id: "tax", label: "Fiscale", color: "green" },
+    { id: "reporting", label: "Reporting", color: "blue" },
+    { id: "tax", label: "Tasse", color: "green" },
     { id: "administrative", label: "Amministrativo", color: "amber" },
     { id: "environmental", label: "Ambientale", color: "red" },
   ]}
@@ -448,34 +458,34 @@ La maggior parte delle attività necessita di approvazione ambientale:
 
 ---
 
-## Errori Comuni
+## Errori comuni
 
-1.  **Operare senza NIB** - Richiesto anche per le piccole imprese
-2.  **Codici KBLI errati** - Devono corrispondere alle attività effettive
-3.  **Mancanza di permessi settoriali** - Verificare i requisiti del settore
-4.  **Ignorare l'aspetto ambientale** - Non è possibile operare senza approvazione
-5.  **Non segnalare LKPM** - La rendicontazione degli investimenti è obbligatoria
-6.  **Permessi scaduti** - Monitorare le date di scadenza
+1. **Operare senza NIB** - Richiesto anche per le piccole aziende
+2. **Codici KBLI errati** - Devono corrispondere alle attività reali
+3. **Licenze settoriali mancanti** - Verifica i requisiti del settore
+4. **Ignorare l'ambientale** - Non si può operare senza approvazione
+5. **Non dichiarare LKPM** - La dichiarazione di investimento è obbligatoria
+6. **Permessi scaduti** - Monitora le date di scadenza
 
 ---
 
-## Domande Frequenti
+## Domande frequenti
 
 <AskZantara
-  context="Business license Indonesia, NIB, OSS, sectoral permits, compliance"
-  placeholder="Chiedi informazioni sulle licenze commerciali..."
+  context="Licenza aziendale Indonesia, NIB, OSS, permessi settoriali, conformità"
+  placeholder="Chiedi sulle licenze aziendali..."
   suggestedQuestions={[
-    "Di quali licenze ha bisogno la mia attività?",
-    "Quanto tempo richiede l'ottenimento delle licenze?",
-    "Posso operare in attesa delle licenze?",
-    "Qual è la sanzione per l'assenza di licenza?",
+    "Quali licenze necessita la mia azienda?",
+    "Quanto tempo impiega il processo di licenza?",
+    "Posso operare mentre aspetto le licenze?",
+    "Qual è la pena per non avere una licenza?",
   ]}
 />
 
 ---
 
-## Articoli Correlati
+## Articoli correlati
 
-- [Guida NIB e OSS](/insights/business/nib-oss-guide)
-- [Guida alla Costituzione di PT PMA](/insights/business/pt-pma-setup-guide)
-- [Permessi Ambientali](/insights/business/environmental-permits)
+- [Guida NIB & OSS](/insights/business/nib-oss-guide)
+- [Guida per la configurazione di PT PMA](/insights/business/pt-pma-setup-guide)
+- [Permessi ambientali](/insights/business/environmental-permits)
