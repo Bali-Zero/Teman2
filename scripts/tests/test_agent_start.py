@@ -583,18 +583,85 @@ def test_ram_admission_locale_comma_decimal_is_parsed_via_lc_all_c(fake_repo, mo
     subprocess so the output is always period-decimal regardless of the
     caller's session locale — this proves it empirically against the REAL
     sysctl binary (only this one test touches the real machine; it asserts
-    the PARSE succeeds and shape is sane, not any specific value)."""
-    import shutil
+    the PARSE succeeds and shape is sane, not any specific value).
 
+    Guarded on the measured CAPABILITY, not on a proxy for it. Two proxies
+    were tried and both lie. `shutil.which("sysctl") is None` lies because
+    Linux ships a `sysctl` (procps) with no `vm.swapusage` key — on
+    ubuntu-latest the guard let the test through, the probe returned rc=1, and
+    it failed on `assert None is not None`. `sys.platform != "darwin"` lies the
+    other way: it skips correctly on a runner but still runs on a Mac whose
+    sysctl is unreachable for any other reason.
+
+    So the guard asks the question the test actually depends on — "can this
+    host produce vm.swapusage output at all?" — by running the raw command
+    itself. That is NOT circular with the assertion below: the guard checks the
+    command SUCCEEDS, the assertion checks our PARSE of its output succeeds,
+    and the comma-locale regression lives exactly in the gap between the two.
+
+    DECLARED consequence: this case never runs in CI; it can only be proved on
+    a real Mac. What a runner must still cover is the other side — that a host
+    which cannot read anything degrades to fail-open instead of blocking every
+    lane — and that is the test immediately below."""
     mod, _ = fake_repo
-    if shutil.which("sysctl") is None:
-        pytest.skip("sysctl not available on this host")
+    try:
+        raw = subprocess.run(
+            ["sysctl", "vm.swapusage"], capture_output=True, text=True, timeout=10
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        pytest.skip(f"host cannot run `sysctl vm.swapusage` ({exc})")
+    if raw.returncode != 0 or not raw.stdout.strip():
+        pytest.skip(
+            "host has no vm.swapusage reading to parse "
+            f"(rc={raw.returncode}) — Darwin-only key"
+        )
 
     sample = mod._sample_swap_usage()
     assert sample is not None
     used_mb, total_mb = sample
     assert 0.0 <= used_mb <= total_mb
     assert total_mb > 0.0
+
+
+def test_ram_admission_fails_open_against_the_real_probe_on_this_host(fake_repo, monkeypatch):
+    """The case that actually runs on a Linux runner, against the REAL probe.
+
+    The sibling tests above prove fail-open with the sampler mocked. This one
+    does not mock it: it calls `_sample_swap_usage()` for real and asserts that
+    whatever this host answers — a reading on a Mac, None on a runner where
+    `sysctl` exists but has no `vm.swapusage` — a lane is still admitted.
+
+    A monitoring probe that cannot measure must never become a reason work
+    stops (family #2), and that is exactly what a platform-specific probe is
+    most likely to do on a platform nobody tested it on."""
+    mod, _ = fake_repo
+    _clear_ram_override(monkeypatch)
+
+    if mod._sample_swap_usage() is not None:
+        # A Mac: the probe CAN read, so this test's subject does not exist
+        # here and the mocked siblings above already cover the logic. Do NOT
+        # try to force the case by mocking load high — real swap on these
+        # machines runs hot (Pro 84%, Mini 93% while both were calm), so an
+        # assertion of "admit" would then be a coin toss on the machine's
+        # pressure at that instant, i.e. a flake dressed as a guard.
+        pytest.skip("this host can read swap — the blind-probe path is unreachable here")
+
+    # A runner where `sysctl` exists but has no vm.swapusage. Load is mocked
+    # to a value that WOULD refuse if the blind swap reading were mistakenly
+    # treated as distress, so passing here cannot come from a calm load
+    # short-circuiting the AND.
+    monkeypatch.setattr(mod, "_sample_load_ratio", lambda: (500.0, 10))
+
+    admit, reason = mod.check_ram_admission()
+    assert admit is True, (
+        f"a probe that cannot measure must not block admission, got: {reason}"
+    )
+    assert "could not measure" in reason.lower(), (
+        "and it must SAY it could not measure, not imply the machine was healthy"
+    )
+
+    out = mod.cmd_create("wr2", "real-probe-fail-open", ttl_minutes=5)
+    assert out.is_dir()
 
 
 # ---------------------------------------------------------------------------
