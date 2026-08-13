@@ -14,14 +14,8 @@
  */
 
 import Link from "next/link";
-import { Cormorant_Garamond } from "next/font/google";
+import { cormorant } from "@balizero/core/fonts/cormorant";
 import { I18nProvider, useTranslation } from "@/i18n";
-
-const cormorant = Cormorant_Garamond({
-  subsets: ["latin"],
-  weight: ["300", "400", "700"],
-  display: "swap",
-});
 
 // CTA: darker copper step + theme-aware on-warm fg (AA both themes, see
 // header comment). Was a #d9bd7a→#a07838 gradient with black text.

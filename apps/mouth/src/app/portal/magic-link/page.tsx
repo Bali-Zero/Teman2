@@ -2,13 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Cormorant_Garamond } from "next/font/google";
-
-const cormorant = Cormorant_Garamond({
-  subsets: ["latin"],
-  weight: ["300", "400", "700"],
-  display: "swap",
-});
+import { cormorant } from "@balizero/core/fonts/cormorant";
 
 // Day tokens (WS3 final slice, 2026-07-26): paper shell + warm card +
 // concept .panel shadow; CTA = darker copper step --bz-copper-text with
