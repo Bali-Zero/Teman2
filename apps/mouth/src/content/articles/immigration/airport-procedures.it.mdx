@@ -76,68 +76,71 @@ canonicalUrl: "https://balizero.com/immigration/airport-procedures"
 ogImage: "/static/insights/immigration/airport.jpg"
 twitterCard: "summary_large_image"
 locale: "it"
-source_sha256: "3fffb4719b6a4e751abaf7fc9a0bf26096cf4991f9555517d27d2fa1b42eecba"
+source_sha256: "665c9485b609a050d7d59b70947283aa0eb3ee5f9a0b82e1ab580a79f38c2eeb"
 ---
 
-# Procedure Aeroportuali in Indonesia 2026: Arrivo e Partenza
+import {
+  JourneyMap,
+  Checklist,
+  InfoCard,
+  AskZantara,
+} from "@/components/insights/interactive";
 
-Che tu atterri a Bali o a Jakarta, ecco la tua guida passo-passo per orientarti negli aeroporti indonesiani.
+# Procedure aeroportuali in Indonesia 2026: Guida per l'arrivo e la partenza
 
-## Processo di Arrivo
+Che tu atterri a Bali o a Jakarta, ecco la tua guida passo dopo passo per navigare negli aeroporti indonesiani.
+
+## Procedura di arrivo
 
 <JourneyMap
-  title="Passaggi di Arrivo Aeroportuale"
+  title="Passi per l'arrivo all'aeroporto"
   description="Dall'atterraggio all'uscita"
   estimatedTotal="30-90 minuti"
   steps={[
     {
       id: "land",
-      title: "Atterraggio e Sbarco",
-      description: "Segui le indicazioni per l'arrivo",
+      title: "Atterraggio e sbarco",
+      description: "Segui i cartelli per l'arrivo",
       duration: "10-15 min",
       status: "richiesto",
       tips: [
-        "Segui le indicazioni 'Arrival'",
-        "Tieni pronto il passaporto",
-        "Prendi nota del carosello bagagli",
+        "Segui i cartelli 'Arrival'",
+        "Avere il passaporto pronto",
+        "Nota il nastro per il bagaglio",
       ],
     },
     {
       id: "voa",
-      title: "Contatore VOA (se necessario)",
-      description: "Acquista il Visto all'Arrivo",
+      title: "Sportello VOA (se necessario)",
+      description: "Acquista il visto all'arrivo",
       duration: "5-20 min",
       status: "opzionale",
       tips: [
         "Prima dell'immigrazione",
         "IDR 500K o USD/carta",
-        "Salta se esente o pre-organizzato",
+        "Salta se sei esente dal visto o lo hai già ottenuto",
       ],
     },
     {
       id: "immigration",
       title: "Immigrazione",
-      description: "Controllo passaporti",
+      description: "Controllo passaporto",
       duration: "10-45 min",
       status: "richiesto",
       tips: [
-        "Fila per gli stranieri",
+        "Coda per stranieri",
         "Passaporto + visto/VOA",
-        "Potrebbero farti delle domande",
-        "Ottieni il timbro di ingresso",
+        "Potrebbero fare domande",
+        "Ottieni il timbro d'ingresso",
       ],
     },
     {
       id: "baggage",
-      title: "Ritiro Bagagli",
-      description: "Ritira i tuoi bagagli",
+      title: "Ritiro bagagli",
+      description: "Raccogli il tuo bagaglio",
       duration: "10-30 min",
       status: "richiesto",
-      tips: [
-        "Trova il tuo carosello",
-        "Controlla le etichette dei bagagli",
-        "Segnala bagagli smarriti",
-      ],
+      tips: ["Trova il tuo nastro", "Controlla le etichette", "Segnala bagagli mancanti"],
     },
     {
       id: "customs",
@@ -148,16 +151,16 @@ Che tu atterri a Bali o a Jakarta, ecco la tua guida passo-passo per orientarti 
       tips: [
         "Canale verde se non hai nulla da dichiarare",
         "Canale rosso per dichiarare merci",
-        "Potresti essere controllato a campione",
+        "Potrebbe essere controllato a caso",
       ],
     },
     {
       id: "exit",
-      title: "Uscita nella Sala Arrivi",
+      title: "Uscita verso la hall di arrivo",
       description: "Benvenuto in Indonesia!",
       duration: "5 min",
       status: "finale",
-      tips: ["Bancomat disponibili", "Contatori SIM", "Opzioni di trasporto"],
+      tips: ["Disponibili gli ATM", "Contatori per SIM card", "Opzioni di trasporto"],
     },
   ]}
 />
@@ -166,168 +169,168 @@ Che tu atterri a Bali o a Jakarta, ecco la tua guida passo-passo per orientarti 
 
 ## Pagamento VOA
 
-### Al Contatore VOA
+### Allo sportello VOA
 
-<InfoCard variant="note" title="Visto all'Arrivo">
-**Prima dell'immigrazione, paga per il VOA:**
+<InfoCard variant="note" title="Visto all'arrivo">
+**Prima dell'immigrazione, paga il VOA:**
 
 - Costo: IDR 500.000
 - Pagamento: Contanti (IDR, USD) o carta
 - Ricevuta: Conservala per l'immigrazione
-- Durata: 30 giorni, prorogabili
+- Durata: 30 giorni, estendibile
 
-Cerca il contatore "Visa on Arrival" prima delle file dell'immigrazione.
+Cerca lo sportello "Visa on Arrival" prima delle code per l'immigrazione.
 
 </InfoCard>
 
-### Opzioni di Pagamento
+### Opzioni di pagamento
 
-| Metodo                  | Accettato                                |
-| ----------------------- | ---------------------------------------- |
-| Rupia Indonesiana       | Sì                                       |
-| Dollari USA             | Sì                                       |
-| Carta di Credito/Debito | Sì (nella maggior parte degli aeroporti) |
-| Altre valute            | Alcune accettate                         |
+| Metodo            | Accettato            |
+| ----------------- | ------------------- |
+| Rupiah Indonesiana | Sì                 |
+| Dollari USA        | Sì                 |
+| Carta di credito/debito | Sì (la maggior parte degli aeroporti) |
+| Altre valute       | Alcune accettate     |
 
 ---
 
 ## Immigrazione
 
-### Cosa Aspettarsi
+### Cosa aspettarsi
 
-| Elemento  | Cosa Succede                                  |
-| --------- | --------------------------------------------- |
-| Documenti | Mostra passaporto + ricevuta VOA/visto        |
-| Domande   | Potrebbero chiederti scopo, durata, indirizzo |
-| Biometria | Foto e impronte digitali                      |
-| Timbro    | Timbro di ingresso nel passaporto             |
-| Durata    | Varia (può essere veloce o lenta)             |
+| Elemento       | Cosa succede                       |
+| -------------- | ---------------------------------- |
+| Documenti      | Mostra passaporto + ricevuta VOA/visto   |
+| Domande        | Potrebbero chiedere lo scopo, la durata, l'indirizzo |
+| Biometria      | Foto e impronte digitali             |
+| Timbro         | Timbro d'ingresso sul passaporto            |
+| Durata         | Varia (può essere veloce o lenta)      |
 
-### Domande Frequenti
+### Domande comuni
 
-| Domanda                       | Buona Risposta                                      |
-| ----------------------------- | --------------------------------------------------- |
-| Qual è lo scopo della visita? | Turismo / Riunioni di lavoro / Visitare la famiglia |
-| Quanto tempo resterai?        | [La tua durata prevista]                            |
-| Dove alloggi?                 | [Nome dell'hotel e zona]                            |
-| Hai un volo di ritorno?       | [Data e compagnia aerea]                            |
-| Qual è la tua professione?    | [Il tuo lavoro/professione]                         |
+| Domanda          | Buona risposta                                   |
+| ----------------- | --------------------------------------------- |
+| Scopo della visita? | Turismo / Riunioni d'affari / Visita a parenti |
+| Per quanto tempo? | [Durata pianificata effettiva]                |
+| Dove si alloggia?    | [Nome dell'hotel e area]                         |
+| Volto di ritorno?    | [Data e compagnia aerea]                            |
+| Occupazione?       | [Lavoro/professione]                         |
 
-<InfoCard variant="tip" title="Consigli per l'Immigrazione">
-**Per un passaggio agevole:**
+<InfoCard variant="tip" title="Consigli per l'immigrazione">
+**Per un passaggio fluido:**
 
 - Sii cortese e paziente
-- Rispondi in modo veritiero
-- Tieni pronto l'indirizzo dell'alloggio
-- Conosci la data del tuo volo di ritorno
+- Rispondi sinceramente
+- Avere pronto l'indirizzo dell'alloggio
+- Conoscere la data del volo di ritorno
 - Non scherzare su cose illegali
-- Vestiti in modo appropriato
+- Vestire in modo decente
 </InfoCard>
 
 ---
 
 ## Dogana
 
-### Cosa Dichiarare
+### Cosa dichiarare
 
-| Dichiarare                          | Limite                           |
-| ----------------------------------- | -------------------------------- |
-| Contanti oltre IDR 100M / USD 10K   | Deve essere dichiarato           |
-| Sigarette oltre 200                 | Deve essere dichiarato           |
-| Alcol oltre 1 litro                 | Deve essere dichiarato           |
-| Merci di valore superiore a USD 500 | Potrebbe essere soggetta a dazio |
+| Dichiarare                      | Limite       |
+| ---------------------------- | --------------- |
+| Denaro oltre IDR 100M / USD 10K | Deve essere dichiarato    |
+| Sigarette oltre 200          | Deve essere dichiarato    |
+| Alcol oltre 1 litro         | Deve essere dichiarato    |
+| Merci oltre USD 500 di valore     | Potrebbero essere tassate |
 
-### Articoli Proibiti
+### Oggetti proibiti
 
-<InfoCard variant="warning" title="Non Portare">
-**Rigorosamente proibiti:**
-- Narcotici/droghe (pena di morte!)
+<InfoCard variant="warning" title="Non portare">
+**Strettamente proibito:**
+- Narcotici/ droghe (pena capitale!)
 - Armi
 - Pornografia
 - Merci contraffatte
-- Alcuni prodotti alimentari
-- Articoli offensivi per la religione
+- Certi prodotti alimentari
+- Oggetti offensivi per la religione
 
-Il traffico di **droghe** comporta la **pena di morte** in Indonesia!
+Le droghe comportano **pena capitale** in Indonesia!
 
 </InfoCard>
 
 ### Canali
 
 | Canale | Usare quando           |
-| ------ | ---------------------- |
-| Verde  | Nulla da dichiarare    |
-| Rosso  | Articoli da dichiarare |
+| ------- | ------------------ |
+| Verde   | Niente da dichiarare |
+| Rosso     | Oggetti da dichiarare   |
 
-Potresti comunque essere controllato a campione nel canale verde.
+Puoi comunque essere controllato a caso nel canale verde.
 
 ---
 
-## Processo di Partenza
+## Procedura di partenza
 
 <JourneyMap
-  title="Passaggi di Partenza Aeroportuale"
-  description: "Lasciare l'Indonesia"
+  title="Passi per la partenza dall'aeroporto"
+  description="Lasciare l'Indonesia"
   estimatedTotal="60-120 minuti"
   steps={[
     {
       id: "arrive",
-      title: "Arrivo in Aeroporto",
-      description: "Prevedi un sacco di tempo",
-      duration: "Arriva presto",
+      title: "Arrivo all'aeroporto",
+      description: "Lascia abbastanza tempo",
+      duration: "Arriva in anticipo",
       status: "richiesto",
       tips: [
-        "3 ore per i voli internazionali",
-        "2 ore per i voli nazionali",
+        "3 ore per internazionali",
+        "2 ore per domestici",
         "Controlla le condizioni del traffico"
       ]
     },
     {
       id: "checkin",
       title: "Check-in",
-      description: "Ottieni il tuo imbarco",
+      description: "Ottieni il biglietto d'imbarco",
       duration: "15-45 min",
       status: "richiesto",
       tips: [
         "Check-in online disponibile",
-        "Contatore o chiosco",
+        "Sportello o kiosk",
         "Consegna i bagagli"
       ]
     },
     {
       id: "immigration-out",
       title: "Immigrazione",
-      description: "Passa il controllo passaporti",
+      description: "Uscita dal controllo passaporti",
       duration: "10-30 min",
       status: "richiesto",
       tips: [
-        "Passaporto + imbarco",
-        "Verrà apposto il timbro di uscita",
-        "Controlla la validità del tuo visto!"
+        "Passaporto + biglietto d'imbarco",
+        "Ti verrà dato il timbro d'uscita",
+        "Controlla la validità del visto!"
       ]
     },
     {
       id: "security",
-      title: "Controllo di Sicurezza",
-      description: "Raggi X e controllo",
+      title: "Controllo di sicurezza",
+      description: "Raggi e controllo",
       duration: "10-20 min",
       status: "richiesto",
       tips: [
-        "Liquidi in una borsa trasparente",
-        "Laptop fuori",
-        "Cinture/scarpe potrebbero dover essere tolte"
+        "Liquidi in borsa trasparente",
+        "Porta fuori il laptop",
+        "Cintura/scarpe potrebbero dover essere rimosse"
       ]
     },
     {
       id: "gate",
-      title: "Gate e Imbarco",
-      description: "Trova il gate, aspetta, imbarca",
+      title: "Porta e imbarco",
+      description: "Trova la porta, aspetta, imbarca",
       duration: "Variabile",
       status: "finale",
       tips: [
-        "Controlla il gate sullo schermo",
-        "Cibo/shopping disponibile",
-        "Ascolta gli annunci"
+        "Controlla la porta sullo schermo",
+        "Disponibili cibo e shopping",
+        "Ascolta le comunicazioni"
       ]
     }
   ]}
@@ -335,119 +338,119 @@ Potresti comunque essere controllato a campione nel canale verde.
 
 ---
 
-## Controllo del Superamento della Durata del Soggiorno
+## Controllo di sovra-stanza
 
-<InfoCard variant="warning" title="Controlla Prima della Partenza">
-**Prima di recarti all'immigrazione:**
+<InfoCard variant="warning" title="Controlla prima della partenza">
+**Prima di andare all'immigrazione:**
 
-- Conta i tuoi giorni in Indonesia
+- Conta i giorni trascorsi in Indonesia
 - Controlla la data di scadenza del visto
-- Superamento della durata del soggiorno = multa di IDR 1.000.000 al giorno
-- Le multe vengono pagate all'immigrazione aeroportuale
-- Può ritardare la tua partenza
+- Sovra-stanza = multa di IDR 1.000.000 al giorno
+- Le multe vengono pagate all'immigrazione dell'aeroporto
+- Possono ritardare la tua partenza
 
-Calcola attentamente per evitare sorprese!
+Calcola con attenzione per evitare sorprese!
 
 </InfoCard>
 
 ---
 
-## Servizi Aeroportuali
+## Servizi aeroportuali
 
 ### Bali (DPS) - Ngurah Rai
 
-| Servizio      | Posizione                     |
-| ------------- | ----------------------------- |
-| Bancomat      | Sala arrivi, partenza         |
-| Cambio valuta | Contatori multipli            |
-| SIM card      | Sala arrivi                   |
-| Grab/Gojek    | Area di prelievo              |
-| Taxi          | Contatore ufficiale           |
-| Porter        | Disponibile (mancia prevista) |
+| Servizio       | Posizione                 |
+| -------------- | ------------------------ |
+| ATM           | Hall di arrivo, partenza  |
+| Cambio valuta | Molti sportelli        |
+| SIM card      | Hall di arrivo             |
+| Grab/Gojek     | Area di pickup              |
+| Taxi           | Contatore ufficiale         |
+| Portiere       | Disponibile (mancia attesa) |
 
 ### Jakarta (CGK) - Soekarno-Hatta
 
-| Servizio        | Posizione             |
-| --------------- | --------------------- |
-| Bancomat        | In tutto              |
-| Cambio valuta   | Multipli              |
-| SIM card        | Sale arrivo           |
-| Treno (Railink) | Verso il centro città |
-| Taxi            | Contatori ufficiali   |
-| Grab            | Aree di prelievo      |
+| Servizio        | Posizione          |
+| --------------- | ----------------- |
+| ATM            | In tutta l'area        |
+| Cambio valuta  | Molti          |
+| SIM card       | Hall di arrivo     |
+| Treno (Railink) | Per il centro città    |
+| Taxi           | Contatori ufficiali |
+| Grab           | Aree di pickup      |
 
 ---
 
-## Opzioni di Trasporto
+## Opzioni di trasporto
 
-### Dall'Aeroporto di Bali
+### Da Bali Airport
 
-| Opzione         | Costo                 | Note                               |
-| --------------- | --------------------- | ---------------------------------- |
-| Taxi ufficiale  | Prezzo fisso per zona | Sicuro, alternativa con tassametro |
-| Grab/Gojek      | Variabile             | Area di prelievo esterna           |
-| Prelievo hotel  | Spesso gratuito       | Prenota in anticipo                |
-| Autista privato | IDR 200-400K          | Prenotato                          |
+| Opzione         | Costo                | Note                     |
+| -------------- | ------------------- | ------------------------- |
+| Taxi ufficiale  | Prezzo fisso per zona | Sicuro, alternativa con metro |
+| Grab/Gojek     | Variabile            | Area di pickup fuori       |
+| Pickup hotel   | Spesso gratuito          | Organizza in anticipo        |
+| Autista privato | IDR 200-400K        | Prenotato in anticipo                |
 
-### Dall'Aeroporto di Jakarta
+### Da Jakarta Airport
 
-| Opzione            | Costo          | Note                          |
-| ------------------ | -------------- | ----------------------------- |
-| Treno aeroportuale | IDR 70K        | Verso Sudirman, 45 min        |
-| Taxi (Blue Bird)   | Con tassametro | IDR 200-400K verso la città   |
-| Grab               | Variabile      | Potrebbe essere più economico |
-| Prelievo hotel     | Varia          | Prenota in anticipo           |
+| Opzione           | Costo     | Note                |
+| ---------------- | -------- | -------------------- |
+| Treno aeroportuale    | IDR 70K  | Per Sudirman, 45 min  |
+| Taxi (Blue Bird) | A metro  | IDR 200-400K per la città |
+| Grab             | Variabile | Potrebbe essere più economico       |
+| Pickup hotel     | Variabile   | Organizza in anticipo   |
 
 ---
 
-## Lista di Controllo Pre-Viaggio
+## Checklist pre-viaggio
 
 <Checklist
-  title="Prima di Volare"
+  title="Prima di volare"
   description="Non dimenticare queste cose"
   persistKey="airport-checklist"
   items={[
     {
       id: "passport",
-      label: "Passaporto (validità di 6+ mesi)",
+      label: "Passaporto (validità 6+ mesi)",
       description: "Controlla la data di scadenza",
       required: true,
-      category: "documenti",
+      category: "documents",
     },
     {
       id: "visa",
-      label: "Idoneità per il visto o il VOA",
-      description: "Conosci il tuo tipo di ingresso",
+      label: "Visto o eleggibilità VOA",
+      description: "Conosci il tipo di ingresso",
       required: true,
-      category: "documenti",
+      category: "documents",
     },
     {
       id: "return",
-      label: "Biglietto di ritorno/solo andata",
-      description: "Potrebbe essere richiesto",
+      label: "Biglietto di ritorno/altro viaggio",
+      description: "Potrebbe essere controllato",
       required: true,
-      category: "viaggio",
+      category: "travel",
     },
     {
       id: "accommodation",
       label: "Indirizzo dell'hotel",
-      description: "Per le domande dell'immigrazione",
+      description: "Per le domande all'immigrazione",
       required: true,
-      category: "viaggio",
+      category: "travel",
     },
     {
       id: "cash",
       label: "Contanti (IDR o USD)",
-      description: "Se necessario per il VOA",
+      description: "Per il VOA se necessario",
       required: true,
-      category: "denaro",
+      category: "money",
     },
     {
       id: "cards",
       label: "Carte di credito/debito",
-      description: "Avvisa la banca del viaggio",
+      description: "Notifica alla banca del viaggio",
       required: false,
-      category: "denaro",
+      category: "money",
     },
   ]}
   categories={[
@@ -460,23 +463,23 @@ Calcola attentamente per evitare sorprese!
 
 ---
 
-## Domande Frequenti
+## Domande frequenti
 
 <AskZantara
-  context="aeroporto in Indonesia, immigrazione, dogana, aeroporto di Bali, aeroporto di Jakarta, VOA"
-  placeholder="Chiedi informazioni sulle procedure aeroportuali..."
+  context="Aeroporto Indonesia, immigrazione, dogana, aeroporto Bali, aeroporto Jakarta, VOA"
+  placeholder="Chiedi sulle procedure aeroportuali..."
   suggestedQuestions={[
-    "Quanto tempo ci vuole per l'immigrazione?",
+    "Quanto dura l'immigrazione?",
     "Posso pagare il VOA con carta di credito?",
-    "Cosa succede se supero la durata del soggiorno?",
-    "Dove posso acquistare una SIM card?",
+    "Cosa succede se resto più del permesso?",
+    "Dove posso comprare una SIM card?",
   ]}
 />
 
 ---
 
-## Articoli Correlati
+## Articoli correlati
 
-- [Requisiti di Ingresso](/insights/immigration/entry-requirements)
-- [Guida all'Estensione VOA](/insights/immigration/voa-extension-guide)
-- [Dichiarazione Doganale](/insights/immigration/customs-declaration)
+- [Requisiti per l'ingresso](/insights/immigration/entry-requirements)
+- [Guida per l'estensione del VOA](/insights/immigration/voa-extension-guide)
+- [Dichiarazione doganale](/insights/immigration/customs-declaration)

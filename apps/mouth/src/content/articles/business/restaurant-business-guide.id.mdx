@@ -75,22 +75,27 @@ ogImage: "/static/insights/business/restaurant-business-guide.jpg"
 ogType: "article"
 twitterCard: "summary_large_image"
 locale: "id"
-source_sha256: "c43ae2b344dad4d8a5141bfdaea86aa464047e365366a8dd310bc2c327bca694"
+source_sha256: "f2119659dd2d7f706614c15baf44e68678446b53deba284181833d393e1be35d"
 ---
 
-# Panduan Lengkap Membuka Restoran di Indonesia 2026 untuk Orang Asing
+import {
+  JourneyMap,
+  Calculator,
+  Checklist,
+  ComparisonTable,
+  InfoCard,
+  AskZantara,
+} from "@/components/insights/interactive";
 
-Membuka restoran di Indonesia sebagai orang asing sangat mungkin dilakukan, tetapi membutuhkan struktur dan perizinan yang tepat. Berikut adalah panduan lengkap Anda.
+# Membuka Restoran di Indonesia 2026: Panduan Lengkap untuk Warga Asing
 
-## Apakah Orang Asing Boleh Membuka Restoran?
+Membuka restoran di Indonesia sebagai warga asing sangat mungkin, tetapi memerlukan struktur dan lisensi yang tepat. Berikut panduan lengkap Anda.
 
-<InfoCard variant="note" title="Ya, Tetapi Dengan Persyaratan">
+## Apakah Warga Asing Bisa Membuka Restoran?
 
-Orang asing dapat memiliki restoran di Indonesia melalui **PT PMA**
-(perusahaan investasi asing). Persyaratan utama: - Investasi minimum: IDR 10
-miliar (~USD 625.000) - Tidak boleh warung/pedagang makanan kaki lima kecil -
-Harus merupakan pendirian restoran formal - Membutuhkan berbagai izin dan
-lisensi
+<InfoCard variant="note" title="Ya, Tapi Dengan Persyaratan">
+
+Warga asing dapat memiliki restoran di Indonesia melalui **PT PMA** (perusahaan investasi asing). Persyaratan utama: - Investasi minimum: IDR 10 miliar (~USD 625.000) - Tidak boleh warung kecil/makanan jalanan - Harus berupa restoran formal - Perlu beberapa izin dan lisensi
 
 </InfoCard>
 
@@ -99,17 +104,17 @@ lisensi
 ## Pilihan Struktur Bisnis
 
 <ComparisonTable
-  title="Opsi Kepemilikan Restoran"
-  description="Cara orang asing dapat mengoperasikan restoran"
+  title="Pilihan Kepemilikan Restoran"
+  description="Cara warga asing dapat beroperasi restoran"
   items={[
     {
       name: "PT PMA (Langsung)",
       subtitle: "Perusahaan milik asing",
       values: {
         "Kepemilikan Asing": "100%",
-        Investasi: "Minimum IDR 10 Miliar",
-        Kontrol: "Kendali penuh",
-        "Cocok Untuk": "Restoran besar, jaringan",
+        Investasi: "Minimal IDR 10B",
+        Kontrol: "Kontrol penuh",
+        "Terbaik Untuk": "Restoran besar, rantai",
       },
       highlight: true,
     },
@@ -117,10 +122,10 @@ lisensi
       name: "PT Lokal + Nominee",
       subtitle: "Perusahaan lokal (berisiko)",
       values: {
-        "Kepemilikan Asing": "0% resmi",
+        "Kepemilikan Asing": "0% secara resmi",
         Investasi: "Lebih rendah",
-        Kontrol: "Pengaturan berisiko",
-        "Cocok Untuk": "Tidak direkomendasikan",
+        Kontrol: "Arrangement berisiko",
+        "Terbaik Untuk": "Tidak disarankan",
       },
     },
     {
@@ -130,17 +135,15 @@ lisensi
         "Kepemilikan Asing": "Bervariasi",
         Investasi: "Bervariasi",
         Kontrol: "Bersama",
-        "Cocok Untuk": "Konsep yang dikenal",
+        "Terbaik Untuk": "Konsep yang dikenal",
       },
     },
   ]}
 />
 
-<InfoCard variant="warning" title="Hindari Pengaturan Nominee">
+<InfoCard variant="warning" title="Hindari Arrangement Nominee">
 
-Menggunakan nominee Indonesia untuk memegang saham adalah ilegal dan berisiko.
-Jika terdeteksi, Anda bisa kehilangan segalanya. Gunakan struktur PT PMA yang
-tepat.
+Menggunakan nominee Indonesia untuk memegang saham adalah ilegal dan berisiko. Jika terdeteksi, Anda bisa kehilangan segalanya. Gunakan struktur PT PMA yang tepat.
 
 </InfoCard>
 
@@ -150,17 +153,17 @@ tepat.
 
 <Calculator
   title="Estimasi Investasi Restoran"
-  description="Hitung total investasi yang dibutuhkan"
+  description="Hitung total investasi yang diperlukan"
   fields={[
     {
       id: "location",
-      label: "Tipe Lokasi",
+      label: "Jenis Lokasi",
       type: "select",
       options: [
         { value: "bali-premium", label: "Bali - Premium (Seminyak, Canggu)" },
-        { value: "bali-standard", label: "Bali - Standard" },
+        { value: "bali-standard", label: "Bali - Standar" },
         { value: "jakarta-premium", label: "Jakarta - Premium" },
-        { value: "jakarta-standard", label: "Jakarta - Standard" }
+        { value: "jakarta-standard", label: "Jakarta - Standar" }
       ],
       defaultValue: "bali-standard"
     },
@@ -177,11 +180,11 @@ tepat.
     },
     {
       id: "concept",
-      label: "Tipe Konsep",
+      label: "Jenis Konsep",
       type: "select",
       options: [
-        { value: "casual", label: "Santai" },
-        { value: "fine", label: "Fine dining" },
+        { value: "casual", label: "Makanan santai" },
+        { value: "fine", label: "Makanan mewah" },
         { value: "cafe", label: "Kafe/toko kopi" },
         { value: "bar", label: "Bar/restoran" }
       ],
@@ -189,7 +192,7 @@ tepat.
     }
   ]}
   calculateResult={(values) => {
-    // Biaya pengaturan dasar berdasarkan lokasi
+    // Biaya setup dasar berdasarkan lokasi
     const locationCosts = {
       "bali-premium": 4000000000,
       "bali-standard": 2500000000,
@@ -197,14 +200,14 @@ tepat.
       "jakarta-standard": 3000000000
     };
 
-    // Pengganda ukuran
+    // Pengali ukuran
     const sizeMultipliers = {
       "small": 0.6,
       "medium": 1.0,
       "large": 1.8
     };
 
-    // Penambahan konsep
+    // Tambahkan konsep
     const conceptAdditions = {
       "casual": 0,
       "fine": 1500000000,
@@ -216,24 +219,24 @@ tepat.
     const multiplier = sizeMultipliers[values.size];
     const addition = conceptAdditions[values.concept];
     const companySetup = 100000000; // Pembentukan PT PMA
-    const workingCapital = 1000000000; // 6 bulan operasional
+    const workingCapital = 1000000000; // Modal kerja 6 bulan
 
     const setupCost = (base * multiplier) + addition;
     const total = setupCost + companySetup + workingCapital;
 
-    // Pastikan minimum IDR 10 Miliar untuk PMA
+    // Pastikan minimal IDR 10B untuk PMA
     const finalTotal = Math.max(total, 10000000000);
 
     return {
       total: finalTotal,
       breakdown: [
-        { label: "Pengaturan Restoran", amount: setupCost },
+        { label: "Setup Restoran", amount: setupCost },
         { label: "Pembentukan PT PMA", amount: companySetup },
         { label: "Modal Kerja (6 bulan)", amount: workingCapital },
         { label: "Total Investasi", amount: finalTotal }
       ],
       currency: "IDR",
-      note: `Memenuhi minimum PMA IDR 10 Miliar: ${finalTotal >= 10000000000 ? "Ya ✅" : "Perlu investasi tambahan"}`
+      note: `Memenuhi minimum PMA IDR 10B: ${finalTotal >= 10000000000 ? "Ya ✅" : "Perlu investasi tambahan"}`
     };
 
 }}
@@ -241,82 +244,82 @@ tepat.
 
 ---
 
-## Lisensi yang Dibutuhkan
+## Lisensi yang Diperlukan
 
 <Checklist
   title="Daftar Periksa Lisensi Restoran"
-  description="Semua izin yang dibutuhkan untuk beroperasi secara legal"
+  description="Semua izin yang diperlukan untuk beroperasi secara legal"
   persistKey="restaurant-license-checklist"
   items={[
     {
       id: "nib",
-      label: "NIB (Identitas Bisnis)",
+      label: "NIB (ID Bisnis)",
       description: "Melalui sistem OSS",
       required: true,
-      category: "perusahaan",
+      category: "company",
     },
     {
       id: "izin-usaha",
-      label: "Izin Usaha (Izin Bisnis)",
-      description: "Izin usaha restoran",
+      label: "Izin Usaha (Lisensi Bisnis)",
+      description: "Lisensi aktivitas restoran",
       required: true,
-      category: "perusahaan",
+      category: "company",
     },
     {
       id: "tdup",
-      label: "TDUP (Izin Usaha Pariwisata)",
+      label: "TDUP (Lisensi Bisnis Pariwisata)",
       description: "Jika di area wisata (Bali)",
       required: false,
-      category: "industri",
+      category: "industry",
     },
     {
       id: "halal",
       label: "Sertifikat Halal",
       description: "Jika menyajikan makanan halal",
       required: false,
-      category: "industri",
+      category: "industry",
     },
     {
       id: "bpom",
       label: "Pendaftaran BPOM",
       description: "Untuk makanan kemasan/olahan",
       required: false,
-      category: "industri",
+      category: "industry",
     },
     {
       id: "liquor",
-      label: "SIUP-MB (Izin Minuman Beralkohol)",
-      description: "Jika menyajikan minuman beralkohol",
+      label: "SIUP-MB (Lisensi Alkohol)",
+      description: "Jika menyajikan alkohol",
       required: false,
-      category: "khusus",
+      category: "special",
     },
     {
       id: "imb",
-      label: "IMB/PBG (Izin Mendirikan Bangunan)",
+      label: "IMB/PBG (Izin Bangunan)",
       description: "Untuk lokasi fisik",
       required: true,
-      category: "lokasi",
+      category: "location",
     },
     {
       id: "slo",
-      label: "SLO (Kelaikan Operasional)",
+      label: "SLO (Kelayakan Operasional)",
       description: "Kepatuhan keselamatan",
       required: true,
-      category: "lokasi",
+      category: "location",
     },
     {
       id: "amdal",
       label: "Dokumen Lingkungan",
       description: "SPPL, UKL-UPL, atau AMDAL",
       required: true,
-      category: "lokasi",
+      category: "location",
     },
     {
       id: "health",
       label: "Izin Dinas Kesehatan",
-      description: "Inspeksi keamanan pangan",
+      description: "Pemeriksaan keamanan pangan",
       required: true,
-      category: "kesehatan",
+      category: "health",
     },
   ]}
   categories={[
@@ -331,11 +334,11 @@ tepat.
 
 ---
 
-## Proses Pendirian
+## Proses Setup
 
 <JourneyMap
-  title="Perjalanan Pendirian Restoran"
-  description: "Dari ide hingga pembukaan"
+  title="Perjalanan Setup Restoran"
+  description="Dari ide hingga pembukaan"
   estimatedTotal="4-6 bulan"
   steps={[
     {
@@ -343,12 +346,12 @@ tepat.
       title: "Perencanaan Bisnis",
       description: "Konsep, lokasi, anggaran",
       duration: "2-4 minggu",
-      status: "dibutuhkan",
+      status: "required",
       tips: [
         "Tentukan konsep restoran",
-        "Riset opsi lokasi",
-        "Buat anggaran rinci",
-        "Identifikasi target pasar"
+        "Lakukan riset opsi lokasi",
+        "Buat anggaran detail",
+        "Identifikasi pasar target"
       ]
     },
     {
@@ -356,76 +359,76 @@ tepat.
       title: "Mendirikan PT PMA",
       description: "Pembentukan perusahaan",
       duration: "4-6 minggu",
-      status: "dibutuhkan",
+      status: "required",
       tips: [
         "Pilih kode KBLI untuk F&B",
-        "Investasi minimum IDR 10 Miliar",
-        "Daftar melalui OSS"
+        "Investasi minimal IDR 10B",
+        "Daftarkan melalui OSS"
       ]
     },
     {
       id: "location",
-      title: "Amankan Lokasi",
+      title: "Mendapatkan Lokasi",
       description: "Sewa dan izin",
       duration: "2-4 minggu",
-      status: "dibutuhkan",
+      status: "required",
       tips: [
-        "Negosiasi persyaratan sewa",
-        "Verifikasi zonasi mengizinkan restoran",
+        "Negosiasikan syarat sewa",
+        "Verifikasi zoning memungkinkan restoran",
         "Periksa izin bangunan",
-        "Tinjau masalah penyewa sebelumnya"
+        "Review masalah penyewa sebelumnya"
       ]
     },
     {
       id: "licenses",
-      title: "Dapatkan Lisensi",
+      title: "Mendapatkan Lisensi",
       description: "Semua izin yang diperlukan",
       duration: "4-8 minggu",
-      status: "dibutuhkan",
+      status: "required",
       tips: [
         "NIB melalui OSS",
         "Izin khusus industri",
-        "Inspeksi dinas kesehatan",
-        "Izin minuman keras jika diperlukan"
+        "Pemeriksaan dinas kesehatan",
+        "Lisensi alkohol jika diperlukan"
       ]
     },
     {
       id: "build",
-      title: "Bangun",
-      description: "Renovasi dan lengkapi",
+      title: "Pembangunan",
+      description: "Renovasi dan peralatan",
       duration: "6-12 minggu",
-      status: "dibutuhkan",
+      status: "required",
       tips: [
         "Desain dapur dan peralatan",
         "Desain interior",
-        "Sistem keamanan",
-        "Izin papan nama"
+        "Sistem keselamatan",
+        "Izin pemasangan signage"
       ]
     },
     {
       id: "staff",
-      title: "Rekrut & Latih Staf",
+      title: "Rekrut dan Latih Staf",
       description: "Bangun tim Anda",
       duration: "4-6 minggu",
-      status: "dibutuhkan",
+      status: "required",
       tips: [
         "Rekrut sebelum pembukaan",
-        "Latih tentang konsep dan layanan",
+        "Latih konsep dan layanan",
         "Daftarkan ke BPJS",
         "Buat SOP"
       ]
     },
     {
       id: "open",
-      title: "Pembukaan",
-      description: "Pembukaan percobaan",
+      title: "Pembukaan Awal",
+      description: "Uji operasional",
       duration: "2-4 minggu",
       status: "final",
       tips: [
         "Mulai dengan jam/menu terbatas",
         "Kumpulkan umpan balik",
         "Perbaiki masalah operasional",
-        "Pembukaan besar ketika siap"
+        "Pembukaan resmi saat siap"
       ]
     }
   ]}
@@ -433,77 +436,75 @@ tepat.
 
 ---
 
-## Izin Minuman Beralkohol (SIUP-MB)
+## Lisensi Alkohol (SIUP-MB)
 
-Jika Anda ingin menyajikan minuman beralkohol:
+Jika Anda ingin menyajikan alkohol:
 
-<InfoCard variant="warning" title="Izin Minuman Beralkohol Itu Kompleks">
-Izin minuman keras di Indonesia adalah:
-- Sangat diatur
+<InfoCard variant="warning" title="Lisensi Alkohol Sangat Kompleks">
+Lisensi alkohol di Indonesia:
+- Diatur sangat ketat
 - Bergantung pada lokasi (beberapa area melarang)
-- Mahal untuk didapatkan
-- Terikat pada peninjauan berkala
+- Mahal untuk diperoleh
+- Subjek pada tinjauan berkala
 
-Di Bali, izin lebih mudah didapatkan. Di area lain, mungkin tidak mungkin.
+Di Bali, lisensi lebih mudah didapatkan. Di area lain, mungkin tidak mungkin.
 
 </InfoCard>
 
-### Tipe Lisensi
+### Jenis Lisensi
 
-| Tipe      | Deskripsi                              | Di mana         |
-| --------- | -------------------------------------- | --------------- |
-| SIUP-MB A | Minuman beralkohol (bir, anggur, sega) | Hotel, restoran |
-| SIUP-MB B | Bir saja                               | Bar, restoran   |
-| SIUP-MB C | Penjualan eceran                       | Toko berlisensi |
+| Jenis      | Deskripsi                               | Di Mana               |
+| --------- | ----------------------------------------- | ------------------- |
+| SIUP-MB A | Minuman beralkohol (bir, anggur, minuman keras) | Hotel, restoran |
+| SIUP-MB B | Bir saja                                 | Bar, restoran   |
+| SIUP-MB C | Penjualan ritel                               | Toko dengan lisensi  |
 
 ---
 
-## Persyaratan Staf
+## Persyaratan Pekerjaan
 
-### Staf Indonesia
+### Pekerja Indonesia
 
-- Harus mempekerjakan pekerja Indonesia
-- Mendaftar ke BPJS (asuransi kesehatan dan ketenagakerjaan)
-- Mengikuti upah minimum (UMR) berdasarkan wilayah
-- Menyediakan kontrak kerja
+- Harus merekrut pekerja Indonesia
+- Daftarkan ke BPJS (asuransi kesehatan dan pekerjaan)
+- Ikuti upah minimum (UMR) berdasarkan wilayah
+- Sediakan kontrak kerja
 
-### Staf Asing
+### Pekerja Asing
 
-- Terbatas pada posisi tertentu (koki, manajer)
-- Membutuhkan RPTKA dan KITAS
-- Harus melatih rekanan Indonesia
+- Terbatas pada posisi tertentu (chef, manajer)
+- Memerlukan RPTKA dan KITAS
+- Harus melatih pekerja Indonesia
 - Biaya tambahan (DKP-TKA)
 
-<InfoCard variant="tip" title="Mempekerjakan Koki Asing">
+<InfoCard variant="tip" title="Merekrut Chef Asing">
 
-Koki asing umum di Indonesia tetapi membutuhkan: - Izin kerja (RPTKA + KITAS)
+Chef asing umum di Indonesia tetapi memerlukan: - Izin kerja (RPTKA + KITAS) - Alasan mengapa chef Indonesia tidak cocok - Chef Indonesia sous chef untuk belajar darinya
 
-- Justifikasi mengapa koki Indonesia tidak cocok - Koki sous Indonesia untuk
-  belajar dari mereka
-  </InfoCard>
+</InfoCard>
 
 ---
 
 ## Tantangan Umum
 
-1. **Investasi minimum tinggi** - IDR 10 Miliar itu jumlah yang besar
-2. **Persaingan lokasi** - Lokasi premium mahal
-3. **Kompleksitas lisensi** - Melibatkan banyak instansi
+1. **Investasi minimum tinggi** - IDR 10B adalah jumlah yang signifikan
+2. **Persaingan lokasi** - Tempat premium mahal
+3. **Kompleksitas lisensi** - Melibatkan banyak lembaga
 4. **Manajemen staf** - Pelatihan dan retensi
 5. **Bisnis musiman** - Terutama di area wisata
-6. **Pembatasan alkohol** - Membatasi di beberapa area
+6. **Pembatasan alkohol** - Terbatas di beberapa area
 
 ---
 
 ## Pertanyaan Umum
 
 <AskZantara
-  context="bisnis restoran Indonesia, izin F&B, PT PMA restoran, membuka restoran Bali"
-  placeholder="Tanyakan tentang bisnis restoran..."
+  context="Bisnis restoran Indonesia, lisensi F&B, restoran PT PMA, buka restoran Bali"
+  placeholder="Tanya tentang bisnis restoran..."
   suggestedQuestions={[
-    "Bisakah saya membuka kafe kecil dengan investasi yang lebih rendah?",
-    "Seberapa sulit mendapatkan izin minuman keras di Bali?",
-    "Bagaimana ROI tipikal untuk restoran?",
+    "Bisakah saya membuka kafe kecil dengan investasi lebih rendah?",
+    "Seberapa sulit mendapatkan lisensi alkohol di Bali?",
+    "Apa ROI tipikal untuk restoran?",
     "Bisakah saya menggunakan resep saya sendiri tanpa masalah?",
   ]}
 />
@@ -514,5 +515,5 @@ Koki asing umum di Indonesia tetapi membutuhkan: - Izin kerja (RPTKA + KITAS)
 
 - [Panduan Pendaftaran PT PMA](/insights/business/pt-pma-registration-guide)
 - [Penjelasan NIB](/insights/business/nib-explained)
-- [Panduan Domicile Perusahaan](/insights/business/company-domicile-guide)
+- [Panduan Domisili Perusahaan](/insights/business/company-domicile-guide)
 - [Izin Kerja untuk Karyawan](/insights/immigration/kitas-work-permit-guide)

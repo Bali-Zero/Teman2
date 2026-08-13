@@ -88,7 +88,8 @@ translatedBy: Gemma3:12b + Gemini 3.1 Pro
 translatedFrom: en
 twitterCard: summary_large_image
 updatedAt: "2026-01-15"
-source_sha256: "9df37f8940c88befeca4174faaa41b6adc7dffc2b697d52e49ec2a1df7c9115d"
+source_sha256: "7a2dac71a30710489852ebff4b23689dd115674273ca4c7afa30cda6cf95667c"
+locale: "id"
 ---
 
 import {
@@ -99,45 +100,407 @@ import {
   AskZantara,
 } from "@/components/insights/interactive";
 
-# Perizinan Berusaha di Indonesia 2026: Panduan Lengkap
+# Izin Usaha di Indonesia 2026: Panduan Lengkap
 
-Indonesia telah menyederhanakan proses perizinan bisnis melalui sistem OSS (Online Single Submission), namun memahami persyaratan spesifik yang Anda butuhkan tetap bisa menjadi hal yang kompleks.
+Indonesia telah menyederhanakan penerbitan izin usaha melalui sistem OSS (Online Single Submission), tetapi memahami kebutuhan Anda tetap bisa rumit. Jika Anda berencana mendirikan bisnis di Bali khususnya, panduan kami tentang [iklim bisnis di Bali 2026](/business/bali-business-climate-2026-what-foreigners-actually-face) mencakup lapisan regulasi unik yang berlaku di atas kerangka nasional.
 
-## Kerangka Perizinan
+## Kerangka Izin
 
 <InfoCard variant="note" title="Sistem OSS">
-Sejak berlakunya **Undang-Undang Cipta Kerja (Omnibus Law)**, Indonesia menerapkan sistem **OSS RBA** (Risk-Based Approach):
+Sejak **Undang-Undang Cipta Kerja (Omnibus Law)**, Indonesia menggunakan sistem **OSS RBA** (Pendekatan Berbasis Risiko):
 
-- Seluruh entitas bisnis wajib mendaftar melalui OSS
-- Mendapatkan **NIB** (Nomor Induk Berusaha) sebagai identitas legalitas utama
-- Tingkat risiko usaha menentukan persyaratan perizinan tambahan yang diperlukan
-- Berbagai perizinan sektoral kini telah terintegrasi penuh ke dalam OSS
-  </InfoCard>
+- Semua bisnis mendaftar melalui OSS
+- Mendapatkan **NIB** (Nomor Induk Berusaha)
+- Tingkat risiko menentukan persyaratan lebih lanjut
+- Izin sektoral terintegrasi ke dalam OSS
 
-## Kategori Perizinan
+</InfoCard>
+
+## Kategori Izin
 
 <DecisionTree
   title="Izin Apa yang Anda Butuhkan?"
-  description="Temukan persyaratan perizinan berdasarkan aktivitas bisnis Anda"
+  description="Temukan persyaratan izin Anda"
   nodes={[
     {
       id: "start",
-      question: "Apa bidang aktivitas bisnis Anda?",
+      question: "Apa aktivitas bisnis Anda?",
       options: [
-        { label: "Perdagangan/Ritel", next: "trade" },
+        { label: "Perdagangan/ritel", next: "trade" },
         { label: "Manufaktur", next: "manufacture" },
-        { label: "Makanan & Minuman (F&B)", next: "food" },
-        { label: "Jasa Profesional", next: "services" },
+        { label: "Makanan & minuman", next: "food" },
+        { label: "Jasa profesional", next: "services" },
         { label: "Konstruksi", next: "construction" },
       ],
     },
     {
       id: "trade",
       result: {
-        title: "Perizinan Berusaha Perdagangan",
+        title: "Izin Bisnis Perdagangan",
         description:
-          "Memerlukan NIB + SIUP (Izin Usaha Perdagangan). Anda mungkin membutuhkan izin impor (API-U/API-P) jika melakukan kegiatan impor barang. Klasifikasi ini umumnya masuk dalam kategori risiko rendah hingga menengah.",
+          "NIB + SIUP (Izin Usaha Perdagangan). Mungkin membutuhkan izin impor (API-U/API-P) jika mengimpor barang. Klasifikasi risiko rendah hingga menengah.",
       },
     },
     {
-      id: "manufac
+      id: "manufacture",
+      result: {
+        title: "Izin Manufaktur",
+        description:
+          "NIB + IUI (Izin Usaha Industri) + Izin lingkungan (AMDAL/UKL-UPL) + Izin lokasi. Klasifikasi risiko menengah hingga tinggi.",
+      },
+    },
+    {
+      id: "food",
+      result: {
+        title: "Izin Bisnis Makanan & Minuman",
+        description:
+          "NIB + TDUP (Izin Usaha Pariwisata) atau SIUP + Registrasi BPOM/Keselamatan Pangan + Sertifikasi Halal (untuk produk tertentu). Risiko menengah.",
+      },
+    },
+    {
+      id: "services",
+      result: {
+        title: "Izin Bisnis Jasa",
+        description:
+          "NIB seringkali sudah cukup. Beberapa jasa profesional membutuhkan sertifikasi khusus. Klasifikasi risiko rendah hingga menengah.",
+      },
+    },
+    {
+      id: "construction",
+      result: {
+        title: "Izin Konstruksi",
+        description:
+          "NIB + SBU (Sertifikat Usaha Konstruksi) + SBUJK (spesifik untuk kategori konstruksi). Risiko menengah hingga tinggi.",
+      },
+    },
+  ]}
+/>
+
+---
+
+## Izin Usaha Inti
+
+<ComparisonTable
+  title="Izin Usaha Penting"
+  description="Izin yang paling dibutuhkan bisnis"
+  items={[
+    {
+      name: "NIB",
+      subtitle: "Nomor Induk Berusaha",
+      values: {
+        Required: "Semua bisnis",
+        "Issued By": "Sistem OSS",
+        Cost: "Gratis",
+        Validity: "Permanen",
+      },
+      highlight: true,
+    },
+    {
+      name: "SIUP",
+      subtitle: "Izin Usaha Perdagangan",
+      values: {
+        Required: "Perusahaan perdagangan",
+        "Issued By": "OSS (melalui NIB)",
+        Cost: "Gratis",
+        Validity: "Per NIB",
+      },
+    },
+    {
+      name: "TDP",
+      subtitle: "Pendaftaran Perusahaan",
+      values: {
+        Required: "Semua PT/CV",
+        "Issued By": "OSS (melalui NIB)",
+        Cost: "Gratis",
+        Validity: "Per NIB",
+      },
+    },
+    {
+      name: "NPWP",
+      subtitle: "Nomor Pokok Wajib Pajak",
+      values: {
+        Required: "Semua bisnis",
+        "Issued By": "Kantor Pajak",
+        Cost: "Gratis",
+        Validity: "Permanen",
+      },
+    },
+  ]}
+/>
+
+---
+
+## Sistem Izin Berbasis Risiko
+
+### Klasifikasi Risiko
+
+| Tingkat Risiko  | Persyaratan               | Contoh                     |
+| ----------- | -------------------------- | ---------------------------- |
+| Rendah         | Hanya NIB                   | Ritel kecil, jasa dasar |
+| Menengah-Rendah  | NIB + Sertifikat Standar | Beberapa perdagangan, konsultasi    |
+| Menengah-Tinggi | NIB + Sertifikat Standar | Jasa makanan, manufaktur  |
+| Tinggi        | NIB + Izin + Pemeriksaan  | Industri besar, berbahaya    |
+
+### Cara Menentukan Risiko
+
+Faktor-faktor meliputi:
+
+- Sektor bisnis (kode KBLI)
+- Skala operasi
+- Dampak lingkungan
+- Risiko kesehatan/masyarakat
+- Nilai investasi
+
+---
+
+## Izin Sektoral
+
+### Izin Sektoral Umum
+
+<Checklist
+  title="Contoh Izin Sektoral"
+  description="Persyaratan spesifik industri"
+  persistKey="sectoral-licenses-checklist"
+  items={[
+    {
+      id: "api",
+      label: "API (ID Importir)",
+      description: "Untuk mengimpor barang",
+      required: false,
+      category: "trade",
+    },
+    {
+      id: "nib-siup",
+      label: "Izin Perdagangan (melalui NIB)",
+      description: "Untuk bisnis perdagangan",
+      required: false,
+      category: "trade",
+    },
+    {
+      id: "tdup",
+      label: "TDUP (Bisnis Pariwisata)",
+      description: "Hotel, tur, restoran",
+      required: false,
+      category: "tourism",
+    },
+    {
+      id: "bpom",
+      label: "Pendaftaran BPOM",
+      description: "Makanan, obat, kosmetik",
+      required: false,
+      category: "health",
+    },
+    {
+      id: "halal",
+      label: "Sertifikasi Halal",
+      description: "Beberapa produk makanan",
+      required: false,
+      category: "health",
+    },
+    {
+      id: "iui",
+      label: "IUI (Izin Industri)",
+      description: "Manufaktur",
+      required: false,
+      category: "manufacturing",
+    },
+    {
+      id: "sbu",
+      label: "SBU (Sertifikat Konstruksi)",
+      description: "Perusahaan konstruksi",
+      required: false,
+      category: "construction",
+    },
+    {
+      id: "ojk",
+      label: "Izin OJK",
+      description: "Jasa keuangan",
+      required: false,
+      category: "financial",
+    },
+  ]}
+  categories={[
+    { id: "trade", label: "Perdagangan", color: "blue" },
+    { id: "tourism", label: "Pariwisata", color: "green" },
+    { id: "health", label: "Kesehatan/Makanan", color: "red" },
+    { id: "manufacturing", label: "Manufaktur", color: "amber" },
+    { id: "construction", label: "Konstruksi", color: "purple" },
+    { id: "financial", label: "Keuangan", color: "cyan" },
+  ]}
+  showProgress={false}
+/>
+
+---
+
+## Izin Berdasarkan Jenis Bisnis
+
+### Bisnis Perdagangan/Impor
+
+| Izin              | Tujuan                   |
+| -------------------- | ------------------------- |
+| NIB                  | Pendaftaran dasar         |
+| API-U                | Importir umum          |
+| API-P                | Importir produsen         |
+| IT (Persetujuan Impor) | Persetujuan produk spesifik |
+| LS (Verifikasi)    | Komoditas tertentu       |
+
+### Restoran/Kafe
+
+| Izin                                                                        | Tujuan                  |
+| ------------------------------------------------------------------------------ | ------------------------ |
+| NIB                                                                            | Pendaftaran dasar        |
+| [TDUP](/business/bali-tourism-business-license-what-you-need-to-start-legally) | Izin bisnis pariwisata |
+| Sertifikat kesehatan                                                             | Keselamatan pangan              |
+| BPOM (jika memproses)                                                           | Makanan kemasan            |
+| Halal (disarankan)                                                            | Pelanggan Muslim         |
+
+### Manufaktur
+
+| Izin              | Tujuan            |
+| -------------------- | ------------------ |
+| NIB                  | Pendaftaran dasar  |
+| IUI                  | Izin industri |
+| Izin lingkungan | AMDAL/UKL-UPL      |
+| Izin lokasi      | Persetujuan penggunaan lahan  |
+| Izin bangunan      | IMB/PBG            |
+| Izin operasional   | Persetujuan akhir     |
+
+---
+
+## Izin Lingkungan
+
+<InfoCard variant="warning" title="Kepatuhan Lingkungan">
+Sebagian besar bisnis membutuhkan persetujuan lingkungan:
+
+**Dampak Rendah (SPPL)**
+
+- Ritel kecil/kantor
+- Deklarasi sederhana
+
+**Dampak Menengah (UKL-UPL)**
+
+- Bisnis menengah
+- Rencana pengelolaan lingkungan
+
+**Dampak Tinggi (AMDAL)**
+
+- Proyek besar
+- Studi dampak lingkungan lengkap
+- Konsultasi publik diperlukan
+
+</InfoCard>
+
+---
+
+## Lokasi & Bangunan
+
+### Izin Terkait Properti
+
+| Izin             | Tujuan            | Kapan Dibutuhkan        |
+| ------------------ | ------------------ | ------------------ |
+| Izin Lokasi    | Persetujuan penggunaan lahan  | Membeli lahan     |
+| IMB/PBG            | Izin bangunan    | Konstruksi       |
+| SLF                | Sertifikat penggunaan bangunan | Mengoperasikan bangunan |
+| HO (jika berlaku) | Izin gangguan    | Beberapa wilayah    |
+
+---
+
+## Biaya Izin
+
+### Biaya Tipe
+
+| Izin                 | Biaya Pemerintah | Biaya Agen  |
+| ----------------------- | -------------- | ---------- |
+| NIB                     | Gratis           | IDR 2-5M   |
+| NPWP                    | Gratis           | IDR 1-2M   |
+| Lingkungan (SPPL)    | Gratis-minimal   | IDR 3-5M   |
+| Lingkungan (UKL-UPL) | IDR 5-20M      | IDR 20-50M |
+| Sektoral (beragam)       | Beragam         | IDR 5-20M  |
+
+---
+
+## Kepatuhan Setelah Izin
+
+<Checklist
+  title="Kepatuhan Berkelanjutan"
+  description="Persyaratan setelah mendapatkan izin"
+  persistKey="ongoing-compliance-checklist"
+  items={[
+    {
+      id: "annual-report",
+      label: "Laporan tahunan LKPM",
+      description: "Laporan aktivitas investasi",
+      required: true,
+      category: "reporting",
+    },
+    {
+      id: "tax-filing",
+      label: "Pengajuan pajak bulanan/tahunan",
+      description: "Semua kewajiban pajak",
+      required: true,
+      category: "tax",
+    },
+    {
+      id: "oss-update",
+      label: "Pembaruan data OSS",
+      description: "Ketika bisnis berubah",
+      required: true,
+      category: "administrative",
+    },
+    {
+      id: "renewal",
+      label: "Perpanjangan izin",
+      description: "Sebelum kedaluwarsa",
+      required: true,
+      category: "administrative",
+    },
+    {
+      id: "env-report",
+      label: "Laporan lingkungan",
+      description: "Jika diminta oleh izin",
+      required: false,
+      category: "environmental",
+    },
+  ]}
+  categories={[
+    { id: "reporting", label: "Pelaporan", color: "blue" },
+    { id: "tax", label: "Pajak", color: "green" },
+    { id: "administrative", label: "Administratif", color: "amber" },
+    { id: "environmental", label: "Lingkungan", color: "red" },
+  ]}
+  showProgress={true}
+/>
+
+---
+
+## Kesalahan Umum
+
+1. **Beroperasi tanpa NIB** - Diperlukan bahkan untuk bisnis kecil
+2. **Kode KBLI salah** - Harus sesuai dengan aktivitas sebenarnya
+3. **Izin sektoral hilang** - Periksa persyaratan industri
+4. **Mengabaikan lingkungan** - Tidak bisa beroperasi tanpa persetujuan
+5. **Tidak melaporkan LKPM** - Pelaporan investasi wajib
+6. **Izin kedaluwarsa** - Pantau tanggal kedaluwarsa
+
+---
+
+## Pertanyaan Umum
+
+<AskZantara
+  context="Izin usaha Indonesia, NIB, OSS, izin sektoral, kepatuhan"
+  placeholder="Tanya tentang izin usaha..."
+  suggestedQuestions={[
+    "Izin apa yang dibutuhkan bisnis saya?",
+    "Berapa lama proses izin?",
+    "Bisakah saya beroperasi sambil menunggu izin?",
+    "Apa sanksi untuk tidak memiliki izin?",
+  ]}
+/>
+
+---
+
+## Artikel Terkait
+
+- [Panduan NIB & OSS](/insights/business/nib-oss-guide)
+- [Panduan Pendirian PT PMA](/insights/business/pt-pma-setup-guide)
+- [Izin Lingkungan](/insights/business/environmental-permits)
