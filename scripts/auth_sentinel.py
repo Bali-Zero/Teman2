@@ -53,6 +53,9 @@ HOME = Path.home()
 REPO = Path(__file__).resolve().parents[1]
 # sentinel_lib è affianco a questo script → import path-independent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(REPO))
+
+from scripts.lib.codex_seat import codex_seat_dirs  # noqa: E402
 
 # --- probe result contract -------------------------------------------------
 
@@ -75,14 +78,15 @@ class Probe:
     fix_cmd: str = ""      # il comando/click ESATTO quando status==ACTION
 
 
-def _run(cmd: list[str] | str, timeout: int = 30, shell: bool = False) -> tuple[int, str]:
+def _run(cmd: list[str] | str, timeout: int = 30, shell: bool = False,
+         env: dict[str, str] | None = None) -> tuple[int, str]:
     """Esegue un probe. Ritorna (exit, output-combinato-troncato). stdin chiuso
     (/dev/null) — codex blocca su stdin aperto."""
     try:
         p = subprocess.run(
             cmd, shell=shell, timeout=timeout,
             stdin=subprocess.DEVNULL,
-            capture_output=True, text=True,
+            capture_output=True, text=True, env=env,
         )
         return p.returncode, (p.stdout + p.stderr).strip()
     except subprocess.TimeoutExpired:
@@ -185,20 +189,41 @@ def probe_drive() -> Probe:
 # --- ramo B: sessione interattiva ------------------------------------------
 
 def probe_codex() -> Probe:
-    auth = HOME / ".codex" / "auth.json"
-    if not auth.exists():
-        return Probe("codex", "B", SKIP, "no ~/.codex/auth.json")
-    # cold-start del primo call codex può superare 60s (verificato 2026-07-11:
-    # vivo a ~75s). 90s per non falsare in TIMEOUT un seat sano.
-    rc, out = _run(["codex", "exec", "--sandbox", "read-only",
-                    "--skip-git-repo-check", "ping"], timeout=90)
-    if rc == 0 and _AUTH_DEAD_RE.search(out) is None:
-        return Probe("codex", "B", OK, "exec ok")
-    if _AUTH_DEAD_RE.search(out):
+    """Sonda OGNI seat ChatGPT Pro, non solo ~/.codex.
+
+    Fino al 2026-08-12 questa sonda guardava un solo path e usciva SKIP se il
+    file non c'era. Su Pro è esattamente lo stato che c'era — `~/.codex` dir
+    senza auth.json — quindi il sentinel taceva mentre ogni chiamata codex del
+    cron rispondeva 401, e il secondo abbonamento pagato non era nemmeno
+    guardato. Un seat morto su due deve NOMINARE quale.
+    """
+    seats = codex_seat_dirs()
+    if not seats:
+        return Probe("codex", "B", SKIP, "nessun seat con auth.json")
+
+    live, dead, unclear = [], [], []
+    for seat in seats:
+        # cold-start del primo call codex può superare 60s (verificato
+        # 2026-07-11: vivo a ~75s). 90s per non falsare in TIMEOUT un seat sano.
+        rc, out = _run(["codex", "exec", "--sandbox", "read-only",
+                        "--skip-git-repo-check", "ping"], timeout=90,
+                       env={**os.environ, "CODEX_HOME": seat})
+        name = Path(seat).name
+        if rc == 0 and _AUTH_DEAD_RE.search(out) is None:
+            live.append(name)
+        elif _AUTH_DEAD_RE.search(out):
+            dead.append(name)
+        else:
+            unclear.append(f"{name}: {out[:60]}")
+
+    if dead:
         return Probe("codex", "B", ACTION,
-                     "OAuth revocato server-side (token_revoked/reused)",
-                     fix_cmd="codex login   # da terminale interattivo")
-    return Probe("codex", "B", UNKNOWN, out[:120])
+                     f"OAuth morto su {', '.join(dead)}"
+                     + (f" (vivi: {', '.join(live)})" if live else ""),
+                     fix_cmd=f"CODEX_HOME=$HOME/{dead[0]} codex login   # terminale interattivo")
+    if unclear and not live:
+        return Probe("codex", "B", UNKNOWN, "; ".join(unclear)[:120])
+    return Probe("codex", "B", OK, f"exec ok su {', '.join(live)}")
 
 
 def probe_agy() -> Probe:

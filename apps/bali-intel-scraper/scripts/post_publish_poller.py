@@ -36,6 +36,29 @@ from datetime import datetime
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).parent
+
+
+def _codex_seat_env(env: dict) -> dict:
+    """Add CODEX_HOME for a logged-in ChatGPT Pro seat (see
+    scripts/lib/codex_seat.py). Imported by path rather than by package name:
+    this file runs from a LaunchAgent with no repo on sys.path, and a missing
+    helper must degrade to codex's own default seat, never crash the poller."""
+    helper = SCRIPT_DIR.resolve().parents[2] / "scripts" / "lib" / "codex_seat.py"
+    if not helper.is_file():
+        return env
+    try:
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("_codex_seat", helper)
+        if spec is None or spec.loader is None:
+            return env
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.codex_seat_env(env)
+    except Exception:  # noqa: BLE001 — a seat hint may never break publishing
+        return env
+
+
 _venv = SCRIPT_DIR.parent / ".venv" / "bin" / "python3"
 VENV_PYTHON = _venv if _venv.exists() else SCRIPT_DIR.parent / "venv" / "bin" / "python3"
 LOG_DIR = Path.home() / ".openclaw" / "workspace" / "logs"
@@ -261,7 +284,13 @@ def _codex_env() -> dict:
         "FIREWORKS_API_KEY",
     ):
         env.pop(key, None)
-    return env
+    # Choose a seat that is actually logged in, alternating between the two
+    # ChatGPT Pro subscriptions. This poller is armed on Pro
+    # (com.balizero.post-publish-poller), and on Pro the default ~/.codex
+    # answers 401 while ~/.codex-acct2 is live — measured 2026-08-12. The
+    # health-check below reads that 401 correctly and leaves articles queued,
+    # so the failure was honest but total.
+    return _codex_seat_env(env)
 
 
 def codex_healthy() -> bool:

@@ -98,6 +98,12 @@ jobs:
               scripts/tests/test_jules_dispatch.py|\
               scripts/tests/test_codex_autofix_selector.py|\
               scripts/codex_tri_llm_review.py|\
+              scripts/lib/codex_seat.sh|\
+              scripts/lib/codex_seat.py|\
+              scripts/tests/test_codex_seat_lib.py|\
+              scripts/tests/test_claude_cascade_shell.py|\
+              infra/launchagents/wrappers/claude-cascade.sh|\
+              scripts/auth_sentinel.py|\
               scripts/tests/test_tri_llm_claude_seat_token.py|\
               scripts/lint_doc_executable_refs.py|\
               scripts/tests/test_lint_doc_executable_refs.py|\
@@ -660,6 +666,39 @@ jobs:
           # half runs the wrapper in a fake world (W107) so "did not rotate" is
           # distinguishable from "never got there".
           bash scripts/tests/test_cron_agent_oauth_cascade.sh
+
+      - name: Codex seat corpus (two paid subscriptions, and a 401 default seat)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # Measured on all three machines 2026-08-12, by the REPLY and not by
+          # the exit code (W104 — `codex --version` returns 0 on a seat that
+          # answers 401): Pro's default ~/.codex is 401 Unauthorized while
+          # ~/.codex-acct2 is live, and M5's second seat ~/.codex-o2 had never
+          # been read by anything. Nothing in the fleet ever set CODEX_HOME, so
+          # every codex call on the cron workhorse produced an auth error and
+          # the second ChatGPT Pro subscription bought nothing.
+          #
+          # The second seat has TWO names in this organism — ~/.codex-o2 in the
+          # repo SSOT, ~/.codex-acct2 in the global CLAUDE.md — and both exist,
+          # on different machines. A list that knows one name relocates the
+          # defect rather than curing it, so both are pinned.
+          #
+          # The census step is the W107 antidote: curing the one wrapper that
+          # bit you only changes WHICH caller dies on a dead seat, so a NEW
+          # `codex exec` that forgets to resolve a seat fails HERE. Armed in
+          # this required workflow and not left to the scripts/tests sweep,
+          # which is continue-on-error and gates nothing (W108).
+          # zsh is NOT on the ubuntu runner, and both corpora need it: the lib is
+          # sourced from zsh callers and claude-cascade.sh IS a zsh script. Both
+          # suites skip-with-reason when zsh is absent rather than erroring, so
+          # without this install they would report green while never exercising
+          # the shell that actually runs them — coverage theatre. Installing it
+          # keeps the skip a machine-local courtesy and never a CI escape.
+          sudo apt-get update -qq && sudo apt-get install -y -qq zsh
+          command -v zsh >/dev/null || { echo "::error::zsh unavailable — the shell corpora would skip, refusing to report green"; exit 1; }
+          python -m pip install --quiet pytest
+          python -m pytest scripts/tests/test_codex_seat_lib.py -q
+          python -m pytest scripts/tests/test_claude_cascade_shell.py -q
 
       - name: Claude seat helper corpus (a plain script must reach a live seat)
         if: steps.paths.outputs.relevant == 'true'

@@ -68,6 +68,18 @@ DRY_RUN="${DRY_RUN:-0}"
 mkdir -p "$(dirname "$STATE_FILE")" "$(dirname "$LOG_FILE")"
 log() { echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] $*" >>"$LOG_FILE"; }
 
+# Which ChatGPT Pro seat the codex tie-break uses. A missing lib degrades to
+# codex's own default seat — the pre-2026-08-12 behaviour — and never exits:
+# a bare `source` of an absent file is a special builtin that terminates the
+# shell under set -e, so the guard is the [ -f ], never an `|| true`.
+CODEX_SEAT_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/codex_seat.sh"
+if [ -f "$CODEX_SEAT_LIB" ]; then
+  # shellcheck disable=SC1090
+  . "$CODEX_SEAT_LIB"
+else
+  codex_seat_pick() { :; }
+fi
+
 # --- Telegram (reuses tier-1 pattern) ---
 send_telegram() {
   local msg="$1"
@@ -199,7 +211,22 @@ $context"
   fi
   # --full-auto is deprecated (alias of --sandbox workspace-write, already set);
   # </dev/null: codex blocks reading an open stdin (W89 class-fix 2026-07-06).
-  timeout "$AGENT_TIMEOUT_S" codex exec --sandbox workspace-write --skip-git-repo-check "$prompt" </dev/null 2>>"$LOG_FILE" | tee -a "$LOG_FILE"
+  #
+  # CODEX_HOME selects a seat that is actually logged in, alternating between
+  # the two ChatGPT Pro subscriptions. Measured 2026-08-12 on Pro, where this
+  # runs: the default ~/.codex answers 401, so the tie-break tier produced
+  # nothing while a paid live seat sat one variable away.
+  # The subshell is not decoration: this file runs under `set -u` on bash 3.2
+  # (/bin/bash on every machine here), where "${empty_array[@]}" is an UNBOUND
+  # VARIABLE error — the no-seat path would crash the tier instead of skipping
+  # the variable.
+  local seat
+  seat="$(codex_seat_pick 2>/dev/null || true)"
+  [ -n "$seat" ] && log "codex seat: $seat"
+  (
+    [ -n "$seat" ] && export CODEX_HOME="$seat"
+    timeout "$AGENT_TIMEOUT_S" codex exec --sandbox workspace-write --skip-git-repo-check "$prompt" </dev/null
+  ) 2>>"$LOG_FILE" | tee -a "$LOG_FILE"
   return "${PIPESTATUS[0]}"
 }
 
