@@ -1,17 +1,10 @@
-import { Montserrat } from "next/font/google";
+import { montserrat } from "@balizero/core/fonts/montserrat";
 import { NavShell, BZLogo } from "@balizero/core";
 import { SessionInit } from "@/components/funnel/SessionInit";
 import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
 import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 import { getFunnelNavItems } from "@/components/funnel/funnel-nav";
 import { MobileNav } from "@/app/v2/_components/MobileNav";
-
-const montserrat = Montserrat({
-  subsets: ["latin"],
-  variable: "--font-montserrat",
-  display: "swap",
-  weight: ["400", "500", "600", "700", "800", "900"],
-});
 
 export default function KBLILayout({
   children,

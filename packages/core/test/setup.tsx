@@ -26,6 +26,21 @@ vi.mock("next/font/google", () => ({
   }),
 }));
 
+// Mock Next.js local font loader (next/font/local) — self-hosted fonts
+// (2026-08-13, fonts/{inter,cormorant,montserrat,league-spartan}.ts) call
+// `localFont(opts)` the same way `Inter(opts)` etc used to. Outside a real
+// Next build there is no SWC/webpack transform to swap this for generated
+// CSS, so the real package throws at import time — same reason
+// next/font/google is mocked above. Echo back the `variable` option so
+// `<family>.variable` still resolves to the real CSS custom property name.
+vi.mock("next/font/local", () => ({
+  default: (opts: { variable?: string } = {}) => ({
+    className: "mock-local-font",
+    variable: opts.variable ?? "--font-mock-local",
+    style: { fontFamily: "mock-local-font" },
+  }),
+}));
+
 vi.mock("next/image", () => ({
   default: ({
     src,
