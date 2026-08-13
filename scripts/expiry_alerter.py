@@ -41,7 +41,7 @@ FROM_EMAIL = os.environ.get("SMTP_FROM_EMAIL", SMTP_LOGIN)
 FROM_NAME = "Zantara AI"
 
 # Telegram config
-TELEGRAM_OWNER_CHAT_ID = "1125336968"
+TELEGRAM_OWNER_CHAT_ID = "8847435604"
 
 # Thresholds (days)
 CRITICAL_DAYS = 14   # 🔴

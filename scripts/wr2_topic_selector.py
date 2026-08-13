@@ -17,7 +17,7 @@ Env:
     NUZANTARA_BACKEND_URL   — default https://nuzantara-rag.fly.dev
     NUZANTARA_API_KEY       — default REDACTED-ROTATED-KEY
     TELEGRAM_BOT_TOKEN      — optional (best-effort notification)
-    TELEGRAM_OWNER_CHAT_ID  — default 1125336968
+    TELEGRAM_OWNER_CHAT_ID  — default 8847435604
 """
 from __future__ import annotations
 
@@ -223,7 +223,7 @@ def _configure_logging() -> None:
 
 def _send_telegram(text: str) -> None:
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-    chat_id = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+    chat_id = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "8847435604")
     if not token:
         return
     try:

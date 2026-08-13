@@ -72,7 +72,7 @@ def _find_venv_python(backend_dir: Path) -> Path:
 VENV_PYTHON = _find_venv_python(BACKEND_DIR)
 
 # Telegram
-TELEGRAM_CHAT_ID = "1125336968"
+TELEGRAM_CHAT_ID = "8847435604"
 
 # Ruff rules (unified source of truth)
 RUFF_RULES = ["BLE001", "DTZ003", "DTZ005", "C901", "TRY400", "ANN001", "ANN204"]

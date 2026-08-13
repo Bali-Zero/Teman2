@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 
 # Design §8.3: only Zero can act on review callbacks.
-DEFAULT_OWNER_CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+DEFAULT_OWNER_CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "8847435604")
 
 
 @dataclass

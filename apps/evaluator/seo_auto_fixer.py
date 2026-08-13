@@ -24,7 +24,7 @@ DB_URL = os.environ.get(
 )
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_SEO_CHAT_ID", "1125336968")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_SEO_CHAT_ID", "8847435604")
 BACKEND_URL = os.environ.get("BACKEND_URL", "https://nuzantara-rag.fly.dev")
 SCRAPER_API_KEY = os.environ.get("SCRAPER_API_KEY", "internal-scraper-key")
 

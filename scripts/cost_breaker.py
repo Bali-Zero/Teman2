@@ -37,7 +37,7 @@ Reuse note: the window-sum mirrors ``CostAdvisor.run_daily_cap_check`` /
 ``analyze_last_window`` SQL idiom (SUM(cost_usd) over a ts_utc window, riding the
 ``idx_llm_cost_provider_ts`` index) rather than re-deriving it. The Telegram
 idiom mirrors ``cost_advisor_cli.send_telegram`` (urllib, swallow-on-error,
-TELEGRAM_OWNER_CHAT_ID default 1125336968).
+TELEGRAM_OWNER_CHAT_ID default 8847435604).
 
 HONEST LIMIT: the per-provider budget is a PROXY threshold (a configurable USD
 estimate), NOT the opaque flat-rate MAX/subscription quota. The breaker degrades
@@ -144,7 +144,7 @@ _DEFAULT_THRESHOLD_FRACTION: Decimal = Decimal("0.85")
 _DEFAULT_WINDOW_SECONDS: int = 24 * 60 * 60
 
 # Telegram (mirrors cost_advisor_cli idiom).
-_TELEGRAM_CHAT_ID: str = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+_TELEGRAM_CHAT_ID: str = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "8847435604")
 
 # STOP-push cooldown (P2-1): suppress duplicate STOP pushes for the same
 # provider within this many seconds, so a per-tick re-check (the CLI runs on a

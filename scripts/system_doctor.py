@@ -131,7 +131,7 @@ NLM_PIPELINE_MODULES: dict[str, str | None] = {
 NLM_STATE_DIR = Path.home() / ".agent" / "decisions" / "state"
 NLM_STALENESS_HOURS = 24
 NLM_RERUN_TIMEOUT_S = 300
-NLM_TELEGRAM_OWNER_CHAT_ID = "1125336968"
+NLM_TELEGRAM_OWNER_CHAT_ID = "8847435604"
 
 
 def log(msg: str) -> None:

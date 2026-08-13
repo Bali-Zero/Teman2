@@ -401,7 +401,7 @@ def _send_telegram(text: str, dry_run: bool = False) -> bool:
         return True
 
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
-    chat_id = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+    chat_id = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "8847435604")
 
     if not token:
         logger.error("TELEGRAM_BOT_TOKEN not set — cannot send alert")

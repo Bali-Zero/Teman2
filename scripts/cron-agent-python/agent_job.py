@@ -256,7 +256,7 @@ class AgentJob:
             self.logger.warning("telegram_gateway_missing", tried="TG_NOTIFY_BIN|repo|HOME")
             return False
         chat = chat_id or self.telegram_chat_id
-        owner = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+        owner = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "8847435604")
         if chat and chat != owner:
             # The gateway delivers to the owner chat only. Silently redirecting
             # would hand someone else's message to Zero — refuse, visibly.

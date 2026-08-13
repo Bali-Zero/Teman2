@@ -31,9 +31,9 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Owner chat_id lives in CLAUDE.md §14 (TELEGRAM_OWNER_CHAT_ID=1125336968).
+# Owner chat_id lives in CLAUDE.md §14 (TELEGRAM_OWNER_CHAT_ID=8847435604).
 # We prefer the env var so tests can override with a stub chat_id.
-_OWNER_CHAT_ID: str = os.getenv("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+_OWNER_CHAT_ID: str = os.getenv("TELEGRAM_OWNER_CHAT_ID", "8847435604")
 
 # Email types treated as operationally critical. Failure on these triggers a
 # Telegram alert immediately (bypassing the retry queue's 3-attempt wait).

@@ -5,7 +5,7 @@
 
   Hourly cron that scans ~/logs/*.{err.log, stderr*.log, error.log,
   launchd.err*} for files exceeding 1 MB and Telegram-alerts Zero
-  (chat_id 1125336968). Per-file cooldown 6h to avoid spam.
+  (chat_id 8847435604). Per-file cooldown 6h to avoid spam.
 
   Why this exists: the WR2 supervisor 84h silent crashloop
   (2026-05-16 → 2026-05-19) generated 6.3 MB + 1.2 MB + 4.1 MB of

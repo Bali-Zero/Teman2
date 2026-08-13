@@ -187,7 +187,7 @@ def test_notify_email_failure_critical_sends_telegram(monkeypatch):
     assert "api.telegram.org/botfake-token/sendMessage" in url
     data = mock_open.call_args[0][1]
     # chat_id is whatever the module captured at import (prod default
-    # 1125336968 or CI override via env — both valid).
+    # 8847435604 or CI override via env — both valid).
     assert f"chat_id={email_audit._OWNER_CHAT_ID}".encode() in data
     assert b"waiting_docs_client" in data
 
@@ -250,7 +250,7 @@ def test_notify_email_failure_critical_swallows_network_error(monkeypatch):
     with patch(
         "backend.services.notifications.email_audit.urllib.request.urlopen",
         side_effect=urllib.error.URLError("timeout"),
-    ):
+    ) as mock_open:
         # Must not raise.
         notify_email_failure_critical(
             email_type="completion_client",
@@ -259,6 +259,10 @@ def test_notify_email_failure_critical_swallows_network_error(monkeypatch):
             practice_id=None,
             error="e",
         )
+    # And must actually have tried: without this, an early return anywhere
+    # upstream would satisfy "did not raise" without ever entering the except
+    # clause this test exists to hold in place.
+    assert mock_open.called
 
 
 # ----------------------------------------------------------------------

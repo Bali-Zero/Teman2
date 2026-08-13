@@ -203,7 +203,7 @@ def _obsolete_code_static_answer(obsolete_hits: list[tuple[str, str]]) -> str | 
 
 
 # Telegram chat ID for Damar / team lead notifications
-TELEGRAM_LEAD_CHAT_ID = 1125336968
+TELEGRAM_LEAD_CHAT_ID = 8847435604
 
 SYSTEM_PROMPT = (
     "You are Bali Zero's Indonesian visa specialist — a concrete, practical "

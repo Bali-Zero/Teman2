@@ -65,7 +65,7 @@ os.environ.setdefault("INSTAGRAM_VERIFY_TOKEN", "test_instagram_verify_token")
 # setdefault the real token survived into pytest, so every un-mocked Telegram
 # sender — sentinel alerter (scripts/sentinel_lib/alerter.py), canva_renderer
 # _telegram.send_telegram, email_audit.notify_email_failure_critical — fired
-# REAL alerts to the owner chat (1125336968) during the test run (verbatim
+# REAL alerts to the owner chat (8847435604) during the test run (verbatim
 # leaks: "OCR ... Context: unit.test.context", "WR2 rendered: Test / DAG123",
 # "Invoice INV-2026-001 ... john@example.com"). Forcing the fake token makes
 # those calls hit a non-existent bot (401, swallowed) — never the owner.

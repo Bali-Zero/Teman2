@@ -28,7 +28,7 @@
 #   DRY_RUN=1 ./deploy_w0.sh          # validate without touching launchd
 #
 # Env (optional):
-#   TELEGRAM_BOT_TOKEN, TELEGRAM_OWNER_CHAT_ID — for abort alert (defaults to 1125336968)
+#   TELEGRAM_BOT_TOKEN, TELEGRAM_OWNER_CHAT_ID — for abort alert (defaults to 8847435604)
 #   ORGANISM_REPO — repo dir (defaults to /Users/nuzantara/nuzantara/apps/organism)
 #   VERIFY_TIMEOUT_SECONDS — bootstrap-to-running timeout (default 30)
 #
@@ -55,7 +55,7 @@ PLISTS=(
   com.nuzantara.organism.scheduled-tick.plist
 )
 
-CHAT_ID="${TELEGRAM_OWNER_CHAT_ID:-1125336968}"
+CHAT_ID="${TELEGRAM_OWNER_CHAT_ID:-8847435604}"
 UID_NUM="$(id -u)"
 
 # ----- helpers --------------------------------------------------------------

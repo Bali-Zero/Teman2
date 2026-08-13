@@ -24,7 +24,7 @@ from backend.services.war_room.models import (
     WarRoomDraft,
 )
 
-OWNER_CHAT_ID = "1125336968"
+OWNER_CHAT_ID = "8847435604"
 DID = UUID("12345678-1234-1234-1234-123456789abc")
 
 

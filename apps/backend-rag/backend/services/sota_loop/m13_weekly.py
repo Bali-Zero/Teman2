@@ -234,7 +234,7 @@ def _notify_telegram(
     """Send digest as plain text — Markdown nested with emoji + backticks
     triggers HTTP 400 from Telegram (Fase 0 lesson #8)."""
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-    chat = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+    chat = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "8847435604")
     if not token:
         return
     import urllib.parse

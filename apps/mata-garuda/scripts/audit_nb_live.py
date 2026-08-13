@@ -116,7 +116,7 @@ def classify_drift(snapshot: int | None, live: int | None) -> str:
 
 def telegram_alert(msg: str) -> None:
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-    chat_id = "1125336968"  # Zero
+    chat_id = "8847435604"  # Zero
     if not token:
         print(f"[telegram-disabled] {msg}", file=sys.stderr)
         return

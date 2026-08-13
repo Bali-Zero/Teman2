@@ -88,7 +88,7 @@ class RunConfig:
         default_factory=lambda: os.environ.get("TELEGRAM_BOT_TOKEN", "")
     )
     telegram_chat_id: str = field(
-        default_factory=lambda: os.environ.get("TELEGRAM_ADMIN_CHAT_ID", "1125336968")
+        default_factory=lambda: os.environ.get("TELEGRAM_ADMIN_CHAT_ID", "8847435604")
     )
     collect_read_freq_7d: Callable[[str], int | None] | None = None
     collect_read_freq_30d: Callable[[str], int | None] | None = None

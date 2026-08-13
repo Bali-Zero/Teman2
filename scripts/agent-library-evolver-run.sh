@@ -37,7 +37,7 @@
 #                    (L11 fix — was /tmp/agent-library-evolver in spec
 #                    draft, weaker on reboot).
 #   TELEGRAM_BOT_TOKEN, TELEGRAM_OWNER_CHAT_ID
-#                    Sourced from SECRETS_FILE. chat_id 1125336968
+#                    Sourced from SECRETS_FILE. chat_id 8847435604
 #                    (Zero's @zero0101010101010 verified live 2026-04-07).
 #
 # Exit codes:

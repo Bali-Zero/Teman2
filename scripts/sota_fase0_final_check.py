@@ -179,7 +179,7 @@ def build_telegram_message(
 def send_telegram(text: str) -> bool:
     """Send via the existing bot; non-fatal if creds missing."""
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-    chat_id = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+    chat_id = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "8847435604")
     if not token:
         logger.warning("TELEGRAM_BOT_TOKEN missing — printing message to stdout only")
         print("\n" + "=" ** 60)

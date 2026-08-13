@@ -29,7 +29,7 @@ _EMAIL_API_URL: str = os.getenv(
 _EMAIL_API_KEY: str = os.getenv("NUZANTARA_API_KEY", "")
 
 ADMIN_EMAIL: str = "zero@balizero.com"
-TELEGRAM_OWNER_CHAT_ID: int = 1125336968
+TELEGRAM_OWNER_CHAT_ID: int = 8847435604
 TAX_CONSULTANT_MANAGER: str = "veronika.tax@balizero.com"
 TAX_CONSULTANTS_NON_MANAGER: tuple[str, ...] = (
     "kadek.tax@balizero.com",

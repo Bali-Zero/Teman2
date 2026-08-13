@@ -116,7 +116,7 @@ class TestConfig:
     def test_tg_config(self):
         from mata_garuda.config import TG_ZERO_CHAT_ID
 
-        assert TG_ZERO_CHAT_ID == "1125336968"
+        assert TG_ZERO_CHAT_ID == "8847435604"
 
     def test_ai_sources_configured(self):
         from mata_garuda.config import (
