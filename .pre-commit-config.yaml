@@ -85,6 +85,20 @@ repos:
         pass_filenames: false
         always_run: true
 
+      # ── TELEGRAM BOT TOKEN (2026-08-13) ─────────────────────────────────────
+      # detect-secrets above ships no detector for `<bot-id>:AA<33>` — measured,
+      # not assumed: a file whose only content is a token-shaped string scans to
+      # `results: {}`. That is how @Balizerobot's LIVE token reached the public
+      # default branch inside two archived .md docs and stayed there. It can
+      # never be revoked (BotFather answers only the creating account, which is
+      # lost), so this hook is the difference between one rejected push and a
+      # permanently burned bot. Runs on every staged file, any extension.
+      - id: no-telegram-bot-token
+        name: "No Telegram bot token in the tree"
+        entry: python3 scripts/lint_telegram_tokens.py
+        language: system
+        types: [text]
+
       - id: root-guard
         name: "Root whitelist (prevent scratch accumulation)"
         entry: python scripts/root_guard.py
