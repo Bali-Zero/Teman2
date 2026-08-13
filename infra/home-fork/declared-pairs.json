@@ -298,7 +298,13 @@
     {
       "live": "~/scripts/cron-agent.sh",
       "repo": "infra/launchagents/wrappers/cron-agent.sh",
-      "_note": "W89 class-audit (2026-07-11, PENDING-ARMS ledger ~68): run_agent() gets BG-ceiling env + anti-background prompt sentence + provenance log line. Live crontab consumer of the 'agent' tier: weekly-dep-audit, seo-guardian-weekly, conversation-cleanup, indexing-daily, learning-pipeline (verified via `crontab -l` on Pro 2026-07-11).",
+      "_note": "W89 class-audit (2026-07-11, PENDING-ARMS ledger ~68): run_agent() gets BG-ceiling env + anti-background prompt sentence + provenance log line. Live crontab consumer of the 'agent' tier: weekly-dep-audit, seo-guardian-weekly, conversation-cleanup, indexing-daily, learning-pipeline (verified via `crontab -l` on Pro 2026-07-11). 2026-08-12 (arm-p1p2-fingerprints): re-verified only 6 of the 16 grep hits for 'cron-agent.sh' in crontab are live invocations (10 are comments/disabled lines) — cell-weekly-report and nlm-nb1-daily-refresh run the exec tier and never reach P2's fingerprint check; weekly-dep-audit, seo-guardian-weekly, indexing-daily got FINGERPRINT_MAP support added (reads its job entry when CRON_AGENT_SKIP_IF_UNCHANGED is unset); learning-pipeline stays unarmed by design (its prompt forbids reading any file, so there is no input to fingerprint).",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/.cron-agent/fingerprints.json",
+      "repo": "infra/launchagents/cron-agent-fingerprints.json",
+      "_note": "2026-08-12 (arm-p1p2-fingerprints, PR pending): job->CRON_AGENT_SKIP_IF_UNCHANGED-command map read by cron-agent.sh's run_agent() (FINGERPRINT_MAP, default $STATE_DIR/fingerprints.json) when the env var itself is unset — arms P2 no-op suppression (PR #4108) for weekly-dep-audit, seo-guardian-weekly and indexing-daily without touching any of the ~16 crontab lines that invoke cron-agent.sh. Deploy is a plain copy alongside the wrapper's own HOME-fork copy, same install step. Not yet installed on Pro as of this entry — until then lint_home_fork will report this pair as repo-ahead (declared, expected, not silent drift).",
       "machines": ["pro"]
     },
     {
@@ -711,6 +717,12 @@
       "repo": "scripts/runtime-reconcile.sh",
       "machines": ["pro"],
       "_note": "UNDECLARED until 2026-08-10, found while migrating its Telegram sender: com.nuzantara.runtime-reconcile.plist on Pro invokes /Users/nuzantara/scripts/runtime-reconcile.sh, a real file and not a symlink, so merging alone leaves the organ on the old code (W107 delivery gotcha). Measured the same day: the live copy was sha256 30216b454a60106b, byte-identical to origin/main — so it was aligned, not forked, and the risk was the NEXT change, which is exactly the one that declared it. The script's own header says 'install the live copy under ~/scripts via the P1 installer'; that sentence was the only thing that knew about the pair, and a sentence in a header is not a lint."
+    },
+    {
+      "live": "~/scripts/mos-plus-compression-worker.py",
+      "repo": "scripts/mos-plus-compression-worker.py",
+      "machines": [],
+      "_note": "Promoted 2026-08-13 (superscar #1 — was UNDECLARED and 100% HOME-fork: 0 hits for mos-plus in `git ls-tree -r origin/main`, live only on Pro under com.balizero.mos-plus.compression, StartInterval=600). Repo canon at promotion is BYTE-IDENTICAL to the live Pro copy (sha256 082c7134265fe0f7…, verified via `ssh pro cat` immediately before writing this file) — the same commit that adds this pair also carries the cascade fix (env-configurable Ollama endpoint defaulting to Mini + retry cap + consecutive-fail alert), so canon and live diverge again right away. `machines` is deliberately EMPTY, not `[\"pro\"]`: per this file's own STRICT ORDERING rule (see the runtime-reconcile.sh entry above and the wa-mirror-attention-classifier entries) a pair is only declared machine-applicable AFTER its live sync is proven, or `--check` arms a permanent red for a gap this PR itself creates. `discover_undeclared` matches on `pair['live']` regardless of `machines` (lint_home_fork.py:702, `declared_lives = {p['live'] for p in pairs}`), so this entry already suppresses the undeclared-payload finding on Pro even though `--check` skips it. Widen to `[\"pro\"]` once the fixed file is actually copied onto Pro's `~/scripts/mos-plus-compression-worker.py` AND re-verified sha256-identical — not before."
     }
   ],
   "allow": [

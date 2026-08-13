@@ -23,6 +23,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from threading import Lock
 
+# CODEX_HOME must name a ChatGPT Pro seat that is actually logged in,
+# alternating between the two subscriptions. Measured 2026-08-12: on Pro
+# the default ~/.codex answers 401, so every codex leg here died on auth.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from scripts.lib.codex_seat import codex_seat_env  # noqa: E402
+
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import editorial_writer as ew  # _extract_json, QUOTA_RE, DRAFTS
@@ -88,7 +94,7 @@ def rewrite_one(code: str, sentences: list[str], model: str) -> str:
             r = subprocess.run(
                 ["codex", "exec", "--sandbox", "read-only", "--skip-git-repo-check",
                  "-m", model, prompt],
-                capture_output=True, text=True, timeout=300,
+                capture_output=True, text=True, timeout=300, env=codex_seat_env(),
             )
         except Exception:
             time.sleep(5)

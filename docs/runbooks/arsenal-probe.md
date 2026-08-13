@@ -46,16 +46,22 @@ Credential values are never printed, logged, or reported (scrub layer; scar #4).
 - `AUTH_DEAD` / `BALANCE_DEAD` / `MODEL_ERR` = persistent and fixable — almost always
   operator-gated:
 
-| Seat dead               | Cure (operator unless noted)                                                                                                                                 |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| codex AUTH_DEAD         | interactive `codex login` on that machine                                                                                                                    |
-| claude AUTH/QUOTA       | `claude auth status`; window cap → wait reset or switch slot                                                                                                 |
-| glm AUTH_DEAD           | re-copy token from a live keychain (see memory `discovery_glm_mini_seat_armed_fable_model_leak_2026_07_06`)                                                  |
-| glm MODEL_ERR           | config drift — launch from repo cwd or pin `--model glm-5.2` (fable-5[1m] leak)                                                                              |
-| deepseek BALANCE_DEAD   | top-up at platform.deepseek.com                                                                                                                              |
-| agy AUTH_DEAD (GUI ctx) | interactive `agy` login in a live session                                                                                                                    |
-| nlm AUTH_DEAD           | `nlm login` on Pro (recurs ~monthly)                                                                                                                         |
-| kimi AUTH_DEAD          | `kimi login` on that machine (device-code flow — authorize the printed URL/code from a kimi.com-logged browser; Allegro subscription, seat added 2026-07-19) |
+| Seat dead               | Cure (operator unless noted)                                                                                                                                                                                                                                                                                     |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| codex AUTH_DEAD         | interactive `codex login` on that machine                                                                                                                                                                                                                                                                        |
+| claude AUTH/QUOTA       | `claude auth status`; window cap → wait reset or switch slot                                                                                                                                                                                                                                                     |
+| glm AUTH_DEAD           | re-copy token from a live keychain (see memory `discovery_glm_mini_seat_armed_fable_model_leak_2026_07_06`)                                                                                                                                                                                                      |
+| glm MODEL_ERR           | config drift — launch from repo cwd or pin `--model glm-5.2` (fable-5[1m] leak)                                                                                                                                                                                                                                  |
+| deepseek BALANCE_DEAD   | top-up at platform.deepseek.com                                                                                                                                                                                                                                                                                  |
+| agy AUTH_DEAD (GUI ctx) | interactive `agy` login in a live session                                                                                                                                                                                                                                                                        |
+| nlm AUTH_DEAD           | `nlm login` on Pro (recurs ~monthly)                                                                                                                                                                                                                                                                             |
+| kimi AUTH_DEAD          | `kimi login` on that machine (device-code flow — authorize the printed URL/code from a kimi.com-logged browser; Allegro subscription, seat added 2026-07-19)                                                                                                                                                     |
+| kimi BALANCE_DEAD       | verify/renew the Allegro membership at kimi.com — distinct from AUTH_DEAD: the device-code login itself succeeds, but the API replies "unable to verify your membership benefits ... ensure your membership is active" (a subscription-status check, not a token check, so `kimi login` alone will not clear it) |
+
+Note (2026-08-13, healer tick): first live occurrence of `kimi BALANCE_DEAD` (evidence: "We're
+unable to verify your membership benefits at this time. Please ensure your membership is active",
+matched by the same generic `_BALANCE_DEAD_PAT` deepseek's `HTTP 402` hits) — added to the table
+above since it previously only documented `kimi AUTH_DEAD`. Operator-gated; no code change.
 
 Note (2026-08-05, healer tick): `claude` and `nlm`'s unauthenticated shapes ("Not logged in ·
 Please run /login", "Run nlm login to re-authenticate") carry no 401/oauth-token marker, only

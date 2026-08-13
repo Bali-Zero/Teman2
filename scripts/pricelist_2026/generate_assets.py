@@ -14,6 +14,7 @@ from pathlib import Path
 # Add repo root to sys.path so `from scripts...` resolves when run as module
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from scripts.lib.codex_seat import codex_seat_env
 from scripts.pricelist_2026 import asset_briefs
 
 DEFAULT_OUT = Path.home() / "Desktop" / "Bali_Zero_Price_List_2026_assets"
@@ -54,7 +55,14 @@ def _generate_one(brief: str, out_path: Path, size: str, *, dry_run: bool) -> bo
     cmd = ["codex", "exec", "--sandbox", "workspace-write", "--skip-git-repo-check", prompt]
     try:
         result = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=300, stdin=subprocess.DEVNULL
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=300,
+            stdin=subprocess.DEVNULL,
+            # A seat that is actually logged in, alternating between the two
+            # ChatGPT Pro subscriptions (scripts/lib/codex_seat.py).
+            env=codex_seat_env(),
         )
     except subprocess.TimeoutExpired:
         print(f"  ✗ TIMEOUT: {out_path.name}", file=sys.stderr)

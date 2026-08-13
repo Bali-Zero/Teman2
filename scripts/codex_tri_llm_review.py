@@ -61,6 +61,9 @@ for forbidden in ("ANTHROPIC_API_KEY", "AWS_BEDROCK_ANTHROPIC_KEY", "VERTEX_AI_A
 # (e.g. running from a worktree).
 REPO_ROOT = Path(os.environ.get("NUZANTARA_REPO_ROOT") or
                  Path(__file__).resolve().parent.parent)
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from scripts.lib.codex_seat import codex_seat_env  # noqa: E402
+
 LOG_DIR = Path.home() / "logs" / "tri-llm-review"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -360,7 +363,12 @@ def _safe_subprocess_env() -> dict[str, str]:
     """
     env = {k: v for k, v in os.environ.items() if k not in _STRIPPED_PROVIDER_KEYS}
     env["PATH"] = _cli_path(env.get("PATH"))
-    return env
+    # CODEX_HOME names a ChatGPT Pro seat that is actually logged in,
+    # alternating between the two subscriptions (scripts/lib/codex_seat.py).
+    # Measured 2026-08-12: on Pro the default ~/.codex answers 401, so this
+    # review leg was spending its whole timeout to produce an auth error. Inert
+    # for the claude leg, which shares this env and never reads the variable.
+    return codex_seat_env(env)
 
 
 async def _communicate_or_kill(
