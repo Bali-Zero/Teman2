@@ -168,6 +168,14 @@ def run_hook(hook: str, payload: dict) -> tuple[int, str]:
     # ensure the kill switch is NOT set, or we'd test a disarmed hook
     env.pop("AGENT_WORKTREE_ENFORCEMENT", None)
     env.pop("HOST_BOUNDARY_OFF", None)
+    # ORCHESTRATE_GATE_OFF specifically: this var can be set with no file behind
+    # it at all (inherited shell export — lesson_a_disarmed_gate_is_mute_2026_08_12),
+    # so `env = dict(os.environ)` above can silently carry it into this subprocess
+    # on a live machine. Today's orchestrate_gate.py cases never reach the block
+    # branch either way (no transcript_path), but a future guilt case added here
+    # would otherwise pass or fail depending on the CI/dev machine's inherited
+    # env instead of the payload under test — the same disease one level down.
+    env.pop("ORCHESTRATE_GATE_OFF", None)
     try:
         proc = subprocess.run(
             [sys.executable, str(path)],
