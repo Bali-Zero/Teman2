@@ -35,7 +35,12 @@ from backend.core.secret_log_redaction import (
     install_telegram_token_redaction,
 )
 
-# Synthetic, never issued by Telegram. Same shape as a real one.
+# Synthetic, never issued by Telegram. Same shape as a real one — which is why
+# the marker below is here: `scripts/lint_telegram_tokens.py` refuses a
+# token-shaped literal anywhere in the tree, and this file needs the real shape
+# to do its job. The marker is an assertion by the author, and it cannot excuse
+# a token the linter already knows is burned.
+# synthetic-telegram-token
 FAKE_TOKEN = "bot7654321098:AAF9zZqLmN0pQrStUvWxYz1234567890abc"  # noqa: S105
 FAKE_URL = f"https://api.telegram.org/{FAKE_TOKEN}/sendMessage"
 SECRET_HALF = "AAF9zZqLmN0pQrStUvWxYz1234567890abc"

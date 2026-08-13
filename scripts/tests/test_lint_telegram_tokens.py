@@ -54,6 +54,33 @@ def test_guilt_the_burned_balizerobot_token_is_named_not_merely_flagged() -> Non
     assert "Balizerobot" in lint.KNOWN_COMPROMISED["a54b897b432002bb"]
 
 
+def test_innocence_an_explicitly_marked_synthetic_fixture_passes() -> None:
+    """The tree legitimately holds one token-shaped literal — the corpus pinning
+    the 2026-08-11 log-leak scar needs the real SHAPE. Blocking it would be the
+    over-match that gets a guard switched off."""
+    same_line = f'FAKE = "{_token()}"  # synthetic-telegram-token'
+    line_above = f"# synthetic-telegram-token\nFAKE = \"{_token()}\"\n"
+    assert not lint.scan_text(same_line)
+    assert not lint.scan_text(line_above)
+
+
+def test_the_synthetic_marker_cannot_launder_a_known_burned_token(monkeypatch) -> None:
+    """An exemption that can excuse a credential we KNOW is real is not an
+    exemption, it is a hole with a comment on it."""
+    monkeypatch.setitem(lint.KNOWN_COMPROMISED, lint._fingerprint(_REAL_BODY), "@testbot")
+    marked = f'TOKEN = "{_token()}"  # synthetic-telegram-token'
+    hits = lint.scan_text(marked)
+    assert hits, "a burned token must be reported however it is marked"
+    assert "@testbot" in hits[0]
+
+
+def test_the_marker_two_lines_above_does_not_reach() -> None:
+    """Same line or the line directly above — a reviewer must read the claim
+    next to the value, not hunt for it."""
+    text = "# synthetic-telegram-token\n# unrelated comment\n" + f'T = "{_token()}"\n'
+    assert lint.scan_text(text)
+
+
 def test_guilt_findings_never_contain_the_token_body() -> None:
     """A gate that echoes the secret writes it into a CI log as public as the
     file it came from — the same disease one layer down."""

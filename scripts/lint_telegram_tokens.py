@@ -73,6 +73,21 @@ KNOWN_COMPROMISED: dict[str, str] = {
 # fall under it and high enough that the usual placeholders do.
 _PLACEHOLDER_MAX_DISTINCT = 5
 
+# An explicit, deliberate assertion by the author that a token-shaped literal is
+# synthetic. It exists because the tree legitimately contains one: the corpus
+# pinning the 2026-08-11 scar (a live token printed into an Actions log by httpx
+# at INFO) needs a string of the real SHAPE — that is the whole point of it.
+# Blocking that file would be the over-match that gets a guard switched off, and
+# the file it would block is a sibling security guard.
+#
+# The marker must sit on the same line or the line directly above, so a reviewer
+# reads the claim next to the value. It is an assertion, not a formality.
+#
+# It CANNOT launder a token we already know is real: a hash in KNOWN_COMPROMISED
+# is reported however it is marked. An exemption that can excuse a burned
+# credential is not an exemption, it is a hole with a comment on it.
+_SYNTHETIC_MARKER = re.compile(r"synthetic-telegram-token", re.IGNORECASE)
+
 _SKIP_DIRS = {".git", "node_modules", ".next", ".venv", "venv", "dist", "build"}
 
 
@@ -87,12 +102,17 @@ def _is_placeholder(body: str) -> bool:
 def scan_text(text: str, path: str = "<memory>") -> list[str]:
     """Return one human-readable finding per real-looking token."""
     findings: list[str] = []
-    for lineno, line in enumerate(text.splitlines(), 1):
+    lines = text.splitlines()
+    for lineno, line in enumerate(lines, 1):
         for match in TOKEN_RE.finditer(line):
             bot_id, body = match.group(1), match.group(2)
             if _is_placeholder(body):
                 continue
             note = KNOWN_COMPROMISED.get(_fingerprint(body))
+            if note is None:
+                above = lines[lineno - 2] if lineno >= 2 else ""
+                if _SYNTHETIC_MARKER.search(line) or _SYNTHETIC_MARKER.search(above):
+                    continue
             label = f" — {note}" if note else ""
             findings.append(
                 f"{path}:{lineno}: Telegram bot token for bot id {bot_id} "
