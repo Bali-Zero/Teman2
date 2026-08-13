@@ -773,7 +773,7 @@ cat ~/.agent/decisions/state/dlq_autopilot.last.json
         <key>HOME</key>
         <string>/Users/nuzantara</string>
         <key>TELEGRAM_BOT_TOKEN</key>
-        <string>8295471667:AAHglwz8p8LxFnDgctmXuCs5aZa6lY78QO8</string>
+        <string>${TELEGRAM_BOT_TOKEN}</string>
         <key>TELEGRAM_ADMIN_CHAT_ID</key>
         <string>1813875994</string>
     </dict>
