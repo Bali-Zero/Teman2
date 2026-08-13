@@ -26,6 +26,8 @@ export function PortalMessages({
   const [newMessage, setNewMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const hasSeenData = useRef(false);
+  const prevMessageCountRef = useRef(0);
 
   const loadMessages = async () => {
     try {
@@ -51,7 +53,18 @@ export function PortalMessages({
   }, [clientId]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messages.length === 0) return;
+
+    if (!hasSeenData.current) {
+      hasSeenData.current = true;
+      prevMessageCountRef.current = messages.length;
+      return;
+    }
+
+    if (messages.length > prevMessageCountRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+    prevMessageCountRef.current = messages.length;
   }, [messages]);
 
   const handleSend = async () => {
