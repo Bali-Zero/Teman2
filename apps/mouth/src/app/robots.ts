@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import type { MetadataRoute } from "next";
 
 // In robots.txt semantics a crawler obeys ONLY the most specific matching
@@ -41,7 +42,26 @@ const DISALLOW = [
   "/_next/",
 ];
 
-export default function robots(): MetadataRoute.Robots {
+// Hosts that serve the internal app surface. These must never be crawled:
+// the pages sit behind login, so what leaks is the subdomain's existence
+// and its route structure, not content. proxy.ts already sets
+// X-Robots-Tag: noindex, nofollow on these hosts (proxy.ts:366, :369, :449)
+// — this closes the robots.txt layer, which is served by this file for
+// every host and until now returned the public site's rules verbatim.
+const INTERNAL_HOSTS = new Set([
+  "zantara.balizero.com",
+  "www.zantara.balizero.com",
+]);
+
+export default async function robots(): Promise<MetadataRoute.Robots> {
+  const host = (await headers()).get("host")?.toLowerCase() ?? "";
+
+  if (INTERNAL_HOSTS.has(host)) {
+    return {
+      rules: [{ userAgent: "*", disallow: "/" }],
+    };
+  }
+
   return {
     rules: [
       // ── Standard crawlers ─────────────────────────────
