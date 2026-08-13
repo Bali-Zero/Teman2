@@ -26,6 +26,7 @@ from scripts.curated_qa_serving_audit import (
     EXIT_ORPHANS,
     EXIT_ROWS_NOT_SERVED,
     audit,
+    render,
     scroll_all,
 )
 from scripts.curated_qa_serving_audit import (
@@ -234,6 +235,81 @@ class TestInnocence:
 
         assert len(ids) == 2
         assert audit([_point(r) for r in rows], ids).orphans == 0
+
+
+class TestGuiltTheLegacyIdIsCalledOut:
+    """412 of 412 prod orphans carry the legacy id, and that is what rules out
+    the obvious cure — so the audit has to distinguish the two shapes."""
+
+    def _legacy_point(self, question: str, domain: str = "visa") -> dict:
+        import hashlib
+        import uuid
+
+        from scripts.curated_qa_serving_audit import _legacy_point_id
+
+        pid = _legacy_point_id(question)
+        # Pin the rule itself, not just the helper's own output: the legacy id
+        # is sha256 of the QUESTION ALONE. A helper that quietly folded the
+        # domain back in would agree with itself forever.
+        assert pid == str(
+            uuid.uuid5(
+                uuid.NAMESPACE_URL, hashlib.sha256(question.strip().lower().encode()).hexdigest()
+            )
+        )
+        return {"id": pid, "payload": {"domain": domain, "text": question, "answer": "…"}}
+
+    def test_an_orphan_carrying_the_legacy_id_is_counted(self, tmp_path: Path) -> None:
+        ids, _ = load_disk_rows(_corpus(tmp_path, [_row("q1")]))
+
+        a = audit([self._legacy_point("a question from the old generation")], ids)
+
+        assert a.orphans == 1
+        assert a.orphans_old_derivation == 1
+
+    def test_the_render_warns_that_exporting_will_not_reach_them(self, tmp_path: Path) -> None:
+        """The warning is the actionable half: without it the next reader
+        exports the questions, gets a duplicate, and the orphan keeps serving."""
+        ids, _ = load_disk_rows(_corpus(tmp_path, [_row("q1")]))
+
+        text = render(audit([self._legacy_point("old one")], ids))
+
+        assert "LEGACY id" in text
+        assert "will NOT reach them" in text
+
+
+class TestInnocenceOnTheLegacyIdCheck:
+    def test_an_orphan_written_by_the_CURRENT_rule_is_not_called_legacy(
+        self, tmp_path: Path
+    ) -> None:
+        """An orphan whose id the current rule CAN address is a different
+        case entirely — exporting its question would genuinely reach it, so
+        calling it legacy would send the reader down the wrong path."""
+        ids, _ = load_disk_rows(_corpus(tmp_path, [_row("q1")]))
+
+        a = audit([_orphan_point("addressable by today's rule")], ids)
+
+        assert a.orphans == 1
+        assert a.orphans_old_derivation == 0
+
+    def test_a_point_matching_disk_is_never_examined_for_legacy_ids(self, tmp_path: Path) -> None:
+        rows = [_row("q1")]
+        ids, _ = load_disk_rows(_corpus(tmp_path, rows))
+
+        a = audit([_point(rows[0])], ids)
+
+        assert a.orphans_old_derivation == 0
+
+    def test_an_orphan_with_no_question_text_is_not_guessed_at(self, tmp_path: Path) -> None:
+        """No `text` means the derivation cannot be tested — that is unknown,
+        not legacy. Counting it either way would be inventing evidence."""
+        ids, _ = load_disk_rows(_corpus(tmp_path, [_row("q1")]))
+
+        a = audit(
+            [{"id": "11111111-2222-3333-4444-555555555555", "payload": {"domain": "visa"}}], ids
+        )
+
+        assert a.orphans == 1
+        assert a.orphans_old_derivation == 0
 
 
 def test_the_audit_uses_the_harvesters_own_id_rule_not_a_copy() -> None:
