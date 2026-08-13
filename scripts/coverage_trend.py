@@ -94,7 +94,7 @@ def write_last_json(status: str, detail: str = "") -> None:
 
 def send_telegram(message: str) -> None:
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
-    chat_id = "1125336968"
+    chat_id = "8847435604"
     if not token:
         logger.warning("TELEGRAM_BOT_TOKEN not set — skipping alert")
         return

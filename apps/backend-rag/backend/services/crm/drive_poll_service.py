@@ -144,7 +144,7 @@ def _drive_poll_max_pages_per_cycle() -> int:
 def _send_telegram_alert(message: str) -> None:
     """Invia alert Telegram quando il circuit breaker si apre."""
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-    chat_id = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+    chat_id = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "8847435604")
     if not bot_token:
         logger.warning("TELEGRAM_BOT_TOKEN non trovato — skip alert circuit breaker")
         return

@@ -52,7 +52,7 @@ telegram_alert() {
   fi
   curl -s --max-time 8 \
     "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-    -d "chat_id=${TELEGRAM_OWNER_CHAT_ID:-1125336968}" \
+    -d "chat_id=${TELEGRAM_OWNER_CHAT_ID:-8847435604}" \
     -d "text=[heartbeat-watchdog] ${message}" >/dev/null 2>&1 || true
   echo "$now" > "$state_file"
 }

@@ -58,7 +58,7 @@ DB_URL_DEFAULT = _require_env("ENTITY_LINKER_DB_URL")
 QDRANT_URL_DEFAULT = _require_env("QDRANT_URL")
 QDRANT_API_KEY_DEFAULT = _require_env("QDRANT_API_KEY")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "8847435604")
 
 
 async def _maybe_notify(message: str) -> None:

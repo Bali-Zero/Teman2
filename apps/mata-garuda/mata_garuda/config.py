@@ -25,14 +25,14 @@ STREAM_MAXLEN = int(os.environ.get("GARUDA_STREAM_MAXLEN", "100000"))
 
 # Telegram — Zero only
 TG_BOT_TOKEN_ENV = "TELEGRAM_BOT_TOKEN"
-TG_ZERO_CHAT_ID = "1125336968"
+TG_ZERO_CHAT_ID = "8847435604"
 
 # NLM Notebook IDs
 # NLM_NOTEBOOKS is a backward-compat shim. Source of truth: notebook_registry.
 # Migration plan: the 4 callsites (sentinel_actor, nlm_feeder, nlm_expander_agent,
 # health_tools) will be migrated to NOTEBOOK_REGISTRY in a follow-up PR — see
 # docs/nb-lifecycle/round1-19-ambiguous-decisions-2026-05-07.md §Follow-up.
-from mata_garuda.notebook_registry import get_legacy_notebooks_dict
+from mata_garuda.notebook_registry import get_legacy_notebooks_dict  # noqa: E402
 NLM_NOTEBOOKS = get_legacy_notebooks_dict()
 
 # Domain → NLM Notebook routing (for nlm_feeder)
@@ -108,7 +108,7 @@ AI_RSS_FEEDS = [
 
 
 # ── Phase 1 — Bridge & Nexus integration ──────────────────────────────
-from pathlib import Path
+from pathlib import Path  # noqa: E402
 
 # New streams
 STREAM_BRIDGE_OUTBOUND = "bridge:outbound"

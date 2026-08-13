@@ -33,7 +33,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
-import re  # noqa: E402
+import re
 
 
 def _require_env(name: str) -> str:
@@ -101,7 +101,7 @@ DB_URL_DEFAULT = _require_env("ENTITY_LINKER_DB_URL")
 QDRANT_URL_DEFAULT = _require_env("QDRANT_URL")
 QDRANT_API_KEY_DEFAULT = _require_env("QDRANT_API_KEY")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "8847435604")
 
 PROGRESS_STEP = int(os.environ.get("ENTITY_LINKER_PROGRESS_STEP", "2000"))
 TELEGRAM_STEP = int(os.environ.get("ENTITY_LINKER_TELEGRAM_STEP", "10000"))

@@ -103,7 +103,7 @@ if [ "$REDIS_RC" -ne 0 ]; then
   if [ -n "${TELEGRAM_BOT_TOKEN:-}" ]; then
     curl -s --max-time 5 \
       "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-      -d "chat_id=${TELEGRAM_OWNER_CHAT_ID:-1125336968}" \
+      -d "chat_id=${TELEGRAM_OWNER_CHAT_ID:-8847435604}" \
       -d "text=[idempotent-runner] Redis unreachable on $(hostname) for $LABEL — fail-open, running anyway" >/dev/null 2>&1 || true
   fi
   exec "$@"

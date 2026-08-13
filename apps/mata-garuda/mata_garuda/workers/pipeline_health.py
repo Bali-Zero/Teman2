@@ -162,7 +162,7 @@ def _emit_sidecar(status: str, metadata: dict, now_ms: int) -> None:
 
 def _tg_alert(text: str) -> bool:
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-    chat = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+    chat = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "8847435604")
     if not token:
         return False
     try:

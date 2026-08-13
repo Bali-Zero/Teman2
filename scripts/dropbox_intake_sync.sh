@@ -35,7 +35,7 @@ LOCK_FILE="${LOG_DIR}/.lock"
 RUN_LOG="${LOG_DIR}/run-$(date +%Y%m%d-%H%M%S).log"
 LATEST="${LOG_DIR}/latest.log"
 SECRETS_FILE="${HOME}/.nuzantara-secrets.env"
-TELEGRAM_CHAT_ID="${TELEGRAM_CHAT_ID:-1125336968}"
+TELEGRAM_CHAT_ID="${TELEGRAM_CHAT_ID:-8847435604}"
 ALERT_COOLDOWN_S=3600
 
 mkdir -p "$LOG_DIR" "$STATE_DIR"

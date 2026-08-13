@@ -66,7 +66,7 @@ UNPUBLISHED_AGE_DAYS = int(os.environ.get("WR2_GC_UNPUBLISHED_AGE_DAYS", "30"))
 
 def _telegram(text: str) -> None:
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-    chat_id = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+    chat_id = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "8847435604")
     if not token:
         return
     try:

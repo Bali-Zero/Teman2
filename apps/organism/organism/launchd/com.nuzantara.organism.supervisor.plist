@@ -22,7 +22,7 @@
     <!-- TELEGRAM_BOT_TOKEN + TELEGRAM_OWNER_CHAT_ID are intentionally NOT
          declared here (cicatrix scar 2026-04-29: world-readable plist
          leaks). Operator sets them via `launchctl setenv TELEGRAM_BOT_TOKEN
-         <token>` + `launchctl setenv TELEGRAM_OWNER_CHAT_ID 1125336968`
+         <token>` + `launchctl setenv TELEGRAM_OWNER_CHAT_ID 8847435604`
          BEFORE flipping the active flag. The notify_telegram actuator
          silently skips alerts when these are unset, so an unset env keeps
          the supervise loop healthy and just disables Telegram side-effects. -->

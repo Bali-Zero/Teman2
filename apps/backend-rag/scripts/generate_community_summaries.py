@@ -52,7 +52,7 @@ logger = logging.getLogger("community_summaries")
 DB_URL = _require_env("ENTITY_LINKER_DB_URL")
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "8847435604")
 
 PROGRESS_STEP = int(os.environ.get("COMMUNITY_PROGRESS_STEP", "100"))
 TELEGRAM_STEP = int(os.environ.get("COMMUNITY_TELEGRAM_STEP", "500"))

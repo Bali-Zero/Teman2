@@ -53,7 +53,7 @@ LOG_FILE = os.path.expanduser("~/logs/cron/metabolic-rollup.jsonl")
 
 # Telegram
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "8847435604")
 
 # PG DSN — optional (Fly tunnel on Air)
 PG_DSN = os.environ.get("METABOLIC_PG_DSN", "")

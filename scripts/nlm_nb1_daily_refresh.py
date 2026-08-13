@@ -311,7 +311,7 @@ def _check_source_count_invariant() -> None:
             )
             log.warning(msg)
             bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-            chat_id = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+            chat_id = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "8847435604")
             if bot_token:
                 try:
                     data = urllib.parse.urlencode({"chat_id": chat_id, "text": msg}).encode()
@@ -454,7 +454,7 @@ def _check_staleness_alert(log_file: Path) -> None:
 
     threshold_hours = 48
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-    chat_id = os.environ.get("TELEGRAM_CHAT_ID", "1125336968")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID", "8847435604")
 
     if not log_file.exists():
         return

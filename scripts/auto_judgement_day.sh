@@ -46,7 +46,7 @@ EXIT_CODE=$?
 
 # Load secrets (TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_CHAT_ID)
 [ -f "$HOME/.nuzantara-secrets.env" ] && set -a && source "$HOME/.nuzantara-secrets.env" && set +a
-TELEGRAM_CHAT_ID="${TELEGRAM_ADMIN_CHAT_ID:-${TELEGRAM_CHAT_ID:-1125336968}}"
+TELEGRAM_CHAT_ID="${TELEGRAM_ADMIN_CHAT_ID:-${TELEGRAM_CHAT_ID:-8847435604}}"
 
 if [ $EXIT_CODE -eq 0 ]; then
     echo "[$DATE] ✅ Evaluation completed." >> "$LOG_FILE"

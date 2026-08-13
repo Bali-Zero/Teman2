@@ -75,7 +75,7 @@ telegram_alert() {
     set +a
   fi
   local token="${TELEGRAM_BOT_TOKEN:-}"
-  local chat="${TELEGRAM_OWNER_CHAT_ID:-1125336968}"
+  local chat="${TELEGRAM_OWNER_CHAT_ID:-8847435604}"
   if [ -z "$token" ]; then
     log "  (telegram skipped — TELEGRAM_BOT_TOKEN not in env)"
     return 0

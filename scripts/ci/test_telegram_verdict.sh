@@ -27,7 +27,7 @@ check() { # check <expected-verdict> <expected-exit> <label> <http_code> <body>
 
 echo "== INNOCENCE: a real delivery must not be reported as a failure =="
 check DELIVERED 0 "the ordinary success body" 200 \
-  '{"ok":true,"result":{"message_id":4211,"chat":{"id":1125336968,"type":"private"},"date":1785000000,"text":"x"}}'
+  '{"ok":true,"result":{"message_id":4211,"chat":{"id":8847435604,"type":"private"},"date":1785000000,"text":"x"}}'
 check DELIVERED 0 "success with whitespace around the colon" 200 \
   '{"ok" : true,"result":{"message_id":1}}'
 

@@ -12,7 +12,7 @@
 #
 # Output:
 #   - Markdown report at ~/nuzantara/research/nb-health/YYYY-MM-nb-intel-curation.md
-#   - Telegram digest to chat_id 1125336968 (from agent)
+#   - Telegram digest to chat_id 8847435604 (from agent)
 # Failure handling:
 #   - Wrapper redirects stdout+stderr to ~/logs/nb-curator-mode-c.log
 #   - Telegram alert if exit != 0

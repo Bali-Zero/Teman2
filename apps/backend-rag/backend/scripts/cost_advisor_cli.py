@@ -35,7 +35,7 @@ install_telegram_token_redaction()
 logger = logging.getLogger(__name__)
 
 DAILY_SPEND_ALERT_THRESHOLD_USD: Decimal = Decimal("20.00")
-TELEGRAM_CHAT_ID: str = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+TELEGRAM_CHAT_ID: str = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "8847435604")
 
 
 # ---------------------------------------------------------------------------

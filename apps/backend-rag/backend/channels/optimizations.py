@@ -585,7 +585,7 @@ class DeliveryManager:
             bot_token = getattr(settings, "telegram_bot_token", None)
             # Fallback chat_id verified live 2026-04-07 (Zero's chat with @Balizerobot).
             # The previous fallback (413539912) returned "chat not found" from Telegram.
-            owner_chat = getattr(settings, "telegram_owner_chat_id", None) or "1125336968"
+            owner_chat = getattr(settings, "telegram_owner_chat_id", None) or "8847435604"
             if not bot_token:
                 logger.warning("DLQ alert: TELEGRAM_BOT_TOKEN not set, skipping alert")
                 return
