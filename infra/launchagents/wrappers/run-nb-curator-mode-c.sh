@@ -23,6 +23,19 @@
 # raise the background ceiling, tell the model inline never to background, and log an
 # explicit "used: tier1-<model>" provenance line (single-tier by design — this agent's
 # NotebookLM MCP tool access needs Claude, not agy/codex/ollama).
+#
+# Healer fix (2026-08-13, PENDING-ARMS ledger, 3rd occurrence root-cause): this wrapper has
+# NO git logic of its own — every commit ever traced back to a Mode C run came from the
+# agentic `claude -p` session deciding, on its own initiative, to `git add`/`git commit` its
+# own report (normal Claude Code habit, per this repo's commit-discipline system prompt).
+# Nothing then pushes it: the commit sits local-only on Pro's main until an interactive
+# session force-reconciles it, and in the meantime Mini's 5min git-pull cron chokes on the
+# non-ff divergence (same wall closed 2026-07-12, 2026-08-09, 2026-08-11 — never cured at
+# the source before now). The sibling Mode A/B wrapper (`nb-curator-daily.sh`) never had
+# this bug because it writes the file directly and never invokes an agentic session at all.
+# Fix: tell the agent explicitly not to touch git, matching that sibling's write-only
+# contract, so the report lands on disk uncommitted and this class of divergence cannot
+# recur from this organ.
 
 set -uo pipefail
 
@@ -52,7 +65,7 @@ export CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS="${CLAUDE_CODE_PRINT_BG_WAIT_CEILING
 
 # Invoke claude CLI to run the nb-curator agent in Mode C.
 # The agent reads the date itself and decides scope (full vs Press-only).
-PROMPT="Run nb-curator agent in Mode C (Dedupe/Summarize). Read today's date, decide scope per the schedule in your spec (day-of-month <=7 AND Monday = full pass; else Press + stale-all). Emit markdown report under ~/nuzantara/research/nb-health/ and Telegram digest. Do NOT call any nlm rm or any mutating command — propose-only per Article 1. Do ALL the work inline in this turn — never spawn a background task or background agent for this; this is a one-shot print-mode run and backgrounded work is terminated at exit, leaving no report on disk (W89 class-audit, regulatory-watcher incident 2026-07-05)."
+PROMPT="Run nb-curator agent in Mode C (Dedupe/Summarize). Read today's date, decide scope per the schedule in your spec (day-of-month <=7 AND Monday = full pass; else Press + stale-all). Emit markdown report under ~/nuzantara/research/nb-health/ and Telegram digest. Do NOT call any nlm rm or any mutating command — propose-only per Article 1. Do ALL the work inline in this turn — never spawn a background task or background agent for this; this is a one-shot print-mode run and backgrounded work is terminated at exit, leaving no report on disk (W89 class-audit, regulatory-watcher incident 2026-07-05). Do NOT run 'git add', 'git commit', 'git push', or any other git command for this report — leave the file uncommitted on disk exactly as written; a separate, human-reviewed process is responsible for committing nb-health artifacts, and a local-only commit from this headless cron desyncs the fleet's main checkout (PENDING-ARMS ledger, 3rd occurrence closed 2026-08-13)."
 
 if ! command -v claude >/dev/null 2>&1; then
     log "FAIL: claude CLI not in PATH"
