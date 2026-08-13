@@ -338,15 +338,48 @@ def test_send_ollama_down_alert_uses_absolute_interpreter_and_never_raises(worke
     assert "--tier" in captured["argv"] and "p0" in captured["argv"]
 
 
-def test_send_ollama_down_alert_logs_the_gateway_outcome(worker, monkeypatch):
+def _run_alert_with_stderr(worker, monkeypatch, stderr: str) -> str:
     class FakeResult:
-        returncode = 0
-        stderr = "tg_notify: sent\n"
+        returncode = 0  # the gateway exits 0 on refusals too — that is the point
         stdout = ""
 
+    FakeResult.stderr = stderr
     monkeypatch.setattr(worker.subprocess, "run", lambda *a, **k: FakeResult())
     worker._send_ollama_down_alert(3)
+    return Path(worker.ERR_LOG).read_text()
 
-    log_text = Path(worker.ERR_LOG).read_text()
-    assert "rc=0" in log_text
-    assert "outcome=sent" in log_text
+
+def test_alert_logs_a_real_delivery_as_delivered(worker, monkeypatch):
+    """Innocence: a genuine send is not maligned as a refusal."""
+    log_text = _run_alert_with_stderr(worker, monkeypatch, "tg_notify: sent\n")
+    assert "DELIVERED" in log_text and "NOT DELIVERED" not in log_text
+    assert "sent" in log_text
+
+
+def test_alert_logs_a_zero_exit_refusal_as_not_delivered(worker, monkeypatch):
+    """GUILT: rc==0 covers six outcomes and three of them never reached
+    Telegram. Judging by the exit code reads a refusal as a page (W104)."""
+    log_text = _run_alert_with_stderr(
+        worker, monkeypatch, "tg_notify: p0_overflow_spooled\n"
+    )
+    assert "NOT DELIVERED" in log_text, (
+        "a p0_overflow_spooled verdict means the budget swallowed the page — "
+        "the log must say the owner was NOT paged, not merely echo an outcome"
+    )
+    assert "p0_overflow_spooled" in log_text, "the verdict must be named, not hidden"
+
+
+def test_alert_does_not_mistake_a_human_diagnostic_for_a_verdict(worker, monkeypatch):
+    """GUILT for the exact defect the class guard caught in this file's first
+    draft: a private `re.search(r"tg_notify:\\s*(\\S+)")` takes the FIRST match,
+    so a human diagnostic carrying the prefix was read as the verdict. The
+    canonical extractor accepts only a line that is EXACTLY a canonical verdict."""
+    log_text = _run_alert_with_stderr(
+        worker, monkeypatch, "tg_notify: could not reach api, retrying\n"
+    )
+    assert "UNKNOWN" in log_text, (
+        "a non-canonical line is not a verdict — it must degrade to unknown"
+    )
+    assert "DELIVERED (" not in log_text, (
+        "must never report a delivery on the strength of a diagnostic line"
+    )

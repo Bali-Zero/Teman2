@@ -242,7 +242,35 @@ def call_ollama(prompt: str) -> str | None:
 # touches OLLAMA_HEALTH_FILE / the gateway.
 # ---------------------------------------------------------------------------
 
-_TG_STATUS_RE = re.compile(r"tg_notify:\s*(\S+)")
+# The gateway's verdict is parsed by the ONE canonical extractor, never by a
+# private regex here. The first draft of this file carried its own
+# `re.compile(r"tg_notify:\s*(\S+)")` + `.search()`, and the class guard
+# scripts/tests/test_gateway_callers_read_the_verdict.py caught it — rightly,
+# and for a better reason than the token name: `search()` takes the FIRST
+# match, so a human diagnostic line that merely contains the prefix would have
+# been read as the verdict, while extract_gateway_verdict() takes the LAST
+# line that is EXACTLY a canonical verdict and returns None otherwise. Two
+# parsers of one contract is superscar #9; this is the shared one.
+#
+# Resolved the same way as the gateway itself below: repo-relative first, then
+# the deployed checkout, because this worker also runs as a HOME-fork copy
+# under ~/scripts on Pro (#1). An import failure must NEVER kill the worker —
+# family #2 — so it degrades to an explicit, logged unknown.
+for _cand in (pathlib.Path(__file__).resolve().parents[1], pathlib.Path.home() / "nuzantara"):
+    if (_cand / "scripts" / "tg_gateway_verdict.py").exists():
+        sys.path.insert(0, str(_cand))
+        break
+try:
+    from scripts.tg_gateway_verdict import extract_gateway_verdict, gateway_delivered
+    _VERDICT_PARSER_AVAILABLE = True
+except ImportError:  # pragma: no cover - deployment gap, reported not swallowed
+    _VERDICT_PARSER_AVAILABLE = False
+
+    def extract_gateway_verdict(stderr):  # type: ignore[misc]
+        return None
+
+    def gateway_delivered(verdict):  # type: ignore[misc]
+        return False
 
 
 def _next_ollama_health_state(state: dict, success: bool) -> dict:
@@ -297,9 +325,19 @@ def _send_ollama_down_alert(consecutive_fails: int) -> None:
     ]
     try:
         r = subprocess.run(argv, input=text, capture_output=True, text=True, timeout=30)
-        m = _TG_STATUS_RE.search(r.stderr or "")
-        outcome = m.group(1) if m else "unparseable"
-        _log(f"ollama-down alert via tg_notify rc={r.returncode} outcome={outcome}")
+        verdict = extract_gateway_verdict(r.stderr)
+        # rc==0 covers six outcomes and THREE of them mean the page did not
+        # reach Telegram (deduped / p0_overflow_spooled / p0_unsent_spooled),
+        # so the log names delivery vs refusal rather than the exit code (W104).
+        if gateway_delivered(verdict):
+            _log(f"ollama-down alert DELIVERED (tg_notify: {verdict})")
+        elif verdict is not None:
+            _log(f"ollama-down alert NOT DELIVERED — gateway refused/deferred it "
+                 f"(tg_notify: {verdict}) — the owner has NOT been paged")
+        else:
+            _log("ollama-down alert verdict UNKNOWN — no canonical 'tg_notify: "
+                 f"<verdict>' line on stderr (rc={r.returncode}, "
+                 f"parser_available={_VERDICT_PARSER_AVAILABLE}) — treat as NOT paged")
     except Exception as e:
         _log(f"ollama-down alert subprocess error: {e}")
 
