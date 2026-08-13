@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import type { MetadataRoute } from "next";
+import { normalizeHostname } from "@/lib/hostname";
 
 // In robots.txt semantics a crawler obeys ONLY the most specific matching
 // user-agent group — specific groups REPLACE the `*` group, they do not
@@ -48,13 +49,31 @@ const DISALLOW = [
 // X-Robots-Tag: noindex, nofollow on these hosts (proxy.ts:366, :369, :449)
 // — this closes the robots.txt layer, which is served by this file for
 // every host and until now returned the public site's rules verbatim.
+// #4153 closed zantara only, because that was what the instruction named.
+// The census afterwards found the same hole on three more hosts: kita, my and
+// prime all answered `/api/health` with 200 and served this file's public
+// rules verbatim — one deployment, four internal front doors, one of them
+// closed. They match what proxy.ts already classifies as non-public:
+// isAppDomain (kita + prime) and isPortalDomain (my).
+//
+// visa.balizero.com and tax.balizero.com are served by this same deployment
+// and are deliberately NOT here: both are public marketing surfaces (measured
+// 2026-08-13 — they answer /api/health 200 like the internal hosts do, so
+// "same deployment" is not what decides this; being publicly marketed is).
+// Adding either would de-index a funnel we pay to rank.
 const INTERNAL_HOSTS = new Set([
   "zantara.balizero.com",
   "www.zantara.balizero.com",
+  "kita.balizero.com",
+  "www.kita.balizero.com",
+  "my.balizero.com",
+  "www.my.balizero.com",
+  "prime.balizero.com",
+  "www.prime.balizero.com",
 ]);
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
-  const host = (await headers()).get("host")?.toLowerCase() ?? "";
+  const host = normalizeHostname((await headers()).get("host") ?? "");
 
   if (INTERNAL_HOSTS.has(host)) {
     return {
