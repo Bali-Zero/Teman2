@@ -42,11 +42,18 @@ const INTERNAL = [
 
 // Served by the same deployment, must stay crawlable. visa/tax are public
 // funnels we pay to rank; balizero.com is the marketing site itself.
+// proxy.ts::matchesDomain treats the `www.` variant of a public domain as
+// public too, so the corpus carries both forms: a single stray `www.` entry
+// slipped into INTERNAL_HOSTS would otherwise de-index a funnel with every
+// test still green.
 const PUBLIC = [
   "balizero.com",
   "www.balizero.com",
   "visa.balizero.com",
+  "www.visa.balizero.com",
   "tax.balizero.com",
+  "www.tax.balizero.com",
+  "mo.balizero.com",
 ];
 
 beforeEach(() => {

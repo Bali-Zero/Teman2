@@ -45,10 +45,24 @@ const DISALLOW = [
 
 // Hosts that serve the internal app surface. These must never be crawled:
 // the pages sit behind login, so what leaks is the subdomain's existence
-// and its route structure, not content. proxy.ts already sets
-// X-Robots-Tag: noindex, nofollow on these hosts (proxy.ts:366, :369, :449)
-// — this closes the robots.txt layer, which is served by this file for
-// every host and until now returned the public site's rules verbatim.
+// and its route structure, not content.
+//
+// This is a CRAWL block, not an index block, and the difference is
+// load-bearing: a URL disallowed here can still appear in results as a bare
+// URL, because the crawler never fetches it and so never sees a noindex.
+// Measured on the live surface 2026-08-13, `GET /` as Googlebot:
+//   zantara → X-Robots-Tag: noindex, nofollow   (shipped in #4106)
+//   kita    → absent (307 to /login)
+//   my      → absent (307 to /portal/login)
+//   prime   → absent (200, proxy.ts returns from the prime rewrite before
+//             the header is set)
+// So for kita/my/prime this file is currently the ONLY protection and the
+// block is strictly better than nothing. For zantara the two layers do
+// interact — the noindex has been live for a day, and blocking the crawl
+// stops Google re-reading it — which is why the open question is whether
+// anything from these hosts is in the index at all. That is a Search Console
+// measurement, not a code question; until it is answered, do not "tidy" this
+// by adding a noindex header to the other three and calling it layered.
 // #4153 closed zantara only, because that was what the instruction named.
 // The census afterwards found the same hole on three more hosts: kita, my and
 // prime all answered `/api/health` with 200 and served this file's public
