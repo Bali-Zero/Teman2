@@ -19,9 +19,11 @@ Neither existing compiler fits this shape:
 
 This compiler is the third sanctioned shape: a pure METADATA correction.
 It writes EXACTLY three fields — pp28_sources, aggregation_note,
-intel_2026.whatChanged — plus _data_note (provenance, never authored by
-this script, always copied verbatim from the spec). It NEVER reads or
-writes per_skala or per_skala_legacy, and it refuses outright to run
+intel_2026.whatChanged — plus _data_note. The source list, whatChanged text,
+and provenance note are copied verbatim from the spec; aggregation_note is
+passed through the later catalogue-wide client-language renderer so both
+compilers share one fixed point. It NEVER reads or writes per_skala or
+per_skala_legacy, and it refuses outright to run
 against a record that already carries any `per_skala_disputed_*` key: a
 metadata-only cure is only sound on an un-quarantined, innocence-confirmed
 record — if the record has been detached, the fix belongs to
@@ -50,6 +52,7 @@ import copy
 import json
 import logging
 import sys
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -62,6 +65,7 @@ if str(_FILIERA_DIR) not in sys.path:
     sys.path.insert(0, str(_FILIERA_DIR))
 
 import cure_canonical_collisions as base  # noqa: E402
+import cure_l23_whatchanged_language as client_language  # noqa: E402
 
 logger = logging.getLogger("kbli_filiera.cure_metadata_pp28_sources")
 
@@ -96,9 +100,11 @@ class MetadataPlan:
 
     status:
       "apply"           — record will be mutated: pp28_sources /
-                          aggregation_note / intel_2026.whatChanged /
-                          _data_note set to the spec's corrected values.
-      "already-cured"   — all four already match the spec: idempotent no-op.
+                          intel_2026.whatChanged / _data_note set to the
+                          spec's corrected values; aggregation_note set to
+                          the language-rendered form of the spec value.
+      "already-cured"   — all four match their composed targets: idempotent
+                          no-op.
       "missing"         — code not found in canonical at all.
       "detached-guard"  — record carries a per_skala_disputed_* key: refuses
                           to apply a metadata-only cure to an already-
@@ -124,12 +130,31 @@ class MetadataPlan:
         if self.status == "no-intel":
             return f"{self.code}: REFUSING — record has no intel_2026 dict to correct whatChanged in"
         if self.status == "already-cured":
-            return f"{self.code}: ALREADY CURED (skip) — pp28_sources/aggregation_note/whatChanged/_data_note match the spec"
+            return f"{self.code}: ALREADY CURED (skip) — pp28_sources/aggregation_note/whatChanged/_data_note match their composed targets"
         return f"{self.code}: pp28_sources/aggregation_note/intel_2026.whatChanged/_data_note -> corrected"
 
 
 def _has_disputed_key(record: dict[str, Any]) -> bool:
     return any(k.startswith("per_skala_disputed") for k in record)
+
+
+def _aggregation_note_target(spec: dict[str, Any]) -> str:
+    """Return this cure's note after the catalogue-wide language renderer.
+
+    The metadata spec predates ``cure_l23_whatchanged_language.py``. That later
+    compiler owns the client-language rendering of ``aggregation_note`` and
+    legitimately turns ``Dati da ... codici figli`` into ``data from ... PP28
+    child code(s)``. Reusing its rule table here makes the two writers converge
+    on one fixed point instead of letting this older cure restore Italian on
+    every subsequent run.
+    """
+    rules = client_language.load_rules(client_language.DEFAULT_SPEC)
+    return client_language.cure_text(
+        spec["aggregation_note"],
+        rules,
+        Counter(),
+        normalize_whitespace=True,
+    )
 
 
 def plan_metadata_cure(record: dict[str, Any], spec: dict[str, Any]) -> MetadataPlan:
@@ -144,7 +169,7 @@ def plan_metadata_cure(record: dict[str, Any], spec: dict[str, Any]) -> Metadata
 
     already = (
         record.get("pp28_sources") == spec["pp28_sources"]
-        and record.get("aggregation_note") == spec["aggregation_note"]
+        and record.get("aggregation_note") == _aggregation_note_target(spec)
         and intel.get("whatChanged") == spec["whatChanged"]
         and record.get("_data_note") == spec["data_note"]
     )
@@ -161,7 +186,7 @@ def apply_metadata_cure(record: dict[str, Any], spec: dict[str, Any]) -> dict[st
     four fields to the same values twice is a no-op on content."""
     new_record = dict(record)
     new_record["pp28_sources"] = copy.deepcopy(spec["pp28_sources"])
-    new_record["aggregation_note"] = spec["aggregation_note"]
+    new_record["aggregation_note"] = _aggregation_note_target(spec)
 
     intel = dict(new_record["intel_2026"])
     intel["whatChanged"] = spec["whatChanged"]
