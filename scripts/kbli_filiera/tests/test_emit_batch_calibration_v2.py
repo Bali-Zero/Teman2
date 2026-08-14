@@ -18,11 +18,11 @@ import re
 import sys
 from pathlib import Path
 
+import pytest
+
 FILIERA = Path(__file__).resolve().parents[1]
 if str(FILIERA) not in sys.path:
     sys.path.insert(0, str(FILIERA))
-
-import pytest
 
 import emit_batch_calibration as v1  # noqa: E402
 import emit_batch_calibration_v2 as c  # noqa: E402

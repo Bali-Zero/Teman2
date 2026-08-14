@@ -11,7 +11,7 @@ FILIERA_DIR = str(Path(__file__).resolve().parents[1])
 if FILIERA_DIR not in sys.path:
     sys.path.insert(0, FILIERA_DIR)
 
-import cure_pma_verification_state as C
+import cure_pma_verification_state as C  # noqa: E402
 
 
 def rec(code: str, **overrides):
