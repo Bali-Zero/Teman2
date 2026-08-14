@@ -1,0 +1,92 @@
+{
+  "run_at": "2026-08-15T07:38:42+08:00",
+  "today": "2026-08-15",
+  "yesterday_seen_count": 22,
+  "new_today_count": 0,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "http_403",
+      "note": "Blocked, retried once, still 403"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "http_403",
+      "note": "Blocked, retried once, still 403"
+    },
+    {
+      "url": "https://ortax.org/news",
+      "reason": "empty_shell",
+      "note": "200 but client-rendered SPA, title 'Artikel tidak ditemukan' (same failure mode as 2026-08-13/14)"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "empty_shell",
+      "note": "200, AJAX search still ignores jenis=PMK&tahun=2026; static fallback shows PP 23/27/30/31/2026 with no recoverable dates, cannot verify freshness"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "timeout",
+      "note": "Connection failed (curl HTTP_CODE=000), retried once, still failed"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "Homepage parsed, dates up to 14 Agu 2026; headlines are Coretax activation/admin news, zero verbatim reg-number citations"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "checked_no_new",
+      "note": "Content parsed (curl reported HTTP_CODE=000 but full body received); newest article dated 13/08 already in seen_citations (PMK 57/2026)"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "checked_no_new",
+      "note": "Homepage parsed; newest Siaran Pers dated 14 Agu 2026 is a deportation case report, not a regulation citation"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "checked_no_new",
+      "note": "Content parsed; newest entry PER-8/PJ/2026 (already seen) dated 2026-07-28, older than 48h window"
+    },
+    {
+      "url": "https://peraturan.go.id",
+      "reason": "outside_window",
+      "note": "Newest dated entry 06 Agustus 2026, older than 48h window"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "Content parsed; newest relevant entry UU 2/2026 (PPRT) dated 30 April 2026, far outside 48h window"
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [],
+  "seen_citations": [
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 28 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "PMK Nomor 44 Tahun 2026",
+    "Peraturan Direktur Jenderal Pajak Nomor PER-8/PJ/2026",
+    "Peraturan Menteri Hukum Nomor 13 Tahun 2026",
+    "PMK Nomor 61 Tahun 2026",
+    "PMK Nomor 57 Tahun 2026"
+  ]
+}
