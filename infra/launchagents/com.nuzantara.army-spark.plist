@@ -6,8 +6,8 @@
   Standing read-only analysis lane on the gpt-5.3-codex-spark bucket
   (measured idle 2026-08-14 — separate weekly bucket from the primary
   Codex quota). Ticks every 2h on Pro; every tick either dispatches the
-  oldest not-yet-done task from infra/army/spark-queue/*.md (--sandbox
-  read-only, 900s cap, one task per tick, max 6/day) or is a fast no-op
+  oldest not-yet-done task from infra/army/spark-queue/*.md (sandbox
+  read-only mode, 900s cap, one task per tick, max 6/day) or is a fast no-op
   (kill switch / wrong node / backoff / cap reached / empty queue). Never
   writes/commits/pushes/opens a PR — see
   research/operations/2026-08-14-armata-h24-standing-lanes.md.

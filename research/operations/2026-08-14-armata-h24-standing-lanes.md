@@ -7,6 +7,7 @@ sources:
   - "scripts/jules_dispatch.py + docs/runbooks/jules-dispatch.md (armed 2026-07-06, dormant since — zero automation calls it)"
   - "cicatrix-superscar.md families #1 HOME-fork, #2 Esiste≠Armato, #5 Sibling-race, #7 KeepAlive misconfig"
   - "W81 firebreak: 2026-06 codex-spark-loop ecosystem disabled after runaway-alarm + 13 PR-spam"
+adversarial_review: kimi-k3
 ---
 
 # Armata H24 — Fase 1: standing lanes on idle flat-sub capacity
@@ -235,3 +236,52 @@ here shipped un-amended.
     existing daily digest gains one extra line reporting the
     produced-vs-verified ratio, rather than standing up a second schedule
     for it.
+
+## Adversarial review
+
+Reviewer: Kimi K3 (`kimi -m kimi-code/k3`), cross-family per CLAUDE.md §6
+(generator≠grader). Transcript: `kimi-refute-army.txt`
+(session `session_faa8c7d2-4490-4a7e-a535-c39e7bc179e0`), 24 numbered
+sub-findings across 6 categories. The amendment log above closes 12 of
+them (mapped 1:1 to the fixes numbered 1-12). The following sub-findings
+were **not** addressed by that amendment and are surviving objections as
+of this PR:
+
+- **§1.3 — unbounded queue retention.** A processed task's `.md` file is
+  never removed from `infra/army/spark-queue/`; the queue grows monotone
+  forever, every tick still has to scan it in full, and a completed task
+  stays visible as "just a file in the repo" to any human or session that
+  doesn't also check `attempts.jsonl` — inviting an accidental manual
+  re-trigger. The amendment fixed *dedup correctness* (item 2) but not
+  *retention*.
+- **§2.3 — kill-switch has no expiry/alarm.** `ARMY_SPARK_ENABLED=false` /
+  `ARMY_JULES_ENABLED=false` can be armed for an incident and forgotten;
+  nothing in the design distinguishes a fresh kill from a 30-day-old one,
+  and no digest line calls out "still disabled" as an anomaly.
+- **§5.4 — no inter-lane mutex.** Spark (every 2h) and Jules (dispatch +
+  harvest every 3h) share the same Pro host, filesystem, and (for Jules)
+  git-state reads, alongside ~200 other LaunchAgents already on that box.
+  The design treats the two lanes as independent; nothing serializes them
+  against each other if their windows overlap.
+- **§6.3 — no cost field.** Neither `attempts.jsonl` nor `sessions.jsonl`
+  records estimated token/quota spend per run, so "did the bucket spend
+  produce anything worth it" stays unanswerable from the receipts alone
+  even after item 12's produced/consumed ratio ships.
+- **§6.5 — Jules escalation has no named owner or SLA.** The
+  `shared/escalations_pro.jsonl` row routes to "an interactive session"
+  generically, unlike the existing verification-role convention with a
+  roster (referenced in the transcript as AGENTS.md §17) — an escalation
+  without an owner risks the same inbox-backpressure-then-silence failure
+  mode item 9 was built to prevent on the dispatch side.
+- **§1.4 — mid-run mutation is detectable, not prevented.** Item 5's
+  reproducibility header records the checkout HEAD sha *at run time*, which
+  lets a later reader detect that a report was built against a moving
+  working tree — it does not stop a concurrent `git pull` from changing
+  files while a 900s `codex exec --sandbox read-only` run is still reading
+  them.
+
+None of these six are blocking for Phase 1 (all remain within the
+"built-but-not-armed until proof-of-armed" gate above, and none reopens a
+firebreak-class failure mode); they are logged here as the honest residue
+of the review rather than silently absorbed into the "12 items, fully
+amended" claim.
