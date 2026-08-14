@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: ce696568a77fbe5aa38612211f7ff66a3abae0891ae06963bd0e98d70d9a55c1
+checksum: ed03e70797370467ddbef5e0f3172540db45c7241875824782a31bde49b49ea6
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2055,6 +2055,49 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/mini.fleet_watch.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.fleet_watch
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 900
+  owner_module: infra/launchagents/wrappers/pro-fleet-watch.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.pro-fleet-watch
+  severity_on_silence: warning
+  notes: 'Cross-node liveness sentinel, twin of mini.fleet_watch with the nodes swapped:
+    the Pro watches the H24 Mini (tailscale+ssh 2-signal verdict) and raises p0 via
+    tg gateway when the peer goes dark >30min. Genesis 2026-08-14: Mini dark 2026-08-10→12
+    (its own application firewall) with zero alarms — the watch is now mutual (infra/fleet-watch/peers.json).'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.fleet_watch.json
+    timestamp_field: ts
+    status_field: status
+- id: mini.fw_guard
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 900
+  owner_module: infra/launchagents/mini/nuzantara-fw-guard.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.fw-guard
+  severity_on_silence: warning
+  notes: 'Root LaunchDaemon (system domain — recovery kickstart needs sudo: system/com.nuzantara.fw-guard)
+    that forces the three macOS application-firewall switches OFF every 5 min and
+    logs every intervention to /var/log/nuzantara-fw-guard.log. Genesis 2026-08-14:
+    the 2026-08-10→12 outage (stealth+block-all, enabler unknown) made the Mini unreachable
+    from every site including its own LAN; kill switch = /etc/nuzantara-fw-guard.disabled.'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.fw_guard.json
     timestamp_field: ts
     status_field: status
 - id: m5.wr2_control_app
