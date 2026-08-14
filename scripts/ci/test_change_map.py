@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Guilt + innocence corpus for the CI shadow change-map."""
+"""Guilt + innocence corpus for the CI change-map."""
 
 from __future__ import annotations
 
@@ -174,7 +174,7 @@ class ChangeMapTests(unittest.TestCase):
         )
         self.assertEqual(len(completed.stdout.splitlines()), 1)
         parsed = json.loads(completed.stdout)
-        self.assertEqual(parsed["mode"], "shadow")
+        self.assertEqual(parsed["mode"], "enforcing")
         self.assertFalse(parsed["run_all"])
 
 

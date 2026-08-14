@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
-"""Classify a PR's changed files for path-aware CI shadow measurement.
+"""Classify a PR's changed files for path-aware CI job selection.
 
 The caller owns changed-file enumeration. In GitHub Actions that caller must
 be ``hotzone_changed_files.sh`` so the input is anchored to the merge-base.
 This module is deliberately pure: known paths map to one or more domains,
 while an empty, malformed, or unclassified input recommends every test job.
-Nothing in this shadow phase skips a live job.
+
+Promoted to enforcing 2026-08-14 (.github/workflows/tests.yml gates its six
+heavy test jobs on ``suggested_jobs``/``run_all`` below) after a ~250-PR
+shadow-measurement window — see that workflow's ``changes`` job for the
+fail-open contract every consumer of this module's output must honor.
 """
 
 from __future__ import annotations
@@ -246,7 +250,7 @@ def _suggested_jobs(domains: set[str], run_all: bool) -> list[str]:
 
 
 def classify(paths: Iterable[str]) -> dict[str, object]:
-    """Build the deterministic shadow recommendation for ``paths``."""
+    """Build the deterministic change-map recommendation for ``paths``."""
 
     raw_paths = list(paths)
     enumeration_failed = ENUMERATION_ERROR in raw_paths
@@ -287,7 +291,14 @@ def classify(paths: Iterable[str]) -> dict[str, object]:
     suggested = _suggested_jobs(domains, run_all)
     return {
         "schema_version": 1,
-        "mode": "shadow",
+        # Promoted 2026-08-14 (cicatrix superscar #2, "esiste ≠ armato": a
+        # status field that keeps saying "shadow" after the caller starts
+        # enforcing it is exactly the false-green this family warns about —
+        # the next person to debug a skipped job would read this and assume
+        # nothing gates on it). Literal, not derived: this module has exactly
+        # one caller (.github/workflows/tests.yml's `changes` job) and it is
+        # enforcing; there is no second "shadow" consumer to parametrize for.
+        "mode": "enforcing",
         "reason": reason,
         "changed_file_count": len(changed),
         "domains": {name: name in domains for name in DOMAIN_NAMES},
