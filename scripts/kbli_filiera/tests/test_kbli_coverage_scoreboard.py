@@ -91,23 +91,49 @@ def test_guilt_pma_verdict_without_a_basis_is_bare():
 
 
 def test_innocence_pma_with_official_basis_is_located():
-    record = rec("50111", pma_official_basis="Perpres 10/2021 Lampiran III line 4202")
+    record = rec(
+        "50111",
+        pma_official_basis="Perpres 10/2021 Lampiran III line 4202",
+        pma_source_vintage="2021-05-25",
+        pma_verification_status="located",
+    )
     assert B.classify_pma(record) == B.PMA_LOCATED
 
 
 def test_innocence_pma_declared_unverified_is_honest():
     """A record that says "we have not verified this cap" is honest by this
     programme's own definition of DONE, even though it has no locator."""
-    assert B.classify_pma(rec("02101", pma_cap_verified=False)) == B.PMA_DECLARED_UNVERIFIED
+    assert B.classify_pma(
+        rec("02101", pma_cap_verified=False, pma_verification_status="declared_gap")
+    ) == B.PMA_DECLARED_UNVERIFIED
 
 
 def test_basis_outranks_a_stale_unverified_flag():
-    record = rec("50122", pma_official_basis="Perpres 10/2021 Lampiran III", pma_cap_verified=False)
+    record = rec(
+        "50122",
+        pma_official_basis="Perpres 10/2021 Lampiran III",
+        pma_source_vintage="2021-05-25",
+        pma_verification_status="located",
+        pma_cap_verified=False,
+    )
     assert B.classify_pma(record) == B.PMA_LOCATED
 
 
 def test_guilt_blank_basis_string_is_not_a_basis():
-    assert B.classify_pma(rec("01111", pma_official_basis="   ")) == B.PMA_BARE
+    assert B.classify_pma(
+        rec(
+            "01111",
+            pma_official_basis="   ",
+            pma_source_vintage="2021-05-25",
+            pma_verification_status="located",
+        )
+    ) == B.PMA_BARE
+
+
+def test_guilt_basis_without_vintage_or_explicit_state_is_still_bare():
+    assert B.classify_pma(
+        rec("50111", pma_official_basis="Perpres 10/2021 Lampiran III")
+    ) == B.PMA_BARE
 
 
 def test_the_layer_wide_pma_source_string_never_confers_provenance():
