@@ -19,6 +19,8 @@ export interface KBLISource {
   score: number;
 }
 
+export type KBLIRelatedRequirements = Record<string, string[]>;
+
 export interface KBLIDetail {
   code: string;
   title: string;
@@ -28,6 +30,7 @@ export interface KBLIDetail {
   sector: string;
   risk_profile: string;
   licenses: KBLILicense[];
+  related_requirements: KBLIRelatedRequirements;
   related_codes: string[];
   intel?: {
     whatItMeans: string;

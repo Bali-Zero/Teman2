@@ -2,7 +2,15 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Search, Loader2, X, FileText, Scale, Activity } from "lucide-react";
+import {
+  Search,
+  Loader2,
+  X,
+  FileText,
+  Scale,
+  Activity,
+  ClipboardList,
+} from "lucide-react";
 import type { KBLIDetail } from "@/lib/api/kbli.api";
 import {
   describeObligation,
@@ -75,6 +83,31 @@ export function getRiskLevel(
   return "not-classified";
 }
 
+const RELATED_REQUIREMENT_LABELS: Record<string, string> = {
+  costs: "Capital & Cost Thresholds",
+  documents: "Supporting Documents",
+  entity_forms: "Entity Form Requirements",
+  immigration: "Immigration Requirements",
+  obligations: "Other Obligations",
+  regulations: "Regulatory References",
+};
+
+export function getRelatedRequirementGroups(
+  relatedRequirements: KBLIDetail["related_requirements"] | undefined,
+): Array<{ key: string; label: string; items: string[] }> {
+  return Object.entries(relatedRequirements ?? {})
+    .filter(([, items]) => Array.isArray(items) && items.length > 0)
+    .map(([key, items]) => ({
+      key,
+      label:
+        RELATED_REQUIREMENT_LABELS[key] ??
+        key
+          .replaceAll("_", " ")
+          .replace(/\b\w/g, (letter) => letter.toUpperCase()),
+      items,
+    }));
+}
+
 // =============================================================================
 // INSPECTOR COMPONENT
 // =============================================================================
@@ -118,6 +151,9 @@ const KBLIInspector = ({
 
   const pmaBadge = getPmaBadge(data.pma_status);
   const riskBadge = getRiskBadge(data.risk_profile);
+  const relatedRequirementGroups = getRelatedRequirementGroups(
+    data.related_requirements,
+  );
 
   return (
     <motion.div
@@ -292,6 +328,44 @@ const KBLIInspector = ({
                       </ul>
                     </div>
                   )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {relatedRequirementGroups.length > 0 && (
+          <section aria-labelledby="related-requirements-heading">
+            <h3
+              id="related-requirements-heading"
+              className="text-[11px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-[#555] mb-2 flex items-center gap-2"
+            >
+              <ClipboardList size={12} /> Related Requirements (Not Permits)
+            </h3>
+            <p className="mb-4 text-[11px] leading-relaxed text-[#666]">
+              These are supporting obligations, documents, thresholds, or
+              regulatory references. They are shown separately from required
+              licenses and are not additional permits.
+            </p>
+            <div className="space-y-4">
+              {relatedRequirementGroups.map((group) => (
+                <div
+                  key={group.key}
+                  className="rounded border border-white/5 bg-[#0A0C10] p-4"
+                >
+                  <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-accent-sand">
+                    {group.label}
+                  </h4>
+                  <ul className="space-y-2">
+                    {group.items.map((item, index) => (
+                      <li
+                        key={`${group.key}-${index}`}
+                        className="text-[11px] leading-relaxed text-[#888]"
+                      >
+                        &bull; {item}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               ))}
             </div>

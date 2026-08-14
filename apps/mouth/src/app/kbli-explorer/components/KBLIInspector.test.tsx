@@ -1,6 +1,12 @@
+import { render, screen } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 
-import { getRiskBadge, getRiskLevel } from "./KBLIInspector";
+import type { KBLIDetail } from "@/lib/api/kbli.api";
+import KBLIInspector, {
+  getRelatedRequirementGroups,
+  getRiskBadge,
+  getRiskLevel,
+} from "./KBLIInspector";
 
 // Zero decision 2026-07-17: an undefined/unclassified KBLI risk must surface as
 // an honest "Not Classified" gap, NEVER the old false-reassuring "low"/"Low Risk"
@@ -43,5 +49,53 @@ describe("getRiskBadge", () => {
     expect(badge.label).not.toMatch(/low/i);
     expect(getRiskBadge("").label).toBe("Not Classified");
     expect(getRiskBadge("Unknown").label).toBe("Not Classified");
+  });
+});
+
+describe("related requirements", () => {
+  it("GUILT: renders reclassified obligations separately and never labels them permits", () => {
+    const data: KBLIDetail = {
+      code: "56101",
+      title: "Restaurant",
+      description: "Restaurant activity",
+      pma_status: "TERBUKA",
+      licensing_status: "VERIFIED",
+      sector: "Accommodation and food service",
+      risk_profile: "Menengah Rendah",
+      licenses: [],
+      related_codes: [],
+      related_requirements: {
+        costs: ["Minimum investment threshold: IDR 10 billion"],
+        documents: ["Business plan"],
+      },
+    };
+
+    render(<KBLIInspector data={data} isLoading={false} />);
+
+    expect(
+      screen.getByRole("heading", {
+        name: "Related Requirements (Not Permits)",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Minimum investment threshold: IDR 10 billion/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Business plan/)).toBeInTheDocument();
+    expect(screen.queryByText("Required Licenses")).toBeNull();
+  });
+
+  it("INNOCENCE: omits empty categories and gives unknown categories an honest label", () => {
+    expect(
+      getRelatedRequirementGroups({
+        costs: [],
+        sector_approval: ["Sector authority review"],
+      }),
+    ).toEqual([
+      {
+        key: "sector_approval",
+        label: "Sector Approval",
+        items: ["Sector authority review"],
+      },
+    ]);
   });
 });
