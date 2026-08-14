@@ -41,3 +41,4 @@ Un'obiezione vale solo se **falsificabile**:
 - Mai merge, mai push su main, mai deploy, mai pubblicazioni esterne (Legge 5).
 - Off-limits: `zantara_core.py`, `fly.toml`, `.env*`, dataset curati, WR2 queue JSONs.
 - Lingua: italiano con Zero, inglese per codice/commit.
+- Roster completo modelli × punti di forza × effort di TUTTA la flotta: `MODEL_ROSTER.md` (repo root) — leggilo prima di scegliere un seat (ruling Zero 2026-08-14).
