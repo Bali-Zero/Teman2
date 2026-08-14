@@ -1,0 +1,22 @@
+id: startup-import-chain
+category: Startup / import chain
+description: >
+  Tests that specifically exercise dependency-injection wiring and the
+  application's own import chain (backend.app.dependencies and friends) —
+  distinct from the much larger set of router tests that merely IMPORT
+  dependencies.py incidentally for DI overrides (that broader set is not
+  included here; it would make this floor a near-total-suite allowlist
+  instead of a targeted one). This is the single point of failure CLAUDE.md
+  §11's pre-deploy "Import chain gate" step exists to catch:
+  `python -c "from backend.app.dependencies import get_current_user; ..."`.
+patterns:
+  - apps/backend-rag/**/test_dependenc*.py
+  - apps/backend-rag/tests/test_import_time.py
+  - apps/backend-rag/**/test_light_router_startup_imports.py
+rationale: >
+  CLAUDE.md §11 pre-deploy sequence names the import-chain check explicitly,
+  and the "Fix dependencies.py / service_initializer" row of the Federation
+  Orchestrator trigger table (CLAUDE.md §2) calls this out as an "Import
+  chain SPOF" — a broken import here does not fail one feature, it fails
+  the whole app's boot.
+verified_match_count: 6

@@ -1,0 +1,19 @@
+id: migration-schema-integrity
+category: Migration / schema integrity
+description: >
+  Tests exercising individual Alembic-style migration files (apply/rollback,
+  advisory-lock behavior, runtime-grants, DDL validity) plus the migration
+  runner/contract/uniqueness tests. A broken migration test means the schema
+  this codebase depends on cannot be proven to apply or roll back cleanly —
+  CLAUDE.md §11 requires migration PRs to pass Squawk lint AND these tests;
+  quarantining one is quarantining the proof that a specific schema change
+  is safe.
+patterns:
+  - apps/backend-rag/**/test_migration_*.py
+  - apps/backend-rag/**/test_*migrations.py
+rationale: >
+  CLAUDE.md §11 "Migration PRs touching migrations_v2/*.sql auto-run Squawk
+  lint" — the pytest side of that same safety net. Migration correctness is
+  the textbook example of a defect class that costs orders of magnitude more
+  to catch in production than in CI.
+verified_match_count: 44
