@@ -1497,11 +1497,8 @@ const track = CTA_TRACKER[funnel]; // resolved once per render
 
 | Helper                      | Category    | GA4 Event Name           |
 | --------------------------- | ----------- | ------------------------ |
-| `trackVisaQuizCompleted`    | Visa Oracle | `visa_quiz_completed`    |
-| `trackVisaResultViewed`     | Visa Oracle | `visa_result_viewed`     |
 | `trackVisaChatQuestion`     | Visa Oracle | `visa_chat_question`     |
 | `trackVisaWhatsAppCTA`      | Visa Oracle | `visa_whatsapp_cta`      |
-| `trackVisaCallingBlock`     | Visa Oracle | `visa_calling_block`     |
 | `trackKBLICodeViewed`       | KBLI        | `kbli_code_viewed`       |
 | `trackKBLISearch`           | KBLI        | `kbli_search`            |
 | `trackKBLIChatQuestion`     | KBLI        | `kbli_chat_question`     |
@@ -1509,7 +1506,7 @@ const track = CTA_TRACKER[funnel]; // resolved once per render
 | `trackPropertyArticleCTA`   | Property    | `property_cta_clicked`   |
 | `trackPropertyAnalyzeCTA`   | Property    | `property_cta_clicked`   |
 | `trackPropertyChatQuestion` | Property    | `property_chat_question` |
-| `trackPropertyWACTA`        | Property    | `property_chat_question` |
+| `trackPropertyWACTA`        | Property    | `property_whatsapp_cta`  |
 
 ---
 
