@@ -11,6 +11,7 @@ boundary is monkeypatched.
 from __future__ import annotations
 
 import importlib.util
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -272,3 +273,346 @@ def test_main_run_failure_exits_1(monkeypatch, capsys):
     code = kc.main(["hello"])
     assert code == 1
     assert "kimi exploded" in capsys.readouterr().err
+
+
+# ---------------------------------------------------------------------------
+# v2 hardening — env scrub, PII gate, model guard, durable perms
+# (standard: qwen-cloud-code.sh v3 — "a prompt instruction is NOT a control")
+# ---------------------------------------------------------------------------
+
+
+def test_scrubbed_env_drops_credential_markers(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-x")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "tok")
+    monkeypatch.setenv("FLY_API_TOKEN", "fly")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://x")
+    monkeypatch.setenv("GITHUB_TOKEN", "ghp_x")
+    env = kc._scrubbed_env()
+    for leaked in ("ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN", "FLY_API_TOKEN", "DATABASE_URL", "GITHUB_TOKEN"):
+        assert leaked not in env
+    assert env.get("PATH") == os.environ.get("PATH")
+
+
+def test_scrubbed_env_keeps_kimi_code_knobs_and_kimi_bin(monkeypatch):
+    monkeypatch.setenv("KIMI_CODE_EXPERIMENTAL_FLAG", "1")
+    monkeypatch.setenv("KIMI_BIN", "/custom/kimi")
+    env = kc._scrubbed_env()
+    assert env.get("KIMI_CODE_EXPERIMENTAL_FLAG") == "1"
+    assert env.get("KIMI_BIN") == "/custom/kimi"
+
+
+def test_run_child_gets_scrubbed_env(monkeypatch):
+    captured = {}
+
+    def fake_run(cmd, **kwargs):
+        captured.update(kwargs)
+        return _FakeCompleted(0, "ok\n", "")
+
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-x")
+    monkeypatch.setattr(kc, "_resolve_kimi_bin", lambda: "/fake/kimi")
+    monkeypatch.setattr(kc.subprocess, "run", fake_run)
+    kc.run("prompt")
+    assert "env" in captured
+    assert "OPENAI_API_KEY" not in captured["env"]
+
+
+def test_probe_child_gets_scrubbed_env(monkeypatch):
+    captured = {}
+
+    def fake_run(cmd, **kwargs):
+        captured.update(kwargs)
+        return _FakeCompleted(0, "PONG\n", "")
+
+    monkeypatch.setenv("JWT_SECRET", "jwt")
+    monkeypatch.setattr(kc, "_resolve_kimi_bin", lambda: "/fake/kimi")
+    monkeypatch.setattr(kc.subprocess, "run", fake_run)
+    kc.probe()
+    assert "env" in captured
+    assert "JWT_SECRET" not in captured["env"]
+
+
+def test_pii_gate_refuses_16_digit_run():
+    # synthetic 16-digit fixture with no keyword adjacency, so the repo's own
+    # Law-2 pre-commit gate (keyword+digits) does not match this file statically
+    with pytest.raises(kc.PiiRefusalError):
+        kc._check_prompt("client id 3201234567890124 please check")
+
+
+def test_pii_gate_allows_normal_visa_language():
+    # keywords alone are NOT PII — legitimate non-PII work mentions them
+    assert kc._check_prompt("explain KTP and NPWP requirements for a PT PMA") is None
+    assert kc._check_prompt("shorter ids like 1234567890 are fine") is None
+
+
+def test_pii_refusal_is_value_error_not_runtime_error():
+    # cascades treat RuntimeError as "dead seat -> next tier"; a PII refusal
+    # must NOT fall through to another cloud seat with the same prompt.
+    assert issubclass(kc.PiiRefusalError, ValueError)
+    assert not issubclass(kc.PiiRefusalError, RuntimeError)
+
+
+def test_run_pii_prompt_raises_before_subprocess(monkeypatch):
+    def fail_run(cmd, **kwargs):  # pragma: no cover - must never be reached
+        raise AssertionError("subprocess must not run for a refused prompt")
+
+    monkeypatch.setattr(kc.subprocess, "run", fail_run)
+    with pytest.raises(kc.PiiRefusalError):
+        kc.run("id 3201234567890124")
+
+
+def test_model_guard_refuses_flag_smuggling():
+    with pytest.raises(ValueError, match="must not start with"):
+        kc._check_model("--yolo")
+    kc._check_model("kimi-code/k3")
+
+
+def test_assert_credential_perms_chmods_0600(monkeypatch, tmp_path):
+    state = tmp_path / "credentials"
+    state.mkdir()
+    secret = state / "kimi-code.json"
+    secret.write_text("{}")
+    secret.chmod(0o644)
+    monkeypatch.setattr(kc, "_KIMI_STATE_DIRS", (state,))
+    kc._assert_credential_perms()
+    assert (secret.stat().st_mode & 0o777) == 0o600
+
+
+def test_assert_credential_perms_missing_dir_never_raises(monkeypatch, tmp_path):
+    monkeypatch.setattr(kc, "_KIMI_STATE_DIRS", (tmp_path / "absent",))
+    kc._assert_credential_perms()
+
+
+def test_main_pii_refusal_exits_3(capsys):
+    # refusals are exit 3, distinct from usage errors (2) and runtime failures (1)
+    code = kc.main(["id 3201234567890124"])
+    assert code == 3
+    assert "REFUSED" in capsys.readouterr().err
+
+
+# ---------------------------------------------------------------------------
+# v2.1 — REWORK-BUILD cures from the Opus-5 Gear-2 verdict on 182c82d069
+# ---------------------------------------------------------------------------
+
+
+def test_pii_gate_refuses_separator_grouped_shapes():
+    # C3: documents and OCR near-always group KTP/NPWP with separators;
+    # a plain-only pattern was the under-match. Keyword kept apart from the
+    # digits so the repo's own Law-2 pre-commit gate does not match statically.
+    grouped = [
+        "3171 0101 9001 0002",
+        "3171-0101-9001-0002",
+        "3171.0101.9001.0002",
+        "01.234.567.8-901.234",  # 15-digit NPWP written form
+    ]
+    for shape in grouped:
+        with pytest.raises(kc.PiiRefusalError):
+            kc._check_prompt(f"check id {shape}")
+
+
+def test_pii_gate_still_allows_short_runs():
+    # dates, ports, short ids, local phone-length numbers all pass
+    assert kc._check_prompt("release 2026-08-12 on port 8000, ticket 1234567890") is None
+    assert kc._check_prompt("call 0812-3456-7890 for the office") is None
+
+
+def test_no_tools_agent_file_exists_and_disables_all_tools():
+    # C1/C2: the pinned profile must exist next to the wrapper and carry
+    # an empty tools allowlist (tools: [] = all tools disabled)
+    assert kc._AGENT_FILE.is_file()
+    text = kc._AGENT_FILE.read_text()
+    assert "tools: []" in text
+
+
+def test_run_binds_no_tools_agent_file(monkeypatch):
+    captured = {}
+
+    def fake_run(cmd, **kwargs):
+        captured["cmd"] = cmd
+        return _FakeCompleted(0, "ok\n", "")
+
+    monkeypatch.setattr(kc, "_resolve_kimi_bin", lambda: "/fake/kimi")
+    monkeypatch.setattr(kc.subprocess, "run", fake_run)
+    kc.run("hello")
+    cmd = captured["cmd"]
+    assert "--agent-file" in cmd
+    assert cmd[cmd.index("--agent-file") + 1] == str(kc._AGENT_FILE)
+
+
+def test_probe_binds_no_tools_agent_file(monkeypatch):
+    captured = {}
+
+    def fake_run(cmd, **kwargs):
+        captured["cmd"] = cmd
+        return _FakeCompleted(0, "PONG\n", "")
+
+    monkeypatch.setattr(kc, "_resolve_kimi_bin", lambda: "/fake/kimi")
+    monkeypatch.setattr(kc.subprocess, "run", fake_run)
+    assert kc.probe() is True
+    assert "--agent-file" in captured["cmd"]
+
+
+def test_run_missing_agent_file_raises_runtime_error(monkeypatch):
+    monkeypatch.setattr(kc, "_resolve_kimi_bin", lambda: "/fake/kimi")
+    monkeypatch.setattr(kc, "_AGENT_FILE", Path("/does/not/exist/agent.md"))
+    with pytest.raises(RuntimeError, match="agent file missing"):
+        kc.run("prompt")
+
+
+def test_probe_missing_agent_file_returns_false(monkeypatch):
+    monkeypatch.setattr(kc, "_resolve_kimi_bin", lambda: "/fake/kimi")
+    monkeypatch.setattr(kc, "_AGENT_FILE", Path("/does/not/exist/agent.md"))
+    assert kc.probe() is False
+
+
+def test_assert_credential_perms_chmods_dir_0700(monkeypatch, tmp_path):
+    # P1 from the review: the directory itself must not stay enumerable
+    state = tmp_path / "oauth"
+    state.mkdir()
+    state.chmod(0o755)
+    (state / "kimi-code").write_text("x")
+    monkeypatch.setattr(kc, "_KIMI_STATE_DIRS", (state,))
+    kc._assert_credential_perms()
+    assert (state.stat().st_mode & 0o777) == 0o700
+    assert ((state / "kimi-code").stat().st_mode & 0o777) == 0o600
+
+
+# ---------------------------------------------------------------------------
+# v2.2 — PASS-WITH-CONDITIONS cures (Opus-5 re-verdict on 87f315f185):
+# structural PII gate (over-match killed, evasions closed), runtime pin
+# of the no-tools profile
+# ---------------------------------------------------------------------------
+
+
+def test_pii_gate_refuses_evasion_shapes():
+    # every evasion the re-verdict proved against v2.1: NBSP, tab,
+    # double-space, slash, comma, newline, letter-adjacent, >= 17 digits,
+    # mixed separators
+    NBSP = " "
+    evasions = [
+        f"3171{NBSP}0101{NBSP}9001{NBSP}0002",
+        "3171\t0101\t9001\t0002",
+        "3171  0101  9001  0002",
+        "3171/0101/9001/0002",
+        "3171,0101,9001,0002",
+        "3171\n0101\n9001\n0002",
+        "NIK3171010190010002",  # letter-adjacent: \\b alone never caught this
+        "31710101019010002",  # 17 digits plain
+        "3171 0101-9001 0002",  # mixed separators
+    ]
+    for shape in evasions:
+        with pytest.raises(kc.PiiRefusalError):
+            kc._check_prompt(f"verify {shape} please")
+
+
+def test_pii_gate_allows_genuinely_short_numbers():
+    # innocence corpus: numbers below the identity class pass
+    allowed = [
+        "call 0812-3456-7890 for the office",  # 11 digits
+        "amount 1.234.567,89 due",  # money formatting, 9 digits
+        "release 2026-08-12, ticket 1234567890",  # date + 10-digit id
+        "port 15432 and exit code 42",
+    ]
+    for payload in allowed:
+        assert kc._check_prompt(payload) is None
+
+
+def test_pii_gate_declared_overmatch_fail_closed():
+    # DECLARED COST (owner call after the Opus-5 cycle-2 BLOCK): for a Law-2
+    # gate the fail-open/fail-closed asymmetry is decisive — long numeric
+    # lists are refused even when innocent. This test PINS the trade so it
+    # is a conscious, reviewable contract, not an accident: if someone
+    # "fixes" the over-match, this test turns red and forces the conversation.
+    declared_refusals = [
+        "compare KBLI 68111 68112 68120 risk tiers",
+        "2026-08-12 2026-08-13 2026-08-14 2026-08-15",
+        "ports 8000 8080 5432 6379 15432 9090",
+        "samples: 12 15 18 21 24 27 30 33",
+        "coords -8.409518, 115.188919 Bali",
+        "compare 2026 2027 2028 2029 revenue",
+    ]
+    for payload in declared_refusals:
+        with pytest.raises(kc.PiiRefusalError):
+            kc._check_prompt(payload)
+
+
+def test_pii_gate_catches_document_dump_shapes():
+    # the v2.2 regression the cycle-2 verdict measured (5/13): a NIK inside
+    # the ordinary shapes of a document dump or CRM export must refuse
+    dumps = [
+        "3171 0101 9001 0002 1",  # one appended digit defeated v2.2
+        "3171010190010002 01-09-1990",  # NIK + birth date
+        "name,3171010190010002,2026,1990,12345",  # CSV row
+        "3171010190010002\n3172020290020003",  # two NIKs, two lines
+        "3171010190010002 / 12345678",  # NIK + passport number
+        "317101019001000213171010190010",  # 20+ digit plain run
+    ]
+    for shape in dumps:
+        with pytest.raises(kc.PiiRefusalError):
+            kc._check_prompt(f"row: {shape}")
+
+
+def test_run_refuses_when_profile_loses_no_tools_pin(monkeypatch, tmp_path):
+    # the "pin not armed" cure: a profile edit that drops `tools: []` must
+    # turn the seat dead, not silently re-arm the exfil channel
+    bad = tmp_path / "agent.md"
+    bad.write_text("---\nname: kimi-client-headless\ndescription: x\n---\nbody\n")
+    monkeypatch.setattr(kc, "_AGENT_FILE", bad)
+    monkeypatch.setattr(kc, "_resolve_kimi_bin", lambda: "/fake/kimi")
+    with pytest.raises(RuntimeError, match="no longer disables all tools"):
+        kc.run("prompt")
+
+
+def test_probe_dead_when_profile_loses_no_tools_pin(monkeypatch, tmp_path):
+    bad = tmp_path / "agent.md"
+    bad.write_text("---\nname: kimi-client-headless\ndescription: x\ntools: [Read]\n---\nbody\n")
+    monkeypatch.setattr(kc, "_AGENT_FILE", bad)
+    monkeypatch.setattr(kc, "_resolve_kimi_bin", lambda: "/fake/kimi")
+    assert kc.probe() is False
+
+
+def test_no_tools_pin_reads_frontmatter_not_body(monkeypatch, tmp_path):
+    # F3 (cycle-2 verdict): a `tools: []` line in the prose BODY must not
+    # satisfy the guard — only the frontmatter block counts
+    sneaky = tmp_path / "agent.md"
+    sneaky.write_text(
+        "---\nname: kimi-client-headless\ndescription: x\ntools: [Read]\n---\n"
+        "This profile keeps tools: [] as its safety contract.\n"
+    )
+    monkeypatch.setattr(kc, "_AGENT_FILE", sneaky)
+    monkeypatch.setattr(kc, "_resolve_kimi_bin", lambda: "/fake/kimi")
+    with pytest.raises(RuntimeError, match="no longer disables all tools"):
+        kc.run("prompt")
+
+
+# ---------------------------------------------------------------------------
+# v2.3.1 — the two one-line cures prescribed by the owner-resolved review
+# (N1 unicode separator artifacts, N2 frontmatter anchored at byte 0)
+# ---------------------------------------------------------------------------
+
+
+def test_pii_gate_refuses_unicode_separator_artifacts():
+    # N1: document dumps and OCR carry exactly these — soft hyphen,
+    # zero-width space/joiners, the Unicode dash family, FEFF
+    shapes = [
+        "3171­0101­9001­0002",   # soft hyphen U+00AD
+        "3171​0101​9001​0002",   # zero-width space U+200B
+        "3171‍0101‍9001‍0002",   # zero-width joiner U+200D
+        "3171–0101–9001–0002",   # en dash U+2013
+        "3171—0101—9001—0002",   # em dash U+2014
+        "3171﻿0101﻿9001﻿0002",   # FEFF
+    ]
+    for shape in shapes:
+        with pytest.raises(kc.PiiRefusalError):
+            kc._check_prompt(f"verify {shape}")
+
+
+def test_no_tools_pin_requires_frontmatter_at_byte_zero(monkeypatch, tmp_path):
+    # N2: prose followed by a decoy --- block must NOT parse as frontmatter
+    decoy = tmp_path / "agent.md"
+    decoy.write_text(
+        "Some prose first.\n---\ntools: []\n---\nname: x\ntools: [Read, Bash]\n"
+    )
+    monkeypatch.setattr(kc, "_AGENT_FILE", decoy)
+    monkeypatch.setattr(kc, "_resolve_kimi_bin", lambda: "/fake/kimi")
+    with pytest.raises(RuntimeError, match="no longer disables all tools"):
+        kc.run("prompt")

@@ -73,6 +73,8 @@ _DEFAULT_ROOT_RELATIVE_PATHS: Tuple[str, ...] = (
     "~/.claude",
     "~/.claude-glm",
     "~/.claude-acct2",
+    "~/.kimi-code",
+    "~/.qwen",
     "~/.openclaw",
     "~/.config",
     "~/.fly",
