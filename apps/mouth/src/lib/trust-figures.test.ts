@@ -70,6 +70,60 @@ describe("trust-figures is the only source of the Google figures", () => {
     expect(offenders).toEqual([]);
   });
 
+  // The two guards above match the PROSE form — a number followed by the word
+  // "reviews", or a number followed by a star. Structured data writes the same
+  // claim the other way round, as a key: `reviewCount: "700"`. That is why
+  // JsonLd.tsx kept a hand-typed 700 (and a ratingValue of 5.0 against the
+  // page's 4.9) straight through the PR that added these guards — the guard
+  // that let the defect past was part of the defect. These two add the key
+  // form; they do not replace the prose form, which still catches the shape
+  // a page renders.
+  it("no file hard-codes the count as a schema key", () => {
+    const offenders = FILES.filter((f) =>
+      // Requires a literal number after the colon, so `String(GOOGLE_REVIEW_COUNT)`
+      // passes. Two digits minimum, so a `reviewCount: 0` default passes too —
+      // the workspace sidebar has a prop of the same name that counts documents,
+      // and a homonym is not a claim about Google.
+      /(ratingCount|reviewCount)\s*:\s*"?\d{2,5}"?/.test(
+        readFileSync(f, "utf8"),
+      ),
+    ).map((f) => f.slice(SRC.length + 1));
+    expect(offenders).toEqual([]);
+  });
+
+  it("no file hard-codes the rating as a schema key", () => {
+    const offenders = FILES.filter((f) =>
+      /ratingValue\s*:\s*"?\d\.\d"?/.test(readFileSync(f, "utf8")),
+    ).map((f) => f.slice(SRC.length + 1));
+    expect(offenders).toEqual([]);
+  });
+
+  it("innocence: the new key-form guards do not fire on the cured shapes", () => {
+    // Measured against the exact strings the cure introduces, plus the
+    // schema.org scale constants and the workspace homonym. A guard that
+    // trips on its own remedy teaches the next person to delete it.
+    const key = /(ratingCount|reviewCount)\s*:\s*"?\d{2,5}"?/;
+    const star = /ratingValue\s*:\s*"?\d\.\d"?/;
+    for (const cured of [
+      'import { GOOGLE_RATING, GOOGLE_REVIEW_COUNT } from "@/lib/trust-figures";',
+      "      ratingValue: GOOGLE_RATING,",
+      "      ratingCount: String(GOOGLE_REVIEW_COUNT),",
+      "      reviewCount: String(GOOGLE_REVIEW_COUNT),",
+      '      bestRating: "5",',
+      '      worstRating: "1",',
+      "  reviewCount?: number;",
+      "  reviewCount = 0,",
+      "  reviewCount={gateStatus?.sections?.documents?.count ?? 0}",
+    ]) {
+      expect(key.test(cured), `key guard fired on: ${cured}`).toBe(false);
+      expect(star.test(cured), `star guard fired on: ${cured}`).toBe(false);
+    }
+    // guilt: the shapes they must still catch
+    expect(key.test('      ratingCount: "700",')).toBe(true);
+    expect(key.test('      reviewCount: "700",')).toBe(true);
+    expect(star.test('      ratingValue: "5.0",')).toBe(true);
+  });
+
   it("no file re-declares the Maps URL", () => {
     // Declared limit: this bans every maps.app.goo.gl short-link, not just
     // ours. A future page that legitimately links a DIFFERENT Google listing

@@ -6,6 +6,7 @@
  * to ensure JSON-LD is present in the static HTML for Googlebot and validators.
  */
 
+import { GOOGLE_RATING, GOOGLE_REVIEW_COUNT } from "@/lib/trust-figures";
 import { WA_NUMBER } from "@/lib/whatsapp-utm";
 
 const baseUrl = process.env.NEXT_PUBLIC_PUBLIC_URL || "https://balizero.com";
@@ -341,11 +342,18 @@ export function AggregateRatingJsonLd() {
     url: baseUrl,
     aggregateRating: {
       "@type": "AggregateRating",
-      ratingValue: "5.0",
+      // Read off the same module the visible pages read, so the rich snippet
+      // and the page cannot disagree. Before this these three fields were
+      // hand-typed here and had drifted: the schema claimed a higher rating
+      // from a larger count than the trust bar rendered beside it, in the
+      // same HTTP response. Figures live in src/lib/trust-figures.ts.
+      ratingValue: GOOGLE_RATING,
+      // bestRating/worstRating are schema.org scale constants, not measured
+      // figures: they stay literal on purpose.
       bestRating: "5",
       worstRating: "1",
-      ratingCount: "700",
-      reviewCount: "700",
+      ratingCount: String(GOOGLE_REVIEW_COUNT),
+      reviewCount: String(GOOGLE_REVIEW_COUNT),
     },
     priceRange: "$$",
     address: {
