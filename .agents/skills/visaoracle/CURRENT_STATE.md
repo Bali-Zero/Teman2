@@ -8,6 +8,14 @@ Purpose: canonical restart and Claude-review handoff for `/visaoracle`
 
 ## Read this first
 
+> **BUSINESS-VALIDATION RULING (Zero, 2026-08-08):** there is no automated
+> traffic-volume gate for ENFORCE — the former 1,000/7d proposal, 100/14d
+> fallback and Wilson-threshold approach are superseded. The Bali Zero team
+> validates through heavy manual testing in SHADOW. This ruling does not close
+> the DPIA, analytics-TTL or explicit ENFORCE-authorization blockers below.
+> Canonical rationale:
+> `research/visa/2026-08-08-decision-tree-v2-full-index-design.md` §4.
+
 Visa Oracle V2 is **ONLINE IN SHADOW with every operational gate proven
 against real production** — roles provisioned, migrations 262–267 applied,
 Privacy Policy V1 registered, a corrected signed RulePack activated
