@@ -12,7 +12,10 @@ import pytest
 
 from backend.scripts.visa_engine import gold_replay_driver as driver
 from backend.services.visa_engine import evaluator
-from backend.services.visa_engine.api_models import VisaOracleEvaluateRequest
+from backend.services.visa_engine.api_models import (
+    DisclosedReviewFlag,
+    VisaOracleEvaluateRequest,
+)
 from backend.services.visa_engine.models import ApplicantFactsData, Decision
 from backend.tests.services.visa_engine import _gold_fixtures as gf
 from backend.tests.services.visa_engine.test_evaluator_gold import PERSONAS
@@ -205,13 +208,65 @@ def test_offline_replay_uses_highest_signed_pack_without_claiming_it_is_active()
     assert report["pack_source"]["file"].endswith(selected_path.name)
     assert report["pack_source"]["selection"].startswith("highest signed PRODUCTION")
     assert report["pack_source"]["production_activation_status"].startswith("not checked")
-    assert report["pack_source"]["policy_adapters"] == [
-        "minor_privacy_hold",
-        "decisive_source_authority_and_freshness_hold",
-        "safety_critical_source_freshness_hold",
-        "disclosed_review_flags",
-    ]
+    assert report["pack_source"]["policy_adapters"] == list(
+        driver.evaluate_path.PUBLIC_POLICY_ADAPTER_NAMES
+    )
     assert "active_database_binding" in report["pack_source"]["runtime_operations_excluded"]
+
+
+@pytest.mark.parametrize(
+    ("overstay_days", "expected_flags"),
+    [
+        (0, ()),
+        (2, (DisclosedReviewFlag.CONFLICTING_IMMIGRATION_STATUS,)),
+    ],
+)
+def test_offline_replay_passes_effective_review_flags_to_public_adapters(
+    monkeypatch: pytest.MonkeyPatch,
+    overstay_days: int,
+    expected_flags: tuple[DisclosedReviewFlag, ...],
+) -> None:
+    persona = PERSONAS[0]
+    wire = driver.build_persona_payload(persona)
+    wire["facts"]["immigration.currently_in_indonesia"] = {
+        "status": "KNOWN",
+        "value": False,
+    }
+    wire["facts"]["immigration.overstay_days"] = {
+        "status": "KNOWN",
+        "value": overstay_days,
+    }
+    request = VisaOracleEvaluateRequest.model_validate(wire)
+    flags_seen: list[tuple[DisclosedReviewFlag, ...]] = []
+
+    def recording_adapter(
+        decision,
+        facts,
+        compiled,
+        *,
+        disclosed_review_flags=(),
+    ):
+        flags_seen.append(disclosed_review_flags)
+        return decision
+
+    monkeypatch.setattr(driver, "PERSONAS", (persona,))
+    monkeypatch.setattr(driver, "build_persona_request", lambda _: request)
+    monkeypatch.setattr(
+        driver.evaluate_path,
+        "apply_public_policy_adapters",
+        recording_adapter,
+    )
+
+    driver.replay_offline_decisions(evaluated_at=_OFFLINE_AT)
+
+    assert flags_seen == [expected_flags]
+
+
+def test_public_policy_helper_and_manifest_are_explicit_exports() -> None:
+    assert {
+        "PUBLIC_POLICY_ADAPTER_NAMES",
+        "apply_public_policy_adapters",
+    } <= set(driver.evaluate_path.__all__)
 
 
 def test_public_policy_helper_preserves_endpoint_adapter_order(
@@ -224,22 +279,22 @@ def test_public_policy_helper_preserves_endpoint_adapter_order(
 
     def minor(current, current_facts):
         assert current_facts is facts
-        calls.append("minor")
+        calls.append("_apply_minor_privacy_hold")
         return current
 
     def decisive(current, current_compiled):
         assert current_compiled is compiled
-        calls.append("decisive")
+        calls.append("_apply_decisive_source_authority_hold")
         return current
 
     def safety(current, current_compiled):
         assert current_compiled is compiled
-        calls.append("safety")
+        calls.append("_apply_safety_critical_source_hold")
         return current
 
     def disclosed(current, flags):
         assert flags == ()
-        calls.append("disclosed")
+        calls.append("_apply_disclosed_review_flags")
         return current
 
     monkeypatch.setattr(driver.evaluate_path, "_apply_minor_privacy_hold", minor)
@@ -248,7 +303,7 @@ def test_public_policy_helper_preserves_endpoint_adapter_order(
     monkeypatch.setattr(driver.evaluate_path, "_apply_disclosed_review_flags", disclosed)
 
     assert driver.evaluate_path.apply_public_policy_adapters(decision, facts, compiled) is decision
-    assert calls == ["minor", "decisive", "safety", "disclosed"]
+    assert calls == list(driver.evaluate_path.PUBLIC_POLICY_ADAPTER_NAMES)
 
 
 def test_offline_replay_applies_public_policy_adapter_to_every_persona(

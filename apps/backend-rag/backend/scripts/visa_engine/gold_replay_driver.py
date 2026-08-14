@@ -12,6 +12,9 @@ that can be compared with production:
   same deterministic, no-I/O policy adapter helper as the public evaluate path.
   This proves only what that repository artifact and those checked-out policy
   adapters do; it never claims that the artifact is the active production pack.
+  Offline mode runs inside the repository's backend environment and therefore
+  requires the serving stack's lock-pinned dependencies; it is not a standalone
+  stdlib utility.
 
 The JSON report keeps every divergence visible.  By default every divergent
 persona has ``"explanation": null`` and therefore makes the command exit 1.
@@ -324,7 +327,7 @@ def replay_offline_decisions(
                 decision,
                 facts,
                 compiled,
-                disclosed_review_flags=request.disclosed_review_flags,
+                disclosed_review_flags=request.effective_review_flags(),
             )
         )
     logger.info(
@@ -617,12 +620,7 @@ def build_offline_report(
             "decision_identity": (
                 "offline-only non-secret provider; not production integrity evidence"
             ),
-            "policy_adapters": [
-                "minor_privacy_hold",
-                "decisive_source_authority_and_freshness_hold",
-                "safety_critical_source_freshness_hold",
-                "disclosed_review_flags",
-            ],
+            "policy_adapters": list(evaluate_path.PUBLIC_POLICY_ADAPTER_NAMES),
             "runtime_operations_excluded": [
                 "active_database_binding",
                 "retention_gate",
