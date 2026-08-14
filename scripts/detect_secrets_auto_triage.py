@@ -242,6 +242,27 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "(same class as the contracts/packs/rulepack-*.json rule above), "
         "never a credential",
     ),
+    # lint_telegram_tokens.py: KNOWN_COMPROMISED maps a 16-hex truncated
+    # sha256 of a burned Telegram bot token to a human-readable note, so a
+    # re-introduction is NAMED ("this is the @Balizerobot token") rather than
+    # merely flagged. The hash is one-way and cannot be expanded back into the
+    # token; the token itself is deliberately absent from the file.
+    #
+    # Content-keyed, not path-keyed: this is a production script under
+    # scripts/, so a path rule would blanket-approve any future finding in it,
+    # including a real credential added later on an unrelated line
+    # (superscar #3 — match the entity, never the file it happens to sit in).
+    # The whole line must be `"<16 lowercase hex>": "@<note>"[,]` — a Telegram
+    # token is `<digits>:AA<33>`, which cannot match a 16-hex key, and its
+    # value here must begin with the `@` of a bot handle.
+    (
+        re.compile(r"^scripts/lint_telegram_tokens\.py$"),
+        re.compile(r'^\s*"[0-9a-f]{16}"\s*:\s*"@[^"]*"\s*,?\s*$'),
+        "Telegram token gate: KNOWN_COMPROMISED keys are one-way 16-hex "
+        "sha256 truncations of burned bot tokens, held so a re-introduction "
+        "can be named rather than merely flagged — never key material, and "
+        "the tokens themselves are absent from the file by design",
+    ),
 ]
 
 # Each rule is (pattern, reason). The pattern matches the file path

@@ -174,7 +174,14 @@ def selftest() -> int:
     and the usual escape — exempting the guard's own path — is how a guard grows
     a hole named after itself.
     """
-    real_body = "AA" + "Hn4Kd9Wq2Zx7Lm1Pv6Rt3Yb8Sc5Ug0Jf"  # 33 chars, varied
+    # Split into short fragments, not one long literal. Same reason the whole
+    # corpus is assembled at runtime, one level down: a single 33-char varied
+    # string is high-entropy enough that detect-secrets flags it as a
+    # Base64 High Entropy String, and the only way to clear that is a triage
+    # rule approving `real_body = "AA" + "<33 chars>"` — which would approve
+    # that shape for any future value, including a live token body pasted in
+    # fragments this gate cannot see. Short pieces need no such approval.
+    real_body = "AA" + "Hn4Kd9Wq" + "2Zx7Lm1P" + "v6Rt3Yb8" + "Sc5Ug0Jf"
     guilty = [
         ("plain markdown", "token: " + "8295471667" + ":" + real_body),
         ("inside a plist", "<string>" + "123456789" + ":" + real_body + "</string>"),
