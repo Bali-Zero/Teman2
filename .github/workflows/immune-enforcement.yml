@@ -824,7 +824,13 @@ jobs:
           data = json.load(open("infra/home-fork/declared-pairs.json"))
           assert isinstance(data.get("pairs"), list) and data["pairs"], "pairs empty"
           for p in data["pairs"]:
-              assert p.get("live", "").startswith("~/"), p
+              # ~/ = HOME-fork domain (the registry's charter). The narrow
+              # absolute-prefix exception covers system-domain LaunchDaemon
+              # payloads (first case: mini fw-guard, 2026-08-14 — a root
+              # daemon must NOT execute from a user-writable $HOME path, so
+              # its live copy lives in /usr/local + /Library by design).
+              # expand_home() passes absolutes through untouched.
+              assert p.get("live", "").startswith(("~/", "/Library/", "/usr/local/")), p
               assert p.get("repo"), p
           print(f"OK: {len(data['pairs'])} declared pairs, {len(data.get('allow', []))} allow globs")
           EOF
