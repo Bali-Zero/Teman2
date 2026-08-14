@@ -1,6 +1,26 @@
 import React from "react";
 import "@testing-library/jest-dom";
+import { configure } from "@testing-library/react";
 import { vi } from "vitest";
+
+// Raise testing-library's default `waitFor`/`findBy*` timeout from its 1000ms
+// default. Canary investigation 2026-08-15 (PR bisecting a deterministic-on-CI,
+// unreproducible-locally failure of `PortalHomePage > should render timeline
+// when available`): a full local `npx vitest --run` of this suite (382 files,
+// 3584 tests, IDENTICAL config to CI — pool:threads, maxThreads:2) passed
+// 100% at the exact commit where CI failed this one assertion twice on two
+// unrelated PRs (#4204, #4202); the component/hook/test file had zero code
+// changes in the surrounding merge window (git log empty). 351 `waitFor(...)`
+// call sites across 49 files in this suite, ZERO with an explicit timeout
+// override — every one of them share this same implicit 1000ms margin against
+// a 2-thread GH Actions runner that has never been re-measured as this suite
+// grew (the exact frontend-side analogue of scripts/suite_growth_probe.py's
+// backend finding). vitest's own `testTimeout: 20000` (vitest.config.ts) is
+// the real ceiling for a genuinely hung/broken assertion — 5000ms here still
+// distinguishes "slow under CI contention" from "actually never resolves"
+// with 4x margin, and is a single choke point rather than 351 individual
+// call-site edits (class fix, not instance fix).
+configure({ asyncUtilTimeout: 5000 });
 
 // Mock Next.js router
 vi.mock("next/navigation", () => ({

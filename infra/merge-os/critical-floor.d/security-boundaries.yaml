@@ -1,0 +1,20 @@
+id: security-boundaries
+category: Security boundaries
+description: >
+  Tests under a dedicated security/ test directory (dashboard-map exposure,
+  mutating-route gating, webhook signature verification, brute-force
+  protection, token revocation, audit logging) plus filename-tagged security
+  tests scattered elsewhere (security-definer binding, advanced/error-path
+  security scenarios, LLM-gateway security). Distinct from auth-authorization
+  (session/RBAC identity) — this category is about the boundary controls
+  AROUND authenticated actions: what a request is allowed to DO, not just
+  who it claims to be.
+patterns:
+  - apps/backend-rag/**/security/test_*.py
+  - apps/backend-rag/**/test_*security*.py
+rationale: >
+  CLAUDE.md §14 PII/OSINT output boundary + §2 Golden Rule #6 "No Hardcoded
+  Secrets" + the repo's own cicatrix-superscar.md family #3 (guard
+  over/under-match) — this suite is the enforcement layer for exactly the
+  class of defect that family documents ~15 scars for. Never quarantinable.
+verified_match_count: 13
