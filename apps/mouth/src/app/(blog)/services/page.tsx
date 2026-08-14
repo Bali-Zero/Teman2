@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
+import { ratingBadge, reviewsLabel } from "@/lib/trust-figures";
 import {
   ArrowRight,
   IdCard,
@@ -99,7 +100,7 @@ const SERVICES: Service[] = [
 
 const TRUST_STRIP = [
   { value: "5,000+", label: "Cases handled since 2019" },
-  { value: "4.9 ★", label: "627 Google reviews" },
+  { value: ratingBadge(), label: reviewsLabel() },
   { value: "18+", label: "Licensed specialists" },
   { value: "2006", label: "Year founded" },
 ];

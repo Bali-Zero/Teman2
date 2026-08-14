@@ -1,5 +1,6 @@
 import React from "react";
 import { Star, Users, ShieldCheck, Clock } from "lucide-react";
+import { ratingBadge, reviewsShort } from "@/lib/trust-figures";
 
 /**
  * TrustBar — CRO quick-win trust proof banner.
@@ -23,7 +24,7 @@ export function TrustBar(): React.ReactElement {
       >
         <span className="inline-flex items-center gap-1">
           <Star size={10} className="fill-current text-[#fbbf24]" />
-          <span>4.9 ★ · 627 Reviews</span>
+          <span>{`${ratingBadge()} · ${reviewsShort()}`}</span>
         </span>
         <span className="opacity-40">·</span>
         <span className="inline-flex items-center gap-1">
@@ -46,7 +47,7 @@ export function TrustBar(): React.ReactElement {
       <div className="flex md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#12161f]/95 backdrop-blur-md border-t border-white/10 shadow-lg py-2 px-4 items-center justify-center gap-4 flex-wrap text-[9px] leading-tight text-white/70">
         <span className="inline-flex items-center gap-1">
           <Star size={10} className="fill-current text-[#fbbf24]" />
-          <span>4.9 ★ · 627 Reviews</span>
+          <span>{`${ratingBadge()} · ${reviewsShort()}`}</span>
         </span>
         <span className="opacity-40">·</span>
         <span className="inline-flex items-center gap-1">
