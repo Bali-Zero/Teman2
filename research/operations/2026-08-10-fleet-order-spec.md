@@ -175,14 +175,28 @@ M2.5 stays PROBATION — zero measured calls, PROBE-4 still open. Hard NOs (§ a
 client-facing, merge/deploy, final gates, credentials-in-env) are untouched — they are
 independent of PROBATION status and apply to ARMED seats exactly as they did to PROBATION ones.
 
-**Cost note (not a confirmed contract fact)**: at public Aug-2026 Singapore DashScope list
-prices (Qwen3.8-Max $2/$6 per 1M in/out, cached input ≈$0.25/1M; Qwen3.7-Plus proxy $0.40/$1.60;
-deepseek-v4-flash $0.14/$0.28, cached input assumed 20% of list — this cache rate is NOT
-independently confirmed for the DeepSeek model), the measured 7-day usage prices out to
-≈$42, a ≈$181/month run-rate against the documented "~$68 tier" (§2.5 table, §8.4). Whether
-the Token Plan is pay-per-token-metered against monthly credits (the 2026-08-08 qwen-seat
-doc calls it "a METERED Token Plan") or a flat allowance with a different real unit-price is
-still not confirmed in this repo — flagging the ratio for Zero, not asserting overspend.
+**Cost note — CORRECTED 2026-08-14 (post-landing review, see burn-rate doc §Part 1 for the full
+correction and both source citations)**: at official Aug-2026 Alibaba list prices (Qwen3.8-Max
+$2/$6 per 1M in/out, cached input $0.25/1M; Qwen3.7-Plus proxy $0.40/$1.60; deepseek-v4-flash
+$0.14/$0.28 with cached input $0.028/1M — this last rate is the model's own OFFICIAL published
+cache price, not a guess: [help.aliyuncs.com/en/model-studio/deepseek-v4-flash](https://www.alibabacloud.com/help/en/model-studio/deepseek-v4-flash)),
+the measured 7-day usage prices out to ≈$42, a **metered-equivalent ceiling** of ≈$181/month —
+i.e. what this usage would cost paying per-token at official list prices with no subscription.
+This is NOT arithmetically comparable to the documented "~$68/month tier" (§2.5 table, §8.4),
+for two independent reasons, both confirmed against Alibaba's own docs:
+(a) **value multiplier** — the $68 figure is the Individual plan's "Pro" tier
+([blog: Token Plan for Individual](https://www.alibabacloud.com/blog/model-studio-token-plan-for-individual-one-subscription-for-every-ai-model-up-to-3x-more-value_603426)),
+whose own claim is "≈3× more usage than pay-as-you-go" — so $68 of Individual-plan credits
+could plausibly cover ≈$150-200 of list-equivalent usage, putting our measured $181 at-or-under
+that ceiling rather than 2.7× over it; (b) **product/region mismatch** — TP1's actual endpoint
+(`token-plan.ap-southeast-1.maas.aliyuncs.com`) is the **Singapore** region, which
+[Alibaba's Token Plan (Team Edition) doc](https://www.alibabacloud.com/help/en/model-studio/token-plan-overview)
+states is available ONLY as Team Edition ($30/$100/$200 per seat/month — no $68 tier exists
+there); the $68 figure is documented only for the Individual plan, whose regional scope isn't
+stated the same way. **Which product TP1 actually is cannot be resolved from the API** — this
+stays an `operator[gui]` item, now with a precise question for the Model Studio console: *which
+edition/tier is this key on, and how many credits remain this cycle*. Do not read the earlier
+"≈2.7×" framing (struck by this correction) as a confirmed overspend signal.
 
 ## 2.6 GLM z.ai door (until quota exhausted)
 
