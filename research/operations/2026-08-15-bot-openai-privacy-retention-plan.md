@@ -14,6 +14,21 @@ adversarial_review: n/a (design/policy document — no code diff to review; reco
 
 # Zantara WA bot — OpenAI provider privacy & retention plan
 
+## ⚠️ Snapshot header — NOT FROZEN, per Zero/team-lead HOLD order
+
+**Base**: `origin/main` @ `7e66a8b3d003de0327e1ff7669e038b467ee8a94` (verifier and implementer
+worktrees share this merge-base). **The implementer worktree (`.worktrees/bot-openai-adapter`) has
+ZERO commits on its branch — every change is uncommitted working-tree state**, verified via
+`git status --short` this session: `M config.py`, `M llm_gateway.py`, `?? openai_responses_client.py`,
+`?? _shadow_provider.py`, `?? backend/tests/llm/`, `?? backend/tests/rag/`, `?? scripts/bot/`.
+
+**This is a moving target by construction.** A code-level observation below (§3.4) was already
+found stale once this session — see the correction note there. **This document reviews an UNFROZEN
+diff and must be re-executed (fresh Kimi K3 + Google/agy Gemini passes, prompts prepared in the
+companion threat model's §Freeze re-review) once the implementer commits and opens a PR.** The
+policy/legal analysis (§1-§3's DPA/consent/retention doctrine) does not depend on the exact code
+snapshot and stays valid; the code-level "live diff finding" in §3.4 does, and is marked accordingly.
+
 ## Scope and posture
 
 This is a **planning document**, not an implementation. It answers: what would have to be true
@@ -213,14 +228,29 @@ this document specifically): the shadow branch's ONLY precondition to sending li
 (current turn + system prompt — real client free-text when armed on prod traffic) to OpenAI is a
 bare boolean env flag (`OPENAI_SHADOW`) plus a configured API key. **There is no code-level check
 for anything in §3.2** — no DPA-signed marker, no ZDR/MAM proof artifact reference, no consent-capture
-gate, no synthetic/de-identified-corpus allowlist. The payload also never sets `"store": false`
-(verified this session — `openai_responses_client.py::generate()`'s payload dict has no `store` key
-at all), meaning the §2.1 default-retention assumption in this plan is not just a policy baseline —
-it is what the code, as written, actually does by omission. **This document's §3.3
-non-recommendation is not currently backed by any technical control**: today, the only thing
-preventing real client traffic from reaching OpenAI is that `OPENAI_SHADOW` defaults to and stays
-`false` in this PR. Recommend V2's gate spec include an explicit policy-gate check (not just the
-env flag) before this branch is ever considered safe to arm outside a non-prod environment.
+gate, no synthetic/de-identified-corpus allowlist.
+
+**STALE claim, CORRECTED this turn (per team-lead's first-hand catch, same correction as the
+companion threat model's row 2):** an earlier pass of this section said the payload "never sets
+`store: false`... it is what the code, as written, actually does by omission." **That is false of
+the current working-tree snapshot**, re-verified this turn: `openai_responses_client.py:296-306`'s
+docstring states *"STATELESS ONLY for this phase (orchestrator veto 2026-08-15 point 2): every
+request sends `"store": false`"* and the payload builder at `:325-331` sets `"store": False`
+**unconditionally**, on every call; `previous_response_id` is no longer a `generate()` parameter at
+all. This does NOT retire this section's underlying point or weaken §2's planning baseline — two
+things stay true regardless of `store`: (1) OpenAI's abuse-monitoring logs are retained ~30 days
+**regardless of the `store` setting** (per §2's own quoted docs — `store:false` only controls
+Application State, not the separate abuse-monitoring retention), so §2.1's 30-day planning
+assumption is UNCHANGED by this correction; (2) the code-level-enforcement gap this section's title
+names is about the OTHER items in §3.2 (DPA marker, ZDR/MAM proof, consent-capture, de-identified
+allowlist) — none of THOSE are checked in code either, and `store:false` being set does not touch
+any of them. **This document's §3.3 non-recommendation is not currently backed by any technical
+control for those four items**: today, the only thing preventing real client traffic from reaching
+OpenAI is that `OPENAI_SHADOW` defaults to and stays `false` in this PR. Recommend V2's gate spec
+include an explicit policy-gate check (not just the env flag) before this branch is ever considered
+safe to arm outside a non-prod environment. **Re-verify `store:false` again at freeze** — the
+implementer worktree is uncommitted and moving (see snapshot header); do not carry "fixed" forward
+as fact about the eventual PR without re-reading the frozen diff.
 
 ## 4. Open items handed to downstream lanes
 
