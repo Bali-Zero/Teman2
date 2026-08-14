@@ -205,3 +205,69 @@ def test_offline_replay_uses_highest_signed_pack_without_claiming_it_is_active()
     assert report["pack_source"]["file"].endswith(selected_path.name)
     assert report["pack_source"]["selection"].startswith("highest signed PRODUCTION")
     assert report["pack_source"]["production_activation_status"].startswith("not checked")
+    assert report["pack_source"]["policy_adapters"] == [
+        "minor_privacy_hold",
+        "decisive_source_authority_and_freshness_hold",
+        "safety_critical_source_freshness_hold",
+        "disclosed_review_flags",
+    ]
+    assert "active_database_binding" in report["pack_source"]["runtime_operations_excluded"]
+
+
+def test_public_policy_helper_preserves_endpoint_adapter_order(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    decision = _fixture_decisions()[0]
+    facts = driver.build_persona_request(PERSONAS[0]).applicant_facts()
+    compiled = gf.build_gold_compiled_pack()
+    calls: list[str] = []
+
+    def minor(current, current_facts):
+        assert current_facts is facts
+        calls.append("minor")
+        return current
+
+    def decisive(current, current_compiled):
+        assert current_compiled is compiled
+        calls.append("decisive")
+        return current
+
+    def safety(current, current_compiled):
+        assert current_compiled is compiled
+        calls.append("safety")
+        return current
+
+    def disclosed(current, flags):
+        assert flags == ()
+        calls.append("disclosed")
+        return current
+
+    monkeypatch.setattr(driver.evaluate_path, "_apply_minor_privacy_hold", minor)
+    monkeypatch.setattr(driver.evaluate_path, "_apply_decisive_source_authority_hold", decisive)
+    monkeypatch.setattr(driver.evaluate_path, "_apply_safety_critical_source_hold", safety)
+    monkeypatch.setattr(driver.evaluate_path, "_apply_disclosed_review_flags", disclosed)
+
+    assert driver.evaluate_path.apply_public_policy_adapters(decision, facts, compiled) is decision
+    assert calls == ["minor", "decisive", "safety", "disclosed"]
+
+
+def test_offline_replay_applies_public_policy_adapter_to_every_persona(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original = driver.evaluate_path.apply_public_policy_adapters
+    persona_calls: list[str] = []
+
+    def recording_adapter(decision, facts, compiled, *, disclosed_review_flags=()):
+        persona_calls.append(facts.assessment_id)
+        return original(
+            decision,
+            facts,
+            compiled,
+            disclosed_review_flags=disclosed_review_flags,
+        )
+
+    monkeypatch.setattr(driver.evaluate_path, "apply_public_policy_adapters", recording_adapter)
+    decisions, _ = driver.replay_offline_decisions(evaluated_at=_OFFLINE_AT)
+
+    assert len(decisions) == len(PERSONAS)
+    assert persona_calls == [driver._persona_assessment_id(persona.id) for persona in PERSONAS]

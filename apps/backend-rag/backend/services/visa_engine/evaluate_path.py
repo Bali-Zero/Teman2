@@ -1220,6 +1220,27 @@ def _apply_disclosed_review_flags(
     return Decision.model_validate(payload)
 
 
+def apply_public_policy_adapters(
+    decision: Decision,
+    facts: ApplicantFacts,
+    compiled: CompiledRulePack,
+    *,
+    disclosed_review_flags: tuple[DisclosedReviewFlag, ...] = (),
+) -> Decision:
+    """Apply every deterministic abstention adapter used by the public path.
+
+    Keeping the ordering in one pure helper prevents offline evidence tools
+    from silently drifting away from the endpoint. Runtime-only operations
+    such as binding resolution, retention, pricing, sealing, and persistence
+    remain outside this helper.
+    """
+
+    decision = _apply_minor_privacy_hold(decision, facts)
+    decision = _apply_decisive_source_authority_hold(decision, compiled)
+    decision = _apply_safety_critical_source_hold(decision, compiled)
+    return _apply_disclosed_review_flags(decision, disclosed_review_flags)
+
+
 async def _save_evaluate_decision(
     db_pool: asyncpg.Pool,
     *,
@@ -1438,7 +1459,7 @@ async def run_evaluation(
         pricing_catalog: ExactPricingCatalog = await asyncio.to_thread(get_pricing_service)
     except Exception as exc:
         # Pricing availability cannot overwrite a legal decision. Log only the
-        # type: adapter exceptions may include catalog payloads or paths.
+        # exception class; adapter exceptions may include catalog payloads or paths.
         logger.warning(
             "evaluate path: pricing catalog acquisition failed: %s (trace=%s)",
             type(exc).__name__,
@@ -1455,11 +1476,12 @@ async def run_evaluation(
             observed_at=now,
             identity_provider=identity_provider,
         )
-        decision = evaluation.decision
-        decision = _apply_minor_privacy_hold(decision, facts)
-        decision = _apply_decisive_source_authority_hold(decision, compiled)
-        decision = _apply_safety_critical_source_hold(decision, compiled)
-        decision = _apply_disclosed_review_flags(decision, disclosed_review_flags)
+        decision = apply_public_policy_adapters(
+            evaluation.decision,
+            facts,
+            compiled,
+            disclosed_review_flags=disclosed_review_flags,
+        )
         try:
             decision = _attach_price_quotes(
                 decision,
