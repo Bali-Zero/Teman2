@@ -150,7 +150,11 @@ def classify_pma(record: dict[str, Any]) -> str:
         and vintage.strip()
     ):
         return PMA_LOCATED
-    if status == "declared_gap":
+    if status == "declared_gap" and not (
+        isinstance(basis, str) and basis.strip()
+    ) and not (
+        isinstance(vintage, str) and vintage.strip()
+    ):
         return PMA_DECLARED_UNVERIFIED
     return PMA_BARE
 

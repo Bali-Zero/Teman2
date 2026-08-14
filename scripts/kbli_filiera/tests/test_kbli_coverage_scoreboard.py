@@ -108,6 +108,29 @@ def test_innocence_pma_declared_unverified_is_honest():
     ) == B.PMA_DECLARED_UNVERIFIED
 
 
+def test_guilt_declared_gap_with_a_stale_basis_is_bare():
+    """A declaration cannot say both "unverified" and "officially based".
+    The compiler must resolve the state before the ratchet treats it as honest.
+    """
+    assert B.classify_pma(
+        rec(
+            "02101",
+            pma_verification_status="declared_gap",
+            pma_official_basis="Perpres 10/2021 Lampiran III",
+        )
+    ) == B.PMA_BARE
+
+
+def test_guilt_declared_gap_with_a_stale_vintage_is_bare():
+    assert B.classify_pma(
+        rec(
+            "02101",
+            pma_verification_status="declared_gap",
+            pma_source_vintage="2021-05-25",
+        )
+    ) == B.PMA_BARE
+
+
 def test_basis_outranks_a_stale_unverified_flag():
     record = rec(
         "50122",
