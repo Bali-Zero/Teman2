@@ -215,9 +215,10 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     """Sanity: the KBLI gold-set rule is path-scoped to kbli-gold-all.json
     only — not the other KBLI files, which stay on the closed-writer-set
     path rules in AUTO_APPROVE_RULES."""
-    assert len(CONTENT_KEYED_RULES) == 7  # +1: infra/llm-credentials/declared.json sha256_16 (2026-08-12)
+    assert len(CONTENT_KEYED_RULES) == 8  # +1: infra/llm-credentials/declared.json sha256_16 (2026-08-12)
     # +1: apps/backend-rag/backend/scripts/visa_engine/gold_replay_driver.py public_key (2026-08-13)
     # +1: research/visa/2026-08-12-gold-replay-live-report.json payload_sha256 (2026-08-13)
+    # +1: scripts/lint_telegram_tokens.py KNOWN_COMPROMISED sha256[:16] key (2026-08-14)
     path_pat, _content_pat, reason = CONTENT_KEYED_RULES[1]
     assert path_pat.search(KBLI_GOLD_ALL)
     assert not path_pat.search("apps/mouth/data/KBLI_2025_FINAL_CLEAN.json")
@@ -723,3 +724,77 @@ def test_innocence_gold_replay_live_report_same_shape_in_another_file_not_approv
     pass from this rule."""
     auto, reason = classify("research/visa/some_other_report.json", 8)
     assert not (auto and "never a credential" in reason)
+
+
+# --- Telegram token gate KNOWN_COMPROMISED rule (2026-08-14) ----------------
+#
+# Context: `scripts/lint_telegram_tokens.py` refuses a Telegram bot token
+# anywhere in the tree. It holds a dict mapping the 16-hex truncated sha256 of
+# tokens known to be BURNED to a human-readable note, so that a
+# re-introduction is NAMED ("this is the @Balizerobot token") instead of
+# merely flagged. detect-secrets reads that key as a "Hex High Entropy
+# String" and made the gate red on the PR that introduced it.
+#
+# The hash is one-way; the token itself is deliberately absent from the file.
+# This is a PRODUCTION script under scripts/, so the rule is content-keyed and
+# not path-keyed: a path rule would blanket-approve any future finding in it.
+# Guilt reads the real line off disk through classify(), so this test fails if
+# the dict is renamed, reshaped, or the rule removed — not merely if someone
+# edits a string literal here.
+
+LINT_TELEGRAM_TOKENS = "scripts/lint_telegram_tokens.py"
+
+
+def _telegram_rule():
+    """Locate the rule by what it MATCHES, not by a positional index that
+    silently shifts when someone inserts a rule above it."""
+    for path_pat, content_pat, reason in CONTENT_KEYED_RULES:
+        if path_pat.search(LINT_TELEGRAM_TOKENS):
+            return path_pat, content_pat, reason
+    raise AssertionError("no CONTENT_KEYED rule covers the Telegram token gate")
+
+
+def test_telegram_token_rule_registered_and_scoped_to_exactly_one_file() -> None:
+    path_pat, _content_pat, reason = _telegram_rule()
+    assert path_pat.search(LINT_TELEGRAM_TOKENS)
+    assert not path_pat.search("scripts/lint_telegram_tokens.py.bak")
+    assert not path_pat.search("scripts/tests/test_lint_telegram_tokens.py")
+    assert "never key material" in reason
+
+
+def test_guilt_the_known_compromised_fingerprint_line_is_approved() -> None:
+    """The exact finding that made `Detect Secrets` red on PR #4163.
+
+    Found by scanning the live file for the dict entry rather than pinning a
+    line number: a hardcoded number would rot the moment anything above it
+    moves, and would then pass by testing the wrong line.
+    """
+    _path_pat, content_pat, _reason = _telegram_rule()
+    lines = open(LINT_TELEGRAM_TOKENS, encoding="utf-8").read().splitlines()
+    hits = [i + 1 for i, ln in enumerate(lines) if content_pat.search(ln)]
+    assert len(hits) == 1, f"expected exactly one KNOWN_COMPROMISED entry, got {hits}"
+    auto, reason = classify(LINT_TELEGRAM_TOKENS, hits[0])
+    assert auto, f"the burned-token fingerprint must be approved (got {reason!r})"
+    assert "never key material" in reason
+
+
+def test_innocence_a_live_token_as_dict_key_is_not_approved() -> None:
+    """A Telegram token is `<digits>:AA<33>`, which cannot pass as a 16-hex
+    key. Assembled from fragments so this test file is not itself a finding."""
+    _path_pat, content_pat, _reason = _telegram_rule()
+    body = "AA" + "Hn4Kd9Wq" + "2Zx7Lm1P" + "v6Rt3Yb8" + "Sc5Ug0Jf"
+    assert content_pat.match(f'    "8295471667:{body}": "@Balizerobot",') is None
+
+
+def test_innocence_hex_key_with_a_non_handle_value_is_not_approved() -> None:
+    """The value must begin with the `@` of a bot handle. A 16-hex key mapped
+    to an opaque string is some other writer's data and stays unaudited."""
+    _path_pat, content_pat, _reason = _telegram_rule()
+    assert content_pat.match('    "a54b897b432002bb": "' + "z" * 40 + '",') is None
+
+
+def test_innocence_a_credential_elsewhere_in_the_same_file_is_not_approved() -> None:
+    """Content-keyed, not path-keyed: this is a production script, so a secret
+    added later on an unrelated line must still stop the gate."""
+    _path_pat, content_pat, _reason = _telegram_rule()
+    assert content_pat.match('    api_key = "ghp_' + "y" * 36 + '"') is None

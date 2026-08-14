@@ -74,6 +74,17 @@ GATEWAY_ALLOWLIST = {
     # PATTERN match is on prose *about* the pattern, not code using it.
     "apps/backend-rag/backend/core/secret_log_redaction.py",
     "apps/backend-rag/backend/tests/core/test_telegram_token_never_reaches_a_log.py",
+    # Refuses a bot TOKEN in the tree (2026-08-13) — never sends. Same shape as
+    # the redaction pair above: zero urlopen/requests/httpx call sites in
+    # either file, and the URL appears twice as prose and twice as a guilt
+    # FIXTURE. The fixture is the point: the first draft of that lint was blind
+    # to a token inside `api.telegram.org/bot<TOKEN>/sendMessage`, the likeliest
+    # hiding place there is, because a leading `\b` cannot match after the `t`
+    # of `bot`. Removing the URL from the corpus to appease a textual scan would
+    # delete the one case that proves the fix — the bare-substring PATTERN match
+    # here is on prose and fixtures ABOUT the pattern, not code using it.
+    "scripts/lint_telegram_tokens.py",
+    "scripts/tests/test_lint_telegram_tokens.py",
 }
 
 

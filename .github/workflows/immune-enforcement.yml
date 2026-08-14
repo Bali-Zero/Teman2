@@ -272,6 +272,29 @@ jobs:
           python scripts/lint_retracted_claims.py --selftest
           python scripts/lint_retracted_claims.py --all
 
+      - name: No Telegram bot token in the tree — prove the guard, then scan
+        # DELIBERATELY NOT gated on steps.paths.outputs.relevant, for the same
+        # reason as the lint above: this guard's SUBJECT is every tracked text
+        # file. The PR shape it exists to catch is a token pasted into a doc, a
+        # plist or a runbook — paths an "immune-relevant" filter never names
+        # (W81: a guard armed against paths its subject never touches is armed
+        # to nothing).
+        #
+        # It is here because on 2026-08-13 the live token of @Balizerobot was
+        # found in cleartext on the PUBLIC default branch, inside two archived
+        # planning docs, with every gate green: `detect-secrets` ships no
+        # detector for this shape (measured — a file containing only a
+        # token-shaped string scans to `results: {}`), and the token lived in
+        # `.md`, so no language linter ever looked at it. The cost was not
+        # theoretical: BotFather answers only the account that created a bot,
+        # that account is lost, so that token can never be revoked.
+        #
+        # --selftest FIRST: "--all reports OK" is worth nothing until the guilt
+        # fixtures prove the scanner can still fail.
+        run: |
+          python scripts/lint_telegram_tokens.py --selftest
+          python scripts/lint_telegram_tokens.py --all
+
       - name: Gateway callers must read the VERDICT, not the exit code
         # Same reasoning as the lint above, same deliberate absence of a paths
         # gate: this guard's SUBJECT is every Python caller of tg_notify.py, and
