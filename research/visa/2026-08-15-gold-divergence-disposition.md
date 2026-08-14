@@ -6,6 +6,7 @@ sources:
   - research/visa/2026-08-12-gold-replay-live-report.json
   - research/visa/2026-08-12-gold-replay-live.md
   - research/visa/2026-08-15-gold-replay-live-post-notice-report.json
+  - research/visa/2026-08-15-shadow-evidence-post-notice.json
   - research/visa/2026-08-15-gold-family-refuter.md
   - apps/backend-rag/backend/scripts/visa_engine/gold_replay_driver.py
   - apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-007.source.json
@@ -61,6 +62,26 @@ was attempted. The byte-preserved report is
 (the filename reflects its 2026-08-15 preservation date; the report's
 `generated_at` timestamp is authoritative). Every response named the same
 active sequence-7 pack and payload hash recorded above.
+
+The production collector was then run read-only for the bounded window
+`[2026-08-14T18:27:38Z, 2026-08-14T19:20:30Z)`. Its byte-preserved,
+aggregate-only report is `2026-08-15-shadow-evidence-post-notice.json`,
+SHA-256
+`5fc1659fe4e20f05a0826623433352108a2fa50399cfdf61f2528f8df27f041c`.
+It reports exactly 20 audit rows and — per its G-a-breadth counters
+(`distinct_requests=20`, `missing_request_fingerprints=0`) — 20 distinct request
+fingerprints, all on the `RECOMMEND` surface with
+`traffic_source=synthetic_gold`; `real`, `synthetic_driver` and legacy counts are
+zero, and duplicate evaluations are zero. This independently confirms
+bounded-window traffic attribution and the absence of any extra persisted replay
+row; it does not claim visibility into a transport attempt that produced no
+audit row.
+
+The same aggregate report remains fail-closed: `enforce_ready=false`, overall
+gate status RED, G-a-volume/G-a-breadth/G-c RED, and G-b/G-d UNMEASURED. In
+particular, its G-c counters retain one decision without citations, two malformed
+grounding summaries and three ungrounded claims. Those are blockers, not a
+reason to reinterpret an HTTP-200 response as grounded or legally verified.
 
 The bounded notice component is now verified live: persona 18 has exactly one
 `OBSOLETE_PRODUCT_CODE` notice and matches its fixture in full; persona 19 also
@@ -217,6 +238,17 @@ The bounded second pass confirmed those four closures and returned
 union to a report schema containing only notice codes. Row 18 now claims only
 what the JSON carries. The final bounded pass returned **SHIP** with no
 surviving findings.
+
+The later aggregate-only collector artifact and its bounded interpretation are
+a separate evidence delta. Kimi K3 reviewed a PII-gate-safe projection that
+omitted only the two long-decimal `window_duration_hours` values and the artifact
+SHA-256 string; it returned **SHIP-WITH-FIXES**. This revision adopts both
+findings by tracing the distinct-fingerprint derivation and making the review
+boundary explicit. The bounded Kimi re-review returned **SHIP** with no
+surviving findings. The byte-exact artifact and its SHA-256 binding remain
+subject to a separate Fable review; the projection-based Kimi pass cannot
+discharge it. This delta does not change the earlier SHIP verdict or any gate
+state.
 
 The canonical pack hash in this file is copied from the cited machine-readable
 report. That provenance assertion is not a substitute for the named independent
