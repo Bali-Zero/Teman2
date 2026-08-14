@@ -89,6 +89,21 @@ when data collection failed completely. `main()` returns 0 only when `errors` is
 empty; a non-empty `errors[]` exits 1 (independent of whether an alert fired — a
 growth/timeout finding is a legitimate result, not a probe failure, and must not be
 conflated with one).
+
+PAGINATION CAP (empirically hit on this organ's first real run, 2026-08-14): the
+`actions/runs` list endpoint's own `list_workflow_runs()` is census-checked — every
+paginated response's `total_count` is compared with the number of unique run IDs actually
+fetched. GitHub's REST docs state this endpoint "will return up to 1,000 results" for any
+query using the `created` filter (docs.github.com/en/rest/actions/workflow-runs); the
+first live run against `Bali-Zero/Teman2` confirmed it (`fetched=1000 reported_total=2782`
+over the `[since, now]` 2*window_days span). `--paginate` cannot get past this — the cap is
+server-side per QUERY, not a client pagination limit — so `list_workflow_runs()` recursively
+bisects the `[since, now]` window by `created` timestamp whenever a window's raw fetch hits
+the cap while its own `total_count` reports more, deduping runs by id across sibling windows,
+bounded by `MAX_BISECT_DEPTH`/`MIN_WINDOW_SECONDS` (a leaf still short at that bound is a
+genuine, reported shortfall in `errors[]`, never a silent truncation — scar family #2 / W97).
+Same mitigation as `scripts/queue_baseline_probe.py`'s own `list_workflow_runs()` (#4185) —
+one cure for both organs, not two independently-invented ones (scar W106b).
 """
 
 from __future__ import annotations
@@ -119,6 +134,22 @@ SCHEMA_VERSION = 1
 GH_TIMEOUT_LIST_RUNS = 120
 GH_TIMEOUT_SHORT = 30
 GH_TIMEOUT_TG = 30
+
+# GitHub REST docs: the `actions/runs` endpoint returns "up to 1,000 results" for any query
+# using the `created` filter (docs.github.com/en/rest/actions/workflow-runs) — a server-side
+# cap per query, not a client-side pagination limit. Empirically confirmed 2026-08-14 on this
+# exact endpoint+workflow (fetched=1000 reported_total=2782, first live run of this organ) —
+# the same defect queue_baseline_probe.py's list_workflow_runs already carries the fix for
+# (#4185); same cure applied here rather than a new one invented per-organ (scar W106b: two
+# organs sharing one query pattern get ONE fix, not whichever one happened to break first).
+PAGE_CAP = 1000
+
+# Bisection safety bound (scar W97 — never a silent truncation): a window still short of its
+# own total_count after being split this many times is reported as a genuine shortfall in
+# errors[], not silently dropped. Values match queue_baseline_probe.py's own constants —
+# twin organs, one cure, not two independently-tuned numbers.
+MAX_BISECT_DEPTH = 10
+MIN_WINDOW_SECONDS = 1
 
 GATE_EVENTS = ("push", "merge_group")
 
@@ -372,16 +403,26 @@ def _parse_concatenated_json(text: str) -> list[dict[str, Any]]:
 # ---------------------------------------------------------------------------
 
 
-def list_workflow_runs(
+def _fetch_runs_window(
     repo: str,
     workflow: str,
-    since: datetime,
-    now: datetime,
-) -> tuple[list[dict[str, Any]], int | None, list[str]]:
-    """Completed runs of `workflow` created in `[since, now]` (UTC), with a census
-    check exactly like queue_baseline_probe.list_workflow_runs — a pagination
-    shortfall against `total_count` is an error, not a quietly-partial success."""
-    created_query = f"{since.strftime('%Y-%m-%dT%H:%M:%S')}..{now.strftime('%Y-%m-%dT%H:%M:%S')}"
+    start: datetime,
+    end: datetime,
+) -> tuple[dict[int, dict[str, Any]], list[dict[str, Any]], int | None, int, list[str]]:
+    """Fetch every page `gh api --paginate` will give us for one `[start, end]` UTC window of
+    `workflow`'s completed runs (both ends inclusive, matching GitHub's `created`
+    range-qualifier semantics).
+
+    Pure I/O primitive — mirrors queue_baseline_probe.py's `_fetch_runs_window` in structure
+    (same twin-organ cure, module docstring PAGINATION CAP section). Does not decide whether
+    the window needs to be split further; that decision belongs to `list_workflow_runs` so
+    this stays a single, independently testable fetch. Returns
+    `(runs_by_id, runs_without_id, reported_total, raw_item_count, errors)` where
+    `raw_item_count` is the number of `workflow_runs` entries actually returned across all
+    pages BEFORE dedup — the number `PAGE_CAP` is measured against, since GitHub's documented
+    1,000-result cap is on items served, not on the dedup'd id count.
+    """
+    created_query = f"{start.strftime('%Y-%m-%dT%H:%M:%SZ')}..{end.strftime('%Y-%m-%dT%H:%M:%SZ')}"
     cmd = [
         "gh", "api", f"repos/{repo}/actions/workflows/{workflow}/runs",
         "-X", "GET",
@@ -394,17 +435,18 @@ def list_workflow_runs(
     try:
         proc = _run_gh(cmd, timeout=GH_TIMEOUT_LIST_RUNS)
     except subprocess.TimeoutExpired as exc:
-        return [], None, [f"list_workflow_runs timeout: {exc}"]
+        return {}, [], None, 0, [f"list_workflow_runs timeout window={created_query}: {exc}"]
     except OSError as exc:
-        return [], None, [f"list_workflow_runs OSError: {exc}"]
+        return {}, [], None, 0, [f"list_workflow_runs OSError window={created_query}: {exc}"]
     if proc.returncode != 0:
-        return [], None, [
-            f"list_workflow_runs failed rc={proc.returncode} stderr={proc.stderr.strip()[:400]}"
+        return {}, [], None, 0, [
+            f"list_workflow_runs failed window={created_query} rc={proc.returncode} "
+            f"stderr={proc.stderr.strip()[:400]}"
         ]
     try:
         pages = _parse_concatenated_json(proc.stdout)
     except json.JSONDecodeError as exc:
-        return [], None, [f"list_workflow_runs bad JSON: {exc}"]
+        return {}, [], None, 0, [f"list_workflow_runs bad JSON window={created_query}: {exc}"]
 
     reported_totals = {
         int(page["total_count"]) for page in pages if isinstance(page.get("total_count"), int)
@@ -413,25 +455,104 @@ def list_workflow_runs(
     reported_total = max(reported_totals) if reported_totals else None
     if len(positive_totals) > 1:
         errors.append(
-            "list_workflow_runs inconsistent positive total_count values across pages: "
-            f"{sorted(positive_totals)}"
+            "list_workflow_runs inconsistent positive total_count values across pages "
+            f"window={created_query}: {sorted(positive_totals)}"
         )
     if reported_total is None:
-        errors.append("list_workflow_runs response missing integer total_count")
+        errors.append(f"list_workflow_runs response missing integer total_count window={created_query}")
 
     runs_by_id: dict[int, dict[str, Any]] = {}
+    runs_without_id: list[dict[str, Any]] = []
+    raw_item_count = 0
     for page in pages:
         for run in page.get("workflow_runs") or []:
+            raw_item_count += 1
             run_id = run.get("id") if isinstance(run, dict) else None
             if isinstance(run_id, int):
                 runs_by_id[run_id] = run
-    runs = list(runs_by_id.values())
-    if reported_total is not None and len(runs) < reported_total:
-        errors.append(
-            "list_workflow_runs pagination shortfall: "
-            f"fetched={len(runs)} reported_total={reported_total}; record is partial"
+            elif isinstance(run, dict):
+                runs_without_id.append(run)
+    return runs_by_id, runs_without_id, reported_total, raw_item_count, errors
+
+
+def list_workflow_runs(
+    repo: str,
+    workflow: str,
+    since: datetime,
+    now: datetime,
+) -> tuple[list[dict[str, Any]], int | None, list[str]]:
+    """Completed runs of `workflow` created in `[since, now]` (UTC), with a census check.
+
+    Returns `(unique_runs, reported_total, errors)`. `reported_total` is the whole window's
+    real total (from the initial, unsplit `[since, now]` fetch — bisection never changes what
+    "the window's total" means, only how many requests it takes to actually fetch it).
+
+    GitHub's `actions/runs` list endpoint returns "up to 1,000 results" for any query using
+    the `created` filter (module docstring, PAGINATION CAP) — a cap on the QUERY, so
+    `--paginate` alone cannot get past it. Whenever a window's raw fetch hits that cap
+    (`>= PAGE_CAP`) while its own `total_count` says there is more, the window is bisected by
+    `created` timestamp and each half is fetched independently, recursing until every leaf is
+    fully resolved or the recursion bound (`MAX_BISECT_DEPTH` / `MIN_WINDOW_SECONDS`) is hit.
+    A shortfall NOT explained by the cap (raw fetch below `PAGE_CAP`, yet still short of
+    `total_count` — e.g. a data anomaly) is reported immediately without attempting to bisect:
+    a narrower window cannot return more than a wider one already failed to. Same strategy as
+    `scripts/queue_baseline_probe.py`'s `list_workflow_runs` (#4185) — one cure for both
+    organs (scar W106b).
+    """
+    runs_by_id: dict[int, dict[str, Any]] = {}
+    runs_without_id: list[dict[str, Any]] = []
+    errors: list[str] = []
+    window_reported_total: list[int | None] = [None]  # set once, from the depth-0 fetch
+
+    def _collect(start: datetime, end: datetime, depth: int) -> None:
+        window_runs, window_no_id, reported_total, raw_count, window_errors = _fetch_runs_window(
+            repo, workflow, start, end
         )
-    return runs, reported_total, errors
+        errors.extend(window_errors)
+        if depth == 0:
+            window_reported_total[0] = reported_total
+        runs_by_id.update(window_runs)
+        runs_without_id.extend(window_no_id)
+
+        unique_count = len(window_runs) + len(window_no_id)
+        if reported_total is None or unique_count >= reported_total:
+            return  # this window is fully accounted for (or totally unknown — nothing more to do)
+
+        if raw_count < PAGE_CAP:
+            # Short of total_count but never even reached the documented cap — not a
+            # capacity problem, bisecting cannot help. Depth-0 keeps the exact historical
+            # message shape (no window suffix) since that IS the whole requested window.
+            if depth == 0:
+                errors.append(
+                    "list_workflow_runs pagination shortfall: "
+                    f"fetched={unique_count} reported_total={reported_total}; record is partial"
+                )
+            else:
+                errors.append(
+                    "list_workflow_runs pagination shortfall: "
+                    f"fetched={unique_count} reported_total={reported_total} "
+                    f"window={start.isoformat()}..{end.isoformat()}; record is partial"
+                )
+            return
+
+        window_seconds = (end - start).total_seconds()
+        if depth >= MAX_BISECT_DEPTH or window_seconds <= MIN_WINDOW_SECONDS:
+            errors.append(
+                "list_workflow_runs pagination shortfall even after bisection: "
+                f"fetched={unique_count} reported_total={reported_total} "
+                f"window={start.isoformat()}..{end.isoformat()} depth={depth}; "
+                "window not further splittable"
+            )
+            return
+
+        mid = start + (end - start) / 2
+        _collect(start, mid, depth + 1)
+        _collect(mid, end, depth + 1)
+
+    _collect(since, now, 0)
+
+    runs = [*runs_by_id.values(), *runs_without_id]
+    return runs, window_reported_total[0], errors
 
 
 def fetch_run_jobs(repo: str, run_id: int) -> tuple[list[dict[str, Any]], str | None]:

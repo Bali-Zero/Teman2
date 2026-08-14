@@ -312,6 +312,173 @@ def _write_workflow(tmp_path: Path, timeout_minutes: int = 30) -> Path:
 
 
 # ---------------------------------------------------------------------------
+# list_workflow_runs pagination bisection (twin-organ cure of #4185's fix to
+# queue_baseline_probe.py's list_workflow_runs — module docstring PAGINATION CAP
+# section, scar W106b: one cure for both organs). `_make_fake_gh` above is
+# window-blind by design (it ignores `created=` and always answers with the full
+# `runs` fixture), which is fine for every OTHER test in this file since none of
+# them exceed PAGE_CAP — but these bisection tests need a fake that answers
+# DIFFERENTLY per requested window, hence the dedicated `_parse_created_window`
+# helper and fakes below (mirrors test_queue_baseline_probe.py's own helper of
+# the same name — same twin-organ test convention, not a new one invented here).
+# ---------------------------------------------------------------------------
+
+
+def _parse_created_window(cmd: list[str]) -> tuple[datetime, datetime]:
+    """Recover the `[start, end]` UTC window `list_workflow_runs` sent, for fakes that
+    need to answer differently per window rather than ignoring `cmd` like `_make_fake_gh`.
+    """
+    for i, tok in enumerate(cmd):
+        if tok == "-f" and cmd[i + 1].startswith("created="):
+            value = cmd[i + 1].split("=", 1)[1]
+            start_s, end_s = value.split("..")
+            fmt = "%Y-%m-%dT%H:%M:%SZ"
+            return (
+                datetime.strptime(start_s, fmt).replace(tzinfo=timezone.utc),
+                datetime.strptime(end_s, fmt).replace(tzinfo=timezone.utc),
+            )
+    raise AssertionError(f"no created= filter found in cmd: {cmd}")
+
+
+def test_list_workflow_runs_bisects_past_the_1000_result_cap(monkeypatch):
+    """Guilt: a window with 2,500 runs (real GitHub caps `created`-filtered queries at
+    1,000, per docs.github.com/en/rest/actions/workflow-runs — measured live on this organ
+    2026-08-14, fetched=1000 reported_total=2782) must still yield ALL of them, with an
+    empty pagination error — recovered via recursive time-window bisection, not a single
+    `--paginate` call.
+    """
+    repo, workflow = "acme/repo", "tests.yml"
+    since = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    now = datetime(2026, 8, 15, tzinfo=timezone.utc)  # 14-day span, mirrors build_record's 2*window_days
+    total_runs = 2500
+    span_seconds = (now - since).total_seconds()
+    step_seconds = span_seconds / total_runs  # evenly spread so bisection halves split ~evenly
+    all_runs = [(i + 1, since + timedelta(seconds=i * step_seconds)) for i in range(total_runs)]
+
+    def fake_run(cmd, **kwargs):  # noqa: ANN001, ANN003
+        assert cmd[0] == "gh"
+        assert cmd[2] == f"repos/{repo}/actions/workflows/{workflow}/runs"
+        start, end = _parse_created_window(cmd)
+        matched = [(rid, ts) for rid, ts in all_runs if start <= ts <= end]
+        capped = matched[: sgp.PAGE_CAP]  # GitHub's real server-side behavior: total_count is
+        # honest, the served items are capped.
+        payload = {
+            "total_count": len(matched),
+            "workflow_runs": [
+                _mk_run(rid, "push", ts.strftime("%Y-%m-%dT%H:%M:%SZ")) for rid, ts in capped
+            ],
+        }
+        return _proc(cmd, 0, json.dumps(payload))
+
+    monkeypatch.setattr(sgp.subprocess, "run", fake_run)
+
+    fetched, reported_total, errors = sgp.list_workflow_runs(repo, workflow, since, now)
+
+    assert reported_total == total_runs
+    assert sorted(run["id"] for run in fetched) == list(range(1, total_runs + 1))
+    assert errors == []
+
+
+def test_list_workflow_runs_gives_up_visibly_when_even_bisection_cannot_resolve(monkeypatch):
+    """Guilt (safety bound): a pathologically dense window that STILL reports more than
+    PAGE_CAP at every level, all the way down to the recursion bound, must never loop
+    forever and must never claim completeness — errors[] stays non-empty, never a silent
+    partial-as-complete record.
+    """
+    repo, workflow = "acme/repo", "tests.yml"
+    since = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    now = datetime(2026, 8, 15, tzinfo=timezone.utc)
+    monkeypatch.setattr(sgp, "MAX_BISECT_DEPTH", 3)  # keep the test fast; still exercises the
+    # real recursive code path and the real fail-visible guard.
+
+    def fake_run(cmd, **kwargs):  # noqa: ANN001, ANN003
+        assert cmd[0] == "gh"
+        if cmd[2] == f"repos/{repo}/actions/workflows/{workflow}/runs":
+            # Every window, no matter how narrow, reports far more than it can serve.
+            payload = {
+                "total_count": 999_999,
+                "workflow_runs": [
+                    _mk_run(i, "push", "2026-08-10T00:00:00Z") for i in range(sgp.PAGE_CAP)
+                ],
+            }
+            return _proc(cmd, 0, json.dumps(payload))
+        raise AssertionError(f"unexpected gh invocation: {cmd}")
+
+    monkeypatch.setattr(sgp.subprocess, "run", fake_run)
+
+    fetched, reported_total, errors = sgp.list_workflow_runs(repo, workflow, since, now)
+
+    assert reported_total == 999_999
+    assert len(fetched) < reported_total
+    assert errors != []
+    assert any("even after bisection" in e for e in errors)
+
+
+def test_list_workflow_runs_gives_up_end_to_end_via_build_record_nonzero_errors(tmp_path, monkeypatch):
+    """Same pathological-density scenario as above, exercised through build_record() end to
+    end: the shortfall must surface in record["errors"] (W101 discipline: this is what the
+    wrapper's rc-based alerting reads), never a green run silently sitting on a partial
+    window. All fixture runs are `event=pull_request` so they never qualify as gate runs
+    (test_qualifies_as_gate_run) — this test is about list_workflow_runs' error surfacing
+    through build_record, not about job-fetching, so no `.../jobs` endpoint needs faking.
+    """
+    _write_workflow(tmp_path, timeout_minutes=30)
+    repo, workflow = "acme/repo", "tests.yml"
+    monkeypatch.setattr(sgp, "MAX_BISECT_DEPTH", 2)
+
+    def fake_run(cmd, **kwargs):  # noqa: ANN001, ANN003
+        assert cmd[0] == "gh"
+        if cmd[1] == "api" and len(cmd) > 2 and cmd[2] == f"repos/{repo}/actions/workflows/{workflow}/runs":
+            payload = {
+                "total_count": 999_999,
+                "workflow_runs": [
+                    _mk_run(i, "pull_request", "2026-08-10T00:00:00Z") for i in range(sgp.PAGE_CAP)
+                ],
+            }
+            return _proc(cmd, 0, json.dumps(payload))
+        raise AssertionError(f"unexpected gh invocation: {cmd}")
+
+    monkeypatch.setattr(sgp.subprocess, "run", fake_run)
+
+    record = sgp.build_record(
+        repo, workflow, tmp_path, "backend/tests", NOW, 7,
+        tmp_path / "scripts" / "tg_notify.py", dispatch_alerts=False,
+    )
+
+    assert record["errors"] != []
+    assert any("even after bisection" in e for e in record["errors"])
+    assert record["run_collection"]["complete"] is False
+
+
+def test_list_workflow_runs_innocence_below_cap_is_not_bisected(monkeypatch):
+    """Innocence: a window whose raw fetch stays below PAGE_CAP is never split, regardless
+    of how narrow the theoretical windows would be — single-window behavior is unchanged
+    from before bisection existed.
+    """
+    repo, workflow = "acme/repo", "tests.yml"
+    since = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    now = datetime(2026, 8, 15, tzinfo=timezone.utc)
+    calls: list[list[str]] = []
+
+    def fake_run(cmd, **kwargs):  # noqa: ANN001, ANN003
+        calls.append(cmd)
+        payload = {
+            "total_count": 42,
+            "workflow_runs": [_mk_run(i, "push", "2026-08-10T00:00:00Z") for i in range(42)],
+        }
+        return _proc(cmd, 0, json.dumps(payload))
+
+    monkeypatch.setattr(sgp.subprocess, "run", fake_run)
+
+    fetched, reported_total, errors = sgp.list_workflow_runs(repo, workflow, since, now)
+
+    assert len(calls) == 1  # exactly one window fetched — no bisection attempted
+    assert reported_total == 42
+    assert len(fetched) == 42
+    assert errors == []
+
+
+# ---------------------------------------------------------------------------
 # build_record integration scenarios
 # ---------------------------------------------------------------------------
 
