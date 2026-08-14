@@ -12,7 +12,8 @@ import type {
   VisaOracleEvaluateResponse,
 } from "./visa-oracle-contract";
 
-export const VISA_ORACLE_EVALUATE_URL = "/api/visa-oracle/evaluate";
+export const VISA_ORACLE_EVALUATE_URL =
+  "/api/visa-oracle/evaluate?traffic_source=real";
 export const VISA_ORACLE_MAX_REQUEST_BYTES = 32 * 1_024;
 export const VISA_ORACLE_DEFAULT_TIMEOUT_MS = 12_000;
 
