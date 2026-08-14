@@ -82,7 +82,7 @@
               "status": "ACTIVE",
               "start": "2026-08-08 17:47",
               "end": "2026-09-09",
-              "auto_renewal": "NOT ENABLED — plan lapses 2026-09-09 unless renewed. operator[business]: decide renewal before that date."
+              "auto_renewal": "ENABLED by Zero 2026-08-14 evening (was NOT ENABLED at the 21:32 console read)."
             },
             "quota": {
               "model": "7-Day rolling quota",
