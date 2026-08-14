@@ -34,7 +34,7 @@ describe("sendShadowEvaluation — the ONE network call site for SHADOW mode", (
     expect(result).toBeUndefined();
   });
 
-  it("POSTs to the exact anonymous evaluate endpoint, no query params, keepalive + JSON headers", () => {
+  it("POSTs to the anonymous evaluate endpoint with an explicit organic label, keepalive + JSON headers", () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue(new Response("{}", { status: 200 }));
@@ -48,11 +48,11 @@ describe("sendShadowEvaluation — the ONE network call site for SHADOW mode", (
       RequestInit & { keepalive?: boolean },
     ];
     expect(url).toBe(SHADOW_EVALUATE_URL);
-    expect(url.endsWith("/api/visa-oracle/evaluate")).toBe(true);
-    // No traffic_source / request_category query params (grounded contract:
-    // the server default traffic_source="real" is exactly what organic
-    // browser SHADOW traffic should be labelled as).
-    expect(url).not.toContain("?");
+    const parsedUrl = new URL(url);
+    expect(parsedUrl.pathname).toBe("/api/visa-oracle/evaluate");
+    expect([...parsedUrl.searchParams.entries()]).toEqual([
+      ["traffic_source", "real"],
+    ]);
     expect(init.method).toBe("POST");
     expect(init.keepalive).toBe(true);
     expect(init.headers).toMatchObject({ "Content-Type": "application/json" });

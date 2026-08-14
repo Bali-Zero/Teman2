@@ -94,7 +94,20 @@ FILES_CHANGED="$(git "${DIFF_ARGS[@]}" --stat 2>/dev/null | tail -1 | grep -oE '
 # Codex spalla BLOCKER #2 + #3: include uncommitted + untracked in the
 # "what's about to ship" tally; otherwise fresh `Write` files look empty.
 UNCOMMITTED_LINES="$(git diff HEAD 2>/dev/null | wc -l | tr -d ' ')"
-UNCOMMITTED_FILES="$(git diff HEAD --name-only 2>/dev/null | grep -c . 2>/dev/null || echo 0)"
+# W104-class bug fixed 2026-08-14 (found by spalla-review on an unrelated PR):
+# `grep -c .` ALWAYS prints a count to stdout (0 on no match) but STILL exits
+# 1 when that count is 0 — under this script's own `set -o pipefail` (line
+# 24), a zero-match pipeline is "failed", so the old `|| echo 0` fallback ran
+# TOO, appending a second "0" after the one grep had already printed. The
+# captured value on an empty diff was the two-line string "0\n0", which then
+# broke `$((...))` arithmetic at TOTAL_FILES below with a hard `syntax error
+# in expression` (reproduced verbatim: `printf '' | grep -c . 2>/dev/null ||
+# echo 0` -> "0\n0"). Fix: `|| true` instead of `|| echo 0` — grep's own
+# printed count is authoritative and the exit code carries no information
+# worth reacting to (same lesson as W104: judge the output, not the exit
+# code), so the fallback only needs to stop `set -e`/pipefail from treating
+# "zero matches" as an error, never to supply its own value.
+UNCOMMITTED_FILES="$(git diff HEAD --name-only 2>/dev/null | grep -c . 2>/dev/null || true)"
 UNTRACKED_FILES="$(git ls-files --others --exclude-standard 2>/dev/null | wc -l | tr -d ' ')"
 TOTAL_DIFF_LINES=$((DIFF_LINES + UNCOMMITTED_LINES))
 
@@ -180,7 +193,9 @@ UNCOMMITTED_BODY="$(git diff HEAD 2>/dev/null | head -1000 || true)"
 # Cap: max 25 files × 200 lines/file ≈ 5000 lines budget, plus skip binary.
 UNTRACKED_FILES_FOR_DUMP="$(git ls-files --others --exclude-standard 2>/dev/null | head -25 || true)"
 UNTRACKED_LIST="$(git ls-files --others --exclude-standard 2>/dev/null | head -50 || true)"
-UNTRACKED_TOTAL_FOR_DUMP="$(printf '%s\n' "$UNTRACKED_FILES_FOR_DUMP" | grep -c . 2>/dev/null || echo 0)"
+# Same class of bug as UNCOMMITTED_FILES above (`|| echo 0` doubling grep -c's
+# own already-printed "0" under pipefail) — same fix, `|| true`.
+UNTRACKED_TOTAL_FOR_DUMP="$(printf '%s\n' "$UNTRACKED_FILES_FOR_DUMP" | grep -c . 2>/dev/null || true)"
 UNTRACKED_BODIES=""
 if [[ -n "$UNTRACKED_FILES_FOR_DUMP" ]]; then
     while IFS= read -r ufile; do
