@@ -1,0 +1,86 @@
+{
+  "run_at": "2026-08-15T07:45:36+08:00",
+  "today": "2026-08-15",
+  "new_today_count": 0,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "http_403",
+      "note": "Blocked by Cloudflare challenge"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "timeout",
+      "note": "DNS resolution failed (SERVFAIL), retried once"
+    },
+    {
+      "url": "https://jdih.kemenkumham.go.id",
+      "reason": "timeout",
+      "note": "DNS resolution failed (SERVFAIL), retried once"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "empty_shell",
+      "note": "NextJS rendered 404 error fallback page"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://ortax.org/berita",
+      "reason": "checked_no_new",
+      "note": "Tax news headlines parsed; no new regulations matching filters in 48h window"
+    },
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "Homepage headlines parsed; no new regulations matching filters in 48h window"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "checked_no_new",
+      "note": "Articles parsed; PFII article published 14 Aug reports on RUU passed in July, no new regulations"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "Newest entry UU 2/2026 dated 30 April 2026"
+    },
+    {
+      "url": "https://peraturan.go.id",
+      "reason": "outside_window",
+      "note": "Newest entry Permenkumham 13/2026 (already seen) and Permendikdasmen 19/2026 dated 06 Aug"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "Newest entry PER-8/PJ/2026 (already seen) dated 2026-07-28"
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [],
+  "seen_citations": [
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 28 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "PMK Nomor 44 Tahun 2026",
+    "Peraturan Direktur Jenderal Pajak Nomor PER-8/PJ/2026",
+    "Peraturan Menteri Hukum Nomor 13 Tahun 2026",
+    "PMK Nomor 61 Tahun 2026",
+    "PMK Nomor 57 Tahun 2026"
+  ]
+}
