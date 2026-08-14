@@ -15,11 +15,11 @@ status: DRAFT — evidence verified; owner/legal decision required before RulePa
 
 # Visa Oracle G-b family refuter — E31B and E31D
 
-**Date:** 2026-08-15  
+**Date:** 2026-08-15<br>
 **Scope:** active RulePack sequence 7 (`2026.8.11`, payload SHA-256
-`3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82`)  
+`3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82`)<br>
 **Mode impact:** none — evidence only; no RulePack, signing, activation, ENFORCE,
-secret, data or deployment change  
+secret, data or deployment change<br>
 **Disposition:** **BLOCK / unresolved G-b defect** until the family fact vocabulary,
 official-source interpretation and signed-pack change are approved independently
 
