@@ -360,6 +360,16 @@ confirms it; the formal veto on the implementer's eventual PR is carried there v
 citing this artifact, not via a direct message to that lane (coordination channel per Zero's
 standing order: artifacts/PRs only, no direct cross-lane messaging).
 
+**STATUS UPDATE, verified independently this turn (not taken on team-lead's word — re-checked via
+`git log`/`git show`/`git diff --stat` in the implementer worktree directly): the ADR is no longer
+phantom.** Committed at `a2201e958` ("docs(bot): ADR for OpenAI Responses client (NO-WIRING) +
+SKILL.md correction") and finalized at `986a29280`; 371 lines, tracked, working tree clean. This
+document's veto is NOT lifted by that alone — a committed ADR retires the "authority doesn't exist"
+half of Finding 0, but the OTHER half (does the code actually implement what the ADR claims to
+mandate?) has not been checked in this pass and is exactly what the freeze re-review below must do.
+Do not read "the ADR exists now" as "Finding 0 is closed" — it converts from a phantom-citation veto
+into an ordinary ADR-compliance review, which still has to happen.
+
 ### Orchestrator-supplied risks — verified
 
 | # | Claim | Verified? | Evidence |
@@ -492,39 +502,58 @@ own count) all checked out. Noted for calibration, not treated as an objection.
 Do not execute either prompt until team-lead signals the implementer's diff is frozen (committed,
 PR open). Fill in `<IMPLEMENTER_PR_URL>` at that point.
 
+**Ground truth as of THIS revision (do not re-derive, verify against the FROZEN diff instead):** the
+shadow-provider design (Findings 5/6/7) is already gone — reworked away before this diff existed —
+and the ADR (Finding 0) is already committed (`a2201e958`/`986a29280`, 371 lines). The freeze prompts
+below are updated accordingly: item (d) is now an ADR-COMPLIANCE check (does the code implement what
+the ADR mandates), not an existence check; a NEW item (h) is the fence net-diff check; a NEW item (i)
+is the credential-only check.
+
 **Kimi K3** (`kimi -p "<prompt>" -m kimi-code/k3`):
 ```
 Re-review the FROZEN diff at <IMPLEMENTER_PR_URL> against research/operations/2026-08-15-bot-
 openai-provider-threat-model.md and research/operations/2026-08-15-bot-openai-privacy-retention-
-plan.md (ground truth for invariants/gates). This is a re-review of drift since an earlier
-unfrozen-snapshot draft, not a from-scratch pass. Check specifically, citing file:line for the
-FROZEN diff (not memory of the draft): (a) is "store": false still set unconditionally in every
-Responses payload; (b) does the tool schema still avoid OpenAI-native retrieval/mcp tools (G5/G16);
-(c) does every OpenAI tool-call actually route through _strip_reserved_args and
-tool_authorizer.authorize() (G3/G4); (d) is the shadow dispatch's context-parity gap (missing
-conversation history/tools, Finding 5 in the threat model) still present or fixed; (e) is the
-phantom-ADR citation (Finding 0 — research/operations/2026-08-15-adr-wa-runtime-openai-provider.md)
-resolved — committed, or citations removed; (f) any NEW gate pattern needed for something that
-changed since the draft; (g) does `DEFAULT_MODEL` still resolve to `gpt-5.6-terra` (or another
-real, currently-documented OpenAI model slug — re-check against OpenAI's own model docs, don't
-assume "STALE — CORRECTED" from an earlier pass still holds), and does `_resolve_api_key()`
-genuinely re-read its source on every call rather than memoizing. Report each as ACCEPTED (matches
-the draft's existing finding) or CHANGED (drifted — describe how) against the draft's claims; item
-(g) may surface something genuinely new (a changed model default, a memoized key) — report that as
-CHANGED against the specific row it updates (row 3 / row 4), not withheld for not fitting the
-ACCEPTED/CHANGED frame. Do not propose fixes or code changes — this is a review-only pass. Cite
-file:line for every claim.
+plan.md (ground truth for invariants/gates). This is a re-review of drift since the last verified
+snapshot (commits a2201e958/986a29280 in the implementer worktree, net-diff 8 files/+3015 vs
+origin/main), not a from-scratch pass. Check specifically, citing file:line for the FROZEN diff (not
+memory of the draft): (a) is "store": false still set unconditionally in every Responses payload;
+(b) does the tool schema still avoid OpenAI-native retrieval/mcp tools (G5/G16); (c) does every
+OpenAI tool-call actually route through _strip_reserved_args and tool_authorizer.authorize()
+(G3/G4) — NOTE this may be moot if the frozen diff is still a standalone, unwired client with no
+tool-calling wiring at all, in which case say so explicitly rather than reporting a vacuous pass;
+(d) READ research/operations/2026-08-15-adr-wa-runtime-openai-provider.md in full and verify the
+CODE actually implements what it mandates (this replaces the old "does the ADR exist" check — it
+now exists; the open question is whether the code matches it) — name any mandate in the ADR the code
+does not fulfill; (e) is Finding 0's phantom-citation status now fully retired (ADR exists, is
+committed, AND is actually cited correctly by the six files the threat model's Finding 0 lists), or
+does a citation still point somewhere wrong; (f) any NEW gate pattern needed for something that
+changed since the last snapshot; (g) does `DEFAULT_MODEL` still resolve to `gpt-5.6-terra` (or
+another real, currently-documented OpenAI model slug — re-check against OpenAI's own model docs,
+don't assume the earlier "STALE — CORRECTED" verdict still holds), and does `_resolve_api_key()`
+genuinely re-read its source on every call rather than memoizing; (h) FENCE net-diff check: `git
+diff origin/main...HEAD --stat` in the implementer worktree — confirm zero touches to config.py and
+llm_gateway.py, and that no shadow-provider-shaped dead code (a module dispatching to OpenAI from
+inside the live orchestrator path without being called) has reappeared; (i) grep the frozen diff for
+the literal string `OPENAI_API_KEY` (bare, not `OPENAI_WA_PROVIDER_API_KEY`) — the ONLY sanctioned
+credential per the council's fence (G20) is `OPENAI_WA_PROVIDER_API_KEY`; any bare `OPENAI_API_KEY`
+read/fallback in the adapter is a fence violation. Report each as ACCEPTED (matches the draft's
+existing finding) or CHANGED (drifted — describe how) against the draft's claims; items (d)/(g)/(h)/
+(i) may surface something genuinely new — report that as CHANGED against the specific finding/row/
+gate it updates, not withheld for not fitting the ACCEPTED/CHANGED frame. Do not propose fixes or
+code changes — this is a review-only pass. Cite file:line for every claim.
 ```
 
 **Google/agy Gemini seat** (`agy -p "<prompt>"`):
 ```
 Same target and ground-truth docs as the Kimi K3 prompt above (research/operations/2026-08-15-bot-
 openai-provider-threat-model.md + -privacy-retention-plan.md, diff at <IMPLEMENTER_PR_URL>, frozen).
-Re-verify the same six items (a-f above) independently, without reading Kimi's output first, then
+Re-verify the same nine items (a-i above) independently, without reading Kimi's output first, then
 diff your findings against the draft's existing claims (ACCEPTED/CHANGED, not fresh discovery
 framing). Focus your width on anything the draft's narrower code-reading pass may have missed
-across the full frozen diff, not just the files already named in the draft's §Live diff review. Cite
-file:line for every claim. Review-only — no fixes, no code changes proposed.
+across the full frozen diff, not just the files already named in the draft's §Live diff review —
+especially item (d), the ADR-compliance read, which is new this pass and benefits from a
+second, independent reading of the ADR against the code rather than trusting one seat's parse of a
+371-line document. Cite file:line for every claim. Review-only — no fixes, no code changes proposed.
 ```
 
 ## §Incident log
