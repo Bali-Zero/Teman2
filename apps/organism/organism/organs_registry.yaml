@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: ed03e70797370467ddbef5e0f3172540db45c7241875824782a31bde49b49ea6
+checksum: 634f7e8d799f5173c825ad9a871557a41ab7f50b8a5d5d6adce7c38161455370
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2322,5 +2322,48 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.zoho_mail_loop.json
+    timestamp_field: ts
+    status_field: status
+- id: army.jules_dispatch
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 86400
+  owner_module: scripts/army/jules_lane_dispatch_wrapper.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.army-jules-dispatch
+  severity_on_silence: warning
+  notes: Armata H24 lane 2, dispatch half — daily 09:00 WITA tick, scripts/army/jules_lane.py
+    dispatch mode sends up to ARMY_JULES_DAILY_CAP tasks from infra/army/jules-queue/*.md
+    to Jules. Never lands anything. See research/operations/2026-08-14-armata-h24-standing-lanes.md.
+    Reports status=blocked until the Jules API key is provisioned on Pro (operator[secret]).
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/army.jules_lane.json
+    timestamp_field: ts
+    status_field: status
+- id: army.jules_harvest
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 10800
+  owner_module: scripts/army/jules_lane_harvest_wrapper.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.army-jules-harvest
+  severity_on_silence: warning
+  notes: Armata H24 lane 2, harvest half — every 3h tick, scripts/army/jules_lane.py
+    harvest mode polls open sessions in ~/army/jules/state/sessions.jsonl. COMPLETED
+    sessions get patch evidence downloaded and one row appended to shared/escalations_pro.jsonl
+    for an interactive session to independently verify and land — this lane never
+    verifies or lands anything itself. See research/operations/2026-08-14-armata-h24-standing-lanes.md.
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/army.jules_lane.json
     timestamp_field: ts
     status_field: status
