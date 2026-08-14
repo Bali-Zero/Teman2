@@ -4,6 +4,7 @@ domain: operations
 client_case: N/A — internal fleet governance (Alibaba Token Plan / TP1 wing PROBE-1-residual)
 sources: 9
 discovered_by: session (worktree .worktrees/ops-tp1-probe1, mandate from team-lead); economic section corrected same-day after independent WebSearch verification by team-lead against Alibaba's own docs; console ground truth (Part 4) read by Zero + team-lead directly from the Model Studio dashboard same-day
+adversarial_review: codex
 ---
 
 # PROBE-1-residual — TP1 burn-rate measured from 7 days of production use
@@ -360,3 +361,61 @@ PROBATION because their own mileage is zero, and MiniMax M2.5 (plus kimi-k2.x) r
 PHANTOM rather than PROBATION once the console roster proved they were never part of this plan
 at all. Two real discrepancies were surfaced rather than papered over in this probe: the
 `-pro` vs `-flash` naming mismatch (Part 3) and the MiniMax/kimi roster phantom (this part).
+
+## Adversarial review
+
+Reviewer: Codex (`codex exec --sandbox read-only --skip-git-repo-check`, `gpt-5.6-sol`,
+`model_reasoning_effort=medium`), fresh session, no prior context — generator≠grader per
+CLAUDE.md §6. The document's own provenance for a prior review pass was not independently
+verifiable (no session id/transcript pointer on disk), so per W113 discipline ("do not
+fabricate a review that isn't verifiable") this is a **fresh** review run same-day rather than
+a reconstruction of an earlier one. All ten objections below were independently re-verified
+against the document's own text/arithmetic before being transcribed here; none were struck.
+
+1. **Version-number contradiction.** The 1-sentence outcome (above) says promotion landed in
+   `FLEET_TOPOLOGY.json` **v1.4**; Part 3 says the file was "bumped to `_version: "1.3"`". Both
+   cannot describe the same applied state — one of the two is stale text.
+2. **MiniMax status contradiction, uncorrected.** Part 3 says MiniMax M2.5 "stays PROBATION —
+   zero measured calls, PROBE-4 explicitly still open" and labels this "confirmed correct".
+   Part 4 and the Conclusion instead reclassify it PHANTOM and call PROBE-4 moot. Part 3's
+   claim is never flagged as superseded — a reader stopping at Part 3 walks away with the wrong
+   verdict.
+3. **Request-count arithmetic.** Part 2 lists 3 base URLs × 9 paths tried "on each base" = 27
+   combinations, but the text says "20 requests, 20× HTTP 404" — a 7-request gap the document
+   doesn't account for (were some combinations skipped, and if so which?).
+4. **"7 days" is not seven complete days.** The window runs 2026-08-08 17:47 →
+   2026-08-14 21:32 (the last day explicitly marked partial); dividing 7-day cost/tokens evenly
+   by 7 to get "$6.04/day" / "$181/month" understates the true burn rate once normalized to
+   elapsed time rather than calendar-day count (the doc's own "naive" qualifier on the run-rate
+   figure acknowledges this only partially).
+5. **"Sharply accelerating... a real trend, not noise" overreaches a single week of data.**
+   Daily totals (12.93M → 34.69M → 2.95M → 11.42M → 16.87M → 42.23M → 90.61M) show a late spike,
+   not a demonstrated trend — one week with no variance/seasonality baseline cannot rule out
+   noise, and the document asserts "not noise" without that analysis.
+6. **Console per-day table doesn't sum to the stated console total.** Re-added independently:
+   13.47M + 35.49M + 2.95M + 11.95M + 17.52M + 43.27M + 92.49M = **217.14M**, not the **217.06M**
+   the doc cites as "the console dashboard" total two sections earlier — an unexplained
+   ~80,000-token gap inside the document's own numbers, before any comparison to the local logs.
+7. **The `usage_record.jsonl` cross-check generalizes from one session.** Only session
+   `35d1ba86-…` is quantified (rollup 86,639 vs per-call 85,484 tokens, ~1.35% delta); the claim
+   that the full 43-session rollup "passes, within ~2%" against the per-call log has no
+   aggregate-level figure behind it.
+8. **"Independently-derived local log files" contradicts the document's own earlier framing.**
+   The correction section states `usage_record.jsonl` and `token-usage-2026-08.jsonl` capture
+   "the SAME underlying activity at different grain" and are explicitly NOT additive/
+   independent sources — the Part 4 cross-check section then calls them "independently-derived"
+   while reconciling them against the console counter.
+9. **20-27 route 404s cannot establish "endpoint crediti non esposto via API."** They show the
+   guessed paths on the tested bases failed, not that no credits/usage endpoint exists anywhere
+   on the account — undocumented paths, methods, or a separate billing API remain unruled-out.
+   (The document's own scope note — "if none respond: declare closed, this is a valid outcome"
+   — makes this an accepted limitation rather than an oversight, but the objection to the
+   *proof strength* of the closing sentence stands.)
+10. **Night-scheduling recommendation is unsupported by the cited evidence.** "Limited-time
+    Night 50% Off" alone doesn't establish eligible hours, timezone, or that TP1's actual quota
+    consumption (vs. sticker price) benefits from the discount window.
+
+None of the ten reopen PROBE-1-residual's headline conclusion (usage is within the 7-day
+rolling quota per Part 4's direct console read, which is independent of the disputed
+arithmetic above) — they are internal-consistency and evidentiary-rigor defects in how that
+conclusion is supported and cross-checked, reported here rather than corrected silently.
