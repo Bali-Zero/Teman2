@@ -4,7 +4,7 @@
   com.nuzantara.army-jules-harvest — Armata H24 lane 2, harvest half
   (2026-08-14).
 
-  Every 3h tick: scripts/army/jules_lane.py --harvest polls every session
+  Every 3h tick: scripts/army/jules_lane.py harvest mode polls every session
   recorded as open in ~/army/jules/state/sessions.jsonl. COMPLETED sessions
   get their patch evidence downloaded to
   ~/army/jules/inbox/<session-id>/ and ONE row appended to

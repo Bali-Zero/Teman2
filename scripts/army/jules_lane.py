@@ -88,6 +88,19 @@ import time
 from pathlib import Path
 from typing import Any
 
+# tg_gateway_verdict lives at the repo root's scripts/ package, not
+# relative to this file's own directory (scripts/army/) — resolve from
+# __file__, not from Paths.repo, which is env-overridable for test
+# fixtures and must not decide where our OWN source tree is
+# (scripts/tests/test_gateway_callers_read_the_verdict.py: tg_notify.py
+# exits 0 on three "not delivered now" outcomes too, so a caller that
+# never parses the verdict cannot tell a page from a swallowed alert).
+_REPO_ROOT_FOR_IMPORTS = Path(__file__).resolve().parents[2]
+if str(_REPO_ROOT_FOR_IMPORTS) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT_FOR_IMPORTS))
+
+from scripts.tg_gateway_verdict import extract_gateway_verdict, gateway_delivered  # noqa: E402
+
 ORGAN_ID = "army.jules_lane"
 
 logging.basicConfig(
@@ -177,12 +190,23 @@ def heartbeat(paths: Paths, status: str, note: str) -> None:
         logger.warning("heartbeat write failed (non-fatal): %s", exc)
 
 
-def telegram(paths: Paths, tier: str, dedup_key: str, text: str) -> None:
-    """The ONE gateway. Never a raw curl, never a hardcoded token."""
+def telegram(paths: Paths, tier: str, dedup_key: str, text: str) -> str | None:
+    """The ONE gateway. Never a raw curl, never a hardcoded token.
+
+    Returns the gateway's parsed verdict (scripts/tg_gateway_verdict.py) —
+    one of the six canonical outcomes tg_notify.py exits 0 on, only one of
+    which ("sent") is a real-time delivery. The old version here logged
+    `proc.returncode` and moved on, which reads deduped/spooled/
+    p0_overflow_spooled/p0_unsent_spooled — all exit 0 — as a delivery
+    (W104; scripts/tests/test_gateway_callers_read_the_verdict.py, the
+    class guard that caught this file). This lane doesn't currently branch
+    dispatch/harvest logic on the verdict, but it no longer misreports
+    "the subprocess ran" as "the owner got paged".
+    """
     gateway = paths.repo / "scripts" / "tg_notify.py"
     if not gateway.is_file():
         logger.warning("NO GATEWAY at %s — alert NOT sent: %s", gateway, text[:80])
-        return
+        return None
     for py in ("/usr/bin/python3", "/opt/homebrew/bin/python3", "/usr/local/bin/python3", "python3"):
         exe = py if py.startswith("/") else _which(py)
         if not exe:
@@ -193,13 +217,27 @@ def telegram(paths: Paths, tier: str, dedup_key: str, text: str) -> None:
                  "--dedup-key", dedup_key, "--", text],
                 capture_output=True, text=True, timeout=30, check=False,
             )
-            logger.info("tg_notify[%s]: rc=%s %s", dedup_key, proc.returncode,
-                        (proc.stdout or proc.stderr).strip()[-200:])
-            return
+            verdict = extract_gateway_verdict(proc.stderr)
+            if verdict is None:
+                logger.warning(
+                    "tg_notify[%s]: rc=%s — no canonical verdict line found, "
+                    "treating as NOT delivered: %s",
+                    dedup_key, proc.returncode, (proc.stdout or proc.stderr).strip()[-200:],
+                )
+            elif gateway_delivered(verdict):
+                logger.info("tg_notify: %s [%s]", verdict, dedup_key)
+            else:
+                logger.info(
+                    "tg_notify: %s [%s] — not a real-time delivery (rc=%s means the "
+                    "process ran, not that Telegram got it)",
+                    verdict, dedup_key, proc.returncode,
+                )
+            return verdict
         except Exception as exc:  # noqa: BLE001
             logger.warning("tg_notify invocation failed: %s", exc)
-            return
+            return None
     logger.warning("no python3 found — alert NOT sent: %s", text[:80])
+    return None
 
 
 def _which(name: str) -> str | None:

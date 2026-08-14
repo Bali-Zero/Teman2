@@ -4,7 +4,7 @@
   com.nuzantara.army-jules-dispatch — Armata H24 lane 2, dispatch half
   (2026-08-14).
 
-  Daily 09:00 WITA tick: scripts/army/jules_lane.py --dispatch sends up to
+  Daily 09:00 WITA tick: scripts/army/jules_lane.py dispatch mode sends up to
   ARMY_JULES_DAILY_CAP (default 3) tasks from infra/army/jules-queue/*.md to
   Jules. Never lands anything — see
   research/operations/2026-08-14-armata-h24-standing-lanes.md and
