@@ -228,19 +228,19 @@ describe("deriveProvenance — innocence corpus", () => {
     expect(prov.state).toBe("pending");
   });
 
-  it("PMA layer is a vintage disclosure on every state, source passed through", () => {
+  it("PMA provenance is independent of licensing state and passes through only an explicit locator + vintage", () => {
     const prov = deriveProvenance(
       makeRaw({
         _l2_source: "OSS_RBA_resiko_2025",
-        bps_2020_ancestors: {
-          codes: ["99999"],
-          adjudication_status: "mechanical-only",
-          inheritance_verdict: "not-adjudicated",
-        },
+        pma_verification_status: "located",
+        pma_official_basis: "Perpres 49/2021 Lampiran III fixture",
+        pma_source_vintage: "2021-05-25",
       }),
     );
-    expect(prov.pma.vintage).toBe("2020");
+    expect(prov.pma.status).toBe("located");
+    expect(prov.pma.vintage).toBe("2021-05-25");
     expect(prov.pma.source).toBe("Perpres 10/2021, 49/2021");
+    expect(prov.pma.locator).toBe("Perpres 49/2021 Lampiran III fixture");
   });
 });
 
@@ -310,45 +310,10 @@ describe("deriveProvenance — real dataset partition invariants", () => {
   });
 });
 
-describe("deriveProvenance — PMA basis traceability (guilt + innocence)", () => {
-  // The PMA layer used to be a CONSTANT: `vintage: "2020"`, `status:
-  // "pending_crosswalk"` as literal types, so every one of the 1,559 codes carried
-  // the same provenance verdict and no other answer was even representable. That
-  // reads as honest ("crosswalk audit in progress") and is honest — for a code with
-  // a recorded KBLI-2020 origin. For a code with none it promises an audit that has
-  // nothing to run on.
-  it("GUILT: no recorded 2020 ancestry ⇒ untraceable_basis, no vintage", () => {
-    const prov = deriveProvenance(
-      makeRaw({ pp28_sources: [], bps_2020_ancestors: undefined }),
-    );
-    expect(prov.pma.status).toBe("untraceable_basis");
-    expect(prov.pma.vintage).toBeNull();
-    // The verdict VALUE is still served — this layer describes provenance, it
-    // never claims the ownership status is wrong.
-    expect(prov.pma.source).toBe("Perpres 10/2021, 49/2021");
-  });
-
-  it("GUILT: an ancestry object with an EMPTY code list is not ancestry", () => {
-    // `bps_2020_ancestors` is an object, so `if (raw.bps_2020_ancestors)` reads
-    // `{codes: []}` as "has ancestry" — form lying about entity, the error this
-    // lane keeps paying for. The predicate must look at the codes.
+describe("deriveProvenance — PMA verification gate (guilt + innocence)", () => {
+  it("GUILT: a legacy value and crosswalk ancestry cannot verify a verdict", () => {
     const prov = deriveProvenance(
       makeRaw({
-        pp28_sources: [],
-        bps_2020_ancestors: {
-          codes: [],
-          adjudication_status: "not-adjudicated",
-          inheritance_verdict: "not-adjudicated",
-        },
-      }),
-    );
-    expect(prov.pma.status).toBe("untraceable_basis");
-  });
-
-  it("INNOCENCE: BPS ancestry ⇒ unchanged pending_crosswalk at vintage 2020", () => {
-    const prov = deriveProvenance(
-      makeRaw({
-        pp28_sources: [],
         bps_2020_ancestors: {
           codes: ["01111"],
           adjudication_status: "not-adjudicated",
@@ -356,17 +321,53 @@ describe("deriveProvenance — PMA basis traceability (guilt + innocence)", () =
         },
       }),
     );
-    expect(prov.pma.status).toBe("pending_crosswalk");
-    expect(prov.pma.vintage).toBe("2020");
+    expect(prov.pma.status).toBe("declared_gap");
+    expect(prov.pma.locator).toBeNull();
+    expect(prov.pma.vintage).toBeNull();
   });
 
-  it("GUILT: PP28-only licensing sources do not establish ancestry", () => {
-    // PP28 identifies the regulatory rows used as licensing sources. It is not
-    // the official identity relation and cannot make a PMA basis traceable.
-    const prov = deriveProvenance(
-      makeRaw({ pp28_sources: ["01111"], bps_2020_ancestors: undefined }),
+  it("GUILT: located without locator or vintage fails closed", () => {
+    const missingLocator = deriveProvenance(
+      makeRaw({
+        pma_verification_status: "located",
+        pma_source_vintage: "2021-05-25",
+      }),
     );
-    expect(prov.pma.status).toBe("untraceable_basis");
+    const missingVintage = deriveProvenance(
+      makeRaw({
+        pma_verification_status: "located",
+        pma_official_basis: "Perpres 49/2021 Lampiran III",
+      }),
+    );
+    expect(missingLocator.pma.status).toBe("declared_gap");
+    expect(missingVintage.pma.status).toBe("declared_gap");
+  });
+
+  it("INNOCENCE: explicit located + locator + vintage verifies the verdict", () => {
+    const prov = deriveProvenance(
+      makeRaw({
+        pma_verification_status: "located",
+        pma_official_basis: "Perpres 49/2021 Lampiran III baris 7",
+        pma_source_vintage: "2021-05-25",
+      }),
+    );
+    expect(prov.pma).toMatchObject({
+      status: "located",
+      locator: "Perpres 49/2021 Lampiran III baris 7",
+      vintage: "2021-05-25",
+    });
+  });
+
+  it("GUILT: an explicit declared gap cannot be promoted by stray fields", () => {
+    const prov = deriveProvenance(
+      makeRaw({
+        pma_verification_status: "declared_gap",
+        pma_official_basis: "stray locator",
+        pma_source_vintage: "2021-05-25",
+      }),
+    );
+    expect(prov.pma.status).toBe("declared_gap");
+    expect(prov.pma.locator).toBeNull();
     expect(prov.pma.vintage).toBeNull();
   });
 });
@@ -381,18 +382,19 @@ describe("deriveProvenance — PMA traceability on the real dataset", () => {
     fs.readFileSync(DATA_PATH, "utf-8"),
   ) as KBLIRawDataFile;
 
-  it("pins the cured real dataset: no untraceable ancestry remains", () => {
-    const untraceable = parsed.data.filter(
-      (r) => deriveProvenance(r).pma.status === "untraceable_basis",
+  it("pins the canonical honesty partition: 54 located, 1,505 gaps", () => {
+    const located = parsed.data.filter(
+      (r) => deriveProvenance(r).pma.status === "located",
     );
-    expect(untraceable).toHaveLength(0);
-    // Every BPS-present record keeps the vintage disclosure.
-    for (const r of parsed.data) {
-      const prov = deriveProvenance(r);
-      expect(prov.pma.status, `code ${r.kode_kbli_2025}`).toBe(
-        "pending_crosswalk",
-      );
-      expect(prov.pma.vintage, `code ${r.kode_kbli_2025}`).toBe("2020");
+    const gaps = parsed.data.filter(
+      (r) => deriveProvenance(r).pma.status === "declared_gap",
+    );
+    expect(located).toHaveLength(54);
+    expect(gaps).toHaveLength(1505);
+    for (const r of located) {
+      const prov = deriveProvenance(r).pma;
+      expect(prov.locator, `code ${r.kode_kbli_2025}`).toBeTruthy();
+      expect(prov.vintage, `code ${r.kode_kbli_2025}`).toBeTruthy();
     }
   });
 });

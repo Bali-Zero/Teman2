@@ -34,9 +34,13 @@ function restricted(overrides: Partial<KBLICode["pma"]> = {}): KBLICode {
       isPriority: false,
       note: null,
       source: "Perpres 10/2021",
+      verificationStatus: "located",
+      officialBasis: "Perpres 49/2021 Lampiran III fixture",
+      sourceVintage: "2021-05-25",
       capSpecial: false,
       capVerified: true,
       routeTo: null,
+      citation: "Perpres 49/2021 Lampiran III fixture",
       ...overrides,
     },
     licensing: [],
@@ -49,6 +53,25 @@ function restricted(overrides: Partial<KBLICode["pma"]> = {}): KBLICode {
     },
     tier: "silver",
     keywords: [],
+    provenance: {
+      state: "verified",
+      definition: { locator: "fixture", assembly: "fixture" },
+      licensing: {
+        status: "oss_native",
+        locator: "OSS_RBA_resiko_2025",
+        vintage: "2025",
+        noOssScope: false,
+        contentInheritedFrom: null,
+      },
+      pma: {
+        source: "Perpres 10/2021",
+        vintage: "2021-05-25",
+        status: "located",
+        locator: "Perpres 49/2021 Lampiran III fixture",
+      },
+      dataNote: null,
+      disputed: null,
+    },
   } as unknown as KBLICode;
 }
 

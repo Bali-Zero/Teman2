@@ -1,10 +1,24 @@
 import { render, screen, within } from "@testing-library/react";
+import fs from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { KBLITransition } from "@/lib/kbli-types";
 import { getCode } from "@/lib/kbli-data";
 import { KBLITransitionSources } from "./KBLITransitionSources";
 
 describe("KBLITransitionSources — BPS-authoritative transition disclosure", () => {
+  it("guilt: the transition card sits outside the gold/non-gold layout branch", () => {
+    const page = fs.readFileSync(
+      path.join(process.cwd(), "src/app/kbli/[code]/page.tsx"),
+      "utf8",
+    );
+
+    expect(page.match(/<KBLITransitionSources\b/g)).toHaveLength(1);
+    expect(page).toMatch(
+      /\)\}\s*\{\/\* BPS\/PP28 transition provenance is shared by both layouts\.[\s\S]*?<KBLITransitionSources/,
+    );
+  });
+
   it("guilt: 01138 renders BPS first, PP28 second, with neither called previous codes", () => {
     const code = getCode("01138")!;
     const { container } = render(

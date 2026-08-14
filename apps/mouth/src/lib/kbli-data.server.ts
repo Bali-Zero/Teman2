@@ -249,6 +249,7 @@ function transformCode(
   gold: Record<string, KBLIGoldContent>,
 ): KBLICode {
   const code = raw.kode_kbli_2025;
+  const provenance = deriveProvenance(raw);
   // Mandate 12 fix (2026-08-09, PENDING-ARMS.md "sektor_id is not a
   // malformed KBLI section"): the section is derived from the code's
   // 2-digit prefix, the same single source of truth kbli-data.ts uses —
@@ -313,6 +314,9 @@ function transformCode(
       isPriority: raw.pma_prioritas || false,
       note: raw.pma_nota,
       source: raw.pma_source,
+      verificationStatus: provenance.pma.status,
+      officialBasis: provenance.pma.locator,
+      sourceVintage: provenance.pma.vintage,
       capSpecial: raw.pma_cap_special === true,
       capVerified: raw.pma_cap_verified !== false,
       routeTo: raw.pma_route_to ?? null,
@@ -371,7 +375,7 @@ function transformCode(
             : undefined,
         }
       : undefined,
-    provenance: deriveProvenance(raw),
+    provenance,
     riskDispute: riskDispute(code) ?? undefined,
     // Same dual-reader discipline as riskDispute above — set in BOTH
     // transforms (kbli-data.ts is the one the page actually consumes) or the

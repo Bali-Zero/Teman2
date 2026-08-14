@@ -1,5 +1,8 @@
 import type { KBLICode } from "@/lib/kbli-types";
-import { isLicensingVerificationPending } from "@/lib/kbli-provenance";
+import {
+  isLicensingVerificationPending,
+  isPmaVerdictVerified,
+} from "@/lib/kbli-provenance";
 import {
   baliBlockClause,
   isNationalClosure,
@@ -86,6 +89,7 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
   // presidential annex allocates to Koperasi/UMKM nationwide. The TERBUKA/100%
   // it leans on is the absence-from-the-annex default fill, not a permission.
   const nationallyClosed = isNationalClosure(code.baliL4?.status, code.code);
+  const pmaVerdictVerified = isPmaVerdictVerified(code);
 
   // A slice-carrying code (perpres_slice_disclosure_relation.py — see the
   // qualifier built below) is TERBUKA on the WHOLE code while one narrower
@@ -103,8 +107,9 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
       ? `${code.perpresSlice.length} carve-outs`
       : "one carve-out";
 
-  const pmaAnswer =
-    code.pma.status === "open"
+  const pmaAnswer = !pmaVerdictVerified
+    ? `Not yet verified. The canonical record carries a current PMA label for KBLI ${code.code} (${code.titleId}), but no adjudicated per-code official basis and source vintage verify that whole-code verdict. Confirm the current treatment at oss.go.id before planning a PT PMA.`
+    : code.pma.status === "open"
       ? nationallyClosed
         ? `No — and not only in Bali. KBLI ${code.code} (${code.titleId}) is ${baliBlockClause(code.baliL4?.status)}, and that closure applies everywhere in Indonesia, so registering the activity in another province does not change the answer.${
             shouldShowReason(code.baliL4?.status, code.baliL4?.reason)
@@ -161,7 +166,7 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
   // 80% cap to "Perpres 10/2021" would have named the wrong instrument.
   const pmaSourceNote = pmaSourceNoteFaq(
     code.pma.source,
-    code.provenance?.pma.status ?? "untraceable_basis",
+    code.provenance?.pma.status ?? "declared_gap",
   );
 
   // BROADER-adjudicated codes render "100% open" correctly for the WHOLE
@@ -189,9 +194,11 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
             : `One specific activity inside this code — "${row.bidangUsaha}" — is capped at 49% foreign ownership under Perpres 10/2021 (as amended)${row.condition ? `, ${row.condition}` : ""}.`,
         )
         .join(" ") +
-      (baliBlocked
-        ? " Outside Bali, the rest of the code remains open to a PT PMA with no local partner required — subject to the Bali restriction stated above."
-        : " The rest of the code remains open to 100% foreign ownership with no local partner required.")
+      (!pmaVerdictVerified
+        ? " These narrower annex entries do not verify the current whole-code PMA verdict."
+        : baliBlocked
+          ? " Outside Bali, the rest of the code remains open to a PT PMA with no local partner required — subject to the Bali restriction stated above."
+          : " The rest of the code remains open to 100% foreign ownership with no local partner required.")
     : "";
 
   // Rows whose provenance is not KBLI-2025-native (crosswalk pending /

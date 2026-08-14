@@ -323,6 +323,7 @@ const META_USES_FULL_EN = process.env.NEXT_PUBLIC_KBLI_META_EN === "1";
 
 function transformRecord(raw: KBLIRawCode): KBLICode {
   const code = raw.kode_kbli_2025;
+  const provenance = deriveProvenance(raw);
   const section = getSectionFromCode(code);
   const sectionMeta = section ? SECTION_META[section] : null;
 
@@ -343,6 +344,9 @@ function transformRecord(raw: KBLIRawCode): KBLICode {
     isPriority: raw.pma_prioritas,
     note: raw.pma_nota,
     source: raw.pma_source,
+    verificationStatus: provenance.pma.status,
+    officialBasis: provenance.pma.locator,
+    sourceVintage: provenance.pma.vintage,
     capSpecial: raw.pma_cap_special === true,
     capVerified: raw.pma_cap_verified !== false, // default true unless explicitly flagged unverified
     routeTo: raw.pma_route_to ?? null,
@@ -431,7 +435,7 @@ function transformRecord(raw: KBLIRawCode): KBLICode {
             : undefined,
         }
       : undefined,
-    provenance: deriveProvenance(raw),
+    provenance,
     // Mirrors the transform in kbli-data.server.ts (W88/#9 — one fact, two
     // readers): both must set it or the two readers disagree on the 30
     // disputed codes exactly as the perpres-locator cross-reader test guards.

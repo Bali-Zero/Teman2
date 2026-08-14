@@ -9,6 +9,7 @@ interface KBLIConsultationCTAProps {
   code: string;
   titleEn: string;
   pmaStatus: string;
+  pmaVerified: boolean;
 }
 
 /**
@@ -25,8 +26,11 @@ export function KBLIConsultationCTA({
   code,
   titleEn,
   pmaStatus,
+  pmaVerified,
 }: KBLIConsultationCTAProps) {
-  const isPMAOpen = pmaStatus === "open" || pmaStatus === "restricted";
+  const isPMAOpen =
+    pmaVerified && (pmaStatus === "open" || pmaStatus === "restricted");
+  const pmaContext = pmaVerified ? pmaStatus : "not verified";
   // Prices come from PricingTool (synced catalog), NEVER hardcoded (CLAUDE.md §8.11).
   const prices = getKbliCtaPrices();
   const ptPmaPrice = toIdrDisplay(prices.ptPma);
@@ -62,8 +66,9 @@ export function KBLIConsultationCTA({
                 Ready to register this business?
               </h2>
               <p className="mt-1 text-sm text-[var(--kbli-text-muted)]">
-                Bali Zero handles PT PMA setup, KBLI registration, NIB, and all
-                licensing for KBLI {code}.
+                {pmaVerified
+                  ? `Bali Zero handles company setup, KBLI registration, NIB, and licensing for KBLI ${code}.`
+                  : `Bali Zero can verify PMA eligibility before company setup, KBLI registration, NIB, and licensing for KBLI ${code}.`}
               </p>
             </div>
           </div>
@@ -104,7 +109,9 @@ export function KBLIConsultationCTA({
                   {virtualOfficePrice}
                 </p>
                 <p className="mt-1 text-xs text-[var(--kbli-text-muted)]">
-                  Legal address for your PT PMA in Bali
+                  {pmaVerified
+                    ? "Legal address for your company in Bali"
+                    : "Legal address options after eligibility verification"}
                 </p>
               </div>
             )}
@@ -118,11 +125,11 @@ export function KBLIConsultationCTA({
             <WhatsAppLeadButton
               source="kbli_navigator"
               resultHash={code}
-              context={{ code, title_en: titleEn, pma_status: pmaStatus }}
+              context={{ code, title_en: titleEn, pma_status: pmaContext }}
               whatsappContext={[
                 { label: "KBLI", value: code },
                 { label: "Business", value: titleEn.slice(0, 150) },
-                { label: "PMA status", value: pmaStatus },
+                { label: "PMA status", value: pmaContext },
               ]}
               utm={{ page: `/kbli/${code}` }}
               fallbackHref={`${WHATSAPP_BASE}?text=${waText}`}

@@ -29,7 +29,7 @@ import { PMABadge } from "./PMABadge";
 
 describe("PMABadge — the cap extremes", () => {
   it("GUILT: a 0% ceiling is not a ceiling — this is the string that was live", () => {
-    render(<PMABadge status="restricted" maxForeign={0} />);
+    render(<PMABadge status="restricted" maxForeign={0} verdictVerified />);
     expect(screen.queryByText("· Max 0%")).toBeNull();
     expect(screen.getByText("· closed (0%)")).toBeDefined();
   });
@@ -38,7 +38,7 @@ describe("PMABadge — the cap extremes", () => {
     // The old bound (`numeric < 100`) did not PRINT anything wrong here — it
     // printed nothing at all, leaving a bare "Restricted" whose qualifier the
     // reader cannot recover. Silence is the other way to be unhelpful.
-    render(<PMABadge status="restricted" maxForeign={100} />);
+    render(<PMABadge status="restricted" maxForeign={100} verdictVerified />);
     expect(screen.queryByText("· Max 100%")).toBeNull();
     expect(screen.getByText("· conditions apply")).toBeDefined();
   });
@@ -56,7 +56,12 @@ describe("PMABadge — the cap extremes", () => {
     // the POSITIVE string is what makes this discriminate, and silence on a
     // restricted code is the defect either way.
     render(
-      <PMABadge status="restricted" maxForeign="special" capSpecial={false} />,
+      <PMABadge
+        status="restricted"
+        maxForeign="special"
+        verdictVerified
+        capSpecial={false}
+      />,
     );
     expect(screen.queryByText(/special%/)).toBeNull();
     expect(screen.queryByText(/Max /)).toBeNull();
@@ -64,19 +69,31 @@ describe("PMABadge — the cap extremes", () => {
   });
 
   it("INNOCENCE: a real ceiling still prints as a ceiling", () => {
-    render(<PMABadge status="restricted" maxForeign={49} />);
+    render(<PMABadge status="restricted" maxForeign={49} verdictVerified />);
     expect(screen.getByText("· Max 49%")).toBeDefined();
   });
 
   it("INNOCENCE: an unverified cap keeps its qualifier", () => {
     render(
-      <PMABadge status="restricted" maxForeign={49} capVerified={false} />,
+      <PMABadge
+        status="restricted"
+        maxForeign={49}
+        verdictVerified
+        capVerified={false}
+      />,
     );
     expect(screen.getByText("· ≈49% unverified")).toBeDefined();
   });
 
   it("INNOCENCE: the special-distribution regime keeps its own wording", () => {
-    render(<PMABadge status="restricted" maxForeign="special" capSpecial />);
+    render(
+      <PMABadge
+        status="restricted"
+        maxForeign="special"
+        verdictVerified
+        capSpecial
+      />,
+    );
     expect(screen.getByText("· special conditions")).toBeDefined();
   });
 
@@ -119,14 +136,28 @@ describe("PMABadge — the cap extremes", () => {
     for (const { file, text } of callSites) {
       expect(text, `${file} omits capSpecial`).toContain("capSpecial");
       expect(text, `${file} omits capVerified`).toContain("capVerified");
+      expect(text, `${file} omits verdictVerified`).toContain(
+        "verdictVerified",
+      );
     }
   });
 
   it("INNOCENCE: the open-status suffixes are untouched", () => {
-    const { unmount } = render(<PMABadge status="open" maxForeign={100} />);
+    const { unmount } = render(
+      <PMABadge status="open" maxForeign={100} verdictVerified />,
+    );
     expect(screen.getByText("· 100% Foreign")).toBeDefined();
     unmount();
-    render(<PMABadge status="open" maxForeign={100} baliBlocked />);
+    render(
+      <PMABadge status="open" maxForeign={100} verdictVerified baliBlocked />,
+    );
     expect(screen.getByText("· 100% nat'l · blocked in Bali")).toBeDefined();
+  });
+
+  it("GUILT: an unverified legacy value never renders open, closed, or a percentage", () => {
+    render(<PMABadge status="open" maxForeign={100} />);
+    expect(screen.getByText("PMA unverified")).toBeDefined();
+    expect(screen.queryByText("Open")).toBeNull();
+    expect(screen.queryByText(/100%/)).toBeNull();
   });
 });

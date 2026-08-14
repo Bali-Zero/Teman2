@@ -68,7 +68,12 @@ function makeProvenance(
       noOssScope: status === "pending_crosswalk",
       contentInheritedFrom,
     },
-    pma: { source: null, vintage: "2020", status: "pending_crosswalk" },
+    pma: {
+      source: "Perpres 10/2021",
+      vintage: "2021-05-25",
+      status: "located",
+      locator: "Perpres 49/2021 Lampiran III fixture",
+    },
     dataNote: null,
     disputed: null,
   };
@@ -90,9 +95,13 @@ function makeCode(overrides: Partial<KBLICode> = {}): KBLICode {
       isPriority: false,
       note: null,
       source: "Perpres 10/2021",
+      verificationStatus: "located",
+      officialBasis: "Perpres 49/2021 Lampiran III fixture",
+      sourceVintage: "2021-05-25",
       capSpecial: false,
       capVerified: true,
       routeTo: null,
+      citation: "Perpres 49/2021 Lampiran III fixture",
     },
     licensing: makeLicensing(),
     transition: {
@@ -321,17 +330,14 @@ describe("real dataset: the gate binds, and v3 actually differentiates", () => {
   // degradations must be REACHED, i.e. some records really do fail verification.
   it("actually degrades on the real dataset (the gate is not a no-op here)", () => {
     const suffixes = getAllCodes().map(kbliMetaTitleSuffix);
-    const openUnverified = suffixes.filter(
-      (s) => s === "100% Foreign Ownership",
-    ).length;
-    const restrictedUnverified = suffixes.filter(
-      (s) => s === "Foreign Ownership Restricted",
+    const pmaGaps = suffixes.filter(
+      (s) => s === "PMA Eligibility Requires Verification",
     ).length;
 
-    // 422 open codes carry an unverified Bali block today (measured). If this
-    // ever hits zero the gate has stopped selecting and the test is lying.
-    expect(openUnverified).toBeGreaterThan(0);
-    expect(openUnverified + restrictedUnverified).toBeGreaterThan(0);
+    // Compiler-owned partition: 54 whole-code verdicts have a per-code locator
+    // and vintage; all other 1,505 records must reach the neutral metadata arm.
+    expect(pmaGaps).toBe(1505);
+    expect(suffixes).toHaveLength(1559);
   });
 
   it("degrades the cap in the DESCRIPTION when capVerified is false", () => {

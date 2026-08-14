@@ -5,63 +5,50 @@ import {
 } from "./kbli-pma-source";
 
 const PERPRES_SOURCE = "Perpres 10/2021, 49/2021";
-const SECTOR_LAW_SOURCE =
-  "PP 14/2018, PP 3/2020 (sector law — Perpres 10/2021 Pasal 11(2) carve-out, not the Perpres 10/2021/49/2021 annexes)";
+const SECTOR_LAW_SOURCE = "PP 14/2018, PP 3/2020 (sector-law carve-out)";
 
 describe("pmaSourceNoteFaq", () => {
-  it("innocence: a Perpres-sourced code keeps the existing crosswalk note verbatim", () => {
-    expect(pmaSourceNoteFaq(PERPRES_SOURCE, "pending_crosswalk")).toBe(
-      " (Source: Perpres 10/2021 as amended by Perpres 49/2021 — the investment-list annexes predate KBLI 2025; per-code crosswalk audit in progress.)",
+  it("located: cites the record source directly", () => {
+    expect(pmaSourceNoteFaq(PERPRES_SOURCE, "located")).toBe(
+      ` (Source: ${PERPRES_SOURCE}.)`,
+    );
+    expect(pmaSourceNoteFaq(SECTOR_LAW_SOURCE, "located")).toBe(
+      ` (Source: ${SECTOR_LAW_SOURCE}.)`,
     );
   });
 
-  it("guilt: a record whose pma_source names PP 14/2018 renders that, not Perpres", () => {
-    const note = pmaSourceNoteFaq(SECTOR_LAW_SOURCE, "pending_crosswalk");
-    expect(note).toContain("PP 14/2018");
-    expect(note).not.toContain("crosswalk audit in progress");
-    // The sector-law source string itself MENTIONS Perpres 10/2021 (naming
-    // the carve-out it was routed away from) — the guard is that the
-    // Perpres CROSSWALK CAVEAT never fires here, not that the word never
-    // appears.
-    expect(note).toBe(` (Source: ${SECTOR_LAW_SOURCE}.)`);
+  it("declared gap: labels a named instrument as context, not proof", () => {
+    const note = pmaSourceNoteFaq(PERPRES_SOURCE, "declared_gap");
+    expect(note).toContain("Instrument context recorded as");
+    expect(note).toContain("no adjudicated per-code official basis");
+    expect(note).toContain("confirm it at oss.go.id");
+    expect(note).not.toContain("audit in progress");
   });
 
-  it("no source recorded: no note, never a fabricated one", () => {
-    expect(pmaSourceNoteFaq(null, "untraceable_basis")).toBe("");
-  });
-
-  it("guilt: untraceable Perpres records cite the source without claiming an audit is in progress", () => {
-    const note = pmaSourceNoteFaq(PERPRES_SOURCE, "untraceable_basis");
-    expect(note).toContain(
-      "The official BPS crosswalk records no KBLI-2020 predecessor",
-    );
-    expect(note).not.toContain("crosswalk audit in progress");
-  });
-
-  it("guilt: an untraceable non-Perpres basis also carries the BPS-gap caveat", () => {
-    const note = pmaSourceNoteFaq(SECTOR_LAW_SOURCE, "untraceable_basis");
-    expect(note).toContain(`Source: ${SECTOR_LAW_SOURCE}.`);
-    expect(note).toContain(
-      "The official BPS crosswalk records no KBLI-2020 predecessor",
-    );
-    expect(note).not.toContain("crosswalk audit in progress");
+  it("declared gap without source remains explicit", () => {
+    const note = pmaSourceNoteFaq(null, "declared_gap");
+    expect(note).toContain("No adjudicated per-code official basis");
+    expect(note).not.toContain("Source:");
   });
 });
 
 describe("pmaSourceAttributionStructured", () => {
-  it("innocence: a Perpres-sourced code keeps the existing structured-data clause verbatim", () => {
-    expect(pmaSourceAttributionStructured(PERPRES_SOURCE)).toBe(
-      " per Perpres 10/2021 as amended (crosswalk to KBLI 2025 pending)",
+  it("located: attributes the named instrument", () => {
+    expect(pmaSourceAttributionStructured(PERPRES_SOURCE, "located")).toBe(
+      ` per ${PERPRES_SOURCE}`,
     );
   });
 
-  it("guilt: a sector-law source is attributed directly, not folded into the Perpres clause", () => {
-    const clause = pmaSourceAttributionStructured(SECTOR_LAW_SOURCE);
-    expect(clause).toBe(` per ${SECTOR_LAW_SOURCE}`);
-    expect(clause).not.toContain("crosswalk to KBLI 2025 pending");
+  it("declared gap: emits a verification warning, never a bare attribution", () => {
+    const clause = pmaSourceAttributionStructured(
+      SECTOR_LAW_SOURCE,
+      "declared_gap",
+    );
+    expect(clause).toContain("no adjudicated per-code official basis");
+    expect(clause).not.toBe(` per ${SECTOR_LAW_SOURCE}`);
   });
 
-  it("no source recorded: no clause", () => {
-    expect(pmaSourceAttributionStructured(null)).toBe("");
+  it("located without a source emits no fabricated clause", () => {
+    expect(pmaSourceAttributionStructured(null, "located")).toBe("");
   });
 });

@@ -103,19 +103,6 @@ export function licensingContentInheritedFrom(code: KBLICode): string[] | null {
  *   `_l2_source` value, is treated as unaudited, never silently promoted to
  *   verified.
  */
-/** Does the official BPS crosswalk record KBLI-2020 ancestry?
- *
- * Structured markers only (cicatrix #3 — never prose), and by ENTITY rather than
- * truthiness: `bps_2020_ancestors` is an object, so a bare `if (raw.bps_2020_ancestors)`
- * would read an empty `{}` as "has ancestry". `pp28_sources` deliberately does
- * not count: it records which KBLI-2020-numbered PP 28 rows supplied licensing
- * content, not official predecessor identity.
- */
-function hasAuthoritativeBps2020Ancestry(raw: KBLIRawCode): boolean {
-  const bps = raw.bps_2020_ancestors?.codes;
-  return Array.isArray(bps) && bps.length > 0;
-}
-
 /**
  * The OTHER codes this record's PP 28 licensing content was carried from, or
  * null when it is self-sourced or records no PP 28 source at all.
@@ -140,23 +127,23 @@ export function pp28ContentInheritedFrom(raw: KBLIRawCode): string[] | null {
   return sources;
 }
 
-/** Provenance of the foreign-ownership verdict — DERIVED, not a constant.
+/** Provenance of the whole-code foreign-ownership verdict.
  *
- * The Perpres 10/2021 + 49/2021 annexes are KBLI-2020-vintage across the catalog
- * (FATAL-2), so a code with an authoritative BPS-recorded 2020 origin is
- * honestly described as
- * "vintage 2020, per-code crosswalk audit pending". A code with NO recorded 2020
- * BPS origin cannot be: there is nothing authoritative to crosswalk FROM, and
- * saying the crosswalk is
- * pending would imply a basis we cannot show. Neither branch claims the verdict is
- * wrong — both describe what our sources can and cannot trace.
+ * This is an affirmative gate. The legacy PMA value, a mechanical KBLI
+ * crosswalk, or a blanket instrument name can never promote a verdict. Only
+ * the compiler-owned `located` marker plus a non-empty official locator and
+ * source vintage may do so; malformed combinations degrade to a declared gap.
  */
 function pmaProvenance(raw: KBLIRawCode): KBLIProvenance["pma"] {
-  const traceable = hasAuthoritativeBps2020Ancestry(raw);
+  const locator = raw.pma_official_basis?.trim() || null;
+  const vintage = raw.pma_source_vintage?.trim() || null;
+  const located =
+    raw.pma_verification_status === "located" && !!locator && !!vintage;
   return {
     source: raw.pma_source ?? null,
-    vintage: traceable ? "2020" : null,
-    status: traceable ? "pending_crosswalk" : "untraceable_basis",
+    vintage: located ? vintage : null,
+    status: located ? "located" : "declared_gap",
+    locator: located ? locator : null,
   };
 }
 
@@ -269,6 +256,14 @@ export function isLicensingVerifiedForBareClaim(code: KBLICode): boolean {
   return (
     (code.licensing?.length ?? 0) > 0 &&
     code.provenance?.licensing?.status === "oss_native"
+  );
+}
+
+/** True only when the whole-code PMA verdict has a canonical locator + vintage. */
+export function isPmaVerdictVerified(code: KBLICode): boolean {
+  const pma = code.provenance?.pma;
+  return (
+    pma?.status === "located" && !!pma.locator?.trim() && !!pma.vintage?.trim()
   );
 }
 

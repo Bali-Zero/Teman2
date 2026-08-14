@@ -3,11 +3,32 @@ import { buildKbliFaq } from "./kbli-faq";
 import { getAllCodes, getCode } from "./kbli-data";
 import type { KBLICode } from "./kbli-types";
 
+function withLocatedPma(code: KBLICode): KBLICode {
+  return {
+    ...code,
+    pma: {
+      ...code.pma,
+      verificationStatus: "located",
+      officialBasis: "Perpres 49/2021 fixture locator",
+      sourceVintage: "2021-05-25",
+    },
+    provenance: {
+      ...code.provenance!,
+      pma: {
+        source: code.pma.source,
+        status: "located",
+        locator: "Perpres 49/2021 fixture locator",
+        vintage: "2021-05-25",
+      },
+    },
+  };
+}
+
 describe("buildKbliFaq", () => {
   it("qualifies the open answer on a Bali-blocked code — never an unqualified yes", () => {
     const blocked = getCode("56101");
     expect(blocked).toBeDefined();
-    const base = blocked as KBLICode;
+    const base = withLocatedPma(blocked as KBLICode);
     const synthetic: KBLICode = {
       ...base,
       pma: { ...base.pma, status: "open" },
@@ -20,7 +41,7 @@ describe("buildKbliFaq", () => {
   });
 
   it("routes to the team on a NON_CLASSIFICABILE code — never claims open or blocked in Bali", () => {
-    const base = getCode("56101") as KBLICode;
+    const base = withLocatedPma(getCode("56101") as KBLICode);
     const synthetic: KBLICode = {
       ...base,
       pma: { ...base.pma, status: "open" },
@@ -40,7 +61,7 @@ describe("buildKbliFaq", () => {
   });
 
   it("innocence: an OK_or_HIGHER_RISK code keeps the plain unqualified open answer", () => {
-    const base = getCode("56101") as KBLICode;
+    const base = withLocatedPma(getCode("56101") as KBLICode);
     const synthetic: KBLICode = {
       ...base,
       pma: { ...base.pma, status: "open" },
@@ -58,7 +79,7 @@ describe("buildKbliFaq", () => {
   });
 
   it("handles capSpecial restricted codes without stating a numeric cap as fact", () => {
-    const base = getCode("56101") as KBLICode;
+    const base = withLocatedPma(getCode("56101") as KBLICode);
     const synthetic: KBLICode = {
       ...base,
       baliL4: undefined,
@@ -179,10 +200,10 @@ describe("buildKbliFaq — BPS-authoritative transition populations", () => {
     expect(answer).not.toContain("previous code");
   });
 
-  it("guilt: cured Batch-A 01287 cites its BPS ancestor and never emits the old gap", () => {
+  it("guilt: 01287 cites its BPS ancestor while PMA remains an explicit gap", () => {
     const code = getCode("01287") as KBLICode;
-    expect(code.provenance?.pma.status).toBe("pending_crosswalk");
-    expect(code.provenance?.pma.vintage).toBe("2020");
+    expect(code.provenance?.pma.status).toBe("declared_gap");
+    expect(code.provenance?.pma.vintage).toBeNull();
     const faq = buildKbliFaq(code);
     expect(transitionAnswer("01287")).toContain(
       "According to the official BPS 2020 → 2025 crosswalk, KBLI 01287 has recorded KBLI 2020 ancestor(s) 01287.",
@@ -192,12 +213,12 @@ describe("buildKbliFaq — BPS-authoritative transition populations", () => {
     );
   });
 
-  it("innocence: BPS-only 01122 keeps its BPS transition answer and pending PMA vintage", () => {
+  it("innocence: BPS-only 01122 keeps its transition answer without promoting PMA", () => {
     const code = getCode("01122") as KBLICode;
     expect(code.transition.pp28LicensingSourceCodes).toEqual([]);
     expect(code.provenance?.pma).toMatchObject({
-      status: "pending_crosswalk",
-      vintage: "2020",
+      status: "declared_gap",
+      vintage: null,
     });
     expect(transitionAnswer("01122")).toContain(
       "According to the official BPS 2020 → 2025 crosswalk",
@@ -210,7 +231,7 @@ describe("buildKbliFaq — BPS-authoritative transition populations", () => {
   it("innocence: 64995 keeps no PP28 source but now cites its BPS ancestor", () => {
     const code = getCode("64995") as KBLICode;
     expect(code.transition.pp28LicensingSourceCodes).toEqual([]);
-    expect(code.provenance?.pma.status).toBe("pending_crosswalk");
+    expect(code.provenance?.pma.status).toBe("declared_gap");
     const answer = transitionAnswer("64995");
     expect(answer).toContain(
       "According to the official BPS 2020 → 2025 crosswalk, KBLI 64995 has recorded KBLI 2020 ancestor(s) 64999.",
@@ -235,7 +256,7 @@ describe("buildKbliFaq — BPS-authoritative transition populations", () => {
 // =============================================================================
 describe("buildKbliFaq — the Bali-block cause is derived, and Italian never leaves", () => {
   const blocked = (status: string, reason: string): KBLICode => {
-    const base = getCode("56101") as KBLICode;
+    const base = withLocatedPma(getCode("56101") as KBLICode);
     return {
       ...base,
       pma: { ...base.pma, status: "open" },
@@ -321,20 +342,20 @@ describe("buildKbliFaq — pmaSourceNote is source-aware (item E)", () => {
     expect(answer).not.toContain("crosswalk audit in progress");
   });
 
-  it("innocence: a Perpres-sourced TERBATAS code keeps the existing crosswalk note verbatim", () => {
+  it("innocence: a located Perpres-sourced TERBATAS code cites its instrument", () => {
     // 52292 (cargo/freight forwarding, max 49% WNA per the l4_bali sample
     // elsewhere in this file) carries the plain Perpres residual-open
     // default — untouched by this fix-pack.
     const code = getAllCodes().find(
       (c) =>
         c.pma.status === "restricted" &&
+        c.provenance?.pma.status === "located" &&
         !!c.pma.source?.startsWith("Perpres 10/2021"),
     );
     expect(code).toBeDefined();
     const answer = buildKbliFaq(code as KBLICode)[0].answer;
-    expect(answer).toContain(
-      "(Source: Perpres 10/2021 as amended by Perpres 49/2021 — the investment-list annexes predate KBLI 2025; per-code crosswalk audit in progress.)",
-    );
+    expect(answer).toContain("(Source: Perpres 10/2021");
+    expect(answer).not.toContain("crosswalk audit in progress");
   });
 });
 

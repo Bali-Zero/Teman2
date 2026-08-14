@@ -14,7 +14,10 @@ import {
 } from "@/lib/kbli-data.server";
 import { formatTimeframe } from "@/lib/kbli-derive";
 import { baliBlockClause, isNationalClosure } from "@/lib/kbli-bali-block";
-import { isLicensingVerificationPending } from "@/lib/kbli-provenance";
+import {
+  isLicensingVerificationPending,
+  isPmaVerdictVerified,
+} from "@/lib/kbli-provenance";
 import { kbliMetaDescription, kbliMetaTitle } from "@/lib/kbli-meta";
 import { restrictedCapBadge } from "@/lib/kbli-pma-shape";
 import { KBLIBreadcrumb } from "@/components/kbli/KBLIBreadcrumb";
@@ -129,6 +132,7 @@ export default async function KBLICodePage({
   const { code: codeParam } = await params;
   const kbli = getCode(codeParam);
   if (!kbli) notFound();
+  const pmaVerdictVerified = isPmaVerdictVerified(kbli);
 
   const gold = getGoldContent(kbli.code);
   const related = getRelatedCodes(kbli.code, 6);
@@ -293,33 +297,40 @@ export default async function KBLICodePage({
                   (!kbli.pma.capSpecial &&
                     (kbli.pma.status === "closed" ||
                       kbli.pma.maxForeign === 0));
-                const pmaBlocked = baliBlocked || nationallyClosed;
+                const pmaBlocked =
+                  pmaVerdictVerified && (baliBlocked || nationallyClosed);
                 return (
                   <>
                     <div
                       className={cn(
                         "mt-5 rounded-xl border px-4 py-3",
-                        pmaBlocked
-                          ? "border-[var(--kbli-pma-closed)]/30 bg-[var(--kbli-pma-closed-bg)]"
-                          : "border-[var(--kbli-pma-open)]/30 bg-[var(--kbli-pma-open-bg)]",
+                        !pmaVerdictVerified
+                          ? "border-slate-400/30 bg-slate-400/10"
+                          : pmaBlocked
+                            ? "border-[var(--kbli-pma-closed)]/30 bg-[var(--kbli-pma-closed-bg)]"
+                            : "border-[var(--kbli-pma-open)]/30 bg-[var(--kbli-pma-open-bg)]",
                       )}
                     >
                       <p
                         className={cn(
                           "text-base font-semibold",
-                          pmaBlocked
-                            ? "text-[var(--kbli-pma-closed)]"
-                            : "text-[var(--kbli-pma-open)]",
+                          !pmaVerdictVerified
+                            ? "text-white/70"
+                            : pmaBlocked
+                              ? "text-[var(--kbli-pma-closed)]"
+                              : "text-[var(--kbli-pma-open)]",
                         )}
                       >
-                        {nationallyClosed
-                          ? `Closed to PMA (national)${kbli.pma.routeTo ? ` — route to the private code ${kbli.pma.routeTo}` : ""}`
-                          : baliBlocked
-                            ? "In Bali: a PT PMA cannot register this code"
-                            : "In Bali: open to a PT PMA"}
+                        {!pmaVerdictVerified
+                          ? "PMA status not yet verified for this KBLI 2025 code"
+                          : nationallyClosed
+                            ? `Closed to PMA (national)${kbli.pma.routeTo ? ` — route to the private code ${kbli.pma.routeTo}` : ""}`
+                            : baliBlocked
+                              ? "In Bali: a PT PMA cannot register this code"
+                              : "In Bali: open to a PT PMA"}
                       </p>
                     </div>
-                    {baliBlocked && !nationallyClosed && (
+                    {pmaVerdictVerified && baliBlocked && !nationallyClosed && (
                       <div className="mt-3 rounded-xl border border-[var(--kbli-pma-restricted)]/30 bg-[var(--kbli-pma-restricted-bg)] px-4 py-3">
                         <p className="text-sm font-semibold text-[var(--kbli-pma-restricted)]">
                           National procedure — does not apply to a PT PMA in
@@ -353,7 +364,9 @@ export default async function KBLICodePage({
                   would tell them the law says something it does not. */}
               {kbli.pma.citation && (
                 <p className="mt-3 text-xs text-[var(--kbli-text-muted)]">
-                  Basis:{" "}
+                  {pmaVerdictVerified
+                    ? "Instrument locator: "
+                    : "Instrument locator (not verdict verification): "}
                   <span className="font-medium">{kbli.pma.citation}</span>
                 </p>
               )}
@@ -363,6 +376,7 @@ export default async function KBLICodePage({
                 <PMABadge
                   status={kbli.pma.status}
                   maxForeign={kbli.pma.maxForeign}
+                  verdictVerified={pmaVerdictVerified}
                   capSpecial={kbli.pma.capSpecial}
                   capVerified={kbli.pma.capVerified}
                   baliBlocked={!!kbli.baliL4?.blocked}
@@ -380,7 +394,7 @@ export default async function KBLICodePage({
                     reason={kbli.baliL4.reason}
                     confidence={kbli.baliL4.confidence}
                     needsReview={kbli.baliL4.needsReview}
-                    pmaStatus={kbli.pma.status}
+                    pmaStatus={pmaVerdictVerified ? kbli.pma.status : "unknown"}
                   />
                 )}
                 {kbli.provenance && (
@@ -873,13 +887,15 @@ export default async function KBLICodePage({
                             Foreign Ownership
                           </span>
                           <span className="text-sm font-semibold text-[var(--foreground)]">
-                            {kbli.pma.capSpecial
-                              ? "Restricted · special conditions"
-                              : kbli.pma.status === "open"
-                                ? `${kbli.pma.maxForeign}% Open`
-                                : kbli.pma.status === "restricted"
-                                  ? restrictedCapBadge(kbli.pma)
-                                  : "Closed"}
+                            {!pmaVerdictVerified
+                              ? "Not verified — confirm in OSS"
+                              : kbli.pma.capSpecial
+                                ? "Restricted · special conditions"
+                                : kbli.pma.status === "open"
+                                  ? `${kbli.pma.maxForeign}% Open`
+                                  : kbli.pma.status === "restricted"
+                                    ? restrictedCapBadge(kbli.pma)
+                                    : "Closed"}
                           </span>
                         </div>
                         <div
@@ -909,8 +925,6 @@ export default async function KBLICodePage({
                   </section>
                 </>
               )}
-
-              <KBLITransitionSources transition={kbli.transition} />
 
               {/* Article card for non-Gold pages */}
               {article && (
@@ -961,6 +975,10 @@ export default async function KBLICodePage({
             </div>
           )}
 
+          {/* BPS/PP28 transition provenance is shared by both layouts. Keep it
+              outside the gold/non-gold branch so gold pages cannot hide it. */}
+          <KBLITransitionSources transition={kbli.transition} />
+
           {/* REGULATORY DIVERGENCE — only on collision-cured codes: the
               documented 2020-vs-2025 divergence, with citations (TRACK-P) */}
           {kbli.provenance && (
@@ -999,6 +1017,7 @@ export default async function KBLICodePage({
             code={kbli.code}
             titleEn={kbli.titleEn}
             pmaStatus={kbli.pma.status}
+            pmaVerified={pmaVerdictVerified}
           />
 
           {/* ZANTARA AI CHAT */}

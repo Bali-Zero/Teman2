@@ -4,6 +4,8 @@ import { pmaCapShape } from "@/lib/kbli-pma-shape";
 interface PMABadgeProps {
   status: "open" | "restricted" | "closed" | "unknown";
   maxForeign: number | "special";
+  /** Whole-code verdict has a canonical official locator + source vintage. */
+  verdictVerified?: boolean;
   /** true => special-distribution condition (47221-class): "· special conditions", not "Closed 0%" */
   capSpecial?: boolean;
   /** false => TERBATAS cap % not source-backed: render "· ≈N% unverified" */
@@ -47,12 +49,18 @@ const config = {
 export function PMABadge({
   status,
   maxForeign,
+  verdictVerified = false,
   capSpecial = false,
   capVerified = true,
   baliBlocked = false,
   size = "md",
 }: PMABadgeProps) {
-  const c = config[status] || config.open;
+  const c = verdictVerified
+    ? config[status] || config.unknown
+    : {
+        ...config.unknown,
+        label: "PMA unverified",
+      };
   const numeric = typeof maxForeign === "number" ? maxForeign : null;
 
   // Qualifying suffix, aligned with the native app:
@@ -62,7 +70,9 @@ export function PMABadge({
   //  - open 100% → "· 100% Foreign"
   //  - open but Bali-blocked → "· 100% nat'l · blocked in Bali" (no false green promise)
   let suffix: string | null = null;
-  if (capSpecial) {
+  if (!verdictVerified) {
+    suffix = null;
+  } else if (capSpecial) {
     suffix = "· special conditions";
   } else if (status === "open" && baliBlocked) {
     suffix = "· 100% nat'l · blocked in Bali";

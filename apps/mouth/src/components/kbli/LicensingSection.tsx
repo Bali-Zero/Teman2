@@ -232,17 +232,21 @@ function KeyFacts({
       {
         label: "Foreign Ownership",
         value:
-          pma.status === "open"
-            ? baliBlocked
-              ? "100% nat'l · blocked in Bali"
-              : "100% Open"
-            : pma.status === "restricted"
-              ? restrictedCapBadge(pma)
-              : "Closed (0%)",
+          pma.verificationStatus !== "located"
+            ? "Not verified — confirm in OSS"
+            : pma.status === "open"
+              ? baliBlocked
+                ? "100% nat'l · blocked in Bali"
+                : "100% Open"
+              : pma.status === "restricted"
+                ? restrictedCapBadge(pma)
+                : "Closed (0%)",
         accent:
-          pma.status === "open" && !baliBlocked
-            ? "var(--kbli-pma-open)"
-            : "var(--kbli-pma-closed)",
+          pma.verificationStatus !== "located"
+            ? "var(--foreground-muted)"
+            : pma.status === "open" && !baliBlocked
+              ? "var(--kbli-pma-open)"
+              : "var(--kbli-pma-closed)",
       },
       {
         label: "Authority",
@@ -300,23 +304,27 @@ function KeyFacts({
       // nationally but blocked for a PT PMA in Bali (l4_bali.blocked), don't
       // headline a green "100% Open" — qualify it, and drop the green accent.
       value:
-        pma.status === "open"
-          ? baliBlocked
-            ? "100% nat'l · blocked in Bali"
-            : "100% Open"
-          : pma.status === "restricted"
-            ? restrictedCapBadge(pma)
-            : "Closed (0%)",
+        pma.verificationStatus !== "located"
+          ? "Not verified — confirm in OSS"
+          : pma.status === "open"
+            ? baliBlocked
+              ? "100% nat'l · blocked in Bali"
+              : "100% Open"
+            : pma.status === "restricted"
+              ? restrictedCapBadge(pma)
+              : "Closed (0%)",
       accent:
-        pma.status === "open" && !baliBlocked
-          ? "var(--kbli-pma-open)"
-          : pma.status === "restricted"
-            ? "var(--kbli-pma-restricted)"
-            : pma.status === "open"
-              ? "var(--kbli-pma-closed)"
-              : pma.status === "closed"
+        pma.verificationStatus !== "located"
+          ? "var(--foreground-muted)"
+          : pma.status === "open" && !baliBlocked
+            ? "var(--kbli-pma-open)"
+            : pma.status === "restricted"
+              ? "var(--kbli-pma-restricted)"
+              : pma.status === "open"
                 ? "var(--kbli-pma-closed)"
-                : undefined,
+                : pma.status === "closed"
+                  ? "var(--kbli-pma-closed)"
+                  : undefined,
     },
     {
       label: "Authority",
@@ -708,7 +716,10 @@ const STEP_COLORS = [
  * contradicts the "reserved for UMKM / closed to a PT PMA" verdict above it.
  * `scales` is the currently-selected TierTab's scale array.
  */
-function companyFormForScale(scales: KBLIBusinessScale[]): {
+function companyFormForScale(
+  scales: KBLIBusinessScale[],
+  pmaVerified: boolean,
+): {
   label: string;
   desc: string;
 } {
@@ -716,7 +727,9 @@ function companyFormForScale(scales: KBLIBusinessScale[]): {
   if (isBesar) {
     return {
       label: "Company incorporation",
-      desc: "PT PMDN (local) or PT PMA (foreign) — notary deed, AHU registration",
+      desc: pmaVerified
+        ? "PT PMDN (local) or PT PMA (foreign) — notary deed, AHU registration"
+        : "PT PMDN (local); verify PMA eligibility before choosing a foreign-owned form — notary deed, AHU registration",
     };
   }
   return {
@@ -741,7 +754,14 @@ function isIncorporationStep(label: string, desc: string): boolean {
  * the code is Bali-blocked. The 100% openness is a NATIONAL fact, but printed bare
  * under a Bali-blocked verdict it reads as "you can own 100% here". Qualify it.
  */
-function rewritePmaLineForBali(line: string, baliBlocked: boolean): string {
+function rewritePmaLineForBali(
+  line: string,
+  baliBlocked: boolean,
+  pmaVerified: boolean,
+): string {
+  if (!pmaVerified && (/\*\*PMA:\*\*/i.test(line) || /^PMA:/i.test(line))) {
+    return "**PMA:** Whole-code foreign-ownership status is not yet verified; confirm the current treatment at oss.go.id.";
+  }
   if (!baliBlocked) return line;
   if (!/\*\*PMA:\*\*/i.test(line) && !/^PMA:/i.test(line)) return line;
   if (!/fully open|100%|foreign ownership/i.test(line)) return line;
@@ -757,10 +777,12 @@ function StepList({
   body,
   activeScales = [],
   baliBlocked = false,
+  pmaVerified = false,
 }: {
   body: string;
   activeScales?: KBLIBusinessScale[];
   baliBlocked?: boolean;
+  pmaVerified?: boolean;
 }) {
   const lines = body.split("\n");
   const steps: { num: number; label: string; desc: string }[] = [];
@@ -782,13 +804,13 @@ function StepList({
       // SCALE-aware company form: replace the hardcoded "PT PMA incorporation"
       // step with the form that actually fits the selected business scale.
       if (isIncorporationStep(label, desc)) {
-        const form = companyFormForScale(activeScales);
+        const form = companyFormForScale(activeScales, pmaVerified);
         label = form.label;
         desc = form.desc;
       }
       steps.push({ num, label, desc });
     } else if (line.trim()) {
-      otherContent.push(rewritePmaLineForBali(line, baliBlocked));
+      otherContent.push(rewritePmaLineForBali(line, baliBlocked, pmaVerified));
     }
   }
 
@@ -853,12 +875,14 @@ function ContentSection({
   type,
   activeScales = [],
   baliBlocked = false,
+  pmaVerified = false,
 }: {
   title: string;
   body: string;
   type: SectionType;
   activeScales?: KBLIBusinessScale[];
   baliBlocked?: boolean;
+  pmaVerified?: boolean;
 }) {
   if (!body.trim()) return null;
 
@@ -873,6 +897,9 @@ function ContentSection({
 
   // PMA sections are usually one line — render inline, not as a card
   if (type === "pma") {
+    const renderedBody = pmaVerified
+      ? body
+      : "Whole-code foreign-ownership status is not yet verified. Confirm the current treatment at oss.go.id before relying on this editorial section.";
     return (
       <div
         className="flex items-start gap-3 rounded-lg px-4 py-3"
@@ -890,7 +917,7 @@ function ContentSection({
             {displayTitle}
           </span>
           <div className="mt-1 text-sm text-[var(--foreground-secondary)]">
-            <ReactMarkdown>{body}</ReactMarkdown>
+            <ReactMarkdown>{renderedBody}</ReactMarkdown>
           </div>
         </div>
       </div>
@@ -923,6 +950,7 @@ function ContentSection({
           body={body}
           activeScales={activeScales}
           baliBlocked={baliBlocked}
+          pmaVerified={pmaVerified}
         />
       ) : (
         <div className="kbli-prose">
@@ -948,6 +976,7 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
   // be read as a how-to for a foreign-owned company IN BALI. Frame, don't hide:
   // the steps are national truth; the Bali restriction is the local override.
   const baliBlocked = !!kbli.baliL4?.blocked;
+  const pmaVerified = kbli.pma.verificationStatus === "located";
   // GARUDA-FILIERA Fase-1 cure #4 (2026-07-17): a code whose Bali risk tier
   // was carried over from a different activity (code-number collision) is
   // neither blocked nor confirmed open — an analogous frame, warn tone
@@ -957,7 +986,24 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
   return (
     <div className="space-y-8">
       {/* ── NATIONAL-vs-BALI FRAME (only when Bali blocks PMA for this code) ── */}
-      {baliBlocked && (
+      {!pmaVerified && (
+        <div className="rounded-xl border border-slate-400/25 bg-slate-400/5 px-5 py-4">
+          <div className="mb-1.5 flex items-center gap-2">
+            <span aria-hidden="true">❓</span>
+            <span className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--foreground-muted)]">
+              PMA eligibility requires verification
+            </span>
+          </div>
+          <p className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
+            The canonical record has no adjudicated per-code official basis and
+            source vintage for the current whole-code PMA value. Treat the
+            licensing procedure below as business-licensing guidance, not proof
+            that a PT PMA may register this activity; confirm at oss.go.id.
+          </p>
+        </div>
+      )}
+
+      {pmaVerified && baliBlocked && (
         <div
           className="rounded-xl border px-5 py-4"
           style={{
@@ -996,7 +1042,7 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
       )}
 
       {/* ── NATIONAL-vs-BALI FRAME (Bali applicability not yet classifiable) ── */}
-      {!baliBlocked && baliNonClassifiable && (
+      {pmaVerified && !baliBlocked && baliNonClassifiable && (
         <div
           className="rounded-xl border px-5 py-4"
           style={{
@@ -1142,8 +1188,10 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
             className="text-sm leading-relaxed text-[var(--foreground-secondary)]"
             style={{ marginTop: "0.5rem" }}
           >
-            Everything else in this code is open as shown. Check which side your
-            exact activity falls on before filing.
+            {pmaVerified
+              ? "Everything else in this code is open as shown."
+              : "These narrower annex entries do not verify the current whole-code PMA verdict."}{" "}
+            Check which side your exact activity falls on before filing.
           </p>
         </div>
       )}
@@ -1323,6 +1371,7 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
               type={detectSectionType(sec.title)}
               activeScales={currentTier?.scales ?? []}
               baliBlocked={baliBlocked}
+              pmaVerified={pmaVerified}
             />
           ))}
         </div>

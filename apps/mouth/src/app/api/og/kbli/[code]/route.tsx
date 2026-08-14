@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
 import { getCode } from "@/lib/kbli-data";
+import { isPmaVerdictVerified } from "@/lib/kbli-provenance";
 import {
   getSectionVisual,
   codeFingerprint,
@@ -35,6 +36,9 @@ function statusChip(kbli: NonNullable<ReturnType<typeof getCode>>): {
   label: string;
   color: string;
 } {
+  if (!isPmaVerdictVerified(kbli)) {
+    return { label: "PMA: VERIFY", color: "#8f96a3" };
+  }
   if (kbli.baliL4?.blocked) {
     return { label: "BALI: BLOCKED", color: "#e0645a" };
   }

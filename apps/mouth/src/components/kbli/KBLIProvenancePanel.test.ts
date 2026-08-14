@@ -117,25 +117,20 @@ describe("the Bali provenance row attributes the verdict to what produced it", (
   });
 });
 
-describe("the PMA provenance row follows authoritative BPS ancestry", () => {
-  it("guilt: cured Batch-A 01287 renders the pending 2020-vintage row", () => {
+describe("the PMA provenance row follows the canonical verification state", () => {
+  it("guilt: 01287 renders a declared gap, not a crosswalk promise", () => {
     const row = pmaRow("01287");
-    expect(row.verdict).toBe("pending");
-    expect(row.vintage).toBe("KBLI 2020");
-    expect(row.detail).toContain(
-      "crosswalk audit of this layer is in progress",
-    );
-    expect(row.detail).not.toContain(
-      "The official BPS crosswalk records no KBLI-2020 predecessor",
-    );
+    expect(row.verdict).toBe("gap");
+    expect(row.vintage).toBe("—");
+    expect(row.detail).toContain("declares a verification gap");
+    expect(row.detail).not.toContain("in progress");
   });
 
-  it("innocence: a BPS-ancestry code keeps the pending 2020-vintage row", () => {
-    const row = pmaRow("01111");
-    expect(row.verdict).toBe("pending");
-    expect(row.vintage).toBe("KBLI 2020");
-    expect(row.detail).toContain(
-      "crosswalk audit of this layer is in progress",
-    );
+  it("innocence: a located sector-law code renders verified locator + vintage", () => {
+    const row = pmaRow("65111");
+    expect(row.verdict).toBe("verified");
+    expect(row.vintage).toBe("2020-01-20");
+    expect(row.locator).toContain("PP 14/2018 Pasal 5(1)");
+    expect(row.detail).toContain("adjudicated official basis");
   });
 });

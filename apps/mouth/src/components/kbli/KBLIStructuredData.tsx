@@ -1,6 +1,9 @@
 import type { KBLICode } from "@/lib/kbli-types";
 import { buildKbliFaq } from "@/lib/kbli-faq";
-import { isLicensingVerificationPending } from "@/lib/kbli-provenance";
+import {
+  isLicensingVerificationPending,
+  isPmaVerdictVerified,
+} from "@/lib/kbli-provenance";
 import { pmaCapShape } from "@/lib/kbli-pma-shape";
 import { pmaSourceAttributionStructured } from "@/lib/kbli-pma-source";
 
@@ -46,6 +49,7 @@ export function KBLICodeJsonLd({
   // neither blocked nor confirmed open — don't let Google/AI answers read
   // it as an unqualified "100% foreign ownership allowed" green light.
   const baliNonClassifiable = code.baliL4?.status === "NON_CLASSIFICABILE";
+  const pmaVerdictVerified = isPmaVerdictVerified(code);
   const baliNat = baliBlocked
     ? " nationally — but blocked for a PT PMA in Bali"
     : baliNonClassifiable
@@ -60,8 +64,6 @@ export function KBLICodeJsonLd({
   // an authoritative BPS-recorded KBLI-2020 origin. If a future or defensive
   // input records none, there is nothing to crosswalk from and the same sentence
   // would overstate what we can show. The current canonical has no such gap.
-  const pmaBasisUntraceable =
-    code.provenance?.pma.status === "untraceable_basis";
   // Source-aware (kbli-pma-source.ts, shared with kbli-faq.ts's pmaSourceNote
   // — one classifier for one fact, never reinvented per surface): the Perpres
   // crosswalk-pending caveat is only true for codes the Perpres annexes
@@ -69,15 +71,18 @@ export function KBLICodeJsonLd({
   // PP 14/2018 Pasal 5(1) jo. PP 3/2020 are NOT among them, and the old
   // hardcoded clause attributed their 80% cap to the wrong instrument in the
   // JSON-LD Google ingests.
-  const pmaAttribution = pmaBasisUntraceable
-    ? " — The official BPS crosswalk records no KBLI-2020 predecessor for this code, so we cannot trace the basis of this ownership verdict; confirm it at oss.go.id before relying on it"
-    : pmaSourceAttributionStructured(code.pma.source);
+  const pmaAttribution = pmaSourceAttributionStructured(
+    code.pma.source,
+    code.provenance?.pma.status ?? "declared_gap",
+  );
   const pmaLabel = `${
-    code.pma.status === "open"
-      ? `100% foreign ownership allowed (TERBUKA)${baliNat}`
-      : code.pma.status === "restricted"
-        ? restrictedPmaStructuredLabel(code)
-        : "Closed to foreign investment (TERTUTUP)"
+    !pmaVerdictVerified
+      ? "Foreign-ownership status not yet verified for this KBLI 2025 code"
+      : code.pma.status === "open"
+        ? `100% foreign ownership allowed (TERBUKA)${baliNat}`
+        : code.pma.status === "restricted"
+          ? restrictedPmaStructuredLabel(code)
+          : "Closed to foreign investment (TERTUTUP)"
   }${pmaAttribution}`;
 
   const riskLevel: string = code.licensing[0]?.riskCategory ?? "Unknown";
@@ -129,7 +134,7 @@ export function KBLICodeJsonLd({
       code.titleEn !== code.titleId ? code.titleEn : undefined,
       "KBLI 2025",
       "Indonesian business license",
-      code.pma.status === "open" ? "PT PMA" : undefined,
+      pmaVerdictVerified && code.pma.status === "open" ? "PT PMA" : undefined,
       riskLevel !== "Unknown" ? `${riskLevel} risk` : undefined,
       code.section ? `Section ${code.section}` : undefined,
     ]

@@ -22,30 +22,6 @@ import type { KBLIProvenance } from "./kbli-types";
 // module, not reinvented per call-site.
 // =============================================================================
 
-/** The Perpres 10/2021 residual-open default and its 49/2021 amendment — the
- * only source for which the crosswalk-pending caveat is true. Matched by
- * substring rather than equality: `pma_source` embeds this instrument name
- * inside a longer string on the sector-law-carved-out codes too (e.g. "...not
- * the Perpres 10/2021/49/2021 annexes)"), and the caveat must NOT fire there —
- * `isPerpresSource` below checks a stricter prefix shape than a bare
- * substring test would, so that longer, sector-law-citing string is excluded. */
-function isPerpresSource(source: string | null): boolean {
-  if (!source) return false;
-  // The Perpres-default string always OPENS with "Perpres 10/2021" (optionally
-  // followed by ", 49/2021"). Every sector-law override observed in the
-  // catalogue instead OPENS with the sector instrument's own name (e.g. "PP
-  // 14/2018, PP 3/2020 ...") and only MENTIONS the Perpres later as the
-  // carve-out it was routed away from — so anchoring at the start is what
-  // keeps this from re-triggering on that mention.
-  return /^Perpres 10\/2021\b/.test(source.trim());
-}
-
-const PERPRES_CROSSWALK_NOTE_FAQ =
-  " (Source: Perpres 10/2021 as amended by Perpres 49/2021 — the investment-list annexes predate KBLI 2025; per-code crosswalk audit in progress.)";
-
-const PERPRES_CROSSWALK_NOTE_STRUCTURED =
-  " per Perpres 10/2021 as amended (crosswalk to KBLI 2025 pending)";
-
 /**
  * The FAQ-prose PMA source note, appended verbatim to the visible answer
  * (and, via the same builder, the FAQPage JSON-LD).
@@ -65,16 +41,12 @@ export function pmaSourceNoteFaq(
   source: string | null,
   provenanceStatus: KBLIProvenance["pma"]["status"],
 ): string {
+  if (provenanceStatus === "declared_gap") {
+    return source
+      ? ` (Instrument context recorded as ${source}, but no adjudicated per-code official basis and vintage currently verify this verdict; confirm it at oss.go.id before relying on it.)`
+      : " (No adjudicated per-code official basis and vintage currently verify this verdict; confirm it at oss.go.id before relying on it.)";
+  }
   if (!source) return "";
-  if (isPerpresSource(source)) {
-    if (provenanceStatus === "untraceable_basis") {
-      return " (Source: Perpres 10/2021 as amended by Perpres 49/2021 — The official BPS crosswalk records no KBLI-2020 predecessor for this code; confirm the verdict at oss.go.id before relying on it.)";
-    }
-    return PERPRES_CROSSWALK_NOTE_FAQ;
-  }
-  if (provenanceStatus === "untraceable_basis") {
-    return ` (Source: ${source}. The official BPS crosswalk records no KBLI-2020 predecessor for this code; confirm the verdict at oss.go.id before relying on it.)`;
-  }
   return ` (Source: ${source}.)`;
 }
 
@@ -84,8 +56,13 @@ export function pmaSourceNoteFaq(
  * as a clause rather than a parenthetical sentence to match the surrounding
  * `pmaLabel` string it is spliced into.
  */
-export function pmaSourceAttributionStructured(source: string | null): string {
+export function pmaSourceAttributionStructured(
+  source: string | null,
+  provenanceStatus: KBLIProvenance["pma"]["status"],
+): string {
+  if (provenanceStatus === "declared_gap") {
+    return " — no adjudicated per-code official basis and vintage currently verify this verdict; confirm it at oss.go.id";
+  }
   if (!source) return "";
-  if (isPerpresSource(source)) return PERPRES_CROSSWALK_NOTE_STRUCTURED;
   return ` per ${source}`;
 }

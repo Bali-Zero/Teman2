@@ -31,6 +31,7 @@ import { pmaCapShape } from "./kbli-pma-shape";
 import {
   isBaliL4BlockVerifiedForBareClaim,
   isLicensingVerifiedForBareClaim,
+  isPmaVerdictVerified,
 } from "./kbli-provenance";
 import type { KBLICode } from "./kbli-types";
 
@@ -74,6 +75,7 @@ export function verifiedLicenseType(kbli: KBLICode): string | null {
  * Both surfaces now degrade identically when the cap is unverified.
  */
 export function kbliPmaLabel(kbli: KBLICode): string {
+  if (!isPmaVerdictVerified(kbli)) return "Foreign Ownership Not Yet Verified";
   if (kbli.pma.status === "open") return "100% Foreign Ownership";
   if (kbli.pma.status !== "restricted") return "Closed to Foreign Investment";
   if (kbli.pma.capSpecial)
@@ -98,6 +100,8 @@ export function kbliPmaLabel(kbli: KBLICode): string {
  * verified — the Bali caveat is then carried by the page body, not the title.
  */
 export function kbliMetaTitleSuffix(kbli: KBLICode): string {
+  if (!isPmaVerdictVerified(kbli))
+    return "PMA Eligibility Requires Verification";
   if (kbli.pma.status === "open") {
     if (isBaliL4BlockVerifiedForBareClaim(kbli)) {
       return "Blocked for PT PMA in Bali (2026)";
