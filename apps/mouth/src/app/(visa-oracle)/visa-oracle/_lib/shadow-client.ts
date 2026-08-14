@@ -22,11 +22,11 @@
  * fully anonymous, exact-match public endpoint (no token, no auth
  * header), rate-limited 30 req/60s per IP, and returns HTTP 200 for every
  * well-formed body (including its own fail-closed
- * TEMPORARILY_UNAVAILABLE shape). No query params are sent from here:
- * `traffic_source` defaults server-side to `"real"` — exactly the right
- * label for organic browser SHADOW traffic — and the `synthetic_*`
- * classes are gated behind an `X-Visa-Driver-Token` header this UI has no
- * business sending.
+ * TEMPORARILY_UNAVAILABLE shape). Organic browser SHADOW traffic is
+ * labelled explicitly with `traffic_source=real`; this client does not
+ * rely on a server default that could silently misclassify an unlabeled
+ * caller. The `synthetic_*` classes are gated behind an
+ * `X-Visa-Driver-Token` header this UI has no business sending.
  *
  * `API_BASE` mirrors `lib/visa-oracle/api.ts`'s existing pattern verbatim
  * — same env var, same fallback host, so this module resolves to the
@@ -38,7 +38,7 @@ import { mapOracleFactsToApplicantFacts } from "./fact-mapper";
 const API_BASE =
   process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://nuzantara-rag.fly.dev";
 
-export const SHADOW_EVALUATE_URL = `${API_BASE}/api/visa-oracle/evaluate`;
+export const SHADOW_EVALUATE_URL = `${API_BASE}/api/visa-oracle/evaluate?traffic_source=real`;
 
 /**
  * Fire the SHADOW evaluate POST for one completed interview. `today` MUST
