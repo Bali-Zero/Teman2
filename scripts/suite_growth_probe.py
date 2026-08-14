@@ -122,6 +122,12 @@ GH_TIMEOUT_TG = 30
 
 GATE_EVENTS = ("push", "merge_group")
 
+# tg_notify.py prints its real outcome as `tg_notify: <verdict>` on stderr — the
+# gateway's own exit code is always 0 (W104), so this is the only place a caller
+# can tell "sent" from "deduped"/"p0_overflow_spooled"/etc. Same convention as
+# scripts/job_health.py's _GATEWAY_VERDICT_RE.
+_GATEWAY_VERDICT_RE = re.compile(r"^tg_notify:\s*(\S+)", re.MULTILINE)
+
 
 def _env_float(name: str, default: float) -> float:
     """Garbage in an env knob must never crash a nightly cron (fail-open contract,
@@ -321,8 +327,23 @@ def _run_tg_notify(cmd: list[str], timeout: int = GH_TIMEOUT_TG) -> subprocess.C
     """The one subprocess boundary this module crosses to reach tg_notify.py. Kept
     separate from `_run_gh` so a test can fake one without accidentally answering
     for the other (scar W114: the fake belongs at the boundary the real code
-    crosses, matched one-for-one, not merged into a single do-everything stub)."""
-    return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    crosses, matched one-for-one, not merged into a single do-everything stub).
+
+    tg_notify.py always exits 0 (W104) — sent/logged/spooled/deduped/
+    p0_overflow_spooled/p0_unsent_spooled are all rc=0. The gateway prints the
+    real outcome as `tg_notify: <verdict>` on its own stderr; a caller that never
+    parses that line reads a refusal as a delivery
+    (scripts/tests/test_gateway_callers_read_the_verdict.py). Parse and log it
+    here, at the one place this module crosses the subprocess boundary, so every
+    caller of this function inherits the reading for free instead of each one
+    re-deriving it (or forgetting to)."""
+    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    m = _GATEWAY_VERDICT_RE.search(proc.stderr or "")
+    print(
+        f"tg_notify: {m.group(1) if m else f'NESSUN verdetto rc={proc.returncode}'}",
+        file=sys.stderr,
+    )
+    return proc
 
 
 def _parse_concatenated_json(text: str) -> list[dict[str, Any]]:
