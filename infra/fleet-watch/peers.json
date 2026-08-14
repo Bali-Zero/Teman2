@@ -1,10 +1,17 @@
 {
-  "_doc": "fleet_watch peer map: watcher `hostname -s` (lowercase) -> peers it guards. A node absent here exits 0 (safe to install fleet-wide). Genesis 2026-07-07: the Pro went dark 5h with zero alarms because every watchdog lived on the Pro itself; the H24 Mini is the natural watcher.",
+  "_doc": "fleet_watch peer map: watcher `hostname -s` (lowercase) -> peers it guards. A node absent here exits 0 (safe to install fleet-wide). Genesis 2026-07-07: the Pro went dark 5h with zero alarms because every watchdog lived on the Pro itself; the H24 Mini is the natural watcher. 2026-08-14: the watch became mutual — the Mini went dark 2026-08-10→12 (its own application firewall) and again nobody was alerted; the Pro now watches the Mini.",
   "mini-pro2": [
     {
       "name": "pro",
       "tailscale_host": "nuzantara",
       "ssh_alias": "pro"
+    }
+  ],
+  "nuzantara": [
+    {
+      "name": "mini",
+      "tailscale_host": "mini-pro2",
+      "ssh_alias": "mini"
     }
   ]
 }

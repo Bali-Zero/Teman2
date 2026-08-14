@@ -130,3 +130,21 @@ def test_main_exits_0_on_unassigned_node(monkeypatch, tmp_path):
     monkeypatch.setattr(fw.socket, "gethostname", lambda: "some-other-box.local")
     rc = fw.main()
     assert rc == 0
+
+
+# --- peers config tripwire: the watch is MUTUAL (2026-08-14) ----------------
+# Genesis: Mini dark 2026-08-10→12 (its own application firewall) with zero
+# alarms — only mini-pro2 watched pro, nobody watched mini. This pins the
+# real config so a future edit cannot silently drop one direction.
+
+def test_real_peers_config_watch_is_mutual():
+    peers = json.loads(
+        (REPO / "infra" / "fleet-watch" / "peers.json").read_text()
+    )
+    mini_watches = {p["name"] for p in peers.get("mini-pro2", [])}
+    pro_watches = {p["name"] for p in peers.get("nuzantara", [])}
+    assert "pro" in mini_watches, "mini-pro2 no longer watches pro"
+    assert "mini" in pro_watches, "nuzantara (Pro) no longer watches mini"
+    (mini_entry,) = [p for p in peers["nuzantara"] if p["name"] == "mini"]
+    assert mini_entry["tailscale_host"] == "mini-pro2"
+    assert mini_entry["ssh_alias"] == "mini"
