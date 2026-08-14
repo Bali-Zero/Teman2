@@ -78,12 +78,23 @@ def test_a_row_judged_on_a_2020_code_applies_to_its_single_heir():
 
 
 def test_the_same_locator_already_present_is_not_an_obstacle():
-    """Re-running the cure must be idempotent, not self-blocking."""
+    """A locator alone is not a completed cure; the missing fields still apply."""
     todo, refusals = run(
         [item("01111", locator="L-II p1")],
         [rec("01111", basis="L-II p1")],
     )
     assert refusals == [] and len(todo) == 1
+
+
+def test_a_fully_applied_patch_is_an_idempotent_noop():
+    it = item("01111", locator="L-II p1")
+    cured = rec("01111", status="TERBATAS", maxa=0, basis="L-II p1")
+    cured.update(A.patch_for(it))
+
+    todo, refusals = run([it], [cured])
+
+    assert todo == []
+    assert refusals == []
 
 
 # --------------------------------------------------------------------------
@@ -451,19 +462,42 @@ def test_the_live_spec_applies_in_the_world_it_was_written_against():
     assert sorted(i["code"] for i in todo) == sorted(codes)
 
 
-def test_guilt_the_live_spec_is_refused_against_the_cured_catalogue():
-    """The other half of the same fact, asserted rather than left implicit: run
-    the live spec against the catalogue AS SHIPPED and every item must be
-    refused for having moved. An applied cure that re-applies is a cure that
-    could double-write, and the review read the refusal as a defect precisely
-    because no test said it was intended."""
+def test_the_live_spec_is_a_clean_noop_against_the_cured_catalogue():
+    """Re-running an applied cure verifies every owned field and succeeds
+    without scheduling a second write."""
     spec = json.loads(A.SPEC.read_text(encoding="utf-8"))
     canonical = json.loads(A.CANONICAL.read_text(encoding="utf-8"))
     records = canonical["data"]
     todo, refusals = A.check(spec, records)
     assert todo == []
-    assert len(refusals) == len(spec["items"])
-    assert all("moved since adjudication" in r for r in refusals)
+    assert refusals == []
+
+
+def test_apply_on_a_fully_cured_sandbox_is_a_noop_without_propagation(
+    tmp_path, capsys, monkeypatch
+):
+    spec_payload = json.loads(A.SPEC.read_text(encoding="utf-8"))
+    canonical = json.loads(A.CANONICAL.read_text(encoding="utf-8"))
+    by_code = {str(r["kode_kbli_2025"]): r for r in canonical["data"]}
+    codes = {i["code"] for i in spec_payload["items"]}
+    siblings = {s for i in spec_payload["items"] for s in i["siblings_left_open"]}
+    payload = {"data": [by_code[c] for c in sorted(codes | siblings)]}
+    dataset = tmp_path / "already.json"
+    dataset.write_text(json.dumps(payload), encoding="utf-8")
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(json.dumps(spec_payload), encoding="utf-8")
+    before = dataset.read_bytes()
+    called = []
+    monkeypatch.setattr(A, "propagate", lambda *a, **k: called.append(1) or [])
+
+    rc = A.main(
+        ["--apply", "--spec", str(spec_path), "--dataset", str(dataset)]
+    )
+
+    assert rc == A.EXIT_OK
+    assert dataset.read_bytes() == before
+    assert called == []
+    assert "clean no-op" in capsys.readouterr().out
 
 
 def test_the_withdrawal_names_the_codes_whose_evidence_was_short():

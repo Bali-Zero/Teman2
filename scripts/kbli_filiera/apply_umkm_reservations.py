@@ -346,6 +346,15 @@ def check(
             refusals.append(f"{code}: already carries a different pma_official_basis")
             continue
 
+        # Idempotent success is stricter than "the locator is already there":
+        # every field owned by this compiler must match its intended patch.
+        # Run this only AFTER the ancestry/split-heir guards above, so a later
+        # structural drift is still a refusal even when the visible PMA fields
+        # happen to look cured.
+        target = patch_for(item)
+        if all(record.get(key) == value for key, value in target.items()):
+            continue
+
         was = item.get("was") or {}
         now = {
             "pma_status": record.get("pma_status"),
@@ -428,7 +437,11 @@ def main(argv: list[str] | None = None) -> int:
 
     todo, refusals = check(spec, records)
 
-    print(f"spec items {len(spec['items'])} · applicable {len(todo)} · refused {len(refusals)}")
+    already_applied = len(spec["items"]) - len(todo) - len(refusals)
+    print(
+        f"spec items {len(spec['items'])} · applicable {len(todo)} · "
+        f"already applied {already_applied} · refused {len(refusals)}"
+    )
     print(f"excluded by the adjudication itself: {spec['excluded']}")
     for r in refusals:
         print(f"  REFUSE {r}")
@@ -442,6 +455,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if not args.apply:
         print("\ndry-run — rerun with --apply to write")
+        return EXIT_OK
+
+    if not todo:
+        print("\nalready applied — clean no-op; nothing written or propagated")
         return EXIT_OK
 
     by_code = {str(r["kode_kbli_2025"]): r for r in records}
