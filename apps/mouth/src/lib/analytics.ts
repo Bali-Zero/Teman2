@@ -286,47 +286,6 @@ export function trackLeadWhatsAppCTA(
 
 // --- Visa Oracle ---
 
-/** Track quiz completion with answers */
-export function trackVisaQuizCompleted(answers: {
-  nationality: string;
-  purpose: string;
-  duration: string;
-  family: string;
-}): void {
-  sendGA4Event("visa_quiz_completed", {
-    event_category: "VisaOracle",
-    nationality: answers.nationality,
-    purpose: answers.purpose,
-    duration: answers.duration,
-    family: answers.family,
-  });
-  trackEvent("visa_quiz_completed", answers);
-  void trackFunnelEvent("visa_quiz_completed", {
-    sessionId: getOrCreateSessionId(),
-    payload: answers,
-  });
-}
-
-/** Track visa recommendation result viewed */
-export function trackVisaResultViewed(
-  topVisa: string,
-  visaCount: number,
-): void {
-  sendGA4Event("visa_result_viewed", {
-    event_category: "VisaOracle",
-    top_visa: topVisa,
-    visa_count: visaCount,
-  });
-  trackEvent("visa_result_viewed", {
-    top_visa: topVisa,
-    visa_count: visaCount,
-  });
-  void trackFunnelEvent("visa_result_viewed", {
-    sessionId: getOrCreateSessionId(),
-    payload: { top_visa: topVisa, visa_count: visaCount },
-  });
-}
-
 /** Track chat question sent in Visa Oracle */
 export function trackVisaChatQuestion(remaining: number): void {
   sendGA4Event("visa_chat_question", {
