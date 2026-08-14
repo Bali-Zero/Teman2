@@ -1,0 +1,18 @@
+id: deploy-health
+category: Deploy health
+description: >
+  Health-endpoint/monitor tests (service health, channel health, drive
+  watchdog health, collection/KG health) plus the backend stability gate
+  test — the pytest counterpart of scripts/backend_stability_gate.py, which
+  CLAUDE.md §11 runs as a required step of the "Run backend stability gate"
+  CI job before deploy. A quarantined health test is a blind spot in
+  exactly the signal CLAUDE.md §11's mandatory post-deploy QA depends on.
+patterns:
+  - apps/backend-rag/**/test_*health*.py
+  - apps/backend-rag/backend/tests/db/test_backend_stability_gate.py
+rationale: >
+  CLAUDE.md §11 Deploy Lifecycle "Post-deploy QA OBBLIGATORIO: wait curl
+  200/307 -> screenshot ... verify colors/logo/no broken -> fix/redeploy"
+  and the tests.yml "Run backend stability gate" step this floor's second
+  pattern targets directly.
+verified_match_count: 18
