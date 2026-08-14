@@ -180,24 +180,50 @@ a refuter's). Diff touches: `apps/backend-rag/backend/app/core/config.py` (+41),
 `apps/backend-rag/backend/services/rag/agentic/_shadow_provider.py` (new, 176 lines),
 `scripts/bot/build_deid_corpus.py` (new, not reviewed here — out of scope for V1).
 
-### 🔴 Finding 0 (found independently, not in the orchestrator's list) — the governing document does not exist
+### 🔴 Finding 0 (found independently, confirmed first-hand by the coordinating lane) — the governing document does not exist
 
-`openai_responses_client.py`, `_shadow_provider.py`, and `config.py`'s new fields all cite
+**FIRST item, per coordinating-lane instruction, with the exact evidence re-verified this turn.**
+Six files in the implementer worktree cite
 `research/operations/2026-08-15-adr-wa-runtime-openai-provider.md` as the authority for design
-decisions (module docstrings, quoted verbatim text attributed to it — e.g. `_shadow_provider.py`'s
-docstring quotes an Italian sentence in quotation marks as if copied from that file). **The file does
-not exist anywhere**: not in this worktree, not in any of the other three bot-lane worktrees
-(`ops-bot-provider-verifier`, `ops-bot-v3-failure-matrix`), not in `git log --all` for that path or a
-commit-message grep for `adr-wa-runtime` across every ref. Same for `scripts/bot/wa_blind_bench.py`,
-cited twice as the intended offline scoring tool — zero results anywhere in the tree. **This is scar
-family #6 (anti-hallucination blindness / phantom citations), and it is the sharpest finding in this
-review**: every design decision in the diff — "Responses API not Chat Completions", "shadow receives
-the same assembled context", "no model has been benchmarked yet", the T2/T3 VIETATO list — is
-attributed to a document that cannot be checked against. A verifier cannot confirm the diff satisfies
-a mandate that isn't on disk; a reader six months from now cannot either. Before this PR is
+decisions — all six checked via `grep -rn "adr-wa-runtime-openai-provider" apps/backend-rag/backend
+scripts` in that worktree, this turn:
+
+| File | Line | What it cites the ADR for |
+|---|---|---|
+| `apps/backend-rag/backend/llm/openai_responses_client.py` | `:5` | module authority, "see …ADR…" |
+| `apps/backend-rag/backend/app/core/config.py` | `:133` | "mandate `…ADR…`" comment on the new fields |
+| `apps/backend-rag/backend/services/rag/agentic/llm_gateway.py` | `:533` | authority for the shadow-dispatch insertion point |
+| `apps/backend-rag/backend/services/rag/agentic/_shadow_provider.py` | `:26` | "§Non-goals records this as …" — quotes a section of the ADR that cannot be checked |
+| `scripts/bot/build_deid_corpus.py` | `:6` | "Part of the … shipping mandate … `…ADR…`" |
+| `scripts/bot/wa_blind_bench.py` | `:6` | same, plus cites `build_deid_corpus.py` as its own input |
+
+**The ADR file does not exist anywhere**: not in this worktree, not in any other bot-lane worktree,
+not in `git log --all --diff-filter=A` for that exact path across every ref (re-run this turn, zero
+hits), not in a commit-message grep for `adr-wa-runtime` (zero hits). One quoted example:
+`_shadow_provider.py`'s docstring quotes an Italian sentence in quotation marks as if copied
+verbatim from the ADR's §Non-goals — a section of a document that isn't on disk.
+
+**Status update on `scripts/bot/wa_blind_bench.py`, checked this turn**: an earlier pass of this
+review found it absent (zero results anywhere in the tree). As of this later check, the file now
+exists on disk in the implementer worktree — `git status --short` there shows it **untracked** (`??
+scripts/bot/`), i.e. still not committed to that branch's history, and it too cites the same
+nonexistent ADR (`:6`, table above). This does not weaken Finding 0 — the governing document is
+still phantom, and the citing surface grew, not shrank, between the two checks. Flagged as a live
+sibling: this file belongs to the implementer lane and was NOT read, edited, or otherwise touched by
+this review beyond the one `grep`/`git status` used to establish this fact.
+
+**This is scar family #6 (anti-hallucination blindness / phantom citations), and it is the sharpest
+finding in this review**: every design decision in the diff — "Responses API not Chat Completions",
+"shadow receives the same assembled context", "no model has been benchmarked yet", the T2/T3 VIETATO
+list — is attributed to a document that cannot be checked against. A verifier cannot confirm the diff
+satisfies a mandate that isn't on disk; a reader six months from now cannot either. Before this PR is
 mergeable, the ADR needs to actually exist (written and committed, even retroactively as "the
 decisions this PR encodes"), or every citation to it needs to come out and the reasoning needs to
-stand on its own in the docstrings.
+stand on its own in the docstrings. **This is a veto-strength finding, not a stylistic nit** — the
+coordinating lane's own independent, first-hand verification of the six-file citation pattern above
+confirms it; the formal veto on the implementer's eventual PR is carried there via required review,
+citing this artifact, not via a direct message to that lane (coordination channel per Zero's
+standing order: artifacts/PRs only, no direct cross-lane messaging).
 
 ### Orchestrator-supplied risks — verified
 
