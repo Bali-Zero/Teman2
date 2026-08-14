@@ -29,7 +29,7 @@ import importlib.util
 import json
 import subprocess
 import sys
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from types import ModuleType
 
@@ -193,6 +193,148 @@ def test_list_workflow_runs_combines_all_pages_and_deduplicates_ids(monkeypatch)
 
     assert [run["id"] for run in fetched] == [1, 2, 3]
     assert reported_total == 3
+    assert errors == []
+
+
+def _parse_created_window(cmd: list[str]) -> tuple[datetime, datetime]:
+    """Recover the `[start, end]` UTC window `list_workflow_runs` sent, for fakes that need
+    to answer differently per window (the bisection tests below) rather than ignoring `cmd`
+    like the fixtures above.
+    """
+    for i, tok in enumerate(cmd):
+        if tok == "-f" and cmd[i + 1].startswith("created="):
+            value = cmd[i + 1].split("=", 1)[1]
+            start_s, end_s = value.split("..")
+            fmt = "%Y-%m-%dT%H:%M:%SZ"
+            return (
+                datetime.strptime(start_s, fmt).replace(tzinfo=timezone.utc),
+                datetime.strptime(end_s, fmt).replace(tzinfo=timezone.utc),
+            )
+    raise AssertionError(f"no created= filter found in cmd: {cmd}")
+
+
+def test_list_workflow_runs_bisects_past_the_1000_result_cap(monkeypatch):
+    """Guilt: a day with 2,500 runs (real GitHub caps `created`-filtered queries at 1,000,
+    per docs.github.com/en/rest/actions/workflow-runs) must still yield ALL of them, with an
+    empty pagination error — recovered via recursive time-window bisection, not a single
+    `--paginate` call.
+    """
+    day = date(2026, 8, 12)
+    total_runs = 2500
+    day_start = datetime(2026, 8, 12, tzinfo=timezone.utc)
+    # Evenly spread across the day so each bisection level's two halves split ~evenly.
+    step_seconds = 86400 / total_runs
+    all_runs = [
+        (i + 1, day_start + timedelta(seconds=i * step_seconds)) for i in range(total_runs)
+    ]
+
+    def fake_run(cmd, **kwargs):  # noqa: ANN001, ANN003
+        assert cmd[0] == "gh"
+        assert cmd[2] == f"repos/{qbp.DEFAULT_REPO}/actions/runs"
+        start, end = _parse_created_window(cmd)
+        matched = [(rid, ts) for rid, ts in all_runs if start <= ts <= end]
+        capped = matched[: qbp.PAGE_CAP]  # GitHub's real server-side behavior: total_count is
+        # honest, the served items are capped.
+        payload = {
+            "total_count": len(matched),
+            "workflow_runs": [_mk_run(rid, "push") for rid, _ts in capped],
+        }
+        return _proc(cmd, 0, json.dumps(payload))
+
+    monkeypatch.setattr(qbp.subprocess, "run", fake_run)
+
+    fetched, reported_total, errors = qbp.list_workflow_runs(qbp.DEFAULT_REPO, day)
+
+    assert reported_total == total_runs
+    assert sorted(run["id"] for run in fetched) == list(range(1, total_runs + 1))
+    assert errors == []
+
+
+def test_list_workflow_runs_gives_up_visibly_when_even_bisection_cannot_resolve(monkeypatch):
+    """Guilt (safety bound): a pathologically dense day that STILL reports more than
+    PAGE_CAP at every window, all the way down to the recursion bound, must never loop
+    forever and must never claim completeness — errors[] stays non-empty and main()'s exit
+    code is non-zero (W101 discipline), never a silent partial-as-complete record.
+    """
+    day = date(2026, 8, 12)
+    monkeypatch.setattr(qbp, "MAX_BISECT_DEPTH", 3)  # keep the test fast; still exercises the
+    # real recursive code path and the real fail-visible guard.
+
+    def fake_run(cmd, **kwargs):  # noqa: ANN001, ANN003
+        assert cmd[0] == "gh"
+        if cmd[2] == f"repos/{qbp.DEFAULT_REPO}/actions/runs":
+            # Every window, no matter how narrow, reports far more than it can serve.
+            payload = {
+                "total_count": 999_999,
+                "workflow_runs": [_mk_run(i, "push") for i in range(qbp.PAGE_CAP)],
+            }
+            return _proc(cmd, 0, json.dumps(payload))
+        raise AssertionError(f"unexpected gh invocation: {cmd}")
+
+    monkeypatch.setattr(qbp.subprocess, "run", fake_run)
+
+    fetched, reported_total, errors = qbp.list_workflow_runs(qbp.DEFAULT_REPO, day)
+
+    assert reported_total == 999_999
+    assert len(fetched) < reported_total
+    assert errors != []
+    assert any("even after bisection" in e for e in errors)
+
+
+def test_list_workflow_runs_gives_up_end_to_end_via_main_nonzero_exit(tmp_path, monkeypatch):
+    """Same pathological-density scenario as above, exercised through main() end to end:
+    the record is still written (never skipped), but the wrapper's rc-based alerting must
+    see the failure (W101 discipline) — never a green run silently sitting on a partial day.
+    """
+    day = date(2026, 8, 12)
+    monkeypatch.setattr(qbp, "MAX_BISECT_DEPTH", 2)
+
+    def fake_run(cmd, **kwargs):  # noqa: ANN001, ANN003
+        assert cmd[0] == "gh"
+        if cmd[1] == "api" and len(cmd) > 2 and cmd[2] == f"repos/{qbp.DEFAULT_REPO}/actions/runs":
+            payload = {"total_count": 999_999, "workflow_runs": [_mk_run(i, "push") for i in range(qbp.PAGE_CAP)]}
+            return _proc(cmd, 0, json.dumps(payload))
+        if cmd[1] == "api" and len(cmd) > 2 and cmd[2].endswith("/timing"):
+            return _proc(cmd, 1, "", "not needed for this test")
+        if cmd[1] == "pr" and cmd[2] == "list":
+            return _proc(cmd, 0, json.dumps([]))
+        raise AssertionError(f"unexpected gh invocation: {cmd}")
+
+    monkeypatch.setattr(qbp.subprocess, "run", fake_run)
+
+    out_dir = tmp_path / "baseline"
+    rc = qbp.main(["--repo", qbp.DEFAULT_REPO, "--date", day.isoformat(), "--out-dir", str(out_dir)])
+
+    assert rc == 1
+    record_path = out_dir / f"{day.isoformat()}.json"
+    assert record_path.exists()
+    on_disk = json.loads(record_path.read_text())
+    assert on_disk["errors"] != []
+    assert on_disk["run_collection"]["complete"] is False
+
+
+def test_list_workflow_runs_innocence_below_cap_is_not_bisected(monkeypatch):
+    """Innocence: a window whose raw fetch stays below PAGE_CAP is never split, regardless
+    of how narrow the theoretical windows would be — single-window behavior is unchanged
+    from before bisection existed (mirrors
+    test_list_workflow_runs_combines_all_pages_and_deduplicates_ids but pinned explicitly
+    against PAGE_CAP so a future change to that constant can't silently make this drift).
+    """
+    day = date(2026, 8, 12)
+    calls: list[list[str]] = []
+
+    def fake_run(cmd, **kwargs):  # noqa: ANN001, ANN003
+        calls.append(cmd)
+        payload = {"total_count": 42, "workflow_runs": [_mk_run(i, "push") for i in range(42)]}
+        return _proc(cmd, 0, json.dumps(payload))
+
+    monkeypatch.setattr(qbp.subprocess, "run", fake_run)
+
+    fetched, reported_total, errors = qbp.list_workflow_runs(qbp.DEFAULT_REPO, day)
+
+    assert len(calls) == 1  # exactly one window fetched — no bisection attempted
+    assert reported_total == 42
+    assert len(fetched) == 42
     assert errors == []
 
 
