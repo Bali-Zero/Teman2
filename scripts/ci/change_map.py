@@ -78,6 +78,28 @@ EXACT_RULES: dict[str, set[str] | frozenset[str]] = {
         "evaluator",
         "security_sensitive",
     },
+    # Cross-domain coupling found in the 57-run shadow audit (2026-08-14,
+    # run 31648287902): this single backend file is PricingTool's canonical
+    # source (PricingService._load_prices() reads it, and
+    # scripts/sync_frontend_prices.py regenerates the mouth-side copy from
+    # it). Two mouth vitest suites read this exact path directly and fail on
+    # drift — apps/mouth/src/lib/pricing-snapshot.test.ts ("keeps every
+    # exact PricingTool row in parity") and
+    # apps/mouth/src/lib/bali-zero-prices.test.ts ("PricingTool
+    # source-of-truth") — so a PR that edits only this backend file, without
+    # having regenerated apps/mouth/data/bali-zero-prices.json yet, needs
+    # frontend-tests to catch the mismatch before merge. The "apps/backend-rag/"
+    # prefix rule below already puts this path in backend_python; this exact
+    # entry additionally routes it to mouth. Deliberately an EXACT path, not
+    # a directory/prefix rule: investigated apps/backend-rag/backend/services/
+    # visa_engine/ (the sibling file that landed in the same real-world PR,
+    # rulepack-prod-008.source.json) and PricingService only ever reads this
+    # one file — no rulepack path feeds the frontend snapshot, so widening
+    # the coupling there would be an unearned guess, not a verified edge.
+    "apps/backend-rag/backend/data/bali_zero_official_prices_2026.json": {
+        "backend_python",
+        "mouth",
+    },
 }
 
 PREFIX_RULES: tuple[tuple[str, frozenset[str]], ...] = (

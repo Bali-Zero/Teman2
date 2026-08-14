@@ -19,6 +19,45 @@ class ChangeMapTests(unittest.TestCase):
         self.assertEqual(result["reason"], "classified")
         self.assertEqual(result["suggested_jobs"], ["backend-tests", "e2e-tests"])
 
+    def test_guilt_pricing_canonical_edit_also_runs_frontend(self) -> None:
+        # 57-run shadow audit, 2026-08-14, run 31648287902: a PR edited only
+        # this backend file, and would have skipped frontend-tests under a
+        # naive path-domain map — but two mouth vitest suites
+        # (pricing-snapshot.test.ts, bali-zero-prices.test.ts) read this
+        # exact path directly for drift detection and FAILED. This is the
+        # coupling rule's guilt case: the exact canonical path must route to
+        # frontend-tests even though nothing under apps/mouth/ changed.
+        result = cm.classify(
+            ["apps/backend-rag/backend/data/bali_zero_official_prices_2026.json"]
+        )
+        self.assertFalse(result["run_all"])
+        self.assertTrue(result["domains"]["backend_python"])
+        self.assertTrue(result["domains"]["mouth"])
+        self.assertEqual(
+            result["suggested_jobs"],
+            ["backend-tests", "frontend-tests", "e2e-tests"],
+        )
+
+    def test_innocence_other_backend_data_files_do_not_couple_to_frontend(
+        self,
+    ) -> None:
+        # The coupling rule above is an EXACT path, not a directory/prefix on
+        # apps/backend-rag/backend/data/ — a sibling data file (including the
+        # deprecated 2025 catalog PricingService no longer reads) must NOT
+        # pull in frontend-tests just for living next to the canonical one.
+        for path in (
+            "apps/backend-rag/backend/data/bali_zero_official_prices_2025.json",
+            "apps/backend-rag/backend/data/some_other_dataset.json",
+        ):
+            with self.subTest(path=path):
+                result = cm.classify([path])
+                self.assertFalse(result["run_all"])
+                self.assertFalse(result["domains"]["mouth"])
+                self.assertNotIn("frontend-tests", result["suggested_jobs"])
+                self.assertEqual(
+                    result["suggested_jobs"], ["backend-tests", "e2e-tests"]
+                )
+
     def test_innocence_docs_only_skips_product_test_jobs(self) -> None:
         result = cm.classify(["docs/runbooks/ci.md", "research/operations/note.json"])
         self.assertFalse(result["run_all"])
