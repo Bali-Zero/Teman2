@@ -128,3 +128,110 @@ Both are deliberately deferred: Phase 1 is the first time this repo runs
 *any* standing multi-task queue against a paid seat since the W81 firebreak,
 and the design bet here is "prove the pattern narrow and capped before
 widening it," not "land all four lanes at once."
+
+## Amendment log — 2026-08-14 (cross-family Kimi K3 refutation, 12 items)
+
+A cross-family refutation of this design (Kimi K3, generator≠grader per
+CLAUDE.md §6) closed 12 numbered defects the same day, before either lane
+was armed anywhere. Both lanes' second commit implements all 12; nothing
+here shipped un-amended.
+
+**Spark (6 items):**
+
+1. **Atomic lock, not a pidfile write.** The single-instance guard is now a
+   `mkdir`-claimed lock directory (`$STATE_DIR/run.lock/`) with a pid file
+   inside, checked and reclaimed if stale. A plain pidfile write is not
+   atomic against a real race, and launchd does not guarantee serialization
+   against a manual run of the same script. A live-lock tick now reports
+   its own distinct status (`skipped-overlap`) rather than the generic `ok`
+   it shared with "queue empty" before.
+2. **Content-only dedup, corruption-fatal state.** The dedup key is now
+   sha256 of task **content**, not `filename:sha` — a rename/move no longer
+   creates a phantom duplicate entry. The done-list is now an append-only
+   JSONL of every *attempt* (`attempts.jsonl`, one line per try, not just
+   successes) instead of a flat "done" list. A line that fails to parse
+   HALTS the lane (`status=state-corrupt`, P0) rather than falling open
+   into re-processing the whole queue — the family #2/#9 failure mode this
+   repo has hit repeatedly (W88, W104: a corrupt or misread state file read
+   as "nothing recorded" is worse than no state at all).
+3. **Retry count + head-of-line protection.** Task selection now prefers
+   never-attempted tasks over once-failed retries, and a task quarantines
+   itself after 2 recorded failures — a single poisoned task can neither
+   block the head of the queue behind it forever nor be retried
+   unboundedly.
+4. **Fixed 12h backoff, plus a format-change tripwire.** Backoff on a
+   detected quota marker is now a flat 12h (never exponential-unbounded).
+   New: 3 *consecutive* non-quota failures (across distinct tasks, so a
+   single quarantined task can't trigger it alone) also fire the same 12h
+   backoff — protection against codex's output format changing underneath
+   the quota-marker regex, where every failure would otherwise misclassify
+   silently.
+5. **Reproducibility header.** Every report now opens with the checkout
+   HEAD sha (at run time) and the task's own content sha256, not just the
+   task's queue filename.
+6. **Explicit WITA clock.** Every "today"/"cap"/"digest hour" computation
+   goes through `TZ=Asia/Makassar date …` (fixed UTC+8, no DST — no
+   zoneinfo/tzdata dependency) instead of ambient system/launchd TZ, which
+   is not guaranteed to be WITA in every cron environment.
+
+**Jules (4 items):**
+
+7. **72h session TTL.** A session still PENDING after
+   `ARMY_JULES_SESSION_TTL_HOURS` (default 72) is marked `stale`, fires
+   exactly ONE escalation of its own ("investigate or cancel", not "verify
+   this patch" — there is none), and is never polled again.
+8. **Escalation dedup grep.** Before writing an escalation, both the
+   completed-session and stale-session paths now grep
+   `shared/escalations_pro.jsonl` for the same job key first. The primary
+   guard is still in-process (a closed session is never re-polled); this is
+   the safety net for the crash-consistency gap where an escalation write
+   succeeded but the session-state save that would have prevented a repeat
+   did not land.
+9. **Inbox backpressure.** Dispatch refuses to send new tasks while
+   `ARMY_JULES_INBOX_BACKPRESSURE` (default 6) or more harvested patches
+   are still awaiting verification (`outcome` unset) — the bottleneck was
+   always verification bandwidth, not dispatch volume (see Rationale
+   above), so dispatch now adapts to it instead of piling on top of it. The
+   count is reported in the daily digest.
+10. **Base-commit recording + blocked-streak alarm.** Every dispatch tick
+    resolves `origin/main`'s HEAD once and records it on each session, so a
+    later verification session can `git apply --check` against the commit
+    Jules actually started from. Two or more *consecutive* ticks blocked on
+    a missing Keychain credential now get a distinct digest line
+    (`army-jules:blocked-streak`) — a forgotten-credential machine should
+    not silently read as "not applicable" forever.
+
+**Both lanes (2 items):**
+
+11. **Wired into the repo's existing organism staleness detector, without
+    a new registry.** Before wiring this in, both `infra/fleet-watch/`
+    (unrelated — a separate Pro/Mini reachability watch, `peers.json`) and
+    `scripts/organism_stale_detector.py` were read in full. Findings that
+    shaped the implementation: the detector auto-discovers every
+    `*.json` file under `~/.organism/last_seen/` (`scan_sidecars()`) — no
+    pre-registration allow-list exists for staleness detection itself, so
+    `army.spark_lane`/`army.jules_lane` need no registry edit anywhere to
+    be picked up. The one other registry in the repo,
+    `apps/organism/organism/organs_registry.yaml`, is consumed by
+    `sentinel-aggregate.py`/`healer_receptor_registry.py` for *recovery-action*
+    automation, not by the stale detector — left unregistered here
+    deliberately (Phase 2 candidate if automated recovery wiring is
+    wanted). Also confirmed the literal word `killed` is in
+    `scripts/lib/heartbeat.sh`'s recognized-status vocabulary and maps to
+    `"error"` — so neither lane ever passes that word to `organism_heartbeat()`
+    for an intentional kill-switch-off tick; each lane keeps its own
+    richer status vocabulary (`killed`/`skipped-overlap`/`state-corrupt`/…)
+    separate from the narrower heartbeat-safe one (`ok`/`degraded`/`error`/`disabled`)
+    it maps down to. Every tick that completes with heartbeat status `ok`
+    additionally stamps `last_success_epoch` into the SAME sidecar file —
+    additive, not a second artifact, so an existing or future consumer that
+    only reads `ts`/`status` is unaffected.
+12. **`outcome` field + weekly produced/consumed digest line.** Both
+    lanes' completed-work records (`attempts.jsonl` for Spark,
+    `sessions.jsonl` for Jules) carry an `outcome` field
+    (`applied`/`rejected`/`read`/`null`) a verification session updates
+    later — append-only state, so an update is a new line, not an in-place
+    edit; readers fold to the latest entry per key. On Mondays (WITA) the
+    existing daily digest gains one extra line reporting the
+    produced-vs-verified ratio, rather than standing up a second schedule
+    for it.
