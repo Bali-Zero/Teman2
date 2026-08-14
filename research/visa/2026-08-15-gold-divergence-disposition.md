@@ -8,6 +8,8 @@ sources:
   - research/visa/2026-08-15-gold-family-refuter.md
   - apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-007.source.json
   - apps/backend-rag/backend/tests/services/visa_engine/_gold_fixtures.py
+  - https://github.com/Bali-Zero/Teman2/pull/4195
+  - https://github.com/Bali-Zero/Teman2/actions/runs/31828149383
 adversarial_review: kimi-k3
 status: DRAFT — proposed dispositions; no divergence accepted without owner or legal approval
 ---
@@ -26,6 +28,24 @@ The six matching personas (3, 4, 11, 12, 13 and 14) are enumerated in the
 2026-08-12 live report and are out of scope here except as stability witnesses
 under the replay contract.
 
+## Notice-dedupe deployment evidence
+
+PR #4195 merged at `2026-08-14T18:20:09Z` as exact merge commit
+`35494716abcfdb4bf7e104382cc2fef81ff3b2d7`. GitHub deploy workflow
+`31828149383` completed successfully for that same head SHA, and Fly release
+`4125` completed at `2026-08-14T18:27:38Z` with image
+`registry.fly.io/nuzantara-rag:deployment-01M00RA6VF7H915NWC055DTHPJ`.
+The read-only `fly image show --app nuzantara-rag --json` inspection on
+2026-08-15 resolved that tag on every listed machine to immutable digest
+`sha256:e075926299c082587fab4022f64127e5c3f3c8685e0389708931d3c81b1851fc`;
+the same image metadata carries OCI label
+`GH_SHA=35494716abcfdb4bf7e104382cc2fef81ff3b2d7`. This binds the deployed
+artifact, rather than only its release time, to the merge commit.
+
+This closes the merge/deployment prerequisite only. No fresh active-pack replay
+after that deployment is recorded here, so the affected rows remain unexplained
+and G-b remains RED.
+
 ## Correction to the first-read narrative
 
 The companion Markdown report said most divergences were “expected by
@@ -41,9 +61,9 @@ observation; this document narrows the interpretation.
 
 - **BLOCK — defect:** evidence identifies a fail-open rule defect; the row
   cannot be accepted as a catalogue change.
-- **CODE FIX PENDING MERGE:** a bounded implementation fix exists, but the row
-  stays unexplained until its exact merge SHA is deployed and a fresh replay
-  proves the effect.
+- **CODE FIX DEPLOYED; REPLAY PENDING:** the bounded implementation fix is
+  merged and deployed at a pinned revision, but the row stays unexplained until
+  a fresh active-pack replay proves the effect.
 - **OWNER/LEGAL DECISION:** the engine is behaving deterministically, but the
   repository does not contain authority to decide whether the live behavior or
   the fixture expectation is normative.
@@ -78,8 +98,8 @@ observation; this document narrows the interpretation.
 | 15 — tourism plus employment | Fixture supports only `E23`; seq-7 needs input because E23 does not cover the entire purpose set. | **SAFE-DIRECTION REVIEW + OWNER PRODUCT DECISION** | Choose whole-intent coverage or partial-candidate semantics for multi-purpose requests. If partial candidates are allowed, specify how unsupported purposes remain visible and non-authoritative. |
 | 16 — below investment threshold | Fixture rejects at one rupiah below its E28A minimum; seq-7 supports `D12`. | **OWNER/LEGAL DECISION — NEGATIVE CONTROL, SUPPORT DIRECTION** | Legal approval is required because accepting D12 here changes route meaning. Do not describe this as a threshold bypass until route semantics are settled: D12 may be a different pre-investment visit route. Decide whether that substitution is allowed for an investment-intent request and prove it cannot be presented as investor-status eligibility. |
 | 17 — investor at fixture minimum | Fixture supports `E28A`; seq-7 supports `D12`. | **OWNER/LEGAL DECISION — SUPPORT DIRECTION** | Reconcile the fixture's investment-capital model with the active pack's E28A facts and decide whether missing paid-up/role facts should yield input instead of a D12 substitution. Require positive E28A and D12 sibling-negative controls. |
-| 18 — obsolete code, incomplete purpose | Both sides need input; seq-7 emits three duplicate `OBSOLETE_PRODUCT_CODE` notices instead of one. | **CODE FIX PENDING MERGE** | PR #4195 aggregates successor source references into one notice. Keep the row unexplained until the exact merge/deploy is replayed and proves one notice with the complete reference union. |
-| 19 — obsolete code, complete tourism facts | Fixture supports `C1`; seq-7 supports `B1,C1`, and emits three duplicate notices. | **SPLIT: CODE FIX PENDING MERGE + OWNER PRODUCT DECISION** | PR #4195 addresses only notice multiplicity. Separately accept or reject B1 as a legitimate catalogue expansion for this persona; prove eligibility and a B1 sibling-negative control. |
+| 18 — obsolete code, incomplete purpose | Both sides need input; seq-7 emits three duplicate `OBSOLETE_PRODUCT_CODE` notices instead of one. | **CODE FIX DEPLOYED; REPLAY PENDING** | PR #4195 is merged and deployed at the pinned revision above and aggregates successor source references into one notice. Keep the row unexplained until a fresh replay proves one notice with the complete reference union. |
+| 19 — obsolete code, complete tourism facts | Fixture supports `C1`; seq-7 supports `B1,C1`, and emits three duplicate notices. | **SPLIT: CODE FIX DEPLOYED; REPLAY PENDING + OWNER PRODUCT DECISION** | PR #4195 addresses only notice multiplicity and is deployed at the pinned revision above. A fresh replay must prove that component; separately accept or reject B1 as a legitimate catalogue expansion for this persona and prove eligibility plus a B1 sibling-negative control. |
 | 20 — onshore conversion, status unknown | Fixture needs status/overstay input; seq-7 requires review for visit-to-ITK and bridging-to-bridging prohibitions. | **SAFE-DIRECTION REVIEW + OWNER/LEGAL DECISION** | Choose whether unknown current status must first request input or conservatively escalate. Bind the choice to a closed null/unknown policy and prove known-safe, known-prohibited and unknown witnesses. |
 
 ## Decision package and replay contract
@@ -119,26 +139,34 @@ The fresh active-pack replay must then:
 ## What can close without owner judgment
 
 Only the notice aggregation for persona 18 and the notice portion of persona
-19 currently have a bounded code fix. Even those are not closed by a green PR:
-they close only after merge, deployment and replay. Personas 7 and 8 are
-blocked defects. The remaining ten rows require explicit owner, legal, privacy
-or product semantics before an agent may edit expected outcomes or author the
-corresponding RulePack behavior.
+19 currently have a bounded code fix. Its exact merge and deployment are now
+proven above, but those components close only after a fresh active-pack replay
+proves the corrected notice union. Personas 7 and 8 are blocked defects. The
+remaining ten rows, plus the B1 component of persona 19, require explicit owner,
+legal, privacy or product semantics before an agent may edit expected outcomes
+or author the corresponding RulePack behavior.
 
 Until those conditions are met, the operationally correct state is **SHADOW / G-b
 RED / ENFORCE NO-GO**.
 
 ## Adversarial review
 
-Kimi K3 reviewed the complete non-PII draft through the repository's pinned
-no-tools wrapper and returned **SHIP-WITH-FIXES**. Both major findings were
-adopted: the status vocabulary now defines product, split and directional
-qualifiers without lowering legal approval for route meaning, and the replay
-stability floor no longer silently exempts E31 outcomes. The revision also
-adopts the review's exact generator/grader separation, enumerates the six
-matching stability witnesses and records the still-unassigned owner seats.
-Kimi's bounded second pass returned **SHIP** with no surviving findings.
+Kimi K3 reviewed the original non-PII draft, before the deployment-evidence
+section existed, through the repository's pinned no-tools wrapper and returned
+**SHIP-WITH-FIXES**. Both major findings were adopted: the status vocabulary now
+defines product, split and directional qualifiers without lowering legal
+approval for route meaning, and the replay stability floor no longer silently
+exempts E31 outcomes. That bounded second pass returned **SHIP** for the
+pre-deployment-evidence revision.
 
-The canonical pack hash was retained in this file and independently checked
-against the machine-readable report. It was masked only in the review transport
-because the wrapper's fail-closed PII filter rejects long numeric shapes.
+A fresh Kimi K3 delta review on 2026-08-15 covered the deployment-evidence
+section, the persona 18/19 status changes and the updated closure statement. It
+returned **SHIP-WITH-FIXES**. This revision adopts all four findings by scoping
+the older review, binding the Fly artifact with its immutable digest and
+`GH_SHA` label, reconciling the persona-19 B1 owner seat and downgrading the
+unattributed hash-check claim below. The bounded second pass returned **SHIP**
+with no surviving findings.
+
+The canonical pack hash in this file is copied from the cited machine-readable
+report. That provenance assertion is not a substitute for the named independent
+grader and deployed-revision checks required by the replay contract.
