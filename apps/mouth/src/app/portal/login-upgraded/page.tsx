@@ -7,7 +7,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Cormorant_Garamond } from "next/font/google";
+import { cormorant } from "@balizero/core/fonts/cormorant";
 import { useSystemSound } from "@/hooks/useSystemSound";
 import { publicAuth } from "@/lib/api/public-auth";
 import { sanitizeRedirect } from "@/lib/auth/sanitizeRedirect";
@@ -17,12 +17,6 @@ import { I18nProvider, useTranslation } from "@/i18n";
 // Configuration
 const REDIRECT_DELAY_MS = 1500;
 const ERROR_RESET_DELAY_MS = 2000;
-
-const cormorant = Cormorant_Garamond({
-  subsets: ["latin"],
-  weight: ["300", "400", "700"],
-  display: "swap",
-});
 
 // WS3 final slice (GARUDA Day Edition): CTA = darker copper step
 // --bz-copper-text with theme-aware --bz-on-warm fg (white on #9d5230 =

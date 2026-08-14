@@ -43,7 +43,7 @@ WITA = timezone(timedelta(hours=8))
 BACKEND_ENV = PROJECT_ROOT / "apps" / "backend-rag" / ".env"
 
 # Telegram — stessa config di expiry_alerter.py
-TELEGRAM_OWNER_CHAT_ID = "1125336968"  # Zero (archangelsamyaza) — corretto 2026-03-31
+TELEGRAM_OWNER_CHAT_ID = "8847435604"  # Zero (archangelsamyaza) — corretto 2026-03-31
 
 # State file for idempotency (avoid Telegram spam on every cron run)
 STATE_DIR = Path(os.path.expanduser("~/.agent/decisions/state"))

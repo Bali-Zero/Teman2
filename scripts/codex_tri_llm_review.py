@@ -687,7 +687,7 @@ def compute_outcome(verdicts: list[ReviewVerdict]) -> tuple[str, int, bool]:
 
 def telegram_notify(decision: PanelDecision) -> None:
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
-    chat_id = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+    chat_id = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "8847435604")
     if not token:
         secrets_path = Path.home() / ".nuzantara-secrets.env"
         if secrets_path.exists():

@@ -81,7 +81,7 @@ async def test_it_sends_and_masks_the_phone_but_not_the_body() -> None:
         patch(f"{NOTIFIER}.settings") as settings,
         patch(f"{NOTIFIER}.telegram_bot", telegram),
     ):
-        settings.admin_telegram_chat_id = "1125336968"
+        settings.admin_telegram_chat_id = "8847435604"
         from backend.services.integrations.human_escalation_notifier import (
             notify_human_telegram,
         )

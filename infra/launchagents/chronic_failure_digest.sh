@@ -23,7 +23,7 @@ if [[ -f "$HOME/.nuzantara-secrets.env" ]]; then
 fi
 
 # Sensible default chat id matches the rest of the fleet (Zero's owner chat).
-export TELEGRAM_OWNER_CHAT_ID="${TELEGRAM_OWNER_CHAT_ID:-1125336968}"
+export TELEGRAM_OWNER_CHAT_ID="${TELEGRAM_OWNER_CHAT_ID:-8847435604}"
 
 if [[ ! -f "$DIGEST_SCRIPT" ]]; then
     echo "[chronic-failure-digest] FATAL: $DIGEST_SCRIPT missing" >&2

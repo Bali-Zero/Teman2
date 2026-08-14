@@ -47,7 +47,7 @@ WINDOW_S = 7 * 86400
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get(
     "TELEGRAM_ADMIN_CHAT_ID",
-    os.environ.get("TELEGRAM_OWNER_CHAT_ID", os.environ.get("TELEGRAM_CHAT_ID", "1125336968")),
+    os.environ.get("TELEGRAM_OWNER_CHAT_ID", os.environ.get("TELEGRAM_CHAT_ID", "8847435604")),
 )
 
 

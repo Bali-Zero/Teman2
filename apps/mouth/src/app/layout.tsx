@@ -204,7 +204,10 @@ export default function RootLayout({
         <link rel="preconnect" href="https://nuzantara-rag.fly.dev" />
         <link rel="dns-prefetch" href="https://nuzantara-rag.fly.dev" />
 
-        {/* Font preloading handled automatically by next/font/google */}
+        {/* Font preloading handled automatically by next/font. The families are
+            self-hosted from packages/core/fonts/files/ (2026-08-13) — no
+            preconnect to fonts.gstatic.com is needed, and none should be added:
+            the point of self-hosting was to remove that host from the path. */}
 
         {/* AI Discovery Links */}
         <link

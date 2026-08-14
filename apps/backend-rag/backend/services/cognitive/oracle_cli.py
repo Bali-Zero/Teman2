@@ -62,7 +62,7 @@ def _hb(status: str, note: str = "") -> None:
         pass
 
 
-DEFAULT_OWNER = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+DEFAULT_OWNER = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "8847435604")
 
 
 def _configure_logging() -> None:

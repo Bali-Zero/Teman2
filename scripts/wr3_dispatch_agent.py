@@ -247,7 +247,7 @@ async def telegram_p0(message: str) -> None:
     script = Path.home() / "scripts" / "telegram-notify.sh"
     if not script.exists():
         return
-    chat_id = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+    chat_id = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "8847435604")
     try:
         proc = await asyncio.create_subprocess_exec(
             str(script), chat_id, f"[WR3 P0] {message}",

@@ -31,7 +31,7 @@ from backend.services.war_room.repository import WarRoomRepository
 logger = logging.getLogger("cognitive.strategos.cli")
 
 
-DEFAULT_OWNER = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+DEFAULT_OWNER = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "8847435604")
 
 
 def _configure_logging() -> None:

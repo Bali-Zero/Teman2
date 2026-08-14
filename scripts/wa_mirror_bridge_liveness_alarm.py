@@ -76,7 +76,7 @@ PID_DIR = Path("/tmp/wa-mirror-pids")
 ACCOUNTS_JSON = Path.home() / ".wa-mirror.accounts.json"
 
 WITA = ZoneInfo("Asia/Makassar")
-TELEGRAM_OWNER_CHAT_ID = "1125336968"  # Zero — per CLAUDE.md §13 / drive_token_watchdog parity
+TELEGRAM_OWNER_CHAT_ID = "8847435604"  # Zero — per CLAUDE.md §13 / drive_token_watchdog parity
 
 _GRACE_MIN = int(os.getenv("WA_LIVENESS_GRACE_MINUTES", "20"))
 _COOLDOWN_MIN = int(os.getenv("WA_LIVENESS_COOLDOWN_MINUTES", "120"))

@@ -45,7 +45,7 @@ Environment variables:
 - WA_MEDIA_API_VERSION    (default v18.0)
 - WA_MEDIA_STALE_HOURS    (default 36 — alert if a pending row is older)
 - TELEGRAM_BOT_TOKEN      (optional; alerts disabled if unset)
-- TELEGRAM_OWNER_CHAT_ID  (optional; default 1125336968)
+- TELEGRAM_OWNER_CHAT_ID  (optional; default 8847435604)
 - BZ_INTERNAL_PHONE_NUMBERS (roster consumed by contact_autocreate's
   ``_is_internal_sender_phone`` — see ``_load_internal_phone_roster`` below;
   this plist's own EnvironmentVariables dict does NOT set it (adversarial
@@ -215,7 +215,7 @@ def _read_bridge_api_key() -> str:
 
 def _send_telegram_alert(msg: str) -> None:
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
-    chat_id = os.getenv("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+    chat_id = os.getenv("TELEGRAM_OWNER_CHAT_ID", "8847435604")
     if not bot_token:
         return
     try:

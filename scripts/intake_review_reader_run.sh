@@ -51,7 +51,7 @@ send_telegram() {
     set +a
   fi
   local TOKEN="${TELEGRAM_BOT_TOKEN:-${CELL_TELEGRAM_BOT_TOKEN:-}}"
-  local CHAT_ID="${TELEGRAM_OWNER_CHAT_ID:-${TELEGRAM_ZERO_CHAT_ID:-1125336968}}"
+  local CHAT_ID="${TELEGRAM_OWNER_CHAT_ID:-${TELEGRAM_ZERO_CHAT_ID:-8847435604}}"
   if [[ -z "${TOKEN}" || -z "${CHAT_ID}" ]]; then
     echo "[intake-review-reader] telegram: skipped (no token/chat_id)" >&2
     return 0

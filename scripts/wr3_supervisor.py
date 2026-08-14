@@ -18,7 +18,7 @@ ENVIRONMENT
   DATABASE_URL                 local pg-proxy DSN (port 15432)
   WR3_DRY_RUN                  if 'true', log decisions, do NOT dispatch
   WR3_RECONCILE_INTERVAL_SEC   periodic outbox replay sweep (default 300)
-  TELEGRAM_OWNER_CHAT_ID       Zero's chat (default 1125336968)
+  TELEGRAM_OWNER_CHAT_ID       Zero's chat (default 8847435604)
 """
 from __future__ import annotations
 

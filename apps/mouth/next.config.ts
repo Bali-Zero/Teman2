@@ -195,7 +195,7 @@ const nextConfig: NextConfig = {
           {
             key: "Content-Security-Policy",
             value:
-              "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://nuzantara-rag.fly.dev wss://nuzantara-rag.fly.dev https://*.sentry.io https://www.google-analytics.com; worker-src 'self' blob:; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'",
+              "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https://nuzantara-rag.fly.dev wss://nuzantara-rag.fly.dev https://*.sentry.io https://www.google-analytics.com; worker-src 'self' blob:; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'",
           },
         ],
       },
@@ -218,17 +218,13 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-      // Preconnect to external domains for Core Web Vitals (LCP/FCP improvement)
-      {
-        source: "/:path*",
-        headers: [
-          {
-            key: "Link",
-            value:
-              "<https://fonts.googleapis.com>; rel=preconnect, <https://fonts.gstatic.com>; rel=preconnect; crossorigin",
-          },
-        ],
-      },
+      // The `Link: rel=preconnect` header to fonts.googleapis.com and
+      // fonts.gstatic.com that used to live here was removed on 2026-08-13,
+      // when the four families became self-hosted (packages/core/fonts/files/).
+      // It was added for Core Web Vitals and, once nothing fetches from those
+      // hosts, it inverts: every route pays a DNS + TCP + TLS handshake to a
+      // host it will never ask for a byte. Do not add it back without a font
+      // that actually loads from there.
     ];
   },
 

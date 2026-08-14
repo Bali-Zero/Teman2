@@ -114,7 +114,7 @@ send_telegram() {
     log "alert ${key} suppressed (cooldown active)"
     return 0
   fi
-  local chat_id="${TELEGRAM_OWNER_CHAT_ID:-1125336968}"
+  local chat_id="${TELEGRAM_OWNER_CHAT_ID:-8847435604}"
   curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
     --data-urlencode "chat_id=${chat_id}" \
     --data-urlencode "parse_mode=Markdown" \
