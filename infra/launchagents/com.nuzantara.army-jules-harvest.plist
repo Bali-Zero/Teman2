@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.nuzantara.army-jules-harvest — Armata H24 lane 2, harvest half
+  (2026-08-14).
+
+  Every 3h tick: scripts/army/jules_lane.py --harvest polls every session
+  recorded as open in ~/army/jules/state/sessions.jsonl. COMPLETED sessions
+  get their patch evidence downloaded to
+  ~/army/jules/inbox/<session-id>/ and ONE row appended to
+  shared/escalations_pro.jsonl for an interactive session to independently
+  verify and land — this lane never verifies or lands anything itself. See
+  com.nuzantara.army-jules-dispatch.plist for the other half and
+  research/operations/2026-08-14-armata-h24-standing-lanes.md for the
+  design.
+
+  Install:
+    cp infra/launchagents/com.nuzantara.army-jules-harvest.plist \
+       ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) \
+       ~/Library/LaunchAgents/com.nuzantara.army-jules-harvest.plist
+
+  Plist permissions hardened to 0444 per cicatrix P0-3.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nuzantara.army-jules-harvest</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/nuzantara/scripts/cron-runner.sh</string>
+        <string>/Users/nuzantara/nuzantara/scripts/army/jules_lane_harvest_wrapper.sh</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/Users/nuzantara/.local/bin:/opt/homebrew/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>CRON_RUNNER_JOB_NAME</key>
+        <string>army_jules_harvest</string>
+        <key>ARMY_JULES_ENABLED</key>
+        <string>true</string>
+    </dict>
+
+    <!-- Every 3 hours. -->
+    <key>StartInterval</key>
+    <integer>10800</integer>
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/army-jules/harvest.launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/army-jules/harvest.launchd.err.log</string>
+
+    <key>KeepAlive</key>
+    <false/>
+
+    <key>ThrottleInterval</key>
+    <integer>120</integer>
+</dict>
+</plist>
