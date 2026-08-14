@@ -2,8 +2,8 @@
 date: 2026-08-14
 domain: operations
 client_case: N/A — internal fleet governance (Alibaba Token Plan / TP1 wing PROBE-1-residual)
-sources: 8
-discovered_by: session (worktree .worktrees/ops-tp1-probe1, mandate from team-lead); economic section corrected same-day after independent WebSearch verification by team-lead against Alibaba's own docs
+sources: 9
+discovered_by: session (worktree .worktrees/ops-tp1-probe1, mandate from team-lead); economic section corrected same-day after independent WebSearch verification by team-lead against Alibaba's own docs; console ground truth (Part 4) read by Zero + team-lead directly from the Model Studio dashboard same-day
 ---
 
 # PROBE-1-residual — TP1 burn-rate measured from 7 days of production use
@@ -17,10 +17,13 @@ qwen-seat-integration doc). Zero ordered the probation reviewed against actual m
 instead of the originally-scoped "3 sample tasks". This is that measurement.
 
 **1-sentence outcome**: PROBE-1-residual is CLOSED — burn-rate is measured (1330 calls, 211.7M
-tokens over 7 days, no credits endpoint exposed via API) — and qwen3.8-max, qwen3.7-plus, and
-deepseek-v4-flash-0731 are promoted PROBATION → ARMED in `FLEET_TOPOLOGY.json` v1.3 on that
-mileage; deepseek-v4-pro, glm-5.2-via-TP1, and MiniMax M2.5 stay PROBATION because they show
-**zero** measured calls in the same window.
+tokens over 7 days, cross-validated against the console's own 217.06M counter within ~2.5%),
+console ground truth confirms usage is **within plan** (Pro Plan, 7-day rolling quota 56.31%
+used, ~44% headroom, auto-renewal OFF — `operator[business]` before 2026-09-09) — and
+qwen3.8-max, qwen3.7-plus, and deepseek-v4-flash-0731 are promoted PROBATION → ARMED in
+`FLEET_TOPOLOGY.json` v1.4 on that mileage; deepseek-v4-pro and glm-5.2-via-TP1 stay PROBATION
+(zero measured calls); MiniMax M2.5 and kimi-k2.x are reclassified **PHANTOM** — console- and
+API-confirmed to not be part of this plan at all, making PROBE-4 moot.
 
 ## Data sources
 
@@ -45,6 +48,9 @@ mileage; deepseek-v4-pro, glm-5.2-via-TP1, and MiniMax M2.5 stay PROBATION becau
 8. [alibabacloud.com/blog — Token Plan for Individual](https://www.alibabacloud.com/blog/model-studio-token-plan-for-individual-one-subscription-for-every-ai-model-up-to-3x-more-value_603426)
    — Individual plan "Pro" tier = $68/month, rolling 5h/7d credit windows, "≈3× more usage
    than pay-as-you-go" claim. Fetched and confirmed 2026-08-14.
+9. Model Studio console dashboard (Zero + team-lead, 2026-08-14, screenshots) — TP1's actual
+   plan/quota/roster ground truth, see Part 4. Key stays masked in the console UI; never
+   transcribed in clear.
 
 ## ⚠️ Correction to the mandate's assumption — the two log files do NOT need `id`-dedup merging
 
@@ -242,12 +248,115 @@ per the original scope ("if none respond: declare closed, this is a valid outcom
   the gate is a legitimate live-host check (a locked/absent Keychain today still correctly
   returns AUTH_DEAD), not a stale policy flag to remove.
 
+## Part 4 — Console ground truth (2026-08-14, Zero + team-lead, Model Studio dashboard)
+
+The credits-endpoint gap left by Part 2 (API confirmed silent) is closed here with a direct
+console read — screenshots reviewed by Zero and the team-lead. This section supersedes the
+`operator[gui]` placeholder wherever it appears above; the key itself stays masked in the
+console UI and was never transcribed in clear anywhere in this repo or this report.
+
+### Plan & renewal
+
+**"Pro Plan"**, status ACTIVE, start 2026-08-08 17:47, end 2026-09-09. **Auto-Renewal NOT
+Enabled.** New flag: `operator[business]` — decide renewal before 2026-09-09 or the whole TP1
+wing lapses mid-cycle.
+
+### Quota model — the real constraint
+
+Not a flat monthly credit pool: a **7-Day rolling quota**, **56.31% used** as of 2026-08-14
+21:32, resetting 2026-08-15 22:50 UTC+8, zero add-on credit packs purchased. **This is the
+number that governs sustainability, not the $181/month metered-equivalent list-price figure
+from Part 1** (which stays useful only as an external reference point, e.g. for comparing
+against a pure pay-as-you-go alternative). **Economic verdict, corrected**: real usage is
+**within plan** — 56.31% of the 7-day rolling window consumed during this probe's own
+peak-burn period (2026-08-14 alone was 43% of the week's local-log total, per Part 1's per-day
+table) leaves roughly **44% headroom**. The earlier "$181 vs $68 ≈ 2.7×" framing and its
+"metered-equivalent ceiling, not confirmed overspend" softened replacement (both struck in the
+prior commit) are both superseded by this direct measurement: there is no overspend signal at
+all, measured or estimated — the plan's own quota dashboard says so directly.
+
+### Cross-check: console counter vs local logs
+
+| | Total tokens (2026-08-08→14) |
+|---|---:|
+| Console dashboard | 217,060,000 |
+| Local logs (this doc, Part 1) | 211,699,042 |
+| Delta | ~2.5% |
+
+Console also reports **91% cache-hit** (195.87M cached / 215.70M input) — consistent with, if
+slightly higher than, the per-model cache-hit rates computed from local logs in Part 1
+(88-96% range). **Reported as a reconciliation, not smoothed over**: a console-side counter and
+two independently-derived local log files agreeing within ~2.5% is a real cross-validation of
+the burn-rate measurement, and the small residual gap is attributable to counting-boundary/
+rollup-timing differences between the console's own aggregator and the local per-call log, not
+to either source being wrong.
+
+Console per-day totals (for comparison against Part 1's per-day table, which used the local
+per-call log):
+
+| Date | Console total tokens |
+|---|---:|
+| 2026-08-08 | 13,470,000 |
+| 2026-08-09 | 35,490,000 |
+| 2026-08-10 | 2,950,000 |
+| 2026-08-11 | 11,950,000 |
+| 2026-08-12 | 17,520,000 |
+| 2026-08-13 | 43,270,000 |
+| 2026-08-14 | 92,490,000 (partial — record day) |
+
+Shape matches the local per-day table closely (both show 2026-08-14 as by far the largest day),
+confirming the trend observation in Part 1 is real, not a local-log artifact.
+
+### Roster reconciliation — MiniMax and kimi-k2.x are PHANTOM, not PROBATION
+
+Console lists **14 models** on this plan, authoritative and directly contradicting the
+2026-08-10 census in `FLEET_TOPOLOGY.json`'s prior text ("15 models... incl. MiniMax-M2.5,
+kimi-k2.5/2.6/2.7"):
+
+qwen3.8-max (flagged "Limited-time Night 50% Off"), qwen3.7-plus, qwen3.7-max, qwen3.6-flash,
+qwen-audio-3.0-tts-plus, qwen-audio-3.0-realtime-plus, wan2.7-image, wan2.7-image-pro,
+happyhorse-1.1-i2v, happyhorse-1.1-t2v, happyhorse-1.1-r2v, deepseek-v4-pro,
+deepseek-v4-flash-0731, glm-5.2. **No MiniMax M2.5. No kimi-k2.x of any version.**
+
+Re-probed `GET /compatible-mode/v1/models` (2026-08-14, same key, same non-destructive read as
+Part 2) as an independent cross-check: it returns **11** models — exactly the console's 14
+minus the 3 `happyhorse-1.1-*` video-gen models, which are console-listed but not exposed on
+the OpenAI-compatible-mode models endpoint. 11 + 3 = 14, matching the console exactly. Two
+independent surfaces (console UI, API endpoint) now agree MiniMax and kimi-k2.x are simply not
+part of this plan — this is not a measurement gap to close with more probing, it's a roster
+correction.
+
+**Consequence**: `FLEET_TOPOLOGY.json`'s `grunt` and `batch_throughput` chains' `minimax-2.5`
+entries are relabeled **PHANTOM** (not PROBATION) — PROBE-4 (the planned MiniMax sample-lot
+verification) is now moot, since there is no live MiniMax seat on this account to verify. If
+MiniMax capacity is still wanted, it requires either adding it to this Token Plan or sourcing a
+different account — a decision, not a probe.
+
+### Additional doors registered (no new seats invented)
+
+- **Anthropic-protocol base**: `https://token-plan.ap-southeast-1.maas.aliyuncs.com/apps/anthropic`
+  — same class of door as the z.ai `claude-glm` shim. Usable with `ANTHROPIC_AUTH_TOKEN`
+  (OAuth-style bearer), **never** `ANTHROPIC_API_KEY` — CLAUDE.md §5's Anthropic-SDK ban
+  applies identically to this endpoint. Registered as a door on the existing TP1 account, not a
+  new role_chain seat.
+- **Unexploited capabilities**, paid-for but wired into zero role_chains: image-gen
+  (`wan2.7-image` / `wan2.7-image-pro`), video-gen (`happyhorse-1.1-i2v/t2v/r2v`), TTS/realtime
+  audio (`qwen-audio-3.0-tts-plus` / `qwen-audio-3.0-realtime-plus`). Flagged only — whether and
+  how to use them is a Zero decision, not this probe's to make.
+- **Operational note**: qwen3.8-max carries a console-visible "Limited-time Night 50% Off"
+  discount — future TP1-heavy H24 batch lanes should schedule at night to exploit this.
+
 ## Conclusion
 
 PROBE-1-residual's condition ("burn-rate + credits endpoint") is satisfied by real production
-data: burn-rate is measured with per-call granularity and cross-checked against the coarser
-session log; the credits endpoint is confirmed absent from the API surface (console-only). The
-promotion applied is partial and evidence-scoped — three seats ARMED on their own measured
-mileage, three seats explicitly left in PROBATION because their own mileage is zero (not
-because PROBE-1 is still open), and one real naming discrepancy (`-pro` vs `-flash`) surfaced
-rather than papered over.
+data, now cross-validated twice: burn-rate is measured with per-call granularity, cross-checked
+against the coarser local session log (Part 1), AND cross-checked against the Model Studio
+console's own counter (Part 4, ~2.5% delta). The credits endpoint is confirmed absent from the
+API surface (Part 2) but closed with direct console ground truth instead (Part 4): **usage is
+within plan, ~44% headroom on the 7-day rolling quota, auto-renewal is OFF and needs an
+operator decision before 2026-09-09.** The promotion applied is partial and evidence-scoped —
+three seats ARMED on their own measured mileage, deepseek-v4-pro and glm-5.2-via-TP1 left in
+PROBATION because their own mileage is zero, and MiniMax M2.5 (plus kimi-k2.x) reclassified
+PHANTOM rather than PROBATION once the console roster proved they were never part of this plan
+at all. Two real discrepancies were surfaced rather than papered over in this probe: the
+`-pro` vs `-flash` naming mismatch (Part 3) and the MiniMax/kimi roster phantom (this part).

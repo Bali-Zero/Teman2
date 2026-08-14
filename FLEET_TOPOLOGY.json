@@ -1,6 +1,6 @@
 {
-  "_version": "1.3",
-  "_updated": "2026-08-14 (PROBE-1-residual closed with 7-day TP1 production burn-rate data: qwen3.8-max/qwen3.7-plus/deepseek-v4-flash-0731 PROBATION->ARMED; deepseek-v4-pro/glm-5.2-via-TP1/MiniMax-M2.5 stay PROBATION on zero measured mileage; credits endpoint confirmed not API-exposed. research/operations/2026-08-14-probe1-tp1-burn-rate.md. Previous: 2026-08-10 panel-amended fleet-order spec: emails, GLM dual-door, DeepSeek re-admission, quorum semantics)",
+  "_version": "1.4",
+  "_updated": "2026-08-14 (console ground truth folded in: TP1 = Pro Plan, active 2026-08-08->2026-09-09, auto-renewal OFF, 7-day rolling quota 56.31% used/within-plan; 14-model roster console-verified, MiniMax M2.5 and kimi-k2.x marked PHANTOM (not in this plan at all, PROBE-4 moot); Anthropic-protocol door + unexploited capabilities registered. Previous same-day: PROBE-1-residual closed with 7-day TP1 production burn-rate data (qwen3.8-max/qwen3.7-plus/deepseek-v4-flash-0731 PROBATION->ARMED). research/operations/2026-08-14-probe1-tp1-burn-rate.md. Earlier: 2026-08-10 panel-amended fleet-order spec: emails, GLM dual-door, DeepSeek re-admission, quorum semantics)",
   "_doc": "SSOT for the CLOUD fleet: orchestrators, accounts, role fallback chains. Local Ollama assignments stay in MODEL_TOPOLOGY.json (unchanged). Rationale: research/operations/2026-08-09-quattro-gruppi-e-continuita.md. Law: AGENTS.md §17 + CLAUDE.md.",
   "_invariants": [
     "Gear-3 harness gate (ruling Zero 2026-08-09): Fable 5 first, rotating across ALL Anthropic accounts; only when NO account can run Fable, fall back to Opus 5 effort=max with gate_degraded:'fable->opus' recorded in the verdict check and Evidence Pack. Never pay per-token to unblock.",
@@ -73,8 +73,67 @@
     "alibaba": {
       "slots": {
         "TP1": {
-          "label": "Token Plan (Model Studio, Singapore region)",
-          "lane": "DashScope API key — Qwen 3.8 Max / Qwen 3.7 / GLM 5.2 / MiniMax 2.5 / Wan. Key registered: ~/.qwen/settings.json env BAILIAN_TOKEN_PLAN_API_KEY (0600). 15 models enumerated 2026-08-10 incl. deepseek-v4-pro/v4-flash/v3.2 (re-admitted by Zero 2026-08-10), glm-5.2/5.1/5, MiniMax-M2.5, kimi-k2.5/2.6/2.7 (older than K3 — Allegro stays the K3 door). PROBE-1-residual CLOSED 2026-08-14 (research/operations/2026-08-14-probe1-tp1-burn-rate.md): burn-rate measured from 7 days of production use (2026-08-08→14, 1330 calls, 211.7M tokens, dedup-verified by unique `id` on ~/.qwen/usage/token-usage-2026-08.jsonl — the coarser session-level ~/.qwen/usage_record.jsonl is NOT additive on top of it, see doc §Data sources). Credits/usage endpoint NOT exposed via API (20 candidate paths probed, all 404; console-only, operator[gui]). PER-MODEL STATUS (2026-08-14): qwen3.8-max ARMED (459 calls / 74.1M tokens measured) · qwen3.7-plus ARMED (65 calls / 6.4M tokens measured) · deepseek-v4-flash-0731 ARMED (806 calls / 131.2M tokens measured) · deepseek-v4-pro STAYS PROBATION — zero measured calls in the same window, NOT the same model/tier as v4-flash, do not conflate · glm-5.2 STAYS PROBATION — zero measured TP1 calls (z.ai remains the active GLM door) · MiniMax-M2.5 STAYS PROBATION (PROBE-4 open, zero measured calls) · kimi-* via TP1 untouched (Allegro/K1 remains the load-bearing Kimi door, out of PROBE-1 scope). Metered-equivalent cost ceiling (official Aug-2026 Alibaba list rates, cache-adjusted): ~$42/7d ≈ ~$181/30d-run-rate — NOT arithmetically comparable to the ~$68/month tier (CORRECTED 2026-08-14: that direct 2.7x-style comparison was wrong on two counts — the $68 Individual-plan tier itself claims ~3x more usage than pay-as-you-go per Alibaba, and TP1's actual endpoint is Singapore/Team-Edition ($30/$100/$200 tiers, no $68 option there) while $68 is documented only for Individual — which product TP1 is cannot be resolved via API). See research/operations/2026-08-14-probe1-tp1-burn-rate.md for full citations; console tier/credits check stays operator[gui]."
+          "label": "Token Plan (Model Studio, Singapore region) — \"Pro Plan\"",
+          "lane": "DashScope API key — Qwen 3.8 Max / Qwen 3.7 / GLM 5.2 / Wan. Key registered: ~/.qwen/settings.json env BAILIAN_TOKEN_PLAN_API_KEY (0600). PROBE-1-residual CLOSED 2026-08-14 (research/operations/2026-08-14-probe1-tp1-burn-rate.md): burn-rate measured from 7 days of production use (2026-08-08→14, 1330 calls, 211.7M tokens locally / 217.06M per console, ~2.5% delta — reconciliation, not smoothed over, see doc §Console ground truth). Credits/usage endpoint NOT exposed via API (20 candidate paths probed, all 404) — CONSOLE-VERIFIED 2026-08-14 (Zero + team-lead, Model Studio dashboard): see console_verified_2026_08_14 below for the actual plan/quota/roster ground truth that supersedes the operator[gui] placeholder. PER-MODEL STATUS (2026-08-14): qwen3.8-max ARMED (459 calls / 74.1M tokens measured) · qwen3.7-plus ARMED (65 calls / 6.4M tokens measured) · deepseek-v4-flash-0731 ARMED (806 calls / 131.2M tokens measured) · deepseek-v4-pro STAYS PROBATION — zero measured calls in the same window, NOT the same model/tier as v4-flash, do not conflate · glm-5.2 STAYS PROBATION — zero measured TP1 calls (z.ai remains the active GLM door) · MiniMax-M2.5 and kimi-k2.x are NOT IN THIS PLAN AT ALL (console roster, 2026-08-14 — see console_verified_2026_08_14.roster; the 2026-08-10 \"15 models incl. MiniMax/kimi-k2.x\" census was wrong, PROBE-4 for MiniMax is moot, corrected below and in role_chains). Metered-equivalent cost ceiling (official Aug-2026 Alibaba list rates, cache-adjusted): ~$42/7d ≈ ~$181/30d-run-rate — kept as a reference number only; the REAL constraint is the rolling quota in console_verified_2026_08_14.quota (56.31% used, within plan). See research/operations/2026-08-14-probe1-tp1-burn-rate.md for full citations.",
+          "console_verified_2026_08_14": {
+            "_doc": "Ground truth read directly from the Model Studio console by Zero + team-lead 2026-08-14 (screenshots), superseding every operator[gui]-flagged placeholder above. Key stays masked in the console UI — never transcribed in clear anywhere in this repo.",
+            "plan": {
+              "name": "Pro Plan",
+              "status": "ACTIVE",
+              "start": "2026-08-08 17:47",
+              "end": "2026-09-09",
+              "auto_renewal": "NOT ENABLED — plan lapses 2026-09-09 unless renewed. operator[business]: decide renewal before that date."
+            },
+            "quota": {
+              "model": "7-Day rolling quota",
+              "used_pct_at_2026_08_14T21_32": 56.31,
+              "reset": "2026-08-15 22:50 UTC+8",
+              "addons_purchased": 0,
+              "verdict": "usage is WITHIN plan — 56.31% of the 7-day rolling window consumed during this probe's peak-burn period (2026-08-14 alone was 43% of the week's local-log total), leaving roughly 44% headroom. The $181/month metered-equivalent list-price figure is NOT the binding constraint; the rolling quota is."
+            },
+            "cross_check_vs_local_logs": {
+              "console_total_tokens_2026_08_08_to_14": 217060000,
+              "local_log_total_tokens_same_window": 211699042,
+              "delta_pct": "~2.5%",
+              "console_cache_hit_pct": 91,
+              "console_cached_tokens": 195870000,
+              "console_input_tokens": 215700000,
+              "note": "Reported as a reconciliation (boundary/rollup timing between the console's own counter and the two local log files), not smoothed over — see burn-rate doc §Console ground truth for the per-day console breakdown compared against the per-day local table."
+            },
+            "roster": {
+              "model_count": 14,
+              "models": [
+                "qwen3.8-max (Limited-time Night 50% Off)",
+                "qwen3.7-plus",
+                "qwen3.7-max",
+                "qwen3.6-flash",
+                "qwen-audio-3.0-tts-plus",
+                "qwen-audio-3.0-realtime-plus",
+                "wan2.7-image",
+                "wan2.7-image-pro",
+                "happyhorse-1.1-i2v",
+                "happyhorse-1.1-t2v",
+                "happyhorse-1.1-r2v",
+                "deepseek-v4-pro",
+                "deepseek-v4-flash-0731",
+                "glm-5.2"
+              ],
+              "NOT_in_plan": ["MiniMax M2.5", "kimi-k2.5/2.6/2.7"],
+              "api_models_endpoint_reconciliation": "GET /compatible-mode/v1/models returns 11 of these 14 (all except the 3 happyhorse-1.1-* video-gen models, which are console-listed but not exposed on the OpenAI-compatible-mode models endpoint). 11+3=14 matches the console count exactly — this explains the discrepancy with the stale 2026-08-10 '15 models' census, which had miscounted in MiniMax/kimi-k2.x that are not actually part of this plan."
+            },
+            "additional_doors_registered_not_new_seats": [
+              "Anthropic-protocol base: https://token-plan.ap-southeast-1.maas.aliyuncs.com/apps/anthropic — same class as the z.ai claude-glm door; usable with ANTHROPIC_AUTH_TOKEN (OAuth-style bearer), NEVER ANTHROPIC_API_KEY (CLAUDE.md §5 Anthropic-SDK ban applies identically here)."
+            ],
+            "unexploited_capabilities": [
+              "image-gen: wan2.7-image / wan2.7-image-pro",
+              "video-gen: happyhorse-1.1-i2v/t2v/r2v",
+              "audio TTS/realtime: qwen-audio-3.0-tts-plus / qwen-audio-3.0-realtime-plus",
+              "None of these are wired into any role_chain — flagging their existence only, use decision stays with Zero."
+            ],
+            "operational_notes": [
+              "qwen3.8-max carries a Limited-time Night 50% Off discount per the console — schedule future TP1-heavy H24 batch lanes at night to exploit this."
+            ]
+          }
         }
       }
     }
@@ -232,7 +291,7 @@
         {
           "model": "minimax-2.5",
           "accounts": ["TP1"],
-          "note": "PROBATION"
+          "note": "PHANTOM — not in the plan's model roster, console-verified 2026-08-14 (Model Studio dashboard, 14-model roster, no MiniMax entry; confirmed independently by the compatible-mode /models endpoint too). PROBE-4 is moot — there is nothing on this account to probe. This chain entry has no live seat behind it until/unless Zero adds MiniMax to the TP1 plan or wires a different account for it."
         }
       ],
       "on_exhaustion": "queue"
@@ -250,7 +309,7 @@
         {
           "model": "minimax-2.5",
           "accounts": ["TP1"],
-          "note": "PROBATION; never load-bearing until promoted — may take first position after PROBE-4 promotion"
+          "note": "PHANTOM — not in the plan's model roster, console-verified 2026-08-14 (see grunt chain entry / accounts.alibaba.slots.TP1.console_verified_2026_08_14.roster for the citation). PROBE-4 moot; \"may take first position after PROBE-4 promotion\" no longer applies until MiniMax is actually added to a real account."
         }
       ],
       "on_exhaustion": "queue"
@@ -330,8 +389,10 @@
   "pending_arms": [
     "cswap (or equivalent OAuth profile swapper) installed+tested on Pro and Air-M5 with the 4 real accounts",
     "~/.codex-o2 second CODEX_HOME created+logged in (zero@balizero.com); aliases codex-o1/codex-o2",
-    "PROBE-1-residual CLOSED 2026-08-14 (research/operations/2026-08-14-probe1-tp1-burn-rate.md) — burn-rate measured (qwen3.8-max/qwen3.7-plus/deepseek-v4-flash-0731 promoted PROBATION->ARMED), credits endpoint confirmed NOT exposed via API (operator[gui] to read the Model Studio console). PROBE-2..4 still open (see research/operations/2026-08-09-quattro-gruppi-e-continuita.md §Probe).",
+    "PROBE-1-residual CLOSED 2026-08-14 (research/operations/2026-08-14-probe1-tp1-burn-rate.md) — burn-rate measured (qwen3.8-max/qwen3.7-plus/deepseek-v4-flash-0731 promoted PROBATION->ARMED); credits endpoint not API-exposed, but console-verified same day (see accounts.alibaba.slots.TP1.console_verified_2026_08_14): Pro Plan, 7-day rolling quota 56.31% used, within plan. PROBE-2/3 still open; PROBE-4 (MiniMax) is now MOOT — MiniMax is not in this plan's roster at all (console-verified), see role_chains grunt/batch_throughput.",
     "decide whether deepseek-v4-flash-0731 substitutes deepseek-v4-pro in the refuter/reasoner role_chains or gets its own dedicated row (both currently point at -pro, which has zero measured TP1 mileage)",
+    "operator[business]: TP1 Pro Plan Auto-Renewal is NOT ENABLED, plan ends 2026-09-09 — decide renewal before that date or the whole TP1 wing lapses (console_verified_2026_08_14.plan)",
+    "operator[business]/decision: unexploited TP1 capabilities (Wan 2.7 image-gen, HappyHorse 1.1 video-gen, Qwen-Audio TTS/realtime) are paid-for but wired into zero role_chains — decide whether to use them",
     "dispatcher script scripts/seat_dispatch.py reading this file (Mac session, needs live CLI testing)",
     "MODEL_TOPOLOGY.json v3: reconcile cloud_fallback (gemini-cli deprecated 2026-06-18 -> agy) and aider_fix (deepseek RETIRED)",
     "cron auto-pause hook for the donor rule (A3 frees its window when the gate calls)"
