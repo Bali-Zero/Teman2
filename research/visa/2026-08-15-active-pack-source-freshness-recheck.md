@@ -15,10 +15,12 @@ status: BLOCKED — legal source re-verification and signed successor pack requi
 
 ## Result
 
-At `2026-08-14T18:24:38Z` (`2026-08-15 02:24:38 WITA`), active
-PRODUCTION RulePack sequence 7 (`2026.8.11`, payload SHA-256
+At `2026-08-14T18:24:38Z` (`2026-08-15 02:24:38 WITA`), the repository's
+signed RulePack sequence 7, marked `PRODUCTION` in its artifact metadata
+(`2026.8.11`, payload SHA-256
 `3d068aef2dca40f1efb74bdd3f8859e767c000282ab8299ac7f277b0b9719f82`)
-contains 20 `OFFICIAL_PORTAL` source records with a seven-day maximum age:
+contains 20 `OFFICIAL_PORTAL` source records subject to a seven-day
+maximum-age policy:
 
 - 19 records were verified at `2026-08-06T06:19:49Z` and became stale after
   `2026-08-13T06:19:49Z`;
@@ -26,11 +28,16 @@ contains 20 `OFFICIAL_PORTAL` source records with a seven-day maximum age:
   current through exactly `2026-08-15T00:00:00Z` (08:00 WITA), then becomes
   stale.
 
-The runtime is failing safe. A local replay of the exact signed sequence-7
-artifact at `2026-08-14T18:40:25Z`, with the same deterministic public policy
-adapters as `/evaluate`, produced 4/20 fixture matches and 16 divergences. All
-16 remain `unexplained` in the G-b ledger because no accepted-explanation file
-was supplied. Separately, the replay establishes the proximate runtime cause
+This recheck did not query which pack was active in the deployed service. In
+the exact checkout pinned to
+`4367d2c7aa2739011a7bedadb46d374424b6041a`, a local replay of the signed
+sequence-7 artifact at `2026-08-14T22:21:37Z` ran through
+`apply_public_policy_adapters`, the same adapter function called by `/evaluate`
+in that checkout. This is code-level parity only, not a claim about deployed
+production behavior. It produced 5/20 fixture matches and 15 divergences; the
+matching personas were 3, 4, 12, 13 and 18. All 15 divergences remain
+`unexplained` in the G-b ledger because no accepted-explanation file was
+supplied. Separately, the replay establishes the proximate decision cause
 for nine of those divergences: personas that the pure evaluator gave supported
 candidates (7, 8, 9, 10, 11, 14, 16, 17 and 19) were converted to
 `HUMAN_REVIEW_REQUIRED` by source-freshness holds. This is operationally safer
@@ -99,18 +106,26 @@ by the global freshness adapter, by design.
   `backend/tests/services/visa_engine/test_evaluator_gold.py`, using expectations
   from `backend/tests/services/visa_engine/_gold_fixtures.py`.
 - Adapter implementation under review: commit
-  `ff05743d930d068ff57dc5b92478658c20854eb2` (PR #4200), specifically
+  `4367d2c7aa2739011a7bedadb46d374424b6041a` (PR #4200), specifically
   `evaluate_path.apply_public_policy_adapters` and the offline caller in
   `gold_replay_driver.py`.
 - Command: from `apps/backend-rag`, run
   `PYTHONPATH=. python -m backend.scripts.visa_engine.gold_replay_driver --offline
-  --out /tmp/visa-gold-replay-policy-parity-ff05743d9.json` in that exact
+  --out /tmp/visa-gold-replay-policy-parity-4367d2c7.json` in that exact
   checkout.
-- Captured report: generated `2026-08-14T18:40:25.233011+00:00`, local path
-  `/tmp/visa-gold-replay-policy-parity-ff05743d9.json`, SHA-256
-  `76fc6209f992a6d388872729fead24e6b02048f7a7fbb0bdffd8e0586061004a`.
+- Captured report: generated `2026-08-14T22:21:37.736863+00:00`, local path
+  `/tmp/visa-gold-replay-policy-parity-4367d2c7.json`, SHA-256
+  `520d1205735edb0955aed337196fbcdcd21809c5b20690458a9c03bea7ee2d58`.
   This handoff summarizes the report; it does not treat the temporary path as a
   durable evidence store or claim production-path equivalence.
+
+This final-candidate replay supersedes the preliminary 4/20 run performed on
+`ff05743d930d068ff57dc5b92478658c20854eb2`. The later #4200 fix makes the
+offline caller use the request's effective review flags, the same accessor
+used by both public endpoint paths in that checkout. This establishes
+code-level parity for the reviewed paths, not production equivalence; the
+replay evidence is pinned to the corrected SHA rather than blended with the
+preliminary observation.
 
 ## Current family-source finding
 
@@ -156,19 +171,22 @@ The freshness blocker closes only when all of the following are recorded:
    steps with the required owner/legal authorization. No agent may infer those
    approvals from a green probe or green CI.
 
-Until this contract is complete, the correct operational disposition is:
-**sources reachable, pack freshness expired, runtime fail-safe active, G-b RED,
-SHADOW retained, ENFORCE NO-GO**.
+Until this contract is complete, the correct disposition is: **sources reachable
+at the bounded probe time, repository pack freshness expired, offline adapter
+fail-safe observed, live deployment state not established by this artifact,
+G-b RED, SHADOW retained, ENFORCE NO-GO**.
 
 ## Adversarial review
 
-Kimi K3 reviewed the complete non-PII artifact through the repository's pinned
-no-tools wrapper and returned **SHIP-WITH-FIXES**. The review confirmed the
-20-source arithmetic, seven-day boundary, WITA conversion, HTTP-versus-legal
-distinction, nine-persona tally and separation of signing, activation and
-ENFORCE authority. Its required and recommended findings were adopted:
+Kimi K3 reviewed a prior non-PII draft pinned to the preliminary
+`ff05743d930d068ff57dc5b92478658c20854eb2` replay through the repository's
+pinned no-tools wrapper and returned **SHIP-WITH-FIXES** for that draft. That
+review confirmed its 20-source arithmetic, seven-day boundary, WITA conversion,
+HTTP-versus-legal distinction, nine-persona freshness-conversion tally and
+separation of signing, activation and ENFORCE authority. Its required and
+recommended findings were adopted:
 
-- the 16 G-b ledger divergences are no longer mislabeled as causally
+- the preliminary 16 G-b ledger divergences were no longer mislabeled as causally
   unexplained; the text distinguishes the absent accepted-explanation ledger
   from the nine observed freshness conversions;
 - the inclusive freshness boundary is defined consistently;
@@ -177,3 +195,21 @@ ENFORCE authority. Its required and recommended findings were adopted:
   and
 - the previously orphaned D12 blocker now states its route-semantics question
   and points to the dedicated disposition artifact.
+
+A fresh full-document Kimi pass then reviewed the non-PII final-candidate text
+with its evidence manifest and returned **SHIP-WITH-FIXES**. It identified
+three scope defects, all adopted here: the draft no longer implies that the
+offline replay established the active production pack or live runtime state;
+the earlier review is explicitly pinned to the preliminary SHA; and adapter
+parity is described as code-level parity rather than production equivalence.
+
+The wrapper refused a subsequent full-document rereview locally because its
+numeric-shape PII guard triggered before transmission; that attempt produced no
+review verdict and was not bypassed. A PII-safe projection limited to the
+corrected passages returned **SHIP-WITH-FIXES** for two non-blocking wording
+findings: describe the source records as subject to the seven-day maximum-age
+policy and repeat the final SHA in the result paragraph. Both were adopted. A
+final bounded projection returned **SHIP**, closed both findings and reported
+no new contradiction. That final verdict covers only the projected corrected
+passages; it supplements, but does not replace, the required exact-SHA Fable
+gate before merge.
