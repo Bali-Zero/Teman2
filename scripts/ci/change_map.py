@@ -7,15 +7,18 @@ This module is deliberately pure: known paths map to one or more domains,
 while an empty, malformed, or unclassified input recommends every test job.
 
 Promoted to enforcing 2026-08-14 (.github/workflows/tests.yml gates its six
-heavy test jobs on ``suggested_jobs``/``run_all`` below) after a ~250-PR
-shadow-measurement window — see that workflow's ``changes`` job for the
-fail-open contract every consumer of this module's output must honor.
+heavy test jobs on ``suggested_jobs``/``run_all`` below) after a 57-run
+shadow-measurement audit that found and closed one real false-skip (see
+EXACT_RULES' PricingTool-canonical entry below) — see that workflow's
+``changes`` job for the fail-open contract every consumer of this module's
+output must honor.
 """
 
 from __future__ import annotations
 
 import json
 import posixpath
+import re
 import sys
 from collections.abc import Iterable
 
@@ -95,16 +98,95 @@ EXACT_RULES: dict[str, set[str] | frozenset[str]] = {
     # frontend-tests to catch the mismatch before merge. The "apps/backend-rag/"
     # prefix rule below already puts this path in backend_python; this exact
     # entry additionally routes it to mouth. Deliberately an EXACT path, not
-    # a directory/prefix rule: investigated apps/backend-rag/backend/services/
-    # visa_engine/ (the sibling file that landed in the same real-world PR,
-    # rulepack-prod-008.source.json) and PricingService only ever reads this
-    # one file — no rulepack path feeds the frontend snapshot, so widening
-    # the coupling there would be an unearned guess, not a verified edge.
+    # a directory/prefix rule.
+    #
+    # CORRECTION (red-team HIGH-8, 2026-08-14): this comment previously
+    # claimed "no rulepack path feeds the frontend snapshot" after checking
+    # only PricingService. That was wrong, not merely incomplete — Codex's
+    # red-team re-read apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/
+    # engine-adapter.test.ts and found it DOES read
+    # apps/backend-rag/backend/services/visa_engine/contracts/packs/
+    # rulepack-prod-*.source.json directly (globs every file matching
+    # rulepack-prod-\d+.source.json under that dir and asserts every SUPPORT
+    # reason code in them has frontend copy — see productionPackFiles() /
+    # supportReasonCodesInPack() in that test). Same suite's
+    # fact-mapper.test.ts also reads
+    # apps/backend-rag/backend/services/visa_engine/models.py directly,
+    # extracting every dotted `alias="a.b"` on ApplicantFactsData as the
+    # backend contract. Both couplings are now below (models.py as an exact
+    # path; the rulepack family as a filename-pattern rule, since the exact
+    # active pack filename changes as new packs are authored ahead of
+    # activation — see that test's own comment on why it globs).
     "apps/backend-rag/backend/data/bali_zero_official_prices_2026.json": {
         "backend_python",
         "mouth",
     },
+    "apps/backend-rag/backend/services/visa_engine/models.py": {
+        "backend_python",
+        "mouth",
+    },
+    # Cross-domain coupling found in the 57-run shadow audit (2026-08-14):
+    # apps/mouth/src/lib/kbli-canonical-pins.test.ts (a REQUIRED
+    # frontend-tests suite, no path filter) reads these two repo-root `data/`
+    # files directly and fails on a stale/mismatched pin — see that test's
+    # own header for why the check has to live in mouth rather than in the
+    # filiera compilers. The "data/" PREFIX_RULES entry below already routes
+    # these to backend_python + docs_content_data; these EXACT entries widen
+    # ONLY these two files to also reach mouth (most of data/ — analysis/,
+    # competitor/, kb_sources/, etc. — has no such frontend reader, so this
+    # is deliberately not a directory/prefix rule).
+    "data/source_documents/KBLI_2025_FINAL_CLEAN.json": {
+        "backend_python",
+        "docs_content_data",
+        "mouth",
+    },
+    "data/kbli-filiera/membership/batch-a-members.json": {
+        "backend_python",
+        "docs_content_data",
+        "mouth",
+    },
+    # Cross-domain coupling found in the 57-run shadow audit (2026-08-14):
+    # apps/backend-rag/backend/tests/app/routers/test_analytics_funnel_parity.py
+    # reads these two exact packages/core files directly (regex-extracts the
+    # FUNNEL_EVENTS / APP_EVENTS `as const` arrays) and pins backend
+    # ALLOWED_EVENTS/FUNNEL_PAGE_EVENTS/FUNNEL_APP_EVENTS as the exact union —
+    # a mismatch either direction fails a backend-tests test. The
+    # "packages/core/" PREFIX_RULES entry below already routes these to
+    # packages_core + mouth; these EXACT entries additionally widen ONLY
+    # these two files to backend_python (every other file under
+    # packages/core/analytics/ — index.ts, useFunnelApp.ts, the *.test.ts
+    # siblings — has no such backend reader, so this is deliberately not a
+    # directory/prefix rule).
+    "packages/core/analytics/funnel-view.ts": {
+        "packages_core",
+        "mouth",
+        "backend_python",
+    },
+    "packages/core/analytics/funnel-app.ts": {
+        "packages_core",
+        "mouth",
+        "backend_python",
+    },
 }
+
+# Filename-pattern coupling (red-team HIGH-8, 2026-08-14): the visa-engine
+# rulepack family is authored under a numbered filename
+# (rulepack-prod-<N>.source.json) and a NEW pack is written and merged
+# BEFORE it is the active one — engine-adapter.test.ts globs every file
+# matching this exact pattern under this exact directory (never a directory
+# it doesn't also enumerate), so the CI coupling has to match the same
+# family, not one pinned filename. Deliberately a narrow regex scoped to
+# both the exact directory AND the test's own basename pattern — mirrors
+# `/^rulepack-prod-\d+\.source\.json$/` in that test file, not invented.
+REGEX_RULES: tuple[tuple[re.Pattern[str], frozenset[str]], ...] = (
+    (
+        re.compile(
+            r"^apps/backend-rag/backend/services/visa_engine/contracts/packs/"
+            r"rulepack-prod-\d+\.source\.json$"
+        ),
+        frozenset({"backend_python", "mouth"}),
+    ),
+)
 
 PREFIX_RULES: tuple[tuple[str, frozenset[str]], ...] = (
     ("apps/backend-rag/", frozenset({"backend_python"})),
@@ -202,6 +284,10 @@ def _domains_for_path(path: str) -> set[str]:
     exact = EXACT_RULES.get(path)
     if exact is not None:
         return set(exact)
+
+    for pattern, domains in REGEX_RULES:
+        if pattern.match(path):
+            return set(domains)
 
     basename = path.rsplit("/", 1)[-1]
     if basename in PYTHON_MANIFEST_NAMES or basename.startswith("requirements-"):

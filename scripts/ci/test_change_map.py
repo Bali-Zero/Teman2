@@ -58,6 +58,157 @@ class ChangeMapTests(unittest.TestCase):
                     result["suggested_jobs"], ["backend-tests", "e2e-tests"]
                 )
 
+    def test_guilt_visa_engine_models_edit_also_runs_frontend(self) -> None:
+        # Red-team HIGH-8, 2026-08-14: apps/mouth/src/app/(visa-oracle)/
+        # visa-oracle/_lib/fact-mapper.test.ts reads this exact backend file
+        # directly (extracts every dotted alias="a.b" on ApplicantFactsData
+        # as the backend contract via extractApplicantFactPathsFromModelsPy())
+        # and fails if the frontend mapper drifts from it.
+        result = cm.classify(
+            ["apps/backend-rag/backend/services/visa_engine/models.py"]
+        )
+        self.assertFalse(result["run_all"])
+        self.assertTrue(result["domains"]["backend_python"])
+        self.assertTrue(result["domains"]["mouth"])
+        self.assertEqual(
+            result["suggested_jobs"],
+            ["backend-tests", "frontend-tests", "e2e-tests"],
+        )
+
+    def test_innocence_sibling_visa_engine_files_do_not_couple_to_frontend(
+        self,
+    ) -> None:
+        # Only models.py itself is the verified contract source — a sibling
+        # file in the same package must not inherit the coupling just for
+        # living next to it.
+        result = cm.classify(
+            ["apps/backend-rag/backend/services/visa_engine/engine.py"]
+        )
+        self.assertFalse(result["run_all"])
+        self.assertFalse(result["domains"]["mouth"])
+        self.assertNotIn("frontend-tests", result["suggested_jobs"])
+
+    def test_guilt_rulepack_family_edit_also_runs_frontend(self) -> None:
+        # Red-team HIGH-8: apps/mouth/.../engine-adapter.test.ts globs every
+        # file matching rulepack-prod-\d+.source.json under this exact
+        # directory (productionPackFiles()) and fails if a pack introduces a
+        # SUPPORT reason code with no frontend copy. A NEW pack is authored
+        # before it is activated, so the coupling must match the FAMILY, not
+        # one pinned filename.
+        for path in (
+            "apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-008.source.json",
+            "apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-9.source.json",
+        ):
+            with self.subTest(path=path):
+                result = cm.classify([path])
+                self.assertFalse(result["run_all"])
+                self.assertTrue(result["domains"]["mouth"])
+                self.assertEqual(
+                    result["suggested_jobs"],
+                    ["backend-tests", "frontend-tests", "e2e-tests"],
+                )
+
+    def test_innocence_non_rulepack_pack_file_does_not_couple_to_frontend(
+        self,
+    ) -> None:
+        # A file in the SAME directory that does not match the test's own
+        # basename pattern (e.g. a draft/staging file, or a differently
+        # named pack) must not be swept in by an over-broad directory rule —
+        # this is deliberately a filename-pattern rule, not a prefix rule.
+        for path in (
+            "apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-staging.json",
+            "apps/backend-rag/backend/services/visa_engine/contracts/packs/README.md",
+        ):
+            with self.subTest(path=path):
+                result = cm.classify([path])
+                self.assertFalse(result["run_all"])
+                self.assertFalse(result["domains"]["mouth"])
+                self.assertNotIn("frontend-tests", result["suggested_jobs"])
+
+    def test_guilt_kbli_canonical_pin_inputs_also_run_frontend(self) -> None:
+        # Red-team HIGH-9, 2026-08-14: apps/mouth/src/lib/
+        # kbli-canonical-pins.test.ts is a REQUIRED frontend-tests suite (no
+        # path filter) that reads these two repo-root data/ files directly
+        # and fails on a stale/mismatched sha256 pin.
+        for path in (
+            "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
+            "data/kbli-filiera/membership/batch-a-members.json",
+        ):
+            with self.subTest(path=path):
+                result = cm.classify([path])
+                self.assertFalse(result["run_all"])
+                self.assertTrue(result["domains"]["backend_python"])
+                self.assertTrue(result["domains"]["mouth"])
+                self.assertEqual(
+                    result["suggested_jobs"],
+                    ["backend-tests", "frontend-tests", "e2e-tests"],
+                )
+
+    def test_innocence_other_data_files_do_not_couple_to_kbli_pin_test(
+        self,
+    ) -> None:
+        # Most of data/ (analysis/, competitor/, kb_sources/, ...) has no
+        # frontend reader — the coupling above is two EXACT paths, not a
+        # directory/prefix widening of the whole data/ tree.
+        for path in (
+            "data/source_documents/KBLI_2017_TO_2025_MAPPING.json",
+            "data/analysis/some_report.json",
+        ):
+            with self.subTest(path=path):
+                result = cm.classify([path])
+                self.assertFalse(result["run_all"])
+                self.assertFalse(result["domains"]["mouth"])
+                self.assertNotIn("frontend-tests", result["suggested_jobs"])
+
+    def test_guilt_funnel_taxonomy_edit_also_runs_backend(self) -> None:
+        # Red-team HIGH-10, 2026-08-14:
+        # apps/backend-rag/backend/tests/app/routers/
+        # test_analytics_funnel_parity.py reads these two exact
+        # packages/core files directly (regex-extracts the FUNNEL_EVENTS /
+        # APP_EVENTS `as const` arrays) and pins the backend allowlist as
+        # their exact union — editing either without the backend allowlist
+        # fails a backend-tests test, on top of the existing
+        # packages_core+mouth coupling from the "packages/core/" prefix.
+        for path in (
+            "packages/core/analytics/funnel-view.ts",
+            "packages/core/analytics/funnel-app.ts",
+        ):
+            with self.subTest(path=path):
+                result = cm.classify([path])
+                self.assertFalse(result["run_all"])
+                self.assertTrue(result["domains"]["packages_core"])
+                self.assertTrue(result["domains"]["mouth"])
+                self.assertTrue(result["domains"]["backend_python"])
+                self.assertEqual(
+                    result["suggested_jobs"],
+                    [
+                        "backend-tests",
+                        "frontend-tests",
+                        "packages-core-tests",
+                        "e2e-tests",
+                    ],
+                )
+
+    def test_innocence_other_packages_core_files_do_not_couple_to_backend(
+        self,
+    ) -> None:
+        # Sibling files in the SAME directory (index.ts, useFunnelApp.ts, the
+        # *.test.ts files) that test_analytics_funnel_parity.py does not
+        # read must not inherit backend_python just for living next door —
+        # the coupling above is two EXACT paths, not a directory/prefix rule.
+        for path in (
+            "packages/core/analytics/index.ts",
+            "packages/core/analytics/useFunnelApp.ts",
+            "packages/core/analytics/funnel-view.test.ts",
+        ):
+            with self.subTest(path=path):
+                result = cm.classify([path])
+                self.assertFalse(result["run_all"])
+                self.assertTrue(result["domains"]["packages_core"])
+                self.assertTrue(result["domains"]["mouth"])
+                self.assertFalse(result["domains"]["backend_python"])
+                self.assertNotIn("backend-tests", result["suggested_jobs"])
+
     def test_innocence_docs_only_skips_product_test_jobs(self) -> None:
         result = cm.classify(["docs/runbooks/ci.md", "research/operations/note.json"])
         self.assertFalse(result["run_all"])
