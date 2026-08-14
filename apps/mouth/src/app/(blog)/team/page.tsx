@@ -6,6 +6,7 @@ import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 import { GoogleReviewsBlock } from "../_components/GoogleReviewsBlock";
 import { RUMAH_VARS, RUMAH_CLASS } from "@/lib/theme/rumahVars";
 import { rosterBySlug, initialsOf } from "@/data/team-roster";
+import { GOOGLE_RATING, reviewsLabel } from "@/lib/trust-figures";
 
 export const metadata: Metadata = {
   title: "Team",
@@ -394,9 +395,9 @@ export default function TeamPage() {
                 style={{ color: "var(--text-primary)" }}
               >
                 <span style={{ color: "#d4a017" }}>★★★★★</span>
-                <span>4.9</span>
+                <span>{GOOGLE_RATING}</span>
                 <span style={{ color: "var(--text-tertiary)" }}>
-                  · 627 Google reviews
+                  {`· ${reviewsLabel()}`}
                 </span>
               </span>
               <span

@@ -3,9 +3,11 @@
 import Image from "next/image";
 import { Star, MapPin, ArrowUpRight, BadgeCheck } from "lucide-react";
 import { rosterBySlug, initialsOf } from "@/data/team-roster";
-
-// Google reviews link — the public Maps URL you shared.
-const GOOGLE_MAPS_URL = "https://maps.app.goo.gl/whiMUTNchcDR5naz8";
+import {
+  GOOGLE_MAPS_URL,
+  ratingWithReviews,
+  reviewCount,
+} from "@/lib/trust-figures";
 
 // Top team members for the homepage. name/role/photo come from the roster SSOT
 // (apps/mouth/src/data/team-roster.ts); this component keeps only the editorial
@@ -244,7 +246,7 @@ export function SocialProof() {
                     className="text-[12px]"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    · 627 reviews
+                    {`· ${reviewCount()} reviews`}
                   </span>
                 </div>
               </div>
@@ -455,7 +457,7 @@ export function SocialProof() {
           />
           <TrustItem
             icon={<Star size={14} strokeWidth={0} fill="currentColor" />}
-            label="4.9 ★ · 627 Google reviews"
+            label={ratingWithReviews()}
           />
           <TrustItem
             icon={<MapPin size={14} strokeWidth={2} />}
