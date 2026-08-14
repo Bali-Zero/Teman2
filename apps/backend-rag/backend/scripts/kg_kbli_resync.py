@@ -13,7 +13,7 @@ WHAT IT SYNCS (1:1 canonical fields only — no derivations):
   - name / name_id / name_en  ← judul + English title maps (curated wins over
     generated, mirroring apps/mouth/src/lib/kbli-data.ts precedence)
   - description               ← uraian
-  - properties.pma_status     ← pma_status
+  - properties.pma_*          ← complete canonical PMA evidence tuple
   - properties.pp28_sources   ← pp28_sources (the OTHER codes a record's PP
     28/2025 licensing rows were carried from; `inspect_kbli` reads it to
     disclose inherited licences — see backend/services/kbli_pp28_provenance.py)
@@ -53,6 +53,13 @@ EN_GENERATED_URL = f"{RAW_BASE}/apps/mouth/src/lib/kbli-english-generated.ts"
 EN_CURATED_URL = f"{RAW_BASE}/apps/mouth/src/lib/kbli-english.ts"
 
 INTEL_KEYS = ("whatItMeans", "whatYouNeed", "baliContext", "whatChanged", "zantaraOpener")
+PMA_KEYS = (
+    "pma_status",
+    "pma_max_asing",
+    "pma_verification_status",
+    "pma_official_basis",
+    "pma_source_vintage",
+)
 TS_ENTRY_RE = re.compile(r'"(\d{5})":\s*"((?:[^"\\]|\\.)*)"')
 
 
@@ -67,9 +74,9 @@ def merge_node_props(props: dict, rec: dict) -> dict:
     Two DELIBERATELY different merge rules live here, and the asymmetry is the
     whole point:
 
-    - `pma_status` and the intel keys are **only ever added**. Canonical not
-      carrying a value means "nothing to say", not "delete what the graph has"
-      — those fields have other writers and other derivations.
+    - The complete `pma_*` evidence tuple is **authoritative**. Missing values
+      are removed so a stale locator/vintage can never bless a raw status from a
+      different run. The intel keys remain additive.
     - `pp28_sources` is **authoritative**: written when canonical has it,
       REMOVED when canonical does not. `inspect_kbli` turns this field into a
       client-facing sentence naming other KBLI codes; a stale list left behind
@@ -81,9 +88,12 @@ def merge_node_props(props: dict, rec: dict) -> dict:
     """
     new_props = dict(props)
 
-    pma = rec.get("pma_status")
-    if pma:
-        new_props["pma_status"] = pma
+    for key in PMA_KEYS:
+        value = rec.get(key)
+        if value not in (None, ""):
+            new_props[key] = value
+        else:
+            new_props.pop(key, None)
 
     intel = rec.get("intel_2026") or {}
     for key in INTEL_KEYS:
@@ -114,7 +124,11 @@ def merge_node_props(props: dict, rec: dict) -> dict:
 async def fetch_inputs() -> tuple[list[dict], dict[str, str]]:
     async with httpx.AsyncClient(timeout=60) as http:
         responses = {}
-        for key, url in (("dataset", DATASET_URL), ("generated", EN_GENERATED_URL), ("curated", EN_CURATED_URL)):
+        for key, url in (
+            ("dataset", DATASET_URL),
+            ("generated", EN_GENERATED_URL),
+            ("curated", EN_CURATED_URL),
+        ):
             r = await http.get(url)
             r.raise_for_status()
             responses[key] = r
@@ -122,7 +136,9 @@ async def fetch_inputs() -> tuple[list[dict], dict[str, str]]:
         generated = parse_ts_title_map(responses["generated"].text)
         curated = parse_ts_title_map(responses["curated"].text)
     titles = {**generated, **curated}  # curated wins (kbli-data.ts precedence)
-    logger.info("canonical: %d codes | EN titles: %d (%d curated)", len(dataset), len(titles), len(curated))
+    logger.info(
+        "canonical: %d codes | EN titles: %d (%d curated)", len(dataset), len(titles), len(curated)
+    )
     return dataset, titles
 
 
@@ -171,7 +187,9 @@ async def main() -> None:
                 continue
 
             if props.get("pma_status") != new_props.get("pma_status"):
-                pma_flips.append(f"{code}: {props.get('pma_status')} -> {new_props.get('pma_status')}")
+                pma_flips.append(
+                    f"{code}: {props.get('pma_status')} -> {new_props.get('pma_status')}"
+                )
             if props.get("pp28_sources") != new_props.get("pp28_sources"):
                 pp28_changes.append(code)
             updated.append(code)
@@ -193,7 +211,13 @@ async def main() -> None:
         await conn.close()
 
     mode = "APPLIED" if args.apply else "DRY-RUN"
-    logger.info("%s: %d to update | %d unchanged | %d missing in KG", mode, len(updated), unchanged, len(missing))
+    logger.info(
+        "%s: %d to update | %d unchanged | %d missing in KG",
+        mode,
+        len(updated),
+        unchanged,
+        len(missing),
+    )
     # No display caps: a truncated list reads as the whole list downstream (W97).
     for line in pma_flips:
         logger.info("  pma flip %s", line)

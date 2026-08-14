@@ -13,6 +13,7 @@ import {
   getDisputedLicensing,
   isBaliL4BlockVerifiedForBareClaim,
   isLicensingVerifiedForBareClaim,
+  knownPmaRawStatus,
   licensingContentInheritedFrom,
   pp28ContentInheritedFrom,
 } from "./kbli-provenance";
@@ -341,6 +342,23 @@ describe("deriveProvenance — PMA verification gate (guilt + innocence)", () =>
     );
     expect(missingLocator.pma.status).toBe("declared_gap");
     expect(missingVintage.pma.status).toBe("declared_gap");
+  });
+
+  it("GUILT: located provenance cannot bless an unknown PMA vocabulary token", () => {
+    const prov = deriveProvenance(
+      makeRaw({
+        pma_status: "FUTURE_STATUS" as never,
+        pma_verification_status: "located",
+        pma_official_basis: "Perpres 49/2021 Lampiran III baris 7",
+        pma_source_vintage: "2021-05-25",
+      }),
+    );
+
+    expect(knownPmaRawStatus("FUTURE_STATUS")).toBeNull();
+    expect(knownPmaRawStatus("terbuka")).toBeNull();
+    expect(prov.pma.status).toBe("declared_gap");
+    expect(prov.pma.locator).toBeNull();
+    expect(prov.pma.vintage).toBeNull();
   });
 
   it("INNOCENCE: explicit located + locator + vintage verifies the verdict", () => {

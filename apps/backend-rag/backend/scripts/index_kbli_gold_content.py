@@ -34,6 +34,7 @@ from pathlib import Path
 
 from backend.core.collection_registry import resolve_collection_name
 from backend.scripts._kbli_repo_root import resolve_repo_root
+from backend.services.kbli_pma_disclosure import pma_claims_verified
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -221,6 +222,9 @@ def load_kbli_base_data(filepath: Path) -> dict[str, dict]:
             "uraian": code.get("uraian", ""),
             "pma_status": code.get("pma_status", ""),
             "pma_max_asing": code.get("pma_max_asing", ""),
+            "pma_verification_status": code.get("pma_verification_status", "declared_gap"),
+            "pma_official_basis": code.get("pma_official_basis", ""),
+            "pma_source_vintage": code.get("pma_source_vintage", ""),
             "sektor_id": code.get("sektor_id", ""),
         }
     return lookup
@@ -241,6 +245,19 @@ def build_embedding_text(code: str, gold: dict, base: dict) -> str:
         f"# KBLI {code}: {judul}",
         "",
     ]
+
+    pma_verified = pma_claims_verified(base)
+    if not pma_verified:
+        official_description = base.get("uraian", "")
+        if official_description:
+            parts.extend(["## Deskripsi (BPS)", official_description, ""])
+        parts.extend(
+            [
+                "## Status PMA: NOT_VERIFIED",
+                "- Gold editorial withheld: no located official basis and source vintage are recorded.",
+            ]
+        )
+        return "\n".join(parts)
 
     if gold.get("zantaraOpener"):
         parts.append("## Quick Answer")
@@ -287,7 +304,8 @@ def build_embedding_text(code: str, gold: dict, base: dict) -> str:
 
 def build_payload(code: str, gold: dict, base: dict, embedding_text: str) -> dict:
     """Build Qdrant payload matching existing kbli_2025_final schema."""
-    description = gold.get("whatItMeans") or base.get("uraian", "")
+    official_description = base.get("uraian", "")
+    pma_verified = pma_claims_verified(base)
     return {
         "text": embedding_text,
         "content": embedding_text,
@@ -295,7 +313,8 @@ def build_payload(code: str, gold: dict, base: dict, embedding_text: str) -> dic
         "kode_kbli": code,
         "kode_kbli_2025": code,
         "judul": base.get("judul", ""),
-        "description": description,
+        "official_description": official_description,
+        "description": official_description,
         "prefix_2": code[:2],
         "prefix_3": code[:3],
         "digit_count": len(code),
@@ -306,7 +325,11 @@ def build_payload(code: str, gold: dict, base: dict, embedding_text: str) -> dic
         "section": base.get("sektor_id", ""),
         "pma_status": base.get("pma_status", ""),
         "pma_max_asing": base.get("pma_max_asing", ""),
-        "has_gold_content": True,
+        "pma_verification_status": base.get("pma_verification_status", "declared_gap"),
+        "pma_official_basis": base.get("pma_official_basis", ""),
+        "pma_source_vintage": base.get("pma_source_vintage", ""),
+        "has_gold_content": pma_verified,
+        "editorial_disclosed": pma_verified,
         "gold_fields": [k for k in gold if k not in ("tka_positions",)],
         "has_tka_info": bool(gold.get("tka_positions")),
         "tka_position_count": len(gold.get("tka_positions", [])),
@@ -431,9 +454,7 @@ async def main():
     # Per-code selection (--only): filter BEFORE building points.
     gold_entries = filter_to_codes(gold_entries, args.only)
     if args.only:
-        logger.info(
-            "%d of %d gold entries selected via --only", len(gold_entries), total_parsed
-        )
+        logger.info("%d of %d gold entries selected via --only", len(gold_entries), total_parsed)
 
     # Load base KBLI data for enrichment
     base_data = {}

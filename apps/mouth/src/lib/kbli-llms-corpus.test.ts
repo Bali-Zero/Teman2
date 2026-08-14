@@ -134,6 +134,16 @@ describe("the row", () => {
       cap: UNVERIFIED_PMA_CAP,
     });
   });
+
+  it("fails closed when a located row carries an unknown PMA status token", () => {
+    const future = rec({ pma_status: "FUTURE_STATUS" });
+
+    expect(pmaColumns(future)).toEqual({
+      status: UNVERIFIED_PMA_STATUS,
+      cap: UNVERIFIED_PMA_CAP,
+    });
+    expect(buildKbliCorpus([future])).not.toContain("FUTURE_STATUS | 100%");
+  });
 });
 
 describe("the committed artifact", () => {

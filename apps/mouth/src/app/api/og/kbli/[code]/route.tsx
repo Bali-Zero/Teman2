@@ -57,7 +57,10 @@ function statusChip(kbli: NonNullable<ReturnType<typeof getCode>>): {
     case "closed":
       return { label: "CLOSED", color: "#e0645a" };
     default:
-      return { label: "OPEN", color: "#5aab6e" };
+      // A complete provenance tuple does not make an unrecognised vocabulary
+      // token mean "open". Keep the social preview neutral rather than turning
+      // future/legacy status values into a foreign-ownership permission.
+      return { label: "PMA: VERIFY", color: "#8f96a3" };
   }
 }
 

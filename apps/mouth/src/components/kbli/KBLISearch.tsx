@@ -2,7 +2,12 @@
 
 import * as React from "react";
 import { Search, Loader2, X, ChevronRight, AlertTriangle } from "lucide-react";
-import { kbliApi, KBLISearchResult } from "@/lib/api/kbli.api";
+import {
+  apiPmaStatusLabel,
+  isApiPmaVerdictVerified,
+  kbliApi,
+  KBLISearchResult,
+} from "@/lib/api/kbli.api";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { logger } from "@/lib/logger";
@@ -204,8 +209,15 @@ export function KBLISearch({
                     {result.description}
                   </div>
                   <div className="flex gap-2 mt-1">
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-medium">
-                      {result.pma_status}
+                    <span
+                      className={cn(
+                        "text-[10px] px-1.5 py-0.5 rounded font-medium",
+                        isApiPmaVerdictVerified(result)
+                          ? "bg-emerald-500/10 text-emerald-400"
+                          : "bg-zinc-500/10 text-zinc-400",
+                      )}
+                    >
+                      {apiPmaStatusLabel(result)}
                     </span>
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-medium">
                       {result.risk_category}

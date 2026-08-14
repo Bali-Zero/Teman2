@@ -171,6 +171,60 @@ class TestVectorSearchTool:
         assert len(parsed["sources"]) == 2
 
     @pytest.mark.asyncio
+    async def test_execute_kbli_declared_gap_never_returns_raw_pma_editorial(self):
+        unsafe_text = """# KBLI 01111
+
+## Status PMA: TERBUKA
+- Kepemilikan asing maksimal: 100
+
+## Intelligence 2026
+- whatChanged: UNSAFE_EDITORIAL_ASSERTION
+"""
+        mock_retriever = MagicMock()
+        mock_retriever.search_with_reranking = AsyncMock(
+            return_value={
+                "results": [
+                    {
+                        "text": unsafe_text,
+                        "score": 0.9,
+                        "metadata": {
+                            "kode_kbli": "01111",
+                            "judul": "Pertanian Jagung",
+                            "official_description": "Uraian resmi BPS.",
+                            "pma_status": "TERBUKA",
+                            "pma_max_asing": 100,
+                            "pma_verification_status": "declared_gap",
+                            "bali_blocked": True,
+                            "bali_reason": "UNSAFE_BALI_REASON",
+                        },
+                    }
+                ]
+            }
+        )
+        tool = self._make_tool(retriever=mock_retriever)
+
+        with patch("backend.app.core.config.settings") as mock_settings:
+            mock_settings.enable_hybrid_search = False
+            result = await tool.execute(
+                query="KBLI 01111 PMA",
+                collection="kbli_2025_final",
+            )
+
+        parsed = json.loads(result)
+        rendered = json.dumps(parsed)
+        assert "Status PMA: NOT_VERIFIED" in parsed["content"]
+        assert "Uraian resmi BPS." in parsed["content"]
+        assert "BLOCKED for PT PMA registration" in parsed["content"]
+        assert parsed["sources"][0]["snippet"].startswith("# KBLI 01111")
+        for unsafe in (
+            "Status PMA: TERBUKA",
+            "maksimal: 100",
+            "UNSAFE_EDITORIAL_ASSERTION",
+            "UNSAFE_BALI_REASON",
+        ):
+            assert unsafe not in rendered
+
+    @pytest.mark.asyncio
     async def test_execute_federated_search(self):
         """No collection specified → federated across all collections."""
         mock_retriever = MagicMock()

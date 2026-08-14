@@ -26,7 +26,12 @@ import {
   Trash2,
   Check,
 } from "lucide-react";
-import { kbliApi, KBLIDetail, KBLISearchResult } from "@/lib/api/kbli.api";
+import {
+  isApiPmaVerdictVerified,
+  kbliApi,
+  KBLIDetail,
+  KBLISearchResult,
+} from "@/lib/api/kbli.api";
 import { toast } from "sonner";
 import { useSessionStorage } from "@/lib/hooks/optimized/useLocalStorage";
 import {
@@ -110,13 +115,21 @@ const GLOSSARY: Record<string, string> = {
   TERTUTUP: "Closed — not available for foreign investment",
 };
 
-function getPmaBadgeInline(status: string): {
+function getPmaBadgeInline(record: KBLISearchResult): {
   label: string;
   color: string;
   bg: string;
   border: string;
 } {
-  const s = (status || "").toUpperCase();
+  if (!isApiPmaVerdictVerified(record)) {
+    return {
+      label: "PMA not verified",
+      color: "#a1a1aa",
+      bg: "rgba(113,113,122,0.12)",
+      border: "rgba(113,113,122,0.25)",
+    };
+  }
+  const s = (record.pma_status || "").toUpperCase();
   if (s === "TERBUKA")
     return {
       label: "Open to Foreigners",
@@ -478,7 +491,7 @@ const AIMessageContent = ({
           >
             {sortByRisk(msg.results).map(
               (result: KBLISearchResult, rIdx: number) => {
-                const pmaBadgeInline = getPmaBadgeInline(result.pma_status);
+                const pmaBadgeInline = getPmaBadgeInline(result);
                 const isSelected = compareSelection.includes(result.code);
                 return (
                   <motion.div
@@ -661,7 +674,7 @@ const InspectorChoreographed = ({
     );
   }
 
-  const pmaBadge = getPmaBadge(data.pma_status);
+  const pmaBadge = getPmaBadge(data);
   const riskLevel = getRiskLevel(data.risk_profile);
 
   // Copy/Export (2C)

@@ -74,9 +74,7 @@ def make_client():
     def _make(node_props: dict, license_rows: list[dict], cached=None):
         app = FastAPI()
         app.include_router(kbli_notebook_module.router)
-        app.dependency_overrides[get_search_service] = lambda: MagicMock(
-            embedder=MagicMock()
-        )
+        app.dependency_overrides[get_search_service] = lambda: MagicMock(embedder=MagicMock())
         app.dependency_overrides[get_optional_database_pool] = lambda: _pool(
             node_props, license_rows
         )
@@ -195,7 +193,7 @@ def test_the_cache_key_is_versioned_past_the_payload_that_lacked_the_field(
         body = _get(client)
         assert body["licensing_note"] is not None
         requested = client._cache.get.await_args.args[0]
-        assert requested == "kbli_inspect_v4_62110", requested
+        assert requested == "kbli_inspect_v5_62110", requested
         assert "_v2_" not in requested
     finally:
         _stop(client)
@@ -203,7 +201,7 @@ def test_the_cache_key_is_versioned_past_the_payload_that_lacked_the_field(
 
 def test_a_current_version_cache_hit_is_still_served_from_cache(make_client):
     """INNOCENCE for the bump: it must invalidate the OLD generation only, not
-    disable caching. A v3 hit short-circuits the DB entirely."""
+    disable caching. A current-generation hit short-circuits the DB entirely."""
     cached = {
         "code": "62110",
         "title": "cached title",

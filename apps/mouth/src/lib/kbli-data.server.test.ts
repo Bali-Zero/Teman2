@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { getAllCodes, getCode, getSections } from "./kbli-data.server";
+import {
+  getAllCodes,
+  getCode,
+  getSections,
+  mapPmaStatus,
+} from "./kbli-data.server";
 
 /**
  * Mandate 12 (2026-08-09, PENDING-ARMS.md "sektor_id is not a malformed
@@ -14,6 +19,14 @@ import { getAllCodes, getCode, getSections } from "./kbli-data.server";
  * values, and a mock could accidentally assert the fix's own assumption.
  */
 describe("kbli-data.server — section derivation (Mandate 12 fix)", () => {
+  it("fails closed for unknown PMA vocabulary instead of defaulting to open", () => {
+    expect(mapPmaStatus("TERBUKA")).toBe("open");
+    expect(mapPmaStatus("TERBATAS")).toBe("restricted");
+    expect(mapPmaStatus("TERTUTUP")).toBe("closed");
+    expect(mapPmaStatus("FUTURE_STATUS")).toBe("unknown");
+    expect(mapPmaStatus("terbuka")).toBe("unknown");
+  });
+
   it("guilt: 56xxx (food service) and 47xxx (retail) resolve to their own true sections, not both to 'I'", () => {
     const foodService = getCode("56101");
     const retail = getCode("47721");

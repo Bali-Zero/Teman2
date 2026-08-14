@@ -149,12 +149,16 @@ export interface paths {
     put?: never;
     /**
      * Run Conversation Cleanup
-     * @description Clean up old conversations:
+     * @description Report — and, only under an explicit opt-in, apply — retention actions:
      *     - Hard-delete records older than `delete_after_days`
      *     - Anonymize (replace user PII with placeholders) records older than `anonymize_after_days`
      *
      *     Anonymization replaces `messages` JSONB with a stub and clears metadata PII fields.
      *     It does NOT touch records that will be deleted in the same run.
+     *
+     *     Refuses (400) any window below RETENTION_MIN_DAYS, and refuses (409) the
+     *     entire write path unless CONVERSATION_RETENTION_ALLOW_CLOCK_DELETE is set.
+     *     Both refusals happen before any query runs.
      */
     post: operations["run_conversation_cleanup_api_admin_conversation_cleanup_post"];
     delete?: never;
@@ -2481,10 +2485,7 @@ export interface paths {
     put?: never;
     /**
      * Logout
-     * @description Logout user and clear authentication cookies.
-     *
-     *     Note: JWT tokens are stateless, so we only clear cookies.
-     *     Client should also discard any stored tokens.
+     * @description Revoke the active JWT and clear authentication cookies.
      */
     post: operations["logout_api_auth_logout_post"];
     delete?: never;
@@ -2574,8 +2575,8 @@ export interface paths {
      * Revoke All Sessions
      * @description Revoke all active sessions for the current user (S03-S2).
      *
-     *     Sets a user-level revocation key in Redis. All tokens for this
-     *     user will be rejected until the key expires (24h).
+     *     Sets a timestamped user-level revocation key in Redis. Tokens issued at or
+     *     before that instant are rejected; a subsequent login receives a valid JWT.
      */
     post: operations["revoke_all_sessions_api_auth_revoke_all_post"];
     delete?: never;
@@ -5013,7 +5014,10 @@ export interface paths {
     head?: never;
     /**
      * Update Client Profile
-     * @description Update client profile fields (avatar, Google Drive folder, etc.)
+     * @description Update client profile fields (avatar, date of birth, passport expiry,
+     *     company name). Does NOT accept `google_drive_folder_id` — see
+     *     `ClientProfileUpdate`'s docstring for why; use
+     *     `POST /clients/{id}/ensure-drive-folder` to associate a Drive folder.
      */
     patch: operations["update_client_profile_api_crm_clients__client_id__profile_patch"];
     trace?: never;
@@ -6668,6 +6672,12 @@ export interface paths {
      * Log Lookup
      * @description Log a map lookup event for analytics tracking.
      *     Creates the analytics table on first use (idempotent).
+     *
+     *     The acting email comes from the authenticated principal, NEVER from the
+     *     request body: this route both writes to the database and names a person, so
+     *     an anonymous caller with a body-supplied email could attribute lookups to
+     *     any employee. It is deliberately NOT in PUBLIC_ENDPOINTS — see the comment
+     *     on the removed `/api/dashboard/map/` prefix entry there.
      */
     post: operations["log_lookup_api_dashboard_map_analytics_log_lookup_post"];
     delete?: never;
@@ -6708,6 +6718,18 @@ export interface paths {
      * Get Clients Geo
      * @description Returns active clients with address info for CRM map layer.
      *     Uses asyncpg pool from app state.
+     *
+     *     Authorization is TWO layers and both are load-bearing (P0, 2026-08-12):
+     *
+     *     1. A principal is required. Until today this took only `request: Request`,
+     *        and `/api/dashboard/map/` was a prefix entry in PUBLIC_ENDPOINTS — so an
+     *        anonymous GET from the public internet returned 500 client rows with
+     *        names, phones, emails and addresses. Measured live, not inferred.
+     *     2. The CRM ownership filter still applies to the authenticated caller. A
+     *        team member may only see rows where `assigned_to` matches
+     *        (`CLAUDE.md` §13); admins get the unfiltered set. Removing the public
+     *        entry alone would have left every authenticated team member able to read
+     *        all 1,244 clients from a route that exists to draw a map.
      */
     get: operations["get_clients_geo_api_dashboard_map_clients_geo_get"];
     put?: never;
@@ -11915,52 +11937,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/notifications/api/notifications/test/": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Test Notification
-     * @description Test notification system with real client data.
-     *
-     *     This endpoint is for STAGING ONLY. It allows testing the notification
-     *     system without waiting for scheduled runs.
-     *
-     *     If force_send is True, an actual email will be sent. Use with caution!
-     */
-    post: operations["test_notification_api_notifications_api_notifications_test__post"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/notifications/api/notifications/test/clients": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * List Testable Clients
-     * @description List clients that have passport/visa data for testing.
-     *     Staging only.
-     */
-    get: operations["list_testable_clients_api_notifications_api_notifications_test_clients_get"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/api/notifications/check": {
     parameters: {
       query?: never;
@@ -12304,7 +12280,7 @@ export interface paths {
      *
      *     **Usage:**
      *     ```python
-     *     import requests
+     *     import httpx
      *
      *     chunks = [
      *         {
@@ -12983,7 +12959,7 @@ export interface paths {
     };
     /**
      * Get Invoice Pdf Url
-     * @description Get the Drive download URL for an invoice PDF.
+     * @description Get the client-safe portal proxy URL for an invoice PDF.
      */
     get: operations["get_invoice_pdf_url_api_portal_billing__invoice_id__pdf_url_get"];
     put?: never;
@@ -15561,7 +15537,7 @@ export interface paths {
     put?: never;
     /**
      * Approve Draft
-     * @description Client approves LKPM draft.
+     * @description Approve an owned LKPM draft, with the existing CRM-admin override.
      */
     post: operations["approve_draft_api_v1_lkpm_approve__draft_id__post"];
     delete?: never;
@@ -15670,9 +15646,10 @@ export interface paths {
      * @description Get LKPM draft for a client/quarter.
      *
      *     Resolution rules for ``client_id``:
-     *       * ``client_id > 0`` — used as-is (staff calling with explicit id).
-     *       * ``client_id = 0`` + ``role='client'`` — resolve from the JWT email
-     *         (shareholders don't know their own numeric id).
+     *       * ``client_id > 0`` — staff may select it; clients may only use their
+     *         server-resolved own id.
+     *       * ``client_id = 0`` + ``role='client'`` — resolve from the JWT user id
+     *         and active portal linkage (shareholders don't know their numeric id).
      *       * ``client_id = 0`` + superuser (zero@balizero.com) + ``?as_client=<id>``
      *         — override to the requested id (admin impersonation, also honored as
      *         the new ``/draft/0/...`` convention everywhere).
@@ -15864,6 +15841,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/lkpm/receipts/{receipt_id}/download": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Download My Receipt
+     * @description Download a tenant-owned LKPM receipt through the client-safe proxy.
+     */
+    get: operations["download_my_receipt_api_v1_lkpm_receipts__receipt_id__download_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/lkpm/reports/{draft_id}/assign": {
     parameters: {
       query?: never;
@@ -15903,7 +15900,7 @@ export interface paths {
     put?: never;
     /**
      * Submit Data
-     * @description Submit LKPM data via manual form.
+     * @description Submit LKPM data for a portal client or a verified CRM admin.
      */
     post: operations["submit_data_api_v1_lkpm_submit_data_post"];
     delete?: never;
@@ -16097,49 +16094,6 @@ export interface paths {
      * @description Return detail for a single visa type by code (slug).
      */
     get: operations["get_visa_type_detail_api_v1_visa_oracle_visa_types__code__get"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/v1/wa-dashboard/stream": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * Wa Dashboard Stream
-     * @description SSE live stream of WA messages, filtered per user RBAC.
-     *
-     *     Headers:
-     *       Last-Event-ID: <int>  -- replay messages after this id (fix #11)
-     */
-    get: operations["wa_dashboard_stream_api_v1_wa_dashboard_stream_get"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/v1/wa-dashboard/stream/health": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * Wa Dashboard Stream Health
-     * @description Diagnostic: connected users + tabs + drop count.
-     */
-    get: operations["wa_dashboard_stream_health_api_v1_wa_dashboard_stream_health_get"];
     put?: never;
     post?: never;
     delete?: never;
@@ -18105,6 +18059,8 @@ export interface components {
        * @default 0
        */
       tools_called: number;
+      /** Tools Used */
+      tools_used?: string[];
       /**
        * Total Steps
        * @default 0
@@ -18214,20 +18170,6 @@ export interface components {
       /** Updated At */
       updated_at: string;
     };
-    /**
-     * AlertType
-     * @description Types of alerts the system can generate.
-     * @enum {string}
-     */
-    AlertType:
-      | "passport_warning"
-      | "passport_critical"
-      | "passport_expired"
-      | "visa_warning"
-      | "visa_critical"
-      | "visa_emergency"
-      | "visa_expired"
-      | "birthday";
     /** AnalyzeInvestmentRequest */
     AnalyzeInvestmentRequest: {
       /** Geo Data */
@@ -18253,7 +18195,8 @@ export interface components {
     /**
      * ApplicantFactsData
      * @description ``ApplicantFacts.facts`` (spec §2) — ``additionalProperties: false``
-     *     with all 40 keys required. Field order mirrors ``enums.FactPath``'s
+     *     with all keys required except the one transitional field documented on
+     *     ``sponsor_type`` below. Field order mirrors ``enums.FactPath``'s
      *     ``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/
      *     ``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``
      *     grouping.
@@ -18400,8 +18343,8 @@ export interface components {
       /**
        * Sponsor.Type
        * @default {
-       *       "status": "UNKNOWN",
-       *       "reason": "NOT_ASKED"
+       *       "reason": "NOT_ASKED",
+       *       "status": "UNKNOWN"
        *     }
        */
       "sponsor.type":
@@ -19179,7 +19122,21 @@ export interface components {
       /** Required Doc Id */
       required_doc_id: number;
     };
-    /** ClientProfileUpdate */
+    /**
+     * ClientProfileUpdate
+     * @description `google_drive_folder_id` is deliberately NOT a field here (removed
+     *     2026-08-09, PENDING-ARMS adversarial review of the Drive write-provenance
+     *     fix). This column is the trust anchor `assert_drive_file_belongs_to_client`
+     *     checks new document `file_id`s against — accepting it from a generic
+     *     profile PATCH let any caller with write access to a client poison that
+     *     anchor with an arbitrary folder id, then either read the victim folder's
+     *     contents through the read proxy directly or launder a foreign document
+     *     through the new write guard. The canonical, backend-controlled path is
+     *     `POST /clients/{id}/ensure-drive-folder` (`crm_clients.py`), which creates
+     *     the folder itself under a per-client advisory lock and never takes a
+     *     caller-supplied folder id. No live frontend flow ever sent this field
+     *     through `PATCH .../profile` (grepped `apps/mouth`, 2026-08-09).
+     */
     ClientProfileUpdate: {
       /** Avatar Url */
       avatar_url?: string | null;
@@ -19187,8 +19144,6 @@ export interface components {
       company_name?: string | null;
       /** Date Of Birth */
       date_of_birth?: string | null;
-      /** Google Drive Folder Id */
-      google_drive_folder_id?: string | null;
       /** Passport Expiry */
       passport_expiry?: string | null;
     };
@@ -21260,8 +21215,22 @@ export interface components {
       licensing_note?: string | null;
       /** Licensing Status */
       licensing_status: string;
-      /** Pma Status */
+      /** Pma Max Asing */
+      pma_max_asing?: number | string | null;
+      /** Pma Official Basis */
+      pma_official_basis?: string | null;
+      /** Pma Source Vintage */
+      pma_source_vintage?: string | null;
+      /**
+       * Pma Status
+       * @default NOT_VERIFIED
+       */
       pma_status: string;
+      /**
+       * Pma Verification Status
+       * @default declared_gap
+       */
+      pma_verification_status: string;
       /**
        * Related Codes
        * @default []
@@ -21340,11 +21309,20 @@ export interface components {
       } | null;
       /** Pma Max Asing */
       pma_max_asing?: number | string | null;
+      /** Pma Official Basis */
+      pma_official_basis?: string | null;
+      /** Pma Source Vintage */
+      pma_source_vintage?: string | null;
       /**
        * Pma Status
-       * @default UNKNOWN
+       * @default NOT_VERIFIED
        */
       pma_status: string;
+      /**
+       * Pma Verification Status
+       * @default declared_gap
+       */
+      pma_verification_status: string;
       /**
        * Risk Category
        * @default Unknown
@@ -21877,7 +21855,9 @@ export interface components {
       | "zantara_widget_handoff"
       | "cta_handoff"
       | "pricing_modal"
-      | "homepage_hero";
+      | "homepage_hero"
+      | "property_chat_question"
+      | "property_article_cta";
     /** LeaveRequestCreate */
     LeaveRequestCreate: {
       /**
@@ -22196,8 +22176,6 @@ export interface components {
       notes?: string | null;
       /** Property Code */
       property_code?: string | null;
-      /** User Email */
-      user_email: string;
     };
     /**
      * MagicLinkRequest
@@ -24739,6 +24717,57 @@ export interface components {
     };
     /**
      * SponsorType
+     * @description The sponsor CATEGORY a product record declares (``sponsor_types``,
+     *     ``models.VisaProductVersion``) and an applicant answers (``sponsor.type``,
+     *     ``FactPath.SPONSOR_TYPE``). Reused as the same closed vocabulary on both
+     *     sides deliberately (``contract.schema.json``'s own description: "a rule
+     *     can then compare the applicant's answer against the product's own
+     *     ``sponsor_types`` without a mapping table in between").
+     *
+     *     Per-value semantics were undocumented before the W3 sponsor-rules
+     *     factbase (``research/visa/2026-08-11-w3-sponsor-rules-factbase.md``)
+     *     found that gap load-bearing: two ambiguous product-record mappings
+     *     (E23V government-vs-employer, E28C individual-vs-none) were judgment
+     *     calls with no written definition to appeal to. Citations below are
+     *     Permenkumham 22/2023 (jo. 11/2024) unless noted.
+     *
+     *     NONE: self-filed — no external/statutory Penjamin is identified; the
+     *         applicant furnishes ``Jaminan Keimigrasian`` (an immigration
+     *         guarantee) instead of a third party's sponsorship attestation.
+     *         "No Penjamin" and "Jaminan Keimigrasian" are not interchangeable
+     *         terms — do not conflate them when citing this value. Verbatim,
+     *         explicit basis: Pasal 58(1) huruf b, "tanpa Penjamin" (E33B). Also
+     *         the resolved mapping for E28C (seq-7, superseding the prior
+     *         ``INDIVIDUAL``/self-sponsor encoding), Pasal 39(1) / 40(1):
+     *         "diajukan oleh Orang Asing" (never "...atau Penjamin"), huruf b
+     *         requires "bukti Jaminan Keimigrasian", never "bukti penjaminan dari
+     *         Penjamin" — a structural absence rather than an explicit "tanpa
+     *         Penjamin" clause, weaker evidence than E33B's but pointing the same
+     *         direction (factbase §3).
+     *     INDIVIDUAL: a natural person stands as Penjamin (e.g. a family sponsor,
+     *         or an individual employer). Distinct from NONE (no Penjamin exists)
+     *         and from EMPLOYER (the Penjamin is a corporate entity). Has no
+     *         currently-verified Pasal-level citation of its own in the six
+     *         products the factbase covers; do not treat its use elsewhere in this
+     *         pack as implying one.
+     *     EMPLOYER: the Penjamin is a company/corporate entity — the ordinary work
+     *         route (E23 and siblings), tested today via
+     *         ``work.employer_is_indonesian_entity`` rather than this fact.
+     *     EDUCATION: the Penjamin is an educational institution (STUDY-purpose
+     *         routes).
+     *     INVESTMENT: the sponsor is the applicant's own investment vehicle/venture
+     *         (e.g. the E28A PT PMA pathway) — the applicant is economically their
+     *         own guarantor through the investment, distinct from GOVERNMENT and
+     *         EMPLOYER.
+     *     GOVERNMENT: the Penjamin is a central-government instansi. Verbatim,
+     *         explicit basis in two products: Pasal 57(1) huruf b, "bukti
+     *         penjaminan dari Penjamin, yang merupakan pemerintah pusat" (E33A);
+     *         Pasal 59(1) huruf b, "bukti penjaminan dari penjamin dari instansi
+     *         pemerintah pusat" (E33C). Confirming the value here does not by
+     *         itself license a SUPPORT/ELIGIBILITY rule keyed on it alone — see
+     *         the factbase and ``research/visa/2026-08-11-seq7-sponsor-semantics
+     *         -and-the-gate-that-does-not-exist.md`` for why E33A/E33C have no
+     *         eligibility gate this fact can safely be conjoined with today.
      * @enum {string}
      */
     SponsorType:
@@ -25242,52 +25271,6 @@ export interface components {
       /** Subject */
       subject?: string | null;
     };
-    /**
-     * TestNotificationRequest
-     * @description Request body for testing notifications.
-     */
-    TestNotificationRequest: {
-      /** @description Force specific alert type, or auto-detect */
-      alert_type?: components["schemas"]["AlertType"] | null;
-      /**
-       * Client Id
-       * @description Test with specific client, or random if omitted
-       */
-      client_id?: number | null;
-      /**
-       * Force Send
-       * @description If true, actually sends email (use with caution!)
-       * @default false
-       */
-      force_send: boolean;
-      /**
-       * Test Email
-       * @description Override recipient email for testing
-       */
-      test_email?: string | null;
-    };
-    /**
-     * TestNotificationResponse
-     * @description Response from test endpoint.
-     */
-    TestNotificationResponse: {
-      /** Alert Details */
-      alert_details?: {
-        [key: string]: unknown;
-      } | null;
-      /** Alert Generated */
-      alert_generated: boolean;
-      /** Alert Sent */
-      alert_sent: boolean;
-      /** Client Info */
-      client_info?: {
-        [key: string]: unknown;
-      } | null;
-      /** Message */
-      message: string;
-      /** Success */
-      success: boolean;
-    };
     /** ThreadMessages */
     ThreadMessages: {
       /** Human Handling */
@@ -25483,7 +25466,7 @@ export interface components {
       /** Email Notifications */
       email_notifications?: boolean | null;
       /** Language */
-      language?: string | null;
+      language?: ("it" | "en" | "id") | null;
       /** Timezone */
       timezone?: string | null;
       /** Whatsapp Notifications */
@@ -27292,11 +27275,11 @@ export interface operations {
   run_conversation_cleanup_api_admin_conversation_cleanup_post: {
     parameters: {
       query?: {
-        /** @description Hard-delete conversations older than this many days */
+        /** @description Hard-delete conversations older than this many days. Floored at 1826. */
         delete_after_days?: number;
-        /** @description Anonymize (strip PII) conversations older than this many days (must be < delete_after_days) */
+        /** @description Anonymize (strip PII) conversations older than this many days, up to delete_after_days. Floored at 1826. When the two are equal (the default) the anonymize window is empty by construction. */
         anonymize_after_days?: number;
-        /** @description If true, count records but do not modify them */
+        /** @description Count records without modifying them (default). Pass false to act. */
         dry_run?: boolean;
       };
       header?: {
@@ -44463,70 +44446,6 @@ export interface operations {
       };
     };
   };
-  test_notification_api_notifications_api_notifications_test__post: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["TestNotificationRequest"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["TestNotificationResponse"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  list_testable_clients_api_notifications_api_notifications_test_clients_get: {
-    parameters: {
-      query?: {
-        limit?: number;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": unknown;
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
   run_expiry_check_api_notifications_check_post: {
     parameters: {
       query?: never;
@@ -50347,6 +50266,37 @@ export interface operations {
       };
     };
   };
+  download_my_receipt_api_v1_lkpm_receipts__receipt_id__download_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        receipt_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
   assign_lkpm_report_api_v1_lkpm_reports__draft_id__assign_put: {
     parameters: {
       query?: never;
@@ -50674,48 +50624,6 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  wa_dashboard_stream_api_v1_wa_dashboard_stream_get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": unknown;
-        };
-      };
-    };
-  };
-  wa_dashboard_stream_health_api_v1_wa_dashboard_stream_health_get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": {
-            [key: string]: unknown;
-          };
         };
       };
     };

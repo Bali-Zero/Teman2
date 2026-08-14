@@ -4,9 +4,40 @@ import { describe, it, expect } from "vitest";
 import type { KBLIDetail } from "@/lib/api/kbli.api";
 import KBLIInspector, {
   getRelatedRequirementGroups,
+  getPmaBadge,
   getRiskBadge,
   getRiskLevel,
 } from "./KBLIInspector";
+
+const GAP_PMA = {
+  pma_status: "TERBUKA",
+  pma_max_asing: 100,
+  pma_verification_status: "declared_gap",
+  pma_official_basis: null,
+  pma_source_vintage: null,
+};
+
+describe("getPmaBadge", () => {
+  it("GUILT: never renders raw TERBUKA/100 without the full evidence tuple", () => {
+    const badge = getPmaBadge(GAP_PMA);
+    expect(badge.label).toBe("PMA Not Verified");
+    expect(badge.className).toContain("badge-neutral");
+    expect(badge.label).not.toMatch(/open|100/i);
+  });
+
+  it("INNOCENCE: preserves a located verdict with locator and vintage", () => {
+    expect(
+      getPmaBadge({
+        ...GAP_PMA,
+        pma_status: "TERBATAS",
+        pma_max_asing: 49,
+        pma_verification_status: "located",
+        pma_official_basis: "Perpres 49/2021 Lampiran III entry 3",
+        pma_source_vintage: "2021-05-25",
+      }).label,
+    ).toBe("Restricted - Conditions Apply");
+  });
+});
 
 // Zero decision 2026-07-17: an undefined/unclassified KBLI risk must surface as
 // an honest "Not Classified" gap, NEVER the old false-reassuring "low"/"Low Risk"
@@ -58,7 +89,7 @@ describe("related requirements", () => {
       code: "56101",
       title: "Restaurant",
       description: "Restaurant activity",
-      pma_status: "TERBUKA",
+      ...GAP_PMA,
       licensing_status: "VERIFIED",
       sector: "Accommodation and food service",
       risk_profile: "Menengah Rendah",

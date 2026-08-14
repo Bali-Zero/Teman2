@@ -28,7 +28,7 @@ import { ENGLISH_TITLES_GENERATED } from "./kbli-english-generated";
 import { resolveLicenseType } from "./kbli-derive";
 import { GOLD_CODES } from "./kbli-gold-codes";
 import { getSectionVisual } from "./kbli-cover-design";
-import { deriveProvenance } from "./kbli-provenance";
+import { deriveProvenance, knownPmaRawStatus } from "./kbli-provenance";
 import { riskDispute } from "./kbli-risk-dispute";
 import { perpresSlice } from "./kbli-perpres-slice";
 import { getSectionFromCode } from "./kbli-section";
@@ -226,8 +226,8 @@ function toTitleCase(text: string): string {
 // PMA status mapping
 // =============================================================================
 
-function mapPmaStatus(raw: string): KBLIPmaStatus {
-  switch (raw) {
+export function mapPmaStatus(raw: string): KBLIPmaStatus {
+  switch (knownPmaRawStatus(raw)) {
     case "TERBUKA":
       return "open";
     case "TERBATAS":
@@ -235,7 +235,7 @@ function mapPmaStatus(raw: string): KBLIPmaStatus {
     case "TERTUTUP":
       return "closed";
     default:
-      return "open";
+      return "unknown";
   }
 }
 

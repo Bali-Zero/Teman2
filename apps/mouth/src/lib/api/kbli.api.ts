@@ -1,4 +1,5 @@
 import { ApiClientBase } from "./client";
+import { knownPmaRawStatus } from "../kbli-provenance";
 
 export interface KBLILicense {
   type: string;
@@ -21,11 +22,33 @@ export interface KBLISource {
 
 export type KBLIRelatedRequirements = Record<string, string[]>;
 
-export interface KBLIDetail {
+export interface KBLIPmaDisclosure {
+  pma_status: string;
+  pma_max_asing: number | string | null;
+  pma_verification_status: string;
+  pma_official_basis: string | null;
+  pma_source_vintage: string | null;
+}
+
+export function isApiPmaVerdictVerified(record: KBLIPmaDisclosure): boolean {
+  return (
+    record.pma_verification_status === "located" &&
+    !!knownPmaRawStatus(record.pma_status) &&
+    !!record.pma_official_basis?.trim() &&
+    !!record.pma_source_vintage?.trim()
+  );
+}
+
+export function apiPmaStatusLabel(record: KBLIPmaDisclosure): string {
+  return isApiPmaVerdictVerified(record)
+    ? record.pma_status
+    : "PMA not verified";
+}
+
+export interface KBLIDetail extends KBLIPmaDisclosure {
   code: string;
   title: string;
   description: string;
-  pma_status: string;
   licensing_status: string;
   sector: string;
   risk_profile: string;
@@ -42,12 +65,11 @@ export interface KBLIDetail {
   };
 }
 
-export interface KBLISearchResult {
+export interface KBLISearchResult extends KBLIPmaDisclosure {
   code: string;
   title: string;
   description: string;
   score: number;
-  pma_status: string;
   risk_category: string;
 }
 

@@ -27,14 +27,26 @@ from backend.scripts.kbli_qdrant_pma_sync import (
 _COLLECTION = "kbli_2025_final_hybrid"
 _BASE = "http://qdrant.test"
 _HEADERS = {"Content-Type": "application/json"}
+_BASIS = "Perpres 49/2021 Lampiran III entry 3"
+_VINTAGE = "2021-05-25"
+
+
+def _pma_fields(status: str = "TERBUKA", cap: Any = 100) -> dict:
+    return {
+        "pma_status": status,
+        "pma_max_asing": cap,
+        "pma_verification_status": "located",
+        "pma_official_basis": _BASIS,
+        "pma_source_vintage": _VINTAGE,
+    }
 
 
 def _rec(code: str, status: str = "TERBUKA", cap: Any = 100) -> dict:
-    return {"kode_kbli_2025": code, "pma_status": status, "pma_max_asing": cap}
+    return {"kode_kbli_2025": code, **_pma_fields(status, cap)}
 
 
 def _point(pid: Any, status: str = "TERBUKA", cap: Any = 100) -> dict:
-    return {"id": pid, "payload": {"pma_status": status, "pma_max_asing": cap, "judul": "x"}}
+    return {"id": pid, "payload": {**_pma_fields(status, cap), "judul": "x"}}
 
 
 class FakeQdrant:
@@ -85,12 +97,10 @@ def test_a_stale_point_is_rewritten_to_the_canonical_verdict():
     fake = FakeQdrant({"25200": [[_point(7)]]})
     with fake.client() as http:
         points = find_points_for_code(http, _BASE, _HEADERS, _COLLECTION, "25200")
-        plan = build_plan("25200", Target("25200", "pma", {"pma_status": "TERBATAS", "pma_max_asing": 49}), points)
+        plan = build_plan("25200", Target("25200", "pma", _pma_fields("TERBATAS", 49)), points)
         n = apply_plan(http, _BASE, _HEADERS, _COLLECTION, plan, apply=True)
     assert n == 1
-    assert fake.payload_writes == [
-        {"payload": {"pma_status": "TERBATAS", "pma_max_asing": 49}, "points": [7]}
-    ]
+    assert fake.payload_writes == [{"payload": _pma_fields("TERBATAS", 49), "points": [7]}]
 
 
 def test_every_point_of_a_code_is_rewritten_across_scroll_pages():
@@ -100,7 +110,7 @@ def test_every_point_of_a_code_is_rewritten_across_scroll_pages():
     with fake.client() as http:
         points = find_points_for_code(http, _BASE, _HEADERS, _COLLECTION, "51102")
         assert [p["id"] for p in points] == [1, 2]
-        plan = build_plan("51102", Target("51102", "pma", {"pma_status": "TERBATAS", "pma_max_asing": 49}), points)
+        plan = build_plan("51102", Target("51102", "pma", _pma_fields("TERBATAS", 49)), points)
         apply_plan(http, _BASE, _HEADERS, _COLLECTION, plan, apply=True)
     assert fake.payload_writes[0]["points"] == [1, 2]
 
@@ -112,7 +122,7 @@ def test_dry_run_writes_nothing():
     fake = FakeQdrant({"25200": [[_point(7)]]})
     with fake.client() as http:
         points = find_points_for_code(http, _BASE, _HEADERS, _COLLECTION, "25200")
-        plan = build_plan("25200", Target("25200", "pma", {"pma_status": "TERBATAS", "pma_max_asing": 49}), points)
+        plan = build_plan("25200", Target("25200", "pma", _pma_fields("TERBATAS", 49)), points)
         n = apply_plan(http, _BASE, _HEADERS, _COLLECTION, plan, apply=False)
     assert n == 0 and fake.payload_writes == []
 
@@ -123,7 +133,7 @@ def test_a_point_already_agreeing_is_left_alone():
     fake = FakeQdrant({"25200": [[_point(7, "TERBATAS", 49)]]})
     with fake.client() as http:
         points = find_points_for_code(http, _BASE, _HEADERS, _COLLECTION, "25200")
-        plan = build_plan("25200", Target("25200", "pma", {"pma_status": "TERBATAS", "pma_max_asing": 49}), points)
+        plan = build_plan("25200", Target("25200", "pma", _pma_fields("TERBATAS", 49)), points)
         assert plan.stale_points() == []
         assert apply_plan(http, _BASE, _HEADERS, _COLLECTION, plan, apply=True) == 0
     assert fake.payload_writes == []
@@ -133,22 +143,20 @@ def test_a_code_with_no_points_never_writes_and_never_crashes():
     fake = FakeQdrant({})
     with fake.client() as http:
         points = find_points_for_code(http, _BASE, _HEADERS, _COLLECTION, "62010")
-        plan = build_plan("62010", Target("62010", "pma", {"pma_status": "TERBUKA", "pma_max_asing": 100}), points)
+        plan = build_plan("62010", Target("62010", "pma", _pma_fields()), points)
         assert not plan.found
         assert apply_plan(http, _BASE, _HEADERS, _COLLECTION, plan, apply=True) == 0
     assert fake.payload_writes == []
 
 
-def test_only_the_two_pma_keys_are_ever_sent():
-    """`set_payload` is a MERGE; the request must carry nothing but the two
-    fields this tool owns, or it silently becomes an editor of the rest of the
-    flat payload."""
+def test_only_the_five_pma_evidence_keys_are_ever_sent():
+    """The PMA layer owns one five-field evidence tuple and nothing else."""
     fake = FakeQdrant({"25200": [[_point(7)]]})
     with fake.client() as http:
         points = find_points_for_code(http, _BASE, _HEADERS, _COLLECTION, "25200")
-        plan = build_plan("25200", Target("25200", "pma", {"pma_status": "TERBATAS", "pma_max_asing": 49}), points)
+        plan = build_plan("25200", Target("25200", "pma", _pma_fields("TERBATAS", 49)), points)
         apply_plan(http, _BASE, _HEADERS, _COLLECTION, plan, apply=True)
-    assert set(fake.payload_writes[0]["payload"]) == {"pma_status", "pma_max_asing"}
+    assert set(fake.payload_writes[0]["payload"]) == set(_pma_fields())
 
 
 @pytest.mark.parametrize("cap", [0, 49, 100, "special", None])
@@ -159,7 +167,7 @@ def test_the_canonical_cap_is_written_verbatim_never_coerced(cap):
     fake = FakeQdrant({"47221": [[_point(3, "TERBUKA", 100)]]})
     with fake.client() as http:
         points = find_points_for_code(http, _BASE, _HEADERS, _COLLECTION, "47221")
-        plan = build_plan("47221", Target("47221", "pma", {"pma_status": "TERBATAS", "pma_max_asing": cap}), points)
+        plan = build_plan("47221", Target("47221", "pma", _pma_fields("TERBATAS", cap)), points)
         apply_plan(http, _BASE, _HEADERS, _COLLECTION, plan, apply=True)
     assert fake.payload_writes[0]["payload"]["pma_max_asing"] == cap
 
@@ -171,7 +179,7 @@ def test_stale_is_judged_on_both_fields_not_just_the_status():
     fake = FakeQdrant({"25200": [[_point(7, "TERBATAS", 100)]]})
     with fake.client() as http:
         points = find_points_for_code(http, _BASE, _HEADERS, _COLLECTION, "25200")
-        plan = build_plan("25200", Target("25200", "pma", {"pma_status": "TERBATAS", "pma_max_asing": 49}), points)
+        plan = build_plan("25200", Target("25200", "pma", _pma_fields("TERBATAS", 49)), points)
     assert plan.stale_points() == [7]
 
 
@@ -184,7 +192,9 @@ def test_stale_is_judged_on_both_fields_not_just_the_status():
 # codes as registrable.
 
 
-def _bali_rec(code: str, status: str, blocked: bool, reason: str = "r", verdict: str | None = None) -> dict:
+def _bali_rec(
+    code: str, status: str, blocked: bool, reason: str = "r", verdict: str | None = None
+) -> dict:
     rec: dict = {
         "kode_kbli_2025": code,
         "pma_status": "TERBUKA",
@@ -224,7 +234,9 @@ def test_the_bali_layer_writes_its_four_keys_and_no_pma_key():
     """Layer isolation, asserted on the wire. A Bali cure that also carried a
     `pma_status` would silently make the national answer this tool's business."""
     fake = FakeQdrant({"86995": [[{"id": 5, "payload": {"bali_status": "CHIUSO_PMA_NO_BESAR"}}]]})
-    targets, _ = build_targets([_bali_rec("86995", "CHIUSO_MORATORIA_BALI", True)], ["86995"], "bali")
+    targets, _ = build_targets(
+        [_bali_rec("86995", "CHIUSO_MORATORIA_BALI", True)], ["86995"], "bali"
+    )
     with fake.client() as http:
         points = find_points_for_code(http, _BASE, _HEADERS, _COLLECTION, "86995")
         plan = build_plan("86995", targets["86995"], points)
@@ -244,7 +256,9 @@ def test_a_bali_point_already_agreeing_is_left_alone():
         "has_bali_l4": True,
     }
     fake = FakeQdrant({"86995": [[{"id": 5, "payload": payload}]]})
-    targets, _ = build_targets([_bali_rec("86995", "CHIUSO_MORATORIA_BALI", True)], ["86995"], "bali")
+    targets, _ = build_targets(
+        [_bali_rec("86995", "CHIUSO_MORATORIA_BALI", True)], ["86995"], "bali"
+    )
     with fake.client() as http:
         points = find_points_for_code(http, _BASE, _HEADERS, _COLLECTION, "86995")
         plan = build_plan("86995", targets["86995"], points)
@@ -264,7 +278,11 @@ def test_a_reason_only_change_is_still_stale():
     }
     fake = FakeQdrant({"86995": [[{"id": 5, "payload": payload}]]})
     targets, _ = build_targets(
-        [_bali_rec("86995", "CHIUSO_MORATORIA_BALI", True, reason="blocked by the Bali moratorium")],
+        [
+            _bali_rec(
+                "86995", "CHIUSO_MORATORIA_BALI", True, reason="blocked by the Bali moratorium"
+            )
+        ],
         ["86995"],
         "bali",
     )
@@ -281,11 +299,10 @@ def test_an_unknown_layer_raises_instead_of_silently_syncing_pma():
 
 
 def test_the_pma_layer_is_unchanged_by_the_generalisation():
-    """Regression pin for the refactor: the default layer still reads exactly
-    the two fields it always did, from the same canonical keys."""
+    """Regression pin: the default layer owns one complete evidence tuple."""
     targets, _ = build_targets([_rec("25200", "TERBATAS", 49)], ["25200"])
     assert targets["25200"].layer == "pma"
-    assert targets["25200"].fields == {"pma_status": "TERBATAS", "pma_max_asing": 49}
+    assert targets["25200"].fields == _pma_fields("TERBATAS", 49)
 
 
 # ---------------------------------------------------------------------------
@@ -329,7 +346,7 @@ Kelompok ini mencakup pembuatan senjata dan amunisi.
 
 
 def _blob_point(pid: Any, blob: str, status: str = "TERBUKA", cap: Any = 100) -> dict:
-    payload: dict[str, Any] = {"pma_status": status, "pma_max_asing": cap}
+    payload: dict[str, Any] = _pma_fields(status, cap)
     for key in PROSE_KEYS:
         payload[key] = blob
     return {"id": pid, "payload": payload}
@@ -341,7 +358,7 @@ def test_the_blob_still_saying_terbuka_100_is_repaired_not_left_behind():
     already said 49."""
     rec = _rec("25200", status="TERBATAS", cap=49)
     point = _blob_point("p1", _BLOB_OPEN, status="TERBATAS", cap=49)  # flat ALREADY cured
-    plan = build_plan("25200", Target("25200", "pma", {"pma_status": "TERBATAS", "pma_max_asing": 49}, rec), [point])
+    plan = build_plan("25200", Target("25200", "pma", _pma_fields("TERBATAS", 49), rec), [point])
 
     assert plan.stale_points() == ["p1"], "a cured flat field must not excuse an uncured blob"
     for key in PROSE_KEYS:
@@ -368,13 +385,112 @@ def test_a_zero_percent_cap_omits_the_line_because_the_generator_omits_it():
     assert render_pma_block(rec) == ["## Status PMA: TERBATAS"]
 
 
+def test_a_declared_gap_withholds_raw_status_and_cap_from_the_blob():
+    """A canonical raw value is not a publishable verdict without its located
+    basis and vintage. The repair must remove both values from retriever prose."""
+    rec = {
+        "kode_kbli_2025": "01111",
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100,
+        "pma_verification_status": "declared_gap",
+        "pma_official_basis": None,
+        "pma_source_vintage": None,
+    }
+    out = rewrite_pma_prose(rec, _BLOB_OPEN)
+    assert out is not None
+    assert "## Status PMA: NOT_VERIFIED" in out
+    assert "Whole-code foreign ownership is withheld" in out
+    assert "## Status PMA: TERBUKA" not in out
+    assert "Kepemilikan asing maksimal: 100" not in out
+
+
+def test_an_unknown_located_status_is_withheld_from_the_blob():
+    rec = {
+        "kode_kbli_2025": "01111",
+        "pma_status": "FUTURE_STATUS",
+        "pma_max_asing": 100,
+        "pma_verification_status": "located",
+        "pma_official_basis": _BASIS,
+        "pma_source_vintage": _VINTAGE,
+    }
+
+    out = rewrite_pma_prose(rec, _BLOB_OPEN)
+
+    assert out is not None
+    assert "## Status PMA: NOT_VERIFIED" in out
+    assert "FUTURE_STATUS" not in out
+    assert "Kepemilikan asing maksimal: 100" not in out
+
+
+def test_a_declared_gap_removes_editorial_and_rebuilds_bali_without_free_form_reason():
+    rec = {
+        "kode_kbli_2025": "01111",
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100,
+        "pma_verification_status": "declared_gap",
+        "pma_official_basis": None,
+        "pma_source_vintage": None,
+        "l4_bali": {
+            "status": "OK_or_HIGHER_RISK",
+            "blocked": False,
+            "reason": "UNSAFE_BALI_REASON asserting national openness",
+        },
+    }
+    legacy = (
+        _BLOB_OPEN.replace(
+            "Direct 1:1 match from KBLI 2020 - code and scope unchanged.",
+            "UNSAFE_EDITORIAL_ASSERTION",
+        )
+        + """
+## Status PMA di Bali (L4 — moratorium provinsi)
+- Status Bali: OK_or_HIGHER_RISK
+- Alasan: UNSAFE_BALI_REASON asserting national openness
+- Catatan: legacy prose.
+"""
+    )
+
+    out = rewrite_pma_prose(rec, legacy)
+
+    assert out is not None
+    assert "## Status PMA: NOT_VERIFIED" in out
+    assert "## Intelligence 2026" not in out
+    assert "UNSAFE_EDITORIAL_ASSERTION" not in out
+    assert "UNSAFE_BALI_REASON" not in out
+    assert "- Alasan:" not in out
+    assert "Status Bali: OK_or_HIGHER_RISK" in out
+    assert "does not prove national permission" in out
+
+
+def test_a_truncated_legacy_gap_with_unsafe_editorial_is_refused():
+    rec = {
+        "kode_kbli_2025": "01111",
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100,
+        "pma_verification_status": "declared_gap",
+        "l4_bali": {
+            "status": "OK_or_HIGHER_RISK",
+            "blocked": False,
+            "reason": "UNSAFE_BALI_REASON",
+        },
+    }
+    truncated = (
+        _BLOB_OPEN
+        + "\n## Status PMA di Bali (L4 — moratorium provinsi)\n"
+        + "- Status Bali: OK_or_HIGHER_RISK\n"
+        + "- Alasan: UNSAFE_BALI_REASON\n"
+        + "(... dipotong untuk batas panjang.)"
+    )
+
+    assert rewrite_pma_prose(rec, truncated) is None
+
+
 def test_a_point_whose_blob_already_tells_the_truth_is_not_rewritten():
     """Innocence: the repair must be a no-op on a truthful blob, or every run
     would rewrite the whole collection and the diff would stop meaning anything."""
     rec = _rec("25200", status="TERBATAS", cap=49)
     cured = rewrite_pma_prose(rec, _BLOB_OPEN)
     point = _blob_point("p1", cured, status="TERBATAS", cap=49)
-    plan = build_plan("25200", Target("25200", "pma", {"pma_status": "TERBATAS", "pma_max_asing": 49}, rec), [point])
+    plan = build_plan("25200", Target("25200", "pma", _pma_fields("TERBATAS", 49), rec), [point])
     assert plan.prose == {}
     assert plan.stale_points() == []
 
@@ -384,8 +500,10 @@ def test_a_blob_without_the_owned_block_is_REFUSED_not_guessed_at():
     Refusing is the whole point — writing into it would be a guess about a
     client-facing store."""
     rec = _rec("25200", status="TERBATAS", cap=49)
-    point = _blob_point("p1", "# KBLI 25200\n\nno pma section here at all\n", status="TERBATAS", cap=49)
-    plan = build_plan("25200", Target("25200", "pma", {"pma_status": "TERBATAS", "pma_max_asing": 49}, rec), [point])
+    point = _blob_point(
+        "p1", "# KBLI 25200\n\nno pma section here at all\n", status="TERBATAS", cap=49
+    )
+    plan = build_plan("25200", Target("25200", "pma", _pma_fields("TERBATAS", 49), rec), [point])
     assert plan.unshaped == ["p1"]
     assert plan.prose == {}
     assert plan.stale_points() == [], "an unshaped point must not be written"
@@ -411,7 +529,9 @@ def test_the_whatchanged_layer_owns_no_flat_key():
     run must not invent one — writing `whatChanged` as a flat field would create
     a second representation nobody reads and nobody keeps in step."""
     targets, refusals = build_targets(
-        [{"kode_kbli_2025": "25200", "intel_2026": {"whatChanged": "x"}}], ["25200"], layer="whatchanged"
+        [{"kode_kbli_2025": "25200", "intel_2026": {"whatChanged": "x"}}],
+        ["25200"],
+        layer="whatchanged",
     )
     assert refusals == []
     assert targets["25200"].fields == {}
@@ -430,8 +550,11 @@ def test_each_point_gets_its_OWN_repaired_blob_never_a_shared_body():
     with a near-copy."""
     rec = _rec("25200", status="TERBATAS", cap=49)
     other = _BLOB_OPEN.replace("Industri Senjata dan Amunisi", "SIBLING CHUNK")
-    points = [_blob_point("p1", _BLOB_OPEN, "TERBATAS", 49), _blob_point("p2", other, "TERBATAS", 49)]
-    plan = build_plan("25200", Target("25200", "pma", {"pma_status": "TERBATAS", "pma_max_asing": 49}, rec), points)
+    points = [
+        _blob_point("p1", _BLOB_OPEN, "TERBATAS", 49),
+        _blob_point("p2", other, "TERBATAS", 49),
+    ]
+    plan = build_plan("25200", Target("25200", "pma", _pma_fields("TERBATAS", 49), rec), points)
     fake = FakeQdrant({})
     with fake.client() as http:
         written = apply_plan(http, _BASE, _HEADERS, _COLLECTION, plan, apply=True)
@@ -457,7 +580,11 @@ def test_the_prose_repair_matches_the_real_generator_on_real_canonical_records()
 
     here = pathlib.Path(__file__).resolve()
     root = next(
-        (p for p in here.parents if (p / "data" / "source_documents" / "KBLI_2025_FINAL_CLEAN.json").is_file()),
+        (
+            p
+            for p in here.parents
+            if (p / "data" / "source_documents" / "KBLI_2025_FINAL_CLEAN.json").is_file()
+        ),
         None,
     )
     assert root is not None, f"canonical dataset not found walking up from {here}"
@@ -484,10 +611,12 @@ def test_the_prose_repair_matches_the_real_generator_on_real_canonical_records()
     build_embedding_text = mod.build_embedding_text
 
     records = json.loads(
-        (root / "data" / "source_documents" / "KBLI_2025_FINAL_CLEAN.json").read_text(encoding="utf-8")
+        (root / "data" / "source_documents" / "KBLI_2025_FINAL_CLEAN.json").read_text(
+            encoding="utf-8"
+        )
     )["data"]
 
-    checked_pma = checked_wc = truncated = 0
+    checked_pma = checked_wc = truncated = eligible_wc = 0
     zero_cap_seen = False
     for rec in records:
         fresh = build_embedding_text(rec)
@@ -499,7 +628,13 @@ def test_the_prose_repair_matches_the_real_generator_on_real_canonical_records()
             checked_pma += 1
             if rec.get("pma_max_asing") in (0, None):
                 zero_cap_seen = True
-        if (rec.get("intel_2026") or {}).get("whatChanged"):
+        if (
+            rec.get("pma_verification_status") == "located"
+            and rec.get("pma_official_basis")
+            and rec.get("pma_source_vintage")
+            and (rec.get("intel_2026") or {}).get("whatChanged")
+        ):
+            eligible_wc += 1
             out = rewrite_whatchanged_prose(rec, fresh)
             if "\n- whatChanged: " not in fresh:
                 # The generator CAPS the embedding text (`build_embedding_text`
@@ -519,8 +654,10 @@ def test_the_prose_repair_matches_the_real_generator_on_real_canonical_records()
             )
             checked_wc += 1
 
-    assert checked_pma > 1400 and checked_wc > 1400, (
-        f"corpus too thin to mean anything: pma={checked_pma} whatChanged={checked_wc}"
+    assert checked_pma > 1400
+    assert eligible_wc > 0 and checked_wc + truncated == eligible_wc, (
+        f"eligible editorial coverage drifted: eligible={eligible_wc} "
+        f"checked={checked_wc} truncated={truncated}"
     )
     assert zero_cap_seen, "no zero/absent cap in the corpus — the falsy-zero branch went untested"
     assert truncated > 0, (

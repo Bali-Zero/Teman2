@@ -86,9 +86,7 @@ async def test_null_scale_list_is_tolerated(tmp_path):
                     {
                         "kode_kbli_2025": "99999",
                         "judul": "Synthetic schema-edge record",
-                        "per_skala": [
-                            {"skala_usaha": None, "kategori_risiko": "Rendah"}
-                        ],
+                        "per_skala": [{"skala_usaha": None, "kategori_risiko": "Rendah"}],
                     }
                 ]
             }
@@ -118,6 +116,27 @@ async def test_lookup_carries_bali_moratorium_verdict_verbatim():
 
 
 @pytest.mark.asyncio
+async def test_exact_lookup_declared_gap_withholds_raw_pma_and_free_form_bali_reason():
+    tool = KBLICanonicalLookupTool(dataset_path=_DATASET)
+
+    payload = json.loads(await tool.execute(code="01111"))
+
+    assert payload["found"] is True
+    assert payload["pma"] == {
+        "status": "NOT_VERIFIED",
+        "max_foreign_ownership_percent": None,
+        "condition": None,
+        "verification_status": "declared_gap",
+        "official_basis": None,
+        "source_vintage": None,
+        "cap_verified": False,
+    }
+    assert "reason" not in payload["bali"]
+    assert "review_basis" not in payload["bali"]
+    assert isinstance(payload["bali"].get("blocked"), bool)
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("code", ["", "1234", "123456", "51A01"])
 async def test_lookup_rejects_non_five_digit_input(code):
     tool = KBLICanonicalLookupTool(dataset_path=_DATASET)
@@ -131,7 +150,7 @@ async def test_lookup_rejects_non_five_digit_input(code):
 def test_prompt_requires_exact_lookup_and_locks_curated_legal_traps():
     from backend.prompts.zantara_core_v4 import TOOL_USAGE_POLICY
 
-    assert "CALL kbli_lookup(code=\"...\") FIRST" in TOOL_USAGE_POLICY
+    assert 'CALL kbli_lookup(code="...") FIRST' in TOOL_USAGE_POLICY
     assert "error=DATASET_UNAVAILABLE" in TOOL_USAGE_POLICY
     assert "Rp2.500.000.000" in TOOL_USAGE_POLICY
     assert "Rp10.000.000.000" in TOOL_USAGE_POLICY

@@ -35,6 +35,7 @@ from dotenv import load_dotenv
 
 from backend.core.collection_registry import resolve_collection_name
 from backend.scripts._kbli_repo_root import resolve_repo_root
+from backend.services.kbli_pma_disclosure import pma_claims_verified
 
 # Repo root: robust resolver that works in both the dev checkout and the Fly
 # container (where parents[4] raises IndexError — the layout is shallower).
@@ -132,6 +133,40 @@ def deterministic_uuid(code: str) -> str:
     return str(uuid.UUID(hashlib.md5(key.encode()).hexdigest()))
 
 
+def render_bali_embedding_block(entry: dict, *, pma_verified: bool) -> list[str]:
+    """Render Bali facts without using them to infer a national PMA verdict."""
+    l4 = entry.get("l4_bali") or {}
+    if not l4.get("status"):
+        return []
+
+    lines = ["## Status PMA di Bali (L4 — moratorium provinsi)"]
+    if l4.get("blocked"):
+        lines.append(
+            "- DIBLOKIR untuk PMA di Bali: kegiatan risiko Rendah/Menengah-Rendah "
+            "tidak dapat didaftarkan PT PMA di Provinsi Bali (moratorium 2026-05-13)."
+        )
+    lines.append(f"- Status Bali: {l4['status']}")
+
+    if pma_verified:
+        if l4.get("reason"):
+            lines.append(f"- Alasan: {l4['reason']}")
+        lines.append(
+            "- Note: national status (Perpres 10/2021) can differ from the "
+            "provincial block; read both verdicts."
+        )
+    elif l4.get("blocked"):
+        lines.append(
+            "- Note: the Bali record indicates a local block; national PMA status "
+            "and cap remain NOT_VERIFIED."
+        )
+    else:
+        lines.append(
+            "- Note: absence of a block in the Bali record does not prove national "
+            "permission; national PMA status and cap remain NOT_VERIFIED."
+        )
+    return lines
+
+
 def build_embedding_text(entry: dict) -> str:
     """
     Build rich embedding text for a KBLI code.
@@ -144,6 +179,7 @@ def build_embedding_text(entry: dict) -> str:
     uraian = entry.get("uraian", "")
     sektor = entry.get("sektor_id", "")
     pma_status = entry.get("pma_status", "")
+    pma_verified = pma_claims_verified(entry)
 
     parts = [
         f"[CONTEXT: KBLI 2025 - BPS 7/2025 + PP28/2025 - Kode {code} - {judul}]",
@@ -164,7 +200,7 @@ def build_embedding_text(entry: dict) -> str:
         parts.append("")
 
     # PMA status
-    if pma_status:
+    if pma_status and pma_verified:
         pma_section = [f"## Status PMA: {pma_status}"]
         if entry.get("pma_max_asing"):
             pma_section.append(f"- Kepemilikan asing maksimal: {entry['pma_max_asing']}")
@@ -176,6 +212,14 @@ def build_embedding_text(entry: dict) -> str:
             pma_section.append(f"- Nota: {entry['pma_nota']}")
         parts.extend(pma_section)
         parts.append("")
+    else:
+        parts.extend(
+            [
+                "## Status PMA: NOT_VERIFIED",
+                "- Whole-code foreign ownership is withheld: no located official basis and source vintage are recorded.",
+                "",
+            ]
+        )
 
     # PP28/2025 licensing (per_skala)
     # CAP: some codes (e.g. 61108 telecom) carry 60+ per_skala entries whose verbatim
@@ -230,7 +274,9 @@ def build_embedding_text(entry: dict) -> str:
             parts.append("")
 
     # Intel 2026 (Bali-specific intelligence)
-    intel = entry.get("intel_2026")
+    # Intel is generated prose and may contain whole-code ownership claims.
+    # It is one atomic editorial layer: do not attempt substring redaction.
+    intel = entry.get("intel_2026") if pma_verified else None
     if intel:
         parts.append("## Intelligence 2026")
         if isinstance(intel, dict):
@@ -243,21 +289,9 @@ def build_embedding_text(entry: dict) -> str:
 
     # L4 Bali sovereign-local status (moratorium 2026-05-13) — embed it so semantic
     # search surfaces the Bali block, not just the national PMA status.
-    l4 = entry.get("l4_bali") or {}
-    if l4.get("status"):
-        parts.append("## Status PMA di Bali (L4 — moratorium provinsi)")
-        if l4.get("blocked"):
-            parts.append(
-                "- DIBLOKIR untuk PMA di Bali: kegiatan risiko Rendah/Menengah-Rendah "
-                "tidak dapat didaftarkan PT PMA di Provinsi Bali (moratorium 2026-05-13).",
-            )
-        parts.append(f"- Status Bali: {l4['status']}")
-        if l4.get("reason"):
-            parts.append(f"- Alasan: {l4['reason']}")
-        parts.append(
-            "- Catatan: status nasional (Perpres 10/2021) bisa TERBUKA 100% "
-            "sementara di Bali diblokir — keduanya benar bersamaan.",
-        )
+    bali_block = render_bali_embedding_block(entry, pma_verified=pma_verified)
+    if bali_block:
+        parts.extend(bali_block)
         parts.append("")
 
     text = "\n".join(parts)
@@ -299,6 +333,7 @@ def build_payload(entry: dict, embedding_text: str) -> dict:
         "kode_kbli": code,
         "kode_kbli_2025": code,
         "judul": entry.get("judul", ""),
+        "official_description": description,
         "description": description,
         "prefix_2": code[:2],
         "prefix_3": code[:3],
@@ -310,11 +345,14 @@ def build_payload(entry: dict, embedding_text: str) -> dict:
         "section": entry.get("sektor_id", ""),
         "pma_status": entry.get("pma_status", ""),
         "pma_max_asing": entry.get("pma_max_asing", ""),
+        "pma_verification_status": entry.get("pma_verification_status", "declared_gap"),
+        "pma_official_basis": entry.get("pma_official_basis", ""),
+        "pma_source_vintage": entry.get("pma_source_vintage", ""),
         "has_per_skala": bool(per_skala),
         "scales": scales,
         "risk_levels": list(risk_levels),
         "kategori_risiko": risk_category,
-        "has_intel_2026": bool(entry.get("intel_2026")),
+        "has_intel_2026": pma_claims_verified(entry) and bool(entry.get("intel_2026")),
         "has_gold_content": False,
         "status_mapping": entry.get("status_mapping", ""),
         # L4 Bali (flat) — sovereign-local status, moratorium 2026-05-13
@@ -620,7 +658,9 @@ async def main():
             logger.info("")
         bali_blocked = sum(1 for p in all_points if p["payload"]["bali_blocked"])
         bali_l4 = sum(1 for p in all_points if p["payload"]["has_bali_l4"])
-        logger.info(f"L4 coverage: {bali_l4}/{len(all_points)} have Bali status, {bali_blocked} blocked in Bali")
+        logger.info(
+            f"L4 coverage: {bali_l4}/{len(all_points)} have Bali status, {bali_blocked} blocked in Bali"
+        )
         logger.info(f"Would delete old OSS_RBA_API points and upsert {len(all_points)} new points")
         return
 

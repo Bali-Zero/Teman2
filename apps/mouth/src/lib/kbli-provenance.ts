@@ -15,6 +15,7 @@ import type {
   KBLICode,
   KBLIDisputedLicensing,
   KBLIDisputedScaleRow,
+  KBLIPmaRawStatus,
   KBLIProvenance,
   KBLIRawCode,
 } from "./kbli-types";
@@ -26,6 +27,20 @@ const OSS_NATIVE_L2 = "OSS_RBA_resiko_2025";
 
 /** `_l2_status` marker for the no-scope set (OSS ruang-lingkup 404). */
 const NO_OSS_RISK = "no_oss_risk";
+
+const KNOWN_PMA_RAW_STATUSES = new Set<KBLIPmaRawStatus>([
+  "TERBUKA",
+  "TERBATAS",
+  "TERTUTUP",
+]);
+
+/** Exact canonical PMA token, or null for missing/future/malformed values. */
+export function knownPmaRawStatus(value: unknown): KBLIPmaRawStatus | null {
+  return typeof value === "string" &&
+    KNOWN_PMA_RAW_STATUSES.has(value as KBLIPmaRawStatus)
+    ? (value as KBLIPmaRawStatus)
+    : null;
+}
 
 /**
  * Normalize a `per_skala_disputed_*` value to a row array. Two live shapes:
@@ -138,7 +153,10 @@ function pmaProvenance(raw: KBLIRawCode): KBLIProvenance["pma"] {
   const locator = raw.pma_official_basis?.trim() || null;
   const vintage = raw.pma_source_vintage?.trim() || null;
   const located =
-    raw.pma_verification_status === "located" && !!locator && !!vintage;
+    raw.pma_verification_status === "located" &&
+    !!knownPmaRawStatus(raw.pma_status) &&
+    !!locator &&
+    !!vintage;
   return {
     source: raw.pma_source ?? null,
     vintage: located ? vintage : null,
@@ -263,7 +281,10 @@ export function isLicensingVerifiedForBareClaim(code: KBLICode): boolean {
 export function isPmaVerdictVerified(code: KBLICode): boolean {
   const pma = code.provenance?.pma;
   return (
-    pma?.status === "located" && !!pma.locator?.trim() && !!pma.vintage?.trim()
+    code.pma.status !== "unknown" &&
+    pma?.status === "located" &&
+    !!pma.locator?.trim() &&
+    !!pma.vintage?.trim()
   );
 }
 

@@ -9,11 +9,12 @@ import type {
   KBLICode,
   KBLISection,
   KBLIGoldContent,
+  KBLIPmaStatus,
 } from "./kbli-types";
 import { resolveLicenseType } from "./kbli-derive";
 import { resolvePmaCap } from "./kbli-pma-cap";
 import { perpresCitation } from "./kbli-perpres-locator";
-import { deriveProvenance } from "./kbli-provenance";
+import { deriveProvenance, knownPmaRawStatus } from "./kbli-provenance";
 import { riskDispute } from "./kbli-risk-dispute";
 import { perpresSlice } from "./kbli-perpres-slice";
 import { getSectionFromCode } from "./kbli-section";
@@ -386,9 +387,10 @@ function transformCode(
   };
 }
 
-function mapPmaStatus(status: string): "open" | "restricted" | "closed" {
-  const s = (status || "").toUpperCase();
-  if (s === "TERBATAS") return "restricted";
-  if (s === "TERTUTUP") return "closed";
-  return "open";
+export function mapPmaStatus(status: string): KBLIPmaStatus {
+  const known = knownPmaRawStatus(status);
+  if (known === "TERBUKA") return "open";
+  if (known === "TERBATAS") return "restricted";
+  if (known === "TERTUTUP") return "closed";
+  return "unknown";
 }

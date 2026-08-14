@@ -43,6 +43,7 @@
  */
 
 import { resolvePmaCap, type PmaCapSource } from "./kbli-pma-cap";
+import { knownPmaRawStatus } from "./kbli-provenance";
 
 /** The honest label when the dataset classifies nothing — mirrors the
  *  backend's `_resolve_risk_profile`, which degrades here rather than to "Low". */
@@ -108,15 +109,18 @@ export function pmaColumns(record: CorpusRecord): {
   status: string;
   cap: string;
 } {
-  const status = record.pma_status?.trim();
-  if (!status) {
+  const rawStatus = record.pma_status?.trim();
+  if (!rawStatus) {
     throw new Error(
       `KBLI ${record.kode_kbli_2025}: no pma_status on the canonical record. ` +
         `Refusing to publish a guessed status into a machine-read corpus.`,
     );
   }
 
+  const status = knownPmaRawStatus(record.pma_status);
+
   const verdictVerified =
+    !!status &&
     record.pma_verification_status === "located" &&
     !!record.pma_official_basis?.trim() &&
     !!record.pma_source_vintage?.trim();

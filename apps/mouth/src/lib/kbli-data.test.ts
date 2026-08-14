@@ -4,12 +4,21 @@ import {
   getCode,
   getCodesBySection,
   getHeroStyle,
+  mapPmaStatus,
   getRelatedCodes,
   getSectionMeta,
   getSections,
 } from "./kbli-data";
 
 describe("kbli-data", () => {
+  it("maps only the three canonical PMA tokens and fails closed otherwise", () => {
+    expect(mapPmaStatus("TERBUKA")).toBe("open");
+    expect(mapPmaStatus("TERBATAS")).toBe("restricted");
+    expect(mapPmaStatus("TERTUTUP")).toBe("closed");
+    expect(mapPmaStatus("FUTURE_STATUS")).toBe("unknown");
+    expect(mapPmaStatus("terbuka")).toBe("unknown");
+  });
+
   it("loads the canonical KBLI dataset as flat frontend records", () => {
     const codes = getAllCodes();
 

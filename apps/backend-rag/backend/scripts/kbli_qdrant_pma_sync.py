@@ -1,6 +1,7 @@
 """
 kbli_qdrant_pma_sync.py — sync a named LAYER of the KBLI Qdrant payload from the
-canonical dataset. `--layer pma` (default) owns `pma_status` / `pma_max_asing`;
+canonical dataset. `--layer pma` (default) owns the complete PMA evidence tuple
+(`pma_status`, `pma_max_asing`, verification status, official basis, vintage);
 `--layer bali` owns `bali_status` / `bali_blocked` / `bali_reason` /
 `has_bali_l4`.
 
@@ -88,7 +89,7 @@ this container REPLACES site-packages rather than extending it (it has already
 cost one `ModuleNotFoundError: asyncpg`). Same shape here, for the same reason.
 
 AFTER APPLYING, EVICT THE CACHE: `inspect_kbli` caches its assembled payload
-under `kbli_inspect_v2_<code>` for up to 30 days, so a cured Qdrant payload is
+under `kbli_inspect_v5_<code>` for up to 30 days, so a cured Qdrant payload is
 invisible on the channel until `kbli_inspect_cache_bust.py --only <codes>
 --apply` has run.
 """
@@ -195,7 +196,13 @@ def _pma_fields(rec: dict) -> tuple[dict[str, Any] | None, str | None]:
     status = rec.get("pma_status")
     if not status:
         return None, "canonical record carries no pma_status — nothing authoritative to sync"
-    return {"pma_status": str(status), "pma_max_asing": rec.get("pma_max_asing")}, None
+    return {
+        "pma_status": str(status),
+        "pma_max_asing": rec.get("pma_max_asing"),
+        "pma_verification_status": rec.get("pma_verification_status", "declared_gap"),
+        "pma_official_basis": rec.get("pma_official_basis"),
+        "pma_source_vintage": rec.get("pma_source_vintage"),
+    }, None
 
 
 def _bali_fields(rec: dict) -> tuple[dict[str, Any] | None, str | None]:
@@ -228,7 +235,10 @@ def _whatchanged_fields(rec: dict) -> tuple[dict[str, Any] | None, str | None]:
     """
     intel = rec.get("intel_2026")
     if not isinstance(intel, dict) or not intel.get("whatChanged"):
-        return None, "canonical record carries no intel_2026.whatChanged — nothing authoritative to sync"
+        return (
+            None,
+            "canonical record carries no intel_2026.whatChanged — nothing authoritative to sync",
+        )
     return {}, None
 
 
@@ -280,7 +290,22 @@ _LAYER_READERS = {
 # ---------------------------------------------------------------------------
 
 _PMA_HEADING = "## Status PMA:"
+_INTEL_HEADING = "## Intelligence 2026"
+_BALI_HEADING = "## Status PMA di Bali (L4 — moratorium provinsi)"
 _WHATCHANGED_PREFIX = "- whatChanged: "
+_TRUNCATION_MARKER = "(... dipotong untuk batas panjang.)"
+_PMA_ALLOWED_STATUSES = frozenset({"TERBUKA", "TERBATAS", "TERTUTUP"})
+
+
+def _pma_claims_verified(rec: dict) -> bool:
+    status = rec.get("pma_status")
+    return bool(
+        rec.get("pma_verification_status") == "located"
+        and isinstance(status, str)
+        and status in _PMA_ALLOWED_STATUSES
+        and str(rec.get("pma_official_basis") or "").strip()
+        and str(rec.get("pma_source_vintage") or "").strip()
+    )
 
 
 def render_pma_block(rec: dict) -> list[str]:
@@ -293,6 +318,13 @@ def render_pma_block(rec: dict) -> list[str]:
     every point it touched — silent data loss dressed as a cure. Any field added
     to the generator's block must be added here, and that test is what says so.
     """
+    verified = _pma_claims_verified(rec)
+    if not verified:
+        return [
+            f"{_PMA_HEADING} NOT_VERIFIED",
+            "- Whole-code foreign ownership is withheld: no located official basis and source vintage are recorded.",
+        ]
+
     lines = [f"{_PMA_HEADING} {rec.get('pma_status')}"]
     if rec.get("pma_max_asing"):  # 0 is falsy THERE, so it must be falsy HERE
         lines.append(f"- Kepemilikan asing maksimal: {rec['pma_max_asing']}")
@@ -302,6 +334,39 @@ def render_pma_block(rec: dict) -> list[str]:
         lines.append(f"- Prioritas: {rec['pma_prioritas']}")
     if rec.get("pma_nota"):
         lines.append(f"- Nota: {rec['pma_nota']}")
+    return lines
+
+
+def render_bali_block(rec: dict) -> list[str]:
+    """Mirror ``reindex_kbli_2025_final.render_bali_embedding_block`` exactly."""
+    l4 = rec.get("l4_bali") or {}
+    if not l4.get("status"):
+        return []
+
+    lines = [_BALI_HEADING]
+    if l4.get("blocked"):
+        lines.append(
+            "- DIBLOKIR untuk PMA di Bali: kegiatan risiko Rendah/Menengah-Rendah "
+            "tidak dapat didaftarkan PT PMA di Provinsi Bali (moratorium 2026-05-13)."
+        )
+    lines.append(f"- Status Bali: {l4['status']}")
+    if _pma_claims_verified(rec):
+        if l4.get("reason"):
+            lines.append(f"- Alasan: {l4['reason']}")
+        lines.append(
+            "- Note: national status (Perpres 10/2021) can differ from the "
+            "provincial block; read both verdicts."
+        )
+    elif l4.get("blocked"):
+        lines.append(
+            "- Note: the Bali record indicates a local block; national PMA status "
+            "and cap remain NOT_VERIFIED."
+        )
+    else:
+        lines.append(
+            "- Note: absence of a block in the Bali record does not prove national "
+            "permission; national PMA status and cap remain NOT_VERIFIED."
+        )
     return lines
 
 
@@ -320,13 +385,57 @@ def _replace_block(blob: str, start_pred, stop_pred, new_lines: list[str]) -> st
     return "\n".join(lines[:i] + new_lines + lines[j:])
 
 
+def _replace_heading_section(blob: str, heading: str, new_lines: list[str]) -> str:
+    """Replace an optional generated ``##`` section while preserving spacing."""
+    lines = blob.split("\n")
+    try:
+        start = lines.index(heading)
+    except ValueError:
+        return blob
+    end = start + 1
+    while end < len(lines) and not lines[end].startswith("## "):
+        end += 1
+
+    before = lines[:start]
+    after = lines[end:]
+    replacement = list(new_lines)
+    if replacement:
+        # Generated sections are separated from the next section (or EOF) by
+        # one empty line. Preserve that byte shape for generator fidelity.
+        replacement.append("")
+    return "\n".join(before + replacement + after)
+
+
 def rewrite_pma_prose(rec: dict, blob: str) -> str | None:
-    return _replace_block(
+    rewritten = _replace_block(
         blob,
         lambda ln: ln.startswith(_PMA_HEADING),
         lambda ln: not ln.startswith("- "),
         render_pma_block(rec),
     )
+    if rewritten is None or _pma_claims_verified(rec):
+        return rewritten
+
+    # A declared gap owns the entire generated/editorial disclosure boundary,
+    # not only the two PMA lines. Old points can still carry an Intelligence
+    # section or a Bali reason that asserts raw national openness. Remove the
+    # former atomically and rebuild the latter from structured Bali fields.
+    # The generator can truncate in the middle of the Bali or Intelligence
+    # section.  Expanding a partial section would write content *after* the
+    # marker that explicitly says the document ended.  A fresh declared-gap
+    # blob is already safe once its PMA block is replaced, so leave that byte
+    # shape alone.  A legacy truncated blob that still carries editorial prose
+    # cannot be repaired losslessly and is refused instead.
+    if _TRUNCATION_MARKER in rewritten:
+        bali_tail = rewritten.partition(_BALI_HEADING)[2]
+        if _INTEL_HEADING in rewritten or "- Alasan:" in bali_tail:
+            return None
+        return rewritten
+
+    rewritten = _replace_heading_section(rewritten, _INTEL_HEADING, [])
+    if _BALI_HEADING in rewritten:
+        rewritten = _replace_heading_section(rewritten, _BALI_HEADING, render_bali_block(rec))
+    return rewritten
 
 
 def rewrite_whatchanged_prose(rec: dict, blob: str) -> str | None:
@@ -451,8 +560,7 @@ def build_plan(code: str, target: Target, points: list[dict]) -> CodePlan:
     """
     ids = [p["id"] for p in points]
     current = {
-        p["id"]: {key: (p.get("payload") or {}).get(key) for key in target.fields}
-        for p in points
+        p["id"]: {key: (p.get("payload") or {}).get(key) for key in target.fields} for p in points
     }
     rewrite = _LAYER_PROSE.get(target.layer)
     prose: dict[Any, dict[str, str]] = {}

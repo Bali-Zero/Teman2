@@ -40,6 +40,9 @@ def test_gold_kbli_payload_is_flat() -> None:
             "judul": "Aktivitas Jasa Boga untuk Acara Tertentu",
             "sektor_id": "I",
             "pma_status": "TERBUKA",
+            "pma_verification_status": "located",
+            "pma_official_basis": "Perpres 49/2021 official locator",
+            "pma_source_vintage": "2021-05-25",
         },
         embedding_text="KBLI 56210 Katering",
     )
@@ -48,3 +51,39 @@ def test_gold_kbli_payload_is_flat() -> None:
     assert payload["kode_kbli"] == "56210"
     assert payload["doc_type"] == "kbli_gold"
     assert payload["has_gold_content"] is True
+
+
+def test_gold_kbli_payload_withholds_editorial_without_the_full_pma_tuple() -> None:
+    payload = build_gold_payload(
+        "56210",
+        {"whatItMeans": "Katering untuk acara", "tka_positions": []},
+        {
+            "judul": "Aktivitas Jasa Boga untuk Acara Tertentu",
+            "sektor_id": "I",
+            "pma_status": "TERBUKA",
+            "pma_verification_status": "declared_gap",
+        },
+        embedding_text="KBLI 56210 Katering",
+    )
+
+    assert payload["has_gold_content"] is False
+    assert payload["editorial_disclosed"] is False
+
+
+def test_gold_kbli_payload_withholds_editorial_for_unknown_pma_status() -> None:
+    payload = build_gold_payload(
+        "56210",
+        {"whatItMeans": "Katering untuk acara", "tka_positions": []},
+        {
+            "judul": "Aktivitas Jasa Boga untuk Acara Tertentu",
+            "sektor_id": "I",
+            "pma_status": "FUTURE_STATUS",
+            "pma_verification_status": "located",
+            "pma_official_basis": "Perpres 49/2021 official locator",
+            "pma_source_vintage": "2021-05-25",
+        },
+        embedding_text="KBLI 56210 Katering",
+    )
+
+    assert payload["has_gold_content"] is False
+    assert payload["editorial_disclosed"] is False

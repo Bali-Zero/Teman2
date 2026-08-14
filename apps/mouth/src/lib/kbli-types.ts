@@ -166,7 +166,7 @@ export interface KBLIRawDataFile {
 // -----------------------------------------------------------------------------
 
 /** Normalized PMA status for frontend display */
-export type KBLIPmaStatus = "open" | "restricted" | "closed";
+export type KBLIPmaStatus = "open" | "restricted" | "closed" | "unknown";
 
 /** Verification state of the whole-code PMA verdict. */
 export type KBLIPmaVerificationStatus = "located" | "declared_gap";

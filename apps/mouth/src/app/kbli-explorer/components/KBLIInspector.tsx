@@ -11,7 +11,11 @@ import {
   Activity,
   ClipboardList,
 } from "lucide-react";
-import type { KBLIDetail } from "@/lib/api/kbli.api";
+import {
+  isApiPmaVerdictVerified,
+  type KBLIDetail,
+  type KBLIPmaDisclosure,
+} from "@/lib/api/kbli.api";
 import {
   describeObligation,
   TRUNCATION_HINT,
@@ -22,11 +26,14 @@ import {
 // HELPERS
 // =============================================================================
 
-export function getPmaBadge(status: string): {
+export function getPmaBadge(record: KBLIPmaDisclosure): {
   label: string;
   className: string;
 } {
-  const s = (status || "").toUpperCase();
+  if (!isApiPmaVerdictVerified(record)) {
+    return { label: "PMA Not Verified", className: "badge badge-neutral" };
+  }
+  const s = (record.pma_status || "").toUpperCase();
   if (s === "TERBUKA")
     return {
       label: "Open to Foreign Investment",
@@ -149,7 +156,7 @@ const KBLIInspector = ({
     );
   }
 
-  const pmaBadge = getPmaBadge(data.pma_status);
+  const pmaBadge = getPmaBadge(data);
   const riskBadge = getRiskBadge(data.risk_profile);
   const relatedRequirementGroups = getRelatedRequirementGroups(
     data.related_requirements,

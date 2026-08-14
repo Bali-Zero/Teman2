@@ -507,11 +507,11 @@ describe("the FAQ + FAQPage JSON-LD — the THIRD render site in this file, FIFT
   });
 
   it("pins the population: 454 answers, only 7 are MSME-reserved", () => {
-    // Mirrors the builder's own guard: pma.status === "open" && baliL4.blocked,
-    // where mapPmaStatus treats anything but TERBATAS/TERTUTUP as open.
+    // Mirrors the builder's own guard: pma.status === "open" && baliL4.blocked.
+    // Only the exact canonical TERBUKA token maps to open.
     const openNationally = (r: RawRecord) => {
       const s = (r.pma_status ?? "").toUpperCase();
-      return s !== "TERBATAS" && s !== "TERTUTUP";
+      return s === "TERBUKA";
     };
     const answers = BLOCKED.filter(openNationally);
     const msme = answers.filter(

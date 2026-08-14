@@ -20,6 +20,11 @@ import {
 } from "@/lib/kbli-provenance";
 import { kbliMetaDescription, kbliMetaTitle } from "@/lib/kbli-meta";
 import { restrictedCapBadge } from "@/lib/kbli-pma-shape";
+import {
+  discloseKbliBaliReason,
+  discloseKbliEditorial,
+  neutralKbliChatOpener,
+} from "@/lib/kbli-pma-editorial";
 import { KBLIBreadcrumb } from "@/components/kbli/KBLIBreadcrumb";
 import { PMABadge } from "@/components/kbli/PMABadge";
 import { RiskBadge } from "@/components/kbli/RiskBadge";
@@ -134,7 +139,8 @@ export default async function KBLICodePage({
   if (!kbli) notFound();
   const pmaVerdictVerified = isPmaVerdictVerified(kbli);
 
-  const gold = getGoldContent(kbli.code);
+  const rawGold = getGoldContent(kbli.code);
+  const { gold, intel } = discloseKbliEditorial(kbli, rawGold);
   const related = getRelatedCodes(kbli.code, 6);
   const sectionMeta = kbli.section ? getSectionMeta(kbli.section) : null;
 
@@ -151,7 +157,7 @@ export default async function KBLICodePage({
     { label: kbli.code },
   ];
 
-  const isGold = !!gold;
+  const isGold = !!rawGold;
   const heroStyle = getHeroStyle(kbli.section);
   const heroImage = GOLD_HERO_IMAGES[kbli.code] ?? null;
   const article = getRelatedArticle(kbli.code);
@@ -391,7 +397,7 @@ export default async function KBLICodePage({
                 {kbli.baliL4 && (
                   <BaliStatusBadge
                     status={kbli.baliL4.status}
-                    reason={kbli.baliL4.reason}
+                    reason={discloseKbliBaliReason(kbli)}
                     confidence={kbli.baliL4.confidence}
                     needsReview={kbli.baliL4.needsReview}
                     pmaStatus={pmaVerdictVerified ? kbli.pma.status : "unknown"}
@@ -405,9 +411,9 @@ export default async function KBLICodePage({
           </div>
 
           {/* LOOP-2 EDITORIAL — the magazine article leads every code that has one */}
-          {kbli.intel_2026?.editorial && (
+          {intel?.editorial && (
             <section className="pb-10 pt-2">
-              <KBLIEditorial editorial={kbli.intel_2026.editorial} />
+              <KBLIEditorial editorial={intel.editorial} />
             </section>
           )}
 
@@ -415,7 +421,7 @@ export default async function KBLICodePage({
           {gold ? (
             <div className="space-y-0">
               {/* THE LEAD — subsumed by the editorial article when one exists */}
-              {!kbli.intel_2026?.editorial && (
+              {!intel?.editorial && (
                 <section className="pb-10">
                   <p
                     className="text-xl leading-relaxed text-[var(--foreground-secondary)] sm:text-[22px] sm:leading-[1.7]"
@@ -695,21 +701,21 @@ export default async function KBLICodePage({
           ) : (
             /* NON-GOLD — enhanced standard layout */
             <div className="space-y-0">
-              {kbli.intel_2026?.whatItMeans ? (
+              {intel?.whatItMeans ? (
                 <>
                   {/* LEAD — subsumed by the editorial article when one exists */}
-                  {!kbli.intel_2026?.editorial && (
+                  {!intel?.editorial && (
                     <section className="pb-10">
                       <p
                         className="text-lg leading-relaxed text-[var(--foreground-secondary)] sm:text-xl sm:leading-[1.7]"
                         style={{ maxWidth: "680px" }}
                       >
-                        {kbli.intel_2026.whatItMeans}
+                        {intel.whatItMeans}
                       </p>
                     </section>
                   )}
 
-                  {kbli.intel_2026.whatChanged && (
+                  {intel.whatChanged && (
                     <div
                       className="flex items-start gap-3 rounded-xl p-4 mb-6"
                       style={{
@@ -728,12 +734,12 @@ export default async function KBLICodePage({
                         What Changed
                       </span>
                       <p className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
-                        {kbli.intel_2026.whatChanged}
+                        {intel.whatChanged}
                       </p>
                     </div>
                   )}
 
-                  {kbli.intel_2026.whatYouNeed && (
+                  {intel.whatYouNeed && (
                     <div
                       className="rounded-xl p-5 mb-6"
                       style={{
@@ -745,13 +751,13 @@ export default async function KBLICodePage({
                         What You Need
                       </h3>
                       <div className="text-sm leading-relaxed text-[var(--foreground-secondary)] whitespace-pre-line">
-                        {kbli.intel_2026.whatYouNeed}
+                        {intel.whatYouNeed}
                       </div>
                     </div>
                   )}
 
                   {/* BALI CONTEXT — shared rendering with the gold layout */}
-                  {kbli.intel_2026.baliContext && (
+                  {intel.baliContext && (
                     <section className="relative -mx-4 mb-6 sm:-mx-6 lg:-mx-8">
                       <div
                         className="absolute inset-0 rounded-2xl"
@@ -773,15 +779,13 @@ export default async function KBLICodePage({
                             Bali Intelligence
                           </h2>
                         </div>
-                        <KBLIBaliContext
-                          baliContext={kbli.intel_2026.baliContext}
-                        />
+                        <KBLIBaliContext baliContext={intel.baliContext} />
                       </div>
                     </section>
                   )}
 
                   {/* WHO THIS IS FOR */}
-                  {kbli.intel_2026.whoThisIsFor && (
+                  {intel.whoThisIsFor && (
                     <div
                       className="rounded-xl p-5 mb-6"
                       style={{
@@ -793,13 +797,13 @@ export default async function KBLICodePage({
                         Who This Is For
                       </h3>
                       <p className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
-                        {kbli.intel_2026.whoThisIsFor}
+                        {intel.whoThisIsFor}
                       </p>
                     </div>
                   )}
 
                   {/* YOU'LL ALSO NEED */}
-                  {kbli.intel_2026.youllAlsoNeed && (
+                  {intel.youllAlsoNeed && (
                     <section
                       className="mb-6 rounded-xl border border-[var(--border)] overflow-hidden"
                       style={{ background: "var(--kbli-bg-elevated)" }}
@@ -813,9 +817,7 @@ export default async function KBLICodePage({
                         </span>
                       </div>
                       <div className="px-5 py-4">
-                        <KBLIYoullAlsoNeed
-                          text={kbli.intel_2026.youllAlsoNeed}
-                        />
+                        <KBLIYoullAlsoNeed text={intel.youllAlsoNeed} />
                       </div>
                     </section>
                   )}
@@ -1042,7 +1044,7 @@ export default async function KBLICodePage({
                   section: kbli.section ?? "",
                 }}
                 opener={(() => {
-                  const fallback = `Ask me anything about KBLI ${kbli.code} — ${kbli.titleEn}. Licensing, PMA rules, what changed in 2025, or how it works in Bali.`;
+                  const fallback = neutralKbliChatOpener(kbli);
                   const op = gold?.zantaraOpener ?? fallback;
                   // The gold/intel openers were written before the 2026 Bali moratorium
                   // and cheerfully promise a "PT PMA setup" on codes now blocked for a

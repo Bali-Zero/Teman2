@@ -1,7 +1,7 @@
 """Two merge rules live in one function, and the asymmetry is the point.
 
-`pma_status` and the intel keys are only ever ADDED — canonical carrying no
-value means "nothing to say", because those fields have other writers.
+The complete `pma_*` evidence tuple and `pp28_sources` are AUTHORITATIVE:
+canonical absence clears stale values. Intel keys remain additive.
 `pp28_sources` is AUTHORITATIVE and is also REMOVED when canonical drops it,
 because `inspect_kbli` renders it into a client-facing sentence naming other
 KBLI codes: a stale list would disclose an inheritance the dataset no longer
@@ -57,13 +57,54 @@ def test_drops_entries_that_are_not_codes_instead_of_writing_None():
 
 
 # --------------------------------------------------------------------------
-# INNOCENCE — the additive fields must NOT inherit the clearing rule
+# PMA evidence tuple — authoritative as one unit
 # --------------------------------------------------------------------------
 
 
-def test_absent_pma_status_does_not_null_the_graph_value():
-    out = merge_node_props({"pma_status": "TERBATAS"}, {"pp28_sources": ["62011"]})
-    assert out["pma_status"] == "TERBATAS"
+def test_absent_pma_tuple_clears_stale_graph_values():
+    existing = {key: f"stale-{key}" for key in kg_kbli_resync.PMA_KEYS}
+    out = merge_node_props(existing, {"pp28_sources": ["62011"]})
+    assert not any(key in out for key in kg_kbli_resync.PMA_KEYS)
+
+
+def test_complete_located_pma_tuple_is_copied_exactly():
+    canonical = {
+        "pma_status": "TERBATAS",
+        "pma_max_asing": 49,
+        "pma_verification_status": "located",
+        "pma_official_basis": "Perpres 49/2021 Lampiran III entry 3",
+        "pma_source_vintage": "2021-05-25",
+    }
+    out = merge_node_props({}, canonical)
+    assert {key: out[key] for key in kg_kbli_resync.PMA_KEYS} == canonical
+
+
+def test_partial_canonical_tuple_removes_stale_locator_and_vintage():
+    existing = {
+        "pma_status": "TERBATAS",
+        "pma_max_asing": 49,
+        "pma_verification_status": "located",
+        "pma_official_basis": "old basis",
+        "pma_source_vintage": "old vintage",
+    }
+    out = merge_node_props(
+        existing,
+        {
+            "pma_status": "TERBUKA",
+            "pma_max_asing": 100,
+            "pma_verification_status": "declared_gap",
+        },
+    )
+    assert out["pma_status"] == "TERBUKA"
+    assert out["pma_max_asing"] == 100
+    assert out["pma_verification_status"] == "declared_gap"
+    assert "pma_official_basis" not in out
+    assert "pma_source_vintage" not in out
+
+
+# --------------------------------------------------------------------------
+# INNOCENCE — additive intel and unrelated fields remain additive
+# --------------------------------------------------------------------------
 
 
 def test_absent_intel_keys_do_not_null_the_graph_values():
@@ -96,7 +137,7 @@ def test_does_not_mutate_the_input_properties():
 @pytest.mark.parametrize(
     "rec",
     [
-        {"pma_status": "TERBATAS"},
+        {"pma_verification_status": "declared_gap"},
         {"intel_2026": {"whatItMeans": "x"}},
         {"pp28_sources": ["62011"]},
     ],
