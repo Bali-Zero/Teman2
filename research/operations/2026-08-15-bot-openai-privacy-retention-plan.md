@@ -9,7 +9,7 @@ sources:
   - .agents/skills/bot/SKILL.md §1 LIVE STATE — WA_HISTORY_TURNS=12, meta_inbox tables, existing memory-bleed containment (P0-MEM)
   - apps/backend-rag/backend/services/integrations/wa_inbox_bot.py (re-read this turn — payload shape sent to the orchestrator)
   - research/operations/2026-08-15-bot-openai-provider-threat-model.md (companion document, same session)
-adversarial_review: n/a (design/policy document — no code diff to review; recommend the same Kimi pass before this becomes an execution plan)
+adversarial_review: kimi-k3
 ---
 
 # Zantara WA bot — OpenAI provider privacy & retention plan
@@ -86,6 +86,16 @@ already sends the raw client query text to OpenAI's embeddings API on every WA R
 (`embedding_provider` default `"openai"`, `config.py:35`), on the Gemini-only path, before this PR.
 OpenAI is already processor #2 in this system. The framing below is corrected accordingly.
 
+**CAVEAT, post-adversarial-review (`## Adversarial review` below, both seats, ACCEPTED):** this
+framing is itself asserted from a config DEFAULT, not from confirmed deployed behavior — no check in
+this pass that the production environment doesn't override `embedding_provider`, which OpenAI
+org/account the embedding calls authenticate to, or whether a DPA already covers that specific flow.
+Treat "OpenAI is already processor #2" as a strong, code-grounded hypothesis this document leans on,
+not as independently confirmed against production — and do not let it be read as retroactively
+discharging the DPA/Art. 56/consent preconditions in §3.2 for the NEW conversational scope this PR
+adds, which remain gated on their own evidence regardless of what the embeddings flow's status turns
+out to be.
+
 - Anything the existing PII boundary already prohibits from leaving the org for cloud LLM
   processing without a demonstrated legal basis (CLAUDE.md §14): KTP, passport, NPWP, akta,
   credentials, raw OSINT data. **This document's contribution is not a new list — it is the
@@ -117,6 +127,14 @@ So: **assume 30 days of retention for anything an OpenAI-backed adapter sends**,
 baseline for every downstream decision (consent language, breach-notification exposure, "how long
 does a client's passport number sit on a third party's server if it leaks through the existing
 prompt-injection gap"). Do not plan against a shorter number without the evidence in §2.1 below.
+
+**CAVEAT, post-adversarial-review (agy seat, ACCEPTED):** the operative risk during that 30-day
+abuse-monitoring window is not primarily elapsed storage time — it is that content OpenAI's automated
+classifiers flag is subject to **human review** by OpenAI trust & safety personnel or contractors
+(the "Eyes Off" carve-outs referenced in §2.1 below exist precisely because that human-review path is
+otherwise the default). If a client's KITAS or passport number gets flagged, the confidentiality
+breach is a person reading it, not a disk holding it for 30 days. Frame consent language and risk
+communication around BOTH facts — duration AND third-party human access — not duration alone.
 
 ### 2.1 ZDR / Modified Abuse Monitoring — what would have to be TRUE, and how to prove it
 
@@ -265,3 +283,87 @@ as fact about the eventual PR without re-reading the frozen diff.
 - **Business/legal (Zero, not session-armable)**: items 1-2 in §3.2 (signed DPA scoped to the right
   Project; Art. 56 basis determination for ID→US) are credential/consent/business-decision
   categories per CLAUDE.md §2's operator taxonomy — flagged, not actioned, here.
+
+## Adversarial review
+
+Two independent seats, run fresh by this session directly (no subagent delegation, per team-lead's
+ratified protocol) against the CURRENT content of this document — the frontmatter previously said
+"n/a, recommend the same Kimi pass before this becomes an execution plan"; that recommendation is
+now discharged. Every objection below was independently re-verified against the actual document text
+(quoted, section-anchored) before a verdict was assigned (W65 discipline).
+
+### Kimi K3 (`kimi -m kimi-code/k3`)
+
+1. **ACCEPTED — the "already processor #2" correction rests on an unverified config default, and
+   the document doesn't follow its own logic to the conclusion.** §1's central reframe ("OpenAI is
+   already processor #2... `embedding_provider` default `"openai"`, `config.py:35`") is inferred from
+   a DEFAULT, not confirmed deployed behavior — no check that prod doesn't override it, which OpenAI
+   org/account receives the calls, or whether a DPA already covers that flow. This is exactly the
+   "code path exists ≠ code path executes in prod" conflation §2.1 item 3 itself forbids for the
+   ZDR/MAM claim. Worse: taken at face value, §3.2's DPA/Art.56/consent preconditions ("before the
+   first real client message reaches OpenAI") are already breached for the embeddings flow the
+   document says is live TODAY, and the document recommends nothing about it — the fail-closed
+   doctrine is applied only to the new adapter, silently waived for the flow just declared live.
+   **Caveat added to §1** (see the correction paragraph there): the "already processor #2" framing
+   is downgraded from a settled fact to "asserted from a config default, not independently confirmed
+   against the deployed environment" — the Art. 56/DPA scoping conclusion should not be treated as
+   fully discharged by this framing alone.
+2. **ACCEPTED — the §2.1 "proof" standard proves a toggle, not retention behavior.** The section's
+   own preamble admits ZDR/MAM are "not independently verifiable via the API... administrative, not
+   cryptographic or programmatically checkable," then labels a dashboard screenshot "PROOF." A
+   screenshot is evidence of a UI state at capture time, not that OpenAI's backend discards data —
+   the standard proves attestation, not behavior, and §3.2 item 4 lets client-facing consent language
+   soften based on that attestation alone. The standard's own wording ("this is a point-in-time
+   proof, not a permanent one") already partially concedes this — the gap is that "PROOF" (capitalized,
+   presented as a defined term) oversells what items 1-2 actually establish. Recommend (not applied
+   here, downstream for whoever operationalizes this into V6): rename the standard to
+   "best-available attestation, requiring continuous re-verification," and tie §3.2 item 4's
+   consent-language trigger to an ongoing re-check, not a one-time dated artifact.
+3. **PARTIALLY ACCEPTED — providerless consent (§3.2 item 3) is in tension with per-provider
+   retention language (§3.2 item 4), and with the specificity valid consent requires.** Item 3
+   recommends consent be written providerless ("cover whichever LLM is active"); item 4 requires the
+   SAME consent to name provider-specific retention ("up to 30 days, subject to abuse-monitoring
+   review" — a fact true of OpenAI, not necessarily of Gemini or a ZDR-proven state). A consent flow
+   satisfying item 3's genericity cannot simultaneously satisfy item 4's specificity as literally
+   worded. This is a real internal tension worth a business/legal call (flagged to §4's
+   business/legal open-items list, not resolved here — consent-flow wording is a Legge-5 decision,
+   not a session-armable one), not fully accepted as "the recommendation is wrong": a providerless
+   CONSENT SCOPE (which entities may receive data) combined with provider-specific RETENTION
+   DISCLOSURE (updated per-vendor at send time) is a coherent design; the document just doesn't spell
+   out that distinction, which is what created the apparent contradiction.
+
+### Google/agy Gemini seat (`agy`)
+
+1. **ACCEPTED — the "already processor #2" framing risks legally grandfathering a much larger
+   exposure via an existing, narrower one.** Equating a single embeddings query string with 12-turn
+   conversational history + direct identifiers (`user_id: "whatsapp_<phone>"`) + tool results treats
+   a purpose- and scope-specific consent/processing question as already-answered by the narrower
+   existing flow. Overlaps with Kimi objection 1 above (both target §1's framing) but from the legal-
+   scope angle rather than the verification angle — both folded into the same §1 caveat.
+2. **ACCEPTED — the providerless-consent recommendation is the sharper version of Kimi's objection
+   3, focused specifically on the Art. 56 cross-border-transfer angle.** §2.2 establishes that OpenAI
+   traffic "will physically leave Indonesia... most likely processed in the US," which under Art. 56's
+   cascade requires (absent adequacy/an adequate-and-binding safeguard) EXPLICIT PER-TRANSFER consent
+   naming the destination — a generic "we send your message to an AI" cannot satisfy that. Same
+   verdict and same disposition as Kimi objection 3: flagged to §4 as a business/legal open item, not
+   resolved here (consent-flow copy is Legge-5 territory), the tension is real and should not be
+   silently smoothed over by whoever drafts the actual consent text.
+3. **ACCEPTED — the 30-day retention baseline frames the threat as storage duration and doesn't
+   name the operational reality of abuse-monitoring human review.** §2/§3.4 correctly catch that
+   `store:false` doesn't bypass the ~30-day abuse-monitoring retention, but frame the risk purely as
+   "how long does a client's passport number sit on a server" — never naming that flagged content is
+   subject to HUMAN review by OpenAI personnel/contractors (the "Eyes Off carve-outs" the document
+   mentions in §2.1 but never connects to the retention analysis). The primary confidentiality risk in
+   the abuse-monitoring window is a human reading the content, not disk-duration. **Caveat added to
+   §2** (see the retention-assumption paragraph there): the 30-day baseline note now names human
+   review by OpenAI trust & safety personnel/contractors as the operative risk during that window,
+   not merely elapsed storage time.
+
+**Not independently re-derived here (both seats, overlapping, noted for completeness rather than
+actioned):** missing data-flow coverage — the OpenAI-generated answer's return path into the bot's
+own answer cache / `conversation_history` (so provider-derived content loops back to the provider on
+later turns), and whether media attachments (passport photos) reach the LLM vs. only "media
+metadata" as the diagram states. Both are real gaps in §1's flow diagram; flagged for whoever expands
+this into V5/V6 rather than closed in this revision, since resolving them requires re-reading the
+channel/media-handling code, which is out of this document's mandate (privacy/retention planning, not
+a fresh code audit).

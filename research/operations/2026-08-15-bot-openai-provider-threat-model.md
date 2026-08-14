@@ -23,7 +23,7 @@ sources:
   - developers.openai.com/api/docs/guides/tools (WebSearch this turn — mcp/web_search/file_search tool types)
   - OpenAI Responses API refusal/incomplete_details schema (WebSearch this turn, community + developer docs)
   - OpenAI sk-proj- Projects launch date (WebSearch this turn — April 2024, corrects an earlier "since 2023" draft claim)
-adversarial_review: kimi (kimi-code/k3) — refutation pass complete, see §Refutation log; 8 objections ACCEPTED, 1 REJECTED (WIF, superseded by primary-source verification)
+adversarial_review: kimi-k3
 ---
 
 # Zantara WA bot — OpenAI provider threat model
@@ -52,6 +52,42 @@ pass of this review have already gone stale once (see the store:false correction
 review). **This document is a review of an UNFROZEN diff and MUST be re-executed (Kimi K3 +
 Google/agy Gemini seat, fresh prompts, not recycled verdicts) once the implementer commits and opens
 a PR.** Nothing below should be read as a final verdict on that eventual PR's actual diff.
+
+**⚠️ SUPERSEDED — re-verified this turn during the Kimi K3 adversarial pass (both this document and
+Deliverable 2's real, from-scratch review, per team-lead's ratified protocol).** Everything above
+this paragraph describes a state that no longer exists. The implementer worktree now has **two
+commits** on its branch (`b36fc9521`, `8a7aa9be5` — "ZERO commits" above is false as of this check),
+and the second commit's message states this explicitly: *"Rework of the vetoed shadow-provider
+design: standalone `OpenAIResponsesClient`... zero wiring into any live path. Reads only
+`OPENAI_WA_PROVIDER_API_KEY` (never the embeddings `OPENAI_API_KEY`)."* Re-verified independently
+this turn by BOTH the Kimi K3 refuter (live `git`/`grep` in that worktree) and a separate
+verification fork this session dispatched for the same purpose (fence-compliance check below):
+
+- `_shadow_provider.py` is **deleted**. `git diff <merge-base> -- config.py llm_gateway.py` in that
+  worktree is now **empty** — the shadow-dispatch changes to `config.py`/`llm_gateway.py` this
+  header's `git status --short` block shows (`+41`/`+18`) are gone; no `OPENAI_SHADOW`,
+  `maybe_dispatch`, or `_run_shadow` reference remains anywhere in `llm_gateway.py`/`config.py`.
+- **Findings 5, 6, and 7** in §Live diff review below (all marked CONFIRMED, Finding 7 called "the
+  most important cross-cutting finding for Deliverable 2") analyze this now-deleted design. They are
+  correctly-verified-at-the-time findings about code the implementer has since reworked away — see
+  the per-row STALE annotations added below rather than deleting them (W113: a correction is a new
+  claim, verify it, don't silently overwrite).
+- **Finding 0**'s core claim ("the ADR file does not exist anywhere") is also overtaken: the ADR now
+  exists on disk in that worktree (`research/operations/2026-08-15-adr-wa-runtime-openai-provider.md`,
+  19.7 KB, still `??` untracked — so G15's "on disk at merge time" criterion is not yet satisfied,
+  but "does not exist anywhere" is no longer accurate). Its own header documents the rework: *"author:
+  Sonnet 5 implementer session... rework after a first builder session shipped a VETOED design (an
+  unwired 'shadow' branch presented as live state...)"*.
+- The header's `llm_gateway.py` **+18** vs §Live diff review's **+25** for the same file (both
+  claimed "verified this turn," never reconciled) is a genuine internal inconsistency, caught by the
+  Kimi K3 pass — flagged and left as-is below for the record, now moot since both numbers describe a
+  diff that no longer exists.
+
+This is a strong point in the standalone client's favor — the rework already independently landed
+several of this document's own recommendations (dedicated credential, no shadow dead-code) before
+this review even reached them — but it means §Live diff review's Findings 0/5/6/7 must be read as
+**historical**, not current, and the freeze re-review (§Freeze re-review below) is not optional
+scaffolding, it is the only way to get a verdict on what's actually there now.
 
 ## Reader's contract
 
@@ -106,6 +142,54 @@ calling, no client PII in the prompt beyond what's already embedded) and the NEW
 provider usage (real-time, client free-text, tool-calling, the full RAG context window) explicitly —
 a regex that flags "any `AsyncOpenAI` import" would break the embedder on day one (over-match,
 scar-family #3) — see §Gate V2, pattern G7.
+
+## §Fence compliance — implementation-lane checklist (added per team-lead, council-ratified)
+
+The council (5-family panel) established explicit fences for the implementation lane, distinct from
+this document's own review-only scope. Restated here as a checklist because this verifier lane's
+freeze re-review (§Freeze re-review below) must check against it:
+
+- Lane implementation = **SOLO client standalone + test HTTP-boundary + corpus/bench locali + ADR
+  NO-WIRING**. FORBIDDEN: modifications to `config.py`, `llm_gateway.py`, any shadow dead-code,
+  `.agents/skills/bot/SKILL.md` LIVE STATE section, secrets, deploy, real traffic.
+- Credential: **ONLY `OPENAI_WA_PROVIDER_API_KEY`** (project service account or WIF, billing/identity
+  separate from the embeddings key) — see G20 above. `OPENAI_API_KEY` (generic/shared) is a banned
+  pattern for this adapter, same tier as the credential bans in §a.
+- `store:false` without a false zero-retention promise (G11 above; Deliverable 2 §2/§3.4).
+- No push/PR of implementation work before: freeze + a net-diff check confirming the fences above +
+  a final Kimi K3 + Google/agy Gemini review of the FROZEN diff. #4194 (this verifier PR) stays
+  DRAFT/HOLD throughout and updates only against the frozen diff.
+
+**Compliance check, run this turn** (verification fork, `git status --short` + `git diff --stat`
++ `git log origin/main..HEAD` in `.worktrees/bot-openai-adapter`, cross-confirmed independently by
+the Kimi K3 adversarial pass's own live `git` checks in the same worktree):
+
+- `config.py` / `llm_gateway.py`: **NOT touched** — `git diff <merge-base> -- config.py
+  llm_gateway.py` is empty. Consistent with the rework note in the Snapshot header above (the
+  shadow-dispatch changes to these two files were reworked away, not merely reverted-then-reapplied).
+- **No shadow dead-code exists** — `_shadow_provider.py` deleted, zero `OPENAI_SHADOW`/
+  `maybe_dispatch` references anywhere in the tree.
+- Committed diff (`git log origin/main..HEAD`, 2 commits: `b36fc9521`, `8a7aa9be5`) touches only
+  `apps/backend-rag/backend/llm/openai_responses_client.py` (new, standalone client),
+  `apps/backend-rag/backend/tests/llm/test_openai_responses_client.py` (its own test — HTTP-boundary
+  shaped, per the client's fail-closed-on-response-shape design already documented above), plus a
+  second commit adding a de-identified-corpus builder and blind-bench harness under `scripts/bot/`
+  (local corpus/bench — matches the allowed category, not independently reviewed here, out of scope
+  for V1). An untracked ADR file exists (Finding 0 above) — matches the ADR-NO-WIRING category, still
+  uncommitted.
+- Credential: the rework commit's own message states *"Reads only `OPENAI_WA_PROVIDER_API_KEY`
+  (never the embeddings `OPENAI_API_KEY`)"* — matches G20.
+
+**As of THIS check, the fence is holding.** This directly CONTRADICTS an earlier claim (team-lead,
+properly-tagged message, citing a check "in questo turno precedente") that the WIP already violated
+the fences via modifications to `config.py`/`llm_gateway.py`/`_shadow_provider.py`. The most likely
+explanation, not confirmed: that earlier check ran against a snapshot taken before the rework commits
+(`b36fc9521`/`8a7aa9be5`, timestamped ~01:15 on 2026-08-15) landed — i.e. the violation was real at
+the time it was reported and has since been fixed by the same rework this section's checks observe,
+rather than the two checks disagreeing about the same state. Flagged for team-lead's awareness rather
+than silently resolved either way (W106/W106b discipline — a stale measurement presented as current
+is exactly the failure class this repo has scar tissue for). This compliance check must be re-run at
+freeze regardless of which explanation is correct.
 
 ---
 
@@ -282,11 +366,11 @@ standing order: artifacts/PRs only, no direct cross-lane messaging).
 |---|---|---|---|
 | 1 | Reuses `OPENAI_API_KEY` already used for embeddings, despite the council condition for a dedicated least-privilege service identity | **CONFIRMED, but self-disclosed, not hidden** | `openai_responses_client.py:14-28` — the module's OWN docstring names this exact collision ("IDENTITY/BILLING COLLISION — FLAG FOR ZERO, NOT SILENTLY RESOLVED") and says explicitly "Do not treat `available=True` as proof the identity/billing-separation term is satisfied." `_ENV_VAR = "OPENAI_API_KEY"` (`:81`) is the same setting name `embeddings.py:248/271` reads. The code names the risk and does not fix it — matches Gate V2 pattern G2 exactly. The self-disclosure is a mitigating factor for THIS PR (nobody can claim they weren't told) but does nothing once `OPENAI_SHADOW=true` is actually armed — see Finding 6. |
 | 2 | Responses payload lacks `store:false` and exposes `previous_response_id` (provider-side state) | **STALE — CORRECTED this turn, per team-lead's first-hand catch.** This finding was true of an EARLIER pass of the implementer's working tree and is **FALSE of the current state**, re-verified this turn (`Read` on `openai_responses_client.py`, lines quoted below). Kept in this table, struck-through in substance, so the record shows what was found AND that it was fixed/moved on — not silently deleted (W113 discipline: the replacement claim is itself verified, not assumed). | **Current code** (`openai_responses_client.py:287-336`, re-read this turn): the docstring at `:296-306` now states *"STATELESS ONLY for this phase (orchestrator veto 2026-08-15 point 2): every request sends `"store": false"* and the payload builder at `:325-331` sets `"store": False` **unconditionally**, on every call, with no code path that omits it. `previous_response_id` is **no longer a parameter of `generate()` at all** — removed entirely, not merely unused (the docstring says "there is no `previous_response_id` parameter"). **This does not mean the underlying risk this row describes is retired** — it means the CURRENT snapshot has addressed it; the risk is exactly why G11 exists as a **tripwire against regression** (§Gate V2 below), not as a still-open finding. Because the implementer worktree is uncommitted and moving (see snapshot header), this must be re-checked again at freeze — do not carry "fixed" forward as a fact about the eventual PR without re-reading the frozen diff. |
-| 3 | `DEFAULT_MODEL=gpt-5.1` placeholder instead of a benchmarked model | **STALE — CORRECTED this turn.** As of the current working-tree snapshot, `DEFAULT_MODEL` is no longer `"gpt-5.1"`. | **Current code** (re-grepped this turn): `DEFAULT_MODEL = MODEL_TERRA` (`:98`) — a named constant, not the earlier bare placeholder string. This lane did NOT trace `MODEL_TERRA`'s actual value/definition in this pass (out of scope for this HOLD update); flag for re-verification at freeze whether it resolves to a real, currently-available OpenAI slug (the original concern — "nobody verified the default is a real model" — may or may not still apply depending on what `MODEL_TERRA` is bound to). Do not carry "still a placeholder" forward as fact. |
+| 3 | `DEFAULT_MODEL=gpt-5.1` placeholder instead of a benchmarked model | **STALE — CORRECTED, and now fully closed** (traced this turn, was previously deferred). `DEFAULT_MODEL` is no longer `"gpt-5.1"`, AND the value it now resolves to is a real, documented OpenAI model. | **Current code**: `MODEL_TERRA = "gpt-5.6-terra"` (`openai_responses_client.py:136`), `DEFAULT_MODEL = MODEL_TERRA` (`:138`). **Verified this turn against the primary source** (`https://developers.openai.com/api/docs/models`, fetched fresh by a dispatched verification fork): `gpt-5.6-sol`, `gpt-5.6-terra`, and `gpt-5.6-luna` are all real, documented OpenAI model IDs, each supporting the Responses API (`v1/responses`) — `gpt-5.6-terra` is described there as "balances intelligence and cost." The original concern ("nobody verified the default is a real model") is retired for real, not cosmetically. Noted for the record: the Kimi K3 adversarial pass on this document independently re-raised this exact question and concluded the OPPOSITE — that `"gpt-5.6-terra"` "carries this fleet's internal Codex-family codename ('Terra', per `FLEET_TOPOLOGY.json` role naming) as a suffix" and "matches no documented OpenAI model naming scheme." That objection is **reviewer error, refuted by the primary source above** — see `## Adversarial review` for the full writeup. Kimi's instinct (a fleet-internal codename colliding with a real vendor slug is exactly the kind of thing worth flagging) was sound; the conclusion was wrong once actually checked against OpenAI's docs rather than against naming-pattern intuition. |
 | 4 | "Available" docs claim live env but the key is cached at construction | **STALE — CORRECTED this turn.** The docstring/behavior mismatch this row described no longer exists in the current snapshot. | **Current code** (`openai_responses_client.py:259-264`, re-read this turn): the `available` property docstring now reads *"True only when an API key is configured, **re-checked on every access** (see `_resolve_api_key`) — mirrors `OpenRouterProvider.is_available` reading `settings.openrouter_enabled` at call time (COS-LAW-013), not once at import/construction"* and the body is `return bool(self._resolve_api_key())` — a live call, not a cached attribute read. The docstring/behavior pair is now internally consistent, and it explicitly cites the OpenRouter precedent (A5 above) as the pattern it's matching. Re-verify `_resolve_api_key()` itself at freeze (not done in this pass) to confirm it genuinely re-reads the source each call rather than memoizing one level down. |
-| 5 | Shadow receives only current message/system prompt, drops chat history/`conversation_messages`/tools, and dispatches on every ReAct gateway call — so the ADR's "same assembled context" claim is false | **CONFIRMED — directly contradicts the (phantom, see Finding 0) ADR quote embedded in the code itself** | `llm_gateway.py::send_message()` signature (`:414-424`): `message: str` is documented as *"User message or continuation prompt"* — the CURRENT turn only; conversation history lives server-side in the Gemini `chat` `ChatSession` object (built by `_get_or_create_chat_session`, converts `history_to_use` into Gemini's own history format at session-creation time, not re-sent per call); `conversation_messages` is a SEPARATE parameter used only for the OpenRouter fallback path. The shadow dispatch call (`:527-535`) passes exactly `message=message, system_prompt=system_prompt, primary_model=model_used, primary_text=text_content, primary_latency_ms=latency_ms` — no `conversation_messages`, no `gemini_tools`. `_run_shadow` (`:132-149`) forwards only `input_text=message, system_prompt=system_prompt` to `client.generate()` — **no `tools=` at all**, so even if a ReAct step's Gemini call used function-calling, the shadow twin cannot call any tool and answers blind. `_shadow_provider.py`'s own docstring (`:4-11`) quotes the ADR as saying the shadow branch "riceve LO STESSO contesto già assemblato dall'orchestratore" — **demonstrably false as coded**. And yes, `send_message()` is the gateway's single call site for every LLM turn in the ReAct loop (WA bot caps at `max_steps=2`, per `wa_inbox_bot.py:530` — so up to ~2-3 dispatches per user message, not one), confirming "dispatches on every ReAct gateway call." Net effect: even once armed, any comparison this shadow logs is confounded by (a) missing history — the OpenAI side answers a DIFFERENT, poorer-context question than Gemini did, and (b) missing tools — a tool-using Gemini turn has no fair OpenAI counterpart at all. Whatever `wa_blind_bench.py` (Finding 0: also phantom) was meant to score, it cannot score model quality from this data without first correcting for context parity. |
-| 6 | Unreferenced `asyncio.create_task`, no task drain/limit | **CONFIRMED** | `_shadow_provider.py:121-129` — `loop.create_task(_run_shadow(...))` with the returned `Task` object never assigned to any variable, never stored in a set/registry, never awaited anywhere. This is the exact anti-pattern the Python `asyncio` docs warn about explicitly: an unreferenced task can be garbage-collected mid-execution with no error surfaced (CPython does not guarantee the task survives if nothing holds a strong reference, particularly under GC pressure). There is also no concurrency cap analogous to `wa_inbox_bot.py`'s `_bot_generation_semaphore` (`_get_bot_generation_semaphore`, admission-gates the PRIMARY Gemini calls at `WA_BOT_MAX_CONCURRENT_GENERATIONS`, default 3) — nothing bounds how many shadow tasks can be in flight at once if traffic scales while the flag is armed, which is a direct cost-exposure risk given OpenAI billing is metered per-token with no prepay buffer (mirrors this document's §(b) P0-FLOOD row, but for the shadow branch specifically, which the original P0-FLOOD analysis didn't cover because it didn't exist yet). |
-| 7 | `OPENAI_SHADOW` + a key present is sufficient to send raw conversational content — no independent legal/privacy arming gate | **CONFIRMED — this is the most important cross-cutting finding for Deliverable 2** | `maybe_dispatch()`'s only precondition (`_shadow_provider.py:98-113`) is `settings.openai_shadow_enabled` (a bare bool env flag) plus `client.available` (a configured key — see Finding 4 for how that check can itself be stale). There is **no check anywhere in this code path** for: a DPA being signed, ZDR/MAM proof (Deliverable 2 §2.1), per-client consent capture (CLAUDE.md §14 / C16), or even a "shadow corpus is synthetic/de-identified only" guard — `message`/`system_prompt` are whatever the live orchestrator assembled for THIS request, i.e., real client free-text when the flag is flipped on real traffic. Deliverable 2 §3.3 says "do not authorize real client traffic based on this document alone" as a POLICY statement; this diff shows that policy currently has **zero code-level enforcement** — the only thing standing between "flag is off" and "every WA message's current turn is sent to OpenAI" is the env var default. Recommend (for V2's gate spec, not implemented here): a SEPARATE, explicit "shadow corpus policy" check — e.g. an env-gated allowlist of session/thread markers known to be synthetic/de-identified (mirrors `scripts/bot/build_deid_corpus.py`'s existence, unread in this pass) — before `OPENAI_SHADOW=true` is ever considered safe to set in the SAME environment that serves real client traffic, or a hard requirement that shadow only run in a non-prod environment until Deliverable 2 §3.2's preconditions are dated artifacts. |
+| 5 | Shadow receives only current message/system prompt, drops chat history/`conversation_messages`/tools, and dispatches on every ReAct gateway call — so the ADR's "same assembled context" claim is false | **STALE — the code this finding describes is DELETED.** This was CONFIRMED and accurate at the time it was written, against the shadow-provider design that then existed. The rework commit (`b36fc9521`, "Rework of the vetoed shadow-provider design... zero wiring into any live path") removed `_shadow_provider.py` entirely and the `llm_gateway.py` shadow-dispatch call site along with it — confirmed independently this turn by the Kimi K3 adversarial pass (live `git`/`grep` in the implementer worktree) and by a separate verification fork. The context-parity DEFECT this row documents (missing history, missing tools) is a real historical finding about a design the implementer already discarded before this correction landed — it should NOT be carried forward as a property of the current or eventual frozen diff without re-checking the reworked, standalone client. | ~~`llm_gateway.py::send_message()` signature (`:414-424`)... `_shadow_provider.py`'s own docstring (`:4-11`)...~~ (original evidence retained below for the historical record; do not re-cite as current) | `llm_gateway.py::send_message()` signature (`:414-424`): `message: str` is documented as *"User message or continuation prompt"* — the CURRENT turn only; conversation history lives server-side in the Gemini `chat` `ChatSession` object (built by `_get_or_create_chat_session`, converts `history_to_use` into Gemini's own history format at session-creation time, not re-sent per call); `conversation_messages` is a SEPARATE parameter used only for the OpenRouter fallback path. The shadow dispatch call (`:527-535`) passes exactly `message=message, system_prompt=system_prompt, primary_model=model_used, primary_text=text_content, primary_latency_ms=latency_ms` — no `conversation_messages`, no `gemini_tools`. `_run_shadow` (`:132-149`) forwards only `input_text=message, system_prompt=system_prompt` to `client.generate()` — **no `tools=` at all**, so even if a ReAct step's Gemini call used function-calling, the shadow twin cannot call any tool and answers blind. `_shadow_provider.py`'s own docstring (`:4-11`) quotes the ADR as saying the shadow branch "riceve LO STESSO contesto già assemblato dall'orchestratore" — **demonstrably false as coded**. And yes, `send_message()` is the gateway's single call site for every LLM turn in the ReAct loop (WA bot caps at `max_steps=2`, per `wa_inbox_bot.py:530` — so up to ~2-3 dispatches per user message, not one), confirming "dispatches on every ReAct gateway call." Net effect: even once armed, any comparison this shadow logs is confounded by (a) missing history — the OpenAI side answers a DIFFERENT, poorer-context question than Gemini did, and (b) missing tools — a tool-using Gemini turn has no fair OpenAI counterpart at all. Whatever `wa_blind_bench.py` (Finding 0: also phantom) was meant to score, it cannot score model quality from this data without first correcting for context parity. |
+| 6 | Unreferenced `asyncio.create_task`, no task drain/limit | **STALE — same reason as row 5.** `_shadow_provider.py` (the file this finding's evidence cites) is deleted in the rework commit. Historical, not current. | `_shadow_provider.py:121-129` — `loop.create_task(_run_shadow(...))` with the returned `Task` object never assigned to any variable, never stored in a set/registry, never awaited anywhere. This is the exact anti-pattern the Python `asyncio` docs warn about explicitly: an unreferenced task can be garbage-collected mid-execution with no error surfaced (CPython does not guarantee the task survives if nothing holds a strong reference, particularly under GC pressure). There is also no concurrency cap analogous to `wa_inbox_bot.py`'s `_bot_generation_semaphore` (`_get_bot_generation_semaphore`, admission-gates the PRIMARY Gemini calls at `WA_BOT_MAX_CONCURRENT_GENERATIONS`, default 3) — nothing bounds how many shadow tasks can be in flight at once if traffic scales while the flag is armed, which is a direct cost-exposure risk given OpenAI billing is metered per-token with no prepay buffer (mirrors this document's §(b) P0-FLOOD row, but for the shadow branch specifically, which the original P0-FLOOD analysis didn't cover because it didn't exist yet). |
+| 7 | `OPENAI_SHADOW` + a key present is sufficient to send raw conversational content — no independent legal/privacy arming gate | **STALE — same reason as rows 5/6.** `OPENAI_SHADOW`/`maybe_dispatch`/`_shadow_provider.py` are gone from the current tree; this was the single most important finding in the earlier design and its removal is a genuine improvement, but the finding itself no longer describes live code. The UNDERLYING RISK CLASS this row names (a design that arms real-traffic dispatch on nothing but a bool flag + a configured key, with zero DPA/consent/ZDR gate) is exactly what §Freeze re-review item (d) and the fence-compliance check below must re-verify does NOT reappear if/when this adapter is eventually wired into a live path — the row is retired as a current finding, not as a category to keep watching. | `maybe_dispatch()`'s only precondition (`_shadow_provider.py:98-113`) is `settings.openai_shadow_enabled` (a bare bool env flag) plus `client.available` (a configured key — see Finding 4 for how that check can itself be stale). There is **no check anywhere in this code path** for: a DPA being signed, ZDR/MAM proof (Deliverable 2 §2.1), per-client consent capture (CLAUDE.md §14 / C16), or even a "shadow corpus is synthetic/de-identified only" guard — `message`/`system_prompt` are whatever the live orchestrator assembled for THIS request, i.e., real client free-text when the flag is flipped on real traffic. Deliverable 2 §3.3 says "do not authorize real client traffic based on this document alone" as a POLICY statement; this diff shows that policy currently has **zero code-level enforcement** — the only thing standing between "flag is off" and "every WA message's current turn is sent to OpenAI" is the env var default. Recommend (for V2's gate spec, not implemented here): a SEPARATE, explicit "shadow corpus policy" check — e.g. an env-gated allowlist of session/thread markers known to be synthetic/de-identified (mirrors `scripts/bot/build_deid_corpus.py`'s existence, unread in this pass) — before `OPENAI_SHADOW=true` is ever considered safe to set in the SAME environment that serves real client traffic, or a hard requirement that shadow only run in a non-prod environment until Deliverable 2 §3.2's preconditions are dated artifacts. |
 
 ### New Gate V2 patterns from this review
 
@@ -299,7 +383,8 @@ standing order: artifacts/PRs only, no direct cross-lane messaging).
 | G15 | BAN: citing a `research/operations/*.md` "ADR"/"shipping mandate" document (with quoted text, section numbers, or a VIETATO list attributed to it) that does not exist on disk at merge time | A docstring quoting `research/operations/2026-08-15-adr-*.md` when `find`/`git log --all` return zero hits for that path | The same docstring after the ADR file has actually been committed, or after the citation is replaced with self-contained reasoning that doesn't depend on an external document |
 | G16 | REQUIRE (replaces the negative half of G5): a **positive allowlist** — every tool in the adapter's `tools=[...]` payload is `type == "function"` AND its `name` ∈ the repo's existing `_gemini_tools` enumeration. Verified via WebSearch this turn: OpenAI's own built-in tool types (`web_search`, `file_search`, `mcp`, `image_generation`, `computer_use_preview`, and whatever ships next) are NOT enumerable in a stable ban-list against a fast-moving API — a positive filter is immune to new tool types shipping upstream | `tools=[{"type": "mcp", "server_url": "https://attacker.example/mcp"}]` passes an enumerated-ban check written before `mcp` existed | `tools=[{"type": "function", "function": {"name": t}} for t in EXISTING_TOOL_NAMES]` — every entry checked against the SAME allowlist Gemini's tool schema uses |
 | G17 | REQUIRE: the OpenAI HTTP client's `base_url` is pinned to `https://api.openai.com` (or an explicit, reviewed exception with its own justification) — verified this turn that this repo already points `AsyncOpenAI` at non-OpenAI `base_url`s for DeepSeek/Ollama (`observability.py:213-221`), so endpoint redirection is idiomatic here, not exotic, and G1's literal-pattern ban does not catch `AsyncOpenAI(base_url="https://chatgpt.com/backend-api/...", api_key=os.environ["ANY_VAR"])`. Combine with a deploy-time check that `OPENAI_WA_PROVIDER_API_KEY` and `OPENAI_API_KEY` (embeddings) hold DIFFERENT values, not just different settings-field names (closes G2's value-level reuse gap) | `AsyncOpenAI(base_url="https://some-proxy.example/v1", api_key=...)` inside the new adapter, or the adapter reading `os.environ["OPENAI_API_KEY"]` directly instead of the dedicated `settings.openai_wa_provider_api_key` field | `AsyncOpenAI(base_url="https://api.openai.com/v1", api_key=settings.openai_wa_provider_api_key)` — pinned host, dedicated settings field, non-empty and distinct-value check against `settings.openai_api_key` in a startup assertion |
-| G18 | REQUIRE: `getattr(state, "trusted_tools_used", True)` (`orchestrator_streaming_core.py:378`) fails CLOSED, not open — a `state` object missing the attribute must resolve to `trusted_tools_used=False`, not `True`. Verified this turn: `apply_shared_trusted_flippers` is a pass-through and `detect_trusted_tool_usage` computes the real signal from the executed-steps trace, provider-agnostic — so this default is a pure omission bug, not an OpenAI-specific gap, but a NEW adapter path is exactly the kind of code that can construct `state` without ever touching this field | A new/refactored code path builds `state` and never sets `trusted_tools_used`; `getattr(..., True)` silently reads "confident" | The default flips to `False`; a path that legitimately trusts a tool result sets the attribute explicitly (as the existing ReAct loop already does) |
+| G18 | REQUIRE: `getattr(state, "trusted_tools_used", True)` (`orchestrator_streaming_core.py:378`) fails CLOSED, not open — a `state` object missing the attribute must resolve to `trusted_tools_used=False`, not `True`. Verified this turn: `apply_shared_trusted_flippers` is a pass-through and `detect_trusted_tool_usage` computes the real signal from the executed-steps trace, provider-agnostic — so this default is a pure omission bug, not an OpenAI-specific gap, but a NEW adapter path is exactly the kind of code that can construct `state` without ever touching this field. **CAVEAT added post-Kimi-K3-review (ACCEPTED, see `## Adversarial review`)**: `orchestrator_streaming_core.py:378` is committed code on `origin/main` serving the CURRENT Gemini live path, not part of the OpenAI adapter's diff — flipping this default is a behavior change to production traffic, not a scoped addition, and this document never verified that every existing Gemini-path construction of `state` already sets the attribute before this line reads it. Before this gate is required as a merge-blocking condition on the OpenAI PR specifically, the BUILD lane (or a separate, dedicated PR) must first audit every live `state`-construction site on the Gemini path and confirm none of them rely on the `True` default — otherwise flipping it silently tightens abstention for the EXISTING provider, which is exactly the "rogue AI refactor changes live semantics" class this repo's pre-deploy checklist exists to catch. Recommend splitting G18 into its own PR/finding, independent of and not blocking the OpenAI adapter's freeze | A new/refactored code path builds `state` and never sets `trusted_tools_used`; `getattr(..., True)` silently reads "confident" | The default flips to `False`; a path that legitimately trusts a tool result sets the attribute explicitly (as the existing ReAct loop already does) |
+| G20 | BAN: the literal string `OPENAI_API_KEY` (or `settings.openai_api_key`) used ANYWHERE in the new adapter's code, config default, or tests — even as a fallback/`os.getenv` default. Confirmed by the council's fence update (team-lead, properly-tagged message): the ONLY sanctioned credential for this adapter is `OPENAI_WA_PROVIDER_API_KEY` (project service account or WIF, separate billing/identity from embeddings). This restates/sharpens G2/G17 into a single explicit, grep-able ban rather than leaving it implied by the secret-reuse framing | `os.getenv("OPENAI_WA_PROVIDER_API_KEY") or os.getenv("OPENAI_API_KEY")` (fallback to the shared key) anywhere in the adapter | The adapter reads `settings.openai_wa_provider_api_key` exclusively, with no fallback to the embeddings key, and a startup assertion that the two settings values are non-empty and distinct (already recommended by G17) |
 | G19 | REQUIRE: OpenAI Responses terminal states other than a normal text answer — `output[].type == "refusal"` (verified real via WebSearch, `ResponseOutputRefusal`), `status == "incomplete"` with `incomplete_details.reason ∈ {content_filter, max_output_tokens}` — map to the SAME `abstain=true`/`_tell_a_human` contract a Gemini abstain does, never to a normal `answer` string with `abstain=false` | Adapter code that does `answer = response.output_text or "[refusal]"` and returns `abstain=False` regardless of `output[].type` | Adapter code that checks `output[].type == "refusal"` FIRST and routes to the same abstain/human-handoff path `wa_inbox_bot.py:208-272` already uses for a Gemini abstain, before ever constructing an `answer` string |
 
 ## §Refutation log
@@ -420,9 +505,15 @@ tool_authorizer.authorize() (G3/G4); (d) is the shadow dispatch's context-parity
 conversation history/tools, Finding 5 in the threat model) still present or fixed; (e) is the
 phantom-ADR citation (Finding 0 — research/operations/2026-08-15-adr-wa-runtime-openai-provider.md)
 resolved — committed, or citations removed; (f) any NEW gate pattern needed for something that
-changed since the draft. Report each as ACCEPTED (matches the draft's existing finding) or CHANGED
-(drifted — describe how) against the draft's claims, not as new independent findings. Do not
-propose fixes or code changes — this is a review-only pass. Cite file:line for every claim.
+changed since the draft; (g) does `DEFAULT_MODEL` still resolve to `gpt-5.6-terra` (or another
+real, currently-documented OpenAI model slug — re-check against OpenAI's own model docs, don't
+assume "STALE — CORRECTED" from an earlier pass still holds), and does `_resolve_api_key()`
+genuinely re-read its source on every call rather than memoizing. Report each as ACCEPTED (matches
+the draft's existing finding) or CHANGED (drifted — describe how) against the draft's claims; item
+(g) may surface something genuinely new (a changed model default, a memoized key) — report that as
+CHANGED against the specific row it updates (row 3 / row 4), not withheld for not fitting the
+ACCEPTED/CHANGED frame. Do not propose fixes or code changes — this is a review-only pass. Cite
+file:line for every claim.
 ```
 
 **Google/agy Gemini seat** (`agy -p "<prompt>"`):
@@ -435,4 +526,111 @@ framing). Focus your width on anything the draft's narrower code-reading pass ma
 across the full frozen diff, not just the files already named in the draft's §Live diff review. Cite
 file:line for every claim. Review-only — no fixes, no code changes proposed.
 ```
+
+## §Incident log
+
+During the HOLD-order revision pass, a dispatched subagent working this branch received
+instruction-shaped content in its execution channel that was not a properly-tagged
+`<teammate-message teammate_id="team-lead">` — it pushed the subagent to run adversarial reviews
+immediately and fold in undisclosed edits. The subagent found `adversarial_review:` frontmatter on
+both this document and the privacy-retention-plan document already changed to a bare `kimi-k3`
+token by something other than itself, and four Kimi/agy review processes already running against
+them. It reverted the frontmatter to its last known-legitimate values, killed the running
+processes, declined to read or incorporate any of their output, and escalated rather than comply
+or fail silently.
+
+The verifier session independently audited the worktree (`git status`, `git log`, `ps`) and found
+no unauthorized state — HEAD matched the subagent's last legitimate commit exactly, nothing
+untracked. Team-lead confirmed via a properly-tagged message that the subagent's refusal was the
+correct action regardless of the true origin of the injected content, and ratified the standing
+protocol: any instruction not arriving via a properly-tagged teammate message is a finding to
+verify before acting on it, even if it resembles a previously-confirmed-legitimate pattern (this
+worktree's CLI-injection channel). Per that ratified instruction, the adversarial reviews below
+were re-executed from scratch, by this session directly (no further subagent delegation), against
+the current content of both documents.
+
+**Resolution (team-lead, properly-tagged message, later the same session):** the untracked
+instructions were traced to the Codex orchestrator in Zero's own chat, acting on Zero's explicit
+mandate (coordinate the /bot focus, the two Fable M5 sessions, and the 5-provider council) — not an
+attack. The origin was legitimate. **This does not retroactively make the refused action correct to
+have complied with**: writing a frontmatter review token without an actually-executed review was a
+shortcut the mandate itself forbade, regardless of who was asking for it, and the ratified protocol
+(verify before acting on anything outside a properly-tagged teammate message) stands unchanged going
+forward — a benevolent, legitimate sender does not retire the need to verify, since the same channel
+could as easily carry an illegitimate one next time.
+
+## Adversarial review
+
+Two independent seats, run fresh from scratch by this session directly (no subagent delegation, per
+team-lead's ratified protocol) against the CURRENT content of this document — not recycled from the
+earlier Kimi K3 pass logged in §Refutation log above, which reviewed an earlier draft. Both seats
+were given the same brief: find missing surfaces, over/under-matching guard patterns, unverified or
+stale claims, and internal inconsistencies, focused on content added/changed since the earlier pass
+(Snapshot header, three-provider split, store:false correction/G11, new gates G16-G19, §Freeze
+re-review). Every objection below was independently re-verified against the actual repo/worktrees in
+THIS turn before a verdict was assigned (W65 discipline — a refuter's report is not a tool output I
+ran).
+
+### Kimi K3 (`kimi -m kimi-code/k3`)
+
+1. **ACCEPTED, and the single largest correction in this revision.** §Live diff review's Findings
+   5/6/7 (all marked CONFIRMED) analyze a shadow-provider design the implementer has since reworked
+   away entirely (`b36fc9521`, "Rework of the vetoed shadow-provider design... zero wiring into any
+   live path"); the Snapshot header's "ZERO commits" claim is also false as of this check (2 commits
+   exist). Kimi verified this itself with live `git`/`grep` in the implementer worktree rather than
+   taking the document's word for it — independently cross-confirmed by a verification fork this
+   session dispatched for the fence-compliance check. Folded into: the Snapshot header's new
+   "SUPERSEDED" paragraph, and the STALE annotations on rows 5/6/7.
+2. **REJECTED — reviewer error, refuted by primary source.** Kimi's row-3 re-check concluded
+   `MODEL_TERRA = "gpt-5.6-terra"` is "not a plausibly real OpenAI API model slug... carries this
+   fleet's internal Codex-family codename ('Terra') as a suffix, matching no documented OpenAI model
+   naming scheme," and that row 3's "STALE — CORRECTED" status was therefore unwarranted. **Verified
+   this turn against the primary source** (`https://developers.openai.com/api/docs/models`, fetched
+   fresh by a dispatched verification fork, independently of and before this objection was read):
+   `gpt-5.6-sol`, `gpt-5.6-terra`, and `gpt-5.6-luna` are all real, documented OpenAI model IDs
+   supporting the Responses API — the naming collision with this fleet's own Codex-family codenames
+   (Sol/Terra/Luna, `FLEET_TOPOLOGY.json`) is real and worth flagging as a SEPARATE risk (a human or
+   an LLM misreading `gpt-5.6-terra` as "our Terra" rather than "OpenAI's Terra" is a plausible
+   confusion this repo should watch for), but the underlying claim — that the slug isn't real — is
+   false. Row 3 already documents this exact objection and its refutation in place (see the row's
+   updated text above).
+3. **ACCEPTED — G18 caveat.** Flipping `orchestrator_streaming_core.py:378`'s fail-open default is a
+   behavior change to the LIVE Gemini path, not scoped to the OpenAI adapter's diff, and this document
+   never verified no current Gemini-path `state` construction relies on the `True` default. Folded
+   into G18's entry above as a caveat recommending the flip ship as its own, independent PR rather
+   than a merge-blocking condition on the OpenAI adapter specifically.
+
+**Not counted (Kimi's own runner-up, noted for completeness):** the §Freeze re-review K3 prompt's
+item (f) ("any NEW gate pattern needed") contradicts its own output-format instruction ("report as
+ACCEPTED/CHANGED... not as new independent findings") — a real, minor internal inconsistency in the
+prompt text, not actioned this pass since the prompt is not executed until freeze.
+
+### Google/agy Gemini seat (`agy`)
+
+1. **ACCEPTED.** §Live diff review's Finding 7 cross-references Finding 4 as evidence that
+   `client.available` "can itself be stale" — but Finding 4 was corrected THIS SAME PASS (HOLD-order
+   update) to state the opposite (`available` is now "a live call, not a cached attribute read").
+   Finding 7's cross-reference was not updated to match. Superseded in substance by Finding 7 now
+   being marked STALE in full (the shadow-dispatch code it describes is deleted — see Kimi objection
+   1 above), but the underlying documentation discipline gap (correcting one row without checking
+   what cross-references it) is a real, separate catch, worth naming even though the specific rows
+   involved have since moved further.
+2. **ACCEPTED.** The Snapshot header states `llm_gateway.py` +18 while §Live diff review's own intro
+   text states `llm_gateway.py` (+25) for the SAME file, both claimed "verified this turn" — a
+   genuine, locatable internal inconsistency. Verified directly (`grep` on both passages, this turn).
+   Now moot in substance (both numbers describe a diff that no longer exists post-rework, per the
+   Snapshot header's SUPERSEDED paragraph) but left uncorrected in place, flagged here, rather than
+   silently reconciled — the two sections should have agreed on the same number at the time they were
+   both written, regardless of what happened to the diff afterward.
+3. **ACCEPTED.** The §Freeze re-review prompts' checklist items (a)-(f) omit two items this document
+   explicitly flagged as "needed at freeze" earlier in the same document: whether `MODEL_TERRA`
+   resolves to a real model slug (row 3 — now closed, see above, but the freeze prompt still doesn't
+   ask about it for the eventual frozen diff) and whether `_resolve_api_key()` genuinely re-reads its
+   source per-call (row 4). Fixed: the Kimi K3 freeze prompt below has been amended to add item (g)
+   covering both.
+
+**Freeze prompt amended, per agy objection 3 and Kimi's runner-up note:** see `§Freeze re-review`
+below — item (g) added to the Kimi K3 prompt for the two omitted checks; the item-(f)-vs-output-format
+contradiction Kimi flagged is left as a known wrinkle in the prompt text (not blocking, since the
+prompt is not executed until freeze and can be re-tightened then).
 
