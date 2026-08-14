@@ -27,7 +27,7 @@ contains 20 `OFFICIAL_PORTAL` source records with a seven-day maximum age:
   stale.
 
 The runtime is failing safe. A local replay of the exact signed sequence-7
-artifact at `2026-08-14T18:18:39Z`, with the same deterministic public policy
+artifact at `2026-08-14T18:40:25Z`, with the same deterministic public policy
 adapters as `/evaluate`, produced 4/20 fixture matches and 16 divergences. All
 16 remain `unexplained` in the G-b ledger because no accepted-explanation file
 was supplied. Separately, the replay establishes the proximate runtime cause
@@ -99,15 +99,16 @@ by the global freshness adapter, by design.
   `backend/tests/services/visa_engine/test_evaluator_gold.py`, using expectations
   from `backend/tests/services/visa_engine/_gold_fixtures.py`.
 - Adapter implementation under review: commit
-  `b5f4a740cbae8c5155eb5cd8e0e9e648190d3785` (PR #4200), specifically
+  `ff05743d930d068ff57dc5b92478658c20854eb2` (PR #4200), specifically
   `evaluate_path.apply_public_policy_adapters` and the offline caller in
   `gold_replay_driver.py`.
 - Command: from `apps/backend-rag`, run
   `PYTHONPATH=. python -m backend.scripts.visa_engine.gold_replay_driver --offline
-  --out /tmp/visa-gold-replay-policy-parity.json` in that exact checkout.
-- Captured report: generated `2026-08-14T18:18:39.684877+00:00`, local path
-  `/tmp/visa-gold-replay-policy-parity.json`, SHA-256
-  `b2d1e0c6e59a7212c88941dc20eaa6ffba38377093f629043fd13cb41addcecb`.
+  --out /tmp/visa-gold-replay-policy-parity-ff05743d9.json` in that exact
+  checkout.
+- Captured report: generated `2026-08-14T18:40:25.233011+00:00`, local path
+  `/tmp/visa-gold-replay-policy-parity-ff05743d9.json`, SHA-256
+  `76fc6209f992a6d388872729fead24e6b02048f7a7fbb0bdffd8e0586061004a`.
   This handoff summarizes the report; it does not treat the temporary path as a
   durable evidence store or claim production-path equivalence.
 
