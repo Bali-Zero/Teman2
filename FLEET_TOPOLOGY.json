@@ -1,6 +1,6 @@
 {
-  "_version": "1.2",
-  "_updated": "2026-08-10 (panel-amended fleet-order spec: emails, GLM dual-door, DeepSeek re-admission, quorum semantics)",
+  "_version": "1.3",
+  "_updated": "2026-08-14 (PROBE-1-residual closed with 7-day TP1 production burn-rate data: qwen3.8-max/qwen3.7-plus/deepseek-v4-flash-0731 PROBATION->ARMED; deepseek-v4-pro/glm-5.2-via-TP1/MiniMax-M2.5 stay PROBATION on zero measured mileage; credits endpoint confirmed not API-exposed. research/operations/2026-08-14-probe1-tp1-burn-rate.md. Previous: 2026-08-10 panel-amended fleet-order spec: emails, GLM dual-door, DeepSeek re-admission, quorum semantics)",
   "_doc": "SSOT for the CLOUD fleet: orchestrators, accounts, role fallback chains. Local Ollama assignments stay in MODEL_TOPOLOGY.json (unchanged). Rationale: research/operations/2026-08-09-quattro-gruppi-e-continuita.md. Law: AGENTS.md §17 + CLAUDE.md.",
   "_invariants": [
     "Gear-3 harness gate (ruling Zero 2026-08-09): Fable 5 first, rotating across ALL Anthropic accounts; only when NO account can run Fable, fall back to Opus 5 effort=max with gate_degraded:'fable->opus' recorded in the verdict check and Evidence Pack. Never pay per-token to unblock.",
@@ -74,7 +74,7 @@
       "slots": {
         "TP1": {
           "label": "Token Plan (Model Studio, Singapore region)",
-          "lane": "DashScope API key — Qwen 3.8 Max / Qwen 3.7 / GLM 5.2 / MiniMax 2.5 / Wan. Monthly credits; burn-rates unknown until PROBE-1. STATUS: PROBATION. Key registered: ~/.qwen/settings.json env BAILIAN_TOKEN_PLAN_API_KEY (0600). 15 models enumerated 2026-08-10 incl. deepseek-v4-pro/v4-flash/v3.2 (re-admitted by Zero 2026-08-10, PROBATION), glm-5.2/5.1/5, MiniMax-M2.5, kimi-k2.5/2.6/2.7 (older than K3 — Allegro stays the K3 door). Burn-rate + credits endpoint pending (PROBE-1-residual)."
+          "lane": "DashScope API key — Qwen 3.8 Max / Qwen 3.7 / GLM 5.2 / MiniMax 2.5 / Wan. Key registered: ~/.qwen/settings.json env BAILIAN_TOKEN_PLAN_API_KEY (0600). 15 models enumerated 2026-08-10 incl. deepseek-v4-pro/v4-flash/v3.2 (re-admitted by Zero 2026-08-10), glm-5.2/5.1/5, MiniMax-M2.5, kimi-k2.5/2.6/2.7 (older than K3 — Allegro stays the K3 door). PROBE-1-residual CLOSED 2026-08-14 (research/operations/2026-08-14-probe1-tp1-burn-rate.md): burn-rate measured from 7 days of production use (2026-08-08→14, 1330 calls, 211.7M tokens, dedup-verified by unique `id` on ~/.qwen/usage/token-usage-2026-08.jsonl — the coarser session-level ~/.qwen/usage_record.jsonl is NOT additive on top of it, see doc §Data sources). Credits/usage endpoint NOT exposed via API (20 candidate paths probed, all 404; console-only, operator[gui]). PER-MODEL STATUS (2026-08-14): qwen3.8-max ARMED (459 calls / 74.1M tokens measured) · qwen3.7-plus ARMED (65 calls / 6.4M tokens measured) · deepseek-v4-flash-0731 ARMED (806 calls / 131.2M tokens measured) · deepseek-v4-pro STAYS PROBATION — zero measured calls in the same window, NOT the same model/tier as v4-flash, do not conflate · glm-5.2 STAYS PROBATION — zero measured TP1 calls (z.ai remains the active GLM door) · MiniMax-M2.5 STAYS PROBATION (PROBE-4 open, zero measured calls) · kimi-* via TP1 untouched (Allegro/K1 remains the load-bearing Kimi door, out of PROBE-1 scope). List-price cost estimate (public Aug-2026 Singapore DashScope rates, cache-adjusted, NOT the confirmed TP1 contract meter): ~$42/7d ≈ ~$181/30d-run-rate vs the ~$68/month tier — flag this ratio for Zero, do not treat it as confirmed overspend (plan mechanics — flat allowance vs metered credits — remain unconfirmed per §2.5/§9 of the fleet-order spec)."
         }
       }
     }
@@ -151,7 +151,7 @@
         {
           "model": "glm-5.2",
           "accounts": ["TP1"],
-          "note": "PROBATION until PROBE-1"
+          "note": "PROBATION — PROBE-1-residual closed 2026-08-14 (research/operations/2026-08-14-probe1-tp1-burn-rate.md) but GLM-via-TP1 specifically shows ZERO measured calls in that window; z.ai remains the active GLM door. Promotion pending real TP1 GLM mileage, not blocked on PROBE-1 anymore."
         }
       ],
       "on_exhaustion": "queue"
@@ -195,7 +195,7 @@
         {
           "model": "deepseek-v4-pro",
           "accounts": ["TP1"],
-          "note": "PROBATION — eligible_for_quorum: false (third opinion only, never counts toward the 2-family quorum)"
+          "note": "PROBATION — eligible_for_quorum: false (third opinion only, never counts toward the 2-family quorum). CONFIRMED STILL CORRECT 2026-08-14 (PROBE-1-residual): deepseek-v4-pro shows ZERO measured calls in the 2026-08-08→14 burn-rate window — the 806 calls / 131.2M tokens measured that window were deepseek-v4-flash-0731, a DIFFERENT model/tier with its own PROBATION->ARMED promotion recorded at accounts.alibaba.slots.TP1. Do not conflate: -pro is not armed by -flash's mileage. deepseek-v4-flash has no dedicated role_chain entry yet — PENDING-ARMS: decide whether it substitutes -pro here or gets its own row."
         }
       ],
       "quorum_note": "Gear 3: zero available refuters => QUEUE, never reaches the gate. Refutation done but 2-family diversity unmet => pack marked degraded, the gate weighs it. PROBATION seats never count toward quorum. HARD family-exclusion: a family that built or counter-built the task is skipped in its refuter chain.",
@@ -213,7 +213,8 @@
         },
         {
           "model": "qwen-3.8-max",
-          "accounts": ["TP1"]
+          "accounts": ["TP1"],
+          "note": "ARMED 2026-08-14 (PROBE-1-residual closed, 459 calls / 74.1M tokens measured 2026-08-08→14, see accounts.alibaba.slots.TP1 and research/operations/2026-08-14-probe1-tp1-burn-rate.md)"
         }
       ],
       "note": "Parallel panel voices, not substitutes; a missing voice is logged, panel proceeds with 2+ families minimum."
@@ -258,7 +259,8 @@
       "chain": [
         {
           "model": "qwen-3.8-max",
-          "accounts": ["TP1"]
+          "accounts": ["TP1"],
+          "note": "ARMED 2026-08-14 (PROBE-1-residual closed, see accounts.alibaba.slots.TP1)"
         },
         {
           "model": "kimi-k3",
@@ -292,7 +294,8 @@
         },
         {
           "model": "qwen-3.8-max",
-          "accounts": ["TP1"]
+          "accounts": ["TP1"],
+          "note": "ARMED 2026-08-14 (PROBE-1-residual closed, see accounts.alibaba.slots.TP1) — the compliance-exact hard_no below is unrelated to PROBATION status and still applies unconditionally"
         }
       ],
       "note": "Claude hallucinates regulations — constitution rule stands. Qwen leg requires mandatory NotebookLM (or Anthropic-seat) verification — compliance-exact hard-NO applies to fallbacks too."
@@ -314,7 +317,7 @@
         {
           "model": "deepseek-v4-pro",
           "accounts": ["TP1"],
-          "note": "PROBATION"
+          "note": "PROBATION — CONFIRMED STILL CORRECT 2026-08-14 (PROBE-1-residual): zero measured calls for -pro specifically in the 2026-08-08→14 burn-rate window; deepseek-v4-flash-0731 (different tier) was ARMED by that same measurement, see accounts.alibaba.slots.TP1 — not the same model, do not conflate."
         },
         {
           "model": "claude-opus-5",
@@ -327,7 +330,8 @@
   "pending_arms": [
     "cswap (or equivalent OAuth profile swapper) installed+tested on Pro and Air-M5 with the 4 real accounts",
     "~/.codex-o2 second CODEX_HOME created+logged in (zero@balizero.com); aliases codex-o1/codex-o2",
-    "PROBE-1..4 (see research/operations/2026-08-09-quattro-gruppi-e-continuita.md §Probe)",
+    "PROBE-1-residual CLOSED 2026-08-14 (research/operations/2026-08-14-probe1-tp1-burn-rate.md) — burn-rate measured (qwen3.8-max/qwen3.7-plus/deepseek-v4-flash-0731 promoted PROBATION->ARMED), credits endpoint confirmed NOT exposed via API (operator[gui] to read the Model Studio console). PROBE-2..4 still open (see research/operations/2026-08-09-quattro-gruppi-e-continuita.md §Probe).",
+    "decide whether deepseek-v4-flash-0731 substitutes deepseek-v4-pro in the refuter/reasoner role_chains or gets its own dedicated row (both currently point at -pro, which has zero measured TP1 mileage)",
     "dispatcher script scripts/seat_dispatch.py reading this file (Mac session, needs live CLI testing)",
     "MODEL_TOPOLOGY.json v3: reconcile cloud_fallback (gemini-cli deprecated 2026-06-18 -> agy) and aider_fix (deepseek RETIRED)",
     "cron auto-pause hook for the donor rule (A3 frees its window when the gate calls)"

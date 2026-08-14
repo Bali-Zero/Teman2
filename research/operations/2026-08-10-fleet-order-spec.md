@@ -140,6 +140,50 @@ means no NUZANTARA/infra credentials (Fly, Vercel, GitHub, DB, `.env*`) in the m
 environment; the seat's OWN provider token lives in the broker layer (Keychain → shim env var),
 outside the model's context — that is how the seat operates at all.
 
+### Addendum 2026-08-14 — PROBE-1-residual CLOSED
+
+Appended, not rewritten — the "All PROBATION until PROBE-1-residual" line above described the
+state as of 2026-08-10 and stays as written for the historical record.
+
+PROBE-1-residual (burn-rate + credits endpoint, per §6 "PROBE ledger" and §8.4) is now closed.
+Full data, methodology, and every number below: `research/operations/2026-08-14-probe1-tp1-burn-rate.md`.
+
+**Burn-rate measured** from `~/.qwen/usage/token-usage-2026-08.jsonl` (per-call log, unique `id`
+per row, 1330 rows / 0 duplicates), 2026-08-08 through 2026-08-14 (7 days of real production
+use, not a synthetic 3-sample-task probe as originally scoped — Zero ruled the larger, real
+sample supersedes the smaller planned one):
+
+| Model | Calls | Total tokens |
+|---|---|---|
+| qwen3.8-max | 459 | 74,059,053 |
+| qwen3.7-plus | 65 | 6,420,702 |
+| deepseek-v4-flash-0731 | 806 | 131,219,287 |
+| **Total** | **1330** | **211,699,042** |
+
+**Credits endpoint**: not exposed via API. 20 candidate paths probed across the TP1
+compatible-mode base, its root, and `dashscope-intl.aliyuncs.com` (`/usage`, `/credits`,
+`/quota`, `/billing`, `/account/usage`, `/balance`, …) — all 404. The key itself is live
+(`GET /compatible-mode/v1/models` → 200, lists the roster). Credits/consumption reading, if it
+exists at all, is console-only (Model Studio dashboard) — `operator[gui]`.
+
+**Promotion** (FLEET_TOPOLOGY.json v1.3): qwen3.8-max, qwen3.7-plus, and
+deepseek-v4-flash-0731 move PROBATION → ARMED on this seat's own measured mileage.
+deepseek-v4-pro (a DIFFERENT tier from -flash — zero measured calls this window) stays
+PROBATION. glm-5.2-via-TP1 stays PROBATION — zero measured TP1 calls; z.ai remains the active
+GLM door, unaffected by this promotion (§2.6 below is not touched by this addendum). MiniMax
+M2.5 stays PROBATION — zero measured calls, PROBE-4 still open. Hard NOs (§ above: PII,
+client-facing, merge/deploy, final gates, credentials-in-env) are untouched — they are
+independent of PROBATION status and apply to ARMED seats exactly as they did to PROBATION ones.
+
+**Cost note (not a confirmed contract fact)**: at public Aug-2026 Singapore DashScope list
+prices (Qwen3.8-Max $2/$6 per 1M in/out, cached input ≈$0.25/1M; Qwen3.7-Plus proxy $0.40/$1.60;
+deepseek-v4-flash $0.14/$0.28, cached input assumed 20% of list — this cache rate is NOT
+independently confirmed for the DeepSeek model), the measured 7-day usage prices out to
+≈$42, a ≈$181/month run-rate against the documented "~$68 tier" (§2.5 table, §8.4). Whether
+the Token Plan is pay-per-token-metered against monthly credits (the 2026-08-08 qwen-seat
+doc calls it "a METERED Token Plan") or a flat allowance with a different real unit-price is
+still not confirmed in this repo — flagging the ratio for Zero, not asserting overspend.
+
 ## 2.6 GLM z.ai door (until quota exhausted)
 
 `claude-glm -p "…"` (shim: Keychain token + `CLAUDE_CONFIG_DIR=~/.claude-glm`). First-call

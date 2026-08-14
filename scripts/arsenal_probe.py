@@ -696,17 +696,24 @@ def probe_qwen_cloud_code(timeout: float) -> tuple[str, str, int]:
     if not binp:
         return NOT_INSTALLED, "qwen binary not found (checked $PATH + mise node 22)", 0
     path_note = _path_note(via_path)
-    # Arming gate (council + Fable gate 2026-08-08, decision SHIP-AFTER-FIXES): the seat
-    # is UNARMED until the operator rotates its credential into Keychain service
-    # `qwen-cloud-code-token` — the runtime shipped with a cleartext 0644 settings.json
-    # key (P0). No keychain entry -> cannot authenticate -> AUTH_DEAD with an explicit
-    # unarmed note. Deliberately NOT in REQUIRED_SEATS on any machine: machine-scoped
-    # candidate seat (M5 only) whose promotion is an operator+Claude-lane decision.
+    # Arming gate (council + Fable gate 2026-08-08, decision SHIP-AFTER-FIXES): the probe
+    # authenticates via Keychain service `qwen-cloud-code-token` (the runtime originally
+    # shipped with a cleartext 0644 settings.json key, P0 — since chmod 0600 + rotated).
+    # CORRECTED 2026-08-14 (PROBE-1-residual, research/operations/2026-08-14-probe1-tp1-burn-rate.md):
+    # the "operator rotation pending" framing below was stale — the Keychain entry is
+    # present on M5 and the seat has answered PONG (verified 2026-08-10) and carried ~1330
+    # calls / ~212M tokens of real production use 2026-08-08→14 via `~/.qwen/settings.json`
+    # (the qwen CLI's own credential path, independent of this probe). If this branch still
+    # fires it means Keychain is genuinely unreadable RIGHT NOW (locked/absent on THIS
+    # machine) — a live host condition, not a standing "rotation never happened" fact.
+    # Still deliberately NOT in REQUIRED_SEATS on any machine: machine-scoped candidate
+    # seat (M5 only) whose promotion into required-fleet status is a separate operator+
+    # Claude-lane decision from the PROBATION->ARMED promotion recorded in FLEET_TOPOLOGY.json.
     token, cred_note = load_keychain_token("qwen-cloud-code-token")
     if not token:
         return (
             AUTH_DEAD,
-            path_note + f"keychain gate: {cred_note} — seat UNARMED (operator rotation pending, gate 2026-08-08)",
+            path_note + f"keychain gate: {cred_note} — seat cannot authenticate at probe time (keychain locked/absent on this host)",
             0,
         )
     env = dict(os.environ)
