@@ -73,6 +73,35 @@ _CRM_ACTOR = "wa-mirror-crm-writer@balizero.com"
 _LEAD_SOURCE = "whatsapp_auto"
 
 # --------------------------------------------------------------------------- #
+# Transient-vs-permanent exception classification (dossier C-31, 2026-08-15).
+#
+# The media loop's per-row `except Exception: ... break` is correct for a
+# TRANSIENT failure (DB/connection hiccup — retry the SAME row next tick) but
+# wrong for a PERMANENT one (bad data, a constraint violation): breaking
+# without advancing the watermark freezes it on that row forever, starving
+# every later media row behind it. Classify by exclusion — anything
+# connectivity-shaped is transient; everything else is a poison row, logged
+# and skipped forward so the tick keeps moving.
+#
+# `asyncio.TimeoutError` and the builtin `TimeoutError` are the same class on
+# Python 3.11+ but were distinct before — both listed so this stays correct
+# regardless of interpreter version.
+# --------------------------------------------------------------------------- #
+_TRANSIENT_EXCEPTIONS: tuple[type[BaseException], ...] = (
+    asyncpg.PostgresConnectionError,
+    asyncpg.InterfaceError,
+    OSError,
+    TimeoutError,
+    asyncio.TimeoutError,
+)
+
+
+def _is_transient(exc: BaseException) -> bool:
+    """True for connectivity-shaped failures worth retrying next tick."""
+    return isinstance(exc, _TRANSIENT_EXCEPTIONS)
+
+
+# --------------------------------------------------------------------------- #
 # Internal-sender guard (2026-06-29).
 #
 # A 1:1 WhatsApp chat is NOT proof that the sender IS the document subject. When
@@ -552,6 +581,7 @@ async def run_one_tick() -> int:
         blob_missing = 0
         direct_media = 0
         group_media = 0
+        poison = 0
         max_done = watermark
 
         for r in rows:
@@ -580,13 +610,25 @@ async def run_one_tick() -> int:
                             note_kind="media",
                         )
                 except Exception as exc:
+                    if _is_transient(exc):
+                        logger.error(
+                            "[wa_mirror_sweep] CRM phone upsert failed for media row %d "
+                            "(transient, retrying next tick): %s",
+                            rid,
+                            exc,
+                            exc_info=True,
+                        )
+                        break
+                    poison += 1
                     logger.error(
-                        "[wa_mirror_sweep] CRM phone upsert failed for media row %d: %s",
+                        "[wa_mirror_sweep] CRM phone upsert failed for media row %d "
+                        "(poison row, advancing past it): %s",
                         rid,
                         exc,
                         exc_info=True,
                     )
-                    break
+                    max_done = max(max_done, rid)
+                    continue
             else:
                 group_media += 1
             try:
@@ -602,11 +644,26 @@ async def run_one_tick() -> int:
                     source_context=_source_context(r),
                 )
             except Exception as exc:
+                if _is_transient(exc):
+                    logger.error(
+                        "[wa_mirror_sweep] enqueue failed for row %d "
+                        "(transient, retrying next tick): %s",
+                        rid,
+                        exc,
+                        exc_info=True,
+                    )
+                    # Do NOT advance past a transient failure — retry next tick.
+                    break
+                poison += 1
                 logger.error(
-                    "[wa_mirror_sweep] enqueue failed for row %d: %s", rid, exc, exc_info=True
+                    "[wa_mirror_sweep] enqueue failed for row %d "
+                    "(poison row, advancing past it): %s",
+                    rid,
+                    exc,
+                    exc_info=True,
                 )
-                # Do NOT advance past a transient failure — retry next tick.
-                break
+                max_done = max(max_done, rid)
+                continue
             if result.was_new:
                 enqueued_new += 1
             else:
@@ -617,8 +674,15 @@ async def run_one_tick() -> int:
             _save_watermark(max_done)
         logger.info(
             "[wa_mirror_sweep] done: scanned=%d direct=%d group=%d new=%d dup=%d "
-            "blob_missing=%d watermark=%d",
-            len(rows), direct_media, group_media, enqueued_new, already, blob_missing, max_done,
+            "blob_missing=%d poison=%d watermark=%d",
+            len(rows),
+            direct_media,
+            group_media,
+            enqueued_new,
+            already,
+            blob_missing,
+            poison,
+            max_done,
         )
         return 0
     finally:
