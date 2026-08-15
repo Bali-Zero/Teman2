@@ -438,6 +438,21 @@ function componentProvenanceWiringContract() {
     }
   }
   assert.equal(callCount, 2, "all two production PMABadge calls are audited");
+
+  const pageSource = fs.readFileSync(
+    path.join(root, "app/kbli/[code]/page.tsx"),
+    "utf8",
+  );
+  assert.match(
+    pageSource,
+    /gold\?\.zantaraOpener\s*\?\?\s*neutralKbliChatOpenerText\(kbli\.code\)/,
+    "every KBLI page must fall back to the exact compiler-owned neutral chat opener",
+  );
+  assert.doesNotMatch(
+    pageSource,
+    /opener=\{\s*pmaVerdictVerified\s*\?/,
+    "declared-gap pages must not branch to bespoke public opener prose",
+  );
   console.log("PASS PMA badge wiring: verdict and cap provenance forwarded");
 }
 

@@ -8,6 +8,7 @@ import {
   getSectionMeta,
 } from "@/lib/kbli-data";
 import { getGoldContent } from "@/lib/kbli-gold-content";
+import { neutralKbliChatOpenerText } from "@/lib/kbli-editorial-certification";
 import { formatPmaOwnership } from "@/lib/kbli-pma-disclosure";
 import { KBLIBreadcrumb } from "@/components/kbli/KBLIBreadcrumb";
 import { PMABadge } from "@/components/kbli/PMABadge";
@@ -10213,10 +10214,7 @@ export default async function KBLICodePage({
                 section: kbli.section ?? "",
               }}
               opener={
-                pmaVerdictVerified
-                  ? (gold?.zantaraOpener ??
-                    `Ask me anything about KBLI ${kbli.code} — ${kbli.titleEn}. Licensing, PMA rules, what changed in 2025, or how it works in Bali.`)
-                  : `Ask me about KBLI ${kbli.code} — ${kbli.titleEn}. Its activity scope and licensing are available; the whole-code foreign-ownership verdict still needs per-code verification.`
+                gold?.zantaraOpener ?? neutralKbliChatOpenerText(kbli.code)
               }
               suggestions={[
                 `What do I need to start a ${kbli.titleEn.toLowerCase()} business?`,
