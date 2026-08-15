@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: ed03e70797370467ddbef5e0f3172540db45c7241875824782a31bde49b49ea6
+checksum: 44b9481b66cc192c3830692961756b4cf4e9b596ee411693de5d56a78f13bccc
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2322,5 +2322,26 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.zoho_mail_loop.json
+    timestamp_field: ts
+    status_field: status
+- id: army.spark_lane
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 7200
+  owner_module: scripts/army/spark_lane.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.army-spark
+  severity_on_silence: warning
+  notes: Armata H24 lane 1 — standing read-only analysis lane on the gpt-5.3-codex-spark
+    bucket. Every 2h on Pro; dispatches the oldest task from infra/army/spark-queue/*.md
+    (sandbox read-only, 900s cap, one task per tick, max 6/day) or is a fast no-op.
+    Never writes/commits/pushes/opens a PR. See research/operations/2026-08-14-armata-h24-standing-lanes.md.
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/army.spark_lane.json
     timestamp_field: ts
     status_field: status
