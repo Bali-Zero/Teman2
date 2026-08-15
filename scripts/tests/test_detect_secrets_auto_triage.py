@@ -620,17 +620,25 @@ def test_innocence_gold_replay_driver_ride_along_statement_not_approved() -> Non
 # moved to CONTENT_KEYED_RULES[6].
 
 GOLD_REPLAY_LIVE_REPORT = "research/visa/2026-08-12-gold-replay-live-report.json"
+GOLD_REPLAY_POST_NOTICE_REPORT = (
+    "research/visa/2026-08-15-gold-replay-live-post-notice-report.json"
+)
 
 
-def test_gold_replay_live_report_rule_registered_and_scoped_to_exactly_one_file() -> (
+def test_gold_replay_live_report_rule_registered_and_scoped_to_reviewed_files() -> (
     None
 ):
     path_pat, _content_pat, reason = CONTENT_KEYED_RULES[6]
     assert path_pat.search(GOLD_REPLAY_LIVE_REPORT)
+    assert path_pat.search(GOLD_REPLAY_POST_NOTICE_REPORT)
     assert not path_pat.search(
         "research/visa/2026-08-12-gold-replay-live-report.json.bak"
     )
+    assert not path_pat.search(
+        "research/visa/2026-08-15-gold-replay-live-post-notice-report.json.bak"
+    )
     assert not path_pat.search("research/visa/2026-08-13-some-other-report.json")
+    assert not path_pat.search("research/visa/2026-08-16-gold-replay-live-report.json")
     assert "never a credential" in reason
 
 
@@ -641,6 +649,15 @@ def test_guilt_gold_replay_live_report_real_line_is_approved() -> None:
     merely if someone edits a string literal in this test."""
     auto, reason = classify(GOLD_REPLAY_LIVE_REPORT, 8)
     assert auto, f"the real payload_sha256 finding must be approved (got {reason!r})"
+    assert "never a credential" in reason
+
+
+def test_guilt_gold_replay_post_notice_real_line_is_approved() -> None:
+    """The exact line 8 finding from Detect Secrets job 94874089047 is the
+    public RulePack payload digest and must be approved by the same narrow
+    content-keyed rule."""
+    auto, reason = classify(GOLD_REPLAY_POST_NOTICE_REPORT, 8)
+    assert auto, f"the post-notice payload_sha256 must be approved (got {reason!r})"
     assert "never a credential" in reason
 
 
@@ -723,6 +740,16 @@ def test_innocence_gold_replay_live_report_same_shape_in_another_file_not_approv
     """Path-scoped: the identical line shape in a different file gets no
     pass from this rule."""
     auto, reason = classify("research/visa/some_other_report.json", 8)
+    assert not (auto and "never a credential" in reason)
+
+
+def test_innocence_gold_replay_post_notice_same_shape_in_similar_file_not_approved() -> (
+    None
+):
+    """A future or renamed report receives no implicit approval."""
+    auto, reason = classify(
+        "research/visa/2026-08-16-gold-replay-live-post-notice-report.json", 8
+    )
     assert not (auto and "never a credential" in reason)
 
 

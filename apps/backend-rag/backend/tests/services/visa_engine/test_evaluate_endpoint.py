@@ -1083,6 +1083,56 @@ def _public_request() -> VisaOracleEvaluateRequest:
     )
 
 
+async def test_run_evaluation_delegates_to_public_policy_helper_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(evaluate_path.EVALUATE_MODE_ENV, "SHADOW")
+    monkeypatch.setenv(evaluate_path.EVALUATE_ENVIRONMENT_ENV, "TEST")
+    _, _, compiled = _patch_engine_chain(monkeypatch)
+    facts = _facts_with_purposes(["TOURISM"])
+    flags = (DisclosedReviewFlag.NOT_CERTAIN,)
+    evaluations = []
+    helper_calls = []
+    original_evaluate = evaluate_path.evaluate_with_trace
+    original_helper = evaluate_path.apply_public_policy_adapters
+
+    def recording_evaluate(*args: object, **kwargs: object):
+        evaluation = original_evaluate(*args, **kwargs)
+        evaluations.append(evaluation)
+        return evaluation
+
+    def recording_helper(
+        decision: Decision,
+        current_facts: ApplicantFacts,
+        current_compiled: object,
+        *,
+        disclosed_review_flags: tuple[DisclosedReviewFlag, ...] = (),
+    ) -> Decision:
+        helper_calls.append((decision, current_facts, current_compiled, disclosed_review_flags))
+        return original_helper(
+            decision,
+            current_facts,
+            current_compiled,
+            disclosed_review_flags=disclosed_review_flags,
+        )
+
+    monkeypatch.setattr(evaluate_path, "evaluate_with_trace", recording_evaluate)
+    monkeypatch.setattr(evaluate_path, "apply_public_policy_adapters", recording_helper)
+
+    await evaluate_path.run_evaluation(
+        object(),
+        facts=facts,
+        traffic_source="real",
+        request_category_hint=None,
+        request_trace="trace-public-policy-delegation",
+        disclosed_review_flags=flags,
+        evaluation_time=gold_loader.GOLD_EFFECTIVE_AT,
+    )
+
+    assert len(evaluations) == 1
+    assert helper_calls == [(evaluations[0].decision, facts, compiled, flags)]
+
+
 def _cached_reservation(response: VisaOracleEvaluateResponse | None) -> IdempotencyReservation:
     reserved_at = datetime(2026, 8, 4, 1, 0, tzinfo=timezone.utc)
     return IdempotencyReservation(
