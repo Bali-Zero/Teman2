@@ -1,0 +1,550 @@
+#!/usr/bin/env python3
+"""intake_health_report.py — read-only daily health snapshot of the document-intake organism.
+
+W0 read-only guardian (never writes DB, never mutates a proposal/queue row).
+Reads the local Postgres `nuzantara_dev` (Law 2 — PII stays local, only
+integers/rates/booleans ever leave this machine) and reports one JSON object
+covering the intake corner's LIVE STATE anatomy: review load, the empty-OCR
+noise class (C-02), blob presence for the review feed (C-01), the CRM's
+`companies` table sanity (C-29), done-but-orphaned queue rows (C-07),
+zombie claimed-but-lease-less proposals (C-05), committed-but-undelivered
+documents (C-08), the worker's own log inode, and 24h freshness counters.
+
+Model: scripts/intake_gate_count_pusher.py (DSN/env/logging conventions) +
+scripts/wr2_daily_reconciler.py (module-level `_tg_notify`/`_heartbeat` so a
+test can monkeypatch the SIDE EFFECT without touching the DB or the network —
+`run()`/`gather()` take a live/fake connection, everything else is pure).
+
+DB: SELECT-only. Connection opened with `default_transaction_read_only=on`
+(server_settings) as defense-in-depth beyond "we only issue SELECTs" — a
+write attempted over this connection is refused by Postgres itself, not by
+code discipline alone.
+
+Env:
+  INTAKE_DATABASE_URL / LOCAL_DATABASE_URL   DSN (default local nuzantara_dev)
+  INTAKE_HEALTH_REPORT_ENABLED               kill switch (default true) — G5
+  INTAKE_HEALTH_COMPANIES_MIN_ROWS           default 1  (breach if companies_rows < N)
+  INTAKE_HEALTH_BLOB_PRESENT_MIN             default 0.5 (breach if newest blob-present rate < N)
+  INTAKE_HEALTH_ALL_EMPTY_MAX                default 0.5 (breach if quarantine all-pages-empty rate > N)
+  INTAKE_HEALTH_ZOMBIE_MAX                   default 0  (breach if zombie count > N)
+  INTAKE_HEALTH_SUPERSEDED_TIMEOUT_MS        default 60000 (statement_timeout for the C-07b query)
+
+Flags: --dry-run (skip Telegram + state-file write; heartbeat still fires) ·
+       --json-only (pure read: skip Telegram + state-file write + heartbeat too)
+
+Exit: 0 always, except a DSN/connect failure (logged, heartbeat status=error) -> 1.
+"""
+from __future__ import annotations
+
+import argparse
+import asyncio
+import fcntl
+import json
+import logging
+import os
+import plistlib
+import subprocess
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+import asyncpg
+
+_REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(_REPO))
+
+from scripts.tg_gateway_verdict import extract_gateway_verdict, gateway_delivered  # noqa: E402
+
+logging.basicConfig(
+    level=os.getenv("INTAKE_HEALTH_LOG_LEVEL", "INFO"),
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
+logger = logging.getLogger("intake_health_report")
+
+ORGAN_ID = "pro.intake_health_report"
+STATE_PATH = Path.home() / ".agent" / "decisions" / "state" / "intake_health_report.json"
+LOCK_FILE = Path.home() / ".cell-bridge-state" / "intake_health_report.lock"
+DEFAULT_DSN = "postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev"
+WORKER_PLIST_PATH = _REPO / "infra" / "launchagents" / "com.nuzantara.intake-worker.plist"
+_FALLBACK_WORKER_LOG = Path.home() / "logs" / "intake-worker.launchd.err.log"
+
+# The absolute python3 candidates tg_notify.py is spawned with (W108 — the
+# alarm must not share the failure mode of a possibly-broken venv PATH
+# resolution). tg_notify.py is stdlib-only by design for exactly this reason.
+_PY3_CANDIDATES: tuple[str, ...] = (
+    "/usr/bin/python3",
+    "/opt/homebrew/bin/python3",
+    "/usr/local/bin/python3",
+)
+
+# The live (non-terminal-loss) proposal statuses (migration 235, verified
+# live against document_routing_proposal.chk_rp_status 2026-08-15). A `done`
+# queue row whose ONLY proposals sit OUTSIDE this set has effectively lost
+# its trail (dead/superseded, never landed anywhere a human or the writer
+# can still act on it).
+_LIVE_PROPOSAL_STATUSES: tuple[str, ...] = (
+    "review_pending", "review_claimed", "routed", "rejected",
+    "auto_routed", "quarantine", "duplicate",
+)
+_LIVE_STATUS_SQL_ARRAY = "ARRAY[" + ",".join(f"'{s}'" for s in _LIVE_PROPOSAL_STATUSES) + "]"
+
+# ---------------------------------------------------------------- SQL (module constants — shape-tested)
+
+STATUS_COUNTS_SQL = """
+    SELECT
+        count(*) FILTER (WHERE p.status = 'review_pending')                            AS review_pending_total,
+        count(*) FILTER (WHERE p.status = 'review_pending' AND q.source = 'whatsapp')   AS review_pending_wa,
+        count(*) FILTER (WHERE p.status = 'quarantine')                                 AS quarantine_total,
+        count(*) FILTER (WHERE p.status = 'duplicate')                                  AS duplicate_total,
+        count(*) FILTER (
+            WHERE p.status = 'review_pending'
+              AND p.entity_resolution ->> 'decision' = 'NO_MATCH'
+        ) AS zero_candidate_count
+    FROM document_routing_proposal p
+    JOIN intake_queue q ON q.id = p.queue_id
+"""
+
+ALL_PAGES_EMPTY_SQL = """
+    SELECT p.status,
+           count(*) FILTER (
+               WHERE NOT EXISTS (
+                   SELECT 1
+                     FROM jsonb_array_elements(q.stage_output -> 'classify' -> 'ocr_text_per_page') AS pg
+                    WHERE pg ->> 'via' IS DISTINCT FROM 'empty'
+               )
+           ) AS all_empty,
+           count(*) AS denominator
+      FROM intake_queue q
+      JOIN document_routing_proposal p ON p.queue_id = q.id
+     WHERE q.source = 'whatsapp'
+       AND p.status IN ('quarantine', 'review_pending')
+       AND jsonb_typeof(q.stage_output -> 'classify' -> 'ocr_text_per_page') = 'array'
+       AND jsonb_array_length(q.stage_output -> 'classify' -> 'ocr_text_per_page') >= 1
+     GROUP BY p.status
+"""
+
+BLOB_SAMPLE_SQL = """
+    SELECT q.blob_path
+      FROM document_routing_proposal p
+      JOIN intake_queue q ON q.id = p.queue_id
+     WHERE q.source = 'whatsapp' AND p.status = 'review_pending'
+     ORDER BY p.created_at {direction}
+     LIMIT $1
+"""
+
+COMPANIES_ROWS_SQL = "SELECT count(*) AS n FROM companies"
+
+ORPHAN_DONE_SQL = """
+    SELECT q.source, count(*) AS n
+      FROM intake_queue q
+      LEFT JOIN document_routing_proposal p ON p.queue_id = q.id
+     WHERE q.status = 'done' AND p.id IS NULL
+     GROUP BY q.source
+"""
+
+SUPERSEDED_ORPHAN_SQL = f"""
+    SELECT count(*) AS n
+      FROM intake_queue q
+     WHERE q.status = 'done'
+       AND EXISTS (SELECT 1 FROM document_routing_proposal p WHERE p.queue_id = q.id)
+       AND NOT EXISTS (
+             SELECT 1
+               FROM document_routing_proposal p
+              WHERE p.queue_id = q.id
+                AND p.status = ANY({_LIVE_STATUS_SQL_ARRAY}::text[])
+           )
+"""
+
+ZOMBIE_SQL = """
+    SELECT count(*) AS n
+      FROM document_routing_proposal
+     WHERE status = 'review_claimed' AND lease_expires_at IS NULL
+"""
+
+UNDELIVERED_COMMITTED_SQL = """
+    SELECT
+        count(*) FILTER (WHERE file_id IS NULL) AS undelivered,
+        count(*)                                AS total
+      FROM documents
+     WHERE intake_proposal_id IS NOT NULL
+"""
+
+DEAD_LAST_24H_SQL = """
+    SELECT count(*) AS n
+      FROM intake_queue
+     WHERE status = 'dead' AND updated_at > now() - interval '24 hours'
+"""
+
+WA_MEDIA_LAST_24H_SQL = """
+    SELECT count(*) AS n
+      FROM whatsapp_message_context
+     WHERE media_stored_path IS NOT NULL
+       AND created_at > now() - interval '24 hours'
+"""
+
+
+# ---------------------------------------------------------------- side effects (module-level, monkeypatchable)
+
+
+def _resolve_py3() -> str:
+    for candidate in _PY3_CANDIDATES:
+        if Path(candidate).is_file():
+            return candidate
+    return sys.executable  # last resort — never crash over interpreter resolution
+
+
+def _tg_notify(tier: str, dedup_key: str, text: str) -> bool:
+    """Route through the tg_notify gateway; never raises."""
+    try:
+        gateway = _REPO / "scripts" / "tg_notify.py"
+        if not gateway.is_file():
+            logger.warning("[intake_health_report] tg_notify.py missing at %s", gateway)
+            return False
+        res = subprocess.run(
+            [_resolve_py3(), str(gateway), "--tier", tier,
+             "--source", "intake-health-report", "--dedup-key", dedup_key, "--", text],
+            capture_output=True, text=True, timeout=30,
+        )
+        verdict = extract_gateway_verdict(res.stderr)
+        logger.info("[intake_health_report] tg_notify: %s", verdict or f"NESSUN verdetto rc={res.returncode}")
+        return res.returncode == 0 and gateway_delivered(verdict)
+    except Exception as exc:  # noqa: BLE001 — never raises
+        logger.warning("[intake_health_report] tg_notify failed: %s", exc)
+        return False
+
+
+def _heartbeat(status: str, note: str = "") -> None:
+    try:
+        from scripts.lib.heartbeat import organism_heartbeat
+
+        organism_heartbeat(ORGAN_ID, status, note=note)
+    except Exception as exc:  # noqa: BLE001 — never raises
+        logger.warning("[intake_health_report] heartbeat write failed: %s", exc)
+
+
+def _write_state(report: dict[str, Any]) -> None:
+    try:
+        STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        tmp = STATE_PATH.with_suffix(STATE_PATH.suffix + f".tmp.{os.getpid()}")
+        tmp.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        os.replace(tmp, STATE_PATH)
+    except OSError as exc:
+        logger.warning("[intake_health_report] state write failed: %s", exc)
+
+
+def _acquire_lock_or_exit() -> int | None:
+    LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(str(LOCK_FILE), os.O_CREAT | os.O_RDWR, 0o644)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return fd
+    except BlockingIOError:
+        logger.info("[intake_health_report] another instance running, skipping")
+        os.close(fd)
+        return None
+
+
+# ---------------------------------------------------------------- pure helpers (unit-tested, no DB/network)
+
+
+def worker_log_path() -> Path:
+    """Resolve the intake-worker's StandardErrorPath from its own plist —
+    never hardcode a duplicate of what the plist already declares."""
+    try:
+        payload = plistlib.loads(WORKER_PLIST_PATH.read_bytes())
+        raw = payload.get("StandardErrorPath")
+        if isinstance(raw, str) and raw:
+            return Path(raw).expanduser()
+    except (OSError, ValueError) as exc:
+        logger.warning(
+            "[intake_health_report] could not read worker plist %s (%s) — falling back to %s",
+            WORKER_PLIST_PATH, exc, _FALLBACK_WORKER_LOG,
+        )
+    return _FALLBACK_WORKER_LOG
+
+
+def blob_presence(paths: list[str]) -> dict[str, Any]:
+    """os.path.exists over a caller-supplied sample. Pure — the caller owns
+    SAMPLING (which rows, how many); this only judges presence."""
+    sampled = len(paths)
+    present = sum(1 for p in paths if p and os.path.exists(p))
+    return {
+        "sampled": sampled,
+        "present": present,
+        "rate": round(present / sampled, 4) if sampled else None,
+    }
+
+
+def build_report(
+    *,
+    status_counts: dict[str, int],
+    all_pages_empty_rows: list[dict[str, Any]],
+    blob_newest: list[str],
+    blob_oldest: list[str],
+    companies_rows: int,
+    orphan_rows: list[dict[str, Any]],
+    superseded_orphans: int | None,
+    zombie_count: int,
+    undelivered: dict[str, int],
+    worker_log_exists: bool,
+    dead_last_24h: int,
+    wa_media_last_24h: int,
+    generated_at: str,
+) -> dict[str, Any]:
+    """Assemble the final report dict from already-fetched raw values. Pure —
+    no DB, no I/O beyond the blob_presence() calls already made by the
+    caller — so the JSON shape is unit-testable with canned inputs."""
+    review_pending_total = int(status_counts.get("review_pending_total") or 0)
+    zero_candidate_count = int(status_counts.get("zero_candidate_count") or 0)
+    zero_candidate_rate = (
+        round(zero_candidate_count / review_pending_total, 4) if review_pending_total else None
+    )
+
+    empty_by_status: dict[str, dict[str, Any]] = {}
+    for row in all_pages_empty_rows:
+        status = row["status"]
+        all_empty = int(row["all_empty"] or 0)
+        denom = int(row["denominator"] or 0)
+        empty_by_status[status] = {
+            "count": all_empty,
+            "denominator": denom,
+            "rate": round(all_empty / denom, 4) if denom else None,
+        }
+    for status in ("quarantine", "review_pending"):
+        empty_by_status.setdefault(status, {"count": 0, "denominator": 0, "rate": None})
+    overall_count = sum(v["count"] for v in empty_by_status.values())
+    overall_denom = sum(v["denominator"] for v in empty_by_status.values())
+
+    orphans_by_source = {row["source"]: int(row["n"] or 0) for row in orphan_rows}
+
+    return {
+        "generated_at": generated_at,
+        "review_pending_wa": int(status_counts.get("review_pending_wa") or 0),
+        "review_pending_total": review_pending_total,
+        "quarantine_total": int(status_counts.get("quarantine_total") or 0),
+        "duplicate_total": int(status_counts.get("duplicate_total") or 0),
+        "zero_candidate_rate": {
+            "count": zero_candidate_count,
+            "denominator": review_pending_total,
+            "rate": zero_candidate_rate,
+        },
+        "all_pages_empty": {
+            "by_status": empty_by_status,
+            "overall_rate": round(overall_count / overall_denom, 4) if overall_denom else None,
+        },
+        "blob_present": {
+            "newest": blob_presence(blob_newest),
+            "oldest": blob_presence(blob_oldest),
+        },
+        "companies_rows": int(companies_rows),
+        "orphans_done_without_proposal": orphans_by_source,
+        "superseded_orphans_true": superseded_orphans,
+        "zombie_review_claimed_null_lease": int(zombie_count),
+        "undelivered_committed": {
+            "undelivered": int(undelivered.get("undelivered") or 0),
+            "total": int(undelivered.get("total") or 0),
+        },
+        "worker_log_inode_exists": bool(worker_log_exists),
+        "dead_last_24h": int(dead_last_24h),
+        "wa_media_last_24h": int(wa_media_last_24h),
+    }
+
+
+def evaluate_breaches(report: dict[str, Any], thresholds: dict[str, float]) -> list[dict[str, str]]:
+    """Pure threshold evaluation. Returns a list of {metric, message} — empty
+    when nothing breaches. Each rule is independently guilt/innocence-tested."""
+    breaches: list[dict[str, str]] = []
+
+    companies_rows = report["companies_rows"]
+    if companies_rows < thresholds["companies_min_rows"]:
+        breaches.append({
+            "metric": "companies_rows",
+            "message": f"companies table has {companies_rows} rows (min {thresholds['companies_min_rows']})",
+        })
+
+    newest = report["blob_present"]["newest"]
+    if newest["sampled"] and newest["rate"] is not None and newest["rate"] < thresholds["blob_present_min"]:
+        breaches.append({
+            "metric": "blob_present_newest",
+            "message": (
+                f"blob-present rate on newest review_pending sample is "
+                f"{newest['rate']:.2%} ({newest['present']}/{newest['sampled']}), "
+                f"below {thresholds['blob_present_min']:.0%}"
+            ),
+        })
+
+    quarantine_empty = report["all_pages_empty"]["by_status"].get("quarantine", {})
+    q_rate = quarantine_empty.get("rate")
+    if q_rate is not None and q_rate > thresholds["all_empty_max"]:
+        breaches.append({
+            "metric": "all_pages_empty_quarantine",
+            "message": (
+                f"all-pages-empty rate among quarantined WhatsApp docs is {q_rate:.2%} "
+                f"({quarantine_empty['count']}/{quarantine_empty['denominator']}), "
+                f"above {thresholds['all_empty_max']:.0%}"
+            ),
+        })
+
+    zombie = report["zombie_review_claimed_null_lease"]
+    if zombie > thresholds["zombie_max"]:
+        breaches.append({
+            "metric": "zombie_review_claimed",
+            "message": f"{zombie} review_claimed proposal(s) with NULL lease_expires_at (max {thresholds['zombie_max']})",
+        })
+
+    if not report["worker_log_inode_exists"]:
+        breaches.append({
+            "metric": "worker_log_missing",
+            "message": "intake-worker StandardErrorPath log file does not exist on disk",
+        })
+
+    return breaches
+
+
+def render_digest(report: dict[str, Any]) -> str:
+    """The 6 headline numbers for the daily digest line."""
+    zc = report["zero_candidate_rate"]["rate"]
+    zc_pct = f"{zc:.1%}" if zc is not None else "n/a"
+    bp = report["blob_present"]["newest"]["rate"]
+    bp_pct = f"{bp:.1%}" if bp is not None else "n/a"
+    return (
+        f"📋 Intake health: review_pending={report['review_pending_total']} "
+        f"(wa={report['review_pending_wa']}) quarantine={report['quarantine_total']} "
+        f"duplicate={report['duplicate_total']} zero_candidate={zc_pct} "
+        f"blob_present(newest)={bp_pct}"
+    )
+
+
+# ---------------------------------------------------------------- DB fetchers (thin, async)
+
+
+async def _fetch_superseded_orphans(conn: Any, timeout_ms: int) -> int | None:
+    try:
+        await conn.execute(f"SET statement_timeout = '{int(timeout_ms)}'")
+        row = await conn.fetchrow(SUPERSEDED_ORPHAN_SQL)
+        return int(row["n"])
+    except asyncpg.exceptions.QueryCanceledError:
+        logger.warning(
+            "[intake_health_report] superseded_orphans query exceeded %sms — reporting null",
+            timeout_ms,
+        )
+        return None
+    finally:
+        try:
+            await conn.execute("SET statement_timeout = DEFAULT")
+        except Exception:  # noqa: BLE001 — never let cleanup crash the report
+            pass
+
+
+async def gather(conn: Any, *, superseded_timeout_ms: int) -> dict[str, Any]:
+    """Run every metric query against `conn` (real or fake) and assemble the
+    final report dict. The only I/O outside `conn` is os.path.exists() on the
+    sampled blob paths and the worker plist read — both pure-function-wrapped
+    above so a test can exercise them without a filesystem fixture if desired."""
+    status_row = await conn.fetchrow(STATUS_COUNTS_SQL)
+    all_pages_empty_rows = [dict(r) for r in await conn.fetch(ALL_PAGES_EMPTY_SQL)]
+    newest_rows = await conn.fetch(BLOB_SAMPLE_SQL.format(direction="DESC"), 300)
+    oldest_rows = await conn.fetch(BLOB_SAMPLE_SQL.format(direction="ASC"), 50)
+    companies_row = await conn.fetchrow(COMPANIES_ROWS_SQL)
+    orphan_rows = [dict(r) for r in await conn.fetch(ORPHAN_DONE_SQL)]
+    superseded_orphans = await _fetch_superseded_orphans(conn, superseded_timeout_ms)
+    zombie_row = await conn.fetchrow(ZOMBIE_SQL)
+    undelivered_row = await conn.fetchrow(UNDELIVERED_COMMITTED_SQL)
+    dead_row = await conn.fetchrow(DEAD_LAST_24H_SQL)
+    wa_media_row = await conn.fetchrow(WA_MEDIA_LAST_24H_SQL)
+
+    return build_report(
+        status_counts=dict(status_row),
+        all_pages_empty_rows=all_pages_empty_rows,
+        blob_newest=[r["blob_path"] for r in newest_rows],
+        blob_oldest=[r["blob_path"] for r in oldest_rows],
+        companies_rows=companies_row["n"],
+        orphan_rows=orphan_rows,
+        superseded_orphans=superseded_orphans,
+        zombie_count=zombie_row["n"],
+        undelivered=dict(undelivered_row),
+        worker_log_exists=worker_log_path().exists(),
+        dead_last_24h=dead_row["n"],
+        wa_media_last_24h=wa_media_row["n"],
+        generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    )
+
+
+def _thresholds_from_env() -> dict[str, float]:
+    return {
+        "companies_min_rows": float(os.getenv("INTAKE_HEALTH_COMPANIES_MIN_ROWS", "1")),
+        "blob_present_min": float(os.getenv("INTAKE_HEALTH_BLOB_PRESENT_MIN", "0.5")),
+        "all_empty_max": float(os.getenv("INTAKE_HEALTH_ALL_EMPTY_MAX", "0.5")),
+        "zombie_max": float(os.getenv("INTAKE_HEALTH_ZOMBIE_MAX", "0")),
+    }
+
+
+async def run(*, dry_run: bool, json_only: bool) -> int:
+    if os.getenv("INTAKE_HEALTH_REPORT_ENABLED", "true").strip().lower() in ("0", "false", "no"):
+        logger.info("[intake_health_report] disabled via INTAKE_HEALTH_REPORT_ENABLED — no-op")
+        _heartbeat("disabled", "INTAKE_HEALTH_REPORT_ENABLED=false")
+        print(json.dumps({"status": "disabled"}))
+        return 0
+
+    lock_fd = _acquire_lock_or_exit()
+    if lock_fd is None:
+        return 0
+    try:
+        dsn = os.getenv("INTAKE_DATABASE_URL") or os.getenv("LOCAL_DATABASE_URL") or DEFAULT_DSN
+        timeout_ms = int(os.getenv("INTAKE_HEALTH_SUPERSEDED_TIMEOUT_MS", "60000"))
+        try:
+            conn = await asyncpg.connect(
+                dsn, server_settings={"default_transaction_read_only": "on"}
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.error("[intake_health_report] DB connect failed: %s", exc)
+            _heartbeat("error", f"db connect failed: {exc}")
+            return 1
+
+        try:
+            report = await gather(conn, superseded_timeout_ms=timeout_ms)
+        finally:
+            await conn.close()
+
+        thresholds = _thresholds_from_env()
+        breaches = evaluate_breaches(report, thresholds)
+        report["breaches"] = breaches
+
+        print(json.dumps(report, indent=2, sort_keys=True))
+
+        if json_only:
+            return 0
+
+        if not dry_run:
+            _write_state(report)
+
+        _heartbeat("ok" if not breaches else "degraded", note=f"breaches={len(breaches)}")
+
+        if not dry_run:
+            _tg_notify("digest", "intake-health:daily", render_digest(report))
+            for breach in breaches:
+                _tg_notify("p0", f"intake-health:{breach['metric']}", f"🚨 {breach['message']}")
+
+        return 0
+    finally:
+        try:
+            fcntl.flock(lock_fd, fcntl.LOCK_UN)
+            os.close(lock_fd)
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0] if __doc__ else "")
+    parser.add_argument("--dry-run", action="store_true", help="no Telegram, no state-file write")
+    parser.add_argument("--json-only", action="store_true", help="pure read: JSON to stdout, no side effects at all")
+    args = parser.parse_args()
+    return asyncio.run(run(dry_run=args.dry_run, json_only=args.json_only))
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except KeyboardInterrupt:
+        sys.exit(130)

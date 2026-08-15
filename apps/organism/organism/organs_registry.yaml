@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 22bbcf39b0b2060ff8695f240d46deca09d212f7bc3930bd89f3557951b79b9f
+checksum: 08499d8c2fbda0e97b0195d7ecc371b423ddfd651509a3aff24f652c7bec2275
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2386,5 +2386,53 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/army.spark_lane.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.intake_health_report
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/intake_health_report.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.intake-health-report
+  severity_on_silence: warning
+  notes: W0 read-only guardian, daily 07:30 WITA. SELECT-only against local
+    nuzantara_dev (Law 2) — review load, C-02 empty-OCR noise class, C-01 blob
+    presence for the review feed, C-29 companies-table sanity, C-07
+    done-without-proposal orphans, C-05 zombie review_claimed proposals, C-08
+    undelivered committed documents, the intake-worker's own log inode, and
+    24h freshness counters. One JSON object plus one Telegram digest line plus
+    a p0 escalation per breached threshold. Never writes DB.
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.intake_health_report.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.wa_mirror_freshness_liveness
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 1350
+  owner_module: scripts/wa_mirror_freshness_liveness.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.wa-mirror-freshness-liveness
+  severity_on_silence: warning
+  notes: W0 read-only guardian, every 900s. SELECT-only max(created_at) off
+    whatsapp_message_context (local nuzantara_dev). ONLY during business
+    hours Mon-Sat 08:00-20:00 Asia/Makassar, alerts --tier p0 (dedup key
+    wa-mirror:freshness:stale) once when the newest row is older than
+    WA_FRESHNESS_MAX_AGE_MIN (default 360min) — a dead intake channel during
+    business hours, not the benign overnight quiet Law 6 already covers.
+    Never writes DB.
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.wa_mirror_freshness_liveness.json
     timestamp_field: ts
     status_field: status
