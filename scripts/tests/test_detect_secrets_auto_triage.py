@@ -43,7 +43,9 @@ failure — a real digest getting rejected because the anchor now bites.
 
 from __future__ import annotations
 
-from scripts.detect_secrets_auto_triage import CONTENT_KEYED_RULES, classify
+from pathlib import Path
+
+from scripts.detect_secrets_auto_triage import CONTENT_KEYED_RULES, classify, triage
 
 CHECK_WORKER_PLANE_REVIEW = "scripts/check_worker_plane_review.py"
 LAUNCH_WORKER_PLANE_REVIEW_PANEL = "scripts/launch_worker_plane_review_panel.py"
@@ -215,10 +217,11 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     """Sanity: the KBLI gold-set rule is path-scoped to kbli-gold-all.json
     only — not the other KBLI files, which stay on the closed-writer-set
     path rules in AUTO_APPROVE_RULES."""
-    assert len(CONTENT_KEYED_RULES) == 8  # +1: infra/llm-credentials/declared.json sha256_16 (2026-08-12)
+    assert len(CONTENT_KEYED_RULES) == 9  # +1: infra/llm-credentials/declared.json sha256_16 (2026-08-12)
     # +1: apps/backend-rag/backend/scripts/visa_engine/gold_replay_driver.py public_key (2026-08-13)
     # +1: research/visa/2026-08-12-gold-replay-live-report.json payload_sha256 (2026-08-13)
     # +1: scripts/lint_telegram_tokens.py KNOWN_COMPROMISED sha256[:16] key (2026-08-14)
+    # +1: traffic-source fail-closed proof identity/integrity anchors (2026-08-15)
     path_pat, _content_pat, reason = CONTENT_KEYED_RULES[1]
     assert path_pat.search(KBLI_GOLD_ALL)
     assert not path_pat.search("apps/mouth/data/KBLI_2025_FINAL_CLEAN.json")
@@ -825,3 +828,105 @@ def test_innocence_a_credential_elsewhere_in_the_same_file_is_not_approved() -> 
     added later on an unrelated line must still stop the gate."""
     _path_pat, content_pat, _reason = _telegram_rule()
     assert content_pat.match('    api_key = "ghp_' + "y" * 36 + '"') is None
+
+
+# --- traffic-source fail-closed live-proof identity anchors (2026-08-15) ---
+
+TRAFFIC_SOURCE_LIVE_PROOF = (
+    "research/visa/2026-08-15-traffic-source-fail-closed-live-proof.json"
+)
+TRAFFIC_SOURCE_CI_FINDING_LINES = [27, 33, 46, 67, 76, 85]
+
+
+def _traffic_source_live_proof_rule():
+    """Find by covered entity, never a positional list index."""
+    matches = [
+        rule
+        for rule in CONTENT_KEYED_RULES
+        if rule[0].search(TRAFFIC_SOURCE_LIVE_PROOF)
+    ]
+    assert len(matches) == 1
+    return matches[0]
+
+
+def test_traffic_source_live_proof_rule_is_exact_path_scoped() -> None:
+    path_pat, _content_pat, reason = _traffic_source_live_proof_rule()
+    assert path_pat.search(TRAFFIC_SOURCE_LIVE_PROOF)
+    assert not path_pat.search(f"{TRAFFIC_SOURCE_LIVE_PROOF}.bak")
+    assert not path_pat.search(
+        "research/visa/2026-08-16-traffic-source-fail-closed-live-proof.json"
+    )
+    assert "never bearer material" in reason
+
+
+def test_guilt_traffic_source_ci_findings_are_auto_approved() -> None:
+    """The exact six unaudited findings emitted by CI run 31859642168."""
+    for line_number in TRAFFIC_SOURCE_CI_FINDING_LINES:
+        auto, reason = classify(TRAFFIC_SOURCE_LIVE_PROOF, line_number)
+        assert auto, f"line {line_number} should be approved (got {reason!r})"
+
+
+def test_guilt_traffic_source_ci_residue_is_fully_triaged() -> None:
+    baseline = {
+        "results": {
+            TRAFFIC_SOURCE_LIVE_PROOF: [
+                {"line_number": line_number, "type": "Hex High Entropy String"}
+                for line_number in TRAFFIC_SOURCE_CI_FINDING_LINES
+            ]
+        }
+    }
+    updated, stats, residue = triage(baseline, apply=True)
+    assert stats == {
+        "auto_approved": 6,
+        "hard_blocked": 0,
+        "no_rule": 0,
+        "total": 6,
+    }
+    assert residue == []
+    assert all(
+        hit["is_secret"] is False
+        for hit in updated["results"][TRAFFIC_SOURCE_LIVE_PROOF]
+    )
+
+
+def test_guilt_every_declared_identity_anchor_shape_is_covered() -> None:
+    """Also cover duplicate values that detect-secrets de-duplicates today."""
+    _path_pat, content_pat, _reason = _traffic_source_live_proof_rule()
+    lines = Path(TRAFFIC_SOURCE_LIVE_PROOF).read_text(encoding="utf-8").splitlines()
+    matching_lines = [line for line in lines if content_pat.search(line)]
+    matching_keys = {
+        line.strip().split("\":", 1)[0].lstrip('"') for line in matching_lines
+    }
+    assert matching_keys == {
+        "api_machine",
+        "document_sha256",
+        "expected_merge_sha",
+        "head_sha",
+        "idempotency_key_sha256",
+        "instance",
+        "payload_sha256",
+        "traffic_source_parameter_sha256",
+    }
+
+
+def test_innocence_traffic_source_wrong_key_same_hash_shape_is_not_approved() -> None:
+    _path_pat, content_pat, _reason = _traffic_source_live_proof_rule()
+    assert content_pat.match('  "api_key_sha256": "' + "a" * 64 + '",') is None
+
+
+def test_innocence_traffic_source_wrong_widths_are_not_approved() -> None:
+    _path_pat, content_pat, _reason = _traffic_source_live_proof_rule()
+    assert content_pat.match('  "head_sha": "' + "a" * 64 + '",') is None
+    assert content_pat.match('  "api_machine": "' + "a" * 16 + '",') is None
+
+
+def test_innocence_traffic_source_ride_along_is_not_approved() -> None:
+    _path_pat, content_pat, _reason = _traffic_source_live_proof_rule()
+    compound = (
+        '  "payload_sha256": "'
+        + "a" * 64
+        + '", "api_key": "ghp_'
+        + "y" * 36
+        + '"'
+    )
+    assert content_pat.match(compound) is None
