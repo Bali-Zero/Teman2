@@ -8,12 +8,13 @@ import {
   getSectionMeta,
 } from "@/lib/kbli-data";
 import { getGoldContent } from "@/lib/kbli-gold-content";
+import { formatPmaOwnership } from "@/lib/kbli-pma-disclosure";
 import { KBLIBreadcrumb } from "@/components/kbli/KBLIBreadcrumb";
 import { PMABadge } from "@/components/kbli/PMABadge";
 import { RiskBadge } from "@/components/kbli/RiskBadge";
 import { TransitionBadge } from "@/components/kbli/TransitionBadge";
 import { BaliStatusBadge } from "@/components/kbli/BaliStatusBadge";
-import { getBaliL4, isBlockedInBali } from "@/lib/kbli-bali-l4";
+import { getBaliL4 } from "@/lib/kbli-bali-l4";
 import { cn } from "@/lib/utils";
 import { KBLICard } from "@/components/kbli/KBLICard";
 import { KBLICodeJsonLd } from "@/components/kbli/KBLIStructuredData";
@@ -46,14 +47,7 @@ export async function generateMetadata({
   const kbli = getCode(codeParam);
   if (!kbli) return { title: "KBLI Code Not Found" };
 
-  const pmaLabel =
-    kbli.pma.status === "open"
-      ? "100% Foreign Ownership"
-      : kbli.pma.status === "restricted"
-        ? kbli.pma.capSpecial
-          ? "Restricted (special distribution conditions)"
-          : `Restricted (max ${kbli.pma.maxForeign}% foreign)`
-        : "Closed to Foreign Investment";
+  const pmaLabel = formatPmaOwnership(kbli.pma, "metadata");
 
   return {
     title: `KBLI ${kbli.code} — ${kbli.titleEn} | KBLI 2025 Navigator`,
@@ -9344,19 +9338,28 @@ export default async function KBLICodePage({
   const kbli = getCode(codeParam);
   if (!kbli) notFound();
 
-  const gold = getGoldContent(kbli.code);
+  const pmaVerdictVerified = kbli.pma.verificationStatus === "located";
+  const gold = getGoldContent(kbli.code, kbli.pma);
   const related = getRelatedCodes(kbli.code, 6);
   const sectionMeta = kbli.section ? getSectionMeta(kbli.section) : null;
-  const baliL4 = getBaliL4(kbli.code); // L4: Bali-specific registrability (null if unknown)
+  const baliL4 = pmaVerdictVerified ? getBaliL4(kbli.code) : null;
   // PMA verdict aligned with the native app:
   //  - a special-distribution code (47221) is OPEN-with-conditions, never "closed"
   //  - national closure = TERTUTUP or 0% cap (and NOT special) dominates the verdict
-  //  - the "reserved-for-MSME / national procedure" callout shows ONLY when Bali actually blocks it
-  const baliBlocked = isBlockedInBali(kbli.code);
+  //  - the Bali / national-procedure callout shows ONLY when Bali actually blocks it
+  const baliBlocked = baliL4?.blocked === true;
   const nationallyClosed =
-    !kbli.pma.capSpecial &&
-    (kbli.pma.status === "closed" || kbli.pma.maxForeign === 0);
+    pmaVerdictVerified &&
+    !(
+      kbli.pma.capVerified === true &&
+      kbli.pma.capSpecial === true &&
+      kbli.pma.maxForeign === "special"
+    ) &&
+    (kbli.pma.status === "closed" ||
+      (kbli.pma.capVerified && kbli.pma.maxForeign === 0));
   const pmaBlocked = baliBlocked || nationallyClosed;
+  const baliVerdictMissing =
+    pmaVerdictVerified && !nationallyClosed && baliL4 === null;
 
   const breadcrumbs = [
     { label: "KBLI Navigator", href: "/kbli" },
@@ -9487,37 +9490,45 @@ export default async function KBLICodePage({
             <div
               className={cn(
                 "mt-5 rounded-xl border px-4 py-3",
-                pmaBlocked
-                  ? "border-[var(--kbli-pma-closed)]/30 bg-[var(--kbli-pma-closed-bg)]"
-                  : "border-[var(--kbli-pma-open)]/30 bg-[var(--kbli-pma-open-bg)]"
+                !pmaVerdictVerified || baliVerdictMissing
+                  ? "border-white/10 bg-white/5"
+                  : pmaBlocked
+                    ? "border-[var(--kbli-pma-closed)]/30 bg-[var(--kbli-pma-closed-bg)]"
+                    : "border-[var(--kbli-pma-open)]/30 bg-[var(--kbli-pma-open-bg)]",
               )}
             >
               <p
                 className={cn(
                   "text-base font-semibold",
-                  pmaBlocked
-                    ? "text-[var(--kbli-pma-closed)]"
-                    : "text-[var(--kbli-pma-open)]"
+                  !pmaVerdictVerified || baliVerdictMissing
+                    ? "text-white/70"
+                    : pmaBlocked
+                      ? "text-[var(--kbli-pma-closed)]"
+                      : "text-[var(--kbli-pma-open)]",
                 )}
               >
-                {nationallyClosed
-                  ? `Closed to PMA (national)${kbli.pma.routeTo ? ` — route to the private code ${kbli.pma.routeTo}` : ""}`
-                  : baliBlocked
-                    ? "In Bali: a PT PMA cannot register this code"
-                    : "In Bali: open to a PT PMA"}
+                {!pmaVerdictVerified
+                  ? "PMA status not yet verified — confirm the current per-code basis before relying on an ownership verdict"
+                  : nationallyClosed
+                    ? `Closed to PMA (national)${kbli.pma.routeTo ? ` — route to the private code ${kbli.pma.routeTo}` : ""}`
+                    : baliVerdictMissing
+                      ? "Bali-specific status not verified — do not infer registrability from a missing Bali record"
+                      : baliBlocked
+                        ? "In Bali: a PT PMA cannot register this code"
+                        : "Bali record: not blocked by the provincial restriction; national ownership and licensing rules still apply"}
               </p>
             </div>
 
-            {/* Reserved-for-MSME / national-procedure callout — ONLY when Bali actually blocks it */}
+            {/* Bali / national-procedure callout — ONLY when Bali actually blocks it */}
             {baliBlocked && !nationallyClosed && (
               <div className="mt-3 rounded-xl border border-[var(--kbli-pma-restricted)]/30 bg-[var(--kbli-pma-restricted-bg)] px-4 py-3">
                 <p className="text-sm font-semibold text-[var(--kbli-pma-restricted)]">
                   National procedure — does not apply to a PT PMA in Bali
                 </p>
                 <p className="mt-1 text-sm text-[var(--kbli-text-muted)]">
-                  In Bali this activity is reserved for MSMEs; a PT PMA (large
-                  enterprise) cannot register it. The national procedure below
-                  applies only to non-PMA operators.
+                  The verified Bali record blocks this activity for a PT PMA.
+                  The national procedure below applies only to non-PMA
+                  operators.
                 </p>
               </div>
             )}
@@ -9527,6 +9538,7 @@ export default async function KBLICodePage({
               <PMABadge
                 status={kbli.pma.status}
                 maxForeign={kbli.pma.maxForeign}
+                verdictVerified={pmaVerdictVerified}
                 capSpecial={kbli.pma.capSpecial}
                 capVerified={kbli.pma.capVerified}
               />
@@ -10050,15 +10062,7 @@ export default async function KBLICodePage({
                           Foreign Ownership
                         </span>
                         <span className="text-sm font-semibold text-[var(--foreground)]">
-                          {kbli.pma.capSpecial
-                            ? "Restricted · special conditions"
-                            : kbli.pma.status === "open"
-                              ? `${kbli.pma.maxForeign}% Open`
-                              : kbli.pma.status === "restricted"
-                                ? kbli.pma.capVerified
-                                  ? `Max ${kbli.pma.maxForeign}%`
-                                  : `≈${kbli.pma.maxForeign}% (unverified)`
-                                : "Closed"}
+                          {formatPmaOwnership(kbli.pma)}
                         </span>
                       </div>
                       <div
@@ -10209,8 +10213,10 @@ export default async function KBLICodePage({
                 section: kbli.section ?? "",
               }}
               opener={
-                gold?.zantaraOpener ??
-                `Ask me anything about KBLI ${kbli.code} — ${kbli.titleEn}. Licensing, PMA rules, what changed in 2025, or how it works in Bali.`
+                pmaVerdictVerified
+                  ? (gold?.zantaraOpener ??
+                    `Ask me anything about KBLI ${kbli.code} — ${kbli.titleEn}. Licensing, PMA rules, what changed in 2025, or how it works in Bali.`)
+                  : `Ask me about KBLI ${kbli.code} — ${kbli.titleEn}. Its activity scope and licensing are available; the whole-code foreign-ownership verdict still needs per-code verification.`
               }
               suggestions={[
                 `What do I need to start a ${kbli.titleEn.toLowerCase()} business?`,

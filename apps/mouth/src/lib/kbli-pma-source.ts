@@ -42,9 +42,7 @@ export function pmaSourceNoteFaq(
   provenanceStatus: KBLIProvenance["pma"]["status"],
 ): string {
   if (provenanceStatus === "declared_gap") {
-    return source
-      ? ` (Instrument context recorded as ${source}, but no adjudicated per-code official basis and vintage currently verify this verdict; confirm it at oss.go.id before relying on it.)`
-      : " (No adjudicated per-code official basis and vintage currently verify this verdict; confirm it at oss.go.id before relying on it.)";
+    return " (No adjudicated per-code official basis and vintage currently verify this verdict; confirm it at oss.go.id before relying on it.)";
   }
   if (!source) return "";
   return ` (Source: ${source}.)`;

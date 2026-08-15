@@ -1,7 +1,4 @@
-import {
-  humanizeInternalEnums,
-  humanizeIntelBlock,
-} from "@/lib/kbli-status-labels";
+import { humanizeIntelBlock } from "@/lib/kbli-status-labels";
 import fs from "fs";
 import path from "path";
 import type {
@@ -12,11 +9,20 @@ import type {
   KBLIPmaStatus,
 } from "./kbli-types";
 import { resolveLicenseType } from "./kbli-derive";
-import { resolvePmaCap } from "./kbli-pma-cap";
-import { perpresCitation } from "./kbli-perpres-locator";
-import { deriveProvenance, knownPmaRawStatus } from "./kbli-provenance";
+import {
+  hasCertifiedCanonicalIntel,
+  hasCertifiedMouthGold,
+  withNeutralKbliChatOpener,
+} from "./kbli-editorial-certification";
+import {
+  discloseBaliL4,
+  disclosePmaInfo,
+  normalizedPmaStatus,
+} from "./kbli-pma-disclosure";
+import { deriveProvenance } from "./kbli-provenance";
 import { riskDispute } from "./kbli-risk-dispute";
 import { perpresSlice } from "./kbli-perpres-slice";
+import { perpresCitation } from "./kbli-perpres-locator";
 import { getSectionFromCode } from "./kbli-section";
 
 // Section names mapping
@@ -152,13 +158,16 @@ export function getCode(code: string): KBLICode | undefined {
  * change, then re-measured against the gold file before fixing.
  */
 export function getGoldContent(code: string): KBLIGoldContent | null {
+  const pma = getCode(code)?.pma;
   const raw = loadGoldData()[code];
-  return raw ? humanizeIntelBlock(raw) : null;
+  if (!pma || !hasCertifiedMouthGold(code, pma, raw)) return null;
+  return humanizeIntelBlock(withNeutralKbliChatOpener(code, raw));
 }
 
 /** Check if a code has gold content */
 export function hasGoldContent(code: string): boolean {
-  return code in loadGoldData();
+  const pma = getCode(code)?.pma;
+  return Boolean(pma && hasCertifiedMouthGold(code, pma, loadGoldData()[code]));
 }
 
 let _datasetLastModified: Date | null = null;
@@ -195,7 +204,12 @@ export function getKbliDatasetLastModified(): Date {
 
 /** Get all codes that have gold content */
 export function getGoldCodes(): string[] {
-  return Object.keys(loadGoldData());
+  const gold = loadGoldData();
+  return getAllCodes()
+    .filter((code) =>
+      hasCertifiedMouthGold(code.code, code.pma, gold[code.code]),
+    )
+    .map((code) => code.code);
 }
 
 /** Get all unique sections with metadata */
@@ -251,6 +265,9 @@ function transformCode(
 ): KBLICode {
   const code = raw.kode_kbli_2025;
   const provenance = deriveProvenance(raw);
+  const pma = disclosePmaInfo(raw, provenance, perpresCitation(code));
+  const pmaVerdictLocated = pma.verificationStatus === "located";
+  const baliL4 = discloseBaliL4(raw, pmaVerdictLocated);
   // Mandate 12 fix (2026-08-09, PENDING-ARMS.md "sektor_id is not a
   // malformed KBLI section"): the section is derived from the code's
   // 2-digit prefix, the same single source of truth kbli-data.ts uses —
@@ -259,7 +276,13 @@ function transformCode(
   // codes onto the single fake section "I". An unmapped prefix returns
   // null (honest "unknown"), not a silent default to any letter.
   const section = getSectionFromCode(code);
-  const goldEntry = gold[code];
+  const rawGoldEntry = gold[code];
+  const goldEntry = hasCertifiedMouthGold(code, pma, rawGoldEntry)
+    ? rawGoldEntry
+    : undefined;
+  const canonicalIntel = hasCertifiedCanonicalIntel(code, pma, raw.intel_2026)
+    ? raw.intel_2026
+    : undefined;
 
   // Merge intel: gold content takes precedence for the editorial fields. EXCEPTION:
   // `baliContext` on a Bali-BLOCKED code. The static gold baliContext is stale for
@@ -270,9 +293,9 @@ function transformCode(
   // is blocked AND the gold text reads as a foreign-ownership go-ahead, prefer the
   // live L4 text; otherwise keep the richer gold editorial.
   const goldBali = goldEntry?.baliContext || "";
-  const liveBali = raw.intel_2026?.baliContext || raw.l4_bali?.reason || "";
+  const liveBali = canonicalIntel?.baliContext || baliL4?.reason || "";
   const goldBaliMisleads =
-    !!raw.l4_bali?.blocked &&
+    baliL4?.blocked === true &&
     /\b(PT PMA|100% foreign|foreign-owned|open to foreign)\b/i.test(goldBali);
   // Internal pipeline symbols resolved to the labels the badges use — the gold
   // layer inherited the same narration, so it needs the same pass. Presentation
@@ -284,19 +307,21 @@ function transformCode(
           whatYouNeed: goldEntry.whatYouNeed || "",
           whatChanged: goldEntry.whatChanged || "",
           baliContext: goldBaliMisleads && liveBali ? liveBali : goldBali,
-          zantaraOpener: goldEntry.zantaraOpener || "",
+          zantaraOpener: withNeutralKbliChatOpener(code, goldEntry)
+            .zantaraOpener,
           youllAlsoNeed: goldEntry.youllAlsoNeed || "",
           coverImage: raw.intel_2026?.coverImage || null,
         }
-      : raw.intel_2026
+      : canonicalIntel
         ? {
-            whatItMeans: raw.intel_2026.whatItMeans || "",
-            whatYouNeed: raw.intel_2026.whatYouNeed || "",
-            whatChanged: raw.intel_2026.whatChanged || "",
-            baliContext: raw.intel_2026.baliContext || "",
-            zantaraOpener: raw.intel_2026.zantaraOpener || "",
-            youllAlsoNeed: raw.intel_2026.youllAlsoNeed || "",
-            coverImage: raw.intel_2026.coverImage || null,
+            whatItMeans: canonicalIntel.whatItMeans || "",
+            whatYouNeed: canonicalIntel.whatYouNeed || "",
+            whatChanged: canonicalIntel.whatChanged || "",
+            baliContext: canonicalIntel.baliContext || "",
+            zantaraOpener: withNeutralKbliChatOpener(code, canonicalIntel)
+              .zantaraOpener,
+            youllAlsoNeed: canonicalIntel.youllAlsoNeed || "",
+            coverImage: canonicalIntel.coverImage || null,
           }
         : undefined,
   );
@@ -308,24 +333,7 @@ function transformCode(
     description: raw.uraian || "",
     section,
     sectionName: section ? SECTION_NAMES_EN[section] || section : null,
-    pma: {
-      status: mapPmaStatus(raw.pma_status),
-      maxForeign: resolvePmaCap(raw),
-      condition: raw.pma_kondisi,
-      isPriority: raw.pma_prioritas || false,
-      note: raw.pma_nota,
-      source: raw.pma_source,
-      verificationStatus: provenance.pma.status,
-      officialBasis: provenance.pma.locator,
-      sourceVintage: provenance.pma.vintage,
-      capSpecial: raw.pma_cap_special === true,
-      capVerified: raw.pma_cap_verified !== false,
-      routeTo: raw.pma_route_to ?? null,
-      // Same single source as the sibling reader in kbli-data.ts. The cap was
-      // once read in these two places with different defaults and rendered
-      // "0% Open" on a live page; the citation gets one writer from the start.
-      citation: perpresCitation(code),
-    },
+    pma,
     licensing: (raw.per_skala || []).map((s) => ({
       scales: s.skala_usaha,
       riskCategory: s.kategori_risiko,
@@ -355,27 +363,7 @@ function transformCode(
     },
     intel,
     // L4 — Bali sovereign-local status (national PMA openness != Bali registrability)
-    baliL4: raw.l4_bali?.status
-      ? {
-          status: raw.l4_bali.status,
-          // Reader-facing prose (badge tooltip + generated FAQ answer) — cured like
-          // the editorial layer. `_data_note` deliberately stays verbatim: there the
-          // symbol is cited AS EVIDENCE of divergence, not narrated at a reader.
-          reason: humanizeInternalEnums(raw.l4_bali.reason || ""),
-          confidence: raw.l4_bali.confidence || "MEDIUM",
-          needsReview: !!raw.l4_bali.needs_review,
-          blocked: !!raw.l4_bali.blocked,
-          from2020: raw.l4_bali.from_2020 ?? null,
-          moratorium: raw.l4_bali.moratorium
-            ? {
-                rule: raw.l4_bali.moratorium.rule || "",
-                effective: raw.l4_bali.moratorium.effective || "",
-                source: raw.l4_bali.moratorium.source || "",
-                virtualOffice: raw.l4_bali.moratorium.virtual_office || "",
-              }
-            : undefined,
-        }
-      : undefined,
+    baliL4,
     provenance,
     riskDispute: riskDispute(code) ?? undefined,
     // Same dual-reader discipline as riskDispute above — set in BOTH
@@ -388,9 +376,5 @@ function transformCode(
 }
 
 export function mapPmaStatus(status: string): KBLIPmaStatus {
-  const known = knownPmaRawStatus(status);
-  if (known === "TERBUKA") return "open";
-  if (known === "TERBATAS") return "restricted";
-  if (known === "TERTUTUP") return "closed";
-  return "unknown";
+  return normalizedPmaStatus(status);
 }

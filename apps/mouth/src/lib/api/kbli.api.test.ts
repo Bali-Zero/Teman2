@@ -49,4 +49,16 @@ describe("KBLI API PMA disclosure", () => {
     expect(isApiPmaVerdictVerified(future)).toBe(false);
     expect(apiPmaStatusLabel(future)).toBe("PMA not verified");
   });
+
+  it("fails closed without throwing when runtime provenance is non-text", () => {
+    const malformed = {
+      ...GAP_01111,
+      pma_verification_status: "located",
+      pma_official_basis: { locator: "not text" },
+      pma_source_vintage: ["2021-05-25"],
+    } as unknown as KBLIPmaDisclosure;
+
+    expect(isApiPmaVerdictVerified(malformed)).toBe(false);
+    expect(apiPmaStatusLabel(malformed)).toBe("PMA not verified");
+  });
 });

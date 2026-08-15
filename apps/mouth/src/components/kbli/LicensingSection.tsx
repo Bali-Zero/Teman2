@@ -20,7 +20,7 @@ import {
   isPmaVerdictVerified,
   licensingContentInheritedFrom,
 } from "@/lib/kbli-provenance";
-import { restrictedCapBadge } from "@/lib/kbli-pma-shape";
+import { formatPmaOwnership } from "@/lib/kbli-pma-disclosure";
 import {
   baliBlockClause,
   shouldShowReason,
@@ -207,6 +207,13 @@ function KeyFacts({
   /** rows served but not verified against a KBLI-2025-native OSS source */
   verificationPending?: boolean;
 }) {
+  const nationalOwnership = pmaVerified
+    ? formatPmaOwnership(pma)
+    : "Not verified — confirm in OSS";
+  const ownershipValue =
+    pmaVerified && baliBlocked
+      ? `National: ${nationalOwnership} · blocked in Bali`
+      : nationalOwnership;
   const primary = licensing[0];
   if (!primary) {
     // No OSS-RBA scale rows. Two honest readings, discriminated by the
@@ -234,15 +241,7 @@ function KeyFacts({
       },
       {
         label: "Foreign Ownership",
-        value: !pmaVerified
-          ? "Not verified — confirm in OSS"
-          : pma.status === "open"
-            ? baliBlocked
-              ? "100% nat'l · blocked in Bali"
-              : "100% Open"
-            : pma.status === "restricted"
-              ? restrictedCapBadge(pma)
-              : "Closed (0%)",
+        value: ownershipValue,
         accent: !pmaVerified
           ? "var(--foreground-muted)"
           : pma.status === "open" && !baliBlocked
@@ -304,15 +303,7 @@ function KeyFacts({
       // National PMA openness != Bali registrability. When the code is open
       // nationally but blocked for a PT PMA in Bali (l4_bali.blocked), don't
       // headline a green "100% Open" — qualify it, and drop the green accent.
-      value: !pmaVerified
-        ? "Not verified — confirm in OSS"
-        : pma.status === "open"
-          ? baliBlocked
-            ? "100% nat'l · blocked in Bali"
-            : "100% Open"
-          : pma.status === "restricted"
-            ? restrictedCapBadge(pma)
-            : "Closed (0%)",
+      value: ownershipValue,
       accent: !pmaVerified
         ? "var(--foreground-muted)"
         : pma.status === "open" && !baliBlocked
@@ -974,7 +965,7 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
   // correct NATIONAL procedure (open in Jakarta/Lombok/etc.) — but they must NOT
   // be read as a how-to for a foreign-owned company IN BALI. Frame, don't hide:
   // the steps are national truth; the Bali restriction is the local override.
-  const baliBlocked = !!kbli.baliL4?.blocked;
+  const baliBlocked = kbli.baliL4?.blocked === true;
   const pmaVerified = isPmaVerdictVerified(kbli);
   // GARUDA-FILIERA Fase-1 cure #4 (2026-07-17): a code whose Bali risk tier
   // was carried over from a different activity (code-number collision) is
@@ -1113,7 +1104,7 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
               <>
                 {" "}
                 The Bali position shown on this page is derived from the
-                record's tier, so it inherits this disagreement.
+                record&apos;s tier, so it inherits this disagreement.
               </>
             )}
           </p>

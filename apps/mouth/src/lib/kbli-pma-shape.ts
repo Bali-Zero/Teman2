@@ -47,7 +47,7 @@
  * call is how per-call-site phrasing gets reinvented in the first place.
  */
 export interface PmaShapeSource {
-  maxForeign: number | "special";
+  maxForeign: number | "special" | null;
   capSpecial: boolean;
   capVerified: boolean;
 }
@@ -83,7 +83,7 @@ export type PmaCapShape = "none" | "partial" | "full" | "conditional";
  * `Max special%` from reaching a public page again.
  */
 export function pmaCapShape(pma: PmaShapeSource): PmaCapShape {
-  if (pma.capSpecial) return "conditional";
+  if (pma.capSpecial && pma.maxForeign === "special") return "conditional";
 
   const cap = pma.maxForeign;
   if (typeof cap !== "number" || !Number.isFinite(cap)) return "conditional";
@@ -97,23 +97,30 @@ export function pmaCapShape(pma: PmaShapeSource): PmaCapShape {
  * The compact label the visible badges show for a TERBATAS code.
  *
  * Three call-sites rendered this independently — `LicensingSection` twice and
- * the detail page once — and they had already drifted: the page qualified an
- * unverified cap as `≈N% (unverified)`, the two badges printed a bare `Max N%`
- * for the same record. This adopts the page's (more careful) behaviour for all
- * three. Live delta today is zero: no restricted code carries
+ * the detail page once — and they had already drifted. An unverified value is
+ * now withheld completely: even an approximate percentage is still a public
+ * regulatory claim. Live delta today is zero: no restricted code carries
  * `pma_cap_verified: false` — the only two rows that do, 02101 and 03120, are
  * TERBUKA and never reach this branch.
  */
 export function restrictedCapBadge(pma: PmaShapeSource): string {
+  if (pma.capSpecial && pma.maxForeign === "special" && pma.capVerified) {
+    return "Conditions apply";
+  }
+  if (!pma.capVerified && pma.maxForeign !== null) {
+    return "Cap not verified";
+  }
+  if (typeof pma.maxForeign !== "number" || !Number.isFinite(pma.maxForeign)) {
+    return "Cap not published";
+  }
   switch (pmaCapShape(pma)) {
     case "none":
       return "Closed (0%)";
     case "full":
-    case "conditional":
       return "Conditions apply";
+    case "conditional":
+      return "Cap not published";
     default:
-      return pma.capVerified
-        ? `Max ${pma.maxForeign}%`
-        : `≈${pma.maxForeign}% (unverified)`;
+      return `Max ${pma.maxForeign}%`;
   }
 }

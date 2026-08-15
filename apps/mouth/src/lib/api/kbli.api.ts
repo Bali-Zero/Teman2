@@ -31,11 +31,15 @@ export interface KBLIPmaDisclosure {
 }
 
 export function isApiPmaVerdictVerified(record: KBLIPmaDisclosure): boolean {
+  const basis = record.pma_official_basis;
+  const vintage = record.pma_source_vintage;
   return (
     record.pma_verification_status === "located" &&
     !!knownPmaRawStatus(record.pma_status) &&
-    !!record.pma_official_basis?.trim() &&
-    !!record.pma_source_vintage?.trim()
+    typeof basis === "string" &&
+    !!basis.trim() &&
+    typeof vintage === "string" &&
+    !!vintage.trim()
   );
 }
 

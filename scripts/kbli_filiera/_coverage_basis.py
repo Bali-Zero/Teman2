@@ -140,20 +140,23 @@ def classify_pma(record: dict[str, Any]) -> str:
     almost every record and never explains the per-code verdict.
     """
     status = record.get("pma_verification_status")
+    pma_status = record.get("pma_status")
     basis = record.get("pma_official_basis")
     vintage = record.get("pma_source_vintage")
     if (
         status == "located"
+        and isinstance(pma_status, str)
+        and pma_status in {"TERBUKA", "TERBATAS", "TERTUTUP"}
         and isinstance(basis, str)
         and basis.strip()
         and isinstance(vintage, str)
         and vintage.strip()
     ):
         return PMA_LOCATED
-    if status == "declared_gap" and not (
-        isinstance(basis, str) and basis.strip()
-    ) and not (
-        isinstance(vintage, str) and vintage.strip()
+    if (
+        status == "declared_gap"
+        and not (isinstance(basis, str) and basis.strip())
+        and not (isinstance(vintage, str) and vintage.strip())
     ):
         return PMA_DECLARED_UNVERIFIED
     return PMA_BARE

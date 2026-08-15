@@ -27,6 +27,8 @@ import json
 import logging
 import os
 import re
+import shutil
+import subprocess
 import sys
 import uuid
 from datetime import datetime, timezone
@@ -34,7 +36,12 @@ from pathlib import Path
 
 from backend.core.collection_registry import resolve_collection_name
 from backend.scripts._kbli_repo_root import resolve_repo_root
-from backend.services.kbli_pma_disclosure import pma_claims_verified
+from backend.services.kbli_editorial_certification import (
+    load_editorial_registry,
+    matches_editorial_certification,
+    with_neutral_kbli_chat_opener,
+)
+from backend.services.kbli_pma_disclosure import disclose_pma
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -60,6 +67,18 @@ KBLI_DATA_FILE = _REPO_ROOT / "apps" / "kbli-navigator" / "data" / "kbli-2025.js
 
 # 5-digit KBLI codes (e.g. "56101")
 _CODE_RE = re.compile(r"^\d{5}$")
+_CERTIFICATION_CONTENT_KEY = "_certification_content"
+
+_NODE_LITERAL_TO_JSON = r"""
+const fs = require("node:fs");
+const vm = require("node:vm");
+const source = fs.readFileSync(0, "utf8");
+const value = vm.runInNewContext(`(${source})`, Object.create(null), { timeout: 5000 });
+if (value === null || typeof value !== "object" || Array.isArray(value)) {
+  throw new Error("KBLI gold literal did not evaluate to an object");
+}
+process.stdout.write(JSON.stringify(value));
+"""
 
 
 def parse_only_codes(raw: str | None) -> list[str] | None:
@@ -112,100 +131,108 @@ def filter_to_codes(
     return {c: entries[c] for c in only_codes}
 
 
-def parse_gold_content_ts(filepath: Path) -> dict[str, dict]:
-    """
-    Parse the TypeScript gold content file into a Python dict.
-
-    The file exports a Record<string, KBLIGoldContent> where each entry has:
-    whatItMeans, whatYouNeed, whatChanged, baliContext, youllAlsoNeed,
-    zantaraOpener, tkaInfo.
-    """
-    raw = filepath.read_text(encoding="utf-8")
-
-    # Extract the object body between the first { and last }
-    # The file has: export const KBLI_GOLD_CONTENT: Record<...> = { ... };
-    start = raw.index("= {") + 2
-    # Find the matching closing brace (last }; in file)
-    end = raw.rindex("};")
-    obj_str = raw[start : end + 1]
-
-    # Convert TypeScript object to valid JSON-ish:
-    # 1. Code keys: "56101": { ... } — already valid
-    # 2. String values with template literals (`...`) — convert to regular strings
-    # 3. Property names without quotes — add quotes
-    # 4. Trailing commas — remove
-
-    # Actually, this is complex TS. Let's use a regex-based extraction instead.
-    entries = {}
-    # Match each top-level code entry: "XXXXX": { ... }
-    # We find code keys and extract their content sections
-    code_pattern = re.compile(r'"(\d{5})"\s*:\s*\{', re.MULTILINE)
-
-    positions = [(m.group(1), m.start(), m.end()) for m in code_pattern.finditer(obj_str)]
-
-    for _i, (code, _, brace_start) in enumerate(positions):
-        # Find the matching closing brace for this entry
-        # Count braces from brace_start-1 (the opening {)
-        depth = 1
-        pos = brace_start
-        while depth > 0 and pos < len(obj_str):
-            ch = obj_str[pos]
-            if ch == "{":
-                depth += 1
-            elif ch == "}":
-                depth -= 1
+def _extract_gold_object_literal(source: str) -> str:
+    """Extract the exact top-level object while ignoring braces in prose."""
+    marker = re.search(r"\bconst\s+KBLI_GOLD_CONTENT\b[^=]*=\s*\{", source)
+    if marker is None:
+        raise ValueError("KBLI_GOLD_CONTENT object declaration not found")
+    start = source.find("{", marker.start())
+    depth = 0
+    quote: str | None = None
+    escaped = False
+    line_comment = False
+    block_comment = False
+    pos = start
+    while pos < len(source):
+        char = source[pos]
+        nxt = source[pos + 1] if pos + 1 < len(source) else ""
+        if line_comment:
+            if char in "\r\n":
+                line_comment = False
+        elif block_comment:
+            if char == "*" and nxt == "/":
+                block_comment = False
+                pos += 1
+        elif quote is not None:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+        elif char == "/" and nxt == "/":
+            line_comment = True
             pos += 1
-        entry_str = obj_str[brace_start - 1 : pos]
+        elif char == "/" and nxt == "*":
+            block_comment = True
+            pos += 1
+        elif char in ('"', "'", "`"):
+            quote = char
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return source[start : pos + 1]
+        pos += 1
+    raise ValueError("unterminated KBLI_GOLD_CONTENT object literal")
 
-        # Extract field values using regex
-        entry = {}
-        for field in [
-            "whatItMeans",
-            "whatYouNeed",
-            "whatChanged",
-            "baliContext",
-            "youllAlsoNeed",
-            "zantaraOpener",
-        ]:
-            # Match: fieldName: "...", or fieldName: `...`,
-            # Handle multi-line strings with template literals
-            pattern = (
-                rf'{field}\s*:\s*(?:"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`|\'((?:[^\'\\]|\\.)*)\')'
-            )
-            m = re.search(pattern, entry_str, re.DOTALL)
-            if m:
-                val = m.group(1) or m.group(2) or m.group(3) or ""
-                # Unescape
-                val = val.replace("\\n", "\n").replace('\\"', '"').replace("\\'", "'")
-                entry[field] = val.strip()
 
-        # Extract tkaInfo.insight if present
-        tka_insight_match = re.search(
-            r'insight\s*:\s*(?:"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`)',
-            entry_str,
-            re.DOTALL,
+def _evaluate_gold_literal(literal: str) -> dict[str, dict]:
+    """Use the image's pinned Node runtime to preserve exact JS string semantics."""
+    if "${" in literal:
+        raise ValueError("dynamic template interpolation is forbidden in certified gold content")
+    node = os.environ.get("KBLI_NODE_BINARY") or shutil.which("node")
+    if not node:
+        raise RuntimeError("node is required to parse certified KBLI gold content")
+    try:
+        completed = subprocess.run(
+            [node, "-e", _NODE_LITERAL_TO_JSON],
+            input=literal,
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=30,
         )
-        if tka_insight_match:
-            entry["tka_insight"] = (
-                (tka_insight_match.group(1) or tka_insight_match.group(2) or "")
-                .replace("\\n", "\n")
-                .strip()
-            )
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError("timed out parsing KBLI gold content") from exc
+    if completed.returncode != 0:
+        raise ValueError(f"Node could not parse KBLI gold content: {completed.stderr[:500]}")
+    parsed = json.loads(completed.stdout)
+    if not isinstance(parsed, dict):
+        raise ValueError("parsed KBLI gold content is not an object")
+    return parsed
 
-        # Extract TKA positions
-        tka_positions = []
-        for pm in re.finditer(
-            r'titleEn\s*:\s*"([^"]*)".*?titleId\s*:\s*"([^"]*)"',
-            entry_str,
-            re.DOTALL,
-        ):
-            tka_positions.append({"en": pm.group(1), "id": pm.group(2)})
-        if tka_positions:
-            entry["tka_positions"] = tka_positions
 
-        if entry:
-            entries[code] = entry
-
+def parse_gold_content_ts(filepath: Path) -> dict[str, dict]:
+    """Parse exact TS literals and retain an unmodified object for hash gating."""
+    raw_entries = _evaluate_gold_literal(
+        _extract_gold_object_literal(filepath.read_text(encoding="utf-8"))
+    )
+    entries: dict[str, dict] = {}
+    for code, content in raw_entries.items():
+        if not _CODE_RE.fullmatch(code) or not isinstance(content, dict):
+            raise ValueError(f"invalid KBLI gold entry {code!r}")
+        entry = dict(content)
+        entry[_CERTIFICATION_CONTENT_KEY] = content
+        tka = content.get("tkaInfo")
+        if isinstance(tka, dict):
+            insight = tka.get("insight")
+            if isinstance(insight, str) and insight.strip():
+                entry["tka_insight"] = insight.strip()
+            positions = []
+            raw_positions = tka.get("relevantPositions")
+            if isinstance(raw_positions, list):
+                for position in raw_positions:
+                    if not isinstance(position, dict):
+                        continue
+                    title_en = position.get("titleEn")
+                    title_id = position.get("titleId")
+                    if isinstance(title_en, str) and isinstance(title_id, str):
+                        positions.append({"en": title_en, "id": title_id})
+            if positions:
+                entry["tka_positions"] = positions
+        entries[code] = entry
     return entries
 
 
@@ -218,19 +245,57 @@ def load_kbli_base_data(filepath: Path) -> dict[str, dict]:
     for code in data.get("data", []):
         kode = code.get("kode_kbli_2025", "")
         lookup[kode] = {
+            "kode_kbli_2025": kode,
             "judul": code.get("judul", ""),
             "uraian": code.get("uraian", ""),
             "pma_status": code.get("pma_status", ""),
-            "pma_max_asing": code.get("pma_max_asing", ""),
+            "pma_max_asing": code.get("pma_max_asing"),
             "pma_verification_status": code.get("pma_verification_status", "declared_gap"),
             "pma_official_basis": code.get("pma_official_basis", ""),
             "pma_source_vintage": code.get("pma_source_vintage", ""),
+            "pma_kondisi": code.get("pma_kondisi"),
+            "pma_prioritas": code.get("pma_prioritas", False),
+            "pma_nota": code.get("pma_nota"),
+            "pma_source": code.get("pma_source"),
+            "pma_cap_special": code.get("pma_cap_special", False),
+            "pma_cap_verified": code.get("pma_cap_verified", False),
+            "pma_route_to": code.get("pma_route_to"),
             "sektor_id": code.get("sektor_id", ""),
         }
     return lookup
 
 
-def build_embedding_text(code: str, gold: dict, base: dict) -> str:
+def certification_content(gold: dict) -> dict:
+    """Return the exact JS object, excluding parser-only derived fields."""
+    content = gold.get(_CERTIFICATION_CONTENT_KEY)
+    if isinstance(content, dict):
+        return content
+    return {
+        key: value
+        for key, value in gold.items()
+        if key not in {_CERTIFICATION_CONTENT_KEY, "tka_insight", "tka_positions"}
+    }
+
+
+def disclosed_standalone_gold(
+    code: str,
+    gold: dict,
+    base: dict,
+    registry: dict | None = None,
+) -> dict | None:
+    """Return a reviewed gold block only while both exact hashes still match."""
+    content = certification_content(gold)
+    if not matches_editorial_certification("standaloneGold", code, base, content, registry):
+        return None
+    return with_neutral_kbli_chat_opener(code, gold)
+
+
+def build_embedding_text(
+    code: str,
+    gold: dict,
+    base: dict,
+    registry: dict | None = None,
+) -> str:
     """
     Build rich embedding text for a gold KBLI code.
 
@@ -246,18 +311,20 @@ def build_embedding_text(code: str, gold: dict, base: dict) -> str:
         "",
     ]
 
-    pma_verified = pma_claims_verified(base)
-    if not pma_verified:
+    certified_gold = disclosed_standalone_gold(code, gold, base, registry)
+    if certified_gold is None:
         official_description = base.get("uraian", "")
         if official_description:
             parts.extend(["## Deskripsi (BPS)", official_description, ""])
         parts.extend(
             [
                 "## Status PMA: NOT_VERIFIED",
-                "- Gold editorial withheld: no located official basis and source vintage are recorded.",
+                "- Gold editorial withheld: the exact content and PMA fingerprint are not in the reviewed registry.",
             ]
         )
         return "\n".join(parts)
+
+    gold = certified_gold
 
     if gold.get("zantaraOpener"):
         parts.append("## Quick Answer")
@@ -302,10 +369,19 @@ def build_embedding_text(code: str, gold: dict, base: dict) -> str:
     return "\n".join(parts)
 
 
-def build_payload(code: str, gold: dict, base: dict, embedding_text: str) -> dict:
+def build_payload(
+    code: str,
+    gold: dict,
+    base: dict,
+    embedding_text: str,
+    registry: dict | None = None,
+) -> dict:
     """Build Qdrant payload matching existing kbli_2025_final schema."""
     official_description = base.get("uraian", "")
-    pma_verified = pma_claims_verified(base)
+    certified_gold = disclosed_standalone_gold(code, gold, base, registry)
+    editorial_disclosed = certified_gold is not None
+    public_gold = certified_gold or {}
+    pma = disclose_pma(base)
     return {
         "text": embedding_text,
         "content": embedding_text,
@@ -318,21 +394,31 @@ def build_payload(code: str, gold: dict, base: dict, embedding_text: str) -> dic
         "prefix_2": code[:2],
         "prefix_3": code[:3],
         "digit_count": len(code),
-        "sources": ["GOLD_EDITORIAL", "BPS_7_2025", "PP_28_2025"],
+        "sources": (
+            ["GOLD_EDITORIAL", "BPS_7_2025", "PP_28_2025"]
+            if editorial_disclosed
+            else ["BPS_7_2025", "PP_28_2025"]
+        ),
         "doc_type": "kbli_gold",
         "version": "GOLD_2026",
         "sektor": base.get("sektor_id", ""),
         "section": base.get("sektor_id", ""),
-        "pma_status": base.get("pma_status", ""),
-        "pma_max_asing": base.get("pma_max_asing", ""),
-        "pma_verification_status": base.get("pma_verification_status", "declared_gap"),
-        "pma_official_basis": base.get("pma_official_basis", ""),
-        "pma_source_vintage": base.get("pma_source_vintage", ""),
-        "has_gold_content": pma_verified,
-        "editorial_disclosed": pma_verified,
-        "gold_fields": [k for k in gold if k not in ("tka_positions",)],
-        "has_tka_info": bool(gold.get("tka_positions")),
-        "tka_position_count": len(gold.get("tka_positions", [])),
+        "pma_status": pma["pma_status"],
+        "pma_max_asing": pma["pma_max_asing"],
+        "pma_verification_status": pma["pma_verification_status"],
+        "pma_official_basis": pma["pma_official_basis"],
+        "pma_source_vintage": pma["pma_source_vintage"],
+        "pma_cap_special": pma["pma_cap_special"],
+        "pma_cap_verified": pma["pma_cap_verified"],
+        "has_gold_content": editorial_disclosed,
+        "editorial_disclosed": editorial_disclosed,
+        "gold_fields": [
+            key
+            for key in public_gold
+            if key not in {_CERTIFICATION_CONTENT_KEY, "tka_insight", "tka_positions"}
+        ],
+        "has_tka_info": bool(public_gold.get("tka_positions")),
+        "tka_position_count": len(public_gold.get("tka_positions", [])),
         "indexed_at": "",  # filled at upsert time
     }
 
@@ -343,14 +429,23 @@ def deterministic_uuid(code: str) -> str:
     return str(uuid.UUID(hashlib.md5(key.encode()).hexdigest()))
 
 
-def build_point(code: str, gold: dict, base: dict, indexed_at: str) -> dict:
+def build_point(
+    code: str,
+    gold: dict,
+    base: dict,
+    indexed_at: str,
+    registry: dict | None = None,
+) -> dict | None:
     """Build one Qdrant point (id + flat payload + text-to-embed) for a gold code.
 
     Extracted from the main() loop so it can be exercised directly by tests —
     never a recreated copy of the production logic (Codex review on #3817).
     """
-    embedding_text = build_embedding_text(code, gold, base)
-    payload = build_payload(code, gold, base, embedding_text)
+    certified_gold = disclosed_standalone_gold(code, gold, base, registry)
+    if certified_gold is None:
+        return None
+    embedding_text = build_embedding_text(code, gold, base, registry)
+    payload = build_payload(code, gold, base, embedding_text, registry)
     payload["indexed_at"] = indexed_at  # flat payload (KBLI flat-payload golden rule)
     return {
         "id": deterministic_uuid(code),
@@ -451,16 +546,37 @@ async def main():
     total_parsed = len(gold_entries)
     logger.info(f"Parsed {total_parsed} gold entries")
 
-    # Per-code selection (--only): filter BEFORE building points.
-    gold_entries = filter_to_codes(gold_entries, args.only)
-    if args.only:
-        logger.info("%d of %d gold entries selected via --only", len(gold_entries), total_parsed)
-
     # Load base KBLI data for enrichment
     base_data = {}
     if KBLI_DATA_FILE.exists():
         base_data = load_kbli_base_data(KBLI_DATA_FILE)
         logger.info(f"Loaded {len(base_data)} base KBLI codes for enrichment")
+
+    registry = load_editorial_registry()
+
+    # Publication is an allowlist over exact content + exact public PMA state,
+    # not an allowlist over code names. Unsafe legacy entries are never turned
+    # into points at all.
+    certified_entries = {
+        code: gold
+        for code, gold in gold_entries.items()
+        if disclosed_standalone_gold(code, gold, base_data.get(code, {}), registry) is not None
+    }
+    logger.info(
+        "Certified %d/%d parsed gold entries for publication",
+        len(certified_entries),
+        total_parsed,
+    )
+
+    # Per-code selection (--only) applies to the certified partition. Asking
+    # for an unsafe legacy code is an error, never a successful zero-point run.
+    gold_entries = filter_to_codes(certified_entries, args.only)
+    if args.only:
+        logger.info(
+            "%d of %d certified gold entries selected via --only",
+            len(gold_entries),
+            len(certified_entries),
+        )
 
     # Build points
     indexed_at = datetime.now(timezone.utc).isoformat()
@@ -468,7 +584,11 @@ async def main():
 
     for code, gold in sorted(gold_entries.items()):
         base = base_data.get(code, {"judul": "", "sektor_id": ""})
-        all_points.append(build_point(code, gold, base, indexed_at))
+        point = build_point(code, gold, base, indexed_at, registry)
+        if point is None:  # defensive against registry/data drift during the run
+            logger.error("certification changed while building KBLI %s", code)
+            sys.exit(1)
+        all_points.append(point)
 
     logger.info(f"Built {len(all_points)} points to index")
 
@@ -476,7 +596,8 @@ async def main():
     fields_count = field_coverage(all_points)
     logger.info("Gold field coverage:")
     for f, n in sorted(fields_count.items(), key=lambda x: -x[1]):
-        logger.info(f"  {f}: {n}/{len(all_points)} ({100 * n // len(all_points)}%)")
+        percentage = 100 * n // len(all_points) if all_points else 0
+        logger.info(f"  {f}: {n}/{len(all_points)} ({percentage}%)")
 
     tka_count = tka_total(all_points)
     logger.info(f"Codes with TKA info: {tka_count}/{len(all_points)}")

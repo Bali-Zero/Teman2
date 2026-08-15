@@ -99,6 +99,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import math
 import os
 import sys
 from dataclasses import dataclass, field
@@ -177,6 +178,8 @@ class CodePlan:
         its flat field while its blob still says TERBUKA / 100."""
         out = []
         for pid in self.point_ids:
+            if pid in self.unshaped:
+                continue
             cur = self.current.get(pid, {})
             if any(cur.get(key) != value for key, value in self.target.fields.items()):
                 out.append(pid)
@@ -193,15 +196,25 @@ class CodePlan:
 
 
 def _pma_fields(rec: dict) -> tuple[dict[str, Any] | None, str | None]:
-    status = rec.get("pma_status")
-    if not status:
-        return None, "canonical record carries no pma_status — nothing authoritative to sync"
+    if not _pma_claims_verified(rec):
+        return {
+            "pma_status": "NOT_VERIFIED",
+            "pma_max_asing": None,
+            "pma_verification_status": "declared_gap",
+            "pma_official_basis": None,
+            "pma_source_vintage": None,
+            "pma_cap_special": False,
+            "pma_cap_verified": False,
+        }, None
+    cap = _public_pma_cap(rec)
     return {
-        "pma_status": str(status),
-        "pma_max_asing": rec.get("pma_max_asing"),
-        "pma_verification_status": rec.get("pma_verification_status", "declared_gap"),
-        "pma_official_basis": rec.get("pma_official_basis"),
-        "pma_source_vintage": rec.get("pma_source_vintage"),
+        "pma_status": rec["pma_status"],
+        "pma_max_asing": cap,
+        "pma_verification_status": "located",
+        "pma_official_basis": rec["pma_official_basis"].strip(),
+        "pma_source_vintage": rec["pma_source_vintage"].strip(),
+        "pma_cap_special": cap == "special",
+        "pma_cap_verified": cap is not None and rec.get("pma_cap_verified") is True,
     }, None
 
 
@@ -213,15 +226,37 @@ def _bali_fields(rec: dict) -> tuple[dict[str, Any] | None, str | None]:
     `l4_bali.verdict` is deliberately NOT read: see the module docstring for the
     118-code measurement that removed the tool which did.
     """
-    l4 = rec.get("l4_bali") or {}
+    if not _pma_claims_verified(rec):
+        return {
+            "bali_status": None,
+            "bali_blocked": None,
+            "bali_reason": "",
+            "has_bali_l4": False,
+        }, None
+
+    l4 = rec.get("l4_bali")
+    if not isinstance(l4, dict):
+        l4 = {}
     status = l4.get("status")
-    if not status:
-        return None, "canonical record carries no l4_bali.status — no Bali verdict to publish"
+    blocked = l4.get("blocked")
+    if (
+        not isinstance(status, str)
+        or not status.strip()
+        or status != status.strip()
+        or not isinstance(blocked, bool)
+    ):
+        return {
+            "bali_status": None,
+            "bali_blocked": None,
+            "bali_reason": "",
+            "has_bali_l4": False,
+        }, None
+    reason = l4.get("reason")
     return {
-        "bali_status": str(status),
-        "bali_blocked": bool(l4.get("blocked")),
-        "bali_reason": str(l4.get("reason") or ""),
-        "has_bali_l4": bool(status),
+        "bali_status": status,
+        "bali_blocked": blocked,
+        "bali_reason": reason.strip() if isinstance(reason, str) else "",
+        "has_bali_l4": True,
     }, None
 
 
@@ -277,10 +312,8 @@ _LAYER_READERS = {
 # cure and the two disagree again. That is asserted, not asserted-by-comment:
 # `test_prose_repair_matches_the_real_generator` runs the REAL
 # `build_embedding_text` over canonical records and requires the repair to be a
-# no-op on its fresh output. The trap it caught: `build_embedding_text` writes
-# the cap line under `if entry.get("pma_max_asing")`, so a cap of **0 is falsy**
-# and the line is OMITTED — for `79122` the truthful blob has no cap line at all,
-# and a repair that wrote `- Kepemilikan asing maksimal: 0` would diverge.
+# no-op on its fresh output, including the zero-cap and special non-percentage
+# forms.
 #
 # WHAT IS NOT CLAIMED: the VECTOR is not re-computed (the embedding model is
 # FROZEN). The old sentence still shapes retrieval RANKING; what changes is the
@@ -297,14 +330,34 @@ _TRUNCATION_MARKER = "(... dipotong untuk batas panjang.)"
 _PMA_ALLOWED_STATUSES = frozenset({"TERBUKA", "TERBATAS", "TERTUTUP"})
 
 
+def _clean_text(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    cleaned = value.strip()
+    return cleaned or None
+
+
+def _public_pma_cap(rec: dict) -> int | float | str | None:
+    value = rec.get("pma_max_asing")
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)) and math.isfinite(value):
+        return value
+    return "special" if value == "special" and rec.get("pma_cap_special") is True else None
+
+
 def _pma_claims_verified(rec: dict) -> bool:
     status = rec.get("pma_status")
+    basis = rec.get("pma_official_basis")
+    vintage = rec.get("pma_source_vintage")
     return bool(
         rec.get("pma_verification_status") == "located"
         and isinstance(status, str)
         and status in _PMA_ALLOWED_STATUSES
-        and str(rec.get("pma_official_basis") or "").strip()
-        and str(rec.get("pma_source_vintage") or "").strip()
+        and isinstance(basis, str)
+        and basis.strip()
+        and isinstance(vintage, str)
+        and vintage.strip()
     )
 
 
@@ -318,55 +371,54 @@ def render_pma_block(rec: dict) -> list[str]:
     every point it touched — silent data loss dressed as a cure. Any field added
     to the generator's block must be added here, and that test is what says so.
     """
-    verified = _pma_claims_verified(rec)
-    if not verified:
+    fields, _ = _pma_fields(rec)
+    assert fields is not None
+    if fields["pma_verification_status"] != "located":
         return [
             f"{_PMA_HEADING} NOT_VERIFIED",
             "- Whole-code foreign ownership is withheld: no located official basis and source vintage are recorded.",
         ]
 
-    lines = [f"{_PMA_HEADING} {rec.get('pma_status')}"]
-    if rec.get("pma_max_asing"):  # 0 is falsy THERE, so it must be falsy HERE
-        lines.append(f"- Kepemilikan asing maksimal: {rec['pma_max_asing']}")
-    if rec.get("pma_kondisi"):
-        lines.append(f"- Kondisi: {rec['pma_kondisi']}")
-    if rec.get("pma_prioritas"):
-        lines.append(f"- Prioritas: {rec['pma_prioritas']}")
-    if rec.get("pma_nota"):
-        lines.append(f"- Nota: {rec['pma_nota']}")
+    lines = [f"{_PMA_HEADING} {fields['pma_status']}"]
+    cap = fields["pma_max_asing"]
+    if fields["pma_cap_verified"]:
+        if cap == "special":
+            lines.append("- Kepemilikan asing: kondisi khusus non-persentase")
+        elif cap is not None:
+            lines.append(f"- Kepemilikan asing maksimal: {cap}%")
+    else:
+        lines.append("- Kepemilikan asing: belum terverifikasi")
+    condition = _clean_text(rec.get("pma_kondisi"))
+    if condition:
+        lines.append(f"- Kondisi: {condition}")
+    if rec.get("pma_prioritas") is True:
+        lines.append("- Prioritas: Ya")
+    note = _clean_text(rec.get("pma_nota"))
+    if note:
+        lines.append(f"- Nota: {note}")
     return lines
 
 
 def render_bali_block(rec: dict) -> list[str]:
     """Mirror ``reindex_kbli_2025_final.render_bali_embedding_block`` exactly."""
-    l4 = rec.get("l4_bali") or {}
-    if not l4.get("status"):
+    fields, _ = _bali_fields(rec)
+    assert fields is not None
+    if not fields["has_bali_l4"]:
         return []
 
     lines = [_BALI_HEADING]
-    if l4.get("blocked"):
+    if fields["bali_blocked"] is True:
         lines.append(
             "- DIBLOKIR untuk PMA di Bali: kegiatan risiko Rendah/Menengah-Rendah "
             "tidak dapat didaftarkan PT PMA di Provinsi Bali (moratorium 2026-05-13)."
         )
-    lines.append(f"- Status Bali: {l4['status']}")
-    if _pma_claims_verified(rec):
-        if l4.get("reason"):
-            lines.append(f"- Alasan: {l4['reason']}")
-        lines.append(
-            "- Note: national status (Perpres 10/2021) can differ from the "
-            "provincial block; read both verdicts."
-        )
-    elif l4.get("blocked"):
-        lines.append(
-            "- Note: the Bali record indicates a local block; national PMA status "
-            "and cap remain NOT_VERIFIED."
-        )
-    else:
-        lines.append(
-            "- Note: absence of a block in the Bali record does not prove national "
-            "permission; national PMA status and cap remain NOT_VERIFIED."
-        )
+    lines.append(f"- Status Bali: {fields['bali_status']}")
+    if fields["bali_reason"]:
+        lines.append(f"- Alasan: {fields['bali_reason']}")
+    lines.append(
+        "- Note: national status (Perpres 10/2021) can differ from the "
+        "provincial block; read both verdicts."
+    )
     return lines
 
 
@@ -418,8 +470,8 @@ def rewrite_pma_prose(rec: dict, blob: str) -> str | None:
 
     # A declared gap owns the entire generated/editorial disclosure boundary,
     # not only the two PMA lines. Old points can still carry an Intelligence
-    # section or a Bali reason that asserts raw national openness. Remove the
-    # former atomically and rebuild the latter from structured Bali fields.
+    # section or a Bali verdict that asserts PT PMA registrability. Remove both
+    # atomically.
     # The generator can truncate in the middle of the Bali or Intelligence
     # section.  Expanding a partial section would write content *after* the
     # marker that explicitly says the document ended.  A fresh declared-gap
@@ -427,8 +479,7 @@ def rewrite_pma_prose(rec: dict, blob: str) -> str | None:
     # shape alone.  A legacy truncated blob that still carries editorial prose
     # cannot be repaired losslessly and is refused instead.
     if _TRUNCATION_MARKER in rewritten:
-        bali_tail = rewritten.partition(_BALI_HEADING)[2]
-        if _INTEL_HEADING in rewritten or "- Alasan:" in bali_tail:
+        if _INTEL_HEADING in rewritten or _BALI_HEADING in rewritten:
             return None
         return rewritten
 
@@ -629,8 +680,8 @@ def apply_plan(
         )
         return 0
 
-    cap = plan.target.fields.get("pma_max_asing", 0)
-    if "pma_max_asing" in plan.target.fields and not isinstance(cap, int):
+    cap = plan.target.fields.get("pma_max_asing")
+    if cap is not None and not isinstance(cap, (int, float)):
         # 47221 carries the string "special" — a non-percentage regime. Passed
         # through verbatim rather than coerced, but said out loud: a payload
         # field that changes type is exactly what a downstream reader does not

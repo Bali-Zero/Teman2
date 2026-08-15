@@ -15,9 +15,13 @@ function withLocatedPma(code: KBLICode): KBLICode {
     ...code,
     pma: {
       ...code.pma,
+      status: "open",
+      maxForeign: 100,
       verificationStatus: "located",
       officialBasis: "Perpres 49/2021 fixture locator",
       sourceVintage: "2021-05-25",
+      capSpecial: false,
+      capVerified: true,
     },
     provenance: {
       ...code.provenance!,
@@ -496,7 +500,9 @@ describe("buildKbliFaq — perpres slice-disclosure qualifier", () => {
 
     const pmaAnswer = buildKbliFaq(affected)[0].answer;
     expect(
-      pmaAnswer.startsWith("Yes for most of this code, with one carve-out:"),
+      pmaAnswer.startsWith(
+        "National status: TERBUKA for most of this code, with one carve-out.",
+      ),
     ).toBe(true);
     expect(pmaAnswer).not.toMatch(
       /^Yes\. KBLI .* No local Indonesian partner required\./,
@@ -584,12 +590,12 @@ describe("buildKbliFaq — perpres slice-disclosure qualifier", () => {
     );
   });
 
-  it("real gap case: 90200 keeps its narrower Sanggar seni row and Bali context without asserting a national whole-code verdict", async () => {
+  it("real gap case: 90200 keeps its narrower Sanggar seni row while unverified Bali and whole-code PMA stay withheld", async () => {
     const { buildKbliFaq } = await import("./kbli-faq");
     const { getCode } = await import("./kbli-data");
     const base = getCode("90200");
     expect(base?.perpresSlice).toHaveLength(1);
-    expect(base?.baliL4?.blocked).toBe(true);
+    expect(base?.baliL4).toBeUndefined();
 
     const pmaAnswer = buildKbliFaq(base!)[0].answer;
     expect(pmaAnswer.startsWith("Not yet verified.")).toBe(true);
@@ -600,6 +606,7 @@ describe("buildKbliFaq — perpres slice-disclosure qualifier", () => {
     expect(pmaAnswer).not.toContain(
       "Outside Bali, the rest of the code remains open",
     );
+    expect(pmaAnswer).not.toContain("but NOT in Bali");
   });
 
   it("innocence: omits the qualifier when perpresSlice is absent", async () => {

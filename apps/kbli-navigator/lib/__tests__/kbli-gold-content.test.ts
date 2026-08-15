@@ -17,7 +17,7 @@
 // =============================================================================
 
 import assert from "node:assert/strict";
-import { getGoldContent } from "../kbli-gold-content";
+import { getRawGoldContentForCertification as getGoldContent } from "../kbli-gold-content";
 
 function guilt68112() {
   const gold = getGoldContent("68112");

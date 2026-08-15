@@ -145,6 +145,7 @@ import asyncpg
 import httpx
 
 from backend.scripts._kbli_archive import archive_row, ensure_archive_schema
+from backend.services.kbli_pma_disclosure import disclose_pma, pma_claims_verified
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("kbli_documents_cure")
@@ -288,7 +289,9 @@ class DocumentCurePlan:
     code: str
     found_in_canonical: bool
     found_in_table: bool
-    is_gap: bool | None  # per_skala == [] -> True (honest-gap); non-empty -> False (restored); None if canonical/table missing
+    is_gap: (
+        bool | None
+    )  # per_skala == [] -> True (honest-gap); non-empty -> False (restored); None if canonical/table missing
     new_judul: str | None
     new_content: str | None
     new_metadata: dict | None
@@ -433,7 +436,9 @@ def _check_snapshot_freshness(captured_at: str | None) -> None:
     try:
         taken = datetime.fromisoformat(captured_at)
     except ValueError as exc:
-        raise RuntimeError(f"--snapshot-captured-at is not ISO8601: {captured_at!r} ({exc})") from exc
+        raise RuntimeError(
+            f"--snapshot-captured-at is not ISO8601: {captured_at!r} ({exc})"
+        ) from exc
     if taken.tzinfo is None:
         taken = taken.replace(tzinfo=timezone.utc)
     age = (datetime.now(timezone.utc) - taken).total_seconds() / 60
@@ -589,9 +594,7 @@ def build_kewajiban_section(record: dict) -> list[str]:
         if not isinstance(raw, list):
             raw = [raw]
         cleaned = tuple(
-            text
-            for text in (_HTML_TAG_RE.sub("", str(v)).strip() for v in raw if v)
-            if text
+            text for text in (_HTML_TAG_RE.sub("", str(v)).strip() for v in raw if v) if text
         )
         if not cleaned:
             continue
@@ -623,14 +626,14 @@ def build_perizinan_section(record: dict) -> str:
     the cured content. Two branches, both provenance-bound:
       - per_skala non-empty (a restored code, e.g. 49213): render the REAL
         canonical per_skala rows as structured bullets — nothing invented.
-      - per_skala == [] (the honest-gap class, 72 of the 73): use
-        `intel_2026.whatYouNeed` VERBATIM — that text is already
-        Codex-gated client-facing honest-gap prose (kbli-navigator corner
-        §1/§4 rule 8/9); this function never re-authors it, never
-        synthesizes a bullet row for a gap code."""
+      - per_skala == [] (the honest-gap class): use `intel_2026.whatYouNeed`
+        only when the PMA evidence tuple is located; otherwise use the neutral
+        licensing fallback so editorial cannot bypass the PMA gate."""
     per_skala = record.get("per_skala") or []
     if per_skala:
         return "\n".join(_render_per_skala_entry(e) for e in per_skala)
+    if not pma_claims_verified(record):
+        return GAP_FALLBACK_TEXT
     what_you_need = ((record.get("intel_2026") or {}).get("whatYouNeed") or "").strip()
     return what_you_need or GAP_FALLBACK_TEXT
 
@@ -642,11 +645,12 @@ def build_cured_content(code: str, record: dict) -> str:
     `build_perizinan_section` (the sole provenance-bound entry point)."""
     judul = (record.get("judul") or "").strip() or f"KBLI {code}"
     uraian = (record.get("uraian") or "").strip() or "(deskripsi belum tersedia)"
-    pma_status = record.get("pma_status") or "Verify at OSS"
-    pma_max_asing = record.get("pma_max_asing")
-    pma_kondisi = record.get("pma_kondisi")
-    pma_nota = record.get("pma_nota")
-    data_note = (record.get("_data_note") or "").strip()
+    pma = disclose_pma(record)
+    pma_status = pma["pma_status"]
+    pma_max_asing = pma["pma_max_asing"]
+    pma_kondisi = pma["pma_kondisi"]
+    pma_nota = pma["pma_nota"]
+    data_note = (record.get("_data_note") or "").strip() if pma_claims_verified(record) else ""
 
     lines: list[str] = [
         f"# KBLI {code} — {judul}",
@@ -657,8 +661,13 @@ def build_cured_content(code: str, record: dict) -> str:
         "## Investasi Asing (PMA)",
         f"- Status PMA: {pma_status}",
     ]
-    if pma_max_asing is not None:
-        lines.append(f"- Maksimum Kepemilikan Asing: {pma_max_asing}%")
+    if pma["pma_cap_verified"]:
+        if pma_max_asing == "special":
+            lines.append("- Kepemilikan Asing: kondisi khusus non-persentase")
+        elif pma_max_asing is not None:
+            lines.append(f"- Maksimum Kepemilikan Asing: {pma_max_asing}%")
+    else:
+        lines.append("- Maksimum Kepemilikan Asing: belum terverifikasi")
     if pma_kondisi:
         lines.append(f"- Kondisi: {pma_kondisi}")
     if pma_nota:
@@ -685,17 +694,26 @@ def build_cured_metadata(code: str, record: dict, old_metadata: dict | None) -> 
     makes no independent claim about it."""
     old = dict(old_metadata or {})
     per_skala = record.get("per_skala") or []
+    pma = disclose_pma(record)
     new_meta: dict = {
         "judul": record.get("judul"),
         "per_skala": per_skala,
         "sektor_id": record.get("sektor_id"),
-        "pma_status": record.get("pma_status"),
+        "pma_status": pma["pma_status"],
+        "pma_max_asing": pma["pma_max_asing"],
+        "pma_verification_status": pma["pma_verification_status"],
+        "pma_official_basis": pma["pma_official_basis"],
+        "pma_source_vintage": pma["pma_source_vintage"],
+        "pma_cap_special": pma["pma_cap_special"],
+        "pma_cap_verified": pma["pma_cap_verified"],
         "pp28_sources": record.get("pp28_sources"),
         "kode_kbli_2025": code,
         "status_mapping": record.get("status_mapping"),
-        "licensing_status": "PENDING_REGULATION" if per_skala == [] else old.get("licensing_status", "N/A"),
+        "licensing_status": "PENDING_REGULATION"
+        if per_skala == []
+        else old.get("licensing_status", "N/A"),
     }
-    data_note = record.get("_data_note")
+    data_note = record.get("_data_note") if pma_claims_verified(record) else None
     if data_note:
         new_meta["_data_note"] = data_note
     return new_meta
@@ -740,7 +758,9 @@ def plan_cure(code: str, record: dict | None, current_row: dict | None) -> Docum
     old_metadata = current_row.get("metadata") or {}
     old_judul = current_row.get("judul")
 
-    update_row = (new_content != old_content) or (new_metadata != old_metadata) or (new_judul != old_judul)
+    update_row = (
+        (new_content != old_content) or (new_metadata != old_metadata) or (new_judul != old_judul)
+    )
 
     return DocumentCurePlan(
         code=code,
@@ -751,7 +771,9 @@ def plan_cure(code: str, record: dict | None, current_row: dict | None) -> Docum
         new_content=new_content if update_row else None,
         new_metadata=new_metadata if update_row else None,
         update_row=update_row,
-        skip_reason=None if update_row else "already cured (content/metadata/judul match canonical)",
+        skip_reason=None
+        if update_row
+        else "already cured (content/metadata/judul match canonical)",
     )
 
 
@@ -878,7 +900,9 @@ def validate_args(parser: argparse.ArgumentParser, args: argparse.Namespace) -> 
     # pre-cure snapshot would be silently skipped by ON CONFLICT DO NOTHING — the
     # one-shot disease resurrected across passes.
     if args.apply and not args.cure_run:
-        parser.error("--cure-run is REQUIRED when --apply is passed — each cure pass declares its own stable id")
+        parser.error(
+            "--cure-run is REQUIRED when --apply is passed — each cure pass declares its own stable id"
+        )
     if not args.cure_run:
         return "dry-run"
     cure_run = args.cure_run.strip()
@@ -1068,7 +1092,9 @@ async def main() -> int | None:
             current_row: dict | None = None
             if row is not None:
                 metadata = (
-                    json.loads(row["metadata"]) if isinstance(row["metadata"], str) else row["metadata"]
+                    json.loads(row["metadata"])
+                    if isinstance(row["metadata"], str)
+                    else row["metadata"]
                 )
                 current_row = {
                     "judul": row["judul"],

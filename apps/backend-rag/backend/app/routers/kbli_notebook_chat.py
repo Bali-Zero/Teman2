@@ -8,6 +8,7 @@ KBLI explanation generation, multi-domain routing, chat endpoint.
 
 import json
 import logging
+import math
 import re
 from dataclasses import dataclass
 from typing import Any
@@ -31,7 +32,11 @@ from backend.app.routers.kbli_notebook import (
     _search_kbli_qdrant,
 )
 from backend.core.cache import cached
-from backend.services.kbli_pma_disclosure import disclose_pma, pma_claims_verified
+from backend.services.kbli_pma_disclosure import (
+    disclose_bali,
+    disclose_pma,
+    pma_claims_verified,
+)
 from backend.services.rag.agentic.kg_orchestrator import KGAgenticOrchestrator
 
 logger = logging.getLogger(__name__)
@@ -46,6 +51,8 @@ _PMA_EVIDENCE_FIELDS = (
     "pma_verification_status",
     "pma_official_basis",
     "pma_source_vintage",
+    "pma_cap_special",
+    "pma_cap_verified",
 )
 
 
@@ -277,40 +284,46 @@ async def _fill_bali_verdicts(results: list["KBLISearchResult"]) -> None:
         # temporary response model runs the same fail-closed validator used by
         # the HTTP API, so a raw cap can never be backfilled without its locator
         # and vintage (Pydantic assignment itself is not validated here).
-        disclosed = KBLISearchResult(
-            **{
-                **result.model_dump(),
-                **_pma_disclosure_fields(payload),
-            }
-        )
+        candidate = {
+            **result.model_dump(),
+            **_pma_disclosure_fields(payload),
+        }
+        if needs_bali_verdict:
+            bali = disclose_bali(
+                {
+                    **_pma_disclosure_fields(payload),
+                    "bali_blocked": _payload_value(payload, "bali_blocked"),
+                    "bali_status": _payload_value(payload, "bali_status"),
+                    "bali_reason": _payload_value(payload, "bali_reason", default=""),
+                }
+            )
+            candidate.update(
+                {
+                    "bali_blocked": bali["bali_blocked"],
+                    "bali_status": bali["bali_status"],
+                    "bali_reason": bali["bali_reason"],
+                }
+            )
+        disclosed = KBLISearchResult(**candidate)
         result.pma_status = disclosed.pma_status
         result.pma_max_asing = disclosed.pma_max_asing
         result.pma_verification_status = disclosed.pma_verification_status
         result.pma_official_basis = disclosed.pma_official_basis
         result.pma_source_vintage = disclosed.pma_source_vintage
-        # These two fields share the PMA gate.  Copy them back as part of the
+        result.pma_cap_special = disclosed.pma_cap_special
+        result.pma_cap_verified = disclosed.pma_cap_verified
+        # These fields share the PMA gate.  Copy them back as part of the
         # same atomic disclosure decision so a later payload that downgrades a
-        # result to ``declared_gap`` cannot leave previously attached prose on
-        # the mutable response object.
+        # result to ``declared_gap`` cannot leave previously attached Bali or
+        # editorial claims on the mutable response object.
         result.expert_legal = disclosed.expert_legal
+        result.bali_status = disclosed.bali_status
+        result.bali_blocked = disclosed.bali_blocked
         result.bali_reason = disclosed.bali_reason
-        # A result already carrying the Bali verdict came from the same point as
-        # the search hit.  The extra read above may be needed only to complete
-        # its PMA evidence tuple; never let that later read replace the verdict
-        # the search actually returned.
-        if not needs_bali_verdict:
+        if not result.pma_verdict_verified:
             continue
-
-        blocked = _payload_value(payload, "bali_blocked")
-        if blocked is None:
+        if not needs_bali_verdict or result.bali_blocked is None:
             continue
-        result.bali_blocked = bool(blocked)
-        result.bali_status = _payload_value(payload, "bali_status")
-        result.bali_reason = (
-            _payload_value(payload, "bali_reason", default="") or ""
-            if result.pma_verdict_verified
-            else ""
-        )
         logger.info(
             "🌴 Backfilled Bali verdict for %s: %s (blocked=%s)",
             result.code,
@@ -427,19 +440,12 @@ def _is_zero_ceiling(value: object) -> bool:
     `int(value or 0)` — which would turn every point without the field into a
     national closure — has to argue with a named function and its test.
 
-    A digit STRING counts. The canonical stores integers and a string should not
-    occur, but if one ever does, the failure has to land on the safe side: `"0"`
-    read as "no ceiling recorded" is the reading that tells a client an activity
-    closed to foreign capital is open.
+    Only an exact finite numeric value counts. Numeric strings, booleans and
+    non-finite floats are malformed source values and never become a claim.
     """
     if isinstance(value, bool):
         return False
-    if isinstance(value, int):
-        return value == 0
-    if isinstance(value, str):
-        text = value.strip()
-        return text.isdigit() and int(text) == 0  # "" is not a digit string
-    return False
+    return isinstance(value, (int, float)) and math.isfinite(value) and value == 0
 
 
 def _national_closure_basis(result: "KBLISearchResult") -> str | None:
@@ -460,7 +466,7 @@ def _national_closure_basis(result: "KBLISearchResult") -> str | None:
         return by_status
     if (result.pma_status or "").strip().upper() == "TERTUTUP":
         return "the national PMA list closes the activity (TERTUTUP)"
-    if _is_zero_ceiling(result.pma_max_asing):
+    if result.pma_cap_verified is True and _is_zero_ceiling(result.pma_max_asing):
         return "the national foreign-ownership ceiling is 0%"
     return None
 
@@ -482,11 +488,9 @@ def _bali_verdict_context_note(result: "KBLISearchResult") -> str:
       when the question mentions foreign investment; a Bali block is material
       even when it does not ("how do I open a massage parlour in Bali?"), and
       staying silent there is what produced the wrong answer.
-    * **The reason is passed through only with a verified PMA tuple.** The Bali
-      verdict is an independent structured signal and still blocks unsafe
-      advice when national PMA provenance is absent.  Its free-form reason,
-      however, can also contain national ownership conclusions.  Publishing
-      that prose for a `declared_gap` row would bypass the exact provenance gate.
+    * **The whole Bali verdict requires a verified PMA tuple.** Bali-side status,
+      block, and reason all describe PT PMA registrability. Publishing any of
+      them for a `declared_gap` row would bypass the exact provenance gate.
 
     Two more, added 2026-08-05 (see `_national_closure_basis` above):
 
@@ -500,20 +504,15 @@ def _bali_verdict_context_note(result: "KBLISearchResult") -> str:
       (`kbli-status-labels.ts::INTERNAL_ENUM_LABELS`); this was the surface that
       had not. The symbol still goes to the log, where it belongs.
 
-    NOT handled here, and measured rather than assumed: an activity that is
-    nationally closed and carries NO Bali verdict at all. Today that set is
-    empty (0 of 1,559), and widening the silence-on-absence contract to cover a
-    population of zero would trade a proven innocence property for nothing.
     """
-    if result.bali_blocked is None:
+    if not result.pma_verdict_verified or result.bali_blocked is None:
         return ""
 
-    pma_verified = result.pma_verdict_verified
     national = _national_closure_basis(result)
     # Coerce BEFORE `.strip()`, not after: `(42 or "").strip()` raises, and that
     # ordering bug predates this change — it has been one malformed payload away
     # from a 500 since the field was added.
-    reason = _speak_internal_symbols(result.bali_reason or "").strip() if pma_verified else ""
+    reason = _speak_internal_symbols(result.bali_reason or "").strip()
 
     if not result.bali_blocked:
         if national:
@@ -527,15 +526,9 @@ def _bali_verdict_context_note(result: "KBLISearchResult") -> str:
                 f"({national}), so the absence of a Bali block is NOT permission. You "
                 "MUST NOT present it as registrable by a PT PMA."
             )
-        if pma_verified:
-            return (
-                "BALI: this activity is NOT blocked for a PT PMA by the Bali provincial "
-                "moratorium. National ownership rules still apply separately."
-            )
         return (
-            "BALI: this activity is NOT blocked in the Bali-side record by the "
-            "provincial moratorium. The national PMA status and ownership ceiling are "
-            "NOT_VERIFIED; do not infer national permission from the Bali result."
+            "BALI: this activity is NOT blocked for a PT PMA by the Bali provincial "
+            "moratorium. National ownership rules still apply separately."
         )
 
     if national:
@@ -553,18 +546,11 @@ def _bali_verdict_context_note(result: "KBLISearchResult") -> str:
             "restriction and do NOT offer another province as an alternative."
         )
 
-    if pma_verified:
-        note = (
-            "BALI — BLOCKED FOR A FOREIGN-OWNED COMPANY (PT PMA). This is a PROVINCIAL "
-            "restriction and it is independent of the national PMA status above: an "
-            "activity can be 100% open nationally and still be unregistrable in Bali."
-        )
-    else:
-        note = (
-            "BALI — BLOCKED FOR A FOREIGN-OWNED COMPANY (PT PMA). This Bali-side "
-            "verdict does not verify the national PMA status or ownership ceiling; "
-            "both remain NOT_VERIFIED."
-        )
+    note = (
+        "BALI — BLOCKED FOR A FOREIGN-OWNED COMPANY (PT PMA). This is a PROVINCIAL "
+        "restriction and it is independent of the national PMA status above: an "
+        "activity can be 100% open nationally and still be unregistrable in Bali."
+    )
     if reason:
         note = f"{note} Stated cause: {reason}"
     note = (
@@ -743,7 +729,7 @@ async def _generate_kbli_explanation_gemini(
 
 @cached(
     ttl=43200,
-    prefix="kbli_explain_v32",
+    prefix="kbli_explain_v33",
 )  # Cache explanations for 12 hours.
 # v28 (2026-08-03): the Bali provincial verdict now reaches the model. The bump is
 # NOT cosmetic — this cache is 12h deep and keyed on the prefix, so every answer
@@ -762,6 +748,8 @@ async def _generate_kbli_explanation_gemini(
 # v32 (2026-08-15): generated kbli_documents prose is admitted only when that
 # row's own PMA tuple matches the verified search result. Cached v31 answers may
 # already contain unbound or divergent parent-document ownership claims.
+# v33 (2026-08-15): Bali-side status, block, and reason are now withheld with the
+# whole PMA claim whenever the exact national evidence tuple is absent.
 async def _generate_kbli_explanation(
     query: str,
     results: list[KBLISearchResult],
@@ -813,16 +801,27 @@ async def _generate_kbli_explanation(
             )
         else:
             logger.debug(f"  Using truncated description for {r.code}")
-            pma_line = (
-                f"PMA: {r.pma_status}; maximum foreign ownership: {r.pma_max_asing}; "
-                f"official basis: {r.pma_official_basis}; source vintage: {r.pma_source_vintage}"
-                if pma_verified
-                else (
+            if not pma_verified:
+                pma_line = (
                     "PMA: NOT_VERIFIED. Do not state or infer an ownership status or "
                     "percentage for this code; explain the evidence gap and recommend "
                     "official OSS/BKPM verification."
                 )
-            )
+            else:
+                cap = "ownership cap: not verified"
+                if r.pma_cap_verified is True:
+                    if r.pma_cap_special is True and r.pma_max_asing == "special":
+                        cap = "ownership cap: special non-percentage conditions"
+                    elif (
+                        isinstance(r.pma_max_asing, (int, float))
+                        and not isinstance(r.pma_max_asing, bool)
+                        and math.isfinite(r.pma_max_asing)
+                    ):
+                        cap = f"maximum foreign ownership: {r.pma_max_asing}%"
+                pma_line = (
+                    f"PMA: {r.pma_status}; {cap}; official basis: "
+                    f"{r.pma_official_basis}; source vintage: {r.pma_source_vintage}"
+                )
             context_parts.append(
                 f"- KBLI {r.code}: {r.title}\n  Scope: {r.description}\n  {pma_line}\n  Risk: {r.risk_category}{expert_info}",
             )
@@ -1221,14 +1220,8 @@ async def chat_kbli(
                                 title=row["judul"],
                                 description=_official_scope(metadata, code),
                                 score=1.0,
-                                pma_status=metadata.get("pma_status", "Verify at OSS"),
-                                pma_max_asing=metadata.get("pma_max_asing"),
-                                pma_verification_status=metadata.get(
-                                    "pma_verification_status", "declared_gap"
-                                ),
-                                pma_official_basis=metadata.get("pma_official_basis"),
-                                pma_source_vintage=metadata.get("pma_source_vintage"),
                                 risk_category="Verify at OSS",  # Will be enriched from full content
+                                **_pma_disclosure_fields(metadata),
                             )
                             logger.info(
                                 f"✅ Direct lookup from kbli_documents: {code} ({len(row['content'])} chars)",
@@ -1251,14 +1244,8 @@ async def chat_kbli(
                                 title=kg_row["name"],
                                 description=kg_row["description"][:200] + "...",
                                 score=1.0,
-                                pma_status=props.get("pma_status", "Verify at OSS"),
-                                pma_max_asing=props.get("pma_max_asing"),
-                                pma_verification_status=props.get(
-                                    "pma_verification_status", "declared_gap"
-                                ),
-                                pma_official_basis=props.get("pma_official_basis"),
-                                pma_source_vintage=props.get("pma_source_vintage"),
                                 risk_category=props.get("kategori_risiko", "Verify at OSS"),
+                                **_pma_disclosure_fields(props),
                             )
                             logger.info("⚠️ Direct lookup fallback to kg_nodes: %s", code)
                             break
@@ -1543,14 +1530,8 @@ async def chat_kbli(
                                     title=row["name"],
                                     description=row["description"][:200] + "...",
                                     score=0.8,  # Static score for fallback
-                                    pma_status=props.get("pma_status", "UNKNOWN"),
-                                    pma_max_asing=props.get("pma_max_asing"),
-                                    pma_verification_status=props.get(
-                                        "pma_verification_status", "declared_gap"
-                                    ),
-                                    pma_official_basis=props.get("pma_official_basis"),
-                                    pma_source_vintage=props.get("pma_source_vintage"),
                                     risk_category=props.get("kategori_risiko", "Unknown"),
+                                    **_pma_disclosure_fields(props),
                                 ),
                             )
                         logger.info(

@@ -35,7 +35,13 @@ from dotenv import load_dotenv
 
 from backend.core.collection_registry import resolve_collection_name
 from backend.scripts._kbli_repo_root import resolve_repo_root
-from backend.services.kbli_pma_disclosure import pma_claims_verified
+from backend.services.kbli_editorial_certification import (
+    assert_certified_source_dataset,
+    load_editorial_registry,
+    matches_editorial_certification,
+    with_neutral_kbli_chat_opener,
+)
+from backend.services.kbli_pma_disclosure import disclose_bali, disclose_pma
 
 # Repo root: robust resolver that works in both the dev checkout and the Fly
 # container (where parents[4] raises IndexError — the layout is shallower).
@@ -133,41 +139,50 @@ def deterministic_uuid(code: str) -> str:
     return str(uuid.UUID(hashlib.md5(key.encode()).hexdigest()))
 
 
-def render_bali_embedding_block(entry: dict, *, pma_verified: bool) -> list[str]:
+def render_bali_embedding_block(entry: dict) -> list[str]:
     """Render Bali facts without using them to infer a national PMA verdict."""
-    l4 = entry.get("l4_bali") or {}
-    if not l4.get("status"):
+    bali = disclose_bali(entry)
+    if not bali["has_bali_l4"]:
         return []
 
     lines = ["## Status PMA di Bali (L4 — moratorium provinsi)"]
-    if l4.get("blocked"):
+    if bali["bali_blocked"] is True:
         lines.append(
             "- DIBLOKIR untuk PMA di Bali: kegiatan risiko Rendah/Menengah-Rendah "
             "tidak dapat didaftarkan PT PMA di Provinsi Bali (moratorium 2026-05-13)."
         )
-    lines.append(f"- Status Bali: {l4['status']}")
+    lines.append(f"- Status Bali: {bali['bali_status']}")
 
-    if pma_verified:
-        if l4.get("reason"):
-            lines.append(f"- Alasan: {l4['reason']}")
-        lines.append(
-            "- Note: national status (Perpres 10/2021) can differ from the "
-            "provincial block; read both verdicts."
-        )
-    elif l4.get("blocked"):
-        lines.append(
-            "- Note: the Bali record indicates a local block; national PMA status "
-            "and cap remain NOT_VERIFIED."
-        )
-    else:
-        lines.append(
-            "- Note: absence of a block in the Bali record does not prove national "
-            "permission; national PMA status and cap remain NOT_VERIFIED."
-        )
+    if bali["bali_reason"]:
+        lines.append(f"- Alasan: {bali['bali_reason']}")
+    lines.append(
+        "- Note: national status (Perpres 10/2021) can differ from the "
+        "provincial block; read both verdicts."
+    )
     return lines
 
 
-def build_embedding_text(entry: dict) -> str:
+def disclosed_canonical_intel(
+    entry: dict,
+    registry: dict | None = None,
+) -> dict | None:
+    """Return only exact reviewed intel, with a compiler-owned neutral opener."""
+    code = str(entry.get("kode_kbli_2025") or "")
+    intel = entry.get("intel_2026")
+    if not isinstance(intel, dict):
+        return None
+    if not matches_editorial_certification(
+        "canonicalIntel",
+        code,
+        entry,
+        intel,
+        registry,
+    ):
+        return None
+    return with_neutral_kbli_chat_opener(code, intel)
+
+
+def build_embedding_text(entry: dict, registry: dict | None = None) -> str:
     """
     Build rich embedding text for a KBLI code.
 
@@ -178,8 +193,10 @@ def build_embedding_text(entry: dict) -> str:
     judul = entry.get("judul", "")
     uraian = entry.get("uraian", "")
     sektor = entry.get("sektor_id", "")
-    pma_status = entry.get("pma_status", "")
-    pma_verified = pma_claims_verified(entry)
+    pma_disclosure = disclose_pma(entry)
+    pma_status = pma_disclosure["pma_status"]
+    pma_verified = pma_disclosure["pma_verification_status"] == "located"
+    certified_intel = disclosed_canonical_intel(entry, registry)
 
     parts = [
         f"[CONTEXT: KBLI 2025 - BPS 7/2025 + PP28/2025 - Kode {code} - {judul}]",
@@ -202,14 +219,20 @@ def build_embedding_text(entry: dict) -> str:
     # PMA status
     if pma_status and pma_verified:
         pma_section = [f"## Status PMA: {pma_status}"]
-        if entry.get("pma_max_asing"):
-            pma_section.append(f"- Kepemilikan asing maksimal: {entry['pma_max_asing']}")
-        if entry.get("pma_kondisi"):
-            pma_section.append(f"- Kondisi: {entry['pma_kondisi']}")
-        if entry.get("pma_prioritas"):
-            pma_section.append(f"- Prioritas: {entry['pma_prioritas']}")
-        if entry.get("pma_nota"):
-            pma_section.append(f"- Nota: {entry['pma_nota']}")
+        cap = pma_disclosure["pma_max_asing"]
+        if pma_disclosure["pma_cap_verified"]:
+            if cap == "special":
+                pma_section.append("- Kepemilikan asing: kondisi khusus non-persentase")
+            elif cap is not None:
+                pma_section.append(f"- Kepemilikan asing maksimal: {cap}%")
+        else:
+            pma_section.append("- Kepemilikan asing: belum terverifikasi")
+        if pma_disclosure["pma_kondisi"]:
+            pma_section.append(f"- Kondisi: {pma_disclosure['pma_kondisi']}")
+        if pma_disclosure["pma_prioritas"]:
+            pma_section.append("- Prioritas: Ya")
+        if pma_disclosure["pma_nota"]:
+            pma_section.append(f"- Nota: {pma_disclosure['pma_nota']}")
         parts.extend(pma_section)
         parts.append("")
     else:
@@ -276,7 +299,7 @@ def build_embedding_text(entry: dict) -> str:
     # Intel 2026 (Bali-specific intelligence)
     # Intel is generated prose and may contain whole-code ownership claims.
     # It is one atomic editorial layer: do not attempt substring redaction.
-    intel = entry.get("intel_2026") if pma_verified else None
+    intel = certified_intel if pma_verified else None
     if intel:
         parts.append("## Intelligence 2026")
         if isinstance(intel, dict):
@@ -289,7 +312,7 @@ def build_embedding_text(entry: dict) -> str:
 
     # L4 Bali sovereign-local status (moratorium 2026-05-13) — embed it so semantic
     # search surfaces the Bali block, not just the national PMA status.
-    bali_block = render_bali_embedding_block(entry, pma_verified=pma_verified)
+    bali_block = render_bali_embedding_block(entry)
     if bali_block:
         parts.extend(bali_block)
         parts.append("")
@@ -305,7 +328,11 @@ def build_embedding_text(entry: dict) -> str:
     return text
 
 
-def build_payload(entry: dict, embedding_text: str) -> dict:
+def build_payload(
+    entry: dict,
+    embedding_text: str,
+    registry: dict | None = None,
+) -> dict:
     """Build Qdrant payload matching the kbli_2025_final schema."""
     code = entry["kode_kbli_2025"]
     per_skala = entry.get("per_skala", [])
@@ -323,8 +350,9 @@ def build_payload(entry: dict, embedding_text: str) -> dict:
 
     # L4 Bali sovereign-local layer (flat fields — KBLI flat-payload golden rule).
     # National PMA openness (pma_status) != Bali registrability (bali_status).
-    l4 = entry.get("l4_bali") or {}
-    bali_status = l4.get("status", "")
+    pma = disclose_pma(entry)
+    bali = disclose_bali(entry)
+    certified_intel = disclosed_canonical_intel(entry, registry)
 
     return {
         "text": embedding_text,
@@ -343,23 +371,22 @@ def build_payload(entry: dict, embedding_text: str) -> dict:
         "version": "v8.1-final-l4-bali",
         "sektor": entry.get("sektor_id", ""),
         "section": entry.get("sektor_id", ""),
-        "pma_status": entry.get("pma_status", ""),
-        "pma_max_asing": entry.get("pma_max_asing", ""),
-        "pma_verification_status": entry.get("pma_verification_status", "declared_gap"),
-        "pma_official_basis": entry.get("pma_official_basis", ""),
-        "pma_source_vintage": entry.get("pma_source_vintage", ""),
+        "pma_status": pma["pma_status"],
+        "pma_max_asing": pma["pma_max_asing"],
+        "pma_verification_status": pma["pma_verification_status"],
+        "pma_official_basis": pma["pma_official_basis"],
+        "pma_source_vintage": pma["pma_source_vintage"],
+        "pma_cap_special": pma["pma_cap_special"],
+        "pma_cap_verified": pma["pma_cap_verified"],
         "has_per_skala": bool(per_skala),
         "scales": scales,
         "risk_levels": list(risk_levels),
         "kategori_risiko": risk_category,
-        "has_intel_2026": pma_claims_verified(entry) and bool(entry.get("intel_2026")),
+        "has_intel_2026": certified_intel is not None,
         "has_gold_content": False,
         "status_mapping": entry.get("status_mapping", ""),
         # L4 Bali (flat) — sovereign-local status, moratorium 2026-05-13
-        "bali_status": bali_status,
-        "bali_blocked": bool(l4.get("blocked")),
-        "bali_reason": l4.get("reason", ""),
-        "has_bali_l4": bool(bali_status),
+        **bali,
         "indexed_at": "",  # filled at upsert time
     }
 
@@ -587,8 +614,10 @@ async def main():
 
     # Load source data
     logger.info("Loading KBLI_2025_FINAL_CLEAN.json...")
-    with open(SOURCE_FILE, encoding="utf-8") as f:
-        source = json.load(f)
+    source_bytes = SOURCE_FILE.read_bytes()
+    registry = load_editorial_registry()
+    assert_certified_source_dataset(source_bytes, registry)
+    source = json.loads(source_bytes)
 
     version = source["metadata"]["version"]
     entries = source["data"]
@@ -612,8 +641,8 @@ async def main():
 
     for entry in entries:
         code = entry["kode_kbli_2025"]
-        embedding_text = build_embedding_text(entry)
-        payload = build_payload(entry, embedding_text)
+        embedding_text = build_embedding_text(entry, registry)
+        payload = build_payload(entry, embedding_text, registry)
         payload["indexed_at"] = indexed_at  # flat payload (KBLI flat-payload golden rule)
 
         all_points.append(
@@ -630,12 +659,14 @@ async def main():
     has_uraian = sum(1 for e in entries if e.get("uraian"))
     has_per_skala = sum(1 for e in entries if e.get("per_skala"))
     has_pma = sum(1 for e in entries if e.get("pma_status"))
-    has_intel = sum(1 for e in entries if e.get("intel_2026"))
+    has_certified_intel = sum(
+        1 for entry in entries if disclosed_canonical_intel(entry, registry) is not None
+    )
     logger.info("Data coverage:")
     logger.info(f"  uraian (BPS description): {has_uraian}/{len(entries)}")
     logger.info(f"  per_skala (PP28 licensing): {has_per_skala}/{len(entries)}")
     logger.info(f"  pma_status: {has_pma}/{len(entries)}")
-    logger.info(f"  intel_2026: {has_intel}/{len(entries)}")
+    logger.info(f"  certified intel_2026: {has_certified_intel}/{len(entries)}")
 
     # Text length stats
     text_lengths = [len(p["_text_to_embed"]) for p in all_points]

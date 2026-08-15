@@ -54,26 +54,17 @@ _LOCATED_PMA = {
 # --------------------------------------------------------------- guilt
 
 
-def test_a_blocked_code_produces_a_note_the_model_cannot_read_as_permission():
-    """The exact production failure, frozen: 86995 blocked, and the note has to
-    say so in words that cannot be summarised into "yes you can".  Its national
-    PMA tuple is a declared gap, so the mixed free-form reason stays hidden."""
-    note = _bali_verdict_context_note(
-        _result(
-            bali_blocked=True,
-            bali_status="CHIUSO_MORATORIA_BALI",
-            bali_reason="blocked in Bali by the PMA moratorium: risk tier ['Menengah Rendah']",
-        ),
+def test_a_blocked_claim_without_a_located_pma_tuple_is_withheld_atomically():
+    """A Bali-side PT PMA verdict cannot bypass the national evidence gate."""
+    result = _result(
+        bali_blocked=True,
+        bali_status="CHIUSO_MORATORIA_BALI",
+        bali_reason="blocked in Bali by the PMA moratorium: risk tier ['Menengah Rendah']",
     )
-    assert "BLOCKED FOR A FOREIGN-OWNED COMPANY" in note
-    # This line read `assert "CHIUSO_MORATORIA_BALI" in note` until 2026-08-05,
-    # which pinned a leak as if it were a feature: the note ended with
-    # `Verdict code: <symbol>` and production read that symbol out to a client.
-    # The stated cause carries the meaning; the symbol carried our vocabulary.
-    assert "CHIUSO_MORATORIA_BALI" not in note
-    assert "Menengah Rendah" not in note
-    assert "NOT_VERIFIED" in note
-    assert "Do not answer that it can be registered in Bali." in note
+    assert result.bali_blocked is None
+    assert result.bali_status is None
+    assert result.bali_reason == ""
+    assert _bali_verdict_context_note(result) == ""
 
 
 def test_the_note_says_the_provincial_block_is_independent_of_national_openness():
@@ -104,6 +95,9 @@ async def test_a_result_built_without_a_payload_is_backfilled_at_the_choke_point
     async def fake_payload(code: str) -> dict:
         assert code == "86995"
         return {
+            "pma_status": "TERBUKA",
+            "pma_max_asing": 100,
+            **_LOCATED_PMA,
             "bali_blocked": True,
             "bali_status": "CHIUSO_MORATORIA_BALI",
             "bali_reason": "the moratorium",
@@ -120,7 +114,7 @@ async def test_a_result_built_without_a_payload_is_backfilled_at_the_choke_point
 
     assert result.bali_blocked is True
     assert result.bali_status == "CHIUSO_MORATORIA_BALI"
-    assert result.bali_reason == ""
+    assert result.bali_reason == "the moratorium"
     assert "BLOCKED" in _bali_verdict_context_note(result)
 
 
@@ -135,9 +129,59 @@ def test_an_absent_verdict_produces_silence_never_a_claim_of_openness():
 
 def test_a_code_that_is_not_blocked_is_told_plainly_and_is_not_called_blocked():
     note = _bali_verdict_context_note(_result(bali_blocked=False, bali_status="OK"))
-    assert "NOT blocked" in note
-    assert "NOT_VERIFIED" in note
-    assert "BLOCKED FOR A FOREIGN-OWNED COMPANY" not in note
+    assert note == ""
+
+
+@pytest.mark.parametrize(
+    ("status", "blocked"),
+    [
+        (" OK ", False),
+        ("OK", "false"),
+        ("OK", 0),
+        ("", False),
+    ],
+)
+def test_response_model_rejects_malformed_bali_before_type_coercion(status, blocked):
+    result = _result(
+        **_LOCATED_PMA,
+        pma_status="TERBUKA",
+        pma_max_asing=100,
+        bali_status=status,
+        bali_blocked=blocked,
+        bali_reason="must not escape",
+    )
+
+    assert result.bali_status is None
+    assert result.bali_blocked is None
+    assert result.bali_reason == ""
+
+
+@pytest.mark.asyncio
+async def test_backfill_rejects_a_trimmed_status_even_with_a_real_boolean():
+    result = _result()
+
+    async def malformed(code: str) -> dict:
+        return {
+            "pma_status": "TERBUKA",
+            "pma_max_asing": 100,
+            **_LOCATED_PMA,
+            "bali_blocked": False,
+            "bali_status": " OK ",
+            "bali_reason": "must not escape",
+        }
+
+    import backend.app.routers.kbli_notebook_chat as mod
+
+    original = mod._get_kbli_payload_from_qdrant
+    mod._get_kbli_payload_from_qdrant = malformed
+    try:
+        await _fill_bali_verdicts([result])
+    finally:
+        mod._get_kbli_payload_from_qdrant = original
+
+    assert result.bali_status is None
+    assert result.bali_blocked is None
+    assert result.bali_reason == ""
 
 
 @pytest.mark.asyncio
@@ -184,10 +228,16 @@ async def test_a_payload_without_the_bali_key_leaves_the_verdict_unknown():
 
 
 @pytest.mark.asyncio
-async def test_a_result_with_a_bali_verdict_only_fetches_missing_pma_evidence():
-    """The later lookup may complete the PMA tuple, but it must not overwrite
-    the Bali verdict carried by the search hit if the two reads disagree."""
-    result = _result(bali_blocked=True, bali_status="CHIUSO_MORATORIA_BALI", bali_reason="keep me")
+async def test_a_verified_result_with_a_bali_verdict_skips_a_later_lookup():
+    """A complete search-hit tuple is already atomic and must not be replaced."""
+    result = _result(
+        **_LOCATED_PMA,
+        pma_status="TERBUKA",
+        pma_max_asing=100,
+        bali_blocked=True,
+        bali_status="CHIUSO_MORATORIA_BALI",
+        bali_reason="keep me",
+    )
     calls: list[str] = []
 
     async def spy(code: str) -> dict:
@@ -203,9 +253,9 @@ async def test_a_result_with_a_bali_verdict_only_fetches_missing_pma_evidence():
     finally:
         mod._get_kbli_payload_from_qdrant = original
 
-    assert calls == ["86995"]
+    assert calls == []
     assert result.bali_status == "CHIUSO_MORATORIA_BALI"
-    assert result.bali_reason == "", "free-form prose stays withheld without a located PMA tuple"
+    assert result.bali_reason == "keep me"
 
 
 @pytest.mark.asyncio
@@ -244,6 +294,8 @@ async def test_a_backfill_downgrade_clears_previously_eligible_pma_prose():
     assert result.pma_status == "NOT_VERIFIED"
     assert result.pma_max_asing is None
     assert result.expert_legal is None
+    assert result.bali_blocked is None
+    assert result.bali_status is None
     assert result.bali_reason == ""
 
 
@@ -261,8 +313,8 @@ def test_the_explanation_cache_prefix_moved_with_this_change():
     # arithmetic across a worktree is its own way to fail while looking fine.
     source = Path(inspect.getsourcefile(mod))
     text = source.read_text(encoding="utf-8")
-    assert 'prefix="kbli_explain_v32"' in text
-    assert 'prefix="kbli_explain_v31"' not in text
+    assert 'prefix="kbli_explain_v33"' in text
+    assert 'prefix="kbli_explain_v32"' not in text
 
 
 def test_the_fill_runs_inside_the_function_every_answer_passes_through():
@@ -413,6 +465,7 @@ def test_a_zero_ceiling_makes_the_closure_national_even_under_a_terbatas_label()
             "16221",
             pma_status="TERBATAS",
             pma_max_asing=0,
+            pma_cap_verified=True,
             **_LOCATED_PMA,
             bali_blocked=True,
             bali_status="BLOCCATO_CLASSE_RISCHIO",
@@ -433,6 +486,7 @@ def test_not_blocked_in_bali_is_not_permission_when_the_national_door_is_shut():
             title="Biro Perjalanan Ibadah Umrah dan Haji Khusus",
             pma_status="TERBATAS",
             pma_max_asing=0,
+            pma_cap_verified=True,
             **_LOCATED_PMA,
             bali_blocked=False,
             bali_status="OK_or_HIGHER_RISK",
@@ -504,7 +558,8 @@ def test_an_absent_ceiling_is_never_read_as_zero_percent():
 
 def test_the_ceiling_test_reads_a_real_zero_in_either_shape_and_never_a_boolean():
     assert _is_zero_ceiling(0) is True
-    assert _is_zero_ceiling("0") is True  # a digit string still means 0%
+    assert _is_zero_ceiling(0.0) is True
+    assert _is_zero_ceiling("0") is False  # numeric strings are never coerced
     assert _is_zero_ceiling(False) is False  # bool is an int in Python; not a cap
     assert _is_zero_ceiling(100) is False
     assert _is_zero_ceiling("100") is False
@@ -585,22 +640,17 @@ def test_no_note_in_the_whole_catalogue_hands_the_model_an_internal_symbol(catal
 
 
 def test_declared_gap_notes_withhold_mixed_free_form_reasons_across_the_catalogue(catalogue):
-    """A Bali reason can bundle a provincial verdict with national ownership
-    prose.  The structured Bali signal remains usable, but a declared-gap row
-    must never smuggle that unverified prose around the PMA tuple gate."""
+    """Every Bali field is silent for every declared-gap catalogue row."""
     checked = 0
     for record in catalogue:
         if record.get("pma_verification_status") == "located":
             continue
         result = _result_for(record)
         note = _bali_verdict_context_note(result)
-        if result.bali_blocked is None:
-            assert note == ""
-            continue
-        assert "NOT_VERIFIED" in note, record["kode_kbli_2025"]
-        reason = str(result.bali_reason or "").strip()
-        if reason:
-            assert reason not in note, record["kode_kbli_2025"]
+        assert result.bali_blocked is None, record["kode_kbli_2025"]
+        assert result.bali_status is None, record["kode_kbli_2025"]
+        assert result.bali_reason == "", record["kode_kbli_2025"]
+        assert note == "", record["kode_kbli_2025"]
         checked += 1
     assert checked > 1000, "declared-gap property gate would be vacuous"
 
@@ -645,6 +695,8 @@ def test_a_non_string_reason_is_survived_rather_than_500ing_the_answer():
 
     result = _result(
         **_LOCATED_PMA,
+        pma_status="TERBUKA",
+        pma_max_asing=100,
         bali_blocked=True,
         bali_status="BLOCCATO_CLASSE_RISCHIO",
     )

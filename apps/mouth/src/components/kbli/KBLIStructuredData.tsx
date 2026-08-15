@@ -5,6 +5,7 @@ import {
   isPmaVerdictVerified,
 } from "@/lib/kbli-provenance";
 import { pmaCapShape } from "@/lib/kbli-pma-shape";
+import { formatPmaOwnership } from "@/lib/kbli-pma-disclosure";
 import { pmaSourceAttributionStructured } from "@/lib/kbli-pma-source";
 
 /**
@@ -18,6 +19,22 @@ import { pmaSourceAttributionStructured } from "@/lib/kbli-pma-source";
  * records having happened once; one shared classifier is what stops a third.
  */
 function restrictedPmaStructuredLabel(code: KBLICode): string {
+  if (
+    code.pma.capVerified &&
+    code.pma.capSpecial &&
+    code.pma.maxForeign === "special"
+  ) {
+    return "Restricted by special non-percentage conditions (TERBATAS)";
+  }
+  if (!code.pma.capVerified && code.pma.maxForeign !== null) {
+    return "Restricted; ownership cap not verified (TERBATAS)";
+  }
+  if (
+    typeof code.pma.maxForeign !== "number" ||
+    !Number.isFinite(code.pma.maxForeign)
+  ) {
+    return "Restricted; ownership cap not published (TERBATAS)";
+  }
   switch (pmaCapShape(code.pma)) {
     case "none":
       return "Closed to foreign ownership in practice — 0% ceiling (TERBATAS)";
@@ -43,7 +60,7 @@ export function KBLICodeJsonLd({
   // but l4_bali.blocked, the SEO/JSON-LD must NOT tell Google "100% foreign
   // ownership allowed" unqualified — it would surface in rich results / AI answers
   // as a green light that is false for a Bali setup.
-  const baliBlocked = !!code.baliL4?.blocked;
+  const baliBlocked = code.baliL4?.blocked === true;
   // GARUDA-FILIERA Fase-1 cure #4 (2026-07-17): a code whose Bali risk tier
   // was carried over from a different activity (code-number collision) is
   // neither blocked nor confirmed open — don't let Google/AI answers read
@@ -75,11 +92,15 @@ export function KBLICodeJsonLd({
     code.pma.source,
     code.provenance?.pma.status ?? "declared_gap",
   );
+  const openPmaLabel =
+    code.pma.capVerified && code.pma.maxForeign === 100
+      ? "100% foreign ownership allowed"
+      : formatPmaOwnership(code.pma, "metadata");
   const pmaLabel = `${
     !pmaVerdictVerified
       ? "Foreign-ownership status not yet verified for this KBLI 2025 code"
       : code.pma.status === "open"
-        ? `100% foreign ownership allowed (TERBUKA)${baliNat}`
+        ? `${openPmaLabel} (TERBUKA)${baliNat}`
         : code.pma.status === "restricted"
           ? restrictedPmaStructuredLabel(code)
           : "Closed to foreign investment (TERTUTUP)"
@@ -134,7 +155,11 @@ export function KBLICodeJsonLd({
       code.titleEn !== code.titleId ? code.titleEn : undefined,
       "KBLI 2025",
       "Indonesian business license",
-      pmaVerdictVerified && code.pma.status === "open" ? "PT PMA" : undefined,
+      pmaVerdictVerified &&
+      code.pma.status === "open" &&
+      !(code.pma.capVerified && code.pma.maxForeign === 0)
+        ? "PT PMA"
+        : undefined,
       riskLevel !== "Unknown" ? `${riskLevel} risk` : undefined,
       code.section ? `Section ${code.section}` : undefined,
     ]

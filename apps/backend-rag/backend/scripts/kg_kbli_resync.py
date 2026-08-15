@@ -13,12 +13,14 @@ WHAT IT SYNCS (1:1 canonical fields only — no derivations):
   - name / name_id / name_en  ← judul + English title maps (curated wins over
     generated, mirroring apps/mouth/src/lib/kbli-data.ts precedence)
   - description               ← uraian
-  - properties.pma_*          ← complete canonical PMA evidence tuple
+  - properties.pma_*          ← fail-closed public PMA disclosure
+  - properties.bali_*         ← fail-closed public Bali disclosure
   - properties.pp28_sources   ← pp28_sources (the OTHER codes a record's PP
     28/2025 licensing rows were carried from; `inspect_kbli` reads it to
     disclose inherited licences — see backend/services/kbli_pp28_provenance.py)
   - properties.{whatItMeans, whatYouNeed, baliContext, whatChanged,
-    zantaraOpener}            ← intel_2026.* (only keys present; never nulled)
+    zantaraOpener}            ← intel_2026.* only for an exact certification
+                                 registry match; otherwise removed atomically
 Fields with unknown original derivation (kategori_risiko, skala_usaha,
 licensing_status, sektor_id) are left untouched.
 
@@ -37,12 +39,20 @@ import argparse
 import asyncio
 import json
 import logging
+import math
 import os
 import re
 import sys
 
 import asyncpg
 import httpx
+
+from backend.services.kbli_editorial_certification import (
+    assert_certified_source_dataset,
+    matches_editorial_certification,
+    validate_editorial_registry,
+    with_neutral_kbli_chat_opener,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("kg_kbli_resync")
@@ -51,15 +61,35 @@ RAW_BASE = "https://raw.githubusercontent.com/Balizero1987/Teman2/main"
 DATASET_URL = f"{RAW_BASE}/data/source_documents/KBLI_2025_FINAL_CLEAN.json"
 EN_GENERATED_URL = f"{RAW_BASE}/apps/mouth/src/lib/kbli-english-generated.ts"
 EN_CURATED_URL = f"{RAW_BASE}/apps/mouth/src/lib/kbli-english.ts"
+EDITORIAL_REGISTRY_URL = f"{RAW_BASE}/data/kbli-filiera/pma-editorial-certifications.json"
 
 INTEL_KEYS = ("whatItMeans", "whatYouNeed", "baliContext", "whatChanged", "zantaraOpener")
+EDITORIAL_KEYS = (
+    *INTEL_KEYS,
+    "youllAlsoNeed",
+    "tkaInfo",
+    "editorial",
+    "intel_2026",
+    "gold_content",
+    "expert_legal",
+    "has_intel_2026",
+    "has_gold_content",
+    "editorial_disclosed",
+)
 PMA_KEYS = (
     "pma_status",
     "pma_max_asing",
     "pma_verification_status",
     "pma_official_basis",
     "pma_source_vintage",
+    "pma_kondisi",
+    "pma_prioritas",
+    "pma_nota",
+    "pma_cap_special",
+    "pma_cap_verified",
 )
+BALI_KEYS = ("bali_status", "bali_blocked", "bali_reason", "has_bali_l4")
+PMA_ALLOWED_STATUSES = frozenset({"TERBUKA", "TERBATAS", "TERTUTUP"})
 TS_ENTRY_RE = re.compile(r'"(\d{5})":\s*"((?:[^"\\]|\\.)*)"')
 
 
@@ -68,15 +98,99 @@ def parse_ts_title_map(source: str) -> dict[str, str]:
     return {code: title.replace('\\"', '"') for code, title in TS_ENTRY_RE.findall(source)}
 
 
-def merge_node_props(props: dict, rec: dict) -> dict:
+def _clean_text(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    cleaned = value.strip()
+    return cleaned or None
+
+
+def _public_pma_cap(rec: dict) -> int | float | str | None:
+    value = rec.get("pma_max_asing")
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)) and math.isfinite(value):
+        return value
+    return "special" if value == "special" and rec.get("pma_cap_special") is True else None
+
+
+def _pma_claims_verified(rec: dict) -> bool:
+    status = rec.get("pma_status")
+    return bool(
+        rec.get("pma_verification_status") == "located"
+        and isinstance(status, str)
+        and status in PMA_ALLOWED_STATUSES
+        and _clean_text(rec.get("pma_official_basis"))
+        and _clean_text(rec.get("pma_source_vintage"))
+    )
+
+
+def _disclose_pma(rec: dict) -> dict:
+    if not _pma_claims_verified(rec):
+        return {
+            "pma_status": "NOT_VERIFIED",
+            "pma_max_asing": None,
+            "pma_verification_status": "declared_gap",
+            "pma_official_basis": None,
+            "pma_source_vintage": None,
+            "pma_kondisi": None,
+            "pma_prioritas": None,
+            "pma_nota": None,
+            "pma_cap_special": False,
+            "pma_cap_verified": False,
+        }
+    cap = _public_pma_cap(rec)
+    return {
+        "pma_status": rec["pma_status"],
+        "pma_max_asing": cap,
+        "pma_verification_status": "located",
+        "pma_official_basis": _clean_text(rec.get("pma_official_basis")),
+        "pma_source_vintage": _clean_text(rec.get("pma_source_vintage")),
+        "pma_kondisi": _clean_text(rec.get("pma_kondisi")),
+        "pma_prioritas": rec.get("pma_prioritas") is True,
+        "pma_nota": _clean_text(rec.get("pma_nota")),
+        "pma_cap_special": cap == "special",
+        "pma_cap_verified": cap is not None and rec.get("pma_cap_verified") is True,
+    }
+
+
+def _disclose_bali(rec: dict) -> dict:
+    neutral = {
+        "bali_status": None,
+        "bali_blocked": None,
+        "bali_reason": "",
+        "has_bali_l4": False,
+    }
+    if not _pma_claims_verified(rec):
+        return neutral
+    l4 = rec.get("l4_bali")
+    if not isinstance(l4, dict):
+        return neutral
+    status = l4.get("status")
+    blocked = l4.get("blocked")
+    if (
+        not isinstance(status, str)
+        or not status.strip()
+        or status != status.strip()
+        or not isinstance(blocked, bool)
+    ):
+        return neutral
+    reason = l4.get("reason")
+    return {
+        "bali_status": status,
+        "bali_blocked": blocked,
+        "bali_reason": reason.strip() if isinstance(reason, str) else "",
+        "has_bali_l4": True,
+    }
+
+
+def merge_node_props(props: dict, rec: dict, registry: dict | None = None) -> dict:
     """The canonical fields folded onto a kg_node's existing `properties`.
 
-    Two DELIBERATELY different merge rules live here, and the asymmetry is the
-    whole point:
-
-    - The complete `pma_*` evidence tuple is **authoritative**. Missing values
-      are removed so a stale locator/vintage can never bless a raw status from a
-      different run. The intel keys remain additive.
+    The PMA/Bali/editorial disclosure atom and ``pp28_sources`` are
+    authoritative.  A partial PMA tuple clears raw ownership, Bali and
+    generated editorial claims instead of preserving stale values from an old
+    graph load.
     - `pp28_sources` is **authoritative**: written when canonical has it,
       REMOVED when canonical does not. `inspect_kbli` turns this field into a
       client-facing sentence naming other KBLI codes; a stale list left behind
@@ -88,18 +202,32 @@ def merge_node_props(props: dict, rec: dict) -> dict:
     """
     new_props = dict(props)
 
-    for key in PMA_KEYS:
-        value = rec.get(key)
-        if value not in (None, ""):
-            new_props[key] = value
-        else:
+    for key in tuple(new_props):
+        if key.startswith("pma_") or key.startswith("bali_") or key == "l4_bali":
             new_props.pop(key, None)
+    new_props.update({key: value for key, value in _disclose_pma(rec).items() if value is not None})
+    new_props.update(
+        {key: value for key, value in _disclose_bali(rec).items() if value is not None}
+    )
 
-    intel = rec.get("intel_2026") or {}
-    for key in INTEL_KEYS:
-        value = intel.get(key)
-        if value:
-            new_props[key] = value
+    # The editorial layer is authoritative and atomic. Clear every legacy
+    # editorial alias first, even for a located tuple, then re-add only an
+    # exact block whose content and PMA fingerprint are in the review registry.
+    for key in EDITORIAL_KEYS:
+        new_props.pop(key, None)
+    intel = rec.get("intel_2026")
+    if isinstance(intel, dict) and matches_editorial_certification(
+        "canonicalIntel",
+        str(rec.get("kode_kbli_2025") or ""),
+        rec,
+        intel,
+        registry,
+    ):
+        intel = with_neutral_kbli_chat_opener(str(rec["kode_kbli_2025"]), intel)
+        for key in INTEL_KEYS:
+            value = intel.get(key)
+            if isinstance(value, str) and value.strip():
+                new_props[key] = value
 
     raw_sources = rec.get("pp28_sources")
     sources: list[str] = []
@@ -121,17 +249,20 @@ def merge_node_props(props: dict, rec: dict) -> dict:
     return new_props
 
 
-async def fetch_inputs() -> tuple[list[dict], dict[str, str]]:
+async def fetch_inputs() -> tuple[list[dict], dict[str, str], dict]:
     async with httpx.AsyncClient(timeout=60) as http:
         responses = {}
         for key, url in (
             ("dataset", DATASET_URL),
             ("generated", EN_GENERATED_URL),
             ("curated", EN_CURATED_URL),
+            ("registry", EDITORIAL_REGISTRY_URL),
         ):
             r = await http.get(url)
             r.raise_for_status()
             responses[key] = r
+        registry = validate_editorial_registry(responses["registry"].json())
+        assert_certified_source_dataset(responses["dataset"].content, registry)
         dataset = responses["dataset"].json()["data"]
         generated = parse_ts_title_map(responses["generated"].text)
         curated = parse_ts_title_map(responses["curated"].text)
@@ -139,7 +270,7 @@ async def fetch_inputs() -> tuple[list[dict], dict[str, str]]:
     logger.info(
         "canonical: %d codes | EN titles: %d (%d curated)", len(dataset), len(titles), len(curated)
     )
-    return dataset, titles
+    return dataset, titles, registry
 
 
 async def main() -> None:
@@ -149,7 +280,7 @@ async def main() -> None:
     args = ap.parse_args()
 
     dsn = os.environ["DATABASE_URL"].replace("postgresql+asyncpg://", "postgresql://")
-    dataset, titles = await fetch_inputs()
+    dataset, titles, registry = await fetch_inputs()
     if args.only:
         dataset = [r for r in dataset if str(r.get("kode_kbli_2025")) == args.only]
 
@@ -180,7 +311,7 @@ async def main() -> None:
             props = json.loads(row["properties"]) if row["properties"] else {}
             name = f"{en.upper()} ({judul.upper()})" if en else judul.upper()
 
-            new_props = merge_node_props(props, rec)
+            new_props = merge_node_props(props, rec, registry)
 
             if row["name"] == name and row["description"] == uraian and new_props == props:
                 unchanged += 1

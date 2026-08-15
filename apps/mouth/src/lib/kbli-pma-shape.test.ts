@@ -100,6 +100,15 @@ describe("pmaCapShape", () => {
       pmaCapShape(restricted({ maxForeign: "special", capSpecial: false }).pma),
     ).toBe("conditional");
   });
+
+  it("does not let a stray special flag override a numeric cap", () => {
+    expect(
+      pmaCapShape(restricted({ maxForeign: 0, capSpecial: true }).pma),
+    ).toBe("none");
+    expect(
+      pmaCapShape(restricted({ maxForeign: 49, capSpecial: true }).pma),
+    ).toBe("partial");
+  });
 });
 
 describe("the <title> suffix", () => {
@@ -227,7 +236,7 @@ describe("the visible badge", () => {
     ).not.toContain("special%");
   });
 
-  it("INNOCENCE: keeps the ceiling, and keeps the unverified qualifier", () => {
+  it("INNOCENCE: keeps verified ceilings and withholds unverified values", () => {
     expect(restrictedCapBadge(restricted({ maxForeign: 49 }).pma)).toBe(
       "Max 49%",
     );
@@ -235,6 +244,23 @@ describe("the visible badge", () => {
       restrictedCapBadge(
         restricted({ maxForeign: 49, capVerified: false }).pma,
       ),
-    ).toBe("≈49% (unverified)");
+    ).toBe("Cap not verified");
+    expect(
+      restrictedCapBadge(restricted({ maxForeign: 0, capVerified: false }).pma),
+    ).toBe("Cap not verified");
+    expect(
+      restrictedCapBadge(
+        restricted({ maxForeign: 100, capVerified: false }).pma,
+      ),
+    ).toBe("Cap not verified");
+    expect(
+      restrictedCapBadge(
+        restricted({
+          maxForeign: "special",
+          capSpecial: true,
+          capVerified: false,
+        }).pma,
+      ),
+    ).toBe("Cap not verified");
   });
 });

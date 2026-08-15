@@ -64,7 +64,13 @@ describe("buildKbliFaq", () => {
     const base = withLocatedPma(getCode("56101") as KBLICode);
     const synthetic: KBLICode = {
       ...base,
-      pma: { ...base.pma, status: "open" },
+      pma: {
+        ...base.pma,
+        status: "open",
+        maxForeign: 100,
+        capSpecial: false,
+        capVerified: true,
+      },
       baliL4: {
         ...(base.baliL4 ?? {}),
         blocked: false,
@@ -78,7 +84,7 @@ describe("buildKbliFaq", () => {
     expect(pmaAnswer).not.toContain("Bali Zero team");
   });
 
-  it("handles capSpecial restricted codes without stating a numeric cap as fact", () => {
+  it("handles an exact special restricted cap without stating a percentage", () => {
     const base = withLocatedPma(getCode("56101") as KBLICode);
     const synthetic: KBLICode = {
       ...base,
@@ -87,13 +93,103 @@ describe("buildKbliFaq", () => {
         ...base.pma,
         status: "restricted",
         capSpecial: true,
-        maxForeign: 0,
+        maxForeign: "special",
+        capVerified: true,
       },
     } as KBLICode;
 
     const pmaAnswer = buildKbliFaq(synthetic)[0].answer;
     expect(pmaAnswer).toContain("special distribution conditions");
-    expect(pmaAnswer).not.toContain("capped at 0%");
+    expect(pmaAnswer).not.toContain("special%");
+  });
+
+  it("does not promote a mismatched special marker over a verified numeric cap", () => {
+    const base = withLocatedPma(getCode("56101") as KBLICode);
+    const synthetic: KBLICode = {
+      ...base,
+      baliL4: undefined,
+      pma: {
+        ...base.pma,
+        status: "restricted",
+        capSpecial: true,
+        capVerified: true,
+        maxForeign: 0,
+      },
+    } as KBLICode;
+
+    const pmaAnswer = buildKbliFaq(synthetic)[0].answer;
+    expect(pmaAnswer).toContain("ceiling for foreign capital is 0%");
+    expect(pmaAnswer).not.toContain("special distribution conditions");
+  });
+
+  it("never manufactures 100% ownership from a located TERBUKA status", () => {
+    const base = withLocatedPma(getCode("56101") as KBLICode);
+    const withoutCap: KBLICode = {
+      ...base,
+      baliL4: undefined,
+      pma: {
+        ...base.pma,
+        status: "open",
+        maxForeign: null,
+        capSpecial: false,
+        capVerified: false,
+      },
+    } as KBLICode;
+    const unverifiedHundred: KBLICode = {
+      ...withoutCap,
+      pma: {
+        ...withoutCap.pma,
+        maxForeign: 100,
+      },
+    } as KBLICode;
+
+    const missingAnswer = buildKbliFaq(withoutCap)[0].answer;
+    const unverifiedAnswer = buildKbliFaq(unverifiedHundred)[0].answer;
+    expect(missingAnswer).toContain("ownership cap is not published");
+    expect(unverifiedAnswer).toContain("ownership cap is not verified");
+    for (const answer of [missingAnswer, unverifiedAnswer]) {
+      expect(answer).not.toContain("100%");
+      expect(answer).not.toContain("No local Indonesian partner required");
+    }
+  });
+
+  it("does not classify an unverified restricted 0% value as a closure", () => {
+    const base = withLocatedPma(getCode("56101") as KBLICode);
+    const synthetic: KBLICode = {
+      ...base,
+      baliL4: undefined,
+      pma: {
+        ...base.pma,
+        status: "restricted",
+        maxForeign: 0,
+        capSpecial: false,
+        capVerified: false,
+      },
+    } as KBLICode;
+
+    const pmaAnswer = buildKbliFaq(synthetic)[0].answer;
+    expect(pmaAnswer).toContain("ownership cap not yet verified");
+    expect(pmaAnswer).not.toContain("0%");
+    expect(pmaAnswer).not.toMatch(/^No\./);
+  });
+
+  it("does not disclose an unverified special-cap claim", () => {
+    const base = withLocatedPma(getCode("56101") as KBLICode);
+    const synthetic: KBLICode = {
+      ...base,
+      baliL4: undefined,
+      pma: {
+        ...base.pma,
+        status: "restricted",
+        maxForeign: "special",
+        capSpecial: true,
+        capVerified: false,
+      },
+    } as KBLICode;
+
+    const pmaAnswer = buildKbliFaq(synthetic)[0].answer;
+    expect(pmaAnswer).toContain("ownership cap not yet verified");
+    expect(pmaAnswer).not.toContain("special distribution conditions");
   });
 
   it("declares the licensing gap on every cure-detached subtype — never 'special regime', never asserting regulatory absence", () => {

@@ -82,6 +82,7 @@ class TestModuleHelpers:
 
         tools_mod._client = None
         await tools_mod.close_agentic_tools_client()  # Should not raise
+        assert tools_mod._client is None
 
 
 # ============================================================================
@@ -214,13 +215,13 @@ class TestVectorSearchTool:
         rendered = json.dumps(parsed)
         assert "Status PMA: NOT_VERIFIED" in parsed["content"]
         assert "Uraian resmi BPS." in parsed["content"]
-        assert "BLOCKED for PT PMA registration" in parsed["content"]
         assert parsed["sources"][0]["snippet"].startswith("# KBLI 01111")
         for unsafe in (
             "Status PMA: TERBUKA",
             "maksimal: 100",
             "UNSAFE_EDITORIAL_ASSERTION",
             "UNSAFE_BALI_REASON",
+            "BLOCKED for PT PMA registration",
         ):
             assert unsafe not in rendered
 

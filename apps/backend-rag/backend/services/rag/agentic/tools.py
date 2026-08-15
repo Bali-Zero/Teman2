@@ -26,7 +26,11 @@ import httpx
 
 from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
 from backend.services.kbli_eye import KBLIEye
-from backend.services.kbli_pma_disclosure import disclose_pma, sanitize_kbli_search_result
+from backend.services.kbli_pma_disclosure import (
+    disclose_bali,
+    disclose_pma,
+    sanitize_kbli_search_result,
+)
 from backend.services.pricing.pricing_service import get_pricing_service
 from backend.services.rag.vision_rag import VisionRAGService
 from backend.services.tools.definitions import BaseTool
@@ -401,13 +405,26 @@ class KBLICanonicalLookupTool(BaseTool):
                 large_scale_risks.add(str(risk))
         disclosed = disclose_pma(record)
         raw_bali = record.get("l4_bali") or {}
-        bali = dict(raw_bali) if isinstance(raw_bali, dict) else {}
-        if disclosed["pma_verification_status"] != "located":
-            # Canonical Bali booleans and source metadata are independent of
-            # national ownership.  Free-form reasons can mix the two, so a
-            # declared national gap withholds that prose atomically.
-            bali.pop("reason", None)
-            bali.pop("review_basis", None)
+        bali_disclosure = disclose_bali(record)
+        bali: dict[str, Any] = {}
+        if bali_disclosure["has_bali_l4"]:
+            # Preserve auxiliary source metadata only after the strict
+            # status/boolean gate, then overwrite every verdict field with its
+            # sanitized value. This keeps useful moratorium provenance without
+            # allowing truthiness coercion at the model boundary.
+            if isinstance(raw_bali, dict):
+                bali = {
+                    key: value
+                    for key, value in raw_bali.items()
+                    if key not in {"status", "blocked", "reason"}
+                }
+            bali.update(
+                {
+                    "status": bali_disclosure["bali_status"],
+                    "blocked": bali_disclosure["bali_blocked"],
+                    "reason": bali_disclosure["bali_reason"],
+                }
+            )
 
         payload = {
             "found": True,
@@ -420,6 +437,7 @@ class KBLICanonicalLookupTool(BaseTool):
                 "verification_status": disclosed["pma_verification_status"],
                 "official_basis": disclosed["pma_official_basis"],
                 "source_vintage": disclosed["pma_source_vintage"],
+                "cap_special": disclosed["pma_cap_special"],
                 "cap_verified": disclosed["pma_cap_verified"],
             },
             "risk_at_large_scale": sorted(large_scale_risks),

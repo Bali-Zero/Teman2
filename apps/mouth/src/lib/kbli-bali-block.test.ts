@@ -944,6 +944,9 @@ describe("the FAQ answer for a national closure", () => {
       ...base,
       pma: {
         ...base.pma,
+        maxForeign: 100,
+        capSpecial: false,
+        capVerified: true,
         verificationStatus: "located",
         officialBasis: "Perpres fixture locator",
         sourceVintage: "2021-05-25",
@@ -959,6 +962,7 @@ describe("the FAQ answer for a national closure", () => {
       },
     };
     const answer = buildKbliFaq(located)[0].answer;
-    expect(answer).toContain("Nationally yes");
+    expect(answer).toContain("Outside Bali it is open to a PT PMA");
+    expect(answer).toContain("100% foreign ownership");
   });
 });

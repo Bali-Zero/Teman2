@@ -104,7 +104,7 @@ export function KBLICard({ code, showTransition = false }: KBLICardProps) {
           verdictVerified={pmaVerified}
           capSpecial={code.pma.capSpecial}
           capVerified={code.pma.capVerified}
-          baliBlocked={!!code.baliL4?.blocked}
+          baliBlocked={code.baliL4?.blocked === true}
           size="sm"
         />
         {code.licensing[0] && (

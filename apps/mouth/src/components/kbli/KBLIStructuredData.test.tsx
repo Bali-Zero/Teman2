@@ -79,4 +79,46 @@ describe("structured data — whole-verdict PMA gate", () => {
     expect(article).toContain("80% foreign ownership");
     expect(article).toContain("PP 14/2018");
   });
+
+  it("guilt: a located open status without a publishable cap does not become 100%", () => {
+    const base = getCode("02102") as KBLICode;
+    const malformed = {
+      ...base,
+      pma: {
+        ...base.pma,
+        status: "open",
+        maxForeign: null,
+        capVerified: false,
+      },
+    } as KBLICode;
+
+    const article = JSON.stringify(jsonLdOf(malformed));
+    expect(article).toContain("ownership cap not published");
+    expect(article).not.toContain("100% foreign ownership allowed");
+  });
+
+  it.each([
+    [49, false],
+    ["special", true],
+  ])(
+    "guilt: a restricted unverified cap %p never reaches JSON-LD",
+    (maxForeign, capSpecial) => {
+      const base = getCode("65111") as KBLICode;
+      const unverified = {
+        ...base,
+        pma: {
+          ...base.pma,
+          status: "restricted",
+          maxForeign,
+          capSpecial,
+          capVerified: false,
+        },
+      } as KBLICode;
+
+      const article = JSON.stringify(jsonLdOf(unverified));
+      expect(article).toContain("ownership cap not verified");
+      expect(article).not.toContain("49%");
+      expect(article).not.toContain("special non-percentage conditions");
+    },
+  );
 });

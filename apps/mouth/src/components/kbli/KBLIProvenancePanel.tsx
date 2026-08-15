@@ -118,9 +118,7 @@ export function buildRows(kbli: KBLICode, prov: KBLIProvenance): SourceRow[] {
     prov.pma.status === "declared_gap"
       ? {
           layer: "Foreign ownership (PMA)",
-          source: prov.pma.source
-            ? `${prov.pma.source} — instrument context only`
-            : "No adjudicated per-code official basis",
+          source: "No adjudicated per-code official basis",
           vintage: "—",
           verdict: "gap",
           detail:
@@ -137,7 +135,7 @@ export function buildRows(kbli: KBLICode, prov: KBLIProvenance): SourceRow[] {
         },
   );
 
-  if (kbli.baliL4) {
+  if (prov.pma.status === "located" && kbli.baliL4) {
     const m = kbli.baliL4.moratorium;
     const isNonClassifiable = kbli.baliL4.status === "NON_CLASSIFICABILE";
     // This row is the honesty surface for the Bali layer, so it must not

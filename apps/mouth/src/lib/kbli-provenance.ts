@@ -150,15 +150,22 @@ export function pp28ContentInheritedFrom(raw: KBLIRawCode): string[] | null {
  * source vintage may do so; malformed combinations degrade to a declared gap.
  */
 function pmaProvenance(raw: KBLIRawCode): KBLIProvenance["pma"] {
-  const locator = raw.pma_official_basis?.trim() || null;
-  const vintage = raw.pma_source_vintage?.trim() || null;
+  const locator =
+    typeof raw.pma_official_basis === "string" && raw.pma_official_basis.trim()
+      ? raw.pma_official_basis.trim()
+      : null;
+  const vintage =
+    typeof raw.pma_source_vintage === "string" && raw.pma_source_vintage.trim()
+      ? raw.pma_source_vintage.trim()
+      : null;
   const located =
     raw.pma_verification_status === "located" &&
     !!knownPmaRawStatus(raw.pma_status) &&
     !!locator &&
     !!vintage;
   return {
-    source: raw.pma_source ?? null,
+    source:
+      located && typeof raw.pma_source === "string" ? raw.pma_source : null,
     vintage: located ? vintage : null,
     status: located ? "located" : "declared_gap",
     locator: located ? locator : null,
@@ -279,12 +286,21 @@ export function isLicensingVerifiedForBareClaim(code: KBLICode): boolean {
 
 /** True only when the whole-code PMA verdict has a canonical locator + vintage. */
 export function isPmaVerdictVerified(code: KBLICode): boolean {
-  const pma = code.provenance?.pma;
+  const provenance = code.provenance?.pma;
+  const officialBasis = code.pma.officialBasis?.trim();
+  const sourceVintage = code.pma.sourceVintage?.trim();
+  const locator = provenance?.locator?.trim();
+  const vintage = provenance?.vintage?.trim();
   return (
-    code.pma.status !== "unknown" &&
-    pma?.status === "located" &&
-    !!pma.locator?.trim() &&
-    !!pma.vintage?.trim()
+    ["open", "restricted", "closed"].includes(code.pma.status) &&
+    code.pma.verificationStatus === "located" &&
+    !!officialBasis &&
+    !!sourceVintage &&
+    provenance?.status === "located" &&
+    !!locator &&
+    !!vintage &&
+    officialBasis === locator &&
+    sourceVintage === vintage
   );
 }
 
@@ -296,5 +312,7 @@ export function isPmaVerdictVerified(code: KBLICode): boolean {
  */
 export function isBaliL4BlockVerifiedForBareClaim(code: KBLICode): boolean {
   const l4 = code.baliL4;
-  return !!l4?.blocked && l4.confidence === "HIGH" && l4.needsReview !== true;
+  return (
+    l4?.blocked === true && l4.confidence === "HIGH" && l4.needsReview !== true
+  );
 }

@@ -105,10 +105,12 @@ async def test_null_scale_list_is_tolerated(tmp_path):
 async def test_lookup_carries_bali_moratorium_verdict_verbatim():
     tool = KBLICanonicalLookupTool(dataset_path=_DATASET)
 
-    payload = json.loads(await tool.execute(code="10211"))
+    # 02102 has a complete located national PMA tuple, so the independent
+    # Bali object is eligible for model-facing disclosure.
+    payload = json.loads(await tool.execute(code="02102"))
 
     moratorium = payload["bali"]["moratorium"]
-    assert payload["bali"]["blocked"] is True
+    assert payload["bali"]["blocked"] is False
     assert "Low + Medium-Low" in moratorium["rule"]
     assert "permanent" in moratorium["rule"]
     assert moratorium["effective"] == "2026-05-13"
@@ -129,11 +131,10 @@ async def test_exact_lookup_declared_gap_withholds_raw_pma_and_free_form_bali_re
         "verification_status": "declared_gap",
         "official_basis": None,
         "source_vintage": None,
+        "cap_special": False,
         "cap_verified": False,
     }
-    assert "reason" not in payload["bali"]
-    assert "review_basis" not in payload["bali"]
-    assert isinstance(payload["bali"].get("blocked"), bool)
+    assert payload["bali"] == {}
 
 
 @pytest.mark.asyncio

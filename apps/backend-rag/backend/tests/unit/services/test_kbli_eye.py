@@ -152,15 +152,44 @@ def test_located_zero_cap_is_still_rejected(eye: KBLIEye) -> None:
     assert out["audit"]["reason_code"] == "PERPRES_10_2021_RESERVATION"
 
 
+def test_located_zero_cap_dominates_bali_advisory(eye: KBLIEye) -> None:
+    out = eye.get_decision("47111", is_pma=True, location="Bali")
+    assert out["pma_logic"]["max_foreign_ownership"] == 0
+    assert out["audit"]["state"] == "REJECTED"
+    assert out["audit"]["reason_code"] == "PERPRES_10_2021_RESERVATION"
+
+
 def test_named_umkm_reservation_still_true(eye: KBLIEye) -> None:
     """The 2 codes the lampiran genuinely allocates to K-UMKM keep the flag."""
     assert eye.get_decision("47111", is_pma=True)["pma_logic"]["is_umkm_reserved"] is True
     assert eye.get_decision("47222", is_pma=True)["pma_logic"]["is_umkm_reserved"] is True
 
 
-def test_bali_gov_letter_branch_survives(eye: KBLIEye) -> None:
-    """68111 is TERBUKA — it must still reach the Bali letter branch."""
+def test_unverified_bali_letter_code_fails_closed(eye: KBLIEye) -> None:
+    """68111 carries a local marker but no located national PMA tuple."""
     out = eye.get_decision("68111", is_pma=True, location="Bali")
+    assert out["audit"]["state"] == "WARNING"
+    assert out["audit"]["reason_code"] == "PMA_NOT_VERIFIED"
+
+
+def test_bali_gov_letter_branch_survives_once_national_tuple_is_located(
+    eye: KBLIEye, records: list[dict]
+) -> None:
+    """The local advisory remains reachable after the disclosure gate."""
+    record = next(r for r in records if r["kode_kbli_2025"] == "68111")
+    synthetic = KBLIEye(db_path=str(DATASET))
+    synthetic.data = [
+        {
+            **record,
+            "pma_status": "TERBUKA",
+            "pma_max_asing": 100,
+            "pma_verification_status": "located",
+            "pma_official_basis": "Synthetic located basis for branch isolation",
+            "pma_source_vintage": "2021-05-25",
+        }
+    ]
+
+    out = synthetic.get_decision("68111", is_pma=True, location="Bali")
     assert out["audit"]["state"] == "WARNING"
     assert out["audit"]["reason_code"] == "BALI_GOV_LETTER_9_CODES"
 
@@ -266,10 +295,10 @@ def test_boolean_cap_is_not_read_as_a_percentage() -> None:
             "pma_source_vintage": "2021-05-25",
         }
     )
-    assert cap == 100, "a boolean must fall through to the status, not read as 1"
+    assert cap is None, "a boolean must not become 1% or a status-derived 100%"
 
 
-def test_numeric_string_cap_is_accepted() -> None:
+def test_numeric_string_cap_is_rejected_without_status_fallback() -> None:
     cap, _basis, _verified = KBLIEye._foreign_cap(
         {
             "pma_max_asing": " 67 ",
@@ -279,7 +308,21 @@ def test_numeric_string_cap_is_accepted() -> None:
             "pma_source_vintage": "2021-05-25",
         }
     )
-    assert cap == 67
+    assert cap is None
+
+
+def test_missing_located_cap_is_not_synthesized_from_status() -> None:
+    cap, basis, verified = KBLIEye._foreign_cap(
+        {
+            "pma_status": "TERBUKA",
+            "pma_max_asing": None,
+            "pma_verification_status": "located",
+            "pma_official_basis": "fixture",
+            "pma_source_vintage": "2021-05-25",
+            "pma_cap_verified": True,
+        }
+    )
+    assert (cap, basis, verified) == (None, None, False)
 
 
 def test_unloaded_database_reports_itself(tmp_path: Path) -> None:

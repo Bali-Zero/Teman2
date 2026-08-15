@@ -26,7 +26,11 @@ from backend.app.dependencies import (
     get_search_service,
 )
 from backend.core.collection_registry import resolve_collection_name
-from backend.services.kbli_pma_disclosure import disclose_pma, pma_claims_verified
+from backend.services.kbli_pma_disclosure import (
+    disclose_bali,
+    disclose_pma,
+    pma_claims_verified,
+)
 from backend.services.kbli_pp28_provenance import licensing_disclosure
 from backend.services.kbli_requires_kind import (
     classify_requires_target,
@@ -91,10 +95,12 @@ class _PMADisclosure(BaseModel):
     """
 
     pma_status: str = "NOT_VERIFIED"
-    pma_max_asing: int | str | None = None
+    pma_max_asing: int | float | str | None = None
     pma_verification_status: str = "declared_gap"
     pma_official_basis: str | None = None
     pma_source_vintage: str | None = None
+    pma_cap_special: bool = False
+    pma_cap_verified: bool = False
 
     @model_validator(mode="before")
     @classmethod
@@ -113,6 +119,8 @@ class _PMADisclosure(BaseModel):
                     "pma_verification_status",
                     "pma_official_basis",
                     "pma_source_vintage",
+                    "pma_cap_special",
+                    "pma_cap_verified",
                 )
             }
         )
@@ -196,16 +204,29 @@ class KBLISearchResult(_PMADisclosure):
     # is stored as `""` by the indexer, and reading absence as 0% would invent a
     # closure on every point written before the field existed.
 
+    @model_validator(mode="before")
+    @classmethod
+    def _withhold_malformed_bali(cls, value: Any) -> Any:
+        """Apply the Bali tuple gate before Pydantic can coerce source values."""
+        if not isinstance(value, dict):
+            return value
+        disclosed = dict(value)
+        bali = disclose_bali(disclosed)
+        disclosed.update(
+            {
+                "bali_status": bali["bali_status"],
+                "bali_blocked": bali["bali_blocked"],
+                "bali_reason": bali["bali_reason"],
+            }
+        )
+        return disclosed
+
     @model_validator(mode="after")
     def _withhold_unverified_editorial(self) -> "KBLISearchResult":
-        """Keep structured Bali booleans but remove mixed free-form prose.
-
-        ``bali_reason`` and ``expert_legal`` can narrate national ownership in
-        the same block as local facts.  They therefore inherit the atomic PMA
-        evidence gate even though ``bali_blocked`` itself remains independently
-        useful and publishable.
-        """
+        """Withhold PMA-dependent Bali and editorial claims as one atom."""
         if not self.pma_verdict_verified:
+            self.bali_status = None
+            self.bali_blocked = None
             self.bali_reason = ""
             self.expert_legal = None
         return self
@@ -269,6 +290,8 @@ def _pma_disclosure_fields(payload: dict[str, Any]) -> dict[str, Any]:
         ),
         "pma_official_basis": _payload_value(payload, "pma_official_basis"),
         "pma_source_vintage": _payload_value(payload, "pma_source_vintage"),
+        "pma_cap_special": _payload_value(payload, "pma_cap_special", default=False),
+        "pma_cap_verified": _payload_value(payload, "pma_cap_verified", default=False),
     }
 
 

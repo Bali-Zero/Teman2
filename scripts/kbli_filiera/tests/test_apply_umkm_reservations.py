@@ -36,11 +36,15 @@ def item(code, judged_as=None, was=None, locator="L-II p1"):
         "code": code,
         "judged_as": judged_as,
         "locator": locator,
-        "was": was if was is not None else {"pma_status": "TERBUKA", "pma_max_asing": 100},
+        "was": was
+        if was is not None
+        else {"pma_status": "TERBUKA", "pma_max_asing": 100},
     }
 
 
-def split_item(code, split, siblings, was=None, locator="L-II p1", judged_as=None, agreed_by=None):
+def split_item(
+    code, split, siblings, was=None, locator="L-II p1", judged_as=None, agreed_by=None
+):
     it = item(code, judged_as=judged_as, was=was, locator=locator)
     it["judged_as_split_heir"] = split
     it["siblings_left_open"] = siblings
@@ -48,7 +52,11 @@ def split_item(code, split, siblings, was=None, locator="L-II p1", judged_as=Non
     # ordinary case and only the tests that mean to attack precondition 6 pass
     # something else. A helper whose default is invalid makes every test a test
     # of the same one check.
-    it["agreed_by"] = ["lane-a (proposer)", "lane-b (blind re-derivation)"] if agreed_by is None else agreed_by
+    it["agreed_by"] = (
+        ["lane-a (proposer)", "lane-b (blind re-derivation)"]
+        if agreed_by is None
+        else agreed_by
+    )
     return it
 
 
@@ -196,7 +204,12 @@ def test_guilt_a_sibling_the_spec_calls_open_but_the_dataset_has_shut_is_refused
         [split_item("96210", "96111", ["96400"])],
         [
             rec("96210", ancestors=["96111"]),
-            rec("96400", ancestors=["96111", "96112", "96200"], status="TERBATAS", maxa=0),
+            rec(
+                "96400",
+                ancestors=["96111", "96112", "96200"],
+                status="TERBATAS",
+                maxa=0,
+            ),
         ],
     )
     assert todo == []
@@ -210,7 +223,10 @@ def test_guilt_a_sibling_whose_status_cannot_be_read_is_refused_not_assumed_open
     establish a positive fact. The first draft asked `not in (None, "TERBUKA")`
     and would have waved this through.
     """
-    silent = {"kode_kbli_2025": "96400", "bps_2020_ancestors": {"codes": ["96111", "96112"]}}
+    silent = {
+        "kode_kbli_2025": "96400",
+        "bps_2020_ancestors": {"codes": ["96111", "96112"]},
+    }
     todo, refusals = run(
         [split_item("96210", "96111", ["96400"])],
         [rec("96210", ancestors=["96111"]), silent],
@@ -270,7 +286,10 @@ def test_innocence_two_genuinely_different_seats_are_accepted():
                 "96210",
                 "96111",
                 ["96400"],
-                agreed_by=["claude-sonnet-5 (proposer)", "codex-gpt-5.6 (blind re-derivation)"],
+                agreed_by=[
+                    "claude-sonnet-5 (proposer)",
+                    "codex-gpt-5.6 (blind re-derivation)",
+                ],
             )
         ],
         [rec("96210", ancestors=["96111"]), rec("96400", ancestors=["96111", "96112"])],
@@ -323,7 +342,12 @@ def test_refuses_a_record_already_adjudicated_by_hand():
     tool is not entitled to overwrite it."""
     todo, refusals = run(
         [item("47111", locator="L-II p14")],
-        [rec("47111", basis="Perpres 10/2021 Lampiran II line 3722 — hand-adjudicated")],
+        [
+            rec(
+                "47111",
+                basis="Perpres 10/2021 Lampiran II line 3722 — hand-adjudicated",
+            )
+        ],
     )
     assert todo == [] and "different pma_official_basis" in refusals[0]
 
@@ -354,6 +378,7 @@ def test_patch_states_zero_foreign_and_names_its_basis():
     assert p["pma_max_asing"] == 0
     assert p["pma_status"] == "TERBATAS"
     assert p["pma_official_basis"] == "L-II p1"
+    assert p["pma_verification_status"] == "located"
     assert p["pma_cap_verified"] is True
 
 
@@ -391,10 +416,22 @@ def test_guilt_a_withdrawn_spec_is_refused_before_anything_is_read(tmp_path, cap
     """`items: []` alone would make the run a silent no-op that prints "applied 0
     codes" — which reads like success. The refusal has to name itself."""
     p = tmp_path / "s.json"
-    p.write_text(json.dumps({
-        "withdrawn": {"date": "2026-08-06", "by": "review", "reason": "why", "next": "what"},
-        "items": [], "withdrawn_items": [], "excluded": {},
-    }), encoding="utf-8")
+    p.write_text(
+        json.dumps(
+            {
+                "withdrawn": {
+                    "date": "2026-08-06",
+                    "by": "review",
+                    "reason": "why",
+                    "next": "what",
+                },
+                "items": [],
+                "withdrawn_items": [],
+                "excluded": {},
+            }
+        ),
+        encoding="utf-8",
+    )
     d = _sandbox_dataset(tmp_path)
     assert A.main(["--apply", "--spec", str(p), "--dataset", str(d)]) == A.EXIT_REFUSED
     assert "REFUSING" in capsys.readouterr().out
@@ -453,7 +490,10 @@ def test_the_live_spec_applies_in_the_world_it_was_written_against():
         r = dict(by_code[c])
         if c in codes:
             was = next(i["was"] for i in spec["items"] if i["code"] == c)
-            r["pma_status"], r["pma_max_asing"] = was["pma_status"], was["pma_max_asing"]
+            r["pma_status"], r["pma_max_asing"] = (
+                was["pma_status"],
+                was["pma_max_asing"],
+            )
             r.pop("pma_official_basis", None)
         world.append(r)
 
@@ -490,9 +530,7 @@ def test_apply_on_a_fully_cured_sandbox_is_a_noop_without_propagation(
     called = []
     monkeypatch.setattr(A, "propagate", lambda *a, **k: called.append(1) or [])
 
-    rc = A.main(
-        ["--apply", "--spec", str(spec_path), "--dataset", str(dataset)]
-    )
+    rc = A.main(["--apply", "--spec", str(spec_path), "--dataset", str(dataset)])
 
     assert rc == A.EXIT_OK
     assert dataset.read_bytes() == before
@@ -550,7 +588,9 @@ def test_the_readjudication_scope_is_named_and_small():
     "recheck all 68". Measured by diffing each verdict's annex row before and
     after the parent/fusion cures: 11 had a restricting parent hidden from the
     lane, 2 had their row text change, 26 read exactly what the annex says."""
-    d = json.loads(A.WITHDRAWN_SPEC.read_text(encoding="utf-8"))["withdrawn"]["evidence_delta_2026_08_06"]
+    d = json.loads(A.WITHDRAWN_SPEC.read_text(encoding="utf-8"))["withdrawn"][
+        "evidence_delta_2026_08_06"
+    ]
     hidden = d["restricting_parent_was_hidden"]
     changed = d["row_text_changed_by_the_fusion_cure"]
     assert len(hidden) + len(changed) == 13, "the re-adjudication is thirteen codes"
@@ -566,7 +606,9 @@ def test_the_readjudication_overturned_eleven_of_the_thirteen():
     bidang usaha. Pinned because it is the reason the withdrawal was right: the
     six 25-Ha crops and the five simple/intermediate-technology grades are
     reserved only as a SEGMENT, not as whole codes."""
-    r = json.loads(A.WITHDRAWN_SPEC.read_text(encoding="utf-8"))["withdrawn"]["readjudication_2026_08_06"]
+    r = json.loads(A.WITHDRAWN_SPEC.read_text(encoding="utf-8"))["withdrawn"][
+        "readjudication_2026_08_06"
+    ]
     v = r["verdicts"]
     assert len(v["REFUSE_SEGMENT"]) == 11
     assert v["PATCH_ZERO"] == ["95299"] and v["REFUSE_BROADER"] == ["42912"]
@@ -595,8 +637,15 @@ def test_the_prior_spec_is_the_nine_that_survived_both_rounds():
     spec = json.loads(A.PRIOR_SPEC.read_text(encoding="utf-8"))
     codes = [i["code"] for i in spec["items"]]
     assert codes == [
-        "10214", "10722", "22121", "41016", "41018", "41020",
-        "95220", "95291", "95299",
+        "10214",
+        "10722",
+        "22121",
+        "41016",
+        "41018",
+        "41020",
+        "95220",
+        "95291",
+        "95299",
     ]
     assert len(codes) == len(set(codes)), "a code patched twice"
     for i in spec["items"]:
@@ -622,7 +671,12 @@ def test_the_prior_spec_names_every_population_it_left_behind():
     # a 1:1 crosswalk edge proves LINEAGE, never that the heir is the same
     # ACTIVITY the annex reserved.
     assert set(ex["vintage_carry_not_yet_semantically_checked"]) == {
-        "10307", "10308", "55106", "55201", "55203", "79903",
+        "10307",
+        "10308",
+        "55106",
+        "55201",
+        "55203",
+        "79903",
     }
 
 
@@ -643,7 +697,9 @@ def test_guilt_no_patched_code_is_also_on_a_refusal_list():
         "ocr_illegible",
     ):
         refused |= set(ex[key])
-    assert not (patched & refused), f"both patched and refused: {sorted(patched & refused)}"
+    assert not (patched & refused), (
+        f"both patched and refused: {sorted(patched & refused)}"
+    )
 
 
 def test_the_prior_spec_supersedes_the_withdrawn_one_by_name():
@@ -666,7 +722,9 @@ def test_the_propagation_targets_are_the_ones_the_sync_script_knows():
     )
 
 
-def test_guilt_a_non_canonical_dataset_does_not_trigger_a_fleet_sync(tmp_path, capsys, monkeypatch):
+def test_guilt_a_non_canonical_dataset_does_not_trigger_a_fleet_sync(
+    tmp_path, capsys, monkeypatch
+):
     """Found by mutation, not by reasoning: with the withdrawal guard deleted, the
     refusal tests ran on to `propagate()` and shelled out to the REAL repo-wide
     sync. Sandboxing the dataset was not enough — the propagation had its own
@@ -675,7 +733,9 @@ def test_guilt_a_non_canonical_dataset_does_not_trigger_a_fleet_sync(tmp_path, c
     called = []
     monkeypatch.setattr(A, "propagate", lambda *a, **k: called.append(1) or [])
     spec = tmp_path / "s.json"
-    spec.write_text(json.dumps({"items": [item("01111")], "excluded": {}}), encoding="utf-8")
+    spec.write_text(
+        json.dumps({"items": [item("01111")], "excluded": {}}), encoding="utf-8"
+    )
     d = _sandbox_dataset(tmp_path)
     assert A.main(["--apply", "--spec", str(spec), "--dataset", str(d)]) == A.EXIT_OK
     assert called == [], "a scratch dataset must not propagate to the fleet"

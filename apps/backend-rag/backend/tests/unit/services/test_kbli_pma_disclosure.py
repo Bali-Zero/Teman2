@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from backend.services.kbli_pma_disclosure import disclose_pma, pma_claims_verified
+from backend.services.kbli_pma_disclosure import disclose_bali, disclose_pma, pma_claims_verified
 
 
 @pytest.mark.parametrize(
@@ -37,6 +37,7 @@ def test_partial_evidence_tuple_fails_closed_atomically(missing: str) -> None:
         "pma_kondisi": None,
         "pma_prioritas": None,
         "pma_nota": None,
+        "pma_cap_special": False,
         "pma_cap_verified": False,
     }
 
@@ -76,3 +77,135 @@ def test_unknown_or_noncanonical_status_fails_closed(status: str) -> None:
     assert disclosed["pma_status"] == "NOT_VERIFIED"
     assert disclosed["pma_max_asing"] is None
     assert disclosed["pma_verification_status"] == "declared_gap"
+
+
+def _located_record() -> dict:
+    return {
+        "pma_status": "TERBUKA",
+        "pma_verification_status": "located",
+        "pma_official_basis": "official locator",
+        "pma_source_vintage": "2021-05-25",
+    }
+
+
+def test_bali_disclosure_requires_the_complete_pma_tuple() -> None:
+    raw = {
+        **_located_record(),
+        "pma_verification_status": "declared_gap",
+        "l4_bali": {
+            "status": "OK_or_HIGHER_RISK",
+            "blocked": False,
+            "reason": "UNSAFE_REASON",
+        },
+    }
+
+    assert disclose_bali(raw) == {
+        "bali_status": None,
+        "bali_blocked": None,
+        "bali_reason": "",
+        "has_bali_l4": False,
+    }
+
+
+@pytest.mark.parametrize("blocked", ["false", "true", 0, 1, None])
+def test_bali_disclosure_never_coerces_a_non_boolean_blocked_value(blocked: object) -> None:
+    raw = {
+        **_located_record(),
+        "l4_bali": {
+            "status": "CHIUSO_MORATORIA_BALI",
+            "blocked": blocked,
+            "reason": "UNSAFE_REASON",
+        },
+    }
+
+    assert disclose_bali(raw)["has_bali_l4"] is False
+    assert disclose_bali(raw)["bali_blocked"] is None
+
+
+@pytest.mark.parametrize("status", [None, "", " ", 7, " OPEN "])
+def test_bali_disclosure_requires_an_exact_nonblank_string_status(status: object) -> None:
+    raw = {
+        **_located_record(),
+        "l4_bali": {"status": status, "blocked": False},
+    }
+
+    assert disclose_bali(raw)["has_bali_l4"] is False
+
+
+def test_bali_disclosure_supports_nested_and_flat_verified_shapes() -> None:
+    expected = {
+        "bali_status": "CHIUSO_MORATORIA_BALI",
+        "bali_blocked": True,
+        "bali_reason": "moratorium",
+        "has_bali_l4": True,
+    }
+    nested = {
+        **_located_record(),
+        "l4_bali": {
+            "status": "CHIUSO_MORATORIA_BALI",
+            "blocked": True,
+            "reason": "moratorium",
+        },
+    }
+    flat = {**_located_record(), **expected}
+
+    assert disclose_bali(nested) == expected
+    assert disclose_bali(flat) == expected
+
+
+def test_pma_cap_verified_is_not_truthiness_coerced() -> None:
+    raw = {**_located_record(), "pma_cap_verified": "false"}
+
+    assert disclose_pma(raw)["pma_cap_verified"] is False
+
+
+@pytest.mark.parametrize("cap", [True, False, "49", " 49 ", float("inf"), object()])
+def test_pma_cap_is_not_coerced_or_allowed_to_escape_malformed(cap: object) -> None:
+    raw = {
+        **_located_record(),
+        "pma_max_asing": cap,
+        "pma_cap_verified": True,
+    }
+
+    assert disclose_pma(raw)["pma_max_asing"] is None
+    assert disclose_pma(raw)["pma_cap_verified"] is False
+
+
+def test_only_marked_special_and_finite_numeric_caps_are_preserved() -> None:
+    marked = disclose_pma(
+        {
+            **_located_record(),
+            "pma_max_asing": "special",
+            "pma_cap_special": True,
+            "pma_cap_verified": True,
+        }
+    )
+    unmarked = disclose_pma(
+        {
+            **_located_record(),
+            "pma_max_asing": "special",
+            "pma_cap_special": False,
+            "pma_cap_verified": True,
+        }
+    )
+    assert marked["pma_max_asing"] == "special"
+    assert marked["pma_cap_special"] is True
+    assert marked["pma_cap_verified"] is True
+    assert unmarked["pma_max_asing"] is None
+    assert unmarked["pma_cap_special"] is False
+    assert unmarked["pma_cap_verified"] is False
+    assert disclose_pma({**_located_record(), "pma_max_asing": 49})["pma_max_asing"] == 49
+
+
+def test_located_auxiliary_fields_use_exact_public_types() -> None:
+    raw = {
+        **_located_record(),
+        "pma_kondisi": 7,
+        "pma_prioritas": "false",
+        "pma_nota": ["unsafe"],
+    }
+
+    disclosed = disclose_pma(raw)
+    assert disclosed["pma_kondisi"] is None
+    assert disclosed["pma_prioritas"] is False
+    assert disclosed["pma_nota"] is None

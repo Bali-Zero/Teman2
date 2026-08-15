@@ -1,4 +1,6 @@
 import { isPmaVerdictVerified } from "./kbli-provenance";
+import { hasPublishablePmaCap } from "./kbli-pma-disclosure";
+import { neutralKbliChatOpenerText } from "./kbli-editorial-certification";
 import type { KBLICode, KBLIGoldContent } from "./kbli-types";
 
 export interface KBLIPublicEditorial {
@@ -11,23 +13,29 @@ export interface KBLIPublicEditorial {
  * Disclose generated editorial as one atomic layer.
  *
  * Gold and intel prose predate the per-record PMA provenance contract and can
- * contain ownership claims anywhere in the block.  A substring scrubber would
- * be a second, incomplete verifier, so the entire layer is withheld unless the
- * structured record has located + official locator + vintage.
+ * contain ownership claims anywhere in the block. The data loaders admit only
+ * exact, hash-certified editorial bound to the current PMA fingerprint; this
+ * final boundary also requires the complete structured provenance tuple and a
+ * publishable cap. A substring scrubber would be a second, incomplete verifier.
  */
 export function discloseKbliEditorial(
   code: KBLICode,
   gold: KBLIGoldContent | null,
 ): KBLIPublicEditorial {
-  if (!isPmaVerdictVerified(code)) {
+  if (!isPmaVerdictVerified(code) || !hasPublishablePmaCap(code.pma)) {
     return {
       gold: null,
       intel: undefined,
-      withheld: Boolean(gold || code.intel_2026),
+      withheld: true,
     };
   }
 
-  return { gold, intel: code.intel_2026, withheld: false };
+  const intel = code.intel_2026;
+  return {
+    gold,
+    intel,
+    withheld: gold === null && intel === undefined,
+  };
 }
 
 /**
@@ -41,5 +49,5 @@ export function discloseKbliBaliReason(code: KBLICode): string | undefined {
 }
 
 export function neutralKbliChatOpener(code: KBLICode): string {
-  return `Ask me about KBLI ${code.code} — ${code.titleEn}: its official scope, licensing, risk, or foreign-ownership verification.`;
+  return neutralKbliChatOpenerText(code.code);
 }

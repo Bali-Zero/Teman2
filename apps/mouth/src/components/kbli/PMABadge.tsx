@@ -3,12 +3,12 @@ import { pmaCapShape } from "@/lib/kbli-pma-shape";
 
 interface PMABadgeProps {
   status: "open" | "restricted" | "closed" | "unknown";
-  maxForeign: number | "special";
+  maxForeign: number | "special" | null;
   /** Whole-code verdict has a canonical official locator + source vintage. */
   verdictVerified?: boolean;
   /** true => special-distribution condition (47221-class): "· special conditions", not "Closed 0%" */
   capSpecial?: boolean;
-  /** false => TERBATAS cap % not source-backed: render "· ≈N% unverified" */
+  /** false => withhold numeric/special cap claims and render "· cap not verified" */
   capVerified?: boolean;
   /**
    * true => the code is nationally open but BLOCKED for a PT PMA in Bali
@@ -51,33 +51,54 @@ export function PMABadge({
   maxForeign,
   verdictVerified = false,
   capSpecial = false,
-  capVerified = true,
+  capVerified = false,
   baliBlocked = false,
   size = "md",
 }: PMABadgeProps) {
+  const markedSpecial = capSpecial === true && maxForeign === "special";
+  const zeroCapClosure =
+    verdictVerified &&
+    !markedSpecial &&
+    capVerified &&
+    typeof maxForeign === "number" &&
+    Number.isFinite(maxForeign) &&
+    maxForeign === 0;
+  const effectiveStatus = zeroCapClosure ? "closed" : status;
   const c = verdictVerified
-    ? config[status] || config.unknown
+    ? config[effectiveStatus] || config.unknown
     : {
         ...config.unknown,
         label: "PMA unverified",
       };
-  const numeric = typeof maxForeign === "number" ? maxForeign : null;
+  const numeric =
+    typeof maxForeign === "number" && Number.isFinite(maxForeign)
+      ? maxForeign
+      : null;
 
   // Qualifying suffix, aligned with the native app:
-  //  - special-distribution → "· special conditions" (never a %)
-  //  - restricted & unverified % → "· ≈N% unverified"
+  //  - verified special-distribution → "· special conditions" (never a %)
+  //  - unverified numeric/special cap → "· cap not verified"
   //  - restricted & verified % → "· Max N%"
   //  - open 100% → "· 100% Foreign"
   //  - open but Bali-blocked → "· 100% nat'l · blocked in Bali" (no false green promise)
   let suffix: string | null = null;
   if (!verdictVerified) {
     suffix = null;
-  } else if (capSpecial) {
+  } else if (markedSpecial && capVerified) {
     suffix = "· special conditions";
+  } else if (markedSpecial) {
+    suffix = "· cap not verified";
+  } else if (zeroCapClosure) {
+    suffix = "· 0% foreign ownership";
   } else if (status === "open" && baliBlocked) {
-    suffix = "· 100% nat'l · blocked in Bali";
-  } else if (status === "open" && numeric === 100) {
-    suffix = "· 100% Foreign";
+    suffix =
+      capVerified && numeric !== null
+        ? `· ${numeric}% nat'l · blocked in Bali`
+        : "· national status · blocked in Bali";
+  } else if (status === "open" && numeric !== null && capVerified) {
+    suffix = `· ${numeric}% Foreign`;
+  } else if (status === "open") {
+    suffix = numeric === null ? "· cap not published" : "· cap not verified";
   } else if (status === "restricted") {
     // The SHAPE comes from the shared classifier; only the wording is this
     // badge's own. This branch used to carry a private copy of the rule,
@@ -93,25 +114,25 @@ export function PMABadge({
     // A ceiling of 0 is not a ceiling anyone can invest under; a ceiling of
     // 100 restricts nothing.
     //
-    // KNOWN GAP, shared with `restrictedCapBadge` and NOT introduced here: the
-    // `none` / `full` / `conditional` arms answer before `capVerified` is
-    // consulted, so an UNVERIFIED cap at an extreme would be stated as fact.
-    // Measured on all 1,559 rows: the only two `capVerified: false` records are
-    // TERBUKA/100 and never reach this branch, and the single restricted cap-0
-    // row is verified — so the cell is unreachable today. Curing it belongs in
-    // the shared module, where all six presenters inherit it at once.
-    switch (pmaCapShape({ maxForeign, capSpecial, capVerified })) {
-      case "none":
-        suffix = "· closed (0%)";
-        break;
-      case "full":
-      case "conditional":
-        suffix = "· conditions apply";
-        break;
-      default:
-        suffix = capVerified
-          ? `· Max ${numeric}%`
-          : `· ≈${numeric}% unverified`;
+    // Verification is checked before classifying the extremes: an unverified
+    // 0 or 100 remains explicitly unverified instead of becoming a closure or
+    // a no-cap condition by assertion.
+    if (numeric === null) {
+      suffix = "· cap not published";
+    } else if (!capVerified) {
+      suffix = "· cap not verified";
+    } else {
+      switch (pmaCapShape({ maxForeign, capSpecial, capVerified })) {
+        case "none":
+          suffix = "· closed (0%)";
+          break;
+        case "full":
+        case "conditional":
+          suffix = "· conditions apply";
+          break;
+        default:
+          suffix = `· Max ${numeric}%`;
+      }
     }
   }
 

@@ -215,6 +215,45 @@ describe("GUILT: the gate withholds unverified facts from title/description", ()
     expect(kbliMetaTitleSuffix(kbli)).toBe("Foreign Ownership Restricted");
     expect(kbliMetaTitleSuffix(kbli)).not.toMatch(/67/);
   });
+
+  it("withholds an unverified special-cap claim from indexed metadata", () => {
+    const kbli = makeCode({
+      pma: {
+        ...makeCode().pma,
+        status: "restricted",
+        maxForeign: "special",
+        capSpecial: true,
+        capVerified: false,
+      },
+    });
+
+    expect(kbliMetaTitleSuffix(kbli)).toBe("Foreign Ownership Restricted");
+    expect(kbliMetaDescription(kbli, "Restaurant")).not.toContain("special");
+  });
+
+  it("does not synthesize 100% for an open status without a verified cap", () => {
+    const missing = makeCode({
+      pma: {
+        ...makeCode().pma,
+        status: "open",
+        maxForeign: null,
+        capVerified: false,
+      },
+    });
+    const unverified = makeCode({
+      pma: {
+        ...makeCode().pma,
+        status: "open",
+        maxForeign: 100,
+        capVerified: false,
+      },
+    });
+
+    expect(kbliMetaTitleSuffix(missing)).toContain("cap not published");
+    expect(kbliMetaTitleSuffix(unverified)).toContain("cap not verified");
+    expect(kbliMetaDescription(missing, "Restaurant")).not.toContain("100%");
+    expect(kbliMetaDescription(unverified, "Restaurant")).not.toContain("100%");
+  });
 });
 
 // -----------------------------------------------------------------------------
@@ -291,7 +330,7 @@ describe("INNOCENCE: verified facts still reach title/description", () => {
 // -----------------------------------------------------------------------------
 
 describe("real dataset: the gate binds, and v3 actually differentiates", () => {
-  it("withholds the Bali block on the majority of blocked-and-open codes", () => {
+  it("states a Bali block only when its bare-claim gate passes", () => {
     const codes = getAllCodes();
     const blockedOpen = codes.filter(
       (c) => c.pma.status === "open" && c.baliL4?.blocked,
@@ -300,14 +339,19 @@ describe("real dataset: the gate binds, and v3 actually differentiates", () => {
       kbliMetaTitleSuffix(c).includes("Bali"),
     );
 
-    // Measured 2026-07-26: 455 blocked-and-open, 33 at HIGH confidence without
-    // a review flag. The gate keeps 422 unverified regulatory claims out of
-    // indexed titles — that is the reason this module exists.
-    expect(blockedOpen.length).toBeGreaterThan(100);
-    expect(stated.length).toBeLessThan(blockedOpen.length / 2);
+    // The public compiler now withholds declared-gap PMA rows altogether, so
+    // the old raw-dataset cardinalities no longer belong at this boundary.
+    // Keep the invariant: every surviving indexed Bali claim passed the exact
+    // confidence/review gate, and every failed gate remains silent.
+    expect(blockedOpen.length).toBeGreaterThan(0);
     for (const c of stated) {
       expect(c.baliL4?.confidence).toBe("HIGH");
       expect(c.baliL4?.needsReview).not.toBe(true);
+    }
+    for (const c of blockedOpen.filter(
+      (code) => !isBaliL4BlockVerifiedForBareClaim(code),
+    )) {
+      expect(kbliMetaTitleSuffix(c)).not.toContain("Bali");
     }
   });
 

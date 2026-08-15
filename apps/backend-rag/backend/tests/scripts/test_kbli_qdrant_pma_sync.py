@@ -38,6 +38,8 @@ def _pma_fields(status: str = "TERBUKA", cap: Any = 100) -> dict:
         "pma_verification_status": "located",
         "pma_official_basis": _BASIS,
         "pma_source_vintage": _VINTAGE,
+        "pma_cap_special": cap == "special",
+        "pma_cap_verified": True,
     }
 
 
@@ -84,10 +86,35 @@ def test_a_code_absent_from_the_canonical_is_refused_not_skipped():
     assert any("99999" in r and "absent from the canonical" in r for r in refusals)
 
 
-def test_a_canonical_record_without_a_status_is_refused():
+def test_a_canonical_record_without_a_status_clears_stale_pma_claims():
     targets, refusals = build_targets([{"kode_kbli_2025": "25200"}], ["25200"])
-    assert targets == {}
-    assert any("no pma_status" in r for r in refusals)
+    assert refusals == []
+    assert targets["25200"].fields == {
+        "pma_status": "NOT_VERIFIED",
+        "pma_max_asing": None,
+        "pma_verification_status": "declared_gap",
+        "pma_official_basis": None,
+        "pma_source_vintage": None,
+        "pma_cap_special": False,
+        "pma_cap_verified": False,
+    }
+
+
+def test_a_declared_gap_never_copies_raw_pma_status_or_cap() -> None:
+    rec = _rec("01111")
+    rec.update(
+        {
+            "pma_verification_status": "declared_gap",
+            "pma_official_basis": None,
+            "pma_source_vintage": None,
+        }
+    )
+
+    targets, refusals = build_targets([rec], ["01111"])
+
+    assert refusals == []
+    assert targets["01111"].fields["pma_status"] == "NOT_VERIFIED"
+    assert targets["01111"].fields["pma_max_asing"] is None
 
 
 # --- guilt -------------------------------------------------------------------
@@ -193,12 +220,11 @@ def test_stale_is_judged_on_both_fields_not_just_the_status():
 
 
 def _bali_rec(
-    code: str, status: str, blocked: bool, reason: str = "r", verdict: str | None = None
+    code: str, status: object, blocked: object, reason: object = "r", verdict: str | None = None
 ) -> dict:
     rec: dict = {
         "kode_kbli_2025": code,
-        "pma_status": "TERBUKA",
-        "pma_max_asing": 100,
+        **_pma_fields(),
         "l4_bali": {"status": status, "blocked": blocked, "reason": reason},
     }
     if verdict is not None:
@@ -222,12 +248,74 @@ def test_the_bali_layer_copies_status_and_ignores_the_stale_verdict_field():
         assert "verdict" not in str(t.fields)
 
 
-def test_a_record_without_a_bali_status_is_refused_not_defaulted():
-    """The 118-code failure mode as a refusal: absent verdict must stop the run,
-    never resolve to 'open'."""
-    targets, refusals = build_targets([{"kode_kbli_2025": "93122"}], ["93122"], "bali")
-    assert targets == {}
-    assert any("no l4_bali.status" in r for r in refusals)
+def test_a_verified_record_without_a_bali_status_clears_stale_bali_claims():
+    """Absence is an authoritative neutral value, never an inferred open verdict."""
+    targets, refusals = build_targets([_rec("93122")], ["93122"], "bali")
+    assert refusals == []
+    assert targets["93122"].fields == {
+        "bali_status": None,
+        "bali_blocked": None,
+        "bali_reason": "",
+        "has_bali_l4": False,
+    }
+
+
+def test_a_declared_gap_clears_all_flat_bali_claims():
+    rec = _bali_rec("01111", "OK_or_HIGHER_RISK", False)
+    rec.update(
+        {
+            "pma_verification_status": "declared_gap",
+            "pma_official_basis": None,
+            "pma_source_vintage": None,
+        }
+    )
+
+    targets, refusals = build_targets([rec], ["01111"], "bali")
+
+    assert refusals == []
+    assert targets["01111"].fields == {
+        "bali_status": None,
+        "bali_blocked": None,
+        "bali_reason": "",
+        "has_bali_l4": False,
+    }
+
+
+@pytest.mark.parametrize("blocked", ["false", "true", 0, 1, None])
+def test_the_bali_layer_never_truthiness_coerces_blocked(blocked: object) -> None:
+    targets, refusals = build_targets(
+        [_bali_rec("86995", "CHIUSO_MORATORIA_BALI", blocked)],
+        ["86995"],
+        "bali",
+    )
+
+    assert refusals == []
+    assert targets["86995"].fields["bali_status"] is None
+    assert targets["86995"].fields["bali_blocked"] is None
+    assert targets["86995"].fields["has_bali_l4"] is False
+
+
+def test_sync_disclosures_match_the_shared_runtime_contract() -> None:
+    from backend.services.kbli_pma_disclosure import disclose_bali, disclose_pma
+
+    located = _bali_rec("86995", "CHIUSO_MORATORIA_BALI", True, "moratorium")
+    pma_target, _ = build_targets([located], ["86995"], "pma")
+    bali_target, _ = build_targets([located], ["86995"], "bali")
+    shared_pma = disclose_pma(located)
+
+    assert pma_target["86995"].fields == {
+        key: shared_pma[key]
+        for key in (
+            "pma_status",
+            "pma_max_asing",
+            "pma_verification_status",
+            "pma_official_basis",
+            "pma_source_vintage",
+            "pma_cap_special",
+            "pma_cap_verified",
+        )
+    }
+    assert bali_target["86995"].fields == disclose_bali(located)
 
 
 def test_the_bali_layer_writes_its_four_keys_and_no_pma_key():
@@ -373,16 +461,25 @@ def test_the_blob_still_saying_terbuka_100_is_repaired_not_left_behind():
         assert "- whatItMeans: Making weapons and ammunition." in new
 
 
-def test_a_zero_percent_cap_omits_the_line_because_the_generator_omits_it():
-    """`build_embedding_text` writes the cap line under `if
-    entry.get("pma_max_asing")`, so 0 is FALSY and the line is absent. `79122`
-    (Umrah/Hajj travel) is capped at 0: a repair that wrote `maksimal: 0` would
-    diverge from the next re-index and re-open this exact gap."""
+def test_a_zero_percent_cap_is_rendered_without_falsy_coercion():
+    """`79122` (Umrah/Hajj travel) is capped at 0; zero is a real cap."""
     rec = _rec("79122", status="TERBATAS", cap=0)
     out = rewrite_pma_prose(rec, _BLOB_OPEN)
     assert "## Status PMA: TERBATAS" in out
-    assert "Kepemilikan asing maksimal" not in out
-    assert render_pma_block(rec) == ["## Status PMA: TERBATAS"]
+    assert "Kepemilikan asing maksimal: 0%" in out
+    assert render_pma_block(rec) == [
+        "## Status PMA: TERBATAS",
+        "- Kepemilikan asing maksimal: 0%",
+    ]
+
+
+def test_a_special_cap_is_rendered_as_a_non_percentage_condition():
+    rec = _rec("47221", status="TERBATAS", cap="special")
+
+    out = rewrite_pma_prose(rec, _BLOB_OPEN)
+
+    assert "Kepemilikan asing: kondisi khusus non-persentase" in out
+    assert "special%" not in out
 
 
 def test_a_declared_gap_withholds_raw_status_and_cap_from_the_blob():
@@ -422,7 +519,27 @@ def test_an_unknown_located_status_is_withheld_from_the_blob():
     assert "Kepemilikan asing maksimal: 100" not in out
 
 
-def test_a_declared_gap_removes_editorial_and_rebuilds_bali_without_free_form_reason():
+@pytest.mark.parametrize(
+    ("basis", "vintage"),
+    [({"locator": "not text"}, _VINTAGE), (_BASIS, ["2021-05-25"])],
+)
+def test_non_text_provenance_never_verifies_retriever_prose(basis, vintage):
+    rec = {
+        "kode_kbli_2025": "01111",
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100,
+        "pma_verification_status": "located",
+        "pma_official_basis": basis,
+        "pma_source_vintage": vintage,
+    }
+
+    assert render_pma_block(rec) == [
+        "## Status PMA: NOT_VERIFIED",
+        "- Whole-code foreign ownership is withheld: no located official basis and source vintage are recorded.",
+    ]
+
+
+def test_a_declared_gap_removes_editorial_and_the_whole_bali_verdict():
     rec = {
         "kode_kbli_2025": "01111",
         "pma_status": "TERBUKA",
@@ -457,8 +574,8 @@ def test_a_declared_gap_removes_editorial_and_rebuilds_bali_without_free_form_re
     assert "UNSAFE_EDITORIAL_ASSERTION" not in out
     assert "UNSAFE_BALI_REASON" not in out
     assert "- Alasan:" not in out
-    assert "Status Bali: OK_or_HIGHER_RISK" in out
-    assert "does not prove national permission" in out
+    assert "Status Bali: OK_or_HIGHER_RISK" not in out
+    assert "## Status PMA di Bali" not in out
 
 
 def test_a_truncated_legacy_gap_with_unsafe_editorial_is_refused():
@@ -571,9 +688,9 @@ def test_the_prose_repair_matches_the_real_generator_on_real_canonical_records()
 
     So this loads the REAL canonical dataset, runs the REAL
     `build_embedding_text`, and requires both repairs to be no-ops on its fresh
-    output. It is what caught the falsy-zero trap: `build_embedding_text` omits
-    the cap line when the cap is 0, and a repair that emitted `maksimal: 0`
-    passes every hand-written test above and still diverges in production.
+    output. This includes the exact zero-cap and special non-percentage shapes;
+    a hand-written repair that formats either differently would still diverge
+    in production.
     """
     import pathlib
     import types
@@ -659,7 +776,7 @@ def test_the_prose_repair_matches_the_real_generator_on_real_canonical_records()
         f"eligible editorial coverage drifted: eligible={eligible_wc} "
         f"checked={checked_wc} truncated={truncated}"
     )
-    assert zero_cap_seen, "no zero/absent cap in the corpus — the falsy-zero branch went untested"
+    assert zero_cap_seen, "no zero/absent cap in the corpus — the edge-cap branch went untested"
     assert truncated > 0, (
         "no truncated record in the corpus — the refusal branch went untested, and it is the "
         "branch that stops the tool inventing content past a truncation marker"

@@ -283,6 +283,8 @@ class TestSnippetCleaning:
                 "pma_status": "TERBUKA",
                 "pma_max_asing": 100,
                 "pma_verification_status": "declared_gap",
+                "bali_blocked": False,
+                "bali_status": "OK_or_HIGHER_RISK",
                 "bali_reason": "Nationally open to 100% foreign ownership.",
             },
             score=0.9,
@@ -292,6 +294,8 @@ class TestSnippetCleaning:
         assert result.pma_max_asing is None
         assert result.pma_official_basis is None
         assert result.pma_source_vintage is None
+        assert result.bali_blocked is None
+        assert result.bali_status is None
         assert result.bali_reason == ""
 
     @pytest.mark.unit
@@ -304,11 +308,15 @@ class TestSnippetCleaning:
             pma_status="TERBUKA",
             pma_max_asing=100,
             pma_verification_status="declared_gap",
+            bali_blocked=True,
+            bali_status="CHIUSO_MORATORIA_BALI",
             bali_reason="Nationally open to 100% foreign ownership.",
             expert_legal={"summary": "Foreign ownership is unrestricted."},
         )
 
         assert result.pma_status == "NOT_VERIFIED"
+        assert result.bali_blocked is None
+        assert result.bali_status is None
         assert result.bali_reason == ""
         assert result.expert_legal is None
 

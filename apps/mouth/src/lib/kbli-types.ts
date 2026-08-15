@@ -89,7 +89,7 @@ export interface KBLIRawCode {
   pma_verification_status?: "located" | "declared_gap";
   // PMA cap provenance (synced from the native app dataset, 2026-06-27)
   pma_cap_special?: boolean; // true => special-distribution condition, render "special conditions" not "Closed 0%"
-  pma_cap_verified?: boolean; // false => TERBATAS cap % not source-backed, render "≈N% unverified"
+  pma_cap_verified?: boolean; // false => withhold numeric/special cap claims
   pma_route_to?: string; // sibling private code when a govt code is closed to PMA
   _source: string;
   // ── Per-record provenance (GARUDA-FILIERA layer markers) ──────────────────
@@ -181,7 +181,7 @@ export type KBLIMatchType =
 /** PMA (foreign investment) details — processed */
 export interface KBLIPmaInfo {
   status: KBLIPmaStatus;
-  maxForeign: number | "special";
+  maxForeign: number | "special" | null;
   condition: string | null;
   isPriority: boolean;
   note: string | null;
@@ -192,7 +192,7 @@ export interface KBLIPmaInfo {
   sourceVintage: string | null;
   // Synced from native app (2026-06-27): provenance flags that change the label.
   capSpecial: boolean; // special-distribution (47221) → "special conditions", not "Closed 0%"
-  capVerified: boolean; // false → TERBATAS % not source-backed → "≈N% unverified"
+  capVerified: boolean; // false → withhold numeric/special cap claims
   routeTo: string | null; // sibling private code when a govt code is closed to PMA (86101→86103)
   /** Which ARTICLE of the Perpres names this code — `source` is only the instrument.
    *  Emitted by scripts/kbli_filiera/perpres_body_default_relation.py, never derived here.

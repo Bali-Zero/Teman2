@@ -53,6 +53,12 @@ STATUS_MAP = {
     "NUOVO": "New in KBLI 2025 — no equivalent in KBLI 2020. Register fresh on OSS.",
 }
 
+PMA_ALLOWED_STATUSES = frozenset({"TERBUKA", "TERBATAS", "TERTUTUP"})
+PMA_NOT_VERIFIED_PROMPT = (
+    "pma_status: NOT_VERIFIED (withhold ownership status, cap, PT PMA eligibility, "
+    "and Bali PMA registrability)"
+)
+
 # Sector-level related codes map for youllAlsoNeed (semi-deterministic)
 SECTOR_RELATED: dict[str, list[str]] = {
     "I.J-P": ["55101", "55201", "55203", "56101", "56301", "79110", "93199"],  # Accommodation/Tourism
@@ -79,41 +85,41 @@ EXAMPLE 1:
 code: 56101
 judul: RESTORAN
 uraian: Kelompok ini mencakup kegiatan usaha yang melayani penjualan makanan dan minuman untuk dikonsumsi di tempat usaha yang bangunannya bersifat tetap.
-pma_status: TERBUKA (100%)
+pma_status: NOT_VERIFIED (withhold ownership status, cap, PT PMA eligibility, and Bali PMA registrability)
 sektor_id: I.J-P
 → whatItMeans: "Running any food and beverage establishment in a permanent building — sit-down restaurants, warungs with fixed walls, food courts, and hotel dining. The key qualifier is 'permanent building': if customers come in, sit down, and eat food you cooked on-site, this is your code. Includes cafeterias, self-service spots, and hotel restaurants."
-→ baliContext: "Bali's restaurant scene is the most competitive in Southeast Asia — Seminyak, Canggu, and Ubud are saturated, with premium spots running IDR 80–200M/year rent. TDUP (Dinas Pariwisata) and SLHS kitchen hygiene certificate are mandatory on top of the NIB — skipping either invites Satpol PP closure. If you serve alcohol, you'll need to add 56301 to your NIB; operating without it is the single most common enforcement trigger in Canggu."
-→ zantaraOpener: "Opening a restaurant in Bali? 56101 is your main code — let me walk you through licensing, what changed in 2025, and how to structure a PMA operation correctly."
+→ baliContext: "Bali's restaurant scene is highly competitive — Seminyak, Canggu, and Ubud are saturated, with premium spots running IDR 80–200M/year rent. TDUP (Dinas Pariwisata) and SLHS kitchen hygiene certificate are mandatory on top of the NIB — skipping either invites Satpol PP closure. If you serve alcohol, add 56301 to the NIB; confirm ownership eligibility separately from this activity and licensing guidance."
+→ zantaraOpener: "Opening a restaurant in Bali? 56101 covers the core activity — I can explain licensing and what changed in 2025 while ownership verification remains separate."
 
 EXAMPLE 2:
 code: 55203
 judul: VILLA
 uraian: Kelompok ini mencakup kegiatan penyediaan akomodasi jangka pendek oleh pengelola villa, dilengkapi dengan fasilitas hotel, kolam renang, dan dapur yang terpisah.
-pma_status: TERBUKA (100%)
+pma_status: NOT_VERIFIED (withhold ownership status, cap, PT PMA eligibility, and Bali PMA registrability)
 sektor_id: I.J-P
 → whatItMeans: "Short-term accommodation in a private villa — with hotel-grade facilities, private pool, and a separate kitchen. This is the standard code for Bali villa rentals. It covers both owner-managed and professionally managed villas open to paying guests, from boutique 1-bedroom villas to large estate properties."
-→ baliContext: "The dominant PMA hospitality entry point in Bali. Beyond the NIB, you need TDUP from Dinas Pariwisata Kabupaten, PBG building permit (replaced IMB in 2022), and KKPR spatial conformity. Critical: villas in green zone agricultural land (LP2B) cannot be permitted regardless of ownership structure — check RDTR zoning before signing any land deal."
-→ zantaraOpener: "Buying or building a villa in Bali? 55203 is the code — I can walk you through licensing, PMA structuring, zoning rules, and what's changed in 2025."
+→ baliContext: "For a Bali villa operation, review TDUP with Dinas Pariwisata Kabupaten, the PBG building permit, and KKPR spatial conformity. Villas in protected agricultural zones may not be permitted regardless of ownership structure — check the current RDTR before signing any land deal. Treat per-code foreign-ownership eligibility as a separate verification question."
+→ zantaraOpener: "Operating a villa in Bali? I can explain the scope of 55203, its licensing path, and zoning checks without assuming an ownership verdict."
 
 EXAMPLE 3:
 code: 01131
 judul: PERTANIAN SAYURAN DAUN
 uraian: Kelompok ini mencakup kegiatan pertanian sayuran yang daun, bunga atau batangnya dimakan sebagai sayur, seperti articok, petsai/sawi, asparagus, kubis/kol, kembang kol, brokoli, selada, seledri, daun bawang, bayam, kangkung, dll.
-pma_status: TERBUKA (100%)
+pma_status: NOT_VERIFIED (withhold ownership status, cap, PT PMA eligibility, and Bali PMA registrability)
 sektor_id: I.B
 → whatItMeans: "Growing leafy vegetables commercially — spinach, kale, cabbage, lettuce, pak choi, kangkung, celery, leeks, broccoli, asparagus, and similar greens. Covers the full cycle: soil prep, planting, irrigation, pest management, and harvesting. The defining feature is that the leaf, stem, or flower of the plant is the edible product."
-→ baliContext: "Organic premium produce for Bali's hotels and restaurants is the viable PMA niche — hotels in Ubud and Seminyak pay 2–4x market rate for certified organic local supply. The hard part is land: PMA cannot hold SHM (freehold) on agricultural land; HGU (cultivation rights) is the correct title, typically granted for 25–35 years. Subak water access is negotiated directly with the banjar, not through OSS — engage the local water council before signing any lease."
-→ zantaraOpener: "Planning a leafy vegetable farm in Bali? Let me explain the licensing requirements, Subak water rules, and how to structure this as a PMA operation."
+→ baliContext: "Organic premium produce can supply Bali's hotels and restaurants, particularly around Ubud and southern Bali. Land title, investment structure, and Subak water access each require separate confirmation outside OSS; engage local land and water authorities before signing a lease. Do not infer foreign-ownership eligibility from the agricultural activity description alone."
+→ zantaraOpener: "Planning a leafy vegetable farm in Bali? I can explain the activity scope, licensing requirements, and Subak questions while ownership is verified separately."
 
 EXAMPLE 4:
 code: 01113
 judul: PERTANIAN KEDELAI
 uraian: Kelompok ini mencakup kegiatan pertanian kedelai (Glycine max). Kelompok ini tidak mencakup pertanian kedelai sayur (edamame) atau kedelai rebus yang termasuk dalam kelompok 01116.
-pma_status: TERBUKA (100%)
+pma_status: NOT_VERIFIED (withhold ownership status, cap, PT PMA eligibility, and Bali PMA registrability)
 sektor_id: I.B
 → whatItMeans: "Commercial soybean cultivation (Glycine max) — covering the full cycle from land prep and planting to harvest and post-harvest handling. Important scope note: edamame and green soybeans for vegetable use fall under 01116, not this code. This is dry soybean for food processing, tempeh/tofu production, and export."
-→ baliContext: "Soybean is a strategic food commodity in Indonesia — government intervention on prices and imports is common, which affects PMA business planning. In Bali, the main viable angle is supplying organic soy to artisan tempeh and tofu producers in Ubud and Denpasar. Land title rules apply: HGU required for PMA (not SHM). Unlike rice and corn, soybean has no Subak water dependency — dryland cultivation is common, which simplifies water rights."
-→ zantaraOpener: "Planning a soybean farm in Bali? Let me walk you through licensing, the edamame vs. kedelai code distinction, and HGU land rights for PMA."
+→ baliContext: "Soybean is a strategic food commodity in Indonesia, so price and import interventions can affect planning. In Bali, one commercial angle is supplying organic soy to tempeh and tofu producers around Ubud and Denpasar. Confirm land title, water access, and foreign-ownership eligibility independently; none follows from this KBLI description alone."
+→ zantaraOpener: "Planning a soybean farm in Bali? I can explain licensing and the edamame-versus-dry-soy code distinction while ownership is verified separately."
 """
 
 SYSTEM_PROMPT = (
@@ -134,6 +140,9 @@ SYSTEM_PROMPT = (
     "   - Include at least ONE of: price range (IDR), specific Bali location, enforcement reality, or named permit\n"
     "   - Include ONE insider tip or common mistake specific to THIS code (not generic advice)\n"
     "   - Write in English. No Indonesian sentences.\n\n"
+    "   - Treat the provided pma_status line as the ONLY permitted ownership evidence.\n"
+    "   - If it is NOT_VERIFIED, NEVER state or imply an ownership status, foreign cap, PT PMA eligibility, "
+    "or Bali PMA registrability for that code.\n\n"
     "3. zantaraOpener: One conversational sentence for a chatbot, ~100-160 chars.\n"
     "   - Start with Bali context (e.g. 'Opening a X in Bali?')\n"
     "   - End with what Zantara will help with\n"
@@ -163,6 +172,67 @@ def load_existing_codes() -> set[str]:
     content = GOLD_TS.read_text()
     # Match "55203": { patterns
     return set(re.findall(r'"(\d{5})":\s*\{', content))
+
+
+def _non_blank_string(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    cleaned = value.strip()
+    return cleaned or None
+
+
+def pma_claims_verified(code: dict) -> bool:
+    """Return whether a code carries the complete publishable PMA tuple."""
+    status = code.get("pma_status")
+    return bool(
+        code.get("pma_verification_status") == "located"
+        and isinstance(status, str)
+        and status in PMA_ALLOWED_STATUSES
+        and _non_blank_string(code.get("pma_official_basis"))
+        and _non_blank_string(code.get("pma_source_vintage"))
+    )
+
+
+def _has_special_pma_cap(code: dict) -> bool:
+    """Return whether the located verdict uses the explicit non-percent regime."""
+    return bool(
+        code.get("pma_status") == "TERBATAS"
+        and code.get("pma_max_asing") == "special"
+        and code.get("pma_cap_special") is True
+    )
+
+
+def public_pma_prompt(code: dict) -> str:
+    """Render the only PMA line allowed to cross the offline LLM boundary."""
+    if not pma_claims_verified(code):
+        return PMA_NOT_VERIFIED_PROMPT
+
+    status = code["pma_status"]
+    cap = code.get("pma_max_asing")
+    if isinstance(cap, (int, float)) and not isinstance(cap, bool):
+        cap_text = f" ({cap}%)"
+    elif _has_special_pma_cap(code):
+        cap_text = " (special non-percentage conditions)"
+    else:
+        cap_text = ""
+    basis = _non_blank_string(code.get("pma_official_basis"))
+    vintage = _non_blank_string(code.get("pma_source_vintage"))
+    return (
+        f"pma_status: {status}{cap_text}; "
+        f"pma_official_basis: {basis}; pma_source_vintage: {vintage}"
+    )
+
+
+def build_llm_batch_input(codes: list[dict]) -> str:
+    """Build a batch prompt without raw/default PMA values."""
+    return "\n\n".join(
+        f"code: {code['kode_kbli_2025']}\n"
+        f"judul: {code['judul']}\n"
+        f"uraian: {code.get('uraian', '')[:600]}\n"
+        f"{public_pma_prompt(code)}\n"
+        f"sektor_id: {code.get('sektor_id', 'N/A')}"
+        for code in codes
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -241,20 +311,39 @@ def _translate_kewajiban(raw: str) -> str:
 def build_what_you_need(code: dict) -> str:
     """Build whatYouNeed from per_skala data — 100% deterministic, numbered steps."""
     per_skala = code.get("per_skala", [])
-    pma_status = code.get("pma_status", "")
+    pma_verified = pma_claims_verified(code)
+    pma_status = code.get("pma_status", "") if pma_verified else "NOT_VERIFIED"
     pma_max = code.get("pma_max_asing", 0)
-    pma_kondisi = code.get("pma_kondisi") or ""
-    pma_nota = code.get("pma_nota") or ""
+    pma_kondisi = (code.get("pma_kondisi") or "") if pma_verified else ""
+    pma_nota = (code.get("pma_nota") or "") if pma_verified else ""
 
     # PMA line
-    if pma_status == "TERBUKA":
-        pma_line = f"**PMA:** Fully open — {pma_max}% foreign ownership allowed."
+    cap_is_number = isinstance(pma_max, (int, float)) and not isinstance(pma_max, bool)
+    cap_is_special = pma_verified and _has_special_pma_cap(code)
+    if pma_status == "NOT_VERIFIED":
+        pma_line = (
+            "**PMA:** NOT_VERIFIED — foreign-ownership status and cap are withheld until "
+            "an official per-code basis and source vintage are located."
+        )
+    elif pma_status == "TERBUKA":
+        pma_line = "**PMA:** Open to foreign investment."
+        if cap_is_number:
+            pma_line = f"**PMA:** Fully open — {pma_max}% foreign ownership allowed."
     elif pma_status == "TERTUTUP":
         pma_line = "**PMA:** Closed to foreign investment — domestic entities only."
     elif pma_status == "TERBATAS":
-        pma_line = f"**PMA:** Restricted — max {pma_max}% foreign ownership."
+        pma_line = "**PMA:** Restricted foreign ownership."
+        if cap_is_number:
+            pma_line = f"**PMA:** Restricted — max {pma_max}% foreign ownership."
+        elif cap_is_special:
+            pma_line = (
+                "**PMA:** Open with special non-percentage conditions — consult the "
+                "official per-code basis."
+            )
     else:
-        pma_line = ""
+        # Defensive fallback. ``pma_claims_verified`` already rejects this
+        # branch, but keep future refactors fail-closed.
+        pma_line = "**PMA:** NOT_VERIFIED — foreign-ownership status and cap are withheld."
     if pma_kondisi:
         pma_line += f" Condition: {pma_kondisi}."
     if pma_nota and pma_nota not in pma_line:
@@ -308,11 +397,27 @@ def build_what_you_need(code: dict) -> str:
                 seen_kew.add(kew)
                 all_kewajiban.append(kew)
 
-    # Numbered steps: always start with PT PMA + NIB, then per-scale requirements
+    # Numbered steps: ownership route first, then NIB and per-scale requirements.
     steps: list[str] = []
     step_n = 1
 
-    steps.append(f"{step_n}. **PT PMA incorporation** — notary deed, AHU registration, TDP (~2–4 weeks)")
+    if pma_status == "TERBUKA" or (
+        pma_status == "TERBATAS"
+        and ((cap_is_number and pma_max > 0) or cap_is_special)
+    ):
+        steps.append(
+            f"{step_n}. **PT PMA incorporation** — notary deed, AHU registration, "
+            "TDP (~2–4 weeks)"
+        )
+    elif pma_status == "TERTUTUP" or (
+        pma_status == "TERBATAS" and cap_is_number and pma_max == 0
+    ):
+        steps.append(f"{step_n}. **Domestic entity route** — this code is closed to PT PMA")
+    else:
+        steps.append(
+            f"{step_n}. **Verify the ownership route** — confirm the current per-code PMA "
+            "basis before choosing a PT PMA or domestic structure"
+        )
     step_n += 1
 
     steps.append(f"{step_n}. **NIB via OSS** — register on oss.go.id, select this code, issued automatically (1–3 days)")
@@ -431,14 +536,7 @@ def enrich_llm_fields(
     for i in range(0, total, batch_size):
         batch = targets[i : i + batch_size]
 
-        batch_text = "\n\n".join(
-            f"code: {c['kode_kbli_2025']}\n"
-            f"judul: {c['judul']}\n"
-            f"uraian: {c.get('uraian', '')[:600]}\n"
-            f"pma_status: {c.get('pma_status', 'TERBUKA')} ({c.get('pma_max_asing', 100)}%)\n"
-            f"sektor_id: {c.get('sektor_id', 'N/A')}"
-            for c in batch
-        )
+        batch_text = build_llm_batch_input(batch)
 
         print(
             f"  LLM batch {i // batch_size + 1}/{(total + batch_size - 1) // batch_size}"

@@ -323,6 +323,7 @@ describe("deriveProvenance — PMA verification gate (guilt + innocence)", () =>
       }),
     );
     expect(prov.pma.status).toBe("declared_gap");
+    expect(prov.pma.source).toBeNull();
     expect(prov.pma.locator).toBeNull();
     expect(prov.pma.vintage).toBeNull();
   });
@@ -342,6 +343,8 @@ describe("deriveProvenance — PMA verification gate (guilt + innocence)", () =>
     );
     expect(missingLocator.pma.status).toBe("declared_gap");
     expect(missingVintage.pma.status).toBe("declared_gap");
+    expect(missingLocator.pma.source).toBeNull();
+    expect(missingVintage.pma.source).toBeNull();
   });
 
   it("GUILT: located provenance cannot bless an unknown PMA vocabulary token", () => {
@@ -357,6 +360,7 @@ describe("deriveProvenance — PMA verification gate (guilt + innocence)", () =>
     expect(knownPmaRawStatus("FUTURE_STATUS")).toBeNull();
     expect(knownPmaRawStatus("terbuka")).toBeNull();
     expect(prov.pma.status).toBe("declared_gap");
+    expect(prov.pma.source).toBeNull();
     expect(prov.pma.locator).toBeNull();
     expect(prov.pma.vintage).toBeNull();
   });
@@ -385,6 +389,7 @@ describe("deriveProvenance — PMA verification gate (guilt + innocence)", () =>
       }),
     );
     expect(prov.pma.status).toBe("declared_gap");
+    expect(prov.pma.source).toBeNull();
     expect(prov.pma.locator).toBeNull();
     expect(prov.pma.vintage).toBeNull();
   });

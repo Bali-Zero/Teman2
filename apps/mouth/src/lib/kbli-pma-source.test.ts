@@ -17,11 +17,12 @@ describe("pmaSourceNoteFaq", () => {
     );
   });
 
-  it("declared gap: labels a named instrument as context, not proof", () => {
+  it("declared gap: withholds even a named raw instrument", () => {
     const note = pmaSourceNoteFaq(PERPRES_SOURCE, "declared_gap");
-    expect(note).toContain("Instrument context recorded as");
-    expect(note).toContain("no adjudicated per-code official basis");
+    expect(note).toContain("No adjudicated per-code official basis");
     expect(note).toContain("confirm it at oss.go.id");
+    expect(note).not.toContain(PERPRES_SOURCE);
+    expect(note).not.toContain("Instrument context recorded as");
     expect(note).not.toContain("audit in progress");
   });
 
@@ -45,6 +46,7 @@ describe("pmaSourceAttributionStructured", () => {
       "declared_gap",
     );
     expect(clause).toContain("no adjudicated per-code official basis");
+    expect(clause).not.toContain(SECTOR_LAW_SOURCE);
     expect(clause).not.toBe(` per ${SECTOR_LAW_SOURCE}`);
   });
 

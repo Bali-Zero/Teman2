@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   getAllCodes,
   getCode,
+  getGoldCodes,
   getSections,
+  hasGoldContent,
   mapPmaStatus,
 } from "./kbli-data.server";
+import { hasPublishablePmaCap } from "./kbli-pma-disclosure";
 
 /**
  * Mandate 12 (2026-08-09, PENDING-ARMS.md "sektor_id is not a malformed
@@ -25,6 +28,58 @@ describe("kbli-data.server — section derivation (Mandate 12 fix)", () => {
     expect(mapPmaStatus("TERTUTUP")).toBe("closed");
     expect(mapPmaStatus("FUTURE_STATUS")).toBe("unknown");
     expect(mapPmaStatus("terbuka")).toBe("unknown");
+  });
+
+  it("uses the same fail-closed PMA contract as the page loader", () => {
+    const gap = getCode("01111");
+    const located = getCode("02102");
+
+    expect(gap?.pma).toMatchObject({
+      status: "unknown",
+      maxForeign: null,
+      verificationStatus: "declared_gap",
+      officialBasis: null,
+      sourceVintage: null,
+      source: null,
+      citation: null,
+    });
+    expect(located?.pma).toMatchObject({
+      status: "open",
+      maxForeign: 100,
+      verificationStatus: "located",
+      sourceVintage: "2021-05-25",
+    });
+    expect(getAllCodes()).toHaveLength(1559);
+    expect(
+      getAllCodes().filter(
+        (code) => code.pma.verificationStatus === "declared_gap",
+      ),
+    ).toHaveLength(1505);
+    for (const code of getAllCodes().filter(
+      (item) => item.pma.verificationStatus === "declared_gap",
+    )) {
+      expect(code.intel, `${code.code} intel`).toBeUndefined();
+      expect(code.baliL4, `${code.code} Bali L4`).toBeUndefined();
+    }
+    expect(located?.intel).toBeDefined();
+    expect(located?.baliL4).toBeDefined();
+  });
+
+  it("does not advertise generated gold content for a declared PMA gap", () => {
+    expect(getCode("16291")?.pma.verificationStatus).toBe("declared_gap");
+    expect(getCode("16291")?.tier).not.toBe("gold");
+    expect(hasGoldContent("16291")).toBe(false);
+
+    expect(getCode("47221")?.pma.verificationStatus).toBe("located");
+    expect(getCode("47221")?.tier).toBe("gold");
+    expect(hasGoldContent("47221")).toBe(true);
+    expect(getGoldCodes()).toContain("47221");
+    expect(getGoldCodes()).not.toContain("16291");
+    expect(getGoldCodes()).toHaveLength(15);
+    for (const code of getGoldCodes()) {
+      expect(getCode(code)?.pma.verificationStatus, code).toBe("located");
+      expect(hasPublishablePmaCap(getCode(code)!.pma), code).toBe(true);
+    }
   });
 
   it("guilt: 56xxx (food service) and 47xxx (retail) resolve to their own true sections, not both to 'I'", () => {

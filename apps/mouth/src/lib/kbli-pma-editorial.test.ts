@@ -16,9 +16,8 @@ describe("PMA editorial disclosure boundary", () => {
       const record = getCode(code);
       expect(record).toBeDefined();
       const rawGold = getGoldContent(code);
-      expect(record?.intel_2026?.editorial?.body).toMatch(
-        /foreign ownership|PMA/i,
-      );
+      expect(record?.intel_2026).toBeUndefined();
+      expect(rawGold).toBeNull();
 
       const disclosed = discloseKbliEditorial(record!, rawGold);
       expect(disclosed.intel).toBeUndefined();
@@ -32,11 +31,12 @@ describe("PMA editorial disclosure boundary", () => {
   );
 
   it("preserves editorial identity for a located verdict", () => {
-    const record = getCode("02102");
+    const record = getCode("47221");
     expect(record).toBeDefined();
     expect(isPmaVerdictVerified(record!)).toBe(true);
 
-    const gold = getGoldContent("02102");
+    const gold = getGoldContent("47221");
+    expect(gold).not.toBeNull();
     const disclosed = discloseKbliEditorial(record!, gold);
     expect(disclosed.intel).toBe(record!.intel_2026);
     expect(disclosed.gold).toBe(gold);
@@ -44,7 +44,48 @@ describe("PMA editorial disclosure boundary", () => {
     expect(discloseKbliBaliReason(record!)).toBe(record!.baliL4?.reason);
   });
 
-  it("enforces the corpus partition: 1505 gaps withheld, 54 located preserved", () => {
+  it("withholds generated prose when the verdict is located but its cap is not verified", () => {
+    const base = getCode("47221");
+    expect(base).toBeDefined();
+    const malformed = {
+      ...base!,
+      pma: {
+        ...base!.pma,
+        maxForeign: 100,
+        capSpecial: false,
+        capVerified: false,
+      },
+    };
+    const sentinelGold = getGoldContent("47221");
+    expect(sentinelGold).not.toBeNull();
+
+    expect(discloseKbliEditorial(malformed, sentinelGold)).toEqual({
+      gold: null,
+      intel: undefined,
+      withheld: true,
+    });
+  });
+
+  it("rejects a torn located tuple whose public fields disagree with provenance", () => {
+    const base = getCode("47221");
+    expect(base).toBeDefined();
+    const torn = {
+      ...base!,
+      pma: {
+        ...base!.pma,
+        officialBasis: "different locator",
+      },
+    };
+
+    expect(isPmaVerdictVerified(torn)).toBe(false);
+    expect(discloseKbliEditorial(torn, getGoldContent("47221"))).toMatchObject({
+      gold: null,
+      intel: undefined,
+      withheld: true,
+    });
+  });
+
+  it("enforces the corpus partition: gaps withheld and only reviewed located prose exposed", () => {
     const codes = getAllCodes();
     const located = codes.filter(isPmaVerdictVerified);
     const gaps = codes.filter((record) => !isPmaVerdictVerified(record));
@@ -52,6 +93,7 @@ describe("PMA editorial disclosure boundary", () => {
     expect(codes).toHaveLength(1559);
     expect(located).toHaveLength(54);
     expect(gaps).toHaveLength(1505);
+    expect(located.filter((record) => record.intel_2026)).toHaveLength(49);
 
     for (const record of gaps) {
       const disclosed = discloseKbliEditorial(
@@ -68,6 +110,13 @@ describe("PMA editorial disclosure boundary", () => {
       expect(disclosed.intel).toBe(record.intel_2026);
       expect(disclosed.gold).toBe(gold);
       expect(discloseKbliBaliReason(record)).toBe(record.baliL4?.reason);
+    }
+    for (const code of ["10722", "47222", "50134", "73100", "96220"]) {
+      const record = getCode(code)!;
+      expect(record.intel_2026, code).toBeUndefined();
+      expect(discloseKbliEditorial(record, getGoldContent(code)).withheld).toBe(
+        getGoldContent(code) === null,
+      );
     }
   });
 });

@@ -28,6 +28,7 @@
 
 import { riskLabelEn } from "./kbli-derive";
 import { pmaCapShape } from "./kbli-pma-shape";
+import { formatPmaOwnership } from "./kbli-pma-disclosure";
 import {
   isBaliL4BlockVerifiedForBareClaim,
   isLicensingVerifiedForBareClaim,
@@ -76,9 +77,14 @@ export function verifiedLicenseType(kbli: KBLICode): string | null {
  */
 export function kbliPmaLabel(kbli: KBLICode): string {
   if (!isPmaVerdictVerified(kbli)) return "Foreign Ownership Not Yet Verified";
-  if (kbli.pma.status === "open") return "100% Foreign Ownership";
+  if (kbli.pma.status === "open")
+    return formatPmaOwnership(kbli.pma, "metadata");
   if (kbli.pma.status !== "restricted") return "Closed to Foreign Investment";
-  if (kbli.pma.capSpecial)
+  if (
+    kbli.pma.capVerified &&
+    kbli.pma.capSpecial &&
+    kbli.pma.maxForeign === "special"
+  )
     return "Restricted (special distribution conditions)";
   if (!kbli.pma.capVerified) return "Restricted for foreign ownership";
   switch (pmaCapShape(kbli.pma)) {
@@ -103,18 +109,25 @@ export function kbliMetaTitleSuffix(kbli: KBLICode): string {
   if (!isPmaVerdictVerified(kbli))
     return "PMA Eligibility Requires Verification";
   if (kbli.pma.status === "open") {
+    if (kbli.pma.capVerified && kbli.pma.maxForeign === 0) {
+      return "Closed to Foreign Investment";
+    }
     if (isBaliL4BlockVerifiedForBareClaim(kbli)) {
       return "Blocked for PT PMA in Bali (2026)";
     }
     const risk = verifiedRiskLabel(kbli);
-    return risk
-      ? `100% Foreign Ownership, ${risk} Risk`
-      : "100% Foreign Ownership";
+    const ownership = formatPmaOwnership(kbli.pma, "metadata");
+    return risk ? `${ownership}, ${risk} Risk` : ownership;
   }
   if (kbli.pma.status === "restricted") {
-    // Order is load-bearing and unchanged: a special-distribution regime has no
-    // percentage at all, so the percentage's provenance flag cannot speak to it.
-    if (kbli.pma.capSpecial) return "Foreign Ownership With Conditions";
+    // Even the non-percentage special regime is a cap claim and therefore
+    // requires the explicit cap-verification flag.
+    if (
+      kbli.pma.capVerified &&
+      kbli.pma.capSpecial &&
+      kbli.pma.maxForeign === "special"
+    )
+      return "Foreign Ownership With Conditions";
     if (!kbli.pma.capVerified) return "Foreign Ownership Restricted";
     switch (pmaCapShape(kbli.pma)) {
       // A 0% ceiling is not a share on offer. Outcome-identical to the 61

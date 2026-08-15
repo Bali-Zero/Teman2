@@ -147,7 +147,9 @@ Official description in the document.
         "intel_2026": {"whatChanged": "UNSAFE_EDITORIAL_ASSERTION"},
         "has_intel_2026": True,
         "bali_blocked": False,
+        "bali_status": "OK_or_HIGHER_RISK",
         "bali_reason": "UNSAFE_BALI_REASON",
+        "l4_bali": {"status": "OK_or_HIGHER_RISK", "blocked": False},
     }
 
     result = format_search_results(
@@ -163,7 +165,7 @@ Official description in the document.
     assert "Uraian resmi BPS." in result["text"]
     assert "Perizinan per Skala Usaha (PP 28/2025)" in result["text"]
     assert "Status PMA: NOT_VERIFIED" in result["text"]
-    assert "not national PMA permission" in result["text"]
+    assert "Bali-side registration" not in result["text"]
     for unsafe in (
         "Status PMA: TERBUKA",
         "maksimal: 100",
@@ -182,10 +184,14 @@ Official description in the document.
     assert result["metadata"]["pma_max_asing"] is None
     assert result["metadata"]["pma_cap_verified"] is False
     assert "pma_cap_note" not in result["metadata"]
-    assert "pma_cap_special" not in result["metadata"]
+    assert result["metadata"]["pma_cap_special"] is False
     assert "pma_correction" not in result["metadata"]
     assert "pma_route_to" not in result["metadata"]
     assert "pma_source" not in result["metadata"]
+    assert "bali_blocked" not in result["metadata"]
+    assert "bali_status" not in result["metadata"]
+    assert "bali_reason" not in result["metadata"]
+    assert "l4_bali" not in result["metadata"]
     assert result["metadata"]["has_intel_2026"] is False
     assert "description" not in result["metadata"]
     assert metadata["pma_status"] == "TERBUKA", "the caller-owned metadata must not mutate"
