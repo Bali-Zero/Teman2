@@ -8,6 +8,21 @@ import type {
 import { knownPmaRawStatus } from "./kbli-provenance";
 import { humanizeInternalEnums } from "./kbli-status-labels";
 
+const ALLOWED_BALI_STATUSES = new Set([
+  "APERTO_BALI_RISCHIO_ALTO",
+  "BLOCCATO_CLASSE_RISCHIO",
+  "BLOCCATO_DIPENDE_SCOPE",
+  "CHIUSO_BALI",
+  "CHIUSO_BALI_PROPOSTO",
+  "CHIUSO_MORATORIA_BALI",
+  "CHIUSO_PMA_NO_BESAR",
+  "CHIUSO_REGOLATORE_SETTORIALE",
+  "NON_CLASSIFICABILE",
+  "OK_or_HIGHER_RISK",
+  "TERBATAS",
+  "TERTUTUP",
+]);
+
 function publicText(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
@@ -175,7 +190,7 @@ export function formatPmaOwnership(
 
 /**
  * Public Bali disclosure. It is subordinate to the complete national PMA
- * tuple and requires an exact nonblank status plus an actual boolean block.
+ * tuple and requires an allow-listed status plus actual source booleans.
  */
 export function discloseBaliL4(
   raw: KBLIRawCode,
@@ -185,9 +200,9 @@ export function discloseBaliL4(
   if (!pmaVerdictLocated || !l4) return undefined;
   if (
     typeof l4.status !== "string" ||
-    !l4.status ||
-    l4.status.trim() !== l4.status ||
-    typeof l4.blocked !== "boolean"
+    !ALLOWED_BALI_STATUSES.has(l4.status) ||
+    typeof l4.blocked !== "boolean" ||
+    typeof l4.needs_review !== "boolean"
   ) {
     return undefined;
   }
@@ -208,7 +223,7 @@ export function discloseBaliL4(
     status: l4.status,
     reason: humanizeInternalEnums(publicText(l4.reason) ?? ""),
     confidence: confidence ?? "MEDIUM",
-    needsReview: l4.needs_review === true,
+    needsReview: l4.needs_review,
     blocked: l4.blocked,
     from2020: publicText(l4.from_2020),
     moratorium,

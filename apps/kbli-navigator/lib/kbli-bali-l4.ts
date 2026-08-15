@@ -32,6 +32,21 @@ export interface BaliL4 {
 
 let _cache: Record<string, BaliL4> | null = null;
 
+const ALLOWED_BALI_STATUSES = new Set([
+  "APERTO_BALI_RISCHIO_ALTO",
+  "BLOCCATO_CLASSE_RISCHIO",
+  "BLOCCATO_DIPENDE_SCOPE",
+  "CHIUSO_BALI",
+  "CHIUSO_BALI_PROPOSTO",
+  "CHIUSO_MORATORIA_BALI",
+  "CHIUSO_PMA_NO_BESAR",
+  "CHIUSO_REGOLATORE_SETTORIALE",
+  "NON_CLASSIFICABILE",
+  "OK_or_HIGHER_RISK",
+  "TERBATAS",
+  "TERTUTUP",
+]);
+
 function cleanText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -46,11 +61,12 @@ export function discloseBaliL4Record(
   const l4 = candidate as Record<string, unknown>;
   const status = l4.status;
   const blocked = l4.blocked;
+  const needsReview = l4.needs_review;
   if (
     typeof status !== "string" ||
-    !status ||
-    status.trim() !== status ||
-    typeof blocked !== "boolean"
+    !ALLOWED_BALI_STATUSES.has(status) ||
+    typeof blocked !== "boolean" ||
+    typeof needsReview !== "boolean"
   ) {
     return null;
   }
@@ -67,7 +83,7 @@ export function discloseBaliL4Record(
     status: status as BaliStatus,
     reason: cleanText(l4.reason),
     confidence,
-    needsReview: l4.needs_review === true,
+    needsReview,
     blocked,
     from2020: cleanText(l4.from_2020) || undefined,
     moratorium: {

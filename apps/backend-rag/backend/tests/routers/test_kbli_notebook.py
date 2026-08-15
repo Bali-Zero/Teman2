@@ -149,10 +149,6 @@ class TestChatEndpoint:
                 AsyncMock(return_value=results),
             ),
             patch(
-                "backend.app.routers.kbli_notebook_chat._fetch_parent_documents_from_kbli_table",
-                AsyncMock(return_value={"56101": "full content"}),
-            ),
-            patch(
                 "backend.app.routers.kbli_notebook_chat._generate_kbli_explanation_gemini",
                 AsyncMock(return_value="KBLI 56101 is open to PMA."),
             ),

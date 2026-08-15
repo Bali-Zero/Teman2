@@ -122,14 +122,41 @@ def test_bali_disclosure_never_coerces_a_non_boolean_blocked_value(blocked: obje
     assert disclose_bali(raw)["bali_blocked"] is None
 
 
-@pytest.mark.parametrize("status", [None, "", " ", 7, " OPEN "])
-def test_bali_disclosure_requires_an_exact_nonblank_string_status(status: object) -> None:
+@pytest.mark.parametrize("status", [None, "", " ", 7, " OPEN ", "OK", "FUTURE_STATUS"])
+def test_bali_disclosure_rejects_unknown_or_malformed_status(status: object) -> None:
     raw = {
         **_located_record(),
         "l4_bali": {"status": status, "blocked": False},
     }
 
     assert disclose_bali(raw)["has_bali_l4"] is False
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        "APERTO_BALI_RISCHIO_ALTO",
+        "BLOCCATO_CLASSE_RISCHIO",
+        "BLOCCATO_DIPENDE_SCOPE",
+        "CHIUSO_BALI",
+        "CHIUSO_BALI_PROPOSTO",
+        "CHIUSO_MORATORIA_BALI",
+        "CHIUSO_PMA_NO_BESAR",
+        "CHIUSO_REGOLATORE_SETTORIALE",
+        "NON_CLASSIFICABILE",
+        "OK_or_HIGHER_RISK",
+        "TERBATAS",
+        "TERTUTUP",
+    ],
+)
+def test_bali_disclosure_accepts_only_canonical_status_vocabulary(status: str) -> None:
+    raw = {
+        **_located_record(),
+        "l4_bali": {"status": status, "blocked": False},
+    }
+
+    assert disclose_bali(raw)["bali_status"] == status
+    assert disclose_bali(raw)["has_bali_l4"] is True
 
 
 def test_bali_disclosure_supports_nested_and_flat_verified_shapes() -> None:
@@ -195,9 +222,9 @@ def test_only_marked_special_and_finite_numeric_caps_are_preserved() -> None:
     assert unmarked["pma_cap_special"] is False
     assert unmarked["pma_cap_verified"] is False
     assert (
-        disclose_pma(
-            {**_located_record(), "pma_max_asing": 49, "pma_cap_verified": True}
-        )["pma_max_asing"]
+        disclose_pma({**_located_record(), "pma_max_asing": 49, "pma_cap_verified": True})[
+            "pma_max_asing"
+        ]
         == 49
     )
 

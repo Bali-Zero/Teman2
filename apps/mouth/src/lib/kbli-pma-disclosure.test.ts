@@ -32,6 +32,7 @@ function located(overrides: Record<string, unknown> = {}): KBLIRawCode {
     l4_bali: {
       status: "OK_or_HIGHER_RISK",
       blocked: false,
+      needs_review: false,
       reason: "OK_or_HIGHER_RISK",
     },
     ...overrides,
@@ -181,12 +182,38 @@ describe("atomic PMA and Bali disclosure", () => {
     expect(discloseBaliL4(raw, true)).toBeUndefined();
   });
 
+  it("rejects a malformed Bali review flag instead of coercing it to false", () => {
+    const malformed = located({
+      l4_bali: {
+        status: "OK_or_HIGHER_RISK",
+        blocked: false,
+        needs_review: "false",
+        reason: "must not escape",
+      },
+    });
+
+    expect(discloseBaliL4(malformed, true)).toBeUndefined();
+  });
+
+  it("rejects an unknown Bali status even when both booleans are valid", () => {
+    const future = located({
+      l4_bali: {
+        status: "FUTURE_STATUS",
+        blocked: false,
+        needs_review: false,
+        reason: "must not become registrable",
+      },
+    });
+
+    expect(discloseBaliL4(future, true)).toBeUndefined();
+  });
+
   it("preserves a valid Bali tuple without truthiness coercion", () => {
     const raw = located({
       l4_bali: {
         status: "OK_or_HIGHER_RISK",
         blocked: false,
-        needs_review: "false",
+        needs_review: false,
         confidence: "FUTURE",
         reason: "OK_or_HIGHER_RISK",
       },

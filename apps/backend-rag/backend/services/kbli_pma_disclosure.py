@@ -17,6 +17,22 @@ PMA_NOT_VERIFIED = "NOT_VERIFIED"
 PMA_DECLARED_GAP = "declared_gap"
 PMA_LOCATED = "located"
 PMA_ALLOWED_STATUSES = frozenset({"TERBUKA", "TERBATAS", "TERTUTUP"})
+BALI_ALLOWED_STATUSES = frozenset(
+    {
+        "APERTO_BALI_RISCHIO_ALTO",
+        "BLOCCATO_CLASSE_RISCHIO",
+        "BLOCCATO_DIPENDE_SCOPE",
+        "CHIUSO_BALI",
+        "CHIUSO_BALI_PROPOSTO",
+        "CHIUSO_MORATORIA_BALI",
+        "CHIUSO_PMA_NO_BESAR",
+        "CHIUSO_REGOLATORE_SETTORIALE",
+        "NON_CLASSIFICABILE",
+        "OK_or_HIGHER_RISK",
+        "TERBATAS",
+        "TERTUTUP",
+    }
+)
 
 _BALI_NEUTRAL = {
     "bali_status": None,
@@ -106,8 +122,8 @@ def disclose_bali(payload: Mapping[str, Any]) -> dict[str, Any]:
     """Return the public Bali view without coercing malformed source values.
 
     A Bali verdict is subordinate to the same complete PMA evidence tuple used
-    by :func:`disclose_pma`.  It is publishable only when its status is a
-    non-blank exact string and ``blocked`` is an actual boolean.  In
+    by :func:`disclose_pma`.  It is publishable only when its status is one of
+    the exact canonical Bali tokens and ``blocked`` is an actual boolean. In
     particular, ``"false"`` must never become ``True`` through Python
     truthiness.  The helper accepts both canonical nested ``l4_bali`` records
     and already-flat Qdrant/KG payloads.
@@ -128,7 +144,11 @@ def disclose_bali(payload: Mapping[str, Any]) -> dict[str, Any]:
         raw_reason = payload.get("bali_reason")
 
     status = _clean_text(raw_status)
-    if status is None or status != raw_status or not isinstance(raw_blocked, bool):
+    if (
+        status not in BALI_ALLOWED_STATUSES
+        or status != raw_status
+        or not isinstance(raw_blocked, bool)
+    ):
         return dict(_BALI_NEUTRAL)
 
     return {

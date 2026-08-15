@@ -10,7 +10,6 @@ import json
 import logging
 import math
 import re
-from dataclasses import dataclass
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -32,11 +31,7 @@ from backend.app.routers.kbli_notebook import (
     _search_kbli_qdrant,
 )
 from backend.core.cache import cached
-from backend.services.kbli_pma_disclosure import (
-    disclose_bali,
-    disclose_pma,
-    pma_claims_verified,
-)
+from backend.services.kbli_pma_disclosure import disclose_bali
 from backend.services.rag.agentic.kg_orchestrator import KGAgenticOrchestrator
 
 logger = logging.getLogger(__name__)
@@ -44,42 +39,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/kbli-notebook", tags=["KBLI Notebook Chat"])
 
 _llm_gateway_instance = None
-
-_PMA_EVIDENCE_FIELDS = (
-    "pma_status",
-    "pma_max_asing",
-    "pma_verification_status",
-    "pma_official_basis",
-    "pma_source_vintage",
-    "pma_cap_special",
-    "pma_cap_verified",
-)
-
-
-@dataclass(frozen=True)
-class _VerifiedParentDocument:
-    """A parent document whose own PMA evidence matches the search result."""
-
-    content: str
-    pma_evidence: tuple[Any, ...]
-
-
-def _publishable_pma_evidence(payload: dict[str, Any]) -> tuple[Any, ...] | None:
-    """Normalize one complete PMA tuple, or fail closed for a partial record."""
-    if not pma_claims_verified(payload):
-        return None
-    disclosed = disclose_pma(payload)
-    return tuple(disclosed[field] for field in _PMA_EVIDENCE_FIELDS)
-
-
-def _parent_document_matches_result(
-    document: object,
-    result: KBLISearchResult,
-) -> bool:
-    """Re-check provenance at the final prompt-injection boundary."""
-    if not isinstance(document, _VerifiedParentDocument):
-        return False
-    return document.pma_evidence == _publishable_pma_evidence(result.model_dump())
 
 
 def _get_llm_gateway() -> Any:
@@ -103,7 +62,7 @@ KBLI_MASTER_PROMPT = (
     "- Use the eligible context data provided; never fill a provenance gap from memory or analogy.\n"
     "- Explain trade-offs, options, and practical next steps when relevant.\n\n"
     "PMA STATUS GLOSSARY (answer these directly without needing source data):\n"
-    "- TERBUKA = Open to 100% foreign ownership (PMA diperbolehkan penuh)\n"
+    "- TERBUKA = Open to foreign investment. It does not establish a percentage; state a ceiling only when the context carries a separately verified ownership cap.\n"
     "- TERBATAS = Open with restrictions — max foreign ownership percentage applies (PMA dengan batasan kepemilikan)\n"
     "- TERTUTUP = Closed to foreign investment — Indonesian nationals only (PMA tidak diperbolehkan)\n"
     "- PMA = Penanaman Modal Asing = Foreign Direct Investment\n"
@@ -716,7 +675,6 @@ def _detect_language(query: str) -> str:
 async def _generate_kbli_explanation_gemini(
     query: str,
     results: list[KBLISearchResult],
-    parent_docs: dict[str, _VerifiedParentDocument] | None = None,
 ) -> str:
     """Generate KBLI explanation using Gemini Flash - Fast, Cost-Effective.
 
@@ -724,12 +682,12 @@ async def _generate_kbli_explanation_gemini(
     clarity and accuracy.
     """
     logger.info("🤖 Using Gemini Flash for KBLI explanation")
-    return await _generate_kbli_explanation(query, results, parent_docs)
+    return await _generate_kbli_explanation(query, results)
 
 
 @cached(
     ttl=43200,
-    prefix="kbli_explain_v33",
+    prefix="kbli_explain_v34",
 )  # Cache explanations for 12 hours.
 # v28 (2026-08-03): the Bali provincial verdict now reaches the model. The bump is
 # NOT cosmetic — this cache is 12h deep and keyed on the prefix, so every answer
@@ -750,17 +708,17 @@ async def _generate_kbli_explanation_gemini(
 # already contain unbound or divergent parent-document ownership claims.
 # v33 (2026-08-15): Bali-side status, block, and reason are now withheld with the
 # whole PMA claim whenever the exact national evidence tuple is absent.
+# v34 (2026-08-15): Postgres parent prose is no longer eligible on a matching
+# PMA tuple alone. Cached v33 answers may contain uncertified arbitrary content.
 async def _generate_kbli_explanation(
     query: str,
     results: list[KBLISearchResult],
-    parent_docs: dict[str, _VerifiedParentDocument] | None = None,
 ) -> str:
     """Generate a grounded explanation of KBLI search results using LLM.
 
     Args:
         query: User query
         results: Search results with codes and metadata
-        parent_docs: Provenance-bound parent documents from kbli_documents.
     """
     if not results:
         return "No matching KBLI codes found for your search. Try different keywords or describe your business activity in more detail."
@@ -784,43 +742,36 @@ async def _generate_kbli_explanation(
         if bali_note:
             expert_info = f"{expert_info}\n  {bali_note}"
 
-        # Parent documents and expert blobs contain generated ownership prose.
-        # They are eligible only after the structured PMA evidence gate.  For a
-        # gap, give the model the safe classification scope plus an explicit
-        # abstention instruction; never ask it to sanitize prose heuristically.
-        parent_doc = parent_docs.get(r.code) if parent_docs else None
-        if pma_verified and _parent_document_matches_result(parent_doc, r):
-            full_content = parent_doc.content
-            logger.debug(f"  Using full parent doc for {r.code}: {len(full_content)} chars")
-            context_parts.append(
-                f"- KBLI {r.code}: {r.title}\n  Full details:\n{full_content}{expert_info}",
+        # Generated parent documents and expert blobs are never eligible merely
+        # because a structured PMA tuple matches: that tuple cannot certify the
+        # arbitrary prose beside it. Build the prompt only from safe structured
+        # fields and the official BPS description. Editorial text needs a
+        # separate exact content-hash + PMA-fingerprint certification path.
+        logger.debug(f"  Using structured context for {r.code}")
+        if not pma_verified:
+            pma_line = (
+                "PMA: NOT_VERIFIED. Do not state or infer an ownership status or "
+                "percentage for this code; explain the evidence gap and recommend "
+                "official OSS/BKPM verification."
             )
         else:
-            logger.debug(f"  Using truncated description for {r.code}")
-            if not pma_verified:
-                pma_line = (
-                    "PMA: NOT_VERIFIED. Do not state or infer an ownership status or "
-                    "percentage for this code; explain the evidence gap and recommend "
-                    "official OSS/BKPM verification."
-                )
-            else:
-                cap = "ownership cap: not verified"
-                if r.pma_cap_verified is True:
-                    if r.pma_cap_special is True and r.pma_max_asing == "special":
-                        cap = "ownership cap: special non-percentage conditions"
-                    elif (
-                        isinstance(r.pma_max_asing, (int, float))
-                        and not isinstance(r.pma_max_asing, bool)
-                        and math.isfinite(r.pma_max_asing)
-                    ):
-                        cap = f"maximum foreign ownership: {r.pma_max_asing}%"
-                pma_line = (
-                    f"PMA: {r.pma_status}; {cap}; official basis: "
-                    f"{r.pma_official_basis}; source vintage: {r.pma_source_vintage}"
-                )
-            context_parts.append(
-                f"- KBLI {r.code}: {r.title}\n  Scope: {r.description}\n  {pma_line}\n  Risk: {r.risk_category}{expert_info}",
+            cap = "ownership cap: not verified"
+            if r.pma_cap_verified is True:
+                if r.pma_cap_special is True and r.pma_max_asing == "special":
+                    cap = "ownership cap: special non-percentage conditions"
+                elif (
+                    isinstance(r.pma_max_asing, (int, float))
+                    and not isinstance(r.pma_max_asing, bool)
+                    and math.isfinite(r.pma_max_asing)
+                ):
+                    cap = f"maximum foreign ownership: {r.pma_max_asing}%"
+            pma_line = (
+                f"PMA: {r.pma_status}; {cap}; official basis: "
+                f"{r.pma_official_basis}; source vintage: {r.pma_source_vintage}"
             )
+        context_parts.append(
+            f"- KBLI {r.code}: {r.title}\n  Scope: {r.description}\n  {pma_line}\n  Risk: {r.risk_category}{expert_info}",
+        )
     context = "\n".join(context_parts)
 
     # Use unified MASTER PROMPT formatted with detected language
@@ -1105,69 +1056,6 @@ def _is_multi_domain_query(query: str) -> bool:
     return is_multi_domain
 
 
-async def _fetch_parent_documents_from_kbli_table(
-    codes: list[str],
-    pool,
-    expected_pma: dict[str, dict[str, Any]],
-) -> dict[str, _VerifiedParentDocument]:
-    """Fetch only parent documents carrying the expected PMA evidence tuple.
-
-    ``kbli_documents.content`` contains generated ownership prose.  It is not
-    eligible merely because a separate Qdrant result is verified: the row's
-    own metadata must carry a complete tuple and match that result exactly.
-    """
-    if not codes or not pool or not expected_pma:
-        return {}
-
-    parent_docs: dict[str, _VerifiedParentDocument] = {}
-    try:
-        async with pool.acquire() as conn:
-            rows = await conn.fetch(
-                "SELECT kode_kbli, content, metadata FROM kbli_documents WHERE kode_kbli = ANY($1)",
-                codes,
-            )
-            for row in rows:
-                code = row["kode_kbli"]
-                raw_metadata = row["metadata"]
-                try:
-                    metadata = (
-                        raw_metadata if isinstance(raw_metadata, dict) else json.loads(raw_metadata)
-                    )
-                except (TypeError, ValueError, json.JSONDecodeError):
-                    logger.warning("Withholding parent document %s: invalid metadata", code)
-                    continue
-
-                document_evidence = _publishable_pma_evidence(metadata)
-                expected_evidence = _publishable_pma_evidence(expected_pma.get(code, {}))
-                content = row["content"]
-                if (
-                    document_evidence is None
-                    or expected_evidence is None
-                    or document_evidence != expected_evidence
-                    or not isinstance(content, str)
-                    or not content.strip()
-                ):
-                    logger.warning(
-                        "Withholding parent document %s: PMA provenance is absent or divergent",
-                        code,
-                    )
-                    continue
-                parent_docs[code] = _VerifiedParentDocument(content, document_evidence)
-
-            if rows:
-                logger.info(
-                    "✅ Admitted %s/%s parent documents from kbli_documents",
-                    len(parent_docs),
-                    len(rows),
-                )
-            else:
-                logger.warning("⚠️ No parent documents found in kbli_documents for codes: %s", codes)
-    except Exception as e:
-        logger.error("❌ Failed to fetch parent documents: %s", e)
-
-    return parent_docs
-
-
 @router.post("/chat", response_model=KBLINotebookChatResponse)
 async def chat_kbli(
     http_request: Request,  # Iniezione corretta dell'oggetto Request di FastAPI
@@ -1195,13 +1083,15 @@ async def chat_kbli(
         codes_from_query = re.findall(r"\b\d{5}\b", kbli_request.query)
         direct_kbli_match = None
 
-        # Try direct KBLI lookup from kbli_documents table (NEW: uses parent docs)
+        # Try direct KBLI lookup from structured metadata. The generated
+        # ``kbli_documents.content`` column is deliberately not selected: a PMA
+        # tuple cannot certify arbitrary prose stored beside it.
         if codes_from_query and pool:
             for code in codes_from_query:
                 try:
                     async with pool.acquire() as conn:
                         row = await conn.fetchrow(
-                            "SELECT kode_kbli, judul, content, metadata FROM kbli_documents WHERE kode_kbli = $1",
+                            "SELECT kode_kbli, judul, metadata FROM kbli_documents WHERE kode_kbli = $1",
                             code,
                         )
 
@@ -1216,17 +1106,15 @@ async def chat_kbli(
                                 title=row["judul"],
                                 description=_official_scope(metadata, code),
                                 score=1.0,
-                                risk_category="Verify at OSS",  # Will be enriched from full content
+                                risk_category="Verify at OSS",
                                 **_pma_disclosure_fields(metadata),
                             )
-                            logger.info(
-                                f"✅ Direct lookup from kbli_documents: {code} ({len(row['content'])} chars)",
-                            )
+                            logger.info("✅ Direct structured lookup from kbli_documents: %s", code)
                             break
                         # Fallback to kg_nodes for backward compatibility
                         entity_id = f"kbli:{code}"
                         kg_row = await conn.fetchrow(
-                            "SELECT entity_id, name, description, properties FROM kg_nodes WHERE entity_id = $1",
+                            "SELECT entity_id, name, properties FROM kg_nodes WHERE entity_id = $1",
                             entity_id,
                         )
                         if kg_row:
@@ -1238,7 +1126,7 @@ async def chat_kbli(
                             direct_kbli_match = KBLISearchResult(
                                 code=code,
                                 title=kg_row["name"],
-                                description=kg_row["description"][:200] + "...",
+                                description=_official_scope(props, code),
                                 score=1.0,
                                 risk_category=props.get("kategori_risiko", "Verify at OSS"),
                                 **_pma_disclosure_fields(props),
@@ -1487,7 +1375,7 @@ async def chat_kbli(
                 if db_pool:
                     async with db_pool.acquire() as conn:
                         rows = await conn.fetch(
-                            "SELECT entity_id, name, description, properties FROM kg_nodes WHERE entity_type = 'kbli' AND (name ILIKE $1 OR entity_id ILIKE $1) LIMIT 5",
+                            "SELECT entity_id, name, properties FROM kg_nodes WHERE entity_type = 'kbli' AND (name ILIKE $1 OR entity_id ILIKE $1) LIMIT 5",
                             f"%{search_query}%",
                         )
                         for row in rows:
@@ -1501,7 +1389,7 @@ async def chat_kbli(
                                 KBLISearchResult(
                                     code=code,
                                     title=row["name"],
-                                    description=row["description"][:200] + "...",
+                                    description=_official_scope(props, code),
                                     score=0.8,  # Static score for fallback
                                     risk_category=props.get("kategori_risiko", "Unknown"),
                                     **_pma_disclosure_fields(props),
@@ -1775,22 +1663,13 @@ async def chat_kbli(
         elif not has_direct_match:
             results = filtered_results if filtered_results else results
 
-        # Resolve the authoritative Qdrant tuple before considering generated
-        # Postgres prose. The parent reader then requires its own tuple to match.
+        # Resolve the authoritative Qdrant tuple before building structured
+        # prompt context. No generated Postgres/KG prose crosses this boundary.
         await _fill_bali_verdicts(results)
-
-        # Fetch full parent documents from kbli_documents table for complete context
-        codes_to_fetch = [r.code for r in results if r.code != "N/A"]
-        expected_pma = {r.code: r.model_dump() for r in results if r.code != "N/A"}
-        parent_docs = await _fetch_parent_documents_from_kbli_table(
-            codes_to_fetch,
-            pool,
-            expected_pma,
-        )
 
         # Generate explanation via Claude Haiku 4.5 (fast, cost-effective)
         # Falls back to Gemini Flash if Claude unavailable
-        answer = await _generate_kbli_explanation_gemini(kbli_request.query, results, parent_docs)
+        answer = await _generate_kbli_explanation_gemini(kbli_request.query, results)
 
         # CRITICAL: Ensure answer is never empty
         if not answer or not answer.strip():

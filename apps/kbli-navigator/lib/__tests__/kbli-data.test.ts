@@ -281,15 +281,44 @@ function adversarialDisclosureContract() {
     "string 'false' must not become a Bali boolean",
   );
 
-  const valid = {
+  const malformedReview = {
     ...(raw as unknown as Record<string, unknown>),
     pma_max_asing: "special",
     pma_cap_special: true,
     pma_cap_verified: true,
     l4_bali: {
-      status: "OK",
+      status: "OK_or_HIGHER_RISK",
       blocked: false,
       needs_review: "false",
+      confidence: "FUTURE",
+    },
+  };
+  assert.equal(
+    discloseBaliL4Record(malformedReview),
+    null,
+    "a string review flag must withhold the complete Bali tuple",
+  );
+
+  const futureStatus = {
+    ...malformedReview,
+    l4_bali: {
+      status: "FUTURE_STATUS",
+      blocked: false,
+      needs_review: false,
+    },
+  };
+  assert.equal(
+    discloseBaliL4Record(futureStatus),
+    null,
+    "an unknown status must not become a Bali verdict",
+  );
+
+  const valid = {
+    ...malformedReview,
+    l4_bali: {
+      status: "OK_or_HIGHER_RISK",
+      blocked: false,
+      needs_review: false,
       confidence: "FUTURE",
     },
   };
@@ -381,7 +410,7 @@ function adversarialDisclosureContract() {
     "a stray special flag must not override a verified numeric zero",
   );
   assert.deepEqual(discloseBaliL4Record(valid), {
-    status: "OK",
+    status: "OK_or_HIGHER_RISK",
     reason: "",
     confidence: "MEDIUM",
     needsReview: false,

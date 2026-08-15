@@ -2,7 +2,7 @@
 Unit tests for backend/app/routers/kbli_notebook_chat.py
 Covers: helper functions, LLM gateway singleton, language detection,
 non-business query check, multi-domain check, translate, explain,
-parent doc fetch, known codes, keyword injection map.
+uncertified-parent exclusion, known codes, keyword injection map.
 Direct function calls (no TestClient) for maximum coverage.
 """
 
@@ -48,18 +48,6 @@ def patch_llm_gateway():
 # ============================================================
 # FIXTURES
 # ============================================================
-
-
-@pytest.fixture
-def mock_db_pool():
-    pool = MagicMock()
-    conn = AsyncMock()
-    acquire_cm = MagicMock()
-    acquire_cm.__aenter__ = AsyncMock(return_value=conn)
-    acquire_cm.__aexit__ = AsyncMock(return_value=False)
-    pool.acquire = MagicMock(return_value=acquire_cm)
-    pool._mock_conn = conn
-    return pool
 
 
 # ============================================================
@@ -294,76 +282,17 @@ async def test_generate_kbli_explanation_success():
     assert len(result) > 0
 
 
-@pytest.mark.asyncio
-async def test_generate_kbli_explanation_with_parent_docs():
-    from backend.app.routers.kbli_notebook import KBLISearchResult
-    from backend.app.routers.kbli_notebook_chat import (
-        _generate_kbli_explanation,
-        _publishable_pma_evidence,
-        _VerifiedParentDocument,
-    )
+def test_router_has_no_uncertified_parent_prose_path():
+    """A matching PMA tuple must not authenticate arbitrary parent content."""
+    import inspect
 
-    _mock_llm_gateway.send_message = AsyncMock(
-        return_value=("Detailed answer with parent docs", "gemini-flash", MagicMock(), {})
-    )
+    import backend.app.routers.kbli_notebook_chat as mod
 
-    mock_result = KBLISearchResult(
-        code="56101",
-        title="RESTORAN",
-        description="Restaurant",
-        score=1.0,
-        risk_category="Rendah",
-        **_VERIFIED_PMA,
-    )
-    evidence = _publishable_pma_evidence(mock_result.model_dump())
-    assert evidence is not None
-    full_content = "Full parent document content for restaurant KBLI code 56101..."
-    parent_docs = {"56101": _VerifiedParentDocument(full_content, evidence)}
-
-    with (
-        patch(
-            "backend.app.routers.kbli_notebook_chat._fill_bali_verdicts",
-            new=AsyncMock(),
-        ),
-    ):
-        result = await _generate_kbli_explanation.__wrapped__(
-            "restaurant",
-            [mock_result],
-            parent_docs,
-        )
-    assert isinstance(result, str)
-    assert full_content in _mock_llm_gateway.send_message.await_args.kwargs["message"]
-
-
-@pytest.mark.asyncio
-async def test_generate_kbli_explanation_rejects_unbound_parent_text():
-    from backend.app.routers.kbli_notebook import KBLISearchResult
-    from backend.app.routers.kbli_notebook_chat import _generate_kbli_explanation
-
-    _mock_llm_gateway.send_message = AsyncMock(
-        return_value=("Safe answer", "gemini-flash", MagicMock(), {})
-    )
-    result_model = KBLISearchResult(
-        code="56101",
-        title="RESTORAN",
-        description="Restaurant",
-        score=1.0,
-        risk_category="Rendah",
-        **_VERIFIED_PMA,
-    )
-    unbound_content = "UNBOUND GENERATED PMA PROSE"
-
-    with patch(
-        "backend.app.routers.kbli_notebook_chat._fill_bali_verdicts",
-        new=AsyncMock(),
-    ):
-        await _generate_kbli_explanation.__wrapped__(
-            "restaurant",
-            [result_model],
-            {"56101": unbound_content},
-        )
-
-    assert unbound_content not in _mock_llm_gateway.send_message.await_args.kwargs["message"]
+    source = inspect.getsource(mod)
+    assert "parent_docs" not in source
+    assert "_fetch_parent_documents_from_kbli_table" not in source
+    assert "SELECT kode_kbli, judul, content" not in source
+    assert "SELECT entity_id, name, description" not in source
 
 
 @pytest.mark.asyncio
@@ -462,126 +391,6 @@ async def test_generate_kbli_explanation_indonesian_fallback():
     with patch("backend.app.routers.kbli_notebook_chat.cached", lambda **kw: lambda f: f):
         result = await _generate_kbli_explanation("apa syarat usaha restoran", [mock_result])
     assert "Ditemukan" in result
-
-
-# ============================================================
-# _fetch_parent_documents_from_kbli_table
-# ============================================================
-
-
-@pytest.mark.asyncio
-async def test_fetch_parent_documents_success(mock_db_pool):
-    from backend.app.routers.kbli_notebook_chat import _fetch_parent_documents_from_kbli_table
-
-    mock_db_pool._mock_conn.fetch.return_value = [
-        {
-            "kode_kbli": "56101",
-            "content": "Full content for 56101",
-            "metadata": _VERIFIED_PMA,
-        },
-    ]
-
-    result = await _fetch_parent_documents_from_kbli_table(
-        ["56101"],
-        mock_db_pool,
-        {"56101": _VERIFIED_PMA},
-    )
-    assert "56101" in result
-    assert result["56101"].content == "Full content for 56101"
-
-
-@pytest.mark.asyncio
-async def test_fetch_parent_documents_rejects_declared_gap(mock_db_pool):
-    from backend.app.routers.kbli_notebook_chat import _fetch_parent_documents_from_kbli_table
-
-    mock_db_pool._mock_conn.fetch.return_value = [
-        {
-            "kode_kbli": "56101",
-            "content": "Raw PMA prose must not pass",
-            "metadata": {
-                **_VERIFIED_PMA,
-                "pma_verification_status": "declared_gap",
-            },
-        },
-    ]
-
-    result = await _fetch_parent_documents_from_kbli_table(
-        ["56101"],
-        mock_db_pool,
-        {"56101": _VERIFIED_PMA},
-    )
-    assert result == {}
-
-
-@pytest.mark.asyncio
-async def test_fetch_parent_documents_rejects_divergent_evidence(mock_db_pool):
-    from backend.app.routers.kbli_notebook_chat import _fetch_parent_documents_from_kbli_table
-
-    mock_db_pool._mock_conn.fetch.return_value = [
-        {
-            "kode_kbli": "56101",
-            "content": "Stale PMA prose must not pass",
-            "metadata": {
-                **_VERIFIED_PMA,
-                "pma_official_basis": "Different locator",
-            },
-        },
-    ]
-
-    result = await _fetch_parent_documents_from_kbli_table(
-        ["56101"],
-        mock_db_pool,
-        {"56101": _VERIFIED_PMA},
-    )
-    assert result == {}
-
-
-@pytest.mark.asyncio
-async def test_fetch_parent_documents_no_codes():
-    from backend.app.routers.kbli_notebook_chat import _fetch_parent_documents_from_kbli_table
-
-    result = await _fetch_parent_documents_from_kbli_table([], MagicMock(), {})
-    assert result == {}
-
-
-@pytest.mark.asyncio
-async def test_fetch_parent_documents_no_pool():
-    from backend.app.routers.kbli_notebook_chat import _fetch_parent_documents_from_kbli_table
-
-    result = await _fetch_parent_documents_from_kbli_table(
-        ["56101"],
-        None,
-        {"56101": _VERIFIED_PMA},
-    )
-    assert result == {}
-
-
-@pytest.mark.asyncio
-async def test_fetch_parent_documents_no_rows(mock_db_pool):
-    from backend.app.routers.kbli_notebook_chat import _fetch_parent_documents_from_kbli_table
-
-    mock_db_pool._mock_conn.fetch.return_value = []
-
-    result = await _fetch_parent_documents_from_kbli_table(
-        ["99999"],
-        mock_db_pool,
-        {"99999": _VERIFIED_PMA},
-    )
-    assert result == {}
-
-
-@pytest.mark.asyncio
-async def test_fetch_parent_documents_db_error(mock_db_pool):
-    from backend.app.routers.kbli_notebook_chat import _fetch_parent_documents_from_kbli_table
-
-    mock_db_pool._mock_conn.fetch.side_effect = Exception("DB error")
-
-    result = await _fetch_parent_documents_from_kbli_table(
-        ["56101"],
-        mock_db_pool,
-        {"56101": _VERIFIED_PMA},
-    )
-    assert result == {}
 
 
 # ============================================================

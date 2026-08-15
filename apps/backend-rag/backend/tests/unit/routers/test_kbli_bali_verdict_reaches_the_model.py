@@ -128,7 +128,7 @@ def test_an_absent_verdict_produces_silence_never_a_claim_of_openness():
 
 
 def test_a_code_that_is_not_blocked_is_told_plainly_and_is_not_called_blocked():
-    note = _bali_verdict_context_note(_result(bali_blocked=False, bali_status="OK"))
+    note = _bali_verdict_context_note(_result(bali_blocked=False, bali_status="OK_or_HIGHER_RISK"))
     assert note == ""
 
 
@@ -138,10 +138,12 @@ def test_a_code_that_is_not_blocked_is_told_plainly_and_is_not_called_blocked():
         (" OK ", False),
         ("OK", "false"),
         ("OK", 0),
+        ("OK", False),
+        ("FUTURE_STATUS", False),
         ("", False),
     ],
 )
-def test_response_model_rejects_malformed_bali_before_type_coercion(status, blocked):
+def test_response_model_rejects_unknown_or_malformed_bali_before_coercion(status, blocked):
     result = _result(
         **_LOCATED_PMA,
         pma_status="TERBUKA",
@@ -313,8 +315,8 @@ def test_the_explanation_cache_prefix_moved_with_this_change():
     # arithmetic across a worktree is its own way to fail while looking fine.
     source = Path(inspect.getsourcefile(mod))
     text = source.read_text(encoding="utf-8")
-    assert 'prefix="kbli_explain_v33"' in text
-    assert 'prefix="kbli_explain_v32"' not in text
+    assert 'prefix="kbli_explain_v34"' in text
+    assert 'prefix="kbli_explain_v33"' not in text
 
 
 def test_the_fill_runs_inside_the_function_every_answer_passes_through():
