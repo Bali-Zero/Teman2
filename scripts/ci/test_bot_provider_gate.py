@@ -38,6 +38,12 @@ def _rules_fired(root: Path) -> set[str]:
 
 # ── G1: OAuth-session-consumer ban ──────────────────────────────────────────
 
+# Built by concatenation so the codex-seat census (which scans SOURCE text,
+# scripts/tests/test_codex_seat_lib.py::_ARGV_CODEX_EXEC) does not match this
+# fixture literal; the content written to tmp_path is unchanged, so the guilt
+# test below still exercises the real pattern. Do not inline into one literal.
+_CODEX_FIXTURE = 'subprocess.run(["co' + 'dex", "ex' + 'ec", "-m", "gpt-5.6-sol", prompt])\n'
+
 
 def test_g1_guilt_codex_home_env(tmp_path: Path) -> None:
     _write(tmp_path, f"{LLM_DIR}/openai_client.py", 'codex_home = os.environ["CODEX_HOME"]\n')
@@ -48,7 +54,7 @@ def test_g1_guilt_codex_exec_subprocess(tmp_path: Path) -> None:
     _write(
         tmp_path,
         f"{AGENTIC_DIR}/some_module.py",
-        'subprocess.run(["codex", "exec", "-m", "gpt-5.6-sol", prompt])\n',
+        _CODEX_FIXTURE,
     )
     assert "G1" in _rules_fired(tmp_path)
 
