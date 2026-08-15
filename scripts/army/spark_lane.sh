@@ -57,7 +57,15 @@ CONSEC_FAIL_LIMIT="${ARMY_SPARK_CONSEC_FAIL_LIMIT:-3}"
 DIGEST_HOUR="${ARMY_SPARK_DIGEST_HOUR:-7}"
 MODEL="${ARMY_SPARK_MODEL:-gpt-5.3-codex-spark}"
 EFFORT="${ARMY_SPARK_EFFORT:-medium}"
-CODEX_HOME_OVERRIDE="${ARMY_SPARK_CODEX_HOME:-$HOME/.codex-acct2}"
+# Seat resolution goes through the fleet door (scripts/lib/codex_seat.sh):
+# the second ChatGPT Pro seat has two names in the fleet (~/.codex-acct2 on
+# Pro, ~/.codex-o2 on M5) and the default ~/.codex is 401-dead on Pro — a
+# hardcoded name makes the other machine's seat invisible. The env var stays
+# as an explicit per-install override; when unset, codex_seat_pick() supplies
+# a live seat (alternating). Empty pick = no seat logged in anywhere: keep ""
+# so the run fails visibly at codex exec instead of silently using ~/.codex.
+. "$REPO/scripts/lib/codex_seat.sh"
+CODEX_HOME_OVERRIDE="${ARMY_SPARK_CODEX_HOME:-$(codex_seat_pick)}"
 CODEX_BIN="${ARMY_SPARK_CODEX_BIN:-codex}"
 
 mkdir -p "$LOG_DIR"
@@ -488,6 +496,10 @@ if [ "$SHOULD_WORK" = "1" ]; then
 
             (
                 cd "$REPO" || exit 90
+                # Empty override = codex_seat_pick found no logged-in seat.
+                # Exporting "" would fall back to ~/.codex silently (401-dead
+                # on Pro) — refuse instead; rc=91 is recorded as a failure.
+                [ -n "$CODEX_HOME_OVERRIDE" ] || exit 91
                 export CODEX_HOME="$CODEX_HOME_OVERRIDE"
                 PROMPT_TEXT="$(cat "$TASK_FILE")"
                 if [ -n "$_to" ]; then

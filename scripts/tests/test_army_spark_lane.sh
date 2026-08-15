@@ -38,9 +38,16 @@ wita_today() { TZ=Asia/Makassar date '+%Y-%m-%d'; }
 # ---------------------------------------------------------------------------
 setup_world() {
     rm -rf "$WORK/world"
-    mkdir -p "$WORK/world/repo/scripts" "$WORK/world/queue" \
+    mkdir -p "$WORK/world/repo/scripts/lib" "$WORK/world/queue" \
         "$WORK/world/reports" "$WORK/world/state" "$WORK/world/logs" \
         "$WORK/world/sidecar" "$WORK/world/bin" "$WORK/world/home"
+
+    # The wrapper unconditionally sources the fleet seat door from
+    # $ARMY_SPARK_REPO/scripts/lib/codex_seat.sh — copy the REAL library in
+    # so that source succeeds exactly as it does against a real checkout,
+    # instead of stubbing around it and silently diverging from the
+    # guarded contract (test_no_call_site_invokes_codex_without_choosing_a_seat).
+    cp "$SCRIPT_DIR/lib/codex_seat.sh" "$WORK/world/repo/scripts/lib/codex_seat.sh"
 
     cat > "$WORK/world/repo/scripts/tg_notify.py" <<'PY'
 #!/usr/bin/env python3
@@ -53,6 +60,13 @@ if log:
 PY
     chmod +x "$WORK/world/repo/scripts/tg_notify.py"
     : > "$WORK/world/tg.log"
+
+    # A live codex seat for scripts/lib/codex_seat.sh to resolve by default,
+    # so the pre-existing cases below keep exercising exactly the same
+    # dispatch path they did before the seat-library sourcing landed. Case 12
+    # removes this to exercise the seatless path on purpose.
+    mkdir -p "$WORK/world/home/.codex-o2"
+    echo '{}' > "$WORK/world/home/.codex-o2/auth.json"
 
     cat > "$WORK/world/queue/task-one.md" <<'MD'
 # Test task one
@@ -70,10 +84,16 @@ MD
 }
 
 # codex stub: behaviour selected via STUB_CODEX_MODE (success|quota|fail).
+# Every invocation is logged (never truncated by mode) so a test can assert
+# the stub was NEVER called — the only way to prove a guard refused BEFORE
+# reaching codex, not just that the outcome happens to look the same as a
+# real codex failure (Case 12).
 write_codex_stub() {
     mode="$1"
+    : > "$WORK/world/codex-invocations.log"
     cat > "$WORK/world/bin/codex" <<SH
 #!/bin/sh
+echo "invoked \$*" >> "$WORK/world/codex-invocations.log"
 case "\$STUB_CODEX_MODE" in
     success) echo "STUB REPORT BODY"; exit 0 ;;
     quota) echo "error: out of extra usage on this weekly bucket"; exit 1 ;;
@@ -98,6 +118,7 @@ run_wrapper() {
         ARMY_SPARK_LOG_DIR="$WORK/world/logs" \
         ARMY_SPARK_SIDECAR_DIR="$WORK/world/sidecar" \
         ARMY_SPARK_CODEX_BIN="codex" \
+        ARMY_SPARK_CODEX_HOME="$WORK/world/home/.codex-o2" \
         ARMY_SPARK_SKIP_NODE_GUARD=1 \
         HOME="$WORK/world/home" \
         "$@" \
@@ -409,6 +430,38 @@ if [ "$rc" = "0" ] && [ "$(report_count)" = "1" ] && [ ! -d "$WORK/world/state/r
     note_pass "stale lock: reclaimed, dispatch proceeds, lock dir cleaned up on exit"
 else
     note_fail "stale lock: rc=$rc report_count=$(report_count) lock_dir_exists=$([ -d "$WORK/world/state/run.lock" ] && echo y || echo n)"
+fi
+
+# ---------------------------------------------------------------------------
+# Case 12 (guilt): no codex seat resolves anywhere in the fake HOME (no
+# ARMY_SPARK_CODEX_HOME override, no auth.json under $HOME/.codex*) ->
+# codex_seat_pick() (sourced from the REAL scripts/lib/codex_seat.sh, see
+# setup_world) returns empty, so the dispatch subshell's `[ -n
+# "$CODEX_HOME_OVERRIDE" ] || exit 91` guard fires BEFORE codex is ever
+# exec'd — never a silent fallback to a dead default ~/.codex. Proven by the
+# stub's own invocation log staying empty, not just by the outcome looking
+# like a codex failure.
+# ---------------------------------------------------------------------------
+setup_world
+write_codex_stub success
+rm -rf "$WORK/world/home/.codex-o2"   # strip setup_world's default seat: seatless HOME
+rc="$(run_wrapper ARMY_SPARK_CODEX_HOME="" STUB_CODEX_MODE=success)"
+status="$(sidecar_status)"
+invocations="$(wc -l < "$WORK/world/codex-invocations.log" 2>/dev/null | tr -d ' ')"
+if [ "$rc" = "0" ] && [ "$status" = "error" ] && [ "$(report_count)" = "0" ] && [ "$invocations" = "0" ]; then
+    note_pass "no codex seat anywhere: dispatch refuses (rc=91 guard), stub codex never invoked"
+else
+    note_fail "no codex seat anywhere: rc=$rc status=$status report_count=$(report_count) invocations=$invocations"
+fi
+if grep -q '"status":"failed"' "$WORK/world/state/attempts.jsonl" 2>/dev/null; then
+    note_pass "no codex seat anywhere: attempt recorded as failed (not silently dropped)"
+else
+    note_fail "no codex seat anywhere: no failed attempt recorded in attempts.jsonl"
+fi
+if grep -q "army-spark:codex-failed" "$WORK/world/tg.log" 2>/dev/null; then
+    note_pass "no codex seat anywhere: P0 alert fired"
+else
+    note_fail "no codex seat anywhere: no P0 alert found in stub log"
 fi
 
 echo
