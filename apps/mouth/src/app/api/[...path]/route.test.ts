@@ -347,7 +347,7 @@ describe("proxy catch-all route — public Visa Oracle boundary", () => {
 
   it("strips portal credentials while preserving anonymous contract headers", async () => {
     const req = new MockNextRequest(
-      "http://localhost/api/visa-oracle/evaluate?request_category=family",
+      "http://localhost/api/visa-oracle/evaluate?traffic_source=real&request_category=family",
       {
         method: "POST",
         headers: {
@@ -374,6 +374,9 @@ describe("proxy catch-all route — public Visa Oracle boundary", () => {
       RequestInit,
     ];
     const sentHeaders = init.headers as Headers;
+    expect(capturedTargetUrl(vi.mocked(global.fetch))).toBe(
+      "https://nuzantara-rag.fly.dev/api/visa-oracle/evaluate?traffic_source=real&request_category=family",
+    );
     expect(sentHeaders.get("authorization")).toBeNull();
     expect(sentHeaders.get("cookie")).toBeNull();
     expect(sentHeaders.get("x-api-key")).toBeNull();

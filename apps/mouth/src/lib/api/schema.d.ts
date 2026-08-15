@@ -50806,8 +50806,8 @@ export interface operations {
   };
   evaluateVisaOracleV2: {
     parameters: {
-      query?: {
-        traffic_source?: "real" | "synthetic_driver" | "synthetic_gold";
+      query: {
+        traffic_source: "real" | "synthetic_driver" | "synthetic_gold";
         request_category?:
           | "business"
           | "diaspora"
