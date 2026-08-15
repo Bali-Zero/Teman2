@@ -51,13 +51,14 @@ export function PMABadge({
       ? maxForeign
       : null;
   const markedSpecial = capSpecial === true && maxForeign === "special";
+  const capPublishable =
+    verdictVerified === true &&
+    capVerified === true &&
+    (numeric !== null || markedSpecial);
   const effectiveStatus =
     verdictVerified !== true
       ? "unknown"
-      : status === "open" &&
-          capVerified === true &&
-          numeric === 0 &&
-          !markedSpecial
+      : status === "open" && capPublishable && numeric === 0 && !markedSpecial
         ? "closed"
         : status;
   const c =
@@ -73,22 +74,19 @@ export function PMABadge({
   let suffix: string | null = null;
   if (verdictVerified !== true || status === "unknown") {
     suffix = null;
-  } else if (markedSpecial && capVerified === true) {
+  } else if (!capPublishable) {
+    suffix = "· cap not verified";
+  } else if (markedSpecial) {
     suffix = "· special conditions";
   } else if (status === "open") {
+    suffix = `· ${numeric}% Foreign`;
+  } else if (status === "restricted" && numeric !== null) {
     suffix =
-      capVerified !== true || numeric === null
-        ? "· cap not verified"
-        : `· ${numeric}% Foreign`;
-  } else if (status === "restricted") {
-    suffix =
-      capVerified !== true || numeric === null
-        ? "· cap not verified"
-        : numeric <= 0
-          ? "· closed (0%)"
-          : numeric >= 100
-            ? "· conditions apply"
-            : `· Max ${numeric}%`;
+      numeric <= 0
+        ? "· closed (0%)"
+        : numeric >= 100
+          ? "· conditions apply"
+          : `· Max ${numeric}%`;
   }
 
   const ariaLabel = `PMA status: ${c.label}${suffix ? ` ${suffix.replace(/^·\s*/, "")}` : ""}`;

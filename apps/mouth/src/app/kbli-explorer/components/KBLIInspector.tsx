@@ -12,7 +12,7 @@ import {
   ClipboardList,
 } from "lucide-react";
 import {
-  isApiPmaVerdictVerified,
+  apiPmaPresentation,
   type KBLIDetail,
   type KBLIPmaDisclosure,
 } from "@/lib/api/kbli.api";
@@ -30,26 +30,26 @@ export function getPmaBadge(record: KBLIPmaDisclosure): {
   label: string;
   className: string;
 } {
-  if (!isApiPmaVerdictVerified(record)) {
-    return { label: "PMA Not Verified", className: "badge badge-neutral" };
-  }
-  const s = (record.pma_status || "").toUpperCase();
-  if (s === "TERBUKA")
+  const presentation = apiPmaPresentation(record);
+  if (presentation.status === "open")
     return {
-      label: "Open to Foreign Investment",
+      label: presentation.ownershipLabel,
       className: "badge badge-success",
     };
-  if (s === "TERBATAS")
+  if (presentation.status === "restricted")
     return {
-      label: "Restricted - Conditions Apply",
+      label: presentation.ownershipLabel,
       className: "badge badge-warning",
     };
-  if (s === "TERTUTUP")
+  if (presentation.status === "closed")
     return {
-      label: "Closed to Foreign Investment",
+      label: presentation.ownershipLabel,
       className: "badge badge-error",
     };
-  return { label: "Status Unknown", className: "badge badge-neutral" };
+  return {
+    label: presentation.ownershipLabel,
+    className: "badge badge-neutral",
+  };
 }
 
 export function getRiskBadge(risk: string): {

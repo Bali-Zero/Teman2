@@ -192,6 +192,26 @@ describe("buildKbliFaq", () => {
     expect(pmaAnswer).not.toContain("special distribution conditions");
   });
 
+  it("qualifies a located closed verdict when its cap is not verified", () => {
+    const base = withLocatedPma(getCode("65111") as KBLICode);
+    const synthetic: KBLICode = {
+      ...base,
+      baliL4: undefined,
+      pma: {
+        ...base.pma,
+        status: "closed",
+        maxForeign: null,
+        capSpecial: false,
+        capVerified: false,
+      },
+    } as KBLICode;
+
+    const pmaAnswer = buildKbliFaq(synthetic)[0].answer;
+    expect(pmaAnswer).toContain(
+      "Closed to Foreign Investment (ownership cap not verified)",
+    );
+  });
+
   it("declares the licensing gap on every cure-detached subtype — never 'special regime', never asserting regulatory absence", () => {
     // Real cured pilot codes across cause subtypes still genuinely detached
     // (per_skala empty): 60312 (unlocatable source), 64310 (wrong-pointer

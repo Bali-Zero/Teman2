@@ -146,7 +146,7 @@ describe("the <title> suffix", () => {
     ).toBe("Foreign Ownership With Conditions");
   });
 
-  it("INNOCENCE: an unverified cap still states nothing — at ANY shape", () => {
+  it("INNOCENCE: an unverified cap stays qualified — at ANY shape", () => {
     // The provenance gate predates this change and must survive it. If a future
     // edit reorders the branches so a shape answers before capVerified, an
     // unverified 0 would start asserting "Closed to Foreign Investment" as fact.
@@ -155,7 +155,7 @@ describe("the <title> suffix", () => {
         kbliMetaTitleSuffix(
           restricted({ maxForeign: cap, capVerified: false }),
         ),
-      ).toBe("Foreign Ownership Restricted");
+      ).toBe("Foreign Ownership Restricted (ownership cap not verified)");
     }
   });
 });
@@ -176,7 +176,7 @@ describe("the <meta description> label", () => {
     );
     expect(
       kbliPmaLabel(restricted({ maxForeign: 49, capVerified: false })),
-    ).toBe("Restricted for foreign ownership");
+    ).toBe("Foreign Ownership Restricted (ownership cap not verified)");
   });
 });
 

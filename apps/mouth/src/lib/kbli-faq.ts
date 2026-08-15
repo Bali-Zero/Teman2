@@ -9,6 +9,7 @@ import {
   shouldShowReason,
 } from "@/lib/kbli-bali-block";
 import { pmaCapShape } from "@/lib/kbli-pma-shape";
+import { formatPmaOwnership } from "@/lib/kbli-pma-disclosure";
 import { pmaSourceNoteFaq } from "@/lib/kbli-pma-source";
 
 export interface KbliFaqEntry {
@@ -240,7 +241,7 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
                 : `National status: TERBUKA. KBLI ${code.code} (${code.titleId}) is ${openWording.claim}. Verify the exact ownership structure in OSS before relying on the status.`
       : code.pma.status === "restricted"
         ? restrictedPmaAnswer(code)
-        : `No. KBLI ${code.code} (${code.titleId}) is TERTUTUP — closed to foreign investment. Reserved for Indonesian nationals only.`;
+        : `No. KBLI ${code.code} (${code.titleId}) is TERTUTUP — ${formatPmaOwnership(code.pma, "metadata")}. Reserved for Indonesian nationals only.`;
 
   // PMA source attribution with vintage (FATAL-2 axis): disclose the
   // instrument the RECORD itself names (kbli-pma-source.ts) instead of

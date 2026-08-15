@@ -25,9 +25,21 @@ export type KBLIRelatedRequirements = Record<string, string[]>;
 export interface KBLIPmaDisclosure {
   pma_status: string;
   pma_max_asing: number | string | null;
+  pma_cap_special: boolean;
+  pma_cap_verified: boolean;
   pma_verification_status: string;
   pma_official_basis: string | null;
   pma_source_vintage: string | null;
+}
+
+export type ApiPmaPublicStatus = "open" | "restricted" | "closed" | "unknown";
+
+export interface ApiPmaPresentation {
+  status: ApiPmaPublicStatus;
+  statusLabel: string;
+  ownershipLabel: string;
+  compactLabel: string;
+  capVerified: boolean;
 }
 
 export function isApiPmaVerdictVerified(record: KBLIPmaDisclosure): boolean {
@@ -43,10 +55,63 @@ export function isApiPmaVerdictVerified(record: KBLIPmaDisclosure): boolean {
   );
 }
 
+/**
+ * Exact public API presentation gate. A located whole-code status does not
+ * verify its ownership ceiling: the cap needs its own affirmative flag and a
+ * finite numeric value (or the exact marked-special tuple).
+ */
+export function apiPmaPresentation(
+  record: KBLIPmaDisclosure,
+): ApiPmaPresentation {
+  const rawStatus = knownPmaRawStatus(record.pma_status);
+  if (!isApiPmaVerdictVerified(record) || !rawStatus) {
+    return {
+      status: "unknown",
+      statusLabel: "PMA not verified",
+      ownershipLabel: "PMA Not Verified",
+      compactLabel: "PMA not verified",
+      capVerified: false,
+    };
+  }
+
+  const numericCap =
+    typeof record.pma_max_asing === "number" &&
+    Number.isFinite(record.pma_max_asing);
+  const specialCap =
+    record.pma_max_asing === "special" && record.pma_cap_special === true;
+  const capVerified =
+    record.pma_cap_verified === true && (numericCap || specialCap);
+  const qualifier = capVerified ? "" : " · ownership cap not verified";
+
+  if (rawStatus === "TERBUKA") {
+    return {
+      status: "open",
+      statusLabel: rawStatus + qualifier,
+      ownershipLabel: "Open to Foreign Investment" + qualifier,
+      compactLabel: "Open to Foreigners" + qualifier,
+      capVerified,
+    };
+  }
+  if (rawStatus === "TERBATAS") {
+    return {
+      status: "restricted",
+      statusLabel: rawStatus + qualifier,
+      ownershipLabel: "Restricted - Conditions Apply" + qualifier,
+      compactLabel: "Restricted" + qualifier,
+      capVerified,
+    };
+  }
+  return {
+    status: "closed",
+    statusLabel: rawStatus + qualifier,
+    ownershipLabel: "Closed to Foreign Investment" + qualifier,
+    compactLabel: "Closed to Foreigners" + qualifier,
+    capVerified,
+  };
+}
+
 export function apiPmaStatusLabel(record: KBLIPmaDisclosure): string {
-  return isApiPmaVerdictVerified(record)
-    ? record.pma_status
-    : "PMA not verified";
+  return apiPmaPresentation(record).statusLabel;
 }
 
 export interface KBLIDetail extends KBLIPmaDisclosure {

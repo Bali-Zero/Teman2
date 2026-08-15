@@ -218,6 +218,19 @@ describe("PMABadge — the cap extremes", () => {
     expect(screen.queryByText(/100%/)).toBeNull();
   });
 
+  it("GUILT: a closed verdict does not hide an unavailable ownership cap", () => {
+    render(
+      <PMABadge
+        status="closed"
+        maxForeign={null}
+        verdictVerified
+        capVerified={false}
+      />,
+    );
+    expect(screen.getByText("Closed")).toBeDefined();
+    expect(screen.getByText("· cap not verified")).toBeDefined();
+  });
+
   it("GUILT: a verified zero cap overrides an inconsistent open label", () => {
     render(
       <PMABadge status="open" maxForeign={0} verdictVerified capVerified />,

@@ -212,7 +212,9 @@ describe("GUILT: the gate withholds unverified facts from title/description", ()
       },
     });
 
-    expect(kbliMetaTitleSuffix(kbli)).toBe("Foreign Ownership Restricted");
+    expect(kbliMetaTitleSuffix(kbli)).toBe(
+      "Foreign Ownership Restricted (ownership cap not verified)",
+    );
     expect(kbliMetaTitleSuffix(kbli)).not.toMatch(/67/);
   });
 
@@ -227,7 +229,9 @@ describe("GUILT: the gate withholds unverified facts from title/description", ()
       },
     });
 
-    expect(kbliMetaTitleSuffix(kbli)).toBe("Foreign Ownership Restricted");
+    expect(kbliMetaTitleSuffix(kbli)).toBe(
+      "Foreign Ownership Restricted (ownership cap not verified)",
+    );
     expect(kbliMetaDescription(kbli, "Restaurant")).not.toContain("special");
   });
 
@@ -253,6 +257,24 @@ describe("GUILT: the gate withholds unverified facts from title/description", ()
     expect(kbliMetaTitleSuffix(unverified)).toContain("cap not verified");
     expect(kbliMetaDescription(missing, "Restaurant")).not.toContain("100%");
     expect(kbliMetaDescription(unverified, "Restaurant")).not.toContain("100%");
+  });
+
+  it("qualifies a closed title and description when its cap is unavailable", () => {
+    const closed = makeCode({
+      pma: {
+        ...makeCode().pma,
+        status: "closed",
+        maxForeign: null,
+        capVerified: false,
+      },
+    });
+
+    expect(kbliMetaTitleSuffix(closed)).toBe(
+      "Closed to Foreign Investment (ownership cap not verified)",
+    );
+    expect(kbliMetaDescription(closed, "Restaurant")).toContain(
+      "Closed to Foreign Investment (ownership cap not verified)",
+    );
   });
 });
 
@@ -400,7 +422,9 @@ describe("real dataset: the gate binds, and v3 actually differentiates", () => {
 
     const description = kbliMetaDescription(kbli, kbli.titleEn);
     expect(description).not.toMatch(/67/);
-    expect(description).toMatch(/Restricted for foreign ownership/);
+    expect(description).toMatch(
+      /Foreign Ownership Restricted \(ownership cap not verified\)/,
+    );
   });
 
   it("keeps the cap in the DESCRIPTION when capVerified is true", () => {

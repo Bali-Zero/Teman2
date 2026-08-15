@@ -122,22 +122,28 @@ export function formatPmaOwnership(
       : null;
   const special = pma.capSpecial === true && pma.maxForeign === "special";
 
+  if (!hasPublishablePmaCap(pma)) {
+    if (pma.status === "open") {
+      return style === "metadata"
+        ? "Open to Foreign Investment (ownership cap not verified)"
+        : "Open · ownership cap not verified";
+    }
+    if (pma.status === "restricted") {
+      return style === "metadata"
+        ? "Foreign Ownership Restricted (ownership cap not verified)"
+        : "Restricted · ownership cap not verified";
+    }
+    return style === "metadata"
+      ? "Closed to Foreign Investment (ownership cap not verified)"
+      : "Closed · ownership cap not verified";
+  }
+
   if (pma.status === "closed") {
     return style === "metadata"
       ? "Closed to Foreign Investment"
-      : cap === 0 && pma.capVerified === true
+      : cap === 0
         ? "Closed (0%)"
         : "Closed";
-  }
-
-  if (pma.capVerified !== true) {
-    return pma.status === "open"
-      ? style === "metadata"
-        ? "Open to Foreign Investment (ownership cap not verified)"
-        : "Open · ownership cap not verified"
-      : style === "metadata"
-        ? "Foreign Ownership Restricted (ownership cap not verified)"
-        : "Restricted · ownership cap not verified";
   }
 
   if (special) {
@@ -146,6 +152,7 @@ export function formatPmaOwnership(
       : "Special non-percentage conditions";
   }
 
+  // Defensive narrowing if a future cap shape and the shared gate drift.
   if (cap === null) {
     return pma.status === "open"
       ? style === "metadata"

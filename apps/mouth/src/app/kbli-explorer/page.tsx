@@ -27,7 +27,7 @@ import {
   Check,
 } from "lucide-react";
 import {
-  isApiPmaVerdictVerified,
+  apiPmaPresentation,
   kbliApi,
   KBLIDetail,
   KBLISearchResult,
@@ -121,32 +121,32 @@ function getPmaBadgeInline(record: KBLISearchResult): {
   bg: string;
   border: string;
 } {
-  if (!isApiPmaVerdictVerified(record)) {
+  const presentation = apiPmaPresentation(record);
+  if (presentation.status === "unknown") {
     return {
-      label: "PMA not verified",
+      label: presentation.compactLabel,
       color: "#a1a1aa",
       bg: "rgba(113,113,122,0.12)",
       border: "rgba(113,113,122,0.25)",
     };
   }
-  const s = (record.pma_status || "").toUpperCase();
-  if (s === "TERBUKA")
+  if (presentation.status === "open")
     return {
-      label: "Open to Foreigners",
+      label: presentation.compactLabel,
       color: "#34d399",
       bg: "rgba(34,197,94,0.12)",
       border: "rgba(34,197,94,0.25)",
     };
-  if (s === "TERBATAS")
+  if (presentation.status === "restricted")
     return {
-      label: "Restricted",
+      label: presentation.compactLabel,
       color: "#fbbf24",
       bg: "rgba(251,191,36,0.12)",
       border: "rgba(251,191,36,0.25)",
     };
-  if (s === "TERTUTUP")
+  if (presentation.status === "closed")
     return {
-      label: "Closed to Foreigners",
+      label: presentation.compactLabel,
       color: "#f87171",
       bg: "rgba(239,68,68,0.12)",
       border: "rgba(239,68,68,0.25)",

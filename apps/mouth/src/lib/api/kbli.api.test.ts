@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  apiPmaPresentation,
   apiPmaStatusLabel,
   isApiPmaVerdictVerified,
   type KBLIPmaDisclosure,
@@ -9,6 +10,8 @@ import {
 const GAP_01111: KBLIPmaDisclosure = {
   pma_status: "TERBUKA",
   pma_max_asing: 100,
+  pma_cap_special: false,
+  pma_cap_verified: false,
   pma_verification_status: "declared_gap",
   pma_official_basis: null,
   pma_source_vintage: null,
@@ -35,6 +38,59 @@ describe("KBLI API PMA disclosure", () => {
         pma_source_vintage: "2021-05-25",
       }),
     ).toBe(true);
+  });
+
+  it("keeps a located verdict but qualifies every label until its cap is verified", () => {
+    const closedWithoutCap: KBLIPmaDisclosure = {
+      ...GAP_01111,
+      pma_status: "TERTUTUP",
+      pma_max_asing: null,
+      pma_verification_status: "located",
+      pma_official_basis: "Perpres 49/2021 Lampiran III",
+      pma_source_vintage: "2021-05-25",
+    };
+
+    expect(isApiPmaVerdictVerified(closedWithoutCap)).toBe(true);
+    expect(apiPmaPresentation(closedWithoutCap)).toMatchObject({
+      status: "closed",
+      capVerified: false,
+      statusLabel: "TERTUTUP · ownership cap not verified",
+      ownershipLabel:
+        "Closed to Foreign Investment · ownership cap not verified",
+      compactLabel: "Closed to Foreigners · ownership cap not verified",
+    });
+  });
+
+  it("publishes only a finite numeric or exact marked-special cap", () => {
+    const located = {
+      ...GAP_01111,
+      pma_status: "TERBATAS",
+      pma_verification_status: "located",
+      pma_official_basis: "Perpres 49/2021 Lampiran III",
+      pma_source_vintage: "2021-05-25",
+      pma_cap_verified: true,
+    } satisfies KBLIPmaDisclosure;
+
+    expect(apiPmaPresentation({ ...located, pma_max_asing: 49 })).toMatchObject(
+      { capVerified: true, statusLabel: "TERBATAS" },
+    );
+    expect(
+      apiPmaPresentation({
+        ...located,
+        pma_max_asing: "special",
+        pma_cap_special: false,
+      }),
+    ).toMatchObject({
+      capVerified: false,
+      statusLabel: "TERBATAS · ownership cap not verified",
+    });
+    expect(
+      apiPmaPresentation({
+        ...located,
+        pma_max_asing: "special",
+        pma_cap_special: true,
+      }),
+    ).toMatchObject({ capVerified: true, statusLabel: "TERBATAS" });
   });
 
   it("fails closed for an unknown status even with complete provenance", () => {

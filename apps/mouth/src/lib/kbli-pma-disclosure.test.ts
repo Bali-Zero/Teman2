@@ -169,6 +169,23 @@ describe("atomic PMA and Bali disclosure", () => {
     expect(hasPublishablePmaCap(unverifiedDisclosure)).toBe(false);
   });
 
+  it("qualifies a located closed verdict when its independent cap is unavailable", () => {
+    const raw = located({
+      pma_status: "TERTUTUP",
+      pma_max_asing: null,
+      pma_cap_verified: false,
+    });
+    const disclosed = disclosePmaInfo(raw, deriveProvenance(raw));
+
+    expect(formatPmaOwnership(disclosed)).toBe(
+      "Closed · ownership cap not verified",
+    );
+    expect(formatPmaOwnership(disclosed, "metadata")).toBe(
+      "Closed to Foreign Investment (ownership cap not verified)",
+    );
+    expect(hasPublishablePmaCap(disclosed)).toBe(false);
+  });
+
   it.each([
     [" OK ", false],
     ["OK", "false"],

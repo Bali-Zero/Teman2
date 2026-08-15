@@ -121,4 +121,23 @@ describe("structured data — whole-verdict PMA gate", () => {
       expect(article).not.toContain("special non-percentage conditions");
     },
   );
+
+  it("guilt: a located closed verdict with no verified cap stays qualified", () => {
+    const base = getCode("65111") as KBLICode;
+    const closedWithoutCap = {
+      ...base,
+      pma: {
+        ...base.pma,
+        status: "closed",
+        maxForeign: null,
+        capSpecial: false,
+        capVerified: false,
+      },
+    } as KBLICode;
+
+    const article = JSON.stringify(jsonLdOf(closedWithoutCap));
+    expect(article).toContain(
+      "Closed to Foreign Investment (ownership cap not verified) (TERTUTUP)",
+    );
+  });
 });

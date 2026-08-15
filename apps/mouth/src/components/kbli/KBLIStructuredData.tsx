@@ -4,45 +4,38 @@ import {
   isLicensingVerificationPending,
   isPmaVerdictVerified,
 } from "@/lib/kbli-provenance";
+import {
+  formatPmaOwnership,
+  hasPublishablePmaCap,
+} from "@/lib/kbli-pma-disclosure";
 import { pmaCapShape } from "@/lib/kbli-pma-shape";
-import { formatPmaOwnership } from "@/lib/kbli-pma-disclosure";
 import { pmaSourceAttributionStructured } from "@/lib/kbli-pma-source";
 
 /**
- * The TERBATAS ownership clause for structured data.
- *
- * This surface interpolated `max ${maxForeign}%` unconditionally and — unlike
- * the visible answer and the FAQ builder — never checked `capSpecial`, so
- * /kbli/47221 published the literal string "Restricted to max special% foreign
- * ownership (TERBATAS)" in both JSON-LD blocks (measured live 2026-07-29). That
- * is the same visible-vs-JSON-LD drift the header of `kbli-faq.ts` already
- * records having happened once; one shared classifier is what stops a third.
+ * JSON-LD keeps its search-oriented verified wording, but cap availability is
+ * decided only by the shared exact gate. Every unavailable shape therefore
+ * inherits the same explicit qualifier as visible and metadata surfaces.
  */
-function restrictedPmaStructuredLabel(code: KBLICode): string {
-  if (
-    code.pma.capVerified === true &&
-    code.pma.capSpecial &&
-    code.pma.maxForeign === "special"
-  ) {
-    return "Restricted by special non-percentage conditions (TERBATAS)";
+function structuredPmaOwnership(code: KBLICode): string {
+  const shared = formatPmaOwnership(code.pma, "metadata");
+  if (!hasPublishablePmaCap(code.pma)) return shared;
+
+  if (code.pma.status === "open" && code.pma.maxForeign === 100) {
+    return "100% foreign ownership allowed";
   }
-  if (code.pma.capVerified !== true) {
-    return "Restricted; ownership cap not verified (TERBATAS)";
+  if (code.pma.status !== "restricted") return shared;
+  if (code.pma.capSpecial && code.pma.maxForeign === "special") {
+    return "Restricted by special non-percentage conditions";
   }
-  if (
-    typeof code.pma.maxForeign !== "number" ||
-    !Number.isFinite(code.pma.maxForeign)
-  ) {
-    return "Restricted; ownership cap not verified (TERBATAS)";
-  }
+
   switch (pmaCapShape(code.pma)) {
     case "none":
-      return "Closed to foreign ownership in practice — 0% ceiling (TERBATAS)";
+      return "Closed to foreign ownership in practice — 0% ceiling";
     case "full":
     case "conditional":
-      return "Restricted by conditions rather than an ownership ceiling (TERBATAS)";
+      return "Restricted by conditions rather than an ownership ceiling";
     default:
-      return `Restricted to max ${code.pma.maxForeign}% foreign ownership (TERBATAS)`;
+      return `Restricted to max ${code.pma.maxForeign}% foreign ownership`;
   }
 }
 
@@ -92,18 +85,19 @@ export function KBLICodeJsonLd({
     code.pma.source,
     code.provenance?.pma.status ?? "declared_gap",
   );
-  const openPmaLabel =
-    code.pma.capVerified === true && code.pma.maxForeign === 100
-      ? "100% foreign ownership allowed"
-      : formatPmaOwnership(code.pma, "metadata");
+  const ownershipLabel = structuredPmaOwnership(code);
+  const statusToken =
+    code.pma.status === "open"
+      ? "TERBUKA"
+      : code.pma.status === "restricted"
+        ? "TERBATAS"
+        : "TERTUTUP";
   const pmaLabel = `${
     !pmaVerdictVerified
       ? "Foreign-ownership status not yet verified for this KBLI 2025 code"
-      : code.pma.status === "open"
-        ? `${openPmaLabel} (TERBUKA)${baliNat}`
-        : code.pma.status === "restricted"
-          ? restrictedPmaStructuredLabel(code)
-          : "Closed to foreign investment (TERTUTUP)"
+      : `${ownershipLabel} (${statusToken})${
+          code.pma.status === "open" ? baliNat : ""
+        }`
   }${pmaAttribution}`;
 
   const riskLevel: string = code.licensing[0]?.riskCategory ?? "Unknown";
@@ -157,6 +151,7 @@ export function KBLICodeJsonLd({
       "Indonesian business license",
       pmaVerdictVerified &&
       code.pma.status === "open" &&
+      hasPublishablePmaCap(code.pma) &&
       !(code.pma.capVerified === true && code.pma.maxForeign === 0)
         ? "PT PMA"
         : undefined,

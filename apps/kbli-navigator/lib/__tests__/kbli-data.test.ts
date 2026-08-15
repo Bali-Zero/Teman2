@@ -22,6 +22,9 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { PMABadge } from "../../components/kbli/PMABadge";
 import {
   discloseBaliL4Record,
   getBaliL4,
@@ -396,6 +399,22 @@ function adversarialDisclosureContract() {
     "generated PMA prose must stay withheld around an unverified special cap",
   );
 
+  const locatedClosedWithoutCap = disclosePmaInfo({
+    ...(raw as unknown as Record<string, unknown>),
+    pma_status: "TERTUTUP",
+    pma_max_asing: null,
+    pma_cap_verified: false,
+  } as unknown as KBLIRawCode);
+  assert.equal(
+    formatPmaOwnership(locatedClosedWithoutCap),
+    "Closed · ownership cap not verified",
+    "a located closed verdict must not hide its unavailable ownership cap",
+  );
+  assert.equal(
+    formatPmaOwnership(locatedClosedWithoutCap, "metadata"),
+    "Closed to Foreign Investment (ownership cap not verified)",
+  );
+
   const mismatchedSpecial = disclosePmaInfo({
     ...(raw as unknown as Record<string, unknown>),
     pma_max_asing: 0,
@@ -438,6 +457,21 @@ function componentProvenanceWiringContract() {
     }
   }
   assert.equal(callCount, 2, "all two production PMABadge calls are audited");
+
+  const closedWithoutCap = renderToStaticMarkup(
+    createElement(PMABadge, {
+      status: "closed",
+      maxForeign: null,
+      verdictVerified: true,
+      capVerified: false,
+    }),
+  );
+  assert.match(closedWithoutCap, />Closed</, "closed verdict remains visible");
+  assert.match(
+    closedWithoutCap,
+    /cap not verified/,
+    "closed badge must expose an unavailable cap",
+  );
 
   const pageSource = fs.readFileSync(
     path.join(root, "app/kbli/[code]/page.tsx"),

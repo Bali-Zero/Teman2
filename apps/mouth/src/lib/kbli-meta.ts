@@ -28,7 +28,10 @@
 
 import { riskLabelEn } from "./kbli-derive";
 import { pmaCapShape } from "./kbli-pma-shape";
-import { formatPmaOwnership } from "./kbli-pma-disclosure";
+import {
+  formatPmaOwnership,
+  hasPublishablePmaCap,
+} from "./kbli-pma-disclosure";
 import {
   isBaliL4BlockVerifiedForBareClaim,
   isLicensingVerifiedForBareClaim,
@@ -77,25 +80,7 @@ export function verifiedLicenseType(kbli: KBLICode): string | null {
  */
 export function kbliPmaLabel(kbli: KBLICode): string {
   if (!isPmaVerdictVerified(kbli)) return "Foreign Ownership Not Yet Verified";
-  if (kbli.pma.status === "open")
-    return formatPmaOwnership(kbli.pma, "metadata");
-  if (kbli.pma.status !== "restricted") return "Closed to Foreign Investment";
-  if (
-    kbli.pma.capVerified &&
-    kbli.pma.capSpecial &&
-    kbli.pma.maxForeign === "special"
-  )
-    return "Restricted (special distribution conditions)";
-  if (!kbli.pma.capVerified) return "Restricted for foreign ownership";
-  switch (pmaCapShape(kbli.pma)) {
-    case "none":
-      return "Closed to Foreign Investment";
-    case "full":
-    case "conditional":
-      return "Restricted (conditions apply, no ownership cap)";
-    default:
-      return `Restricted (max ${kbli.pma.maxForeign}% foreign)`;
-  }
+  return formatPmaOwnership(kbli.pma, "metadata");
 }
 
 /**
@@ -108,6 +93,11 @@ export function kbliPmaLabel(kbli: KBLICode): string {
 export function kbliMetaTitleSuffix(kbli: KBLICode): string {
   if (!isPmaVerdictVerified(kbli))
     return "PMA Eligibility Requires Verification";
+  const ownership = formatPmaOwnership(kbli.pma, "metadata");
+  // A whole-code status can be located while the independent ownership-cap
+  // tuple is absent. Surface that qualifier before any status-specific title,
+  // Bali or risk branch can hide it.
+  if (!hasPublishablePmaCap(kbli.pma)) return ownership;
   if (kbli.pma.status === "open") {
     if (kbli.pma.capVerified && kbli.pma.maxForeign === 0) {
       return "Closed to Foreign Investment";
@@ -116,7 +106,6 @@ export function kbliMetaTitleSuffix(kbli: KBLICode): string {
       return "Blocked for PT PMA in Bali (2026)";
     }
     const risk = verifiedRiskLabel(kbli);
-    const ownership = formatPmaOwnership(kbli.pma, "metadata");
     return risk ? `${ownership}, ${risk} Risk` : ownership;
   }
   if (kbli.pma.status === "restricted") {
