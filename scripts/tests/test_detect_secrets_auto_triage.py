@@ -43,6 +43,8 @@ failure — a real digest getting rejected because the anchor now bites.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from scripts.detect_secrets_auto_triage import CONTENT_KEYED_RULES, classify, triage
 
 CHECK_WORKER_PLANE_REVIEW = "scripts/check_worker_plane_review.py"
@@ -890,7 +892,7 @@ def test_guilt_traffic_source_ci_residue_is_fully_triaged() -> None:
 def test_guilt_every_declared_identity_anchor_shape_is_covered() -> None:
     """Also cover duplicate values that detect-secrets de-duplicates today."""
     _path_pat, content_pat, _reason = _traffic_source_live_proof_rule()
-    lines = open(TRAFFIC_SOURCE_LIVE_PROOF, encoding="utf-8").read().splitlines()
+    lines = Path(TRAFFIC_SOURCE_LIVE_PROOF).read_text(encoding="utf-8").splitlines()
     matching_lines = [line for line in lines if content_pat.search(line)]
     matching_keys = {
         line.strip().split("\":", 1)[0].lstrip('"') for line in matching_lines

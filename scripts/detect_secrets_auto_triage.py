@@ -285,13 +285,11 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
             r"2026-08-15-traffic-source-fail-closed-live-proof\.json$"
         ),
         re.compile(
-            r'^\s*"(?:idempotency_key_sha256|document_sha256|'
+            r'^\s*"(?:(?:idempotency_key_sha256|document_sha256|'
             r'traffic_source_parameter_sha256|payload_sha256)"\s*:\s*'
-            r'"[0-9a-f]{64}"\s*,?\s*$'
-            r'|^\s*"(?:head_sha|expected_merge_sha)"\s*:\s*'
-            r'"[0-9a-f]{40}"\s*,?\s*$'
-            r'|^\s*"(?:api_machine|instance)"\s*:\s*'
-            r'"[0-9a-f]{14}"\s*,?\s*$'
+            r'"[0-9a-f]{64}|(?:head_sha|expected_merge_sha)"\s*:\s*'
+            r'"[0-9a-f]{40}|(?:api_machine|instance)"\s*:\s*'
+            r'"[0-9a-f]{14})"\s*,?\s*$'
         ),
         "traffic-source fail-closed live proof: named sha256 integrity/"
         "one-way hashes, git SHAs, and public Fly machine IDs used to "
