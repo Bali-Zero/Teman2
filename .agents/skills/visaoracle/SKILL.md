@@ -113,6 +113,193 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
 ## LIVE STATE (update on every state change — whoever changes state updates this section)
 
+- 2026-08-15 (Pro continuation): **THE EXACT PR #4192 FRONTEND CANDIDATE IS
+  PROMOTED TO THE PRODUCTION ALIAS.** Interactive Fable independently checked
+  the Vercel identity, project, target, READY state, old alias owner and exact
+  source commit, then ran one promotion at `2026-08-14T23:47:31Z`: deployment
+  `dpl_GCXrsjrXwPjL9mrZdwDg9seFnLK7`, commit
+  `32c8b26d2d632fc21af1d17fff74bcdc1a55fa49` (`#4192`). Independent Vercel API
+  verification now resolves `mouth-nuzantara-2026.vercel.app` to that exact
+  deployment with target `production` and state `READY`. A read-only
+  `GET /visa` returned the expected Vercel deployment-protection redirect
+  (`302`, no 5xx); no evaluation POST or backend traffic was generated. This
+  promotion changes neither the backend queue nor RulePack state. SHADOW and
+  the ENFORCE prohibition remain unchanged.
+
+- 2026-08-15 (Pro continuation): **PR #4200 MERGED THROUGH THE LIVE MERGE QUEUE
+  AT ITS EXACT REVIEWED SHA.** Exact head
+  `4367d2c7aa2739011a7bedadb46d374424b6041a`, binary diff SHA-256
+  `77019d5daa5c1915a253aa78f3aacbea1885f0964f212a809a9a53398fcd48e0`.
+  The independent Fable 5 exact-SHA gate returned SHIP and left audit marker
+  `visa-fable-exact-sha-gate:4367d2c7`. A separate Fable operator rechecked the
+  immutable head, merge-base, diff digest and 66 clean check conclusions, then
+  executed exactly one canonical `scripts/mq.sh arm 4200`. Independent GraphQL
+  verification immediately afterward reported `isInMergeQueue=true`, state
+  `AWAITING_CHECKS`, position 2, with the head unchanged. It advanced to
+  position 1 at `2026-08-14T23:52:59Z`; all merge-group checks then completed
+  successfully and the queue merged it at `2026-08-15T00:06:34Z` as exact
+  merge-group commit `0fae2a64c5f495ead2a0f4f497c253f6f0cee2bd`. GraphQL
+  now reports `state=MERGED` and no merge-queue entry. The mode-`0600` arm
+  receipt records the reviewed head. Automatic backend deployment run
+  `31852588636` completed successfully for that exact merge at
+  `2026-08-15T00:16:26Z`, including every migration and post-deploy health job.
+  Fly release 4126 runs image digest
+  `sha256:d195c251d9ae9f8ae4f016c9029604d296455631b3bf05c19835366c06c388b6`;
+  all four image records carry OCI label `GH_SHA=0fae2a64...`, the API machine
+  health check is passing, and a separate read-only `GET /health/ready`
+  returned `ready=true`. No evaluation POST was sent. This
+  merge does not authorize any other
+  PR merge, frontend promotion, RulePack signing/activation or ENFORCE change.
+  SHADOW remains mandatory.
+
+- 2026-08-15 (Pro continuation): **DEPENDENT DRAFT PR #4198 PASSED ITS EXACT-SHA
+  FABLE 5 GATE.** Independent session
+  `a4d7d067-5556-4f29-ae7d-83aa52088de9` verified the unchanged head
+  `94ed6bd9204ef63080339d2a24ba5d8ea9de98a1`, merge-base
+  `7e66a8b3d003de0327e1ff7669e038b467ee8a94`, binary diff SHA-256
+  `bc3187b018bf265424ce9a2caae0e8cf4c2dfe515db5e3617c1a2b9a186a1fb6`,
+  replay claims, official E31B/E31D sources, SHADOW/PII boundaries and all exact
+  head CI, then returned SHIP. Pro independently rechecked the live head and
+  clean check set and recorded audit marker
+  `visa-fable-exact-sha-gate:94ed6bd9` in PR comment
+  `#issuecomment-5299331193`. Fable operator session
+  `1327f48a-b8b2-47a9-ba30-84d70a08aada` subsequently revalidated the unchanged
+  head, gate marker, diff and terminal-green CI, marked the PR ready, and ran
+  `scripts/mq.sh arm 4198` exactly once. The resulting mode-`0600` receipt
+  records the exact head at `2026-08-15T00:21:27Z`, and GraphQL initially
+  confirmed #4198 `QUEUED`/`AWAITING_CHECKS` at position 3 behind unrelated
+  #4204 and #4202. At `2026-08-15T00:25:40Z`, their aggregate merge group failed
+  `Immune enforcement`: the census identified #4202's new
+  `scripts/ci/test_bot_provider_gate.py` as a `codex exec` caller without the
+  required `codex_seat` resolver. GraphQL consequently marked #4202 and
+  downstream #4198 `UNMERGEABLE`, while #4198 itself remained exact-head
+  `MERGEABLE`/`CLEAN` with no bad checks. No queue mutation was attempted.
+  GitHub subsequently removed the unrelated failing predecessor, advanced
+  `main` to `ef8db35d...`, and rebuilt #4198 alone at `2026-08-15T00:29:21Z`
+  as merge-group `2b0cae1866bc24d4b77c0b81840dca1f9b2da393`; GraphQL now reports it
+  `AWAITING_CHECKS` at position 1. At `2026-08-15T00:46:22Z`, all 42/42
+  merge-group checks were terminal-clean with zero bad conclusions; no re-arm
+  or queue mutation was attempted. The queue merged the exact reviewed head at
+  `2026-08-15T00:46:36Z` as squash/merge-group commit
+  `2b0cae1866bc24d4b77c0b81840dca1f9b2da393` directly atop
+  `ef8db35dbd4d5943354a5d3479f63080a4811f3d`. Independent GraphQL verification
+  reports `state=MERGED`, `main` at that exact commit and no merge-queue entry;
+  the PR still records reviewed head `94ed6bd9...`. No signing, activation,
+  deploy or ENFORCE action occurred.
+
+- 2026-08-15 (Pro continuation): **DEPENDENT PR #4199 PASSED ITS EXACT-SHA
+  FABLE 5 GATE.** Independent session
+  `e06d3c01-a41e-410e-90e0-a679638634bc` verified the unchanged head
+  `903b01f8b5d2bb33141ddacaca9ac6aa6043efcc`, merge-base
+  `f05a577a9f6d876b0914088b884e1406677ae4f8`, binary diff SHA-256
+  `ae31cc045030dcb4b778f19bdf2904d80c394533d938e7586a05f5ed0606abd2`,
+  both preserved artifact hashes, every substantive replay/disposition claim,
+  the exact-path plus exact-content detector exception, PII/scope boundaries,
+  R1 and live exact-head CI, then returned SHIP. Pro independently rechecked
+  the live head and clean check set and recorded audit marker
+  `visa-fable-exact-sha-gate:903b01f8` in PR comment
+  `#issuecomment-5299393419`. The grader explicitly treated its M5 system-Python
+  failures as missing local project dependencies/DB role rather than PR
+  failures and relied on the green exact-head Backend Tests job. Fable queue
+  operator session `d0837493-4bdb-403d-ad4e-0a56c4e31771` then independently
+  revalidated the unchanged head, merge-base, binary diff, unique gate marker,
+  clean worktree and all 58 exact-head check-runs plus successful combined
+  status before marking the PR ready exactly once. The post-ready retrigger
+  settled at 61 check-runs with zero pending/bad and combined status `success`.
+  After a final immutable-identity check, the same operator invoked
+  `scripts/mq.sh arm 4199` exactly once. Its mode-`0600` receipt records the
+  exact head at `2026-08-15T00:52:49Z`; GraphQL independently confirmed
+  `QUEUED` and then `AWAITING_CHECKS` at position 1 with the head unchanged.
+  GitHub built merge-group commit
+  `d56550a5d89a543d3f5e2de13d20b0fd5f6d57c7` directly after current `main`;
+  at `2026-08-15T01:21:09Z` all 43/43 merge-group checks were terminal
+  `success`, with combined commit status `success`. The queue merged the exact
+  reviewed head at `2026-08-15T01:21:41Z` as that same commit, whose sole
+  parent is the #4198 merge
+  `2b0cae1866bc24d4b77c0b81840dca1f9b2da393`. Independent GraphQL
+  verification reports `state=MERGED`, `main` at `d56550a5...` and no queue
+  entry; the PR still records reviewed head `903b01f8...`. No signing,
+  activation, deploy or ENFORCE action was taken.
+
+- 2026-08-15 (Pro continuation): **DEPENDENT DRAFT PR #4201 PASSED ITS EXACT-SHA
+  FABLE 5 GATE.** Independent session
+  `59087feb-2b5f-4c49-b230-b63f39453fac` verified unchanged head
+  `69c7493146ed23fc717b73a18fff652e05089204`, merge-base
+  `35494716abcfdb4bf7e104382cc2fef81ff3b2d7`, binary diff SHA-256
+  `d92a1f986a6d706d7fa6cac4ee95a9f2783895fc1bc4b251eef32c8e4b3fa53a`
+  and all changed bytes. It independently reproduced the pinned replay report
+  byte-for-byte at SHA-256
+  `520d1205735edb0955aed337196fbcdcd21809c5b20690458a9c03bea7ee2d58`,
+  confirmed the 5/20 match set and 15 unexplained divergences, source-expiry
+  arithmetic, inclusive freshness boundary, policy-adapter parity, R1/PII
+  posture and terminal-green exact-head CI, then returned SHIP. Pro rechecked
+  the live head, clean diff and zero pending/bad checks before recording marker
+  `visa-fable-exact-sha-gate:69c74931` in PR comment
+  `#issuecomment-5299448049`. Independent queue-operator session
+  `ea8bf063-9e6b-4dc8-b622-0b655bc25e63` then revalidated the unique marker,
+  clean exact-head worktree, fresh merge-base and binary diff digest and invoked
+  `gh pr ready 4201` exactly once at `2026-08-15T01:24:59Z`. Its post-ready
+  suite settled 51/51 terminal-clean, after which Fable invoked the canonical
+  queue arm exactly once. The mode-`0600` receipt records the exact reviewed
+  head at `2026-08-15T01:25:52Z`; GraphQL first reported it `QUEUED` at
+  position 1 from `2026-08-15T01:25:53Z`, then advanced it to
+  `AWAITING_CHECKS` on speculative merge commit
+  `d54999e3ab3d01d90828ffc231f0dd3c575edd7f`. All 43/43 merge-group checks
+  settled terminal-clean with combined status `success`; the queue merged the
+  exact reviewed head at `2026-08-15T01:43:30Z` as that commit, directly after
+  #4199 merge `d56550a5d89a543d3f5e2de13d20b0fd5f6d57c7`. Independent REST,
+  GraphQL and remote-ref verification agree on `state=MERGED`, no queue entry
+  and `main` at `d54999e3...`. No signing, activation, deploy or ENFORCE action
+  was taken.
+
+- 2026-08-15 (Pro continuation): **PHASE B IS RECOMPOSED AS ONE LOCAL COMMIT
+  DIRECTLY ATOP THE #4200 MERGE AND HAS PASSED ITS EXACT-SHA FABLE 5 GATE.** Branch
+  `agent/nuzantara/backend-rag/visa-required-traffic-source-final`, head
+  `b5d6da2e989d2943099236b8871734cb7b378d0d`, parent
+  `0fae2a64c5f495ead2a0f4f497c253f6f0cee2bd`, binary diff SHA-256
+  `c0724febc0d2cbfd3b1239a756cd2e54d979cde532b1d786fd45b154c5dfb8fe`.
+  The 7-file candidate makes `traffic_source` required and fail-closed and is
+  green after rebase under the focused endpoint suite, Ruff, mypy, mouth proxy
+  Vitest, Prettier, TypeScript and the Visa OpenAPI contract validator. The
+  missing-label 422 boundary remains mutation-proven. Independent Fable 5
+  session `8bef8be3-9ced-4860-9b42-f9cfb2e7949b` reviewed every changed byte,
+  rechecked the immutable head, merge-base and diff digest, reproduced focused
+  backend 3/3, mouth 35/35, TypeScript and OpenAPI-validator passes, and proved
+  that restoring the former implicit `real` default makes both boundary guards
+  fail. Its final live read found 63 exact-head check-runs terminal-clean (57
+  success, 6 path/config skips), zero pending/bad, and combined commit status
+  `success`, then returned SHIP. Pro independently repeated the identity,
+  digest and live-check read and recorded the unique audit marker
+  `visa-fable-exact-sha-gate:b5d6da2e` in PR comment
+  `#issuecomment-5299580365`. Independent queue-operator session
+  `f7f9ba3f-105e-430c-88c3-ee124a5b24b0` revalidated every predecessor and
+  immutable-target invariant, invoked `gh pr ready 4208` exactly once, waited
+  for all 66 resulting exact-head checks to settle terminal-clean (59 success,
+  6 skips, one neutral advisory; combined status `success`), revalidated again
+  and invoked the canonical arm exactly once. The mode-`0600` receipt records
+  the reviewed head at `2026-08-15T01:49:28Z`; GraphQL first reported it
+  `QUEUED` at position 1 from `2026-08-15T01:49:29Z`, then advanced it to
+  `AWAITING_CHECKS` on speculative merge commit `650716442c81298647eb07542e198565709de014`.
+  All 42/42 merge-group checks settled terminal-clean (39 success, 3 skips)
+  with combined status `success`; the queue merged the exact reviewed head at
+  `2026-08-15T02:16:05Z` as that commit, directly after #4201 merge
+  `d54999e3ab3d01d90828ffc231f0dd3c575edd7f`. Independent REST, GraphQL and
+  remote-ref verification agree on `state=MERGED`, no queue entry and `main`
+  at `65071644...`. Automatic deploy run `31858744114` completed `success` at
+  `2026-08-15T02:25:55Z`; Fly release 4127 is complete at digest
+  `sha256:6bef531ce86eef0f9bca6ea3934ed3a53bf65d7d6495d024ceba319328dee0c6`,
+  all four image records carry exact `GH_SHA=65071644...`, and API health is
+  passing. Exactly one missing-label evaluate POST then returned the sanitized
+  `422` detail in live logs; the production handler additionally supplies its
+  non-applicant correlation ID. A separate zero-POST readback proved required
+  live OpenAPI, `ready=true`, read-only SQL and zero matching idempotency rows.
+  The final aggregate is 20 `synthetic_gold`, 0 `real`, 0 legacy and remains
+  RED/`enforce_ready=false`. Evidence:
+  `research/visa/2026-08-15-traffic-source-fail-closed-live-proof.json` and
+  `research/visa/2026-08-15-shadow-evidence-final.json`. No explicit-real
+  smoke, RulePack, activation or ENFORCE action occurred. Any head change
+  voids the historical gate identity.
+
 - 2026-08-07 (Mini, Visa Oracle V2 completion): **REPOSITORY CANDIDATE G0–G6 PASS;
   PRODUCTION REMAINS NO-GO/SHADOW.** Exact independently reviewed delivery
   `e15fc1b84501cbdc2e023497b3e1af298f51034f`, baseline `cd343655c`, verdict
@@ -642,6 +829,93 @@ visa_decisions` — the retention worker operates through `SECURITY DEFINER` fun
   `operator[credential]`: unlock Pro's screen once, or provision a readonly credential on Mini.
   `VISA_ENGINE_MATCH_MODE` is confirmed ABSENT from all 212 secrets on `nuzantara-rag` (genuinely absent,
   not set-to-off), so the 07-28 MATCH-vs-RECOMMEND fork is still unexecuted and still owner-gated.
+
+- 2026-08-15 (Pro takeover, finalization in progress): **Mini is unavailable;
+  Pro owns the continuation, but no authority boundary changed.** SHADOW remains
+  live and ENFORCE remains NO-GO; no RulePack was signed or activated. Frontend
+  labeling PR #4192 is merged at `32c8b26d2d632fc21af1d17fff74bcdc1a55fa49`.
+  Its exact production-target Vercel candidate
+  `dpl_GCXrsjrXwPjL9mrZdwDg9seFnLK7` is READY, contains one
+  `traffic_source=real` call site and was promoted exactly once by the
+  interactive Fable operator; independent API verification resolves the
+  production alias to that exact candidate.
+  Backend replay support from #4195 is live at merge
+  `35494716abcfdb4bf7e104382cc2fef81ff3b2d7` (Fly release 4125). A bounded
+  20-request `synthetic_gold` replay returned 5 matches and 15 unexplained
+  divergences, with all 20 rows labeled synthetic and distinct; it supplied no
+  organic evidence.
+
+  The policy-parity repair PR #4200 was frozen at
+  `4367d2c7aa2739011a7bedadb46d374424b6041a`, exact diff SHA-256
+  `77019d5daa5c1915a253aa78f3aacbea1885f0964f212a809a9a53398fcd48e0`,
+  with local 240-test verification and GitHub CI green, then merged through the
+  queue at `2026-08-15T00:06:34Z` as
+  `0fae2a64c5f495ead2a0f4f497c253f6f0cee2bd` after the exact-head Fable gate
+  and green merge-group CI. Automatic backend deployment run `31852588636`
+  completed successfully at `2026-08-15T00:16:26Z`, including all migrations
+  and post-deploy health. Fly release 4126 carries the exact merge in every
+  image's `GH_SHA` label at digest
+  `sha256:d195c251d9ae9f8ae4f016c9029604d296455631b3bf05c19835366c06c388b6`;
+  machine health and a separate read-only `/health/ready` request are green.
+  No evaluation request was generated. The dependent draft
+  queue is #4198 at `94ed6bd9204ef63080339d2a24ba5d8ea9de98a1`, #4199 at
+  `903b01f8b5d2bb33141ddacaca9ac6aa6043efcc`, and #4201 at
+  `69c7493146ed23fc717b73a18fff652e05089204`; Phase B follows as #4208 at
+  `b5d6da2e989d2943099236b8871734cb7b378d0d`. The intended merge order is
+  #4200 -> #4198 -> #4199 -> #4201 -> #4208. #4200 and #4198 are merged. #4198 was made ready and
+  armed once by Fable at its reviewed head; its mode-`0600` receipt is exact and
+  GraphQL first reported it `QUEUED`/`AWAITING_CHECKS` at position 3 behind
+  unrelated #4204 and #4202, then marked it `UNMERGEABLE` when their aggregate
+  merge group failed #4202's unrelated `codex_seat` census. #4198 itself stayed
+  exact-head `MERGEABLE`/`CLEAN`; no queue mutation was made. GitHub removed the
+  failing predecessor and rebuilt #4198 alone as merge-group `2b0cae18...`.
+  After all 42 group checks passed, the queue merged that exact reviewed head
+  at `2026-08-15T00:46:36Z`; GraphQL now reports no queue entry and `main` at
+  `2b0cae18...`. #4199 was made ready exactly once by Fable after an immutable
+  identity and 58-check preflight; its post-ready checks settled 61/61 clean,
+  after which Fable invoked the canonical arm exactly once. Its mode-`0600`
+  receipt records `903b01f8...` at `2026-08-15T00:52:49Z`, and GraphQL advanced
+  it from `QUEUED` to `AWAITING_CHECKS` at position 1 on merge-group
+  `d56550a5...`. After all 43/43 group checks passed, the queue merged that
+  exact reviewed head at `2026-08-15T01:21:41Z`; GraphQL now reports no queue
+  entry and `main` at `d56550a5...`, directly after #4198. #4201 was made ready
+  exactly once by Fable at `2026-08-15T01:24:59Z` after revalidation; its 51
+  post-ready checks settled clean before Fable armed it exactly once. Its
+  mode-`0600` receipt records the reviewed head at `2026-08-15T01:25:52Z`, and
+  GraphQL advanced it from `QUEUED` at position 1 to `AWAITING_CHECKS` on
+  speculative merge commit `d54999e3...`. All 43/43 group checks settled
+  terminal-clean, and the queue merged the exact reviewed head at
+  `2026-08-15T01:43:30Z` as `d54999e3...`, directly after #4199. Independent
+  verification now reports no queue entry and `main` at that commit. All three have
+  passed their
+  immutable exact-SHA Fable gates with audit markers
+  `visa-fable-exact-sha-gate:94ed6bd9` and
+  `visa-fable-exact-sha-gate:903b01f8` and
+  `visa-fable-exact-sha-gate:69c74931`, respectively.
+  Phase B (`traffic_source` required and fail-closed) is one local commit
+  `b5d6da2e989d2943099236b8871734cb7b378d0d` directly atop the #4200 merge;
+  it passed its immutable exact-SHA Fable gate, carries audit marker
+  `visa-fable-exact-sha-gate:b5d6da2e`, and is published as PR #4208. Fable
+  made it ready exactly once, observed 66 terminal-clean exact-head checks,
+  then armed it exactly once. Its mode-`0600` receipt records the immutable
+  head at `2026-08-15T01:49:28Z`, and GraphQL first reported it `QUEUED` at
+  position 1 from `2026-08-15T01:49:29Z`, then `AWAITING_CHECKS` on speculative
+  merge commit `650716442c81298647eb07542e198565709de014`. All 42/42 group checks
+  settled terminal-clean, and the queue merged the exact reviewed head at
+  `2026-08-15T02:16:05Z` as `65071644...`, directly after #4201. Independent
+  verification reports no queue entry and `main` at that commit. Automatic
+  deploy run `31858744114` completed successfully and Fly release 4127 carries
+  exact `GH_SHA=65071644...` on every image record at digest
+  `sha256:6bef531ce86eef0f9bca6ea3934ed3a53bf65d7d6495d024ceba319328dee0c6`.
+  Its boundary test is mutation-proven: restoring
+  the former implicit `real` default makes the missing-label test fail on an
+  attempted evaluation, and restoring the candidate bytes makes it pass. The
+  final live proof now records exactly one missing-label POST, sanitized live
+  `422`, required OpenAPI, passing health and zero matching ledger persistence.
+  The refreshed aggregate remains 20 synthetic/0 real and RED; no
+  explicit-real smoke, RulePack action or ENFORCE change occurred. See
+  `research/visa/2026-08-15-traffic-source-fail-closed-live-proof.json` and
+  `research/visa/2026-08-15-shadow-evidence-final.json`.
 
 ## TRACKS — parallel work groups (multi-session coordination)
 

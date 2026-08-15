@@ -43,3 +43,4 @@ Crediti esauriti → la catena di fallback di `FLEET_TOPOLOGY.json` decide; mai 
 - Mai merge, mai deploy, mai output client-facing, mai pubblicazioni (Legge 5).
 - Worktree discipline (AGENTS.md §0.5) per ogni mutazione; off-limits files invariati.
 - Lingua: italiano con Zero, inglese per codice/commit.
+- Roster completo modelli × punti di forza × effort di TUTTA la flotta: `MODEL_ROSTER.md` (repo root) — leggilo prima di scegliere un seat (ruling Zero 2026-08-14).
