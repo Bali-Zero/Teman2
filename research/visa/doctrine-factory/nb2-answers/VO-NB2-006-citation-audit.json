@@ -1,0 +1,35 @@
+[
+  {
+    "query_id": "VO-NB2-003",
+    "conversation_id_sent": "65f3a774-e88e-4ab8-8dc1-64927d75f157",
+    "bracket_pointers_found": 0,
+    "resolved_pointers": [],
+    "unresolved_pointers": [],
+    "title_mentions": [],
+    "structured_citations_present": true,
+    "verdict": "VERIFIED",
+    "reason": "structured citations present and every extracted prose pointer resolves"
+  },
+  {
+    "query_id": "VO-NB2-004",
+    "conversation_id_sent": "a5b29e63-667b-4a20-b494-aad47ec7c502",
+    "bracket_pointers_found": 0,
+    "resolved_pointers": [],
+    "unresolved_pointers": [],
+    "title_mentions": [],
+    "structured_citations_present": true,
+    "verdict": "VERIFIED",
+    "reason": "structured citations present and every extracted prose pointer resolves"
+  },
+  {
+    "query_id": "VO-NB2-005",
+    "conversation_id_sent": "50dbf0f7-a565-4dd2-81cd-13ed86e7fc29",
+    "bracket_pointers_found": 0,
+    "resolved_pointers": [],
+    "unresolved_pointers": [],
+    "title_mentions": [],
+    "structured_citations_present": true,
+    "verdict": "VERIFIED",
+    "reason": "structured citations present and every extracted prose pointer resolves"
+  }
+]

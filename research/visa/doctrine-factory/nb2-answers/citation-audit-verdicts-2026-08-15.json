@@ -1,0 +1,107 @@
+[
+  {
+    "query_id": "step0-probe-a-pong",
+    "conversation_id_sent": "8a32e3b6-7e54-4209-b6b4-31e7067599f4",
+    "bracket_pointers_found": 0,
+    "resolved_pointers": [],
+    "unresolved_pointers": [],
+    "title_mentions": [],
+    "structured_citations_present": false,
+    "verdict": "UNSUPPORTED",
+    "reason": "no structured citations and no resolvable prose pointer/title mention found"
+  },
+  {
+    "query_id": "step0-probe-b-history-leak",
+    "conversation_id_sent": "e794d18a-cd11-4cf1-b020-9faef666a7f7",
+    "bracket_pointers_found": 0,
+    "resolved_pointers": [],
+    "unresolved_pointers": [],
+    "title_mentions": [],
+    "structured_citations_present": false,
+    "verdict": "UNSUPPORTED",
+    "reason": "no structured citations and no resolvable prose pointer/title mention found"
+  },
+  {
+    "query_id": "VO-NB2-001",
+    "conversation_id_sent": "19530d78-6386-4421-964f-03aa1b9dcf16",
+    "bracket_pointers_found": 0,
+    "resolved_pointers": [],
+    "unresolved_pointers": [],
+    "title_mentions": [
+      "Indonesia's 2024 Visa and Residency Legal Reforms",
+      "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)",
+      "Peraturan Menteri Imigrasi dan Pemasyarakatan Nomor 5 Tahun 2025 - Paralegal.id",
+      "Permenimipas5_2025.pdf",
+      "Permenkumham_34_2021.pdf",
+      "UU No. 63 Tahun 2024 — Perubahan atas UU Keimigrasian (Key Provisions)",
+      "UU_6_2011_Keimigrasian.pdf",
+      "https://peraturan.go.id/files/permenkumham-no-11-tahun-2024.pdf",
+      "https://peraturan.go.id/files/permenkumham-no-22-tahun-2023.pdf",
+      "jabatan_tka_kepmen228_settori_ammessi_2025.txt",
+      "jabatan_tka_vietate_kepmen349_2025.txt"
+    ],
+    "structured_citations_present": true,
+    "verdict": "VERIFIED",
+    "reason": "structured citations present and every extracted prose pointer resolves"
+  },
+  {
+    "query_id": "VO-NB2-002",
+    "conversation_id_sent": "20845c54-5915-43f2-bf94-d2c28e3b05b1",
+    "bracket_pointers_found": 0,
+    "resolved_pointers": [],
+    "unresolved_pointers": [],
+    "title_mentions": [
+      "Bongkar Fakta Indonesia Banjir Regulasi",
+      "Cuplikan What's Up Kemenkum : Bongkar Fakta Indonesia Banjir Regulasi",
+      "Focus Group Discussion Ketahanan Pangan di Lingkungan Kementerian Imigrasi dan Pemasyarakatan",
+      "Hari Kekayaan Intelektual Sedunia Tahun 2026",
+      "Imigrasi Ngurah Rai Gagalkan Dugaan Upaya Masuk Satu Keluarga Gunakan Paspor Palsu",
+      "Permenkumham_10_2025.pdf",
+      "Permenkumham_27_2021_Visa.pdf",
+      "Permenkumham_27_2024.pdf",
+      "Perpres_76_2024.pdf",
+      "TIMPORA Kuta Selatan Tingkatkan Sinergitas dan Perkuat Pengawasan WNA",
+      "claims_db_immigration.txt",
+      "garante_penjamin_guida_2025.txt",
+      "kitas_e23_tka_guida_2025.txt",
+      "kitas_e33g_remote_work_guida_2025.txt",
+      "visto_d2_d12_multiplo_guida_2025.txt"
+    ],
+    "structured_citations_present": true,
+    "verdict": "VERIFIED",
+    "reason": "structured citations present and every extracted prose pointer resolves"
+  },
+  {
+    "query_id": "VO-NB2-003",
+    "conversation_id_sent": "65f3a774-e88e-4ab8-8dc1-64927d75f157",
+    "bracket_pointers_found": 0,
+    "resolved_pointers": [],
+    "unresolved_pointers": [],
+    "title_mentions": [],
+    "structured_citations_present": true,
+    "verdict": "VERIFIED",
+    "reason": "structured citations present and every extracted prose pointer resolves"
+  },
+  {
+    "query_id": "VO-NB2-004",
+    "conversation_id_sent": "a5b29e63-667b-4a20-b494-aad47ec7c502",
+    "bracket_pointers_found": 0,
+    "resolved_pointers": [],
+    "unresolved_pointers": [],
+    "title_mentions": [],
+    "structured_citations_present": true,
+    "verdict": "VERIFIED",
+    "reason": "structured citations present and every extracted prose pointer resolves"
+  },
+  {
+    "query_id": "VO-NB2-005",
+    "conversation_id_sent": "50dbf0f7-a565-4dd2-81cd-13ed86e7fc29",
+    "bracket_pointers_found": 0,
+    "resolved_pointers": [],
+    "unresolved_pointers": [],
+    "title_mentions": [],
+    "structured_citations_present": true,
+    "verdict": "VERIFIED",
+    "reason": "structured citations present and every extracted prose pointer resolves"
+  }
+]
