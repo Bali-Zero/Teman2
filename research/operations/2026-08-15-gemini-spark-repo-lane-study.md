@@ -10,7 +10,7 @@ sources:
   - https://support.google.com/gemini/answer/17094710 (schedules — official)
   - https://support.google.com/gemini/answer/16176929 (GitHub import — official)
   - https://www.forbes.com/sites/paulmonckton/2026/05/26/google-announced-gemini-spark-but-left-out-an-uncomfortable-warning/
-adversarial_review: dispatching session (Fable) cross-checked the report against the internal relay claims — 3/4 relay claims (folder=~/nuzantara, subagent fan-out, fail-closed net gate) came back UNVERIFIED or contradicted; F11's sole counter-source was itself exposed as a likely scam repo (HTTP 404)
+adversarial_review: codex
 discovered_by: spark-study subagent (Sonnet 5, WebSearch), dispatched 2026-08-15 by the M5 Fable session on Zero's order "studialo perché può lavorare sul repo"
 ---
 
@@ -91,3 +91,52 @@ Fleet infra: an `infra/army/` queue-file pattern for Spark tasks should be built
 2. Open the Spark UI (Mac app) and report verbatim whether a "run command / terminal / GitHub" option exists — public sources through 2026-08-13 say no; only the live product can confirm.
 3. The internal relay's "folder connesso ~/nuzantara + subagent fan-out + fail-closed gate" — source? Three of four relay claims came back UNVERIFIED or contradicted; worth tracing before acting on them.
 4. Given F12, the "autonomous-but-verified repo work" role is better served by doubling down on Jules (PR #4180 lane) + Codex Spark (PR #4179 lane) + Antigravity — Spark's H24 value is real but document/Workspace-shaped.
+
+## Adversarial review
+
+Seat: **codex** (`gpt-5.6-terra`, read-only sandbox, dispatched 2026-08-15 by the same
+M5 session that authored this file — cross-family, generator != grader per R1). Codex
+was instructed to try to refute the F1-F13 findings and the "NOT ARMED" verdict, checking
+internal consistency, over-confident claims relative to cited evidence, whether "NOT ARMED"
+actually follows from the findings, and whether the four UNVERIFIED findings (F5/F9/F10/F11)
+stay hedged downstream instead of being silently treated as confirmed.
+
+**Verdict: 15 objections raised, 11 survived.**
+
+The core conclusions held up:
+
+- **F5 (no GitHub connector) and F8 (oversight weaker than assumed) — REFUTED**: both are
+  correctly hedged against their own cited evidence.
+- **The "NOT ARMED" verdict itself — REFUTED**: the unverified GitHub-write, shell/git-execution,
+  and network-egress claims are sufficient on their own to justify refusing a repo-worker mandate;
+  the gating is not overreach.
+- **Silent confirmation of F5/F9/F10/F11 — REFUTED**: the downstream sections (Standing mandate,
+  BARRED list) consistently keep those capabilities withheld rather than assuming them.
+
+11 objections survived as real weaknesses, mostly about evidentiary rigor rather than the
+headline verdict:
+
+- Several F1-F4/F6/F7/F13 claims cite a source by name without a retrievable link for the
+  specific granular fact asserted — the bundles are not independently reproducible from this
+  document alone.
+- F6's "approval is per-action inside a run" is this document's own inference from the schedules
+  page, not something that page states directly.
+- F9/F10's "likely product conflation" / "likely a mixed-up reference to Gemini CLI" framings are
+  reasonable inferences but are stated with more confidence than an unpreserved search actually
+  supports.
+- F11: an HTTP 404 on the counter-source repo is real and worth flagging, but does not by itself
+  prove the repo was fraudulent/malware — "treat its claim as fabricated" is a stronger claim than
+  the 404 alone establishes (the marketing-language pattern-match is the actual basis, and that is
+  in the text, but the two grounds read as one).
+- **Real scope inconsistency, worth fixing**: the BARRED list says "never at `.git`-tracked source,"
+  but the Standing mandate scopes Spark to `.worktrees/spark-<task-id>/`, which is itself a git
+  worktree with `.git`-tracked content. The intended distinction (never the *main checkout* /
+  history-mutating operations, vs. a disposable per-task worktree) is clear from context elsewhere
+  in the doc but is not stated precisely at that line.
+- Re-arming on any single one of F5/F9/F11 being re-verified may be too permissive — F9 in
+  particular currently has no stated test procedure that could prove fail-closed egress even if an
+  operator tried to re-verify it.
+
+None of the survived objections overturn the headline verdict (Spark is not a repo-lane worker
+today, NOT ARMED); they sharpen citation rigor and flag one real wording inconsistency in the
+BARRED list that a future edit should tighten.
