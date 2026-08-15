@@ -398,6 +398,10 @@ def test_local_disclosure_matches_shared_runtime_contract() -> None:
     assert _disclose_pma(record) == disclose_pma(record)
     assert _disclose_bali(record) == disclose_bali(record)
 
+    verified = record | {"pma_cap_verified": True}
+    assert _disclose_pma(verified) == disclose_pma(verified)
+    assert _disclose_bali(verified) == disclose_bali(verified)
+
 
 def test_verify_shadow_node_deprecated_fails_on_neutral_but_untagged_text():
     """BUG (found live): a shadow row with harmless (non-MICE) text but

@@ -288,6 +288,8 @@ def _clean_text(value: object) -> str | None:
 
 
 def _public_pma_cap(record: dict) -> int | float | str | None:
+    if record.get("pma_cap_verified") is not True:
+        return None
     value = record.get("pma_max_asing")
     if isinstance(value, bool):
         return None
@@ -332,7 +334,7 @@ def _disclose_pma(record: dict) -> dict:
         "pma_prioritas": record.get("pma_prioritas") is True,
         "pma_nota": _clean_text(record.get("pma_nota")),
         "pma_cap_special": cap == "special",
-        "pma_cap_verified": cap is not None and record.get("pma_cap_verified") is True,
+        "pma_cap_verified": cap is not None,
     }
 
 

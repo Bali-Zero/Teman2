@@ -317,6 +317,22 @@ def test_sync_disclosures_match_the_shared_runtime_contract() -> None:
     }
     assert bali_target["86995"].fields == disclose_bali(located)
 
+    unverified = located | {"pma_cap_verified": False}
+    unverified_target, _ = build_targets([unverified], ["86995"], "pma")
+    shared_unverified = disclose_pma(unverified)
+    assert unverified_target["86995"].fields == {
+        key: shared_unverified[key]
+        for key in (
+            "pma_status",
+            "pma_max_asing",
+            "pma_verification_status",
+            "pma_official_basis",
+            "pma_source_vintage",
+            "pma_cap_special",
+            "pma_cap_verified",
+        )
+    }
+
 
 def test_the_bali_layer_writes_its_four_keys_and_no_pma_key():
     """Layer isolation, asserted on the wire. A Bali cure that also carried a

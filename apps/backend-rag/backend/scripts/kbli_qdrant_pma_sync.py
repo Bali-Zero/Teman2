@@ -214,7 +214,7 @@ def _pma_fields(rec: dict) -> tuple[dict[str, Any] | None, str | None]:
         "pma_official_basis": rec["pma_official_basis"].strip(),
         "pma_source_vintage": rec["pma_source_vintage"].strip(),
         "pma_cap_special": cap == "special",
-        "pma_cap_verified": cap is not None and rec.get("pma_cap_verified") is True,
+        "pma_cap_verified": cap is not None,
     }, None
 
 
@@ -338,6 +338,8 @@ def _clean_text(value: object) -> str | None:
 
 
 def _public_pma_cap(rec: dict) -> int | float | str | None:
+    if rec.get("pma_cap_verified") is not True:
+        return None
     value = rec.get("pma_max_asing")
     if isinstance(value, bool):
         return None
