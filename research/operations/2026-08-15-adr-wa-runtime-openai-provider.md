@@ -4333,3 +4333,634 @@ attached to a live test class describes LIVE behavior, corrected in
 place, not narrated-and-superseded like the deep historical paragraphs
 elsewhere in this module). Zero assertion changes — the test bodies
 were already correct, only the prose was stale.
+
+## 30. Owner ruling — subscription path (2026-08-15)
+
+### 30.1 The ruling, and its precedence over §2's NO-GO
+
+Zero (direct, Legge 5 — business decision, the one category this ADR's own
+doctrine reserves for the human owner) ruled 2026-08-15: **the WA OpenAI
+provider goes through the ChatGPT Pro SUBSCRIPTION (headless `codex exec`),
+not a per-token OpenAI API key.**
+
+Honest narration of what this does and does not change:
+
+- **§2's council verdict is not erased.** It stays recorded, verbatim, as
+  history — the exact "NO-GO on using the ChatGPT Pro / Codex OAuth
+  subscription as a WhatsApp runtime credential ... conflates identity and
+  blast radius" reasoning the council gave is still true and still on the
+  record. This ruling **overrides** it for this lane, it does not retroactively
+  declare it wrong.
+- **Zero was shown the residual risk once, explicitly, and accepted it.**
+  The specific risk the council named — a human interactive seat's ToS terms
+  not being written for unattended service traffic — was not resolved by new
+  evidence; it was a business risk-acceptance call, the kind only the owner
+  can make (this ADR's own §2 framed the council's NO-GO as a
+  recommendation to the business, not a technical impossibility).
+- **The house precedent Zero cited is real and on-disk, not a rationalization
+  invented for this ADR.** `backend/llm/claude_oauth_client.py` already
+  routes 100% of this repo's Claude traffic — including the OpenClaw/Telegram
+  channel and every cron `claude` wrapper — through exactly this shape:
+  shell out to the vendor's own CLI, authenticate via the human MAX-plan
+  OAuth subscription, never the metered API. `codex_exec_client.py` (§30.3)
+  is architecturally the same pattern one vendor over: a subprocess wrapper
+  around a CLI that authenticates via a ChatGPT Pro subscription instead of
+  `OPENAI_WA_PROVIDER_API_KEY`.
+
+### 30.2 The Responses client is demoted to a dormant alternative
+
+`openai_responses_client.py` (§3) is unchanged by this ruling — it is not
+deleted, not modified, not superseded in the sense of being replaced. It is
+demoted in PRIORITY: under this ruling, `OPENAI_WA_PROVIDER_API_KEY` **will
+never be provisioned**. The client stays in-tree as a dormant, fully
+reviewed (twenty-one adversarial rounds, §§6-28) alternative — available if
+a future, separately-authorized business decision ever wants the API-key
+path instead of (or alongside) the subscription path. Nothing in this
+section changes that file's own NO-WIRING status, its exception taxonomy,
+or its test suite (163 tests, confirmed unchanged this round — §29's own
+"Final measured test counts").
+
+### 30.3 The new provider's binding invariants
+
+`apps/backend-rag/backend/llm/codex_exec_client.py` (new, this round) ships
+under the same NO-WIRING discipline as its sibling: zero imports from any
+live module, offline tests only. Its binding invariants, verified against
+its own module docstring and test suite:
+
+1. **Async subprocess only** — `asyncio.create_subprocess_exec`, never
+   `shell=True`. Fixed argv shape `codex exec --sandbox read-only
+   --skip-git-repo-check --ignore-user-config -m <model> -` (CORRECTED, R26
+   GLM addendum F26-3, 2026-08-15: this restatement previously omitted
+   `--ignore-user-config` — the R25-1 HIGH security fix that stops
+   host-level `~/.codex/config.toml` hooks from receiving the prompt OUTSIDE
+   the model's sandbox; a reader rebuilding from this line alone would have
+   re-opened that leak). `cwd` is a fresh, empty, per-call
+   `tempfile.mkdtemp()` directory, removed in a `finally` block — never the
+   repo, never an inherited/shared cwd (see §30.4 for why this was
+   empirically, not just theoretically, load-bearing).
+2. **Prompt text never on argv, never in the child env** (W115 scar) — the
+   literal argv token `-` plus `proc.communicate(input=prompt.encode())`
+   delivers the prompt via stdin only, verified against `codex exec --help`'s
+   documented stdin contract.
+3. **`available` is a fail-closed property**, computed fresh on every read:
+   binary presence (constructor arg → `WA_CODEX_BIN` env → `codex` on
+   `PATH`) AND a non-empty `auth.json` under `CODEX_HOME` (constructor arg →
+   `CODEX_HOME` env → `~/.codex`). Never raises on construction.
+4. **Output judgment is asymmetric by design, not "stdout+stderr+exit-code
+   together"** (W104 scar; CORRECTED, R26 GLM addendum F26-3, 2026-08-15 —
+   this line previously read "judged on stdout+stderr+exit-code together",
+   the exact phrasing §30.6's R25-6 already flagged as false against the
+   code/test-file docstrings and corrected THERE, but this ADR sentence was
+   never updated to match): against a MEASURED contract (§30.4), stdout is
+   the clean answer text on `exit_code == 0` — nothing else;
+   empty/whitespace-only stdout on a zero exit is a typed
+   `CodexExecOutputShapeError`, never a best-effort blank answer. stderr is
+   ALWAYS decoded but is a signal source ONLY on `exit_code != 0`; on a
+   successful run it echoes the client's own prompt/answer verbatim and is
+   never scanned or logged (see point 5, and §30.8).
+5. **Auth-death is a distinct typed error** (`CodexExecAuthError`, house scar
+   2026-05-24 class), detected only on `exit_code != 0` (CORRECTED, R26 GLM
+   addendum F26-3, 2026-08-15 — this line previously said auth-death is
+   detected "only after stripping the caller's own prompt text from the
+   scanned output", which described the R25-3 shape, not the FINAL one):
+   the scan reads STDERR ONLY — stdout is never part of the scanned text at
+   all (§30.8) — after removing, WHOLE-LINE-ONLY, any stderr line that
+   verbatim-equals or is contained in a line of the prompt or of this run's
+   own stdout. See §30.4's stderr-echo finding for why the scope is
+   `exit_code != 0`-only, and §30.8 for the full evolution of the stripping
+   mechanism (R25-3 → R26-2 → the R26-addendum unified stderr-only design).
+6. **Sanitized errors and logs** — no prompt text, no raw stdout/stderr
+   content, no auth material ever reaches an exception message or a log
+   line; `CodexExecProcessError` carries only the numeric exit code.
+7. **Model governance** — `gpt-5.6-sol` / `gpt-5.6-terra` (default) /
+   `gpt-5.6-luna`, the same GPT-5.6 family CLAUDE.md §5 already names for
+   this repo's Codex cascade; any other slug is refused pre-launch via
+   `CodexExecModelNotAllowedError`.
+
+### 30.4 Grounding-probe outcome (measured, with one honest caveat)
+
+**Measured, not assumed.** One designated live call was run from the
+`bot-openai-adapter` session, 2026-08-15, against the operator's real
+ChatGPT Pro subscription (`codex login status` → `Logged in using ChatGPT`,
+`codex-cli 0.147.0`):
+
+```
+$ printf 'Reply with exactly PONG' | codex exec --sandbox read-only \
+    --skip-git-repo-check -m gpt-5.6-terra -
+# cwd: /tmp/codex-probe-neutral
+exit_code=0
+stdout: b'PONG\n'
+```
+
+*(This is the ORIGINAL R24 probe, quoted exactly as run — it predates the
+`--ignore-user-config` fix, which is why that flag is absent from its argv
+here; it is not a template to copy. The RE-MEASURED R25-1 probe, with the
+fix applied and confirming zero `hook:` lines, is narrated in §30.6; the
+code's `_FIXED_ARGV_PREFIX` is the authoritative CURRENT argv shape,
+corrected in §30.3 point 1 above per F26-3.)*
+
+The full stderr transcript of the RE-MEASURED R25-1 probe (banner +
+echoed prompt/answer + token-count footer) is captured verbatim in
+`test_codex_exec_client.py`'s `_MEASURED_SUCCESS_STDERR` fixture.
+CORRECTED (R26 GLM addendum, F26-5, 2026-08-15): this sentence, and the
+sibling claim in the code's point 7 docstring, previously said "both probe
+transcripts are quoted in the ADR §30" — false; no stderr transcript is
+quoted inline anywhere in §30 (the code block above is the closest thing,
+and it shows only `exit_code`/`stdout`, never stderr). Only the
+RE-MEASURED (R25) transcript survives at all, and only in the test
+fixture — not here. The ORIGINAL R24 transcript (the one that actually
+contained the `hook: SessionStart`/`hook: UserPromptSubmit` lines cited as
+the evidence for the next finding below) was overwritten in place by the
+re-measure and is not preserved verbatim anywhere in this tree or in git
+history (`git log -p` on the test file shows a single commit already
+containing only the re-measured content) — declared as a genuine gap, not
+reconstructed from memory. Three findings came directly out of the
+original probe (and two adjacent, deliberately-scoped diagnostic calls —
+see the disclosure below), each of which changed the client's design from
+what the mandate had assumed going in:
+
+- **stdout is clean; stderr is not.** stdout on success is *only* the
+  answer text (`b'PONG\n'`) — no banner, no metadata. stderr, by contrast,
+  is a full human-readable transcript that echoes the CLIENT-SUPPLIED
+  prompt text verbatim (`user\n<prompt>`) before the model's answer
+  (`codex\n<answer>`). This is why §30.3 point 5 scopes auth-death detection
+  to `exit_code != 0` only and strips the known prompt substring before
+  scanning: a WA immigration bot's real traffic routinely contains words
+  like "login"/"expired"/"unauthorized" as ordinary Indonesian-visa
+  vocabulary (a client asking why their KITAS portal login is expired), and
+  scanning success-path stderr indiscriminately for those words would be a
+  textbook cicatrix family #3 guard-over-match.
+- **cwd is load-bearing, empirically, not just in theory.** A diagnostic
+  call made from the repo worktree's own cwd (an operator slip, not the
+  designated probe) had `codex exec` pick up this repo's own Claude-hook
+  machinery (`SessionStart`/`UserPromptSubmit` hooks, a cross-machine "Peer
+  Pro" reachability ping) and answer in a machine-specific persona
+  ("[Air-M5] Pong. Peer Pro non raggiungibile; sync non verificato.") — live
+  proof that an unset/inherited cwd leaks ambient repo/host context into the
+  model's turn, not a hypothetical the client's design merely gestures at.
+- **`auth.json` file-presence is a necessary-but-not-sufficient proxy.**
+  Pointing `CODEX_HOME` at an empty temp directory (no `auth.json` at all)
+  did **not** make `codex exec` fail — it authenticated and answered
+  normally, while `codex login status` against that same fake `CODEX_HOME`
+  correctly reported "Not logged in". This implies the live credential also
+  lives outside `CODEX_HOME`'s file scope (macOS Keychain, by analogy with
+  `claude_oauth_client.py`'s own keychain-fallback tier) — the same lesson
+  as the Drive-OAuth finding in the project CLAUDE.md §13 ("the only thing
+  that knows is an actual refresh attempt"). `available=True` in this client
+  means "the file we were told to check exists", not "a live call is
+  guaranteed to work"; §30.3 point 5's auth-death detection is what actually
+  catches a dead credential the file check cannot.
+
+**Honest disclosure — scope of live calls made.** The mandate authorized
+exactly one designated grounding-call for this round (R25-1 later
+authorized exactly ONE additional designated re-measure — §30.6).
+CORRECTED (R27-4, GLM F5, 2026-08-15 THAW round): this paragraph
+previously said "Three real codex exec invocations were made in total",
+undercounting by one against the module docstring's own point 7 ("all
+FOUR calls are declared") — the R25-1 re-measured probe (§30.6) is a real,
+separate live call this paragraph never folded in. FOUR real `codex exec`
+invocations were made in total: (1) the designated R24 probe above; (2) an
+ACCIDENTAL diagnostic call — an operator slip, cwd left at the repo
+default, NOT a deliberately-scoped probe — that produced the cwd-leak
+finding below; (3) a deliberately-scoped `CODEX_HOME`-override variant
+that produced the third finding below; and (4) the designated R25-1
+re-measure (§30.6), confirming `--ignore-user-config` closes the point-1
+finding on the wire. All four used the same non-PII "PONG"/health-check-
+shaped prompt; none carried client data. This is disclosed here rather
+than silently normalized to a lower number — the extra calls were not
+free, and the number is stated in the freeze report verbatim rather than
+rounded down. (The prior wording also lumped call (2) together with call
+(3) as "two additional ... diagnostic calls", implying both were
+deliberately scoped — false for call (2), an operator slip, not a design;
+corrected here to distinguish an accident from a probe.)
+
+**What was NOT empirically triggered, and is declared rather than silently
+assumed:** the exact stderr shape `codex exec` (as opposed to `codex login
+status`) prints on ITS OWN auth failure. Triggering that would have
+required logging out of the operator's real, working ChatGPT Pro session —
+not authorized in this offline/no-wiring phase. §30.3 point 5's word-class
+list is built from `codex login status`'s measured "Not logged in" string
+plus the house `claude_oauth_client.py::_AUTH_DIAGNOSTIC_PATTERN`, and the
+corresponding test fixtures are labelled CONSTRUCTED, not measured, in both
+the client's module docstring and the test file's own header comment.
+
+### 30.5 Fence update, and what is still unchanged
+
+Fence: **9 → 11 files.** This round adds exactly
+`apps/backend-rag/backend/llm/codex_exec_client.py` and
+`apps/backend-rag/backend/tests/llm/test_codex_exec_client.py` on top of the
+nine files from the original NO-WIRING PR (`git diff 6a8ab5180..1a76f1ce3
+--name-only`).
+
+**Correction (R25-6, 2026-08-15 THAW round):** the sentence that used to
+stand here — "the nine files ... are unchanged" — was false against this
+very round's own delta: `docs/AI_ONBOARDING.md`, one of the original nine,
+carries a pre-commit-hook-auto-regenerated `DOCSYNC` test-count line
+(`scripts/docs_sync.py::count_test_files` counts test FILES via
+`Path.rglob("test_*.py")`, so one new test file bumps the count by exactly
+1 — see the REFUTED F5 note below). The accurate statement: the fence stays
+**11 files total**; eight of the original nine are byte-identical to the
+R24 round, and the ninth (`docs/AI_ONBOARDING.md`) carries only that
+mechanically-regenerated count-line delta, folded into the SAME commit as
+the feature per the W86 house rule (cicatrix family #9 — "the docs_sync
+regen goes in the same commit as the feature, never separate").
+
+**NO-WIRING is unchanged.** This ruling closes the business/cost gate this
+ADR's own three-gate framing (§3, module docstrings) named for the
+Responses client and now names identically for the subscription client:
+security review, and a real shadow-hook design with context parity, are
+both still open, both still required before either client gets a live
+caller. This ruling is a business decision about WHICH credential path is
+authorized when that day comes — it is not itself an activation, and
+neither client acquires a caller, a config flag, or a gateway branch as a
+result of it. Grep it yourself before trusting this sentence, same standing
+instruction as every other NO-WIRING claim in this file.
+
+### 30.6 R25 THAW round — adversarial fix disposition (2026-08-15)
+
+GLM-5.2 delta review on `1a76f1ce3..812f5c594` (the R24 recomposition):
+RED, 10 findings. Team-lead's gate: 8 CONFIRMED (fixed below), 1 reframed
+into a doc-accuracy fix (folded into §30.5 above and point 4's docstring),
+1 REFUTED. Disposition, most-severe first:
+
+- **R25-1 (HIGH, CONFIRMED)** — host-level `codex` config hooks execute
+  from the neutral tempdir regardless of cwd; a `UserPromptSubmit` hook
+  receives the prompt OUTSIDE the model sandbox (the "[Air-M5]" persona leak
+  in point 1 is this class, not a pure cwd issue). Fix: `--ignore-user-config`
+  added to `_FIXED_ARGV_PREFIX`; RE-MEASURED (point 7) — zero `hook:` lines
+  in the re-probed stderr.
+- **R25-2 (MEDIUM, CONFIRMED)** — the `available` gate honored env
+  `CODEX_HOME` but `_build_env` injected it into the child ONLY when
+  explicitly constructed; a gate/child mismatch was reachable via the env
+  var alone. Fix: `_build_env` always injects
+  `CODEX_HOME=str(self._resolve_codex_home())`, the same call the gate
+  makes — structurally impossible to diverge now.
+- **R25-3 (MEDIUM, CONFIRMED)** — (a) a partial answer echoed into stderr
+  before a late failure survived prompt-only stripping and could contain
+  client-conversation auth-shaped words; (b) bare `401` false-positived on
+  ordinary text ("completed after 401 ms"). Fix: `_strip_known_texts` now
+  strips BOTH the prompt AND the run's own stdout from the stderr scan
+  text; `_AUTH_DEATH_RE` drops bare `401` in favor of context-anchored
+  `401 unauthorized|error 401|401 error|http 401` (plus the pre-existing
+  bare `unauthorized`). Pinned tests both directions, plus a boundary-
+  collision regression proving the stdout-echo strip closes a real
+  concatenation false-positive.
+- **R25-4 (MEDIUM, CONFIRMED)** — under-match: "token has expired", "you
+  need to sign in", "session invalidated", "sign-in required" matched
+  nothing. Fix: `_AUTH_DEATH_RE` extended with these phrasings, still
+  word-boundary/multi-word-anchored (bare "expired"/"sign" deliberately
+  still do NOT match — see the innocence tests for "your passport has
+  expired" / "please sign the form").
+- **R25-5 (LOW, CONFIRMED)** — `generate()` caught only `FileNotFoundError`
+  at launch (a `PermissionError`/other `OSError` would escape untyped), and
+  `_kill_and_reap` ran only on `asyncio.TimeoutError` (any other exception
+  out of `communicate()` left the child unreaped). Fix: launch catch
+  widened to `OSError` (a superclass covering both); `communicate()` wrapped
+  with a catch-all that reaps before re-raising the original exception
+  unchanged.
+- **R25-6 (LOW, CONFIRMED, doc-accuracy)** — point 4's "judged together"
+  claim was false on the success path (stderr is decoded but never scanned
+  when `exit_code == 0`); the test file's "Invariant 8/9" section headers
+  named a taxonomy the module never had (7 invariants, not 9); §30.5's
+  "nine files unchanged" claim was false against this round's own
+  `docs/AI_ONBOARDING.md` delta. All three corrected in place (point 4's
+  docstring, the test file's section headers, §30.5 above).
+- **R25-7 (LOW, CONFIRMED)** — missing test coverage: empty/whitespace
+  prompt validation through `generate()`, a per-call model override
+  reflected in the spawned argv, the `CODEX_HOME` env-tier agreement (R25-2),
+  `WA_CODEX_BIN` honored at `generate()`-launch time (not merely by
+  `available`). All four added to `test_codex_exec_client.py`.
+- **R25-8 (MICRO, CONFIRMED)** — `_build_env`'s docstring omitted `TMPDIR`
+  despite the code already passing it through; declared (not coded) residual
+  that `errors="replace"` decoding can make the prompt/stdout strip miss at
+  a multibyte margin — both now documented on `_build_env` and
+  `_strip_known_texts` respectively.
+- **REFUTED — F5**, recorded here so it is not re-raised: GLM claimed the
+  `docs/AI_ONBOARDING.md` count bump `1360→1361` should have been `+38`
+  (the number of new tests this round added). False, verified against
+  `scripts/docs_sync.py:89-94`: `count_test_files()` returns
+  `len(list(tests.rglob("test_*.py")))` — it counts test FILES, not test
+  functions. One new file (`test_codex_exec_client.py`) is `+1` by the
+  generator's own, correct semantics; `+38` would be a defect, not the fix.
+
+All fixes re-measured/re-tested where the mandate authorized it (R25-1's
+one re-probe; everything else offline per W114). Suite counts, RCs, and
+ruff status for the fixed round are in the freeze report for this THAW.
+
+### 30.7 R26 THAW round — second-gate disposition, all three self-inflicted (2026-08-15)
+
+Gemini/agy second-gate review on the R25 delta (the round in §30.6): RED,
+3 findings, all orchestrator-confirmed on disk, and — unlike every prior
+round — all three are **regressions the R25 fixes introduced themselves**,
+not pre-existing defects. Disposition:
+
+- **R26-1 (HIGH, CONFIRMED)** — `asyncio.CancelledError` has been a
+  `BaseException` subclass, not an `Exception` subclass, since Python 3.8.
+  R25-5's catch-all `except Exception:` around `communicate()` therefore
+  never sees a cancellation — the coroutine is torn down without running
+  `_kill_and_reap`, and because the caller's tempdir cleanup can race ahead
+  of an unreaped child, the subprocess is orphaned. Fix: an explicit
+  `except asyncio.CancelledError:` branch, ordered BEFORE the generic
+  `except Exception:`, that runs `_kill_and_reap(proc)` and then
+  `raise` with no arguments — re-propagating cancellation unchanged rather
+  than swallowing or rewrapping it (a cancelled caller must see
+  `CancelledError`, never a `CodexExecProcessError` in its place). Pinned
+  with a REAL cancellation test: the `generate()` call is scheduled as an
+  actual `asyncio.Task`, cancelled mid-flight while the fake process is
+  parked in a `communicate()` that never resolves on its own, and the test
+  asserts both that `CancelledError` propagates out of the awaited task AND
+  that the fake process's kill/wait bookkeeping ran — not a
+  `ConnectionResetError` stand-in (the R25-5 test of that shape is kept,
+  since it still pins the general catch-all, but it does not exercise this
+  clause and was never claimed to).
+- **R26-2 (MEDIUM, CONFIRMED)** — `_strip_known_texts` (R25-3) used a
+  whole-text `str.replace()`: stripping a short or common stdout answer
+  (agy's repro: a one-word answer, `"in"`) deleted every occurrence of that
+  substring from stderr, including the one embedded inside the genuine
+  diagnostic phrase `"not logged in"` — mangling it to `"not logged "` and
+  making the auth-death scanner **fail OPEN** at the exact moment it must
+  page. The R25-3 fix closed one false-positive path by opening a
+  false-negative one. Fix: renamed to `_strip_known_lines` and rewritten to
+  operate on whole lines only — a stderr line is dropped in its entirety
+  when it verbatim-equals or is contained in a known line (prompt or
+  stdout, split the same way); a line that is not dropped is never
+  otherwise touched, so a short/common candidate can no longer reach INTO a
+  surviving line and mutate it. Required tests added: (1)
+  `test_guilt_bare_common_word_stdout_does_not_mangle_stderr_scan` — agy's
+  exact scenario (stdout `"in"`, stderr containing `"Not logged in"`, exit
+  1) now correctly still raises `CodexExecAuthError`; (2)
+  `test_innocence_echoed_401_unauthorized_prompt_does_not_false_positive` —
+  reconfirms the original R25-3 protection (an echoed client message
+  containing "401 unauthorized" as content, not diagnostic, must not
+  false-page) still holds under the line-based rewrite; (3) the R25-3(a)
+  boundary-collision test is RE-EXPRESSED as
+  `test_guilt_echoed_stdout_line_prevents_boundary_false_positive` — its
+  original form relied on intra-line substring concatenation, which no
+  longer applies the same way once stripping is line-granular, so it is
+  rebuilt against the measured whole-line wire shape (stdout echoed as its
+  own line between `user`/`codex` role markers) to keep proving the same
+  property: an echoed stdout line cannot bridge into an adjacent
+  stderr-only line to form a false auth-death phrase.
+- **R26-3 (MEDIUM, CONFIRMED)** — the `run\s+`codex\s+login`?\b` clause
+  (backtick optional) was flagged as failing to match between a closing
+  backtick and a following space/end-of-line, because a trailing `\b`
+  asserts a word-character boundary and a backtick is a non-word character
+  on both sides. Fix applied regardless of the paragraph below: the
+  trailing `\b` is replaced with a negative lookahead `(?!\w)`, which
+  asserts "not immediately followed by a word character" without requiring
+  a *preceding* word character the way `\b` does — strictly at least as
+  permissive, and a closer match to the actual intent ("don't let this
+  clause bleed into a longer word"). Two isolated fixtures added,
+  deliberately containing NO other `_AUTH_DEATH_RE` alternative's
+  vocabulary (every pre-existing fixture that used this clause, e.g.
+  `_CONSTRUCTED_AUTH_FAIL_STDERR`, also contains `"Not logged in"`, which
+  matches independently and would mask this specific clause being broken):
+  `test_guilt_run_codex_login_clause_without_backticks` and
+  `test_guilt_run_codex_login_clause_with_backticks`.
+  **Honest measured caveat** (anti-hallucination discipline, per §6/CLAUDE.md
+  — a reviewer's claim is verified independently, not relayed as fact): I
+  ran the actual compiled pre-fix pattern directly against several
+  backtick-boundary inputs ("Run \`codex login\` to authenticate.",
+  "Please run \`codex login\` now.", "run \`codex login\`" at end-of-string,
+  before a period, and before a newline) and **did not reproduce the
+  claimed non-match** — in every case tested, Python's `re` engine
+  backtracked on the optional `?` quantifier (un-consuming the backtick)
+  until `\b` could hold against the bare word `login`, so the clause
+  matched under the OLD pattern too. I am not able to confirm the exact
+  failure mode the review described reproduces in Python's `re` module on
+  the inputs I tried. What is NOT in question: the fix is safe (strictly
+  widens or leaves unchanged what matches, never narrows) and it closes a
+  real, independently-verified gap — this specific clause had zero isolated
+  test coverage before this round, so whether it worked was previously
+  unproven either way. Recorded here rather than silently agreed with or
+  silently dropped.
+
+  **REFUTED IN MECHANISM (team-lead's independent confirmation, R26 GLM
+  addendum GO message, 2026-08-15):** the team-lead ran the same probe
+  independently — `re.search(r'\b(?:...|run\s+`?codex\s+login`?)\b', 'Run
+  `codex login` to authenticate.')` — and reports the SAME result: it
+  MATCHES (backtracking leaves the trailing optional backtick group empty
+  and `\b` holds against the bare word "login"). Two independent probes,
+  same non-reproduction, same conclusion: the reviewer's claimed non-match
+  does not occur in Python's `re` module on the tested inputs. This
+  strengthens, not weakens, the disposition above — the `(?!\w)` fix is
+  kept as strictly non-narrowing hardening, and the closed
+  isolated-test-coverage gap remains the real, independently-verified
+  finding.
+- **Doc-accuracy (same class as R25-6)** — the `except Exception:` branch's
+  comment, added in R25-5, claimed the branch "reaps ... for e.g. a
+  cancelled task" — false after the R26-1 fix (cancellation now has its own
+  branch above it and never reaches this one); corrected in place to
+  describe only what this branch now actually handles: any other exception
+  out of `communicate()` (OSError variants, decode errors, etc.).
+
+Fence unchanged at 11 files. All three fixes are code+test only, in the
+same unpushed 4th commit as §30.6 (amended, not a new commit) once the
+team-lead's go-ahead lands — this section was written and held per an
+explicit sequencing instruction (a parallel GLM re-check on the R25 delta
+was still in flight) to prevent an amendment from crossing a recomposition
+mid-flight, a failure class this lane has hit five times. Suite counts,
+RCs, and ruff status for this round are in the freeze report for this
+THAW.
+
+### 30.8 R26 GLM addendum — second-gate re-check completes the round (2026-08-15)
+
+While §30.7 (agy's 3 findings) was fixed and held per the explicit
+sequencing instruction above, the parallel GLM re-check on the same R25
+delta landed: RED, 6 findings. One duplicates §30.7's R26-1
+(`asyncio.CancelledError` bypassing the R25-5 catch-all) — no separate
+action, already fixed there. The remaining 5, all orchestrator-confirmed
+on disk:
+
+- **F26-1 (HIGH, CONFIRMED) + F26-4 (MEDIUM, CONFIRMED) — unified into ONE
+  design fix, not two patches.** §30.7's R26-2 fix (line-based stripping)
+  still concatenated `_strip_known_lines(stdout, prompt) + "\n" +
+  _strip_known_lines(stderr, prompt, stdout)` — putting the model's OWN
+  partial answer back into the scanned text on a late failure. F26-1: a
+  constructed example — stdout = "Your KITAS login has expired; you are
+  unauthorized until renewal (401 on the portal)." with a clean, unrelated
+  stderr — would still false-page, because that sentence was never
+  stripped from ITSELF. F26-4: the `"\n"` join between the two
+  independently-stripped streams was itself a seam `_AUTH_DEATH_RE`'s
+  `\s+` alternatives (which match a newline) could bridge across. Fix,
+  UNIFIED per the team-lead's design directive: (a) the scan now reads
+  STDERR ONLY — stdout is never part of the scanned text at all, declared
+  (not silently assumed) on the grounds that no measured evidence places
+  `codex exec`'s own diagnostics on stdout (§30.4); (b) stderr is still
+  stripped of known prompt/stdout LINES via `_strip_known_lines` (§30.7's
+  R26-2 mechanism, unchanged) before scanning; (c) the scan itself now
+  goes through a new `_auth_death_detected(*texts)` helper that searches
+  each argument INDEPENDENTLY and never joins them with a separator —
+  removing the concatenation seam structurally, not only for today's
+  single-argument call site. Required tests added:
+  `test_innocence_late_failure_partial_stdout_answer_mentions_401_does_not_page`
+  (F26-1 scenario, end-to-end through `generate()`) and
+  `test_guilt_boundary_formation_never_bridges_across_independently_searched_texts`
+  (F26-4, a direct unit test on `_auth_death_detected` proving two
+  fragments that WOULD combine if concatenated do not match when searched
+  separately). All prior R25-3/R25-4/R26-2/R26-3 pins re-verified passing
+  under the new design — none needed behavior changes (they were already
+  stderr-scoped, or, for the boundary-adjacency test, safe by construction
+  under the new stdout exclusion).
+- **F26-3 (MEDIUM, CONFIRMED, doc-accuracy with security relevance)** —
+  §30.3's restatements had drifted from the code across two rounds: (a)
+  point 1's quoted argv shape omitted `--ignore-user-config`, the R25-1
+  HIGH security fix — a reader rebuilding the client from this ADR alone
+  would have re-opened the host-hook prompt leak; (b) point 4 still read
+  "judged on stdout+stderr+exit-code together", the exact phrasing
+  §30.6's R25-6 already corrected in the code/test docstrings but never in
+  this sentence; (c) point 5 still said auth-death is detected "only after
+  stripping the caller's own prompt text", describing the R25-3 shape, not
+  the current stderr-only one. All three corrected in §30.3 above, and
+  updated to describe THIS round's final design rather than re-fixed to
+  the intermediate R25/R26-2 shape. The §30.4 code-block probe transcript
+  was left as-is — it is a historical record of the literal R24 command
+  actually run, and editing it to add a flag it never used would
+  misrepresent the evidence — but is now annotated to say so explicitly
+  and point to the current authoritative argv shape.
+- **F26-5 (LOW, CONFIRMED, doc-accuracy)** — two related false claims:
+  §30.4 and the code's point 7 docstring both said "both probe transcripts
+  are quoted in the ADR §30" — false; verified (grep across the whole
+  document plus a manual read of §30.1–30.7) that no stderr transcript is
+  quoted inline anywhere in this ADR, only the RE-MEASURED one lives in
+  the test fixture. The ORIGINAL R24 transcript (the one with the `hook:`
+  lines — the actual evidence for R25-1) was overwritten by the re-measure
+  and does not survive anywhere in this tree or in git history — confirmed
+  via `git log -p` on the test file, which shows a single commit already
+  containing only the re-measured content. Both claims corrected to state
+  this honestly rather than fabricate a reconstruction of a transcript no
+  longer on disk (anti-hallucination discipline, CLAUDE.md §6).
+- **F26-6 (LOW, CONFIRMED, test-file accuracy)** — `test_codex_exec_client.py`
+  had two section headers both claiming "Invariant 4" (the genuine one,
+  output contract, and a duplicate on the `TestTimeout` class). Timeout is
+  a deadline/output-shape behavior, not one of the module's 7 numbered
+  invariants — the duplicate header relabeled to say so.
+
+All ten of GLM's independently-verified R25 claims (argv flag, env
+unification, 401 anchoring, vocabulary, OSError widening, the 59/222
+suite counts) are unchanged by this round and were not regressed by the
+stderr-only redesign.
+
+Verification (all from repo root, after every fix above): `ruff check` +
+`ruff format --check` on both `codex_exec_client.py` and
+`test_codex_exec_client.py` — clean. `test_codex_exec_client.py` alone: 66
+passed (was 64 pre-addendum: +2 for F26-1/F26-4), 0 failed. Full suite
+counts and RCs for `backend/tests/llm/` and `scripts/bot/` are in the
+freeze report for this THAW.
+
+This addendum completes the R26 round per the team-lead's explicit
+instruction — no further go-signal is needed; recomposition and the
+freeze report follow this section.
+
+### 30.9 R27 THAW round — final polish (2026-08-15)
+
+Round-27 reviews on `0c8dd281c`: agy RED-1 (REFUTED), GLM RED-6 (F1
+refuted — same claim as agy's, F2-F6 orchestrator-confirmed on disk; GLM's
+review was truncated at `max_tokens` mid-F6 with no VERDICT line, treated
+as RED by content per the mandate — F6's fix direction was unambiguous
+regardless).
+
+**Refutations, recorded rather than silently agreed with or silently
+dropped:**
+
+- **(a) agy's claim (HIGH) and GLM's F1 (same claim, hedged: "if auto,
+  collapses to a consistency defect") — that two R26-2 pin tests
+  (`test_innocence_echoed_401_unauthorized_prompt_does_not_false_positive`,
+  `test_guilt_bare_common_word_stdout_does_not_mangle_stderr_scan`) are
+  INERT without an explicit `@pytest.mark.asyncio` decorator — REFUTED,
+  independently re-verified in THIS session, not merely relayed: grepped
+  `apps/backend-rag/pytest.ini:17` → `asyncio_mode = auto` (confirmed on
+  disk); ran the named test individually
+  (`pytest backend/tests/llm/test_codex_exec_client.py::TestAuthDeathDetection::test_innocence_echoed_401_unauthorized_prompt_does_not_false_positive`)
+  → 1 passed. Under `asyncio_mode = auto`, pytest-asyncio wraps every
+  `async def test_*` regardless of an explicit marker — no marker was ever
+  needed, and both tests were live and exercised in every prior suite run
+  this round reported ("66 passed" etc. genuinely ran them, not silently
+  skipped them).
+- **(b) Residual consistency nit (not a bug, declared choice):** ~30
+  explicit `@pytest.mark.asyncio` markers already exist elsewhere in this
+  file against 2 unmarked async tests (the ones in (a)) — harmless under
+  `asyncio_mode = auto` but genuinely confusing to any text-only reviewer
+  who checks marker-presence as a correctness signal (as both agy and GLM
+  independently did). Resolved in the cheaper direction: added the 2
+  missing markers rather than a file-header comment, matching the file's
+  own dominant convention rather than asking ~30 existing tests to
+  conform to the minority shape.
+
+**Confirmed fixes:**
+
+- **R27-1 (GLM F3, LOW but real fail-open)** — `_strip_known_lines`'s
+  original containment check (`stripped == kl or stripped in kl`) dropped
+  a GENUINE diagnostic stderr line whenever it was merely a SUBSTRING of
+  any known (prompt/stdout) line — symmetric to the R26-2 mangle bug, just
+  on the opposite side of the equality/containment boundary. Measured
+  example: prompt "why am I not logged in after midnight, is this
+  urgent?" contains the substring "not logged in"; an independent, genuine
+  diagnostic stderr line reading exactly "not logged in" was silently
+  dropped before ever reaching `_AUTH_DEATH_RE`, silencing a real page.
+  Fix: EQUALITY ONLY (`stripped in known_lines`, a set-membership check) —
+  the measured wire shape never needed containment tolerance (prompt and
+  answer are always echoed as their own complete, unwrapped line(s)).
+  Tests added: `test_guilt_diagnostic_substring_of_prompt_line_still_pages`
+  (the regression pin) and
+  `test_innocence_genuine_echoed_line_still_dropped_under_equality_only`
+  (confirms the original R25-3/R26-2 defusal still holds under
+  equality-only). Full suite re-verified: all pre-existing R26-2 mangle
+  pins (`test_guilt_bare_common_word_stdout_does_not_mangle_stderr_scan`
+  and siblings) still pass unchanged — the fix narrows a false-drop
+  condition that neither of those tests exercised.
+- **R27-2 (GLM F4, LOW)** — `_resolve_codex_home` returned a RELATIVE path
+  as-is on all three resolution tiers, re-opening the exact gate/child
+  divergence R25-2 (§30.6) declared structurally impossible: `available`
+  (the gate) resolves a relative `Path` against the CALLING process's cwd
+  at property-access time, while the spawned child always runs from a
+  fresh NEUTRAL TEMPDIR cwd (point 1) created and torn down per call — the
+  same relative string meant two DIFFERENT directories depending on WHEN
+  it was resolved. Fix: `.resolve()` on all three tiers (explicit
+  constructor arg, `CODEX_HOME` env var, and — harmlessly, since it is
+  already absolute — the `~/.codex` default). Test added:
+  `test_guilt_relative_codex_home_resolves_absolute_and_agrees` —
+  chdir's into a tmp dir, constructs the client with a RELATIVE
+  `codex_home=`, and asserts `available` still resolves correctly, the
+  resolved path is absolute, and the actual spawned child's env carries
+  that SAME absolute path.
+- **R27-3 (GLM F2, MEDIUM doc-accuracy, security-relevant class)** — two
+  in-code restatements had drifted from the R26-addendum's stderr-only
+  design (§30.8) without being updated: point 5's LEAD sentence still said
+  "stdout+stderr are scanned", true only through the R25-3/R26-2
+  intermediate design; and `CodexExecAuthError`'s docstring still said
+  "(prompt-stripped) output". Both corrected in place, with the file's own
+  established CORRECTED-marker convention, to describe the FINAL design
+  (stderr-only, line-based-equality strip of prompt+stdout). The
+  `_strip_known_lines` function docstring and its inline "equals, or is a
+  substring of" phrasing were also brought in line with the R27-1 fix
+  above in the same pass (avoiding re-introducing the doc/code drift this
+  finding is about).
+- **R27-4 (GLM F5, LOW doc)** — ADR §30.4's "Honest disclosure" paragraph
+  said "Three real codex exec invocations were made in total", undercounting
+  by one against the module docstring's own point 7 ("all four calls are
+  declared") — the R25-1 re-measured probe (§30.6) was never folded into
+  that count. It also lumped the accidental cwd-leak call together with
+  the deliberately-scoped `CODEX_HOME` variant as "two ... diagnostic
+  calls", contradicting its own "operator slip" framing of the first.
+  Corrected to FOUR, with each of the four calls named and the
+  accident/design distinction made explicit (§30.4 above).
+- **R27-5 (GLM F6, MICRO)** — `tempfile.mkdtemp()` (creating the per-call
+  neutral cwd, point 1) was called OUTSIDE every typed-exception wrapper in
+  `generate()` — a raw `OSError` (disk full, `/tmp` unwritable, a TOCTOU
+  permission change) would have propagated straight out, breaking this
+  module's own fail-closed-with-typed-exceptions contract. Fix: wrapped,
+  mapped to `CodexExecUnavailableError`, added to the `Raises:` docstring.
+  Test added: `test_guilt_mkdtemp_failure_maps_to_unavailable` —
+  monkeypatches `tempfile.mkdtemp` to raise, asserts the typed error and
+  that the subprocess was never launched.
+
+**Verification** (all from repo root, after every fix above): `ruff check`
++ `ruff format --check` on both `codex_exec_client.py` and
+`test_codex_exec_client.py` — clean. `test_codex_exec_client.py` alone: 70
+passed (was 66 pre-R27: +4 for R27-1×2/R27-2/R27-5), 0 failed. Full suite
+counts and RCs for `backend/tests/llm/` and `scripts/bot/` are in the
+freeze report for this THAW.
+
+No further hold protocol for this round — fix, recompose, freeze, deliver,
+HALT, per the team-lead's explicit instruction opening this round.
