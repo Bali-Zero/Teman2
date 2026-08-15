@@ -62,6 +62,14 @@ CANONICAL_PATH = REPO_ROOT / "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json"
 CANONICAL_REL = "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
 DISPUTED_KEY = "per_skala_disputed_pp28_collision"
 
+# Catalogue-wide derived fields owned by `cure_pma_verification_state.py`.
+# This residual registry remains strict on every field its own compiler can
+# touch while allowing the orthogonal, exhaustively tested global derivation to
+# coexist on the same branch.
+GLOBAL_PMA_VERIFICATION_FIELDS = frozenset(
+    {"pma_verification_status", "pma_source_vintage"}
+)
+
 # --- dataset copies (pattern shared with test_kbli_metadata_fixes_registry.py) ---
 
 ALL_DATASET_COPIES = [
@@ -86,6 +94,14 @@ def _load_record(path: Path, code: str) -> dict[str, Any]:
     if rec is None:
         raise AssertionError(f"{path}: record {code} not found in dataset")
     return rec
+
+
+def _without_global_pma_verification_fields(record: dict[str, Any]) -> dict[str, Any]:
+    return {
+        key: value
+        for key, value in record.items()
+        if key not in GLOBAL_PMA_VERIFICATION_FIELDS
+    }
 
 
 def _load_spec_entries(spec_path: Path) -> dict[str, dict[str, Any]]:
@@ -258,17 +274,17 @@ def test_per_skala_row_count_and_no_disputed_key():
             )
 
 
-def test_aggregation_note_left_untouched_documented_stale():
+def test_aggregation_note_left_untouched_then_globally_translated():
     """cure_canonical_collisions.py's metadata_only action never writes
-    aggregation_note — confirm this residual fix did not silently start
-    doing so, matching the documented 'known follow-up' in both spec
-    entries' aggregation_note_flag key."""
+    aggregation_note. The later catalogue-wide client-language compiler does,
+    so pin its sanctioned English rendering rather than the superseded Italian
+    bytes this residual cure intentionally left behind."""
     rec_52101 = _load_record(CANONICAL_PATH, "52101")
     assert rec_52101.get("aggregation_note") is None
     rec_10433 = _load_record(CANONICAL_PATH, "10433")
-    assert rec_10433.get("aggregation_note") == "Dati da 10433 + 1 codici figli PP28", (
-        "10433: aggregation_note changed — this residual fix does not write that "
-        "field; if it changed, something else touched this record."
+    assert rec_10433.get("aggregation_note") == "data from 10433 + 1 PP28 child code(s)", (
+        "10433: aggregation_note drifted from the deterministic rendering owned "
+        "by cure_l23_whatchanged_language.py."
     )
 
 
@@ -311,7 +327,12 @@ def test_canonical_diff_vs_origin_main_is_subset_of_residual_codes():
         "record set (code membership) drifted vs origin/main — this fix must "
         "never add/remove records."
     )
-    changed = {code for code in main_by_code if main_by_code[code] != disk_by_code[code]}
+    changed = {
+        code
+        for code in main_by_code
+        if _without_global_pma_verification_fields(main_by_code[code])
+        != _without_global_pma_verification_fields(disk_by_code[code])
+    }
     # The allowlist is every code a COMMITTED cure spec claims, not this lot's two.
     # A literal `changed <= RESIDUAL_CODES` holds only while this branch's sole
     # divergence from main is this lot — it breaks the instant any legitimate,
@@ -360,7 +381,9 @@ def test_innocent_controls_byte_identical_vs_origin_main():
     main_by_code = _git_show_by_code("origin/main", CANONICAL_REL)
     disk_by_code = _load_by_code(REPO_ROOT / CANONICAL_REL)
     for code in INNOCENT_CONTROLS:
-        assert main_by_code[code] == disk_by_code[code], (
+        assert _without_global_pma_verification_fields(
+            main_by_code[code]
+        ) == _without_global_pma_verification_fields(disk_by_code[code]), (
             f"{code}: unexpectedly diverged from origin/main — this residual fix "
             "must not touch this control code."
         )

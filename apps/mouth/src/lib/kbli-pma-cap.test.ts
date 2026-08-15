@@ -109,7 +109,7 @@ describe("population — every one of the 1,559 codes", () => {
   });
 });
 
-describe("one rule, one module — the two readers cannot drift apart again", () => {
+describe("public readers delegate cap disclosure to the atomic PMA boundary", () => {
   const SERVER = readFileSync(join(HERE, "kbli-data.server.ts"), "utf8");
   const CLIENT = readFileSync(join(HERE, "kbli-data.ts"), "utf8");
 
@@ -121,9 +121,14 @@ describe("one rule, one module — the two readers cannot drift apart again", ()
       expect(source, `${name} must not re-derive the cap`).not.toMatch(
         /maxForeign:\s*raw\.pma_max_asing/,
       );
-      expect(source, `${name} must call the shared resolver`).toContain(
-        "maxForeign: resolvePmaCap(raw)",
-      );
+      expect(
+        source,
+        `${name} must call the shared disclosure helper`,
+      ).toContain("disclosePmaInfo(raw, provenance, perpresCitation(code))");
+      expect(
+        source,
+        `${name} must not invoke the legacy cap resolver`,
+      ).not.toContain("resolvePmaCap(raw)");
     }
   });
 });

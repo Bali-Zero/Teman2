@@ -31,6 +31,8 @@ from pathlib import Path
 
 import httpx
 
+from backend.services.kbli_pma_disclosure import disclose_bali, disclose_pma
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
@@ -42,10 +44,7 @@ UPSERT_BATCH = 50
 PHANTOMS = {"26120", "60111", "82920", "85598"}
 
 SOURCE_FILE = (
-    Path(__file__).resolve().parents[4]
-    / "data"
-    / "source_documents"
-    / "KBLI_2025_FINAL_CLEAN.json"
+    Path(__file__).resolve().parents[4] / "data" / "source_documents" / "KBLI_2025_FINAL_CLEAN.json"
 )
 
 
@@ -72,26 +71,34 @@ def ruang_lingkup_text_block(e: dict) -> list[str]:
 
 
 def l4_text_block(e: dict) -> list[str]:
-    l4 = e.get("l4_bali") or {}
-    if not l4.get("status"):
+    bali = disclose_bali(e)
+    if not bali["has_bali_l4"]:
         return []
     out = ["", "STATUS PMA DI BALI (L4 - moratorium provinsi 2026-05-13):"]
-    if l4.get("blocked"):
+    if bali["bali_blocked"] is True:
         out.append("- DIBLOKIR untuk PMA di Bali (kegiatan risiko Rendah/Menengah-Rendah).")
-    out.append(f"- Status Bali: {l4['status']}")
-    if l4.get("reason"):
-        out.append(f"- Catatan: {l4['reason']}")
-    out.append("- Nasional bisa TERBUKA 100% sementara Bali memblokir.")
+    out.append(f"- Status Bali: {bali['bali_status']}")
+    if bali["bali_reason"]:
+        out.append(f"- Catatan: {bali['bali_reason']}")
+    out.append("- Status nasional dan verdict Bali adalah lapisan terpisah; baca keduanya.")
     return out
 
 
 def l4_meta(e: dict) -> dict:
-    l4 = e.get("l4_bali") or {}
-    return {
-        "bali_status": l4.get("status", ""),
-        "bali_blocked": bool(l4.get("blocked")),
-        "bali_reason": l4.get("reason", ""),
-    }
+    return disclose_bali(e)
+
+
+def pma_text_line(disclosure: dict) -> str:
+    """Render the already-disclosed cap without inventing a percentage."""
+    line = f"Status PMA: {disclosure['pma_status']}"
+    if not disclosure["pma_cap_verified"]:
+        return f"{line} (ownership cap not verified)"
+    cap = disclosure["pma_max_asing"]
+    if cap == "special":
+        return f"{line} (special non-percentage conditions)"
+    if cap is not None:
+        return f"{line} (Max {cap}%)"
+    return line
 
 
 def build_chunks(e: dict) -> list[dict]:
@@ -99,13 +106,23 @@ def build_chunks(e: dict) -> list[dict]:
     code = e["kode_kbli_2025"]
     judul = e.get("judul", "")
     sektor = e.get("sektor_id", "")
-    pma = e.get("pma_status", "")
-    pma_max = e.get("pma_max_asing", "")
+    pma_disclosure = disclose_pma(e)
+    pma = pma_disclosure["pma_status"]
+    pma_max = pma_disclosure["pma_max_asing"]
     uraian = e.get("uraian", "")
     base_meta = {
-        "kode_kbli": code, "kode": code, "kode_kbli_2025": code,
-        "judul": judul, "sektor_id": sektor,
-        "pma_status": pma, "pma_max_asing": pma_max,
+        "kode_kbli": code,
+        "kode": code,
+        "kode_kbli_2025": code,
+        "judul": judul,
+        "sektor_id": sektor,
+        "pma_status": pma,
+        "pma_max_asing": pma_max,
+        "pma_verification_status": pma_disclosure["pma_verification_status"],
+        "pma_official_basis": pma_disclosure["pma_official_basis"],
+        "pma_source_vintage": pma_disclosure["pma_source_vintage"],
+        "pma_cap_special": pma_disclosure["pma_cap_special"],
+        "pma_cap_verified": pma_disclosure["pma_cap_verified"],
         "doc_type": "kbli_bps",
         **l4_meta(e),
     }
@@ -113,15 +130,15 @@ def build_chunks(e: dict) -> list[dict]:
 
     # 1) _uraian chunk — pure description + OSS scope + L4 (matches activity queries)
     utext = "\n".join(
-        [f"[KBLI {code}] {judul}", "", uraian]
-        + ruang_lingkup_text_block(e)
-        + l4_text_block(e),
+        [f"[KBLI {code}] {judul}", "", uraian] + ruang_lingkup_text_block(e) + l4_text_block(e),
     )
-    chunks.append({
-        "id": det_uuid(f"kbli_2025_oss::{code}::uraian"),
-        "text": utext,
-        "metadata": {**base_meta, "chunk_id": f"kbli_{code}_uraian", "chunk_type": "uraian"},
-    })
+    chunks.append(
+        {
+            "id": det_uuid(f"kbli_2025_oss::{code}::uraian"),
+            "text": utext,
+            "metadata": {**base_meta, "chunk_id": f"kbli_{code}_uraian", "chunk_type": "uraian"},
+        }
+    )
 
     # 2) one chunk per per_skala group (scale + licensing detail)
     for i, s in enumerate(e.get("per_skala", []) or []):
@@ -134,7 +151,7 @@ def build_chunks(e: dict) -> list[dict]:
             f"Kategori Risiko: {risk}" if risk else "Kategori Risiko: -",
             "",
             f"Sektor: {sektor}",
-            f"Status PMA: {pma}" + (f" (Max {pma_max}%)" if pma_max not in ("", None) else ""),
+            pma_text_line(pma_disclosure),
             "",
             "PERIZINAN:",
             f"- Jenis Izin: {s.get('perizinan', '')}",
@@ -155,21 +172,23 @@ def build_chunks(e: dict) -> list[dict]:
             lines.append("KEWAJIBAN PELAKU USAHA:")
             lines += [f"- {x}" for x in kew]
         lines += l4_text_block(e)
-        chunks.append({
-            "id": det_uuid(f"kbli_2025_oss::{code}::skala::{scale_tag}::{i}"),
-            "text": "\n".join(lines),
-            "metadata": {
-                **base_meta,
-                "chunk_id": f"kbli_{code}_{scale_tag}_{i}",
-                "chunk_type": "per_skala",
-                "skala_usaha": scales,
-                "kategori_risiko": risk,
-                "perizinan": s.get("perizinan", ""),
-                "jangka_waktu": s.get("jangka_waktu", ""),
-                "kewenangan": s.get("kewenangan", ""),
-                "fiktif_positif": bool(s.get("fiktif_positif")),
-            },
-        })
+        chunks.append(
+            {
+                "id": det_uuid(f"kbli_2025_oss::{code}::skala::{scale_tag}::{i}"),
+                "text": "\n".join(lines),
+                "metadata": {
+                    **base_meta,
+                    "chunk_id": f"kbli_{code}_{scale_tag}_{i}",
+                    "chunk_type": "per_skala",
+                    "skala_usaha": scales,
+                    "kategori_risiko": risk,
+                    "perizinan": s.get("perizinan", ""),
+                    "jangka_waktu": s.get("jangka_waktu", ""),
+                    "kewenangan": s.get("kewenangan", ""),
+                    "fiktif_positif": bool(s.get("fiktif_positif")),
+                },
+            }
+        )
     return chunks
 
 
@@ -186,8 +205,11 @@ async def main() -> None:
         H["api-key"] = qkey
 
     source = json.load(open(SOURCE_FILE, encoding="utf-8"))
-    entries = [e for e in source["data"]
-               if len(str(e.get("kode_kbli_2025", ""))) == 5 and e["kode_kbli_2025"] not in PHANTOMS]
+    entries = [
+        e
+        for e in source["data"]
+        if len(str(e.get("kode_kbli_2025", ""))) == 5 and e["kode_kbli_2025"] not in PHANTOMS
+    ]
     if args.limit:
         entries = entries[: args.limit]
 
@@ -201,7 +223,9 @@ async def main() -> None:
     if args.dry_run:
         s = next((c for c in all_chunks if c["metadata"]["kode_kbli"] == "56101"), all_chunks[0])
         logger.info(f"sample chunk {s['metadata']['chunk_id']}:\n{s['text'][:400]}")
-        codes_56101 = [c["metadata"]["chunk_id"] for c in all_chunks if c["metadata"]["kode_kbli"] == "56101"]
+        codes_56101 = [
+            c["metadata"]["chunk_id"] for c in all_chunks if c["metadata"]["kode_kbli"] == "56101"
+        ]
         logger.info(f"56101 chunks: {codes_56101}")
         return
 
@@ -227,22 +251,41 @@ async def main() -> None:
     logger.info(f"got {len(sparse)} bm25 vectors")
 
     async with httpx.AsyncClient(timeout=120) as http:
-        sch = (await http.get(f"{qurl}/collections/{LIVE}", headers=H)).json()["result"]["config"]["params"]
+        sch = (await http.get(f"{qurl}/collections/{LIVE}", headers=H)).json()["result"]["config"][
+            "params"
+        ]
         await http.delete(f"{qurl}/collections/{TWIN}", headers=H)
-        r = await http.put(f"{qurl}/collections/{TWIN}",
-                           json={"vectors": sch["vectors"], "sparse_vectors": sch.get("sparse_vectors", {"bm25": {}})},
-                           headers=H)
+        r = await http.put(
+            f"{qurl}/collections/{TWIN}",
+            json={
+                "vectors": sch["vectors"],
+                "sparse_vectors": sch.get("sparse_vectors", {"bm25": {}}),
+            },
+            headers=H,
+        )
         r.raise_for_status()
         logger.info(f"created {TWIN}")
-        qp = [{"id": c["id"], "vector": {"dense": e, "bm25": s},
-               "payload": {"text": c["text"], "metadata": c["metadata"]}}
-              for c, e, s in zip(all_chunks, embs, sparse, strict=False)]
+        qp = [
+            {
+                "id": c["id"],
+                "vector": {"dense": e, "bm25": s},
+                "payload": {"text": c["text"], "metadata": c["metadata"]},
+            }
+            for c, e, s in zip(all_chunks, embs, sparse, strict=False)
+        ]
         for i in range(0, len(qp), UPSERT_BATCH):
-            r = await http.put(f"{qurl}/collections/{TWIN}/points?wait=true",
-                               json={"points": qp[i : i + UPSERT_BATCH]}, headers=H)
+            r = await http.put(
+                f"{qurl}/collections/{TWIN}/points?wait=true",
+                json={"points": qp[i : i + UPSERT_BATCH]},
+                headers=H,
+            )
             r.raise_for_status()
-        tc = (await http.get(f"{qurl}/collections/{TWIN}", headers=H)).json()["result"]["points_count"]
-        lc = (await http.get(f"{qurl}/collections/{LIVE}", headers=H)).json()["result"]["points_count"]
+        tc = (await http.get(f"{qurl}/collections/{TWIN}", headers=H)).json()["result"][
+            "points_count"
+        ]
+        lc = (await http.get(f"{qurl}/collections/{LIVE}", headers=H)).json()["result"][
+            "points_count"
+        ]
         logger.info(f"TWIN {TWIN}: {tc} chunks | LIVE {LIVE}: {lc} (untouched)")
     logger.info("Done v3 — chunked native format. Live untouched.")
 

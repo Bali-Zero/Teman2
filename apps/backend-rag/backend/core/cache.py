@@ -15,9 +15,12 @@ import logging
 import time
 from collections import OrderedDict
 from collections.abc import Callable
+from dataclasses import asdict, is_dataclass
 from decimal import Decimal
 from functools import wraps
 from typing import Any
+
+from pydantic import BaseModel
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -26,11 +29,14 @@ class DecimalEncoder(json.JSONEncoder):
     def default(self, obj: Any) -> Any:
         if isinstance(obj, Decimal):
             return float(obj)
-        # Handle Pydantic v2 models
-        if hasattr(obj, "model_dump"):
-            return obj.model_dump()
-        # Handle Pydantic v1 models
-        if hasattr(obj, "dict"):
+        if is_dataclass(obj) and not isinstance(obj, type):
+            return asdict(obj)
+        # Attribute probing is unsafe here: dynamic doubles such as MagicMock
+        # claim to have both methods and recurse forever when either is called.
+        # Only actual Pydantic models receive the model encoder.
+        if isinstance(obj, BaseModel):
+            if hasattr(BaseModel, "model_dump"):
+                return obj.model_dump(mode="json")
             return obj.dict()
         return super().default(obj)
 
@@ -187,7 +193,7 @@ class CacheService:
             return False
 
         try:
-            json.dumps(obj)
+            json.dumps(obj, cls=DecimalEncoder)
             return True
         except (TypeError, ValueError):
             return False
@@ -423,9 +429,7 @@ async def invalidate_crm_stats(cache_service: CacheService | None = None) -> int
     """
     total = 0
     for namespace in ("crm_clients_stats", "crm_practices_stats"):
-        total += await invalidate_cache(
-            f"zantara:{namespace}:*", cache_service=cache_service
-        )
+        total += await invalidate_cache(f"zantara:{namespace}:*", cache_service=cache_service)
     return total
 
 

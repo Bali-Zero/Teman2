@@ -27,6 +27,7 @@
 !apps/kbli-navigator/lib/kbli-gold-content.ts
 !apps/kbli-navigator/data/kbli-2025.json
 !data/source_documents/KBLI_2025_FINAL_CLEAN.json
+!data/kbli-filiera/pma-editorial-certifications.json
 
 # Exclude noise inside included dirs
 **/__pycache__/

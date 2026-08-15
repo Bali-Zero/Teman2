@@ -69,6 +69,15 @@ META_56101_SPEC_PATH = REPO_ROOT / "scripts/kbli_filiera/cure_specs/metadata_561
 GOLD_PATH = REPO_ROOT / "apps/mouth/data/kbli-gold-all.json"
 DISPUTED_KEY = "per_skala_disputed_pp28_collision"
 
+# These two top-level fields are owned by the catalogue-wide
+# `cure_pma_verification_state.py` compiler.  Lot-scoped innocence checks must
+# still compare every field their own compiler could touch, but must not accuse
+# an independently verified, whole-catalogue derivation of being a 56101 scope
+# leak merely because both changes share a branch.
+GLOBAL_PMA_VERIFICATION_FIELDS = frozenset(
+    {"pma_verification_status", "pma_source_vintage"}
+)
+
 # Scope: the two GIT-TRACKED dataset copies only (the backend-rag copies are
 # gitignored local sync targets, not part of this PR's diff).
 TRACKED_DATASET_COPIES = [
@@ -94,6 +103,14 @@ def _sha256(obj: Any) -> str:
     return hashlib.sha256(
         json.dumps(obj, sort_keys=True, ensure_ascii=False).encode("utf-8")
     ).hexdigest()
+
+
+def _without_global_pma_verification_fields(record: dict[str, Any]) -> dict[str, Any]:
+    return {
+        key: value
+        for key, value in record.items()
+        if key not in GLOBAL_PMA_VERIFICATION_FIELDS
+    }
 
 
 def _cure_applied() -> bool:
@@ -294,7 +311,9 @@ def test_56102_record_untouched():
         pytest.skip("origin/main not resolvable in this checkout — env-coupled check")
     canonical = REPO_ROOT / "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
     rec = _load_record(canonical, "56102")
-    assert _sha256(rec) == _sha256(main_by_code["56102"]), (
+    assert _sha256(_without_global_pma_verification_fields(rec)) == _sha256(
+        _without_global_pma_verification_fields(main_by_code["56102"])
+    ), (
         "56102: record content differs from origin/main — the 56101 provenance "
         "correction must never mutate the record it re-credits, only 56101's own "
         "pointer/prose fields."
@@ -402,7 +421,10 @@ def test_canonical_diff_vs_origin_main_is_exactly_56101():
         "removed) — the 56101 metadata cure must never add/remove records."
     )
     changed = sorted(
-        code for code, rec in cur_by_code.items() if rec != main_by_code[code]
+        code
+        for code, rec in cur_by_code.items()
+        if _without_global_pma_verification_fields(rec)
+        != _without_global_pma_verification_fields(main_by_code[code])
     )
     known_codes = _all_cure_spec_codes()
     unaccounted = sorted(code for code in changed if code not in known_codes)

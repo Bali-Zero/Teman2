@@ -16,6 +16,7 @@ import pytest
 from backend.scripts._kbli_repo_root import resolve_repo_root
 from backend.scripts.index_kbli_gold_content import (
     build_point,
+    certification_content,
     field_coverage,
     filter_to_codes,
     sample_lines,
@@ -29,6 +30,10 @@ from backend.scripts.reindex_kbli_2025_final import (
 )
 from backend.scripts.reindex_kbli_2025_final import (
     parse_only_codes as parse_bps_only,
+)
+from backend.services.kbli_editorial_certification import (
+    pma_editorial_fingerprint,
+    stable_editorial_sha256,
 )
 
 # ─── parse_only_codes (shared semantics, two copies) ───────────────────────
@@ -166,6 +171,36 @@ class TestFilterEntriesToCodes:
 # ─── build_point (gold indexer — flat payload, KBLI flat-payload golden rule) ──
 
 
+def _certified_point(
+    code: str,
+    gold: dict,
+    base: dict,
+    indexed_at: str,
+) -> dict:
+    canonical_base = {
+        "kode_kbli_2025": code,
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100,
+        "pma_verification_status": "located",
+        "pma_official_basis": "Perpres 49/2021 test locator",
+        "pma_source_vintage": "2021-05-25",
+        "pma_cap_verified": True,
+        **base,
+    }
+    canonical_base["kode_kbli_2025"] = code
+    registry = {
+        "standaloneGold": {
+            code: {
+                "pmaFingerprint": pma_editorial_fingerprint(canonical_base),
+                "contentSha256": stable_editorial_sha256(certification_content(gold)),
+            }
+        }
+    }
+    point = build_point(code, gold, canonical_base, indexed_at, registry)
+    assert point is not None
+    return point
+
+
 class TestBuildPoint:
     """build_point() is the exact function main() calls per code — never a
     recreated copy of the production logic (Codex review on #3817). It crashed
@@ -182,14 +217,14 @@ class TestBuildPoint:
         """Guilt: the point actually produced sets payload['indexed_at'] and
         carries NO 'metadata' key — this is what crashed unconditionally
         before the fix."""
-        point = build_point("56101", self._gold(), self._base(), "2026-08-08T00:00:00+00:00")
+        point = _certified_point("56101", self._gold(), self._base(), "2026-08-08T00:00:00+00:00")
         assert point["payload"]["indexed_at"] == "2026-08-08T00:00:00+00:00"
         assert "metadata" not in point["payload"]
 
     def test_point_shape(self):
         """Innocence: the rest of the point shape (id + text-to-embed +
         existing flat fields) is unchanged by the extraction."""
-        point = build_point("56101", self._gold(), self._base(), "2026-08-08T00:00:00+00:00")
+        point = _certified_point("56101", self._gold(), self._base(), "2026-08-08T00:00:00+00:00")
         assert set(point.keys()) == {"id", "payload", "_text_to_embed"}
         assert point["payload"]["kode_kbli"] == "56101"
         assert point["payload"]["doc_type"] == "kbli_gold"
@@ -198,8 +233,8 @@ class TestBuildPoint:
     def test_deterministic_id_across_calls(self):
         """Innocence: id stays deterministic (idempotent upserts) — the
         extraction must not perturb deterministic_uuid's inputs."""
-        p1 = build_point("56101", self._gold(), self._base(), "2026-08-08T00:00:00+00:00")
-        p2 = build_point("56101", self._gold(), self._base(), "2026-08-08T01:00:00+00:00")
+        p1 = _certified_point("56101", self._gold(), self._base(), "2026-08-08T00:00:00+00:00")
+        p2 = _certified_point("56101", self._gold(), self._base(), "2026-08-08T01:00:00+00:00")
         assert p1["id"] == p2["id"]
         assert p1["payload"]["indexed_at"] != p2["payload"]["indexed_at"]
 
@@ -230,7 +265,7 @@ class TestFieldCoverage:
         original line 428."""
         gold = {"whatItMeans": "Restoran", "whatYouNeed": "Izin usaha mikro"}
         base = {"judul": "Restoran", "sektor_id": "I"}
-        point = build_point("56101", gold, base, "2026-08-08T00:00:00+00:00")
+        point = _certified_point("56101", gold, base, "2026-08-08T00:00:00+00:00")
         coverage = field_coverage([point])
         assert coverage["whatItMeans"] == 1
         assert coverage["whatYouNeed"] == 1
@@ -256,8 +291,8 @@ class TestTkaTotal:
         gold_without_tka = {"whatItMeans": "y"}
         base = {"judul": "x", "sektor_id": "I"}
         points = [
-            build_point("11111", gold_with_tka, base, "2026-08-08T00:00:00+00:00"),
-            build_point("22222", gold_without_tka, base, "2026-08-08T00:00:00+00:00"),
+            _certified_point("11111", gold_with_tka, base, "2026-08-08T00:00:00+00:00"),
+            _certified_point("22222", gold_without_tka, base, "2026-08-08T00:00:00+00:00"),
         ]
         assert tka_total(points) == 1
 
@@ -279,7 +314,7 @@ class TestSampleLines:
         original lines 440/441 (Code + Judul)."""
         gold = {"whatItMeans": "Restoran"}
         base = {"judul": "Restoran Padang Asli", "sektor_id": "I"}
-        point = build_point("56101", gold, base, "2026-08-08T00:00:00+00:00")
+        point = _certified_point("56101", gold, base, "2026-08-08T00:00:00+00:00")
         lines = sample_lines(point)
         assert any("56101" in line for line in lines)
         assert any("Restoran Padang Asli" in line for line in lines)

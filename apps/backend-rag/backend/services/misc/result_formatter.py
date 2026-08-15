@@ -6,6 +6,8 @@ Extracted from SearchService to improve modularity and testability.
 
 from typing import Any
 
+from backend.services.kbli_pma_disclosure import sanitize_kbli_search_result
+
 
 def format_search_results(
     raw_results: dict[str, Any],
@@ -113,6 +115,11 @@ def format_search_results(
         # Get document content
         doc_content = (
             raw_results["documents"][i] if i < len(raw_results.get("documents", [])) else ""
+        )
+        doc_content, metadata = sanitize_kbli_search_result(
+            collection_name,
+            doc_content,
+            metadata,
         )
 
         formatted_results.append(

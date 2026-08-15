@@ -1,8 +1,9 @@
 // Perpres slice-disclosure frame — 10 general BROADER-adjudicated codes (12
 // BROADER-adjudicated minus 20235/30303, excluded as adjacent-not-contained
 // — see ADJACENT_NOT_CONTAINED in perpres_slice_disclosure_relation.py) plus
-// 30111's two hand-authored rows and 30113's one render "100% open" correctly
-// for the WHOLE code while a narrower bidang usaha inside them carries a
+// 30111's two hand-authored rows and 30113's one render the narrower annex
+// conditions without promoting them to a WHOLE-code PMA verdict when that
+// verdict lacks a per-code locator and vintage. Each bidang usaha carries a
 // Perpres 10/2021 (as amended by 49/2021) Lampiran III foreign-cap condition.
 // A real render, using REAL codes from the live artifact via kbli-data.ts
 // (not synthetic overrides) — the strongest available proof the disclosure
@@ -33,7 +34,9 @@ describe("LicensingSection perpres slice-disclosure frame", () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Everything else in this code is open as shown/),
+      screen.getByText(
+        /These narrower annex entries do not verify the current whole-code PMA verdict/,
+      ),
     ).toBeInTheDocument();
   });
 
@@ -79,7 +82,7 @@ describe("LicensingSection perpres slice-disclosure frame", () => {
     ).toBeInTheDocument();
   });
 
-  it("30111 renders the 'everything else is open' closer exactly ONCE, not once per row", () => {
+  it("30111 renders the whole-code verification warning exactly ONCE, not once per row", () => {
     // The Pinisi/Cadik row (0%, no condition) is NOT open — a per-row
     // "the rest is open" sentence repeated after the warship row would be
     // false. One shared closer after every row has had its say.
@@ -89,8 +92,13 @@ describe("LicensingSection perpres slice-disclosure frame", () => {
     render(<LicensingSection kbli={kbli} gold={null} />);
 
     expect(
-      screen.getAllByText(/Everything else in this code is open as shown/),
+      screen.getAllByText(
+        /These narrower annex entries do not verify the current whole-code PMA verdict/,
+      ),
     ).toHaveLength(1);
+    expect(
+      screen.queryByText(/Everything else in this code is open as shown/),
+    ).toBeNull();
   });
 
   it("58130 (press, cap 0 WITH a phased condition) renders the condition, never the absolute closure sentence", () => {

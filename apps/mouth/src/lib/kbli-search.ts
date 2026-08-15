@@ -9,6 +9,7 @@ import type {
   KBLIPmaStatus,
   KBLIRiskCategory,
 } from "./kbli-types";
+import { isPmaVerdictVerified } from "./kbli-provenance";
 
 // -----------------------------------------------------------------------------
 // Types
@@ -98,7 +99,10 @@ function applyFilters(
   if (!filters) return codes;
 
   return codes.filter((code) => {
-    if (filters.pmaStatus && code.pma.status !== filters.pmaStatus) {
+    if (
+      filters.pmaStatus &&
+      (!isPmaVerdictVerified(code) || code.pma.status !== filters.pmaStatus)
+    ) {
       return false;
     }
     if (filters.riskCategory) {
@@ -231,7 +235,7 @@ function scoreCode(code: KBLICode, query: string): number {
 
   if (score > 0) {
     // --- PMA open bonus ---
-    if (code.pma.status === "open") {
+    if (isPmaVerdictVerified(code) && code.pma.status === "open") {
       score += 3;
     }
 

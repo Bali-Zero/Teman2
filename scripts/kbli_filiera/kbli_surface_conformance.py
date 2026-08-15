@@ -19,8 +19,9 @@ the third.
 
 READ-ONLY. This file never writes. The cure is
 `apps/backend-rag/backend/scripts/kbli_documents_cure.py`, whose `--only` path
-already writes canonical `pma_status` wholesale — the tooling was never the
-problem, the selector was.
+already writes canonical `pma_status` wholesale.  That path may only consume
+the verified divergences reported here; an explicit unverified gap remains a
+backlog item and is never an instruction to overwrite the client-facing store.
 
 USAGE
     scripts/kbli_filiera/kbli_surface_conformance.py                # via scripts/pg.sh
@@ -39,7 +40,11 @@ WHAT IS ENFORCED, AND WHAT IS ONLY DECLARED — stated here so a green run is ne
 misread as "the surface is clean":
 
   ENFORCED (exit 1)
-    - `pma_status` disagrees with canonical.
+    - `pma_status` disagrees with a canonical verdict whose per-code official
+      basis and source vintage are both verified (`located`).
+    - `pma_status` disagrees while canonical's verification declaration is
+      absent or malformed.  This fails closed as `pma_invalid_divergent`; it is
+      NOT safe input to a cure.
     - licensing PRESENCE disagrees: canonical detached the rows (declared gap)
       while the table still serves them, or the reverse. This is the exact shape
       of the 50113 disease that reached WhatsApp.
@@ -48,11 +53,17 @@ misread as "the surface is clean":
     - a row is marked `NOT_IN_KBLI_2025` while canonical DOES carry the code —
       a live activity advertised to clients as retired.
     - a code the website cites from a NAMED Perpres annex (locator bucket
-      `named-in-annex`/`priority-lampiran-i`) has no canonical `pma_official_basis`
-      — the DB-backed channels (chat_kbli, WhatsApp, webchat) stay blind to a
-      citation the website already shows on `/kbli/<code>`.
+      `named-in-annex`) has no canonical `pma_official_basis` and canonical has
+      not honestly declared that adjudication gap.
 
   DECLARED ONLY (counted, never fails)
+    - a table PMA value disagrees with a canonical `declared_gap`.  The value is
+      retained for continuity but is explicitly unverified, so it cannot be
+      propagated as truth.
+    - a named-annex locator has not propagated to canonical, but canonical
+      explicitly records `declared_gap`.  Locator presence identifies an
+      adjudication candidate; it does not prove that a KBLI-2020 restriction
+      transfers to its KBLI-2025 descendant.
     - `judul` text differences. 1,423 rows still carry the original UPPERCASE
       seed titles with English glosses; failing on that would drown the signal
       above in cosmetic noise on its first run. The TRUNCATED subset is counted
@@ -74,7 +85,12 @@ _FILIERA_DIR = Path(__file__).resolve().parent
 if str(_FILIERA_DIR) not in sys.path:
     sys.path.insert(0, str(_FILIERA_DIR))
 
-from _coverage_basis import CODE_FIELD  # noqa: E402
+from _coverage_basis import (  # noqa: E402
+    CODE_FIELD,
+    PMA_DECLARED_UNVERIFIED,
+    PMA_LOCATED,
+    classify_pma,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CANONICAL = REPO_ROOT / "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
@@ -169,6 +185,8 @@ def plan_conformance(
     """Pure. No list of codes anywhere: every row of the table is judged, and
     every canonical code is asked for."""
     pma_divergent: list[dict[str, Any]] = []
+    pma_unverified_divergent: list[dict[str, Any]] = []
+    pma_invalid_divergent: list[dict[str, Any]] = []
     licensing_divergent: list[dict[str, Any]] = []
     unneutralised_phantoms: list[str] = []
     live_marked_retired: list[str] = []
@@ -194,18 +212,24 @@ def plan_conformance(
         canonical_pma = record.get("pma_status")
         table_pma = row.get("pma_status")
         if canonical_pma != table_pma:
-            pma_divergent.append(
-                {
-                    "code": code,
-                    "canonical": canonical_pma,
-                    "table": table_pma,
-                    # Named so the report can say WHICH divergences sync to an
-                    # adjudicated basis and which merely sync to the SSOT's own
-                    # unverified value — a distinction the cure must not blur.
-                    "canonical_basis": bool(record.get("pma_official_basis")),
-                    "canonical_cap_verified": record.get("pma_cap_verified"),
-                }
-            )
+            verification_state = classify_pma(record)
+            detail = {
+                "code": code,
+                "canonical": canonical_pma,
+                "table": table_pma,
+                "canonical_basis": bool(record.get("pma_official_basis")),
+                "canonical_vintage": bool(record.get("pma_source_vintage")),
+                "canonical_cap_verified": record.get("pma_cap_verified"),
+                "verification_state": verification_state,
+            }
+            if verification_state == PMA_LOCATED:
+                pma_divergent.append(detail)
+            elif verification_state == PMA_DECLARED_UNVERIFIED:
+                pma_unverified_divergent.append(detail)
+            else:
+                # Fail closed, but keep this distinct from a verified truth
+                # mismatch: a writer must repair/adjudicate canonical first.
+                pma_invalid_divergent.append(detail)
 
         canonical_rows = len(record.get("per_skala") or [])
         table_rows = int(row.get("rows") or 0)
@@ -225,6 +249,7 @@ def plan_conformance(
 
     enforced = (
         len(pma_divergent)
+        + len(pma_invalid_divergent)
         + len(licensing_divergent)
         + len(unneutralised_phantoms)
         + len(live_marked_retired)
@@ -235,6 +260,12 @@ def plan_conformance(
         "table_rows": len(table),
         "enforced_divergences": enforced,
         "pma_divergent": sorted(pma_divergent, key=lambda d: d["code"]),
+        "pma_unverified_divergent": sorted(
+            pma_unverified_divergent, key=lambda d: d["code"]
+        ),
+        "pma_invalid_divergent": sorted(
+            pma_invalid_divergent, key=lambda d: d["code"]
+        ),
         "licensing_divergent": sorted(licensing_divergent, key=lambda d: d["code"]),
         "unneutralised_phantoms": sorted(unneutralised_phantoms),
         "live_marked_retired": sorted(live_marked_retired),
@@ -251,7 +282,7 @@ def plan_citation_propagation(
     (`apps/mouth/data/perpres-locators.json`) propagate to canonical's
     adjudicated `pma_official_basis` field?
 
-    Only the two SPECIFIC buckets carry code-named regulatory information
+    Only the SPECIFIC buckets carry code-named regulatory information
     (`SPECIFIC_CITATION_BUCKETS`); every other bucket is a generic
     default-provision fallback and is never flagged — see that constant's
     docstring.
@@ -261,6 +292,7 @@ def plan_citation_propagation(
     """
     specific_citation_codes = 0
     citation_not_propagated: list[dict[str, Any]] = []
+    citation_pending_adjudication: list[dict[str, Any]] = []
 
     for code, locator in locators.items():
         bucket = locator.get("bucket")
@@ -276,18 +308,24 @@ def plan_citation_propagation(
             continue
 
         if not record.get("pma_official_basis"):
-            citation_not_propagated.append(
-                {
-                    "code": code,
-                    "bucket": bucket,
-                    "cite": locator.get("cite"),
-                    "canonical_pma_status": record.get("pma_status"),
-                }
-            )
+            detail = {
+                "code": code,
+                "bucket": bucket,
+                "cite": locator.get("cite"),
+                "canonical_pma_status": record.get("pma_status"),
+                "verification_state": classify_pma(record),
+            }
+            if detail["verification_state"] == PMA_DECLARED_UNVERIFIED:
+                citation_pending_adjudication.append(detail)
+            else:
+                citation_not_propagated.append(detail)
 
     return {
         "specific_citation_codes": specific_citation_codes,
         "citation_not_propagated": sorted(citation_not_propagated, key=lambda d: d["code"]),
+        "citation_pending_adjudication": sorted(
+            citation_pending_adjudication, key=lambda d: d["code"]
+        ),
     }
 
 
@@ -299,7 +337,8 @@ def render(report: dict[str, Any]) -> str:
         "",
     ]
     for key, label in (
-        ("pma_divergent", "pma_status disagrees"),
+        ("pma_divergent", "pma_status disagrees with VERIFIED canonical"),
+        ("pma_invalid_divergent", "pma_status disagrees; canonical state INVALID"),
         ("licensing_divergent", "licensing presence disagrees"),
         ("unneutralised_phantoms", "in table, absent from canonical, NOT neutralised"),
         ("live_marked_retired", "marked NOT_IN_KBLI_2025 while canonical has the code"),
@@ -308,7 +347,7 @@ def render(report: dict[str, Any]) -> str:
         items = report[key]
         lines.append(f"  {label}: {len(items)}")
         for item in items[:PRINT_SAMPLE]:
-            if isinstance(item, dict) and key == "pma_divergent":
+            if isinstance(item, dict) and key.startswith("pma_"):
                 basis = "adjudicated basis" if item["canonical_basis"] else "NO basis on canonical"
                 lines.append(
                     f"      {item['code']}  canonical={item['canonical']} "
@@ -324,6 +363,16 @@ def render(report: dict[str, Any]) -> str:
         if len(items) > PRINT_SAMPLE:
             lines.append(f"      ... showing {PRINT_SAMPLE} of {len(items)}")
 
+    pud = report.get("pma_unverified_divergent", [])
+    lines.append(f"  pma_unverified_divergent: {len(pud)} (declared only; never sync)")
+    for item in pud[:PRINT_SAMPLE]:
+        lines.append(
+            f"      {item['code']}  canonical={item['canonical']} "
+            f"table={item['table']}  [declared_gap]"
+        )
+    if len(pud) > PRINT_SAMPLE:
+        lines.append(f"      ... showing {PRINT_SAMPLE} of {len(pud)}")
+
     citation = report.get("citation_propagation", {})
     cnp = citation.get("citation_not_propagated", [])
     lines.append(
@@ -337,6 +386,19 @@ def render(report: dict[str, Any]) -> str:
         )
     if len(cnp) > PRINT_SAMPLE:
         lines.append(f"      ... showing {PRINT_SAMPLE} of {len(cnp)}")
+
+    cpa = citation.get("citation_pending_adjudication", [])
+    lines.append(
+        f"  citation_pending_adjudication: {len(cpa)} "
+        "(declared only; named locator is not an inherited PMA ruling)"
+    )
+    for item in cpa[:PRINT_SAMPLE]:
+        lines.append(
+            f"      {item['code']}  bucket={item['bucket']} "
+            f"canonical_pma_status={item['canonical_pma_status']}"
+        )
+    if len(cpa) > PRINT_SAMPLE:
+        lines.append(f"      ... showing {PRINT_SAMPLE} of {len(cpa)}")
 
     declared = report["declared_only"]
     lines += [

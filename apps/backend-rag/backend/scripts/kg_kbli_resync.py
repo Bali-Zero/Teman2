@@ -13,12 +13,14 @@ WHAT IT SYNCS (1:1 canonical fields only — no derivations):
   - name / name_id / name_en  ← judul + English title maps (curated wins over
     generated, mirroring apps/mouth/src/lib/kbli-data.ts precedence)
   - description               ← uraian
-  - properties.pma_status     ← pma_status
+  - properties.pma_*          ← fail-closed public PMA disclosure
+  - properties.bali_*         ← fail-closed public Bali disclosure
   - properties.pp28_sources   ← pp28_sources (the OTHER codes a record's PP
     28/2025 licensing rows were carried from; `inspect_kbli` reads it to
     disclose inherited licences — see backend/services/kbli_pp28_provenance.py)
   - properties.{whatItMeans, whatYouNeed, baliContext, whatChanged,
-    zantaraOpener}            ← intel_2026.* (only keys present; never nulled)
+    zantaraOpener}            ← intel_2026.* only for an exact certification
+                                 registry match; otherwise removed atomically
 Fields with unknown original derivation (kategori_risiko, skala_usaha,
 licensing_status, sektor_id) are left untouched.
 
@@ -44,6 +46,14 @@ import sys
 import asyncpg
 import httpx
 
+from backend.services.kbli_editorial_certification import (
+    assert_certified_source_dataset,
+    matches_editorial_certification,
+    validate_editorial_registry,
+    with_neutral_kbli_chat_opener,
+)
+from backend.services.kbli_pma_disclosure import disclose_bali, disclose_pma
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("kg_kbli_resync")
 
@@ -51,8 +61,40 @@ RAW_BASE = "https://raw.githubusercontent.com/Balizero1987/Teman2/main"
 DATASET_URL = f"{RAW_BASE}/data/source_documents/KBLI_2025_FINAL_CLEAN.json"
 EN_GENERATED_URL = f"{RAW_BASE}/apps/mouth/src/lib/kbli-english-generated.ts"
 EN_CURATED_URL = f"{RAW_BASE}/apps/mouth/src/lib/kbli-english.ts"
+EDITORIAL_REGISTRY_URL = f"{RAW_BASE}/data/kbli-filiera/pma-editorial-certifications.json"
 
 INTEL_KEYS = ("whatItMeans", "whatYouNeed", "baliContext", "whatChanged", "zantaraOpener")
+EDITORIAL_KEYS = (
+    *INTEL_KEYS,
+    "youllAlsoNeed",
+    "tkaInfo",
+    "editorial",
+    "intel_2026",
+    "gold_content",
+    "expert_legal",
+    "has_intel_2026",
+    "has_gold_content",
+    "editorial_disclosed",
+)
+PMA_KEYS = (
+    "pma_status",
+    "pma_max_asing",
+    "pma_verification_status",
+    "pma_official_basis",
+    "pma_source_vintage",
+    "pma_kondisi",
+    "pma_prioritas",
+    "pma_nota",
+    "pma_cap_special",
+    "pma_cap_verified",
+)
+BALI_KEYS = (
+    "bali_status",
+    "bali_blocked",
+    "bali_needs_review",
+    "bali_reason",
+    "has_bali_l4",
+)
 TS_ENTRY_RE = re.compile(r'"(\d{5})":\s*"((?:[^"\\]|\\.)*)"')
 
 
@@ -61,15 +103,23 @@ def parse_ts_title_map(source: str) -> dict[str, str]:
     return {code: title.replace('\\"', '"') for code, title in TS_ENTRY_RE.findall(source)}
 
 
-def merge_node_props(props: dict, rec: dict) -> dict:
+def _disclose_pma(rec: dict) -> dict:
+    """Compatibility wrapper around the single shared disclosure gate."""
+    return disclose_pma(rec)
+
+
+def _disclose_bali(rec: dict) -> dict:
+    """Compatibility wrapper around the single shared disclosure gate."""
+    return disclose_bali(rec)
+
+
+def merge_node_props(props: dict, rec: dict, registry: dict | None = None) -> dict:
     """The canonical fields folded onto a kg_node's existing `properties`.
 
-    Two DELIBERATELY different merge rules live here, and the asymmetry is the
-    whole point:
-
-    - `pma_status` and the intel keys are **only ever added**. Canonical not
-      carrying a value means "nothing to say", not "delete what the graph has"
-      — those fields have other writers and other derivations.
+    The PMA/Bali/editorial disclosure atom and ``pp28_sources`` are
+    authoritative.  A partial PMA tuple clears raw ownership, Bali and
+    generated editorial claims instead of preserving stale values from an old
+    graph load.
     - `pp28_sources` is **authoritative**: written when canonical has it,
       REMOVED when canonical does not. `inspect_kbli` turns this field into a
       client-facing sentence naming other KBLI codes; a stale list left behind
@@ -81,15 +131,32 @@ def merge_node_props(props: dict, rec: dict) -> dict:
     """
     new_props = dict(props)
 
-    pma = rec.get("pma_status")
-    if pma:
-        new_props["pma_status"] = pma
+    for key in tuple(new_props):
+        if key.startswith("pma_") or key.startswith("bali_") or key == "l4_bali":
+            new_props.pop(key, None)
+    new_props.update({key: value for key, value in _disclose_pma(rec).items() if value is not None})
+    new_props.update(
+        {key: value for key, value in _disclose_bali(rec).items() if value is not None}
+    )
 
-    intel = rec.get("intel_2026") or {}
-    for key in INTEL_KEYS:
-        value = intel.get(key)
-        if value:
-            new_props[key] = value
+    # The editorial layer is authoritative and atomic. Clear every legacy
+    # editorial alias first, even for a located tuple, then re-add only an
+    # exact block whose content and PMA fingerprint are in the review registry.
+    for key in EDITORIAL_KEYS:
+        new_props.pop(key, None)
+    intel = rec.get("intel_2026")
+    if isinstance(intel, dict) and matches_editorial_certification(
+        "canonicalIntel",
+        str(rec.get("kode_kbli_2025") or ""),
+        rec,
+        intel,
+        registry,
+    ):
+        intel = with_neutral_kbli_chat_opener(str(rec["kode_kbli_2025"]), intel)
+        for key in INTEL_KEYS:
+            value = intel.get(key)
+            if isinstance(value, str) and value.strip():
+                new_props[key] = value
 
     raw_sources = rec.get("pp28_sources")
     sources: list[str] = []
@@ -111,19 +178,28 @@ def merge_node_props(props: dict, rec: dict) -> dict:
     return new_props
 
 
-async def fetch_inputs() -> tuple[list[dict], dict[str, str]]:
+async def fetch_inputs() -> tuple[list[dict], dict[str, str], dict]:
     async with httpx.AsyncClient(timeout=60) as http:
         responses = {}
-        for key, url in (("dataset", DATASET_URL), ("generated", EN_GENERATED_URL), ("curated", EN_CURATED_URL)):
+        for key, url in (
+            ("dataset", DATASET_URL),
+            ("generated", EN_GENERATED_URL),
+            ("curated", EN_CURATED_URL),
+            ("registry", EDITORIAL_REGISTRY_URL),
+        ):
             r = await http.get(url)
             r.raise_for_status()
             responses[key] = r
+        registry = validate_editorial_registry(responses["registry"].json())
+        assert_certified_source_dataset(responses["dataset"].content, registry)
         dataset = responses["dataset"].json()["data"]
         generated = parse_ts_title_map(responses["generated"].text)
         curated = parse_ts_title_map(responses["curated"].text)
     titles = {**generated, **curated}  # curated wins (kbli-data.ts precedence)
-    logger.info("canonical: %d codes | EN titles: %d (%d curated)", len(dataset), len(titles), len(curated))
-    return dataset, titles
+    logger.info(
+        "canonical: %d codes | EN titles: %d (%d curated)", len(dataset), len(titles), len(curated)
+    )
+    return dataset, titles, registry
 
 
 async def main() -> None:
@@ -133,7 +209,7 @@ async def main() -> None:
     args = ap.parse_args()
 
     dsn = os.environ["DATABASE_URL"].replace("postgresql+asyncpg://", "postgresql://")
-    dataset, titles = await fetch_inputs()
+    dataset, titles, registry = await fetch_inputs()
     if args.only:
         dataset = [r for r in dataset if str(r.get("kode_kbli_2025")) == args.only]
 
@@ -164,14 +240,16 @@ async def main() -> None:
             props = json.loads(row["properties"]) if row["properties"] else {}
             name = f"{en.upper()} ({judul.upper()})" if en else judul.upper()
 
-            new_props = merge_node_props(props, rec)
+            new_props = merge_node_props(props, rec, registry)
 
             if row["name"] == name and row["description"] == uraian and new_props == props:
                 unchanged += 1
                 continue
 
             if props.get("pma_status") != new_props.get("pma_status"):
-                pma_flips.append(f"{code}: {props.get('pma_status')} -> {new_props.get('pma_status')}")
+                pma_flips.append(
+                    f"{code}: {props.get('pma_status')} -> {new_props.get('pma_status')}"
+                )
             if props.get("pp28_sources") != new_props.get("pp28_sources"):
                 pp28_changes.append(code)
             updated.append(code)
@@ -193,7 +271,13 @@ async def main() -> None:
         await conn.close()
 
     mode = "APPLIED" if args.apply else "DRY-RUN"
-    logger.info("%s: %d to update | %d unchanged | %d missing in KG", mode, len(updated), unchanged, len(missing))
+    logger.info(
+        "%s: %d to update | %d unchanged | %d missing in KG",
+        mode,
+        len(updated),
+        unchanged,
+        len(missing),
+    )
     # No display caps: a truncated list reads as the whole list downstream (W97).
     for line in pma_flips:
         logger.info("  pma flip %s", line)

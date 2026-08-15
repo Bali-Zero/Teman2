@@ -209,6 +209,25 @@ def test_c_does_not_fire_on_a_text_that_names_no_predecessor():
     assert PASS_CONTRADICTED_PREDECESSOR not in _passes(rec)
 
 
+def test_c_also_enforces_the_previous_codes_wording_used_by_gold():
+    text = "Renumbered from KBLI 2020. Previous code(s): 33333."
+    rec = _record(what_changed=text, kbli_2020_source="44444")
+    out, passes = plan_text(text, rec)
+
+    assert PASS_CONTRADICTED_PREDECESSOR in passes
+    assert "Previous code(s): 33333" not in out
+    assert "33333" in out and "44444" in out
+    assert "unconfirmed" in out
+
+
+def test_c_keeps_supported_previous_codes_wording():
+    text = "Renumbered from KBLI 2020. Previous code(s): 33333."
+    rec = _record(what_changed=text, kbli_2020_source="33333")
+
+    assert contradicted_predecessors(text, rec) == set()
+    assert PASS_CONTRADICTED_PREDECESSOR not in _passes(rec)
+
+
 def test_c_never_substitutes_the_recorded_number_for_the_published_one():
     # The layers can disagree with each other (46415: pp28 says 46694, BPS says
     # 46419). Publishing either as THE answer would be us picking a winner —

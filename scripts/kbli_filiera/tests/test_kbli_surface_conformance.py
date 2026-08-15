@@ -29,6 +29,16 @@ def canon(code: str, **kwargs) -> dict:
     return base
 
 
+def located(code: str, **kwargs) -> dict:
+    return canon(
+        code,
+        pma_official_basis="Perpres 10/2021 Lampiran III",
+        pma_source_vintage="2021-05-25",
+        pma_verification_status="located",
+        **kwargs,
+    )
+
+
 def row(code: str, **kwargs) -> dict:
     base = {
         "code": code,
@@ -69,7 +79,7 @@ def neutral_locators_file(tmp_path: Path) -> Path:
 def test_it_judges_codes_no_cure_spec_has_ever_named():
     """A code invented for this test, in neither store's cure history, still
     gets caught. This is the whole thesis: state, not list."""
-    report = C.plan_conformance(store(canon("77777")), [row("77777", pma_status="TERTUTUP")])
+    report = C.plan_conformance(store(located("77777")), [row("77777", pma_status="TERTUTUP")])
     assert [d["code"] for d in report["pma_divergent"]] == ["77777"]
 
 
@@ -86,7 +96,7 @@ def test_it_asks_for_every_canonical_code():
 
 def test_guilt_pma_status_disagreement():
     report = C.plan_conformance(
-        store(canon("50122", pma_status="TERBATAS")), [row("50122", pma_status="TERBUKA")]
+        store(located("50122", pma_status="TERBATAS")), [row("50122", pma_status="TERBUKA")]
     )
     assert report["pma_divergent"][0]["canonical"] == "TERBATAS"
     assert report["pma_divergent"][0]["table"] == "TERBUKA"
@@ -177,21 +187,35 @@ def test_innocence_matching_licensing_presence_is_clean_at_both_ends():
 # --------------------------------------------------------------------------
 
 
-def test_divergence_records_whether_canonical_has_an_adjudicated_basis():
-    """Six of the eight live divergences sync the table to an adjudicated
-    Perpres basis; two only sync it to canonical's own unverified value. A cure
-    that blurs the two would claim a truth fix it did not make."""
+def test_divergence_separates_verified_truth_from_declared_gap():
+    """A declared gap is visible, but it is never safe input to a cure."""
     report = C.plan_conformance(
         store(
-            canon("50122", pma_status="TERBATAS", pma_official_basis="Perpres 10/2021 Lampiran III"),
-            canon("02101", pma_status="TERBUKA", pma_cap_verified=False),
+            located("50122", pma_status="TERBATAS"),
+            canon(
+                "02101",
+                pma_status="TERBUKA",
+                pma_cap_verified=False,
+                pma_verification_status="declared_gap",
+            ),
         ),
         [row("50122", pma_status="TERBUKA"), row("02101", pma_status="TERBATAS")],
     )
-    by_code = {d["code"]: d for d in report["pma_divergent"]}
-    assert by_code["50122"]["canonical_basis"] is True
-    assert by_code["02101"]["canonical_basis"] is False
-    assert by_code["02101"]["canonical_cap_verified"] is False
+    assert [d["code"] for d in report["pma_divergent"]] == ["50122"]
+    assert [d["code"] for d in report["pma_unverified_divergent"]] == ["02101"]
+    assert report["pma_divergent"][0]["canonical_basis"] is True
+    assert report["pma_unverified_divergent"][0]["canonical_cap_verified"] is False
+    assert report["enforced_divergences"] == 1
+
+
+def test_guilt_malformed_canonical_pma_state_fails_closed_without_claiming_truth():
+    report = C.plan_conformance(
+        store(canon("02101", pma_status="TERBUKA")),
+        [row("02101", pma_status="TERBATAS")],
+    )
+    assert report["pma_divergent"] == []
+    assert [d["code"] for d in report["pma_invalid_divergent"]] == ["02101"]
+    assert report["enforced_divergences"] == 1
 
 
 # --------------------------------------------------------------------------
@@ -258,7 +282,7 @@ def test_conformant_stores_exit_zero(tmp_path):
 
 def test_divergent_stores_exit_one(tmp_path):
     canonical = tmp_path / "c.json"
-    canonical.write_text(json.dumps({"data": [canon("01111", pma_status="TERTUTUP")]}), encoding="utf-8")
+    canonical.write_text(json.dumps({"data": [located("01111", pma_status="TERTUTUP")]}), encoding="utf-8")
     snap = tmp_path / "s.json"
     snap.write_text(json.dumps([row("01111", pma_status="TERBUKA")]), encoding="utf-8")
     assert (
@@ -289,6 +313,30 @@ def test_guilt_named_in_annex_with_no_canonical_basis():
     )
     assert [d["code"] for d in report["citation_not_propagated"]] == ["01111"]
     assert report["specific_citation_codes"] == 1
+
+
+def test_declared_gap_named_citation_is_pending_not_enforced():
+    report = C.plan_citation_propagation(
+        store(canon("01111", pma_verification_status="declared_gap")),
+        {"01111": loc("named-in-annex")},
+    )
+    assert report["citation_not_propagated"] == []
+    assert [d["code"] for d in report["citation_pending_adjudication"]] == ["01111"]
+
+
+def test_stale_declared_gap_with_vintage_does_not_escape_citation_gate():
+    report = C.plan_citation_propagation(
+        store(
+            canon(
+                "01111",
+                pma_verification_status="declared_gap",
+                pma_source_vintage="2021-05-25",
+            )
+        ),
+        {"01111": loc("named-in-annex")},
+    )
+    assert [d["code"] for d in report["citation_not_propagated"]] == ["01111"]
+    assert report["citation_pending_adjudication"] == []
 
 
 def test_innocence_priority_lampiran_i_is_not_an_ownership_citation():
@@ -384,6 +432,31 @@ def test_citation_not_propagated_folds_into_the_cli_exit_code(tmp_path):
         ]
     )
     assert rc == C.EXIT_DIVERGENCE
+
+
+def test_declared_gap_citation_backlog_does_not_fail_cli(tmp_path):
+    canonical = tmp_path / "c.json"
+    canonical.write_text(
+        json.dumps({"data": [canon("01111", pma_verification_status="declared_gap")]}),
+        encoding="utf-8",
+    )
+    snap = tmp_path / "s.json"
+    snap.write_text(json.dumps([row("01111")]), encoding="utf-8")
+    locators = tmp_path / "locators.json"
+    locators.write_text(
+        json.dumps({"locators": {"01111": loc("named-in-annex")}}),
+        encoding="utf-8",
+    )
+    assert C.main(
+        [
+            "--canonical",
+            str(canonical),
+            "--locators",
+            str(locators),
+            "--table-json",
+            str(snap),
+        ]
+    ) == C.EXIT_OK
 
 
 # ---------------------------------------------------------------------------

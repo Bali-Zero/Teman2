@@ -15,6 +15,7 @@ import type {
   KBLICode,
   KBLIDisputedLicensing,
   KBLIDisputedScaleRow,
+  KBLIPmaRawStatus,
   KBLIProvenance,
   KBLIRawCode,
 } from "./kbli-types";
@@ -26,6 +27,20 @@ const OSS_NATIVE_L2 = "OSS_RBA_resiko_2025";
 
 /** `_l2_status` marker for the no-scope set (OSS ruang-lingkup 404). */
 const NO_OSS_RISK = "no_oss_risk";
+
+const KNOWN_PMA_RAW_STATUSES = new Set<KBLIPmaRawStatus>([
+  "TERBUKA",
+  "TERBATAS",
+  "TERTUTUP",
+]);
+
+/** Exact canonical PMA token, or null for missing/future/malformed values. */
+export function knownPmaRawStatus(value: unknown): KBLIPmaRawStatus | null {
+  return typeof value === "string" &&
+    KNOWN_PMA_RAW_STATUSES.has(value as KBLIPmaRawStatus)
+    ? (value as KBLIPmaRawStatus)
+    : null;
+}
 
 /**
  * Normalize a `per_skala_disputed_*` value to a row array. Two live shapes:
@@ -103,19 +118,6 @@ export function licensingContentInheritedFrom(code: KBLICode): string[] | null {
  *   `_l2_source` value, is treated as unaudited, never silently promoted to
  *   verified.
  */
-/** Does the official BPS crosswalk record KBLI-2020 ancestry?
- *
- * Structured markers only (cicatrix #3 — never prose), and by ENTITY rather than
- * truthiness: `bps_2020_ancestors` is an object, so a bare `if (raw.bps_2020_ancestors)`
- * would read an empty `{}` as "has ancestry". `pp28_sources` deliberately does
- * not count: it records which KBLI-2020-numbered PP 28 rows supplied licensing
- * content, not official predecessor identity.
- */
-function hasAuthoritativeBps2020Ancestry(raw: KBLIRawCode): boolean {
-  const bps = raw.bps_2020_ancestors?.codes;
-  return Array.isArray(bps) && bps.length > 0;
-}
-
 /**
  * The OTHER codes this record's PP 28 licensing content was carried from, or
  * null when it is self-sourced or records no PP 28 source at all.
@@ -140,23 +142,33 @@ export function pp28ContentInheritedFrom(raw: KBLIRawCode): string[] | null {
   return sources;
 }
 
-/** Provenance of the foreign-ownership verdict — DERIVED, not a constant.
+/** Provenance of the whole-code foreign-ownership verdict.
  *
- * The Perpres 10/2021 + 49/2021 annexes are KBLI-2020-vintage across the catalog
- * (FATAL-2), so a code with an authoritative BPS-recorded 2020 origin is
- * honestly described as
- * "vintage 2020, per-code crosswalk audit pending". A code with NO recorded 2020
- * BPS origin cannot be: there is nothing authoritative to crosswalk FROM, and
- * saying the crosswalk is
- * pending would imply a basis we cannot show. Neither branch claims the verdict is
- * wrong — both describe what our sources can and cannot trace.
+ * This is an affirmative gate. The legacy PMA value, a mechanical KBLI
+ * crosswalk, or a blanket instrument name can never promote a verdict. Only
+ * the compiler-owned `located` marker plus a non-empty official locator and
+ * source vintage may do so; malformed combinations degrade to a declared gap.
  */
 function pmaProvenance(raw: KBLIRawCode): KBLIProvenance["pma"] {
-  const traceable = hasAuthoritativeBps2020Ancestry(raw);
+  const locator =
+    typeof raw.pma_official_basis === "string" && raw.pma_official_basis.trim()
+      ? raw.pma_official_basis.trim()
+      : null;
+  const vintage =
+    typeof raw.pma_source_vintage === "string" && raw.pma_source_vintage.trim()
+      ? raw.pma_source_vintage.trim()
+      : null;
+  const located =
+    raw.pma_verification_status === "located" &&
+    !!knownPmaRawStatus(raw.pma_status) &&
+    !!locator &&
+    !!vintage;
   return {
-    source: raw.pma_source ?? null,
-    vintage: traceable ? "2020" : null,
-    status: traceable ? "pending_crosswalk" : "untraceable_basis",
+    source:
+      located && typeof raw.pma_source === "string" ? raw.pma_source : null,
+    vintage: located ? vintage : null,
+    status: located ? "located" : "declared_gap",
+    locator: located ? locator : null,
   };
 }
 
@@ -272,6 +284,26 @@ export function isLicensingVerifiedForBareClaim(code: KBLICode): boolean {
   );
 }
 
+/** True only when the whole-code PMA verdict has a canonical locator + vintage. */
+export function isPmaVerdictVerified(code: KBLICode): boolean {
+  const provenance = code.provenance?.pma;
+  const officialBasis = code.pma.officialBasis?.trim();
+  const sourceVintage = code.pma.sourceVintage?.trim();
+  const locator = provenance?.locator?.trim();
+  const vintage = provenance?.vintage?.trim();
+  return (
+    ["open", "restricted", "closed"].includes(code.pma.status) &&
+    code.pma.verificationStatus === "located" &&
+    !!officialBasis &&
+    !!sourceVintage &&
+    provenance?.status === "located" &&
+    !!locator &&
+    !!vintage &&
+    officialBasis === locator &&
+    sourceVintage === vintage
+  );
+}
+
 /**
  * True when the L4 Bali "blocked" verdict is strong enough to state without a
  * qualifier: blocked, HIGH confidence, and not flagged for review. The page
@@ -280,5 +312,7 @@ export function isLicensingVerifiedForBareClaim(code: KBLICode): boolean {
  */
 export function isBaliL4BlockVerifiedForBareClaim(code: KBLICode): boolean {
   const l4 = code.baliL4;
-  return !!l4?.blocked && l4.confidence === "HIGH" && l4.needsReview !== true;
+  return (
+    l4?.blocked === true && l4.confidence === "HIGH" && l4.needsReview !== true
+  );
 }

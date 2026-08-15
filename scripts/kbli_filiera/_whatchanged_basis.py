@@ -34,7 +34,8 @@ migrazione da KBLI 2020 necessaria"_.
 cut mid-word — "…the modern evolution of a press th". A client reads that.
 
 **C · contradicted predecessor.** The text names an explicit "KBLI 2020: <code>"
-that appears in **none** of the record's three crosswalk layers. Four cases, and
+or "Previous code(s): <code>" that appears in **none** of the record's three
+crosswalk layers. Four original cases, and
 two of them invert the advice a client would act on: `46415` and `46496` say
 "→ KBLI 2025: 46415 (confermato)" — *your code is unchanged, just refresh the
 NIB* — while `status_mapping` is `CODICE_RINUMERATO` and the layers record a
@@ -84,7 +85,9 @@ HONEST_CLAIM = "No KBLI-2020 predecessor is recorded for this code."
 TRUNCATION_LENGTH = 216
 
 _SENTENCE_END = re.compile(r"[.!?](?=\s|$)")
-_NAMED_PREDECESSOR = re.compile(r"KBLI 2020:\s*(\d{5})")
+_NAMED_PREDECESSOR = re.compile(
+    r"(?:KBLI 2020:|Previous code\(s\):)\s*(\d{5})", re.IGNORECASE
+)
 _ENDS_COMPLETE = re.compile(r"[.!?]\s*$")
 
 # Pass D fires only on wordings that assert the NUMBER carried over. "Direct
@@ -327,7 +330,7 @@ def has_unreadable_layer_rows(record: dict[str, Any]) -> bool:
 
 
 def named_predecessors(text: str) -> set[str]:
-    """The 2020 codes the PROSE names explicitly ("KBLI 2020: 46415")."""
+    """The 2020 codes the prose names with either supported label."""
     return set(_NAMED_PREDECESSOR.findall(text))
 
 

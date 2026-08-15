@@ -146,6 +146,7 @@ def patch_for(item: dict[str, Any]) -> dict[str, Any]:
         "pma_max_asing": 0,
         "pma_status": "TERBATAS",
         "pma_official_basis": item["locator"],
+        "pma_verification_status": "located",
         "pma_cap_verified": True,
         "pma_source_vintage": VINTAGE,
         "pma_kondisi": KONDISI,
@@ -257,7 +258,8 @@ def check(
             # The mechanics here only guarantee that a wrong identity call
             # cannot ALSO over-reach into activities the annex never named.
             ancestors = [
-                str(a) for a in (record.get("bps_2020_ancestors") or {}).get("codes") or []
+                str(a)
+                for a in (record.get("bps_2020_ancestors") or {}).get("codes") or []
             ]
             if split not in ancestors:
                 refusals.append(
@@ -309,7 +311,9 @@ def check(
             #    have survived: nothing exercises the branch that lies. A guard
             #    that cannot observe the fact must refuse, not assume it.
             not_open = [
-                s for s in siblings if (by_code.get(s) or {}).get("pma_status") != "TERBUKA"
+                s
+                for s in siblings
+                if (by_code.get(s) or {}).get("pma_status") != "TERBUKA"
             ]
             if not_open:
                 refusals.append(
@@ -346,6 +350,15 @@ def check(
             refusals.append(f"{code}: already carries a different pma_official_basis")
             continue
 
+        # Idempotent success is stricter than "the locator is already there":
+        # every field owned by this compiler must match its intended patch.
+        # Run this only AFTER the ancestry/split-heir guards above, so a later
+        # structural drift is still a refusal even when the visible PMA fields
+        # happen to look cured.
+        target = patch_for(item)
+        if all(record.get(key) == value for key, value in target.items()):
+            continue
+
         was = item.get("was") or {}
         now = {
             "pma_status": record.get("pma_status"),
@@ -371,7 +384,9 @@ def propagate(dry: bool = False) -> list[str]:
         ["bash", str(SYNC_SCRIPT), "sync"], capture_output=True, text=True
     )
     if result.returncode != 0:
-        problems.append(f"sync_kbli_dataset.sh exited {result.returncode}: {result.stderr[-400:]}")
+        problems.append(
+            f"sync_kbli_dataset.sh exited {result.returncode}: {result.stderr[-400:]}"
+        )
         return problems
 
     # Prove the propagation instead of trusting the exit code (superscar #2).
@@ -379,7 +394,9 @@ def propagate(dry: bool = False) -> list[str]:
         ["bash", str(SYNC_SCRIPT), "--check"], capture_output=True, text=True
     )
     if check.returncode != 0:
-        problems.append(f"consumer copies still differ after sync: {check.stdout[-400:]}")
+        problems.append(
+            f"consumer copies still differ after sync: {check.stdout[-400:]}"
+        )
         return problems
 
     if not SIDECAR_DATASET.exists():
@@ -428,12 +445,18 @@ def main(argv: list[str] | None = None) -> int:
 
     todo, refusals = check(spec, records)
 
-    print(f"spec items {len(spec['items'])} · applicable {len(todo)} · refused {len(refusals)}")
+    already_applied = len(spec["items"]) - len(todo) - len(refusals)
+    print(
+        f"spec items {len(spec['items'])} · applicable {len(todo)} · "
+        f"already applied {already_applied} · refused {len(refusals)}"
+    )
     print(f"excluded by the adjudication itself: {spec['excluded']}")
     for r in refusals:
         print(f"  REFUSE {r}")
     if refusals:
-        print("\nrefusing to write: a spec wrong about one code is not trusted for the rest")
+        print(
+            "\nrefusing to write: a spec wrong about one code is not trusted for the rest"
+        )
         return EXIT_REFUSED
 
     for item in todo:
@@ -442,6 +465,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if not args.apply:
         print("\ndry-run — rerun with --apply to write")
+        return EXIT_OK
+
+    if not todo:
+        print("\nalready applied — clean no-op; nothing written or propagated")
         return EXIT_OK
 
     by_code = {str(r["kode_kbli_2025"]): r for r in records}

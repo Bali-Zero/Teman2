@@ -1,11 +1,15 @@
 import type { KBLICode } from "@/lib/kbli-types";
-import { isLicensingVerificationPending } from "@/lib/kbli-provenance";
+import {
+  isLicensingVerificationPending,
+  isPmaVerdictVerified,
+} from "@/lib/kbli-provenance";
 import {
   baliBlockClause,
   isNationalClosure,
   shouldShowReason,
 } from "@/lib/kbli-bali-block";
 import { pmaCapShape } from "@/lib/kbli-pma-shape";
+import { formatPmaOwnership } from "@/lib/kbli-pma-disclosure";
 import { pmaSourceNoteFaq } from "@/lib/kbli-pma-source";
 
 export interface KbliFaqEntry {
@@ -44,8 +48,23 @@ function restrictedPmaAnswer(code: KBLICode): string {
   const head = `KBLI ${code.code} (${code.titleId})`;
   const cond = conditionClause(code);
 
-  if (code.pma.capSpecial) {
+  if (code.pma.capVerified !== true) {
+    return `Restricted, with the ownership cap not yet verified. ${head} is TERBATAS; do not rely on any percentage or special-cap claim until it is confirmed in OSS.${cond}`;
+  }
+
+  if (
+    code.pma.capVerified === true &&
+    code.pma.capSpecial === true &&
+    code.pma.maxForeign === "special"
+  ) {
     return `Conditionally. ${head} is TERBATAS with special distribution conditions (open to foreign ownership but subject to a special distribution-network/location requirement — verify the exact terms in OSS).${cond}`;
+  }
+
+  if (
+    typeof code.pma.maxForeign !== "number" ||
+    !Number.isFinite(code.pma.maxForeign)
+  ) {
+    return `Restricted. ${head} is TERBATAS, but the public record does not carry a publishable ownership cap. Verify the exact ceiling and conditions in OSS.${cond}`;
   }
 
   switch (pmaCapShape(code.pma)) {
@@ -66,13 +85,72 @@ function restrictedPmaAnswer(code: KBLICode): string {
       const remainderClause = cond
         ? ""
         : " An Indonesian partner holds the remaining shares.";
-      return `Partially. ${head} is TERBATAS — foreign ownership is ${code.pma.capVerified ? "capped" : "indicatively capped (unverified)"} at ${code.pma.maxForeign}%.${cond}${remainderClause}`;
+      return `Partially. ${head} is TERBATAS — foreign ownership is capped at ${code.pma.maxForeign}%.${cond}${remainderClause}`;
     }
   }
 }
 
+interface OpenPmaWording {
+  claim: string;
+  short: string;
+  fullyOpen: boolean;
+}
+
+/** TERBUKA wording that never manufactures a 100% cap from the status alone. */
+function openPmaWording(code: KBLICode): OpenPmaWording {
+  if (
+    code.pma.capVerified === true &&
+    code.pma.capSpecial === true &&
+    code.pma.maxForeign === "special"
+  ) {
+    return {
+      claim:
+        "open to foreign investment under special non-percentage conditions",
+      short: "special non-percentage conditions",
+      fullyOpen: false,
+    };
+  }
+
+  const cap =
+    typeof code.pma.maxForeign === "number" &&
+    Number.isFinite(code.pma.maxForeign)
+      ? code.pma.maxForeign
+      : null;
+  if (code.pma.capVerified !== true || cap === null) {
+    return {
+      claim: "recorded as TERBUKA, but its ownership cap is not verified",
+      short: "ownership cap not verified",
+      fullyOpen: false,
+    };
+  }
+  if (cap === 0) {
+    return {
+      claim:
+        "not available to foreign capital because the verified ceiling is 0%",
+      short: "0% foreign ownership",
+      fullyOpen: false,
+    };
+  }
+  if (cap === 100) {
+    return {
+      claim: "open to 100% foreign ownership via PT PMA",
+      short: "100% foreign ownership",
+      fullyOpen: true,
+    };
+  }
+  return {
+    claim: `open to up to ${cap}% foreign ownership via PT PMA`,
+    short: `up to ${cap}% foreign ownership`,
+    fullyOpen: false,
+  };
+}
+
 export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
-  const baliBlocked = !!code.baliL4?.blocked;
+  const baliBlocked = code.baliL4?.blocked === true;
+  const exactSpecialCap =
+    code.pma.capVerified === true &&
+    code.pma.capSpecial === true &&
+    code.pma.maxForeign === "special";
   // GARUDA-FILIERA Fase-1 cure #4 (2026-07-17): the risk tier the earlier
   // ok/blocked Bali verdict depended on was carried over from a different
   // activity through a code-number collision and has been detached — Bali
@@ -85,7 +163,16 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
   // for the central bank, radioactive-waste collection, and seven bidang usaha a
   // presidential annex allocates to Koperasi/UMKM nationwide. The TERBUKA/100%
   // it leans on is the absence-from-the-annex default fill, not a permission.
-  const nationallyClosed = isNationalClosure(code.baliL4?.status, code.code);
+  const nationallyClosed =
+    isNationalClosure(code.baliL4?.status, code.code) ||
+    (!exactSpecialCap &&
+      (code.pma.status === "closed" ||
+        (code.pma.capVerified && code.pma.maxForeign === 0)));
+  const pmaVerdictVerified = isPmaVerdictVerified(code);
+  const openWording = openPmaWording(code);
+  const outsideBali = openWording.fullyOpen
+    ? "Outside Bali it is open to a PT PMA with no local partner required."
+    : `Outside Bali, the national record is ${openWording.claim}; verify the exact ownership structure in OSS.`;
 
   // A slice-carrying code (perpres_slice_disclosure_relation.py — see the
   // qualifier built below) is TERBUKA on the WHOLE code while one narrower
@@ -103,8 +190,9 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
       ? `${code.perpresSlice.length} carve-outs`
       : "one carve-out";
 
-  const pmaAnswer =
-    code.pma.status === "open"
+  const pmaAnswer = !pmaVerdictVerified
+    ? `Not yet verified. The canonical record carries a current PMA label for KBLI ${code.code} (${code.titleId}), but no adjudicated per-code official basis and source vintage verify that whole-code verdict. Confirm the current treatment at oss.go.id before planning a PT PMA.`
+    : code.pma.status === "open"
       ? nationallyClosed
         ? `No — and not only in Bali. KBLI ${code.code} (${code.titleId}) is ${baliBlockClause(code.baliL4?.status)}, and that closure applies everywhere in Indonesia, so registering the activity in another province does not change the answer.${
             shouldShowReason(code.baliL4?.status, code.baliL4?.reason)
@@ -128,16 +216,16 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
               // below (after the carve-out is named), same fix as the plain
               // branch — Bali blocking the whole code does not excuse
               // asserting the carve-out-free national picture up front.
-              `Nationally yes for most of this code, with ${carveOutPhrase} — but NOT in Bali either way. KBLI ${code.code} (${code.titleId}) is TERBUKA (100% foreign ownership) at the national level for most of the activity, but in Bali it is ${baliBlockClause(code.baliL4?.status)}.${
+              `Nationally this code is TERBUKA for most of its scope, with ${carveOutPhrase} — but NOT in Bali either way. KBLI ${code.code} (${code.titleId}) carries ${openWording.short} at the national level for most of the activity, but in Bali it is ${baliBlockClause(code.baliL4?.status)}.${
                 shouldShowReason(code.baliL4?.status, code.baliL4?.reason)
                   ? ` ${code.baliL4?.reason}`
                   : ""
               }`
-            : `Nationally yes — but NOT in Bali. KBLI ${code.code} (${code.titleId}) is TERBUKA (100% foreign ownership) at the national level, but in Bali it is ${baliBlockClause(code.baliL4?.status)}.${
+            : `National status: TERBUKA (${openWording.short}) — but NOT in Bali. KBLI ${code.code} (${code.titleId}) is ${baliBlockClause(code.baliL4?.status)} in Bali.${
                 shouldShowReason(code.baliL4?.status, code.baliL4?.reason)
                   ? ` ${code.baliL4?.reason}`
                   : ""
-              } Outside Bali it is open to a PT PMA with no local partner required.`
+              } ${outsideBali}`
           : baliNonClassifiable
             ? // No BROADER-adjudicated code currently reaches this branch
               // (checked live, 2026-08-07) — declared, not silently assumed
@@ -145,13 +233,15 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
               // foreign ownership at the national level" claim below. Left
               // unfixed rather than guessing untested wording; flag if one
               // ever lands here.
-              `Nationally yes — but Bali applicability cannot be determined yet. KBLI ${code.code} (${code.titleId}) is TERBUKA (100% foreign ownership) at the national level; whether Bali's PMA moratorium applies to this specific activity is not yet classifiable, pending re-derivation of the correct risk tier. Verify with the Bali Zero team before planning a Bali setup.`
+              `National status: TERBUKA (${openWording.short}) — but Bali applicability cannot be determined yet. Whether Bali's PMA moratorium applies to KBLI ${code.code} (${code.titleId}) is not yet classifiable, pending re-derivation of the correct risk tier. Verify with the Bali Zero team before planning a Bali setup.`
             : hasPerpresSlice
-              ? `Yes for most of this code, with ${carveOutPhrase}: KBLI ${code.code} (${code.titleId}) is TERBUKA — open to 100% foreign ownership via PT PMA for most of the activity.`
-              : `Yes. KBLI ${code.code} (${code.titleId}) is TERBUKA — open to 100% foreign ownership via PT PMA. No local Indonesian partner required.`
+              ? `National status: TERBUKA for most of this code, with ${carveOutPhrase}. KBLI ${code.code} (${code.titleId}) is ${openWording.claim} for most of the activity.`
+              : openWording.fullyOpen
+                ? `Yes. KBLI ${code.code} (${code.titleId}) is TERBUKA — ${openWording.claim}. No local Indonesian partner required.`
+                : `National status: TERBUKA. KBLI ${code.code} (${code.titleId}) is ${openWording.claim}. Verify the exact ownership structure in OSS before relying on the status.`
       : code.pma.status === "restricted"
         ? restrictedPmaAnswer(code)
-        : `No. KBLI ${code.code} (${code.titleId}) is TERTUTUP — closed to foreign investment. Reserved for Indonesian nationals only.`;
+        : `No. KBLI ${code.code} (${code.titleId}) is TERTUTUP — ${formatPmaOwnership(code.pma, "metadata")}. Reserved for Indonesian nationals only.`;
 
   // PMA source attribution with vintage (FATAL-2 axis): disclose the
   // instrument the RECORD itself names (kbli-pma-source.ts) instead of
@@ -161,7 +251,7 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
   // 80% cap to "Perpres 10/2021" would have named the wrong instrument.
   const pmaSourceNote = pmaSourceNoteFaq(
     code.pma.source,
-    code.provenance?.pma.status ?? "untraceable_basis",
+    code.provenance?.pma.status ?? "declared_gap",
   );
 
   // BROADER-adjudicated codes render "100% open" correctly for the WHOLE
@@ -189,9 +279,15 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
             : `One specific activity inside this code — "${row.bidangUsaha}" — is capped at 49% foreign ownership under Perpres 10/2021 (as amended)${row.condition ? `, ${row.condition}` : ""}.`,
         )
         .join(" ") +
-      (baliBlocked
-        ? " Outside Bali, the rest of the code remains open to a PT PMA with no local partner required — subject to the Bali restriction stated above."
-        : " The rest of the code remains open to 100% foreign ownership with no local partner required.")
+      (!pmaVerdictVerified
+        ? " These narrower annex entries do not verify the current whole-code PMA verdict."
+        : baliBlocked
+          ? openWording.fullyOpen
+            ? " Outside Bali, the rest of the code remains open to a PT PMA with no local partner required — subject to the Bali restriction stated above."
+            : ` Outside Bali, the rest of the code is ${openWording.claim}; verify the exact ownership structure in OSS.`
+          : openWording.fullyOpen
+            ? " The rest of the code remains open to 100% foreign ownership with no local partner required."
+            : ` The rest of the code is ${openWording.claim}; verify the exact ownership structure in OSS.`)
     : "";
 
   // Rows whose provenance is not KBLI-2025-native (crosswalk pending /
