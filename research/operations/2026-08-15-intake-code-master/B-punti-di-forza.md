@@ -1,0 +1,57 @@
+---
+title: "Intake Code Master — B: 27 defensive patterns"
+date: 2026-08-15
+domain: operations
+client_case: none (intake system audit, aggregate counts only, PII-redacted; no client names/phones/ids beyond client_id/proposal_id integers)
+author: Claude Fable 5 interactive session (Pro) — candidacy dossier, READ-ONLY mandate
+sources:
+  - worktree .worktrees/docs-intake-code-master-0815 @ f6dfda994 (code read file:line in-turn; svc/rt/rd path conventions in README)
+  - local nuzantara_dev Postgres 127.0.0.1:5432 (SELECT-only, default_transaction_read_only=on; W87 — never the prod MCP)
+  - one prod read via scripts/pg.sh (readonly role) for the `companies` count
+  - live process/plist/log state on Pro (launchctl print, ps, lsof, stat) — measured 2026-08-15
+  - research/operations/doc-intake-unified/* + 2026-06-27/28, 2026-07-18 intake reports + modus PENDING-ARMS + /intake SKILL
+  - external SOTA (D): URLs listed per axis, WebSearch 2026-08-15
+adversarial_review: kimi-k3
+---
+
+# Deliverable B — Punti di forza (cicatrici codificate)
+
+> Path: `svc/` = `apps/backend-rag/backend/services/intake/`, `rt/` = `apps/backend-rag/backend/app/routers/`, `rd/` = `apps/backend-rag/backend/app/`. Ogni riga verificata su `~/nuzantara` HEAD `f6dfda994` nel turno di scrittura.
+
+Formato per voce: **(a)** meccanismo `file:line` · **(b)** incidente/classe prevenuta · **(c)** cosa succede rimuovendolo.
+
+| # | Pattern | (a) Meccanismo | (b) Previene | (c) Senza |
+|---|---|---|---|---|
+| B1 | **Fail-closed adapter Drive** | `svc/drive_adapter.py:39-40, 153-158`: senza `INTAKE_DRIVE_SCOPE_FOLDER_ID` il drain rifiuta di ingerire "the whole Drive" e ritorna counters vuoti | ingestione dell'intero Drive aziendale (decine di migliaia di file fuori scope) per un env-file mancante | il primo tick senza env svuota il Drive in coda: 39k backlog bis |
+| B2 | **Fail-closed delivery/identità** | `svc/crm_push.py:159-167` (`create_if_missing=True`, `reject_ambiguous=True`, `restore_if_archived=False`), stati `identity_unresolved` `:323-348`, `no_token` `:261`; `svc/crm_delivery.py:147, 384-392` "fails CLOSED rather than guessing"; `DELIVERY_FAILED_STATUS` = `committed_local_delivery_failed` (`rt/intake_review.py:1343-1352` `_delivery_aware_status`) | attach di un documento al cliente Fly SBAGLIATO quando il telefono è condiviso/ambiguo; resurrezione di card archiviate | 45 `missing_blob` + 40 `identity_unresolved` (misura audit) diventerebbero attach fantasma su Kita |
+| B3 | **Fail-closed identità reviewer** | `rt/intake_review.py:140-152` `_reviewer_identity`: non-admin senza email ⇒ 403 | un JWT senza email non può vedere/agire "come nessuno" | own-chat degrada a "tutti vedono tutto" |
+| B4 | **Rivalidazione in-TX + advisory lock deterministico** | `svc/auto_attach.py:249-272` `_STRONG_ID_REVALIDATORS` (`FOR UPDATE`), `_strong_id_still_owned :312-392`, `_matched_value_is_valid :295-309`; lock per valore `svc/client_enricher.py:117` `STRONG_ID_LOCK_SEED=4248`, `StrongIdLockBusy :141`, `acquire_strong_id_lock :148-169`; chiavi ORDINATE `svc/client_enricher.py:412-421` (no AB-BA) | due commit concorrenti sullo stesso passaporto: il secondo rilegge il possesso in-TX e viene SKIPPATO (`skipped: strong_id_stale`, `svc/auto_attach.py:867-880` — resta a un umano) invece di duplicare la chiave su due card; il lock per valore serializza le due TX (auto-attach: `StrongIdLockBusy` ⇒ `skipped: strong_id_lock_busy` `:768-780`, la proposal resta `review_pending`; sul percorso umano l'eccezione risale al router — non catturata in `rt/intake_review.py`) | doppio owner dello stesso strong-id ⇒ il matcher successivo vede AMBIGUOUS per sempre |
+| B5 | **GATE-11** | `svc/routing.py:389, 419` (legge `custom_fields.identity_backfill.<col>.verified`), `:816` degrada a `LINK_CANDIDATE`; promozione solo su documento indipendente `svc/client_enricher.py:349-403` | una chiave backfillata (non provata) che auto-attacca documenti a una card ⇒ contaminazione a cascata del libro chiavi | l'identity backfill diventerebbe una macchina di auto-conferma |
+| B6 | **Degradazione sender≠subject** | `svc/routing.py:240` `SENDER_SUBJECT_AGREE_MIN_SIM=0.45`, applicata `:851` | il telefono del mittente non è il soggetto (familiare/agente/staff che inoltra) — con nome discordante niente AUTO_ATTACH | il doc del figlio va sulla card del padre |
+| B7 | **Anti-funnel volumetrico** | `svc/auto_attach.py:457-461` soglie 8 doc/5 tipi; SQL `:630-644` | un numero-imbuto (agente/ufficio) che porta i documenti di N persone collassato su 1 cliente | N passaporti diversi sulla stessa card |
+| B8 | **Fill-only sugli identificatori** | `svc/client_enricher.py:48` `_IDENTITY_FILL_ONLY_COLUMNS`, check `:324-343`; backfill script CAS `length(normalized)<6` (`scripts/intake_identity_backfill.py:22`) | sovrascrittura di un passaporto già presente con uno estratto (OCR errato/altro soggetto) | ogni commit riscrive la chiave del cliente |
+| B9 | **Dry-run + audit + rollback con CAS** | `svc/writer.py:817-997` (`dry_run`), `_write_audit :1410-1454` (`plan.to_dict()` in `intake_commit_audit.plan`), `rollback_commit :1224-1407`, `_revert_document_enrichment :1101-1218` CAS contro `enriched_columns` — mai revert cieco | un attach sbagliato è reversibile deterministicamente; la de-enrichment non cancella valori scritti da altri | rollback = `UPDATE clients SET passport=NULL` cieco |
+| B10 | **Soppressione per pipeline_version** | `svc/routing.py:84` insieme, `:96-99` prefisso (`pv.startswith(p + ":")` a `:97`), chokepoint `:1349-1361` | il batch autocreate che conia card DAI doc non può poi "corroborarle" con gli stessi doc (circolare) | auto-attach su card appena inventate |
+| B11 | **Rianimazione anti-deadlock superseded** | `svc/routing.py:1527-1560`: se il `routing_key` collide con un survivor `superseded`, lo riporta a `review_pending` invece di lasciare l'orfano | reprocess che marca superseded + stessa key ⇒ documento sparito da `/review` per sempre | orfani silenziosi (misurati 131 righe `done` con sole superseded) |
+| B12 | **Mascheramento PII in `last_error`** | `svc/worker.py:130-143` `_PII_PATTERNS`/`mask_pii` (KTP/card 16 cifre, passport-ish, email, phone) | tracce di documento nel DB/log operativo (Law 2) | 37 righe `dead` da handler-poison porterebbero email/KTP in chiaro (oggi: `[EMAIL]`, `[KTP/CARD]`) |
+| B13 | **Claim ordinato al drenaggio** | `svc/worker.py:606-674` ORDER BY: `validated` prima → `pending` ultimo; whatsapp prima di drive | starvation: 24k pending drive che soffocano il singolo doc WhatsApp del cliente di oggi | il canale cliente muore dietro il backlog admin |
+| B14 | **TransientStageError ≠ attempts** | `svc/stages.py:83, 237-241`; `svc/worker.py:146, 450-466, 541` | Ollama giù per 10 minuti ⇒ 3×5 tentativi bruciati ⇒ `dead` (successo 35 volte pre-fix `8352f3852`) | il backlog muore ogni notte di manutenzione |
+| B15 | **Alias `__main__`** | `svc/worker.py:67-88` | doppia classe `TransientStageError` (vedi A.8-1) | B14 diventa decorativo |
+| B16 | **RBAC own-chat fail-closed** | `rt/intake_review.py:158-199`, `:426-437`, `:705`, `:1022-1030` (`claim_token` deve combaciare) | un reviewer che vede/approva i doc di un altro chat; approve senza claim | approve cross-tenant e claim rubati |
+| B17 | **Stack middleware del reader** | `rd/intake_review_reader.py:59-60` strip `cf-access-*`, `x-debug-key`, `x-internal-key` (anti-spoof), `:72-93` `NoStorePIIMiddleware` (`Cache-Control: no-store, private`), `:98` `BridgeAuthMiddleware`, ordine `:177-185` | header di fiducia forgiati dal client; PII cachata da edge/proxy | un `cf-access-authenticated-user-email` finto = admin |
+| B18 | **Path-containment + MIME sul blob** | `rt/intake_review.py:86-137` root gestite + `resolve()` + `relative_to`, `_INLINE_SAFE_MIME :81`, `nosniff`/CSP `:637-649` | `../../.env` via `blob_path` manomesso; SVG/HTML scriptabile inline | LFI e XSS con PII |
+| B19 | **Liveness "forma del codice HTTP"** | `scripts/intake_review_reader_liveness.sh:139` `^[1-5][0-9][0-9]$` (401/404 = vivo; `000` = morto), probe `:113-116` | reader crash-loop verde in launchd (incidente 2026-06-17) | `/review` giù senza pagina; nota: 5xx conta come vivo (vedi C-13) |
+| B20 | **W96/W97 nei test e nel pusher** | `backend/tests/conftest.py:39-54` (rifiuta `nuzantara_dev`), `scripts/tests/test_intake_dsn_guard_covers_every_var.py`; pusher `scripts/intake_gate_count_pusher.py:74-96` scarta `''` E LOGGA il conteggio (mai list-shrink muto), test `scripts/tests/test_intake_gate_count_pusher.py:54-117` guilt+innocence | pytest che claim-a la coda viva (37 doc uccisi il 23/6→14/7 dal poison handler); un `''` che invalida l'INTERO body Pydantic su Fly | ricaduta W96; gate mirror muto per tutti |
+| B21 | **Ammissione Ollama a slot + min-size** | `svc/inference_runtime.py:50-55, 92` `ollama_inference_slot` (`INTAKE_OLLAMA_MAX_INFLIGHT`), `svc/classify.py:302`; `MIN_OCR_DIM=32` `_ensure_min_size :364-367` | 3 worker × N pagine che saturano un solo Ollama (timeout a cascata); immagini < patch che fanno esplodere qwen2.5vl | timeouts "transient" a raffica e pagine perse |
+| B22 | **Cloud OCR opt-in gated** | `svc/classify.py:171-178` `cloud_vision_allowed`/`note_cloud_ocr_blocked` | PII documentale verso Gemini senza consenso (Law 2/6) | ogni pagina illeggibile va in cloud |
+| B23 | **Reroute route-only, `stage_output` intatto** | `scripts/intake_reprocess_backlog.py:262-268, 331-343`, test `backend/tests/scripts/test_intake_reprocess_backlog.py:1388-1403` | distruggere l'unica copia OCR dei blob evicted (A.8-3) | 97,7% dei reroute non recuperabili |
+| B24 | **Lock di rieleggibilità e supersede a due passi** | `scripts/intake_reprocess_backlog.py:294-329` (`FOR UPDATE SKIP LOCKED`, `RETURNING` conferma) | yank di una riga in lease dal worker; supersede di una proposal appena claimata da un umano | reviewer che approva una proposal già superseded |
+| B25 | **Guardia di scope su `--revive-stub`** | `scripts/intake_reprocess_backlog.py:531-555` (whatsapp only, sender presente, NOT EXISTS proposal, direct-only default) | flood di `/review` con doc di gruppo misti; doppioni su righe con proposal viva | 399 duplicati (contati nel commento `:536`) |
+| B26 | **Retention difensiva** | `scripts/intake_blob_retention.py:65-111` unlink solo sotto root gestite, mai righe DB (`document_instances` `ON DELETE RESTRICT` m212 `:32`) | `rm` di un path arbitrario da una riga DB manomessa; perdita del registro dedup | il registro blob-hash smette di riconoscere i re-invii |
+| B27 | **Kill-switch e fail-open del gate** | `svc/gate_evaluator.py:190-196` `INTAKE_GATE_DISABLED` kill-switch, `:235` admin mai bloccati, degraded fail-open | un bug del gate che brick-a l'intero workspace | Kita in 423 permanente |
+
+Considerazione: le famiglie B4/B5/B8/B9 sono la spina dorsale del "mai name-only auto-commit"; B14/B15/B21 la spina della continuità sotto Ollama; B16-B18 la spina della PII in transito. Le altre sono contrafforti misurabili (B1/B2/B20 hanno numeri d'incidente reali nel DB).
+
+## Adversarial review
+
+Cross-family refuters (generator ≠ grader): **Codex GPT-5.6 terra** (`codex exec --sandbox read-only`) and **Kimi K3** (`kimi -m kimi-code/k3 -p`), both ordered to destroy the dossier on the worktree, plus two Sonnet anchor-verifiers. Result: 0 findings fell; the weakened items and their on-disk re-verification are recorded in [F-verbale-refuter.md](F-verbale-refuter.md). Refuter transcripts: session scratchpad `refuter-codex-terra.md`, `refuter-kimi-k3.md`.
