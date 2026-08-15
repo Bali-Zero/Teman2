@@ -226,6 +226,7 @@ def test_kbli_located_tuple_does_not_authorize_stale_qdrant_editorial_or_cap() -
         "has_intel_2026": True,
         "bali_status": "OK_or_HIGHER_RISK",
         "bali_blocked": False,
+        "bali_needs_review": False,
         "bali_reason": "Registrable in Bali",
     }
 
@@ -257,6 +258,7 @@ def test_kbli_located_tuple_does_not_authorize_stale_qdrant_editorial_or_cap() -
         assert unsafe not in str(result["metadata"])
     assert result["metadata"]["bali_blocked"] is False
     assert result["metadata"]["bali_status"] == "OK_or_HIGHER_RISK"
+    assert result["metadata"]["bali_needs_review"] is False
     assert result["metadata"]["bali_reason"] == "Registrable in Bali"
     assert result["metadata"]["has_bali_l4"] is True
     assert "l4_bali" not in result["metadata"]

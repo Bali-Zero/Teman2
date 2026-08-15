@@ -39,6 +39,7 @@ def _result(code: str = "86995", **kwargs) -> KBLISearchResult:
         "title": "Aktivitas Rumah Pijat",
         "description": "...",
         "score": 0.9,
+        "bali_needs_review": False,
     }
     base.update(kwargs)
     return KBLISearchResult(**base)
@@ -99,6 +100,7 @@ async def test_a_result_built_without_a_payload_is_backfilled_at_the_choke_point
             "pma_max_asing": 100,
             **_LOCATED_PMA,
             "bali_blocked": True,
+            "bali_needs_review": False,
             "bali_status": "CHIUSO_MORATORIA_BALI",
             "bali_reason": "the moratorium",
         }
@@ -155,7 +157,42 @@ def test_response_model_rejects_unknown_or_malformed_bali_before_coercion(status
 
     assert result.bali_status is None
     assert result.bali_blocked is None
+    assert result.bali_needs_review is None
     assert result.bali_reason == ""
+
+
+@pytest.mark.parametrize("needs_review", ["false", "true", 0, 1, None])
+def test_response_model_rejects_a_non_boolean_bali_review_flag(needs_review):
+    result = _result(
+        **_LOCATED_PMA,
+        pma_status="TERBUKA",
+        pma_max_asing=100,
+        bali_status="CHIUSO_MORATORIA_BALI",
+        bali_blocked=True,
+        bali_needs_review=needs_review,
+        bali_reason="must not escape",
+    )
+
+    assert result.bali_status is None
+    assert result.bali_blocked is None
+    assert result.bali_needs_review is None
+    assert result.bali_reason == ""
+
+
+def test_review_flag_reaches_the_model_as_a_caution() -> None:
+    note = _bali_verdict_context_note(
+        _result(
+            **_LOCATED_PMA,
+            pma_status="TERBUKA",
+            pma_max_asing=100,
+            bali_status="CHIUSO_MORATORIA_BALI",
+            bali_blocked=True,
+            bali_needs_review=True,
+            bali_reason="moratorium",
+        )
+    )
+
+    assert "flagged for human review" in note
 
 
 @pytest.mark.asyncio
@@ -168,6 +205,7 @@ async def test_backfill_rejects_a_trimmed_status_even_with_a_real_boolean():
             "pma_max_asing": 100,
             **_LOCATED_PMA,
             "bali_blocked": False,
+            "bali_needs_review": False,
             "bali_status": " OK ",
             "bali_reason": "must not escape",
         }
@@ -395,6 +433,7 @@ def _result_for(record: dict) -> KBLISearchResult:
         pma_source_vintage=record.get("pma_source_vintage"),
         bali_status=l4.get("status"),
         bali_blocked=l4.get("blocked"),
+        bali_needs_review=l4.get("needs_review"),
         bali_reason=l4.get("reason") or "",
     )
 

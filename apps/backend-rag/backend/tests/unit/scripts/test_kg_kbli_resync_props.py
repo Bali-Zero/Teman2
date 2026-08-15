@@ -151,6 +151,7 @@ def test_a_gap_removes_all_known_editorial_and_bali_claims() -> None:
     existing = {key: f"stale-{key}" for key in kg_kbli_resync.EDITORIAL_KEYS} | {
         "bali_status": "OK_or_HIGHER_RISK",
         "bali_blocked": False,
+        "bali_needs_review": False,
         "bali_reason": "stale",
         "has_bali_l4": True,
         "l4_bali": {"status": "OK_or_HIGHER_RISK", "blocked": False},
@@ -171,6 +172,7 @@ def test_located_tuple_syncs_intel_and_typed_bali_authoritatively() -> None:
         "l4_bali": {
             "status": "CHIUSO_MORATORIA_BALI",
             "blocked": True,
+            "needs_review": False,
             "reason": "moratorium",
         },
     }
@@ -190,6 +192,7 @@ def test_located_tuple_syncs_intel_and_typed_bali_authoritatively() -> None:
     )
     assert out["bali_status"] == "CHIUSO_MORATORIA_BALI"
     assert out["bali_blocked"] is True
+    assert out["bali_needs_review"] is False
     assert out["has_bali_l4"] is True
 
 
@@ -216,6 +219,7 @@ def test_malformed_bali_boolean_is_neutral_not_truthiness_coerced() -> None:
         "l4_bali": {
             "status": "CHIUSO_MORATORIA_BALI",
             "blocked": "false",
+            "needs_review": False,
             "reason": "unsafe",
         },
     }
@@ -236,7 +240,11 @@ def test_local_disclosure_matches_the_shared_runtime_contract() -> None:
         "pma_verification_status": "located",
         "pma_official_basis": " official locator ",
         "pma_source_vintage": " 2021-05-25 ",
-        "l4_bali": {"status": "NON_CLASSIFICABILE", "blocked": False},
+        "l4_bali": {
+            "status": "NON_CLASSIFICABILE",
+            "blocked": False,
+            "needs_review": False,
+        },
     }
 
     assert kg_kbli_resync._disclose_pma(canonical) == disclose_pma(canonical)

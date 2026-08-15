@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import copy
+import sys
 
 import httpx
 import pytest
 
+from backend.scripts import index_kbli_gold_content as gold_indexer
 from backend.scripts.index_kbli_gold_content import (
     COLLECTION_NAME,
     GOLD_CONTENT_FILE,
@@ -104,11 +106,33 @@ async def test_full_retraction_targets_every_owned_legacy_gold_id(monkeypatch) -
     gold = parse_gold_content_ts(GOLD_CONTENT_FILE)
     point_ids = [deterministic_uuid(code) for code in sorted(gold)]
 
-    await delete_existing_gold_points(point_ids, "https://qdrant.test", "secret")
+    await delete_existing_gold_points(
+        point_ids,
+        "https://qdrant.test",
+        "secret",
+        sweep_owned=True,
+    )
 
     assert len(point_ids) == 322
     assert len(set(point_ids)) == 322
     assert calls == [
+        (
+            f"https://qdrant.test/collections/{COLLECTION_NAME}/points/delete",
+            {
+                "params": {"wait": "true"},
+                "json": {
+                    "filter": {
+                        "must": [
+                            {"key": "doc_type", "match": {"value": "kbli_gold"}},
+                        ]
+                    }
+                },
+                "headers": {
+                    "Content-Type": "application/json",
+                    "api-key": "secret",
+                },
+            },
+        ),
         (
             f"https://qdrant.test/collections/{COLLECTION_NAME}/points/delete",
             {
@@ -119,6 +143,64 @@ async def test_full_retraction_targets_every_owned_legacy_gold_id(monkeypatch) -
                     "api-key": "secret",
                 },
             },
+        ),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_missing_embedding_credentials_happens_after_selected_retraction(
+    monkeypatch,
+) -> None:
+    events: list[tuple[str, object]] = []
+
+    async def fake_delete(point_ids, qdrant_url, api_key, *, sweep_owned=False):
+        events.append(("delete", (point_ids, qdrant_url, api_key, sweep_owned)))
+
+    monkeypatch.setattr(gold_indexer, "delete_existing_gold_points", fake_delete)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["index_kbli_gold_content.py", "--only", "47111", "--qdrant-url", "https://q.test"],
+    )
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("QDRANT_API_KEY", raising=False)
+
+    with pytest.raises(SystemExit) as exc_info:
+        await gold_indexer.main()
+
+    assert exc_info.value.code == 1
+    assert events == [
+        (
+            "delete",
+            ([deterministic_uuid("47111")], "https://q.test", "", False),
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_uncertified_only_code_is_a_successful_delete_only_reconciliation(
+    monkeypatch,
+) -> None:
+    events: list[tuple[str, object]] = []
+
+    async def fake_delete(point_ids, qdrant_url, api_key, *, sweep_owned=False):
+        events.append(("delete", (point_ids, qdrant_url, api_key, sweep_owned)))
+
+    monkeypatch.setattr(gold_indexer, "delete_existing_gold_points", fake_delete)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["index_kbli_gold_content.py", "--only", "47222", "--qdrant-url", "https://q.test"],
+    )
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("QDRANT_API_KEY", raising=False)
+
+    await gold_indexer.main()
+
+    assert events == [
+        (
+            "delete",
+            ([deterministic_uuid("47222")], "https://q.test", "", False),
         )
     ]
 

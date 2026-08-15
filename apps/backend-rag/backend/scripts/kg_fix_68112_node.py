@@ -169,13 +169,23 @@ import argparse
 import asyncio
 import json
 import logging
-import math
 import os
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 
 import asyncpg
 import httpx
+
+_APP_ROOT = Path(__file__).resolve().parents[2]
+if str(_APP_ROOT) not in sys.path:
+    sys.path.insert(0, str(_APP_ROOT))
+
+from backend.services.kbli_pma_disclosure import (
+    disclose_bali,
+    disclose_pma,
+    pma_claims_verified,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("kg_fix_68112_node")
@@ -216,8 +226,13 @@ PMA_KEYS = (
     "pma_cap_special",
     "pma_cap_verified",
 )
-BALI_KEYS = ("bali_status", "bali_blocked", "bali_reason", "has_bali_l4")
-PMA_ALLOWED_STATUSES = frozenset({"TERBUKA", "TERBATAS", "TERTUTUP"})
+BALI_KEYS = (
+    "bali_status",
+    "bali_blocked",
+    "bali_needs_review",
+    "bali_reason",
+    "has_bali_l4",
+)
 
 # Guilt+innocence markers reused VERBATIM from
 # scripts/tests/test_kbli_68112_pp28_mice_collision.py so the dataset-side
@@ -280,92 +295,14 @@ class ShadowFixPlan:
     new_properties: dict | None
 
 
-def _clean_text(value: object) -> str | None:
-    if not isinstance(value, str):
-        return None
-    cleaned = value.strip()
-    return cleaned or None
-
-
-def _public_pma_cap(record: dict) -> int | float | str | None:
-    if record.get("pma_cap_verified") is not True:
-        return None
-    value = record.get("pma_max_asing")
-    if isinstance(value, bool):
-        return None
-    if isinstance(value, (int, float)) and math.isfinite(value):
-        return value
-    return "special" if value == "special" and record.get("pma_cap_special") is True else None
-
-
-def _pma_claims_verified(record: dict) -> bool:
-    status = record.get("pma_status")
-    return bool(
-        record.get("pma_verification_status") == "located"
-        and isinstance(status, str)
-        and status in PMA_ALLOWED_STATUSES
-        and _clean_text(record.get("pma_official_basis"))
-        and _clean_text(record.get("pma_source_vintage"))
-    )
-
-
 def _disclose_pma(record: dict) -> dict:
-    if not _pma_claims_verified(record):
-        return {
-            "pma_status": "NOT_VERIFIED",
-            "pma_max_asing": None,
-            "pma_verification_status": "declared_gap",
-            "pma_official_basis": None,
-            "pma_source_vintage": None,
-            "pma_kondisi": None,
-            "pma_prioritas": None,
-            "pma_nota": None,
-            "pma_cap_special": False,
-            "pma_cap_verified": False,
-        }
-    cap = _public_pma_cap(record)
-    return {
-        "pma_status": record["pma_status"],
-        "pma_max_asing": cap,
-        "pma_verification_status": "located",
-        "pma_official_basis": _clean_text(record.get("pma_official_basis")),
-        "pma_source_vintage": _clean_text(record.get("pma_source_vintage")),
-        "pma_kondisi": _clean_text(record.get("pma_kondisi")),
-        "pma_prioritas": record.get("pma_prioritas") is True,
-        "pma_nota": _clean_text(record.get("pma_nota")),
-        "pma_cap_special": cap == "special",
-        "pma_cap_verified": cap is not None,
-    }
+    """Compatibility wrapper around the single shared disclosure gate."""
+    return disclose_pma(record)
 
 
 def _disclose_bali(record: dict) -> dict:
-    neutral = {
-        "bali_status": None,
-        "bali_blocked": None,
-        "bali_reason": "",
-        "has_bali_l4": False,
-    }
-    if not _pma_claims_verified(record):
-        return neutral
-    l4 = record.get("l4_bali")
-    if not isinstance(l4, dict):
-        return neutral
-    status = l4.get("status")
-    blocked = l4.get("blocked")
-    if (
-        not isinstance(status, str)
-        or not status.strip()
-        or status != status.strip()
-        or not isinstance(blocked, bool)
-    ):
-        return neutral
-    reason = l4.get("reason")
-    return {
-        "bali_status": status,
-        "bali_blocked": blocked,
-        "bali_reason": reason.strip() if isinstance(reason, str) else "",
-        "has_bali_l4": True,
-    }
+    """Compatibility wrapper around the single shared disclosure gate."""
+    return disclose_bali(record)
 
 
 def plan_main_node_fix(record: dict | None, kg_row: dict | None) -> NodeFixPlan:
@@ -421,7 +358,7 @@ def plan_main_node_fix(record: dict | None, kg_row: dict | None) -> NodeFixPlan:
         }
     )
 
-    if _pma_claims_verified(record):
+    if pma_claims_verified(record):
         for key in INTEL_KEYS:
             new_props.pop(key, None)
             value = intel.get(key)
@@ -579,7 +516,7 @@ def verify_main_node_matches_canonical(record: dict, kg_row: dict) -> list[str]:
         elif props.get(key) != expected:
             problems.append(f"properties.{key} does not match the public disclosure contract")
 
-    if _pma_claims_verified(record):
+    if pma_claims_verified(record):
         for key in INTEL_KEYS:
             value = intel.get(key)
             if isinstance(value, str) and value.strip():

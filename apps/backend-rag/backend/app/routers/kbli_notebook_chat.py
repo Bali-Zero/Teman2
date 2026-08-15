@@ -252,6 +252,7 @@ async def _fill_bali_verdicts(results: list["KBLISearchResult"]) -> None:
                 {
                     **_pma_disclosure_fields(payload),
                     "bali_blocked": _payload_value(payload, "bali_blocked"),
+                    "bali_needs_review": _payload_value(payload, "bali_needs_review"),
                     "bali_status": _payload_value(payload, "bali_status"),
                     "bali_reason": _payload_value(payload, "bali_reason", default=""),
                 }
@@ -259,6 +260,7 @@ async def _fill_bali_verdicts(results: list["KBLISearchResult"]) -> None:
             candidate.update(
                 {
                     "bali_blocked": bali["bali_blocked"],
+                    "bali_needs_review": bali["bali_needs_review"],
                     "bali_status": bali["bali_status"],
                     "bali_reason": bali["bali_reason"],
                 }
@@ -278,6 +280,7 @@ async def _fill_bali_verdicts(results: list["KBLISearchResult"]) -> None:
         result.expert_legal = disclosed.expert_legal
         result.bali_status = disclosed.bali_status
         result.bali_blocked = disclosed.bali_blocked
+        result.bali_needs_review = disclosed.bali_needs_review
         result.bali_reason = disclosed.bali_reason
         if not result.pma_verdict_verified:
             continue
@@ -472,6 +475,12 @@ def _bali_verdict_context_note(result: "KBLISearchResult") -> str:
     # ordering bug predates this change — it has been one malformed payload away
     # from a 500 since the field was added.
     reason = _speak_internal_symbols(result.bali_reason or "").strip()
+    review_note = (
+        " The canonical Bali record remains flagged for human review; present this as "
+        "a cautious current classification, not a final legal determination."
+        if result.bali_needs_review is True
+        else ""
+    )
 
     if not result.bali_blocked:
         if national:
@@ -483,11 +492,11 @@ def _bali_verdict_context_note(result: "KBLISearchResult") -> str:
                 "NOT blocked by the Bali provincial moratorium — but this activity is "
                 "closed to a foreign-owned company (PT PMA) at the NATIONAL level "
                 f"({national}), so the absence of a Bali block is NOT permission. You "
-                "MUST NOT present it as registrable by a PT PMA."
+                f"MUST NOT present it as registrable by a PT PMA.{review_note}"
             )
         return (
             "BALI: this activity is NOT blocked for a PT PMA by the Bali provincial "
-            "moratorium. National ownership rules still apply separately."
+            f"moratorium. National ownership rules still apply separately.{review_note}"
         )
 
     if national:
@@ -502,7 +511,7 @@ def _bali_verdict_context_note(result: "KBLISearchResult") -> str:
         return (
             f"{note} You MUST say a PT PMA cannot register this activity anywhere in "
             "Indonesia and give this cause. Do NOT describe it as a Bali-only "
-            "restriction and do NOT offer another province as an alternative."
+            f"restriction and do NOT offer another province as an alternative.{review_note}"
         )
 
     note = (
@@ -516,7 +525,7 @@ def _bali_verdict_context_note(result: "KBLISearchResult") -> str:
         f"{note} You MUST say the activity is blocked in Bali and give this cause. "
         "Do not answer that it can be registered in Bali."
     )
-    return note
+    return f"{note}{review_note}"
 
 
 _TRANSLATE_SYSTEM = (

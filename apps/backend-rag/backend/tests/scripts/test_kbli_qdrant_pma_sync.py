@@ -220,12 +220,22 @@ def test_stale_is_judged_on_both_fields_not_just_the_status():
 
 
 def _bali_rec(
-    code: str, status: object, blocked: object, reason: object = "r", verdict: str | None = None
+    code: str,
+    status: object,
+    blocked: object,
+    reason: object = "r",
+    verdict: str | None = None,
+    needs_review: object = False,
 ) -> dict:
     rec: dict = {
         "kode_kbli_2025": code,
         **_pma_fields(),
-        "l4_bali": {"status": status, "blocked": blocked, "reason": reason},
+        "l4_bali": {
+            "status": status,
+            "blocked": blocked,
+            "needs_review": needs_review,
+            "reason": reason,
+        },
     }
     if verdict is not None:
         rec["l4_bali"]["verdict"] = verdict
@@ -255,6 +265,7 @@ def test_a_verified_record_without_a_bali_status_clears_stale_bali_claims():
     assert targets["93122"].fields == {
         "bali_status": None,
         "bali_blocked": None,
+        "bali_needs_review": None,
         "bali_reason": "",
         "has_bali_l4": False,
     }
@@ -276,6 +287,7 @@ def test_a_declared_gap_clears_all_flat_bali_claims():
     assert targets["01111"].fields == {
         "bali_status": None,
         "bali_blocked": None,
+        "bali_needs_review": None,
         "bali_reason": "",
         "has_bali_l4": False,
     }
@@ -292,6 +304,29 @@ def test_the_bali_layer_never_truthiness_coerces_blocked(blocked: object) -> Non
     assert refusals == []
     assert targets["86995"].fields["bali_status"] is None
     assert targets["86995"].fields["bali_blocked"] is None
+    assert targets["86995"].fields["has_bali_l4"] is False
+
+
+@pytest.mark.parametrize("needs_review", ["false", "true", 0, 1, None])
+def test_the_bali_layer_never_truthiness_coerces_needs_review(
+    needs_review: object,
+) -> None:
+    targets, refusals = build_targets(
+        [
+            _bali_rec(
+                "86995",
+                "CHIUSO_MORATORIA_BALI",
+                True,
+                needs_review=needs_review,
+            )
+        ],
+        ["86995"],
+        "bali",
+    )
+
+    assert refusals == []
+    assert targets["86995"].fields["bali_status"] is None
+    assert targets["86995"].fields["bali_needs_review"] is None
     assert targets["86995"].fields["has_bali_l4"] is False
 
 
@@ -334,7 +369,7 @@ def test_sync_disclosures_match_the_shared_runtime_contract() -> None:
     }
 
 
-def test_the_bali_layer_writes_its_four_keys_and_no_pma_key():
+def test_the_bali_layer_writes_its_five_keys_and_no_pma_key():
     """Layer isolation, asserted on the wire. A Bali cure that also carried a
     `pma_status` would silently make the national answer this tool's business."""
     fake = FakeQdrant({"86995": [[{"id": 5, "payload": {"bali_status": "CHIUSO_PMA_NO_BESAR"}}]]})
@@ -346,7 +381,13 @@ def test_the_bali_layer_writes_its_four_keys_and_no_pma_key():
         plan = build_plan("86995", targets["86995"], points)
         assert apply_plan(http, _BASE, _HEADERS, _COLLECTION, plan, apply=True) == 1
     written = fake.payload_writes[0]["payload"]
-    assert set(written) == {"bali_status", "bali_blocked", "bali_reason", "has_bali_l4"}
+    assert set(written) == {
+        "bali_status",
+        "bali_blocked",
+        "bali_needs_review",
+        "bali_reason",
+        "has_bali_l4",
+    }
     assert not any(k.startswith("pma_") for k in written)
 
 
@@ -356,6 +397,7 @@ def test_a_bali_point_already_agreeing_is_left_alone():
     payload = {
         "bali_status": "CHIUSO_MORATORIA_BALI",
         "bali_blocked": True,
+        "bali_needs_review": False,
         "bali_reason": "r",
         "has_bali_l4": True,
     }
@@ -377,6 +419,7 @@ def test_a_reason_only_change_is_still_stale():
     payload = {
         "bali_status": "CHIUSO_MORATORIA_BALI",
         "bali_blocked": True,
+        "bali_needs_review": False,
         "bali_reason": "OSS has no Usaha Besar scale row",
         "has_bali_l4": True,
     }

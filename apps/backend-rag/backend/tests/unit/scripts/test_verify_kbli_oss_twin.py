@@ -23,6 +23,7 @@ def _record(code: str, *, located: bool, blocked: object = False) -> dict:
         "l4_bali": {
             "status": "BLOCCATO_CLASSE_RISCHIO",
             "blocked": blocked,
+            "needs_review": False,
             "reason": "moratorium",
         },
         "per_skala": [

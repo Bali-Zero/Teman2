@@ -37,6 +37,7 @@ BALI_ALLOWED_STATUSES = frozenset(
 _BALI_NEUTRAL = {
     "bali_status": None,
     "bali_blocked": None,
+    "bali_needs_review": None,
     "bali_reason": "",
     "has_bali_l4": False,
 }
@@ -123,10 +124,10 @@ def disclose_bali(payload: Mapping[str, Any]) -> dict[str, Any]:
 
     A Bali verdict is subordinate to the same complete PMA evidence tuple used
     by :func:`disclose_pma`.  It is publishable only when its status is one of
-    the exact canonical Bali tokens and ``blocked`` is an actual boolean. In
-    particular, ``"false"`` must never become ``True`` through Python
-    truthiness.  The helper accepts both canonical nested ``l4_bali`` records
-    and already-flat Qdrant/KG payloads.
+    the exact canonical Bali tokens and both ``blocked`` and ``needs_review``
+    are actual booleans. In particular, ``"false"`` must never become ``True``
+    through Python truthiness.  The helper accepts both canonical nested
+    ``l4_bali`` records and already-flat Qdrant/KG payloads.
     """
     if not pma_claims_verified(payload):
         return dict(_BALI_NEUTRAL)
@@ -137,10 +138,12 @@ def disclose_bali(payload: Mapping[str, Any]) -> dict[str, Any]:
             return dict(_BALI_NEUTRAL)
         raw_status = nested.get("status")
         raw_blocked = nested.get("blocked")
+        raw_needs_review = nested.get("needs_review")
         raw_reason = nested.get("reason")
     else:
         raw_status = payload.get("bali_status")
         raw_blocked = payload.get("bali_blocked")
+        raw_needs_review = payload.get("bali_needs_review")
         raw_reason = payload.get("bali_reason")
 
     status = _clean_text(raw_status)
@@ -148,12 +151,14 @@ def disclose_bali(payload: Mapping[str, Any]) -> dict[str, Any]:
         status not in BALI_ALLOWED_STATUSES
         or status != raw_status
         or not isinstance(raw_blocked, bool)
+        or not isinstance(raw_needs_review, bool)
     ):
         return dict(_BALI_NEUTRAL)
 
     return {
         "bali_status": status,
         "bali_blocked": raw_blocked,
+        "bali_needs_review": raw_needs_review,
         "bali_reason": _clean_text(raw_reason) or "",
         "has_bali_l4": True,
     }

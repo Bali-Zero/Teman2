@@ -109,8 +109,9 @@ async def test_lookup_exposes_only_the_reviewed_bali_verdict_shape():
     # Bali object is eligible for model-facing disclosure.
     payload = json.loads(await tool.execute(code="02102"))
 
-    assert set(payload["bali"]) == {"status", "blocked", "reason"}
+    assert set(payload["bali"]) == {"status", "blocked", "needs_review", "reason"}
     assert payload["bali"]["blocked"] is False
+    assert payload["bali"]["needs_review"] is False
     rendered = json.dumps(payload["bali"])
     for internal_field in ("moratorium", "verdict", "verdict_state", "confidence"):
         assert internal_field not in rendered

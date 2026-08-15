@@ -95,6 +95,7 @@ def test_bali_disclosure_requires_the_complete_pma_tuple() -> None:
         "l4_bali": {
             "status": "OK_or_HIGHER_RISK",
             "blocked": False,
+            "needs_review": False,
             "reason": "UNSAFE_REASON",
         },
     }
@@ -102,6 +103,7 @@ def test_bali_disclosure_requires_the_complete_pma_tuple() -> None:
     assert disclose_bali(raw) == {
         "bali_status": None,
         "bali_blocked": None,
+        "bali_needs_review": None,
         "bali_reason": "",
         "has_bali_l4": False,
     }
@@ -114,6 +116,7 @@ def test_bali_disclosure_never_coerces_a_non_boolean_blocked_value(blocked: obje
         "l4_bali": {
             "status": "CHIUSO_MORATORIA_BALI",
             "blocked": blocked,
+            "needs_review": False,
             "reason": "UNSAFE_REASON",
         },
     }
@@ -126,7 +129,7 @@ def test_bali_disclosure_never_coerces_a_non_boolean_blocked_value(blocked: obje
 def test_bali_disclosure_rejects_unknown_or_malformed_status(status: object) -> None:
     raw = {
         **_located_record(),
-        "l4_bali": {"status": status, "blocked": False},
+        "l4_bali": {"status": status, "blocked": False, "needs_review": False},
     }
 
     assert disclose_bali(raw)["has_bali_l4"] is False
@@ -152,7 +155,7 @@ def test_bali_disclosure_rejects_unknown_or_malformed_status(status: object) -> 
 def test_bali_disclosure_accepts_only_canonical_status_vocabulary(status: str) -> None:
     raw = {
         **_located_record(),
-        "l4_bali": {"status": status, "blocked": False},
+        "l4_bali": {"status": status, "blocked": False, "needs_review": False},
     }
 
     assert disclose_bali(raw)["bali_status"] == status
@@ -163,6 +166,7 @@ def test_bali_disclosure_supports_nested_and_flat_verified_shapes() -> None:
     expected = {
         "bali_status": "CHIUSO_MORATORIA_BALI",
         "bali_blocked": True,
+        "bali_needs_review": False,
         "bali_reason": "moratorium",
         "has_bali_l4": True,
     }
@@ -171,6 +175,7 @@ def test_bali_disclosure_supports_nested_and_flat_verified_shapes() -> None:
         "l4_bali": {
             "status": "CHIUSO_MORATORIA_BALI",
             "blocked": True,
+            "needs_review": False,
             "reason": "moratorium",
         },
     }
@@ -178,6 +183,24 @@ def test_bali_disclosure_supports_nested_and_flat_verified_shapes() -> None:
 
     assert disclose_bali(nested) == expected
     assert disclose_bali(flat) == expected
+
+
+@pytest.mark.parametrize("needs_review", ["false", "true", 0, 1, None])
+def test_bali_disclosure_never_coerces_a_non_boolean_review_flag(
+    needs_review: object,
+) -> None:
+    raw = {
+        **_located_record(),
+        "l4_bali": {
+            "status": "CHIUSO_MORATORIA_BALI",
+            "blocked": True,
+            "needs_review": needs_review,
+        },
+    }
+
+    disclosed = disclose_bali(raw)
+    assert disclosed["has_bali_l4"] is False
+    assert disclosed["bali_needs_review"] is None
 
 
 def test_pma_cap_verified_is_not_truthiness_coerced() -> None:

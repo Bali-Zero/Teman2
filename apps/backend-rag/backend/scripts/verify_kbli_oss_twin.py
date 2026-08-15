@@ -50,7 +50,13 @@ PMA_METADATA_KEYS = (
     "pma_cap_special",
     "pma_cap_verified",
 )
-BALI_METADATA_KEYS = ("bali_status", "bali_blocked", "bali_reason", "has_bali_l4")
+BALI_METADATA_KEYS = (
+    "bali_status",
+    "bali_blocked",
+    "bali_needs_review",
+    "bali_reason",
+    "has_bali_l4",
+)
 
 results: list[tuple[str, bool, str]] = []
 

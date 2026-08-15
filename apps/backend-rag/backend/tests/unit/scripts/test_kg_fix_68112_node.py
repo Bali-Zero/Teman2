@@ -352,6 +352,7 @@ def test_located_record_retains_editorial_and_typed_bali() -> None:
         "l4_bali": {
             "status": "NON_CLASSIFICABILE",
             "blocked": False,
+            "needs_review": False,
             "reason": "risk tier unresolved",
         },
     }
@@ -363,6 +364,7 @@ def test_located_record_retains_editorial_and_typed_bali() -> None:
     assert plan.new_properties["_data_note"] == record["_data_note"]
     assert plan.new_properties["bali_status"] == "NON_CLASSIFICABILE"
     assert plan.new_properties["bali_blocked"] is False
+    assert plan.new_properties["bali_needs_review"] is False
 
 
 def test_malformed_bali_boolean_is_neutral() -> None:
@@ -372,7 +374,11 @@ def test_malformed_bali_boolean_is_neutral() -> None:
         "pma_verification_status": "located",
         "pma_official_basis": "official locator",
         "pma_source_vintage": "2021-05-25",
-        "l4_bali": {"status": "NON_CLASSIFICABILE", "blocked": "false"},
+        "l4_bali": {
+            "status": "NON_CLASSIFICABILE",
+            "blocked": "false",
+            "needs_review": False,
+        },
     }
 
     plan = plan_main_node_fix(record, KG_ROW_STALE)
@@ -392,7 +398,11 @@ def test_local_disclosure_matches_shared_runtime_contract() -> None:
         "pma_verification_status": "located",
         "pma_official_basis": " official locator ",
         "pma_source_vintage": " 2021-05-25 ",
-        "l4_bali": {"status": "NON_CLASSIFICABILE", "blocked": False},
+        "l4_bali": {
+            "status": "NON_CLASSIFICABILE",
+            "blocked": False,
+            "needs_review": False,
+        },
     }
 
     assert _disclose_pma(record) == disclose_pma(record)

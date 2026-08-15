@@ -368,7 +368,7 @@ def build_payload(
         "digit_count": len(code),
         "sources": ["BPS_7_2025", "PP_28_2025"],
         "doc_type": "kbli_bps",
-        "version": "v8.1-final-l4-bali",
+        "version": "v8.2-final-l4-bali-reviewed",
         "sektor": entry.get("sektor_id", ""),
         "section": entry.get("sektor_id", ""),
         "pma_status": pma["pma_status"],

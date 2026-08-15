@@ -189,6 +189,7 @@ class KBLISearchResult(_PMADisclosure):
     # written before the Bali layer existed must produce silence, never a claim.
     bali_status: str | None = None
     bali_blocked: bool | None = None
+    bali_needs_review: bool | None = None
     bali_reason: str = ""
     # The national foreign-ownership CEILING, carried on the same flat payload.
     # `pma_status` is a word ("TERBUKA"/"TERBATAS"/"TERTUTUP") and it is the only
@@ -215,6 +216,7 @@ class KBLISearchResult(_PMADisclosure):
             {
                 "bali_status": bali["bali_status"],
                 "bali_blocked": bali["bali_blocked"],
+                "bali_needs_review": bali["bali_needs_review"],
                 "bali_reason": bali["bali_reason"],
             }
         )
@@ -227,6 +229,7 @@ class KBLISearchResult(_PMADisclosure):
         if not self.pma_verdict_verified:
             self.bali_status = None
             self.bali_blocked = None
+            self.bali_needs_review = None
             self.bali_reason = ""
         return self
 
@@ -320,6 +323,7 @@ def _result_from_payload(payload: dict[str, Any], score: float) -> "KBLISearchRe
         risk_category=_payload_value(payload, "kategori_risiko", default="Unknown"),
         bali_status=_payload_value(payload, "bali_status"),
         bali_blocked=_payload_value(payload, "bali_blocked"),
+        bali_needs_review=_payload_value(payload, "bali_needs_review"),
         bali_reason=_payload_value(payload, "bali_reason", default="") or "",
         **_pma_disclosure_fields(payload),
     )

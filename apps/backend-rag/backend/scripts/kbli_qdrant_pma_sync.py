@@ -2,8 +2,8 @@
 kbli_qdrant_pma_sync.py — sync a named LAYER of the KBLI Qdrant payload from the
 canonical dataset. `--layer pma` (default) owns the complete PMA evidence tuple
 (`pma_status`, `pma_max_asing`, verification status, official basis, vintage);
-`--layer bali` owns `bali_status` / `bali_blocked` / `bali_reason` /
-`has_bali_l4`.
+`--layer bali` owns `bali_status` / `bali_blocked` /
+`bali_needs_review` / `bali_reason` / `has_bali_l4`.
 
 WHY THE BALI LAYER LIVES HERE AND NOT IN ITS OWN TOOL (2026-08-03): there WAS a
 second tool, `apps/backend-rag/scripts/patch_qdrant_bali_l4.py`, and it is
@@ -82,11 +82,10 @@ USAGE (dry-run is the default; nothing is written without --apply):
     cd /app && python backend/scripts/kbli_qdrant_pma_sync.py --layer bali \\
         --collection kbli_2025_final_hybrid --codes 86995,96220 --apply
 
-Deliberately import-free of `backend.*`: the two cure tools that already run in
-this image (`kbli_documents_cure.py`, `kg_kbli_resync.py`) read their config
-from the environment and fetch the canonical over HTTP, and `PYTHONPATH=.` in
-this container REPLACES site-packages rather than extending it (it has already
-cost one `ModuleNotFoundError: asyncpg`). Same shape here, for the same reason.
+The script bootstraps the application root before importing the shared
+disclosure gate.  Direct Fly execution therefore keeps working without a
+``PYTHONPATH`` override, while every writer uses the exact same PMA/Bali
+allowlist and boolean validation.
 
 AFTER APPLYING, EVICT THE CACHE: `inspect_kbli` caches its assembled payload
 under `kbli_inspect_v6_<code>` for up to 30 days, so a cured Qdrant payload is
@@ -99,7 +98,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import math
 import os
 import sys
 from dataclasses import dataclass, field
@@ -107,6 +105,16 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+
+_APP_ROOT = Path(__file__).resolve().parents[2]
+if str(_APP_ROOT) not in sys.path:
+    sys.path.insert(0, str(_APP_ROOT))
+
+from backend.services.kbli_pma_disclosure import (
+    disclose_bali,
+    disclose_pma,
+    pma_claims_verified,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("kbli_qdrant_pma_sync")
@@ -196,26 +204,17 @@ class CodePlan:
 
 
 def _pma_fields(rec: dict) -> tuple[dict[str, Any] | None, str | None]:
-    if not _pma_claims_verified(rec):
-        return {
-            "pma_status": "NOT_VERIFIED",
-            "pma_max_asing": None,
-            "pma_verification_status": "declared_gap",
-            "pma_official_basis": None,
-            "pma_source_vintage": None,
-            "pma_cap_special": False,
-            "pma_cap_verified": False,
-        }, None
-    cap = _public_pma_cap(rec)
-    return {
-        "pma_status": rec["pma_status"],
-        "pma_max_asing": cap,
-        "pma_verification_status": "located",
-        "pma_official_basis": rec["pma_official_basis"].strip(),
-        "pma_source_vintage": rec["pma_source_vintage"].strip(),
-        "pma_cap_special": cap == "special",
-        "pma_cap_verified": cap is not None,
-    }, None
+    public = disclose_pma(rec)
+    keys = (
+        "pma_status",
+        "pma_max_asing",
+        "pma_verification_status",
+        "pma_official_basis",
+        "pma_source_vintage",
+        "pma_cap_special",
+        "pma_cap_verified",
+    )
+    return {key: public[key] for key in keys}, None
 
 
 def _bali_fields(rec: dict) -> tuple[dict[str, Any] | None, str | None]:
@@ -226,38 +225,7 @@ def _bali_fields(rec: dict) -> tuple[dict[str, Any] | None, str | None]:
     `l4_bali.verdict` is deliberately NOT read: see the module docstring for the
     118-code measurement that removed the tool which did.
     """
-    if not _pma_claims_verified(rec):
-        return {
-            "bali_status": None,
-            "bali_blocked": None,
-            "bali_reason": "",
-            "has_bali_l4": False,
-        }, None
-
-    l4 = rec.get("l4_bali")
-    if not isinstance(l4, dict):
-        l4 = {}
-    status = l4.get("status")
-    blocked = l4.get("blocked")
-    if (
-        not isinstance(status, str)
-        or not status.strip()
-        or status != status.strip()
-        or not isinstance(blocked, bool)
-    ):
-        return {
-            "bali_status": None,
-            "bali_blocked": None,
-            "bali_reason": "",
-            "has_bali_l4": False,
-        }, None
-    reason = l4.get("reason")
-    return {
-        "bali_status": status,
-        "bali_blocked": blocked,
-        "bali_reason": reason.strip() if isinstance(reason, str) else "",
-        "has_bali_l4": True,
-    }, None
+    return disclose_bali(rec), None
 
 
 def _whatchanged_fields(rec: dict) -> tuple[dict[str, Any] | None, str | None]:
@@ -327,7 +295,6 @@ _INTEL_HEADING = "## Intelligence 2026"
 _BALI_HEADING = "## Status PMA di Bali (L4 — moratorium provinsi)"
 _WHATCHANGED_PREFIX = "- whatChanged: "
 _TRUNCATION_MARKER = "(... dipotong untuk batas panjang.)"
-_PMA_ALLOWED_STATUSES = frozenset({"TERBUKA", "TERBATAS", "TERTUTUP"})
 
 
 def _clean_text(value: object) -> str | None:
@@ -335,32 +302,6 @@ def _clean_text(value: object) -> str | None:
         return None
     cleaned = value.strip()
     return cleaned or None
-
-
-def _public_pma_cap(rec: dict) -> int | float | str | None:
-    if rec.get("pma_cap_verified") is not True:
-        return None
-    value = rec.get("pma_max_asing")
-    if isinstance(value, bool):
-        return None
-    if isinstance(value, (int, float)) and math.isfinite(value):
-        return value
-    return "special" if value == "special" and rec.get("pma_cap_special") is True else None
-
-
-def _pma_claims_verified(rec: dict) -> bool:
-    status = rec.get("pma_status")
-    basis = rec.get("pma_official_basis")
-    vintage = rec.get("pma_source_vintage")
-    return bool(
-        rec.get("pma_verification_status") == "located"
-        and isinstance(status, str)
-        and status in _PMA_ALLOWED_STATUSES
-        and isinstance(basis, str)
-        and basis.strip()
-        and isinstance(vintage, str)
-        and vintage.strip()
-    )
 
 
 def render_pma_block(rec: dict) -> list[str]:
@@ -467,7 +408,7 @@ def rewrite_pma_prose(rec: dict, blob: str) -> str | None:
         lambda ln: not ln.startswith("- "),
         render_pma_block(rec),
     )
-    if rewritten is None or _pma_claims_verified(rec):
+    if rewritten is None or pma_claims_verified(rec):
         return rewritten
 
     # A declared gap owns the entire generated/editorial disclosure boundary,
@@ -754,8 +695,8 @@ def main() -> int:
         default="pma",
         help="which payload layer to sync: 'pma' (national ownership: pma_status, "
         "pma_max_asing, AND the '## Status PMA:' block inside the content/text blob), "
-        "'bali' (provincial verdict: bali_status, bali_blocked, bali_reason, "
-        "has_bali_l4) or 'whatchanged' (prose-only: the '- whatChanged:' line inside "
+        "'bali' (provincial verdict: bali_status, bali_blocked, bali_needs_review, "
+        "bali_reason, has_bali_l4) or 'whatchanged' (prose-only: the '- whatChanged:' line inside "
         "the blob, which has no flat payload key). One layer per run, on purpose — "
         "they answer different questions from different instruments.",
     )

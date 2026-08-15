@@ -48,6 +48,7 @@ def test_reindex_kbli_payload_is_flat() -> None:
     assert payload["pma_max_asing"] is None
     assert payload["bali_status"] is None
     assert payload["bali_blocked"] is None
+    assert payload["bali_needs_review"] is None
 
 
 def test_gold_kbli_payload_is_flat() -> None:
@@ -120,6 +121,7 @@ def test_oss_twin_withholds_pma_and_bali_claims_for_a_declared_gap() -> None:
             "l4_bali": {
                 "status": "OK_or_HIGHER_RISK",
                 "blocked": False,
+                "needs_review": False,
                 "reason": "UNSAFE_BALI_REASON",
             },
             "per_skala": [{"skala_usaha": ["Besar"]}],
@@ -138,7 +140,7 @@ def test_oss_twin_withholds_pma_and_bali_claims_for_a_declared_gap() -> None:
         assert "UNSAFE_BALI_REASON" not in chunk["text"]
 
 
-def _located_with_bali(*, blocked: object) -> dict:
+def _located_with_bali(*, blocked: object, needs_review: object = False) -> dict:
     return {
         "kode_kbli_2025": "86995",
         "judul": "Aktivitas Pelayanan Kesehatan",
@@ -152,6 +154,7 @@ def _located_with_bali(*, blocked: object) -> dict:
         "l4_bali": {
             "status": "CHIUSO_MORATORIA_BALI",
             "blocked": blocked,
+            "needs_review": needs_review,
             "reason": "UNSAFE_BALI_REASON",
         },
         "per_skala": [{"skala_usaha": ["Besar"]}],
@@ -165,6 +168,7 @@ def test_reindex_never_coerces_a_string_bali_blocked_value() -> None:
 
     assert payload["bali_status"] is None
     assert payload["bali_blocked"] is None
+    assert payload["bali_needs_review"] is None
     assert payload["bali_reason"] == ""
     assert payload["has_bali_l4"] is False
 
@@ -176,6 +180,7 @@ def test_oss_twin_never_coerces_a_string_bali_blocked_value() -> None:
     for chunk in chunks:
         assert chunk["metadata"]["bali_status"] is None
         assert chunk["metadata"]["bali_blocked"] is None
+        assert chunk["metadata"]["bali_needs_review"] is None
         assert chunk["metadata"]["has_bali_l4"] is False
         assert "CHIUSO_MORATORIA_BALI" not in chunk["text"]
         assert "UNSAFE_BALI_REASON" not in chunk["text"]
@@ -192,6 +197,19 @@ def test_verified_code_without_bali_evidence_stays_neutral_not_open() -> None:
     assert payload["bali_blocked"] is None
     assert payload["has_bali_l4"] is False
     assert all(chunk["metadata"]["bali_blocked"] is None for chunk in chunks)
+
+
+def test_all_builders_reject_a_string_bali_review_flag() -> None:
+    entry = _located_with_bali(blocked=True, needs_review="false")
+
+    payload = build_bps_payload(entry, embedding_text="KBLI 86995")
+    chunks = build_chunks(entry)
+
+    assert payload["bali_status"] is None
+    assert payload["bali_needs_review"] is None
+    assert payload["has_bali_l4"] is False
+    assert all(chunk["metadata"]["bali_needs_review"] is None for chunk in chunks)
+    assert all(chunk["metadata"]["has_bali_l4"] is False for chunk in chunks)
 
 
 def test_oss_twin_does_not_hardcode_an_open_national_status_in_bali_guidance() -> None:

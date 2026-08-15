@@ -488,16 +488,21 @@ async def upsert_to_qdrant(points: list[dict], qdrant_url: str, api_key: str | N
 
 
 async def delete_existing_gold_points(
-    point_ids: list[str], qdrant_url: str, api_key: str | None
+    point_ids: list[str],
+    qdrant_url: str,
+    api_key: str | None,
+    *,
+    sweep_owned: bool = False,
 ) -> None:
-    """Delete every deterministic legacy gold ID before a full certified replace.
+    """Retract this indexer's owned points before any replacement work.
 
-    The publication allowlist shrank from hundreds of legacy entries to the
-    certified partition.  Upsert alone cannot retract IDs that are no longer
-    admitted.  Explicit IDs avoid relying on a Qdrant payload index and keep the
-    destructive scope limited to points this indexer itself owns.
+    A full reconciliation first sweeps ``doc_type=kbli_gold`` so points removed
+    from the current TypeScript source are still retracted.  Deterministic IDs
+    are also deleted for the current (or ``--only`` selected) raw entries,
+    covering legacy points that predate the ownership tag.  Both selectors are
+    intentionally narrow and any failed delete aborts before embedding/upsert.
     """
-    if not point_ids:
+    if not point_ids and not sweep_owned:
         return
 
     import httpx
@@ -505,21 +510,40 @@ async def delete_existing_gold_points(
     headers = {"Content-Type": "application/json"}
     if api_key:
         headers["api-key"] = api_key
+    selectors: list[tuple[str, dict]] = []
+    if sweep_owned:
+        selectors.append(
+            (
+                "owned gold payloads",
+                {
+                    "filter": {
+                        "must": [
+                            {"key": "doc_type", "match": {"value": "kbli_gold"}},
+                        ]
+                    }
+                },
+            )
+        )
+    if point_ids:
+        selectors.append(("deterministic gold IDs", {"points": point_ids}))
+
     async with httpx.AsyncClient(timeout=120) as http:
-        response = await http.post(
-            f"{qdrant_url}/collections/{COLLECTION_NAME}/points/delete",
-            params={"wait": "true"},
-            json={"points": point_ids},
-            headers=headers,
-        )
-    if response.status_code != 200:
-        logger.error(
-            "Qdrant gold delete failed: %s %s",
-            response.status_code,
-            response.text[:300],
-        )
-        raise RuntimeError("Failed to delete legacy KBLI gold points")
-    logger.info("  Deleted/retracted %d deterministic legacy gold IDs", len(point_ids))
+        for label, selector in selectors:
+            response = await http.post(
+                f"{qdrant_url}/collections/{COLLECTION_NAME}/points/delete",
+                params={"wait": "true"},
+                json=selector,
+                headers=headers,
+            )
+            if response.status_code != 200:
+                logger.error(
+                    "Qdrant gold delete failed for %s: %s %s",
+                    label,
+                    response.status_code,
+                    response.text[:300],
+                )
+                raise RuntimeError("Failed to delete legacy KBLI gold points")
+            logger.info("  Retracted %s", label)
 
 
 def field_coverage(all_points: list[dict]) -> dict[str, int]:
@@ -578,10 +602,33 @@ async def main():
 
     # Parse gold content
     logger.info("Parsing gold content from TypeScript...")
-    gold_entries = parse_gold_content_ts(GOLD_CONTENT_FILE)
-    legacy_gold_point_ids = [deterministic_uuid(code) for code in sorted(gold_entries)]
-    total_parsed = len(gold_entries)
+    raw_gold_entries = parse_gold_content_ts(GOLD_CONTENT_FILE)
+    total_parsed = len(raw_gold_entries)
     logger.info(f"Parsed {total_parsed} gold entries")
+
+    # Selection is validated against the RAW source, not the certified subset.
+    # An existing but now-uncertified --only code is a valid delete-only
+    # reconciliation, while a code absent from the source remains an error.
+    selected_raw_entries = filter_to_codes(raw_gold_entries, args.only)
+    retraction_ids = [deterministic_uuid(code) for code in sorted(selected_raw_entries)]
+    if args.only:
+        logger.info(
+            "%d of %d raw gold entries selected via --only",
+            len(selected_raw_entries),
+            total_parsed,
+        )
+
+    # Retraction is the first external publication action.  Missing OpenAI
+    # credentials, certification drift, or an embedding failure after this
+    # point can leave silence but can never leave stale uncertified prose live.
+    if not args.dry_run:
+        logger.info("Retracting owned/selected gold points before certification and embedding...")
+        await delete_existing_gold_points(
+            retraction_ids,
+            qdrant_url,
+            qdrant_api_key,
+            sweep_owned=args.only is None,
+        )
 
     # Load base KBLI data for enrichment
     base_data = {}
@@ -596,24 +643,16 @@ async def main():
     # into points at all.
     certified_entries = {
         code: gold
-        for code, gold in gold_entries.items()
+        for code, gold in selected_raw_entries.items()
         if disclosed_standalone_gold(code, gold, base_data.get(code, {}), registry) is not None
     }
     logger.info(
         "Certified %d/%d parsed gold entries for publication",
         len(certified_entries),
-        total_parsed,
+        len(selected_raw_entries),
     )
 
-    # Per-code selection (--only) applies to the certified partition. Asking
-    # for an unsafe legacy code is an error, never a successful zero-point run.
-    gold_entries = filter_to_codes(certified_entries, args.only)
-    if args.only:
-        logger.info(
-            "%d of %d certified gold entries selected via --only",
-            len(gold_entries),
-            len(certified_entries),
-        )
+    gold_entries = certified_entries
 
     # Build points
     indexed_at = datetime.now(timezone.utc).isoformat()
@@ -646,6 +685,15 @@ async def main():
                 logger.info(line)
             logger.info("")
         logger.info(f"Would upsert {len(all_points)} gold points to {COLLECTION_NAME}")
+        logger.info(
+            "Would retract %d selected deterministic IDs%s before publication",
+            len(retraction_ids),
+            " plus all doc_type=kbli_gold points" if args.only is None else "",
+        )
+        return
+
+    if not all_points:
+        logger.info("Delete-only reconciliation complete; no certified gold points to publish.")
         return
 
     # Embed
@@ -672,16 +720,6 @@ async def main():
                 "payload": point["payload"],
             },
         )
-
-    if args.only is None:
-        logger.info("Retracting all deterministic legacy gold point IDs before replace...")
-        await delete_existing_gold_points(
-            legacy_gold_point_ids,
-            qdrant_url,
-            qdrant_api_key,
-        )
-    else:
-        logger.info("Legacy gold retraction skipped (--only implies upsert-only)")
 
     logger.info(f"Upserting {len(qdrant_points)} points...")
     await upsert_to_qdrant(qdrant_points, qdrant_url, qdrant_api_key)

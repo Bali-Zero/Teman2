@@ -39,7 +39,6 @@ import argparse
 import asyncio
 import json
 import logging
-import math
 import os
 import re
 import sys
@@ -53,6 +52,7 @@ from backend.services.kbli_editorial_certification import (
     validate_editorial_registry,
     with_neutral_kbli_chat_opener,
 )
+from backend.services.kbli_pma_disclosure import disclose_bali, disclose_pma
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("kg_kbli_resync")
@@ -88,8 +88,13 @@ PMA_KEYS = (
     "pma_cap_special",
     "pma_cap_verified",
 )
-BALI_KEYS = ("bali_status", "bali_blocked", "bali_reason", "has_bali_l4")
-PMA_ALLOWED_STATUSES = frozenset({"TERBUKA", "TERBATAS", "TERTUTUP"})
+BALI_KEYS = (
+    "bali_status",
+    "bali_blocked",
+    "bali_needs_review",
+    "bali_reason",
+    "has_bali_l4",
+)
 TS_ENTRY_RE = re.compile(r'"(\d{5})":\s*"((?:[^"\\]|\\.)*)"')
 
 
@@ -98,92 +103,14 @@ def parse_ts_title_map(source: str) -> dict[str, str]:
     return {code: title.replace('\\"', '"') for code, title in TS_ENTRY_RE.findall(source)}
 
 
-def _clean_text(value: object) -> str | None:
-    if not isinstance(value, str):
-        return None
-    cleaned = value.strip()
-    return cleaned or None
-
-
-def _public_pma_cap(rec: dict) -> int | float | str | None:
-    if rec.get("pma_cap_verified") is not True:
-        return None
-    value = rec.get("pma_max_asing")
-    if isinstance(value, bool):
-        return None
-    if isinstance(value, (int, float)) and math.isfinite(value):
-        return value
-    return "special" if value == "special" and rec.get("pma_cap_special") is True else None
-
-
-def _pma_claims_verified(rec: dict) -> bool:
-    status = rec.get("pma_status")
-    return bool(
-        rec.get("pma_verification_status") == "located"
-        and isinstance(status, str)
-        and status in PMA_ALLOWED_STATUSES
-        and _clean_text(rec.get("pma_official_basis"))
-        and _clean_text(rec.get("pma_source_vintage"))
-    )
-
-
 def _disclose_pma(rec: dict) -> dict:
-    if not _pma_claims_verified(rec):
-        return {
-            "pma_status": "NOT_VERIFIED",
-            "pma_max_asing": None,
-            "pma_verification_status": "declared_gap",
-            "pma_official_basis": None,
-            "pma_source_vintage": None,
-            "pma_kondisi": None,
-            "pma_prioritas": None,
-            "pma_nota": None,
-            "pma_cap_special": False,
-            "pma_cap_verified": False,
-        }
-    cap = _public_pma_cap(rec)
-    return {
-        "pma_status": rec["pma_status"],
-        "pma_max_asing": cap,
-        "pma_verification_status": "located",
-        "pma_official_basis": _clean_text(rec.get("pma_official_basis")),
-        "pma_source_vintage": _clean_text(rec.get("pma_source_vintage")),
-        "pma_kondisi": _clean_text(rec.get("pma_kondisi")),
-        "pma_prioritas": rec.get("pma_prioritas") is True,
-        "pma_nota": _clean_text(rec.get("pma_nota")),
-        "pma_cap_special": cap == "special",
-        "pma_cap_verified": cap is not None,
-    }
+    """Compatibility wrapper around the single shared disclosure gate."""
+    return disclose_pma(rec)
 
 
 def _disclose_bali(rec: dict) -> dict:
-    neutral = {
-        "bali_status": None,
-        "bali_blocked": None,
-        "bali_reason": "",
-        "has_bali_l4": False,
-    }
-    if not _pma_claims_verified(rec):
-        return neutral
-    l4 = rec.get("l4_bali")
-    if not isinstance(l4, dict):
-        return neutral
-    status = l4.get("status")
-    blocked = l4.get("blocked")
-    if (
-        not isinstance(status, str)
-        or not status.strip()
-        or status != status.strip()
-        or not isinstance(blocked, bool)
-    ):
-        return neutral
-    reason = l4.get("reason")
-    return {
-        "bali_status": status,
-        "bali_blocked": blocked,
-        "bali_reason": reason.strip() if isinstance(reason, str) else "",
-        "has_bali_l4": True,
-    }
+    """Compatibility wrapper around the single shared disclosure gate."""
+    return disclose_bali(rec)
 
 
 def merge_node_props(props: dict, rec: dict, registry: dict | None = None) -> dict:

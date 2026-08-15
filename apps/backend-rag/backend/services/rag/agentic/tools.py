@@ -412,6 +412,7 @@ class KBLICanonicalLookupTool(BaseTool):
             bali = {
                 "status": bali_disclosure["bali_status"],
                 "blocked": bali_disclosure["bali_blocked"],
+                "needs_review": bali_disclosure["bali_needs_review"],
                 "reason": bali_disclosure["bali_reason"],
             }
 
