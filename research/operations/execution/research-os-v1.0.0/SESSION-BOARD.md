@@ -1,6 +1,6 @@
 # Research OS v1.0.0 — Session Board
 
-**Board revision:** `execution-board/1.0.0`
+**Board revision:** `execution-board/1.0.1-pro-air-only`
 **Program state:** `prepared_not_dispatched`
 **Semantic authority:** [`research-os/v1.0.0`](../../specs/evidence-to-action-freeze-2026-08-15/README.md)
 **Dependency authority:** [`DEPENDENCY-DAG.md`](../../specs/evidence-to-action-freeze-2026-08-15/DEPENDENCY-DAG.md)
@@ -48,23 +48,26 @@ Every eligible packet still enters the single serial I1 queue; the table does no
 
 ## 2. Logical fleet slots
 
-Live placement is decided immediately before dispatch by `scripts/fleet_dispatch.py capacity --fetch --json`. The following are admission ceilings, not promises that the nodes are free.
+After S00, live placement is decided immediately before dispatch by the reviewed campaign planner. The existing generic fleet command may supply diagnostics, but it is neither the S00 bootstrap authority nor an admission receipt. The following are admission ceilings, not promises that the nodes are free.
 
 | Slot | Default node | Role | Concurrent ceiling | Boundary |
 |---|---|---|---:|---|
 | `C0` | Air-M5 | Persistent operator–AI Conductor | 1 | Coordination, public/minimized research, manifests, review queue; no protected runtime |
 | `H1–H3` | Pro | Hot-path implementation lanes | 3 host-local | Authoritative DB, Qdrant, NEXUS, FlowKit, daemons, render and integration truth |
-| `B1–B2` | Mini-Pro2 | Batch/preparation/evaluation lanes | 2 host-local | Local inference, public/synthetic fixtures, replay and non-conflicting batch work |
-| `V1` | Best safe node | Independent refuter/reviewer | 1 on demand | Different session; Gear-2/refuter family differs from the main builder and reruns critical checks from disk |
+| `B1–B2` | Pro | Logical batch/preparation/evaluation queue | 1 active across both slots | Public/synthetic fixtures, replay and non-conflicting batch work; the other logical slot remains queued |
+| `V1` | Pro or Air-M5 within data boundary | Independent refuter/reviewer | 1 on demand | Different session; Gear-2/refuter family differs from the main builder and reruns critical checks from disk |
 | `I1` | Pro | Interactive Claude/operator-controlled serial integrator | 1, exclusive | S00-produced dedicated integration manifest; one reviewed SHA at a time; never an external builder/reviewer seat |
+| `X0` | Mini-Pro2 | Excluded node | 0 | No campaign probe dependency, ref, worktree, lease, execution, review, inference, integration, or effect |
 
 Rules:
 
 - `I1` never integrates two branches concurrently.
 - The program-wide builder cap is four. Host-local ceilings do not add together; a fifth eligible builder stays queued.
+- All four builder slots, when safely admitted, run on Pro; `B1` and `B2` are logical alternatives with one combined active preparation ceiling.
 - A saturated Pro reduces builder count; it does not move protected work to Air-M5.
+- Mini-Pro2 is outside the dispatch universe. Its darkness does not block S00, but it can never be selected as fallback capacity.
 - `V1` may pre-empt the lowest-priority preparation slot so reviews do not starve the critical path.
-- Unknown machine state, opaque file ownership, or unavailable lease infrastructure makes placement fail closed.
+- Unknown participating-machine state, opaque file ownership, or unavailable Pro lease infrastructure makes placement fail closed. The state of an explicitly excluded node is outside that predicate.
 - The practical steady-state target is four bounded builders plus the Conductor. A read-only reviewer may run alongside them only when it does not contend for a saturated host; a review that needs code changes consumes a builder slot through a separate repair dispatch.
 
 The current placement tools are reusable but are not a transactional campaign orchestrator. Before Cohort A, Session S00 must create one Pro-authoritative run registry, freeze one immutable `campaign_root_sha`, and maintain an append-only chain of immutable monorepo integration checkpoints. Every dispatch binds four distinct lineage fields: `campaign_root_sha`, monorepo control-plane `dispatch_base_sha`, `source_repository`, and immutable `source_base_sha`. The Pro authority places lanes sequentially and verifies the resulting worktree repository and `HEAD == source_base_sha`; monorepo lanes require `source_base_sha == dispatch_base_sha`, while external P01/P07 lanes remain blocked until an operator-approved immutable OSINT-Nexus source ref exists. Air-M5 may invoke the Pro authority, but it never writes a local campaign registry or lease. Current `fleet_dispatch.py place` does not propagate the required lineage or write a complete fail-closed scope sidecar, and its collision check plus worktree creation are not atomic; therefore it is advisory only until S00 is independently reviewed. No packet is dispatched through a dry-run/direct-broker workaround.
@@ -100,17 +103,17 @@ Calendar duration is deliberately not guessed. Preregistered operating windows g
 | 02 | Publishing truth | Audit, policy fixtures, golden set | P04 contract PASS; migration 271 after 270 | Pro / `backend-rag` | publication state and migration train |
 | 03 | WR3/FlowKit readiness | Yes, zero-spend only | Compatibility review against P04 before it can unlock P11 | Pro / `wr3` | same WR3 runtime files later owned by P11 |
 | 04 | Canonical contracts | Ready first | None beyond fresh Pro truth and exclusive leases | Pro / `backend-rag` | contract exports, repository core, migration 270 |
-| 05 | Intel Lake + MATA | Inventory, replay fixtures, ownership map | P04 PASS; migration 272 after 271 | Pro; Mini for public/synthetic replay | Intel/MATA queues and schema |
-| 06 | NAGA claim ledger | Schema mapping, fixtures, temporal cases | P04 PASS; migration 273 after 272 | Pro; Mini for synthetic tests | claim/evidence registry and schema |
+| 05 | Intel Lake + MATA | Inventory, replay fixtures, ownership map | P04 PASS; migration 272 after 271 | Pro | Intel/MATA queues and schema |
+| 06 | NAGA claim ledger | Schema mapping, fixtures, temporal cases | P04 PASS; migration 273 after 272 | Pro | claim/evidence registry and schema |
 | 07 | NEXUS entity resolution | Golden set and synthetic clone plan | P01, P04, P05, P06 PASS; never mutate production graph | Pro / `organism` | P01 external repo boundary; P05 typed message |
-| 08 | Hybrid retrieval | Baseline and labeled query set | P05 and P06 PASS; P17 before any grounded canary | Pro for Qdrant truth; Mini for offline eval | retrieval registry; no embedding change |
+| 08 | Hybrid retrieval | Baseline and labeled query set | P05 and P06 PASS; P17 before any grounded canary | Pro | retrieval registry; no embedding change |
 | 09 | Blog/Magazine/SEO | Fixtures and schema design | Schema 274 after P02/P04; runtime after P12/P18 | Pro / `cell` | evaluator tree, publication adapter, migration train |
 | 10 | WR2 foundry | Visual-contract fixtures and recent-output baseline | P04, P06, P18 PASS | Pro / `wr2` | WR2 scripts and critic path |
 | 11 | WR3 foundry | Non-overlapping fixtures only | P03 compatibility PASS plus P04/P06/P12/P18 | Pro / `wr3` | exclusive with P03-owned WR3 files; paid pilot separately gated |
 | 12 | Kita Action Inbox | State fixtures and UI prototype | P04/P05/P06/P07 PASS; P08 and P17 required before canary; migration 275 after 274 | Pro / `backend-rag` + `frontend` | action schema, router and Kita route registry |
-| 13 | Outcome telemetry | Taxonomy, source mappings, synthetic collectors | P04 and P09–P12 PASS; migration 276 after 275 | Pro / `cell`; Mini for replay | Packet 09 SEO files and Packet 14 evaluator tree |
-| 14 | Cross-system evaluations | Advisory harness, labeling guide, public/synthetic sets | Blocking Phase B waits for P05–P13, P17, P18 and runnable P13 measurements | Mini for batch; Pro for authoritative replay | broad evaluator ownership; file-exact lease required |
-| 15 | Active learning | Shadow decision collection and offline fixtures | P12/P13/P14/P18 PASS; no autonomous routing mutation | Mini / `ops` | outcome and action registries |
+| 13 | Outcome telemetry | Taxonomy, source mappings, synthetic collectors | P04 and P09–P12 PASS; migration 276 after 275 | Pro / `cell` | Packet 09 SEO files and Packet 14 evaluator tree |
+| 14 | Cross-system evaluations | Advisory harness, labeling guide, public/synthetic sets | Blocking Phase B waits for P05–P13, P17, P18 and runnable P13 measurements | Pro | broad evaluator ownership; file-exact lease required |
+| 15 | Active learning | Shadow decision collection and offline fixtures | P12/P13/P14/P18 PASS; no autonomous routing mutation | Pro / `ops` | outcome and action registries |
 | 16 | Controlled retirement | Inventory and live-use instrumentation plan | All P01–P15/P17–P23 plus G4; one target per dispatch | Pro / `ops` | flags, schedulers, queues, routes; exclusive effect gate |
 | 17 | NotebookLM verifier | Routing/privacy fixtures | P04/P06 PASS; reuse canonical repositories or stop for ledger revision | Air-M5 control, Pro-protected processing as required | NLM registry and WR2/WR3 call sites |
 | 18 | Conductor bridge | Interaction design and synthetic handoff prototype | P02/P04/P06/P12/P17 PASS; no new migration without ledger revision | Air-M5 design, Pro integration / `frontend` | Action Inbox and Kita registries |
@@ -210,7 +213,7 @@ Models are assigned by role, not prestige. The live fleet roster and health chec
 | Domain-grounded verifier | NotebookLM specialist | Exact domain checks; never event storage or execution authority |
 | Adversarial refuter / Gear 2 | Current Pro topology's refuter chain | Different session and different family from the main builder; find contract, privacy, replay, and edge-case failures |
 | Final empirical gate / Gear 3 | Fable 5 designated judge | Separate Fable session regardless of builder family; inspect actual diff and rerun on-disk evidence at G1–G4; use only the topology-defined degraded fallback |
-| Local classifier/batch | Approved Ollama model on Pro/Mini | Non-critical asynchronous classification and pre-filtering |
+| Local classifier/batch | Approved Ollama model on Pro | Non-critical asynchronous classification and pre-filtering; Mini-Pro2 is outside this campaign |
 
 The builder cannot review its own work. Gear 2/refuter must use a different session and family from the main builder. Gear 3 is a separate Fable session even when the builder was Anthropic-family; only the current Pro topology's explicit Opus/max degraded fallback applies when all Fable accounts are unavailable. Agreement between models is not evidence, approval, or permission to execute.
 
@@ -265,7 +268,7 @@ Recompute the launch queue whenever:
 - a shared lease expires;
 - a migration number or purpose drifts;
 - a preparation branch reveals a new file collision;
-- Pro or Mini capacity changes materially;
+- Pro capacity or the reviewed Pro/Air campaign topology changes materially;
 - an operating window produces divergence, stranded messages, duplicate effects, or missing evidence;
 - an operator rejects or narrows a proposed effect.
 

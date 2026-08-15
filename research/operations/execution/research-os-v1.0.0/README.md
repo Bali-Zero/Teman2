@@ -5,6 +5,7 @@
 **Execution-plan date:** 2026-08-15 WITA
 **Authoritative runtime:** Pro
 **Control surface:** Air-M5
+**Campaign topology:** Pro execution + Air-M5 control; Mini-Pro2 `OUT_OF_CAMPAIGN`
 
 This directory turns the frozen architecture into an executable program without changing the freeze itself. It separates work that can be prepared in parallel from shared integration points that must remain serial.
 
@@ -29,7 +30,7 @@ At creation time:
 
 ```mermaid
 flowchart LR
-    O["Operator + Conductor on Air-M5"] --> C["Capacity and collision check"]
+    O["Operator + Conductor on Air-M5"] --> C["Pro-only campaign capacity and collision check"]
     C --> P["Parallel preparation lanes"]
     C --> B["Parallel bounded builders"]
     P --> G["Dependency gate"]
@@ -54,6 +55,21 @@ The Conductor is a role, not another background service. It controls scope, orde
 4. **Generator is not grader.** Every implementation branch receives an independent review; G1–G4 also receive a final on-disk empirical gate from the fleet's designated judge.
 5. **Retirement is not deletion.** A legacy path is first instrumented, shadowed, proven replaceable, disabled behind a reversible control, observed for a complete window, and only then considered for a separate removal change.
 
+## Campaign topology amendment: Pro + Air only
+
+The operator has removed Mini-Pro2 from this execution campaign. This is a campaign-scoped placement decision, not a global machine retirement and not a semantic change to the frozen Research OS architecture.
+
+- Pro is the only execution, registry, lease, builder, protected-processing, review-runtime, and integration authority.
+- Air-M5 remains the lightweight operator/Conductor surface and may host public, minimized, or read-only review work within its existing boundary.
+- Mini-Pro2 is `OUT_OF_CAMPAIGN`: it receives no campaign ref, worktree, branch, lease, builder, reviewer, batch, inference, integration, or retirement-effect assignment.
+- Mini-Pro2 reachability, capacity, worktree inventory, and local Redis state are not S00 bootstrap inputs and do not block this campaign.
+- The generic fleet inventory may still list Mini-Pro2 for other Nuzantara work. The Research OS controller must filter it out before admission and must reject any attempt to place campaign work there.
+- Existing H24 services, stores, daemons, and retained Mini-hosted systems are untouched. Their continued operation or later retirement remains governed by their own contracts and authority gates.
+- No campaign branch is fetched, checked out, synchronized, or executed on Mini-Pro2. If Mini later becomes reachable, it remains quarantined from this campaign unless a separately reviewed successor control-room decision explicitly re-admits it.
+- An independently reviewed successor of this Control Room must contain this amendment before S00 may rely on it.
+
+The participating topology is therefore closed and explicit: `authority_host=Pro`, `control_surface=Air-M5`, `excluded_nodes=[Mini-Pro2]`. Unknown state on a participating component remains fail-closed. An excluded node is not treated as spare capacity and is not probed as an authority dependency.
+
 ## S00-only bootstrap exception
 
 The normal packet protocol below depends on controls that Session S00 must first create. Exactly one bounded bootstrap exception is therefore permitted, for S00 only:
@@ -62,25 +78,25 @@ The normal packet protocol below depends on controls that Session S00 must first
 2. reverify the current Pro source relationship and critical tooling hashes; if the reviewed commit is not a safe source base, an interactive operator-controlled integrator creates one conflict-free bootstrap-composition commit from an operator-approved immutable Pro source ref plus the exact reviewed control-room change, and an independent reviewer approves that exact composed SHA before S00 edits begin;
 3. record that final reviewed immutable SHA as `s00_base_sha`, create one dedicated Pro S00 worktree from it, and prove `HEAD == s00_base_sha` before and after acquiring the existing Pro path/repository leases;
 4. create an immutable, branch-bound bootstrap scope receipt containing `control_room_sha`, `s00_base_sha`, source repository/ref, exact owned paths, Pro authority identity, lease-backend fingerprint, expiry, and the default zero-live-effect ceiling;
-5. recheck path and worktree collisions after creation and fail closed on any unavailable, mismatched, local-only, or fail-open authority component;
+5. use direct Pro-authoritative worktree, path, registry, and lease inventory for the bootstrap collision check, then recheck the same participating Pro/Air campaign resources after worktree creation; fail closed on any unavailable, mismatched, local-only, or fail-open participating authority component;
 6. run S00 as the only program session: no packet builder, reviewer repair, integration, migration, deployment, scheduler/service/flag change, publication, protected-data movement, or paid effect may run concurrently;
 7. commit the S00 candidate first, independently review its exact SHA and artifact hashes, and route every repair through a successor commit and fresh review.
 
-The exception terminates when the final reviewed S00 SHA becomes `campaign_root_sha` and creates the normal Pro-authoritative registry, sidecars, placement controls, and dedicated integration-manifest contract. It cannot be reused by a packet or live effect. If the immutable Pro source identity or bootstrap receipt cannot be produced, the campaign remains blocked.
+During this exception, the pre-S00 generic fleet command is diagnostic only and is not an authority gate. If it exits nonzero solely because it probes excluded Mini-Pro2, record `excluded_node_ignored` and continue with the direct Pro-authoritative bootstrap inventory. Any failure or unknown state involving Pro, the Air-M5 control surface, the exact owned paths, the Pro lease backend, or the immutable source remains a hard stop. The exception terminates when the final reviewed S00 SHA becomes `campaign_root_sha` and creates the normal Pro-authoritative registry, sidecars, placement controls, and dedicated integration-manifest contract. It cannot be reused by a packet or live effect. If the immutable Pro source identity or bootstrap receipt cannot be produced, the campaign remains blocked.
 
 ## Normal packet session start protocol
 
 After reviewed S00 has terminated the bootstrap exception, before any child session edits a file:
 
-1. refresh the authoritative Pro head, live topology, and baseline;
+1. refresh the authoritative Pro head, the Pro/Air participating topology, and baseline; do not probe Mini-Pro2 as a campaign dependency;
 2. confirm the single-writer Pro run registry, the campaign lease, and the exact Pro Redis/backend fingerprint; Air-M5 and Mini-local registries or lease universes are invalid;
 3. confirm the immutable `campaign_root_sha`, the exact monorepo control-plane `dispatch_base_sha` selected from the append-only integration-checkpoint chain, the `source_repository`, and its immutable `source_base_sha`;
-4. run the fleet-capacity and collision probe;
+4. run the campaign-capacity and collision probe over participating Pro/Air resources only; a generic fleet result must be filtered by the reviewed topology policy;
 5. select the highest-priority eligible entry from `SESSION-BOARD.md` without exceeding four active builders;
 6. instantiate and hash one immutable Dispatch Manifest from the frozen template;
 7. acquire every exact path/shared-resource lease;
 8. create one dedicated worktree from an immutable ref in `source_repository` resolving to the exact `source_base_sha`; monorepo lanes require `source_base_sha == dispatch_base_sha`, while an external-repository lane binds its separately approved source SHA and keeps `dispatch_base_sha` as control-plane lineage;
-9. verify worktree `HEAD == source_base_sha`, repository identity, metadata, scope sidecar, and fleet collisions again; P01/P07 remain blocked until an immutable operator-approved OSINT-Nexus source ref exists;
+9. verify worktree `HEAD == source_base_sha`, repository identity, metadata, scope sidecar, and participating-topology collisions again; P01/P07 remain blocked until an immutable operator-approved OSINT-Nexus source ref exists;
 10. record baseline, fixtures, rollback point, flags, cost ceiling, and hard stops;
 11. begin implementation only after the session accepts the exact manifest.
 
@@ -154,7 +170,7 @@ The first executable queue is defined in [`WAVE-0-DISPATCH.md`](./WAVE-0-DISPATC
 1. Packet 04 canonical contracts;
 2. Packet 01 NEXUS containment Tasks 1–6;
 3. Packet 03 WR3/FlowKit zero-spend readiness;
-4. Packet 05 and 06 preparation lanes when Mini-Pro2 capacity is available;
+4. Packet 05 and 06 preparation lanes on Pro, with at most one preparation lane active beside the three hot-path lanes;
 5. Packet 02, 07, 08, 12, 14, 17, and 18 preparation in the overflow queue.
 
 Nothing in this directory authorizes execution of those entries. Dispatch begins only after this control-room branch receives independent review and the Conductor records a current capacity/baseline receipt.

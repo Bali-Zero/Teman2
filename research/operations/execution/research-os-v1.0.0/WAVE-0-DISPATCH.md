@@ -4,6 +4,7 @@
 **Purpose:** start the critical path with the largest safe fan-out
 **Authority:** this document ranks work; it does not authorize a mutation, service effect, paid render, migration application, or production cutover
 **Semantic source:** [`research-os/v1.0.0`](../../specs/evidence-to-action-freeze-2026-08-15/README.md)
+**Campaign topology:** Pro execution + Air-M5 control; Mini-Pro2 `OUT_OF_CAMPAIGN`
 
 Wave 0 registers three bounded implementation lanes and two preparation lanes. At most four builders run concurrently; the fifth lane remains ready and enters when a slot clears. The wave creates evidence and reviewed branches; it changes no live service. Every lane receives its own immutable Dispatch Manifest, exact worktree, file scope, leases, builder, reviewer, and completion receipt.
 
@@ -37,9 +38,9 @@ Wave 0 cannot start from the current tools by opening five terminals. The placem
 
 1. First build and independently review Session S00 from the reviewed control-room commit. Until S00 passes, Wave 0 remains blocked; current placement commands are read-only diagnostics only.
 2. Through the Pro-only authority, create one non-repository run directory such as `~/.organism/frozen-packet-runs/<run-id>/`. It is single-writer: only the Pro campaign controller mutates its run manifest through atomic replacement. Air-M5 invokes that controller remotely; workers and reviewers write uniquely named immutable receipts.
-3. Bind every reservation to `authority_host=Pro`, the absolute registry root, Redis host/port/database/keyspace identity, and a backend fingerprint. Acquire one campaign lease such as `research-os-v1.0.0:<run-id>`. Redis unavailability, a localhost backend on Air/Mini, or a fingerprint mismatch is a hard stop.
+3. Bind every reservation to `authority_host=Pro`, the absolute registry root, Redis host/port/database/keyspace identity, and a backend fingerprint. Acquire one campaign lease such as `research-os-v1.0.0:<run-id>`. Redis unavailability, a localhost backend on Air/Mini, or a fingerprint mismatch is a hard stop. Mini-Pro2 itself is excluded from the campaign and is not probed for authority, capacity, or collisions.
 4. Select one reviewed `campaign_root_sha` and create an immutable feature ref pointing to it. Maintain a separate append-only monorepo integration-checkpoint chain. Every child dispatch freezes one exact checkpoint as `dispatch_base_sha`, plus `source_repository` and an immutable `source_base_sha`; a moving `main` tip is never an identity. Monorepo lanes require `source_base_sha == dispatch_base_sha`. External P01/P07 lanes keep the monorepo checkpoint as control lineage but use a separately operator-approved immutable OSINT-Nexus `source_base_sha`.
-5. Record the freeze hash, contract hash, DAG hash, campaign root, initial checkpoint, current Pro topology hash, policy `max_concurrent_builders: 4`, and every packet's exact dependencies/paths in the run manifest.
+5. Record the freeze hash, contract hash, DAG hash, campaign root, initial checkpoint, reviewed topology policy `authority_host=Pro`, `control_surface=Air-M5`, `excluded_nodes=[Mini-Pro2]`, current Pro topology hash, policy `max_concurrent_builders: 4`, one combined active preparation ceiling across `B1–B2`, and every packet's exact dependencies/paths in the run manifest.
 6. For each lane, use one reviewed S00 reservation/placement operation: reserve packet/path/shared resources, select a safe node, propagate `campaign_root_sha`, `dispatch_base_sha`, `source_repository`, and `source_base_sha`, create the worktree in that exact repository, write complete branch-bound scope/metadata, and recheck `HEAD == source_base_sha`, repository identity, leases, sidecar and collisions before returning success. Sidecar failure returns nonzero or `needs_reconcile`; it never exposes a runnable worker command.
 7. Place lanes sequentially through the Pro authority. Execution may be parallel only after all reservations for the admitted set are stable.
 
@@ -58,13 +59,9 @@ pending → reserved → worktree_ready → running → built
 The Conductor performs these steps once, immediately before launch. A stale result is not reusable.
 
 1. Verify the authoritative Pro checkout, origin relationship, and the exact reviewed execution-plan commit.
-2. Run a current three-node capacity probe:
+2. Run a current campaign-topology capacity probe. Before S00 exists, use direct Pro-authoritative worktree, registry, path and lease inventory under the bounded bootstrap exception. The generic fleet command is diagnostic only: a nonzero result caused solely by its attempt to contact excluded Mini-Pro2 is recorded as `excluded_node_ignored`, not `BOOTSTRAP_AUTHORITY_UNAVAILABLE`. After S00 is independently reviewed, its campaign planner must admit Pro execution resources and the Air-M5 control surface only. Any generic fleet data is filtered before admission and never becomes a reservation receipt.
 
-   ```bash
-   python3 scripts/fleet_dispatch.py capacity --fetch --json
-   ```
-
-3. List active worktrees and leases on each reachable node. A dark node, unreadable lane scope, or missing lease backend blocks shared-file mutation.
+3. List active worktrees and leases for participating Pro/Air campaign resources. A dark participating node, unreadable participating lane scope, or missing Pro lease backend blocks shared-file mutation. Mini-Pro2 darkness does not block this campaign, and Mini-Pro2 must not receive a campaign ref or lane.
 4. Resolve every intended path against current live lanes with the reviewed S00 planner before creating anything. A raw `fleet_dispatch.py place ... --dry-run` may provide diagnostic input, but it is not a reservation or dispatch receipt.
 5. Instantiate one copy of `DISPATCH-MANIFEST.md` per admitted lane. Freeze its exact `campaign_root_sha`, `dispatch_base_sha`, `source_repository`, `source_base_sha`, worktree, paths, models, side-effect ceiling, tests, rollback, operating window, and hard stops; hash the manifest.
 6. Create the lane only through the reviewed S00 operation and from the exact immutable `source_base_sha`. For monorepo work, require equality with `dispatch_base_sha`; for P01/P07, refuse placement until the approved immutable OSINT-Nexus source ref resolves exactly. Never combine a dry-run decision with a direct broker invocation: the current broker cannot persist the required base/scope lineage fail closed.
@@ -267,7 +264,7 @@ P03 releases `wr3-runtime` after handoff. P11 cannot edit these paths until then
 ### B1 — P05 Intel Lake/MATA preparation
 
 **Priority:** 4
-**Preferred node:** Mini-Pro2 for public/synthetic analysis; Pro only for protected/live truth
+**Preferred node:** Pro. This logical preparation slot may run only when one of the four Pro builder slots is available.
 **Lane:** `intel`
 **Task ID:** `ros-v1-p05-intel-prep-b01`
 **Packet:** [`05-intel-lake-v2-mata-consolidation.md`](../../specs/evidence-to-action-freeze-2026-08-15/work-packets/05-intel-lake-v2-mata-consolidation.md)
@@ -297,7 +294,7 @@ Exit: one reviewable preparation bundle with a lossless contract map, candidate 
 ### B2 — P06 NAGA preparation
 
 **Priority:** 5
-**Preferred node:** Mini-Pro2 for synthetic evaluation; Pro only for authoritative read-only inventory
+**Preferred node:** Pro. `B1` and `B2` share one active preparation ceiling; this lane remains queued while `B1` is active.
 **Lane:** `organism`
 **Task ID:** `ros-v1-p06-naga-prep-b01`
 **Packet:** [`06-naga-claim-ledger.md`](../../specs/evidence-to-action-freeze-2026-08-15/work-packets/06-naga-claim-ledger.md)

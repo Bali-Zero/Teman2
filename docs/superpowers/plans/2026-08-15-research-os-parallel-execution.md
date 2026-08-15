@@ -140,6 +140,8 @@ Cover:
 - run-manifest writes use lock + temporary file + atomic rename;
 - every receipt binds `authority_host=Pro`, absolute registry root, Redis host/port/database/keyspace identity, and backend fingerprint;
 - Air/Mini-local Redis, wrong-backend fingerprints, fail-open lease behavior, and sidecar-write failure all stop dispatch;
+- the reviewed topology policy binds `authority_host=Pro`, `control_surface=Air-M5`, and `excluded_nodes=[Mini-Pro2]`; Mini-Pro2 unreachability does not block S00, no Mini probe is required, and any campaign placement/ref/worktree/lease request targeting Mini-Pro2 is rejected;
+- the S00 bootstrap uses direct Pro-authoritative worktree, path, registry and lease inventory; a pre-S00 generic fleet failure caused solely by probing excluded Mini-Pro2 records `excluded_node_ignored`, while any unknown or failed participating Pro/Air authority input remains fail closed;
 - builder, Gear-2 reviewer, Gear-3 judge, and I1 integrator session IDs/families are recorded; self-review and same-family Gear-2 review are rejected;
 - completed receipt replays idempotently, while unknown/in-progress/failed state stops automatic continuation;
 - the frozen packet Dispatch Manifest remains merge-forbidden, while a separately instantiated integration manifest binds one integrator, reviewed source/review receipt, source/destination repository, control and repository checkpoints, worktree/branch, leases, expected merge-tree/result hashes, tests and expiry;
@@ -151,6 +153,7 @@ Cover:
 The adapter should:
 
 - create/validate `~/.organism/frozen-packet-runs/<run-id>/` on Pro;
+- encode the closed campaign topology and filter excluded nodes before capacity or collision admission, without treating excluded-node reachability as an authority dependency;
 - hash frozen packet/contract/DAG inputs;
 - maintain a single-writer run manifest and append-only event/receipt indexes;
 - reserve packet/path/shared resources before sequential placement;
@@ -209,7 +212,7 @@ Read current Pro `HEAD`, `origin/main`, worktrees, dirty paths, fleet topology, 
 
 **Step 2: Select the campaign base**
 
-Use the reviewed S00 commit as immutable `campaign_root_sha`. Create an immutable feature ref visible to Pro and Mini, and initialize the first monorepo integration checkpoint to that same SHA. Record ref and hashes. Later control-plane checkpoints are append-only successors; the campaign root never moves. Every dispatch also binds `source_repository` and `source_base_sha`; for monorepo lanes the source base equals the selected `dispatch_base_sha`, while external P01/P07 lanes require their own operator-approved immutable OSINT-Nexus ref. This is not a main merge or deployment.
+Use the reviewed S00 commit as immutable `campaign_root_sha`. Create an immutable feature ref on Pro; Air-M5 may consume a read-only mirror as the operator control surface, while Mini-Pro2 must not fetch, check out, synchronize, or execute that ref. Initialize the first monorepo integration checkpoint to the same SHA and record ref and hashes. Later control-plane checkpoints are append-only successors; the campaign root never moves. Every dispatch also binds `source_repository` and `source_base_sha`; for monorepo lanes the source base equals the selected `dispatch_base_sha`, while external P01/P07 lanes require their own operator-approved immutable OSINT-Nexus ref. This is not a main merge or deployment.
 
 **Step 3: Initialize the registry**
 
@@ -234,9 +237,9 @@ Follow [`WAVE-0-DISPATCH.md`](../../../research/operations/execution/research-os
 - P04 canonical contracts on Pro;
 - P01 Tasks 1–6 on a separately preserved OSINT-Nexus Pro worktree;
 - P03 WR3/FlowKit zero-spend readiness on Pro;
-- P05 Intel/MATA preparation on the safest available Pro/Mini slot.
+- P05 Intel/MATA preparation on the fourth available Pro builder slot.
 
-**Queued next:** P06 NAGA preparation. It enters when one of the four slots clears. If node capacity makes three Pro lanes unsafe, queue the lower-priority lane; do not move protected work to Air-M5.
+**Queued next:** P06 NAGA preparation. It enters when one of the four Pro slots clears and no other preparation lane is active. If Pro capacity makes three hot-path lanes unsafe, queue the lower-priority lane; do not move protected work to Air-M5 or any work to Mini-Pro2.
 
 **Step 1: Place sequentially**
 
