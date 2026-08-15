@@ -1,0 +1,93 @@
+{
+  "run_at": "2026-08-15T07:09:14+08:00",
+  "today": "2026-08-15",
+  "yesterday_seen_count": 22,
+  "new_today_count": 0,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "http_403",
+      "note": "Blocked, retried once (Mozilla UA via curl), still 403"
+    },
+    {
+      "url": "https://ortax.org/news",
+      "reason": "empty_shell",
+      "note": "200 but client-rendered SPA, title 'Artikel tidak ditemukan' (same failure mode as prior runs)"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "http_403",
+      "note": "Blocked, retried once (Mozilla UA via curl), still 403"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "empty_shell",
+      "note": "200, AJAX search ignores jenis=PMK&tahun=2026 filter; static fallback is the full hierarchy catalog, newest date 01 Agustus 2026, unrelated to filter"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "timeout",
+      "note": "Connection failed (curl HTTP_CODE=000), retried once, still failed"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "timeout",
+      "note": "DNS/connection timeout (getaddrinfo ETIMEOUT via WebFetch), retried once via curl (exit 28), still failed"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "Homepage parsed; headlines are tax-revenue/RAPBN 2027/budget news, no verbatim reg-number citations within window"
+    },
+    {
+      "url": "https://peraturan.go.id",
+      "reason": "outside_window",
+      "note": "Newest entry Permendikdasmen 19/2026, Tanggal Pengundangan 06 Agustus 2026, older than 48h window"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "checked_no_new",
+      "note": "Homepage parsed; newest Siaran Pers dated 14 Agu 2026 (deportation enforcement, Israeli national) - not a regulatory citation"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "Content parsed; newest entry PER-8/PJ/2026 (already seen) dated 2026-07-28, older than 48h window"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "Content parsed; newest entry UU 2/2026 (PPRT) dated 30 April 2026, far outside 48h window"
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [],
+  "seen_citations": [
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 28 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "PMK Nomor 44 Tahun 2026",
+    "Peraturan Direktur Jenderal Pajak Nomor PER-8/PJ/2026",
+    "Peraturan Menteri Hukum Nomor 13 Tahun 2026",
+    "PMK Nomor 61 Tahun 2026",
+    "PMK Nomor 57 Tahun 2026"
+  ],
+  "note": "All 4 NB-INTEL queried successfully, 0 formal regulatory citations returned. NB-INTEL-Tax surfaced a ministerial interview (Purbaya Yudhi Sadewa, 12 Aug 2026, ANTARA) re: possible further postponement of PPh Pasal 22 marketplace withholding (already deferred to 1 Nov 2026) - dropped per Hard Rule #2 (no speculation): it is a statement of intent, not an enacted act, and carries no verbatim citation number."
+}

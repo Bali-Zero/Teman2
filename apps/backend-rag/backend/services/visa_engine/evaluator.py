@@ -865,17 +865,23 @@ def _build_notices(facts: FactSnapshot, compiled_pack: CompiledRulePack) -> tupl
     if requested is None or isinstance(requested, UnknownFact):
         return ()
     requested_code = str(requested.value)
-    notices: list[Reason] = []
+    # One retired code may map to several current products (for example,
+    # B211A maps to C1/C2/C6 in the production catalogue).  That is one
+    # applicant-facing event, not one event per successor product.  Aggregate
+    # every successor citation into a single deterministic notice.
+    source_refs: set[uuid.UUID] = set()
     for compiled_product in compiled_pack.products:
         if requested_code in compiled_product.product.legacy_codes:
-            notices.append(
-                Reason(
-                    code="OBSOLETE_PRODUCT_CODE",
-                    rule_ids=(),
-                    source_refs=_sorted_uuids(compiled_product.product.source_refs),
-                )
-            )
-    return tuple(notices)
+            source_refs.update(compiled_product.product.source_refs)
+    if not source_refs:
+        return ()
+    return (
+        Reason(
+            code="OBSOLETE_PRODUCT_CODE",
+            rule_ids=(),
+            source_refs=_sorted_uuids(source_refs),
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------

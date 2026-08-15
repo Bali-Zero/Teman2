@@ -79,7 +79,7 @@ function assertExactEnum(document, schema, values, label) {
 }
 
 function assertParameter(parameters, name, location) {
-  const found = parameters.some(
+  const found = parameters.find(
     (parameter) =>
       typeof parameter === "object" &&
       parameter !== null &&
@@ -88,6 +88,7 @@ function assertParameter(parameters, name, location) {
       parameter.in === location,
   );
   if (!found) fail(`POST is missing ${location} parameter ${name}`);
+  return found;
 }
 
 async function main() {
@@ -206,6 +207,10 @@ async function main() {
     ...(pathItem.parameters ?? []),
     ...(operation.parameters ?? []),
   ];
+  const trafficSource = assertParameter(parameters, "traffic_source", "query");
+  if (trafficSource.required !== true) {
+    fail("POST query parameter traffic_source must be required");
+  }
   assertParameter(parameters, "request_category", "query");
   assertParameter(parameters, "Idempotency-Key", "header");
 

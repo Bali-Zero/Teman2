@@ -69,6 +69,10 @@ WHITELIST_FILES: set[str] = {
     # Agent-topology SSOT, sibling of MODEL_TOPOLOGY.json above (fleet-order
     # landing 2026-08-10) — cloud fleet accounts/role-chains.
     "FLEET_TOPOLOGY.json",
+    # Model catalogue (models × strengths × effort × door), read by every
+    # conductor before choosing a seat — sits beside FLEET_TOPOLOGY.json,
+    # which owns accounts/chains (Zero ruling 2026-08-14).
+    "MODEL_ROSTER.md",
     # Entry launcher
     "sentinel",
     # Symlinks (organizational)

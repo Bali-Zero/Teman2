@@ -105,6 +105,50 @@ else
   pass "fail-loud: unresolvable head exits non-zero instead of passing blind"
 fi
 
+# --------------------------------------------------- HIGH-5 (red-team 2026-08-14)
+# `git diff --name-only` used to be followed by an unconditional `exit 0` — a
+# git failure AFTER printing a partial file list still looked like success to
+# the caller. Simulate that with a PATH-shimmed fake `git` that passes every
+# subcommand through to the real binary EXCEPT `diff`, which prints one line
+# then exits 1 — proving the under-test script now surfaces that failure
+# instead of returning the partial line with exit 0.
+REAL_GIT="$(command -v git)"
+FAKE_GIT_DIR="$(mktemp -d)"
+cat > "$FAKE_GIT_DIR/git" <<FAKEGIT
+#!/usr/bin/env bash
+if [[ "\$1" == "diff" ]]; then
+  echo "docs/partial-before-failure.md"
+  exit 1
+fi
+exec "$REAL_GIT" "\$@"
+FAKEGIT
+chmod +x "$FAKE_GIT_DIR/git"
+if out=$(PATH="$FAKE_GIT_DIR:$PATH" "$UNDER_TEST" "$MAIN_TIP" "$CODEOWNERS_HEAD" 2>/dev/null); then
+  fail "high-5: git diff failure was not surfaced as a script failure (got: ${out//$'\n'/, })"
+else
+  pass "high-5: git diff failure after merge-base resolution exits non-zero, not a blind partial pass"
+fi
+rm -rf "$FAKE_GIT_DIR"
+
+# --------------------------------------------------- HIGH-6 (red-team 2026-08-14)
+# A rename between the fork point and the branch head must surface BOTH the
+# old and the new path — not just the destination, which is what
+# `git diff --name-only` alone (no `--no-renames`) can collapse to depending
+# on ambient `diff.renames` config.
+git checkout -q -b feature-rename "$INITIAL"
+git mv apps/mouth/src/content/articles/tax/a.mdx apps/mouth/src/content/articles/tax/b.mdx
+git commit -qm "rename: a.mdx -> b.mdx"
+RENAME_HEAD="$(git rev-parse HEAD)"
+git checkout -q "$MAIN_TIP"
+
+out="$("$UNDER_TEST" "$MAIN_TIP" "$RENAME_HEAD" 2>/dev/null)"
+if grep -qx 'apps/mouth/src/content/articles/tax/a\.mdx' <<< "$out" \
+  && grep -qx 'apps/mouth/src/content/articles/tax/b\.mdx' <<< "$out"; then
+  pass "high-6: a rename reports BOTH the old and the new path"
+else
+  fail "high-6: rename did not report both paths (output: ${out//$'\n'/, })"
+fi
+
 echo
 if [[ "$FAILURES" -gt 0 ]]; then
   echo "FAIL — $FAILURES assertion(s) failed"

@@ -1,13 +1,12 @@
 """Manual/ceremony probe wrapper for ``POST /api/visa-oracle/evaluate``.
 
-Every hand-run smoke against the evaluate endpoint that omits the
-``traffic_source`` query param lands as ``traffic_source=real`` by design
-(the router's default -- see ``app/routers/visa_oracle_evaluate.py``'s module
-docstring, and it is CORRECT for organic end-user traffic). But an operator
-probe is not organic traffic: `shadow_evidence.py`'s G-a-vol gate reserves
-``real`` for genuine adoption evidence, and every prior arming/prove-live
-ceremony that skipped the query param contaminated that ledger (3 rows
-2026-07-26, 4 rows 2026-08-10, 2 rows + 1 rejected 422 on 2026-08-11 --
+Every request must now carry an explicit ``traffic_source`` query parameter;
+the router rejects an omission with a sanitized 422 instead of silently
+classifying it as ``real``. That fail-closed boundary matters because an
+operator probe is not organic traffic: `shadow_evidence.py`'s G-a-vol gate
+reserves ``real`` for genuine adoption evidence, and earlier arming/prove-live
+ceremonies that relied on the former implicit default contaminated that ledger
+(3 rows 2026-07-26, 4 rows 2026-08-10, 2 rows + 1 rejected 422 on 2026-08-11 --
 ``.agents/skills/visaoracle/{SKILL,CURRENT_STATE}.md``).
 
 This CLI closes that gap for the manual path: it defaults to

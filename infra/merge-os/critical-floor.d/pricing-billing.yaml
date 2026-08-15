@@ -1,0 +1,17 @@
+id: pricing-billing
+category: Pricing / billing
+description: >
+  Every test touching PricingTool, dynamic pricing, billing endpoints, or
+  the hardcoded-pricing-detector. CLAUDE.md Golden Rule #11 is absolute
+  ("All prices from PricingTool. Never hardcode.") and this is a
+  client-facing agency — a pricing regression is a direct financial-harm
+  surface, not an internal-quality one.
+patterns:
+  - apps/backend-rag/**/test_*pricing*.py
+  - apps/backend-rag/**/test_*billing*.py
+rationale: >
+  CLAUDE.md §8 Golden Rule #11 "PricingTool Only — All prices from
+  PricingTool. Never hardcode." + §13 "Client-facing: single price
+  all-inclusive from PricingTool". A quarantined pricing test is an
+  unverified price shown to a real client.
+verified_match_count: 20
