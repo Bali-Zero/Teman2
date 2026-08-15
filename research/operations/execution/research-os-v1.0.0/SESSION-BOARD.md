@@ -56,7 +56,7 @@ Live placement is decided immediately before dispatch by `scripts/fleet_dispatch
 | `H1–H3` | Pro | Hot-path implementation lanes | 3 host-local | Authoritative DB, Qdrant, NEXUS, FlowKit, daemons, render and integration truth |
 | `B1–B2` | Mini-Pro2 | Batch/preparation/evaluation lanes | 2 host-local | Local inference, public/synthetic fixtures, replay and non-conflicting batch work |
 | `V1` | Best safe node | Independent refuter/reviewer | 1 on demand | Different session; Gear-2/refuter family differs from the main builder and reruns critical checks from disk |
-| `I1` | Pro | Interactive Claude/operator-controlled serial integrator | 1, exclusive | Separate hash-bound manifest; one reviewed SHA at a time; never an external builder/reviewer seat |
+| `I1` | Pro | Interactive Claude/operator-controlled serial integrator | 1, exclusive | S00-produced dedicated integration manifest; one reviewed SHA at a time; never an external builder/reviewer seat |
 
 Rules:
 
@@ -67,7 +67,9 @@ Rules:
 - Unknown machine state, opaque file ownership, or unavailable lease infrastructure makes placement fail closed.
 - The practical steady-state target is four bounded builders plus the Conductor. A read-only reviewer may run alongside them only when it does not contend for a saturated host; a review that needs code changes consumes a builder slot through a separate repair dispatch.
 
-The current placement tools are reusable but are not a transactional campaign orchestrator. Before Cohort A, Session S00 must create one Pro-authoritative run registry, freeze one immutable `campaign_root_sha`, and maintain an append-only chain of immutable integration checkpoints. Every dispatch selects one exact checkpoint as `dispatch_base_sha`. The Pro authority places lanes sequentially and verifies the resulting worktree `HEAD` against that SHA. Air-M5 may invoke the Pro authority, but it never writes a local campaign registry or lease. Current `fleet_dispatch.py place` does not propagate the required base or write a complete fail-closed scope sidecar, and its collision check plus worktree creation are not atomic; therefore it is advisory only until S00 is independently reviewed. No packet is dispatched through a dry-run/direct-broker workaround.
+The current placement tools are reusable but are not a transactional campaign orchestrator. Before Cohort A, Session S00 must create one Pro-authoritative run registry, freeze one immutable `campaign_root_sha`, and maintain an append-only chain of immutable monorepo integration checkpoints. Every dispatch binds four distinct lineage fields: `campaign_root_sha`, monorepo control-plane `dispatch_base_sha`, `source_repository`, and immutable `source_base_sha`. The Pro authority places lanes sequentially and verifies the resulting worktree repository and `HEAD == source_base_sha`; monorepo lanes require `source_base_sha == dispatch_base_sha`, while external P01/P07 lanes remain blocked until an operator-approved immutable OSINT-Nexus source ref exists. Air-M5 may invoke the Pro authority, but it never writes a local campaign registry or lease. Current `fleet_dispatch.py place` does not propagate the required lineage or write a complete fail-closed scope sidecar, and its collision check plus worktree creation are not atomic; therefore it is advisory only until S00 is independently reviewed. No packet is dispatched through a dry-run/direct-broker workaround.
+
+S00 alone uses the bounded bootstrap exception defined in `README.md`: one reviewed control-room/base composition, one Pro worktree, one branch-bound bootstrap receipt, no concurrent packet and no live effect. S00 commits before review; only its final exact reviewed SHA becomes the campaign root. It also produces the dedicated integration-manifest schema. After that point the exception terminates and every builder, reviewer, repair, or I1 operation must satisfy the normal campaign protocol.
 
 ## 3. Event-driven execution cohorts
 
@@ -227,7 +229,7 @@ sequenceDiagram
     B->>R: Commit + evidence bundle; stop
     R->>R: Inspect disk, rerun critical checks, adversarial review
     R->>C: PASS / PASS_WITH_LIMITS / FAIL / insufficient_evidence
-    C->>I: Exact reviewed SHA + integration manifest
+    C->>I: Exact reviewed SHA + S00-validated integration manifest
     I->>I: Preserve source SHA, merge conflict-free, test integrated checkpoint
     I->>C: Integration receipt; no implied live authority
     C->>O: Exact effect proposal only when eligible
@@ -238,6 +240,7 @@ Gate policy:
 
 - A packet reviewer checks its exact branch.
 - `I1` checks the integrated candidate, not only the individual branch.
+- The ordinary frozen Dispatch Manifest remains merge-forbidden. Reviewed S00 produces the separate hash-bound integration-manifest schema; each instance permits one exact conflict-free merge into one named isolated branch and forbids source rewriting, conflict repair, `main`, deploy, production migration and every live effect.
 - G1, G2, G3, and G4 require the separate Gear-3 Fable session defined by current Pro topology; this gate is session-independent rather than family-exclusion-based.
 - `PASS_WITH_LIMITS` unlocks only what the receipt explicitly names.
 - `insufficient_evidence` never opens a canary or retirement.

@@ -109,7 +109,7 @@ Expected result: one final locally reviewed feature-branch revision, possibly pr
 
 This is execution infrastructure, not a twenty-fourth semantic packet.
 
-**Bootstrap gate:** make the exact independently reviewed Task 1 commit available to Pro through an immutable feature ref, create a dedicated S00 worktree from that ref, and verify its `HEAD`, owned paths and leases before editing. After S00 itself passes independent review, its exact reviewed commit becomes the 23-packet `campaign_root_sha`. The older freeze commit remains semantic authority but is not used as a moving execution base.
+**S00-only bootstrap gate:** this is the sole bounded exception to the normal packet-session protocol, because S00 creates that protocol's registry and sidecars. Make the exact independently reviewed Task 1 commit available to Pro through an immutable feature ref as `control_room_sha`; reverify its relationship to current Pro source and critical tooling hashes. If it is not a safe direct source base, an interactive operator-controlled integrator creates one conflict-free bootstrap-composition commit from an operator-approved immutable Pro source ref plus the exact reviewed control-room change, and an independent reviewer approves that exact composed SHA. Record the final reviewed immutable commit as `s00_base_sha`, create one dedicated Pro S00 worktree from it, acquire the existing Pro path/repository leases through a non-fail-open operation, verify `HEAD == s00_base_sha`, and write an immutable branch-bound bootstrap scope receipt before editing. Recheck collisions after creation. No packet session or live effect may run concurrently. This exception terminates after S00's final reviewed commit creates the normal controls and becomes the 23-packet `campaign_root_sha`; it is never reusable.
 
 **Files:**
 
@@ -118,6 +118,7 @@ This is execution infrastructure, not a twenty-fourth semantic packet.
 - Create: `scripts/research_os_campaign.py`
 - Create: `scripts/tests/test_research_os_campaign.py`
 - Modify/create focused tests for `fleet_dispatch.py` and `agent_start.py`
+- Create: `research/operations/execution/research-os-v1.0.0/INTEGRATION-MANIFEST.schema.json`
 - Create: `docs/runbooks/research-os-campaign-control.md`
 
 **Ownership/lease:** `session-tooling`, `research-os-campaign-control`, and exact script paths. Do not combine this with a packet implementation.
@@ -126,9 +127,10 @@ This is execution infrastructure, not a twenty-fourth semantic packet.
 
 Cover:
 
-- one exact `--base-commit` or immutable `--base-ref` is propagated through placement to worktree creation;
-- `campaign_root_sha` remains immutable while each dispatch binds one immutable `dispatch_base_sha` from the integration-checkpoint chain;
-- the worktree refuses to start when `HEAD` differs from the frozen SHA;
+- the S00 bootstrap accepts only the exact reviewed `s00_base_sha`, branch-bound scope receipt, Pro leases and authority fingerprint, and terminates before any packet dispatch; an absent/moving/mismatched source or concurrent session fails closed;
+- each dispatch carries `campaign_root_sha`, monorepo `dispatch_base_sha`, `source_repository`, and immutable `source_base_sha` through reservation, placement and handoff;
+- monorepo lanes require `source_base_sha == dispatch_base_sha`; external P01/P07 lanes require an independently approved immutable OSINT-Nexus source ref and fail closed without it;
+- the worktree refuses to start when repository identity differs or `HEAD != source_base_sha`;
 - `.agent-task.json` records base SHA, packet ID/hash, contract hash, owned paths, dependencies, and run ID;
 - `max_concurrent_builders=4` queues the fifth builder;
 - Redis unavailable refuses reservation;
@@ -140,6 +142,8 @@ Cover:
 - Air/Mini-local Redis, wrong-backend fingerprints, fail-open lease behavior, and sidecar-write failure all stop dispatch;
 - builder, Gear-2 reviewer, Gear-3 judge, and I1 integrator session IDs/families are recorded; self-review and same-family Gear-2 review are rejected;
 - completed receipt replays idempotently, while unknown/in-progress/failed state stops automatic continuation;
+- the frozen packet Dispatch Manifest remains merge-forbidden, while a separately instantiated integration manifest binds one integrator, reviewed source/review receipt, source/destination repository, control and repository checkpoints, worktree/branch, leases, expected merge-tree/result hashes, tests and expiry;
+- absent, stale, mismatched or over-broad integration manifests refuse integration, and only one exact conflict-free isolated-branch merge is representable; rewriting, conflict repair, `main`, deploy, production migration, scheduler/service/flag/publication/paid effects remain forbidden;
 - no command merges, deploys, publishes, starts a scheduler, restarts a service, or executes a packet.
 
 **Step 2: Implement the smallest adapter**
@@ -150,8 +154,9 @@ The adapter should:
 - hash frozen packet/contract/DAG inputs;
 - maintain a single-writer run manifest and append-only event/receipt indexes;
 - reserve packet/path/shared resources before sequential placement;
-- pass and verify one frozen base SHA;
-- expose `plan`, `reserve`, `place`, `record-handoff`, `record-review`, `queue-integration`, and `status` commands;
+- pass and verify all four lineage fields and require worktree `HEAD == source_base_sha`;
+- expose `plan`, `reserve`, `place`, `record-handoff`, `record-review`, `create-integration-manifest`, `queue-integration`, `record-integration`, and `status` commands;
+- produce and validate the dedicated hash-bound integration-manifest schema without weakening the merge prohibition in the ordinary packet manifest;
 - never launch an LLM, merge, deploy, or perform a live effect;
 - make side effects explicit and default to none.
 
@@ -166,18 +171,27 @@ apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_research_os_campa
 apps/backend-rag/.venv/bin/python -m pytest scripts/tests -k 'fleet_dispatch or agent_start' -q
 ```
 
-**Step 4: Independent review**
-
-The reviewer must reproduce frozen-base mismatch, Redis failure, fifth-builder queueing, stale-review invalidation, and collision refusal. The implementation cannot be used by Wave 0 until this review passes.
-
-**Step 5: Commit**
+**Step 4: Create the S00 candidate commit**
 
 ```bash
 git add scripts/fleet_dispatch.py scripts/agent_start.py \
   scripts/research_os_campaign.py scripts/tests \
+  research/operations/execution/research-os-v1.0.0/INTEGRATION-MANIFEST.schema.json \
   docs/runbooks/research-os-campaign-control.md
 git commit -m "feat(ops): add frozen research campaign control"
 ```
+
+**Step 5: Independently review the exact candidate SHA**
+
+The reviewer binds the exact commit SHA and artifact hashes, then reproduces bootstrap mismatch, repository/base mismatch, Redis failure, fifth-builder queueing, stale-review invalidation, collision refusal, and absent/stale/over-broad integration-manifest refusal. The implementation cannot be used by Wave 0 until this review passes.
+
+**Step 6: Repair only through a successor commit**
+
+Any change after review creates a new commit and invalidates that verdict. Run the focused checks again and obtain a fresh independent review of the successor SHA; never rebase or amend the reviewed candidate.
+
+**Step 7: Freeze the campaign root**
+
+Only the final independently reviewed S00 SHA becomes `campaign_root_sha`. Record the exact SHA, hashes, bootstrap receipt and review receipt; then terminate the S00-only exception and require the normal packet protocol for every later session.
 
 ---
 
@@ -195,7 +209,7 @@ Read current Pro `HEAD`, `origin/main`, worktrees, dirty paths, fleet topology, 
 
 **Step 2: Select the campaign base**
 
-Use the reviewed S00 commit as immutable `campaign_root_sha`. Create an immutable feature ref visible to Pro and Mini, and initialize the first integration checkpoint to that same SHA. Record ref and hashes. Later checkpoints are append-only successors; the campaign root never moves. This is not a main merge or deployment.
+Use the reviewed S00 commit as immutable `campaign_root_sha`. Create an immutable feature ref visible to Pro and Mini, and initialize the first monorepo integration checkpoint to that same SHA. Record ref and hashes. Later control-plane checkpoints are append-only successors; the campaign root never moves. Every dispatch also binds `source_repository` and `source_base_sha`; for monorepo lanes the source base equals the selected `dispatch_base_sha`, while external P01/P07 lanes require their own operator-approved immutable OSINT-Nexus ref. This is not a main merge or deployment.
 
 **Step 3: Initialize the registry**
 
@@ -465,7 +479,7 @@ Follow [`RETIREMENT-REGISTER.md`](../../../research/operations/execution/researc
 
 **Step 1: Inventory only**
 
-Refresh every candidate, classify `RETAIN|CONSOLIDATE|DEPRECATE|ARCHIVE|UNKNOWN`, and add instrumentation designs. The inventory session must end with exactly one atomic, evidence-qualified nomination and no disable. If no target qualifies, the session remains open/blocked and produces no effect; it does not close with zero nominations or manufacture a candidate.
+Refresh every candidate, classify `RETAIN|CONSOLIDATE|DEPRECATE|ARCHIVE|UNKNOWN`, and add instrumentation designs. The inventory session must end with exactly one atomic, evidence-qualified nomination, acquisition of the exclusive `active_candidate_id` lease, and no disable. If no target qualifies, the session remains open/blocked and produces no effect; it does not close with zero nominations or manufacture a candidate.
 
 **Step 2: Prove replacement and non-use**
 
@@ -473,13 +487,13 @@ Collect two complete windows or the stricter candidate window, live-use/unknown-
 
 **Step 3: Disable one target**
 
-After independent review, G4-compatible outcomes and exact owner authority, change one reversible flag/selector. Record immutable attempt, operational receipt and outcome. Observe one full window. No other retirement proceeds.
+After independent review, G4-compatible outcomes and exact owner authority, verify that the nomination's global `active_candidate_id` lease is still exact and held, then change one reversible flag/selector. Record immutable attempt, operational receipt and outcome. Observe one full window. No other retirement proceeds while that lease is held.
 
 **Step 4: Remove later and separately**
 
-If the disabled window is clean, create a new removal intent and approval. Remove only code/config whose data/history is archived and whose rollback remains tested. Never delete historical evidence, claims, approvals, outcomes, provenance, protected graph data, or NotebookLM sources as part of generic cleanup.
+If the disabled window is clean, either close the candidate revision as `DisabledRetainedClosed`, or create a new removal intent and approval while retaining the same global candidate lease. Remove only code/config whose data/history is archived and whose rollback remains tested. Release the lease only at `ArchivedRetired`, `DisabledRetainedClosed`, or `ReenableReconciled`; partial/unknown effects must complete the rollback or restore/re-enable path first. Never delete historical evidence, claims, approvals, outcomes, provenance, protected graph data, or NotebookLM sources as part of generic cleanup.
 
-After the inherited Packet 16 gate, the lowest-risk first nomination is the metadata-only R13a alias repair if its own windows are complete; it never touches the live job. The recommended first runtime disable is the narrowly scoped MATA WR2 dossier-writer R03 after its additional P05/P12/P18/P14 proof. Canonical NotebookLM consolidation follows in three serial steps. Publication-history fallback and physical retirement are separate near-last effects. NEXUS graph readers default to retain.
+After the inherited Packet 16 gate, the lowest-risk first nomination is the metadata-only R13a alias repair if its own windows are complete; it never touches the live job. The recommended first runtime disable is the narrowly scoped MATA WR2 dossier-writer R03 after its additional P05/P12/P18/P14 proof. Canonical NotebookLM consolidation follows in three serial steps. Publication-history retirement is four near-last effects: canonical read with dual write, fallback-off, legacy-writer-off, then physical archive. R12 NEXUS/Mini graph readers are terminally retained in this program; any future retirement proposal requires a new freeze and absolute-last placement.
 
 ---
 
@@ -524,7 +538,11 @@ Every builder and reviewer handoff must include:
 run_id: exact campaign run
 packet_id: exact packet or split sub-packet
 dispatch_manifest_ref: exact id and sha256
-base_commit: exact frozen SHA
+campaign_root_sha: exact immutable campaign root
+dispatch_base_sha: exact monorepo control-plane checkpoint
+source_repository: exact repository identity and path
+source_base_sha: exact immutable source repository SHA
+base_commit: compatibility alias equal to source_base_sha
 branch: exact branch
 head_commit: exact current SHA
 owned_paths: exact list
@@ -534,6 +552,7 @@ tests:
     exit_code: integer
     result: concise result
 leases: exact held/released resources
+integration_manifest_ref: null unless queued for one exact I1 operation
 side_effects_observed: []
 migration_state: not_created | created_not_applied | applied_test_only
 flags_state: exact values

@@ -25,7 +25,7 @@ flowchart LR
     R1 --> I["Serial integration queue"]
     R2 --> G0["G0 eligibility; no cutover"]
     R3 --> G0
-    B1 --> Q["Rebase after P04"]
+    B1 --> Q["Fresh successor from integrated P04 checkpoint"]
     B2 --> Q
 ```
 
@@ -38,9 +38,9 @@ Wave 0 cannot start from the current tools by opening five terminals. The placem
 1. First build and independently review Session S00 from the reviewed control-room commit. Until S00 passes, Wave 0 remains blocked; current placement commands are read-only diagnostics only.
 2. Through the Pro-only authority, create one non-repository run directory such as `~/.organism/frozen-packet-runs/<run-id>/`. It is single-writer: only the Pro campaign controller mutates its run manifest through atomic replacement. Air-M5 invokes that controller remotely; workers and reviewers write uniquely named immutable receipts.
 3. Bind every reservation to `authority_host=Pro`, the absolute registry root, Redis host/port/database/keyspace identity, and a backend fingerprint. Acquire one campaign lease such as `research-os-v1.0.0:<run-id>`. Redis unavailability, a localhost backend on Air/Mini, or a fingerprint mismatch is a hard stop.
-4. Select one reviewed `campaign_root_sha` and create an immutable feature ref pointing to it. Maintain a separate append-only integration-checkpoint chain. Every child dispatch freezes one exact checkpoint as `dispatch_base_sha`; a moving `main` tip is never an identity.
+4. Select one reviewed `campaign_root_sha` and create an immutable feature ref pointing to it. Maintain a separate append-only monorepo integration-checkpoint chain. Every child dispatch freezes one exact checkpoint as `dispatch_base_sha`, plus `source_repository` and an immutable `source_base_sha`; a moving `main` tip is never an identity. Monorepo lanes require `source_base_sha == dispatch_base_sha`. External P01/P07 lanes keep the monorepo checkpoint as control lineage but use a separately operator-approved immutable OSINT-Nexus `source_base_sha`.
 5. Record the freeze hash, contract hash, DAG hash, campaign root, initial checkpoint, current Pro topology hash, policy `max_concurrent_builders: 4`, and every packet's exact dependencies/paths in the run manifest.
-6. For each lane, use one reviewed S00 reservation/placement operation: reserve packet/path/shared resources, select a safe node, propagate the exact `dispatch_base_sha`, create the worktree, write complete branch-bound scope/metadata, and recheck `HEAD`, leases, sidecar and collisions before returning success. Sidecar failure returns nonzero or `needs_reconcile`; it never exposes a runnable worker command.
+6. For each lane, use one reviewed S00 reservation/placement operation: reserve packet/path/shared resources, select a safe node, propagate `campaign_root_sha`, `dispatch_base_sha`, `source_repository`, and `source_base_sha`, create the worktree in that exact repository, write complete branch-bound scope/metadata, and recheck `HEAD == source_base_sha`, repository identity, leases, sidecar and collisions before returning success. Sidecar failure returns nonzero or `needs_reconcile`; it never exposes a runnable worker command.
 7. Place lanes sequentially through the Pro authority. Execution may be parallel only after all reservations for the admitted set are stable.
 
 Recommended registry states are:
@@ -66,8 +66,8 @@ The Conductor performs these steps once, immediately before launch. A stale resu
 
 3. List active worktrees and leases on each reachable node. A dark node, unreadable lane scope, or missing lease backend blocks shared-file mutation.
 4. Resolve every intended path against current live lanes with the reviewed S00 planner before creating anything. A raw `fleet_dispatch.py place ... --dry-run` may provide diagnostic input, but it is not a reservation or dispatch receipt.
-5. Instantiate one copy of `DISPATCH-MANIFEST.md` per admitted lane. Freeze its exact base SHA, worktree, paths, models, side-effect ceiling, tests, rollback, operating window, and hard stops; hash the manifest.
-6. Create the lane only through the reviewed S00 operation and from the exact immutable `dispatch_base_sha`. Never combine a dry-run decision with a direct broker invocation: the current broker cannot persist the required base/scope lineage fail closed.
+5. Instantiate one copy of `DISPATCH-MANIFEST.md` per admitted lane. Freeze its exact `campaign_root_sha`, `dispatch_base_sha`, `source_repository`, `source_base_sha`, worktree, paths, models, side-effect ceiling, tests, rollback, operating window, and hard stops; hash the manifest.
+6. Create the lane only through the reviewed S00 operation and from the exact immutable `source_base_sha`. For monorepo work, require equality with `dispatch_base_sha`; for P01/P07, refuse placement until the approved immutable OSINT-Nexus source ref resolves exactly. Never combine a dry-run decision with a direct broker invocation: the current broker cannot persist the required base/scope lineage fail closed.
 7. Acquire the declared shared leases. Start no worker before both the worktree and lease receipts exist.
 8. Dispatch the builder. When it reaches `review_ready`, stop it and assign a different model family/session as reviewer.
 
@@ -151,7 +151,7 @@ Reviewer family: architecture/contract refuter different from the builder. A P04
 **Task ID:** `ros-v1-p01-nexus-prep-b01`
 **Packet:** [`01-nexus-security-containment.md`](../../specs/evidence-to-action-freeze-2026-08-15/work-packets/01-nexus-security-containment.md)
 
-This is a separate repository with a historically dirty runtime checkout. The monorepo placement tool cannot prove its branch base or file collisions. Before any edit, the operator must approve a recoverable source snapshot. No session may reset, stash, clean, copy to Air-M5, or overwrite the live checkout autonomously.
+This is a separate repository with a historically dirty runtime checkout. The monorepo placement tool cannot prove its branch base or file collisions. Before any edit, the operator must approve a recoverable immutable source snapshot/ref and S00 must record it as `source_base_sha`; the contemporaneous monorepo `dispatch_base_sha` remains the packet's control-plane lineage and is not the external worktree HEAD. Placement fails closed until both identities are present and independently checked. No session may reset, stash, clean, copy to Air-M5, or overwrite the live checkout autonomously. Packet 07 uses the same dual-repository rule in its later dispatch.
 
 Exact source ownership is the list frozen in Packet 01, including only:
 
@@ -292,7 +292,7 @@ Forbidden:
 - disabling the broken bridge or duplicate feed;
 - calling WR2, publishing, or generating content.
 
-Exit: one reviewable preparation bundle with a lossless contract map, candidate metrics, protected-data boundary, exact implementation scope, and explicit unknowns. Rebase it after P04; do not mechanically merge generated schemas.
+Exit: one reviewable preparation bundle with a lossless contract map, candidate metrics, protected-data boundary, exact implementation scope, and explicit unknowns. After P04 integration, open a fresh successor manifest and worktree from the exact reviewed P04 checkpoint, reference the immutable preparation receipt, and never rebase or reuse the preparation branch. Do not mechanically merge generated schemas.
 
 ### B2 — P06 NAGA preparation
 
@@ -365,7 +365,7 @@ Only I1 integrates reviewed implementation branches. Initial order:
 3. P02/migration 271, P05/migration 272, and P06/migration 273 only after their later implementation branches pass;
 4. P03 may integrate independently of the schema train only if the exact diff has no shared-contract collision and its P04 compatibility review passes.
 
-I1 is a distinct interactive Claude/operator-controlled role with a separate integration manifest; it is never the external builder or reviewer. It accepts one exact reviewed source SHA, acquires the relevant leases, and performs a conflict-free merge into the isolated program integration branch without rewriting that source SHA. It reruns affected tests, verifies the migration ledger, and emits a new immutable integration-checkpoint SHA and receipt. If a conflict, rebase, or source edit is required, I1 stops and issues a successor repair dispatch whose new SHA must be independently reviewed. I1 never merges to `main`, deploys, applies a production migration, loads a job, restarts a service, publishes, or spends credits.
+I1 is a distinct interactive Claude/operator-controlled role with a dedicated integration manifest instantiated from the S00-produced `INTEGRATION-MANIFEST.schema.json`; it is never the external builder or reviewer. The ordinary frozen Dispatch Manifest remains merge-forbidden. The integration manifest binds the exact source/destination repository, reviewed source SHA and review receipt, current monorepo control checkpoint, repository-specific destination checkpoint, worktree/branch, leases, expected merge-tree/result hashes, expiry, and tests, and permits only one conflict-free merge into the named isolated program integration branch. It forbids `main`, rewriting, conflict repair, deploy, production migration, service control, publication, paid use, and every live effect. I1 reruns affected tests, verifies the migration ledger where applicable, and emits the repository result SHA plus a new immutable control-plane checkpoint and receipt. If a conflict, rebase, source edit, absent/stale manifest, or hash mismatch occurs, I1 stops and issues a successor repair dispatch whose new SHA must be independently reviewed.
 
 ## 8. Wave 0 completion
 

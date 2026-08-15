@@ -54,19 +54,33 @@ The Conductor is a role, not another background service. It controls scope, orde
 4. **Generator is not grader.** Every implementation branch receives an independent review; G1–G4 also receive a final on-disk empirical gate from the fleet's designated judge.
 5. **Retirement is not deletion.** A legacy path is first instrumented, shadowed, proven replaceable, disabled behind a reversible control, observed for a complete window, and only then considered for a separate removal change.
 
-## Session start protocol
+## S00-only bootstrap exception
 
-Before any child session edits a file:
+The normal packet protocol below depends on controls that Session S00 must first create. Exactly one bounded bootstrap exception is therefore permitted, for S00 only:
+
+1. bind the exact independently reviewed control-room commit as `control_room_sha` and make it visible to Pro through an immutable feature ref;
+2. reverify the current Pro source relationship and critical tooling hashes; if the reviewed commit is not a safe source base, an interactive operator-controlled integrator creates one conflict-free bootstrap-composition commit from an operator-approved immutable Pro source ref plus the exact reviewed control-room change, and an independent reviewer approves that exact composed SHA before S00 edits begin;
+3. record that final reviewed immutable SHA as `s00_base_sha`, create one dedicated Pro S00 worktree from it, and prove `HEAD == s00_base_sha` before and after acquiring the existing Pro path/repository leases;
+4. create an immutable, branch-bound bootstrap scope receipt containing `control_room_sha`, `s00_base_sha`, source repository/ref, exact owned paths, Pro authority identity, lease-backend fingerprint, expiry, and the default zero-live-effect ceiling;
+5. recheck path and worktree collisions after creation and fail closed on any unavailable, mismatched, local-only, or fail-open authority component;
+6. run S00 as the only program session: no packet builder, reviewer repair, integration, migration, deployment, scheduler/service/flag change, publication, protected-data movement, or paid effect may run concurrently;
+7. commit the S00 candidate first, independently review its exact SHA and artifact hashes, and route every repair through a successor commit and fresh review.
+
+The exception terminates when the final reviewed S00 SHA becomes `campaign_root_sha` and creates the normal Pro-authoritative registry, sidecars, placement controls, and dedicated integration-manifest contract. It cannot be reused by a packet or live effect. If the immutable Pro source identity or bootstrap receipt cannot be produced, the campaign remains blocked.
+
+## Normal packet session start protocol
+
+After reviewed S00 has terminated the bootstrap exception, before any child session edits a file:
 
 1. refresh the authoritative Pro head, live topology, and baseline;
 2. confirm the single-writer Pro run registry, the campaign lease, and the exact Pro Redis/backend fingerprint; Air-M5 and Mini-local registries or lease universes are invalid;
-3. confirm the immutable `campaign_root_sha` and the exact immutable `dispatch_base_sha` selected from the append-only integration-checkpoint chain;
+3. confirm the immutable `campaign_root_sha`, the exact monorepo control-plane `dispatch_base_sha` selected from the append-only integration-checkpoint chain, the `source_repository`, and its immutable `source_base_sha`;
 4. run the fleet-capacity and collision probe;
 5. select the highest-priority eligible entry from `SESSION-BOARD.md` without exceeding four active builders;
 6. instantiate and hash one immutable Dispatch Manifest from the frozen template;
 7. acquire every exact path/shared-resource lease;
-8. create one dedicated worktree from an immutable ref resolving to the exact `dispatch_base_sha`;
-9. verify worktree `HEAD`, metadata, scope sidecar, and fleet collisions again;
+8. create one dedicated worktree from an immutable ref in `source_repository` resolving to the exact `source_base_sha`; monorepo lanes require `source_base_sha == dispatch_base_sha`, while an external-repository lane binds its separately approved source SHA and keeps `dispatch_base_sha` as control-plane lineage;
+9. verify worktree `HEAD == source_base_sha`, repository identity, metadata, scope sidecar, and fleet collisions again; P01/P07 remain blocked until an immutable operator-approved OSINT-Nexus source ref exists;
 10. record baseline, fixtures, rollback point, flags, cost ceiling, and hard stops;
 11. begin implementation only after the session accepts the exact manifest.
 
@@ -109,7 +123,7 @@ The control room uses a coordinator-only `program_state`; it does not replace th
 
 Every completed builder handoff contains:
 
-- exact `campaign_root_sha`, `dispatch_base_sha`, reviewed source commit, and final source commit;
+- exact `campaign_root_sha`, monorepo `dispatch_base_sha`, `source_repository`, `source_base_sha`, reviewed source commit, and final source commit;
 - exact changed paths;
 - deterministic, adversarial, security, and privacy results;
 - golden-set and metric references where applicable;
@@ -131,7 +145,7 @@ The serial integrator rejects:
 - tests that label fixture success as live readiness;
 - any undocumented outward side effect.
 
-The integrator is a distinct interactive Claude/operator-controlled role with its own hash-bound integration manifest; no external builder or reviewer seat may act as I1. I1 accepts one exact reviewed source SHA at a time into the isolated program integration branch. It preserves that SHA through a conflict-free merge and emits a separate integration-checkpoint SHA and receipt. If integration requires a rebase, conflict edit, or any rewritten source commit, the candidate returns through a successor repair dispatch and independent review before integration.
+The integrator is a distinct interactive Claude/operator-controlled role with its own hash-bound integration manifest; no external builder or reviewer seat may act as I1. Reviewed S00 must create and validate the dedicated `INTEGRATION-MANIFEST.schema.json` successor contract before I1 exists. The ordinary frozen Dispatch Manifest remains merge-forbidden. One integration manifest authorizes only one exact conflict-free merge of one reviewed source SHA into one named isolated integration branch in the same `source_repository`; it binds the control-plane checkpoint, repository-specific destination checkpoint, leases, review receipt, expected tree/result hashes, expiry, tests, and prohibitions on `main`, rewriting, conflict repair, deployment, production migration, service control, publication, paid use, and all live effects. I1 preserves the reviewed source identity and emits a separate repository result SHA plus a monorepo control-plane integration receipt/checkpoint. If integration requires a rebase, conflict edit, or any rewritten source commit, the candidate returns through a successor repair dispatch and independent review before integration.
 
 ## Immediate launch boundary
 

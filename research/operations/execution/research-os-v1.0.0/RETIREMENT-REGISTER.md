@@ -38,24 +38,45 @@ stateDiagram-v2
     DisableReceiptRecorded --> DisabledObserving
     DisabledObserving --> DisableReconciled
     DisableReconciled --> RemovalProposed
+    DisableReconciled --> DisabledRetainedClosed: owner closes disabled state
     RemovalProposed --> RemovalAuthorized
     RemovalAuthorized --> RemovalAttemptStarted
     RemovalAttemptStarted --> RemovalReceiptRecorded
     RemovalReceiptRecorded --> RemovalReconciling
     RemovalReconciling --> ArchivedRetired
+    DisableAttemptStarted --> FailedEffectReconciling: proven no effect
+    DisableReceiptRecorded --> FailedEffectReconciling: terminal no-effect receipt
+    FailedEffectReconciling --> Instrumented: no effect reconciled
+    DisableAttemptStarted --> RollbackRequired: partial or unknown effect
+    DisableReceiptRecorded --> RollbackRequired: failed or uncertain receipt
     DisabledObserving --> RollbackRequired: divergence or unknown consumer
+    DisableReconciled --> RollbackRequired: late divergence
     ShadowW1 --> RollbackRequired: field or outcome loss
     ShadowW2 --> RollbackRequired: field or outcome loss
+    RemovalAttemptStarted --> RestoreRequired: partial or unknown removal
+    RemovalReceiptRecorded --> RestoreRequired: failed or uncertain receipt
+    RemovalReconciling --> RestoreRequired: reconciliation failure
+    RestoreRequired --> RestoreIntentPending
+    RestoreIntentPending --> RestoreAuthorized
+    RestoreAuthorized --> RestoreAttemptStarted
+    RestoreAttemptStarted --> RestoreReceiptRecorded
+    RestoreReceiptRecorded --> RestoreReconciled
+    RestoreReconciled --> ReenableIntentPending
     RollbackRequired --> ReenableIntentPending
     ReenableIntentPending --> ReenableAuthorized
     ReenableAuthorized --> ReenableAttemptStarted
     ReenableAttemptStarted --> ReenableReceiptRecorded
     ReenableReceiptRecorded --> Reenabled
+    ReenableAttemptStarted --> ManualRecoveryRequired: partial or unknown effect
+    ReenableReceiptRecorded --> ManualRecoveryRequired: failed or uncertain receipt
+    ManualRecoveryRequired --> ReenableIntentPending: independently reviewed recovery
     Reenabled --> ReenableReconciled
-    ReenableReconciled --> Instrumented
+    ReenableReconciled --> Instrumented: new candidate revision and new lease only
 ```
 
-Time alone never advances a candidate. `UNKNOWN` cannot be nominated. `RETAIN` is a valid terminal classification. `ArchivedRetired` preserves required history and evidence; it never means erasing provenance. No second candidate may advance beyond inventory until the active candidate reaches `DisableReconciled`, `ArchivedRetired`, or `ReenableReconciled` and all of its outcomes are reconciled.
+Time alone never advances a candidate. `UNKNOWN` cannot be nominated. `RETAIN` is a valid terminal classification. `ArchivedRetired` preserves required history and evidence; it never means erasing provenance.
+
+Nomination atomically acquires one program-wide exclusive `active_candidate_id` retirement lease. While it is held, no second candidate may advance beyond inventory. The lease is released only after all outcomes reconcile at one terminal close: `ArchivedRetired`, `DisabledRetainedClosed`, or `ReenableReconciled`. It is not released at `DisableReconciled`, during a removal proposal, or anywhere in a failed/restore/re-enable path. Choosing `DisabledRetainedClosed` means the owner intentionally retains the reversible disabled state and closes this candidate revision; any later removal is a new candidate revision/effect that must reacquire the global lease and repeat current evidence and authority gates.
 
 ## 2. Mandatory evidence for every candidate
 
@@ -92,10 +113,10 @@ The observations below were refreshed read-only on 2026-08-15 WITA and must be r
 | `R06` | MATA NotebookLM feeder writer duplicate of Intel Lake feed | `DEPRECATE`, live | single canonical Intel Lake pusher fed by canonical MATA events | R04, R05, P05, P17 and P14 evidence | add `MATA_NLM_FEED_WRITE_ENABLED`; keep MATA read/compare/telemetry shadow active | two 7-day windows, source/content-hash parity and outage case | high; after R03/R04/R05 |
 | `R07` | Parallel/raw MATA queues after canonical Intel migration | `UNKNOWN` by queue; classify individually | P05 canonical `IntelEvent` outbox and registered consumers | P05 parity, every consumer migrated and P14 evidence | one producer/consumer flag per exact stream; preserve replay cursor/data | W1 and W2 each cover the maximum of producer cadence, longest known consumer cadence and sample floor; unknown/monthly consumer means at least two non-overlapping 30-day windows | high; never retire as a bulk queue family |
 | `R08` | Misleading `auto_publish` / `auto_approved` labels | `DEPRECATE` at semantic-adapter level | P02 truthful `ContentObject` state projection | P02, P09 compatibility and P14 evidence | `PUBLICATION_LEGACY_LABELS_ENABLED`; canonical adapter and dual write/read remain active | two windows, each at least the longer of 100 candidates or 14 daily runs | medium; labels before physical history store |
-| `R09` | `published_articles.json` legacy read dependency | `RETAIN` now; possible late `DEPRECATE` | P02/P09 canonical durable publication history and dedup ledger | R08, P02/P09 parity, complete history import and P14 evidence | `PUBLISHED_HISTORY_READ_SOURCE=legacy|canonical` plus independent `PUBLISHED_HISTORY_LEGACY_FALLBACK_ENABLED`; immutable legacy snapshot | W1 and W2 each cover `max(100 candidates, 14 daily runs)`, non-overlapping, plus full replay, replacement outage and tested restore | critical; primary cutover, fallback-off and physical archive are three separate effects near-last |
+| `R09` | `published_articles.json` legacy read/write dependency | `RETAIN` now; possible late `DEPRECATE` | P02/P09 canonical durable publication history, dedup ledger and writer | R08, P02/P09 parity, complete reader/writer inventory, complete history import and P14 evidence | `PUBLISHED_HISTORY_READ_SOURCE=legacy|canonical`, `PUBLISHED_HISTORY_LEGACY_FALLBACK_ENABLED`, and `PUBLISHED_HISTORY_WRITE_TARGET=legacy|dual|canonical`; immutable legacy snapshot | W1 and W2 each cover `max(100 candidates, 14 daily runs)`, non-overlapping, then a new full window after each effect, plus full replay, replacement outage and tested restore | critical; read cutover, fallback-off, writer-off and physical archive are four separate effects near-last |
 | `R10` | Standalone owner decision cockpit/pipeline | `UNKNOWN`, likely eventual `CONSOLIDATE` | P12/P18 Kita Action Inbox + Conductor | full object/action/privacy parity and P19–P23 adoption | read-only shadow projection; route-by-route selector | two 30-day windows because use may be manual/monthly | high; preserve private local store, no PII movement |
 | `R11` | Old WR2/WR3 fields and adapters | `UNKNOWN` by field | P03/P10/P11 lossless canonical media contracts | P03, P04, P10, P11 and P14 evidence | field-read telemetry and compatibility flag per exact adapter | W1 and W2 each cover the maximum of production cadence, longest known consumer cadence and sample floor; unknown/monthly consumer means at least two non-overlapping 30-day windows, including rollback render | high; retire field-by-field only |
-| `R12` | Mini-hosted MATA SQLite KG reader; authority and purpose `UNKNOWN` | `UNKNOWN`, default `RETAIN` | no replacement presumed; only a future P07/NEXUS-compatible reader with complete semantic/security parity may qualify | restored health, consumer inventory, 30-day telemetry, P07 and explicit NEXUS boundary review | no disable control until purpose and authority are proved | two 30-day windows after restored access | critical; last or retain permanently |
+| `R12` | Mini-hosted MATA SQLite KG reader; authority and purpose `UNKNOWN` | `UNKNOWN`, terminal `RETAIN` for this program | no replacement presumed; only a future P07/NEXUS-compatible reader with complete semantic/security parity may qualify in a new freeze/program | restored health, consumer inventory, 30-day telemetry, P07 and explicit NEXUS boundary review | no disable control until purpose and authority are proved | two 30-day windows after restored access | critical; retained now, absolute last in any future program |
 | `R13a` | Metadata alias `com.matagaruda.wr2-bridge.hourly` → canonical live label `com.matagaruda.wr2-bridge` | metadata `CONSOLIDATE` | one runtime-derived identity across ownership catalog, generator, watchdog and docs | exact alias/caller scan and runtime label proof | reversible compatibility alias plus old/new lookup counters; never unload or disable `com.matagaruda.wr2-bridge` | two non-overlapping 7-day inventory windows including two catalog/watchdog regenerations | low; safest first nomination after global P16 admission |
 | `R13b` | Already-retired `com.matagaruda.redis-split-brain.check.plist.retired-20260714` archaeology | `ARCHIVE` | immutable archive manifest and current checker identity | zero call/reference proof for this exact file | documentation/archive change only; no runtime label action | two 7-day inventory sweeps | low; separate from R13a |
 | `R14` | Dormant/no-op public-channel routes or fixture-only jobs | registry family only; not nominable until split into one exact ID | active registered route or explicit removal | exact route/job identity plus live-use instrumentation | route-specific reject/flag; never broad scheduler cleanup | each exact child covers its longest producer/consumer/scheduled cycle | variable; create `R14-<exact-target>` before any state transition |
@@ -153,16 +174,19 @@ First replace misleading labels with a compatibility projection. Later prove the
 R09 cannot be nominated until:
 
 - a complete import/reconciliation report exists;
+- every reader and every writer is inventoried, and each writer is routed through an explicit legacy/dual/canonical selector;
 - every reader is routed through the canonical ledger or an explicit compatibility adapter;
+- dual-write count, identity, state and content-hash parity succeeds without duplicate outward effects;
 - replacement-unavailable failure injection falls back safely;
 - old and new histories agree in two non-overlapping windows, each covering at least `max(100 candidates, 14 daily runs)`;
 - the immutable legacy snapshot and restoration drill pass.
 
-R09 is three independent effects, never one cleanup:
+R09 is four independent effects, never one cleanup:
 
-1. switch `PUBLISHED_HISTORY_READ_SOURCE` from `legacy` to `canonical` while `PUBLISHED_HISTORY_LEGACY_FALLBACK_ENABLED` remains on;
+1. switch `PUBLISHED_HISTORY_READ_SOURCE` from `legacy` to `canonical` while `PUBLISHED_HISTORY_LEGACY_FALLBACK_ENABLED` remains on and `PUBLISHED_HISTORY_WRITE_TARGET=dual` preserves writer parity;
 2. after a new full proof window and a separate approval, turn the legacy fallback off;
-3. only after another proposal, approval, snapshot and restore proof, archive the physical legacy file or adapter.
+3. after another new full proof window, writer parity, and a separate approval, set `PUBLISHED_HISTORY_WRITE_TARGET=canonical` so the legacy writer is off;
+4. only after a further full post-writer-off window and another proposal, approval, snapshot and restore proof, archive the physical legacy file or adapter.
 
 Each effect has its own intent, approval, attempt, receipt, observation and reconciliation. Historical evidence remains archived.
 
@@ -192,7 +216,7 @@ If evidence is incomplete, remain `INSTRUMENTED` or `SHADOW_W1/W2`. Never promot
 
 ### Session C — nomination and disable proposal
 
-The first Packet 16 inventory session must close with exactly one qualified candidate nominated; it still performs no disable. If no candidate satisfies every global and candidate-specific gate, the session remains open and blocked rather than closing with zero or inventing a winner. Materialize the proposal through the canonical P18/P12 chain. Bind target, arguments, flag transition, version, hashes, rollback and expiry.
+The first Packet 16 inventory session must close with exactly one qualified candidate nominated; nomination atomically acquires the exclusive `active_candidate_id` lease and still performs no disable. If no candidate satisfies every global and candidate-specific gate, the session remains open and blocked rather than closing with zero or inventing a winner. Materialize the proposal through the canonical P18/P12 chain. Bind target, arguments, flag transition, version, hashes, rollback and expiry.
 
 ### Session D — one reversible disable
 
@@ -204,13 +228,13 @@ After independent G4-compatible review and exact owner approval:
 4. record terminal `OperationalReceipt` and `OutcomeEvent`;
 5. observe a full candidate-specific window;
 6. record the disable receipt and reconcile every expected outcome;
-7. stop all other retirement effects until the candidate reaches `DisableReconciled` or a completed re-enable reconciliation.
+7. keep the global `active_candidate_id` lease and stop all other retirement effects until this candidate revision reaches `ArchivedRetired`, `DisabledRetainedClosed`, or `ReenableReconciled`.
 
 The first effect is never code deletion, data deletion, stream deletion, job unload, or scheduler removal.
 
 ### Session E — removal proposal and later removal
 
-Only after the disabled observation window reaches `DisableReconciled`, create a new removal proposal and obtain a new approval. Preserve archive/data, record the removal attempt, perform one atomic removal, update runbooks/observability, run failure injection and rollback, record the terminal receipt, and reach `ArchivedRetired` or a completed re-enable reconciliation before choosing another candidate.
+Only after the disabled observation window reaches `DisableReconciled`, either close intentionally at `DisabledRetainedClosed` with no removal authority, or create a new removal proposal and obtain a new approval while retaining the global candidate lease. Preserve archive/data, record the removal attempt, perform one atomic removal, update runbooks/observability, run failure injection and rollback, record the terminal receipt, and reach `ArchivedRetired` or a completed restore/re-enable reconciliation before choosing another candidate.
 
 ## 7. Rollback triggers
 
@@ -226,7 +250,7 @@ Any one of these stops the retirement queue and proposes re-enable:
 - rollback depends on already removed data;
 - the replacement is unavailable and the failure path was not proven.
 
-Re-enable is itself an authorized action. A narrowly pre-approved rollback intent may be used only within its exact bindings and expiry. After rollback, the candidate returns to `INSTRUMENTED`; it does not resume at the failed stage automatically.
+Re-enable and post-removal restoration are themselves authorized actions. A narrowly pre-approved rollback intent may be used only within its exact bindings and expiry. A proven no-effect attempt reconciles through `FailedEffectReconciling`; a partial or unknown disable enters `RollbackRequired`; a partial or unknown removal enters the explicit restore chain before re-enable. Failed or uncertain recovery enters `ManualRecoveryRequired` and needs independent review before another exact intent. The candidate lease remains held throughout. After `ReenableReconciled` closes the revision, any retry starts as a new candidate revision at `INSTRUMENTED` and reacquires the lease; it never resumes at the failed stage automatically.
 
 ## 8. Recommended order
 
@@ -242,8 +266,8 @@ This order starts only after the inherited Packet 16 entry gate is satisfied. Be
 8. Retire R08 semantic labels through adapters.
 9. Consider R10 only after two 30-day Action Inbox parity windows.
 10. Consider R11 fields one by one after P03/P10/P11.
-11. Keep R12 by default unless long-window semantic/security parity proves a better canonical reader.
-12. Execute R09 near-last as three distinct effects: canonical-primary selection, later fallback-off, and only later physical archive. Preserve the immutable legacy snapshot throughout.
+11. Execute R09 near-last as four distinct effects: canonical-primary selection with dual write, later fallback-off, later legacy-writer-off, and only later physical archive. Preserve the immutable legacy snapshot throughout.
+12. R12 is terminally `RETAIN` in this program. Any future non-RETAIN proposal requires a new freeze/program, fresh authority-and-purpose proof, explicit NEXUS boundary review, and absolute-last position after every other retirement candidate.
 
 The MATA WR2 bridge illustrates why metadata and runtime must stay separate: the plist filename carries an `.hourly` suffix, while its embedded live launchd label does not; an ownership catalog records the suffixed identity as inactive even though the unsuffixed label is loaded. R13a may repair that alias only after admission to Packet 16 and an alias/caller scan. It must not unload or disable the live job, and it must not be confused with the R03 dossier-writer disable. R13b concerns only the separately named, already-retired plist artifact.
 
