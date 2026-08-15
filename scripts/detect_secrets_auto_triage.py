@@ -265,6 +265,39 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "can be named rather than merely flagged — never key material, and "
         "the tokens themselves are absent from the file by design",
     ),
+    # Final traffic-source fail-closed live proof: the dated JSON records
+    # public integrity/identity anchors needed to reproduce the ceremony.
+    # Four named fields are full sha256 values (including the one-way hash of
+    # the deliberately unlogged idempotency key), two are git commit SHAs,
+    # and two are the public Fly machine identifier repeated in different
+    # evidence sections. None is bearer material.
+    #
+    # This remains content-keyed because research/visa is an open writer set:
+    # only the exact reviewed artifact, exact semantic field names, exact
+    # lowercase-hex widths, and an end-anchored JSON assignment are approved.
+    # A credential on any other key or in any other research file remains
+    # unaudited. As with every shape rule above, a hex credential deliberately
+    # pasted into one of these exact semantic slots is indistinguishable by
+    # regex; independent exact-SHA review is therefore still required.
+    (
+        re.compile(
+            r"(^|/)research/visa/"
+            r"2026-08-15-traffic-source-fail-closed-live-proof\.json$"
+        ),
+        re.compile(
+            r'^\s*"(?:idempotency_key_sha256|document_sha256|'
+            r'traffic_source_parameter_sha256|payload_sha256)"\s*:\s*'
+            r'"[0-9a-f]{64}"\s*,?\s*$'
+            r'|^\s*"(?:head_sha|expected_merge_sha)"\s*:\s*'
+            r'"[0-9a-f]{40}"\s*,?\s*$'
+            r'|^\s*"(?:api_machine|instance)"\s*:\s*'
+            r'"[0-9a-f]{14}"\s*,?\s*$'
+        ),
+        "traffic-source fail-closed live proof: named sha256 integrity/"
+        "one-way hashes, git SHAs, and public Fly machine IDs used to "
+        "reproduce the reviewed ceremony; exact path/key/shape only, never "
+        "bearer material",
+    ),
 ]
 
 # Each rule is (pattern, reason). The pattern matches the file path
