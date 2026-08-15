@@ -1,0 +1,21 @@
+id: embedding-model-dims
+category: Embedding model / dimensions
+description: >
+  Tests asserting the frozen embedding model identity and vector dimension.
+  Deliberately narrow: a broad grep for the literal "1536" or
+  "text-embedding-3-small" across the suite returns ~70 files, but that
+  string also matches unrelated numeric literals (token limits, ports,
+  etc.) in most of them — including only the files whose actual SUBJECT is
+  the embedding model/dimension itself keeps this floor a precise
+  allowlist rather than noise (see PR description for the full grep output
+  and the declared exclusion). Widening this category to the full grep
+  result is left to a future slice, deliberately, rather than gold-plated
+  into this one.
+patterns:
+  - apps/backend-rag/**/test_embedding*.py
+rationale: >
+  CLAUDE.md §9 Data Invariant "Embedding model FROZEN: text-embedding-3-small
+  (1536 dims). Changing invalidates 93,283 vectors. NEVER change without a
+  re-indexing plan." — the single most expensive-to-violate invariant in
+  this repo's data layer.
+verified_match_count: 3

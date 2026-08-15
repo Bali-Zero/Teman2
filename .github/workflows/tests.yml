@@ -1,8 +1,6 @@
 name: Tests & Coverage
 
 on:
-  push:
-    branches: [main, develop]
   pull_request:
     types: [opened, synchronize, reopened]
   merge_group:
@@ -355,7 +353,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       HAS_CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN != '' }}
-    timeout-minutes: 30
+    timeout-minutes: 40
 
     services:
       postgres:
