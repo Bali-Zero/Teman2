@@ -105,6 +105,93 @@ def test_references_list_also_resolves_pointers():
     assert verdict["verdict"] == ca.VERDICT_VERIFIED
 
 
+# --- GLM grader fix-first round, 2026-08-15 --------------------------------------------------
+# Measured live this session: NB-2's real answers use BARE `[N]` almost exclusively (27 in
+# VO-NB2-001, 43 in VO-NB2-002, 4 in VO-NB2-005; ZERO `[Source N]` anywhere) — the first cut of
+# this tool only recognized `[Source N]`, so it was blind to the citation form NB-2 actually
+# uses (P0). It also granted VERIFIED without membership-checking structured source_ids the
+# prose never pointed at (P1).
+
+
+def test_guilt_bare_bracket_pointer_hallucinated_out_of_citations_map():
+    """Bare [99] with no matching citations-map entry — the real-language form of the P0
+    hallucination guilt case."""
+    record = _ok_record(answer="Per [99] this is allowed.", citations={"1": "src-1"})
+    verdict = ca.audit_record(record, SNAPSHOT_INDEX)
+    assert verdict["verdict"] == ca.VERDICT_NOT_COMPILABLE
+    assert verdict["unresolved_pointers"][0]["pointer"] == "[99]"
+
+
+def test_guilt_bare_bracket_pointer_resolves_to_source_id_absent_from_snapshot():
+    record = _ok_record(answer="Per [1] this is allowed.", citations={"1": "src-does-not-exist"})
+    verdict = ca.audit_record(record, SNAPSHOT_INDEX)
+    assert verdict["verdict"] == ca.VERDICT_NOT_COMPILABLE
+    assert verdict["unresolved_pointers"][0]["pointer"] == "[1]"
+
+
+def test_innocence_bare_bracket_pointer_that_is_in_the_citations_map_resolves():
+    """Innocence test explicitly requested by the grader: a bare [N] that IS in the citations
+    map must resolve cleanly (not over-matched into a false hallucination flag)."""
+    record = _ok_record(answer="Per [1] and [2] this is allowed.", citations={"1": "src-1", "2": "src-2"})
+    verdict = ca.audit_record(record, SNAPSHOT_INDEX)
+    assert verdict["verdict"] == ca.VERDICT_VERIFIED
+    assert {p["pointer"] for p in verdict["resolved_pointers"]} == {"[1]", "[2]"}
+    assert not verdict["unresolved_pointers"]
+
+
+def test_innocence_bare_bracket_and_source_bracket_do_not_double_count_same_number():
+    """[Source 1] and a separate bare [1] elsewhere both extract and both resolve — they are
+    two distinct pointer OCCURRENCES in the prose, not a double-match bug on one occurrence."""
+    record = _ok_record(
+        answer="First mention [Source 1], later shorthand [1] again.",
+        citations={"1": "src-1"},
+    )
+    verdict = ca.audit_record(record, SNAPSHOT_INDEX)
+    assert verdict["verdict"] == ca.VERDICT_VERIFIED
+    assert verdict["bracket_pointers_found"] == 2
+
+
+def test_guilt_fabricated_structured_source_id_never_referenced_in_prose():
+    """P1 fix: a fabricated citations[] entry the prose never pointed at (no [Source 2] / [2]
+    anywhere) must STILL fail the audit — the structured payload's own claim is checked
+    independently of prose pointers."""
+    record = _ok_record(
+        answer="Per [Source 1] this is allowed.",
+        citations={"1": "src-1", "2": "src-does-not-exist"},
+    )
+    verdict = ca.audit_record(record, SNAPSHOT_INDEX)
+    assert verdict["verdict"] == ca.VERDICT_NOT_COMPILABLE
+    assert any(u["source_id"] == "src-does-not-exist" for u in verdict["unresolved_structured_source_ids"])
+
+
+def test_guilt_fabricated_references_source_id_never_referenced_in_prose():
+    record = _ok_record(
+        answer="No bracket pointers here at all.",
+        citations={},
+        references=[{"source_id": "src-fake", "citation_number": 7, "cited_text": "..."}],
+    )
+    verdict = ca.audit_record(record, SNAPSHOT_INDEX)
+    assert verdict["verdict"] == ca.VERDICT_NOT_COMPILABLE
+
+
+def test_guilt_fabricated_sources_used_entry():
+    record = _ok_record(answer="No brackets.", citations={"1": "src-1"}, sources_used=["src-1", "src-fake-2"])
+    verdict = ca.audit_record(record, SNAPSHOT_INDEX)
+    assert verdict["verdict"] == ca.VERDICT_NOT_COMPILABLE
+
+
+def test_innocence_all_structured_source_ids_resolve():
+    record = _ok_record(
+        answer="Per [Source 1] and [2].",
+        citations={"1": "src-1", "2": "src-2"},
+        references=[{"source_id": "src-1", "citation_number": 1, "cited_text": "..."}],
+        sources_used=["src-1", "src-2"],
+    )
+    verdict = ca.audit_record(record, SNAPSHOT_INDEX)
+    assert verdict["verdict"] == ca.VERDICT_VERIFIED
+    assert not verdict["unresolved_structured_source_ids"]
+
+
 def test_load_source_index_from_snapshot_file(tmp_path):
     snapshot = {"notebook_id": "nb", "sources": [{"id": "s1", "title": "T1"}, {"id": "s2", "title": "T2"}]}
     p = tmp_path / "snap.json"

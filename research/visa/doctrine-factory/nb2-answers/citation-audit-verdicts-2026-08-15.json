@@ -5,6 +5,7 @@
     "bracket_pointers_found": 0,
     "resolved_pointers": [],
     "unresolved_pointers": [],
+    "unresolved_structured_source_ids": [],
     "title_mentions": [],
     "structured_citations_present": false,
     "verdict": "UNSUPPORTED",
@@ -16,6 +17,7 @@
     "bracket_pointers_found": 0,
     "resolved_pointers": [],
     "unresolved_pointers": [],
+    "unresolved_structured_source_ids": [],
     "title_mentions": [],
     "structured_citations_present": false,
     "verdict": "UNSUPPORTED",
@@ -24,9 +26,146 @@
   {
     "query_id": "VO-NB2-001",
     "conversation_id_sent": "19530d78-6386-4421-964f-03aa1b9dcf16",
-    "bracket_pointers_found": 0,
-    "resolved_pointers": [],
+    "bracket_pointers_found": 27,
+    "resolved_pointers": [
+      {
+        "pointer": "[3]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[6]",
+        "source_id": "1d475989-11fb-407f-83e8-a951b399e384",
+        "title": "https://peraturan.go.id/files/permenkumham-no-11-tahun-2024.pdf"
+      },
+      {
+        "pointer": "[7]",
+        "source_id": "07a6e9a8-7ad4-4103-9008-27648ae64581",
+        "title": "Indonesia's 2024 Visa and Residency Legal Reforms"
+      },
+      {
+        "pointer": "[15]",
+        "source_id": "1ac4063f-92f1-4dd0-9bc6-0d9e406d1af8",
+        "title": "Permenkumham_22_2023.pdf"
+      },
+      {
+        "pointer": "[15]",
+        "source_id": "1ac4063f-92f1-4dd0-9bc6-0d9e406d1af8",
+        "title": "Permenkumham_22_2023.pdf"
+      },
+      {
+        "pointer": "[14]",
+        "source_id": "1d475989-11fb-407f-83e8-a951b399e384",
+        "title": "https://peraturan.go.id/files/permenkumham-no-11-tahun-2024.pdf"
+      },
+      {
+        "pointer": "[25]",
+        "source_id": "163eb1a9-5712-41f8-b591-7e7b9a2ab805",
+        "title": "Permenkumham_27_2021_Visa.pdf"
+      },
+      {
+        "pointer": "[25]",
+        "source_id": "163eb1a9-5712-41f8-b591-7e7b9a2ab805",
+        "title": "Permenkumham_27_2021_Visa.pdf"
+      },
+      {
+        "pointer": "[26]",
+        "source_id": "adc39025-f3ec-4a51-adc0-57f7c0c212ce",
+        "title": "UU No. 63 Tahun 2024 — Perubahan atas UU Keimigrasian (Key Provisions)"
+      },
+      {
+        "pointer": "[26]",
+        "source_id": "adc39025-f3ec-4a51-adc0-57f7c0c212ce",
+        "title": "UU No. 63 Tahun 2024 — Perubahan atas UU Keimigrasian (Key Provisions)"
+      },
+      {
+        "pointer": "[28]",
+        "source_id": "adc39025-f3ec-4a51-adc0-57f7c0c212ce",
+        "title": "UU No. 63 Tahun 2024 — Perubahan atas UU Keimigrasian (Key Provisions)"
+      },
+      {
+        "pointer": "[26]",
+        "source_id": "adc39025-f3ec-4a51-adc0-57f7c0c212ce",
+        "title": "UU No. 63 Tahun 2024 — Perubahan atas UU Keimigrasian (Key Provisions)"
+      },
+      {
+        "pointer": "[2]",
+        "source_id": "359c4c5f-90ca-4ae9-a6ba-c2704c6e42f3",
+        "title": "Permenimipas5_2025.pdf"
+      },
+      {
+        "pointer": "[30]",
+        "source_id": "137010c4-7d70-4059-adc2-618682e53535",
+        "title": "Peraturan Menteri Imigrasi dan Pemasyarakatan Nomor 5 Tahun 2025 - Paralegal.id"
+      },
+      {
+        "pointer": "[2]",
+        "source_id": "359c4c5f-90ca-4ae9-a6ba-c2704c6e42f3",
+        "title": "Permenimipas5_2025.pdf"
+      },
+      {
+        "pointer": "[31]",
+        "source_id": "e4443084-1d72-4fc7-8dc4-93faf414a2a2",
+        "title": "garante_penjamin_guida_2025.txt"
+      },
+      {
+        "pointer": "[33]",
+        "source_id": "d7093786-432c-4c5f-88e8-b217a8aedaae",
+        "title": "Permenkumham_34_2021.pdf"
+      },
+      {
+        "pointer": "[33]",
+        "source_id": "d7093786-432c-4c5f-88e8-b217a8aedaae",
+        "title": "Permenkumham_34_2021.pdf"
+      },
+      {
+        "pointer": "[33]",
+        "source_id": "d7093786-432c-4c5f-88e8-b217a8aedaae",
+        "title": "Permenkumham_34_2021.pdf"
+      },
+      {
+        "pointer": "[34]",
+        "source_id": "d7093786-432c-4c5f-88e8-b217a8aedaae",
+        "title": "Permenkumham_34_2021.pdf"
+      },
+      {
+        "pointer": "[35]",
+        "source_id": "d7093786-432c-4c5f-88e8-b217a8aedaae",
+        "title": "Permenkumham_34_2021.pdf"
+      },
+      {
+        "pointer": "[36]",
+        "source_id": "d7093786-432c-4c5f-88e8-b217a8aedaae",
+        "title": "Permenkumham_34_2021.pdf"
+      },
+      {
+        "pointer": "[40]",
+        "source_id": "9fbfd84a-b059-4a9d-8b8e-add475c51066",
+        "title": "jabatan_tka_kepmen228_settori_ammessi_2025.txt"
+      },
+      {
+        "pointer": "[40]",
+        "source_id": "9fbfd84a-b059-4a9d-8b8e-add475c51066",
+        "title": "jabatan_tka_kepmen228_settori_ammessi_2025.txt"
+      },
+      {
+        "pointer": "[45]",
+        "source_id": "3479ae6a-2e23-4ad1-8abc-975d256209b2",
+        "title": "Bali Tourist Levy — Perda Bali 2/2025 (was 6/2023) — Rp 150.000"
+      },
+      {
+        "pointer": "[5]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      }
+    ],
     "unresolved_pointers": [],
+    "unresolved_structured_source_ids": [],
     "title_mentions": [
       "Indonesia's 2024 Visa and Residency Legal Reforms",
       "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)",
@@ -42,14 +181,231 @@
     ],
     "structured_citations_present": true,
     "verdict": "VERIFIED",
-    "reason": "structured citations present and every extracted prose pointer resolves"
+    "reason": "structured citations present, every extracted prose pointer resolves, and every structured source_id the payload asserts also resolves"
   },
   {
     "query_id": "VO-NB2-002",
     "conversation_id_sent": "20845c54-5915-43f2-bf94-d2c28e3b05b1",
-    "bracket_pointers_found": 0,
-    "resolved_pointers": [],
+    "bracket_pointers_found": 43,
+    "resolved_pointers": [
+      {
+        "pointer": "[1]",
+        "source_id": "e9968c12-f9fb-44ac-b2be-f95ae9849366",
+        "title": "C5A Local-Work Prohibition — Legal Sources 2026-06-01"
+      },
+      {
+        "pointer": "[3]",
+        "source_id": "adc39025-f3ec-4a51-adc0-57f7c0c212ce",
+        "title": "UU No. 63 Tahun 2024 — Perubahan atas UU Keimigrasian (Key Provisions)"
+      },
+      {
+        "pointer": "[3]",
+        "source_id": "adc39025-f3ec-4a51-adc0-57f7c0c212ce",
+        "title": "UU No. 63 Tahun 2024 — Perubahan atas UU Keimigrasian (Key Provisions)"
+      },
+      {
+        "pointer": "[4]",
+        "source_id": "13b705f1-95a0-4a04-872c-bfa223ac8125",
+        "title": "cekal_deportazione_sanzioni_guida_2025.txt"
+      },
+      {
+        "pointer": "[11]",
+        "source_id": "e9968c12-f9fb-44ac-b2be-f95ae9849366",
+        "title": "C5A Local-Work Prohibition — Legal Sources 2026-06-01"
+      },
+      {
+        "pointer": "[12]",
+        "source_id": "33f96d5a-3ed6-4785-a769-0c9900dd9678",
+        "title": "PP45_2024_PNBP.pdf"
+      },
+      {
+        "pointer": "[21]",
+        "source_id": "d14f6c39-c4c3-48dc-8b6c-275a6c8245ce",
+        "title": "nb2_visa_procedures_guide.txt"
+      },
+      {
+        "pointer": "[26]",
+        "source_id": "359c4c5f-90ca-4ae9-a6ba-c2704c6e42f3",
+        "title": "Permenimipas5_2025.pdf"
+      },
+      {
+        "pointer": "[27]",
+        "source_id": "d7093786-432c-4c5f-88e8-b217a8aedaae",
+        "title": "Permenkumham_34_2021.pdf"
+      },
+      {
+        "pointer": "[27]",
+        "source_id": "d7093786-432c-4c5f-88e8-b217a8aedaae",
+        "title": "Permenkumham_34_2021.pdf"
+      },
+      {
+        "pointer": "[31]",
+        "source_id": "8abf1fe6-c884-4bc2-aa7d-6fd509c5ec54",
+        "title": "nb2_immigration_circulars.txt"
+      },
+      {
+        "pointer": "[31]",
+        "source_id": "8abf1fe6-c884-4bc2-aa7d-6fd509c5ec54",
+        "title": "nb2_immigration_circulars.txt"
+      },
+      {
+        "pointer": "[32]",
+        "source_id": "d66c8593-4c76-4362-9486-14b5598615d8",
+        "title": "Circular Imigrasi — Pembatasan Perpanjangan Visa C1 (31 Maret 2026)"
+      },
+      {
+        "pointer": "[32]",
+        "source_id": "d66c8593-4c76-4362-9486-14b5598615d8",
+        "title": "Circular Imigrasi — Pembatasan Perpanjangan Visa C1 (31 Maret 2026)"
+      },
+      {
+        "pointer": "[35]",
+        "source_id": "723bfcd6-a1e5-4b3e-a8bf-aec92473027d",
+        "title": "kitas_e23_tka_guida_2025.txt"
+      },
+      {
+        "pointer": "[36]",
+        "source_id": "0c22e859-00d2-4dc9-a3bf-e894dbca98a8",
+        "title": "visto_d2_d12_multiplo_guida_2025.txt"
+      },
+      {
+        "pointer": "[37]",
+        "source_id": "e4443084-1d72-4fc7-8dc4-93faf414a2a2",
+        "title": "garante_penjamin_guida_2025.txt"
+      },
+      {
+        "pointer": "[38]",
+        "source_id": "c5e5b5c0-14f4-45a8-84fa-e735dc517680",
+        "title": "claims_db_immigration.txt"
+      },
+      {
+        "pointer": "[39]",
+        "source_id": "d818b8ec-a5ca-450e-8478-6504fdc57d6e",
+        "title": "[NB2-MD] Open Questions - Updated 2026-03-28"
+      },
+      {
+        "pointer": "[19]",
+        "source_id": "42a3f083-0205-4d9a-9e0c-f666f4284885",
+        "title": "[NB2-MD] Change Log - Updated 2026-03-28"
+      },
+      {
+        "pointer": "[40]",
+        "source_id": "3479ae6a-2e23-4ad1-8abc-975d256209b2",
+        "title": "Bali Tourist Levy — Perda Bali 2/2025 (was 6/2023) — Rp 150.000"
+      },
+      {
+        "pointer": "[40]",
+        "source_id": "3479ae6a-2e23-4ad1-8abc-975d256209b2",
+        "title": "Bali Tourist Levy — Perda Bali 2/2025 (was 6/2023) — Rp 150.000"
+      },
+      {
+        "pointer": "[41]",
+        "source_id": "3479ae6a-2e23-4ad1-8abc-975d256209b2",
+        "title": "Bali Tourist Levy — Perda Bali 2/2025 (was 6/2023) — Rp 150.000"
+      },
+      {
+        "pointer": "[44]",
+        "source_id": "0fe687ea-5fa6-45c4-80f0-9bf0e05359d9",
+        "title": "Menteri Hukum Atensi Aduan Notaris dari Solo, Dirjen AHU Turun Tangan | Pasti Ada Solusi"
+      },
+      {
+        "pointer": "[45]",
+        "source_id": "7e1de502-ad21-49e8-8c78-4856042aa4c2",
+        "title": "Menteri Hukum: PNBP Notaris Disusun untuk Pemerataan, Bukan Memberatkan | PASTI ADA SOLUSI"
+      },
+      {
+        "pointer": "[46]",
+        "source_id": "7e1de502-ad21-49e8-8c78-4856042aa4c2",
+        "title": "Menteri Hukum: PNBP Notaris Disusun untuk Pemerataan, Bukan Memberatkan | PASTI ADA SOLUSI"
+      },
+      {
+        "pointer": "[47]",
+        "source_id": "163eb1a9-5712-41f8-b591-7e7b9a2ab805",
+        "title": "Permenkumham_27_2021_Visa.pdf"
+      },
+      {
+        "pointer": "[48]",
+        "source_id": "163eb1a9-5712-41f8-b591-7e7b9a2ab805",
+        "title": "Permenkumham_27_2021_Visa.pdf"
+      },
+      {
+        "pointer": "[49]",
+        "source_id": "62137480-53f3-459e-9e8f-bb5943275151",
+        "title": "Peraturan Pemerintah Nomor 34 Tahun 2021"
+      },
+      {
+        "pointer": "[50]",
+        "source_id": "2d15685c-9d31-4e68-9e1e-9f985aac1a79",
+        "title": "https://peraturan.bpk.go.id/Download/364085/Permenkumham%20Nomor%2022%20Tahun%202023.pdf"
+      },
+      {
+        "pointer": "[51]",
+        "source_id": "2d15685c-9d31-4e68-9e1e-9f985aac1a79",
+        "title": "https://peraturan.bpk.go.id/Download/364085/Permenkumham%20Nomor%2022%20Tahun%202023.pdf"
+      },
+      {
+        "pointer": "[52]",
+        "source_id": "7ea48f9e-c264-4226-aa55-b4a725a96efa",
+        "title": "Hari Kekayaan Intelektual Sedunia Tahun 2026"
+      },
+      {
+        "pointer": "[53]",
+        "source_id": "7ea48f9e-c264-4226-aa55-b4a725a96efa",
+        "title": "Hari Kekayaan Intelektual Sedunia Tahun 2026"
+      },
+      {
+        "pointer": "[54]",
+        "source_id": "c7db9286-e2ba-4476-8088-a63645978f10",
+        "title": "Hak Paten Dilanggar, Erick Sukamti Ungkap Perjuangan 2 Tahun Mencari Keadilan | Pasti Ada Solusi"
+      },
+      {
+        "pointer": "[55]",
+        "source_id": "c7db9286-e2ba-4476-8088-a63645978f10",
+        "title": "Hak Paten Dilanggar, Erick Sukamti Ungkap Perjuangan 2 Tahun Mencari Keadilan | Pasti Ada Solusi"
+      },
+      {
+        "pointer": "[56]",
+        "source_id": "bdd8b4d6-dd37-42fd-b07c-d5f019ffed0a",
+        "title": "Hari Kekayaan Intelektual Sedunia Tahun 2026"
+      },
+      {
+        "pointer": "[57]",
+        "source_id": "6ead6bea-4db6-478b-8788-d6915b190f8f",
+        "title": "Hari Kekayaan Intelektual Sedunia Tahun 2026"
+      },
+      {
+        "pointer": "[46]",
+        "source_id": "7e1de502-ad21-49e8-8c78-4856042aa4c2",
+        "title": "Menteri Hukum: PNBP Notaris Disusun untuk Pemerataan, Bukan Memberatkan | PASTI ADA SOLUSI"
+      },
+      {
+        "pointer": "[60]",
+        "source_id": "6ead6bea-4db6-478b-8788-d6915b190f8f",
+        "title": "Hari Kekayaan Intelektual Sedunia Tahun 2026"
+      },
+      {
+        "pointer": "[61]",
+        "source_id": "ca08eb7f-dd50-4241-a52e-a21893b93393",
+        "title": "Kasus Notaris Berlarut, Menteri Hukum Siapkan Perubahan Aturan | PASTI ADA SOLUSI"
+      },
+      {
+        "pointer": "[62]",
+        "source_id": "62596ac1-d961-47b9-9626-bba630cd0db8",
+        "title": "PP342021.pdf"
+      },
+      {
+        "pointer": "[65]",
+        "source_id": "7ea48f9e-c264-4226-aa55-b4a725a96efa",
+        "title": "Hari Kekayaan Intelektual Sedunia Tahun 2026"
+      },
+      {
+        "pointer": "[65]",
+        "source_id": "7ea48f9e-c264-4226-aa55-b4a725a96efa",
+        "title": "Hari Kekayaan Intelektual Sedunia Tahun 2026"
+      }
+    ],
     "unresolved_pointers": [],
+    "unresolved_structured_source_ids": [],
     "title_mentions": [
       "Bongkar Fakta Indonesia Banjir Regulasi",
       "Cuplikan What's Up Kemenkum : Bongkar Fakta Indonesia Banjir Regulasi",
@@ -69,7 +425,7 @@
     ],
     "structured_citations_present": true,
     "verdict": "VERIFIED",
-    "reason": "structured citations present and every extracted prose pointer resolves"
+    "reason": "structured citations present, every extracted prose pointer resolves, and every structured source_id the payload asserts also resolves"
   },
   {
     "query_id": "VO-NB2-003",
@@ -77,10 +433,11 @@
     "bracket_pointers_found": 0,
     "resolved_pointers": [],
     "unresolved_pointers": [],
+    "unresolved_structured_source_ids": [],
     "title_mentions": [],
     "structured_citations_present": true,
     "verdict": "VERIFIED",
-    "reason": "structured citations present and every extracted prose pointer resolves"
+    "reason": "structured citations present, every extracted prose pointer resolves, and every structured source_id the payload asserts also resolves"
   },
   {
     "query_id": "VO-NB2-004",
@@ -88,20 +445,43 @@
     "bracket_pointers_found": 0,
     "resolved_pointers": [],
     "unresolved_pointers": [],
+    "unresolved_structured_source_ids": [],
     "title_mentions": [],
     "structured_citations_present": true,
     "verdict": "VERIFIED",
-    "reason": "structured citations present and every extracted prose pointer resolves"
+    "reason": "structured citations present, every extracted prose pointer resolves, and every structured source_id the payload asserts also resolves"
   },
   {
     "query_id": "VO-NB2-005",
     "conversation_id_sent": "50dbf0f7-a565-4dd2-81cd-13ed86e7fc29",
-    "bracket_pointers_found": 0,
-    "resolved_pointers": [],
+    "bracket_pointers_found": 4,
+    "resolved_pointers": [
+      {
+        "pointer": "[1]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[4]",
+        "source_id": "0c22e859-00d2-4dc9-a3bf-e894dbca98a8",
+        "title": "visto_d2_d12_multiplo_guida_2025.txt"
+      },
+      {
+        "pointer": "[7]",
+        "source_id": "0c22e859-00d2-4dc9-a3bf-e894dbca98a8",
+        "title": "visto_d2_d12_multiplo_guida_2025.txt"
+      }
+    ],
     "unresolved_pointers": [],
+    "unresolved_structured_source_ids": [],
     "title_mentions": [],
     "structured_citations_present": true,
     "verdict": "VERIFIED",
-    "reason": "structured citations present and every extracted prose pointer resolves"
+    "reason": "structured citations present, every extracted prose pointer resolves, and every structured source_id the payload asserts also resolves"
   }
 ]

@@ -14,7 +14,7 @@ sources:
     note: "empirical evidence cited by adjudication-report.md §9: 10/10 P0 answers share conversation_id 3e8fe6db-8873-4689-9bff-226ee875c09d"
   - path: /Users/balizero/nuzantara/.worktrees/ops-visaoracle-adjudication/visa-oracle-adjudication/adjudication-report.md
     lines: "§9"
-adversarial_review: pending
+adversarial_review: glm
 ---
 
 # QW-1 STEP 0 — NB-2 transport root-cause + fresh-conversation isolation proof
@@ -162,3 +162,16 @@ STEP 0 consumed 2 of the 10 allowed live NB-2 `notebook query` calls for this ta
 (`nlm source list`) is a read-only listing, not a `notebook query` call, and is not counted
 against this budget per the mandate's constraint wording ("only `nlm notebook query` and
 read-only listing … Budget: max 10 live NB-2 queries").
+
+## Adversarial review
+
+GLM 5.2, 2026-08-15, verdetto FIX-FIRST, 7 findings (1 P0, 2 P1, 4 P2), tutti accolti e curati
+in questo stesso branch (`agent/air-m5/ops/qw1-nb2-transport`). Nessuno dei 7 finding riguarda
+direttamente le due asserzioni di isolamento di QUESTO documento (STEP 0 root-cause + probe A/B)
+— i finding colpivano `nb2_query.py::build_record()`/`snapshot_sources()` e
+`nb2_citation_audit.py`, condivisi con il B0 canary. Il verdetto STEP 0 sopra resta valido
+(i due probe restano `status=OK`, `conversation_id_sent==conversation_id_returned`, nessuno
+uguale a `3e8fe6db…`); i fix li rendono più robusti su percorsi che STEP 0 non ha esercitato
+(timeout, rc≠0 con JSON valido). Dettaglio completo (7 finding + disposizione per-finding) nel
+documento gemello `2026-08-15-qw1-b0-canary.md` §Adversarial review — non duplicato qui per
+evitare due copie divergenti dello stesso registro.

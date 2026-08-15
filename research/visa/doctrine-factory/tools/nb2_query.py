@@ -27,7 +27,10 @@ QUERY-ONLY CONTRACT: this module shells out ONLY to `nlm notebook query` (chat) 
 --snapshot-sources mode, `nlm source list` (read-only listing). It NEVER calls
 `source add/delete/rename`, NEVER `delete_chat_history`, and NEVER mutates the notebook in any
 way. Judge the OUTPUT JSON, not just the process exit code (cicatrix W104: a green exit code is
-not proof of a good answer).
+not proof of a good answer) — and the converse also holds (GLM grader finding P2, 2026-08-15):
+a NONZERO exit code is not proof of a WORTHLESS answer either. `build_record()` always attempts
+to parse stdout and run the isolation check regardless of returncode, so a valid JSON payload
+is never silently discarded just because the CLI process also complained on stderr.
 """
 from __future__ import annotations
 
@@ -38,7 +41,6 @@ import os
 import subprocess
 import sys
 import uuid
-from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
@@ -74,6 +76,19 @@ class IsolationMismatchError(RuntimeError):
         self.record = record
 
 
+class QueryTimeoutError(RuntimeError):
+    """Raised when `nlm` does not return within its subprocess timeout.
+
+    Per GLM grader finding P2 (2026-08-15): the log is the anomaly's domicile — a timeout is
+    durably appended as a JSONL record (partial stdout/stderr if the OS captured any) BEFORE
+    this is raised, exactly like IsolationMismatchError.
+    """
+
+    def __init__(self, message: str, record: dict[str, Any]):
+        super().__init__(message)
+        self.record = record
+
+
 def utcnow_iso() -> str:
     """ISO 8601 with an explicit UTC timezone offset (mandate: "ts_utc (ISO with timezone)")."""
     return datetime.now(timezone.utc).isoformat()
@@ -100,7 +115,9 @@ def run_nlm_query(
     """Invoke `nlm notebook query <nb> <question> --json -c <conversation_id> -t <timeout>`.
 
     Never invoked without an explicit -c: an omitted conversation_id is exactly the defect
-    this tool exists to cure (see module docstring root-cause).
+    this tool exists to cure (see module docstring root-cause). May raise
+    `subprocess.TimeoutExpired` — the caller (`run_one_query`) is responsible for turning that
+    into a durable JSONL anomaly record before it propagates.
     """
     cmd = [
         nlm_bin,
@@ -117,6 +134,40 @@ def run_nlm_query(
     return runner(cmd, capture_output=True, text=True, timeout=timeout + 30)
 
 
+def _try_parse_json(stdout: str) -> tuple[Any | None, str | None]:
+    """(payload, parse_error). payload is None if stdout is empty/whitespace or invalid JSON."""
+    text = (stdout or "").strip()
+    if not text:
+        return None, "empty stdout"
+    try:
+        return json.loads(text), None
+    except json.JSONDecodeError as exc:
+        return None, f"json_decode_error: {exc}"
+
+
+def _isolation_hypotheses(conversation_id_sent: str, conversation_id_returned: Any) -> list[str]:
+    """Non-empty ONLY when isolation looks broken. A list of possible causes, never a single
+    asserted one (GLM grader finding P2, 2026-08-15: the previous message text asserted "the
+    server did not honor the fresh conversation id" as if that were the only possible
+    explanation — it is one hypothesis among several: the payload could also carry no
+    conversation_id field at all, or the id we're comparing against could itself be a parse
+    artifact)."""
+    hypotheses: list[str] = []
+    if conversation_id_returned is None:
+        hypotheses.append("payload carries no conversation_id field at all")
+    elif conversation_id_returned != conversation_id_sent:
+        hypotheses.append(
+            f"server echoed back a different conversation_id ({conversation_id_returned!r}) "
+            f"than the one sent ({conversation_id_sent!r})"
+        )
+    if conversation_id_returned == CONTAMINATED_CONVERSATION_ID:
+        hypotheses.append(
+            f"conversation_id equals the known-contaminated persistent conversation id "
+            f"{CONTAMINATED_CONVERSATION_ID}"
+        )
+    return hypotheses
+
+
 def build_record(
     *,
     query_id: str,
@@ -130,7 +181,11 @@ def build_record(
     ts_answered_utc: str,
     nlm_version: str,
 ) -> dict[str, Any]:
-    """Build the JSONL record. Judges the OUTPUT JSON — never trusts rc==0 alone (W104)."""
+    """Build the JSONL record. Judges the OUTPUT JSON, never the exit code alone, in EITHER
+    direction (W104 + GLM grader finding P2): rc==0 does not prove a good answer, and rc!=0
+    does not prove a worthless one — stdout is always parsed and the isolation check always
+    runs, regardless of returncode.
+    """
     record: dict[str, Any] = {
         "query_id": query_id,
         "question": question,
@@ -140,27 +195,30 @@ def build_record(
         "asked_at_utc": ts_asked_utc,
         "nlm_version": nlm_version,
         "returncode": returncode,
-        "sha256_raw_response": hashlib.sha256(stdout.encode("utf-8")).hexdigest(),
+        "sha256_raw_response": hashlib.sha256((stdout or "").encode("utf-8")).hexdigest(),
     }
 
-    if returncode != 0:
-        record["status"] = "CLI_ERROR"
-        record["anomaly"] = f"nlm exited {returncode}"
-        record["stderr"] = stderr[-4000:]
-        return record
+    payload, parse_error = _try_parse_json(stdout)
 
-    try:
-        payload = json.loads(stdout)
-    except json.JSONDecodeError as exc:
-        record["status"] = "UNPARSEABLE_JSON"
-        record["anomaly"] = f"json_decode_error: {exc}"
-        record["raw_stdout"] = stdout[-4000:]
+    if payload is None:
+        if returncode != 0:
+            record["status"] = "CLI_ERROR"
+            record["anomaly"] = f"nlm exited {returncode} and stdout did not parse as JSON ({parse_error})"
+        else:
+            record["status"] = "UNPARSEABLE_JSON"
+            record["anomaly"] = parse_error
+        if stderr:
+            record["stderr"] = stderr[-4000:]
+        if stdout:
+            record["raw_stdout"] = stdout[-4000:]
         return record
 
     if not isinstance(payload, dict):
         record["status"] = "UNEXPECTED_SHAPE"
         record["anomaly"] = f"payload is a {type(payload).__name__}, expected a dict"
         record["raw_stdout"] = stdout[-4000:]
+        if stderr:
+            record["stderr"] = stderr[-4000:]
         return record
 
     conversation_id_returned = payload.get("conversation_id")
@@ -172,23 +230,32 @@ def build_record(
     record["turn_number"] = payload.get("turn_number")
     record["is_follow_up"] = payload.get("is_follow_up")
 
-    if conversation_id_returned != conversation_id_sent:
+    hypotheses = _isolation_hypotheses(conversation_id_sent, conversation_id_returned)
+
+    if returncode != 0:
+        # A valid JSON payload came back despite a nonzero exit (e.g. the CLI printed a
+        # warning to stderr and still exited non-zero). Preserve BOTH signals — never silently
+        # drop the payload just because rc!=0.
+        record["stderr"] = stderr[-4000:] if stderr else None
+        if hypotheses:
+            record["status"] = "ISOLATION_MISMATCH"
+            record["anomaly"] = (
+                f"nlm exited {returncode} AND the conversation isolation check failed — "
+                "possible causes (not narrowed to one): " + "; ".join(hypotheses)
+            )
+        else:
+            record["status"] = "CLI_ERROR_WITH_JSON"
+            record["anomaly"] = (
+                f"nlm exited {returncode} despite returning a parseable, isolation-clean JSON "
+                "payload — the answer/citations fields above are still usable"
+            )
+        return record
+
+    if hypotheses:
         record["status"] = "ISOLATION_MISMATCH"
         record["anomaly"] = (
-            f"conversation_id_returned={conversation_id_returned!r} != "
-            f"conversation_id_sent={conversation_id_sent!r} — the server did not honor the "
-            "fresh conversation id"
-        )
-    elif conversation_id_returned == CONTAMINATED_CONVERSATION_ID:
-        # Structurally unreachable when conversation_id_returned == conversation_id_sent and
-        # conversation_id_sent is a freshly minted uuid4 (astronomically unlikely to collide
-        # with the known-contaminated id) — kept as an independent guard, not dead code: it
-        # fires if a future nlm version starts echoing a DIFFERENT contaminated id back as
-        # "sent", or if conversation_id_sent is ever supplied by a caller who reused it.
-        record["status"] = "ISOLATION_MISMATCH"
-        record["anomaly"] = (
-            "conversation_id equals the known-contaminated persistent conversation id "
-            f"{CONTAMINATED_CONVERSATION_ID}"
+            "conversation isolation check failed — possible causes (not narrowed to one): "
+            + "; ".join(hypotheses)
         )
     else:
         record["status"] = "OK"
@@ -203,6 +270,44 @@ def append_jsonl(path: Path, record: dict[str, Any]) -> None:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
+def _timeout_record(
+    *,
+    query_id: str,
+    question: str,
+    notebook_id: str,
+    conversation_id_sent: str,
+    timeout: float,
+    exc: "subprocess.TimeoutExpired",
+    ts_asked_utc: str,
+    ts_answered_utc: str,
+    nlm_version: str,
+) -> dict[str, Any]:
+    def _decode(value: Any) -> str:
+        if value is None:
+            return ""
+        if isinstance(value, bytes):
+            return value.decode("utf-8", errors="replace")
+        return str(value)
+
+    partial_stdout = _decode(getattr(exc, "output", None))
+    partial_stderr = _decode(getattr(exc, "stderr", None))
+    return {
+        "query_id": query_id,
+        "question": question,
+        "notebook_id": notebook_id,
+        "conversation_id_sent": conversation_id_sent,
+        "ts_utc": ts_answered_utc,
+        "asked_at_utc": ts_asked_utc,
+        "nlm_version": nlm_version,
+        "returncode": None,
+        "status": "TIMEOUT",
+        "anomaly": f"nlm did not return within the {timeout}s query timeout (subprocess.run timeout={exc.timeout}s)",
+        "sha256_raw_response": hashlib.sha256(partial_stdout.encode("utf-8")).hexdigest(),
+        "partial_stdout": partial_stdout[-4000:],
+        "partial_stderr": partial_stderr[-4000:],
+    }
+
+
 def run_one_query(
     *,
     query_id: str,
@@ -215,20 +320,38 @@ def run_one_query(
 ) -> dict[str, Any]:
     """Mint a fresh conversation, run one query, append the record, return it.
 
-    Raises IsolationMismatchError (after the record is already durably appended) if the
-    server did not honor the fresh conversation id.
+    Raises IsolationMismatchError or QueryTimeoutError (in both cases AFTER the record is
+    already durably appended) on the respective failure — the log is always the anomaly's
+    domicile first, the exception is the fail-loud signal second.
     """
     conversation_id_sent = str(uuid.uuid4())
     nlm_version = get_nlm_version(nlm_bin=nlm_bin, runner=runner)
     ts_asked = utcnow_iso()
-    proc = run_nlm_query(
-        notebook_id,
-        question,
-        conversation_id_sent,
-        timeout=timeout,
-        nlm_bin=nlm_bin,
-        runner=runner,
-    )
+    try:
+        proc = run_nlm_query(
+            notebook_id,
+            question,
+            conversation_id_sent,
+            timeout=timeout,
+            nlm_bin=nlm_bin,
+            runner=runner,
+        )
+    except subprocess.TimeoutExpired as exc:
+        ts_answered = utcnow_iso()
+        record = _timeout_record(
+            query_id=query_id,
+            question=question,
+            notebook_id=notebook_id,
+            conversation_id_sent=conversation_id_sent,
+            timeout=timeout,
+            exc=exc,
+            ts_asked_utc=ts_asked,
+            ts_answered_utc=ts_answered,
+            nlm_version=nlm_version,
+        )
+        append_jsonl(log_path, record)
+        raise QueryTimeoutError(record["anomaly"], record=record) from exc
+
     ts_answered = utcnow_iso()
     record = build_record(
         query_id=query_id,
@@ -248,6 +371,14 @@ def run_one_query(
     return record
 
 
+def _content_hash(sources: list[dict[str, Any]]) -> str:
+    """Stable 8-hex-char hash of the sources list CONTENT (not the timestamped wrapper) —
+    two honest captures of the same source list on the same day get the same filename;
+    different content never collides with an old filename by accident."""
+    canonical = json.dumps(sources, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:8]
+
+
 def snapshot_sources(
     *,
     notebook_id: str = NB2_ID,
@@ -256,7 +387,14 @@ def snapshot_sources(
     runner: Runner = subprocess.run,
     date_str: str | None = None,
 ) -> Path:
-    """Freeze the notebook's source id<->title map (read-only listing, never a mutation)."""
+    """Freeze the notebook's source id<->title map (read-only listing, never a mutation).
+
+    Filename carries a content short-hash (`nb2-source-snapshot-<date>-<sha8>.json`, GLM
+    grader finding P2, 2026-08-15) so a stale or hand-edited file that happens to sit at the
+    same date-stamped path with DIFFERENT sources is detected and refused rather than silently
+    overwritten. Same content at the same path is treated as an idempotent no-op (the file is
+    left untouched, not re-timestamped).
+    """
     cmd = [nlm_bin, "source", "list", notebook_id, "--json"]
     proc = runner(cmd, capture_output=True, text=True, timeout=60)
     if proc.returncode != 0:
@@ -266,13 +404,31 @@ def snapshot_sources(
         raise RuntimeError(f"nlm source list --json returned a {type(sources).__name__}, expected a list")
 
     date_str = date_str or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    content_hash = _content_hash(sources)
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / f"nb2-source-snapshot-{date_str}.json"
+    out_path = out_dir / f"nb2-source-snapshot-{date_str}-{content_hash}.json"
+
+    if out_path.exists():
+        try:
+            existing = json.loads(out_path.read_text(encoding="utf-8"))
+            existing_sources = existing.get("sources") if isinstance(existing, dict) else None
+        except json.JSONDecodeError:
+            existing_sources = None
+        if existing_sources != sources:
+            raise FileExistsError(
+                f"{out_path} already exists with DIFFERENT sources content than what was just "
+                "fetched — same date+content-hash filename should imply identical content; "
+                "refusing to overwrite. Investigate (hand-edited file? true hash collision?) "
+                "before deleting it manually."
+            )
+        return out_path  # identical content already frozen for this date — idempotent no-op
+
     snapshot = {
         "notebook_id": notebook_id,
         "captured_at_utc": utcnow_iso(),
         "nlm_version": get_nlm_version(nlm_bin=nlm_bin, runner=runner),
         "source_count": len(sources),
+        "content_sha256_8": content_hash,
         "sources": sources,
     }
     out_path.write_text(json.dumps(snapshot, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -316,16 +472,23 @@ def main(argv: list[str] | None = None) -> int:
         except IsolationMismatchError as exc:
             print(f"ISOLATION_MISMATCH: {exc}", file=sys.stderr)
             return 3
+        except QueryTimeoutError as exc:
+            print(f"TIMEOUT: {exc}", file=sys.stderr)
+            return 4
         print(json.dumps(record, ensure_ascii=False, indent=2))
         return 0 if record["status"] == "OK" else 1
 
     if args.mode == "snapshot-sources":
-        out_path = snapshot_sources(
-            notebook_id=args.notebook_id,
-            out_dir=args.out_dir,
-            nlm_bin=args.nlm_bin,
-            date_str=args.date,
-        )
+        try:
+            out_path = snapshot_sources(
+                notebook_id=args.notebook_id,
+                out_dir=args.out_dir,
+                nlm_bin=args.nlm_bin,
+                date_str=args.date,
+            )
+        except FileExistsError as exc:
+            print(f"REFUSED: {exc}", file=sys.stderr)
+            return 5
         print(f"wrote {out_path}")
         return 0
 
