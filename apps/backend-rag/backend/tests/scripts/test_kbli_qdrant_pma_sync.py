@@ -10,6 +10,7 @@ Qdrant is mocked entirely via a fake httpx transport — no live Qdrant needed.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -22,6 +23,7 @@ from backend.scripts.kbli_qdrant_pma_sync import (
     build_plan,
     build_targets,
     find_points_for_code,
+    load_dataset,
 )
 
 _COLLECTION = "kbli_2025_final_hybrid"
@@ -464,10 +466,12 @@ def test_the_pma_layer_is_unchanged_by_the_generalisation():
 
 from backend.scripts.kbli_qdrant_pma_sync import (  # noqa: E402
     PROSE_KEYS,
+    certified_intelligence_block,
     render_pma_block,
     rewrite_pma_prose,
     rewrite_whatchanged_prose,
 )
+from backend.services.kbli_editorial_certification import load_editorial_registry  # noqa: E402
 
 _BLOB_OPEN = """[CONTEXT: KBLI 2025 - Kode 25200 - Industri Senjata dan Amunisi]
 
@@ -492,6 +496,29 @@ Kelompok ini mencakup pembuatan senjata dan amunisi.
 """
 
 
+def _repo_root() -> Path:
+    here = Path(__file__).resolve()
+    root = next(
+        (
+            parent
+            for parent in here.parents
+            if (parent / "data/source_documents/KBLI_2025_FINAL_CLEAN.json").is_file()
+        ),
+        None,
+    )
+    assert root is not None
+    return root
+
+
+def _real_record(code: str) -> dict:
+    payload = json.loads(
+        (_repo_root() / "data/source_documents/KBLI_2025_FINAL_CLEAN.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    return next(record for record in payload["data"] if record["kode_kbli_2025"] == code)
+
+
 def _blob_point(pid: Any, blob: str, status: str = "TERBUKA", cap: Any = 100) -> dict:
     payload: dict[str, Any] = _pma_fields(status, cap)
     for key in PROSE_KEYS:
@@ -514,10 +541,12 @@ def test_the_blob_still_saying_terbuka_100_is_repaired_not_left_behind():
         assert "- Kepemilikan asing maksimal: 49" in new
         assert "TERBUKA" not in new
         assert "maksimal: 100" not in new
-        # everything outside the owned block survives untouched
+        # Non-editorial sections survive, but a synthetic/raw Intelligence
+        # section has no matching content certificate and is retracted atomically.
         assert "Industri Senjata dan Amunisi" in new
         assert "## Perizinan per Skala Usaha (PP 28/2025)" in new
-        assert "- whatItMeans: Making weapons and ammunition." in new
+        assert "## Intelligence 2026" not in new
+        assert "- whatItMeans: Making weapons and ammunition." not in new
 
 
 def test_a_zero_percent_cap_is_rendered_without_falsy_coercion():
@@ -685,19 +714,70 @@ def test_a_blob_without_the_owned_block_is_REFUSED_not_guessed_at():
     assert plan.stale_points() == [], "an unshaped point must not be written"
 
 
-def test_the_whatchanged_layer_replaces_only_its_own_line():
+def test_the_whatchanged_layer_retracts_an_uncertified_editorial_section():
     rec = {
         "kode_kbli_2025": "25200",
         "intel_2026": {"whatChanged": "Our records do not support this code number carrying over."},
     }
     out = rewrite_whatchanged_prose(rec, _BLOB_OPEN)
-    assert "- whatChanged: Our records do not support this code number carrying over." in out
+    assert out is not None
+    assert "## Intelligence 2026" not in out
     assert "Direct 1:1 match" not in out
-    # the neighbours in the same section are untouched
-    assert "- whatItMeans: Making weapons and ammunition." in out
-    assert "- baliContext: Not a Bali activity." in out
-    # and it does not touch the PMA block it does not own
+    assert "Making weapons and ammunition" not in out
+    # The historical layer name does not make it own the PMA block.
     assert "## Status PMA: TERBUKA" in out
+
+
+def test_the_whatchanged_layer_replaces_the_complete_certified_editorial_block():
+    registry = load_editorial_registry()
+    rec = _real_record("25200")
+
+    out = rewrite_whatchanged_prose(rec, _BLOB_OPEN, registry)
+
+    assert out is not None
+    assert "- whatChanged: Direct 1:1 match from KBLI 2020 — code and scope unchanged." in out
+    assert "Ask me about KBLI 25200: its official scope" in out
+    assert "Making weapons and ammunition." not in out
+    assert "Looking into Industri Senjata" not in out
+    assert certified_intelligence_block(rec, registry)[0] == "## Intelligence 2026"
+
+
+def test_frozen_47222_cannot_publish_raw_zero_percent_prose_without_a_certificate():
+    """Regression for the final OpenAI P1 on frozen HEAD 3d5b8fb9."""
+    registry = load_editorial_registry()
+    rec = _real_record("47222")
+    unsafe = _BLOB_OPEN.replace(
+        "- whatChanged: Direct 1:1 match from KBLI 2020 - code and scope unchanged.",
+        f"- whatChanged: {rec['intel_2026']['whatChanged']}",
+    )
+
+    targets, refusals = build_targets(
+        [rec],
+        ["47222"],
+        "whatchanged",
+        registry,
+    )
+    plan = build_plan("47222", targets["47222"], [_blob_point("p1", unsafe)])
+    out = plan.prose["p1"]["content"]
+
+    assert refusals == []
+    assert out is not None
+    assert "## Intelligence 2026" not in out
+    assert "foreign investment is 0%" not in out
+    assert certified_intelligence_block(rec, registry) == []
+    assert plan.prose["p1"]["text"] == out
+
+
+def test_dataset_bytes_are_bound_to_the_registry_before_any_target_is_built(tmp_path: Path):
+    registry = load_editorial_registry()
+    canonical = _repo_root() / "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
+
+    assert len(load_dataset(str(canonical), registry)) == 1559
+
+    tampered = tmp_path / "tampered.json"
+    tampered.write_bytes(canonical.read_bytes() + b"\n")
+    with pytest.raises(ValueError, match="do not match the editorial review registry"):
+        load_dataset(str(tampered), registry)
 
 
 def test_the_whatchanged_layer_owns_no_flat_key():
@@ -751,19 +831,9 @@ def test_the_prose_repair_matches_the_real_generator_on_real_canonical_records()
     a hand-written repair that formats either differently would still diverge
     in production.
     """
-    import pathlib
     import types
 
-    here = pathlib.Path(__file__).resolve()
-    root = next(
-        (
-            p
-            for p in here.parents
-            if (p / "data" / "source_documents" / "KBLI_2025_FINAL_CLEAN.json").is_file()
-        ),
-        None,
-    )
-    assert root is not None, f"canonical dataset not found walking up from {here}"
+    root = _repo_root()
 
     gen_path = root / "apps/backend-rag/backend/scripts/reindex_kbli_2025_final.py"
     mod = types.ModuleType("rix_for_test")
@@ -791,38 +861,40 @@ def test_the_prose_repair_matches_the_real_generator_on_real_canonical_records()
             encoding="utf-8"
         )
     )["data"]
+    registry = load_editorial_registry()
 
     checked_pma = checked_wc = truncated = eligible_wc = 0
     zero_cap_seen = False
     for rec in records:
-        fresh = build_embedding_text(rec)
+        fresh = build_embedding_text(rec, registry)
         if rec.get("pma_status"):
-            assert rewrite_pma_prose(rec, fresh) == fresh, (
+            assert rewrite_pma_prose(rec, fresh, registry) == fresh, (
                 f"{rec['kode_kbli_2025']}: the PMA repair is not a no-op on freshly generated text — "
                 "it would fight the next re-index"
             )
             checked_pma += 1
             if rec.get("pma_max_asing") in (0, None):
                 zero_cap_seen = True
-        if (
-            rec.get("pma_verification_status") == "located"
-            and rec.get("pma_official_basis")
-            and rec.get("pma_source_vintage")
-            and (rec.get("intel_2026") or {}).get("whatChanged")
-        ):
+        if rec.get("kode_kbli_2025") in registry["canonicalIntel"] and (
+            rec.get("intel_2026") or {}
+        ).get("whatChanged"):
             eligible_wc += 1
-            out = rewrite_whatchanged_prose(rec, fresh)
+            out = rewrite_whatchanged_prose(rec, fresh, registry)
             if "\n- whatChanged: " not in fresh:
                 # The generator CAPS the embedding text (`build_embedding_text`
                 # truncates long per_skala blocks with "... dipotong untuk batas
-                # panjang"), so for 101 of 1,559 records the Intelligence 2026
-                # section never makes it into the blob at all. There is no line
-                # to repair, and the tool must REFUSE rather than append one —
-                # appending would put text past a truncation marker, where a
-                # reader has been told the document stops.
-                assert out is None, (
-                    f"{rec['kode_kbli_2025']}: repaired a whatChanged line into a blob that has none"
-                )
+                # panjang"). If no Intelligence section exists, there is
+                # nothing safe to address and the writer refuses. If the cap
+                # falls inside an exact certified prefix before whatChanged,
+                # the only valid operation is an unchanged no-op.
+                if "\n## Intelligence 2026\n" in fresh:
+                    assert out == fresh, (
+                        f"{rec['kode_kbli_2025']}: changed an exact certified truncated prefix"
+                    )
+                else:
+                    assert out is None, (
+                        f"{rec['kode_kbli_2025']}: repaired editorial prose into a blob that has none"
+                    )
                 truncated += 1
                 continue
             assert out == fresh, (

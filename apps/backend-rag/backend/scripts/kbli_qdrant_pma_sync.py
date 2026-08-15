@@ -55,6 +55,12 @@ instruments, and the one confusion this lane keeps paying for is treating them
 as one answer. A run that could move both at once would make "did this cure
 touch the national fields?" unanswerable from the command line.
 
+EDITORIAL PUBLICATION GATE: ``intel_2026`` is an atomic generated layer, not a
+side effect of a located PMA tuple. The dataset bytes must match the certification
+registry, and Qdrant receives the entire exact reviewed block (with the neutral
+opener) or no Intelligence section. The legacy ``whatchanged`` layer name is kept
+for operational compatibility; it no longer licenses one raw field in isolation.
+
 SCOPE DISCIPLINE (mirrors `kbli_qdrant_risk_clear.py` and
 `kg_kbli_license_fix.py`): `--codes` is MANDATORY. No code is ever
 auto-discovered or swept.
@@ -110,6 +116,14 @@ _APP_ROOT = Path(__file__).resolve().parents[2]
 if str(_APP_ROOT) not in sys.path:
     sys.path.insert(0, str(_APP_ROOT))
 
+from backend.services.kbli_editorial_certification import (
+    assert_certified_source_dataset,
+    load_editorial_registry,
+    matches_editorial_certification,
+    resolve_editorial_registry_path,
+    validate_editorial_registry,
+    with_neutral_kbli_chat_opener,
+)
 from backend.services.kbli_pma_disclosure import (
     disclose_bali,
     disclose_pma,
@@ -121,6 +135,7 @@ logger = logging.getLogger("kbli_qdrant_pma_sync")
 
 RAW_BASE = "https://raw.githubusercontent.com/Balizero1987/Teman2/main"
 DATASET_URL = f"{RAW_BASE}/data/source_documents/KBLI_2025_FINAL_CLEAN.json"
+EDITORIAL_REGISTRY_URL = f"{RAW_BASE}/data/kbli-filiera/pma-editorial-certifications.json"
 
 # The flat KBLI payload invariant (CLAUDE.md §9) — the code lives in
 # `kode_kbli`, never nested. Points are always resolved through this filter,
@@ -155,6 +170,10 @@ class Target:
     # source as the flat fields. Two lookups of one record is how the two
     # representations end up disagreeing.
     record: dict = field(default_factory=dict)
+    # The exact registry that certified the dataset bytes loaded for this run.
+    # Carrying it with the target prevents a later helper from silently loading
+    # a different checkout or remote revision while deciding what may publish.
+    editorial_registry: dict | None = field(default=None, repr=False, compare=False)
 
 
 @dataclass
@@ -293,7 +312,6 @@ _LAYER_READERS = {
 _PMA_HEADING = "## Status PMA:"
 _INTEL_HEADING = "## Intelligence 2026"
 _BALI_HEADING = "## Status PMA di Bali (L4 — moratorium provinsi)"
-_WHATCHANGED_PREFIX = "- whatChanged: "
 _TRUNCATION_MARKER = "(... dipotong untuk batas panjang.)"
 
 
@@ -401,14 +419,101 @@ def _replace_heading_section(blob: str, heading: str, new_lines: list[str]) -> s
     return "\n".join(before + replacement + after)
 
 
-def rewrite_pma_prose(rec: dict, blob: str) -> str | None:
+def _heading_section_is_truncated(blob: str, heading: str) -> bool:
+    """Return whether the generator cap marker falls inside one named section."""
+    lines = blob.split("\n")
+    try:
+        start = lines.index(heading)
+    except ValueError:
+        return False
+    end = start + 1
+    while end < len(lines) and not lines[end].startswith("## "):
+        end += 1
+    return _TRUNCATION_MARKER in lines[start:end]
+
+
+def _truncated_section_matches_reviewed_prefix(
+    blob: str,
+    heading: str,
+    reviewed_lines: list[str],
+) -> bool:
+    """Accept only a generator-truncated prefix of the exact reviewed section."""
+    if not reviewed_lines:
+        return False
+    lines = blob.split("\n")
+    try:
+        start = lines.index(heading)
+        marker = lines.index(_TRUNCATION_MARKER, start + 1)
+    except ValueError:
+        return False
+    actual_prefix = lines[start:marker]
+    # A certified value may itself contain newlines. The generator interpolates
+    # it into one list element and the final join turns those into physical
+    # lines, so compare the same physical representation stored in Qdrant.
+    reviewed_physical_lines = "\n".join(reviewed_lines).split("\n")
+    return actual_prefix == reviewed_physical_lines[: len(actual_prefix)]
+
+
+def certified_intelligence_block(
+    rec: dict,
+    registry: dict | None = None,
+) -> list[str]:
+    """Render the exact atomic Intelligence section accepted by the indexer."""
+    code = str(rec.get("kode_kbli_2025") or "")
+    intel = rec.get("intel_2026")
+    if not isinstance(intel, dict) or not matches_editorial_certification(
+        "canonicalIntel",
+        code,
+        rec,
+        intel,
+        registry,
+    ):
+        return []
+
+    reviewed = with_neutral_kbli_chat_opener(code, intel)
+    lines = [_INTEL_HEADING]
+    for key, value in reviewed.items():
+        if value:
+            # Mirror reindex_kbli_2025_final.build_embedding_text byte-for-byte.
+            lines.append(f"- {key}: {value}")
+    return lines
+
+
+def rewrite_pma_prose(
+    rec: dict,
+    blob: str,
+    registry: dict | None = None,
+) -> str | None:
     rewritten = _replace_block(
         blob,
         lambda ln: ln.startswith(_PMA_HEADING),
         lambda ln: not ln.startswith("- "),
         render_pma_block(rec),
     )
-    if rewritten is None or pma_claims_verified(rec):
+    if rewritten is None:
+        return None
+
+    # Editorial prose is one atomic, independently certified layer. A located
+    # PMA tuple does not certify prose that happens to repeat it. Replace the
+    # whole section with the exact reviewed block or retract it completely.
+    # Never expand/retract a section truncated mid-body: its missing boundary is
+    # unknowable, so the point is unshaped and must be refused.
+    reviewed_intel = certified_intelligence_block(rec, registry)
+    if _heading_section_is_truncated(rewritten, _INTEL_HEADING):
+        # A fresh generator can hit the global character cap inside a large,
+        # certified Intelligence section. It is already safe only when the PMA
+        # block was unchanged and every complete editorial line is the exact
+        # prefix of the reviewed block. Any attempted mutation is refused.
+        if rewritten == blob and _truncated_section_matches_reviewed_prefix(
+            rewritten,
+            _INTEL_HEADING,
+            reviewed_intel,
+        ):
+            return rewritten
+        return None
+    rewritten = _replace_heading_section(rewritten, _INTEL_HEADING, reviewed_intel)
+
+    if pma_claims_verified(rec):
         return rewritten
 
     # A declared gap owns the entire generated/editorial disclosure boundary,
@@ -432,33 +537,37 @@ def rewrite_pma_prose(rec: dict, blob: str) -> str | None:
     return rewritten
 
 
-def rewrite_whatchanged_prose(rec: dict, blob: str) -> str | None:
-    """Replace EXACTLY ONE line.
+def rewrite_whatchanged_prose(
+    rec: dict,
+    blob: str,
+    registry: dict | None = None,
+) -> str | None:
+    """Replace or retract the complete certified Intelligence section.
 
-    `build_embedding_text` emits each intel entry as a single `- {k}: {v}` part,
-    and measured on canonical 2026-08-05 **zero** of the 1,559 `whatChanged`
-    values contain a newline (longest 665 chars) — so the block is one line and
-    a multi-line span rule is not just unnecessary, it is wrong: the first draft
-    consumed lines until the next `- `/`## `, which on `20112` swallowed the
-    generator's own truncation marker `(... dipotong untuk batas panjang.)`.
-
-    A value that DID contain a newline would silently break the round trip, so
-    it is refused rather than written.
-
-    Refusing when the line is absent matters just as much: for 101 of 1,559
-    records the generator truncates before `## Intelligence 2026` ever appears,
-    and appending a line there would put content AFTER a marker that tells the
-    reader the document stopped.
+    The historical layer name remains CLI-compatible, but a single reviewed
+    field is not independently publishable: its certificate covers the exact
+    ``intel_2026`` object and PMA fingerprint. Therefore the writer replaces the
+    entire section from a matching certificate, retracts the section when no
+    certificate matches, and refuses a section truncated before its boundary.
     """
-    text = (rec.get("intel_2026") or {}).get("whatChanged")
-    if not text or "\n" in text:
+    if _INTEL_HEADING not in blob:
         return None
-    lines = blob.split("\n")
-    for n, ln in enumerate(lines):
-        if ln.startswith(_WHATCHANGED_PREFIX):
-            lines[n] = f"{_WHATCHANGED_PREFIX}{text}"
-            return "\n".join(lines)
-    return None
+    reviewed_intel = certified_intelligence_block(rec, registry)
+    if _heading_section_is_truncated(blob, _INTEL_HEADING):
+        return (
+            blob
+            if _truncated_section_matches_reviewed_prefix(
+                blob,
+                _INTEL_HEADING,
+                reviewed_intel,
+            )
+            else None
+        )
+    return _replace_heading_section(
+        blob,
+        _INTEL_HEADING,
+        reviewed_intel,
+    )
 
 
 _LAYER_PROSE = {
@@ -469,7 +578,10 @@ _LAYER_PROSE = {
 
 
 def build_targets(
-    records: list[dict], codes: list[str], layer: str = "pma"
+    records: list[dict],
+    codes: list[str],
+    layer: str = "pma",
+    editorial_registry: dict | None = None,
 ) -> tuple[dict[str, Target], list[str]]:
     """Read the canonical verdict for each requested code.
 
@@ -494,21 +606,42 @@ def build_targets(
         if fields is None:
             refusals.append(f"{code}: {why}")
             continue
-        targets[code] = Target(code=code, layer=layer, fields=fields, record=rec)
+        targets[code] = Target(
+            code=code,
+            layer=layer,
+            fields=fields,
+            record=rec,
+            editorial_registry=editorial_registry,
+        )
     return targets, refusals
 
 
-def load_dataset(source: str) -> list[dict]:
-    """Local path or URL — the same two-mode source the sibling cure tools take."""
+def _load_json_source(source: str, label: str) -> tuple[bytes, Any]:
+    """Read exact bytes plus decoded JSON from a local path or URL."""
     if source.startswith(("http://", "https://")):
-        logger.info("dataset: fetching %s", source)
+        logger.info("%s: fetching %s", label, source)
         with httpx.Client(timeout=120) as http:
             resp = http.get(source)
             resp.raise_for_status()
-            payload = resp.json()
+            raw = resp.content
     else:
-        logger.info("dataset: reading %s", source)
-        payload = json.loads(Path(source).read_text(encoding="utf-8"))
+        logger.info("%s: reading %s", label, source)
+        raw = Path(source).read_bytes()
+    return raw, json.loads(raw)
+
+
+def load_certification_registry(source: str) -> dict:
+    """Load and structurally validate the registry selected for this run."""
+    if not source.startswith(("http://", "https://")):
+        return load_editorial_registry(source)
+    _, payload = _load_json_source(source, "editorial registry")
+    return validate_editorial_registry(payload)
+
+
+def load_dataset(source: str, registry: dict | None = None) -> list[dict]:
+    """Load only dataset bytes cryptographically bound to the active registry."""
+    raw, payload = _load_json_source(source, "dataset")
+    assert_certified_source_dataset(raw, registry)
     return payload["data"]
 
 
@@ -567,7 +700,7 @@ def build_plan(code: str, target: Target, points: list[dict]) -> CodePlan:
                 blob = payload.get(key)
                 if not isinstance(blob, str) or not blob:
                     continue
-                new = rewrite(target.record, blob)
+                new = rewrite(target.record, blob, target.editorial_registry)
                 if new is None:
                     # The block this layer owns is not in the blob. Not "already
                     # correct" — unknown. Recorded so the run says so out loud.
@@ -690,14 +823,19 @@ def main() -> int:
     )
     ap.add_argument("--dataset", default=DATASET_URL, help="canonical dataset: local path or URL")
     ap.add_argument(
+        "--registry",
+        help="editorial certification registry: local path or URL. Defaults to the "
+        "matching repo file for a local dataset and the canonical URL for a remote dataset.",
+    )
+    ap.add_argument(
         "--layer",
         choices=LAYERS,
         default="pma",
         help="which payload layer to sync: 'pma' (national ownership: pma_status, "
         "pma_max_asing, AND the '## Status PMA:' block inside the content/text blob), "
         "'bali' (provincial verdict: bali_status, bali_blocked, bali_needs_review, "
-        "bali_reason, has_bali_l4) or 'whatchanged' (prose-only: the '- whatChanged:' line inside "
-        "the blob, which has no flat payload key). One layer per run, on purpose — "
+        "bali_reason, has_bali_l4) or 'whatchanged' (legacy name for atomic certified "
+        "Intelligence-section reconciliation; no flat payload key). One layer per run, on purpose — "
         "they answer different questions from different instruments.",
     )
     args = ap.parse_args()
@@ -708,7 +846,20 @@ def main() -> int:
         return 2
 
     logger.info("layer: %s", args.layer)
-    targets, refusals = build_targets(load_dataset(args.dataset), codes, args.layer)
+    registry_source = args.registry
+    if not registry_source:
+        registry_source = (
+            EDITORIAL_REGISTRY_URL
+            if args.dataset.startswith(("http://", "https://"))
+            else str(resolve_editorial_registry_path())
+        )
+    registry = load_certification_registry(registry_source)
+    targets, refusals = build_targets(
+        load_dataset(args.dataset, registry),
+        codes,
+        args.layer,
+        registry,
+    )
     if refusals:
         for r in refusals:
             logger.error("REFUSED %s", r)
