@@ -33,6 +33,8 @@ export function hasPublishablePmaCap(pma: KBLIPmaInfo): boolean {
 }
 
 function publicPmaCap(raw: KBLIRawCode): number | "special" | null {
+  if (raw.pma_cap_verified !== true) return null;
+
   const cap: unknown = raw.pma_max_asing;
   if (typeof cap === "number" && Number.isFinite(cap)) return cap;
   if (cap === "special" && raw.pma_cap_special === true) return "special";

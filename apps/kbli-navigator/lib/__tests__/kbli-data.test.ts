@@ -330,9 +330,14 @@ function adversarialDisclosureContract() {
     pma_cap_verified: false,
   } as unknown as KBLIRawCode);
   assert.equal(
+    locatedOpenUnverifiedCap.maxForeign,
+    null,
+    "an unverified numeric cap must be absent from the public model",
+  );
+  assert.equal(
     formatPmaOwnership(locatedOpenUnverifiedCap),
-    "Open · ownership cap not verified",
-    "an unverified 100 value must not become 100% ownership",
+    "Open · ownership cap not published",
+    "an unverified 100 value must not enter the public ownership verdict",
   );
   assert.equal(
     hasPublishablePmaCap(locatedOpenUnverifiedCap),
@@ -347,9 +352,14 @@ function adversarialDisclosureContract() {
     pma_cap_verified: false,
   } as unknown as KBLIRawCode);
   assert.equal(
+    locatedRestrictedUnverifiedSpecial.maxForeign,
+    null,
+    "an unverified special cap must be absent from the public model",
+  );
+  assert.equal(
     formatPmaOwnership(locatedRestrictedUnverifiedSpecial),
-    "Restricted · ownership cap not verified",
-    "an unverified special marker must not become a public cap claim",
+    "Restricted · cap not published",
+    "an unverified special marker must not enter the public verdict",
   );
   assert.equal(
     hasPublishablePmaCap(locatedRestrictedUnverifiedSpecial),
