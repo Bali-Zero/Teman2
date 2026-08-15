@@ -20,20 +20,20 @@ import { pmaSourceAttributionStructured } from "@/lib/kbli-pma-source";
  */
 function restrictedPmaStructuredLabel(code: KBLICode): string {
   if (
-    code.pma.capVerified &&
+    code.pma.capVerified === true &&
     code.pma.capSpecial &&
     code.pma.maxForeign === "special"
   ) {
     return "Restricted by special non-percentage conditions (TERBATAS)";
   }
-  if (!code.pma.capVerified && code.pma.maxForeign !== null) {
+  if (code.pma.capVerified !== true) {
     return "Restricted; ownership cap not verified (TERBATAS)";
   }
   if (
     typeof code.pma.maxForeign !== "number" ||
     !Number.isFinite(code.pma.maxForeign)
   ) {
-    return "Restricted; ownership cap not published (TERBATAS)";
+    return "Restricted; ownership cap not verified (TERBATAS)";
   }
   switch (pmaCapShape(code.pma)) {
     case "none":
@@ -93,7 +93,7 @@ export function KBLICodeJsonLd({
     code.provenance?.pma.status ?? "declared_gap",
   );
   const openPmaLabel =
-    code.pma.capVerified && code.pma.maxForeign === 100
+    code.pma.capVerified === true && code.pma.maxForeign === 100
       ? "100% foreign ownership allowed"
       : formatPmaOwnership(code.pma, "metadata");
   const pmaLabel = `${
@@ -157,7 +157,7 @@ export function KBLICodeJsonLd({
       "Indonesian business license",
       pmaVerdictVerified &&
       code.pma.status === "open" &&
-      !(code.pma.capVerified && code.pma.maxForeign === 0)
+      !(code.pma.capVerified === true && code.pma.maxForeign === 0)
         ? "PT PMA"
         : undefined,
       riskLevel !== "Unknown" ? `${riskLevel} risk` : undefined,

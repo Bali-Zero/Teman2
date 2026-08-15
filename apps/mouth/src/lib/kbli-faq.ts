@@ -47,13 +47,13 @@ function restrictedPmaAnswer(code: KBLICode): string {
   const head = `KBLI ${code.code} (${code.titleId})`;
   const cond = conditionClause(code);
 
-  if (!code.pma.capVerified && code.pma.maxForeign !== null) {
+  if (code.pma.capVerified !== true) {
     return `Restricted, with the ownership cap not yet verified. ${head} is TERBATAS; do not rely on any percentage or special-cap claim until it is confirmed in OSS.${cond}`;
   }
 
   if (
-    code.pma.capVerified &&
-    code.pma.capSpecial &&
+    code.pma.capVerified === true &&
+    code.pma.capSpecial === true &&
     code.pma.maxForeign === "special"
   ) {
     return `Conditionally. ${head} is TERBATAS with special distribution conditions (open to foreign ownership but subject to a special distribution-network/location requirement — verify the exact terms in OSS).${cond}`;
@@ -98,8 +98,8 @@ interface OpenPmaWording {
 /** TERBUKA wording that never manufactures a 100% cap from the status alone. */
 function openPmaWording(code: KBLICode): OpenPmaWording {
   if (
-    code.pma.capVerified &&
-    code.pma.capSpecial &&
+    code.pma.capVerified === true &&
+    code.pma.capSpecial === true &&
     code.pma.maxForeign === "special"
   ) {
     return {
@@ -115,14 +115,7 @@ function openPmaWording(code: KBLICode): OpenPmaWording {
     Number.isFinite(code.pma.maxForeign)
       ? code.pma.maxForeign
       : null;
-  if (cap === null) {
-    return {
-      claim: "recorded as TERBUKA, but its ownership cap is not published",
-      short: "ownership cap not published",
-      fullyOpen: false,
-    };
-  }
-  if (!code.pma.capVerified) {
+  if (code.pma.capVerified !== true || cap === null) {
     return {
       claim: "recorded as TERBUKA, but its ownership cap is not verified",
       short: "ownership cap not verified",

@@ -51,13 +51,17 @@ export function PMABadge({
       ? maxForeign
       : null;
   const markedSpecial = capSpecial === true && maxForeign === "special";
-  const effectiveStatus = !verdictVerified
-    ? "unknown"
-    : status === "open" && capVerified && numeric === 0 && !markedSpecial
-      ? "closed"
-      : status;
+  const effectiveStatus =
+    verdictVerified !== true
+      ? "unknown"
+      : status === "open" &&
+          capVerified === true &&
+          numeric === 0 &&
+          !markedSpecial
+        ? "closed"
+        : status;
   const c =
-    effectiveStatus === "unknown" && !verdictVerified
+    effectiveStatus === "unknown" && verdictVerified !== true
       ? { ...config.unknown, label: "PMA unverified" }
       : config[effectiveStatus];
 
@@ -67,30 +71,24 @@ export function PMABadge({
   //  - restricted & verified %: "· Max N%"
   //  - open verified cap: "· N% Foreign"; no cap is inferred from TERBUKA
   let suffix: string | null = null;
-  if (!verdictVerified || status === "unknown") {
+  if (verdictVerified !== true || status === "unknown") {
     suffix = null;
-  } else if (markedSpecial && capVerified) {
+  } else if (markedSpecial && capVerified === true) {
     suffix = "· special conditions";
-  } else if (markedSpecial) {
-    suffix = "· cap not verified";
   } else if (status === "open") {
     suffix =
-      numeric === null
-        ? "· cap not published"
-        : !capVerified
-          ? "· cap not verified"
-          : `· ${numeric}% Foreign`;
+      capVerified !== true || numeric === null
+        ? "· cap not verified"
+        : `· ${numeric}% Foreign`;
   } else if (status === "restricted") {
     suffix =
-      numeric === null
-        ? "· cap not published"
-        : !capVerified
-          ? "· cap not verified"
-          : numeric <= 0
-            ? "· closed (0%)"
-            : numeric >= 100
-              ? "· conditions apply"
-              : `· Max ${numeric}%`;
+      capVerified !== true || numeric === null
+        ? "· cap not verified"
+        : numeric <= 0
+          ? "· closed (0%)"
+          : numeric >= 100
+            ? "· conditions apply"
+            : `· Max ${numeric}%`;
   }
 
   const ariaLabel = `PMA status: ${c.label}${suffix ? ` ${suffix.replace(/^·\s*/, "")}` : ""}`;

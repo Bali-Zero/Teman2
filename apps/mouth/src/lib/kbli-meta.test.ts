@@ -249,7 +249,7 @@ describe("GUILT: the gate withholds unverified facts from title/description", ()
       },
     });
 
-    expect(kbliMetaTitleSuffix(missing)).toContain("cap not published");
+    expect(kbliMetaTitleSuffix(missing)).toContain("cap not verified");
     expect(kbliMetaTitleSuffix(unverified)).toContain("cap not verified");
     expect(kbliMetaDescription(missing, "Restaurant")).not.toContain("100%");
     expect(kbliMetaDescription(unverified, "Restaurant")).not.toContain("100%");

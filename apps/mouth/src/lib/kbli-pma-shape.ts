@@ -104,14 +104,18 @@ export function pmaCapShape(pma: PmaShapeSource): PmaCapShape {
  * TERBUKA and never reach this branch.
  */
 export function restrictedCapBadge(pma: PmaShapeSource): string {
-  if (pma.capSpecial && pma.maxForeign === "special" && pma.capVerified) {
+  if (
+    pma.capSpecial === true &&
+    pma.maxForeign === "special" &&
+    pma.capVerified === true
+  ) {
     return "Conditions apply";
   }
-  if (!pma.capVerified && pma.maxForeign !== null) {
+  if (pma.capVerified !== true) {
     return "Cap not verified";
   }
   if (typeof pma.maxForeign !== "number" || !Number.isFinite(pma.maxForeign)) {
-    return "Cap not published";
+    return "Cap not verified";
   }
   switch (pmaCapShape(pma)) {
     case "none":
@@ -119,7 +123,7 @@ export function restrictedCapBadge(pma: PmaShapeSource): string {
     case "full":
       return "Conditions apply";
     case "conditional":
-      return "Cap not published";
+      return "Cap not verified";
     default:
       return `Max ${pma.maxForeign}%`;
   }

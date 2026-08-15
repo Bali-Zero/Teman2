@@ -25,7 +25,9 @@ export function hasLocatedPmaTuple(record: Record<string, unknown>): boolean {
 
 /** True only when generated prose may safely repeat a cap assertion. */
 export function hasPublishablePmaCap(pma: KBLIPmaInfo): boolean {
-  if (pma.verificationStatus !== "located" || !pma.capVerified) return false;
+  if (pma.verificationStatus !== "located" || pma.capVerified !== true) {
+    return false;
+  }
   if (typeof pma.maxForeign === "number") {
     return Number.isFinite(pma.maxForeign);
   }
@@ -102,18 +104,28 @@ export function formatPmaOwnership(
   if (pma.status === "closed") {
     return style === "metadata"
       ? "Closed to Foreign Investment"
-      : cap === 0 && pma.capVerified
+      : cap === 0 && pma.capVerified === true
         ? "Closed (0%)"
         : "Closed";
   }
 
-  if (special && pma.capVerified) {
+  if (pma.capVerified !== true) {
+    return pma.status === "open"
+      ? style === "metadata"
+        ? "Open to Foreign Investment (ownership cap not verified)"
+        : "Open · ownership cap not verified"
+      : style === "metadata"
+        ? "Foreign Ownership Restricted (ownership cap not verified)"
+        : "Restricted · ownership cap not verified";
+  }
+
+  if (special) {
     return style === "metadata"
       ? "Foreign Ownership Subject to Special Non-Percentage Conditions"
       : "Special non-percentage conditions";
   }
 
-  if (special) {
+  if (cap === null) {
     return pma.status === "open"
       ? style === "metadata"
         ? "Open to Foreign Investment (ownership cap not verified)"
@@ -124,37 +136,14 @@ export function formatPmaOwnership(
   }
 
   if (pma.status === "open") {
-    if (cap !== null) {
-      if (!pma.capVerified) {
-        return style === "metadata"
-          ? "Open to Foreign Investment (ownership cap not verified)"
-          : "Open · ownership cap not verified";
-      }
-      if (cap === 0) {
-        return style === "metadata"
-          ? "Closed to Foreign Investment"
-          : "Closed (0%)";
-      }
+    if (cap === 0) {
       return style === "metadata"
-        ? `${cap}% Foreign Ownership`
-        : `${cap}% Open`;
+        ? "Closed to Foreign Investment"
+        : "Closed (0%)";
     }
-    return style === "metadata"
-      ? "Open to Foreign Investment (ownership cap not published)"
-      : "Open · ownership cap not published";
+    return style === "metadata" ? `${cap}% Foreign Ownership` : `${cap}% Open`;
   }
 
-  if (cap === null) {
-    return style === "metadata"
-      ? "Foreign Ownership Restricted (cap not published)"
-      : "Restricted · cap not published";
-  }
-
-  if (!pma.capVerified) {
-    return style === "metadata"
-      ? "Foreign Ownership Restricted (ownership cap not verified)"
-      : "Restricted · ownership cap not verified";
-  }
   if (cap === 0) {
     return style === "metadata"
       ? "Closed to Foreign Investment"
@@ -165,10 +154,7 @@ export function formatPmaOwnership(
       ? "Foreign Ownership Restricted by Non-Percentage Conditions"
       : "Conditions apply";
   }
-  if (pma.capVerified) {
-    return style === "metadata"
-      ? `Restricted (max ${cap}% foreign)`
-      : `Max ${cap}%`;
-  }
-  return style === "metadata" ? "Foreign Ownership Restricted" : "Restricted";
+  return style === "metadata"
+    ? `Restricted (max ${cap}% foreign)`
+    : `Max ${cap}%`;
 }

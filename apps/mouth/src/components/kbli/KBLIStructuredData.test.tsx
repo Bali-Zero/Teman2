@@ -93,7 +93,7 @@ describe("structured data — whole-verdict PMA gate", () => {
     } as KBLICode;
 
     const article = JSON.stringify(jsonLdOf(malformed));
-    expect(article).toContain("ownership cap not published");
+    expect(article).toContain("ownership cap not verified");
     expect(article).not.toContain("100% foreign ownership allowed");
   });
 

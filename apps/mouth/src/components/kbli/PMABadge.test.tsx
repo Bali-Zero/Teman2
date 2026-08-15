@@ -80,7 +80,7 @@ describe("PMABadge — the cap extremes", () => {
     );
     expect(screen.queryByText(/special%/)).toBeNull();
     expect(screen.queryByText(/Max /)).toBeNull();
-    expect(screen.getByText("· cap not published")).toBeDefined();
+    expect(screen.getByText("· cap not verified")).toBeDefined();
   });
 
   it("INNOCENCE: a real ceiling still prints as a ceiling", () => {
@@ -202,7 +202,7 @@ describe("PMABadge — the cap extremes", () => {
     const { unmount } = render(
       <PMABadge status="open" maxForeign={null} verdictVerified />,
     );
-    expect(screen.getByText("· cap not published")).toBeDefined();
+    expect(screen.getByText("· cap not verified")).toBeDefined();
     expect(screen.queryByText(/100%/)).toBeNull();
     unmount();
 

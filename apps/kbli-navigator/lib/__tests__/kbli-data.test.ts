@@ -328,7 +328,7 @@ function adversarialDisclosureContract() {
   );
   assert.equal(
     formatPmaOwnership(disclosePmaInfo(raw)),
-    "Restricted · cap not published",
+    "Restricted · ownership cap not verified",
     "a malformed numeric-string cap must never render as null%",
   );
   assert.equal(
@@ -344,12 +344,12 @@ function adversarialDisclosureContract() {
   } as unknown as KBLIRawCode);
   assert.equal(
     formatPmaOwnership(locatedOpenWithoutCap),
-    "Open · ownership cap not published",
+    "Open · ownership cap not verified",
     "TERBUKA must not synthesize a 100% cap",
   );
   assert.equal(
     formatPmaOwnership(locatedOpenWithoutCap, "metadata"),
-    "Open to Foreign Investment (ownership cap not published)",
+    "Open to Foreign Investment (ownership cap not verified)",
     "metadata must not synthesize a 100% cap",
   );
   const locatedOpenUnverifiedCap = disclosePmaInfo({
@@ -365,7 +365,7 @@ function adversarialDisclosureContract() {
   );
   assert.equal(
     formatPmaOwnership(locatedOpenUnverifiedCap),
-    "Open · ownership cap not published",
+    "Open · ownership cap not verified",
     "an unverified 100 value must not enter the public ownership verdict",
   );
   assert.equal(
@@ -387,7 +387,7 @@ function adversarialDisclosureContract() {
   );
   assert.equal(
     formatPmaOwnership(locatedRestrictedUnverifiedSpecial),
-    "Restricted · cap not published",
+    "Restricted · ownership cap not verified",
     "an unverified special marker must not enter the public verdict",
   );
   assert.equal(

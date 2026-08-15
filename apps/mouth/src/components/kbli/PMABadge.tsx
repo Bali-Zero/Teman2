@@ -57,19 +57,20 @@ export function PMABadge({
 }: PMABadgeProps) {
   const markedSpecial = capSpecial === true && maxForeign === "special";
   const zeroCapClosure =
-    verdictVerified &&
+    verdictVerified === true &&
     !markedSpecial &&
-    capVerified &&
+    capVerified === true &&
     typeof maxForeign === "number" &&
     Number.isFinite(maxForeign) &&
     maxForeign === 0;
   const effectiveStatus = zeroCapClosure ? "closed" : status;
-  const c = verdictVerified
-    ? config[effectiveStatus] || config.unknown
-    : {
-        ...config.unknown,
-        label: "PMA unverified",
-      };
+  const c =
+    verdictVerified === true
+      ? config[effectiveStatus] || config.unknown
+      : {
+          ...config.unknown,
+          label: "PMA unverified",
+        };
   const numeric =
     typeof maxForeign === "number" && Number.isFinite(maxForeign)
       ? maxForeign
@@ -82,23 +83,21 @@ export function PMABadge({
   //  - open 100% → "· 100% Foreign"
   //  - open but Bali-blocked → "· 100% nat'l · blocked in Bali" (no false green promise)
   let suffix: string | null = null;
-  if (!verdictVerified) {
+  if (verdictVerified !== true) {
     suffix = null;
-  } else if (markedSpecial && capVerified) {
+  } else if (markedSpecial && capVerified === true) {
     suffix = "· special conditions";
-  } else if (markedSpecial) {
-    suffix = "· cap not verified";
   } else if (zeroCapClosure) {
     suffix = "· 0% foreign ownership";
   } else if (status === "open" && baliBlocked) {
     suffix =
-      capVerified && numeric !== null
+      capVerified === true && numeric !== null
         ? `· ${numeric}% nat'l · blocked in Bali`
         : "· national status · blocked in Bali";
-  } else if (status === "open" && numeric !== null && capVerified) {
+  } else if (status === "open" && numeric !== null && capVerified === true) {
     suffix = `· ${numeric}% Foreign`;
   } else if (status === "open") {
-    suffix = numeric === null ? "· cap not published" : "· cap not verified";
+    suffix = "· cap not verified";
   } else if (status === "restricted") {
     // The SHAPE comes from the shared classifier; only the wording is this
     // badge's own. This branch used to carry a private copy of the rule,
@@ -117,9 +116,7 @@ export function PMABadge({
     // Verification is checked before classifying the extremes: an unverified
     // 0 or 100 remains explicitly unverified instead of becoming a closure or
     // a no-cap condition by assertion.
-    if (numeric === null) {
-      suffix = "· cap not published";
-    } else if (!capVerified) {
+    if (capVerified !== true || numeric === null) {
       suffix = "· cap not verified";
     } else {
       switch (pmaCapShape({ maxForeign, capSpecial, capVerified })) {

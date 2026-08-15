@@ -145,7 +145,7 @@ describe("buildKbliFaq", () => {
 
     const missingAnswer = buildKbliFaq(withoutCap)[0].answer;
     const unverifiedAnswer = buildKbliFaq(unverifiedHundred)[0].answer;
-    expect(missingAnswer).toContain("ownership cap is not published");
+    expect(missingAnswer).toContain("ownership cap is not verified");
     expect(unverifiedAnswer).toContain("ownership cap is not verified");
     for (const answer of [missingAnswer, unverifiedAnswer]) {
       expect(answer).not.toContain("100%");
