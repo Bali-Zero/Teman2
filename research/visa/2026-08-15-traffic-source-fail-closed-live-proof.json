@@ -1,0 +1,112 @@
+{
+  "ceremony": {
+    "actual_evaluate_post_attempts": 1,
+    "pre_post_failures": [
+      {
+        "evaluate_post_sent": false,
+        "reason": "production image omits backend.tests used by the repository-only gold fixture builder",
+        "stage": "fixture import"
+      },
+      {
+        "evaluate_post_sent": false,
+        "reason": "OpenAPI preflight required runtime authentication",
+        "stage": "OpenAPI GET",
+        "status_code": 401
+      },
+      {
+        "evaluate_post_sent": false,
+        "reason": "the split light API worker serves its schema at /openapi.json",
+        "stage": "OpenAPI GET",
+        "status_code": 404
+      }
+    ],
+    "successful_readback_evaluate_post_attempts": 0
+  },
+  "database": {
+    "connection_default_transaction_read_only": "on",
+    "idempotency_key_sha256": "17a662494366b0549f278729c7596adb53fbbde87f5f22258c25130ec712464e",
+    "matching_rows_after_live_post": 0,
+    "table": "public.visa_evaluate_idempotency"
+  },
+  "deployment": {
+    "fly": {
+      "api_machine": "7847d95ce29658",
+      "api_service_check": "passing",
+      "image_digest": "sha256:6bef531ce86eef0f9bca6ea3934ed3a53bf65d7d6495d024ceba319328dee0c6",
+      "image_ref": "registry.fly.io/nuzantara-rag:deployment-01M01KHGB66VVMWPC02TQ2DRPB",
+      "machine_image_records_with_exact_gh_sha": 4,
+      "release_created_at": "2026-08-15T02:22:50Z",
+      "release_status": "complete",
+      "release_version": 4127
+    },
+    "github_actions": {
+      "completed_at": "2026-08-15T02:25:55Z",
+      "conclusion": "success",
+      "event": "push",
+      "head_sha": "650716442c81298647eb07542e198565709de014",
+      "run_id": 31858744114,
+      "status": "completed",
+      "workflow": "Deploy Backend to Fly.io"
+    }
+  },
+  "evidence_sources": {
+    "application_log": {
+      "correlation_id": "93fd9096-5d8f-4625-b7f7-b70531e4fdd6",
+      "instance": "7847d95ce29658",
+      "observed_at": "2026-08-15T02:30:41.112204Z"
+    },
+    "readback_observed_at": "2026-08-15T02:32:36.071411Z"
+  },
+  "expected_merge_sha": "650716442c81298647eb07542e198565709de014",
+  "health": {
+    "path": "/health/ready",
+    "ready": true,
+    "status_code": 200
+  },
+  "openapi": {
+    "document_sha256": "4ab413b453969700f52ac3c91968972da79c916d76e3e5247793eb52ac474202",
+    "evaluate_path": "/api/visa-oracle/evaluate",
+    "path": "/openapi.json",
+    "status_code": 200,
+    "traffic_source_enum": [
+      "real",
+      "synthetic_driver",
+      "synthetic_gold"
+    ],
+    "traffic_source_parameter_sha256": "7ec17b8df2998cd3a758f46c401798055162ae505d1edc8e6641464c6a275f07",
+    "traffic_source_required": true
+  },
+  "request": {
+    "idempotency_key_logged": false,
+    "method": "POST",
+    "path": "/api/visa-oracle/evaluate",
+    "payload_fixture": "gold_persona_01",
+    "payload_logged": false,
+    "payload_sha256": "3c99bb9cd88a1ea718bed11b6ef9d5a45e15dbdf57a89a4335b293dda7e3fc2c",
+    "redirects_followed": 0,
+    "traffic_source_query_present": false
+  },
+  "response": {
+    "production_envelope_adds_non_applicant_correlation_id": true,
+    "sanitized_detail": [
+      {
+        "loc": [
+          "query",
+          "field"
+        ],
+        "msg": "Required field is missing",
+        "type": "missing"
+      }
+    ],
+    "sanitized_detail_exact": true,
+    "status_code": 422
+  },
+  "safety": {
+    "enforce_changed": false,
+    "explicit_real_smoke_sent": false,
+    "rulepack_activated": false,
+    "rulepack_signed": false
+  },
+  "schema_version": "visa-traffic-source-live-proof/1.0.0",
+  "verdict": "PASS"
+}
