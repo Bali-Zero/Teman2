@@ -68,6 +68,23 @@ PY
     mkdir -p "$WORK/world/home/.codex-o2"
     echo '{}' > "$WORK/world/home/.codex-o2/auth.json"
 
+    # The real queue dir carries a README.md alongside real tasks (documents
+    # the queue format, incl. quota/backoff/429 behavior) — every fake world
+    # must reproduce that shape so the README-exclusion fix (defect 1,
+    # 2026-08-15) is exercised by every case, not just a dedicated one.
+    # Written BEFORE task-one.md on purpose: select_task() without the
+    # exclusion picks the earliest-mtime never-attempted candidate, so if
+    # README.md were still eligible it would win the race by CREATION ORDER
+    # alone — the guilt assertion in Case 13 below must not depend on
+    # alphabetical/mtime luck to catch the defect.
+    cat > "$WORK/world/queue/README.md" <<'MD'
+# Spark queue README
+
+This queue feeds army.spark_lane. If the bucket returns "out of extra usage",
+"usage limit", "quota exceeded", or HTTP 429, the lane backs off for 12h.
+Rate-limit and weekly limit markers are treated the same way.
+MD
+
     cat > "$WORK/world/queue/task-one.md" <<'MD'
 # Test task one
 
@@ -96,6 +113,7 @@ write_codex_stub() {
 echo "invoked \$*" >> "$WORK/world/codex-invocations.log"
 case "\$STUB_CODEX_MODE" in
     success) echo "STUB REPORT BODY"; exit 0 ;;
+    success_quota_text) echo "Analysis: this queue documents a usage limit and 429 backoff policy."; exit 0 ;;
     quota) echo "error: out of extra usage on this weekly bucket"; exit 1 ;;
     fail) echo "boom: synthetic codex crash"; exit 3 ;;
     *) echo "unset STUB_CODEX_MODE"; exit 9 ;;
@@ -462,6 +480,81 @@ if grep -q "army-spark:codex-failed" "$WORK/world/tg.log" 2>/dev/null; then
     note_pass "no codex seat anywhere: P0 alert fired"
 else
     note_fail "no codex seat anywhere: no P0 alert found in stub log"
+fi
+
+# ---------------------------------------------------------------------------
+# Case 13 (guilt+innocence, defect 1 — 2026-08-15 live evidence): the queue
+# README must never be dispatched as a task, while a real task file
+# alongside it IS. Live symptom on Pro 17:09-17:10 WITA: run.log showed
+# "dispatching task=README.md" (select_task()'s *.md glob matched it).
+# setup_world's fake queue always has README.md next to task-one.md, so
+# every case above already exercises this — this case asserts it directly.
+# ---------------------------------------------------------------------------
+setup_world
+write_codex_stub success
+rc="$(run_wrapper STUB_CODEX_MODE=success)"
+if [ "$rc" = "0" ] && [ "$(report_count)" = "1" ] \
+    && grep -q "dispatching task=task-one.md" "$WORK/world/logs/run.log" 2>/dev/null; then
+    note_pass "README exclusion innocence: the real task alongside README.md IS dispatched"
+else
+    note_fail "README exclusion innocence: rc=$rc report_count=$(report_count)"
+fi
+if ! grep -q "dispatching task=README.md" "$WORK/world/logs/run.log" 2>/dev/null; then
+    note_pass "README exclusion guilt: README.md is never selected as a dispatch target"
+else
+    note_fail "README exclusion guilt: README.md was dispatched as a task"
+fi
+
+# ---------------------------------------------------------------------------
+# Case 13b (guilt, defect 1): a queue containing ONLY README.md (no real
+# task) reads as EMPTY, not as "one task named README.md" — no dispatch, no
+# report, heartbeat=ok.
+# ---------------------------------------------------------------------------
+setup_world
+write_codex_stub success
+rm -f "$WORK/world/queue/task-one.md"
+rc="$(run_wrapper STUB_CODEX_MODE=success)"
+status="$(sidecar_status)"
+if [ "$rc" = "0" ] && [ "$(report_count)" = "0" ] && [ "$status" = "ok" ] \
+    && ! grep -q "dispatching task=README.md" "$WORK/world/logs/run.log" 2>/dev/null; then
+    note_pass "README exclusion guilt (queue-only-README): treated as empty queue, never dispatched"
+else
+    note_fail "README exclusion guilt (queue-only-README): rc=$rc report_count=$(report_count) status=$status"
+fi
+
+# ---------------------------------------------------------------------------
+# Case 14 (guilt+innocence, defect 2 — 2026-08-15 live evidence): a
+# SUCCESSFUL codex run (rc=0) whose output text happens to mention
+# quota/usage-limit/429 language must be classified as a normal successful
+# report, NOT quota. This is the exact false-positive measured live: the
+# dispatched README documents quota/backoff/429 behavior, so codex's
+# legitimate analysis of it contained those substrings -> false
+# status=quota, false 12h backoff, false P0-class alert; a manual codex
+# probe on the same bucket 3 minutes later answered fine (bucket was never
+# actually in quota). The pre-existing quota-on-FAILURE case (Case 5) must
+# stay green — this case only closes the rc=0 false-positive gap.
+# ---------------------------------------------------------------------------
+setup_world
+write_codex_stub success_quota_text
+rc="$(run_wrapper STUB_CODEX_MODE=success_quota_text)"
+status="$(sidecar_status)"
+report_file="$(find "$WORK/world/reports" -maxdepth 1 -name '*.md' 2>/dev/null | head -1)"
+if [ "$rc" = "0" ] && [ "$status" = "ok" ] && [ "$(report_count)" = "1" ] \
+    && [ -n "$report_file" ] && grep -q "usage limit" "$report_file"; then
+    note_pass "quota over-match fix: rc=0 output mentioning 'usage limit' classified as a normal report, not quota"
+else
+    note_fail "quota over-match fix: rc=$rc status=$status report_count=$(report_count)"
+fi
+if [ ! -f "$WORK/world/state/backoff-until.txt" ]; then
+    note_pass "quota over-match fix innocence: no backoff file written on a successful run"
+else
+    note_fail "quota over-match fix innocence: a backoff file was written despite rc=0 success"
+fi
+if grep -q '"status":"ok"' "$WORK/world/state/attempts.jsonl" 2>/dev/null \
+    && ! grep -q '"status":"quota"' "$WORK/world/state/attempts.jsonl" 2>/dev/null; then
+    note_pass "quota over-match fix: attempt recorded as ok, not quota"
+else
+    note_fail "quota over-match fix: attempts.jsonl did not record ok-not-quota"
 fi
 
 echo

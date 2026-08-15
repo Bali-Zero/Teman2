@@ -266,6 +266,16 @@ candidates = []
 for name in names:
     if not name.endswith(".md"):
         continue
+    # The queue dir carries a README.md alongside real task files (it
+    # documents the queue format, quota/backoff/429 behavior, etc.) — it
+    # matches the *.md glob but is not a task. Case-insensitive so
+    # README.md/readme.md/Readme.MD are all excluded the same way. This is
+    # the ONLY place that enumerates queue files for dispatch, so this
+    # exclusion is automatically the single source of truth (nothing else
+    # reads QUEUE_DIR directly — the daily digest counts attempts.jsonl,
+    # not the queue dir).
+    if name.lower().startswith("readme"):
+        continue
     path = os.path.join(queue_dir, name)
     if not os.path.isfile(path):
         continue
@@ -520,7 +530,25 @@ if [ "$SHOULD_WORK" = "1" ]; then
             run_count=$((run_count + 1))
             echo "$run_count" > "$COUNT_FILE"
 
-            if grep -qiE 'out of extra usage|usage limit|quota exceeded|rate.limit|429|weekly limit' "$OUT_TMP" 2>/dev/null; then
+            # Quota markers are classified ONLY when the invocation actually
+            # FAILED (CODEX_RC != 0) — cicatrix family #3 (guard-over-match):
+            # the classifier used to grep the model's OUTPUT unconditionally,
+            # even on a successful (rc=0) run. Measured live 2026-08-15: the
+            # dispatched task was infra/army/spark-queue/README.md (defect 1,
+            # now excluded above), which *documents* this lane's own
+            # quota/backoff/429 behavior — codex's legitimate analysis of
+            # that doc contained those substrings, producing a false
+            # status=quota, a false 12h backoff, and a false P0-class alert,
+            # while a manual codex probe on the same bucket 3 minutes later
+            # answered fine (the bucket was never actually in quota). A
+            # successful run whose TEXT happens to mention quota is
+            # innocent; only a failed run whose text names the reason is
+            # guilty. The pattern itself is kept unchanged for the failure
+            # branch — codex exec (unlike some CLIs) fails non-zero on a
+            # genuine quota exhaustion (see the stub's `quota` mode, exit 1),
+            # so gating on rc!=0 does not blind this branch to a real quota
+            # hit.
+            if [ "$CODEX_RC" -ne 0 ] && grep -qiE 'out of extra usage|usage limit|quota exceeded|rate.limit|429|weekly limit' "$OUT_TMP" 2>/dev/null; then
                 new_backoff=$((now_epoch + BACKOFF_HOURS * 3600))
                 echo "$new_backoff" > "$BACKOFF_FILE"
                 echo 0 > "$CONSEC_FAIL_FILE"   # quota is a distinct, correctly-classified state
