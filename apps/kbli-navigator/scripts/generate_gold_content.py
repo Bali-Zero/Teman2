@@ -15,6 +15,7 @@ Usage:
 
 import argparse
 import json
+import math
 import re
 import sys
 import urllib.request
@@ -199,7 +200,18 @@ def _has_special_pma_cap(code: dict) -> bool:
         code.get("pma_status") == "TERBATAS"
         and code.get("pma_max_asing") == "special"
         and code.get("pma_cap_special") is True
+        and code.get("pma_cap_verified") is True
     )
+
+
+def _publishable_numeric_pma_cap(code: dict) -> int | float | None:
+    """Return a finite numeric cap only under the exact verification marker."""
+    if code.get("pma_cap_verified") is not True:
+        return None
+    cap = code.get("pma_max_asing")
+    if isinstance(cap, bool) or not isinstance(cap, (int, float)):
+        return None
+    return cap if math.isfinite(cap) else None
 
 
 def public_pma_prompt(code: dict) -> str:
@@ -208,8 +220,8 @@ def public_pma_prompt(code: dict) -> str:
         return PMA_NOT_VERIFIED_PROMPT
 
     status = code["pma_status"]
-    cap = code.get("pma_max_asing")
-    if isinstance(cap, (int, float)) and not isinstance(cap, bool):
+    cap = _publishable_numeric_pma_cap(code)
+    if cap is not None:
         cap_text = f" ({cap}%)"
     elif _has_special_pma_cap(code):
         cap_text = " (special non-percentage conditions)"
@@ -313,12 +325,12 @@ def build_what_you_need(code: dict) -> str:
     per_skala = code.get("per_skala", [])
     pma_verified = pma_claims_verified(code)
     pma_status = code.get("pma_status", "") if pma_verified else "NOT_VERIFIED"
-    pma_max = code.get("pma_max_asing", 0)
+    pma_max = _publishable_numeric_pma_cap(code)
     pma_kondisi = (code.get("pma_kondisi") or "") if pma_verified else ""
     pma_nota = (code.get("pma_nota") or "") if pma_verified else ""
 
     # PMA line
-    cap_is_number = isinstance(pma_max, (int, float)) and not isinstance(pma_max, bool)
+    cap_is_number = pma_max is not None
     cap_is_special = pma_verified and _has_special_pma_cap(code)
     if pma_status == "NOT_VERIFIED":
         pma_line = (
@@ -326,11 +338,13 @@ def build_what_you_need(code: dict) -> str:
             "an official per-code basis and source vintage are located."
         )
     elif pma_status == "TERBUKA":
-        pma_line = "**PMA:** Open to foreign investment."
+        pma_line = "**PMA:** Open to foreign investment; ownership cap not verified."
         if cap_is_number:
             pma_line = f"**PMA:** Fully open — {pma_max}% foreign ownership allowed."
     elif pma_status == "TERTUTUP":
-        pma_line = "**PMA:** Closed to foreign investment — domestic entities only."
+        pma_line = "**PMA:** Closed to foreign investment; ownership cap not verified."
+        if cap_is_number:
+            pma_line = f"**PMA:** Closed — {pma_max}% foreign ownership."
     elif pma_status == "TERBATAS":
         pma_line = "**PMA:** Restricted foreign ownership."
         if cap_is_number:
@@ -401,16 +415,16 @@ def build_what_you_need(code: dict) -> str:
     steps: list[str] = []
     step_n = 1
 
-    if pma_status == "TERBUKA" or (
-        pma_status == "TERBATAS"
-        and ((cap_is_number and pma_max > 0) or cap_is_special)
-    ):
+    if (
+        cap_is_number
+        and (pma_status == "TERBUKA" or (pma_status == "TERBATAS" and pma_max > 0))
+    ) or cap_is_special:
         steps.append(
             f"{step_n}. **PT PMA incorporation** — notary deed, AHU registration, "
             "TDP (~2–4 weeks)"
         )
-    elif pma_status == "TERTUTUP" or (
-        pma_status == "TERBATAS" and cap_is_number and pma_max == 0
+    elif cap_is_number and (
+        pma_status == "TERTUTUP" or (pma_status == "TERBATAS" and pma_max == 0)
     ):
         steps.append(f"{step_n}. **Domestic entity route** — this code is closed to PT PMA")
     else:

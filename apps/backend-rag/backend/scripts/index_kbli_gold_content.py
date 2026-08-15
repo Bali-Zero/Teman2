@@ -482,8 +482,44 @@ async def upsert_to_qdrant(points: list[dict], qdrant_url: str, api_key: str | N
             )
             if resp.status_code != 200:
                 logger.error(f"Qdrant upsert failed: {resp.status_code} {resp.text[:300]}")
+                raise RuntimeError("Failed to upsert certified KBLI gold points")
             else:
                 logger.info(f"  Upserted batch {i}-{i + len(batch)} ({len(batch)} points)")
+
+
+async def delete_existing_gold_points(
+    point_ids: list[str], qdrant_url: str, api_key: str | None
+) -> None:
+    """Delete every deterministic legacy gold ID before a full certified replace.
+
+    The publication allowlist shrank from hundreds of legacy entries to the
+    certified partition.  Upsert alone cannot retract IDs that are no longer
+    admitted.  Explicit IDs avoid relying on a Qdrant payload index and keep the
+    destructive scope limited to points this indexer itself owns.
+    """
+    if not point_ids:
+        return
+
+    import httpx
+
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["api-key"] = api_key
+    async with httpx.AsyncClient(timeout=120) as http:
+        response = await http.post(
+            f"{qdrant_url}/collections/{COLLECTION_NAME}/points/delete",
+            params={"wait": "true"},
+            json={"points": point_ids},
+            headers=headers,
+        )
+    if response.status_code != 200:
+        logger.error(
+            "Qdrant gold delete failed: %s %s",
+            response.status_code,
+            response.text[:300],
+        )
+        raise RuntimeError("Failed to delete legacy KBLI gold points")
+    logger.info("  Deleted/retracted %d deterministic legacy gold IDs", len(point_ids))
 
 
 def field_coverage(all_points: list[dict]) -> dict[str, int]:
@@ -543,6 +579,7 @@ async def main():
     # Parse gold content
     logger.info("Parsing gold content from TypeScript...")
     gold_entries = parse_gold_content_ts(GOLD_CONTENT_FILE)
+    legacy_gold_point_ids = [deterministic_uuid(code) for code in sorted(gold_entries)]
     total_parsed = len(gold_entries)
     logger.info(f"Parsed {total_parsed} gold entries")
 
@@ -627,7 +664,7 @@ async def main():
 
     # Build Qdrant points (named vectors: "dense" for this hybrid collection)
     qdrant_points = []
-    for point, emb in zip(all_points, embeddings, strict=False):
+    for point, emb in zip(all_points, embeddings, strict=True):
         qdrant_points.append(
             {
                 "id": point["id"],
@@ -635,6 +672,16 @@ async def main():
                 "payload": point["payload"],
             },
         )
+
+    if args.only is None:
+        logger.info("Retracting all deterministic legacy gold point IDs before replace...")
+        await delete_existing_gold_points(
+            legacy_gold_point_ids,
+            qdrant_url,
+            qdrant_api_key,
+        )
+    else:
+        logger.info("Legacy gold retraction skipped (--only implies upsert-only)")
 
     logger.info(f"Upserting {len(qdrant_points)} points...")
     await upsert_to_qdrant(qdrant_points, qdrant_url, qdrant_api_key)

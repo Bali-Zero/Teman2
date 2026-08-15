@@ -89,7 +89,7 @@ this container REPLACES site-packages rather than extending it (it has already
 cost one `ModuleNotFoundError: asyncpg`). Same shape here, for the same reason.
 
 AFTER APPLYING, EVICT THE CACHE: `inspect_kbli` caches its assembled payload
-under `kbli_inspect_v5_<code>` for up to 30 days, so a cured Qdrant payload is
+under `kbli_inspect_v6_<code>` for up to 30 days, so a cured Qdrant payload is
 invisible on the channel until `kbli_inspect_cache_bust.py --only <codes>
 --apply` has run.
 """

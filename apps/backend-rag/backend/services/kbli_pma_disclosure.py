@@ -40,6 +40,9 @@ def _public_pma_cap(payload: Mapping[str, Any]) -> int | float | str | None:
     canonical structured marker that distinguishes a real non-percentage
     regime from malformed or legacy text.
     """
+    if payload.get("pma_cap_verified") is not True:
+        return None
+
     value = payload.get("pma_max_asing")
     if isinstance(value, bool):
         return None
@@ -95,7 +98,7 @@ def disclose_pma(payload: Mapping[str, Any]) -> dict[str, Any]:
         "pma_prioritas": payload.get("pma_prioritas") is True,
         "pma_nota": _clean_text(payload.get("pma_nota")),
         "pma_cap_special": cap == "special",
-        "pma_cap_verified": cap is not None and payload.get("pma_cap_verified") is True,
+        "pma_cap_verified": cap is not None,
     }
 
 
@@ -159,11 +162,12 @@ def sanitize_kbli_search_result(
 ) -> tuple[str, dict[str, Any]]:
     """Fail-close KBLI vector text and metadata before either reaches an LLM.
 
-    Live Qdrant points can predate the current generator.  For a declared gap
-    we therefore do not attempt substring redaction of editorial prose.  We
-    rebuild context from the official BPS description and the generated PP28
-    licensing section (whose heading and source are fixed).  PMA, Bali, and
-    editorial claims are withheld as one atom from both text and metadata.
+    Live Qdrant points can predate the current generator.  A complete PMA tuple
+    authenticates the structured verdict, not arbitrary prose stored beside it.
+    We therefore never return the original KBLI document wholesale.  Context is
+    rebuilt from the official description, the known PP28 licensing section,
+    and freshly disclosed structured PMA/Bali fields; editorial prose is removed
+    from both text and metadata for located and gap records alike.
     """
     safe_metadata = dict(metadata or {})
     original_text = text if isinstance(text, str) else str(text or "")
@@ -171,10 +175,7 @@ def sanitize_kbli_search_result(
         return original_text, safe_metadata
 
     disclosure = disclose_pma(safe_metadata)
-    safe_metadata.update(disclosure)
-
-    if disclosure["pma_verification_status"] == PMA_LOCATED:
-        return original_text, safe_metadata
+    bali = disclose_bali(safe_metadata)
 
     # Legacy and future writers can carry additional ``pma_*`` working fields
     # (for example cap notes, alternate routes, or correction annotations).
@@ -182,11 +183,10 @@ def sanitize_kbli_search_result(
     # canonical tuple is withheld can still reveal or imply the raw verdict.
     # Keep only the explicit fail-closed public shape returned by
     # ``disclose_pma``; unknown PMA fields are denied by default.
-    public_pma_keys = frozenset(disclosure)
     for key in tuple(safe_metadata):
-        if key.startswith("pma_") and key not in public_pma_keys:
+        if key.startswith("pma_"):
             safe_metadata.pop(key, None)
-        if key.startswith("bali_") or key == "l4_bali":
+        if key.startswith("bali_") or key in {"l4_bali", "has_bali_l4"}:
             safe_metadata.pop(key, None)
 
     for key in (
@@ -197,8 +197,12 @@ def sanitize_kbli_search_result(
         # Legacy gold points used this ambiguous field for generated prose.
         # New writers also carry ``official_description`` explicitly.
         "description",
+        "editorial_disclosed",
     ):
         safe_metadata.pop(key, None)
+    safe_metadata.update(disclosure)
+    if bali["has_bali_l4"]:
+        safe_metadata.update(bali)
     safe_metadata["has_intel_2026"] = False
     safe_metadata["has_gold_content"] = False
 
@@ -224,12 +228,43 @@ def sanitize_kbli_search_result(
     if licensing:
         lines.extend(["", licensing])
 
-    lines.extend(
-        [
-            "",
-            "## Status PMA: NOT_VERIFIED",
-            "- Whole-code foreign ownership is withheld: no located official basis and source vintage are recorded.",
-        ]
-    )
+    if disclosure["pma_verification_status"] == PMA_LOCATED:
+        lines.extend(["", f"## Status PMA: {disclosure['pma_status']}"])
+        if disclosure["pma_cap_verified"] is True:
+            cap = disclosure["pma_max_asing"]
+            if cap == "special":
+                lines.append("- Foreign ownership cap: verified special non-percentage regime")
+            elif cap is not None:
+                lines.append(f"- Foreign ownership cap: {cap}%")
+        else:
+            lines.append("- Foreign ownership cap: not verified")
+        lines.extend(
+            [
+                f"- Official basis: {disclosure['pma_official_basis']}",
+                f"- Source vintage: {disclosure['pma_source_vintage']}",
+            ]
+        )
+        if disclosure["pma_kondisi"]:
+            lines.append(f"- Conditions: {disclosure['pma_kondisi']}")
+        if disclosure["pma_nota"]:
+            lines.append(f"- Note: {disclosure['pma_nota']}")
+        if bali["has_bali_l4"]:
+            lines.extend(
+                [
+                    "",
+                    f"## Bali registration status: {bali['bali_status']}",
+                    f"- Blocked: {'yes' if bali['bali_blocked'] else 'no'}",
+                ]
+            )
+            if bali["bali_reason"]:
+                lines.append(f"- Reason: {bali['bali_reason']}")
+    else:
+        lines.extend(
+            [
+                "",
+                "## Status PMA: NOT_VERIFIED",
+                "- Whole-code foreign ownership is withheld: no located official basis and source vintage are recorded.",
+            ]
+        )
 
     return "\n".join(lines), safe_metadata

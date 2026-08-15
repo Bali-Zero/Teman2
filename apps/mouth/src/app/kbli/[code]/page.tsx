@@ -109,7 +109,7 @@ export async function generateMetadata({
       images: [
         {
           // Deterministic editorial cover — kbli-cover-design.ts DNA rendered
-          // at request time by /api/og/kbli/[code] (cached immutable).
+          // at request time by /api/og/kbli/[code] (fresh per request).
           url: `https://balizero.com/api/og/kbli/${kbli.code}`,
           width: 1200,
           height: 630,

@@ -193,7 +193,7 @@ def test_the_cache_key_is_versioned_past_the_payload_that_lacked_the_field(
         body = _get(client)
         assert body["licensing_note"] is not None
         requested = client._cache.get.await_args.args[0]
-        assert requested == "kbli_inspect_v5_62110", requested
+        assert requested == "kbli_inspect_v6_62110", requested
         assert "_v2_" not in requested
     finally:
         _stop(client)

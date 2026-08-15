@@ -13,6 +13,7 @@ function publicText(value: unknown): string | null {
 }
 
 function publicPmaCap(raw: KBLIRawCode): number | "special" | null {
+  if (raw.pma_cap_verified !== true) return null;
   const cap: unknown = raw.pma_max_asing;
   if (typeof cap === "number" && Number.isFinite(cap)) return cap;
   if (cap === "special" && raw.pma_cap_special === true) return "special";
@@ -76,7 +77,7 @@ export function disclosePmaInfo(
     officialBasis: provenance.pma.locator,
     sourceVintage: provenance.pma.vintage,
     capSpecial: maxForeign === "special",
-    capVerified: maxForeign !== null && raw.pma_cap_verified === true,
+    capVerified: maxForeign !== null,
     routeTo: publicText(raw.pma_route_to),
     citation: publicText(citation),
   };

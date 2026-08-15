@@ -82,7 +82,7 @@ def test_absent_pma_tuple_clears_stale_graph_values():
     assert "pma_source_vintage" not in out
 
 
-def test_complete_located_pma_tuple_is_copied_exactly():
+def test_located_pma_tuple_without_cap_marker_omits_the_cap():
     canonical = {
         "pma_status": "TERBATAS",
         "pma_max_asing": 49,
@@ -91,8 +91,25 @@ def test_complete_located_pma_tuple_is_copied_exactly():
         "pma_source_vintage": "2021-05-25",
     }
     out = merge_node_props({}, canonical)
-    assert {key: out[key] for key in canonical} == canonical
+    assert out["pma_status"] == "TERBATAS"
+    assert out["pma_verification_status"] == "located"
+    assert out["pma_official_basis"] == canonical["pma_official_basis"]
+    assert out["pma_source_vintage"] == canonical["pma_source_vintage"]
+    assert "pma_max_asing" not in out
     assert out["pma_cap_verified"] is False
+
+
+def test_verified_located_numeric_cap_is_copied():
+    canonical = {
+        "pma_status": "TERBATAS",
+        "pma_max_asing": 49,
+        "pma_cap_verified": True,
+        "pma_verification_status": "located",
+        "pma_official_basis": "Perpres 49/2021 Lampiran III entry 3",
+        "pma_source_vintage": "2021-05-25",
+    }
+    out = merge_node_props({}, canonical)
+    assert {key: out[key] for key in canonical} == canonical
 
 
 def test_partial_canonical_tuple_removes_stale_locator_and_vintage():
@@ -224,6 +241,10 @@ def test_local_disclosure_matches_the_shared_runtime_contract() -> None:
 
     assert kg_kbli_resync._disclose_pma(canonical) == disclose_pma(canonical)
     assert kg_kbli_resync._disclose_bali(canonical) == disclose_bali(canonical)
+
+    verified = canonical | {"pma_cap_verified": True}
+    assert kg_kbli_resync._disclose_pma(verified) == disclose_pma(verified)
+    assert kg_kbli_resync._disclose_bali(verified) == disclose_bali(verified)
 
 
 def test_untouched_properties_survive():

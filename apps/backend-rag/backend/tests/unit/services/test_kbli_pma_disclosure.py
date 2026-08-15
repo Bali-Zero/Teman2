@@ -194,7 +194,32 @@ def test_only_marked_special_and_finite_numeric_caps_are_preserved() -> None:
     assert unmarked["pma_max_asing"] is None
     assert unmarked["pma_cap_special"] is False
     assert unmarked["pma_cap_verified"] is False
-    assert disclose_pma({**_located_record(), "pma_max_asing": 49})["pma_max_asing"] == 49
+    assert (
+        disclose_pma(
+            {**_located_record(), "pma_max_asing": 49, "pma_cap_verified": True}
+        )["pma_max_asing"]
+        == 49
+    )
+
+
+@pytest.mark.parametrize(
+    "cap",
+    [0, 49, "special"],
+)
+def test_located_cap_is_withheld_without_the_exact_verified_marker(cap: object) -> None:
+    raw = {
+        **_located_record(),
+        "pma_max_asing": cap,
+        "pma_cap_special": cap == "special",
+        "pma_cap_verified": False,
+    }
+
+    disclosed = disclose_pma(raw)
+    assert disclosed["pma_status"] == "TERBUKA"
+    assert disclosed["pma_verification_status"] == "located"
+    assert disclosed["pma_max_asing"] is None
+    assert disclosed["pma_cap_special"] is False
+    assert disclosed["pma_cap_verified"] is False
 
 
 def test_located_auxiliary_fields_use_exact_public_types() -> None:

@@ -15,6 +15,7 @@ import logging
 import time
 from collections import OrderedDict
 from collections.abc import Callable
+from dataclasses import asdict, is_dataclass
 from decimal import Decimal
 from functools import wraps
 from typing import Any
@@ -28,6 +29,8 @@ class DecimalEncoder(json.JSONEncoder):
     def default(self, obj: Any) -> Any:
         if isinstance(obj, Decimal):
             return float(obj)
+        if is_dataclass(obj) and not isinstance(obj, type):
+            return asdict(obj)
         # Attribute probing is unsafe here: dynamic doubles such as MagicMock
         # claim to have both methods and recurse forever when either is called.
         # Only actual Pydantic models receive the model encoder.

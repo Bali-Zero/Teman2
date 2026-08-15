@@ -32,6 +32,7 @@ _VERIFIED_PMA = {
     "pma_verification_status": "located",
     "pma_official_basis": "Perpres 49/2021 Lampiran III",
     "pma_source_vintage": "2025-06-01",
+    "pma_cap_verified": True,
 }
 
 
@@ -366,29 +367,41 @@ async def test_generate_kbli_explanation_rejects_unbound_parent_text():
 
 
 @pytest.mark.asyncio
-async def test_generate_kbli_explanation_with_expert_data():
+async def test_generate_kbli_explanation_never_sends_unbound_expert_data():
+    from backend.app.routers.kbli_notebook import KBLISearchResult
     from backend.app.routers.kbli_notebook_chat import _generate_kbli_explanation
 
     _mock_llm_gateway.send_message = AsyncMock(
         return_value=("Answer with expert data", "gemini-flash", MagicMock(), {})
     )
 
-    mock_result = MagicMock()
-    mock_result.code = "56101"
-    mock_result.title = "RESTORAN"
-    mock_result.description = "Restaurant"
-    mock_result.pma_status = "TERBUKA"
-    mock_result.risk_category = "Rendah"
-    mock_result.expert_legal = {
+    result_model = KBLISearchResult(
+        code="56101",
+        title="RESTORAN",
+        description="Restaurant",
+        score=1.0,
+        risk_category="Rendah",
+        **_VERIFIED_PMA,
+    )
+    # Simulate a stale object populated after response-model validation. The
+    # model boundary must ignore it even when the structured PMA tuple is valid.
+    result_model.expert_legal = {
         "bab": "III",
         "pasal": "12",
         "pb_umku": ["PB-001"],
         "pma_implications": "Full foreign ownership allowed",
     }
 
-    with patch("backend.app.routers.kbli_notebook_chat.cached", lambda **kw: lambda f: f):
-        result = await _generate_kbli_explanation("restaurant", [mock_result])
+    with patch(
+        "backend.app.routers.kbli_notebook_chat._fill_bali_verdicts",
+        new=AsyncMock(),
+    ):
+        result = await _generate_kbli_explanation.__wrapped__("restaurant", [result_model])
+
     assert isinstance(result, str)
+    message = _mock_llm_gateway.send_message.await_args.kwargs["message"]
+    assert "Full foreign ownership allowed" not in message
+    assert "PB-001" not in message
 
 
 @pytest.mark.asyncio

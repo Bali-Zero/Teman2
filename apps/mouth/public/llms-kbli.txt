@@ -4,7 +4,9 @@
 # PMA_STATUS and MAX_FOREIGN publish a verdict only when the canonical record
 #   carries a per-code official basis and source vintage. Otherwise both
 #   columns say NOT_VERIFIED / Not verified; the raw declared value is withheld.
-# For verified rows, MAX_FOREIGN is the adjudicated foreign-ownership ceiling
+# For located rows, MAX_FOREIGN additionally requires pma_cap_verified=true.
+#   Without that exact marker the status remains located while the cap says
+#   Not verified. A published cap is the adjudicated foreign-ownership ceiling
 #   ("special" = a non-percentage regime, not a number). It is never defaulted:
 #   0% means the activity is closed to foreign capital, not "unknown".
 # MAX_FOREIGN is the GENERAL ceiling under the code's governing instrument,

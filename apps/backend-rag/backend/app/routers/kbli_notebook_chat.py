@@ -774,11 +774,7 @@ async def _generate_kbli_explanation(
     context_parts = []
     for r in results:
         pma_verified = r.pma_verdict_verified
-        # Check if we have deep metadata from Postgres/Expert injection
         expert_info = ""
-        if pma_verified and hasattr(r, "expert_legal") and r.expert_legal:
-            ex = r.expert_legal
-            expert_info = f"\n  Expert Data (PP 28/2025): Bab {ex.get('bab')}, Pasal {ex.get('pasal')}. PB-UMKU: {', '.join(ex.get('pb_umku', []))}. Note: {ex.get('pma_implications')}"
 
         scale_note = _scale_specific_pma_context_note(r.code, query) if pma_verified else ""
         if scale_note:
@@ -1465,29 +1461,6 @@ async def chat_kbli(
                 results.append(_result_from_payload(p, score=r.get("score", 0.0)))
                 if len(results) >= 5:
                     break
-
-            # Enrichment step: Fetch expert_legal from Postgres for all results
-            if pool:
-                async with pool.acquire() as conn:
-                    for i, r in enumerate(results):
-                        try:
-                            row = await conn.fetchrow(
-                                "SELECT properties FROM kg_nodes WHERE entity_id = $1",
-                                f"kbli:{r.code}",
-                            )
-                            if row:
-                                props = (
-                                    json.loads(row["properties"])
-                                    if isinstance(row["properties"], str)
-                                    else row["properties"]
-                                )
-                                if r.pma_verdict_verified and "expert_legal" in props:
-                                    results[i].expert_legal = props["expert_legal"]
-                                    logger.info(
-                                        f"✨ Enriched result {r.code} with Expert Legal data",
-                                    )
-                        except Exception as enrich_err:
-                            logger.warning(f"Failed to enrich {r.code}: {enrich_err}")
 
             # When a specific code is in the query, filter Qdrant results to same 2-digit sector prefix
             # This prevents cross-sector contamination (e.g. 64954 Syariah pawn in catering results)

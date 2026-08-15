@@ -404,27 +404,16 @@ class KBLICanonicalLookupTool(BaseTool):
             if "Besar" in scales and risk:
                 large_scale_risks.add(str(risk))
         disclosed = disclose_pma(record)
-        raw_bali = record.get("l4_bali") or {}
         bali_disclosure = disclose_bali(record)
         bali: dict[str, Any] = {}
         if bali_disclosure["has_bali_l4"]:
-            # Preserve auxiliary source metadata only after the strict
-            # status/boolean gate, then overwrite every verdict field with its
-            # sanitized value. This keeps useful moratorium provenance without
-            # allowing truthiness coercion at the model boundary.
-            if isinstance(raw_bali, dict):
-                bali = {
-                    key: value
-                    for key, value in raw_bali.items()
-                    if key not in {"status", "blocked", "reason"}
-                }
-            bali.update(
-                {
-                    "status": bali_disclosure["bali_status"],
-                    "blocked": bali_disclosure["bali_blocked"],
-                    "reason": bali_disclosure["bali_reason"],
-                }
-            )
+            # The source object carries internal working fields.  The model
+            # boundary is an explicit allowlist, never "all except known".
+            bali = {
+                "status": bali_disclosure["bali_status"],
+                "blocked": bali_disclosure["bali_blocked"],
+                "reason": bali_disclosure["bali_reason"],
+            }
 
         payload = {
             "found": True,

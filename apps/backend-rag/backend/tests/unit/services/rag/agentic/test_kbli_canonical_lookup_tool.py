@@ -102,19 +102,18 @@ async def test_null_scale_list_is_tolerated(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_lookup_carries_bali_moratorium_verdict_verbatim():
+async def test_lookup_exposes_only_the_reviewed_bali_verdict_shape():
     tool = KBLICanonicalLookupTool(dataset_path=_DATASET)
 
     # 02102 has a complete located national PMA tuple, so the independent
     # Bali object is eligible for model-facing disclosure.
     payload = json.loads(await tool.execute(code="02102"))
 
-    moratorium = payload["bali"]["moratorium"]
+    assert set(payload["bali"]) == {"status", "blocked", "reason"}
     assert payload["bali"]["blocked"] is False
-    assert "Low + Medium-Low" in moratorium["rule"]
-    assert "permanent" in moratorium["rule"]
-    assert moratorium["effective"] == "2026-05-13"
-    assert moratorium["source"] == "Gubernur letter B.27.000/642/PM/DPMPTSP"
+    rendered = json.dumps(payload["bali"])
+    for internal_field in ("moratorium", "verdict", "verdict_state", "confidence"):
+        assert internal_field not in rendered
 
 
 @pytest.mark.asyncio

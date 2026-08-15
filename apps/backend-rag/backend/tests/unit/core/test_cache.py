@@ -5,6 +5,7 @@ Target: >95% coverage
 
 import sys
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -21,6 +22,12 @@ from backend.core.cache import CacheService, LRUCache, cached
 
 class _CacheKeyModel(BaseModel):
     code: str
+
+
+@dataclass(frozen=True)
+class _CacheKeyParentDocument:
+    content: str
+    evidence: tuple[str, ...]
 
 
 class TestLRUCache:
@@ -161,6 +168,32 @@ class TestCacheKeySerialization:
         cache = CacheService()
 
         assert cache._is_serializable(MagicMock()) is False
+
+    def test_nested_dataclass_parent_documents_participate_in_cache_key(self):
+        cache = CacheService()
+
+        first = cache._generate_key(
+            "kbli",
+            query="restaurant",
+            parent_docs={
+                "56101": _CacheKeyParentDocument(
+                    content="Verified parent A",
+                    evidence=("located", "Perpres 49/2021"),
+                )
+            },
+        )
+        second = cache._generate_key(
+            "kbli",
+            query="restaurant",
+            parent_docs={
+                "56101": _CacheKeyParentDocument(
+                    content="Verified parent B",
+                    evidence=("located", "Perpres 49/2021"),
+                )
+            },
+        )
+
+        assert first != second
 
 
 class TestInvalidateCrmStats:

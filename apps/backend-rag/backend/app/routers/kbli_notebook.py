@@ -165,9 +165,8 @@ class KBLIDetail(_PMADisclosure):
 
     @model_validator(mode="after")
     def _withhold_unverified_editorial(self) -> "KBLIDetail":
-        """Do not let cached or future detail constructors bypass the PMA gate."""
-        if not self.pma_verdict_verified:
-            self.expert_legal = None
+        """Legacy KG prose has no cross-store certification; always withhold it."""
+        self.expert_legal = None
         return self
 
 
@@ -223,12 +222,12 @@ class KBLISearchResult(_PMADisclosure):
 
     @model_validator(mode="after")
     def _withhold_unverified_editorial(self) -> "KBLISearchResult":
-        """Withhold PMA-dependent Bali and editorial claims as one atom."""
+        """Withhold uncertified KG editorial and gate the structured Bali tuple."""
+        self.expert_legal = None
         if not self.pma_verdict_verified:
             self.bali_status = None
             self.bali_blocked = None
             self.bali_reason = ""
-            self.expert_legal = None
         return self
 
 
@@ -600,7 +599,7 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
     # v4 -> v5: PMA values are now an evidence tuple.  Old cache entries carry
     # raw status/cap without the required locator and vintage, so they must be
     # re-read through the fail-closed response contract immediately.
-    cache_key = f"kbli_inspect_v5_{code}"
+    cache_key = f"kbli_inspect_v6_{code}"
     ttl = get_kbli_ttl(code)
 
     # Try manual cache check
@@ -785,16 +784,10 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
                 licenses=licenses,
                 related_requirements=related_requirements,
                 related_codes=related_codes,
-                # The legacy blob contains unstructured PMA implications.  It
-                # is publishable only under the same verified tuple; otherwise
-                # omit it wholesale instead of attempting prose heuristics.
-                expert_legal=(
-                    props.get("expert_legal")
-                    if pma_disclosure.get("pma_verification_status") == "located"
-                    and pma_disclosure.get("pma_official_basis")
-                    and pma_disclosure.get("pma_source_vintage")
-                    else None
-                ),
+                # KG expert_legal is not cryptographically bound to the Qdrant
+                # PMA tuple.  It stays withheld until a same-record certificate
+                # exists; a located tuple in another store is not authority.
+                expert_legal=None,
                 licensing_content_inherited_from=inherited_from,
                 licensing_note=licensing_note,
                 **pma_disclosure,

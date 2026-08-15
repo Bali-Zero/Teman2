@@ -2,13 +2,20 @@ from __future__ import annotations
 
 import copy
 
+import httpx
+import pytest
+
 from backend.scripts.index_kbli_gold_content import (
+    COLLECTION_NAME,
     GOLD_CONTENT_FILE,
     KBLI_DATA_FILE,
     build_point,
+    delete_existing_gold_points,
+    deterministic_uuid,
     disclosed_standalone_gold,
     load_kbli_base_data,
     parse_gold_content_ts,
+    upsert_to_qdrant,
 )
 from backend.services.kbli_editorial_certification import load_editorial_registry
 
@@ -69,3 +76,77 @@ def test_located_but_uncertified_gold_is_not_a_point() -> None:
 
     assert base["47222"]["pma_verification_status"] == "located"
     assert build_point("47222", gold["47222"], base["47222"], "test", registry) is None
+
+
+@pytest.mark.asyncio
+async def test_full_retraction_targets_every_owned_legacy_gold_id(monkeypatch) -> None:
+    calls: list[tuple[str, dict]] = []
+
+    class FakeResponse:
+        status_code = 200
+        text = "ok"
+
+    class FakeAsyncClient:
+        def __init__(self, *, timeout: int) -> None:
+            assert timeout == 120
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, traceback) -> None:
+            return None
+
+        async def post(self, url: str, **kwargs):
+            calls.append((url, kwargs))
+            return FakeResponse()
+
+    monkeypatch.setattr(httpx, "AsyncClient", FakeAsyncClient)
+    gold = parse_gold_content_ts(GOLD_CONTENT_FILE)
+    point_ids = [deterministic_uuid(code) for code in sorted(gold)]
+
+    await delete_existing_gold_points(point_ids, "https://qdrant.test", "secret")
+
+    assert len(point_ids) == 322
+    assert len(set(point_ids)) == 322
+    assert calls == [
+        (
+            f"https://qdrant.test/collections/{COLLECTION_NAME}/points/delete",
+            {
+                "params": {"wait": "true"},
+                "json": {"points": point_ids},
+                "headers": {
+                    "Content-Type": "application/json",
+                    "api-key": "secret",
+                },
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_qdrant_upsert_failure_is_not_reported_as_success(monkeypatch) -> None:
+    class FakeResponse:
+        status_code = 503
+        text = "unavailable"
+
+    class FakeAsyncClient:
+        def __init__(self, *, timeout: int) -> None:
+            assert timeout == 120
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, traceback) -> None:
+            return None
+
+        async def put(self, url: str, **kwargs):
+            return FakeResponse()
+
+    monkeypatch.setattr(httpx, "AsyncClient", FakeAsyncClient)
+
+    with pytest.raises(RuntimeError, match="upsert certified KBLI gold"):
+        await upsert_to_qdrant(
+            [{"id": deterministic_uuid("47111"), "vector": {}, "payload": {}}],
+            "https://qdrant.test",
+            None,
+        )

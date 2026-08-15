@@ -336,7 +336,7 @@ export async function GET(
       width: WIDTH,
       height: HEIGHT,
       headers: {
-        "Cache-Control": "public, immutable, no-transform, max-age=31536000",
+        "Cache-Control": "no-store",
       },
     },
   );

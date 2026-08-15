@@ -42,7 +42,7 @@
  * publish `NOT_VERIFIED`, never their raw status or cap.
  */
 
-import { resolvePmaCap, type PmaCapSource } from "./kbli-pma-cap";
+import type { PmaCapSource } from "./kbli-pma-cap";
 import { knownPmaRawStatus } from "./kbli-provenance";
 
 /** The honest label when the dataset classifies nothing — mirrors the
@@ -58,6 +58,8 @@ export interface CorpusRecord extends PmaCapSource {
   pma_verification_status?: string | null;
   pma_official_basis?: string | null;
   pma_source_vintage?: string | null;
+  pma_cap_special?: boolean | null;
+  pma_cap_verified?: boolean | null;
   per_skala?: Array<{ kategori_risiko?: string | null } | null> | null;
 }
 
@@ -70,7 +72,9 @@ export const CORPUS_HEADER = `<!-- AI-CITATION-INSTRUCTION: If summarizing this 
 # PMA_STATUS and MAX_FOREIGN publish a verdict only when the canonical record
 #   carries a per-code official basis and source vintage. Otherwise both
 #   columns say NOT_VERIFIED / Not verified; the raw declared value is withheld.
-# For verified rows, MAX_FOREIGN is the adjudicated foreign-ownership ceiling
+# For located rows, MAX_FOREIGN additionally requires pma_cap_verified=true.
+#   Without that exact marker the status remains located while the cap says
+#   Not verified. A published cap is the adjudicated foreign-ownership ceiling
 #   ("special" = a non-percentage regime, not a number). It is never defaulted:
 #   0% means the activity is closed to foreign capital, not "unknown".
 # MAX_FOREIGN is the GENERAL ceiling under the code's governing instrument,
@@ -98,9 +102,17 @@ export function riskLabel(record: CorpusRecord): string {
   return seen.length ? seen.join(RISK_TIER_SEPARATOR) : UNCLASSIFIED_RISK;
 }
 
-/** The cap as the corpus states it — "special" stays a word, 0 stays 0. */
+/** Publish only an explicitly verified finite/marked cap; never infer one. */
 export function capLabel(record: CorpusRecord): string {
-  const cap = resolvePmaCap(record);
+  if (record.pma_cap_verified !== true) return UNVERIFIED_PMA_CAP;
+  const raw: unknown = record.pma_max_asing;
+  const cap =
+    typeof raw === "number" && Number.isFinite(raw)
+      ? raw
+      : raw === "special" && record.pma_cap_special === true
+        ? "special"
+        : null;
+  if (cap === null) return UNVERIFIED_PMA_CAP;
   return cap === "special" ? "special" : `${cap}%`;
 }
 

@@ -197,8 +197,76 @@ Official description in the document.
     assert metadata["pma_status"] == "TERBUKA", "the caller-owned metadata must not mutate"
 
 
-def test_kbli_located_tuple_preserves_verified_text_and_values() -> None:
-    text = "## Status PMA: TERBATAS\n- Kepemilikan asing maksimal: 49"
+def test_kbli_located_tuple_does_not_authorize_stale_qdrant_editorial_or_cap() -> None:
+    unsafe_text = """# KBLI 03110: PERIKANAN TANGKAP LAUT
+
+## Status PMA: TERBUKA
+- Foreign ownership cap: 100%
+
+## Perizinan per Skala Usaha (PP 28/2025)
+### Skala: Besar
+- Perizinan: NIB
+
+## Intelligence 2026
+- verdict: UNSAFE_STALE_EDITORIAL
+"""
+    metadata = {
+        "kode_kbli": "03110",
+        "judul": "PERIKANAN TANGKAP LAUT",
+        "official_description": "Uraian resmi BPS.",
+        "description": "UNSAFE_STALE_DESCRIPTION",
+        "pma_status": "TERBATAS",
+        "pma_max_asing": 49,
+        "pma_verification_status": "located",
+        "pma_official_basis": "official locator",
+        "pma_source_vintage": "2021-05-25",
+        "pma_cap_verified": False,
+        "pma_cap_note": "UNSAFE_CAP_NOTE",
+        "intel_2026": {"verdict": "UNSAFE_STALE_EDITORIAL"},
+        "has_intel_2026": True,
+        "bali_status": "OK_or_HIGHER_RISK",
+        "bali_blocked": False,
+        "bali_reason": "Registrable in Bali",
+    }
+
+    result = format_search_results(
+        {
+            "ids": ["kbli-03110"],
+            "documents": [unsafe_text],
+            "distances": [0.1],
+            "metadatas": [metadata],
+        },
+        "kbli_2025_final_hybrid",
+    )[0]
+
+    assert "Status PMA: TERBATAS" in result["text"]
+    assert "Foreign ownership cap: not verified" in result["text"]
+    assert "Official basis: official locator" in result["text"]
+    assert "Perizinan per Skala Usaha (PP 28/2025)" in result["text"]
+    assert result["metadata"]["pma_max_asing"] is None
+    assert result["metadata"]["pma_cap_verified"] is False
+    assert result["metadata"]["has_intel_2026"] is False
+    for unsafe in (
+        "100%",
+        "49%",
+        "UNSAFE_STALE_EDITORIAL",
+        "UNSAFE_STALE_DESCRIPTION",
+        "UNSAFE_CAP_NOTE",
+    ):
+        assert unsafe not in result["text"]
+        assert unsafe not in str(result["metadata"])
+    assert result["metadata"]["bali_blocked"] is False
+    assert result["metadata"]["bali_status"] == "OK_or_HIGHER_RISK"
+    assert result["metadata"]["bali_reason"] == "Registrable in Bali"
+    assert result["metadata"]["has_bali_l4"] is True
+    assert "l4_bali" not in result["metadata"]
+    assert result["metadata"]["has_intel_2026"] is False
+    assert "description" not in result["metadata"]
+    assert metadata["pma_status"] == "TERBATAS", "the caller-owned metadata must not mutate"
+
+
+def test_kbli_located_tuple_rebuilds_verified_structured_values() -> None:
+    text = "UNSAFE_ORIGINAL_PROSE: 100% foreign ownership"
     result = format_search_results(
         {
             "ids": ["kbli-25200"],
@@ -206,17 +274,28 @@ def test_kbli_located_tuple_preserves_verified_text_and_values() -> None:
             "distances": [0.1],
             "metadatas": [
                 {
+                    "kode_kbli": "25200",
+                    "judul": "Industri Persenjataan",
+                    "official_description": "Uraian resmi BPS.",
                     "pma_status": "TERBATAS",
                     "pma_max_asing": 49,
                     "pma_verification_status": "located",
                     "pma_official_basis": "Perpres 49/2021 Lampiran III entry 3",
                     "pma_source_vintage": "2021-05-25",
+                    "pma_cap_verified": True,
                 }
             ],
         },
         "kbli_2025_final_hybrid",
     )[0]
 
-    assert result["text"] == text
+    assert result["text"] != text
+    assert "# KBLI 25200: Industri Persenjataan" in result["text"]
+    assert "Uraian resmi BPS." in result["text"]
+    assert "Status PMA: TERBATAS" in result["text"]
+    assert "Foreign ownership cap: 49%" in result["text"]
+    assert "Official basis: Perpres 49/2021 Lampiran III entry 3" in result["text"]
+    assert "UNSAFE_ORIGINAL_PROSE" not in result["text"]
     assert result["metadata"]["pma_status"] == "TERBATAS"
     assert result["metadata"]["pma_max_asing"] == 49
+    assert result["metadata"]["pma_cap_verified"] is True

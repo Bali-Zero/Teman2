@@ -352,6 +352,8 @@ class TestSnippetCleaning:
                 "pma_verification_status": "located",
                 "pma_official_basis": "Perpres 49/2021 Lampiran III entry 3",
                 "pma_source_vintage": "2021-05-25",
+                "pma_cap_verified": True,
+                "expert_legal": {"summary": "Unbound legacy ownership prose."},
             },
             score=0.9,
         )
@@ -362,12 +364,35 @@ class TestSnippetCleaning:
         assert result.pma_official_basis
         assert result.pma_source_vintage == "2021-05-25"
         assert result.pma_verdict_verified is True
+        assert result.expert_legal is None
 
         # These response models are mutable because the chat router enriches
         # them after retrieval.  The decision property must therefore re-check
         # the entire tuple instead of trusting a stale ``located`` marker.
         result.pma_official_basis = None
         assert result.pma_verdict_verified is False
+
+    @pytest.mark.unit
+    def test_located_detail_still_withholds_cross_store_expert_editorial(self) -> None:
+        detail = kbli_notebook_module.KBLIDetail(
+            code="16221",
+            title="Industri Barang dari Rotan",
+            description="Official BPS scope",
+            licensing_status="REGULATED",
+            sector="C",
+            risk_profile="Unknown",
+            licenses=[],
+            pma_status="TERBATAS",
+            pma_max_asing=49,
+            pma_verification_status="located",
+            pma_official_basis="Perpres 49/2021 Lampiran III entry 3",
+            pma_source_vintage="2021-05-25",
+            pma_cap_verified=True,
+            expert_legal={"summary": "Unbound legacy ownership prose."},
+        )
+
+        assert detail.pma_verdict_verified is True
+        assert detail.expert_legal is None
 
     @pytest.mark.unit
     def test_generated_content_never_becomes_public_search_description(self) -> None:

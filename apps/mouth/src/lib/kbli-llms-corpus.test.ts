@@ -38,6 +38,7 @@ const rec = (over: Partial<CorpusRecord> = {}): CorpusRecord => ({
   pma_verification_status: "located",
   pma_official_basis: "Perpres 10/2021 Lampiran III",
   pma_source_vintage: "2021-05-25",
+  pma_cap_verified: true,
   ...over,
 });
 
@@ -52,16 +53,44 @@ describe("the cap", () => {
 
   it("a non-percentage regime stays a word, never an invented number", () => {
     expect(
-      capLabel(rec({ pma_status: "TERBATAS", pma_max_asing: "special" })),
+      capLabel(
+        rec({
+          pma_status: "TERBATAS",
+          pma_max_asing: "special",
+          pma_cap_special: true,
+        }),
+      ),
     ).toBe("special");
   });
 
-  it("INNOCENCE: an open code with no cap field is still 100%", () => {
-    // 01122 is the one record in the catalogue carrying no cap. It is TERBUKA,
-    // so 100 is the right answer and this cure must not move it.
+  it("withholds a missing or unverified cap without inferring 100%", () => {
     expect(
       capLabel(rec({ pma_status: "TERBUKA", pma_max_asing: undefined })),
-    ).toBe("100%");
+    ).toBe(UNVERIFIED_PMA_CAP);
+    expect(capLabel(rec({ pma_max_asing: 49, pma_cap_verified: false }))).toBe(
+      UNVERIFIED_PMA_CAP,
+    );
+  });
+
+  it.each(["49", true, Number.POSITIVE_INFINITY])(
+    "rejects malformed runtime cap %p",
+    (pma_max_asing) => {
+      expect(capLabel(rec({ pma_max_asing: pma_max_asing as never }))).toBe(
+        UNVERIFIED_PMA_CAP,
+      );
+    },
+  );
+
+  it("requires the special marker as well as cap verification", () => {
+    expect(
+      capLabel(
+        rec({
+          pma_status: "TERBATAS",
+          pma_max_asing: "special",
+          pma_cap_special: false,
+        }),
+      ),
+    ).toBe(UNVERIFIED_PMA_CAP);
   });
 });
 

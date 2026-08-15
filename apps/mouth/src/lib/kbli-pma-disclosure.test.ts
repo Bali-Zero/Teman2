@@ -121,11 +121,12 @@ describe("atomic PMA and Bali disclosure", () => {
     for (const raw of [numeric, special]) {
       const disclosed = disclosePmaInfo(raw, deriveProvenance(raw));
       expect(formatPmaOwnership(disclosed)).toBe(
-        "Restricted · ownership cap not verified",
+        "Restricted · cap not published",
       );
       expect(formatPmaOwnership(disclosed, "metadata")).toBe(
-        "Foreign Ownership Restricted (ownership cap not verified)",
+        "Foreign Ownership Restricted (cap not published)",
       );
+      expect(disclosed.maxForeign).toBeNull();
       expect(hasPublishablePmaCap(disclosed)).toBe(false);
     }
   });
@@ -154,8 +155,9 @@ describe("atomic PMA and Bali disclosure", () => {
       "Open · ownership cap not published",
     );
     expect(formatPmaOwnership(unverifiedDisclosure)).toBe(
-      "Open · ownership cap not verified",
+      "Open · ownership cap not published",
     );
+    expect(unverifiedDisclosure.maxForeign).toBeNull();
     expect(formatPmaOwnership(missingDisclosure, "metadata")).not.toContain(
       "100%",
     );
