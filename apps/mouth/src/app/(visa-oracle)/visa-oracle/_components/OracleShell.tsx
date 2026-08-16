@@ -46,8 +46,10 @@ import {
 import {
   emitVisaOracleTelemetry,
   nonReversibleHash,
+  resolveFrontendVersion,
   type VisaOracleTelemetryState,
 } from "../_lib/telemetry";
+import { GOLD_ORACLE_PACK_HASH } from "../_lib/gold-oracle-baseline";
 import {
   resolveVisaOracleMode,
   type VisaOracleMode,
@@ -584,6 +586,8 @@ function OracleShellRuntime({
                     : "visa_oracle_v2_parity_mismatch",
                   state: response.decision.state,
                   correlationHash: telemetryCorrelationHash,
+                  packHash: GOLD_ORACLE_PACK_HASH,
+                  frontendVersion: resolveFrontendVersion(),
                 });
                 return buildShadowOutcome({
                   code: "SHADOW_VERIFICATION_ONLY",
