@@ -3,6 +3,7 @@ date: 2026-08-17
 domain: visa
 client_case: none
 sources: [visa-oracle-adjudication/output-A/03-nb2-interrogation-program.md, visa-oracle-adjudication/output-B/03-nb2-interrogation-program.md, visa-oracle-adjudication/output-C/blueprint-completa.md, docs/plans/2026-08-15-visa-oracle-doctrine-factory (git show b49bb8d98:visa-oracle-adjudication/execution-plan.md)]
+adversarial_review: kimi-k3
 ---
 
 # E2b PREP — dedup log

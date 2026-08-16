@@ -3,6 +3,7 @@ date: 2026-08-17
 domain: visa
 client_case: none
 sources: [visa-oracle-adjudication/output-A, visa-oracle-adjudication/output-B, visa-oracle-adjudication/output-C, rulepack-prod-007.source.json, research/visa/doctrine-factory/reachability/rulepack-prod-007-reachability.md]
+adversarial_review: kimi-k3
 ---
 
 # E2b PREP — fused NB-2 query bank (A∪B∪C) — index

@@ -3,6 +3,7 @@ date: 2026-08-17
 domain: visa
 client_case: none
 sources: [rulepack-prod-007.source.json, research/visa/doctrine-factory/reachability/rulepack-prod-007-reachability.md, research/visa/doctrine-factory/query-bank/fused-bank.jsonl]
+adversarial_review: kimi-k3
 ---
 
 # E2b PREP — coverage matrix skeleton
