@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import pathlib
 import sys
 from datetime import datetime, timedelta
@@ -376,6 +377,48 @@ class _StubConn:
         return None
 
 
+def test_run_level_kill_switch_never_reaches_the_dsn(monkeypatch):
+    # verbale #10c: the freshness test suite never called run() at all — the
+    # kill switch, lock/flock logic and DB-connect gating were entirely
+    # untested. A fake DSN that raises if asyncpg.connect is ever invoked
+    # proves the disabled path short-circuits BEFORE touching the network,
+    # not merely that it returns 0.
+    hb = []
+    monkeypatch.setattr(wmfl, "_heartbeat", lambda status, note="": hb.append((status, note)))
+    monkeypatch.setenv("WA_MIRROR_FRESHNESS_LIVENESS_ENABLED", "false")
+    monkeypatch.setenv("INTAKE_DATABASE_URL", "postgresql://unreachable-host-must-not-be-dialed/db")
+
+    async def _must_not_be_called(*_args, **_kwargs):
+        raise AssertionError("asyncpg.connect must not be reached when the kill switch is off")
+
+    monkeypatch.setattr(wmfl.asyncpg, "connect", _must_not_be_called)
+
+    rc = asyncio.run(wmfl.run(dry_run=False))
+
+    assert rc == 0
+    assert hb == [("disabled", "WA_MIRROR_FRESHNESS_LIVENESS_ENABLED=false")]
+
+
+def test_run_level_kill_switch_accepts_case_insensitive_0(monkeypatch):
+    hb = []
+    monkeypatch.setattr(wmfl, "_heartbeat", lambda status, note="": hb.append((status, note)))
+    monkeypatch.setenv("WA_MIRROR_FRESHNESS_LIVENESS_ENABLED", "0")
+    monkeypatch.setenv("INTAKE_DATABASE_URL", "postgresql://unreachable-host-must-not-be-dialed/db")
+
+    async def _must_not_be_called(*_args, **_kwargs):
+        raise AssertionError("asyncpg.connect must not be reached when the kill switch is off")
+
+    monkeypatch.setattr(wmfl.asyncpg, "connect", _must_not_be_called)
+
+    rc = asyncio.run(wmfl.run(dry_run=False))
+
+    assert rc == 0
+    # note text is a fixed literal regardless of which accepted spelling
+    # ("0"/"false"/"no") the caller used — only the short-circuit itself
+    # (never dialing the DSN) is what this test exists to prove.
+    assert hb == [("disabled", "WA_MIRROR_FRESHNESS_LIVENESS_ENABLED=false")]
+
+
 def test_run_heartbeats_error_and_exits_2_on_uncaught_tick_exception(tmp_path, monkeypatch):
     hb = []
     monkeypatch.setattr(wmfl, "_heartbeat", lambda status, note="": hb.append((status, note)))
@@ -396,6 +439,25 @@ def test_run_heartbeats_error_and_exits_2_on_uncaught_tick_exception(tmp_path, m
 
     assert rc == 2
     assert hb and hb[-1][0] == "error"
+
+
+# ---------------------------------------------------------------- lock file chmod hardening (verbale #9)
+
+
+def test_acquire_lock_hardens_a_pre_existing_loose_lock_file(tmp_path, monkeypatch):
+    lock = tmp_path / "state" / "wa_mirror_freshness_liveness.lock"
+    lock.parent.mkdir(parents=True)
+    lock.write_text("")
+    lock.chmod(0o644)  # simulate a pre-hardening-era lock file already on disk
+    monkeypatch.setattr(wmfl, "LOCK_FILE", lock)
+
+    fd = wmfl._acquire_lock_or_exit()
+    try:
+        assert fd is not None
+        assert (lock.stat().st_mode & 0o777) == 0o600
+    finally:
+        if fd is not None:
+            os.close(fd)
 
 
 if __name__ == "__main__":

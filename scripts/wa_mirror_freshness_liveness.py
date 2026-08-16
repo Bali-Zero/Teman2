@@ -169,6 +169,15 @@ def _read_state() -> dict[str, Any] | None:
 def _acquire_lock_or_exit() -> int | None:
     LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
     fd = os.open(str(LOCK_FILE), os.O_CREAT | os.O_RDWR, 0o600)
+    # O_CREAT's mode argument only applies when the file is CREATED (verbale
+    # #9) — it does not retroactively chmod a lock file that already exists
+    # on disk from an earlier pre-hardening run. Mirrors tg_notify.py's
+    # harden() rationale (same repo, same PR family, and the exact lesson
+    # tg_notify.py already documents in its own docstring).
+    try:
+        os.chmod(LOCK_FILE, 0o600)
+    except OSError as exc:  # noqa: BLE001 — never let a chmod failure block the lock
+        logger.warning("[wa_freshness] lock chmod failed: %s", exc)
     try:
         fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         return fd

@@ -236,6 +236,15 @@ def _write_state(report: dict[str, Any]) -> None:
 def _acquire_lock_or_exit() -> int | None:
     LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
     fd = os.open(str(LOCK_FILE), os.O_CREAT | os.O_RDWR, 0o600)
+    # O_CREAT's mode argument only applies when the file is CREATED (verbale
+    # #9) — it does not retroactively chmod a lock file that already exists
+    # on disk from an earlier pre-hardening run. Mirrors tg_notify.py's
+    # harden() rationale (same repo, same PR family, and the exact lesson
+    # tg_notify.py already documents in its own docstring).
+    try:
+        os.chmod(LOCK_FILE, 0o600)
+    except OSError as exc:  # noqa: BLE001 — never let a chmod failure block the lock
+        logger.warning("[intake_health_report] lock chmod failed: %s", exc)
     try:
         fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         return fd
@@ -539,7 +548,14 @@ async def run(*, dry_run: bool, json_only: bool) -> int:
         _heartbeat("ok", note=f"breaches={len(breaches)}")
 
         if not dry_run:
-            _tg_notify("digest", "intake-health:daily", render_digest(report))
+            # Date-stamped, not a bare constant (verbale #4): a fixed daily
+            # dedup key can knife-edge-collide with tg_notify's own escalating
+            # mute window — once a condition's streak reaches 2, its mute
+            # window is exactly 24h, the same as this cron's own cadence, so
+            # ordinary cron jitter of a few seconds could silently drop that
+            # day's digest line into the existing dedup entry.
+            date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            _tg_notify("digest", f"intake-health:daily:{date_key}", render_digest(report))
             for breach in breaches:
                 _tg_notify("p0", f"intake-health:{breach['metric']}", f"🚨 {breach['message']}")
 

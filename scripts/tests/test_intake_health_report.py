@@ -16,6 +16,7 @@ Run:  python3 scripts/tests/test_intake_health_report.py
 from __future__ import annotations
 
 import asyncio
+import os
 import pathlib
 import sys
 
@@ -393,6 +394,29 @@ def test_json_only_skips_all_side_effects(tmp_path, monkeypatch, capsys):
     assert '"review_pending_total"' in out
 
 
+def test_digest_dedup_key_is_date_stamped_not_a_bare_constant(tmp_path, monkeypatch):
+    sent = []
+    monkeypatch.setattr(ihr, "_tg_notify", lambda tier, key, text: sent.append((tier, key)) or True)
+    monkeypatch.setattr(ihr, "_heartbeat", lambda *a, **k: None)
+    monkeypatch.setattr(ihr, "STATE_PATH", tmp_path / "state.json")
+    monkeypatch.setattr(ihr, "LOCK_FILE", tmp_path / "lock")
+    monkeypatch.setattr(ihr, "worker_log_path", lambda: tmp_path / "does-not-exist.log")
+
+    async def _fake_connect(*_args, **_kwargs):
+        return _FakeConn()
+
+    monkeypatch.setattr(ihr.asyncpg, "connect", _fake_connect)
+    monkeypatch.setenv("INTAKE_HEALTH_REPORT_ENABLED", "true")
+
+    rc = asyncio.run(ihr.run(dry_run=False, json_only=False))
+
+    assert rc == 0
+    digest_keys = [k for t, k in sent if t == "digest"]
+    assert len(digest_keys) == 1
+    assert digest_keys[0].startswith("intake-health:daily:")
+    assert digest_keys[0] != "intake-health:daily"
+
+
 def test_heartbeat_is_ok_even_with_breaches_organ_not_finding(tmp_path, monkeypatch):
     hb = []
     monkeypatch.setattr(ihr, "_tg_notify", lambda tier, key, text: True)
@@ -434,6 +458,22 @@ def test_lock_held_writes_error_heartbeat_and_digest_instead_of_exiting_silently
     tier, key, _text = sent[0]
     assert tier == "digest"
     assert key.startswith("intake-health:lock-held:")
+
+
+def test_acquire_lock_hardens_a_pre_existing_loose_lock_file(tmp_path, monkeypatch):
+    lock = tmp_path / "state" / "intake_health_report.lock"
+    lock.parent.mkdir(parents=True)
+    lock.write_text("")
+    lock.chmod(0o644)  # simulate a pre-hardening-era lock file already on disk
+    monkeypatch.setattr(ihr, "LOCK_FILE", lock)
+
+    fd = ihr._acquire_lock_or_exit()
+    try:
+        assert fd is not None
+        assert (lock.stat().st_mode & 0o777) == 0o600
+    finally:
+        if fd is not None:
+            os.close(fd)
 
 
 def test_kill_switch_disabled_short_circuits(monkeypatch, capsys):
