@@ -155,6 +155,16 @@ n_pages() {  # n_pages <root>  -> number of recorded Telegram sends
     [ -f "$f" ] && wc -l < "$f" | tr -d ' ' || echo 0
 }
 
+# Portable octal file-mode read: GNU stat (Linux CI runners) uses `-c '%a'`;
+# BSD/macOS stat (local dev) has no `-c` and instead uses `-f '%Lp'` — passing
+# the wrong flag to the wrong `stat` doesn't error cleanly, it silently
+# switches BSD `-f` into "report on the FILESYSTEM, not the file" mode and
+# prints a multi-line df-style blob that satisfies no `check` on any OS. Try
+# GNU form first (suppressing its "invalid option" stderr), fall back to BSD.
+file_mode() {  # file_mode <path> -> octal mode (e.g. "600"), empty if missing
+    stat -c '%a' "$1" 2>/dev/null || stat -f '%Lp' "$1" 2>/dev/null
+}
+
 echo "GUILT — a 5xx must page as SICK, not fold into ALIVE"
 
 ROOT="$TMP/w-sick-guilt"; make_world "$ROOT"; install_plist "$ROOT"
@@ -176,7 +186,7 @@ check_true "log names the SICK verdict WITH the code (500), not just ALIVE-with-
 check_true "state file records action=sick" \
     "$(grep -q '"last_action": "sick"' "$ROOT/home/.agent/decisions/state/intake_review_reader_liveness.json" 2>/dev/null; echo $?)"
 check "state write is atomic+hardened: file mode is 600" \
-    "600" "$(stat -f '%Lp' "$ROOT/home/.agent/decisions/state/intake_review_reader_liveness.json" 2>/dev/null)"
+    "600" "$(file_mode "$ROOT/home/.agent/decisions/state/intake_review_reader_liveness.json")"
 check "state write is atomic+hardened: no .tmp.* leftover" \
     0 "$(find "$ROOT/home/.agent/decisions/state" -name '*.tmp.*' 2>/dev/null | wc -l | tr -d ' ')"
 stop_fake_server
