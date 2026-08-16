@@ -537,3 +537,46 @@ async def test_postgres_error_detail_never_reaches_the_log(
     # reason exc_info is False for a PostgresError) carries the phone.
     assert phone_in_detail not in caplog.text
     assert any("UniqueViolationError[23505]" in r.message for r in caplog.records)
+
+
+# --------------------------------------------------------------------------- #
+# Partial progress (verbale #7, post-refuter Qwen 3.8 Max — test-suite gap):
+# rows before a transient break must still advance the watermark and still
+# get enqueued — the break stops the tick, it must not discard progress
+# already made this tick.
+# --------------------------------------------------------------------------- #
+@pytest.mark.asyncio
+async def test_partial_progress_before_transient_break(
+    monkeypatch, tmp_path, caplog
+) -> None:
+    row_a = _row(1100, blob_path=_write_blob(tmp_path, "a.pdf"))
+    row_b = _row(1101, blob_path=_write_blob(tmp_path, "b.pdf"))
+    row_c = _row(1102, blob_path=_write_blob(tmp_path, "c.pdf"))
+    enqueue_calls: list[str] = []
+
+    async def flaky_enqueue(_pool, *, source_ref, **_kw):
+        if source_ref == f"wa-mirror:{row_c['baileys_message_id']}":
+            raise asyncpg.PostgresConnectionError("connection reset")
+        enqueue_calls.append(source_ref)
+        return SimpleNamespace(was_new=True)
+
+    wms = _load_sweeper()
+    saved = _wire(
+        monkeypatch,
+        wms,
+        rows=[row_a, row_b, row_c],
+        watermark_seed=1099,
+        enqueue=flaky_enqueue,
+    )
+
+    with caplog.at_level(logging.INFO, logger="wa_mirror_sweeper"):
+        rc = await wms.run_one_tick()
+
+    assert rc == 0
+    # A and B were enqueued and the watermark advanced to B — the transient
+    # break on C stops the tick, it does not discard A/B's progress.
+    assert enqueue_calls == [
+        f"wa-mirror:{row_a['baileys_message_id']}",
+        f"wa-mirror:{row_b['baileys_message_id']}",
+    ]
+    assert saved.get("wm") == row_b["id"]
