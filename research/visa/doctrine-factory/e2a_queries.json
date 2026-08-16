@@ -1,0 +1,122 @@
+[
+  {
+    "id": "E2A-D1-DOCTRINE",
+    "products": ["D1"],
+    "q": "Produce a complete doctrine card for visa D1 (Tourism Multiple Entry): permitted, forbidden and borderline activities; entries; duration per stay and any annual cumulative cap; extensions and conversions; onshore/offshore conditions; nationality restrictions; age limits; sponsor requirement (if any); financial requirements; income source rules; mandatory documents; which checks can be automated vs need human document review; nearest alternative visas."
+  },
+  {
+    "id": "E2A-D1-DURATION",
+    "products": ["D1"],
+    "q": "For visa D1, extract the exact maximum stay per visit, whether this limit is continuous-per-entry or cumulative across the validity period/calendar year, the total visa validity tiers, and any extension mechanism. Quote the exact wording and cite the source and passage for each number."
+  },
+  {
+    "id": "E2A-D1-BOUNDARY",
+    "products": ["D1", "C1"],
+    "q": "Compare D1 and C1: when does a frequent tourist need D1 (multiple entry) instead of repeated C1 (single entry) stays? Which activities are explicitly forbidden on D1 (e.g. business negotiation, contract signing, paid work), and what is the exact boundary between tourism and business activity for D1 holders?"
+  },
+  {
+    "id": "E2A-D2-DOCTRINE",
+    "products": ["D2"],
+    "q": "Produce a complete doctrine card for visa D2 (Business Multiple Entry): permitted, forbidden and borderline activities; entries; duration per stay and any annual cumulative cap; extensions and conversions; onshore/offshore conditions; nationality restrictions; age limits; sponsor requirement; financial requirements; income source rules; mandatory documents; which checks can be automated vs need human document review; nearest alternative visas."
+  },
+  {
+    "id": "E2A-D2-DURATION",
+    "products": ["D2"],
+    "q": "For visa D2, state the exact per-entry stay limit, whether it is continuous or cumulative, the number and duration of any extensions, and any annual cumulative cap (e.g. 180 days per year). Quote the exact wording and cite source and passage for each number. Resolve or explicitly register any conflict between different sources on this point."
+  },
+  {
+    "id": "E2A-D2-SPONSOR",
+    "products": ["D2", "C2"],
+    "q": "Who may sponsor a D2 business visit: an Indonesian entity, a foreign entity, or an individual? What must the invitation/sponsor letter contain? Is an invitation letter alone ever sufficient where a formal sponsor is not mandatory?"
+  },
+  {
+    "id": "E2A-D2-ACTIVITY-BOUNDARY",
+    "products": ["D2", "C2"],
+    "q": "Define the legal line between 'attending meetings/negotiation' and 'performing work' for D2 and C2 business visit visas: which concrete factors (duration, deliverables, supervision, payment source) appear in the sources? May a D2 holder sign contracts or represent a foreign employer in negotiations? Is per-diem or expense reimbursement by an Indonesian entity treated as compensation that triggers a work-permit requirement?"
+  },
+  {
+    "id": "E2A-D2-VS-C2",
+    "products": ["D2", "C2"],
+    "q": "Compare C2 and D2 for business visits: what makes the multiple-entry D2 product necessary or legally required over the single-entry C2, including the cumulative-presence/frequency angle?"
+  },
+  {
+    "id": "E2A-D12-DOCTRINE",
+    "products": ["D12"],
+    "q": "Produce a complete doctrine card for visa D12 (Pre-Investment Multiple Entry): permitted, forbidden and borderline activities; entries; duration per stay and total validity; extensions and conversions; onshore/offshore conditions; nationality restrictions; age limits; sponsor requirement; financial requirements; mandatory documents; which checks can be automated vs need human document review; nearest alternative visas."
+  },
+  {
+    "id": "E2A-D12-DURATION",
+    "products": ["D12"],
+    "q": "For visa D12, state the exact per-entry stay limit, the extension mechanism and total validity after extension (quote Pasal 95(4) or its successor provision if the sources reference it), and whether the extension is per-entry or per-validity. Resolve or explicitly register any conflict between sources giving different total-validity figures (e.g. 1/2 years vs 1/2/5 years)."
+  },
+  {
+    "id": "E2A-D12-CONVERSION",
+    "products": ["D12"],
+    "q": "Can a D12 (Pre-Investment) visa be converted or extended into a limited stay permit (ITAS/izin tinggal terbatas) onshore? State exactly what the sources say about extendability versus convertibility for D12, and cite the exact passage."
+  },
+  {
+    "id": "E2A-D12-SITEVISIT",
+    "products": ["D12", "D2"],
+    "q": "What distinguishes a lawful D12 pre-investment site visit (market research, land scouting, feasibility study) from an unlawful operational inspection or hands-on work at a site? Give the decisive facts the sources use to draw this line, and state which activities would move a D12 holder out of the pre-investment scope."
+  },
+  {
+    "id": "E2A-D12-VS-D2",
+    "products": ["D2", "D12"],
+    "q": "Compare D2 and D12 side by side: which activities put an applicant on one side or the other, and where exactly is the legal boundary between a business site visit (D2) and a pre-investment site visit (D12)? What genuine pre-investment intent must be documented for D12 that D2 does not require?"
+  },
+  {
+    "id": "E2A-D-3WAY-COMPARE",
+    "products": ["D1", "D2", "D12"],
+    "q": "Compare D1, D2 and D12 for a foreigner making repeated trips to Indonesia: for each, list permitted activities, per-entry stay limit, any annual ceiling, and the single decisive condition that makes each visa the only legally correct choice over the other two. Cite per product."
+  },
+  {
+    "id": "E2A-D-CONT-CUM",
+    "products": ["D1", "D2", "D12"],
+    "q": "For D-series multiple-entry visas (D1, D2, D12), is the per-entry stay limit continuous-days-per-entry, and is there also an annual cumulative ceiling across multiple entries? Quote exactly how any '60 days per entry / 180 per year' or similar style limits are worded for each product, and state whether the clock resets on each new entry."
+  },
+  {
+    "id": "E2A-D-FUNDS",
+    "products": ["D1", "D2", "D12"],
+    "q": "Extract the financial-proof minimum (amount, currency, acceptable evidence such as bank statement duration) required for D1, D2 and D12 respectively. Cite the exact figure and source/passage for each product; note if any figure differs from what is stated for other visitor products (B1/C1)."
+  },
+  {
+    "id": "E2A-E31B-DOCTRINE",
+    "products": ["E31B"],
+    "q": "Produce a complete doctrine card for visa E31B (spouse of ITAS/ITAP holder): family relationship required, sponsor requirement and status, age limits, financial requirements, mandatory documents, which checks can be automated vs need human document review, nearest alternative visas."
+  },
+  {
+    "id": "E2A-E31B-COMPARE",
+    "products": ["E31A", "E31B", "E31C"],
+    "q": "Compare E31A, E31B and E31C for family relationship, citizenship/status of the principal family member, age, and sponsor requirement. For each product state exactly what must be true of the sponsoring family member's own legal status."
+  },
+  {
+    "id": "E2A-E31B-REFUTER-SPONSOR-STATUS",
+    "products": ["E31B"],
+    "q": "For E31B specifically: what exact proof or status is required to demonstrate that the sponsoring spouse holds a valid, currently-effective ITAS or ITAP? Is a sponsor whose ITAS/ITAP status is unknown, unverified, pending, expired, or explicitly absent/none ever sufficient to satisfy this requirement? State explicitly, with citation, what counts as a verified sponsor status versus a merely-declared or merely-known-to-exist status, and what happens if the sponsor's status cannot be confirmed."
+  },
+  {
+    "id": "E2A-E31B-PRINCIPAL-STATUS",
+    "products": ["E31B"],
+    "q": "For E31B (spouse of ITAS/ITAP holder), which category of principal status is eligible as sponsor: a foreign worker holding E23-family stay permits, an investor/long-stay holder under E28/E33, or both? Does the source distinguish which principal status must be verified before the E31B application can be granted?"
+  },
+  {
+    "id": "E2A-E31D-DOCTRINE",
+    "products": ["E31D"],
+    "q": "Produce a complete doctrine card for visa E31D (stepchild of a foreigner in a mixed marriage): family relationship required, sponsor requirement, age limits, mandatory documents (including proof of the Indonesian parent's marriage), which checks can be automated vs need human document review, nearest alternative visas."
+  },
+  {
+    "id": "E2A-E31D-COMPARE",
+    "products": ["E31D", "E31E", "E31F"],
+    "q": "Compare E31D, E31E and E31F for family relationship, status of the principal, age limits, and required documentary proof. For each, state precisely what distinguishes it from the other two."
+  },
+  {
+    "id": "E2A-E31D-REFUTER-PURPOSE-ONLY",
+    "products": ["E31D"],
+    "q": "Is declaring a general FAMILY purpose alone ever sufficient, according to the sources, to support E31D (stepchild of a foreigner in a mixed marriage) — without independent proof of the specific step-parent relationship, the Indonesian parent's registered marriage to the foreign step-parent, and the sponsor's own status? What is the minimum discriminating fact, per the sources, that separates E31D specifically from any other family-purpose visa product (E31A/E31B/E31C/E31E/E31F/E31G/E31H/E31J)?"
+  },
+  {
+    "id": "E2A-E31D-DOCS",
+    "products": ["E31D"],
+    "q": "For E31D, list the exact documents required to prove the step-parent relationship: which document proves the Indonesian parent's marriage to the foreign step-parent, which proves the child's relationship to the Indonesian parent, whether legalization/sworn translation is required for foreign documents, and which of these checks require human document review versus which can be automated from a declared fact."
+  }
+]
