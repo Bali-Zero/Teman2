@@ -1,0 +1,411 @@
+#!/usr/bin/env python3
+"""Pure tests for intake_health_report.py — NO database (W87/W96).
+
+Every test here works against canned dicts/lists or a FakeConn whose
+fetchrow/fetch/execute dispatch on a SQL-text fingerprint — never against a
+live connection, and never against `nuzantara_dev` (the local Intake/WhatsApp
+queue). Covers: JSON-shape stability, the rate/count math in build_report(),
+guilt+innocence for every threshold rule in evaluate_breaches(), the blob
+presence sampler against tmp_path, the SQL-shape assertions the orchestrator
+asked for (document_routing_proposal named, the corrected 7-status live set
+embedded), and that --dry-run sends nothing through a fake tg_notify.
+
+Run:  python3 scripts/tests/test_intake_health_report.py
+      python3 -m pytest scripts/tests/test_intake_health_report.py -q
+"""
+from __future__ import annotations
+
+import asyncio
+import pathlib
+import sys
+
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+
+import intake_health_report as ihr  # noqa: E402
+
+
+# ---------------------------------------------------------------- build_report shape
+
+
+def _base_kwargs(**overrides):
+    kwargs = dict(
+        status_counts={
+            "review_pending_total": 100,
+            "review_pending_wa": 40,
+            "quarantine_total": 20,
+            "duplicate_total": 5,
+            "zero_candidate_count": 30,
+        },
+        all_pages_empty_rows=[
+            {"status": "quarantine", "all_empty": 8, "denominator": 10},
+            {"status": "review_pending", "all_empty": 2, "denominator": 20},
+        ],
+        blob_newest=["/tmp/a.jpg", "/tmp/missing.jpg"],
+        blob_oldest=["/tmp/b.jpg"],
+        companies_rows=5,
+        orphan_rows=[{"source": "whatsapp", "n": 3}, {"source": "drive", "n": 1}],
+        superseded_orphans=2,
+        zombie_count=0,
+        undelivered={"undelivered": 1, "total": 10},
+        worker_log_exists=True,
+        dead_last_24h=4,
+        wa_media_last_24h=7,
+        generated_at="2026-08-15T00:00:00Z",
+    )
+    kwargs.update(overrides)
+    return kwargs
+
+
+def test_build_report_has_stable_top_level_keys():
+    report = ihr.build_report(**_base_kwargs())
+    assert set(report.keys()) == {
+        "generated_at",
+        "review_pending_wa",
+        "review_pending_total",
+        "quarantine_total",
+        "duplicate_total",
+        "zero_candidate_rate",
+        "all_pages_empty",
+        "blob_present",
+        "companies_rows",
+        "orphans_done_without_proposal",
+        "superseded_orphans_true",
+        "zombie_review_claimed_null_lease",
+        "undelivered_committed",
+        "worker_log_inode_exists",
+        "dead_last_24h",
+        "wa_media_last_24h",
+    }
+
+
+def test_zero_candidate_rate_math():
+    report = ihr.build_report(**_base_kwargs())
+    zc = report["zero_candidate_rate"]
+    assert zc == {"count": 30, "denominator": 100, "rate": 0.3}
+
+
+def test_zero_candidate_rate_none_when_no_review_pending():
+    kwargs = _base_kwargs()
+    kwargs["status_counts"] = {
+        "review_pending_total": 0,
+        "review_pending_wa": 0,
+        "quarantine_total": 0,
+        "duplicate_total": 0,
+        "zero_candidate_count": 0,
+    }
+    report = ihr.build_report(**kwargs)
+    assert report["zero_candidate_rate"]["rate"] is None
+
+
+def test_all_pages_empty_by_status_and_overall():
+    report = ihr.build_report(**_base_kwargs())
+    empty = report["all_pages_empty"]
+    assert empty["by_status"]["quarantine"] == {"count": 8, "denominator": 10, "rate": 0.8}
+    assert empty["by_status"]["review_pending"] == {"count": 2, "denominator": 20, "rate": 0.1}
+    # overall = (8+2)/(10+20)
+    assert empty["overall_rate"] == round(10 / 30, 4)
+
+
+def test_all_pages_empty_defaults_present_even_with_no_rows():
+    kwargs = _base_kwargs(all_pages_empty_rows=[])
+    report = ihr.build_report(**kwargs)
+    empty = report["all_pages_empty"]
+    assert empty["by_status"]["quarantine"] == {"count": 0, "denominator": 0, "rate": None}
+    assert empty["by_status"]["review_pending"] == {"count": 0, "denominator": 0, "rate": None}
+    assert empty["overall_rate"] is None
+
+
+def test_orphans_by_source_and_superseded_passthrough():
+    report = ihr.build_report(**_base_kwargs())
+    assert report["orphans_done_without_proposal"] == {"whatsapp": 3, "drive": 1}
+    assert report["superseded_orphans_true"] == 2
+
+
+def test_superseded_orphans_null_on_timeout_passthrough():
+    report = ihr.build_report(**_base_kwargs(superseded_orphans=None))
+    assert report["superseded_orphans_true"] is None
+
+
+# ---------------------------------------------------------------- blob_presence
+
+
+def test_blob_presence_counts_present_and_missing(tmp_path):
+    present = tmp_path / "present.jpg"
+    present.write_bytes(b"x")
+    missing = tmp_path / "missing.jpg"
+    result = ihr.blob_presence([str(present), str(missing)])
+    assert result == {"sampled": 2, "present": 1, "rate": 0.5}
+
+
+def test_blob_presence_empty_sample_rate_is_none():
+    assert ihr.blob_presence([]) == {"sampled": 0, "present": 0, "rate": None}
+
+
+# ---------------------------------------------------------------- evaluate_breaches (guilt + innocence)
+
+
+_THRESHOLDS = {
+    "companies_min_rows": 1.0,
+    "blob_present_min": 0.5,
+    "all_empty_max": 0.5,
+    "zombie_max": 0.0,
+}
+
+
+def _report_with(**overrides):
+    """A genuinely HEALTHY baseline report — every threshold rule innocent
+    unless a test explicitly overrides the field it means to breach."""
+    report = ihr.build_report(**_base_kwargs(
+        companies_rows=5,
+        zombie_count=0,
+        worker_log_exists=True,
+        blob_newest=[],
+        blob_oldest=[],
+        all_pages_empty_rows=[
+            {"status": "quarantine", "all_empty": 1, "denominator": 10},
+            {"status": "review_pending", "all_empty": 1, "denominator": 20},
+        ],
+    ))
+    report.update(overrides)
+    return report
+
+
+def test_guilt_companies_rows_zero_breaches():
+    report = _report_with(companies_rows=0)
+    breaches = ihr.evaluate_breaches(report, _THRESHOLDS)
+    assert any(b["metric"] == "companies_rows" for b in breaches)
+
+
+def test_innocence_companies_rows_positive_no_breach():
+    report = _report_with(companies_rows=5)
+    breaches = ihr.evaluate_breaches(report, _THRESHOLDS)
+    assert not any(b["metric"] == "companies_rows" for b in breaches)
+
+
+def test_guilt_blob_present_newest_below_threshold():
+    report = _report_with(blob_present={"newest": {"sampled": 10, "present": 3, "rate": 0.3},
+                                         "oldest": {"sampled": 5, "present": 5, "rate": 1.0}})
+    breaches = ihr.evaluate_breaches(report, _THRESHOLDS)
+    assert any(b["metric"] == "blob_present_newest" for b in breaches)
+
+
+def test_innocence_blob_present_newest_at_or_above_threshold():
+    report = _report_with(blob_present={"newest": {"sampled": 10, "present": 6, "rate": 0.6},
+                                         "oldest": {"sampled": 5, "present": 5, "rate": 1.0}})
+    breaches = ihr.evaluate_breaches(report, _THRESHOLDS)
+    assert not any(b["metric"] == "blob_present_newest" for b in breaches)
+
+
+def test_innocence_blob_present_newest_zero_sample_is_inconclusive_not_a_breach():
+    report = _report_with(blob_present={"newest": {"sampled": 0, "present": 0, "rate": None},
+                                         "oldest": {"sampled": 0, "present": 0, "rate": None}})
+    breaches = ihr.evaluate_breaches(report, _THRESHOLDS)
+    assert not any(b["metric"] == "blob_present_newest" for b in breaches)
+
+
+def test_guilt_all_pages_empty_quarantine_above_threshold():
+    report = _report_with(all_pages_empty={
+        "by_status": {
+            "quarantine": {"count": 9, "denominator": 10, "rate": 0.9},
+            "review_pending": {"count": 0, "denominator": 10, "rate": 0.0},
+        },
+        "overall_rate": 0.45,
+    })
+    breaches = ihr.evaluate_breaches(report, _THRESHOLDS)
+    assert any(b["metric"] == "all_pages_empty_quarantine" for b in breaches)
+
+
+def test_innocence_all_pages_empty_quarantine_at_or_below_threshold():
+    report = _report_with(all_pages_empty={
+        "by_status": {
+            "quarantine": {"count": 4, "denominator": 10, "rate": 0.4},
+            "review_pending": {"count": 0, "denominator": 10, "rate": 0.0},
+        },
+        "overall_rate": 0.2,
+    })
+    breaches = ihr.evaluate_breaches(report, _THRESHOLDS)
+    assert not any(b["metric"] == "all_pages_empty_quarantine" for b in breaches)
+
+
+def test_guilt_zombie_above_max():
+    report = _report_with(zombie_review_claimed_null_lease=1)
+    breaches = ihr.evaluate_breaches(report, _THRESHOLDS)
+    assert any(b["metric"] == "zombie_review_claimed" for b in breaches)
+
+
+def test_innocence_zombie_at_max():
+    report = _report_with(zombie_review_claimed_null_lease=0)
+    breaches = ihr.evaluate_breaches(report, _THRESHOLDS)
+    assert not any(b["metric"] == "zombie_review_claimed" for b in breaches)
+
+
+def test_guilt_worker_log_missing():
+    report = _report_with(worker_log_inode_exists=False)
+    breaches = ihr.evaluate_breaches(report, _THRESHOLDS)
+    assert any(b["metric"] == "worker_log_missing" for b in breaches)
+
+
+def test_innocence_worker_log_present():
+    report = _report_with(worker_log_inode_exists=True)
+    breaches = ihr.evaluate_breaches(report, _THRESHOLDS)
+    assert not any(b["metric"] == "worker_log_missing" for b in breaches)
+
+
+def test_no_breaches_when_everything_healthy():
+    report = _report_with()
+    breaches = ihr.evaluate_breaches(report, _THRESHOLDS)
+    assert breaches == []
+
+
+# ---------------------------------------------------------------- SQL shape (orphan query)
+
+
+def test_superseded_orphan_sql_names_the_table_and_the_corrected_live_set():
+    sql = ihr.SUPERSEDED_ORPHAN_SQL
+    assert "document_routing_proposal" in sql
+    expected_live_set = (
+        "review_pending", "review_claimed", "routed", "rejected",
+        "auto_routed", "quarantine", "duplicate",
+    )
+    assert expected_live_set == ihr._LIVE_PROPOSAL_STATUSES
+    for status in expected_live_set:
+        assert f"'{status}'" in sql, f"{status!r} missing from SUPERSEDED_ORPHAN_SQL"
+    # 'dead' and 'superseded' are deliberately OUT of the live set (terminal-loss).
+    assert "'dead'" not in sql
+    assert "'superseded'" not in sql
+
+
+def test_orphan_done_sql_left_joins_proposal_and_groups_by_source():
+    sql = ihr.ORPHAN_DONE_SQL
+    assert "document_routing_proposal" in sql
+    assert "LEFT JOIN" in sql
+    assert "q.source" in sql
+
+
+# ---------------------------------------------------------------- --dry-run sends nothing (fake tg + fake conn)
+
+
+class _FakeConn:
+    """Dispatches fetchrow/fetch/execute on a SQL-text fingerprint — no DB."""
+
+    async def fetchrow(self, query, *args):
+        if "review_pending_total" in query:
+            return {
+                "review_pending_total": 10, "review_pending_wa": 4,
+                "quarantine_total": 2, "duplicate_total": 1, "zero_candidate_count": 3,
+            }
+        if "FROM companies" in query:
+            return {"n": 5}
+        if "review_claimed' AND lease_expires_at IS NULL" in query:
+            return {"n": 0}
+        if "FROM documents" in query:
+            return {"undelivered": 0, "total": 2}
+        if "'dead'" in query and "intake_queue" in query:
+            return {"n": 0}
+        if "whatsapp_message_context" in query:
+            return {"n": 1}
+        if "NOT EXISTS" in query and "document_routing_proposal" in query:
+            return {"n": 0}
+        raise AssertionError(f"FakeConn.fetchrow: unrecognized query fingerprint: {query[:80]!r}")
+
+    async def fetch(self, query, *args):
+        if "jsonb_array_elements" in query:
+            return []
+        if "blob_path" in query:
+            return []
+        if "LEFT JOIN document_routing_proposal" in query:
+            return [{"source": "whatsapp", "n": 0}]
+        raise AssertionError(f"FakeConn.fetch: unrecognized query fingerprint: {query[:80]!r}")
+
+    async def execute(self, query, *args):
+        return "SET"
+
+    async def close(self):
+        return None
+
+
+def test_dry_run_sends_no_telegram_and_writes_no_state(tmp_path, monkeypatch):
+    sent = []
+    monkeypatch.setattr(ihr, "_tg_notify", lambda tier, key, text: sent.append((tier, key)) or True)
+    monkeypatch.setattr(ihr, "_heartbeat", lambda *a, **k: None)
+    monkeypatch.setattr(ihr, "STATE_PATH", tmp_path / "state.json")
+    monkeypatch.setattr(ihr, "LOCK_FILE", tmp_path / "lock")
+    monkeypatch.setattr(ihr, "worker_log_path", lambda: tmp_path / "does-not-exist.log")
+
+    async def _fake_connect(*_args, **_kwargs):
+        return _FakeConn()
+
+    monkeypatch.setattr(ihr.asyncpg, "connect", _fake_connect)
+    monkeypatch.setenv("INTAKE_HEALTH_REPORT_ENABLED", "true")
+
+    rc = asyncio.run(ihr.run(dry_run=True, json_only=False))
+
+    assert rc == 0
+    assert sent == []
+    assert not (tmp_path / "state.json").exists()
+
+
+def test_non_dry_run_writes_state_and_sends_digest(tmp_path, monkeypatch):
+    sent = []
+    monkeypatch.setattr(ihr, "_tg_notify", lambda tier, key, text: sent.append((tier, key)) or True)
+    monkeypatch.setattr(ihr, "_heartbeat", lambda *a, **k: None)
+    monkeypatch.setattr(ihr, "STATE_PATH", tmp_path / "state.json")
+    monkeypatch.setattr(ihr, "LOCK_FILE", tmp_path / "lock")
+    monkeypatch.setattr(ihr, "worker_log_path", lambda: tmp_path / "does-not-exist.log")
+
+    async def _fake_connect(*_args, **_kwargs):
+        return _FakeConn()
+
+    monkeypatch.setattr(ihr.asyncpg, "connect", _fake_connect)
+    monkeypatch.setenv("INTAKE_HEALTH_REPORT_ENABLED", "true")
+
+    rc = asyncio.run(ihr.run(dry_run=False, json_only=False))
+
+    assert rc == 0
+    assert (tmp_path / "state.json").exists()
+    # digest always sent + at least the worker_log_missing breach (file doesn't exist)
+    tiers = {t for t, _k in sent}
+    assert "digest" in tiers
+    assert ("p0", "intake-health:worker_log_missing") in sent
+
+
+def test_json_only_skips_all_side_effects(tmp_path, monkeypatch, capsys):
+    sent = []
+    monkeypatch.setattr(ihr, "_tg_notify", lambda tier, key, text: sent.append((tier, key)) or True)
+    monkeypatch.setattr(ihr, "_heartbeat", lambda *a, **k: sent.append(("heartbeat", a)))
+    monkeypatch.setattr(ihr, "STATE_PATH", tmp_path / "state.json")
+    monkeypatch.setattr(ihr, "LOCK_FILE", tmp_path / "lock")
+    monkeypatch.setattr(ihr, "worker_log_path", lambda: tmp_path / "does-not-exist.log")
+
+    async def _fake_connect(*_args, **_kwargs):
+        return _FakeConn()
+
+    monkeypatch.setattr(ihr.asyncpg, "connect", _fake_connect)
+    monkeypatch.setenv("INTAKE_HEALTH_REPORT_ENABLED", "true")
+
+    rc = asyncio.run(ihr.run(dry_run=False, json_only=True))
+
+    assert rc == 0
+    assert sent == []
+    assert not (tmp_path / "state.json").exists()
+    out = capsys.readouterr().out
+    assert '"review_pending_total"' in out
+
+
+def test_kill_switch_disabled_short_circuits(monkeypatch, capsys):
+    monkeypatch.setenv("INTAKE_HEALTH_REPORT_ENABLED", "false")
+    called = []
+    monkeypatch.setattr(ihr, "_heartbeat", lambda status, note="": called.append(status))
+
+    rc = asyncio.run(ihr.run(dry_run=False, json_only=False))
+
+    assert rc == 0
+    assert called == ["disabled"]
+    assert '"status": "disabled"' in capsys.readouterr().out
+
+
+if __name__ == "__main__":
+    import pytest
+
+    sys.exit(pytest.main([__file__, "-v"]))
