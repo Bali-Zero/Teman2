@@ -27,8 +27,9 @@ change.
 
 Scar-family #3 (guard-over-match/under-match) discipline: every guilt
 assertion (the 56 cured + 80190 conditional) is paired with an innocence
-assertion (the 8 DISCLOSED + 9 CLEAN pilot/structural records must be
-byte-IDENTICAL to their pre-cure l4_bali — this cure must never touch them).
+assertion (the 8 DISCLOSED + 6 CLEAN pilot/structural records must retain all
+fields owned by this cure — this cure must never touch them). Three records
+formerly classified CLEAN are pinned separately to their later adjudication.
 """
 
 from __future__ import annotations
@@ -54,6 +55,7 @@ DISCLOSURE_MARKER = "[derivation under review] "
 # record, in `_data_note` and in the spec, which is where a maintainer looks.
 DETACH_PHRASE = "set aside as unverifiable for KBLI 2025"
 GARUDA_TOKEN = "(GARUDA-FILIERA)"
+GLOBAL_L4_DERIVED_FIELDS = frozenset({"verdict_state"})
 
 # --- verbatim from test_kbli_batch_a_lot1_registry.py (2026-07-18) ---------
 
@@ -79,6 +81,15 @@ def _load_record(path: Path, code: str) -> dict[str, Any]:
     if rec is None:
         raise AssertionError(f"{path}: record {code} not found in dataset")
     return rec
+
+
+def _without_global_l4_derived_fields(l4_bali: dict[str, Any]) -> dict[str, Any]:
+    """Remove only fields owned by later catalogue-wide derivations."""
+    return {
+        key: value
+        for key, value in l4_bali.items()
+        if key not in GLOBAL_L4_DERIVED_FIELDS
+    }
 
 
 # --- end verbatim block -----------------------------------------------------
@@ -148,13 +159,14 @@ MORATORIUM_BLOCK = {
     "virtual_office": "BANNED as PMA domicile in Bali",
 }
 
-# Pinned, byte-exact PRE-cure l4_bali for the 8 DISCLOSED pilot codes (already
-# correctly disclosed by an earlier cure — cure_l4_editorial.py) + the 9 CLEAN
+# Pinned PRE-cure l4_bali for the 8 DISCLOSED pilot codes (already correctly
+# disclosed by an earlier cure — cure_l4_editorial.py) + the 6 CLEAN
 # structural/legal-basis codes (census-verified: their l4_bali reason does NOT
 # key on a disputed-only tier). Verified by direct read of the canonical
 # dataset THIS session (2026-07-19) both before and after applying
-# cure_l4bali_disclosure.py --apply — none of these 17 records changed a
-# single byte. This is the innocence half of the guilt+innocence discipline
+# cure_l4bali_disclosure.py --apply — none of the fields owned by this cure
+# changed. The later catalogue-wide `verdict_state` derivation is intentionally
+# excluded below. This is the innocence half of the guilt+innocence discipline
 # (scar-family #3): if this cure ever over-reaches onto one of them, these
 # tests fail.
 UNTOUCHED_L4_BALI: dict[str, dict[str, Any]] = {
@@ -326,15 +338,16 @@ DISCLOSED_PILOT_CODES = [
 # observation ("OSS has no Usaha Besar scale row, only Mikro/Kecil/Menengah"),
 # independent of the disputed risk tier. The canonical falsifies that belief:
 # all three carry `_l2_status: no_oss_risk` with `_l2_source: None` — OSS
-# returned NO scope at all (404), not "only the smaller scales" — and their only
-# scale rows have ever lived inside the disowned `per_skala_disputed_pp28_collision`
+# returned no retrievable scope at all, not "only the smaller scales" — and
+# their only scale rows have ever lived inside the disowned
+# `per_skala_disputed_pp28_collision`
 # block (47771 [Mikro,Kecil]/[Menengah], 52211 [Mikro,Kecil], 70100
 # [Mikro,Kecil,Menengah]). So the "structural" observation is itself read off the
 # vintage-2020 block the programme repudiated, and the sentence attributes it to
-# OSS. They are stale-certifying like the rest and are cured by the wave-2 spec
-# (l4bali_gap_disclosure_2026_07_25.json); `status`/`blocked` remain untouched.
-# The false SENTENCE is a separate, editorial fix — logged AWAITS ZERO in the
-# /kbli-navigator corner, not silently rewritten here.
+# OSS. They were therefore disclosed by the wave-2 spec
+# (l4bali_gap_disclosure_2026_07_25.json). The later instrument-based
+# adjudication (2026-08-03) supersedes that intermediate posture and is what
+# the registry now pins below.
 WAVE2_RECLASSIFIED_FROM_CLEAN = ["47771", "52211", "70100"]
 CLEAN_CODES = [
     "01287", "38122", "59131", "64110", "68127", "68129",
@@ -477,14 +490,16 @@ def test_cured_per_skala_untouched_empty(code: str):
 
 
 # ---------------------------------------------------------------------------
-# 6. INNOCENCE — the 8 DISCLOSED pilot codes + 9 CLEAN structural codes are
-#    byte-IDENTICAL to their pre-cure l4_bali (this cure never touches them).
+# 6. INNOCENCE — the 8 DISCLOSED pilot codes + 6 CLEAN structural codes retain
+#    their pre-cure cure-owned fields (this cure never touches them).
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("code", DISCLOSED_PILOT_CODES)
-def test_disclosed_pilot_records_byte_unchanged(code: str):
+def test_disclosed_pilot_records_keep_cure_owned_fields(code: str):
     rec = _load_record(CANONICAL_PATH, code)
-    assert rec.get("l4_bali") == UNTOUCHED_L4_BALI[code], (
+    l4 = rec.get("l4_bali") or {}
+    assert "verdict_state" in l4
+    assert _without_global_l4_derived_fields(l4) == UNTOUCHED_L4_BALI[code], (
         f"{code}: l4_bali drifted — this is one of the 8 pilot DISCLOSED records, already "
         "correctly disclosed by an earlier cure (cure_l4_editorial.py); the l4bali_disclosure "
         "cure must NEVER touch it. If this fails, the cure over-reached (guard-over-match)."
@@ -496,10 +511,12 @@ def test_disclosed_pilot_records_byte_unchanged(code: str):
 
 
 @pytest.mark.parametrize("code", CLEAN_CODES)
-def test_clean_structural_records_byte_unchanged(code: str):
+def test_clean_structural_records_keep_cure_owned_fields(code: str):
     rec = _load_record(CANONICAL_PATH, code)
-    assert rec.get("l4_bali") == UNTOUCHED_L4_BALI[code], (
-        f"{code}: l4_bali drifted — this is one of the 9 CLEAN records (structural/legal "
+    l4 = rec.get("l4_bali") or {}
+    assert "verdict_state" in l4
+    assert _without_global_l4_derived_fields(l4) == UNTOUCHED_L4_BALI[code], (
+        f"{code}: l4_bali drifted — this is one of the 6 CLEAN records (structural/legal "
         "basis, not derived from a disputed-only risk tier per the census); the "
         "l4bali_disclosure cure must NEVER touch it."
     )
@@ -516,7 +533,7 @@ def test_clean_structural_records_byte_unchanged(code: str):
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("code", WAVE2_RECLASSIFIED_FROM_CLEAN)
-def test_reclassified_records_are_disclosed_not_clean(code: str):
+def test_reclassified_records_are_superseded_by_final_perpres_adjudication(code: str):
     rec = _load_record(CANONICAL_PATH, code)
     l4 = rec.get("l4_bali") or {}
 
@@ -531,18 +548,20 @@ def test_reclassified_records_are_disclosed_not_clean(code: str):
     assert not rec.get("per_skala"), f"{code}: per_skala is populated — risk layer restored"
     assert DISPUTED_KEY in rec, f"{code}: disputed block missing — evidence for reclassification gone"
 
-    assert l4.get("reason", "").startswith(DISCLOSURE_MARKER), (
-        f"{code}: expected the wave-2 disclosure marker — its verdict is derived from the "
-        "disowned PP28 rows, not from an intact OSS observation."
-    )
-    assert l4.get("confidence") == "LOW" and l4.get("needs_review") is True
-
-    # The cure discloses; it never re-derives. The commercially decisive part of
-    # the verdict must be exactly what it was before.
-    before = UNTOUCHED_L4_BALI[code]
-    assert l4.get("status") == before["status"]
-    assert l4.get("blocked") == before["blocked"]
-    assert before["reason"] in l4["reason"], "original reason must survive as audit trail"
+    # The July disclosure was an intermediate posture. The later instrument-
+    # based adjudication withdrew the false no-Besar ownership inference while
+    # preserving the honest Bali-risk gap. Pin that newer provenance instead of
+    # requiring the superseded disclosure bytes to survive forever.
+    assert l4.get("review_basis") == "perpres_adjudication_2026_08_03"
+    assert l4.get("status") == "NON_CLASSIFICABILE"
+    assert l4.get("confidence") == "MEDIUM"
+    assert l4.get("needs_review") is True
+    assert l4.get("blocked") is True
+    assert l4.get("verdict_state") == "unknown"
+    reason = l4.get("reason", "")
+    assert not reason.startswith(DISCLOSURE_MARKER)
+    assert "no licensing rows" in reason
+    assert "Pasal 26(1)" in reason
 
 
 # ---------------------------------------------------------------------------

@@ -477,3 +477,31 @@ def test_broad_sponsor_only_eligibility_rule_manufactures_an_offer(
         "pins no longer reproduces and the module docstring's claim needs "
         "re-checking"
     )
+
+
+def test_obsolete_code_emits_one_notice_with_all_successor_sources(seq7):
+    """B211A maps to multiple current products but is one legacy-code event.
+
+    The active sequence-7 catalogue maps B211A to C1, C2 and C6.  The
+    decision must therefore carry one deduplicated notice whose citations
+    cover every matching successor, rather than three identical notices.
+    """
+    decision = _decide(
+        seq7,
+        {
+            "intent.purposes": _known(["TOURISM"]),
+            "intent.stay_days": _known(30),
+            "intent.requested_product_code": _known("B211A"),
+        },
+    )
+
+    assert len(decision.notices) == 1
+    notice = decision.notices[0]
+    assert notice.code == "OBSOLETE_PRODUCT_CODE"
+    expected_sources = {
+        source_ref
+        for compiled_product in seq7.products
+        if "B211A" in compiled_product.product.legacy_codes
+        for source_ref in compiled_product.product.source_refs
+    }
+    assert set(notice.source_refs) == expected_sources

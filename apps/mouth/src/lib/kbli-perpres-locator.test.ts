@@ -77,17 +77,16 @@ describe("Perpres citation on the KBLI page", () => {
   });
 });
 
-describe("the page's own reader surfaces the citation", () => {
-  it("exposes it on kbli.pma.citation for the code the page requests", async () => {
-    // The artifact holding the data and the PAGE showing it are two different
-    // claims. `page.tsx` renders `kbli.pma.citation` from `getCode()` in
-    // kbli-data.ts — so this exercises that path rather than the file, which
-    // is the difference between "the data exists" and "the page can reach it".
+describe("the page's own reader gates the citation with the whole-code PMA tuple", () => {
+  it("does not promote a narrower locator into a whole-code citation for declared gaps", async () => {
+    // The locator artifact still carries these narrower source facts, tested
+    // above. Both whole-code records are declared gaps, however, so the public
+    // PMA object must not use that artifact to manufacture a verified verdict.
     const { getCode } = await import("./kbli-data");
     const restaurant = getCode("56101");
-    expect(restaurant?.pma.citation).toContain("Pasal 3(1)(d)");
+    expect(restaurant?.pma.citation).toBeNull();
     const villa = getCode("55203");
-    expect(villa?.pma.citation).toContain("via KBLI-2020 55193");
+    expect(villa?.pma.citation).toBeNull();
   });
 
   it("agrees between the two readers, on every code", async () => {

@@ -4,12 +4,22 @@ import {
   getCode,
   getCodesBySection,
   getHeroStyle,
+  mapPmaStatus,
   getRelatedCodes,
   getSectionMeta,
   getSections,
 } from "./kbli-data";
+import { hasPublishablePmaCap } from "./kbli-pma-disclosure";
 
 describe("kbli-data", () => {
+  it("maps only the three canonical PMA tokens and fails closed otherwise", () => {
+    expect(mapPmaStatus("TERBUKA")).toBe("open");
+    expect(mapPmaStatus("TERBATAS")).toBe("restricted");
+    expect(mapPmaStatus("TERTUTUP")).toBe("closed");
+    expect(mapPmaStatus("FUTURE_STATUS")).toBe("unknown");
+    expect(mapPmaStatus("terbuka")).toBe("unknown");
+  });
+
   it("loads the canonical KBLI dataset as flat frontend records", () => {
     const codes = getAllCodes();
 
@@ -21,8 +31,8 @@ describe("kbli-data", () => {
         titleEn: expect.any(String),
         description: expect.any(String),
         pma: expect.objectContaining({
-          status: expect.stringMatching(/^(open|restricted|closed)$/),
-          maxForeign: expect.any(Number),
+          status: expect.stringMatching(/^(open|restricted|closed|unknown)$/),
+          verificationStatus: expect.stringMatching(/^(located|declared_gap)$/),
         }),
         licensing: expect.any(Array),
         transition: expect.objectContaining({
@@ -32,6 +42,65 @@ describe("kbli-data", () => {
         keywords: expect.any(Array),
       }),
     );
+  });
+
+  it("atomically withholds every PMA claim on gaps and preserves located tuples", () => {
+    const gap = getCode("01111");
+    const located = getCode("02102");
+
+    expect(gap?.pma).toMatchObject({
+      status: "unknown",
+      maxForeign: null,
+      condition: null,
+      isPriority: false,
+      note: null,
+      source: null,
+      verificationStatus: "declared_gap",
+      officialBasis: null,
+      sourceVintage: null,
+      capSpecial: false,
+      capVerified: false,
+      routeTo: null,
+      citation: null,
+    });
+    expect(located?.pma).toMatchObject({
+      status: "open",
+      maxForeign: 100,
+      verificationStatus: "located",
+      sourceVintage: "2021-05-25",
+    });
+    expect(located?.pma.officialBasis).toEqual(expect.any(String));
+    expect(located?.pma.citation).toEqual(expect.any(String));
+
+    const codes = getAllCodes();
+    const gaps = codes.filter(
+      (code) => code.pma.verificationStatus === "declared_gap",
+    );
+    const locatedCodes = codes.filter(
+      (code) => code.pma.verificationStatus === "located",
+    );
+    expect(gaps).toHaveLength(1505);
+    expect(locatedCodes).toHaveLength(54);
+    for (const code of gaps) {
+      expect(code.pma, code.code).toMatchObject({
+        status: "unknown",
+        maxForeign: null,
+        condition: null,
+        source: null,
+        officialBasis: null,
+        sourceVintage: null,
+        capVerified: false,
+        citation: null,
+      });
+      expect(code.intel_2026, `${code.code} intel`).toBeUndefined();
+      expect(code.baliL4, `${code.code} Bali L4`).toBeUndefined();
+      expect(code.tier, `${code.code} tier`).not.toBe("gold");
+    }
+    expect(located?.intel_2026).toBeDefined();
+    expect(located?.baliL4).toBeDefined();
+    for (const code of locatedCodes) {
+      expect(hasPublishablePmaCap(code.pma), code.code).toBe(true);
+    }
   });
 
   it("finds a known food-service code with transformed title and section data", () => {

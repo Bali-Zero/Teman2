@@ -69,6 +69,10 @@ RECORD_50113 = {
     ),
     "pma_status": "TERBATAS",
     "pma_max_asing": 49,
+    "pma_verification_status": "located",
+    "pma_official_basis": "Perpres 10/2021 Lampiran III located fixture",
+    "pma_source_vintage": "2021-05-25",
+    "pma_cap_verified": True,
     "per_skala": [],
     "per_skala_disputed_pp28_collision": [{"kategori_risiko": "Menengah Tinggi"}],
     "_data_note": (
@@ -102,7 +106,7 @@ RECORD_68112 = {
             "register the activity via NIB. **Licensing not yet defined in OSS for this new "
             "code:** OSS has not published a risk-based standard (Sertifikat Standar / "
             "standar usaha) for 68112 under KBLI 2025 (ruang-lingkup returns 404). The risk "
-            "level and \"Standard Certificate / LSPr self-assessment\" shown here previously "
+            'level and "Standard Certificate / LSPr self-assessment" shown here previously '
             "were a code-number collision — they belonged to a *different* activity, "
             "MICE-venue rental, which does **not** apply to residential leasing. Confirm "
             "current OSS requirements before filing."
@@ -126,7 +130,9 @@ RECORD_49213 = {
             "kewenangan": ["Bupati/Wali Kota"],
         },
     ],
-    "per_skala_disputed_pp28_collision": [{"kategori_risiko": "Menengah Tinggi", "kewenangan": ["Gubernur"]}],
+    "per_skala_disputed_pp28_collision": [
+        {"kategori_risiko": "Menengah Tinggi", "kewenangan": ["Gubernur"]}
+    ],
     "_data_note": "KBLI 2025 code 49213 ... per_skala restored from 3 per-ancestor rows.",
     "intel_2026": {
         "whatYouNeed": "This activity is open to foreign investment through a PMA company.",
@@ -139,10 +145,18 @@ RECORD_HEALTHY = {
     "judul": "Restoran",
     "uraian": "Aktivitas penyediaan makanan di bangunan tetap.",
     "pma_status": "TERBUKA",
-    "per_skala": [{"skala_usaha": ["Besar"], "kategori_risiko": "Menengah Tinggi", "perizinan": ["NIB"]}],
+    "per_skala": [
+        {"skala_usaha": ["Besar"], "kategori_risiko": "Menengah Tinggi", "perizinan": ["NIB"]}
+    ],
 }
 
-NARROW_CAPITAL_DENY_LIST = ("Rp 10", "Modal Disetor", "modal disetor", "paid-up capital", "Ten Billion")
+NARROW_CAPITAL_DENY_LIST = (
+    "Rp 10",
+    "Modal Disetor",
+    "modal disetor",
+    "paid-up capital",
+    "Ten Billion",
+)
 
 # The exact synthesized-bullet pattern this script's own renderer produces
 # for a non-empty per_skala — the ONLY thing a gap-code's Perizinan section
@@ -188,9 +202,10 @@ def test_gap_code_50113_perizinan_is_whatyouneed_verbatim_no_synthesized_bullet(
     assert _SYNTHESIZED_BULLET_PREFIX not in section
 
 
-def test_gap_code_68112_perizinan_is_whatyouneed_verbatim_no_synthesized_bullet():
+def test_gap_code_68112_withholds_editorial_without_a_located_pma_tuple():
     section = build_perizinan_section(RECORD_68112)
-    assert section == RECORD_68112["intel_2026"]["whatYouNeed"]
+    assert "belum dapat diverifikasi" in section
+    assert RECORD_68112["intel_2026"]["whatYouNeed"] not in section
     assert _SYNTHESIZED_BULLET_PREFIX not in section
 
 
@@ -204,6 +219,34 @@ def test_gap_code_68112_content_never_contains_capital_deny_tokens():
     content = build_cured_content("68112", RECORD_68112)
     for token in NARROW_CAPITAL_DENY_LIST:
         assert token not in content, f"unexpected capital-figure token {token!r} in cured content"
+
+
+def test_declared_pma_gap_withholds_raw_pma_editorial_and_audit_prose():
+    content = build_cured_content("68112", RECORD_68112)
+    metadata = build_cured_metadata("68112", RECORD_68112, old_metadata={})
+
+    assert "Status PMA: NOT_VERIFIED" in content
+    assert "Status PMA: TERBUKA" not in content
+    assert "Maksimum Kepemilikan Asing: 100" not in content
+    assert RECORD_68112["intel_2026"]["whatYouNeed"] not in content
+    assert RECORD_68112["_data_note"] not in content
+    assert metadata["pma_status"] == "NOT_VERIFIED"
+    assert metadata["pma_max_asing"] is None
+    assert metadata["pma_verification_status"] == "declared_gap"
+    assert "_data_note" not in metadata
+
+
+def test_located_special_cap_is_rendered_without_a_percentage_suffix():
+    record = dict(
+        RECORD_50113,
+        pma_max_asing="special",
+        pma_cap_special=True,
+    )
+
+    content = build_cured_content("47221", record)
+
+    assert "Kepemilikan Asing: kondisi khusus non-persentase" in content
+    assert "special%" not in content
 
 
 def test_gap_code_content_never_contains_synthesized_bullet_line():
@@ -287,13 +330,17 @@ def test_gap_code_flagged_as_gap_in_plan():
 
 
 def test_cured_metadata_gap_code_per_skala_replaced_with_empty_list():
-    meta = build_cured_metadata("50113", RECORD_50113, old_metadata={"per_skala": [{"fabricated": True}]})
+    meta = build_cured_metadata(
+        "50113", RECORD_50113, old_metadata={"per_skala": [{"fabricated": True}]}
+    )
     assert meta["per_skala"] == []
     assert meta["licensing_status"] == "PENDING_REGULATION"
 
 
 def test_cured_metadata_restored_code_per_skala_replaced_with_real_rows():
-    meta = build_cured_metadata("49213", RECORD_49213, old_metadata={"per_skala": [{"fabricated": True}]})
+    meta = build_cured_metadata(
+        "49213", RECORD_49213, old_metadata={"per_skala": [{"fabricated": True}]}
+    )
     assert meta["per_skala"] == RECORD_49213["per_skala"]
     assert "fabricated" not in str(meta["per_skala"])
 
@@ -402,7 +449,13 @@ def test_archive_params_preserves_content_byte_exact():
 
 
 def test_archive_params_handles_missing_metadata_gracefully():
-    current_row = {"judul": "x", "content": "y", "metadata": None, "created_at": None, "updated_at": None}
+    current_row = {
+        "judul": "x",
+        "content": "y",
+        "metadata": None,
+        "created_at": None,
+        "updated_at": None,
+    }
     params = archive_params("50113", current_row)
     import json as _json
 
@@ -491,7 +544,9 @@ def test_fetch_conformance_report_refuses_cannot_verify(monkeypatch, tmp_path):
     """Exit 4 carries an EMPTY divergence list — byte-identical to a healthy
     fleet. Reading it as 'nothing to cure' is how a cure becomes a silent
     no-op (W84: absence of a reading is not alignment)."""
-    script = _pin_detector(monkeypatch, tmp_path, _Proc(4, stdout="CANNOT VERIFY: table snapshot unavailable"))
+    script = _pin_detector(
+        monkeypatch, tmp_path, _Proc(4, stdout="CANNOT VERIFY: table snapshot unavailable")
+    )
     with pytest.raises(RuntimeError, match="CANNOT-VERIFY"):
         fetch_conformance_report(script)
 
@@ -650,7 +705,9 @@ def test_repo_layout_resolves_to_the_real_detector():
 
 def test_container_layout_resolves_to_none_instead_of_raising():
     """GUILT: the exact path the deployed image uses. Must be a value, not a crash."""
-    assert _cure.find_conformance_script(_Path("/app/backend/scripts/kbli_documents_cure.py")) is None
+    assert (
+        _cure.find_conformance_script(_Path("/app/backend/scripts/kbli_documents_cure.py")) is None
+    )
 
 
 def test_a_fixed_parent_index_would_still_crash_on_the_container_layout():
@@ -939,7 +996,9 @@ def test_accepts_a_snapshot_captured_just_now(monkeypatch, tmp_path):
         "backend.scripts.kbli_documents_cure.subprocess.run",
         lambda *a, **k: _Proc(0, stdout='{"licensing_divergent": []}'),
     )
-    fresh = (datetime.now(timezone.utc) - timedelta(minutes=SNAPSHOT_MAX_AGE_MINUTES - 5)).isoformat()
+    fresh = (
+        datetime.now(timezone.utc) - timedelta(minutes=SNAPSHOT_MAX_AGE_MINUTES - 5)
+    ).isoformat()
     assert fetch_conformance_report(script, table_json=snap, snapshot_captured_at=fresh) == {
         "licensing_divergent": []
     }
@@ -959,7 +1018,9 @@ def test_refuses_an_unparseable_capture_time(tmp_path):
     snap = tmp_path / "snap.json"
     snap.write_text("[]", encoding="utf-8")
     with pytest.raises(RuntimeError, match="not ISO8601"):
-        fetch_conformance_report(tmp_path / "d.py", table_json=snap, snapshot_captured_at="yesterday")
+        fetch_conformance_report(
+            tmp_path / "d.py", table_json=snap, snapshot_captured_at="yesterday"
+        )
 
 
 def test_refuses_a_snapshot_file_that_is_not_there(tmp_path):
@@ -1026,9 +1087,7 @@ def _repo_root_obl() -> _Path_obl:
     raise AssertionError(f"canonical dataset not found walking up from {here}")
 
 
-_CANONICAL_OBL = (
-    _repo_root_obl() / "data" / "source_documents" / "KBLI_2025_FINAL_CLEAN.json"
-)
+_CANONICAL_OBL = _repo_root_obl() / "data" / "source_documents" / "KBLI_2025_FINAL_CLEAN.json"
 
 
 def _canonical_by_code():
@@ -1087,9 +1146,7 @@ def test_markup_from_the_extraction_never_reaches_the_client():
 
 def test_an_oversized_block_declares_its_truncation_instead_of_being_cut_quietly():
     """W97 — a silent cut reads downstream as "this is everything"."""
-    record = {
-        "per_skala": [_scale(f"S{i}", ["x" * 900 + str(i)]) for i in range(40)]
-    }
+    record = {"per_skala": [_scale(f"S{i}", ["x" * 900 + str(i)]) for i in range(40)]}
     block = "\n".join(build_kewajiban_section(record))
     assert "tidak ditampilkan di sini" in block
     assert len(block) <= KEWAJIBAN_BLOCK_MAX_CHARS + 2000, "the cap did not bound the block"
@@ -1214,7 +1271,9 @@ def test_the_delivery_selector_keeps_only_machine_seeds_and_names_the_rest():
     rows = {
         "96230": {"content": machine},
         "55203": {"content": _EDITORIAL_2026_02_17},
-        "47401": {"content": "# KBLI 47401 - Retail\n\n## Informasi Umum\nx\n\n## Sejarah\nhand-written\n"},
+        "47401": {
+            "content": "# KBLI 47401 - Retail\n\n## Informasi Umum\nx\n\n## Sejarah\nhand-written\n"
+        },
     }
     kept, n_present = select_machine_template_rows(list(rows), rows)
     assert n_present == 3
@@ -1271,10 +1330,13 @@ def test_main_uses_the_selector_rather_than_its_own_inline_filter():
     src = _Path_obl(__file__).resolve()
     root = _repo_root_obl()
     tree = ast.parse(
-        (root / "apps/backend-rag/backend/scripts/kbli_documents_cure.py").read_text(encoding="utf-8")
+        (root / "apps/backend-rag/backend/scripts/kbli_documents_cure.py").read_text(
+            encoding="utf-8"
+        )
     )
     main_fn = next(
-        n for n in ast.walk(tree)
+        n
+        for n in ast.walk(tree)
         if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == "main"
     )
     called = {
@@ -1307,9 +1369,11 @@ def test_two_scope_selectors_together_are_refused_never_silently_ranked(flags):
     msg = selector_conflict(**flags)
     assert msg is not None
     assert "refusing to union them" in msg
-    for name, on in (("--all-quarantined", flags["quarantined"]),
-                     ("--all-licensing-absent", flags["licensing_absent"]),
-                     ("--all-machine-template", flags["machine_template"])):
+    for name, on in (
+        ("--all-quarantined", flags["quarantined"]),
+        ("--all-licensing-absent", flags["licensing_absent"]),
+        ("--all-machine-template", flags["machine_template"]),
+    ):
         assert (name in msg) is on, "the refusal must name exactly the selectors that were on"
 
 
@@ -1387,9 +1451,18 @@ def test_cure_run_strips_and_returns_clean_value_cure():
 
 def test_apply_passes_cli_cure_run_to_archive_row_cure(monkeypatch):
     """The cure_run from --cure-run must reach archive_row verbatim."""
-    monkeypatch.setattr(_sys, "argv", [
-        "cure", "--only", "50113", "--apply", "--cure-run", "kbli_cure:2026-08-08",
-    ])
+    monkeypatch.setattr(
+        _sys,
+        "argv",
+        [
+            "cure",
+            "--only",
+            "50113",
+            "--apply",
+            "--cure-run",
+            "kbli_cure:2026-08-08",
+        ],
+    )
     monkeypatch.setenv("DATABASE_URL", "postgresql://fake/fake")
 
     async def _dataset(_source):
@@ -1403,14 +1476,16 @@ def test_apply_passes_cli_cure_run_to_archive_row_cure(monkeypatch):
             return "OK"
 
         async def fetch(self, _sql, codes):
-            return [{
-                "kode_kbli": "50113",
-                "judul": "STALE",
-                "content": "stale fabricated content",
-                "metadata": {},
-                "created_at": None,
-                "updated_at": None,
-            }]
+            return [
+                {
+                    "kode_kbli": "50113",
+                    "judul": "STALE",
+                    "content": "stale fabricated content",
+                    "metadata": {},
+                    "created_at": None,
+                    "updated_at": None,
+                }
+            ]
 
         async def fetchval(self, _sql, *_a):
             return True  # has cure_run column + has composite constraint

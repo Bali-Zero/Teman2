@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { cn } from '@/lib/utils';
+import { cn } from "@/lib/utils";
 
 interface KBLIFiltersProps {
   pmaFilter: string | null;
@@ -8,7 +8,13 @@ interface KBLIFiltersProps {
   onPMAChange: (value: string | null) => void;
   onTransitionChange: (value: string | null) => void;
   counts?: {
-    pma: { all: number; open: number; restricted: number; closed: number };
+    pma: {
+      all: number;
+      open: number;
+      restricted: number;
+      closed: number;
+      unknown: number;
+    };
     transition: { new: number; merged: number; renamed: number };
   };
 }
@@ -29,10 +35,10 @@ function Chip({
       type="button"
       onClick={onClick}
       className={cn(
-        'rounded-full border px-3 py-1 text-xs font-medium transition-all backdrop-blur-md',
+        "rounded-full border px-3 py-1 text-xs font-medium transition-all backdrop-blur-md",
         active
-          ? 'border-[var(--kbli-accent)] bg-[var(--kbli-accent)]/10 text-[var(--kbli-accent)] shadow-[0_0_12px_rgba(220,38,38,0.2)]'
-          : 'border-white/10 bg-white/5 text-[var(--foreground-muted)] hover:bg-white/10 hover:border-white/20 hover:text-[var(--foreground)]'
+          ? "border-[var(--kbli-accent)] bg-[var(--kbli-accent)]/10 text-[var(--kbli-accent)] shadow-[0_0_12px_rgba(220,38,38,0.2)]"
+          : "border-white/10 bg-white/5 text-[var(--foreground-muted)] hover:bg-white/10 hover:border-white/20 hover:text-[var(--foreground)]",
       )}
       aria-pressed={active}
     >
@@ -75,25 +81,36 @@ export function KBLIFilters({
           All
         </Chip>
         <Chip
-          active={pmaFilter === 'open'}
-          onClick={() => onPMAChange(pmaFilter === 'open' ? null : 'open')}
+          active={pmaFilter === "open"}
+          onClick={() => onPMAChange(pmaFilter === "open" ? null : "open")}
           count={counts?.pma.open}
         >
           ✅ Open
         </Chip>
         <Chip
-          active={pmaFilter === 'restricted'}
-          onClick={() => onPMAChange(pmaFilter === 'restricted' ? null : 'restricted')}
+          active={pmaFilter === "restricted"}
+          onClick={() =>
+            onPMAChange(pmaFilter === "restricted" ? null : "restricted")
+          }
           count={counts?.pma.restricted}
         >
           ⚠️ Restricted
         </Chip>
         <Chip
-          active={pmaFilter === 'closed'}
-          onClick={() => onPMAChange(pmaFilter === 'closed' ? null : 'closed')}
+          active={pmaFilter === "closed"}
+          onClick={() => onPMAChange(pmaFilter === "closed" ? null : "closed")}
           count={counts?.pma.closed}
         >
           🚫 Closed
+        </Chip>
+        <Chip
+          active={pmaFilter === "unknown"}
+          onClick={() =>
+            onPMAChange(pmaFilter === "unknown" ? null : "unknown")
+          }
+          count={counts?.pma.unknown}
+        >
+          ❓ Not verified
         </Chip>
       </div>
 
@@ -106,21 +123,30 @@ export function KBLIFilters({
         <span className="w-20 shrink-0 text-xs font-medium text-[var(--foreground-muted)]">
           2025 Status:
         </span>
-        <Chip active={!transitionFilter} onClick={() => onTransitionChange(null)}>
+        <Chip
+          active={!transitionFilter}
+          onClick={() => onTransitionChange(null)}
+        >
           All
         </Chip>
         <Chip
-          active={transitionFilter === 'BPS_ONLY'}
-          onClick={() => onTransitionChange(transitionFilter === 'BPS_ONLY' ? null : 'BPS_ONLY')}
+          active={transitionFilter === "BPS_ONLY"}
+          onClick={() =>
+            onTransitionChange(
+              transitionFilter === "BPS_ONLY" ? null : "BPS_ONLY",
+            )
+          }
           count={counts?.transition.new}
         >
           🆕 New
         </Chip>
         <Chip
-          active={transitionFilter === 'MATCH_CON_AGGREGAZIONE'}
+          active={transitionFilter === "MATCH_CON_AGGREGAZIONE"}
           onClick={() =>
             onTransitionChange(
-              transitionFilter === 'MATCH_CON_AGGREGAZIONE' ? null : 'MATCH_CON_AGGREGAZIONE'
+              transitionFilter === "MATCH_CON_AGGREGAZIONE"
+                ? null
+                : "MATCH_CON_AGGREGAZIONE",
             )
           }
           count={counts?.transition.merged}
@@ -128,10 +154,12 @@ export function KBLIFilters({
           🔀 Merged
         </Chip>
         <Chip
-          active={transitionFilter === 'CODICE_RINUMERATO'}
+          active={transitionFilter === "CODICE_RINUMERATO"}
           onClick={() =>
             onTransitionChange(
-              transitionFilter === 'CODICE_RINUMERATO' ? null : 'CODICE_RINUMERATO'
+              transitionFilter === "CODICE_RINUMERATO"
+                ? null
+                : "CODICE_RINUMERATO",
             )
           }
           count={counts?.transition.renamed}

@@ -30,7 +30,7 @@ function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
 }
 
 describe("Visa Oracle evaluation HTTP client", () => {
-  it("uses the generated endpoint contract without semantic query data", async () => {
+  it("labels organic browser evaluations explicitly and sends no other query data", async () => {
     const fetchImpl = vi.fn<typeof fetch>(async () =>
       jsonResponse(makeVisaOracleResponse()),
     );
@@ -44,7 +44,12 @@ describe("Visa Oracle evaluation HTTP client", () => {
     expect(result.mode).toBe("ENGINE");
     expect(fetchImpl).toHaveBeenCalledOnce();
     const [url, init] = fetchImpl.mock.calls[0];
-    expect(url).toBe("/api/visa-oracle/evaluate");
+    expect(url).toBe("/api/visa-oracle/evaluate?traffic_source=real");
+    const parsedUrl = new URL(String(url), "http://localhost");
+    expect(parsedUrl.pathname).toBe("/api/visa-oracle/evaluate");
+    expect([...parsedUrl.searchParams.entries()]).toEqual([
+      ["traffic_source", "real"],
+    ]);
     expect(init).toMatchObject({
       method: "POST",
       body: JSON.stringify(REQUEST),

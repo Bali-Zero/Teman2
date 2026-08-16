@@ -4,14 +4,12 @@
 // Runs server-side at build time (Next.js static generation).
 // =============================================================================
 
-import {
-  humanizeInternalEnums,
-  humanizeIntelBlock,
-} from "@/lib/kbli-status-labels";
+import { humanizeIntelBlock } from "@/lib/kbli-status-labels";
 import fs from "fs";
 import path from "path";
 import type {
   KBLICode,
+  KBLIGoldContent,
   KBLIRawCode,
   KBLIRawDataFile,
   KBLISection,
@@ -22,15 +20,23 @@ import type {
 } from "./kbli-types";
 
 import { ENGLISH_TITLES } from "./kbli-english";
-import { resolvePmaCap } from "./kbli-pma-cap";
-import { perpresCitation } from "./kbli-perpres-locator";
+import {
+  discloseBaliL4,
+  disclosePmaInfo,
+  normalizedPmaStatus,
+} from "./kbli-pma-disclosure";
+import {
+  hasCertifiedCanonicalIntel,
+  hasCertifiedMouthGold,
+  withNeutralKbliChatOpener,
+} from "./kbli-editorial-certification";
 import { ENGLISH_TITLES_GENERATED } from "./kbli-english-generated";
 import { resolveLicenseType } from "./kbli-derive";
-import { GOLD_CODES } from "./kbli-gold-codes";
 import { getSectionVisual } from "./kbli-cover-design";
 import { deriveProvenance } from "./kbli-provenance";
 import { riskDispute } from "./kbli-risk-dispute";
 import { perpresSlice } from "./kbli-perpres-slice";
+import { perpresCitation } from "./kbli-perpres-locator";
 import { getSectionFromCode } from "./kbli-section";
 
 // =============================================================================
@@ -226,17 +232,8 @@ function toTitleCase(text: string): string {
 // PMA status mapping
 // =============================================================================
 
-function mapPmaStatus(raw: string): KBLIPmaStatus {
-  switch (raw) {
-    case "TERBUKA":
-      return "open";
-    case "TERBATAS":
-      return "restricted";
-    case "TERTUTUP":
-      return "closed";
-    default:
-      return "open";
-  }
+export function mapPmaStatus(raw: string): KBLIPmaStatus {
+  return normalizedPmaStatus(raw);
 }
 
 // =============================================================================
@@ -303,8 +300,8 @@ function extractKeywords(title: string, description: string): string[] {
 // Tier assignment
 // =============================================================================
 
-function assignTier(code: string): KBLITier {
-  if (GOLD_CODES.has(code)) return "gold";
+function assignTier(code: string, goldCertified: boolean): KBLITier {
+  if (goldCertified) return "gold";
   // Silver tier: codes with English titles available (curated or generated)
   if (ENGLISH_TITLES[code] || ENGLISH_TITLES_GENERATED[code]) return "silver";
   return "bronze";
@@ -321,8 +318,12 @@ const META_USES_FULL_EN = process.env.NEXT_PUBLIC_KBLI_META_EN === "1";
 // Transform a single raw record
 // =============================================================================
 
-function transformRecord(raw: KBLIRawCode): KBLICode {
+function transformRecord(
+  raw: KBLIRawCode,
+  gold: Record<string, KBLIGoldContent>,
+): KBLICode {
   const code = raw.kode_kbli_2025;
+  const provenance = deriveProvenance(raw);
   const section = getSectionFromCode(code);
   const sectionMeta = section ? SECTION_META[section] : null;
 
@@ -336,22 +337,14 @@ function transformRecord(raw: KBLIRawCode): KBLICode {
     ? titleEn
     : (ENGLISH_TITLES[code] ?? titleId);
 
-  const pma = {
-    status: mapPmaStatus(raw.pma_status),
-    maxForeign: resolvePmaCap(raw),
-    condition: raw.pma_kondisi,
-    isPriority: raw.pma_prioritas,
-    note: raw.pma_nota,
-    source: raw.pma_source,
-    capSpecial: raw.pma_cap_special === true,
-    capVerified: raw.pma_cap_verified !== false, // default true unless explicitly flagged unverified
-    routeTo: raw.pma_route_to ?? null,
-    // The ARTICLE, not just the instrument. `source` above is the blanket
-    // "Perpres 10/2021, 49/2021" every record carries; this is which of its
-    // articles actually names this code. Read from an artifact the compiler
-    // emits — never re-derived here, or the two would drift apart.
-    citation: perpresCitation(code),
-  };
+  const pma = disclosePmaInfo(raw, provenance, perpresCitation(code));
+  const pmaVerdictLocated = pma.verificationStatus === "located";
+  const canonicalIntelCertified = hasCertifiedCanonicalIntel(
+    code,
+    pma,
+    raw.intel_2026,
+  );
+  const goldCertified = hasCertifiedMouthGold(code, pma, gold[code]);
 
   const licensing: KBLILicenseByScale[] = (raw.per_skala ?? []).map(
     (entry) => ({
@@ -397,41 +390,20 @@ function transformRecord(raw: KBLIRawCode): KBLICode {
     pma,
     licensing,
     transition,
-    tier: assignTier(code),
+    tier: assignTier(code, goldCertified),
     keywords: extractKeywords(raw.judul, raw.uraian),
     // Internal pipeline symbols (OK_or_HIGHER_RISK, BPS_ONLY, …) are resolved to
     // the labels the KBLI badges use, at the loader, so no reader-facing surface
     // can leak one by being the surface nobody remembered to wrap. Presentation
     // only — the verdict itself is untouched. See @/lib/kbli-status-labels.
-    intel_2026: humanizeIntelBlock(raw.intel_2026),
+    intel_2026: canonicalIntelCertified
+      ? humanizeIntelBlock(withNeutralKbliChatOpener(code, raw.intel_2026!))
+      : undefined,
     // L4 — Bali sovereign-local status (national PMA openness != Bali registrability).
     // Mirrors the transform in kbli-data.server.ts; this is the module the
     // /kbli/[code] page actually consumes via getCode()/getAllCodes().
-    baliL4: raw.l4_bali?.status
-      ? {
-          status: raw.l4_bali.status,
-          // Reader-facing prose: it is the badge tooltip AND is embedded verbatim
-          // into the generated FAQ answer (kbli-faq.ts). 8 codes narrate
-          // "Previous status: OK_or_HIGHER_RISK" — same cure as the editorial layer.
-          // NOTE the deliberate asymmetry with `_data_note`, which is NOT humanised:
-          // there the symbol is a verbatim CITATION of the canonical record used as
-          // divergence evidence, and rewriting evidence would corrupt the audit trail.
-          reason: humanizeInternalEnums(raw.l4_bali.reason || ""),
-          confidence: raw.l4_bali.confidence || "MEDIUM",
-          needsReview: !!raw.l4_bali.needs_review,
-          blocked: !!raw.l4_bali.blocked,
-          from2020: raw.l4_bali.from_2020 ?? null,
-          moratorium: raw.l4_bali.moratorium
-            ? {
-                rule: raw.l4_bali.moratorium.rule || "",
-                effective: raw.l4_bali.moratorium.effective || "",
-                source: raw.l4_bali.moratorium.source || "",
-                virtualOffice: raw.l4_bali.moratorium.virtual_office || "",
-              }
-            : undefined,
-        }
-      : undefined,
-    provenance: deriveProvenance(raw),
+    baliL4: discloseBaliL4(raw, pmaVerdictLocated),
+    provenance,
     // Mirrors the transform in kbli-data.server.ts (W88/#9 — one fact, two
     // readers): both must set it or the two readers disagree on the 30
     // disputed codes exactly as the perpres-locator cross-reader test guards.
@@ -479,7 +451,15 @@ function loadData(): void {
   }
 
   const raw: KBLIRawDataFile = JSON.parse(rawData);
-  const codes = raw.data.map(transformRecord);
+  const goldPath = path.join(process.cwd(), "data", "kbli-gold-all.json");
+  let gold: Record<string, KBLIGoldContent> = {};
+  try {
+    const parsedGold = JSON.parse(fs.readFileSync(goldPath, "utf-8"));
+    gold = parsedGold.data ?? parsedGold;
+  } catch {
+    process.stderr.write(`[kbli] Failed to load gold data from: ${goldPath}\n`);
+  }
+  const codes = raw.data.map((record) => transformRecord(record, gold));
 
   // Build lookup maps
   const codeMap = new Map<string, KBLICode>();

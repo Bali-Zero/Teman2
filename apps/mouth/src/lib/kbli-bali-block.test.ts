@@ -28,6 +28,10 @@ interface RawRecord {
   per_skala?: unknown[];
   pma_status?: string;
   pma_max_asing?: number;
+  pma_source?: string | null;
+  pma_official_basis?: string | null;
+  pma_source_vintage?: string | null;
+  pma_verification_status?: "located" | "declared_gap";
   pma_cap_special?: boolean;
 }
 const RECORDS = (rawData as { data: RawRecord[] }).data;
@@ -62,6 +66,10 @@ function toKbliCodeForFaq(r: RawRecord): KBLICode {
             ? "restricted"
             : "closed",
       maxForeign: r.pma_max_asing ?? null,
+      source: r.pma_source ?? null,
+      verificationStatus: r.pma_verification_status ?? "declared_gap",
+      officialBasis: r.pma_official_basis ?? null,
+      sourceVintage: r.pma_source_vintage ?? null,
       capVerified: false,
       capSpecial: r.pma_cap_special ?? false,
       condition: null,
@@ -73,6 +81,25 @@ function toKbliCodeForFaq(r: RawRecord): KBLICode {
           blocked: r.l4_bali.blocked ?? false,
         }
       : null,
+    provenance: {
+      state: "pending",
+      definition: { locator: null, assembly: null },
+      licensing: {
+        status: "pending_crosswalk",
+        locator: null,
+        vintage: null,
+        noOssScope: true,
+        contentInheritedFrom: null,
+      },
+      pma: {
+        source: r.pma_source ?? null,
+        status: r.pma_verification_status ?? "declared_gap",
+        locator: r.pma_official_basis ?? null,
+        vintage: r.pma_source_vintage ?? null,
+      },
+      dataNote: null,
+      disputed: null,
+    },
   } as unknown as KBLICode;
 }
 
@@ -480,11 +507,11 @@ describe("the FAQ + FAQPage JSON-LD — the THIRD render site in this file, FIFT
   });
 
   it("pins the population: 454 answers, only 7 are MSME-reserved", () => {
-    // Mirrors the builder's own guard: pma.status === "open" && baliL4.blocked,
-    // where mapPmaStatus treats anything but TERBATAS/TERTUTUP as open.
+    // Mirrors the builder's own guard: pma.status === "open" && baliL4.blocked.
+    // Only the exact canonical TERBUKA token maps to open.
     const openNationally = (r: RawRecord) => {
       const s = (r.pma_status ?? "").toUpperCase();
-      return s !== "TERBATAS" && s !== "TERTUTUP";
+      return s === "TERBUKA";
     };
     const answers = BLOCKED.filter(openNationally);
     const msme = answers.filter(
@@ -876,27 +903,66 @@ describe("the FAQ answer for a national closure", () => {
     // absence-from-the-annex default — and are what this rule actually changes.
     // They stay in the list regardless: the point is to stop depending on a
     // default fill that can move underneath us.
-    let changed = 0;
+    let declaredGaps = 0;
     for (const r of [...national, ...byCode]) {
       const answer = buildKbliFaq(toKbliCodeForFaq(r))[0].answer.toLowerCase();
       // No branch, ever, may route the reader to another province.
       expect(answer, r.kode_kbli_2025).not.toContain("outside bali it is open");
       expect(answer, r.kode_kbli_2025).not.toContain("nationally yes");
       if (r.pma_status === "TERBUKA" && (r.pma_max_asing ?? 0) > 0) {
-        expect(answer, r.kode_kbli_2025).toContain("everywhere in indonesia");
-        changed += 1;
+        if (
+          r.pma_verification_status === "located" &&
+          r.pma_official_basis &&
+          r.pma_source_vintage
+        ) {
+          expect(answer, r.kode_kbli_2025).toContain("everywhere in indonesia");
+        } else {
+          expect(answer, r.kode_kbli_2025).toContain("not yet verified");
+          expect(answer, r.kode_kbli_2025).not.toContain(
+            "everywhere in indonesia",
+          );
+          declaredGaps += 1;
+        }
       }
     }
-    // Premise: if this ever hits 0 the loop above is asserting nothing.
-    expect(changed).toBeGreaterThanOrEqual(5);
+    // The raw-open/default-filled national-closure stratum currently consists
+    // only of declared gaps. The located innocence arm is covered separately;
+    // here we pin that the gap never borrows certainty from the Bali layer.
+    expect(declaredGaps).toBeGreaterThan(0);
   });
 
-  it("INNOCENCE: a genuine Bali-only block keeps the 'nationally yes' answer", () => {
+  it("INNOCENCE: a located Bali-only block keeps the 'nationally yes' answer", () => {
     const baliOnly = BLOCKED.filter(
       (r) => r.l4_bali?.status === "CHIUSO_MORATORIA_BALI",
     );
     expect(baliOnly.length).toBeGreaterThan(0);
-    const answer = buildKbliFaq(toKbliCodeForFaq(baliOnly[0]))[0].answer;
-    expect(answer).toContain("Nationally yes");
+    const base = toKbliCodeForFaq(baliOnly[0]);
+    // The current canonical has no located member in this stratum. Promote one
+    // synthetic copy with all three affirmative fields so the innocence arm
+    // remains constrained without weakening the real-data gap expectation.
+    const located: KBLICode = {
+      ...base,
+      pma: {
+        ...base.pma,
+        maxForeign: 100,
+        capSpecial: false,
+        capVerified: true,
+        verificationStatus: "located",
+        officialBasis: "Perpres fixture locator",
+        sourceVintage: "2021-05-25",
+      },
+      provenance: {
+        ...base.provenance!,
+        pma: {
+          source: base.pma.source,
+          status: "located",
+          locator: "Perpres fixture locator",
+          vintage: "2021-05-25",
+        },
+      },
+    };
+    const answer = buildKbliFaq(located)[0].answer;
+    expect(answer).toContain("Outside Bali it is open to a PT PMA");
+    expect(answer).toContain("100% foreign ownership");
   });
 });

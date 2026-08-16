@@ -192,6 +192,7 @@ COPY apps/backend-rag/*.py ./
 COPY apps/kbli-navigator/lib/kbli-gold-content.ts ./apps/kbli-navigator/lib/kbli-gold-content.ts
 COPY apps/kbli-navigator/data/kbli-2025.json ./apps/kbli-navigator/data/kbli-2025.json
 COPY data/source_documents/KBLI_2025_FINAL_CLEAN.json ./source_documents/KBLI_2025_FINAL_CLEAN.json
+COPY data/kbli-filiera/pma-editorial-certifications.json ./data/kbli-filiera/pma-editorial-certifications.json
 
 # Set Python path (cell-core included for explicit import resolution)
 ENV PYTHONPATH=/app:/app/backend:/app/packages/cell-core:/app/apps/crm-cell:/home/nuzantara/.local/lib/python3.11/site-packages

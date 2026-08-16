@@ -29,21 +29,36 @@ import { PMABadge } from "./PMABadge";
 
 describe("PMABadge — the cap extremes", () => {
   it("GUILT: a 0% ceiling is not a ceiling — this is the string that was live", () => {
-    render(<PMABadge status="restricted" maxForeign={0} />);
+    render(
+      <PMABadge
+        status="restricted"
+        maxForeign={0}
+        verdictVerified
+        capVerified
+      />,
+    );
     expect(screen.queryByText("· Max 0%")).toBeNull();
-    expect(screen.getByText("· closed (0%)")).toBeDefined();
+    expect(screen.getByText("· 0% foreign ownership")).toBeDefined();
+    expect(screen.getByText("Closed")).toBeDefined();
   });
 
   it("GUILT: a 100% ceiling restricts nothing, and must not go silent either", () => {
     // The old bound (`numeric < 100`) did not PRINT anything wrong here — it
     // printed nothing at all, leaving a bare "Restricted" whose qualifier the
     // reader cannot recover. Silence is the other way to be unhelpful.
-    render(<PMABadge status="restricted" maxForeign={100} />);
+    render(
+      <PMABadge
+        status="restricted"
+        maxForeign={100}
+        verdictVerified
+        capVerified
+      />,
+    );
     expect(screen.queryByText("· Max 100%")).toBeNull();
     expect(screen.getByText("· conditions apply")).toBeDefined();
   });
 
-  it("GUILT: a drifted non-numeric cap gets a qualifier, not silence", () => {
+  it("GUILT: an unmarked non-numeric cap is withheld, not treated as special", () => {
     // capSpecial and the "special" value are independent raw fields
     // (pma_cap_special / pma_max_asing); they agree on one record today and
     // nothing structural keeps them in step.
@@ -56,34 +71,74 @@ describe("PMABadge — the cap extremes", () => {
     // the POSITIVE string is what makes this discriminate, and silence on a
     // restricted code is the defect either way.
     render(
-      <PMABadge status="restricted" maxForeign="special" capSpecial={false} />,
+      <PMABadge
+        status="restricted"
+        maxForeign="special"
+        verdictVerified
+        capSpecial={false}
+      />,
     );
     expect(screen.queryByText(/special%/)).toBeNull();
     expect(screen.queryByText(/Max /)).toBeNull();
-    expect(screen.getByText("· conditions apply")).toBeDefined();
+    expect(screen.getByText("· cap not verified")).toBeDefined();
   });
 
   it("INNOCENCE: a real ceiling still prints as a ceiling", () => {
-    render(<PMABadge status="restricted" maxForeign={49} />);
+    render(
+      <PMABadge
+        status="restricted"
+        maxForeign={49}
+        verdictVerified
+        capVerified
+      />,
+    );
     expect(screen.getByText("· Max 49%")).toBeDefined();
   });
 
   it("INNOCENCE: an unverified cap keeps its qualifier", () => {
     render(
-      <PMABadge status="restricted" maxForeign={49} capVerified={false} />,
+      <PMABadge
+        status="restricted"
+        maxForeign={49}
+        verdictVerified
+        capVerified={false}
+      />,
     );
-    expect(screen.getByText("· ≈49% unverified")).toBeDefined();
+    expect(screen.getByText("· cap not verified")).toBeDefined();
+    expect(screen.queryByText(/49/)).toBeNull();
   });
 
   it("INNOCENCE: the special-distribution regime keeps its own wording", () => {
-    render(<PMABadge status="restricted" maxForeign="special" capSpecial />);
+    render(
+      <PMABadge
+        status="restricted"
+        maxForeign="special"
+        verdictVerified
+        capSpecial
+        capVerified
+      />,
+    );
     expect(screen.getByText("· special conditions")).toBeDefined();
+  });
+
+  it("withholds the special-cap claim when the cap is not verified", () => {
+    render(
+      <PMABadge
+        status="restricted"
+        maxForeign="special"
+        verdictVerified
+        capSpecial
+        capVerified={false}
+      />,
+    );
+    expect(screen.getByText("· cap not verified")).toBeDefined();
+    expect(screen.queryByText(/special conditions/)).toBeNull();
   });
 
   it("GUILT: no production call site may drop the provenance props", () => {
     // Every case above hands `capSpecial`/`capVerified` in by hand, so they
     // exercise a call shape the app did not actually use: KBLICard rendered
-    // <PMABadge> without either, silently taking the defaults (false/true) and
+    // <PMABadge> without either, silently taking ambiguous defaults and
     // ASSERTING a cap it was never told was verified. Adversarial review found
     // it; a fixture-driven card test would only have pinned the one call site
     // that existed today, so pin the PROPERTY instead — no call site, present
@@ -119,14 +174,76 @@ describe("PMABadge — the cap extremes", () => {
     for (const { file, text } of callSites) {
       expect(text, `${file} omits capSpecial`).toContain("capSpecial");
       expect(text, `${file} omits capVerified`).toContain("capVerified");
+      expect(text, `${file} omits verdictVerified`).toContain(
+        "verdictVerified",
+      );
     }
   });
 
   it("INNOCENCE: the open-status suffixes are untouched", () => {
-    const { unmount } = render(<PMABadge status="open" maxForeign={100} />);
+    const { unmount } = render(
+      <PMABadge status="open" maxForeign={100} verdictVerified capVerified />,
+    );
     expect(screen.getByText("· 100% Foreign")).toBeDefined();
     unmount();
-    render(<PMABadge status="open" maxForeign={100} baliBlocked />);
+    render(
+      <PMABadge
+        status="open"
+        maxForeign={100}
+        verdictVerified
+        capVerified
+        baliBlocked
+      />,
+    );
     expect(screen.getByText("· 100% nat'l · blocked in Bali")).toBeDefined();
+  });
+
+  it("GUILT: open status never synthesizes a missing or unverified 100% cap", () => {
+    const { unmount } = render(
+      <PMABadge status="open" maxForeign={null} verdictVerified />,
+    );
+    expect(screen.getByText("· cap not verified")).toBeDefined();
+    expect(screen.queryByText(/100%/)).toBeNull();
+    unmount();
+
+    render(
+      <PMABadge
+        status="open"
+        maxForeign={100}
+        verdictVerified
+        capVerified={false}
+      />,
+    );
+    expect(screen.getByText("· cap not verified")).toBeDefined();
+    expect(screen.queryByText(/100%/)).toBeNull();
+  });
+
+  it("GUILT: a closed verdict does not hide an unavailable ownership cap", () => {
+    render(
+      <PMABadge
+        status="closed"
+        maxForeign={null}
+        verdictVerified
+        capVerified={false}
+      />,
+    );
+    expect(screen.getByText("Closed")).toBeDefined();
+    expect(screen.getByText("· cap not verified")).toBeDefined();
+  });
+
+  it("GUILT: a verified zero cap overrides an inconsistent open label", () => {
+    render(
+      <PMABadge status="open" maxForeign={0} verdictVerified capVerified />,
+    );
+    expect(screen.getByText("Closed")).toBeDefined();
+    expect(screen.getByText("· 0% foreign ownership")).toBeDefined();
+    expect(screen.queryByText("Open")).toBeNull();
+  });
+
+  it("GUILT: an unverified legacy value never renders open, closed, or a percentage", () => {
+    render(<PMABadge status="open" maxForeign={100} />);
+    expect(screen.getByText("PMA unverified")).toBeDefined();
+    expect(screen.queryByText("Open")).toBeNull();
+    expect(screen.queryByText(/100%/)).toBeNull();
   });
 });

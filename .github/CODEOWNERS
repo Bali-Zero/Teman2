@@ -47,6 +47,14 @@
 /scripts/tests/test_prepush_suite_lock.sh            @Balizero1987
 /scripts/tests/test_prepush_tip_drift.sh             @Balizero1987
 
+# change-map path-aware CI gate (tests.yml `changes` job) — red-team
+# CRITICAL-1, 2026-08-14. Defense in depth alongside base-ref extraction:
+# these decide which required test suites a PR actually runs, so weakening
+# them is a merge-gate bypass, not routine CI maintenance.
+/scripts/ci/change_map.py                            @Balizero1987
+/scripts/ci/test_change_map.py                       @Balizero1987
+/scripts/ci/hotzone_changed_files.sh                 @Balizero1987
+
 # ---------------------------------------------------------------------------
 # Deploy / infra config — TIER 1
 # ---------------------------------------------------------------------------

@@ -8,8 +8,7 @@ export async function GET() {
     { total: codes.length, codes },
     {
       headers: {
-        "Cache-Control":
-          "public, s-maxage=86400, stale-while-revalidate=604800",
+        "Cache-Control": "no-store",
       },
     },
   );

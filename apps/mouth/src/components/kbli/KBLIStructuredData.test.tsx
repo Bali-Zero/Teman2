@@ -46,43 +46,98 @@ describe("KBLICodeJsonLd — pmaAttribution is source-aware (item E)", () => {
     expect(description).not.toContain("crosswalk to KBLI 2025 pending");
   });
 
-  it("innocence: a Perpres-sourced TERBATAS code keeps the existing structured-data clause verbatim", () => {
+  it("innocence: a located Perpres-sourced TERBATAS code is attributed directly", () => {
     const code = getAllCodes().find(
       (c) =>
         c.pma.status === "restricted" &&
         !!c.pma.source?.startsWith("Perpres 10/2021") &&
-        c.provenance?.pma.status !== "untraceable_basis",
+        c.provenance?.pma.status === "located",
     ) as KBLICode;
     expect(code).toBeDefined();
     const jsonLd = jsonLdOf(code);
-    expect(jsonLd.description as string).toContain(
-      "per Perpres 10/2021 as amended (crosswalk to KBLI 2025 pending)",
-    );
+    expect(jsonLd.description as string).toContain("per Perpres 10/2021");
   });
 });
 
-describe("structured data — Batch-A BPS ancestry cure", () => {
-  it("guilt: 01287 emits pending-crosswalk attribution and no obsolete gap in either JSON-LD block", () => {
+describe("structured data — whole-verdict PMA gate", () => {
+  it("guilt: 01287 emits the declared gap and no 100% ownership promise", () => {
     const code = getCode("01287") as KBLICode;
-    expect(code.provenance?.pma.status).toBe("pending_crosswalk");
+    expect(code.provenance?.pma.status).toBe("declared_gap");
 
     const article = JSON.stringify(jsonLdOf(code));
     const faq = JSON.stringify(faqJsonLdOf(code));
-    expect(article).toContain("crosswalk to KBLI 2025 pending");
+    expect(article).toContain("not yet verified");
     expect(faq).toContain("recorded KBLI 2020 ancestor(s) 01287");
-    expect(article).not.toContain(
-      "The official BPS crosswalk records no KBLI-2020 predecessor",
-    );
-    expect(faq).not.toContain(
-      "No official BPS 2020 → 2025 crosswalk ancestor is recorded",
-    );
+    expect(article).not.toContain("100% foreign ownership allowed");
+    expect(faq).not.toContain("open to 100% foreign ownership");
   });
 
-  it("innocence: a BPS-ancestry code keeps the pending-crosswalk attribution", () => {
-    const code = getCode("01111") as KBLICode;
-    expect(code.provenance?.pma.status).toBe("pending_crosswalk");
-    expect(JSON.stringify(jsonLdOf(code))).toContain(
-      "crosswalk to KBLI 2025 pending",
+  it("innocence: a located sector-law code keeps its verified ownership cap", () => {
+    const code = getCode("65111") as KBLICode;
+    expect(code.provenance?.pma.status).toBe("located");
+    const article = JSON.stringify(jsonLdOf(code));
+    expect(article).toContain("80% foreign ownership");
+    expect(article).toContain("PP 14/2018");
+  });
+
+  it("guilt: a located open status without a publishable cap does not become 100%", () => {
+    const base = getCode("02102") as KBLICode;
+    const malformed = {
+      ...base,
+      pma: {
+        ...base.pma,
+        status: "open",
+        maxForeign: null,
+        capVerified: false,
+      },
+    } as KBLICode;
+
+    const article = JSON.stringify(jsonLdOf(malformed));
+    expect(article).toContain("ownership cap not verified");
+    expect(article).not.toContain("100% foreign ownership allowed");
+  });
+
+  it.each([
+    [49, false],
+    ["special", true],
+  ])(
+    "guilt: a restricted unverified cap %p never reaches JSON-LD",
+    (maxForeign, capSpecial) => {
+      const base = getCode("65111") as KBLICode;
+      const unverified = {
+        ...base,
+        pma: {
+          ...base.pma,
+          status: "restricted",
+          maxForeign,
+          capSpecial,
+          capVerified: false,
+        },
+      } as KBLICode;
+
+      const article = JSON.stringify(jsonLdOf(unverified));
+      expect(article).toContain("ownership cap not verified");
+      expect(article).not.toContain("49%");
+      expect(article).not.toContain("special non-percentage conditions");
+    },
+  );
+
+  it("guilt: a located closed verdict with no verified cap stays qualified", () => {
+    const base = getCode("65111") as KBLICode;
+    const closedWithoutCap = {
+      ...base,
+      pma: {
+        ...base.pma,
+        status: "closed",
+        maxForeign: null,
+        capSpecial: false,
+        capVerified: false,
+      },
+    } as KBLICode;
+
+    const article = JSON.stringify(jsonLdOf(closedWithoutCap));
+    expect(article).toContain(
+      "Closed to Foreign Investment (ownership cap not verified) (TERTUTUP)",
     );
   });
 });

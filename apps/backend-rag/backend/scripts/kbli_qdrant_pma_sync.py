@@ -1,8 +1,9 @@
 """
 kbli_qdrant_pma_sync.py — sync a named LAYER of the KBLI Qdrant payload from the
-canonical dataset. `--layer pma` (default) owns `pma_status` / `pma_max_asing`;
-`--layer bali` owns `bali_status` / `bali_blocked` / `bali_reason` /
-`has_bali_l4`.
+canonical dataset. `--layer pma` (default) owns the complete PMA evidence tuple
+(`pma_status`, `pma_max_asing`, verification status, official basis, vintage);
+`--layer bali` owns `bali_status` / `bali_blocked` /
+`bali_needs_review` / `bali_reason` / `has_bali_l4`.
 
 WHY THE BALI LAYER LIVES HERE AND NOT IN ITS OWN TOOL (2026-08-03): there WAS a
 second tool, `apps/backend-rag/scripts/patch_qdrant_bali_l4.py`, and it is
@@ -54,6 +55,12 @@ instruments, and the one confusion this lane keeps paying for is treating them
 as one answer. A run that could move both at once would make "did this cure
 touch the national fields?" unanswerable from the command line.
 
+EDITORIAL PUBLICATION GATE: ``intel_2026`` is an atomic generated layer, not a
+side effect of a located PMA tuple. The dataset bytes must match the certification
+registry, and Qdrant receives the entire exact reviewed block (with the neutral
+opener) or no Intelligence section. The legacy ``whatchanged`` layer name is kept
+for operational compatibility; it no longer licenses one raw field in isolation.
+
 SCOPE DISCIPLINE (mirrors `kbli_qdrant_risk_clear.py` and
 `kg_kbli_license_fix.py`): `--codes` is MANDATORY. No code is ever
 auto-discovered or swept.
@@ -81,14 +88,13 @@ USAGE (dry-run is the default; nothing is written without --apply):
     cd /app && python backend/scripts/kbli_qdrant_pma_sync.py --layer bali \\
         --collection kbli_2025_final_hybrid --codes 86995,96220 --apply
 
-Deliberately import-free of `backend.*`: the two cure tools that already run in
-this image (`kbli_documents_cure.py`, `kg_kbli_resync.py`) read their config
-from the environment and fetch the canonical over HTTP, and `PYTHONPATH=.` in
-this container REPLACES site-packages rather than extending it (it has already
-cost one `ModuleNotFoundError: asyncpg`). Same shape here, for the same reason.
+The script bootstraps the application root before importing the shared
+disclosure gate.  Direct Fly execution therefore keeps working without a
+``PYTHONPATH`` override, while every writer uses the exact same PMA/Bali
+allowlist and boolean validation.
 
 AFTER APPLYING, EVICT THE CACHE: `inspect_kbli` caches its assembled payload
-under `kbli_inspect_v2_<code>` for up to 30 days, so a cured Qdrant payload is
+under `kbli_inspect_v6_<code>` for up to 30 days, so a cured Qdrant payload is
 invisible on the channel until `kbli_inspect_cache_bust.py --only <codes>
 --apply` has run.
 """
@@ -106,11 +112,30 @@ from typing import Any
 
 import httpx
 
+_APP_ROOT = Path(__file__).resolve().parents[2]
+if str(_APP_ROOT) not in sys.path:
+    sys.path.insert(0, str(_APP_ROOT))
+
+from backend.services.kbli_editorial_certification import (
+    assert_certified_source_dataset,
+    load_editorial_registry,
+    matches_editorial_certification,
+    resolve_editorial_registry_path,
+    validate_editorial_registry,
+    with_neutral_kbli_chat_opener,
+)
+from backend.services.kbli_pma_disclosure import (
+    disclose_bali,
+    disclose_pma,
+    pma_claims_verified,
+)
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("kbli_qdrant_pma_sync")
 
 RAW_BASE = "https://raw.githubusercontent.com/Balizero1987/Teman2/main"
 DATASET_URL = f"{RAW_BASE}/data/source_documents/KBLI_2025_FINAL_CLEAN.json"
+EDITORIAL_REGISTRY_URL = f"{RAW_BASE}/data/kbli-filiera/pma-editorial-certifications.json"
 
 # The flat KBLI payload invariant (CLAUDE.md §9) — the code lives in
 # `kode_kbli`, never nested. Points are always resolved through this filter,
@@ -145,6 +170,10 @@ class Target:
     # source as the flat fields. Two lookups of one record is how the two
     # representations end up disagreeing.
     record: dict = field(default_factory=dict)
+    # The exact registry that certified the dataset bytes loaded for this run.
+    # Carrying it with the target prevents a later helper from silently loading
+    # a different checkout or remote revision while deciding what may publish.
+    editorial_registry: dict | None = field(default=None, repr=False, compare=False)
 
 
 @dataclass
@@ -176,6 +205,8 @@ class CodePlan:
         its flat field while its blob still says TERBUKA / 100."""
         out = []
         for pid in self.point_ids:
+            if pid in self.unshaped:
+                continue
             cur = self.current.get(pid, {})
             if any(cur.get(key) != value for key, value in self.target.fields.items()):
                 out.append(pid)
@@ -192,10 +223,17 @@ class CodePlan:
 
 
 def _pma_fields(rec: dict) -> tuple[dict[str, Any] | None, str | None]:
-    status = rec.get("pma_status")
-    if not status:
-        return None, "canonical record carries no pma_status — nothing authoritative to sync"
-    return {"pma_status": str(status), "pma_max_asing": rec.get("pma_max_asing")}, None
+    public = disclose_pma(rec)
+    keys = (
+        "pma_status",
+        "pma_max_asing",
+        "pma_verification_status",
+        "pma_official_basis",
+        "pma_source_vintage",
+        "pma_cap_special",
+        "pma_cap_verified",
+    )
+    return {key: public[key] for key in keys}, None
 
 
 def _bali_fields(rec: dict) -> tuple[dict[str, Any] | None, str | None]:
@@ -206,16 +244,7 @@ def _bali_fields(rec: dict) -> tuple[dict[str, Any] | None, str | None]:
     `l4_bali.verdict` is deliberately NOT read: see the module docstring for the
     118-code measurement that removed the tool which did.
     """
-    l4 = rec.get("l4_bali") or {}
-    status = l4.get("status")
-    if not status:
-        return None, "canonical record carries no l4_bali.status — no Bali verdict to publish"
-    return {
-        "bali_status": str(status),
-        "bali_blocked": bool(l4.get("blocked")),
-        "bali_reason": str(l4.get("reason") or ""),
-        "has_bali_l4": bool(status),
-    }, None
+    return disclose_bali(rec), None
 
 
 def _whatchanged_fields(rec: dict) -> tuple[dict[str, Any] | None, str | None]:
@@ -228,7 +257,10 @@ def _whatchanged_fields(rec: dict) -> tuple[dict[str, Any] | None, str | None]:
     """
     intel = rec.get("intel_2026")
     if not isinstance(intel, dict) or not intel.get("whatChanged"):
-        return None, "canonical record carries no intel_2026.whatChanged — nothing authoritative to sync"
+        return (
+            None,
+            "canonical record carries no intel_2026.whatChanged — nothing authoritative to sync",
+        )
     return {}, None
 
 
@@ -267,10 +299,8 @@ _LAYER_READERS = {
 # cure and the two disagree again. That is asserted, not asserted-by-comment:
 # `test_prose_repair_matches_the_real_generator` runs the REAL
 # `build_embedding_text` over canonical records and requires the repair to be a
-# no-op on its fresh output. The trap it caught: `build_embedding_text` writes
-# the cap line under `if entry.get("pma_max_asing")`, so a cap of **0 is falsy**
-# and the line is OMITTED — for `79122` the truthful blob has no cap line at all,
-# and a repair that wrote `- Kepemilikan asing maksimal: 0` would diverge.
+# no-op on its fresh output, including the zero-cap and special non-percentage
+# forms.
 #
 # WHAT IS NOT CLAIMED: the VECTOR is not re-computed (the embedding model is
 # FROZEN). The old sentence still shapes retrieval RANKING; what changes is the
@@ -280,7 +310,16 @@ _LAYER_READERS = {
 # ---------------------------------------------------------------------------
 
 _PMA_HEADING = "## Status PMA:"
-_WHATCHANGED_PREFIX = "- whatChanged: "
+_INTEL_HEADING = "## Intelligence 2026"
+_BALI_HEADING = "## Status PMA di Bali (L4 — moratorium provinsi)"
+_TRUNCATION_MARKER = "(... dipotong untuk batas panjang.)"
+
+
+def _clean_text(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    cleaned = value.strip()
+    return cleaned or None
 
 
 def render_pma_block(rec: dict) -> list[str]:
@@ -293,15 +332,54 @@ def render_pma_block(rec: dict) -> list[str]:
     every point it touched — silent data loss dressed as a cure. Any field added
     to the generator's block must be added here, and that test is what says so.
     """
-    lines = [f"{_PMA_HEADING} {rec.get('pma_status')}"]
-    if rec.get("pma_max_asing"):  # 0 is falsy THERE, so it must be falsy HERE
-        lines.append(f"- Kepemilikan asing maksimal: {rec['pma_max_asing']}")
-    if rec.get("pma_kondisi"):
-        lines.append(f"- Kondisi: {rec['pma_kondisi']}")
-    if rec.get("pma_prioritas"):
-        lines.append(f"- Prioritas: {rec['pma_prioritas']}")
-    if rec.get("pma_nota"):
-        lines.append(f"- Nota: {rec['pma_nota']}")
+    fields, _ = _pma_fields(rec)
+    assert fields is not None
+    if fields["pma_verification_status"] != "located":
+        return [
+            f"{_PMA_HEADING} NOT_VERIFIED",
+            "- Whole-code foreign ownership is withheld: no located official basis and source vintage are recorded.",
+        ]
+
+    lines = [f"{_PMA_HEADING} {fields['pma_status']}"]
+    cap = fields["pma_max_asing"]
+    if fields["pma_cap_verified"]:
+        if cap == "special":
+            lines.append("- Kepemilikan asing: kondisi khusus non-persentase")
+        elif cap is not None:
+            lines.append(f"- Kepemilikan asing maksimal: {cap}%")
+    else:
+        lines.append("- Kepemilikan asing: belum terverifikasi")
+    condition = _clean_text(rec.get("pma_kondisi"))
+    if condition:
+        lines.append(f"- Kondisi: {condition}")
+    if rec.get("pma_prioritas") is True:
+        lines.append("- Prioritas: Ya")
+    note = _clean_text(rec.get("pma_nota"))
+    if note:
+        lines.append(f"- Nota: {note}")
+    return lines
+
+
+def render_bali_block(rec: dict) -> list[str]:
+    """Mirror ``reindex_kbli_2025_final.render_bali_embedding_block`` exactly."""
+    fields, _ = _bali_fields(rec)
+    assert fields is not None
+    if not fields["has_bali_l4"]:
+        return []
+
+    lines = [_BALI_HEADING]
+    if fields["bali_blocked"] is True:
+        lines.append(
+            "- DIBLOKIR untuk PMA di Bali: kegiatan risiko Rendah/Menengah-Rendah "
+            "tidak dapat didaftarkan PT PMA di Provinsi Bali (moratorium 2026-05-13)."
+        )
+    lines.append(f"- Status Bali: {fields['bali_status']}")
+    if fields["bali_reason"]:
+        lines.append(f"- Alasan: {fields['bali_reason']}")
+    lines.append(
+        "- Note: national status (Perpres 10/2021) can differ from the "
+        "provincial block; read both verdicts."
+    )
     return lines
 
 
@@ -320,42 +398,176 @@ def _replace_block(blob: str, start_pred, stop_pred, new_lines: list[str]) -> st
     return "\n".join(lines[:i] + new_lines + lines[j:])
 
 
-def rewrite_pma_prose(rec: dict, blob: str) -> str | None:
-    return _replace_block(
+def _replace_heading_section(blob: str, heading: str, new_lines: list[str]) -> str:
+    """Replace an optional generated ``##`` section while preserving spacing."""
+    lines = blob.split("\n")
+    try:
+        start = lines.index(heading)
+    except ValueError:
+        return blob
+    end = start + 1
+    while end < len(lines) and not lines[end].startswith("## "):
+        end += 1
+
+    before = lines[:start]
+    after = lines[end:]
+    replacement = list(new_lines)
+    if replacement:
+        # Generated sections are separated from the next section (or EOF) by
+        # one empty line. Preserve that byte shape for generator fidelity.
+        replacement.append("")
+    return "\n".join(before + replacement + after)
+
+
+def _heading_section_is_truncated(blob: str, heading: str) -> bool:
+    """Return whether the generator cap marker falls inside one named section."""
+    lines = blob.split("\n")
+    try:
+        start = lines.index(heading)
+    except ValueError:
+        return False
+    end = start + 1
+    while end < len(lines) and not lines[end].startswith("## "):
+        end += 1
+    return _TRUNCATION_MARKER in lines[start:end]
+
+
+def _truncated_section_matches_reviewed_prefix(
+    blob: str,
+    heading: str,
+    reviewed_lines: list[str],
+) -> bool:
+    """Accept only a generator-truncated prefix of the exact reviewed section."""
+    if not reviewed_lines:
+        return False
+    lines = blob.split("\n")
+    try:
+        start = lines.index(heading)
+        marker = lines.index(_TRUNCATION_MARKER, start + 1)
+    except ValueError:
+        return False
+    actual_prefix = lines[start:marker]
+    # A certified value may itself contain newlines. The generator interpolates
+    # it into one list element and the final join turns those into physical
+    # lines, so compare the same physical representation stored in Qdrant.
+    reviewed_physical_lines = "\n".join(reviewed_lines).split("\n")
+    return actual_prefix == reviewed_physical_lines[: len(actual_prefix)]
+
+
+def certified_intelligence_block(
+    rec: dict,
+    registry: dict | None = None,
+) -> list[str]:
+    """Render the exact atomic Intelligence section accepted by the indexer."""
+    code = str(rec.get("kode_kbli_2025") or "")
+    intel = rec.get("intel_2026")
+    if not isinstance(intel, dict) or not matches_editorial_certification(
+        "canonicalIntel",
+        code,
+        rec,
+        intel,
+        registry,
+    ):
+        return []
+
+    reviewed = with_neutral_kbli_chat_opener(code, intel)
+    lines = [_INTEL_HEADING]
+    for key, value in reviewed.items():
+        if value:
+            # Mirror reindex_kbli_2025_final.build_embedding_text byte-for-byte.
+            lines.append(f"- {key}: {value}")
+    return lines
+
+
+def rewrite_pma_prose(
+    rec: dict,
+    blob: str,
+    registry: dict | None = None,
+) -> str | None:
+    rewritten = _replace_block(
         blob,
         lambda ln: ln.startswith(_PMA_HEADING),
         lambda ln: not ln.startswith("- "),
         render_pma_block(rec),
     )
-
-
-def rewrite_whatchanged_prose(rec: dict, blob: str) -> str | None:
-    """Replace EXACTLY ONE line.
-
-    `build_embedding_text` emits each intel entry as a single `- {k}: {v}` part,
-    and measured on canonical 2026-08-05 **zero** of the 1,559 `whatChanged`
-    values contain a newline (longest 665 chars) — so the block is one line and
-    a multi-line span rule is not just unnecessary, it is wrong: the first draft
-    consumed lines until the next `- `/`## `, which on `20112` swallowed the
-    generator's own truncation marker `(... dipotong untuk batas panjang.)`.
-
-    A value that DID contain a newline would silently break the round trip, so
-    it is refused rather than written.
-
-    Refusing when the line is absent matters just as much: for 101 of 1,559
-    records the generator truncates before `## Intelligence 2026` ever appears,
-    and appending a line there would put content AFTER a marker that tells the
-    reader the document stopped.
-    """
-    text = (rec.get("intel_2026") or {}).get("whatChanged")
-    if not text or "\n" in text:
+    if rewritten is None:
         return None
-    lines = blob.split("\n")
-    for n, ln in enumerate(lines):
-        if ln.startswith(_WHATCHANGED_PREFIX):
-            lines[n] = f"{_WHATCHANGED_PREFIX}{text}"
-            return "\n".join(lines)
-    return None
+
+    # Editorial prose is one atomic, independently certified layer. A located
+    # PMA tuple does not certify prose that happens to repeat it. Replace the
+    # whole section with the exact reviewed block or retract it completely.
+    # Never expand/retract a section truncated mid-body: its missing boundary is
+    # unknowable, so the point is unshaped and must be refused.
+    reviewed_intel = certified_intelligence_block(rec, registry)
+    if _heading_section_is_truncated(rewritten, _INTEL_HEADING):
+        # A fresh generator can hit the global character cap inside a large,
+        # certified Intelligence section. It is already safe only when the PMA
+        # block was unchanged and every complete editorial line is the exact
+        # prefix of the reviewed block. Any attempted mutation is refused.
+        if rewritten == blob and _truncated_section_matches_reviewed_prefix(
+            rewritten,
+            _INTEL_HEADING,
+            reviewed_intel,
+        ):
+            return rewritten
+        return None
+    rewritten = _replace_heading_section(rewritten, _INTEL_HEADING, reviewed_intel)
+
+    if pma_claims_verified(rec):
+        return rewritten
+
+    # A declared gap owns the entire generated/editorial disclosure boundary,
+    # not only the two PMA lines. Old points can still carry an Intelligence
+    # section or a Bali verdict that asserts PT PMA registrability. Remove both
+    # atomically.
+    # The generator can truncate in the middle of the Bali or Intelligence
+    # section.  Expanding a partial section would write content *after* the
+    # marker that explicitly says the document ended.  A fresh declared-gap
+    # blob is already safe once its PMA block is replaced, so leave that byte
+    # shape alone.  A legacy truncated blob that still carries editorial prose
+    # cannot be repaired losslessly and is refused instead.
+    if _TRUNCATION_MARKER in rewritten:
+        if _INTEL_HEADING in rewritten or _BALI_HEADING in rewritten:
+            return None
+        return rewritten
+
+    rewritten = _replace_heading_section(rewritten, _INTEL_HEADING, [])
+    if _BALI_HEADING in rewritten:
+        rewritten = _replace_heading_section(rewritten, _BALI_HEADING, render_bali_block(rec))
+    return rewritten
+
+
+def rewrite_whatchanged_prose(
+    rec: dict,
+    blob: str,
+    registry: dict | None = None,
+) -> str | None:
+    """Replace or retract the complete certified Intelligence section.
+
+    The historical layer name remains CLI-compatible, but a single reviewed
+    field is not independently publishable: its certificate covers the exact
+    ``intel_2026`` object and PMA fingerprint. Therefore the writer replaces the
+    entire section from a matching certificate, retracts the section when no
+    certificate matches, and refuses a section truncated before its boundary.
+    """
+    if _INTEL_HEADING not in blob:
+        return None
+    reviewed_intel = certified_intelligence_block(rec, registry)
+    if _heading_section_is_truncated(blob, _INTEL_HEADING):
+        return (
+            blob
+            if _truncated_section_matches_reviewed_prefix(
+                blob,
+                _INTEL_HEADING,
+                reviewed_intel,
+            )
+            else None
+        )
+    return _replace_heading_section(
+        blob,
+        _INTEL_HEADING,
+        reviewed_intel,
+    )
 
 
 _LAYER_PROSE = {
@@ -366,7 +578,10 @@ _LAYER_PROSE = {
 
 
 def build_targets(
-    records: list[dict], codes: list[str], layer: str = "pma"
+    records: list[dict],
+    codes: list[str],
+    layer: str = "pma",
+    editorial_registry: dict | None = None,
 ) -> tuple[dict[str, Target], list[str]]:
     """Read the canonical verdict for each requested code.
 
@@ -391,21 +606,42 @@ def build_targets(
         if fields is None:
             refusals.append(f"{code}: {why}")
             continue
-        targets[code] = Target(code=code, layer=layer, fields=fields, record=rec)
+        targets[code] = Target(
+            code=code,
+            layer=layer,
+            fields=fields,
+            record=rec,
+            editorial_registry=editorial_registry,
+        )
     return targets, refusals
 
 
-def load_dataset(source: str) -> list[dict]:
-    """Local path or URL — the same two-mode source the sibling cure tools take."""
+def _load_json_source(source: str, label: str) -> tuple[bytes, Any]:
+    """Read exact bytes plus decoded JSON from a local path or URL."""
     if source.startswith(("http://", "https://")):
-        logger.info("dataset: fetching %s", source)
+        logger.info("%s: fetching %s", label, source)
         with httpx.Client(timeout=120) as http:
             resp = http.get(source)
             resp.raise_for_status()
-            payload = resp.json()
+            raw = resp.content
     else:
-        logger.info("dataset: reading %s", source)
-        payload = json.loads(Path(source).read_text(encoding="utf-8"))
+        logger.info("%s: reading %s", label, source)
+        raw = Path(source).read_bytes()
+    return raw, json.loads(raw)
+
+
+def load_certification_registry(source: str) -> dict:
+    """Load and structurally validate the registry selected for this run."""
+    if not source.startswith(("http://", "https://")):
+        return load_editorial_registry(source)
+    _, payload = _load_json_source(source, "editorial registry")
+    return validate_editorial_registry(payload)
+
+
+def load_dataset(source: str, registry: dict | None = None) -> list[dict]:
+    """Load only dataset bytes cryptographically bound to the active registry."""
+    raw, payload = _load_json_source(source, "dataset")
+    assert_certified_source_dataset(raw, registry)
     return payload["data"]
 
 
@@ -451,8 +687,7 @@ def build_plan(code: str, target: Target, points: list[dict]) -> CodePlan:
     """
     ids = [p["id"] for p in points]
     current = {
-        p["id"]: {key: (p.get("payload") or {}).get(key) for key in target.fields}
-        for p in points
+        p["id"]: {key: (p.get("payload") or {}).get(key) for key in target.fields} for p in points
     }
     rewrite = _LAYER_PROSE.get(target.layer)
     prose: dict[Any, dict[str, str]] = {}
@@ -465,7 +700,7 @@ def build_plan(code: str, target: Target, points: list[dict]) -> CodePlan:
                 blob = payload.get(key)
                 if not isinstance(blob, str) or not blob:
                     continue
-                new = rewrite(target.record, blob)
+                new = rewrite(target.record, blob, target.editorial_registry)
                 if new is None:
                     # The block this layer owns is not in the blob. Not "already
                     # correct" — unknown. Recorded so the run says so out loud.
@@ -521,8 +756,8 @@ def apply_plan(
         )
         return 0
 
-    cap = plan.target.fields.get("pma_max_asing", 0)
-    if "pma_max_asing" in plan.target.fields and not isinstance(cap, int):
+    cap = plan.target.fields.get("pma_max_asing")
+    if cap is not None and not isinstance(cap, (int, float)):
         # 47221 carries the string "special" — a non-percentage regime. Passed
         # through verbatim rather than coerced, but said out loud: a payload
         # field that changes type is exactly what a downstream reader does not
@@ -588,14 +823,19 @@ def main() -> int:
     )
     ap.add_argument("--dataset", default=DATASET_URL, help="canonical dataset: local path or URL")
     ap.add_argument(
+        "--registry",
+        help="editorial certification registry: local path or URL. Defaults to the "
+        "matching repo file for a local dataset and the canonical URL for a remote dataset.",
+    )
+    ap.add_argument(
         "--layer",
         choices=LAYERS,
         default="pma",
         help="which payload layer to sync: 'pma' (national ownership: pma_status, "
         "pma_max_asing, AND the '## Status PMA:' block inside the content/text blob), "
-        "'bali' (provincial verdict: bali_status, bali_blocked, bali_reason, "
-        "has_bali_l4) or 'whatchanged' (prose-only: the '- whatChanged:' line inside "
-        "the blob, which has no flat payload key). One layer per run, on purpose — "
+        "'bali' (provincial verdict: bali_status, bali_blocked, bali_needs_review, "
+        "bali_reason, has_bali_l4) or 'whatchanged' (legacy name for atomic certified "
+        "Intelligence-section reconciliation; no flat payload key). One layer per run, on purpose — "
         "they answer different questions from different instruments.",
     )
     args = ap.parse_args()
@@ -606,7 +846,20 @@ def main() -> int:
         return 2
 
     logger.info("layer: %s", args.layer)
-    targets, refusals = build_targets(load_dataset(args.dataset), codes, args.layer)
+    registry_source = args.registry
+    if not registry_source:
+        registry_source = (
+            EDITORIAL_REGISTRY_URL
+            if args.dataset.startswith(("http://", "https://"))
+            else str(resolve_editorial_registry_path())
+        )
+    registry = load_certification_registry(registry_source)
+    targets, refusals = build_targets(
+        load_dataset(args.dataset, registry),
+        codes,
+        args.layer,
+        registry,
+    )
     if refusals:
         for r in refusals:
             logger.error("REFUSED %s", r)

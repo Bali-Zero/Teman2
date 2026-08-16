@@ -129,20 +129,35 @@ def classify_licensing(record: dict[str, Any]) -> str:
 
 
 def classify_pma(record: dict[str, Any]) -> str:
-    """Does the foreign-ownership verdict name its basis?
+    """Does the foreign-ownership verdict carry its explicit verification state?
 
-    `pma_official_basis` is the only per-code locator in this layer (it quotes
-    the Perpres lampiran and line). `pma_source` is deliberately NOT consulted:
-    it is one identical string on every record.
+    ``located`` is earned only when the record also carries the per-code basis
+    AND its source-instrument vintage.  ``declared_gap`` is the explicit honest
+    abstention written by ``cure_pma_verification_state.py``.  An absent or
+    malformed state remains bare: absence is not a declaration.
 
-    Precedence is LOCATED over DECLARED_UNVERIFIED — a record that carries a
-    real adjudicated basis is located even if an older `pma_cap_verified: false`
-    is still sitting on it; the basis is the stronger, later statement.
+    ``pma_source`` is deliberately NOT consulted: it is one identical string on
+    almost every record and never explains the per-code verdict.
     """
+    status = record.get("pma_verification_status")
+    pma_status = record.get("pma_status")
     basis = record.get("pma_official_basis")
-    if isinstance(basis, str) and basis.strip():
+    vintage = record.get("pma_source_vintage")
+    if (
+        status == "located"
+        and isinstance(pma_status, str)
+        and pma_status in {"TERBUKA", "TERBATAS", "TERTUTUP"}
+        and isinstance(basis, str)
+        and basis.strip()
+        and isinstance(vintage, str)
+        and vintage.strip()
+    ):
         return PMA_LOCATED
-    if record.get("pma_cap_verified") is False:
+    if (
+        status == "declared_gap"
+        and not (isinstance(basis, str) and basis.strip())
+        and not (isinstance(vintage, str) and vintage.strip())
+    ):
         return PMA_DECLARED_UNVERIFIED
     return PMA_BARE
 

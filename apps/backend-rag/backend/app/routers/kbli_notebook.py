@@ -18,7 +18,7 @@ from typing import Annotated, Any
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from backend.app.core.config import settings
 from backend.app.dependencies import (
@@ -26,6 +26,11 @@ from backend.app.dependencies import (
     get_search_service,
 )
 from backend.core.collection_registry import resolve_collection_name
+from backend.services.kbli_pma_disclosure import (
+    disclose_bali,
+    disclose_pma,
+    pma_claims_verified,
+)
 from backend.services.kbli_pp28_provenance import licensing_disclosure
 from backend.services.kbli_requires_kind import (
     classify_requires_target,
@@ -79,11 +84,61 @@ class KBLILicense(BaseModel):
     requirements: list[str]
 
 
-class KBLIDetail(BaseModel):
+class _PMADisclosure(BaseModel):
+    """Fail-closed public contract for whole-code foreign-ownership claims.
+
+    A raw status/cap is not publishable evidence.  It is disclosed only when
+    the same record carries the canonical verification state, an official
+    locator, and the source vintage.  Keeping this invariant on the response
+    model protects every constructor (including old cache entries and future
+    fallback paths), rather than relying on each caller to remember the gate.
+    """
+
+    pma_status: str = "NOT_VERIFIED"
+    pma_max_asing: int | float | str | None = None
+    pma_verification_status: str = "declared_gap"
+    pma_official_basis: str | None = None
+    pma_source_vintage: str | None = None
+    pma_cap_special: bool = False
+    pma_cap_verified: bool = False
+
+    @model_validator(mode="before")
+    @classmethod
+    def _withhold_unverified_pma(cls, value: Any) -> Any:
+        if not isinstance(value, dict):
+            return value
+
+        disclosed = dict(value)
+        public = disclose_pma(disclosed)
+        disclosed.update(
+            {
+                key: public[key]
+                for key in (
+                    "pma_status",
+                    "pma_max_asing",
+                    "pma_verification_status",
+                    "pma_official_basis",
+                    "pma_source_vintage",
+                    "pma_cap_special",
+                    "pma_cap_verified",
+                )
+            }
+        )
+        return disclosed
+
+    @property
+    def pma_verdict_verified(self) -> bool:
+        # Re-check the full tuple instead of trusting the marker alone.  Models
+        # are mutable in this router, so a later assignment must not turn a
+        # partial tuple into a publishable verdict merely by leaving ``located``
+        # behind.
+        return pma_claims_verified(self.model_dump())
+
+
+class KBLIDetail(_PMADisclosure):
     code: str
     title: str
     description: str
-    pma_status: str
     licensing_status: str
     sector: str
     risk_profile: str
@@ -108,13 +163,18 @@ class KBLIDetail(BaseModel):
     licensing_content_inherited_from: list[str] | None = None
     licensing_note: str | None = None
 
+    @model_validator(mode="after")
+    def _withhold_unverified_editorial(self) -> "KBLIDetail":
+        """Legacy KG prose has no cross-store certification; always withhold it."""
+        self.expert_legal = None
+        return self
 
-class KBLISearchResult(BaseModel):
+
+class KBLISearchResult(_PMADisclosure):
     code: str
     title: str
     description: str
     score: float
-    pma_status: str = "UNKNOWN"
     risk_category: str = "Unknown"
     expert_legal: dict | None = None
     # The Bali provincial verdict, carried on the same flat Qdrant payload as
@@ -129,6 +189,7 @@ class KBLISearchResult(BaseModel):
     # written before the Bali layer existed must produce silence, never a claim.
     bali_status: str | None = None
     bali_blocked: bool | None = None
+    bali_needs_review: bool | None = None
     bali_reason: str = ""
     # The national foreign-ownership CEILING, carried on the same flat payload.
     # `pma_status` is a word ("TERBUKA"/"TERBATAS"/"TERTUTUP") and it is the only
@@ -142,7 +203,35 @@ class KBLISearchResult(BaseModel):
     # `None` means the payload carried no ceiling. It is NOT zero: an absent cap
     # is stored as `""` by the indexer, and reading absence as 0% would invent a
     # closure on every point written before the field existed.
-    pma_max_asing: int | str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _withhold_malformed_bali(cls, value: Any) -> Any:
+        """Apply the Bali tuple gate before Pydantic can coerce source values."""
+        if not isinstance(value, dict):
+            return value
+        disclosed = dict(value)
+        bali = disclose_bali(disclosed)
+        disclosed.update(
+            {
+                "bali_status": bali["bali_status"],
+                "bali_blocked": bali["bali_blocked"],
+                "bali_needs_review": bali["bali_needs_review"],
+                "bali_reason": bali["bali_reason"],
+            }
+        )
+        return disclosed
+
+    @model_validator(mode="after")
+    def _withhold_unverified_editorial(self) -> "KBLISearchResult":
+        """Withhold uncertified KG editorial and gate the structured Bali tuple."""
+        self.expert_legal = None
+        if not self.pma_verdict_verified:
+            self.bali_status = None
+            self.bali_blocked = None
+            self.bali_needs_review = None
+            self.bali_reason = ""
+        return self
 
 
 class KBLINotebookChatRequest(BaseModel):
@@ -191,19 +280,52 @@ def _clean_snippet(text: str | None) -> str:
     return _CONTEXT_HEADER_RE.sub("", text or "").lstrip()
 
 
+def _pma_disclosure_fields(payload: dict[str, Any]) -> dict[str, Any]:
+    """Extract the complete PMA evidence tuple from one authoritative record."""
+    return {
+        "pma_status": _payload_value(payload, "pma_status", default="NOT_VERIFIED"),
+        "pma_max_asing": _payload_value(payload, "pma_max_asing"),
+        "pma_verification_status": _payload_value(
+            payload,
+            "pma_verification_status",
+            default="declared_gap",
+        ),
+        "pma_official_basis": _payload_value(payload, "pma_official_basis"),
+        "pma_source_vintage": _payload_value(payload, "pma_source_vintage"),
+        "pma_cap_special": _payload_value(payload, "pma_cap_special", default=False),
+        "pma_cap_verified": _payload_value(payload, "pma_cap_verified", default=False),
+    }
+
+
+def _official_scope(payload: dict[str, Any], code: str) -> str:
+    """Return only an explicitly labelled official KBLI description.
+
+    Legacy gold Qdrant points used ``description`` for generated editorial, so
+    that ambiguous key is not an eligible fallback on a public/search surface.
+    """
+    description = _payload_value(payload, "official_description", "uraian", default="")
+    if description:
+        return _clean_snippet(str(description))[:200] + "..."
+    return f"Official BPS description unavailable for KBLI {code}."
+
+
 def _result_from_payload(payload: dict[str, Any], score: float) -> "KBLISearchResult":
     """Build a KBLISearchResult from a flat/legacy Qdrant KBLI payload."""
+    code = _payload_value(payload, "kode_kbli", "kode", "kode_kbli_2025", default="N/A")
     return KBLISearchResult(
-        code=_payload_value(payload, "kode_kbli", "kode", "kode_kbli_2025", default="N/A"),
+        code=code,
         title=_payload_value(payload, "judul", "title_id", default="N/A"),
-        description=_clean_snippet(
-            _payload_value(payload, "content", "text", "description", default="") or "",
-        )[:200]
-        + "...",
+        # `content`/`text` contains generated licensing and PMA prose.  Search
+        # snippets are public output, so only explicitly labelled BPS scope is
+        # eligible; legacy ``description`` can be gold editorial.
+        description=_official_scope(payload, code),
         score=round(score, 4),
-        pma_status=_payload_value(payload, "pma_status", default="UNKNOWN"),
-        pma_max_asing=_payload_value(payload, "pma_max_asing"),
         risk_category=_payload_value(payload, "kategori_risiko", default="Unknown"),
+        bali_status=_payload_value(payload, "bali_status"),
+        bali_blocked=_payload_value(payload, "bali_blocked"),
+        bali_needs_review=_payload_value(payload, "bali_needs_review"),
+        bali_reason=_payload_value(payload, "bali_reason", default="") or "",
+        **_pma_disclosure_fields(payload),
     )
 
 
@@ -478,7 +600,10 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
     # incomplete, it is WRONG, and nothing in the response would betray it.
     # Rule of thumb for the next reader: bump whenever the meaning of an
     # existing field changes, not only when a field is added.
-    cache_key = f"kbli_inspect_v4_{code}"
+    # v4 -> v5: PMA values are now an evidence tuple.  Old cache entries carry
+    # raw status/cap without the required locator and vintage, so they must be
+    # re-read through the fail-closed response contract immediately.
+    cache_key = f"kbli_inspect_v6_{code}"
     ttl = get_kbli_ttl(code)
 
     # Try manual cache check
@@ -622,11 +747,11 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
                 _payload_value(qdrant_payload, "kategori_risiko") if qdrant_payload else None
             )
 
-            pma_status = (
-                (_payload_value(qdrant_payload, "pma_status") if qdrant_payload else None)
-                or props.get("pma_status")
-                or "UNKNOWN"
-            )
+            # Never splice a status from one store to provenance from another.
+            # A Qdrant point is one atomic evidence record; only when no point
+            # exists do we use the KG node as the complete fallback record.
+            pma_source = qdrant_payload if qdrant_payload else props
+            pma_disclosure = _pma_disclosure_fields(pma_source)
 
             risk_profile = _resolve_risk_profile(qdrant_risk, licenses)
 
@@ -648,7 +773,7 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
             logger.info(
                 "✅ KBLI %s details retrieved (pma=%s, risk=%s, inherited_licensing=%s)",
                 code,
-                pma_status,
+                pma_disclosure["pma_status"],
                 risk_profile,
                 bool(inherited_from),
             )
@@ -657,16 +782,19 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
                 code=code,
                 title=node["name"],
                 description=props.get("uraian", node["description"]),
-                pma_status=pma_status,
                 licensing_status=props.get("licensing_status", "REGULATED"),
                 sector=sector_id.replace("sektor:", "") if sector_id else "N/A",
                 risk_profile=risk_profile,
                 licenses=licenses,
                 related_requirements=related_requirements,
                 related_codes=related_codes,
-                expert_legal=props.get("expert_legal"),
+                # KG expert_legal is not cryptographically bound to the Qdrant
+                # PMA tuple.  It stays withheld until a same-record certificate
+                # exists; a located tuple in another store is not authority.
+                expert_legal=None,
                 licensing_content_inherited_from=inherited_from,
                 licensing_note=licensing_note,
+                **pma_disclosure,
             )
 
             # Save to cache with dynamic TTL

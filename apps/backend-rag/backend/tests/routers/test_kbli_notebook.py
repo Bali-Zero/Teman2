@@ -67,7 +67,9 @@ class TestSearchEndpoint:
         assert response.status_code == 200
         payload = response.json()
         assert payload[0]["code"] == "56101"
-        assert payload[0]["pma_status"] == "TERBUKA"
+        assert payload[0]["pma_status"] == "NOT_VERIFIED"
+        assert payload[0]["pma_max_asing"] is None
+        assert payload[0]["pma_verification_status"] == "declared_gap"
 
     @pytest.mark.integration
     def test_search_kbli_returns_503_on_timeout(self, client: TestClient) -> None:
@@ -145,10 +147,6 @@ class TestChatEndpoint:
             patch(
                 "backend.app.routers.kbli_notebook_chat._search_kbli_qdrant",
                 AsyncMock(return_value=results),
-            ),
-            patch(
-                "backend.app.routers.kbli_notebook_chat._fetch_parent_documents_from_kbli_table",
-                AsyncMock(return_value={"56101": "full content"}),
             ),
             patch(
                 "backend.app.routers.kbli_notebook_chat._generate_kbli_explanation_gemini",
@@ -246,6 +244,7 @@ class TestSnippetCleaning:
                         "Aktivitas Penyediaan Makanan di Bangunan Tetap]\n\n"
                         "Real BPS description of the restaurant activity"
                     ),
+                    "official_description": "Real BPS description of the restaurant activity",
                     "pma_status": "TERBUKA",
                     "kategori_risiko": "Menengah Rendah",
                 },
@@ -269,6 +268,160 @@ class TestSnippetCleaning:
         description = response.json()[0]["description"]
         assert not description.startswith("[CONTEXT:")
         assert description.startswith("Real BPS description")
+
+    @pytest.mark.unit
+    def test_real_01111_shape_withholds_raw_terbuka_100_without_provenance(self) -> None:
+        result = kbli_notebook_module._result_from_payload(
+            {
+                "kode_kbli": "01111",
+                "judul": "Pertanian Jagung",
+                "description": "Official BPS corn farming scope",
+                "pma_status": "TERBUKA",
+                "pma_max_asing": 100,
+                "pma_verification_status": "declared_gap",
+                "bali_blocked": False,
+                "bali_status": "OK_or_HIGHER_RISK",
+                "bali_reason": "Nationally open to 100% foreign ownership.",
+            },
+            score=0.9,
+        )
+
+        assert result.pma_status == "NOT_VERIFIED"
+        assert result.pma_max_asing is None
+        assert result.pma_official_basis is None
+        assert result.pma_source_vintage is None
+        assert result.bali_blocked is None
+        assert result.bali_status is None
+        assert result.bali_reason == ""
+
+    @pytest.mark.unit
+    def test_declared_gap_withholds_expert_legal_editorial_atomically(self) -> None:
+        result = kbli_notebook_module.KBLISearchResult(
+            code="01111",
+            title="Pertanian Jagung",
+            description="Official BPS scope",
+            score=0.9,
+            pma_status="TERBUKA",
+            pma_max_asing=100,
+            pma_verification_status="declared_gap",
+            bali_blocked=True,
+            bali_status="CHIUSO_MORATORIA_BALI",
+            bali_reason="Nationally open to 100% foreign ownership.",
+            expert_legal={"summary": "Foreign ownership is unrestricted."},
+        )
+
+        assert result.pma_status == "NOT_VERIFIED"
+        assert result.bali_blocked is None
+        assert result.bali_status is None
+        assert result.bali_reason == ""
+        assert result.expert_legal is None
+
+    @pytest.mark.unit
+    def test_declared_gap_detail_model_withholds_cached_expert_editorial(self) -> None:
+        detail = kbli_notebook_module.KBLIDetail(
+            code="01111",
+            title="Pertanian Jagung",
+            description="Official BPS scope",
+            licensing_status="REGULATED",
+            sector="A",
+            risk_profile="Unknown",
+            licenses=[],
+            pma_status="TERBUKA",
+            pma_max_asing=100,
+            pma_verification_status="declared_gap",
+            expert_legal={"summary": "Foreign ownership is unrestricted."},
+        )
+
+        assert detail.pma_status == "NOT_VERIFIED"
+        assert detail.pma_max_asing is None
+        assert detail.expert_legal is None
+
+    @pytest.mark.unit
+    def test_located_tuple_preserves_status_cap_and_provenance(self) -> None:
+        result = kbli_notebook_module._result_from_payload(
+            {
+                "kode_kbli": "16221",
+                "judul": "Industri Barang dari Rotan",
+                "description": "Official BPS scope",
+                "pma_status": "TERBATAS",
+                "pma_max_asing": 49,
+                "pma_verification_status": "located",
+                "pma_official_basis": "Perpres 49/2021 Lampiran III entry 3",
+                "pma_source_vintage": "2021-05-25",
+                "pma_cap_verified": True,
+                "expert_legal": {"summary": "Unbound legacy ownership prose."},
+            },
+            score=0.9,
+        )
+
+        assert result.pma_status == "TERBATAS"
+        assert result.pma_max_asing == 49
+        assert result.pma_verification_status == "located"
+        assert result.pma_official_basis
+        assert result.pma_source_vintage == "2021-05-25"
+        assert result.pma_verdict_verified is True
+        assert result.expert_legal is None
+
+        # These response models are mutable because the chat router enriches
+        # them after retrieval.  The decision property must therefore re-check
+        # the entire tuple instead of trusting a stale ``located`` marker.
+        result.pma_official_basis = None
+        assert result.pma_verdict_verified is False
+
+    @pytest.mark.unit
+    def test_located_detail_still_withholds_cross_store_expert_editorial(self) -> None:
+        detail = kbli_notebook_module.KBLIDetail(
+            code="16221",
+            title="Industri Barang dari Rotan",
+            description="Official BPS scope",
+            licensing_status="REGULATED",
+            sector="C",
+            risk_profile="Unknown",
+            licenses=[],
+            pma_status="TERBATAS",
+            pma_max_asing=49,
+            pma_verification_status="located",
+            pma_official_basis="Perpres 49/2021 Lampiran III entry 3",
+            pma_source_vintage="2021-05-25",
+            pma_cap_verified=True,
+            expert_legal={"summary": "Unbound legacy ownership prose."},
+        )
+
+        assert detail.pma_verdict_verified is True
+        assert detail.expert_legal is None
+
+    @pytest.mark.unit
+    def test_generated_content_never_becomes_public_search_description(self) -> None:
+        result = kbli_notebook_module._result_from_payload(
+            {
+                "kode_kbli": "16291",
+                "judul": "Industri Anyaman Rotan dan Bambu",
+                "content": "Nationally this activity is 100% open to foreign ownership.",
+                "official_description": "Official BPS woven-rattan scope.",
+                "pma_status": "TERBUKA",
+                "pma_max_asing": 100,
+                "pma_verification_status": "declared_gap",
+            },
+            score=0.9,
+        )
+
+        assert result.description.startswith("Official BPS woven-rattan scope")
+        assert "100%" not in result.description
+
+    @pytest.mark.unit
+    def test_legacy_gold_description_is_not_treated_as_official_scope(self) -> None:
+        result = kbli_notebook_module._result_from_payload(
+            {
+                "kode_kbli": "16291",
+                "judul": "Industri Anyaman Rotan dan Bambu",
+                "description": "This business is open to 100% foreign ownership.",
+                "pma_verification_status": "declared_gap",
+            },
+            score=0.9,
+        )
+
+        assert result.description == "Official BPS description unavailable for KBLI 16291."
+        assert "100%" not in result.description
 
 
 class TestExactCodeFastPath:
