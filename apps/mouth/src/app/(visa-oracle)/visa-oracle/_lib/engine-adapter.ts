@@ -359,13 +359,22 @@ function reason(
   };
 }
 
-// Curated, human-readable copy for the rule pack's HUMAN_REVIEW reason
-// codes (source: services/visa_engine/contracts/packs/rulepack-prod-*.json
-// `effect.reason_code` on REQUIRE_REVIEW rules). A code missing from this
-// map falls back to an honest generic sentence — never a raw code dump —
-// so a new rule can ship without breaking this UI, and this map can grow
-// independently of a rule pack release.
-const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
+// Curated, human-readable copy for HUMAN_REVIEW reason codes: the rule
+// pack's own `effect.reason_code` on REQUIRE_REVIEW rules (source:
+// services/visa_engine/contracts/packs/rulepack-prod-*.json), plus a
+// pack-independent set the backend emits itself (disclosed-review flags +
+// the minor-guardian privacy hold — see evaluate_path.py
+// `_DISCLOSED_REVIEW_REASON_CODES` and `_apply_minor_privacy_hold`). A code
+// missing from this map falls back to an honest generic sentence — never a
+// raw code dump — so a new rule can ship without breaking this UI, and this
+// map can grow independently of a rule pack release.
+//
+// engine-adapter.test.ts's exhaustiveness test enforces two things: every
+// key here must name a code that still exists (no stale renames — see
+// KNOWN_UNMAPPED_REVIEW_REASON_CODES there for the ones this map doesn't
+// cover yet), and every code the current pack can emit is accounted for,
+// either here or in that known-gap list.
+export const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
   CALLING_VISA_REVIEW: text(
     "Your nationality is on the Calling Visa list, which always requires manual review before a visa can be confirmed.",
     "Kewarganegaraan Anda termasuk dalam daftar Calling Visa, yang selalu memerlukan peninjauan manual sebelum visa dapat dikonfirmasi.",
@@ -374,7 +383,11 @@ const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
     "An active overstay on record needs a person to review before any path can be confirmed.",
     "Overstay aktif yang tercatat memerlukan peninjauan oleh seseorang sebelum jalur apa pun dapat dikonfirmasi.",
   ),
-  CITIZENSHIP_EVIDENCE_CONFLICT: text(
+  // Renamed from CITIZENSHIP_EVIDENCE_CONFLICT (QW-4a, 2026-08-17): that key
+  // named no code in any pack from seq-6 onward. CITIZENSHIP_LIST_DIVERGENCE
+  // is its current name (services/visa_engine/contracts/packs/
+  // rulepack-prod-007.source.json). Copy text unchanged — only the key moved.
+  CITIZENSHIP_LIST_DIVERGENCE: text(
     "Your answers about citizenship do not fully agree with each other and need a person to confirm.",
     "Jawaban Anda tentang kewarganegaraan tidak sepenuhnya cocok satu sama lain dan memerlukan konfirmasi dari seseorang.",
   ),
@@ -382,7 +395,10 @@ const REVIEW_REASON_COPY: Record<string, LocalizedText> = {
     "This case involves a minor without a confirmed guardian on file and needs a person to review it.",
     "Kasus ini melibatkan anak di bawah umur tanpa wali yang terkonfirmasi dan memerlukan peninjauan oleh seseorang.",
   ),
-  STATUS_BRIDGING_REVIEW: text(
+  // Renamed from STATUS_BRIDGING_REVIEW (QW-4a, 2026-08-17): same stale
+  // situation — BRIDGING_ADVERSE_HISTORY is the current name for this rule
+  // in rulepack-prod-007+. Copy text unchanged.
+  BRIDGING_ADVERSE_HISTORY: text(
     "Bridging between immigration statuses needs a person to check the timing and conditions involved.",
     "Peralihan antar status keimigrasian memerlukan pemeriksaan oleh seseorang atas waktu dan ketentuan yang berlaku.",
   ),
