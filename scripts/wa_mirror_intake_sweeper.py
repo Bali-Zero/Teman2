@@ -41,6 +41,17 @@ Environment:
 - WA_MIRROR_MEDIA_TYPES              (default "document,image" — comma list)
 - WA_MIRROR_TEXT_SWEEP_BATCH          (default 100 — direct text rows promoted per tick)
 - WA_MIRROR_TEXT_START_ID             (optional — same seed semantics for text rows)
+
+Exit codes (poison breaker, verbale #3, post-refuter Qwen 3.8 Max, 2026-08-17):
+  0  normal tick, including a tick with SOME poison rows (< storm threshold)
+     — a digest-tier Telegram line is still sent so poison is never silent.
+  2  a POISON STORM this tick: `poison >= max(5, ceil(0.2 * scanned))`. A P0
+     Telegram alert fires and the tick returns non-zero ON PURPOSE so launchd
+     records the run as FAILED — the old unconditional `return 0` meant a
+     systemic misclassification (e.g. a broken migration) could silently
+     drain the entire backlog at full rate with launchd showing green every
+     time. `crm_poison` (CRM-identity-only failures, verbale #2) never counts
+     toward the storm threshold — those never drop a document.
 """
 from __future__ import annotations
 
@@ -48,8 +59,11 @@ import asyncio
 import fcntl
 import hashlib
 import logging
+import math
 import os
+import subprocess
 import sys
+import time
 from pathlib import Path
 
 import asyncpg
@@ -59,7 +73,24 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "apps" / "backen
 from backend.services.intake.enqueue import enqueue
 from backend.services.intake.routing import normalize_sender_phone
 
+# The tg_notify gateway parser (scripts/tg_gateway_verdict.py) — repo root on
+# sys.path so this resolves whether the module is run directly or loaded via
+# importlib (tests), same pattern as scripts/intake_health_report.py.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from scripts.tg_gateway_verdict import extract_gateway_verdict  # noqa: E402
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+
 logger = logging.getLogger("wa_mirror_sweeper")
+
+# The absolute python3 candidates tg_notify.py is spawned with (W108 — the
+# alarm must not share the failure mode of a possibly-broken venv PATH
+# resolution). tg_notify.py is stdlib-only by design for exactly this reason.
+_PY3_CANDIDATES: tuple[str, ...] = (
+    "/usr/bin/python3",
+    "/opt/homebrew/bin/python3",
+    "/usr/local/bin/python3",
+)
 
 STATE_DIR = Path.home() / ".cell-bridge-state"
 LAST_ID_FILE = STATE_DIR / "wa_mirror_sweep_last_id.txt"
@@ -551,6 +582,40 @@ async def _sweep_text_clients(pool: asyncpg.Pool, batch: int) -> dict[str, int]:
     return counters
 
 
+def _resolve_py3() -> str:
+    for candidate in _PY3_CANDIDATES:
+        if Path(candidate).is_file():
+            return candidate
+    return sys.executable  # last resort — never crash over interpreter resolution
+
+
+def _tg_notify(tier: str, dedup_key: str, text: str) -> bool:
+    """Route the poison breaker's alert through the tg_notify gateway.
+
+    Module-level side effect, monkeypatchable (same pattern as
+    scripts/intake_health_report.py::_tg_notify) — never raises, so a
+    Telegram/gateway hiccup never turns a completed sweep tick into a crash.
+    `text` MUST carry counts only (poison/crm_poison/scanned/watermark) —
+    never a row id, phone, or exception body (Law 2 / UU-PDP).
+    """
+    try:
+        gateway = _REPO_ROOT / "scripts" / "tg_notify.py"
+        if not gateway.is_file():
+            logger.warning("[wa_mirror_sweep] tg_notify.py missing at %s", gateway)
+            return False
+        res = subprocess.run(
+            [_resolve_py3(), str(gateway), "--tier", tier,
+             "--source", "wa-mirror-sweeper", "--dedup-key", dedup_key, "--", text],
+            capture_output=True, text=True, timeout=30,
+        )
+        verdict = extract_gateway_verdict(res.stderr)
+        logger.info("[wa_mirror_sweep] tg_notify: %s", verdict or f"NESSUN verdetto rc={res.returncode}")
+        return res.returncode == 0 and verdict is not None
+    except Exception as exc:  # never raises
+        logger.warning("[wa_mirror_sweep] tg_notify failed: %s", exc)
+        return False
+
+
 async def run_one_tick() -> int:
     db_url = os.getenv(
         "INTAKE_DATABASE_URL",
@@ -729,6 +794,38 @@ async def run_one_tick() -> int:
             crm_poison,
             max_done,
         )
+
+        # Poison breaker (verbale #3, post-refuter Qwen 3.8 Max, P1). The tick
+        # used to `return 0` unconditionally no matter how many rows were
+        # poisoned — a systemic misclassification (e.g. a broken migration)
+        # could silently drain the entire backlog at full rate with launchd
+        # recording a clean success every tick. Any poison at all is worth a
+        # digest line (never silent); a STORM — a large fraction of the batch
+        # poisoned in one tick — is worth a P0 and a non-zero exit so launchd
+        # marks the run FAILED. crm_poison never counts toward the storm
+        # threshold: a CRM-identity-only failure (verbale #2) never drops a
+        # document, so it is not the "backlog silently draining" failure mode
+        # this breaker exists to catch.
+        scanned = len(rows)
+        today = time.strftime("%Y-%m-%d")
+        if poison + crm_poison > 0:
+            _tg_notify(
+                "digest",
+                f"wa-mirror-sweeper:poison:{today}",
+                f"wa-mirror sweeper poison this tick: poison={poison} "
+                f"crm_poison={crm_poison} scanned={scanned} watermark={max_done}",
+            )
+        storm_threshold = max(5, math.ceil(0.2 * scanned))
+        if poison >= storm_threshold:
+            _tg_notify(
+                "p0",
+                "wa-mirror-sweeper:poison-storm",
+                f"wa-mirror sweeper POISON STORM: poison={poison}/{scanned} "
+                f"(>= threshold {storm_threshold}); watermark={max_done}. "
+                "Likely a systemic misclassification, not per-row bad data — "
+                "check recent enqueue()/schema changes before requeuing.",
+            )
+            return 2
         return 0
     finally:
         await pool.close()

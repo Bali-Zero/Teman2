@@ -107,8 +107,16 @@ def _row(rid: int, *, blob_path: str, bmid: str | None = None) -> dict[str, Any]
     }
 
 
-def _wire(monkeypatch, wms, *, rows, watermark_seed, upsert=None, enqueue=None):
-    """Monkeypatch everything run_one_tick() needs, none of it real I/O."""
+def _wire(
+    monkeypatch, wms, *, rows, watermark_seed, upsert=None, enqueue=None, tg_notify=None
+):
+    """Monkeypatch everything run_one_tick() needs, none of it real I/O.
+
+    ``_tg_notify`` defaults to a no-op stub: without it, the poison-breaker
+    (verbale #3) would spawn a REAL subprocess against scripts/tg_notify.py
+    on every test that hits ANY poison row, writing to the live
+    ``~/.organism/tg_spool`` outside tmp_path (W96 — test-writes-prod).
+    """
     monkeypatch.setattr(wms.asyncpg, "create_pool", _fake_create_pool(rows))
     monkeypatch.setattr(wms, "_sweep_text_clients", _noop_text_sweep)
     monkeypatch.setattr(wms, "_load_watermark", lambda: watermark_seed)
@@ -118,7 +126,12 @@ def _wire(monkeypatch, wms, *, rows, watermark_seed, upsert=None, enqueue=None):
         wms, "_upsert_client_by_phone", upsert or _default_upsert
     )
     monkeypatch.setattr(wms, "enqueue", enqueue or _default_enqueue)
+    monkeypatch.setattr(wms, "_tg_notify", tg_notify or _default_tg_notify)
     return saved
+
+
+def _default_tg_notify(_tier: str, _dedup_key: str, _text: str) -> bool:
+    return True
 
 
 def _fake_create_pool(rows: list[dict[str, Any]]):
@@ -388,3 +401,102 @@ async def test_blob_path_is_a_directory_counts_as_missing_and_advances(
     assert enqueue_calls == []
     assert saved.get("wm") == 500
     assert any("blob_missing=1" in r.message for r in caplog.records)
+
+
+# --------------------------------------------------------------------------- #
+# Poison breaker (verbale #3, post-refuter Qwen 3.8 Max, P1). The tick used to
+# `return 0` unconditionally regardless of how many rows were poisoned.
+# --------------------------------------------------------------------------- #
+@pytest.mark.asyncio
+async def test_poison_breaker_no_call_when_zero_poison(monkeypatch, tmp_path) -> None:
+    """Zero poison rows this tick -> the breaker stays completely silent."""
+    row_n = _row(600, blob_path=_write_blob(tmp_path, "n.pdf"))
+    tg_calls: list[tuple[str, str, str]] = []
+
+    def recording_tg_notify(tier: str, dedup_key: str, text: str) -> bool:
+        tg_calls.append((tier, dedup_key, text))
+        return True
+
+    wms = _load_sweeper()
+    _wire(
+        monkeypatch, wms, rows=[row_n], watermark_seed=599, tg_notify=recording_tg_notify
+    )
+
+    rc = await wms.run_one_tick()
+
+    assert rc == 0
+    assert tg_calls == []
+
+
+@pytest.mark.asyncio
+async def test_poison_breaker_digest_only_below_storm_threshold(
+    monkeypatch, tmp_path
+) -> None:
+    """One poison row, well below the storm threshold (max(5, ceil(0.2*2))=5):
+    exactly one digest-tier line, no P0, tick still returns 0."""
+    row_n = _row(700, blob_path=_write_blob(tmp_path, "n.pdf"))
+    row_n1 = _row(701, blob_path=_write_blob(tmp_path, "n1.pdf"))
+    tg_calls: list[tuple[str, str, str]] = []
+
+    def recording_tg_notify(tier: str, dedup_key: str, text: str) -> bool:
+        tg_calls.append((tier, dedup_key, text))
+        return True
+
+    async def flaky_enqueue(_pool, *, source_ref, **_kw):
+        if source_ref == f"wa-mirror:{row_n['baileys_message_id']}":
+            raise ValueError("malformed payload — permanent")
+        return SimpleNamespace(was_new=True)
+
+    wms = _load_sweeper()
+    _wire(
+        monkeypatch,
+        wms,
+        rows=[row_n, row_n1],
+        watermark_seed=699,
+        enqueue=flaky_enqueue,
+        tg_notify=recording_tg_notify,
+    )
+
+    rc = await wms.run_one_tick()
+
+    assert rc == 0
+    assert [c[0] for c in tg_calls] == ["digest"]
+    assert tg_calls[0][1].startswith("wa-mirror-sweeper:poison:")
+    assert re.search(r"(?<!crm_)\bpoison=1\b", tg_calls[0][2])
+    # Counts only — no row id or phone in the Telegram text (Law 2 / UU-PDP).
+    assert str(row_n["id"]) not in tg_calls[0][2]
+    assert row_n["sender_phone"] not in tg_calls[0][2]
+
+
+@pytest.mark.asyncio
+async def test_poison_breaker_p0_and_rc2_on_storm(monkeypatch, tmp_path) -> None:
+    """poison >= max(5, ceil(0.2*scanned)) is a STORM: a P0 fires (in addition
+    to the digest line) and the tick returns 2 so launchd marks the run
+    FAILED instead of green — the failure mode this breaker exists to catch.
+    """
+    rows = [_row(800 + i, blob_path=_write_blob(tmp_path, f"n{i}.pdf")) for i in range(5)]
+    tg_calls: list[tuple[str, str, str]] = []
+
+    def recording_tg_notify(tier: str, dedup_key: str, text: str) -> bool:
+        tg_calls.append((tier, dedup_key, text))
+        return True
+
+    async def always_poison_enqueue(_pool, *, source_ref, **_kw):
+        raise ValueError("malformed payload — permanent")
+
+    wms = _load_sweeper()
+    _wire(
+        monkeypatch,
+        wms,
+        rows=rows,
+        watermark_seed=799,
+        enqueue=always_poison_enqueue,
+        tg_notify=recording_tg_notify,
+    )
+
+    rc = await wms.run_one_tick()
+
+    assert rc == 2
+    assert [c[0] for c in tg_calls] == ["digest", "p0"]
+    assert tg_calls[1][1] == "wa-mirror-sweeper:poison-storm"
+    assert "poison=5/5" in tg_calls[1][2]
