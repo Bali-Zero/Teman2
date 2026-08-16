@@ -73,7 +73,8 @@ _CRM_ACTOR = "wa-mirror-crm-writer@balizero.com"
 _LEAD_SOURCE = "whatsapp_auto"
 
 # --------------------------------------------------------------------------- #
-# Transient-vs-permanent exception classification (dossier C-31, 2026-08-15).
+# Transient-vs-permanent exception classification (dossier C-31, 2026-08-15;
+# widened post-refuter Qwen 3.8 Max finding #1, 2026-08-17).
 #
 # The media loop's per-row `except Exception: ... break` is correct for a
 # TRANSIENT failure (DB/connection hiccup — retry the SAME row next tick) but
@@ -86,6 +87,24 @@ _LEAD_SOURCE = "whatsapp_auto"
 # `asyncio.TimeoutError` and the builtin `TimeoutError` are the same class on
 # Python 3.11+ but were distinct before — both listed so this stays correct
 # regardless of interpreter version.
+#
+# The original tuple only caught connection-shaped failures. It missed the
+# retryable Postgres error classes below — all confirmed live (asyncpg 0.31.0,
+# apps/backend-rag/.venv) NOT to be subclasses of any pre-existing entry, so
+# each was silently misclassified as permanent poison and the row it hit was
+# dropped forever instead of being retried next tick:
+#   - QueryCanceledError    — a statement_timeout cancel mid-CRM-upsert
+#   - DeadlockDetectedError / SerializationError — lock/serialization conflict
+#     (the CRM upsert takes pg_advisory_xact_lock + SELECT...FOR UPDATE)
+#   - OperatorInterventionError — covers AdminShutdownError, CrashShutdownError,
+#     CannotConnectNowError, IdleSessionTimeoutError (a DB restart/maintenance
+#     window, not a data defect)
+#   - InsufficientResourcesError — covers OutOfMemoryError,
+#     TooManyConnectionsError, DiskFullError (resource pressure, not poison)
+#   - PostgresSystemError — server-side I/O/system failure
+# Deliberately conservative: constraint/data errors (UniqueViolationError,
+# UndefinedTableError, DataError, ValueError, ...) stay OUTSIDE this tuple and
+# permanent, per the existing classify-by-exclusion contract.
 # --------------------------------------------------------------------------- #
 _TRANSIENT_EXCEPTIONS: tuple[type[BaseException], ...] = (
     asyncpg.PostgresConnectionError,
@@ -93,6 +112,12 @@ _TRANSIENT_EXCEPTIONS: tuple[type[BaseException], ...] = (
     OSError,
     TimeoutError,
     asyncio.TimeoutError,
+    asyncpg.QueryCanceledError,
+    asyncpg.DeadlockDetectedError,
+    asyncpg.SerializationError,
+    asyncpg.OperatorInterventionError,
+    asyncpg.InsufficientResourcesError,
+    asyncpg.PostgresSystemError,
 )
 
 

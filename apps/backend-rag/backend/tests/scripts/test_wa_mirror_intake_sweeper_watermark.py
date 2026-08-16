@@ -163,6 +163,31 @@ def test_is_transient_rejects_everything_else_as_permanent() -> None:
     assert wms._is_transient(asyncpg.DataError("bad data")) is False
     assert wms._is_transient(KeyError("missing")) is False
     assert wms._is_transient(RuntimeError("assertion")) is False
+    assert wms._is_transient(asyncpg.UndefinedTableError("no such table")) is False
+    assert wms._is_transient(asyncpg.UniqueViolationError("dup key")) is False
+
+
+# --------------------------------------------------------------------------- #
+# Widened transient set (verbale #1, post-refuter Qwen 3.8 Max, 2026-08-17):
+# retryable Postgres classes the original connectivity-only tuple missed.
+# --------------------------------------------------------------------------- #
+def test_is_transient_classifies_widened_retryable_postgres_errors() -> None:
+    wms = _load_sweeper()
+    assert wms._is_transient(asyncpg.QueryCanceledError("canceled")) is True
+    assert wms._is_transient(asyncpg.DeadlockDetectedError("deadlock")) is True
+    assert wms._is_transient(asyncpg.SerializationError("serialization")) is True
+    # OperatorInterventionError family (admin shutdown / crash / maintenance).
+    assert wms._is_transient(asyncpg.OperatorInterventionError("intervention")) is True
+    assert wms._is_transient(asyncpg.AdminShutdownError("admin shutdown")) is True
+    assert wms._is_transient(asyncpg.CrashShutdownError("crash shutdown")) is True
+    assert wms._is_transient(asyncpg.CannotConnectNowError("cannot connect now")) is True
+    assert wms._is_transient(asyncpg.IdleSessionTimeoutError("idle timeout")) is True
+    # InsufficientResourcesError family (OOM / too many conns / disk full).
+    assert wms._is_transient(asyncpg.InsufficientResourcesError("resources")) is True
+    assert wms._is_transient(asyncpg.OutOfMemoryError("oom")) is True
+    assert wms._is_transient(asyncpg.TooManyConnectionsError("too many conns")) is True
+    assert wms._is_transient(asyncpg.DiskFullError("disk full")) is True
+    assert wms._is_transient(asyncpg.PostgresSystemError("system error")) is True
 
 
 # --------------------------------------------------------------------------- #
