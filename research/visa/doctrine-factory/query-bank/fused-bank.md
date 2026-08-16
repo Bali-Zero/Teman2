@@ -362,7 +362,7 @@ One row per catalog code — see `fused-bank.jsonl` (topic=`T1N`), not enumerate
 ## Adversarial review
 
 Cross-family review dispatched to Kimi K3 (`kimi-code/k3`), 2026-08-17. Findings and dispositions: see
-`dedup-log.md` §Kimi refuter disposition. Summary: 4 mega-compound rows (originally in T7/T8) flagged as
+`dedup-log.md` §Adversarial review. Summary: 4 mega-compound rows (originally in T7/T8) flagged as
 carrying multiple legally-disjoint claims in one query were split into 7 atomic rows (T7 grew 9→13, T8
 grew 9→12 net of the split plus 2 genuinely net-new facets Kimi surfaced — Exit Permit Only under T8 and
 RPTKA job-title/position binding under T11). Two of Kimi's flagged "risky comparatives" (T2-048, T2-061)

@@ -70,7 +70,15 @@ to further compounding if NB-2 query-budget pressure appears during E2b executio
 E2b execution-time operator, not compounded here (compounding further now would re-introduce the
 exact loss-of-discriminant risk this pass was designed to avoid).
 
-## Kimi refuter disposition
+## Adversarial review
+
+Seat: `kimi-k3`. **10 objections raised** (5 dedup, §a; 5 coverage-gap, §b). **7 survived and were
+acted on**: 3 mega-compound splits applied verbatim (T7-9, T8-2, T8-4; a 4th split, T8-3, was added
+proactively on the same defect class during disposition), 2 comparatives (T2-048, T2-061) kept as-is
+with a logged execution-time caveat rather than re-split, 1 net-new coverage row added (RPTKA
+job-title binding), 1 net-new row folded into an existing split (EPO into T8-3). **3 did not
+survive** — false alarms from partial-context review (dependent-cascade, overstay, bridging —
+already covered by topics outside Kimi's extract, verified against the full matrix, §b).
 
 Dispatched: `~/.kimi-code/bin/kimi -p "REFUTA: cerca dedup sbagliati (query fuse che chiedono cose
 diverse) e buchi di coverage non dichiarati" -m kimi-code/k3` (timebox 8 min), pasting: the topic

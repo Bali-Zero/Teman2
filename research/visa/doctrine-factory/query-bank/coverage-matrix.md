@@ -81,7 +81,7 @@ Full per-topic query_id lists: see `coverage-matrix.json` (machine-readable, sam
 
 ## Adversarial review
 
-Cross-family review dispatched to Kimi K3 (`kimi-code/k3`), 2026-08-17 — see `dedup-log.md` §Kimi refuter
-disposition. Kimi's review did not have this matrix's full topic set in its context (only T2/T7/T8 extracts);
-its 3 flagged "coverage gaps" were checked against the full matrix here and found already covered — logged
-as false alarms, not blind trust in either direction.
+Cross-family review dispatched to Kimi K3 (`kimi-code/k3`), 2026-08-17 — see `dedup-log.md` §Adversarial
+review for the full disposition. Kimi's review did not have this matrix's full topic set in its context
+(only T2/T7/T8 extracts); its 3 flagged "coverage gaps" were checked against the full matrix here and
+found already covered — logged as false alarms, not blind trust in either direction.
