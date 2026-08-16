@@ -618,7 +618,18 @@ async def run_one_tick() -> int:
                 logger.warning("[wa_mirror_sweep] row %d missing id/path, skipping", rid)
                 max_done = max(max_done, rid)  # don't re-scan a structurally-bad row
                 continue
-            if not os.path.exists(blob_path):
+            # verbale #4 (post-refuter Qwen 3.8 Max, P2): `os.path.exists()`
+            # passes for a DIRECTORY or an unreadable file too. compute_blob_hash()
+            # then does a bare `open(blob_path, "rb")`, which raises
+            # IsADirectoryError/PermissionError — both OSError subclasses, so
+            # `_is_transient()` (OSError is transient) classified them as
+            # retry-worthy and `break`-froze the watermark on that row forever
+            # (the exact pre-fix pathology, reproduced for this input shape).
+            # `os.path.isfile()` + `os.access(..., os.R_OK)` catch both shapes
+            # HERE, before enqueue()/compute_blob_hash() ever opens the path,
+            # so a bad blob is counted and advanced past like any other
+            # missing blob instead of freezing the tick.
+            if not (os.path.isfile(blob_path) and os.access(blob_path, os.R_OK)):
                 blob_missing += 1
                 logger.warning("[wa_mirror_sweep] row %d blob missing on disk, skipping", rid)
                 max_done = max(max_done, rid)  # blob gone; never coming back, advance past it

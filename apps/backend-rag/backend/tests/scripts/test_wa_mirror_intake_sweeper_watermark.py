@@ -349,3 +349,42 @@ async def test_transient_crm_upsert_error_does_not_advance_watermark(
     assert enqueue_calls == []
     assert "wm" not in saved
     assert any("poison=0" in r.message for r in caplog.records)
+
+
+# --------------------------------------------------------------------------- #
+# Blob pre-check (verbale #4, post-refuter Qwen 3.8 Max, P2).
+# --------------------------------------------------------------------------- #
+@pytest.mark.asyncio
+async def test_blob_path_is_a_directory_counts_as_missing_and_advances(
+    monkeypatch, tmp_path, caplog
+) -> None:
+    """A directory (or unreadable file) at ``media_stored_path`` must be
+    counted as a missing blob and advanced past — NOT treated as a transient
+    OSError. ``os.path.exists()`` passes for a directory too, and
+    ``compute_blob_hash()``'s bare ``open(blob_path, "rb")`` would then raise
+    ``IsADirectoryError`` (an ``OSError`` subclass), which ``_is_transient()``
+    misclassifies as retryable — freezing the watermark on that row forever.
+    ``os.path.isfile()`` + ``os.access(..., os.R_OK)`` catch it HERE, before
+    enqueue()/compute_blob_hash() ever opens the path.
+    """
+    bad_dir = tmp_path / "not_a_file"
+    bad_dir.mkdir()
+    row_n = _row(500, blob_path=str(bad_dir))
+    enqueue_calls: list[str] = []
+
+    async def recording_enqueue(_pool, *, source_ref, **_kw):
+        enqueue_calls.append(source_ref)
+        return SimpleNamespace(was_new=True)
+
+    wms = _load_sweeper()
+    saved = _wire(
+        monkeypatch, wms, rows=[row_n], watermark_seed=499, enqueue=recording_enqueue
+    )
+
+    with caplog.at_level(logging.INFO, logger="wa_mirror_sweeper"):
+        rc = await wms.run_one_tick()
+
+    assert rc == 0
+    assert enqueue_calls == []
+    assert saved.get("wm") == 500
+    assert any("blob_missing=1" in r.message for r in caplog.records)
