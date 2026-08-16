@@ -166,8 +166,13 @@ check_true "page carries the SICK dedup key (not DEAD's)" \
     "$(grep -q "intake-review-reader:sick:${HOSTSHORT}" "$ROOT/home/tg_calls.jsonl" 2>/dev/null; echo $?)"
 check_true "log names the state SICK" \
     "$(grep -q 'reader SICK' "$ROOT/home/logs/intake-review-reader-liveness.log" 2>/dev/null; echo $?)"
-check_true "log names the code (500)" \
-    "$(grep -q '500' "$ROOT/home/logs/intake-review-reader-liveness.log" 2>/dev/null; echo $?)"
+# Anchored to the SICK verdict line itself (not just "the log contains 500" anywhere) —
+# refuter finding #6: a bare `grep -q '500'` also passes on the PRE-fix script, which
+# logs "OK: reader ALIVE (http 500)" for the exact same input (the old code folded every
+# 1xx-5xx into ALIVE), so that check never actually exercised the fix it claimed to guard.
+# "ALERT: reader SICK on port <N> (http 500" only appears if the SICK branch ran at all.
+check_true "log names the SICK verdict WITH the code (500), not just ALIVE-with-500" \
+    "$(grep -qE 'ALERT: reader SICK on port [0-9]+ \(http 500' "$ROOT/home/logs/intake-review-reader-liveness.log" 2>/dev/null; echo $?)"
 check_true "state file records action=sick" \
     "$(grep -q '"last_action": "sick"' "$ROOT/home/.agent/decisions/state/intake_review_reader_liveness.json" 2>/dev/null; echo $?)"
 check "state write is atomic+hardened: file mode is 600" \
