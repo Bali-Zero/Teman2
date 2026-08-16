@@ -25,8 +25,8 @@
 # has no guilt test and no innocence test. Corpus:
 # scripts/tests/test_docs_sync_gate_failclosed.sh
 #
-# Usage: docs_sync_gate.sh check|test     (run from the repo root)
-#   check — the docs are in sync (judge: scripts/docs_sync.py)
+# Usage: docs_sync_gate.sh check [changed-files] | test
+#   check — protected blocks in guilty files are canonical
 #   test  — the judge's own unit tests pass (corpus: scripts/tests/test_docs_sync_atlas.py)
 #
 # PYTHON may override the interpreter (absolute path in CI contexts — W108:
@@ -52,7 +52,13 @@ require_file() {
 case "$MODE" in
   check)
     require_file "scripts/docs_sync.py" || exit 1
-    "$PYTHON" scripts/docs_sync.py --check
+    CHECK_ARGS=(--check)
+    CHANGED_FILES="${2:-${DOCSYNC_CHANGED_FILES_FILE:-}}"
+    if [ -n "$CHANGED_FILES" ]; then
+      require_file "$CHANGED_FILES" || exit 1
+      CHECK_ARGS+=(--changed-files-from "$CHANGED_FILES")
+    fi
+    "$PYTHON" scripts/docs_sync.py "${CHECK_ARGS[@]}"
     exit $?
     ;;
   test)
@@ -61,7 +67,7 @@ case "$MODE" in
     exit $?
     ;;
   *)
-    echo "usage: $0 check|test" >&2
+    echo "usage: $0 check [changed-files] | test" >&2
     exit 2
     ;;
 esac

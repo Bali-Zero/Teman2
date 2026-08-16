@@ -3,7 +3,7 @@
 # Sun 05:00 WITA (Sat 21:00 UTC)
 #
 # Two-layer automation:
-#   L0 (always)    : regenerate DOCS_INVENTORY.md, Telegram on any delta.
+#   L0 (always)    : generate an ephemeral inventory, Telegram on any delta.
 #   L1+L2 (auto-PR): if orphans OR broken-links detected, open a PR that
 #                    already contains the orphan archive moves (L1) and
 #                    a review-required checklist for broken links (L2).
@@ -11,7 +11,7 @@
 #
 # Safety gates:
 #   - Requires `gh` CLI authenticated for PR creation.
-#   - Working tree must be clean (except for inventory) before running.
+#   - Working tree must be clean before running.
 #   - --dry-run flag for audit-only mode.
 
 set -euo pipefail
@@ -19,6 +19,7 @@ set -euo pipefail
 L25_AUDIT_JSON=""
 L25_SHIM_DIR=""
 PR_BODY_FILE=""
+AUDIT_OUTPUT_FILE=""
 cleanup_docs_guardian_temp() {
   if [[ -n "${L25_SHIM_DIR:-}" ]]; then
     rm -f -- "$L25_SHIM_DIR/claude" 2>/dev/null || true
@@ -26,6 +27,7 @@ cleanup_docs_guardian_temp() {
   fi
   [[ -n "${L25_AUDIT_JSON:-}" ]] && rm -f -- "$L25_AUDIT_JSON" 2>/dev/null || true
   [[ -n "${PR_BODY_FILE:-}" ]] && rm -f -- "$PR_BODY_FILE" 2>/dev/null || true
+  [[ -n "${AUDIT_OUTPUT_FILE:-}" ]] && rm -f -- "$AUDIT_OUTPUT_FILE" 2>/dev/null || true
 }
 trap cleanup_docs_guardian_temp EXIT
 trap 'exit 129' HUP
@@ -73,13 +75,13 @@ CLUSTER_ARGS=(
   --cluster "system-audit:docs/archive/SYSTEM_AUDIT_2026-04-03.md,docs/SYSTEM_AUDIT_FINAL_2026-04-03.md:docs/SYSTEM_AUDIT_FINAL_2026-04-03.md"
 )
 
-# Sync DOCSYNC markers; tolerate failure.
-python scripts/docs_sync.py --quiet || true
+AUDIT_OUTPUT_FILE=$(mktemp -t docs-inventory-XXXXXX.md)
+OUTPUT_ARGS=(--output "$AUDIT_OUTPUT_FILE")
 
 # Collect stats (single JSON read). docs_audit.py exits 1 when delta is
 # detected — that's expected (we want to know about delta); capture stdout
 # regardless. Only fallback to '{}' on genuine catastrophic failure.
-STATS=$(python scripts/docs_audit.py --json --quiet "${WHITELIST_ARGS[@]}" "${CLUSTER_ARGS[@]}" 2>/dev/null || true)
+STATS=$(python scripts/docs_audit.py --json --quiet "${OUTPUT_ARGS[@]}" "${WHITELIST_ARGS[@]}" "${CLUSTER_ARGS[@]}" 2>/dev/null || true)
 if [[ -z "${STATS:-}" ]]; then
   STATS='{}'
 fi
@@ -95,9 +97,6 @@ STALE=$(echo "$STATS_LINE" | awk '{print $1}')
 BROKEN=$(echo "$STATS_LINE" | awk '{print $2}')
 ORPHANS=$(echo "$STATS_LINE" | awk '{print $3}')
 
-# Regenerate inventory (persistent file output)
-python scripts/docs_audit.py --quiet "${WHITELIST_ARGS[@]}" "${CLUSTER_ARGS[@]}" || true
-
 if [[ "$DRY_RUN" == "1" ]]; then
   echo "[dry-run] stale=$STALE broken=$BROKEN orphans=$ORPHANS"
   exit 0
@@ -105,21 +104,17 @@ fi
 
 # Nothing actionable? (STALE counts canonical cluster keepers — irreducible, ignored.)
 if [[ "$ORPHANS" == "0" && "$BROKEN" == "0" ]]; then
-  # Discard inventory drift so the repo stays clean.
-  if ! git diff --quiet docs/DOCS_INVENTORY.md 2>/dev/null; then
-    git checkout -- docs/DOCS_INVENTORY.md 2>/dev/null || true
-  fi
   exit 0
 fi
 
 # --- Preconditions for auto-PR ---
 if ! command -v gh >/dev/null 2>&1 || ! gh auth status >/dev/null 2>&1; then
-  notify "docs-guardian" "Delta detected ($ORPHANS orphans, $BROKEN broken) but gh CLI unavailable. Manual review. See docs/DOCS_INVENTORY.md."
+  notify "docs-guardian" "Delta detected ($ORPHANS orphans, $BROKEN broken) but gh CLI unavailable. Manual review. Generate the docs-derived-state artifact."
   exit 0
 fi
 
-# Working tree sanity (ignore inventory file)
-if ! git diff --quiet HEAD -- . ':(exclude)docs/DOCS_INVENTORY.md' 2>/dev/null; then
+# Working tree sanity
+if ! git diff --quiet HEAD -- . 2>/dev/null; then
   notify "docs-guardian" "Delta detected but working tree is dirty. Auto-PR skipped. $ORPHANS orphans, $BROKEN broken."
   exit 0
 fi
@@ -160,19 +155,19 @@ L1_COMMITTED=0
 L25_COMMITTED=0
 L25_SUMMARY=""
 if [[ "$ORPHANS" != "0" ]]; then
-  python scripts/docs_audit.py --apply --quiet "${WHITELIST_ARGS[@]}" "${CLUSTER_ARGS[@]}" || {
+  python scripts/docs_audit.py --apply --quiet "${OUTPUT_ARGS[@]}" "${WHITELIST_ARGS[@]}" "${CLUSTER_ARGS[@]}" || {
     notify "docs-guardian" "--apply failed. Working tree partially modified. Manual cleanup required."
     git checkout main >/dev/null 2>&1 || true
     exit 1
   }
-  python scripts/docs_audit.py --quiet "${WHITELIST_ARGS[@]}" "${CLUSTER_ARGS[@]}" || true
+  python scripts/docs_audit.py --quiet "${OUTPUT_ARGS[@]}" "${WHITELIST_ARGS[@]}" "${CLUSTER_ARGS[@]}" || true
   git add -A docs/
   if ! git diff --cached --quiet 2>/dev/null; then
     git -c commit.gpgsign=false commit -q -m "chore(docs): auto-archive $ORPHANS orphan docs
 
 Orphan criteria: mtime>90d AND refs_in=0 AND not in whitelist.
 Destination: docs/archive/$(date +%Y-%m)-orphans/
-Inventory refreshed post-move.
+Inventory generated ephemerally post-move.
 
 Archived files:
 $ORPHAN_LIST
@@ -203,7 +198,7 @@ if [[ "$BROKEN" != "0" ]]; then
   if [[ -x "$L25_CASCADE_BIN" ]]; then
     # Fresh audit JSON snapshot (post-L1 state)
     L25_AUDIT_JSON=$(mktemp -t docs-audit-XXXXXX.json)
-    python scripts/docs_audit.py --json --quiet "${WHITELIST_ARGS[@]}" "${CLUSTER_ARGS[@]}" >"$L25_AUDIT_JSON" 2>/dev/null || true
+    python scripts/docs_audit.py --json --quiet "${OUTPUT_ARGS[@]}" "${WHITELIST_ARGS[@]}" "${CLUSTER_ARGS[@]}" >"$L25_AUDIT_JSON" 2>/dev/null || true
 
     # docs_link_fixer invokes a binary named `claude`. A temporary symlink keeps
     # its stable subprocess contract while routing each decision through the
@@ -240,7 +235,7 @@ except Exception:
 
     if [[ "$L25_APPLIED" != "0" ]]; then
       # Re-run audit: if broken went up, something broke — rollback all L2.5 changes
-      POST_STATS=$(python scripts/docs_audit.py --json --quiet "${WHITELIST_ARGS[@]}" "${CLUSTER_ARGS[@]}" 2>/dev/null || true)
+      POST_STATS=$(python scripts/docs_audit.py --json --quiet "${OUTPUT_ARGS[@]}" "${WHITELIST_ARGS[@]}" "${CLUSTER_ARGS[@]}" 2>/dev/null || true)
       POST_BROKEN=$(echo "$POST_STATS" | python -c "
 import json, sys
 try:
@@ -256,7 +251,7 @@ except Exception:
         notify "docs-guardian" "L2.5 regression detected: broken went from $BROKEN to $POST_BROKEN. All L2.5 fixes reverted."
       else
         # Commit L2.5 fixes separately from L1
-        python scripts/docs_audit.py --quiet "${WHITELIST_ARGS[@]}" "${CLUSTER_ARGS[@]}" || true
+        python scripts/docs_audit.py --quiet "${OUTPUT_ARGS[@]}" "${WHITELIST_ARGS[@]}" "${CLUSTER_ARGS[@]}" || true
         git add -A docs/
         if ! git diff --cached --quiet 2>/dev/null; then
           git -c commit.gpgsign=false commit -q -m "fix(docs): auto-repair $L25_APPLIED broken link(s) via Claude OAuth
@@ -355,7 +350,7 @@ PR_BODY_FILE=$(mktemp)
   fi
   echo "### Inventory"
   echo
-  echo "\`docs/DOCS_INVENTORY.md\` has been refreshed and reflects state AFTER L1 auto-archive."
+  echo "The inventory was generated ephemerally after L1; no volatile table is committed."
   echo
   echo "---"
   echo "🤖 Auto-generated by \`scripts/docs_guardian.sh\` · weekly cron."

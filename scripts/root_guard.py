@@ -106,8 +106,6 @@ WHITELIST_GLOBS: tuple[str, ...] = (
     ".python-version",
     ".ruff.toml",
     ".python-version",
-    # docsync internal cache (written by scripts/docs_sync.py)
-    ".docs_sync_cache.json",
 )
 
 # Top-level directories that are allowed to be tracked (anything inside is OK).

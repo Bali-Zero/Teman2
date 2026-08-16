@@ -45,7 +45,17 @@ def aged_fixture(tmp_path):
 
 def _run_audit(repo: Path, *args: str) -> subprocess.CompletedProcess:
     """Invoke docs_audit.py with --repo pointing to the fixture."""
-    cmd = [sys.executable, str(AUDIT_SCRIPT), "--repo", str(repo), *args]
+    # Legacy behavioral tests intentionally exercise the historical tracked
+    # path. Production callers use docs_audit.py's new artifact-only default.
+    cmd = [
+        sys.executable,
+        str(AUDIT_SCRIPT),
+        "--repo",
+        str(repo),
+        "--output",
+        "docs/DOCS_INVENTORY.md",
+        *args,
+    ]
     return subprocess.run(cmd, capture_output=True, text=True)
 
 
@@ -266,7 +276,7 @@ def test_check_flag_exit_codes(aged_fixture):
     live_doc.write_text(live_doc.read_text() + "\n[missing](nope.md)\n")
     result = _run_audit(aged_fixture, *common, "--check")
     assert result.returncode == 1
-    assert "docs_audit: docs/DOCS_INVENTORY.md is out of date" in result.stderr
+    assert "docs_audit: generated output differs from" in result.stderr
     assert "--- committed/" in result.stderr
     assert "+++ generated/" in result.stderr
 

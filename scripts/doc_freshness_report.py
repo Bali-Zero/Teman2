@@ -72,7 +72,6 @@ REF_PREFIXES = (
 # Declared cadences for generated outputs (organ → (path, cadence_days, generator)).
 # cadence_days=None → no declared cadence: age is reported, verdict NO-CADENCE.
 GENERATED_OUTPUTS = [
-    ("DOCS_INVENTORY", "docs/DOCS_INVENTORY.md", 7, "scripts/docs_audit.py (weekly docs-guardian cron, Pro)"),
     ("DOCS_TRENDS", "docs/DOCS_TRENDS.md", 31, "scripts/docs_history_analyzer.py (monthly by design — NOT armed)"),
     ("AUTOMATIONS_REFERENCE", "docs/AUTOMATIONS_REFERENCE.md", None, "scripts/generate_automations_reference.py (on demand)"),
     ("AUTOMATION_CATALOG", "scripts/automation_catalog.json", None, "hand-maintained JSON"),

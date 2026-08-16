@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Docs Audit — generate DOCS_INVENTORY.md from a walk of docs/**/*.md.
+"""Docs Audit — generate an artifact inventory from a walk of docs/**/*.md.
 
 Rules (first match wins):
   1. ARCHIVED if path starts with docs/archive/
@@ -92,6 +92,15 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--repo", default=".", help="Repo root (default: .)")
     p.add_argument(
+        "--output",
+        default=".artifacts/docs-derived-state/DOCS_INVENTORY.md",
+        help=(
+            "Inventory artifact path, absolute or relative to --repo. The "
+            "default is untracked derived state; docs/DOCS_INVENTORY.md is "
+            "only a stable pointer."
+        ),
+    )
+    p.add_argument(
         "--orphan-days",
         type=int,
         default=90,
@@ -170,7 +179,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help=(
             "Explicit, self-documenting alias for the default (no --apply) "
-            "inventory-regeneration mode: rewrites docs/DOCS_INVENTORY.md "
+            "inventory-regeneration mode: rewrites the --output artifact "
             "content only, never touches docs/archive/. Mutually exclusive "
             "with --apply and --check. Use this when you only want the "
             "table refreshed and do NOT want orphan git-mv side effects."
@@ -268,11 +277,9 @@ def print_check_delta(
 ) -> None:
     """Emit a compact diff when --check finds inventory drift."""
     print(
-        "docs_audit: docs/DOCS_INVENTORY.md is out of date; regenerate with "
-        "bash scripts/docs_inventory_regen.sh (gate-consistent by default — "
-        "safe to run and commit on a PR branch; see --gate-consistent's "
-        f"--help text for why a bare `python {Path(__file__).as_posix()}` "
-        "invocation without it can commit content this same gate then rejects).",
+        f"docs_audit: generated output differs from {inventory_path}; "
+        "regenerate the ephemeral bundle with "
+        "bash scripts/docs_inventory_regen.sh.",
         file=sys.stderr,
     )
     diff = list(
@@ -1911,7 +1918,12 @@ def main() -> int:
     # unconditionally the working tree: --check's whole job is to compare a
     # fresh render against exactly what's checked in, forgery-detection
     # included).
-    inventory_path = repo / "docs" / "DOCS_INVENTORY.md"
+    configured_output = Path(args.output)
+    inventory_path = (
+        configured_output
+        if configured_output.is_absolute()
+        else repo / configured_output
+    )
     old_content = (
         inventory_path.read_text(encoding="utf-8") if inventory_path.exists() else ""
     )
