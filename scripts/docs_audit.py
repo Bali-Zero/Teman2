@@ -1303,7 +1303,43 @@ def read_trusted_prev_flipped(repo: Path, trusted_ref: str = "origin/main") -> D
         # Ref resolves fine; the FILE just doesn't exist on it (yet). Legit
         # {} — matches parse_prev_flipped()'s own bootstrap contract.
         return {}
-    return parse_prev_flipped(show.stdout)
+    prev = parse_prev_flipped(show.stdout)
+    if not prev:
+        # THIRD STATE — the docstring above knows only two ("ref unresolvable"
+        # -> raise, "file absent" -> bootstrap {}) and this is neither: the
+        # file EXISTS on the trusted ref and carries no parseable provenance
+        # table at all. PR #4233 ("delete tracked derived state", 2026-08-16)
+        # replaced docs/DOCS_INVENTORY.md with a pointer document, so from
+        # that commit on this branch is reached on EVERY invocation and the
+        # channel is severed permanently, not bootstrapping toward anything.
+        #
+        # The harm is the one the fail-closed paragraph above already spells
+        # out in full — "would incorrectly tell every already-organ-ARCHIVED
+        # doc 'no prior flip on record', letting Rule 2 fall through and
+        # silently resurrect it" — reached through infrastructure instead of
+        # malice, which is the route that paragraph did not anticipate.
+        # Measured 2026-08-17: 148 documents carried a flip at b626e01f6^ and
+        # 0 do on the pointer; under --gate-consistent all 148 now read LIVE.
+        # See .claude/skills/modus/PENDING-ARMS.md.
+        #
+        # DELIBERATELY a signaler, not a gate: the return contract is
+        # unchanged ({} exactly as before) so no caller's behaviour moves on
+        # this commit. Whether the mechanism should be re-armed against a
+        # declared input or retired outright is an open ledger decision, and
+        # a warning may not pre-empt it. What this DOES buy is that the break
+        # stops being invisible (superscar #2, "esiste != armato"): it is now
+        # named, with its cause, in the log of every run that reaches here.
+        print(
+            "docs_audit: WARNING - orphan-flip provenance channel is SEVERED. "
+            f"{trusted_ref}:docs/DOCS_INVENTORY.md exists but contains no "
+            "parseable provenance table, so every prior orphan flip reads as "
+            "'never flipped'. This is NOT the bootstrap case (that one is a "
+            "MISSING file). Docs previously archived by the organ can fall "
+            "through Rule 2 and silently resurrect. See PENDING-ARMS.md, row "
+            "'orphan-flip anti-forgery gate'.",
+            file=sys.stderr,
+        )
+    return prev
 
 
 def _flip_is_still_valid(carried: str, last_touched: date) -> bool:
