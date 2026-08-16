@@ -1,0 +1,238 @@
+#!/usr/bin/env bash
+# Corpus for scripts/intake_review_reader_liveness.sh — dossier C-13, 2026-08-15.
+#
+# DEFECT: `if [[ "$CODE" =~ ^[1-5][0-9][0-9]$ ]]` folded EVERY HTTP status, including 5xx,
+# into ALIVE — "any 3-digit code is a heartbeat". A reader whose DB pool died and answered
+# 500 on every path logged "OK: reader ALIVE (http 500)" while kita.balizero.com/review was
+# actually serving errors. Fix: 1xx-4xx = ALIVE, 5xx = a NEW "SICK" branch that pages P0
+# through the same gateway with its own dedup key, gated by the SAME active-active guard
+# (no plist here => not this host's job) and the SAME anti-storm cooldown DEAD already used
+# (superscar #2 "green lies" + #7/#10 sibling cautions).
+#
+# The wrapper is proven by EXECUTING it in a fake world — a real (loopback) HTTP server
+# standing in for the reader, a fake tg_notify.py that records what it was called with
+# instead of paging anyone. Reading the script cannot tell "detected SICK" from "paged for
+# SICK" apart (W107) — only running it can.
+#
+# Usage: bash scripts/tests/test_intake_review_reader_liveness_5xx.sh
+
+set -uo pipefail
+
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+WRAPPER_SRC="$REPO/scripts/intake_review_reader_liveness.sh"
+[ -f "$WRAPPER_SRC" ] || { echo "intake_review_reader_liveness.sh not found at $WRAPPER_SRC"; exit 1; }
+
+PASS=0
+FAIL=0
+check() {  # check <name> <expected> <actual>
+    if [ "$2" = "$3" ]; then
+        echo "  ok    $1"
+        PASS=$((PASS + 1))
+    else
+        echo "  FAIL  $1 (expected=$2 actual=$3)"
+        FAIL=$((FAIL + 1))
+    fi
+}
+check_true() {  # check_true <name> <shell-test-exit-code>
+    if [ "$2" = "0" ]; then
+        echo "  ok    $1"
+        PASS=$((PASS + 1))
+    else
+        echo "  FAIL  $1"
+        FAIL=$((FAIL + 1))
+    fi
+}
+
+TMP="$(mktemp -d)"
+SERVER_PID=""
+cleanup() {
+    [ -n "$SERVER_PID" ] && kill "$SERVER_PID" 2>/dev/null
+    wait "$SERVER_PID" 2>/dev/null
+    rm -rf "$TMP"
+}
+trap cleanup EXIT
+
+HOSTSHORT="$(hostname -s)"
+
+# --- Fake HTTP server: answers every GET with a fixed status code on a free
+# loopback port, until killed. stdlib only. ---
+cat > "$TMP/fake_server.py" <<'PYEOF'
+import http.server
+import socket
+import sys
+
+code = int(sys.argv[1])
+
+
+class Handler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(code)
+        self.end_headers()
+
+    def log_message(self, *_a):
+        pass
+
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.bind(("127.0.0.1", 0))
+port = s.getsockname()[1]
+s.close()
+
+with http.server.HTTPServer(("127.0.0.1", port), Handler) as httpd:
+    print(port, flush=True)
+    httpd.serve_forever()
+PYEOF
+
+start_fake_server() {  # start_fake_server <http-code>  -> prints the port
+    [ -n "$SERVER_PID" ] && { kill "$SERVER_PID" 2>/dev/null; wait "$SERVER_PID" 2>/dev/null; }
+    rm -f "$TMP/port.txt"
+    python3 "$TMP/fake_server.py" "$1" >"$TMP/port.txt" 2>"$TMP/server.err" &
+    SERVER_PID=$!
+    for _ in $(seq 1 50); do
+        [ -s "$TMP/port.txt" ] && break
+        sleep 0.1
+    done
+    cat "$TMP/port.txt"
+}
+
+stop_fake_server() {
+    [ -n "$SERVER_PID" ] && { kill "$SERVER_PID" 2>/dev/null; wait "$SERVER_PID" 2>/dev/null; }
+    SERVER_PID=""
+}
+
+# A port nothing is listening on (bind-then-close, never serve): curl gets an
+# immediate connection-refused = code 000, same as a genuinely dead reader.
+closed_port() {
+    python3 - <<'PYEOF'
+import socket
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.bind(("127.0.0.1", 0))
+print(s.getsockname()[1])
+s.close()
+PYEOF
+}
+
+# --- Fake Telegram gateway: records argv (JSON array per call) to $TG_RECORD
+# instead of sending anything. ---
+cat > "$TMP/tg_notify.py" <<'PYEOF'
+import json
+import os
+import sys
+
+record = os.environ.get("TG_RECORD")
+if record:
+    with open(record, "a") as f:
+        f.write(json.dumps(sys.argv[1:]) + "\n")
+sys.exit(0)
+PYEOF
+
+# --- World: a scripts/ dir with the REAL wrapper + the fake gateway beside it
+# (dirname "$0" resolution), and an isolated $HOME. ---
+make_world() {  # make_world <root>
+    local root="$1"
+    mkdir -p "$root/scripts" "$root/home/Library/LaunchAgents"
+    cp "$WRAPPER_SRC" "$root/scripts/intake_review_reader_liveness.sh"
+    cp "$TMP/tg_notify.py" "$root/scripts/tg_notify.py"
+}
+
+install_plist() {  # install_plist <root>
+    : > "$1/home/Library/LaunchAgents/com.nuzantara.intake-review-reader.plist"
+}
+
+run_wrapper() {  # run_wrapper <root> <port> [extra env assignments...]
+    local root="$1" port="$2"; shift 2
+    ( cd "$root" && env "$@" \
+        HOME="$root/home" \
+        TG_RECORD="$root/home/tg_calls.jsonl" \
+        PROBE_PORT="$port" \
+        bash "$root/scripts/intake_review_reader_liveness.sh" \
+        >"$root/home/stdout.log" 2>"$root/home/stderr.log" )
+    echo $?
+}
+
+n_pages() {  # n_pages <root>  -> number of recorded Telegram sends
+    local f="$1/home/tg_calls.jsonl"
+    [ -f "$f" ] && wc -l < "$f" | tr -d ' ' || echo 0
+}
+
+echo "GUILT — a 5xx must page as SICK, not fold into ALIVE"
+
+ROOT="$TMP/w-sick-guilt"; make_world "$ROOT"; install_plist "$ROOT"
+PORT="$(start_fake_server 500)"
+RC="$(run_wrapper "$ROOT" "$PORT" COOLDOWN_S=0)"
+check "500 with plist present -> wrapper exits 1 (alert sent)" 1 "$RC"
+check "exactly one page recorded" 1 "$(n_pages "$ROOT")"
+check_true "page carries the SICK dedup key (not DEAD's)" \
+    "$(grep -q "intake-review-reader:sick:${HOSTSHORT}" "$ROOT/home/tg_calls.jsonl" 2>/dev/null; echo $?)"
+check_true "log names the state SICK" \
+    "$(grep -q 'reader SICK' "$ROOT/home/logs/intake-review-reader-liveness.log" 2>/dev/null; echo $?)"
+check_true "log names the code (500)" \
+    "$(grep -q '500' "$ROOT/home/logs/intake-review-reader-liveness.log" 2>/dev/null; echo $?)"
+check_true "state file records action=sick" \
+    "$(grep -q '"last_action": "sick"' "$ROOT/home/.agent/decisions/state/intake_review_reader_liveness.json" 2>/dev/null; echo $?)"
+stop_fake_server
+
+echo
+echo "INNOCENCE — process up and CORRECT must not page"
+
+ROOT="$TMP/w-ok-200"; make_world "$ROOT"; install_plist "$ROOT"
+PORT="$(start_fake_server 200)"
+RC="$(run_wrapper "$ROOT" "$PORT" COOLDOWN_S=0)"
+check "200 -> wrapper exits 0" 0 "$RC"
+check "no page sent" 0 "$(n_pages "$ROOT")"
+check_true "log names the state ALIVE" \
+    "$(grep -q 'ALIVE' "$ROOT/home/logs/intake-review-reader-liveness.log" 2>/dev/null; echo $?)"
+stop_fake_server
+
+ROOT="$TMP/w-ok-401"; make_world "$ROOT"; install_plist "$ROOT"
+PORT="$(start_fake_server 401)"
+RC="$(run_wrapper "$ROOT" "$PORT" COOLDOWN_S=0)"
+check "401 (JWT-gated, still up) -> wrapper exits 0" 0 "$RC"
+check "no page sent" 0 "$(n_pages "$ROOT")"
+stop_fake_server
+
+echo
+echo "INNOCENCE — the DEAD path (000, port closed) is unchanged by this fix"
+
+ROOT="$TMP/w-dead"; make_world "$ROOT"; install_plist "$ROOT"
+PORT="$(closed_port)"
+RC="$(run_wrapper "$ROOT" "$PORT" COOLDOWN_S=0)"
+check "port closed -> wrapper exits 1 (alert sent)" 1 "$RC"
+check "exactly one page recorded" 1 "$(n_pages "$ROOT")"
+check_true "page still carries DEAD's original dedup key (stalled)" \
+    "$(grep -q "intake-review-reader:stalled:${HOSTSHORT}" "$ROOT/home/tg_calls.jsonl" 2>/dev/null; echo $?)"
+check_true "log names the state DEAD" \
+    "$(grep -q 'reader DEAD' "$ROOT/home/logs/intake-review-reader-liveness.log" 2>/dev/null; echo $?)"
+check_true "state file records action=alert_dead (unchanged)" \
+    "$(grep -q '"last_action": "alert_dead"' "$ROOT/home/.agent/decisions/state/intake_review_reader_liveness.json" 2>/dev/null; echo $?)"
+
+echo
+echo "GUILT/INNOCENCE — SICK mirrors DEAD's two shared guards, not just its message"
+
+# Active-active guard: no plist here + no FORCE_CHECK => stay silent even SICK.
+ROOT="$TMP/w-sick-noop"; make_world "$ROOT"
+PORT="$(start_fake_server 503)"
+RC="$(run_wrapper "$ROOT" "$PORT" COOLDOWN_S=0)"
+check "503, no plist, no FORCE_CHECK -> no-op exit 0 (not this host)" 0 "$RC"
+check "no page sent" 0 "$(n_pages "$ROOT")"
+stop_fake_server
+
+# Cooldown guard: a recent last_action_ts must suppress a SICK page too, so a
+# flapping backend does not page every tick (the defect this mirrors DEAD to
+# avoid: an un-throttled SICK path would page every 5min).
+ROOT="$TMP/w-sick-cooldown"; make_world "$ROOT"; install_plist "$ROOT"
+mkdir -p "$ROOT/home/.agent/decisions/state"
+cat > "$ROOT/home/.agent/decisions/state/intake_review_reader_liveness.json" <<EOF
+{"last_action_ts": $(date +%s), "last_action": "ok", "last_http_code": "200", "probe": "x"}
+EOF
+PORT="$(start_fake_server 500)"
+RC="$(run_wrapper "$ROOT" "$PORT" COOLDOWN_S=1800)"
+check "500 right after a recent action -> exit 1 (still unhealthy) but suppressed" 1 "$RC"
+check "cooldown suppresses the page" 0 "$(n_pages "$ROOT")"
+check_true "log says cooldown active" \
+    "$(grep -q 'cooldown active' "$ROOT/home/logs/intake-review-reader-liveness.log" 2>/dev/null; echo $?)"
+stop_fake_server
+
+echo
+echo "result: $PASS pass, $FAIL fail"
+[ "$FAIL" -eq 0 ]
