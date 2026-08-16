@@ -122,12 +122,9 @@ Mouth (Next.js) → Backend (FastAPI) → Data (Postgres + Qdrant + Redis)
 
 ## System Stats
 
-- Routers: 90
-- Services: 253
-- Test Files: 419
-- KG Nodes: 108,068
-- KG Edges: 242,827
-- Vectors: 93,283
+Do not trust a committed numeric snapshot. Generate current repository state
+with `python3 scripts/docs_sync.py --json`; service-backed fields explicitly
+report `unavailable` when live credentials are absent.
 
 ## Resources
 

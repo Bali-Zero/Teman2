@@ -13,9 +13,9 @@ Monthly companion to weekly docs-guardian. Mines git log over the last 6 months 
 - Top-touched docs (central / evolving)
 - Quiet-but-alive docs (future orphan candidates)
 
-Orthogonal to `docs/DOCS_INVENTORY.md`:
+Orthogonal to the generated docs-inventory artifact:
 
-- **DOCS_INVENTORY.md**: state snapshot (which docs are LIVE/STALE/ARCHIVED right now)
+- **docs-derived-state/DOCS_INVENTORY.md**: ephemeral state snapshot
 - **DOCS_TRENDS.md**: evolution (how the corpus is changing over time)
 
 ## Install
@@ -42,6 +42,6 @@ crontab -l | grep -v docs-history-analyzer | crontab -
 
 ## Related
 
-- Weekly: `scripts/docs_guardian.sh` → `docs/DOCS_INVENTORY.md` (state)
+- Scheduled: `.github/workflows/docs-inventory-refresh.yml` → artifact (state)
 - Monthly: `scripts/docs_history_analyzer.py` → `docs/DOCS_TRENDS.md` (trends)
 - Design: `docs/superpowers/specs/2026-04-24-docs-hygiene-design.md`

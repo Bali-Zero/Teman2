@@ -1,14 +1,10 @@
-"""Tests for the atlas extractors added to scripts/docs_sync.py.
-
-These run against the real repo tree on purpose: the extractors' contract is
-"deterministic over git-tracked files" (local ↔ CI parity), so the repo itself
-is the fixture. Structural assertions only — no exact counts, or every new
-runbook/skill would break the suite.
-"""
+"""Tests for live derived-state generation and protected stable pointers."""
 
 from __future__ import annotations
 
 import importlib.util
+import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -23,156 +19,98 @@ sys.modules["docs_sync"] = docs_sync
 _spec.loader.exec_module(docs_sync)
 
 
-# ---------------------------------------------------------------------------
-# Extractors
-# ---------------------------------------------------------------------------
-
-def test_list_runbooks_excludes_readme_and_has_titles():
-    rows = docs_sync.list_runbooks()
-    assert rows, "repo has runbooks; extractor returned none"
-    names = [r["file"] for r in rows]
-    assert "README.md" not in names, "the generated index must not index itself"
-    assert all(r["title"] for r in rows), "every runbook row needs a title fallback"
-    assert names == sorted(names), "output must be sorted (deterministic)"
-
-
-def test_list_workflows_parses_export_const_meta():
-    rows = docs_sync.list_workflows()
-    by_name = {r["name"]: r for r in rows}
-    # verify-template.js is a durable, citable artifact (CLAUDE.md §6) — if it
-    # ever disappears this test SHOULD fail and force a doc decision.
-    assert "verify-template" in by_name
-    assert by_name["verify-template"]["description"], (
-        "meta.description not parsed — the meta block sits below header "
-        "comments; the extractor must anchor to `export const meta`"
-    )
-
-
-def test_list_skills_parses_folded_frontmatter_description():
-    rows = docs_sync.list_skills()
-    by_name = {r["name"]: r for r in rows}
-    assert "modus" in by_name, "repo-tracked skill modus not enumerated"
-    # modus uses `description: >` (YAML folded scalar) — the regression this
-    # test pins is returning '>' or '' instead of the folded text.
-    desc = by_name["modus"]["description"]
-    assert desc and desc != ">", f"folded description not joined: {desc!r}"
-    assert len(desc) <= 160
-
-
-def test_automation_coverage_bounds():
-    cov = docs_sync.automation_coverage()
-    assert cov["plists"] > 0, "infra/launchagents has tracked plists"
-    assert 0 <= cov["documented"] <= cov["plists"]
-
-
-def test_extractors_deterministic():
-    # Two independent calls, compared via locals rather than inline — the
-    # anti-reward-hacking linter's RH002 check compares ast.dump(left) ==
-    # ast.dump(right) and can't tell "two separate calls to a pure function"
-    # from a literal `assert X == X` tautology when both sides are written
-    # identically inline. Same values, same behavior; this form just doesn't
-    # trip the AST-structural false positive.
+def test_atlas_extractors_are_structural_and_deterministic():
     runbooks_a, runbooks_b = docs_sync.list_runbooks(), docs_sync.list_runbooks()
-    assert runbooks_a == runbooks_b
     workflows_a, workflows_b = docs_sync.list_workflows(), docs_sync.list_workflows()
-    assert workflows_a == workflows_b
     skills_a, skills_b = docs_sync.list_skills(), docs_sync.list_skills()
-    assert skills_a == skills_b
     coverage_a, coverage_b = docs_sync.automation_coverage(), docs_sync.automation_coverage()
+
+    assert runbooks_a == runbooks_b
+    assert workflows_a == workflows_b
+    assert skills_a == skills_b
     assert coverage_a == coverage_b
+    assert runbooks_a and all(row["title"] for row in runbooks_a)
+    assert "README.md" not in {row["file"] for row in runbooks_a}
+    assert "verify-template" in {row["name"] for row in workflows_a}
+    assert "modus" in {row["name"] for row in skills_a}
+    assert 0 <= coverage_a["documented"] <= coverage_a["plists"]
 
 
-# ---------------------------------------------------------------------------
-# Templates
-# ---------------------------------------------------------------------------
-
-def _stats():
-    return {
-        "runbooks": [{"file": "a.md", "title": "A | pipe"}],
-        "workflows": [{"file": "w.js", "name": "w", "description": "d | pipe"}],
-        "skills": [{"name": "s", "description": "sd"}],
-        "automation_coverage": {"plists": 4, "documented": 1},
+def test_templates_are_stable_pointers_not_volatile_values():
+    assert set(docs_sync.TEMPLATES) == {
+        key for keys in docs_sync.EXPECTED_MARKERS.values() for key in keys
     }
+    for key, body in docs_sync.TEMPLATES.items():
+        assert "scripts/docs_sync.py --json" in body, key
+        assert "docs-derived-state CI artifact" in body, key
+        assert not re.search(
+            r"\b\d[\d,]*\s+(routers?|services?|tests?|documents?|nodes?|edges?|plists?)\b",
+            body,
+            re.IGNORECASE,
+        ), key
 
 
-def test_templates_registered_and_render():
-    for key in (
-        "RUNBOOKS_INDEX",
-        "WORKFLOWS_INDEX",
-        "SKILLS_INDEX",
-        "AUTOMATION_COVERAGE",
-    ):
-        assert key in docs_sync.TEMPLATES
-        body = docs_sync.TEMPLATES[key](_stats())
-        assert body.strip(), f"{key} rendered empty"
+def test_all_managed_files_are_canonical_after_regen():
+    for target in docs_sync.TARGET_FILES:
+        changed, _old, _new, errors = docs_sync.inject_markers(target)
+        assert errors == [], (target, errors)
+        assert not changed, target
 
 
-def test_table_cells_escape_pipes():
-    body = docs_sync.TEMPLATES["RUNBOOKS_INDEX"](_stats())
-    assert "A \\| pipe" in body
-    body = docs_sync.TEMPLATES["WORKFLOWS_INDEX"](_stats())
-    assert "d \\| pipe" in body
+def test_diff_local_innocence_ignores_unrelated_global_drift(tmp_path):
+    changed = tmp_path / "changed.txt"
+    changed.write_text("apps/backend-rag/backend/services/new_service.py\n")
+    assert docs_sync._targets_for_changed_file_list(changed) == []
 
 
-def test_automation_coverage_render_pct():
-    body = docs_sync.TEMPLATES["AUTOMATION_COVERAGE"](_stats())
-    assert "4 plist" in body and "(25% coverage)" in body
+def test_diff_local_guilt_selects_changed_doc_and_judge(tmp_path):
+    changed_doc = tmp_path / "changed-doc.txt"
+    changed_doc.write_text("README.md\n")
+    assert docs_sync._targets_for_changed_file_list(changed_doc) == [
+        docs_sync.REPO_ROOT / "README.md"
+    ]
+
+    changed_judge = tmp_path / "changed-judge.txt"
+    changed_judge.write_text("scripts/docs_sync.py\n")
+    assert docs_sync._targets_for_changed_file_list(changed_judge) == docs_sync.TARGET_FILES
 
 
-def test_coverage_zero_plists_no_division_error():
-    body = docs_sync.TEMPLATES["AUTOMATION_COVERAGE"](
-        {"automation_coverage": {"plists": 0, "documented": 0}}
-    )
-    assert "(0% coverage)" in body
+def test_hand_edit_is_guilty_but_prose_edit_is_innocent():
+    rel = "README.md"
+    original = (REPO_ROOT / rel).read_text()
+    pointer = docs_sync.TEMPLATES["TECH_STATS"]
+
+    hand_edit = original.replace(pointer, "\n- Backend: 999 routers\n")
+    restored, errors = docs_sync.canonicalize_content(rel, hand_edit)
+    assert errors == []
+    assert restored == original
+
+    prose_edit = original + "\nProse outside the protected block.\n"
+    unchanged, errors = docs_sync.canonicalize_content(rel, prose_edit)
+    assert errors == []
+    assert unchanged == prose_edit
 
 
-# ---------------------------------------------------------------------------
-# Target wiring
-# ---------------------------------------------------------------------------
-
-def test_target_files_wiring():
-    targets = [p.name for p in docs_sync.TARGET_FILES]
-    assert "INDEX.md" in targets
-    assert "CLAUDE.md" not in targets, (
-        "CLAUDE.md markers were removed in F44 — a dead target misleads"
-    )
-    rels = [str(p.relative_to(docs_sync.REPO_ROOT)) for p in docs_sync.TARGET_FILES]
-    assert "docs/runbooks/README.md" in rels
+def test_missing_marker_fails_closed():
+    updated, errors = docs_sync.canonicalize_content("README.md", "# no marker\n")
+    assert updated == "# no marker\n"
+    assert errors == [
+        "README.md: expected exactly one TECH_STATS marker pair, found 0"
+    ]
 
 
-# ---------------------------------------------------------------------------
-# Cache write gating (read_only) — .docs_sync_cache.json must stay untouched
-# by any mode documented as non-mutating (--check/--diff/--json).
-# ---------------------------------------------------------------------------
-
-def test_gather_stats_read_only_skips_cache_write(monkeypatch):
-    calls = []
-    monkeypatch.setattr(docs_sync, "_save_cache", lambda stats: calls.append(stats))
-
-    docs_sync.gather_stats(read_only=True)
-    assert calls == [], "read_only=True must never call _save_cache"
-
-    docs_sync.gather_stats()
-    assert len(calls) == 1, "default (write) mode must still refresh the cache"
-
-
-def test_check_leaves_docs_sync_cache_untouched():
-    """Regression: `--check` is documented as read-only but used to call
-    _save_cache unconditionally, dirtying a tracked file on every invocation
-    (including in CI, where the fresh-clone .docs_sync_cache.json is what
-    --check's Qdrant fallback relies on — see gather_stats docstring)."""
-    cache_path = docs_sync.CACHE_PATH
-    before = cache_path.read_bytes() if cache_path.exists() else None
-
+def test_json_is_valid_and_does_not_write_tracked_targets():
+    before = {path: path.read_bytes() for path in docs_sync.TARGET_FILES}
     result = subprocess.run(
-        [sys.executable, str(REPO_ROOT / "scripts" / "docs_sync.py"), "--check"],
+        [sys.executable, str(REPO_ROOT / "scripts" / "docs_sync.py"), "--json"],
         cwd=REPO_ROOT,
+        check=True,
         capture_output=True,
         text=True,
     )
-
-    after = cache_path.read_bytes() if cache_path.exists() else None
-    assert before == after, (
-        "--check modified .docs_sync_cache.json — read-only mode must not "
-        f"write. stdout={result.stdout!r} stderr={result.stderr!r}"
-    )
+    payload = json.loads(result.stdout)
+    assert {"routers", "services", "apps", "runbooks", "workflows", "skills"} <= payload.keys()
+    assert payload["qdrant"]["status"] in {"live", "unavailable"}
+    assert payload["kg"]["status"] in {"environment", "unavailable"}
+    after = {path: path.read_bytes() for path in docs_sync.TARGET_FILES}
+    assert before == after

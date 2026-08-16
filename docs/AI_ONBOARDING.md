@@ -4,7 +4,7 @@
 **Purpose:** Technical reference for AI assistants. For behavioral rules, see `CLAUDE.md`. For the founding principles of the organism, see `SYMBIOSIS.md` (monorepo root).
 
 <!-- DOCSYNC:QUICK_NUMBERS_START -->
-`330 routers · 697 services · 1367 tests · 12 Qdrant collections · 104,154 vectors · 108,068 KG nodes`
+Current state for quick numbers is intentionally not stored in git. Run `python3 scripts/docs_sync.py --json` or download the latest [docs-derived-state CI artifact](https://github.com/Bali-Zero/Teman2/actions/workflows/docs-inventory-refresh.yml).
 <!-- DOCSYNC:QUICK_NUMBERS_END -->
 
 > **Role split:** `CLAUDE.md` = how to act (rules, delegation, language, deploy QA). This file = how to build (architecture, code patterns, debugging, workflows).
@@ -37,7 +37,7 @@ PYTHONPATH=. pytest backend/tests/services/rag/test_confidence.py -q --tb=no && 
 
 - [ ] Virtualenv: `.venv` (NEVER `venv/` or system Python)
 - [ ] Absolute imports, async-first (`httpx`), type hints, `logger` not `print()`
-- [ ] Embedding model `text-embedding-3-small` is **FROZEN** (93,283 vectors depend on it)
+- [ ] Embedding model `text-embedding-3-small` is **FROZEN** (the existing vector index depends on it)
 
 ---
 
@@ -45,7 +45,7 @@ PYTHONPATH=. pytest backend/tests/services/rag/test_confidence.py -q --tb=no && 
 
 ### Embedding Model — FROZEN
 
-All vectors use `text-embedding-3-small` (1536 dims). Changing it invalidates 93,283 existing vectors.
+All vectors use `text-embedding-3-small` (1536 dims). Changing it invalidates the existing vector index.
 
 ```bash
 curl https://nuzantara-rag.fly.dev/health | jq '.embeddings.model'  # Must be "text-embedding-3-small"

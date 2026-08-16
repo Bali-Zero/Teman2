@@ -47,17 +47,23 @@ ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null 
 
 ### Tech Stack
 
-<!-- DOCSYNC:BACKEND_STATS_START -->
+<!-- HISTORICAL-SNAPSHOT:BACKEND_STATS_START -->
 
 - **Backend:** Python 3.11+, FastAPI, 90 routers, 253 services, 419 test files
-<!-- DOCSYNC:BACKEND_STATS_END -->
+
+<!-- HISTORICAL-SNAPSHOT:BACKEND_STATS_END -->
+
 - **Frontend:** Next.js, TypeScript, Tailwind CSS
 - **Databases:** PostgreSQL (relational), Qdrant (vector), Redis (cache)
 - **Infrastructure:** Fly.io (backend), Vercel (frontend)
 - **Knowledge Graph:** 108,068 nodes, 242,827 edges
-<!-- DOCSYNC:VECTOR_STATS_START -->
+
+<!-- HISTORICAL-SNAPSHOT:VECTOR_STATS_START -->
+
 - **Vector Collections:** 10 live on Fly.io (93,283 documents), 11 defined in code
-<!-- DOCSYNC:VECTOR_STATS_END -->
+
+<!-- HISTORICAL-SNAPSHOT:VECTOR_STATS_END -->
+
 - **Embedding Model:** `text-embedding-3-small` (1536 dims) — **NEVER CHANGE** (would invalidate 93,283 vectors)
 - **Search Pipeline:** Hybrid (BM25+Dense+RRF) + CrossEncoder reranking
 
@@ -217,11 +223,11 @@ Sections: `SECURITY_BOUNDARY` · `TOOL_USAGE_POLICY` · `SYSTEM_INSTRUCTIONS` ·
 
 ### Evidence Scoring — `<0.15` ABSTAIN · `0.15-0.60` CAUTIOUS · `>0.60` NORMAL
 
-<!-- DOCSYNC:EMBEDDING_FROZEN_START -->
+<!-- HISTORICAL-SNAPSHOT:EMBEDDING_FROZEN_START -->
 
 ### Embedding — `text-embedding-3-small` (1536 dims) FROZEN. Never change without re-indexing plan.
 
-<!-- DOCSYNC:EMBEDDING_FROZEN_END -->
+<!-- HISTORICAL-SNAPSHOT:EMBEDDING_FROZEN_END -->
 
 ## 7. MCP Servers
 

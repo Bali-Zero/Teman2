@@ -964,8 +964,8 @@
       "consumes": "pytest, coverage history file"
     },
     "docs_guardian.sh": {
-      "description": "Weekly docs hygiene: regenerates DOCS_INVENTORY.md (classify LIVE/STALE/ARCHIVED), detects DOCSYNC drift / broken links / orphans. Sends Telegram alert only on delta. Schedule: Sun 05:00 WITA.",
-      "produces": "docs/DOCS_INVENTORY.md (refreshed), Telegram alert on delta",
+      "description": "Weekly docs hygiene: generates an ephemeral inventory, detects broken links / orphans, and sends Telegram only on actionable delta. Schedule: Sun 05:00 WITA.",
+      "produces": "Docs archive/link repair PR when actionable, Telegram alert on delta",
       "consumes": "docs/**/*.md, CLAUDE.md, INDEX.md, SYMBIOSIS.md, VADEMECUM.md, apps/*/README.md"
     },
     "docs_history_analyzer.py": {
@@ -1505,7 +1505,7 @@
   },
   "github_actions": {
     "gh_docs_sync": {
-      "description": "GitHub Action: checks docs are in sync on push/PR. Validates documentation matches code state.",
+      "description": "GitHub Action: checks protected stable pointers on the merge-base delta and validates the live-state generator.",
       "system": "CI/CD",
       "machine": "GitHub",
       "type": "ci-workflow",

@@ -233,7 +233,7 @@ Use only for emergency / hotfix / cicatrix-fix.
 - `apps/admin-dashboard/` - Admin UI
 - `apps/webapp/` - Web application
 - `apps/bali-intel-scraper/` - Intelligence gathering
-- `apps/nuzantara-mcp/` - MCP server v2.1 (115 tools, 10 prompts, 5 resources, 8 chains)
+- `apps/nuzantara-mcp/` - MCP server v2.1 (inspect the server for its live capability inventory)
 - `apps/nuzantara-mcp-advanced/` - Advanced MCP (Fly.io ops, diagnostics)
 - `apps/nuzantara-mcp-browser/` - Browser automation MCP
 - `apps/graph-engine/` - Graph processing engine
@@ -244,12 +244,12 @@ Use only for emergency / hotfix / cicatrix-fix.
 
 ### Tech Stack
 
-- **Backend:** Python 3.11+, FastAPI, 327 router mounts (156 router files), 746 service files, 1,449 test files
+- **Backend:** Python 3.11+, FastAPI. Live counts: `python3 scripts/docs_sync.py --json`
 - **Frontend:** Next.js, TypeScript, Tailwind CSS
 - **Databases:** PostgreSQL (relational), Qdrant (vector), Redis (cache)
 - **Infrastructure:** Fly.io (backend), Vercel (frontend)
-- **Knowledge Graph:** 108,068 nodes, 242,827 edges
-- **Vector Collections:** 11 canonical logical collections (`backend/core/collection_registry.py`), 104,154 documents
+- **Knowledge Graph:** live counts are generated, not stored in this file
+- **Vector Collections:** canonical registry: `backend/core/collection_registry.py`; live counts: `python3 scripts/docs_sync.py --json`
 - **Embedding Model:** `text-embedding-3-small` (1536 dims) — **NEVER CHANGE**
 
 ## 2. Agent Behavior Rules (IMPORTANT)
@@ -338,18 +338,18 @@ vercel --prod
 apps/backend-rag/
 ├── backend/
 │   ├── app/              # FastAPI app
-│   │   ├── routers/      # API endpoints (156 router files, 327 mounts)
+│   │   ├── routers/      # API endpoints (live inventory: docs_sync.py --json)
 │   │   ├── services/     # App-level services (CRM, auth, metrics)
 │   │   ├── setup/        # app_factory, router_registration, service_initializer
 │   │   ├── dependencies.py  # ⚠️ Imported by ALL routers — test before deploy
 │   │   └── main.py       # Entrypoint (alias for main_cloud.py)
-│   ├── services/         # Core business logic (746 service files)
+│   ├── services/         # Core business logic
 │   ├── core/             # Config, security, logging
 │   ├── prompts/          # ⭐ Prompt Single Source of Truth (see below)
 │   ├── channels/         # 7 channels (whatsapp, telegram, instagram, etc.)
 │   ├── llm/              # LLM clients (Gemini, Ollama, OpenRouter)
 │   └── migrations/       # custom SQL (legacy 001→124 py; live v2 092→246 sql in backend/db/migrations_v2/)
-├── tests/                # 1,449 test files (276 tests/ + 1,173 backend/tests/)
+├── tests/                # Unit and integration tests
 ├── .venv/                # ⚠️ ALWAYS .venv on Pro and Mini
 └── fly.toml
 ```
@@ -439,7 +439,7 @@ Classification confidence thresholds:
 
 **Model:** `text-embedding-3-small` (OpenAI)  
 **Dimensions:** 1536  
-**CRITICAL:** This model is FROZEN. Changing it would invalidate 104,154 existing vectors.  
+**CRITICAL:** This model is FROZEN. Changing it would invalidate the existing vector index.
 **Never:** Switch to another model without explicit authorization and full re-indexing plan.
 
 ## 6. MCP Servers
