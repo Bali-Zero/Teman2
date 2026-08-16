@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Ephemeral E2a driver — runs the slice query bank through nb2_query.py.
 
-Not part of the doctrine-factory tooling (that lives in tools/); this is a one-shot
-runner for the E2a task, deleted after use. Appends the mandatory template
+One-shot runner for the E2a task (kept for provenance/re-run reference, not a
+general-purpose doctrine-factory tool). Appends the mandatory template
 (blueprint C §3.0 / master prompt §5C) to every question, sequential execution,
 fresh conversation per query (nb2_query.py's own contract).
 """
@@ -11,7 +11,7 @@ import sys
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent / "research/visa/doctrine-factory/tools"))
+sys.path.insert(0, str(Path(__file__).parent))
 import nb2_query  # noqa: E402
 
 TEMPLATE = (
@@ -25,8 +25,8 @@ TEMPLATE = (
     "information or source is missing."
 )
 
-QUERIES_PATH = Path(__file__).parent / "research/visa/doctrine-factory/e2a_queries.json"
-LOG_PATH = Path(__file__).parent / "research/visa/doctrine-factory/nb2-answers/response-log.jsonl"
+QUERIES_PATH = Path(__file__).parent.parent / "e2a_queries.json"
+LOG_PATH = Path(__file__).parent.parent / "nb2-answers/response-log.jsonl"
 
 
 def main():
