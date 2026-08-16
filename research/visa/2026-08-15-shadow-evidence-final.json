@@ -1,0 +1,155 @@
+{
+  "blockers": [
+    "G-a-vol",
+    "G-a-breadth",
+    "G-c",
+    "G-b",
+    "G-d"
+  ],
+  "enforce_ready": false,
+  "gate_status": "RED",
+  "gates": {
+    "G-a-breadth": {
+      "active_utc_days": 1,
+      "category_counts": {
+        "family": 3,
+        "investor": 4,
+        "long_tourism": 7,
+        "other": 3,
+        "work_remote": 3
+      },
+      "distinct_requests": 20,
+      "distinct_visa_codes": 0,
+      "duplicate_evaluations": 0,
+      "green": false,
+      "invalid_candidate_bindings": 0,
+      "longest_consecutive_utc_day_streak": 1,
+      "malformed_candidate_summaries": 0,
+      "minimum_consecutive_days": 7,
+      "minimum_distinct_requests": 1000,
+      "minimum_distinct_visa_codes": 30,
+      "minimum_window_duration_hours": 168,
+      "missing_or_invalid_categories": 0,
+      "missing_request_fingerprints": 0,
+      "missing_required_categories": [
+        "retirement",
+        "student",
+        "work_employee"
+      ],
+      "reported_only_categories": [
+        "business",
+        "diaspora"
+      ],
+      "required_categories": [
+        "family",
+        "investor",
+        "long_tourism",
+        "retirement",
+        "student",
+        "work_employee",
+        "work_remote"
+      ],
+      "status": "RED",
+      "total_audit_rows": 20,
+      "traffic_source_counts": {
+        "synthetic_driver": 0,
+        "synthetic_gold": 20
+      },
+      "traffic_sources": [
+        "synthetic_driver",
+        "synthetic_gold"
+      ],
+      "visa_codes": [],
+      "window_duration_hours": 8.082777777777778
+    },
+    "G-a-vol": {
+      "active_utc_days": 0,
+      "category_counts": {},
+      "distinct_requests": 0,
+      "distinct_visa_codes": 0,
+      "duplicate_evaluations": 0,
+      "green": false,
+      "invalid_candidate_bindings": 0,
+      "longest_consecutive_utc_day_streak": 0,
+      "malformed_candidate_summaries": 0,
+      "minimum_consecutive_days": 7,
+      "minimum_distinct_requests": 1000,
+      "minimum_distinct_visa_codes": 30,
+      "minimum_window_duration_hours": 168,
+      "missing_or_invalid_categories": 0,
+      "missing_request_fingerprints": 0,
+      "missing_required_categories": [
+        "family",
+        "investor",
+        "long_tourism",
+        "retirement",
+        "student",
+        "work_employee",
+        "work_remote"
+      ],
+      "reported_only_categories": [
+        "business",
+        "diaspora"
+      ],
+      "required_categories": [
+        "family",
+        "investor",
+        "long_tourism",
+        "retirement",
+        "student",
+        "work_employee",
+        "work_remote"
+      ],
+      "status": "RED",
+      "total_audit_rows": 0,
+      "traffic_source_counts": {
+        "real": 0
+      },
+      "traffic_sources": [
+        "real"
+      ],
+      "visa_codes": [],
+      "window_duration_hours": 8.082777777777778
+    },
+    "G-b": {
+      "green": false,
+      "reason": "requires independent canonical 20-persona replay evidence",
+      "status": "UNMEASURED"
+    },
+    "G-c": {
+      "citations_not_claimed": 0,
+      "claimed_sources_not_cited": 0,
+      "decisions_without_citations": 1,
+      "green": false,
+      "invalid_rule_pack_payloads": 0,
+      "malformed_citations": 0,
+      "malformed_grounding_summaries": 2,
+      "missing_rule_pack_digests": 0,
+      "missing_ruleset_activations": 0,
+      "status": "RED",
+      "ungrounded_claims": 3,
+      "unresolved_or_invalid_sources": 0
+    },
+    "G-d": {
+      "green": false,
+      "reason": "requires a recorded live ENFORCE-to-OFF rollback drill",
+      "status": "UNMEASURED"
+    }
+  },
+  "schema_version": "visa-shadow-evidence/1.3.0",
+  "skipped_non_evidence_surfaces": 0,
+  "surfaces": {
+    "RECOMMEND": 20
+  },
+  "traffic_source": {
+    "legacy": 0,
+    "real": 0,
+    "synthetic_driver": 0,
+    "synthetic_gold": 20,
+    "total_audit_rows": 20
+  },
+  "window": {
+    "end_exclusive": "2026-08-15T02:32:36+00:00",
+    "start": "2026-08-14T18:27:38+00:00"
+  }
+}

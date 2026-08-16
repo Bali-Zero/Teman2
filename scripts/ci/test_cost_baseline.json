@@ -1,0 +1,63 @@
+{
+  "_doc": "Committed reference baseline for scripts/ci/test_cost_gate.py. Snapshot of one scripts/suite_growth_probe.py record measured on Pro (this repo's suite-growth telemetry organ, research/operations/2026-08-14-merge-os-v3-research-council.md \u00a7C1/\u00a76 step 3) \u2014 committed here deliberately so the gate never makes a live call to Pro from CI (CI cannot see Pro; council contract point 3). p50_minutes is the comparison baseline (the gate's own docstring explains why not p95). Refresh this file periodically by re-running scripts/suite_growth_probe.py --no-alert on Pro and copying its jobs{}.current_window \u2014 there is no automation for that yet (deliberately out of this PR's scope, same as the tests.yml wiring itself).",
+  "jobs": {
+    "backend-tests": {
+      "p50_minutes": 26.5,
+      "p95_minutes": 28.188333333333333,
+      "sample_size": 459,
+      "timeout_minutes": 30
+    },
+    "change-map": {
+      "p50_minutes": 0.0,
+      "p95_minutes": 1.1666666666666667,
+      "sample_size": 312,
+      "timeout_minutes": 10
+    },
+    "e2e-tests": {
+      "p50_minutes": 7.066666666666666,
+      "p95_minutes": 7.784999999999999,
+      "sample_size": 459,
+      "timeout_minutes": 20
+    },
+    "evaluator-critical-tests": {
+      "p50_minutes": 0.5666666666666667,
+      "p95_minutes": 0.7333333333333333,
+      "sample_size": 456,
+      "timeout_minutes": null
+    },
+    "frontend-tests": {
+      "p50_minutes": 1.7666666666666666,
+      "p95_minutes": 5.683333333333334,
+      "sample_size": 913,
+      "timeout_minutes": 10
+    },
+    "mcp-server-tests": {
+      "p50_minutes": 0.8666666666666667,
+      "p95_minutes": 1.15,
+      "sample_size": 457,
+      "timeout_minutes": 10
+    },
+    "shared-core-package-tests": {
+      "p50_minutes": 1.4666666666666666,
+      "p95_minutes": 1.7899999999999996,
+      "sample_size": 457,
+      "timeout_minutes": null
+    },
+    "test-summary": {
+      "p50_minutes": 0.06666666666666667,
+      "p95_minutes": 0.1,
+      "sample_size": 460,
+      "timeout_minutes": 10
+    }
+  },
+  "schema_version": 1,
+  "source": {
+    "captured_by": "scripts/ci/test_cost_gate.py build session, 2026-08-15 (ssh pro cat)",
+    "generated_at_utc": "2026-08-14T21:18:00Z",
+    "machine": "pro",
+    "organ": "scripts/suite_growth_probe.py",
+    "record_path": "~/.nuzantara-mq/suite-growth/20260814T211800Z.json",
+    "window_days": 7,
+    "workflow": "tests.yml"
+  }
+}

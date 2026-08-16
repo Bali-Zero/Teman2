@@ -78,11 +78,16 @@ WHAT IT DOES (dry-run by default; nothing is written without --apply):
                                  column is already correct, but kept for
                                  idempotent consistency with properties.uraian)
     - properties.uraian      <- canonical uraian (fixes the subgroup-bleed)
+    - properties.pma_*/bali_* <- fail-closed public disclosure. 68112 is a
+                                  declared PMA gap, so its historical
+                                  TERBUKA/100 and Bali working verdict are
+                                  removed and replaced by NOT_VERIFIED.
     - properties.{whatItMeans,whatYouNeed,baliContext,whatChanged,
-      zantaraOpener}         <- canonical intel_2026.* (only PRESENT keys,
-                                 never nulled — same discipline as
-                                 `kg_kbli_resync.py`)
-    - properties._data_note  <- canonical _data_note (if present)
+      zantaraOpener,_data_note} are removed for that declared gap. They are
+                                  generated/editorial working prose and cannot
+                                  be republished until the complete located PMA
+                                  tuple exists. A future located tuple restores
+                                  only canonical present values.
     - DELETE FROM kg_edges WHERE source_entity_id='kbli:68112' AND
       relationship_type='REQUIRES' AND target_entity_id LIKE 'perizinan:%'
       — ONLY if the freshly-fetched canonical `per_skala == []` (guard
@@ -167,9 +172,20 @@ import logging
 import os
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 
 import asyncpg
 import httpx
+
+_APP_ROOT = Path(__file__).resolve().parents[2]
+if str(_APP_ROOT) not in sys.path:
+    sys.path.insert(0, str(_APP_ROOT))
+
+from backend.services.kbli_pma_disclosure import (
+    disclose_bali,
+    disclose_pma,
+    pma_claims_verified,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("kg_fix_68112_node")
@@ -186,6 +202,37 @@ SHADOW_ENTITY_ID = f"kbli_{CODE}"
 # file runnable via `fly ssh console` with no local package-relative import
 # surprises, mirroring the sibling scripts' own convention.
 INTEL_KEYS = ("whatItMeans", "whatYouNeed", "baliContext", "whatChanged", "zantaraOpener")
+EDITORIAL_KEYS = (
+    *INTEL_KEYS,
+    "youllAlsoNeed",
+    "tkaInfo",
+    "editorial",
+    "intel_2026",
+    "gold_content",
+    "expert_legal",
+    "has_intel_2026",
+    "has_gold_content",
+    "editorial_disclosed",
+)
+PMA_KEYS = (
+    "pma_status",
+    "pma_max_asing",
+    "pma_verification_status",
+    "pma_official_basis",
+    "pma_source_vintage",
+    "pma_kondisi",
+    "pma_prioritas",
+    "pma_nota",
+    "pma_cap_special",
+    "pma_cap_verified",
+)
+BALI_KEYS = (
+    "bali_status",
+    "bali_blocked",
+    "bali_needs_review",
+    "bali_reason",
+    "has_bali_l4",
+)
 
 # Guilt+innocence markers reused VERBATIM from
 # scripts/tests/test_kbli_68112_pp28_mice_collision.py so the dataset-side
@@ -248,6 +295,16 @@ class ShadowFixPlan:
     new_properties: dict | None
 
 
+def _disclose_pma(record: dict) -> dict:
+    """Compatibility wrapper around the single shared disclosure gate."""
+    return disclose_pma(record)
+
+
+def _disclose_bali(record: dict) -> dict:
+    """Compatibility wrapper around the single shared disclosure gate."""
+    return disclose_bali(record)
+
+
 def plan_main_node_fix(record: dict | None, kg_row: dict | None) -> NodeFixPlan:
     """Pure decision function for `kbli:68112`.
 
@@ -279,7 +336,8 @@ def plan_main_node_fix(record: dict | None, kg_row: dict | None) -> NodeFixPlan:
         )
 
     uraian = (record.get("uraian") or "").strip()
-    intel = record.get("intel_2026") or {}
+    intel = record.get("intel_2026")
+    intel = intel if isinstance(intel, dict) else {}
     data_note = record.get("_data_note")
     per_skala = record.get("per_skala")
     per_skala_empty = per_skala == []
@@ -288,12 +346,31 @@ def plan_main_node_fix(record: dict | None, kg_row: dict | None) -> NodeFixPlan:
     new_props = dict(old_props)
     if uraian:
         new_props["uraian"] = uraian
-    for k in INTEL_KEYS:
-        v = intel.get(k)
-        if v:
-            new_props[k] = v
-    if data_note:
-        new_props["_data_note"] = data_note
+
+    for key in tuple(new_props):
+        if key.startswith("pma_") or key.startswith("bali_") or key == "l4_bali":
+            new_props.pop(key, None)
+    new_props.update(
+        {
+            key: value
+            for key, value in {**_disclose_pma(record), **_disclose_bali(record)}.items()
+            if value is not None
+        }
+    )
+
+    if pma_claims_verified(record):
+        for key in INTEL_KEYS:
+            new_props.pop(key, None)
+            value = intel.get(key)
+            if isinstance(value, str) and value.strip():
+                new_props[key] = value
+        new_props.pop("_data_note", None)
+        if isinstance(data_note, str) and data_note.strip():
+            new_props["_data_note"] = data_note
+    else:
+        for key in EDITORIAL_KEYS:
+            new_props.pop(key, None)
+        new_props.pop("_data_note", None)
 
     description_stale = bool(uraian) and kg_row["description"] != uraian
     props_stale = new_props != old_props
@@ -421,17 +498,42 @@ def verify_main_node_matches_canonical(record: dict, kg_row: dict) -> list[str]:
     """
     problems: list[str] = []
     uraian = (record.get("uraian") or "").strip()
-    intel = record.get("intel_2026") or {}
+    intel = record.get("intel_2026")
+    intel = intel if isinstance(intel, dict) else {}
     props = kg_row["properties"] or {}
 
     if uraian and kg_row["description"] != uraian:
         problems.append(f"description does not match canonical uraian: {kg_row['description']!r}")
     if uraian and props.get("uraian") != uraian:
-        problems.append(f"properties.uraian does not match canonical uraian: {props.get('uraian')!r}")
-    for k in INTEL_KEYS:
-        v = intel.get(k)
-        if v and props.get(k) != v:
-            problems.append(f"properties.{k} does not match canonical intel_2026.{k}")
+        problems.append(
+            f"properties.uraian does not match canonical uraian: {props.get('uraian')!r}"
+        )
+    expected_disclosure = {**_disclose_pma(record), **_disclose_bali(record)}
+    for key, expected in expected_disclosure.items():
+        if expected is None:
+            if key in props:
+                problems.append(f"properties.{key} should be absent at the public boundary")
+        elif props.get(key) != expected:
+            problems.append(f"properties.{key} does not match the public disclosure contract")
+
+    if pma_claims_verified(record):
+        for key in INTEL_KEYS:
+            value = intel.get(key)
+            if isinstance(value, str) and value.strip():
+                if props.get(key) != value:
+                    problems.append(f"properties.{key} does not match canonical intel_2026.{key}")
+            elif key in props:
+                problems.append(f"properties.{key} should be absent when canonical omits it")
+        data_note = record.get("_data_note")
+        if isinstance(data_note, str) and data_note.strip():
+            if props.get("_data_note") != data_note:
+                problems.append("properties._data_note does not match canonical")
+        elif "_data_note" in props:
+            problems.append("properties._data_note should be absent when canonical omits it")
+    else:
+        for key in (*EDITORIAL_KEYS, "_data_note"):
+            if key in props:
+                problems.append(f"properties.{key} must be withheld for a declared PMA gap")
     return problems
 
 
@@ -470,7 +572,9 @@ async def _fetch_kg_row(conn: asyncpg.Connection, entity_id: str) -> dict | None
     )
     if row is None:
         return None
-    props = json.loads(row["properties"]) if isinstance(row["properties"], str) else row["properties"]
+    props = (
+        json.loads(row["properties"]) if isinstance(row["properties"], str) else row["properties"]
+    )
     return {"description": row["description"], "properties": props or {}}
 
 
@@ -521,7 +625,9 @@ async def run_verification(conn: asyncpg.Connection) -> bool:
                 for p in canon_problems:
                     logger.error("VERIFY FAIL %s: %s", CANONICAL_ENTITY_ID, p)
             else:
-                logger.info("VERIFY PASS %s: description/properties match canonical", CANONICAL_ENTITY_ID)
+                logger.info(
+                    "VERIFY PASS %s: description/properties match canonical", CANONICAL_ENTITY_ID
+                )
 
     edges = await _fetch_requires_perizinan_edges(conn, CANONICAL_ENTITY_ID)
     if edges:
@@ -601,15 +707,19 @@ async def main() -> int:
             )
             if main_plan.update_node:
                 before_props = (main_row or {}).get("properties", {})
-                for k in ("uraian", *INTEL_KEYS, "_data_note"):
+                for k in ("uraian", *PMA_KEYS, *BALI_KEYS, *EDITORIAL_KEYS, "_data_note"):
                     old_v = before_props.get(k)
                     new_v = (main_plan.new_properties or {}).get(k)
                     if old_v != new_v:
                         logger.info(
                             "  properties.%s: %s -> %s",
                             k,
-                            (old_v[:80] + "...") if isinstance(old_v, str) and len(old_v) > 80 else old_v,
-                            (new_v[:80] + "...") if isinstance(new_v, str) and len(new_v) > 80 else new_v,
+                            (old_v[:80] + "...")
+                            if isinstance(old_v, str) and len(old_v) > 80
+                            else old_v,
+                            (new_v[:80] + "...")
+                            if isinstance(new_v, str) and len(new_v) > 80
+                            else new_v,
                         )
 
         if main_plan.delete_requires_perizinan_edges:

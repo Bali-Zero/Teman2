@@ -1,8 +1,5 @@
 import { Star, MapPin, ArrowUpRight } from "lucide-react";
-
-// Canonical Google reviews — same source as homepage SocialProof.
-// If you edit here, also edit apps/mouth/src/app/v2/_components/SocialProof.tsx.
-const GOOGLE_MAPS_URL = "https://maps.app.goo.gl/whiMUTNchcDR5naz8";
+import { GOOGLE_MAPS_URL, ratingWithReviews } from "@/lib/trust-figures";
 
 const REVIEWS = [
   {
@@ -40,7 +37,7 @@ const REVIEWS = [
 export function GoogleReviewsBlock({
   limit = 7,
   eyebrow = "What clients say",
-  title = "4.9 ★ · 627 Google reviews",
+  title = ratingWithReviews(),
 }: {
   limit?: number;
   eyebrow?: string;

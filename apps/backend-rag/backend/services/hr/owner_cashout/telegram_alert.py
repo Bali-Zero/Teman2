@@ -19,7 +19,7 @@ install_telegram_token_redaction()
 
 logger = logging.getLogger(__name__)
 
-OWNER_CHAT_ID = "1125336968"  # Zero's @zero0101010101010 chat w/ @Balizerobot
+OWNER_CHAT_ID = "8847435604"  # Zero's @zero0101010101010 chat w/ @Balizerobot
 TG_TIMEOUT_S = 10.0
 
 

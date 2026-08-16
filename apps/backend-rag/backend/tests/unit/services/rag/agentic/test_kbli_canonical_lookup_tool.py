@@ -86,9 +86,7 @@ async def test_null_scale_list_is_tolerated(tmp_path):
                     {
                         "kode_kbli_2025": "99999",
                         "judul": "Synthetic schema-edge record",
-                        "per_skala": [
-                            {"skala_usaha": None, "kategori_risiko": "Rendah"}
-                        ],
+                        "per_skala": [{"skala_usaha": None, "kategori_risiko": "Rendah"}],
                     }
                 ]
             }
@@ -104,17 +102,39 @@ async def test_null_scale_list_is_tolerated(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_lookup_carries_bali_moratorium_verdict_verbatim():
+async def test_lookup_exposes_only_the_reviewed_bali_verdict_shape():
     tool = KBLICanonicalLookupTool(dataset_path=_DATASET)
 
-    payload = json.loads(await tool.execute(code="10211"))
+    # 02102 has a complete located national PMA tuple, so the independent
+    # Bali object is eligible for model-facing disclosure.
+    payload = json.loads(await tool.execute(code="02102"))
 
-    moratorium = payload["bali"]["moratorium"]
-    assert payload["bali"]["blocked"] is True
-    assert "Low + Medium-Low" in moratorium["rule"]
-    assert "permanent" in moratorium["rule"]
-    assert moratorium["effective"] == "2026-05-13"
-    assert moratorium["source"] == "Gubernur letter B.27.000/642/PM/DPMPTSP"
+    assert set(payload["bali"]) == {"status", "blocked", "needs_review", "reason"}
+    assert payload["bali"]["blocked"] is False
+    assert payload["bali"]["needs_review"] is False
+    rendered = json.dumps(payload["bali"])
+    for internal_field in ("moratorium", "verdict", "verdict_state", "confidence"):
+        assert internal_field not in rendered
+
+
+@pytest.mark.asyncio
+async def test_exact_lookup_declared_gap_withholds_raw_pma_and_free_form_bali_reason():
+    tool = KBLICanonicalLookupTool(dataset_path=_DATASET)
+
+    payload = json.loads(await tool.execute(code="01111"))
+
+    assert payload["found"] is True
+    assert payload["pma"] == {
+        "status": "NOT_VERIFIED",
+        "max_foreign_ownership_percent": None,
+        "condition": None,
+        "verification_status": "declared_gap",
+        "official_basis": None,
+        "source_vintage": None,
+        "cap_special": False,
+        "cap_verified": False,
+    }
+    assert payload["bali"] == {}
 
 
 @pytest.mark.asyncio
@@ -131,7 +151,7 @@ async def test_lookup_rejects_non_five_digit_input(code):
 def test_prompt_requires_exact_lookup_and_locks_curated_legal_traps():
     from backend.prompts.zantara_core_v4 import TOOL_USAGE_POLICY
 
-    assert "CALL kbli_lookup(code=\"...\") FIRST" in TOOL_USAGE_POLICY
+    assert 'CALL kbli_lookup(code="...") FIRST' in TOOL_USAGE_POLICY
     assert "error=DATASET_UNAVAILABLE" in TOOL_USAGE_POLICY
     assert "Rp2.500.000.000" in TOOL_USAGE_POLICY
     assert "Rp10.000.000.000" in TOOL_USAGE_POLICY

@@ -243,7 +243,7 @@ def _post_telegram(token: str, payload: dict) -> None:
 
 def _send_telegram(text: str) -> None:
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-    chat_id = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+    chat_id = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "8847435604")
     if not token:
         logger.info("Telegram skipped (no TELEGRAM_BOT_TOKEN)")
         return

@@ -1,0 +1,21 @@
+id: rag-abstention-confidence
+category: RAG abstention / confidence
+description: >
+  The evidence-scoring abstain-policy suite (generation gate, per-domain
+  label gate, confidence-zone edges, WhatsApp abstain-reaches-a-human/
+  content-is-sent behavior) plus the confidence-computation suite that feeds
+  those thresholds. This is the mechanism that decides whether the RAG
+  system answers a legal/tax/visa question at all or defers to a human —
+  the single highest-consequence decision point in the whole pipeline.
+patterns:
+  - apps/backend-rag/**/test_*abstain*.py
+  - apps/backend-rag/**/test_*confidence*.py
+rationale: >
+  CLAUDE.md §9 "Evidence scoring thresholds ... 5 NAMED gates, one SSOT" —
+  the same section explicitly names test_abstain_threshold_convergence.py
+  and test_abstain_policy_hardening.py as the tripwire/golden-matrix tests
+  enforcing the intentional generation<>label divergence. Quarantining
+  either would let that divergence silently collapse or drift, which
+  CLAUDE.md records as a panel-ruled SAFETY decision (2026-06-14: per-domain
+  in generation = tax advice at 0.11 evidence = safety regression).
+verified_match_count: 10

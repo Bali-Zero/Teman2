@@ -222,7 +222,9 @@ test.describe("Visa Oracle real full-stack smoke", () => {
     };
     expect(initialRequest.body).not.toBe("");
     expect(initialRequest.idempotencyKey).toMatch(UUID);
-    expect(initialRequest.path).toBe("/api/visa-oracle/evaluate");
+    expect(initialRequest.path).toBe(
+      "/api/visa-oracle/evaluate?traffic_source=real",
+    );
 
     // Chromium can evict a navigation response body before Playwright reads
     // it. Re-read the already-completed durable result through the product's

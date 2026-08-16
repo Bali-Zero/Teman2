@@ -41,7 +41,7 @@ PROXY_SCORE_THRESHOLD = 0.45     # Soglia cosine similarity proxy
 COVERAGE_THRESHOLD = 90.0        # % golden queries che trovano le collection attese
 
 # Telegram config
-TELEGRAM_OWNER_CHAT_ID = "1125336968"
+TELEGRAM_OWNER_CHAT_ID = "8847435604"
 
 VERBOSE = False
 DRY_RUN = False

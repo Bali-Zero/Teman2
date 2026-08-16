@@ -749,6 +749,8 @@ Binding roster + corrections: research/operations/2026-08-10-fleet-order-spec.md
 
 **SSOT files:** cloud fleet = `FLEET_TOPOLOGY.json` (repo root) · local Ollama = `MODEL_TOPOLOGY.json` (unchanged) · rationale + four-groups study = `research/operations/2026-08-09-quattro-gruppi-e-continuita.md` · roles roster = FLOTTA-LLM doc referenced there.
 
+**Full model roster × strengths × efforts: `MODEL_ROSTER.md`** — read it before choosing seats (Zero ruling 2026-08-14). Every conductor door (claude/codex/agy/kimi/qwen) reads `AGENTS.md`, so this is the shared denominator.
+
 ### 17.1 Conductor is a ROLE, not a model
 
 - Zero may start the interactive session with **any frontier orchestrator**: Claude (Fable/Opus/Sonnet), Codex (Sol/Terra/Luna), agy/Antigravity, Kimi. Whoever conducts inherits the **same law**: this file, the harness (gears, Evidence Pack, verdicts), CLAUDE.md invariants. Same law, different door.

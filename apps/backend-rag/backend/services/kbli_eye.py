@@ -4,6 +4,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from backend.services.kbli_pma_disclosure import disclose_pma
+
 logger = logging.getLogger(__name__)
 
 
@@ -84,7 +86,7 @@ class KBLIEye:
                 self.data = content  # Backup se fosse già una lista
 
     @staticmethod
-    def _foreign_cap(kbli: dict) -> tuple[int | None, str | None, bool]:
+    def _foreign_cap(kbli: dict) -> tuple[int | float | None, str | None, bool]:
         """Risolve il tetto di proprietà straniera (%) per un codice.
 
         Il tetto NON è derivabile da `pma_status` da solo: TERBATAS copre 0%,
@@ -97,28 +99,21 @@ class KBLIEye:
         Ritorna `(cap, basis, verified)`. `cap is None` significa "non possiamo
         dichiarare una cifra": è un gap dichiarato, mai uno 0 silenzioso.
         """
-        raw = kbli.get("pma_max_asing")
-        basis = kbli.get("pma_cap_note") or kbli.get("pma_official_basis")
-        verified = bool(kbli.get("pma_cap_verified"))
+        disclosed = disclose_pma(kbli)
+        if disclosed["pma_verification_status"] != "located":
+            return None, None, False
 
-        # `bool` è sottoclasse di `int` in Python: va escluso PRIMA del check.
-        if isinstance(raw, bool):
-            raw = None
-        if isinstance(raw, int):
+        raw = disclosed["pma_max_asing"]
+        basis = kbli.get("pma_cap_note") or disclosed["pma_official_basis"]
+        verified = disclosed["pma_cap_verified"] is True
+
+        # ``disclose_pma`` already excludes bool, numeric strings, infinities,
+        # and an unmarked ``special``. Re-check the exact numeric shape here so
+        # this decision layer never reintroduces coercion or status fallbacks.
+        if isinstance(raw, (int, float)) and not isinstance(raw, bool):
             return raw, basis, verified
-        if isinstance(raw, str) and raw.strip().isdigit():
-            return int(raw.strip()), basis, verified
-        if raw is not None:
-            # es. "special": regime condizionato, nessuna percentuale sulla riga.
+        if raw == "special":
             return None, basis, verified
-
-        # Nessuna cifra aggiudicata sul record: si ricade sullo status, che è
-        # inequivocabile SOLO ai due estremi.
-        status = kbli.get("pma_status")
-        if status == "TERBUKA":
-            return 100, "Derived from pma_status=TERBUKA (no per-code cap on record)", False
-        if status == "TERTUTUP":
-            return 0, "Derived from pma_status=TERTUTUP (no per-code cap on record)", False
         return None, None, False
 
     @classmethod
@@ -129,12 +124,16 @@ class KBLIEye:
         ambiente, cultura, cabotaggio…): dedurne "riservato alle UMKM" è
         un'asserzione plausibile-ma-non-fondata. Meglio un gap dichiarato.
         """
-        kondisi = (kbli.get("pma_kondisi") or "").strip()
+        disclosed = disclose_pma(kbli)
+        if disclosed["pma_verification_status"] != "located":
+            return None
+
+        kondisi = (disclosed["pma_kondisi"] or "").strip()
         if kondisi in cls.UMKM_RESERVED_KONDISI:
             return True
-        if cls.UMKM_ALLOCATION_MARKER in (kbli.get("pma_official_basis") or ""):
+        if cls.UMKM_ALLOCATION_MARKER in (disclosed["pma_official_basis"] or ""):
             return True
-        if kbli.get("pma_status") == "TERBUKA":
+        if disclosed["pma_status"] == "TERBUKA":
             return False
         return None
 
@@ -151,7 +150,9 @@ class KBLIEye:
             return {"state": "ERROR", "reason_code": "CODE_NOT_FOUND"}
 
         # 2. Parametri di input per la matrice
-        is_open_pma = kbli.get("pma_status") == "TERBUKA"
+        disclosed = disclose_pma(kbli)
+        pma_verified = disclosed["pma_verification_status"] == "located"
+        is_open_pma = disclosed["pma_status"] == "TERBUKA"
         cap, cap_basis, cap_verified = self._foreign_cap(kbli)
 
         # Gestione dati per_skala (può essere una lista o un dict a seconda del cleanup)
@@ -163,9 +164,27 @@ class KBLIEye:
         # 3. Matrice di Decisione (Determinismo puro)
         resolved_code = kbli["kode_kbli_2025"]
 
-        if is_pma and cap == 0:
+        if is_pma and not pma_verified:
+            # The national PMA tuple is the disclosure gate for the decision.
+            # A local Bali marker must not turn an unverified national record
+            # into a confident, mixed verdict.
+            state = "WARNING"
+            reason = "PMA_NOT_VERIFIED"
+        elif is_pma and cap == 0:
+            # A verified zero cap is the binding national result.  Evaluate it
+            # before advisory Bali warnings so e.g. 47111 remains REJECTED.
             state = "REJECTED"
             reason = "PERPRES_10_2021_RESERVATION"  # DNI list — 0% asing
+        elif is_pma and location == "Bali" and resolved_code in self.BALI_GOV_LETTER_CODES:
+            # 9 codici citati nella Surat Gubernur 28 Gen 2026. This local
+            # advisory is emitted only after the national tuple clears the
+            # disclosure gate; otherwise PMA_NOT_VERIFIED is the atomic answer.
+            state = "WARNING"
+            reason = "BALI_GOV_LETTER_9_CODES"
+        elif location == "Bali" and resolved_code in self.BALI_MORATORIUM_RETAIL:
+            # Moratorium toko modern berjejaring (INGUB 6/2025)
+            state = "WARNING"
+            reason = "BALI_INGUB_6_2025_MORATORIUM"
         elif is_pma and not is_open_pma:
             # Limitato, NON chiuso. Un PMA può salire fino a `cap` (o deve
             # soddisfare una condizione non-percentuale). WARNING, mai
@@ -173,14 +192,6 @@ class KBLIEye:
             # 49% in un rifiuto.
             state = "WARNING"
             reason = "PERPRES_10_2021_FOREIGN_CAP"
-        elif is_pma and location == "Bali" and resolved_code in self.BALI_GOV_LETTER_CODES:
-            # 9 codici citati nella Surat Gubernur 28 Gen 2026
-            state = "WARNING"
-            reason = "BALI_GOV_LETTER_9_CODES"
-        elif location == "Bali" and resolved_code in self.BALI_MORATORIUM_RETAIL:
-            # Moratorium toko modern berjejaring (INGUB 6/2025)
-            state = "WARNING"
-            reason = "BALI_INGUB_6_2025_MORATORIUM"
         else:
             state = "APPROVED"
             reason = "STANDARD_COMPLIANCE"
@@ -202,11 +213,16 @@ class KBLIEye:
                 "max_foreign_ownership": cap,
                 "max_foreign_ownership_basis": cap_basis,
                 "max_foreign_ownership_verified": cap_verified,
+                "pma_cap_special": disclosed["pma_cap_special"],
+                "pma_status": disclosed["pma_status"],
+                "pma_verification_status": disclosed["pma_verification_status"],
+                "pma_official_basis": disclosed["pma_official_basis"],
+                "pma_source_vintage": disclosed["pma_source_vintage"],
                 # bool | None — None = chiuso/limitato per un motivo che il
                 # record non dichiara: NON assumere che sia una riserva UMKM
                 "is_umkm_reserved": self._umkm_reserved(kbli),
                 # verbatim: "Kemitraan dengan ..." è una condizione, non un tetto
-                "pma_condition": kbli.get("pma_kondisi"),
+                "pma_condition": disclosed["pma_kondisi"],
             },
             "timestamp": datetime.now(tz=timezone.utc).isoformat(),
         }

@@ -11,14 +11,19 @@ import type {
   KBLIRawCode,
   KBLIRawDataFile,
   KBLISection,
-  KBLIPmaStatus,
   KBLILicenseByScale,
   KBLITransition,
   KBLITier,
 } from "./kbli-types";
 
 import { ENGLISH_TITLES } from "./kbli-english";
-import { GOLD_CODES } from "./kbli-gold-codes";
+import {
+  hasCertifiedCanonicalIntel,
+  hasCertifiedStandaloneGold,
+  withNeutralKbliChatOpener,
+} from "./kbli-editorial-certification";
+import { getRawGoldContentForCertification } from "./kbli-gold-content";
+import { disclosePmaInfo } from "./kbli-pma-disclosure";
 
 // =============================================================================
 // Constants: Section metadata
@@ -268,23 +273,6 @@ function toTitleCase(text: string): string {
 }
 
 // =============================================================================
-// PMA status mapping
-// =============================================================================
-
-function mapPmaStatus(raw: string): KBLIPmaStatus {
-  switch (raw) {
-    case "TERBUKA":
-      return "open";
-    case "TERBATAS":
-      return "restricted";
-    case "TERTUTUP":
-      return "closed";
-    default:
-      return "open";
-  }
-}
-
-// =============================================================================
 // Section derivation from KBLI code
 // =============================================================================
 
@@ -357,8 +345,8 @@ function extractKeywords(title: string, description: string): string[] {
 // Tier assignment
 // =============================================================================
 
-function assignTier(code: string): KBLITier {
-  if (GOLD_CODES.has(code)) return "gold";
+function assignTier(code: string, goldCertified: boolean): KBLITier {
+  if (goldCertified) return "gold";
   // Silver tier: codes with English titles available
   if (ENGLISH_TITLES[code]) return "silver";
   return "bronze";
@@ -376,17 +364,17 @@ function transformRecord(raw: KBLIRawCode): KBLICode {
   const titleId = toTitleCase(raw.judul);
   const titleEn = ENGLISH_TITLES[code] ?? titleId; // Fallback to Indonesian title
 
-  const pma = {
-    status: mapPmaStatus(raw.pma_status),
-    maxForeign: raw.pma_max_asing,
-    condition: raw.pma_kondisi,
-    isPriority: raw.pma_prioritas,
-    note: raw.pma_nota,
-    source: raw.pma_source,
-    capSpecial: raw.pma_cap_special === true,
-    capVerified: raw.pma_cap_verified !== false, // default true unless explicitly flagged unverified
-    routeTo: raw.pma_route_to ?? null,
-  };
+  const pma = disclosePmaInfo(raw);
+  const canonicalIntelCertified = hasCertifiedCanonicalIntel(
+    code,
+    pma,
+    raw.intel_2026,
+  );
+  const goldCertified = hasCertifiedStandaloneGold(
+    code,
+    pma,
+    getRawGoldContentForCertification(code),
+  );
 
   const licensing: KBLILicenseByScale[] = (raw.per_skala ?? []).map(
     (entry) => ({
@@ -419,9 +407,11 @@ function transformRecord(raw: KBLIRawCode): KBLICode {
     pma,
     licensing,
     transition,
-    tier: assignTier(code),
+    tier: assignTier(code, goldCertified),
     keywords: extractKeywords(raw.judul, raw.uraian),
-    intel_2026: raw.intel_2026,
+    intel_2026: canonicalIntelCertified
+      ? withNeutralKbliChatOpener(code, raw.intel_2026!)
+      : undefined,
   };
 }
 

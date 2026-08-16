@@ -135,7 +135,12 @@ async def test_check_pma_eligibility(mock_db_pool):
                 "entity_id": "kbli:56101",
                 "entity_type": "kbli_code",
                 "name": "Restoran",
-                "properties": {"pma_status": "TERBUKA"},
+                "properties": {
+                    "pma_status": "TERBUKA",
+                    "pma_verification_status": "located",
+                    "pma_official_basis": "test fixture official locator",
+                    "pma_source_vintage": "2021-05-25",
+                },
             },
         ],
     )

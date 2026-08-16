@@ -210,6 +210,11 @@ MODE_PROMPT="Run nb-curator daily pass. FIRST read your full operating spec at ~
 
 HARD LIMITS — violating these = failure:
 - Do NOT write, create, or run ANY python/bash analysis or diff scripts. Read files and reason directly.
+- Do NOT run 'git add', 'git commit', 'git push', or any other git command. Write the report file
+  with your file-write tool and stop there — promoting the report to origin/main is a SEPARATE
+  process, not part of this task (three prior local-only commits on this machine's main checkout
+  came from exactly this: an agentic run that finished writing and then 'helpfully' committed on
+  its own, bypassing the worktree+PR flow and leaving a commit that sits ahead of origin unpushed).
 - Make AT MOST 2 file reads total (the inventory JSON + at most the single latest report in $OUTPUT_DIR), then write the report and stop.
 - Single pass. Finish within ~3 minutes. Brevity over completeness.
 

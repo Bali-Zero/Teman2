@@ -105,6 +105,8 @@ from backend.tests.services.visa_engine.test_shadow_match import _seed_gold_rule
 
 pytestmark = pytest.mark.asyncio
 
+_REAL_EVALUATE_URL = "/api/visa-oracle/evaluate?traffic_source=real"
+
 
 # ---------------------------------------------------------------------------
 # Shared helpers
@@ -389,7 +391,7 @@ def test_safety_source_hold_applies_when_safety_rules_are_in_force() -> None:
 async def test_wrong_content_type_is_415() -> None:
     async with _client(_build_app(_UntouchedPool())) as client:
         response = await client.post(
-            "/api/visa-oracle/evaluate",
+            _REAL_EVALUATE_URL,
             content=b"{}",
             headers={"content-type": "text/plain"},
         )
@@ -401,7 +403,7 @@ async def test_json_prefix_lookalike_content_type_is_415() -> None:
 
     async with _client(_build_app(_UntouchedPool())) as client:
         response = await client.post(
-            "/api/visa-oracle/evaluate",
+            _REAL_EVALUATE_URL,
             content=b"{}",
             headers={"content-type": "application/jsonp"},
         )
@@ -422,7 +424,7 @@ async def test_duplicate_content_type_headers_are_400(
     raw = json.dumps(_wire_payload(_facts_with_purposes(["TOURISM"]))).encode()
     async with _client(_build_app(_UntouchedPool())) as client:
         response = await client.post(
-            "/api/visa-oracle/evaluate",
+            _REAL_EVALUATE_URL,
             content=raw,
             headers=[("content-type", value) for value in content_types],
         )
@@ -434,7 +436,7 @@ async def test_json_content_type_parameters_are_accepted(monkeypatch: pytest.Mon
     raw = json.dumps(_wire_payload(_facts_with_purposes(["TOURISM"]))).encode()
     async with _client(_build_app(_UntouchedPool())) as client:
         response = await client.post(
-            "/api/visa-oracle/evaluate",
+            _REAL_EVALUATE_URL,
             content=raw,
             headers={"content-type": "application/json; charset=utf-8"},
         )
@@ -444,7 +446,7 @@ async def test_json_content_type_parameters_are_accepted(monkeypatch: pytest.Mon
 async def test_oversize_body_is_413() -> None:
     async with _client(_build_app(_UntouchedPool())) as client:
         response = await client.post(
-            "/api/visa-oracle/evaluate",
+            _REAL_EVALUATE_URL,
             content=b"x" * (visa_oracle_evaluate.MAX_EVALUATE_BODY_BYTES + 1),
             headers={"content-type": "application/json"},
         )
@@ -467,7 +469,7 @@ async def test_chunked_oversize_body_aborts_stream_early() -> None:
 
     async with _client(_build_app(_UntouchedPool())) as client:
         response = await client.post(
-            "/api/visa-oracle/evaluate",
+            _REAL_EVALUATE_URL,
             content=_counting_chunks(),
             headers={"content-type": "application/json"},
         )
@@ -480,7 +482,7 @@ async def test_chunked_oversize_body_aborts_stream_early() -> None:
 async def test_invalid_json_is_400() -> None:
     async with _client(_build_app(_UntouchedPool())) as client:
         response = await client.post(
-            "/api/visa-oracle/evaluate",
+            _REAL_EVALUATE_URL,
             content=b"{not json",
             headers={"content-type": "application/json"},
         )
@@ -490,7 +492,7 @@ async def test_invalid_json_is_400() -> None:
 async def test_invalid_utf8_is_400() -> None:
     async with _client(_build_app(_UntouchedPool())) as client:
         response = await client.post(
-            "/api/visa-oracle/evaluate",
+            _REAL_EVALUATE_URL,
             content=b'{"marker":"\xff"}',
             headers={"content-type": "application/json"},
         )
@@ -505,7 +507,7 @@ async def test_non_utf8_json_encodings_are_400(encoding: str) -> None:
     raw = json.dumps(_wire_payload(_facts_with_purposes(["TOURISM"]))).encode(encoding)
     async with _client(_build_app(_UntouchedPool())) as client:
         response = await client.post(
-            "/api/visa-oracle/evaluate",
+            _REAL_EVALUATE_URL,
             content=raw,
             headers={"content-type": "application/json"},
         )
@@ -516,7 +518,7 @@ async def test_extreme_json_nesting_is_400_not_500() -> None:
     nested = ("[" * 2_000) + "0" + ("]" * 2_000)
     async with _client(_build_app(_UntouchedPool())) as client:
         response = await client.post(
-            "/api/visa-oracle/evaluate",
+            _REAL_EVALUATE_URL,
             content=nested,
             headers={"content-type": "application/json"},
         )
@@ -527,7 +529,7 @@ async def test_extreme_json_nesting_is_400_not_500() -> None:
 async def test_ambiguous_content_length_is_400(declared: str) -> None:
     async with _client(_build_app(_UntouchedPool())) as client:
         response = await client.post(
-            "/api/visa-oracle/evaluate",
+            _REAL_EVALUATE_URL,
             content=b"{}",
             headers={"content-type": "application/json", "content-length": declared},
         )
@@ -537,7 +539,7 @@ async def test_ambiguous_content_length_is_400(declared: str) -> None:
 async def test_multiple_content_length_headers_are_400() -> None:
     async with _client(_build_app(_UntouchedPool())) as client:
         response = await client.post(
-            "/api/visa-oracle/evaluate",
+            _REAL_EVALUATE_URL,
             content=b"{}",
             headers=[
                 ("content-type", "application/json"),
@@ -551,7 +553,7 @@ async def test_multiple_content_length_headers_are_400() -> None:
 async def test_extreme_digit_count_content_length_is_400_not_500() -> None:
     async with _client(_build_app(_UntouchedPool())) as client:
         response = await client.post(
-            "/api/visa-oracle/evaluate",
+            _REAL_EVALUATE_URL,
             content=b"{}",
             headers={
                 "content-type": "application/json",
@@ -570,7 +572,7 @@ async def test_extra_json_property_name_is_absent_from_validation_body_and_logs(
     payload[marker] = "sensitive-value"
     with caplog.at_level(logging.DEBUG):
         async with _client(_build_app(_UntouchedPool())) as client:
-            response = await client.post("/api/visa-oracle/evaluate", json=payload)
+            response = await client.post(_REAL_EVALUATE_URL, json=payload)
     assert response.status_code == 422
     assert marker not in response.text
     assert "sensitive-value" not in response.text
@@ -597,7 +599,7 @@ async def test_duplicate_top_level_json_key_is_400_without_key_echo() -> None:
     )
     async with _client(_build_app(_UntouchedPool())) as client:
         response = await client.post(
-            "/api/visa-oracle/evaluate",
+            _REAL_EVALUATE_URL,
             content=duplicate,
             headers={"content-type": "application/json"},
         )
@@ -615,7 +617,7 @@ async def test_duplicate_nested_json_key_is_400() -> None:
     )
     async with _client(_build_app(_UntouchedPool())) as client:
         response = await client.post(
-            "/api/visa-oracle/evaluate",
+            _REAL_EVALUATE_URL,
             content=duplicate,
             headers={"content-type": "application/json"},
         )
@@ -626,7 +628,7 @@ async def test_duplicate_nested_json_key_is_400() -> None:
 async def test_non_finite_json_numbers_are_400(token: str) -> None:
     async with _client(_build_app(_UntouchedPool())) as client:
         response = await client.post(
-            "/api/visa-oracle/evaluate",
+            _REAL_EVALUATE_URL,
             content=f'{{"value":{token}}}',
             headers={"content-type": "application/json"},
         )
@@ -635,7 +637,7 @@ async def test_non_finite_json_numbers_are_400(token: str) -> None:
 
 async def test_missing_top_level_keys_is_422() -> None:
     async with _client(_build_app(_UntouchedPool())) as client:
-        response = await client.post("/api/visa-oracle/evaluate", json={})
+        response = await client.post(_REAL_EVALUATE_URL, json={})
     assert response.status_code == 422
 
 
@@ -643,7 +645,7 @@ async def test_extra_top_level_key_is_422() -> None:
     payload = _wire_payload(_facts_with_purposes(["TOURISM"]))
     payload["bogus"] = 1
     async with _client(_build_app(_UntouchedPool())) as client:
-        response = await client.post("/api/visa-oracle/evaluate", json=payload)
+        response = await client.post(_REAL_EVALUATE_URL, json=payload)
     assert response.status_code == 422
 
 
@@ -653,7 +655,7 @@ async def test_invalid_fact_value_is_422_and_never_echoes_input() -> None:
     payload = _wire_payload(_facts_with_purposes(["TOURISM"]))
     payload["facts"]["intent.stay_days"] = {"status": "KNOWN", "value": -54321}
     async with _client(_build_app(_UntouchedPool())) as client:
-        response = await client.post("/api/visa-oracle/evaluate", json=payload)
+        response = await client.post(_REAL_EVALUATE_URL, json=payload)
     assert response.status_code == 422
     assert "-54321" not in response.text
 
@@ -668,7 +670,7 @@ async def test_custom_validation_messages_never_echo_impossible_date(
         "value": impossible_date,
     }
     async with _client(_build_app(_UntouchedPool())) as client:
-        response = await client.post("/api/visa-oracle/evaluate", json=payload)
+        response = await client.post(_REAL_EVALUATE_URL, json=payload)
     assert response.status_code == 422
     assert impossible_date not in response.text
     for error in response.json()["detail"]:
@@ -695,7 +697,7 @@ async def test_thin_facts_are_never_rejected(monkeypatch: pytest.MonkeyPatch) ->
     assert facts is not None
     payload = _wire_payload(facts)
     async with _client(_build_app(_UntouchedPool())) as client:
-        response = await client.post("/api/visa-oracle/evaluate", json=payload)
+        response = await client.post(_REAL_EVALUATE_URL, json=payload)
     assert response.status_code == 200
     assert response.json()["decision"]["state"] == "TEMPORARILY_UNAVAILABLE"
 
@@ -715,7 +717,7 @@ async def test_bogus_traffic_source_param_is_400_and_never_echoes() -> None:
 async def test_bogus_request_category_param_is_400_and_never_echoes() -> None:
     async with _client(_build_app(_UntouchedPool())) as client:
         response = await client.post(
-            "/api/visa-oracle/evaluate?request_category=bogus-marker-67890",
+            "/api/visa-oracle/evaluate?request_category=bogus-marker-67890&traffic_source=real",
             json=_wire_payload(_facts_with_purposes(["TOURISM"])),
         )
     assert response.status_code == 400
@@ -778,14 +780,40 @@ def test_openapi_pins_named_request_response_and_operation_id() -> None:
         "synthetic_gold",
         "synthetic_driver",
     }
+    assert query_parameters["traffic_source"]["required"] is True
     assert "diaspora" in query_parameters["request_category"]["schema"]["enum"]
+
+
+async def test_missing_traffic_source_is_sanitized_422_before_database_access(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def _unexpected_evaluation(*args: object, **kwargs: object) -> VisaOracleEvaluateResponse:
+        raise AssertionError("evaluation path must not run without an explicit traffic_source")
+
+    monkeypatch.setattr(evaluate_path, "run_public_evaluation", _unexpected_evaluation)
+    async with _client(_build_app(_UntouchedPool())) as client:
+        response = await client.post(
+            "/api/visa-oracle/evaluate",
+            json=_wire_payload(_facts_with_purposes(["TOURISM"])),
+        )
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "detail": [
+            {
+                "loc": ["query", "field"],
+                "type": "missing",
+                "msg": "Required field is missing",
+            }
+        ]
+    }
 
 
 async def test_invalid_idempotency_key_is_400_without_echo() -> None:
     marker = "invalid key pii-marker"
     async with _client(_build_app(_UntouchedPool())) as client:
         response = await client.post(
-            "/api/visa-oracle/evaluate",
+            _REAL_EVALUATE_URL,
             json=_wire_payload(_facts_with_purposes(["TOURISM"])),
             headers={"idempotency-key": marker},
         )
@@ -796,7 +824,7 @@ async def test_invalid_idempotency_key_is_400_without_echo() -> None:
 async def test_duplicate_idempotency_headers_are_400() -> None:
     async with _client(_build_app(_UntouchedPool())) as client:
         response = await client.post(
-            "/api/visa-oracle/evaluate",
+            _REAL_EVALUATE_URL,
             json=_wire_payload(_facts_with_purposes(["TOURISM"])),
             headers=[("idempotency-key", "request-a"), ("idempotency-key", "request-b")],
         )
@@ -812,7 +840,7 @@ async def test_idempotency_conflict_is_static_409(
     monkeypatch.setattr(evaluate_path, "run_public_evaluation", _conflict)
     async with _client(_build_app(_UntouchedPool())) as client:
         response = await client.post(
-            "/api/visa-oracle/evaluate",
+            _REAL_EVALUATE_URL,
             json=_wire_payload(_facts_with_purposes(["TOURISM"])),
             headers={"idempotency-key": "request-conflict"},
         )
@@ -840,12 +868,12 @@ async def test_canonical_request_hash_ignores_json_property_order(
     reordered["facts"] = dict(reversed(tuple(payload["facts"].items())))
     async with _client(_build_app(_UntouchedPool())) as client:
         first = await client.post(
-            "/api/visa-oracle/evaluate",
+            _REAL_EVALUATE_URL,
             json=payload,
             headers={"idempotency-key": "request-order-stable"},
         )
         second = await client.post(
-            "/api/visa-oracle/evaluate",
+            _REAL_EVALUATE_URL,
             json=reordered,
             headers={"idempotency-key": "request-order-stable"},
         )
@@ -1081,6 +1109,56 @@ def _public_request() -> VisaOracleEvaluateRequest:
             gold_loader.load_persona(gold_loader.PERSONAS_DIR / "02_business_c2.json").facts
         )
     )
+
+
+async def test_run_evaluation_delegates_to_public_policy_helper_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(evaluate_path.EVALUATE_MODE_ENV, "SHADOW")
+    monkeypatch.setenv(evaluate_path.EVALUATE_ENVIRONMENT_ENV, "TEST")
+    _, _, compiled = _patch_engine_chain(monkeypatch)
+    facts = _facts_with_purposes(["TOURISM"])
+    flags = (DisclosedReviewFlag.NOT_CERTAIN,)
+    evaluations = []
+    helper_calls = []
+    original_evaluate = evaluate_path.evaluate_with_trace
+    original_helper = evaluate_path.apply_public_policy_adapters
+
+    def recording_evaluate(*args: object, **kwargs: object):
+        evaluation = original_evaluate(*args, **kwargs)
+        evaluations.append(evaluation)
+        return evaluation
+
+    def recording_helper(
+        decision: Decision,
+        current_facts: ApplicantFacts,
+        current_compiled: object,
+        *,
+        disclosed_review_flags: tuple[DisclosedReviewFlag, ...] = (),
+    ) -> Decision:
+        helper_calls.append((decision, current_facts, current_compiled, disclosed_review_flags))
+        return original_helper(
+            decision,
+            current_facts,
+            current_compiled,
+            disclosed_review_flags=disclosed_review_flags,
+        )
+
+    monkeypatch.setattr(evaluate_path, "evaluate_with_trace", recording_evaluate)
+    monkeypatch.setattr(evaluate_path, "apply_public_policy_adapters", recording_helper)
+
+    await evaluate_path.run_evaluation(
+        object(),
+        facts=facts,
+        traffic_source="real",
+        request_category_hint=None,
+        request_trace="trace-public-policy-delegation",
+        disclosed_review_flags=flags,
+        evaluation_time=gold_loader.GOLD_EFFECTIVE_AT,
+    )
+
+    assert len(evaluations) == 1
+    assert helper_calls == [(evaluations[0].decision, facts, compiled, flags)]
 
 
 def _cached_reservation(response: VisaOracleEvaluateResponse | None) -> IdempotencyReservation:
@@ -1687,7 +1765,7 @@ async def test_happy_path_http_end_to_end(monkeypatch: pytest.MonkeyPatch) -> No
 
     async with _client(_build_app(_FakePool())) as client:
         response = await client.post(
-            "/api/visa-oracle/evaluate",
+            _REAL_EVALUATE_URL,
             json=_wire_payload(_facts_with_purposes(["TOURISM"])),
         )
 
@@ -2179,7 +2257,7 @@ async def test_http_offshore_unknown_overstay_remains_needs_input(
     }
 
     async with _client(_build_app(_UntouchedPool())) as client:
-        response = await client.post("/api/visa-oracle/evaluate", json=wire)
+        response = await client.post(_REAL_EVALUATE_URL, json=wire)
 
     assert response.status_code == 200, response.text
     decision = response.json()["decision"]
@@ -2669,7 +2747,7 @@ async def test_public_projection_defects_fail_closed_without_500(
     headers = {"Idempotency-Key": "projection-defect"} if use_idempotency else {}
     async with _client(_build_app(_UntouchedPool())) as client:
         response = await client.post(
-            "/api/visa-oracle/evaluate",
+            _REAL_EVALUATE_URL,
             json=_wire_payload(_facts_with_purposes(["BUSINESS_MEETINGS"])),
             headers=headers,
         )
@@ -2891,7 +2969,7 @@ async def test_request_category_hint_honored_when_facts_derive_other(
 
     async with _client(_build_app(_FakePool())) as client:
         response = await client.post(
-            "/api/visa-oracle/evaluate?request_category=diaspora",
+            "/api/visa-oracle/evaluate?request_category=diaspora&traffic_source=real",
             json=_wire_payload(_facts_with_purposes(None)),
         )
     assert response.status_code == 200
@@ -2911,7 +2989,7 @@ async def test_request_category_hint_loses_to_mappable_facts(
 
     async with _client(_build_app(_FakePool())) as client:
         response = await client.post(
-            "/api/visa-oracle/evaluate?request_category=student",
+            "/api/visa-oracle/evaluate?request_category=student&traffic_source=real",
             json=_wire_payload(_facts_with_purposes(["TOURISM"])),
         )
     assert response.status_code == 200

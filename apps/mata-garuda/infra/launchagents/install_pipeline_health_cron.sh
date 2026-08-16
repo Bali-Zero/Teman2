@@ -29,7 +29,7 @@ mkdir -p "$HOME/logs" "$HOME/.organism/last_seen"
 RH="${GARUDA_REDIS_HOST:-localhost}"
 RPW="${GARUDA_REDIS_PASSWORD:-}"
 TGT="${TELEGRAM_BOT_TOKEN:-}"
-TGC="${TELEGRAM_OWNER_CHAT_ID:-1125336968}"
+TGC="${TELEGRAM_OWNER_CHAT_ID:-8847435604}"
 
 cat > "$PLIST" <<PLIST_EOF
 <?xml version="1.0" encoding="UTF-8"?>

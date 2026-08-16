@@ -71,7 +71,7 @@ fi
 _telegram() {
     local text="$1"
     local token="${TELEGRAM_BOT_TOKEN:-}"
-    local chat="${TELEGRAM_OWNER_CHAT_ID:-1125336968}"
+    local chat="${TELEGRAM_OWNER_CHAT_ID:-8847435604}"
     if [[ -z "${token}" ]]; then
         return 0
     fi

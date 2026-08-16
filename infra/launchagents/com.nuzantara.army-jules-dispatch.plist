@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.nuzantara.army-jules-dispatch — Armata H24 lane 2, dispatch half
+  (2026-08-14).
+
+  Daily 09:00 WITA tick: scripts/army/jules_lane.py dispatch mode sends up to
+  ARMY_JULES_DAILY_CAP (default 3) tasks from infra/army/jules-queue/*.md to
+  Jules. Never lands anything — see
+  research/operations/2026-08-14-armata-h24-standing-lanes.md and
+  infra/army/jules-queue/README.md.
+
+  Two plists, one script: launchd needs one Label per schedule, and this
+  lane has two independent cadences (dispatch daily, harvest every 3h) —
+  see com.nuzantara.army-jules-harvest.plist for the other half.
+
+  Credential note: the Jules API key currently lives in M5's Keychain only.
+  Until it is provisioned on Pro, every tick here reports status=blocked
+  (visible in the heartbeat sidecar + one digest alert) and does nothing
+  else — this is expected, not a fault (see the design doc's proof-of-armed
+  table). Provisioning the key is an operator[secret] action, not something
+  this lane or a session does on its own.
+
+  Install:
+    cp infra/launchagents/com.nuzantara.army-jules-dispatch.plist \
+       ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) \
+       ~/Library/LaunchAgents/com.nuzantara.army-jules-dispatch.plist
+
+  Plist permissions hardened to 0444 per cicatrix P0-3.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nuzantara.army-jules-dispatch</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/nuzantara/scripts/cron-runner.sh</string>
+        <string>/Users/nuzantara/nuzantara/scripts/army/jules_lane_dispatch_wrapper.sh</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/Users/nuzantara/.local/bin:/opt/homebrew/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>CRON_RUNNER_JOB_NAME</key>
+        <string>army_jules_dispatch</string>
+        <key>ARMY_JULES_ENABLED</key>
+        <string>true</string>
+    </dict>
+
+    <!-- 09:00 WITA daily. -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>9</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/army-jules/dispatch.launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/army-jules/dispatch.launchd.err.log</string>
+
+    <key>KeepAlive</key>
+    <false/>
+
+    <key>ThrottleInterval</key>
+    <integer>120</integer>
+</dict>
+</plist>

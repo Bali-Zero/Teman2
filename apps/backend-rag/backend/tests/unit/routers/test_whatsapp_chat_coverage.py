@@ -870,7 +870,7 @@ async def test_notify_zero_conversation_log_sends_message():
         patch("backend.app.routers.whatsapp_chat.settings") as mock_settings,
         patch("backend.app.routers.whatsapp_chat.telegram_bot", mock_telegram),
     ):
-        mock_settings.admin_telegram_chat_id = "1125336968"
+        mock_settings.admin_telegram_chat_id = "8847435604"
         await notify_zero_conversation_log(
             phone="621234567890",
             sender_name="Test",
@@ -934,7 +934,7 @@ async def test_notify_human_telegram_with_context():
             mock_telegram,
         ),
     ):
-        mock_settings.admin_telegram_chat_id = "1125336968"
+        mock_settings.admin_telegram_chat_id = "8847435604"
         await notify_human_telegram(
             phone="621234567890",
             message_text="I need help personally",

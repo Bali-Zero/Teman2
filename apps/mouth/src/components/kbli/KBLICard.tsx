@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { PMABadge } from "./PMABadge";
 import { RiskBadge } from "./RiskBadge";
-import { isLicensingVerificationPending } from "@/lib/kbli-provenance";
+import {
+  isLicensingVerificationPending,
+  isPmaVerdictVerified,
+} from "@/lib/kbli-provenance";
 import { TransitionBadge } from "./TransitionBadge";
 import { BaliStatusBadge } from "./BaliStatusBadge";
 import type { KBLICode } from "@/lib/kbli-types";
@@ -13,6 +16,7 @@ interface KBLICardProps {
 
 export function KBLICard({ code, showTransition = false }: KBLICardProps) {
   const isGold = code.tier === "gold";
+  const pmaVerified = isPmaVerdictVerified(code);
   return (
     <Link
       href={`/kbli/${code.code}`}
@@ -83,7 +87,7 @@ export function KBLICard({ code, showTransition = false }: KBLICardProps) {
         {code.baliL4?.status && (
           <BaliStatusBadge
             status={code.baliL4.status}
-            pmaStatus={code.pma.status}
+            pmaStatus={pmaVerified ? code.pma.status : "unknown"}
             size="sm"
           />
         )}
@@ -97,9 +101,10 @@ export function KBLICard({ code, showTransition = false }: KBLICardProps) {
         <PMABadge
           status={code.pma.status}
           maxForeign={code.pma.maxForeign}
+          verdictVerified={pmaVerified}
           capSpecial={code.pma.capSpecial}
           capVerified={code.pma.capVerified}
-          baliBlocked={!!code.baliL4?.blocked}
+          baliBlocked={code.baliL4?.blocked === true}
           size="sm"
         />
         {code.licensing[0] && (

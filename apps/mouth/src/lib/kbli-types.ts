@@ -81,9 +81,15 @@ export interface KBLIRawCode {
   pma_prioritas: boolean;
   pma_nota: string | null;
   pma_source: string | null;
+  /** Per-code official locator supporting the current PMA verdict. */
+  pma_official_basis?: string | null;
+  /** Effective/publication date of the instrument named by pma_official_basis. */
+  pma_source_vintage?: string | null;
+  /** Compiler-owned honesty partition: only `located` may be rendered as fact. */
+  pma_verification_status?: "located" | "declared_gap";
   // PMA cap provenance (synced from the native app dataset, 2026-06-27)
   pma_cap_special?: boolean; // true => special-distribution condition, render "special conditions" not "Closed 0%"
-  pma_cap_verified?: boolean; // false => TERBATAS cap % not source-backed, render "≈N% unverified"
+  pma_cap_verified?: boolean; // false => withhold numeric/special cap claims
   pma_route_to?: string; // sibling private code when a govt code is closed to PMA
   _source: string;
   // ── Per-record provenance (GARUDA-FILIERA layer markers) ──────────────────
@@ -160,7 +166,10 @@ export interface KBLIRawDataFile {
 // -----------------------------------------------------------------------------
 
 /** Normalized PMA status for frontend display */
-export type KBLIPmaStatus = "open" | "restricted" | "closed";
+export type KBLIPmaStatus = "open" | "restricted" | "closed" | "unknown";
+
+/** Verification state of the whole-code PMA verdict. */
+export type KBLIPmaVerificationStatus = "located" | "declared_gap";
 
 /** Content tier for progressive enhancement */
 export type KBLITier = "gold" | "silver" | "bronze";
@@ -172,14 +181,18 @@ export type KBLIMatchType =
 /** PMA (foreign investment) details — processed */
 export interface KBLIPmaInfo {
   status: KBLIPmaStatus;
-  maxForeign: number | "special";
+  maxForeign: number | "special" | null;
   condition: string | null;
   isPriority: boolean;
   note: string | null;
   source: string | null;
+  /** Whole-verdict verification, distinct from the narrower capVerified flag. */
+  verificationStatus: KBLIPmaVerificationStatus;
+  officialBasis: string | null;
+  sourceVintage: string | null;
   // Synced from native app (2026-06-27): provenance flags that change the label.
   capSpecial: boolean; // special-distribution (47221) → "special conditions", not "Closed 0%"
-  capVerified: boolean; // false → TERBATAS % not source-backed → "≈N% unverified"
+  capVerified: boolean; // false → withhold numeric/special cap claims
   routeTo: string | null; // sibling private code when a govt code is closed to PMA (86101→86103)
   /** Which ARTICLE of the Perpres names this code — `source` is only the instrument.
    *  Emitted by scripts/kbli_filiera/perpres_body_default_relation.py, never derived here.
@@ -261,25 +274,13 @@ export interface KBLIProvenance {
      */
     contentInheritedFrom: string[] | null;
   };
-  /** Foreign-ownership layer — Perpres 10/2021 + 49/2021 (KBLI-2020 vintage).
-   *
-   * `status` used to be the literal `"pending_crosswalk"`, i.e. a CONSTANT the type
-   * made impossible to contradict: all 1,559 codes received the same provenance
-   * verdict. That is right only for codes with an authoritative BPS-recorded
-   * KBLI-2020 origin: the annexes are 2020-vintage and the per-code crosswalk
-   * audit is genuinely pending. It is NOT right for any record whose
-   * `bps_2020_ancestors.codes` list is empty: "crosswalk pending" tells a
-   * reader a basis exists and only the mapping is unfinished, which is a stronger
-   * claim than we can support. For such defensive/future cases,
-   * `untraceable_basis` + `vintage: null`; the current canonical has none.
-   *
-   * F12 wording: this says our sources record no path to the verdict. It does NOT
-   * assert the regulator published nothing, and it does not call the value wrong.
-   */
+  /** Foreign-ownership layer. A verdict is located only when the canonical
+   * record carries an explicit status, official locator and source vintage. */
   pma: {
     source: string | null;
-    vintage: "2020" | null;
-    status: "pending_crosswalk" | "untraceable_basis";
+    vintage: string | null;
+    status: KBLIPmaVerificationStatus;
+    locator: string | null;
   };
   /** Honest-gap note with verbatim citations (only on cured codes) */
   dataNote: string | null;

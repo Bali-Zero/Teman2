@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Montserrat } from "next/font/google";
+import { montserrat } from "@balizero/core/fonts/montserrat";
 import { NavShell, BZLogo } from "@balizero/core";
 import { SessionInit } from "@/components/funnel/SessionInit";
 import { HeaderWhatsAppCTA } from "@/components/funnel/HeaderWhatsAppCTA";
@@ -14,13 +14,6 @@ export const metadata: Metadata = {
     canonical: "https://balizero.com/visa",
   },
 };
-
-const montserrat = Montserrat({
-  subsets: ["latin"],
-  variable: "--font-montserrat",
-  display: "swap",
-  weight: ["400", "500", "600", "700", "800", "900"],
-});
 
 export default function VisaLayout({
   children,

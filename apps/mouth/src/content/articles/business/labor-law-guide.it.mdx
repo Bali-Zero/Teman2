@@ -74,47 +74,55 @@ ogImage: "/static/insights/business/labor-law-guide.jpg"
 ogType: "article"
 twitterCard: "summary_large_image"
 locale: "it"
-source_sha256: "7ee10bfdfcd9e6223c2a6f15e0e183e4f40e77e0826cde4305347d6b6668f65e"
+source_sha256: "f699ac7f28ee2d960e20d45de4813baf9bbfb0bf5ab065e1fe7b9d357960fdfe"
 ---
 
-# Legge del Lavoro in Indonesia 2026: Guida per i Datori di Lavoro
+import {
+  ComparisonTable,
+  Calculator,
+  Checklist,
+  InfoCard,
+  AskZantara,
+} from "@/components/insights/interactive";
 
-La legge indonesiana sul lavoro presenta requisiti specifici per le relazioni di lavoro. Comprendere questi aspetti è essenziale per la conformità.
+# Legge sul lavoro in Indonesia 2026: Guida per datori di lavoro
 
-## Tipi di Contratto di Lavoro
+La legge sul lavoro Indonesiana ha requisiti specifici per le relazioni di lavoro. Comprenderli è essenziale per la conformità.
+
+## Tipi di contratto di lavoro
 
 <ComparisonTable
-  title="Tipi di Contratto"
+  title="Tipi di contratto"
   description="PKWT vs PKWTT"
   items={[
     {
       name: "PKWTT",
-      subtitle: "Permanente/Indefinito",
+      subtitle: "Permanente/Indeterminato",
       values: {
-        Duration: "Nessuna data di fine",
-        Termination: "Con giusta causa + indennità",
-        Probation: "Max 3 mesi",
+        Durata: "Nessuna data di fine",
+        Termination: "Con causa + indennità",
+        Prova: "Massimo 3 mesi",
         "Best For": "Dipendenti chiave",
       },
       highlight: true,
     },
     {
       name: "PKWT",
-      subtitle: "A Termine/Contratto",
+      subtitle: "A termine/Contratto",
       values: {
-        Duration: "Max 5 anni",
-        Termination: "Alla scadenza del contratto",
-        Probation: "Non consentito",
-        "Best For": "Progetto/temporaneo",
+        Durata: "Massimo 5 anni",
+        Termination: "Alla fine del contratto",
+        Prova: "Non consentito",
+        "Best For": "Progetti/temporanei",
       },
     },
     {
       name: "Freelance",
       subtitle: "Non dipendente",
       values: {
-        Duration: "Per progetto",
+        Durata: "Per progetto",
         Termination: "Per accordo",
-        Probation: "N/A",
+        Prova: "N/A",
         "Best For": "Compiti specifici",
       },
     },
@@ -123,54 +131,54 @@ La legge indonesiana sul lavoro presenta requisiti specifici per le relazioni di
 
 ---
 
-## PKWT (Contratto a Termine)
+## PKWT (Contratto a termine)
 
-<InfoCard variant="warning" title="Limitazioni PKWT">
+<InfoCard variant="warning" title="Limitazioni del PKWT">
 **Il PKWT può essere utilizzato solo per:**
-- Lavori temporanei
-- Lavori stagionali
-- Progetti una tantum
-- Lavori relativi a nuovi prodotti/processi (max 2 anni)
+- Lavoro temporaneo
+- Lavoro stagionale
+- Progetti unici
+- Lavoro legato a nuovi prodotti/processi (massimo 2 anni)
 
 **Non può essere utilizzato per:**
 
 - Posizioni permanenti
-- Operazioni principali in corso
-- Incarichi a tempo indeterminato
+- Operazioni core continue
+- Assegnazioni indefinite
 
 Violazione: Il contratto diventa automaticamente PKWTT (permanente).
 
 </InfoCard>
 
-### Regole sulla Durata del PKWT
+### Regole sulla durata del PKWT
 
-| Regola                  | Limite                            |
-| ----------------------- | --------------------------------- |
-| Durata iniziale         | Max 5 anni (cumulativi)           |
-| Rinnovi                 | Entro il limite di 5 anni         |
-| Nessun periodo di prova | Periodo di prova nullo se scritto |
-| Indennità               | Richiesta al completamento        |
+| Regola         | Limite                     |
+| ------------ | ------------------------- |
+| Termine iniziale | Massimo 5 anni (cumulativi)  |
+| Proroghe   | Entro il limite di 5 anni       |
+| Nessuna prova | La prova è nulla se scritta |
+| Compensazione | Richiesta alla fine  |
 
 ---
 
-## Orario di Lavoro
+## Orari di lavoro
 
-### Orario di Lavoro Standard
+### Orari di lavoro standard
 
-| Orario    | Ore/Giorno | Giorni/Settimana | Totale/Settimana |
-| --------- | ---------- | ---------------- | ---------------- |
-| Opzione 1 | 7 ore      | 6 giorni         | 42 ore           |
-| Opzione 2 | 8 ore      | 5 giorni         | 40 ore           |
+| Orario | Ore/Giorno | Giorni/Settimana | Totale/Settimana |
+| -------- | --------- | --------- | ---------- |
+| Opzione 1 | 7 ore   | 6 giorni    | 42 ore   |
+| Opzione 2 | 8 ore   | 5 giorni    | 40 ore   |
 
-### Regole sul Lavoro Straordinario
+### Regole per le ore straordinarie
 
 <Calculator
-  title="Calcolatore del Lavoro Straordinario"
-  description="Calcola il pagamento del lavoro straordinario"
+  title="Calcolatore ore straordinarie"
+  description="Calcola la paga per le ore straordinarie"
   fields={[
     {
       id: "monthly",
-      label: "Stipendio Mensile (IDR)",
+      label: "Stipendio mensile (IDR)",
       type: "number",
       defaultValue: 10000000,
       min: 0,
@@ -179,7 +187,7 @@ Violazione: Il contratto diventa automaticamente PKWTT (permanente).
     },
     {
       id: "hours",
-      label: "Ore di Lavoro Straordinario",
+      label: "Ore straordinarie",
       type: "number",
       defaultValue: 10,
       min: 0,
@@ -188,11 +196,11 @@ Violazione: Il contratto diventa automaticamente PKWTT (permanente).
     },
     {
       id: "day",
-      label: "Tipo di Giorno",
+      label: "Tipo di giorno",
       type: "select",
       options: [
-        { value: "weekday", label: "Giorno feriale normale" },
-        { value: "weekend", label: "Fine settimana/festivo" }
+        { value: "weekday", label: "Giorno lavorativo normale" },
+        { value: "weekend", label: "Weekend/festivo" }
       ],
       defaultValue: "weekday"
     }
@@ -215,7 +223,7 @@ Violazione: Il contratto diventa automaticamente PKWTT (permanente).
         }
       }
     } else {
-      // Fine settimana/festivo: calcolo diverso
+      // Weekend/festivo: calcolo diverso
       // Prime 8 ore: 2x, 9a ora: 3x, 10a+: 4x
       const first8 = Math.min(hours, 8);
       overtime += first8 * hourlyRate * 2;
@@ -230,13 +238,13 @@ Violazione: Il contratto diventa automaticamente PKWTT (permanente).
     return {
       total: Math.round(overtime),
       breakdown: [
-        { label: "Stipendio Mensile", amount: monthly },
-        { label: "Tariffa Oraria (1/173)", amount: Math.round(hourlyRate) },
-        { label: "Ore di Lavoro Straordinario", amount: hours },
-        { label: "Pagamento del Lavoro Straordinario", amount: Math.round(overtime) }
+        { label: "Stipendio mensile", amount: monthly },
+        { label: "Tariffa oraria (1/173)", amount: Math.round(hourlyRate) },
+        { label: "Ore straordinarie", amount: hours },
+        { label: "Pagamento ore straordinarie", amount: Math.round(overtime) }
       ],
       currency: "IDR",
-      note: values.day === "weekday" ? "Giorno feriale: 1.5x la prima ora, 2x dopo" : "Fine settimana: 2x le prime 8, 3x la 9a, 4x la 10a+"
+      note: values.day === "weekday" ? "Giorno lavorativo: 1.5x prima ora, 2x dopo" : "Weekend: 2x prime 8, 3x 9a, 4x 10a+"
     };
 
 }}
@@ -244,95 +252,97 @@ Violazione: Il contratto diventa automaticamente PKWTT (permanente).
 
 ---
 
-## Salario Minimo
+## Stipendio minimo
 
-### Salario Minimo Regionale (UMR/UMK)
+### Stipendio minimo regionale (UMR/UMK)
 
 | Provincia/Città | UMR 2026 (Approssimativo) |
-| --------------- | ------------------------- |
-| DKI Jakarta     | ~IDR 5.1M                 |
-| Bali            | ~IDR 2.9M                 |
-| Surabaya        | ~IDR 4.7M                 |
-| Bandung         | ~IDR 4.0M                 |
-| Semarang        | ~IDR 3.1M                 |
+| ------------- | ----------------- |
+| DKI Jakarta   | ~IDR 5.1M         |
+| Bali          | ~IDR 2.9M         |
+| Surabaya      | ~IDR 4.7M         |
+| Bandung       | ~IDR 4.0M         |
+| Semarang      | ~IDR 3.1M         |
 
-<InfoCard variant="note" title="Note sul Salario Minimo">
+<InfoCard variant="note" title="Note sullo stipendio minimo">
 
-- L'UMR è il minimo per i dipendenti a tempo indeterminato - Aggiornato
-  annualmente (solitamente a gennaio) - Possono applicarsi minimi settoriali -
-  Componenti: lo stipendio base può essere il 75%, gli indennità il 25% - I
-  lavoratori PKWT hanno diritto agli stessi minimi
-  </InfoCard>
+- L'UMR è lo stipendio minimo per i dipendenti permanenti
+- Aggiornato annualmente (di solito gennaio)
+- Possono applicarsi minimi settoriali
+- Componenti: lo stipendio base può essere il 75%, le indennità il 25%
+- I lavoratori PKWT hanno diritto agli stessi minimi
+
+</InfoCard>
 
 ---
 
-## Benefici Obbligatori
+## Benefici obbligatori
 
 <Checklist
-  title="Benefici Obbligatori per i Dipendenti"
+  title="Benefici obbligatori per i dipendenti"
   description="Obblighi legali per i datori di lavoro"
   persistKey="benefits-checklist"
   items={[
     {
       id: "bpjs-kesehatan",
       label: "BPJS Kesehatan (Salute)",
-      description: "Contributo del 5% (4% datore di lavoro, 1% dipendente)",
+      description: "Contributo del 5% (4% datore, 1% dipendente)",
       required: true,
       category: "bpjs",
     },
     {
       id: "bpjs-tk-jkk",
-      label: "BPJS JKK (Infortunio sul Lavoro)",
-      description: "0.24-1.74% solo datore di lavoro",
+      label: "BPJS JKK (Infortunio sul lavoro)",
+      description: "0,24-1,74% solo datore",
       required: true,
       category: "bpjs",
     },
     {
       id: "bpjs-tk-jkm",
       label: "BPJS JKM (Morte)",
-      description: "0.3% solo datore di lavoro",
+      description: "0,3% solo datore",
       required: true,
       category: "bpjs",
     },
     {
       id: "bpjs-tk-jht",
-      label: "BPJS JHT (Fondo Pensione)",
-      description: "5.7% (3.7% datore di lavoro, 2% dipendente)",
+      label: "BPJS JHT (Fondo pensione)",
+      description: "5,7% (3,7% datore, 2% dipendente)",
       required: true,
       category: "bpjs",
     },
     {
       id: "bpjs-tk-jp",
       label: "BPJS JP (Pensione)",
-      description: "3% (2% datore di lavoro, 1% dipendente)",
+      description: "3% (2% datore, 1% dipendente)",
       required: true,
       category: "bpjs",
     },
     {
       id: "annual-leave",
-      label: "Congedo Annuale",
+      label: "Ferie annuali",
       description: "12 giorni/anno dopo 12 mesi",
       required: true,
       category: "leave",
     },
     {
       id: "thr",
-      label: "THR (Festività Religiosa)",
-      description: "Stipendio mensile prima della festività principale",
+      label: "THR (Festa religiosa)",
+      description: "1 mese di stipendio prima di una grande festa",
       required: true,
       category: "bonus",
     },
     {
       id: "maternity",
-      label: "Congedo di Maternità",
-      description: "3 mesi retribuiti",
+      label: "Congedo maternità",
+      description: "3 mesi pagati",
       required: true,
       category: "leave",
     },
   ]}
   categories={[
     { id: "bpjs", label: "BPJS", color: "blue" },
-    { id: "leave", label: "Congedo", color: "green" },
+    { id: "leave", label: "Congedi", color: "green" },
     { id: "bonus", label: "Bonus", color: "amber" },
   ]}
   showProgress={false}
@@ -340,51 +350,51 @@ Violazione: Il contratto diventa automaticamente PKWTT (permanente).
 
 ---
 
-## Diritto al Congedo
+## Diritti alle ferie
 
-### Congedo Annuale
+### Ferie annuali
 
-| Tipo                | Diritto                                |
-| ------------------- | -------------------------------------- |
-| Congedo annuale     | 12 giorni/anno (dopo 12 mesi)          |
-| Congedo lungo       | 2 mesi dopo 6 anni (in alcune aziende) |
-| Festività religiosa | Come da accordo                        |
+| Tipo              | Diritto                             |
+| ----------------- | --------------------------------------- |
+| Ferie annuali      | 12 giorni/anno (dopo 12 mesi)          |
+| Ferie lunghe        | 2 mesi dopo 6 anni (alcune aziende) |
+| Festa religiosa | Come per accordo                        |
 
-### Congedo Speciale (Retribuito)
+### Congedi speciali (pagati)
 
-| Evento                            | Giorni   |
-| --------------------------------- | -------- |
-| Matrimonio                        | 3 giorni |
-| Matrimonio del figlio             | 2 giorni |
-| Circoncisione                     | 2 giorni |
-| Battesimo                         | 2 giorni |
-| Morte del coniuge/figlio/genitore | 2 giorni |
-| Morte di un altro familiare       | 1 giorno |
-| La moglie partorisce/aborto       | 2 giorni |
+| Evento                         | Giorni   |
+| ----------------------------- | ------ |
+| Matrimonio                      | 3 giorni |
+| Matrimonio del figlio              | 2 giorni |
+| Circoncisione                  | 2 giorni |
+| Battesimo                       | 2 giorni |
+| Morte del coniuge/figlio/parente     | 2 giorni |
+| Morte di un altro membro della famiglia     | 1 giorno  |
+| Moglie che dà alla luce/aborto | 2 giorni |
 
-### Congedo di Maternità/Paternità
+### Maternità/Paternità
 
-| Tipo di Congedo | Durata                                  | Retribuzione     |
-| --------------- | --------------------------------------- | ---------------- |
-| Maternità       | 1.5 mesi prima + 1.5 mesi dopo il parto | Stipendio intero |
-| Aborto          | 1.5 mesi                                | Stipendio intero |
-| Paternità       | 2 giorni                                | Stipendio intero |
+| Tipo di congedo  | Durata                                   | Pagamento      |
+| ----------- | ------------------------------------------ | -------- |
+| Maternità   | 1,5 mesi prima + 1,5 mesi dopo il parto | Stipendio pieno |
+| Aborto | 1,5 mesi                                 | Stipendio pieno |
+| Paternità   | 2 giorni                                     | Stipendio pieno |
 
 ---
 
-## Contratti di Lavoro
+## Contratti di lavoro
 
-### Elementi Obbligatori del Contratto
+### Elementi richiesti nel contratto
 
 <Checklist
-  title="Requisiti del Contratto"
-  description="Cosa deve essere presente nel contratto di lavoro"
+  title="Requisiti del contratto"
+  description="Cosa deve essere nel contratto di lavoro"
   persistKey="contract-elements-checklist"
   items={[
     {
       id: "names",
-      label: "Nomi dell'azienda e del dipendente",
-      description: "Nomi legali completi",
+      label: "Nome dell'azienda e del dipendente",
+      description: "Nomina legale completa",
       required: true,
       category: "parties",
     },
@@ -398,7 +408,7 @@ Violazione: Il contratto diventa automaticamente PKWTT (permanente).
     {
       id: "position",
       label: "Posizione/descrizione del lavoro",
-      description: "Ruolo e mansioni",
+      description: "Ruolo e doveri",
       required: true,
       category: "work",
     },
@@ -411,29 +421,29 @@ Violazione: Il contratto diventa automaticamente PKWTT (permanente).
     },
     {
       id: "hours",
-      label: "Orario di lavoro",
-      description: "Programma e lavoro straordinario",
+      label: "Ore di lavoro",
+      description: "Orario e ore straordinarie",
       required: true,
       category: "work",
     },
     {
       id: "start",
       label: "Data di inizio",
-      description: "Quando inizia il lavoro",
+      description: "Quando inizia l'impiego",
       required: true,
       category: "dates",
     },
     {
       id: "term",
       label: "Durata del contratto (se PKWT)",
-      description: "Data di fine per contratto a termine",
+      description: "Data di fine per a termine",
       required: false,
       category: "dates",
     },
     {
       id: "signatures",
       label: "Firme",
-      description: "Entrambe le parti firmano",
+      description: "Firme di entrambe le parti",
       required: true,
       category: "legal",
     },
@@ -450,9 +460,9 @@ Violazione: Il contratto diventa automaticamente PKWTT (permanente).
 
 ---
 
-## Regolamenti Aziendali
+## Regolamenti aziendali
 
-### Quando Richiesti
+### Quando richiesti
 
 <InfoCard variant="note" title="Peraturan Perusahaan">
 Le aziende con **10+ dipendenti** devono avere:
@@ -460,60 +470,60 @@ Le aziende con **10+ dipendenti** devono avere:
 
 O con sindacato:
 
-- **PKB (Perjanjian Kerja Bersama)** - Accordo di contrattazione collettiva
+- **PKB (Perjanjian Kerja Bersama)** - Accordo collettivo
 
-Deve essere registrato presso l'ufficio del lavoro e rinnovato ogni 2 anni.
+Deve essere registrato presso l'ufficio del Lavoro e rinnovato ogni 2 anni.
 
 </InfoCard>
 
 ---
 
-## Lavoratori Stranieri
+## Lavoratori stranieri
 
-### Requisiti per l'Impiego di Stranieri
+### Requisiti per l'impiego straniero
 
-| Requisito | Descrizione                                |
-| --------- | ------------------------------------------ |
-| RPTKA     | Piano di utilizzo dei lavoratori stranieri |
-| IMTA      | Permesso di lavoro                         |
-| KITAS     | Permesso di soggiorno                      |
-| Posizione | Deve essere un ruolo consentito            |
-| Compagno  | Discepoli indonesiani                      |
+| Requisito | Descrizione                     |
+| ----------- | ------------------------------- |
+| RPTKA       | Piano di utilizzo lavoratori stranieri |
+| IMTA        | Permesso di lavoro                     |
+| KITAS       | Permesso di soggiorno                     |
+| Posizione    | Deve essere ruolo permesso          |
+| Compagno   | Sottoposti Indonesiani         |
 
-Vedere: [Guida al Permesso di Lavoro KITAS](/insights/immigration/kitas-work-permit-guide)
-
----
-
-## Violazioni Comuni
-
-| Violazione                     | Rischio                     |
-| ------------------------------ | --------------------------- |
-| Nessuna registrazione BPJS     | Multe + pagamento arretrato |
-| Salario al di sotto del minimo | Azioni legali               |
-| Nessun contratto scritto       | Il contratto diventa PKWTT  |
-| Ore di lavoro eccessive        | Sanzioni                    |
-| Nessun pagamento THR           | Azioni legali               |
-| Licenziamento improprio        | Indennità + risarcimento    |
+Vedi: [Guida al permesso di lavoro KITAS](/insights/immigration/kitas-work-permit-guide)
 
 ---
 
-## Domande Frequenti
+## Violazioni comuni
+
+| Violazione               | Rischio                     |
+| ----------------------- | ------------------------ |
+| Nessuna registrazione BPJS    | Multe + pagamento arretrato     |
+| Sotto lo stipendio minimo      | Azione legale             |
+| Nessun contratto scritto     | Il contratto diventa PKWTT   |
+| Ore di lavoro eccessive | Penalità                |
+| Nessun pagamento THR          | Azione legale             |
+| Terminazione non corretta    | Indennità + compensazione |
+
+---
+
+## Domande comuni
 
 <AskZantara
-  context="Legge del lavoro in Indonesia, legge sul lavoro, BPJS, orario di lavoro, diritti al congedo"
-  placeholder="Chiedi informazioni sulla legge del lavoro..."
+  context="Legge sul lavoro Indonesia, legge sul lavoro, BPJS, orari di lavoro, diritti alle ferie"
+  placeholder="Chiedi sulla legge sul lavoro..."
   suggestedQuestions={[
-    "Quanto costa la contribuzione BPJS?",
-    "Posso usare PKWT per ruoli permanenti?",
-    "Qual è il numero massimo di ore di lavoro straordinario?",
+    "Quanto è il contributo BPJS?",
+    "Posso utilizzare il PKWT per ruoli permanenti?",
+    "Qual è il massimo di ore straordinarie?",
     "Quando è dovuto il pagamento THR?",
   ]}
 />
 
 ---
 
-## Articoli Correlati
+## Articoli correlati
 
-- [Assunzione di Dipendenti Indonesiani](/insights/business/hiring-indonesian-employees)
-- [Risoluzione e Indennità](/insights/business/termination-severance)
-- [Guida al Permesso di Lavoro KITAS](/insights/immigration/kitas-work-permit-guide)
+- [Assunzione di dipendenti Indonesiani](/insights/business/hiring-indonesian-employees)
+- [Terminazione & Indennità](/insights/business/termination-severance)
+- [Guida al permesso di lavoro KITAS](/insights/immigration/kitas-work-permit-guide)

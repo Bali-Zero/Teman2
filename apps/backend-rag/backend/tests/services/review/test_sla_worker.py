@@ -21,7 +21,7 @@ from backend.services.war_room.models import (
     RejectionReason,
 )
 
-OWNER = "1125336968"
+OWNER = "8847435604"
 
 
 def _draft_row(hours_ago: float, draft_id: UUID | None = None) -> dict:

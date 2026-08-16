@@ -3,14 +3,8 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Cormorant_Garamond } from "next/font/google";
+import { cormorant } from "@balizero/core/fonts/cormorant";
 import { api } from "@/lib/api";
-
-const cormorant = Cormorant_Garamond({
-  subsets: ["latin"],
-  weight: ["300", "400", "700"],
-  display: "swap",
-});
 
 const REDIRECT_DELAY_MS = 600;
 

@@ -9,6 +9,7 @@ import type {
   KBLIPmaInfo,
 } from "@/lib/kbli-types";
 import ReactMarkdown from "react-markdown";
+import { formatPmaOwnership } from "@/lib/kbli-pma-disclosure";
 
 // =============================================================================
 // Types
@@ -198,21 +199,15 @@ function KeyFacts({
     },
     {
       label: "Foreign Ownership",
-      value: pma.capSpecial
-        ? "Restricted · special conditions"
-        : pma.status === "open"
-          ? "100% Open"
-          : pma.status === "restricted"
-            ? pma.capVerified
-              ? `Max ${pma.maxForeign}%`
-              : `≈${pma.maxForeign}% (unverified)`
-            : "Closed (0%)",
+      value: formatPmaOwnership(pma),
       accent:
-        pma.status === "open"
-          ? "var(--kbli-pma-open)"
-          : pma.status === "restricted"
-            ? "var(--kbli-pma-restricted)"
-            : "var(--kbli-pma-closed)",
+        pma.status === "unknown"
+          ? "var(--foreground-muted)"
+          : pma.status === "open"
+            ? "var(--kbli-pma-open)"
+            : pma.status === "restricted"
+              ? "var(--kbli-pma-restricted)"
+              : "var(--kbli-pma-closed)",
     },
     {
       label: "Authority",

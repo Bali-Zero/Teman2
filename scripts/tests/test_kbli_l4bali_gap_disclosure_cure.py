@@ -495,5 +495,7 @@ def test_the_three_disclosure_sentences_are_the_only_dialects_in_the_catalogue()
         for r in payload["data"]
         if str((r.get("l4_bali") or {}).get("reason") or "").startswith(cure.DISCLOSURE_PREFIX)
     ]
-    assert len(disclosed) == 152
+    selected, _ = emit.select(payload["data"])
+    assert selected == [], "a still-gap-derived verdict lost its required disclosure"
+    assert disclosed, "the catalogue unexpectedly lost every disclosure audit trail"
     assert all(any(reason.endswith(s) for s in suffixes) for reason in disclosed)

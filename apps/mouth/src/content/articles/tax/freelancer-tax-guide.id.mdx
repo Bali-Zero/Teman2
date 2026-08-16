@@ -73,7 +73,7 @@ tags:
 canonicalUrl: "https://balizero.com/tax/freelancer-tax-guide"
 ogImage: "/static/insights/tax/freelancer-tax.jpg"
 twitterCard: "summary_large_image"
-source_sha256: "26e6284380d782f4ea787c6f0758ed3778cca44d4d2e4a8ba1d8560317679189"
+source_sha256: "cb9d5efccf720d2e94619d62ccc4687f7ed01e442bfe3a5f5967d04263abc005"
 ---
 
 import {
@@ -86,7 +86,7 @@ import {
 
 # Pajak Freelancer di Indonesia 2026
 
-Bekerja sebagai freelancer menciptakan kewajiban pajak yang berbeda dibandingkan karyawan. Berikut adalah cara kerja pajak bagi individu yang bekerja mandiri di Indonesia.
+Freelancing menciptakan kewajiban pajak yang berbeda dengan pekerjaan. Berikut cara kerja pajak untuk individu yang bekerja sendiri di Indonesia.
 
 ## Dua Skenario
 
@@ -96,23 +96,23 @@ Bekerja sebagai freelancer menciptakan kewajiban pajak yang berbeda dibandingkan
   items={[
     {
       name: "Klien Internasional Saja",
-      subtitle: "Semua penghasilan dari luar Indonesia",
+      subtitle: "Semua pendapatan dari luar Indonesia",
       values: {
-        "Pajak Indonesia?": "Ya, jika residen pajak",
-        Pemotongan: "Tidak (dibayar langsung)",
-        Pelaporan: "SPT Tahunan",
-        Kompleksitas: "Lebih Rendah",
+        "Pajak Indonesia?": "Ya, jika wajib pajak",
+        Withholding: "Tidak (dibayar langsung)",
+        Reporting: "SPT Tahunan",
+        Complexity: "Lebih rendah",
       },
       highlight: true,
     },
     {
       name: "Klien Indonesia",
-      subtitle: "Penghasilan dari dalam Indonesia",
+      subtitle: "Pendapatan dari dalam Indonesia",
       values: {
         "Pajak Indonesia?": "Ya, selalu",
-        Pemotongan: "PPh 21/23 oleh klien",
-        Pelaporan: "SPT Tahunan + kepatuhan",
-        Kompleksitas: "Lebih Tinggi",
+        Withholding: "PPh 21/23 oleh klien",
+        Reporting: "SPT Tahunan + kepatuhan",
+        Complexity: "Lebih tinggi",
       },
     },
   ]}
@@ -122,24 +122,24 @@ Bekerja sebagai freelancer menciptakan kewajiban pajak yang berbeda dibandingkan
 
 ## Freelancer Internasional
 
-Jika Anda adalah residen pajak yang bekerja freelance untuk **klien internasional saja**:
+Jika Anda adalah wajib pajak yang bekerja sebagai **freelancer untuk klien internasional saja**:
 
 ### Kewajiban Anda
 
-1. Daftar NPWP
-2. Lapor penghasilan pada SPT tahunan (Formulir 1770)
-3. Bayar pajak atas penghasilan seluruh dunia
-4. Dapat mengklaim kredit pajak luar negeri
+1. Mendaftar NPWP
+2. Melaporkan pendapatan pada SPT Tahunan (Form 1770)
+3. Membayar pajak atas pendapatan dunia
+4. Dapat mengklaim kredit pajak asing
 
 ### Perhitungan Pajak
 
 <Calculator
   title="Kalkulator Pajak Freelancer"
-  description="Estimasi pajak tahunan Anda atas penghasilan freelance"
+  description="Perkirakan pajak tahunan Anda atas pendapatan freelance"
   fields={[
     {
       id: "annual",
-      label: "Penghasilan Freelance Tahunan (IDR)",
+      label: "Pendapatan Freelance Tahunan (IDR)",
       type: "number",
       defaultValue: 300000000,
       min: 0,
@@ -148,7 +148,7 @@ Jika Anda adalah residen pajak yang bekerja freelance untuk **klien internasiona
     },
     {
       id: "expenses",
-      label: "Biaya Operasional Bisnis (IDR)",
+      label: "Biaya Bisnis (IDR)",
       type: "number",
       defaultValue: 50000000,
       min: 0,
@@ -160,7 +160,7 @@ Jika Anda adalah residen pajak yang bekerja freelance untuk **klien internasiona
       label: "Status PTKP",
       type: "select",
       options: [
-        { value: "TK0", label: "Lajang (TK/0)" },
+        { value: "TK0", label: "Tunggal (TK/0)" },
         { value: "K0", label: "Menikah (K/0)" },
         { value: "K1", label: "Menikah + 1 anak" },
         { value: "K2", label: "Menikah + 2 anak" }
@@ -171,12 +171,12 @@ Jika Anda adalah residen pajak yang bekerja freelance untuk **klien internasiona
   calculateResult={(values) => {
     const income = Number(values.annual);
     const expenses = Number(values.expenses);
-    const net = income - expenses;
+    const netIncome = income - expenses;
 
     const ptkpMap = { 'TK0': 54000000, 'K0': 58500000, 'K1': 63000000, 'K2': 67500000 };
     const ptkp = ptkpMap[values.status];
 
-    let taxable = Math.max(0, net - ptkp);
+    let taxable = Math.max(0, netIncome - ptkp);
     let tax = 0;
     let remaining = taxable;
 
@@ -186,20 +186,20 @@ Jika Anda adalah residen pajak yang bekerja freelance untuk **klien internasiona
     if (remaining > 0) { const b4 = Math.min(remaining, 4500000000); tax += b4 * 0.30; remaining -= b4; }
     if (remaining > 0) { tax += remaining * 0.35; }
 
-    const effectiveRate = net > 0 ? ((tax / net) * 100).toFixed(1) : 0;
+    const effectiveRate = netIncome > 0 ? ((tax / netIncome) * 100).toFixed(1) : 0;
 
     return {
       total: tax,
       breakdown: [
-        { label: "Penghasilan Bruto", amount: income },
+        { label: "Pendapatan Kotor", amount: income },
         { label: "Biaya", amount: -expenses },
-        { label: "Penghasilan Neto", amount: net },
-        { label: "Pengurang PTKP", amount: -ptkp },
-        { label: "Penghasilan Kena Pajak", amount: taxable },
+        { label: "Pendapatan Bersih", amount: netIncome },
+        { label: "Pengurangan PTKP", amount: -ptkp },
+        { label: "Pendapatan Kena Pajak", amount: taxable },
         { label: "Pajak Tahunan", amount: tax }
       ],
       currency: "IDR",
-      note: `Tarif pajak efektif atas penghasilan neto: ${effectiveRate}%`
+      note: `Tarif pajak efektif atas pendapatan bersih: ${effectiveRate}%`
     };
 
 }}
@@ -213,39 +213,38 @@ Jika Anda memiliki **klien Indonesia**, mereka diwajibkan untuk memotong pajak:
 
 ### PPh 21 atau PPh 23?
 
-| Situasi                                   | Jenis Pajak | Tarif             |
-| ----------------------------------------- | ----------- | ----------------- |
-| Individu freelancer yang menyediakan jasa | PPh 21      | Progresif (5-35%) |
-| Jasa kepada perusahaan                    | PPh 23      | 2% dari bruto     |
-| Teknis/manajemen/konsultasi               | PPh 23      | 2% dari bruto     |
+| Situasi                                | Jenis Pajak | Tarif                |
+| ---------------------------------------- | -------- | ------------------- |
+| Freelancer individu menyediakan jasa | PPh 21   | Progresif (5-35%) |
+| Jasa ke perusahaan                      | PPh 23   | 2% dari kotor         |
+| Teknis/Manajemen/Konsultasi          | PPh 23   | 2% dari kotor         |
 
-<InfoCard variant="note" title="PPh 23 Bukanlah Pajak Final">
+<InfoCard variant="note" title="PPh 23 Bukan Pajak Akhir">
 
-  PPh 23 (2%) adalah **pembayaran di muka**, bukan pajak final. Anda tetap harus
-  melaporkan SPT dan mungkin berutang pajak tambahan atau mendapatkan
-  pengembalian tergantung pada total penghasilan.
+  PPh 23 (2%) adalah **pembayaran awal**, bukan pajak akhir. Anda tetap harus mengajukan SPT dan
+  mungkin harus membayar pajak tambahan atau mendapatkan pengembalian tergantung pada total pendapatan.
 </InfoCard>
 
 ---
 
-## Pelacakan dan Catatan
+## Pelacakan dan Rekam
 
 <Checklist
-  title="Pencatatan Freelancer"
-  description="Apa yang harus dilacak untuk keperluan pajak"
+  title="Pemeliharaan Rekam Freelancer"
+  description="Apa yang perlu dilacak untuk tujuan pajak"
   persistKey="freelancer-records"
   items={[
     {
       id: "income",
-      label: "Semua penghasilan yang diterima",
+      label: "Semua pendapatan yang diterima",
       description: "Lacak berdasarkan klien, tanggal, jumlah",
       required: true,
       category: "income",
     },
     {
       id: "invoices",
-      label: "Salinan faktur/invoice",
-      description: "Simpan semua invoice yang diterbitkan",
+      label: "Salinan faktur",
+      description: "Simpan semua faktur yang dikeluarkan",
       required: true,
       category: "income",
     },
@@ -258,28 +257,28 @@ Jika Anda memiliki **klien Indonesia**, mereka diwajibkan untuk memotong pajak:
     },
     {
       id: "expenses",
-      label: "Kuitansi biaya bisnis",
+      label: "Bukti penerimaan biaya bisnis",
       description: "Biaya yang dapat dikurangkan",
       required: true,
       category: "expenses",
     },
     {
       id: "bank",
-      label: "Rekening koran bank",
-      description: "Menunjukkan pendapatan dan pengeluaran",
+      label: "Pernyataan bank",
+      description: "Menunjukkan pendapatan dan biaya",
       required: true,
       category: "financial",
     },
     {
       id: "foreign-proof",
-      label: "Bukti penghasilan luar negeri",
+      label: "Bukti pendapatan asing",
       description: "PayPal, Wise, transfer bank",
       required: false,
       category: "income",
     },
   ]}
   categories={[
-    { id: "income", label: "Penghasilan", color: "green" },
+    { id: "income", label: "Pendapatan", color: "green" },
     { id: "expenses", label: "Biaya", color: "amber" },
     { id: "tax", label: "Dokumen Pajak", color: "blue" },
     { id: "financial", label: "Keuangan", color: "purple" },
@@ -295,31 +294,31 @@ Sebagai freelancer, Anda dapat mengurangkan biaya yang terkait dengan bisnis:
 
 ### Dapat Dikurangkan
 
-- Biaya kantor/coworking
-- Peralatan kerja
+- Biaya kantor/koworking
+- Peralatan untuk bekerja
 - Langganan perangkat lunak
 - Pengembangan profesional
-- Perjalanan kerja
+- Perjalanan untuk bekerja
 - Biaya komunikasi
 
 ### Tidak Dapat Dikurangkan
 
 - Biaya pribadi
 - Hiburan (terbatas)
-- Denda atau penalti
+- Denda atau sanksi
 
 ---
 
 ## Pertanyaan Umum
 
 <AskZantara
-  context="Pajak freelancer, pekerja mandiri Indonesia, PPh 23, pajak kontraktor independen"
+  context="Pajak freelancer, wirausaha Indonesia, PPh 23, pajak kontraktor independen"
   placeholder="Tanyakan tentang pajak freelancer..."
   suggestedQuestions={[
     "Apakah saya perlu memungut PPN?",
-    "Seberapa sering saya membayar pajak?",
-    "Bisakah saya mengurangkan biaya laptop saya?",
-    "Bagaimana jika klien tidak memotong pajak?",
+    "Seberapa sering saya harus membayar pajak?",
+    "Apakah saya dapat mengurangkan laptop saya?",
+    "Apa yang harus dilakukan jika klien tidak memotong pajak?",
   ]}
 />
 
@@ -329,5 +328,5 @@ Sebagai freelancer, Anda dapat mengurangkan biaya yang terkait dengan bisnis:
 
 - [Panduan Pajak Indonesia untuk Orang Asing](/insights/tax-legal/indonesia-tax-guide-for-foreigners)
 - [NPWP untuk Orang Asing](/insights/tax-legal/npwp-foreigners-guide)
-- [Panduan SPT Tahunan](/insights/tax-legal/annual-tax-return-guide)
-- [Bekerja Freelance Secara Legal di Indonesia](/insights/lifestyle/freelancing-legally-indonesia)
+- [Panduan Pengajuan Pajak Tahunan (SPT)](/insights/tax-legal/annual-tax-return-guide)
+- [Bekerja sebagai Freelancer secara Legal di Indonesia](/insights/lifestyle/freelancing-legally-indonesia)

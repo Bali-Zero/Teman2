@@ -18,7 +18,7 @@ Environment variables:
 - BRIDGE_SKILLS_API_KEY   (required; dedicated key, NOT BRIDGE_API_KEY)
 - PRO_REDIS_URL           (default redis://127.0.0.1:6379)
 - TELEGRAM_BOT_TOKEN      (optional; alerts disabled if unset)
-- TELEGRAM_OWNER_CHAT_ID  (optional; default 1125336968)
+- TELEGRAM_OWNER_CHAT_ID  (optional; default 8847435604)
 """
 from __future__ import annotations
 

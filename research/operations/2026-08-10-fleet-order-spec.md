@@ -140,6 +140,64 @@ means no NUZANTARA/infra credentials (Fly, Vercel, GitHub, DB, `.env*`) in the m
 environment; the seat's OWN provider token lives in the broker layer (Keychain → shim env var),
 outside the model's context — that is how the seat operates at all.
 
+### Addendum 2026-08-14 — PROBE-1-residual CLOSED
+
+Appended, not rewritten — the "All PROBATION until PROBE-1-residual" line above described the
+state as of 2026-08-10 and stays as written for the historical record.
+
+PROBE-1-residual (burn-rate + credits endpoint, per §6 "PROBE ledger" and §8.4) is now closed.
+Full data, methodology, and every number below: `research/operations/2026-08-14-probe1-tp1-burn-rate.md`.
+
+**Burn-rate measured** from `~/.qwen/usage/token-usage-2026-08.jsonl` (per-call log, unique `id`
+per row, 1330 rows / 0 duplicates), 2026-08-08 through 2026-08-14 (7 days of real production
+use, not a synthetic 3-sample-task probe as originally scoped — Zero ruled the larger, real
+sample supersedes the smaller planned one):
+
+| Model | Calls | Total tokens |
+|---|---|---|
+| qwen3.8-max | 459 | 74,059,053 |
+| qwen3.7-plus | 65 | 6,420,702 |
+| deepseek-v4-flash-0731 | 806 | 131,219,287 |
+| **Total** | **1330** | **211,699,042** |
+
+**Credits endpoint**: not exposed via API. 20 candidate paths probed across the TP1
+compatible-mode base, its root, and `dashscope-intl.aliyuncs.com` (`/usage`, `/credits`,
+`/quota`, `/billing`, `/account/usage`, `/balance`, …) — all 404. The key itself is live
+(`GET /compatible-mode/v1/models` → 200, lists the roster). Credits/consumption reading, if it
+exists at all, is console-only (Model Studio dashboard) — `operator[gui]`.
+
+**Promotion** (FLEET_TOPOLOGY.json v1.3): qwen3.8-max, qwen3.7-plus, and
+deepseek-v4-flash-0731 move PROBATION → ARMED on this seat's own measured mileage.
+deepseek-v4-pro (a DIFFERENT tier from -flash — zero measured calls this window) stays
+PROBATION. glm-5.2-via-TP1 stays PROBATION — zero measured TP1 calls; z.ai remains the active
+GLM door, unaffected by this promotion (§2.6 below is not touched by this addendum). MiniMax
+M2.5 stays PROBATION — zero measured calls, PROBE-4 still open. Hard NOs (§ above: PII,
+client-facing, merge/deploy, final gates, credentials-in-env) are untouched — they are
+independent of PROBATION status and apply to ARMED seats exactly as they did to PROBATION ones.
+
+**Cost note — CORRECTED 2026-08-14 (post-landing review, see burn-rate doc §Part 1 for the full
+correction and both source citations)**: at official Aug-2026 Alibaba list prices (Qwen3.8-Max
+$2/$6 per 1M in/out, cached input $0.25/1M; Qwen3.7-Plus proxy $0.40/$1.60; deepseek-v4-flash
+$0.14/$0.28 with cached input $0.028/1M — this last rate is the model's own OFFICIAL published
+cache price, not a guess: [help.aliyuncs.com/en/model-studio/deepseek-v4-flash](https://www.alibabacloud.com/help/en/model-studio/deepseek-v4-flash)),
+the measured 7-day usage prices out to ≈$42, a **metered-equivalent ceiling** of ≈$181/month —
+i.e. what this usage would cost paying per-token at official list prices with no subscription.
+This is NOT arithmetically comparable to the documented "~$68/month tier" (§2.5 table, §8.4),
+for two independent reasons, both confirmed against Alibaba's own docs:
+(a) **value multiplier** — the $68 figure is the Individual plan's "Pro" tier
+([blog: Token Plan for Individual](https://www.alibabacloud.com/blog/model-studio-token-plan-for-individual-one-subscription-for-every-ai-model-up-to-3x-more-value_603426)),
+whose own claim is "≈3× more usage than pay-as-you-go" — so $68 of Individual-plan credits
+could plausibly cover ≈$150-200 of list-equivalent usage, putting our measured $181 at-or-under
+that ceiling rather than 2.7× over it; (b) **product/region mismatch** — TP1's actual endpoint
+(`token-plan.ap-southeast-1.maas.aliyuncs.com`) is the **Singapore** region, which
+[Alibaba's Token Plan (Team Edition) doc](https://www.alibabacloud.com/help/en/model-studio/token-plan-overview)
+states is available ONLY as Team Edition ($30/$100/$200 per seat/month — no $68 tier exists
+there); the $68 figure is documented only for the Individual plan, whose regional scope isn't
+stated the same way. **Which product TP1 actually is cannot be resolved from the API** — this
+stays an `operator[gui]` item, now with a precise question for the Model Studio console: *which
+edition/tier is this key on, and how many credits remain this cycle*. Do not read the earlier
+"≈2.7×" framing (struck by this correction) as a confirmed overspend signal.
+
 ## 2.6 GLM z.ai door (until quota exhausted)
 
 `claude-glm -p "…"` (shim: Keychain token + `CLAUDE_CONFIG_DIR=~/.claude-glm`). First-call

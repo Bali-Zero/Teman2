@@ -122,7 +122,7 @@ def test_plan_apply_when_metadata_differs():
 def test_plan_already_cured_when_metadata_matches():
     rec = _record(
         pp28_sources=SPEC["pp28_sources"],
-        aggregation_note=SPEC["aggregation_note"],
+        aggregation_note=cure._aggregation_note_target(SPEC),
         what_changed=SPEC["whatChanged"],
         data_note=SPEC["data_note"],
     )
@@ -150,7 +150,7 @@ def test_plan_innocence_untouched_neighbor_not_flagged():
     as apply/guard — the compiler must not false-positive on a clean record."""
     rec = _record(
         pp28_sources=SPEC["pp28_sources"],
-        aggregation_note=SPEC["aggregation_note"],
+        aggregation_note=cure._aggregation_note_target(SPEC),
         what_changed=SPEC["whatChanged"],
         data_note=SPEC["data_note"],
         disputed=False,
@@ -168,7 +168,7 @@ def test_apply_sets_three_fields_and_data_note():
     rec = _record()
     out = cure.apply_metadata_cure(rec, SPEC)
     assert out["pp28_sources"] == SPEC["pp28_sources"]
-    assert out["aggregation_note"] == SPEC["aggregation_note"]
+    assert out["aggregation_note"] == "data from 56101 + 2 PP28 child code(s) (56102, 56109)"
     assert out["intel_2026"]["whatChanged"] == SPEC["whatChanged"]
     assert out["_data_note"] == SPEC["data_note"]
 
@@ -265,7 +265,7 @@ def test_cli_apply_mutates_target_and_leaves_neighbor_untouched(tmp_path: Path, 
     by_code = {r["kode_kbli_2025"]: r for r in out["data"]}
     cured = by_code["56101"]
     assert cured["pp28_sources"] == SPEC["pp28_sources"]
-    assert cured["aggregation_note"] == SPEC["aggregation_note"]
+    assert cured["aggregation_note"] == cure._aggregation_note_target(SPEC)
     assert cured["intel_2026"]["whatChanged"] == SPEC["whatChanged"]
     assert cured["_data_note"] == SPEC["data_note"]
 

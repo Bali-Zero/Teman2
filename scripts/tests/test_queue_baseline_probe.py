@@ -29,7 +29,7 @@ import importlib.util
 import json
 import subprocess
 import sys
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from types import ModuleType
 
@@ -75,6 +75,44 @@ def _mk_run(
 
 def _proc(cmd: list[str], rc: int, out: str, err: str = "") -> subprocess.CompletedProcess:
     return subprocess.CompletedProcess(cmd, rc, out, err)
+
+
+def _assert_explicit_get(cmd: list[str]) -> None:
+    """`gh api` silently switches its default method to POST the instant any `-f`/`-F`
+    field is present, unless `-X`/`--method` overrides it — every `-f`/`-F`-bearing `gh api`
+    REST call this module makes MUST carry an explicit `-X GET` (regression coverage for the
+    real-API 404 `fetch_run_jobs()` hit live 2026-08-14 on `.../actions/runs/{id}/jobs` before
+    this flag was added — third instance of this class found the same day, after
+    scripts/suite_growth_probe.py and scripts/queue_ejection_attribution.py; see PR
+    description). A fake that stayed silent on a missing `-X GET` would never have caught
+    that — a real subprocess call did, and this assertion is what keeps it caught without
+    needing the network again.
+
+    EXCLUDED BY DESIGN: `gh api graphql` calls (`fetch_automerge_enabled_at`) — GraphQL is
+    POST BY PROTOCOL (queries and variables travel in the POST body), not a missing flag;
+    asserting `-X GET` there would be wrong, not a fix.
+    """
+    if "graphql" in cmd:
+        return
+    has_f = "-f" in cmd or "-F" in cmd
+    if has_f:
+        assert "-X" in cmd, f"gh api call has -f but no explicit -X GET: {cmd}"
+        idx = cmd.index("-X")
+        assert cmd[idx + 1] == "GET", f"gh api call's -X is not GET: {cmd}"
+
+
+def _guarded(fake):
+    """Wrap a fake `subprocess.run` replacement so EVERY test in this file gets the
+    `_assert_explicit_get` regression pin for free, regardless of which ad-hoc `fake_run` it
+    defines — a class-audit fix that lived in only one test's fixture would leave every other
+    call-site's future regression uncaught (scar family #3: a guard that only covers the one
+    instance it was written for is a guard that will miss the next one)."""
+
+    def wrapped(cmd, **kwargs):  # noqa: ANN001, ANN003
+        _assert_explicit_get(cmd)
+        return fake(cmd, **kwargs)
+
+    return wrapped
 
 
 def _make_fake_gh(
@@ -159,8 +197,7 @@ def test_list_workflow_runs_reports_server_side_pagination_shortfall(monkeypatch
         timing_ms_by_id={},
         reported_run_total=17_648,
     )
-    monkeypatch.setattr(qbp.subprocess, "run", fake)
-
+    monkeypatch.setattr(qbp.subprocess, "run", _guarded(fake))
     fetched, reported_total, errors = qbp.list_workflow_runs(
         qbp.DEFAULT_REPO,
         date(2026, 8, 9),
@@ -184,8 +221,7 @@ def test_list_workflow_runs_combines_all_pages_and_deduplicates_ids(monkeypatch)
     def fake_run(cmd, **kwargs):  # noqa: ANN001, ANN003
         return _proc(cmd, 0, "".join(json.dumps(page) for page in pages))
 
-    monkeypatch.setattr(qbp.subprocess, "run", fake_run)
-
+    monkeypatch.setattr(qbp.subprocess, "run", _guarded(fake_run))
     fetched, reported_total, errors = qbp.list_workflow_runs(
         qbp.DEFAULT_REPO,
         date(2026, 8, 9),
@@ -196,6 +232,144 @@ def test_list_workflow_runs_combines_all_pages_and_deduplicates_ids(monkeypatch)
     assert errors == []
 
 
+def _parse_created_window(cmd: list[str]) -> tuple[datetime, datetime]:
+    """Recover the `[start, end]` UTC window `list_workflow_runs` sent, for fakes that need
+    to answer differently per window (the bisection tests below) rather than ignoring `cmd`
+    like the fixtures above.
+    """
+    for i, tok in enumerate(cmd):
+        if tok == "-f" and cmd[i + 1].startswith("created="):
+            value = cmd[i + 1].split("=", 1)[1]
+            start_s, end_s = value.split("..")
+            fmt = "%Y-%m-%dT%H:%M:%SZ"
+            return (
+                datetime.strptime(start_s, fmt).replace(tzinfo=timezone.utc),
+                datetime.strptime(end_s, fmt).replace(tzinfo=timezone.utc),
+            )
+    raise AssertionError(f"no created= filter found in cmd: {cmd}")
+
+
+def test_list_workflow_runs_bisects_past_the_1000_result_cap(monkeypatch):
+    """Guilt: a day with 2,500 runs (real GitHub caps `created`-filtered queries at 1,000,
+    per docs.github.com/en/rest/actions/workflow-runs) must still yield ALL of them, with an
+    empty pagination error — recovered via recursive time-window bisection, not a single
+    `--paginate` call.
+    """
+    day = date(2026, 8, 12)
+    total_runs = 2500
+    day_start = datetime(2026, 8, 12, tzinfo=timezone.utc)
+    # Evenly spread across the day so each bisection level's two halves split ~evenly.
+    step_seconds = 86400 / total_runs
+    all_runs = [
+        (i + 1, day_start + timedelta(seconds=i * step_seconds)) for i in range(total_runs)
+    ]
+
+    def fake_run(cmd, **kwargs):  # noqa: ANN001, ANN003
+        assert cmd[0] == "gh"
+        assert cmd[2] == f"repos/{qbp.DEFAULT_REPO}/actions/runs"
+        start, end = _parse_created_window(cmd)
+        matched = [(rid, ts) for rid, ts in all_runs if start <= ts <= end]
+        capped = matched[: qbp.PAGE_CAP]  # GitHub's real server-side behavior: total_count is
+        # honest, the served items are capped.
+        payload = {
+            "total_count": len(matched),
+            "workflow_runs": [_mk_run(rid, "push") for rid, _ts in capped],
+        }
+        return _proc(cmd, 0, json.dumps(payload))
+
+    monkeypatch.setattr(qbp.subprocess, "run", _guarded(fake_run))
+    fetched, reported_total, errors = qbp.list_workflow_runs(qbp.DEFAULT_REPO, day)
+
+    assert reported_total == total_runs
+    assert sorted(run["id"] for run in fetched) == list(range(1, total_runs + 1))
+    assert errors == []
+
+
+def test_list_workflow_runs_gives_up_visibly_when_even_bisection_cannot_resolve(monkeypatch):
+    """Guilt (safety bound): a pathologically dense day that STILL reports more than
+    PAGE_CAP at every window, all the way down to the recursion bound, must never loop
+    forever and must never claim completeness — errors[] stays non-empty and main()'s exit
+    code is non-zero (W101 discipline), never a silent partial-as-complete record.
+    """
+    day = date(2026, 8, 12)
+    monkeypatch.setattr(qbp, "MAX_BISECT_DEPTH", 3)  # keep the test fast; still exercises the
+    # real recursive code path and the real fail-visible guard.
+
+    def fake_run(cmd, **kwargs):  # noqa: ANN001, ANN003
+        assert cmd[0] == "gh"
+        if cmd[2] == f"repos/{qbp.DEFAULT_REPO}/actions/runs":
+            # Every window, no matter how narrow, reports far more than it can serve.
+            payload = {
+                "total_count": 999_999,
+                "workflow_runs": [_mk_run(i, "push") for i in range(qbp.PAGE_CAP)],
+            }
+            return _proc(cmd, 0, json.dumps(payload))
+        raise AssertionError(f"unexpected gh invocation: {cmd}")
+
+    monkeypatch.setattr(qbp.subprocess, "run", _guarded(fake_run))
+    fetched, reported_total, errors = qbp.list_workflow_runs(qbp.DEFAULT_REPO, day)
+
+    assert reported_total == 999_999
+    assert len(fetched) < reported_total
+    assert errors != []
+    assert any("even after bisection" in e for e in errors)
+
+
+def test_list_workflow_runs_gives_up_end_to_end_via_main_nonzero_exit(tmp_path, monkeypatch):
+    """Same pathological-density scenario as above, exercised through main() end to end:
+    the record is still written (never skipped), but the wrapper's rc-based alerting must
+    see the failure (W101 discipline) — never a green run silently sitting on a partial day.
+    """
+    day = date(2026, 8, 12)
+    monkeypatch.setattr(qbp, "MAX_BISECT_DEPTH", 2)
+
+    def fake_run(cmd, **kwargs):  # noqa: ANN001, ANN003
+        assert cmd[0] == "gh"
+        if cmd[1] == "api" and len(cmd) > 2 and cmd[2] == f"repos/{qbp.DEFAULT_REPO}/actions/runs":
+            payload = {"total_count": 999_999, "workflow_runs": [_mk_run(i, "push") for i in range(qbp.PAGE_CAP)]}
+            return _proc(cmd, 0, json.dumps(payload))
+        if cmd[1] == "api" and len(cmd) > 2 and cmd[2].endswith("/timing"):
+            return _proc(cmd, 1, "", "not needed for this test")
+        if cmd[1] == "pr" and cmd[2] == "list":
+            return _proc(cmd, 0, json.dumps([]))
+        raise AssertionError(f"unexpected gh invocation: {cmd}")
+
+    monkeypatch.setattr(qbp.subprocess, "run", _guarded(fake_run))
+    out_dir = tmp_path / "baseline"
+    rc = qbp.main(["--repo", qbp.DEFAULT_REPO, "--date", day.isoformat(), "--out-dir", str(out_dir)])
+
+    assert rc == 1
+    record_path = out_dir / f"{day.isoformat()}.json"
+    assert record_path.exists()
+    on_disk = json.loads(record_path.read_text())
+    assert on_disk["errors"] != []
+    assert on_disk["run_collection"]["complete"] is False
+
+
+def test_list_workflow_runs_innocence_below_cap_is_not_bisected(monkeypatch):
+    """Innocence: a window whose raw fetch stays below PAGE_CAP is never split, regardless
+    of how narrow the theoretical windows would be — single-window behavior is unchanged
+    from before bisection existed (mirrors
+    test_list_workflow_runs_combines_all_pages_and_deduplicates_ids but pinned explicitly
+    against PAGE_CAP so a future change to that constant can't silently make this drift).
+    """
+    day = date(2026, 8, 12)
+    calls: list[list[str]] = []
+
+    def fake_run(cmd, **kwargs):  # noqa: ANN001, ANN003
+        calls.append(cmd)
+        payload = {"total_count": 42, "workflow_runs": [_mk_run(i, "push") for i in range(42)]}
+        return _proc(cmd, 0, json.dumps(payload))
+
+    monkeypatch.setattr(qbp.subprocess, "run", _guarded(fake_run))
+    fetched, reported_total, errors = qbp.list_workflow_runs(qbp.DEFAULT_REPO, day)
+
+    assert len(calls) == 1  # exactly one window fetched — no bisection attempted
+    assert reported_total == 42
+    assert len(fetched) == 42
+    assert errors == []
+
+
 def test_public_repo_timing_falls_back_to_run_duration_ms(monkeypatch):
     fake = _make_fake_gh(
         qbp.DEFAULT_REPO,
@@ -203,8 +377,7 @@ def test_public_repo_timing_falls_back_to_run_duration_ms(monkeypatch):
         timing_ms_by_id={7001: 0},
         run_duration_ms_by_id={7001: 90_000},
     )
-    monkeypatch.setattr(qbp.subprocess, "run", fake)
-
+    monkeypatch.setattr(qbp.subprocess, "run", _guarded(fake))
     minutes, source, error = qbp.fetch_run_timing_minutes(qbp.DEFAULT_REPO, 7001)
 
     assert minutes == pytest.approx(1.5)
@@ -219,8 +392,7 @@ def test_nonzero_billable_timing_wins_over_run_duration(monkeypatch):
         timing_ms_by_id={7002: 120_000},
         run_duration_ms_by_id={7002: 600_000},
     )
-    monkeypatch.setattr(qbp.subprocess, "run", fake)
-
+    monkeypatch.setattr(qbp.subprocess, "run", _guarded(fake))
     minutes, source, error = qbp.fetch_run_timing_minutes(qbp.DEFAULT_REPO, 7002)
 
     assert minutes == pytest.approx(2.0)
@@ -254,8 +426,7 @@ def test_attribution_even_split_and_unattributed_group_minutes(monkeypatch):
     ]
     timing_ms = {1001: 40 * 60_000, 1002: 20 * 60_000, 1003: 30 * 60_000, 1004: 15 * 60_000}
     fake = _make_fake_gh(qbp.DEFAULT_REPO, runs, timing_ms, merged_prs=[])
-    monkeypatch.setattr(qbp.subprocess, "run", fake)
-
+    monkeypatch.setattr(qbp.subprocess, "run", _guarded(fake))
     record = qbp.build_record(qbp.DEFAULT_REPO, day)
 
     assert record["errors"] == []
@@ -290,8 +461,7 @@ def test_pull_request_run_with_empty_pull_requests_field_is_unattributed_not_dro
     day = date(2026, 8, 9)
     runs = [_mk_run(2001, "pull_request", pull_requests=[])]
     fake = _make_fake_gh(qbp.DEFAULT_REPO, runs, {2001: 12 * 60_000}, merged_prs=[])
-    monkeypatch.setattr(qbp.subprocess, "run", fake)
-
+    monkeypatch.setattr(qbp.subprocess, "run", _guarded(fake))
     record = qbp.build_record(qbp.DEFAULT_REPO, day)
 
     assert record["errors"] == []
@@ -322,8 +492,7 @@ def test_ejection_counted_even_when_its_own_timing_fetch_fails(monkeypatch):
         jobs_by_id={5001: [{"name": "Backend Tests (Python)", "conclusion": "failure"}]},
         pr_view_by_number={500: {"author": {"login": "someone"}, "headRefName": "fix/x"}},
     )
-    monkeypatch.setattr(qbp.subprocess, "run", fake)
-
+    monkeypatch.setattr(qbp.subprocess, "run", _guarded(fake))
     record = qbp.build_record(qbp.DEFAULT_REPO, day)
 
     assert record["ejections"]["total"] == 1
@@ -334,12 +503,52 @@ def test_ejection_counted_even_when_its_own_timing_fetch_fails(monkeypatch):
     assert record["billed_minutes_per_pr"] == {}
 
 
+def test_ejection_infra_classification_reaches_real_jobs_fetch_boundary(monkeypatch):
+    """Reconciliation guilt-test (post-2026-08-14 `-X GET` fix): the INFRA branch of
+    `classify_ejection` was NEVER dead as a pure function (see
+    `test_classify_ejection_failed_run_with_setup_job_failure_is_infra` below) — it was dead
+    end-to-end, because `fetch_run_jobs` 404'd on every real call before this fix and
+    `build_record` always saw an empty jobs list. `_guarded()` (module-level in this test
+    file) makes every fixture in this file assert the real `gh api` argv is 404-safe — this
+    test additionally proves that, once real, the jobs data actually reaches and flips the
+    classification (not just that the call shape is correct in isolation). Uses the SAME
+    real day (2026-08-12) and the SAME infra-flavoured job name ("Set up job") verified live
+    against this repo's actual PR #4127 second ejection episode
+    (scripts/queue_ejection_attribution.py's own dry-run independently found this INFRA
+    ejection via the PR-timeline path the same day) — not a hypothetical fixture.
+    """
+    day = date(2026, 8, 12)
+    runs = [
+        _mk_run(
+            6001,
+            "merge_group",
+            conclusion="failure",
+            head_branch="gh-readonly-queue/main/pr-4127-abc123",
+        )
+    ]
+    fake = _make_fake_gh(
+        qbp.DEFAULT_REPO,
+        runs,
+        timing_ms_by_id={6001: 5 * 60_000},
+        merged_prs=[],
+        jobs_by_id={6001: [{"name": "Set up job", "conclusion": "failure"}]},
+        pr_view_by_number={4127: {"author": {"login": "Balizero1987"}, "headRefName": "agent/air-m5/ops/x"}},
+    )
+    monkeypatch.setattr(qbp.subprocess, "run", _guarded(fake))
+
+    record = qbp.build_record(qbp.DEFAULT_REPO, day)
+
+    assert record["ejections"]["total"] == 1
+    assert record["ejections"]["by_class"]["INFRA"] == 1
+    assert record["ejections"]["by_class"]["CODE"] == 0
+    assert record["ejections"]["by_author_class"]["agent"] == 1
+
+
 def test_non_pr_non_merge_group_run_counts_toward_slot_utilization_only(monkeypatch):
     day = date(2026, 8, 9)
     runs = [_mk_run(3001, "schedule")]
     fake = _make_fake_gh(qbp.DEFAULT_REPO, runs, {3001: 5 * 60_000}, merged_prs=[])
-    monkeypatch.setattr(qbp.subprocess, "run", fake)
-
+    monkeypatch.setattr(qbp.subprocess, "run", _guarded(fake))
     record = qbp.build_record(qbp.DEFAULT_REPO, day)
 
     assert record["errors"] == []
@@ -358,8 +567,7 @@ def test_public_repo_duration_fallback_populates_runner_minutes(monkeypatch):
         run_duration_ms_by_id={3002: 5 * 60_000},
         merged_prs=[],
     )
-    monkeypatch.setattr(qbp.subprocess, "run", fake)
-
+    monkeypatch.setattr(qbp.subprocess, "run", _guarded(fake))
     record = qbp.build_record(qbp.DEFAULT_REPO, day)
 
     assert record["errors"] == []
@@ -376,8 +584,7 @@ def test_public_repo_duration_fallback_populates_runner_minutes(monkeypatch):
 def test_empty_day_record_carries_full_schema_with_zeros(monkeypatch):
     day = date(2026, 8, 9)
     fake = _make_fake_gh(qbp.DEFAULT_REPO, runs=[], timing_ms_by_id={}, merged_prs=[])
-    monkeypatch.setattr(qbp.subprocess, "run", fake)
-
+    monkeypatch.setattr(qbp.subprocess, "run", _guarded(fake))
     record = qbp.build_record(qbp.DEFAULT_REPO, day)
 
     assert record["errors"] == []
@@ -422,8 +629,7 @@ def test_empty_day_record_carries_full_schema_with_zeros(monkeypatch):
 def test_empty_day_end_to_end_via_main_writes_file_and_exits_zero(tmp_path, monkeypatch):
     day = date(2026, 8, 9)
     fake = _make_fake_gh(qbp.DEFAULT_REPO, runs=[], timing_ms_by_id={}, merged_prs=[])
-    monkeypatch.setattr(qbp.subprocess, "run", fake)
-
+    monkeypatch.setattr(qbp.subprocess, "run", _guarded(fake))
     out_dir = tmp_path / "baseline"
     rc = qbp.main(["--repo", qbp.DEFAULT_REPO, "--date", day.isoformat(), "--out-dir", str(out_dir)])
 
@@ -445,8 +651,7 @@ def test_empty_day_end_to_end_via_main_writes_file_and_exits_zero(tmp_path, monk
 
 def test_api_denial_produces_record_with_errors_never_silent(monkeypatch):
     day = date(2026, 8, 9)
-    monkeypatch.setattr(qbp.subprocess, "run", _fail_everything)
-
+    monkeypatch.setattr(qbp.subprocess, "run", _guarded(_fail_everything))
     record = qbp.build_record(qbp.DEFAULT_REPO, day)
 
     # Guilt: under total API denial, an empty errors[] must be IMPOSSIBLE.
@@ -459,8 +664,7 @@ def test_api_denial_produces_record_with_errors_never_silent(monkeypatch):
 
 def test_api_denial_end_to_end_via_main_nonzero_exit_but_record_on_disk(tmp_path, monkeypatch):
     day = date(2026, 8, 9)
-    monkeypatch.setattr(qbp.subprocess, "run", _fail_everything)
-
+    monkeypatch.setattr(qbp.subprocess, "run", _guarded(_fail_everything))
     out_dir = tmp_path / "baseline"
     rc = qbp.main(["--repo", qbp.DEFAULT_REPO, "--date", day.isoformat(), "--out-dir", str(out_dir)])
 

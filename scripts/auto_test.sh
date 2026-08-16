@@ -106,7 +106,7 @@ log "Agent tests — Passed: $PASSED | Failed: $FAILED"
 
 # Load secrets (TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_CHAT_ID)
 [ -f "$HOME/.nuzantara-secrets.env" ] && set -a && source "$HOME/.nuzantara-secrets.env" && set +a
-TELEGRAM_CHAT_ID="${TELEGRAM_ADMIN_CHAT_ID:-${TELEGRAM_CHAT_ID:-1125336968}}"
+TELEGRAM_CHAT_ID="${TELEGRAM_ADMIN_CHAT_ID:-${TELEGRAM_CHAT_ID:-8847435604}}"
 
 if [ $FAILED -eq 0 ]; then
     log "✅ All tests passed (Passed: $PASSED)"

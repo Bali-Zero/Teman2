@@ -70,7 +70,7 @@ def main() -> int:
                 f"https://api.telegram.org/bot{token}/sendMessage",
                 urllib.parse.urlencode(
                     {
-                        "chat_id": os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968"),
+                        "chat_id": os.environ.get("TELEGRAM_OWNER_CHAT_ID", "8847435604"),
                         "text": text,
                     }
                 ).encode(),

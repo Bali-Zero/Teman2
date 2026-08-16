@@ -90,7 +90,7 @@ send_telegram() {
     set +a
   fi
   local TOKEN="${TELEGRAM_BOT_TOKEN:-}"
-  local CHAT_ID="${TELEGRAM_OWNER_CHAT_ID:-1125336968}"
+  local CHAT_ID="${TELEGRAM_OWNER_CHAT_ID:-8847435604}"
   if [ -z "$TOKEN" ]; then
     log "telegram: skipped (no token)"
     return 0

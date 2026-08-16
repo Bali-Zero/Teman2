@@ -138,36 +138,6 @@ describe("analytics", () => {
     expect(body).not.toHaveProperty("user_id");
   });
 
-  it("dispatches Visa Oracle funnel events to GA4 and the core funnel bus", async () => {
-    const gtag = vi.fn();
-    (window as typeof window & { gtag?: typeof gtag }).gtag = gtag;
-    const { trackVisaQuizCompleted } = await loadAnalytics();
-
-    trackVisaQuizCompleted({
-      nationality: "Italy",
-      purpose: "business",
-      duration: "12 months",
-      family: "yes",
-    });
-
-    expect(gtag).toHaveBeenCalledWith("event", "visa_quiz_completed", {
-      event_category: "VisaOracle",
-      nationality: "Italy",
-      purpose: "business",
-      duration: "12 months",
-      family: "yes",
-    });
-    expect(trackFunnelEventMock).toHaveBeenCalledWith("visa_quiz_completed", {
-      sessionId: "core-session-id",
-      payload: {
-        nationality: "Italy",
-        purpose: "business",
-        duration: "12 months",
-        family: "yes",
-      },
-    });
-  });
-
   it("dispatches typed funnel CTA events with extra payload", async () => {
     const gtag = vi.fn();
     (window as typeof window & { gtag?: typeof gtag }).gtag = gtag;

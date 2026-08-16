@@ -49,7 +49,7 @@ async def test_send_photo_url_sends_expected_payload():
     a = TelegramReviewAdapter(bot_token="t", http_client=client)
 
     result = await a.send_photo_url(
-        chat_id=1125336968,
+        chat_id=8847435604,
         photo_url="https://tigris/cover.png",
         caption="Test caption",
         reply_markup={"inline_keyboard": [[{"text": "x", "callback_data": "y"}]]},
@@ -59,7 +59,7 @@ async def test_send_photo_url_sends_expected_payload():
     called_url = client.post.call_args.args[0]
     payload = client.post.call_args.kwargs["data"]
     assert called_url.endswith("/sendPhoto")
-    assert payload["chat_id"] == "1125336968"
+    assert payload["chat_id"] == "8847435604"
     assert payload["photo"] == "https://tigris/cover.png"
     assert payload["caption"] == "Test caption"
     assert payload["parse_mode"] == "HTML"

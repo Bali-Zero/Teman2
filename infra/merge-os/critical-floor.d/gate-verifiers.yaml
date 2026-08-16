@@ -1,0 +1,29 @@
+id: gate-verifiers
+category: Verifiers of other gates
+description: >
+  Tests that verify OTHER gates/guards are themselves correct — the
+  data-invariant tripwires, and every corpus file registered as a
+  guilt+innocence proof in infra/guard-conformance/registry.json. These are
+  meta-level: quarantining one doesn't just lose coverage of a feature, it
+  silently disarms this repo's own guilt+innocence discipline
+  (cicatrix-superscar.md family #3's own antidote) for whatever guard that
+  corpus protects. Listed as explicit paths rather than a glob pattern —
+  this is a small, curated, cross-cutting set rather than a directory/name
+  convention.
+patterns:
+  - apps/backend-rag/backend/tests/test_data_invariant_tripwires.py
+  - apps/backend-rag/backend/tests/unit/scripts/test_openclaw_whatsapp_bridge_script.py
+  - scripts/tests/test_tg_gateway.py
+  - scripts/tests/test_evidence_pack_lint.py
+  - scripts/tests/test_wr2_editorial_pregate.py
+  - apps/wa-mirror/scripts/test_api_server_path_confinement.py
+  - scripts/tests/test_check_required_workflow_conformance.py
+  - apps/backend-rag/backend/tests/unit/services/rag/agentic/test_casual_gate_overmatch.py
+rationale: >
+  CLAUDE.md §9 "Evidence scoring thresholds ... tripwire tests" +
+  infra/guard-conformance/registry.json's own mandate ("nessuna guardia
+  mergiata senza un test di innocenza E di colpevolezza",
+  cicatrix-superscar.md #3) + infra/guard-conformance/check_guard_conformance.py's
+  CI enforcement of exactly this corpus. A gate whose own verifier can be
+  quarantined is a gate that can silently regress.
+verified_match_count: 8

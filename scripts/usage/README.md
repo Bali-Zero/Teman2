@@ -19,9 +19,11 @@
 | Claude Max/Team (4 account) | nessuna API pubblica quota → parse transcript `~/.claude*/projects/**/*.jsonl` per profilo (pattern ccusage); finestre 5h/7d stimate dai timestamp | 🔧 collector da armare |
 | Codex Pro (2 account) | parse `$CODEX_HOME/sessions/**/*.jsonl` per home | 🔧 collector da armare |
 | Google AI Ultra (agy) | nessuna API quota → conteggio invocazioni dai log + quota % solo in settings UI | 🟡 parziale per natura |
-| Kimi Allegro | conteggio invocazioni log CLI | 🟡 parziale |
-| Alibaba Token Plan (crediti) | console Model Studio; endpoint crediti da individuare in PROBE-1; usage per-request nelle risposte API | ⏳ post PROBE-1 |
+| Kimi (piano Vivace — ex "Allegro" nei doc) | console GUI kimi.com/membership/subscription?tab=quota → manual snapshot in `~/.agent/seat-usage/console_quota_snapshot.json` (local, 0600, NEVER committed — schema self-documented in the file; monthly total + 5h/7d Code windows) | ✅ ARMED (manual, 2026-08-15 first reading) |
+| Alibaba Token Plan (crediti) | console GUI Model Studio → same local snapshot file (`alibaba_tp1` key: 7-day rolling % + cycle + auto-renewal); PROBE-1 residual (programmatic credits endpoint) stays open | ✅ ARMED (manual, 2026-08-15) |
 | Infra (Fly/Vercel/Upstash) | fatture console; fuori scope v1 | ⏳ |
+
+Console snapshots: sources with no API live in `~/.agent/seat-usage/console_quota_snapshot.json` (local-only, never in this public repo). A session or the operator refreshes it from the two console pages; the dashboard can fetch it when served locally alongside the seat snapshot.
 
 ## Arming (sessione Mac, in ordine)
 

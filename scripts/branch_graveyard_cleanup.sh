@@ -355,7 +355,7 @@ if $TELEGRAM_ALERT && (( ZOMBIE_COUNT > TELEGRAM_THRESHOLD )); then
         set -a; source "$HOME/.nuzantara-secrets.env"; set +a
     fi
     TG_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
-    TG_CHAT="${TELEGRAM_OWNER_CHAT_ID:-1125336968}"
+    TG_CHAT="${TELEGRAM_OWNER_CHAT_ID:-8847435604}"
     if [[ -n "$TG_TOKEN" && -n "$TG_CHAT" ]]; then
         MSG="Branch graveyard: $ZOMBIE_COUNT claude/* zombies + $STALE_COUNT stale (threshold $TELEGRAM_THRESHOLD). Report: ${OUTPUT_FILE:-stdout-only}"
         curl -sS --max-time 10 \

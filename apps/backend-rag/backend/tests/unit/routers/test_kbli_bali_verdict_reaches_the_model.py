@@ -39,32 +39,33 @@ def _result(code: str = "86995", **kwargs) -> KBLISearchResult:
         "title": "Aktivitas Rumah Pijat",
         "description": "...",
         "score": 0.9,
+        "bali_needs_review": False,
     }
     base.update(kwargs)
     return KBLISearchResult(**base)
 
 
+_LOCATED_PMA = {
+    "pma_verification_status": "located",
+    "pma_official_basis": "test fixture official locator",
+    "pma_source_vintage": "2021-05-25",
+}
+
+
 # --------------------------------------------------------------- guilt
 
 
-def test_a_blocked_code_produces_a_note_the_model_cannot_read_as_permission():
-    """The exact production failure, frozen: 86995 blocked, and the note has to
-    say so in words that cannot be summarised into "yes you can"."""
-    note = _bali_verdict_context_note(
-        _result(
-            bali_blocked=True,
-            bali_status="CHIUSO_MORATORIA_BALI",
-            bali_reason="blocked in Bali by the PMA moratorium: risk tier ['Menengah Rendah']",
-        ),
+def test_a_blocked_claim_without_a_located_pma_tuple_is_withheld_atomically():
+    """A Bali-side PT PMA verdict cannot bypass the national evidence gate."""
+    result = _result(
+        bali_blocked=True,
+        bali_status="CHIUSO_MORATORIA_BALI",
+        bali_reason="blocked in Bali by the PMA moratorium: risk tier ['Menengah Rendah']",
     )
-    assert "BLOCKED FOR A FOREIGN-OWNED COMPANY" in note
-    # This line read `assert "CHIUSO_MORATORIA_BALI" in note` until 2026-08-05,
-    # which pinned a leak as if it were a feature: the note ended with
-    # `Verdict code: <symbol>` and production read that symbol out to a client.
-    # The stated cause carries the meaning; the symbol carried our vocabulary.
-    assert "CHIUSO_MORATORIA_BALI" not in note
-    assert "Menengah Rendah" in note
-    assert "Do not answer that it can be registered in Bali." in note
+    assert result.bali_blocked is None
+    assert result.bali_status is None
+    assert result.bali_reason == ""
+    assert _bali_verdict_context_note(result) == ""
 
 
 def test_the_note_says_the_provincial_block_is_independent_of_national_openness():
@@ -72,7 +73,14 @@ def test_the_note_says_the_provincial_block_is_independent_of_national_openness(
     sentence the model reconciles the two by dropping the inconvenient one —
     which is what it did."""
     note = _bali_verdict_context_note(
-        _result(bali_blocked=True, bali_status="CHIUSO_MORATORIA_BALI", bali_reason="x"),
+        _result(
+            **_LOCATED_PMA,
+            pma_status="TERBUKA",
+            pma_max_asing=100,
+            bali_blocked=True,
+            bali_status="CHIUSO_MORATORIA_BALI",
+            bali_reason="x",
+        ),
     )
     assert "independent of the national PMA status" in note
 
@@ -88,7 +96,11 @@ async def test_a_result_built_without_a_payload_is_backfilled_at_the_choke_point
     async def fake_payload(code: str) -> dict:
         assert code == "86995"
         return {
+            "pma_status": "TERBUKA",
+            "pma_max_asing": 100,
+            **_LOCATED_PMA,
             "bali_blocked": True,
+            "bali_needs_review": False,
             "bali_status": "CHIUSO_MORATORIA_BALI",
             "bali_reason": "the moratorium",
         }
@@ -104,6 +116,7 @@ async def test_a_result_built_without_a_payload_is_backfilled_at_the_choke_point
 
     assert result.bali_blocked is True
     assert result.bali_status == "CHIUSO_MORATORIA_BALI"
+    assert result.bali_reason == "the moratorium"
     assert "BLOCKED" in _bali_verdict_context_note(result)
 
 
@@ -117,9 +130,98 @@ def test_an_absent_verdict_produces_silence_never_a_claim_of_openness():
 
 
 def test_a_code_that_is_not_blocked_is_told_plainly_and_is_not_called_blocked():
-    note = _bali_verdict_context_note(_result(bali_blocked=False, bali_status="OK"))
-    assert "NOT blocked" in note
-    assert "BLOCKED FOR A FOREIGN-OWNED COMPANY" not in note
+    note = _bali_verdict_context_note(_result(bali_blocked=False, bali_status="OK_or_HIGHER_RISK"))
+    assert note == ""
+
+
+@pytest.mark.parametrize(
+    ("status", "blocked"),
+    [
+        (" OK ", False),
+        ("OK", "false"),
+        ("OK", 0),
+        ("OK", False),
+        ("FUTURE_STATUS", False),
+        ("", False),
+    ],
+)
+def test_response_model_rejects_unknown_or_malformed_bali_before_coercion(status, blocked):
+    result = _result(
+        **_LOCATED_PMA,
+        pma_status="TERBUKA",
+        pma_max_asing=100,
+        bali_status=status,
+        bali_blocked=blocked,
+        bali_reason="must not escape",
+    )
+
+    assert result.bali_status is None
+    assert result.bali_blocked is None
+    assert result.bali_needs_review is None
+    assert result.bali_reason == ""
+
+
+@pytest.mark.parametrize("needs_review", ["false", "true", 0, 1, None])
+def test_response_model_rejects_a_non_boolean_bali_review_flag(needs_review):
+    result = _result(
+        **_LOCATED_PMA,
+        pma_status="TERBUKA",
+        pma_max_asing=100,
+        bali_status="CHIUSO_MORATORIA_BALI",
+        bali_blocked=True,
+        bali_needs_review=needs_review,
+        bali_reason="must not escape",
+    )
+
+    assert result.bali_status is None
+    assert result.bali_blocked is None
+    assert result.bali_needs_review is None
+    assert result.bali_reason == ""
+
+
+def test_review_flag_reaches_the_model_as_a_caution() -> None:
+    note = _bali_verdict_context_note(
+        _result(
+            **_LOCATED_PMA,
+            pma_status="TERBUKA",
+            pma_max_asing=100,
+            bali_status="CHIUSO_MORATORIA_BALI",
+            bali_blocked=True,
+            bali_needs_review=True,
+            bali_reason="moratorium",
+        )
+    )
+
+    assert "flagged for human review" in note
+
+
+@pytest.mark.asyncio
+async def test_backfill_rejects_a_trimmed_status_even_with_a_real_boolean():
+    result = _result()
+
+    async def malformed(code: str) -> dict:
+        return {
+            "pma_status": "TERBUKA",
+            "pma_max_asing": 100,
+            **_LOCATED_PMA,
+            "bali_blocked": False,
+            "bali_needs_review": False,
+            "bali_status": " OK ",
+            "bali_reason": "must not escape",
+        }
+
+    import backend.app.routers.kbli_notebook_chat as mod
+
+    original = mod._get_kbli_payload_from_qdrant
+    mod._get_kbli_payload_from_qdrant = malformed
+    try:
+        await _fill_bali_verdicts([result])
+    finally:
+        mod._get_kbli_payload_from_qdrant = original
+
+    assert result.bali_status is None
+    assert result.bali_blocked is None
+    assert result.bali_reason == ""
 
 
 @pytest.mark.asyncio
@@ -166,11 +268,16 @@ async def test_a_payload_without_the_bali_key_leaves_the_verdict_unknown():
 
 
 @pytest.mark.asyncio
-async def test_a_result_that_already_carries_a_verdict_is_not_refetched():
-    """The two Qdrant-built constructors already fill these fields. Re-fetching
-    would be a second read that could disagree with the first — and would let a
-    later store overwrite the verdict the search actually returned."""
-    result = _result(bali_blocked=True, bali_status="CHIUSO_MORATORIA_BALI", bali_reason="keep me")
+async def test_a_verified_result_with_a_bali_verdict_skips_a_later_lookup():
+    """A complete search-hit tuple is already atomic and must not be replaced."""
+    result = _result(
+        **_LOCATED_PMA,
+        pma_status="TERBUKA",
+        pma_max_asing=100,
+        bali_blocked=True,
+        bali_status="CHIUSO_MORATORIA_BALI",
+        bali_reason="keep me",
+    )
     calls: list[str] = []
 
     async def spy(code: str) -> dict:
@@ -191,13 +298,52 @@ async def test_a_result_that_already_carries_a_verdict_is_not_refetched():
     assert result.bali_reason == "keep me"
 
 
+@pytest.mark.asyncio
+async def test_a_backfill_downgrade_clears_previously_eligible_pma_prose():
+    """All disclosure-sensitive fields move together when the authoritative
+    lookup no longer carries a complete PMA evidence tuple."""
+    result = _result(
+        **_LOCATED_PMA,
+        pma_status="TERBUKA",
+        pma_max_asing=100,
+        expert_legal={"analysis": "previously eligible ownership prose"},
+        bali_reason="previously eligible mixed reason",
+    )
+
+    async def declared_gap(code: str) -> dict:
+        assert code == "86995"
+        return {
+            "pma_status": "TERBUKA",
+            "pma_max_asing": 100,
+            "pma_verification_status": "declared_gap",
+            "bali_blocked": True,
+            "bali_status": "CHIUSO_MORATORIA_BALI",
+            "bali_reason": "unverified mixed reason",
+        }
+
+    import backend.app.routers.kbli_notebook_chat as mod
+
+    original = mod._get_kbli_payload_from_qdrant
+    mod._get_kbli_payload_from_qdrant = declared_gap
+    try:
+        await _fill_bali_verdicts([result])
+    finally:
+        mod._get_kbli_payload_from_qdrant = original
+
+    assert result.pma_verification_status == "declared_gap"
+    assert result.pma_status == "NOT_VERIFIED"
+    assert result.pma_max_asing is None
+    assert result.expert_legal is None
+    assert result.bali_blocked is None
+    assert result.bali_status is None
+    assert result.bali_reason == ""
+
+
 # ----------------------------------------------------------- tripwires
 
 
 def test_the_explanation_cache_prefix_moved_with_this_change():
-    """A 12-hour cache keyed on this prefix would keep serving answers generated
-    blind to the Bali block for half a day after the deploy. A cure the cache
-    hides is not live."""
+    """A 12-hour cache must not outlive a stricter prompt-disclosure boundary."""
     import inspect
     from pathlib import Path
 
@@ -207,8 +353,8 @@ def test_the_explanation_cache_prefix_moved_with_this_change():
     # arithmetic across a worktree is its own way to fail while looking fine.
     source = Path(inspect.getsourcefile(mod))
     text = source.read_text(encoding="utf-8")
-    assert 'prefix="kbli_explain_v29"' in text
-    assert 'prefix="kbli_explain_v28"' not in text
+    assert 'prefix="kbli_explain_v34"' in text
+    assert 'prefix="kbli_explain_v33"' not in text
 
 
 def test_the_fill_runs_inside_the_function_every_answer_passes_through():
@@ -282,8 +428,12 @@ def _result_for(record: dict) -> KBLISearchResult:
         score=1.0,
         pma_status=record.get("pma_status") or "UNKNOWN",
         pma_max_asing=record.get("pma_max_asing"),
+        pma_verification_status=record.get("pma_verification_status") or "declared_gap",
+        pma_official_basis=record.get("pma_official_basis"),
+        pma_source_vintage=record.get("pma_source_vintage"),
         bali_status=l4.get("status"),
         bali_blocked=l4.get("blocked"),
+        bali_needs_review=l4.get("needs_review"),
         bali_reason=l4.get("reason") or "",
     )
 
@@ -299,6 +449,7 @@ def test_a_state_monopoly_is_not_described_as_a_bali_restriction():
             title="Bank Sentral",
             pma_status="TERBUKA",
             pma_max_asing=100,
+            **_LOCATED_PMA,
             bali_blocked=True,
             bali_status="CHIUSO_REGOLATORE_SETTORIALE",
             bali_reason="Bank Sentral — exclusive State monopoly operated by Bank Indonesia.",
@@ -320,6 +471,7 @@ def test_a_code_reserved_by_name_is_national_even_when_pma_status_says_open():
             "69104",
             pma_status="TERBUKA",
             pma_max_asing=100,
+            **_LOCATED_PMA,
             bali_blocked=True,
             bali_status="TERTUTUP",
             bali_reason="Notary/PPAT is a personal State office, WNI only (UU 30/2004).",
@@ -336,6 +488,7 @@ def test_a_tertutup_pma_status_makes_the_closure_national():
             "01287",
             pma_status="TERTUTUP",
             pma_max_asing=0,
+            **_LOCATED_PMA,
             bali_blocked=True,
             bali_status="TERTUTUP",
             bali_reason="Closed to foreign ownership at the national level.",
@@ -353,6 +506,8 @@ def test_a_zero_ceiling_makes_the_closure_national_even_under_a_terbatas_label()
             "16221",
             pma_status="TERBATAS",
             pma_max_asing=0,
+            pma_cap_verified=True,
+            **_LOCATED_PMA,
             bali_blocked=True,
             bali_status="BLOCCATO_CLASSE_RISCHIO",
             bali_reason="blocked in Bali by the PMA moratorium",
@@ -372,6 +527,8 @@ def test_not_blocked_in_bali_is_not_permission_when_the_national_door_is_shut():
             title="Biro Perjalanan Ibadah Umrah dan Haji Khusus",
             pma_status="TERBATAS",
             pma_max_asing=0,
+            pma_cap_verified=True,
+            **_LOCATED_PMA,
             bali_blocked=False,
             bali_status="OK_or_HIGHER_RISK",
         ),
@@ -389,6 +546,7 @@ def test_a_real_moratorium_block_is_still_called_provincial():
     a client that Bali's moratorium reaches Java."""
     note = _bali_verdict_context_note(
         _result(
+            **_LOCATED_PMA,
             bali_blocked=True,
             bali_status="CHIUSO_MORATORIA_BALI",
             bali_reason="blocked in Bali by the PMA moratorium: risk tier ['Menengah Rendah']",
@@ -403,7 +561,13 @@ def test_a_real_moratorium_block_is_still_called_provincial():
 
 def test_an_open_code_that_is_not_blocked_gets_no_national_warning():
     note = _bali_verdict_context_note(
-        _result(bali_blocked=False, bali_status="OK_or_HIGHER_RISK", pma_status="TERBUKA", pma_max_asing=100),
+        _result(
+            **_LOCATED_PMA,
+            bali_blocked=False,
+            bali_status="OK_or_HIGHER_RISK",
+            pma_status="TERBUKA",
+            pma_max_asing=100,
+        ),
     )
     assert "NOT blocked" in note
     assert "NOT permission" not in note
@@ -421,6 +585,7 @@ def test_an_absent_ceiling_is_never_read_as_zero_percent():
         assert not _is_zero_ceiling(absent), f"{absent!r} must not read as a 0% ceiling"
         note = _bali_verdict_context_note(
             _result(
+                **_LOCATED_PMA,
                 bali_blocked=True,
                 bali_status="BLOCCATO_CLASSE_RISCHIO",
                 bali_reason="risk class",
@@ -434,7 +599,8 @@ def test_an_absent_ceiling_is_never_read_as_zero_percent():
 
 def test_the_ceiling_test_reads_a_real_zero_in_either_shape_and_never_a_boolean():
     assert _is_zero_ceiling(0) is True
-    assert _is_zero_ceiling("0") is True  # a digit string still means 0%
+    assert _is_zero_ceiling(0.0) is True
+    assert _is_zero_ceiling("0") is False  # numeric strings are never coerced
     assert _is_zero_ceiling(False) is False  # bool is an int in Python; not a cap
     assert _is_zero_ceiling(100) is False
     assert _is_zero_ceiling("100") is False
@@ -457,6 +623,7 @@ def test_a_symbol_written_inside_a_reason_is_spoken_not_quoted():
     today and exists because reasons are rewritten most weeks."""
     note = _bali_verdict_context_note(
         _result(
+            **_LOCATED_PMA,
             bali_blocked=True,
             bali_status="BLOCCATO_CLASSE_RISCHIO",
             bali_reason="tier carried over from OK_or_HIGHER_RISK; see pma_cap_verified",
@@ -475,6 +642,7 @@ def test_an_unmapped_symbol_degrades_to_words_rather_than_reaching_a_client():
     for someone to notice it."""
     note = _bali_verdict_context_note(
         _result(
+            **_LOCATED_PMA,
             bali_blocked=True,
             bali_status="BLOCCATO_CLASSE_RISCHIO",
             bali_reason="verdict CHIUSO_QUALCOSA_DI_NUOVO applies",
@@ -496,14 +664,36 @@ def test_no_note_in_the_whole_catalogue_hands_the_model_an_internal_symbol(catal
 
     Deliberately NOT an allow list of the symbols we know: an underscore-joined
     token is pipeline vocabulary by construction, so a symbol invented tomorrow
-    is covered the day it appears. `TERTUTUP` and `TERBATAS` carry no underscore
-    and are official regulatory words — they are not, and must not become, leaks.
+    is covered the day it appears. `NOT_VERIFIED` is the one exception: it is the
+    public fail-closed PMA contract shared by API, UI and machine corpus.
+    `TERTUTUP` and `TERBATAS` carry no underscore and are official regulatory
+    words — they are not, and must not become, leaks.
     """
     offenders = []
     for record in catalogue:
         note = _bali_verdict_context_note(_result_for(record))
-        offenders.extend((record["kode_kbli_2025"], sym) for sym in _SYMBOL_RE.findall(note))
+        offenders.extend(
+            (record["kode_kbli_2025"], sym)
+            for sym in _SYMBOL_RE.findall(note)
+            if sym != "NOT_VERIFIED"
+        )
     assert offenders == [], f"internal symbols reaching the model: {offenders[:10]}"
+
+
+def test_declared_gap_notes_withhold_mixed_free_form_reasons_across_the_catalogue(catalogue):
+    """Every Bali field is silent for every declared-gap catalogue row."""
+    checked = 0
+    for record in catalogue:
+        if record.get("pma_verification_status") == "located":
+            continue
+        result = _result_for(record)
+        note = _bali_verdict_context_note(result)
+        assert result.bali_blocked is None, record["kode_kbli_2025"]
+        assert result.bali_status is None, record["kode_kbli_2025"]
+        assert result.bali_reason == "", record["kode_kbli_2025"]
+        assert note == "", record["kode_kbli_2025"]
+        checked += 1
+    assert checked > 1000, "declared-gap property gate would be vacuous"
 
 
 def test_every_national_closure_in_the_catalogue_refuses_the_provincial_wording(catalogue):
@@ -544,7 +734,13 @@ def test_a_non_string_reason_is_survived_rather_than_500ing_the_answer():
     assert _speak_internal_symbols(123) == "123"
     assert _speak_internal_symbols(None) == "None"
 
-    result = _result(bali_blocked=True, bali_status="BLOCCATO_CLASSE_RISCHIO")
+    result = _result(
+        **_LOCATED_PMA,
+        pma_status="TERBUKA",
+        pma_max_asing=100,
+        bali_blocked=True,
+        bali_status="BLOCCATO_CLASSE_RISCHIO",
+    )
     result.bali_reason = 42  # what a malformed payload would put there
     note = _bali_verdict_context_note(result)  # must not raise
     assert "BLOCKED FOR A FOREIGN-OWNED COMPANY" in note
@@ -553,12 +749,7 @@ def test_a_non_string_reason_is_survived_rather_than_500ing_the_answer():
 # ------------------------------------------------- one verdict, two surfaces
 
 _PAGE_RULE = (
-    Path(__file__).resolve().parents[6]
-    / "apps"
-    / "mouth"
-    / "src"
-    / "lib"
-    / "kbli-bali-block.ts"
+    Path(__file__).resolve().parents[6] / "apps" / "mouth" / "src" / "lib" / "kbli-bali-block.ts"
 )
 
 

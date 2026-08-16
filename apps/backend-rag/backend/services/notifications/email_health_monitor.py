@@ -43,7 +43,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_OWNER_CHAT_ID: str = os.getenv("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+_OWNER_CHAT_ID: str = os.getenv("TELEGRAM_OWNER_CHAT_ID", "8847435604")
 _EMAIL_API_URL = os.getenv(
     "INTERNAL_EMAIL_API_URL",
     "https://nuzantara-rag.fly.dev/api/notifications/send-email",

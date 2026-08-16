@@ -280,15 +280,43 @@ def test_chat_kbli_keyword_injection_beauty_salon(client):
 
 
 def test_chat_kbli_multi_domain_kg_orchestrator(client, mock_db_pool):
-    """Should use KG Orchestrator for multi-domain queries (KBLI + visa)."""
+    """Non-PMA business + tax queries may still use the KG Orchestrator."""
     mock_kg_response = MagicMock()
-    mock_kg_response.answer = "You need PT PMA with KITAS investor visa."
+    mock_kg_response.answer = "Tax rules depend on the registered restaurant business."
     mock_kg_response.sources = [{"title": "test source", "relevance": "High"}]
     mock_kg_response.reasoning_trace = ["step1", "step2"]
     mock_kg_response.golden_route_matched = None
 
     mock_orchestrator = MagicMock()
     mock_orchestrator.process = AsyncMock(return_value=mock_kg_response)
+
+    with (
+        patch(
+            "backend.app.routers.kbli_notebook_chat._translate_query_for_kbli",
+            new=AsyncMock(return_value="restoran pajak"),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._search_kbli_qdrant",
+            new=AsyncMock(return_value=[]),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat.KGAgenticOrchestrator",
+            return_value=mock_orchestrator,
+        ),
+    ):
+        response = client.post(
+            "/kbli-notebook/chat",
+            json=chat_payload("What tax regulation applies to a restaurant business?"),
+        )
+    assert response.status_code == 200
+    data = response.json()
+    assert "answer" in data
+
+
+def test_chat_sensitive_multi_domain_query_never_uses_ungated_kg_answer(client, mock_db_pool):
+    """A free-form KG answer cannot prove the five-field PMA evidence tuple."""
+    mock_orchestrator = MagicMock()
+    mock_orchestrator.process = AsyncMock()
 
     with (
         patch(
@@ -306,11 +334,12 @@ def test_chat_kbli_multi_domain_kg_orchestrator(client, mock_db_pool):
     ):
         response = client.post(
             "/kbli-notebook/chat",
-            json=chat_payload("Can I open a restaurant in Bali with a retirement KITAS?"),
+            json=chat_payload("Can a foreigner open a restaurant with a retirement KITAS?"),
         )
+
     assert response.status_code == 200
-    data = response.json()
-    assert "answer" in data
+    mock_orchestrator.process.assert_not_awaited()
+    assert "outside my area of expertise" in response.json()["answer"]
 
 
 def test_chat_kbli_multi_domain_kg_orchestrator_fails(client, mock_db_pool):

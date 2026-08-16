@@ -2,12 +2,38 @@ import { describe, expect, it, vi } from "vitest";
 import fs from "fs";
 import path from "path";
 import { perpresSlice } from "./kbli-perpres-slice";
+import type { KBLICode } from "./kbli-types";
 
 const ARTIFACT = path.join(
   process.cwd(),
   "data",
   "kbli-perpres-slice-disclosures.json",
 );
+
+function withLocatedPma(code: KBLICode): KBLICode {
+  return {
+    ...code,
+    pma: {
+      ...code.pma,
+      status: "open",
+      maxForeign: 100,
+      verificationStatus: "located",
+      officialBasis: "Perpres 49/2021 fixture locator",
+      sourceVintage: "2021-05-25",
+      capSpecial: false,
+      capVerified: true,
+    },
+    provenance: {
+      ...code.provenance!,
+      pma: {
+        source: code.pma.source,
+        status: "located",
+        locator: "Perpres 49/2021 fixture locator",
+        vintage: "2021-05-25",
+      },
+    },
+  };
+}
 
 describe("perpresSlice — the /kbli/13133 batik-cap slice reader", () => {
   it("returns the single row for a real BROADER-adjudicated code", () => {
@@ -401,10 +427,13 @@ describe("RENDER CONTRACT: LicensingSection.tsx and kbli-faq.ts", () => {
     );
   });
 
-  it("LicensingSection.tsx pins the shared tail sentence, rendered once after every row", () => {
+  it("LicensingSection.tsx pins both verified and declared-gap tail sentences", () => {
     const normalized = LICENSING_SECTION_SOURCE.replace(/\s+/g, " ");
     expect(normalized).toContain(
-      "Everything else in this code is open as shown. Check which side your exact activity falls on before filing.",
+      '"Everything else in this code is open as shown."',
+    );
+    expect(normalized).toContain(
+      '"These narrower annex entries do not verify the current whole-code PMA verdict."',
     );
   });
 
@@ -456,8 +485,9 @@ describe("buildKbliFaq — perpres slice-disclosure qualifier", () => {
     const { getCode } = await import("./kbli-data");
     const base = getCode("56101");
     expect(base).toBeDefined();
+    const located = withLocatedPma(base!);
     const affected = {
-      ...base,
+      ...located,
       perpresSlice: [
         {
           bidangUsaha: "Industri batik cap",
@@ -470,7 +500,9 @@ describe("buildKbliFaq — perpres slice-disclosure qualifier", () => {
 
     const pmaAnswer = buildKbliFaq(affected)[0].answer;
     expect(
-      pmaAnswer.startsWith("Yes for most of this code, with one carve-out:"),
+      pmaAnswer.startsWith(
+        "National status: TERBUKA for most of this code, with one carve-out.",
+      ),
     ).toBe(true);
     expect(pmaAnswer).not.toMatch(
       /^Yes\. KBLI .* No local Indonesian partner required\./,
@@ -495,8 +527,9 @@ describe("buildKbliFaq — perpres slice-disclosure qualifier", () => {
     const { buildKbliFaq } = await import("./kbli-faq");
     const { getCode } = await import("./kbli-data");
     const base = getCode("56101");
+    const located = withLocatedPma(base!);
     const affected = {
-      ...base,
+      ...located,
       perpresSlice: [
         {
           bidangUsaha: "Penerbitan surat kabar, majalah, dan buletin (pers)",
@@ -520,8 +553,9 @@ describe("buildKbliFaq — perpres slice-disclosure qualifier", () => {
     const { getCode } = await import("./kbli-data");
     const base = getCode("56101");
     expect(base).toBeDefined();
+    const located = withLocatedPma(base!);
     const affected = {
-      ...base,
+      ...located,
       perpresSlice: [
         {
           bidangUsaha: "Industri radar pertahanan untuk sistem persenjataan",
@@ -538,43 +572,41 @@ describe("buildKbliFaq — perpres slice-disclosure qualifier", () => {
     );
   });
 
-  it("appends one sentence per row for a multi-row code, and pluralizes 'carve-outs' in the opener", async () => {
+  it("real gap case: 30111 renders every narrower row but never promotes them into a whole-code open verdict", async () => {
     const { buildKbliFaq } = await import("./kbli-faq");
     const { getCode } = await import("./kbli-data");
     const base = getCode("30111");
     expect(base?.perpresSlice).toHaveLength(2);
 
     const pmaAnswer = buildKbliFaq(base!)[0].answer;
-    expect(
-      pmaAnswer.startsWith("Yes for most of this code, with 2 carve-outs:"),
-    ).toBe(true);
+    expect(pmaAnswer.startsWith("Not yet verified.")).toBe(true);
     expect(pmaAnswer).toContain("Industri kapal perang");
     expect(pmaAnswer).toContain("Pinisi");
-    // The shared closer must appear exactly once, after both rows.
-    const closerCount =
-      pmaAnswer.split(
-        "The rest of the code remains open to 100% foreign ownership",
-      ).length - 1;
-    expect(closerCount).toBe(1);
+    expect(pmaAnswer).toContain(
+      "These narrower annex entries do not verify the current whole-code PMA verdict.",
+    );
+    expect(pmaAnswer).not.toContain(
+      "The rest of the code remains open to 100% foreign ownership",
+    );
   });
 
-  it("real case: 90200 (Sanggar seni) is BOTH BROADER-adjudicated AND Bali-blocked — the opener and closer both carry the Bali caveat", async () => {
+  it("real gap case: 90200 keeps its narrower Sanggar seni row while unverified Bali and whole-code PMA stay withheld", async () => {
     const { buildKbliFaq } = await import("./kbli-faq");
     const { getCode } = await import("./kbli-data");
     const base = getCode("90200");
     expect(base?.perpresSlice).toHaveLength(1);
-    expect(base?.baliL4?.blocked).toBe(true);
+    expect(base?.baliL4).toBeUndefined();
 
     const pmaAnswer = buildKbliFaq(base!)[0].answer;
-    expect(
-      pmaAnswer.startsWith(
-        "Nationally yes for most of this code, with one carve-out — but NOT in Bali either way.",
-      ),
-    ).toBe(true);
+    expect(pmaAnswer.startsWith("Not yet verified.")).toBe(true);
     expect(pmaAnswer).toContain("Sanggar seni");
     expect(pmaAnswer).toContain(
-      "Outside Bali, the rest of the code remains open to a PT PMA with no local partner required — subject to the Bali restriction stated above.",
+      "These narrower annex entries do not verify the current whole-code PMA verdict.",
     );
+    expect(pmaAnswer).not.toContain(
+      "Outside Bali, the rest of the code remains open",
+    );
+    expect(pmaAnswer).not.toContain("but NOT in Bali");
   });
 
   it("innocence: omits the qualifier when perpresSlice is absent", async () => {

@@ -73,7 +73,7 @@ tags:
 canonicalUrl: "https://balizero.com/tax/freelancer-tax-guide"
 ogImage: "/static/insights/tax/freelancer-tax.jpg"
 twitterCard: "summary_large_image"
-source_sha256: "26e6284380d782f4ea787c6f0758ed3778cca44d4d2e4a8ba1d8560317679189"
+source_sha256: "cb9d5efccf720d2e94619d62ccc4687f7ed01e442bfe3a5f5967d04263abc005"
 ---
 
 import {
@@ -86,7 +86,7 @@ import {
 
 # Tasse per Freelancer in Indonesia 2026
 
-Il lavoro freelance comporta obblighi fiscali diversi rispetto al lavoro dipendente. Ecco come funzionano le tasse per i lavoratori autonomi in Indonesia.
+Lavorare come freelance comporta obbligazioni fiscali diverse rispetto all'occupazione. Ecco come funzionano le tasse per i lavoratori autonomi in Indonesia.
 
 ## Due Scenari
 
@@ -96,23 +96,23 @@ Il lavoro freelance comporta obblighi fiscali diversi rispetto al lavoro dipende
   items={[
     {
       name: "Solo Clienti Internazionali",
-      subtitle: "Tutti i redditi provengono da fuori l'Indonesia",
+      subtitle: "Tutti i redditi da fuori Indonesia",
       values: {
         "Tasse Indonesiane?": "Sì, se residente fiscale",
         Ritenuta: "No (pagato direttamente)",
-        Dichiarazione: "SPT Annuale",
-        Complessità: "Minore",
+        Dichiarazione: "SPT annuale",
+        Complessità: "Bassa",
       },
       highlight: true,
     },
     {
       name: "Clienti Indonesiani",
-      subtitle: "Reddito proveniente dall'Indonesia",
+      subtitle: "Reddito da dentro Indonesia",
       values: {
         "Tasse Indonesiane?": "Sì, sempre",
-        Ritenuta: "PPh 21/23 dal cliente",
-        Dichiarazione: "SPT Annuale + adempimenti",
-        Complessità: "Maggiore",
+        Ritenuta: "PPh 21/23 da parte del cliente",
+        Dichiarazione: "SPT annuale + conformità",
+        Complessità: "Alta",
       },
     },
   ]}
@@ -122,24 +122,24 @@ Il lavoro freelance comporta obblighi fiscali diversi rispetto al lavoro dipende
 
 ## Freelancer Internazionali
 
-Se sei un residente fiscale che lavora come freelance **solo per clienti internazionali**:
+Se sei un freelancer residente fiscale che lavora **solo per clienti internazionali**:
 
 ### I Tuoi Obblighi
 
 1. Registrati per l'NPWP
 2. Dichiara il reddito sull'SPT annuale (Modulo 1770)
-3. Paga le tasse sul reddito mondiale
-4. Puoi richiedere crediti d'imposta per le tasse pagate all'estero
+3. Paga le tasse su tutto il reddito mondiale
+4. Puoi richiedere crediti fiscali esteri
 
 ### Calcolo delle Tasse
 
 <Calculator
-  title="Calcolatore Tasse Freelancer"
-  description="Stima le tue tasse annuali sul reddito da freelance"
+  title="Calcolatore delle Tasse per Freelancer"
+  description="Stima la tua tassa annuale sul reddito da freelance"
   fields={[
     {
       id: "annual",
-      label: "Reddito Freelance Annuale (IDR)",
+      label: "Reddito Annuale da Freelance (IDR)",
       type: "number",
       defaultValue: 300000000,
       min: 0,
@@ -160,7 +160,7 @@ Se sei un residente fiscale che lavora come freelance **solo per clienti interna
       label: "Stato PTKP",
       type: "select",
       options: [
-        { value: "TK0", label: "Single (TK/0)" },
+        { value: "TK0", label: "Singolo (TK/0)" },
         { value: "K0", label: "Sposato (K/0)" },
         { value: "K1", label: "Sposato + 1 figlio" },
         { value: "K2", label: "Sposato + 2 figli" }
@@ -171,12 +171,12 @@ Se sei un residente fiscale che lavora come freelance **solo per clienti interna
   calculateResult={(values) => {
     const income = Number(values.annual);
     const expenses = Number(values.expenses);
-    const net = income - expenses;
+    const netIncome = income - expenses;
 
     const ptkpMap = { 'TK0': 54000000, 'K0': 58500000, 'K1': 63000000, 'K2': 67500000 };
     const ptkp = ptkpMap[values.status];
 
-    let taxable = Math.max(0, net - ptkp);
+    let taxable = Math.max(0, netIncome - ptkp);
     let tax = 0;
     let remaining = taxable;
 
@@ -186,20 +186,20 @@ Se sei un residente fiscale che lavora come freelance **solo per clienti interna
     if (remaining > 0) { const b4 = Math.min(remaining, 4500000000); tax += b4 * 0.30; remaining -= b4; }
     if (remaining > 0) { tax += remaining * 0.35; }
 
-    const effectiveRate = net > 0 ? ((tax / net) * 100).toFixed(1) : 0;
+    const effectiveRate = netIncome > 0 ? ((tax / netIncome) * 100).toFixed(1) : 0;
 
     return {
       total: tax,
       breakdown: [
         { label: "Reddito Lordo", amount: income },
         { label: "Spese", amount: -expenses },
-        { label: "Reddito Netto", amount: net },
+        { label: "Reddito Netto", amount: netIncome },
         { label: "Deduzione PTKP", amount: -ptkp },
-        { label: "Reddito Imponibile", amount: taxable },
+        { label: "Reddito Tassabile", amount: taxable },
         { label: "Tassa Annuale", amount: tax }
       ],
       currency: "IDR",
-      note: `Aliquota fiscale effettiva sul reddito netto: ${effectiveRate}%`
+      note: `Aliquota effettiva sul reddito netto: ${effectiveRate}%`
     };
 
 }}
@@ -209,26 +209,25 @@ Se sei un residente fiscale che lavora come freelance **solo per clienti interna
 
 ## Clienti Indonesiani
 
-Se hai **clienti indonesiani**, questi sono tenuti a trattenere le tasse:
+Se hai **clienti Indonesiani**, essi sono obbligati a trattenere le tasse:
 
 ### PPh 21 o PPh 23?
 
-| Situazione                                  | Tipo di Tassa | Aliquota            |
-| ------------------------------------------- | ------------- | ------------------- |
-| Freelancer individuale che fornisce servizi | PPh 21        | Progressiva (5-35%) |
-| Servizi a società                           | PPh 23        | 2% del lordo        |
-| Tecnico/gestionale/consulenza               | PPh 23        | 2% del lordo        |
+| Situazione                                | Tipo di Tassa | Aliquota                |
+| ---------------------------------------- | -------- | ------------------- |
+| Freelancer individuale che fornisce servizi | PPh 21   | Progressiva (5-35%) |
+| Servizi a una società                      | PPh 23   | 2% del lordo         |
+| Tecnico/gestione/consulenza          | PPh 23   | 2% del lordo         |
 
-<InfoCard variant="note" title="La PPh 23 non è una Tassa Finale">
+<InfoCard variant="note" title="PPh 23 non è definitiva">
 
-  La PPh 23 (2%) è un **acconto**, non la tassa finale. Devi comunque presentare
-  l'SPT e potresti dover pagare tasse aggiuntive o ricevere un rimborso a
-  seconda del reddito totale.
+  PPh 23 (2%) è un **acconto**, non una tassa definitiva. Devi comunque presentare l'SPT e
+  potresti dover pagare tasse aggiuntive o ricevere un rimborso in base al reddito totale.
 </InfoCard>
 
 ---
 
-## Tracciamento e Registri
+## Tracciamento e Documenti
 
 <Checklist
   title="Tenuta dei Registri per Freelancer"
@@ -244,7 +243,7 @@ Se hai **clienti indonesiani**, questi sono tenuti a trattenere le tasse:
     },
     {
       id: "invoices",
-      label: "Copie delle fatture",
+      label: "Copia delle fatture",
       description: "Conserva tutte le fatture emesse",
       required: true,
       category: "income",
@@ -252,7 +251,7 @@ Se hai **clienti indonesiani**, questi sono tenuti a trattenere le tasse:
     {
       id: "bukti-potong",
       label: "Bukti Potong dai clienti",
-      description: "Certificati di ritenuta d'acconto",
+      description: "Certificati di ritenuta fiscale",
       required: true,
       category: "tax",
     },
@@ -265,8 +264,8 @@ Se hai **clienti indonesiani**, questi sono tenuti a trattenere le tasse:
     },
     {
       id: "bank",
-      label: "Estratti conto bancari",
-      description: "Mostra entrate e uscite",
+      label: " Estratti conto bancari",
+      description: "Mostra redditi e spese",
       required: true,
       category: "financial",
     },
@@ -279,9 +278,9 @@ Se hai **clienti indonesiani**, questi sono tenuti a trattenere le tasse:
     },
   ]}
   categories={[
-    { id: "income", label: "Entrate", color: "green" },
+    { id: "income", label: "Reddito", color: "green" },
     { id: "expenses", label: "Spese", color: "amber" },
-    { id: "tax", label: "Doc Fiscali", color: "blue" },
+    { id: "tax", label: "Documenti Fiscali", color: "blue" },
     { id: "financial", label: "Finanziario", color: "purple" },
   ]}
   showProgress={true}
@@ -291,35 +290,35 @@ Se hai **clienti indonesiani**, questi sono tenuti a trattenere le tasse:
 
 ## Spese Deducibili
 
-Come freelance, puoi dedurre le spese relative all'attività:
+Come freelancer, puoi dedurre le spese correlate all'attività:
 
 ### Deducibili
 
 - Costi ufficio/coworking
-- Attrezzatura per il lavoro
+- Attrezzature per il lavoro
 - Abbonamenti software
 - Sviluppo professionale
-- Viaggi di lavoro
+- Viaggi per lavoro
 - Costi di comunicazione
 
 ### Non Deducibili
 
 - Spese personali
 - Intrattenimento (limitato)
-- Multe o sanzioni
+- Multe o penali
 
 ---
 
-## Domande Comuni
+## Domande Frequenti
 
 <AskZantara
-  context="Tasse freelance, lavoro autonomo Indonesia, PPh 23, tasse collaboratore indipendente"
-  placeholder="Chiedi sulle tasse per i freelance..."
+  context="Tasse per freelancer, lavoratore autonomo in Indonesia, PPh 23, tasse per lavoratore indipendente"
+  placeholder="Chiedi sulle tasse per freelancer..."
   suggestedQuestions={[
-    "Devo addebitare l'IVA?",
-    "Ogni quanto pago le tasse?",
+    "Devo applicare l'IVA?",
+    "Con quale frequenza pago le tasse?",
     "Posso dedurre il mio laptop?",
-    "Cosa succede se i clienti non trattengono le tasse?",
+    "Cosa succede se i clienti non tratten gono le tasse?",
   ]}
 />
 
@@ -327,7 +326,7 @@ Come freelance, puoi dedurre le spese relative all'attività:
 
 ## Articoli Correlati
 
-- [Guida Fiscale Indonesia per Stranieri](/insights/tax-legal/indonesia-tax-guide-for-foreigners)
+- [Guida alle Tasse in Indonesia per Stranieri](/insights/tax-legal/indonesia-tax-guide-for-foreigners)
 - [NPWP per Stranieri](/insights/tax-legal/npwp-foreigners-guide)
-- [Guida alla Dichiarazione dei Redditi Annuale (SPT)](/insights/tax-legal/annual-tax-return-guide)
-- [Lavorare come Freelance Legalmente in Indonesia](/insights/lifestyle/freelancing-legally-indonesia)
+- [Guida alla Dichiarazione Fiscale Annuale (SPT)](/insights/tax-legal/annual-tax-return-guide)
+- [Lavorare come Freelancer in Indonesia](/insights/lifestyle/freelancing-legally-indonesia)

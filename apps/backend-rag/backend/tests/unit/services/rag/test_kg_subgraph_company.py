@@ -64,6 +64,15 @@ def _base_state(**overrides):
     return state
 
 
+def _located_pma(status: object) -> dict:
+    return {
+        "pma_status": status,
+        "pma_verification_status": "located",
+        "pma_official_basis": "test fixture official locator",
+        "pma_source_vintage": "2021-05-25",
+    }
+
+
 # ============================================================
 # identify_company_type_node
 # ============================================================
@@ -213,7 +222,7 @@ class TestCheckPMAEligibility:
                     "entity_id": "kbli:47111",
                     "entity_type": "kbli",
                     "name": "Perdagangan Eceran",
-                    "properties": {"pma_status": "allowed"},
+                    "properties": _located_pma("TERBUKA"),
                 }
             ]
         )
@@ -258,6 +267,11 @@ class TestCheckPMAEligibility:
         pma_detail = result["licensing_requirements"][-1]["details"][0]
         assert pma_detail["eligible"] is None
         assert "cap" in pma_detail["eligibility_basis"]
+        assert pma_detail["pma_status"] == "NOT_VERIFIED"
+        assert pma_detail["pma_max_asing"] is None
+        assert pma_detail["pma_verification_status"] == "declared_gap"
+        assert pma_detail["pma_official_basis"] is None
+        assert pma_detail["pma_source_vintage"] is None
 
 
 class TestPmaEligibilityVocabulary:
@@ -279,8 +293,8 @@ class TestPmaEligibilityVocabulary:
             ("TERTUTUP", False),
             ("TERBATAS", None),
             ("Verify at OSS", None),
-            ("terbuka", True),  # case/whitespace must not decide a verdict
-            ("  TERBUKA  ", True),
+            ("terbuka", None),  # non-canonical tokens fail closed
+            ("  TERBUKA  ", None),
         ],
     )
     @pytest.mark.asyncio
@@ -292,7 +306,7 @@ class TestPmaEligibilityVocabulary:
                     "entity_id": "kbli:56101",
                     "entity_type": "kbli_code",
                     "name": "Restaurant",
-                    "properties": {"pma_status": status},
+                    "properties": _located_pma(status),
                 }
             ]
         )
@@ -311,7 +325,7 @@ class TestPmaEligibilityVocabulary:
                     "entity_id": "kbli:56101",
                     "entity_type": "kbli",
                     "name": "Restaurant",
-                    "properties": {"pma_status": status},
+                    "properties": _located_pma(status),
                 }
             ]
         )
@@ -354,7 +368,7 @@ class TestPmaEligibilityVocabulary:
         detail = result["licensing_requirements"][-1]["details"][0]
         assert detail["eligible"] is None
         assert detail["eligibility_state"] == "undetermined"
-        assert detail["pma_status"] == "unknown"
+        assert detail["pma_status"] == "NOT_VERIFIED"
 
     @pytest.mark.parametrize(
         ("status", "expected_state"),
@@ -384,7 +398,7 @@ class TestPmaEligibilityVocabulary:
                     "entity_id": "kbli:56101",
                     "entity_type": "kbli_code",
                     "name": "Restaurant",
-                    "properties": {"pma_status": status},
+                    "properties": _located_pma(status),
                 }
             ]
         )
@@ -414,7 +428,7 @@ class TestPmaEligibilityVocabulary:
                     "entity_id": "kbli:79110",  # TERBATAS on the live KG
                     "entity_type": "kbli_code",
                     "name": "Travel Agency",
-                    "properties": {"pma_status": "TERBATAS"},
+                    "properties": _located_pma("TERBATAS"),
                 }
             ]
         )
@@ -438,7 +452,12 @@ class TestPmaEligibilityVocabulary:
                     "entity_id": "kbli:56101",
                     "entity_type": "kbli",
                     "name": "Restaurant",
-                    "properties": '{"pma_status": "TERTUTUP"}',
+                    "properties": (
+                        '{"pma_status":"TERTUTUP",'
+                        '"pma_verification_status":"located",'
+                        '"pma_official_basis":"fixture",'
+                        '"pma_source_vintage":"2021-05-25"}'
+                    ),
                 }
             ]
         )

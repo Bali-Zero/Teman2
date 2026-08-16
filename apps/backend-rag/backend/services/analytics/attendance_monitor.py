@@ -101,12 +101,12 @@ HR_REPLY_BASE_URL: str = os.getenv(
 )
 
 # Telegram digest target — Zero's personal chat with @Balizerobot.
-# The fallback chat_id 1125336968 was verified live on 2026-04-07 by hitting
+# The fallback chat_id 8847435604 was verified live on 2026-04-07 by hitting
 # Telegram getMe + sendMessage from inside the production container; CLAUDE.md
 # §14 previously documented 413539912 which is unreachable ("chat not found").
 # The TELEGRAM_OWNER_CHAT_ID env var still takes precedence if set.
 TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_DIGEST_CHAT_ID: str = os.getenv("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+TELEGRAM_DIGEST_CHAT_ID: str = os.getenv("TELEGRAM_OWNER_CHAT_ID", "8847435604")
 
 # Telegram sendMessage hard limit is 4096 chars; leave headroom for the
 # "(part N/M)\n" header that chunked messages get.
@@ -648,7 +648,7 @@ class AttendanceMonitor:
         )
 
         telegram_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
-        chat_id = os.getenv("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+        chat_id = os.getenv("TELEGRAM_OWNER_CHAT_ID", "8847435604")
 
         if not telegram_token:
             logger.warning("Clock-in reminder: TELEGRAM_BOT_TOKEN not set")

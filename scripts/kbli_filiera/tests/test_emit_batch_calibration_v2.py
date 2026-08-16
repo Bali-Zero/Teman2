@@ -18,16 +18,28 @@ import re
 import sys
 from pathlib import Path
 
+import pytest
+
 FILIERA = Path(__file__).resolve().parents[1]
 if str(FILIERA) not in sys.path:
     sys.path.insert(0, str(FILIERA))
-
-import pytest
 
 import emit_batch_calibration as v1  # noqa: E402
 import emit_batch_calibration_v2 as c  # noqa: E402
 
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
+HEX64_IN_TEXT = re.compile(r"(?<![0-9a-f])[0-9a-f]{64}(?![0-9a-f])")
+
+
+def _without_sha256_digests(text: str) -> str:
+    """Remove opaque digests before checking whether KBLI plaintext leaked.
+
+    A five-digit KBLI can occur by chance inside a hexadecimal digest.  That
+    is not a plaintext disclosure, so leak assertions must inspect only the
+    surrounding artifact content.
+    """
+
+    return HEX64_IN_TEXT.sub("<sha256>", text)
 
 
 def _rec(code, *, l2_source=None, per_skala=None):
@@ -285,13 +297,15 @@ def test_negative_plaintext_never_appears_in_rendered_v2_artifact():
     )
     md = c.render_markdown(ctx)
     js = c.render_json(ctx)
+    md_without_digests = _without_sha256_digests(md)
+    js_without_digests = _without_sha256_digests(js)
     all_neg_plaintext = list(v1.NEGATIVE_CONTROL_CODES) + list(c.LOT1_QUARANTINED_CODES)
     deliberate_precedent_citation = {"49213"}
     for code in all_neg_plaintext:
         if code in deliberate_precedent_citation:
             continue
-        assert code not in md, f"NEGATIVE control {code!r} leaked into v2 markdown"
-        assert code not in js, f"NEGATIVE control {code!r} leaked into v2 json"
+        assert code not in md_without_digests, f"NEGATIVE control {code!r} leaked into v2 markdown"
+        assert code not in js_without_digests, f"NEGATIVE control {code!r} leaked into v2 json"
     # 49213 IS expected, but ONLY inside the m5 ruling prose, never inside
     # the gold_sets.negative_control digest-list section itself.
     assert "49213" in md and "49213" in js
@@ -322,9 +336,11 @@ def test_positive_plaintext_never_appears_in_rendered_v2_artifact():
     )
     md = c.render_markdown(ctx)
     js = c.render_json(ctx)
+    md_without_digests = _without_sha256_digests(md)
+    js_without_digests = _without_sha256_digests(js)
     for code in plaintext_positive_codes:
-        assert code not in md, f"positive control {code!r} leaked into v2 markdown"
-        assert code not in js, f"positive control {code!r} leaked into v2 json"
+        assert code not in md_without_digests, f"positive control {code!r} leaked into v2 markdown"
+        assert code not in js_without_digests, f"positive control {code!r} leaked into v2 json"
     # and none of the plaintext positives selected are among the burned Lot-1 reveals
     assert set(plaintext_positive_codes).isdisjoint(c.LOT1_POSITIVE_REVEALED)
 

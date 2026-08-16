@@ -9,93 +9,137 @@
 // Falls back to schema-v2 for local dev if the injected field is absent.
 // Build-time only (Next.js static gen). Graceful-degrades to no-badge if neither is present.
 // =============================================================================
-import fs from 'fs';
-import path from 'path';
-import type { BaliStatus } from '@/components/kbli/BaliStatusBadge';
+import fs from "fs";
+import path from "path";
+import type { BaliStatus } from "@/components/kbli/BaliStatusBadge";
+import { hasLocatedPmaTuple } from "./kbli-pma-disclosure";
 
 export interface BaliL4 {
   status: BaliStatus;
   reason: string;
-  confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+  confidence: "HIGH" | "MEDIUM" | "LOW";
   needsReview: boolean;
-  /** Authoritative "a PT PMA cannot register this in Bali" flag from the dataset.
-   *  undefined when the source (schema-v2) predates the flag → fall back to status list. */
-  blocked?: boolean;
+  /** Authoritative "a PT PMA cannot register this in Bali" flag from the dataset. */
+  blocked: boolean;
   from2020?: string;
-  moratorium: { rule: string; effective: string; source: string; virtualOffice: string };
+  moratorium: {
+    rule: string;
+    effective: string;
+    source: string;
+    virtualOffice: string;
+  };
 }
 
 let _cache: Record<string, BaliL4> | null = null;
 
-const EMPTY_MORATORIUM = { rule: '', effective: '', source: '', virtualOffice: '' };
+const ALLOWED_BALI_STATUSES = new Set([
+  "APERTO_BALI_RISCHIO_ALTO",
+  "BLOCCATO_CLASSE_RISCHIO",
+  "BLOCCATO_DIPENDE_SCOPE",
+  "CHIUSO_BALI",
+  "CHIUSO_BALI_PROPOSTO",
+  "CHIUSO_MORATORIA_BALI",
+  "CHIUSO_PMA_NO_BESAR",
+  "CHIUSO_REGOLATORE_SETTORIALE",
+  "NON_CLASSIFICABILE",
+  "OK_or_HIGHER_RISK",
+  "TERBATAS",
+  "TERTUTUP",
+]);
+
+function cleanText(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+/** Pure public boundary used by the file loader and adversarial tests. */
+export function discloseBaliL4Record(
+  record: Record<string, unknown>,
+): BaliL4 | null {
+  if (!hasLocatedPmaTuple(record)) return null;
+  const candidate = record.l4_bali;
+  if (!candidate || typeof candidate !== "object") return null;
+  const l4 = candidate as Record<string, unknown>;
+  const status = l4.status;
+  const blocked = l4.blocked;
+  const needsReview = l4.needs_review;
+  if (
+    typeof status !== "string" ||
+    !ALLOWED_BALI_STATUSES.has(status) ||
+    typeof blocked !== "boolean" ||
+    typeof needsReview !== "boolean"
+  ) {
+    return null;
+  }
+
+  const confidence = ["HIGH", "MEDIUM", "LOW"].includes(String(l4.confidence))
+    ? (l4.confidence as BaliL4["confidence"])
+    : "MEDIUM";
+  const moratorium =
+    l4.moratorium && typeof l4.moratorium === "object"
+      ? (l4.moratorium as Record<string, unknown>)
+      : {};
+
+  return {
+    status: status as BaliStatus,
+    reason: cleanText(l4.reason),
+    confidence,
+    needsReview,
+    blocked,
+    from2020: cleanText(l4.from_2020) || undefined,
+    moratorium: {
+      rule: cleanText(moratorium.rule),
+      effective: cleanText(moratorium.effective),
+      source: cleanText(moratorium.source),
+      virtualOffice: cleanText(
+        moratorium.virtual_office ?? moratorium.virtualOffice,
+      ),
+    },
+  };
+}
 
 // Primary path: l4_bali injected flat into the live KBLI data file (ships to Vercel).
 function loadFromLiveData(): Record<string, BaliL4> | null {
   const candidates = [
-    path.join(process.cwd(), 'data', 'kbli-2025.json'),
-    path.resolve(process.cwd(), '..', 'nuzantara', 'source_documents', 'KBLI_2025_FINAL_CLEAN.json'),
-    path.resolve(process.cwd(), '..', '..', 'data', 'source_documents', 'KBLI_2025_FINAL_CLEAN.json'),
+    path.join(process.cwd(), "data", "kbli-2025.json"),
+    path.resolve(
+      process.cwd(),
+      "..",
+      "nuzantara",
+      "source_documents",
+      "KBLI_2025_FINAL_CLEAN.json",
+    ),
+    path.resolve(
+      process.cwd(),
+      "..",
+      "..",
+      "data",
+      "source_documents",
+      "KBLI_2025_FINAL_CLEAN.json",
+    ),
   ];
   const file = candidates.find((p) => fs.existsSync(p));
   if (!file) return null;
-  const data = JSON.parse(fs.readFileSync(file, 'utf-8'));
+  const data = JSON.parse(fs.readFileSync(file, "utf-8"));
   const records = data.data ?? data.records ?? [];
   const out: Record<string, BaliL4> = {};
   let found = 0;
   for (const rec of records) {
-    const kode = String(rec.kode_kbli_2025 ?? rec.kode_kbli ?? rec.kode ?? rec.code ?? '').trim();
-    const l4 = rec.l4_bali;
-    if (!kode || !l4?.status) continue;
+    const kode = String(
+      rec.kode_kbli_2025 ?? rec.kode_kbli ?? rec.kode ?? rec.code ?? "",
+    ).trim();
+    const disclosed = discloseBaliL4Record(rec);
+    if (!kode || !disclosed) continue;
     found++;
-    const m = l4.moratorium ?? {};
-    out[kode] = {
-      status: l4.status as BaliStatus,
-      reason: l4.reason ?? '',
-      confidence: l4.confidence ?? 'MEDIUM',
-      needsReview: !!l4.needs_review,
-      blocked: typeof l4.blocked === 'boolean' ? l4.blocked : undefined,
-      from2020: l4.from_2020 ?? undefined,
-      moratorium: {
-        rule: m.rule ?? '',
-        effective: m.effective ?? '',
-        source: m.source ?? '',
-        virtualOffice: m.virtual_office ?? m.virtualOffice ?? '',
-      },
-    };
+    out[kode] = disclosed;
   }
   return found > 0 ? out : null;
 }
 
-// Fallback path: read the nested schema-v2 (local dev only — gitignored, absent on Vercel).
+// The legacy schema-v2 fallback predates the exact PMA verification tuple.
+// Publishing its Bali verdict would bypass the atomic gate, so it intentionally
+// contributes no public records until it carries equivalent provenance.
 function loadFromSchemaV2(): Record<string, BaliL4> {
-  const candidates = [
-    path.join(process.cwd(), '../../data/kbli_schema_v2/KBLI_2025_SCHEMA_V2.json'),
-    path.join(process.cwd(), 'data/kbli_schema_v2/KBLI_2025_SCHEMA_V2.json'),
-  ];
-  const file = candidates.find((p) => fs.existsSync(p));
-  const out: Record<string, BaliL4> = {};
-  if (!file) return out;
-  const data = JSON.parse(fs.readFileSync(file, 'utf-8'));
-  for (const rec of data.records ?? []) {
-    const l4 = rec.l4_bali;
-    if (!l4?.bali_status) continue;
-    const v = l4.bali_status.value;
-    const m = l4.moratorium ?? {};
-    out[rec.kode] = {
-      status: v.status as BaliStatus,
-      reason: v.reason ?? '',
-      confidence: l4.bali_status.provenance?.confidence ?? 'MEDIUM',
-      needsReview: !!l4.needs_human_review,
-      from2020: v.from_2020,
-      moratorium: {
-        rule: m.rule ?? '',
-        effective: m.effective ?? '',
-        source: m.source ?? '',
-        virtualOffice: m.virtual_office ?? '',
-      },
-    };
-  }
-  return out;
+  return {};
 }
 
 function loadSchema(): Record<string, BaliL4> {
@@ -105,21 +149,12 @@ function loadSchema(): Record<string, BaliL4> {
   return _cache;
 }
 
-// silence unused-var lint for the shared empty constant if tree-shaken
-void EMPTY_MORATORIUM;
-
 /** Bali L4 status for a 5-digit KBLI code, or null if unknown. */
 export function getBaliL4(kode: string): BaliL4 | null {
   return loadSchema()[kode] ?? null;
 }
 
-/** True if a PMA (foreign-owned) company is effectively blocked in Bali for this code.
- *  Prefer the authoritative `blocked` flag from the dataset (covers NEEDS_REVIEW_NO_OSS_SCOPE,
- *  CHIUSO_PMA_NO_BESAR, etc. that a status-name list would miss — superscar #3); fall back to the
- *  status list only when the source has no explicit flag (schema-v2). */
+/** True only when the verified public tuple carries an actual boolean block. */
 export function isBlockedInBali(kode: string): boolean {
-  const l4 = getBaliL4(kode);
-  if (!l4) return false;
-  if (typeof l4.blocked === 'boolean') return l4.blocked;
-  return ['BLOCCATO_CLASSE_RISCHIO', 'CHIUSO_BALI', 'TERTUTUP'].includes(l4.status);
+  return getBaliL4(kode)?.blocked === true;
 }

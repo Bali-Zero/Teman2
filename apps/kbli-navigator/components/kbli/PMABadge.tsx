@@ -1,74 +1,102 @@
-import { cn } from '@/lib/utils';
+import { cn } from "@/lib/utils";
 
 interface PMABadgeProps {
-  status: 'open' | 'restricted' | 'closed';
-  maxForeign: number | 'special';
+  status: "open" | "restricted" | "closed" | "unknown";
+  maxForeign: number | "special" | null;
+  /** Whole-code verdict carries the compiler-owned located tuple. */
+  verdictVerified?: boolean;
   /** true => special-distribution condition (47221-class): "Restricted · special conditions", not "Closed 0%" */
   capSpecial?: boolean;
-  /** false => TERBATAS cap % is not source-backed: render "≈N% (unverified)" */
+  /** false => withhold numeric/special cap claims and render "cap not verified" */
   capVerified?: boolean;
-  size?: 'sm' | 'md';
+  size?: "sm" | "md";
 }
 
 const config = {
   open: {
-    label: 'Open',
-    icon: '✅',
+    label: "Open",
+    icon: "✅",
     className:
-      'bg-[var(--kbli-pma-open-bg)] text-[var(--kbli-pma-open)] border-[var(--kbli-pma-open)]/20',
+      "bg-[var(--kbli-pma-open-bg)] text-[var(--kbli-pma-open)] border-[var(--kbli-pma-open)]/20",
   },
   restricted: {
-    label: 'Restricted',
-    icon: '⚠️',
+    label: "Restricted",
+    icon: "⚠️",
     className:
-      'bg-[var(--kbli-pma-restricted-bg)] text-[var(--kbli-pma-restricted)] border-[var(--kbli-pma-restricted)]/20',
+      "bg-[var(--kbli-pma-restricted-bg)] text-[var(--kbli-pma-restricted)] border-[var(--kbli-pma-restricted)]/20",
   },
   closed: {
-    label: 'Closed',
-    icon: '🚫',
+    label: "Closed",
+    icon: "🚫",
     className:
-      'bg-[var(--kbli-pma-closed-bg)] text-[var(--kbli-pma-closed)] border-[var(--kbli-pma-closed)]/20',
+      "bg-[var(--kbli-pma-closed-bg)] text-[var(--kbli-pma-closed)] border-[var(--kbli-pma-closed)]/20",
+  },
+  unknown: {
+    label: "PMA unverified",
+    icon: "❓",
+    className: "bg-white/5 text-[var(--foreground-muted)] border-white/10",
   },
 };
 
 export function PMABadge({
   status,
   maxForeign,
+  verdictVerified = false,
   capSpecial = false,
-  capVerified = true,
-  size = 'md',
+  capVerified = false,
+  size = "md",
 }: PMABadgeProps) {
-  const c = config[status];
-  const numeric = typeof maxForeign === 'number' ? maxForeign : null;
+  const numeric =
+    typeof maxForeign === "number" && Number.isFinite(maxForeign)
+      ? maxForeign
+      : null;
+  const markedSpecial = capSpecial === true && maxForeign === "special";
+  const capPublishable =
+    verdictVerified === true &&
+    capVerified === true &&
+    (numeric !== null || markedSpecial);
+  const effectiveStatus =
+    verdictVerified !== true
+      ? "unknown"
+      : status === "open" && capPublishable && numeric === 0 && !markedSpecial
+        ? "closed"
+        : status;
+  const c =
+    effectiveStatus === "unknown" && verdictVerified !== true
+      ? { ...config.unknown, label: "PMA unverified" }
+      : config[effectiveStatus];
 
   // Suffix that qualifies the badge, aligned with the native app:
-  //  - special-distribution: "· special conditions" (never a %)
-  //  - restricted & unverified %: "· ≈N% unverified"
+  //  - verified special-distribution: "· special conditions" (never a %)
+  //  - unverified numeric/special cap: "· cap not verified"
   //  - restricted & verified %: "· Max N%"
-  //  - open 100%: "· 100% Foreign"
+  //  - open verified cap: "· N% Foreign"; no cap is inferred from TERBUKA
   let suffix: string | null = null;
-  if (capSpecial) {
-    suffix = '· special conditions';
-  } else if (status === 'open' && numeric === 100) {
-    suffix = '· 100% Foreign';
-  } else if (status === 'restricted' && numeric !== null && numeric < 100) {
-    suffix = capVerified ? `· Max ${numeric}%` : `· ≈${numeric}% unverified`;
+  if (verdictVerified !== true || status === "unknown") {
+    suffix = null;
+  } else if (!capPublishable) {
+    suffix = "· cap not verified";
+  } else if (markedSpecial) {
+    suffix = "· special conditions";
+  } else if (status === "open") {
+    suffix = `· ${numeric}% Foreign`;
+  } else if (status === "restricted" && numeric !== null) {
+    suffix =
+      numeric <= 0
+        ? "· closed (0%)"
+        : numeric >= 100
+          ? "· conditions apply"
+          : `· Max ${numeric}%`;
   }
 
-  const ariaLabel = capSpecial
-    ? 'PMA status: Restricted, open with special distribution conditions'
-    : status === 'open' && numeric === 100
-      ? 'PMA status: Open for foreign investment, 100% foreign ownership allowed'
-      : status === 'restricted' && numeric !== null && numeric < 100
-        ? `PMA status: Restricted, maximum ${numeric}% foreign ownership${capVerified ? '' : ' (unverified cap)'}`
-        : `PMA status: ${c.label}`;
+  const ariaLabel = `PMA status: ${c.label}${suffix ? ` ${suffix.replace(/^·\s*/, "")}` : ""}`;
 
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border font-medium',
-        size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-3 py-1 text-sm',
-        c.className
+        "inline-flex items-center gap-1.5 rounded-full border font-medium",
+        size === "sm" ? "px-2 py-0.5 text-xs" : "px-3 py-1 text-sm",
+        c.className,
       )}
       aria-label={ariaLabel}
     >

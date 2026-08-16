@@ -5,7 +5,9 @@ Target: >95% coverage
 
 import sys
 import time
+from dataclasses import dataclass
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -13,7 +15,19 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from backend.core.cache import LRUCache, cached
+from pydantic import BaseModel
+
+from backend.core.cache import CacheService, LRUCache, cached
+
+
+class _CacheKeyModel(BaseModel):
+    code: str
+
+
+@dataclass(frozen=True)
+class _CacheKeyParentDocument:
+    content: str
+    evidence: tuple[str, ...]
 
 
 class TestLRUCache:
@@ -109,12 +123,12 @@ class TestCachedDecorator:
         call_count = {"count": 0}
 
         @cached(ttl=60)
-        async def test_func(x):
+        async def cached_func(x):
             call_count["count"] += 1
             return x * 2
 
-        result1 = await test_func(5)
-        result2 = await test_func(5)  # Should use cache
+        result1 = await cached_func(5)
+        result2 = await cached_func(5)  # Should use cache
 
         assert result1 == 10
         assert result2 == 10
@@ -126,19 +140,60 @@ class TestCachedDecorator:
         call_count = {"count": 0}
 
         @cached(ttl=60, prefix="test")
-        async def test_func(x):
+        async def cached_func(x):
             call_count["count"] += 1
             return x * 2
 
-        result1 = await test_func(5)
-        result2 = await test_func(10)  # Different arg, should call again
-        result3 = await test_func(5)  # Same as first, should use cache
+        result1 = await cached_func(5)
+        result2 = await cached_func(10)  # Different arg, should call again
+        result3 = await cached_func(5)  # Same as first, should use cache
 
         assert result1 == 10
         assert result2 == 20
         assert result3 == 10
         # Should be called twice (once for 5, once for 10)
         assert call_count["count"] >= 1
+
+
+class TestCacheKeySerialization:
+    def test_pydantic_result_lists_participate_in_cache_key(self):
+        cache = CacheService()
+
+        first = cache._generate_key("kbli", "query", [_CacheKeyModel(code="01111")])
+        second = cache._generate_key("kbli", "query", [_CacheKeyModel(code="02102")])
+
+        assert first != second
+
+    def test_dynamic_test_doubles_do_not_recurse_in_the_encoder(self):
+        cache = CacheService()
+
+        assert cache._is_serializable(MagicMock()) is False
+
+    def test_nested_dataclass_parent_documents_participate_in_cache_key(self):
+        cache = CacheService()
+
+        first = cache._generate_key(
+            "kbli",
+            query="restaurant",
+            parent_docs={
+                "56101": _CacheKeyParentDocument(
+                    content="Verified parent A",
+                    evidence=("located", "Perpres 49/2021"),
+                )
+            },
+        )
+        second = cache._generate_key(
+            "kbli",
+            query="restaurant",
+            parent_docs={
+                "56101": _CacheKeyParentDocument(
+                    content="Verified parent B",
+                    evidence=("located", "Perpres 49/2021"),
+                )
+            },
+        )
+
+        assert first != second
 
 
 class TestInvalidateCrmStats:

@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from generate_gold_content import (
     SYSTEM_PROMPT,
     append_to_gold_ts,
+    build_llm_batch_input,
     build_what_changed,
     build_what_you_need,
     build_youll_also_need,
@@ -55,14 +56,7 @@ def enrich_llm_fields_gemini(targets: list[dict], batch_size: int = 3) -> dict[s
     for i in range(0, total, batch_size):
         batch = targets[i : i + batch_size]
 
-        batch_text = "\n\n".join(
-            f"code: {c['kode_kbli_2025']}\n"
-            f"judul: {c['judul']}\n"
-            f"uraian: {c.get('uraian', '')[:600]}\n"
-            f"pma_status: {c.get('pma_status', 'TERBUKA')} ({c.get('pma_max_asing', 100)}%)\n"
-            f"sektor_id: {c.get('sektor_id', 'N/A')}"
-            for c in batch
-        )
+        batch_text = build_llm_batch_input(batch)
 
         print(
             f"  Gemini batch {i // batch_size + 1}/{(total + batch_size - 1) // batch_size}"

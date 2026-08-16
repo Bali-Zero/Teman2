@@ -43,7 +43,94 @@ session reads this corner; it does not browse `research/`.
 Also stale in `20-the-honest-map-blocked-bali-codes.md` and its `_INDEX.md` row: the blocked count
 is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
-## 1. LIVE STATE (last update 2026-08-12 — keep current)
+## 1. LIVE STATE (last update 2026-08-13 — keep current)
+
+**🟢 2026-08-13 — THE BATCH-A ANCESTRY IS PROVEN LIVE AS A CLASS, THE TRI-STATE IS ON THE CANONICAL, AND
+THE GOLD-PAGE GAP FINALLY HAS ITS CAUSE.** Four PRs merged this round: `#4129`, `#4126`, `#4141`
+(`1305870b6`) and `#4144` (`baf387b7f1`).
+
+**`#4141` — Batch-A ancestry, proven on 30 pages and not on one.** Canonical now carries
+`bps_2020_ancestors` for **221 of 221** Batch-A codes; the honest-gap set is **EMPTY**. Promoted from M5
+(the Vercel credential lives only there, reachable at Tailscale `100.110.186.116` — `ssh air` resolves to
+a link-local IPv6 and times out) and measured live on `balizero.com` across a 30-code spread: **0 false
+denials remaining**. The client-facing falsehood ("No official BPS 2020…" on codes whose crosswalk
+exists) is closed for the class, not for a sample. Three foreign-cap divergences that the new ancestry
+newly exposed (`51103`, `60103`, `60203`) were adjudicated **`BROADER`** — not patched — because annex
+entry 31 restricts _air_ transport and 34/35 restrict the LPS/LPB **institutions**, while these codes are
+space transport and on-demand streaming; and their candidate ancestors disagree (`60101`/`60201` carry no
+annex row at all), so a mis-assigned ancestor would change the value written. Same PR excluded them from
+the slice disclosure (`ADJACENT_NOT_CONTAINED`, now five): that surface renders _"One specific activity
+INSIDE this code…"_, which **asserts containment** — true for genuine BROADER codes, false for these, and
+it would have told a client that part of on-demand streaming is closed to foreign equity. Lesson worth
+keeping: an exclusion is an ASSERTION, and it must be verified on **every** surface the entity reaches,
+exactly like a guard.
+
+**`#4144` — the `l4_bali.verdict_state` tri-state applied to the canonical.** Distribution
+`blocked 95 / open 3 / unknown 25 / provisional 1436` over 1559 records, 17 legacy `blocked=true`
+preserved, all 1559 facts bases re-derived before writing. Additive by contract, and proven by an
+**independent read** rather than the compiler's own report: `verdict_state` 0 → 1559 and **0 legacy
+`blocked` values changed**. Consumer copies synced + sidecar bumped in the same commit
+(`sha256:f74b4577c96f…d12da`). Battery `scripts/kbli_filiera/tests/`: **1294 passed, 0 failed**.
+
+**The consequence nobody had written down, and it will hit the NEXT field too:** adding a field to all
+1559 records invalidates every whole-record pin in the hardened cure specs, because
+`_hardened_cure_io.classify_plan` pins the hash of the **WHOLE record** at its fully-cured state (its own
+docstring says the pin must be recomputed after every cure touching the same record). Class censused
+rather than patched where it bit: **17 spec files carry `old_sha256` pins (207 entries), but only 4 target
+the canonical (17 entries)** — the ten `prose_*` specs pin FIELD hashes and their refusal is byte-identical
+against `origin/main`, i.e. pre-existing. The re-pin is licensed by PROOF, never assumption: stripping the
+new field from the live record must reproduce the old pin exactly (**17/17** verified). Without that
+check, a re-pin launders someone else's drift — the precise failure the guard exists to catch. Then
+`emit_batch_calibration` refused on the membership content-address pin and prescribed its own remedy;
+re-emitting was verified mechanical first (same 221 codes, 0 added, 0 removed, per-member fields
+byte-identical — only 2 pin lines move).
+
+**`verdict_state` has NO render site yet** — no renderer, no Qdrant, no KG reads it. It is inert by
+design, so nothing a client sees changed and no store sync was owed. The day something starts reading it,
+that sync becomes its own work.
+
+**🔴 ROOT CAUSE FOUND for the 428 gold pages that never render the BPS transition card.** It is not the
+data and not the component. In `apps/mouth/src/app/kbli/[code]/page.tsx` there is a ternary `{gold ? (` at
+**line 401** whose else-branch opens at **line 681** (same indent, 10); the
+`<KBLITransitionSources transition={kbli.transition} />` call sits at **line 913** — inside the **non-gold**
+branch. The component is innocent: it always renders the section, either as "Authoritative BPS crosswalk"
+or as "BPS crosswalk gap", which is why gold pages show **no block at all** rather than an empty one.
+Measured, not inferred: of a 30-code live sample, the 5 pages missing the card were **5/5 gold** and the
+25 showing it **0/25 gold**. Fix = hoist the call out of the ternary — but that is a client-facing render
+change on 428 pages and wants its own PR and proof. NOT done.
+
+**The `whatChanged` lying-ancestry lane is MEASURED CLEAN — and its guard is blind on a real template.**
+Using the module's own predicate (`plan_text`), canonical: 1559/1559 carry a `whatChanged`, **0 would be
+changed**. Gold: 428 entries, **0 changed, 0 contradicted**. But `_whatchanged_basis._NAMED_PREDECESSOR`
+only matches `KBLI 2020: NNNNN`, so the **73 records** using `Previous code(s): NNNNN` (21 canonical + 52
+gold) are unscanned by construction — checked by hand against `bps_2020_ancestors`: **73/73 supported, 0
+contradicted**. They tell the truth today by luck, not by enforcement; a `whatChanged` written tomorrow on
+that template with a wrong number would pass green. Under-match, W82 family — ledgered, not cured. The 8
+gold entries with no canonical record (`64921 85300 85491 85499 85600 86903 96120 96130`) name no
+predecessor at all, and their URLs serve `<title>Page not found | Bali Zero</title>` under HTTP **200**
+(the soft-404), so that text reaches no client; re-keying stays `operator[business]`.
+
+**🔴 STILL NOT ARMED: the daily surface-conformance detector on Pro (08:20 WITA).** The CODE is merged
+(`#4126`) but the on-host install is not done, and the cause is verified rather than assumed: Pro's main
+checkout is **23 commits behind** and does **not contain** `infra/launchagents/wrappers/kbli-surface-conformance-run.sh`
+at all, while a LIVE sibling (`claude interactive`, 16h+ elapsed) holds that checkout with 17 staged files.
+Arming needs a pull that would race live work, and the two shortcuts are both scars: pointing the
+LaunchAgent at a temporary worktree is HOME-fork, writing into the held checkout is sibling-race. Remaining
+sequence when the checkout frees: `scripts/pro/pro-git-pull.sh` (never `reset --hard` — W117), **re-copy the
+live twin `~/scripts/cron-runner.sh`** (it is a REAL file there, currently identical to the pre-`#4126`
+main, so the merge alone leaves it inert — W107), `--lint`, first run with a stub gateway, `install`,
+`--kickstart`, `--verify`; the ledger row closes **only after a real 08:20 tick**.
+
+**Traps banked this round, all paid for:** `gh pr view --json isInMergeQueue` is rejected as an unknown
+field by this `gh` build — the whole command fails, so never put it in a script; a PR **already queued**
+reports `autoMergeRequest: null`, so that field alone never proves "unarmed" (ask `gh pr merge --auto`,
+which answers _"already queued to merge"_); Codex's `--sandbox workspace-write` has **no network**, so a
+delegated `git push` dies with `RC=128`; the Kimi seat dies around 3 minutes, which killed three dispatches
+mid-task — one of them after it had already pushed, opened the PR and armed auto-merge, so **measure the
+world, not the seat's transcript**; and the third consumer copy
+`apps/backend-rag/backend/data/KBLI_2025_FINAL_CLEAN.json` is **gitignored by design** (the sync script
+calls it a "MARCIA zombie"), so no merge ever reaches it — only `scripts/sync_kbli_dataset.sh`, which
+refuses to run from a checkout with `main` checked out. It is stale on Pro right now.
 
 **🟢 2026-08-12 — CONTENT CURE SHIPPED, BKPM ZIP REBUILT: the pre-retraction editorial payload is gone
 from every surface.** Lane C absorbed: `KBLI-2025-Content/` articles+chapters refreshed from the

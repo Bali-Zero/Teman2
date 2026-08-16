@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Mail, MessageCircle, MapPin, Clock, ArrowRight } from "lucide-react";
 import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
+import { GOOGLE_MAPS_URL } from "@/lib/trust-figures";
 import { RUMAH_VARS, RUMAH_CLASS } from "@/lib/theme/rumahVars";
 
 export const metadata: Metadata = {
@@ -35,7 +36,7 @@ const CHANNELS = [
     icon: MapPin,
     title: "Office",
     value: "Jalan Raya Anyar n.2, Kerobokan, Bali",
-    href: "https://maps.app.goo.gl/whiMUTNchcDR5naz8",
+    href: GOOGLE_MAPS_URL,
     note: "By appointment — tap to open on Google Maps.",
     accent: "#c8102e",
     fill: "solid" as const,

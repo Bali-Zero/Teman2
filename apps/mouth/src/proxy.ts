@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { normalizeHostname } from "@/lib/hostname";
 
 /**
  * Multi-domain Middleware
@@ -132,14 +133,6 @@ function classifyRequest(
   if (SCRAPER_SIGNATURES.test(ua)) return "suspicious";
 
   return "human";
-}
-
-function normalizeHostname(host: string): string {
-  const normalized = host.trim().toLowerCase().replace(/\.$/, "");
-  if (normalized.startsWith("[")) {
-    return normalized.slice(1, normalized.indexOf("]"));
-  }
-  return normalized.split(":", 1)[0];
 }
 
 function matchesDomain(

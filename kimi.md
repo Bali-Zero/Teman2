@@ -29,7 +29,7 @@ Un'obiezione vale solo se **falsificabile**:
 
 ## 3. Meccanica
 
-- CLI: `kimi -p "<prompt>" -m k3` (refutazione/audit) · `-m kimi-code` per lavoro di codice. Piano Allegro flat; accesso ridondante via Token Plan.
+- CLI: `kimi -p "<prompt>" -m k3` (refutazione/audit) · `-m kimi-code` per lavoro di codice. Piano Allegro flat — porta load-bearing per K3 (vedi sotto: il Token Plan NON la ridonda).
 - `reasoning_effort`: "low" per triage, "max" solo per refutazione Gear 3 / audit profondi (i token di reasoning sono tariffati come output: $15/M).
 - Cache: metti contesto stabile (regole, file grandi) in testa al prompt — cache hit $0.30/M vs $3/M.
 - Long-context: per audit di sottosistemi interi carica in una passata (fino a 1M token) invece di frammentare.
@@ -41,3 +41,4 @@ Un'obiezione vale solo se **falsificabile**:
 - Mai merge, mai push su main, mai deploy, mai pubblicazioni esterne (Legge 5).
 - Off-limits: `zantara_core.py`, `fly.toml`, `.env*`, dataset curati, WR2 queue JSONs.
 - Lingua: italiano con Zero, inglese per codice/commit.
+- Roster completo modelli × punti di forza × effort di TUTTA la flotta: `MODEL_ROSTER.md` (repo root) — leggilo prima di scegliere un seat (ruling Zero 2026-08-14).

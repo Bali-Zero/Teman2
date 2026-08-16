@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.nuzantara.army-spark — Armata H24 lane 1 (2026-08-14).
+
+  Standing read-only analysis lane on the gpt-5.3-codex-spark bucket
+  (measured idle 2026-08-14 — separate weekly bucket from the primary
+  Codex quota). Ticks every 2h on Pro; every tick either dispatches the
+  oldest not-yet-done task from infra/army/spark-queue/*.md (sandbox
+  read-only mode, 900s cap, one task per tick, max 6/day) or is a fast no-op
+  (kill switch / wrong node / backoff / cap reached / empty queue). Never
+  writes/commits/pushes/opens a PR — see
+  research/operations/2026-08-14-armata-h24-standing-lanes.md.
+
+  Genesis this lane deliberately does NOT repeat: the 2026-06
+  "codex-spark-loop" ecosystem died of runaway-alarm + 13 PR-spam (W81
+  firebreak). Fixes applied here: repo-canonical path (no HOME-fork copy),
+  StartInterval not KeepAlive (superscar #7), cron-runner.sh wrapper for
+  fail-visible receipts + P0 on a wrapper-level crash, and the wrapper's
+  OWN alerting (via tg_notify.py) stays quiet on expected conditions
+  (quota/backoff/cap) so it never becomes the alarm-storm this replaces.
+
+  Install:
+    cp infra/launchagents/com.nuzantara.army-spark.plist \
+       ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) \
+       ~/Library/LaunchAgents/com.nuzantara.army-spark.plist
+
+  Plist permissions hardened to 0444 per cicatrix P0-3.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nuzantara.army-spark</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/nuzantara/scripts/cron-runner.sh</string>
+        <string>/Users/nuzantara/nuzantara/scripts/army/spark_lane.sh</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/Users/nuzantara/.local/bin:/opt/homebrew/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>CRON_RUNNER_JOB_NAME</key>
+        <string>army_spark_lane</string>
+        <key>ARMY_SPARK_ENABLED</key>
+        <string>true</string>
+    </dict>
+
+    <!-- Every 2 hours. No RunAtLoad: an install-time immediate run competing
+         with an operator's own interactive Spark probe is unwanted noise;
+         the first real tick fires within 2h of load. -->
+    <key>StartInterval</key>
+    <integer>7200</integer>
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/army-spark/launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/army-spark/launchd.err.log</string>
+
+    <key>KeepAlive</key>
+    <false/>
+
+    <!-- Avoid a tight respawn loop if the payload exits immediately (superscar #7). -->
+    <key>ThrottleInterval</key>
+    <integer>120</integer>
+</dict>
+</plist>
