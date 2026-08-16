@@ -328,6 +328,65 @@ def test_dedup_key_recovered_is_date_stamped():
     assert wmfl.recovered_dedup_key(now_wita) == "wa-mirror:freshness:recovered:2026-08-17"
 
 
+# ---------------------------------------------------------------- heartbeat reflects the ORGAN, not the finding (verbale #2)
+
+
+def test_heartbeat_is_ok_even_when_stale_organ_not_finding(tmp_path, monkeypatch):
+    now = datetime(2026, 8, 17, 12, 0, tzinfo=wmfl.WITA)
+    newest = datetime(2026, 8, 17, 5, 0, tzinfo=wmfl.WITA)  # stale -> would have been "degraded" pre-fix
+    hb = []
+    monkeypatch.setattr(wmfl, "_tg_notify", lambda *a, **k: True)
+    monkeypatch.setattr(wmfl, "_heartbeat", lambda status, note="": hb.append((status, note)))
+    monkeypatch.setattr(wmfl, "STATE_PATH", tmp_path / "state.json")
+    monkeypatch.setattr(wmfl, "_run_status_script", lambda: None)
+    monkeypatch.setenv("WA_FRESHNESS_MAX_AGE_MIN", "180")
+    monkeypatch.setenv("WA_FRESHNESS_BUSINESS_START", "8")
+    monkeypatch.setenv("WA_FRESHNESS_BUSINESS_END", "20")
+    monkeypatch.setenv("WA_FRESHNESS_BUSINESS_DAYS", "0,1,2,3,4,5")
+
+    conn = _FakeConn(newest)
+    rc = asyncio.run(wmfl._tick(conn, now, dry_run=False))
+
+    assert rc == 0
+    assert len(hb) == 1
+    status, note = hb[0]
+    assert status == "ok"
+    assert "stale=True" in note
+
+
+# ---------------------------------------------------------------- run() wraps the whole tick, never exits uncaught (verbale #6)
+
+
+class _StubConn:
+    async def fetchrow(self, query, *args, **kwargs):
+        return {"newest": None}
+
+    async def close(self):
+        return None
+
+
+def test_run_heartbeats_error_and_exits_2_on_uncaught_tick_exception(tmp_path, monkeypatch):
+    hb = []
+    monkeypatch.setattr(wmfl, "_heartbeat", lambda status, note="": hb.append((status, note)))
+    monkeypatch.setattr(wmfl, "LOCK_FILE", tmp_path / "lock")
+    monkeypatch.setattr(wmfl, "STATE_PATH", tmp_path / "state.json")
+    monkeypatch.setenv("WA_MIRROR_FRESHNESS_LIVENESS_ENABLED", "true")
+    # A garbage env value is parsed OUTSIDE the connect-phase try/except (it
+    # lives inside _tick), so pre-fix this propagated to Python's default
+    # exit 1 with a bare traceback and no heartbeat at all.
+    monkeypatch.setenv("WA_FRESHNESS_MAX_AGE_MIN", "not-a-number")
+
+    async def _fake_connect(*_args, **_kwargs):
+        return _StubConn()
+
+    monkeypatch.setattr(wmfl.asyncpg, "connect", _fake_connect)
+
+    rc = asyncio.run(wmfl.run(dry_run=True))
+
+    assert rc == 2
+    assert hb and hb[-1][0] == "error"
+
+
 if __name__ == "__main__":
     import pytest
 

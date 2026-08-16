@@ -292,7 +292,7 @@ async def _tick(conn: Any, now_wita: datetime, *, dry_run: bool) -> int:
     end_hour = int(os.getenv("WA_FRESHNESS_BUSINESS_END", "20"))
     business_days = _business_days_from_env()
 
-    row = await conn.fetchrow(FRESHNESS_SQL)
+    row = await conn.fetchrow(FRESHNESS_SQL, timeout=30)
     newest = row["newest"]
     business = in_business_hours(
         now_wita, start_hour=start_hour, end_hour=end_hour, business_days=business_days
@@ -342,9 +342,16 @@ async def _tick(conn: Any, now_wita: datetime, *, dry_run: bool) -> int:
     if not dry_run:
         _write_state(state)
 
+    # The heartbeat reflects the ORGAN (did the tick complete?), never the
+    # FINDING (is the mirror stale?) — verbale #2: an unconditional
+    # "degraded" heartbeat on every stale tick made healer_receptor_registry
+    # classify this healthy organ as dead (HEALTHY_STATUSES has no
+    # "degraded") and spawn an auto-remediation session against it, on
+    # ordinary quiet nights. "error" is reserved for the outer try/except in
+    # run() — an exception, never a clean tick with an unwelcome result.
     _heartbeat(
-        "degraded" if stale else "ok",
-        note=f"business_age_min={round(business_age_min, 1)} business_hours={business}",
+        "ok",
+        note=f"stale={stale} business={business} business_age_min={round(business_age_min, 1)} alerted={alerted}",
     )
 
     return 0
@@ -365,7 +372,7 @@ async def run(*, dry_run: bool) -> int:
         dsn = os.getenv("INTAKE_DATABASE_URL") or os.getenv("LOCAL_DATABASE_URL") or DEFAULT_DSN
         try:
             conn = await asyncpg.connect(
-                dsn, server_settings={"default_transaction_read_only": "on"}
+                dsn, server_settings={"default_transaction_read_only": "on"}, timeout=20
             )
         except Exception as exc:  # noqa: BLE001
             logger.error("[wa_freshness] DB connect failed: %s", exc)
@@ -375,6 +382,16 @@ async def run(*, dry_run: bool) -> int:
         try:
             now_wita = datetime.now(WITA)
             return await _tick(conn, now_wita, dry_run=dry_run)
+        except Exception as exc:  # noqa: BLE001 — the whole tick (env parsing
+            # included, verbale #6) must never exit uncaught: a mid-tick
+            # failure (garbage env value, a non-connect-phase DB error) used
+            # to propagate to Python's default exit 1 with a bare traceback
+            # and no _heartbeat("error", ...) at all, contradicting this
+            # module's own documented exit contract and leaving the healer
+            # sentinel to misdiagnose a config/error fault as staleness.
+            logger.error("[wa_freshness] tick failed: %s", exc)
+            _heartbeat("error", f"tick failed: {exc}")
+            return 2
         finally:
             await conn.close()
     finally:

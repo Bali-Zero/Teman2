@@ -489,6 +489,18 @@ async def run(*, dry_run: bool, json_only: bool) -> int:
 
     lock_fd = _acquire_lock_or_exit()
     if lock_fd is None:
+        # Previously exited silently: a hung run (verbale #7 — every gather()
+        # query but one ran unbounded) could hold this flock past the next
+        # scheduled 07:30 tick, and that tick's own return-0-without-a-word
+        # meant the organ went fully dark (no digest, no P0, no heartbeat)
+        # until a human found the hung process by hand. Now it says so.
+        date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        _heartbeat("error", "lock held")
+        _tg_notify(
+            "digest",
+            f"intake-health:lock-held:{date_key}",
+            "🔒 intake-health-report: previous instance still running — this tick skipped",
+        )
         return 0
     try:
         dsn = os.getenv("INTAKE_DATABASE_URL") or os.getenv("LOCAL_DATABASE_URL") or DEFAULT_DSN
@@ -519,7 +531,12 @@ async def run(*, dry_run: bool, json_only: bool) -> int:
         if not dry_run:
             _write_state(report)
 
-        _heartbeat("ok" if not breaches else "degraded", note=f"breaches={len(breaches)}")
+        # Heartbeat reflects the ORGAN (did the report complete?), never the
+        # FINDING (are there breaches?) — same rule as wa_mirror_freshness_
+        # liveness.py (verbale #2): a breach is real information, but it does
+        # not mean this organ is unhealthy, and "degraded" made the healer
+        # sentinel treat a completed report carrying findings as a dead organ.
+        _heartbeat("ok", note=f"breaches={len(breaches)}")
 
         if not dry_run:
             _tg_notify("digest", "intake-health:daily", render_digest(report))

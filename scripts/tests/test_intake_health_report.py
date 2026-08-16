@@ -393,6 +393,49 @@ def test_json_only_skips_all_side_effects(tmp_path, monkeypatch, capsys):
     assert '"review_pending_total"' in out
 
 
+def test_heartbeat_is_ok_even_with_breaches_organ_not_finding(tmp_path, monkeypatch):
+    hb = []
+    monkeypatch.setattr(ihr, "_tg_notify", lambda tier, key, text: True)
+    monkeypatch.setattr(ihr, "_heartbeat", lambda status, note="": hb.append((status, note)))
+    monkeypatch.setattr(ihr, "STATE_PATH", tmp_path / "state.json")
+    monkeypatch.setattr(ihr, "LOCK_FILE", tmp_path / "lock")
+    monkeypatch.setattr(ihr, "worker_log_path", lambda: tmp_path / "does-not-exist.log")
+
+    async def _fake_connect(*_args, **_kwargs):
+        return _FakeConn()
+
+    monkeypatch.setattr(ihr.asyncpg, "connect", _fake_connect)
+    monkeypatch.setenv("INTAKE_HEALTH_REPORT_ENABLED", "true")
+
+    rc = asyncio.run(ihr.run(dry_run=False, json_only=False))
+
+    assert rc == 0
+    # worker_log_missing breach fires (file doesn't exist) — heartbeat must
+    # still read "ok", never "degraded" (verbale #2's twin, this organ).
+    assert hb
+    status, note = hb[-1]
+    assert status == "ok"
+    assert "breaches=" in note
+
+
+def test_lock_held_writes_error_heartbeat_and_digest_instead_of_exiting_silently(monkeypatch):
+    hb = []
+    sent = []
+    monkeypatch.setattr(ihr, "_heartbeat", lambda status, note="": hb.append((status, note)))
+    monkeypatch.setattr(ihr, "_tg_notify", lambda tier, key, text: sent.append((tier, key, text)) or True)
+    monkeypatch.setattr(ihr, "_acquire_lock_or_exit", lambda: None)
+    monkeypatch.setenv("INTAKE_HEALTH_REPORT_ENABLED", "true")
+
+    rc = asyncio.run(ihr.run(dry_run=False, json_only=False))
+
+    assert rc == 0
+    assert hb == [("error", "lock held")]
+    assert len(sent) == 1
+    tier, key, _text = sent[0]
+    assert tier == "digest"
+    assert key.startswith("intake-health:lock-held:")
+
+
 def test_kill_switch_disabled_short_circuits(monkeypatch, capsys):
     monkeypatch.setenv("INTAKE_HEALTH_REPORT_ENABLED", "false")
     called = []
