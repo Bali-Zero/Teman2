@@ -14,6 +14,7 @@ Run:  python3 scripts/tests/test_wa_mirror_freshness_liveness.py
 from __future__ import annotations
 
 import asyncio
+import json
 import pathlib
 import sys
 from datetime import datetime, timedelta
@@ -70,6 +71,41 @@ def test_in_business_hours_boundary_end_hour_exclusive():
     assert wmfl.in_business_hours(now_wita, start_hour=8, end_hour=20, business_days={0, 1, 2, 3, 4, 5}) is False
 
 
+# ---------------------------------------------------------------- business-time reference (verbale #1)
+
+
+def test_business_hours_open_wita_floors_to_start_hour():
+    now_wita = datetime(2026, 8, 17, 14, 37, tzinfo=wmfl.WITA)  # Monday afternoon
+    opened = wmfl.business_hours_open_wita(now_wita, start_hour=8)
+    assert opened == datetime(2026, 8, 17, 8, 0, tzinfo=wmfl.WITA)
+
+
+def test_business_reference_uses_newest_when_newer_than_open():
+    now_wita = datetime(2026, 8, 17, 12, 0, tzinfo=wmfl.WITA)  # Monday noon
+    newest = datetime(2026, 8, 17, 11, 30, tzinfo=wmfl.WITA)  # 11:30 today
+    ref = wmfl.business_reference(newest, now_wita, start_hour=8)
+    assert ref == newest
+
+
+def test_business_reference_floors_at_today_open_for_overnight_message():
+    now_wita = datetime(2026, 8, 17, 12, 0, tzinfo=wmfl.WITA)  # Monday noon
+    newest = datetime(2026, 8, 17, 5, 0, tzinfo=wmfl.WITA)  # overnight, before open
+    ref = wmfl.business_reference(newest, now_wita, start_hour=8)
+    assert ref == datetime(2026, 8, 17, 8, 0, tzinfo=wmfl.WITA)
+
+
+def test_business_reference_floors_at_today_open_when_table_empty():
+    now_wita = datetime(2026, 8, 17, 11, 1, tzinfo=wmfl.WITA)  # Monday
+    ref = wmfl.business_reference(None, now_wita, start_hour=8)
+    assert ref == datetime(2026, 8, 17, 8, 0, tzinfo=wmfl.WITA)
+
+
+def test_business_age_minutes_computes_delta_from_reference():
+    ref = datetime(2026, 8, 17, 8, 0, tzinfo=wmfl.WITA)
+    now_wita = datetime(2026, 8, 17, 11, 1, tzinfo=wmfl.WITA)
+    assert wmfl.business_age_minutes(ref, now_wita) == 181.0
+
+
 # ---------------------------------------------------------------- DEAD-count parsing (canned, fake numbers)
 
 # Fake wa-mirror-launcher status.sh table — masked per repo convention: fake
@@ -119,18 +155,22 @@ class _FakeConn:
     def __init__(self, newest):
         self._newest = newest
 
-    async def fetchrow(self, query, *args):
+    async def fetchrow(self, query, *args, **kwargs):
         assert "whatsapp_message_context" in query
         return {"newest": self._newest}
 
 
-def _run_tick(newest, now_wita, *, dry_run, monkeypatch, tmp_path, status_output=None):
+def _run_tick(newest, now_wita, *, dry_run, monkeypatch, tmp_path, status_output=None,
+              max_age_min="180", prior_state=None):
     sent = []
+    state_path = tmp_path / "state.json"
+    if prior_state is not None:
+        state_path.write_text(json.dumps(prior_state), encoding="utf-8")
     monkeypatch.setattr(wmfl, "_tg_notify", lambda tier, key, text: sent.append((tier, key, text)) or True)
     monkeypatch.setattr(wmfl, "_heartbeat", lambda *a, **k: None)
-    monkeypatch.setattr(wmfl, "STATE_PATH", tmp_path / "state.json")
+    monkeypatch.setattr(wmfl, "STATE_PATH", state_path)
     monkeypatch.setattr(wmfl, "_run_status_script", lambda: status_output)
-    monkeypatch.setenv("WA_FRESHNESS_MAX_AGE_MIN", "360")
+    monkeypatch.setenv("WA_FRESHNESS_MAX_AGE_MIN", max_age_min)
     monkeypatch.setenv("WA_FRESHNESS_BUSINESS_START", "8")
     monkeypatch.setenv("WA_FRESHNESS_BUSINESS_END", "20")
     monkeypatch.setenv("WA_FRESHNESS_BUSINESS_DAYS", "0,1,2,3,4,5")
@@ -140,9 +180,14 @@ def _run_tick(newest, now_wita, *, dry_run, monkeypatch, tmp_path, status_output
     return rc, sent
 
 
-def test_guilt_stale_in_business_hours_sends_exactly_one_p0(tmp_path, monkeypatch):
+# New default (verbale #1): WA_FRESHNESS_MAX_AGE_MIN=180 (3h), evaluated
+# against a business-hours-adjusted reference — max(newest, today's 08:00).
+
+
+def test_guilt_overnight_message_ages_past_threshold_into_the_morning(tmp_path, monkeypatch):
+    # newest=Mon 05:00, now=Mon 12:00 -> ref=Mon 08:00, business_age=240 > 180.
     now = datetime(2026, 8, 17, 12, 0, tzinfo=wmfl.WITA)  # Monday noon
-    newest = now - timedelta(hours=7)  # 420min > 360min threshold
+    newest = datetime(2026, 8, 17, 5, 0, tzinfo=wmfl.WITA)
     rc, sent = _run_tick(
         newest, now, dry_run=False, monkeypatch=monkeypatch, tmp_path=tmp_path,
         status_output=_CANNED_STATUS_TABLE_ALL_DEAD,
@@ -153,12 +198,50 @@ def test_guilt_stale_in_business_hours_sends_exactly_one_p0(tmp_path, monkeypatc
     assert p0_sends[0][1] == wmfl.DEDUP_KEY
 
 
-def test_innocence_stale_outside_business_hours_sends_nothing(tmp_path, monkeypatch):
-    now = datetime(2026, 8, 17, 3, 0, tzinfo=wmfl.WITA)  # Monday 03:00 — night
-    newest = now - timedelta(hours=7)
+def test_innocence_quiet_overnight_gap_never_pages_at_next_morning_open(tmp_path, monkeypatch):
+    # newest=Mon 19:55, now=Tue 09:00 -> ref=Tue 08:00, business_age=60 <= 180.
+    # This is exactly the false-P0 shape the refuter caught pre-fix.
+    now = datetime(2026, 8, 18, 9, 0, tzinfo=wmfl.WITA)  # Tuesday
+    newest = datetime(2026, 8, 17, 19, 55, tzinfo=wmfl.WITA)  # Monday 19:55
     rc, sent = _run_tick(newest, now, dry_run=False, monkeypatch=monkeypatch, tmp_path=tmp_path)
     assert rc == 0
     assert sent == []
+
+
+def test_innocence_weekend_gap_never_pages_monday_mid_morning(tmp_path, monkeypatch):
+    # newest=Sat 19:00, now=Mon 10:30 -> ref=Mon 08:00, business_age=150 <= 180.
+    now = datetime(2026, 8, 17, 10, 30, tzinfo=wmfl.WITA)  # Monday
+    newest = datetime(2026, 8, 15, 19, 0, tzinfo=wmfl.WITA)  # Saturday 19:00
+    rc, sent = _run_tick(newest, now, dry_run=False, monkeypatch=monkeypatch, tmp_path=tmp_path)
+    assert rc == 0
+    assert sent == []
+
+
+def test_guilt_weekend_gap_pages_once_past_threshold_monday(tmp_path, monkeypatch):
+    # newest=Sat 19:00, now=Mon 11:01 -> ref=Mon 08:00, business_age=181 > 180.
+    now = datetime(2026, 8, 17, 11, 1, tzinfo=wmfl.WITA)  # Monday
+    newest = datetime(2026, 8, 15, 19, 0, tzinfo=wmfl.WITA)  # Saturday 19:00
+    rc, sent = _run_tick(newest, now, dry_run=False, monkeypatch=monkeypatch, tmp_path=tmp_path)
+    assert rc == 0
+    p0_sends = [s for s in sent if s[0] == "p0"]
+    assert len(p0_sends) == 1
+
+
+def test_innocence_sunday_never_pages_regardless_of_age(tmp_path, monkeypatch):
+    now = datetime(2026, 8, 16, 15, 0, tzinfo=wmfl.WITA)  # Sunday afternoon
+    newest = datetime(2026, 8, 10, 0, 0, tzinfo=wmfl.WITA)  # a week stale
+    rc, sent = _run_tick(newest, now, dry_run=False, monkeypatch=monkeypatch, tmp_path=tmp_path)
+    assert rc == 0
+    assert sent == []
+
+
+def test_guilt_null_newest_pages_past_threshold_in_business_hours(tmp_path, monkeypatch):
+    # table has never had a row -> ref floors at today_open regardless.
+    now = datetime(2026, 8, 17, 11, 1, tzinfo=wmfl.WITA)  # Monday
+    rc, sent = _run_tick(None, now, dry_run=False, monkeypatch=monkeypatch, tmp_path=tmp_path)
+    assert rc == 0
+    p0_sends = [s for s in sent if s[0] == "p0"]
+    assert len(p0_sends) == 1
 
 
 def test_innocence_fresh_in_business_hours_sends_nothing(tmp_path, monkeypatch):
@@ -171,11 +254,78 @@ def test_innocence_fresh_in_business_hours_sends_nothing(tmp_path, monkeypatch):
 
 def test_dry_run_never_sends_even_when_stale_in_business_hours(tmp_path, monkeypatch):
     now = datetime(2026, 8, 17, 12, 0, tzinfo=wmfl.WITA)
-    newest = now - timedelta(hours=7)
+    newest = datetime(2026, 8, 17, 5, 0, tzinfo=wmfl.WITA)
     rc, sent = _run_tick(newest, now, dry_run=True, monkeypatch=monkeypatch, tmp_path=tmp_path)
     assert rc == 0
     assert sent == []
     assert not (tmp_path / "state.json").exists()
+
+
+# ---------------------------------------------------------------- alerted persisted BEFORE write (verbale #5)
+
+
+def test_alerted_flag_is_persisted_in_the_written_state_file(tmp_path, monkeypatch):
+    now = datetime(2026, 8, 17, 12, 0, tzinfo=wmfl.WITA)
+    newest = datetime(2026, 8, 17, 5, 0, tzinfo=wmfl.WITA)  # guilty -> pages
+    rc, sent = _run_tick(newest, now, dry_run=False, monkeypatch=monkeypatch, tmp_path=tmp_path)
+    assert rc == 0
+    written = json.loads((tmp_path / "state.json").read_text())
+    assert written["alerted"] is True
+
+
+def test_innocent_tick_persists_alerted_false(tmp_path, monkeypatch):
+    now = datetime(2026, 8, 17, 12, 0, tzinfo=wmfl.WITA)
+    newest = now - timedelta(minutes=5)
+    rc, sent = _run_tick(newest, now, dry_run=False, monkeypatch=monkeypatch, tmp_path=tmp_path)
+    assert rc == 0
+    written = json.loads((tmp_path / "state.json").read_text())
+    assert written["alerted"] is False
+
+
+# ---------------------------------------------------------------- recovered digest (verbale #1 follow-on)
+
+
+def test_recovered_digest_sent_when_previous_alerted_and_now_fresh(tmp_path, monkeypatch):
+    now = datetime(2026, 8, 17, 12, 0, tzinfo=wmfl.WITA)
+    newest = now - timedelta(minutes=5)  # fresh now
+    rc, sent = _run_tick(
+        newest, now, dry_run=False, monkeypatch=monkeypatch, tmp_path=tmp_path,
+        prior_state={"alerted": True},
+    )
+    assert rc == 0
+    digests = [s for s in sent if s[0] == "digest"]
+    assert len(digests) == 1
+    assert digests[0][1] == f"wa-mirror:freshness:recovered:{now.strftime('%Y-%m-%d')}"
+
+
+def test_no_recovered_digest_when_previous_was_not_alerted(tmp_path, monkeypatch):
+    now = datetime(2026, 8, 17, 12, 0, tzinfo=wmfl.WITA)
+    newest = now - timedelta(minutes=5)
+    rc, sent = _run_tick(
+        newest, now, dry_run=False, monkeypatch=monkeypatch, tmp_path=tmp_path,
+        prior_state={"alerted": False},
+    )
+    assert rc == 0
+    assert sent == []
+
+
+def test_no_recovered_digest_when_still_stale(tmp_path, monkeypatch):
+    now = datetime(2026, 8, 17, 12, 0, tzinfo=wmfl.WITA)
+    newest = datetime(2026, 8, 17, 5, 0, tzinfo=wmfl.WITA)  # still stale
+    rc, sent = _run_tick(
+        newest, now, dry_run=False, monkeypatch=monkeypatch, tmp_path=tmp_path,
+        prior_state={"alerted": True},
+    )
+    assert rc == 0
+    digests = [s for s in sent if s[0] == "digest"]
+    assert digests == []
+    p0_sends = [s for s in sent if s[0] == "p0"]
+    assert len(p0_sends) == 1
+
+
+def test_dedup_key_recovered_is_date_stamped():
+    now_wita = datetime(2026, 8, 17, 12, 0, tzinfo=wmfl.WITA)
+    assert wmfl.recovered_dedup_key(now_wita) == "wa-mirror:freshness:recovered:2026-08-17"
 
 
 if __name__ == "__main__":
