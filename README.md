@@ -4,6 +4,8 @@ Production AI-powered business intelligence platform for **Bali Zero** — Indon
 
 **Live:** [kita.balizero.com](https://kita.balizero.com)
 
+<!-- mergeos-step4-live-proof: prose-only change outside protected DOCSYNC blocks -->
+
 ## Architecture
 
 Monorepo powered by agentic RAG with Knowledge Graph. Live repository state is
