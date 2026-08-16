@@ -157,6 +157,24 @@ def _is_transient(exc: BaseException) -> bool:
     return isinstance(exc, _TRANSIENT_EXCEPTIONS)
 
 
+def _exc_summary(exc: BaseException) -> str:
+    """PII-safe one-line exception summary for the media-loop error logs
+    (verbale #6, post-refuter Qwen 3.8 Max, P2).
+
+    ``asyncpg.PostgresError.__str__()`` appends ``DETAIL``/``HINT`` when the
+    server supplies them, and a constraint-violation DETAIL on a phone-keyed
+    table (``clients.phone_normalized`` UNIQUE) can embed the raw offending
+    phone value — doubling the poison-row ERROR call sites that could leak
+    PII into ``wa-mirror-intake-sweeper.log``. A Postgres exception is
+    therefore summarized as its type + sqlstate ONLY, never its message.
+    Anything else (OSError, ValueError, ...) is not DB-error-shaped and does
+    not carry that DETAIL/HINT risk, so it keeps its message.
+    """
+    if isinstance(exc, asyncpg.PostgresError):
+        return f"{type(exc).__name__}[{getattr(exc, 'sqlstate', '-')}]"
+    return f"{type(exc).__name__}: {exc}"
+
+
 # --------------------------------------------------------------------------- #
 # Internal-sender guard (2026-06-29).
 #
@@ -717,8 +735,8 @@ async def run_one_tick() -> int:
                             "[wa_mirror_sweep] CRM phone upsert failed for media row %d "
                             "(transient, retrying next tick): %s",
                             rid,
-                            exc,
-                            exc_info=True,
+                            _exc_summary(exc),
+                            exc_info=not isinstance(exc, asyncpg.PostgresError),
                         )
                         break
                     # PERMANENT CRM-identity failure (verbale #2, post-refuter
@@ -734,8 +752,8 @@ async def run_one_tick() -> int:
                         "[wa_mirror_sweep] CRM phone upsert failed for media row %d "
                         "(permanent, CRM identity hint dropped — document still enqueued): %s",
                         rid,
-                        exc,
-                        exc_info=True,
+                        _exc_summary(exc),
+                        exc_info=not isinstance(exc, asyncpg.PostgresError),
                     )
                     client_id_hint = None
             else:
@@ -758,8 +776,8 @@ async def run_one_tick() -> int:
                         "[wa_mirror_sweep] enqueue failed for row %d "
                         "(transient, retrying next tick): %s",
                         rid,
-                        exc,
-                        exc_info=True,
+                        _exc_summary(exc),
+                        exc_info=not isinstance(exc, asyncpg.PostgresError),
                     )
                     # Do NOT advance past a transient failure — retry next tick.
                     break
@@ -768,8 +786,8 @@ async def run_one_tick() -> int:
                     "[wa_mirror_sweep] enqueue failed for row %d "
                     "(poison row, advancing past it): %s",
                     rid,
-                    exc,
-                    exc_info=True,
+                    _exc_summary(exc),
+                    exc_info=not isinstance(exc, asyncpg.PostgresError),
                 )
                 max_done = max(max_done, rid)
                 continue

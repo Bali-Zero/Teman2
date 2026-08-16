@@ -500,3 +500,40 @@ async def test_poison_breaker_p0_and_rc2_on_storm(monkeypatch, tmp_path) -> None
     assert [c[0] for c in tg_calls] == ["digest", "p0"]
     assert tg_calls[1][1] == "wa-mirror-sweeper:poison-storm"
     assert "poison=5/5" in tg_calls[1][2]
+
+
+# --------------------------------------------------------------------------- #
+# PII-safe error logs (verbale #6, post-refuter Qwen 3.8 Max, P2).
+# --------------------------------------------------------------------------- #
+@pytest.mark.asyncio
+async def test_postgres_error_detail_never_reaches_the_log(
+    monkeypatch, tmp_path, caplog
+) -> None:
+    """``asyncpg.PostgresError.__str__()`` appends DETAIL/HINT when the server
+    supplies them, and a constraint violation on a phone-keyed table (e.g.
+    ``clients.phone_normalized`` UNIQUE) can embed the raw offending phone in
+    DETAIL. A poison-row error log must summarize a Postgres exception as
+    type+sqlstate ONLY — the phone-shaped DETAIL must never reach the log
+    text (message OR any attached traceback rendering).
+    """
+    row_n = _row(1000, blob_path=_write_blob(tmp_path, "n.pdf"))
+    phone_in_detail = "6281234567890"
+
+    async def poison_enqueue(_pool, *, source_ref, **_kw):
+        exc = asyncpg.UniqueViolationError(
+            "duplicate key value violates unique constraint"
+        )
+        exc.detail = f"Key (phone_normalized)=({phone_in_detail}) already exists."
+        raise exc
+
+    wms = _load_sweeper()
+    _wire(monkeypatch, wms, rows=[row_n], watermark_seed=999, enqueue=poison_enqueue)
+
+    with caplog.at_level(logging.INFO, logger="wa_mirror_sweeper"):
+        rc = await wms.run_one_tick()
+
+    assert rc == 0
+    # Neither the formatted message nor any attached traceback text (the
+    # reason exc_info is False for a PostgresError) carries the phone.
+    assert phone_in_detail not in caplog.text
+    assert any("UniqueViolationError[23505]" in r.message for r in caplog.records)
