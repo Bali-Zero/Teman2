@@ -1,0 +1,2869 @@
+{
+ "pack_id": "453ee842-7f35-5d77-b460-31d67e2784c2",
+ "sequence": 7,
+ "version": "2026.8.11",
+ "n_products": 38,
+ "n_rules": 104,
+ "matrix": {
+  "E28A": {
+   "reachability": "REACHABLE",
+   "n_rules": 9,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.sponsor_confirmed",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "investment.investment_capital_idr",
+    "investment.paid_up_capital_idr",
+    "investment.proposed_role",
+    "investment.pt_pma_committed",
+    "person.nationalities"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T15",
+    "T3",
+    "T4",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-013"
+    ],
+    "T10": [
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-009"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-005",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017"
+    ],
+    "T4": [
+     "VO-FUSED-T4-002",
+     "VO-FUSED-T4-009"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-007",
+     "VO-FUSED-T7-009"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "E28B": {
+   "reachability": "BLOCKED",
+   "n_rules": 7,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.sponsor_confirmed",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "intent.requested_product_code",
+    "person.nationalities"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T15",
+    "T3",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-014"
+    ],
+    "T10": [
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-009"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-005",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-007",
+     "VO-FUSED-T7-009"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "E28C": {
+   "reachability": "BLOCKED",
+   "n_rules": 7,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.sponsor_confirmed",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "intent.requested_product_code",
+    "person.nationalities"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T15",
+    "T3",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-015"
+    ],
+    "T10": [
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-009"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-005",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-007",
+     "VO-FUSED-T7-009",
+     "VO-FUSED-T7-013"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "E28D": {
+   "reachability": "BLOCKED",
+   "n_rules": 7,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.sponsor_confirmed",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "intent.requested_product_code",
+    "person.nationalities"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T15",
+    "T3",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-016"
+    ],
+    "T10": [
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-009"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-005",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-007",
+     "VO-FUSED-T7-009"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "E28F": {
+   "reachability": "BLOCKED",
+   "n_rules": 7,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.sponsor_confirmed",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "intent.requested_product_code",
+    "person.nationalities"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T15",
+    "T3",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-017"
+    ],
+    "T10": [
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-009"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-005",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-007",
+     "VO-FUSED-T7-009"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "E33": {
+   "reachability": "REACHABLE",
+   "n_rules": 11,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.sponsor_confirmed",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "person.nationalities",
+    "secondhome.bank_deposit_at_state_bank",
+    "secondhome.bank_deposit_in_own_name",
+    "secondhome.bank_deposit_usd",
+    "secondhome.qualifying_property_value_usd"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T14",
+    "T15",
+    "T3",
+    "T4",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-032"
+    ],
+    "T10": [
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-009"
+    ],
+    "T14": [
+     "VO-FUSED-T14-002",
+     "VO-FUSED-T14-003",
+     "VO-FUSED-T14-004",
+     "VO-FUSED-T14-005",
+     "VO-FUSED-T14-006"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-005",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017",
+     "VO-FUSED-T3-018"
+    ],
+    "T4": [
+     "VO-FUSED-T4-004",
+     "VO-FUSED-T4-009",
+     "VO-FUSED-T4-010"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-004",
+     "VO-FUSED-T7-007",
+     "VO-FUSED-T7-009"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "E33A": {
+   "reachability": "BLOCKED",
+   "n_rules": 7,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.sponsor_confirmed",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "intent.requested_product_code",
+    "person.nationalities"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T15",
+    "T3",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-032",
+     "VO-FUSED-T1-033"
+    ],
+    "T10": [
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-009"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-005",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017",
+     "VO-FUSED-T3-018"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-004",
+     "VO-FUSED-T7-007",
+     "VO-FUSED-T7-009"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "E33B": {
+   "reachability": "BLOCKED",
+   "n_rules": 7,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.sponsor_confirmed",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "intent.requested_product_code",
+    "person.nationalities"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T15",
+    "T3",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-032",
+     "VO-FUSED-T1-034"
+    ],
+    "T10": [
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-009"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-005",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017",
+     "VO-FUSED-T3-018"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-004",
+     "VO-FUSED-T7-007",
+     "VO-FUSED-T7-008",
+     "VO-FUSED-T7-009"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "E33C": {
+   "reachability": "BLOCKED",
+   "n_rules": 7,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.sponsor_confirmed",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "intent.requested_product_code",
+    "person.nationalities"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T15",
+    "T3",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-032",
+     "VO-FUSED-T1-035"
+    ],
+    "T10": [
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-009"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-005",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017",
+     "VO-FUSED-T3-018"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-004",
+     "VO-FUSED-T7-007",
+     "VO-FUSED-T7-009"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "E33E": {
+   "reachability": "REACHABLE",
+   "n_rules": 10,
+   "required_facts": [
+    "derived.age_years",
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.sponsor_confirmed",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "person.nationalities",
+    "secondhome.bank_deposit_at_state_bank",
+    "secondhome.bank_deposit_in_own_name",
+    "secondhome.bank_deposit_usd",
+    "secondhome.passive_monthly_income_usd"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T14",
+    "T15",
+    "T3",
+    "T4",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-032",
+     "VO-FUSED-T1-036"
+    ],
+    "T10": [
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-009"
+    ],
+    "T14": [
+     "VO-FUSED-T14-001",
+     "VO-FUSED-T14-002",
+     "VO-FUSED-T14-003",
+     "VO-FUSED-T14-004",
+     "VO-FUSED-T14-005",
+     "VO-FUSED-T14-006"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-005",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017",
+     "VO-FUSED-T3-018"
+    ],
+    "T4": [
+     "VO-FUSED-T4-004",
+     "VO-FUSED-T4-005",
+     "VO-FUSED-T4-009",
+     "VO-FUSED-T4-010"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-004",
+     "VO-FUSED-T7-007",
+     "VO-FUSED-T7-009"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "E33F": {
+   "reachability": "REACHABLE",
+   "n_rules": 9,
+   "required_facts": [
+    "derived.age_years",
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.sponsor_confirmed",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "person.nationalities",
+    "secondhome.passive_monthly_income_usd"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T14",
+    "T15",
+    "T3",
+    "T4",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-032",
+     "VO-FUSED-T1-037"
+    ],
+    "T10": [
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-009"
+    ],
+    "T14": [
+     "VO-FUSED-T14-002",
+     "VO-FUSED-T14-003",
+     "VO-FUSED-T14-004",
+     "VO-FUSED-T14-005",
+     "VO-FUSED-T14-006"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-005",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017",
+     "VO-FUSED-T3-018"
+    ],
+    "T4": [
+     "VO-FUSED-T4-004",
+     "VO-FUSED-T4-009",
+     "VO-FUSED-T4-010"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-004",
+     "VO-FUSED-T7-007",
+     "VO-FUSED-T7-009"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "E33G": {
+   "reachability": "REACHABLE",
+   "n_rules": 12,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.sponsor_confirmed",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "investment.pt_pma_committed",
+    "person.nationalities",
+    "work.employer_is_indonesian_entity",
+    "work.indonesia_source_compensation",
+    "work.serves_indonesian_clients"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T13",
+    "T15",
+    "T3",
+    "T4",
+    "T6",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-032",
+     "VO-FUSED-T1-038"
+    ],
+    "T10": [
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-009"
+    ],
+    "T13": [
+     "VO-FUSED-T13-001",
+     "VO-FUSED-T13-002",
+     "VO-FUSED-T13-003",
+     "VO-FUSED-T13-004",
+     "VO-FUSED-T13-005",
+     "VO-FUSED-T13-006"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-005",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017",
+     "VO-FUSED-T3-018"
+    ],
+    "T4": [
+     "VO-FUSED-T4-004",
+     "VO-FUSED-T4-006",
+     "VO-FUSED-T4-009",
+     "VO-FUSED-T4-010"
+    ],
+    "T6": [
+     "VO-FUSED-T6-001",
+     "VO-FUSED-T6-005"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-004",
+     "VO-FUSED-T7-007",
+     "VO-FUSED-T7-009"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "A1": {
+   "reachability": "REACHABLE",
+   "n_rules": 8,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.sponsor_confirmed",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "intent.stay_days",
+    "person.nationalities"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T15",
+    "T3",
+    "T5",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-001"
+    ],
+    "T10": [
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-009"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017"
+    ],
+    "T5": [
+     "VO-FUSED-T5-001",
+     "VO-FUSED-T5-007"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-008",
+     "VO-FUSED-T7-009",
+     "VO-FUSED-T7-011"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-002",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "B1": {
+   "reachability": "REACHABLE",
+   "n_rules": 8,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.sponsor_confirmed",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "intent.stay_days",
+    "person.nationalities"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T15",
+    "T3",
+    "T5",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-002"
+    ],
+    "T10": [
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-009"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017"
+    ],
+    "T5": [
+     "VO-FUSED-T5-001",
+     "VO-FUSED-T5-007"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-009",
+     "VO-FUSED-T7-011"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-002",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "C1": {
+   "reachability": "REACHABLE",
+   "n_rules": 7,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.sponsor_confirmed",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "intent.stay_days",
+    "person.nationalities"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T15",
+    "T3",
+    "T5",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-004"
+    ],
+    "T10": [
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-009"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-007",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-001",
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017"
+    ],
+    "T5": [
+     "VO-FUSED-T5-001",
+     "VO-FUSED-T5-003",
+     "VO-FUSED-T5-006",
+     "VO-FUSED-T5-007"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-009",
+     "VO-FUSED-T7-011"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "C2": {
+   "reachability": "REACHABLE",
+   "n_rules": 8,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.sponsor_confirmed",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "intent.stay_days",
+    "person.nationalities"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T15",
+    "T3",
+    "T5",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-005"
+    ],
+    "T10": [
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-009"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-007",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-001",
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-003",
+     "VO-FUSED-T3-004",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017",
+     "VO-FUSED-T3-018"
+    ],
+    "T5": [
+     "VO-FUSED-T5-001",
+     "VO-FUSED-T5-003",
+     "VO-FUSED-T5-006",
+     "VO-FUSED-T5-007"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-002",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-009",
+     "VO-FUSED-T7-010"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "C6": {
+   "reachability": "REACHABLE",
+   "n_rules": 7,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.sponsor_confirmed",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "intent.stay_days",
+    "person.nationalities"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T15",
+    "T3",
+    "T5",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-006"
+    ],
+    "T10": [
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-009"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-007",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017"
+    ],
+    "T5": [
+     "VO-FUSED-T5-001",
+     "VO-FUSED-T5-003",
+     "VO-FUSED-T5-006",
+     "VO-FUSED-T5-007"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-009"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "BRIDGING": {
+   "reachability": "REACHABLE",
+   "n_rules": 14,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.sponsor_confirmed",
+    "immigration.current_status_code",
+    "immigration.current_status_expiry",
+    "immigration.currently_in_indonesia",
+    "immigration.overstay_days",
+    "immigration.violation_history",
+    "intent.purposes",
+    "intent.requested_product_code",
+    "person.nationalities"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T15",
+    "T3",
+    "T7",
+    "T8",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-003"
+    ],
+    "T10": [
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-009"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-005",
+     "VO-FUSED-T7-009"
+    ],
+    "T8": [
+     "VO-FUSED-T8-002",
+     "VO-FUSED-T8-006",
+     "VO-FUSED-T8-007"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "E23": {
+   "reachability": "REACHABLE",
+   "n_rules": 8,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.sponsor_confirmed",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "investment.proposed_role",
+    "person.nationalities",
+    "work.employer_is_indonesian_entity",
+    "work.indonesian_work_sponsor_confirmed"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T11",
+    "T15",
+    "T3",
+    "T4",
+    "T6",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-010"
+    ],
+    "T10": [
+     "VO-FUSED-T10-003",
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-009"
+    ],
+    "T11": [
+     "VO-FUSED-T11-001",
+     "VO-FUSED-T11-002",
+     "VO-FUSED-T11-004",
+     "VO-FUSED-T11-005",
+     "VO-FUSED-T11-006",
+     "VO-FUSED-T11-007",
+     "VO-FUSED-T11-008"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-009",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017"
+    ],
+    "T4": [
+     "VO-FUSED-T4-009"
+    ],
+    "T6": [
+     "VO-FUSED-T6-001"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-006",
+     "VO-FUSED-T7-007",
+     "VO-FUSED-T7-009"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "E23U": {
+   "reachability": "BLOCKED",
+   "n_rules": 6,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.sponsor_confirmed",
+    "immigration.overstay_days",
+    "person.nationalities"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T15",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-010",
+     "VO-FUSED-T1-011"
+    ],
+    "T10": [
+     "VO-FUSED-T10-003",
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-009"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-006",
+     "VO-FUSED-T7-007",
+     "VO-FUSED-T7-009"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "E23V": {
+   "reachability": "BLOCKED",
+   "n_rules": 6,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.sponsor_confirmed",
+    "immigration.overstay_days",
+    "person.nationalities"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T15",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-010",
+     "VO-FUSED-T1-012"
+    ],
+    "T10": [
+     "VO-FUSED-T10-003",
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-009"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-006",
+     "VO-FUSED-T7-007",
+     "VO-FUSED-T7-009"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "E31A": {
+   "reachability": "REACHABLE",
+   "n_rules": 10,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.marriage_registered",
+    "family.relation_to_sponsor",
+    "family.sponsor_confirmed",
+    "family.sponsor_nationalities",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "person.nationalities",
+    "process.wants_onshore_conversion"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T15",
+    "T3",
+    "T7",
+    "T8",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-023"
+    ],
+    "T10": [
+     "VO-FUSED-T10-001",
+     "VO-FUSED-T10-002",
+     "VO-FUSED-T10-003",
+     "VO-FUSED-T10-004",
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-006",
+     "VO-FUSED-T10-007",
+     "VO-FUSED-T10-008",
+     "VO-FUSED-T10-009",
+     "VO-FUSED-T10-010"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-007",
+     "VO-FUSED-T7-009"
+    ],
+    "T8": [
+     "VO-FUSED-T8-002",
+     "VO-FUSED-T8-004",
+     "VO-FUSED-T8-005",
+     "VO-FUSED-T8-006",
+     "VO-FUSED-T8-007",
+     "VO-FUSED-T8-008",
+     "VO-FUSED-T8-009",
+     "VO-FUSED-T8-010",
+     "VO-FUSED-T8-012"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "E31B": {
+   "reachability": "REACHABLE",
+   "n_rules": 8,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.marriage_registered",
+    "family.relation_to_sponsor",
+    "family.sponsor_confirmed",
+    "family.sponsor_status_code",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "person.nationalities"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T15",
+    "T3",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-024"
+    ],
+    "T10": [
+     "VO-FUSED-T10-001",
+     "VO-FUSED-T10-002",
+     "VO-FUSED-T10-003",
+     "VO-FUSED-T10-004",
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-006",
+     "VO-FUSED-T10-007",
+     "VO-FUSED-T10-008",
+     "VO-FUSED-T10-009",
+     "VO-FUSED-T10-010"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-007",
+     "VO-FUSED-T7-009"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "E31C": {
+   "reachability": "REACHABLE",
+   "n_rules": 8,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.relation_to_sponsor",
+    "family.sponsor_confirmed",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "person.nationalities"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T15",
+    "T3",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-025"
+    ],
+    "T10": [
+     "VO-FUSED-T10-001",
+     "VO-FUSED-T10-002",
+     "VO-FUSED-T10-003",
+     "VO-FUSED-T10-004",
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-006",
+     "VO-FUSED-T10-007",
+     "VO-FUSED-T10-008",
+     "VO-FUSED-T10-009",
+     "VO-FUSED-T10-010"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-007",
+     "VO-FUSED-T7-009"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "E31D": {
+   "reachability": "REACHABLE",
+   "n_rules": 9,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.sponsor_confirmed",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "person.nationalities"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T15",
+    "T3",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-026"
+    ],
+    "T10": [
+     "VO-FUSED-T10-001",
+     "VO-FUSED-T10-002",
+     "VO-FUSED-T10-003",
+     "VO-FUSED-T10-004",
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-006",
+     "VO-FUSED-T10-007",
+     "VO-FUSED-T10-008",
+     "VO-FUSED-T10-009",
+     "VO-FUSED-T10-010"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-007",
+     "VO-FUSED-T7-009"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "E31E": {
+   "reachability": "REACHABLE",
+   "n_rules": 10,
+   "required_facts": [
+    "derived.age_years",
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.relation_to_sponsor",
+    "family.sponsor_confirmed",
+    "family.sponsor_status_code",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "person.marital_status",
+    "person.nationalities"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T15",
+    "T3",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-027"
+    ],
+    "T10": [
+     "VO-FUSED-T10-001",
+     "VO-FUSED-T10-002",
+     "VO-FUSED-T10-003",
+     "VO-FUSED-T10-004",
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-006",
+     "VO-FUSED-T10-007",
+     "VO-FUSED-T10-008",
+     "VO-FUSED-T10-009",
+     "VO-FUSED-T10-010"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-007",
+     "VO-FUSED-T7-009"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "E31F": {
+   "reachability": "REACHABLE",
+   "n_rules": 8,
+   "required_facts": [
+    "derived.age_years",
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.relation_to_sponsor",
+    "family.sponsor_confirmed",
+    "family.sponsor_nationalities",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "person.nationalities"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T15",
+    "T3",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-028"
+    ],
+    "T10": [
+     "VO-FUSED-T10-001",
+     "VO-FUSED-T10-002",
+     "VO-FUSED-T10-003",
+     "VO-FUSED-T10-004",
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-006",
+     "VO-FUSED-T10-007",
+     "VO-FUSED-T10-008",
+     "VO-FUSED-T10-009",
+     "VO-FUSED-T10-010"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-007",
+     "VO-FUSED-T7-009"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "E31G": {
+   "reachability": "REACHABLE",
+   "n_rules": 7,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.relation_to_sponsor",
+    "family.sponsor_confirmed",
+    "family.sponsor_nationalities",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "person.nationalities"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T15",
+    "T3",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-029"
+    ],
+    "T10": [
+     "VO-FUSED-T10-001",
+     "VO-FUSED-T10-002",
+     "VO-FUSED-T10-003",
+     "VO-FUSED-T10-004",
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-006",
+     "VO-FUSED-T10-007",
+     "VO-FUSED-T10-008",
+     "VO-FUSED-T10-009",
+     "VO-FUSED-T10-010"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-007",
+     "VO-FUSED-T7-009"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "E31H": {
+   "reachability": "REACHABLE",
+   "n_rules": 8,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.relation_to_sponsor",
+    "family.sponsor_confirmed",
+    "family.sponsor_status_code",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "person.nationalities"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T15",
+    "T3",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-030"
+    ],
+    "T10": [
+     "VO-FUSED-T10-001",
+     "VO-FUSED-T10-002",
+     "VO-FUSED-T10-003",
+     "VO-FUSED-T10-004",
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-006",
+     "VO-FUSED-T10-007",
+     "VO-FUSED-T10-008",
+     "VO-FUSED-T10-009",
+     "VO-FUSED-T10-010"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-007",
+     "VO-FUSED-T7-009"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "E31J": {
+   "reachability": "REACHABLE",
+   "n_rules": 9,
+   "required_facts": [
+    "derived.age_years",
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.relation_to_sponsor",
+    "family.sponsor_confirmed",
+    "family.sponsor_status_code",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "person.nationalities"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T15",
+    "T3",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-031"
+    ],
+    "T10": [
+     "VO-FUSED-T10-001",
+     "VO-FUSED-T10-002",
+     "VO-FUSED-T10-003",
+     "VO-FUSED-T10-004",
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-006",
+     "VO-FUSED-T10-007",
+     "VO-FUSED-T10-008",
+     "VO-FUSED-T10-009",
+     "VO-FUSED-T10-010"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-007",
+     "VO-FUSED-T7-009"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "D1": {
+   "reachability": "REACHABLE",
+   "n_rules": 12,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.sponsor_confirmed",
+    "immigration.overstay_days",
+    "intent.entry_pattern",
+    "intent.purposes",
+    "intent.stay_days",
+    "person.nationalities"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T15",
+    "T3",
+    "T5",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-007"
+    ],
+    "T10": [
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-009"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-007",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-001",
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-003",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017"
+    ],
+    "T5": [
+     "VO-FUSED-T5-001",
+     "VO-FUSED-T5-002",
+     "VO-FUSED-T5-005",
+     "VO-FUSED-T5-006",
+     "VO-FUSED-T5-007"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-009",
+     "VO-FUSED-T7-012"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "D2": {
+   "reachability": "REACHABLE",
+   "n_rules": 12,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.sponsor_confirmed",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "intent.stay_days",
+    "person.nationalities"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T15",
+    "T3",
+    "T5",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-008"
+    ],
+    "T10": [
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-009"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-007",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-001",
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-003",
+     "VO-FUSED-T3-004",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017",
+     "VO-FUSED-T3-018"
+    ],
+    "T5": [
+     "VO-FUSED-T5-001",
+     "VO-FUSED-T5-002",
+     "VO-FUSED-T5-005",
+     "VO-FUSED-T5-006",
+     "VO-FUSED-T5-007"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-002",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-009",
+     "VO-FUSED-T7-010",
+     "VO-FUSED-T7-012"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "D12": {
+   "reachability": "REACHABLE",
+   "n_rules": 13,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.sponsor_confirmed",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "intent.stay_days",
+    "investment.pt_pma_committed",
+    "person.nationalities",
+    "process.wants_onshore_conversion"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T15",
+    "T3",
+    "T4",
+    "T5",
+    "T7",
+    "T8",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-007",
+     "VO-FUSED-T1-009"
+    ],
+    "T10": [
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-009"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-007",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-001",
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-003",
+     "VO-FUSED-T3-004",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017",
+     "VO-FUSED-T3-018"
+    ],
+    "T4": [
+     "VO-FUSED-T4-001",
+     "VO-FUSED-T4-009"
+    ],
+    "T5": [
+     "VO-FUSED-T5-001",
+     "VO-FUSED-T5-002",
+     "VO-FUSED-T5-004",
+     "VO-FUSED-T5-005",
+     "VO-FUSED-T5-006",
+     "VO-FUSED-T5-007"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-009",
+     "VO-FUSED-T7-010",
+     "VO-FUSED-T7-012"
+    ],
+    "T8": [
+     "VO-FUSED-T8-002",
+     "VO-FUSED-T8-006",
+     "VO-FUSED-T8-007",
+     "VO-FUSED-T8-012"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "E30": {
+   "reachability": "REACHABLE",
+   "n_rules": 9,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.sponsor_confirmed",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "person.nationalities",
+    "study.admission_confirmed",
+    "study.sponsor_confirmed"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T12",
+    "T15",
+    "T3",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-018"
+    ],
+    "T10": [
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-009"
+    ],
+    "T12": [
+     "VO-FUSED-T12-001",
+     "VO-FUSED-T12-005"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-011",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-007",
+     "VO-FUSED-T7-009"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "E30A": {
+   "reachability": "REACHABLE",
+   "n_rules": 10,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.sponsor_confirmed",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "person.nationalities",
+    "study.admission_confirmed",
+    "study.level",
+    "study.sponsor_confirmed"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T12",
+    "T15",
+    "T3",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-018",
+     "VO-FUSED-T1-019"
+    ],
+    "T10": [
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-009"
+    ],
+    "T12": [
+     "VO-FUSED-T12-001",
+     "VO-FUSED-T12-005"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-011",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-007",
+     "VO-FUSED-T7-009"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "E30B": {
+   "reachability": "REACHABLE",
+   "n_rules": 11,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.sponsor_confirmed",
+    "immigration.overstay_days",
+    "intent.purposes",
+    "person.nationalities",
+    "study.admission_confirmed",
+    "study.level",
+    "study.sponsor_confirmed"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T12",
+    "T15",
+    "T3",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-018",
+     "VO-FUSED-T1-020"
+    ],
+    "T10": [
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-009"
+    ],
+    "T12": [
+     "VO-FUSED-T12-001",
+     "VO-FUSED-T12-005"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T3": [
+     "VO-FUSED-T3-002",
+     "VO-FUSED-T3-005",
+     "VO-FUSED-T3-006",
+     "VO-FUSED-T3-007",
+     "VO-FUSED-T3-008",
+     "VO-FUSED-T3-010",
+     "VO-FUSED-T3-011",
+     "VO-FUSED-T3-012",
+     "VO-FUSED-T3-013",
+     "VO-FUSED-T3-014",
+     "VO-FUSED-T3-015",
+     "VO-FUSED-T3-016",
+     "VO-FUSED-T3-017"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-007",
+     "VO-FUSED-T7-009"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "E30E": {
+   "reachability": "BLOCKED",
+   "n_rules": 6,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.sponsor_confirmed",
+    "immigration.overstay_days",
+    "person.nationalities"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T15",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-018",
+     "VO-FUSED-T1-021"
+    ],
+    "T10": [
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-009"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-007",
+     "VO-FUSED-T7-009"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  },
+  "E30F": {
+   "reachability": "BLOCKED",
+   "n_rules": 6,
+   "required_facts": [
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.sponsor_confirmed",
+    "immigration.overstay_days",
+    "person.nationalities"
+   ],
+   "required_claim_topics": [
+    "T1",
+    "T10",
+    "T15",
+    "T7",
+    "T9"
+   ],
+   "coverage": {
+    "T1": [
+     "VO-FUSED-T1-018",
+     "VO-FUSED-T1-022"
+    ],
+    "T10": [
+     "VO-FUSED-T10-005",
+     "VO-FUSED-T10-009"
+    ],
+    "T15": [
+     "VO-FUSED-T15-001",
+     "VO-FUSED-T15-002",
+     "VO-FUSED-T15-003",
+     "VO-FUSED-T15-004",
+     "VO-FUSED-T15-006",
+     "VO-FUSED-T15-008"
+    ],
+    "T7": [
+     "VO-FUSED-T7-001",
+     "VO-FUSED-T7-003",
+     "VO-FUSED-T7-007",
+     "VO-FUSED-T7-009"
+    ],
+    "T9": [
+     "VO-FUSED-T9-001",
+     "VO-FUSED-T9-003",
+     "VO-FUSED-T9-004",
+     "VO-FUSED-T9-005",
+     "VO-FUSED-T9-006"
+    ]
+   },
+   "coverage_state": "PENDING",
+   "gaps_no_covering_query": []
+  }
+ },
+ "gap_products_any": {},
+ "gap_products_reachable": {}
+}
