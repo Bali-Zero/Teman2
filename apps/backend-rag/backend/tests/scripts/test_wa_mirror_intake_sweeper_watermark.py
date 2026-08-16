@@ -20,6 +20,7 @@ from __future__ import annotations
 import asyncio
 import importlib.util
 import logging
+import re
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -230,19 +231,27 @@ async def test_permanent_enqueue_error_advances_watermark_past_poison_row(
 async def test_permanent_crm_upsert_error_advances_watermark_and_still_enqueues_next(
     monkeypatch, tmp_path, caplog
 ) -> None:
+    """Verbale #2 (post-refuter Qwen 3.8 Max, P1): a PERMANENT CRM-upsert
+    failure must NOT drop the media document. Only the CRM identity hint is
+    lost — row N still reaches ``enqueue()`` with ``client_id_hint=None``
+    (review/OCR still happens, it just isn't pre-linked to a client), and
+    row N+1 gets its own fresh CRM upsert attempt and its own hint.
+    """
     row_n = _row(200, blob_path=_write_blob(tmp_path, "n.pdf"))
     row_n1 = _row(201, blob_path=_write_blob(tmp_path, "n1.pdf"))
     upsert_calls: list[int] = []
     enqueue_calls: list[str] = []
+    enqueue_hints: dict[str, int | None] = {}
 
     async def flaky_upsert(_conn, *, raw_phone, **_kw):
         upsert_calls.append(1)
         if raw_phone == row_n["sender_phone"]:
             raise RuntimeError("constraint violation — permanent")
-        return 1
+        return 42
 
-    async def recording_enqueue(_pool, *, source_ref, **_kw):
+    async def recording_enqueue(_pool, *, source_ref, client_id_hint, **_kw):
         enqueue_calls.append(source_ref)
+        enqueue_hints[source_ref] = client_id_hint
         return SimpleNamespace(was_new=True)
 
     wms = _load_sweeper()
@@ -259,11 +268,20 @@ async def test_permanent_crm_upsert_error_advances_watermark_and_still_enqueues_
         rc = await wms.run_one_tick()
 
     assert rc == 0
-    # Row N's CRM upsert died -> row N is SKIPPED (never reaches enqueue), but
-    # row N+1 still gets a fresh CRM upsert attempt and IS enqueued.
-    assert enqueue_calls == [f"wa-mirror:{row_n1['baileys_message_id']}"]
+    ref_n = f"wa-mirror:{row_n['baileys_message_id']}"
+    ref_n1 = f"wa-mirror:{row_n1['baileys_message_id']}"
+    # Both rows reach enqueue() — row N's document is KEPT despite the CRM
+    # failure, just with no client-identity hint; row N+1 gets its real hint.
+    assert enqueue_calls == [ref_n, ref_n1]
+    assert enqueue_hints[ref_n] is None
+    assert enqueue_hints[ref_n1] == 42
     assert saved.get("wm") == 201
-    assert any("poison=1" in r.message for r in caplog.records)
+    # crm_poison counts the CRM-identity loss; the enqueue-level `poison`
+    # counter stays 0 (word-boundary match so `crm_poison=1` in the same
+    # message can't make a bare "poison=0" assertion pass by substring —
+    # `_` is a word char, so `\bpoison=` never matches inside `crm_poison=`).
+    assert any(re.search(r"\bcrm_poison=1\b", r.message) for r in caplog.records)
+    assert any(re.search(r"(?<!crm_)\bpoison=0\b", r.message) for r in caplog.records)
 
 
 # --------------------------------------------------------------------------- #

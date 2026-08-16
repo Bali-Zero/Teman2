@@ -607,6 +607,7 @@ async def run_one_tick() -> int:
         direct_media = 0
         group_media = 0
         poison = 0
+        crm_poison = 0
         max_done = watermark
 
         for r in rows:
@@ -644,16 +645,23 @@ async def run_one_tick() -> int:
                             exc_info=True,
                         )
                         break
-                    poison += 1
+                    # PERMANENT CRM-identity failure (verbale #2, post-refuter
+                    # Qwen 3.8 Max): the CRM upsert is a phone->client_id HINT,
+                    # not the document itself. Dropping the row here (the old
+                    # `continue`) skipped enqueue() entirely and lost the media
+                    # document — a constraint violation on the CRM side is not
+                    # a reason to lose a client's passport/document. Record the
+                    # loss of the identity hint, keep client_id_hint=None, and
+                    # FALL THROUGH so the row still reaches enqueue() below.
+                    crm_poison += 1
                     logger.error(
                         "[wa_mirror_sweep] CRM phone upsert failed for media row %d "
-                        "(poison row, advancing past it): %s",
+                        "(permanent, CRM identity hint dropped — document still enqueued): %s",
                         rid,
                         exc,
                         exc_info=True,
                     )
-                    max_done = max(max_done, rid)
-                    continue
+                    client_id_hint = None
             else:
                 group_media += 1
             try:
@@ -699,7 +707,7 @@ async def run_one_tick() -> int:
             _save_watermark(max_done)
         logger.info(
             "[wa_mirror_sweep] done: scanned=%d direct=%d group=%d new=%d dup=%d "
-            "blob_missing=%d poison=%d watermark=%d",
+            "blob_missing=%d poison=%d crm_poison=%d watermark=%d",
             len(rows),
             direct_media,
             group_media,
@@ -707,6 +715,7 @@ async def run_one_tick() -> int:
             already,
             blob_missing,
             poison,
+            crm_poison,
             max_done,
         )
         return 0
