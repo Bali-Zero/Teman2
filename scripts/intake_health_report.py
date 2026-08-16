@@ -66,7 +66,16 @@ ORGAN_ID = "pro.intake_health_report"
 STATE_PATH = Path.home() / ".agent" / "decisions" / "state" / "intake_health_report.json"
 LOCK_FILE = Path.home() / ".cell-bridge-state" / "intake_health_report.lock"
 DEFAULT_DSN = "postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev"
-WORKER_PLIST_PATH = _REPO / "infra" / "launchagents" / "com.nuzantara.intake-worker.plist"
+REPO_WORKER_PLIST_PATH = _REPO / "infra" / "launchagents" / "com.nuzantara.intake-worker.plist"
+# The INSTALLED launchd plist — the one actually driving the running worker —
+# takes precedence over the repo copy (verbale #8, superscar #1 HOME-fork):
+# this script's own _REPO is derived from whichever checkout happened to
+# invoke it (main / a worktree / a stale deploy copy), which is not
+# necessarily the checkout the worker was installed from. Reading the repo
+# copy when the two diverge is a false-clean or a false-breach on
+# worker_log_inode_exists, decided by an accident of which checkout ran this
+# report today rather than by what launchd is actually running.
+INSTALLED_WORKER_PLIST_PATH = Path.home() / "Library" / "LaunchAgents" / "com.nuzantara.intake-worker.plist"
 _FALLBACK_WORKER_LOG = Path.home() / "logs" / "intake-worker.launchd.err.log"
 
 # The absolute python3 candidates tg_notify.py is spawned with (W108 — the
@@ -257,20 +266,30 @@ def _acquire_lock_or_exit() -> int | None:
 # ---------------------------------------------------------------- pure helpers (unit-tested, no DB/network)
 
 
-def worker_log_path() -> Path:
+def resolve_worker_plist_path() -> tuple[Path, str]:
+    """Prefer the INSTALLED launchd plist over the repo copy (verbale #8) —
+    returns (path, "installed"|"repo")."""
+    if INSTALLED_WORKER_PLIST_PATH.is_file():
+        return INSTALLED_WORKER_PLIST_PATH, "installed"
+    return REPO_WORKER_PLIST_PATH, "repo"
+
+
+def worker_log_path() -> tuple[Path, str]:
     """Resolve the intake-worker's StandardErrorPath from its own plist —
-    never hardcode a duplicate of what the plist already declares."""
+    never hardcode a duplicate of what the plist already declares. Returns
+    (log_path, plist_source) so the caller can report which plist was read."""
+    plist_path, source = resolve_worker_plist_path()
     try:
-        payload = plistlib.loads(WORKER_PLIST_PATH.read_bytes())
+        payload = plistlib.loads(plist_path.read_bytes())
         raw = payload.get("StandardErrorPath")
         if isinstance(raw, str) and raw:
-            return Path(raw).expanduser()
+            return Path(raw).expanduser(), source
     except (OSError, ValueError) as exc:
         logger.warning(
             "[intake_health_report] could not read worker plist %s (%s) — falling back to %s",
-            WORKER_PLIST_PATH, exc, _FALLBACK_WORKER_LOG,
+            plist_path, exc, _FALLBACK_WORKER_LOG,
         )
-    return _FALLBACK_WORKER_LOG
+    return _FALLBACK_WORKER_LOG, source
 
 
 def blob_presence(paths: list[str]) -> dict[str, Any]:
@@ -297,6 +316,7 @@ def build_report(
     zombie_count: int,
     undelivered: dict[str, int],
     worker_log_exists: bool,
+    worker_plist_source: str,
     dead_last_24h: int,
     wa_media_last_24h: int,
     generated_at: str,
@@ -355,6 +375,7 @@ def build_report(
             "total": int(undelivered.get("total") or 0),
         },
         "worker_log_inode_exists": bool(worker_log_exists),
+        "worker_plist_source": worker_plist_source,
         "dead_last_24h": int(dead_last_24h),
         "wa_media_last_24h": int(wa_media_last_24h),
     }
@@ -462,6 +483,7 @@ async def gather(conn: Any, *, superseded_timeout_ms: int) -> dict[str, Any]:
     undelivered_row = await conn.fetchrow(UNDELIVERED_COMMITTED_SQL)
     dead_row = await conn.fetchrow(DEAD_LAST_24H_SQL)
     wa_media_row = await conn.fetchrow(WA_MEDIA_LAST_24H_SQL)
+    worker_log_p, worker_plist_source = worker_log_path()
 
     return build_report(
         status_counts=dict(status_row),
@@ -473,7 +495,8 @@ async def gather(conn: Any, *, superseded_timeout_ms: int) -> dict[str, Any]:
         superseded_orphans=superseded_orphans,
         zombie_count=zombie_row["n"],
         undelivered=dict(undelivered_row),
-        worker_log_exists=worker_log_path().exists(),
+        worker_log_exists=worker_log_p.exists(),
+        worker_plist_source=worker_plist_source,
         dead_last_24h=dead_row["n"],
         wa_media_last_24h=wa_media_row["n"],
         generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -515,8 +538,21 @@ async def run(*, dry_run: bool, json_only: bool) -> int:
         dsn = os.getenv("INTAKE_DATABASE_URL") or os.getenv("LOCAL_DATABASE_URL") or DEFAULT_DSN
         timeout_ms = int(os.getenv("INTAKE_HEALTH_SUPERSEDED_TIMEOUT_MS", "60000"))
         try:
+            # statement_timeout at the SESSION level (verbale #7): every
+            # gather() query except _fetch_superseded_orphans ran unbounded —
+            # a hung jsonb-heavy join could hold the single-instance flock
+            # indefinitely, and the NEXT scheduled tick would then hit the
+            # lock-held branch above. _fetch_superseded_orphans still gets
+            # its own tighter override (default 60000ms) via `SET
+            # statement_timeout` and resets to this session default (not
+            # Postgres's true default) afterward — same 60s guard as before.
             conn = await asyncpg.connect(
-                dsn, server_settings={"default_transaction_read_only": "on"}
+                dsn,
+                server_settings={
+                    "default_transaction_read_only": "on",
+                    "statement_timeout": "120000",
+                },
+                timeout=20,
             )
         except Exception as exc:  # noqa: BLE001
             logger.error("[intake_health_report] DB connect failed: %s", exc)

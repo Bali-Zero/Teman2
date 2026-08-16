@@ -50,6 +50,7 @@ def _base_kwargs(**overrides):
         zombie_count=0,
         undelivered={"undelivered": 1, "total": 10},
         worker_log_exists=True,
+        worker_plist_source="repo",
         dead_last_24h=4,
         wa_media_last_24h=7,
         generated_at="2026-08-15T00:00:00Z",
@@ -75,6 +76,7 @@ def test_build_report_has_stable_top_level_keys():
         "zombie_review_claimed_null_lease",
         "undelivered_committed",
         "worker_log_inode_exists",
+        "worker_plist_source",
         "dead_last_24h",
         "wa_media_last_24h",
     }
@@ -326,13 +328,100 @@ class _FakeConn:
         return None
 
 
+# ---------------------------------------------------------------- connect timeouts (verbale #7)
+
+
+def test_connect_sets_session_statement_timeout_and_connect_timeout(tmp_path, monkeypatch):
+    # Records the actual args/kwargs asyncpg.connect() was called with — a
+    # fake connection object at the connect boundary, not just a canned
+    # return value, so a regression to the un-timed-out connect call is
+    # caught even though every individual query still "succeeds" in the fake.
+    recorded = {}
+
+    async def _recording_connect(dsn, **kwargs):
+        recorded["dsn"] = dsn
+        recorded["kwargs"] = kwargs
+        return _FakeConn()
+
+    monkeypatch.setattr(ihr.asyncpg, "connect", _recording_connect)
+    monkeypatch.setattr(ihr, "_tg_notify", lambda *a, **k: True)
+    monkeypatch.setattr(ihr, "_heartbeat", lambda *a, **k: None)
+    monkeypatch.setattr(ihr, "STATE_PATH", tmp_path / "state.json")
+    monkeypatch.setattr(ihr, "LOCK_FILE", tmp_path / "lock")
+    monkeypatch.setattr(ihr, "worker_log_path", lambda: (tmp_path / "does-not-exist.log", "repo"))
+    monkeypatch.setenv("INTAKE_HEALTH_REPORT_ENABLED", "true")
+
+    rc = asyncio.run(ihr.run(dry_run=True, json_only=True))
+
+    assert rc == 0
+    assert recorded["kwargs"].get("timeout") is not None and recorded["kwargs"]["timeout"] <= 20
+    assert recorded["kwargs"]["server_settings"]["statement_timeout"] == "120000"
+    assert recorded["kwargs"]["server_settings"]["default_transaction_read_only"] == "on"
+
+
+# ---------------------------------------------------------------- worker plist resolution (verbale #8)
+
+
+def test_resolve_worker_plist_path_prefers_installed_over_repo(tmp_path, monkeypatch):
+    installed = tmp_path / "installed.plist"
+    installed.write_text("<plist></plist>")
+    monkeypatch.setattr(ihr, "INSTALLED_WORKER_PLIST_PATH", installed)
+
+    path, source = ihr.resolve_worker_plist_path()
+
+    assert path == installed
+    assert source == "installed"
+
+
+def test_resolve_worker_plist_path_falls_back_to_repo_when_installed_absent(tmp_path, monkeypatch):
+    monkeypatch.setattr(ihr, "INSTALLED_WORKER_PLIST_PATH", tmp_path / "does-not-exist.plist")
+
+    path, source = ihr.resolve_worker_plist_path()
+
+    assert path == ihr.REPO_WORKER_PLIST_PATH
+    assert source == "repo"
+
+
+def test_worker_log_path_reads_installed_plist_when_present(tmp_path, monkeypatch):
+    import plistlib
+
+    installed = tmp_path / "installed.plist"
+    installed.write_bytes(plistlib.dumps({"StandardErrorPath": str(tmp_path / "worker.err.log")}))
+    monkeypatch.setattr(ihr, "INSTALLED_WORKER_PLIST_PATH", installed)
+
+    log_path, source = ihr.worker_log_path()
+
+    assert log_path == tmp_path / "worker.err.log"
+    assert source == "installed"
+
+
+def test_report_records_worker_plist_source(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(ihr, "_tg_notify", lambda *a, **k: True)
+    monkeypatch.setattr(ihr, "_heartbeat", lambda *a, **k: None)
+    monkeypatch.setattr(ihr, "STATE_PATH", tmp_path / "state.json")
+    monkeypatch.setattr(ihr, "LOCK_FILE", tmp_path / "lock")
+    monkeypatch.setattr(ihr, "worker_log_path", lambda: (tmp_path / "does-not-exist.log", "installed"))
+
+    async def _fake_connect(*_args, **_kwargs):
+        return _FakeConn()
+
+    monkeypatch.setattr(ihr.asyncpg, "connect", _fake_connect)
+    monkeypatch.setenv("INTAKE_HEALTH_REPORT_ENABLED", "true")
+
+    rc = asyncio.run(ihr.run(dry_run=True, json_only=True))
+
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert '"worker_plist_source": "installed"' in out
+
+
 def test_dry_run_sends_no_telegram_and_writes_no_state(tmp_path, monkeypatch):
     sent = []
     monkeypatch.setattr(ihr, "_tg_notify", lambda tier, key, text: sent.append((tier, key)) or True)
     monkeypatch.setattr(ihr, "_heartbeat", lambda *a, **k: None)
     monkeypatch.setattr(ihr, "STATE_PATH", tmp_path / "state.json")
     monkeypatch.setattr(ihr, "LOCK_FILE", tmp_path / "lock")
-    monkeypatch.setattr(ihr, "worker_log_path", lambda: tmp_path / "does-not-exist.log")
+    monkeypatch.setattr(ihr, "worker_log_path", lambda: (tmp_path / "does-not-exist.log", "repo"))
 
     async def _fake_connect(*_args, **_kwargs):
         return _FakeConn()
@@ -353,7 +442,7 @@ def test_non_dry_run_writes_state_and_sends_digest(tmp_path, monkeypatch):
     monkeypatch.setattr(ihr, "_heartbeat", lambda *a, **k: None)
     monkeypatch.setattr(ihr, "STATE_PATH", tmp_path / "state.json")
     monkeypatch.setattr(ihr, "LOCK_FILE", tmp_path / "lock")
-    monkeypatch.setattr(ihr, "worker_log_path", lambda: tmp_path / "does-not-exist.log")
+    monkeypatch.setattr(ihr, "worker_log_path", lambda: (tmp_path / "does-not-exist.log", "repo"))
 
     async def _fake_connect(*_args, **_kwargs):
         return _FakeConn()
@@ -377,7 +466,7 @@ def test_json_only_skips_all_side_effects(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(ihr, "_heartbeat", lambda *a, **k: sent.append(("heartbeat", a)))
     monkeypatch.setattr(ihr, "STATE_PATH", tmp_path / "state.json")
     monkeypatch.setattr(ihr, "LOCK_FILE", tmp_path / "lock")
-    monkeypatch.setattr(ihr, "worker_log_path", lambda: tmp_path / "does-not-exist.log")
+    monkeypatch.setattr(ihr, "worker_log_path", lambda: (tmp_path / "does-not-exist.log", "repo"))
 
     async def _fake_connect(*_args, **_kwargs):
         return _FakeConn()
@@ -400,7 +489,7 @@ def test_digest_dedup_key_is_date_stamped_not_a_bare_constant(tmp_path, monkeypa
     monkeypatch.setattr(ihr, "_heartbeat", lambda *a, **k: None)
     monkeypatch.setattr(ihr, "STATE_PATH", tmp_path / "state.json")
     monkeypatch.setattr(ihr, "LOCK_FILE", tmp_path / "lock")
-    monkeypatch.setattr(ihr, "worker_log_path", lambda: tmp_path / "does-not-exist.log")
+    monkeypatch.setattr(ihr, "worker_log_path", lambda: (tmp_path / "does-not-exist.log", "repo"))
 
     async def _fake_connect(*_args, **_kwargs):
         return _FakeConn()
@@ -423,7 +512,7 @@ def test_heartbeat_is_ok_even_with_breaches_organ_not_finding(tmp_path, monkeypa
     monkeypatch.setattr(ihr, "_heartbeat", lambda status, note="": hb.append((status, note)))
     monkeypatch.setattr(ihr, "STATE_PATH", tmp_path / "state.json")
     monkeypatch.setattr(ihr, "LOCK_FILE", tmp_path / "lock")
-    monkeypatch.setattr(ihr, "worker_log_path", lambda: tmp_path / "does-not-exist.log")
+    monkeypatch.setattr(ihr, "worker_log_path", lambda: (tmp_path / "does-not-exist.log", "repo"))
 
     async def _fake_connect(*_args, **_kwargs):
         return _FakeConn()
