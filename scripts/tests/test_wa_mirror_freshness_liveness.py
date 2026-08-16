@@ -136,6 +136,17 @@ def test_count_dead_lines_none_when_script_output_unavailable():
     assert wmfl.count_dead_lines(None) is None
 
 
+# ---------------------------------------------------------------- SQL shape (bridge-writer filter, verbale #3)
+
+
+def test_freshness_sql_filters_to_the_wa_mirror_bridge_writer():
+    # whatsapp_message_context is shared with the legacy meta_cloud_api
+    # writer (migration 173) — without this filter a dead wa-mirror bridge
+    # is masked by the other writer still inserting rows.
+    assert "whatsapp_message_context" in wmfl.FRESHNESS_SQL
+    assert "source = 'wa_mirror'" in wmfl.FRESHNESS_SQL
+
+
 # ---------------------------------------------------------------- dedup key stability
 
 

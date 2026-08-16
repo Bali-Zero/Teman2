@@ -93,7 +93,15 @@ _PY3_CANDIDATES: tuple[str, ...] = (
     "/usr/local/bin/python3",
 )
 
-FRESHNESS_SQL = "SELECT max(created_at) AS newest FROM whatsapp_message_context"
+# whatsapp_message_context is shared by two writers (migration 173 adds
+# `source VARCHAR(32) NOT NULL DEFAULT 'meta_cloud_api'`) — verbale #3.
+# Verified live 2026-08-17 (READ-ONLY psql, no PII beyond aggregate counts):
+# source='wa_mirror' 94,487 rows / source='meta_cloud_api' 14,049 rows — the
+# legacy path is NOT dormant. Without this filter a completely dead wa-mirror
+# bridge would never trip this check: max(created_at) stays fresh off the
+# other writer, and this organ would report healthy while the bridge it
+# exists to watch is down.
+FRESHNESS_SQL = "SELECT max(created_at) AS newest FROM whatsapp_message_context WHERE source = 'wa_mirror'"
 
 
 # ---------------------------------------------------------------- side effects (module-level, monkeypatchable)
