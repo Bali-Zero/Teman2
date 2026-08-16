@@ -292,6 +292,45 @@ for that reason).
   M5 today); the standing PENDING-ARMS item (retire explicitly or fix the doc) can now resolve
   in the "alive" direction.
 
+## Adversarial review
+
+Seat: **Codex `gpt-5.6` at effort `xhigh`**, convoked as this council's red-team — generator≠grader,
+it did not author the plan it judged. Transcript:
+`research/operations/refutations/2026-08-14-mergeos-v3-codex.txt` (890 lines), alongside the two
+sibling seats in the same directory. This section was added on 2026-08-16 while restoring the
+document; it is derived from that transcript, not from recollection.
+
+Its verdict was **BLOCK on activating ring-gating and heal-as-PR** — explicitly *not* on the merge
+queue as a correctness boundary. §6's build order is that verdict's shape: ring-gating re-sequenced
+to step 8, heal-as-PR never built (§C2).
+
+**Objections that survived into this document, unresolved and load-bearing:**
+
+- **F1** (`needs:`-skip on `merge_group`) and **F3** (a routing judge the judged PR can modify)
+  stay OPEN, elevated to P0-at-activation. They are inert only while step 0's freeze holds;
+  nothing in steps 1-4 arms them.
+- **F6** (quarantine as a negative marker zero tests set) and **F7** (a retry counter keyed to the
+  queue entry, so a re-enqueue resets it) stay OPEN with the dispositions in §5.
+- **agy-F4's general case** stays OPEN in the seat's own words — "Rimane il rischio che un
+  cambiamento “relevant” ma non colpevole venga bloccato da drift globale." — and it is the
+  verify-don't-store redesign (§C2, step 4), not the current relevance sentinel, that removes it.
+- **F3's preferred mechanism carries an unverified ASSUMPTION**: the SHA-pinned required workflow
+  appears to need Enterprise-tier rulesets. Entitlement unverified → operator item (§9), with the
+  fallback package as the default path.
+
+**The review's own declared evidence boundary** (quoted, because inheriting a review's silence as
+if it were a finding is how a snapshot becomes a standing fact — §8): it inspected the local
+`origin/main` tracking ref on M5 for the relevant files, but "Il Pro era irraggiungibile, quindi
+**non ho riconfermato live** ruleset, bypass actors o impostazioni amministrative dell’organizzazione."
+Every step that depends on those — step 2's ruleset audit, step 5's entitlement check — must
+re-measure them rather than read this review as having cleared them.
+
+Two of the seat's recommendations were adopted into §C2 and bound step 4's scope: *"derived
+documentation non versionata, salvo eccezioni che siano veri input runtime/client"*, and
+verification against a **declared input SHA** rather than a moving `main`. The exception clause is
+not decorative — a tracked derived file that some program actually reads back as input is outside
+this deletion, and the executing session owes the sweep that tells the two apart.
+
 ## 10. References
 
 Transcripts: `research/operations/refutations/2026-08-14-mergeos-v3-{codex,kimi-k3,agy-gemini}.txt`.
