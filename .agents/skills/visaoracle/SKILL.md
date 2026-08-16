@@ -917,6 +917,22 @@ visa_decisions` — the retention worker operates through `SECURITY DEFINER` fun
   `research/visa/2026-08-15-traffic-source-fail-closed-live-proof.json` and
   `research/visa/2026-08-15-shadow-evidence-final.json`.
 
+- 2026-08-16 (M5, QW-8 ledger correction): **seq-8 exists, unsigned, chain
+  BROKEN — adjudicated 2026-08-15.** `rulepack-prod-008.source.json`
+  (pricing-only, 11 products) is on disk with no `.signed.json`; its
+  `previous_payload_sha256` points to seq-6's signed hash instead of the
+  currently-active seq-7's, so signing it as-is would either violate the
+  anti-rollback check or fork the chain. Full evidence:
+  `visa-oracle-adjudication/adjudication-report.md` §8 (in worktree
+  `ops-visaoracle-adjudication`). **Owner GO received 2026-08-16 on Fase 3
+  REV 2, OD-2 = fold**: seq-8 folds into seq-9 rather than being
+  sign-activated standalone; seq-9's `previous_payload_sha256` MUST point to
+  `rulepack-prod-007.signed.json` (the current highest-signed pack), not to
+  seq-8. Wave-1 quick wins launched same day: QW-1 (NB-2 transport
+  isolation — fresh-conversation runner, citation audit, B0 canary) is
+  PR #4222, armed into the merge queue 2026-08-16 (verified via GraphQL
+  `isInMergeQueue`, position 5 at arm time).
+
 ## TRACKS — parallel work groups (multi-session coordination)
 
 The v2 program runs as separate tracks, one per surface, coordinated ONLY through this skill. Any
