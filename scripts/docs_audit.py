@@ -1329,9 +1329,17 @@ def read_trusted_prev_flipped(repo: Path, trusted_ref: str = "origin/main") -> D
         # a warning may not pre-empt it. What this DOES buy is that the break
         # stops being invisible (superscar #2, "esiste != armato"): it is now
         # named, with its cause, in the log of every run that reaches here.
+        # The trusted ref's NAME is deliberately not interpolated here.
+        # CodeQL's py/clear-text-logging-sensitive-data taints the value of
+        # this argument and rates the resulting log a HIGH alert (measured on
+        # PR #4248, scripts/docs_audit.py:1333). The name buys nothing a
+        # reader does not already have — the caller chose the ref, the path is
+        # a constant, and this file documents the default — so the cheap and
+        # honest move is to stop logging the argument rather than to suppress
+        # the rule.
         print(
             "docs_audit: WARNING - orphan-flip provenance channel is SEVERED. "
-            f"{trusted_ref}:docs/DOCS_INVENTORY.md exists but contains no "
+            "docs/DOCS_INVENTORY.md exists on the trusted ref but contains no "
             "parseable provenance table, so every prior orphan flip reads as "
             "'never flipped'. This is NOT the bootstrap case (that one is a "
             "MISSING file). Docs previously archived by the organ can fall "
