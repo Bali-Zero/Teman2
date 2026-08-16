@@ -79,9 +79,23 @@ jobs:
             echo "::error::could not determine the changed set (rc=$ENUM_RC) — failing rather than skipping"
             exit 1
           fi
+          # The backend-volume paths (router_registration.py, backend/services/,
+          # backend/tests/, backend/channels/, package.json) were dropped from this
+          # list on 2026-08-16 by Merge-OS v3 step 4: they fed ONLY the volume counts
+          # this repo no longer commits (RETIRED_COUNT_KEYS in scripts/docs_sync.py).
+          # They were also ~97% of this gate's traffic — 189 of 195 commits touching
+          # docs/AI_ONBOARDING.md and 61 of 63 touching README.md in the 60 days
+          # before that date changed nothing but those numbers, and each one of them
+          # could hand the NEXT innocent backend PR a red required check (W86).
+          #
+          # README.md and docs/AI_ONBOARDING.md deliberately STAY on this list even
+          # though they no longer contain any marker: they are still docs_sync
+          # TARGET_FILES, and the anti-regrowth corpus that forbids a retired count
+          # from coming back only runs when this job runs. Dropping them would leave
+          # that guard present but unarmed (superscar #2, esiste ≠ armato).
           RELEVANT=false
           if printf '%s\n' "$CHANGED" | grep -qE \
-            '^apps/backend-rag/backend/app/setup/router_registration\.py$|^apps/backend-rag/backend/services/|^apps/backend-rag/backend/tests/|^apps/backend-rag/backend/channels/|^apps/[^/]+/README\.md$|^package\.json$|^scripts/docs_sync\.py$|^scripts/tests/test_docs_sync_atlas\.py$|^scripts/ci/docs_sync_gate\.sh$|^scripts/tests/test_docs_sync_gate_failclosed\.sh$|^scripts/automation_catalog\.json$|^README\.md$|^INDEX\.md$|^docs/AI_ONBOARDING\.md$|^docs/AUTOMATIONS_REFERENCE\.md$|^docs/runbooks/|^infra/workflows/|^infra/launchagents/|^\.claude/skills/|^\.github/workflows/docs-sync\.yml$'; then
+            '^apps/[^/]+/README\.md$|^scripts/docs_sync\.py$|^scripts/tests/test_docs_sync_atlas\.py$|^scripts/ci/docs_sync_gate\.sh$|^scripts/tests/test_docs_sync_gate_failclosed\.sh$|^scripts/automation_catalog\.json$|^README\.md$|^INDEX\.md$|^docs/AI_ONBOARDING\.md$|^docs/AUTOMATIONS_REFERENCE\.md$|^docs/runbooks/|^infra/workflows/|^infra/launchagents/|^\.claude/skills/|^\.github/workflows/docs-sync\.yml$'; then
             RELEVANT=true
           fi
           echo "relevant=$RELEVANT" >> "$GITHUB_OUTPUT"
@@ -108,6 +122,22 @@ jobs:
         run: |
           python -m pip install --quiet pytest
           bash scripts/ci/docs_sync_gate.sh test
+
+      # The plists-vs-docs coverage ratio used to live as a committed number in
+      # INDEX.md (DOCSYNC:AUTOMATION_COVERAGE). Step 4 removed it with the other
+      # counts, but its purpose was to keep a documentation GAP visible (W81
+      # signaler), so it is reported here instead of being dropped: recomputed on
+      # every run, shown to the author whose diff can move it. Reporting only — it
+      # must never gate, and `|| true` keeps a signaler from becoming a blocker.
+      - name: Automation-coverage signal (report only, never gates)
+        if: steps.relevant.outputs.relevant == 'true'
+        run: |
+          COVERAGE="$(python scripts/docs_sync.py --coverage)" || true
+          if [ -n "$COVERAGE" ]; then
+            echo "::notice::automation coverage — $COVERAGE"
+          else
+            echo "::notice::automation coverage unavailable (docs_sync --coverage produced no output)"
+          fi
 
       - name: Not docs-sync-relevant
         if: steps.relevant.outputs.relevant != 'true'

@@ -1,10 +1,22 @@
 #!/usr/bin/env python3
 """DocSentinel — Automated Documentation Stats Synchronizer.
 
-Extracts live metrics from the Nuzantara codebase and injects them into
-markdown files between <!-- DOCSYNC:KEY_START --> / <!-- DOCSYNC:KEY_END -->
-markers. Keeps README.md, INDEX.md, docs/AI_ONBOARDING.md and
-docs/runbooks/README.md in sync with actual code state.
+Extracts live metrics from the Nuzantara codebase. Two channels, and which one a
+number goes to is now a rule, not a habit (Merge-OS v3 step 4 / §C2, 2026-08-16):
+
+  ENUMERATIONS (which app, which runbook, which skill, which workflow) are injected
+  into markdown between <!-- DOCSYNC:KEY_START --> / <!-- DOCSYNC:KEY_END --> markers
+  in INDEX.md and docs/runbooks/README.md — they are navigational content, and they
+  only move when an organ is added or renamed.
+
+  VOLUME COUNTS (routers, services, tests, collections, vectors, KG nodes, version,
+  coverage ratio) are NOT committed anywhere. They are served live by `--json` /
+  `--coverage`. See RETIRED_COUNT_KEYS for why, and for the two tracked derived
+  files that are deliberately exempt because a program reads them back as input.
+
+README.md and docs/AI_ONBOARDING.md stay listed in TARGET_FILES although they now
+carry no marker: that is what keeps `--check` (and the anti-regrowth corpus) watching
+them for a retired count sneaking back in.
 (CLAUDE.md was a target until F44 removed its markers — kept out on purpose.)
 
 Spec: docs/DOCSYNC_SENTINEL.md
@@ -15,6 +27,7 @@ Usage:
     python scripts/docs_sync.py --check    # CI mode: exit 1 if stale
     python scripts/docs_sync.py --diff     # show what would change
     python scripts/docs_sync.py --json     # raw stats as JSON
+    python scripts/docs_sync.py --coverage # plists-vs-docs coverage line
     python scripts/docs_sync.py --quiet    # hook mode (no output on success)
 
 No external dependencies. Python stdlib only.
@@ -487,49 +500,75 @@ def _render_skills_index(stats: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _render_automation_coverage(stats: dict[str, Any]) -> str:
-    """Render AUTOMATION_COVERAGE marker: plists vs documentation coverage."""
+def format_automation_coverage(stats: dict[str, Any]) -> str:
+    """One-line plists-vs-docs coverage, for a LIVE surface — never for tracked prose.
+
+    This used to be the AUTOMATION_COVERAGE marker body written into INDEX.md. The
+    docstring on `automation_coverage()` calls it "a signaler, not a gate (W81): the
+    coverage gap stays visible instead of hiding in no diff" — and that purpose is
+    exactly why it could not simply be deleted with the other counts (superscar #2:
+    a signal nobody reads is not armed, and a signal that is stale most of the time
+    is worse than none).
+
+    So the signal moved rather than died: the docs-sync workflow prints it as a
+    `::notice::` on every PR that touches `infra/launchagents/`,
+    `scripts/automation_catalog.json` or `docs/AUTOMATIONS_REFERENCE.md` — it fires
+    at the moment the ratio can change, at the author who changed it, always
+    recomputed. Also available any time via `--coverage` / `--json`.
+    """
     cov = stats["automation_coverage"]
     pct = round(100 * cov["documented"] / cov["plists"]) if cov["plists"] else 0
     return (
-        f"\n`{cov['plists']} plist tracked in infra/launchagents/ · "
+        f"{cov['plists']} plist tracked in infra/launchagents/ · "
         f"{cov['documented']} documented in automation_catalog.json + "
-        f"AUTOMATIONS_REFERENCE.md ({pct}% coverage)`\n"
+        f"AUTOMATIONS_REFERENCE.md ({pct}% coverage)"
     )
 
 
+# Keys this tool used to render into tracked prose and must never render again
+# (Merge-OS v3 step 4 / §C2, 2026-08-16 — verify-don't-store). Each was a VOLUME
+# COUNT: routers, services, tests, vectors, KG nodes, package version, or the
+# plist-vs-docs coverage ratio. They moved on nearly every backend PR — measured on
+# 60 days of origin/main, 189 of 195 commits touching docs/AI_ONBOARDING.md and 61
+# of 63 touching README.md changed nothing but these numbers — so the committed
+# value was stale on main more often than it was right, every parallel backend PR
+# collided on the same derived line, and an innocent PR inherited the drift as a red
+# required check (W86; PRs #4101/#4066).
+#
+# The sweep that authorised the deletion found ZERO programmatic consumers of the
+# VALUES: every reader was this writer, the docs-sync gate/auditor, a test, or human
+# prose — nothing under apps/ or packages/ opens README.md, INDEX.md or
+# AI_ONBOARDING.md at all. The numbers are still computed and still available; they
+# are served live by `--json` / `--coverage` instead of being frozen into a page.
+#
+# Two tracked derived files were deliberately NOT touched, because a program reads
+# them back as INPUT: `.docs_sync_cache.json` (the qdrant/kg fallback this script
+# loads) and `docs/DOCS_INVENTORY.md` (docs_audit.py::parse_prev_flipped reads its
+# `orphan_flipped_on` column as the sole channel carrying prior-flip provenance).
+# That is the red-team seat's own exception clause: "derived documentation non
+# versionata, salvo eccezioni che siano veri input runtime/client".
+#
+# Enforced by scripts/tests/test_docs_sync_atlas.py (guilt + innocence). Putting a
+# key back here means re-committing a number no program reads — read §C2 first.
+RETIRED_COUNT_KEYS = frozenset(
+    {
+        "TECH_STATS",
+        "QUICK_NUMBERS",
+        "AUTOMATION_COVERAGE",
+        "BACKEND_STATS",
+        "VECTOR_STATS",
+        "EMBEDDING_FROZEN",
+    }
+)
+
+# What survives is the ENUMERATIONS — navigational tables whose rows are the organs
+# themselves (which app, which runbook, which skill, which workflow). They are
+# content a reader navigates by, not a number, and they move only when an organ is
+# added or renamed: the PR that moves the input is the PR that regenerates them.
 TEMPLATES: dict[str, Any] = {
     "RUNBOOKS_INDEX": _render_runbooks_index,
     "WORKFLOWS_INDEX": _render_workflows_index,
     "SKILLS_INDEX": _render_skills_index,
-    "AUTOMATION_COVERAGE": _render_automation_coverage,
-    "BACKEND_STATS": lambda s: (
-        f"\n- **Backend:** Python 3.11+, FastAPI, "
-        f"{s['routers']} routers, {s['services']} services, "
-        f"{s['test_files']} test files\n"
-    ),
-    "VECTOR_STATS": lambda s: (
-        f"\n- **Vector Collections:** {s['qdrant']['collections']} live on Fly.io "
-        f"({s['qdrant']['documents']:,} documents), "
-        f"{s['qdrant']['collections']} defined in code\n"
-    ),
-    "EMBEDDING_FROZEN": lambda s: (
-        f"\n### Embedding — `{s['qdrant']['embedding_model']}` "
-        f"(1536 dims) FROZEN. Never change without re-indexing plan.\n"
-    ),
-    "TECH_STATS": lambda s: (
-        f"\n- Backend: FastAPI · {s['routers']} routers · {s['services']} services\n"
-        f"- Vector DB: Qdrant · {s['qdrant']['collections']} collections · "
-        f"{s['qdrant']['documents']:,} documents\n"
-        f"- Knowledge Graph: {s['kg']['nodes']:,} nodes · {s['kg']['edges']:,} edges\n"
-        f"- Apps: {s['app_count']} · Packages: {s['package_count']}\n"
-        f"- Version: {s['version']}\n"
-    ),
-    "QUICK_NUMBERS": lambda s: (
-        f"\n`{s['routers']} routers · {s['services']} services · "
-        f"{s['test_files']} tests · {s['qdrant']['collections']} Qdrant collections · "
-        f"{s['qdrant']['documents']:,} vectors · {s['kg']['nodes']:,} KG nodes`\n"
-    ),
     "LIVING_ORGANS": _render_living_organs,
 }
 
@@ -541,16 +580,30 @@ TEMPLATES: dict[str, Any] = {
 def gather_stats(*, read_only: bool = False) -> dict[str, Any]:
     """Collect all stats from codebase.
 
-    read_only=True skips the cache refresh below. Used by --check/--diff/--json:
-    those modes are documented (and, for --check, relied on by CI) as
+    read_only=True skips the cache refresh below. Used by --check/--diff/--json/
+    --coverage: those modes are documented (and, for --check, relied on by CI) as
     non-mutating, but this function used to call `_save_cache` unconditionally
     — every "read-only" invocation quietly dirtied `.docs_sync_cache.json` on
-    disk. The tracked cache itself must stay committed: CI's docs-sync.yml
-    workflow has no QDRANT_URL/QDRANT_API_KEY, so `get_qdrant_stats()` falls
-    back to this committed snapshot rather than the older hardcoded
-    `_QDRANT_FALLBACK` — untracking it would make --check fail on every
-    triggering PR (verified empirically: removing the file flips
-    `--check` from OK to STALE). This flag only stops the SIDE-EFFECT write,
+    disk.
+
+    The tracked cache must still stay committed, but the REASON changed on
+    2026-08-16 and the old one is now false. It used to read: "untracking it would
+    make --check fail on every triggering PR (verified empirically: removing the
+    file flips --check from OK to STALE)". True while TECH_STATS / QUICK_NUMBERS /
+    VECTOR_STATS rendered qdrant numbers into tracked prose. Merge-OS v3 step 4
+    retired every one of those templates (see RETIRED_COUNT_KEYS), so no surviving
+    template touches `stats["qdrant"]` or `stats["kg"]` at all — and the claim was
+    RE-MEASURED here rather than inherited (W106, a cure anchored to a frozen
+    measurement of the world): with `.docs_sync_cache.json` deleted, `--check` still
+    prints `DOCSYNC OK (no changes)` and exits 0.
+
+    What the cache is load-bearing for NOW is `--json`, which since step 4 is the
+    only channel serving these numbers to a reader. CI, and any machine without
+    QDRANT_URL/QDRANT_API_KEY exported, falls back to this committed snapshot;
+    untrack it and `--json` silently degrades to the much older hardcoded
+    `_QDRANT_FALLBACK` (93,283 documents against the 104,154 the snapshot carries)
+    — wrong numbers rather than a red check, which is the quieter failure of the
+    two. This flag only stops the SIDE-EFFECT write,
     never the read.
     """
     qdrant = get_qdrant_stats()
@@ -656,16 +709,28 @@ def main() -> int:
         "--json", action="store_true", help="Output raw stats as JSON (no writes)"
     )
     parser.add_argument(
+        "--coverage",
+        action="store_true",
+        help="Print the plists-vs-docs coverage line (no writes) — see "
+        "format_automation_coverage()",
+    )
+    parser.add_argument(
         "--quiet", action="store_true", help="Suppress output on success (hook mode)"
     )
     args = parser.parse_args()
 
     # --check/--diff/--json are all documented as non-mutating; none of them
     # may leave .docs_sync_cache.json touched on disk.
-    stats = gather_stats(read_only=args.check or args.diff or args.json)
+    stats = gather_stats(
+        read_only=args.check or args.diff or args.json or args.coverage
+    )
 
     if args.json:
         print(json.dumps(stats, indent=2, default=str))
+        return 0
+
+    if args.coverage:
+        print(format_automation_coverage(stats))
         return 0
 
     any_changed = False

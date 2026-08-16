@@ -12,7 +12,7 @@
 | Perché fare X?                                | [SYMBIOSIS.md](SYMBIOSIS.md)                                                        | Filosofia, "prima di toccare"                                            |
 | Come fare X?                                  | [VADEMECUM.md](VADEMECUM.md)                                                        | Checklist operativa per ogni tipo di elemento                            |
 | Dove vive X?                                  | Questa pagina, sezione "Organi" sotto                                               | Mappa statica top-level                                                  |
-| Metriche live (count routers/servizi/vector)? | [README.md](README.md) §Tech Stack + [docs/AI_ONBOARDING.md](docs/AI_ONBOARDING.md) | Auto-sincronizzate via `docs_sync.py` (marker rimossi da CLAUDE.md, F44) |
+| Metriche live (count routers/servizi/vector)? | `python scripts/docs_sync.py --json`                                                | NON committate in nessuna pagina dal 2026-08-16 (Merge-OS v3 §C2)        |
 | Dettagli tecnici di un'app?                   | `apps/<nome>/README.md` o `apps/<nome>/CLAUDE.md`                                   | File locali all'app                                                      |
 | Quando X è stato fatto?                       | `git log` + MOS (`~/.claude/scripts/mem query "X"`)                                 | Git + memoria persistente                                                |
 | Policy AI dispatch / federazione?             | [docs/AI_DISPATCH_REFERENCE.md](docs/AI_DISPATCH_REFERENCE.md)                      | Dispatch, fallback, timeout                                              |
@@ -29,7 +29,7 @@
 
 ### Production workloads
 
-- **`apps/backend-rag/`** — RAG backend (FastAPI, deploy Fly.io; count routers/services in README.md §Tech Stack auto-sync). Prompt SSOT: `backend/prompts/zantara_core.py`. Include WR2 pipeline (`backend/services/{war_room,council,visual,canva_renderer,review,publisher}/`).
+- **`apps/backend-rag/`** — RAG backend (FastAPI, deploy Fly.io; count routers/services via `python scripts/docs_sync.py --json`, non committati). Prompt SSOT: `backend/prompts/zantara_core.py`. Include WR2 pipeline (`backend/services/{war_room,council,visual,canva_renderer,review,publisher}/`).
 - **`apps/mouth/`** — Next.js frontend (Vercel). kita/my/prime.balizero.com.
 - **`apps/bali-intel-scraper/`** — Intel pipeline daily 03:00 WITA (solo Pro, NOT Fly). Articoli MDX → GitHub → Vercel.
 - **`apps/zantara-media/`** — Curator Agent GARUDA (Sprint 5.1 LIVE). Drive indexer + Qdrant `garuda_assets` + Postgres `garuda_index`.
@@ -169,9 +169,15 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `publication_histor
 
 ### LaunchAgents — copertura documentale
 
-<!-- DOCSYNC:AUTOMATION_COVERAGE_START -->
-`141 plist tracked in infra/launchagents/ · 106 documented in automation_catalog.json + AUTOMATIONS_REFERENCE.md (75% coverage)`
-<!-- DOCSYNC:AUTOMATION_COVERAGE_END -->
+La copertura (quanti plist di `infra/launchagents/` sono documentati in
+`automation_catalog.json` + `AUTOMATIONS_REFERENCE.md`) **non è più committata qui**: era
+un numero che si muoveva a ogni plist aggiunto e restava stantio su `main`. Ora il gate
+`docs-sync.yml` la stampa come `::notice::` su ogni PR che tocca quei path — cioè a chi la
+può muovere, nel momento in cui la muove. Misurala anche a mano:
+
+```bash
+python scripts/docs_sync.py --coverage
+```
 
 Runbook operativi: indice auto-generato in [docs/runbooks/README.md](docs/runbooks/README.md).
 
@@ -203,4 +209,4 @@ Questo file è **mantenuto manualmente**. Si aggiorna quando:
 - Un nuovo pattern di riferimento emerge
 - Una sezione diventa obsoleta
 
-Le metriche quantitative (router count, vector count, etc.) vivono tra marker `<!-- DOCSYNC:* -->` in `README.md` (più `docs/AI_ONBOARDING.md`, `docs/DOCS_INVENTORY.md`, ecc.) — NON più in CLAUDE.md, da cui i marker sono stati rimossi (F44) — e sono auto-sincronizzate da `scripts/docs_sync.py`.
+Le metriche quantitative (router count, vector count, test count, ecc.) **non vivono più in nessuna pagina committata**: dal 2026-08-16 (Merge-OS v3 step 4, §C2) `scripts/docs_sync.py` le serve solo live via `--json`/`--coverage`. Restano committati, tra marker `<!-- DOCSYNC:* -->`, soltanto gli **elenchi** (app, runbook, skill, workflow) — contenuto di navigazione, non numeri. `docs/DOCS_INVENTORY.md` resta generato e committato per una ragione precisa: la colonna `orphan_flipped_on` è l'unico canale con cui `docs_audit.py` ricorda i flip precedenti, quindi è un vero input di programma, non prosa derivata.

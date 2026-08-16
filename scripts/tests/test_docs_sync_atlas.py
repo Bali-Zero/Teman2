@@ -100,7 +100,6 @@ def test_templates_registered_and_render():
         "RUNBOOKS_INDEX",
         "WORKFLOWS_INDEX",
         "SKILLS_INDEX",
-        "AUTOMATION_COVERAGE",
     ):
         assert key in docs_sync.TEMPLATES
         body = docs_sync.TEMPLATES[key](_stats())
@@ -115,15 +114,98 @@ def test_table_cells_escape_pipes():
 
 
 def test_automation_coverage_render_pct():
-    body = docs_sync.TEMPLATES["AUTOMATION_COVERAGE"](_stats())
+    body = docs_sync.format_automation_coverage(_stats())
     assert "4 plist" in body and "(25% coverage)" in body
 
 
 def test_coverage_zero_plists_no_division_error():
-    body = docs_sync.TEMPLATES["AUTOMATION_COVERAGE"](
+    body = docs_sync.format_automation_coverage(
         {"automation_coverage": {"plists": 0, "documented": 0}}
     )
     assert "(0% coverage)" in body
+
+
+# ---------------------------------------------------------------------------
+# Retired volume counts must not come back (Merge-OS v3 step 4 / §C2)
+#
+# Guilt AND innocence on both halves of the rule (superscar #3): the retired keys
+# must be refused wherever they could return — as a TEMPLATES entry, or as a marker
+# re-pasted into a tracked page — and the surviving enumeration markers, which look
+# identical in shape, must NOT be caught by the same check.
+# ---------------------------------------------------------------------------
+
+# Every file that could plausibly regain one, whether or not it is a TARGET_FILE
+# today — a guard scoped to TARGET_FILES would go blind the moment someone trims
+# that list, which is the exact shape of the thing being prevented.
+_PAGES_WATCHED_FOR_REGROWTH = (
+    "README.md",
+    "INDEX.md",
+    "docs/AI_ONBOARDING.md",
+    "docs/runbooks/README.md",
+)
+
+
+def _markers_in(rel: str) -> set[str]:
+    """DOCSYNC keys present in a tracked page (entity, not substring)."""
+    text = (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore")
+    return {m.group("key") for m in docs_sync.MARKER_RE.finditer(text)}
+
+
+def test_retired_count_keys_have_no_template():
+    """GUILT: re-registering a retired key as a renderer must fail here."""
+    overlap = docs_sync.RETIRED_COUNT_KEYS & set(docs_sync.TEMPLATES)
+    assert not overlap, (
+        f"{sorted(overlap)} back in TEMPLATES — these are volume counts with no "
+        "programmatic consumer; they were removed from tracked prose by Merge-OS v3 "
+        "step 4 (§C2). Serve them from --json/--coverage instead."
+    )
+
+
+def test_retired_count_markers_absent_from_tracked_pages():
+    """GUILT: pasting a retired marker back into a tracked page must fail here."""
+    for rel in _PAGES_WATCHED_FOR_REGROWTH:
+        found = _markers_in(rel) & docs_sync.RETIRED_COUNT_KEYS
+        assert not found, (
+            f"{rel} regained retired DOCSYNC marker(s) {sorted(found)} — a committed "
+            "volume count goes stale on main and hands the next innocent PR a red "
+            "check (W86). Link to `python scripts/docs_sync.py --json` instead."
+        )
+
+
+def test_surviving_enumeration_markers_are_not_flagged():
+    """INNOCENCE: the enumerations that legitimately stay are not caught.
+
+    Without this, a guard that simply banned every DOCSYNC marker would pass the
+    two tests above while quietly deleting the atlas.
+    """
+    index_markers = _markers_in("INDEX.md")
+    assert {"LIVING_ORGANS", "WORKFLOWS_INDEX", "SKILLS_INDEX"} <= index_markers, (
+        f"INDEX.md lost enumeration markers — found {sorted(index_markers)}"
+    )
+    assert "RUNBOOKS_INDEX" in _markers_in("docs/runbooks/README.md")
+    assert not (index_markers & docs_sync.RETIRED_COUNT_KEYS)
+
+
+def test_coverage_flag_is_read_only_and_reports():
+    """The signal that replaced the INDEX.md coverage block must actually run.
+
+    A `::notice::` step in docs-sync.yml is only a signal if the command behind it
+    exits 0 and prints something (superscar #2 — a signaler nobody can read is not
+    armed). Also pins that --coverage does not dirty the tracked cache.
+    """
+    cache = docs_sync.CACHE_PATH
+    before = cache.read_bytes() if cache.exists() else None
+    proc = subprocess.run(
+        [sys.executable, str(REPO_ROOT / "scripts" / "docs_sync.py"), "--coverage"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    after = cache.read_bytes() if cache.exists() else None
+    assert proc.returncode == 0, f"--coverage exited {proc.returncode}: {proc.stderr}"
+    assert "coverage)" in proc.stdout, f"--coverage printed nothing usable: {proc.stdout!r}"
+    assert before == after, "--coverage modified .docs_sync_cache.json"
 
 
 # ---------------------------------------------------------------------------

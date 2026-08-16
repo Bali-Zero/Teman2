@@ -6,7 +6,8 @@ Production AI-powered business intelligence platform for **Bali Zero** — Indon
 
 ## Architecture
 
-Monorepo powered by agentic RAG with Knowledge Graph (live app/router/service counts in **Tech Stack** below — auto-synced by `scripts/docs_sync.py`).
+Monorepo powered by agentic RAG with Knowledge Graph. App/router/service counts are not
+committed in this file — get them live with `python scripts/docs_sync.py --json`.
 
 ```
 nuzantara/
@@ -33,13 +34,18 @@ nuzantara/
 
 ## Tech Stack
 
-<!-- DOCSYNC:TECH_STATS_START -->
-- Backend: FastAPI · 330 routers · 697 services
-- Vector DB: Qdrant · 12 collections · 104,154 documents
-- Knowledge Graph: 108,068 nodes · 242,827 edges
-- Apps: 32 · Packages: 6
-- Version: 5.2.0
-<!-- DOCSYNC:TECH_STATS_END -->
+- Backend: Python 3.11+ · FastAPI · Postgres 17 (Fly.io) · Redis
+- Vector DB: Qdrant · embeddings `text-embedding-3-small`, 1536 dims (FROZEN)
+- Knowledge Graph + agentic RAG · LangGraph
+- Frontend: Next.js on Vercel · macOS/SwiftUI control surfaces
+
+Counts (routers, services, tests, collections, vectors, KG nodes) are **not committed
+here** on purpose: they moved on nearly every backend PR, so the committed line was
+stale on `main` more often than it was right. Read them live instead:
+
+```bash
+python scripts/docs_sync.py --json
+```
 
 ## Search Pipeline (enabled 2026-03-24)
 

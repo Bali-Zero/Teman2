@@ -3,9 +3,14 @@
 **Last Updated:** 2026-07-02
 **Purpose:** Technical reference for AI assistants. For behavioral rules, see `CLAUDE.md`. For the founding principles of the organism, see `SYMBIOSIS.md` (monorepo root).
 
-<!-- DOCSYNC:QUICK_NUMBERS_START -->
-`330 routers · 697 services · 1366 tests · 12 Qdrant collections · 104,154 vectors · 108,068 KG nodes`
-<!-- DOCSYNC:QUICK_NUMBERS_END -->
+**Quick numbers** (routers · services · tests · Qdrant collections · vectors · KG nodes) are
+**deliberately not committed to this file**: they changed on nearly every backend PR, which made
+this line stale on `main` most of the time and turned it into a merge conflict on every parallel
+backend PR. Get them live — the generator is the source of truth, not this page:
+
+```bash
+python scripts/docs_sync.py --json
+```
 
 > **Role split:** `CLAUDE.md` = how to act (rules, delegation, language, deploy QA). This file = how to build (architecture, code patterns, debugging, workflows).
 
