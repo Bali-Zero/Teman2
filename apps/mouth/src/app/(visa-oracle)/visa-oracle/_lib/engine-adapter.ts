@@ -36,7 +36,15 @@ const KITAP_TWO_YEAR_MARRIAGE_AND_INTEGRATION_COPY = text(
   "Pasal 60 ayat (2) UU 6/2011 mensyaratkan usia perkawinan mencapai dua tahun dan Pernyataan Integrasi yang ditandatangani untuk KITAP perkawinan campur. Penilaian ini belum memverifikasi kedua prasyarat tersebut.",
 );
 
-const NEXT_STEPS: OutcomeNextSteps = [
+/**
+ * Exported so the gold-oracle SHADOW baseline (`preview-adapter.ts`'s
+ * `buildGoldOraclePreviewOutcome`) reproduces the SAME public next-steps
+ * copy a real `NEEDS_INPUT` engine outcome carries — `shadow-parity.ts`'s
+ * `semanticProjection` compares `nextSteps` verbatim (id/title/body), so an
+ * independently-worded preview copy would read as a permanent mismatch on
+ * this axis alone, even when state and missing facts agree exactly.
+ */
+export const NEXT_STEPS: OutcomeNextSteps = [
   {
     id: "review-decision",
     title: text(
