@@ -65,7 +65,7 @@ discovered_by: spark-study subagent (Sonnet 5, WebSearch), dispatched 2026-08-15
 - ✅ True H24 scheduling is real (F6) — but built for Gmail/Docs/Workspace-shaped chores, not code.
 - ⚠️ Oversight weaker than assumed (F8); sandbox claims unconfirmed (F9).
 
-At most: point Spark (Ultra, Mac) at a **non-code, document-shaped folder** — sorting/summarizing research PDFs, drafting doc prose — never at `.git`-tracked source, never unsupervised, never as a git-committing worker. The repo-worker role belongs to **Jules / Codex / Antigravity**.
+At most: point Spark (Ultra, Mac) at a **non-code, document-shaped folder** — sorting/summarizing research PDFs, drafting doc prose — never at repo source outside a dedicated task-scoped worktree (and inside one, only the document-shaped files the task names — per the standing-mandate scoping below), never unsupervised, never as a git-committing worker. The repo-worker role belongs to **Jules / Codex / Antigravity**.
 
 ## Standing mandate draft — GATED, NOT ARMED
 
