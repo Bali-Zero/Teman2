@@ -97,6 +97,14 @@ send_telegram() {
 }
 
 # --- State ---
+# COOLDOWN FIX (post-refuter, dossier C-13 follow-up): last_action_ts is touched ONLY by
+# SICK/DEAD alerts — it is the ONLY field the cooldown gate below reads. last_ok_ts is touched
+# ONLY by the healthy ALIVE tick and the cooldown gate never looks at it. Before this split,
+# the ALIVE branch's write_state("ok", ...) bumped the SAME last_action_ts the cooldown gate
+# reads, so a healthy 300s tick could silently mute the FIRST alert of a fresh incident for up
+# to COOLDOWN_S (~30min) — a guard meant to throttle REPEAT alerts was also throttling
+# first-onset ones. Each writer preserves the other field's prior value (read-then-write) so
+# neither tick clobbers the other's clock.
 read_last_action_ts() {
   if [ -f "$STATE_FILE" ]; then
     /usr/bin/jq -r '.last_action_ts // 0' "$STATE_FILE" 2>/dev/null || echo 0
@@ -104,11 +112,31 @@ read_last_action_ts() {
     echo 0
   fi
 }
-write_state() {
+read_last_ok_ts() {
+  if [ -f "$STATE_FILE" ]; then
+    /usr/bin/jq -r '.last_ok_ts // 0' "$STATE_FILE" 2>/dev/null || echo 0
+  else
+    echo 0
+  fi
+}
+write_ok_state() {  # write_ok_state <code> — bumps last_ok_ts, preserves last_action_ts
+  local code="$1"
+  cat >"$STATE_FILE" <<EOF
+{
+  "last_action_ts": $(read_last_action_ts),
+  "last_ok_ts": $(now_ts),
+  "last_action": "ok",
+  "last_http_code": "$code",
+  "probe": "http://${PROBE_HOST}:${PROBE_PORT}/"
+}
+EOF
+}
+write_alert_state() {  # write_alert_state <action> <code> — bumps last_action_ts, preserves last_ok_ts
   local action="$1"; local code="$2"
   cat >"$STATE_FILE" <<EOF
 {
   "last_action_ts": $(now_ts),
+  "last_ok_ts": $(read_last_ok_ts),
   "last_action": "$action",
   "last_http_code": "$code",
   "probe": "http://${PROBE_HOST}:${PROBE_PORT}/"
@@ -150,7 +178,7 @@ log "probe: http://${PROBE_HOST}:${PROBE_PORT}/ -> code=${CODE} plist_present=${
 # We validate the SHAPE, never string-compare to "000".
 if [[ "$CODE" =~ ^[1-4][0-9][0-9]$ ]]; then
   log "OK: reader ALIVE (http ${CODE})"
-  write_state "ok" "$CODE"
+  write_ok_state "$CODE"
   exit 0
 fi
 
@@ -205,5 +233,5 @@ if [ "$DRY_RUN" = "1" ]; then
 else
   send_telegram "$ALERT_MSG" "$DEDUP_SUFFIX"
 fi
-write_state "$STATE_ACTION" "$CODE"
+write_alert_state "$STATE_ACTION" "$CODE"
 exit 1
