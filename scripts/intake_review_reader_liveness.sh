@@ -119,29 +119,33 @@ read_last_ok_ts() {
     echo 0
   fi
 }
-write_ok_state() {  # write_ok_state <code> — bumps last_ok_ts, preserves last_action_ts
-  local code="$1"
-  cat >"$STATE_FILE" <<EOF
+# Atomic, hardened write (refuter finding #5): write to a PID-suffixed tmpfile beside the
+# real state file, chmod it 600, then `mv -f` it into place. `mv` within the same directory
+# is a single rename syscall, so a reader never observes a half-written state file (the old
+# `cat >"$STATE_FILE"` redirect truncated-then-wrote in place — a torn read was possible if
+# anything read the file mid-write), and 600 keeps it out of default-umask world-readable
+# territory (superscar #4) even though today's payload is non-PII (ts/action/http-code/probe
+# only).
+_write_state_json() {  # _write_state_json <last_action_ts> <last_ok_ts> <last_action> <code>
+  local action_ts="$1" ok_ts="$2" action="$3" code="$4"
+  local tmp="${STATE_FILE}.tmp.$$"
+  cat >"$tmp" <<EOF
 {
-  "last_action_ts": $(read_last_action_ts),
-  "last_ok_ts": $(now_ts),
-  "last_action": "ok",
-  "last_http_code": "$code",
-  "probe": "http://${PROBE_HOST}:${PROBE_PORT}/"
-}
-EOF
-}
-write_alert_state() {  # write_alert_state <action> <code> — bumps last_action_ts, preserves last_ok_ts
-  local action="$1"; local code="$2"
-  cat >"$STATE_FILE" <<EOF
-{
-  "last_action_ts": $(now_ts),
-  "last_ok_ts": $(read_last_ok_ts),
+  "last_action_ts": $action_ts,
+  "last_ok_ts": $ok_ts,
   "last_action": "$action",
   "last_http_code": "$code",
   "probe": "http://${PROBE_HOST}:${PROBE_PORT}/"
 }
 EOF
+  chmod 600 "$tmp"
+  mv -f "$tmp" "$STATE_FILE"
+}
+write_ok_state() {  # write_ok_state <code> — bumps last_ok_ts, preserves last_action_ts
+  _write_state_json "$(read_last_action_ts)" "$(now_ts)" "ok" "$1"
+}
+write_alert_state() {  # write_alert_state <action> <code> — bumps last_action_ts, preserves last_ok_ts
+  _write_state_json "$(now_ts)" "$(read_last_ok_ts)" "$1" "$2"
 }
 
 # --- Probe: print curl's %{http_code}. On connection-refused/timeout curl ALREADY

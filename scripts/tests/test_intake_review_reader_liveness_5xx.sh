@@ -170,6 +170,10 @@ check_true "log names the code (500)" \
     "$(grep -q '500' "$ROOT/home/logs/intake-review-reader-liveness.log" 2>/dev/null; echo $?)"
 check_true "state file records action=sick" \
     "$(grep -q '"last_action": "sick"' "$ROOT/home/.agent/decisions/state/intake_review_reader_liveness.json" 2>/dev/null; echo $?)"
+check "state write is atomic+hardened: file mode is 600" \
+    "600" "$(stat -f '%Lp' "$ROOT/home/.agent/decisions/state/intake_review_reader_liveness.json" 2>/dev/null)"
+check "state write is atomic+hardened: no .tmp.* leftover" \
+    0 "$(find "$ROOT/home/.agent/decisions/state" -name '*.tmp.*' 2>/dev/null | wc -l | tr -d ' ')"
 stop_fake_server
 
 echo
