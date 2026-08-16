@@ -37,7 +37,7 @@ nuzantara/
 ## Tech Stack
 
 <!-- DOCSYNC:TECH_STATS_START -->
-Current state for technical counts is intentionally not stored in git. Run `python3 scripts/docs_sync.py --json` or download the latest [docs-derived-state CI artifact](https://github.com/Bali-Zero/Teman2/actions/workflows/docs-inventory-refresh.yml).
+INTENTIONAL LIVE-PROOF HAND EDIT: this protected body must be rejected by check-docs-sync.
 <!-- DOCSYNC:TECH_STATS_END -->
 
 ## Search Pipeline (enabled 2026-03-24)
