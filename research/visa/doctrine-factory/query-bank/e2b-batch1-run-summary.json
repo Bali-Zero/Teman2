@@ -1,0 +1,209 @@
+[
+  {
+    "query_id": "VO-FUSED-T1-003",
+    "attempt": 2,
+    "status": "TIMEOUT_FINAL",
+    "note": "doctrine-card, both attempts timed out (prior process)"
+  },
+  {
+    "query_id": "VO-FUSED-T1-038",
+    "attempt": 1,
+    "status": "TIMEOUT_FINAL",
+    "note": "doctrine-card, no-retry policy (v2), attempt-1 timeout logged by prior process"
+  },
+  {
+    "query_id": "VO-FUSED-T1-038",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T1-032",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T1-020",
+    "attempt": 1,
+    "status": "TIMEOUT_FINAL"
+  },
+  {
+    "query_id": "VO-FUSED-T1-036",
+    "attempt": 1,
+    "status": "TIMEOUT_FINAL"
+  },
+  {
+    "query_id": "VO-FUSED-T1-023",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T1-027",
+    "attempt": 1,
+    "status": "TIMEOUT_FINAL"
+  },
+  {
+    "query_id": "VO-FUSED-T1-019",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T1-013",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T1-037",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T1-031",
+    "attempt": 1,
+    "status": "TIMEOUT_FINAL"
+  },
+  {
+    "query_id": "VO-FUSED-T1-018",
+    "attempt": 1,
+    "status": "TIMEOUT_FINAL"
+  },
+  {
+    "query_id": "VO-FUSED-T1-010",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T7-001",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T9-001",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T15-001",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T10-009",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T3-002",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T3-005",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T4-004",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T4-006",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T4-010",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T6-005",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T12-001",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T12-005",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T13-001",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T13-002",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T13-003",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T13-004",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T13-006",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T14-002",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T14-003",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T14-004",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T14-005",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T14-006",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T3-006",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T3-007",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T3-010",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T6-001",
+    "attempt": 1,
+    "status": "OK"
+  },
+  {
+    "query_id": "VO-FUSED-T4-009",
+    "attempt": 1,
+    "status": "OK"
+  }
+]

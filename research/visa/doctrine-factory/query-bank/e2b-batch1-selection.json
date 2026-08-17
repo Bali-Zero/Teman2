@@ -1,0 +1,657 @@
+[
+  {
+    "query_id": "VO-FUSED-T1-003",
+    "topic": "T1",
+    "category": "doctrine-card",
+    "text": "Produce a complete doctrine card for the Indonesian visa/stay-permit index code BRIDGING (onshore bridging permit): (1) category and legal purpose; (2) permitted activities; (3) prohibited activities; (4) borderline activities the sources flag or fail to resolve; (5) single or multiple entry; (6) duration per entry and total validity; (7) extensions (how many, how long) and conversions (to what, onshore?); (8) where the application can be filed (onshore/offshore) and any status required onshore; (9) nationality restrictions including calling-visa applicability; (10) age limits; (11) sponsor/guarantor requirements after UU 63/2024; (12) financial requirements and proof; (13) permitted source of income/compensation; (14) family/dependent provisions; (15) investment requirements if any; (16) mandatory documents; (17) which requirements are declarative vs require documentary proof. If the sources do not cover this code at all, say so explicitly.",
+    "target_products": [
+      "BRIDGING"
+    ],
+    "provenance": [
+      "nb2q-b00-03",
+      "QB2-03",
+      "VO-NB2-009"
+    ],
+    "priority": "BULK",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T1-038",
+    "topic": "T1",
+    "category": "doctrine-card",
+    "text": "Produce a complete doctrine card for the Indonesian visa/stay-permit index code E33G (remote worker): (1) category and legal purpose; (2) permitted activities; (3) prohibited activities; (4) borderline activities the sources flag or fail to resolve; (5) single or multiple entry; (6) duration per entry and total validity; (7) extensions (how many, how long) and conversions (to what, onshore?); (8) where the application can be filed (onshore/offshore) and any status required onshore; (9) nationality restrictions including calling-visa applicability; (10) age limits; (11) sponsor/guarantor requirements after UU 63/2024; (12) financial requirements and proof; (13) permitted source of income/compensation; (14) family/dependent provisions; (15) investment requirements if any; (16) mandatory documents; (17) which requirements are declarative vs require documentary proof. If the sources do not cover this code at all, say so explicitly.",
+    "target_products": [
+      "E33G"
+    ],
+    "provenance": [
+      "nb2q-b00-38",
+      "QB2-38",
+      "VO-NB2-044"
+    ],
+    "priority": "SLICE_COVERED_BY_E2A",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T1-032",
+    "topic": "T1",
+    "category": "doctrine-card",
+    "text": "Produce a complete doctrine card for the Indonesian visa/stay-permit index code E33 (second home): (1) category and legal purpose; (2) permitted activities; (3) prohibited activities; (4) borderline activities the sources flag or fail to resolve; (5) single or multiple entry; (6) duration per entry and total validity; (7) extensions (how many, how long) and conversions (to what, onshore?); (8) where the application can be filed (onshore/offshore) and any status required onshore; (9) nationality restrictions including calling-visa applicability; (10) age limits; (11) sponsor/guarantor requirements after UU 63/2024; (12) financial requirements and proof; (13) permitted source of income/compensation; (14) family/dependent provisions; (15) investment requirements if any; (16) mandatory documents; (17) which requirements are declarative vs require documentary proof. If the sources do not cover this code at all, say so explicitly.",
+    "target_products": [
+      "E33"
+    ],
+    "provenance": [
+      "nb2q-b00-32",
+      "QB2-32",
+      "VO-NB2-038"
+    ],
+    "priority": "BULK",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T1-020",
+    "topic": "T1",
+    "category": "doctrine-card",
+    "text": "Produce a complete doctrine card for the Indonesian visa/stay-permit index code E30B (study variant B): (1) category and legal purpose; (2) permitted activities; (3) prohibited activities; (4) borderline activities the sources flag or fail to resolve; (5) single or multiple entry; (6) duration per entry and total validity; (7) extensions (how many, how long) and conversions (to what, onshore?); (8) where the application can be filed (onshore/offshore) and any status required onshore; (9) nationality restrictions including calling-visa applicability; (10) age limits; (11) sponsor/guarantor requirements after UU 63/2024; (12) financial requirements and proof; (13) permitted source of income/compensation; (14) family/dependent provisions; (15) investment requirements if any; (16) mandatory documents; (17) which requirements are declarative vs require documentary proof. If the sources do not cover this code at all, say so explicitly.",
+    "target_products": [
+      "E30B"
+    ],
+    "provenance": [
+      "nb2q-b00-20",
+      "QB2-20",
+      "VO-NB2-026"
+    ],
+    "priority": "BULK",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T1-036",
+    "topic": "T1",
+    "category": "doctrine-card",
+    "text": "Produce a complete doctrine card for the Indonesian visa/stay-permit index code E33E (retirement (silver hair)): (1) category and legal purpose; (2) permitted activities; (3) prohibited activities; (4) borderline activities the sources flag or fail to resolve; (5) single or multiple entry; (6) duration per entry and total validity; (7) extensions (how many, how long) and conversions (to what, onshore?); (8) where the application can be filed (onshore/offshore) and any status required onshore; (9) nationality restrictions including calling-visa applicability; (10) age limits; (11) sponsor/guarantor requirements after UU 63/2024; (12) financial requirements and proof; (13) permitted source of income/compensation; (14) family/dependent provisions; (15) investment requirements if any; (16) mandatory documents; (17) which requirements are declarative vs require documentary proof. If the sources do not cover this code at all, say so explicitly.",
+    "target_products": [
+      "E33E"
+    ],
+    "provenance": [
+      "nb2q-b00-36",
+      "QB2-36",
+      "VO-NB2-042"
+    ],
+    "priority": "BULK",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T1-023",
+    "topic": "T1",
+    "category": "doctrine-card",
+    "text": "Produce a complete doctrine card for the Indonesian visa/stay-permit index code E31A (family variant A): (1) category and legal purpose; (2) permitted activities; (3) prohibited activities; (4) borderline activities the sources flag or fail to resolve; (5) single or multiple entry; (6) duration per entry and total validity; (7) extensions (how many, how long) and conversions (to what, onshore?); (8) where the application can be filed (onshore/offshore) and any status required onshore; (9) nationality restrictions including calling-visa applicability; (10) age limits; (11) sponsor/guarantor requirements after UU 63/2024; (12) financial requirements and proof; (13) permitted source of income/compensation; (14) family/dependent provisions; (15) investment requirements if any; (16) mandatory documents; (17) which requirements are declarative vs require documentary proof. If the sources do not cover this code at all, say so explicitly.",
+    "target_products": [
+      "E31A"
+    ],
+    "provenance": [
+      "nb2q-b00-23",
+      "QB2-23",
+      "VO-NB2-029"
+    ],
+    "priority": "BULK",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T1-027",
+    "topic": "T1",
+    "category": "doctrine-card",
+    "text": "Produce a complete doctrine card for the Indonesian visa/stay-permit index code E31E (family variant E): (1) category and legal purpose; (2) permitted activities; (3) prohibited activities; (4) borderline activities the sources flag or fail to resolve; (5) single or multiple entry; (6) duration per entry and total validity; (7) extensions (how many, how long) and conversions (to what, onshore?); (8) where the application can be filed (onshore/offshore) and any status required onshore; (9) nationality restrictions including calling-visa applicability; (10) age limits; (11) sponsor/guarantor requirements after UU 63/2024; (12) financial requirements and proof; (13) permitted source of income/compensation; (14) family/dependent provisions; (15) investment requirements if any; (16) mandatory documents; (17) which requirements are declarative vs require documentary proof. If the sources do not cover this code at all, say so explicitly.",
+    "target_products": [
+      "E31E"
+    ],
+    "provenance": [
+      "nb2q-b00-27",
+      "QB2-27",
+      "VO-NB2-033"
+    ],
+    "priority": "BULK",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T1-019",
+    "topic": "T1",
+    "category": "doctrine-card",
+    "text": "Produce a complete doctrine card for the Indonesian visa/stay-permit index code E30A (study variant A): (1) category and legal purpose; (2) permitted activities; (3) prohibited activities; (4) borderline activities the sources flag or fail to resolve; (5) single or multiple entry; (6) duration per entry and total validity; (7) extensions (how many, how long) and conversions (to what, onshore?); (8) where the application can be filed (onshore/offshore) and any status required onshore; (9) nationality restrictions including calling-visa applicability; (10) age limits; (11) sponsor/guarantor requirements after UU 63/2024; (12) financial requirements and proof; (13) permitted source of income/compensation; (14) family/dependent provisions; (15) investment requirements if any; (16) mandatory documents; (17) which requirements are declarative vs require documentary proof. If the sources do not cover this code at all, say so explicitly.",
+    "target_products": [
+      "E30A"
+    ],
+    "provenance": [
+      "nb2q-b00-19",
+      "QB2-19",
+      "VO-NB2-025"
+    ],
+    "priority": "BULK",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T1-013",
+    "topic": "T1",
+    "category": "doctrine-card",
+    "text": "Produce a complete doctrine card for the Indonesian visa/stay-permit index code E28A (investor KITAS (active)): (1) category and legal purpose; (2) permitted activities; (3) prohibited activities; (4) borderline activities the sources flag or fail to resolve; (5) single or multiple entry; (6) duration per entry and total validity; (7) extensions (how many, how long) and conversions (to what, onshore?); (8) where the application can be filed (onshore/offshore) and any status required onshore; (9) nationality restrictions including calling-visa applicability; (10) age limits; (11) sponsor/guarantor requirements after UU 63/2024; (12) financial requirements and proof; (13) permitted source of income/compensation; (14) family/dependent provisions; (15) investment requirements if any; (16) mandatory documents; (17) which requirements are declarative vs require documentary proof. If the sources do not cover this code at all, say so explicitly.",
+    "target_products": [
+      "E28A"
+    ],
+    "provenance": [
+      "nb2q-b00-13",
+      "QB2-13",
+      "VO-NB2-019"
+    ],
+    "priority": "SLICE_COVERED_BY_E2A",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T1-037",
+    "topic": "T1",
+    "category": "doctrine-card",
+    "text": "Produce a complete doctrine card for the Indonesian visa/stay-permit index code E33F (diaspora): (1) category and legal purpose; (2) permitted activities; (3) prohibited activities; (4) borderline activities the sources flag or fail to resolve; (5) single or multiple entry; (6) duration per entry and total validity; (7) extensions (how many, how long) and conversions (to what, onshore?); (8) where the application can be filed (onshore/offshore) and any status required onshore; (9) nationality restrictions including calling-visa applicability; (10) age limits; (11) sponsor/guarantor requirements after UU 63/2024; (12) financial requirements and proof; (13) permitted source of income/compensation; (14) family/dependent provisions; (15) investment requirements if any; (16) mandatory documents; (17) which requirements are declarative vs require documentary proof. If the sources do not cover this code at all, say so explicitly.",
+    "target_products": [
+      "E33F"
+    ],
+    "provenance": [
+      "nb2q-b00-37",
+      "QB2-37",
+      "VO-NB2-043"
+    ],
+    "priority": "BULK",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T1-031",
+    "topic": "T1",
+    "category": "doctrine-card",
+    "text": "Produce a complete doctrine card for the Indonesian visa/stay-permit index code E31J (family/diaspora-adjacent): (1) category and legal purpose; (2) permitted activities; (3) prohibited activities; (4) borderline activities the sources flag or fail to resolve; (5) single or multiple entry; (6) duration per entry and total validity; (7) extensions (how many, how long) and conversions (to what, onshore?); (8) where the application can be filed (onshore/offshore) and any status required onshore; (9) nationality restrictions including calling-visa applicability; (10) age limits; (11) sponsor/guarantor requirements after UU 63/2024; (12) financial requirements and proof; (13) permitted source of income/compensation; (14) family/dependent provisions; (15) investment requirements if any; (16) mandatory documents; (17) which requirements are declarative vs require documentary proof. If the sources do not cover this code at all, say so explicitly.",
+    "target_products": [
+      "E31J"
+    ],
+    "provenance": [
+      "nb2q-b00-31",
+      "QB2-31",
+      "VO-NB2-037"
+    ],
+    "priority": "BULK",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T1-018",
+    "topic": "T1",
+    "category": "doctrine-card",
+    "text": "Produce a complete doctrine card for the Indonesian visa/stay-permit index code E30 (study (generic)): (1) category and legal purpose; (2) permitted activities; (3) prohibited activities; (4) borderline activities the sources flag or fail to resolve; (5) single or multiple entry; (6) duration per entry and total validity; (7) extensions (how many, how long) and conversions (to what, onshore?); (8) where the application can be filed (onshore/offshore) and any status required onshore; (9) nationality restrictions including calling-visa applicability; (10) age limits; (11) sponsor/guarantor requirements after UU 63/2024; (12) financial requirements and proof; (13) permitted source of income/compensation; (14) family/dependent provisions; (15) investment requirements if any; (16) mandatory documents; (17) which requirements are declarative vs require documentary proof. If the sources do not cover this code at all, say so explicitly.",
+    "target_products": [
+      "E30"
+    ],
+    "provenance": [
+      "nb2q-b00-18",
+      "QB2-18",
+      "VO-NB2-024"
+    ],
+    "priority": "BULK",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T1-010",
+    "topic": "T1",
+    "category": "doctrine-card",
+    "text": "Produce a complete doctrine card for the Indonesian visa/stay-permit index code E23 (work KITAS (general)): (1) category and legal purpose; (2) permitted activities; (3) prohibited activities; (4) borderline activities the sources flag or fail to resolve; (5) single or multiple entry; (6) duration per entry and total validity; (7) extensions (how many, how long) and conversions (to what, onshore?); (8) where the application can be filed (onshore/offshore) and any status required onshore; (9) nationality restrictions including calling-visa applicability; (10) age limits; (11) sponsor/guarantor requirements after UU 63/2024; (12) financial requirements and proof; (13) permitted source of income/compensation; (14) family/dependent provisions; (15) investment requirements if any; (16) mandatory documents; (17) which requirements are declarative vs require documentary proof. If the sources do not cover this code at all, say so explicitly.",
+    "target_products": [
+      "E23"
+    ],
+    "provenance": [
+      "nb2q-b00-10",
+      "QB2-10",
+      "VO-NB2-016"
+    ],
+    "priority": "SLICE_COVERED_BY_E2A",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T7-001",
+    "topic": "T7",
+    "category": "sponsor",
+    "text": "After UU 63/2024: which products still require a guarantor (penjamin), which require only a sponsor, and which need neither? Cite the amended articles.",
+    "target_products": [
+      "ALL"
+    ],
+    "provenance": [
+      "QB7-01",
+      "nb2q-b07-01"
+    ],
+    "priority": "BULK",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T9-001",
+    "topic": "T9",
+    "category": "nationality",
+    "text": "Which nationalities are currently on the Calling Visa list, under which instrument, with what effective date, and which products does it restrict? Which nationalities are eligible for B1 VOA today, under which current instrument?",
+    "target_products": [
+      "ALL"
+    ],
+    "provenance": [
+      "nb2q-b09-01",
+      "nb2q-b09-02",
+      "QB8-01",
+      "QB0-05"
+    ],
+    "priority": "BULK",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T15-001",
+    "topic": "T15",
+    "category": "risk",
+    "text": "Overstay: current fine per day, threshold beyond which deportation is mandatory, discretionary bands, exact day-count boundaries. Cite the newest instrument.",
+    "target_products": [
+      "ALL"
+    ],
+    "provenance": [
+      "QB14-01",
+      "nb2q-b15-01",
+      "VO-NB2-119"
+    ],
+    "priority": "BULK",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T10-009",
+    "topic": "T10",
+    "category": "family-minors",
+    "text": "Which products have explicit minimum/maximum ages, and for every age-threshold, what is the operator, reference date, inclusivity of the threshold and the day-before/day-after boundary case?",
+    "target_products": [
+      "ALL"
+    ],
+    "provenance": [
+      "nb2q-b10-04",
+      "VO-NB2-104"
+    ],
+    "priority": "BULK",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T3-002",
+    "topic": "T3",
+    "category": "activity-boundary",
+    "text": "Classify the role of speaker, panelist or demonstrator at an event, distinguishing foreign compensation, Indonesian compensation and no compensation.",
+    "target_products": [
+      "ALL relevant"
+    ],
+    "provenance": [
+      "VO-NB2-066"
+    ],
+    "priority": "BULK",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T3-005",
+    "topic": "T3",
+    "category": "activity-boundary",
+    "text": "Classify audit, quality control, compliance inspection and technical due diligence on an already-operating activity; identify code and limits.",
+    "target_products": [
+      "C17",
+      "D17",
+      "ALL"
+    ],
+    "provenance": [
+      "VO-NB2-069"
+    ],
+    "priority": "BULK",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T4-004",
+    "topic": "T4",
+    "category": "threshold",
+    "text": "E33: qualifying deposit amount and accepted alternatives (property value floor, in whose name, which banks qualify).",
+    "target_products": [
+      "E33"
+    ],
+    "provenance": [
+      "QB5-04",
+      "nb2q-b03-03"
+    ],
+    "priority": "BULK",
+    "state": "PLANNED",
+    "notes": "095/096/116/117 (VO-NB2) and A-B03 fold in as confirmatory duplicates of the per-product rows above"
+  },
+  {
+    "query_id": "VO-FUSED-T4-006",
+    "topic": "T4",
+    "category": "threshold",
+    "text": "E33G: annual income floor, in what currency, evidenced how, over what look-back period.",
+    "target_products": [
+      "E33G"
+    ],
+    "provenance": [
+      "QB5-06",
+      "nb2q-b03-01"
+    ],
+    "priority": "SLICE_COVERED_BY_E2A",
+    "state": "PLANNED",
+    "notes": "095/096/116/117 (VO-NB2) and A-B03 fold in as confirmatory duplicates of the per-product rows above"
+  },
+  {
+    "query_id": "VO-FUSED-T4-010",
+    "topic": "T4",
+    "category": "threshold",
+    "text": "Does any golden-visa class exist in the corpus, with which investment tiers and stay durations?",
+    "target_products": [
+      "E33",
+      "E33A",
+      "E33E"
+    ],
+    "provenance": [
+      "nb2q-b12-04"
+    ],
+    "priority": "BULK",
+    "state": "PLANNED",
+    "notes": "095/096/116/117 (VO-NB2) and A-B03 fold in as confirmatory duplicates of the per-product rows above"
+  },
+  {
+    "query_id": "VO-FUSED-T6-005",
+    "topic": "T6",
+    "category": "compensation",
+    "text": "Does the corpus address tax-residency interaction (183-day rule) for long-stay visitors/remote workers, or is that outside immigration scope? Distinguish the immigration fact (source/activity of income) from the tax-residency question \u2014 where must the engine only warn, not decide.",
+    "target_products": [
+      "E33G",
+      "D1"
+    ],
+    "provenance": [
+      "VO-NB2-098"
+    ],
+    "priority": "SLICE_COVERED_BY_E2A",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T12-001",
+    "topic": "T12",
+    "category": "study",
+    "text": "Izin belajar: which authority issues it, for which institution types, is it a precondition of the study visa?",
+    "target_products": [
+      "E30"
+    ],
+    "provenance": [
+      "QB11-01"
+    ],
+    "priority": "BULK",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T12-005",
+    "topic": "T12",
+    "category": "study",
+    "text": "May a visitor attend short courses, workshops or language school on C1/B1? Where is the line versus formal E30 study?",
+    "target_products": [
+      "B1",
+      "C1",
+      "E30"
+    ],
+    "provenance": [
+      "nb2q-b13-02"
+    ],
+    "priority": "SLICE_COVERED_BY_E2A",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T13-001",
+    "topic": "T13",
+    "category": "remote-work",
+    "text": "For E33G, define precisely: employer abroad, no Indonesian clients, no Indonesian-source income \u2014 which of these are explicit legal conditions vs operational practice? May an E33G holder's foreign employer have Indonesian customers if the holder does not serve them?",
+    "target_products": [
+      "E33G"
+    ],
+    "provenance": [
+      "nb2q-b14-01",
+      "nb2q-b14-04",
+      "QB12-01"
+    ],
+    "priority": "SLICE_COVERED_BY_E2A",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T13-002",
+    "topic": "T13",
+    "category": "remote-work",
+    "text": "May an E33G remote worker serve Indonesian clients or invoice an Indonesian entity at all, even minor? Where is the line?",
+    "target_products": [
+      "E33G"
+    ],
+    "provenance": [
+      "nb2q-b02-05",
+      "QB12-02"
+    ],
+    "priority": "SLICE_COVERED_BY_E2A",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T13-003",
+    "topic": "T13",
+    "category": "remote-work",
+    "text": "Family members of an E33G holder: which codes attach and with what rights?",
+    "target_products": [
+      "E33G",
+      "E31"
+    ],
+    "provenance": [
+      "QB12-04"
+    ],
+    "priority": "SLICE_COVERED_BY_E2A",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T13-004",
+    "topic": "T13",
+    "category": "remote-work",
+    "text": "Freelancer with mixed foreign+Indonesian income: which lawful configurations exist (E33G vs E23 vs none)?",
+    "target_products": [
+      "E33G",
+      "E23"
+    ],
+    "provenance": [
+      "QB12-05"
+    ],
+    "priority": "SLICE_COVERED_BY_E2A",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T13-006",
+    "topic": "T13",
+    "category": "remote-work",
+    "text": "For E33G, does the requirement that the employer be located abroad mean the employer entity itself must not be an Indonesian legal entity (e.g. no Indonesian subsidiary/branch acting as employer of record), independent of where clients are served? Cite the passage that would let the engine test employer entity nationality directly, distinct from the client-locus test.",
+    "target_products": [
+      "E33G"
+    ],
+    "provenance": [
+      "VO-NB2-081"
+    ],
+    "priority": "SLICE_COVERED_BY_E2A",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T14-002",
+    "topic": "T14",
+    "category": "retirement-second-home",
+    "text": "E33: the deposit \u2014 exact amount, state-owned bank requirement, own-name requirement, lock-in duration, and the property alternative's floor.",
+    "target_products": [
+      "E33"
+    ],
+    "provenance": [
+      "QB13-02"
+    ],
+    "priority": "BULK",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T14-003",
+    "topic": "T14",
+    "category": "retirement-second-home",
+    "text": "May E33/E33E holders work or own/manage a business? Quote the prohibition or permission.",
+    "target_products": [
+      "E33",
+      "E33E"
+    ],
+    "provenance": [
+      "QB13-03"
+    ],
+    "priority": "BULK",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T14-004",
+    "topic": "T14",
+    "category": "retirement-second-home",
+    "text": "E33/E33E \u2192 KITAP: is there a conversion path and after how long?",
+    "target_products": [
+      "E33",
+      "E33E"
+    ],
+    "provenance": [
+      "QB13-04"
+    ],
+    "priority": "BULK",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T14-005",
+    "topic": "T14",
+    "category": "retirement-second-home",
+    "text": "Family riders on E33/E33E (spouse, children): codes and conditions.",
+    "target_products": [
+      "E33",
+      "E33E",
+      "E31"
+    ],
+    "provenance": [
+      "QB13-05"
+    ],
+    "priority": "BULK",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T14-006",
+    "topic": "T14",
+    "category": "retirement-second-home",
+    "text": "Health-insurance requirements for retirement/second-home permits: which sources impose them and with what minimums?",
+    "target_products": [
+      "E33",
+      "E33E"
+    ],
+    "provenance": [
+      "QB13-06"
+    ],
+    "priority": "BULK",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T3-006",
+    "topic": "T3",
+    "category": "activity-boundary",
+    "text": "Classify installation, repair or maintenance of machinery; separate hands-on work, remote assistance and mere observation.",
+    "target_products": [
+      "C20",
+      "ALL"
+    ],
+    "provenance": [
+      "VO-NB2-070"
+    ],
+    "priority": "BULK",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T3-007",
+    "topic": "T3",
+    "category": "activity-boundary",
+    "text": "Classify commissioning, start-up and testing; identify who operates the machinery, who signs acceptance, and when the corpus mandates review.",
+    "target_products": [
+      "ALL relevant"
+    ],
+    "provenance": [
+      "VO-NB2-071"
+    ],
+    "priority": "BULK",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T3-010",
+    "topic": "T3",
+    "category": "activity-boundary",
+    "text": "Classify who delivers training, workshops or coaching in Indonesia; separate internal, public, free and paid training.",
+    "target_products": [
+      "ALL relevant"
+    ],
+    "provenance": [
+      "VO-NB2-074"
+    ],
+    "priority": "BULK",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T6-001",
+    "topic": "T6",
+    "category": "compensation",
+    "text": "What legal test determines whether compensation is 'from an Indonesian source' for immigration purposes: payer location, payment channel, or place of work? Separate stipendio/fee/reimbursement/per-diem/profit/dividend/client-payment as a taxonomy.",
+    "target_products": [
+      "ALL"
+    ],
+    "provenance": [
+      "nb2q-b06-01",
+      "VO-NB2-097"
+    ],
+    "priority": "BULK",
+    "state": "PLANNED",
+    "notes": ""
+  },
+  {
+    "query_id": "VO-FUSED-T4-009",
+    "topic": "T4",
+    "category": "threshold",
+    "text": "PNBP fees per product family (visit, D-series by validity, KITAS, KITAP) and DKPTKA where applicable \u2014 current schedule with instrument + date.",
+    "target_products": [
+      "ALL"
+    ],
+    "provenance": [
+      "QB5-09",
+      "QB1-05"
+    ],
+    "priority": "BULK",
+    "state": "PLANNED",
+    "notes": "095/096/116/117 (VO-NB2) and A-B03 fold in as confirmatory duplicates of the per-product rows above"
+  }
+]
