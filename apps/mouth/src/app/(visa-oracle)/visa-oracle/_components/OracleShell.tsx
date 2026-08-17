@@ -832,11 +832,6 @@ function OracleShellRuntime({
                 onBack={back}
                 canGoBack={canGoBack}
                 noticeI18nKey={noticeFor(current.questionId, lane)}
-                courtesyNoteI18nKey={
-                  current.questionId === "remote_income"
-                    ? ("q.remote_income.courtesy_note" as I18nKey)
-                    : undefined
-                }
                 currentAnswer={state.facts[current.questionId]}
               />
             )}

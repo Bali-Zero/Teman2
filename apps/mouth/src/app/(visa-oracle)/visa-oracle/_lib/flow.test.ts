@@ -636,6 +636,74 @@ describe("resume snapshot validation", () => {
     });
     expect(restored?.facts.overstay_days).toBeUndefined();
   });
+
+  it("fails closed (returns null, never throws) on a pre-deletion snapshot paused on either dead node (E4 slice)", () => {
+    // Guilt: a snapshot from before this cleanup could have `history`
+    // ending on `tourism_duration`/`remote_income` (a real user paused an
+    // interview there pre-deploy). Both ids are gone from QUESTIONS now —
+    // `isOracleNode`'s hasOwnProperty guard must reject the whole snapshot,
+    // not throw and not silently accept an unknown node.
+    const base = {
+      schemaVersion: INTERVIEW_SNAPSHOT_SCHEMA_VERSION,
+      attempt: 0,
+      updatedAtIso: "2026-08-03T00:00:00Z",
+      facts: {},
+    };
+    for (const deadId of ["tourism_duration", "remote_income"]) {
+      const snapshot = {
+        ...base,
+        history: [
+          { kind: "framing" as const },
+          { kind: "question" as const, questionId: deadId },
+        ],
+      };
+      expect(() => restoreInterviewSnapshot(snapshot)).not.toThrow();
+      expect(restoreInterviewSnapshot(snapshot)).toBeNull();
+    }
+  });
+});
+
+describe("dead-node cleanup — E4 slice (question-registry-audit.md §2)", () => {
+  it("no live category sequence (fixed or dynamic) ever names a dead node", () => {
+    // Innocence: the full behavioral graph reachable from every category
+    // (fixed sequences + every dynamic branch combination already exercised
+    // by "the ten behavioral interview branches" above) never mentions
+    // either id — proving their removal from tree.ts/flow.ts changed
+    // nothing about any LIVE path.
+    const deadIds = new Set(["tourism_duration", "remote_income"]);
+    for (const category of CATEGORY_KEYS) {
+      for (const facts of [
+        { category },
+        { category, investment_vehicle: "pt_pma" },
+        { category, investment_vehicle: "property" },
+        { category, investment_vehicle: "bank_deposit" },
+        { category, retirement_basis: "bank_deposit" },
+        { category, retirement_basis: "property" },
+        { category, retirement_basis: "passive_income" },
+        { category, retirement_basis: "family_sponsor" },
+        { category, family_relation: "SPOUSE" },
+        { category, family_sponsor_nationalities: "US" },
+        { category, family_sponsor_nationalities: "ID" },
+      ] as OracleFacts[]) {
+        for (const id of getCategoryQuestionIds(facts)) {
+          expect(deadIds.has(id)).toBe(false);
+        }
+      }
+    }
+  });
+
+  it("computeNextNode never routes any live transition into a dead node", () => {
+    // Guilt: if either id were re-wired into a live sequence, this would
+    // catch it via the ten-branch happy paths above already asserting
+    // exact next-question ids at every step — this test additionally pins
+    // that `tourism_duration`/`remote_income` are absent from every fixed
+    // sequence's declared ids.
+    const fixedIds = CATEGORY_KEYS.flatMap((category) =>
+      getCategoryQuestionIds({ category }),
+    );
+    expect(fixedIds).not.toContain("tourism_duration");
+    expect(fixedIds).not.toContain("remote_income");
+  });
 });
 
 describe("attempt and verdict navigation", () => {
