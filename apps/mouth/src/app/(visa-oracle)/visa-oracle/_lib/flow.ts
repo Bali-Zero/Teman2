@@ -330,11 +330,6 @@ export function computeNextNode(
       const first = getCategoryQuestionIds(facts)[0] ?? "stay_days";
       return { kind: "question", questionId: first };
     }
-    // Legacy fixture snapshots can still be inspected, but this bucket is
-    // no longer reachable in the live graph and never feeds the API mapper.
-    case "tourism_duration":
-    case "remote_income":
-      return { kind: "question", questionId: "review_gate" };
     case "review_gate":
       return { kind: "confirmation" };
     default: {

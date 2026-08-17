@@ -1,0 +1,83 @@
+[
+  {
+    "query_id": "E2B2-E28B",
+    "source": "batch2-authored",
+    "reworked_from": "VO-FUSED-T1-* doctrine-card family, narrowed per batch-1's finding that full 17-part doctrine-card queries timeout ~100%",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["E28B"],
+    "text": "For the Indonesian investor KITAS product E28B (corporate/institutional investor tier) ONLY, answer just these 5 points, concisely, one short paragraph each: (1) category and legal purpose (what distinguishes it from E28A and E28C); (2) permitted vs prohibited activities while holding it; (3) single or multiple entry, and duration per entry and total validity; (4) how many times it can be extended and for how long, and what it converts to (onshore conversion path, if any); (5) is a sponsor/guarantor required, and minimum investment threshold if any. Cite source title and passage for each of the 5 points."
+  },
+  {
+    "query_id": "E2B2-E28C",
+    "source": "batch2-authored",
+    "reworked_from": "VO-FUSED-T1-* doctrine-card family, narrowed",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["E28C"],
+    "text": "For the Indonesian investor KITAS product E28C (portfolio investor tier) ONLY, answer just these 5 points, concisely, one short paragraph each: (1) category and legal purpose (what distinguishes it from E28A and E28B); (2) permitted vs prohibited activities while holding it; (3) single or multiple entry, and duration per entry and total validity; (4) how many times it can be extended and for how long, and what it converts to (onshore conversion path, if any); (5) is a sponsor/guarantor required, and minimum investment threshold if any. Cite source title and passage for each of the 5 points."
+  },
+  {
+    "query_id": "E2B2-E28D",
+    "source": "batch2-authored",
+    "reworked_from": "VO-FUSED-T1-* doctrine-card family, narrowed",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["E28D"],
+    "text": "For the Indonesian KITAS product E28D ONLY, answer just these 5 points, concisely, one short paragraph each: (1) category and legal purpose (which applicant profile this index code covers, within the E28 investor/director family); (2) permitted vs prohibited activities while holding it; (3) single or multiple entry, and duration per entry and total validity; (4) how many times it can be extended and for how long, and what it converts to (onshore conversion path, if any); (5) is a sponsor/guarantor required. Cite source title and passage for each of the 5 points. If NB-2's sources do not define an index code E28D at all, say so explicitly rather than guessing."
+  },
+  {
+    "query_id": "E2B2-E28F",
+    "source": "batch2-authored",
+    "reworked_from": "VO-FUSED-T1-* doctrine-card family, narrowed",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["E28F"],
+    "text": "For the Indonesian KITAS product E28F ONLY, answer just these 5 points, concisely, one short paragraph each: (1) category and legal purpose (which applicant profile this index code covers, within the E28 investor/director family); (2) permitted vs prohibited activities while holding it; (3) single or multiple entry, and duration per entry and total validity; (4) how many times it can be extended and for how long, and what it converts to (onshore conversion path, if any); (5) is a sponsor/guarantor required. Cite source title and passage for each of the 5 points. If NB-2's sources do not define an index code E28F at all, say so explicitly rather than guessing."
+  },
+  {
+    "query_id": "E2B2-E30E",
+    "source": "batch2-authored",
+    "reworked_from": "VO-FUSED-T1-* doctrine-card family, narrowed",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["E30E"],
+    "text": "For the Indonesian KITAS/ITAS product E30E ONLY, answer just these 5 points, concisely, one short paragraph each: (1) category and legal purpose (which applicant profile this index code covers, within the E30 family); (2) permitted vs prohibited activities while holding it; (3) single or multiple entry, and duration per entry and total validity; (4) how many times it can be extended and for how long, and what it converts to (onshore conversion path, if any); (5) is a sponsor/guarantor required. Cite source title and passage for each of the 5 points. If NB-2's sources do not define an index code E30E at all, say so explicitly rather than guessing."
+  },
+  {
+    "query_id": "E2B2-E30F",
+    "source": "batch2-authored",
+    "reworked_from": "VO-FUSED-T1-* doctrine-card family, narrowed",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["E30F"],
+    "text": "For the Indonesian KITAS/ITAS product E30F ONLY, answer just these 5 points, concisely, one short paragraph each: (1) category and legal purpose (which applicant profile this index code covers, within the E30 family); (2) permitted vs prohibited activities while holding it; (3) single or multiple entry, and duration per entry and total validity; (4) how many times it can be extended and for how long, and what it converts to (onshore conversion path, if any); (5) is a sponsor/guarantor required. Cite source title and passage for each of the 5 points. If NB-2's sources do not define an index code E30F at all, say so explicitly rather than guessing."
+  },
+  {
+    "query_id": "E2B2-E28BC-XCHECK",
+    "source": "batch2-authored",
+    "reworked_from": "n/a — dedicated cross-check, not in fused-bank",
+    "topic": "T4",
+    "category": "pinpoint-hunt",
+    "target_products": ["E28B", "E28C"],
+    "text": "Give the exact minimum capital/investment thresholds (in USD or IDR) for E28B and E28C separately, as an index-code-to-threshold table if the sources support one, with source title, date and passage/pinpoint article for each figure. Note explicitly if any source uses a different internal label (e.g. 'E28G' or similar) for either tier, and what that label maps to."
+  },
+  {
+    "query_id": "E2B2-E28DF-XCHECK",
+    "source": "batch2-authored",
+    "reworked_from": "n/a — dedicated existence/mapping check",
+    "topic": "T1",
+    "category": "pinpoint-hunt",
+    "target_products": ["E28D", "E28F"],
+    "text": "Do NB-2's sources use the index codes E28D and E28F anywhere (KITAS/ITAS director, commissioner, or other E28-family sub-codes beyond E28A/E28B/E28C)? List every E28-family index code the sources actually name, with the source title and passage for each, and state plainly if E28D and/or E28F are not attested in NB-2 at all."
+  },
+  {
+    "query_id": "E2B2-E30EF-XCHECK",
+    "source": "batch2-authored",
+    "reworked_from": "n/a — dedicated existence/mapping check",
+    "topic": "T1",
+    "category": "pinpoint-hunt",
+    "target_products": ["E30E", "E30F"],
+    "text": "Do NB-2's sources use the index codes E30E and E30F anywhere (beyond E30/E30A/E30B)? List every E30-family index code the sources actually name, with the source title and passage for each, and state plainly if E30E and/or E30F are not attested in NB-2 at all."
+  }
+]
