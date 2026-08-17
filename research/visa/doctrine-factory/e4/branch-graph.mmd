@@ -1,0 +1,41 @@
+flowchart TD
+  framing["framing"] --> in_indonesia
+  in_indonesia -. cond .-> overstay_days
+  in_indonesia -. cond .-> permit_expiry
+  permit_expiry --> current_status_code
+  current_status_code --> overstay_days
+  overstay_days -. cond .-> nationalities
+  overstay_days -. cond .-> wants_onshore_conversion
+  wants_onshore_conversion --> application_channel
+  application_channel --> nationalities
+  nationalities --> birth_date
+  birth_date --> category
+  category --> trip_scope
+  remote_income --> review_gate
+  review_gate -. cond .-> review_gate
+  trip_scope --> category_dispatch{{"per-category branch"}}
+  category_dispatch -->|tourism| cat_tourism["tourism"]
+  cat_tourism --> stay_days --> entry_pattern
+  category_dispatch -->|business| cat_business["business"]
+  cat_business --> business_activity --> work_indonesia_compensation --> stay_days --> entry_pattern
+  category_dispatch -->|work| cat_work["work"]
+  cat_work --> sponsor_category --> work_payer --> work_indonesia_compensation --> work_sponsor_confirmed --> work_role --> stay_days
+  category_dispatch -->|invest| cat_invest["invest"]
+  cat_invest -.-> cat_invest_dynamic["dynamic branch (facts-dependent)"]
+  category_dispatch -->|remote| cat_remote["remote"]
+  cat_remote --> sponsor_category --> remote_clients --> remote_compensation --> remote_employer_country --> remote_pt_pma --> stay_days
+  category_dispatch -->|family| cat_family["family"]
+  cat_family -.-> cat_family_dynamic["dynamic branch (facts-dependent)"]
+  category_dispatch -->|retirement| cat_retirement["retirement"]
+  cat_retirement -.-> cat_retirement_dynamic["dynamic branch (facts-dependent)"]
+  category_dispatch -->|study| cat_study["study"]
+  cat_study --> sponsor_category --> study_level --> study_admission_confirmed --> study_sponsor_confirmed --> stay_days
+  category_dispatch -->|diaspora| cat_diaspora["diaspora"]
+  cat_diaspora --> diaspora_connection --> diaspora_documents --> stay_days
+  category_dispatch -->|other| cat_other["other"]
+  cat_other --> other_purpose --> other_paid_activity --> stay_days --> entry_pattern
+  review_gate --> confirmation --> verdict
+  tourism_duration["tourism_duration (DEAD — unreachable, legacy fixtures only)"]
+  style tourism_duration fill:#444,color:#fff,stroke:#f66,stroke-dasharray: 5 5
+  remote_income["remote_income (DEAD — unreachable, legacy fixtures only)"]
+  style remote_income fill:#444,color:#fff,stroke:#f66,stroke-dasharray: 5 5
