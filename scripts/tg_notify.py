@@ -45,6 +45,7 @@ import socket
 import subprocess
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -394,7 +395,20 @@ def send_telegram(token: str, chat: str, text: str) -> bool:
     try:
         with urllib.request.urlopen(req, timeout=API_TIMEOUT) as resp:
             return json.loads(resp.read().decode()).get("ok", False)
-    except Exception:
+    except urllib.error.HTTPError as e:
+        # Telegram's error body names the real cause (bad token, chat not
+        # found, blocked, rate-limited, ...) — never the token itself, which
+        # lives in the URL, not the response. Swallowing this (bare `except
+        # Exception: return False`) left every past failure undiagnosable:
+        # "SEND FAILED" in the caller's log with no reason, ever.
+        try:
+            detail = e.read().decode(errors="replace")[:300]
+        except Exception:
+            detail = ""
+        print(f"[tg_notify] send_telegram HTTPError {e.code} {e.reason}: {detail}", file=sys.stderr)
+        return False
+    except Exception as e:
+        print(f"[tg_notify] send_telegram {type(e).__name__}: {e}", file=sys.stderr)
         return False
 
 
