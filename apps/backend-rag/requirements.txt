@@ -32,7 +32,7 @@ boto3>=1.43.67
 
 # AI/ML - UPGRADED FOR HTTPX 0.28+ COMPATIBILITY
 openai>=2.53.0  # Upgraded for httpx 0.28+ (proxies parameter removed)
-anthropic>=0.120.2  # Upgraded for httpx 0.28+ compatibility
+anthropic>=0.122.0  # Upgraded for httpx 0.28+ compatibility
 # PyTorch - Explicitly specify compatible version to avoid RuntimeError with sentence-transformers
 # PyTorch 2.2.0+ required for transformers compatibility (register_pytree_node)
 torch>=2.13.0  # Security: RCE via torch.load fixed in 2.6.0 (CVE-2025-32434)
@@ -71,9 +71,9 @@ langgraph-checkpoint-postgres>=3.1.2  # PostgreSQL checkpointing for stateful wo
 h2>=4.4.1  # transitive via httpx; CVE-2026-71554 affects 4.4.0. Named here
 #   ON PURPOSE even though nothing imports it directly: a floor that lives only
 #   in the lock is not a constraint, it is a snapshot (W98).
-langchain-core>=1.5.3  # Updated 2026-03-14: patch fixes for streaming + callbacks
-langchain-anthropic>=1.5.4  # Required for KG LangGraph orchestrator
-langchain-openai>=1.4.2  # Required for KG LangGraph orchestrator fallback
+langchain-core>=1.5.4  # Updated 2026-03-14: patch fixes for streaming + callbacks
+langchain-anthropic>=1.5.6  # Required for KG LangGraph orchestrator
+langchain-openai>=1.5.0  # Required for KG LangGraph orchestrator fallback
 langsmith>=0.10.17  # Observability: @traceable on RAG nodes + KG nodes
 # langchain-google-genai removed to resolve conflicts
 
