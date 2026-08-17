@@ -103,6 +103,9 @@ def _redis_env() -> dict[str, str] | None:
     return env
 
 
+_AUTH_ERROR_PREFIXES = ("NOAUTH", "WRONGPASS", "NOPERM")
+
+
 def redis_cmd(*args: str, timeout: int = 10, retries: int = 2) -> str:
     """Execute a redis-cli command and return output.
 
@@ -114,6 +117,15 @@ def redis_cmd(*args: str, timeout: int = 10, retries: int = 2) -> str:
     hammering an already-loaded host immediately. retries=2 means up to
     3 total attempts; set retries=0 to preserve the old single-shot
     behavior for any caller that wants a strict fail-fast.
+
+    W89/W104 NOAUTH-swallow: redis-cli returns an auth-failure reply on
+    STDOUT at exit 0 (never a nonzero returncode), so a caller that only
+    checks `result.startswith("[ERROR]")` — the convention every downstream
+    caller of this SSOT uses — would treat "NOAUTH Authentication
+    required." as a successful XADD/SET/etc reply. nerve.py and
+    check_redis_split_brain.py already carry this same detection
+    independently; it belongs here too since this is the function their
+    own docstrings/tests point to as "the SSOT that carries REDISCLI_AUTH".
     """
     cmd = [REDIS_CLI] + _redis_host_args() + list(args)
     attempts = retries + 1
@@ -125,7 +137,10 @@ def redis_cmd(*args: str, timeout: int = 10, retries: int = 2) -> str:
             )
             if result.returncode != 0:
                 return f"[ERROR] redis-cli: {result.stderr.strip()}"
-            return result.stdout.strip()
+            out = result.stdout.strip()
+            if out.startswith(_AUTH_ERROR_PREFIXES):
+                return f"[ERROR] redis-cli: {out}"
+            return out
         except FileNotFoundError:
             return "[ERROR] redis-cli not found"
         except subprocess.TimeoutExpired:
