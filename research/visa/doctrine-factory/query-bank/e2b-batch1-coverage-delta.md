@@ -14,11 +14,16 @@ adversarial_review: kimi-k3
 
 ## Adversarial review
 
-Covered by the joint Kimi K3 pass over the batch (see the claim ledger's `## Adversarial review` for
-the full account — killed at the 8-minute timebox before a verdict, no findings against this file
-specifically). This delta file is a mechanical derivation of `coverage-matrix-after-batch1.json` — its
-correctness was self-verified by re-running the same script's tally logic in this turn against the
-raw `e2b-batch1-run-summary.json`/response-log rather than relying on a separate adversarial pass.
+Covered by two joint Kimi K3 passes over the batch (see the claim ledger's `## Adversarial review` for
+the full account of both). Round 1 was killed at the 8-minute timebox before a verdict; Round 2
+(narrow text-only scope) completed and returned 25 findings, none against this file specifically — its
+25-item review scope was the claim ledger + conflict report text, not the coverage-matrix delta. This
+delta file is a mechanical derivation of `coverage-matrix-after-batch1.json` — its correctness was
+self-verified by re-running the same script's tally logic in this turn against the raw
+`e2b-batch1-run-summary.json`/response-log rather than relying on a separate adversarial pass. The
+25-item cure did not alter which products reached `ALL_TOPICS_ANSWERED`/`PARTIAL` (that's a query-level
+reachability fact, unaffected by claim-state downgrades or pinpoint additions) — the counts in this
+file remain accurate after the ledger's Round 2 fixes.
 
 ## Method
 
