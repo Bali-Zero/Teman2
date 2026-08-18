@@ -1,25 +1,25 @@
 """Codex-exec subscription provider — OFFLINE, standalone provider adapter.
 
-Owner ruling this client implements (2026-08-15, Zero, direct, Legge 5 — see
-`research/operations/2026-08-15-adr-wa-runtime-openai-provider.md` §30):
-the WA OpenAI provider goes through the **ChatGPT Pro SUBSCRIPTION** (headless
-`codex exec`), NOT a per-token OpenAI API key. This SUPERSEDES the ADR §1
-council NO-GO on using an OpenAI subscription credential for a WA runtime —
-the council verdict stays recorded as history; Zero was shown the residual
-OpenAI-ToS risk once and accepted it, citing the house precedent that Claude
-MAX OAuth already powers OpenClaw/Telegram and the cron `claude` wrappers
-(`backend/llm/claude_oauth_client.py`, same "shell out to the vendor CLI,
-never the SDK/API key" shape). `OPENAI_WA_PROVIDER_API_KEY` (the sibling
-`openai_responses_client.py`'s credential) will never be provisioned under
-this ruling; that client stays in-tree as a DORMANT, reviewed alternative —
-this module does not import it, replace it, or delete it.
+Owner credential-path ruling recorded by this client (2026-08-15, Zero,
+direct, Legge 5 — see
+`research/operations/2026-08-15-adr-wa-runtime-openai-provider.md` §30): if a
+separately reviewed future WA OpenAI runtime is authorized, its intended path
+is the **ChatGPT Pro SUBSCRIPTION** (headless `codex exec`), not a per-token
+OpenAI API key. The current authorization is narrower: this module may be used
+only by the human-run offline evidence harness. The ruling does not authorize
+a service credential, runtime wiring, real client text, traffic, deployment,
+or cutover. The council's runtime-risk analysis stays recorded as history.
+`OPENAI_WA_PROVIDER_API_KEY` (the sibling `openai_responses_client.py`'s
+credential) is not provisioned under this ruling; that client stays in-tree
+as a DORMANT, reviewed alternative — this module does not import it, replace
+it, or delete it.
 
 ⚠️ THIS FILE HAS ZERO WIRING. Nothing in `backend/services/rag/agentic/` or
 any other live module imports it. No config flag, no gateway branch, no
 hot-path reference exists anywhere in this repo — grep it yourself before
-trusting this comment. It sits behind the same three gates as its sibling
-(security review, a real shadow-hook design with context parity, and now
-the business/cost gate, which this ruling CLOSES — see the ADR §30).
+trusting this comment. Any live use still requires a separate runtime design,
+security/privacy review, context-parity evidence, and explicit activation
+authorization; none is supplied by this file or ruling.
 
 Design mirrors `openai_responses_client.py`'s discipline (read that module's
 docstring first): a property-based `available` that never raises on
