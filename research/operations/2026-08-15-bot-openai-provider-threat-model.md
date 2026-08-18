@@ -23,7 +23,7 @@ sources:
   - developers.openai.com/api/docs/guides/tools (WebSearch this turn — mcp/web_search/file_search tool types)
   - OpenAI Responses API refusal/incomplete_details schema (WebSearch this turn, community + developer docs)
   - OpenAI sk-proj- Projects launch date (WebSearch this turn — April 2024, corrects an earlier "since 2023" draft claim)
-  - PR #4216 source head 6cc3c845c (Codex subscription adapter, offline harness, tests, CI, and ADR)
+  - PR #4216 source head 0b8705527 (Codex subscription adapter, offline harness, tests, CI, and ADR)
   - research/operations/2026-08-15-bot-provider-failure-matrix.md (R28 reconciliation)
 adversarial_review: >-
   Historical draft reviewed by Kimi K3 and Gemini; R28 adapter review Kimi K3
@@ -41,7 +41,7 @@ review archaeology: it threat-modeled an earlier Responses-API-key design and, b
 discarded pseudo-shadow branch. Whenever an earlier sentence conflicts with this section, this
 section wins.
 
-**Frozen target:** PR #4216 source head `6cc3c845c`, reconciled with `origin/main` at
+**Frozen target:** PR #4216 source head `0b8705527`, reconciled with `origin/main` at
 `993e4e868a6e8210328f69ccd136ca9d5c54d776`. The current fence is eleven files: the standalone
 subscription adapter and test, the dormant Responses adapter and test, role-aware corpus/benchmark
 tooling and tests, the ADR, test-package marker, and the existing CI workflow. `config.py`,
@@ -572,7 +572,7 @@ own count) all checked out. Noted for calibration, not treated as an objection.
 These prompts targeted an intermediate Responses/API-key snapshot and are retained for provenance.
 Do not execute them against the current subscription adapter: their credential and client
 assumptions are obsolete. R28 above records the review actually run against PR #4216 source head
-`6cc3c845c`; a future runtime-wiring diff requires a fresh prompt written for that concrete design.
+`0b8705527`; a future runtime-wiring diff requires a fresh prompt written for that concrete design.
 
 **Ground truth as of THIS revision (do not re-derive, verify against the FROZEN diff instead):** the
 shadow-provider design (Findings 5/6/7) is already gone — reworked away before this diff existed —

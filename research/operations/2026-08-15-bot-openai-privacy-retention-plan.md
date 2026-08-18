@@ -13,7 +13,7 @@ sources:
   - https://help.openai.com/en/articles/5722486-api-data-usage-policies (official API data usage and retention controls, checked 2026-08-18)
   - https://help.openai.com/en/articles/7039943-data-usage-for-consumer-services-faq (official consumer-services FAQ, checked 2026-08-18)
   - https://help.openai.com/en/articles/7730893-data-control (official ChatGPT data controls, checked 2026-08-18)
-  - PR #4216 source head 6cc3c845c and its ADR (subscription-backed offline lane)
+  - PR #4216 source head 0b8705527 and its ADR (subscription-backed offline lane)
 adversarial_review: >-
   Historical plan reviewed by Kimi K3 and Gemini; R28 adapter review Kimi K3
   SHIP plus Gemini 3.7 Flash High degraded fallback SHIP after Gemini 3.1 Pro
@@ -346,7 +346,7 @@ as fact about the eventual PR without re-reading the frozen diff.
 
 **R28 update:** V3's selected-provider matrix now exists in
 `research/operations/2026-08-15-bot-provider-failure-matrix.md` and is reconciled to PR #4216 head
-`6cc3c845c`. It confirms the lane is offline-only and that there is currently nothing to roll back
+`0b8705527`. It confirms the lane is offline-only and that there is currently nothing to roll back
 from. The historical handoff below remains useful for a future serve-stage, but it is not an open
 request to wire the current adapter.
 
