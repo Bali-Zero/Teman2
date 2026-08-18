@@ -1,7 +1,11 @@
 """Webhook signature/secret verification primitives.
 
 Pure functions that can be reused by every public-channel router
-(WhatsApp, Instagram, Telegram, X/Twitter). Each function raises
+(WhatsApp, Instagram, X/Twitter). ``verify_telegram_secret`` was removed
+2026-08-18 along with ``telegram_webhook.py`` — the router it verified for
+was structurally dead by design (its process never had a live
+``ChannelRouter``; see ``.claude/skills/modus/PENDING-ARMS.md``). Each
+function raises
 ``WebhookVerificationError`` with a stable ``reason`` code on failure
 and returns ``None`` on success — callers decide HTTP status mapping.
 
@@ -26,7 +30,6 @@ import hmac
 __all__ = [
     "WebhookVerificationError",
     "verify_meta_hmac",
-    "verify_telegram_secret",
     "verify_twitter_hmac",
 ]
 
@@ -121,42 +124,6 @@ def verify_meta_hmac(
     ).hexdigest()
 
     if not hmac.compare_digest(received_digest, expected_digest):
-        raise WebhookVerificationError("signature_mismatch", provider)
-
-
-def verify_telegram_secret(
-    header_value: str | None,
-    expected_secret: str | None,
-    *,
-    require_secret: bool = True,
-    provider: str = "telegram",
-) -> None:
-    """Verify ``X-Telegram-Bot-Api-Secret-Token`` shared-secret header.
-
-    Telegram does not sign the body — instead it echoes back a static
-    secret that was registered with ``setWebhook``. Constant-time
-    comparison avoids leaking the secret length via timing.
-
-    Args:
-        header_value: Value of ``X-Telegram-Bot-Api-Secret-Token``, or
-                ``None`` if absent.
-        expected_secret: Secret previously sent to ``setWebhook``, or
-                ``None`` if not configured.
-        require_secret: See :func:`verify_meta_hmac`.
-        provider: Channel label (default ``telegram``).
-
-    Raises:
-        WebhookVerificationError: On any verification failure.
-    """
-    if not expected_secret:
-        if require_secret:
-            raise WebhookVerificationError("missing_secret", provider)
-        return
-
-    if not header_value:
-        raise WebhookVerificationError("missing_header", provider)
-
-    if not hmac.compare_digest(header_value, expected_secret):
         raise WebhookVerificationError("signature_mismatch", provider)
 
 

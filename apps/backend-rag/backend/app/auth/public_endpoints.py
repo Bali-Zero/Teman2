@@ -218,13 +218,12 @@ _WEBHOOKS = (
     ),
     # Removed 2026-04-18: /webhook/twitter webhook_router intentionally
     # disabled (manifest: "CRC broken, OAuth incomplete").
-    PublicEndpoint(
-        "/webhook/telegram",
-        Category.WEBHOOK,
-        "Telegram bot webhook (multi-channel architecture) — the single "
-        "mounted path; /api/telegram/webhook and /api/webhook/telegram "
-        "aliases were removed in 2026-04-18 registry audit.",
-    ),
+    # Removed 2026-08-18 (Zero ruled REMOVE): /webhook/telegram and
+    # telegram_webhook.py itself deleted — the route was structurally dead by
+    # design (the `api` process it was mounted on always had
+    # app.state.channel_router = None, so Depends(get_channel_router) 503'd
+    # on every request; the live Telegram channel is Pro OpenClaw, per
+    # CLAUDE.md §12). See .claude/skills/modus/PENDING-ARMS.md (closed lines).
 )
 
 _OAUTH = (

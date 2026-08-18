@@ -15,7 +15,6 @@ import pytest
 from backend.security.webhook_verifier import (
     WebhookVerificationError,
     verify_meta_hmac,
-    verify_telegram_secret,
     verify_twitter_hmac,
 )
 
@@ -25,7 +24,6 @@ from backend.security.webhook_verifier import (
 
 META_SECRET = "meta-app-secret-xyz"
 TWITTER_SECRET = "twitter-consumer-secret-abc"
-TG_SECRET = "tg-shared-secret-123"
 
 
 def _meta_sig(body: bytes, secret: str = META_SECRET) -> str:
@@ -46,13 +44,15 @@ def _twitter_sig(body: bytes, secret: str = TWITTER_SECRET) -> str:
 class TestVerifyMetaHmac:
     def test_valid_signature_passes(self) -> None:
         body = b'{"object":"whatsapp_business_account"}'
-        verify_meta_hmac(body, _meta_sig(body), META_SECRET, provider="whatsapp")
+        result = verify_meta_hmac(body, _meta_sig(body), META_SECRET, provider="whatsapp")
+        assert result is None  # success is silent — the contract is "did not raise"
 
     def test_valid_signature_empty_body_passes(self) -> None:
         # Meta sends empty bodies for some lifecycle pings; HMAC of b"" is
         # a well-defined value so verification must still succeed.
         body = b""
-        verify_meta_hmac(body, _meta_sig(body), META_SECRET, provider="whatsapp")
+        result = verify_meta_hmac(body, _meta_sig(body), META_SECRET, provider="whatsapp")
+        assert result is None
 
     def test_missing_header_raises(self) -> None:
         with pytest.raises(WebhookVerificationError) as ei:
@@ -100,46 +100,19 @@ class TestVerifyMetaHmac:
 
     def test_missing_secret_without_require_skips(self) -> None:
         # dev mode: should not raise even with bogus signature
-        verify_meta_hmac(
+        result = verify_meta_hmac(
             b"x",
             "sha256=bogus",
             None,
             provider="whatsapp",
             require_secret=False,
         )
+        assert result is None
 
     def test_default_require_secret_is_true(self) -> None:
         # Sanity: the safe default kicks in if caller forgets the kwarg.
         with pytest.raises(WebhookVerificationError):
             verify_meta_hmac(b"x", "sha256=abc", None, provider="whatsapp")
-
-
-# ---------------------------------------------------------------------------
-# Telegram shared-secret header
-# ---------------------------------------------------------------------------
-
-
-class TestVerifyTelegramSecret:
-    def test_valid_secret_passes(self) -> None:
-        verify_telegram_secret(TG_SECRET, TG_SECRET)
-
-    def test_missing_header_raises(self) -> None:
-        with pytest.raises(WebhookVerificationError) as ei:
-            verify_telegram_secret(None, TG_SECRET)
-        assert ei.value.reason == "missing_header"
-
-    def test_wrong_secret_raises_signature_mismatch(self) -> None:
-        with pytest.raises(WebhookVerificationError) as ei:
-            verify_telegram_secret("not-the-secret", TG_SECRET)
-        assert ei.value.reason == "signature_mismatch"
-
-    def test_missing_expected_secret_with_require_raises(self) -> None:
-        with pytest.raises(WebhookVerificationError) as ei:
-            verify_telegram_secret(TG_SECRET, None, require_secret=True)
-        assert ei.value.reason == "missing_secret"
-
-    def test_missing_expected_secret_without_require_skips(self) -> None:
-        verify_telegram_secret(TG_SECRET, None, require_secret=False)
 
 
 # ---------------------------------------------------------------------------
@@ -150,7 +123,8 @@ class TestVerifyTelegramSecret:
 class TestVerifyTwitterHmac:
     def test_valid_signature_passes(self) -> None:
         body = b'{"direct_message_events":[]}'
-        verify_twitter_hmac(body, _twitter_sig(body), TWITTER_SECRET)
+        result = verify_twitter_hmac(body, _twitter_sig(body), TWITTER_SECRET)
+        assert result is None  # success is silent — the contract is "did not raise"
 
     def test_uses_base64_not_hex(self) -> None:
         # Regression guard: if someone refactors and switches to .hexdigest(),
@@ -191,7 +165,8 @@ class TestVerifyTwitterHmac:
         assert ei.value.reason == "missing_secret"
 
     def test_missing_secret_without_require_skips(self) -> None:
-        verify_twitter_hmac(b"x", "sha256=abc", None, require_secret=False)
+        result = verify_twitter_hmac(b"x", "sha256=abc", None, require_secret=False)
+        assert result is None
 
 
 # ---------------------------------------------------------------------------
