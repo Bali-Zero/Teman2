@@ -100,6 +100,7 @@ declare -a PLAN=(
   "$SRC_DIR/fleet.ghostty|$DEST_DIR/fleet.ghostty"
   "$SRC_DIR/keys.ghostty|$DEST_DIR/keys.ghostty"
   "$SRC_DIR/machines/$MACHINE.ghostty|$DEST_DIR/machine.ghostty"
+  "$SRC_DIR/verify-latest.sh|$DEST_DIR/verify-latest.sh"
 )
 
 if [ "$DRY_RUN" -eq 1 ]; then
