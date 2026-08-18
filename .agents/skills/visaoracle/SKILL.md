@@ -113,6 +113,25 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
 ## LIVE STATE (update on every state change — whoever changes state updates this section)
 
+- 2026-08-18 (M5, E5 perimeter — twin-partition: this session owns E5/compiler/backend
+  `visa_engine`; nuzantara-df owns E3 bulk + OD-4): **E5 INCREMENTS 1+2 ARE ON MAIN.**
+  Inc-1 PR #4283 (merge `93b9ae18f`): claim-ledger parser (`claim_ledger.py`, per-product
+  state resolution for the mixed CL-D-FUNDS line) + compiler CLI
+  (`backend/scripts/visa_engine/compile_claims.py`) with hard lints VERIFIED-only and
+  R-OVERSTAY-PLANNING (Zero ruling 2026-08-18: any `immigration.overstay_days` reference
+  must be gated by `immigration.currently_in_indonesia == true` in its ALL-ancestor
+  chain), plus the 26 reformed claim-backed slice rules (D1/D2/D12/E31B/E31D) in
+  `research/visa/doctrine-factory/e5/slice-rule-manifest.json`. Inc-2 PR #4291 (armed at
+  green, gate passed 77/77 tests): lints UNSATISFIABLE-CONDITION and VACUOUS-RULE
+  (duplicate-subtree + optional `must_reference_facts`), each proven on the real seq-7
+  defects `el.e33e.deposit-income-basis` (brute-force UNSAT, 0/64 assignments) and
+  `el.e33g.income-60k-manual` (duplicated block, zero income facts, `60000` absent from
+  the pack) — both independently confirmed on `origin/main` pack bytes and RECORDED AS
+  SEQ-9 SIGNING-GATE BLOCKERS: neither rule enters the fold uncured. OD-4 ratified (Zero
+  via nuzantara-df session, package #4288): no OUT_OF_COMMERCIAL_SCOPE labels, E28B/C/D/F
+  always-HUMAN_REVIEW rules stay as designed, E30E/E30F = pure rule-authoring (next E5
+  increment), E23U/V+E33A/B/C await the E2c ledger. SHADOW/ENFORCE posture unchanged.
+
 - 2026-08-15 (Pro continuation): **THE EXACT PR #4192 FRONTEND CANDIDATE IS
   PROMOTED TO THE PRODUCTION ALIAS.** Interactive Fable independently checked
   the Vercel identity, project, target, READY state, old alias owner and exact
