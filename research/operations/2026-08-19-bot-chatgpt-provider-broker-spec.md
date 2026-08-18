@@ -412,6 +412,21 @@ table proves it.
   tests; the Gemini path is the behavioral reference).
 - Whether the second ChatGPT Pro seat ever joins (post-S3c data; C8 forbids silent rotation).
 
+## Adversarial review
+
+Seat: **Kimi K3** (declared token), corroborated by **Codex GPT-5.6 sol** red-team and
+**Gemini 3.1 Pro** (agy) — four rounds total, every finding dispositioned in §8. Final
+verdicts: Codex SHIP (after BLOCKED×2 → FIX-FIRST → confirmation micro-round 4/4 SATISFIED),
+Kimi SHIP (after FIX-FIRST×3 → 2/2 SATISFIED), agy SHIP. ~40 findings raised across rounds;
+**three objections survive by design rather than by fix**, each carried openly in the spec:
+
+1. **The Graph-send ack window** (Codex H10): pre-existing, not widened, explicitly outside
+   this spec's claims — the spec asserts only "zero new send paths" (§2, §7).
+2. **The seat-credential exfiltration residual** (Codex CR2): bounded, probed, and owner-gated
+   as G-P6 — accepted risk, not a solved one (§4.2).
+3. **The Gemini-free depletion-resilience claim** (Kimi v2-3): CONDITIONAL on S2's zero-LLM
+   package-builder test, with a named downgrade-and-re-review path (§2.2).
+
 ## §Solo-operatore
 
 - One-time `codex login` as the `zantara-codex` user on Pro (device-code/GUI).

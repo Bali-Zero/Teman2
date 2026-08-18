@@ -248,6 +248,21 @@ re-run after the underlying cause is fixed) if any of the following occurs:
   transport row): sparse per-fixture failures below that bar are counted as category-1 FAILs,
   never silently dropped, and above it the run measures the transport, not the provider.
 
+## Adversarial review
+
+Seat: **Kimi K3** (generator≠grader — corpus and rubric drafted by a Sonnet implementer,
+refuted by a cross-family seat). First pass: **FIX-FIRST, 5 findings**, all gate-coverage
+defects (category-2 count error + ungated abstain fixtures; scorer-blinding absent from the
+invalidation rules; transport errors laundering through the abstain rubric; per-domain accuracy
+masking; single-scorer zero tolerance). All five were folded into §4/§5/§6 **before the freeze**
+— legitimate under this document's own freeze rule, which binds at commit, with no generation
+run. Confirmation micro-round: **5/5 SATISFIED, VERDICT: SHIP**. The 4 encoded Indonesian facts
+(2.5 mld paid-up; 80y Hak Pakai; 80y HGB; Rp 1,000,000/day overstay) were verified CORRECT
+against BKPM 5/2025, PP 18/2021, PP 45/2024; all table arithmetic re-checked. **Surviving
+notes (non-blocking): none survived as objections** — the reviewer's two closing notes (the
+COMPLAINT_RETENTION count taken on attestation, since verified programmatically against the
+corpus; a zero-tolerance wording friction in §4 cat. 6) are both addressed in the text.
+
 ## 7. What this document does not do
 
 This document registers fixtures and a rubric. It does not run Stage 1, does not generate a
