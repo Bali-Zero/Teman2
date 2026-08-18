@@ -126,6 +126,46 @@ _ENV_VAR = "OPENAI_WA_PROVIDER_API_KEY"
 
 _RESPONSES_URL = "https://api.openai.com/v1/responses"
 
+
+async def _record_openai_responses_call(
+    *,
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+    success: bool,
+    latency_ms: int,
+    error_class: str | None,
+) -> None:
+    """Record one paid Responses API attempt without affecting its caller.
+
+    This client is dormant and unwired, but a manually invoked HTTP attempt
+    would still be billable.  Keep the ledger fail-open and import it lazily so
+    merely importing this offline adapter does not initialize observability or
+    database state.  Only local model/token/error metadata is recorded; prompt,
+    response, API key, and remote error content never enter the event.
+    """
+    try:
+        from backend.services.llm_clients.pricing import calculate_cost
+        from backend.services.observability import record_llm_call
+
+        cost_usd = calculate_cost(input_tokens, output_tokens, model)
+        await record_llm_call(
+            provider="openai_responses",
+            model=model,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            cost_usd=cost_usd,
+            success=success,
+            latency_ms=latency_ms,
+            endpoint="OpenAIResponsesClient.generate",
+            error_class=error_class,
+        )
+    except Exception as exc:
+        logger.warning(
+            "OpenAIResponsesClient: cost recorder failed (%s)",
+            type(exc).__name__,
+        )
+
 # Transient HTTP statuses worth a retry. 429 = rate limit, 5xx = server-side.
 _RETRYABLE_STATUS_CODES = frozenset({429, 500, 502, 503, 504})
 
@@ -1463,6 +1503,14 @@ class OpenAIResponsesClient:
                 # retried) and API 4xx/5xx status codes (retryable only if
                 # in _RETRYABLE_STATUS_CODES, handled separately below).
                 last_exc = exc
+                await _record_openai_responses_call(
+                    model=model_name,
+                    input_tokens=0,
+                    output_tokens=0,
+                    success=False,
+                    latency_ms=round((time.perf_counter() - t0) * 1000),
+                    error_class=type(exc).__name__,
+                )
                 if attempt <= self.max_retries:
                     backoff = 0.5 * (2 ** (attempt - 1))
                     logger.warning(
@@ -1524,6 +1572,14 @@ class OpenAIResponsesClient:
             # so retry behaviour for the previously-handled cases is
             # unchanged).
             if response.status_code != 200:
+                await _record_openai_responses_call(
+                    model=model_name,
+                    input_tokens=0,
+                    output_tokens=0,
+                    success=False,
+                    latency_ms=round((time.perf_counter() - t0) * 1000),
+                    error_class=OpenAIAPIError.__name__,
+                )
                 if response.status_code in _RETRYABLE_STATUS_CODES and attempt <= self.max_retries:
                     backoff = 0.5 * (2 ** (attempt - 1))
                     logger.warning(
@@ -1579,15 +1635,34 @@ class OpenAIResponsesClient:
                 pending_shape_error = OpenAIResponseShapeError("response body was not valid JSON")
 
             if pending_shape_error is not None:
+                await _record_openai_responses_call(
+                    model=model_name,
+                    input_tokens=0,
+                    output_tokens=0,
+                    success=False,
+                    latency_ms=round(latency_ms),
+                    error_class=OpenAIResponseShapeError.__name__,
+                )
                 raise pending_shape_error
-            result = _parse_responses_payload(
-                data,
-                model_requested=model_name,
-                requested_tool_names=requested_tool_names,
-            )
+            try:
+                result = _parse_responses_payload(
+                    data,
+                    model_requested=model_name,
+                    requested_tool_names=requested_tool_names,
+                )
+            except OpenAIResponseShapeError:
+                await _record_openai_responses_call(
+                    model=model_name,
+                    input_tokens=0,
+                    output_tokens=0,
+                    success=False,
+                    latency_ms=round(latency_ms),
+                    error_class=OpenAIResponseShapeError.__name__,
+                )
+                raise
             # Replace the placeholder latency_ms/attempts from the pure parser
             # with the real measurement — dataclass is frozen, so rebuild.
-            return LLMResult(
+            final_result = LLMResult(
                 text=result.text,
                 refusal=result.refusal,
                 refusal_reason=result.refusal_reason,
@@ -1600,6 +1675,15 @@ class OpenAIResponsesClient:
                 finish_reason=result.finish_reason,
                 raw_response_id=result.raw_response_id,
             )
+            await _record_openai_responses_call(
+                model=model_name,
+                input_tokens=final_result.input_tokens,
+                output_tokens=final_result.output_tokens,
+                success=True,
+                latency_ms=round(latency_ms),
+                error_class=None,
+            )
+            return final_result
 
         # Unreachable in practice (the loop always returns or raises), but
         # keeps the type-checker honest and fails loudly rather than

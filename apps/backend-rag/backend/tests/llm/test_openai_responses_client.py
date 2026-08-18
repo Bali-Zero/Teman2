@@ -39,6 +39,7 @@ Covers:
 from __future__ import annotations
 
 import json
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
@@ -62,6 +63,16 @@ from backend.llm.openai_responses_client import (
     _parse_responses_payload,
     _validate_api_key_ascii,
 )
+
+_REAL_RECORD_OPENAI_RESPONSES_CALL = client_module._record_openai_responses_call
+
+
+@pytest.fixture(autouse=True)
+def _stub_cost_recorder(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
+    """Keep every adapter test offline and independent of the cost ledger."""
+    recorder = AsyncMock()
+    monkeypatch.setattr(client_module, "_record_openai_responses_call", recorder)
+    return recorder
 
 
 def _text_response_payload(text: str, *, model: str = "gpt-5.6-terra", status: str = "completed") -> dict:
@@ -1977,6 +1988,97 @@ class TestUsageAccounting:
 
         assert result.input_tokens == 123
         assert result.output_tokens == 45
+
+
+class TestCostTracking:
+    async def test_success_records_local_usage_only(
+        self,
+        _stub_cost_recorder: AsyncMock,
+    ) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            payload = _text_response_payload("private response text")
+            payload["usage"] = {"input_tokens": 123, "output_tokens": 45}
+            return httpx.Response(200, json=payload)
+
+        client = _client_with_transport(handler)
+        await client.generate(input_text="private prompt text")
+        await client.close()
+
+        _stub_cost_recorder.assert_awaited_once()
+        event = _stub_cost_recorder.await_args.kwargs
+        assert event == {
+            "model": MODEL_TERRA,
+            "input_tokens": 123,
+            "output_tokens": 45,
+            "success": True,
+            "latency_ms": event["latency_ms"],
+            "error_class": None,
+        }
+        assert isinstance(event["latency_ms"], int)
+        assert "private prompt text" not in repr(event)
+        assert "private response text" not in repr(event)
+
+    async def test_retry_records_each_paid_attempt(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        _stub_cost_recorder: AsyncMock,
+    ) -> None:
+        calls = 0
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                return httpx.Response(500, json={"error": "remote detail must not be recorded"})
+            return httpx.Response(200, json=_text_response_payload("ok"))
+
+        monkeypatch.setattr(client_module.asyncio, "sleep", AsyncMock())
+        client = OpenAIResponsesClient(api_key="test-key", max_retries=1)
+        client._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        await client.generate(input_text="hi")
+        await client.close()
+
+        assert _stub_cost_recorder.await_count == 2
+        failure = _stub_cost_recorder.await_args_list[0].kwargs
+        success = _stub_cost_recorder.await_args_list[1].kwargs
+        assert failure["success"] is False
+        assert failure["input_tokens"] == 0
+        assert failure["output_tokens"] == 0
+        assert failure["error_class"] == OpenAIAPIError.__name__
+        assert success["success"] is True
+        assert success["input_tokens"] == 12
+        assert success["output_tokens"] == 7
+        assert "remote detail must not be recorded" not in repr(failure)
+
+    async def test_real_helper_delegates_to_fail_open_cost_ledger(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        from backend.services import observability
+
+        ledger = AsyncMock()
+        monkeypatch.setattr(observability, "record_llm_call", ledger)
+
+        await _REAL_RECORD_OPENAI_RESPONSES_CALL(
+            model=MODEL_TERRA,
+            input_tokens=100,
+            output_tokens=25,
+            success=True,
+            latency_ms=17,
+            error_class=None,
+        )
+
+        ledger.assert_awaited_once()
+        event = ledger.await_args.kwargs
+        assert event["provider"] == "openai_responses"
+        assert event["model"] == MODEL_TERRA
+        assert event["input_tokens"] == 100
+        assert event["output_tokens"] == 25
+        assert event["success"] is True
+        assert event["latency_ms"] == 17
+        assert event["endpoint"] == "OpenAIResponsesClient.generate"
+        assert event["error_class"] is None
+        assert isinstance(event["cost_usd"], float)
 
 
 class TestR9_5GetClientTrustEnvRegression:
