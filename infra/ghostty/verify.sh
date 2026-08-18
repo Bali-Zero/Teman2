@@ -155,7 +155,16 @@ fi
 # in it silently outranks the whole profile.
 APPSUP="$HOME/Library/Application Support/com.mitchellh.ghostty/config.ghostty"
 if [ -f "$APPSUP" ]; then
-  APPSUP_SETTINGS="$(grep -cvE '^[[:space:]]*(#.*)?$' "$APPSUP" 2>/dev/null || echo 0)"
+  # `grep -c` prints its count on stdout AND exits 1 when that count is zero, so
+  # a `|| echo 0` fallback appends a SECOND zero: the variable becomes "0\n0" and
+  # the numeric test below dies with "integer expression expected" — which is
+  # what it did on all three machines. grep already emits the number; take it and
+  # only substitute when the capture is empty (file unreadable).
+  APPSUP_SETTINGS="$(grep -cvE '^[[:space:]]*(#.*)?$' "$APPSUP" 2>/dev/null)"
+  case "$APPSUP_SETTINGS" in
+    ''|*[!0-9]*) bad "cannot count settings in $APPSUP — treating as a finding, not as empty"
+                 RC=$((RC|4)); APPSUP_SETTINGS=0 ;;
+  esac
   if [ "$APPSUP_SETTINGS" -gt 0 ]; then
     bad "$APPSUP holds $APPSUP_SETTINGS setting(s) and takes PRECEDENCE over everything installed here"
     RC=$((RC|1))

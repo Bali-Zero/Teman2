@@ -78,8 +78,17 @@ say "dest    : $DEST_DIR"
 # Judged by content: the app creates this file empty by itself, so only a file
 # that actually carries settings is worth warning about.
 APPSUP="$HOME/Library/Application Support/com.mitchellh.ghostty/config.ghostty"
-if [ -f "$APPSUP" ] && [ "$(grep -cvE '^[[:space:]]*(#.*)?$' "$APPSUP" 2>/dev/null || echo 0)" -gt 0 ]; then
-  say "WARNING : $APPSUP holds settings and takes precedence over this install"
+if [ -f "$APPSUP" ]; then
+  # `grep -c` prints the count AND exits 1 when it is zero, so a `|| echo 0`
+  # fallback appends a second zero and the numeric test dies on "0\n0". Take
+  # grep's own number; substitute only when the capture came back empty.
+  APPSUP_N="$(grep -cvE '^[[:space:]]*(#.*)?$' "$APPSUP" 2>/dev/null)"
+  case "$APPSUP_N" in ''|*[!0-9]*) APPSUP_N=-1 ;; esac
+  if [ "$APPSUP_N" -gt 0 ]; then
+    say "WARNING : $APPSUP holds $APPSUP_N setting(s) and takes precedence over this install"
+  elif [ "$APPSUP_N" -lt 0 ]; then
+    say "WARNING : cannot read $APPSUP — it outranks this install and its contents are unknown"
+  fi
 fi
 say "ghostty : $("$GHOSTTY_BIN" --version 2>/dev/null | head -1)"
 

@@ -14,6 +14,25 @@
 #  Reload after edits: cmd+shift+comma. The reference states explicitly that
 #  `background-opacity` needs a full restart; blur and the Dock icon are not
 #  documented either way, so treat a relaunch as the reliable route for all three.
+#
+#  NOT every line here changes something. Of the 52 scalar settings this file
+#  declares, 24 are byte-identical to Ghostty 1.3.1's own default. They are kept
+#  on purpose — an explicit value is a pin that survives an upstream default
+#  flip, and it makes the posture readable instead of implied — but they are
+#  NOT choices, and nothing here should describe them as if they were.
+#
+#  Re-derive the split after any Ghostty upgrade; a default that moves under a
+#  pinned line is exactly what the pin is for:
+#
+#    ghostty +show-config                    # EFFECTIVE config — prints ONLY
+#                                            # what differs from the default, so
+#                                            # a key's ABSENCE means "= default"
+#    ghostty +show-config --default=true     # Ghostty's defaults. Ignores your
+#                                            # config entirely: with font-size 99
+#                                            # on disk it still answers 13.
+#
+#  Neither view is safe for keybinds: `+show-config` silently DROPS prefixes, so
+#  a `global:` bind prints as an ordinary one. Only keys.ghostty knows.
 # ═══════════════════════════════════════════════════════════════════════════
 
 # ─── Typography ────────────────────────────────────────────────────────────
@@ -142,8 +161,19 @@ clipboard-paste-protection = true
 clipboard-paste-bracketed-safe = true
 clipboard-trim-trailing-spaces = true
 
-# Treat '/' '.' '-' '_' as part of a word so a double-click grabs a whole path
-# or a whole flag, which is what you actually want to copy in this repo.
+# These are the characters that END a word, not the ones that make one — the
+# reference is explicit that it "specifies the boundary characters rather than
+# the word characters", the inverse of zsh's WORDCHARS. `/` `.` `-` `_` are
+# absent, which is why a double-click grabs a whole path or a whole flag.
+#
+# This value is byte-identical to Ghostty's default (measured: `+show-config`
+# reports no deviation). It is written out so the boundary set is visible rather
+# than folklore, and so a future edit is a diff against something.
+#
+# The consequence that bites in this repo: `:` IS a boundary, so double-clicking
+# `file.py:163` grabs the path without the line number. Dropping `:` would fix
+# that and break double-click inside URLs, `PATH`, `key: value` and timestamps —
+# a narrow gain for a broad cost, so it stays. Use drag or triple-click.
 selection-word-chars = " \t'\"│`|:;,()[]{}<>$"
 
 link-url = true
@@ -171,6 +201,19 @@ macos-option-as-alt = right
 # also interfere with legitimate accessibility software.
 macos-auto-secure-input = true
 macos-secure-input-indication = true
+
+# AppleScript control of the terminal is OFF. It defaults to ON (measured), and
+# it is the one macOS surface here that ships permissive: with it enabled, any
+# process that can run osascript gets "AppleScript object lookup for windows,
+# tabs, and terminals" on a terminal that holds this fleet's live shells.
+#
+# Measured before closing it: nothing in this repo, nothing in ~/scripts and no
+# LaunchAgent drives Ghostty through AppleScript, so nothing loses a capability.
+#
+# The neighbouring surface, `macos-shortcuts`, is left alone on purpose: its
+# default is already `ask` — Shortcuts can create terminals, send text and run
+# commands, but only after a permission prompt the human sees once.
+macos-applescript = false
 
 # ─── Safety ────────────────────────────────────────────────────────────────
 confirm-close-surface = true
