@@ -73,10 +73,19 @@ shadow-hook design`, i.e. the hold is **not** the route question (that paragraph
     supply on its own authority. Whoever runs the actual freeze re-review (Kimi K3 + Google/agy
     on the frozen `b7b2d6652` diff) should also update #4197 to cover `codex_exec_client.py`
     before that PR is judged complete.
-  - Shadow-first wiring plan (flag OFF by default, mirror dry-run, PROVE-LIVE criteria,
-    config-only rollback) written as a proposal doc for the orchestrator's gate:
-    `research/operations/2026-08-18-bot-openai-shadow-wiring-plan.md` — proposal only, no code,
-    no config touched.
+  - **#4301 plan red-teamed and narrowed 2026-08-18.** The first draft called for a default-OFF
+    shadow flag and incorrectly said the existing corpus/bench could prove context parity,
+    tool-calling shape, and #4197 rows. Independent Kimi K3 (`FIX-FIRST`) and Gemini 3.1 Pro
+    (`BLOCKED`) both rejected that claim: `wa_blind_bench.py` exercises the dormant Responses API
+    key lane, the ADR declares the corpus V5-INCOMPLETE (synthetic-only, role-blind, single-turn),
+    and `CodexExecClient` has only a single text prompt rather than Gemini's native system/history/
+    tool channels. The corrected plan is now **offline evidence before any shadow wiring**:
+    operator machine only, de-identified fixtures only, no flag/config/gateway/live path, and no
+    claim of native parity. It also records a newly measured adapter blocker: codex-cli 0.147.0
+    supports `--ephemeral`, but frozen #4216 does not pass it, so local session persistence must be
+    closed and tested before replay. See
+    `research/operations/2026-08-18-bot-openai-shadow-wiring-plan.md`. No code, config, secret,
+    real traffic, deploy, cutover, or merge was authorized by this correction.
 
 - **🔇 THE ONLY EXITS THAT LEAVE THE CLIENT SILENT WERE THE ONLY ONES THAT TOLD NOBODY
   (2026-08-12, CURED).** `generate_bot_reply` notifies a human at the BOTTOM of the function,

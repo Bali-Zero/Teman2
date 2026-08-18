@@ -2,149 +2,297 @@
 date: 2026-08-18
 domain: operations
 client_case: zantara-wa-provider
-discovered_by: "Fable/Sonnet session (M5), dispatched to advance the /bot OpenAI-provider lane after Zero's 2026-08-18 route reconfirmation"
+discovered_by: "Fable/Sonnet session (M5), corrected after independent Kimi K3 and Gemini 3.1 Pro red-team review"
 sources:
   - "memory: decision_wa_openai_provider_subscription_path_owner_ruling_2026_08_15 (owner ruling: ChatGPT Pro subscription via codex exec, never OPENAI_WA_PROVIDER_API_KEY)"
-  - "memory: project_bot_openai_lane_governance_codex_orchestrator_2026_08_15 (fence + close-gate sequence)"
-  - "PR #4216 body (frozen head b7b2d6652, base 6a8ab5180, 11-file fence, 28-round cross-family review) — read this turn via `gh pr view`"
-  - "PR #4194 body + doc content on branch agent/air-m5/ops/bot-provider-verifier (research/operations/2026-08-15-bot-openai-provider-threat-model.md, read via `git show` this turn) — §Fence compliance, §Freeze re-review, §Refutation log"
-  - "PR #4197 body + doc content on branch agent/air-m5/ops/bot-failure-matrix (research/operations/2026-08-15-bot-provider-failure-matrix.md, read via `git show` this turn) — §1 Failure matrix, §2 Idempotency, §3 Rollback proof"
-  - ".agents/skills/bot/SKILL.md (this session's own update, §1 LIVE STATE 2026-08-18 entry) — Anatomy §3, blood-bought rules §5, wa-mirror PII posture (CLAUDE.md §14)"
-adversarial_review: "NONE YET — this is a first-draft PROPOSAL for the orchestrator's gate, explicitly not a closed deliverable. It has not been through the lane's Kimi K3 / Google-agy review pass and must not be cited as verified until it has."
+  - "memory: project_bot_openai_lane_governance_codex_orchestrator_2026_08_15 (NO-WIRING fence and close-gate sequence)"
+  - "PR #4216 frozen head b7b2d6652 and its 11-file net diff, read this turn"
+  - "PR #4194 threat model at head 28f70f026, read this turn"
+  - "PR #4197 failure matrix, read this turn"
+  - ".agents/skills/bot/SKILL.md, live-state entry dated 2026-08-18"
+  - "codex-cli 0.147.0 local help for exec --ephemeral, --ignore-user-config, --ignore-rules, and sandbox controls, measured this turn"
+adversarial_review: kimi-k3
+review_corroboration: "gemini-3.1-pro"
 ---
 
-# BOT-V — OpenAI provider: shadow-first wiring plan (proposal, not authorization)
+# BOT-V — OpenAI provider: offline evidence before any shadow wiring
 
-## 0. What this document is, and is not
+## 0. Decision and authority boundary
 
-This is a **proposal** for whoever runs the /bot OpenAI-lane orchestrator's close gate (per
-`project_bot_openai_lane_governance_codex_orchestrator_2026_08_15`: freeze diff → lead net-diff
-check → final Kimi K3 + Google/agy Gemini review of the frozen diff → only then a PR). It is
-**not** a design that has cleared that gate, and it does **not** authorize any code change. No
-file in this repo that selects a provider, sets a runtime flag, or touches `config.py` /
-`llm_gateway.py` was modified to write this document. The live WA channel is unaffected by
-anything below; today's mandate (2026-08-18) explicitly does not authorize a cutover.
+The provider route is an owner decision, not an open architecture vote:
 
-**Scope**: how the ALREADY-SELECTED provider (`codex_exec_client.py`, ChatGPT Pro subscription
-via headless `codex exec`, per the 2026-08-15 owner ruling) should eventually be wired into the
-live reply path, if and when the orchestrator's gate clears it — in a way that never risks a
-client-facing regression and that can be reversed in one config edit. It deliberately does not
-re-litigate the route (Zero closed that) or re-derive the threat model (#4194 owns that,
-pending its own freeze re-review).
+- the candidate is `codex_exec_client.py`;
+- it uses an already-authenticated ChatGPT Pro subscription through headless
+  `codex exec`;
+- `OPENAI_WA_PROVIDER_API_KEY` will not be provisioned;
+- the sibling `openai_responses_client.py` remains a dormant, unwired alternative and is not the
+  candidate this plan evaluates.
 
-## 1. Why "shadow-first", not "flip and watch"
+This document does **not** authorize a runtime flag, a gateway branch, a credential move, live
+WhatsApp traffic, a deploy, a cutover, or a merge. The current #4216 fence remains NO-WIRING.
+Stage 1 below is an operator-run, de-identified, offline evaluation. It is deliberately not called
+"shadow" because it does not observe or attach to the live reply path.
 
-Two pieces of prior art in this exact lane say why a flag-flip-to-primary is the wrong first
-step:
+The [official Codex authentication documentation](https://learn.chatgpt.com/docs/auth) confirms
+that the CLI supports both ChatGPT subscription sign-in and API-key sign-in. That establishes that
+the selected local invocation route exists; it does **not** by itself establish that an interactive
+subscription is suitable for an unattended WhatsApp production runtime. The owner has accepted
+the residual route risk, while the technical, privacy, quota, and runtime-host gates below remain
+open.
 
-1. **The vetoed shadow-provider design already found a context-parity defect the hard way.**
-   Per #4197's failure matrix (finding on `_shadow_provider.py`, since reworked away per commit
-   `b36fc9521`): the first shadow-dispatch attempt forwarded only `input_text` + `system_prompt`
-   to the OpenAI client — no conversation history, no tools — so any comparison it logged was
-   confounded from the start: the shadow side was answering a strictly poorer-context question.
-   A comparison harness that isn't fed the same context as the live path measures nothing.
-2. **The existing OpenRouter fallback is the pattern to imitate, not the trap to repeat.**
-   `Settings.openrouter_enabled` (default `False`, `app/core/config.py:130`) already gates a
-   real, committed, code-live third provider tier behind a single boolean — #4194's own
-   Refutation log flags the risk explicitly: "the most likely way an OpenAI adapter gets wired
-   in practice is by imitating the ALREADY-PRESENT `_call_openrouter` fallback block" without a
-   discrete arming decision, exactly as a Gemini quota exhaustion (4 real occurrences per this
-   corner) can flip traffic today for a different vendor with nobody deciding to. This plan's
-   flag is deliberately **not** a fallback-on-failure switch — see §3.
+## 1. Current measured state
 
-## 2. Flag — default OFF, single switch, fail-closed
+1. **#4216 is inert.** Its selected adapter is standalone and has no live importers, config field,
+   gateway branch, secret, cron, or deploy. It is still draft and conflicts with current `main`.
+2. **The existing blind bench targets the wrong provider.** `scripts/bot/wa_blind_bench.py`
+   imports `OpenAIResponsesClient`, checks `OPENAI_WA_PROVIDER_API_KEY`, and calls the dormant
+   Responses API lane. It does not exercise `CodexExecClient`.
+3. **The corpus is V5 INCOMPLETE.** The #4216 ADR states that the builder is synthetic-only,
+   role-blind, and single-turn. The live bot can send up to 12 prior turns. Current fixtures cannot
+   prove history parity, role behavior, or context-contamination resistance.
+4. **#4197 covers the wrong failure boundary.** Its rows describe HTTP/API-key failures for
+   `openai_responses_client.py`; it has no process-shaped coverage for the selected adapter.
+5. **The selected adapter is text-in/text-out.** `CodexExecClient.generate()` accepts one prompt
+   string plus model/timeout controls. It has no native system-instruction channel, structured
+   message array, or function-schema channel. The live Gemini gateway has all three. Therefore
+   literal provider parity is structurally unavailable through this adapter.
+6. **The production host is not a Codex host.** The live backend is a Fly container; the current
+   image does not install or authenticate the Codex CLI. Copying an operator's ChatGPT credential
+   into Fly would be a new security and account-identity decision, not an implementation detail.
+7. **At-rest behavior needs a correction.** Local `codex exec --help` on CLI 0.147.0 exposes
+   `--ephemeral` (no session-file persistence), but the frozen #4216 argv does not pass it. Until
+   that is fixed and mechanically tested, even offline prompts may be retained under
+   `CODEX_HOME`.
+8. **`read-only` is not a no-tools contract.** A Codex coding-agent invocation can still attempt
+   read operations or other agentic actions. A fresh cwd and `--ignore-user-config` reduce ambient
+   context, but do not prove host-file isolation or disable the model's coding-agent persona.
 
-- **New setting, name TBD by the implementer lane** (e.g. `WA_OPENAI_SHADOW_ENABLED`), boolean,
-  **default `False`** in every environment including prod, per the same pattern as
-  `openrouter_enabled`.
-- Fail-closed on every dimension already named in #4194's Gate V2 spec and #4216's ADR: no
-  `codex` binary / no auth → `available=False`, never silently degrade to "try anyway"; no flag
-  → the code path is not entered at all (not merely "returns nothing" — dead code until armed).
-- The flag governs **shadow dispatch only** (§3). A **separate**, explicitly named flag would be
-  required to ever make OpenAI a *candidate* for serving a real answer (§5) — the two must never
-  share one boolean, or a single flip both starts comparison logging and starts answering
-  clients, which is exactly the "arms real-traffic dispatch on nothing but a bool" risk #4194's
-  Finding 7 already named against the earlier design.
+The consequence is precise: #4216 contains useful provider-boundary work, but the existing corpus
+and bench cannot yet produce decision-grade evidence for the selected route.
 
-## 3. Dry-run on the mirror, not on live traffic
+## 2. Corrections to the first draft
 
-"The mirror" = `apps/wa-mirror`'s captured message stream, **not** the live inbound webhook
-path. Two tiers, cheapest-first:
+The first draft made one false sufficiency claim: it said the existing offline artifacts could
+validate context parity, tool-calling shape, and #4197's failure rows. Independent Kimi K3 and
+Gemini 3.1 Pro reviews both rejected that claim. It is removed.
 
-1. **Offline replay against the de-identified corpus** (`scripts/bot/build_deid_corpus.py` +
-   the blind bench harness, both already built per #4216's fence deliverables). This is the
-   first and default tier: no real client text ever reaches the provider, PII boundary is
-   satisfied by construction (de-identification happens before any network call), and it can run
-   as many times as needed without touching production state.
-2. **Shadow dispatch on live-shaped-but-discarded traffic, gated separately from tier 1.** If
-   the orchestrator's gate wants a closer-to-production signal before any real answer is ever
-   served, the design that failed context-parity in §1 can be rebuilt correctly — full
-   conversation history + tools, matching what the live Gemini call receives — but the OUTPUT is
-   **never** returned to the client, only logged for comparison (mirrors the original intent of
-   `_shadow_provider.py`, this time with parity). **This tier sends real client message text to
-   OpenAI's cloud endpoint** — that is a PII/transit decision under CLAUDE.md §14 (Art. 56
-   cascade: adequacy → binding safeguard → explicit consent), separate from and in addition to
-   the ToS risk Zero already ruled on for the credential itself. This plan does not resolve that
-   gap; it names it as a **precondition**, not a detail to fill in later: tier 2 must not run
-   against real WA-mirror content until that basis is demonstrable, per the existing corner rule
-   ("the gateway chat proves no clause, Art. 56 basis, revocation or per-client consent today").
-   Tier 1 has no such precondition and is sufficient to validate context-parity, tool-calling
-   shape, and the failure-matrix rows from #4197 before tier 2 is even proposed as a next step.
-3. Both tiers write to a **dedicated comparison log**, never to `wa_outbox` or any table a
-   client-facing surface reads — same "no shared format changed from one side" discipline as
-   cicatrix family #9 (state-schema mutation drift): this is a new sink, not a repurposed one.
+Stage 1 can measure only this narrower proposition:
 
-## 4. PROVE-LIVE criteria — what "ready to even consider serving an answer" means
+> On role-aware, multi-turn, fully de-identified fixtures, how does the selected text-in/text-out
+> `codex exec` adapter perform when given a deterministic serialized context package, compared
+> with the current Gemini answer for the same offline fixture?
 
-Before any second flag (§2) is proposed to exist at all, tier-1 + (if cleared) tier-2 dry-runs
-must show, over a stated sample size (not a single run — this corner's own probes have been
-burned by N=1 verdicts more than once, e.g. the abstain-rate and language-drift findings):
+It cannot prove native tool-call equivalence, system-message priority equivalence, live dispatch
+behavior, latency under inbound bursts, subscription availability at WhatsApp scale, or production
+host suitability. Those are separate gates, not conclusions to infer from answer quality.
 
-- **Context parity, verified not assumed**: the shadow call receives the identical assembled
-  context (history, tools-available, system prompt) as the live Gemini call for the same
-  message — a repeat of #4197's context-parity finding is disqualifying on its own.
-- **Failure-matrix coverage for the ACTUAL provider**, not the dormant one. #4197 as currently
-  written analyzes `openai_responses_client.py`'s HTTP failure modes; the codex-exec provider's
-  failure modes are process/subprocess-shaped (auth-death via stderr vocabulary, sandbox
-  rejection, stdin timeout, ChatGPT Pro seat rate limits) and are a **precondition for this
-  gate**, not an afterthought — see the corner entry above (#4197 currently has zero coverage of
-  `codex_exec_client.py`).
-- **Abstain/evidence-gate equivalence**: the shadow path must not bypass or weaken any of the 5
-  named abstain gates (`_abstain_policy.py`, CLAUDE.md §9 SSOT) — a provider swap is not grounds
-  to revisit thresholds that are panel-ruled.
-- **PII log-leak parity**: whatever discipline protects WhatsApp phone numbers from cleartext
-  logging on the Gemini path today (an OPEN P0 per this corner's own history, `tool_authorizer.py`
-  `_audit()`) must not have a second, unaudited log line on the OpenAI comparison path.
-- **A declared sample size and pass bar**, set by whoever runs the gate — this document does not
-  set a number; it names what the number must be measured against.
+## 3. Minimal defensible Stage 1 — offline evaluation only
 
-## 5. Rollback is config-only, by construction — because nothing is wired yet
+Stage 1 may begin only after all prerequisites below exist on one frozen branch and pass review.
 
-The honest state today (per #4197 §3, re-confirmed by this document): "rollback to Gemini" has
-no meaningful answer yet because nothing routes to OpenAI to roll back FROM. This plan is
-written so that stays true through every stage:
+### 3.1 Provider-specific bench
 
-- **Stage 0 (today)**: no flag exists. Nothing to roll back.
-- **Stage 1 (tier-1 dry-run armed)**: the new flag defaults OFF; flipping it OFF again is the
-  entire rollback — no code path outside the shadow dispatcher is touched, no client-facing
-  behavior changes at any point, because tier-1 never reaches a client-facing code path at all.
-- **Stage 2 (tier-2 shadow-on-live-shaped-traffic, IF the PII precondition in §3 is cleared)**:
-  same single-flag rollback; the output is discarded before it reaches any send path, so even a
-  crash mid-comparison cannot degrade the served answer (would need to be built as fire-and-
-  forget with its own exception boundary, same as the reworked design's stated intent).
-  Stage 2 remains disqualified for any real WA-mirror content until §3's precondition is met.
-- **A future "OpenAI may answer" stage is explicitly OUT OF SCOPE of this document.** It would
-  need its own ADR, its own gate, and — per §2 — its own separate flag, never inherited from the
-  shadow flag. Naming it here is only to be explicit about where this plan's authority ends: it
-  proposes a path to *observe* the new provider safely, not a path to *serve* it.
+Adapt the existing blind-bench machinery rather than rebuilding its safety controls, but add an
+explicit `codex-exec` candidate path that:
 
-## 6. What this plan explicitly hands back to the orchestrator's gate
+- instantiates `CodexExecClient`, never `OpenAIResponsesClient`;
+- gates on `CodexExecClient.available`, never an API-key environment variable;
+- passes fixture text through stdin, never argv or an environment variable;
+- preserves blind labels and the separate `0600` label key;
+- records typed process outcomes without persisting raw stderr;
+- runs with concurrency `1` initially; no fan-out, queue, daemon, or live dispatcher;
+- exits non-zero if every candidate call failed or if no selected-provider call ran.
 
-- The precise flag name, module boundaries, and file list for tier-1 wiring (implementation
-  detail, belongs to whichever lane the orchestrator assigns it to, under the same NO-WIRING
-  fence discipline that governed #4216).
-- The PII/Art. 56 basis for tier 2 (§3) — a business/legal precondition, not an engineering one.
-- The sample size and pass/fail bar for §4's PROVE-LIVE criteria.
-- Updating #4197 to cover `codex_exec_client.py`'s actual failure taxonomy before that document
-  is treated as complete gate-prep (flagged in the corner entry this session added,
-  `.agents/skills/bot/SKILL.md` §1, 2026-08-18).
+The Responses API bench may remain as an explicitly dormant alternative, but its result must never
+be labelled as evidence for the subscription provider.
+
+### 3.2 Role-aware, multi-turn, de-identified corpus
+
+Upgrade the corpus contract before benchmarking:
+
+- every fixture declares the audience role (`client` or `team`) and language;
+- multi-turn fixtures preserve ordered roles and contain the current turn plus prior turns, up to
+  the live ceiling of 12;
+- every turn passes the existing fail-closed de-identification and residual-PII scan;
+- if any turn is unsafe, the whole conversation fixture is dropped;
+- source ordering, contact identifiers, message IDs, timestamps, filenames, and export paths are
+  not written to the fixture;
+- only synthetic fixtures are used until a separate human privacy decision authorizes processing
+  a real export locally on the Pro. Raw WhatsApp/OSINT data never moves to Air-M5 or cloud prompts.
+
+### 3.3 Serialized-context approximation, not parity
+
+For each fixture, build one deterministic prompt package with explicit delimiters for:
+
+1. the frozen Zantara system instructions relevant to the test;
+2. ordered conversation turns with roles;
+3. deterministic retrieval/tool results prepared by the existing local RAG code;
+4. the current user turn;
+5. a strict final-answer-only instruction.
+
+This is an **approximation**. It does not recreate Gemini's native system priority or function
+calling. Stage 1 evaluates final synthesis after tool/retrieval outputs are precomputed; it does not
+claim that Codex can autonomously choose or execute the same tools. The prompt-package hash is
+recorded so both candidates can be proven to have received the intended offline fixture package,
+but the word "parity" is reserved for native-equivalent interfaces and is not used here.
+
+### 3.4 Operator-controlled execution host
+
+Run Stage 1 only on an operator-controlled machine already authenticated to the chosen ChatGPT Pro
+seat (Air-M5 or Pro), never in Fly and never by copying auth material to another host. The run
+manifest must name:
+
+- machine and CLI version;
+- selected account/seat identifier without including credentials;
+- model and timeout;
+- fixture-set hash and prompt-package version;
+- start/end time and attempted/succeeded/typed-failure counts;
+- a predeclared maximum number of subscription calls.
+
+The quota budget must be small enough not to starve the O1/O2 builder/refuter lanes. A quota or
+usage-window response aborts the run; it is not silently retried across accounts.
+
+### 3.5 No session persistence and no ambient host access assumption
+
+Before corpus replay, amend and test the selected adapter so its fixed argv includes
+`--ephemeral`. Also evaluate the current CLI's `--ignore-rules` control and add it if it closes an
+otherwise inherited policy surface without breaking authentication.
+
+The gate must run a synthetic sentinel probe and prove:
+
+- no new Codex session/rollout file is created for the invocation;
+- no prompt text appears in argv, environment, stdout diagnostics, stderr diagnostics, or logs;
+- user and repo hooks do not run;
+- the model cannot use the empty working directory to recover repository context;
+- cancellation and timeout still reap the child and remove the per-call temp directory.
+
+This does not make Codex a generic no-tools API. Therefore Stage 1 contains de-identified synthetic
+content only, and any future client-text use remains blocked pending a stronger OS-level isolation
+design and privacy review.
+
+### 3.6 Ephemeral comparison artifacts
+
+Stage 1 writes outside git to a newly created `0700` run directory. Files are `0600` and contain
+de-identified fixtures only. The manifest/sink schema is:
+
+- `run_id`, `fixture_set_hash`, `fixture_id`, `role`, `language`;
+- `provider`, `model`, `prompt_package_hash`;
+- `started_at`, `latency_ms`, `outcome_class`;
+- blind `variant_label`, de-identified response text, refusal/abstain marker;
+- explicit `native_tool_trace: unavailable` for the Codex lane;
+- no phone, contact, source message ID, raw stderr, auth path, export path, or credential field.
+
+`(run_id, fixture_id, provider, model)` is the idempotency key. Replaying the same run must not
+double-count results. Retention and deletion are operator actions after the blind review; nothing
+is committed, uploaded, or sent to a client-facing system.
+
+## 4. Acceptance matrix for Stage 1
+
+| Gate | Mechanical evidence | Pass condition |
+| --- | --- | --- |
+| Correct provider | Import/call-site scan plus test double at the subprocess boundary | Every selected-lane candidate invokes `CodexExecClient`; zero selected-lane API-key checks |
+| No wiring | Net diff against `main` | No change to config, gateway, routers, workers, Fly/Vercel, secrets, cron, outbox, or webhook code |
+| Corpus shape | Corpus schema tests | Role required; ordered multi-turn fixtures supported through 12 prior turns; whole-fixture drop on unsafe turn |
+| De-identification | Guilt and innocence fixtures | Every known PII-shaped fixture drops or redacts; legitimate monetary/legal numbers survive only under existing explicit rules |
+| Ephemeral CLI | Before/after filesystem snapshot around a synthetic sentinel | Zero new session/rollout files and zero sentinel hits outside the declared run directory |
+| Ambient isolation | Synthetic hook/rule/context probes | No hooks; no inherited repo persona; no undeclared host-file content in output |
+| Process failures | Updated #4197 plus tests | Binary absent, auth absent/dead, sandbox/rule rejection, timeout, cancellation, malformed/empty stdout, quota exhaustion, and non-zero exit all map to typed fail-closed outcomes |
+| Resource bound | Burst test against the offline runner | Maximum one child at a time; no orphan after cancellation/timeout; bounded queue is unnecessary because Stage 1 has no live ingress |
+| Blindness | Transcript/key separation test | Transcript cannot reveal provider/model mapping; key remains `0600` and separate |
+| Idempotency | Same-run replay test | No duplicate result rows for the idempotency key |
+| Scoring | Pre-registered rubric before labels are opened | Accuracy/grounding, abstain appropriateness, language, citation discipline, price discipline, and unsafe-fabrication scored per role/language stratum |
+| Independent verdict | Frozen-diff review | Kimi K3 adversarial review plus Gemini constructive review; findings dispositioned before any PR is readied |
+
+The exact fixture count and pass threshold must be registered **before** responses are generated,
+after the upgraded corpus inventory is known. It must include every role/language stratum with
+enough fixtures to prevent a single example from deciding a verdict. A run that hits quota, skips
+the selected provider, changes the rubric after unblinding, or lacks a stratum is invalid rather
+than a partial pass.
+
+## 5. #4197 and #4194 must be aligned before Stage 1 is called complete
+
+### #4197 — selected-provider failure matrix
+
+Replace the claim that HTTP/API-key rows cover "the OpenAI shadow" with two explicitly separated
+surfaces: dormant Responses API and selected Codex subprocess. The selected-provider matrix must
+cover at least:
+
+- binary/path disappearance and version drift;
+- auth file absent, empty, malformed, revoked, or expired;
+- subscription quota/usage-window exhaustion;
+- prompt stdin/write failure;
+- sandbox, inherited-rule, and policy rejection;
+- timeout and external cancellation;
+- non-zero exit with sanitized diagnostics;
+- empty/malformed stdout and answer-shape rejection;
+- child reaping, tempdir cleanup, and ephemeral-session proof;
+- host resource exhaustion and bounded offline concurrency;
+- rerun/idempotency behavior.
+
+Every row distinguishes `measured`, `constructed test`, and `unmeasured`. No constructed stderr
+fixture may be described as measured vendor behavior.
+
+### #4194 — freeze threat-model review
+
+Re-run the threat model against the reconciled final adapter head, not its earlier commits. Add the
+new at-rest/session, coding-agent tool surface, operator-host, account-quota, and credential-move
+findings. A passing security review of a dormant HTTP client does not transfer to the subprocess
+provider.
+
+## 6. What remains blocked after Stage 1
+
+Even a successful offline evaluation does not authorize live shadowing or serving:
+
+- no runtime flag may land under the current NO-WIRING fence;
+- no production host for a subscription-backed provider has been approved;
+- no operator credential may be copied to Fly;
+- no live WhatsApp/WA-mirror/client text may be sent to Codex;
+- no comparison sink for PII-derived content has been approved;
+- no native system/tool/history parity exists in `CodexExecClient`;
+- no subscription capacity/SLA has been demonstrated for client traffic;
+- no cutover, fallback, deploy, merge, or outward publication is authorized.
+
+A future live-shadow proposal needs a new owner mandate that formally amends the fence, a new ADR,
+a named execution/broker architecture, a lawful PII basis, bounded concurrency/backpressure, a
+precise dispatch point relative to cache/coalescing/abstain gates, a sampling-bias analysis, and a
+separate comparison-sink security review. A future serve-stage needs another independent decision
+and its own flag. Neither is part of this document.
+
+## Adversarial review
+
+### Kimi K3 — FIX-FIRST
+
+The independent review verified the route and the adapter's zero-wiring/fail-closed claims, but
+rejected the first draft's central sufficiency sentence. Surviving findings:
+
+1. the existing blind bench is API-key/Responses-specific and cannot evaluate the selected client;
+2. the V5-INCOMPLETE corpus cannot establish role, history, or tool behavior;
+3. native context/tool parity is structurally unavailable through the current one-string contract;
+4. the Fly execution host and credential-placement question was absent;
+5. Codex session persistence and comparison-sink retention were unexamined;
+6. the live dispatch point, sample bias, account quota, and concurrency limits were unspecified;
+7. #4197 contradictorily claimed coverage while documenting only the dormant HTTP client;
+8. a formal fence amendment is mandatory before any runtime flag exists.
+
+Disposition: accepted. The plan now stops at offline evidence, names the approximation honestly,
+adds provider-specific corpus/bench/failure requirements, mandates ephemeral execution, and defers
+all wiring.
+
+### Gemini 3.1 Pro — BLOCKED before Stage 1
+
+The independent cross-family review corroborated the wrong-provider bench, wrong-boundary failure
+matrix, and single-turn corpus blockers. It required all three to be corrected before Stage 1 can
+produce valid evidence. Disposition: accepted and encoded in §§3–5.
+
+### Claims both reviews did not overturn
+
+- `openrouter_enabled` is default-off on current `main`;
+- #4216's selected client remains unimported and unwired;
+- the adapter uses stdin, a fresh per-call cwd, typed errors, cancellation reaping, and sanitized
+  diagnostics;
+- #4197 currently covers only the dormant HTTP provider;
+- there is no current OpenAI runtime path to roll back from;
+- the owner route remains ChatGPT Pro subscription via `codex exec`, never the paid API-key lane.
+
+The reviewed verdict is therefore **PROCEED ONLY WITH THE PREREQUISITES FOR OFFLINE STAGE 1**. It
+is not approval to run Stage 1 yet, and it is not approval for shadow wiring.
