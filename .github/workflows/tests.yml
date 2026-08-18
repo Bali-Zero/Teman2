@@ -1191,7 +1191,33 @@ jobs:
           }
 
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+        run: |
+          # BOUNDED because `--with-deps` shells out to `apt-get` INSIDE
+          # playwright's own process: this step carries exactly the risk cured
+          # for our explicit apt call sites in scripts/ci/apt_install.sh, in a
+          # place that helper cannot reach.
+          #
+          # Measured over 13 consecutive runs of this workflow (2026-08-18):
+          # eleven finish in 24-32s, one took 8m01s and still succeeded, and one
+          # was 17m33s deep with nothing to show when the job's 20-minute budget
+          # killed it. GitHub reports a budget kill as `cancelled`, NOT
+          # `failure` — and a cancelled REQUIRED context ejects the merge-queue
+          # entry with no failing check anywhere to point at, which is how the
+          # repo sat unmergeable for eleven hours (W118, cicatrix family #2).
+          #
+          # 600s is chosen against the MEASURED distribution, not a round
+          # number: comfortably above the worst observed SUCCESS (8m01s) so a
+          # slow-but-working mirror still passes, and half the job budget so the
+          # remaining 10 minutes still cover build + serve + the tests
+          # themselves. The other half of that arithmetic is the lesson: a bound
+          # sized without leaving room for the rest of the job does not avoid
+          # exhausting the budget, it guarantees it.
+          #
+          # No retry, deliberately. A retry is the remedy that LOOKS right when
+          # the symptom is "slow", and three of them inside one budget is how
+          # the first attempt at the apt cure failed. Failing once, loudly, at a
+          # named step beats being cancelled silently.
+          timeout 600 npx playwright install --with-deps chromium
 
       - name: Run E2E tests
         env:

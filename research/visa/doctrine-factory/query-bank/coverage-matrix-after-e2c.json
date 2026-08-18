@@ -1,0 +1,647 @@
+{
+  "pack_id": "453ee842-7f35-5d77-b460-31d67e2784c2",
+  "sequence": 7,
+  "version": "2026.8.11",
+  "n_products": 38,
+  "n_rules": 104,
+  "batch": "e2c-blocked5",
+  "scope_note": "State file for the E2c mini-batch (OD-4 disposition: 5 query-disposition BLOCKED products get dedicated doctrine queries). Only carries the 5 products this batch touched (E23U, E23V, E33A, E33B, E33C) plus their batch1 baseline entries copied verbatim for continuity -- this is NOT a full-corpus coverage matrix regen and does not rewrite coverage-matrix-after-batch1.json or any batch2/batch2b/batch3 state file.",
+  "matrix": {
+    "E23U": {
+      "reachability": "BLOCKED",
+      "n_rules": 6,
+      "required_facts": [
+        "derived.has_indonesian_citizenship",
+        "derived.is_minor",
+        "family.sponsor_confirmed",
+        "immigration.overstay_days",
+        "person.nationalities"
+      ],
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T7",
+        "T9"
+      ],
+      "coverage": {
+        "T1": [
+          "VO-FUSED-T1-010",
+          "VO-FUSED-T1-011"
+        ],
+        "T10": [
+          "VO-FUSED-T10-003",
+          "VO-FUSED-T10-005",
+          "VO-FUSED-T10-009"
+        ],
+        "T15": [
+          "VO-FUSED-T15-001",
+          "VO-FUSED-T15-002",
+          "VO-FUSED-T15-003",
+          "VO-FUSED-T15-004",
+          "VO-FUSED-T15-006",
+          "VO-FUSED-T15-008"
+        ],
+        "T7": [
+          "VO-FUSED-T7-001",
+          "VO-FUSED-T7-003",
+          "VO-FUSED-T7-006",
+          "VO-FUSED-T7-007",
+          "VO-FUSED-T7-009"
+        ],
+        "T9": [
+          "VO-FUSED-T9-001",
+          "VO-FUSED-T9-003",
+          "VO-FUSED-T9-004",
+          "VO-FUSED-T9-005",
+          "VO-FUSED-T9-006"
+        ]
+      },
+      "coverage_state": "PENDING",
+      "gaps_no_covering_query": [],
+      "batch1_topic_states": {
+        "T1": {
+          "batch1_state": "ANSWER_OBTAINED",
+          "via_query_ids": [
+            "VO-FUSED-T1-010"
+          ]
+        },
+        "T10": {
+          "batch1_state": "ANSWER_OBTAINED",
+          "via_query_ids": [
+            "VO-FUSED-T10-009"
+          ]
+        },
+        "T15": {
+          "batch1_state": "ANSWER_OBTAINED",
+          "via_query_ids": [
+            "VO-FUSED-T15-001"
+          ]
+        },
+        "T7": {
+          "batch1_state": "ANSWER_OBTAINED",
+          "via_query_ids": [
+            "VO-FUSED-T7-001"
+          ]
+        },
+        "T9": {
+          "batch1_state": "ANSWER_OBTAINED",
+          "via_query_ids": [
+            "VO-FUSED-T9-001"
+          ]
+        }
+      },
+      "batch1_coverage_state": "ALL_TOPICS_ANSWERED",
+      "e2c_t1_closure": {
+        "state": "DOCTRINE_EXISTS",
+        "claim_ids": [
+          "CL-E23U-01",
+          "CL-E23U-02",
+          "CL-E23U-03"
+        ],
+        "via_query_ids": [
+          "E2C-E23U-IDENTITY",
+          "E2C-E23U-DURATION"
+        ],
+        "citation_audit_verdicts": {
+          "E2C-E23U-IDENTITY": "VERIFIED",
+          "E2C-E23U-DURATION": "VERIFIED"
+        },
+        "note": "T1 doctrine-card gap closed this batch via narrow 2-point dedicated queries (OD-4 disposition 'run dedicated queries'); superseded batch1's wide-family ANSWER_OBTAINED label (VO-FUSED-T1-010/032) which never produced a per-product card."
+      }
+    },
+    "E23V": {
+      "reachability": "BLOCKED",
+      "n_rules": 6,
+      "required_facts": [
+        "derived.has_indonesian_citizenship",
+        "derived.is_minor",
+        "family.sponsor_confirmed",
+        "immigration.overstay_days",
+        "person.nationalities"
+      ],
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T7",
+        "T9"
+      ],
+      "coverage": {
+        "T1": [
+          "VO-FUSED-T1-010",
+          "VO-FUSED-T1-012"
+        ],
+        "T10": [
+          "VO-FUSED-T10-003",
+          "VO-FUSED-T10-005",
+          "VO-FUSED-T10-009"
+        ],
+        "T15": [
+          "VO-FUSED-T15-001",
+          "VO-FUSED-T15-002",
+          "VO-FUSED-T15-003",
+          "VO-FUSED-T15-004",
+          "VO-FUSED-T15-006",
+          "VO-FUSED-T15-008"
+        ],
+        "T7": [
+          "VO-FUSED-T7-001",
+          "VO-FUSED-T7-003",
+          "VO-FUSED-T7-006",
+          "VO-FUSED-T7-007",
+          "VO-FUSED-T7-009"
+        ],
+        "T9": [
+          "VO-FUSED-T9-001",
+          "VO-FUSED-T9-003",
+          "VO-FUSED-T9-004",
+          "VO-FUSED-T9-005",
+          "VO-FUSED-T9-006"
+        ]
+      },
+      "coverage_state": "PENDING",
+      "gaps_no_covering_query": [],
+      "batch1_topic_states": {
+        "T1": {
+          "batch1_state": "ANSWER_OBTAINED",
+          "via_query_ids": [
+            "VO-FUSED-T1-010"
+          ]
+        },
+        "T10": {
+          "batch1_state": "ANSWER_OBTAINED",
+          "via_query_ids": [
+            "VO-FUSED-T10-009"
+          ]
+        },
+        "T15": {
+          "batch1_state": "ANSWER_OBTAINED",
+          "via_query_ids": [
+            "VO-FUSED-T15-001"
+          ]
+        },
+        "T7": {
+          "batch1_state": "ANSWER_OBTAINED",
+          "via_query_ids": [
+            "VO-FUSED-T7-001"
+          ]
+        },
+        "T9": {
+          "batch1_state": "ANSWER_OBTAINED",
+          "via_query_ids": [
+            "VO-FUSED-T9-001"
+          ]
+        }
+      },
+      "batch1_coverage_state": "ALL_TOPICS_ANSWERED",
+      "e2c_t1_closure": {
+        "state": "DOCTRINE_EXISTS",
+        "claim_ids": [
+          "CL-E23V-01",
+          "CL-E23V-02",
+          "CL-E23V-03"
+        ],
+        "via_query_ids": [
+          "E2C-E23V-IDENTITY",
+          "E2C-E23V-DURATION"
+        ],
+        "citation_audit_verdicts": {
+          "E2C-E23V-IDENTITY": "VERIFIED",
+          "E2C-E23V-DURATION": "PROSE_ONLY"
+        },
+        "note": "T1 doctrine-card gap closed this batch via narrow 2-point dedicated queries (OD-4 disposition 'run dedicated queries'); superseded batch1's wide-family ANSWER_OBTAINED label (VO-FUSED-T1-010/032) which never produced a per-product card."
+      }
+    },
+    "E33A": {
+      "reachability": "BLOCKED",
+      "n_rules": 7,
+      "required_facts": [
+        "derived.has_indonesian_citizenship",
+        "derived.is_minor",
+        "family.sponsor_confirmed",
+        "immigration.overstay_days",
+        "intent.purposes",
+        "intent.requested_product_code",
+        "person.nationalities"
+      ],
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T3",
+        "T7",
+        "T9"
+      ],
+      "coverage": {
+        "T1": [
+          "VO-FUSED-T1-032",
+          "VO-FUSED-T1-033"
+        ],
+        "T10": [
+          "VO-FUSED-T10-005",
+          "VO-FUSED-T10-009"
+        ],
+        "T15": [
+          "VO-FUSED-T15-001",
+          "VO-FUSED-T15-002",
+          "VO-FUSED-T15-003",
+          "VO-FUSED-T15-004",
+          "VO-FUSED-T15-005",
+          "VO-FUSED-T15-006",
+          "VO-FUSED-T15-008"
+        ],
+        "T3": [
+          "VO-FUSED-T3-002",
+          "VO-FUSED-T3-005",
+          "VO-FUSED-T3-006",
+          "VO-FUSED-T3-007",
+          "VO-FUSED-T3-008",
+          "VO-FUSED-T3-010",
+          "VO-FUSED-T3-012",
+          "VO-FUSED-T3-013",
+          "VO-FUSED-T3-014",
+          "VO-FUSED-T3-015",
+          "VO-FUSED-T3-016",
+          "VO-FUSED-T3-017",
+          "VO-FUSED-T3-018"
+        ],
+        "T7": [
+          "VO-FUSED-T7-001",
+          "VO-FUSED-T7-003",
+          "VO-FUSED-T7-004",
+          "VO-FUSED-T7-007",
+          "VO-FUSED-T7-009"
+        ],
+        "T9": [
+          "VO-FUSED-T9-001",
+          "VO-FUSED-T9-003",
+          "VO-FUSED-T9-004",
+          "VO-FUSED-T9-005",
+          "VO-FUSED-T9-006"
+        ]
+      },
+      "coverage_state": "PENDING",
+      "gaps_no_covering_query": [],
+      "batch1_topic_states": {
+        "T1": {
+          "batch1_state": "ANSWER_OBTAINED",
+          "via_query_ids": [
+            "VO-FUSED-T1-032"
+          ]
+        },
+        "T10": {
+          "batch1_state": "ANSWER_OBTAINED",
+          "via_query_ids": [
+            "VO-FUSED-T10-009"
+          ]
+        },
+        "T15": {
+          "batch1_state": "ANSWER_OBTAINED",
+          "via_query_ids": [
+            "VO-FUSED-T15-001"
+          ]
+        },
+        "T3": {
+          "batch1_state": "ANSWER_OBTAINED",
+          "via_query_ids": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ]
+        },
+        "T7": {
+          "batch1_state": "ANSWER_OBTAINED",
+          "via_query_ids": [
+            "VO-FUSED-T7-001"
+          ]
+        },
+        "T9": {
+          "batch1_state": "ANSWER_OBTAINED",
+          "via_query_ids": [
+            "VO-FUSED-T9-001"
+          ]
+        }
+      },
+      "batch1_coverage_state": "ALL_TOPICS_ANSWERED",
+      "e2c_t1_closure": {
+        "state": "DOCTRINE_EXISTS",
+        "claim_ids": [
+          "CL-E33A-01",
+          "CL-E33A-02",
+          "CL-E33A-03"
+        ],
+        "via_query_ids": [
+          "E2C-E33A-IDENTITY",
+          "E2C-E33A-DURATION"
+        ],
+        "citation_audit_verdicts": {
+          "E2C-E33A-IDENTITY": "VERIFIED",
+          "E2C-E33A-DURATION": "VERIFIED"
+        },
+        "note": "T1 doctrine-card gap closed this batch via narrow 2-point dedicated queries (OD-4 disposition 'run dedicated queries'); superseded batch1's wide-family ANSWER_OBTAINED label (VO-FUSED-T1-010/032) which never produced a per-product card."
+      },
+      "e2c_cf17_identity_conflict": {
+        "state": "SUPERSEDED_LEVEL6_SIDE",
+        "note": "Internal operational DB (nb2_visa_types_final.txt, Level 6) maps this product to a property/deposit/business Second Home financial-instrument identity; primary law (Kepmen M.IP-08.GR.01.01/2025 + Permenkumham 22/2023/11/2024, Level 2) maps it to the government-invited-expert/collaborating-expert/world-figure talent identity. Resolved per source-hierarchy-draft.md S3.1.2 (cross-level -> SUPERSEDED, not CONFLICTING). See CF-17 in e2c-blocked5-claim-ledger.md."
+      }
+    },
+    "E33B": {
+      "reachability": "BLOCKED",
+      "n_rules": 7,
+      "required_facts": [
+        "derived.has_indonesian_citizenship",
+        "derived.is_minor",
+        "family.sponsor_confirmed",
+        "immigration.overstay_days",
+        "intent.purposes",
+        "intent.requested_product_code",
+        "person.nationalities"
+      ],
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T3",
+        "T7",
+        "T9"
+      ],
+      "coverage": {
+        "T1": [
+          "VO-FUSED-T1-032",
+          "VO-FUSED-T1-034"
+        ],
+        "T10": [
+          "VO-FUSED-T10-005",
+          "VO-FUSED-T10-009"
+        ],
+        "T15": [
+          "VO-FUSED-T15-001",
+          "VO-FUSED-T15-002",
+          "VO-FUSED-T15-003",
+          "VO-FUSED-T15-004",
+          "VO-FUSED-T15-005",
+          "VO-FUSED-T15-006",
+          "VO-FUSED-T15-008"
+        ],
+        "T3": [
+          "VO-FUSED-T3-002",
+          "VO-FUSED-T3-005",
+          "VO-FUSED-T3-006",
+          "VO-FUSED-T3-007",
+          "VO-FUSED-T3-008",
+          "VO-FUSED-T3-010",
+          "VO-FUSED-T3-012",
+          "VO-FUSED-T3-013",
+          "VO-FUSED-T3-014",
+          "VO-FUSED-T3-015",
+          "VO-FUSED-T3-016",
+          "VO-FUSED-T3-017",
+          "VO-FUSED-T3-018"
+        ],
+        "T7": [
+          "VO-FUSED-T7-001",
+          "VO-FUSED-T7-003",
+          "VO-FUSED-T7-004",
+          "VO-FUSED-T7-007",
+          "VO-FUSED-T7-008",
+          "VO-FUSED-T7-009"
+        ],
+        "T9": [
+          "VO-FUSED-T9-001",
+          "VO-FUSED-T9-003",
+          "VO-FUSED-T9-004",
+          "VO-FUSED-T9-005",
+          "VO-FUSED-T9-006"
+        ]
+      },
+      "coverage_state": "PENDING",
+      "gaps_no_covering_query": [],
+      "batch1_topic_states": {
+        "T1": {
+          "batch1_state": "ANSWER_OBTAINED",
+          "via_query_ids": [
+            "VO-FUSED-T1-032"
+          ]
+        },
+        "T10": {
+          "batch1_state": "ANSWER_OBTAINED",
+          "via_query_ids": [
+            "VO-FUSED-T10-009"
+          ]
+        },
+        "T15": {
+          "batch1_state": "ANSWER_OBTAINED",
+          "via_query_ids": [
+            "VO-FUSED-T15-001"
+          ]
+        },
+        "T3": {
+          "batch1_state": "ANSWER_OBTAINED",
+          "via_query_ids": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ]
+        },
+        "T7": {
+          "batch1_state": "ANSWER_OBTAINED",
+          "via_query_ids": [
+            "VO-FUSED-T7-001"
+          ]
+        },
+        "T9": {
+          "batch1_state": "ANSWER_OBTAINED",
+          "via_query_ids": [
+            "VO-FUSED-T9-001"
+          ]
+        }
+      },
+      "batch1_coverage_state": "ALL_TOPICS_ANSWERED",
+      "e2c_t1_closure": {
+        "state": "DOCTRINE_EXISTS",
+        "claim_ids": [
+          "CL-E33B-01",
+          "CL-E33B-02",
+          "CL-E33B-03",
+          "CL-E33B-04"
+        ],
+        "via_query_ids": [
+          "E2C-E33B-IDENTITY",
+          "E2C-E33B-DURATION",
+          "E2C-E33B-EXTRA"
+        ],
+        "citation_audit_verdicts": {
+          "E2C-E33B-IDENTITY": "VERIFIED",
+          "E2C-E33B-DURATION": "VERIFIED",
+          "E2C-E33B-EXTRA": "PROSE_ONLY"
+        },
+        "note": "T1 doctrine-card gap closed this batch via narrow 2-point dedicated queries (OD-4 disposition 'run dedicated queries'); superseded batch1's wide-family ANSWER_OBTAINED label (VO-FUSED-T1-010/032) which never produced a per-product card."
+      },
+      "e2c_cf17_identity_conflict": {
+        "state": "SUPERSEDED_LEVEL6_SIDE",
+        "note": "Internal operational DB (nb2_visa_types_final.txt, Level 6) maps this product to a property/deposit/business Second Home financial-instrument identity; primary law (Kepmen M.IP-08.GR.01.01/2025 + Permenkumham 22/2023/11/2024, Level 2) maps it to the government-invited-expert/collaborating-expert/world-figure talent identity. Resolved per source-hierarchy-draft.md S3.1.2 (cross-level -> SUPERSEDED, not CONFLICTING). See CF-17 in e2c-blocked5-claim-ledger.md."
+      }
+    },
+    "E33C": {
+      "reachability": "BLOCKED",
+      "n_rules": 7,
+      "required_facts": [
+        "derived.has_indonesian_citizenship",
+        "derived.is_minor",
+        "family.sponsor_confirmed",
+        "immigration.overstay_days",
+        "intent.purposes",
+        "intent.requested_product_code",
+        "person.nationalities"
+      ],
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T3",
+        "T7",
+        "T9"
+      ],
+      "coverage": {
+        "T1": [
+          "VO-FUSED-T1-032",
+          "VO-FUSED-T1-035"
+        ],
+        "T10": [
+          "VO-FUSED-T10-005",
+          "VO-FUSED-T10-009"
+        ],
+        "T15": [
+          "VO-FUSED-T15-001",
+          "VO-FUSED-T15-002",
+          "VO-FUSED-T15-003",
+          "VO-FUSED-T15-004",
+          "VO-FUSED-T15-005",
+          "VO-FUSED-T15-006",
+          "VO-FUSED-T15-008"
+        ],
+        "T3": [
+          "VO-FUSED-T3-002",
+          "VO-FUSED-T3-005",
+          "VO-FUSED-T3-006",
+          "VO-FUSED-T3-007",
+          "VO-FUSED-T3-008",
+          "VO-FUSED-T3-010",
+          "VO-FUSED-T3-012",
+          "VO-FUSED-T3-013",
+          "VO-FUSED-T3-014",
+          "VO-FUSED-T3-015",
+          "VO-FUSED-T3-016",
+          "VO-FUSED-T3-017",
+          "VO-FUSED-T3-018"
+        ],
+        "T7": [
+          "VO-FUSED-T7-001",
+          "VO-FUSED-T7-003",
+          "VO-FUSED-T7-004",
+          "VO-FUSED-T7-007",
+          "VO-FUSED-T7-009"
+        ],
+        "T9": [
+          "VO-FUSED-T9-001",
+          "VO-FUSED-T9-003",
+          "VO-FUSED-T9-004",
+          "VO-FUSED-T9-005",
+          "VO-FUSED-T9-006"
+        ]
+      },
+      "coverage_state": "PENDING",
+      "gaps_no_covering_query": [],
+      "batch1_topic_states": {
+        "T1": {
+          "batch1_state": "ANSWER_OBTAINED",
+          "via_query_ids": [
+            "VO-FUSED-T1-032"
+          ]
+        },
+        "T10": {
+          "batch1_state": "ANSWER_OBTAINED",
+          "via_query_ids": [
+            "VO-FUSED-T10-009"
+          ]
+        },
+        "T15": {
+          "batch1_state": "ANSWER_OBTAINED",
+          "via_query_ids": [
+            "VO-FUSED-T15-001"
+          ]
+        },
+        "T3": {
+          "batch1_state": "ANSWER_OBTAINED",
+          "via_query_ids": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ]
+        },
+        "T7": {
+          "batch1_state": "ANSWER_OBTAINED",
+          "via_query_ids": [
+            "VO-FUSED-T7-001"
+          ]
+        },
+        "T9": {
+          "batch1_state": "ANSWER_OBTAINED",
+          "via_query_ids": [
+            "VO-FUSED-T9-001"
+          ]
+        }
+      },
+      "batch1_coverage_state": "ALL_TOPICS_ANSWERED",
+      "e2c_t1_closure": {
+        "state": "DOCTRINE_EXISTS",
+        "claim_ids": [
+          "CL-E33C-01",
+          "CL-E33C-02",
+          "CL-E33C-03"
+        ],
+        "via_query_ids": [
+          "E2C-E33C-IDENTITY",
+          "E2C-E33C-DURATION"
+        ],
+        "citation_audit_verdicts": {
+          "E2C-E33C-IDENTITY": "PROSE_ONLY",
+          "E2C-E33C-DURATION": "VERIFIED"
+        },
+        "note": "T1 doctrine-card gap closed this batch via narrow 2-point dedicated queries (OD-4 disposition 'run dedicated queries'); superseded batch1's wide-family ANSWER_OBTAINED label (VO-FUSED-T1-010/032) which never produced a per-product card."
+      },
+      "e2c_cf17_identity_conflict": {
+        "state": "SUPERSEDED_LEVEL6_SIDE",
+        "note": "Internal operational DB (nb2_visa_types_final.txt, Level 6) maps this product to a property/deposit/business Second Home financial-instrument identity; primary law (Kepmen M.IP-08.GR.01.01/2025 + Permenkumham 22/2023/11/2024, Level 2) maps it to the government-invited-expert/collaborating-expert/world-figure talent identity. Resolved per source-hierarchy-draft.md S3.1.2 (cross-level -> SUPERSEDED, not CONFLICTING). See CF-17 in e2c-blocked5-claim-ledger.md."
+      }
+    }
+  },
+  "e2c_summary": {
+    "products_closed_this_batch": [
+      "E23U",
+      "E23V",
+      "E33A",
+      "E33B",
+      "E33C"
+    ],
+    "queries_used": 11,
+    "query_budget": 12,
+    "retries_used": 0,
+    "retry_budget": 5,
+    "citation_audit_verdicts": {
+      "VERIFIED": 8,
+      "PROSE_ONLY": 3,
+      "SKIPPED_TRANSPORT_ERROR": 0,
+      "NOT_COMPILABLE": 0
+    },
+    "new_conflict": "CF-17 (E33A/B/C identity mapping, resolved via source hierarchy, not left open)",
+    "claim_ledger": "research/visa/doctrine-factory/claims/e2c-blocked5-claim-ledger.md"
+  }
+}

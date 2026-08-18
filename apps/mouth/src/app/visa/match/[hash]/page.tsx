@@ -294,7 +294,7 @@ export default function VisaMatchResultPage({
       <AppWhatsAppCTA
         source="visa_match"
         headline={`Start the ${data.recommended_visa} application`}
-        description="We file the paperwork and handle imigrasi. Typical first reply on WhatsApp in under 5 hours."
+        description="We file the paperwork and handle imigrasi."
         resultHash={data.hash}
         context={{
           recommended_visa: data.recommended_visa,

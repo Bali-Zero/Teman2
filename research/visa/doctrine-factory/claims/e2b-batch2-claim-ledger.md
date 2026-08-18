@@ -17,6 +17,14 @@ sources:
     note: "sibling batch — dedup-checked before drafting: E28B/E28C appear there only in passing (cross-cutting income-type table, CF-12 Golden Visa tier mismatch), never as a dedicated doctrine pinpoint; E28D/E28F/E30E/E30F do not appear at all"
   - path: research/visa/doctrine-factory/claims/e2b-batch1-conflict-report.md
     note: "CF-1..CF-12 numbering (CF-1..6 from e2a, CF-7..12 from batch-1); this batch's conflict report continues at CF-13"
+  - path: research/visa/doctrine-factory/nb2-answers/e2b-batch2b-response-log.jsonl
+    note: "EXTENSION note (batch-2b, separate PR): 30 records — this session's own 25-query broader slice + 10 lost-and-recovered re-runs, kept in its OWN file so it never collides with this file's already-merged 9-record e2b-batch2-response-log.jsonl. See the '## E2b batch-2b EXTENSION' section below for the sibling-worktree collision this file's name change is a direct consequence of."
+  - path: research/visa/doctrine-factory/query-bank/e2b-batch2b-selection.json
+    note: "EXTENSION artifact: this session's own 25-query plan, kept separate from the already-merged e2b-batch2-selection.json"
+  - path: research/visa/doctrine-factory/nb2-answers/e2b-batch2b-citation-audit.json
+    note: "EXTENSION artifact: citation-audit verdicts for this session's own 30 records"
+  - path: research/visa/doctrine-factory/query-bank/coverage-matrix-after-batch2b.json
+    note: "EXTENSION artifact: combined coverage delta (batch-1 + already-merged batch-2's 9 + this EXTENSION's 25/30), built this session"
 adversarial_review: kimi-k3
 ---
 
@@ -411,3 +419,440 @@ numbering (CF-13/14/15, no duplicates, all cross-refs resolve), the 9-query acco
 suspected-unconfirmed-for-the-rest, correctly NOT generalized), and that the citation-audit's "9/9
 VERIFIED" does not contradict individual claims' CONFLICTING/UNVERIFIED states (different axes —
 mechanical citation-resolvability vs. epistemic claim status — both declared as such in this ledger).
+
+---
+
+## E2b batch-2b EXTENSION — 27-PARTIAL-product closing slice + CF-7/8/10/12 pinpoint hunt
+
+Task: item **E2b**, the SECOND, independently-dispatched slice of batch-2 work — assigned separately
+from the 9-query 6-BLOCKED-product batch above (that batch merged as PR #4258 before this EXTENSION was
+ready; this EXTENSION lands as its OWN follow-up PR). Targets: the 27 products the batch-1 coverage
+delta left `PARTIAL` (prioritized by rule-count, highest first) plus 5 dedicated pinpoint-hunt queries
+for CF-7/CF-8/CF-10/CF-12. **Additive**: everything above this line is the already-merged batch-2
+section, unmodified in content (only the frontmatter `sources` list gained pointers to this section's
+artifacts, which live under their OWN `e2b-batch2b-*` filenames to avoid touching the already-merged
+`e2b-batch2-*` files).
+
+### Sibling-worktree collision — full transparency
+
+This session and the one that authored the batch-2 section above landed in the **same worktree/branch**
+(`agent/air-m5/ops/e2b-batch2`, deterministic from `scripts/agent_start.py --lane ops --task-id
+e2b-batch2`) at overlapping times — a genuine cicatrix-family-#5 sibling-race, not a hypothetical one.
+Sequence, reconstructed from `git reflog` + this session's own tool-call record:
+
+1. This session created the original worktree, wrote its own 25-query selection and a driver script,
+   and started a background run.
+2. Partway through (after ~10 of the 25 queries had completed and been durably appended to that
+   worktree's `e2b-batch2-response-log.jsonl`), the OTHER session landed in the identical worktree,
+   judged this session's live, still-running background process an "unowned, orphaned (PPID 1)"
+   abandoned attempt (it was not orphaned — PPID 1 reparenting is a normal consequence of a
+   backgrounded `&` process whose parent shell tool call already returned; the process was alive and
+   owned by this session the whole time), reset the branch to a fresh `origin/main`, wrote its own
+   9-query selection, ran its 9 queries, and **overwrote** the response-log file with a file containing
+   only its own 9 records before drafting its claims and merging PR #4258.
+3. This session's background process, still running, continued appending its own remaining ~20 records
+   (queries #11-25 plus retries) onto that now-9-line file with `append_jsonl` (open-mode `"a"`, per
+   `nb2_query.py` — never truncates). This is why the first 10 records this session actually obtained
+   (`E2B2-T5-001/002/003`, `E2B2-T8-001/002`, `E2B2-T11-001`, `E2B2-T1-BRIDGING`, `E2B2-T1-E31J`,
+   `E2B2-T1-E31BC`, `E2B2-T1-E31DE`) were **overwritten and permanently lost as raw text** by the
+   sibling's reset — though this session's own run-summary (written by its own script at the end of its
+   run, independent of the log file) durably recorded that all 10 DID return `status=OK` at the time
+   they were asked, which is why they are re-run rather than treated as failures below.
+4. **No destructive action was taken against the sibling's work in response** — nothing of theirs was
+   discarded, reset, or rewritten; PR #4258 merged untouched. Once #4258 merged (before this session's
+   own work was ready), a fresh worktree/branch (`agent/air-m5/ops/e2b-batch2b`) was created from
+   updated `origin/main` per the dispatcher's instruction, and this EXTENSION lands as an additive edit
+   to the (now-merged) files, with its own supporting artifacts under `e2b-batch2b-*` filenames so a
+   third collision on the same filename cannot recur.
+
+### Recovery re-run — 10 queries, honestly labeled
+
+`E2B2-T5-001`, `E2B2-T5-002`, `E2B2-T5-003`, `E2B2-T8-001`, `E2B2-T8-002`, `E2B2-T11-001`,
+`E2B2-T1-BRIDGING`, `E2B2-T1-E31J`, `E2B2-T1-E31BC`, `E2B2-T1-E31DE` were **re-issued verbatim**
+(`tools/run_e2b_batch2b_recovery.py`) after the collision, appended to `e2b-batch2b-response-log.jsonl`.
+**These are RE-RUNS, not the original series** — the append-only guarantee `nb2_query.py`'s own module
+docstring describes ("Append-only. Never rewrites the file, never truncates") was violated once on this
+branch, by the sibling's file-level overwrite (a script-level overwrite outside `nb2_query.py`'s own
+writer, not a defect in that writer itself) — flagged here rather than presented as an unbroken chain.
+All 10 re-runs returned `status=OK` on the first attempt. The original attempt's run-summary entries
+(also `status=OK`, `attempt=1`, timestamped before the collision) are the only surviving evidence the
+FIRST attempt succeeded — the raw answer TEXT from that first attempt is unrecoverable; the claims below
+are drawn from the RE-RUN text only.
+
+### Query execution summary (this EXTENSION)
+
+25-query plan (family-grouped "doctrine-lite" 5-point queries for the T1 gap, the fused-bank's own
+narrow T5/T8/T11 cross-cutting queries verbatim, and 5 pinpoint-hunt probes for CF-7/8/10/12) + 10
+recovery re-runs = **35 live query attempts this session**. Combined with 5 in-run retries
+(`E2B2-T1-E31FGH`, `E2B2-T1-E30`, `E2B2-T1-D1D2`, `E2B2-CF8-A` each timed out once and succeeded on
+retry, and `E2B2-T1-C2` timed out on its retry too), the session used **40 of its `<=40` live-query
+budget and 5 of its `<=5` retry budget — exactly at both caps, not comfortably under either one**. C2's
+own retry IS the 5th and final retry that exhausted the retry budget (named explicitly in the C2 section
+below, not omitted from the count). Citation audit (`e2b-batch2b-citation-audit.json`, run this session
+over this EXTENSION's own 30-record log): **20 `VERIFIED`, 3 `PROSE_ONLY`, 6 `SKIPPED_TRANSPORT_ERROR`
+(the 4 first-attempt timeouts + the 2 `E2B2-T1-C2` timeouts), 1 `NOT_COMPILABLE`** (`E2B2-T11-001` —
+several bracket pointers beyond `[54]` don't resolve against the structured citations map; the claim
+below is downgraded to `VERIFIED-WITH-CAVEAT` for this reason, not treated as clean `VERIFIED` despite
+the rich, well-cited-looking prose). Combined with the already-merged batch-2 section's own 9/9
+`VERIFIED`, the two files together (`e2b-batch2-citation-audit.json` + `e2b-batch2b-citation-audit.json`)
+cover the full 39-record picture across both PRs.
+
+### Claims by product (this EXTENSION)
+
+**Method note**: family-grouped queries return one shared answer covering several products — claims
+below are split per product but a shared `Provenance` query_id may support multiple products' claims.
+Per this task's binding rule, `doctrine-lite`/`pinpoint-hunt` answers with no structured citation
+resolution are `VERIFIED-WITH-CAVEAT`, never plain `VERIFIED` — the claim `state` field uses ONLY this
+ledger's own Method §2 vocabulary (`VERIFIED`/`CONFLICTING`/`STALE`/`UNVERIFIED`/`SUPERSEDED`/
+`VERIFIED-WITH-CAVEAT`); the citation-audit's own separate verdict vocabulary (`PROSE_ONLY`,
+`NOT_COMPILABLE`, etc.) is cited in the `Source`/parenthetical line as the REASON for a
+`VERIFIED-WITH-CAVEAT` state, never substituted for the state itself.
+
+#### BRIDGING — Izin Tinggal Peralihan (onshore transitional stay permit)
+
+**Coverage state: was TOTAL GAP after batch-1 (both attempts timed out there); now answered.**
+
+- **CL-BRIDGING-01 — category/purpose.** BRIDGING is legally the "Visitor Stay Permit in the framework
+  of Transition of Immigration Stay Permit" (*Izin Tinggal Kunjungan dalam rangka peralihan Izin Tinggal
+  Keimigrasian*) — a procedural bridge preventing overstay while a new onshore stay-permit application
+  is processed (VITAS/ITAS/ITAP transitions), not a stay-permit category in its own right.
+  - Source: `Permenkumham No. 11 Tahun 2024` (per the answer's own citation, passage 183/535);
+    `Permenkumham_27_2021_Visa.pdf` (passage 149/457/865). Citation-audit verdict: `PROSE_ONLY` (no
+    structured citations/references field, pointers not independently resolvable).
+  - **State: VERIFIED-WITH-CAVEAT.** Products: BRIDGING. Provenance: `E2B2-T1-BRIDGING`.
+- **CL-BRIDGING-02 — activities are DELEGATED, not enumerated in primary law.** Permitted activities are
+  limited to "certain activities" (*kegiatan tertentu*) whose specific definition the primary
+  regulation delegates to the Director General of Immigration, not the statute itself — i.e. the
+  activity boundary is not self-executing from `Permenkumham 11/2024` alone; local labor, commercial
+  sales, and compensation from an Indonesian party are prohibited by the general cross-cutting rule
+  (matching batch-1's T3-series findings), not a BRIDGING-specific carve-out.
+  - Source: `Permenkumham No. 11 Tahun 2024` (passage 534/928).
+  - **State: VERIFIED-WITH-CAVEAT.** Products: BRIDGING. Provenance: `E2B2-T1-BRIDGING`.
+- Note: the answer did not fully cover points 3-5 (entry/duration, extension/conversion, sponsor)
+  within its response length — this closes the coverage-matrix T1 gap (an answer now exists where none
+  did) but does NOT constitute a complete doctrine card; a follow-up narrower query on BRIDGING's
+  duration/extension/sponsor specifically is recommended before E5 treats this product as fully cured.
+
+#### E31J — sibling reunification (minor with sibling ITAS/ITAP holder)
+
+- **CL-E31J-01 — category/purpose.** `Permenkumham 11/2024` Art. 33(2)(h)(9) (new provision, in force
+  3 May 2024) and Art. 50A(1) introduce a family-reunification index for a foreign minor (<18, unmarried)
+  joining a sibling (*saudara kandung*) who holds an ITAS or ITAP; `Kepmen M.IP-08.GR.01.01/2025`
+  codifies this under index **E31J**.
+  - Source: `Permenkumham No. 11 Tahun 2024` Art. 33(2)(h)(9), Art. 50A(1); `Kepmen
+    M.IP-08.GR.01.01/2025`.
+  - **State: VERIFIED.** Products: E31J. Provenance: `E2B2-T1-E31J`.
+- **CL-E31J-02 — activities.** Permitted: tourism, shopping, visiting family/friends, entry/exit during
+  MERP validity. Prohibited: overstaying, selling goods/services, receiving compensation/wages/
+  commission from an Indonesian person or entity.
+  - Source: `Kepmen M.IP-08.GR.01.01/2025`.
+  - **State: VERIFIED.** Products: E31J. Provenance: `E2B2-T1-E31J`.
+- Note: this closes batch-1's "genuine content gap" flag on E31J (its dedicated `VO-FUSED-T1-030`-family
+  doctrine card had never returned an `OK` answer before this EXTENSION).
+
+#### E31B / E31C / E31D / E31E / E31F — FOURTH+FIFTH recurrence of the E31-index-letter primary-law-vs-
+internal-DB mismatch (NOT a new production-risk finding — see disposition)
+
+Three family-grouped answers (`E2B2-T1-E31BC`, `E2B2-T1-E31DE`, `E2B2-T1-E31FGH-RETRY`) all
+independently, unprompted, surface the SAME internal-database index-letter confusion e2a's **CF-5** and
+batch-1's **CF-9** already identified and disposed of:
+
+- **Primary law** (per all three answers, citing `Permenkumham 22/2023`/`11/2024` and `Kepmen
+  M.IP-08.GR.01.01/2025`): **E31B** = foreign spouse of an ITAS/ITAP holder; **E31C** = foreign child born
+  of a marriage between a foreign national and an Indonesian citizen (WNI); **E31D** = foreign child of
+  a foreign national married to a WNI (a closely related but distinct sub-case from E31C's own answer's
+  framing — the two family-grouped answers are not perfectly harmonized on the E31C/E31D boundary
+  either, logged as-is, not smoothed); **E31F** = foreign child reuniting with an Indonesian-citizen
+  parent (`Penyatuan Keluarga`).
+- **Internal DB** (`nb2_visa_types_final.txt`, per all three answers): **E31B** = child of KITAS/KITAP
+  holder; **E31C** = parent of KITAS/KITAP holder; **E31D** = "Spouse KITAS (KITAS Holder Spouse)";
+  **E31F** = ALSO "Spouse KITAS (KITAP Holder Spouse)" — the SAME internal-DB label the E31D answer
+  independently gave, i.e. the internal DB attaches the spouse label to two different index letters
+  across two independently-run queries, which is itself additional evidence of how unreliable that
+  internal artifact is (not a claim that BOTH E31D and E31F are "really" the spouse index — neither is,
+  per primary law).
+- **CL-E31BCDEF-01 — the mismatch is CONFIRMED to recur a fourth/fifth time, independent of e2a and
+  batch-1's own occurrences.** New EVIDENCE strengthening the case that `nb2_visa_types_final.txt`
+  itself carries a genuine, recurring internal-artifact defect (now FOUR independent query rounds
+  reproduce it, across FIVE affected index letters: B/C/D/E/F) — but per CF-5's already-checked
+  disposition (verified directly against `seed_visa_types_complete_2026.py` and
+  `rulepack-prod-007.source.json`, both showing the correct `E31B=spouse/E31D=stepchild/E31E=child-of-
+  foreigner` production mapping), **production is unaffected**. This entry does not re-open CF-5/CF-9's
+  disposition, only adds a fourth/fifth data point to it.
+  - Source: `E2B2-T1-E31BC`, `E2B2-T1-E31DE`, `E2B2-T1-E31FGH-RETRY` (all `VERIFIED`-audited).
+  - **State: CONFLICTING (NB-2-source only, production unaffected — see CF-5/CF-9).** Products: E31B,
+    E31C, E31D, E31F. Provenance: `E2B2-T1-E31BC`, `E2B2-T1-E31DE`, `E2B2-T1-E31FGH-RETRY`. Cross-ref:
+    `e2a-conflict-report.md` CF-5, `e2b-batch1-conflict-report.md` CF-9.
+- **CL-E31B-legal-01 — E31B activities/entry/duration (primary-law reading).** Multiple-entry, standard
+  family-reunification activity set (tourism/shopping/family visits permitted; local employment/sales
+  prohibited without a separate E23 work permit).
+  - Source: `Permenkumham No. 22 Tahun 2023`/`11/2024` Pasal 33(2)(h)(2); `Kepmen
+    M.IP-08.GR.01.01/2025`.
+  - **State: VERIFIED-WITH-CAVEAT** (rests on the primary-law reading; see CL-E31BCDEF-01's internal-DB
+    conflict). Products: E31B. Provenance: `E2B2-T1-E31BC`.
+- **CL-E31D-legal-01 — E31D activities (primary-law reading, distinctive point).** Uniquely among the
+  E31 family, the primary-law text for E31D permits informal self-employment/business activity to
+  support the family's livelihood, EXCLUDING formal employment relationships with an Indonesian company
+  or individual (`"Melakukan pekerjaan dan/atau usaha untuk memenuhi kebutuhan hidup ... di luar
+  hubungan kerja..."`) — a narrower but real activity allowance most other E31 sub-indices' answers in
+  this batch did not surface.
+  - Source: `Permenkumham No. 11/2024` (per the answer's own inline citation).
+  - **State: VERIFIED-WITH-CAVEAT** (primary-law reading; internal-DB conflict per CL-E31BCDEF-01).
+    Products: E31D. Provenance: `E2B2-T1-E31DE`.
+
+#### E31G / E31H — thin backfill (retry-recovered, response budget consumed by E31F)
+
+- **CL-E31GH-01 — coverage-matrix-closing but THIN.** The retried (narrowed) `E2B2-T1-E31FGH-RETRY`
+  answer's response budget was consumed primarily by E31F's detailed dual-framework analysis (see
+  CL-E31BCDEF-01 above); E31G and E31H did not receive comparably detailed treatment in the same answer.
+  **Recorded honestly as a THIN backfill, not a full doctrine card** — the coverage-matrix T1 gap is
+  closed (an answer touching all three products exists) but E31G/E31H's specific category/purpose/
+  activity content should not be treated as E31F-grade in the eventual doctrine-card build.
+  - Source: `E2B2-T1-E31FGH-RETRY`.
+  - **State: VERIFIED-WITH-CAVEAT (thin).** Products: E31G, E31H. Provenance:
+    `E2B2-T1-E31FGH-RETRY`.
+
+#### E30 / E30B — family-grouped, retry-recovered
+
+- **CL-E30-03 — E30 family index structure, per this EXTENSION's own answer.** (renamed from
+  `CL-E30-01` to avoid ID collision with batch1's distinct claim; states unchanged) `Kepmen
+  M.IP-08.GR.01.01/2025` subdivides the E30 Student KITAS family, per `E2B2-T1-E30-RETRY`, into: E30A
+  (primary/secondary education), E30B (higher education — diploma/sarjana/master/doktor), E30E (KEK-zone
+  institution), E30F (student exchange); E30 itself is the generic parent index ("*Mengikuti
+  pendidikan*").
+  - Source: `Kepmen M.IP-08.GR.01.01/2025` (source ID 49, passage cited); `nb2_visa_types_final.txt`
+    (source ID 120).
+  - **State: VERIFIED-WITH-CAVEAT** — flagged, not smoothed: the already-merged batch-2 section's own
+    `CL-E30F-01` above describes E30A differently, in passing, as "academic research" rather than
+    "primary/secondary education." Neither this EXTENSION nor that section asked a dedicated E30A
+    doctrine-card question — both descriptions are asides inside answers primarily about OTHER products
+    (E30/E30B here; E30F there). This is a genuine, UNRESOLVED cross-document discrepancy about what
+    E30A actually covers, surfaced by this EXTENSION's own adversarial pass (see below) — not silently
+    harmonized in either direction. A dedicated E30A doctrine-card query is recommended before E5 treats
+    either description as settled. Products: E30, E30B. Provenance: `E2B2-T1-E30-RETRY`.
+- Note: the retried (narrowed) answer's response was cut off before reaching the "Attività Consentite"
+  detail section for E30/E30B specifically — closes the T1 coverage gap but, like BRIDGING and
+  E31G/E31H above, is a thinner-than-ideal doctrine-card input; flagged, not hidden.
+
+#### E30E / E30F — cross-check against the already-merged sibling section's own dedicated E30E/E30F
+doctrine-lite answers
+
+- **CL-E30EF-01 — corroborates the already-merged section's CL-E30E-01/CL-E30F-01 category/purpose
+  findings.** This EXTENSION's own `E2B2-T1-E30EF` answer (asked independently, before this session was
+  aware of the merged `E2B2-E30E`/`E2B2-E30F` answers above) reaches the SAME category/purpose
+  conclusion for both products (KEK-zone institution / student-exchange program respectively), citing
+  the same primary sources (`Kepmen M.IP-08.GR.01.01/2025`, `Permenkumham 22/2023`/`11/2024`,
+  `UU 63/2024`). Treated as independent corroboration, not double-counted as two separate facts.
+  - Source: `E2B2-T1-E30EF` (`VERIFIED`-audited).
+  - **State: VERIFIED** (corroborates the already-merged section's own `VERIFIED` claims above).
+    Products: E30E, E30F. Provenance: `E2B2-T1-E30EF` (cross-ref merged `E2B2-E30E`, `E2B2-E30F`).
+
+#### D1 / D2 / D12 — redundant with the already-MERGED E3a slice (PR #4250/#4251), noted not re-litigated
+
+`git log origin/main` confirms PR #4250 ("E3a slice doctrine cards: D1/D2/D12/E31B/E31D") and #4251
+("E3a CF-1 resolution fast-follow") are **already MERGED to main**, predating this EXTENSION — meaning
+D1/D2/D12 (and E31B/E31D, covered above under the E31 mismatch instead) already have dedicated,
+presumably more thorough doctrine-card content elsewhere in the repo. This EXTENSION's own
+`E2B2-T1-D1D2-RETRY`/`E2B2-T1-D12` answers are recorded below for coverage-matrix bookkeeping and
+cross-check value ONLY — not presented as the primary doctrine-card source for these three products.
+
+- **CL-D1D2D12-XCHECK-01 — D1 duration/extension figures cross-check.** `E2B2-T1-D1D2-RETRY` (citation
+  audit: `PROSE_ONLY`) cites `Permenkumham 11/2024` Pasal 7(4)/(5) (validity tiers, up to 10yr total)
+  and Pasal 16(1)/(2) (first-time-applicant caps) for D1 multiple-entry visit visas — consistent in
+  shape with this EXTENSION's own `E2B2-T5-001`/`E2B2-T5-003` cross-cutting entry-duration findings
+  below, no contradiction found.
+  - **State: VERIFIED-WITH-CAVEAT (PROSE_ONLY, cross-check value only — see E3a for the authoritative
+    doctrine card).** Products: D1, D2. Provenance: `E2B2-T1-D1D2-RETRY`.
+- **CL-D12-XCHECK-01 — D12 category/purpose cross-check.** `E2B2-T1-D12` (citation audit: `PROSE_ONLY`)
+  confirms D12 = "Prainvestasi" (pre-investment) under `Kepmen M.IP-08.GR.01.01/2025` Category 7 and
+  `Permenkumham 11/2024`, consistent with batch-1's own `VO-FUSED-T1-*` D12 findings — no contradiction
+  found, cross-check only.
+  - **State: VERIFIED-WITH-CAVEAT (PROSE_ONLY, cross-check value only).** Products: D12. Provenance:
+    `E2B2-T1-D12`.
+
+#### A1 / B1 — visa-free entry / visa-on-arrival
+
+- **CL-A1B1-01 — category/purpose.** A1 (*Bebas Visa Kunjungan*): visa-free entry for tourism, personal
+  development, sightseeing (incl. yachting), family visits, transit, business consultations/negotiations
+  /contract-signing (no local work). B1 (*Visa Kunjungan Saat Kedatangan*/VoA): same activity envelope,
+  issued electronically on arrival to eligible nationalities.
+  - Source: `Permenkumham No. 22/2023` Art. 10 & 18 (A1); Art. 12 & 32 (B1 issuance mechanics); `Kepmen
+    M.IP-08.GR.01.01/2025` Allegato Sez. A.1.
+  - **State: VERIFIED.** Products: A1, B1. Provenance: `E2B2-T1-A1B1`.
+- Note: consistent with this EXTENSION's own `E2B2-T5-001` finding (below) that A1/B1-class products are
+  single-entry and a single exit permanently voids the stay permit.
+
+#### C1 / C6 — visit visa (tourism / other)
+
+- **CL-C1C6-01 — regulatory hierarchy identified, product-specific detail thin.** The answer opens with
+  a correct, detailed source-hierarchy classification (`UU 6/2011` as amended by `UU 63/2024`/`PP
+  45/2024`; `Permenkumham 22/2023`/`11/2024`; `Kepmen M.IP-08.GR.01.01/2025`; `Permenimipas 5/2025`) but
+  the response was truncated before delivering C1/C6's own category/purpose/activity content in detail
+  (cut off mid-table). **Recorded honestly as a coverage-matrix-closing but THIN answer**, not a
+  complete doctrine card.
+  - Source: `E2B2-T1-C1C6` (`VERIFIED`-audited — the source-hierarchy portion resolves cleanly even
+    though the product-specific portion is thin).
+  - **State: VERIFIED-WITH-CAVEAT (thin).** Products: C1, C6. Provenance: `E2B2-T1-C1C6`.
+
+#### C2 — GENUINE GAP, both attempts timed out
+
+**Coverage state: TOTAL GAP, honestly unresolved.** `E2B2-T1-C2` timed out on both the initial attempt
+and its narrowed retry (`E2B2-T1-C2-RETRY`) — the only product in this EXTENSION's 25-query selection
+with zero live-query budget remaining to spend on a third attempt. **C2's own retry (`E2B2-T1-C2-RETRY`)
+IS the 5th and final retry that exhausted the global `<=5` retry budget** (the other 4 —
+`E31FGH`/`E30`/`D1D2`/`CF8-A` — each succeeded on their own retry) — named explicitly here so the retry
+count in the "Query execution summary" section above and this section agree exactly. C2 remains the sole
+`PARTIAL` product in `coverage-matrix-after-batch2b.json` (6 of 7 topics answered, T1 pending).
+
+- **CL-C2-GAP-01 — no claim can be authored for C2's doctrine-card content from this EXTENSION.**
+  - Source: none (both attempts TIMEOUT). Products: C2. Provenance: `E2B2-T1-C2`,
+    `E2B2-T1-C2-RETRY` (both `SKIPPED_TRANSPORT_ERROR`).
+  - Note: batch-1's own coverage delta already flagged C2 as needing T1+T5; this EXTENSION's
+    `E2B2-T5-002` (below) DID close C2's T5 gap — only T1 (doctrine-card) remains open for C2.
+
+#### E28B / E28C — cross-check against the already-merged sibling section's own dedicated E28B/E28C
+answers
+
+- **CL-E28BC-XCHECK-01 — corroborates CL-E28B-01/CL-E28C-01 and strengthens CL-E28B-05/CL-E28C-05's
+  threshold figures.** This EXTENSION's `E2B2-T1-E28BC` answer independently reaches the SAME
+  category/purpose split (E28B = corporate/PT-PMA investor; E28C = pure portfolio investor) and cites
+  the SAME `Permenkumham 11/2024` Pasal 39(2)/40(2) threshold articles as the already-merged section's
+  dedicated answers above, with no contradiction found.
+  - Source: `E2B2-T1-E28BC` (`VERIFIED`-audited).
+  - **State: VERIFIED** (corroborates the already-merged section's claims). Products: E28B, E28C.
+    Provenance: `E2B2-T1-E28BC` (cross-ref merged `E2B2-E28B`, `E2B2-E28C`, `E2B2-E28BC-XCHECK`).
+
+#### E28D / E28F — cross-check against the already-merged sibling section's own dedicated E28D/E28F
+answers (CF-13/CF-14)
+
+- **CL-E28DF-XCHECK-01 — corroborates CF-13/CF-14's primary-law-vs-internal-DB conflict, no new fact.**
+  This EXTENSION's `E2B2-T1-E28DF` answer independently surfaces the SAME primary-law-vs-internal-DB
+  mismatch for both E28D and E28F that the already-merged section's `CF-13`/`CF-14` already document in
+  detail — treated purely as corroboration, no new claim content extracted (the merged section's own
+  CL-E28D-01/02/03 and CL-E28F-01/02/03/04 remain the authoritative claims for these two products).
+  - Source: `E2B2-T1-E28DF` (`VERIFIED`-audited).
+  - **State: VERIFIED** (corroborates already-merged CF-13/CF-14, no independent new claim). Products:
+    E28D, E28F. Provenance: `E2B2-T1-E28DF` (cross-ref merged `E2B2-E28D`, `E2B2-E28F`,
+    `E2B2-E28DF-XCHECK`).
+
+#### Cross-cutting findings (T5/T8/T11 — fused-bank verbatim queries)
+
+- **CL-XCUT-T5-01 — single- vs multiple-entry, per product class.** Per `E2B2-T5-001`'s answer, C-series
+  (naming C1, C2, C7, C8, C12, C18, C22 explicitly) and B-series VoA (B1-B4) are single-entry: any exit
+  permanently voids the stay permit (ITK). D-series (D1/D2/D12) are multiple-entry. **Products list below
+  is scoped to exactly what the answer names** — C6 is NOT explicitly named in this answer's own text
+  (it is covered instead by `E2B2-T5-002` below, which DOES name C6 directly), so C6 is excluded from
+  this claim's Products list even though it is a C-series product, to avoid asserting a fact this
+  specific answer did not actually state for C6.
+  - Source: `Permenkumham 22/2023` Pasal 8(1)(a), Pasal 11; `Kepmen M.IP-08.GR.01.01/2025`.
+  - **State: VERIFIED.** Products: A1, B1, B2, B3, B4, C1, C2, C7, C8, C12, C18, C22, D1, D2, D12.
+    Provenance: `E2B2-T5-001`.
+- **CL-XCUT-T5-02 — C-series extension mechanics.** 60-day initial stay, up to 2 extensions of 60 days
+  each (max 180 days total); filing window opens 14 days before expiry; a timely-filed-and-paid
+  extension application suspends overstay accrual even if approval lands after the prior permit's
+  expiry; new period starts the day after the prior permit's expiry. This answer's own query scope was
+  specifically C1/C2/C6 (see `e2b-batch2b-selection.json`), which is why C6 appears here despite not
+  appearing in `CL-XCUT-T5-01` above — the two claims are scoped to what each SPECIFIC answer actually
+  covered, not harmonized into one combined C-series list.
+  - Source: `Permenkumham` Pasal 95 & 97 (per the answer's own citation).
+  - **State: VERIFIED.** Products: C1, C2, C6. Provenance: `E2B2-T5-002`.
+- **CL-XCUT-T5-03 — D-series re-entry clock resets on exit, no minimum time abroad required.** Each
+  re-entry on a D-series multiple-entry visa opens a fresh per-entry stay window; no minimum period
+  abroad is mandated by national law before re-entry, though the answer flags an OPERATIONAL (not
+  legal) risk of entry-refusal profiling for frequent immediate re-entries (>3-4/year "border runs").
+  - Source: `UU 6/2011`/`63/2024`; `Permenkumham 22/2023`/`11/2024`; `Kepmen M.IP-08.GR.01.01/2025`.
+  - **State: VERIFIED.** Products: D1, D2, D12. Provenance: `E2B2-T5-003`.
+- **CL-XCUT-T8-01 — blackout windows.** No specific "must not exit" legal blackout window was identified
+  as product-general; the answer instead frames constraints operationally (pending-application timing,
+  local Kanim enforcement patterns) rather than citing a specific statutory exit prohibition.
+  - Source: `E2B2-T8-001` (`VERIFIED`-audited, but the answer's own content does not assert a clean
+    product-specific blackout rule).
+  - **State: VERIFIED-WITH-CAVEAT** (answer is grounded but does not deliver a crisp per-product
+    blackout-window table the query asked for). Products: ALL. Provenance: `E2B2-T8-001`.
+- **CL-XCUT-T8-02 — KITAS without MERP: post-reform vs pre-reform.** Post-UU-63/2024 KITAS: MERP is
+  automatically integrated at issuance — exiting without a separate MERP is not legally possible to get
+  wrong. Pre-reform KITAS: exiting without the (then-separate) MERP document caused the KITAS to lapse
+  immediately, with NO legal restoration path other than a fresh offshore VITAS application. Exempt:
+  dual-citizen minors entering on an Indonesian passport with `Fasilitas Keimigrasian`.
+  - Source: `UU No. 63/2024` (per the answer's own citation).
+  - **State: VERIFIED.** Products: E28, E31, E33 (family-wide, per query scope). Provenance:
+    `E2B2-T8-002`.
+- **CL-XCUT-T11-01 — RPTKA filing.** RPTKA (Rencana Penggunaan Tenaga Kerja Asing) replaced IMTA
+  entirely under `PP 34/2021` — RPTKA approval + DKP-TKA payment is now the sole work authorization,
+  feeding E23 visa/KITAS issuance. Must be filed by the Indonesian employer (PT, PT PMA, CV, Yayasan,
+  government body, or foreign representative office) — never by the foreign worker personally.
+  - Source: `PP 34/2021` Pasal 1 angka 2 (per the answer's own citation).
+  - **State: VERIFIED-WITH-CAVEAT** (citation audit verdict `NOT_COMPILABLE` — several bracket pointers
+    beyond `[54]` in the fuller answer do not resolve against the structured citations map; the
+    passages actually read and quoted above use pointers `[1]-[6]`, all resolved, but the answer's
+    unresolved tail is flagged rather than silently ignored). Products: E23. Provenance:
+    `E2B2-T11-001`.
+
+### CF-7 / CF-8 / CF-10 / CF-12 pinpoint-hunt outcomes
+
+Full dispositions are written in this EXTENSION's own conflict-report addendum
+(`e2b-batch2-conflict-report.md`'s new "## EXTENSION — CF-7/8/10/12 pinpoint-hunt outcomes" section) to
+keep this ledger's per-product structure intact. Summary for readers of this file: **all four resolve
+cleanly with article-level primary-law pinpoints found this session** — CF-7 (E33E age = 55, per
+`Kepmen M.IP-08.GR.01.01/2025` + `Permenkumham 11/2024` Pasal 61/62/101, superseding the pre-2024-reform
+60-year figure that Bali Zero's own guide never updated); CF-8 (E33/E33E KITAP conversion = 3 years per
+`Permenkumham 22/2023` Pasal 179(1), NOT Pasal 76 which governs cancellation only); CF-10 (E28A KITAP
+conversion = 3 years per `PP 31/2013`/`Permenkumham 22/2023` Pasal 179(1)/173(c)); CF-12 (E28G is
+legally a foreign-parent-company-representative role per `Kepmen M.IP-08.GR.01.01/2025`, not a Golden
+Visa tier — independently corroborating the already-merged section's own `CL-CROSS-E28-01` above). None
+of the four "5-year"/"60-year"/"5+ years" operational-guide figures is called erroneous outright — each
+is named as what it demonstrably is (a stale or prudential figure that no longer/never matched the
+governing article), per the task's hard honesty rule against dishonest one-sided framing on a resolved
+conflict's losing side. **Note the terminology used by the already-merged section's own CL-CROSS-E28-01
+above** ("still ESCALATED there per that batch's own disposition") **and this EXTENSION's own wording
+below (batch-1's original CF-12 disposition was "OPEN, escalate to E5/operator")** — "ESCALATED" and
+"OPEN (escalate-flagged)" describe the SAME batch-1 state, not two different ones; this EXTENSION uses
+"OPEN" consistently below to match batch-1's own literal disposition text.
+
+### Coverage outcome (this EXTENSION, for OD-4)
+
+Combined with the already-merged batch-2 section above and batch-1: **26 of the 27 `PARTIAL` products
+from `coverage-matrix-after-batch1.json` now reach `ALL_TOPICS_ANSWERED`** in
+`query-bank/coverage-matrix-after-batch2b.json` (built this session, combining batch-1's per-topic
+credit with both this EXTENSION's and the already-merged section's batch-2 answers) —
+`coverage-matrix-after-batch2b.json`'s own `matrix` object is the checkable artifact for this arithmetic,
+not this prose sentence alone. **C2 is the sole remaining `PARTIAL` product** (6/7 topics; T1
+doctrine-card content genuinely absent — both attempts timed out). Several of the 26 "closed" products
+carry an honest caveat (thin/PROSE_ONLY/redundant-with-E3a) rather than a clean full doctrine card — read
+the per-product sections above, not just the coverage-state label, before treating any of them as
+build-ready for E5.
+
+### Adversarial review (this EXTENSION + re-covering the already-merged CF-13/14/15 section)
+
+Per this task's binding constraint, the adversarial pass below was scoped to cover **this EXTENSION's
+own new content AND the already-merged batch-2 section above (including CF-13/14/15)** — no section of
+this combined file is adversarial-review-exempt just because it was authored by a different session and
+already merged.
+
+**Round 1** — `kimi -m kimi-code/k3`, instructed "NON usare sub-agent: analizza direttamente il testo",
+run against the FULL combined file (already-merged batch-2 section + this EXTENSION, concatenated) plus
+the companion conflict report, internal-coherence-only scope (no NB-2/tool access), 8-minute timebox.
+**Killed at the timebox before delivering a formatted final verdict** — the process was still working
+through its analysis when killed, same failure mode as batch-1's own Round 1. Per that same precedent
+(batch-1's Round 1 killed-but-partial output was still used, not discarded), this session read the
+partial stdout transcript directly and self-cured every concrete, unambiguous defect it had already
+surfaced before being killed, rather than fabricating a clean pass or discarding a substantially-complete
+review:
+
+| # | Finding (extracted from Kimi's killed-mid-analysis transcript) | Disposition |
+|---|---|---|
+| 1 | "35 live query attempts... well inside the `<=40` budget" is numerically misleading — 35 + 5 retries = 40, exactly AT the cap, not "well inside" it | **FIXED** — Query execution summary above now states "used 40 of its `<=40` live-query budget and 5 of its `<=5` retry budget — exactly at both caps, not comfortably under either one" |
+| 2 | The C2 section's retry-exhaustion parenthetical named only 4 retries (`E31FGH`/`E30`/`D1D2`/`CF8-A`), omitting C2's own retry as the 5th — inconsistent with the summary section's own list of 5 retries that DOES include C2 | **FIXED** — C2 section now explicitly states "C2's own retry (`E2B2-T1-C2-RETRY`) IS the 5th and final retry" |
+| 3 | The original CF-12-UPDATE draft (conflict-report EXTENSION) described "Rp 5 miliar+" as "E28F's real-estate-investor threshold" in a way readable as asserting it a REAL, legitimate E28F threshold — but CF-14 (already-merged section) establishes E28F's ACTUAL primary-law meaning is IKN branch/subsidiary, and Rp 5 miliar+/real-estate is the INTERNAL DB's mismatched/disputed label for E28F, not a confirmed real threshold | **FIXED** — conflict-report EXTENSION's CF-12 UPDATE reworded to say the figure "belongs to E28F's INTERNAL-DB label (itself CF-14's own contested mismatch, not a confirmed real E28F threshold)" rather than presenting it as settled fact |
+| 4 | "ESCALATED" (already-merged section's own CL-CROSS-E28-01 wording) vs "OPEN" (this EXTENSION's own wording) for batch-1's CF-12 disposition risked reading as two different claimed prior states | **FIXED** — added an explicit note above (CF-7/8/10/12 pinpoint-hunt outcomes section) clarifying both terms describe the same batch-1 disposition, quoting batch-1's own literal text ("OPEN, escalate to E5/operator") |
+| 5 | `CL-BRIDGING-01`'s original draft used `State: PROSE_ONLY / VERIFIED-WITH-CAVEAT` — mixing the citation-audit's own verdict vocabulary into the claim `state` field, which this ledger's Method §2 explicitly reserves for a separate fixed vocabulary | **FIXED** — state field now reads plain `VERIFIED-WITH-CAVEAT`; `PROSE_ONLY` moved to the Source line as the stated REASON for the caveat |
+| 6 | `CL-E30-03` (this EXTENSION; renamed from `CL-E30-01` to avoid an ID collision with batch1's distinct E30 validity-tiers claim) describes E30A as "primary/secondary education"; the already-merged section's own `CL-E30F-01` describes E30A, in passing, as "academic research" — a genuine unflagged cross-document contradiction about what E30A covers | **FIXED, not silently resolved** — `CL-E30-03` now states this discrepancy explicitly and recommends a dedicated E30A doctrine-card query rather than asserting either description as settled |
+| 7 | `CL-XCUT-T5-01`'s `Products` field originally included C6 and A1 without the narrative text explicitly naming them, while `CL-XCUT-T5-02` separately covers C6 — risk of double-scoping/over-claiming beyond what each specific answer actually said | **FIXED** — `CL-XCUT-T5-01`'s Products list now excludes C6 (moved exclusively to `CL-XCUT-T5-02`, which DID ask about C6 specifically) with an explicit scoping note; A1's coverage is explained via its own cross-reference note under `CL-A1B1-01` instead of silently folded into the T5-01 Products list |
+
+No finding required reversing a claim's `state` from `VERIFIED` to something weaker, or discarding a
+source — all 7 were framing/scoping/wording precision fixes, applied against this session's own raw
+JSONL/citation-audit evidence, not narrative repair alone. This EXTENSION's own text is the only content
+edited; the already-merged batch-2 section above (including CF-13/14/15) required NO changes — Kimi's
+partial transcript, read in full, raised no unresolved defect against that section specifically before
+being killed (it re-confirmed several of that section's own prior-round fixes as still holding, e.g. the
+"three of six" conflict count and the CF-13 CROSS-TIER heading correction).

@@ -1,0 +1,20 @@
+[
+  {
+    "query_id": "E2B3-C2-IDENTITY",
+    "source": "batch3-authored",
+    "reworked_from": "E2B2-T1-C2 (5-point doctrine-lite, timed out twice)",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["C2"],
+    "text": "For C2 (Visit Visa Business, single-entry, Visa Kunjungan Bisnis) ONLY -- answer just these 2 points, concisely, one short paragraph each: (1) category/legal purpose and permitted vs prohibited activities; (2) single or multiple entry, duration per entry and total validity (compare briefly to D2 -- Business Multiple Entry -- only if it clarifies the single-entry distinction). Cite source title and passage for each point."
+  },
+  {
+    "query_id": "E2B3-C2-PROCEDURE",
+    "source": "batch3-authored",
+    "reworked_from": "E2B2-T1-C2 (5-point doctrine-lite, timed out twice)",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["C2"],
+    "text": "For C2 (Visit Visa Business, single-entry, Visa Kunjungan Bisnis) ONLY -- answer just these 2 points, concisely, one short paragraph each: (1) extension mechanics (how many, how long) and any onshore conversion path; (2) mandatory sponsor/guarantor requirement. Cite source title and passage for each point."
+  }
+]

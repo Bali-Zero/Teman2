@@ -1,0 +1,1909 @@
+{
+  "slice": "E5-INCREMENT-1",
+  "rules": [
+    {
+      "product_code": "D1",
+      "claim_ids": [
+        "CL-D1-02",
+        "CL-D1-03",
+        "CL-D-COMPARE"
+      ],
+      "caveats": [
+        {
+          "claim_id": "CL-D1-02",
+          "note": "requirement-bundle rule co-cites source ee8fe5b8-... flagged CHANGED in freshness-recheck-2026-08-16.md record #4 (Conflict Report CF-6); the product-specific OFFICIAL_PORTAL record backing this claim is unaffected (still CURRENT) but the co-citation is carried, not silently dropped."
+        }
+      ],
+      "rule": {
+        "rule_id": "el.d1-cv-required",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "374e79e0-f0bf-5291-8cba-974e794e210a"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "TOURISM",
+                    "FAMILY",
+                    "TRANSIT",
+                    "BUSINESS_MEETINGS"
+                  ]
+                },
+                {
+                  "op": "eq",
+                  "fact": "intent.entry_pattern",
+                  "value": "MULTIPLE"
+                }
+              ]
+            },
+            {
+              "op": "all",
+              "args": [
+                {
+                  "op": "all",
+                  "args": [
+                    {
+                      "fact": "intent.purposes",
+                      "op": "intersects",
+                      "values": [
+                        "TOURISM",
+                        "FAMILY",
+                        "TRANSIT",
+                        "BUSINESS_MEETINGS"
+                      ]
+                    },
+                    {
+                      "fact": "intent.stay_days",
+                      "op": "lte",
+                      "value": 60
+                    }
+                  ]
+                },
+                {
+                  "op": "eq",
+                  "fact": "intent.entry_pattern",
+                  "value": "MULTIPLE"
+                }
+              ]
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "CV_REQUIRED",
+          "covered_purposes": [
+            "BUSINESS_MEETINGS",
+            "FAMILY",
+            "TOURISM",
+            "TRANSIT"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "ca5a2ce8-83bb-58ec-b2d9-285833cf085a",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715",
+          "ee8fe5b8-b0b4-544a-bf9a-fe53c3e316f2"
+        ],
+        "explanation_key": "explain.el.d1-cv-required",
+        "safety_critical": false
+      }
+    },
+    {
+      "product_code": "D1",
+      "claim_ids": [
+        "CL-D1-02",
+        "CL-D-FUNDS",
+        "CL-D1-03",
+        "CL-D-COMPARE"
+      ],
+      "caveats": [
+        {
+          "claim_id": "CL-D-FUNDS",
+          "note": "statute delegates the exact figure to the DG rather than hardcoding it; OFFICIAL_PORTAL layer states USD 2,000 operationally \u2014 reconciled two-layer fact, not a conflict, see D2.md \u00a73.12."
+        },
+        {
+          "claim_id": "CL-D1-02",
+          "note": "requirement-bundle rule co-cites source ee8fe5b8-... flagged CHANGED in freshness-recheck-2026-08-16.md record #4 (Conflict Report CF-6); the product-specific OFFICIAL_PORTAL record backing this claim is unaffected (still CURRENT) but the co-citation is carried, not silently dropped."
+        }
+      ],
+      "rule": {
+        "rule_id": "el.d1-funds-usd-2000",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "374e79e0-f0bf-5291-8cba-974e794e210a"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "TOURISM",
+                    "FAMILY",
+                    "TRANSIT",
+                    "BUSINESS_MEETINGS"
+                  ]
+                },
+                {
+                  "op": "eq",
+                  "fact": "intent.entry_pattern",
+                  "value": "MULTIPLE"
+                }
+              ]
+            },
+            {
+              "op": "all",
+              "args": [
+                {
+                  "op": "all",
+                  "args": [
+                    {
+                      "fact": "intent.purposes",
+                      "op": "intersects",
+                      "values": [
+                        "TOURISM",
+                        "FAMILY",
+                        "TRANSIT",
+                        "BUSINESS_MEETINGS"
+                      ]
+                    },
+                    {
+                      "fact": "intent.stay_days",
+                      "op": "lte",
+                      "value": 60
+                    }
+                  ]
+                },
+                {
+                  "op": "eq",
+                  "fact": "intent.entry_pattern",
+                  "value": "MULTIPLE"
+                }
+              ]
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "PROOF_OF_FUNDS_D1",
+          "covered_purposes": [
+            "BUSINESS_MEETINGS",
+            "FAMILY",
+            "TOURISM",
+            "TRANSIT"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "ca5a2ce8-83bb-58ec-b2d9-285833cf085a",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715",
+          "ee8fe5b8-b0b4-544a-bf9a-fe53c3e316f2"
+        ],
+        "explanation_key": "explain.el.d1-funds-usd-2000",
+        "safety_critical": false
+      }
+    },
+    {
+      "product_code": "D1",
+      "claim_ids": [
+        "CL-D1-02",
+        "CL-D1-03",
+        "CL-D-COMPARE"
+      ],
+      "caveats": [
+        {
+          "claim_id": "CL-D1-02",
+          "note": "requirement-bundle rule co-cites source ee8fe5b8-... flagged CHANGED in freshness-recheck-2026-08-16.md record #4 (Conflict Report CF-6); the product-specific OFFICIAL_PORTAL record backing this claim is unaffected (still CURRENT) but the co-citation is carried, not silently dropped."
+        }
+      ],
+      "rule": {
+        "rule_id": "el.d1-itinerary-required",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "374e79e0-f0bf-5291-8cba-974e794e210a"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "TOURISM",
+                    "FAMILY",
+                    "TRANSIT",
+                    "BUSINESS_MEETINGS"
+                  ]
+                },
+                {
+                  "op": "eq",
+                  "fact": "intent.entry_pattern",
+                  "value": "MULTIPLE"
+                }
+              ]
+            },
+            {
+              "op": "all",
+              "args": [
+                {
+                  "op": "all",
+                  "args": [
+                    {
+                      "fact": "intent.purposes",
+                      "op": "intersects",
+                      "values": [
+                        "TOURISM",
+                        "FAMILY",
+                        "TRANSIT",
+                        "BUSINESS_MEETINGS"
+                      ]
+                    },
+                    {
+                      "fact": "intent.stay_days",
+                      "op": "lte",
+                      "value": 60
+                    }
+                  ]
+                },
+                {
+                  "op": "eq",
+                  "fact": "intent.entry_pattern",
+                  "value": "MULTIPLE"
+                }
+              ]
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "ITINERARY_REQUIRED",
+          "covered_purposes": [
+            "BUSINESS_MEETINGS",
+            "FAMILY",
+            "TOURISM",
+            "TRANSIT"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "ca5a2ce8-83bb-58ec-b2d9-285833cf085a",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715",
+          "ee8fe5b8-b0b4-544a-bf9a-fe53c3e316f2"
+        ],
+        "explanation_key": "explain.el.d1-itinerary-required",
+        "safety_critical": false
+      }
+    },
+    {
+      "product_code": "D1",
+      "claim_ids": [
+        "CL-D1-01",
+        "CL-D1-03",
+        "CL-D-COMPARE"
+      ],
+      "caveats": [],
+      "rule": {
+        "rule_id": "el.d1-multi-entry-support",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "374e79e0-f0bf-5291-8cba-974e794e210a"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "TOURISM",
+                    "FAMILY",
+                    "TRANSIT",
+                    "BUSINESS_MEETINGS"
+                  ]
+                },
+                {
+                  "fact": "intent.stay_days",
+                  "op": "lte",
+                  "value": 60
+                }
+              ]
+            },
+            {
+              "op": "eq",
+              "fact": "intent.entry_pattern",
+              "value": "MULTIPLE"
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "PURPOSE_PRODUCT_MATCH",
+          "covered_purposes": [
+            "TOURISM",
+            "FAMILY",
+            "TRANSIT",
+            "BUSINESS_MEETINGS"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "ca5a2ce8-83bb-58ec-b2d9-285833cf085a",
+          "ee8fe5b8-b0b4-544a-bf9a-fe53c3e316f2",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715"
+        ],
+        "explanation_key": "explain.el.d1-multi-entry-support",
+        "safety_critical": false
+      }
+    },
+    {
+      "product_code": "D1",
+      "claim_ids": [
+        "CL-D1-02",
+        "CL-D1-03",
+        "CL-D-COMPARE"
+      ],
+      "caveats": [
+        {
+          "claim_id": "CL-D1-02",
+          "note": "requirement-bundle rule co-cites source ee8fe5b8-... flagged CHANGED in freshness-recheck-2026-08-16.md record #4 (Conflict Report CF-6); the product-specific OFFICIAL_PORTAL record backing this claim is unaffected (still CURRENT) but the co-citation is carried, not silently dropped."
+        }
+      ],
+      "rule": {
+        "rule_id": "el.d1-passport-validity",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "374e79e0-f0bf-5291-8cba-974e794e210a"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "TOURISM",
+                    "FAMILY",
+                    "TRANSIT",
+                    "BUSINESS_MEETINGS"
+                  ]
+                },
+                {
+                  "op": "eq",
+                  "fact": "intent.entry_pattern",
+                  "value": "MULTIPLE"
+                }
+              ]
+            },
+            {
+              "op": "all",
+              "args": [
+                {
+                  "op": "all",
+                  "args": [
+                    {
+                      "fact": "intent.purposes",
+                      "op": "intersects",
+                      "values": [
+                        "TOURISM",
+                        "FAMILY",
+                        "TRANSIT",
+                        "BUSINESS_MEETINGS"
+                      ]
+                    },
+                    {
+                      "fact": "intent.stay_days",
+                      "op": "lte",
+                      "value": 60
+                    }
+                  ]
+                },
+                {
+                  "op": "eq",
+                  "fact": "intent.entry_pattern",
+                  "value": "MULTIPLE"
+                }
+              ]
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "PASSPORT_VALIDITY_6_MONTHS_REQUIRED",
+          "covered_purposes": [
+            "BUSINESS_MEETINGS",
+            "FAMILY",
+            "TOURISM",
+            "TRANSIT"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "ca5a2ce8-83bb-58ec-b2d9-285833cf085a",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715",
+          "ee8fe5b8-b0b4-544a-bf9a-fe53c3e316f2"
+        ],
+        "explanation_key": "explain.el.d1-passport-validity",
+        "safety_critical": false
+      }
+    },
+    {
+      "product_code": "D1",
+      "claim_ids": [
+        "CL-D1-02",
+        "CL-D1-03",
+        "CL-D-COMPARE"
+      ],
+      "caveats": [
+        {
+          "claim_id": "CL-D1-02",
+          "note": "requirement-bundle rule co-cites source ee8fe5b8-... flagged CHANGED in freshness-recheck-2026-08-16.md record #4 (Conflict Report CF-6); the product-specific OFFICIAL_PORTAL record backing this claim is unaffected (still CURRENT) but the co-citation is carried, not silently dropped."
+        }
+      ],
+      "rule": {
+        "rule_id": "el.d1-support-letter",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "374e79e0-f0bf-5291-8cba-974e794e210a"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "TOURISM",
+                    "FAMILY",
+                    "TRANSIT",
+                    "BUSINESS_MEETINGS"
+                  ]
+                },
+                {
+                  "op": "eq",
+                  "fact": "intent.entry_pattern",
+                  "value": "MULTIPLE"
+                }
+              ]
+            },
+            {
+              "op": "all",
+              "args": [
+                {
+                  "op": "all",
+                  "args": [
+                    {
+                      "fact": "intent.purposes",
+                      "op": "intersects",
+                      "values": [
+                        "TOURISM",
+                        "FAMILY",
+                        "TRANSIT",
+                        "BUSINESS_MEETINGS"
+                      ]
+                    },
+                    {
+                      "fact": "intent.stay_days",
+                      "op": "lte",
+                      "value": 60
+                    }
+                  ]
+                },
+                {
+                  "op": "eq",
+                  "fact": "intent.entry_pattern",
+                  "value": "MULTIPLE"
+                }
+              ]
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "SUPPORT_LETTER_REQUIRED",
+          "covered_purposes": [
+            "BUSINESS_MEETINGS",
+            "FAMILY",
+            "TOURISM",
+            "TRANSIT"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "ca5a2ce8-83bb-58ec-b2d9-285833cf085a",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715",
+          "ee8fe5b8-b0b4-544a-bf9a-fe53c3e316f2"
+        ],
+        "explanation_key": "explain.el.d1-support-letter",
+        "safety_critical": false
+      }
+    },
+    {
+      "product_code": "D12",
+      "claim_ids": [
+        "CL-D12-02",
+        "CL-D12-03",
+        "CL-D-COMPARE"
+      ],
+      "caveats": [
+        {
+          "claim_id": "CL-D12-02",
+          "note": "requirement-bundle rule co-cites source ee8fe5b8-... flagged CHANGED in freshness-recheck-2026-08-16.md record #4 (Conflict Report CF-6); the product-specific OFFICIAL_PORTAL record backing this claim is unaffected (still CURRENT) but the co-citation is carried, not silently dropped."
+        }
+      ],
+      "rule": {
+        "rule_id": "el.d12-cv-required",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "INVESTMENT"
+                  ]
+                },
+                {
+                  "op": "neq",
+                  "fact": "investment.pt_pma_committed",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "INVESTMENT"
+                  ]
+                },
+                {
+                  "fact": "intent.stay_days",
+                  "op": "lte",
+                  "value": 180
+                }
+              ]
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "CV_REQUIRED",
+          "covered_purposes": [
+            "INVESTMENT"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "5e64ec6b-8fcc-5518-b70f-87bf22aa5e29",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715",
+          "ee8fe5b8-b0b4-544a-bf9a-fe53c3e316f2"
+        ],
+        "explanation_key": "explain.el.d12-cv-required",
+        "safety_critical": false
+      }
+    },
+    {
+      "product_code": "D12",
+      "claim_ids": [
+        "CL-D12-02",
+        "CL-D-FUNDS",
+        "CL-D12-03",
+        "CL-D-COMPARE"
+      ],
+      "caveats": [
+        {
+          "claim_id": "CL-D-FUNDS",
+          "note": "statute delegates the exact figure to the DG rather than hardcoding it; OFFICIAL_PORTAL layer states USD 2,000 operationally \u2014 reconciled two-layer fact, not a conflict, see D2.md \u00a73.12."
+        },
+        {
+          "claim_id": "CL-D12-02",
+          "note": "requirement-bundle rule co-cites source ee8fe5b8-... flagged CHANGED in freshness-recheck-2026-08-16.md record #4 (Conflict Report CF-6); the product-specific OFFICIAL_PORTAL record backing this claim is unaffected (still CURRENT) but the co-citation is carried, not silently dropped."
+        }
+      ],
+      "rule": {
+        "rule_id": "el.d12-funds-usd-5000",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "INVESTMENT"
+                  ]
+                },
+                {
+                  "op": "neq",
+                  "fact": "investment.pt_pma_committed",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "INVESTMENT"
+                  ]
+                },
+                {
+                  "fact": "intent.stay_days",
+                  "op": "lte",
+                  "value": 180
+                }
+              ]
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "PROOF_OF_FUNDS_D12",
+          "covered_purposes": [
+            "INVESTMENT"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "5e64ec6b-8fcc-5518-b70f-87bf22aa5e29",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715",
+          "ee8fe5b8-b0b4-544a-bf9a-fe53c3e316f2"
+        ],
+        "explanation_key": "explain.el.d12-funds-usd-5000",
+        "safety_critical": false
+      }
+    },
+    {
+      "product_code": "D12",
+      "claim_ids": [
+        "CL-D12-02",
+        "CL-D12-03",
+        "CL-D-COMPARE"
+      ],
+      "caveats": [
+        {
+          "claim_id": "CL-D12-02",
+          "note": "requirement-bundle rule co-cites source ee8fe5b8-... flagged CHANGED in freshness-recheck-2026-08-16.md record #4 (Conflict Report CF-6); the product-specific OFFICIAL_PORTAL record backing this claim is unaffected (still CURRENT) but the co-citation is carried, not silently dropped."
+        }
+      ],
+      "rule": {
+        "rule_id": "el.d12-itinerary-required",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "INVESTMENT"
+                  ]
+                },
+                {
+                  "op": "neq",
+                  "fact": "investment.pt_pma_committed",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "INVESTMENT"
+                  ]
+                },
+                {
+                  "fact": "intent.stay_days",
+                  "op": "lte",
+                  "value": 180
+                }
+              ]
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "ITINERARY_REQUIRED",
+          "covered_purposes": [
+            "INVESTMENT"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "5e64ec6b-8fcc-5518-b70f-87bf22aa5e29",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715",
+          "ee8fe5b8-b0b4-544a-bf9a-fe53c3e316f2"
+        ],
+        "explanation_key": "explain.el.d12-itinerary-required",
+        "safety_critical": false
+      }
+    },
+    {
+      "product_code": "D12",
+      "claim_ids": [
+        "CL-D12-01",
+        "CL-D12-03",
+        "CL-D-COMPARE"
+      ],
+      "caveats": [],
+      "rule": {
+        "rule_id": "el.d12-multi-entry-support",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "fact": "intent.purposes",
+              "op": "intersects",
+              "values": [
+                "INVESTMENT"
+              ]
+            },
+            {
+              "fact": "intent.stay_days",
+              "op": "lte",
+              "value": 180
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "PURPOSE_PRODUCT_MATCH",
+          "covered_purposes": [
+            "INVESTMENT"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "5e64ec6b-8fcc-5518-b70f-87bf22aa5e29",
+          "ee8fe5b8-b0b4-544a-bf9a-fe53c3e316f2",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715"
+        ],
+        "explanation_key": "explain.el.d12-multi-entry-support",
+        "safety_critical": false
+      }
+    },
+    {
+      "product_code": "D12",
+      "claim_ids": [
+        "CL-D12-02",
+        "CL-D12-03",
+        "CL-D-COMPARE"
+      ],
+      "caveats": [
+        {
+          "claim_id": "CL-D12-02",
+          "note": "requirement-bundle rule co-cites source ee8fe5b8-... flagged CHANGED in freshness-recheck-2026-08-16.md record #4 (Conflict Report CF-6); the product-specific OFFICIAL_PORTAL record backing this claim is unaffected (still CURRENT) but the co-citation is carried, not silently dropped."
+        }
+      ],
+      "rule": {
+        "rule_id": "el.d12-passport-validity",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "INVESTMENT"
+                  ]
+                },
+                {
+                  "op": "neq",
+                  "fact": "investment.pt_pma_committed",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "INVESTMENT"
+                  ]
+                },
+                {
+                  "fact": "intent.stay_days",
+                  "op": "lte",
+                  "value": 180
+                }
+              ]
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "PASSPORT_VALIDITY_6_MONTHS_REQUIRED",
+          "covered_purposes": [
+            "INVESTMENT"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "5e64ec6b-8fcc-5518-b70f-87bf22aa5e29",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715",
+          "ee8fe5b8-b0b4-544a-bf9a-fe53c3e316f2"
+        ],
+        "explanation_key": "explain.el.d12-passport-validity",
+        "safety_critical": false
+      }
+    },
+    {
+      "product_code": "D12",
+      "claim_ids": [
+        "CL-D12-02",
+        "CL-D12-03",
+        "CL-D-COMPARE"
+      ],
+      "caveats": [
+        {
+          "claim_id": "CL-D12-02",
+          "note": "requirement-bundle rule co-cites source ee8fe5b8-... flagged CHANGED in freshness-recheck-2026-08-16.md record #4 (Conflict Report CF-6); the product-specific OFFICIAL_PORTAL record backing this claim is unaffected (still CURRENT) but the co-citation is carried, not silently dropped."
+        }
+      ],
+      "rule": {
+        "rule_id": "el.d12-support-letter",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "INVESTMENT"
+                  ]
+                },
+                {
+                  "op": "neq",
+                  "fact": "investment.pt_pma_committed",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "INVESTMENT"
+                  ]
+                },
+                {
+                  "fact": "intent.stay_days",
+                  "op": "lte",
+                  "value": 180
+                }
+              ]
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "SUPPORT_LETTER_REQUIRED",
+          "covered_purposes": [
+            "INVESTMENT"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "5e64ec6b-8fcc-5518-b70f-87bf22aa5e29",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715",
+          "ee8fe5b8-b0b4-544a-bf9a-fe53c3e316f2"
+        ],
+        "explanation_key": "explain.el.d12-support-letter",
+        "safety_critical": false
+      }
+    },
+    {
+      "product_code": "D12",
+      "claim_ids": [
+        "CL-D12-04"
+      ],
+      "caveats": [],
+      "rule": {
+        "rule_id": "hf.d12-onshore-conversion-excluded",
+        "stage": "HARD_FILTER",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "fact": "process.wants_onshore_conversion",
+          "op": "eq",
+          "value": true
+        },
+        "effect": {
+          "type": "EXCLUDE",
+          "reason_code": "D12_NOT_CONVERTIBLE"
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "5e64ec6b-8fcc-5518-b70f-87bf22aa5e29"
+        ],
+        "explanation_key": "explain.hf.d12-onshore-conversion-excluded",
+        "safety_critical": true
+      }
+    },
+    {
+      "product_code": "D2",
+      "claim_ids": [
+        "CL-D2-02",
+        "CL-D2-03",
+        "CL-D-COMPARE"
+      ],
+      "caveats": [
+        {
+          "claim_id": "CL-D2-03",
+          "note": "category-error caveat only (per-stay vs calendar-year), unrelated to the now-closed CF-1 extension-count question \u2014 see D2.md \u00a75."
+        },
+        {
+          "claim_id": "CL-D2-02",
+          "note": "requirement-bundle rule co-cites source ee8fe5b8-... flagged CHANGED in freshness-recheck-2026-08-16.md record #4 (Conflict Report CF-6); the product-specific OFFICIAL_PORTAL record backing this claim is unaffected (still CURRENT) but the co-citation is carried, not silently dropped."
+        }
+      ],
+      "rule": {
+        "rule_id": "el.d2-cv-required",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "306725c1-7269-5c45-a4b8-188265fcf4d8"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "fact": "intent.purposes",
+              "op": "intersects",
+              "values": [
+                "BUSINESS_MEETINGS"
+              ]
+            },
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "BUSINESS_MEETINGS"
+                  ]
+                },
+                {
+                  "fact": "intent.stay_days",
+                  "op": "lte",
+                  "value": 60
+                }
+              ]
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "CV_REQUIRED",
+          "covered_purposes": [
+            "BUSINESS_MEETINGS"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "d3ad622e-f2d9-5b31-8ede-bc87e6b9cc0e",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715",
+          "ee8fe5b8-b0b4-544a-bf9a-fe53c3e316f2"
+        ],
+        "explanation_key": "explain.el.d2-cv-required",
+        "safety_critical": false
+      }
+    },
+    {
+      "product_code": "D2",
+      "claim_ids": [
+        "CL-D2-02",
+        "CL-D-FUNDS",
+        "CL-D2-03",
+        "CL-D-COMPARE"
+      ],
+      "caveats": [
+        {
+          "claim_id": "CL-D-FUNDS",
+          "note": "statute delegates the exact figure to the DG rather than hardcoding it; OFFICIAL_PORTAL layer states USD 2,000 operationally \u2014 reconciled two-layer fact, not a conflict, see D2.md \u00a73.12."
+        },
+        {
+          "claim_id": "CL-D2-03",
+          "note": "category-error caveat only (per-stay vs calendar-year), unrelated to the now-closed CF-1 extension-count question \u2014 see D2.md \u00a75."
+        },
+        {
+          "claim_id": "CL-D2-02",
+          "note": "requirement-bundle rule co-cites source ee8fe5b8-... flagged CHANGED in freshness-recheck-2026-08-16.md record #4 (Conflict Report CF-6); the product-specific OFFICIAL_PORTAL record backing this claim is unaffected (still CURRENT) but the co-citation is carried, not silently dropped."
+        }
+      ],
+      "rule": {
+        "rule_id": "el.d2-funds-usd-2000",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "306725c1-7269-5c45-a4b8-188265fcf4d8"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "fact": "intent.purposes",
+              "op": "intersects",
+              "values": [
+                "BUSINESS_MEETINGS"
+              ]
+            },
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "BUSINESS_MEETINGS"
+                  ]
+                },
+                {
+                  "fact": "intent.stay_days",
+                  "op": "lte",
+                  "value": 60
+                }
+              ]
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "PROOF_OF_FUNDS_D2",
+          "covered_purposes": [
+            "BUSINESS_MEETINGS"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "d3ad622e-f2d9-5b31-8ede-bc87e6b9cc0e",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715",
+          "ee8fe5b8-b0b4-544a-bf9a-fe53c3e316f2"
+        ],
+        "explanation_key": "explain.el.d2-funds-usd-2000",
+        "safety_critical": false
+      }
+    },
+    {
+      "product_code": "D2",
+      "claim_ids": [
+        "CL-D2-02",
+        "CL-D2-03",
+        "CL-D-COMPARE"
+      ],
+      "caveats": [
+        {
+          "claim_id": "CL-D2-03",
+          "note": "category-error caveat only (per-stay vs calendar-year), unrelated to the now-closed CF-1 extension-count question \u2014 see D2.md \u00a75."
+        },
+        {
+          "claim_id": "CL-D2-02",
+          "note": "requirement-bundle rule co-cites source ee8fe5b8-... flagged CHANGED in freshness-recheck-2026-08-16.md record #4 (Conflict Report CF-6); the product-specific OFFICIAL_PORTAL record backing this claim is unaffected (still CURRENT) but the co-citation is carried, not silently dropped."
+        }
+      ],
+      "rule": {
+        "rule_id": "el.d2-itinerary-required",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "306725c1-7269-5c45-a4b8-188265fcf4d8"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "fact": "intent.purposes",
+              "op": "intersects",
+              "values": [
+                "BUSINESS_MEETINGS"
+              ]
+            },
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "BUSINESS_MEETINGS"
+                  ]
+                },
+                {
+                  "fact": "intent.stay_days",
+                  "op": "lte",
+                  "value": 60
+                }
+              ]
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "ITINERARY_REQUIRED",
+          "covered_purposes": [
+            "BUSINESS_MEETINGS"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "d3ad622e-f2d9-5b31-8ede-bc87e6b9cc0e",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715",
+          "ee8fe5b8-b0b4-544a-bf9a-fe53c3e316f2"
+        ],
+        "explanation_key": "explain.el.d2-itinerary-required",
+        "safety_critical": false
+      }
+    },
+    {
+      "product_code": "D2",
+      "claim_ids": [
+        "CL-D2-01",
+        "CL-D2-03",
+        "CL-D-COMPARE"
+      ],
+      "caveats": [
+        {
+          "claim_id": "CL-D2-01",
+          "note": "sole NB-2 citation is an internal guide, upgraded via OFFICIAL_PORTAL corroboration only (CF-3) \u2014 see D2.md \u00a73.1."
+        },
+        {
+          "claim_id": "CL-D2-03",
+          "note": "category-error caveat only (per-stay vs calendar-year), unrelated to the now-closed CF-1 extension-count question \u2014 see D2.md \u00a75."
+        }
+      ],
+      "rule": {
+        "rule_id": "el.d2-multi-entry-support",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "306725c1-7269-5c45-a4b8-188265fcf4d8"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "fact": "intent.purposes",
+              "op": "intersects",
+              "values": [
+                "BUSINESS_MEETINGS"
+              ]
+            },
+            {
+              "fact": "intent.stay_days",
+              "op": "lte",
+              "value": 60
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "PURPOSE_PRODUCT_MATCH",
+          "covered_purposes": [
+            "BUSINESS_MEETINGS"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "d3ad622e-f2d9-5b31-8ede-bc87e6b9cc0e",
+          "ee8fe5b8-b0b4-544a-bf9a-fe53c3e316f2",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715"
+        ],
+        "explanation_key": "explain.el.d2-multi-entry-support",
+        "safety_critical": false
+      }
+    },
+    {
+      "product_code": "D2",
+      "claim_ids": [
+        "CL-D2-02",
+        "CL-D2-03",
+        "CL-D-COMPARE"
+      ],
+      "caveats": [
+        {
+          "claim_id": "CL-D2-03",
+          "note": "category-error caveat only (per-stay vs calendar-year), unrelated to the now-closed CF-1 extension-count question \u2014 see D2.md \u00a75."
+        },
+        {
+          "claim_id": "CL-D2-02",
+          "note": "requirement-bundle rule co-cites source ee8fe5b8-... flagged CHANGED in freshness-recheck-2026-08-16.md record #4 (Conflict Report CF-6); the product-specific OFFICIAL_PORTAL record backing this claim is unaffected (still CURRENT) but the co-citation is carried, not silently dropped."
+        }
+      ],
+      "rule": {
+        "rule_id": "el.d2-passport-validity",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "306725c1-7269-5c45-a4b8-188265fcf4d8"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "fact": "intent.purposes",
+              "op": "intersects",
+              "values": [
+                "BUSINESS_MEETINGS"
+              ]
+            },
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "BUSINESS_MEETINGS"
+                  ]
+                },
+                {
+                  "fact": "intent.stay_days",
+                  "op": "lte",
+                  "value": 60
+                }
+              ]
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "PASSPORT_VALIDITY_6_MONTHS_REQUIRED",
+          "covered_purposes": [
+            "BUSINESS_MEETINGS"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "d3ad622e-f2d9-5b31-8ede-bc87e6b9cc0e",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715",
+          "ee8fe5b8-b0b4-544a-bf9a-fe53c3e316f2"
+        ],
+        "explanation_key": "explain.el.d2-passport-validity",
+        "safety_critical": false
+      }
+    },
+    {
+      "product_code": "D2",
+      "claim_ids": [
+        "CL-D2-02",
+        "CL-D2-03",
+        "CL-D-COMPARE"
+      ],
+      "caveats": [
+        {
+          "claim_id": "CL-D2-03",
+          "note": "category-error caveat only (per-stay vs calendar-year), unrelated to the now-closed CF-1 extension-count question \u2014 see D2.md \u00a75."
+        },
+        {
+          "claim_id": "CL-D2-02",
+          "note": "requirement-bundle rule co-cites source ee8fe5b8-... flagged CHANGED in freshness-recheck-2026-08-16.md record #4 (Conflict Report CF-6); the product-specific OFFICIAL_PORTAL record backing this claim is unaffected (still CURRENT) but the co-citation is carried, not silently dropped."
+        }
+      ],
+      "rule": {
+        "rule_id": "el.d2-support-letter",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "306725c1-7269-5c45-a4b8-188265fcf4d8"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "fact": "intent.purposes",
+              "op": "intersects",
+              "values": [
+                "BUSINESS_MEETINGS"
+              ]
+            },
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "BUSINESS_MEETINGS"
+                  ]
+                },
+                {
+                  "fact": "intent.stay_days",
+                  "op": "lte",
+                  "value": 60
+                }
+              ]
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "SUPPORT_LETTER_REQUIRED",
+          "covered_purposes": [
+            "BUSINESS_MEETINGS"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "d3ad622e-f2d9-5b31-8ede-bc87e6b9cc0e",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715",
+          "ee8fe5b8-b0b4-544a-bf9a-fe53c3e316f2"
+        ],
+        "explanation_key": "explain.el.d2-support-letter",
+        "safety_critical": false
+      }
+    },
+    {
+      "product_code": "E31B",
+      "claim_ids": [
+        "CL-E31B-REFUTER",
+        "CL-E31B-STRUCT"
+      ],
+      "caveats": [],
+      "rule": {
+        "rule_id": "el.e31b-sponsor-itas-itap",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "5d5f9bd4-349b-54d7-841a-784c0afba068"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "FAMILY"
+                  ]
+                },
+                {
+                  "fact": "family.relation_to_sponsor",
+                  "op": "eq",
+                  "value": "SPOUSE"
+                }
+              ]
+            },
+            {
+              "op": "all",
+              "args": [
+                {
+                  "fact": "intent.purposes",
+                  "op": "intersects",
+                  "values": [
+                    "FAMILY"
+                  ]
+                },
+                {
+                  "fact": "family.relation_to_sponsor",
+                  "op": "eq",
+                  "value": "SPOUSE"
+                },
+                {
+                  "fact": "family.marriage_registered",
+                  "op": "eq",
+                  "value": true
+                },
+                {
+                  "fact": "family.sponsor_status_code",
+                  "op": "in",
+                  "values": [
+                    "ITAS_ACTIVE",
+                    "ITAP_ACTIVE",
+                    "VITAS_APPROVED"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "REQ_SPONSOR_ITAS_ITAP",
+          "covered_purposes": [
+            "FAMILY"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "570f2bc4-5120-561f-90ba-58fcd9507514",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715"
+        ],
+        "explanation_key": "explain.el.e31b-sponsor-itas-itap",
+        "safety_critical": false
+      }
+    },
+    {
+      "product_code": "E31B",
+      "claim_ids": [
+        "CL-E31B-01",
+        "CL-E31B-STRUCT"
+      ],
+      "caveats": [],
+      "rule": {
+        "rule_id": "el.e31b-spouse-itas-support",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "5d5f9bd4-349b-54d7-841a-784c0afba068"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "fact": "intent.purposes",
+              "op": "intersects",
+              "values": [
+                "FAMILY"
+              ]
+            },
+            {
+              "fact": "family.relation_to_sponsor",
+              "op": "eq",
+              "value": "SPOUSE"
+            },
+            {
+              "fact": "family.marriage_registered",
+              "op": "eq",
+              "value": true
+            },
+            {
+              "fact": "family.sponsor_status_code",
+              "op": "in",
+              "values": [
+                "ITAS_ACTIVE",
+                "ITAP_ACTIVE",
+                "VITAS_APPROVED"
+              ]
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "PURPOSE_PRODUCT_MATCH",
+          "covered_purposes": [
+            "FAMILY"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "570f2bc4-5120-561f-90ba-58fcd9507514",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715"
+        ],
+        "explanation_key": "explain.el.e31b-spouse-itas-support",
+        "safety_critical": false
+      }
+    },
+    {
+      "product_code": "E31D",
+      "claim_ids": [
+        "CL-E31D-REFUTER",
+        "CL-E31D-STRUCT"
+      ],
+      "caveats": [],
+      "rule": {
+        "rule_id": "el.e31d-sponsor-mixed-marriage",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "3204e973-59da-5da1-bad0-06a7172e5b2c"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "fact": "intent.purposes",
+              "op": "intersects",
+              "values": [
+                "FAMILY"
+              ]
+            },
+            {
+              "fact": "family.relation_to_sponsor",
+              "op": "eq",
+              "value": "CHILD"
+            },
+            {
+              "fact": "family.marriage_registered",
+              "op": "eq",
+              "value": true
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "REQ_SPONSOR_MIXED_MARRIAGE",
+          "covered_purposes": [
+            "FAMILY"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "50457cd0-b67f-5b88-bf66-33bcf62f3d9b",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715"
+        ],
+        "explanation_key": "explain.el.e31d-sponsor-mixed-marriage",
+        "safety_critical": false
+      }
+    },
+    {
+      "product_code": "E31D",
+      "claim_ids": [
+        "CL-E31D-REFUTER",
+        "CL-E31D-STRUCT"
+      ],
+      "caveats": [],
+      "rule": {
+        "rule_id": "el.e31d-step-parent-relation",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "3204e973-59da-5da1-bad0-06a7172e5b2c"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "fact": "intent.purposes",
+              "op": "intersects",
+              "values": [
+                "FAMILY"
+              ]
+            },
+            {
+              "fact": "family.relation_to_sponsor",
+              "op": "eq",
+              "value": "CHILD"
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "REQ_STEP_PARENT_RELATION",
+          "covered_purposes": [
+            "FAMILY"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "50457cd0-b67f-5b88-bf66-33bcf62f3d9b",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715"
+        ],
+        "explanation_key": "explain.el.e31d-step-parent-relation",
+        "safety_critical": false
+      }
+    },
+    {
+      "product_code": "E31D",
+      "claim_ids": [
+        "CL-E31D-01",
+        "CL-E31D-STRUCT"
+      ],
+      "caveats": [],
+      "rule": {
+        "rule_id": "el.e31d-stepchild-support",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "3204e973-59da-5da1-bad0-06a7172e5b2c"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "fact": "intent.purposes",
+              "op": "intersects",
+              "values": [
+                "FAMILY"
+              ]
+            },
+            {
+              "fact": "family.relation_to_sponsor",
+              "op": "eq",
+              "value": "CHILD"
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "PURPOSE_PRODUCT_MATCH",
+          "covered_purposes": [
+            "FAMILY"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "50457cd0-b67f-5b88-bf66-33bcf62f3d9b",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715"
+        ],
+        "explanation_key": "explain.el.e31d-stepchild-support",
+        "safety_critical": false
+      }
+    },
+    {
+      "product_code": "E31D",
+      "claim_ids": [
+        "CL-E31D-REFUTER"
+      ],
+      "caveats": [],
+      "rule": {
+        "rule_id": "hf.e31d-adult-excluded",
+        "stage": "HARD_FILTER",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "3204e973-59da-5da1-bad0-06a7172e5b2c"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "fact": "derived.age_years",
+          "op": "gte",
+          "value": 18
+        },
+        "effect": {
+          "type": "EXCLUDE",
+          "reason_code": "REQ_UNDER_18"
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "50457cd0-b67f-5b88-bf66-33bcf62f3d9b",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715"
+        ],
+        "explanation_key": "explain.hf.e31d-adult-excluded",
+        "safety_critical": true
+      }
+    },
+    {
+      "product_code": "E31D",
+      "claim_ids": [
+        "CL-E31D-REFUTER"
+      ],
+      "caveats": [],
+      "rule": {
+        "rule_id": "hf.e31d-married-excluded",
+        "stage": "HARD_FILTER",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "3204e973-59da-5da1-bad0-06a7172e5b2c"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-07-24T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "fact": "person.marital_status",
+          "op": "neq",
+          "value": "SINGLE"
+        },
+        "effect": {
+          "type": "EXCLUDE",
+          "reason_code": "REQ_UNMARRIED"
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "50457cd0-b67f-5b88-bf66-33bcf62f3d9b",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715"
+        ],
+        "explanation_key": "explain.hf.e31d-married-excluded",
+        "safety_critical": true
+      }
+    }
+  ]
+}

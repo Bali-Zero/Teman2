@@ -74,6 +74,27 @@ def evaluate(data: dict, waive: dict[str, set[str] | None] = WAIVE) -> list[tupl
         if vuln.get("severity") not in BLOCKING:
             continue
         ids = advisory_ids(vuln)
+        if not ids:
+            # No advisory id of its OWN: every `via` entry is a bare package
+            # name, i.e. this package is a CARRIER of someone else's advisory.
+            # It still blocks — but it must not fall through to the waiver
+            # branch below, which would report it as "waived, but on unexpected
+            # paths" and so name a waiver that was never granted. On 2026-08-17
+            # `prisma` and `@prisma/config` (carriers of deepmerge-ts's
+            # GHSA-ggr8-5vv4-36mx) read exactly that way, and it sent a session
+            # hunting through WAIVE for entries that do not exist while the repo
+            # sat unmergeable. The verdict was right; the message pointed away
+            # from the cause.
+            carries = sorted(str(x) for x in (vuln.get("via") or []) if isinstance(x, str))
+            bad.append(
+                (
+                    name,
+                    vuln.get("severity"),
+                    [],
+                    f"no advisory of its own — carries: {carries or ['<unknown>']}",
+                )
+            )
+            continue
         unwaived = ids - waive.keys()
         if unwaived:
             bad.append((name, vuln.get("severity"), sorted(ids), "not waived"))
