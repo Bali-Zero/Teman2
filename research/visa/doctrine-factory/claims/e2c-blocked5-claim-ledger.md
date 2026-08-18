@@ -303,10 +303,11 @@ pathway (a), leaving that detail to the bilateral agreement with the relevant mi
 - Source: `Kepmen M.IP-08.GR.01.01/2025` (`0c7e2212-...`) + `Permenkumham_22_2023.pdf`
   (`1ac4063f-...`, verbatim Pasal 105(10)(b) and Pasal 458 pinpoints quoted in-answer) +
   `nb2_golden_visa.txt` (`147e332b-...`) + `nb2_visa_types_final.txt` (`2d2ec0af-...`).
-- **State: VERIFIED** for the duration figure (5/10 years, machine-audited `VERIFIED`);
-  **UNVERIFIED** for the flat "sponsor always mandatory" reading specifically, pending
-  reconciliation against `Pasal 57`/`58` (see CL-E33B-04). Products: E33B. Provenance:
-  `E2C-E33B-DURATION` (citation-audit `VERIFIED`).
+- **State: VERIFIED-WITH-CAVEAT.** The duration figure (5/10 years) is machine-audited VERIFIED
+  on its own; the caveat covers the flat "sponsor always mandatory" reading, which stays
+  unverified pending reconciliation against Pasal 57/58 (see CL-E33B-04 and the two-pathway
+  discussion in the header prose above). Products: E33B. Provenance: `E2C-E33B-DURATION`
+  (citation-audit `VERIFIED`).
 
 **CL-E33B-04 — Qualifying-expertise documentary evidence and verification nature (priority query,
 least-documented of the trio).** Under `Permenkumham No. 22/2023 Pasal 58`, the applicant must

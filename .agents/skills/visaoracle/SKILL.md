@@ -113,6 +113,48 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
 ## LIVE STATE (update on every state change — whoever changes state updates this section)
 
+- 2026-08-19 (M5, E5 increment 3 — the seq-9 fold): **SEQ-9 CANDIDATE BUILT, GATED, AND ON ITS
+  PR; CP3 PRESENTED TO ZERO. SHADOW/ENFORCE UNCHANGED (seq-7 stays active until CP4).**
+  Everything in the 08-18 NEXT line except the ceremony itself: (1) the two seq-9 signing-gate
+  blockers CURED BY RETIREMENT — `el.e33e.deposit-income-basis` proved REDUNDANT, not just UNSAT
+  (CL-E33-04 VERIFIED says deposit AND income, already encoded by healthy `el.e33e.retirement`;
+  the spec's OR assumption was refuted on claim evidence), and `el.e33g.income-60k-manual`
+  retired in favor of the pre-existing `el.e33g.remote-work` + NEW `review.e33g.income-evidence`
+  (OD-1 pattern: the USD 60k/yr requirement has no FactPath, so E33G can no longer reach
+  SUPPORTED silently — a deliberate delta vs OD-3's 27-reachable count, E33G was reachable
+  through the defect). (2) Rule-authoring for the 7 blocked products landed claim-cited through
+  the E5 compiler (0 findings): E30E/E30F real SUPPORT (E30F sponsor-constrained to EDUCATION
+  after a Codex P0 caught the missing conjunct live on the evaluator), E33A/B/C sponsor
+  HARD_FILTERs (SUPPORT shape rejected — W3 factbase "manufactured offer" bug), E23U/E23V
+  requested-product review rules (W3: no safe SUPPORT exists; NOTE: production-inert until the
+  interview collects `intent.requested_product_code` — fact-mapper hard-codes NOT_ASKED; same
+  property as the pre-existing e33 review rules; PENDING-ARMS row opened, Track C/E6 scope).
+  (3) OD-2 fold executed: seq-8's 11 `pricing_key` folded, its broken chain permanently pinned
+  by test; seq-9 chains to seq-7's RECOMPUTED signed payload hash
+  (`3d068aef…9719f82`), `sequence 9`, `version 2026.8.19`, `rule_pack_id 66eb0b4c-…` (uuid5
+  convention). (4) Freshness: E31E's two HARD_FILTERs re-sourced from dead `ecd22722` to
+  primary law `c9e6f0e4` (Permenkumham 22/2023 Pasal 33(2)(h)(5), "belum berusia 18 … dan belum
+  kawin" grounds BOTH predicates); `0497cb52` dropped (0 refs); `ee8fe5b8` CHANGED → de-referenced
+  from all 18 citing rules (each keeps ≥2 sources). (5) The `_LEDGER_FILES` gap CLOSED:
+  batch3+e2c ledgers wired into the compiler tests after fixing two real parser traps found by
+  running the parser (dual-header CL-E31C-01/CL-E31F-01 swallowed both ids; CL-E33B-03's state
+  bullet produced spurious product_states). Assembly is deterministic
+  (`fold_pack.py`, 2 runs byte-identical, sha256 `e3c14579…4648660`, atomic write). VERIFY:
+  2-family refuter quorum (Codex sol-high DO-NOT-SHIP → 7 findings → fix round; Kimi K3 3 P2/3
+  P3 — BOTH drove the real evaluator; Kimi mutation-proved the first test suite content-blind →
+  content-parity + 21 evaluator witness tests added; UNKNOWN semantics proven safe:
+  `on_unknown=NEEDS_INPUT`, no D1/D2/D12-class masking, no exclude-on-UNKNOWN). Gates: 129
+  targeted pytest + 25 vitest + compile_pack RC 0 + R1 green. **KNOWN RESIDUALS (CP3 decision
+  #4):** `el.c2.corporate-sponsor-type` + `el.e31c-mixed-marriage-parents` are the SAME
+  name-promises-untested-predicate class as the cured e33g, byte-inherited from seq-7, NOT cured
+  (no compilable claim grounds a tightening — attempted, stopped; refuters split
+  indefensible-vs-defensible), pinned in tests + ledger; recommended cure = seq-10 after an
+  E31C/C2 doctrine batch. Reachability 27→29 / 9 blocked. CP3 package:
+  `research/visa/doctrine-factory/e5/cp3-decision-package.md`; full delta:
+  `research/visa/doctrine-factory/e5/2026-08-19-e5-increment3-fold.md`. NEXT on Zero's GO:
+  sign (M5 kid `prod-2026-07-1`) → two-login activation → live smoke → then HRR/flag-veto
+  reform (the 26 reformed slice rules deliberately NOT in this fold) and E6/E7.
+
 - 2026-08-18 (M5, doctrine-factory E2/E3 close): **E2 CLOSED, E3 COMPLETE, OD-4 RULED.**
   E2 (OD-3 arrest criterion): MET — 27/27 REACHABLE products, per the closure verdict in
   #4278 (merged; #4264 is a closed-without-merge sibling, content blob-identical, no loss).
