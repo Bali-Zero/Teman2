@@ -129,6 +129,70 @@ def test_the_same_advisory_on_a_production_path_we_never_vetted_blocks():
     assert run_cli(payload) == 1
 
 
+# --- carrier packages: block, but name the right cause ----------------------
+#
+# A package whose `via` holds only bare NAMES has no advisory of its own — it
+# merely carries someone else's. It must still block; the bug being pinned here
+# is the REASON it used to give.
+
+
+def carrier(severity="high", via=("deepmerge-ts",), nodes=("node_modules/prisma",)):
+    """The live 2026-08-17 shape: `via` is strings, so advisory_ids() is empty."""
+    return {"severity": severity, "via": list(via), "nodes": list(nodes)}
+
+
+def test_a_carrier_still_blocks():
+    bad = evaluate({"vulnerabilities": {"prisma": carrier()}}, WAIVE)
+    assert len(bad) == 1, bad
+
+
+def test_a_carrier_does_not_claim_a_waiver_that_was_never_granted():
+    """The scar: it read 'waived, but on unexpected paths' with WAIVE untouched."""
+    bad = evaluate({"vulnerabilities": {"prisma": carrier()}}, WAIVE)
+    assert "waiv" not in bad[0][3], bad
+    assert "deepmerge-ts" in bad[0][3], bad
+
+
+def test_a_carrier_blocks_even_when_its_node_is_a_waived_path():
+    """Path-shape must not rescue it: with no ids, no waiver can apply."""
+    bad = evaluate({"vulnerabilities": {"prisma": carrier(nodes=(GRAY_MATTER,))}}, WAIVE)
+    assert len(bad) == 1 and "waiv" not in bad[0][3], bad
+
+
+def test_a_carrier_with_no_recorded_nodes_now_blocks():
+    """DELIBERATE behaviour change — pinned, not asserted away.
+
+    The old code reached the waiver branch and computed `stray` over
+    `nodes`; with no nodes there was nothing stray, so it appended NOTHING and a
+    high-severity carrier passed the gate. Measured old-vs-new on 2026-08-18:
+    False -> True for both `nodes: []` and absent `nodes`. Blocking is the right
+    answer — "npm recorded no path" is not evidence of no path — but it IS a
+    change, so it gets a test instead of a sentence.
+    """
+    assert len(evaluate({"vulnerabilities": {"prisma": carrier(nodes=())}}, WAIVE)) == 1
+    no_nodes = {"severity": "high", "via": ["deepmerge-ts"]}
+    assert len(evaluate({"vulnerabilities": {"prisma": no_nodes}}, WAIVE)) == 1
+
+
+def test_a_carrier_below_the_threshold_is_still_ignored():
+    """Innocence: the new branch sits AFTER the severity filter, not before it."""
+    assert evaluate({"vulnerabilities": {"prisma": carrier(severity="moderate")}}, WAIVE) == []
+
+
+def test_a_real_advisory_still_reads_not_waived():
+    """Innocence: the new branch must not swallow the ordinary unwaived case."""
+    bad = evaluate({"vulnerabilities": {"lodash": vuln(ids=("GHSA-unknown",))}}, WAIVE)
+    assert bad[0][3] == "not waived", bad
+
+
+def test_a_genuinely_stray_path_still_says_unexpected_paths():
+    """Innocence: the message that IS correct for a real waiver survives."""
+    bad = evaluate(
+        {"vulnerabilities": {"js-yaml": vuln(nodes=("node_modules/js-yaml",))}}, WAIVE
+    )
+    assert "unexpected paths" in bad[0][3], bad
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0
