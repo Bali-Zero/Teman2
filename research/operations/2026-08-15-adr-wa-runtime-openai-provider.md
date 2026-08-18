@@ -10,10 +10,7 @@ status: "NO-WIRING. The selected provider is the standalone CodexExecClient auth
   selected-provider consumer in this PR is the human-run offline blind-benchmark facade.
   Nothing in the live WhatsApp runtime imports, calls, flags-gates, deploys, or cuts over to
   either client."
-adversarial_review: >-
-  Kimi K3 SHIP; Gemini 3.1 Pro FIX-FIRST findings dispositioned; Gemini 3.1 Pro
-  re-review timed out without a verdict; degraded continuity fallback Gemini 3.7
-  Flash High SHIP; mandatory final Fable/Claude on-disk gate pending
+adversarial_review: kimi-k3
 sources:
   - .agents/skills/bot/SKILL.md (WA-bot corner, live wiring GROUND)
   - apps/backend-rag/backend/services/rag/agentic/llm_gateway.py (confirmed UNCHANGED —
@@ -389,7 +386,9 @@ The offline review and tooling portions above are complete for this unwired
 diff. The human privacy review, real-data benchmark, runtime-host decision,
 future wiring, final Fable/Claude gate, deployment, and cutover are not.
 
-## 9. Adversarial review notes (historical rounds; current disposition in §30.10)
+## Adversarial review
+
+### 9. Historical rounds; current disposition in §30.10
 
 This section preserves earlier review rounds and their finding-level
 dispositions. The R28 reconciliation later completed the Kimi K3 review and
