@@ -242,11 +242,19 @@ stop_fake_server
 # the SAME last_action_ts field the cooldown gate reads, so a healthy tick right before a
 # fresh incident could mute its first alert for up to COOLDOWN_S. A fresh incident must
 # always page on its first detection, no matter how recently the reader was healthy.
+#
+# ORGANIC, not hand-seeded (fast-follow, 2026-08-18 — refuter finding N1 on #4247: the
+# hand-seeded state JSON below matched ONLY the post-fix field semantics, so this
+# scenario stayed green even against a full revert of the cooldown-split commit —
+# reverting-and-rerunning the shipped corpus proved 24/25 still pass, both PART 1 and
+# PART 2 among them. A real ALIVE tick, then a real SICK tick, exercises write_ok_state
+# and the cooldown gate exactly as production does; it fails on the reverted commit
+# (single shared last_action_ts suppresses the SICK page) and passes on the fix.
 ROOT="$TMP/w-sick-recent-ok-does-not-suppress"; make_world "$ROOT"; install_plist "$ROOT"
-mkdir -p "$ROOT/home/.agent/decisions/state"
-cat > "$ROOT/home/.agent/decisions/state/intake_review_reader_liveness.json" <<EOF
-{"last_action_ts": 0, "last_ok_ts": $(date +%s), "last_action": "ok", "last_http_code": "200", "probe": "x"}
-EOF
+PORT="$(start_fake_server 200)"
+RC0="$(run_wrapper "$ROOT" "$PORT" COOLDOWN_S=1800)"
+check "priming healthy tick -> wrapper exits 0 (writes its own ok state)" 0 "$RC0"
+stop_fake_server
 PORT="$(start_fake_server 500)"
 RC="$(run_wrapper "$ROOT" "$PORT" COOLDOWN_S=1800)"
 check "500 right after a recent HEALTHY tick -> exit 1 (fresh incident pages immediately)" 1 "$RC"
@@ -257,15 +265,18 @@ stop_fake_server
 # suppress the next page within COOLDOWN_S, so a flapping backend does not page every
 # tick (the defect this mirrors DEAD to avoid: an un-throttled SICK path would page every
 # 5min).
+#
+# ORGANIC, not hand-seeded (fast-follow, 2026-08-18, same finding as PART 1 above): a
+# real SICK tick primes the alert state via write_alert_state, then an immediate second
+# real SICK tick against the same root must be suppressed by the cooldown it just wrote.
 ROOT="$TMP/w-sick-recent-alert-suppresses"; make_world "$ROOT"; install_plist "$ROOT"
-mkdir -p "$ROOT/home/.agent/decisions/state"
-cat > "$ROOT/home/.agent/decisions/state/intake_review_reader_liveness.json" <<EOF
-{"last_action_ts": $(date +%s), "last_ok_ts": 0, "last_action": "sick", "last_http_code": "500", "probe": "x"}
-EOF
 PORT="$(start_fake_server 500)"
+RC0="$(run_wrapper "$ROOT" "$PORT" COOLDOWN_S=1800)"
+check "priming SICK tick -> wrapper exits 1 (alert sent)" 1 "$RC0"
+check "priming SICK tick pages exactly once" 1 "$(n_pages "$ROOT")"
 RC="$(run_wrapper "$ROOT" "$PORT" COOLDOWN_S=1800)"
 check "500 right after a recent SICK alert -> exit 1 (still unhealthy) but suppressed" 1 "$RC"
-check "cooldown suppresses the repeat page" 0 "$(n_pages "$ROOT")"
+check "cooldown suppresses the repeat page (page count unchanged)" 1 "$(n_pages "$ROOT")"
 check_true "log says cooldown active" \
     "$(grep -q 'cooldown active' "$ROOT/home/logs/intake-review-reader-liveness.log" 2>/dev/null; echo $?)"
 stop_fake_server
