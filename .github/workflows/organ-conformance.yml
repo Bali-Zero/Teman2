@@ -149,29 +149,14 @@ jobs:
       # verdict, which the regex-based gate cannot see. zsh is not guaranteed on
       # the runner image, and a missing interpreter must not turn that proof
       # into a skip: install it explicitly, then assert it is there.
-      # MEASURED 2026-08-18: this step hung twice on merge_group refs and ran
-      # 10m15s — the job's ENTIRE budget — while every other step in it takes
-      # 1-28s. The job died at `timeout-minutes: 10`, and GitHub reports a
-      # budget kill as `cancelled`, not `failure`. "Every organ is born with
-      # its genes" is a REQUIRED context, and a cancelled required check is not
-      # green, so three merge-queue entries went UNMERGEABLE at once with no
-      # legible reason anywhere. An unbounded `apt-get` inside a bounded job is
-      # a silent budget thief. Bound the apt CALL (not the step — later steps
-      # here do real work) and retry: a stalled mirror now costs 3 minutes and
-      # says so, instead of eating the job and reporting a cancellation.
       - name: Require zsh (the G2 corpus executes a real zsh wrapper)
         if: steps.relevant.outputs.hit == 'true'
         run: |
-          if ! command -v zsh >/dev/null 2>&1; then
-            for attempt in 1 2 3; do
-              if timeout 180 sudo apt-get update && timeout 180 sudo apt-get install --yes zsh; then
-                break
-              fi
-              echo "::warning::apt attempt ${attempt}/3 for zsh failed or stalled; retrying"
-              sleep $((attempt * 5))
-            done
-          fi
-          command -v zsh
+          # Bounded + fail-closed via the shared helper — see its header for the
+          # measurement. Unbounded here, this step ate the job's whole 10-minute
+          # budget twice and the kill surfaced as `cancelled`, which for a
+          # REQUIRED context reads as "not green" with no cause named anywhere.
+          bash scripts/ci/apt_install.sh zsh zsh
 
       # test_the_id_whitelist_is_ascii_not_collation needs a locale that actually
       # COLLATES: `LC_ALL=it_IT.UTF-8` does not create it, and where it is absent
@@ -182,17 +167,8 @@ jobs:
         if: steps.relevant.outputs.hit == 'true'
         run: |
           set -euo pipefail
-          # Bounded for the same reason as the zsh step above — and bounded HERE
-          # too on purpose: curing only the step that bit us would just move
-          # which apt call eats the budget next time.
           if ! locale -a | grep -qi '^it_IT.utf-\?8$'; then
-            for attempt in 1 2 3; do
-              if timeout 180 sudo apt-get update && timeout 180 sudo apt-get install --yes locales; then
-                break
-              fi
-              echo "::warning::apt attempt ${attempt}/3 for locales failed or stalled; retrying"
-              sleep $((attempt * 5))
-            done
+            bash scripts/ci/apt_install.sh - locales
             sudo locale-gen it_IT.UTF-8
             sudo update-locale
           fi

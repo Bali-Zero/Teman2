@@ -40,20 +40,7 @@ jobs:
 
       - name: Install ripgrep + test dependencies
         run: |
-          # Bounded + retried (2026-08-18) — see organ-conformance.yml: an
-          # unbounded apt-get inside a 10-minute job eats the budget, and the
-          # kill reports as `cancelled`, which names no cause.
-          for attempt in 1 2 3; do
-            if timeout 180 sudo apt-get update -y && timeout 180 sudo apt-get install -y ripgrep; then
-              break
-            fi
-            echo "::warning::apt attempt ${attempt}/3 for ripgrep failed or stalled; retrying"
-            sleep $((attempt * 5))
-          done
-          # FAIL-CLOSED — see lint-i18n-providers.yml. Without it, three failed
-          # attempts leave `sleep` as the last command (exit 0) and the step is
-          # GREEN with ripgrep absent.
-          command -v rg
+          bash scripts/ci/apt_install.sh rg ripgrep
           python -m pip install --upgrade pip
           # pytest-asyncio is required even though test_no_httpx_violators.py is
           # sync: apps/backend-rag/pytest.ini declares asyncio_default_fixture_loop_scope,

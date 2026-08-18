@@ -28,22 +28,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Install ripgrep
-        run: |
-          # Bounded + retried (2026-08-18) — see organ-conformance.yml.
-          for attempt in 1 2 3; do
-            if timeout 180 sudo apt-get update && timeout 180 sudo apt-get install -y ripgrep; then
-              break
-            fi
-            echo "::warning::apt attempt ${attempt}/3 for ripgrep failed or stalled; retrying"
-            sleep $((attempt * 5))
-          done
-          # FAIL-CLOSED. Without this line the step is fail-OPEN: after three
-          # failed attempts the loop simply ends, the last command executed is
-          # `sleep` (exit 0), and the step goes GREEN with ripgrep absent — the
-          # lint below would then measure a missing tool, not the code. Proven
-          # locally 2026-08-18: the bare loop exits 0, the loop plus this line
-          # exits 1.
-          command -v rg
+        run: bash scripts/ci/apt_install.sh rg ripgrep
 
       - name: Run synthetic test suite
         run: bash tests/lint/test_i18n_providers.sh

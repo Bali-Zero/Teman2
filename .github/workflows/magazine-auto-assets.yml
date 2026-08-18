@@ -65,19 +65,7 @@ jobs:
           pytest pytest-asyncio httpx Pillow cryptography pydantic rfc8785 asyncpg
       - name: Require zsh for real wrapper lifecycle tests
         run: |
-          # Bounded + retried: an unbounded apt-get inside a 10-minute job is a
-          # silent budget thief, and a budget kill reports as `cancelled`, not
-          # `failure` (measured on organ-conformance, 2026-08-18).
-          if ! command -v zsh >/dev/null 2>&1; then
-            for attempt in 1 2 3; do
-              if timeout 180 sudo apt-get update && timeout 180 sudo apt-get install --yes zsh; then
-                break
-              fi
-              echo "::warning::apt attempt ${attempt}/3 for zsh failed or stalled; retrying"
-              sleep $((attempt * 5))
-            done
-          fi
-          command -v zsh
+          bash scripts/ci/apt_install.sh zsh zsh
       - name: Verify magazine asset lifecycle contracts
         # Whole DIRECTORY, not a named subset (widened 2026-08-07 with the GARUDA
         # decommission). This is the only job that installs apps/zantara-media's

@@ -152,6 +152,8 @@ jobs:
               scripts/tests/test_claude_seat_helper.sh|\
               scripts/tests/test_cron_agent_alert_verdict.sh|\
               scripts/ci/prepush_tip_drift.sh|\
+              scripts/ci/apt_install.sh|\
+              scripts/ci/test_apt_install.sh|\
               .husky/pre-commit|\
               scripts/tests/test_husky_pii_pass_overmatch.py|\
               scripts/tests/test_pii_gate_merge_scope.sh|\
@@ -690,6 +692,20 @@ jobs:
           # distinguishable from "never got there".
           bash scripts/tests/test_cron_agent_oauth_cascade.sh
 
+      - name: apt helper corpus (a bounded install that still fails closed)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # scripts/ci/apt_install.sh is called by SIX workflows, so its corpus
+          # belongs in a REQUIRED job (`antidotes`) and not in the scripts/tests
+          # sweep, which is continue-on-error and gates nothing (W108).
+          # Two properties are load-bearing and both are asserted there:
+          # every apt invocation is wrapped in a timeout, and the TOTAL bound
+          # stays well inside a ten-minute job budget. The first attempt at this
+          # cure retried 3x180s inside that same budget — which does not avoid
+          # exhausting it, it guarantees it. A green suite must not let the next
+          # author re-derive that arithmetic.
+          bash scripts/ci/test_apt_install.sh
+
       - name: Codex seat corpus (two paid subscriptions, and a 401 default seat)
         if: steps.paths.outputs.relevant == 'true'
         run: |
@@ -717,17 +733,7 @@ jobs:
           # without this install they would report green while never exercising
           # the shell that actually runs them — coverage theatre. Installing it
           # keeps the skip a machine-local courtesy and never a CI escape.
-          # Bounded + retried (2026-08-18): an unbounded apt-get inside a
-          # 10-minute job can consume the whole budget, and a budget kill is
-          # reported as `cancelled` — which for a REQUIRED context reads as
-          # "not green" with no cause named anywhere.
-          for attempt in 1 2 3; do
-            if timeout 180 sudo apt-get update -qq && timeout 180 sudo apt-get install -y -qq zsh; then
-              break
-            fi
-            echo "::warning::apt attempt ${attempt}/3 for zsh failed or stalled; retrying"
-            sleep $((attempt * 5))
-          done
+          bash scripts/ci/apt_install.sh zsh zsh
           command -v zsh >/dev/null || { echo "::error::zsh unavailable — the shell corpora would skip, refusing to report green"; exit 1; }
           python -m pip install --quiet pytest
           python -m pytest scripts/tests/test_codex_seat_lib.py -q
