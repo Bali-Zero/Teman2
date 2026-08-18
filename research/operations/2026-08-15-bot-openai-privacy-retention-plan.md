@@ -1,5 +1,5 @@
 ---
-date: 2026-08-15
+date: 2026-08-18
 domain: operations
 client_case: zantara-wa-provider
 sources:
@@ -10,13 +10,15 @@ sources:
   - apps/backend-rag/backend/services/integrations/wa_inbox_bot.py (re-read this turn — payload shape sent to the orchestrator)
   - research/operations/2026-08-15-bot-openai-provider-threat-model.md (companion document, same session)
   - https://openai.com/policies/how-your-data-is-used-to-improve-model-performance/ (official individual-vs-business training distinction, checked 2026-08-18)
-  - https://help.openai.com/en/articles/5722486-api-data-usage-policies (official ChatGPT/Codex controls, checked 2026-08-18)
-  - https://help.openai.com/en/articles/7039943-data-usage-for-consumer-services-faq (official consumer access controls, checked 2026-08-18)
-  - PR #4216 final head 847a5e834 and its ADR (subscription-backed offline lane)
+  - https://help.openai.com/en/articles/5722486-api-data-usage-policies (official API data usage and retention controls, checked 2026-08-18)
+  - https://help.openai.com/en/articles/7039943-data-usage-for-consumer-services-faq (official consumer-services FAQ, checked 2026-08-18)
+  - https://help.openai.com/en/articles/7730893-data-control (official ChatGPT data controls, checked 2026-08-18)
+  - PR #4216 source head 6cc3c845c and its ADR (subscription-backed offline lane)
 adversarial_review: >-
   Historical plan reviewed by Kimi K3 and Gemini; R28 adapter review Kimi K3
   SHIP plus Gemini 3.7 Flash High degraded fallback SHIP after Gemini 3.1 Pro
-  FIX-FIRST; mandatory final Fable/Claude on-disk gate pending
+  FIX-FIRST; R28 document review Kimi K3 FIX-FIRST findings corrected; mandatory
+  final Fable/Claude on-disk gate pending
 ---
 
 # Zantara WA bot — OpenAI provider privacy & retention plan
@@ -344,7 +346,7 @@ as fact about the eventual PR without re-reading the frozen diff.
 
 **R28 update:** V3's selected-provider matrix now exists in
 `research/operations/2026-08-15-bot-provider-failure-matrix.md` and is reconciled to PR #4216 head
-`847a5e834`. It confirms the lane is offline-only and that there is currently nothing to roll back
+`6cc3c845c`. It confirms the lane is offline-only and that there is currently nothing to roll back
 from. The historical handoff below remains useful for a future serve-stage, but it is not an open
 request to wire the current adapter.
 

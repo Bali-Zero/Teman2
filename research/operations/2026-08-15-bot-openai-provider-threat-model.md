@@ -1,5 +1,5 @@
 ---
-date: 2026-08-15
+date: 2026-08-18
 domain: operations
 client_case: zantara-wa-provider
 sources:
@@ -23,12 +23,13 @@ sources:
   - developers.openai.com/api/docs/guides/tools (WebSearch this turn — mcp/web_search/file_search tool types)
   - OpenAI Responses API refusal/incomplete_details schema (WebSearch this turn, community + developer docs)
   - OpenAI sk-proj- Projects launch date (WebSearch this turn — April 2024, corrects an earlier "since 2023" draft claim)
-  - PR #4216 final head 847a5e834 (Codex subscription adapter, offline harness, tests, CI, and ADR)
+  - PR #4216 source head 6cc3c845c (Codex subscription adapter, offline harness, tests, CI, and ADR)
   - research/operations/2026-08-15-bot-provider-failure-matrix.md (R28 reconciliation)
 adversarial_review: >-
   Historical draft reviewed by Kimi K3 and Gemini; R28 adapter review Kimi K3
   SHIP plus Gemini 3.7 Flash High degraded fallback SHIP after Gemini 3.1 Pro
-  FIX-FIRST; mandatory final Fable/Claude on-disk gate pending
+  FIX-FIRST; R28 document review Kimi K3 FIX-FIRST findings corrected; mandatory
+  final Fable/Claude on-disk gate pending
 ---
 
 # Zantara WA bot — OpenAI provider threat model
@@ -40,19 +41,20 @@ review archaeology: it threat-modeled an earlier Responses-API-key design and, b
 discarded pseudo-shadow branch. Whenever an earlier sentence conflicts with this section, this
 section wins.
 
-**Frozen target:** PR #4216 head `847a5e834`, reconciled with `origin/main` at
+**Frozen target:** PR #4216 source head `6cc3c845c`, reconciled with `origin/main` at
 `993e4e868a6e8210328f69ccd136ca9d5c54d776`. The current fence is eleven files: the standalone
 subscription adapter and test, the dormant Responses adapter and test, role-aware corpus/benchmark
 tooling and tests, the ADR, test-package marker, and the existing CI workflow. `config.py`,
 `llm_gateway.py`, WhatsApp routers/workers, live settings, secrets, and the bot skill's LIVE STATE
 are unchanged. There is no live importer, flag, shadow dispatch, client traffic, deploy, or cutover.
 
-**Selected provider:** `CodexExecClient`, using the operator's existing ChatGPT Pro subscription
-through headless `codex exec`. The `OpenAIResponsesClient` remains dormant and receives no paid API
-key. Zero's later subscription ruling supersedes the earlier council's API-key choice **for this
-human-run offline evidence lane only**. It does not authorize personal subscription credentials as
-a Fly service credential. Historical F1/F3 below therefore remain valid runtime bans, but no longer
-describe the selected offline adapter as prohibited code.
+**Selected evidence provider:** `CodexExecClient`, using the operator's existing ChatGPT Pro
+subscription through headless `codex exec`. The `OpenAIResponsesClient` remains dormant and receives
+no paid API key. Zero's later ruling records ChatGPT Pro as the intended credential path if a future
+WA runtime is separately designed and authorized; the current authorization stops at this human-run
+offline evidence lane. It does not authorize a personal subscription credential as a Fly service
+credential, runtime wiring, traffic, deployment, or cutover. Historical F1/F3 below therefore remain
+valid runtime bans, but no longer describe the selected offline adapter as prohibited code.
 
 ### Current threat disposition
 
@@ -69,10 +71,11 @@ describe the selected offline adapter as prohibited code.
 
 ### Verification and verdict
 
-One addopts-free process collected and passed **482 tests**: 71 subscription-adapter, 163 dormant
-Responses-adapter, and 248 corpus/benchmark tests. The two offline harness test files are explicitly
-collected by the backend PR CI job. Targeted Ruff `F,I`, workflow YAML parsing, Prettier, and
-`git diff --check` passed.
+One addopts-free local process collected and passed **482 tests**: 71 subscription-adapter, 163
+dormant Responses-adapter, and 248 corpus/benchmark tests. The backend PR CI job already collects
+`backend/tests/`, including both adapter suites, and now explicitly adds
+`scripts/bot/test_build_deid_corpus.py` and `scripts/bot/test_wa_blind_bench.py`. Targeted Ruff `F,I`,
+workflow YAML parsing, Prettier, and `git diff --check` passed.
 
 Kimi K3 returned SHIP. Gemini 3.1 Pro returned FIX-FIRST; the two code findings were accepted and
 closed: a second cancellation can no longer interrupt reaping, and the offline harness tests are
@@ -81,9 +84,16 @@ declared continuity fallback, Gemini 3.7 Flash High, returned SHIP with
 `degraded_execution: true`. The repository's mandatory final Fable/Claude on-disk gate remains
 pending.
 
-**Threat verdict:** SHIP only as **unwired offline evidence tooling**; BLOCK for real WhatsApp
-data, shadow traffic, serving, merge, deploy, or cutover. The threat model must be run again against
-the actual future runtime design because that design does not exist in this PR.
+A separate Kimi K3 review of this R28 documentation returned FIX-FIRST on two authorization-wording
+ambiguities. The adapter docstring now distinguishes the intended future credential path from the
+current offline-only authorization, and this document no longer labels a merge-blocked artifact
+"SHIP." Bundle-limited observations in that review were marked UNVERIFIED rather than defects; the
+eleven-file fence and test paths were independently checked against the source worktree.
+
+**Threat disposition:** acceptable for independent review only as **unwired offline evidence
+tooling**. This is not a merge or activation authorization. Real WhatsApp data, shadow traffic,
+serving, merge, deploy, and cutover remain BLOCKED pending their named gates. The threat model must
+be run again against the actual future runtime design because that design does not exist in this PR.
 
 ## ⚠️ Historical snapshot header — SUPERSEDED by R28 above
 
@@ -561,8 +571,8 @@ own count) all checked out. Noted for calibration, not treated as an objection.
 
 These prompts targeted an intermediate Responses/API-key snapshot and are retained for provenance.
 Do not execute them against the current subscription adapter: their credential and client
-assumptions are obsolete. R28 above records the review actually run against final PR #4216 head
-`847a5e834`; a future runtime-wiring diff requires a fresh prompt written for that concrete design.
+assumptions are obsolete. R28 above records the review actually run against PR #4216 source head
+`6cc3c845c`; a future runtime-wiring diff requires a fresh prompt written for that concrete design.
 
 **Ground truth as of THIS revision (do not re-derive, verify against the FROZEN diff instead):** the
 shadow-provider design (Findings 5/6/7) is already gone — reworked away before this diff existed —
