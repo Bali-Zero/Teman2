@@ -6,16 +6,97 @@ discovered_by: "Fable/Sonnet session (M5), corrected after independent Kimi K3 a
 sources:
   - "memory: decision_wa_openai_provider_subscription_path_owner_ruling_2026_08_15 (owner ruling: ChatGPT Pro subscription via codex exec, never OPENAI_WA_PROVIDER_API_KEY)"
   - "memory: project_bot_openai_lane_governance_codex_orchestrator_2026_08_15 (NO-WIRING fence and close-gate sequence)"
-  - "PR #4216 frozen head b7b2d6652 and its 11-file net diff, read this turn"
+  - "PR #4216 head 6cb663dd66c67ed8d84dc204508eafe3c6d0c5de, merged as 67eb3be94cb9be9abaae00b372446389e971cf4f, and its 12-file net diff, re-verified live on Air-M5 and Pro"
   - "PR #4194 threat model at head 28f70f026, read this turn"
   - "PR #4197 failure matrix, read this turn"
-  - ".agents/skills/bot/SKILL.md, live-state entry dated 2026-08-18"
-  - "codex-cli 0.147.0 local help for exec --ephemeral, --ignore-user-config, --ignore-rules, and sandbox controls, measured this turn"
+  - ".agents/skills/bot/SKILL.md, live-state entry dated 2026-08-19"
+  - "codex-cli 0.147.0 local help for exec --ephemeral, --ignore-user-config, --ignore-rules, and sandbox controls, measured 2026-08-18"
 adversarial_review: kimi-k3
 review_corroboration: "gemini-3.1-pro"
 ---
 
 # BOT-V — OpenAI provider: offline evidence before any shadow wiring
+
+## Live reconciliation — 2026-08-19 (authoritative)
+
+This section supersedes stale implementation-state statements later in this document. The safety
+and architecture boundaries remain in force, but #4216 advanced materially after the original
+plan and was re-measured from its exact current head.
+
+- Zero authorized the start of live testing on 2026-08-18. Source: memory
+  `decision_wa_openai_provider_subscription_path_owner_ruling_2026_08_15`, §2026-08-18 riconferma
+  ("la rotta abbonamento è confermata e il DRAFT HOLD è sciolto sulla ROTTA — la lane avanza");
+  the label "point 7" used by earlier drafts was that session's own checklist numbering and
+  resolves to nothing in this document. That closes the missing-owner-authorization gate for the
+  gated merge/deploy progression; it does not waive generator-not-grader review, privacy, PII,
+  runtime-host, rollback, or no-outward-send gates, and it authorizes no cutover.
+- #4216 remains inert and NO-WIRING at source head
+  `6cb663dd66c67ed8d84dc204508eafe3c6d0c5de`. Independent Fable review re-ran the 513 focused
+  tests, confirmed the 12-file fence and zero runtime importers, returned PASS, moved the PR from
+  draft to ready, and armed the canonical merge queue.
+- The first two merge groups were rejected by the same runner-infrastructure signature.
+  Merge-group `ca65adfef0ef86f502b5fcd186dc1f3e76676059` failed run `32157479924` at the required
+  `Immune enforcement` step `Codex seat corpus` after 71 seconds; after an independent
+  PASS-REQUEUED verdict, merge-group `8b8d233e3da9c6e000aab36a0a1c04e5521776e0` failed the
+  same step in run `32159641457` after 79 seconds. Both logs contained no command output between
+  step start and exit 1: the bounded `apt_install.sh zsh zsh` could not deliver `zsh`, so neither
+  pytest corpus started. The same step passed on the PR run, the four affected CI/helper/test
+  files were byte-identical across PR, merge-group, and `main`, and local re-runs passed 13/13,
+  14/14, and 56/56. This was an apt-mirror failure, not an adapter regression.
+- A read-only rerun of only that failed workflow then passed in 5m59s: `apt update` timed out, the
+  cached install still delivered `/usr/bin/zsh`, and the real 14-test and 56-test corpora passed.
+  Independent Fable issued `PASS-REQUEUED-FINAL` and requeued once under an explicit terminal
+  anti-loop rule. Final merge-group `67eb3be94cb9be9abaae00b372446389e971cf4f` completed all
+  26/26 workflows successfully, including the previously failing immune gate, full backend,
+  frontend, E2E, security, and secret scans. GitHub merged #4216 at `2026-08-18T17:26:10Z`, and
+  `origin/main` was independently observed at that exact merge commit.
+- CI workflow `32165589346` deployed that exact commit successfully: pre-deploy validation and
+  82 core tests passed; pre/post SQL and Python migrations passed; the Fly rolling deploy passed
+  in 6m22s; the workflow health and synthetic RAG smoke tests passed without rollback. A separate
+  post-workflow probe returned `HTTP 200` and `{"status":"healthy"}` from
+  `https://nuzantara-rag.fly.dev/health`. The merged adapter file is present, while a commit-pinned
+  grep found no runtime importer, config flag, or gateway reference outside the two dormant
+  adapter modules and their tests. Deployment therefore changed code availability only; it did
+  not activate a provider or attach to WhatsApp traffic.
+- The selected blind-bench client is now `CodexSubscriptionBenchClient`, a narrow facade over
+  `CodexExecClient`. It never checks `OPENAI_WA_PROVIDER_API_KEY`, and candidate calls are strictly
+  sequential.
+- The corpus builder now defaults to role-aware, multi-turn JSONL, requires canonical roles and a
+  local-only conversation identifier, and emits user targets with at most 12 independently scanned
+  prior turns. Its two fail-closed mechanisms are distinct and both remain in force: an unsafe
+  turn drops the whole conversation fixture (the §3.2 rule and §4 gate below, unchanged), and an
+  unattributable turn clears the accumulated history before any later turn can inherit it. Legacy
+  role-blind output is opt-in and rejected by the promotion bench.
+- The fixed CLI argv now includes both `--ephemeral` and `--ignore-rules`. On Pro, 513 focused
+  adapter/pricing/corpus/bench tests passed from the exact PR head.
+- A synthetic Terra sentinel passed through the real adapter in 6.9 seconds. A second role-aware
+  multi-turn bench produced three successful sequential responses: Terra 8.6 seconds, Luna
+  6.6 seconds, and Sol 6.7 seconds; all three returned the exact synthetic token from history.
+  The run used no WhatsApp, Meta, CRM, database, Qdrant, client, or OSINT input.
+- Across the measured runs: no API-key variable reached the child, no Codex session file changed,
+  no sentinel appeared in the observed session surfaces, no adapter temp directory or child
+  remained, and all ephemeral fixture/transcript/key artifacts were owner-only (`0600`) and
+  deleted after inspection.
+- A non-login SSH/LaunchAgent environment on Pro may omit `/opt/homebrew/bin`. Because
+  `/opt/homebrew/bin/codex` is a Node shebang script, a future supervisor must set an explicit
+  executable search path including Homebrew; setting `WA_CODEX_BIN` alone is insufficient when
+  `/usr/bin/env` cannot resolve `node`.
+- The CLI's private `stderr` pipe contains a human-readable transcript that echoes the prompt.
+  The adapter drains that pipe in memory to avoid deadlock but, on success, does not log, persist,
+  return, or scan it. On a non-zero exit the adapter DOES scan that stderr — only after
+  whole-line stripping of the echoed prompt, and it surfaces only sanitized typed errors, never
+  the raw pipe (the adapter's module docstring records the full evolution of that rule).
+  Therefore the original literal requirement that the prompt never occur in
+  raw `stderr` is impossible for codex-cli 0.147.0 and is replaced by the narrower mechanical
+  requirement below: no prompt in argv, environment, adapter logs, surfaced diagnostics,
+  exceptions, or persisted files. This is sufficient only for synthetic testing, not client PII.
+- The authenticated seat is a personal ChatGPT Pro account. OpenAI's published policy says Pro
+  Codex conversations may be used to improve models unless the account-level ChatGPT training
+  control is disabled. That exact account setting has not been verified. Real client text, PII,
+  WA-mirror data, live shadowing, Fly credential placement, serving, activation, and cutover
+  remain **NO-GO** until that privacy gate and a named Pro-side broker/supervisor design pass
+  independent review. The now-completed CI-green merge/deploy of the dormant NO-WIRING files did
+  not activate the provider and remains separate from any future serving gate.
 
 ## 0. Decision and authority boundary
 
@@ -28,10 +109,13 @@ The provider route is an owner decision, not an open architecture vote:
 - the sibling `openai_responses_client.py` remains a dormant, unwired alternative and is not the
   candidate this plan evaluates.
 
-This document does **not** authorize a runtime flag, a gateway branch, a credential move, live
-WhatsApp traffic, a deploy, a cutover, or a merge. The current #4216 fence remains NO-WIRING.
-Stage 1 below is an operator-run, de-identified, offline evaluation. It is deliberately not called
-"shadow" because it does not observe or attach to the live reply path.
+The original version of this document did **not** authorize a runtime flag, a gateway branch, a
+credential move, live WhatsApp traffic, a deploy, a cutover, or a merge. Zero later supplied the
+2026-08-18 owner authorization recorded in the live reconciliation above. The independently reviewed
+dormant merge and CI deploy are now complete, but the #4216 diff itself remains NO-WIRING, and the
+technical/privacy gates still determine which later action is safe to execute. Stage 1 remains an
+operator-run, de-identified, offline evaluation. It is deliberately not called "shadow" because
+it does not observe or attach to the live reply path.
 
 The [official Codex authentication documentation](https://learn.chatgpt.com/docs/auth) confirms
 that the CLI supports both ChatGPT subscription sign-in and API-key sign-in. That establishes that
@@ -40,7 +124,11 @@ subscription is suitable for an unattended WhatsApp production runtime. The owne
 the residual route risk, while the technical, privacy, quota, and runtime-host gates below remain
 open.
 
-## 1. Current measured state
+## 1. Original pre-R28 measured state (historical)
+
+The numbered observations below explain why the plan was narrowed. They are retained as review
+history; where they conflict with **Live reconciliation — 2026-08-19**, the reconciliation is the
+authoritative current state.
 
 1. **#4216 is inert.** Its selected adapter is standalone and has no live importers, config field,
    gateway branch, secret, cron, or deploy. It is still draft and conflicts with current `main`.
@@ -157,11 +245,16 @@ usage-window response aborts the run; it is not silently retried across accounts
 Before corpus replay, amend and test the selected adapter so its fixed argv includes
 `--ephemeral`. Also evaluate the current CLI's `--ignore-rules` control and add it if it closes an
 otherwise inherited policy surface without breaking authentication.
+_(Done at the merged head: the fixed argv now includes both `--ephemeral` and `--ignore-rules` —
+see the live reconciliation above. The gate requirements below remain in force for any future
+change to the argv or the CLI version.)_
 
 The gate must run a synthetic sentinel probe and prove:
 
 - no new Codex session/rollout file is created for the invocation;
-- no prompt text appears in argv, environment, stdout diagnostics, stderr diagnostics, or logs;
+- no prompt text appears in argv, environment, adapter logs, surfaced diagnostics, exceptions, or
+  persisted files; the codex-cli 0.147.0 raw private `stderr` pipe is explicitly allowed to carry
+  its transient transcript only while the adapter drains it in memory;
 - user and repo hooks do not run;
 - the model cannot use the empty working directory to recover repository context;
 - cancellation and timeout still reap the child and remove the per-call temp directory.
@@ -241,7 +334,10 @@ provider.
 
 ## 6. What remains blocked after Stage 1
 
-Even a successful offline evaluation does not authorize live shadowing or serving:
+Even a fully green Stage 1 — and what has actually passed so far is only the synthetic liveness
+smoke recorded above, not the full Stage 1 evaluation with its §4 acceptance matrix — does not by
+itself authorize live shadowing or serving. Zero's 2026-08-18 authorization permits progression
+only as each remaining gate turns green:
 
 - no runtime flag may land under the current NO-WIRING fence;
 - no production host for a subscription-backed provider has been approved;
@@ -250,7 +346,10 @@ Even a successful offline evaluation does not authorize live shadowing or servin
 - no comparison sink for PII-derived content has been approved;
 - no native system/tool/history parity exists in `CodexExecClient`;
 - no subscription capacity/SLA has been demonstrated for client traffic;
-- no cutover, fallback, deploy, merge, or outward publication is authorized.
+- the dormant merge and CI deploy completed only after their review, CI, and rollback gates were
+  green; no runtime activation, cutover, fallback, live shadow, or outward publication is safe
+  before its separate privacy/runtime-host/review gate is green, and Legge 5 continues to prohibit
+  any client-facing test send.
 
 A future live-shadow proposal needs a new owner mandate that formally amends the fence, a new ADR,
 a named execution/broker architecture, a lawful PII basis, bounded concurrency/backpressure, a
@@ -294,5 +393,8 @@ produce valid evidence. Disposition: accepted and encoded in §§3–5.
 - there is no current OpenAI runtime path to roll back from;
 - the owner route remains ChatGPT Pro subscription via `codex exec`, never the paid API-key lane.
 
-The reviewed verdict is therefore **PROCEED ONLY WITH THE PREREQUISITES FOR OFFLINE STAGE 1**. It
-is not approval to run Stage 1 yet, and it is not approval for shadow wiring.
+The historical reviewed verdict was **PROCEED ONLY WITH THE PREREQUISITES FOR OFFLINE STAGE 1**.
+Those tooling prerequisites and a synthetic liveness smoke have now passed as recorded in the live
+reconciliation. This is still not approval for client-data replay or shadow wiring: account-level
+training controls, the Pro-side broker/supervisor boundary, fail-off dispatch, and independent
+review remain open.
