@@ -7,9 +7,9 @@
 | File | Cosa fa |
 |---|---|
 | `usage-dashboard.html` | Dashboard self-contained. Sezione API **già viva** (snapshot dal ledger PG `llm_cost_events`, mig 117). Sezione seat si accende quando il collector gira accanto (fetch di `seat_usage_snapshot.json`). |
-| `seat_usage_collector.py` | Parsa i log locali delle CLI (Claude ×N profili, Codex ×2 CODEX_HOME, agy, kimi) → snapshot JSON. **NON testato sui log reali: PENDING-ARMS.** |
+| `seat_usage_collector.py` | Parsa i log locali delle CLI (Claude ×N profili, Codex ×2 CODEX_HOME, agy, kimi) → snapshot JSON. **Armato 2026-08-19 via launchd su M5+Pro+Mini (`infra/launchagents/install_seat_usage_cron.sh` — la prova è lo snapshot scritto dal daemon, mtime-advance, mai un run a mano).** |
 | `seat_map.json` | Generato al primo run: mappa profili locali → seat A1/A2/A3/AZ/O1/O2. Da editare dopo l'installazione di cswap. |
-| `com.nuzantara.seat-usage.plist.template` | Template LaunchAgent (StartInterval 1800, no secrets). NON in `infra/launchagents/` finché non testato — spostarlo lì solo all'arming. |
+| `com.nuzantara.seat-usage.plist.template` | Template LaunchAgent (StartInterval 1800, no secrets). L'arming è avvenuto: l'installer `infra/launchagents/install_seat_usage_cron.sh` renderizza QUESTO template (che resta qui accanto al collector by design — l'installer lo risolve dal proprio checkout). |
 
 ## La verità sulle fonti (matrice onestà)
 

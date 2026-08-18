@@ -27,3 +27,10 @@ macos-icon-screen-color = #1e1e2e,#1e2f24
 scrollback-limit = 16000000
 window-width = 120
 window-height = 34
+
+# ─── Fleet reach (palette, per-machine) ────────────────────────────────────
+# command-palette-entry ACCUMULATES across included files, so per-machine
+# entries live here. Same convention as keys.ghostty: TYPED, never executed —
+# no trailing newline, nothing runs until you press enter.
+command-palette-entry = title:"SSH: pro (dev + runtime)",description:"Pro workhorse (typed, not executed).",action:"text:ssh pro"
+command-palette-entry = title:"SSH: air (M5 workstation)",description:"Antonello's primary seat (typed, not executed).",action:"text:ssh air"

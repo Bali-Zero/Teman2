@@ -28,7 +28,16 @@ FORCE_MACHINE=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run) DRY_RUN=1 ;;
-    --machine) FORCE_MACHINE="${2:-}"; shift ;;
+    --machine)
+      # Require the value. Without this guard `--machine` alone consumed nothing
+      # and silently fell through to hostname detection — which on the wrong box
+      # means installing the wrong profile, quietly.
+      [ $# -ge 2 ] || { echo "--machine needs a value: pro|m5|mini" >&2; exit 2; }
+      case "$2" in
+        pro|m5|mini) FORCE_MACHINE="$2" ;;
+        *) echo "unknown machine '$2' (expected pro|m5|mini)" >&2; exit 2 ;;
+      esac
+      shift ;;
     -h|--help) sed -n '2,14p' "${BASH_SOURCE[0]}"; exit 0 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
@@ -62,6 +71,25 @@ say "dest    : $DEST_DIR"
 
 [ "$(basename "$DEST_DIR")" = "ghostty" ] || die "destination must be a directory named 'ghostty' (got $DEST_DIR) — Ghostty only looks for <config-home>/ghostty/config"
 [ -x "$GHOSTTY_BIN" ] || die "Ghostty binary not found at $GHOSTTY_BIN"
+
+# macOS searches $HOME/Library/Application Support/com.mitchellh.ghostty/config.ghostty
+# BEFORE any XDG location. A file there outranks everything we are about to
+# install, so refuse to pretend otherwise.
+# Judged by content: the app creates this file empty by itself, so only a file
+# that actually carries settings is worth warning about.
+APPSUP="$HOME/Library/Application Support/com.mitchellh.ghostty/config.ghostty"
+if [ -f "$APPSUP" ]; then
+  # `grep -c` prints the count AND exits 1 when it is zero, so a `|| echo 0`
+  # fallback appends a second zero and the numeric test dies on "0\n0". Take
+  # grep's own number; substitute only when the capture came back empty.
+  APPSUP_N="$(grep -cvE '^[[:space:]]*(#.*)?$' "$APPSUP" 2>/dev/null)"
+  case "$APPSUP_N" in ''|*[!0-9]*) APPSUP_N=-1 ;; esac
+  if [ "$APPSUP_N" -gt 0 ]; then
+    say "WARNING : $APPSUP holds $APPSUP_N setting(s) and takes precedence over this install"
+  elif [ "$APPSUP_N" -lt 0 ]; then
+    say "WARNING : cannot read $APPSUP — it outranks this install and its contents are unknown"
+  fi
+fi
 say "ghostty : $("$GHOSTTY_BIN" --version 2>/dev/null | head -1)"
 
 # ── What we are about to place ─────────────────────────────────────────────
@@ -72,6 +100,7 @@ declare -a PLAN=(
   "$SRC_DIR/fleet.ghostty|$DEST_DIR/fleet.ghostty"
   "$SRC_DIR/keys.ghostty|$DEST_DIR/keys.ghostty"
   "$SRC_DIR/machines/$MACHINE.ghostty|$DEST_DIR/machine.ghostty"
+  "$SRC_DIR/verify-latest.sh|$DEST_DIR/verify-latest.sh"
 )
 
 if [ "$DRY_RUN" -eq 1 ]; then
@@ -109,11 +138,35 @@ else
   BACKUP=""
 fi
 
+# Roll back to the state we found. On a FRESH install there is no backup, and an
+# earlier version returned immediately in that case — leaving whatever files had
+# already been copied in place, i.e. a half-installed config presented as "no
+# harm done". Removing what we placed is the rollback in that case.
+#
+# Every step is checked: a rollback that fails silently is worse than no
+# rollback, because the message that follows it says nothing was lost.
 restore() {
-  [ -n "$BACKUP" ] || return 0
-  echo "  rolling back from $BACKUP" >&2
-  rm -f "$DEST_DIR"/config "$DEST_DIR"/fleet.ghostty "$DEST_DIR"/keys.ghostty "$DEST_DIR"/machine.ghostty
-  for f in "$BACKUP"/*; do [ -f "$f" ] && cp -p "$f" "$DEST_DIR/"; done
+  local failed=0
+  echo "  rolling back" >&2
+  for p in "${PLAN[@]}"; do
+    rm -f "${p##*|}" || failed=1
+  done
+  if [ -n "$BACKUP" ]; then
+    echo "  restoring from $BACKUP" >&2
+    for f in "$BACKUP"/*; do
+      [ -f "$f" ] || continue
+      cp -p "$f" "$DEST_DIR/" || failed=1
+    done
+  fi
+  # Put back the retired filename, if we had already moved it.
+  if [ -n "${RETIRED:-}" ] && [ -f "$RETIRED" ]; then
+    mv "$RETIRED" "$DEST_DIR/config.ghostty" || failed=1
+  fi
+  if [ $failed -ne 0 ]; then
+    echo "  ROLLBACK INCOMPLETE — inspect $DEST_DIR by hand before using it." >&2
+    return 1
+  fi
+  return 0
 }
 
 # ── Install ────────────────────────────────────────────────────────────────
@@ -126,10 +179,12 @@ done
 # Retire the stale filename rather than deleting it: it must not remain (it
 # merges in and wins on any key this profile leaves unset), but the previous
 # content is kept on disk under a dated name in case something in it is wanted.
+RETIRED=""
 if [ -f "$DEST_DIR/config.ghostty" ]; then
-  mv "$DEST_DIR/config.ghostty" "$DEST_DIR/config.ghostty.retired-$STAMP" \
-    || { restore; die "could not retire config.ghostty"; }
-  say "retired : config.ghostty -> config.ghostty.retired-$STAMP"
+  RETIRED="$DEST_DIR/config.ghostty.retired-$STAMP"
+  mv "$DEST_DIR/config.ghostty" "$RETIRED" \
+    || { RETIRED=""; restore; die "could not retire config.ghostty"; }
+  say "retired : config.ghostty -> $(basename "$RETIRED")"
 fi
 
 # ── Prove it loads ─────────────────────────────────────────────────────────
@@ -138,8 +193,15 @@ VOUT="$(XDG_CONFIG_HOME="$XDG_PARENT" "$GHOSTTY_BIN" +validate-config 2>&1)"; VR
 if [ $VRC -ne 0 ]; then
   echo "  validation FAILED (rc=$VRC):" >&2
   echo "$VOUT" >&2
-  restore
-  die "config rejected by Ghostty — previous config restored, nothing lost."
+  if restore; then
+    if [ -n "$BACKUP" ]; then
+      die "config rejected by Ghostty — the previous config was restored, nothing lost."
+    else
+      die "config rejected by Ghostty — the files just written were removed; this machine had no config before and still has none."
+    fi
+  else
+    die "config rejected by Ghostty AND rollback did not complete — inspect $DEST_DIR by hand."
+  fi
 fi
 say "validate: OK (rc=0)"
 

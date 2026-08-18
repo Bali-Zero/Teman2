@@ -23,3 +23,10 @@ macos-icon-screen-color = #1e1e2e,#1e2a3a
 # 24 GB and a full interactive load — keep scrollback at the fleet default.
 window-width = 124
 window-height = 36
+
+# ─── Fleet reach (palette, per-machine) ────────────────────────────────────
+# command-palette-entry ACCUMULATES across included files, so per-machine
+# entries live here. Same convention as keys.ghostty: TYPED, never executed —
+# no trailing newline, nothing runs until you press enter.
+command-palette-entry = title:"SSH: pro (dev + runtime)",description:"Pro workhorse — mDNS at home, Tailscale elsewhere (typed, not executed).",action:"text:ssh pro"
+command-palette-entry = title:"SSH: mini (server H24)",description:"Tailscale-only — Mini is in the office on a separate ISP (typed, not executed).",action:"text:ssh mini"

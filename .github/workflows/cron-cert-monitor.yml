@@ -27,9 +27,6 @@ jobs:
           DOMAINS=(
             "balizero.com:443"
             "kita.balizero.com:443"
-            "mail.balizero.com:443"
-            "calendar.balizero.com:443"
-            "drive.balizero.com:443"
             "knowledge.balizero.com:443"
             "nuzantara-rag.fly.dev:443"
           )

@@ -20,7 +20,132 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 - **Bali Zero team**: work-support assistant. Check-in via WA (opens the free Meta 24h window),
   CRM nudges, PII-light briefings. Persona = "assistente operativo interno", not sales.
 
-## 1. LIVE STATE (last update 2026-08-12 — keep current)
+## 1. LIVE STATE (last update 2026-08-19 — keep current)
+
+- **🧪 CHATGPT PRO ADAPTER LIVE TEST — SYNTHETIC LIVENESS SMOKE GREEN (NOT the full Stage 1
+  evaluation); DORMANT ADAPTER MERGED + DEPLOYED; REAL WA STILL NO-GO (2026-08-19, supersedes
+  the stale #4216/#4301 implementation snapshot immediately below).**
+  Zero authorized the start of live testing on 2026-08-18 (route + advance authority recorded in
+  memory `decision_wa_openai_provider_subscription_path_owner_ruling_2026_08_15`, §2026-08-18
+  riconferma; the label "point 7" used by earlier drafts was that session's own checklist
+  numbering and resolves to nothing in this corner or the plan), scoped to synthetic,
+  de-identified, operator-controlled probes only. #4216 source head
+  `6cb663dd66c67ed8d84dc204508eafe3c6d0c5de` carries a 12-file net diff and remains strictly
+  NO-WIRING.
+  Independent Fable review repeated 513/513 focused tests, confirmed the 12-file/no-importer
+  fence, returned PASS, moved #4216 to ready, and armed the canonical queue. The unchanged head
+  was ejected twice by required merge-group `Immune enforcement` runs `32157479924` and
+  `32159641457`: both failed only at `Codex seat corpus` after 71s/79s, with no output after step
+  start because bounded `apt_install.sh zsh zsh` could not deliver `zsh`; neither pytest corpus
+  started. The affected CI/helper/test blobs were identical across PR/merge-group/main, while the
+  PR run and local re-runs passed 13/13 + 14/14 + 56/56. A rerun of only the failed workflow
+  (same code, no change) then passed in 5m59s (`apt update` timed out, cached install delivered
+  `/usr/bin/zsh`, and both 14/14 + 56/56 corpora ran). Independent Fable issued
+  `PASS-REQUEUED-FINAL`; the third and explicitly final merge-group
+  `67eb3be94cb9be9abaae00b372446389e971cf4f` passed all 26/26 workflows. GitHub merged #4216 at
+  `2026-08-18T17:26:10Z`, and `origin/main` was independently observed at that exact commit.
+  CI deploy workflow `32165589346` then passed on that same SHA: pre-deploy validation + 82 core
+  tests, pre/post SQL and Python migrations, Fly rolling deploy (6m22s), health, and synthetic RAG
+  smoke all succeeded with no rollback. An independent probe returned `HTTP 200` and
+  `{"status":"healthy"}` from `https://nuzantara-rag.fly.dev/health`. Commit-pinned inspection
+  confirmed the adapter is present but has zero runtime importer, config flag, or gateway
+  reference outside the two dormant adapter modules and their tests: deployed does **not** mean
+  activated, serving, shadowing, or connected to WhatsApp.
+  On Pro, `codex-cli 0.147.0` reports `Logged in using ChatGPT`. From the exact PR head, a real
+  `CodexExecClient` Terra call returned an exact random synthetic sentinel in 6.9s. The role-aware
+  multi-turn blind harness then ran sequentially across Terra/Luna/Sol and all 3/3 returned the
+  exact synthetic token from the prior user turn (0 errors; 8.6s/6.6s/6.7s).
+  No WhatsApp, Meta, CRM, DB, Qdrant, client, or OSINT input was read; no message was sent.
+  Observed isolation: no API key forwarded, no session file change, no sentinel persistence hit,
+  no child/tempdir residue, owner-only `0600` ephemeral artifacts deleted after inspection.
+  Two gates were discovered live: (1) non-login Pro processes need a `PATH` including
+  `/opt/homebrew/bin` because `codex` is a Node shebang script — `WA_CODEX_BIN` alone cannot find
+  `node`; (2) codex-cli echoes the prompt into its private transient stderr pipe, although the
+  adapter never logs, persists, returns, or exposes that pipe on success; on a non-zero exit it
+  scans that stderr only after whole-line stripping of the echoed prompt and surfaces only
+  sanitized typed errors, never the raw pipe. The authenticated seat
+  is personal ChatGPT Pro; its account-level **Improve the model for everyone** setting is not
+  yet verified. Official policy says Pro Codex conversations may be used for training unless that
+  control is off. Therefore the live verdict is **GO only for synthetic, de-identified,
+  operator-controlled Pro probes** and **NO-GO for client text/PII, WA mirror, live shadow, Fly
+  credentials, activation, serving, cutover, or any outward test send**. The completed CI-green
+  merge/deploy changed code availability only and did not activate the provider. The corrected
+  authoritative plan is
+  `research/operations/2026-08-18-bot-openai-shadow-wiring-plan.md`; next gate is the account
+  privacy check plus a named Pro-side fail-off broker/supervisor design and independent review.
+  Generator-not-grader and Legge 5 remain unchanged despite the owner authorization.
+  **Current state of the two gate-prep PRs** (the historical snapshot's DRAFT/BLOCKED wording for
+  them is superseded too): #4194 (threat model + privacy plan) and #4197 (failure matrix) were
+  reconciled to the final adapter evidence head `1dcdd670d` — subscription-provider coverage,
+  single-token `adversarial_review: kimi-k3` frontmatter, Fable gate recorded in the documents'
+  own Adversarial-review sections (the PR descriptions still carry draft-era text) — then
+  un-drafted and entered the merge queue on 2026-08-19.
+
+- **🤖 HISTORICAL OPENAI WA-PROVIDER SNAPSHOT — SUPERSEDED BY THE LIVE TEST ENTRY ABOVE.**
+  Retained only as the chronology that produced #4216/#4301; do not use its old branch heads,
+  merge status, bench shape, or authorization wording as current state.
+  This lane is governed by two session memories, not by this file — `.agents/skills/bot/SKILL.md`
+  said nothing about it before this entry: `decision_wa_openai_provider_subscription_path_owner_ruling_2026_08_15`
+  (Zero's 2026-08-15 ruling: WA runtime OpenAI provider goes through the **ChatGPT Pro
+  subscription** via headless `codex exec`, NEVER a per-token `OPENAI_WA_PROVIDER_API_KEY` —
+  supersedes the 5-family council's NO-GO-on-subscription verdict, residual ToS risk accepted by
+  the owner) and `project_bot_openai_lane_governance_codex_orchestrator_2026_08_15` (fence:
+  implementation lane in `.worktrees/bot-openai-adapter` is client-standalone + tests + ADR
+  **NO-WIRING** only — config.py/llm_gateway.py/secrets/deploy/real-traffic all forbidden; close
+  gate is freeze diff → lead net-diff check → **final Kimi K3 + Google/agy Gemini review of the
+  FROZEN diff** → only then a PR). Zero reconfirmed the ROUTE on 2026-08-18 — this is a GO to
+  keep advancing the lane, strictly inside that existing governance; it does **not** authorize
+  wiring or a live WA-channel cutover.
+  - **#4216** (adapter, `feat(bot): OpenAI WA provider lane (NO-WIRING)`) — its own body says
+    `DRAFT — HOLD. Not for merge. Remaining gates before any wiring: security review +
+shadow-hook design`, i.e. the hold is **not** the route question (that paragraph calls the
+    business/cost gate CLOSED) — it is two separate, still-open technical gates. Also
+    `mergeStateStatus=DIRTY`/`mergeable=CONFLICTING` against current `origin/main` as of this
+    check — readying it would not even let CI run (0-workflow DIRTY pattern, cicatrix #9 "Gate
+    e required"), and resolving the conflict would touch the "frozen head `b7b2d6652`" the whole
+    28-round review chain was run against. **Left in draft.**
+  - **#4194** (verifier V1/V4, `docs(bot): OpenAI-provider threat model + privacy plan`) — the PR
+    body reads as complete, but the doc it ships (`research/operations/2026-08-15-bot-openai-provider-threat-model.md`
+    on that branch) says otherwise, in its own text, as of its last commit (`28f70f026`,
+    "freeze-review prompts updated ... **Still not executed — standing by for team-lead's
+    explicit freeze signal, per the HOLD order**"): a `§Freeze re-review` section titled
+    "prepared prompts, NOT YET RUN", and the fence-compliance checklist states plainly `#4194
+... stays DRAFT/HOLD throughout and updates only against the frozen diff`. The doc reviewed
+    commits `b36fc9521`/`8a7aa9be5`; #4216's actual frozen head is `b7b2d6652` (4 boundary
+    commits) — a later state than what got reviewed. Today's route reconfirmation is not the
+    "team-lead's explicit freeze signal" this doc is waiting for (a different, technical
+    checkpoint). **Left in draft — trust the artifact's own self-declaration over its PR
+    summary (W65/W113 discipline).**
+  - **#4197** (BOT-V3 failure matrix, `docs(bot): failure matrix, idempotency, rollback proof`) —
+    content-checked, not just status-checked: its frontmatter still frames the choice as the
+    OLD council recommendation ("NO-GO on ChatGPT/Codex OAuth ... CONDITIONAL-GO on the OpenAI
+    API"), which the 2026-08-15 owner ruling **inverted**. Grepped the doc on that branch for
+    `codex_exec`/`codex.exec`/`subscription provider`/`owner ruling`/`ADR §30`/`supersede`:
+    **zero hits**. Every failure-matrix row analyzes `openai_responses_client.py` (the dormant
+    API-key alternative) as "the OpenAI shadow" — none analyzes `codex_exec_client.py` (the
+    actually-selected provider, subprocess/stdin auth-death failure modes, not HTTP
+    401/429/5xx). `mergeStateStatus=BLOCKED`. **Left in draft** — readying it would present a
+    gate-prep document as covering the chosen provider when it covers the shelved one.
+  - **Net**: none of the three PRs met the "body declares deliverable complete AND the only hold
+    was the route" bar this session was given to ready them on. Two hold on gates unrelated to
+    the route (#4216 security-review/shadow-hook-design, #4197's content gap on the wrong
+    provider); one (#4194) explicitly says it is waiting for a freeze signal this session cannot
+    supply on its own authority. Whoever runs the actual freeze re-review (Kimi K3 + Google/agy
+    on the frozen `b7b2d6652` diff) should also update #4197 to cover `codex_exec_client.py`
+    before that PR is judged complete.
+  - **#4301 plan red-teamed and narrowed 2026-08-18.** The first draft called for a default-OFF
+    shadow flag and incorrectly said the existing corpus/bench could prove context parity,
+    tool-calling shape, and #4197 rows. Independent Kimi K3 (`FIX-FIRST`) and Gemini 3.1 Pro
+    (`BLOCKED`) both rejected that claim: `wa_blind_bench.py` exercises the dormant Responses API
+    key lane, the ADR declares the corpus V5-INCOMPLETE (synthetic-only, role-blind, single-turn),
+    and `CodexExecClient` has only a single text prompt rather than Gemini's native system/history/
+    tool channels. The corrected plan is now **offline evidence before any shadow wiring**:
+    operator machine only, de-identified fixtures only, no flag/config/gateway/live path, and no
+    claim of native parity. It also records a newly measured adapter blocker: codex-cli 0.147.0
+    supports `--ephemeral`, but frozen #4216 does not pass it, so local session persistence must be
+    closed and tested before replay. See
+    `research/operations/2026-08-18-bot-openai-shadow-wiring-plan.md`. No code, config, secret,
+    real traffic, deploy, cutover, or merge was authorized by this correction.
 
 - **🔇 THE ONLY EXITS THAT LEAVE THE CLIENT SILENT WERE THE ONLY ONES THAT TOLD NOBODY
   (2026-08-12, CURED).** `generate_bot_reply` notifies a human at the BOTTOM of the function,

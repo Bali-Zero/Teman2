@@ -113,6 +113,37 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
 ## LIVE STATE (update on every state change — whoever changes state updates this section)
 
+- 2026-08-18 (M5, doctrine-factory E2/E3 close): **E2 CLOSED, E3 COMPLETE, OD-4 RULED.**
+  E2 (OD-3 arrest criterion): MET — 27/27 REACHABLE products, per the closure verdict in
+  #4278 (merged; #4264 is a closed-without-merge sibling, content blob-identical, no loss).
+  The E2c mini-batch (#4294, merged) closed the 5 query-disposition BLOCKED products;
+  two new conflicts surfaced there: CF-16 (C2 onshore conversion, OPEN, non-blocking) and
+  CF-17 (E33A/B/C internal-DB identity — RESOLVED via hierarchy: primary law governs, the
+  internal DB is superseded, the live pack is already correct). CF-7/8/10/12 RESOLVED via
+  article-level pinpoints (E33E retirement age = 55; KITAP conversion = 3y under Pasal
+  179(1) Permenkumham 22/2023). **CF-8 caveat: further refinement is in #4308 (OPEN,
+  awaiting owner review, NOT yet merged)** — its finding: no 5-year ACCESS route exists;
+  the internal "5" traces to superseded UU 6/2011 Pasal 60(1) and/or KITAP's own 5-year
+  validity period (Pasal 121(1)), not an alternate eligibility pathway. E3: 38/38 Product
+  Doctrine Cards on main (#4250+#4251 slice, #4279 visit, #4280 work/invest, #4282
+  long-stay, #4300 E30 repoint follow-up — all merged). OD-4 RULED by Zero 2026-08-18: no
+  product gets OUT_OF_COMMERCIAL_SCOPE; E28B/C/D/F keep always-REVIEW by design; E23U/V +
+  E33A/B/C doctrine closed via the E2c ledger; E30E/F await rule-authoring only (E5
+  backlog). Decision package: `research/visa/doctrine-factory/e3/od4-decision-package.md`
+  (#4288, merged). ENGINE DEFECTS (seq-9 signing inputs, cross-verified against
+  `origin/main` pack bytes): `el.e33e.deposit-income-basis` is UNSATISFIABLE (brute-force
+  0/64 assignments) and `el.e33g.income-60k-manual` is VACUOUS (duplicated subtree, no
+  income fact, "60000" absent from any pack) — both flagged by the E5 lint compiler,
+  inc-1 #4283 + inc-2 #4291 (both merged, gate 77/77), and RECORDED AS SEQ-9
+  SIGNING-GATE BLOCKERS: neither rule enters the fold uncured. Known gap:
+  `_LEDGER_FILES` in the compiler is a hand-wired list — batch3/e2c ledgers have no CI
+  reader yet (PENDING-ARMS row open, owner E5). OWNER items still open (business,
+  outside repo, per OD-4): internal E33E guide still says 60 (must become 55); E28F
+  internal-DB definition (CF-14); E33A/B/C internal-DB identity (CF-17); noindex ruling.
+  NEXT: E5 rule-authoring (E30E/F + the 5 E2c products), cure the 2 defective rules, fold
+  seq-8→seq-9 (OD-2), freshness 20/20 (replace `ecd22722`), CP3 (Zero) → signing ceremony
+  (M5 key) → activation. Then HRR/flag-veto reform and the E6/E7 path to the ENFORCE gate.
+
 - 2026-08-18 (M5, E5 perimeter — twin-partition: this session owns E5/compiler/backend
   `visa_engine`; nuzantara-df owns E3 bulk + OD-4): **E5 INCREMENTS 1+2 ARE ON MAIN.**
   Inc-1 PR #4283 (merge `93b9ae18f`): claim-ledger parser (`claim_ledger.py`, per-product

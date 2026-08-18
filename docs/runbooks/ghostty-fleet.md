@@ -97,8 +97,10 @@ the Ghostty window:
 tmux new-session -s claude    # then start claude inside it
 ```
 
-tmux is installed on Pro (3.6a). It is **absent on M5**, the primary workstation —
-so there, agent teams have no backend at all until `brew install tmux`.
+tmux is now present on all three: Pro 3.7b, M5 3.7b (installed 2026-08-18 —
+until then the primary workstation had no backend at all), Mini 3.6a. Installing
+the binary only makes the fix _available_; the panes appear only when Claude Code
+is actually running **inside** a session, because the first branch tests `$TMUX`.
 
 Work that does not need a pane is unaffected: background agents, the Workflow
 tool, and MCP-hosted seats (for example the Codex second-opinion server) run as
@@ -117,12 +119,68 @@ subprocesses and were used successfully from Ghostty on the same day.
 | `cmd+shift+s`           | dump the whole scrollback to a file and open it                 |
 | `cmd+alt+p`             | pin the window on top · `cmd+alt+o` toggle transparency         |
 | `cmd+alt+r`             | read-only mode (blocks input to a running job)                  |
-| `cmd+grave`             | quick terminal from anywhere (needs Accessibility)              |
+| `cmd+alt+t`             | rename the current tab (name the lane)                          |
+| `cmd+alt+m`             | flip mouse reporting (escape a mouse-grabbing TUI)              |
+| `cmd+alt+n` then letter | NUZ table: types a fleet command (see below)                    |
+| `cmd+alt+grave`         | quick terminal from anywhere (needs Accessibility)              |
 | `cmd+shift+comma`       | reload the config                                               |
+
+## The NUZ table
+
+`cmd+alt+n` arms a **single-shot** key table. One-shot alone is not trap-free —
+the reference deactivates it only on a **valid** binding from the table, so a
+stray key would leave it armed; its `unconsumed:catch_all` is what guarantees
+any other keystroke disarms it (and still reaches the shell). The next letter
+TYPES a fleet command into the prompt — nothing executes until you read it and
+press enter, the same convention as every Nuzantara palette entry:
+
+|     |                    |     |                     |
+| --- | ------------------ | --- | ------------------- |
+| `s` | repo status        | `w` | worktree list       |
+| `p` | proprioception     | `a` | pending-arms ledger |
+| `l` | HOME-fork lint     | `v` | ghostty verify      |
+| `q` | merge-queue status | `t` | claude tmux session |
+
+The command palette (`cmd+shift+p`) carries the same commands with descriptions,
+plus per-machine `SSH:` entries contributed by each machine profile — the table
+is the muscle-memory path, the palette is the discoverable one.
+
+## What the 2026-08-18 layer changes on screen
+
+- **Display P3** (`window-colorspace`): terminal colours use the panel's full
+  gamut — Mocha accents render slightly more vivid than under sRGB. Revert to
+  `srgb` in `local.ghostty` if colour-matched screenshots matter.
+- **Focus follows mouse** across splits, scoped to the focused window.
+- **Quick terminal** is pinned top, sized 35% of the screen. Changing the
+  position needs a full Ghostty restart, not a reload.
 
 `global:` bindings need Ghostty in **System Settings → Privacy & Security →
 Accessibility**. Without the grant the binding is silently inert — there is no
 error, so verify by pressing it.
+
+It is `cmd+alt+grave`, not `cmd+grave`: macOS already owns `cmd+grave` for
+"Cycle Through Windows", and a `global:` bind "will always consume the input",
+so binding it there breaks window cycling in every application on the machine.
+
+Two things make this easy to get wrong:
+
+- **`+show-config` silently drops keybind prefixes.** A `global:` bind prints as
+  an ordinary one, so the command cannot tell you whether the bind is global.
+  Only the file on disk knows. Grep `~/.config/ghostty/keys.ghostty`.
+- **The grant is per machine and the check is not remotable.** Read it directly
+  (read-only, no `tccutil` — resetting TCC is machine-wide, never a probe):
+
+  ```bash
+  sqlite3 "file:///Library/Application%20Support/com.apple.TCC/TCC.db?mode=ro" \
+    "select client, auth_value from access where service='kTCCServiceAccessibility';" \
+    | grep -i ghostty
+  ```
+
+  `…|2` means granted; no row means never granted. Measured 2026-08-18: **Pro
+  granted**, **Mini no row** (headless server — the quick terminal is pointless
+  there anyway), **M5 the query answers `authorization denied` over ssh**, because
+  sshd on that host lacks Full Disk Access. That is CANNOT-VERIFY, not
+  "not granted" — run it in a local M5 terminal to actually know.
 
 ## Recovery
 

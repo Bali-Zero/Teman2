@@ -33,7 +33,9 @@ infra/ghostty/
 │   ├── m5.ghostty       ├→ ~/.config/ghostty/machine.ghostty     (one per host)
 │   └── mini.ghostty    ─┘
 ├── install.sh          back up → install → validate → roll back on failure
-└── verify.sh           prove it is installed, current, and working
+├── verify.sh           prove it is installed, current, and working
+└── verify-latest.sh    → ~/.config/ghostty/verify-latest.sh      (what nuz/v types:
+                          runs origin/main's verify.sh — current on any checkout)
 ```
 
 `~/.config/ghostty/local.ghostty` is yours: never installed, never in git,
@@ -48,8 +50,15 @@ bash infra/ghostty/verify.sh              # prove it
 ```
 
 The machine is detected by hostname; `--machine pro|m5|mini` overrides it.
-Reload a running Ghostty with `cmd+shift+comma`. **Opacity, blur and the Dock
-icon need a full quit and relaunch** — a reload will not show them.
+Reload a running Ghostty with `cmd+shift+comma`. The reference states explicitly
+that `background-opacity` needs a full quit and relaunch; blur and the Dock icon
+are not documented either way, so relaunch is the reliable route for all three.
+
+One location outranks all of this: macOS searches
+`~/Library/Application Support/com.mitchellh.ghostty/config.ghostty` **before**
+any XDG path. Ghostty.app creates that file empty by itself, which is harmless —
+but if it ever carries settings they silently beat everything installed here, so
+`verify.sh` checks its CONTENT (not its existence) and fails when it is non-empty.
 
 Drift between the installed copy and this directory is caught two ways: locally
 by `verify.sh`, and fleet-wide by `scripts/lint_home_fork.py --check`, which
@@ -67,8 +76,12 @@ Measured against Ghostty 1.3.1 on macOS 27.0, not assumed:
   "configuration files do not take effect until after the entire configuration is
   loaded." Measured order: top-level `config` → top-level `config.ghostty` →
   `config`'s includes → `config.ghostty`'s includes.
-- Among includes, **declaration order wins later**: `fleet` → `keys` → `machine`
-  → `local`.
+- Among includes, declaration order is `fleet` → `keys` → `machine` → `local`,
+  and **later wins — but only for scalar settings**. Repeatable ones accumulate:
+  `font-family` builds a fallback chain rather than overriding (reset it with
+  `font-family = ""` first), and `font-feature` / `command-palette-entry` append.
+  `keybind` appends too, except that the same trigger declared again replaces
+  its action.
 - Relative include paths resolve against the directory of the file holding the
   directive — **not** the process working directory, and **not** the symlink
   target if the file is reached through a symlink.
@@ -76,6 +89,13 @@ Measured against Ghostty 1.3.1 on macOS 27.0, not assumed:
 - `?` before a path suppresses the error when the file is absent. Without it, one
   missing include makes the whole configuration fail to load.
 - `scrollback-limit` is in **bytes, per surface** — not lines, not per app.
+- `+show-config` prints the effective configuration but **drops keybind
+  prefixes** — a `global:` bind shows as an ordinary one. It cannot be used to
+  verify prefix state; read the file instead.
+- `+list-keybinds --default=true` prefixes every line with `keybind = ` and
+  prints Ghostty's normalised form (`cmd`→`super`, `left`→`arrow_left`,
+  `comma`→`,`). Comparing your bindings against it without normalising reports
+  everything as non-default.
 
 ## Two defects this profile addresses
 
@@ -100,18 +120,25 @@ It costs nothing and makes a screenshot, a screen-share or a Vision Pro virtual
 display name its own machine.
 
 `macos-icon = custom-style` is flagged experimental upstream ("we may change the
-format of the custom styles in the future"). If a future release rejects it,
-`verify.sh` fails loudly and the fix is to drop three lines from the machine
-profile.
+format of the custom styles in the future"). If a future release rejects the
+value, `+validate-config` fails and `install.sh` refuses the install rather than
+leaving a broken config; the fix is to drop three lines from the machine profile.
 
 ## Known gaps
 
-- **Mini has no Nerd font.** The fleet `font-family` silently falls back to plain
-  `JetBrains Mono`, which has no icon glyphs, so prompt segments render as tofu.
-  `verify.sh` reports this rather than letting it pass unseen. Fix:
-  `brew install --cask font-jetbrains-mono-nerd-font`.
 - **Agent-team panes do not open in Ghostty.** Claude Code hosts teammate panes
   in tmux or iTerm2 only; in a bare Ghostty window it falls back to an external
   tmux session or fails outright. Running Claude Code inside `tmux` makes panes
-  appear in the Ghostty window. tmux is installed on Pro (3.6a) and absent on M5.
-  See `docs/runbooks/ghostty-fleet.md`.
+  appear in the Ghostty window. The tmux binary is present on all three machines
+  (measured 2026-08-18: Pro 3.7b, M5 3.7b, Mini 3.6a) but the binary is only the
+  prerequisite — the panes appear when Claude Code actually runs INSIDE a
+  session. The palette entry "Claude: agent-pane session (tmux)" and `cmd+alt+n,
+  t` both type the attach command. See `docs/runbooks/ghostty-fleet.md`.
+- **`global:` keybinds need a per-machine Accessibility grant.** Without it the
+  quick-terminal binding is silently inert — no error, nothing happens. The
+  grant cannot be probed remotely (the runbook documents the read-only local
+  check); press the chord once after install to know.
+
+Two gaps this file used to list are cured and guarded: Mini's missing Nerd font
+(installed 2026-08-18; `verify.sh` still checks resolution) and M5's missing
+tmux (installed 2026-08-18).

@@ -1,0 +1,93 @@
+{
+  "run_at": "2026-08-16T07:08:56+08:00",
+  "today": "2026-08-16",
+  "yesterday_seen_count": 22,
+  "new_today_count": 0,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "http_403",
+      "note": "Blocked, retried once (Mozilla UA via curl), still 403"
+    },
+    {
+      "url": "https://ortax.org/news",
+      "reason": "empty_shell",
+      "note": "200 but client-rendered SPA, title 'Artikel tidak ditemukan' (same failure mode as prior runs)"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "http_403",
+      "note": "Blocked, retried once (Mozilla UA via curl), still 403"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "http_403",
+      "note": "Blocked, retried once (Mozilla UA via curl), still 403 (empty_shell on prior runs, 403 today)"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "timeout",
+      "note": "Connection failed (curl HTTP_CODE=000), retried once, still failed"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "http_403",
+      "note": "Blocked, retried once (Mozilla UA via curl), still 403 (was checked_no_new on prior runs, 403 today)"
+    },
+    {
+      "url": "https://peraturan.go.id",
+      "reason": "ssl_error",
+      "note": "WebFetch 'Socket is closed' twice, curl confirms SSL connect error (exit 35)"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "Homepage parsed; headlines are Coretax/marketplace-tax commentary, no verbatim reg-number citations within window"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "outside_window",
+      "note": "Article dated 2026-08-14 reports PMK 58/2026 (Bea Cukai reorg), but PMK 58/2026 itself was enacted 10 Agustus 2026 per JDIH Kemenkeu, 6 days outside 48h window - same freshness standard applied to Permendikdasmen 19/2026 on 2026-08-15"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "Content parsed; newest entry PER-8/PJ/2026 (already seen) dated 2026-07-28, older than 48h window"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "Content parsed; newest entry UU 2/2026 (PPRT) dated 30 April 2026, far outside 48h window"
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [],
+  "seen_citations": [
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 28 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "PMK Nomor 44 Tahun 2026",
+    "Peraturan Direktur Jenderal Pajak Nomor PER-8/PJ/2026",
+    "Peraturan Menteri Hukum Nomor 13 Tahun 2026",
+    "PMK Nomor 61 Tahun 2026",
+    "PMK Nomor 57 Tahun 2026"
+  ],
+  "note": "All 4 NB-INTEL queried successfully, 0 formal regulatory citations returned (NB-INTEL-Tax again surfaced the same Purbaya marketplace-tax-postponement talking point already dropped 2026-08-15 - still no verbatim citation, dropped per Hard Rule #2). Web sweep found one candidate (PMK 58/2026, Bea Cukai reorg) via IKPI but it falls outside the 48h freshness window at the regulation's own enactment date, not the article's publish date - filed under sources_checked_no_delta/outside_window per the same standard used 2026-08-15."
+}
