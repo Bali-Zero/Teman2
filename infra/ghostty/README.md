@@ -1,0 +1,117 @@
+# Ghostty — Nuzantara fleet profile
+
+The terminal Antonello actually works in, on Pro / M5 / Mini, kept in one place
+and under review instead of drifting per machine.
+
+## Why this exists
+
+Before this, the fleet ran three different terminals under one name. Measured
+on 2026-08-18:
+
+| | Pro | M5 | Mini |
+|---|---|---|---|
+| config file | `config.ghostty` (53 keys) | `config` (22 keys) | none at all |
+| theme | Catppuccin Mocha | Catppuccin Macchiato | Ghostty default |
+| font | `…Nerd Font Mono` | `…Nerd Font` | no Nerd font installed |
+| ssh terminfo | on | **off** | — |
+| splits / resize keys | none | yes | — |
+| clipboard guards | yes | **none** | — |
+
+Neither machine was wrong; they had simply been written months apart and never
+reconciled. `~/.config` is not a git repository, so there was also no history
+and no backup of either.
+
+## Layout
+
+```
+infra/ghostty/
+├── config              → installed as ~/.config/ghostty/config   (the entry point)
+├── fleet.ghostty       → ~/.config/ghostty/fleet.ghostty         (shared base)
+├── keys.ghostty        → ~/.config/ghostty/keys.ghostty          (keybinds + palette)
+├── machines/
+│   ├── pro.ghostty     ─┐
+│   ├── m5.ghostty       ├→ ~/.config/ghostty/machine.ghostty     (one per host)
+│   └── mini.ghostty    ─┘
+├── install.sh          back up → install → validate → roll back on failure
+└── verify.sh           prove it is installed, current, and working
+```
+
+`~/.config/ghostty/local.ghostty` is yours: never installed, never in git,
+loaded last, optional (`?` prefix). Put one-machine experiments there.
+
+## Use
+
+```bash
+bash infra/ghostty/install.sh --dry-run   # what would change
+bash infra/ghostty/install.sh             # do it (backs up first)
+bash infra/ghostty/verify.sh              # prove it
+```
+
+The machine is detected by hostname; `--machine pro|m5|mini` overrides it.
+Reload a running Ghostty with `cmd+shift+comma`. **Opacity, blur and the Dock
+icon need a full quit and relaunch** — a reload will not show them.
+
+Drift between the installed copy and this directory is caught two ways: locally
+by `verify.sh`, and fleet-wide by `scripts/lint_home_fork.py --check`, which
+arbitrates against `origin/main` rather than the local checkout (that
+distinction is the W106b scar: on a machine whose checkout is behind, the naive
+comparison blames the copy that is actually current).
+
+## Config mechanics worth knowing
+
+Measured against Ghostty 1.3.1 on macOS 27.0, not assumed:
+
+- Ghostty auto-reads **two** filenames: `config` and `config.ghostty`. Both are
+  read and merged when both exist.
+- **An included file always beats a top-level value.** The reference is explicit:
+  "configuration files do not take effect until after the entire configuration is
+  loaded." Measured order: top-level `config` → top-level `config.ghostty` →
+  `config`'s includes → `config.ghostty`'s includes.
+- Among includes, **declaration order wins later**: `fleet` → `keys` → `machine`
+  → `local`.
+- Relative include paths resolve against the directory of the file holding the
+  directive — **not** the process working directory, and **not** the symlink
+  target if the file is reached through a symlink.
+- `~` is expanded in include paths. `$HOME` is **not** (it fails loudly).
+- `?` before a path suppresses the error when the file is absent. Without it, one
+  missing include makes the whole configuration fail to load.
+- `scrollback-limit` is in **bytes, per surface** — not lines, not per app.
+
+## Two defects this profile addresses
+
+**`xterm-ghostty` is unknown across the fleet.** `infocmp xterm-ghostty` exits 1
+on both M5 and Mini, so every ssh out of a Ghostty window landed on a host that
+could not describe the terminal. `shell-integration-features` now carries
+`ssh-terminfo` (installs it on first connect, then caches the host) and
+`ssh-env` (carries `COLORTERM`, and falls back to `xterm-256color` when the
+install cannot happen). Check what has been cached with `ghostty +ssh-cache`.
+
+**Nothing told you a long job had finished.** `notify-on-command-finish =
+unfocused` with a 45s floor sends a macOS notification for deploys, test suites
+and LLM panels — but only when you are looking elsewhere, and only for your own
+interactive commands (it rides on OSC 133, which non-interactive tool shells do
+not emit).
+
+## Machine identity
+
+Each host owns a colour, carried by the cursor, the split dividers and the Dock
+icon: **Pro peach `#fab387`**, **M5 blue `#89b4fa`**, **Mini green `#a6e3a1`**.
+It costs nothing and makes a screenshot, a screen-share or a Vision Pro virtual
+display name its own machine.
+
+`macos-icon = custom-style` is flagged experimental upstream ("we may change the
+format of the custom styles in the future"). If a future release rejects it,
+`verify.sh` fails loudly and the fix is to drop three lines from the machine
+profile.
+
+## Known gaps
+
+- **Mini has no Nerd font.** The fleet `font-family` silently falls back to plain
+  `JetBrains Mono`, which has no icon glyphs, so prompt segments render as tofu.
+  `verify.sh` reports this rather than letting it pass unseen. Fix:
+  `brew install --cask font-jetbrains-mono-nerd-font`.
+- **Agent-team panes do not open in Ghostty.** Claude Code hosts teammate panes
+  in tmux or iTerm2 only; in a bare Ghostty window it falls back to an external
+  tmux session or fails outright. Running Claude Code inside `tmux` makes panes
+  appear in the Ghostty window. tmux is installed on Pro (3.6a) and absent on M5.
+  See `docs/runbooks/ghostty-fleet.md`.

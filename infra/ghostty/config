@@ -1,0 +1,35 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  Ghostty · ENTRY POINT  →  installed as ~/.config/ghostty/config
+#
+#  Ghostty auto-reads exactly two filenames in this directory: `config` and
+#  `config.ghostty`. When both exist BOTH are read and merged. Measured load
+#  order on 1.3.1 (four compositions, 2026-08-18):
+#
+#     1. config              (top-level values)
+#     2. config.ghostty      (top-level values — these beat config's)
+#     3. the files config included
+#     4. the files config.ghostty included   (these beat everything)
+#
+#  Two consequences, both counter-intuitive:
+#    · An INCLUDED file always beats a top-level value, in either file. That is
+#      documented: "configuration files do not take effect until after the
+#      entire configuration is loaded."
+#    · So a leftover `config.ghostty` does not cleanly override this setup — it
+#      loses on every key our included files set, and wins on every key they do
+#      not. A patchwork, which is harder to reason about than a clean override.
+#      That is why the installer retires it instead of leaving it alone.
+#
+#  Within the includes below, order is declaration order and LATER WINS:
+#     fleet  →  keys  →  machine  →  local
+#  Relative paths resolve against the directory of the file holding the
+#  directive (this one), and `~` is expanded — `$HOME` is NOT.
+# ═══════════════════════════════════════════════════════════════════════════
+
+config-file = fleet.ghostty
+config-file = keys.ghostty
+config-file = machine.ghostty
+
+# Optional, never in git, always last: scratch overrides for one machine or one
+# afternoon. The leading `?` means "no error if absent" — verified: without it,
+# a missing file makes the whole config fail to load.
+config-file = ?local.ghostty
