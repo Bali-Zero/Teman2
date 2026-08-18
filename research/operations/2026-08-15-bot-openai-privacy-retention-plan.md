@@ -13,12 +13,8 @@ sources:
   - https://help.openai.com/en/articles/5722486-api-data-usage-policies (official API data usage and retention controls, checked 2026-08-18)
   - https://help.openai.com/en/articles/7039943-data-usage-for-consumer-services-faq (official consumer-services FAQ, checked 2026-08-18)
   - https://help.openai.com/en/articles/7730893-data-control (official ChatGPT data controls, checked 2026-08-18)
-  - PR #4216 source head 0b8705527 and its ADR (subscription-backed offline lane)
-adversarial_review: >-
-  Historical plan reviewed by Kimi K3 and Gemini; R28 adapter review Kimi K3
-  SHIP plus Gemini 3.7 Flash High degraded fallback SHIP after Gemini 3.1 Pro
-  FIX-FIRST; R28 document review Kimi K3 FIX-FIRST findings corrected; mandatory
-  final Fable/Claude on-disk gate pending
+  - PR #4216 source head 1dcdd670d and its ADR (subscription-backed offline lane)
+adversarial_review: kimi-k3
 ---
 
 # Zantara WA bot — OpenAI provider privacy & retention plan
@@ -71,8 +67,9 @@ No real export was processed and no client-specific blind benchmark was run.
    to the CLI.
 5. A separate runtime architecture and fresh threat/privacy review. Fly does not inherit this
    Air-M5 user's local CLI or ChatGPT OAuth state, and PR #4216 contains no runtime wiring.
-6. Mandatory final Fable/Claude on-disk gate, followed by the repository's normal PR checks. No
-   merge, deploy, traffic, or cutover is authorized by this plan.
+6. The mandatory Fable 5 on-disk gate passed on source head `1dcdd670d`; repository CI and an
+   independent merge decision remain separate. No merge, deploy, traffic, or cutover is authorized
+   by this plan.
 
 **Privacy verdict:** synthetic, non-PII offline probing only. Real WhatsApp data, even de-identified
 by the automated builder, remains BLOCKED until every gate above has evidence.
@@ -346,7 +343,7 @@ as fact about the eventual PR without re-reading the frozen diff.
 
 **R28 update:** V3's selected-provider matrix now exists in
 `research/operations/2026-08-15-bot-provider-failure-matrix.md` and is reconciled to PR #4216 head
-`0b8705527`. It confirms the lane is offline-only and that there is currently nothing to roll back
+`1dcdd670d`. It confirms the lane is offline-only and that there is currently nothing to roll back
 from. The historical handoff below remains useful for a future serve-stage, but it is not an open
 request to wire the current adapter.
 

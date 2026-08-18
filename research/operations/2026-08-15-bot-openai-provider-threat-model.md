@@ -23,13 +23,9 @@ sources:
   - developers.openai.com/api/docs/guides/tools (WebSearch this turn — mcp/web_search/file_search tool types)
   - OpenAI Responses API refusal/incomplete_details schema (WebSearch this turn, community + developer docs)
   - OpenAI sk-proj- Projects launch date (WebSearch this turn — April 2024, corrects an earlier "since 2023" draft claim)
-  - PR #4216 source head 0b8705527 (Codex subscription adapter, offline harness, tests, CI, and ADR)
+  - PR #4216 source head 1dcdd670d (Codex subscription adapter, offline harness, tests, CI, and ADR)
   - research/operations/2026-08-15-bot-provider-failure-matrix.md (R28 reconciliation)
-adversarial_review: >-
-  Historical draft reviewed by Kimi K3 and Gemini; R28 adapter review Kimi K3
-  SHIP plus Gemini 3.7 Flash High degraded fallback SHIP after Gemini 3.1 Pro
-  FIX-FIRST; R28 document review Kimi K3 FIX-FIRST findings corrected; mandatory
-  final Fable/Claude on-disk gate pending
+adversarial_review: kimi-k3
 ---
 
 # Zantara WA bot — OpenAI provider threat model
@@ -41,7 +37,7 @@ review archaeology: it threat-modeled an earlier Responses-API-key design and, b
 discarded pseudo-shadow branch. Whenever an earlier sentence conflicts with this section, this
 section wins.
 
-**Frozen target:** PR #4216 source head `0b8705527`, reconciled with `origin/main` at
+**Frozen target:** PR #4216 source head `1dcdd670d`, reconciled with `origin/main` at
 `993e4e868a6e8210328f69ccd136ca9d5c54d776`. The current fence is eleven files: the standalone
 subscription adapter and test, the dormant Responses adapter and test, role-aware corpus/benchmark
 tooling and tests, the ADR, test-package marker, and the existing CI workflow. `config.py`,
@@ -67,11 +63,11 @@ valid runtime bans, but no longer describe the selected offline adapter as prohi
 | Persistence | The final adapter probe returned a synthetic sentinel exactly, held the observed session-file count at `3273 -> 3273`, and found no sentinel beneath the searched `~/.codex` tree | This is narrow evidence for one call and searched surfaces, not universal non-persistence proof |
 | Context and tool parity | Offline fixtures now carry canonical roles plus up to 12 prior turns. The benchmark defaults to a narrow `CodexSubscriptionBenchClient` facade and invokes candidates sequentially | The adapter is text-in/text-out: no native tool calls, RAG state, citations, or production ReAct parity. A blind conversational-safety score cannot prove end-to-end replacement quality |
 | Runtime reachability | None. Fly does not inherit this Air-M5 user's CLI binary or ChatGPT OAuth state | A separate architecture, default-off wiring PR, threat review, and serve-stage gate would be required; PR #4216 cannot be promoted by configuration |
-| Dormant Responses client | Still stateless with `store:false`, no live consumer, and no key | Historical API-retention analysis remains relevant only if that separate path is ever revived with explicit paid-key authorization |
+| Dormant Responses client | Still stateless with `store:false`, no live consumer, and no key. Every handled HTTP-attempt outcome emits a fail-open, prompt-free cost event; cancellation in flight remains a declared LOW caveat | Historical API-retention analysis remains relevant only if that separate path is ever revived with explicit paid-key authorization and exact pricing rows |
 
 ### Verification and verdict
 
-One addopts-free local process collected and passed **482 tests**: 71 subscription-adapter, 163
+One addopts-free local process collected and passed **487 tests**: 73 subscription-adapter, 166
 dormant Responses-adapter, and 248 corpus/benchmark tests. The backend PR CI job already collects
 `backend/tests/`, including both adapter suites, and now explicitly adds
 `scripts/bot/test_build_deid_corpus.py` and `scripts/bot/test_wa_blind_bench.py`. Targeted Ruff `F,I`,
@@ -81,8 +77,9 @@ Kimi K3 returned SHIP. Gemini 3.1 Pro returned FIX-FIRST; the two code findings 
 closed: a second cancellation can no longer interrupt reaping, and the offline harness tests are
 now in CI discovery. The focused Gemini 3.1 Pro re-review timed out and produced no verdict. The
 declared continuity fallback, Gemini 3.7 Flash High, returned SHIP with
-`degraded_execution: true`. The repository's mandatory final Fable/Claude on-disk gate remains
-pending.
+`degraded_execution: true`. Fable 5 then independently reviewed the final source head
+`1dcdd670d` and returned SHIP with no CRITICAL, HIGH, or MEDIUM finding. Its six LOW follow-ups are
+recorded in PR #4216; none authorizes runtime use.
 
 A separate Kimi K3 review of this R28 documentation returned FIX-FIRST on two authorization-wording
 ambiguities. The adapter docstring now distinguishes the intended future credential path from the
@@ -572,7 +569,7 @@ own count) all checked out. Noted for calibration, not treated as an objection.
 These prompts targeted an intermediate Responses/API-key snapshot and are retained for provenance.
 Do not execute them against the current subscription adapter: their credential and client
 assumptions are obsolete. R28 above records the review actually run against PR #4216 source head
-`0b8705527`; a future runtime-wiring diff requires a fresh prompt written for that concrete design.
+`1dcdd670d`; a future runtime-wiring diff requires a fresh prompt written for that concrete design.
 
 **Ground truth as of THIS revision (do not re-derive, verify against the FROZEN diff instead):** the
 shadow-provider design (Findings 5/6/7) is already gone — reworked away before this diff existed —
