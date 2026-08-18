@@ -15,6 +15,12 @@ sources:
   - path: research/visa/doctrine-factory/source-hierarchy-draft.md
     lines: "44-56, 96-116"
     note: "7-level authority hierarchy and the cross-level SUPERSEDED-not-CONFLICTING resolution rule (S3.1.2) applied to this batch's E33A/B/C mapping finding"
+  - path: research/visa/doctrine-factory/cards/E33A.md
+    note: "sibling 'E3 bulk' lane's independently-authored card, landed on origin/main the same day (pulled in by this branch's post-batch git merge origin/main) -- sourced from the LIVE production pack, not NB-2; its Identity section corroborates this ledger's CF-17 finding exactly and resolves the operational flag in the safe direction"
+  - path: research/visa/doctrine-factory/cards/E33B.md
+    note: "same lane, same corroboration, for E33B"
+  - path: research/visa/doctrine-factory/cards/E33C.md
+    note: "same lane, same corroboration, for E33C"
 adversarial_review: kimi-k3
 ---
 
@@ -428,6 +434,21 @@ the same 3 codes to a property / deposit / business financial-instrument taxonom
   the internal DB being superseded), not an external/independent legal authority — it corroborates
   what Bali Zero currently SELLS under the E33 family, not what the law says; treat it as
   a second internal signal agreeing with primary law, not as independent legal evidence.
+- **Operational flag RESOLVED (post-merge fetch, this session):** `git merge origin/main` for this
+  branch pulled in `research/visa/doctrine-factory/cards/E33A.md`, `E33B.md`, `E33C.md` — a sibling
+  "E3 bulk" lane's independently-authored product cards, landed the same day, sourced not from
+  NB-2 but directly from the LIVE production pack (`rulepack-prod-007.source.json` `names.en`/
+  `names.id`) and the 114-code catalog (`seed_visa_types_complete_2026.py`). Their identity
+  findings match this ledger's exactly and independently: E33A = "Second Home Visa — Special-
+  Expertise Government Invitation", E33B = "Second Home Golden Visa — Special-Expertise
+  Collaboration", E33C = "Second Home Golden Visa — World-Figure Government Invitation" — the
+  government-invited-expert/collaborating-expert/world-figure family, not the property/deposit/
+  business one. This settles the operational-flag question above in the SAFE direction: **the
+  live RulePack's own `names` fields already carry the primary-law-aligned identity**, so there is
+  no live product-identity mismatch to fix downstream of this ledger's finding — the internal-
+  guide (`nb2_visa_types_final.txt`) mapping was always the outlier, never propagated into
+  production. (Neither `E23U.md` nor `E23V.md` exists in `cards/` — this ledger remains the sole
+  doctrine source for those two products.)
 
 ## Closure verdict per product (OD-4 disposition)
 
