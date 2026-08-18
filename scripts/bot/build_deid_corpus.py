@@ -76,8 +76,9 @@ target can be emitted — the builder never bridges over an unverified gap.
 Standard `.txt` exports do not encode a safe canonical staff/client role.
 They therefore produce zero eligible fixtures in the default mode instead
 of guessing from sender names. `--allow-legacy-single-turn` exists only for
-reproducing the historical role-blind harness and is an explicit opt-in; its
-output cannot settle quality on the real role-aware task.
+builder-side comparison with the historical role-blind corpus and is an explicit
+opt-in. Its output is intentionally rejected by the current role-aware benchmark
+loader and cannot settle quality on the real task.
 
 Usage:
     PYTHONPATH=. python3 scripts/bot/build_deid_corpus.py \\
@@ -2072,9 +2073,10 @@ def main() -> int:
         "--allow-legacy-single-turn",
         action="store_true",
         help=(
-            "Opt in to the historical role-blind, single-turn corpus. Default CLI mode "
-            "requires JSONL records with role=user|assistant and a non-empty local "
-            "conversation_id, then emits up to 12 prior de-identified turns."
+            "Opt in to the historical role-blind, single-turn corpus for builder-side "
+            "comparison only; this output is not valid input for the current benchmark. "
+            "Default CLI mode requires JSONL records with role=user|assistant and a "
+            "non-empty local conversation_id, then emits up to 12 prior de-identified turns."
         ),
     )
     parser.add_argument("-v", "--verbose", action="store_true")

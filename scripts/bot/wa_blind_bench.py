@@ -673,9 +673,9 @@ async def _run_one_fixture(
     responses: dict[str, str] = {}
     latency_ms: dict[str, float | None] = {}
     attempts: dict[str, int | None] = {}
+    prompt = _render_fixture_prompt(fixture)
     for label, model in label_map.items():
         try:
-            prompt = _render_fixture_prompt(fixture)
             result = await client.generate(input_text=prompt, model=model)
             responses[label] = "[REFUSED]" if result.refusal is True else result.text
             latency_ms[label] = result.latency_ms
