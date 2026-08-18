@@ -264,10 +264,31 @@ def _is_position_remote_dispatched(cmd_scan: str, pos: int) -> bool:
 #   - `git worktree remove [--force] <path>`  — segment-anchored git verb
 #   - `rm -rf[...] <path>` where a resolved arg lands under <repo>/.worktrees/<x>
 # Anything we cannot resolve to a concrete dirty worktree → ALLOW (negative-gating).
+#
+# W119 (2026-08-18, 9th over-match of this family found in this file, this time
+# in the ARGUMENT-COLLECTING capture group rather than the verb match): the
+# repeated group `(?:\s+TOKEN)+` used `\s+` as the inter-token separator, and
+# `\s` matches a literal newline. A Bash tool call is routinely MULTIPLE shell
+# statements joined by bare newlines (no `;`), which bash itself treats as
+# statement separators — but this regex did not, so it kept consuming tokens
+# PAST the end of the `rm`/`git worktree remove` line, across every following
+# line, until it hit the first `|`/`;`/`&`/`)` character anywhere further down
+# the command. A live incident: a 9-line command whose FIRST line was
+# `rm -f "$VAR/pkg"` (itself noise-stripped to `rm -f ""` — the quoted variable
+# reference contributed nothing) and whose SIXTH line was an unrelated
+# `cd /repo/.worktrees/<this-worktree>/apps/mouth` had that `cd` TARGET vacuumed
+# up as if it were an `rm` argument, naming the live, dirty, unarmed worktree as
+# a removal victim and blocking the whole (harmless) command. Same defect,
+# independently, in `CPMV_RE` below (a `cp`/`mv` line can misattribute a LATER
+# line's path as its destination, risking a false `_write_hits_main` block too).
+# Fix: confine the inter-token separator inside these repeated groups to
+# same-line whitespace (`[ \t]+`, no `\n`) — a shell token never legitimately
+# spans a bare newline here, the same reasoning W84 already applied to the
+# quote-stripper's char-class. Guilt+innocence: test_w119_multiline_token_bleed.py.
 WT_REMOVE_GIT_RE = re.compile(
-    r"\bgit\s+(?:-C\s+\S+\s+)?worktree\s+remove\b((?:\s+(?:--?\S+|[^\s|;&)]+))+)"
+    r"\bgit\s+(?:-C\s+\S+\s+)?worktree\s+remove\b((?:[ \t]+(?:--?\S+|[^\s|;&)]+))+)"
 )
-RM_RF_RE = re.compile(r"\brm\s+(?:-\S+\s+)*-\S*[rf]\S*(?:\s+-\S+)*((?:\s+[^\s|;&)]+)+)")
+RM_RF_RE = re.compile(r"\brm\s+(?:-\S+\s+)*-\S*[rf]\S*(?:\s+-\S+)*((?:[ \t]+[^\s|;&)]+)+)")
 
 
 def _quarantine_ref_for(wt: pathlib.Path) -> str:
@@ -537,7 +558,11 @@ SEDI_RE = re.compile(r"\bsed\b[^|;&]*?-i\S*\s+(?:-e\s+\S+\s+|'[^']*'\s+|\"[^\"]*
 # dd of=path
 DDOF_RE = re.compile(r"\bdd\b[^|;&]*?\bof=([^\s|;&)]+)")
 # cp/mv/install SRC... DEST  → DEST is the last non-flag token before pipe/sep
-CPMV_RE = re.compile(r"\b(?:cp|mv|install)\b((?:\s+(?:-\S+|[^\s|;&)]+))+)")
+# W119 (2026-08-18): same cross-line-bleed defect as RM_RF_RE / WT_REMOVE_GIT_RE
+# above — `\s+` as the inter-token separator inside a repeated group matches a
+# bare newline, so a `cp`/`mv` line can vacuum up a LATER, unrelated line's path
+# as if it were its own destination argument. Confined to same-line whitespace.
+CPMV_RE = re.compile(r"\b(?:cp|mv|install)\b((?:[ \t]+(?:-\S+|[^\s|;&)]+))+)")
 
 
 def _strip_noise(cmd: str) -> str:

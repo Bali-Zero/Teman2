@@ -5,8 +5,8 @@
   "_enforcement": "none",
   "recurrence_threshold": 3,
   "totals": {
-    "scars_scanned": 13,
-    "mechanical_candidates": 8,
+    "scars_scanned": 14,
+    "mechanical_candidates": 9,
     "consultive": 1,
     "rejected_no_anchor": 4
   },
@@ -20,7 +20,9 @@
       "W77": 3,
       "W79": 3,
       "W82": 4,
-      "W83": 4
+      "W83": 4,
+      "W84": 3,
+      "W85": 3
     },
     "families": {}
   },
@@ -119,6 +121,28 @@
       "note": "Recurring objective pattern (>=3). Candidate for an EXECUTABLE antibody via scar_replay -> test -> SHADOW -> (human-gate) -> enforcement. NOT auto-applied."
     },
     {
+      "title": "🐛 W119 (P1 STRUCTURAL): il gruppo di cattura degli argomenti leggeva `\\s` come separatore — un `rm -f` di riga 1 è stato accusato del `cd` di riga 6",
+      "severity": "UNKNOWN",
+      "w_numbers": [
+        "W105",
+        "W109",
+        "W117",
+        "W119",
+        "W80",
+        "W84",
+        "W85"
+      ],
+      "recurring_via": {
+        "w": [
+          "W84",
+          "W85"
+        ],
+        "family": []
+      },
+      "pipeline": "mechanical",
+      "note": "Recurring objective pattern (>=3). Candidate for an EXECUTABLE antibody via scar_replay -> test -> SHADOW -> (human-gate) -> enforcement. NOT auto-applied."
+    },
+    {
       "title": "🐛 W83 (P2 STRUCTURAL): il worktree-isolation hook decide su substring testuale → 3 falsi BLOCK in una sessione (git pull remoto ssh, `cd <worktree> && git`, git-verb dentro una stringa quotata) (2026-06-16)",
       "severity": "P2",
       "w_numbers": [
@@ -166,7 +190,8 @@
           "W77",
           "W79",
           "W82",
-          "W83"
+          "W83",
+          "W84"
         ],
         "family": []
       },
@@ -193,7 +218,9 @@
           "W73",
           "W77",
           "W82",
-          "W83"
+          "W83",
+          "W84",
+          "W85"
         ],
         "family": []
       },
