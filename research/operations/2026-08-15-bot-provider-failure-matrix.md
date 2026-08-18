@@ -5,7 +5,7 @@ client_case: "internal — BOT-V3 gate-prep for the Zantara WhatsApp ChatGPT Pro
 discovered_by: "Codex orchestrator on Air-M5, resumed from the 2026-08-15 BOT-V lane and re-grounded against current main plus adapter head"
 sources:
   - "origin/main at 993e4e868a6e8210328f69ccd136ca9d5c54d776, fetched 2026-08-18"
-  - "PR #4216 adapter source head 0b8705527: Codex subscription adapter, offline harness, tests, CI, and ADR"
+  - "PR #4216 adapter source head 1dcdd670d: Codex subscription adapter, offline harness, tests, CI, and ADR"
   - "PR #4216 ADR: research/operations/2026-08-15-adr-wa-runtime-openai-provider.md"
   - "PR #4301 branch agent/air-m5/ops/bot-corner-reconfirm-2026-08-18: research/operations/2026-08-18-bot-openai-shadow-wiring-plan.md"
   - "apps/backend-rag/backend/app/routers/whatsapp_chat.py"
@@ -14,10 +14,7 @@ sources:
   - "apps/backend-rag/backend/services/rag/agentic/llm_gateway.py"
   - "apps/backend-rag/backend/app/core/config.py"
   - "codex-cli 0.147.0 local exec help, measured 2026-08-18"
-adversarial_review: >-
-  Kimi K3 and Gemini 3.1 Pro reviewed the earlier failure-matrix rewrite;
-  final adapter review is Kimi K3 SHIP plus Gemini 3.7 Flash High degraded
-  fallback SHIP after Gemini 3.1 Pro FIX-FIRST; final Fable/Claude gate pending
+adversarial_review: kimi-k3
 ---
 
 # BOT-V3 — selected-provider failure matrix, idempotency, and rollback truth
@@ -46,7 +43,7 @@ This report separates three kinds of evidence:
   a real vendor failure;
 - **UNMEASURED** — reasoned from code or named as a required probe; no passing claim is made.
 
-The selected adapter evidence is frozen at PR #4216 source head `0b8705527`. Live-path evidence was
+The selected adapter evidence is frozen at PR #4216 source head `1dcdd670d`. Live-path evidence was
 rechecked against current `origin/main` at `993e4e868a6e8210328f69ccd136ca9d5c54d776`.
 `git diff HEAD..origin/main` was empty for all cited WhatsApp hot files before this revision.
 
@@ -237,24 +234,31 @@ before either file surface can exist.
 - [ ] Benchmark-run idempotency and crash-safe output publication proved.
 - [x] Adapter diff reviewed by Kimi K3; Gemini 3.1 Pro FIX-FIRST findings were dispositioned and
       the degraded Gemini 3.7 Flash High fallback returned SHIP.
-- [ ] Mandatory final Fable/Claude on-disk gate.
-- [x] #4194 threat/privacy addendum reconciled to source head `0b8705527`; its independent Kimi K3
-      FIX-FIRST wording findings were corrected. The mandatory Fable/Claude gate remains open.
+- [x] Mandatory final Fable 5 on-disk gate: SHIP on `1dcdd670d`, with no CRITICAL, HIGH, or MEDIUM
+      finding; six non-blocking LOW follow-ups recorded in PR #4216.
+- [x] #4194 threat/privacy addendum reconciled to source head `1dcdd670d`; its independent Kimi K3
+      FIX-FIRST wording findings were corrected.
 - [ ] No config, gateway, worker, secret, live traffic, merge, or deploy until a separate mandate.
 
 ## R28 reconciliation proof
 
 The PR #4216 source head named above was rechecked from its isolated worktree. One combined,
-addopts-free pytest process collected and passed **482 tests**: 71 subscription-adapter tests, 163
+addopts-free pytest process collected and passed **487 tests**: 73 subscription-adapter tests, 166
 dormant Responses-adapter tests, and 248 corpus/benchmark tests. Targeted Ruff `F,I`, workflow YAML
 parsing, Prettier, and `git diff --check` also passed. The two co-located offline harness test files
 are now explicit arguments in `.github/workflows/tests.yml`; CI runs those deterministic tests but
 does not execute a provider call, ingest an export, or perform human scoring.
 
-After Kimi K3 found that the adapter docstring could be read as runtime authorization, source head
-`0b8705527` narrowed it to the intended future credential-path choice plus the current human-run
-offline evidence boundary. The focused 71-test adapter suite and Ruff check passed again after that
-documentation-only correction.
+GitHub's backend job independently found that the dormant paid client lacked the mandatory cost
+ledger hook. The source was thawed and fixed rather than whitelisted: every handled HTTP-attempt
+outcome now emits a fail-open event containing only local model/token/status metadata, and the
+repository's `check_llm_cost_tracking.py` passes. Cancellation while a request is still in flight
+and zero-token accounting for malformed billed responses remain declared non-blocking LOWs.
+
+After Kimi K3 found that the adapter docstring could be read as runtime authorization, the text was
+narrowed to the intended future credential-path choice plus the current human-run offline evidence
+boundary. The focused 71-test adapter suite passed at that intermediate freeze; the final head's
+expanded 73-test adapter suite is included in the 487-case run above.
 
 ## Adversarial review
 
@@ -275,6 +279,6 @@ returned **Kimi K3 — SHIP** and **Gemini 3.1 Pro — FIX-FIRST**. Two real fin
 repeated cancellation can no longer interrupt child reaping, and the co-located offline harness
 tests are now named explicitly in the backend PR CI job. A focused Gemini 3.1 Pro re-review timed
 out without a verdict; the declared continuity fallback, Gemini 3.7 Flash High, re-read those fixes
-and returned **SHIP with `degraded_execution: true`**. The mandatory final Fable/Claude on-disk
-gate remains pending. No reviewer authorized live traffic, credentials, config, gateway or worker
-wiring, merge, deploy, or cutover.
+and returned **SHIP with `degraded_execution: true`**. Fable 5 independently reviewed final source
+head `1dcdd670d` and returned **SHIP**, with no CRITICAL, HIGH, or MEDIUM finding. No reviewer
+authorized live traffic, credentials, config, gateway or worker wiring, merge, deploy, or cutover.
