@@ -1,0 +1,103 @@
+{
+  "run_at": "2026-08-14T07:08:33+08:00",
+  "today": "2026-08-14",
+  "yesterday_seen_count": 21,
+  "new_today_count": 1,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "http_403",
+      "note": "Blocked, retried once, still 403"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "http_403",
+      "note": "Blocked, retried once, still 403"
+    },
+    {
+      "url": "https://ortax.org/news",
+      "reason": "empty_shell",
+      "note": "200 but client-rendered SPA, title 'Artikel tidak ditemukan' (same failure mode as 2026-08-13)"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "empty_shell",
+      "note": "200, 'Ditemukan 2.565 hasil' but AJAX search ignores jenis=PMK&tahun=2026 filter; static fallback is the full hierarchy-sorted UU catalog, newest UU 2/2026 dated 30 Apr 2026"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "timeout",
+      "note": "Connection failed (curl HTTP_CODE=000), retried once, still failed"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "Homepage parsed; headlines are tax-admin/Coretax/DPR news, no verbatim reg-number citations within window"
+    },
+    {
+      "url": "https://peraturan.go.id",
+      "reason": "outside_window",
+      "note": "Newest entry Permenkumham/Permen Hukum 13/2026 (already seen) and Permendikdasmen 19/2026, Tanggal Pengundangan 06 Agustus 2026, older than 48h window"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "outside_window",
+      "note": "Homepage parsed; newest Siaran Pers dated 7 Agu 2026 (iAPI/SIMKIM data exchange), older than 48h window"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "Content parsed; newest entry PER-8/PJ/2026 (already seen) dated 2026-07-28, older than 48h window"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "Content parsed; newest entry UU 2/2026 (PPRT) dated 30 April 2026, far outside 48h window"
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [
+    {
+      "citation": "PMK Nomor 57 Tahun 2026",
+      "title_id": "Perubahan atas Peraturan Menteri Keuangan Nomor 52/PMK.04/2020 tentang Bentuk Fisik, Spesifikasi, dan Desain Pita Cukai [titolo inferito dal contenuto dell'articolo, non citazione verbatim del titolo di gazzetta]",
+      "title_en": "Amendment to PMK 52/PMK.04/2020 on the Physical Form, Specifications, and Design of Excise Tape (Pita Cukai)",
+      "service_line": [
+        "tax"
+      ],
+      "severity": "low",
+      "confidence": "medium",
+      "impact_note": "Amends PMK 52/PMK.04/2020, tightening security-paper/printing specifications and minimum design elements required on excise tape (pita cukai) affixed to excisable goods (tobacco, alcohol). Narrow customs/excise (DJBC) scope — relevant only to excisable-goods producers/importers, not typical Bali Zero PT PMA/individual tax clients.",
+      "summary": "PMK 57/2026 (enacted 30 Jul 2026, reported by IKPI 13 Aug 2026) amends PMK 52/PMK.04/2020, requiring security paper/printing elements on excise tape (pita cukai) plus minimum design elements (state emblem, DJBC logo, excise tariff, budget year, retail price/pack content). Single-source finding (IKPI only) - not cross-validated elsewhere (hukumonline and muc.co.id both 403 today; DDTC homepage did not surface it).",
+      "source": "ikpi.or.id (13 Aug 2026) | https://ikpi.or.id/purbaya-terbitkan-aturan-baru-pita-cukai-kini-wajib-punya-unsur-sekuriti/",
+      "verbatim_excerpt": "Kementerian Keuangan (Kemenkeu) menerbitkan Peraturan Menteri Keuangan (PMK) Nomor 57 Tahun 2026 yang mengubah ketentuan mengenai bentuk fisik, spesifikasi, dan desain pita cukai. Aturan tersebut merupakan perubahan atas PMK Nomor 52/PMK.04/2020 tentang Bentuk Fisik, Spesifikasi, dan Desain Pita Cukai. “Bentuk dfisik pita cukai merupakan kertas yang memiliki sifat atau unsur sekuriti,” bunyi Pasal 2 ayat (2), dikutip Kamis (13/8). PMK Nomor 57 Tahun 2026 ditetapkan di Jakarta pada 30 Juli 2026 oleh Menteri Keuangan Purbaya Yudhi Sadewa. Peraturan tersebut mulai berlaku pada tanggal diundangkan.",
+      "first_seen_at": "2026-08-14T07:08:33+08:00"
+    }
+  ],
+  "seen_citations": [
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 28 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "PMK Nomor 44 Tahun 2026",
+    "Peraturan Direktur Jenderal Pajak Nomor PER-8/PJ/2026",
+    "Peraturan Menteri Hukum Nomor 13 Tahun 2026",
+    "PMK Nomor 61 Tahun 2026",
+    "PMK Nomor 57 Tahun 2026"
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "run_at": "2026-08-17T07:07:25+08:00",
+  "today": "2026-08-17",
+  "yesterday_seen_count": 22,
+  "new_today_count": 0,
+  "partial": false,
+  "unreachable_sources": [
+    {"url": "https://www.hukumonline.com/berita/", "reason": "http_403", "note": "blocked both attempts, 1 mechanical retry done"},
+    {"url": "https://muc.co.id/article", "reason": "http_403", "note": "blocked both attempts, 1 mechanical retry done"},
+    {"url": "https://jdih.kemenkeu.go.id/peraturan", "reason": "timeout", "note": "connection refused/timeout, 1 mechanical retry done"}
+  ],
+  "sources_checked_no_delta": [
+    {"url": "https://ortax.org/news", "reason": "empty_shell", "note": "200 OK but page body reads 'Artikel tidak ditemukan' (JS SPA shell)"},
+    {"url": "https://news.ddtc.co.id/", "reason": "checked_no_new", "note": "only PP 24/2026 tag seen (already in seen_citations)"},
+    {"url": "https://ikpi.or.id/berita/", "reason": "checked_no_new", "note": "dated entries 15-16 Aug 2026 but none are regulation citations"},
+    {"url": "https://peraturan.go.id", "reason": "outside_window", "note": "newest dated entry 06 Aug 2026 (Permen Dikdasmen 19/2026)"},
+    {"url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026", "reason": "checked_no_new", "note": "static listing did not honor query filter; no PMK 2026 in last 48h visible"},
+    {"url": "https://www.imigrasi.go.id", "reason": "outside_window", "note": "newest press release 14 Agu 2026"},
+    {"url": "https://www.pajak.go.id/peraturan", "reason": "checked_no_new", "note": "catalog search form only, no default dated listing"},
+    {"url": "https://jdih.kemnaker.go.id/peraturan", "reason": "checked_no_new", "note": "listing sorted by hierarchy not date; no item within 48h identified"}
+  ],
+  "nb_query_errors": [],
+  "deltas": [],
+  "seen_citations": ["UU Nomor 4 Tahun 2026", "UU Nomor 5 Tahun 2026", "PP Nomor 20 Tahun 2026", "PP Nomor 24 Tahun 2026", "Perpres Nomor 3 Tahun 2026", "Perpres Nomor 26 Tahun 2026", "Perpres Nomor 27 Tahun 2026", "PMK Nomor 43 Tahun 2026", "PMK Nomor 42 Tahun 2026", "PMK Nomor 41 Tahun 2026", "PMK Nomor 40 Tahun 2026", "PMK Nomor 28 Tahun 2026", "Permenkes Nomor 6 Tahun 2026", "Permenaker Nomor 7 Tahun 2026", "Permenaker Nomor 8 Tahun 2026", "Permenaker Nomor 9 Tahun 2026", "Permen PMK/Badan PMI Nomor 5 Tahun 2026", "PMK Nomor 44 Tahun 2026", "Peraturan Direktur Jenderal Pajak Nomor PER-8/PJ/2026", "Peraturan Menteri Hukum Nomor 13 Tahun 2026", "PMK Nomor 61 Tahun 2026", "PMK Nomor 57 Tahun 2026"]
+}

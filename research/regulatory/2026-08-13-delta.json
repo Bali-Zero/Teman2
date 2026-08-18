@@ -1,0 +1,102 @@
+{
+  "run_at": "2026-08-13T07:23:32+08:00",
+  "today": "2026-08-13",
+  "yesterday_seen_count": 20,
+  "new_today_count": 1,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "http_403",
+      "note": "Blocked, retried once, still 403"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "http_403",
+      "note": "Blocked, retried once, still 403"
+    },
+    {
+      "url": "https://ortax.org/news",
+      "reason": "empty_shell",
+      "note": "200 but client-rendered SPA, title 'Artikel tidak ditemukan' (same failure mode as 2026-08-12)"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "empty_shell",
+      "note": "200 but Elementor JS-rendered CSS/theme-var shell, zero real dated entries"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "empty_shell",
+      "note": "200 but AJAX search ignores filter; static fallback is a year/entity filter-form list, no dates"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "empty_shell",
+      "note": "200 but Drupal filter-form shell, zero PMK mentions in static HTML"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "timeout",
+      "note": "Connection failed, retried once, curl exit 28"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://peraturan.go.id",
+      "reason": "outside_window",
+      "note": "Recently-promulgated list parsed; newest entry Tanggal Penetapan 04 Agustus 2026 / Pengundangan 06 Agustus 2026, older than 48h window"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "checked_no_new",
+      "note": "Homepage parsed; only dated content found was unrelated (football tournament), zero regulation-dated entries"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "Content parsed; newest entry UU 2/2026 (PPRT) dated 30 April 2026, far outside 48h window"
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [
+    {
+      "citation": "PMK Nomor 61 Tahun 2026",
+      "title_id": "Tata Cara Pemanfaatan Tarif Bea Masuk dengan Skema User Specific Duty Free Scheme (USDFS) dalam Rangka Persetujuan Indonesia-Jepang mengenai Kemitraan Ekonomi (IJEPA) [titolo inferito dal contenuto dell'articolo, non citazione verbatim del titolo di gazzetta]",
+      "title_en": "Procedures for Utilizing Import Duty Tariffs under the User Specific Duty Free Scheme (USDFS) within the Indonesia-Japan Economic Partnership Agreement (IJEPA)",
+      "service_line": [
+        "tax"
+      ],
+      "severity": "low",
+      "confidence": "medium",
+      "impact_note": "Replaces PMK 51/2022; sets the procedure for claiming USDFS import-duty exemption on raw materials for IJEPA-registered industrial users (steel service centers, petrochemical importers) via SINSW. Narrow B2B customs scope, unlikely to affect typical Bali Zero PT PMA/individual clients unless they operate as a registered IJEPA raw-material importer.",
+      "summary": "PMK 61/2026 (enacted 31 Jul 2026, in force since 1 Aug 2026, reported by DDTC 12 Aug 2026) replaces PMK 51/2022 and sets the procedure for claiming USDFS import-duty tariffs under the Indonesia-Japan Economic Partnership Agreement, following the update to the IJEPA protocol via Perpres 32/2026. Single-source finding (DDTC only) - not cross-validated elsewhere.",
+      "source": "news.ddtc.co.id (12 Aug 2026) | https://news.ddtc.co.id/berita/download-peraturan/1821600/aturan-baru-bea-masuk-berdasarkan-usdfs-ijepa-unduh-di-sini",
+      "verbatim_excerpt": "Pemerintah menyesuaikan tata cara pemanfaatan tarif bea masuk dengan skema user specific duty free scheme (USDFS) dalam rangka Persetujuan antara Republik Indonesia dan Jepang mengenai Suatu Kemitraan Ekonomi (Indonesia and Japan for an Economic Partnership/IJEPA). Penyesuaian tersebut dilakukan melalui Peraturan Menteri Keuangan (PMK) 61/2026. Beleid ini dirilis untuk menggantikan PMK 51/2022.",
+      "first_seen_at": "2026-08-13T07:23:32+08:00"
+    }
+  ],
+  "seen_citations": [
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 28 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "PMK Nomor 44 Tahun 2026",
+    "Peraturan Direktur Jenderal Pajak Nomor PER-8/PJ/2026",
+    "Peraturan Menteri Hukum Nomor 13 Tahun 2026",
+    "PMK Nomor 61 Tahun 2026"
+  ]
+}

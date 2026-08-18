@@ -1,0 +1,8 @@
+{
+  "timestamp": "2026-08-14T09:05:05.170822",
+  "phase1_submitted": 9,
+  "phase1_failed": 191,
+  "phase1_backlog": 1740,
+  "quota_total": 200,
+  "quota_remaining": 191
+}
