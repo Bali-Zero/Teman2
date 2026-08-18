@@ -5,7 +5,7 @@ client_case: "internal — BOT-V3 gate-prep for the Zantara WhatsApp ChatGPT Pro
 discovered_by: "Codex orchestrator on Air-M5, resumed from the 2026-08-15 BOT-V lane and re-grounded against current main plus adapter head"
 sources:
   - "origin/main at 993e4e868a6e8210328f69ccd136ca9d5c54d776, fetched 2026-08-18"
-  - "PR #4216 adapter head b7b2d6652: apps/backend-rag/backend/llm/codex_exec_client.py and tests"
+  - "PR #4216 adapter head 847a5e834: Codex subscription adapter, offline harness, tests, CI, and ADR"
   - "PR #4216 ADR: research/operations/2026-08-15-adr-wa-runtime-openai-provider.md"
   - "PR #4301 branch agent/air-m5/ops/bot-corner-reconfirm-2026-08-18: research/operations/2026-08-18-bot-openai-shadow-wiring-plan.md"
   - "apps/backend-rag/backend/app/routers/whatsapp_chat.py"
@@ -14,7 +14,10 @@ sources:
   - "apps/backend-rag/backend/services/rag/agentic/llm_gateway.py"
   - "apps/backend-rag/backend/app/core/config.py"
   - "codex-cli 0.147.0 local exec help, measured 2026-08-18"
-adversarial_review: kimi-k3
+adversarial_review: >-
+  Kimi K3 and Gemini 3.1 Pro reviewed the earlier failure-matrix rewrite;
+  final adapter review is Kimi K3 SHIP plus Gemini 3.7 Flash High degraded
+  fallback SHIP after Gemini 3.1 Pro FIX-FIRST; final Fable/Claude gate pending
 ---
 
 # BOT-V3 — selected-provider failure matrix, idempotency, and rollback truth
@@ -27,10 +30,12 @@ The selected candidate is the ChatGPT Pro subscription adapter in
 dormant client's HTTP 401/429/5xx taxonomy as though it covered "the OpenAI shadow". It did not.
 
 Current verdict: **offline evidence only; not ready for shadow wiring or client traffic**. The
-adapter has a strong constructed-test baseline around subprocess lifecycle and sanitized failures,
-but material boundaries remain unmeasured or unimplemented: subscription quota classification,
-ephemeral session proof, inherited rule/tool isolation, partial-output detection, generic stdin
-communication errors, concurrency/backpressure, and a production execution host.
+adapter now has both a strong constructed-test baseline and one narrow, successful subscription
+probe through its final argv. Ephemeral execution, rule isolation, generic communication errors,
+role-aware history, sequential bench invocation, and repeated-cancellation reaping are closed for
+the offline harness. Material boundaries remain: subscription quota classification, tool/RAG
+parity, partial-output detection, stronger host-read isolation, benchmark-run idempotency, a
+privacy-approved real corpus and blind score, and a production execution host.
 
 ## 0. Frozen evidence boundary
 
@@ -41,12 +46,13 @@ This report separates three kinds of evidence:
   a real vendor failure;
 - **UNMEASURED** — reasoned from code or named as a required probe; no passing claim is made.
 
-The selected adapter evidence is frozen at PR #4216 head `b7b2d6652`. Live-path evidence was
+The selected adapter evidence is frozen at PR #4216 head `847a5e834`. Live-path evidence was
 rechecked against current `origin/main` at `993e4e868a6e8210328f69ccd136ca9d5c54d776`.
 `git diff HEAD..origin/main` was empty for all cited WhatsApp hot files before this revision.
 
-No client data, WhatsApp export, secret, provider call, config change, runtime flag, deploy, merge,
-or outward message was used to produce this report.
+No client data, WhatsApp export, secret, config change, runtime flag, deploy, merge, or outward
+message was used to produce this report. PR #4216 declares seven synthetic, non-PII subscription
+calls across its full development history; the final adapter probe is described narrowly below.
 
 ## 1. Provider tripartition — do not collapse these lanes
 
@@ -68,35 +74,37 @@ for that dormant alternative only.
 
 | Failure or boundary | Frozen adapter behavior | Evidence | Required disposition before offline Stage 1 | Client-facing implication today |
 | --- | --- | --- | --- | --- |
-| Binary missing, path absent, non-executable, or auth file absent/empty | `available=False`; `generate()` raises `CodexExecUnavailableError` before spawn. The ADR also measured that macOS Keychain auth may let the CLI authenticate even when an isolated `CODEX_HOME` lacks `auth.json`, so this gate is deliberately over-strict and is not equivalent to real credential state | CONSTRUCTED filesystem tests plus MEASURED Keychain caveat in ADR §30.4 | Keep fail-closed; bench must report `SKIPPED_UNAVAILABLE`, never a pass. Record that file presence is only a local gate proxy | None; there is no live caller |
+| Binary missing, path absent, non-executable, or auth file absent/empty | `available=False`; `generate()` raises `CodexExecUnavailableError` before spawn. Fresh isolated-home reproduction did **not** reproduce the historical Keychain inference: status was `Not logged in` and controlled exec attempts failed with HTTP 401 | CONSTRUCTED filesystem tests plus MEASURED isolated-home correction in ADR §30.4 | Keep fail-closed; bench reports `SKIPPED_UNAVAILABLE`, never a pass. File presence remains only a local gate proxy, not proof that a credential is live | None; there is no live caller |
 | Binary disappears or becomes unusable after availability check | Launch `OSError` maps to sanitized `CodexExecUnavailableError` | CONSTRUCTED tests | Preserve mapping and prove no child/tempdir leak | None |
 | Temp directory creation fails | Maps to sanitized `CodexExecUnavailableError` | CONSTRUCTED test | Preserve typed failure | None |
 | Invalid model, prompt, or timeout | Positive model allowlist; empty prompt and non-finite/non-positive timeout rejected before spawn | CONSTRUCTED tests | Preserve the already-correct validation; style cleanup is not a Stage 1 gate | None |
-| Auth material exists but token is revoked/expired | On non-zero exit, sanitized stderr is matched against auth-death phrases; match raises `CodexExecAuthError` without raw stderr | Classifier behavior is CONSTRUCTED. Only `not logged in` was MEASURED through `codex login status`; the remaining vocabulary plus the wording and exit shape of a real failed `codex exec` are UNMEASURED | Measure an actual controlled `codex exec` auth-death or use a documented real incident; record CLI version; do not treat the status-command vocabulary as proof of the exec-command failure shape | None; future path must page an operator and fail closed |
+| Auth material exists but token is revoked/expired | On non-zero exit, sanitized stderr is matched against auth-death phrases; match raises `CodexExecAuthError` without raw stderr | The real isolated-home `codex exec` HTTP-401 failure class and stable `Not logged in` status phrase are MEASURED. The stored stderr fixture and broader classifier vocabulary remain CONSTRUCTED | Preserve the measured/constructed distinction; do not promote the broader regex vocabulary into vendor-contract evidence | None; future path must page an operator and fail closed |
 | ChatGPT Pro usage window / quota / seat throttle | No dedicated classifier. Unless vendor text accidentally matches auth vocabulary, it becomes generic `CodexExecProcessError(exit_code)` | UNMEASURED | Add a distinct sanitized quota/usage-window class only after measuring actual CLI output with Zero's authorization; abort replay, do not rotate seats silently | None; future shadow must never degrade Gemini or consume all O1/O2 capacity |
 | Vendor account enforcement / suspension | The accepted subscription-automation ToS residual could present as auth death, quota, or a generic non-zero exit; the current classifier cannot distinguish a dead token from a disabled seat | UNMEASURED | Treat any ambiguous seat-wide failure as operator-only and stop the lane. Do not rotate accounts or relabel it as transient without evidence | None; future runtime suitability remains blocked |
-| Sandbox, policy, approval, or inherited-rule rejection | Non-zero exit becomes generic process error; argv has `--sandbox read-only` and `--ignore-user-config`, but not `--ignore-rules` | Partly MEASURED from CLI help; failure wording UNMEASURED | Evaluate `--ignore-rules`; add if safe. Build guilt/innocence probes for hooks/rules and agentic host reads | None |
-| Prompt write / `communicate()` failure other than timeout/cancel | Child is killed/reaped, then the original arbitrary exception is re-raised | CONSTRUCTED test | Add a sanitized typed communication error; no raw OS/provider exception should escape a provider boundary | None |
+| Sandbox, policy, approval, or inherited-rule rejection | Non-zero exit becomes generic process error; fixed argv now has `--sandbox read-only`, `--ignore-user-config`, and `--ignore-rules` | Flags MEASURED from CLI help and argv; failure wording and remaining coding-agent host-read surface are UNMEASURED | Rule-file inheritance is closed for the offline harness. Stronger OS/process isolation remains an independent human architecture gate before real client data | None |
+| Prompt write / `communicate()` failure other than timeout/cancel | Child is killed/reaped, then a fixed-literal `CodexExecCommunicationError` is raised; raw exception type and text do not cross the boundary | CONSTRUCTED test | Closed for the offline harness; preserve the typed, sanitized mapping | None |
 | Wall-clock timeout | Child killed and reaped; `CodexExecTimeoutError`; prompt/raw output excluded from message | CONSTRUCTED test | Preserve; offline runner uses a fixed timeout and records the typed class | None |
-| Caller cancellation | Child killed/reaped; `CancelledError` propagates unchanged | CONSTRUCTED test | Preserve; prove tempdir cleanup after real task cancellation | None |
+| Caller cancellation, including a second cancellation during cleanup | One stable shielded wait task finishes child reaping before the latest `CancelledError` propagates unchanged | CONSTRUCTED single- and repeated-cancel tests | Closed for the offline harness; preserve the stable wait-task invariant | None |
 | Other non-zero exit | `CodexExecProcessError` carries numeric exit code only | CONSTRUCTED test | Preserve sanitization; extend matrix only after real failure samples exist | None |
 | Exit zero with empty/whitespace stdout | `CodexExecOutputShapeError` | CONSTRUCTED tests | Preserve; bench counts as failed candidate, never empty success | None |
-| Exit zero with truncated or partial non-empty text | Accepted as success; the current plain-text result carries no completion/truncation metadata | UNMEASURED and undetectable under the frozen adapter contract | Evaluate CLI 0.147.0's `--output-schema` as a candidate shape constraint, but do not assume it supplies completion metadata. Adopt or reject it by probe; score obvious truncation in the offline rubric | None |
-| Model refusal or safety block expressed as prose | Returned as ordinary text; `CodexExecResult` has no refusal field | UNMEASURED | Evaluate whether `--output-schema` can expose a stable refusal field without weakening isolation; otherwise classify by the offline rubric. Do not pretend parity with Responses API refusal objects | None |
+| Exit zero with truncated or partial non-empty text | Accepted as success; the current plain-text result carries no completion/truncation metadata | UNMEASURED and undetectable under the frozen adapter contract | `--output-schema` was evaluated and rejected for this purpose: it constrains answer shape but supplies neither completion metadata nor a reliable truncation signal. Score obvious truncation in the offline rubric and keep this boundary explicit | None |
+| Model refusal or safety block expressed as prose | Returned as ordinary text; `CodexExecResult` has no refusal field | UNMEASURED | `--output-schema` does not expose provider refusal metadata. Classify by the offline rubric and do not pretend parity with Responses API refusal objects | None |
 | Native function/tool call | Unsupported: the adapter has no tool-schema input or structured tool-call output | MEASURED from function signature and fixed argv | Stage 1 precomputes retrieval/tool results and evaluates final synthesis only; native tool parity is out of scope | None |
-| Session transcript persistence | Frozen argv omits `--ephemeral`; CLI 0.147.0 help explicitly offers it | MEASURED argv/help mismatch; actual filesystem residue not yet probed | Add `--ephemeral`; sentinel before/after filesystem test must show zero new rollout/session file and zero prompt residue | None; blocks any replay beyond synthetic de-identified text |
+| Session transcript persistence | Fixed argv includes `--ephemeral`. The final adapter probe returned its synthetic sentinel exactly, kept observed session-file count at `3273 -> 3273`, and found no sentinel residue beneath the searched `~/.codex` tree | MEASURED narrow final-adapter probe plus CONSTRUCTED argv tests | Closed only for the exact searched surfaces and synthetic call; this is not universal non-persistence proof. Independent privacy review still gates real corpus use | None |
 | Ambient repo/user context | Fresh empty cwd and `--ignore-user-config` are present; coding-agent tools still exist and read-only is not a no-tools contract | Fresh-cwd/hook behavior partly MEASURED in adapter ADR; host-read isolation UNMEASURED | Synthetic sentinel and hostile-prompt tests; no real client text until stronger OS isolation is independently approved | None |
 | Secret/environment exposure | Child env is reduced to PATH/HOME/TERM/LANG/LC_ALL/TMPDIR plus CODEX_HOME; prompt goes through stdin, not argv/env | CONSTRUCTED tests | Preserve; test prompt absent from argv/env/logs; CODEX_HOME path itself must not enter result artifacts | None |
 | Tempdir removal failure | `shutil.rmtree(..., ignore_errors=True)` hides cleanup failure | UNMEASURED | Add a cleanup-verification test or explicit sanitized diagnostic; offline runner must detect residue | None |
-| Parallel calls / inbound burst | One subprocess per `generate()`; no semaphore or queue in the client | UNMEASURED | Offline Stage 1 concurrency is exactly 1. Any future dispatcher needs its own bound, drop policy, and resource test | None |
+| Parallel calls / inbound burst | One subprocess per `generate()`; no semaphore in the client. The offline benchmark invokes candidates and fixtures sequentially, so observed harness concurrency is structurally one | MEASURED from the harness loop; runtime burst behavior remains UNMEASURED | Closed for the offline harness. Any future dispatcher needs its own bound, drop policy, and resource test | None |
 | Retry/backoff | Client performs no retry | MEASURED from code | Correct for fail-closed offline evidence. Future retry policy belongs to a caller and requires idempotency/quota rules | None |
 
 ### Load-bearing conclusion
 
 The adapter's current tests prove that many **constructed** process failures are sanitized and
-cleaned up. They do not prove how Codex CLI reports a dead subscription, a usage cap, a safety
-rejection, or a partial completion in the real service. The gate must never convert a simulated
-stderr string into a claim about measured vendor behavior.
+cleaned up; the narrow final subscription probe additionally proves one successful invocation and
+the searched persistence surfaces. They do not prove how Codex CLI reports a usage cap, a safety
+rejection, or a partial completion in the real service, and the broader auth vocabulary remains
+constructed. The gate must never convert a simulated stderr string into a claim about measured
+vendor behavior.
 
 ## 3. Offline Stage 1 failure semantics
 
@@ -104,19 +112,23 @@ Stage 1 is the de-identified replay proposed in PR #4301 on branch
 `agent/air-m5/ops/bot-corner-reconfirm-2026-08-18`, file
 `research/operations/2026-08-18-bot-openai-shadow-wiring-plan.md`. That proposal is not yet on
 this branch or `main`; the requirements below are repeated here so this document does not depend
-on an unresolvable local path. It is not a live shadow branch.
+on an unresolvable local path. PR #4216 now implements the role-aware corpus builder and sequential
+subscription-backed blind-bench harness, but no real export was processed and no blind quality
+score exists. It is not a live shadow branch.
 
 The runner must:
 
 1. use `CodexExecClient`, never infer the selected provider from a generic "OpenAI" label;
 2. run only on an operator machine already authenticated to the declared ChatGPT Pro seat;
-3. use `--ephemeral`, a fresh cwd, ignored user config/rules as validated, and concurrency 1;
+3. use `--ephemeral`, a fresh cwd, ignored user config/rules as validated, and concurrency 1 — all
+   now enforced by the offline harness;
 4. never retry auth, quota, policy, or unknown non-zero exits automatically;
 5. record only the typed outcome, numeric exit code where already exposed, model, latency, and
    de-identified fixture ID — never raw stderr, auth paths, credentials, phone numbers, or source
    message IDs;
 6. fail the entire run if no selected-provider call succeeds, if quota interrupts the registered
-   sample, or if a session/prompt residue sentinel is found;
+   sample, or if a session/prompt residue sentinel is found; the all-provider-failed case is
+   implemented, while quota and run-level residue monitoring remain operational gates;
 7. keep blind output and provider-label key separate with `0600` files in a `0700` run directory;
 8. make `(run_id, fixture_id, provider, model)` the idempotency key.
 
@@ -162,8 +174,11 @@ it rather than claiming end-to-end exactly-once delivery.
 ### Offline replay idempotency — new, separate keyspace
 
 The Stage 1 run never writes to `meta_inbox_messages`, `wa_outbox`, or any client-facing table. Its
-idempotency key is the local run key defined in §3. Replaying fixtures must not manufacture larger
-sample counts by duplicating rows.
+target idempotency key is the local run key defined in §3. The current harness preserves a run's
+blind-label recipe through its secret nonce/seed/candidate key file, but it does **not** yet enforce
+the proposed `(run_id, fixture_id, provider, model)` key or publish output atomically. Its private
+output files are truncated on reuse. Replaying fixtures must not manufacture larger sample counts
+by duplicating rows; this remains an explicit gate rather than a passing claim.
 
 ### Live-path gaps and trip observables carried forward
 
@@ -208,18 +223,32 @@ before either file surface can exist.
 
 ## 6. Gates that remain open
 
-- [ ] #4216 rebased/reconciled with current main without widening its 11-file fence.
-- [ ] `--ephemeral` added and session/prompt-residue sentinel proven.
-- [ ] `--ignore-rules` and coding-agent host-read surface dispositioned.
-- [ ] Generic communicate failures mapped to a sanitized typed error.
-- [ ] Auth-death wording measured against a controlled real CLI failure.
+- [x] #4216 reconciled with `origin/main` at `993e4e868` and held to its declared 11-file fence.
+- [x] `--ephemeral` added and one narrow session/prompt-residue sentinel probe passed.
+- [x] `--ignore-rules` added; inherited rules are excluded from the offline contract.
+- [ ] Stronger coding-agent/host-read isolation independently approved before any real client text.
+- [x] Generic communicate failures mapped to a sanitized typed error.
+- [x] Controlled isolated-home `codex exec` measured the HTTP-401 class; only the broader auth
+      vocabulary remains constructed.
 - [ ] Subscription quota/usage-window behavior measured with Zero's authorization and quota budget.
-- [ ] Role-aware, multi-turn de-identified corpus completed.
-- [ ] Bench path actually invokes `CodexExecClient`.
-- [ ] Offline runner concurrency fixed at 1 and idempotency proved.
-- [x] Final frozen diff reviewed by Kimi K3 and Gemini 3.1 Pro.
+- [x] Role-aware, multi-turn de-identified corpus tooling completed and fail-closed.
+- [x] Bench path invokes the `CodexExecClient` facade by default without a paid API key.
+- [x] Offline runner candidate/fixture calls are sequential, fixing harness concurrency at 1.
+- [ ] Benchmark-run idempotency and crash-safe output publication proved.
+- [x] Adapter diff reviewed by Kimi K3; Gemini 3.1 Pro FIX-FIRST findings were dispositioned and
+      the degraded Gemini 3.7 Flash High fallback returned SHIP.
+- [ ] Mandatory final Fable/Claude on-disk gate.
 - [ ] #4194 threat model rerun against the final adapter head.
 - [ ] No config, gateway, worker, secret, live traffic, merge, or deploy until a separate mandate.
+
+## R28 reconciliation proof
+
+The final PR #4216 head named above was rechecked from its isolated worktree. One combined,
+addopts-free pytest process collected and passed **482 tests**: 71 subscription-adapter tests, 163
+dormant Responses-adapter tests, and 248 corpus/benchmark tests. Targeted Ruff `F,I`, workflow YAML
+parsing, Prettier, and `git diff --check` also passed. The two co-located offline harness test files
+are now explicit arguments in `.github/workflows/tests.yml`; CI runs those deterministic tests but
+does not execute a provider call, ingest an export, or perform human scoring.
 
 ## Adversarial review
 
@@ -235,5 +264,11 @@ measured through `codex login status`; the remaining vocabulary and a real faile
 shape are unmeasured. The row now states exactly that distinction. An earlier Gemini attempt that
 mutated the file was discarded and does not count as review evidence.
 
-Final frozen-diff verdicts: **Kimi K3 — SHIP; Gemini 3.1 Pro — SHIP.** No reviewer authorized live
-traffic, credentials, config, gateway or worker wiring, merge, deploy, or cutover.
+That review applied to the earlier failure-matrix rewrite. The final adapter review subsequently
+returned **Kimi K3 — SHIP** and **Gemini 3.1 Pro — FIX-FIRST**. Two real findings were closed:
+repeated cancellation can no longer interrupt child reaping, and the co-located offline harness
+tests are now named explicitly in the backend PR CI job. A focused Gemini 3.1 Pro re-review timed
+out without a verdict; the declared continuity fallback, Gemini 3.7 Flash High, re-read those fixes
+and returned **SHIP with `degraded_execution: true`**. The mandatory final Fable/Claude on-disk
+gate remains pending. No reviewer authorized live traffic, credentials, config, gateway or worker
+wiring, merge, deploy, or cutover.
