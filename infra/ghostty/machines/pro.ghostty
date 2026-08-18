@@ -21,3 +21,10 @@ macos-icon-screen-color = #1e1e2e,#302438
 # The fleet's 32 MB per surface stands; raise it here only after re-measuring.
 window-width = 132
 window-height = 38
+
+# ─── Fleet reach (palette, per-machine) ────────────────────────────────────
+# command-palette-entry ACCUMULATES across included files, so per-machine
+# entries live here. Same convention as keys.ghostty: TYPED, never executed —
+# no trailing newline, nothing runs until you press enter.
+command-palette-entry = title:"SSH: mini (server H24)",description:"Tailscale-only — Mini is in the office on a separate ISP (typed, not executed).",action:"text:ssh mini"
+command-palette-entry = title:"SSH: air (M5 workstation)",description:"Antonello's primary seat (typed, not executed).",action:"text:ssh air"
