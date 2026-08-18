@@ -166,11 +166,14 @@ class BenchClient(Protocol):
     """Narrow client contract needed by the blind harness."""
 
     @property
-    def available(self) -> bool: ...
+    def available(self) -> bool:
+        raise NotImplementedError
 
-    async def generate(self, *, input_text: str, model: str | None = None) -> BenchCandidateResult: ...
+    async def generate(self, *, input_text: str, model: str | None = None) -> BenchCandidateResult:
+        raise NotImplementedError
 
-    async def close(self) -> None: ...
+    async def close(self) -> None:
+        raise NotImplementedError
 
 
 class CodexSubscriptionBenchClient:

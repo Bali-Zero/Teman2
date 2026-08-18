@@ -930,9 +930,9 @@ class TestK5PrivateOutputDirectory:
         looser permissions must still end up at 0700, not silently kept
         loose."""
         target = tmp_path / "preexisting"
-        target.mkdir(mode=0o755)
-        os.chmod(target, 0o755)  # mkdir's mode is umask-narrowed; force it loose first
-        assert stat.S_IMODE(target.stat().st_mode) == 0o755
+        target.mkdir(mode=0o750)
+        os.chmod(target, 0o750)  # force group access without ever granting world access
+        assert stat.S_IMODE(target.stat().st_mode) == 0o750
 
         _mkdir_private(target)
 
@@ -977,8 +977,8 @@ class TestR9_8MkdirPrivateRefusesSymlinkLeaf:
 
     def test_guilt_symlink_leaf_is_refused(self, tmp_path: Path):
         real_target = tmp_path / "real-dir"
-        real_target.mkdir(mode=0o755)
-        os.chmod(real_target, 0o755)
+        real_target.mkdir(mode=0o750)
+        os.chmod(real_target, 0o750)
 
         symlink_path = tmp_path / "out"
         symlink_path.symlink_to(real_target)
@@ -986,7 +986,7 @@ class TestR9_8MkdirPrivateRefusesSymlinkLeaf:
         with pytest.raises(OSError):
             _mkdir_private(symlink_path)
 
-        assert stat.S_IMODE(real_target.stat().st_mode) == 0o755, (
+        assert stat.S_IMODE(real_target.stat().st_mode) == 0o750, (
             "a symlink target's permissions must never be tightened by a call that refuses it"
         )
 
@@ -1151,8 +1151,8 @@ class TestWriteJsonlPrivateFchmod:
     def test_preexisting_loose_file_is_tightened_to_0600(self, tmp_path: Path):
         target = tmp_path / "preexisting.jsonl"
         target.write_text('{"id": "old-1", "language": "en", "text": "old"}\n', encoding="utf-8")
-        os.chmod(target, 0o644)
-        assert stat.S_IMODE(target.stat().st_mode) == 0o644
+        os.chmod(target, 0o640)
+        assert stat.S_IMODE(target.stat().st_mode) == 0o640
 
         _write_jsonl_private(target, [{"id": "new-1", "language": "en", "text": "new"}])
 
@@ -1173,7 +1173,7 @@ class TestWriteJsonlPrivateFchmod:
         target = tmp_path / "existing.jsonl"
         original_content = '{"id": "orig-1", "language": "en", "text": "keep me byte-identical"}\n'
         target.write_text(original_content, encoding="utf-8")
-        os.chmod(target, 0o644)
+        os.chmod(target, 0o640)
 
         closed_fds: list[int] = []
         real_close = os.close
@@ -1217,7 +1217,7 @@ class TestWriteJsonlPrivateFchmod:
         target = tmp_path / "existing-ftruncate.jsonl"
         original_content = '{"id": "orig-1", "language": "en", "text": "keep me byte-identical"}\n'
         target.write_text(original_content, encoding="utf-8")
-        os.chmod(target, 0o644)
+        os.chmod(target, 0o640)
 
         closed_fds: list[int] = []
         real_close = os.close

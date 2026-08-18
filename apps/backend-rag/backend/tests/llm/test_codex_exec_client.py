@@ -1039,7 +1039,8 @@ class TestTimeout:
 
         task.cancel()
         with pytest.raises(asyncio.CancelledError):
-            await task
+            unexpected_result = await task
+            pytest.fail(f"cancelled task returned unexpectedly: {unexpected_result!r}")
 
         assert proc.killed is True
         assert proc.wait_completed is True
@@ -1134,7 +1135,8 @@ class TestTimeout:
         task.cancel()
 
         with pytest.raises(asyncio.CancelledError):
-            _cancelled_result = await task
+            unexpected_result = await task
+            pytest.fail(f"cancelled task returned unexpectedly: {unexpected_result!r}")
 
         assert proc.killed is True
         assert proc.waited is True

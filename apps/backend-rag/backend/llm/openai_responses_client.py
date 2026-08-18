@@ -680,9 +680,12 @@ def _extract_refusal_reason(source: dict[str, Any], *keys: str) -> str:
     original chain's final `or "refused"` for the true "nothing was ever
     sent" case."""
     for key in keys:
-        if key not in source:
-            continue
-        value = source[key]
+        # Keep the runtime guard even though the public type contract is
+        # ``str``. It makes the mapping lookup's hashability invariant
+        # explicit to both Python and static security analyzers.
+        if not isinstance(key, str):
+            raise TypeError("refusal reason key is not a string")
+        value = source.get(key)
         if value is None:
             continue
         if not isinstance(value, str):
