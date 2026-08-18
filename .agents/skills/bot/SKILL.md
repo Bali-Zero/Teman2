@@ -20,7 +20,63 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 - **Bali Zero team**: work-support assistant. Check-in via WA (opens the free Meta 24h window),
   CRM nudges, PII-light briefings. Persona = "assistente operativo interno", not sales.
 
-## 1. LIVE STATE (last update 2026-08-12 — keep current)
+## 1. LIVE STATE (last update 2026-08-18 — keep current)
+
+- **🤖 OPENAI WA-PROVIDER LANE — ROUTE RECONFIRMED 2026-08-18, ALL THREE GATE-PREP PRs STILL
+  DRAFT (checked against the actual PR/branch content this turn, not their own summaries).**
+  This lane is governed by two session memories, not by this file — `.agents/skills/bot/SKILL.md`
+  said nothing about it before this entry: `decision_wa_openai_provider_subscription_path_owner_ruling_2026_08_15`
+  (Zero's 2026-08-15 ruling: WA runtime OpenAI provider goes through the **ChatGPT Pro
+  subscription** via headless `codex exec`, NEVER a per-token `OPENAI_WA_PROVIDER_API_KEY` —
+  supersedes the 5-family council's NO-GO-on-subscription verdict, residual ToS risk accepted by
+  the owner) and `project_bot_openai_lane_governance_codex_orchestrator_2026_08_15` (fence:
+  implementation lane in `.worktrees/bot-openai-adapter` is client-standalone + tests + ADR
+  **NO-WIRING** only — config.py/llm_gateway.py/secrets/deploy/real-traffic all forbidden; close
+  gate is freeze diff → lead net-diff check → **final Kimi K3 + Google/agy Gemini review of the
+  FROZEN diff** → only then a PR). Zero reconfirmed the ROUTE on 2026-08-18 — this is a GO to
+  keep advancing the lane, strictly inside that existing governance; it does **not** authorize
+  wiring or a live WA-channel cutover.
+  - **#4216** (adapter, `feat(bot): OpenAI WA provider lane (NO-WIRING)`) — its own body says
+    `DRAFT — HOLD. Not for merge. Remaining gates before any wiring: security review +
+shadow-hook design`, i.e. the hold is **not** the route question (that paragraph calls the
+    business/cost gate CLOSED) — it is two separate, still-open technical gates. Also
+    `mergeStateStatus=DIRTY`/`mergeable=CONFLICTING` against current `origin/main` as of this
+    check — readying it would not even let CI run (0-workflow DIRTY pattern, cicatrix #9 "Gate
+    e required"), and resolving the conflict would touch the "frozen head `b7b2d6652`" the whole
+    28-round review chain was run against. **Left in draft.**
+  - **#4194** (verifier V1/V4, `docs(bot): OpenAI-provider threat model + privacy plan`) — the PR
+    body reads as complete, but the doc it ships (`research/operations/2026-08-15-bot-openai-provider-threat-model.md`
+    on that branch) says otherwise, in its own text, as of its last commit (`28f70f026`,
+    "freeze-review prompts updated ... **Still not executed — standing by for team-lead's
+    explicit freeze signal, per the HOLD order**"): a `§Freeze re-review` section titled
+    "prepared prompts, NOT YET RUN", and the fence-compliance checklist states plainly `#4194
+... stays DRAFT/HOLD throughout and updates only against the frozen diff`. The doc reviewed
+    commits `b36fc9521`/`8a7aa9be5`; #4216's actual frozen head is `b7b2d6652` (4 boundary
+    commits) — a later state than what got reviewed. Today's route reconfirmation is not the
+    "team-lead's explicit freeze signal" this doc is waiting for (a different, technical
+    checkpoint). **Left in draft — trust the artifact's own self-declaration over its PR
+    summary (W65/W113 discipline).**
+  - **#4197** (BOT-V3 failure matrix, `docs(bot): failure matrix, idempotency, rollback proof`) —
+    content-checked, not just status-checked: its frontmatter still frames the choice as the
+    OLD council recommendation ("NO-GO on ChatGPT/Codex OAuth ... CONDITIONAL-GO on the OpenAI
+    API"), which the 2026-08-15 owner ruling **inverted**. Grepped the doc on that branch for
+    `codex_exec`/`codex.exec`/`subscription provider`/`owner ruling`/`ADR §30`/`supersede`:
+    **zero hits**. Every failure-matrix row analyzes `openai_responses_client.py` (the dormant
+    API-key alternative) as "the OpenAI shadow" — none analyzes `codex_exec_client.py` (the
+    actually-selected provider, subprocess/stdin auth-death failure modes, not HTTP
+    401/429/5xx). `mergeStateStatus=BLOCKED`. **Left in draft** — readying it would present a
+    gate-prep document as covering the chosen provider when it covers the shelved one.
+  - **Net**: none of the three PRs met the "body declares deliverable complete AND the only hold
+    was the route" bar this session was given to ready them on. Two hold on gates unrelated to
+    the route (#4216 security-review/shadow-hook-design, #4197's content gap on the wrong
+    provider); one (#4194) explicitly says it is waiting for a freeze signal this session cannot
+    supply on its own authority. Whoever runs the actual freeze re-review (Kimi K3 + Google/agy
+    on the frozen `b7b2d6652` diff) should also update #4197 to cover `codex_exec_client.py`
+    before that PR is judged complete.
+  - Shadow-first wiring plan (flag OFF by default, mirror dry-run, PROVE-LIVE criteria,
+    config-only rollback) written as a proposal doc for the orchestrator's gate:
+    `research/operations/2026-08-18-bot-openai-shadow-wiring-plan.md` — proposal only, no code,
+    no config touched.
 
 - **🔇 THE ONLY EXITS THAT LEAVE THE CLIENT SILENT WERE THE ONLY ONES THAT TOLD NOBODY
   (2026-08-12, CURED).** `generate_bot_reply` notifies a human at the BOTTOM of the function,
