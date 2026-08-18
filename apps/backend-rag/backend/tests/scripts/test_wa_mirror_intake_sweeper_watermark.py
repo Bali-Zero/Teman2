@@ -20,6 +20,7 @@ from __future__ import annotations
 import asyncio
 import importlib.util
 import logging
+import re
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -106,8 +107,16 @@ def _row(rid: int, *, blob_path: str, bmid: str | None = None) -> dict[str, Any]
     }
 
 
-def _wire(monkeypatch, wms, *, rows, watermark_seed, upsert=None, enqueue=None):
-    """Monkeypatch everything run_one_tick() needs, none of it real I/O."""
+def _wire(
+    monkeypatch, wms, *, rows, watermark_seed, upsert=None, enqueue=None, tg_notify=None
+):
+    """Monkeypatch everything run_one_tick() needs, none of it real I/O.
+
+    ``_tg_notify`` defaults to a no-op stub: without it, the poison-breaker
+    (verbale #3) would spawn a REAL subprocess against scripts/tg_notify.py
+    on every test that hits ANY poison row, writing to the live
+    ``~/.organism/tg_spool`` outside tmp_path (W96 — test-writes-prod).
+    """
     monkeypatch.setattr(wms.asyncpg, "create_pool", _fake_create_pool(rows))
     monkeypatch.setattr(wms, "_sweep_text_clients", _noop_text_sweep)
     monkeypatch.setattr(wms, "_load_watermark", lambda: watermark_seed)
@@ -117,7 +126,12 @@ def _wire(monkeypatch, wms, *, rows, watermark_seed, upsert=None, enqueue=None):
         wms, "_upsert_client_by_phone", upsert or _default_upsert
     )
     monkeypatch.setattr(wms, "enqueue", enqueue or _default_enqueue)
+    monkeypatch.setattr(wms, "_tg_notify", tg_notify or _default_tg_notify)
     return saved
+
+
+def _default_tg_notify(_tier: str, _dedup_key: str, _text: str) -> bool:
+    return True
 
 
 def _fake_create_pool(rows: list[dict[str, Any]]):
@@ -163,6 +177,31 @@ def test_is_transient_rejects_everything_else_as_permanent() -> None:
     assert wms._is_transient(asyncpg.DataError("bad data")) is False
     assert wms._is_transient(KeyError("missing")) is False
     assert wms._is_transient(RuntimeError("assertion")) is False
+    assert wms._is_transient(asyncpg.UndefinedTableError("no such table")) is False
+    assert wms._is_transient(asyncpg.UniqueViolationError("dup key")) is False
+
+
+# --------------------------------------------------------------------------- #
+# Widened transient set (verbale #1, post-refuter Qwen 3.8 Max, 2026-08-17):
+# retryable Postgres classes the original connectivity-only tuple missed.
+# --------------------------------------------------------------------------- #
+def test_is_transient_classifies_widened_retryable_postgres_errors() -> None:
+    wms = _load_sweeper()
+    assert wms._is_transient(asyncpg.QueryCanceledError("canceled")) is True
+    assert wms._is_transient(asyncpg.DeadlockDetectedError("deadlock")) is True
+    assert wms._is_transient(asyncpg.SerializationError("serialization")) is True
+    # OperatorInterventionError family (admin shutdown / crash / maintenance).
+    assert wms._is_transient(asyncpg.OperatorInterventionError("intervention")) is True
+    assert wms._is_transient(asyncpg.AdminShutdownError("admin shutdown")) is True
+    assert wms._is_transient(asyncpg.CrashShutdownError("crash shutdown")) is True
+    assert wms._is_transient(asyncpg.CannotConnectNowError("cannot connect now")) is True
+    assert wms._is_transient(asyncpg.IdleSessionTimeoutError("idle timeout")) is True
+    # InsufficientResourcesError family (OOM / too many conns / disk full).
+    assert wms._is_transient(asyncpg.InsufficientResourcesError("resources")) is True
+    assert wms._is_transient(asyncpg.OutOfMemoryError("oom")) is True
+    assert wms._is_transient(asyncpg.TooManyConnectionsError("too many conns")) is True
+    assert wms._is_transient(asyncpg.DiskFullError("disk full")) is True
+    assert wms._is_transient(asyncpg.PostgresSystemError("system error")) is True
 
 
 # --------------------------------------------------------------------------- #
@@ -205,19 +244,27 @@ async def test_permanent_enqueue_error_advances_watermark_past_poison_row(
 async def test_permanent_crm_upsert_error_advances_watermark_and_still_enqueues_next(
     monkeypatch, tmp_path, caplog
 ) -> None:
+    """Verbale #2 (post-refuter Qwen 3.8 Max, P1): a PERMANENT CRM-upsert
+    failure must NOT drop the media document. Only the CRM identity hint is
+    lost — row N still reaches ``enqueue()`` with ``client_id_hint=None``
+    (review/OCR still happens, it just isn't pre-linked to a client), and
+    row N+1 gets its own fresh CRM upsert attempt and its own hint.
+    """
     row_n = _row(200, blob_path=_write_blob(tmp_path, "n.pdf"))
     row_n1 = _row(201, blob_path=_write_blob(tmp_path, "n1.pdf"))
     upsert_calls: list[int] = []
     enqueue_calls: list[str] = []
+    enqueue_hints: dict[str, int | None] = {}
 
     async def flaky_upsert(_conn, *, raw_phone, **_kw):
         upsert_calls.append(1)
         if raw_phone == row_n["sender_phone"]:
             raise RuntimeError("constraint violation — permanent")
-        return 1
+        return 42
 
-    async def recording_enqueue(_pool, *, source_ref, **_kw):
+    async def recording_enqueue(_pool, *, source_ref, client_id_hint, **_kw):
         enqueue_calls.append(source_ref)
+        enqueue_hints[source_ref] = client_id_hint
         return SimpleNamespace(was_new=True)
 
     wms = _load_sweeper()
@@ -234,11 +281,20 @@ async def test_permanent_crm_upsert_error_advances_watermark_and_still_enqueues_
         rc = await wms.run_one_tick()
 
     assert rc == 0
-    # Row N's CRM upsert died -> row N is SKIPPED (never reaches enqueue), but
-    # row N+1 still gets a fresh CRM upsert attempt and IS enqueued.
-    assert enqueue_calls == [f"wa-mirror:{row_n1['baileys_message_id']}"]
+    ref_n = f"wa-mirror:{row_n['baileys_message_id']}"
+    ref_n1 = f"wa-mirror:{row_n1['baileys_message_id']}"
+    # Both rows reach enqueue() — row N's document is KEPT despite the CRM
+    # failure, just with no client-identity hint; row N+1 gets its real hint.
+    assert enqueue_calls == [ref_n, ref_n1]
+    assert enqueue_hints[ref_n] is None
+    assert enqueue_hints[ref_n1] == 42
     assert saved.get("wm") == 201
-    assert any("poison=1" in r.message for r in caplog.records)
+    # crm_poison counts the CRM-identity loss; the enqueue-level `poison`
+    # counter stays 0 (word-boundary match so `crm_poison=1` in the same
+    # message can't make a bare "poison=0" assertion pass by substring —
+    # `_` is a word char, so `\bpoison=` never matches inside `crm_poison=`).
+    assert any(re.search(r"\bcrm_poison=1\b", r.message) for r in caplog.records)
+    assert any(re.search(r"(?<!crm_)\bpoison=0\b", r.message) for r in caplog.records)
 
 
 # --------------------------------------------------------------------------- #
@@ -306,3 +362,221 @@ async def test_transient_crm_upsert_error_does_not_advance_watermark(
     assert enqueue_calls == []
     assert "wm" not in saved
     assert any("poison=0" in r.message for r in caplog.records)
+
+
+# --------------------------------------------------------------------------- #
+# Blob pre-check (verbale #4, post-refuter Qwen 3.8 Max, P2).
+# --------------------------------------------------------------------------- #
+@pytest.mark.asyncio
+async def test_blob_path_is_a_directory_counts_as_missing_and_advances(
+    monkeypatch, tmp_path, caplog
+) -> None:
+    """A directory (or unreadable file) at ``media_stored_path`` must be
+    counted as a missing blob and advanced past — NOT treated as a transient
+    OSError. ``os.path.exists()`` passes for a directory too, and
+    ``compute_blob_hash()``'s bare ``open(blob_path, "rb")`` would then raise
+    ``IsADirectoryError`` (an ``OSError`` subclass), which ``_is_transient()``
+    misclassifies as retryable — freezing the watermark on that row forever.
+    ``os.path.isfile()`` + ``os.access(..., os.R_OK)`` catch it HERE, before
+    enqueue()/compute_blob_hash() ever opens the path.
+    """
+    bad_dir = tmp_path / "not_a_file"
+    bad_dir.mkdir()
+    row_n = _row(500, blob_path=str(bad_dir))
+    enqueue_calls: list[str] = []
+
+    async def recording_enqueue(_pool, *, source_ref, **_kw):
+        enqueue_calls.append(source_ref)
+        return SimpleNamespace(was_new=True)
+
+    wms = _load_sweeper()
+    saved = _wire(
+        monkeypatch, wms, rows=[row_n], watermark_seed=499, enqueue=recording_enqueue
+    )
+
+    with caplog.at_level(logging.INFO, logger="wa_mirror_sweeper"):
+        rc = await wms.run_one_tick()
+
+    assert rc == 0
+    assert enqueue_calls == []
+    assert saved.get("wm") == 500
+    assert any("blob_missing=1" in r.message for r in caplog.records)
+
+
+# --------------------------------------------------------------------------- #
+# Poison breaker (verbale #3, post-refuter Qwen 3.8 Max, P1). The tick used to
+# `return 0` unconditionally regardless of how many rows were poisoned.
+# --------------------------------------------------------------------------- #
+@pytest.mark.asyncio
+async def test_poison_breaker_no_call_when_zero_poison(monkeypatch, tmp_path) -> None:
+    """Zero poison rows this tick -> the breaker stays completely silent."""
+    row_n = _row(600, blob_path=_write_blob(tmp_path, "n.pdf"))
+    tg_calls: list[tuple[str, str, str]] = []
+
+    def recording_tg_notify(tier: str, dedup_key: str, text: str) -> bool:
+        tg_calls.append((tier, dedup_key, text))
+        return True
+
+    wms = _load_sweeper()
+    _wire(
+        monkeypatch, wms, rows=[row_n], watermark_seed=599, tg_notify=recording_tg_notify
+    )
+
+    rc = await wms.run_one_tick()
+
+    assert rc == 0
+    assert tg_calls == []
+
+
+@pytest.mark.asyncio
+async def test_poison_breaker_digest_only_below_storm_threshold(
+    monkeypatch, tmp_path
+) -> None:
+    """One poison row, well below the storm threshold (max(5, ceil(0.2*2))=5):
+    exactly one digest-tier line, no P0, tick still returns 0."""
+    row_n = _row(700, blob_path=_write_blob(tmp_path, "n.pdf"))
+    row_n1 = _row(701, blob_path=_write_blob(tmp_path, "n1.pdf"))
+    tg_calls: list[tuple[str, str, str]] = []
+
+    def recording_tg_notify(tier: str, dedup_key: str, text: str) -> bool:
+        tg_calls.append((tier, dedup_key, text))
+        return True
+
+    async def flaky_enqueue(_pool, *, source_ref, **_kw):
+        if source_ref == f"wa-mirror:{row_n['baileys_message_id']}":
+            raise ValueError("malformed payload — permanent")
+        return SimpleNamespace(was_new=True)
+
+    wms = _load_sweeper()
+    _wire(
+        monkeypatch,
+        wms,
+        rows=[row_n, row_n1],
+        watermark_seed=699,
+        enqueue=flaky_enqueue,
+        tg_notify=recording_tg_notify,
+    )
+
+    rc = await wms.run_one_tick()
+
+    assert rc == 0
+    assert [c[0] for c in tg_calls] == ["digest"]
+    assert tg_calls[0][1].startswith("wa-mirror-sweeper:poison:")
+    assert re.search(r"(?<!crm_)\bpoison=1\b", tg_calls[0][2])
+    # Counts only — no row id or phone in the Telegram text (Law 2 / UU-PDP).
+    assert str(row_n["id"]) not in tg_calls[0][2]
+    assert row_n["sender_phone"] not in tg_calls[0][2]
+
+
+@pytest.mark.asyncio
+async def test_poison_breaker_p0_and_rc2_on_storm(monkeypatch, tmp_path) -> None:
+    """poison >= max(5, ceil(0.2*scanned)) is a STORM: a P0 fires (in addition
+    to the digest line) and the tick returns 2 so launchd marks the run
+    FAILED instead of green — the failure mode this breaker exists to catch.
+    """
+    rows = [_row(800 + i, blob_path=_write_blob(tmp_path, f"n{i}.pdf")) for i in range(5)]
+    tg_calls: list[tuple[str, str, str]] = []
+
+    def recording_tg_notify(tier: str, dedup_key: str, text: str) -> bool:
+        tg_calls.append((tier, dedup_key, text))
+        return True
+
+    async def always_poison_enqueue(_pool, *, source_ref, **_kw):
+        raise ValueError("malformed payload — permanent")
+
+    wms = _load_sweeper()
+    _wire(
+        monkeypatch,
+        wms,
+        rows=rows,
+        watermark_seed=799,
+        enqueue=always_poison_enqueue,
+        tg_notify=recording_tg_notify,
+    )
+
+    rc = await wms.run_one_tick()
+
+    assert rc == 2
+    assert [c[0] for c in tg_calls] == ["digest", "p0"]
+    assert tg_calls[1][1] == "wa-mirror-sweeper:poison-storm"
+    assert "poison=5/5" in tg_calls[1][2]
+
+
+# --------------------------------------------------------------------------- #
+# PII-safe error logs (verbale #6, post-refuter Qwen 3.8 Max, P2).
+# --------------------------------------------------------------------------- #
+@pytest.mark.asyncio
+async def test_postgres_error_detail_never_reaches_the_log(
+    monkeypatch, tmp_path, caplog
+) -> None:
+    """``asyncpg.PostgresError.__str__()`` appends DETAIL/HINT when the server
+    supplies them, and a constraint violation on a phone-keyed table (e.g.
+    ``clients.phone_normalized`` UNIQUE) can embed the raw offending phone in
+    DETAIL. A poison-row error log must summarize a Postgres exception as
+    type+sqlstate ONLY — the phone-shaped DETAIL must never reach the log
+    text (message OR any attached traceback rendering).
+    """
+    row_n = _row(1000, blob_path=_write_blob(tmp_path, "n.pdf"))
+    phone_in_detail = "6281234567890"
+
+    async def poison_enqueue(_pool, *, source_ref, **_kw):
+        exc = asyncpg.UniqueViolationError(
+            "duplicate key value violates unique constraint"
+        )
+        exc.detail = f"Key (phone_normalized)=({phone_in_detail}) already exists."
+        raise exc
+
+    wms = _load_sweeper()
+    _wire(monkeypatch, wms, rows=[row_n], watermark_seed=999, enqueue=poison_enqueue)
+
+    with caplog.at_level(logging.INFO, logger="wa_mirror_sweeper"):
+        rc = await wms.run_one_tick()
+
+    assert rc == 0
+    # Neither the formatted message nor any attached traceback text (the
+    # reason exc_info is False for a PostgresError) carries the phone.
+    assert phone_in_detail not in caplog.text
+    assert any("UniqueViolationError[23505]" in r.message for r in caplog.records)
+
+
+# --------------------------------------------------------------------------- #
+# Partial progress (verbale #7, post-refuter Qwen 3.8 Max — test-suite gap):
+# rows before a transient break must still advance the watermark and still
+# get enqueued — the break stops the tick, it must not discard progress
+# already made this tick.
+# --------------------------------------------------------------------------- #
+@pytest.mark.asyncio
+async def test_partial_progress_before_transient_break(
+    monkeypatch, tmp_path, caplog
+) -> None:
+    row_a = _row(1100, blob_path=_write_blob(tmp_path, "a.pdf"))
+    row_b = _row(1101, blob_path=_write_blob(tmp_path, "b.pdf"))
+    row_c = _row(1102, blob_path=_write_blob(tmp_path, "c.pdf"))
+    enqueue_calls: list[str] = []
+
+    async def flaky_enqueue(_pool, *, source_ref, **_kw):
+        if source_ref == f"wa-mirror:{row_c['baileys_message_id']}":
+            raise asyncpg.PostgresConnectionError("connection reset")
+        enqueue_calls.append(source_ref)
+        return SimpleNamespace(was_new=True)
+
+    wms = _load_sweeper()
+    saved = _wire(
+        monkeypatch,
+        wms,
+        rows=[row_a, row_b, row_c],
+        watermark_seed=1099,
+        enqueue=flaky_enqueue,
+    )
+
+    with caplog.at_level(logging.INFO, logger="wa_mirror_sweeper"):
+        rc = await wms.run_one_tick()
+
+    assert rc == 0
+    # A and B were enqueued and the watermark advanced to B — the transient
+    # break on C stops the tick, it does not discard A/B's progress.
+    assert enqueue_calls == [
+        f"wa-mirror:{row_a['baileys_message_id']}",
+        f"wa-mirror:{row_b['baileys_message_id']}",
+    ]
+    assert saved.get("wm") == row_b["id"]
