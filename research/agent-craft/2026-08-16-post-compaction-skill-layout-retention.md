@@ -1,3 +1,7 @@
+---
+adversarial_review: exempt-machine-report # agent-craft daily Deep Research transcript (generated artifact, not a curated research deliverable — no client_case/sources frontmatter, domain "agent-craft" is outside the CLAUDE.md §15 curated capture taxonomy)
+---
+
 # Agent-craft DR — 2026-08-16-post-compaction-skill-layout-retention
 
 **Date**: 2026-08-16
@@ -118,6 +122,8 @@ Questo approccio garantisce la stabilità del contesto: non dipendiamo dalla qua
 ### [9] source `6445c350…`
 
 > Tipo : Claude Code subagent (Type A) in ~/.claude/agents/wr2-design-architect.md Modello : Opus 4.7 via OAuth MAX (zero costi, CLAUDE.md HARD RULE compliance) Pattern : orchestrator centralizzato + 4 specialist subagents (NO peer-to-peer — Google 17.2× error amplification finding) Sub-agents pianificati : brief-interpreter (Sonnet), storyboarder (Sonnet), layout-composer (Sonnet), critic (Opus vision-capable), publisher (Haiku) Skill base : ~/.claude/skills/bali-zero-brand/ — closed-namespace tokens + constitution + voice + layouts Memory layers : episodic (SQLite), semantic (file cortex), procedural (skill library), reflective (weekly cron synthesis) Growth pattern : Voyager curriculum + Reflexion post-mortem Quality gates : token compliance → critic panel (4 rubric) → CLIP similarity → diffusion variance hallucination check → human review
+
+> RETRACTED[kim-2025-17x-error-amplification-as-cause]: il 17.2× misura `Independent` (agenti paralleli, nessuna coordinazione — Ω=synthesis_only), NON il peer-to-peer (`Decentralized`, che in Table 5 è il PIÙ ALTO, 0.477); la causa error-propagation è unsupported (Table 4, p=0.658). Resta in piedi: la regola no-peer-to-peer, ma su basi di repo (context isolation, un solo state owner, no cross-worker contamination) — non su questo paper, in nessuna direzione.
 
 ### [10] source `b4852cc9…`
 

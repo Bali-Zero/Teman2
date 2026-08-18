@@ -1,3 +1,7 @@
+---
+adversarial_review: exempt-machine-report # agent-craft daily Deep Research transcript (generated artifact, not a curated research deliverable — no client_case/sources frontmatter, domain "agent-craft" is outside the CLAUDE.md §15 curated capture taxonomy)
+---
+
 # Agent-craft DR — 2026-08-10-claude-code-agent-anatomy-complete-structure
 
 **Date**: 2026-08-10
@@ -177,6 +181,8 @@ Dall'analisi del nostro backlog operativo, emerge che l'integrazione di server M
 
 > You orchestrate four stateless specialist subagents. Invoke each via the Agent tool with subagent_type=<name> and pass the prior step's structured JSON as the prompt . Specialists read shared brand cortex files; they NEVER talk peer-to-peer (Google's 17.2× error-amplification finding). All inputs and outputs are JSON or files on disk. <cited_table>
 
+> RETRACTED[kim-2025-17x-error-amplification-as-cause]: il 17.2× misura `Independent` (agenti paralleli, nessuna coordinazione — Ω=synthesis_only), NON il peer-to-peer (`Decentralized`, che in Table 5 è il PIÙ ALTO, 0.477); la causa error-propagation è unsupported (Table 4, p=0.658). Resta in piedi: la regola no-peer-to-peer, ma su basi di repo (context isolation, un solo state owner, no cross-worker contamination) — non su questo paper, in nessuna direzione.
+
 ### [24] source `cf769fec…`
 
 > The difference between casual and effective Claude Code usage comes down to five core systems. Master these and Claude Code becomes a force multiplier: Configuration hierarchy : controls behavior Permission system : gates operations Hook system : enables deterministic automation MCP protocol : extends capabilities Subagent system : handles complex multi-step tasks Key Takeaways Five systems determine your effectiveness : configuration hierarchy, permissions, hooks, MCP, and subagents control everything from behavior to automation. Push work to the Delegation Layer : subagents prevent context bloat by isolating exploration in clean context windows, returning only summaries. Hooks guarantee execution; prompts do not : use hooks for linting, formatting, and security checks that must run every time regardless of model behavior. Model tiering saves cost without sacrificing quality : route subagent exploration to cheaper models and reserve Opus for genuine architectural reasoning — or standardize on Opus if quality is your only variable. MCP connects Claude to your toolchain : databases, GitHub, Sentry, and 3,000+ integrations extend Claude beyond file reading and bash commands.
@@ -192,6 +198,8 @@ Dall'analisi del nostro backlog operativo, emerge che l'integrazione di server M
 ### [27] source `a1f286dd…`
 
 > Quality gates (in order) : Token compliance (deterministic): all colors map to brand palette, all fonts map to brand stack — non-compliance = hard fail. Critic panel score ≥ threshold — soft fail = retry with feedback (max 2 retries). CLIP similarity ≥ threshold to curated set of past on-brand carousels — guards against subtle drift. Diffusion-variance hallucination check on any generated raster. Human review queue for final go/no-go on publish. Single agent vs multi-agent verdict : multi-agent with strict orchestrator is correct because specialist roles are genuinely different competencies; but Google's 17.2× error-amplification finding is a serious warning — architecture must be centralized state, stateless workers , not peer-to-peer. Avoid temptation to give each sub-agent its own memory.
+
+> RETRACTED[kim-2025-17x-error-amplification-as-cause]: il 17.2× misura `Independent` (agenti paralleli, nessuna coordinazione — Ω=synthesis_only), NON il peer-to-peer (`Decentralized`, che in Table 5 è il PIÙ ALTO, 0.477); la causa error-propagation è unsupported (Table 4, p=0.658). Resta in piedi: la regola no-peer-to-peer, ma su basi di repo (context isolation, un solo state owner, no cross-worker contamination) — non su questo paper, in nessuna direzione.
 
 ### [28] source `d3754c90…`
 

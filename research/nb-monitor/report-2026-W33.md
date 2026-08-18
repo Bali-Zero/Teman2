@@ -1,3 +1,7 @@
+---
+adversarial_review: exempt-machine-report # NB mitochondrial value monitor weekly ranking table (generated artifact, not a research deliverable — no prose/sources/client_case, pure cron output)
+---
+
 # NB Mitochondrial Value Monitor — 2026-W33
 
 _Generated at 2026-08-16T18:30:05+00:00_

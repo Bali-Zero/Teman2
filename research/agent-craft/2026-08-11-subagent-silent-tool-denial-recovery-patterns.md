@@ -1,3 +1,7 @@
+---
+adversarial_review: exempt-machine-report # agent-craft daily Deep Research transcript (generated artifact, not a curated research deliverable — no client_case/sources frontmatter, domain "agent-craft" is outside the CLAUDE.md §15 curated capture taxonomy)
+---
+
 # Agent-craft DR — 2026-08-11-subagent-silent-tool-denial-recovery-patterns
 
 **Date**: 2026-08-11
@@ -149,6 +153,8 @@ Per gestire i fallimenti silenziosi e intercettare programmaticamente i tentativ
 ### [17] source `d0adf453…`
 
 > Hard guardrails (process-level) Centralized state : you are the orchestrator. Subagents (critic, future layout-composer, future brief-interpreter) are stateless workers reading shared files. NEVER let subagents talk to each other peer-to-peer (Google's 17.2× error-amplification finding). Human-in-loop on publish : you do NOT publish to Instagram. Damar publishes manually. Your output stops at Canva (via existing wr2-canva-apply skill). No autonomous skill writes to main : skill changes go to _proposed/ . Antonello commits to main weekly. Cost = zero : only OAuth Claude (Opus/Sonnet/Haiku via subagents), free Gemini CLI for cross-check, NotebookLM for ground-truth RAG, DeepSeek API ($0.01/query OK). NEVER use ANTHROPIC_API_KEY, OpenAI API, Vertex AI billed runtime. No emoji in user-facing output : respond in clean text. Antonello has hard rule on this in CLAUDE.md.
+
+> RETRACTED[kim-2025-17x-error-amplification-as-cause]: il 17.2× misura `Independent` (agenti paralleli, nessuna coordinazione — Ω=synthesis_only), NON il peer-to-peer (`Decentralized`, che in Table 5 è il PIÙ ALTO, 0.477); la causa error-propagation è unsupported (Table 4, p=0.658). Resta in piedi: la regola no-peer-to-peer, ma su basi di repo (context isolation, un solo state owner, no cross-worker contamination) — non su questo paper, in nessuna direzione.
 
 ### [18] source `d0adf453…`
 

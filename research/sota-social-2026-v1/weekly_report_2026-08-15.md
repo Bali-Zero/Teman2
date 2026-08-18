@@ -1,3 +1,7 @@
+---
+adversarial_review: exempt-machine-report # M13 sota-social growth-loop weekly KPI delta report (generated artifact, not a research deliverable)
+---
+
 # SOTA Weekly Report — 2026-08-15
 
 

@@ -1,3 +1,7 @@
+---
+adversarial_review: exempt-machine-report # agent-craft daily Deep Research transcript (generated artifact, not a curated research deliverable — no client_case/sources frontmatter, domain "agent-craft" is outside the CLAUDE.md §15 curated capture taxonomy)
+---
+
 # Agent-craft DR — 2026-08-13-dynamic-skill-validator-preflight-compilation
 
 **Date**: 2026-08-13
@@ -118,9 +122,13 @@ Per implementare la sicurezza della governance "by construction" [1, 2] durante 
 
 > Quality gates (in order) : Token compliance (deterministic): all colors map to brand palette, all fonts map to brand stack — non-compliance = hard fail. Critic panel score ≥ threshold — soft fail = retry with feedback (max 2 retries). CLIP similarity ≥ threshold to curated set of past on-brand carousels — guards against subtle drift. Diffusion-variance hallucination check on any generated raster. Human review queue for final go/no-go on publish. Single agent vs multi-agent verdict : multi-agent with strict orchestrator is correct because specialist roles are genuinely different competencies; but Google's 17.2× error-amplification finding is a serious warning — architecture must be centralized state, stateless workers , not peer-to-peer. Avoid temptation to give each sub-agent its own memory.
 
+> RETRACTED[kim-2025-17x-error-amplification-as-cause]: il 17.2× misura `Independent` (agenti paralleli, nessuna coordinazione — Ω=synthesis_only), NON il peer-to-peer (`Decentralized`, che in Table 5 è il PIÙ ALTO, 0.477); la causa error-propagation è unsupported (Table 4, p=0.658). Resta in piedi: la regola no-peer-to-peer, ma su basi di repo (context isolation, un solo state owner, no cross-worker contamination) — non su questo paper, in nessuna direzione.
+
 ### [4] source `d0adf453…`
 
 > Hard guardrails (process-level) Centralized state : you are the orchestrator. Subagents (critic, future layout-composer, future brief-interpreter) are stateless workers reading shared files. NEVER let subagents talk to each other peer-to-peer (Google's 17.2× error-amplification finding). Human-in-loop on publish : you do NOT publish to Instagram. Damar publishes manually. Your output stops at Canva (via existing wr2-canva-apply skill). No autonomous skill writes to main : skill changes go to _proposed/ . Antonello commits to main weekly. Cost = zero : only OAuth Claude (Opus/Sonnet/Haiku via subagents), free Gemini CLI for cross-check, NotebookLM for ground-truth RAG, DeepSeek API ($0.01/query OK). NEVER use ANTHROPIC_API_KEY, OpenAI API, Vertex AI billed runtime. No emoji in user-facing output : respond in clean text. Antonello has hard rule on this in CLAUDE.md.
+
+> RETRACTED[kim-2025-17x-error-amplification-as-cause]: il 17.2× misura `Independent` (agenti paralleli, nessuna coordinazione — Ω=synthesis_only), NON il peer-to-peer (`Decentralized`, che in Table 5 è il PIÙ ALTO, 0.477); la causa error-propagation è unsupported (Table 4, p=0.658). Resta in piedi: la regola no-peer-to-peer, ma su basi di repo (context isolation, un solo state owner, no cross-worker contamination) — non su questo paper, in nessuna direzione.
 
 ### [5] source `74917ad2…`
 
@@ -165,6 +173,8 @@ Per implementare la sicurezza della governance "by construction" [1, 2] durante 
 ### [15] source `d0adf453…`
 
 > You orchestrate four stateless specialist subagents. Invoke each via the Agent tool with subagent_type=<name> and pass the prior step's structured JSON as the prompt . Specialists read shared brand cortex files; they NEVER talk peer-to-peer (Google's 17.2× error-amplification finding). All inputs and outputs are JSON or files on disk. <cited_table>
+
+> RETRACTED[kim-2025-17x-error-amplification-as-cause]: il 17.2× misura `Independent` (agenti paralleli, nessuna coordinazione — Ω=synthesis_only), NON il peer-to-peer (`Decentralized`, che in Table 5 è il PIÙ ALTO, 0.477); la causa error-propagation è unsupported (Table 4, p=0.658). Resta in piedi: la regola no-peer-to-peer, ma su basi di repo (context isolation, un solo state owner, no cross-worker contamination) — non su questo paper, in nessuna direzione.
 
 ### [16] source `f6c76ff7…`
 

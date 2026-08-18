@@ -1,3 +1,7 @@
+---
+adversarial_review: exempt-machine-report # agent-craft daily Deep Research transcript (generated artifact, not a curated research deliverable — no client_case/sources frontmatter, domain "agent-craft" is outside the CLAUDE.md §15 curated capture taxonomy)
+---
+
 # Agent-craft DR — 2026-08-15-skill-frontmatter-token-space-optimization
 
 **Date**: 2026-08-15

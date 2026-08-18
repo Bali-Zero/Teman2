@@ -1,3 +1,7 @@
+---
+adversarial_review: exempt-machine-report # agent-craft daily Deep Research transcript (generated artifact, not a curated research deliverable — no client_case/sources frontmatter, domain "agent-craft" is outside the CLAUDE.md §15 curated capture taxonomy)
+---
+
 # Agent-craft DR — 2026-08-18-agent-taxonomy-orchestrator-worker-gate-watcher-synthesizer
 
 **Date**: 2026-08-18
@@ -19,9 +23,13 @@ Per la risposta: (1) cita verbatim le fonti rilevanti tra i tuoi 86 sources, (2)
 *   **L'Orchestratore e i Lavoratori Stateless (Centralized State):**
     > *"multi-agent with strict orchestrator is correct because specialist roles are genuinely different competencies; but Google's 17.2× error-amplification finding is a serious warning — architecture must be centralized state, stateless workers, not peer-to-peer. Avoid temptation to give each sub-agent its own memory."* [1]
     
+    > RETRACTED[kim-2025-17x-error-amplification-as-cause]: il 17.2× misura `Independent` (agenti paralleli, nessuna coordinazione — Ω=synthesis_only), NON il peer-to-peer (`Decentralized`, che in Table 5 è il PIÙ ALTO, 0.477); la causa error-propagation è unsupported (Table 4, p=0.658). Resta in piedi: la regola no-peer-to-peer, ma su basi di repo (context isolation, un solo state owner, no cross-worker contamination) — non su questo paper, in nessuna direzione.
+
 *   **L'Impatto delle Topologie sull'Amplificazione degli Errori (Kim et al. 2025):**
     > *"Multi-agent error amplification 17.2× (Kim et al. 2025 arxiv 2512.08296) is real but task-dependent — orchestrator-led shrinks to 4.4×, sequential tasks favor single-agent, parallelizable tasks favor centralized multi-agent."* [2]
     
+    > RETRACTED[kim-2025-17x-error-amplification-as-cause]: il 17.2× misura `Independent` (agenti paralleli, nessuna coordinazione — Ω=synthesis_only), NON il peer-to-peer (`Decentralized`, che in Table 5 è il PIÙ ALTO, 0.477); la causa error-propagation è unsupported (Table 4, p=0.658). Resta in piedi: la regola no-peer-to-peer, ma su basi di repo (context isolation, un solo state owner, no cross-worker contamination) — non su questo paper, in nessuna direzione.
+
 *   **La natura sequenziale del flusso e l'isolamento del contesto:**
     > *"For sequential pipelines (brief → storyboard → layout → critic in chain, like WR2): single-agent batte multi-agent di 39–70%. Multi-agent in WR2 is justified by context-isolation and model-routing economy (Sonnet workers + Opus critic + Haiku vision-pre-pass), not by parallelism gain."* [3]
 
@@ -99,6 +107,8 @@ Dall'analisi delle definizioni degli agenti e dei log, emerge che molti sub-agen
 ### **4. Domande Aperte per il Deep Research (DR) di Domani**
 
 1.  Dato che Kim et al. documentano che l'amplificazione d'errore cala drasticamente da **17.2x a 4.4x** applicando una topologia centralizzata (orchestrator-led) [41], quali meccanismi di *state-rollback* o *checkpointing* a livello di disco (es. ripristino di `slides.json` tramite git-diff post-bocciatura del critic) possiamo integrare in `wr2-design-architect` per sanare automaticamente le allucinazioni prima del coinvolgimento umano [42]?
+    > RETRACTED[kim-2025-17x-error-amplification-as-cause]: il 17.2× misura `Independent` (agenti paralleli, nessuna coordinazione — Ω=synthesis_only), NON il peer-to-peer (`Decentralized`, che in Table 5 è il PIÙ ALTO, 0.477); la causa error-propagation è unsupported (Table 4, p=0.658). Resta in piedi: la regola no-peer-to-peer, ma su basi di repo (context isolation, un solo state owner, no cross-worker contamination) — non su questo paper, in nessuna direzione.
+
 2.  I Watcher (es. `regulatory-watcher` o `competitor-monitor`) per definizione scrivono file locali e notificano, ma non innescano flussi downstream [4]. Come possiamo strutturare una **Event-Driven Knowledge Activation** (es. tramite un eventbus di file di lock o code Redis locali come `garuda:enriched`) affinché un Watcher possa "svegliare" l'Orchestratore in modo asincrono solo al superamento di una soglia di severità della novità legale [43, 44]?
 3.  Nel calcolo del **Maturity-Aware Update Gating** per l'evoluzione automatica delle nostre skill [45], come deve essere ponderato l'apporto dei Gate (il giudizio asettico del `wr2-critic` basato sul brand) rispetto all'apporto dei Synthesizer (il feedback reale delle conversioni elaborato dal `wr2-ig-metrics-analyst`), garantendo che il comportamento dell'agente si adatti ai trend social senza mai violare la costituzione legale del brand [46, 47]?
 
@@ -143,13 +153,19 @@ Dall'analisi delle definizioni degli agenti e dei log, emerge che molti sub-agen
 
 > Quality gates (in order) : Token compliance (deterministic): all colors map to brand palette, all fonts map to brand stack — non-compliance = hard fail. Critic panel score ≥ threshold — soft fail = retry with feedback (max 2 retries). CLIP similarity ≥ threshold to curated set of past on-brand carousels — guards against subtle drift. Diffusion-variance hallucination check on any generated raster. Human review queue for final go/no-go on publish. Single agent vs multi-agent verdict : multi-agent with strict orchestrator is correct because specialist roles are genuinely different competencies; but Google's 17.2× error-amplification finding is a serious warning — architecture must be centralized state, stateless workers , not peer-to-peer. Avoid temptation to give each sub-agent its own memory.
 
+> RETRACTED[kim-2025-17x-error-amplification-as-cause]: il 17.2× misura `Independent` (agenti paralleli, nessuna coordinazione — Ω=synthesis_only), NON il peer-to-peer (`Decentralized`, che in Table 5 è il PIÙ ALTO, 0.477); la causa error-propagation è unsupported (Table 4, p=0.658). Resta in piedi: la regola no-peer-to-peer, ma su basi di repo (context isolation, un solo state owner, no cross-worker contamination) — non su questo paper, in nessuna direzione.
+
 ### [2] source `354fe331…`
 
 > -------------------------------------------------------------------------------- name: lessons-multi-agent-topology-kim-2025 description: "Multi-agent error amplification 17.2× (Kim et al. 2025 arxiv 2512.08296) is real but task-dependent — orchestrator-led shrinks to 4.4×, sequential tasks favor single-agent, parallelizable tasks favor centralized multi-agent. Agent teams in Claude Code = all Claude models only, no Gemini/Codex/DeepSeek as teammates." metadata: node_type: memory type: lessons originSessionId: 08bda0ef-5579-4fb2-a654-f16050486d01
 
+> RETRACTED[kim-2025-17x-error-amplification-as-cause]: il 17.2× misura `Independent` (agenti paralleli, nessuna coordinazione — Ω=synthesis_only), NON il peer-to-peer (`Decentralized`, che in Table 5 è il PIÙ ALTO, 0.477); la causa error-propagation è unsupported (Table 4, p=0.658). Resta in piedi: la regola no-peer-to-peer, ma su basi di repo (context isolation, un solo state owner, no cross-worker contamination) — non su questo paper, in nessuna direzione.
+
 ### [3] source `354fe331…`
 
 > Corrected guidance for Bali Zero stack The old rule (wr2-design-architect.md:338, lines 91+129+338, also pre-T2.91, pre-T2.271): "NEVER let subagents talk to each other peer-to-peer (Google's 17.2× error-amplification finding)." The corrected rule : For sequential pipelines (brief → storyboard → layout → critic in chain, like WR2): single-agent batte multi-agent di 39–70% . Multi-agent in WR2 is justified by context-isolation and model-routing economy (Sonnet workers + Opus critic + Haiku vision-pre-pass), not by parallelism gain. Don't pretend it's a parallelism win. For parallelizable tasks (multi-perspective client case, multi-source regulatory check, cross-LLM bipolar verifier): centralized multi-agent batte single-agent di +80.9% . This is where agent teams shines. Peer-to-peer is not banned — it's 4× worse than centralized, but on parallelizable tasks it's still often better than single-agent. Use it when the task genuinely needs cross-agent challenge (devil's advocate, scientific debate pattern in agent-teams docs). Independent (no coordination) is the real trap — 17.2× amplification. Never spawn N parallel sessions and merge results without any lead.
+
+> RETRACTED[kim-2025-17x-error-amplification-as-cause]: il 17.2× misura `Independent` (agenti paralleli, nessuna coordinazione — Ω=synthesis_only), NON il peer-to-peer (`Decentralized`, che in Table 5 è il PIÙ ALTO, 0.477); la causa error-propagation è unsupported (Table 4, p=0.658). Resta in piedi: la regola no-peer-to-peer, ma su basi di repo (context isolation, un solo state owner, no cross-worker contamination) — non su questo paper, in nessuna direzione.
 
 ### [4] source `d6bf2f6f…`
 
@@ -179,6 +195,8 @@ Dall'analisi delle definizioni degli agenti e dei log, emerge che molti sub-agen
 
 > Tipo : Claude Code subagent (Type A) in ~/.claude/agents/wr2-design-architect.md Modello : Opus 4.7 via OAuth MAX (zero costi, CLAUDE.md HARD RULE compliance) Pattern : orchestrator centralizzato + 4 specialist subagents (NO peer-to-peer — Google 17.2× error amplification finding) Sub-agents pianificati : brief-interpreter (Sonnet), storyboarder (Sonnet), layout-composer (Sonnet), critic (Opus vision-capable), publisher (Haiku) Skill base : ~/.claude/skills/bali-zero-brand/ — closed-namespace tokens + constitution + voice + layouts Memory layers : episodic (SQLite), semantic (file cortex), procedural (skill library), reflective (weekly cron synthesis) Growth pattern : Voyager curriculum + Reflexion post-mortem Quality gates : token compliance → critic panel (4 rubric) → CLIP similarity → diffusion variance hallucination check → human review
 
+> RETRACTED[kim-2025-17x-error-amplification-as-cause]: il 17.2× misura `Independent` (agenti paralleli, nessuna coordinazione — Ω=synthesis_only), NON il peer-to-peer (`Decentralized`, che in Table 5 è il PIÙ ALTO, 0.477); la causa error-propagation è unsupported (Table 4, p=0.658). Resta in piedi: la regola no-peer-to-peer, ma su basi di repo (context isolation, un solo state owner, no cross-worker contamination) — non su questo paper, in nessuna direzione.
+
 ### [11] source `d0adf453…`
 
 > -------------------------------------------------------------------------------- name: wr2-design-architect description: "MUST BE USED for every Bali Zero WR2 editorial carousel. Use IMMEDIATELY when user says "design a carousel for [topic]", "draft a WR2 brief", or invokes the WR2 pipeline. Orchestrator-only: fans out to 4 specialist subagents (brief-interpreter, storyboarder, layout-composer, critic), NEVER writes brief.json/slides.json/HTML inline. Reads brand cortex (constitution + tokens + voice + 64 past carouseli), enforces 3 contracts (fan-out, NB ground-truth, imagegen no-silent-reuse), runs critic gate, emits queue handoff. Grows via Voyager skill library + Reflexion weekly synthesis." tools: Read, Write, Edit, Glob, Grep, Bash, Skill, Agent, WebFetch model: opus isolation: worktree color: blue skills:
@@ -186,6 +204,8 @@ Dall'analisi delle definizioni degli agenti e dei log, emerge che molti sub-agen
 ### [12] source `d0adf453…`
 
 > You orchestrate four stateless specialist subagents. Invoke each via the Agent tool with subagent_type=<name> and pass the prior step's structured JSON as the prompt . Specialists read shared brand cortex files; they NEVER talk peer-to-peer (Google's 17.2× error-amplification finding). All inputs and outputs are JSON or files on disk. <cited_table>
+
+> RETRACTED[kim-2025-17x-error-amplification-as-cause]: il 17.2× misura `Independent` (agenti paralleli, nessuna coordinazione — Ω=synthesis_only), NON il peer-to-peer (`Decentralized`, che in Table 5 è il PIÙ ALTO, 0.477); la causa error-propagation è unsupported (Table 4, p=0.658). Resta in piedi: la regola no-peer-to-peer, ma su basi di repo (context isolation, un solo state owner, no cross-worker contamination) — non su questo paper, in nessuna direzione.
 
 ### [13] source `f25859a8…`
 
