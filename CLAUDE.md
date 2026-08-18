@@ -236,7 +236,7 @@ fly deploy --config apps/backend-rag/fly.toml --dockerfile apps/backend-rag/Dock
 
 **Migration PRs** touching `migrations_v2/*.sql` auto-run Squawk lint (PR #306). Bypass: `-- squawk-ignore: <rule>`.
 
-**Post-deploy QA OBBLIGATORIO**: wait curl 200/307 → screenshot via `mcp__claude-in-chrome__*` → verify colors/logo/no broken → fix/redeploy → final report. URLs: `kita`/`my`/`prime`/`calendar`/`mail`/`drive`/`knowledge`/`zantara`.balizero.com.
+**Post-deploy QA OBBLIGATORIO**: wait curl 200/307 → screenshot via `mcp__claude-in-chrome__*` → verify colors/logo/no broken → fix/redeploy → final report. URLs: `kita`/`my`/`prime`/`knowledge`/`zantara`.balizero.com — `calendar`/`mail`/`drive` were removed on 2026-08-18: their Vercel projects were deleted in `7f287c623` (2026-04-17) and the orphan DNS answers 404, so QA-ing them was checking surfaces that no longer exist.
 
 ## 12. Operational Channels
 
