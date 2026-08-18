@@ -10,7 +10,7 @@ sources:
   - "PR #4194 threat model at head 28f70f026, read this turn"
   - "PR #4197 failure matrix, read this turn"
   - ".agents/skills/bot/SKILL.md, live-state entry dated 2026-08-19"
-  - "codex-cli 0.147.0 local help for exec --ephemeral, --ignore-user-config, --ignore-rules, and sandbox controls, measured this turn"
+  - "codex-cli 0.147.0 local help for exec --ephemeral, --ignore-user-config, --ignore-rules, and sandbox controls, measured 2026-08-18"
 adversarial_review: kimi-k3
 review_corroboration: "gemini-3.1-pro"
 ---
@@ -23,10 +23,13 @@ This section supersedes stale implementation-state statements later in this docu
 and architecture boundaries remain in force, but #4216 advanced materially after the original
 plan and was re-measured from its exact current head.
 
-- Zero explicitly authorized point 7 and the start of live testing on 2026-08-18. That closes the
-  missing-owner-authorization gate for the gated merge/deploy/cutover progression; it does not
-  waive generator-not-grader review, privacy, PII, runtime-host, rollback, or no-outward-send
-  gates.
+- Zero authorized the start of live testing on 2026-08-18. Source: memory
+  `decision_wa_openai_provider_subscription_path_owner_ruling_2026_08_15`, §2026-08-18 riconferma
+  ("la rotta abbonamento è confermata e il DRAFT HOLD è sciolto sulla ROTTA — la lane avanza");
+  the label "point 7" used by earlier drafts was that session's own checklist numbering and
+  resolves to nothing in this document. That closes the missing-owner-authorization gate for the
+  gated merge/deploy progression; it does not waive generator-not-grader review, privacy, PII,
+  runtime-host, rollback, or no-outward-send gates, and it authorizes no cutover.
 - #4216 remains inert and NO-WIRING at source head
   `6cb663dd66c67ed8d84dc204508eafe3c6d0c5de`. Independent Fable review re-ran the 513 focused
   tests, confirmed the 12-file fence and zero runtime importers, returned PASS, moved the PR from
@@ -59,9 +62,11 @@ plan and was re-measured from its exact current head.
   `CodexExecClient`. It never checks `OPENAI_WA_PROVIDER_API_KEY`, and candidate calls are strictly
   sequential.
 - The corpus builder now defaults to role-aware, multi-turn JSONL, requires canonical roles and a
-  local-only conversation identifier, emits user targets with at most 12 independently scanned
-  prior turns, and fails closed by clearing accumulated history after an unsafe or unattributable
-  turn. Legacy role-blind output is opt-in and rejected by the promotion bench.
+  local-only conversation identifier, and emits user targets with at most 12 independently scanned
+  prior turns. Its two fail-closed mechanisms are distinct and both remain in force: an unsafe
+  turn drops the whole conversation fixture (the §3.2 rule and §4 gate below, unchanged), and an
+  unattributable turn clears the accumulated history before any later turn can inherit it. Legacy
+  role-blind output is opt-in and rejected by the promotion bench.
 - The fixed CLI argv now includes both `--ephemeral` and `--ignore-rules`. On Pro, 513 focused
   adapter/pricing/corpus/bench tests passed from the exact PR head.
 - A synthetic Terra sentinel passed through the real adapter in 6.9 seconds. A second role-aware
@@ -78,7 +83,10 @@ plan and was re-measured from its exact current head.
   `/usr/bin/env` cannot resolve `node`.
 - The CLI's private `stderr` pipe contains a human-readable transcript that echoes the prompt.
   The adapter drains that pipe in memory to avoid deadlock but, on success, does not log, persist,
-  return, or scan it. Therefore the original literal requirement that the prompt never occur in
+  return, or scan it. On a non-zero exit the adapter DOES scan that stderr — only after
+  whole-line stripping of the echoed prompt, and it surfaces only sanitized typed errors, never
+  the raw pipe (the adapter's module docstring records the full evolution of that rule).
+  Therefore the original literal requirement that the prompt never occur in
   raw `stderr` is impossible for codex-cli 0.147.0 and is replaced by the narrower mechanical
   requirement below: no prompt in argv, environment, adapter logs, surfaced diagnostics,
   exceptions, or persisted files. This is sufficient only for synthetic testing, not client PII.
@@ -103,7 +111,7 @@ The provider route is an owner decision, not an open architecture vote:
 
 The original version of this document did **not** authorize a runtime flag, a gateway branch, a
 credential move, live WhatsApp traffic, a deploy, a cutover, or a merge. Zero later supplied the
-point-7 owner authorization recorded in the live reconciliation above. The independently reviewed
+2026-08-18 owner authorization recorded in the live reconciliation above. The independently reviewed
 dormant merge and CI deploy are now complete, but the #4216 diff itself remains NO-WIRING, and the
 technical/privacy gates still determine which later action is safe to execute. Stage 1 remains an
 operator-run, de-identified, offline evaluation. It is deliberately not called "shadow" because
@@ -237,6 +245,9 @@ usage-window response aborts the run; it is not silently retried across accounts
 Before corpus replay, amend and test the selected adapter so its fixed argv includes
 `--ephemeral`. Also evaluate the current CLI's `--ignore-rules` control and add it if it closes an
 otherwise inherited policy surface without breaking authentication.
+_(Done at the merged head: the fixed argv now includes both `--ephemeral` and `--ignore-rules` —
+see the live reconciliation above. The gate requirements below remain in force for any future
+change to the argv or the CLI version.)_
 
 The gate must run a synthetic sentinel probe and prove:
 
@@ -323,8 +334,10 @@ provider.
 
 ## 6. What remains blocked after Stage 1
 
-Even the successful synthetic offline evaluation does not by itself authorize live shadowing or
-serving. Zero's point-7 authorization permits progression only as each remaining gate turns green:
+Even a fully green Stage 1 — and what has actually passed so far is only the synthetic liveness
+smoke recorded above, not the full Stage 1 evaluation with its §4 acceptance matrix — does not by
+itself authorize live shadowing or serving. Zero's 2026-08-18 authorization permits progression
+only as each remaining gate turns green:
 
 - no runtime flag may land under the current NO-WIRING fence;
 - no production host for a subscription-backed provider has been approved;

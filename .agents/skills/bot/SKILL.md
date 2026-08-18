@@ -22,19 +22,24 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 
 ## 1. LIVE STATE (last update 2026-08-19 — keep current)
 
-- **🧪 CHATGPT PRO ADAPTER LIVE TEST — SYNTHETIC STAGE 1 GREEN; DORMANT ADAPTER MERGED +
-  DEPLOYED; REAL WA STILL NO-GO (2026-08-19, supersedes the stale #4216/#4301 implementation
-  snapshot immediately below).**
-  Zero explicitly authorized point 7 and told the lane to start live tests. #4216 source head
-  `6cb663dd66c67ed8d84dc204508eafe3c6d0c5de` contains 12 files and remains strictly NO-WIRING.
+- **🧪 CHATGPT PRO ADAPTER LIVE TEST — SYNTHETIC LIVENESS SMOKE GREEN (NOT the full Stage 1
+  evaluation); DORMANT ADAPTER MERGED + DEPLOYED; REAL WA STILL NO-GO (2026-08-19, supersedes
+  the stale #4216/#4301 implementation snapshot immediately below).**
+  Zero authorized the start of live testing on 2026-08-18 (route + advance authority recorded in
+  memory `decision_wa_openai_provider_subscription_path_owner_ruling_2026_08_15`, §2026-08-18
+  riconferma; the label "point 7" used by earlier drafts was that session's own checklist
+  numbering and resolves to nothing in this corner or the plan), scoped to synthetic,
+  de-identified, operator-controlled probes only. #4216 source head
+  `6cb663dd66c67ed8d84dc204508eafe3c6d0c5de` carries a 12-file net diff and remains strictly
+  NO-WIRING.
   Independent Fable review repeated 513/513 focused tests, confirmed the 12-file/no-importer
   fence, returned PASS, moved #4216 to ready, and armed the canonical queue. The unchanged head
   was ejected twice by required merge-group `Immune enforcement` runs `32157479924` and
   `32159641457`: both failed only at `Codex seat corpus` after 71s/79s, with no output after step
   start because bounded `apt_install.sh zsh zsh` could not deliver `zsh`; neither pytest corpus
   started. The affected CI/helper/test blobs were identical across PR/merge-group/main, while the
-  PR run and local re-runs passed 13/13 + 14/14 + 56/56. A read-only rerun of only the failed
-  workflow then passed in 5m59s (`apt update` timed out, cached install delivered
+  PR run and local re-runs passed 13/13 + 14/14 + 56/56. A rerun of only the failed workflow
+  (same code, no change) then passed in 5m59s (`apt update` timed out, cached install delivered
   `/usr/bin/zsh`, and both 14/14 + 56/56 corpora ran). Independent Fable issued
   `PASS-REQUEUED-FINAL`; the third and explicitly final merge-group
   `67eb3be94cb9be9abaae00b372446389e971cf4f` passed all 26/26 workflows. GitHub merged #4216 at
@@ -56,7 +61,9 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
   Two gates were discovered live: (1) non-login Pro processes need a `PATH` including
   `/opt/homebrew/bin` because `codex` is a Node shebang script — `WA_CODEX_BIN` alone cannot find
   `node`; (2) codex-cli echoes the prompt into its private transient stderr pipe, although the
-  adapter never logs, persists, returns, or exposes that pipe on success. The authenticated seat
+  adapter never logs, persists, returns, or exposes that pipe on success; on a non-zero exit it
+  scans that stderr only after whole-line stripping of the echoed prompt and surfaces only
+  sanitized typed errors, never the raw pipe. The authenticated seat
   is personal ChatGPT Pro; its account-level **Improve the model for everyone** setting is not
   yet verified. Official policy says Pro Codex conversations may be used for training unless that
   control is off. Therefore the live verdict is **GO only for synthetic, de-identified,
@@ -67,6 +74,11 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
   `research/operations/2026-08-18-bot-openai-shadow-wiring-plan.md`; next gate is the account
   privacy check plus a named Pro-side fail-off broker/supervisor design and independent review.
   Generator-not-grader and Legge 5 remain unchanged despite the owner authorization.
+  **Current state of the two gate-prep PRs** (the historical snapshot's DRAFT/BLOCKED wording for
+  them is superseded too): #4194 (threat model + privacy plan) and #4197 (failure matrix) were
+  reconciled to the final adapter evidence head `1dcdd670d` — subscription-provider coverage,
+  single-token R1 frontmatter, Fable gate recorded in their bodies — then un-drafted and entered
+  the merge queue on 2026-08-19.
 
 - **🤖 HISTORICAL OPENAI WA-PROVIDER SNAPSHOT — SUPERSEDED BY THE LIVE TEST ENTRY ABOVE.**
   Retained only as the chronology that produced #4216/#4301; do not use its old branch heads,
