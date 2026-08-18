@@ -28,10 +28,12 @@ Env:
   INTAKE_HEALTH_ALL_EMPTY_MAX                default 0.5 (breach if quarantine all-pages-empty rate > N)
   INTAKE_HEALTH_ZOMBIE_MAX                   default 0  (breach if zombie count > N)
   INTAKE_HEALTH_SUPERSEDED_TIMEOUT_MS        default 60000 (statement_timeout for the C-07b query)
+  INTAKE_HEALTH_CONNECTION_CLOSE_TIMEOUT_SECONDS
+                                               default 5 (asyncpg connection-close bound)
 
 Flags: --dry-run (skip Telegram + state-file write; heartbeat still fires) ·
-       --json-only (pure read on success: skip Telegram + state-file write + ok
-       heartbeat; failures still emit heartbeat=error)
+       --json-only (no success side effects: skip Telegram + state-file write +
+       success heartbeat; failures still emit heartbeat=error)
 
 Exit: 0 after a completed/disabled/lock-held run; 1 after a connect, gather,
       report-build, persistence, or connection-close failure (heartbeat=error).
@@ -43,6 +45,7 @@ import asyncio
 import fcntl
 import json
 import logging
+import math
 import os
 import plistlib
 import subprocess
@@ -68,6 +71,12 @@ ORGAN_ID = "pro.intake_health_report"
 STATE_PATH = Path.home() / ".agent" / "decisions" / "state" / "intake_health_report.json"
 LOCK_FILE = Path.home() / ".cell-bridge-state" / "intake_health_report.lock"
 DEFAULT_DSN = "postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev"
+DEFAULT_SUPERSEDED_TIMEOUT_MS = 60_000
+# Matches the five-second asyncpg close bound used by the PG bridge and both
+# WR2 supervisors. Set INTAKE_HEALTH_LOG_LEVEL=DEBUG to record actual close
+# latency, then tune the env override if a future driver/proxy needs a
+# different measured bound; no code edit or frozen re-estimate is required.
+DEFAULT_CONNECTION_CLOSE_TIMEOUT_SECONDS = 5.0
 REPO_WORKER_PLIST_PATH = _REPO / "infra" / "launchagents" / "com.nuzantara.intake-worker.plist"
 # The INSTALLED launchd plist — the one actually driving the running worker —
 # takes precedence over the repo copy (verbale #8, superscar #1 HOME-fork):
@@ -520,6 +529,54 @@ def _thresholds_from_env() -> dict[str, float]:
     }
 
 
+def _timeouts_from_env() -> tuple[int, float]:
+    """Parse and validate every operator-configurable timeout before connect."""
+    superseded_timeout_ms = int(
+        os.getenv(
+            "INTAKE_HEALTH_SUPERSEDED_TIMEOUT_MS",
+            str(DEFAULT_SUPERSEDED_TIMEOUT_MS),
+        )
+    )
+    connection_close_timeout_seconds = float(
+        os.getenv(
+            "INTAKE_HEALTH_CONNECTION_CLOSE_TIMEOUT_SECONDS",
+            str(DEFAULT_CONNECTION_CLOSE_TIMEOUT_SECONDS),
+        )
+    )
+    if superseded_timeout_ms <= 0:
+        raise ValueError("superseded timeout must be positive")
+    if (
+        not math.isfinite(connection_close_timeout_seconds)
+        or connection_close_timeout_seconds <= 0
+    ):
+        raise ValueError("connection-close timeout must be finite and positive")
+    return superseded_timeout_ms, connection_close_timeout_seconds
+
+
+async def _close_connection(conn: Any, *, timeout_seconds: float) -> None:
+    """Close an asyncpg connection within the configured liveness bound."""
+    loop = asyncio.get_running_loop()
+    started_at = loop.time()
+    try:
+        await asyncio.wait_for(conn.close(), timeout=timeout_seconds)
+    except Exception:  # noqa: BLE001 — caller owns canonical phase reporting
+        # Mirrors the established asyncpg cleanup convention in the PG bridge
+        # and WR2 supervisors: a close failure/timeout must not leave the
+        # transport alive after this run releases its single-instance flock.
+        try:
+            conn.terminate()
+        except Exception:  # noqa: BLE001 — retain the original close failure
+            pass
+        raise
+    finally:
+        logger.debug(
+            "[intake_health_report] connection close elapsed_seconds=%.3f "
+            "timeout_seconds=%.3f",
+            loop.time() - started_at,
+            timeout_seconds,
+        )
+
+
 async def run(*, dry_run: bool, json_only: bool) -> int:
     if os.getenv("INTAKE_HEALTH_REPORT_ENABLED", "true").strip().lower() in ("0", "false", "no"):
         logger.info("[intake_health_report] disabled via INTAKE_HEALTH_REPORT_ENABLED — no-op")
@@ -550,9 +607,19 @@ async def run(*, dry_run: bool, json_only: bool) -> int:
         )
         return 0
     try:
+        try:
+            timeout_ms, connection_close_timeout_seconds = _timeouts_from_env()
+        except (TypeError, ValueError, OverflowError) as exc:
+            error_type = type(exc).__name__
+            logger.error(
+                "[intake_health_report] timeout configuration failed: %s",
+                error_type,
+            )
+            _heartbeat("error", f"timeout configuration failed: {error_type}")
+            return 1
+
         dsn = os.getenv("INTAKE_DATABASE_URL") or os.getenv("LOCAL_DATABASE_URL") or DEFAULT_DSN
         try:
-            timeout_ms = int(os.getenv("INTAKE_HEALTH_SUPERSEDED_TIMEOUT_MS", "60000"))
             # statement_timeout at the SESSION level (verbale #7): every
             # gather() query except _fetch_superseded_orphans ran unbounded —
             # a hung jsonb-heavy join could hold the single-instance flock
@@ -595,11 +662,21 @@ async def run(*, dry_run: bool, json_only: bool) -> int:
                 failure = exc
         finally:
             try:
-                await conn.close()
+                await _close_connection(
+                    conn,
+                    timeout_seconds=connection_close_timeout_seconds,
+                )
             except Exception as exc:  # noqa: BLE001 — close is part of run completion
                 if failure is None:
                     failure = exc
                     failure_phase = "connection close"
+                else:
+                    logger.warning(
+                        "[intake_health_report] connection close also failed after %s "
+                        "failure: %s",
+                        failure_phase,
+                        type(exc).__name__,
+                    )
 
         if failure is not None:
             # Never serialize the exception message into observability: gather
@@ -649,7 +726,14 @@ async def run(*, dry_run: bool, json_only: bool) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0] if __doc__ else "")
     parser.add_argument("--dry-run", action="store_true", help="no Telegram, no state-file write")
-    parser.add_argument("--json-only", action="store_true", help="pure read: JSON to stdout, no side effects at all")
+    parser.add_argument(
+        "--json-only",
+        action="store_true",
+        help=(
+            "JSON to stdout with no success side effects; failures still emit "
+            "heartbeat=error"
+        ),
+    )
     args = parser.parse_args()
     return asyncio.run(run(dry_run=args.dry_run, json_only=args.json_only))
 

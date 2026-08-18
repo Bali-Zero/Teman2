@@ -16,12 +16,15 @@ Run:  python3 scripts/tests/test_intake_health_report.py
 from __future__ import annotations
 
 import asyncio
+import fcntl
 import json
 import os
 import pathlib
 import shutil
 import subprocess
 import sys
+
+import pytest
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
@@ -339,6 +342,33 @@ class _TrackingConn(_FakeConn):
         self.closed = True
 
 
+class _CloseFailureConn(_FakeConn):
+    def __init__(self):
+        self.terminated = False
+
+    async def close(self):
+        raise RuntimeError("client-close-detail-should-never-reach-heartbeat")
+
+    def terminate(self):
+        self.terminated = True
+
+
+class _HangingCloseConn(_FakeConn):
+    def __init__(self):
+        self.close_cancelled = False
+        self.terminated = False
+
+    async def close(self):
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            self.close_cancelled = True
+            raise
+
+    def terminate(self):
+        self.terminated = True
+
+
 def _install_run_fakes(monkeypatch, tmp_path, conn, heartbeats):
     async def _fake_connect(*_args, **_kwargs):
         return conn
@@ -358,6 +388,8 @@ def _install_run_fakes(monkeypatch, tmp_path, conn, heartbeats):
         lambda: (tmp_path / "does-not-exist.log", "repo"),
     )
     monkeypatch.setenv("INTAKE_HEALTH_REPORT_ENABLED", "true")
+    monkeypatch.delenv("INTAKE_HEALTH_SUPERSEDED_TIMEOUT_MS", raising=False)
+    monkeypatch.delenv("INTAKE_HEALTH_CONNECTION_CLOSE_TIMEOUT_SECONDS", raising=False)
 
 
 # ---------------------------------------------------------------- connect timeouts (verbale #7)
@@ -391,6 +423,48 @@ def test_connect_sets_session_statement_timeout_and_connect_timeout(tmp_path, mo
     assert recorded["kwargs"]["server_settings"]["default_transaction_read_only"] == "on"
 
 
+@pytest.mark.parametrize(
+    ("env_name", "invalid_value"),
+    (
+        ("INTAKE_HEALTH_SUPERSEDED_TIMEOUT_MS", "client-name-not-an-integer"),
+        ("INTAKE_HEALTH_CONNECTION_CLOSE_TIMEOUT_SECONDS", "client-name-not-a-float"),
+        ("INTAKE_HEALTH_CONNECTION_CLOSE_TIMEOUT_SECONDS", "nan"),
+        ("INTAKE_HEALTH_CONNECTION_CLOSE_TIMEOUT_SECONDS", "0"),
+    ),
+)
+def test_invalid_timeout_configuration_is_reported_before_connect(
+    tmp_path,
+    monkeypatch,
+    env_name,
+    invalid_value,
+):
+    heartbeats = []
+    connect_calls = []
+
+    async def _unexpected_connect(*args, **kwargs):
+        connect_calls.append((args, kwargs))
+        return _FakeConn()
+
+    monkeypatch.setattr(ihr.asyncpg, "connect", _unexpected_connect)
+    monkeypatch.setattr(
+        ihr,
+        "_heartbeat",
+        lambda status, note="": heartbeats.append((status, note)),
+    )
+    monkeypatch.setattr(ihr, "LOCK_FILE", tmp_path / "lock")
+    monkeypatch.setenv("INTAKE_HEALTH_REPORT_ENABLED", "true")
+    monkeypatch.delenv("INTAKE_HEALTH_SUPERSEDED_TIMEOUT_MS", raising=False)
+    monkeypatch.delenv("INTAKE_HEALTH_CONNECTION_CLOSE_TIMEOUT_SECONDS", raising=False)
+    monkeypatch.setenv(env_name, invalid_value)
+
+    rc = asyncio.run(ihr.run(dry_run=True, json_only=True))
+
+    assert rc == 1
+    assert connect_calls == []
+    assert heartbeats == [("error", "timeout configuration failed: ValueError")]
+    assert "client-name" not in heartbeats[0][1]
+
+
 def test_connect_failure_emits_type_only_error_heartbeat(tmp_path, monkeypatch):
     heartbeats = []
 
@@ -411,6 +485,116 @@ def test_connect_failure_emits_type_only_error_heartbeat(tmp_path, monkeypatch):
     assert rc == 1
     assert heartbeats == [("error", "db connect failed: RuntimeError")]
     assert "client-record" not in heartbeats[0][1]
+
+
+def test_connection_close_failure_emits_type_only_error_heartbeat(tmp_path, monkeypatch):
+    conn = _CloseFailureConn()
+    heartbeats = []
+    _install_run_fakes(monkeypatch, tmp_path, conn, heartbeats)
+
+    rc = asyncio.run(ihr.run(dry_run=True, json_only=True))
+
+    assert rc == 1
+    assert conn.terminated is True
+    assert heartbeats == [("error", "connection close failed: RuntimeError")]
+    assert "client-close-detail" not in heartbeats[0][1]
+
+
+def test_connection_close_timeout_is_bounded_and_releases_lock(tmp_path, monkeypatch):
+    conn = _HangingCloseConn()
+    heartbeats = []
+    _install_run_fakes(monkeypatch, tmp_path, conn, heartbeats)
+    monkeypatch.setenv("INTAKE_HEALTH_CONNECTION_CLOSE_TIMEOUT_SECONDS", "0.01")
+
+    rc = asyncio.run(
+        asyncio.wait_for(
+            ihr.run(dry_run=True, json_only=True),
+            timeout=1.0,
+        )
+    )
+
+    assert rc == 1
+    assert conn.close_cancelled is True
+    assert conn.terminated is True
+    assert heartbeats == [("error", "connection close failed: TimeoutError")]
+
+    # The timeout path must reach run()'s outer finally and release its flock;
+    # otherwise the next scheduled tick would emit a misleading healthy
+    # lock-held heartbeat forever.
+    next_lock_fd = ihr._acquire_lock_or_exit()
+    try:
+        assert next_lock_fd is not None
+    finally:
+        if next_lock_fd is not None:
+            fcntl.flock(next_lock_fd, fcntl.LOCK_UN)
+            os.close(next_lock_fd)
+
+
+@pytest.mark.parametrize("primary_phase", ("gather", "report", "persist"))
+def test_primary_failure_is_preserved_when_connection_close_also_fails(
+    tmp_path,
+    monkeypatch,
+    primary_phase,
+):
+    conn = _CloseFailureConn()
+    heartbeats = []
+    _install_run_fakes(monkeypatch, tmp_path, conn, heartbeats)
+
+    if primary_phase == "gather":
+        async def _fail_gather(*_args, **_kwargs):
+            raise LookupError("primary-detail-must-stay-private")
+
+        monkeypatch.setattr(ihr, "gather", _fail_gather)
+    elif primary_phase == "report":
+        def _fail_report():
+            raise LookupError("primary-detail-must-stay-private")
+
+        monkeypatch.setattr(ihr, "_thresholds_from_env", _fail_report)
+    else:
+        def _fail_persist(_report):
+            raise LookupError("primary-detail-must-stay-private")
+
+        monkeypatch.setattr(ihr, "_write_state", _fail_persist)
+
+    rc = asyncio.run(
+        ihr.run(
+            dry_run=primary_phase != "persist",
+            json_only=primary_phase != "persist",
+        )
+    )
+
+    assert rc == 1
+    assert conn.terminated is True
+    assert heartbeats == [("error", f"{primary_phase} failed: LookupError")]
+    assert "connection close failed" not in heartbeats[0][1]
+
+
+def test_primary_failure_is_preserved_when_connection_close_times_out(
+    tmp_path,
+    monkeypatch,
+):
+    conn = _HangingCloseConn()
+    heartbeats = []
+    _install_run_fakes(monkeypatch, tmp_path, conn, heartbeats)
+    monkeypatch.setenv("INTAKE_HEALTH_CONNECTION_CLOSE_TIMEOUT_SECONDS", "0.01")
+
+    async def _fail_gather(*_args, **_kwargs):
+        raise LookupError("primary-detail-must-stay-private")
+
+    monkeypatch.setattr(ihr, "gather", _fail_gather)
+
+    rc = asyncio.run(
+        asyncio.wait_for(
+            ihr.run(dry_run=True, json_only=True),
+            timeout=1.0,
+        )
+    )
+
+    assert rc == 1
+    assert conn.close_cancelled is True
+    assert conn.terminated is True
+    assert heartbeats == [("error", "gather failed: LookupError")]
+    assert "connection close failed" not in heartbeats[0][1]
 
 
 def test_gather_failure_emits_error_heartbeat_and_closes_connection(tmp_path, monkeypatch):
@@ -630,6 +814,22 @@ def test_json_only_skips_all_side_effects(tmp_path, monkeypatch, capsys):
     assert not (tmp_path / "state.json").exists()
     out = capsys.readouterr().out
     assert '"review_pending_total"' in out
+
+
+def test_json_only_help_distinguishes_success_from_failure_side_effects(
+    monkeypatch,
+    capsys,
+):
+    monkeypatch.setattr(sys, "argv", ["intake_health_report.py", "--help"])
+
+    with pytest.raises(SystemExit) as exc_info:
+        ihr.main()
+
+    assert exc_info.value.code == 0
+    normalized_help = " ".join(capsys.readouterr().out.split())
+    assert "no success side effects" in normalized_help
+    assert "failures still emit heartbeat=error" in normalized_help
+    assert "no success side effects" in (ihr.__doc__ or "")
 
 
 def test_digest_dedup_key_is_date_stamped_not_a_bare_constant(tmp_path, monkeypatch):
