@@ -29,6 +29,15 @@
        ~/Library/LaunchAgents/com.nuzantara.intake-health-report.plist
 
   Plist permissions hardened to 0444 per cicatrix P0-3.
+
+  TZ NOTE (verbale #11): launchd's StartCalendarInterval has NO timezone
+  field — "07:30 daily = WITA" holds ONLY while the host's system TZ is set
+  to Asia/Makassar. A TZ drift on the host silently shifts this cron's wall-
+  clock time with no error anywhere. The freshness organ (wa-mirror-
+  freshness-liveness, StartInterval-based) is unaffected by this class of
+  drift since it computes business hours via ZoneInfo("Asia/Makassar") in
+  code, not off the host's system TZ — that asymmetry between the two W0
+  guardians is easy to miss if you assume they share a TZ dependency.
 -->
 <plist version="1.0">
 <dict>
