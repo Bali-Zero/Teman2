@@ -8,23 +8,38 @@ import { logger } from "@/lib/logger";
 import { toError } from "@/lib/types/common";
 import { ApiError } from "@/lib/api/error-handler";
 import { STAGE_LABELS } from "@/lib/api/secondhome/state-machine";
-import type { E33Stage } from "@/lib/api/secondhome/secondhome.types";
+import type {
+  E33Stage,
+  EvidenceRefView,
+  GuaranteeBasis,
+} from "@/lib/api/secondhome/secondhome.types";
 import { useAdvanceSecondHomeCase } from "@/hooks/useSecondHome";
+import { isGuaranteeEvidenceComplete } from "./guarantee-evidence";
 
 /**
  * Advance-stage control. `allowedNextStages` comes from the CaseDetail
  * response's own `allowed_next_stages` field — the SERVER list is
  * authoritative (already excludes itap_eval while the flag is off); this
  * component does not recompute it from the local state-machine mirror.
+ *
+ * `basis`/`evidence` are used ONLY to proactively disable
+ * guarantee_proof_due → annual_maintenance when the guarantee evidence is
+ * incomplete (backend hardening 2026-08-19 rejects that transition with
+ * 409 otherwise) — a convenience, not a second source of truth; the server
+ * message is still surfaced verbatim on any 409.
  */
 export function TransitionControl({
   caseId,
   currentStage,
   allowedNextStages,
+  basis,
+  evidence,
 }: {
   caseId: string;
   currentStage: E33Stage;
   allowedNextStages: E33Stage[];
+  basis: GuaranteeBasis;
+  evidence: EvidenceRefView[];
 }) {
   const toast = useToast();
   const advance = useAdvanceSecondHomeCase(caseId);
@@ -35,6 +50,10 @@ export function TransitionControl({
   // Defensive filter — the server list is authoritative and already
   // excludes itap_eval, but never render it even if it slipped through.
   const offeredStages = allowedNextStages.filter((s) => s !== "itap_eval");
+
+  const evidenceComplete = isGuaranteeEvidenceComplete(basis, evidence);
+  const annualMaintenanceGated =
+    currentStage === "guarantee_proof_due" && !evidenceComplete;
 
   if (offeredStages.length === 0) {
     return (
@@ -100,11 +119,28 @@ export function TransitionControl({
         >
           <option value="">-- Select next stage --</option>
           {offeredStages.map((stage) => (
-            <option key={stage} value={stage}>
+            <option
+              key={stage}
+              value={stage}
+              disabled={
+                stage === "annual_maintenance" && annualMaintenanceGated
+              }
+            >
               {STAGE_LABELS[stage]}
+              {stage === "annual_maintenance" && annualMaintenanceGated
+                ? " (evidence incomplete)"
+                : ""}
             </option>
           ))}
         </select>
+        {annualMaintenanceGated && (
+          <p className="text-xs text-[var(--bz-text-2)]">
+            Annual Maintenance requires the guarantee evidence to be complete —
+            basis proof (
+            {basis === "deposit" ? "bank confirmation" : "property title"}) plus
+            a filed immigration filing. Add evidence first.
+          </p>
+        )}
         {needsOccurredOn && (
           <div>
             <label className="text-xs text-[var(--bz-text-2)] block mb-1">
@@ -131,7 +167,11 @@ export function TransitionControl({
       </div>
       <Button
         type="submit"
-        disabled={!toStage || advance.isPending}
+        disabled={
+          !toStage ||
+          advance.isPending ||
+          (toStage === "annual_maintenance" && annualMaintenanceGated)
+        }
         className="w-full gap-2 bg-[var(--bz-accent)] text-[var(--accent-foreground)] hover:bg-[var(--bz-accent)]/90"
       >
         {advance.isPending ? (

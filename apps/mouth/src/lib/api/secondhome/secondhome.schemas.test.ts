@@ -16,13 +16,12 @@ describe("createCaseSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("accepts a property-basis case with practice link and owner email", () => {
+  it("accepts a property-basis case with practice link and owner email (schema stays permissive — the UI disables the property option, the backend enforces the 422)", () => {
     const result = createCaseSchema.safeParse({
       client_id: 42,
       basis: "property",
       practice_id: 7,
       owner_email: "ari@balizero.com",
-      note: "Fit memo completed 2026-08-01",
     });
     expect(result.success).toBe(true);
   });
@@ -103,6 +102,18 @@ describe("createCaseSchema", () => {
       owner_email: "",
     });
     expect(empty.success).toBe(true);
+  });
+
+  it("never carries a note field through to the parsed output (backend dropped it — 2026-08-19 reconciliation)", () => {
+    const result = createCaseSchema.safeParse({
+      client_id: 1,
+      basis: "deposit",
+      note: "should be stripped, not validated",
+    } as unknown as Parameters<typeof createCaseSchema.safeParse>[0]);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).not.toHaveProperty("note");
+    }
   });
 });
 

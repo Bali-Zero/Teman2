@@ -122,7 +122,6 @@ export const createCaseSchema = z
       .or(z.literal("")),
     dependent_code: dependentCodeEnum.optional(),
     principal_case_id: emptyToUndefined,
-    note: emptyToUndefined,
   })
   .superRefine((data, ctx) => {
     // dependent_code requires principal_case_id and vice versa (422 on the

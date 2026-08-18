@@ -53,7 +53,14 @@ export type GuaranteeAlertSeverity = "info" | "warning" | "urgent" | "critical";
 
 // ── Requests ──────────────────────────────────────────────────────────────────
 
-/** POST /api/e33/cases body. */
+/**
+ * POST /api/e33/cases body.
+ *
+ * NOTE (2026-08-19 backend adversarial-review reconciliation): `note` was
+ * dropped entirely — the backend accepted and silently discarded it, and
+ * the hardened contract no longer offers it. Do not re-add without a
+ * backend-confirmed field.
+ */
 export interface CreateCaseParams {
   client_id: number;
   basis: GuaranteeBasis;
@@ -61,7 +68,6 @@ export interface CreateCaseParams {
   owner_email?: string;
   dependent_code?: DependentCode;
   principal_case_id?: string;
-  note?: string;
 }
 
 /** GET /api/e33/cases query params. */

@@ -45,7 +45,6 @@ export default function NewSecondHomeCasePage() {
     { id: number; label: string }[]
   >([]);
   const [ownerEmail, setOwnerEmail] = useState("");
-  const [note, setNote] = useState("");
   const [isDependent, setIsDependent] = useState(false);
   const [dependentCode, setDependentCode] = useState<DependentCode | "">("");
   const [principalCaseId, setPrincipalCaseId] = useState("");
@@ -111,7 +110,6 @@ export default function NewSecondHomeCasePage() {
       owner_email: ownerEmail,
       dependent_code: isDependent && dependentCode ? dependentCode : undefined,
       principal_case_id: isDependent ? principalCaseId : undefined,
-      note,
     });
 
     if (!result.success) {
@@ -213,26 +211,37 @@ export default function NewSecondHomeCasePage() {
             </label>
             <div className="grid grid-cols-2 gap-3">
               {[
-                { value: "deposit" as const, label: "Deposit — USD 130,000" },
+                {
+                  value: "deposit" as const,
+                  label: "Deposit — USD 130,000",
+                  disabled: false,
+                },
                 {
                   value: "property" as const,
                   label: "Property — USD 1,000,000",
+                  disabled: true,
                 },
               ].map((option) => (
                 <button
                   key={option.value}
                   type="button"
+                  disabled={option.disabled}
                   onClick={() => setBasis(option.value)}
                   className={`py-2.5 rounded-lg border text-sm font-medium transition-colors ${
-                    basis === option.value
-                      ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]"
-                      : "border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                    option.disabled
+                      ? "border-[var(--border)] bg-[var(--background-elevated)]/50 text-[var(--foreground-muted)] opacity-50 cursor-not-allowed"
+                      : basis === option.value
+                        ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]"
+                        : "border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
                   }`}
                 >
                   {option.label}
                 </button>
               ))}
             </div>
+            <p className="text-xs text-[var(--foreground-muted)]">
+              Property route — pending official confirmation (addendum 007).
+            </p>
           </div>
 
           {/* Practice link (optional) */}
@@ -343,23 +352,6 @@ export default function NewSecondHomeCasePage() {
                 </div>
               </div>
             )}
-          </div>
-
-          {/* Note */}
-          <div className="space-y-2">
-            <label className={labelClass}>
-              Note{" "}
-              <span className="text-[var(--foreground-muted)] font-normal">
-                (optional)
-              </span>
-            </label>
-            <textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              className={`${inputClass} resize-none`}
-              rows={3}
-              placeholder="Fit-memo notes, client context, internal reminders..."
-            />
           </div>
 
           <div className="pt-4 flex justify-end gap-3 border-t border-[var(--border)]">
