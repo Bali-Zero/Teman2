@@ -469,7 +469,9 @@ export function proxy(request: NextRequest) {
     }
 
     // /email → the Zoho mailbox. Zoho has no path that corresponds to a kita
-    // one, so every /email/* lands on the inbox rather than composing a path.
+    // one, so /email and /email/<segment> both land on the inbox rather than
+    // composing a path. A path containing a dot never reaches this middleware
+    // at all — the matcher below excludes it — so /email/first.last 404s.
     if (pathname === "/email" || pathname.startsWith("/email/")) {
       return crossOriginRedirect(request, new URL(ZOHO_MAILBOX_URL), 302);
     }
@@ -487,6 +489,9 @@ export function proxy(request: NextRequest) {
         302,
       );
       redirectResponse.headers.set("x-pathname", pathname);
+      // Re-set what the app-domain block set on the response we are replacing:
+      // a new response does not inherit it, and /calendar is not in robots.ts.
+      redirectResponse.headers.set("X-Robots-Tag", "noindex, nofollow");
       return redirectResponse;
     }
 

@@ -630,6 +630,17 @@ describe("Middleware - Multi-domain Routing", () => {
           "https://kita.balizero.com/dashboard",
         );
       });
+
+      // The app-domain block noindexes every response it produces, but a newly
+      // created redirect does not inherit the header — the /portal redirect two
+      // branches up re-sets it for the same reason. /calendar is not covered by
+      // robots.ts either, so without this the retirement is crawlable.
+      it(`[guilt] keeps the app-domain noindex header on ${retired}`, () => {
+        const request = createRequest(`https://kita.balizero.com${retired}`);
+        const response = proxy(request);
+
+        expect(response.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
+      });
     }
 
     it("[guilt] a deep retired path also lands on the dashboard", () => {
