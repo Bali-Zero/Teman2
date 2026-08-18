@@ -5,7 +5,7 @@ client_case: "internal — BOT-V3 gate-prep for the Zantara WhatsApp ChatGPT Pro
 discovered_by: "Codex orchestrator on Air-M5, resumed from the 2026-08-15 BOT-V lane and re-grounded against current main plus adapter head"
 sources:
   - "origin/main at 993e4e868a6e8210328f69ccd136ca9d5c54d776, fetched 2026-08-18"
-  - "PR #4216 adapter source head 6cc3c845c: Codex subscription adapter, offline harness, tests, CI, and ADR"
+  - "PR #4216 adapter source head 0b8705527: Codex subscription adapter, offline harness, tests, CI, and ADR"
   - "PR #4216 ADR: research/operations/2026-08-15-adr-wa-runtime-openai-provider.md"
   - "PR #4301 branch agent/air-m5/ops/bot-corner-reconfirm-2026-08-18: research/operations/2026-08-18-bot-openai-shadow-wiring-plan.md"
   - "apps/backend-rag/backend/app/routers/whatsapp_chat.py"
@@ -46,7 +46,7 @@ This report separates three kinds of evidence:
   a real vendor failure;
 - **UNMEASURED** — reasoned from code or named as a required probe; no passing claim is made.
 
-The selected adapter evidence is frozen at PR #4216 source head `6cc3c845c`. Live-path evidence was
+The selected adapter evidence is frozen at PR #4216 source head `0b8705527`. Live-path evidence was
 rechecked against current `origin/main` at `993e4e868a6e8210328f69ccd136ca9d5c54d776`.
 `git diff HEAD..origin/main` was empty for all cited WhatsApp hot files before this revision.
 
@@ -238,7 +238,7 @@ before either file surface can exist.
 - [x] Adapter diff reviewed by Kimi K3; Gemini 3.1 Pro FIX-FIRST findings were dispositioned and
       the degraded Gemini 3.7 Flash High fallback returned SHIP.
 - [ ] Mandatory final Fable/Claude on-disk gate.
-- [x] #4194 threat/privacy addendum reconciled to source head `6cc3c845c`; its independent Kimi K3
+- [x] #4194 threat/privacy addendum reconciled to source head `0b8705527`; its independent Kimi K3
       FIX-FIRST wording findings were corrected. The mandatory Fable/Claude gate remains open.
 - [ ] No config, gateway, worker, secret, live traffic, merge, or deploy until a separate mandate.
 
@@ -252,7 +252,7 @@ are now explicit arguments in `.github/workflows/tests.yml`; CI runs those deter
 does not execute a provider call, ingest an export, or perform human scoring.
 
 After Kimi K3 found that the adapter docstring could be read as runtime authorization, source head
-`6cc3c845c` narrowed it to the intended future credential-path choice plus the current human-run
+`0b8705527` narrowed it to the intended future credential-path choice plus the current human-run
 offline evidence boundary. The focused 71-test adapter suite and Ruff check passed again after that
 documentation-only correction.
 
