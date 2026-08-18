@@ -1,9 +1,10 @@
 {
   "_version": "1.4",
-  "_updated": "2026-08-14 (console ground truth folded in: TP1 = Pro Plan, active 2026-08-08->2026-09-09, auto-renewal ENABLED (flipped by Zero same evening), 7-day rolling quota 56.31% used/within-plan; 14-model roster console-verified, MiniMax M2.5 and kimi-k2.x marked PHANTOM (not in this plan at all, PROBE-4 moot); Anthropic-protocol door + unexploited capabilities registered. Previous same-day: PROBE-1-residual closed with 7-day TP1 production burn-rate data (qwen3.8-max/qwen3.7-plus/deepseek-v4-flash-0731 PROBATION->ARMED). research/operations/2026-08-14-probe1-tp1-burn-rate.md. Earlier: 2026-08-10 panel-amended fleet-order spec: emails, GLM dual-door, DeepSeek re-admission, quorum semantics)",
+  "_updated": "2026-08-19b (accounts estate: +A4 antozero1987 +A5 sianoantonello, both Max 20x — Zero's correction, supersedes the 2026-08-10 'no A4 exists' resolution; A5 verified live as Mini's ~/.claude login). Earlier same day: final-gate gear split, ruling Zero: Fable 5 reviews the Gear-3/large-feature class only; Gear 1-2 small interventions close on Opus 5; selector = the CI-recomputed gear floor. Earlier 2026-08-14: console ground truth folded in: TP1 = Pro Plan, active 2026-08-08->2026-09-09, auto-renewal ENABLED (flipped by Zero same evening), 7-day rolling quota 56.31% used/within-plan; 14-model roster console-verified, MiniMax M2.5 and kimi-k2.x marked PHANTOM (not in this plan at all, PROBE-4 moot); Anthropic-protocol door + unexploited capabilities registered. Previous same-day: PROBE-1-residual closed with 7-day TP1 production burn-rate data (qwen3.8-max/qwen3.7-plus/deepseek-v4-flash-0731 PROBATION->ARMED). research/operations/2026-08-14-probe1-tp1-burn-rate.md. Earlier: 2026-08-10 panel-amended fleet-order spec: emails, GLM dual-door, DeepSeek re-admission, quorum semantics)",
   "_doc": "SSOT for the CLOUD fleet: orchestrators, accounts, role fallback chains. Local Ollama assignments stay in MODEL_TOPOLOGY.json (unchanged). Rationale: research/operations/2026-08-09-quattro-gruppi-e-continuita.md. Law: AGENTS.md §17 + CLAUDE.md.",
   "_invariants": [
     "Gear-3 harness gate (ruling Zero 2026-08-09): Fable 5 first, rotating across ALL Anthropic accounts; only when NO account can run Fable, fall back to Opus 5 effort=max with gate_degraded:'fable->opus' recorded in the verdict check and Evidence Pack. Never pay per-token to unblock.",
+    "Final-gate gear split (ruling Zero 2026-08-19): Fable 5 (max) is the final reviewer/gate for the Gear-3/large-feature class ONLY; Gear 1-2 small interventions close on Opus 5. Selector = the CI-recomputed deterministic gear floor, never a conductor choice. Fable is never spent on small diffs; never pay per-token either way. WR2 content gate untouched (unconditionally Fable).",
     "WR2 on-disk content gate: UNCHANGED and out of this file's scope — unconditionally Fable, no fallback, window dead => SUSPEND.",
     "PII lanes = local models only (MODEL_TOPOLOGY roles). No cloud fallback ever: fail-closed, queue.",
     "Client-facing outputs (quotes, comms) = Anthropic interactive session only.",
@@ -15,7 +16,7 @@
   "accounts": {
     "anthropic": {
       "mechanism": "OAuth profile swap (cswap-style; profiles in Keychain on macOS). PENDING-ARMS: install+test on Pro and Air-M5.",
-      "policy": "Lanes are HOME assignments, not fences: every lane drains its home account first, then the ladder borrows automatically from the least-loaded other account (nothing sits idle). Sacrifice order when the gate needs a window: cron/batch lane pauses FIRST to donate its account. Donor mechanism UNARMED until the cron auto-pause hook lands (PENDING-ARMS): today donor rotation is a manual act. RESOLVED 2026-08-10 (Zero): the Anthropic estate is exactly 3 MAX (A1/A2/A3) + 1 Team Premium (AZ) — no A4 exists; ladders use A1-A3+AZ. The 'quad-MAX' wording in the global home CLAUDE.md is stale — that file is host-boundary protected from agent writes, correction is an operator paste-apply.",
+      "policy": "Lanes are HOME assignments, not fences: every lane drains its home account first, then the ladder borrows automatically from the least-loaded other account (nothing sits idle). Sacrifice order when the gate needs a window: cron/batch lane pauses FIRST to donate its account. Donor mechanism UNARMED until the cron auto-pause hook lands (PENDING-ARMS): today donor rotation is a manual act. SUPERSEDED 2026-08-19 (Zero, fleet-max-throughput mandate): the estate is 5 MAX (A1-A5) + 1 Team Premium (AZ) — A4 antozero1987 and A5 sianoantonello exist, both Max 20x; ladders may draw on A1-A5+AZ. The 2026-08-10 'no A4 exists' resolution described that day's estate, not an invariant. The 'TRE MAX' wording in the global home CLAUDE.md is now stale in the opposite direction — that file is host-boundary protected from agent writes, correction is an operator paste-apply.",
       "slots": {
         "A1": {
           "email": "antonellosiano@gmail.com",
@@ -31,6 +32,16 @@
           "email": "applevisionpro1987@gmail.com",
           "plan": "Claude Max 20x",
           "lane": "cron/batch — designated DONOR: auto-pause to free its window for the gate"
+        },
+        "A4": {
+          "email": "antozero1987@… (exact address unverified — account named by Zero 2026-08-19; confirm at first CLI login)",
+          "plan": "Claude Max 20x",
+          "lane": "cloud routines (afternoon PR-babysit + weekly PENDING-ARMS triage) — CLI login pending (M5 spare CLAUDE_CONFIG_DIR)"
+        },
+        "A5": {
+          "email": "sianoantonello@gmail.com",
+          "plan": "Claude Max 20x",
+          "lane": "Mini ~/.claude machine login (verified live 2026-08-19) + cloud routines (ssot-contradiction-hunter, secret-pattern-sweep)"
         },
         "AZ": {
           "email": "zero@balizero.com",
@@ -198,6 +209,7 @@
       "on_exhaustion": "queue"
     },
     "builder_primary": {
+      "note": "Workhorse-first intensification (ruling Zero 2026-08-15, reconfirmed 2026-08-19; MODEL_ROSTER §Throughput doctrine): this chain serves harness-native/Anthropic-specific BUILD units. Batch/iterative/review-cycle work routes FIRST to the flat workhorse doors (TP1 deepseek-v4-flash/qwen3.7-plus ARMED, GLM z.ai, agy) before any seat here.",
       "chain": [
         {
           "model": "claude-sonnet-5",
@@ -365,7 +377,7 @@
           "model": "family-conditional: builder=Anthropic -> gemini-agy(G1) -> codex(O1); builder=non-Anthropic -> opus-5(A1,A2) first"
         }
       ],
-      "note": "Gear-2 verdict seat must be a different family than the main builder (AGENTS 17.1). Builder seats never issue verdicts; exhaustion queues the PR.",
+      "note": "Gear-2 verdict seat must be a different family than the main builder (AGENTS 17.1). Builder seats never issue verdicts; exhaustion queues the PR. Final-review split (ruling Zero 2026-08-19): the final on-disk review for Gear 1-2 closes on Opus 5 — Fable is never spent on small diffs (see _invariants).",
       "on_exhaustion": "queue"
     },
     "reasoner": {

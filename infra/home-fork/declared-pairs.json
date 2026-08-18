@@ -768,7 +768,7 @@
       "live": "~/.config/ghostty/verify-latest.sh",
       "repo": "infra/ghostty/verify-latest.sh",
       "machines": ["all"],
-      "_note": "Ghostty fleet profile, added 2026-08-18, wired 2026-08-19 (PENDING-ARMS closure). Launcher that nuz/v and the verify command-palette entry type — runs origin/main's verify.sh via a fresh archive extract, so it stays current even on a checkout that is intentionally behind (M5). Installed by infra/ghostty/install.sh; drift checked locally by infra/ghostty/verify.sh's own pair loop and fleet-wide by this lint against origin/main."
+      "_note": "Ghostty fleet launcher, added 2026-08-19 (closes the nuz/v dead-path degradation, PENDING-ARMS 2026-08-18). Runs origin/main's verify.sh from a temp extraction, so the guardian executed is always current even where the checkout is behind by policy (W106b). Installed by install.sh; drift watched here and by verify.sh's own pair loop."
     },
     {
       "live": "~/.config/ghostty/machine.ghostty",
