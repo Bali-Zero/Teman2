@@ -1,23 +1,15 @@
 ---
-title: "ADR — OpenAI Responses API client: an OFFLINE, unwired component (NO-WIRING)"
+title: "ADR — OpenAI WhatsApp provider groundwork: OFFLINE and unwired (NO-WIRING)"
 date: 2026-08-15
 author: Sonnet 5 implementer session, worktree `bot-openai-adapter`, rework after a first
   builder session shipped a VETOED design (an unwired "shadow" branch presented as live state
   in `.agents/skills/bot/SKILL.md`, plus config/gateway wiring that never actually dispatched
   anything real). This PR is a full rebuild on top of that revert.
-status: "NO-WIRING. This PR ships one standalone, unimported HTTP client and its offline
-  benchmark/corpus tooling. Nothing in the live WhatsApp runtime imports, calls, flags-gates,
-  or is otherwise aware of any of it. Verify with
-  `grep -rln \"openai_responses_client\" --include='*.py' .` (from the repo root — the module
-  lives under `apps/backend-rag/backend/`, but its only CALLER, `wa_blind_bench.py`, lives
-  under `scripts/bot/`, so a search scoped to `apps/backend-rag/backend` alone under-reports;
-  confirmed 2026-08-15, corrects an earlier draft of this line whose scoped command returned
-  zero hits, including for the module's own file, because a file grepping for its own module
-  name does not self-match unless it references itself by that string) — the only hits are
-  `scripts/bot/wa_blind_bench.py`, `scripts/bot/test_wa_blind_bench.py`, and
-  `apps/backend-rag/backend/tests/llm/test_openai_responses_client.py`: a standalone script a
-  human runs by hand, that script's own test, and this module's test file — nothing a router,
-  cron, or CI gate reaches."
+status: "NO-WIRING. The selected provider is the standalone CodexExecClient authenticated by
+  the existing ChatGPT subscription; the Responses API-key client remains dormant. The only
+  selected-provider consumer in this PR is the human-run offline blind-benchmark facade.
+  Nothing in the live WhatsApp runtime imports, calls, flags-gates, deploys, or cuts over to
+  either client."
 adversarial_review: pending-kimi-k3
 sources:
   - .agents/skills/bot/SKILL.md (WA-bot corner, live wiring GROUND)
@@ -30,7 +22,7 @@ sources:
 client_case: null
 ---
 
-# ADR — OpenAI Responses API client: an offline, unwired component
+# ADR — OpenAI WhatsApp provider groundwork: offline and unwired
 
 ## 1. Context
 
@@ -334,7 +326,11 @@ follow-up — it is real, intentional scope, correctly attributed here now
 that it has been re-measured rather than assumed empty alongside its four
 genuinely-empty siblings.
 
-## 7. Corpus tooling: explicitly V5 INCOMPLETE
+## 7. Historical corpus gap: V5 INCOMPLETE (superseded by §30.10 R28)
+
+This section records the 2026-08-15 state and is intentionally not rewritten
+as if role awareness existed then. R28 closes both tooling gaps in the default
+builder mode; the current contract and residual limits are in §30.10.
 
 `scripts/bot/build_deid_corpus.py` and `scripts/bot/wa_blind_bench.py` are
 built and unit-tested against **synthetic fixtures only** — neither has
@@ -362,7 +358,11 @@ correction, the gaps below are declared here rather than silently carried:
   that question until role-awareness and multi-turn fixtures are added.
   Tracked here as an open gap, not silently deferred by omission.
 
-## 8. What arming would require (future PR, not started here)
+## 8. Historical arming requirements (subscription ruling supersedes point 1)
+
+This list records the pre-ruling Responses/API-key path. §30.1 supersedes
+point 1 with the owner-selected ChatGPT-subscription path; the remaining
+privacy, independent-scoring, runtime-host, review, and no-wiring gates remain.
 
 1. Zero's explicit business/cost authorization to provision
    `OPENAI_WA_PROVIDER_API_KEY` as a least-privilege project
@@ -5015,6 +5015,34 @@ current dependency and is explicitly superseded. These probes prove only the
 observed surfaces; they do not prove universal non-persistence or unattended
 production suitability.
 
+The offline benchmark is now aligned to the selected provider. Its default
+client is a narrow `CodexSubscriptionBenchClient` facade over
+`CodexExecClient`; it never reads `OPENAI_WA_PROVIDER_API_KEY` and never arms
+the dormant paid client. The facade records one subprocess attempt after a
+successful response and leaves structured refusal as unknown rather than
+inventing a boolean. Candidate calls remain strictly sequential, so maximum
+provider concurrency is one.
+
+The historical §7 V5 gap is closed at the tooling level. Default
+`build_deid_corpus` behavior now accepts only structured JSONL turns carrying
+canonical `user`/`assistant` roles plus a local conversation identifier, emits
+only user targets, and attaches at most 12 prior independently redacted and
+scanned role-labelled turns. Conversation identifiers never reach output or
+logs. Any unsafe or unverified turn clears that conversation's accumulated
+history; if the turn lacks an identifier, every accumulated conversation from
+that source file is cleared because the gap cannot be attributed safely. Plain WhatsApp TXT
+exports lack a trustworthy role field and therefore yield no default-mode
+fixture; historical role-blind single-turn output requires the explicit
+`--allow-legacy-single-turn` opt-in and is not promotion evidence.
+
+The blind transcript now carries `history` separately from the current user
+`prompt`; the text-only Codex provider receives the same structure encoded as
+JSON beneath fixed benchmark instructions. The benchmark loader rejects legacy
+fixtures that omit `role='user'` or an explicit role-aware `history` list. This closes role loss inside the
+harness but does not reproduce production RAG/tool state, so it remains a
+comparative conversational-safety bench, not proof of end-to-end Gemini parity.
+No real WhatsApp export was processed in this PR.
+
 `codex exec --output-schema <FILE>` was evaluated and deliberately not added.
 The option constrains the model's final response shape; it does not provide
 provider completion metadata, a refusal object, or a reliable truncation
@@ -5026,3 +5054,13 @@ The operational boundary is unchanged: no runtime import, flag, channel
 wiring, WhatsApp traffic, deployment, or cutover is part of this PR. A future
 runtime host remains an explicit architecture gate because Fly production does
 not inherit this Air-M5 user's local Codex CLI or ChatGPT OAuth state.
+
+R28 verification was run from the reconciled worktree with the backend virtual
+environment active. One combined pytest process collected 481 cases (70 Codex
+adapter, 163 dormant Responses adapter, and 248 corpus/benchmark) and exited
+zero. Running the four suites together exposed and then closed a test-isolation
+bug: backend tests left `DATABASE_URL` in the process, which made later corpus
+tests attempt a dynamic CRM-name lookup against an unrelated database. The
+corpus test module now removes `DATABASE_URL` and `PGURL` per test; production
+code and its fail-closed CRM-name behavior are unchanged. `git diff --check`
+and targeted Ruff `F,I` checks over the four script files also exited zero.

@@ -41,6 +41,13 @@ from scripts.bot.build_deid_corpus import (  # noqa: E402
 )
 
 
+@pytest.fixture(autouse=True)
+def _isolate_dynamic_crm_database_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep corpus tests independent from backend-suite environment mutation."""
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.delenv("PGURL", raising=False)
+
+
 def _write_wa_txt(path: Path, lines: list[str]) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -68,6 +75,7 @@ class TestGuiltResidualAndIndependentScan:
             execute=True,
             use_ollama_ner=False,
             ollama_model="unused",
+            require_role_aware=False,
         )
         assert stats["kept"] == 1
         written_text = "".join(f.read_text(encoding="utf-8") for f in out_dir.glob("*.local.jsonl"))
@@ -88,6 +96,7 @@ class TestGuiltResidualAndIndependentScan:
             execute=True,
             use_ollama_ner=False,
             ollama_model="unused",
+            require_role_aware=False,
         )
         assert stats["kept"] == 1
         written_text = "".join(f.read_text(encoding="utf-8") for f in out_dir.glob("*.local.jsonl"))
@@ -136,6 +145,7 @@ class TestGuiltResidualAndIndependentScan:
             execute=False,
             use_ollama_ner=False,
             ollama_model="unused",
+            require_role_aware=False,
         )
         assert stats["kept"] == 0
         assert stats["dropped_independent_scan"] == 2
@@ -466,6 +476,7 @@ class TestG1SpacedDigitRuns:
             execute=False,
             use_ollama_ner=False,
             ollama_model="unused",
+            require_role_aware=False,
         )
         assert stats["kept"] == 0
         assert stats["dropped_residual_pii"] == 1
@@ -486,6 +497,7 @@ class TestG1SpacedDigitRuns:
             execute=False,
             use_ollama_ner=False,
             ollama_model="unused",
+            require_role_aware=False,
         )
         assert stats["kept"] == 1
         assert stats["dropped_residual_pii"] == 0
@@ -523,7 +535,9 @@ class TestR6_1PIIScanGaps:
         how this figure would actually appear in a real client message."""
         assert (
             _is_date_or_amount_shape(
-                "10,000,000,000", text="modal disetor 10,000,000,000 IDR", span=(14, 28),
+                "10,000,000,000",
+                text="modal disetor 10,000,000,000 IDR",
+                span=(14, 28),
             )
             is True
         )
@@ -601,6 +615,7 @@ class TestR6_1PIIScanGaps:
             execute=False,
             use_ollama_ner=False,
             ollama_model="unused",
+            require_role_aware=False,
         )
         assert stats["kept"] == 0
 
@@ -624,6 +639,7 @@ class TestR6_1PIIScanGaps:
             execute=False,
             use_ollama_ner=False,
             ollama_model="unused",
+            require_role_aware=False,
         )
         assert stats["kept"] == 1
         assert stats["dropped_residual_pii"] == 0
@@ -728,6 +744,7 @@ class TestG2CaseInsensitiveScanB:
             execute=False,
             use_ollama_ner=False,
             ollama_model="unused",
+            require_role_aware=False,
         )
         assert stats["kept"] == 0
         assert stats["dropped_independent_scan"] == 1
@@ -941,6 +958,7 @@ class TestK5PrivateOutputDirectory:
                 execute=True,
                 use_ollama_ner=False,
                 ollama_model="unused",
+                require_role_aware=False,
             )
         finally:
             os.umask(old_umask)
@@ -1002,6 +1020,7 @@ class TestInnocenceCleanMessagesSurvive:
             execute=False,
             use_ollama_ner=False,
             ollama_model="unused",
+            require_role_aware=False,
         )
         assert stats["kept"] == 3
         assert stats["dropped_residual_pii"] == 0
@@ -1051,6 +1070,7 @@ class TestFingerprintAbsence:
             execute=True,
             use_ollama_ner=False,
             ollama_model="unused",
+            require_role_aware=False,
         )
         assert stats["kept"] >= 1
 
@@ -1079,10 +1099,11 @@ class TestFingerprintAbsence:
             assert suffix.isdigit()
 
     def test_raw_record_has_no_sender_field_at_all(self):
-        """Structural guard: RawRecord's fields are exactly text +
-        source_file (local-logging-only) — a future edit that adds back a
-        sender/hash field would be a data-minimization regression."""
-        assert set(RawRecord.__dataclass_fields__.keys()) == {"text", "source_file"}
+        """Structural guard: role-aware grouping may retain canonical role
+        and a local-only conversation ID, but never the sender field."""
+        fields = set(RawRecord.__dataclass_fields__)
+        assert fields == {"text", "source_file", "role", "conversation_id"}
+        assert "sender" not in fields
 
 
 class TestOutputPermissions:
@@ -1104,6 +1125,7 @@ class TestOutputPermissions:
                 execute=True,
                 use_ollama_ner=False,
                 ollama_model="unused",
+                require_role_aware=False,
             )
         finally:
             os.umask(old_umask)
@@ -1138,7 +1160,9 @@ class TestWriteJsonlPrivateFchmod:
         assert mode == 0o600, f"expected tightened to 0o600, got {oct(mode)}"
 
     def test_fchmod_failure_leaves_original_content_untouched_and_fd_closed(
-        self, tmp_path: Path, monkeypatch,
+        self,
+        tmp_path: Path,
+        monkeypatch,
     ):
         """Guilt for the pass-2 refinement specifically: a failed
         `os.fchmod` must not have already truncated the file. Spies on
@@ -1169,12 +1193,13 @@ class TestWriteJsonlPrivateFchmod:
 
         assert len(closed_fds) == 1, "the fd opened before the failed fchmod must be closed exactly once"
         assert target.read_text(encoding="utf-8") == original_content, (
-            "pre-existing content must survive a failed fchmod completely untouched — "
-            "not just 'no new content added'"
+            "pre-existing content must survive a failed fchmod completely untouched — not just 'no new content added'"
         )
 
     def test_r11_1_ftruncate_failure_closes_fd_exactly_once_and_propagates(
-        self, tmp_path: Path, monkeypatch,
+        self,
+        tmp_path: Path,
+        monkeypatch,
     ):
         """R11-1 (Kimi K3 round-11 review): R10-4's fix moved `os.ftruncate`/
         `os.lseek` inside the `os.fchmod` guard, but the ADR claimed "no new
@@ -1323,6 +1348,7 @@ class TestIndependentScanFailsClosed:
             execute=False,
             use_ollama_ner=False,
             ollama_model="unused",
+            require_role_aware=False,
         )
         assert stats["kept"] == 0
         assert stats["independent_scan_errors"] == 1
@@ -1399,6 +1425,7 @@ class TestLogsNeverLeakExceptionText:
                 execute=False,
                 use_ollama_ner=False,
                 ollama_model="unused",
+                require_role_aware=False,
             )
 
         assert stats["redaction_failed"] == 1
@@ -1429,6 +1456,7 @@ class TestLogsNeverLeakExceptionText:
                 execute=False,
                 use_ollama_ner=False,
                 ollama_model="unused",
+                require_role_aware=False,
             )
 
         assert stats["independent_scan_errors"] == 1
@@ -1474,7 +1502,7 @@ class TestR6_3NoExportFilenameInLogs:
         input_dir = tmp_path / "in"
         input_dir.mkdir()
         bad_file = input_dir / f"WhatsApp Chat with {contact_name}.jsonl"
-        bad_file.write_text('[1, 2, 3]\n', encoding="utf-8")
+        bad_file.write_text("[1, 2, 3]\n", encoding="utf-8")
 
         with caplog.at_level(logging.WARNING):
             list(module._load_records(input_dir))
@@ -1553,6 +1581,7 @@ class TestR6_3NoExportFilenameInLogs:
                 execute=False,
                 use_ollama_ner=False,
                 ollama_model="unused",
+                require_role_aware=False,
             )
 
         assert stats["kept"] == 1
@@ -1634,6 +1663,7 @@ class TestR6_7NonDictJsonlLineDoesNotCrash:
             execute=False,
             use_ollama_ner=False,
             ollama_model="unused",
+            require_role_aware=False,
         )
         assert stats["kept"] == 1
         assert stats["read"] == 1
@@ -1781,6 +1811,7 @@ class TestR7_5InvalidUtf8InJsonlDoesNotCrashTheBuild:
             execute=False,
             use_ollama_ner=False,
             ollama_model="unused",
+            require_role_aware=False,
         )
         assert stats["kept"] == 1
         assert stats["read"] == 1
@@ -1813,6 +1844,7 @@ class TestR7_4OutputDirPathClassCoversTheOutputSide:
                 execute=True,
                 use_ollama_ner=False,
                 ollama_model="unused",
+                require_role_aware=False,
             )
 
         assert stats["kept"] == 1
@@ -1866,6 +1898,7 @@ class TestR8_5IdDocNearDigitsCrossesNewlines:
             execute=False,
             use_ollama_ner=False,
             ollama_model="unused",
+            require_role_aware=False,
         )
         assert stats["read"] == 1
         assert stats["kept"] == 0
@@ -1918,6 +1951,7 @@ class TestR8_8SlashSeparatedDigitRunsAndDayFirstDates:
             execute=False,
             use_ollama_ner=False,
             ollama_model="unused",
+            require_role_aware=False,
         )
         assert stats["kept"] == 0
         assert stats["dropped_residual_pii"] == 1
@@ -2038,9 +2072,7 @@ class TestR18_1DotAttachedHonorificAndSigNormalization:
     "bu, besok ya") is no longer mistaken for a name."""
 
     def test_guilt_dot_attached_lowercase_name_flagged(self):
-        assert "honorific_name" in _independent_pii_scan(
-            "tolong sampaikan ke ibu.siti rahayu besok"
-        )
+        assert "honorific_name" in _independent_pii_scan("tolong sampaikan ke ibu.siti rahayu besok")
         assert "honorific_name" in _independent_pii_scan("pak.budi santoso datang")
 
     def test_innocence_marker_followed_by_ordinary_lowercase_word_not_flagged(self):
@@ -2093,9 +2125,7 @@ class TestR18_1bSpacedLowercaseNameStopwordGuard:
     module-level R18-1b comment for the full derivation."""
 
     def test_guilt_spaced_lowercase_name_flagged(self):
-        assert "honorific_name" in _independent_pii_scan(
-            "tolong ke ibu siti rahayu besok"
-        )
+        assert "honorific_name" in _independent_pii_scan("tolong ke ibu siti rahayu besok")
         assert "honorific_name" in _independent_pii_scan("pak budi santoso datang")
 
     def test_innocence_marker_followed_by_stopword_not_flagged(self):
@@ -2109,7 +2139,7 @@ class TestR18_1bSpacedLowercaseNameStopwordGuard:
         assert "honorific_name" not in _independent_pii_scan("pak tolong kirim")
 
     def test_innocence_comma_after_marker_still_not_flagged(self):
-        """"bu, besok ya" — the VERDICT is unchanged (unflagged), but the
+        """ "bu, besok ya" — the VERDICT is unchanged (unflagged), but the
         MECHANISM changed at R20-3: this docstring originally described
         the comma as breaking the marker-then-space adjacency the
         candidate regex required, a structural reason independent of the
@@ -2128,9 +2158,7 @@ class TestR18_1bSpacedLowercaseNameStopwordGuard:
         """The R18-1b branch is purely additive (an OR'd-in extra
         detector) — every guilt/innocence case R18-1 and its Sig ADDENDUM
         already pinned must remain byte-for-byte identical."""
-        assert "honorific_name" in _independent_pii_scan(
-            "tolong sampaikan ke ibu.siti rahayu besok"
-        )
+        assert "honorific_name" in _independent_pii_scan("tolong sampaikan ke ibu.siti rahayu besok")
         assert "honorific_name" in _independent_pii_scan("pak.budi santoso datang")
         assert "honorific_name" in _independent_pii_scan("ke Ibu. Siti Rahayu")
         assert "honorific_name" in _independent_pii_scan("Sig.Rossi chiede update")
@@ -2173,9 +2201,7 @@ class TestR18_3ExtendedAddressMarkerVocabulary:
     entirely undetected."""
 
     def test_guilt_gg_abbreviation_flagged(self):
-        assert "address_marker" in _independent_pii_scan(
-            "alamat: Gg. Melati II No. 4, Denpasar"
-        )
+        assert "address_marker" in _independent_pii_scan("alamat: Gg. Melati II No. 4, Denpasar")
 
     def test_guilt_gg_abbreviation_lowercase_no_space_flagged(self):
         assert "address_marker" in _independent_pii_scan("gg. melati no 3")
@@ -2191,9 +2217,7 @@ class TestR19_1HonorificAdjacentPairStopwordGuard:
     in pairs — given name + family name)."""
 
     def test_guilt_name_pair_behind_a_bridging_stopword_flagged(self):
-        assert "honorific_name" in _independent_pii_scan(
-            "pak minta budi santoso datang"
-        )
+        assert "honorific_name" in _independent_pii_scan("pak minta budi santoso datang")
         assert "honorific_name" in _independent_pii_scan("ibu tolong siti rahayu")
 
     def test_innocence_no_adjacent_non_stopword_pair_not_flagged(self):
@@ -2219,9 +2243,7 @@ class TestR19_1HonorificAdjacentPairStopwordGuard:
         adjacent to the marker — must remain flagged identically under
         the new pair rule."""
         assert "honorific_name" in _independent_pii_scan("pak budi santoso datang")
-        assert "honorific_name" in _independent_pii_scan(
-            "tolong ke ibu siti rahayu besok"
-        )
+        assert "honorific_name" in _independent_pii_scan("tolong ke ibu siti rahayu besok")
 
 
 class TestR19_1bHonorificTwoModeStopwordGuard:
@@ -2314,9 +2336,7 @@ class TestR19_2AddressMarkerPrefixBoundary:
         the R17-3-declared "jalankan" ("run/execute") false positive is
         also closed by this same lookahead, since "k" (the char right
         after "Jalan" in "jalankan") is not whitespace or a dot."""
-        assert "address_marker" not in _independent_pii_scan(
-            "kita mau jalankan program ini"
-        )
+        assert "address_marker" not in _independent_pii_scan("kita mau jalankan program ini")
 
 
 class TestR19_3DotAttachedHonorificStopwordGuard:
@@ -2339,17 +2359,13 @@ class TestR19_3DotAttachedHonorificStopwordGuard:
     longer exists."""
 
     def test_guilt_stopword_after_dot_no_longer_flagged(self):
-        assert "honorific_name" not in _independent_pii_scan(
-            "makasih pak.sudah bantu"
-        )
+        assert "honorific_name" not in _independent_pii_scan("makasih pak.sudah bantu")
         assert "honorific_name" not in _independent_pii_scan("bu.tolong kirim")
 
     def test_regression_dot_attached_and_addendum_sig_cases_unaffected(self):
         """Every R18-1/ADDENDUM dot-attached guilt case must remain
         flagged identically after the stopword guard is applied."""
-        assert "honorific_name" in _independent_pii_scan(
-            "tolong sampaikan ke ibu.siti rahayu besok"
-        )
+        assert "honorific_name" in _independent_pii_scan("tolong sampaikan ke ibu.siti rahayu besok")
         assert "honorific_name" in _independent_pii_scan("pak.budi santoso datang")
         assert "honorific_name" in _independent_pii_scan("Sig.Rossi chiede update")
         assert "honorific_name" in _independent_pii_scan("Sig.ra Rossi")
@@ -2373,9 +2389,7 @@ class TestR20_1DotAttachedTwoModeStopwordGuard:
 
     def test_guilt_name_pair_behind_a_dot_attached_bridging_stopword_flagged(self):
         assert "honorific_name" in _independent_pii_scan("ibu.tolong siti rahayu")
-        assert "honorific_name" in _independent_pii_scan(
-            "pak.minta budi santoso datang"
-        )
+        assert "honorific_name" in _independent_pii_scan("pak.minta budi santoso datang")
 
     def test_innocence_regress_dot_attached_single_word_after_stopword_not_flagged(self):
         assert "honorific_name" not in _independent_pii_scan("makasih pak.sudah bantu")
@@ -2442,7 +2456,7 @@ class TestR20_3HonorificLightPunctuationSeparator:
         assert "honorific_name" in _independent_pii_scan("pak, budi santoso ok")
 
     def test_innocence_comma_plus_single_stopword_word_still_not_flagged(self):
-        """"pak, sudah bantu" — the comma now reaches the two-mode scan
+        """ "pak, sudah bantu" — the comma now reaches the two-mode scan
         (R20-3's own widening), but stays unflagged via the stopword
         guard on "sudah", exactly like the unpunctuated equivalent."""
         assert "honorific_name" not in _independent_pii_scan("pak, sudah bantu")
@@ -2499,9 +2513,7 @@ class TestR21_1HonorificPairScanAnyCase:
         via the coincidental (santoso, datang) pair, not via the actual
         defect — must stay flagged after the fix, now for the right
         reason (the capitalized "Budi" pair itself)."""
-        assert "honorific_name" in _independent_pii_scan(
-            "pak minta Budi santoso datang"
-        )
+        assert "honorific_name" in _independent_pii_scan("pak minta Budi santoso datang")
 
     def test_innocence_stopword_only_still_not_flagged_on_both_branches(self):
         """The any-case widening must not turn a bare bridging stopword,
@@ -2539,9 +2551,7 @@ class TestR21_3HonorificStopwordStackSkip:
     then the pair-scan window runs starting after that skip."""
 
     def test_guilt_stopword_stack_then_pair_flagged(self):
-        assert "honorific_name" in _independent_pii_scan(
-            "pak minta tolong dong budi santoso"
-        )
+        assert "honorific_name" in _independent_pii_scan("pak minta tolong dong budi santoso")
 
     def test_regression_single_stopword_cases_unaffected(self):
         """The pre-existing R19-1/R19-1b/R20-1 single-stopword guilt and
@@ -2574,3 +2584,259 @@ class TestR21_5IdDocEncliticSuffixExtension:
     def test_regression_r20_2_suffixes_and_bare_form_unaffected(self):
         assert "id_doc_near_digits" in _independent_pii_scan("paspornya A1234567")
         assert "id_doc_near_digits" in _independent_pii_scan("paspor A1234567")
+
+
+class TestR28RoleAwareMultiturnCorpus:
+    """The default builder mode emits user targets with at most 12 prior
+    de-identified role-labelled turns and never serializes conversation IDs."""
+
+    @staticmethod
+    def _write_records(path: Path, rows: list[dict[str, str]]) -> None:
+        path.write_text(
+            "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows),
+            encoding="utf-8",
+        )
+
+    def test_default_mode_preserves_roles_and_context_without_group_identifier(self, tmp_path: Path):
+        input_dir = tmp_path / "in"
+        input_dir.mkdir()
+        output_dir = tmp_path / "out"
+        conversation_id = "local-conversation-never-serialize"
+        self._write_records(
+            input_dir / "export.jsonl",
+            [
+                {
+                    "role": "assistant",
+                    "conversation_id": conversation_id,
+                    "text": "hello, how can i help?",
+                },
+                {
+                    "role": "user",
+                    "conversation_id": conversation_id,
+                    "text": "what visa options should i verify?",
+                },
+                {
+                    "role": "assistant",
+                    "conversation_id": conversation_id,
+                    "text": "the team should verify eligibility.",
+                },
+                {
+                    "role": "user",
+                    "conversation_id": conversation_id,
+                    "text": "thanks, what documents are usually checked?",
+                },
+            ],
+        )
+
+        stats = build_corpus(
+            input_dir=input_dir,
+            output_dir=output_dir,
+            execute=True,
+            use_ollama_ner=False,
+            ollama_model="unused",
+        )
+
+        fixtures = [
+            json.loads(line)
+            for path in output_dir.glob("fixtures_*.local.jsonl")
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line
+        ]
+        assert stats["mode"] == "role-aware-multiturn"
+        assert stats["kept"] == 2
+        assert [turn["role"] for turn in fixtures[0]["history"]] == ["assistant"]
+        assert [turn["role"] for turn in fixtures[1]["history"]] == [
+            "assistant",
+            "user",
+            "assistant",
+        ]
+        assert all(fixture["role"] == "user" for fixture in fixtures)
+        assert conversation_id not in json.dumps(fixtures)
+
+    def test_history_is_capped_at_twelve_prior_turns(self, tmp_path: Path):
+        input_dir = tmp_path / "in"
+        input_dir.mkdir()
+        output_dir = tmp_path / "out"
+        rows = [
+            {
+                "role": "assistant",
+                "conversation_id": "opaque-local-1",
+                "text": f"please review item {index}.",
+            }
+            for index in range(14)
+        ]
+        rows.append(
+            {
+                "role": "user",
+                "conversation_id": "opaque-local-1",
+                "text": "what should i verify next?",
+            },
+        )
+        self._write_records(input_dir / "export.jsonl", rows)
+
+        stats = build_corpus(
+            input_dir=input_dir,
+            output_dir=output_dir,
+            execute=True,
+            use_ollama_ner=False,
+            ollama_model="unused",
+        )
+
+        fixture_lines = [
+            line
+            for path in output_dir.glob("fixtures_*.local.jsonl")
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line
+        ]
+        assert stats["kept"] == 1
+        assert len(json.loads(fixture_lines[0])["history"]) == 12
+
+    def test_interleaved_conversations_do_not_share_history(self, tmp_path: Path):
+        input_dir = tmp_path / "in"
+        input_dir.mkdir()
+        output_dir = tmp_path / "out"
+        self._write_records(
+            input_dir / "export.jsonl",
+            [
+                {
+                    "role": "assistant",
+                    "conversation_id": "opaque-a",
+                    "text": "answer for conversation alpha.",
+                },
+                {
+                    "role": "assistant",
+                    "conversation_id": "opaque-b",
+                    "text": "answer for conversation beta.",
+                },
+                {
+                    "role": "user",
+                    "conversation_id": "opaque-a",
+                    "text": "what should i verify?",
+                },
+            ],
+        )
+
+        build_corpus(
+            input_dir=input_dir,
+            output_dir=output_dir,
+            execute=True,
+            use_ollama_ner=False,
+            ollama_model="unused",
+        )
+
+        fixture_lines = [
+            line
+            for path in output_dir.glob("fixtures_*.local.jsonl")
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line
+        ]
+        history = json.loads(fixture_lines[0])["history"]
+        assert history == [{"role": "assistant", "text": "answer for conversation alpha."}]
+
+    def test_unsafe_turn_resets_context_instead_of_bridging_over_gap(self, tmp_path: Path):
+        input_dir = tmp_path / "in"
+        input_dir.mkdir()
+        output_dir = tmp_path / "out"
+        self._write_records(
+            input_dir / "export.jsonl",
+            [
+                {
+                    "role": "assistant",
+                    "conversation_id": "opaque-local-1",
+                    "text": "hello, how can i help?",
+                },
+                {
+                    "role": "assistant",
+                    "conversation_id": "opaque-local-1",
+                    "text": "John Smith will review this.",
+                },
+                {
+                    "role": "user",
+                    "conversation_id": "opaque-local-1",
+                    "text": "what should i verify now?",
+                },
+            ],
+        )
+
+        stats = build_corpus(
+            input_dir=input_dir,
+            output_dir=output_dir,
+            execute=True,
+            use_ollama_ner=False,
+            ollama_model="unused",
+        )
+
+        fixture_lines = [
+            line
+            for path in output_dir.glob("fixtures_*.local.jsonl")
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line
+        ]
+        assert stats["dropped_independent_scan"] == 1
+        assert stats["context_resets"] == 1
+        assert json.loads(fixture_lines[0])["history"] == []
+
+    def test_missing_role_or_conversation_id_is_dropped_fail_closed(self, tmp_path: Path):
+        input_dir = tmp_path / "in"
+        input_dir.mkdir()
+        self._write_records(
+            input_dir / "export.jsonl",
+            [
+                {"conversation_id": "opaque-local-1", "text": "what visa applies?"},
+                {"role": "user", "text": "what visa applies?"},
+            ],
+        )
+
+        stats = build_corpus(
+            input_dir=input_dir,
+            output_dir=tmp_path / "out",
+            execute=False,
+            use_ollama_ner=False,
+            ollama_model="unused",
+        )
+
+        assert stats["read"] == 2
+        assert stats["dropped_role_unknown"] == 2
+        assert stats["kept"] == 0
+
+    def test_missing_conversation_id_clears_prior_histories_from_same_file(self, tmp_path: Path):
+        input_dir = tmp_path / "in"
+        input_dir.mkdir()
+        output_dir = tmp_path / "out"
+        self._write_records(
+            input_dir / "export.jsonl",
+            [
+                {
+                    "role": "assistant",
+                    "conversation_id": "opaque-local-1",
+                    "text": "hello, how can i help?",
+                },
+                {
+                    "role": "assistant",
+                    "text": "this unattributable turn breaks continuity.",
+                },
+                {
+                    "role": "user",
+                    "conversation_id": "opaque-local-1",
+                    "text": "what should i verify now?",
+                },
+            ],
+        )
+
+        stats = build_corpus(
+            input_dir=input_dir,
+            output_dir=output_dir,
+            execute=True,
+            use_ollama_ner=False,
+            ollama_model="unused",
+        )
+
+        fixture_lines = [
+            line
+            for path in output_dir.glob("fixtures_*.local.jsonl")
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line
+        ]
+        assert stats["dropped_role_unknown"] == 1
+        assert stats["context_resets"] == 1
+        assert json.loads(fixture_lines[0])["history"] == []

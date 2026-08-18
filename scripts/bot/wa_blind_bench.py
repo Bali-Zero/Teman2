@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """
-Blind benchmark harness — OpenAI Responses candidates vs quality ceiling.
+Blind benchmark harness — ChatGPT-subscription Codex candidates vs quality ceiling.
 
-Part of the OpenAI Responses adapter shipping mandate (2026-08-15) —
+Part of the WhatsApp OpenAI-provider shipping mandate (2026-08-15) —
 `research/operations/2026-08-15-adr-wa-runtime-openai-provider.md`. Runs
 the de-identified fixtures from `scripts/bot/build_deid_corpus.py` through
-the two approved runtime candidates and prints per-fixture output for BLIND
+the three approved model candidates and prints per-fixture output for BLIND
 scoring — this script does not score anything itself.
 
 ⚠️ NOT A CI GATE. Orchestrator corpus gate, 2026-08-15: this harness must
 NEVER be wired into a CI required check or otherwise treated as a green/red
-promotion signal. It has no dedicated credential in any environment today
-(see below), so any "it ran" or "it passed" claim about it is currently
-false by construction. It exists to be run BY A HUMAN, deliberately, once
-Zero authorizes a benchmark pass with a provisioned key.
+promotion signal. It uses the selected `CodexExecClient` path and the
+operator's existing ChatGPT subscription; it never reads or requests a paid
+OpenAI API key. It exists to be run BY A HUMAN, deliberately, after the
+de-identified corpus has passed its independent human privacy/legal review.
 
 Models — approved candidates, not an unbenchmarked placeholder. The
 default `--candidates` list is all three of `gpt-5.6-terra`, `gpt-5.6-luna`
@@ -23,20 +23,19 @@ file) — an earlier draft's docstring claimed sol was "included as the
 quality ceiling" while the code never called it, which was a promise the
 code did not keep. `sol` is included here as a reference point for
 whoever scores the blind transcript, not as a candidate for the runtime
-default (`DEFAULT_MODEL` in `openai_responses_client.py` stays
-`gpt-5.6-terra`, unaffected by anything in this file). SCORING never
+default (`DEFAULT_MODEL` in `codex_exec_client.py` stays `gpt-5.6-terra`,
+unaffected by anything in this file). SCORING never
 happens inside this script (see SCORING below) — a human or a non-OpenAI
 seat reads the blind transcript and decides, so "sol judging sol" never
 arises regardless of which models this harness calls.
 
-SKIP / NOT RUN semantics: if `OPENAI_WA_PROVIDER_API_KEY` is unset (the
-dedicated credential `backend/llm/openai_responses_client.py` reads — see
-that module for why this is NOT the embeddings `OPENAI_API_KEY`), this
-script prints instructions and exits 0. Exit 0 here means "nothing ran",
+SKIP / NOT RUN semantics: if `CodexExecClient.available` is false (the Codex
+binary or a non-empty `auth.json` under the selected `CODEX_HOME` is absent),
+this script prints instructions and exits 0. Exit 0 here means "nothing ran",
 NOT "checks passed" — do not let a CI wrapper collapse those two meanings.
 The printed banner is machine-greppable (`WA_BLIND_BENCH_STATUS=`), values
-`SKIPPED_NO_KEY` / `SKIPPED_NO_FIXTURES` / `RAN` / `RAN_ALL_FAILED` (R6-6,
-Kimi K3 round-6 review: a run that reached the API and got NOTHING but
+`SKIPPED_UNAVAILABLE` / `SKIPPED_NO_FIXTURES` / `RAN` / `RAN_ALL_FAILED` (R6-6,
+Kimi K3 round-6 review: a run that reached the provider and got NOTHING but
 `[ERROR: ...]` back on every single response is not a completed benchmark
 pass — `main()` exits non-zero for `RAN_ALL_FAILED`, exits 0 for `RAN`
 even with SOME per-response failures, whose count is reported in the
@@ -68,7 +67,7 @@ the difference if it ever needs to.
 SCORING is explicitly OUT of this script's scope (mandate T4: "Nell'ADR
 nota che lo scoring finale del bench va fatto da seat NON-OpenAI (sol che
 giudica sol = self-approval)"). This script's job ends at producing a
-blind transcript — `{fixture_id, language, prompt}` mapped to
+blind transcript — `{fixture_id, language, history, prompt}` mapped to
 `{variant_label: response_text}` with variant labels SHUFFLED per fixture
 (see `_blind_labels`) so a human or a non-OpenAI scoring seat cannot infer
 which model produced which answer from label order alone. The mapping from
@@ -120,7 +119,7 @@ Usage:
         --fixtures-dir research/personal/wa-bench-corpus/fixtures.local \\
         --output-dir research/personal/wa-bench-corpus/bench-runs.local
 
-    # No key configured: prints instructions, exits 0, runs nothing.
+    # Codex CLI/auth unavailable: prints instructions, exits 0, runs nothing.
 """
 
 from __future__ import annotations
@@ -135,7 +134,9 @@ import random
 import re
 import secrets
 import sys
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Protocol
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "apps" / "backend-rag"))
 
@@ -149,6 +150,57 @@ _STATUS_PREFIX = "WA_BLIND_BENCH_STATUS="
 # passed --seed 42" — both need different treatment when combined with
 # `--reuse-nonce-from` (see `main()`).
 _DEFAULT_SEED = 42
+
+
+@dataclass(frozen=True)
+class BenchCandidateResult:
+    """Provider-neutral result shape used only by this offline harness."""
+
+    text: str
+    latency_ms: float
+    attempts: int
+    refusal: bool | None
+
+
+class BenchClient(Protocol):
+    """Narrow client contract needed by the blind harness."""
+
+    @property
+    def available(self) -> bool: ...
+
+    async def generate(self, *, input_text: str, model: str | None = None) -> BenchCandidateResult: ...
+
+    async def close(self) -> None: ...
+
+
+class CodexSubscriptionBenchClient:
+    """Compatibility facade from the harness contract to `CodexExecClient`.
+
+    `CodexExecClient` performs one subprocess attempt and exposes no structured
+    refusal field. The facade records `attempts=1` after a successful call and
+    `refusal=None`; it never fabricates a refusal decision.
+    """
+
+    def __init__(self) -> None:
+        from backend.llm.codex_exec_client import CodexExecClient
+
+        self._client = CodexExecClient()
+
+    @property
+    def available(self) -> bool:
+        return self._client.available
+
+    async def generate(self, *, input_text: str, model: str | None = None) -> BenchCandidateResult:
+        result = await self._client.generate(input_text, model=model)
+        return BenchCandidateResult(
+            text=result.text,
+            latency_ms=result.latency_ms,
+            attempts=1,
+            refusal=None,
+        )
+
+    async def close(self) -> None:
+        """No persistent HTTP client exists on the subprocess path."""
 
 
 def _print_status(status: str) -> None:
@@ -341,6 +393,22 @@ class CandidatesEmptyError(ValueError):
 
 
 _REQUIRED_FIXTURE_KEYS = ("id", "language", "text")
+_MAX_HISTORY_TURNS = 12
+
+
+def _is_valid_history(value: object) -> bool:
+    """Validate the de-identified, role-aware history shape fail-closed."""
+    if not isinstance(value, list) or len(value) > _MAX_HISTORY_TURNS:
+        return False
+    for turn in value:
+        if not isinstance(turn, dict):
+            return False
+        if turn.get("role") not in {"user", "assistant"}:
+            return False
+        if not isinstance(turn.get("text"), str) or not turn["text"]:
+            return False
+    return True
+
 
 # R8-4 binding correction, 2026-08-15 (Kimi K3 round-8 review): the EXACT
 # basenames `_load_fixtures` itself ever generates would produce, if this
@@ -460,6 +528,18 @@ def _load_fixtures(fixtures_dir: Path) -> list[dict]:
                         f"valid fixture — expected a JSON object with non-empty string 'id', "
                         f"'language', 'text' fields",
                     )
+                if record.get("role") != "user" or "history" not in record:
+                    raise FixtureFormatError(
+                        f"{_safe_fixture_ref(path, file_index=file_index)}, line {line_no}: not a "
+                        f"valid fixture — the current benchmark requires role='user' and "
+                        f"an explicit role-aware 'history' list",
+                    )
+                if not _is_valid_history(record["history"]):
+                    raise FixtureFormatError(
+                        f"{_safe_fixture_ref(path, file_index=file_index)}, line {line_no}: not a "
+                        f"valid fixture — 'history' must be a list of at most "
+                        f"{_MAX_HISTORY_TURNS} non-empty user/assistant turns",
+                    )
                 fixtures.append(record)
     return fixtures
 
@@ -534,9 +614,31 @@ def _blind_labels(variants: list[str], *, seed: int) -> dict[str, str]:
     return dict(zip(letters, shuffled, strict=True))
 
 
+def _render_fixture_prompt(fixture: dict[str, object]) -> str:
+    """Serialize role-aware context into the text-only Codex provider.
+
+    JSON keeps message boundaries explicit even when a message itself contains
+    strings such as ``assistant:``. The fixture builder has already redacted and
+    independently scanned every turn before this function can receive it.
+    """
+    history = fixture.get("history", [])
+    payload = {
+        "history": history,
+        "current_user_message": fixture["text"],
+    }
+    return (
+        "Offline de-identified WhatsApp response benchmark. Act as Zantara, "
+        "Bali Zero's concise and careful assistant. Reply only to the current "
+        "user message, using the prior role-labelled turns only as context. "
+        "Do not invent prices, deadlines, legal certainty, or tool results; if "
+        "grounding is unavailable, say what must be verified by the team. "
+        "Return only the proposed WhatsApp reply.\n\n" + json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    )
+
+
 async def _run_one_fixture(
-    client,
-    fixture: dict,
+    client: BenchClient,
+    fixture: dict[str, object],
     *,
     candidates: list[str],
     seed_base: int,
@@ -573,16 +675,17 @@ async def _run_one_fixture(
     attempts: dict[str, int | None] = {}
     for label, model in label_map.items():
         try:
-            result = await client.generate(input_text=fixture["text"], model=model)
-            responses[label] = "[REFUSED]" if result.refusal else result.text
+            prompt = _render_fixture_prompt(fixture)
+            result = await client.generate(input_text=prompt, model=model)
+            responses[label] = "[REFUSED]" if result.refusal is True else result.text
             latency_ms[label] = result.latency_ms
             attempts[label] = result.attempts
         except Exception as exc:  # noqa: BLE001 — one candidate's failure must not sink the fixture
             # Exception TYPE only — never the exception's string content,
-            # which for an OpenAI client failure could echo back remote
-            # API content or, for other failure classes, local state we
+            # which for a provider failure could echo back output content
+            # or, for other failure classes, local state we
             # don't want in a log line. Same discipline as
-            # openai_responses_client.py.
+            # the selected provider boundary.
             #
             # R7-1 binding correction, 2026-08-15 (Kimi K3 round-7 review):
             # this used to log the REAL model name (`model`), not the
@@ -602,9 +705,10 @@ async def _run_one_fixture(
             latency_ms[label] = None
             attempts[label] = None
 
-    blind_row = {
+    blind_row: dict[str, object] = {
         "fixture_id": fixture["id"],
         "language": fixture["language"],
+        "history": fixture.get("history", []),
         "prompt": fixture["text"],
         "responses": responses,
     }
@@ -654,18 +758,14 @@ async def run_bench(
     on `--reuse-nonce-from` (conflict with an explicit CLI value fails
     loud, never silently prefers one) and fails loud (never falls back to
     the default) if an OLDER key file lacks them."""
-    from backend.llm.openai_responses_client import OpenAIResponsesClient
-
-    client = OpenAIResponsesClient()
+    client: BenchClient = CodexSubscriptionBenchClient()
     if not client.available:
-        _print_status("SKIPPED_NO_KEY")
+        _print_status("SKIPPED_UNAVAILABLE")
         print(
-            "\nNo dedicated OpenAI API key configured "
-            "(env OPENAI_WA_PROVIDER_API_KEY is unset).\n"
-            "This harness is NOT wired to the embeddings OPENAI_API_KEY on purpose "
-            "(identity/billing separation — see the ADR). Nothing was run.\n"
-            "To arm: provision a least-privilege project service-account key under "
-            "OPENAI_WA_PROVIDER_API_KEY, then re-run this command.\n",
+            "\nCodex subscription client unavailable (binary or local ChatGPT auth "
+            "material missing). Nothing was run.\n"
+            "Authenticate the existing subscription with `codex login`; do not add a "
+            "paid OpenAI API key for this lane.\n",
         )
         return {"fixtures": 0, "skipped": 1}
 
@@ -758,7 +858,7 @@ async def run_bench(
                 # R6-6: count per-response failures across the whole run —
                 # a run that "RAN" (exit 0) with EVERY response an
                 # `[ERROR: ...]` placeholder is not a completed benchmark,
-                # it's a run that never actually reached the API.
+                # it's a run that never produced a provider response.
                 #
                 # R14-3 binding correction, 2026-08-15 (Kimi K3 round-14
                 # review): this used to count failures by testing
@@ -791,8 +891,8 @@ async def run_bench(
         _print_status("RAN_ALL_FAILED")
         logger.error(
             "All %d responses across %d fixture(s) failed — this is NOT a completed "
-            "benchmark pass, treat it as a run that never actually reached the API "
-            "(check the dedicated key, network, and per-fixture warnings above).",
+            "benchmark pass, treat it as a run that never produced a provider response "
+            "(check Codex subscription availability and the per-fixture warnings above).",
             total_responses,
             len(fixtures),
         )
@@ -841,7 +941,7 @@ async def run_bench(
 
 
 def main() -> int:
-    from backend.llm.openai_responses_client import MODEL_LUNA, MODEL_SOL, MODEL_TERRA
+    from backend.llm.codex_exec_client import MODEL_LUNA, MODEL_SOL, MODEL_TERRA
 
     default_candidates = [MODEL_TERRA, MODEL_LUNA, MODEL_SOL]
 
@@ -1075,8 +1175,7 @@ def main() -> int:
             if len(set(file_candidates)) != len(file_candidates):
                 _print_status("FAILED_NO_CANDIDATES")
                 logger.error(
-                    "--reuse-nonce-from: the file you passed has a 'candidates' field with "
-                    "duplicate candidate names",
+                    "--reuse-nonce-from: the file you passed has a 'candidates' field with duplicate candidate names",
                 )
                 return 1
             if args.candidates is not None and list(args.candidates) != list(file_candidates):

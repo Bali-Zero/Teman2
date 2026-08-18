@@ -2,7 +2,7 @@
 """
 De-identify a local WhatsApp export into blind-benchmark fixtures.
 
-Part of the OpenAI Responses adapter shipping mandate (2026-08-15) —
+Part of the WhatsApp OpenAI-provider shipping mandate (2026-08-15) —
 `research/operations/2026-08-15-adr-wa-runtime-openai-provider.md`. Builds
 the input corpus for `scripts/bot/wa_blind_bench.py`. This script is a
 HARNESS: it is designed and unit-tested against synthetic fixtures, but it
@@ -58,31 +58,26 @@ and zero eligible fixtures resulted (whether because 0 input records were
 found, or all of them were dropped) — an empty corpus must never read as a
 successful build. This is a harness-correctness property, not a business
 guarantee: passing the two automated scans is necessary, not sufficient,
-for a corpus to be safe to hand to an external API. Per the orchestrator:
-no fixture produced here is eligible for use against a real (non-loopback)
-endpoint without an INDEPENDENT human privacy/legal review pass — this
+for a corpus to be safe to hand to an external model provider. Per the
+orchestrator: no fixture produced here is eligible for use against the
+subscription-backed Codex provider without an INDEPENDENT human privacy/legal review pass — this
 script cannot and does not certify that on its own.
 
-**V5 INCOMPLETE** (declared here, not silently deferred by omission — see
-the ADR's `research/operations/2026-08-15-adr-wa-runtime-openai-provider.md`
-§7 "Corpus tooling: explicitly V5 INCOMPLETE" for the full disposition).
-Two gaps, both open:
-    - No role awareness: fixtures are bucketed by guessed language only
-      (`en`/`it`/`id`/`other`), never distinguishing a client-role message
-      from a Bali Zero team/staff message — a real WA export mixes both,
-      and the two carry different PII-sensitivity and different content
-      shape.
-    - No multi-turn structure: every fixture is one isolated message,
-      while the live bot ships up to 12 prior turns of history to the
-      model (`wa_inbox_bot._HISTORY_TURNS`) — a single-turn benchmark
-      cannot measure how a candidate model behaves with that context
-      loaded, including false-continuity/context-contamination failure
-      modes.
-    Any blind-bench run this tooling produces today benchmarks
-    single-turn, role-blind responses ONLY — it does not settle
-    OpenAI-vs-Gemini quality on the real, multi-turn, role-aware WA task,
-    and no future reader should treat a `wa_blind_bench.py` transcript as
-    doing so until both gaps are closed.
+**R28 ROLE-AWARE / MULTI-TURN CONTRACT (2026-08-18).** Default CLI and
+library behavior now requires structured JSONL records with an explicit
+`role` (`user` or `assistant`) and a non-empty local `conversation_id`.
+Only user turns become benchmark targets; each target carries up to the 12
+prior independently redacted/scanned role-labelled turns from the same
+conversation. The grouping identifier is held only in memory and is never
+serialized, hashed, logged, or written. If any turn fails either privacy
+scan, the conversation's accumulated history is cleared before a later
+target can be emitted — the builder never bridges over an unverified gap.
+
+Standard `.txt` exports do not encode a safe canonical staff/client role.
+They therefore produce zero eligible fixtures in the default mode instead
+of guessing from sender names. `--allow-legacy-single-turn` exists only for
+reproducing the historical role-blind harness and is an explicit opt-in; its
+output cannot settle quality on the real role-aware task.
 
 Usage:
     PYTHONPATH=. python3 scripts/bot/build_deid_corpus.py \\
@@ -97,17 +92,21 @@ Input format (best-effort, see `_load_records`):
       "DD/MM/YY, HH:MM - Sender: message text" (one line per message;
       multi-line messages continue on following lines with no
       timestamp-prefix, appended to the previous record).
-    - `.jsonl` files: one JSON object per line with at least
-      `{"sender": str, "text": str}` and optionally `"timestamp"`.
+    - `.jsonl` files: one JSON object per line with `{"text": str,
+      "role": "user"|"assistant", "conversation_id": str}` in default
+      role-aware mode. Additional fields such as `sender`/`timestamp` are
+      ignored and never written.
     Unparseable lines are counted and skipped, never guessed at.
-    Sender is read only to group continuation lines during parsing — it is
-    never hashed, stored, or written to any output.
+    Sender text is parsed only transiently from `.txt` line headers; it is
+    never hashed, stored, used to guess a role, or written to output.
 
 Output: one JSONL file per language bucket (`fixtures_en.local.jsonl`,
 `fixtures_it.local.jsonl`, `fixtures_id.local.jsonl`, plus
-`fixtures_other.local.jsonl`), each line
-`{"id": str, "language": str, "text": str}` — `id` is a pure sequence
-number (see PRIVACY CONTRACT above), nothing else.
+`fixtures_other.local.jsonl`), each role-aware line
+`{"id": str, "language": str, "role": "user", "history": [{"role":
+str, "text": str}], "text": str}`. `id` is a pure sequence number and
+`history` is capped at 12 prior turns; neither sender nor conversation ID is
+serialized.
 """
 
 from __future__ import annotations
@@ -120,13 +119,15 @@ import os
 import re
 import subprocess
 import sys
+from collections import deque
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 # Reuse-first: the repo's existing fail-closed PII redactor.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
-from scripts._redact_pii import Redactor, RedactionError  # noqa: E402
+from scripts._redact_pii import RedactionError, Redactor  # noqa: E402
 
 logger = logging.getLogger("build_deid_corpus")
 
@@ -1450,6 +1451,8 @@ _LANG_MARKERS: dict[str, frozenset[str]] = {
     ),
 }
 
+_HISTORY_TURNS = 12
+
 
 @dataclass(frozen=True)
 class RawRecord:
@@ -1459,20 +1462,17 @@ class RawRecord:
     `file_index` docstring for why even the FILE is referenced by an
     opaque ordinal, not this path, in any log line).
 
-    R7-6 binding correction, 2026-08-15 (Kimi K3 round-7 review): this
-    docstring previously described a `_sender_for_grouping` field that
-    does not exist on this dataclass — the actual fields are `text` and
-    `source_file`; sender is read only transiently while parsing a `.txt`
-    export's continuation lines (`_iter_txt_records`, appended "regardless
-    of sender") and is never captured into a `RawRecord` at all. Corrected
-    to describe the real fields, while keeping the data-minimization point
-    the old text made — actually STRONGER than the old docstring implied:
-    the sender isn't merely unhashed/unstored on this dataclass, it is
-    never captured here in the first place, so there is no sender-shaped
-    value anywhere in this dataclass to accidentally serialize."""
+    R28 adds canonical `role` and a local-only `conversation_id` for
+    structured JSONL input. Neither field is inferred from a sender name;
+    `.txt` records leave both unset and are therefore ineligible in default
+    role-aware mode. `conversation_id` exists only to key an in-memory
+    history and is never serialized, hashed, or logged. Sender remains
+    transient parser input and is never captured on this dataclass."""
 
     text: str
     source_file: Path  # local dev logging only — never serialized to output
+    role: Literal["user", "assistant"] | None = None
+    conversation_id: str | None = None  # local grouping only — never serialized
 
 
 def _iter_txt_records(path: Path) -> Iterator[RawRecord]:
@@ -1564,7 +1564,22 @@ def _iter_jsonl_records(path: Path, *, file_index: int) -> Iterator[RawRecord]:
             text = obj.get("text")
             if not isinstance(text, str) or not text.strip():
                 continue
-            yield RawRecord(text=text, source_file=path)
+            raw_role = obj.get("role")
+            role: Literal["user", "assistant"] | None = (
+                raw_role if isinstance(raw_role, str) and raw_role in {"user", "assistant"} else None
+            )
+            raw_conversation_id = obj.get("conversation_id")
+            conversation_id = (
+                raw_conversation_id.strip()
+                if isinstance(raw_conversation_id, str) and raw_conversation_id.strip()
+                else None
+            )
+            yield RawRecord(
+                text=text,
+                source_file=path,
+                role=role,
+                conversation_id=conversation_id,
+            )
 
 
 def _load_records(input_dir: Path) -> Iterator[RawRecord]:
@@ -1880,6 +1895,7 @@ def build_corpus(
     use_ollama_ner: bool,
     ollama_model: str,
     min_remaining_chars: int = 3,
+    require_role_aware: bool = True,
 ) -> dict[str, object]:
     redactor = Redactor.load_default()
     # `agent-library/config/redaction-rules.yaml`'s `gate.min_remaining_chars:
@@ -1902,16 +1918,45 @@ def build_corpus(
         "dropped_residual_pii": 0,
         "dropped_independent_scan": 0,
         "independent_scan_errors": 0,
+        "dropped_role_unknown": 0,
+        "context_resets": 0,
+        "accepted_context_turns": 0,
         "kept": 0,
+        "mode": "role-aware-multiturn" if require_role_aware else "legacy-single-turn",
     }
     sequence = 0
+    histories: dict[tuple[Path, str], deque[dict[str, str]]] = {}
+
+    def clear_history(key: tuple[Path, str] | None, *, source_file: Path) -> None:
+        """Break context continuity after any unverified or unsafe turn.
+
+        A missing conversation ID cannot be mapped back to one history. In
+        that case fail closed by clearing every accumulated conversation from
+        the same source file instead of bridging over an unattributable gap.
+        """
+        if key is not None:
+            if histories.pop(key, None) is not None:
+                stats["context_resets"] += 1
+            return
+
+        matching_keys = [history_key for history_key in histories if history_key[0] == source_file]
+        for history_key in matching_keys:
+            del histories[history_key]
+        if matching_keys:
+            stats["context_resets"] += 1
 
     for record in _load_records(input_dir):
         stats["read"] += 1
+        conversation_key = (record.source_file, record.conversation_id) if record.conversation_id is not None else None
+        if require_role_aware and (record.role is None or conversation_key is None):
+            stats["dropped_role_unknown"] += 1
+            clear_history(conversation_key, source_file=record.source_file)
+            continue
         try:
             redacted = redactor.redact(record.text)
         except RedactionError as e:
             stats["redaction_failed"] += 1
+            clear_history(conversation_key, source_file=record.source_file)
             # Exception TYPE only, never str(e) — P1-privacy. A
             # `RedactionError` message can itself embed a snippet of the
             # text a nested rule was applied to (`scripts/_redact_pii.py`
@@ -1929,6 +1974,7 @@ def build_corpus(
         # Scan A.
         if _has_residual_pii(redacted):
             stats["dropped_residual_pii"] += 1
+            clear_history(conversation_key, source_file=record.source_file)
             continue
 
         # Scan B — independent. An exception here is FAIL CLOSED: the
@@ -1938,6 +1984,7 @@ def build_corpus(
             findings = _independent_pii_scan(redacted)
         except Exception as e:  # noqa: BLE001 — fail-closed boundary
             stats["independent_scan_errors"] += 1
+            clear_history(conversation_key, source_file=record.source_file)
             # Exception TYPE only, never str(e) — P1-privacy. This is a
             # bare `except Exception`, so whatever raises here is by
             # definition unanticipated; assuming its message is safe to
@@ -1951,18 +1998,32 @@ def build_corpus(
             continue
         if findings:
             stats["dropped_independent_scan"] += 1
+            clear_history(conversation_key, source_file=record.source_file)
             logger.debug("Independent scan flagged %s, record dropped", findings)
             continue
 
         language = _guess_language(redacted)
+        history_rows: list[dict[str, str]] = []
+        if require_role_aware:
+            assert conversation_key is not None
+            assert record.role is not None
+            history = histories.setdefault(conversation_key, deque(maxlen=_HISTORY_TURNS))
+            history_rows = [dict(turn) for turn in history]
+            history.append({"role": record.role, "text": redacted})
+            stats["accepted_context_turns"] += 1
+            if record.role == "assistant":
+                continue
+
         sequence += 1
-        buckets[language].append(
-            {
-                "id": f"fixture-{sequence:06d}",
-                "language": language,
-                "text": redacted,
-            },
-        )
+        fixture: dict[str, object] = {
+            "id": f"fixture-{sequence:06d}",
+            "language": language,
+            "text": redacted,
+        }
+        if require_role_aware:
+            fixture["role"] = "user"
+            fixture["history"] = history_rows
+        buckets[language].append(fixture)
         stats["kept"] += 1
 
     if execute:
@@ -2007,6 +2068,15 @@ def main() -> int:
         default=3,
         help="Redactor gate floor at MESSAGE granularity (default 3; the shared YAML's 100 is for context blobs)",
     )
+    parser.add_argument(
+        "--allow-legacy-single-turn",
+        action="store_true",
+        help=(
+            "Opt in to the historical role-blind, single-turn corpus. Default CLI mode "
+            "requires JSONL records with role=user|assistant and a non-empty local "
+            "conversation_id, then emits up to 12 prior de-identified turns."
+        ),
+    )
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args()
 
@@ -2029,6 +2099,7 @@ def main() -> int:
         use_ollama_ner=args.use_ollama_ner,
         ollama_model=args.ollama_model,
         min_remaining_chars=args.min_remaining_chars,
+        require_role_aware=not args.allow_legacy_single_turn,
     )
     logger.info("Done: %s", stats)
 

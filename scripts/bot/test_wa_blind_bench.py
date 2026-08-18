@@ -1,12 +1,10 @@
 """Unit tests for scripts/bot/wa_blind_bench.py.
 
-Orchestrator corpus gate: "wa_blind_bench with no dedicated key must be
-explicit SKIP/NOT RUN and must never count as a green promotion gate."
-This proves the SKIP path is a true no-op (zero HTTP calls) and prints the
-machine-greppable status line, plus that a run WITH a key and fixtures
-produces the expected blind-transcript/key-file split (no real network —
-the client is faked at the HTTP boundary, matching the house pattern used
-in `backend/tests/llm/test_openai_responses_client.py`).
+Orchestrator corpus gate: an unavailable subscription client must be an
+explicit SKIP/NOT RUN and must never count as a green promotion gate. These
+tests prove that path is a true no-op (zero subprocess calls), and that an
+available faked subscription client plus fixtures produces the expected
+blind-transcript/key-file split. No test launches the real Codex CLI.
 
 Run:
     cd ~/nuzantara && python3 -m pytest scripts/bot/test_wa_blind_bench.py -v
@@ -34,9 +32,37 @@ from scripts.bot.wa_blind_bench import (  # noqa: E402
     _load_fixtures,
     _mkdir_private,
     _open_private,
+    _render_fixture_prompt,
     _safe_fixture_ref,
     run_bench,
 )
+from scripts.bot.wa_blind_bench import (
+    CodexSubscriptionBenchClient as _RealCodexSubscriptionBenchClient,
+)
+
+
+@pytest.fixture(autouse=True)
+def _available_subscription_client_by_default(monkeypatch):
+    """Keep every offline test independent of the workstation's real login."""
+
+    class _Result:
+        text = "synthetic answer"
+        latency_ms = 1.0
+        attempts = 1
+        refusal = None
+
+    class _Client:
+        available = True
+
+        async def generate(self, *, input_text, model=None, **kwargs):
+            return _Result()
+
+        async def close(self):
+            pass
+
+    import scripts.bot.wa_blind_bench as client_module
+
+    monkeypatch.setattr(client_module, "CodexSubscriptionBenchClient", _Client)
 
 
 class TestK5PrivateOutputDirectory:
@@ -121,7 +147,9 @@ class TestOpenPrivateFchmod:
         assert mode == 0o600, f"expected tightened to 0o600, got {oct(mode)}"
 
     def test_fchmod_failure_leaves_original_content_untouched_and_fd_closed(
-        self, tmp_path: Path, monkeypatch,
+        self,
+        tmp_path: Path,
+        monkeypatch,
     ):
         target = tmp_path / "existing.jsonl"
         original_content = '{"turn": "keep me byte-identical"}\n'
@@ -150,7 +178,9 @@ class TestOpenPrivateFchmod:
         )
 
     def test_r11_1_ftruncate_failure_closes_fd_exactly_once_and_propagates(
-        self, tmp_path: Path, monkeypatch,
+        self,
+        tmp_path: Path,
+        monkeypatch,
     ):
         """R11-1 (Kimi K3 round-11 review): R10-4's fix moved `os.ftruncate`/
         `os.lseek` inside the `os.fchmod` guard, but the ADR claimed "no new
@@ -214,13 +244,21 @@ class TestOpenPrivateFchmod:
         assert "padding" not in final_content, "no residual tail from the longer pre-existing content"
 
 
-class TestSkipNoKey:
+class TestSkipUnavailable:
     @pytest.mark.asyncio
-    async def test_skip_when_no_dedicated_key_zero_network(self, tmp_path, monkeypatch, capsys):
-        monkeypatch.delenv("OPENAI_WA_PROVIDER_API_KEY", raising=False)
-        # Even an unrelated OPENAI_API_KEY must not arm this — same
-        # identity/billing separation invariant as the client itself.
-        monkeypatch.setenv("OPENAI_API_KEY", "sk-embeddings-not-mine")
+    async def test_skip_when_codex_subscription_unavailable_zero_calls(self, tmp_path, monkeypatch, capsys):
+        class _UnavailableClient:
+            available = False
+
+            async def generate(self, *, input_text, model=None, **kwargs):
+                raise AssertionError("generate must not run while unavailable")
+
+            async def close(self):
+                raise AssertionError("close must not run before availability gate")
+
+        import scripts.bot.wa_blind_bench as client_module
+
+        monkeypatch.setattr(client_module, "CodexSubscriptionBenchClient", _UnavailableClient)
 
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()
@@ -239,11 +277,27 @@ class TestSkipNoKey:
         )
 
         captured = capsys.readouterr()
-        assert f"{_STATUS_PREFIX}SKIPPED_NO_KEY" in captured.out
+        assert f"{_STATUS_PREFIX}SKIPPED_UNAVAILABLE" in captured.out
 
     @pytest.mark.asyncio
-    async def test_skip_when_no_fixtures_even_with_key(self, tmp_path, monkeypatch, capsys):
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
+    async def test_skip_when_no_fixtures_even_when_subscription_client_available(
+        self,
+        tmp_path,
+        monkeypatch,
+        capsys,
+    ):
+        class _AvailableClient:
+            available = True
+
+            async def generate(self, *, input_text, model=None, **kwargs):
+                raise AssertionError("no fixture means no generate call")
+
+            async def close(self):
+                pass
+
+        import scripts.bot.wa_blind_bench as client_module
+
+        monkeypatch.setattr(client_module, "CodexSubscriptionBenchClient", _AvailableClient)
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()  # exists but empty — no fixtures_*.local.jsonl
         output_dir = tmp_path / "out"
@@ -396,12 +450,11 @@ class TestR6_2NonceBasedBlinding:
         prior run's nonce (as `--nonce` would) reproduces the exact same
         blind-label shuffle — the reproducibility guarantee the module
         docstring makes, now correctly scoped to "given the nonce"."""
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
 
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()
         (fixtures_dir / "fixtures_en.local.jsonl").write_text(
-            json.dumps({"id": "fixture-000001", "language": "en", "text": "How much is a KITAS?"}) + "\n",
+            json.dumps({"id": "fixture-000001", "language": "en", "role": "user", "history": [], "text": "How much is a KITAS?"}) + "\n",
             encoding="utf-8",
         )
 
@@ -421,9 +474,9 @@ class TestR6_2NonceBasedBlinding:
             async def close(self):
                 pass
 
-        import backend.llm.openai_responses_client as client_module
+        import scripts.bot.wa_blind_bench as client_module
 
-        monkeypatch.setattr(client_module, "OpenAIResponsesClient", _FakeClient)
+        monkeypatch.setattr(client_module, "CodexSubscriptionBenchClient", _FakeClient)
 
         shared_nonce = "reused-nonce-for-reproducibility-test"
 
@@ -457,12 +510,11 @@ class TestR6_2NonceBasedBlinding:
         """Innocence for the default path: when no `--nonce` is supplied,
         `run_bench` must generate its own fresh nonce (never a fixed
         constant, never empty)."""
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
 
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()
         (fixtures_dir / "fixtures_en.local.jsonl").write_text(
-            json.dumps({"id": "fixture-000001", "language": "en", "text": "How much is a KITAS?"}) + "\n",
+            json.dumps({"id": "fixture-000001", "language": "en", "role": "user", "history": [], "text": "How much is a KITAS?"}) + "\n",
             encoding="utf-8",
         )
 
@@ -482,9 +534,9 @@ class TestR6_2NonceBasedBlinding:
             async def close(self):
                 pass
 
-        import backend.llm.openai_responses_client as client_module
+        import scripts.bot.wa_blind_bench as client_module
 
-        monkeypatch.setattr(client_module, "OpenAIResponsesClient", _FakeClient)
+        monkeypatch.setattr(client_module, "CodexSubscriptionBenchClient", _FakeClient)
 
         await run_bench(
             fixtures_dir=fixtures_dir,
@@ -526,7 +578,7 @@ class TestR6_2RefinementReuseNonceFromFile:
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()
         (fixtures_dir / "fixtures_en.local.jsonl").write_text(
-            json.dumps({"id": "fixture-000001", "language": "en", "text": "How much is a KITAS?"}) + "\n",
+            json.dumps({"id": "fixture-000001", "language": "en", "role": "user", "history": [], "text": "How much is a KITAS?"}) + "\n",
             encoding="utf-8",
         )
         return fixtures_dir
@@ -549,14 +601,13 @@ class TestR6_2RefinementReuseNonceFromFile:
             async def close(self):
                 pass
 
-        import backend.llm.openai_responses_client as client_module
+        import scripts.bot.wa_blind_bench as client_module
 
-        monkeypatch.setattr(client_module, "OpenAIResponsesClient", _FakeClient)
+        monkeypatch.setattr(client_module, "CodexSubscriptionBenchClient", _FakeClient)
 
     def test_guilt_nonce_flag_no_longer_exists_on_the_cli(self, tmp_path, monkeypatch):
         import scripts.bot.wa_blind_bench as module
 
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         fixtures_dir = self._fixtures_dir(tmp_path)
         monkeypatch.setattr(
             sys,
@@ -584,7 +635,6 @@ class TestR6_2RefinementReuseNonceFromFile:
         how a real operator would invoke this in two separate CLI runs."""
         import asyncio as _asyncio
 
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         self._patch_fake_client(monkeypatch)
         fixtures_dir = self._fixtures_dir(tmp_path)
 
@@ -630,7 +680,6 @@ class TestR6_2RefinementReuseNonceFromFile:
         )
 
     def test_guilt_malformed_reuse_nonce_from_file_fails_loud_not_a_silent_fresh_nonce(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         self._patch_fake_client(monkeypatch)
         fixtures_dir = self._fixtures_dir(tmp_path)
 
@@ -658,7 +707,6 @@ class TestR6_2RefinementReuseNonceFromFile:
         assert not output_dir.exists(), "nothing should have been run when the requested nonce could not be read"
 
     def test_guilt_missing_reuse_nonce_from_file_fails_loud(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         self._patch_fake_client(monkeypatch)
         fixtures_dir = self._fixtures_dir(tmp_path)
 
@@ -697,14 +745,13 @@ class TestR7_2NonDictNonceLineDoesNotCrash:
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()
         (fixtures_dir / "fixtures_en.local.jsonl").write_text(
-            json.dumps({"id": "fixture-000001", "language": "en", "text": "How much is a KITAS?"}) + "\n",
+            json.dumps({"id": "fixture-000001", "language": "en", "role": "user", "history": [], "text": "How much is a KITAS?"}) + "\n",
             encoding="utf-8",
         )
         return fixtures_dir
 
     @pytest.mark.parametrize("bad_first_line", ["[1, 2]", "42", '"just a string"', "null"])
     def test_guilt_non_dict_first_line_fails_loud_not_a_raw_typeerror(self, tmp_path, monkeypatch, bad_first_line):
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         fixtures_dir = self._fixtures_dir(tmp_path)
 
         bad_key_file = tmp_path / "not_a_key_file.jsonl"
@@ -786,24 +833,23 @@ class TestR7_3FixtureShapeValidation:
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()
         (fixtures_dir / "fixtures_en.local.jsonl").write_text(
-            json.dumps({"id": "fixture-000001", "language": "en", "text": "How much is a KITAS?"}) + "\n",
+            json.dumps({"id": "fixture-000001", "language": "en", "role": "user", "history": [], "text": "How much is a KITAS?"}) + "\n",
             encoding="utf-8",
         )
 
         fixtures = _load_fixtures(fixtures_dir)
-        assert fixtures == [{"id": "fixture-000001", "language": "en", "text": "How much is a KITAS?"}]
+        assert fixtures == [{"id": "fixture-000001", "language": "en", "role": "user", "history": [], "text": "How much is a KITAS?"}]
 
     @pytest.mark.asyncio
     async def test_end_to_end_malformed_fixture_leaves_no_partial_output_files(self, tmp_path, monkeypatch):
         """The mandate's core property: a malformed fixture mixed in with
         a well-formed one must crash BEFORE run_bench opens any output
         file — never a half-written blind transcript / key file."""
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
 
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()
         lines = [
-            json.dumps({"id": "fixture-000001", "language": "en", "text": "How much is a KITAS?"}),
+            json.dumps({"id": "fixture-000001", "language": "en", "role": "user", "history": [], "text": "How much is a KITAS?"}),
             "[1, 2]",  # malformed — not a dict
         ]
         (fixtures_dir / "fixtures_en.local.jsonl").write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -823,9 +869,9 @@ class TestR7_3FixtureShapeValidation:
             async def close(self):
                 pass
 
-        import backend.llm.openai_responses_client as client_module
+        import scripts.bot.wa_blind_bench as client_module
 
-        monkeypatch.setattr(client_module, "OpenAIResponsesClient", _FakeClient)
+        monkeypatch.setattr(client_module, "CodexSubscriptionBenchClient", _FakeClient)
 
         from scripts.bot.wa_blind_bench import FixtureFormatError
 
@@ -868,7 +914,7 @@ class TestR7_3FixtureShapeValidation:
 class TestR6_6AllFailedStatus:
     """R6-6 (Kimi K3 round-6 review): a run that reaches `RAN` (exit 0)
     with EVERY response an `[ERROR: ...]` placeholder is not a completed
-    benchmark pass — it's a run that never actually reached the API on
+    benchmark pass — it's a run that never produced a provider response on
     any candidate. `WA_BLIND_BENCH_STATUS=RAN_ALL_FAILED` + non-zero
     `main()` exit distinguishes that from a genuine (possibly
     partial-failure) `RAN`."""
@@ -878,7 +924,15 @@ class TestR6_6AllFailedStatus:
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()
         lines = [
-            json.dumps({"id": f"fixture-{i:06d}", "language": "en", "text": f"question {i}"})
+            json.dumps(
+                {
+                    "id": f"fixture-{i:06d}",
+                    "language": "en",
+                    "role": "user",
+                    "history": [],
+                    "text": f"question {i}",
+                },
+            )
             for i in range(1, n + 1)
         ]
         (fixtures_dir / "fixtures_en.local.jsonl").write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -886,7 +940,6 @@ class TestR6_6AllFailedStatus:
 
     @pytest.mark.asyncio
     async def test_guilt_all_candidates_failing_yields_all_failed_status(self, tmp_path, monkeypatch, capsys):
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         fixtures_dir = self._fixtures_dir(tmp_path)
 
         class _FakeClient:
@@ -898,9 +951,9 @@ class TestR6_6AllFailedStatus:
             async def close(self):
                 pass
 
-        import backend.llm.openai_responses_client as client_module
+        import scripts.bot.wa_blind_bench as client_module
 
-        monkeypatch.setattr(client_module, "OpenAIResponsesClient", _FakeClient)
+        monkeypatch.setattr(client_module, "CodexSubscriptionBenchClient", _FakeClient)
 
         stats = await run_bench(
             fixtures_dir=fixtures_dir,
@@ -918,7 +971,6 @@ class TestR6_6AllFailedStatus:
     def test_guilt_main_returns_nonzero_when_all_responses_fail(self, tmp_path, monkeypatch):
         import scripts.bot.wa_blind_bench as module
 
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         fixtures_dir = self._fixtures_dir(tmp_path)
 
         class _FakeClient:
@@ -930,9 +982,9 @@ class TestR6_6AllFailedStatus:
             async def close(self):
                 pass
 
-        import backend.llm.openai_responses_client as client_module
+        import scripts.bot.wa_blind_bench as client_module
 
-        monkeypatch.setattr(client_module, "OpenAIResponsesClient", _FakeClient)
+        monkeypatch.setattr(client_module, "CodexSubscriptionBenchClient", _FakeClient)
         monkeypatch.setattr(
             sys,
             "argv",
@@ -954,7 +1006,6 @@ class TestR6_6AllFailedStatus:
         """Innocence: partial failure (one candidate errors, one succeeds
         on the same fixture) must stay `RAN` (exit-0 territory) but report
         the error count in the returned stats and the log."""
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         fixtures_dir = self._fixtures_dir(tmp_path)
 
         class _FakeResult:
@@ -974,9 +1025,9 @@ class TestR6_6AllFailedStatus:
             async def close(self):
                 pass
 
-        import backend.llm.openai_responses_client as client_module
+        import scripts.bot.wa_blind_bench as client_module
 
-        monkeypatch.setattr(client_module, "OpenAIResponsesClient", _FakeClient)
+        monkeypatch.setattr(client_module, "CodexSubscriptionBenchClient", _FakeClient)
 
         stats = await run_bench(
             fixtures_dir=fixtures_dir,
@@ -994,7 +1045,6 @@ class TestR6_6AllFailedStatus:
 
     @pytest.mark.asyncio
     async def test_innocence_all_success_stays_ran_zero_errors(self, tmp_path, monkeypatch, capsys):
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         fixtures_dir = self._fixtures_dir(tmp_path)
 
         class _FakeResult:
@@ -1012,9 +1062,9 @@ class TestR6_6AllFailedStatus:
             async def close(self):
                 pass
 
-        import backend.llm.openai_responses_client as client_module
+        import scripts.bot.wa_blind_bench as client_module
 
-        monkeypatch.setattr(client_module, "OpenAIResponsesClient", _FakeClient)
+        monkeypatch.setattr(client_module, "CodexSubscriptionBenchClient", _FakeClient)
 
         stats = await run_bench(
             fixtures_dir=fixtures_dir,
@@ -1031,7 +1081,10 @@ class TestR6_6AllFailedStatus:
 
     @pytest.mark.asyncio
     async def test_innocence_genuine_response_starting_with_error_marker_not_counted_as_failed(
-        self, tmp_path, monkeypatch, capsys,
+        self,
+        tmp_path,
+        monkeypatch,
+        capsys,
     ):
         """R14-3 (Kimi K3 round-14 review): failure counting used to test
         `response_text.startswith("[ERROR:")` against the model's own
@@ -1044,7 +1097,6 @@ class TestR6_6AllFailedStatus:
         content — this is the case that in the limit (every fixture)
         would previously have flipped a genuinely successful run to
         `RAN_ALL_FAILED`."""
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         fixtures_dir = self._fixtures_dir(tmp_path)
 
         class _FakeResult:
@@ -1062,9 +1114,9 @@ class TestR6_6AllFailedStatus:
             async def close(self):
                 pass
 
-        import backend.llm.openai_responses_client as client_module
+        import scripts.bot.wa_blind_bench as client_module
 
-        monkeypatch.setattr(client_module, "OpenAIResponsesClient", _FakeClient)
+        monkeypatch.setattr(client_module, "CodexSubscriptionBenchClient", _FakeClient)
 
         stats = await run_bench(
             fixtures_dir=fixtures_dir,
@@ -1095,18 +1147,20 @@ class TestR7_1PerFixtureFailureLogNeverNamesTheRealModel:
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()
         (fixtures_dir / "fixtures_en.local.jsonl").write_text(
-            json.dumps({"id": "fixture-000001", "language": "en", "text": "How much is a KITAS?"}) + "\n",
+            json.dumps({"id": "fixture-000001", "language": "en", "role": "user", "history": [], "text": "How much is a KITAS?"}) + "\n",
             encoding="utf-8",
         )
         return fixtures_dir
 
     @pytest.mark.asyncio
     async def test_guilt_real_model_name_never_appears_in_any_log_record_on_failure(
-        self, tmp_path, monkeypatch, caplog,
+        self,
+        tmp_path,
+        monkeypatch,
+        caplog,
     ):
         import logging as _logging
 
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         fixtures_dir = self._fixtures_dir(tmp_path)
 
         class _FakeClient:
@@ -1118,9 +1172,9 @@ class TestR7_1PerFixtureFailureLogNeverNamesTheRealModel:
             async def close(self):
                 pass
 
-        import backend.llm.openai_responses_client as client_module
+        import scripts.bot.wa_blind_bench as client_module
 
-        monkeypatch.setattr(client_module, "OpenAIResponsesClient", _FakeClient)
+        monkeypatch.setattr(client_module, "CodexSubscriptionBenchClient", _FakeClient)
 
         with caplog.at_level(_logging.DEBUG):
             stats = await run_bench(
@@ -1143,7 +1197,6 @@ class TestR7_1PerFixtureFailureLogNeverNamesTheRealModel:
         real model name."""
         import logging as _logging
 
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         fixtures_dir = self._fixtures_dir(tmp_path)
 
         class _FakeClient:
@@ -1155,9 +1208,9 @@ class TestR7_1PerFixtureFailureLogNeverNamesTheRealModel:
             async def close(self):
                 pass
 
-        import backend.llm.openai_responses_client as client_module
+        import scripts.bot.wa_blind_bench as client_module
 
-        monkeypatch.setattr(client_module, "OpenAIResponsesClient", _FakeClient)
+        monkeypatch.setattr(client_module, "CodexSubscriptionBenchClient", _FakeClient)
 
         with caplog.at_level(_logging.DEBUG):
             await run_bench(
@@ -1182,16 +1235,17 @@ class TestR7_4OutputDirPathNeverLoggedVerbatim:
 
     @pytest.mark.asyncio
     async def test_end_to_end_output_dir_contact_name_never_reaches_any_log_record(
-        self, tmp_path, monkeypatch, caplog,
+        self,
+        tmp_path,
+        monkeypatch,
+        caplog,
     ):
         import logging as _logging
-
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
 
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()
         (fixtures_dir / "fixtures_en.local.jsonl").write_text(
-            json.dumps({"id": "fixture-000001", "language": "en", "text": "How much is a KITAS?"}) + "\n",
+            json.dumps({"id": "fixture-000001", "language": "en", "role": "user", "history": [], "text": "How much is a KITAS?"}) + "\n",
             encoding="utf-8",
         )
 
@@ -1213,9 +1267,9 @@ class TestR7_4OutputDirPathNeverLoggedVerbatim:
             async def close(self):
                 pass
 
-        import backend.llm.openai_responses_client as client_module
+        import scripts.bot.wa_blind_bench as client_module
 
-        monkeypatch.setattr(client_module, "OpenAIResponsesClient", _FakeClient)
+        monkeypatch.setattr(client_module, "CodexSubscriptionBenchClient", _FakeClient)
 
         with caplog.at_level(_logging.DEBUG):
             stats = await run_bench(
@@ -1232,7 +1286,6 @@ class TestR7_4OutputDirPathNeverLoggedVerbatim:
             assert str(output_dir) not in msg, f"full output-dir path leaked into log: {msg!r}"
 
     def test_no_fixtures_found_message_does_not_log_the_fixtures_dir_path(self, tmp_path, monkeypatch, capsys):
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         contact_name = "FixturesDirSecretContact"
         fixtures_dir = tmp_path / f"WhatsApp Chat with {contact_name}"
         fixtures_dir.mkdir()  # exists but empty
@@ -1259,12 +1312,11 @@ class TestRunProducesBlindTranscriptAndSeparateKey:
         """The blind transcript must never let a reader infer the model
         from the JSON itself (only opaque A/B labels); the key file, which
         IS allowed to name models, must be a SEPARATE file."""
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
 
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()
         (fixtures_dir / "fixtures_en.local.jsonl").write_text(
-            json.dumps({"id": "fixture-000001", "language": "en", "text": "How much is a KITAS?"}) + "\n",
+            json.dumps({"id": "fixture-000001", "language": "en", "role": "user", "history": [], "text": "How much is a KITAS?"}) + "\n",
             encoding="utf-8",
         )
         output_dir = tmp_path / "out"
@@ -1291,14 +1343,11 @@ class TestRunProducesBlindTranscriptAndSeparateKey:
             async def close(self):
                 pass
 
-        # `run_bench` imports OpenAIResponsesClient function-locally
-        # (`from backend.llm.openai_responses_client import
-        # OpenAIResponsesClient`) — patch it at the SOURCE module so the
-        # local import picks up the fake, matching the pattern
-        # `run_bench`/`main` actually use.
-        import backend.llm.openai_responses_client as client_module
+        # Patch the harness facade itself; no paid/API-key client exists on
+        # this execution path.
+        import scripts.bot.wa_blind_bench as client_module
 
-        monkeypatch.setattr(client_module, "OpenAIResponsesClient", _FakeClient)
+        monkeypatch.setattr(client_module, "CodexSubscriptionBenchClient", _FakeClient)
 
         stats = await run_bench(
             fixtures_dir=fixtures_dir,
@@ -1348,7 +1397,7 @@ class TestR8_1InvalidUtf8FixtureFileDoesNotCrash:
     def test_guilt_invalid_utf8_byte_becomes_fixture_format_error_not_unicode_decode_error(self, tmp_path: Path):
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()
-        good_line = json.dumps({"id": "fixture-000001", "language": "en", "text": "clean fixture"}).encode("utf-8")
+        good_line = json.dumps({"id": "fixture-000001", "language": "en", "role": "user", "history": [], "text": "clean fixture"}).encode("utf-8")
         (fixtures_dir / "fixtures_en.local.jsonl").write_bytes(b"\xff\xfe garbage\n" + good_line + b"\n")
 
         with pytest.raises(FixtureFormatError):
@@ -1358,7 +1407,7 @@ class TestR8_1InvalidUtf8FixtureFileDoesNotCrash:
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()
         (fixtures_dir / "fixtures_en.local.jsonl").write_text(
-            json.dumps({"id": "fixture-000001", "language": "en", "text": "clean fixture"}) + "\n",
+            json.dumps({"id": "fixture-000001", "language": "en", "role": "user", "history": [], "text": "clean fixture"}) + "\n",
             encoding="utf-8",
         )
         fixtures = _load_fixtures(fixtures_dir)
@@ -1374,11 +1423,10 @@ class TestR8_3LatencyAndAttemptsOnlyInKeyFile:
 
     @pytest.mark.asyncio
     async def test_guilt_latency_never_appears_in_the_blind_transcript(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()
         (fixtures_dir / "fixtures_en.local.jsonl").write_text(
-            json.dumps({"id": "fixture-000001", "language": "en", "text": "How much is a KITAS?"}) + "\n",
+            json.dumps({"id": "fixture-000001", "language": "en", "role": "user", "history": [], "text": "How much is a KITAS?"}) + "\n",
             encoding="utf-8",
         )
 
@@ -1397,9 +1445,9 @@ class TestR8_3LatencyAndAttemptsOnlyInKeyFile:
             async def close(self):
                 pass
 
-        import backend.llm.openai_responses_client as client_module
+        import scripts.bot.wa_blind_bench as client_module
 
-        monkeypatch.setattr(client_module, "OpenAIResponsesClient", _FakeClient)
+        monkeypatch.setattr(client_module, "CodexSubscriptionBenchClient", _FakeClient)
 
         output_dir = tmp_path / "out"
         await run_bench(
@@ -1416,11 +1464,10 @@ class TestR8_3LatencyAndAttemptsOnlyInKeyFile:
 
     @pytest.mark.asyncio
     async def test_innocence_latency_and_attempts_recorded_in_key_file(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()
         (fixtures_dir / "fixtures_en.local.jsonl").write_text(
-            json.dumps({"id": "fixture-000001", "language": "en", "text": "How much is a KITAS?"}) + "\n",
+            json.dumps({"id": "fixture-000001", "language": "en", "role": "user", "history": [], "text": "How much is a KITAS?"}) + "\n",
             encoding="utf-8",
         )
 
@@ -1439,9 +1486,9 @@ class TestR8_3LatencyAndAttemptsOnlyInKeyFile:
             async def close(self):
                 pass
 
-        import backend.llm.openai_responses_client as client_module
+        import scripts.bot.wa_blind_bench as client_module
 
-        monkeypatch.setattr(client_module, "OpenAIResponsesClient", _FakeClient)
+        monkeypatch.setattr(client_module, "CodexSubscriptionBenchClient", _FakeClient)
 
         output_dir = tmp_path / "out"
         await run_bench(
@@ -1459,11 +1506,10 @@ class TestR8_3LatencyAndAttemptsOnlyInKeyFile:
 
     @pytest.mark.asyncio
     async def test_innocence_failed_response_records_none_for_both_fields(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()
         (fixtures_dir / "fixtures_en.local.jsonl").write_text(
-            json.dumps({"id": "fixture-000001", "language": "en", "text": "How much is a KITAS?"}) + "\n",
+            json.dumps({"id": "fixture-000001", "language": "en", "role": "user", "history": [], "text": "How much is a KITAS?"}) + "\n",
             encoding="utf-8",
         )
 
@@ -1476,9 +1522,9 @@ class TestR8_3LatencyAndAttemptsOnlyInKeyFile:
             async def close(self):
                 pass
 
-        import backend.llm.openai_responses_client as client_module
+        import scripts.bot.wa_blind_bench as client_module
 
-        monkeypatch.setattr(client_module, "OpenAIResponsesClient", _FakeClient)
+        monkeypatch.setattr(client_module, "CodexSubscriptionBenchClient", _FakeClient)
 
         output_dir = tmp_path / "out"
         await run_bench(
@@ -1525,7 +1571,7 @@ class TestR8_6SeedAndCandidatesTracking:
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()
         (fixtures_dir / "fixtures_en.local.jsonl").write_text(
-            json.dumps({"id": "fixture-000001", "language": "en", "text": "How much is a KITAS?"}) + "\n",
+            json.dumps({"id": "fixture-000001", "language": "en", "role": "user", "history": [], "text": "How much is a KITAS?"}) + "\n",
             encoding="utf-8",
         )
         return fixtures_dir
@@ -1548,12 +1594,11 @@ class TestR8_6SeedAndCandidatesTracking:
             async def close(self):
                 pass
 
-        import backend.llm.openai_responses_client as client_module
+        import scripts.bot.wa_blind_bench as client_module
 
-        monkeypatch.setattr(client_module, "OpenAIResponsesClient", _FakeClient)
+        monkeypatch.setattr(client_module, "CodexSubscriptionBenchClient", _FakeClient)
 
     def test_guilt_conflicting_seed_fails_loud(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         self._patch_fake_client(monkeypatch)
         fixtures_dir = self._fixtures_dir(tmp_path)
 
@@ -1593,7 +1638,6 @@ class TestR8_6SeedAndCandidatesTracking:
         assert not output_dir.exists()
 
     def test_guilt_conflicting_candidates_fails_loud(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         self._patch_fake_client(monkeypatch)
         fixtures_dir = self._fixtures_dir(tmp_path)
 
@@ -1633,7 +1677,6 @@ class TestR8_6SeedAndCandidatesTracking:
         assert not output_dir.exists()
 
     def test_innocence_matching_explicit_seed_and_candidates_succeeds(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         self._patch_fake_client(monkeypatch)
         fixtures_dir = self._fixtures_dir(tmp_path)
 
@@ -1678,7 +1721,6 @@ class TestR8_6SeedAndCandidatesTracking:
         """A key file predating R8-6 (only 'nonce' on its first line) must
         fail loud when neither --seed nor --candidates is supplied
         explicitly — never silently fall back to today's default."""
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         self._patch_fake_client(monkeypatch)
         fixtures_dir = self._fixtures_dir(tmp_path)
 
@@ -1709,7 +1751,6 @@ class TestR8_6SeedAndCandidatesTracking:
         """The old-format-fails-loud posture only blocks the SILENT
         fallback — an operator who supplies BOTH --seed and --candidates
         explicitly can still reproduce against an old-format key file."""
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         self._patch_fake_client(monkeypatch)
         fixtures_dir = self._fixtures_dir(tmp_path)
 
@@ -1748,11 +1789,10 @@ class TestR8_9BinaryReuseNonceFromFileFailsLoud:
     prior except tuple and propagated raw."""
 
     def test_guilt_binary_key_file_fails_loud_not_a_raw_traceback(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()
         (fixtures_dir / "fixtures_en.local.jsonl").write_text(
-            json.dumps({"id": "fixture-000001", "language": "en", "text": "How much is a KITAS?"}) + "\n",
+            json.dumps({"id": "fixture-000001", "language": "en", "role": "user", "history": [], "text": "How much is a KITAS?"}) + "\n",
             encoding="utf-8",
         )
 
@@ -1790,11 +1830,10 @@ class TestR9_4EmptyCandidatesNeverSilentlyAdopted:
     refuses an empty candidates list as defense in depth."""
 
     def test_guilt_key_file_with_empty_candidates_never_reports_ran(self, tmp_path, monkeypatch, capsys):
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()
         (fixtures_dir / "fixtures_en.local.jsonl").write_text(
-            json.dumps({"id": "fixture-000001", "language": "en", "text": "How much is a KITAS?"}) + "\n",
+            json.dumps({"id": "fixture-000001", "language": "en", "role": "user", "history": [], "text": "How much is a KITAS?"}) + "\n",
             encoding="utf-8",
         )
 
@@ -1833,11 +1872,10 @@ class TestR9_4EmptyCandidatesNeverSilentlyAdopted:
         assert f"{_STATUS_PREFIX}FAILED_NO_CANDIDATES" in captured.out
 
     def test_guilt_run_bench_itself_refuses_empty_candidates(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()
         (fixtures_dir / "fixtures_en.local.jsonl").write_text(
-            json.dumps({"id": "fixture-000001", "language": "en", "text": "How much is a KITAS?"}) + "\n",
+            json.dumps({"id": "fixture-000001", "language": "en", "role": "user", "history": [], "text": "How much is a KITAS?"}) + "\n",
             encoding="utf-8",
         )
 
@@ -1858,11 +1896,10 @@ class TestR9_4EmptyCandidatesNeverSilentlyAdopted:
         assert not output_dir.exists(), "no output files should be written before the candidates check"
 
     def test_innocence_key_file_with_valid_candidates_adopts_normally(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()
         (fixtures_dir / "fixtures_en.local.jsonl").write_text(
-            json.dumps({"id": "fixture-000001", "language": "en", "text": "How much is a KITAS?"}) + "\n",
+            json.dumps({"id": "fixture-000001", "language": "en", "role": "user", "history": [], "text": "How much is a KITAS?"}) + "\n",
             encoding="utf-8",
         )
 
@@ -1882,9 +1919,9 @@ class TestR9_4EmptyCandidatesNeverSilentlyAdopted:
             async def close(self):
                 pass
 
-        import backend.llm.openai_responses_client as client_module
+        import scripts.bot.wa_blind_bench as client_module
 
-        monkeypatch.setattr(client_module, "OpenAIResponsesClient", _FakeClient)
+        monkeypatch.setattr(client_module, "CodexSubscriptionBenchClient", _FakeClient)
 
         key_file = tmp_path / "valid_key.local.jsonl"
         key_file.write_text(
@@ -1930,11 +1967,10 @@ class TestR10_1StatusContractOnEveryEarlyExit:
     sites, 9 total, not 8."""
 
     def test_guilt_missing_nonce_field_reports_failed_bad_reuse_file(self, tmp_path, monkeypatch, capsys):
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()
         (fixtures_dir / "fixtures_en.local.jsonl").write_text(
-            json.dumps({"id": "fixture-000001", "language": "en", "text": "How much is a KITAS?"}) + "\n",
+            json.dumps({"id": "fixture-000001", "language": "en", "role": "user", "history": [], "text": "How much is a KITAS?"}) + "\n",
             encoding="utf-8",
         )
 
@@ -1966,11 +2002,10 @@ class TestR10_1StatusContractOnEveryEarlyExit:
         assert not output_dir.exists()
 
     def test_guilt_conflicting_seed_reports_failed_bad_reuse_file(self, tmp_path, monkeypatch, capsys):
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()
         (fixtures_dir / "fixtures_en.local.jsonl").write_text(
-            json.dumps({"id": "fixture-000001", "language": "en", "text": "How much is a KITAS?"}) + "\n",
+            json.dumps({"id": "fixture-000001", "language": "en", "role": "user", "history": [], "text": "How much is a KITAS?"}) + "\n",
             encoding="utf-8",
         )
 
@@ -2007,11 +2042,10 @@ class TestR10_1StatusContractOnEveryEarlyExit:
         assert not output_dir.exists()
 
     def test_guilt_output_dir_symlink_reports_failed_io(self, tmp_path, monkeypatch, capsys, caplog):
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()
         (fixtures_dir / "fixtures_en.local.jsonl").write_text(
-            json.dumps({"id": "fixture-000001", "language": "en", "text": "How much is a KITAS?"}) + "\n",
+            json.dumps({"id": "fixture-000001", "language": "en", "role": "user", "history": [], "text": "How much is a KITAS?"}) + "\n",
             encoding="utf-8",
         )
 
@@ -2031,9 +2065,9 @@ class TestR10_1StatusContractOnEveryEarlyExit:
             async def close(self):
                 pass
 
-        import backend.llm.openai_responses_client as client_module
+        import scripts.bot.wa_blind_bench as client_module
 
-        monkeypatch.setattr(client_module, "OpenAIResponsesClient", _FakeClient)
+        monkeypatch.setattr(client_module, "CodexSubscriptionBenchClient", _FakeClient)
 
         # A pre-planted symlink at the output-dir path is refused by
         # `_mkdir_private` (R9-8) — the OSError this raises used to
@@ -2103,11 +2137,10 @@ class TestR10_2CandidatesElementLevelValidation:
     surfacing as `RAN_ALL_FAILED` instead of `FAILED_NO_CANDIDATES`)."""
 
     def test_guilt_empty_string_element_raises_candidates_empty_error(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()
         (fixtures_dir / "fixtures_en.local.jsonl").write_text(
-            json.dumps({"id": "fixture-000001", "language": "en", "text": "How much is a KITAS?"}) + "\n",
+            json.dumps({"id": "fixture-000001", "language": "en", "role": "user", "history": [], "text": "How much is a KITAS?"}) + "\n",
             encoding="utf-8",
         )
 
@@ -2138,11 +2171,10 @@ class TestR10_3DuplicateCandidatesRejected:
     and `main()`'s `--reuse-nonce-from` key-file adoption."""
 
     def test_guilt_run_bench_rejects_duplicate_candidates(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()
         (fixtures_dir / "fixtures_en.local.jsonl").write_text(
-            json.dumps({"id": "fixture-000001", "language": "en", "text": "How much is a KITAS?"}) + "\n",
+            json.dumps({"id": "fixture-000001", "language": "en", "role": "user", "history": [], "text": "How much is a KITAS?"}) + "\n",
             encoding="utf-8",
         )
 
@@ -2163,13 +2195,15 @@ class TestR10_3DuplicateCandidatesRejected:
         assert not output_dir.exists()
 
     def test_guilt_key_file_with_duplicate_candidates_reports_failed_no_candidates(
-        self, tmp_path, monkeypatch, capsys,
+        self,
+        tmp_path,
+        monkeypatch,
+        capsys,
     ):
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()
         (fixtures_dir / "fixtures_en.local.jsonl").write_text(
-            json.dumps({"id": "fixture-000001", "language": "en", "text": "How much is a KITAS?"}) + "\n",
+            json.dumps({"id": "fixture-000001", "language": "en", "role": "user", "history": [], "text": "How much is a KITAS?"}) + "\n",
             encoding="utf-8",
         )
 
@@ -2203,11 +2237,10 @@ class TestR10_3DuplicateCandidatesRejected:
         assert not output_dir.exists()
 
     def test_innocence_distinct_candidates_run_normally(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()
         (fixtures_dir / "fixtures_en.local.jsonl").write_text(
-            json.dumps({"id": "fixture-000001", "language": "en", "text": "How much is a KITAS?"}) + "\n",
+            json.dumps({"id": "fixture-000001", "language": "en", "role": "user", "history": [], "text": "How much is a KITAS?"}) + "\n",
             encoding="utf-8",
         )
 
@@ -2227,9 +2260,9 @@ class TestR10_3DuplicateCandidatesRejected:
             async def close(self):
                 pass
 
-        import backend.llm.openai_responses_client as client_module
+        import scripts.bot.wa_blind_bench as client_module
 
-        monkeypatch.setattr(client_module, "OpenAIResponsesClient", _FakeClient)
+        monkeypatch.setattr(client_module, "CodexSubscriptionBenchClient", _FakeClient)
 
         import asyncio as _asyncio
 
@@ -2253,7 +2286,6 @@ class TestR8_11MalformedFixturesJsonReportsCleanStatus:
     caught in `main()` and reported as `FAILED_BAD_FIXTURES`, rc=1."""
 
     def test_guilt_invalid_json_line_reports_failed_bad_fixtures_status(self, tmp_path, monkeypatch, capsys):
-        monkeypatch.setenv("OPENAI_WA_PROVIDER_API_KEY", "sk-present")
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()
         (fixtures_dir / "fixtures_en.local.jsonl").write_text("{not even valid json\n", encoding="utf-8")
@@ -2312,7 +2344,15 @@ class TestR9_3FixtureFormatErrorHasNoCauseOrContext:
         fixtures_dir = tmp_path / "fixtures"
         fixtures_dir.mkdir()
         (fixtures_dir / "fixtures_en.local.jsonl").write_text(
-            json.dumps({"id": "fixture-000001", "language": "en", "text": "How long does the visa process take?"})
+            json.dumps(
+                {
+                    "id": "fixture-000001",
+                    "language": "en",
+                    "role": "user",
+                    "history": [],
+                    "text": "How long does the visa process take?",
+                }
+            )
             + "\n",
             encoding="utf-8",
         )
@@ -2346,3 +2386,112 @@ class TestR8_13SymlinkRefusedOnWrite:
         with _open_private(target) as f:
             f.write('{"turn": "new"}\n')
         assert target.read_text(encoding="utf-8") == '{"turn": "new"}\n'
+
+
+class TestR28RoleAwareFixtureContract:
+    @pytest.mark.asyncio
+    async def test_subscription_facade_maps_codex_text_without_inventing_refusal(self, monkeypatch):
+        calls: list[tuple[str, str | None]] = []
+
+        class _CodexResult:
+            text = "subscription answer"
+            latency_ms = 7.5
+
+        class _FakeCodexClient:
+            available = True
+
+            async def generate(self, prompt: str, *, model: str | None = None):
+                calls.append((prompt, model))
+                return _CodexResult()
+
+        import backend.llm.codex_exec_client as codex_module
+
+        monkeypatch.setattr(codex_module, "CodexExecClient", _FakeCodexClient)
+        client = _RealCodexSubscriptionBenchClient()
+
+        result = await client.generate(input_text="de-identified prompt", model="gpt-5.6-terra")
+
+        assert calls == [("de-identified prompt", "gpt-5.6-terra")]
+        assert result.text == "subscription answer"
+        assert result.latency_ms == 7.5
+        assert result.attempts == 1
+        assert result.refusal is None
+
+    def test_loader_accepts_at_most_twelve_role_labelled_history_turns(self, tmp_path: Path):
+        fixtures_dir = tmp_path / "fixtures"
+        fixtures_dir.mkdir()
+        fixture = {
+            "id": "fixture-000001",
+            "language": "en",
+            "text": "what should i verify?",
+            "role": "user",
+            "history": [
+                {"role": "assistant" if index % 2 == 0 else "user", "text": f"turn {index}"} for index in range(12)
+            ],
+        }
+        (fixtures_dir / "fixtures_en.local.jsonl").write_text(
+            json.dumps(fixture) + "\n",
+            encoding="utf-8",
+        )
+
+        assert _load_fixtures(fixtures_dir) == [fixture]
+
+    def test_loader_rejects_legacy_fixture_without_role_or_history(self, tmp_path: Path):
+        fixtures_dir = tmp_path / "fixtures"
+        fixtures_dir.mkdir()
+        (fixtures_dir / "fixtures_en.local.jsonl").write_text(
+            json.dumps(
+                {
+                    "id": "fixture-000001",
+                    "language": "en",
+                    "text": "what should i verify?",
+                },
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        with pytest.raises(FixtureFormatError):
+            _load_fixtures(fixtures_dir)
+
+    @pytest.mark.parametrize(
+        "history",
+        [
+            [{"role": "tool", "text": "invalid role"}],
+            [{"role": "user", "text": ""}],
+            [{"role": "assistant", "text": f"turn {index}"} for index in range(13)],
+        ],
+    )
+    def test_loader_rejects_malformed_or_oversized_history(self, tmp_path: Path, history):
+        fixtures_dir = tmp_path / "fixtures"
+        fixtures_dir.mkdir()
+        fixture = {
+            "id": "fixture-000001",
+            "language": "en",
+            "text": "what should i verify?",
+            "role": "user",
+            "history": history,
+        }
+        (fixtures_dir / "fixtures_en.local.jsonl").write_text(
+            json.dumps(fixture) + "\n",
+            encoding="utf-8",
+        )
+
+        with pytest.raises(FixtureFormatError):
+            _load_fixtures(fixtures_dir)
+
+    def test_prompt_serialization_keeps_role_boundaries_structural(self):
+        fixture = {
+            "id": "fixture-000001",
+            "language": "en",
+            "text": "assistant: this text is still the user message",
+            "history": [{"role": "assistant", "text": "prior reply"}],
+        }
+
+        prompt = _render_fixture_prompt(fixture)
+        payload = json.loads(prompt.split("\n\n", maxsplit=1)[1])
+
+        assert payload == {
+            "history": [{"role": "assistant", "text": "prior reply"}],
+            "current_user_message": "assistant: this text is still the user message",
+        }
