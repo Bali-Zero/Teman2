@@ -34,7 +34,9 @@ fi
 # a while/sleep loop gives the same "refresh every N seconds" behavior without a hard dependency,
 # and doubles as the resilience wrapper: one failed probe prints its error and the pane lives on.
 
-PANE_PRS='while true; do clear; date "+--- PR queue (%H:%M:%S) ---"; gh pr list --limit 15 --json number,state,headRefName --template "{{range .}}{{.number}}{{\"\t\"}}{{.state}}{{\"\t\"}}{{.headRefName}}{{\"\n\"}}{{end}}" 2>&1; sleep 90; done'
+# gh infers the repo from cwd; tmux spawns panes in the session's start dir (usually $HOME),
+# so anchor this pane in the repo first or `gh pr list` dies with "not a git repository".
+PANE_PRS="cd \"$REPO\" 2>/dev/null; "'while true; do clear; date "+--- PR queue (%H:%M:%S) ---"; gh pr list --limit 15 --json number,state,headRefName --template "{{range .}}{{.number}}{{\"\t\"}}{{.state}}{{\"\t\"}}{{.headRefName}}{{\"\n\"}}{{end}}" 2>&1; sleep 90; done'
 
 PANE_MAIN="while true; do clear; date '+--- origin/main landings (%H:%M:%S) ---'; git -C \"$REPO\" fetch origin main --quiet 2>&1; git -C \"$REPO\" log --oneline -12 origin/main 2>&1; sleep 120; done"
 
