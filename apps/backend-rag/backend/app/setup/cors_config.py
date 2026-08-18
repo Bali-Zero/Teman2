@@ -38,9 +38,6 @@ def get_allowed_origins() -> list[str]:
         "https://www.kita.balizero.com",
         "https://my.balizero.com",  # Portal clienti
         "https://www.my.balizero.com",
-        "https://mail.balizero.com",  # Mail subdomain
-        "https://calendar.balizero.com",  # Calendar subdomain
-        "https://drive.balizero.com",  # Drive subdomain
         "https://knowledge.balizero.com",  # Knowledge subdomain
         "https://visa.balizero.com",  # Visa Oracle product
         "https://nuzantara-mouth.vercel.app",  # Frontend Vercel deployment
