@@ -1,0 +1,23 @@
+# ── Ghostty · machine profile: PRO (nuzantara@Nuzantara, M4 Pro 48GB) ──────
+# Loaded AFTER fleet.ghostty, so anything here overrides the fleet base.
+# Role: primary dev + H24 workhorse. Runs the daemons, the heavy models, cron.
+
+working-directory = /Users/nuzantara/nuzantara
+
+# Identity: PEACH. Pro is the workhorse.
+# Cursor, split dividers and the Dock icon carry the machine colour, so a
+# screenshot, a screen-share or a Vision Pro virtual display names its own
+# machine without you reading the prompt.
+cursor-color = #fab387
+cursor-text = #1e1e2e
+split-divider-color = #fab387
+
+macos-icon = custom-style
+macos-icon-frame = aluminum
+macos-icon-ghost-color = #fab387
+macos-icon-screen-color = #1e1e2e,#302438
+
+# 48 GB of RAM, but swap measured at 10.3 GB of 11.3 GB in use on 2026-08-18.
+# The fleet's 32 MB per surface stands; raise it here only after re-measuring.
+window-width = 132
+window-height = 38

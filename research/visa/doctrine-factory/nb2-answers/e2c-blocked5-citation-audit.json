@@ -1,0 +1,988 @@
+[
+  {
+    "query_id": "E2C-E23U-IDENTITY",
+    "conversation_id_sent": "92f907d8-9ff4-4875-91ce-fe1940b8f786",
+    "bracket_pointers_found": 39,
+    "resolved_pointers": [
+      {
+        "pointer": "[1]",
+        "source_id": "62596ac1-d961-47b9-9626-bba630cd0db8",
+        "title": "PP342021.pdf"
+      },
+      {
+        "pointer": "[2]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[4]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[3]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[8]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[4]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[9]",
+        "source_id": "2d15685c-9d31-4e68-9e1e-9f985aac1a79",
+        "title": "https://peraturan.bpk.go.id/Download/364085/Permenkumham%20Nomor%2022%20Tahun%202023.pdf"
+      },
+      {
+        "pointer": "[10]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[7]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[7]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[11]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[12]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[7]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[13]",
+        "source_id": "2d15685c-9d31-4e68-9e1e-9f985aac1a79",
+        "title": "https://peraturan.bpk.go.id/Download/364085/Permenkumham%20Nomor%2022%20Tahun%202023.pdf"
+      },
+      {
+        "pointer": "[14]",
+        "source_id": "2d15685c-9d31-4e68-9e1e-9f985aac1a79",
+        "title": "https://peraturan.bpk.go.id/Download/364085/Permenkumham%20Nomor%2022%20Tahun%202023.pdf"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "62596ac1-d961-47b9-9626-bba630cd0db8",
+        "title": "PP342021.pdf"
+      },
+      {
+        "pointer": "[2]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[4]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[4]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[4]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[4]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[20]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[20]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[20]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[20]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[9]",
+        "source_id": "2d15685c-9d31-4e68-9e1e-9f985aac1a79",
+        "title": "https://peraturan.bpk.go.id/Download/364085/Permenkumham%20Nomor%2022%20Tahun%202023.pdf"
+      },
+      {
+        "pointer": "[10]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[7]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[7]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[7]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[7]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[7]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[7]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[7]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[21]",
+        "source_id": "2d15685c-9d31-4e68-9e1e-9f985aac1a79",
+        "title": "https://peraturan.bpk.go.id/Download/364085/Permenkumham%20Nomor%2022%20Tahun%202023.pdf"
+      },
+      {
+        "pointer": "[22]",
+        "source_id": "27394849-1ebd-4125-be6e-51fa05bffa35",
+        "title": "merp_rientro_guida_2025.txt"
+      },
+      {
+        "pointer": "[24]",
+        "source_id": "076cde21-8d1b-4880-be2b-bb65f0c201b5",
+        "title": "imk_itk_itb_itp_documenti_soggiorno_guida_2025.txt"
+      },
+      {
+        "pointer": "[5]",
+        "source_id": "e4443084-1d72-4fc7-8dc4-93faf414a2a2",
+        "title": "garante_penjamin_guida_2025.txt"
+      },
+      {
+        "pointer": "[7]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      }
+    ],
+    "unresolved_pointers": [],
+    "unresolved_structured_source_ids": [],
+    "title_mentions": [
+      "kitas_e23_tka_guida_2025.txt",
+      "kitas_e33g_remote_work_guida_2025.txt",
+      "merp_rientro_guida_2025.txt",
+      "nb2_visa_types_final.txt"
+    ],
+    "structured_citations_present": true,
+    "verdict": "VERIFIED",
+    "reason": "structured citations present, every extracted prose pointer resolves, and every structured source_id the payload asserts also resolves"
+  },
+  {
+    "query_id": "E2C-E23U-DURATION",
+    "conversation_id_sent": "0dfb2036-afb8-4c36-84de-03f3c0f07097",
+    "bracket_pointers_found": 11,
+    "resolved_pointers": [
+      {
+        "pointer": "[1]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[8]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[2]",
+        "source_id": "adc39025-f3ec-4a51-adc0-57f7c0c212ce",
+        "title": "UU No. 63 Tahun 2024 — Perubahan atas UU Keimigrasian (Key Provisions)"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      }
+    ],
+    "unresolved_pointers": [],
+    "unresolved_structured_source_ids": [],
+    "title_mentions": [
+      "nb2_visa_types_final.txt"
+    ],
+    "structured_citations_present": true,
+    "verdict": "VERIFIED",
+    "reason": "structured citations present, every extracted prose pointer resolves, and every structured source_id the payload asserts also resolves"
+  },
+  {
+    "query_id": "E2C-E23V-IDENTITY",
+    "conversation_id_sent": "fc3075e8-70d6-484c-8c8a-d602d415f14a",
+    "bracket_pointers_found": 20,
+    "resolved_pointers": [
+      {
+        "pointer": "[2]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[14]",
+        "source_id": "e9968c12-f9fb-44ac-b2be-f95ae9849366",
+        "title": "C5A Local-Work Prohibition — Legal Sources 2026-06-01"
+      },
+      {
+        "pointer": "[2]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[16]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[17]",
+        "source_id": "723bfcd6-a1e5-4b3e-a8bf-aec92473027d",
+        "title": "kitas_e23_tka_guida_2025.txt"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[8]",
+        "source_id": "adc39025-f3ec-4a51-adc0-57f7c0c212ce",
+        "title": "UU No. 63 Tahun 2024 — Perubahan atas UU Keimigrasian (Key Provisions)"
+      },
+      {
+        "pointer": "[2]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[2]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[10]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[2]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[20]",
+        "source_id": "e9968c12-f9fb-44ac-b2be-f95ae9849366",
+        "title": "C5A Local-Work Prohibition — Legal Sources 2026-06-01"
+      },
+      {
+        "pointer": "[8]",
+        "source_id": "adc39025-f3ec-4a51-adc0-57f7c0c212ce",
+        "title": "UU No. 63 Tahun 2024 — Perubahan atas UU Keimigrasian (Key Provisions)"
+      },
+      {
+        "pointer": "[8]",
+        "source_id": "adc39025-f3ec-4a51-adc0-57f7c0c212ce",
+        "title": "UU No. 63 Tahun 2024 — Perubahan atas UU Keimigrasian (Key Provisions)"
+      },
+      {
+        "pointer": "[16]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[16]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[18]",
+        "source_id": "8abf1fe6-c884-4bc2-aa7d-6fd509c5ec54",
+        "title": "nb2_immigration_circulars.txt"
+      },
+      {
+        "pointer": "[2]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[2]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      }
+    ],
+    "unresolved_pointers": [],
+    "unresolved_structured_source_ids": [],
+    "title_mentions": [
+      "nb2_visa_types_final.txt"
+    ],
+    "structured_citations_present": true,
+    "verdict": "VERIFIED",
+    "reason": "structured citations present, every extracted prose pointer resolves, and every structured source_id the payload asserts also resolves"
+  },
+  {
+    "query_id": "E2C-E23V-DURATION",
+    "conversation_id_sent": "3e0ec7c9-15e1-4b6d-a164-522416378fc8",
+    "bracket_pointers_found": 0,
+    "resolved_pointers": [],
+    "unresolved_pointers": [],
+    "unresolved_structured_source_ids": [],
+    "title_mentions": [
+      "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)",
+      "[NB2-MD] Open Questions - Updated 2026-03-28",
+      "alih_status_offshore_autogate_guida_2025.txt",
+      "izin_kerja_tka_procedura_completa_2025.txt",
+      "kitap_guida_2025.txt",
+      "kitas_e23_tka_guida_2025.txt",
+      "kitas_e33e_silver_hair_guida_2025.txt",
+      "merp_rientro_guida_2025.txt",
+      "nb2_visa_types_final.txt"
+    ],
+    "structured_citations_present": false,
+    "verdict": "PROSE_ONLY",
+    "reason": "structured citations/references/sources_used are empty; grounding relies on resolvable prose pointers/title mentions only"
+  },
+  {
+    "query_id": "E2C-E33A-IDENTITY",
+    "conversation_id_sent": "705f481a-44a4-47b7-a616-f27495d3cc25",
+    "bracket_pointers_found": 27,
+    "resolved_pointers": [
+      {
+        "pointer": "[4]",
+        "source_id": "1ac4063f-92f1-4dd0-9bc6-0d9e406d1af8",
+        "title": "Permenkumham_22_2023.pdf"
+      },
+      {
+        "pointer": "[5]",
+        "source_id": "1d475989-11fb-407f-83e8-a951b399e384",
+        "title": "https://peraturan.go.id/files/permenkumham-no-11-tahun-2024.pdf"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[7]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[8]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[9]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[8]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[8]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[11]",
+        "source_id": "147e332b-7d12-400e-b222-8c587efa7ef9",
+        "title": "nb2_golden_visa.txt"
+      },
+      {
+        "pointer": "[11]",
+        "source_id": "147e332b-7d12-400e-b222-8c587efa7ef9",
+        "title": "nb2_golden_visa.txt"
+      },
+      {
+        "pointer": "[11]",
+        "source_id": "147e332b-7d12-400e-b222-8c587efa7ef9",
+        "title": "nb2_golden_visa.txt"
+      },
+      {
+        "pointer": "[11]",
+        "source_id": "147e332b-7d12-400e-b222-8c587efa7ef9",
+        "title": "nb2_golden_visa.txt"
+      },
+      {
+        "pointer": "[11]",
+        "source_id": "147e332b-7d12-400e-b222-8c587efa7ef9",
+        "title": "nb2_golden_visa.txt"
+      },
+      {
+        "pointer": "[11]",
+        "source_id": "147e332b-7d12-400e-b222-8c587efa7ef9",
+        "title": "nb2_golden_visa.txt"
+      },
+      {
+        "pointer": "[11]",
+        "source_id": "147e332b-7d12-400e-b222-8c587efa7ef9",
+        "title": "nb2_golden_visa.txt"
+      },
+      {
+        "pointer": "[11]",
+        "source_id": "147e332b-7d12-400e-b222-8c587efa7ef9",
+        "title": "nb2_golden_visa.txt"
+      },
+      {
+        "pointer": "[11]",
+        "source_id": "147e332b-7d12-400e-b222-8c587efa7ef9",
+        "title": "nb2_golden_visa.txt"
+      },
+      {
+        "pointer": "[11]",
+        "source_id": "147e332b-7d12-400e-b222-8c587efa7ef9",
+        "title": "nb2_golden_visa.txt"
+      },
+      {
+        "pointer": "[15]",
+        "source_id": "e9968c12-f9fb-44ac-b2be-f95ae9849366",
+        "title": "C5A Local-Work Prohibition — Legal Sources 2026-06-01"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[2]",
+        "source_id": "147e332b-7d12-400e-b222-8c587efa7ef9",
+        "title": "nb2_golden_visa.txt"
+      },
+      {
+        "pointer": "[16]",
+        "source_id": "d818b8ec-a5ca-450e-8478-6504fdc57d6e",
+        "title": "[NB2-MD] Open Questions - Updated 2026-03-28"
+      }
+    ],
+    "unresolved_pointers": [],
+    "unresolved_structured_source_ids": [],
+    "title_mentions": [
+      "Permenkumham_22_2023.pdf",
+      "nb2_golden_visa.txt",
+      "nb2_visa_procedures_guide.txt",
+      "nb2_visa_types_final.txt"
+    ],
+    "structured_citations_present": true,
+    "verdict": "VERIFIED",
+    "reason": "structured citations present, every extracted prose pointer resolves, and every structured source_id the payload asserts also resolves"
+  },
+  {
+    "query_id": "E2C-E33A-DURATION",
+    "conversation_id_sent": "96f8f909-b168-4829-84d6-ca2912c24bd6",
+    "bracket_pointers_found": 8,
+    "resolved_pointers": [
+      {
+        "pointer": "[1]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[12]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[15]",
+        "source_id": "147e332b-7d12-400e-b222-8c587efa7ef9",
+        "title": "nb2_golden_visa.txt"
+      },
+      {
+        "pointer": "[13]",
+        "source_id": "147e332b-7d12-400e-b222-8c587efa7ef9",
+        "title": "nb2_golden_visa.txt"
+      },
+      {
+        "pointer": "[19]",
+        "source_id": "d14f6c39-c4c3-48dc-8b6c-275a6c8245ce",
+        "title": "nb2_visa_procedures_guide.txt"
+      },
+      {
+        "pointer": "[20]",
+        "source_id": "57f48604-aab9-454c-a116-e8555d0d15b8",
+        "title": "nb_kitas_renewal.txt"
+      }
+    ],
+    "unresolved_pointers": [],
+    "unresolved_structured_source_ids": [],
+    "title_mentions": [],
+    "structured_citations_present": true,
+    "verdict": "VERIFIED",
+    "reason": "structured citations present, every extracted prose pointer resolves, and every structured source_id the payload asserts also resolves"
+  },
+  {
+    "query_id": "E2C-E33B-IDENTITY",
+    "conversation_id_sent": "79bc35a1-e235-498e-87e3-87ae430ca103",
+    "bracket_pointers_found": 31,
+    "resolved_pointers": [
+      {
+        "pointer": "[3]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[4]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[4]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[3]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[5]",
+        "source_id": "07a6e9a8-7ad4-4103-9008-27648ae64581",
+        "title": "Indonesia's 2024 Visa and Residency Legal Reforms"
+      },
+      {
+        "pointer": "[8]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[8]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[3]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[10]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[10]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[11]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[12]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[12]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[11]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[15]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[11]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[11]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[11]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[13]",
+        "source_id": "147e332b-7d12-400e-b222-8c587efa7ef9",
+        "title": "nb2_golden_visa.txt"
+      },
+      {
+        "pointer": "[16]",
+        "source_id": "147e332b-7d12-400e-b222-8c587efa7ef9",
+        "title": "nb2_golden_visa.txt"
+      },
+      {
+        "pointer": "[17]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[13]",
+        "source_id": "147e332b-7d12-400e-b222-8c587efa7ef9",
+        "title": "nb2_golden_visa.txt"
+      },
+      {
+        "pointer": "[3]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[21]",
+        "source_id": "1d475989-11fb-407f-83e8-a951b399e384",
+        "title": "https://peraturan.go.id/files/permenkumham-no-11-tahun-2024.pdf"
+      },
+      {
+        "pointer": "[30]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[30]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[30]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[30]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[35]",
+        "source_id": "8ec5dd2a-c3eb-4da5-a54a-565ef9133aed",
+        "title": "nb2_pricing_immigration.txt"
+      },
+      {
+        "pointer": "[36]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[37]",
+        "source_id": "e9968c12-f9fb-44ac-b2be-f95ae9849366",
+        "title": "C5A Local-Work Prohibition — Legal Sources 2026-06-01"
+      }
+    ],
+    "unresolved_pointers": [],
+    "unresolved_structured_source_ids": [],
+    "title_mentions": [
+      "nb2_golden_visa.txt",
+      "nb2_visa_types_final.txt"
+    ],
+    "structured_citations_present": true,
+    "verdict": "VERIFIED",
+    "reason": "structured citations present, every extracted prose pointer resolves, and every structured source_id the payload asserts also resolves"
+  },
+  {
+    "query_id": "E2C-E33B-DURATION",
+    "conversation_id_sent": "34e7c402-2e8b-43c7-b586-8f1fb13dbc37",
+    "bracket_pointers_found": 9,
+    "resolved_pointers": [
+      {
+        "pointer": "[1]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[3]",
+        "source_id": "236aaddc-57e8-452a-a66b-a3c03936cb98",
+        "title": "https://peraturan.go.id/files/permenkumham-no-22-tahun-2023.pdf"
+      },
+      {
+        "pointer": "[3]",
+        "source_id": "236aaddc-57e8-452a-a66b-a3c03936cb98",
+        "title": "https://peraturan.go.id/files/permenkumham-no-22-tahun-2023.pdf"
+      },
+      {
+        "pointer": "[3]",
+        "source_id": "236aaddc-57e8-452a-a66b-a3c03936cb98",
+        "title": "https://peraturan.go.id/files/permenkumham-no-22-tahun-2023.pdf"
+      },
+      {
+        "pointer": "[3]",
+        "source_id": "236aaddc-57e8-452a-a66b-a3c03936cb98",
+        "title": "https://peraturan.go.id/files/permenkumham-no-22-tahun-2023.pdf"
+      },
+      {
+        "pointer": "[9]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[9]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[12]",
+        "source_id": "d818b8ec-a5ca-450e-8478-6504fdc57d6e",
+        "title": "[NB2-MD] Open Questions - Updated 2026-03-28"
+      }
+    ],
+    "unresolved_pointers": [],
+    "unresolved_structured_source_ids": [],
+    "title_mentions": [
+      "nb2_golden_visa.txt",
+      "nb2_visa_types_final.txt"
+    ],
+    "structured_citations_present": true,
+    "verdict": "VERIFIED",
+    "reason": "structured citations present, every extracted prose pointer resolves, and every structured source_id the payload asserts also resolves"
+  },
+  {
+    "query_id": "E2C-E33B-EXTRA",
+    "conversation_id_sent": "415a31fe-2e6a-44b2-aa3a-68c8000c65af",
+    "bracket_pointers_found": 0,
+    "resolved_pointers": [],
+    "unresolved_pointers": [],
+    "unresolved_structured_source_ids": [],
+    "title_mentions": [
+      "kitas_e28b_e28c_golden_visa_guida_2025.txt",
+      "kitas_religioso_second_home_guida_2025.txt",
+      "nb2_golden_visa.txt",
+      "nb2_visa_procedures_guide.txt",
+      "nb2_visa_types_final.txt",
+      "visto_e28a_investitore_guida_2025.txt"
+    ],
+    "structured_citations_present": false,
+    "verdict": "PROSE_ONLY",
+    "reason": "structured citations/references/sources_used are empty; grounding relies on resolvable prose pointers/title mentions only"
+  },
+  {
+    "query_id": "E2C-E33C-IDENTITY",
+    "conversation_id_sent": "87878d4c-3f12-4d65-a954-16a9b2f2333f",
+    "bracket_pointers_found": 0,
+    "resolved_pointers": [],
+    "unresolved_pointers": [],
+    "unresolved_structured_source_ids": [],
+    "title_mentions": [
+      "nb2_visa_types_final.txt"
+    ],
+    "structured_citations_present": false,
+    "verdict": "PROSE_ONLY",
+    "reason": "structured citations/references/sources_used are empty; grounding relies on resolvable prose pointers/title mentions only"
+  },
+  {
+    "query_id": "E2C-E33C-DURATION",
+    "conversation_id_sent": "4b0de399-85a9-442b-8a38-a73a1fe7b7c4",
+    "bracket_pointers_found": 15,
+    "resolved_pointers": [
+      {
+        "pointer": "[1]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[2]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[4]",
+        "source_id": "09d6e396-bb18-467e-ab71-ae89bfe44177",
+        "title": "kitas_e33g_remote_work_guida_2025.txt"
+      },
+      {
+        "pointer": "[5]",
+        "source_id": "1d475989-11fb-407f-83e8-a951b399e384",
+        "title": "https://peraturan.go.id/files/permenkumham-no-11-tahun-2024.pdf"
+      },
+      {
+        "pointer": "[5]",
+        "source_id": "1d475989-11fb-407f-83e8-a951b399e384",
+        "title": "https://peraturan.go.id/files/permenkumham-no-11-tahun-2024.pdf"
+      },
+      {
+        "pointer": "[7]",
+        "source_id": "163eb1a9-5712-41f8-b591-7e7b9a2ab805",
+        "title": "Permenkumham_27_2021_Visa.pdf"
+      },
+      {
+        "pointer": "[8]",
+        "source_id": "e9968c12-f9fb-44ac-b2be-f95ae9849366",
+        "title": "C5A Local-Work Prohibition — Legal Sources 2026-06-01"
+      },
+      {
+        "pointer": "[7]",
+        "source_id": "163eb1a9-5712-41f8-b591-7e7b9a2ab805",
+        "title": "Permenkumham_27_2021_Visa.pdf"
+      },
+      {
+        "pointer": "[8]",
+        "source_id": "e9968c12-f9fb-44ac-b2be-f95ae9849366",
+        "title": "C5A Local-Work Prohibition — Legal Sources 2026-06-01"
+      },
+      {
+        "pointer": "[2]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[2]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[2]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[2]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[2]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[21]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 — Klasifikasi Visa (110-tipe, include C5A)"
+      }
+    ],
+    "unresolved_pointers": [],
+    "unresolved_structured_source_ids": [],
+    "title_mentions": [
+      "C5A Local-Work Prohibition — Legal Sources 2026-06-01",
+      "Indonesian Legal Framework for Visas and Stay Permits",
+      "Permenkumham_22_2023.pdf",
+      "Permenkumham_27_2021_Visa.pdf",
+      "https://peraturan.go.id/files/permenkumham-no-11-tahun-2024.pdf",
+      "nb2_visa_types_final.txt"
+    ],
+    "structured_citations_present": true,
+    "verdict": "VERIFIED",
+    "reason": "structured citations present, every extracted prose pointer resolves, and every structured source_id the payload asserts also resolves"
+  }
+]
