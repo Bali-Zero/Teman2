@@ -11,7 +11,28 @@
 #  Every value below was verified against the reference shipped INSIDE the
 #  installed app (Contents/Resources/ghostty/doc/ghostty.5.md, Ghostty 1.3.1),
 #  not against web docs, which may describe another release.
-#  Reload after edits: cmd+shift+comma. Opacity/blur changes need a full restart.
+#  Reload after edits: cmd+shift+comma. The reference states explicitly that
+#  `background-opacity` needs a full restart; blur and the Dock icon are not
+#  documented either way, so treat a relaunch as the reliable route for all three.
+#
+#  NOT every line here changes something. Of the 51 non-repeatable settings this
+#  file declares, 24 RESOLVE to Ghostty 1.3.1's own default. They are kept
+#  on purpose — an explicit value is a pin that survives an upstream default
+#  flip, and it makes the posture readable instead of implied — but they are
+#  NOT choices, and nothing here should describe them as if they were.
+#
+#  Re-derive the split after any Ghostty upgrade; a default that moves under a
+#  pinned line is exactly what the pin is for:
+#
+#    ghostty +show-config                    # EFFECTIVE config — prints ONLY
+#                                            # what differs from the default, so
+#                                            # a key's ABSENCE means "= default"
+#    ghostty +show-config --default=true     # Ghostty's defaults. Ignores your
+#                                            # config entirely: with font-size 99
+#                                            # on disk it still answers 13.
+#
+#  Neither view is safe for keybinds: `+show-config` silently DROPS prefixes, so
+#  a `global:` bind prints as an ordinary one. Only keys.ghostty knows.
 # ═══════════════════════════════════════════════════════════════════════════
 
 # ─── Typography ────────────────────────────────────────────────────────────
@@ -34,8 +55,11 @@ font-thicken = true
 font-thicken-strength = 128
 
 # Alpha blending in linear space WITH the correction step: removes the dark
-# fringing around glyph edges that transparency introduces, while keeping the
-# weight identical to macOS-native blending. Matters because we run at 0.94.
+# fringing around glyph edges that transparency introduces, while keeping weight
+# "nearly or completely identical" to macOS-native blending (the reference's own
+# words — not a promise of pixel identity). It also changes the colour space for
+# transparent images and any custom shader. macOS defaults to `native`; revert
+# to that if text weight ever looks wrong. Matters because we run at 0.94.
 alpha-blending = linear-corrected
 
 # ─── Colour ────────────────────────────────────────────────────────────────
@@ -75,10 +99,12 @@ macos-window-shadow = true
 macos-dock-drop-behavior = new-tab
 
 # ─── Scrollback ────────────────────────────────────────────────────────────
-# UNITS ARE BYTES, PER SURFACE — not lines, and not per application. Ten splits
-# means ten times this number. 32 MB holds a very long Claude Code session while
-# staying well clear of the swap pressure measured on Pro (10.3 GB of 11.3 GB
-# in use). Raise it per-machine, never fleet-wide.
+# UNITS ARE BYTES, PER SURFACE — not lines, and not per application, so ten
+# splits can reach ten times this number. It is allocated LAZILY, so the figure
+# is a ceiling and not a reservation; the visible screen is always allocated on
+# top of it. 32 MB holds a very long Claude Code session while staying clear of
+# the swap pressure measured on Pro (10.3 GB of 11.3 GB in use). Raise it in a
+# machine profile, never fleet-wide.
 scrollback-limit = 32000000
 
 # Keep the viewport still while output streams past; only your own keystrokes
@@ -94,22 +120,33 @@ mouse-hide-while-typing = true
 # ─── Long-running commands ─────────────────────────────────────────────────
 # Deploys, pytest suites, LLM panels and fly builds outlive your attention.
 # 'unfocused' notifies only when you are looking at something else; 45s keeps
-# ordinary commands silent. Requires OSC 133, which the shell integration below
-# provides — so it fires for YOUR interactive commands, not for tool-call shells.
+# ordinary commands silent.
+#
+# The mechanism is OSC 133 prompt marking, which the shell integration below
+# emits. Anything that marks commands that way gets notifications; a shell that
+# does not — a non-interactive tool-call shell, for instance — gets none. It is
+# the escape sequence that decides, not which program started the shell.
 notify-on-command-finish = unfocused
 notify-on-command-finish-after = 45s
 notify-on-command-finish-action = no-bell,notify
 
-# Silent bell: mark the tab, never make noise.
+# Silent bell: no system alert sound, no custom audio. What remains is
+# `attention` (bounces the Dock icon) and `title` (prepends 🔔 to the surface
+# title) — visible, not audible.
 bell-features = no-system,no-audio,attention,title
 
 # ─── Shell integration ─────────────────────────────────────────────────────
-# ssh-terminfo is the fix for the daily fleet defect: xterm-ghostty is unknown
-# on both M5 and Mini (`infocmp xterm-ghostty` exits 1 there), so every ssh from
-# a Ghostty window used to land on a terminal the remote could not describe.
-# With this on, the first ssh to a host installs the terminfo via tic and caches
-# the host; ssh-env carries COLORTERM/TERM_PROGRAM and provides the
-# xterm-256color fallback when the install cannot happen.
+# ssh-terminfo addresses the daily fleet defect: xterm-ghostty was unknown on
+# both M5 and Mini (`infocmp xterm-ghostty` exited 1 on each), so every ssh from
+# a Ghostty window landed on a terminal the remote could not describe.
+#
+# It ATTEMPTS the install — it does not guarantee it. It needs `infocmp` locally
+# and `tic` on the remote, and it only runs from an interactive shell, because
+# the wrapper is a zsh function created by the shell integration at the FIRST
+# PROMPT (`_ghostty_deferred_init`). Scripts, cron and tool-call shells never
+# see it, which is why the cache can read empty on a machine that has had this
+# enabled for a long time. ssh-env carries COLORTERM/TERM_PROGRAM and supplies
+# the xterm-256color fallback when the install cannot happen.
 shell-integration = detect
 shell-integration-features = cursor,sudo,title,ssh-env,ssh-terminfo,path
 
@@ -124,24 +161,59 @@ clipboard-paste-protection = true
 clipboard-paste-bracketed-safe = true
 clipboard-trim-trailing-spaces = true
 
-# Treat '/' '.' '-' '_' as part of a word so a double-click grabs a whole path
-# or a whole flag, which is what you actually want to copy in this repo.
+# These are the characters that END a word, not the ones that make one — the
+# reference is explicit that it "specifies the boundary characters rather than
+# the word characters", the inverse of zsh's WORDCHARS. `/` `.` `-` `_` are
+# absent, which is why a double-click grabs a whole path or a whole flag.
+#
+# This value is byte-identical to Ghostty's default (measured: `+show-config`
+# reports no deviation). It is written out so the boundary set is visible rather
+# than folklore, and so a future edit is a diff against something.
+#
+# The consequence that bites in this repo: `:` IS a boundary, so double-clicking
+# `file.py:163` grabs the path without the line number. Dropping `:` would fix
+# that and break double-click inside URLs, `PATH`, `key: value` and timestamps —
+# a narrow gain for a broad cost, so it stays. Use drag or triple-click.
 selection-word-chars = " \t'\"│`|:;,()[]{}<>$"
 
 link-url = true
 link-previews = true
 
 # ─── macOS behaviour ───────────────────────────────────────────────────────
-# LEFT option becomes Alt (so alt+f / alt+b / alt+. work in zsh); RIGHT option
+# RIGHT option becomes Alt (so alt+f / alt+b / alt+. work in zsh); LEFT option
 # keeps macOS dead-key composition, which on this ABC layout is how à è é ì ò ù
-# are typed. Do not change this to plain `true` — it would break Italian input.
-macos-option-as-alt = left
+# are typed: option+` then a, option+e then e, and so on.
+#
+# `right`, not `left`. On a US/ABC layout the backtick sits at the top LEFT of
+# the keyboard, so the hand that naturally reaches option+` is the left one —
+# binding LEFT to Alt would take the accent mechanism away from the hand that
+# uses it. Never set this to plain `true`: that takes BOTH option keys and the
+# reference warns it "will break Unicode input sequences on macOS".
+macos-option-as-alt = right
 
 # Secure Input blocks other processes from reading keystrokes at password
-# prompts. It also blocks accessibility-API keystroke capture, which is the
-# same vector that took the M5 keyboard on 2026-08-16 — keep it armed.
+# prompts, including accessibility-API keystroke capture — the same vector that
+# took the M5 keyboard on 2026-08-16, which is why it stays armed.
+#
+# Two caveats the reference states and which matter on an ssh-heavy fleet:
+# detection of a password prompt is HEURISTIC, and it explicitly "does not work
+# over SSH connections" — so a remote sudo prompt is not covered by it. It can
+# also interfere with legitimate accessibility software.
 macos-auto-secure-input = true
 macos-secure-input-indication = true
+
+# AppleScript control of the terminal is OFF. It defaults to ON (measured), and
+# it is the one macOS surface here that ships permissive: with it enabled, any
+# process that can run osascript gets "AppleScript object lookup for windows,
+# tabs, and terminals" on a terminal that holds this fleet's live shells.
+#
+# Measured before closing it: nothing in this repo, nothing in ~/scripts and no
+# LaunchAgent drives Ghostty through AppleScript, so nothing loses a capability.
+#
+# The neighbouring surface, `macos-shortcuts`, is left alone on purpose: its
+# default is already `ask` — Shortcuts can create terminals, send text and run
+# commands, but only after a permission prompt the human sees once.
+macos-applescript = false
 
 # ─── Safety ────────────────────────────────────────────────────────────────
 confirm-close-surface = true

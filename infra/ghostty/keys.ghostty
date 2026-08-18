@@ -1,30 +1,41 @@
 # ═══════════════════════════════════════════════════════════════════════════
 #  Ghostty · Nuzantara KEYBINDS + COMMAND PALETTE
 #  Loaded by ~/.config/ghostty/config after fleet.ghostty.
-#  `ghostty +list-keybinds` prints the effective set (defaults included).
+#  `ghostty +list-keybinds` prints the effective set, defaults included.
 # ═══════════════════════════════════════════════════════════════════════════
 #
-#  Ghostty already ships the macOS conventions — cmd+t/w/n tabs and windows,
-#  cmd+c/v, cmd+f scrollback search (new in 1.3), cmd+g / shift+cmd+g to walk
-#  results, cmd+1..9, cmd+home/end. Nothing below re-declares those; this file
-#  only adds what is missing.
+#  Ghostty 1.3.1 ships 93 default bindings, and they already cover more than is
+#  obvious. Measured against `+list-keybinds` on a config-less binary, these are
+#  ALREADY defaults and are deliberately NOT redeclared here:
+#
+#     cmd+d / cmd+shift+d      split right / down
+#     cmd+shift+enter          toggle split zoom
+#     cmd+alt+arrows           move between splits
+#     cmd+up / cmd+down        jump to previous / next shell prompt
+#     cmd+shift+p              command palette
+#     cmd+shift+,              reload config
+#     cmd+f / cmd+g            search scrollback, next result
+#     cmd+t / cmd+w / cmd+n    tabs and windows
+#
+#  An earlier draft of this file restated all of them under a comment claiming
+#  it "only adds what is missing". That claim was false, and the redeclarations
+#  were noise. What follows is what the defaults genuinely do not provide.
 
-# ─── Splits ────────────────────────────────────────────────────────────────
-keybind = cmd+d=new_split:right
-keybind = cmd+shift+d=new_split:down
-keybind = cmd+shift+enter=toggle_split_zoom
-keybind = cmd+alt+left=goto_split:left
-keybind = cmd+alt+right=goto_split:right
-keybind = cmd+alt+up=goto_split:up
-keybind = cmd+alt+down=goto_split:down
-
-# Keep a zoomed split zoomed while you move between splits, instead of
-# collapsing the layout on every navigation.
+# ─── Splits: behaviour, not new bindings ───────────────────────────────────
+# Keep a zoomed split zoomed while moving between splits, instead of collapsing
+# the layout on every navigation.
 split-preserve-zoom = navigation
 
 # ─── Resize mode (modal, tmux-style) ───────────────────────────────────────
-# cmd+r enters the table; arrows resize; '=' equalises; esc leaves.
-# There is no timeout on key tables — esc is the only way out, so it is bound.
+# cmd+r enters the table; arrows resize; '=' equalises; esc or cmd+r leaves.
+#
+# Key tables are STICKY by design. The reference is explicit: "If an invalid key
+# is pressed, the sequence ends but the table remains active", and "binding
+# lookup proceeds from the innermost table outward" — so without the catch_all
+# below, a stray keystroke while resizing would fall through to the shell AND
+# leave you still in resize mode, with no visible sign of it. catch_all makes
+# any unexpected key simply leave the table, which is the behaviour a person
+# expects from a modal mode they did not realise they were still in.
 keybind = cmd+r=activate_key_table:resize
 keybind = resize/left=resize_split:left,10
 keybind = resize/right=resize_split:right,10
@@ -32,52 +43,53 @@ keybind = resize/up=resize_split:up,10
 keybind = resize/down=resize_split:down,10
 keybind = resize/equal=equalize_splits
 keybind = resize/escape=deactivate_key_table
+keybind = resize/cmd+r=deactivate_key_table
+keybind = resize/unconsumed:catch_all=deactivate_key_table
 
-# ─── Reading long sessions ─────────────────────────────────────────────────
-# Walk backwards and forwards between shell PROMPTS. This is the single most
-# useful binding for a 40k-line Claude Code session: it steps command by
-# command instead of line by line. Depends on OSC 133 from shell integration.
-keybind = cmd+up=jump_to_prompt:-1
-keybind = cmd+down=jump_to_prompt:1
-
+# ─── Keeping a long session ────────────────────────────────────────────────
 # Dump the whole scrollback to a file and open it — the honest way to keep a
-# long run for later, rather than scrolling and copying by hand.
+# long run, rather than scrolling and copying by hand.
 keybind = cmd+shift+s=write_scrollback_file:open
-# Same for the visible screen, path to clipboard instead of opening.
+# Same for the visible screen, path to the clipboard instead of opening it.
 keybind = cmd+alt+s=write_screen_file:copy
 
 # ─── Window control ────────────────────────────────────────────────────────
 # Pin a window above everything else — for a log tail or a monitor split you
-# want to keep visible while working in another app.
+# want visible while working in another app.
 keybind = cmd+alt+p=toggle_window_float_on_top
 # Momentarily make the background fully opaque when transparency hurts reading.
 keybind = cmd+alt+o=toggle_background_opacity
-# Read-only mode: blocks input to the pty. Useful when a long job is running
-# and a stray keystroke would be sent into it.
+# Read-only mode: blocks input to the pty, so a stray keystroke cannot reach a
+# long-running job.
 keybind = cmd+alt+r=toggle_readonly
-
-# ─── Config & palette ──────────────────────────────────────────────────────
-keybind = cmd+shift+comma=reload_config
-keybind = cmd+shift+p=toggle_command_palette
 
 # ─── Quick terminal ────────────────────────────────────────────────────────
 # Drops a terminal from the top of the screen over any app.
-# `global:` requires the Accessibility permission for Ghostty in
-# System Settings > Privacy & Security > Accessibility. Without the grant the
-# binding is simply inert — it fails silently, so verify it after install.
-keybind = global:cmd+grave_accent=toggle_quick_terminal
+#
+# NOT bound to cmd+grave. That chord is the macOS system shortcut "Cycle Through
+# Windows" (it appears in the standard Window menu and is an enabled system
+# hotkey), and a `global:` binding "always consumes the input" while Ghostty is
+# unfocused — so taking it would break window cycling in EVERY application, not
+# just this one. cmd+alt+grave is not claimed by the system.
+#
+# `global:` needs Ghostty in System Settings → Privacy & Security → Accessibility.
+# Without the grant the binding is silently inert: no error, nothing happens.
+# Press it once after install to confirm the grant is real.
+keybind = global:cmd+alt+grave_accent=toggle_quick_terminal
 
 # ─── Command palette: Nuzantara entries ────────────────────────────────────
-# These APPEND to Ghostty's built-in palette (they do not replace it).
-# Every one of them TYPES the command and stops — no trailing newline, so
-# nothing executes until you read it and press enter yourself. That is
-# deliberate: a palette that runs commands is a palette that runs the wrong
-# command eventually.
-command-palette-entry = title:"Nuzantara: repo status",description:"git status in the monorepo (type only, not executed).",action:"text:git -C ~/nuzantara status --short --branch"
-command-palette-entry = title:"Nuzantara: worktree list",description:"List agent worktrees (type only, not executed).",action:"text:git -C ~/nuzantara worktree list"
-command-palette-entry = title:"Nuzantara: new agent worktree",description:"Broker a fresh isolated worktree (type only — fill in lane and task).",action:"text:python3 ~/nuzantara/scripts/agent_start.py --lane ops --task-id "
-command-palette-entry = title:"Nuzantara: proprioception report",description:"Show the last fleet self-check (type only, not executed).",action:"text:cat ~/.nuzantara-proprioception/last.md"
-command-palette-entry = title:"Nuzantara: escalations board",description:"HIGH-first escalation board (type only, not executed).",action:"text:python3 ~/nuzantara/scripts/pending_arms_report.py"
-command-palette-entry = title:"Nuzantara: HOME-fork lint",description:"Check live-vs-repo drift for declared pairs (type only, not executed).",action:"text:python3 ~/nuzantara/scripts/lint_home_fork.py --check"
-command-palette-entry = title:"Ghostty: verify this config",description:"Validate the installed Ghostty config and prove which files were read.",action:"text:bash ~/nuzantara/infra/ghostty/verify.sh"
+# These APPEND to Ghostty's 88 built-in entries — measured 96 = 88 + 8. They do
+# not replace them (the reference notes the defaults can be cleared only by
+# setting this key to an empty value, which we do not do).
+#
+# Every one TYPES the command and stops — no trailing newline, so nothing runs
+# until you read it and press enter yourself. A palette that executes is a
+# palette that eventually executes the wrong thing.
+command-palette-entry = title:"Nuzantara: repo status",description:"git status in the monorepo (typed, not executed).",action:"text:git -C ~/nuzantara status --short --branch"
+command-palette-entry = title:"Nuzantara: worktree list",description:"List agent worktrees (typed, not executed).",action:"text:git -C ~/nuzantara worktree list"
+command-palette-entry = title:"Nuzantara: new agent worktree",description:"Broker a fresh isolated worktree (typed — fill in lane and task).",action:"text:python3 ~/nuzantara/scripts/agent_start.py --lane ops --task-id "
+command-palette-entry = title:"Nuzantara: proprioception report",description:"Show the last fleet self-check (typed, not executed).",action:"text:cat ~/.nuzantara-proprioception/last.md"
+command-palette-entry = title:"Nuzantara: pending arms",description:"Suspended-work ledger (typed, not executed).",action:"text:python3 ~/nuzantara/scripts/pending_arms_report.py"
+command-palette-entry = title:"Nuzantara: HOME-fork lint",description:"Check live-vs-repo drift for declared pairs (typed, not executed).",action:"text:python3 ~/nuzantara/scripts/lint_home_fork.py --check"
+command-palette-entry = title:"Ghostty: verify this config",description:"Validate the installed config and check drift, font and terminfo.",action:"text:bash ~/nuzantara/infra/ghostty/verify.sh"
 command-palette-entry = title:"Ghostty: ssh terminfo cache",description:"List hosts that already have xterm-ghostty installed.",action:"text:ghostty +ssh-cache"

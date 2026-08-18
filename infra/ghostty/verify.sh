@@ -18,8 +18,9 @@ set -uo pipefail
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEST_DIR="${GHOSTTY_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/ghostty}"
 # Every ghostty invocation below is pinned to the directory we are verifying
-# (see the note in install.sh) so a check can never pass by reading a config
-# other than the installed one.
+# (see the note in install.sh) so a check does not silently read some other XDG
+# location. It is NOT total isolation: the macOS Application Support path is
+# searched ahead of XDG regardless, which is why check 6b exists.
 XDG_PARENT="$(dirname "$DEST_DIR")"
 GHOSTTY_BIN="${GHOSTTY_BIN:-/Applications/Ghostty.app/Contents/MacOS/ghostty}"
 RC=0
@@ -68,16 +69,52 @@ for pair in "config|config" "fleet.ghostty|fleet.ghostty" "keys.ghostty|keys.gho
   fi
 done
 # machine.ghostty is installed under a fixed name from a per-host source, so it
-# is matched against whichever profile it actually equals.
-if [ -f "$DEST_DIR/machine.ghostty" ]; then
-  matched=""
-  for m in "$SRC_DIR"/machines/*.ghostty; do
-    cmp -s "$m" "$DEST_DIR/machine.ghostty" && matched="$(basename "$m" .ghostty)"
-  done
-  if [ -n "$matched" ]; then ok "machine profile installed: $matched"
-  else bad "machine.ghostty matches no profile in $SRC_DIR/machines/"; RC=$((RC|2)); drift=1; fi
-else
+# must be compared against the profile THIS host should have. Matching against
+# "any profile in machines/" was the earlier version and it passed happily with
+# M5's profile installed on Pro — including a working-directory that does not
+# exist on this machine. Same hostname mapping as install.sh.
+expected_machine() {
+  local h; h="$(hostname -s 2>/dev/null || hostname)"
+  case "$h" in
+    Nuzantara|nuzantara) echo pro  ;;
+    Air-M5|air-m5)       echo m5   ;;
+    Mini-Pro2|mini-pro2) echo mini ;;
+    *) return 1 ;;
+  esac
+}
+EXPECT="${GHOSTTY_EXPECT_MACHINE:-$(expected_machine || true)}"
+if [ -z "$EXPECT" ]; then
+  warn "unrecognised host '$(hostname -s)' — cannot tell which profile belongs here (check skipped, not passed)"
+  RC=$((RC|4))
+elif [ ! -f "$DEST_DIR/machine.ghostty" ]; then
   bad "missing installed file: $DEST_DIR/machine.ghostty"; RC=$((RC|2)); drift=1
+elif cmp -s "$SRC_DIR/machines/$EXPECT.ghostty" "$DEST_DIR/machine.ghostty"; then
+  ok "machine profile installed: $EXPECT (matches this host)"
+else
+  actual="none"
+  for m in "$SRC_DIR"/machines/*.ghostty; do
+    cmp -s "$m" "$DEST_DIR/machine.ghostty" && actual="$(basename "$m" .ghostty)"
+  done
+  bad "wrong machine profile: this host is '$EXPECT' but machine.ghostty is '$actual'"
+  RC=$((RC|2)); drift=1
+fi
+
+# The configured working directory has to exist, or every new window opens
+# somewhere unintended. This is what catches a foreign profile in practice.
+# Capture the STATUS, not just the text. With `2>/dev/null` and an empty-string
+# test, a ghostty that cannot run at all leaves WD empty and this check silently
+# VANISHES instead of failing — the verifier then reports a clean profile it
+# never actually inspected. An unusable binary is a finding of its own.
+EFFECTIVE="$(XDG_CONFIG_HOME="$XDG_PARENT" "$GHOSTTY_BIN" +show-config --default=false 2>&1)"; ERC=$?
+if [ $ERC -ne 0 ]; then
+  bad "+show-config failed (rc=$ERC) — the effective config could not be read, so nothing below was verified against it"
+  note "$(printf '%s' "$EFFECTIVE" | head -2)"
+  RC=$((RC|4))
+else
+  WD="$(printf '%s\n' "$EFFECTIVE" | sed -n 's/^working-directory = //p' | head -1)"
+  if [ -n "$WD" ] && [ ! -d "$WD" ]; then
+    bad "working-directory does not exist on this machine: $WD"; RC=$((RC|2))
+  fi
 fi
 [ $drift -eq 0 ] && ok "installed copies match the repo source"
 
@@ -87,8 +124,14 @@ fi
 # XDG_CONFIG_HOME so the configured family cannot answer for the tested one.
 FAM="$(grep -m1 '^font-family = ' "$SRC_DIR/fleet.ghostty" | sed 's/^font-family = //')"
 if [ -n "$FAM" ]; then
-  FOUT="$(XDG_CONFIG_HOME=/nonexistent-xdg "$GHOSTTY_BIN" +show-face --font-family="$FAM" --string=A 2>&1)"
-  if printf '%s' "$FOUT" | grep -qF "$FAM"; then
+  FOUT="$(XDG_CONFIG_HOME=/nonexistent-xdg "$GHOSTTY_BIN" +show-face --font-family="$FAM" --string=A 2>&1)"; FRC=$?
+  if [ $FRC -ne 0 ]; then
+    # Distinguish "this font is missing" from "this binary cannot answer". Both
+    # used to land in the same branch, which told the reader to install a font
+    # when the real problem was the tool doing the asking.
+    bad "+show-face failed (rc=$FRC) — cannot tell whether '$FAM' resolves: $FOUT"
+    RC=$((RC|4))
+  elif printf '%s' "$FOUT" | grep -qF "$FAM"; then
     ok "font resolves: $FAM"
   else
     warn "font '$FAM' does NOT resolve here — falling back to: $FOUT"
@@ -106,7 +149,8 @@ fi
 # peers means the wrapper has never actually run.
 CACHE="$(XDG_CONFIG_HOME="$XDG_PARENT" "$GHOSTTY_BIN" +ssh-cache 2>&1)"; CRC=$?
 if [ $CRC -ne 0 ]; then
-  warn "+ssh-cache failed (rc=$CRC): $CACHE"
+  bad "+ssh-cache failed (rc=$CRC): $CACHE"
+  RC=$((RC|4))
 else
   if printf '%s' "$CACHE" | grep -qi "no hosts"; then
     warn "ssh terminfo cache is EMPTY — no remote host has xterm-ghostty yet"
@@ -115,6 +159,43 @@ else
   else
     ok "ssh terminfo cache: $(printf '%s' "$CACHE" | tr '\n' ' ')"
   fi
+fi
+
+# ── 6b. The location that outranks everything ──────────────────────────────
+# macOS searches $HOME/Library/Application Support/com.mitchellh.ghostty/
+# config.ghostty BEFORE any XDG location. Nothing this profile installs can
+# override a file sitting there, so its presence is a finding, not a detail.
+# Judged by CONTENT, not by existence: Ghostty.app creates this file empty on
+# its own (observed 2026-08-18 — the CLI does not, the running app does), so a
+# presence test would fail forever on every machine and train you to ignore this
+# script. An empty or comment-only file changes nothing; a file with settings
+# in it silently outranks the whole profile.
+APPSUP="$HOME/Library/Application Support/com.mitchellh.ghostty/config.ghostty"
+if [ -f "$APPSUP" ]; then
+  # `grep -c` prints its count on stdout AND exits 1 when that count is zero, so
+  # a `|| echo 0` fallback appends a SECOND zero: the variable becomes "0\n0" and
+  # the numeric test below dies with "integer expression expected" — which is
+  # what it did on all three machines. grep already emits the number; take it and
+  # only substitute when the capture is empty (file unreadable).
+  APPSUP_SETTINGS="$(grep -cvE '^[[:space:]]*(#.*)?$' "$APPSUP" 2>/dev/null)"
+  case "$APPSUP_SETTINGS" in
+    ''|*[!0-9]*) APPSUP_SETTINGS=unreadable ;;
+  esac
+  if [ "$APPSUP_SETTINGS" = unreadable ]; then
+    # NOT folded into 0. An earlier version set it to 0 here and then fell
+    # through to the "present but empty" branch below, so the verifier printed
+    # BOTH "cannot count" and "present but empty (no effect)" — one of which is
+    # a claim it had just said it could not make. Unreadable is its own verdict.
+    bad "cannot read $APPSUP — it OUTRANKS this profile and its contents are unknown"
+    RC=$((RC|4))
+  elif [ "$APPSUP_SETTINGS" -gt 0 ]; then
+    bad "$APPSUP holds $APPSUP_SETTINGS setting(s) and takes PRECEDENCE over everything installed here"
+    RC=$((RC|1))
+  else
+    ok "Application Support config present but empty (no effect)"
+  fi
+else
+  ok "no higher-priority config in Application Support"
 fi
 
 # ── 7. Effective values worth eyeballing ───────────────────────────────────
