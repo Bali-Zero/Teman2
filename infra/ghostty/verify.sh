@@ -62,7 +62,7 @@ fi
 # fleet-wide authority is scripts/lint_home_fork.py, which compares against
 # origin/main. This check is the local, fast one.
 drift=0
-for pair in "config|config" "fleet.ghostty|fleet.ghostty" "keys.ghostty|keys.ghostty"; do
+for pair in "config|config" "fleet.ghostty|fleet.ghostty" "keys.ghostty|keys.ghostty" "verify-latest.sh|verify-latest.sh"; do
   s="$SRC_DIR/${pair%%|*}"; d="$DEST_DIR/${pair##*|}"
   if [ ! -f "$d" ]; then bad "missing installed file: $d"; RC=$((RC|2)); drift=1
   elif ! cmp -s "$s" "$d"; then bad "drift: $d differs from $s"; RC=$((RC|2)); drift=1

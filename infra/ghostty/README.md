@@ -33,7 +33,9 @@ infra/ghostty/
 │   ├── m5.ghostty       ├→ ~/.config/ghostty/machine.ghostty     (one per host)
 │   └── mini.ghostty    ─┘
 ├── install.sh          back up → install → validate → roll back on failure
-└── verify.sh           prove it is installed, current, and working
+├── verify.sh           prove it is installed, current, and working
+└── verify-latest.sh    → ~/.config/ghostty/verify-latest.sh      (what nuz/v types:
+                          runs origin/main's verify.sh — current on any checkout)
 ```
 
 `~/.config/ghostty/local.ghostty` is yours: never installed, never in git,
