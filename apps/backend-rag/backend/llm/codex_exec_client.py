@@ -801,12 +801,12 @@ class CodexExecClient:
         binary = self._resolve_binary()
         if not binary:
             return False
-        if not (os.path.isfile(binary) and os.access(binary, os.X_OK)):
-            return False
         try:
+            if not (os.path.isfile(binary) and os.access(binary, os.X_OK)):
+                return False
             auth_file = self._resolve_codex_home() / _AUTH_FILE_NAME
             return auth_file.is_file() and auth_file.stat().st_size > 0
-        except OSError:
+        except (OSError, ValueError):
             return False
 
     def _build_env(self) -> dict[str, str]:

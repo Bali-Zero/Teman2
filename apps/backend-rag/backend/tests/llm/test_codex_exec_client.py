@@ -227,6 +227,17 @@ class TestAvailable:
         client = CodexExecClient(binary="/nonexistent/nowhere", codex_home="/nonexistent/home")
         assert client.available is False
 
+    def test_guilt_embedded_nul_binary_fails_closed(self) -> None:
+        client = CodexExecClient(binary="codex\0binary", codex_home="/nonexistent/home")
+        assert client.available is False
+
+    def test_guilt_embedded_nul_codex_home_fails_closed(self, tmp_path) -> None:
+        binary = tmp_path / "codex"
+        binary.write_text("#!/bin/sh\n")
+        binary.chmod(0o755)
+        client = CodexExecClient(binary=str(binary), codex_home="codex\0home")
+        assert client.available is False
+
     def test_env_var_binary_override(self, tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
         binary = tmp_path / "codex"
         binary.write_text("#!/bin/sh\n")
