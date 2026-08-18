@@ -531,7 +531,13 @@ def test_heartbeat_is_ok_even_with_breaches_organ_not_finding(tmp_path, monkeypa
     assert "breaches=" in note
 
 
-def test_lock_held_writes_error_heartbeat_and_digest_instead_of_exiting_silently(monkeypatch):
+def test_lock_held_writes_ok_heartbeat_and_digest_instead_of_exiting_silently(monkeypatch):
+    # W0 recheck fast-follow (2026-08-18): this used to assert ("error", "lock
+    # held") — but "error" sits outside healer_receptor_registry.py's
+    # HEALTHY_STATUSES set, so a normal lock-contention tick (a manual debug
+    # run, a launchd overlap) got classified DEAD and triggered the autonomous
+    # healer session against a perfectly healthy organ. Lock-held-and-skipped
+    # is a no-op, not a failure — the heartbeat must read "ok".
     hb = []
     sent = []
     monkeypatch.setattr(ihr, "_heartbeat", lambda status, note="": hb.append((status, note)))
@@ -542,11 +548,19 @@ def test_lock_held_writes_error_heartbeat_and_digest_instead_of_exiting_silently
     rc = asyncio.run(ihr.run(dry_run=False, json_only=False))
 
     assert rc == 0
-    assert hb == [("error", "lock held")]
+    assert hb == [("ok", "lock held, skipped")]
     assert len(sent) == 1
     tier, key, _text = sent[0]
     assert tier == "digest"
     assert key.startswith("intake-health:lock-held:")
+
+    # Cross-module tripwire: the whole point of this fix is that a
+    # lock-contention tick must NOT be classified dead by the healer. Assert
+    # directly against the registry's own set, not a hardcoded "ok" literal,
+    # so a future rename of that set still catches the regression here.
+    import healer_receptor_registry as hrr
+
+    assert hb[0][0] in hrr.HEALTHY_STATUSES
 
 
 def test_acquire_lock_hardens_a_pre_existing_loose_lock_file(tmp_path, monkeypatch):

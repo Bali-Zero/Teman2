@@ -5,13 +5,14 @@
   "_enforcement": "none",
   "recurrence_threshold": 3,
   "totals": {
-    "scars_scanned": 12,
-    "mechanical_candidates": 7,
+    "scars_scanned": 13,
+    "mechanical_candidates": 8,
     "consultive": 1,
     "rejected_no_anchor": 4
   },
   "recurring_patterns": {
     "w_numbers": {
+      "W108": 3,
       "W64": 3,
       "W68": 3,
       "W72": 3,
@@ -92,6 +93,25 @@
       "recurring_via": {
         "w": [
           "W64"
+        ],
+        "family": []
+      },
+      "pipeline": "mechanical",
+      "note": "Recurring objective pattern (>=3). Candidate for an EXECUTABLE antibody via scar_replay -> test -> SHADOW -> (human-gate) -> enforcement. NOT auto-applied."
+    },
+    {
+      "title": "🐛 W118 (P0 STRUCTURAL): il repo è stato fermo 11 ore per DUE cause indipendenti che si nascondevano a vicenda, e nessuna delle due lasciava un check rosso da indicare",
+      "severity": "UNKNOWN",
+      "w_numbers": [
+        "W107",
+        "W108",
+        "W113",
+        "W118",
+        "W65"
+      ],
+      "recurring_via": {
+        "w": [
+          "W108"
         ],
         "family": []
       },
