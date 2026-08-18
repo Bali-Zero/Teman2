@@ -16,12 +16,13 @@ import os
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from backend.app.core.config import settings
 from backend.app.core.intel_approvers import get_required_votes
 from backend.app.dependencies import get_channel_router
 from backend.channels.router import ChannelRouter
+from backend.security.webhook_verifier import WebhookVerificationError, verify_telegram_secret
 from backend.services.integrations.telegram_bot_service import telegram_bot
 from backend.services.intel.intel_staging_service import assert_valid_item_id
 
@@ -87,6 +88,39 @@ async def _resolve_team_agent(request: Request, chat_id: int | None) -> dict[str
 
 
 router = APIRouter(prefix="/webhook", tags=["telegram"])
+
+
+def _verify_telegram_webhook_secret(request: Request) -> None:
+    """Verify ``X-Telegram-Bot-Api-Secret-Token`` against ``TELEGRAM_WEBHOOK_SECRET``.
+
+    Telegram does not sign the update body — instead it echoes back a static
+    secret that was registered with ``setWebhook``. When ``TELEGRAM_WEBHOOK_SECRET``
+    is not configured (local/dev), verification is skipped — same fail-open-when-
+    unconfigured convention as ``_verify_whatsapp_signature`` in ``whatsapp_chat.py``.
+    When it IS configured (Fly secret, deployed on ``nuzantara-rag``), a missing or
+    mismatched header fails closed with 401 — called as the FIRST statement of the
+    handler below, before the ack-first persist and before the catch-all except
+    block, so a forged sender can never reach either.
+
+    Never logs the secret value or the header value — only the stable ``reason``
+    code from ``WebhookVerificationError``.
+
+    Raises:
+        HTTPException: 401 if the secret is configured and verification fails.
+    """
+    expected_secret = os.environ.get("TELEGRAM_WEBHOOK_SECRET")
+    try:
+        verify_telegram_secret(
+            request.headers.get("X-Telegram-Bot-Api-Secret-Token"),
+            expected_secret,
+            require_secret=False,
+        )
+    except WebhookVerificationError as exc:
+        logger.warning(
+            "❌ Telegram webhook: secret verification failed (reason=%s)",
+            exc.reason,
+        )
+        raise HTTPException(status_code=401, detail="Invalid webhook secret") from exc
 
 
 async def handle_intel_callback(callback_query: dict[str, Any]) -> bool:
@@ -272,6 +306,10 @@ async def telegram_webhook(
     Telegram Bot API webhook endpoint — ack-first pattern (P0-6 audit 2026-04-29).
 
     Flow:
+      0. Verify ``X-Telegram-Bot-Api-Secret-Token`` (fail-closed 401 when
+         ``TELEGRAM_WEBHOOK_SECRET`` is configured — see
+         ``_verify_telegram_webhook_secret``). This runs BEFORE anything
+         else, so a forged update never reaches the ack-first persist.
       1. Parse + validate update_id (Telegram-provided idempotency key).
       2. Persist payload to ``inbound_webhooks`` (idempotent on update_id).
       3. Handle callback_query OR route via ChannelRouter (existing behavior).
@@ -280,6 +318,8 @@ async def telegram_webhook(
     Returns:
         Success confirmation (Telegram expects 200 OK)
     """
+    _verify_telegram_webhook_secret(request)
+
     try:
         # Parse request body
         update = await request.json()
