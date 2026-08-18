@@ -636,12 +636,6 @@ export default function ChatPage() {
             )}
           </Button>
         </div>
-        <p
-          className="text-xs mt-2 text-center"
-          style={{ color: "var(--bz-text-3)" }}
-        >
-          Messages are typically responded to within 24 hours
-        </p>
       </div>
     </div>
   );

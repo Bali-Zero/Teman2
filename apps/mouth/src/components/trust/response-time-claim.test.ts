@@ -64,12 +64,62 @@ const FILES = SCANNED.flatMap((d) => walk(join(SRC, d)));
 // promise to a reader. So "respond" is only a claim when a first-person subject
 // makes it; "reply" needs no subject, because nothing in this app says a server
 // replies.
+//
+// Second round (2026-08-18). The first version was blind to every shape but the
+// one it was written from. Measured misses, in this very repo:
+//   - `{ value: "4.8h", label: "avg first-reply on WhatsApp" }` — `\s+` accepts
+//     only whitespace, and "first-" sits between "avg" and "repl".
+//   - `Typical first reply on WhatsApp in under 5 hours.` — a prepositional
+//     phrase between the noun and "in".
+//   - `Usually within 15 minutes.` — no reply word in the sentence at all; only
+//     the <h1> above it made it a reply promise.
+//   - `AVG_REPLY_MINUTES = 2` — an identifier, no space to match.
+// The patterns below were chosen AFTER the innocence corpus was fixed, and each
+// was run against all of it. Widening any of them means re-running both lists.
 const CLAIMS: RegExp[] = [
-  /\b(avg|average)\.?\s+repl(y|ies)\b/i,
-  /\brepl(y|ies|ying)\s+(in|within)\s+(under\s+)?\d/i,
+  /\b(avg|average|typical)\.?\s+repl(y|ies)\b/i,
+  /\b(avg|average|typical)\.?\s+response\s*[:=]?\s*(under\s+|less\s+than\s+)?\d/i,
+  /\brepl(y|ies|ying)\b[^.\n]{0,20}?\b(in|within)\s+(under\s+|less\s+than\s+)?\d/i,
   /\b(we|our\s+team|balizero)\s+(repl(y|ies)|responds?)\s+(in|within)\s+(under\s+)?\d/i,
-  /\breply\s+time\s*[:=]\s*\d/i,
+  /\bresponded\s+to\s+(in|within)\s+(under\s+)?\d/i,
+  /\brepl(y|ies)\s+time\s*[:=]\s*\d/i,
+  /\bavg[_\s-]*repl(y|ies)(?![a-z])/i,
+  /\busually\s+(?:within|under)\s+\d+\s*(?:min|hour|hr)[a-z]*\b/i,
 ];
+
+// ---------------------------------------------------------------------------
+// DECLARED GAP — two live claims this guard deliberately does NOT catch yet.
+//
+// Both are on pages right now, both are unmeasured, and neither can be removed
+// without editing `packages/core`, which this PR is not allowed to touch:
+//
+//   1. `{ value: "4.8h", label: "avg first-reply on WhatsApp" }`
+//      apps/mouth/src/app/visa/page.tsx:25 and app/visa/clock/page.tsx:95.
+//      `AppTrustStripProps.items` is a fixed-length tuple
+//      (packages/core/components/apps/AppTrustStrip.tsx:11), so dropping the
+//      third item is a compile error. Measured, `tsc --noEmit`:
+//        TS2322: Source has 2 element(s) but target requires 3.
+//      The CSS grid is auto-fit and handles two items fine — it is the TYPE,
+//      not the layout, that blocks it.
+//
+//   2. `responseMinutes: 15`
+//      app/kbli/page.tsx:44, app/kbli/[code]/page.tsx:191,
+//      app/(tax-calendar)/tax-calendar/page.tsx:12,
+//      app/property/eligibility/page.tsx:14.
+//      `TrustBandProps.responseMinutes` is a REQUIRED prop rendered as
+//      `~{responseMinutes} min` inside a hard `repeat(3, …)` grid
+//      (packages/core/components/TrustBand.tsx:6,43).
+//
+// A pattern that caught either would turn this suite red on main, so what is
+// scoped is the PATTERN — never a filename exception, which would hide the
+// claim instead of declaring it. Neither string is in the innocence corpus
+// below: they are not innocent, they are unreachable from here.
+//
+// When packages/core is opened: delete both claims, then widen pattern 1 to
+// allow a hyphenated infix (e.g. `(avg|average)\b[^.\n]{0,16}?\brepl(y|ies)`)
+// and add one for `responseMinutes`, and re-run the innocence corpus —
+// "Avg Latency" and `{ l: "Avg response" }` are the two that will fight you.
+// ---------------------------------------------------------------------------
 
 describe("no page claims a response time nobody measured", () => {
   it("scans a plausible number of files", () => {
@@ -86,10 +136,23 @@ describe("no page claims a response time nobody measured", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("guilt: it catches the three shapes that were actually served", () => {
+  it("guilt: it catches every shape that was actually served", () => {
     for (const served of [
+      // shipped on the homepage until 2026-08-18
       "          <span>Avg reply: 2 min</span>",
       "          Chat with us — avg reply: 2 min",
+      "  <span>Avg. reply: 2 min</span>",
+      "  <p>Average response: 2 minutes</p>",
+      "  <p>Typical reply: 2 min</p>",
+      // identifier forms — no space for a word-spaced pattern to land on
+      "export const AVG_REPLY_MINUTES = 2;",
+      "export const AVG_REPLY = '2 min';",
+      // removed by this PR, at the file:line each was measured at
+      "Typical first reply on WhatsApp in under 5 hours.",
+      "<span>Usually within 15 minutes.</span>",
+      'note: "Fastest response — usually under 15 minutes.",',
+      "Messages are typically responded to within 24 hours",
+      // caught by the first version, must not regress
       "  <p>We reply within 5 minutes</p>",
       "  <p>Our team responds in 2 minutes</p>",
       "  <span>Reply time: 2 min</span>",
@@ -102,8 +165,9 @@ describe("no page claims a response time nobody measured", () => {
   });
 
   it("innocence: it does not fire on the durations that are not claims", () => {
-    // Every string here is real code from this app. A guard that trips on a
-    // Tailwind class or a poll interval teaches the next person to delete it.
+    // Every string here is real code from this app, quoted at the file:line it
+    // was measured at. A guard that trips on a Tailwind class or a poll
+    // interval teaches the next person to delete it.
     for (const innocent of [
       '        <div className="flex items-center gap-2 min-w-0">',
       '          className="group flex items-center gap-2 px-3 py-2 min-h-[44px] rounded"',
@@ -118,6 +182,33 @@ describe("no page claims a response time nobody measured", () => {
       // "respond" pattern requires a first-person subject.
       '    it("knowledge search should respond within 2 seconds", async () => {',
       "     *     Twitter sends GET with ``?crc_token=TOKEN``.  We must respond within 3 s",
+      // Machine latency on an internal dashboard — app/(workspace)/analytics/
+      // page.tsx:349,745,829,1160,1172. "Avg" and "Response" both appear; the
+      // subject is a server and no promise is made to a reader.
+      '                <p className="text-xs text-[var(--bz-text-2)]">Avg Latency</p>',
+      '                    <span className="text-[var(--bz-text-2)]">Avg Latency</span>',
+      "                Response Times (Percentiles)",
+      "    avg_latency_ms: number;",
+      "                    {data.system.response_time_p95.toFixed(0)}ms",
+      // Timers and animation, not promises.
+      "    const interval = setInterval(fetchHealth, 5000); // Poll every 5s",
+      "    const interval = setInterval(loadData, 60000);",
+      "  pollIntervalMs = 30000,",
+      "      setTimeout(() => setCopied(false), 2000);",
+      "// Edge has a 30s timeout which kills workspace-stream responses.",
+      "      const responseTime = performance.now() - startTime;",
+      '                      className="object-cover transition-transform duration-700 group-hover:scale-105"',
+      '          <h1 className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">',
+      // A button label — app/portal/(authenticated)/_components/TimelineItem.tsx:193.
+      '            Reply <ChevronRight className="w-3 h-3 ml-1" />',
+      // The Visa Oracle stat card — app/v2/_components/FunnelBoxes.tsx:20.
+      // "<3s" is the AI assistant's latency, not a person answering a customer;
+      // same distinction as the SLO above. Whether <3s was ever measured is a
+      // separate question from whether this guard should fire on it.
+      '      { l: "Avg response", v: "<3s" },',
+      // Survives on the contact page after the 15-minute promise was removed:
+      // a reply word with no duration attached is not a claim.
+      "            No bots in the first reply. WhatsApp is the fastest channel —",
     ]) {
       const fired = CLAIMS.filter((re) => re.test(innocent));
       expect(fired.length, `fired on: ${innocent}`).toBe(0);
