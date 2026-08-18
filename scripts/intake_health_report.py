@@ -30,9 +30,11 @@ Env:
   INTAKE_HEALTH_SUPERSEDED_TIMEOUT_MS        default 60000 (statement_timeout for the C-07b query)
 
 Flags: --dry-run (skip Telegram + state-file write; heartbeat still fires) ·
-       --json-only (pure read: skip Telegram + state-file write + heartbeat too)
+       --json-only (pure read on success: skip Telegram + state-file write + ok
+       heartbeat; failures still emit heartbeat=error)
 
-Exit: 0 always, except a DSN/connect failure (logged, heartbeat status=error) -> 1.
+Exit: 0 after a completed/disabled/lock-held run; 1 after a connect, gather,
+      report-build, persistence, or connection-close failure (heartbeat=error).
 """
 from __future__ import annotations
 
@@ -239,7 +241,13 @@ def _write_state(report: dict[str, Any]) -> None:
         tmp.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         os.replace(tmp, STATE_PATH)
     except OSError as exc:
-        logger.warning("[intake_health_report] state write failed: %s", exc)
+        # Persistence is part of completing this organ's run. Swallowing an
+        # OSError here made launchd see rc=0 and the final heartbeat say `ok`
+        # even though the durable report was never updated. Log only the type
+        # (the exception message may contain a local/client-derived path), then
+        # let run() emit the canonical error heartbeat and rc=1.
+        logger.warning("[intake_health_report] state write failed: %s", type(exc).__name__)
+        raise
 
 
 def _acquire_lock_or_exit() -> int | None:
@@ -543,8 +551,8 @@ async def run(*, dry_run: bool, json_only: bool) -> int:
         return 0
     try:
         dsn = os.getenv("INTAKE_DATABASE_URL") or os.getenv("LOCAL_DATABASE_URL") or DEFAULT_DSN
-        timeout_ms = int(os.getenv("INTAKE_HEALTH_SUPERSEDED_TIMEOUT_MS", "60000"))
         try:
+            timeout_ms = int(os.getenv("INTAKE_HEALTH_SUPERSEDED_TIMEOUT_MS", "60000"))
             # statement_timeout at the SESSION level (verbale #7): every
             # gather() query except _fetch_superseded_orphans ran unbounded —
             # a hung jsonb-heavy join could hold the single-instance flock
@@ -562,26 +570,53 @@ async def run(*, dry_run: bool, json_only: bool) -> int:
                 timeout=20,
             )
         except Exception as exc:  # noqa: BLE001
-            logger.error("[intake_health_report] DB connect failed: %s", exc)
-            _heartbeat("error", f"db connect failed: {exc}")
+            error_type = type(exc).__name__
+            logger.error("[intake_health_report] DB connect failed: %s", error_type)
+            _heartbeat("error", f"db connect failed: {error_type}")
             return 1
 
+        failure: Exception | None = None
+        failure_phase = "gather"
         try:
-            report = await gather(conn, superseded_timeout_ms=timeout_ms)
+            try:
+                report = await gather(conn, superseded_timeout_ms=timeout_ms)
+
+                failure_phase = "report"
+                thresholds = _thresholds_from_env()
+                breaches = evaluate_breaches(report, thresholds)
+                report["breaches"] = breaches
+
+                print(json.dumps(report, indent=2, sort_keys=True))
+
+                if not json_only and not dry_run:
+                    failure_phase = "persist"
+                    _write_state(report)
+            except Exception as exc:  # noqa: BLE001 — canonical liveness boundary
+                failure = exc
         finally:
-            await conn.close()
+            try:
+                await conn.close()
+            except Exception as exc:  # noqa: BLE001 — close is part of run completion
+                if failure is None:
+                    failure = exc
+                    failure_phase = "connection close"
 
-        thresholds = _thresholds_from_env()
-        breaches = evaluate_breaches(report, thresholds)
-        report["breaches"] = breaches
-
-        print(json.dumps(report, indent=2, sort_keys=True))
+        if failure is not None:
+            # Never serialize the exception message into observability: gather
+            # can touch Intake rows, so a message could carry PII. The stable
+            # phase plus exception TYPE is sufficient for triage and safe for
+            # the shared heartbeat channel.
+            error_type = type(failure).__name__
+            logger.error(
+                "[intake_health_report] %s failed: %s",
+                failure_phase,
+                error_type,
+            )
+            _heartbeat("error", f"{failure_phase} failed: {error_type}")
+            return 1
 
         if json_only:
             return 0
-
-        if not dry_run:
-            _write_state(report)
 
         # Heartbeat reflects the ORGAN (did the report complete?), never the
         # FINDING (are there breaches?) — same rule as wa_mirror_freshness_

@@ -16,8 +16,11 @@ Run:  python3 scripts/tests/test_intake_health_report.py
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import pathlib
+import shutil
+import subprocess
 import sys
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -328,6 +331,35 @@ class _FakeConn:
         return None
 
 
+class _TrackingConn(_FakeConn):
+    def __init__(self):
+        self.closed = False
+
+    async def close(self):
+        self.closed = True
+
+
+def _install_run_fakes(monkeypatch, tmp_path, conn, heartbeats):
+    async def _fake_connect(*_args, **_kwargs):
+        return conn
+
+    monkeypatch.setattr(ihr.asyncpg, "connect", _fake_connect)
+    monkeypatch.setattr(ihr, "_tg_notify", lambda *a, **k: True)
+    monkeypatch.setattr(
+        ihr,
+        "_heartbeat",
+        lambda status, note="": heartbeats.append((status, note)),
+    )
+    monkeypatch.setattr(ihr, "STATE_PATH", tmp_path / "state.json")
+    monkeypatch.setattr(ihr, "LOCK_FILE", tmp_path / "lock")
+    monkeypatch.setattr(
+        ihr,
+        "worker_log_path",
+        lambda: (tmp_path / "does-not-exist.log", "repo"),
+    )
+    monkeypatch.setenv("INTAKE_HEALTH_REPORT_ENABLED", "true")
+
+
 # ---------------------------------------------------------------- connect timeouts (verbale #7)
 
 
@@ -357,6 +389,123 @@ def test_connect_sets_session_statement_timeout_and_connect_timeout(tmp_path, mo
     assert recorded["kwargs"].get("timeout") is not None and recorded["kwargs"]["timeout"] <= 20
     assert recorded["kwargs"]["server_settings"]["statement_timeout"] == "120000"
     assert recorded["kwargs"]["server_settings"]["default_transaction_read_only"] == "on"
+
+
+def test_connect_failure_emits_type_only_error_heartbeat(tmp_path, monkeypatch):
+    heartbeats = []
+
+    async def _failing_connect(*_args, **_kwargs):
+        raise RuntimeError("client-record-should-never-reach-heartbeat")
+
+    monkeypatch.setattr(ihr.asyncpg, "connect", _failing_connect)
+    monkeypatch.setattr(
+        ihr,
+        "_heartbeat",
+        lambda status, note="": heartbeats.append((status, note)),
+    )
+    monkeypatch.setattr(ihr, "LOCK_FILE", tmp_path / "lock")
+    monkeypatch.setenv("INTAKE_HEALTH_REPORT_ENABLED", "true")
+
+    rc = asyncio.run(ihr.run(dry_run=True, json_only=True))
+
+    assert rc == 1
+    assert heartbeats == [("error", "db connect failed: RuntimeError")]
+    assert "client-record" not in heartbeats[0][1]
+
+
+def test_gather_failure_emits_error_heartbeat_and_closes_connection(tmp_path, monkeypatch):
+    conn = _TrackingConn()
+    heartbeats = []
+    _install_run_fakes(monkeypatch, tmp_path, conn, heartbeats)
+
+    async def _failing_gather(*_args, **_kwargs):
+        raise LookupError("passport-value-should-never-reach-heartbeat")
+
+    monkeypatch.setattr(ihr, "gather", _failing_gather)
+
+    rc = asyncio.run(ihr.run(dry_run=True, json_only=True))
+
+    assert rc == 1
+    assert conn.closed is True
+    assert heartbeats == [("error", "gather failed: LookupError")]
+    assert "passport-value" not in heartbeats[0][1]
+
+
+def test_report_failure_emits_error_heartbeat_and_closes_connection(tmp_path, monkeypatch):
+    conn = _TrackingConn()
+    heartbeats = []
+    _install_run_fakes(monkeypatch, tmp_path, conn, heartbeats)
+
+    def _failing_thresholds():
+        raise ValueError("company-name-should-never-reach-heartbeat")
+
+    monkeypatch.setattr(ihr, "_thresholds_from_env", _failing_thresholds)
+
+    rc = asyncio.run(ihr.run(dry_run=True, json_only=True))
+
+    assert rc == 1
+    assert conn.closed is True
+    assert heartbeats == [("error", "report failed: ValueError")]
+    assert "company-name" not in heartbeats[0][1]
+
+
+def test_persist_failure_emits_error_heartbeat_and_closes_connection(tmp_path, monkeypatch):
+    conn = _TrackingConn()
+    heartbeats = []
+    _install_run_fakes(monkeypatch, tmp_path, conn, heartbeats)
+
+    def _failing_replace(*_args, **_kwargs):
+        raise PermissionError("client-path-should-never-reach-heartbeat")
+
+    monkeypatch.setattr(ihr.os, "replace", _failing_replace)
+
+    rc = asyncio.run(ihr.run(dry_run=False, json_only=False))
+
+    assert rc == 1
+    assert conn.closed is True
+    assert heartbeats == [("error", "persist failed: PermissionError")]
+    assert "client-path" not in heartbeats[0][1]
+
+
+def test_wrapper_missing_or_non_executable_python_emits_error_heartbeat(tmp_path):
+    for python_state in ("missing", "not-executable"):
+        fake_repo = tmp_path / python_state / "repo"
+        fake_scripts = fake_repo / "scripts"
+        fake_lib = fake_scripts / "lib"
+        fake_lib.mkdir(parents=True)
+        shutil.copy2(REPO_ROOT / "scripts" / "intake_health_report_run.sh", fake_scripts)
+        shutil.copy2(REPO_ROOT / "scripts" / "lib" / "heartbeat.sh", fake_lib)
+
+        if python_state == "not-executable":
+            fake_python = fake_repo / "apps" / "backend-rag" / ".venv" / "bin" / "python"
+            fake_python.parent.mkdir(parents=True)
+            fake_python.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            fake_python.chmod(0o644)
+
+        heartbeat_dir = tmp_path / python_state / "heartbeats"
+        env = os.environ.copy()
+        env.update(
+            {
+                "HOME": str(tmp_path / python_state / "home"),
+                "INTAKE_HEALTH_REPORT_ENABLED": "true",
+                "ORGANISM_LAST_SEEN_DIR": str(heartbeat_dir),
+            }
+        )
+
+        result = subprocess.run(
+            ["/bin/bash", str(fake_scripts / "intake_health_report_run.sh")],
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        assert result.returncode != 0
+        heartbeat = json.loads(
+            (heartbeat_dir / "pro.intake_health_report.json").read_text(encoding="utf-8")
+        )
+        assert heartbeat["status"] == "error"
+        assert heartbeat["note"] == "venv python unavailable"
 
 
 # ---------------------------------------------------------------- worker plist resolution (verbale #8)

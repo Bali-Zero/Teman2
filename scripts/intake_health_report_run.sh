@@ -41,4 +41,11 @@ esac
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
 PYBIN="$REPO_ROOT/apps/backend-rag/.venv/bin/python"
+if [[ ! -x "$PYBIN" ]]; then
+  # The interpreter cannot report its own absence. Use the shell heartbeat
+  # helper already sourced above, with a static PII-free note.
+  organism_heartbeat "$ORGAN_ID" "error" "venv python unavailable"
+  echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) ERROR intake health report venv python unavailable" >&2
+  exit 1
+fi
 exec "$PYBIN" -u "$REPO_ROOT/scripts/intake_health_report.py" "$@"
