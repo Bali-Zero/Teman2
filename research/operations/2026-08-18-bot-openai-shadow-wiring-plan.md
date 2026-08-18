@@ -119,7 +119,7 @@ open.
 ## 1. Original pre-R28 measured state (historical)
 
 The numbered observations below explain why the plan was narrowed. They are retained as review
-history; where they conflict with **Live reconciliation — 2026-08-18**, the reconciliation is the
+history; where they conflict with **Live reconciliation — 2026-08-19**, the reconciliation is the
 authoritative current state.
 
 1. **#4216 is inert.** Its selected adapter is standalone and has no live importers, config field,
