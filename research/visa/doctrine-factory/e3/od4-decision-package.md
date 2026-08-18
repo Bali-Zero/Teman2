@@ -21,7 +21,7 @@ sources:
   - path: research/visa/doctrine-factory/claims/e2b-batch1-claim-ledger.md
   - path: research/visa/doctrine-factory/claims/e2b-batch2-claim-ledger.md
   - path: apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-007.source.json
-adversarial_review: kimi-k3-real-run-see-section-below
+adversarial_review: kimi-k3
 ---
 
 # OD-4 Decision Package — the 11 BLOCKED products at the E3 gate
