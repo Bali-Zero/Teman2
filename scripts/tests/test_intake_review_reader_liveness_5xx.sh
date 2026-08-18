@@ -155,6 +155,16 @@ n_pages() {  # n_pages <root>  -> number of recorded Telegram sends
     [ -f "$f" ] && wc -l < "$f" | tr -d ' ' || echo 0
 }
 
+# Portable octal file-mode read: GNU stat (Linux CI runners) uses `-c '%a'`;
+# BSD/macOS stat (local dev) has no `-c` and instead uses `-f '%Lp'` — passing
+# the wrong flag to the wrong `stat` doesn't error cleanly, it silently
+# switches BSD `-f` into "report on the FILESYSTEM, not the file" mode and
+# prints a multi-line df-style blob that satisfies no `check` on any OS. Try
+# GNU form first (suppressing its "invalid option" stderr), fall back to BSD.
+file_mode() {  # file_mode <path> -> octal mode (e.g. "600"), empty if missing
+    stat -c '%a' "$1" 2>/dev/null || stat -f '%Lp' "$1" 2>/dev/null
+}
+
 echo "GUILT — a 5xx must page as SICK, not fold into ALIVE"
 
 ROOT="$TMP/w-sick-guilt"; make_world "$ROOT"; install_plist "$ROOT"
@@ -166,10 +176,19 @@ check_true "page carries the SICK dedup key (not DEAD's)" \
     "$(grep -q "intake-review-reader:sick:${HOSTSHORT}" "$ROOT/home/tg_calls.jsonl" 2>/dev/null; echo $?)"
 check_true "log names the state SICK" \
     "$(grep -q 'reader SICK' "$ROOT/home/logs/intake-review-reader-liveness.log" 2>/dev/null; echo $?)"
-check_true "log names the code (500)" \
-    "$(grep -q '500' "$ROOT/home/logs/intake-review-reader-liveness.log" 2>/dev/null; echo $?)"
+# Anchored to the SICK verdict line itself (not just "the log contains 500" anywhere) —
+# refuter finding #6: a bare `grep -q '500'` also passes on the PRE-fix script, which
+# logs "OK: reader ALIVE (http 500)" for the exact same input (the old code folded every
+# 1xx-5xx into ALIVE), so that check never actually exercised the fix it claimed to guard.
+# "ALERT: reader SICK on port <N> (http 500" only appears if the SICK branch ran at all.
+check_true "log names the SICK verdict WITH the code (500), not just ALIVE-with-500" \
+    "$(grep -qE 'ALERT: reader SICK on port [0-9]+ \(http 500' "$ROOT/home/logs/intake-review-reader-liveness.log" 2>/dev/null; echo $?)"
 check_true "state file records action=sick" \
     "$(grep -q '"last_action": "sick"' "$ROOT/home/.agent/decisions/state/intake_review_reader_liveness.json" 2>/dev/null; echo $?)"
+check "state write is atomic+hardened: file mode is 600" \
+    "600" "$(file_mode "$ROOT/home/.agent/decisions/state/intake_review_reader_liveness.json")"
+check "state write is atomic+hardened: no .tmp.* leftover" \
+    0 "$(find "$ROOT/home/.agent/decisions/state" -name '*.tmp.*' 2>/dev/null | wc -l | tr -d ' ')"
 stop_fake_server
 
 echo
@@ -217,18 +236,36 @@ check "503, no plist, no FORCE_CHECK -> no-op exit 0 (not this host)" 0 "$RC"
 check "no page sent" 0 "$(n_pages "$ROOT")"
 stop_fake_server
 
-# Cooldown guard: a recent last_action_ts must suppress a SICK page too, so a
-# flapping backend does not page every tick (the defect this mirrors DEAD to
-# avoid: an un-throttled SICK path would page every 5min).
-ROOT="$TMP/w-sick-cooldown"; make_world "$ROOT"; install_plist "$ROOT"
+# Cooldown guard, PART 1: cooldown is ALERT-only — a recent HEALTHY tick (last_ok_ts
+# recent, last_action_ts untouched/zero) must NOT suppress the next SICK page. This is
+# the opposite of what the pre-cooldown-fix code did: write_state("ok", ...) used to bump
+# the SAME last_action_ts field the cooldown gate reads, so a healthy tick right before a
+# fresh incident could mute its first alert for up to COOLDOWN_S. A fresh incident must
+# always page on its first detection, no matter how recently the reader was healthy.
+ROOT="$TMP/w-sick-recent-ok-does-not-suppress"; make_world "$ROOT"; install_plist "$ROOT"
 mkdir -p "$ROOT/home/.agent/decisions/state"
 cat > "$ROOT/home/.agent/decisions/state/intake_review_reader_liveness.json" <<EOF
-{"last_action_ts": $(date +%s), "last_action": "ok", "last_http_code": "200", "probe": "x"}
+{"last_action_ts": 0, "last_ok_ts": $(date +%s), "last_action": "ok", "last_http_code": "200", "probe": "x"}
 EOF
 PORT="$(start_fake_server 500)"
 RC="$(run_wrapper "$ROOT" "$PORT" COOLDOWN_S=1800)"
-check "500 right after a recent action -> exit 1 (still unhealthy) but suppressed" 1 "$RC"
-check "cooldown suppresses the page" 0 "$(n_pages "$ROOT")"
+check "500 right after a recent HEALTHY tick -> exit 1 (fresh incident pages immediately)" 1 "$RC"
+check "a recent last_ok_ts does NOT suppress the first SICK page" 1 "$(n_pages "$ROOT")"
+stop_fake_server
+
+# Cooldown guard, PART 2: a recent SICK/DEAD ALERT (last_action_ts recent) must still
+# suppress the next page within COOLDOWN_S, so a flapping backend does not page every
+# tick (the defect this mirrors DEAD to avoid: an un-throttled SICK path would page every
+# 5min).
+ROOT="$TMP/w-sick-recent-alert-suppresses"; make_world "$ROOT"; install_plist "$ROOT"
+mkdir -p "$ROOT/home/.agent/decisions/state"
+cat > "$ROOT/home/.agent/decisions/state/intake_review_reader_liveness.json" <<EOF
+{"last_action_ts": $(date +%s), "last_ok_ts": 0, "last_action": "sick", "last_http_code": "500", "probe": "x"}
+EOF
+PORT="$(start_fake_server 500)"
+RC="$(run_wrapper "$ROOT" "$PORT" COOLDOWN_S=1800)"
+check "500 right after a recent SICK alert -> exit 1 (still unhealthy) but suppressed" 1 "$RC"
+check "cooldown suppresses the repeat page" 0 "$(n_pages "$ROOT")"
 check_true "log says cooldown active" \
     "$(grep -q 'cooldown active' "$ROOT/home/logs/intake-review-reader-liveness.log" 2>/dev/null; echo $?)"
 stop_fake_server

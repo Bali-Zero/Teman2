@@ -17,7 +17,7 @@ const CHANNELS = [
     title: "WhatsApp",
     value: "+62 821 3454 721",
     href: buildWhatsAppLink("home"),
-    note: "Fastest response — usually under 15 minutes.",
+    note: "Fastest response.",
     accent: "#22c55e",
     fill: "solid" as const,
   },
@@ -80,10 +80,6 @@ export default function ContactPage() {
             }}
           >
             Talk to a real person.
-            <br />
-            <span style={{ color: "var(--text-secondary)" }}>
-              Usually within 15 minutes.
-            </span>
           </h1>
           <p
             className="text-[16px] leading-[1.6] mb-4"
