@@ -127,10 +127,12 @@ subprocesses and were used successfully from Ghostty on the same day.
 
 ## The NUZ table
 
-`cmd+alt+n` arms a **single-shot** key table (it deactivates after one binding,
-so there is no sticky-mode trap). The next letter TYPES a fleet command into the
-prompt — nothing executes until you read it and press enter, the same convention
-as every Nuzantara palette entry:
+`cmd+alt+n` arms a **single-shot** key table. One-shot alone is not trap-free —
+the reference deactivates it only on a **valid** binding from the table, so a
+stray key would leave it armed; its `unconsumed:catch_all` is what guarantees
+any other keystroke disarms it (and still reaches the shell). The next letter
+TYPES a fleet command into the prompt — nothing executes until you read it and
+press enter, the same convention as every Nuzantara palette entry:
 
 |     |                    |     |                     |
 | --- | ------------------ | --- | ------------------- |

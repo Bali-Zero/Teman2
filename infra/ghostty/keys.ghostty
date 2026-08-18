@@ -78,11 +78,15 @@ keybind = cmd+alt+t=prompt_tab_title
 keybind = cmd+alt+m=toggle_mouse_reporting
 
 # ─── NUZ table: the fleet's daily commands, two keystrokes away ────────────
-# cmd+alt+n arms a SINGLE-SHOT table (`activate_key_table_once`: the table
-# deactivates itself after one binding fires — no sticky-mode trap, which is
-# why this one needs no catch_all). The letter then TYPES the command and
-# stops, same convention as the palette below: no trailing newline, nothing
-# runs until you read it and press enter.
+# cmd+alt+n arms a SINGLE-SHOT table (`activate_key_table_once`). One-shot is
+# NOT trap-free by itself: the reference deactivates it only on "the first
+# VALID keybinding from that table" — a key the table does not bind falls
+# through to the shell and LEAVES THE TABLE ARMED, so a forgotten cmd+alt+n
+# would hijack the next 's' you type mid-word. The catch_all below is what
+# actually closes that hole (same cure as the resize table above); the
+# unconsumed: prefix lets the stray key still reach the shell. The letter
+# then TYPES the command and stops, same convention as the palette below: no
+# trailing newline, nothing runs until you read it and press enter.
 #
 #   cmd+alt+n, s   git status            cmd+alt+n, w   worktree list
 #   cmd+alt+n, p   proprioception        cmd+alt+n, a   pending arms
@@ -98,6 +102,7 @@ keybind = nuz/v=text:bash ~/nuzantara/infra/ghostty/verify.sh
 keybind = nuz/q=text:bash ~/nuzantara/scripts/mq.sh status
 keybind = nuz/t=text:tmux new -As claude
 keybind = nuz/escape=deactivate_key_table
+keybind = nuz/unconsumed:catch_all=deactivate_key_table
 
 # ─── Quick terminal ────────────────────────────────────────────────────────
 # Drops a terminal from the top of the screen over any app.
@@ -114,8 +119,9 @@ keybind = nuz/escape=deactivate_key_table
 keybind = global:cmd+alt+grave_accent=toggle_quick_terminal
 
 # ─── Command palette: Nuzantara entries ────────────────────────────────────
-# These APPEND to Ghostty's 88 built-in entries — measured 96 = 88 + 8. They do
-# not replace them (the reference notes the defaults can be cleared only by
+# These APPEND to Ghostty's 88 built-in entries — measured 2026-08-18:
+# 99 = 88 + the 11 below; the machine profile adds 2 more (101 composed). They
+# do not replace them (the reference notes the defaults can be cleared only by
 # setting this key to an empty value, which we do not do).
 #
 # Every one TYPES the command and stops — no trailing newline, so nothing runs

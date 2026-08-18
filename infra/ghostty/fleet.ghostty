@@ -15,10 +15,12 @@
 #  `background-opacity` needs a full restart; blur and the Dock icon are not
 #  documented either way, so treat a relaunch as the reliable route for all three.
 #
-#  NOT every line here changes something. Of the 57 non-repeatable settings this
+#  NOT every line here changes something. Of the 56 non-repeatable settings this
 #  file declares, 26 RESOLVE to Ghostty 1.3.1's own default (both numbers
 #  measured 2026-08-18 with the method below, this file alone in an isolated
-#  XDG_CONFIG_HOME — absence from `+show-config --default=false` = pin). They are kept
+#  XDG_CONFIG_HOME — absence from `+show-config --default=false` = pin;
+#  font-family and font-feature are excluded as REPEATABLE, per the entry
+#  point's own documentation). They are kept
 #  on purpose — an explicit value is a pin that survives an upstream default
 #  flip, and it makes the posture readable instead of implied — but they are
 #  NOT choices, and nothing here should describe them as if they were.
