@@ -40,8 +40,7 @@ jobs:
 
       - name: Install ripgrep + test dependencies
         run: |
-          sudo apt-get update -y
-          sudo apt-get install -y ripgrep
+          bash scripts/ci/apt_install.sh rg ripgrep
           python -m pip install --upgrade pip
           # pytest-asyncio is required even though test_no_httpx_violators.py is
           # sync: apps/backend-rag/pytest.ini declares asyncio_default_fixture_loop_scope,
