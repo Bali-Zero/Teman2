@@ -23,6 +23,7 @@ import pathlib
 import shutil
 import subprocess
 import sys
+import time
 
 import pytest
 
@@ -330,43 +331,69 @@ class _FakeConn:
     async def execute(self, query, *args):
         return "SET"
 
-    async def close(self):
+    async def close(self, *, timeout=None):
         return None
 
 
 class _TrackingConn(_FakeConn):
     def __init__(self):
         self.closed = False
+        self.close_timeout = None
+        self.terminated = False
 
-    async def close(self):
+    async def close(self, *, timeout=None):
+        self.close_timeout = timeout
         self.closed = True
+
+    def terminate(self):
+        self.terminated = True
 
 
 class _CloseFailureConn(_FakeConn):
     def __init__(self):
         self.terminated = False
 
-    async def close(self):
+    async def close(self, *, timeout=None):
         raise RuntimeError("client-close-detail-should-never-reach-heartbeat")
 
     def terminate(self):
         self.terminated = True
 
 
-class _HangingCloseConn(_FakeConn):
+class _CancellationResistantCloseConn(_FakeConn):
     def __init__(self):
-        self.close_cancelled = False
+        self.close_cancellations = 0
+        self.close_returned = False
+        self.close_timeout = None
         self.terminated = False
+        self._terminated = asyncio.Event()
 
-    async def close(self):
+    async def close(self, *, timeout=None):
+        self.close_timeout = timeout
+        # Test-process failsafe only: a regression must FAIL after a measurable
+        # 500ms instead of hanging the whole pytest worker forever.  Production
+        # is required to call terminate near the configured 10ms deadline.
+        safety_release = asyncio.get_running_loop().call_later(
+            0.5,
+            self._terminated.set,
+        )
         try:
-            await asyncio.Event().wait()
-        except asyncio.CancelledError:
-            self.close_cancelled = True
-            raise
+            while not self._terminated.is_set():
+                try:
+                    await self._terminated.wait()
+                except asyncio.CancelledError:
+                    # Intentionally suppress every cancellation.  The old
+                    # asyncio.wait_for implementation waited here until the
+                    # failsafe; the production helper must reach its
+                    # synchronous terminate watchdog instead.
+                    self.close_cancellations += 1
+            self.close_returned = True
+        finally:
+            safety_release.cancel()
 
     def terminate(self):
         self.terminated = True
+        self._terminated.set()
 
 
 def _install_run_fakes(monkeypatch, tmp_path, conn, heartbeats):
@@ -501,26 +528,25 @@ def test_connection_close_failure_emits_type_only_error_heartbeat(tmp_path, monk
 
 
 def test_connection_close_timeout_is_bounded_and_releases_lock(tmp_path, monkeypatch):
-    conn = _HangingCloseConn()
+    conn = _CancellationResistantCloseConn()
     heartbeats = []
     _install_run_fakes(monkeypatch, tmp_path, conn, heartbeats)
     monkeypatch.setenv("INTAKE_HEALTH_CONNECTION_CLOSE_TIMEOUT_SECONDS", "0.01")
 
-    rc = asyncio.run(
-        asyncio.wait_for(
-            ihr.run(dry_run=True, json_only=True),
-            timeout=1.0,
-        )
-    )
+    started_at = time.monotonic()
+    rc = asyncio.run(ihr.run(dry_run=True, json_only=True))
+    elapsed = time.monotonic() - started_at
 
     assert rc == 1
-    assert conn.close_cancelled is True
+    assert elapsed < 0.25
+    assert conn.close_cancellations >= 1
+    assert conn.close_returned is True
+    assert conn.close_timeout == pytest.approx(0.01)
     assert conn.terminated is True
     assert heartbeats == [("error", "connection close failed: TimeoutError")]
 
     # The timeout path must reach run()'s outer finally and release its flock;
-    # otherwise the next scheduled tick would emit a misleading healthy
-    # lock-held heartbeat forever.
+    # otherwise the next scheduled tick would remain lock-held forever.
     next_lock_fd = ihr._acquire_lock_or_exit()
     try:
         assert next_lock_fd is not None
@@ -573,7 +599,7 @@ def test_primary_failure_is_preserved_when_connection_close_times_out(
     tmp_path,
     monkeypatch,
 ):
-    conn = _HangingCloseConn()
+    conn = _CancellationResistantCloseConn()
     heartbeats = []
     _install_run_fakes(monkeypatch, tmp_path, conn, heartbeats)
     monkeypatch.setenv("INTAKE_HEALTH_CONNECTION_CLOSE_TIMEOUT_SECONDS", "0.01")
@@ -583,18 +609,38 @@ def test_primary_failure_is_preserved_when_connection_close_times_out(
 
     monkeypatch.setattr(ihr, "gather", _fail_gather)
 
-    rc = asyncio.run(
-        asyncio.wait_for(
-            ihr.run(dry_run=True, json_only=True),
-            timeout=1.0,
-        )
-    )
+    started_at = time.monotonic()
+    rc = asyncio.run(ihr.run(dry_run=True, json_only=True))
+    elapsed = time.monotonic() - started_at
 
     assert rc == 1
-    assert conn.close_cancelled is True
+    assert elapsed < 0.25
+    assert conn.close_cancellations >= 1
+    assert conn.close_returned is True
     assert conn.terminated is True
     assert heartbeats == [("error", "gather failed: LookupError")]
     assert "connection close failed" not in heartbeats[0][1]
+
+
+def test_cooperative_connection_close_uses_driver_timeout_without_terminate(
+    tmp_path,
+    monkeypatch,
+):
+    conn = _TrackingConn()
+    heartbeats = []
+    _install_run_fakes(monkeypatch, tmp_path, conn, heartbeats)
+    monkeypatch.setenv("INTAKE_HEALTH_CONNECTION_CLOSE_TIMEOUT_SECONDS", "0.05")
+
+    started_at = time.monotonic()
+    rc = asyncio.run(ihr.run(dry_run=True, json_only=True))
+    elapsed = time.monotonic() - started_at
+
+    assert rc == 0
+    assert elapsed < 0.25
+    assert conn.closed is True
+    assert conn.close_timeout == pytest.approx(0.05)
+    assert conn.terminated is False
+    assert heartbeats == []
 
 
 def test_gather_failure_emits_error_heartbeat_and_closes_connection(tmp_path, monkeypatch):
@@ -880,16 +926,31 @@ def test_heartbeat_is_ok_even_with_breaches_organ_not_finding(tmp_path, monkeypa
     assert "breaches=" in note
 
 
-def test_lock_held_writes_ok_heartbeat_and_digest_instead_of_exiting_silently(monkeypatch):
-    # W0 recheck fast-follow (2026-08-18): this used to assert ("error", "lock
-    # held") — but "error" sits outside healer_receptor_registry.py's
-    # HEALTHY_STATUSES set, so a normal lock-contention tick (a manual debug
-    # run, a launchd overlap) got classified DEAD and triggered the autonomous
-    # healer session against a perfectly healthy organ. Lock-held-and-skipped
-    # is a no-op, not a failure — the heartbeat must read "ok".
-    hb = []
+def test_lock_held_preserves_nonhealthy_sidecar_and_consumer_verdict(
+    tmp_path,
+    monkeypatch,
+):
+    sidecar_dir = tmp_path / "last_seen"
+    sidecar_dir.mkdir()
+    sidecar_path = sidecar_dir / "pro.intake_health_report.json"
+    previous_payload = {
+        "ts": "2026-08-19T00:00:00Z",
+        "status": "error",
+        "note": "previous run failed: RuntimeError",
+    }
+    previous_bytes = (json.dumps(previous_payload) + "\n").encode("utf-8")
+    sidecar_path.write_bytes(previous_bytes)
+
+    heartbeat_calls = []
     sent = []
-    monkeypatch.setattr(ihr, "_heartbeat", lambda status, note="": hb.append((status, note)))
+    real_heartbeat = ihr._heartbeat
+
+    def _recording_heartbeat(status, note=""):
+        heartbeat_calls.append((status, note))
+        real_heartbeat(status, note)
+
+    monkeypatch.setenv("ORGANISM_LAST_SEEN_DIR", str(sidecar_dir))
+    monkeypatch.setattr(ihr, "_heartbeat", _recording_heartbeat)
     monkeypatch.setattr(ihr, "_tg_notify", lambda tier, key, text: sent.append((tier, key, text)) or True)
     monkeypatch.setattr(ihr, "_acquire_lock_or_exit", lambda: None)
     monkeypatch.setenv("INTAKE_HEALTH_REPORT_ENABLED", "true")
@@ -897,19 +958,43 @@ def test_lock_held_writes_ok_heartbeat_and_digest_instead_of_exiting_silently(mo
     rc = asyncio.run(ihr.run(dry_run=False, json_only=False))
 
     assert rc == 0
-    assert hb == [("ok", "lock held, skipped")]
+    assert heartbeat_calls == []
+    assert sidecar_path.read_bytes() == previous_bytes
+    assert json.loads(sidecar_path.read_text(encoding="utf-8")) == previous_payload
     assert len(sent) == 1
     tier, key, _text = sent[0]
     assert tier == "digest"
     assert key.startswith("intake-health:lock-held:")
 
-    # Cross-module tripwire: the whole point of this fix is that a
-    # lock-contention tick must NOT be classified dead by the healer. Assert
-    # directly against the registry's own set, not a hardcoded "ok" literal,
-    # so a future rename of that set still catches the regression here.
+    # Consumer contract: a skipped contender cannot launder the lock owner's
+    # last real error into HEALTHY_STATUSES.  Exercise the actual healer reader
+    # against a minimal registry rather than restating its status vocabulary.
     import healer_receptor_registry as hrr
 
-    assert hb[0][0] in hrr.HEALTHY_STATUSES
+    registry_path = tmp_path / "registry.yaml"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "organs": [
+                    {
+                        "id": "pro.intake_health_report",
+                        "runtime": "pro_launchd",
+                        "type": "cron",
+                        "expected_hb_seconds": 90_000,
+                        "severity_on_silence": "warning",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    consumer_report = hrr.run("pro", registry_path, sidecar_dir)
+
+    assert consumer_report["exit"] == 1
+    assert [entry["id"] for entry in consumer_report["dead"]] == [
+        "pro.intake_health_report"
+    ]
+    assert consumer_report["ok"] == []
 
 
 def test_acquire_lock_hardens_a_pre_existing_loose_lock_file(tmp_path, monkeypatch):

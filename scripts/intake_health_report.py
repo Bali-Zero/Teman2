@@ -554,21 +554,57 @@ def _timeouts_from_env() -> tuple[int, float]:
 
 
 async def _close_connection(conn: Any, *, timeout_seconds: float) -> None:
-    """Close an asyncpg connection within the configured liveness bound."""
+    """Close an asyncpg connection within the configured liveness bound.
+
+    asyncpg exposes both ``Connection.close(timeout=...)`` and the synchronous
+    ``Connection.terminate()`` escape hatch.  The driver's timeout is the
+    primary bound; the matching loop watchdog is defense-in-depth for a close
+    coroutine that catches cancellation and keeps waiting.  Deliberately use
+    the *current* task rather than spawning a close task: ``asyncio.run()``
+    waits for cancellation-resistant pending tasks during shutdown, which
+    would otherwise move the hang from this function to runner teardown.
+    """
     loop = asyncio.get_running_loop()
     started_at = loop.time()
+    deadline = started_at + timeout_seconds
+    forced_termination = False
+
+    def force_terminate() -> None:
+        nonlocal forced_termination
+        forced_termination = True
+        try:
+            conn.terminate()
+        except Exception as exc:  # noqa: BLE001 — close error remains canonical
+            logger.warning(
+                "[intake_health_report] connection terminate failed: %s",
+                type(exc).__name__,
+            )
+
+    timeout = asyncio.timeout_at(deadline)
+    watchdog: asyncio.TimerHandle | None = None
     try:
-        await asyncio.wait_for(conn.close(), timeout=timeout_seconds)
-    except Exception:  # noqa: BLE001 — caller owns canonical phase reporting
+        async with timeout:
+            # __aenter__ schedules the task cancellation first; scheduling the
+            # terminate callback second at the same absolute deadline means a
+            # cancellation-resistant close sees both signals without leaving a
+            # child task behind for asyncio.run() to reap.
+            watchdog = loop.call_at(deadline, force_terminate)
+            await conn.close(timeout=timeout_seconds)
+        # asyncio.Timeout only raises automatically when CancelledError escapes
+        # the body.  A broken close can suppress it and return after terminate;
+        # keep the failure verdict rather than laundering that path as success.
+        if timeout.expired():
+            raise TimeoutError("connection close exceeded deadline")
+    except (Exception, asyncio.CancelledError):  # caller owns phase reporting
         # Mirrors the established asyncpg cleanup convention in the PG bridge
         # and WR2 supervisors: a close failure/timeout must not leave the
         # transport alive after this run releases its single-instance flock.
-        try:
-            conn.terminate()
-        except Exception:  # noqa: BLE001 — retain the original close failure
-            pass
+        if not forced_termination:
+            force_terminate()
         raise
     finally:
+        if watchdog is not None:
+            watchdog.cancel()
         logger.debug(
             "[intake_health_report] connection close elapsed_seconds=%.3f "
             "timeout_seconds=%.3f",
@@ -592,14 +628,12 @@ async def run(*, dry_run: bool, json_only: bool) -> int:
         # meant the organ went fully dark (no digest, no P0, no heartbeat)
         # until a human found the hung process by hand. Now it says so.
         date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        # W0 recheck fast-follow (2026-08-18): "error" put this organ outside
-        # healer_receptor_registry.py's HEALTHY_STATUSES set, so a normal
-        # lock-contention tick (a manual debug run, a launchd overlap) got
-        # classified dead and triggered the autonomous healer session against
-        # a perfectly healthy organ — the exact failure class #4223 existed to
-        # kill, reopened through this branch. Lock-held-and-skipped is a
-        # no-op, not a failure.
-        _heartbeat("ok", "lock held, skipped")
+        # A skipped contender has learned nothing about the lock owner's
+        # health.  Keep rc=0 and the operator digest, but do NOT refresh the
+        # shared heartbeat sidecar: publishing either `ok` or `error` here
+        # overwrites the owner's last real verdict with a claim this process
+        # cannot support.  The healer therefore continues to consume the
+        # previous run's status/timestamp and can still detect it as dead/stale.
         _tg_notify(
             "digest",
             f"intake-health:lock-held:{date_key}",
