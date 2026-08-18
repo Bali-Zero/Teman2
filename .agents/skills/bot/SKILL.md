@@ -22,8 +22,35 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 
 ## 1. LIVE STATE (last update 2026-08-18 — keep current)
 
-- **🤖 OPENAI WA-PROVIDER LANE — ROUTE RECONFIRMED 2026-08-18, ALL THREE GATE-PREP PRs STILL
-  DRAFT (checked against the actual PR/branch content this turn, not their own summaries).**
+- **🧪 CHATGPT PRO ADAPTER LIVE TEST — SYNTHETIC STAGE 1 GREEN, REAL WA STILL NO-GO
+  (2026-08-18, supersedes the stale #4216/#4301 implementation snapshot immediately below).**
+  Zero explicitly authorized point 7 and told the lane to start live tests. The current #4216
+  head is `6cb663dd66c67ed8d84dc204508eafe3c6d0c5de` (12 files), GitHub reports
+  `mergeStateStatus=CLEAN`/`mergeable=MERGEABLE`, and all observed checks are green or
+  intentionally skipped; it remains DRAFT and NO-WIRING. On Pro, `codex-cli 0.147.0` reports
+  `Logged in using ChatGPT`. From the exact PR head, 513 focused adapter/pricing/corpus/bench tests
+  passed. A real `CodexExecClient` Terra call returned an exact random synthetic sentinel in
+  6.9s. The role-aware multi-turn blind harness then ran sequentially across Terra/Luna/Sol and
+  all 3/3 returned the exact synthetic token from the prior user turn (0 errors; 8.6s/6.6s/6.7s).
+  No WhatsApp, Meta, CRM, DB, Qdrant, client, or OSINT input was read; no message was sent.
+  Observed isolation: no API key forwarded, no session file change, no sentinel persistence hit,
+  no child/tempdir residue, owner-only `0600` ephemeral artifacts deleted after inspection.
+  Two gates were discovered live: (1) non-login Pro processes need a `PATH` including
+  `/opt/homebrew/bin` because `codex` is a Node shebang script — `WA_CODEX_BIN` alone cannot find
+  `node`; (2) codex-cli echoes the prompt into its private transient stderr pipe, although the
+  adapter never logs, persists, returns, or exposes that pipe on success. The authenticated seat
+  is personal ChatGPT Pro; its account-level **Improve the model for everyone** setting is not
+  yet verified. Official policy says Pro Codex conversations may be used for training unless that
+  control is off. Therefore the live verdict is **GO only for synthetic, de-identified,
+  operator-controlled Pro probes** and **NO-GO for client text/PII, WA mirror, live shadow, Fly
+  credentials, deploy, serving, cutover, or any outward test send**. The corrected authoritative
+  plan is `research/operations/2026-08-18-bot-openai-shadow-wiring-plan.md`; next gate is the
+  account privacy check plus a named Pro-side fail-off broker/supervisor design and independent
+  review. Generator-not-grader and Legge 5 remain unchanged despite the owner authorization.
+
+- **🤖 HISTORICAL OPENAI WA-PROVIDER SNAPSHOT — SUPERSEDED BY THE LIVE TEST ENTRY ABOVE.**
+  Retained only as the chronology that produced #4216/#4301; do not use its old branch heads,
+  merge status, bench shape, or authorization wording as current state.
   This lane is governed by two session memories, not by this file — `.agents/skills/bot/SKILL.md`
   said nothing about it before this entry: `decision_wa_openai_provider_subscription_path_owner_ruling_2026_08_15`
   (Zero's 2026-08-15 ruling: WA runtime OpenAI provider goes through the **ChatGPT Pro
