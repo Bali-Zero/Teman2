@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from datetime import date
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import asyncpg
@@ -12,9 +13,15 @@ from fastapi.testclient import TestClient
 
 import backend.app.routers.e33_cases as e33_cases_module
 from backend.app.dependencies import get_current_user, get_database_pool
-from backend.services.crm.e33_case_repository import E33CaseRepository
+from backend.services.crm.e33_case_repository import E33CaseRepository, case_to_row
 from backend.services.crm.e33_guarantee_scanner import ScanSwitchState
-from backend.services.crm.e33_lifecycle import E33Case, E33Stage, GuaranteeBasis
+from backend.services.crm.e33_lifecycle import (
+    E33Case,
+    E33Stage,
+    EvidenceKind,
+    EvidenceRef,
+    GuaranteeBasis,
+)
 
 CASE_ID_RE = re.compile(r"^E33-\d{4}-[0-9a-f]{6}$")
 
@@ -51,6 +58,26 @@ def _existing_case(
     return E33Case(case_id=case_id, client_id=client_id, basis=GuaranteeBasis.DEPOSIT, stage=stage)
 
 
+def _wire_txn_conn(conn, *, case: E33Case | None, client_row: dict[str, object] | None) -> None:
+    """Wire mock_db_pool's shared conn for the load(FOR UPDATE)->mutate->save
+    path used by advance_case/add_evidence, which run the REAL
+    E33CaseRepository.with_connection(conn) (not a patched repo class).
+
+    fetchrow order: 1) repo.load()'s full-row SELECT, 2) the client
+    full_name/assigned_to lookup. A ``None`` case models "not found" — only
+    the first fetchrow (repo.load) then returns None; the second is not
+    reached by the router in that path, so client_row may be omitted.
+    """
+    if case is None:
+        conn.fetchrow = AsyncMock(return_value=None)
+    else:
+        side_effects = [case_to_row(case)]
+        if client_row is not None:
+            side_effects.append(client_row)
+        conn.fetchrow = AsyncMock(side_effect=side_effects)
+    conn.execute = AsyncMock(return_value="OK")
+
+
 class TestCreateCase:
     @pytest.mark.integration
     def test_create_case_success_mints_case_id_and_starts_at_fit_memo(
@@ -59,9 +86,15 @@ class TestCreateCase:
         pool, conn = mock_db_pool
         client = TestClient(_make_app(pool, admin_user), raise_server_exceptions=False)
 
+        conn.fetchrow = AsyncMock(
+            return_value={
+                "full_name": "Alice Example",
+                "assigned_to": "admin@balizero.com",
+                "deleted_at": None,
+            }
+        )
         fake_repo = MagicMock()
         fake_repo.insert = AsyncMock(side_effect=lambda case: case)
-        conn.fetchval = AsyncMock(return_value="Alice Example")
 
         with patch.object(e33_cases_module, "E33CaseRepository", return_value=fake_repo):
             response = client.post(
@@ -72,6 +105,7 @@ class TestCreateCase:
         assert response.status_code == 201
         body = response.json()
         assert body["stage"] == "fit_memo"
+        assert body["client_name"] == "Alice Example"
         assert CASE_ID_RE.match(body["case_id"]), body["case_id"]
         assert body["stage_history"] == []
         fake_repo.insert.assert_awaited_once()
@@ -108,29 +142,114 @@ class TestCreateCase:
         assert response.status_code == 422
 
     @pytest.mark.integration
-    def test_fk_violation_returns_422(self, mock_db_pool, admin_user) -> None:
-        pool, _conn = mock_db_pool
+    def test_property_basis_returns_422_and_never_touches_db(
+        self, mock_db_pool, admin_user
+    ) -> None:
+        pool, conn = mock_db_pool
         client = TestClient(_make_app(pool, admin_user), raise_server_exceptions=False)
 
-        fake_repo = MagicMock()
-        fake_repo.insert = AsyncMock(
-            side_effect=asyncpg.ForeignKeyViolationError(
-                "insert or update on table violates foreign key constraint"
-            )
+        response = client.post(
+            "/api/e33/cases",
+            json={"client_id": 1, "basis": "property"},
         )
+
+        assert response.status_code == 422
+        assert "property" in response.json()["detail"].lower()
+        conn.fetchrow.assert_not_called()
+
+    @pytest.mark.integration
+    def test_client_does_not_exist_returns_422(self, mock_db_pool, admin_user) -> None:
+        pool, conn = mock_db_pool
+        client = TestClient(_make_app(pool, admin_user), raise_server_exceptions=False)
+        conn.fetchrow = AsyncMock(return_value=None)
+
+        response = client.post(
+            "/api/e33/cases",
+            json={"client_id": 999999, "basis": "deposit"},
+        )
+
+        assert response.status_code == 422
+        assert "does not exist" in response.json()["detail"]
+
+    @pytest.mark.integration
+    def test_archived_client_returns_422(self, mock_db_pool, admin_user) -> None:
+        pool, conn = mock_db_pool
+        client = TestClient(_make_app(pool, admin_user), raise_server_exceptions=False)
+        conn.fetchrow = AsyncMock(
+            return_value={
+                "full_name": "Alice",
+                "assigned_to": "admin@balizero.com",
+                "deleted_at": "2026-01-01T00:00:00+00:00",
+            }
+        )
+
+        response = client.post(
+            "/api/e33/cases",
+            json={"client_id": 1, "basis": "deposit"},
+        )
+
+        assert response.status_code == 422
+        assert "archived" in response.json()["detail"]
+
+    @pytest.mark.integration
+    def test_non_admin_creating_for_unassigned_client_returns_403(
+        self, mock_db_pool, team_user
+    ) -> None:
+        pool, conn = mock_db_pool
+        client = TestClient(_make_app(pool, team_user), raise_server_exceptions=False)
+        conn.fetchrow = AsyncMock(
+            return_value={
+                "full_name": "Alice",
+                "assigned_to": "someone-else@balizero.com",
+                "deleted_at": None,
+            }
+        )
+
+        response = client.post(
+            "/api/e33/cases",
+            json={"client_id": 1, "basis": "deposit"},
+        )
+
+        assert response.status_code == 403
+
+    @pytest.mark.integration
+    def test_fk_violation_returns_422_generic_detail(self, mock_db_pool, admin_user) -> None:
+        pool, conn = mock_db_pool
+        client = TestClient(_make_app(pool, admin_user), raise_server_exceptions=False)
+        conn.fetchrow = AsyncMock(
+            return_value={
+                "full_name": "Alice",
+                "assigned_to": "admin@balizero.com",
+                "deleted_at": None,
+            }
+        )
+
+        fake_repo = MagicMock()
+        raw_pg_detail = "insert or update on table violates foreign key constraint pk_practice_42"
+        fake_repo.insert = AsyncMock(side_effect=asyncpg.ForeignKeyViolationError(raw_pg_detail))
 
         with patch.object(e33_cases_module, "E33CaseRepository", return_value=fake_repo):
             response = client.post(
                 "/api/e33/cases",
-                json={"client_id": 999999, "basis": "deposit"},
+                json={"client_id": 1, "basis": "deposit", "practice_id": 999999},
             )
 
         assert response.status_code == 422
+        detail = response.json()["detail"]
+        assert raw_pg_detail not in detail  # no raw asyncpg exception text leaked to the client
+        assert "does not exist" in detail
 
     @pytest.mark.integration
     def test_unique_violation_remints_once_then_500(self, mock_db_pool, admin_user) -> None:
-        pool, _conn = mock_db_pool
+        pool, conn = mock_db_pool
         client = TestClient(_make_app(pool, admin_user), raise_server_exceptions=False)
+        conn.fetchrow = AsyncMock(
+            return_value={
+                "full_name": "Alice",
+                "assigned_to": "admin@balizero.com",
+                "deleted_at": None,
+            }
+        )
 
         fake_repo = MagicMock()
         fake_repo.insert = AsyncMock(
@@ -270,30 +389,135 @@ class TestGetCase:
         assert body["allowed_next_stages"] == ["bank_precheck"]
         assert body["guarantee"] is None
         assert body["forecasts"] == []
+        assert body["guarantee_evidence_complete"] is False
 
-
-class TestAdvanceCase:
     @pytest.mark.integration
-    def test_invalid_transition_returns_409(self, mock_db_pool, admin_user) -> None:
+    def test_get_case_guarantee_evidence_complete_true_with_full_evidence(
+        self, mock_db_pool, admin_user
+    ) -> None:
         pool, conn = mock_db_pool
         client = TestClient(_make_app(pool, admin_user), raise_server_exceptions=False)
 
-        case = _existing_case()  # stage=fit_memo — payment is unreachable directly
+        case = _existing_case(stage=E33Stage.GUARANTEE_PROOF_DUE)
+        case.add_evidence(
+            EvidenceRef(
+                evidence_id="ev-1", kind=EvidenceKind.BANK_CONFIRMATION, document_ref="doc-1"
+            )
+        )
+        case.add_evidence(
+            EvidenceRef(
+                evidence_id="ev-2",
+                kind=EvidenceKind.IMMIGRATION_FILING,
+                document_ref="doc-2",
+                filed_date=date(2026, 1, 1),
+            )
+        )
         fake_repo = MagicMock()
         fake_repo.load = AsyncMock(return_value=case)
-        fake_repo.save = AsyncMock(return_value=None)
         conn.fetchrow = AsyncMock(
             return_value={"full_name": "Alice", "assigned_to": "admin@balizero.com"}
         )
 
         with patch.object(e33_cases_module, "E33CaseRepository", return_value=fake_repo):
-            response = client.post(
-                f"/api/e33/cases/{case.case_id}/advance",
-                json={"to_stage": "payment"},
-            )
+            response = client.get(f"/api/e33/cases/{case.case_id}")
+
+        assert response.status_code == 200
+        assert response.json()["guarantee_evidence_complete"] is True
+
+
+class TestAdvanceCase:
+    @pytest.mark.integration
+    def test_advance_locks_row_for_update_via_same_connection(
+        self, mock_db_pool, admin_user
+    ) -> None:
+        pool, conn = mock_db_pool
+        client = TestClient(_make_app(pool, admin_user), raise_server_exceptions=False)
+        case = _existing_case()  # fit_memo
+        _wire_txn_conn(
+            conn, case=case, client_row={"full_name": "Alice", "assigned_to": "admin@balizero.com"}
+        )
+
+        response = client.post(
+            f"/api/e33/cases/{case.case_id}/advance",
+            json={"to_stage": "bank_precheck"},
+        )
+
+        assert response.status_code == 200
+        lock_call = conn.execute.call_args_list[0]
+        assert "FOR UPDATE" in lock_call.args[0]
+        assert lock_call.args[1] == case.case_id
+        # load (repo) and the lock both went through the same conn — a
+        # second, separately-acquired connection would defeat the lock.
+        assert conn.fetchrow.call_count == 2
+
+    @pytest.mark.integration
+    def test_advance_not_found_returns_404(self, mock_db_pool, admin_user) -> None:
+        pool, conn = mock_db_pool
+        client = TestClient(_make_app(pool, admin_user), raise_server_exceptions=False)
+        _wire_txn_conn(conn, case=None, client_row=None)
+
+        response = client.post(
+            "/api/e33/cases/E33-2026-notexist/advance",
+            json={"to_stage": "bank_precheck"},
+        )
+
+        assert response.status_code == 404
+
+    @pytest.mark.integration
+    def test_advance_non_admin_not_assigned_returns_403(self, mock_db_pool, team_user) -> None:
+        pool, conn = mock_db_pool
+        client = TestClient(_make_app(pool, team_user), raise_server_exceptions=False)
+        case = _existing_case()
+        _wire_txn_conn(
+            conn,
+            case=case,
+            client_row={"full_name": "Alice", "assigned_to": "someone-else@balizero.com"},
+        )
+
+        response = client.post(
+            f"/api/e33/cases/{case.case_id}/advance",
+            json={"to_stage": "bank_precheck"},
+        )
+
+        assert response.status_code == 403
+        assert conn.execute.call_count == 1  # lock only, save() never reached
+
+    @pytest.mark.integration
+    def test_same_stage_advance_returns_409_and_never_saves(
+        self, mock_db_pool, admin_user
+    ) -> None:
+        pool, conn = mock_db_pool
+        client = TestClient(_make_app(pool, admin_user), raise_server_exceptions=False)
+        case = _existing_case(stage=E33Stage.ITAS_ACTIVE)
+        _wire_txn_conn(
+            conn, case=case, client_row={"full_name": "Alice", "assigned_to": "admin@balizero.com"}
+        )
+
+        response = client.post(
+            f"/api/e33/cases/{case.case_id}/advance",
+            json={"to_stage": "itas_active"},
+        )
 
         assert response.status_code == 409
-        fake_repo.save.assert_not_awaited()
+        assert "already in stage" in response.json()["detail"]
+        assert conn.execute.call_count == 1  # lock only, save() never called
+
+    @pytest.mark.integration
+    def test_invalid_transition_returns_409(self, mock_db_pool, admin_user) -> None:
+        pool, conn = mock_db_pool
+        client = TestClient(_make_app(pool, admin_user), raise_server_exceptions=False)
+        case = _existing_case()  # fit_memo — payment is unreachable directly
+        _wire_txn_conn(
+            conn, case=case, client_row={"full_name": "Alice", "assigned_to": "admin@balizero.com"}
+        )
+
+        response = client.post(
+            f"/api/e33/cases/{case.case_id}/advance",
+            json={"to_stage": "payment"},
+        )
+
+        assert response.status_code == 409
+        assert conn.execute.call_count == 1
 
     @pytest.mark.integration
     def test_transition_into_itap_eval_returns_409_even_though_edge_exists(
@@ -301,43 +525,33 @@ class TestAdvanceCase:
     ) -> None:
         pool, conn = mock_db_pool
         client = TestClient(_make_app(pool, admin_user), raise_server_exceptions=False)
-
         case = _existing_case(stage=E33Stage.ITAS_ACTIVE)
-        fake_repo = MagicMock()
-        fake_repo.load = AsyncMock(return_value=case)
-        fake_repo.save = AsyncMock(return_value=None)
-        conn.fetchrow = AsyncMock(
-            return_value={"full_name": "Alice", "assigned_to": "admin@balizero.com"}
+        _wire_txn_conn(
+            conn, case=case, client_row={"full_name": "Alice", "assigned_to": "admin@balizero.com"}
         )
 
-        with patch.object(e33_cases_module, "E33CaseRepository", return_value=fake_repo):
-            response = client.post(
-                f"/api/e33/cases/{case.case_id}/advance",
-                json={"to_stage": "itap_eval"},
-            )
+        response = client.post(
+            f"/api/e33/cases/{case.case_id}/advance",
+            json={"to_stage": "itap_eval"},
+        )
 
         assert response.status_code == 409
         assert "letter-006" in response.json()["detail"].lower()
-        fake_repo.save.assert_not_awaited()
+        assert conn.execute.call_count == 1
 
     @pytest.mark.integration
     def test_advance_happy_path_appends_stage_history(self, mock_db_pool, admin_user) -> None:
         pool, conn = mock_db_pool
         client = TestClient(_make_app(pool, admin_user), raise_server_exceptions=False)
-
-        case = _existing_case()  # stage=fit_memo
-        fake_repo = MagicMock()
-        fake_repo.load = AsyncMock(return_value=case)
-        fake_repo.save = AsyncMock(return_value=None)
-        conn.fetchrow = AsyncMock(
-            return_value={"full_name": "Alice", "assigned_to": "admin@balizero.com"}
+        case = _existing_case()  # fit_memo
+        _wire_txn_conn(
+            conn, case=case, client_row={"full_name": "Alice", "assigned_to": "admin@balizero.com"}
         )
 
-        with patch.object(e33_cases_module, "E33CaseRepository", return_value=fake_repo):
-            response = client.post(
-                f"/api/e33/cases/{case.case_id}/advance",
-                json={"to_stage": "bank_precheck", "note": "docs received"},
-            )
+        response = client.post(
+            f"/api/e33/cases/{case.case_id}/advance",
+            json={"to_stage": "bank_precheck", "note": "docs received"},
+        )
 
         assert response.status_code == 200
         body = response.json()
@@ -346,7 +560,60 @@ class TestAdvanceCase:
         assert body["stage_history"][0]["to_stage"] == "bank_precheck"
         assert body["stage_history"][0]["from_stage"] == "fit_memo"
         assert body["stage_history"][0]["note"] == "docs received"
-        fake_repo.save.assert_awaited_once()
+        assert conn.execute.call_count == 2  # lock + save()
+
+    @pytest.mark.integration
+    def test_guarantee_proof_due_to_annual_maintenance_blocked_without_evidence(
+        self, mock_db_pool, admin_user
+    ) -> None:
+        pool, conn = mock_db_pool
+        client = TestClient(_make_app(pool, admin_user), raise_server_exceptions=False)
+        case = _existing_case(stage=E33Stage.GUARANTEE_PROOF_DUE)
+        _wire_txn_conn(
+            conn, case=case, client_row={"full_name": "Alice", "assigned_to": "admin@balizero.com"}
+        )
+
+        response = client.post(
+            f"/api/e33/cases/{case.case_id}/advance",
+            json={"to_stage": "annual_maintenance"},
+        )
+
+        assert response.status_code == 409
+        assert "guarantee evidence" in response.json()["detail"].lower()
+        assert conn.execute.call_count == 1
+
+    @pytest.mark.integration
+    def test_guarantee_proof_due_to_annual_maintenance_allowed_with_complete_evidence(
+        self, mock_db_pool, admin_user
+    ) -> None:
+        pool, conn = mock_db_pool
+        client = TestClient(_make_app(pool, admin_user), raise_server_exceptions=False)
+        case = _existing_case(stage=E33Stage.GUARANTEE_PROOF_DUE)
+        case.add_evidence(
+            EvidenceRef(
+                evidence_id="ev-1", kind=EvidenceKind.BANK_CONFIRMATION, document_ref="doc-1"
+            )
+        )
+        case.add_evidence(
+            EvidenceRef(
+                evidence_id="ev-2",
+                kind=EvidenceKind.IMMIGRATION_FILING,
+                document_ref="doc-2",
+                filed_date=date(2026, 1, 1),
+            )
+        )
+        assert case.guarantee_evidence_complete  # sanity on the fixture itself
+        _wire_txn_conn(
+            conn, case=case, client_row={"full_name": "Alice", "assigned_to": "admin@balizero.com"}
+        )
+
+        response = client.post(
+            f"/api/e33/cases/{case.case_id}/advance",
+            json={"to_stage": "annual_maintenance"},
+        )
+
+        assert response.status_code == 200
+        assert response.json()["stage"] == "annual_maintenance"
 
 
 class TestAddEvidence:
@@ -354,59 +621,107 @@ class TestAddEvidence:
     def test_custody_violating_metadata_key_returns_422(self, mock_db_pool, admin_user) -> None:
         pool, conn = mock_db_pool
         client = TestClient(_make_app(pool, admin_user), raise_server_exceptions=False)
-
         case = _existing_case(stage=E33Stage.ITAS_ACTIVE)
-        fake_repo = MagicMock()
-        fake_repo.load = AsyncMock(return_value=case)
-        fake_repo.save = AsyncMock(return_value=None)
-        conn.fetchrow = AsyncMock(
-            return_value={"full_name": "Alice", "assigned_to": "admin@balizero.com"}
+        _wire_txn_conn(
+            conn, case=case, client_row={"full_name": "Alice", "assigned_to": "admin@balizero.com"}
         )
 
-        with patch.object(e33_cases_module, "E33CaseRepository", return_value=fake_repo):
-            response = client.post(
-                f"/api/e33/cases/{case.case_id}/evidence",
-                json={
-                    "kind": "bank_confirmation",
-                    "document_ref": "doc-1",
-                    "metadata": {"account_number": "1234567890"},
-                },
-            )
+        response = client.post(
+            f"/api/e33/cases/{case.case_id}/evidence",
+            json={
+                "kind": "bank_confirmation",
+                "document_ref": "doc-1",
+                "metadata": {"account_number": "1234567890"},
+            },
+        )
 
         assert response.status_code == 422
         assert "no-custody" in response.json()["detail"].lower()
-        fake_repo.save.assert_not_awaited()
+        assert conn.execute.call_count == 1  # lock only, save() never reached
         assert case.evidence == []
+
+    @pytest.mark.integration
+    def test_nested_custody_key_smuggled_in_dict_value_returns_422(
+        self, mock_db_pool, admin_user
+    ) -> None:
+        pool, conn = mock_db_pool
+        client = TestClient(_make_app(pool, admin_user), raise_server_exceptions=False)
+
+        response = client.post(
+            "/api/e33/cases/E33-2026-abc123/evidence",
+            json={
+                "kind": "bank_confirmation",
+                "document_ref": "doc-1",
+                "metadata": {"details": {"account_number": "1234567890"}},
+            },
+        )
+
+        assert response.status_code == 422
+        assert "scalar" in response.json()["detail"][0]["msg"].lower()
+        # rejected by pydantic before the endpoint runs — no DB round-trip at all
+        conn.fetchrow.assert_not_called()
+
+    @pytest.mark.integration
+    def test_empty_document_ref_returns_422(self, mock_db_pool, admin_user) -> None:
+        pool, conn = mock_db_pool
+        client = TestClient(_make_app(pool, admin_user), raise_server_exceptions=False)
+
+        response = client.post(
+            "/api/e33/cases/E33-2026-abc123/evidence",
+            json={"kind": "bank_confirmation", "document_ref": ""},
+        )
+
+        assert response.status_code == 422
+        conn.fetchrow.assert_not_called()
+
+    @pytest.mark.integration
+    def test_top_level_issuing_party_overwrites_metadata_key(
+        self, mock_db_pool, admin_user
+    ) -> None:
+        pool, conn = mock_db_pool
+        client = TestClient(_make_app(pool, admin_user), raise_server_exceptions=False)
+        case = _existing_case(stage=E33Stage.ITAS_ACTIVE)
+        _wire_txn_conn(
+            conn, case=case, client_row={"full_name": "Alice", "assigned_to": "admin@balizero.com"}
+        )
+
+        response = client.post(
+            f"/api/e33/cases/{case.case_id}/evidence",
+            json={
+                "kind": "bank_confirmation",
+                "document_ref": "doc-1",
+                "issuing_party": "Bank Mandiri",
+                "metadata": {"issuing_party": "should be overwritten"},
+            },
+        )
+
+        assert response.status_code == 200
+        assert response.json()["evidence"][0]["metadata"]["issuing_party"] == "Bank Mandiri"
 
     @pytest.mark.integration
     def test_add_evidence_happy_path(self, mock_db_pool, admin_user) -> None:
         pool, conn = mock_db_pool
         client = TestClient(_make_app(pool, admin_user), raise_server_exceptions=False)
-
         case = _existing_case(stage=E33Stage.ITAS_ACTIVE)
-        fake_repo = MagicMock()
-        fake_repo.load = AsyncMock(return_value=case)
-        fake_repo.save = AsyncMock(return_value=None)
-        conn.fetchrow = AsyncMock(
-            return_value={"full_name": "Alice", "assigned_to": "admin@balizero.com"}
+        _wire_txn_conn(
+            conn, case=case, client_row={"full_name": "Alice", "assigned_to": "admin@balizero.com"}
         )
 
-        with patch.object(e33_cases_module, "E33CaseRepository", return_value=fake_repo):
-            response = client.post(
-                f"/api/e33/cases/{case.case_id}/evidence",
-                json={
-                    "kind": "bank_confirmation",
-                    "document_ref": "doc-1",
-                    "issuing_party": "Bank Mandiri",
-                },
-            )
+        response = client.post(
+            f"/api/e33/cases/{case.case_id}/evidence",
+            json={
+                "kind": "bank_confirmation",
+                "document_ref": "doc-1",
+                "issuing_party": "Bank Mandiri",
+            },
+        )
 
         assert response.status_code == 200
         body = response.json()
         assert len(body["evidence"]) == 1
         assert body["evidence"][0]["document_ref"] == "doc-1"
         assert body["evidence"][0]["metadata"]["issuing_party"] == "Bank Mandiri"
-        fake_repo.save.assert_awaited_once()
+        assert conn.execute.call_count == 2  # lock + save()
 
 
 class TestSummary:
@@ -458,6 +773,33 @@ class TestSummary:
         assert body["by_stage"] == {"fit_memo": 3, "epo": 2, "status_change": 1}
         assert body["active_total"] == 3
         assert body["scan_switch"] == "enabled"
+
+    @pytest.mark.integration
+    def test_guarantee_due_30d_filters_to_active_permit_stages_only(
+        self, mock_db_pool, admin_user
+    ) -> None:
+        pool, conn = mock_db_pool
+        client = TestClient(_make_app(pool, admin_user), raise_server_exceptions=False)
+        conn.fetch = AsyncMock(return_value=[])
+        conn.fetchval = AsyncMock(return_value=2)
+
+        with patch.object(
+            e33_cases_module,
+            "resolve_scan_switch",
+            AsyncMock(return_value=ScanSwitchState.ENABLED),
+        ):
+            response = client.get("/api/e33/summary")
+
+        assert response.status_code == 200
+        assert response.json()["guarantee_due_30d"] == 2
+
+        due_query = conn.fetchval.call_args.args[0]
+        due_params = conn.fetchval.call_args.args[1:]
+        assert "ANY(" in due_query
+        assert ["annual_maintenance", "guarantee_proof_due", "itas_active"] in due_params
+        # terminal stages must never appear in the "due" stage filter
+        assert not any("epo" in p for p in due_params if isinstance(p, list))
+        assert not any("status_change" in p for p in due_params if isinstance(p, list))
 
 
 class TestRouterStructure:

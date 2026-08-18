@@ -15,6 +15,9 @@ single dependency covers both checks).
 RBAC: admins (``is_crm_admin``) see every case. Non-admin team members are
 restricted to cases whose client is assigned to them — mirrors the
 ``compliance_alerts.py`` / ``crm_practices.py`` ``assigned_to`` pattern.
+This now covers ``POST /cases`` too: a non-admin cannot open a case for a
+client not assigned to them (403), and the client must exist and not be
+archived (``deleted_at IS NULL``) (422).
 
 No-custody / ITAP / dependent-code enforcement is NOT re-implemented here —
 it lives in ``backend.services.crm.e33_lifecycle`` (the domain model) and
@@ -22,11 +25,21 @@ this router surfaces its exceptions as the appropriate HTTP status:
 ``CustodyViolationError`` / ``UnknownDependentCodeError`` -> 422,
 ``E33InvalidTransitionError`` (including the ITAP_EVAL gate) -> 409.
 
+Concurrency: ``advance`` and ``evidence`` wrap load→mutate→save in a single
+transaction with ``SELECT ... FOR UPDATE`` on the case row — two concurrent
+requests against the same case_id serialize instead of racing a lost update
+(the second waits, re-reads the already-advanced case, and is evaluated
+against ITS current state, not a stale in-memory copy).
+
 Field-mapping note: the ``POST .../evidence`` body carries ``issuing_party``
 and ``note`` for UI convenience, but ``EvidenceRef`` has no dedicated fields
 for either (only ``document_ref`` / ``issued_date`` / ``filed_date`` /
 ``confirmed_by`` / ``metadata``) — both are folded into ``metadata`` under
-their own keys, still subject to the no-custody KEY validation.
+their own keys. When the caller's ``metadata`` dict also sets the same key,
+the dedicated top-level field WINS (plain overwrite, not ``setdefault``).
+Still subject to the no-custody KEY validation, and metadata VALUES must be
+scalar (rejects a dict/list value — closes the nested-forbidden-key
+smuggling path where a custody key hides one level deeper than the scan).
 """
 
 from __future__ import annotations
@@ -48,6 +61,7 @@ from backend.app.utils.crm_utils import is_crm_admin
 from backend.services.crm.e33_case_repository import E33CaseRepository
 from backend.services.crm.e33_guarantee_scanner import ScanSwitchState, resolve_scan_switch
 from backend.services.crm.e33_lifecycle import (
+    ACTIVE_PERMIT_STAGES,
     E33_ITAP_EVAL_ENABLED,
     TERMINAL_STAGES,
     VALID_TRANSITIONS,
@@ -106,18 +120,39 @@ def _assert_client_access(current_user: dict[str, Any], assigned_to: str | None)
         )
 
 
-async def _fetch_client_name(db_pool: asyncpg.Pool, client_id: int) -> str | None:
+async def _fetch_client_for_create(db_pool: asyncpg.Pool, client_id: int) -> Any | None:
+    """Full pre-insert check row: existence, archival state, ownership."""
     async with db_pool.acquire() as conn:
-        return await conn.fetchval("SELECT full_name FROM clients WHERE id = $1", client_id)
+        return await conn.fetchrow(
+            "SELECT full_name, assigned_to, deleted_at FROM clients WHERE id = $1", client_id
+        )
 
 
 async def _fetch_client_name_and_owner(
     db_pool: asyncpg.Pool, client_id: int
 ) -> tuple[str | None, str | None]:
+    """Read-only lookup (no lock needed — used by the GET detail endpoint)."""
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow(
             "SELECT full_name, assigned_to FROM clients WHERE id = $1", client_id
         )
+    if row is None:
+        return None, None
+    return row["full_name"], row["assigned_to"]
+
+
+async def _fetch_client_name_and_owner_conn(
+    conn: asyncpg.Connection, client_id: int
+) -> tuple[str | None, str | None]:
+    """Same lookup as :func:`_fetch_client_name_and_owner` but on an ALREADY
+    acquired connection — used inside the advance/evidence transactions so
+    the whole load→mutate→save sequence stays on one connection (never a
+    second, separately-acquired one) for the FOR UPDATE lock to be
+    meaningful.
+    """
+    row = await conn.fetchrow(
+        "SELECT full_name, assigned_to FROM clients WHERE id = $1", client_id
+    )
     if row is None:
         return None, None
     return row["full_name"], row["assigned_to"]
@@ -196,6 +231,7 @@ def _case_detail_dict(case: E33Case, *, client_name: str | None, today: date) ->
             "stage_history": _to_jsonable(case.history),
             "allowed_next_stages": _allowed_next_stages(case.stage),
             "guarantee": _guarantee_dict(case, today=today),
+            "guarantee_evidence_complete": case.guarantee_evidence_complete,
             "forecasts": _to_jsonable(case.build_case_forecasts(today=today)),
         }
     )
@@ -212,7 +248,6 @@ class CaseCreateBody(BaseModel):
     owner_email: str | None = None
     dependent_code: str | None = None
     principal_case_id: str | None = None
-    note: str | None = None
 
     @field_validator("dependent_code")
     @classmethod
@@ -241,12 +276,27 @@ class AdvanceBody(BaseModel):
 
 class EvidenceBody(BaseModel):
     kind: EvidenceKind
-    document_ref: str
+    document_ref: str = Field(min_length=1)
     issuing_party: str | None = None
     issued_on: date | None = None
     filed_on: date | None = None
     note: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("metadata")
+    @classmethod
+    def _metadata_values_must_be_scalar(cls, v: dict[str, Any]) -> dict[str, Any]:
+        """Reject dict/list values — a nested object can hide a forbidden
+        custody key one level below the KEY scan (``validate_evidence_metadata``
+        only inspects top-level keys), e.g.
+        ``{"metadata": {"details": {"account_number": "..."}}}``.
+        """
+        for key, val in v.items():
+            if isinstance(val, dict | list):
+                raise ValueError(
+                    f"metadata values must be scalar (key {key!r} is a {type(val).__name__})"
+                )
+        return v
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -260,9 +310,34 @@ async def create_case(
 ) -> dict[str, Any]:
     """Mint a new E33 case starting at ``fit_memo``.
 
+    Property basis is out of V1 scope (pending addendum 007 —
+    ``property_validation_standard``). Client existence, archival state and
+    RBAC are checked BEFORE any insert.
+
     On a case_id collision (``asyncpg.UniqueViolationError``) re-mint once;
     a second collision is a 500 (astronomically unlikely — 6 hex chars).
     """
+    if body.basis == GuaranteeBasis.PROPERTY:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                "property route not yet supported — pending addendum 007 "
+                "(property_validation_standard)"
+            ),
+        )
+
+    client_row = await _fetch_client_for_create(db_pool, body.client_id)
+    if client_row is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="client does not exist"
+        )
+    if client_row["deleted_at"] is not None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="client is archived"
+        )
+    _assert_client_access(current_user, client_row["assigned_to"])
+    client_name = client_row["full_name"]
+
     repo = E33CaseRepository(db_pool)
     today = date.today()
     case: E33Case | None = None
@@ -290,12 +365,17 @@ async def create_case(
             )
             continue
         except asyncpg.ForeignKeyViolationError as exc:
+            logger.warning(
+                "e33.create_case.fk_violation client_id=%s practice_id=%s "
+                "principal_case_id=%s error=%s",
+                body.client_id,
+                body.practice_id,
+                body.principal_case_id,
+                exc,
+            )
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=(
-                    "Referenced client, practice or principal case does not exist: "
-                    f"{exc}"
-                ),
+                detail="referenced client, practice or principal case does not exist",
             ) from exc
 
     if last_error is not None or case is None:
@@ -304,7 +384,6 @@ async def create_case(
             detail="Could not mint a unique E33 case id after 2 attempts",
         ) from last_error
 
-    client_name = await _fetch_client_name(db_pool, body.client_id)
     return _case_detail_dict(case, client_name=client_name, today=today)
 
 
@@ -381,27 +460,72 @@ async def advance_case(
     current_user: dict[str, Any] = Depends(require_team_member),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
-    repo = E33CaseRepository(db_pool)
-    case = await repo.load(case_id)
-    if case is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="E33 case not found")
+    """Advance a case's stage.
 
-    client_name, assigned_to = await _fetch_client_name_and_owner(db_pool, case.client_id)
-    _assert_client_access(current_user, assigned_to)
+    load -> mutate -> save runs inside one transaction with a
+    ``SELECT ... FOR UPDATE`` row lock so two concurrent advances against
+    the same case serialize instead of the second silently clobbering the
+    first's write with a stale in-memory copy.
+    """
+    async with db_pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute(
+                "SELECT case_id FROM e33_cases WHERE case_id = $1 FOR UPDATE", case_id
+            )
+            repo = E33CaseRepository.with_connection(conn)
+            case = await repo.load(case_id)
+            if case is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND, detail="E33 case not found"
+                )
 
-    try:
-        case.advance(
-            body.to_stage,
-            at=datetime.now(tz=timezone.utc),
-            actor=current_user.get("email"),
-            note=body.note,
-            occurred_on=body.occurred_on,
-            itap_eval_enabled=E33_ITAP_EVAL_ENABLED,
-        )
-    except E33InvalidTransitionError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+            client_name, assigned_to = await _fetch_client_name_and_owner_conn(
+                conn, case.client_id
+            )
+            _assert_client_access(current_user, assigned_to)
 
-    await repo.save(case)
+            if body.to_stage == case.stage:
+                # validate_transition() treats same-stage as a no-op, but
+                # advance() itself re-stamps entry_date/itas_date and
+                # appends a history row — a same-stage call would silently
+                # rewrite the Day-90 anchor date. Reject it explicitly.
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=(
+                        f"case is already in stage '{case.stage.value}' — same-stage "
+                        "re-dating is not allowed"
+                    ),
+                )
+
+            if (
+                case.stage == E33Stage.GUARANTEE_PROOF_DUE
+                and body.to_stage == E33Stage.ANNUAL_MAINTENANCE
+                and not case.guarantee_evidence_complete
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=(
+                        "record the guarantee evidence (bank confirmation / property "
+                        "title filing) before closing the Day-90 gate"
+                    ),
+                )
+
+            try:
+                case.advance(
+                    body.to_stage,
+                    at=datetime.now(tz=timezone.utc),
+                    actor=current_user.get("email"),
+                    note=body.note,
+                    occurred_on=body.occurred_on,
+                    itap_eval_enabled=E33_ITAP_EVAL_ENABLED,
+                )
+            except E33InvalidTransitionError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+                ) from exc
+
+            await repo.save(case)
+
     return _case_detail_dict(case, client_name=client_name, today=date.today())
 
 
@@ -412,40 +536,57 @@ async def add_evidence(
     current_user: dict[str, Any] = Depends(require_team_member),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
-    repo = E33CaseRepository(db_pool)
-    case = await repo.load(case_id)
-    if case is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="E33 case not found")
+    """Attach an evidence reference to a case.
 
-    client_name, assigned_to = await _fetch_client_name_and_owner(db_pool, case.client_id)
-    _assert_client_access(current_user, assigned_to)
-
+    Same transaction + ``FOR UPDATE`` pattern as :func:`advance_case` — see
+    its docstring.
+    """
     # issuing_party / note have no dedicated EvidenceRef field — see module
-    # docstring. Folded into metadata (still subject to the no-custody KEY
-    # validation performed by EvidenceRef.__post_init__).
+    # docstring. Folded into metadata under their own keys and OVERWRITE any
+    # same-named key the caller also put in body.metadata (top-level field
+    # wins) — still subject to the no-custody KEY validation performed by
+    # EvidenceRef.__post_init__.
     metadata = dict(body.metadata or {})
     if body.issuing_party:
-        metadata.setdefault("issuing_party", body.issuing_party)
+        metadata["issuing_party"] = body.issuing_party
     if body.note:
-        metadata.setdefault("note", body.note)
+        metadata["note"] = body.note
 
-    try:
-        evidence = EvidenceRef(
-            evidence_id=str(uuid4()),
-            kind=body.kind,
-            document_ref=body.document_ref,
-            issued_date=body.issued_on,
-            filed_date=body.filed_on,
-            confirmed_by=current_user.get("email"),
-            metadata=metadata,
-        )
-    except CustodyViolationError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
-        ) from exc
+    async with db_pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute(
+                "SELECT case_id FROM e33_cases WHERE case_id = $1 FOR UPDATE", case_id
+            )
+            repo = E33CaseRepository.with_connection(conn)
+            case = await repo.load(case_id)
+            if case is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND, detail="E33 case not found"
+                )
 
-    case.add_evidence(evidence)
-    await repo.save(case)
+            client_name, assigned_to = await _fetch_client_name_and_owner_conn(
+                conn, case.client_id
+            )
+            _assert_client_access(current_user, assigned_to)
+
+            try:
+                evidence = EvidenceRef(
+                    evidence_id=str(uuid4()),
+                    kind=body.kind,
+                    document_ref=body.document_ref,
+                    issued_date=body.issued_on,
+                    filed_date=body.filed_on,
+                    confirmed_by=current_user.get("email"),
+                    metadata=metadata,
+                )
+            except CustodyViolationError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+                ) from exc
+
+            case.add_evidence(evidence)
+            await repo.save(case)
+
     return _case_detail_dict(case, client_name=client_name, today=date.today())
 
 
@@ -457,10 +598,11 @@ async def get_summary(
     rbac_clause: str | None = None
     rbac_params: list[Any] = []
     if not is_crm_admin(current_user):
+        rbac_params.append((current_user.get("email") or "").lower())
         rbac_clause = (
-            "e33_cases.client_id IN (SELECT id FROM clients WHERE LOWER(assigned_to) = $1)"
+            "e33_cases.client_id IN "
+            f"(SELECT id FROM clients WHERE LOWER(assigned_to) = ${len(rbac_params)})"
         )
-        rbac_params = [(current_user.get("email") or "").lower()]
 
     async with db_pool.acquire() as conn:
         stage_where = f"WHERE {rbac_clause}" if rbac_clause else ""
@@ -469,15 +611,24 @@ async def get_summary(
             *rbac_params,
         )
 
+        # "due" must be scoped to the scanner's own active-permit stage set
+        # (itas_active / guarantee_proof_due / annual_maintenance) — a
+        # terminal-stage case with a stale deadline still on the row must
+        # NOT count as "due". Sourced from ACTIVE_PERMIT_STAGES, no string
+        # literals, so the two never drift apart.
+        due_params = list(rbac_params)
+        active_stage_values = sorted(s.value for s in ACTIVE_PERMIT_STAGES)
+        due_params.append(active_stage_values)
         due_conditions = [
             "guarantee_proof_deadline IS NOT NULL",
             "guarantee_proof_deadline <= CURRENT_DATE + 30",
+            f"stage = ANY(${len(due_params)}::text[])",
         ]
         if rbac_clause:
             due_conditions.append(rbac_clause)
         due_where = "WHERE " + " AND ".join(due_conditions)
         guarantee_due_30d = await conn.fetchval(
-            f"SELECT COUNT(*) FROM e33_cases {due_where}", *rbac_params
+            f"SELECT COUNT(*) FROM e33_cases {due_where}", *due_params
         )
 
     scan_switch: ScanSwitchState = await resolve_scan_switch(db_pool)
