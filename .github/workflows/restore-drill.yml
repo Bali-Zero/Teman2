@@ -48,12 +48,26 @@ jobs:
 
       - name: Install postgresql-client + ensure aws CLI
         run: |
-          sudo apt-get update -qq
+          # Bounded + retried (2026-08-18) — see organ-conformance.yml.
+          for attempt in 1 2 3; do
+            if timeout 180 sudo apt-get update -qq; then break; fi
+            echo "::warning::apt-get update attempt ${attempt}/3 failed or stalled; retrying"
+            sleep $((attempt * 5))
+          done
           # NOTE: do NOT apt-install `awscli` — it has no installation candidate
           # on ubuntu-24.04 runners (apt exit 100, drill failed every run since
           # 2026-05-05). aws CLI v2 is pre-installed on GitHub-hosted runners;
           # verify it, and fall back to the official installer if ever absent.
-          sudo apt-get install -y -qq postgresql-client
+          for attempt in 1 2 3; do
+            if timeout 180 sudo apt-get install -y -qq postgresql-client; then break; fi
+            echo "::warning::apt-get install postgresql-client attempt ${attempt}/3 failed or stalled; retrying"
+            sleep $((attempt * 5))
+          done
+          # FAIL-CLOSED — see lint-i18n-providers.yml. `aws --version` below
+          # asserts the OTHER tool this step provides; without this line a
+          # postgresql-client that never installed would reach the drill as a
+          # confusing failure downstream instead of a named one here.
+          command -v pg_restore
           if ! command -v aws >/dev/null 2>&1; then
             echo "aws CLI not pre-installed — fetching official v2 bundle"
             curl -sSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
