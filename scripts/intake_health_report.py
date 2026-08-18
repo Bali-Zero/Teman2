@@ -527,7 +527,14 @@ async def run(*, dry_run: bool, json_only: bool) -> int:
         # meant the organ went fully dark (no digest, no P0, no heartbeat)
         # until a human found the hung process by hand. Now it says so.
         date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        _heartbeat("error", "lock held")
+        # W0 recheck fast-follow (2026-08-18): "error" put this organ outside
+        # healer_receptor_registry.py's HEALTHY_STATUSES set, so a normal
+        # lock-contention tick (a manual debug run, a launchd overlap) got
+        # classified dead and triggered the autonomous healer session against
+        # a perfectly healthy organ — the exact failure class #4223 existed to
+        # kill, reopened through this branch. Lock-held-and-skipped is a
+        # no-op, not a failure.
+        _heartbeat("ok", "lock held, skipped")
         _tg_notify(
             "digest",
             f"intake-health:lock-held:{date_key}",
