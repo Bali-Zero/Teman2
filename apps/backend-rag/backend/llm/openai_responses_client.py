@@ -634,12 +634,14 @@ def _extract_refusal_reason(source: dict[str, Any], *keys: str) -> str:
         if key not in source:
             continue
         value = source[key]
-        if value is None or value == "":
+        if value is None:
             continue
         if not isinstance(value, str):
             raise OpenAIResponseShapeError(
                 "refusal reason field is not a string (category=malformed_field)",
             )
+        if value == "":
+            continue
         return value
     return "refused"
 

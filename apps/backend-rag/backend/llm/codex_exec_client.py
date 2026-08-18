@@ -33,7 +33,8 @@ Binding invariants (R24-1, mandate 2026-08-15):
 1.  **Async subprocess only.** `asyncio.create_subprocess_exec` — never
     `shell=True`, never a shell string, never `subprocess.run`. Argv is a
     fixed shape: `codex exec --sandbox read-only --skip-git-repo-check
-    --ignore-user-config -m <model> -`. `cwd` is a FRESH, EMPTY, per-call temp
+    --ephemeral --ignore-user-config --ignore-rules -m <model> -`. `cwd` is a
+    FRESH, EMPTY, per-call temp
     directory created via `tempfile.mkdtemp()` and removed in a `finally`
     block — never the repo, never the caller's inherited cwd, never a shared
     `/tmp` used by other processes. **Two independent things are needed here,
@@ -65,6 +66,11 @@ Binding invariants (R24-1, mandate 2026-08-15):
     it cannot leak even another local process's temp files back through the
     sandboxed read-only filesystem access `codex exec` grants the model.
 
+    `--ephemeral` prevents Codex from persisting session files, while
+    `--ignore-rules` prevents user/project exec-policy rule files from being
+    loaded. These are separate controls from the neutral cwd and
+    `--ignore-user-config`; none substitutes for another.
+
     **The tempdir cleanup and the child process lifecycle must agree, even
     under cancellation** (R26-1 fix, 2026-08-15 THAW round): `generate()`
     now has a dedicated `except asyncio.CancelledError:` arm around
@@ -76,9 +82,10 @@ Binding invariants (R24-1, mandate 2026-08-15):
     per-call tempdir out from under a still-alive, now-orphaned `codex`
     child process. The sibling `except Exception:` arm in the same
     `communicate()` block (R25-5, same round — widened from
-    `TimeoutError`-only reaping to every non-`CancelledError` exception) is
-    documented on `CodexExecUnavailableError` and in `generate()`'s own
-    inline comments.
+    `TimeoutError`-only reaping to every non-`CancelledError` exception) now
+    converts the arbitrary underlying failure to
+    `CodexExecCommunicationError` after reaping. Raw OS/provider exception
+    text does not cross the adapter boundary.
 
 2.  **Prompt text NEVER on argv, NEVER in the child env** (W115 scar: argv is
     `ps`-readable by every user on the box; the same lesson this repo
@@ -101,22 +108,18 @@ Binding invariants (R24-1, mandate 2026-08-15):
     `generate()` raises `CodexExecUnavailableError` when `available` is
     `False`; it never raises on construction.
 
-    ⚠️ MEASURED CAVEAT (2026-08-15, grounding probe — see point 7): this
-    file-presence check is a NECESSARY but NOT SUFFICIENT proxy for "a real
-    call will succeed" — pointing `CODEX_HOME` at an empty temp directory
-    (so no `auth.json` existed at all) did **not** make `codex exec` fail;
-    it authenticated and answered normally, implying the live OAuth
-    credential also lives outside `CODEX_HOME`'s file scope (macOS Keychain,
-    by analogy with `claude_oauth_client.py`'s own keychain fallback tier).
-    `codex login status`, run against that same empty `CODEX_HOME`,
-    correctly reported "Not logged in" — so the discrepancy is specific to
-    `codex exec`'s own auth resolution, not a probing artifact. This mirrors
-    the Drive-OAuth lesson in the project CLAUDE.md §13 ("no column records
-    the refresh token's validity ... the only thing that knows is an actual
-    refresh attempt"): `available=True` here means "the file we were told to
-    check exists", not "a live call is guaranteed to work" — the auth-death
-    detection in point 5 below is what actually catches a dead credential
-    the file check cannot.
+    ⚠️ MEASURED CAVEAT, corrected 2026-08-18 (see point 7): file presence is
+    a NECESSARY but NOT SUFFICIENT proxy for "a real call will succeed".
+    A 2026-08-15 probe appeared to authenticate with an empty isolated
+    `CODEX_HOME`, which led to an explicitly labelled inference that a
+    macOS Keychain credential might exist outside that directory. A fresh
+    reproduction attempt on 2026-08-18 did **not** reproduce that result:
+    `codex login status` reported "Not logged in" and `codex exec` failed
+    with HTTP 401, while the default authenticated `CODEX_HOME` succeeded.
+    This adapter therefore does not rely on an inferred Keychain fallback.
+    `available=True` means only "the configured auth file exists and is
+    non-empty", not "the credential is live"; point 5's real-call
+    auth-death handling remains necessary.
 
     **The gate and the child MUST agree by construction** (R25-2 fix,
     2026-08-15 THAW round): `_build_env` now always injects
@@ -269,9 +272,9 @@ Binding invariants (R24-1, mandate 2026-08-15):
     no auth material (not even a file path's existence bit beyond the
     boolean `available` result) ever reaches an exception message or a log
     line. `CodexExecProcessError` carries only the numeric exit code;
-    `CodexExecAuthError`/`CodexExecOutputShapeError`/`CodexExecTimeoutError`
-    carry only fixed local literals. Full type hints throughout; `logger`
-    never `print`.
+    `CodexExecAuthError`/`CodexExecOutputShapeError`/`CodexExecTimeoutError`/
+    `CodexExecCommunicationError` carry only fixed local literals. Full type
+    hints throughout; `logger` never `print`.
 
 7.  **GROUNDING PROBE.** One designated live call was run from this session
     in the original R24 round (`printf 'Reply with exactly PONG' | codex
@@ -299,14 +302,22 @@ Binding invariants (R24-1, mandate 2026-08-15):
     only the re-measured content). What remains of it is this narrative
     description (`hook:` lines present, no verbatim quote) — declared as a
     gap, not silently smoothed over. See ADR §30.8 for the full disposition.
-    Beyond
-    these two designated probes, two additional non-PII diagnostic calls
+    Beyond these two designated probes, two additional non-PII diagnostic calls
     were made in the original R24 round — one that (by operator error, cwd
     left at the repo default) demonstrated the point-1 cwd-leak finding
     before `--ignore-user-config` existed, and one `CODEX_HOME` variant that
-    produced the point-3 auth-proxy finding — all four calls are declared
-    here and in the freeze reports rather than hidden; no further live calls
-    are planned. Everything else in this module (auth failure, timeout,
+    produced the historical point-3 auth-proxy finding. Three additional
+    synthetic, non-PII calls were made on 2026-08-18: two attempts with a
+    fresh isolated `CODEX_HOME` failed at authentication ("Not logged in" /
+    HTTP 401), created no session file, and left no sentinel residue; one
+    call through this adapter's final argv, using the default authenticated
+    ChatGPT-subscription home, returned a runtime-generated sentinel exactly,
+    left the observed session-file count unchanged (`3273 -> 3273`), and left
+    zero files containing that sentinel under `~/.codex`. These observations
+    are deliberately narrow: they demonstrate the measured call and the
+    searched surfaces, not universal absence of every possible persistence
+    surface. All seven calls are declared rather than hidden; no further live
+    calls are planned. Everything else in this module (timeout,
     model-not-allowed, malformed output shapes) is OFFLINE, faking at the
     SUBPROCESS boundary per W114 discipline: the fake speaks the measured
     wire shape for the success path, and an honestly labelled constructed
@@ -324,6 +335,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import math
 import os
 import re
 import shutil
@@ -365,6 +377,10 @@ _FIXED_ARGV_PREFIX: tuple[str, ...] = (
     "--sandbox",
     "read-only",
     "--skip-git-repo-check",
+    # CLI 0.147.0: "Run without persisting session files to disk." This is
+    # mandatory for every de-identified replay and cannot be disabled by a
+    # caller.
+    "--ephemeral",
     # R25-1 (2026-08-15 THAW round): neutral cwd alone stops REPO-local
     # context from leaking in but does NOT stop USER-level config
     # (`~/.codex/config.toml`) hooks from running regardless of cwd — see
@@ -372,6 +388,9 @@ _FIXED_ARGV_PREFIX: tuple[str, ...] = (
     # `$CODEX_HOME/config.toml`; auth still uses `CODEX_HOME`" — auth
     # resolution is unaffected, only host-config-driven hooks are disabled.
     "--ignore-user-config",
+    # Separate from user config: suppress user/project exec-policy `.rules`
+    # files so host policy cannot silently alter this provider contract.
+    "--ignore-rules",
 )
 # The literal argv token that tells `codex exec` to read the prompt from
 # stdin regardless of whether stdin happens to be piped (`codex exec --help`:
@@ -383,11 +402,13 @@ _STDIN_SENTINEL = "-"
 # `exit_code != 0`-only scoping rationale. Mirrors (does not import, to keep
 # this module's own failure taxonomy independent per point 6's "no cross-file
 # assumptions") `claude_oauth_client.py::_AUTH_DIAGNOSTIC_PATTERN`, widened
-# with the codex-specific "not logged in" / "login required" / "run codex
-# login" phrasings the `codex login status` probe measured, plus the
-# additional phrasings R25-4 (2026-08-15 THAW round) flagged as plausible
-# real `codex exec` wording that the original list under-matched: "token has
-# expired", "you need to sign in", "session invalidated", "sign-in required".
+# with the measured `codex login status` phrase "not logged in" plus
+# constructed, plausible `codex exec` phrases including "login required" and
+# "run codex login". Additional phrasings R25-4 (2026-08-15 THAW round)
+# flagged as plausible wording that the original list under-matched: "token
+# has expired", "you need to sign in", "session invalidated", "sign-in
+# required". Only "not logged in" is measured; the rest remains constructed
+# until a controlled real auth-death is observed.
 #
 # R25-3 correction (same round): bare `401` was REMOVED — it false-positived
 # on ordinary non-auth text containing the digits "401" (measured example:
@@ -471,6 +492,14 @@ class CodexExecTimeoutError(RuntimeError):
     """The subprocess did not complete within the wall-clock timeout. The
     process is killed and reaped (`kill()` + `wait()`) before this is
     raised — no zombie process is left behind.
+    """
+
+
+class CodexExecCommunicationError(RuntimeError):
+    """The child was launched but stdin/stdout/stderr communication failed
+    outside the timeout/cancellation paths. The child is killed and reaped
+    before this sanitized error is raised. The underlying exception object
+    and message are deliberately not exposed across the provider boundary.
     """
 
 
@@ -686,9 +715,8 @@ class CodexExecClient:
         if (
             not isinstance(timeout_s, (int, float))
             or isinstance(timeout_s, bool)
-            or timeout_s != timeout_s  # NaN check without importing math for one use
+            or not math.isfinite(timeout_s)
             or timeout_s <= 0
-            or timeout_s == float("inf")
         ):
             raise ValueError(f"timeout_s must be a finite positive number, got {timeout_s!r}")
 
@@ -817,6 +845,9 @@ class CodexExecClient:
                 exception contract).
             CodexExecTimeoutError: the subprocess exceeded the wall-clock
                 budget; it is killed and reaped before this is raised.
+            CodexExecCommunicationError: subprocess stdin/stdout/stderr
+                communication failed outside timeout/cancellation; the child
+                was killed and reaped and the raw exception was suppressed.
             CodexExecAuthError: the subprocess exited non-zero with output
                 matching a known auth-failure word class (point 5).
             CodexExecProcessError: the subprocess exited non-zero for any
@@ -839,9 +870,8 @@ class CodexExecClient:
             if (
                 not isinstance(timeout_s, (int, float))
                 or isinstance(timeout_s, bool)
-                or timeout_s != timeout_s
+                or not math.isfinite(timeout_s)
                 or timeout_s <= 0
-                or timeout_s == float("inf")
             ):
                 raise ValueError(f"timeout_s must be a finite positive number, got {timeout_s!r}")
             effective_timeout = float(timeout_s)
@@ -941,11 +971,23 @@ class CodexExecClient:
                 # the dedicated `except asyncio.CancelledError:` arm above,
                 # which is what actually covers cancellation. This arm
                 # guarantees `_kill_and_reap` runs before every OTHER
-                # exception class from `communicate()` leaves this method,
-                # then re-raises the original exception unchanged — this is
-                # not a new typed error, just a guaranteed cleanup step.
+                # exception class from `communicate()` leaves this method.
+                # The raw exception cannot cross a provider boundary: callers
+                # receive a stable typed error with no underlying message or
+                # exception object attached.
                 await _kill_and_reap(proc)
-                raise
+                communication_failed = True
+            else:
+                communication_failed = False
+
+            if communication_failed:
+                logger.warning(
+                    "codex_exec: subprocess communication failed (model=%s)",
+                    resolved_model,
+                )
+                raise CodexExecCommunicationError(
+                    "codex exec subprocess communication failed after launch — process killed",
+                ) from None
 
             latency_ms = (time.monotonic() - start) * 1000.0
             exit_code = proc.returncode if proc.returncode is not None else -1

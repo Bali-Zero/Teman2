@@ -4389,12 +4389,14 @@ its own module docstring and test suite:
 
 1. **Async subprocess only** — `asyncio.create_subprocess_exec`, never
    `shell=True`. Fixed argv shape `codex exec --sandbox read-only
-   --skip-git-repo-check --ignore-user-config -m <model> -` (CORRECTED, R26
-   GLM addendum F26-3, 2026-08-15: this restatement previously omitted
-   `--ignore-user-config` — the R25-1 HIGH security fix that stops
-   host-level `~/.codex/config.toml` hooks from receiving the prompt OUTSIDE
-   the model's sandbox; a reader rebuilding from this line alone would have
-   re-opened that leak). `cwd` is a fresh, empty, per-call
+   --skip-git-repo-check --ephemeral --ignore-user-config --ignore-rules
+   -m <model> -` (CORRECTED, R28, 2026-08-18: `--ephemeral` suppresses
+   persisted session files and `--ignore-rules` suppresses user/project
+   exec-policy rules; CLI 0.147.0 help was read locally before both flags
+   were fixed into the adapter). The earlier R26 correction added
+   `--ignore-user-config`, the R25-1 HIGH security fix that stops host-level
+   `~/.codex/config.toml` hooks from receiving the prompt outside the
+   model's sandbox. `cwd` is a fresh, empty, per-call
    `tempfile.mkdtemp()` directory, removed in a `finally` block — never the
    repo, never an inherited/shared cwd (see §30.4 for why this was
    empirically, not just theoretically, load-bearing).
@@ -4425,13 +4427,15 @@ its own module docstring and test suite:
    scanned output", which described the R25-3 shape, not the FINAL one):
    the scan reads STDERR ONLY — stdout is never part of the scanned text at
    all (§30.8) — after removing, WHOLE-LINE-ONLY, any stderr line that
-   verbatim-equals or is contained in a line of the prompt or of this run's
-   own stdout. See §30.4's stderr-echo finding for why the scope is
+   verbatim-equals a complete line of the prompt or of this run's own stdout.
+   See §30.4's stderr-echo finding for why the scope is
    `exit_code != 0`-only, and §30.8 for the full evolution of the stripping
    mechanism (R25-3 → R26-2 → the R26-addendum unified stderr-only design).
 6. **Sanitized errors and logs** — no prompt text, no raw stdout/stderr
    content, no auth material ever reaches an exception message or a log
-   line; `CodexExecProcessError` carries only the numeric exit code.
+   line; `CodexExecProcessError` carries only the numeric exit code and
+   arbitrary post-launch communication failures become the fixed-literal
+   `CodexExecCommunicationError` after the child is killed and reaped.
 7. **Model governance** — `gpt-5.6-sol` / `gpt-5.6-terra` (default) /
    `gpt-5.6-luna`, the same GPT-5.6 family CLAUDE.md §5 already names for
    this repo's Codex cascade; any other slug is refused pre-launch via
@@ -4499,17 +4503,16 @@ what the mandate had assumed going in:
   proof that an unset/inherited cwd leaks ambient repo/host context into the
   model's turn, not a hypothetical the client's design merely gestures at.
 - **`auth.json` file-presence is a necessary-but-not-sufficient proxy.**
-  Pointing `CODEX_HOME` at an empty temp directory (no `auth.json` at all)
-  did **not** make `codex exec` fail — it authenticated and answered
-  normally, while `codex login status` against that same fake `CODEX_HOME`
-  correctly reported "Not logged in". This implies the live credential also
-  lives outside `CODEX_HOME`'s file scope (macOS Keychain, by analogy with
-  `claude_oauth_client.py`'s own keychain-fallback tier) — the same lesson
-  as the Drive-OAuth finding in the project CLAUDE.md §13 ("the only thing
-  that knows is an actual refresh attempt"). `available=True` in this client
-  means "the file we were told to check exists", not "a live call is
-  guaranteed to work"; §30.3 point 5's auth-death detection is what actually
-  catches a dead credential the file check cannot.
+  The 2026-08-15 `CODEX_HOME` variant appeared to authenticate without an
+  `auth.json`, leading to an explicitly labelled inference that a Keychain
+  credential might exist outside the directory. **R28 correction,
+  2026-08-18:** a fresh isolated-home reproduction did not reproduce that
+  behavior: `codex login status` reported "Not logged in" and two controlled
+  `codex exec` attempts failed with HTTP 401. The default authenticated home
+  succeeded. The adapter therefore does not rely on the historical Keychain
+  inference. `available=True` means only "the configured auth file exists and
+  is non-empty", not "the credential is live"; §30.3 point 5's auth-death
+  handling remains necessary.
 
 **Honest disclosure — scope of live calls made.** The mandate authorized
 exactly one designated grounding-call for this round (R25-1 later
@@ -4518,8 +4521,9 @@ CORRECTED (R27-4, GLM F5, 2026-08-15 THAW round): this paragraph
 previously said "Three real codex exec invocations were made in total",
 undercounting by one against the module docstring's own point 7 ("all
 FOUR calls are declared") — the R25-1 re-measured probe (§30.6) is a real,
-separate live call this paragraph never folded in. FOUR real `codex exec`
-invocations were made in total: (1) the designated R24 probe above; (2) an
+separate live call this paragraph never folded in. As of the end of R27,
+FOUR real `codex exec` invocations had been made: (1) the designated R24
+probe above; (2) an
 ACCIDENTAL diagnostic call — an operator slip, cwd left at the repo
 default, NOT a deliberately-scoped probe — that produced the cwd-leak
 finding below; (3) a deliberately-scoped `CODEX_HOME`-override variant
@@ -4534,15 +4538,25 @@ rounded down. (The prior wording also lumped call (2) together with call
 deliberately scoped — false for call (2), an operator slip, not a design;
 corrected here to distinguish an accident from a probe.)
 
-**What was NOT empirically triggered, and is declared rather than silently
-assumed:** the exact stderr shape `codex exec` (as opposed to `codex login
-status`) prints on ITS OWN auth failure. Triggering that would have
-required logging out of the operator's real, working ChatGPT Pro session —
-not authorized in this offline/no-wiring phase. §30.3 point 5's word-class
-list is built from `codex login status`'s measured "Not logged in" string
-plus the house `claude_oauth_client.py::_AUTH_DIAGNOSTIC_PATTERN`, and the
-corresponding test fixtures are labelled CONSTRUCTED, not measured, in both
-the client's module docstring and the test file's own header comment.
+**R28 disclosure, 2026-08-18:** three additional synthetic, non-PII calls
+were made, bringing the declared historical total to seven. Two used a fresh
+isolated `CODEX_HOME` and failed at authentication; neither created a session
+file or left the runtime-generated sentinel on the searched isolated surface.
+The third exercised `CodexExecClient` itself with the final fixed argv and the
+default authenticated ChatGPT-subscription home: it returned the generated
+sentinel exactly, the observed session-file count stayed `3273 -> 3273`, and
+no file containing that sentinel was found under `~/.codex`. These are narrow
+observations about the exact call and searched surfaces, not a claim that no
+other persistence surface can exist. No client data was used, and no further
+live calls are planned for this offline lane.
+
+**Auth-failure evidence boundary, corrected R28:** the isolated-home calls now
+measure `codex exec`'s own HTTP-401 failure class without logging the operator
+out of the working default home. The test fixture remains deliberately
+CONSTRUCTED because the full volatile stderr transcript was not promoted into
+source. Only the stable `codex login status` phrase "Not logged in" and the
+HTTP-401 class are treated as measured; the broader regex vocabulary remains
+constructed from the house `claude_oauth_client.py::_AUTH_DIAGNOSTIC_PATTERN`.
 
 ### 30.5 Fence update, and what is still unchanged
 
@@ -4964,3 +4978,51 @@ freeze report for this THAW.
 
 No further hold protocol for this round — fix, recompose, freeze, deliver,
 HALT, per the team-lead's explicit instruction opening this round.
+
+### 30.10 R28 reconciliation — current main, subscription proof, and residual boundary (2026-08-18)
+
+This branch was reconciled with `origin/main` at
+`993e4e868a6e8210328f69ccd136ca9d5c54d776`; the only merge conflict was the
+mechanically maintained `docs/AI_ONBOARDING.md` test-count text, resolved to
+current main. The feature fence is now ten files relative to main, not eleven:
+that generated documentation file no longer differs.
+
+The selected path remains `CodexExecClient`, authenticated by the operator's
+existing ChatGPT subscription. The dormant `OpenAIResponsesClient` remains
+unwired and receives no paid API key. Local `codex-cli 0.147.0` help was read
+for the final subprocess contract. In addition to the existing neutral cwd,
+read-only sandbox, stdin-only prompt, and `--ignore-user-config`, the fixed argv
+now includes:
+
+- `--ephemeral`, whose local help contract is to run without persisting session
+  files;
+- `--ignore-rules`, which prevents user/project `.rules` policy files from
+  changing this adapter's execution contract.
+
+The adapter now converts arbitrary post-launch `communicate()` failures into a
+sanitized `CodexExecCommunicationError` only after killing and reaping the
+child. The raw exception object and text do not cross the provider boundary.
+Two static-analysis findings were also closed without broad refactoring:
+finite timeout validation uses `math.isfinite`, and refusal-reason extraction
+type-checks before comparing with the empty string.
+
+Three R28 subscription calls and their limits are disclosed in §30.4. The
+successful call was executed through the adapter, not a hand-assembled proxy
+command, and observed exact sentinel output, no session-count increase, and no
+sentinel residue under the searched `~/.codex` tree. The isolated-home calls
+failed with `Not logged in`/HTTP 401, so the R24 Keychain inference is not a
+current dependency and is explicitly superseded. These probes prove only the
+observed surfaces; they do not prove universal non-persistence or unattended
+production suitability.
+
+`codex exec --output-schema <FILE>` was evaluated and deliberately not added.
+The option constrains the model's final response shape; it does not provide
+provider completion metadata, a refusal object, or a reliable truncation
+signal. Adding a schema would therefore create false confidence without
+closing the partial-output boundary. The provider continues to return text
+only and leaves answer-quality/refusal evaluation to the offline benchmark.
+
+The operational boundary is unchanged: no runtime import, flag, channel
+wiring, WhatsApp traffic, deployment, or cutover is part of this PR. A future
+runtime host remains an explicit architecture gate because Fly production does
+not inherit this Air-M5 user's local Codex CLI or ChatGPT OAuth state.

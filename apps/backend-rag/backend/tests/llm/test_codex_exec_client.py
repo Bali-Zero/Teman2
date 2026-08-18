@@ -2,7 +2,7 @@
 
 Every test fakes at the SUBPROCESS boundary (W114 discipline): the fake
 `asyncio.create_subprocess_exec` speaks either the MEASURED wire shape
-captured from the module's one designated grounding probe (2026-08-15, see
+captured from the historical designated R25 re-measure (2026-08-15, see
 `codex_exec_client.py`'s module docstring point 7 and the ADR §30), or an
 honestly-labelled CONSTRUCTED shape for paths that were not (and, in this
 offline/no-wiring phase, should not be) empirically triggered — never an
@@ -24,6 +24,7 @@ from backend.llm.codex_exec_client import (
     MODEL_TERRA,
     CodexExecAuthError,
     CodexExecClient,
+    CodexExecCommunicationError,
     CodexExecModelNotAllowedError,
     CodexExecOutputShapeError,
     CodexExecProcessError,
@@ -40,11 +41,16 @@ from backend.llm.codex_exec_client import (
 # flagged those as a host-level hook receiving the prompt OUTSIDE the model
 # sandbox. The client's argv now adds `--ignore-user-config`
 # (`codex_exec_client.py::_FIXED_ARGV_PREFIX`), and this fixture is the
-# RE-MEASURED probe with that flag: `printf 'Reply with exactly PONG' |
+# HISTORICAL R25 RE-MEASURED probe with that flag: `printf 'Reply with exactly PONG' |
 # codex exec --sandbox read-only --skip-git-repo-check --ignore-user-config
 # -m gpt-5.6-terra -`, cwd `/tmp/codex-probe-neutral-r25`, 2026-08-15,
 # codex-cli 0.147.0, exit_code=0 — stdout unchanged (`PONG\n` only), stderr
-# now carries ZERO `hook:` lines. See module docstring points 1 and 7.
+# now carries ZERO `hook:` lines. The 2026-08-18 R28 probe exercised the
+# adapter's final argv (which additionally fixes `--ephemeral` and
+# `--ignore-rules`) and measured exact output plus searched persistence
+# surfaces, but intentionally did not retain a new stderr transcript. This
+# fixture therefore remains labelled R25 rather than being rewritten as
+# imagined R28 evidence. See module docstring points 1 and 7.
 # ---------------------------------------------------------------------------
 _MEASURED_PROMPT = "Reply with exactly PONG"
 _MEASURED_SUCCESS_STDOUT = b"PONG\n"
@@ -332,7 +338,9 @@ class TestSubprocessShape:
             "--sandbox",
             "read-only",
             "--skip-git-repo-check",
+            "--ephemeral",
             "--ignore-user-config",
+            "--ignore-rules",
             "-m",
             MODEL_TERRA,
             "-",
@@ -1019,7 +1027,7 @@ class TestTimeout:
         assert fake_exec.calls == []
 
     @pytest.mark.asyncio
-    async def test_guilt_arbitrary_communicate_exception_still_kills_and_reaps(
+    async def test_guilt_arbitrary_communicate_exception_is_sanitized_after_reap(
         self,
         tmp_path,
         fake_exec: _FakeSubprocessExec,
@@ -1028,17 +1036,20 @@ class TestTimeout:
         on `asyncio.TimeoutError` — any OTHER exception out of
         `communicate()` (simulated here as a `ConnectionResetError`, e.g. a
         broken stdin pipe) used to propagate with the child left unreaped.
-        The original exception must still propagate unchanged (this is a
-        cleanup guarantee, not a new typed error)."""
+        The child must still be reaped, but the original exception must not
+        propagate across the provider boundary. The raw exception and its
+        message must not escape."""
         client = _make_available_client(tmp_path)
         boom = ConnectionResetError("stdin pipe broke")
         proc = _FakeProcess(b"", b"", 0, communicate_raises=boom)
         fake_exec.queue(proc)
 
-        with pytest.raises(ConnectionResetError) as exc_info:
+        with pytest.raises(CodexExecCommunicationError) as exc_info:
             await client.generate("hello")
 
-        assert exc_info.value is boom
+        assert "stdin pipe broke" not in str(exc_info.value)
+        assert exc_info.value.__context__ is None
+        assert exc_info.value.__cause__ is None
         assert proc.killed is True
         assert proc.waited is True
 
@@ -1070,7 +1081,7 @@ class TestTimeout:
         task.cancel()
 
         with pytest.raises(asyncio.CancelledError):
-            await task
+            _cancelled_result = await task
 
         assert proc.killed is True
         assert proc.waited is True
