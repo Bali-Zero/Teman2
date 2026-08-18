@@ -19,8 +19,20 @@
 #      not. A patchwork, which is harder to reason about than a clean override.
 #      That is why the installer retires it instead of leaving it alone.
 #
-#  Within the includes below, order is declaration order and LATER WINS:
+#  Within the includes below, order is declaration order:
 #     fleet  →  keys  →  machine  →  local
+#
+#  "Later wins" is true for SCALAR settings only (font-size, theme, opacity: the
+#  machine profile genuinely overrides the fleet base). REPEATABLE settings do
+#  NOT override — they accumulate:
+#    · `font-family` appends a FALLBACK CHAIN. Measured: a machine profile
+#      naming a second font does not replace the first, it becomes the fallback.
+#      To actually replace it, reset the list first: `font-family = ""` then the
+#      new value.
+#    · `font-feature` and `command-palette-entry` likewise accumulate.
+#    · `keybind` accumulates too, except that re-binding the SAME trigger
+#      replaces its action.
+#
 #  Relative paths resolve against the directory of the file holding the
 #  directive (this one), and `~` is expanded — `$HOME` is NOT.
 # ═══════════════════════════════════════════════════════════════════════════

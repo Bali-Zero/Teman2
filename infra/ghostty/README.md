@@ -48,8 +48,15 @@ bash infra/ghostty/verify.sh              # prove it
 ```
 
 The machine is detected by hostname; `--machine pro|m5|mini` overrides it.
-Reload a running Ghostty with `cmd+shift+comma`. **Opacity, blur and the Dock
-icon need a full quit and relaunch** — a reload will not show them.
+Reload a running Ghostty with `cmd+shift+comma`. The reference states explicitly
+that `background-opacity` needs a full quit and relaunch; blur and the Dock icon
+are not documented either way, so relaunch is the reliable route for all three.
+
+One location outranks all of this: macOS searches
+`~/Library/Application Support/com.mitchellh.ghostty/config.ghostty` **before**
+any XDG path. Ghostty.app creates that file empty by itself, which is harmless —
+but if it ever carries settings they silently beat everything installed here, so
+`verify.sh` checks its CONTENT (not its existence) and fails when it is non-empty.
 
 Drift between the installed copy and this directory is caught two ways: locally
 by `verify.sh`, and fleet-wide by `scripts/lint_home_fork.py --check`, which
@@ -67,8 +74,12 @@ Measured against Ghostty 1.3.1 on macOS 27.0, not assumed:
   "configuration files do not take effect until after the entire configuration is
   loaded." Measured order: top-level `config` → top-level `config.ghostty` →
   `config`'s includes → `config.ghostty`'s includes.
-- Among includes, **declaration order wins later**: `fleet` → `keys` → `machine`
-  → `local`.
+- Among includes, declaration order is `fleet` → `keys` → `machine` → `local`,
+  and **later wins — but only for scalar settings**. Repeatable ones accumulate:
+  `font-family` builds a fallback chain rather than overriding (reset it with
+  `font-family = ""` first), and `font-feature` / `command-palette-entry` append.
+  `keybind` appends too, except that the same trigger declared again replaces
+  its action.
 - Relative include paths resolve against the directory of the file holding the
   directive — **not** the process working directory, and **not** the symlink
   target if the file is reached through a symlink.
@@ -100,9 +111,9 @@ It costs nothing and makes a screenshot, a screen-share or a Vision Pro virtual
 display name its own machine.
 
 `macos-icon = custom-style` is flagged experimental upstream ("we may change the
-format of the custom styles in the future"). If a future release rejects it,
-`verify.sh` fails loudly and the fix is to drop three lines from the machine
-profile.
+format of the custom styles in the future"). If a future release rejects the
+value, `+validate-config` fails and `install.sh` refuses the install rather than
+leaving a broken config; the fix is to drop three lines from the machine profile.
 
 ## Known gaps
 

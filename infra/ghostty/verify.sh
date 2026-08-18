@@ -18,8 +18,9 @@ set -uo pipefail
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEST_DIR="${GHOSTTY_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/ghostty}"
 # Every ghostty invocation below is pinned to the directory we are verifying
-# (see the note in install.sh) so a check can never pass by reading a config
-# other than the installed one.
+# (see the note in install.sh) so a check does not silently read some other XDG
+# location. It is NOT total isolation: the macOS Application Support path is
+# searched ahead of XDG regardless, which is why check 6b exists.
 XDG_PARENT="$(dirname "$DEST_DIR")"
 GHOSTTY_BIN="${GHOSTTY_BIN:-/Applications/Ghostty.app/Contents/MacOS/ghostty}"
 RC=0
@@ -68,16 +69,41 @@ for pair in "config|config" "fleet.ghostty|fleet.ghostty" "keys.ghostty|keys.gho
   fi
 done
 # machine.ghostty is installed under a fixed name from a per-host source, so it
-# is matched against whichever profile it actually equals.
-if [ -f "$DEST_DIR/machine.ghostty" ]; then
-  matched=""
-  for m in "$SRC_DIR"/machines/*.ghostty; do
-    cmp -s "$m" "$DEST_DIR/machine.ghostty" && matched="$(basename "$m" .ghostty)"
-  done
-  if [ -n "$matched" ]; then ok "machine profile installed: $matched"
-  else bad "machine.ghostty matches no profile in $SRC_DIR/machines/"; RC=$((RC|2)); drift=1; fi
-else
+# must be compared against the profile THIS host should have. Matching against
+# "any profile in machines/" was the earlier version and it passed happily with
+# M5's profile installed on Pro — including a working-directory that does not
+# exist on this machine. Same hostname mapping as install.sh.
+expected_machine() {
+  local h; h="$(hostname -s 2>/dev/null || hostname)"
+  case "$h" in
+    Nuzantara|nuzantara) echo pro  ;;
+    Air-M5|air-m5)       echo m5   ;;
+    Mini-Pro2|mini-pro2) echo mini ;;
+    *) return 1 ;;
+  esac
+}
+EXPECT="${GHOSTTY_EXPECT_MACHINE:-$(expected_machine || true)}"
+if [ -z "$EXPECT" ]; then
+  warn "unrecognised host '$(hostname -s)' — cannot tell which profile belongs here (check skipped, not passed)"
+  RC=$((RC|4))
+elif [ ! -f "$DEST_DIR/machine.ghostty" ]; then
   bad "missing installed file: $DEST_DIR/machine.ghostty"; RC=$((RC|2)); drift=1
+elif cmp -s "$SRC_DIR/machines/$EXPECT.ghostty" "$DEST_DIR/machine.ghostty"; then
+  ok "machine profile installed: $EXPECT (matches this host)"
+else
+  actual="none"
+  for m in "$SRC_DIR"/machines/*.ghostty; do
+    cmp -s "$m" "$DEST_DIR/machine.ghostty" && actual="$(basename "$m" .ghostty)"
+  done
+  bad "wrong machine profile: this host is '$EXPECT' but machine.ghostty is '$actual'"
+  RC=$((RC|2)); drift=1
+fi
+
+# The configured working directory has to exist, or every new window opens
+# somewhere unintended. This is what catches a foreign profile in practice.
+WD="$(XDG_CONFIG_HOME="$XDG_PARENT" "$GHOSTTY_BIN" +show-config --default=false 2>/dev/null | sed -n 's/^working-directory = //p' | head -1)"
+if [ -n "$WD" ] && [ ! -d "$WD" ]; then
+  bad "working-directory does not exist on this machine: $WD"; RC=$((RC|2))
 fi
 [ $drift -eq 0 ] && ok "installed copies match the repo source"
 
@@ -106,7 +132,8 @@ fi
 # peers means the wrapper has never actually run.
 CACHE="$(XDG_CONFIG_HOME="$XDG_PARENT" "$GHOSTTY_BIN" +ssh-cache 2>&1)"; CRC=$?
 if [ $CRC -ne 0 ]; then
-  warn "+ssh-cache failed (rc=$CRC): $CACHE"
+  bad "+ssh-cache failed (rc=$CRC): $CACHE"
+  RC=$((RC|4))
 else
   if printf '%s' "$CACHE" | grep -qi "no hosts"; then
     warn "ssh terminfo cache is EMPTY — no remote host has xterm-ghostty yet"
@@ -115,6 +142,28 @@ else
   else
     ok "ssh terminfo cache: $(printf '%s' "$CACHE" | tr '\n' ' ')"
   fi
+fi
+
+# ── 6b. The location that outranks everything ──────────────────────────────
+# macOS searches $HOME/Library/Application Support/com.mitchellh.ghostty/
+# config.ghostty BEFORE any XDG location. Nothing this profile installs can
+# override a file sitting there, so its presence is a finding, not a detail.
+# Judged by CONTENT, not by existence: Ghostty.app creates this file empty on
+# its own (observed 2026-08-18 — the CLI does not, the running app does), so a
+# presence test would fail forever on every machine and train you to ignore this
+# script. An empty or comment-only file changes nothing; a file with settings
+# in it silently outranks the whole profile.
+APPSUP="$HOME/Library/Application Support/com.mitchellh.ghostty/config.ghostty"
+if [ -f "$APPSUP" ]; then
+  APPSUP_SETTINGS="$(grep -cvE '^[[:space:]]*(#.*)?$' "$APPSUP" 2>/dev/null || echo 0)"
+  if [ "$APPSUP_SETTINGS" -gt 0 ]; then
+    bad "$APPSUP holds $APPSUP_SETTINGS setting(s) and takes PRECEDENCE over everything installed here"
+    RC=$((RC|1))
+  else
+    ok "Application Support config present but empty (no effect)"
+  fi
+else
+  ok "no higher-priority config in Application Support"
 fi
 
 # ── 7. Effective values worth eyeballing ───────────────────────────────────
