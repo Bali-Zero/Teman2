@@ -26,7 +26,7 @@ async def main() -> None:
 
     try:
         await bot.set_webhook(
-            url="https://nuzantara-rag.fly.dev/api/telegram/webhook",
+            url="https://nuzantara-rag.fly.dev/webhook/telegram",
             secret_token=secret,
             allowed_updates=["message", "edited_message", "callback_query"],
         )
