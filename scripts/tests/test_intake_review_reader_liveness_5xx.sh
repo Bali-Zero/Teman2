@@ -49,11 +49,14 @@ SERVER_PORT=""
 
 stop_fake_server() {
     local pid="${SERVER_PID:-}"
-    SERVER_PID=""
-    SERVER_PORT=""
-    [ -n "$pid" ] || return 0
+    if [ -z "$pid" ]; then
+        SERVER_PORT=""
+        return 0
+    fi
     kill "$pid" 2>/dev/null || true
     wait "$pid" 2>/dev/null || true
+    SERVER_PID=""
+    SERVER_PORT=""
 }
 
 cleanup() {
