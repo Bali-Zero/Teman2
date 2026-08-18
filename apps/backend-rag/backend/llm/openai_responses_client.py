@@ -11,6 +11,14 @@ API OpenAI is actively developing, carries first-class typed refusal /
 tool-call items instead of overloading `finish_reason`, and is the
 surface `wa_blind_bench.py` (`scripts/bot/`) is built against.
 
+CURRENT DISPOSITION (2026-08-18, superseding the historical selection
+paragraph above): the human-run blind bench now selects
+`CodexSubscriptionBenchClient` -> `CodexExecClient`, authenticated through
+the existing ChatGPT Pro/Codex subscription. This Responses client remains a
+dormant, unwired alternative; the current ruling does not authorize
+provisioning its paid API key. Any later API-key activation would require a
+separate owner ruling, cost/privacy review, runtime design, and live-path gate.
+
 ⚠️ THIS FILE HAS ZERO WIRING. Nothing in `backend/services/rag/agentic/`
 or any other live module imports it. No config flag, no gateway branch,
 no hot-path reference exists anywhere in this repo — grep it yourself
@@ -25,9 +33,10 @@ preference). This client reads **`OPENAI_WA_PROVIDER_API_KEY`**
 `Settings.openai_api_key`/`OPENAI_API_KEY`, which backs
 `embedding_provider="openai"` (`text-embedding-3-small`, Golden Rule §9,
 FROZEN) and is ALREADY a live Fly secret. No env var this client reads is
-set anywhere today, so `available` is `False` everywhere until Zero
-explicitly provisions a least-privilege project service-account key (or
-WIF — see the ADR) under THIS name. Do not repoint `_ENV_VAR` at the
+set anywhere today, so `available` is `False` everywhere. Under the current
+ruling it stays unset; only a separate future authorization could provision a
+least-privilege project service-account key (or WIF — see the ADR) under THIS
+name. Do not repoint `_ENV_VAR` at the
 embeddings key to "make it work" — that reintroduces the exact identity/
 billing collision an earlier draft was rejected for.
 

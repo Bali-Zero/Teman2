@@ -65,7 +65,7 @@ against a corrected, binding spec.
     the runtime credential,
   - no secrets installed, no traffic armed, in this phase.
 
-## 3. What this PR actually ships
+## 3. What this PR actually ships (historical API-first phase; superseded by §30)
 
 One file with zero live callers:
 
@@ -98,8 +98,9 @@ Plus its own offline test/tooling surface:
   see the cicatrix #9 lesson on stale counts embedded in prose.
 - `scripts/bot/build_deid_corpus.py` + its test — a local-only WA-export
   de-identifier (unrelated to and never called by the runtime).
-- `scripts/bot/wa_blind_bench.py` + its test — a human-run blind
-  benchmark harness against the client above.
+- `scripts/bot/wa_blind_bench.py` + its test — originally a human-run blind
+  benchmark harness against the client above. The current default is the
+  subscription-backed facade described in §30.5; the paid client is dormant.
 
 **`.agents/skills/bot/SKILL.md` carries ZERO net change from
 `origin/main` in this PR** — no LIVE STATE entry, no mention of this
@@ -5099,3 +5100,44 @@ implementation-review loop, but not the repository's mandatory final
 Fable/Claude on-disk gate. The PR remains ineligible for merge, deployment,
 live WhatsApp traffic, or cutover until that gate and every operational gate
 above are satisfied.
+
+### 30.11 CI cost ledger and first Fable final-gate pass (2026-08-18)
+
+Fable 5, running from the authenticated MAX subscription in read-only mode,
+independently reviewed source head `0b8705527` against base `993e4e868` and
+returned **SHIP**: no CRITICAL, HIGH, or MEDIUM finding survived. It reran all
+four offline suites and measured 482 passing tests. Its three LOW findings
+were: stale API-first wording in the dormant Responses client and §3, plus a
+degenerate embedded-NUL path that could make `CodexExecClient.available`
+raise `ValueError` despite its fail-closed contract.
+
+GitHub CI then exposed an independent merge blocker that the focused suite and
+that review had not exercised: `scripts/check_llm_cost_tracking.py` classified
+the dormant Responses client as a potential paid caller, but the client did
+not emit `record_llm_call`. The source was thawed rather than whitelisted. It
+now records one fail-open, prompt-free ledger event for every actual HTTP
+attempt, including failed/retried attempts, and records validated token usage
+for a successful response. The event contains only the locally selected model,
+token counts, success/error class, and latency; it never contains prompt,
+response, credential, or remote error content. Three tests pin the success,
+retry, and real-recorder delegation paths.
+
+The three Fable LOWs were also closed while the source was already thawed. The
+dormant client and §3 now identify the subscription facade as the current
+offline benchmark default, and `CodexExecClient.available` catches both
+`OSError` and `ValueError` across binary/auth-path resolution. Two embedded-NUL
+tests pin that fail-closed behavior. A final full-Ruff pass also found and
+closed the benchmark test's missing `# noqa: E402` on its second post-bootstrap
+import.
+
+After those changes, one fresh combined process passed **487 tests**: 73 Codex
+adapter, 166 dormant Responses adapter, and 248 corpus/benchmark tests. Full
+Ruff over all eight Python files, `check_llm_cost_tracking.py`, the R1
+adversarial-review gate, and `git diff --check` also passed. No real WhatsApp
+data, runtime import, provider flag, deployment, or cutover was introduced.
+
+The final Fable verdict for the resulting source head is deliberately recorded
+in PR review metadata rather than self-attested here: any edit that writes a
+verdict into this file necessarily creates a new, unreviewed SHA. The merge,
+deployment, privacy, runtime-host, real-data, and cutover gates remain outside
+this PR and outside this document's authority.
