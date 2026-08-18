@@ -1,0 +1,159 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  Ghostty · Nuzantara FLEET BASE
+#  Shared by Pro / M5 / Mini. Machine-specific settings live in machine.ghostty,
+#  which is loaded AFTER this file and therefore wins.
+#
+#  Canonical source: infra/ghostty/fleet.ghostty  (this repo)
+#  Installed copy:   ~/.config/ghostty/fleet.ghostty
+#  Drift is caught by scripts/lint_home_fork.py (declared in
+#  infra/home-fork/declared-pairs.json) — never edit the installed copy.
+#
+#  Every value below was verified against the reference shipped INSIDE the
+#  installed app (Contents/Resources/ghostty/doc/ghostty.5.md, Ghostty 1.3.1),
+#  not against web docs, which may describe another release.
+#  Reload after edits: cmd+shift+comma. Opacity/blur changes need a full restart.
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ─── Typography ────────────────────────────────────────────────────────────
+# "…Nerd Font Mono" (not plain "…Nerd Font") is deliberate: the Mono variant
+# constrains icon glyphs to a single cell, so powerline/devicon segments in the
+# starship prompt cannot overlap the next column. Both names resolve on Pro and
+# M5; an unresolvable name silently falls back to plain "JetBrains Mono", which
+# has NO Nerd glyphs — so this string is load-bearing, not cosmetic.
+font-family = JetBrainsMono Nerd Font Mono
+font-size = 14
+
+# Ligatures OFF. In a terminal that shows diffs, regexes and shell operators,
+# `!=` `->` `=>` `>=` rendered as single glyphs hide the real character count.
+font-feature = -calt
+font-feature = -liga
+font-feature = -dlig
+
+# Retina stem-darkening. 128 = midpoint of the documented 0-255 range.
+font-thicken = true
+font-thicken-strength = 128
+
+# Alpha blending in linear space WITH the correction step: removes the dark
+# fringing around glyph edges that transparency introduces, while keeping the
+# weight identical to macOS-native blending. Matters because we run at 0.94.
+alpha-blending = linear-corrected
+
+# ─── Colour ────────────────────────────────────────────────────────────────
+# Catppuccin Mocha fleet-wide. Chosen (over Macchiato, which M5 previously ran)
+# because BAT_THEME is already 'Catppuccin Mocha': one palette, whole terminal.
+theme = Catppuccin Mocha
+
+# WCAG contrast floor. 1 = no floor, 21 = max. 1.5 rescues unreadable
+# foreground/background pairs emitted by TUIs without repainting the theme.
+minimum-contrast = 1.5
+
+# ─── Window & glass ────────────────────────────────────────────────────────
+# macos-glass-regular is a real value on macOS >= 26 and needs background-opacity
+# < 1 to have any effect. Measured 2026-08-18: Pro and M5 run 27.0, Mini runs
+# 26.6.1 — all three clear the floor, but the fleet is NOT on one OS version.
+background-opacity = 0.94
+background-blur = macos-glass-regular
+unfocused-split-opacity = 0.82
+
+window-padding-x = 12
+window-padding-y = 10
+window-padding-balance = true
+window-padding-color = background
+window-vsync = true
+window-save-state = always
+window-inherit-working-directory = true
+window-inherit-font-size = true
+tab-inherit-working-directory = true
+split-inherit-working-directory = true
+
+# 'transparent' is Ghostty's own default and lets the window background reach
+# the titlebar. If the glass effect ever renders artefacts against it, the
+# escape hatch is `macos-titlebar-style = hidden` in machine.ghostty — at the
+# cost of losing titlebar window-dragging.
+macos-titlebar-style = transparent
+macos-window-shadow = true
+macos-dock-drop-behavior = new-tab
+
+# ─── Scrollback ────────────────────────────────────────────────────────────
+# UNITS ARE BYTES, PER SURFACE — not lines, and not per application. Ten splits
+# means ten times this number. 32 MB holds a very long Claude Code session while
+# staying well clear of the swap pressure measured on Pro (10.3 GB of 11.3 GB
+# in use). Raise it per-machine, never fleet-wide.
+scrollback-limit = 32000000
+
+# Keep the viewport still while output streams past; only your own keystrokes
+# jump to the bottom. Without this, reading scrollback during a long build is
+# a fight against the terminal.
+scroll-to-bottom = keystroke,no-output
+
+# ─── Cursor & mouse ────────────────────────────────────────────────────────
+cursor-style = block
+cursor-style-blink = false
+mouse-hide-while-typing = true
+
+# ─── Long-running commands ─────────────────────────────────────────────────
+# Deploys, pytest suites, LLM panels and fly builds outlive your attention.
+# 'unfocused' notifies only when you are looking at something else; 45s keeps
+# ordinary commands silent. Requires OSC 133, which the shell integration below
+# provides — so it fires for YOUR interactive commands, not for tool-call shells.
+notify-on-command-finish = unfocused
+notify-on-command-finish-after = 45s
+notify-on-command-finish-action = no-bell,notify
+
+# Silent bell: mark the tab, never make noise.
+bell-features = no-system,no-audio,attention,title
+
+# ─── Shell integration ─────────────────────────────────────────────────────
+# ssh-terminfo is the fix for the daily fleet defect: xterm-ghostty is unknown
+# on both M5 and Mini (`infocmp xterm-ghostty` exits 1 there), so every ssh from
+# a Ghostty window used to land on a terminal the remote could not describe.
+# With this on, the first ssh to a host installs the terminfo via tic and caches
+# the host; ssh-env carries COLORTERM/TERM_PROGRAM and provides the
+# xterm-256color fallback when the install cannot happen.
+shell-integration = detect
+shell-integration-features = cursor,sudo,title,ssh-env,ssh-terminfo,path
+
+# ─── Clipboard & selection ─────────────────────────────────────────────────
+# copy-on-select stays OFF: selecting text to READ it must never overwrite the
+# clipboard you were about to paste. Middle-click paste keeps working regardless.
+copy-on-select = false
+selection-clear-on-copy = true
+clipboard-read = ask
+clipboard-write = allow
+clipboard-paste-protection = true
+clipboard-paste-bracketed-safe = true
+clipboard-trim-trailing-spaces = true
+
+# Treat '/' '.' '-' '_' as part of a word so a double-click grabs a whole path
+# or a whole flag, which is what you actually want to copy in this repo.
+selection-word-chars = " \t'\"│`|:;,()[]{}<>$"
+
+link-url = true
+link-previews = true
+
+# ─── macOS behaviour ───────────────────────────────────────────────────────
+# LEFT option becomes Alt (so alt+f / alt+b / alt+. work in zsh); RIGHT option
+# keeps macOS dead-key composition, which on this ABC layout is how à è é ì ò ù
+# are typed. Do not change this to plain `true` — it would break Italian input.
+macos-option-as-alt = left
+
+# Secure Input blocks other processes from reading keystrokes at password
+# prompts. It also blocks accessibility-API keystroke capture, which is the
+# same vector that took the M5 keyboard on 2026-08-16 — keep it armed.
+macos-auto-secure-input = true
+macos-secure-input-indication = true
+
+# ─── Safety ────────────────────────────────────────────────────────────────
+confirm-close-surface = true
+# Closing a split or tab stays undoable for two minutes instead of five seconds.
+# Deliberately not longer: an un-expired undo keeps the closed session ALIVE, and
+# the reference warns that a large timeout makes "terminal sessions never
+# actually quit". Pro was measured at 10.3 GB of 11.3 GB swap in use — two
+# minutes is enough to catch a mis-click, short enough that things actually die.
+undo-timeout = 2m
+
+# ─── Updates ───────────────────────────────────────────────────────────────
+# Download in the background, install on your say-so. Never silently swap the
+# binary under a running session.
+auto-update = download
+auto-update-channel = stable

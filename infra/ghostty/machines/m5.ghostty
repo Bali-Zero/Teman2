@@ -1,0 +1,25 @@
+# ── Ghostty · machine profile: M5 (balizero@Air-M5, M5 24GB) ───────────────
+# Loaded AFTER fleet.ghostty, so anything here overrides the fleet base.
+# Role: THE interactive workstation. Antonello works here 100% of the time.
+# Deliberately light: no daemons, no cron, no Ollama.
+# NOTE the different home — this machine's user is `balizero`, not `nuzantara`.
+
+working-directory = /Users/balizero/nuzantara
+
+# Slightly larger type than Pro: this is a laptop panel and it is where the
+# actual reading happens. Preserved from the profile that was already here.
+font-size = 15
+
+# Identity: BLUE. M5 is the primary seat.
+cursor-color = #89b4fa
+cursor-text = #1e1e2e
+split-divider-color = #89b4fa
+
+macos-icon = custom-style
+macos-icon-frame = chrome
+macos-icon-ghost-color = #89b4fa
+macos-icon-screen-color = #1e1e2e,#1e2a3a
+
+# 24 GB and a full interactive load — keep scrollback at the fleet default.
+window-width = 124
+window-height = 36
