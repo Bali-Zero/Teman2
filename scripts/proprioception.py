@@ -976,10 +976,10 @@ DEFAULT_REGISTRY: list[dict] = [
         "id": "docs_sync", "type": "wrap",
         "target": ["python3", "{repo}/scripts/docs_sync.py", "--check"],
         "class": "code<->docs",
-        "boundary": "code counts <-> docs numbers (W86)",
+        "boundary": "protected docs pointers <-> canonical generator output",
         "machines": ["all"], "tags": ["docs"], "timeout_sec": 60,
         "severity": "P3", "parse": "exit_code",
-        "fix_hint": "python3 scripts/docs_sync.py  (regen in the SAME commit as the feature)",
+        "fix_hint": "restore the protected pointer with: python3 scripts/docs_sync.py",
     },
     {
         # Reader, not prober: re-emits the last arsenal_probe report (no live LLM

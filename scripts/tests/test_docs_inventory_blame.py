@@ -178,19 +178,11 @@ def test_summary_block_rows_are_never_treated_as_documents(tmp_path):
     assert not any(k in m for k in ("LIVE", "STALE", "ARCHIVED", "Status", "Doc"))
 
 
-def test_parser_reads_every_row_of_the_real_inventory(tmp_path):
-    """Anchor to the real artifact: the row count must equal the summary block's
-    own LIVE+STALE+ARCHIVED total. A parser that silently reads half the table
-    would make the subset test pass by seeing no drift at all."""
-    import re
-
+def test_tracked_inventory_pointer_is_not_parsed_as_derived_rows():
+    """The retired blame judge must not mistake pointer prose for table state."""
     content = (REPO_ROOT / "docs" / "DOCS_INVENTORY.md").read_text(encoding="utf-8")
-    counts = {
-        s: int(n)
-        for s, n in re.findall(r"^\|\s*(LIVE|STALE|ARCHIVED)\s*\|\s*(\d+)", content, re.M)
-    }
-    assert counts, "could not read the summary block — has the table shape changed?"
-    assert len(blame.row_map(content)) == sum(counts.values())
+    assert "docs-derived-state CI artifact" in content
+    assert blame.row_map(content) == {}
 
 
 def test_added_and_removed_rows_both_count_as_drift(tmp_path):

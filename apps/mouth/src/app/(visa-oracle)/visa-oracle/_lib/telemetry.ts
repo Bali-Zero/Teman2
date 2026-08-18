@@ -25,6 +25,22 @@ export interface VisaOracleTelemetry {
   state?: VisaOracleTelemetryState;
   /** SHA-256 only. Raw facts, category, nationality, or payload are forbidden. */
   correlationHash?: string;
+  /**
+   * SHADOW-parity events only (QW-2). Identifies the independent gold-oracle
+   * baseline's PINNED rule-pack (`gold-oracle-baseline.ts`'s
+   * `GOLD_ORACLE_PACK_HASH`) that produced this match/mismatch verdict —
+   * never a live server value, so a rotation of the pinned pack is visible
+   * in the event stream without a schema change. PII-free by construction:
+   * it is a build-time constant, not a value read from applicant data.
+   */
+  packHash?: string;
+  /**
+   * SHADOW-parity events only (QW-2). Build identifier for the frontend
+   * that emitted the verdict, so a parity_mismatch spike can be correlated
+   * to a specific deploy. PII-free (a commit SHA / build id, never a
+   * request-derived value).
+   */
+  frontendVersion?: string;
 }
 
 const SHA256_HEX = /^[a-f0-9]{64}$/;
@@ -37,12 +53,31 @@ export async function nonReversibleHash(value: string): Promise<string> {
   ).join("");
 }
 
-/** Closed telemetry boundary: only event, terminal state, and SHA-256 leave. */
+/**
+ * Build identifier for this frontend deploy. Vercel does not auto-expose its
+ * system `VERCEL_GIT_COMMIT_SHA` to client bundles (only `NEXT_PUBLIC_`-
+ * prefixed vars are inlined) — `NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA` must be
+ * added to the Vercel project's environment variables for this to carry a
+ * real commit; until then it deliberately falls back to `"unknown"` rather
+ * than fabricating a value. The repository is public, so the SHA is not a
+ * secret (same posture as `app/api/health/route.ts`'s server-side `COMMIT`).
+ */
+export function resolveFrontendVersion(
+  value: string | undefined = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA,
+): string {
+  return value && value.trim().length > 0 ? value : "unknown";
+}
+
+/** Closed telemetry boundary: only event, terminal state, SHA-256, and (for
+ * SHADOW-parity events) the pinned pack/build identifiers leave. */
 export function emitVisaOracleTelemetry(input: VisaOracleTelemetry): void {
   const properties: Record<string, string> = {};
   if (input.state) properties.state = input.state;
   if (input.correlationHash && SHA256_HEX.test(input.correlationHash)) {
     properties.correlation_hash = input.correlationHash;
   }
+  if (input.packHash) properties.pack_hash = input.packHash;
+  if (input.frontendVersion)
+    properties.frontend_version = input.frontendVersion;
   trackPiiFreeEvent(input.event, properties);
 }

@@ -1,0 +1,148 @@
+[
+  {
+    "query_id": "E3A-CF1-Q1-EXT-COUNT",
+    "conversation_id_sent": "63832bf1-15eb-4a3a-847a-bd6dc06f606d",
+    "bracket_pointers_found": 10,
+    "resolved_pointers": [
+      {
+        "pointer": "[1]",
+        "source_id": "1d475989-11fb-407f-83e8-a951b399e384",
+        "title": "https://peraturan.go.id/files/permenkumham-no-11-tahun-2024.pdf"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "1d475989-11fb-407f-83e8-a951b399e384",
+        "title": "https://peraturan.go.id/files/permenkumham-no-11-tahun-2024.pdf"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "1d475989-11fb-407f-83e8-a951b399e384",
+        "title": "https://peraturan.go.id/files/permenkumham-no-11-tahun-2024.pdf"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "1d475989-11fb-407f-83e8-a951b399e384",
+        "title": "https://peraturan.go.id/files/permenkumham-no-11-tahun-2024.pdf"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "1d475989-11fb-407f-83e8-a951b399e384",
+        "title": "https://peraturan.go.id/files/permenkumham-no-11-tahun-2024.pdf"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "1d475989-11fb-407f-83e8-a951b399e384",
+        "title": "https://peraturan.go.id/files/permenkumham-no-11-tahun-2024.pdf"
+      },
+      {
+        "pointer": "[7]",
+        "source_id": "1d475989-11fb-407f-83e8-a951b399e384",
+        "title": "https://peraturan.go.id/files/permenkumham-no-11-tahun-2024.pdf"
+      },
+      {
+        "pointer": "[7]",
+        "source_id": "1d475989-11fb-407f-83e8-a951b399e384",
+        "title": "https://peraturan.go.id/files/permenkumham-no-11-tahun-2024.pdf"
+      },
+      {
+        "pointer": "[10]",
+        "source_id": "d76e6c78-7925-47b8-a545-c6ec37b9fb9b",
+        "title": "visto_e28a_investitore_guida_2025.txt"
+      },
+      {
+        "pointer": "[10]",
+        "source_id": "d76e6c78-7925-47b8-a545-c6ec37b9fb9b",
+        "title": "visto_e28a_investitore_guida_2025.txt"
+      }
+    ],
+    "unresolved_pointers": [],
+    "unresolved_structured_source_ids": [],
+    "title_mentions": [],
+    "structured_citations_present": true,
+    "verdict": "VERIFIED",
+    "reason": "structured citations present, every extracted prose pointer resolves, and every structured source_id the payload asserts also resolves"
+  },
+  {
+    "query_id": "E3A-CF1-Q2-D12-EXT-COUNT",
+    "conversation_id_sent": "8daf064d-0a35-43eb-bf07-511718954e55",
+    "bracket_pointers_found": 14,
+    "resolved_pointers": [
+      {
+        "pointer": "[1]",
+        "source_id": "236aaddc-57e8-452a-a66b-a3c03936cb98",
+        "title": "https://peraturan.go.id/files/permenkumham-no-22-tahun-2023.pdf"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "236aaddc-57e8-452a-a66b-a3c03936cb98",
+        "title": "https://peraturan.go.id/files/permenkumham-no-22-tahun-2023.pdf"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "236aaddc-57e8-452a-a66b-a3c03936cb98",
+        "title": "https://peraturan.go.id/files/permenkumham-no-22-tahun-2023.pdf"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "236aaddc-57e8-452a-a66b-a3c03936cb98",
+        "title": "https://peraturan.go.id/files/permenkumham-no-22-tahun-2023.pdf"
+      },
+      {
+        "pointer": "[2]",
+        "source_id": "236aaddc-57e8-452a-a66b-a3c03936cb98",
+        "title": "https://peraturan.go.id/files/permenkumham-no-22-tahun-2023.pdf"
+      },
+      {
+        "pointer": "[2]",
+        "source_id": "236aaddc-57e8-452a-a66b-a3c03936cb98",
+        "title": "https://peraturan.go.id/files/permenkumham-no-22-tahun-2023.pdf"
+      },
+      {
+        "pointer": "[3]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[4]",
+        "source_id": "0c22e859-00d2-4dc9-a3bf-e894dbca98a8",
+        "title": "visto_d2_d12_multiplo_guida_2025.txt"
+      },
+      {
+        "pointer": "[5]",
+        "source_id": "d76e6c78-7925-47b8-a545-c6ec37b9fb9b",
+        "title": "visto_e28a_investitore_guida_2025.txt"
+      },
+      {
+        "pointer": "[5]",
+        "source_id": "d76e6c78-7925-47b8-a545-c6ec37b9fb9b",
+        "title": "visto_e28a_investitore_guida_2025.txt"
+      },
+      {
+        "pointer": "[8]",
+        "source_id": "0c7e2212-7925-452e-b239-86b627646352",
+        "title": "Kepmen M.IP-08.GR.01.01/2025 \u2014 Klasifikasi Visa (110-tipe, include C5A)"
+      },
+      {
+        "pointer": "[3]",
+        "source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+        "title": "nb2_visa_types_final.txt"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "236aaddc-57e8-452a-a66b-a3c03936cb98",
+        "title": "https://peraturan.go.id/files/permenkumham-no-22-tahun-2023.pdf"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "236aaddc-57e8-452a-a66b-a3c03936cb98",
+        "title": "https://peraturan.go.id/files/permenkumham-no-22-tahun-2023.pdf"
+      }
+    ],
+    "unresolved_pointers": [],
+    "unresolved_structured_source_ids": [],
+    "title_mentions": [],
+    "structured_citations_present": true,
+    "verdict": "VERIFIED",
+    "reason": "structured citations present, every extracted prose pointer resolves, and every structured source_id the payload asserts also resolves"
+  }
+]

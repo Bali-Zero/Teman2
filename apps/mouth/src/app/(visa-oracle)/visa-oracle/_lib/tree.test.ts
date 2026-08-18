@@ -74,12 +74,23 @@ describe("tree.ts — interview decision boundary", () => {
     expect(QUESTIONS.family_sponsor_status_code.decisionMapping).toEqual({
       kind: "HUMAN_CONTEXT",
     });
-    expect(QUESTIONS.tourism_duration.decisionMapping.kind).toBe(
-      "HUMAN_CONTEXT",
-    );
-    expect(QUESTIONS.tourism_duration.notSure).toEqual({
+    expect(QUESTIONS.other_purpose.decisionMapping.kind).toBe("HUMAN_CONTEXT");
+    expect(QUESTIONS.other_purpose.notSure).toEqual({
       mode: "human-review",
     });
+  });
+
+  it("does not carry the 2 dead legacy nodes (E4 slice — question-registry-audit.md §2)", () => {
+    // Both were unreachable in the live graph (flow.ts's dispatch never
+    // routed to them from any FIXED_CATEGORY_QUESTIONS or dynamic branch
+    // sequence) and are named verbatim, deleted here, in the audit. Guilt:
+    // re-adding either id must fail this test.
+    expect(
+      Object.prototype.hasOwnProperty.call(QUESTIONS, "tourism_duration"),
+    ).toBe(false);
+    expect(
+      Object.prototype.hasOwnProperty.call(QUESTIONS, "remote_income"),
+    ).toBe(false);
   });
 });
 

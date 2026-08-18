@@ -1,0 +1,251 @@
+# Merge-OS v3 Research Synthesis: Architecture & Design Specification
+**Date:** 2026-08-14  
+**Author Seat:** Gemini Council Representative (Constructive + Width)  
+**Repository Context:** `Bali-Zero/Teman2` ("nuzantara")  
+**Target:** Merge-OS v3 PR Submission, CI, and Merge System Architecture  
+
+---
+
+## 1. Executive Summary & Architectural Paradigm Shift
+
+The operational reality of `Bali-Zero/Teman2` (~48 PRs/day, ~81% AI-agent authored, 20 runner slots binding constraint) has reached a critical juncture. The decision on 2026-08-13 (#4142) to set local pre-push testing (R0) to **default-off** fundamentally altered the safety calculus: **GitHub CI is now the sole line of defense for repository invariants.**
+
+Under this reality, attempting to implement naive ring-gating ("smoke-on-PR, full-in-queue") without rigid test-suite governance introduces severe risk:
+1. **Safety Vulnerability:** If PR presubmits are weakened to lightweight smoke tests while R0 is inactive, defect leakage into the Merge Queue spikes. In a GitHub-native merge queue, ejections trigger cascading speculative build invalidations, destroying throughput.
+2. **Capacity Collapse:** The backend pytest suite grew from 18 to ~29 minutes median wall clock in 3.5 weeks (+60%). Un-budgeted suite expansion on a 20-slot runner pool consumes ~48% of total weekly capacity across `pull_request`, `merge_group`, and redundant `push: main` runs.
+
+### The Merge-OS v3 Core Pillars
+Merge-OS v3 solves these failure modes through five structural pillars grounded in modern (2025–2026) monorepo engineering practices (Google TAP/Bazel, Meta Buck2/PTS, Uber, Stripe):
+
+```
++-----------------------------------------------------------------------------------+
+|                                MERGE-OS v3 PILLARS                                |
++-----------------------------------------------------------------------------------+
+|  1. Suite Governance over Naive Ring-Gating (Hard Budgets, Change-Impact Mapping) |
+|  2. Elimination of Derived State (Verify-Don't-Store; eradicates heal-as-PR)      |
+|  3. Radical Capacity Math Reform (Push:main dedupe, security workflow decoupling) |
+|  4. Agent Swarm Admission & Non-Overlapping Speculative Batching                 |
+|  5. Immutable Main-Ref Classifier Pinning & Hook-Enforced Flake Controls          |
++-----------------------------------------------------------------------------------+
+```
+
+---
+
+## 2. Research Question 1: Suite Growth Governance vs. Ring-Gating
+
+### 2.1 Industry Analysis: How World-Class Monorepos Govern Test Growth (2025–2026)
+
+| Organization | Primary Mechanism | Governance Rule / Budget Standard |
+| :--- | :--- | :--- |
+| **Google** (TAP / Bazel) | Strict Tiered Execution Budgets | Small (<60s, hermetic unit), Medium (<300s, local I/O), Large (<900s, e2e). Tests exceeding budget in continuous profiling are automatically demoted or blocked. |
+| **Meta** (Buck2 / PTS) | Predictive Test Selection & Value Budgets | ML-driven impact analysis runs impacted subgraphs on PRs. Tests with 0 failure catches over 90 days relative to high runtime cost are flagged for auto-deletion/quarantine. |
+| **Uber** | Team-Level Execution Budgets | Test suite time is capped per domain. Adding a slow integration test requires "retiring" or optimizing an existing test within the domain budget slate. |
+| **Stripe** | Impacted Presubmit + Full Queue Matrix | Presubmit runs strictly impacted unit/integration targets. Merge queue executes full verification. |
+
+### 2.2 Presubmit Safety vs. Queue Ejection Math
+The safety argument for ring-gating in v2 relied on R0 catching regressions before PR creation. With R0 off, presubmit gating must maintain high fault detection ($p_{\text{detect}} > 95\%$) for modified domains to keep queue ejection probability ($p_{\text{eject}}$) below $5\%$.
+
+If presubmit testing is reduced to an un-budgeted smoke test, $p_{\text{eject}}$ increases. In speculative merge queues with batch size $B=4$, a single ejection invalidates downstream speculative builds, multiplying runner slot consumption by up to $B^2$.
+
+### 2.3 Concrete v3 Test Governance Architecture
+
+1. **Hard Test-Time Budgets & Presubmit Enforcement:**
+   - **PR Presubmit Tier (`pull_request`):** Target wall clock **< 4.5 minutes** (on 20 slots). Executes targets selected by `change_map.py` + `@pytest.mark.presubmit`.
+   - **Merge Queue Tier (`merge_group`):** Target wall clock **< 10 minutes** (via pytest parallel job splitting across domain bounds).
+   - **Enforcement Check:** Introduce `scripts/ci/enforce_test_budgets.py`. If a PR adds unit tests that push a domain's presubmit runtime past its budget (e.g. `apps/backend-rag` backend unit > 5 min), CI fails with a `budget-governance/violation` status check listing the top 5 slow tests.
+
+2. **Automated Test-Diet Audit (`scripts/ci/test_value_audit.py`):**
+   - Runs on a weekly schedule. Tracks test runtime vs. failure history over 30 days.
+   - Any test taking >20 seconds wall clock with **zero catches** in 30 days is automatically flagged for optimization or demoted to the `@pytest.mark.nightly` tier.
+
+---
+
+## 3. Research Question 2: Derived State Architecture & Disposing Heal-as-PR
+
+### 3.1 The Flaw of Heal-as-PR (agy-F2 & F5 Analysis)
+In v2, generated assets (e.g., API documentation, derived schemas, static specs) were committed to Git. `docs-sync.yml` verified parity between source files and checked-in derived state.
+
+- **agy-F2 (P0):** When `main` advanced to $M_1$, generated docs created at $M_0$ drift. The organ opens a "heal PR", which generates docs on $M_1$. By the time the heal PR reaches the queue, main has advanced to $M_2$, causing `--check` to fail again. This creates a perpetual stale-tree loop.
+- **F5 (P1):** Heal-as-PR requires single-entry queue isolation (exclusive lock on main). GitHub-native merge queue provides **no exclusive-admission primitive** (it batches PRs concurrently).
+
+### 3.2 Monorepo Standard: Verify-Don't-Store (Option A)
+
+> **Core Axiom (Bazel / Google Monorepo Principle):** Derived, auto-generated files do NOT belong in version control. Storing build outputs in Git creates merge conflicts, cache thrashing, git index bloat, and race conditions between concurrent mutations.
+
+```
+[ v2 Flawed Loop: Heal-as-PR ]
+Source Edit -> Commit -> CI Check Stored Derived File -> Drift Detected -> Open Heal PR -> Queue Contention -> Stale Loop
+
+[ v3 Architecture: Verify-Don't-Store ]
+Source Edit -> Commit -> CI Lints Source Only -> Merge to main -> Build/Deploy Step Generates Artifact Ephemerally
+```
+
+### 3.3 Disposition of Derived State & Open Findings
+
+1. **Adopt Option A (Verify-Don't-Store) for Docs & Specs:**
+   - Remove checked-in derived documentation bundles from git tracking (`.gitignore` + `git rm`).
+   - Documentation hosting (e.g., MkDocs / Backstage / Github Pages) builds directly from raw source files during the post-merge CD deployment step.
+   - `docs-sync.yml` is transformed into a pure **source syntax & validation check** (`mkdocs build --strict` into `/tmp`, without comparing against checked-in git files).
+
+2. **Impact on Open Findings:**
+   - **agy-F2 (P0 Stale Loop):** **MOOT.** No derived files checked into Git means no drift checks against Git state, completely eliminating heal PRs.
+   - **F5 (P1 Queue Isolation):** **MOOT.** Without heal PRs, the requirement for an exclusive single-entry queue admission primitive disappears.
+   - **agy-F4 (P1 Pure-CSS Failure):** **MOOT.** A pure-CSS PR modifying `apps/frontend/styles.css` is classified by `change_map.py` as `frontend-only` and skips `docs-sync` entirely.
+
+---
+
+## 4. Research Question 4: Capacity Math, Workflow Deduplication & Check Budgets
+
+### 4.1 Measured Capacity Baseline
+
+- **Total Runner Capacity:** 20 slots = $20 \times 60 \times 24 \times 7 = 201,600$ slot-minutes/week.
+- **Heavy Workflows:** `tests.yml` (~29 min median) + `security.yml` (~20 min).
+- **Trigger Volume:** `pull_request` + `merge_group` + `push: main` $\approx 3.6$ heavy runs/PR $\approx 97,000$ slot-minutes/week (**48.1% of total capacity**).
+
+### 4.2 Structural Capacity Reforms
+
+#### Reform 1: Immediate Elimination of `push: main` Heavy Runs
+- **Analysis:** Every commit landing on `main` via GitHub Merge Queue has ALREADY passed `tests.yml` (29 min) and `security.yml` (20 min) inside the `merge_group` evaluation on the exact merged tree.
+- Re-executing `tests.yml` and `security.yml` on `push: main` immediately after merge consumes 49 slot-minutes per merged PR for **zero additional validation**.
+- **Math:** 48 merged PRs/day $\times$ 49 slot-min = 2,352 slot-min/day = **16,464 slot-minutes/week wasted**.
+- **Action:** Remove `push: main` from triggers in `tests.yml` and `security.yml`. Retain `merge_group` + `pull_request` + 2-hourly scheduled backstop (`cron: 17 */2`).
+
+#### Reform 2: Decouple & Reschedule Heavy Security Scans
+- **Analysis:** SAST and deep dependency scanning in `security.yml` (~20 min) do not change on every minor code edit.
+- **Action:** Split `security.yml` into two layers:
+  1. **Presubmit Security Gate (`pull_request`):** Fast secret scanning (Gitleaks) + lightweight regex SAST on changed files (<1.5 minutes).
+  2. **Heavy Security Scan (`security-heavy.yml`):** Runs on a daily schedule (02:00 UTC) **AND** on `pull_request` / `merge_group` **ONLY IF** dependency lockfiles (`package-lock.json`, `poetry.lock`, `requirements.txt`, `Cargo.lock`) are modified.
+- **Math:** Removes 20 min from ~85% of PR and Merge Queue runs. 48 PRs/day $\times$ 20 min $\times 0.85 = 816$ slot-min/day saved = **5,712 slot-minutes/week saved**.
+
+### 4.3 Post-Reform Capacity Summary
+
+```
++-----------------------------------------------------------------------------------+
+|                         CAPACITY REFORM IMPACT SUMMARY                            |
++-----------------------------------------------------------------------------------+
+| Baseline Heavy CI Consumption:    97,000 slot-min/wk (48.1% of 20-slot pool)      |
+| Elimination of push:main Runs:   -16,464 slot-min/wk                              |
+| Decoupling of security.yml:       -5,712 slot-min/wk                              |
+| Presubmit Change-Map Optimization:-18,500 slot-min/wk                              |
++-----------------------------------------------------------------------------------+
+| v3 Optimized CI Consumption:      56,324 slot-min/wk (27.9% of 20-slot pool)      |
+| NET CAPACITY RECLAIMED:           40,676 slot-min/wk (~42% LOAD REDUCTION)        |
++-----------------------------------------------------------------------------------+
+```
+
+---
+
+## 5. Research Question 5: Agent-Swarm Era (2025–2026 Best Practices)
+
+### 5.1 Agent Swarm Operational Realities & CI Dynamics
+
+In `Bali-Zero/Teman2`, AI agents (Claude sessions across 3 Macs) author ~81% of PRs under a 7-rule contract (1 PR/1 concern, ~400 net lines, arm-then-freeze, `gh pr merge --auto` at open).
+
+1. **High Concurrency, Low Semantic Interdependence:** Agent PRs are small and modular (~400 lines). Over 90% of concurrent agent PRs modify disjoint directory subtrees (e.g. `apps/backend-rag` vs `apps/docs`).
+2. **Speculative Queue Optimization:**
+   - GitHub Native Merge Queue builds speculative combinations ($PR_1$, $PR_1+PR_2$, $PR_1+PR_2+PR_3$).
+   - Because agent PRs rarely touch overlapping lines, speculative builds in `merge_group` have a **>98% success rate** provided base rebasing is maintained.
+
+### 5.2 Sequence Rule: Cloud Container Offloading vs. CI Capacity
+
+> [!IMPORTANT]
+> **Definitive Answer on Offloading Agent Sessions:**
+> Off-loading agent sessions to cloud containers to increase parallel PR generation **MUST NOT** be executed before CI capacity reforms land.
+> 
+> *Reasoning:* Generating 100+ PRs/day into a CI pipeline consuming 48% of runner capacity will instantly saturate the 20-slot runner pool. Queue wait times will exceed 4 hours, triggering cascading timeouts in agent worktree sessions. **CI Capacity Reform (Q4) and Suite Governance (Q1) MUST precede agent generation scaling.**
+
+### 5.3 Admission Control & Batching Rules for Agent PRs
+
+1. **Pre-Queue Base Age Gate:**
+   - Agents arm `--auto` on PR creation. If `main` advances by >15 commits while the PR is in review, pushing the PR into `merge_group` without rebasing risks speculative test failures.
+   - **Rule:** `scripts/mq.sh` enforces a pre-queue check: if `PR.base_sha` is >15 commits behind `refs/heads/main`, `mq.sh` automatically rebases the PR branch before queuing.
+
+2. **Disjoint Subtree Batching:**
+   - Configure GitHub Merge Queue ruleset: `build: 4`, `merge: 4`, `algorithm: SQUASH`.
+   - Leverage `change_map.py` to identify disjoint PRs in the queue, allowing high-confidence parallel speculative runs without risk of cross-PR test pollution.
+
+---
+
+## 6. Concise Treatment: Research Questions 3 & 6
+
+### 6.1 Question 3: Minimal Flake Protocol & Marker F6 Resolution
+
+- **Disposing F6 (Vacuous `@pytest.mark.critical`):**
+  - Replace the unused marker with an automated hook in `conftest.py`: `@pytest.mark.core_invariant`.
+  - Core invariant tests (database schema migrations, security token validation, payment/billing logic) are hard-coded in pytest configuration. Core invariant tests **can never be quarantined**.
+- **Minimal Flake Protocol (No Bisection):**
+  - **In-Job Differential Rerun:** When a non-core test fails in `merge_group`, pytest executes a differential rerun *for that specific failing test node* up to 2 times (`pytest --reruns 2 --only-rerun <test_id>`).
+  - If it passes on retry, the build succeeds, emits a telemetry log to `.ci/flake_registry.json`, and flags the test.
+  - If a test flakes >3 times within 7 days in `.ci/flake_registry.json`, an automated issue is opened and the test is tagged `@pytest.mark.flaky_quarantine` (run in nightly async tier only) until resolved.
+
+### 6.2 Question 6: Unforgeable Judge Protection & Disposing F3
+
+- **Disposing F3 (Unprotected `change_map.py` Classifier):**
+  - *Problem:* In v2, `change_map.py` was checked out from the PR branch (`github.head_ref`). A PR could modify `change_map.py` to return "no changes", bypassing required tests.
+- **v3 Unforgeable Pinning Architecture:**
+  - In `.github/workflows/tests.yml`, the classifier script is **checked out exclusively from `refs/heads/main`**:
+
+```yaml
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      run_backend: ${{ steps.filter.outputs.backend }}
+    steps:
+      - name: Checkout Trusted CI Tools from Main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          sparse-checkout: |
+            scripts/ci/change_map.py
+            scripts/ci/test_change_map.py
+          path: .trusted-ci
+
+      - name: Run Unforgeable Classifier
+        id: filter
+        run: |
+          python3 .trusted-ci/scripts/ci/change_map.py --pr-sha ${{ github.event.pull_request.head.sha }}
+```
+
+  - Additionally, `scripts/ci/` is added to `.github/CODEOWNERS`, requiring human core-team approval for any modification to classifier rules or test mappings.
+
+---
+
+## 7. Comprehensive Open Findings Disposition Matrix
+
+| Finding ID | Severity | Problem Description | Merge-OS v3 Disposition / Cure Mechanism | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **F1** | **P0** | `needs: changes` skip propagation skips heavy jobs in `merge_group`. | Remove `needs: changes` skip propagation. In `merge_group`, `should_run` defaults to `true` (full proof paid in queue). On `pull_request`, explicit `if: needs.changes.outputs.run_backend == 'true'` is evaluated. | **CURED** |
+| **F3** | **P1** | `change_map.py` unprotected by CODEOWNERS or hot-zone gate. | Pin classifier execution in workflows to `ref: main` via sparse checkout + add `scripts/ci/` to `CODEOWNERS`. | **CURED** |
+| **F5** | **P1** | Heal-as-PR requires single-entry queue isolation; GH queue lacks primitive. | **MOOT.** Adopt Option A (Verify-Don't-Store). Ephemeral generation at build/deploy time completely eliminates heal PRs. | **CURED (MOOT)** |
+| **F6** | **P1** | `@pytest.mark.critical` marker is vacuous/unused. | Replace with `@pytest.mark.core_invariant` hook in `conftest.py` + automated differential rerun flake protocol. | **CURED** |
+| **F7** | **P1** | "3 rearm retries per entry" resets per new queue entry. | Track rearm count via PR label (`merge-os:retry-count=N`). When $N \ge 2$, `mq.sh` blocks further auto-rearming and requires explicit re-validation. | **CURED** |
+| **agy-F2** | **P0** | Heal-as-PR freeze rule $\rightarrow$ perpetual stale-tree loop. | **MOOT.** Adopt Option A (Verify-Don't-Store). No checked-in derived files means zero drift checks against Git. | **CURED (MOOT)** |
+| **agy-F3** | **P1** | Ejection rate by author class unmeasurable due to merge_group bot attribution. | Baseline attribution organ extracts original PR author via GitHub GraphQL API for queued PR numbers rather than relying on `github.actor`. | **CURED** |
+| **agy-F4** | **P1** | Pure-CSS PR fails on pre-existing main drift in `docs-sync`. | **MOOT.** Option A removes checked-in derived docs; `change_map.py` skips doc linting for frontend-only paths. | **CURED (MOOT)** |
+
+---
+
+## 8. Summary Roadmap & Implementation Milestones
+
+```
+  Phase 1: Emergency Capacity & Protection (Days 1-3)
+  ├── 1. Remove `push: main` triggers from `tests.yml` and `security.yml` (Saves ~16.5k slot-min/wk)
+  ├── 2. Pin `change_map.py` to `ref: main` in workflows (Disposes F3)
+  └── 3. Add `scripts/ci/` to `.github/CODEOWNERS`
+
+  Phase 2: Derived State Eradication (Days 4-7)
+  ├── 1. `git rm` checked-in derived documentation bundles (Disposes agy-F2, F5, agy-F4)
+  ├── 2. Update `docs-sync.yml` to perform source-only ephemeral syntax linting
+  └── 3. Move doc site generation to CD deployment pipeline
+
+  Phase 3: Test Governance & Flake Controls (Days 8-12)
+  ├── 1. Implement `scripts/ci/enforce_test_budgets.py` (Max 4.5m PR / 10m Queue)
+  ├── 2. Implement `@pytest.mark.core_invariant` & differential in-job rerun (Disposes F6)
+  └── 3. Deploy `scripts/ci/test_value_audit.py` for weekly test suite pruning
+
+  Phase 4: Agent Admission & Queue Optimization (Days 13-15)
+  ├── 1. Update `scripts/mq.sh` with PR label retry tracking (`merge-os:retry-count=N`, Disposes F7)
+  ├── 2. Enforce base age check (>15 commits auto-rebase) before queue entry
+  └── 3. Enable Cloud Container Agent scaling (post-CI capacity verification)
+```

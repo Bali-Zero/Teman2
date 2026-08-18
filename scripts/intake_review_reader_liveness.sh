@@ -19,12 +19,19 @@
 #   port directly: the heartbeat IS the HTTP response.
 #
 # Liveness rule: the reader is JWT-only, so EVERY path returns an HTTP status (401/404) when
-# ALIVE. ANY HTTP response (any 3-digit code) = ALIVE. curl connection-refused / timeout /
-# HTTP code 000 = DEAD. This correctly separates "process up but auth-gated" from "port dead".
+# ALIVE. A 1xx-4xx response = ALIVE (process up and answering correctly — auth-gated counts).
+# curl connection-refused / timeout / HTTP code 000 = DEAD.
+#
+# DOSSIER C-13 (2026-08-15): a bare 5xx used to fold into ALIVE too ("any 3-digit code"), so a
+# reader whose DB pool died and answered 500 on every path was logged "OK: reader ALIVE (http
+# 500)" — this correctly separates "process up but auth-gated" from "port dead", but it did NOT
+# separate "process up and CORRECT" from "process up and BROKEN". A 5xx now takes its own SICK
+# branch below: same active-active guard + cooldown as DEAD, its own dedup key, so it pages
+# instead of hiding — but never storms every 5min on a flapping backend.
 #
 # SEGNALATORE ONLY (superscar #2 antidote: it ALERTS, it does NOT auto-attuate). It does NOT
 # restart/pip-install/kickstart — a sibling PR (fix/intake-reader-venv-deps-autoheal) owns the
-# auto-heal. This guardian's job is to make a dead reader PAGE instead of hiding.
+# auto-heal. This guardian's job is to make a dead OR sick reader PAGE instead of hiding.
 #
 # Pro-only (the reader runs only on Pro — avoid active-active, superscar #10): the plist
 # installs on Pro only, and this script no-ops gracefully if nothing is listening AND the
@@ -67,7 +74,10 @@ log() { echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] $*" >>"$LOG_FILE"; }
 # two twins does not halve the problem; it only moves which one is unguarded
 # (W106b). Both are on the gateway now, and both resolve an ABSOLUTE interpreter.
 send_telegram() {
-  local msg="$1" gateway py
+  # $2 = dedup-key suffix (default "stalled", the pre-existing DEAD-path key —
+  # unchanged behavior for every caller that doesn't pass one). SICK passes
+  # "sick" so its pages dedup independently of DEAD's.
+  local msg="$1" dedup_suffix="${2:-stalled}" gateway py
   gateway="$(dirname "$0")/tg_notify.py"
   [ -f "$gateway" ] || gateway="$HOME/nuzantara/scripts/tg_notify.py"
   if [ ! -f "$gateway" ]; then
@@ -79,7 +89,7 @@ send_telegram() {
   for py in /usr/bin/python3 /opt/homebrew/bin/python3 /usr/local/bin/python3; do
     [ -x "$py" ] || continue
     "$py" "$gateway" --tier p0 --source intake-review-reader-liveness \
-      --dedup-key "intake-review-reader:stalled:$(hostname -s)" -- "$msg" \
+      --dedup-key "intake-review-reader:${dedup_suffix}:$(hostname -s)" -- "$msg" \
       >>"$LOG_FILE" 2>&1 || log "telegram: gateway send failed"
     return 0
   done
@@ -133,19 +143,39 @@ if [ -f "$HOME/Library/LaunchAgents/${READER_LABEL}.plist" ]; then PLIST_PRESENT
 CODE="$(probe_http_code)"
 log "probe: http://${PROBE_HOST}:${PROBE_PORT}/ -> code=${CODE} plist_present=${PLIST_PRESENT}"
 
-# ALIVE iff CODE is a single valid HTTP status (1xx-5xx). 401/404 count — the process
-# is up and answering. Anything else (000 = connection refused/timeout, empty, or a
-# doubled string) = DEAD. We validate the SHAPE, never string-compare to "000".
-if [[ "$CODE" =~ ^[1-5][0-9][0-9]$ ]]; then
+# ALIVE iff CODE is a single valid HTTP status in 1xx-4xx. 401/404 count — the process is
+# up and answering CORRECTLY. A 5xx means the process answered but is UNHEALTHY (e.g. a dead
+# DB pool answering 500 on /) — that is SICK, handled below, never folded into ALIVE (dossier
+# C-13). Anything else (000 = connection refused/timeout, empty, or a doubled string) = DEAD.
+# We validate the SHAPE, never string-compare to "000".
+if [[ "$CODE" =~ ^[1-4][0-9][0-9]$ ]]; then
   log "OK: reader ALIVE (http ${CODE})"
   write_state "ok" "$CODE"
   exit 0
 fi
 
-# DEAD path (code=000 = connection refused / timeout).
+# From here CODE is either 5xx (SICK — process up but unhealthy) or 000/other (DEAD —
+# connection refused/timeout). Both are bad-state alerts and share the SAME active-active
+# guard (superscar #10: no plist here => not this host's job, stay silent) and the SAME
+# anti-storm cooldown (superscar #7 sibling caution) — driven from one place so a future
+# change to one path cannot silently leave the other unthrottled.
+if [[ "$CODE" =~ ^5[0-9][0-9]$ ]]; then
+  STATE_LABEL="SICK"; STATE_LOWER="sick"; STATE_ACTION="sick"; DEDUP_SUFFIX="sick"
+  REASON="http ${CODE}, process answered but unhealthy"
+  EMOJI="🤒"; HEADLINE="intake-review reader SICK"
+  EFFECT="kita.balizero.com/review may be serving errors (5xx) — the reader process itself is up."
+  CHECK_HINT="likely a DB pool / dependency failure — the process is alive but its backend isn't"
+else
+  STATE_LABEL="DEAD"; STATE_LOWER="dead"; STATE_ACTION="alert_dead"; DEDUP_SUFFIX="stalled"
+  REASON="curl code=${CODE} = connection refused/timeout"
+  EMOJI="🚨"; HEADLINE="intake-review reader DOWN"
+  EFFECT="kita.balizero.com/review is DOWN."
+  CHECK_HINT="likely venv dep / import crash under KeepAlive"
+fi
+
 # If the reader is not supposed to run here (no plist) and unless FORCE_CHECK=1, no-op.
 if [ "$PLIST_PRESENT" != "1" ] && [ "${FORCE_CHECK:-0}" != "1" ]; then
-  log "no-op: reader plist absent on this host and port dead — not the reader's host (no alert)"
+  log "no-op: reader plist absent on this host and port ${STATE_LOWER} — not the reader's host (no alert)"
   exit 0
 fi
 
@@ -153,27 +183,27 @@ fi
 LAST_ACTION_TS=$(read_last_action_ts)
 SINCE=$((NOW - LAST_ACTION_TS))
 if [ "$SINCE" -lt "$COOLDOWN_S" ]; then
-  log "WARN: reader DEAD (code=${CODE}) but cooldown active (${SINCE}s < ${COOLDOWN_S}s) — alert suppressed"
+  log "WARN: reader ${STATE_LABEL} (code=${CODE}) but cooldown active (${SINCE}s < ${COOLDOWN_S}s) — alert suppressed"
   exit 1
 fi
 
-log "ALERT: reader DEAD on port ${PROBE_PORT} (curl code=${CODE} = connection refused/timeout)"
+log "ALERT: reader ${STATE_LABEL} on port ${PROBE_PORT} (${REASON})"
 # Plain text, no backticks: the raw curl this replaced passed parse_mode=Markdown,
 # and the gateway sends without a parse_mode — the five backtick spans would have
 # reached Zero as literal characters. Adding parse_mode to the shared gateway
 # instead would re-render every other organ's message, so the text moves, not it.
-ALERT_MSG="🚨 intake-review reader DOWN
-Probe: http://${PROBE_HOST}:${PROBE_PORT}/ → ${CODE} (connection refused/timeout)
-Effect: kita.balizero.com/review is DOWN.
+ALERT_MSG="${EMOJI} ${HEADLINE}
+Probe: http://${PROBE_HOST}:${PROBE_PORT}/ → ${CODE} (${REASON})
+Effect: ${EFFECT}
 Label: ${READER_LABEL}
-Check: tail ~/logs/intake-review-reader.log (likely venv dep / import crash under KeepAlive).
+Check: tail ~/logs/intake-review-reader.log (${CHECK_HINT}).
 Guardian: segnalatore only (auto-heal handled separately)."
 
 if [ "$DRY_RUN" = "1" ]; then
   log "DRY_RUN=1 → would send: ${ALERT_MSG}"
   echo "$ALERT_MSG"
 else
-  send_telegram "$ALERT_MSG"
+  send_telegram "$ALERT_MSG" "$DEDUP_SUFFIX"
 fi
-write_state "alert_dead" "$CODE"
+write_state "$STATE_ACTION" "$CODE"
 exit 1

@@ -1,15 +1,9 @@
 name: Docs Guardian
 
+# Generator-correctness sentinel. It never compares a tracked global inventory.
 on:
   pull_request:
-    paths:
-      - "docs/**"
-      - "scripts/docs_audit.py"
-      - "scripts/docs_guardian.sh"
-      - "scripts/docs_inventory_regen.sh"
-      - "scripts/docs_inventory_blame.py"
-      - "scripts/tests/test_docs_inventory_blame.py"
-      - ".github/workflows/docs-guardian.yml"
+  merge_group:
 
 concurrency:
   group: docs-guardian-${{ github.ref }}
@@ -18,86 +12,64 @@ concurrency:
 jobs:
   inventory-check:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
         with:
-          fetch-depth: 0 # needed for `git log -1 --format=%ct` mtime derivation
+          fetch-depth: 0
           filter: blob:none
 
+      - name: Generator-relevant paths in this diff?
+        id: relevant
+        env:
+          BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha || github.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          CHANGED="$(bash scripts/ci/hotzone_changed_files.sh "$BASE_SHA" "$HEAD_SHA" "$PR_NUMBER")"
+          ENUM_RC=$?
+          if [ "$ENUM_RC" -ne 0 ]; then
+            echo "::error::could not determine changed files (rc=$ENUM_RC)"
+            exit 1
+          fi
+          RELEVANT=false
+          if printf '%s\n' "$CHANGED" | grep -qE \
+            '^scripts/docs_audit\.py$|^scripts/docs_inventory_regen\.sh$|^scripts/tests/test_docs_(audit|inventory_regen|inventory_render_is_clock_free)\.py$|^\.github/workflows/docs-(guardian|inventory-refresh)\.yml$'; then
+            RELEVANT=true
+          fi
+          echo "relevant=$RELEVANT" >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-python@v7
+        if: steps.relevant.outputs.relevant == 'true'
         with:
           python-version: "3.11"
 
-      # The guard's own corpus runs FIRST and in the SAME workflow that enforces
-      # it: a rule about who is to blame is exactly the kind that fails silently
-      # in the permissive direction, and a test no workflow names is decoration.
-      # Cheap (pure functions, <1s) so it costs nothing to put ahead of the two
-      # regenerations below.
-      - name: The blame rule proves guilt AND innocence
+      - name: Prove inventory generator correctness
+        if: steps.relevant.outputs.relevant == 'true'
+        env:
+          DOCS_DERIVED_OUTPUT_DIR: ${{ runner.temp }}/docs-derived-state
         run: |
           set -euo pipefail
           python3 -m pip install --quiet pytest
-          python3 -m pytest scripts/tests/test_docs_inventory_blame.py -q -rs
-
-      # Why this job regenerates the inventory TWICE (once at HEAD, once at the
-      # base) instead of the single `docs_audit.py --check` it used to run:
-      #
-      # `--check` compares the committed table byte-for-byte against a freshly
-      # generated one and fails on ANY difference. `docs/DOCS_INVENTORY.md` is
-      # derived from the WHOLE repository, and main here moves every ~20 minutes,
-      # so that rule asked each PR to make a global artifact exactly correct at
-      # merge time — including drift it did not cause. Both halves of that bit,
-      # measured on 2026-07-26:
-      #
-      #   * #3106 edited two docs/superpowers/** files without regenerating and
-      #     merged (this gate is not a required context). The NEXT docs-touching
-      #     PR, #3149, inherited the red — and the hunt for a cause it never had
-      #     is what uncovered the nine-day death of the refresh organ.
-      #   * The organ's OWN PR #3203 failed on a single line, `**Orphans:** 65`
-      #     vs `64`, because main moved between its 09:13Z regeneration and the
-      #     15:11Z check. It cannot win that race: regeneration plus CI is longer
-      #     than the interval between merges.
-      #
-      # So the gate now asks the question it always meant to ask — "did THIS PR
-      # make it worse?" — by generating at both ends and comparing the drift.
-      # scripts/docs_inventory_blame.py holds the rule and its guilt/innocence
-      # corpus. The base is `pull_request.base.sha`: the tip this PR is measured
-      # against, which is exactly what the merge ref already contains. (Not the
-      # W102 trap — that scar is about enumerating CHANGED FILES, where two-dot
-      # and merge-base disagree; here both ends are whole-tree regenerations.)
-      #
-      # Each side runs the base's OWN copy of scripts/docs_inventory_regen.sh,
-      # deliberately: a PR that changes the classifier SHOULD see its own logic
-      # change show up as drift it must commit.
-      - name: Snapshot the committed inventory at HEAD and at the base
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/inv"
-          cp docs/DOCS_INVENTORY.md "$RUNNER_TEMP/inv/committed_head.md"
-          git worktree add --detach "$RUNNER_TEMP/base" "$BASE_SHA"
-          cp "$RUNNER_TEMP/base/docs/DOCS_INVENTORY.md" "$RUNNER_TEMP/inv/committed_base.md"
-
-      - name: Regenerate at HEAD
-        run: |
-          set -euo pipefail
+          python3 -m pytest \
+            scripts/tests/test_docs_audit.py \
+            scripts/tests/test_docs_inventory_regen.py \
+            scripts/tests/test_docs_inventory_render_is_clock_free.py \
+            -q
           bash scripts/docs_inventory_regen.sh
-          cp docs/DOCS_INVENTORY.md "$RUNNER_TEMP/inv/generated_head.md"
+          test -s "$DOCS_DERIVED_OUTPUT_DIR/docs-sync.json"
+          test -s "$DOCS_DERIVED_OUTPUT_DIR/docs-audit.json"
+          test -s "$DOCS_DERIVED_OUTPUT_DIR/DOCS_INVENTORY.md"
 
-      - name: Regenerate at the base
-        working-directory: ${{ runner.temp }}/base
-        run: |
-          set -euo pipefail
-          bash scripts/docs_inventory_regen.sh
-          cp docs/DOCS_INVENTORY.md "$RUNNER_TEMP/inv/generated_base.md"
+      - uses: actions/upload-artifact@v7
+        if: steps.relevant.outputs.relevant == 'true'
+        with:
+          name: docs-derived-state-${{ github.sha }}
+          path: ${{ runner.temp }}/docs-derived-state
+          retention-days: 14
 
-      - name: Is this PR to blame for the inventory being out of date?
-        run: |
-          set -euo pipefail
-          python3 scripts/docs_inventory_blame.py \
-            --committed-base "$RUNNER_TEMP/inv/committed_base.md" \
-            --generated-base "$RUNNER_TEMP/inv/generated_base.md" \
-            --committed-head "$RUNNER_TEMP/inv/committed_head.md" \
-            --generated-head "$RUNNER_TEMP/inv/generated_head.md"
+      - name: Innocent delta sentinel
+        if: steps.relevant.outputs.relevant != 'true'
+        run: echo "::notice::no inventory-generator surface changed; sentinel success"

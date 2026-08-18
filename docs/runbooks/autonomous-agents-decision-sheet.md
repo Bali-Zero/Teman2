@@ -8,11 +8,11 @@ Evidence gathered read-only; production runtime untouched.
 `GET /api/autonomous-agents/status` (probed live 2026-07-05T09:12Z) reports all three
 Tier-1 agents with `status=idle, last_run=null, next_run=null, total_runs=0`:
 
-| Agent | Manual trigger | Scheduler |
-|---|---|---|
-| Conversation Quality Trainer | `POST /api/autonomous-agents/conversation-trainer/run` (`app/routers/autonomous_agents.py:107`) | none |
-| Client LTV Predictor & Nurturer | `POST /api/autonomous-agents/client-value-predictor/run` (`:192`) | none |
-| Knowledge Graph Builder | `POST /api/autonomous-agents/knowledge-graph-builder/run` (`:285`) | none |
+| Agent                           | Manual trigger                                                                                  | Scheduler |
+| ------------------------------- | ----------------------------------------------------------------------------------------------- | --------- |
+| Conversation Quality Trainer    | `POST /api/autonomous-agents/conversation-trainer/run` (`app/routers/autonomous_agents.py:107`) | none      |
+| Client LTV Predictor & Nurturer | `POST /api/autonomous-agents/client-value-predictor/run` (`:192`)                               | none      |
+| Knowledge Graph Builder         | `POST /api/autonomous-agents/knowledge-graph-builder/run` (`:285`)                              | none      |
 
 They have **never run since being scaffolded** (TAC-1 2026-07-02 found the same; re-proven
 live today). MCP mirrors exist (`run_conversation_trainer`, `run_client_predictor`) — equally
@@ -22,7 +22,7 @@ never invoked.
 
 1. **The ENTIRE AutonomousScheduler never starts.** Its call-site is commented out:
    `app/setup/service_initializer.py` — `# 10. Background services (DISABLED for
-   omnichannel stabilization)` / `# await _init_background_services(...)` (since commit
+omnichannel stabilization)` / `# await _init_background_services(...)` (since commit
    `8dec12830`, 2026-02-11). Twin confirmation in `app/setup/app_factory.py` ("shutdown
    removed — re-add when re-enabled"). Only the Health Monitor was re-extracted (step
    10b); the scheduler — plus Compliance Monitor and the WS Redis listener on the same
@@ -35,9 +35,9 @@ never invoked.
      none with this name);
    - `knowledge_graph_builder`: **never registered** (only the different
      `kg_incremental_builder` exists, behind `ENABLE_KG_INCREMENTAL=false`).
-   The scheduler docstring's "migrated to OpenClaw cron" claim **never materialized**: on
-   Pro, `~/.openclaw/cron/jobs.json` is itself retired (`jobs.json.migrated`) and a
-   recursive grep for trainer/predictor/builder in `~/.openclaw/` returns nothing.
+     The scheduler docstring's "migrated to OpenClaw cron" claim **never materialized**: on
+     Pro, `~/.openclaw/cron/jobs.json` is itself retired (`jobs.json.migrated`) and a
+     recursive grep for trainer/predictor/builder in `~/.openclaw/` returns nothing.
 3. **Execution stats are in-memory.** `app/routers/autonomous_agents.py:29`
    `agent_executions: dict = {}` — no table exists (no `agent_execution*` migration).
    Even a successful manual run shows `total_runs=0` after the next deploy/restart; the
@@ -70,7 +70,8 @@ and delete the scheduler's dead "Disabled Tasks" entries. Zero functional loss v
 
 **Recommendation (non-binding):** retire Conversation Trainer (its design predates the
 current prompt-management reality and needs a git worktree it cannot have on Fly); trial-ARM
-the KG Builder (the KG is live and growing — `108,068` nodes per DOCSYNC — and this agent is
+the KG Builder (the KG is live and growing — query current state rather than a
+committed count — and this agent is
 the only automated feeder); decide LTV Predictor after one supervised manual run.
 
 If ARM is chosen for anything, also make `/status` honest: either persist executions

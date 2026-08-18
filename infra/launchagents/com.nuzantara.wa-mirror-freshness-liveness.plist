@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.nuzantara.wa-mirror-freshness-liveness — W0 read-only freshness
+  guardian for the WhatsApp mirror (2026-08-15).
+
+  Every 900s (15min) tick: scripts/wa_mirror_freshness_liveness.py reads
+  max(created_at) off whatsapp_message_context (SELECT-only, local Postgres
+  nuzantara_dev) and, ONLY during business hours Mon-Sat 08:00-20:00 Asia/
+  Makassar, alerts tier=p0 (dedup key wa-mirror:freshness:stale) once when
+  the newest row is older than WA_FRESHNESS_MAX_AGE_MIN (default 360min).
+  Outside business hours or when fresh: state-file + heartbeat only, no
+  Telegram — a quiet overnight line is Law 6 (local sovereignty:
+  disconnection is natural, not a fault), not a fault to page on.
+
+  superscar #7 (KeepAlive misconfig): this is a StartInterval PROBE, not a
+  daemon — KeepAlive=false, no `nohup ... &`, no nothing-to-restart. Same
+  shape as com.nuzantara.intake-review-reader-liveness.plist and
+  scripts/supervisor_liveness_watchdog.sh.
+
+  Pro-only (superscar #10 active-active split-brain: the WhatsApp mirror and
+  its Postgres table live on Pro only — do NOT install this on Mini/M5).
+
+  Kill switch: WA_MIRROR_FRESHNESS_LIVENESS_ENABLED=false (checked in the
+  wrapper — the disabled path writes its own status=disabled heartbeat and
+  exits before spawning python).
+
+  Install:
+    cp infra/launchagents/com.nuzantara.wa-mirror-freshness-liveness.plist \
+       ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) \
+       ~/Library/LaunchAgents/com.nuzantara.wa-mirror-freshness-liveness.plist
+
+  Plist permissions hardened to 0444 per cicatrix P0-3.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nuzantara.wa-mirror-freshness-liveness</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/nuzantara/scripts/wa_mirror_freshness_liveness_run.sh</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>WA_MIRROR_FRESHNESS_LIVENESS_ENABLED</key>
+        <string>true</string>
+    </dict>
+
+    <key>StartInterval</key>
+    <integer>900</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/wa-mirror-freshness-liveness.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/wa-mirror-freshness-liveness.err.log</string>
+
+    <key>ThrottleInterval</key>
+    <integer>60</integer>
+</dict>
+</plist>

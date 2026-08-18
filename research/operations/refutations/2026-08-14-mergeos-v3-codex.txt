@@ -1,0 +1,890 @@
+# Merge-OS v3 — verdetto RED-TEAM
+
+**Verdetto: BLOCK sull’attivazione di ring-gating e heal-as-PR.** Non perché la merge queue sia un confine di correttezza sbagliato, ma perché il disegno v2 combina tre rischi:
+
+1. il primo full test affidabile arriverebbe troppo tardi, dentro la queue;
+2. il giudice che decide cosa non eseguire è ancora modificabile dal PR giudicato;
+3. derived state strettamente sincronizzato con `main` crea un protocollo senza punto fisso.
+
+La direzione v3 che raccomando è:
+
+- **full proof sempre su `merge_group`;**
+- **PR smoke inizialmente conservativo, senza ring-gating attivo;**
+- **suite-growth governance e trigger dedupe prima della selezione path-aware;**
+- **derived documentation non versionata, salvo eccezioni che siano veri input runtime/client;**
+- **routing judge eseguito da un required workflow immutabile e separato dal PR;**
+- **quarantine come allowlist protetta, non come marker negativo;**
+- **retry budget persistente per `(PR, head SHA)`, non per queue entry.**
+
+Confine dell’evidenza: ho ispezionato sull’Air-M5 il tracking ref locale `origin/main` per i file rilevanti; quei file non differiscono dal checkout locale. Il Pro era irraggiungibile, quindi **non ho riconfermato live** ruleset, bypass actors o impostazioni amministrative dell’organizzazione. Le primitive GitHub descritte sotto sono verificate contro la documentazione ufficiale corrente.
+
+---
+
+## 1. Disposizione dei finding residui
+
+| Finding | Stato v3 | Disposizione corretta |
+|---|---:|---|
+| **F1 — `needs: changes` fa saltare i job su `merge_group`** | **OPEN, P0 all’attivazione** | Il classifier job non deve mai essere skipped. Tutti i required job devono materializzarsi anche su `merge_group`; la selezione va applicata dentro il job, con sentinel esplicito. Su `merge_group`, errore del classifier, output vuoto o kill-switch non esattamente `on` ⇒ **full suite**. |
+| **F3 — judge modificabile dal PR** | **OPEN, da elevare a P0 all’attivazione** | Il judge autoritativo deve vivere in un **required workflow pinned a SHA**, preferibilmente in un policy repository separato. CODEOWNERS e hot-zone sono solo defense-in-depth. |
+| **F5 — heal-as-PR richiede queue isolation inesistente** | **DISSOLVE con il redesign di derived state** | Non usare la queue per sincronizzare documentazione puramente derivata. GitHub ha “solo merge”, ma non espone un queue-wide admission lock/freeze adatto a questo protocollo. |
+| **F6 — `critical` marker usato da zero test** | **OPEN** | Eliminare il marker dalla safety logic. La quarantena deve essere una allowlist protetta con owner, issue, signature ed expiry. Tutto ciò che non è esplicitamente quarantinato resta blocking. |
+| **F7 — tre rearm per queue entry non limitano nulla** | **OPEN** | Contatore durevole per `(repo, PR, head SHA)`, non per entry. Un nuovo queue entry non resetta nulla; solo un nuovo head SHA può aprire un nuovo budget. |
+| **agy-F2 — stale-tree loop del heal PR** | **DISSOLVE se il derived output non è tracked** | Per l’eccezione tracked, verificare l’output contro un **declared input SHA**, non contro il `main` mobile; la freshness diventa SLO asincrono, non merge invariant. |
+| **agy-F3 — author class non misurabile nei merge group** | **DISSOLVED: il punto di osservazione era sbagliato** | Misurare gli episodi dalla timeline del PR, non da `merge_group.actor`. `RemovedFromMergeQueueEvent` espone PR, actor, enqueuer, timestamp e reason. |
+| **agy-F4 — pure CSS bloccato da drift preesistente** | **Caso esatto già curato; difetto generale ancora OPEN** | Il sentinel di rilevanza evita il caso pure-CSS corrente. Rimane il rischio che un cambiamento “relevant” ma non colpevole venga bloccato da drift globale. Il redesign verify-don’t-store lo elimina. |
+
+---
+
+## 2. F1: wiring sicuro della ring-gating
+
+La configurazione corrente conferma la trappola: il job `changes` è limitato a `pull_request` in [`tests.yml`](/Users/balizero/nuzantara/.github/workflows/tests.yml:89). Se i job pesanti ricevessero semplicemente `needs: changes`, su `merge_group` diventerebbero dipendenti da un job skipped.
+
+GitHub considera accettabili per un required check le conclusioni `success`, `skipped` e `neutral`. Inoltre documenta espressamente che un job dipendente può essere skipped quando una dependency non gira o fallisce, a meno di usare `always()`. Quindi un workflow globalmente “green” non dimostra che il full proof sia stato eseguito. [GitHub — troubleshooting required status checks](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/collaborating-on-repositories-with-code-quality-features/troubleshooting-required-status-checks)
+
+### Wiring v3 corretto
+
+Il modello robusto è:
+
+1. **`changes` materializzato per tutti gli eventi.**
+
+   - Su `pull_request`: esegue il classifier trusted.
+   - Su `merge_group`, `push`, `schedule`, manual dispatch: emette direttamente tutti i lane output come `true`.
+   - Se il classifier lancia eccezione, produce output vuoto o non valida lo schema: emette `run_all=true`.
+   - L’errore del classifier viene registrato, ma la fallback operativa è il full run.
+
+2. **Nessun required job deve essere top-level skipped.**
+
+   Ogni required job deve avere `if: always()` rispetto alle dependency e materializzare comunque il proprio check. La decisione riguarda i **passi pesanti interni**, non l’esistenza del job.
+
+3. **L’unica condizione che permette il no-op è una negazione esplicita e completa.**
+
+   Concettualmente:
+
+   ```text
+   SKIP_HEAVY soltanto se:
+     event == pull_request
+     AND MERGEOS_RING_GATING == "on"
+     AND classifier_result == success
+     AND relevant_output == "false"
+   ```
+
+   In ogni altro caso:
+
+   ```text
+   RUN_HEAVY = true
+   ```
+
+   Questo rende fail-open-to-full:
+
+   - flag unset;
+   - typo come `ON`, `true`, `enabled`;
+   - classifier failure;
+   - output mancante;
+   - nuovo tipo di evento;
+   - `merge_group`.
+
+4. **Il no-op deve essere un sentinel osservabile.**
+
+   Il check individuale deve concludere `success` con annotazione del tipo:
+
+   ```text
+   intentional_noop=true
+   reason=irrelevant_path
+   classifier_policy_sha=<sha>
+   ```
+
+   Non deve apparire semplicemente `skipped`, perché `skipped` è indistinguibile dall’incidente di wiring che F1 denuncia.
+
+5. **Il guilt corpus deve testare il workflow, non soltanto Python.**
+
+   L’attuale classifier include sé stesso e il proprio corpus fra i path che forzano `run_all`, come si vede in [`change_map.py`](/Users/balizero/nuzantara/scripts/ci/change_map.py:54), ma questo non prova la forma del grafo Actions. Il corpus v3 deve fare parsing del workflow YAML e verificare almeno:
+
+   - `changes` esiste su `pull_request` e `merge_group`;
+   - ogni required job dichiara correttamente la dependency;
+   - ogni required job usa la forma `always()` necessaria;
+   - `merge_group` produce full run;
+   - classifier failure produce full run;
+   - output vuoto produce full run;
+   - kill-switch unset o errato produce full run;
+   - la rimozione di una dependency o del sentinel fallisce il policy check.
+
+**Conclusione F1:** non basta correggere l’espressione `if`. Va eliminata la possibilità che il check richiesto scompaia o venga accettato come skipped.
+
+---
+
+## 3. F3 e Q6: come proteggere davvero il giudice
+
+Il problema non è soltanto ownership. È una questione di **root of trust**.
+
+Un giudice eseguito dal PR ref può essere indebolito dallo stesso PR. Aggiungere il file a CODEOWNERS rende la modifica più visibile, ma non cambia quale codice viene eseguito. L’attuale [`CODEOWNERS`](/Users/balizero/nuzantara/.github/CODEOWNERS) protegge i workflow e diversi verifier, ma non `scripts/ci/change_map.py` né il relativo corpus. L’attuale hot-zone gate possiede già il pattern giusto — checkout e self-test dal base SHA — in [`hot-zone-pr-gate.yml`](/Users/balizero/nuzantara/.github/workflows/hot-zone-pr-gate.yml:68), ma la sua hot-zone non include i file del change map.
+
+### Meccanismo v3 raccomandato: required workflow pinned
+
+GitHub Enterprise rulesets supporta la regola **“Require workflows to pass before merging”**. Il ruleset seleziona repository sorgente, workflow e ref; la REST Rules API documenta anche i campi `repository_id`, `path`, `ref` e `sha`. Questo consente di fissare il workflow autoritativo a un commit immutabile. [GitHub — rules available for rulesets](https://docs.github.com/en/enterprise-cloud@latest/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets), [GitHub — repository rules REST API](https://docs.github.com/en/rest/repos/rules?apiVersion=2026-03-10)
+
+Architettura:
+
+```text
+Bali-Zero/mergeos-policy @ immutable SHA
+        │
+        ├── required workflow definition
+        ├── change-map judge
+        ├── corpus
+        └── workflow-shape validator
+                 │
+                 ▼
+        target PR contents treated only as data
+                 │
+                 ├── changed-file list
+                 ├── checked-out code under test
+                 └── test results
+```
+
+Il workflow trusted può checkoutare il target commit per eseguire i test, ma **non deve importare o eseguire il `change_map.py` proveniente dal target PR**. Judge e corpus devono arrivare dal policy SHA fissato nel ruleset.
+
+Una modifica del policy engine richiederebbe:
+
+1. PR separato nel policy repository;
+2. review indipendente;
+3. test del nuovo policy SHA;
+4. cambio amministrativo del SHA nel ruleset;
+5. rollout iniziale in `Evaluate`;
+6. promozione ad `Active`.
+
+Questa separazione impedisce a un singolo PR applicativo di cambiare contemporaneamente policy e verdetto.
+
+### Perché i meccanismi più deboli non bastano
+
+#### CODEOWNERS
+
+GitHub usa il `CODEOWNERS` della base branch e può richiedere la review di un code owner. È utile e va aggiunto, insieme alla protezione del file `CODEOWNERS` stesso. [GitHub — About code owners](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners)
+
+Ma CODEOWNERS:
+
+- protegge il processo di approvazione;
+- non fissa il codice eseguito;
+- non impedisce a un reviewer autorizzato di approvare accidentalmente un indebolimento;
+- non protegge una chiamata indiretta a un altro helper PR-controlled.
+
+Quindi è defense-in-depth, non root of trust.
+
+#### Hot-zone gate base-pinned
+
+È un buon controllo intermedio. V3 dovrebbe includere nella hot zone:
+
+- `scripts/ci/change_map.py`;
+- `scripts/ci/test_change_map.py`;
+- `tests.yml`;
+- qualsiasi file che traduca output del classifier in job selection;
+- ogni manifest di critical/quarantine;
+- il policy/workflow-shape corpus.
+
+Il verifier deve essere eseguito dalla base branch o da un SHA fissato. Questo impedisce l’auto-approvazione del singolo PR, ma resta meno forte di un policy repository separato.
+
+#### `pull_request_target`
+
+`pull_request_target` gira nel contesto della base branch, ma GitHub avverte di non checkoutare ed eseguire codice non trusted in quel contesto, soprattutto quando sono presenti token, secrets o cache scrivibili. Può essere usato per una classificazione metadata-only con permessi minimi, ma non per build/test del PR. [GitHub — events that trigger workflows](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows)
+
+Se usato:
+
+- `contents: read`;
+- nessun secret;
+- nessun write permission;
+- nessuna cache condivisa scrivibile;
+- nessuna esecuzione di script dal PR;
+- changed paths letti tramite API o diff trattato come dati.
+
+Non è la mia prima scelta se required workflows è disponibile.
+
+#### Expected source del status check
+
+Fissare l’expected source a GitHub Actions protegge l’identità dell’app che crea il check. Non protegge il contenuto del workflow. Un workflow indebolito dal PR può comunque produrre un check proveniente dalla stessa GitHub App.
+
+### ASSUNZIONE Q6
+
+**ASSUNZIONE:** il piano GitHub Enterprise e le policy dell’organizzazione Bali-Zero consentono i required workflows a livello di organization ruleset. La capability esiste nella documentazione ufficiale, ma non ho ispezionato live l’entitlement o le impostazioni dell’organizzazione.
+
+Se non fosse disponibile, la ring-gating deve restare disattivata finché non esiste almeno il pacchetto:
+
+- CODEOWNERS;
+- required code-owner review;
+- dismiss stale approvals;
+- hot-zone base-pinned;
+- required routing-integrity check;
+- classifier fail-open-to-full;
+- workflow-shape corpus.
+
+---
+
+## 4. Q2: derived state — heal-as-PR è il rimedio sbagliato
+
+Per il tipo di dati generati da `docs_sync`, la soluzione preferibile è **verify-don’t-store**.
+
+[`docs_sync.py`](/Users/balizero/nuzantara/scripts/docs_sync.py:42) aggiorna file come `README.md`, `INDEX.md`, `docs/AI_ONBOARDING.md` e `docs/runbooks/README.md` usando conteggi e inventari del repository. Questi dati cambiano con quasi ogni crescita del monorepo e non sembrano essere input eseguibili.
+
+### Ordine delle alternative
+
+#### 1. Verify-don’t-store — raccomandato
+
+- Il repository conserva generator, schema e test.
+- CI verifica che il generator sia deterministico e funzionante.
+- Il report viene prodotto come Actions artifact, pagina dashboard o output del docs build.
+- I README contengono testo stabile e un link al report corrente, non numeri copiati.
+- Un cambiamento applicativo non viene bloccato perché un conteggio globale tracked è vecchio.
+
+Bazel formalizza la distinzione: i source file sono versionati; i generated/derived/output file vengono prodotti dai source e non sono normalmente versionati. [Bazel — build concepts](https://bazel.build/concepts/build-ref)
+
+Questa scelta dissolve simultaneamente:
+
+- **F5:** non serve isolare la queue per inserire il heal PR;
+- **agy-F2:** non esiste un heal PR che rincorre un `main` mobile;
+- **agy-F4 generale:** un PR relevant non viene più accusato per drift derivato preesistente.
+
+#### 2. Generate at read/deploy time — raccomandato dove esiste un consumer
+
+Per il portale docs o un sito:
+
+- generare l’inventory dal commit esatto durante build/deploy;
+- includere `source_commit_sha`, generator version e timestamp;
+- pubblicare l’output come artifact del commit;
+- non riconciliare byte tracked nel repository.
+
+Per un README GitHub, che non ha una build server-side controllata dal repository, la soluzione più sana è rimuovere i numeri volatili o usare un badge/link a un report esterno.
+
+#### 3. Tracked derived output con provenance — solo vera eccezione
+
+Esistono eccezioni legittime. Il progetto Go osserva che il codice generato necessario ai client può dover essere checked-in perché i client non dispongono del generator. [Go — Generating code](https://go.dev/blog/generate)
+
+Meta usa un modello analogo ma rigoroso con DotSlash: descriptor generati e committati dall’automazione fanno riferimento ad artifact remoti tramite digest e provenance. In quel caso il file tracked è un input di distribuzione, non un contatore editoriale. [Meta Engineering — DotSlash](https://engineering.fb.com/2024/02/06/developer-tools/dotslash-simplified-executable-deployment/)
+
+Se un derived file deve davvero restare tracked:
+
+- il generated block è delimitato e non modificabile manualmente;
+- il commit dell’organ dichiara `input_source_sha`;
+- dichiara generator SHA e output digest;
+- il verifier rigenera dall’**esatto `input_source_sha`**, non dal `main` corrente;
+- la freshness rispetto a `main` è monitorata come SLO asincrono;
+- un successivo cambiamento di `main` non invalida retroattivamente il PR già generato.
+
+Questo rimuove il loop perché la funzione diventa:
+
+```text
+output = generator(source_at_declared_sha)
+```
+
+e non:
+
+```text
+output = generator(latest_main_at_validation_time)
+```
+
+Il costo è che il file può risultare già non-current subito dopo il merge. Per conteggi informativi è complessità senza valore: meglio non versionarli.
+
+### Perché “solo merge” non salva heal-as-PR
+
+GitHub possiede alcune primitive vicine ma non equivalenti:
+
+- `MergeQueueEntry.solo` è documentato nel GraphQL schema;
+- Enterprise custom roles include il permesso “Request a solo merge”;
+- il mutation input documentato per `enqueuePullRequest` espone PR ID, expected head OID e `jump`, ma non un parametro `solo`. [GitHub — GraphQL Pulls schema](https://docs.github.com/en/graphql/reference/pulls), [GitHub — custom repository roles](https://docs.github.com/en/enterprise-cloud@latest/organizations/managing-user-access-to-your-organizations-repositories/managing-repository-roles/about-custom-repository-roles)
+
+Anche concedendo una richiesta solo tramite UI o ruolo, **solo merge non significa exclusive admission**:
+
+- non congela `main` durante la generazione;
+- non impedisce l’ingresso di altri PR;
+- non offre al generator una lease queue-wide;
+- non rende stabile il base commit fra generazione, enqueue e validation.
+
+Quindi F5 va precisato così: GitHub ha una nozione di entry da fondere da sola, ma non la queue-wide isolation/freeze necessaria al protocollo heal-as-PR.
+
+### ASSUNZIONE Q2
+
+**ASSUNZIONE:** i valori generati nei quattro documenti sono informativi e non vengono consumati come input runtime, deploy o contract esterno. Il codice del generator lo suggerisce, ma prima di rimuoverli serve un dependency search sui consumer.
+
+---
+
+## 5. Attacco alla dottrina ratificata
+
+### 5.1 “Queue = only serializer of global invariants”
+
+**Parzialmente vero, formulato troppo assolutamente.**
+
+La merge queue serializza bene invarianti che possono essere provati su un synthetic commit composto da:
+
+```text
+latest base + queued changes
+```
+
+GitHub descrive esattamente questo comportamento: crea un merge group e richiede i check sul gruppo prima dell’integrazione. [GitHub — Managing a merge queue](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue)
+
+Non può però serializzare da sola:
+
+- stato esterno mutabile;
+- deploy environment;
+- SaaS/API dependencies;
+- derived docs rigenerati dopo l’osservazione di `main`;
+- risorse cross-repository;
+- lease operative;
+- artifact costruiti su un source SHA diverso;
+- organi schedulati che osservano un mondo cambiato dopo il merge.
+
+Per questi servono idempotenza, provenance e compare-and-swap sullo stato reale. La queue resta il solo writer gate di `main`, non il solo serializer di ogni invariante del sistema.
+
+### 5.2 “Full proof paid once: presubmit slice, queue full proof, post-merge healing”
+
+**Corretto come safety model; difettoso come throughput model con R0 spento.**
+
+Con R0 off, il primo full proof affidabile dentro la queue continua a proteggere `main`, purché:
+
+- tutti i required check girino davvero su `merge_group`;
+- non esistano bypass actors;
+- non esistano direct pushes;
+- nessun required context accetti un no-op accidentale.
+
+Ma la queue diventa il primo luogo in cui si scopre un comune code-red. Conseguenze:
+
+- il PR occupa slot costosi prima di fallire;
+- gruppi sintetici devono essere riformati;
+- PR non colpevoli possono subire ritardo e rebuild;
+- il queue transit p95 cresce;
+- la diagnostica arriva più tardi all’agente autore.
+
+Non è corretto dire che un singolo PR rosso “espelle tutto”: GitHub può rimuovere il PR problematico e riformare gruppi. Ma il costo di invalidazione e ricostruzione è reale.
+
+GitHub stessa descrive il proprio obiettivo di merge-queue scalability come impedire che PR problematici danneggino tutti gli altri, usando rollout graduale e osservabilità; non presenta la queue come sostituto di ogni feedback presubmit. [GitHub Engineering — How GitHub uses merge queue](https://github.blog/engineering/engineering-principles/how-github-uses-merge-queue-to-ship-hundreds-of-changes-every-day/)
+
+**Verdetto:** queue-full-proof è ancora sound per correctness. Non è sufficiente per admission economics. Con R0 off serve un PR smoke ad alta resa prima della queue.
+
+### 5.3 “Derived state through the queue, never past it”
+
+Valido per source state o generated artifacts che siano veri input di sistema. È controproducente per:
+
+- contatori;
+- inventari;
+- indici puramente informativi;
+- dashboard snapshots;
+- documentazione derivabile economicamente.
+
+Versionare questi output trasforma la queue in una distributed lock per cache editoriali. La cura corretta è eliminare la cache tracked.
+
+### 5.4 “Full proof paid once”
+
+La dottrina non descrive il sistema attuale: `tests.yml` e `security.yml` pagano ancora PR, `merge_group` e `push: main`, con schedule aggiuntive. Prima di introdurre selezione rischiosa, va rimossa la prova duplicata sul commit appena integrato.
+
+### 5.5 “No commercial queue sotto 150 PR/day”
+
+Non vedo evidenza per riaprire questa decisione. GitHub-native possiede:
+
+- build concurrency;
+- grouping;
+- merge methods;
+- timeout;
+- enqueue/dequeue events;
+- merge-group checks.
+
+Il problema corrente è nella governance di workload e suite, non nell’assenza di un queue vendor.
+
+### 5.6 “Matrix sharding rejected perché gli slot sono il vincolo”
+
+La misurazione `xdist = 1.16×` e pool da 20 slot rende il rifiuto ragionevole. Ma non va trasformato in un divieto generale di partizionamento:
+
+- **matrix sharding parallelo** aumenta la pressione sugli slot ed è giustamente respinto;
+- **suite partitioning seriale per ownership/cost accounting** può invece essere utile senza aumentare concurrency.
+
+Il valore non è necessariamente velocizzare il wall time; è rendere visibili budget, ownership e regressioni per lane.
+
+---
+
+## 6. F6 e Q3: regime flake minimo che vale la pena costruire
+
+Con circa 50 PR al giorno, il minimo utile non è un sistema di bisection sofisticato. È una classificazione conservativa dentro lo stesso run.
+
+### Regime minimo
+
+1. Eseguire la suite normalmente.
+2. Per ogni failing node ID, ripetere **esattamente quel test** una volta sullo stesso head SHA e nello stesso environment.
+3. Registrare:
+
+   ```text
+   test node ID
+   first failure fingerprint
+   retry result
+   runner image
+   dependency lock digest
+   head SHA
+   historical failure rate
+   quarantine entry, se esiste
+   ```
+
+4. Verdetto:
+
+   - fail → fail: hard failure;
+   - fail → pass, test non quarantinato: flake candidate, ma **blocking**;
+   - fail → pass, test in quarantine valida: nonblocking con annotazione;
+   - quarantine scaduta o malformata: blocking;
+   - test nella critical floor: sempre blocking.
+
+La differential analysis iniziale dovrebbe essere diagnostica, non un’autorizzazione automatica a passare. Eseguire una full baseline di `main` per ogni PR raddoppierebbe il costo. Si può confrontare con l’ultimo main green compatibile per classificare, ma non per trasformare automaticamente un nuovo rosso in verde.
+
+### Quarantine manifest, non marker negativo
+
+Il marker `critical` è registrato in [`pytest.ini`](/Users/balizero/nuzantara/apps/backend-rag/pytest.ini:72), ma il corpus corrente non contiene test marcati. Usarlo come “esclusione dalla quarantena” crea una falsa barriera.
+
+La policy corretta è default-deny:
+
+```yaml
+quarantine:
+  - node_id: ...
+    owner: ...
+    issue: ...
+    failure_fingerprint: ...
+    first_seen: ...
+    expires_at: ...
+    sample_size: ...
+    observed_flake_rate: ...
+```
+
+Ogni entry deve avere:
+
+- owner;
+- issue;
+- failure signature;
+- evidence window;
+- expiry breve;
+- motivo;
+- history URL;
+- eventuale replacement test.
+
+**PROPOSTA:** expiry massima 14 giorni, con rinnovo che richiede nuova evidenza e ownership approval.
+
+Il manifest deve essere:
+
+- protetto da CODEOWNERS;
+- incluso nella hot zone;
+- verificato da policy pinned;
+- impossibile da modificare nello stesso PR che beneficia della quarantena senza review separata.
+
+La critical floor dovrebbe essere un manifest positivo protetto, non la complementare di un marker poco usato. Inizialmente includerei almeno:
+
+- auth e authorization;
+- migration/schema integrity;
+- startup/import chain;
+- pricing/billing;
+- security boundaries;
+- RAG abstention/confidence;
+- embedding model/dimensions;
+- queue/policy verifiers;
+- deploy health/rollback.
+
+I marker pytest possono essere aggiunti per reporting e selezione locale, ma non devono essere l’unica fonte di policy. Se mantenuti, il policy check deve imporre:
+
+- collected critical count > 0;
+- nessuna riduzione non approvata;
+- ogni node ID dichiarato esiste;
+- nessun quarantined test appartiene alla critical floor.
+
+Bazel governa i test tramite classi di size/timeout e raccomanda timeout quanto più stretti possibile senza introdurre flakiness. [Bazel — Test Encyclopedia](https://bazel.build/reference/test-encyclopedia) Il progetto Flutter documenta un regime più aggressivo: ownership, osservazione statistica, issue ad alta priorità per flake rilevanti, una serie di run verdi prima del ripristino e rimozione dei test che non possono essere stabilizzati. [Flutter — Reducing Test Flakiness](https://chromium.googlesource.com/external/github.com/flutter/flutter/%2B/master/docs/infra/Reducing-Test-Flakiness.md)
+
+**Non raccomando auto-deletion basata soltanto su lentezza o flake rate.** La cancellazione deve richiedere prova di ridondanza, coverage sostitutiva o impossibilità documentata di stabilizzazione.
+
+---
+
+## 7. F7: retry budget che limiti davvero
+
+L’attuale `requeue` disarma e ri-arma il PR in [`mq.sh`](/Users/balizero/nuzantara/scripts/mq.sh:294). Ogni rearm produce una nuova queue entry, quindi un contatore associato all’entry non limita il numero di cicli.
+
+### Identità corretta
+
+```text
+retry_key = repository + PR number + head SHA
+```
+
+Non:
+
+```text
+retry_key = queue entry ID
+```
+
+### Policy proposta
+
+- **CODE failure:** zero auto-requeue.
+- **INFRA failure:** massimo tre auto-requeue sullo stesso head SHA in una finestra mobile.
+- **CONFLICT / HEAD_MOVED:** nessun requeue automatico finché il nuovo head non ha completato il PR smoke.
+- **MANUAL dequeue:** mai auto-rearmare senza un’esplicita policy.
+- **UNKNOWN:** fail closed; non consumare indefinitamente capacity.
+- Nuovo head SHA: nuovo budget soltanto dopo un nuovo presubmit.
+- Superato il budget:
+  - dequeue;
+  - check terminale `mergeos/retry-exhausted`;
+  - reason e history visibili;
+  - intervento manuale o nuovo commit.
+
+**PROPOSTA:** tre retry INFRA per head SHA in 24 ore. La soglia va poi adattata ai dati della baseline.
+
+Serve uno store durevole con compare-and-increment atomico. GitHub Actions non documenta una primitive atomica cross-run per questo contatore. Artifacts, comments e workflow variables possono conservare indizi, ma non sono un lock affidabile sotto concorrenza. Se non esiste uno store organico sicuro, la scelta conservativa è **nessun autonomous rearm**.
+
+Il retry del singolo flaky test, invece, deve avvenire dentro la medesima workflow attempt: non consuma un nuovo queue entry e non resetta budget.
+
+---
+
+## 8. agy-F3: misurare ejections per author class
+
+Il merge-group actor è il punto sbagliato: rappresenta il bot o il gruppo, non l’autore dei singoli PR.
+
+GitHub espone eventi `pull_request` per `enqueued` e `dequeued`. Nella GraphQL timeline, `RemovedFromMergeQueueEvent` include:
+
+- `pullRequest`;
+- `actor`;
+- `enqueuer`;
+- `beforeCommit`;
+- `createdAt`;
+- `reason`.
+
+[GitHub — Actions events](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows), [GitHub — GraphQL Pulls schema](https://docs.github.com/en/graphql/reference/pulls)
+
+### Telemetria corretta
+
+Registrare un queue episode:
+
+```text
+(PR number, head SHA, enqueue timestamp)
+```
+
+Al `dequeued`:
+
+1. interrogare la timeline del PR;
+2. leggere l’ultimo `RemovedFromMergeQueueEvent` coerente con quell’episodio;
+3. attribuire author class da `pullRequest.author`, non da `github.actor`;
+4. conservare il raw GitHub reason;
+5. applicare una classificazione locale:
+
+   - `CODE`;
+   - `INFRA`;
+   - `CONFLICT`;
+   - `HEAD_MOVED`;
+   - `MANUAL`;
+   - `UNKNOWN`.
+
+Le re-entry sono episodi distinti, ma mantengono lo stesso autore e head SHA finché il PR non cambia.
+
+Il `merge_group` resta adatto per:
+
+- timing di gruppo;
+- billed minutes;
+- group size;
+- aggregate queue throughput.
+
+Non per author attribution. L’attuale formula di even-split può restare per il **cost attribution**, purché sia dichiarata come stima; non va riutilizzata per la causalità delle ejections.
+
+---
+
+## 9. agy-F4: cosa è già curato e cosa no
+
+Il caso letterale “pure CSS esegue docs-sync e muore su drift preesistente” risulta già curato. [`docs-sync.yml`](/Users/balizero/nuzantara/.github/workflows/docs-sync.yml:63) esegue relevance detection a livello job/step e produce un sentinel success per i cambiamenti non rilevanti.
+
+Rimane però una versione più generale:
+
+```text
+PR cambia un path incluso nella relevance regex
++
+main possiede drift derivato preesistente e non causato dal PR
+=
+PR viene espulso
+```
+
+Questo è guilt by proximity, non guilt by delta.
+
+Se per qualche tempo i generated file restano tracked, il gate dovrebbe bloccare soltanto:
+
+1. una modifica manuale al generated block;
+2. una modifica al generator/corpus che rende il generator invalido;
+3. un generated-output PR la cui provenance non corrisponde al declared input SHA.
+
+Non dovrebbe bloccare un normale PR perché `generator(current PR tree) != tracked global output` quando la divergenza era già presente nella base.
+
+---
+
+## 10. Q1 e Q4: suite growth è il lever dominante prima della ring-gating
+
+La suite è cresciuta di circa il 60% in cinque settimane senza budget. Con R0 spento, questo è più pericoloso di prima: CI è sia safety boundary sia capacity bottleneck.
+
+Ring-gating riduce lavoro saltando prove. Suite governance riduce lavoro eliminando costo inutile e impedendo nuova crescita. Il secondo intervento non indebolisce il confine di correttezza; quindi ha un ritorno risk-adjusted superiore.
+
+### Budget da introdurre
+
+#### 1. Hard timeout per singolo job
+
+Protegge il run corrente da runaway. Deve essere basato su un multiplo conservativo del p95 storico, non sul valore mediano.
+
+#### 2. Rolling p95 SLO
+
+Per ogni required lane:
+
+- wall time p50/p95;
+- billed slot-minutes;
+- test count;
+- top-N test per durata;
+- delta settimanale;
+- owner;
+- queue transit impact.
+
+Il p95 è un segnale storico: non può “salvare” capacity già spesa nel run che lo misura.
+
+#### 3. Regression budget per PR che modifica test/infrastruttura
+
+Un required governance check può confrontare:
+
+```text
+estimated new suite cost
+versus
+frozen accepted baseline
+```
+
+e bloccare soltanto la regressione introdotta dal PR. Non deve imporre retroattivamente un limite assoluto a tutti i PR quando `main` è già sopra soglia.
+
+Esempi:
+
+- nuovo test aggiunge oltre una soglia di secondi stimati;
+- timeout di un test viene aumentato;
+- un marker slow viene rimosso;
+- fixture session-scoped diventa function-scoped;
+- numero di parametrizzazioni esplode;
+- test duplicato copre comportamento già provato.
+
+**PROPOSTA:** budget hard solo sui PR che toccano test runner, fixture o corpus; sugli altri PR il budget produce telemetria, non blocco.
+
+#### 4. Ownership SLA
+
+Ogni top slow test deve avere:
+
+- owner;
+- motivo del costo;
+- categoria;
+- obiettivo di riduzione;
+- issue;
+- scadenza.
+
+Auto-deletion indiscriminata è troppo rischiosa. L’automazione può aprire issue o preparare candidature di consolidamento, non cancellare autonomamente safety evidence.
+
+### Trigger dedupe: ordine a rischio minimo
+
+1. Completare i sette record consecutivi della baseline.
+2. Verificare sul ruleset:
+   - nessun bypass actor operativo;
+   - nessun direct push;
+   - ogni merge passa da `merge_group`;
+   - i 26 context si materializzano realmente.
+3. **Rimuovere prima `push: main` da `tests.yml`**, perché esiste già il full schedule ogni due ore.
+4. Osservare almeno un ciclo operativo completo e una scheduled run.
+5. Per `security.yml`:
+   - aggiungere schedule giornaliero;
+   - attendere almeno una scheduled run green;
+   - poi rimuovere `push: main`.
+6. Mantenere manual dispatch e schedule come backstop.
+
+Questo ordine accetta un breve periodo di duplicazione aggiuntiva su security pur di evitare una finestra senza backstop confermato.
+
+### Required check con limite `N min p95`
+
+Sì come **governance check storico**, no come semplice timeout travestito da p95.
+
+Separare:
+
+- `timeout-minutes`: protegge il run corrente;
+- `ci-cost-budget`: blocca regressioni di costo sui PR colpevoli;
+- dashboard p95: governa trend e SLO;
+- queue transit SLO: misura l’impatto reale.
+
+La soglia `N` deve derivare da:
+
+- 20 runner slots;
+- arrival rate;
+- target queue transit p95;
+- utilization ceiling;
+- headroom per incidenti e schedule.
+
+Non da un numero arbitrario.
+
+---
+
+## 11. Quando, eventualmente, attivare la ring-gating
+
+Non immediatamente dopo aver corretto F1.
+
+Precondizioni:
+
+1. judge pinned e non self-modifiable;
+2. workflow-shape corpus required;
+3. merge-group full proof invariabile;
+4. trigger dedupe completato;
+5. suite budget attivo;
+6. flake/quarantine policy attiva;
+7. retry budget durevole;
+8. classifier shadow osservato **nelle nuove condizioni R0-off**.
+
+**PROPOSTA di finestra:** almeno due settimane o 100–200 PR, scegliendo il limite raggiunto più tardi.
+
+Metriche necessarie:
+
+- recall sui PR realmente rossi;
+- falsi negative rispetto al full run;
+- slot-minutes evitabili;
+- queue rebuild fan-out;
+- ejection rate per author class;
+- queue transit p50/p95;
+- quota di failure rilevata al PR smoke contro queue;
+- numero di intentional no-op contro accidental skipped.
+
+Solo dopo si abilita:
+
+```text
+vars.MERGEOS_RING_GATING == "on"
+```
+
+prima su una lane a basso rischio, poi progressivamente. Unset o typo deve continuare a significare full suite.
+
+---
+
+## 12. Agent-swarm: cloud container dopo CI capacity, non prima
+
+Non ho trovato evidenza primaria sufficiente per affermare che i repository con molti PR AI usino un algoritmo di merge fondamentalmente diverso. **ASSUNZIONE:** le best practice pubbliche specifiche per swarm di coding agents sono ancora meno mature delle pratiche generali di merge queue.
+
+Il principio di coda è però semplice:
+
+```text
+se arrival rate cresce
+e service capacity resta fissa
+queue transit peggiora
+```
+
+Spostare più agenti in cloud container prima del capacity work:
+
+- aumenta i PR simultanei;
+- aumenta i rebases e head movement;
+- aumenta i merge-group rebuild;
+- aumenta la concorrenza sul medesimo pool da 20 slot;
+- riduce il feedback locale senza migliorare il collo di bottiglia.
+
+I cloud agent diventano sensati dopo che:
+
+- utilization possiede headroom;
+- queue transit p95 è entro SLO;
+- test cost non cresce più senza controllo;
+- admission/smoke è affidabile;
+- retry e ejection attribution sono misurabili.
+
+Prima di allora amplificano il problema.
+
+---
+
+## 13. Build order v3 per ritorno risk-adjusted
+
+### 0. Freeze immediato
+
+- Non attivare Wave 2 ring-gating.
+- Non costruire Wave 3 heal-as-PR.
+- Mantenere il classifier in shadow.
+
+**Ritorno:** impedisce l’introduzione dei P0 latenti senza costo operativo.
+
+### 1. Completare baseline e rimuovere prove duplicate
+
+- Raggiungere i sette record.
+- Audit ruleset/bypass.
+- Rimuovere `tests.yml push: main`.
+- Portare security a schedule giornaliero confermato, poi rimuovere il relativo push.
+
+**Ritorno:** recupero di slot senza ridurre il proof su PR/queue.
+
+### 2. Fermare suite growth
+
+- hard timeout;
+- timing corpus;
+- p95 SLO;
+- test-cost regression gate;
+- owner per top slow tests;
+- suite diet iniziale.
+
+**Ritorno:** affronta il trend che altrimenti annulla qualsiasi ottimizzazione successiva.
+
+### 3. Eliminare il derived-state protocol impossibile
+
+- rimuovere conteggi/inventari volatili dai tracked docs;
+- produrre report come artifact/build output;
+- sostituire strict equality con generator correctness/provenance.
+
+**Ritorno:** elimina F5, agy-F2 e agy-F4 generale; riduce false ejections correnti.
+
+### 4. Creare la root of trust del judge
+
+- required workflow pinned;
+- policy repository o immutable SHA;
+- CODEOWNERS e hot-zone come seconda barriera;
+- workflow-shape guilt corpus.
+
+**Ritorno:** rende possibile una futura ring-gating senza self-judging PR.
+
+### 5. Correggere F1 mantenendo tutto in shadow
+
+- classifier job sempre materializzato;
+- required jobs sempre materializzati;
+- step-level gating;
+- merge-group always-full;
+- fail-open-to-full;
+- sentinel esplicito.
+
+**Ritorno:** elimina il rischio di silent skip prima che l’output venga consumato.
+
+### 6. Flake e retry control
+
+- exact-test same-SHA retry;
+- protected quarantine manifest;
+- explicit critical floor;
+- durable `(PR, head SHA)` retry counter;
+- timeline-based ejection attribution.
+
+**Ritorno:** impedisce che il recupero automatico diventi un loop di consumo e rende i dati interpretabili.
+
+### 7. Nuova osservazione shadow con R0 off
+
+- 2 settimane o 100–200 PR;
+- recall, capacity, ejection e transit metrics;
+- red-catch comparison PR versus queue.
+
+**Ritorno:** valida il sistema attuale, non quello precedente a #4142.
+
+### 8. Ring-gating progressiva
+
+- una lane non critica;
+- opt-in exact string;
+- rollout per cohort;
+- automatic rollback su recall o queue-transit regression.
+
+### 9. Cloud agent scale-out
+
+Solo dopo capacity headroom e transit SLO stabile.
+
+---
+
+## 14. Invarianti di accettazione v3
+
+V3 non dovrebbe essere dichiarato pronto finché non sono vere tutte queste condizioni:
+
+1. Nessun PR può modificare il judge che determina il proprio test scope.
+2. Ogni `merge_group` esegue il full proof indipendentemente dal change map.
+3. Nessun required context può risultare accidentalmente `skipped`.
+4. Classifier failure, output vuoto o flag errato producono full run.
+5. Il guilt corpus verifica sia il mapping sia il wiring Actions.
+6. Nessun derived informational file richiede exclusive queue admission.
+7. Nessun PR viene bloccato da drift derivato preesistente che non ha causato.
+8. La quarantena è una allowlist protetta e con expiry.
+9. La critical floor è positiva, popolata e non riducibile senza review.
+10. Il retry budget sopravvive alla creazione di nuove queue entries.
+11. Le ejections sono attribuite al PR e al suo autore, non al merge-group bot.
+12. `push: main` viene rimosso solo dopo audit di queue coverage e bypass.
+13. La suite possiede budget, owner e allarme di crescita.
+14. La ring-gating viene valutata su dati raccolti dopo lo spegnimento di R0.
+15. L’aumento della capacità degli agenti non precede la capacità del CI.
+
+La conclusione più importante è questa: **Merge-OS v3 non deve ottimizzare per “meno test sul PR” finché non sa controllare perché la suite costa sempre di più.** Il full proof nella queue resta necessario; trasformarlo nel primo full feedback boundary, mentre il giudice è modificabile e il costo cresce senza budget, sarebbe corretto formalmente ma fragile operativamente.
+

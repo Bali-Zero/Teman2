@@ -917,6 +917,68 @@ visa_decisions` — the retention worker operates through `SECURITY DEFINER` fun
   `research/visa/2026-08-15-traffic-source-fail-closed-live-proof.json` and
   `research/visa/2026-08-15-shadow-evidence-final.json`.
 
+- 2026-08-16 (M5, QW-8 ledger correction): **seq-8 exists, unsigned, chain
+  BROKEN — adjudicated 2026-08-15.** `rulepack-prod-008.source.json`
+  (pricing-only, 11 products) is on disk with no `.signed.json`; its
+  `previous_payload_sha256` points to seq-6's signed hash instead of the
+  currently-active seq-7's, so signing it as-is would either violate the
+  anti-rollback check or fork the chain. Full evidence:
+  `visa-oracle-adjudication/adjudication-report.md` §8 (in worktree
+  `ops-visaoracle-adjudication`). **Owner GO received 2026-08-16 on Fase 3
+  REV 2, OD-2 = fold**: seq-8 folds into seq-9 rather than being
+  sign-activated standalone; seq-9's `previous_payload_sha256` MUST point to
+  `rulepack-prod-007.signed.json` (the current highest-signed pack), not to
+  seq-8. Wave-1 quick wins launched same day: QW-1 (NB-2 transport
+  isolation — fresh-conversation runner, citation audit, B0 canary) is
+  PR #4222, armed into the merge queue 2026-08-16 (verified via GraphQL
+  `isInMergeQueue`, position 5 at arm time).
+
+- 2026-08-17 (M5, wave-1 close + G-E1): **FASE 3 REV 2 WAVE-1 COMPLETE — 8 PRs
+  MERGED TO MAIN 2026-08-16.** #4222 QW-1 (NB-2 transport isolation:
+  fresh-conversation runner + citation audit, B0 canary PASS) · #4230 QW-8
+  (ledger corrections) · #4231 QW-5 (freshness recheck 20 OFFICIAL_PORTAL: 16
+  CURRENT / 1 CURRENT-with-exception / 3 CHANGED; source `ecd22722` — the
+  E31E page — does NOT support the 2 HARD_FILTER rules citing it, seq-9
+  signing gate input) · #4232 QW-3 (reachability vs active seq-7: 27/11
+  identical to seq-6, 0 orphan rules, 8/44 FactPaths referenced by zero
+  rules) · #4234 QW-2 (real SHADOW parity baseline pinned on sha256 of
+  `evaluate_path.py`; discovery: ANY "unsure" answer on the public path
+  forces `HUMAN_REVIEW_REQUIRED` via the monotone `DISCLOSED_UNCERTAINTY_REVIEW`
+  adapter — the live mechanics of the flag-veto RC-1 that E5 reforms) ·
+  #4235 QW-9 (source hierarchy draft) · #4236 QW-6a (HRR reason audit
+  tooling, mandatory traffic_source split; QW-6b stays
+  `operator[credential]`-gated) · #4238 QW-4a (2 stale
+  `REVIEW_REASON_COPY` keys renamed + exhaustiveness test with
+  `KNOWN_UNMAPPED` list; QW-4b stays copy-deck-gated). Still gated: QW-4b,
+  QW-6b, QW-7 (OD-5).
+
+  **POSTURE FINDING (owner-gated, deliberately NOT cured):** post-wave
+  prove-live shows `https://balizero.com/visa-oracle` answers 200 but
+  serves `<meta name="robots" content="index, follow">`, inherited from
+  the root layout. The corner's "noindex" claims (2026-07-18/07-28 entries)
+  are STALE, and the disappearance is dated: the group's
+  `visa-oracle/layout.tsx` carried `robots: { index: false, follow: false }`
+  from creation (`07b46cf1a`, PR #2617, 2026-07-18) until it was removed
+  in `63234a12a` (PR #3732, 2026-08-07) — the exact G0–G6 rebuild merge
+  (correction: an earlier `git log -S noindex` check on the group returned
+  0 commits and was read as "never carried a directive" — the directive was
+  written as `index: false`, never the literal string `noindex`, so that
+  probe was a false negative by construction; `git log -S "index: false"`
+  shows the true add/remove pair). The substantive conclusion holds — the
+  noindex disappeared with the G0–G6 rebuild, NOT with wave-1 (no wave-1
+  diff touches metadata, verified). Restore-vs-ratify is
+  Zero's call (publish posture, Legge 5); until ruled, the SHADOW surface
+  is indexable.
+
+  **G-E1 APPROVED by Zero 2026-08-17 ("go"):** source hierarchy draft
+  (#4235) ratified, artifact home confirmed (`research/visa/doctrine-factory/`
+  for the ledger, `contracts/` for compiled artifacts), OD-1..5 registry
+  per plan REV 2 (OD-2 = fold explicit). E2a (vertical slice D1/D2/D12 +
+  E31B/E31D refuter claims — PR #4245) and E2b prep (fused query bank
+  A∪B∪C, 247 unique queries, coverage matrix skeleton, zero holes on the 27
+  reachable products — PR #4241) dispatched same day. The noindex ruling
+  remains OPEN.
+
 ## TRACKS — parallel work groups (multi-session coordination)
 
 The v2 program runs as separate tracks, one per surface, coordinated ONLY through this skill. Any

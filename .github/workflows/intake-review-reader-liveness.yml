@@ -1,0 +1,45 @@
+# intake-review-reader liveness guardian — executor for its own corpus
+# ----------------------------------------------------------------------------
+# scripts/intake_review_reader_liveness.sh has no generic sweep that runs its
+# `scripts/tests/*.sh` corpus: `scripts-tests-sweep.yml` only collects
+# `test_*.py` via pytest (a `.sh` file is invisible to pytest collection), and
+# it is `continue-on-error: true` besides — a guard whose only executor cannot
+# go red is superscar #2 (exists != armed) rebuilt in a fresh file. Every other
+# `.sh` corpus in this repo is wired the same way: one small workflow, named by
+# the script it proves, path-filtered so it starts on the diff that could break
+# it (see tg-gateway.yml / alarm-cure-alignment.yml for the same shape).
+#
+# Deliberately NOT a required context, matching those siblings' reasoning: a
+# required check that goes permanently red blocks the entire merge queue,
+# which is a worse failure mode than an unread one.
+#
+# Dossier: C-13 (2026-08-15) — a bare 5xx used to fold into ALIVE ("any
+# 3-digit code is a heartbeat"); it now takes its own SICK branch. See
+# scripts/intake_review_reader_liveness.sh's own header for the incident.
+
+name: "intake-review reader liveness (5xx SICK corpus)"
+
+on:
+  pull_request:
+    paths:
+      - "scripts/intake_review_reader_liveness.sh"
+      - "scripts/tests/test_intake_review_reader_liveness_5xx.sh"
+      - ".github/workflows/intake-review-reader-liveness.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  liveness-corpus:
+    name: 5xx is SICK, not ALIVE — guilt + innocence
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: The guardian still parses
+        run: bash -n scripts/intake_review_reader_liveness.sh
+
+      - name: Corpus (bash + stdlib python3 only, no install)
+        run: bash scripts/tests/test_intake_review_reader_liveness_5xx.sh
