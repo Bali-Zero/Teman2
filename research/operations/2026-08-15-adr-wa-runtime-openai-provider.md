@@ -5152,10 +5152,10 @@ the new test directory as top-level package `llm`; later legacy tests importing
 `llm.adapters.base` then resolved that test package instead of production
 `backend/llm` and failed with `ModuleNotFoundError`. Removing only the empty
 package marker restores the intended standalone test-module collection and
-returns the current fence to ten files. The bot suites plus both legacy import
-tests pass together in one process at the repaired head. The exact final-head
-verdict remains PR review metadata for the same anti-self-attestation reason
-stated at the end of §30.11.
+returned the then-current fence to ten files. The bot suites plus both legacy
+import tests pass together in one process at the repaired head. The exact
+final-head verdict remains PR review metadata for the same anti-self-attestation
+reason stated at the end of §30.11.
 
 A separate pre-existing file, `scripts/ci/bot_provider_gate.py`, remains
 **BUILT-NOT-ARMED**: no GitHub workflow invokes it. Its current G1 policy encodes
@@ -5166,3 +5166,34 @@ repository-root `scripts/bot`. This has no current CI or runtime effect, but it
 is an explicit follow-up gate: the lint's policy and scope must be reconciled
 before anyone arms it. This PR neither changes nor bypasses that out-of-fence
 guard.
+
+### 30.13 CodeQL permission fixtures and inherited pricing-log alerts (2026-08-18)
+
+The first CodeQL aggregate after the namespace repair reported eighteen branch
+alerts. The dynamic refusal-key hashability error and all five informational
+notes were closed in the next source delta, but CodeQL correctly continued to
+reject the benchmark tests' deliberately non-private fixture modes: changing
+world-readable `0755`/`0644` fixtures to group-readable `0750`/`0640` was not a
+security fix because the files still exposed data outside the owner account.
+The tests now start only from owner-only, noncanonical modes (`0600` for a
+directory that must become exactly `0700`, `0700` for a file that must become
+exactly `0600`). They retain the exact-mode and symlink-non-following assertions
+without granting group or world access at any point.
+
+The same aggregate attributed two HIGH alerts in
+`backend/services/llm_clients/pricing.py` to this pull request even though a
+three-dot diff against both the pull-request base and the then-current
+`origin/main` showed that file to be unchanged. GitHub's own check explained
+that alerts not introduced by the pull request can appear when the added code
+is too large for a reliable baseline. The alerts were fixed rather than
+dismissed: unknown or ambiguous model slugs no longer enter logs; diagnostics
+retain only the match count and known pricing-table keys. Dedicated tests pin
+both unknown and ambiguous paths so a caller-controlled raw slug cannot return
+to log arguments.
+
+That CI-required repair expands the final review fence from ten to twelve files:
+the pricing module and its existing unit-test module are the only additions.
+It does not add a provider flag, runtime importer, credential, network call,
+real WhatsApp data, deployment, traffic, or cutover. As above, the exact-head
+independent verdict belongs in pull-request review metadata, not in this
+self-modifying source document.

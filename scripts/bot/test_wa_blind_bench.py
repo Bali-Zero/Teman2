@@ -82,11 +82,11 @@ class TestK5PrivateOutputDirectory:
         mode = stat.S_IMODE(target.stat().st_mode)
         assert mode == 0o700, f"expected 0o700, got {oct(mode)}"
 
-    def test_already_existing_looser_directory_is_tightened(self, tmp_path: Path):
+    def test_already_existing_noncanonical_directory_is_normalized(self, tmp_path: Path):
         target = tmp_path / "preexisting"
-        target.mkdir(mode=0o750)
-        os.chmod(target, 0o750)  # force group access without ever granting world access
-        assert stat.S_IMODE(target.stat().st_mode) == 0o750
+        target.mkdir(mode=0o600)
+        os.chmod(target, 0o600)  # force an owner-only but noncanonical directory mode
+        assert stat.S_IMODE(target.stat().st_mode) == 0o600
 
         _mkdir_private(target)
 
@@ -103,8 +103,8 @@ class TestR9_8MkdirPrivateRefusesSymlinkLeaf:
 
     def test_guilt_symlink_leaf_is_refused(self, tmp_path: Path):
         real_target = tmp_path / "real-dir"
-        real_target.mkdir(mode=0o750)
-        os.chmod(real_target, 0o750)
+        real_target.mkdir(mode=0o600)
+        os.chmod(real_target, 0o600)
 
         symlink_path = tmp_path / "bench-runs.local"
         symlink_path.symlink_to(real_target)
@@ -112,7 +112,7 @@ class TestR9_8MkdirPrivateRefusesSymlinkLeaf:
         with pytest.raises(OSError):
             _mkdir_private(symlink_path)
 
-        assert stat.S_IMODE(real_target.stat().st_mode) == 0o750, (
+        assert stat.S_IMODE(real_target.stat().st_mode) == 0o600, (
             "a symlink target's permissions must never be tightened by a call that refuses it"
         )
 
@@ -134,11 +134,11 @@ class TestOpenPrivateFchmod:
     checked). `_open_private` had ZERO test coverage of any kind before
     this round."""
 
-    def test_preexisting_loose_file_is_tightened_to_0600(self, tmp_path: Path):
+    def test_preexisting_noncanonical_file_is_normalized_to_0600(self, tmp_path: Path):
         target = tmp_path / "preexisting.jsonl"
         target.write_text('{"turn": "old"}\n', encoding="utf-8")
-        os.chmod(target, 0o640)
-        assert stat.S_IMODE(target.stat().st_mode) == 0o640
+        os.chmod(target, 0o700)
+        assert stat.S_IMODE(target.stat().st_mode) == 0o700
 
         with _open_private(target) as f:
             f.write('{"turn": "new"}\n')
@@ -154,7 +154,7 @@ class TestOpenPrivateFchmod:
         target = tmp_path / "existing.jsonl"
         original_content = '{"turn": "keep me byte-identical"}\n'
         target.write_text(original_content, encoding="utf-8")
-        os.chmod(target, 0o640)
+        os.chmod(target, 0o700)
 
         closed_fds: list[int] = []
         real_close = os.close
@@ -198,7 +198,7 @@ class TestOpenPrivateFchmod:
         target = tmp_path / "existing-ftruncate.jsonl"
         original_content = '{"turn": "keep me byte-identical"}\n'
         target.write_text(original_content, encoding="utf-8")
-        os.chmod(target, 0o640)
+        os.chmod(target, 0o700)
 
         closed_fds: list[int] = []
         real_close = os.close
@@ -2073,7 +2073,7 @@ class TestR10_1StatusContractOnEveryEarlyExit:
         # `_mkdir_private` (R9-8) — the OSError this raises used to
         # propagate raw out of `main()` with no status line at all.
         real_target = tmp_path / "real-dir"
-        real_target.mkdir(mode=0o750)
+        real_target.mkdir(mode=0o600)
         output_dir = tmp_path / "out"
         output_dir.symlink_to(real_target)
 
