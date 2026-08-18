@@ -10,7 +10,10 @@ status: "NO-WIRING. The selected provider is the standalone CodexExecClient auth
   selected-provider consumer in this PR is the human-run offline blind-benchmark facade.
   Nothing in the live WhatsApp runtime imports, calls, flags-gates, deploys, or cuts over to
   either client."
-adversarial_review: pending-kimi-k3
+adversarial_review: >-
+  Kimi K3 SHIP; Gemini 3.1 Pro FIX-FIRST findings dispositioned; Gemini 3.1 Pro
+  re-review timed out without a verdict; degraded continuity fallback Gemini 3.7
+  Flash High SHIP; mandatory final Fable/Claude on-disk gate pending
 sources:
   - .agents/skills/bot/SKILL.md (WA-bot corner, live wiring GROUND)
   - apps/backend-rag/backend/services/rag/agentic/llm_gateway.py (confirmed UNCHANGED —
@@ -377,24 +380,24 @@ privacy, independent-scoring, runtime-host, review, and no-wiring gates remain.
 4. A real `wa_blind_bench.py` run, scored by a non-OpenAI seat (Kimi K3 or
    Gemini) reading only the blind transcript, never the label key.
 5. A real Kimi K3 adversarial security review of the client and any
-   future wiring — `adversarial_review: pending-kimi-k3` above stays
-   pending until that runs; this field is not hand-edited to a passing
-   value.
+   future wiring. The unwired client and offline harness received that
+   review in R28 (§30.10); any future runtime wiring requires a new review.
 6. Gemini constructive review and the Fable final on-disk gate, per the
    repo's standard ship-lifecycle.
 
-None of the above is started in this PR.
+The offline review and tooling portions above are complete for this unwired
+diff. The human privacy review, real-data benchmark, runtime-host decision,
+future wiring, final Fable/Claude gate, deployment, and cutover are not.
 
-## 9. Adversarial review notes (partial — review still in progress)
+## 9. Adversarial review notes (historical rounds; current disposition in §30.10)
 
-`adversarial_review: pending-kimi-k3` in the frontmatter stays as written
-— the Kimi K3 review of this diff has not been confirmed complete from
-this session's side, and this field is never hand-edited to a passing
-value ahead of that. One finding has surfaced and been dispositioned so
-far, and per team-lead instruction it is recorded here rather than
-silently dropped — a refuted finding that stays visible is worth more
-than one that vanishes (cicatrix W65: "even the refuter hallucinates" —
-the record protects the next reviewer from re-raising the same
+This section preserves earlier review rounds and their finding-level
+dispositions. The R28 reconciliation later completed the Kimi K3 review and
+ran the Gemini review chain; §30.10 is authoritative for the current gate
+state. The final Fable/Claude on-disk gate remains pending. Findings are
+recorded rather than silently dropped — a refuted finding that stays visible
+is worth more than one that vanishes (cicatrix W65: "even the refuter
+hallucinates" — the record protects the next reviewer from re-raising the same
 already-checked question, or from wrongly assuming nobody checked it):
 
 - **Finding R3**: `gpt-5.6-sol` / `gpt-5.6-terra` / `gpt-5.6-luna`
@@ -4984,8 +4987,10 @@ HALT, per the team-lead's explicit instruction opening this round.
 This branch was reconciled with `origin/main` at
 `993e4e868a6e8210328f69ccd136ca9d5c54d776`; the only merge conflict was the
 mechanically maintained `docs/AI_ONBOARDING.md` test-count text, resolved to
-current main. The feature fence is now ten files relative to main, not eleven:
-that generated documentation file no longer differs.
+current main. The feature fence was ten files after reconciliation; the later
+CI-discovery fix adds only `.github/workflows/tests.yml`, so the current fence
+is eleven files relative to main. The generated onboarding documentation no
+longer differs.
 
 The selected path remains `CodexExecClient`, authenticated by the operator's
 existing ChatGPT subscription. The dormant `OpenAIResponsesClient` remains
@@ -5030,18 +5035,19 @@ only user targets, and attaches at most 12 prior independently redacted and
 scanned role-labelled turns. Conversation identifiers never reach output or
 logs. Any unsafe or unverified turn clears that conversation's accumulated
 history; if the turn lacks an identifier, every accumulated conversation from
-that source file is cleared because the gap cannot be attributed safely. Plain WhatsApp TXT
-exports lack a trustworthy role field and therefore yield no default-mode
-fixture; historical role-blind single-turn output requires the explicit
-`--allow-legacy-single-turn` opt-in and is not promotion evidence.
+that source file is cleared because the gap cannot be attributed safely. Plain
+WhatsApp TXT exports lack a trustworthy role field and therefore yield no
+default-mode fixture; historical role-blind single-turn output requires the
+explicit `--allow-legacy-single-turn` opt-in, is builder-comparison-only, is
+rejected by the benchmark loader, and is not promotion evidence.
 
 The blind transcript now carries `history` separately from the current user
 `prompt`; the text-only Codex provider receives the same structure encoded as
 JSON beneath fixed benchmark instructions. The benchmark loader rejects legacy
-fixtures that omit `role='user'` or an explicit role-aware `history` list. This closes role loss inside the
-harness but does not reproduce production RAG/tool state, so it remains a
-comparative conversational-safety bench, not proof of end-to-end Gemini parity.
-No real WhatsApp export was processed in this PR.
+fixtures that omit `role='user'` or an explicit role-aware `history` list. This
+closes role loss inside the harness but does not reproduce production RAG/tool
+state, so it remains a comparative conversational-safety bench, not proof of
+end-to-end Gemini parity. No real WhatsApp export was processed in this PR.
 
 `codex exec --output-schema <FILE>` was evaluated and deliberately not added.
 The option constrains the model's final response shape; it does not provide
@@ -5056,7 +5062,7 @@ runtime host remains an explicit architecture gate because Fly production does
 not inherit this Air-M5 user's local Codex CLI or ChatGPT OAuth state.
 
 R28 verification was run from the reconciled worktree with the backend virtual
-environment active. One combined pytest process collected 481 cases (70 Codex
+environment active. One combined pytest process collected 482 cases (71 Codex
 adapter, 163 dormant Responses adapter, and 248 corpus/benchmark) and exited
 zero. Running the four suites together exposed and then closed a test-isolation
 bug: backend tests left `DATABASE_URL` in the process, which made later corpus
@@ -5064,3 +5070,33 @@ tests attempt a dynamic CRM-name lookup against an unrelated database. The
 corpus test module now removes `DATABASE_URL` and `PGURL` per test; production
 code and its fail-closed CRM-name behavior are unchanged. `git diff --check`
 and targeted Ruff `F,I` checks over the four script files also exited zero.
+
+The final review sequence was explicit and non-consensual. Kimi K3 returned
+SHIP after independently reading the unwired adapter and harness. Its two LOW
+notes were closed in `4b23e957f`: legacy single-turn fixtures are now expressly
+builder-comparison-only and invalid benchmark inputs, and candidate prompts are
+rendered once before provider invocation.
+
+Gemini 3.1 Pro then returned FIX-FIRST. Two findings were accepted. First, a
+second cancellation could interrupt child reaping after the initial
+cancellation; `26fe11b0f` now waits on one shielded, stable wait task, records
+later cancellation, finishes reaping, and only then propagates cancellation.
+A real repeated-`cancel()` test proves that sequence. The reviewer's suggested
+bare `suppress(BaseException)` shape was not used because it could still return
+before the child was reaped. Second, the co-located offline harness tests were
+absent from PR CI discovery; `784c59791` adds their exact paths to the existing
+backend PR pytest job without executing the human/provider benchmark. The
+reviewer's third HIGH finding, which objected to the prescribed commit
+co-author identity, was rejected because that exact identity is a binding
+repository instruction rather than a code defect. A Python-version LOW finding
+about scoped regular-expression flags was also rejected as factually
+incorrect.
+
+The focused Gemini 3.1 Pro re-review exceeded its eight-minute timebox and
+returned no verdict; it is recorded as a timeout, never as approval. The
+continuity fallback, Gemini 3.7 Flash High, re-read the two fixes and returned
+SHIP with `degraded_execution: true`. This closes the available independent
+implementation-review loop, but not the repository's mandatory final
+Fable/Claude on-disk gate. The PR remains ineligible for merge, deployment,
+live WhatsApp traffic, or cutover until that gate and every operational gate
+above are satisfied.
