@@ -87,6 +87,13 @@ Measured against Ghostty 1.3.1 on macOS 27.0, not assumed:
 - `?` before a path suppresses the error when the file is absent. Without it, one
   missing include makes the whole configuration fail to load.
 - `scrollback-limit` is in **bytes, per surface** — not lines, not per app.
+- `+show-config` prints the effective configuration but **drops keybind
+  prefixes** — a `global:` bind shows as an ordinary one. It cannot be used to
+  verify prefix state; read the file instead.
+- `+list-keybinds --default=true` prefixes every line with `keybind = ` and
+  prints Ghostty's normalised form (`cmd`→`super`, `left`→`arrow_left`,
+  `comma`→`,`). Comparing your bindings against it without normalising reports
+  everything as non-default.
 
 ## Two defects this profile addresses
 
