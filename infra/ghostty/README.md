@@ -33,7 +33,8 @@ infra/ghostty/
 │   ├── m5.ghostty       ├→ ~/.config/ghostty/machine.ghostty     (one per host)
 │   └── mini.ghostty    ─┘
 ├── install.sh          back up → install → validate → roll back on failure
-└── verify.sh           prove it is installed, current, and working
+├── verify.sh           prove it is installed, current, and working
+└── verify-latest.sh    → ~/.config/ghostty/verify-latest.sh  (what nuz/v types — always runs origin/main's verify.sh, even on a behind checkout)
 ```
 
 `~/.config/ghostty/local.ghostty` is yours: never installed, never in git,
@@ -137,6 +138,9 @@ leaving a broken config; the fix is to drop three lines from the machine profile
   grant cannot be probed remotely (the runbook documents the read-only local
   check); press the chord once after install to know.
 
-Two gaps this file used to list are cured and guarded: Mini's missing Nerd font
-(installed 2026-08-18; `verify.sh` still checks resolution) and M5's missing
-tmux (installed 2026-08-18).
+Three gaps this file used to list are cured and guarded: Mini's missing Nerd
+font (installed 2026-08-18; `verify.sh` still checks resolution), M5's missing
+tmux (installed 2026-08-18), and `nuz/v` typing a dead path on a behind
+checkout (closed 2026-08-19 — `nuz/v` now types `verify-latest.sh`, which
+always runs origin/main's `verify.sh` regardless of local checkout freshness;
+see the file's own header for why).

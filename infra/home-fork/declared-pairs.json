@@ -765,6 +765,12 @@
       "_note": "Ghostty fleet profile, added 2026-08-18. ~/.config is not a git repo, so these installed copies had no history and no backup before this. Installed by infra/ghostty/install.sh, which validates and rolls back on failure; infra/ghostty/verify.sh is the local check, this lint the fleet-wide one against origin/main. Keybinds and command-palette entries, identical on all three hosts."
     },
     {
+      "live": "~/.config/ghostty/verify-latest.sh",
+      "repo": "infra/ghostty/verify-latest.sh",
+      "machines": ["all"],
+      "_note": "Ghostty fleet profile, added 2026-08-18, wired 2026-08-19 (PENDING-ARMS closure). Launcher that nuz/v and the verify command-palette entry type — runs origin/main's verify.sh via a fresh archive extract, so it stays current even on a checkout that is intentionally behind (M5). Installed by infra/ghostty/install.sh; drift checked locally by infra/ghostty/verify.sh's own pair loop and fleet-wide by this lint against origin/main."
+    },
+    {
       "live": "~/.config/ghostty/machine.ghostty",
       "repo": "infra/ghostty/machines/pro.ghostty",
       "machines": ["pro"],

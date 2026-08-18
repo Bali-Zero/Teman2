@@ -98,7 +98,10 @@ keybind = nuz/w=text:git -C ~/nuzantara worktree list
 keybind = nuz/p=text:cat ~/.nuzantara-proprioception/last.md
 keybind = nuz/a=text:python3 ~/nuzantara/scripts/pending_arms_report.py
 keybind = nuz/l=text:python3 ~/nuzantara/scripts/lint_home_fork.py --check
-keybind = nuz/v=text:bash ~/nuzantara/infra/ghostty/verify.sh
+# nuz/v types the INSTALLED launcher, not a repo path: M5's checkout is behind
+# by policy, so a repo path can be absent or stale there. The launcher runs
+# origin/main's verify.sh — current on every machine (closed 2026-08-19).
+keybind = nuz/v=text:bash ~/.config/ghostty/verify-latest.sh
 keybind = nuz/q=text:bash ~/nuzantara/scripts/mq.sh status
 keybind = nuz/t=text:tmux new -As claude
 keybind = nuz/escape=deactivate_key_table
@@ -133,7 +136,7 @@ command-palette-entry = title:"Nuzantara: new agent worktree",description:"Broke
 command-palette-entry = title:"Nuzantara: proprioception report",description:"Show the last fleet self-check (typed, not executed).",action:"text:cat ~/.nuzantara-proprioception/last.md"
 command-palette-entry = title:"Nuzantara: pending arms",description:"Suspended-work ledger (typed, not executed).",action:"text:python3 ~/nuzantara/scripts/pending_arms_report.py"
 command-palette-entry = title:"Nuzantara: HOME-fork lint",description:"Check live-vs-repo drift for declared pairs (typed, not executed).",action:"text:python3 ~/nuzantara/scripts/lint_home_fork.py --check"
-command-palette-entry = title:"Ghostty: verify this config",description:"Validate the installed config and check drift, font and terminfo.",action:"text:bash ~/nuzantara/infra/ghostty/verify.sh"
+command-palette-entry = title:"Ghostty: verify this config",description:"Runs origin/main's verify.sh via the installed launcher — current on any checkout.",action:"text:bash ~/.config/ghostty/verify-latest.sh"
 command-palette-entry = title:"Ghostty: ssh terminfo cache",description:"List hosts that already have xterm-ghostty installed.",action:"text:ghostty +ssh-cache"
 command-palette-entry = title:"Claude: agent-pane session (tmux)",description:"Agent-team panes need tmux or iTerm2 — attach or create the session Claude Code can split (typed, not executed).",action:"text:tmux new -As claude"
 command-palette-entry = title:"Nuzantara: merge queue status",description:"queue_doctor snapshot via mq.sh (typed, not executed).",action:"text:bash ~/nuzantara/scripts/mq.sh status"
