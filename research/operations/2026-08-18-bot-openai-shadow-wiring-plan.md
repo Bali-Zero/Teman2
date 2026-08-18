@@ -17,7 +17,7 @@ review_corroboration: "gemini-3.1-pro"
 
 # BOT-V — OpenAI provider: offline evidence before any shadow wiring
 
-## Live reconciliation — 2026-08-18 (authoritative)
+## Live reconciliation — 2026-08-19 (authoritative)
 
 This section supersedes stale implementation-state statements later in this document. The safety
 and architecture boundaries remain in force, but #4216 advanced materially after the original
@@ -27,10 +27,22 @@ plan and was re-measured from its exact current head.
   missing-owner-authorization gate for the gated merge/deploy/cutover progression; it does not
   waive generator-not-grader review, privacy, PII, runtime-host, rollback, or no-outward-send
   gates.
-- #4216 is still an inert draft, but its current head is
-  `6cb663dd66c67ed8d84dc204508eafe3c6d0c5de`, its 12-file diff is mergeable/CLEAN, and every
-  observed GitHub check is green or intentionally skipped. It still has no runtime caller, flag,
-  gateway branch, WhatsApp hook, secret, daemon, deployment, or traffic.
+- #4216 remains inert and NO-WIRING at head
+  `6cb663dd66c67ed8d84dc204508eafe3c6d0c5de`. Independent Fable review re-ran the 513 focused
+  tests, confirmed the 12-file fence and zero runtime importers, returned PASS, moved the PR from
+  draft to ready, and armed the canonical merge queue. The PR checks are green or intentionally
+  skipped, and GitHub reports mergeable/CLEAN.
+- The merge queue has nevertheless rejected the unchanged head twice. Merge-group
+  `ca65adfef0ef86f502b5fcd186dc1f3e76676059` failed run `32157479924` at the required
+  `Immune enforcement` step `Codex seat corpus` after 71 seconds; after an independent
+  PASS-REQUEUED verdict, merge-group `8b8d233e3da9c6e000aab36a0a1c04e5521776e0` failed the
+  same step in run `32159641457` after 79 seconds. Both logs contain no command output between
+  step start and exit 1: the bounded `apt_install.sh zsh zsh` could not deliver `zsh`, so neither
+  pytest corpus started. The same step passed on the PR run, the four affected CI/helper/test
+  files are byte-identical across PR, merge-group, and `main`, and local re-runs passed 13/13,
+  14/14, and 56/56. This is a repeatable GitHub runner apt-mirror gate failure, not an adapter
+  regression. Anti-loop policy therefore leaves #4216 ready but outside the queue until a
+  delayed retry or an independently reviewed CI cure; it is not merged or deployed.
 - The selected blind-bench client is now `CodexSubscriptionBenchClient`, a narrow facade over
   `CodexExecClient`. It never checks `OPENAI_WA_PROVIDER_API_KEY`, and candidate calls are strictly
   sequential.
@@ -61,9 +73,10 @@ plan and was re-measured from its exact current head.
 - The authenticated seat is a personal ChatGPT Pro account. OpenAI's published policy says Pro
   Codex conversations may be used to improve models unless the account-level ChatGPT training
   control is disabled. That exact account setting has not been verified. Real client text, PII,
-  WA-mirror data, live shadowing, Fly credential placement, serving, deploy, and cutover remain
-  **NO-GO** until that privacy gate and a named Pro-side broker/supervisor design pass independent
-  review.
+  WA-mirror data, live shadowing, Fly credential placement, serving, activation, and cutover
+  remain **NO-GO** until that privacy gate and a named Pro-side broker/supervisor design pass
+  independent review. A future CI-green merge/deploy of the dormant NO-WIRING files does not
+  activate the provider and is a separate gate.
 
 ## 0. Decision and authority boundary
 

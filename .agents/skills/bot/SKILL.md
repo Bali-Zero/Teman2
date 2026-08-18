@@ -20,18 +20,28 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 - **Bali Zero team**: work-support assistant. Check-in via WA (opens the free Meta 24h window),
   CRM nudges, PII-light briefings. Persona = "assistente operativo interno", not sales.
 
-## 1. LIVE STATE (last update 2026-08-18 — keep current)
+## 1. LIVE STATE (last update 2026-08-19 — keep current)
 
-- **🧪 CHATGPT PRO ADAPTER LIVE TEST — SYNTHETIC STAGE 1 GREEN, REAL WA STILL NO-GO
-  (2026-08-18, supersedes the stale #4216/#4301 implementation snapshot immediately below).**
+- **🧪 CHATGPT PRO ADAPTER LIVE TEST — SYNTHETIC STAGE 1 GREEN; MERGE QUEUE BLOCKED BY
+  REPEATED RUNNER APT FAILURE; REAL WA STILL NO-GO (2026-08-19, supersedes the stale
+  #4216/#4301 implementation snapshot immediately below).**
   Zero explicitly authorized point 7 and told the lane to start live tests. The current #4216
   head is `6cb663dd66c67ed8d84dc204508eafe3c6d0c5de` (12 files), GitHub reports
   `mergeStateStatus=CLEAN`/`mergeable=MERGEABLE`, and all observed checks are green or
-  intentionally skipped; it remains DRAFT and NO-WIRING. On Pro, `codex-cli 0.147.0` reports
-  `Logged in using ChatGPT`. From the exact PR head, 513 focused adapter/pricing/corpus/bench tests
-  passed. A real `CodexExecClient` Terra call returned an exact random synthetic sentinel in
-  6.9s. The role-aware multi-turn blind harness then ran sequentially across Terra/Luna/Sol and
-  all 3/3 returned the exact synthetic token from the prior user turn (0 errors; 8.6s/6.6s/6.7s).
+  intentionally skipped. Independent Fable review repeated 513/513 focused tests, confirmed the
+  12-file/no-importer fence, returned PASS, moved #4216 to ready, and armed the canonical queue;
+  it remains NO-WIRING. The unchanged head was then ejected twice by required merge-group
+  `Immune enforcement` runs `32157479924` and `32159641457`: both failed only at `Codex seat
+corpus` after 71s/79s, with no output after step start because bounded
+  `apt_install.sh zsh zsh` could not deliver `zsh`; neither pytest corpus started. The affected
+  CI/helper/test blobs are identical across PR/merge-group/main, while the PR run and local
+  re-runs passed 13/13 + 14/14 + 56/56. After the second identical signature the anti-loop rule
+  left the PR ready, CLEAN, outside the queue, not merged and not deployed. A delayed retry or
+  independently reviewed CI cure is required before requeue.
+  On Pro, `codex-cli 0.147.0` reports `Logged in using ChatGPT`. From the exact PR head, a real
+  `CodexExecClient` Terra call returned an exact random synthetic sentinel in 6.9s. The role-aware
+  multi-turn blind harness then ran sequentially across Terra/Luna/Sol and all 3/3 returned the
+  exact synthetic token from the prior user turn (0 errors; 8.6s/6.6s/6.7s).
   No WhatsApp, Meta, CRM, DB, Qdrant, client, or OSINT input was read; no message was sent.
   Observed isolation: no API key forwarded, no session file change, no sentinel persistence hit,
   no child/tempdir residue, owner-only `0600` ephemeral artifacts deleted after inspection.
@@ -43,10 +53,12 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
   yet verified. Official policy says Pro Codex conversations may be used for training unless that
   control is off. Therefore the live verdict is **GO only for synthetic, de-identified,
   operator-controlled Pro probes** and **NO-GO for client text/PII, WA mirror, live shadow, Fly
-  credentials, deploy, serving, cutover, or any outward test send**. The corrected authoritative
-  plan is `research/operations/2026-08-18-bot-openai-shadow-wiring-plan.md`; next gate is the
-  account privacy check plus a named Pro-side fail-off broker/supervisor design and independent
-  review. Generator-not-grader and Legge 5 remain unchanged despite the owner authorization.
+  credentials, activation, serving, cutover, or any outward test send**. A CI-green merge/deploy
+  of the dormant NO-WIRING files is a separate gate and would not activate the provider. The
+  corrected authoritative plan is
+  `research/operations/2026-08-18-bot-openai-shadow-wiring-plan.md`; next gate is the account
+  privacy check plus a named Pro-side fail-off broker/supervisor design and independent review.
+  Generator-not-grader and Legge 5 remain unchanged despite the owner authorization.
 
 - **🤖 HISTORICAL OPENAI WA-PROVIDER SNAPSHOT — SUPERSEDED BY THE LIVE TEST ENTRY ABOVE.**
   Retained only as the chronology that produced #4216/#4301; do not use its old branch heads,
