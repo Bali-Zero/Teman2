@@ -116,3 +116,4 @@ Quando Zero avvia una sessione interattiva Codex come **orchestratore** (non wor
 - Quote cliente, comunicazioni verso l'esterno e PII restano fuori dal perimetro Codex (Anthropic-interactive / locale).
 - Rotazione account OpenAI: `CODEX_HOME=~/.codex` (O1) / `CODEX_HOME=~/.codex-o2` (O2) — `--profile` cambia modello, NON identità.
 - Il contratto worker (§0–§6) resta valido quando Codex è dispatchato da un altro Conduttore.
+- Roster completo modelli × punti di forza × effort di TUTTA la flotta: `MODEL_ROSTER.md` (repo root) — leggilo prima di scegliere un seat (ruling Zero 2026-08-14).

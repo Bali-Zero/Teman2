@@ -1,21 +1,31 @@
 #!/usr/bin/env python3
 """Audit CURRENT apps/mouth KBLI dataset vs OSS ground truth (2026-07-07).
 Re-derivation of the 2026-06-19 comparison, on today's data. Deterministic, no LLM."""
-import json, re, unicodedata
+import json
+import re
+import unicodedata
 from difflib import SequenceMatcher
+from pathlib import Path
 
-OURS = "/Users/balizero/nuzantara/apps/mouth/data/KBLI_2025_FINAL_CLEAN.json"
-OSS = "/Users/balizero/nuzantara/data/source_documents/KBLI_2025_OSS_GROUND_TRUTH.json"
-GOLD = "/Users/balizero/nuzantara/apps/mouth/data/kbli-gold-all.json"
+REPO_ROOT = Path(__file__).resolve().parents[1]
+OURS = REPO_ROOT / "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json"
+OSS = REPO_ROOT / "data/source_documents/KBLI_2025_OSS_GROUND_TRUTH.json"
+GOLD = REPO_ROOT / "apps/mouth/data/kbli-gold-all.json"
+
 
 def norm(s):
-    if not s: return ""
+    if not s:
+        return ""
     s = unicodedata.normalize("NFKC", str(s)).lower().strip()
     return re.sub(r"\s+", " ", s)
 
-ours_raw = json.load(open(OURS))
-ours = {r["kode_kbli_2025"]: r for r in ours_raw["data"]} if isinstance(ours_raw, dict) else {r["kode_kbli_2025"]: r for r in ours_raw}
-oss_raw = json.load(open(OSS))
+ours_raw = json.loads(OURS.read_text(encoding="utf-8"))
+ours = (
+    {r["kode_kbli_2025"]: r for r in ours_raw["data"]}
+    if isinstance(ours_raw, dict)
+    else {r["kode_kbli_2025"]: r for r in ours_raw}
+)
+oss_raw = json.loads(OSS.read_text(encoding="utf-8"))
 # OSS shape unknown: try list of records with kbli/kode field
 recs = oss_raw if isinstance(oss_raw, list) else oss_raw.get("data", oss_raw.get("records", []))
 oss5 = {}
@@ -24,13 +34,19 @@ for r in recs:
     code = str(r.get("kbli") or r.get("kode") or r.get("code") or "")
     if len(code) == 5 and code.isdigit():
         oss5[code] = r
-        if sample_fields is None: sample_fields = list(r.keys())
+        if sample_fields is None:
+            sample_fields = list(r.keys())
 
 print(f"OURS: {len(ours)} codes | OSS 5-digit: {len(oss5)} | OSS total recs: {len(recs)}")
 print(f"OSS fields: {sample_fields}")
 
-def oss_title(r): return r.get("judul_id") or r.get("title") or r.get("nama") or ""
-def oss_desc(r): return r.get("uraian_id") or r.get("description") or r.get("keterangan") or ""
+def oss_title(r):
+    return r.get("judul_id") or r.get("title") or r.get("nama") or ""
+
+
+def oss_desc(r):
+    return r.get("uraian_id") or r.get("description") or r.get("keterangan") or ""
+
 
 missing = sorted(set(oss5) - set(ours))
 phantom = sorted(set(ours) - set(oss5))
@@ -39,7 +55,8 @@ print(f"PHANTOM in ours (not in OSS 2025): {len(phantom)} {phantom[:10]}")
 
 title_mismatch, trunc, desc_low = [], [], []
 for code, r in ours.items():
-    if code not in oss5: continue
+    if code not in oss5:
+        continue
     o = oss5[code]
     tj, oj = norm(r.get("judul", "")), norm(oss_title(o))
     if tj != oj:
@@ -65,9 +82,14 @@ for c, s in sorted(desc_low, key=lambda x: x[1])[:15]:
     print(f"  {c}: sim={s}")
 
 # Field coverage on ours
-gold = json.load(open(GOLD))
+gold = json.loads(GOLD.read_text(encoding="utf-8"))
 n = len(ours)
-def cov(pred): return sum(1 for r in ours.values() if pred(r))
+
+
+def cov(pred):
+    return sum(1 for r in ours.values() if pred(r))
+
+
 print(f"\n--- COVERAGE (n={n}) ---")
 print(f"gold-tier: {len(gold)}")
 sample = next(iter(ours.values()))

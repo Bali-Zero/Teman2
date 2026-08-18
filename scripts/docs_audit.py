@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Docs Audit — generate DOCS_INVENTORY.md from a walk of docs/**/*.md.
+"""Docs Audit — generate an artifact inventory from a walk of docs/**/*.md.
 
 Rules (first match wins):
   1. ARCHIVED if path starts with docs/archive/
@@ -92,6 +92,15 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--repo", default=".", help="Repo root (default: .)")
     p.add_argument(
+        "--output",
+        default=".artifacts/docs-derived-state/DOCS_INVENTORY.md",
+        help=(
+            "Inventory artifact path, absolute or relative to --repo. The "
+            "default is untracked derived state; docs/DOCS_INVENTORY.md is "
+            "only a stable pointer."
+        ),
+    )
+    p.add_argument(
         "--orphan-days",
         type=int,
         default=90,
@@ -170,7 +179,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help=(
             "Explicit, self-documenting alias for the default (no --apply) "
-            "inventory-regeneration mode: rewrites docs/DOCS_INVENTORY.md "
+            "inventory-regeneration mode: rewrites the --output artifact "
             "content only, never touches docs/archive/. Mutually exclusive "
             "with --apply and --check. Use this when you only want the "
             "table refreshed and do NOT want orphan git-mv side effects."
@@ -268,11 +277,9 @@ def print_check_delta(
 ) -> None:
     """Emit a compact diff when --check finds inventory drift."""
     print(
-        "docs_audit: docs/DOCS_INVENTORY.md is out of date; regenerate with "
-        "bash scripts/docs_inventory_regen.sh (gate-consistent by default — "
-        "safe to run and commit on a PR branch; see --gate-consistent's "
-        f"--help text for why a bare `python {Path(__file__).as_posix()}` "
-        "invocation without it can commit content this same gate then rejects).",
+        f"docs_audit: generated output differs from {inventory_path}; "
+        "regenerate the ephemeral bundle with "
+        "bash scripts/docs_inventory_regen.sh.",
         file=sys.stderr,
     )
     diff = list(
@@ -1296,7 +1303,51 @@ def read_trusted_prev_flipped(repo: Path, trusted_ref: str = "origin/main") -> D
         # Ref resolves fine; the FILE just doesn't exist on it (yet). Legit
         # {} — matches parse_prev_flipped()'s own bootstrap contract.
         return {}
-    return parse_prev_flipped(show.stdout)
+    prev = parse_prev_flipped(show.stdout)
+    if not prev:
+        # THIRD STATE — the docstring above knows only two ("ref unresolvable"
+        # -> raise, "file absent" -> bootstrap {}) and this is neither: the
+        # file EXISTS on the trusted ref and carries no parseable provenance
+        # table at all. PR #4233 ("delete tracked derived state", 2026-08-16)
+        # replaced docs/DOCS_INVENTORY.md with a pointer document, so from
+        # that commit on this branch is reached on EVERY invocation and the
+        # channel is severed permanently, not bootstrapping toward anything.
+        #
+        # The harm is the one the fail-closed paragraph above already spells
+        # out in full — "would incorrectly tell every already-organ-ARCHIVED
+        # doc 'no prior flip on record', letting Rule 2 fall through and
+        # silently resurrect it" — reached through infrastructure instead of
+        # malice, which is the route that paragraph did not anticipate.
+        # Measured 2026-08-17: 148 documents carried a flip at b626e01f6^ and
+        # 0 do on the pointer; under --gate-consistent all 148 now read LIVE.
+        # See .claude/skills/modus/PENDING-ARMS.md.
+        #
+        # DELIBERATELY a signaler, not a gate: the return contract is
+        # unchanged ({} exactly as before) so no caller's behaviour moves on
+        # this commit. Whether the mechanism should be re-armed against a
+        # declared input or retired outright is an open ledger decision, and
+        # a warning may not pre-empt it. What this DOES buy is that the break
+        # stops being invisible (superscar #2, "esiste != armato"): it is now
+        # named, with its cause, in the log of every run that reaches here.
+        # The trusted ref's NAME is deliberately not interpolated here.
+        # CodeQL's py/clear-text-logging-sensitive-data taints the value of
+        # this argument and rates the resulting log a HIGH alert (measured on
+        # PR #4248, scripts/docs_audit.py:1333). The name buys nothing a
+        # reader does not already have — the caller chose the ref, the path is
+        # a constant, and this file documents the default — so the cheap and
+        # honest move is to stop logging the argument rather than to suppress
+        # the rule.
+        print(
+            "docs_audit: WARNING - orphan-flip provenance channel is SEVERED. "
+            "docs/DOCS_INVENTORY.md exists on the trusted ref but contains no "
+            "parseable provenance table, so every prior orphan flip reads as "
+            "'never flipped'. This is NOT the bootstrap case (that one is a "
+            "MISSING file). Docs previously archived by the organ can fall "
+            "through Rule 2 and silently resurrect. See PENDING-ARMS.md, row "
+            "'orphan-flip anti-forgery gate'.",
+            file=sys.stderr,
+        )
+    return prev
 
 
 def _flip_is_still_valid(carried: str, last_touched: date) -> bool:
@@ -1911,7 +1962,12 @@ def main() -> int:
     # unconditionally the working tree: --check's whole job is to compare a
     # fresh render against exactly what's checked in, forgery-detection
     # included).
-    inventory_path = repo / "docs" / "DOCS_INVENTORY.md"
+    configured_output = Path(args.output)
+    inventory_path = (
+        configured_output
+        if configured_output.is_absolute()
+        else repo / configured_output
+    )
     old_content = (
         inventory_path.read_text(encoding="utf-8") if inventory_path.exists() else ""
     )

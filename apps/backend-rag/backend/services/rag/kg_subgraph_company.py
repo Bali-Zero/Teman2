@@ -16,6 +16,8 @@ from typing import Any, TypedDict
 import asyncpg
 from langgraph.graph import END, StateGraph
 
+from backend.services.kbli_pma_disclosure import disclose_pma
+
 logger = logging.getLogger(__name__)
 
 
@@ -127,9 +129,9 @@ _PMA_ELIGIBILITY: dict[str, tuple[str, str]] = {
 }
 
 
-def resolve_pma_eligibility(raw_status: object) -> tuple[str, bool | None, str]:
+def resolve_pma_eligibility(payload: dict[str, Any]) -> tuple[str, bool | None, str]:
     """
-    Map a raw KG ``pma_status`` to ``(state, eligible, basis)``.
+    Map one complete KG PMA evidence tuple to ``(state, eligible, basis)``.
 
     ``state`` is the authoritative verdict (``open`` / ``closed`` /
     ``undetermined``); ``eligible`` is derived from it here and nowhere else.
@@ -139,6 +141,15 @@ def resolve_pma_eligibility(raw_status: object) -> tuple[str, bool | None, str]:
     know" and "closed to foreigners" are different answers, and this store is
     only entitled to the first one when it is silent.
     """
+    disclosed = disclose_pma(payload)
+    if disclosed["pma_verification_status"] != "located":
+        return (
+            PMA_STATE_UNDETERMINED,
+            None,
+            "official per-code PMA evidence tuple not located — status and cap NOT_VERIFIED",
+        )
+
+    raw_status = disclosed["pma_status"]
     key = str(raw_status or "").strip().upper()
     if not key:
         state, basis = PMA_STATE_UNDETERMINED, "no pma_status on the KG node — undetermined"
@@ -322,8 +333,9 @@ async def check_pma_eligibility_node(state: CompanyState, db_pool: asyncpg.Pool)
             if not isinstance(props, dict):
                 props = {}
 
-            pma_status = props.get("pma_status")
-            state_str, eligible, basis = resolve_pma_eligibility(pma_status)
+            disclosed = disclose_pma(props)
+            pma_status = disclosed["pma_status"]
+            state_str, eligible, basis = resolve_pma_eligibility(props)
             answered.add(row["entity_id"])
 
             pma_info.append(
@@ -337,6 +349,10 @@ async def check_pma_eligibility_node(state: CompanyState, db_pool: asyncpg.Pool)
                     # Compare with `is`, never with truthiness — None is not False.
                     "eligible": eligible,
                     "eligibility_basis": basis,
+                    "pma_max_asing": disclosed["pma_max_asing"],
+                    "pma_verification_status": disclosed["pma_verification_status"],
+                    "pma_official_basis": disclosed["pma_official_basis"],
+                    "pma_source_vintage": disclosed["pma_source_vintage"],
                     "source_entity_type": row["entity_type"],
                 },
             )

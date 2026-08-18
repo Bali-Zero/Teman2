@@ -55,6 +55,14 @@
 /scripts/ci/test_change_map.py                       @Balizero1987
 /scripts/ci/hotzone_changed_files.sh                 @Balizero1987
 
+# Ring-gating manual kill-switch (Merge-OS v2 round-2 Cure #1, adapted
+# 2026-08-18) — sits in the same trust boundary as the classifier files
+# above: a PR that neuters this script's ability to force the full suite
+# quietly disarms the one operator-controlled emergency lever over the
+# ring-gating the three files above implement.
+/scripts/ci/ring_gating_override.sh                  @Balizero1987
+/scripts/ci/test_ring_gating_override.py             @Balizero1987
+
 # ---------------------------------------------------------------------------
 # Deploy / infra config — TIER 1
 # ---------------------------------------------------------------------------

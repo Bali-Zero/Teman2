@@ -4,7 +4,7 @@ so a data-plane cure actually reaches WhatsApp/webchat.
 
 WHY THIS EXISTS (2026-07-24). `inspect_kbli`
 (`GET /api/v1/kbli-notebook/inspect/{code}`, `kbli_notebook.py:352`) caches the
-whole assembled `KBLIDetail` under `kbli_inspect_v4_{code}`, with a TTL from
+whole assembled `KBLIDetail` under `kbli_inspect_v6_{code}`, with a TTL from
 `get_kbli_ttl()` that is **30 days** for most codes (12h only for 471/472/563/
 661/62, 7d for 55/41/86/05..09). Every KBLI cure so far — the 8-code pilot, the
 86-code `kbli_documents` cure, the 18-code 4th-surface cure, the 4-code phantom
@@ -20,7 +20,7 @@ packaging code — because a diagnostic call made BEFORE the cure had populated 
 30-day cache entry. Curing the store is not curing the surface (see memory
 `feedback_merged_is_not_live_consumer_map_first_2026_07_16`).
 
-WHAT IT DOES: for each `--only` code, reports whether `kbli_inspect_v4_{code}`
+WHAT IT DOES: for each `--only` code, reports whether `kbli_inspect_v6_{code}`
 is currently present, and with `--apply` deletes it and RE-READS to confirm the
 key is actually gone. The re-read matters: `CacheService.delete()` returning
 True is the client's claim, not evidence, and a Redis-unavailable fallback path
@@ -53,7 +53,7 @@ logger = logging.getLogger("kbli_inspect_cache_bust")
 # EARNED ITS KEEP on 2026-08-06: the router went v2 → v3 to publish the
 # inherited-licensing disclosure past stale entries, and this constant was
 # missed. CI caught the pair coming apart, not a reader.
-CACHE_KEY_TEMPLATE = "kbli_inspect_v4_{code}"
+CACHE_KEY_TEMPLATE = "kbli_inspect_v6_{code}"
 
 
 def cache_key(code: str) -> str:
@@ -113,7 +113,8 @@ async def main() -> None:
         )
         raise SystemExit(3)
     logger.info(
-        "cache backend: %s", "shared Redis" if cache.redis_available else "in-memory (no Redis configured)"
+        "cache backend: %s",
+        "shared Redis" if cache.redis_available else "in-memory (no Redis configured)",
     )
 
     present = 0

@@ -62,7 +62,7 @@ export function HeroCTA() {
             boxShadow: "0 6px 18px rgba(255,45,76,0.3)",
           }}
         >
-          Chat with us — avg reply: 2 min
+          Chat with us
           <ArrowRight size={15} strokeWidth={2.2} />
         </WhatsAppLeadButton>
         <a

@@ -17,8 +17,11 @@ import { describe, it, expect } from "vitest";
 import {
   buildKbliCorpus,
   capLabel,
+  pmaColumns,
   riskLabel,
   UNCLASSIFIED_RISK,
+  UNVERIFIED_PMA_CAP,
+  UNVERIFIED_PMA_STATUS,
   type CorpusRecord,
 } from "./kbli-llms-corpus";
 import rawData from "../../data/KBLI_2025_FINAL_CLEAN.json";
@@ -32,6 +35,10 @@ const rec = (over: Partial<CorpusRecord> = {}): CorpusRecord => ({
   judul: "x",
   pma_status: "TERBUKA",
   pma_max_asing: 100,
+  pma_verification_status: "located",
+  pma_official_basis: "Perpres 10/2021 Lampiran III",
+  pma_source_vintage: "2021-05-25",
+  pma_cap_verified: true,
   ...over,
 });
 
@@ -46,16 +53,44 @@ describe("the cap", () => {
 
   it("a non-percentage regime stays a word, never an invented number", () => {
     expect(
-      capLabel(rec({ pma_status: "TERBATAS", pma_max_asing: "special" })),
+      capLabel(
+        rec({
+          pma_status: "TERBATAS",
+          pma_max_asing: "special",
+          pma_cap_special: true,
+        }),
+      ),
     ).toBe("special");
   });
 
-  it("INNOCENCE: an open code with no cap field is still 100%", () => {
-    // 01122 is the one record in the catalogue carrying no cap. It is TERBUKA,
-    // so 100 is the right answer and this cure must not move it.
+  it("withholds a missing or unverified cap without inferring 100%", () => {
     expect(
       capLabel(rec({ pma_status: "TERBUKA", pma_max_asing: undefined })),
-    ).toBe("100%");
+    ).toBe(UNVERIFIED_PMA_CAP);
+    expect(capLabel(rec({ pma_max_asing: 49, pma_cap_verified: false }))).toBe(
+      UNVERIFIED_PMA_CAP,
+    );
+  });
+
+  it.each(["49", true, Number.POSITIVE_INFINITY])(
+    "rejects malformed runtime cap %p",
+    (pma_max_asing) => {
+      expect(capLabel(rec({ pma_max_asing: pma_max_asing as never }))).toBe(
+        UNVERIFIED_PMA_CAP,
+      );
+    },
+  );
+
+  it("requires the special marker as well as cap verification", () => {
+    expect(
+      capLabel(
+        rec({
+          pma_status: "TERBATAS",
+          pma_max_asing: "special",
+          pma_cap_special: false,
+        }),
+      ),
+    ).toBe(UNVERIFIED_PMA_CAP);
   });
 });
 
@@ -99,6 +134,45 @@ describe("the row", () => {
       "62010 | Software | TERBUKA | 100% | Not classified\n",
     );
   });
+
+  it("GUILT: withholds a declared-gap PMA status and cap", () => {
+    const gap = rec({
+      kode_kbli_2025: "01111",
+      pma_verification_status: "declared_gap",
+      pma_official_basis: undefined,
+      pma_source_vintage: undefined,
+    });
+
+    expect(pmaColumns(gap)).toEqual({
+      status: UNVERIFIED_PMA_STATUS,
+      cap: UNVERIFIED_PMA_CAP,
+    });
+    expect(buildKbliCorpus([gap])).toContain(
+      "01111 | x | NOT_VERIFIED | Not verified | Not classified\n",
+    );
+    expect(buildKbliCorpus([gap])).not.toContain("TERBUKA | 100%");
+  });
+
+  it("fails closed when located provenance is incomplete", () => {
+    expect(pmaColumns(rec({ pma_official_basis: "   " }))).toEqual({
+      status: UNVERIFIED_PMA_STATUS,
+      cap: UNVERIFIED_PMA_CAP,
+    });
+    expect(pmaColumns(rec({ pma_source_vintage: undefined }))).toEqual({
+      status: UNVERIFIED_PMA_STATUS,
+      cap: UNVERIFIED_PMA_CAP,
+    });
+  });
+
+  it("fails closed when a located row carries an unknown PMA status token", () => {
+    const future = rec({ pma_status: "FUTURE_STATUS" });
+
+    expect(pmaColumns(future)).toEqual({
+      status: UNVERIFIED_PMA_STATUS,
+      cap: UNVERIFIED_PMA_CAP,
+    });
+    expect(buildKbliCorpus([future])).not.toContain("FUTURE_STATUS | 100%");
+  });
 });
 
 describe("the committed artifact", () => {
@@ -112,24 +186,35 @@ describe("the committed artifact", () => {
     expect(readFileSync(COMMITTED, "utf8")).toBe(buildKbliCorpus(RECORDS));
   });
 
-  it("states no foreign cap the canonical contradicts", () => {
+  it("states no unverified or contradictory foreign cap", () => {
     // A property rather than a byte-comparison, so it still means something if
     // the format is ever reshaped: every published cap must be the resolved
     // one, and in particular no closed code may read as open.
-    const published = new Map<string, string>();
+    const published = new Map<string, { status: string; cap: string }>();
     for (const line of readFileSync(COMMITTED, "utf8").split("\n")) {
       if (!/^\d{5} \| /.test(line)) continue;
       const parts = line.split(" | ");
-      published.set(parts[0], parts[3]);
+      published.set(parts[0], { status: parts[2], cap: parts[3] });
     }
-    const wrong = RECORDS.filter(
-      (r) => published.get(r.kode_kbli_2025 ?? "") !== capLabel(r),
-    ).map((r) => r.kode_kbli_2025);
+    const wrong = RECORDS.filter((r) => {
+      const expected = pmaColumns(r);
+      const actual = published.get(r.kode_kbli_2025 ?? "");
+      return actual?.status !== expected.status || actual?.cap !== expected.cap;
+    }).map((r) => r.kode_kbli_2025);
     expect(wrong).toEqual([]);
-    // and the corpus really does carry closed codes as 0% — guards against the
-    // assertion above passing vacuously on an empty or unparsed file
-    expect([...published.values()].filter((c) => c === "0%").length).toBe(
-      RECORDS.filter((r) => capLabel(r) === "0%").length,
+    // The corpus really carries every verified closed code as 0%, while every
+    // declared gap withholds both raw ownership columns.
+    expect([...published.values()].filter((p) => p.cap === "0%").length).toBe(
+      RECORDS.filter((r) => pmaColumns(r).cap === "0%").length,
+    );
+    expect(
+      [...published.values()].filter(
+        (p) =>
+          p.status === UNVERIFIED_PMA_STATUS && p.cap === UNVERIFIED_PMA_CAP,
+      ).length,
+    ).toBe(
+      RECORDS.filter((r) => pmaColumns(r).status === UNVERIFIED_PMA_STATUS)
+        .length,
     );
     expect(published.size).toBe(RECORDS.length);
   });

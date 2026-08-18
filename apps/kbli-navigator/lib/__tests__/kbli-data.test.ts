@@ -10,8 +10,8 @@
 // this test locks in that transformRecord() (lib/kbli-data.ts) handles a
 // quarantined record correctly:
 //   - GUILT:     a quarantined code (68112) renders NO licensing rows (the
-//                disputed block is never resurrected) but the honest-gap
-//                intel_2026.whatYouNeed text IS present and readable.
+//                disputed block is never resurrected), and PMA-dependent
+//                free-form editorial is withheld while PMA is unverified.
 //   - INNOCENCE: a healthy code with real per_skala (55101) renders its
 //                licensing rows unchanged.
 //
@@ -20,7 +20,33 @@
 // =============================================================================
 
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { PMABadge } from "../../components/kbli/PMABadge";
+import {
+  discloseBaliL4Record,
+  getBaliL4,
+  isBlockedInBali,
+} from "../kbli-bali-l4";
 import { getCode, getAllCodes } from "../kbli-data";
+import {
+  hasCertifiedCanonicalIntel,
+  hasCertifiedStandaloneGold,
+  neutralKbliChatOpenerText,
+} from "../kbli-editorial-certification";
+import {
+  getGoldCodes,
+  getGoldContent,
+  getRawGoldContentForCertification,
+} from "../kbli-gold-content";
+import {
+  disclosePmaInfo,
+  formatPmaOwnership,
+  hasPublishablePmaCap,
+} from "../kbli-pma-disclosure";
+import type { KBLIRawCode } from "../kbli-types";
 
 function guiltCase() {
   const kbli = getCode("68112");
@@ -35,19 +61,433 @@ function guiltCase() {
     "68112 (quarantined) must render zero licensing rows, not the disputed PP28/MICE block",
   );
 
-  // Honest-gap prose must be present and legible (this is what the page
-  // renders instead of a false risk/license claim for a non-gold code).
-  assert.ok(
-    kbli!.intel_2026?.whatYouNeed,
-    "68112 must carry an intel_2026.whatYouNeed honest-gap explanation",
-  );
-  assert.match(
-    kbli!.intel_2026!.whatYouNeed!,
-    /not yet defined|not.{0,15}published|no risk-based/i,
-    "68112's whatYouNeed must state the licensing gap honestly, not assert a resolved risk level",
+  assert.equal(
+    kbli!.intel_2026,
+    undefined,
+    "68112 must withhold free-form editorial while its whole-code PMA verdict is unverified",
   );
 
-  console.log("PASS guilt: 68112 — empty licensing, honest gap prose present");
+  console.log(
+    "PASS guilt: 68112 — empty licensing and PMA-dependent editorial withheld",
+  );
+}
+
+function pmaDisclosureContract() {
+  const gap = getCode("01111");
+  assert.ok(gap, "01111 must be present in the dataset");
+  assert.deepEqual(
+    gap!.pma,
+    {
+      status: "unknown",
+      maxForeign: null,
+      condition: null,
+      isPriority: false,
+      note: null,
+      source: null,
+      verificationStatus: "declared_gap",
+      officialBasis: null,
+      sourceVintage: null,
+      capSpecial: false,
+      capVerified: false,
+      routeTo: null,
+    },
+    "01111 must expose one atomic declared-gap PMA shape",
+  );
+  assert.equal(
+    gap!.intel_2026,
+    undefined,
+    "01111 must not expose free-form editorial derived from an unverified PMA verdict",
+  );
+  assert.equal(
+    getBaliL4("01111"),
+    null,
+    "01111 must not expose a Bali verdict around the PMA provenance gate",
+  );
+  assert.equal(isBlockedInBali("01111"), false);
+
+  const located = getCode("02102");
+  assert.ok(located, "02102 must be present in the dataset");
+  assert.equal(located!.pma.verificationStatus, "located");
+  assert.notEqual(located!.pma.status, "unknown");
+  assert.ok(located!.pma.officialBasis);
+  assert.ok(located!.pma.sourceVintage);
+  assert.ok(getBaliL4("02102"), "02102 must retain its located Bali verdict");
+
+  const all = getAllCodes();
+  const gaps = all.filter(
+    (code) => code.pma.verificationStatus === "declared_gap",
+  );
+  const locatedCodes = all.filter(
+    (code) => code.pma.verificationStatus === "located",
+  );
+  assert.equal(gaps.length, 1505, "dataset must contain 1,505 PMA gaps");
+  assert.equal(
+    locatedCodes.length,
+    54,
+    "dataset must contain 54 located PMA verdicts",
+  );
+  for (const code of gaps) {
+    assert.equal(code.pma.status, "unknown", `${code.code}: PMA status`);
+    assert.equal(code.pma.maxForeign, null, `${code.code}: PMA cap`);
+    assert.equal(code.pma.condition, null, `${code.code}: PMA condition`);
+    assert.equal(code.pma.isPriority, false, `${code.code}: PMA priority`);
+    assert.equal(code.pma.note, null, `${code.code}: PMA note`);
+    assert.equal(code.pma.source, null, `${code.code}: PMA source`);
+    assert.equal(code.pma.officialBasis, null, `${code.code}: PMA basis`);
+    assert.equal(code.pma.sourceVintage, null, `${code.code}: PMA vintage`);
+    assert.equal(code.pma.capSpecial, false, `${code.code}: special cap`);
+    assert.equal(code.pma.capVerified, false, `${code.code}: verified cap`);
+    assert.equal(code.pma.routeTo, null, `${code.code}: PMA route`);
+    assert.equal(code.intel_2026, undefined, `${code.code}: editorial`);
+    assert.notEqual(code.tier, "gold", `${code.code}: public content tier`);
+  }
+  for (const code of locatedCodes) {
+    assert.equal(
+      hasPublishablePmaCap(code.pma),
+      true,
+      `${code.code}: located editorial requires an explicitly verified cap`,
+    );
+  }
+
+  const certifiedIntel = locatedCodes.filter((code) => code.intel_2026);
+  assert.equal(
+    certifiedIntel.length,
+    49,
+    "only the 49 manually reviewed canonical editorial blocks may publish",
+  );
+  for (const code of ["10722", "47222", "50134", "73100", "96220"]) {
+    assert.equal(getCode(code)?.intel_2026, undefined, `${code}: unsafe intel`);
+  }
+
+  assert.equal(getCode("47111")?.tier, "gold");
+  assert.equal(getCode("65121")?.tier, "gold");
+  assert.notEqual(getCode("47221")?.tier, "gold");
+  assert.notEqual(getCode("16291")?.tier, "gold");
+
+  console.log(
+    `PASS PMA disclosure: ${gaps.length} gaps withheld, ${certifiedIntel.length}/${locatedCodes.length} located editorial blocks certified`,
+  );
+}
+
+function editorialCertificationContract() {
+  const parsed = JSON.parse(
+    fs.readFileSync(path.join(process.cwd(), "data", "kbli-2025.json"), "utf8"),
+  ) as { data: KBLIRawCode[] };
+  const raw = (code: string) => {
+    const record = parsed.data.find((item) => item.kode_kbli_2025 === code);
+    assert.ok(record, `${code}: raw canonical record`);
+    return record;
+  };
+
+  const safe = getCode("47111");
+  assert.ok(safe, "47111 transformed record");
+  const safeIntel = raw("47111").intel_2026;
+  assert.ok(safeIntel, "47111 raw canonical intel");
+  assert.equal(
+    hasCertifiedCanonicalIntel("47111", safe!.pma, safeIntel),
+    true,
+    "reviewed canonical bytes and PMA fingerprint must certify",
+  );
+  assert.equal(
+    hasCertifiedCanonicalIntel("47111", safe!.pma, {
+      ...safeIntel,
+      whatItMeans: `${safeIntel!.whatItMeans}x`,
+    }),
+    false,
+    "one-character editorial drift must fail closed",
+  );
+  assert.equal(
+    hasCertifiedCanonicalIntel(
+      "47111",
+      { ...safe!.pma, maxForeign: 1 },
+      safeIntel,
+    ),
+    false,
+    "PMA fingerprint drift must fail closed",
+  );
+
+  const safeGold = getRawGoldContentForCertification("47111");
+  const unsafeGold = getRawGoldContentForCertification("47221");
+  assert.ok(safeGold, "47111 raw standalone gold");
+  assert.ok(unsafeGold, "47221 raw standalone gold");
+  assert.equal(hasCertifiedStandaloneGold("47111", safe!.pma, safeGold), true);
+  assert.equal(
+    hasCertifiedStandaloneGold("47221", getCode("47221")!.pma, unsafeGold),
+    false,
+    "uncorrected standalone gold must remain withheld",
+  );
+  assert.equal(getGoldContent("47221", getCode("47221")!.pma), null);
+  assert.equal(
+    getGoldContent("47111", safe!.pma)?.zantaraOpener,
+    neutralKbliChatOpenerText("47111"),
+    "published standalone gold must use the compiler-owned neutral opener",
+  );
+  assert.equal(
+    safe!.intel_2026?.zantaraOpener,
+    neutralKbliChatOpenerText("47111"),
+    "published canonical intel must use the compiler-owned neutral opener",
+  );
+
+  const goldCodes = getGoldCodes((code) => getCode(code)?.pma);
+  assert.deepEqual(goldCodes, ["47111", "65121"]);
+  assert.deepEqual(
+    getAllCodes()
+      .filter((code) => code.tier === "gold")
+      .map((code) => code.code),
+    goldCodes,
+    "tier assignment must derive from the same certified gold bytes",
+  );
+
+  console.log(
+    "PASS editorial certification: content hash + PMA fingerprint + neutral opener",
+  );
+}
+
+function adversarialDisclosureContract() {
+  const raw = {
+    kode_kbli_2025: "47221",
+    pma_status: "TERBATAS",
+    pma_max_asing: "49",
+    pma_verification_status: "located",
+    pma_official_basis: "official locator",
+    pma_source_vintage: "2021-05-25",
+    pma_prioritas: "false",
+    pma_cap_verified: "true",
+    l4_bali: {
+      status: "OK",
+      blocked: "false",
+      reason: "must not escape",
+    },
+  } as unknown as KBLIRawCode;
+
+  assert.deepEqual(
+    disclosePmaInfo(raw),
+    {
+      status: "restricted",
+      maxForeign: null,
+      condition: null,
+      isPriority: false,
+      note: null,
+      source: null,
+      verificationStatus: "located",
+      officialBasis: "official locator",
+      sourceVintage: "2021-05-25",
+      capSpecial: false,
+      capVerified: false,
+      routeTo: null,
+    },
+    "public PMA fields must not coerce string caps or booleans",
+  );
+  assert.equal(
+    discloseBaliL4Record(raw as unknown as Record<string, unknown>),
+    null,
+    "string 'false' must not become a Bali boolean",
+  );
+
+  const malformedReview = {
+    ...(raw as unknown as Record<string, unknown>),
+    pma_max_asing: "special",
+    pma_cap_special: true,
+    pma_cap_verified: true,
+    l4_bali: {
+      status: "OK_or_HIGHER_RISK",
+      blocked: false,
+      needs_review: "false",
+      confidence: "FUTURE",
+    },
+  };
+  assert.equal(
+    discloseBaliL4Record(malformedReview),
+    null,
+    "a string review flag must withhold the complete Bali tuple",
+  );
+
+  const futureStatus = {
+    ...malformedReview,
+    l4_bali: {
+      status: "FUTURE_STATUS",
+      blocked: false,
+      needs_review: false,
+    },
+  };
+  assert.equal(
+    discloseBaliL4Record(futureStatus),
+    null,
+    "an unknown status must not become a Bali verdict",
+  );
+
+  const valid = {
+    ...malformedReview,
+    l4_bali: {
+      status: "OK_or_HIGHER_RISK",
+      blocked: false,
+      needs_review: false,
+      confidence: "FUTURE",
+    },
+  };
+  assert.equal(
+    disclosePmaInfo(valid as unknown as KBLIRawCode).maxForeign,
+    "special",
+  );
+  assert.equal(
+    formatPmaOwnership(disclosePmaInfo(raw)),
+    "Restricted · ownership cap not verified",
+    "a malformed numeric-string cap must never render as null%",
+  );
+  assert.equal(
+    formatPmaOwnership(disclosePmaInfo(valid as unknown as KBLIRawCode)),
+    "Special non-percentage conditions",
+    "a special cap must never acquire a percentage suffix",
+  );
+
+  const locatedOpenWithoutCap = disclosePmaInfo({
+    ...(raw as unknown as Record<string, unknown>),
+    pma_status: "TERBUKA",
+    pma_max_asing: undefined,
+  } as unknown as KBLIRawCode);
+  assert.equal(
+    formatPmaOwnership(locatedOpenWithoutCap),
+    "Open · ownership cap not verified",
+    "TERBUKA must not synthesize a 100% cap",
+  );
+  assert.equal(
+    formatPmaOwnership(locatedOpenWithoutCap, "metadata"),
+    "Open to Foreign Investment (ownership cap not verified)",
+    "metadata must not synthesize a 100% cap",
+  );
+  const locatedOpenUnverifiedCap = disclosePmaInfo({
+    ...(raw as unknown as Record<string, unknown>),
+    pma_status: "TERBUKA",
+    pma_max_asing: 100,
+    pma_cap_verified: false,
+  } as unknown as KBLIRawCode);
+  assert.equal(
+    locatedOpenUnverifiedCap.maxForeign,
+    null,
+    "an unverified numeric cap must be absent from the public model",
+  );
+  assert.equal(
+    formatPmaOwnership(locatedOpenUnverifiedCap),
+    "Open · ownership cap not verified",
+    "an unverified 100 value must not enter the public ownership verdict",
+  );
+  assert.equal(
+    hasPublishablePmaCap(locatedOpenUnverifiedCap),
+    false,
+    "generated PMA prose must stay withheld around an unverified cap",
+  );
+
+  const locatedRestrictedUnverifiedSpecial = disclosePmaInfo({
+    ...(raw as unknown as Record<string, unknown>),
+    pma_max_asing: "special",
+    pma_cap_special: true,
+    pma_cap_verified: false,
+  } as unknown as KBLIRawCode);
+  assert.equal(
+    locatedRestrictedUnverifiedSpecial.maxForeign,
+    null,
+    "an unverified special cap must be absent from the public model",
+  );
+  assert.equal(
+    formatPmaOwnership(locatedRestrictedUnverifiedSpecial),
+    "Restricted · ownership cap not verified",
+    "an unverified special marker must not enter the public verdict",
+  );
+  assert.equal(
+    hasPublishablePmaCap(locatedRestrictedUnverifiedSpecial),
+    false,
+    "generated PMA prose must stay withheld around an unverified special cap",
+  );
+
+  const locatedClosedWithoutCap = disclosePmaInfo({
+    ...(raw as unknown as Record<string, unknown>),
+    pma_status: "TERTUTUP",
+    pma_max_asing: null,
+    pma_cap_verified: false,
+  } as unknown as KBLIRawCode);
+  assert.equal(
+    formatPmaOwnership(locatedClosedWithoutCap),
+    "Closed · ownership cap not verified",
+    "a located closed verdict must not hide its unavailable ownership cap",
+  );
+  assert.equal(
+    formatPmaOwnership(locatedClosedWithoutCap, "metadata"),
+    "Closed to Foreign Investment (ownership cap not verified)",
+  );
+
+  const mismatchedSpecial = disclosePmaInfo({
+    ...(raw as unknown as Record<string, unknown>),
+    pma_max_asing: 0,
+    pma_cap_special: true,
+    pma_cap_verified: true,
+  } as unknown as KBLIRawCode);
+  assert.equal(mismatchedSpecial.maxForeign, 0);
+  assert.equal(mismatchedSpecial.capSpecial, false);
+  assert.equal(
+    formatPmaOwnership(mismatchedSpecial),
+    "Closed (0%)",
+    "a stray special flag must not override a verified numeric zero",
+  );
+  assert.deepEqual(discloseBaliL4Record(valid), {
+    status: "OK_or_HIGHER_RISK",
+    reason: "",
+    confidence: "MEDIUM",
+    needsReview: false,
+    blocked: false,
+    from2020: undefined,
+    moratorium: { rule: "", effective: "", source: "", virtualOffice: "" },
+  });
+
+  console.log("PASS adversarial disclosure: no PMA/Bali type coercion");
+}
+
+function componentProvenanceWiringContract() {
+  const root = process.cwd();
+  const files = ["components/kbli/KBLICard.tsx", "app/kbli/[code]/page.tsx"];
+  let callCount = 0;
+  for (const relative of files) {
+    const source = fs.readFileSync(path.join(root, relative), "utf8");
+    const calls = source.match(/<PMABadge[\s\S]*?\/>/g) ?? [];
+    assert.ok(calls.length > 0, `${relative}: expected a PMABadge call`);
+    for (const call of calls) {
+      callCount += 1;
+      assert.match(call, /verdictVerified=/, `${relative}: PMA tuple gate`);
+      assert.match(call, /capSpecial=/, `${relative}: special-cap marker`);
+      assert.match(call, /capVerified=/, `${relative}: cap provenance`);
+    }
+  }
+  assert.equal(callCount, 2, "all two production PMABadge calls are audited");
+
+  const closedWithoutCap = renderToStaticMarkup(
+    createElement(PMABadge, {
+      status: "closed",
+      maxForeign: null,
+      verdictVerified: true,
+      capVerified: false,
+    }),
+  );
+  assert.match(closedWithoutCap, />Closed</, "closed verdict remains visible");
+  assert.match(
+    closedWithoutCap,
+    /cap not verified/,
+    "closed badge must expose an unavailable cap",
+  );
+
+  const pageSource = fs.readFileSync(
+    path.join(root, "app/kbli/[code]/page.tsx"),
+    "utf8",
+  );
+  assert.match(
+    pageSource,
+    /gold\?\.zantaraOpener\s*\?\?\s*neutralKbliChatOpenerText\(kbli\.code\)/,
+    "every KBLI page must fall back to the exact compiler-owned neutral chat opener",
+  );
+  assert.doesNotMatch(
+    pageSource,
+    /opener=\{\s*pmaVerdictVerified\s*\?/,
+    "declared-gap pages must not branch to bespoke public opener prose",
+  );
+  console.log("PASS PMA badge wiring: verdict and cap provenance forwarded");
 }
 
 function innocenceCase() {
@@ -85,5 +525,9 @@ function datasetShapeSanity() {
 
 guiltCase();
 innocenceCase();
+pmaDisclosureContract();
+editorialCertificationContract();
+adversarialDisclosureContract();
+componentProvenanceWiringContract();
 datasetShapeSanity();
 console.log("\nAll kbli-data.ts quarantine-transform checks passed.");

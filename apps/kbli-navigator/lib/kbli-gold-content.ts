@@ -4,7 +4,11 @@
 // Source truth: KBLI_2025_FINAL_CLEAN.json (BPS 7/2025 + PP28/2025)
 // =============================================================================
 
-import type { KBLIGoldContent } from "./kbli-types";
+import {
+  hasCertifiedStandaloneGold,
+  withNeutralKbliChatOpener,
+} from "./kbli-editorial-certification";
+import type { KBLIGoldContent, KBLIPmaInfo } from "./kbli-types";
 
 /**
  * Gold-tier editorial content keyed by KBLI 2025 code.
@@ -12,7 +16,7 @@ import type { KBLIGoldContent } from "./kbli-types";
  * Every fact here was verified against KBLI_2025_FINAL_CLEAN.json.
  * If you edit, re-verify against the source data — do not guess.
  */
-export const KBLI_GOLD_CONTENT: Record<string, KBLIGoldContent> = {
+const KBLI_GOLD_CONTENT: Record<string, KBLIGoldContent> = {
   // ===========================================================================
   // F&B (56xxx)
   // ===========================================================================
@@ -44900,21 +44904,39 @@ Investment advisory falls under **OJK** (Otoritas Jasa Keuangan) jurisdiction. T
 /**
  * Check if a given KBLI code has gold-tier editorial content.
  */
-export function hasGoldContent(code: string): boolean {
-  return code in KBLI_GOLD_CONTENT;
+export function hasGoldContent(code: string, pma: KBLIPmaInfo): boolean {
+  return hasCertifiedStandaloneGold(code, pma, KBLI_GOLD_CONTENT[code]);
 }
 
 /**
  * Get gold-tier content for a KBLI code, or null if not available.
  */
-export function getGoldContent(code: string): KBLIGoldContent | null {
-  return KBLI_GOLD_CONTENT[code] ?? null;
+export function getGoldContent(
+  code: string,
+  pma: KBLIPmaInfo,
+): KBLIGoldContent | null {
+  const content = KBLI_GOLD_CONTENT[code];
+  return hasCertifiedStandaloneGold(code, pma, content)
+    ? withNeutralKbliChatOpener(code, content)
+    : null;
 }
 
 /**
  * List all KBLI codes that have gold-tier editorial content.
  */
-export function getGoldCodes(): string[] {
-  return Object.keys(KBLI_GOLD_CONTENT);
+export function getGoldCodes(
+  pmaForCode: (code: string) => KBLIPmaInfo | undefined,
+): string[] {
+  return Object.keys(KBLI_GOLD_CONTENT).filter((code) => {
+    const pma = pmaForCode(code);
+    return pma !== undefined && hasGoldContent(code, pma);
+  });
+}
+
+/** Raw bytes for the loader's hash gate and read-only corpus regression tests. */
+export function getRawGoldContentForCertification(
+  code: string,
+): KBLIGoldContent | null {
+  return KBLI_GOLD_CONTENT[code] ?? null;
 }
 // v1771748767

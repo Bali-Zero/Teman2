@@ -8,6 +8,7 @@ KBLI explanation generation, multi-domain routing, chat endpoint.
 
 import json
 import logging
+import math
 import re
 from typing import Any
 
@@ -21,13 +22,16 @@ from backend.app.routers.kbli_notebook import (
     KBLINotebookChatRequest,
     KBLINotebookChatResponse,
     KBLISearchResult,
-    _clean_snippet,
     _get_kbli_payload_from_qdrant,
+    _official_scope,
     _payload_value,
+    _pma_disclosure_fields,
     _resolve_embedding,
+    _result_from_payload,
     _search_kbli_qdrant,
 )
 from backend.core.cache import cached
+from backend.services.kbli_pma_disclosure import disclose_bali
 from backend.services.rag.agentic.kg_orchestrator import KGAgenticOrchestrator
 
 logger = logging.getLogger(__name__)
@@ -55,13 +59,14 @@ KBLI_MASTER_PROMPT = (
     "YOUR APPROACH:\n"
     "- Be conversational, clear, and helpful — like talking to a knowledgeable friend, not reading a legal document.\n"
     "- Start with a direct answer to the user's question, then provide supporting details.\n"
-    "- Use the full context data provided — don't leave out important licensing, PMA status, or requirements information.\n"
+    "- Use the eligible context data provided; never fill a provenance gap from memory or analogy.\n"
     "- Explain trade-offs, options, and practical next steps when relevant.\n\n"
     "PMA STATUS GLOSSARY (answer these directly without needing source data):\n"
-    "- TERBUKA = Open to 100% foreign ownership (PMA diperbolehkan penuh)\n"
+    "- TERBUKA = Open to foreign investment. It does not establish a percentage; state a ceiling only when the context carries a separately verified ownership cap.\n"
     "- TERBATAS = Open with restrictions — max foreign ownership percentage applies (PMA dengan batasan kepemilikan)\n"
     "- TERTUTUP = Closed to foreign investment — Indonesian nationals only (PMA tidak diperbolehkan)\n"
     "- PMA = Penanaman Modal Asing = Foreign Direct Investment\n"
+    "- NOT_VERIFIED = this code's whole-code foreign-ownership verdict is withheld because the record lacks a located official basis and source vintage. Never infer TERBUKA/TERBATAS/TERTUTUP or a percentage for that code; state the gap and direct the user to OSS/BKPM verification.\n"
     "- CAPITAL FACTS FOR PMA (two DIFFERENT thresholds — never conflate them):\n"
     "  * Modal Disetor Minimum (paid-up capital) = Rp 2.5 Billion, per Permen Investasi/Hilirisasi-BKPM "
     "5/2025 (in force 2025-10-02, abrogates Permen BKPM 4/2021).\n"
@@ -73,10 +78,10 @@ KBLI_MASTER_PROMPT = (
     "- NIB = Nomor Induk Berusaha = Business Identification Number (first step in OSS)\n"
     "If a user asks what these terms mean, explain them directly using this glossary.\n\n"
     "KNOWN KBLI CODES (use these exact definitions when asked):\n"
-    "- 47901 = PLATFORM DIGITAL INTERMEDIASI PERDAGANGAN ECERAN — Operating a digital marketplace that intermediates retail sales. PMA: TERBUKA (100% open). NOTE: this is the MARKETPLACE OPERATOR. A business selling its OWN goods online takes the code of the PRODUCT CATEGORY it sells, with that category's restrictions (e.g. 47221 alcoholic beverages TERBATAS, 47222 non-alcoholic TERTUTUP, most others TERBUKA). KBLI 47911 was a 2020 code and does NOT exist in KBLI 2025 — never cite it.\n"
-    "- 56101 = AKTIVITAS PENYEDIAAN MAKANAN DI BANGUNAN TETAP (RESTORAN) — Restaurant services with permanent building. PMA: TERBUKA (open to foreigners). Risiko is scale-dependent; for PMA/Besar: Menengah Tinggi.\n"
-    "- 56210 = AKTIVITAS JASA BOGA UNTUK ACARA TERTENTU (EVENT CATERING) — Event catering/katering. PMA: TERBUKA (open to foreigners), Risiko: Menengah Tinggi.\n"
-    "- 56290 = AKTIVITAS JASA BOGA LAINNYA — Other food service activities. PMA: TERBUKA (100% open).\n"
+    "- 47901 = PLATFORM DIGITAL INTERMEDIASI PERDAGANGAN ECERAN — Operating a digital marketplace that intermediates retail sales. NOTE: this is the MARKETPLACE OPERATOR. A business selling its OWN goods online takes the code of the PRODUCT CATEGORY it sells. KBLI 47911 was a 2020 code and does NOT exist in KBLI 2025 — never cite it.\n"
+    "- 56101 = AKTIVITAS PENYEDIAAN MAKANAN DI BANGUNAN TETAP (RESTORAN) — Restaurant services with a permanent building. Risk is scale-dependent.\n"
+    "- 56210 = AKTIVITAS JASA BOGA UNTUK ACARA TERTENTU (EVENT CATERING) — Event catering/katering.\n"
+    "- 56290 = AKTIVITAS JASA BOGA LAINNYA — Other food service activities.\n"
     "If a user asks about these codes by number, explain them directly from this list.\n\n"
     "ACCURACY GUIDELINES:\n"
     "1. Use only real citations from the context data. Don't make up placeholder references like 'Chapter X' or 'Bab Y'.\n"
@@ -86,13 +91,13 @@ KBLI_MASTER_PROMPT = (
     "investment value per KBLI per location of more than Rp 10 Billion (excluding land/buildings). "
     "Never state Rp 10 Billion as the paid-up capital figure.\n"
     "4. If data is missing from context, say so clearly: 'This detail isn't in the official documents — please verify at oss.go.id'.\n"
-    "5. When PMA status shows 'Verify at OSS', explain that it varies by business scale and they should check oss.go.id/perizinan.\n"
+    "5. When PMA status is NOT_VERIFIED or 'Verify at OSS', do not infer a verdict or cap; explain that the whole-code ownership claim lacks a located official basis/source vintage and should be checked with OSS/BKPM.\n"
     "6. NEVER estimate a licensing risk tier (Rendah/Menengah Rendah/Menengah Tinggi/Tinggi) for a KBLI code "
     "by analogy with other codes' risk levels. If risk_category for the code in context is 'Verify at OSS' "
     "or otherwise unverified/absent, say so honestly and point the user to oss.go.id or the Bali Zero team "
     "— do not guess a plausible tier.\n"
-    "8. COLLOQUIAL TERMS: Know that 'restoran/restaurant/rumah makan' = aktivitas penyediaan makanan (KBLI 56101, PMA TERBUKA), "
-    "'katering/catering' = jasa boga (KBLI 56210 PMA TERBUKA / 56290 PMA TERBATAS), "
+    "8. COLLOQUIAL TERMS: Know that 'restoran/restaurant/rumah makan' = aktivitas penyediaan makanan (KBLI 56101), "
+    "'katering/catering' = jasa boga (KBLI 56210 / 56290), "
     "'mobile app/aplikasi/software development' = aktivitas pemrograman komputer (KBLI 62199) or pengembangan aplikasi e-commerce (KBLI 62191), "
     "'IT consulting/konsultan IT/software consultant' = aktivitas konsultasi manajemen dan bisnis (KBLI 70209), "
     "'online retail/e-commerce/toko online/online shop' = KBLI 47901 if the client OPERATES a marketplace platform, "
@@ -116,7 +121,7 @@ KBLI_MASTER_PROMPT = (
     "'graphic design/desain grafis/logo design/branding' = aktivitas desain grafis/komunikasi visual (KBLI 74192), "
     "'interior design/desain interior' = aktivitas desain interior (KBLI 74191), "
     "'fashion design/desain mode/desain tekstil' = aktivitas desain tekstil mode dan garmen (KBLI 74113), "
-    "'bar/wine bar/cocktail bar/beach club' = aktivitas bar (KBLI 56301, PMA TERBUKA — alcohol service still requires SKPL/PB-UMKU and local licensing), "
+    "'bar/wine bar/cocktail bar/beach club' = aktivitas bar (KBLI 56301 — alcohol service still requires SKPL/PB-UMKU and local licensing), "
     "'salon/hair salon/barbershop/pangkas rambut/hair studio' = aktivitas penataan dan pangkas rambut (KBLI 96210), "
     "'beauty salon/nail studio/nail art/eyelash extension/brow studio/wax studio/make-up artist/MUA/perawatan kecantikan' = aktivitas perawatan kecantikan (KBLI 96220), "
     "'spa/day spa/wellness/spa harian/sauna/steam bath/pemandian uap/solarium' = aktivitas SPA harian sauna dan pemandian uap (KBLI 96230), "
@@ -168,6 +173,35 @@ def _is_foreign_investment_query(query: str) -> bool:
     return any(marker in normalized for marker in FOREIGN_INVESTMENT_QUERY_MARKERS)
 
 
+def _requires_structured_pma_gate(query: str) -> bool:
+    """Return whether a multi-domain answer could make an ownership claim.
+
+    The KG orchestrator owns its own retrieval path, so this router cannot prove
+    that every PMA sentence in its free-form answer passed the five-field
+    evidence gate. Foreign-investment and immigration-shaped questions stay on
+    the KBLI router's fail-closed path until the orchestrator exposes equivalent
+    structured provenance.
+    """
+    normalized = query.lower()
+    ownership_terms = bool(
+        re.search(r"\b(?:own|owner|ownership|kepemilikan|dimiliki)\b", normalized)
+    )
+    immigration_terms = any(
+        marker in normalized
+        for marker in (
+            "kitas",
+            "kitap",
+            "visa",
+            "work permit",
+            "izin kerja",
+            "izin tinggal",
+            "imigrasi",
+            "immigration",
+        )
+    )
+    return _is_foreign_investment_query(query) or ownership_terms or immigration_terms
+
+
 def _scale_specific_pma_context_note(code: str, query: str) -> str:
     if not _is_foreign_investment_query(query):
         return ""
@@ -195,7 +229,8 @@ async def _fill_bali_verdicts(results: list["KBLISearchResult"]) -> None:
     is the defect this whole lane exists to remove.
     """
     for result in results:
-        if result.bali_blocked is not None:
+        needs_bali_verdict = result.bali_blocked is None
+        if not needs_bali_verdict and result.pma_verdict_verified:
             continue
         try:
             payload = await _get_kbli_payload_from_qdrant(result.code)
@@ -204,18 +239,53 @@ async def _fill_bali_verdicts(results: list["KBLISearchResult"]) -> None:
             continue
         if not payload:
             continue
-        # Filled BEFORE the verdict gate on purpose: the national ceiling is a
-        # different fact from the Bali verdict, and a point that carries the cap
-        # but not the Bali layer must still hand the cap over. Never overwritten
-        # — the two payload-built constructors already set it from the same read.
-        if result.pma_max_asing is None:
-            result.pma_max_asing = _payload_value(payload, "pma_max_asing")
-        blocked = _payload_value(payload, "bali_blocked")
-        if blocked is None:
+        # Apply the full national evidence tuple atomically. Constructing a
+        # temporary response model runs the same fail-closed validator used by
+        # the HTTP API, so a raw cap can never be backfilled without its locator
+        # and vintage (Pydantic assignment itself is not validated here).
+        candidate = {
+            **result.model_dump(),
+            **_pma_disclosure_fields(payload),
+        }
+        if needs_bali_verdict:
+            bali = disclose_bali(
+                {
+                    **_pma_disclosure_fields(payload),
+                    "bali_blocked": _payload_value(payload, "bali_blocked"),
+                    "bali_needs_review": _payload_value(payload, "bali_needs_review"),
+                    "bali_status": _payload_value(payload, "bali_status"),
+                    "bali_reason": _payload_value(payload, "bali_reason", default=""),
+                }
+            )
+            candidate.update(
+                {
+                    "bali_blocked": bali["bali_blocked"],
+                    "bali_needs_review": bali["bali_needs_review"],
+                    "bali_status": bali["bali_status"],
+                    "bali_reason": bali["bali_reason"],
+                }
+            )
+        disclosed = KBLISearchResult(**candidate)
+        result.pma_status = disclosed.pma_status
+        result.pma_max_asing = disclosed.pma_max_asing
+        result.pma_verification_status = disclosed.pma_verification_status
+        result.pma_official_basis = disclosed.pma_official_basis
+        result.pma_source_vintage = disclosed.pma_source_vintage
+        result.pma_cap_special = disclosed.pma_cap_special
+        result.pma_cap_verified = disclosed.pma_cap_verified
+        # These fields share the PMA gate.  Copy them back as part of the
+        # same atomic disclosure decision so a later payload that downgrades a
+        # result to ``declared_gap`` cannot leave previously attached Bali or
+        # editorial claims on the mutable response object.
+        result.expert_legal = disclosed.expert_legal
+        result.bali_status = disclosed.bali_status
+        result.bali_blocked = disclosed.bali_blocked
+        result.bali_needs_review = disclosed.bali_needs_review
+        result.bali_reason = disclosed.bali_reason
+        if not result.pma_verdict_verified:
             continue
-        result.bali_blocked = bool(blocked)
-        result.bali_status = _payload_value(payload, "bali_status")
-        result.bali_reason = _payload_value(payload, "bali_reason", default="") or ""
+        if not needs_bali_verdict or result.bali_blocked is None:
+            continue
         logger.info(
             "🌴 Backfilled Bali verdict for %s: %s (blocked=%s)",
             result.code,
@@ -332,19 +402,12 @@ def _is_zero_ceiling(value: object) -> bool:
     `int(value or 0)` — which would turn every point without the field into a
     national closure — has to argue with a named function and its test.
 
-    A digit STRING counts. The canonical stores integers and a string should not
-    occur, but if one ever does, the failure has to land on the safe side: `"0"`
-    read as "no ceiling recorded" is the reading that tells a client an activity
-    closed to foreign capital is open.
+    Only an exact finite numeric value counts. Numeric strings, booleans and
+    non-finite floats are malformed source values and never become a claim.
     """
     if isinstance(value, bool):
         return False
-    if isinstance(value, int):
-        return value == 0
-    if isinstance(value, str):
-        text = value.strip()
-        return text.isdigit() and int(text) == 0  # "" is not a digit string
-    return False
+    return isinstance(value, (int, float)) and math.isfinite(value) and value == 0
 
 
 def _national_closure_basis(result: "KBLISearchResult") -> str | None:
@@ -354,6 +417,9 @@ def _national_closure_basis(result: "KBLISearchResult") -> str | None:
     closed it: "closed nationally" with no basis is the kind of assertion this
     lane keeps having to withdraw.
     """
+    if not result.pma_verdict_verified:
+        return None
+
     by_code = _NATIONAL_CLOSURE_CODES.get(result.code)
     if by_code:
         return by_code
@@ -362,7 +428,7 @@ def _national_closure_basis(result: "KBLISearchResult") -> str | None:
         return by_status
     if (result.pma_status or "").strip().upper() == "TERTUTUP":
         return "the national PMA list closes the activity (TERTUTUP)"
-    if _is_zero_ceiling(result.pma_max_asing):
+    if result.pma_cap_verified is True and _is_zero_ceiling(result.pma_max_asing):
         return "the national foreign-ownership ceiling is 0%"
     return None
 
@@ -384,9 +450,9 @@ def _bali_verdict_context_note(result: "KBLISearchResult") -> str:
       when the question mentions foreign investment; a Bali block is material
       even when it does not ("how do I open a massage parlour in Bali?"), and
       staying silent there is what produced the wrong answer.
-    * **The reason is passed through, never re-worded.** It is the sentence the
-      adjudication wrote, and it already names its own instrument — a summary
-      here would be a second opinion drifting away from the page.
+    * **The whole Bali verdict requires a verified PMA tuple.** Bali-side status,
+      block, and reason all describe PT PMA registrability. Publishing any of
+      them for a `declared_gap` row would bypass the exact provenance gate.
 
     Two more, added 2026-08-05 (see `_national_closure_basis` above):
 
@@ -400,12 +466,8 @@ def _bali_verdict_context_note(result: "KBLISearchResult") -> str:
       (`kbli-status-labels.ts::INTERNAL_ENUM_LABELS`); this was the surface that
       had not. The symbol still goes to the log, where it belongs.
 
-    NOT handled here, and measured rather than assumed: an activity that is
-    nationally closed and carries NO Bali verdict at all. Today that set is
-    empty (0 of 1,559), and widening the silence-on-absence contract to cover a
-    population of zero would trade a proven innocence property for nothing.
     """
-    if result.bali_blocked is None:
+    if not result.pma_verdict_verified or result.bali_blocked is None:
         return ""
 
     national = _national_closure_basis(result)
@@ -413,6 +475,12 @@ def _bali_verdict_context_note(result: "KBLISearchResult") -> str:
     # ordering bug predates this change — it has been one malformed payload away
     # from a 500 since the field was added.
     reason = _speak_internal_symbols(result.bali_reason or "").strip()
+    review_note = (
+        " The canonical Bali record remains flagged for human review; present this as "
+        "a cautious current classification, not a final legal determination."
+        if result.bali_needs_review is True
+        else ""
+    )
 
     if not result.bali_blocked:
         if national:
@@ -424,11 +492,11 @@ def _bali_verdict_context_note(result: "KBLISearchResult") -> str:
                 "NOT blocked by the Bali provincial moratorium — but this activity is "
                 "closed to a foreign-owned company (PT PMA) at the NATIONAL level "
                 f"({national}), so the absence of a Bali block is NOT permission. You "
-                "MUST NOT present it as registrable by a PT PMA."
+                f"MUST NOT present it as registrable by a PT PMA.{review_note}"
             )
         return (
             "BALI: this activity is NOT blocked for a PT PMA by the Bali provincial "
-            "moratorium. National ownership rules still apply separately."
+            f"moratorium. National ownership rules still apply separately.{review_note}"
         )
 
     if national:
@@ -443,7 +511,7 @@ def _bali_verdict_context_note(result: "KBLISearchResult") -> str:
         return (
             f"{note} You MUST say a PT PMA cannot register this activity anywhere in "
             "Indonesia and give this cause. Do NOT describe it as a Bali-only "
-            "restriction and do NOT offer another province as an alternative."
+            f"restriction and do NOT offer another province as an alternative.{review_note}"
         )
 
     note = (
@@ -457,7 +525,7 @@ def _bali_verdict_context_note(result: "KBLISearchResult") -> str:
         f"{note} You MUST say the activity is blocked in Bali and give this cause. "
         "Do not answer that it can be registered in Bali."
     )
-    return note
+    return f"{note}{review_note}"
 
 
 _TRANSLATE_SYSTEM = (
@@ -616,7 +684,6 @@ def _detect_language(query: str) -> str:
 async def _generate_kbli_explanation_gemini(
     query: str,
     results: list[KBLISearchResult],
-    parent_docs: dict[str, str] = None,
 ) -> str:
     """Generate KBLI explanation using Gemini Flash - Fast, Cost-Effective.
 
@@ -624,12 +691,12 @@ async def _generate_kbli_explanation_gemini(
     clarity and accuracy.
     """
     logger.info("🤖 Using Gemini Flash for KBLI explanation")
-    return await _generate_kbli_explanation(query, results, parent_docs)
+    return await _generate_kbli_explanation(query, results)
 
 
 @cached(
     ttl=43200,
-    prefix="kbli_explain_v29",
+    prefix="kbli_explain_v34",
 )  # Cache explanations for 12 hours.
 # v28 (2026-08-03): the Bali provincial verdict now reaches the model. The bump is
 # NOT cosmetic — this cache is 12h deep and keyed on the prefix, so every answer
@@ -639,17 +706,28 @@ async def _generate_kbli_explanation_gemini(
 # and no internal verdict symbol reaches the model. Same reason for the bump, and
 # it bites harder here: an answer cached under v28 is one that told a client to
 # try another province, and it would keep saying so for 12 hours after deploy.
+# v30 (2026-08-15): raw whole-code PMA prose is withheld unless the result
+# carries located + official basis + source vintage. Old answers may contain the
+# now-withheld claim, so the prefix is part of the disclosure boundary.
+# v31 (2026-08-15): declared-gap rows keep the structured Bali warning but no
+# longer pass through a mixed free-form reason that can contain national PMA
+# claims. Cached v30 answers may already quote that prose.
+# v32 (2026-08-15): generated kbli_documents prose is admitted only when that
+# row's own PMA tuple matches the verified search result. Cached v31 answers may
+# already contain unbound or divergent parent-document ownership claims.
+# v33 (2026-08-15): Bali-side status, block, and reason are now withheld with the
+# whole PMA claim whenever the exact national evidence tuple is absent.
+# v34 (2026-08-15): Postgres parent prose is no longer eligible on a matching
+# PMA tuple alone. Cached v33 answers may contain uncertified arbitrary content.
 async def _generate_kbli_explanation(
     query: str,
     results: list[KBLISearchResult],
-    parent_docs: dict[str, str] = None,
 ) -> str:
     """Generate a grounded explanation of KBLI search results using LLM.
 
     Args:
         query: User query
         results: Search results with codes and metadata
-        parent_docs: Dict mapping KBLI code -> full parent document content from kbli_documents table
     """
     if not results:
         return "No matching KBLI codes found for your search. Try different keywords or describe your business activity in more detail."
@@ -662,13 +740,10 @@ async def _generate_kbli_explanation(
 
     context_parts = []
     for r in results:
-        # Check if we have deep metadata from Postgres/Expert injection
+        pma_verified = r.pma_verdict_verified
         expert_info = ""
-        if hasattr(r, "expert_legal") and r.expert_legal:
-            ex = r.expert_legal
-            expert_info = f"\n  Expert Data (PP 28/2025): Bab {ex.get('bab')}, Pasal {ex.get('pasal')}. PB-UMKU: {', '.join(ex.get('pb_umku', []))}. Note: {ex.get('pma_implications')}"
 
-        scale_note = _scale_specific_pma_context_note(r.code, query)
+        scale_note = _scale_specific_pma_context_note(r.code, query) if pma_verified else ""
         if scale_note:
             expert_info = f"{expert_info}\n  PMA/foreign-owned scale note: {scale_note}"
 
@@ -676,18 +751,36 @@ async def _generate_kbli_explanation(
         if bali_note:
             expert_info = f"{expert_info}\n  {bali_note}"
 
-        # Use full parent document content if available, otherwise fall back to truncated description
-        if parent_docs and r.code in parent_docs:
-            full_content = parent_docs[r.code]
-            logger.debug(f"  Using full parent doc for {r.code}: {len(full_content)} chars")
-            context_parts.append(
-                f"- KBLI {r.code}: {r.title}\n  Full details:\n{full_content}{expert_info}",
+        # Generated parent documents and expert blobs are never eligible merely
+        # because a structured PMA tuple matches: that tuple cannot certify the
+        # arbitrary prose beside it. Build the prompt only from safe structured
+        # fields and the official BPS description. Editorial text needs a
+        # separate exact content-hash + PMA-fingerprint certification path.
+        logger.debug(f"  Using structured context for {r.code}")
+        if not pma_verified:
+            pma_line = (
+                "PMA: NOT_VERIFIED. Do not state or infer an ownership status or "
+                "percentage for this code; explain the evidence gap and recommend "
+                "official OSS/BKPM verification."
             )
         else:
-            logger.debug(f"  Using truncated description for {r.code}")
-            context_parts.append(
-                f"- KBLI {r.code}: {r.title}\n  Scope: {r.description}\n  PMA: {r.pma_status}, Risk: {r.risk_category}{expert_info}",
+            cap = "ownership cap: not verified"
+            if r.pma_cap_verified is True:
+                if r.pma_cap_special is True and r.pma_max_asing == "special":
+                    cap = "ownership cap: special non-percentage conditions"
+                elif (
+                    isinstance(r.pma_max_asing, (int, float))
+                    and not isinstance(r.pma_max_asing, bool)
+                    and math.isfinite(r.pma_max_asing)
+                ):
+                    cap = f"maximum foreign ownership: {r.pma_max_asing}%"
+            pma_line = (
+                f"PMA: {r.pma_status}; {cap}; official basis: "
+                f"{r.pma_official_basis}; source vintage: {r.pma_source_vintage}"
             )
+        context_parts.append(
+            f"- KBLI {r.code}: {r.title}\n  Scope: {r.description}\n  {pma_line}\n  Risk: {r.risk_category}{expert_info}",
+        )
     context = "\n".join(context_parts)
 
     # Use unified MASTER PROMPT formatted with detected language
@@ -699,14 +792,14 @@ async def _generate_kbli_explanation(
         f"Relevant KBLI data from official sources (BPS 2025, PP 28/2025):\n{context}\n\n"
         f"Task: Write a comprehensive, conversational answer covering:\n\n"
         f"1. PRIMARY KBLI CODE(S): State the main code(s), full Indonesian name, and English translation\n"
-        f"2. PMA STATUS: Explain TERBUKA/TERBATAS/TERTUTUP clearly and what it means for foreign investors\n"
+        f"2. PMA STATUS: State a code-specific verdict/cap only when its context includes a located official basis and source vintage. For NOT_VERIFIED, state the evidence gap and do not infer a verdict.\n"
         f"3. CAPITAL REQUIREMENTS: If PMA relevant, state BOTH thresholds correctly — modal disetor "
         f"(paid-up capital) minimum Rp 2.5 Billion per BKPM 5/2025 (effective 2025-10-02), and minimum "
         f"investment value per KBLI per location of more than Rp 10 Billion (excluding land/buildings). "
         f"Never call Rp 10 Billion the paid-up capital minimum\n"
         f"4. LICENSING & RISK: Explain how requirements vary by business scale (Mikro/Kecil/Menengah/Besar)\n"
         f"5. PRACTICAL GUIDANCE: Include next steps, where to register (OSS), or any Bali-specific considerations\n\n"
-        f"Be thorough and use all the detailed information provided in the context data above. "
+        f"Be thorough and use only the eligible detailed information provided in the context data above. "
         f"Don't just summarize — explain what each requirement means and how it applies to their situation."
     )
 
@@ -972,37 +1065,6 @@ def _is_multi_domain_query(query: str) -> bool:
     return is_multi_domain
 
 
-async def _fetch_parent_documents_from_kbli_table(codes: list[str], pool) -> dict[str, str]:
-    """Fetch full parent documents from kbli_documents table for given KBLI codes.
-
-    Returns dict mapping code -> full content from kbli_documents.
-    This replaces truncated descriptions with complete parent document content.
-    """
-    if not codes or not pool:
-        return {}
-
-    parent_docs = {}
-    try:
-        async with pool.acquire() as conn:
-            rows = await conn.fetch(
-                "SELECT kode_kbli, content FROM kbli_documents WHERE kode_kbli = ANY($1)",
-                codes,
-            )
-            for row in rows:
-                parent_docs[row["kode_kbli"]] = row["content"]
-
-            if rows:
-                logger.info(
-                    f"✅ Fetched {len(rows)} parent documents from kbli_documents (avg {sum(len(d) for d in parent_docs.values()) // len(parent_docs)} chars)",
-                )
-            else:
-                logger.warning("⚠️ No parent documents found in kbli_documents for codes: %s", codes)
-    except Exception as e:
-        logger.error("❌ Failed to fetch parent documents: %s", e)
-
-    return parent_docs
-
-
 @router.post("/chat", response_model=KBLINotebookChatResponse)
 async def chat_kbli(
     http_request: Request,  # Iniezione corretta dell'oggetto Request di FastAPI
@@ -1030,13 +1092,15 @@ async def chat_kbli(
         codes_from_query = re.findall(r"\b\d{5}\b", kbli_request.query)
         direct_kbli_match = None
 
-        # Try direct KBLI lookup from kbli_documents table (NEW: uses parent docs)
+        # Try direct KBLI lookup from structured metadata. The generated
+        # ``kbli_documents.content`` column is deliberately not selected: a PMA
+        # tuple cannot certify arbitrary prose stored beside it.
         if codes_from_query and pool:
             for code in codes_from_query:
                 try:
                     async with pool.acquire() as conn:
                         row = await conn.fetchrow(
-                            "SELECT kode_kbli, judul, content, metadata FROM kbli_documents WHERE kode_kbli = $1",
+                            "SELECT kode_kbli, judul, metadata FROM kbli_documents WHERE kode_kbli = $1",
                             code,
                         )
 
@@ -1046,28 +1110,20 @@ async def chat_kbli(
                                 if isinstance(row["metadata"], dict)
                                 else json.loads(row["metadata"])
                             )
-                            # Extract first ~200 chars from content for preview
-                            content_preview = (
-                                row["content"][:200] + "..."
-                                if len(row["content"]) > 200
-                                else row["content"]
-                            )
                             direct_kbli_match = KBLISearchResult(
                                 code=code,
                                 title=row["judul"],
-                                description=content_preview,
+                                description=_official_scope(metadata, code),
                                 score=1.0,
-                                pma_status=metadata.get("pma_status", "Verify at OSS"),
-                                risk_category="Verify at OSS",  # Will be enriched from full content
+                                risk_category="Verify at OSS",
+                                **_pma_disclosure_fields(metadata),
                             )
-                            logger.info(
-                                f"✅ Direct lookup from kbli_documents: {code} ({len(row['content'])} chars)",
-                            )
+                            logger.info("✅ Direct structured lookup from kbli_documents: %s", code)
                             break
                         # Fallback to kg_nodes for backward compatibility
                         entity_id = f"kbli:{code}"
                         kg_row = await conn.fetchrow(
-                            "SELECT entity_id, name, description, properties FROM kg_nodes WHERE entity_id = $1",
+                            "SELECT entity_id, name, properties FROM kg_nodes WHERE entity_id = $1",
                             entity_id,
                         )
                         if kg_row:
@@ -1079,10 +1135,10 @@ async def chat_kbli(
                             direct_kbli_match = KBLISearchResult(
                                 code=code,
                                 title=kg_row["name"],
-                                description=kg_row["description"][:200] + "...",
+                                description=_official_scope(props, code),
                                 score=1.0,
-                                pma_status=props.get("pma_status", "Verify at OSS"),
                                 risk_category=props.get("kategori_risiko", "Verify at OSS"),
+                                **_pma_disclosure_fields(props),
                             )
                             logger.info("⚠️ Direct lookup fallback to kg_nodes: %s", code)
                             break
@@ -1095,31 +1151,7 @@ async def chat_kbli(
             logger.info("🔢 Code %s not in kg_nodes, trying Qdrant payload filter lookup", code)
             qdrant_payload = await _get_kbli_payload_from_qdrant(code)
             if qdrant_payload:
-                direct_kbli_match = KBLISearchResult(
-                    code=code,
-                    title=_payload_value(
-                        qdrant_payload,
-                        "judul",
-                        "title_id",
-                        default=f"KBLI {code}",
-                    ),
-                    description=_clean_snippet(
-                        _payload_value(qdrant_payload, "content", "text", "description", default="")
-                        or "",
-                    )[:200]
-                    + "...",
-                    score=1.0,
-                    pma_status=_payload_value(
-                        qdrant_payload,
-                        "pma_status",
-                        default="Verify at OSS",
-                    ),
-                    risk_category=_payload_value(
-                        qdrant_payload,
-                        "kategori_risiko",
-                        default="Verify at OSS",
-                    ),
-                )
+                direct_kbli_match = _result_from_payload(qdrant_payload, score=1.0)
                 logger.info(
                     f"✅ Found KBLI {code} via Qdrant payload filter: {direct_kbli_match.title}",
                 )
@@ -1132,7 +1164,7 @@ async def chat_kbli(
                 direct_kbli_match = KBLISearchResult(
                     code=code,
                     title=known["title"],
-                    description=known["description"],
+                    description=f"KBLI classification: {known['title']}.",
                     score=1.0,
                     pma_status=known["pma_status"],
                     risk_category=known["risk_category"],
@@ -1299,7 +1331,7 @@ async def chat_kbli(
                     direct_kbli_match = KBLISearchResult(
                         code=target_code,
                         title=known["title"],
-                        description=known["description"],
+                        description=f"KBLI classification: {known['title']}.",
                         score=1.0,
                         pma_status=known["pma_status"],
                         risk_category=known["risk_category"],
@@ -1323,55 +1355,9 @@ async def chat_kbli(
                 if code in seen_codes:
                     continue
                 seen_codes.add(code)
-                results.append(
-                    KBLISearchResult(
-                        code=code,
-                        title=_payload_value(p, "judul", "title_id", default="N/A"),
-                        description=_clean_snippet(
-                            _payload_value(p, "content", "text", "description", default="") or "",
-                        )[:200]
-                        + "...",
-                        score=round(r.get("score", 0.0), 4),
-                        pma_status=_payload_value(p, "pma_status", default="Verify at OSS"),
-                        # No default: absence must stay None, never 0% (see the
-                        # field's own comment). This is the ONE constructor that
-                        # fills the Bali verdict itself, so the choke-point
-                        # backfill skips it — the cap has to be taken here or it
-                        # is never taken at all.
-                        pma_max_asing=_payload_value(p, "pma_max_asing"),
-                        risk_category=_payload_value(p, "kategori_risiko", default="Verify at OSS"),
-                        bali_status=_payload_value(p, "bali_status"),
-                        # No default: a missing field must stay None so the note
-                        # helper can tell "not blocked" from "we were not told".
-                        bali_blocked=_payload_value(p, "bali_blocked"),
-                        bali_reason=_payload_value(p, "bali_reason", default="") or "",
-                    ),
-                )
+                results.append(_result_from_payload(p, score=r.get("score", 0.0)))
                 if len(results) >= 5:
                     break
-
-            # Enrichment step: Fetch expert_legal from Postgres for all results
-            if pool:
-                async with pool.acquire() as conn:
-                    for i, r in enumerate(results):
-                        try:
-                            row = await conn.fetchrow(
-                                "SELECT properties FROM kg_nodes WHERE entity_id = $1",
-                                f"kbli:{r.code}",
-                            )
-                            if row:
-                                props = (
-                                    json.loads(row["properties"])
-                                    if isinstance(row["properties"], str)
-                                    else row["properties"]
-                                )
-                                if "expert_legal" in props:
-                                    results[i].expert_legal = props["expert_legal"]
-                                    logger.info(
-                                        f"✨ Enriched result {r.code} with Expert Legal data",
-                                    )
-                        except Exception as enrich_err:
-                            logger.warning(f"Failed to enrich {r.code}: {enrich_err}")
 
             # When a specific code is in the query, filter Qdrant results to same 2-digit sector prefix
             # This prevents cross-sector contamination (e.g. 64954 Syariah pawn in catering results)
@@ -1398,7 +1384,7 @@ async def chat_kbli(
                 if db_pool:
                     async with db_pool.acquire() as conn:
                         rows = await conn.fetch(
-                            "SELECT entity_id, name, description, properties FROM kg_nodes WHERE entity_type = 'kbli' AND (name ILIKE $1 OR entity_id ILIKE $1) LIMIT 5",
+                            "SELECT entity_id, name, properties FROM kg_nodes WHERE entity_type = 'kbli' AND (name ILIKE $1 OR entity_id ILIKE $1) LIMIT 5",
                             f"%{search_query}%",
                         )
                         for row in rows:
@@ -1412,10 +1398,10 @@ async def chat_kbli(
                                 KBLISearchResult(
                                     code=code,
                                     title=row["name"],
-                                    description=row["description"][:200] + "...",
+                                    description=_official_scope(props, code),
                                     score=0.8,  # Static score for fallback
-                                    pma_status=props.get("pma_status", "UNKNOWN"),
                                     risk_category=props.get("kategori_risiko", "Unknown"),
+                                    **_pma_disclosure_fields(props),
                                 ),
                             )
                         logger.info(
@@ -1429,7 +1415,9 @@ async def chat_kbli(
         detected_kbli = list(dict.fromkeys(codes_from_query + codes_from_results))
 
         # MULTI-DOMAIN ROUTING: If query spans KBLI + visa/legal, use KG Orchestrator
-        if _is_multi_domain_query(kbli_request.query):
+        if _is_multi_domain_query(kbli_request.query) and not _requires_structured_pma_gate(
+            kbli_request.query
+        ):
             logger.info("🌐 Multi-domain query detected → routing to KG Orchestrator")
             try:
                 # Initialize KG Orchestrator with db_pool and search_service
@@ -1482,6 +1470,10 @@ async def chat_kbli(
             except Exception as kg_err:
                 logger.error("❌ KG Orchestrator failed, falling back to KBLI-only: %s", kg_err)
                 # Fall through to standard KBLI processing
+        elif _is_multi_domain_query(kbli_request.query):
+            logger.info(
+                "🛡️ Multi-domain query kept on structured KBLI path because it may require a PMA verdict"
+            )
 
         # Check for non-business queries (KITAS/visa/immigration OR recommendations)
         if _is_non_business_query(kbli_request.query):
@@ -1680,13 +1672,13 @@ async def chat_kbli(
         elif not has_direct_match:
             results = filtered_results if filtered_results else results
 
-        # Fetch full parent documents from kbli_documents table for complete context
-        codes_to_fetch = [r.code for r in results if r.code != "N/A"]
-        parent_docs = await _fetch_parent_documents_from_kbli_table(codes_to_fetch, pool)
+        # Resolve the authoritative Qdrant tuple before building structured
+        # prompt context. No generated Postgres/KG prose crosses this boundary.
+        await _fill_bali_verdicts(results)
 
         # Generate explanation via Claude Haiku 4.5 (fast, cost-effective)
         # Falls back to Gemini Flash if Claude unavailable
-        answer = await _generate_kbli_explanation_gemini(kbli_request.query, results, parent_docs)
+        answer = await _generate_kbli_explanation_gemini(kbli_request.query, results)
 
         # CRITICAL: Ensure answer is never empty
         if not answer or not answer.strip():

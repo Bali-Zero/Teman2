@@ -4,16 +4,17 @@ import { cn } from "@/lib/utils";
 // Source: schema-v2 l4_bali (moratorium 2026-05-13, Gubernur letter B.27.000/642 + research).
 export type BaliStatus =
   | "OK_or_HIGHER_RISK"
+  | "APERTO_BALI_RISCHIO_ALTO"
   | "BLOCCATO_CLASSE_RISCHIO"
   | "BLOCCATO_DIPENDE_SCOPE"
-  | "NEEDS_REVIEW_NO_OSS_SCOPE"
+  | "CHIUSO_MORATORIA_BALI"
   | "CHIUSO_PMA_NO_BESAR"
+  | "CHIUSO_REGOLATORE_SETTORIALE"
   | "CHIUSO_BALI"
   | "CHIUSO_BALI_PROPOSTO"
   | "TERTUTUP"
   | "TERBATAS"
-  | "TERTUTUP_CANDIDATE"
-  | "TERBATAS_CANDIDATE";
+  | "NON_CLASSIFICABILE";
 
 interface BaliStatusBadgeProps {
   status: BaliStatus;
@@ -28,6 +29,11 @@ const config: Record<
   { label: string; icon: string; tone: "ok" | "warn" | "block" }
 > = {
   OK_or_HIGHER_RISK: { label: "Registrable in Bali", icon: "✅", tone: "ok" },
+  APERTO_BALI_RISCHIO_ALTO: {
+    label: "Open in Bali (high-risk tier)",
+    icon: "✅",
+    tone: "ok",
+  },
   BLOCCATO_CLASSE_RISCHIO: {
     label: "Blocked in Bali (risk-class moratorium)",
     icon: "🚫",
@@ -38,13 +44,18 @@ const config: Record<
     icon: "⚠️",
     tone: "warn",
   },
-  NEEDS_REVIEW_NO_OSS_SCOPE: {
-    label: "Needs review (no OSS scope)",
-    icon: "❓",
-    tone: "warn",
+  CHIUSO_MORATORIA_BALI: {
+    label: "Closed in Bali (2026 moratorium)",
+    icon: "🚫",
+    tone: "block",
   },
   CHIUSO_PMA_NO_BESAR: {
-    label: "Closed to PMA (no large-scale row)",
+    label: "Reserved for MSME — closed to PT PMA",
+    icon: "🚫",
+    tone: "block",
+  },
+  CHIUSO_REGOLATORE_SETTORIALE: {
+    label: "Closed (sector regulator)",
     icon: "🚫",
     tone: "block",
   },
@@ -56,13 +67,8 @@ const config: Record<
   },
   TERTUTUP: { label: "Closed to foreigners", icon: "🚫", tone: "block" },
   TERBATAS: { label: "Restricted (Bali cap)", icon: "⚠️", tone: "warn" },
-  TERTUTUP_CANDIDATE: {
-    label: "Likely closed — verify",
-    icon: "❓",
-    tone: "warn",
-  },
-  TERBATAS_CANDIDATE: {
-    label: "Likely restricted — verify",
+  NON_CLASSIFICABILE: {
+    label: "Bali status not classifiable — verify",
     icon: "❓",
     tone: "warn",
   },

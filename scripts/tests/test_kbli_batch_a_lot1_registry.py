@@ -70,6 +70,8 @@ from typing import Any
 
 import pytest
 
+from scripts.kbli_filiera._prose_disclosure import split_disclosure
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 LOT1_SPEC_PATH = REPO_ROOT / "scripts/kbli_filiera/cure_specs/batch_a_lot1.json"
 CANONICAL_PATH = REPO_ROOT / "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json"
@@ -257,17 +259,18 @@ def test_lot1_data_note_matches_spec_verbatim(code: str):
 
 @pytest.mark.parametrize("code", LOT1_CODES)
 def test_lot1_whatYouNeed_honest_gap(code: str):
-    """intel_2026.whatYouNeed must be rewritten to the spec's honest-gap text
-    VERBATIM — replacing the stale client-facing prose derived from the
-    detached (contaminated) per_skala rows."""
+    """The body remains the lot spec verbatim; a later compiler may append its
+    independently owned, end-anchored risk-tier disclosure paragraph."""
     spec_by_code = _load_lot1_spec_by_code()
     rec = _load_record(CANONICAL_PATH, code)
     intel = rec.get("intel_2026") or {}
-    assert intel.get("whatYouNeed") == spec_by_code[code]["whatYouNeed"], (
-        f"{code}: intel_2026.whatYouNeed does not match the spec's honest-gap "
-        "text verbatim — the compiler must copy whatYouNeed verbatim, never "
-        "paraphrase or invent it."
+    body, appendix = split_disclosure(intel.get("whatYouNeed"))
+    assert body == spec_by_code[code]["whatYouNeed"], (
+        f"{code}: intel_2026.whatYouNeed base does not match the lot spec's "
+        "honest-gap text verbatim."
     )
+    if appendix:
+        assert appendix.startswith("\n\n**Risk tier under review.** ")
 
 
 # ---------------------------------------------------------------------------

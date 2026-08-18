@@ -45,7 +45,17 @@ def aged_fixture(tmp_path):
 
 def _run_audit(repo: Path, *args: str) -> subprocess.CompletedProcess:
     """Invoke docs_audit.py with --repo pointing to the fixture."""
-    cmd = [sys.executable, str(AUDIT_SCRIPT), "--repo", str(repo), *args]
+    # Legacy behavioral tests intentionally exercise the historical tracked
+    # path. Production callers use docs_audit.py's new artifact-only default.
+    cmd = [
+        sys.executable,
+        str(AUDIT_SCRIPT),
+        "--repo",
+        str(repo),
+        "--output",
+        "docs/DOCS_INVENTORY.md",
+        *args,
+    ]
     return subprocess.run(cmd, capture_output=True, text=True)
 
 
@@ -266,7 +276,7 @@ def test_check_flag_exit_codes(aged_fixture):
     live_doc.write_text(live_doc.read_text() + "\n[missing](nope.md)\n")
     result = _run_audit(aged_fixture, *common, "--check")
     assert result.returncode == 1
-    assert "docs_audit: docs/DOCS_INVENTORY.md is out of date" in result.stderr
+    assert "docs_audit: generated output differs from" in result.stderr
     assert "--- committed/" in result.stderr
     assert "+++ generated/" in result.stderr
 
@@ -2260,6 +2270,95 @@ def test_trusted_ref_tip_date_succeeds_when_fetch_succeeds(tmp_path):
     result = docs_audit._trusted_ref_tip_date(repo, "origin/main")
     assert result is not None, "a healthy origin + successful fetch must resolve a tip date"
     assert result == date.today() - timedelta(days=200)
+
+
+# ---------------------------------------------------------------------------
+# Severed provenance channel (2026-08-17). read_trusted_prev_flipped()'s
+# docstring knows exactly two ways to reach {}: the ref will not resolve
+# (raise) or the file is absent on it (legitimate bootstrap). PR #4233 created
+# a THIRD: the file is present and is a pointer document with no table, so {}
+# is returned forever while reading exactly like a first-ever run.
+#
+# The signal is a WARNING, never a behaviour change — these tests pin the
+# signal AND pin that the two legitimate {}-producing states stay silent, so
+# an unconditional "always warn" (which would pass guilt alone) fails here.
+# ---------------------------------------------------------------------------
+
+_SEVERED = "SEVERED"
+
+
+def _trusted_prev_flipped_stderr(repo, capsys):
+    """Call the real function; return (result, stderr) with stderr captured."""
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    capsys.readouterr()  # drop anything buffered by fixture setup
+    result = docs_audit.read_trusted_prev_flipped(repo, "origin/main")
+    return result, capsys.readouterr().err
+
+
+def test_severed_channel_tableless_trusted_inventory_warns(tmp_path, capsys):
+    """GUILT: a trusted inventory that EXISTS but carries no parseable table
+    must name itself as a severed channel. This is the post-#4233 state of
+    origin/main: an 11-line pointer document. Without this, the break is
+    indistinguishable from a first-ever run in every log the organism keeps.
+    """
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=200)
+    (repo / "docs" / "DOCS_INVENTORY.md").write_text(
+        "# Documentation Inventory\n\n"
+        "Derived state now lives in `.artifacts/docs-derived-state/`.\n",
+        encoding="utf-8",
+    )
+    _commit_and_push(repo, "replace inventory with a pointer")
+
+    result, err = _trusted_prev_flipped_stderr(repo, capsys)
+
+    assert result == {}, "contract unchanged: a tableless trusted inventory still yields {}"
+    assert _SEVERED in err, (
+        "a present-but-tableless trusted inventory is NOT the bootstrap case and "
+        f"must say so; stderr was: {err!r}"
+    )
+
+
+def test_real_trusted_table_does_not_warn(tmp_path, capsys):
+    """INNOCENCE 1: a healthy trusted inventory with real provenance must
+    return it and stay silent. An unconditional warning would fail here.
+    """
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=200)
+    (repo / "docs" / "DOCS_INVENTORY.md").write_text(
+        "# Documentation Inventory\n\n"
+        "## Files\n\n"
+        "| File | Status | orphan_flipped_on |\n"
+        "|------|--------|--------------------|\n"
+        "| docs/OLD_DOC.md | ARCHIVED | 2026-07-19 |\n",
+        encoding="utf-8",
+    )
+    _commit_and_push(repo, "inventory with a real flip")
+
+    result, err = _trusted_prev_flipped_stderr(repo, capsys)
+
+    assert result == {"docs/OLD_DOC.md": "2026-07-19"}, (
+        f"a real trusted table must still be read verbatim: got {result}"
+    )
+    assert _SEVERED not in err, f"a healthy table must not be called severed; stderr: {err!r}"
+
+
+def test_absent_trusted_inventory_stays_a_silent_bootstrap(tmp_path, capsys):
+    """INNOCENCE 2: the ORIGINAL {}-producing state — no docs/DOCS_INVENTORY.md
+    on the trusted ref at all — is a legitimate bootstrap and must remain
+    silent. Warning here would cry severed-channel at every genuinely fresh
+    repo, which is how a real signal gets trained into noise.
+    """
+    repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=200)
+    assert not (repo / "docs" / "DOCS_INVENTORY.md").exists(), "fixture: file must be absent"
+
+    result, err = _trusted_prev_flipped_stderr(repo, capsys)
+
+    assert result == {}, "bootstrap still yields {}"
+    assert _SEVERED not in err, (
+        f"an ABSENT trusted inventory is the bootstrap case, not a severed "
+        f"channel; stderr: {err!r}"
+    )
 
 
 def test_redteam_major5_doc_touched_after_flip_resurrects_to_live(tmp_path):

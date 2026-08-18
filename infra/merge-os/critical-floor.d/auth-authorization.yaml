@@ -1,0 +1,15 @@
+id: auth-authorization
+category: Auth / authorization
+description: >
+  Authentication (session, API key, OAuth) and authorization (RBAC,
+  route-level authz) tests. A regression here is a live security incident,
+  not a flaky-test triage item — CLAUDE.md §13's CRM RBAC rule and the
+  route-authz coverage gate both depend on these staying green on every run.
+patterns:
+  - apps/backend-rag/**/test_*auth*.py
+rationale: >
+  CLAUDE.md §13 "CRM RBAC: Admin ... = all access. Team = only assigned_to
+  matches" + apps/backend-rag/backend/tests/security/test_route_authz_coverage.py
+  (route-level authz coverage census). Never quarantinable: a passing suite
+  is the only evidence this boundary holds.
+verified_match_count: 24

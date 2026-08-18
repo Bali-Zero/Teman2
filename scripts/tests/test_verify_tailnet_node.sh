@@ -25,8 +25,7 @@ TMP=$(mktemp -d) || exit 2
 #
 # The residue check compares a BEFORE and AFTER set of json filenames, not mtimes. The first draft
 # used `find -newer "$SUT"` as a stand-in for "written by this run" and that proxy lied immediately:
-# `.docs_sync_cache.json` — written by the docs-sync gate and by the pre-commit hook — is newer than
-# the SUT on any normal working copy, so the check reported "the corpus wrote json into the invoking
+# unrelated JSON files newer than the SUT made the check report "the corpus wrote json into the invoking
 # directory" when the corpus had written nothing. A false accusation is worse than no check: it sends
 # the next reader hunting in the wrong place (cicatrix #9 — a state signal read through a proxy).
 ORIG_PWD=$PWD

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Merge-OS v3 build-order step 3 slice 1 — suite-growth telemetry organ,
+     LaunchAgent TEMPLATE.
+
+     research/operations/2026-08-14-merge-os-v3-research-council.md §6 step 3
+     "Suite-growth governance (the dominant lever, C1)" — this slice is
+     telemetry + alarm only, no gate-semantics change.
+
+     NOT INSTALLED BY THIS PR. This is a template only — arming it on Pro
+     (copying to ~/Library/LaunchAgents/, `launchctl bootstrap`, and verifying
+     the first receipt) is a separate ALIGN-FLEET step the orchestrator
+     drives, tracked in .claude/skills/modus/PENDING-ARMS.md (scar family #2
+     "esiste != armato" — built != armed, declared here rather than silently
+     assumed).
+
+     Placeholder <NUZANTARA_USER> must be substituted with the target
+     machine's actual user (nuzantara on Pro/Mini, balizero on M5) at install
+     time — no user-specific path is hardcoded in this template (cf.
+     cicatrix-superscar.md family #1, HOME-fork drift: a plist with someone
+     else's username baked in is exactly that disease).
+
+     03:57 WITA — nightly, after queue-baseline's 03:40 slot (own template,
+     same wrappers dir) with margin, deliberately off the :00/:30 minute
+     marks. -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nuzantara.suite-growth-probe</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>-lc</string>
+        <string>/Users/&lt;NUZANTARA_USER&gt;/nuzantara/infra/launchagents/wrappers/suite-growth-probe.sh &gt;&gt; /Users/&lt;NUZANTARA_USER&gt;/logs/suite-growth-probe.log 2&gt;&amp;1</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>3</integer>
+        <key>Minute</key>
+        <integer>57</integer>
+    </dict>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>/Users/&lt;NUZANTARA_USER&gt;/logs/suite-growth-probe.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/&lt;NUZANTARA_USER&gt;/logs/suite-growth-probe.error.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/&lt;NUZANTARA_USER&gt;</string>
+        <key>PATH</key>
+        <string>/Users/&lt;NUZANTARA_USER&gt;/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+    <key>KeepAlive</key>
+    <false/>
+</dict>
+</plist>

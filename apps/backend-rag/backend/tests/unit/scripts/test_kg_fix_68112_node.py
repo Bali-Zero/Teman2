@@ -17,9 +17,12 @@ from __future__ import annotations
 
 from backend.scripts.kg_fix_68112_node import (
     CANONICAL_ENTITY_ID,
+    EDITORIAL_KEYS,
     SHADOW_DATA_NOTE,
     SHADOW_DEPRECATION_NOTICE,
     SHADOW_ENTITY_ID,
+    _disclose_bali,
+    _disclose_pma,
     plan_main_node_fix,
     plan_shadow_node_fix,
     verify_main_node_matches_canonical,
@@ -79,7 +82,7 @@ KG_ROW_STALE = {
 }
 
 
-def test_main_node_stale_uraian_and_whatyouneed_gets_fixed_and_edges_deleted():
+def test_main_node_gap_withholds_editorial_and_edges_are_deleted():
     plan = plan_main_node_fix(CANONICAL_RECORD_FIXED, KG_ROW_STALE)
 
     assert plan.entity_id == CANONICAL_ENTITY_ID
@@ -88,13 +91,14 @@ def test_main_node_stale_uraian_and_whatyouneed_gets_fixed_and_edges_deleted():
     assert plan.delete_requires_perizinan_edges is True
     assert plan.skip_reason is None
     assert plan.new_properties["uraian"] == CANONICAL_RECORD_FIXED["uraian"]
-    assert "MICE" not in plan.new_properties["whatYouNeed"] or "code-number collision" in plan.new_properties["whatYouNeed"].lower()
-    assert plan.new_properties["whatYouNeed"] == CANONICAL_RECORD_FIXED["intel_2026"]["whatYouNeed"]
+    assert not any(key in plan.new_properties for key in EDITORIAL_KEYS)
     # untouched fields survive the merge
-    assert plan.new_properties["pma_status"] == "TERBUKA"
+    assert plan.new_properties["pma_status"] == "NOT_VERIFIED"
+    assert plan.new_properties["pma_verification_status"] == "declared_gap"
+    assert plan.new_properties["pma_cap_verified"] is False
     assert plan.new_properties["kategori_risiko"] == "Menengah Rendah"
     assert plan.new_properties["licensing_status"] == "REGULATED"
-    assert plan.new_properties["_data_note"] == CANONICAL_RECORD_FIXED["_data_note"]
+    assert "_data_note" not in plan.new_properties
 
 
 def test_main_node_non_empty_per_skala_refuses_edge_deletion_but_still_syncs_properties():
@@ -120,8 +124,12 @@ def test_main_node_already_clean_is_noop_on_properties_but_edges_still_flagged()
         "description": CANONICAL_RECORD_FIXED["uraian"],
         "properties": {
             "uraian": CANONICAL_RECORD_FIXED["uraian"],
-            **CANONICAL_RECORD_FIXED["intel_2026"],
-            "_data_note": CANONICAL_RECORD_FIXED["_data_note"],
+            "pma_status": "NOT_VERIFIED",
+            "pma_verification_status": "declared_gap",
+            "pma_cap_special": False,
+            "pma_cap_verified": False,
+            "bali_reason": "",
+            "has_bali_l4": False,
         },
     }
 
@@ -130,7 +138,9 @@ def test_main_node_already_clean_is_noop_on_properties_but_edges_still_flagged()
     assert plan.update_node is False
     assert plan.new_properties is None
     assert plan.new_description is None
-    assert plan.delete_requires_perizinan_edges is True  # still checked/attempted, idempotent if none exist
+    assert (
+        plan.delete_requires_perizinan_edges is True
+    )  # still checked/attempted, idempotent if none exist
 
 
 def test_main_node_missing_from_canonical_dataset_is_skipped():
@@ -166,7 +176,11 @@ def test_shadow_node_gets_neutralized():
 def test_shadow_node_already_deprecated_is_noop():
     already_done_row = {
         "description": SHADOW_DEPRECATION_NOTICE,
-        "properties": {"_deprecated": True, "_superseded_by": CANONICAL_ENTITY_ID, "_data_note": "x"},
+        "properties": {
+            "_deprecated": True,
+            "_superseded_by": CANONICAL_ENTITY_ID,
+            "_data_note": "x",
+        },
     }
 
     plan = plan_shadow_node_fix(already_done_row)
@@ -298,7 +312,10 @@ def test_verify_main_node_matches_canonical_catches_subgroup_bleed_even_without_
     never catch it. verify_main_node_matches_canonical must."""
     problems = verify_main_node_matches_canonical(CANONICAL_RECORD_FIXED, KG_ROW_STALE)
     assert any("properties.uraian" in p for p in problems)
-    assert any("description" in p for p in problems) or KG_ROW_STALE["description"] == CANONICAL_RECORD_FIXED["uraian"]
+    assert (
+        any("description" in p for p in problems)
+        or KG_ROW_STALE["description"] == CANONICAL_RECORD_FIXED["uraian"]
+    )
 
 
 def test_verify_main_node_matches_canonical_passes_once_fixed():
@@ -306,10 +323,94 @@ def test_verify_main_node_matches_canonical_passes_once_fixed():
         "description": CANONICAL_RECORD_FIXED["uraian"],
         "properties": {
             "uraian": CANONICAL_RECORD_FIXED["uraian"],
-            **CANONICAL_RECORD_FIXED["intel_2026"],
+            "pma_status": "NOT_VERIFIED",
+            "pma_verification_status": "declared_gap",
+            "pma_cap_special": False,
+            "pma_cap_verified": False,
+            "bali_reason": "",
+            "has_bali_l4": False,
         },
     }
     assert verify_main_node_matches_canonical(CANONICAL_RECORD_FIXED, fixed_row) == []
+
+
+def test_verify_main_node_rejects_raw_gap_editorial_and_status() -> None:
+    problems = verify_main_node_matches_canonical(CANONICAL_RECORD_FIXED, KG_ROW_STALE)
+
+    assert any("pma_status" in problem for problem in problems)
+    assert any("whatYouNeed" in problem and "withheld" in problem for problem in problems)
+
+
+def test_located_record_retains_editorial_and_typed_bali() -> None:
+    record = {
+        **CANONICAL_RECORD_FIXED,
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100,
+        "pma_verification_status": "located",
+        "pma_official_basis": "official locator",
+        "pma_source_vintage": "2021-05-25",
+        "l4_bali": {
+            "status": "NON_CLASSIFICABILE",
+            "blocked": False,
+            "needs_review": False,
+            "reason": "risk tier unresolved",
+        },
+    }
+
+    plan = plan_main_node_fix(record, KG_ROW_STALE)
+
+    assert plan.new_properties["pma_status"] == "TERBUKA"
+    assert plan.new_properties["whatYouNeed"] == record["intel_2026"]["whatYouNeed"]
+    assert plan.new_properties["_data_note"] == record["_data_note"]
+    assert plan.new_properties["bali_status"] == "NON_CLASSIFICABILE"
+    assert plan.new_properties["bali_blocked"] is False
+    assert plan.new_properties["bali_needs_review"] is False
+
+
+def test_malformed_bali_boolean_is_neutral() -> None:
+    record = {
+        **CANONICAL_RECORD_FIXED,
+        "pma_status": "TERBUKA",
+        "pma_verification_status": "located",
+        "pma_official_basis": "official locator",
+        "pma_source_vintage": "2021-05-25",
+        "l4_bali": {
+            "status": "NON_CLASSIFICABILE",
+            "blocked": "false",
+            "needs_review": False,
+        },
+    }
+
+    plan = plan_main_node_fix(record, KG_ROW_STALE)
+
+    assert "bali_status" not in plan.new_properties
+    assert "bali_blocked" not in plan.new_properties
+    assert plan.new_properties["has_bali_l4"] is False
+
+
+def test_local_disclosure_matches_shared_runtime_contract() -> None:
+    from backend.services.kbli_pma_disclosure import disclose_bali, disclose_pma
+
+    record = {
+        **CANONICAL_RECORD_FIXED,
+        "pma_status": "TERBATAS",
+        "pma_max_asing": 49,
+        "pma_verification_status": "located",
+        "pma_official_basis": " official locator ",
+        "pma_source_vintage": " 2021-05-25 ",
+        "l4_bali": {
+            "status": "NON_CLASSIFICABILE",
+            "blocked": False,
+            "needs_review": False,
+        },
+    }
+
+    assert _disclose_pma(record) == disclose_pma(record)
+    assert _disclose_bali(record) == disclose_bali(record)
+
+    verified = record | {"pma_cap_verified": True}
+    assert _disclose_pma(verified) == disclose_pma(verified)
+    assert _disclose_bali(verified) == disclose_bali(verified)
 
 
 def test_verify_shadow_node_deprecated_fails_on_neutral_but_untagged_text():

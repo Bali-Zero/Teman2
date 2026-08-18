@@ -1,0 +1,443 @@
+{
+  "source": {
+    "tree_ts": "apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/tree.ts",
+    "flow_ts": "apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.ts"
+  },
+  "node_count_total": 49,
+  "category_keys": [
+    "tourism",
+    "business",
+    "work",
+    "invest",
+    "remote",
+    "family",
+    "retirement",
+    "study",
+    "diaspora",
+    "other"
+  ],
+  "category_count": 10,
+  "human_context_lanes": [
+    "trip_scope",
+    "business_activity",
+    "work_role",
+    "investment_vehicle",
+    "family_sponsor_status_code",
+    "retirement_basis",
+    "diaspora_connection",
+    "diaspora_documents",
+    "other_purpose",
+    "other_paid_activity",
+    "remote_income",
+    "tourism_duration"
+  ],
+  "human_context_count": 12,
+  "fact_backed_nodes": [
+    "in_indonesia",
+    "permit_expiry",
+    "current_status_code",
+    "overstay_days",
+    "wants_onshore_conversion",
+    "application_channel",
+    "nationalities",
+    "birth_date",
+    "category",
+    "entry_pattern",
+    "sponsor_category",
+    "work_payer",
+    "work_indonesia_compensation",
+    "work_sponsor_confirmed",
+    "remote_clients",
+    "remote_compensation",
+    "remote_employer_country",
+    "remote_pt_pma",
+    "investment_pt_pma",
+    "investment_capital_idr",
+    "investment_paid_up_capital_idr",
+    "investment_role",
+    "family_relation",
+    "marital_status",
+    "family_sponsor_nationalities",
+    "family_marriage_registered",
+    "family_sponsor_confirmed",
+    "secondhome_deposit_usd",
+    "secondhome_state_bank",
+    "secondhome_own_name",
+    "secondhome_property_value_usd",
+    "secondhome_passive_income_usd",
+    "study_level",
+    "study_admission_confirmed",
+    "study_sponsor_confirmed",
+    "stay_days"
+  ],
+  "unclassified_decision_nodes": [
+    "review_gate"
+  ],
+  "dead_nodes": [
+    "tourism_duration",
+    "remote_income"
+  ],
+  "fixed_category_questions": {
+    "tourism": [
+      "stay_days",
+      "entry_pattern"
+    ],
+    "business": [
+      "business_activity",
+      "work_indonesia_compensation",
+      "stay_days",
+      "entry_pattern"
+    ],
+    "work": [
+      "sponsor_category",
+      "work_payer",
+      "work_indonesia_compensation",
+      "work_sponsor_confirmed",
+      "work_role",
+      "stay_days"
+    ],
+    "remote": [
+      "sponsor_category",
+      "remote_clients",
+      "remote_compensation",
+      "remote_employer_country",
+      "remote_pt_pma",
+      "stay_days"
+    ],
+    "family": [],
+    "invest": [],
+    "retirement": [],
+    "study": [
+      "sponsor_category",
+      "study_level",
+      "study_admission_confirmed",
+      "study_sponsor_confirmed",
+      "stay_days"
+    ],
+    "diaspora": [
+      "diaspora_connection",
+      "diaspora_documents",
+      "stay_days"
+    ],
+    "other": [
+      "other_purpose",
+      "other_paid_activity",
+      "stay_days",
+      "entry_pattern"
+    ]
+  },
+  "entry_switch_edges": [
+    {
+      "from": "in_indonesia",
+      "to": "overstay_days",
+      "kind": "conditional"
+    },
+    {
+      "from": "in_indonesia",
+      "to": "permit_expiry",
+      "kind": "conditional"
+    },
+    {
+      "from": "permit_expiry",
+      "to": "current_status_code",
+      "kind": "fixed"
+    },
+    {
+      "from": "current_status_code",
+      "to": "overstay_days",
+      "kind": "fixed"
+    },
+    {
+      "from": "overstay_days",
+      "to": "nationalities",
+      "kind": "conditional"
+    },
+    {
+      "from": "overstay_days",
+      "to": "wants_onshore_conversion",
+      "kind": "conditional"
+    },
+    {
+      "from": "wants_onshore_conversion",
+      "to": "application_channel",
+      "kind": "fixed"
+    },
+    {
+      "from": "application_channel",
+      "to": "nationalities",
+      "kind": "fixed"
+    },
+    {
+      "from": "nationalities",
+      "to": "birth_date",
+      "kind": "fixed"
+    },
+    {
+      "from": "birth_date",
+      "to": "category",
+      "kind": "fixed"
+    },
+    {
+      "from": "category",
+      "to": "trip_scope",
+      "kind": "fixed"
+    },
+    {
+      "from": "remote_income",
+      "to": "review_gate",
+      "kind": "fixed"
+    },
+    {
+      "from": "review_gate",
+      "to": "review_gate",
+      "kind": "conditional"
+    }
+  ],
+  "questions": [
+    {
+      "id": "in_indonesia",
+      "group": "location",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "permit_expiry",
+      "group": "location",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "current_status_code",
+      "group": "location",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "overstay_days",
+      "group": "location",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "wants_onshore_conversion",
+      "group": "location",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "application_channel",
+      "group": "location",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "nationalities",
+      "group": "identity",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "birth_date",
+      "group": "identity",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "category",
+      "group": "intent",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "trip_scope",
+      "group": "intent",
+      "decision_kind": "HUMAN_CONTEXT"
+    },
+    {
+      "id": "entry_pattern",
+      "group": "details",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "sponsor_category",
+      "group": "details",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "business_activity",
+      "group": "details",
+      "decision_kind": "HUMAN_CONTEXT"
+    },
+    {
+      "id": "work_payer",
+      "group": "details",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "work_indonesia_compensation",
+      "group": "details",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "work_sponsor_confirmed",
+      "group": "details",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "work_role",
+      "group": "details",
+      "decision_kind": "HUMAN_CONTEXT"
+    },
+    {
+      "id": "remote_clients",
+      "group": "details",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "remote_compensation",
+      "group": "details",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "remote_employer_country",
+      "group": "details",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "remote_pt_pma",
+      "group": "details",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "investment_vehicle",
+      "group": "details",
+      "decision_kind": "HUMAN_CONTEXT"
+    },
+    {
+      "id": "investment_pt_pma",
+      "group": "details",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "investment_capital_idr",
+      "group": "details",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "investment_paid_up_capital_idr",
+      "group": "details",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "investment_role",
+      "group": "details",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "family_relation",
+      "group": "details",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "marital_status",
+      "group": "details",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "family_sponsor_nationalities",
+      "group": "details",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "family_sponsor_status_code",
+      "group": "details",
+      "decision_kind": "HUMAN_CONTEXT"
+    },
+    {
+      "id": "family_marriage_registered",
+      "group": "details",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "family_sponsor_confirmed",
+      "group": "details",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "retirement_basis",
+      "group": "details",
+      "decision_kind": "HUMAN_CONTEXT"
+    },
+    {
+      "id": "secondhome_deposit_usd",
+      "group": "details",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "secondhome_state_bank",
+      "group": "details",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "secondhome_own_name",
+      "group": "details",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "secondhome_property_value_usd",
+      "group": "details",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "secondhome_passive_income_usd",
+      "group": "details",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "study_level",
+      "group": "details",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "study_admission_confirmed",
+      "group": "details",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "study_sponsor_confirmed",
+      "group": "details",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "diaspora_connection",
+      "group": "details",
+      "decision_kind": "HUMAN_CONTEXT"
+    },
+    {
+      "id": "diaspora_documents",
+      "group": "details",
+      "decision_kind": "HUMAN_CONTEXT"
+    },
+    {
+      "id": "other_purpose",
+      "group": "details",
+      "decision_kind": "HUMAN_CONTEXT"
+    },
+    {
+      "id": "other_paid_activity",
+      "group": "details",
+      "decision_kind": "HUMAN_CONTEXT"
+    },
+    {
+      "id": "remote_income",
+      "group": "details",
+      "decision_kind": "HUMAN_CONTEXT"
+    },
+    {
+      "id": "tourism_duration",
+      "group": "details",
+      "decision_kind": "HUMAN_CONTEXT"
+    },
+    {
+      "id": "stay_days",
+      "group": "details",
+      "decision_kind": "FACT"
+    },
+    {
+      "id": "review_gate",
+      "group": "review",
+      "decision_kind": null
+    }
+  ]
+}

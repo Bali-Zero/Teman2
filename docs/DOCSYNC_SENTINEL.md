@@ -1,141 +1,77 @@
-# DocSentinel — Automated Documentation Stats Synchronizer
+# DocSentinel — live derived state without tracked snapshots
 
-**Added:** 2026-03-24
-**File:** `scripts/docs_sync.py`
-**Cost:** $0 (deterministic, no LLM)
+`scripts/docs_sync.py` has two deliberately separate responsibilities:
 
-## What It Does
+1. `--json` generates current counts and enumerable atlases from the checked-out
+   tree and optional live services.
+2. `--check` protects small stable pointer blocks in tracked markdown from hand
+   edits or malformed markers.
 
-Extracts live metrics from the codebase and injects them into markdown files between `<!-- DOCSYNC:KEY_START -->` / `<!-- DOCSYNC:KEY_END -->` markers. Numbers like router count, service count, vector document count stay always in sync with the actual code.
+Volatile counts, tables, and inventories are not committed. This prevents a
+repository-wide change from making an unrelated pull request fail because a
+global snapshot drifted.
 
-## How It Works
-
-```
-Code Change → docs_sync.py extracts stats → Injects into marker regions → Docs updated
-```
-
-### Stats Extracted
-
-| Stat               | Source                       | Method                        |
-| ------------------ | ---------------------------- | ----------------------------- |
-| Router count       | `router_registration.py`     | regex `api.include_router(`   |
-| Service count      | `backend/services/**/*.py`   | file count (excl. `__init__`) |
-| Test file count    | `backend/tests/**/test_*.py` | file count                    |
-| App count          | `apps/*/`                    | directory count               |
-| Version            | `package.json`               | JSON parse                    |
-| Qdrant collections | `/health` endpoint           | HTTP GET with cache fallback  |
-| Qdrant documents   | `/health` endpoint           | HTTP GET with cache fallback  |
-| Embedding model    | `/health` endpoint           | HTTP GET with cache fallback  |
-| Channel count      | `backend/channels/*/`        | directory count               |
-| KG nodes/edges     | cached                       | hardcoded (changes rarely)    |
-
-### Markers in Docs
-
-| File                    | Markers                                             | Content                                        |
-| ----------------------- | --------------------------------------------------- | ---------------------------------------------- |
-| `README.md`             | `TECH_STATS`, `FEATURE_FLAGS`                       | Tech stack table, feature flags table          |
-| `CLAUDE.md`             | `BACKEND_STATS`, `VECTOR_STATS`, `EMBEDDING_FROZEN` | Backend metrics, vector counts, frozen warning |
-| `docs/AI_ONBOARDING.md` | `QUICK_NUMBERS`                                     | One-line stats summary                         |
-
-### Marker Format
-
-```markdown
-<!-- DOCSYNC:KEY_START -->
-
-Content that gets auto-replaced
-
-<!-- DOCSYNC:KEY_END -->
-```
-
-**Rule:** Never edit content between markers manually — it will be overwritten.
-
-## Usage
+## Commands
 
 ```bash
-# Update all markers in-place
-python scripts/docs_sync.py
+# Current machine-readable state; never writes repository files
+python3 scripts/docs_sync.py --json
 
-# Check if docs are stale (CI mode, exit 1 if stale)
-python scripts/docs_sync.py --check
+# Validate every protected pointer
+python3 scripts/docs_sync.py --check
 
-# Show what would change without writing
-python scripts/docs_sync.py --diff
+# CI: validate only managed docs named by the merge-base delta
+python3 scripts/docs_sync.py --check --changed-files-from /tmp/changed.txt
 
-# Output raw stats as JSON
-python scripts/docs_sync.py --json
+# Restore canonical pointer bodies after an accidental hand edit
+python3 scripts/docs_sync.py
 
-# Quiet mode (for hooks)
-python scripts/docs_sync.py --quiet
+# Generate the full inventory and JSON files under .artifacts/
+bash scripts/docs_inventory_regen.sh
 ```
 
-## Triggers
+The scheduled `docs-inventory-refresh.yml` workflow runs the last command and
+publishes `docs-sync.json`, `docs-audit.json`, and `DOCS_INVENTORY.md` as a CI
+artifact.
 
-| Trigger         | File                              | When                   | Blocking             |
-| --------------- | --------------------------------- | ---------------------- | -------------------- |
-| **Manual**      | `python scripts/docs_sync.py`     | On demand              | —                    |
-| **Post-commit** | `.husky/post-commit`              | After every git commit | No (background)      |
-| **CI/CD**       | `.github/workflows/docs-sync.yml` | PRs touching `apps/`   | Yes (fails if stale) |
-| **Cron**        | `scripts/docs_sync_cron.sh`       | Daily at 03:17         | No (auto-commits)    |
+## Protected files
 
-### Setting Up Cron
+- `README.md` — technical-state pointer
+- `INDEX.md` — apps, workflows, skills, and automation pointers
+- `docs/AI_ONBOARDING.md` — quick-numbers pointer
+- `docs/runbooks/README.md` — runbook-inventory pointer
+- `docs/DOCS_INVENTORY.md` — full-inventory pointer
 
-```bash
-# On Pro (development machine)
-crontab -e
-# Add:
-17 3 * * * /Users/nuzantara/Projects/nuzantara/scripts/docs_sync_cron.sh
+Every expected marker pair must exist exactly once. The body between its start
+and end marker must equal the generator's stable template.
 
-# On Air (server)
-crontab -e
-# Add:
-17 3 * * * /Users/antonellosiano/Projects/nuzantara/scripts/docs_sync_cron.sh
-```
+## Gate semantics
 
-## Graceful Degradation
+The required `check-docs-sync` workflow always starts. It enumerates the
+merge-base delta and then:
 
-- **Qdrant unreachable:** Uses cached values from `.docs_sync_cache.json`
-- **Cache missing:** Falls back to last known hardcoded values
-- **Post-commit fails:** Silent (background, non-blocking)
-- **CI check fails:** PR blocked, developer runs `python scripts/docs_sync.py`
+- runs generator correctness tests when the generator or protected surface is
+  relevant;
+- validates only protected docs changed by the pull request;
+- validates the whole protected surface when `scripts/docs_sync.py` itself
+  changes;
+- returns sentinel success for unrelated changes.
 
-## Adding New Markers
+This gives both required properties:
 
-1. Add a template to `TEMPLATES` dict in `docs_sync.py`:
+- **guilt:** a hand edit inside a protected marker is red;
+- **innocence:** a code change that alters a live count but does not edit a
+  protected doc cannot become red from global drift.
 
-```python
-TEMPLATES["MY_NEW_STAT"] = lambda s: f"My stat: {s['routers']} routers"
-```
+## Unavailable live services
 
-2. Add markers to target .md file:
+`--json` reports an explicit `status: unavailable` with `null` values when
+Qdrant or Knowledge Graph credentials are absent. It never promotes a committed
+cache or hardcoded historical count to apparently-current state.
 
-```markdown
-<!-- DOCSYNC:MY_NEW_STAT_START -->
+## Adding a new protected pointer
 
-placeholder
-
-<!-- DOCSYNC:MY_NEW_STAT_END -->
-```
-
-3. Add target file to `TARGET_FILES` list if not already there.
-
-4. Run `python scripts/docs_sync.py` to verify.
-
-## Architecture
-
-```
-scripts/docs_sync.py
-├── Extractors (pure Python, no dependencies)
-│   ├── count_routers()      → regex on router_registration.py
-│   ├── count_services()     → glob on backend/services/
-│   ├── count_test_files()   → glob on backend/tests/
-│   ├── count_apps()         → listdir on apps/
-│   ├── get_version()        → json.load on package.json
-│   ├── get_qdrant_stats()   → HTTP GET /health + cache
-│   ├── count_channels()     → listdir on backend/channels/
-│   └── get_kg_stats()       → cached hardcoded values
-├── Templates (string formatters per marker key)
-├── inject_markers()         → regex replace between marker pairs
-└── main()                   → CLI: --check, --diff, --json, --quiet
-```
-
-No external dependencies. Uses only Python stdlib (`json`, `re`, `pathlib`, `urllib`).
+Add the marker key to `EXPECTED_MARKERS`, add a stable no-count template to
+`TEMPLATES`, add the tracked target to `TARGET_FILES`, and extend the unit
+tests. A changing value belongs in JSON or the workflow artifact, not in the
+tracked marker body.

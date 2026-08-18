@@ -1,0 +1,14 @@
+[
+  {
+    "query_id": "E2B3-C2-IDENTITY",
+    "attempt": 1,
+    "status": "OK",
+    "note": "C2 category/purpose + entry-duration, narrow 2-point ask"
+  },
+  {
+    "query_id": "E2B3-C2-PROCEDURE",
+    "attempt": 1,
+    "status": "OK",
+    "note": "C2 extension mechanics + mandatory sponsor, narrow 2-point ask; surfaced CF-16 (onshore-conversion conflict)"
+  }
+]

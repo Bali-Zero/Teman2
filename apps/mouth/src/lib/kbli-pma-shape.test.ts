@@ -34,9 +34,13 @@ function restricted(overrides: Partial<KBLICode["pma"]> = {}): KBLICode {
       isPriority: false,
       note: null,
       source: "Perpres 10/2021",
+      verificationStatus: "located",
+      officialBasis: "Perpres 49/2021 Lampiran III fixture",
+      sourceVintage: "2021-05-25",
       capSpecial: false,
       capVerified: true,
       routeTo: null,
+      citation: "Perpres 49/2021 Lampiran III fixture",
       ...overrides,
     },
     licensing: [],
@@ -49,6 +53,25 @@ function restricted(overrides: Partial<KBLICode["pma"]> = {}): KBLICode {
     },
     tier: "silver",
     keywords: [],
+    provenance: {
+      state: "verified",
+      definition: { locator: "fixture", assembly: "fixture" },
+      licensing: {
+        status: "oss_native",
+        locator: "OSS_RBA_resiko_2025",
+        vintage: "2025",
+        noOssScope: false,
+        contentInheritedFrom: null,
+      },
+      pma: {
+        source: "Perpres 10/2021",
+        vintage: "2021-05-25",
+        status: "located",
+        locator: "Perpres 49/2021 Lampiran III fixture",
+      },
+      dataNote: null,
+      disputed: null,
+    },
   } as unknown as KBLICode;
 }
 
@@ -76,6 +99,15 @@ describe("pmaCapShape", () => {
     expect(
       pmaCapShape(restricted({ maxForeign: "special", capSpecial: false }).pma),
     ).toBe("conditional");
+  });
+
+  it("does not let a stray special flag override a numeric cap", () => {
+    expect(
+      pmaCapShape(restricted({ maxForeign: 0, capSpecial: true }).pma),
+    ).toBe("none");
+    expect(
+      pmaCapShape(restricted({ maxForeign: 49, capSpecial: true }).pma),
+    ).toBe("partial");
   });
 });
 
@@ -114,7 +146,7 @@ describe("the <title> suffix", () => {
     ).toBe("Foreign Ownership With Conditions");
   });
 
-  it("INNOCENCE: an unverified cap still states nothing — at ANY shape", () => {
+  it("INNOCENCE: an unverified cap stays qualified — at ANY shape", () => {
     // The provenance gate predates this change and must survive it. If a future
     // edit reorders the branches so a shape answers before capVerified, an
     // unverified 0 would start asserting "Closed to Foreign Investment" as fact.
@@ -123,7 +155,7 @@ describe("the <title> suffix", () => {
         kbliMetaTitleSuffix(
           restricted({ maxForeign: cap, capVerified: false }),
         ),
-      ).toBe("Foreign Ownership Restricted");
+      ).toBe("Foreign Ownership Restricted (ownership cap not verified)");
     }
   });
 });
@@ -144,7 +176,7 @@ describe("the <meta description> label", () => {
     );
     expect(
       kbliPmaLabel(restricted({ maxForeign: 49, capVerified: false })),
-    ).toBe("Restricted for foreign ownership");
+    ).toBe("Foreign Ownership Restricted (ownership cap not verified)");
   });
 });
 
@@ -204,7 +236,7 @@ describe("the visible badge", () => {
     ).not.toContain("special%");
   });
 
-  it("INNOCENCE: keeps the ceiling, and keeps the unverified qualifier", () => {
+  it("INNOCENCE: keeps verified ceilings and withholds unverified values", () => {
     expect(restrictedCapBadge(restricted({ maxForeign: 49 }).pma)).toBe(
       "Max 49%",
     );
@@ -212,6 +244,23 @@ describe("the visible badge", () => {
       restrictedCapBadge(
         restricted({ maxForeign: 49, capVerified: false }).pma,
       ),
-    ).toBe("≈49% (unverified)");
+    ).toBe("Cap not verified");
+    expect(
+      restrictedCapBadge(restricted({ maxForeign: 0, capVerified: false }).pma),
+    ).toBe("Cap not verified");
+    expect(
+      restrictedCapBadge(
+        restricted({ maxForeign: 100, capVerified: false }).pma,
+      ),
+    ).toBe("Cap not verified");
+    expect(
+      restrictedCapBadge(
+        restricted({
+          maxForeign: "special",
+          capSpecial: true,
+          capVerified: false,
+        }).pma,
+      ),
+    ).toBe("Cap not verified");
   });
 });

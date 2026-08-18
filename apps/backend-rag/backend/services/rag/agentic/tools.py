@@ -26,6 +26,11 @@ import httpx
 
 from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
 from backend.services.kbli_eye import KBLIEye
+from backend.services.kbli_pma_disclosure import (
+    disclose_bali,
+    disclose_pma,
+    sanitize_kbli_search_result,
+)
 from backend.services.pricing.pricing_service import get_pricing_service
 from backend.services.rag.vision_rag import VisionRAGService
 from backend.services.tools.definitions import BaseTool
@@ -211,10 +216,7 @@ class VectorSearchTool(BaseTool):
 
             # Structured concurrency (Python 3.11+); _search_collection swallows exceptions.
             async with asyncio.TaskGroup() as tg:
-                col_tasks = [
-                    tg.create_task(_search_collection(col))
-                    for col in target_collections
-                ]
+                col_tasks = [tg.create_task(_search_collection(col)) for col in target_collections]
             search_results = [t.result() for t in col_tasks]
 
             # Process and deduplicate results
@@ -253,10 +255,11 @@ class VectorSearchTool(BaseTool):
                     if isinstance(chunk, dict)
                     else getattr(chunk, "text", str(chunk))
                 )
+                source_col = chunk.get("_source_collection", "unknown")
                 metadata = chunk.get("metadata", {}) if isinstance(chunk, dict) else {}
+                text, metadata = sanitize_kbli_search_result(source_col, text, metadata)
                 title = metadata.get("title") or "Document"
 
-                source_col = chunk.get("_source_collection", "unknown")
                 doc_id = (
                     metadata.get("chapter_id")
                     or metadata.get("document_id")
@@ -314,7 +317,9 @@ class KBLICanonicalLookupTool(BaseTool):
     """
 
     def __init__(self, dataset_path: str | Path | None = None) -> None:
-        resolved_path = Path(dataset_path) if dataset_path is not None else _default_kbli_dataset_path()
+        resolved_path = (
+            Path(dataset_path) if dataset_path is not None else _default_kbli_dataset_path()
+        )
         self._eye = KBLIEye(db_path=str(resolved_path.resolve()))
 
     @property
@@ -326,8 +331,9 @@ class KBLICanonicalLookupTool(BaseTool):
         return (
             "Look up one exact five-digit code in the canonical KBLI 2025 catalogue. "
             "ALWAYS use this before vector_search when the user supplies a specific "
-            "five-digit KBLI code. Returns exact PMA ownership cap/condition/source, "
-            "large-scale OSS risk, and Bali moratorium fields. If found=false, do not "
+            "five-digit KBLI code. Returns PMA ownership fields only when their complete "
+            "official evidence tuple is located, otherwise NOT_VERIFIED; also returns "
+            "large-scale OSS risk and Bali-side moratorium fields. If found=false, do not "
             "invent or silently map the code to a semantic neighbour."
         )
 
@@ -397,19 +403,35 @@ class KBLICanonicalLookupTool(BaseTool):
             risk = scope.get("kategori_risiko")
             if "Besar" in scales and risk:
                 large_scale_risks.add(str(risk))
+        disclosed = disclose_pma(record)
+        bali_disclosure = disclose_bali(record)
+        bali: dict[str, Any] = {}
+        if bali_disclosure["has_bali_l4"]:
+            # The source object carries internal working fields.  The model
+            # boundary is an explicit allowlist, never "all except known".
+            bali = {
+                "status": bali_disclosure["bali_status"],
+                "blocked": bali_disclosure["bali_blocked"],
+                "needs_review": bali_disclosure["bali_needs_review"],
+                "reason": bali_disclosure["bali_reason"],
+            }
+
         payload = {
             "found": True,
             "code": clean_code,
             "title": record.get("judul"),
             "pma": {
-                "status": record.get("pma_status"),
-                "max_foreign_ownership_percent": record.get("pma_max_asing"),
-                "condition": record.get("pma_kondisi"),
-                "official_basis": record.get("pma_official_basis"),
-                "cap_verified": bool(record.get("pma_cap_verified")),
+                "status": disclosed["pma_status"],
+                "max_foreign_ownership_percent": disclosed["pma_max_asing"],
+                "condition": disclosed["pma_kondisi"],
+                "verification_status": disclosed["pma_verification_status"],
+                "official_basis": disclosed["pma_official_basis"],
+                "source_vintage": disclosed["pma_source_vintage"],
+                "cap_special": disclosed["pma_cap_special"],
+                "cap_verified": disclosed["pma_cap_verified"],
             },
             "risk_at_large_scale": sorted(large_scale_risks),
-            "bali": record.get("l4_bali"),
+            "bali": bali,
             "source": source,
         }
         return json.dumps(payload, ensure_ascii=False)
@@ -1127,7 +1149,6 @@ class TimeSheetTool(BaseTool):
 
         except Exception as e:
             return json.dumps({"error": str(e)})
-
 
 
 # W0 safety pre-arm (S1, 2026-07-25): defensive bounds for the LLM-supplied

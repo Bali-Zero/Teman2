@@ -26,7 +26,12 @@ import {
   Trash2,
   Check,
 } from "lucide-react";
-import { kbliApi, KBLIDetail, KBLISearchResult } from "@/lib/api/kbli.api";
+import {
+  apiPmaPresentation,
+  kbliApi,
+  KBLIDetail,
+  KBLISearchResult,
+} from "@/lib/api/kbli.api";
 import { toast } from "sonner";
 import { useSessionStorage } from "@/lib/hooks/optimized/useLocalStorage";
 import {
@@ -110,30 +115,38 @@ const GLOSSARY: Record<string, string> = {
   TERTUTUP: "Closed — not available for foreign investment",
 };
 
-function getPmaBadgeInline(status: string): {
+function getPmaBadgeInline(record: KBLISearchResult): {
   label: string;
   color: string;
   bg: string;
   border: string;
 } {
-  const s = (status || "").toUpperCase();
-  if (s === "TERBUKA")
+  const presentation = apiPmaPresentation(record);
+  if (presentation.status === "unknown") {
     return {
-      label: "Open to Foreigners",
+      label: presentation.compactLabel,
+      color: "#a1a1aa",
+      bg: "rgba(113,113,122,0.12)",
+      border: "rgba(113,113,122,0.25)",
+    };
+  }
+  if (presentation.status === "open")
+    return {
+      label: presentation.compactLabel,
       color: "#34d399",
       bg: "rgba(34,197,94,0.12)",
       border: "rgba(34,197,94,0.25)",
     };
-  if (s === "TERBATAS")
+  if (presentation.status === "restricted")
     return {
-      label: "Restricted",
+      label: presentation.compactLabel,
       color: "#fbbf24",
       bg: "rgba(251,191,36,0.12)",
       border: "rgba(251,191,36,0.25)",
     };
-  if (s === "TERTUTUP")
+  if (presentation.status === "closed")
     return {
-      label: "Closed to Foreigners",
+      label: presentation.compactLabel,
       color: "#f87171",
       bg: "rgba(239,68,68,0.12)",
       border: "rgba(239,68,68,0.25)",
@@ -478,7 +491,7 @@ const AIMessageContent = ({
           >
             {sortByRisk(msg.results).map(
               (result: KBLISearchResult, rIdx: number) => {
-                const pmaBadgeInline = getPmaBadgeInline(result.pma_status);
+                const pmaBadgeInline = getPmaBadgeInline(result);
                 const isSelected = compareSelection.includes(result.code);
                 return (
                   <motion.div
@@ -661,7 +674,7 @@ const InspectorChoreographed = ({
     );
   }
 
-  const pmaBadge = getPmaBadge(data.pma_status);
+  const pmaBadge = getPmaBadge(data);
   const riskLevel = getRiskLevel(data.risk_profile);
 
   // Copy/Export (2C)

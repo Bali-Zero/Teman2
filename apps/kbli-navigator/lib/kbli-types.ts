@@ -12,10 +12,7 @@ export type KBLIBusinessScale = "Mikro" | "Kecil" | "Menengah" | "Besar";
 
 /** Risk category levels from PP28/2025 */
 export type KBLIRiskCategory =
-  | "Rendah"
-  | "Menengah Rendah"
-  | "Menengah Tinggi"
-  | "Tinggi";
+  "Rendah" | "Menengah Rendah" | "Menengah Tinggi" | "Tinggi";
 
 /** Mapping status indicating how a 2025 code relates to 2020 codes */
 export type KBLIMappingStatus =
@@ -51,7 +48,7 @@ export interface KBLIScaleEntry {
 export interface KBLIRawBaliL4 {
   status: string;
   reason?: string;
-  confidence?: 'HIGH' | 'MEDIUM' | 'LOW';
+  confidence?: "HIGH" | "MEDIUM" | "LOW";
   needs_review?: boolean;
   blocked?: boolean;
   from_2020?: string | null;
@@ -74,16 +71,18 @@ export interface KBLIRawCode {
   status_mapping: KBLIMappingStatus;
   pp28_sources: string[];
   pma_status: KBLIPmaRawStatus;
-  pma_max_asing: number | 'special'; // "special" = open-with-special-conditions (47221-class), no clean %
+  pma_max_asing: number | "special"; // "special" = open-with-special-conditions (47221-class), no clean %
   pma_kondisi: string | null;
   pma_prioritas: boolean;
   pma_nota: string | null;
   pma_source: string | null;
   // PMA cap provenance (synced from the native app dataset, 2026-06-27)
   pma_cap_special?: boolean; // true => special-distribution condition, render "special conditions" not "Closed 0%"
-  pma_cap_verified?: boolean; // false => TERBATAS cap % is not source-backed, render "≈N% unverified"
-  pma_route_to?: string; // sibling private code when a govt code is closed to PMA
-  pma_official_basis?: string;
+  pma_cap_verified?: boolean; // false => withhold numeric/special cap claims
+  pma_route_to?: string | null; // sibling private code when a govt code is closed to PMA
+  pma_official_basis?: string | null;
+  pma_source_vintage?: string | null;
+  pma_verification_status?: "located" | "declared_gap";
   l4_bali?: KBLIRawBaliL4 | null; // Bali-specific registrability, synced as a record field
   _source: string;
   // Optional fields (present on some records)
@@ -122,29 +121,31 @@ export interface KBLIRawDataFile {
 // -----------------------------------------------------------------------------
 
 /** Normalized PMA status for frontend display */
-export type KBLIPmaStatus = "open" | "restricted" | "closed";
+export type KBLIPmaStatus = "open" | "restricted" | "closed" | "unknown";
+
+export type KBLIPmaVerificationStatus = "located" | "declared_gap";
 
 /** Content tier for progressive enhancement */
 export type KBLITier = "gold" | "silver" | "bronze";
 
 /** Match type for search results */
 export type KBLIMatchType =
-  | "exact_code"
-  | "keyword"
-  | "semantic"
-  | "section_browse";
+  "exact_code" | "keyword" | "semantic" | "section_browse";
 
 /** PMA (foreign investment) details — processed */
 export interface KBLIPmaInfo {
   status: KBLIPmaStatus;
-  maxForeign: number | 'special';
+  maxForeign: number | "special" | null;
   condition: string | null;
   isPriority: boolean;
   note: string | null;
   source: string | null;
+  verificationStatus: KBLIPmaVerificationStatus;
+  officialBasis: string | null;
+  sourceVintage: string | null;
   // Synced from native app (2026-06-27): provenance flags that change the label.
   capSpecial: boolean; // special-distribution condition (47221) → "special conditions", not "Closed 0%"
-  capVerified: boolean; // false → TERBATAS % not source-backed → "≈N% unverified"
+  capVerified: boolean; // false → withhold numeric/special cap claims
   routeTo: string | null; // sibling private code when a govt code is closed to PMA (e.g. 86101 → 86103)
 }
 

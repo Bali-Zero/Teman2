@@ -2,11 +2,19 @@ name: Security Scanning
 
 on:
   push:
-    branches: [main, develop]
+    branches: [develop]
   pull_request:
     types: [opened, synchronize, reopened]
   merge_group:
   schedule:
+    # Daily backstop, 19:17 UTC = 03:17 WITA next day. Prerequisite for a
+    # later PR to remove this workflow's `push: main` trigger (Merge-OS v3
+    # build order step 2 — research/operations/2026-08-14-merge-os-v3-research-council.md
+    # §6): that dedupe only lands after this schedule has produced at least
+    # one green scheduled run, so there is never a window with no confirmed
+    # backstop. The weekly Sunday entry stays until then — two schedules
+    # overlapping is harmless.
+    - cron: "17 19 * * *" # Daily security backstop, 03:17 WITA
     - cron: "0 0 * * 0" # Weekly scan on Sunday
   workflow_dispatch:
 

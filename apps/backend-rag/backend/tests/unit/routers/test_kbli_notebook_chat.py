@@ -2,7 +2,7 @@
 Unit tests for backend/app/routers/kbli_notebook_chat.py
 Covers: helper functions, LLM gateway singleton, language detection,
 non-business query check, multi-domain check, translate, explain,
-parent doc fetch, known codes, keyword injection map.
+uncertified-parent exclusion, known codes, keyword injection map.
 Direct function calls (no TestClient) for maximum coverage.
 """
 
@@ -26,6 +26,15 @@ _mock_llm_gateway.send_message = AsyncMock(
     )
 )
 
+_VERIFIED_PMA = {
+    "pma_status": "TERBUKA",
+    "pma_max_asing": 100,
+    "pma_verification_status": "located",
+    "pma_official_basis": "Perpres 49/2021 Lampiran III",
+    "pma_source_vintage": "2025-06-01",
+    "pma_cap_verified": True,
+}
+
 
 @pytest.fixture(autouse=True)
 def patch_llm_gateway():
@@ -39,18 +48,6 @@ def patch_llm_gateway():
 # ============================================================
 # FIXTURES
 # ============================================================
-
-
-@pytest.fixture
-def mock_db_pool():
-    pool = MagicMock()
-    conn = AsyncMock()
-    acquire_cm = MagicMock()
-    acquire_cm.__aenter__ = AsyncMock(return_value=conn)
-    acquire_cm.__aexit__ = AsyncMock(return_value=False)
-    pool.acquire = MagicMock(return_value=acquire_cm)
-    pool._mock_conn = conn
-    return pool
 
 
 # ============================================================
@@ -139,6 +136,30 @@ def test_is_multi_domain_query_business_plus_legal():
     from backend.app.routers.kbli_notebook_chat import _is_multi_domain_query
 
     assert _is_multi_domain_query("PMA company tax regulation requirements") is True
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "Can a foreigner own KBLI 01111?",
+        "Can I open a restaurant with a KITAS?",
+        "What ownership cap applies to this business?",
+        "Apakah usaha ini dapat dimiliki investor asing?",
+    ],
+)
+def test_sensitive_multi_domain_queries_require_the_structured_pma_gate(query):
+    from backend.app.routers.kbli_notebook_chat import _requires_structured_pma_gate
+
+    assert _requires_structured_pma_gate(query) is True
+
+
+def test_non_pma_business_tax_query_can_use_multi_domain_route():
+    from backend.app.routers.kbli_notebook_chat import _requires_structured_pma_gate
+
+    assert (
+        _requires_structured_pma_gate("What tax regulation applies to a restaurant business?")
+        is False
+    )
 
 
 # ============================================================
@@ -261,53 +282,55 @@ async def test_generate_kbli_explanation_success():
     assert len(result) > 0
 
 
-@pytest.mark.asyncio
-async def test_generate_kbli_explanation_with_parent_docs():
-    from backend.app.routers.kbli_notebook_chat import _generate_kbli_explanation
+def test_router_has_no_uncertified_parent_prose_path():
+    """A matching PMA tuple must not authenticate arbitrary parent content."""
+    import inspect
 
-    _mock_llm_gateway.send_message = AsyncMock(
-        return_value=("Detailed answer with parent docs", "gemini-flash", MagicMock(), {})
-    )
+    import backend.app.routers.kbli_notebook_chat as mod
 
-    mock_result = MagicMock()
-    mock_result.code = "56101"
-    mock_result.title = "RESTORAN"
-    mock_result.description = "Restaurant"
-    mock_result.pma_status = "TERBUKA"
-    mock_result.risk_category = "Rendah"
-    mock_result.expert_legal = None
-
-    parent_docs = {"56101": "Full parent document content for restaurant KBLI code 56101..."}
-
-    with patch("backend.app.routers.kbli_notebook_chat.cached", lambda **kw: lambda f: f):
-        result = await _generate_kbli_explanation("restaurant", [mock_result], parent_docs)
-    assert isinstance(result, str)
+    source = inspect.getsource(mod)
+    assert "parent_docs" not in source
+    assert "_fetch_parent_documents_from_kbli_table" not in source
+    assert "SELECT kode_kbli, judul, content" not in source
+    assert "SELECT entity_id, name, description" not in source
 
 
 @pytest.mark.asyncio
-async def test_generate_kbli_explanation_with_expert_data():
+async def test_generate_kbli_explanation_never_sends_unbound_expert_data():
+    from backend.app.routers.kbli_notebook import KBLISearchResult
     from backend.app.routers.kbli_notebook_chat import _generate_kbli_explanation
 
     _mock_llm_gateway.send_message = AsyncMock(
         return_value=("Answer with expert data", "gemini-flash", MagicMock(), {})
     )
 
-    mock_result = MagicMock()
-    mock_result.code = "56101"
-    mock_result.title = "RESTORAN"
-    mock_result.description = "Restaurant"
-    mock_result.pma_status = "TERBUKA"
-    mock_result.risk_category = "Rendah"
-    mock_result.expert_legal = {
+    result_model = KBLISearchResult(
+        code="56101",
+        title="RESTORAN",
+        description="Restaurant",
+        score=1.0,
+        risk_category="Rendah",
+        **_VERIFIED_PMA,
+    )
+    # Simulate a stale object populated after response-model validation. The
+    # model boundary must ignore it even when the structured PMA tuple is valid.
+    result_model.expert_legal = {
         "bab": "III",
         "pasal": "12",
         "pb_umku": ["PB-001"],
         "pma_implications": "Full foreign ownership allowed",
     }
 
-    with patch("backend.app.routers.kbli_notebook_chat.cached", lambda **kw: lambda f: f):
-        result = await _generate_kbli_explanation("restaurant", [mock_result])
+    with patch(
+        "backend.app.routers.kbli_notebook_chat._fill_bali_verdicts",
+        new=AsyncMock(),
+    ):
+        result = await _generate_kbli_explanation.__wrapped__("restaurant", [result_model])
+
     assert isinstance(result, str)
+    message = _mock_llm_gateway.send_message.await_args.kwargs["message"]
+    assert "Full foreign ownership allowed" not in message
+    assert "PB-001" not in message
 
 
 @pytest.mark.asyncio
@@ -371,60 +394,6 @@ async def test_generate_kbli_explanation_indonesian_fallback():
 
 
 # ============================================================
-# _fetch_parent_documents_from_kbli_table
-# ============================================================
-
-
-@pytest.mark.asyncio
-async def test_fetch_parent_documents_success(mock_db_pool):
-    from backend.app.routers.kbli_notebook_chat import _fetch_parent_documents_from_kbli_table
-
-    mock_db_pool._mock_conn.fetch.return_value = [
-        {"kode_kbli": "56101", "content": "Full content for 56101"},
-    ]
-
-    result = await _fetch_parent_documents_from_kbli_table(["56101"], mock_db_pool)
-    assert "56101" in result
-    assert result["56101"] == "Full content for 56101"
-
-
-@pytest.mark.asyncio
-async def test_fetch_parent_documents_no_codes():
-    from backend.app.routers.kbli_notebook_chat import _fetch_parent_documents_from_kbli_table
-
-    result = await _fetch_parent_documents_from_kbli_table([], MagicMock())
-    assert result == {}
-
-
-@pytest.mark.asyncio
-async def test_fetch_parent_documents_no_pool():
-    from backend.app.routers.kbli_notebook_chat import _fetch_parent_documents_from_kbli_table
-
-    result = await _fetch_parent_documents_from_kbli_table(["56101"], None)
-    assert result == {}
-
-
-@pytest.mark.asyncio
-async def test_fetch_parent_documents_no_rows(mock_db_pool):
-    from backend.app.routers.kbli_notebook_chat import _fetch_parent_documents_from_kbli_table
-
-    mock_db_pool._mock_conn.fetch.return_value = []
-
-    result = await _fetch_parent_documents_from_kbli_table(["99999"], mock_db_pool)
-    assert result == {}
-
-
-@pytest.mark.asyncio
-async def test_fetch_parent_documents_db_error(mock_db_pool):
-    from backend.app.routers.kbli_notebook_chat import _fetch_parent_documents_from_kbli_table
-
-    mock_db_pool._mock_conn.fetch.side_effect = Exception("DB error")
-
-    result = await _fetch_parent_documents_from_kbli_table(["56101"], mock_db_pool)
-    assert result == {}
-
-
-# ============================================================
 # KNOWN_KBLI_CODES and NON_BUSINESS_KEYWORDS
 # ============================================================
 
@@ -472,7 +441,8 @@ def test_master_prompt_does_not_flatten_56101_pma_risk_to_medium_low():
         "— Restaurant services with permanent building. PMA: TERBUKA "
         "(open to foreigners), Risiko: Menengah Rendah."
     ) not in prompt
-    assert "PMA/Besar: Menengah Tinggi" in prompt
+    assert "Risk is scale-dependent" in prompt
+    assert "PMA/Besar: Menengah Tinggi" not in prompt
 
 
 @pytest.mark.asyncio
@@ -550,17 +520,17 @@ def test_master_prompt_forbids_risk_tier_estimation_by_analogy():
     assert "do not guess a plausible tier" in prompt
 
 
-def test_master_prompt_still_cites_verified_risk_for_known_codes():
-    """Innocence check: the anti-analogy abstention instruction must NOT
-    suppress risk citations for codes that DO have verified data baked into
-    the prompt (e.g. 56101/56210 have explicit, sourced risk categories)."""
+def test_master_prompt_does_not_bake_source_free_code_verdicts_into_context():
+    """The master prompt is not an evidence store. Per-code ownership and risk
+    facts must arrive through the structured result gate, not static prose that
+    cannot carry its official basis and source vintage."""
     from backend.app.routers.kbli_notebook_chat import KBLI_MASTER_PROMPT
 
     prompt = KBLI_MASTER_PROMPT.format(lang="English")
-    # Verified per-code risk facts remain intact and unblocked.
-    assert "PMA/Besar: Menengah Tinggi" in prompt
+    assert "PMA/Besar: Menengah Tinggi" not in prompt
     assert "56210 = AKTIVITAS JASA BOGA UNTUK ACARA TERTENTU" in prompt
-    assert "Risiko: Menengah Tinggi" in prompt
+    assert "56210 PMA TERBUKA" not in prompt
+    assert "Risiko: Menengah Tinggi" not in prompt
 
 
 @pytest.mark.asyncio

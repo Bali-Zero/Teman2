@@ -45,11 +45,16 @@ def rec(code: str, **kwargs) -> dict:
 def test_guilt_licensing_rows_without_a_named_source_are_bare():
     """THE defect: permit rows asserted to a client with nothing on the record
     saying where they came from."""
-    assert B.classify_licensing(rec("99999", per_skala=[{"skala_usaha": "Besar"}])) == B.LIC_BARE
+    assert (
+        B.classify_licensing(rec("99999", per_skala=[{"skala_usaha": "Besar"}]))
+        == B.LIC_BARE
+    )
 
 
 def test_innocence_oss_2025_rows_are_sourced():
-    record = rec("01111", per_skala=[{"skala_usaha": "Besar"}], _l2_source=B.OSS_2025_SOURCE)
+    record = rec(
+        "01111", per_skala=[{"skala_usaha": "Besar"}], _l2_source=B.OSS_2025_SOURCE
+    )
     assert B.classify_licensing(record) == B.LIC_SOURCED_OSS_2025
 
 
@@ -63,21 +68,35 @@ def test_innocence_pp28_rows_are_located_but_flagged_vintage_pending():
     """The 5 Batch-A codes that kept their PP28 rows: the source IS named, so
     they are not bare — but they must never be conflated with the 2025-native
     class, because PP28 is KBLI-2020 vintage."""
-    record = rec("93111", per_skala=[{"skala_usaha": "Besar"}], _l2_status=B.NO_OSS_RISK, pp28_sources=["93111"])
+    record = rec(
+        "93111",
+        per_skala=[{"skala_usaha": "Besar"}],
+        _l2_status=B.NO_OSS_RISK,
+        pp28_sources=["93111"],
+    )
     assert B.classify_licensing(record) == B.LIC_SOURCED_PP28_VINTAGE_PENDING
 
 
 def test_guilt_no_oss_rows_without_pp28_sources_are_bare():
     """Innocence's twin: `no_oss_risk` alone does not confer provenance — a row
     kept with NO source named at all is still bare."""
-    record = rec("93111", per_skala=[{"skala_usaha": "Besar"}], _l2_status=B.NO_OSS_RISK, pp28_sources=[])
+    record = rec(
+        "93111",
+        per_skala=[{"skala_usaha": "Besar"}],
+        _l2_status=B.NO_OSS_RISK,
+        pp28_sources=[],
+    )
     assert B.classify_licensing(record) == B.LIC_BARE
 
 
 def test_guilt_unrecognised_l2_source_does_not_earn_provenance():
     """EXACT match, never substring: a marker nobody has vetted must fall
     through to bare rather than be granted a vintage it did not earn."""
-    record = rec("01111", per_skala=[{"skala_usaha": "Besar"}], _l2_source="OSS_RBA_resiko_2025_DRAFT")
+    record = rec(
+        "01111",
+        per_skala=[{"skala_usaha": "Besar"}],
+        _l2_source="OSS_RBA_resiko_2025_DRAFT",
+    )
     assert B.classify_licensing(record) == B.LIC_BARE
 
 
@@ -91,23 +110,100 @@ def test_guilt_pma_verdict_without_a_basis_is_bare():
 
 
 def test_innocence_pma_with_official_basis_is_located():
-    record = rec("50111", pma_official_basis="Perpres 10/2021 Lampiran III line 4202")
+    record = rec(
+        "50111",
+        pma_official_basis="Perpres 10/2021 Lampiran III line 4202",
+        pma_source_vintage="2021-05-25",
+        pma_verification_status="located",
+    )
     assert B.classify_pma(record) == B.PMA_LOCATED
 
 
 def test_innocence_pma_declared_unverified_is_honest():
     """A record that says "we have not verified this cap" is honest by this
     programme's own definition of DONE, even though it has no locator."""
-    assert B.classify_pma(rec("02101", pma_cap_verified=False)) == B.PMA_DECLARED_UNVERIFIED
+    assert (
+        B.classify_pma(
+            rec("02101", pma_cap_verified=False, pma_verification_status="declared_gap")
+        )
+        == B.PMA_DECLARED_UNVERIFIED
+    )
+
+
+def test_guilt_declared_gap_with_a_stale_basis_is_bare():
+    """A declaration cannot say both "unverified" and "officially based".
+    The compiler must resolve the state before the ratchet treats it as honest.
+    """
+    assert (
+        B.classify_pma(
+            rec(
+                "02101",
+                pma_verification_status="declared_gap",
+                pma_official_basis="Perpres 10/2021 Lampiran III",
+            )
+        )
+        == B.PMA_BARE
+    )
+
+
+def test_guilt_declared_gap_with_a_stale_vintage_is_bare():
+    assert (
+        B.classify_pma(
+            rec(
+                "02101",
+                pma_verification_status="declared_gap",
+                pma_source_vintage="2021-05-25",
+            )
+        )
+        == B.PMA_BARE
+    )
 
 
 def test_basis_outranks_a_stale_unverified_flag():
-    record = rec("50122", pma_official_basis="Perpres 10/2021 Lampiran III", pma_cap_verified=False)
+    record = rec(
+        "50122",
+        pma_official_basis="Perpres 10/2021 Lampiran III",
+        pma_source_vintage="2021-05-25",
+        pma_verification_status="located",
+        pma_cap_verified=False,
+    )
     assert B.classify_pma(record) == B.PMA_LOCATED
 
 
 def test_guilt_blank_basis_string_is_not_a_basis():
-    assert B.classify_pma(rec("01111", pma_official_basis="   ")) == B.PMA_BARE
+    assert (
+        B.classify_pma(
+            rec(
+                "01111",
+                pma_official_basis="   ",
+                pma_source_vintage="2021-05-25",
+                pma_verification_status="located",
+            )
+        )
+        == B.PMA_BARE
+    )
+
+
+def test_guilt_located_marker_cannot_bless_unknown_pma_status():
+    assert (
+        B.classify_pma(
+            rec(
+                "01111",
+                pma_status="FUTURE_STATUS",
+                pma_official_basis="Perpres 10/2021 Lampiran III",
+                pma_source_vintage="2021-05-25",
+                pma_verification_status="located",
+            )
+        )
+        == B.PMA_BARE
+    )
+
+
+def test_guilt_basis_without_vintage_or_explicit_state_is_still_bare():
+    assert (
+        B.classify_pma(rec("50111", pma_official_basis="Perpres 10/2021 Lampiran III"))
+        == B.PMA_BARE
+    )
 
 
 def test_the_layer_wide_pma_source_string_never_confers_provenance():
@@ -151,7 +247,10 @@ def test_innocence_explicit_no_ancestor_marker_is_a_declared_gap():
 def test_adjudicated_submetric_counts_only_real_verdicts():
     adjudicated = rec(
         "01111",
-        bps_2020_ancestors={"source_locator": [{"lampiran": 10}], "inheritance_verdict": "transfers"},
+        bps_2020_ancestors={
+            "source_locator": [{"lampiran": 10}],
+            "inheritance_verdict": "transfers",
+        },
     )
     assert B.crosswalk_is_adjudicated(adjudicated) is True
 
@@ -179,7 +278,11 @@ def test_build_scoreboard_refuses_a_mismatched_partition():
     """If a future edit adds a state to a classifier but forgets to declare
     whether it is honest, the builder must raise rather than quietly score it."""
     original = B.AXES["licensing"]
-    S.AXES["licensing"] = (lambda r: "a_state_nobody_declared", frozenset(), frozenset())
+    S.AXES["licensing"] = (
+        lambda r: "a_state_nobody_declared",
+        frozenset(),
+        frozenset(),
+    )
     try:
         board = S.build_scoreboard([rec("01111")])
         # Undeclared states are counted as defects, never silently dropped.
@@ -193,7 +296,9 @@ def test_build_scoreboard_refuses_a_mismatched_partition():
 # --------------------------------------------------------------------------
 
 
-def _board(honest: int, defect: int, codes: list[str], strong: list[str] | None = None) -> dict:
+def _board(
+    honest: int, defect: int, codes: list[str], strong: list[str] | None = None
+) -> dict:
     return {
         "total_codes": honest + defect,
         "axes": {
@@ -227,19 +332,42 @@ def test_guilt_wiping_every_sourced_row_is_a_REGRESSION_not_a_perfect_score(tmp_
     is gone. Measured on the real 1,559-record dataset before the fix: green.
     """
     sourced = [
-        rec(f"0111{i}", per_skala=[{"skala_usaha": "Besar"}], _l2_source=B.OSS_2025_SOURCE)
+        rec(
+            f"0111{i}",
+            per_skala=[{"skala_usaha": "Besar"}],
+            _l2_source=B.OSS_2025_SOURCE,
+        )
         for i in range(4)
     ]
     canonical = _canonical(tmp_path, sourced)
     baseline = tmp_path / "b.json"
-    assert S.main(["--canonical", str(canonical), "--baseline", str(baseline), "--update-baseline"]) == S.EXIT_OK
+    assert (
+        S.main(
+            [
+                "--canonical",
+                str(canonical),
+                "--baseline",
+                str(baseline),
+                "--update-baseline",
+            ]
+        )
+        == S.EXIT_OK
+    )
 
-    wiped = [rec(r[B.CODE_FIELD], per_skala=[], _l2_source=B.OSS_2025_SOURCE) for r in sourced]
+    wiped = [
+        rec(r[B.CODE_FIELD], per_skala=[], _l2_source=B.OSS_2025_SOURCE)
+        for r in sourced
+    ]
     canonical.write_text(json.dumps({"data": wiped}), encoding="utf-8")
 
     board = S.build_scoreboard(wiped)
-    assert board["axes"]["licensing"]["honest"] == 4, "still 'honest' — that is the trap"
-    assert S.main(["--canonical", str(canonical), "--baseline", str(baseline), "--check"]) == S.EXIT_REGRESSION
+    assert board["axes"]["licensing"]["honest"] == 4, (
+        "still 'honest' — that is the trap"
+    )
+    assert (
+        S.main(["--canonical", str(canonical), "--baseline", str(baseline), "--check"])
+        == S.EXIT_REGRESSION
+    )
 
 
 def test_innocence_the_programmes_own_cure_path_is_still_allowed(tmp_path):
@@ -247,14 +375,34 @@ def test_innocence_the_programmes_own_cure_path_is_still_allowed(tmp_path):
     122 times. If the strong-state arm fired on that, the gate would attack the
     work it exists to protect — so `sourced_pp28_vintage_pending` is NOT strong.
     """
-    before = [rec("93111", per_skala=[{"x": 1}], _l2_status=B.NO_OSS_RISK, pp28_sources=["93111"])]
+    before = [
+        rec(
+            "93111",
+            per_skala=[{"x": 1}],
+            _l2_status=B.NO_OSS_RISK,
+            pp28_sources=["93111"],
+        )
+    ]
     canonical = _canonical(tmp_path, before)
     baseline = tmp_path / "b.json"
-    S.main(["--canonical", str(canonical), "--baseline", str(baseline), "--update-baseline"])
+    S.main(
+        [
+            "--canonical",
+            str(canonical),
+            "--baseline",
+            str(baseline),
+            "--update-baseline",
+        ]
+    )
 
-    after = [rec("93111", per_skala=[], _l2_status=B.NO_OSS_RISK, pp28_sources=["93111"])]
+    after = [
+        rec("93111", per_skala=[], _l2_status=B.NO_OSS_RISK, pp28_sources=["93111"])
+    ]
     canonical.write_text(json.dumps({"data": after}), encoding="utf-8")
-    assert S.main(["--canonical", str(canonical), "--baseline", str(baseline), "--check"]) == S.EXIT_OK
+    assert (
+        S.main(["--canonical", str(canonical), "--baseline", str(baseline), "--check"])
+        == S.EXIT_OK
+    )
 
 
 def test_guilt_swapping_one_fix_for_one_degradation_is_caught(tmp_path):
@@ -282,9 +430,34 @@ def test_guilt_duplicate_codes_are_refused_by_the_loader(tmp_path):
 
 
 def test_guilt_falling_crosswalk_adjudication_is_caught():
-    before = {"total_codes": 1, "axes": {"crosswalk": {"honest": 1, "defect": 0, "adjudicated": 5, "defect_codes": [], "strong_codes": []}}}
-    after = {"total_codes": 1, "axes": {"crosswalk": {"honest": 1, "defect": 0, "adjudicated": 2, "defect_codes": [], "strong_codes": []}}}
-    assert any("adjudicated inheritance fell" in p for p in S.ratchet_regressions(after, before))
+    before = {
+        "total_codes": 1,
+        "axes": {
+            "crosswalk": {
+                "honest": 1,
+                "defect": 0,
+                "adjudicated": 5,
+                "defect_codes": [],
+                "strong_codes": [],
+            }
+        },
+    }
+    after = {
+        "total_codes": 1,
+        "axes": {
+            "crosswalk": {
+                "honest": 1,
+                "defect": 0,
+                "adjudicated": 2,
+                "defect_codes": [],
+                "strong_codes": [],
+            }
+        },
+    }
+    assert any(
+        "adjudicated inheritance fell" in p
+        for p in S.ratchet_regressions(after, before)
+    )
 
 
 def test_update_baseline_refuses_to_launder_a_regression(tmp_path, capsys):
@@ -293,15 +466,40 @@ def test_update_baseline_refuses_to_launder_a_regression(tmp_path, capsys):
     good = [rec("01111", per_skala=[{"x": 1}], _l2_source=B.OSS_2025_SOURCE)]
     canonical = _canonical(tmp_path, good)
     baseline = tmp_path / "b.json"
-    S.main(["--canonical", str(canonical), "--baseline", str(baseline), "--update-baseline"])
+    S.main(
+        [
+            "--canonical",
+            str(canonical),
+            "--baseline",
+            str(baseline),
+            "--update-baseline",
+        ]
+    )
 
-    canonical.write_text(json.dumps({"data": [rec("01111", per_skala=[])]}), encoding="utf-8")
-    rc = S.main(["--canonical", str(canonical), "--baseline", str(baseline), "--update-baseline"])
+    canonical.write_text(
+        json.dumps({"data": [rec("01111", per_skala=[])]}), encoding="utf-8"
+    )
+    rc = S.main(
+        [
+            "--canonical",
+            str(canonical),
+            "--baseline",
+            str(baseline),
+            "--update-baseline",
+        ]
+    )
     assert rc == S.EXIT_REGRESSION
     assert "REFUSING to overwrite" in capsys.readouterr().out
 
     rc = S.main(
-        ["--canonical", str(canonical), "--baseline", str(baseline), "--update-baseline", "--accept-regression"]
+        [
+            "--canonical",
+            str(canonical),
+            "--baseline",
+            str(baseline),
+            "--update-baseline",
+            "--accept-regression",
+        ]
     )
     assert rc == S.EXIT_OK, "the deliberate override must still work, just loudly"
 
@@ -331,13 +529,24 @@ def test_guilt_ratchet_fires_when_a_bare_fact_appears():
 
 
 def test_innocence_ratchet_is_silent_on_improvement():
-    assert S.ratchet_regressions(_board(14, 1, ["x"]), _board(10, 5, ["x", "a", "b", "c", "d"])) == []
+    assert (
+        S.ratchet_regressions(
+            _board(14, 1, ["x"]), _board(10, 5, ["x", "a", "b", "c", "d"])
+        )
+        == []
+    )
 
 
 def test_innocence_ratchet_is_silent_on_a_brand_new_axis():
     """Adding an axis must not read as a regression of the axes that existed."""
     current = _board(10, 5, ["a"])
-    current["axes"]["brand_new"] = {"total": 15, "honest": 0, "defect": 15, "states": {}, "defect_codes": []}
+    current["axes"]["brand_new"] = {
+        "total": 15,
+        "honest": 0,
+        "defect": 15,
+        "states": {},
+        "defect_codes": [],
+    }
     assert S.ratchet_regressions(current, _board(10, 5, ["a"])) == []
 
 
@@ -355,7 +564,7 @@ def test_guilt_ratchet_fires_when_an_axis_disappears():
 
 
 def test_unreadable_canonical_is_cannot_verify_not_regression(tmp_path, capsys):
-    """"I could not measure" must never be reported as "it regressed" — an
+    """ "I could not measure" must never be reported as "it regressed" — an
     healer acting on a mis-attributed failure spends a session on a false
     premise (W106b)."""
     rc = S.main(["--canonical", str(tmp_path / "nope.json"), "--check"])
@@ -366,19 +575,43 @@ def test_unreadable_canonical_is_cannot_verify_not_regression(tmp_path, capsys):
 def test_unreadable_baseline_is_cannot_verify(tmp_path, capsys):
     canonical = tmp_path / "c.json"
     canonical.write_text(json.dumps({"data": [rec("01111")]}), encoding="utf-8")
-    rc = S.main(["--canonical", str(canonical), "--baseline", str(tmp_path / "nope.json"), "--check"])
+    rc = S.main(
+        [
+            "--canonical",
+            str(canonical),
+            "--baseline",
+            str(tmp_path / "nope.json"),
+            "--check",
+        ]
+    )
     assert rc == S.EXIT_CANNOT_VERIFY
 
 
 def test_check_round_trips_against_a_freshly_written_baseline(tmp_path):
     canonical = tmp_path / "c.json"
     canonical.write_text(
-        json.dumps({"data": [rec("01111", per_skala=[{"x": 1}], _l2_source=B.OSS_2025_SOURCE)]}),
+        json.dumps(
+            {"data": [rec("01111", per_skala=[{"x": 1}], _l2_source=B.OSS_2025_SOURCE)]}
+        ),
         encoding="utf-8",
     )
     baseline = tmp_path / "b.json"
-    assert S.main(["--canonical", str(canonical), "--baseline", str(baseline), "--update-baseline"]) == S.EXIT_OK
-    assert S.main(["--canonical", str(canonical), "--baseline", str(baseline), "--check"]) == S.EXIT_OK
+    assert (
+        S.main(
+            [
+                "--canonical",
+                str(canonical),
+                "--baseline",
+                str(baseline),
+                "--update-baseline",
+            ]
+        )
+        == S.EXIT_OK
+    )
+    assert (
+        S.main(["--canonical", str(canonical), "--baseline", str(baseline), "--check"])
+        == S.EXIT_OK
+    )
 
 
 def test_check_fails_when_the_dataset_regresses_against_its_baseline(tmp_path):
@@ -386,11 +619,24 @@ def test_check_fails_when_the_dataset_regresses_against_its_baseline(tmp_path):
     good = rec("01111", per_skala=[{"x": 1}], _l2_source=B.OSS_2025_SOURCE)
     canonical.write_text(json.dumps({"data": [good]}), encoding="utf-8")
     baseline = tmp_path / "b.json"
-    S.main(["--canonical", str(canonical), "--baseline", str(baseline), "--update-baseline"])
+    S.main(
+        [
+            "--canonical",
+            str(canonical),
+            "--baseline",
+            str(baseline),
+            "--update-baseline",
+        ]
+    )
 
     # the source marker is dropped — the rows stay, the provenance does not
-    canonical.write_text(json.dumps({"data": [rec("01111", per_skala=[{"x": 1}])]}), encoding="utf-8")
-    assert S.main(["--canonical", str(canonical), "--baseline", str(baseline), "--check"]) == S.EXIT_REGRESSION
+    canonical.write_text(
+        json.dumps({"data": [rec("01111", per_skala=[{"x": 1}])]}), encoding="utf-8"
+    )
+    assert (
+        S.main(["--canonical", str(canonical), "--baseline", str(baseline), "--check"])
+        == S.EXIT_REGRESSION
+    )
 
 
 def test_empty_canonical_is_refused(tmp_path):

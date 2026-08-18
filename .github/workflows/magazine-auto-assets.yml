@@ -65,11 +65,7 @@ jobs:
           pytest pytest-asyncio httpx Pillow cryptography pydantic rfc8785 asyncpg
       - name: Require zsh for real wrapper lifecycle tests
         run: |
-          if ! command -v zsh >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install --yes zsh
-          fi
-          command -v zsh
+          bash scripts/ci/apt_install.sh zsh zsh
       - name: Verify magazine asset lifecycle contracts
         # Whole DIRECTORY, not a named subset (widened 2026-08-07 with the GARUDA
         # decommission). This is the only job that installs apps/zantara-media's

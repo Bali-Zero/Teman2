@@ -28,7 +28,8 @@ Abuse controls (Codex red-team, binding per the W1 brief):
   never echoed.
 - Rate limit: dedicated 30/min bucket in ``RateLimitMiddleware.RATE_LIMITS``
   (exact-path entry, beats the generic ``/api/`` 120/min prefix).
-- ``traffic_source`` (query param, default ``real``): synthetic classes
+- ``traffic_source`` (required query param; no implicit default): callers must
+  label every request explicitly. Synthetic classes
   require BOTH (a) the server-side allowlist env
   (``evaluate_path.ALLOW_SYNTHETIC_SOURCES_ENV``) arming the class AND
   (b) the ``X-Visa-Driver-Token`` header matching the
@@ -309,7 +310,7 @@ async def evaluate_applicant(
     traffic_source: Annotated[
         str,
         Query(json_schema_extra={"enum": sorted(_TRAFFIC_SOURCE_VALUES)}),
-    ] = "real",
+    ],
     request_category: Annotated[
         str | None,
         Query(json_schema_extra={"enum": sorted(_REQUEST_CATEGORY_VALUES)}),

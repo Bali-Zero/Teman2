@@ -111,32 +111,31 @@ export function buildRows(kbli: KBLICode, prov: KBLIProvenance): SourceRow[] {
     });
   }
 
-  // Derived, not fixed. "Audit pending" is honest for a code with a recorded
-  // KBLI-2020 origin: the annexes predate KBLI 2025 and the per-code crosswalk is
-  // genuinely in progress. It is NOT honest for a code that records no 2020
-  // ancestry at all — there is no crosswalk to be pending ON, and "in progress"
-  // would promise work that cannot start. That is a declared gap.
+  // Positive gate: only a compiler-located official basis + vintage verifies
+  // the whole-code verdict. A broad instrument name or mechanical crosswalk is
+  // useful context, but never proof of the current open/restricted/closed value.
   rows.push(
-    prov.pma.status === "untraceable_basis"
+    prov.pma.status === "declared_gap"
       ? {
           layer: "Foreign ownership (PMA)",
-          source: prov.pma.source ?? "Perpres 10/2021, 49/2021",
+          source: "No adjudicated per-code official basis",
           vintage: "—",
           verdict: "gap",
           detail:
-            "The official BPS crosswalk records no KBLI-2020 predecessor for this code, so we cannot trace how the investment-list verdict shown here was assigned to it. The value is served as-is, not as a verified determination — confirm it at oss.go.id before relying on it.",
+            "The canonical record declares a verification gap for the current ownership value. The instrument locator layer can identify a potentially applicable provision, but it does not verify this whole-code verdict; confirm it at oss.go.id before relying on it.",
         }
       : {
           layer: "Foreign ownership (PMA)",
-          source: prov.pma.source ?? "Perpres 10/2021, 49/2021",
-          vintage: "KBLI 2020",
-          verdict: "pending",
+          source: prov.pma.source ?? "Official PMA instrument",
+          vintage: prov.pma.vintage ?? "—",
+          verdict: "verified",
           detail:
-            "The investment-list annexes predate KBLI 2025; the per-code crosswalk audit of this layer is in progress. The value shown is the annex text, disclosed with its vintage.",
+            "The current whole-code foreign-ownership verdict has an adjudicated official basis and source vintage in the canonical record.",
+          locator: prov.pma.locator,
         },
   );
 
-  if (kbli.baliL4) {
+  if (prov.pma.status === "located" && kbli.baliL4) {
     const m = kbli.baliL4.moratorium;
     const isNonClassifiable = kbli.baliL4.status === "NON_CLASSIFICABILE";
     // This row is the honesty surface for the Bali layer, so it must not

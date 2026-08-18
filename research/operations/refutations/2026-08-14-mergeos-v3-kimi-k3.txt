@@ -1,0 +1,79 @@
+  ---
+
+  # Kimi K3 — REFUTER report, Merge-OS v3 grounding pack
+
+  Seat mandate: falsify, with cases. Every repo claim below was re-checked today on `main` (d5f34fe53). Pack-supplied aggregates I could not re-measure (97k slot-min/wk, run medians) are marked ASSUMPTION.
+
+  **Verified before arguing:** #4142 is real (`f80eaaf54`, PREPUSH_RUN_BACKEND seeds to 0; measured 2.3% real catches, 30% no-verdict under one-Mac contention; CI a verified strict superset). `tests.yml` fires on `pull_request` + `merge_group` + `push: main` + 2-hourly cron — full proof currently paid **~3×**, dedupe not done. Backend test files: **1,280 (2026-07-10) → 1,531 (today)**, +20% in 5 weeks, and the only "budget" is `timeout-minutes: 30` on the pytest job (`tests.yml:202`) plus a non-enforcing `--durations=50` report. `critical` marker: registered `pytest.ini:72`, used by **zero** tests (F6 confirmed). `scripts/ci/change_map.py`: absent from CODEOWNERS (only `prepush_tip_drift.sh` from `scripts/ci/` is listed) — F3 half confirmed. docs_sync derived state = vanity counts in 4 markdown files (README "330 routers · 695 services"; 9 markers in INDEX.md; 2 each in AI_ONBOARDING, runbooks/README); grep shows no programmatic consumer — only the writer, the auditor, and their tests.
+
+  ---
+
+  ## (a) Q1 — Claim: "ring-gating is the right next lever" → **UNSOUND** (as sequenced)
+
+  **Strongest refutation — arithmetic, not taste.**
+
+  1. Ring-gating only touches `pull_request` runs — the classifier job is PR-only *by design* today (`tests.yml:91`), and F1 exists precisely because wiring it into `merge_group` silently skips heavy jobs. So the lever acts on roughly 1 of the ~3.6 runs/PR (ASSUMPTION: pack's run ratio). Ceiling: a one-time cut to a minority of slot-min.
+  2. The suite grows ~10%/week compounding (18→25.7 min in 3.5 wk; now ~29 median) across **all four** triggers — PR, queue, push:main, and the 2-hourly cron. A one-time ~10–15% capacity cut is arithmetically erased by the ungoverned derivative in **~2 weeks**. Ring-gating treats the level; nothing treats d(suite)/dt. Verified: 1,280→1,531 test files in 5 weeks, zero pushback mechanisms in tree.
+  3. Concrete predicted incident: at ~29 min median against `timeout-minutes: 30`, suite growth converts the job timeout into **cancelled required checks** — and this repo has already documented that failure mode in `docs-sync.yml:48-55`: "a cancelled required check never turns green by itself — the PR is hard-blocked with nothing red to fix." Suite growth doesn't just cost slots; it is walking the main gate toward a systemic hard-block.
+  4. Blast radius: ring-gating is the single most dangerous change on the table (F1 skip-propagation, F3 unprotected judge — both verified present), while a test-time budget / per-PR net-test-seconds gate / growth alarm is additive and fails visible. Google TAP and Meta's predictive selection (general knowledge, ASSUMPTION as applied here) both layer selection **on top of** size/flakiness governance — selection is never the growth governor.
+
+  **Evidence that would settle it:** the Wave-1 baseline organ's billed-min/PR split by `event_name` (if merge_group + push + schedule ≥ 60% of slot-min, ring-gating-first is arithmetically dead on the pack's own numbers); per-PR net test-seconds added; date the p95 run crosses the 30-min job timeout.
+
+  **Verdict: UNSOUND as the *next* lever.** Correct order: govern the derivative (budget/alarm/suite diet — cheap, safe, attacks the compounding term), then cut the level (ring-gating), and never wire `needs: changes` into `merge_group` until F1's skip shape is corpus-tested against the wired graph, not the shadow one.
+
+  ---
+
+  ## (b) Q2 — Claim: "heal-as-PR is needed" → **UNSOUND** (the wound is self-inflicted; delete the invariant, not the healing)
+
+  **Strongest refutation — three cases, all observed in this repo.**
+
+  1. **The defended value is ~zero.** The derived state is counts in prose. Proof exactness has no consumer: `AGENTS.md` and `README.md` are *simultaneously committed* claiming different truths (746 vs 695 services; 1,449 test files vs README's implied other) and the platform operated fine. If a stale number in a README cost anything, that cost is already being paid daily and nobody noticed.
+  2. **The gate violates its own invariant by normal operation.** #4101 (`66592b6d4`, commit message, measured): a fully compliant PR with regen-in-same-commit landed, and main *still* went DOCSYNC STALE because main gained 7 commits between regen and merge — "regen in the same commit is necessary but not sufficient on a moving main… the queue outran it." Same shape as #4066 three days earlier; same class as the #3057 hard-block; agy-F4 observed live twice. With ~47 merges/day and the relevance regex covering `backend/services/`, `backend/tests/`, `backend/channels/`, essentially every backend merge re-stales the committed counts for every in-flight PR. A gate whose invariant is destroyed by the system's own throughput is a defect generator.
+  3. **Heal-as-PR structurally cannot win this race.** The heal diff is computed at M0; its `merge_group` check runs on a batch tree containing count-changing batchmates → red → organ opens another heal PR (agy-F2's loop). This is not hypothetical: the repo **already runs heal-as-PR** for `DOCS_INVENTORY.md` (`docs-inventory-refresh.yml`: bot branch → `gh pr create` → `--auto --squash` through the queue) and **already needs a stuck-heal-PR liveness alarm** (>48h, BLOCKER-4 in `docs-inventory-refresh-liveness.yml`). Stuck heal PRs are a monitored, expected failure mode *today*. F5 (no exclusive admission) is real but secondary: no isolation primitive can fix a check that is racy by construction.
+
+  **The shape that makes agy-F2 and F5 moot:** keep verify, kill store-or-exactness. Concretely, option (c) sharpened — make the check **diff-local**: "did *this* diff change a source of a count without regenerating" instead of "is the whole tree exactly in sync." That kills agy-F4 (innocent PRs never inherit main drift), kills agy-F2 (no global drift → no heal loop → nothing to isolate, F5 evaporates), and preserves the only real value (a PR that adds a router also updates the docs it touched). If even that is too expensive, option (a): counts become approximate prose plus `scripts/docs_sync.py --json` for live numbers, nightly regen via the *existing* docs-inventory organ shape. Either disposition converts a P0 + a P1 into deletions. (How the big systems treat it, ASSUMPTION/general knowledge: generated artifacts are not checked in where generation is hermetic — Bazel derives at build time; where checked-in generation is unavoidable, presubmits check that *the diff's sources* were regenerated, never global tree exactness.)
+
+  **Evidence that would settle it:** consumer enumeration (done via grep: none programmatic — residual ASSUMPTION: human README readers on GitHub); count of main-stale incidents per fortnight (already ≥3 in ~2 weeks); a 2-week A/B of the diff-local check — predicted false-red rate ≈ 0.
+
+  ---
+
+  ## (c) Q5 — Claim: "'full proof paid once in the queue' is still sound post-R0, with agent authors" → **UNSOUND** (allocation is backwards for this author class)
+
+  **Strongest refutation.**
+
+  1. **"Once" is already false.** Verified triggers: the same full suite runs on `pull_request`, `merge_group`, and `push: main` (dedupe explicitly not done, pack §3), plus the 2-hourly cron. The doctrine describes a target. The live question is *where* the single payment should sit.
+  2. **With R0 off, PR-side CI is the first execution of the code anywhere.** #4142's own message: "CI is the ONLY test boundary." Agents no longer run tests locally at all. Moving the full proof into the queue (ring-gating's smoke-on-PR) means feeding **never-tested code** into a serializer that (i) batches ≤5, so one bad agent PR ejects four innocents; (ii) attributes every batch to `github-actions[bot]` — agy-F3, structural: ejection-rate-by-author-class is *unmeasurable*, so you cannot even detect the regression; (iii) has no bisection (GitHub-native), so ejection handling is manual; (iv) has F7's unbounded rearm (counter resets per new queue entry — verified logic, bounds nothing). Attribution is the scarcest resource in an agent-authored repo, and the PR-side run is the **only** point where failure maps 1:1 to an author and a diff. "Paid once in the queue" spends the proof exactly where attribution is destroyed.
+  3. **The safety record argues for redundancy, not once-ness.** 4 reverts in 12 weeks at ~47 PR/day was achieved *under the redundant regime* (full proof paid 2–3×). The doctrine treats the duplicate payments as waste; the revert record is evidence they are the premium on insurance that is paying out.
+  4. Steelman considered and rejected: Google/Meta do pay the full proof at the land queue with cheap presubmits — but their authors have working local verification and their queues have culprit-finding/bisection (ASSUMPTION: general knowledge of TAP/Sandcastle). This repo, post-R0, has neither. Importing their allocation without their compensating machinery is cargo-cult.
+
+  **Replacement doctrine:** full proof paid at **PR-side** (attributed, isolated, blast radius = 1 PR), plus the queue's batch proof as a second, amortized layer whose ejections stay rare *because* inputs are pre-proven. "Paid once" dies; "paid at the point of attribution, then once more amortized at the serializer" is the honest model. If slots cannot afford it, cut scope (suite diet, per (a)) — never attribution.
+
+  **Evidence that would settle it:** PR-side first-run failure rate of agent PRs since 2026-08-13 (if ≥10–15%, queue-only proof ejects constantly and the claim is dead; if <2%, my case weakens substantially); ejection rate and batch-size distribution from the baseline organ; whether the queue API now exposes per-PR ejection attribution (would defuse agy-F3).
+
+  ---
+
+  ## (d) Q5 — Claim: "cloud-offloading more parallel agent sessions helps before CI capacity work lands" → **UNSOUND** (harms first; the batching steelman is confiscated by ejections)
+
+  **Strongest refutation.**
+
+  1. **The measured local analog already ran this experiment.** #4142's data: at 3+ concurrent agent lanes against one fixed-capacity gate, **30% of runs produced no verdict at all** (9 lock-timeouts + 17 SIGTERMs) and 2.3% produced signal. Saturation of a fixed-capacity gate by parallel agent sessions did not slow verdicts — it made verdicts *disappear*, fail-silent. That is the direct observed preview of "more parallel sessions before capacity work."
+  2. **The arithmetic needs no new arrivals to go nonlinear.** 48% slot utilization (ASSUMPTION: pack figure, internally consistent with 20 slots = 201,600 slot-min/wk) with suite growth ~10%/wk and `timeout-minutes: 30` already at the median's edge: utilization crosses the ~70% Kingman regime — where p95 queue wait diverges — in a few weeks *with arrival rate held flat*. Cloud offloading raises λ now, against a μ that is falling weekly.
+  3. **The strongest pro case — deeper queue fills merge_group batches (build 5) and amortizes the full proof — fails under current conditions.** (i) PR-side runs are unbatched and linear in λ regardless. (ii) With R0 off, batches are filled with never-tested code: at per-PR failure probability p, a batch of 5 fails with probability 1−(1−p)⁵ (23% at p=5%), and each ejection costs the batch proof *plus* survivor re-runs *plus* F7's unbounded rearm — the batching discount is confiscated by the ejection tax. (iii) No bisection means that tax is paid by hand. Batching amortizes only when inputs are pre-proven — which is (c)'s point: the preconditions are exactly the capacity/allocation work that hasn't landed yet.
+
+  **Evidence that would settle it:** current merge_group batch-size distribution (if batches already average ≥3, the amortization headroom is mostly captured and the steelman dies outright); organ-measured queue transit p50/p95 vs λ; a controlled +20% PR-volume ramp for one week watching p95 transit and no-verdict/cancelled-check rate.
+
+  **Verdict: UNSOUND under current conditions; reverses to SOUND only after two preconditions — attributed PR-side proof restored (c) and either slot expansion or ring-gating landed (a).** Volume is the *last* dial you turn, not the first.
+
+  ---
+
+  ## Summary table
+
+  | Claim | Verdict | Decisive case |
+  |---|---|---|
+  | (a) Ring-gating is the right next lever | **UNSOUND** (sequencing) | One-time cut to ~1/3.6 of runs vs ~10%/wk compounding growth on all 4 triggers; growth erased the saving in ~2 wk; 30-min job timeout is the coming hard-block |
+  | (b) Heal-as-PR is needed | **UNSOUND** | #4101: main went stale despite a compliant PR — invariant violated by normal operation; no consumer of exactness; diff-local check deletes agy-F2 and F5 instead of feeding them |
+  | (c) Full proof paid once in the queue | **UNSOUND** (allocation backwards) | Post-R0 the PR-side run is the only attributed signal; queue batches are unbisected, unattributable (agy-F3), unbounded-rearm (F7); 4 reverts/12wk was achieved under redundancy |
+  | (d) Cloud-offload more sessions now helps | **UNSOUND** (harms first) | #4142's 30% no-verdict rate is the observed saturation signature; batching discount is confiscated by ejections of never-tested code |
+
+  Cross-cutting note for the synthesis: (a), (c) and (d) are the same finding from three sides — **the system is about to trade attributed, redundant, pre-queue proof for unattributed, batched, post-hoc proof at exactly the moment its authors stopped testing locally and its suite started compounding ungoverned.** The v3 that survives refutation governs the suite derivative first, keeps the full proof where blame lives, and adds volume last.
+

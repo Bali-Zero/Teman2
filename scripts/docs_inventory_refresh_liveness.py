@@ -2,6 +2,10 @@
 """docs_inventory_refresh_liveness.py — liveness guardian for the
 `.github/workflows/docs-inventory-refresh.yml` scheduled organ.
 
+Current production mode passes ``--skip-pr-check`` because the organ publishes
+artifacts and intentionally creates no branch or PR. The older stuck-PR
+decision functions remain for deterministic replay and backward compatibility.
+
 P3-prime (2026-07-17, research/operations/2026-07-17-push-pipeline-optimization-spec.md
 §P3): making `inventory-check` deterministic (docs_audit.py's classify(), see its
 module docstring) moves the docs-orphan TIME-CROSSING decision out of the PR gate
@@ -311,6 +315,14 @@ def parse_args() -> argparse.Namespace:
         "of shelling out to `gh` (deterministic testing / replay).",
     )
     p.add_argument(
+        "--skip-pr-check",
+        action="store_true",
+        help=(
+            "Check only workflow-run liveness. Use for the artifact-only organ, "
+            "which intentionally creates no refresh PR."
+        ),
+    )
+    p.add_argument(
         "--pr-max-age-hours",
         type=float,
         default=DEFAULT_PR_MAX_AGE_HOURS,
@@ -346,6 +358,13 @@ def main() -> int:
         print(f"docs_inventory_refresh_liveness: COULD NOT DETERMINE liveness: {exc}", file=sys.stderr)
         return 2
 
+    now = datetime.now(tz=timezone.utc)
+    max_age = timedelta(hours=args.max_age_hours)
+    alive, run_message = check_liveness(runs, now, max_age)
+    print(run_message, file=sys.stderr if not alive else sys.stdout)
+    if args.skip_pr_check:
+        return 0 if alive else 1
+
     # BLOCKER-4 fix: a second, independent I/O fetch for the EFFECT-check
     # (stuck flip-PRs) — kept as its own try/except so a failure here is
     # attributable ("couldn't fetch PRs" vs. "couldn't fetch runs") rather
@@ -360,15 +379,10 @@ def main() -> int:
         print(f"docs_inventory_refresh_liveness: COULD NOT DETERMINE stuck-PR status: {exc}", file=sys.stderr)
         return 2
 
-    now = datetime.now(tz=timezone.utc)
-    max_age = timedelta(hours=args.max_age_hours)
-    alive, run_message = check_liveness(runs, now, max_age)
-
     pr_max_age = timedelta(hours=args.pr_max_age_hours)
     no_stuck_pr, pr_message = check_stuck_prs(prs, now, pr_max_age, args.pr_branch_prefix)
 
     ok = alive and no_stuck_pr
-    print(run_message, file=sys.stderr if not alive else sys.stdout)
     print(pr_message, file=sys.stderr if not no_stuck_pr else sys.stdout)
     return 0 if ok else 1
 

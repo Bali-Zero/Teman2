@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: ed03e70797370467ddbef5e0f3172540db45c7241875824782a31bde49b49ea6
+checksum: 08499d8c2fbda0e97b0195d7ecc371b423ddfd651509a3aff24f652c7bec2275
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2322,5 +2322,117 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.zoho_mail_loop.json
+    timestamp_field: ts
+    status_field: status
+- id: army.jules_dispatch
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 86400
+  owner_module: scripts/army/jules_lane_dispatch_wrapper.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.army-jules-dispatch
+  severity_on_silence: warning
+  notes: Armata H24 lane 2, dispatch half — daily 09:00 WITA tick, scripts/army/jules_lane.py
+    dispatch mode sends up to ARMY_JULES_DAILY_CAP tasks from infra/army/jules-queue/*.md
+    to Jules. Never lands anything. See research/operations/2026-08-14-armata-h24-standing-lanes.md.
+    Reports status=blocked until the Jules API key is provisioned on Pro (operator[secret]).
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/army.jules_lane.json
+    timestamp_field: ts
+    status_field: status
+- id: army.jules_harvest
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 10800
+  owner_module: scripts/army/jules_lane_harvest_wrapper.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.army-jules-harvest
+  severity_on_silence: warning
+  notes: Armata H24 lane 2, harvest half — every 3h tick, scripts/army/jules_lane.py
+    harvest mode polls open sessions in ~/army/jules/state/sessions.jsonl. COMPLETED
+    sessions get patch evidence downloaded and one row appended to shared/escalations_pro.jsonl
+    for an interactive session to independently verify and land — this lane never
+    verifies or lands anything itself. See research/operations/2026-08-14-armata-h24-standing-lanes.md.
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/army.jules_lane.json
+    timestamp_field: ts
+    status_field: status
+- id: army.spark_lane
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 7200
+  owner_module: scripts/army/spark_lane.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.army-spark
+  severity_on_silence: warning
+  notes: Armata H24 lane 1 — standing read-only analysis lane on the gpt-5.3-codex-spark
+    bucket. Every 2h on Pro; dispatches the oldest task from infra/army/spark-queue/*.md
+    (sandbox read-only, 900s cap, one task per tick, max 6/day) or is a fast no-op.
+    Never writes/commits/pushes/opens a PR. See research/operations/2026-08-14-armata-h24-standing-lanes.md.
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/army.spark_lane.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.intake_health_report
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/intake_health_report.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.intake-health-report
+  severity_on_silence: warning
+  notes: W0 read-only guardian, daily 07:30 WITA. SELECT-only against local
+    nuzantara_dev (Law 2) — review load, C-02 empty-OCR noise class, C-01 blob
+    presence for the review feed, C-29 companies-table sanity, C-07
+    done-without-proposal orphans, C-05 zombie review_claimed proposals, C-08
+    undelivered committed documents, the intake-worker's own log inode, and
+    24h freshness counters. One JSON object plus one Telegram digest line plus
+    a p0 escalation per breached threshold. Never writes DB.
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.intake_health_report.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.wa_mirror_freshness_liveness
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 1350
+  owner_module: scripts/wa_mirror_freshness_liveness.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.wa-mirror-freshness-liveness
+  severity_on_silence: warning
+  notes: W0 read-only guardian, every 900s. SELECT-only max(created_at) off
+    whatsapp_message_context (local nuzantara_dev). ONLY during business
+    hours Mon-Sat 08:00-20:00 Asia/Makassar, alerts --tier p0 (dedup key
+    wa-mirror:freshness:stale) once when the newest row is older than
+    WA_FRESHNESS_MAX_AGE_MIN (default 360min) — a dead intake channel during
+    business hours, not the benign overnight quiet Law 6 already covers.
+    Never writes DB.
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.wa_mirror_freshness_liveness.json
     timestamp_field: ts
     status_field: status

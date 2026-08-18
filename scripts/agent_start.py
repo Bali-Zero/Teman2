@@ -338,6 +338,76 @@ RECENT_ACTIVITY_MINUTES = 10
 # suspected orphan (surfaced by --list, gated by the CI hygiene test).
 ORPHAN_TTL_MULTIPLE = 2
 
+# ---------------------------------------------------------------------------
+# RAM admission gate (2026-08-13, Zero's directive)
+# ---------------------------------------------------------------------------
+#
+# Measured on M5 the night this was written (~03:20): 883 processes, load
+# average 157 on 10 cores, swap 10801M/11264M used (96%), 1.6GB free RAM with
+# 9.2GB in the compressor. The pytest holding the pre-push lock had 24 minutes
+# of wall clock and 6 minutes of CPU — in the next 20 real seconds it earned
+# 0.01 CPU-seconds. Not stuck: STARVED. It held the lock for hours; every
+# session behind it queued; the fourth in line timed out at 75min. Zero's
+# framing: reject the CREATION of a new lane when the machine is already this
+# far underwater — it cannot save the 883 processes already running, but it
+# stops the 884th from queuing behind the same starved lock.
+#
+# Signal choice — `memory_pressure`'s "free %" is a proxy that LIES (superscar
+# #9): sampled at the same moment as the numbers above, it reported "33% free"
+# while swap sat at 96%. Zero's instruction was therefore "use swap, not
+# memory_pressure alone" — but a same-night cross-fleet sample (2026-08-13
+# ~03:50-03:55, LC_ALL=C sysctl on all three machines) shows swap-% alone does
+# NOT discriminate crisis from ordinary business on this fleet: Pro sat at
+# 7859/9216MB=85% and Mini at 4788/5120MB=94% while both were plainly calm
+# (see below) — macOS's swap file is a high-water mark that does not shrink
+# back down once pressure has passed, so "swap mostly full" turns out to be
+# this fleet's normal resting state, not a crisis signal by itself. The signal
+# that DID separate crisis from calm cleanly, same snapshot:
+#
+#     machine  cores  load(5m)  load/core   swap%   verdict
+#     M5(then)   10    ~420      ~42x        ~96%    CRISIS (the incident)
+#     Pro        14     13.2     ~0.9x        85%    calm (near saturation, not over)
+#     Mini       12      4.0     ~0.3x        94%    calm despite high swap%
+#
+# So the gate requires BOTH swap% and load-per-core over threshold (AND, not
+# OR) — swap alone would have false-positived on calm Mini; load alone would
+# ignore Zero's explicit "use swap" instruction. `os.getloadavg()` reads the
+# getloadavg(3) syscall directly (floats, no text/locale exposure) — no need
+# to shell out to `uptime`. Threshold picks (generous on purpose — requirement
+# is "must reject tonight's numbers, must never fire on an ordinary day"):
+# 5x/core load ratio and 90% swap are each far outside the calm-Pro/calm-Mini
+# band above and far inside the crisis-M5 band, leaving wide margin either way.
+#
+# LOCALE GOTCHA (found writing this, M5, LANG=it_IT.UTF-8): `sysctl
+# vm.swapusage` renders its numbers in the CALLER's locale — under it_IT the
+# decimal separator is a COMMA ("used = 10858,38M"), not a period. A naive
+# `float()` on that string raises ValueError on every Italian-locale session,
+# which is to say on the one machine this gate exists to protect — the sample
+# would silently read as "cannot measure" and the gate would fail-open FOREVER
+# on M5, never once firing. Forcing `LC_ALL=C` on the subprocess env sidesteps
+# it: verified empirically, same live sysctl call, comma with the session's
+# real locale vs period under LC_ALL=C.
+#
+# Fail-open (superscar #2, "esiste non armato" cuts both ways: a gate that
+# blocks work because IT is broken is worse than one that lets a broken
+# machine through once): any sysctl/loadavg failure, timeout, or parse miss
+# admits the lane, logging that the machine could NOT be measured — which is a
+# distinct claim from "the machine is fine" and must never be read as one.
+#
+# LIMIT this gate does NOT claim to fix: it blocks the NEXT lane's admission.
+# It does nothing for the 883 processes already running tonight, and nothing
+# for a machine that crosses the threshold *after* a lane is already admitted.
+RAM_ADMISSION_OVERRIDE_ENV = "AGENT_RAM_ADMISSION_OVERRIDE"
+RAM_ADMISSION_SWAP_PCT_ENV = "AGENT_RAM_ADMISSION_SWAP_PCT_MAX"
+RAM_ADMISSION_LOAD_RATIO_ENV = "AGENT_RAM_ADMISSION_LOAD_RATIO_MAX"
+RAM_ADMISSION_DEFAULT_SWAP_PCT_MAX = 90.0
+RAM_ADMISSION_DEFAULT_LOAD_RATIO_MAX = 5.0
+# sysexits.h EX_TEMPFAIL: "temporary failure, user is invited to retry" — the
+# semantically correct code for "not now", distinct from the generic exit 1
+# every validation error in this file already uses, so a caller (cron wrapper,
+# CI) can tell "machine is busy, retry later" apart from "you typo'd the lane".
+RAM_ADMISSION_EXIT_CODE = 75
+
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -501,6 +571,168 @@ def _worktree_path(lane: str, task_id: str) -> Path:
 
 
 # ---------------------------------------------------------------------------
+# RAM admission gate — sampling
+# ---------------------------------------------------------------------------
+
+
+def _float_env(name: str, default: float) -> float:
+    """Parse a float from env, falling back to `default` on missing/bad value.
+
+    A malformed override (typo, empty string) must not crash the broker — it
+    degrades to the built-in default, same fail-open spirit as the rest of
+    this gate.
+    """
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        logger.warning("ignoring malformed %s=%r, using default %.1f", name, raw, default)
+        return default
+
+
+def _sample_swap_usage() -> tuple[float, float] | None:
+    """Return (used_mb, total_mb) from `sysctl vm.swapusage`, or None on any
+    failure (missing binary, timeout, unexpected output, unparseable number).
+
+    `LC_ALL=C` on the subprocess env is load-bearing, not cosmetic: `sysctl`
+    renders `vm.swapusage` in the CALLER's locale, and under `it_IT.UTF-8`
+    (this machine's session locale) the decimal separator is a COMMA
+    ("used = 10858,38M") — `float()` on that raises ValueError and every
+    sample on this machine would read as unmeasurable, forever. See the
+    RAM_ADMISSION module comment for the measured before/after.
+    """
+    try:
+        env = dict(os.environ)
+        env["LC_ALL"] = "C"
+        proc = subprocess.run(
+            ["sysctl", "vm.swapusage"],
+            capture_output=True,
+            text=True,
+            timeout=3,
+            env=env,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        logger.warning("RAM admission: sysctl vm.swapusage failed: %s", exc)
+        return None
+    if proc.returncode != 0 or not proc.stdout.strip():
+        logger.warning(
+            "RAM admission: sysctl vm.swapusage rc=%s stdout=%r",
+            proc.returncode,
+            proc.stdout,
+        )
+        return None
+    # "vm.swapusage: total = 11264.00M  used = 10858.38M  free = 405.62M ..."
+    m = re.search(r"total\s*=\s*([\d.]+)M\s+used\s*=\s*([\d.]+)M", proc.stdout)
+    if not m:
+        logger.warning("RAM admission: unparseable swapusage output: %r", proc.stdout)
+        return None
+    try:
+        total_mb = float(m.group(1))
+        used_mb = float(m.group(2))
+    except ValueError:
+        return None
+    if total_mb <= 0:
+        return None
+    return used_mb, total_mb
+
+
+def _sample_load_ratio() -> tuple[float, int] | None:
+    """Return (load5, ncpu), or None on any failure.
+
+    `os.getloadavg()` reads the getloadavg(3) syscall directly — floats, no
+    text to parse, no locale exposure (unlike shelling out to `uptime`, whose
+    output is also locale-formatted). The 5-minute average is used rather than
+    1-minute: sustained pressure (what this gate protects against — a machine
+    that has been drowning for many minutes) should not be judged by a single
+    noisy 60s sample.
+    """
+    try:
+        _load1, load5, _load15 = os.getloadavg()
+        ncpu = os.cpu_count()
+    except OSError as exc:
+        logger.warning("RAM admission: getloadavg failed: %s", exc)
+        return None
+    if not ncpu or ncpu <= 0:
+        return None
+    return load5, ncpu
+
+
+def check_ram_admission() -> tuple[bool, str]:
+    """Admission decision for creating a NEW lane. Returns (admit, reason).
+
+    admit=True means "go ahead" — either the machine is healthy, the operator
+    overrode the gate, OR the machine could not be measured (fail-open: not
+    being able to check is not the same claim as being fine, see the log line
+    in the last branch). admit=False means both swap-% and load-per-core are
+    over their configured thresholds — REFUSED, not merely warned.
+
+    Both signals must be over threshold (AND), not either alone (OR): a same-
+    night cross-fleet sample (see module comment) found swap-% alone reads
+    ~85-94% on machines that were plainly calm (load well under 1x/core) —
+    macOS's swap file is a high-water mark that does not shrink back down, so
+    "swap mostly full" is this fleet's ordinary resting state. Load-per-core
+    was the signal that cleanly separated the M5 incident (~42x/core) from
+    calm Pro/Mini (~0.3-0.9x/core) that same night.
+    """
+    override = os.environ.get(RAM_ADMISSION_OVERRIDE_ENV, "").strip().lower()
+    if override in {"1", "true", "yes", "on"}:
+        return True, f"{RAM_ADMISSION_OVERRIDE_ENV} set — admission gate bypassed"
+
+    # Defensive try/except HERE, not just inside the samplers: this is a
+    # health-check probe, and a probe that can crash its own caller is a
+    # broken gate, not a working one (superscar #2). The samplers already
+    # catch the exceptions they anticipate (OSError, TimeoutExpired) — this
+    # is the backstop for whatever they don't, so "the sampler raised" always
+    # degrades to fail-open, never to an unhandled exception that takes the
+    # whole `agent_start.py` invocation down with it.
+    try:
+        swap_sample = _sample_swap_usage()
+    except Exception as exc:  # noqa: BLE001 - deliberate catch-all, see above
+        logger.warning("RAM admission: swap sampler raised %r — fail-open", exc)
+        swap_sample = None
+    try:
+        load_sample = _sample_load_ratio()
+    except Exception as exc:  # noqa: BLE001 - deliberate catch-all, see above
+        logger.warning("RAM admission: load sampler raised %r — fail-open", exc)
+        load_sample = None
+    if swap_sample is None or load_sample is None:
+        msg = (
+            "RAM admission gate: could not measure machine state "
+            "(sysctl/getloadavg unavailable or unparseable) — admitting, "
+            "fail-open. This is NOT a claim the machine is healthy."
+        )
+        logger.warning(msg)
+        return True, msg
+
+    used_mb, total_mb = swap_sample
+    swap_pct = used_mb / total_mb * 100.0
+    load5, ncpu = load_sample
+    load_ratio = load5 / ncpu
+
+    swap_max = _float_env(RAM_ADMISSION_SWAP_PCT_ENV, RAM_ADMISSION_DEFAULT_SWAP_PCT_MAX)
+    load_max = _float_env(RAM_ADMISSION_LOAD_RATIO_ENV, RAM_ADMISSION_DEFAULT_LOAD_RATIO_MAX)
+
+    if swap_pct >= swap_max and load_ratio >= load_max:
+        reason = (
+            f"REFUSED: machine is memory-distressed — swap {swap_pct:.1f}% used "
+            f"(threshold {swap_max:.0f}%) AND load {load5:.1f} on {ncpu} cores = "
+            f"{load_ratio:.1f}x/core (threshold {load_max:.1f}x/core). "
+            "A new lane would queue behind an already-starved machine, not run. "
+            "Close some sessions, or launch this lane on Mini/Pro instead. "
+            f"One-time override: {RAM_ADMISSION_OVERRIDE_ENV}=1."
+        )
+        return False, reason
+
+    return True, (
+        f"RAM admission OK — swap {swap_pct:.1f}% used (threshold {swap_max:.0f}%), "
+        f"load {load5:.1f}/{ncpu} cores = {load_ratio:.1f}x/core "
+        f"(threshold {load_max:.1f}x/core)"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Metadata dataclass
 # ---------------------------------------------------------------------------
 
@@ -616,12 +848,23 @@ def cmd_create(
     Returns the absolute path to the new worktree.
 
     Raises SystemExit on validation or git error so the CLI exits non-zero.
+    A RAM-distressed machine raises SystemExit(RAM_ADMISSION_EXIT_CODE)
+    specifically (see check_ram_admission) rather than the generic exit 1
+    every other validation failure here uses — a caller can tell "not now,
+    retry" apart from "malformed request".
     """
     if _kill_switch_active():
         raise SystemExit(
             f"ERROR: broker disabled ({KILL_SWITCH_ENV}=false). "
             "Unset or set to 'true' to re-enable."
         )
+
+    admit, admission_reason = check_ram_admission()
+    if not admit:
+        print(admission_reason, file=sys.stderr)
+        logger.warning("RAM admission gate REFUSED create: %s", admission_reason)
+        raise SystemExit(RAM_ADMISSION_EXIT_CODE)
+    logger.info(admission_reason)
 
     _validate_id("lane", lane)
     _validate_id("task-id", task_id)

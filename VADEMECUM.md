@@ -340,16 +340,16 @@ launchctl list com.nuzantara.mio-job  # verifica: LastExitStatus = 0
 
 ## 15. Nuova / spostamento documentazione (`docs/`)
 
-> L'inventory `docs/DOCS_INVENTORY.md` è la fonte di verità per lo stato dei
-> ~570 file sotto `docs/**`. È **auto-generato**: non scriverlo a mano.
+> `docs/DOCS_INVENTORY.md` è un puntatore stabile. La fonte di verità corrente
+> è l'artifact prodotto da `scripts/docs_inventory_regen.sh`.
 
 **Quando aggiungi un nuovo doc:**
 
 1. [ ] Hai scelto la subdir giusta sotto `docs/`? (Se non esiste, è accettabile creare.)
 2. [ ] Almeno un doc esistente o un libro sacro (CLAUDE/INDEX/SYMBIOSIS/VADEMECUM) lo linka? Altrimenti finirà candidato orphan dopo 90 giorni.
-3. [ ] Hai rigenerato l'inventory? Una delle due:
-   - **Locale ora:** `./scripts/docs_guardian.sh` (aggiorna `docs/DOCS_INVENTORY.md`)
-   - **Lascialo al weekly cron:** ok, ma il CI check `Docs Guardian` sulla tua PR fallirà finché non lo rigeneri e committi.
+3. [ ] Se ti serve l'inventory, genera l'artifact locale con
+       `bash scripts/docs_inventory_regen.sh`. Non commetterlo: il CI verifica il
+       generatore, non confronta uno snapshot globale.
 
 **Quando sposti / rinomini un doc:**
 
@@ -364,9 +364,9 @@ launchctl list com.nuzantara.mio-job  # verifica: LastExitStatus = 0
 
 **Mai modificare a mano:**
 
-- `docs/DOCS_INVENTORY.md` — rigenerato da `scripts/docs_audit.py`.
+- I body tra marker `<!-- DOCSYNC:KEY_START -->` — puntatori protetti gestiti
+  da `scripts/docs_sync.py`; non inserire conteggi.
 - `docs/AUTOMATIONS_REFERENCE.md` — rigenerato nightly 23:15 WITA da `scripts/generate_automations_reference.py`.
-- Blocchi `<!-- DOCSYNC:KEY_START -->` — gestiti da `scripts/docs_sync.py`.
 
 ---
 

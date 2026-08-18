@@ -68,7 +68,12 @@ function makeProvenance(
       noOssScope: status === "pending_crosswalk",
       contentInheritedFrom,
     },
-    pma: { source: null, vintage: "2020", status: "pending_crosswalk" },
+    pma: {
+      source: "Perpres 10/2021",
+      vintage: "2021-05-25",
+      status: "located",
+      locator: "Perpres 49/2021 Lampiran III fixture",
+    },
     dataNote: null,
     disputed: null,
   };
@@ -90,9 +95,13 @@ function makeCode(overrides: Partial<KBLICode> = {}): KBLICode {
       isPriority: false,
       note: null,
       source: "Perpres 10/2021",
+      verificationStatus: "located",
+      officialBasis: "Perpres 49/2021 Lampiran III fixture",
+      sourceVintage: "2021-05-25",
       capSpecial: false,
       capVerified: true,
       routeTo: null,
+      citation: "Perpres 49/2021 Lampiran III fixture",
     },
     licensing: makeLicensing(),
     transition: {
@@ -203,8 +212,69 @@ describe("GUILT: the gate withholds unverified facts from title/description", ()
       },
     });
 
-    expect(kbliMetaTitleSuffix(kbli)).toBe("Foreign Ownership Restricted");
+    expect(kbliMetaTitleSuffix(kbli)).toBe(
+      "Foreign Ownership Restricted (ownership cap not verified)",
+    );
     expect(kbliMetaTitleSuffix(kbli)).not.toMatch(/67/);
+  });
+
+  it("withholds an unverified special-cap claim from indexed metadata", () => {
+    const kbli = makeCode({
+      pma: {
+        ...makeCode().pma,
+        status: "restricted",
+        maxForeign: "special",
+        capSpecial: true,
+        capVerified: false,
+      },
+    });
+
+    expect(kbliMetaTitleSuffix(kbli)).toBe(
+      "Foreign Ownership Restricted (ownership cap not verified)",
+    );
+    expect(kbliMetaDescription(kbli, "Restaurant")).not.toContain("special");
+  });
+
+  it("does not synthesize 100% for an open status without a verified cap", () => {
+    const missing = makeCode({
+      pma: {
+        ...makeCode().pma,
+        status: "open",
+        maxForeign: null,
+        capVerified: false,
+      },
+    });
+    const unverified = makeCode({
+      pma: {
+        ...makeCode().pma,
+        status: "open",
+        maxForeign: 100,
+        capVerified: false,
+      },
+    });
+
+    expect(kbliMetaTitleSuffix(missing)).toContain("cap not verified");
+    expect(kbliMetaTitleSuffix(unverified)).toContain("cap not verified");
+    expect(kbliMetaDescription(missing, "Restaurant")).not.toContain("100%");
+    expect(kbliMetaDescription(unverified, "Restaurant")).not.toContain("100%");
+  });
+
+  it("qualifies a closed title and description when its cap is unavailable", () => {
+    const closed = makeCode({
+      pma: {
+        ...makeCode().pma,
+        status: "closed",
+        maxForeign: null,
+        capVerified: false,
+      },
+    });
+
+    expect(kbliMetaTitleSuffix(closed)).toBe(
+      "Closed to Foreign Investment (ownership cap not verified)",
+    );
+    expect(kbliMetaDescription(closed, "Restaurant")).toContain(
+      "Closed to Foreign Investment (ownership cap not verified)",
+    );
   });
 });
 
@@ -282,7 +352,7 @@ describe("INNOCENCE: verified facts still reach title/description", () => {
 // -----------------------------------------------------------------------------
 
 describe("real dataset: the gate binds, and v3 actually differentiates", () => {
-  it("withholds the Bali block on the majority of blocked-and-open codes", () => {
+  it("states a Bali block only when its bare-claim gate passes", () => {
     const codes = getAllCodes();
     const blockedOpen = codes.filter(
       (c) => c.pma.status === "open" && c.baliL4?.blocked,
@@ -291,14 +361,19 @@ describe("real dataset: the gate binds, and v3 actually differentiates", () => {
       kbliMetaTitleSuffix(c).includes("Bali"),
     );
 
-    // Measured 2026-07-26: 455 blocked-and-open, 33 at HIGH confidence without
-    // a review flag. The gate keeps 422 unverified regulatory claims out of
-    // indexed titles — that is the reason this module exists.
-    expect(blockedOpen.length).toBeGreaterThan(100);
-    expect(stated.length).toBeLessThan(blockedOpen.length / 2);
+    // The public compiler now withholds declared-gap PMA rows altogether, so
+    // the old raw-dataset cardinalities no longer belong at this boundary.
+    // Keep the invariant: every surviving indexed Bali claim passed the exact
+    // confidence/review gate, and every failed gate remains silent.
+    expect(blockedOpen.length).toBeGreaterThan(0);
     for (const c of stated) {
       expect(c.baliL4?.confidence).toBe("HIGH");
       expect(c.baliL4?.needsReview).not.toBe(true);
+    }
+    for (const c of blockedOpen.filter(
+      (code) => !isBaliL4BlockVerifiedForBareClaim(code),
+    )) {
+      expect(kbliMetaTitleSuffix(c)).not.toContain("Bali");
     }
   });
 
@@ -321,17 +396,14 @@ describe("real dataset: the gate binds, and v3 actually differentiates", () => {
   // degradations must be REACHED, i.e. some records really do fail verification.
   it("actually degrades on the real dataset (the gate is not a no-op here)", () => {
     const suffixes = getAllCodes().map(kbliMetaTitleSuffix);
-    const openUnverified = suffixes.filter(
-      (s) => s === "100% Foreign Ownership",
-    ).length;
-    const restrictedUnverified = suffixes.filter(
-      (s) => s === "Foreign Ownership Restricted",
+    const pmaGaps = suffixes.filter(
+      (s) => s === "PMA Eligibility Requires Verification",
     ).length;
 
-    // 422 open codes carry an unverified Bali block today (measured). If this
-    // ever hits zero the gate has stopped selecting and the test is lying.
-    expect(openUnverified).toBeGreaterThan(0);
-    expect(openUnverified + restrictedUnverified).toBeGreaterThan(0);
+    // Compiler-owned partition: 54 whole-code verdicts have a per-code locator
+    // and vintage; all other 1,505 records must reach the neutral metadata arm.
+    expect(pmaGaps).toBe(1505);
+    expect(suffixes).toHaveLength(1559);
   });
 
   it("degrades the cap in the DESCRIPTION when capVerified is false", () => {
@@ -350,7 +422,9 @@ describe("real dataset: the gate binds, and v3 actually differentiates", () => {
 
     const description = kbliMetaDescription(kbli, kbli.titleEn);
     expect(description).not.toMatch(/67/);
-    expect(description).toMatch(/Restricted for foreign ownership/);
+    expect(description).toMatch(
+      /Foreign Ownership Restricted \(ownership cap not verified\)/,
+    );
   });
 
   it("keeps the cap in the DESCRIPTION when capVerified is true", () => {

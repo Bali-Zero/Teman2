@@ -252,17 +252,6 @@ const en = {
   "q.unit.usd": "USD",
   "q.unit.usd_month": "USD per month",
 
-  "q.remote_income":
-    "Can you verify the income evidence for your remote-work plan?",
-  "q.remote_income.hint":
-    "This answer is context only. The verified rule pack decides whether it affects a supported path.",
-  "why.remote_income":
-    "Evidence readiness can help a human reviewer understand what still needs verification.",
-  "q.remote_income.opt.above": "Yes, I can verify it",
-  "q.remote_income.opt.below": "No, not yet",
-  "q.remote_income.courtesy_note":
-    "Tax treatment is outside this assessment. Confirm it separately with a qualified tax adviser.",
-
   "q.family_relation": "How are you related to the proposed sponsor?",
   "q.family_relation.hint": "Choose the relationship that can be documented.",
   "q.family_relation.opt.SPOUSE": "Spouse",
@@ -408,12 +397,6 @@ const en = {
   "why.other_paid_activity":
     "The engine has no exact matching fact for this broad question, so the answer cannot support a recommendation.",
 
-  "q.tourism_duration": "How long are you planning to stay?",
-  "q.tourism_duration.hint": "A rough answer is fine.",
-  "q.tourism_duration.opt.short": "Up to 30 days",
-  "q.tourism_duration.opt.medium": "31–60 days",
-  "q.tourism_duration.opt.extended": "60+ days",
-
   "q.stay_days": "How many days do you plan to stay?",
   "q.stay_days.hint":
     "Enter the planned total as a whole number; this is not a legal threshold.",
@@ -458,16 +441,12 @@ const en = {
     "You weren’t sure where you are — we assumed you’re in Indonesia, the safer read.",
   "assumption.permit_expiry":
     "You weren’t sure when your current stay permission expires, so no deadline was inferred.",
-  "assumption.tourism_duration":
-    "You weren’t sure how long you’re staying — we assumed a short visit.",
   "assumption.stay_days":
     "You weren’t sure about the planned stay, so no duration was inferred.",
   "assumption.work_payer":
     "You weren’t sure who pays you — we’re holding this for a Bali Zero advisor rather than guessing.",
   "assumption.remote_clients":
     "You weren’t sure where your clients sit — we’re holding this for a human rather than guessing.",
-  "assumption.remote_income":
-    "You weren’t sure about your income — we’re holding this for a human rather than guessing.",
   "assumption.generic":
     "You marked “Not sure” for “{{question}}”; no value was inferred.",
 
@@ -521,8 +500,6 @@ const en = {
   "tree.remote_compensation": "Payment source",
   "tree.remote_employer_country": "Employer country",
   "tree.remote_pt_pma": "PT PMA link",
-  "tree.remote_income": "Income floor",
-  "tree.tourism_duration": "Length of stay",
   "tree.stay_days": "Length of stay",
   "tree.investment_vehicle": "Investment basis",
   "tree.investment_pt_pma": "PT PMA commitment",
@@ -988,17 +965,6 @@ const id: Record<Keys, string> = {
   "q.unit.usd": "USD",
   "q.unit.usd_month": "USD per bulan",
 
-  "q.remote_income":
-    "Dapatkah Anda memverifikasi bukti penghasilan untuk rencana kerja remote Anda?",
-  "q.remote_income.hint":
-    "Jawaban ini hanya konteks. Rule pack terverifikasi yang menentukan apakah hal ini memengaruhi jalur yang didukung.",
-  "why.remote_income":
-    "Kesiapan bukti membantu peninjau manusia memahami hal yang masih perlu diverifikasi.",
-  "q.remote_income.opt.above": "Ya, saya dapat memverifikasinya",
-  "q.remote_income.opt.below": "Tidak, belum",
-  "q.remote_income.courtesy_note":
-    "Perlakuan pajak berada di luar asesmen ini. Konfirmasikan secara terpisah dengan penasihat pajak yang berkualifikasi.",
-
   "q.family_relation": "Apa hubungan Anda dengan calon sponsor?",
   "q.family_relation.hint": "Pilih hubungan yang dapat dibuktikan.",
   "q.family_relation.opt.SPOUSE": "Suami atau istri",
@@ -1144,12 +1110,6 @@ const id: Record<Keys, string> = {
   "why.other_paid_activity":
     "Mesin tidak memiliki fakta persis untuk pertanyaan luas ini, sehingga jawabannya tidak dapat mendukung rekomendasi.",
 
-  "q.tourism_duration": "Berapa lama Anda berencana tinggal?",
-  "q.tourism_duration.hint": "Perkiraan kasar tidak masalah.",
-  "q.tourism_duration.opt.short": "Sampai 30 hari",
-  "q.tourism_duration.opt.medium": "31–60 hari",
-  "q.tourism_duration.opt.extended": "60+ hari",
-
   "q.stay_days": "Berapa hari Anda berencana tinggal?",
   "q.stay_days.hint":
     "Masukkan jumlah hari penuh yang direncanakan; angka ini bukan ambang hukum.",
@@ -1188,16 +1148,12 @@ const id: Record<Keys, string> = {
     "Anda tidak yakin di mana posisi Anda — kami menganggap Anda di Indonesia, opsi yang lebih aman.",
   "assumption.permit_expiry":
     "Anda belum yakin kapan izin tinggal saat ini berakhir, jadi tidak ada tenggat yang diperkirakan.",
-  "assumption.tourism_duration":
-    "Anda tidak yakin berapa lama akan tinggal — kami menganggap kunjungan singkat.",
   "assumption.stay_days":
     "Anda belum yakin tentang rencana masa tinggal, jadi tidak ada durasi yang diperkirakan.",
   "assumption.work_payer":
     "Anda tidak yakin siapa yang menggaji Anda — kami menahan ini untuk konsultan Bali Zero, bukan menebak.",
   "assumption.remote_clients":
     "Anda tidak yakin di mana klien Anda berada — kami menahan ini untuk manusia, bukan menebak.",
-  "assumption.remote_income":
-    "Anda tidak yakin soal penghasilan Anda — kami menahan ini untuk manusia, bukan menebak.",
   "assumption.generic":
     "Anda memilih “Tidak yakin” untuk “{{question}}”; tidak ada nilai yang diperkirakan.",
 
@@ -1251,8 +1207,6 @@ const id: Record<Keys, string> = {
   "tree.remote_compensation": "Sumber pembayaran",
   "tree.remote_employer_country": "Negara pemberi kerja",
   "tree.remote_pt_pma": "Kaitan PT PMA",
-  "tree.remote_income": "Ambang penghasilan",
-  "tree.tourism_duration": "Lama tinggal",
   "tree.stay_days": "Lama tinggal",
   "tree.investment_vehicle": "Dasar investasi",
   "tree.investment_pt_pma": "Komitmen PT PMA",

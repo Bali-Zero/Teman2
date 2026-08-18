@@ -148,3 +148,105 @@ def test_real_peers_config_watch_is_mutual():
     (mini_entry,) = [p for p in peers["nuzantara"] if p["name"] == "mini"]
     assert mini_entry["tailscale_host"] == "mini-pro2"
     assert mini_entry["ssh_alias"] == "mini"
+
+
+# --- re-escalation ladder (2026-08-17) --------------------------------------
+# Genesis: the Mini was dark 2026-08-14 18:16 → 2026-08-17 12:27 (Internet
+# Sharing had claimed its Wi-Fi card, so it could never associate). fleet_watch
+# did its job at minute 30 — "mini DARK 30m -> p0 (sent)" — and then logged
+# "mini dark 236762s" for ~65 hours without another word, because one bool
+# said "already alerted". Guilt below is that exact silence.
+
+H = 3600.0
+
+
+def dark_state(seconds_dark, **over):
+    entry = {"dark_since": NOW - seconds_dark, "alerted": True,
+             "alert_stage": 1, "last_ok": None}
+    entry.update(over)
+    return {"pro": entry}
+
+
+def test_no_repeat_between_rungs_is_still_quiet():
+    # innocence: 90 minutes dark, first alert already out → nothing new.
+    state, _, spy = run_tick(dark_state(1.5 * H), ts=False, ssh=False)
+    assert spy.calls == []
+    assert state["pro"]["alert_stage"] == 1
+
+
+def test_re_escalates_at_six_hours():
+    state, _, spy = run_tick(dark_state(6 * H), ts=False, ssh=False)
+    assert [c[0] for c in spy.calls] == ["p0"]
+    assert "STILL DARK" in spy.calls[0][2]
+    assert state["pro"]["alert_stage"] == 2
+    # and then goes quiet again until the next rung
+    _, _, spy2 = run_tick(state, ts=False, ssh=False)
+    assert spy2.calls == []
+
+
+def test_re_escalates_at_24h_then_daily():
+    assert fw.due_alert_stage(24 * H) == 3
+    assert fw.due_alert_stage(48 * H) == 4
+    assert fw.due_alert_stage(72 * H) == 5
+
+
+def test_the_65h_silence_cannot_happen_again():
+    """The literal scar: 236762s dark after one alert must NOT be silent."""
+    state, _, spy = run_tick(dark_state(236762), ts=False, ssh=False)
+    assert spy.calls, "65h of dark produced no alarm — W107/W116 all over again"
+    assert spy.calls[0][0] == "p0"
+
+
+def test_skipped_rungs_collapse_to_one_message():
+    # The watcher itself was down across several rungs: stage jumps 1 -> 5,
+    # and that must be ONE message, not a burst of four.
+    state, _, spy = run_tick(dark_state(72 * H), ts=False, ssh=False)
+    assert len(spy.calls) == 1
+    assert state["pro"]["alert_stage"] == 5
+
+
+def test_dedup_key_is_per_stage():
+    # The gateway dedups on this key for 6h; a constant key would swallow
+    # every re-alert and the ladder would be decorative.
+    s1, _, spy1 = run_tick(dark_state(1 * H, alert_stage=0, alerted=False),
+                           ts=False, ssh=False)
+    s2, _, spy2 = run_tick(dark_state(6 * H), ts=False, ssh=False)
+    assert spy1.calls[0][1] != spy2.calls[0][1]
+    assert spy1.calls[0][1].endswith(":s1")
+    assert spy2.calls[0][1].endswith(":s2")
+
+
+def test_legacy_state_without_alert_stage_still_escalates():
+    # State files written before this change carry only `alerted: True`.
+    legacy = {"pro": {"dark_since": NOW - 6 * H, "alerted": True,
+                      "last_ok": None}}
+    state, _, spy = run_tick(legacy, ts=False, ssh=False)
+    assert [c[0] for c in spy.calls] == ["p0"]
+    assert state["pro"]["alert_stage"] == 2
+
+
+def test_legacy_state_is_not_re_alerted_from_scratch():
+    """Innocence twin of the test above — and the one with teeth.
+
+    Reading `alerted: True` as stage 0 would re-send the TRANSITION alert to
+    every peer already dark when this ships. The escalation test cannot see
+    that (a p0 fires either way); only silence below the next rung can.
+    """
+    legacy = {"pro": {"dark_since": NOW - 1.5 * H, "alerted": True,
+                      "last_ok": None}}
+    _, _, spy = run_tick(legacy, ts=False, ssh=False)
+    assert spy.calls == [], "legacy state replayed the first alert"
+
+
+def test_recovery_from_a_re_escalated_dark_still_resets():
+    state, _, spy = run_tick(dark_state(30 * H, alert_stage=4),
+                             ts=True, ssh=True)
+    assert [c[0] for c in spy.calls] == ["digest"]
+    assert state["pro"]["alert_stage"] == 0
+    assert state["pro"]["dark_since"] is None
+
+
+def test_below_threshold_is_stage_zero():
+    assert fw.due_alert_stage(0) == 0
+    assert fw.due_alert_stage(fw.DARK_AFTER_S - 1) == 0
+    assert fw.due_alert_stage(fw.DARK_AFTER_S) == 1

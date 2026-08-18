@@ -16,7 +16,7 @@ import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 
 DEFAULT_LAST_SEEN_DIR = Path("~/.organism/last_seen").expanduser()
@@ -63,6 +63,12 @@ class TcpProbe:
     host: str
     port: int
     timeout_seconds: float = 2.0
+    # Cross-host probes (this bridge runs on Pro, e.g. reaching Mini over
+    # Tailscale) see ordinary transient network flaps (cicatrix family #8:
+    # "azioni puntuali non protette da retry"). A single failed attempt is
+    # not evidence the target organ is down — retry before declaring it so.
+    retries: int = 2
+    retry_delay_seconds: float = 1.0
 
 
 BRIDGED_LABELS: tuple[BridgedLaunchAgent, ...] = (
@@ -633,37 +639,52 @@ def build_receipt(
     return receipt
 
 
-def build_tcp_receipt(spec: TcpProbe, *, now: int, host: str) -> dict[str, Any]:
+def build_tcp_receipt(
+    spec: TcpProbe,
+    *,
+    now: int,
+    host: str,
+    sleep: Callable[[float], None] = time.sleep,
+) -> dict[str, Any]:
     target = f"{spec.host}:{spec.port}"
     started = time.monotonic()
-    try:
-        conn = socket.create_connection(
-            (spec.host, spec.port),
-            timeout=spec.timeout_seconds,
-        )
-        conn.close()
-    except OSError as exc:
+    last_exc: OSError | None = None
+    attempts = spec.retries + 1
+
+    for attempt in range(attempts):
+        if attempt:
+            sleep(spec.retry_delay_seconds)
+        try:
+            conn = socket.create_connection(
+                (spec.host, spec.port),
+                timeout=spec.timeout_seconds,
+            )
+            conn.close()
+        except OSError as exc:
+            last_exc = exc
+            continue
+
         return {
             "organ_id": spec.organ_id,
             "job": spec.organ_id,
             "ts": now,
-            "status": "failed",
+            "status": "ok",
             "host": host,
             "source": "launchagent-state-bridge",
             "target": target,
             "latency_ms": int((time.monotonic() - started) * 1000),
-            "last_error": f"tcp connect failed: {exc}",
         }
 
     return {
         "organ_id": spec.organ_id,
         "job": spec.organ_id,
         "ts": now,
-        "status": "ok",
+        "status": "failed",
         "host": host,
         "source": "launchagent-state-bridge",
         "target": target,
         "latency_ms": int((time.monotonic() - started) * 1000),
+        "last_error": f"tcp connect failed after {attempts} attempts: {last_exc}",
     }
 
 

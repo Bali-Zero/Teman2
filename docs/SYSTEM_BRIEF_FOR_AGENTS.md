@@ -16,25 +16,14 @@ intelligence platform per servizi business indonesiani (visa, company setup, tax
 
 ---
 
-## Numbers
+## Live state
 
-| Metrica                 | Valore                                                                                       |
-| ----------------------- | -------------------------------------------------------------------------------------------- |
-| Clienti                 | 5,000+                                                                                       |
-| App nel monorepo        | 20                                                                                           |
-| Backend routers         | 90+                                                                                          |
-| Backend services        | 257 files across 34 service directories                                                      |
-| Communication channels  | 7 (WhatsApp, Telegram, Instagram, Web, X, GChat, Slack)                                      |
-| MCP tools               | 131 (118 Nuzantara + 13 Advanced)                                                            |
-| MCP workflow chains     | 8 deterministic automation chains                                                            |
-| Qdrant vector documents | 93,283 across 10 live collections                                                            |
-| Knowledge Graph nodes   | 56,113                                                                                       |
-| Knowledge Graph edges   | 161,173                                                                                      |
-| Frontend pages          | 84+ (SSG + dynamic)                                                                          |
-| KBLI SSG pages          | 1,563                                                                                        |
-| Test files              | 419                                                                                          |
-| Embedding model         | text-embedding-3-small (1536 dims) — FROZEN, non cambiabile                                  |
-| Backend LOC (key files) | orchestrator_core 1,124 + search_service 1,382 + reasoning 1,828 + service_initializer 1,195 |
+I conteggi di repository e servizi non sono salvati in questo brief. Generali
+con `python3 scripts/docs_sync.py --json` o scarica l'ultimo artifact
+`docs-derived-state` dal workflow `docs-inventory-refresh.yml`. I campi che
+richiedono credenziali live dichiarano esplicitamente `unavailable`.
+
+L'embedding model resta `text-embedding-3-small` (1536 dims) ed è FROZEN.
 
 ---
 

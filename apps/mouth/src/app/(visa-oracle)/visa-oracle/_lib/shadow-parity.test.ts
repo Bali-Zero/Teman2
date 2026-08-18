@@ -79,3 +79,90 @@ describe("shadow public-contract parity", () => {
     expect(shadowParityMatches(noPath, noPathBaseline)).toBe(false);
   });
 });
+
+describe("QW-2 gold-oracle SHADOW baseline (independent, non-tautological)", () => {
+  // Empirically verified against the real evaluator + policy-adapter chain
+  // (see gold-oracle-baseline.ts's doc comment): a real SHADOW response for
+  // this exact interview is HUMAN_REVIEW_REQUIRED with exactly one review
+  // reason, DISCLOSED_UNCERTAINTY_REVIEW, empty source_refs.
+  const REMOTE_WORKER_UNSURE_FACTS = {
+    category: "remote",
+    work_payer: "unsure",
+    remote_compensation: "no",
+    remote_clients: "foreign",
+    review_gate: "none",
+  };
+
+  function humanReviewResponseMatchingBaseline() {
+    const response = makeVisaOracleResponse("HUMAN_REVIEW_REQUIRED");
+    response.decision.review_reasons = [
+      {
+        code: "DISCLOSED_UNCERTAINTY_REVIEW",
+        rule_ids: ["system.disclosed-review.not-certain"],
+        source_refs: [],
+      },
+    ];
+    response.sources = [];
+    return response;
+  }
+
+  it("parity_match is reachable against the independent gold-oracle baseline", () => {
+    const baseline = buildPreviewOutcome(
+      REMOTE_WORKER_UNSURE_FACTS,
+      new Date("2026-08-03T04:00:00Z"),
+    );
+    expect(baseline.state).toBe("HUMAN_REVIEW_REQUIRED");
+
+    const response = humanReviewResponseMatchingBaseline();
+
+    expect(shadowParityMatches(response, baseline)).toBe(true);
+  });
+
+  it("parity_mismatch is reachable against the same independent baseline", () => {
+    const baseline = buildPreviewOutcome(
+      REMOTE_WORKER_UNSURE_FACTS,
+      new Date("2026-08-03T04:00:00Z"),
+    );
+
+    const response = humanReviewResponseMatchingBaseline();
+    response.decision.review_reasons = [
+      {
+        code: "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW",
+        rule_ids: ["system.disclosed-review.activity-boundary"],
+        source_refs: [],
+      },
+    ];
+
+    expect(shadowParityMatches(response, baseline)).toBe(false);
+  });
+
+  it(
+    "non-tautology: one baseline instance, built ONLY from facts before " +
+      "either response exists, agrees with one response and disagrees " +
+      "with another — proving the verdict is not read back off the " +
+      "response under test",
+    () => {
+      // `buildPreviewOutcome` has no `VisaOracleEvaluateResponse` parameter
+      // at all — this call happens before either response object below is
+      // constructed, so it cannot have read either of them.
+      const baseline = buildPreviewOutcome(
+        REMOTE_WORKER_UNSURE_FACTS,
+        new Date("2026-08-03T04:00:00Z"),
+      );
+
+      const agreeing = humanReviewResponseMatchingBaseline();
+
+      const disagreeing = humanReviewResponseMatchingBaseline();
+      disagreeing.decision.review_reasons = [
+        {
+          code: "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW",
+          rule_ids: ["system.disclosed-review.ambiguous-sponsor"],
+          source_refs: [],
+        },
+      ];
+
+      expect(shadowParityMatches(agreeing, baseline)).toBe(true);
+      expect(shadowParityMatches(disagreeing, baseline)).toBe(false);
+    },
+  );
+});

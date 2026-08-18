@@ -1,28 +1,41 @@
 import type { KBLICode } from "@/lib/kbli-types";
 import { buildKbliFaq } from "@/lib/kbli-faq";
-import { isLicensingVerificationPending } from "@/lib/kbli-provenance";
+import {
+  isLicensingVerificationPending,
+  isPmaVerdictVerified,
+} from "@/lib/kbli-provenance";
+import {
+  formatPmaOwnership,
+  hasPublishablePmaCap,
+} from "@/lib/kbli-pma-disclosure";
 import { pmaCapShape } from "@/lib/kbli-pma-shape";
 import { pmaSourceAttributionStructured } from "@/lib/kbli-pma-source";
 
 /**
- * The TERBATAS ownership clause for structured data.
- *
- * This surface interpolated `max ${maxForeign}%` unconditionally and — unlike
- * the visible answer and the FAQ builder — never checked `capSpecial`, so
- * /kbli/47221 published the literal string "Restricted to max special% foreign
- * ownership (TERBATAS)" in both JSON-LD blocks (measured live 2026-07-29). That
- * is the same visible-vs-JSON-LD drift the header of `kbli-faq.ts` already
- * records having happened once; one shared classifier is what stops a third.
+ * JSON-LD keeps its search-oriented verified wording, but cap availability is
+ * decided only by the shared exact gate. Every unavailable shape therefore
+ * inherits the same explicit qualifier as visible and metadata surfaces.
  */
-function restrictedPmaStructuredLabel(code: KBLICode): string {
+function structuredPmaOwnership(code: KBLICode): string {
+  const shared = formatPmaOwnership(code.pma, "metadata");
+  if (!hasPublishablePmaCap(code.pma)) return shared;
+
+  if (code.pma.status === "open" && code.pma.maxForeign === 100) {
+    return "100% foreign ownership allowed";
+  }
+  if (code.pma.status !== "restricted") return shared;
+  if (code.pma.capSpecial && code.pma.maxForeign === "special") {
+    return "Restricted by special non-percentage conditions";
+  }
+
   switch (pmaCapShape(code.pma)) {
     case "none":
-      return "Closed to foreign ownership in practice — 0% ceiling (TERBATAS)";
+      return "Closed to foreign ownership in practice — 0% ceiling";
     case "full":
     case "conditional":
-      return "Restricted by conditions rather than an ownership ceiling (TERBATAS)";
+      return "Restricted by conditions rather than an ownership ceiling";
     default:
-      return `Restricted to max ${code.pma.maxForeign}% foreign ownership (TERBATAS)`;
+      return `Restricted to max ${code.pma.maxForeign}% foreign ownership`;
   }
 }
 
@@ -40,12 +53,13 @@ export function KBLICodeJsonLd({
   // but l4_bali.blocked, the SEO/JSON-LD must NOT tell Google "100% foreign
   // ownership allowed" unqualified — it would surface in rich results / AI answers
   // as a green light that is false for a Bali setup.
-  const baliBlocked = !!code.baliL4?.blocked;
+  const baliBlocked = code.baliL4?.blocked === true;
   // GARUDA-FILIERA Fase-1 cure #4 (2026-07-17): a code whose Bali risk tier
   // was carried over from a different activity (code-number collision) is
   // neither blocked nor confirmed open — don't let Google/AI answers read
   // it as an unqualified "100% foreign ownership allowed" green light.
   const baliNonClassifiable = code.baliL4?.status === "NON_CLASSIFICABILE";
+  const pmaVerdictVerified = isPmaVerdictVerified(code);
   const baliNat = baliBlocked
     ? " nationally — but blocked for a PT PMA in Bali"
     : baliNonClassifiable
@@ -60,8 +74,6 @@ export function KBLICodeJsonLd({
   // an authoritative BPS-recorded KBLI-2020 origin. If a future or defensive
   // input records none, there is nothing to crosswalk from and the same sentence
   // would overstate what we can show. The current canonical has no such gap.
-  const pmaBasisUntraceable =
-    code.provenance?.pma.status === "untraceable_basis";
   // Source-aware (kbli-pma-source.ts, shared with kbli-faq.ts's pmaSourceNote
   // — one classifier for one fact, never reinvented per surface): the Perpres
   // crosswalk-pending caveat is only true for codes the Perpres annexes
@@ -69,15 +81,23 @@ export function KBLICodeJsonLd({
   // PP 14/2018 Pasal 5(1) jo. PP 3/2020 are NOT among them, and the old
   // hardcoded clause attributed their 80% cap to the wrong instrument in the
   // JSON-LD Google ingests.
-  const pmaAttribution = pmaBasisUntraceable
-    ? " — The official BPS crosswalk records no KBLI-2020 predecessor for this code, so we cannot trace the basis of this ownership verdict; confirm it at oss.go.id before relying on it"
-    : pmaSourceAttributionStructured(code.pma.source);
-  const pmaLabel = `${
+  const pmaAttribution = pmaSourceAttributionStructured(
+    code.pma.source,
+    code.provenance?.pma.status ?? "declared_gap",
+  );
+  const ownershipLabel = structuredPmaOwnership(code);
+  const statusToken =
     code.pma.status === "open"
-      ? `100% foreign ownership allowed (TERBUKA)${baliNat}`
+      ? "TERBUKA"
       : code.pma.status === "restricted"
-        ? restrictedPmaStructuredLabel(code)
-        : "Closed to foreign investment (TERTUTUP)"
+        ? "TERBATAS"
+        : "TERTUTUP";
+  const pmaLabel = `${
+    !pmaVerdictVerified
+      ? "Foreign-ownership status not yet verified for this KBLI 2025 code"
+      : `${ownershipLabel} (${statusToken})${
+          code.pma.status === "open" ? baliNat : ""
+        }`
   }${pmaAttribution}`;
 
   const riskLevel: string = code.licensing[0]?.riskCategory ?? "Unknown";
@@ -129,7 +149,12 @@ export function KBLICodeJsonLd({
       code.titleEn !== code.titleId ? code.titleEn : undefined,
       "KBLI 2025",
       "Indonesian business license",
-      code.pma.status === "open" ? "PT PMA" : undefined,
+      pmaVerdictVerified &&
+      code.pma.status === "open" &&
+      hasPublishablePmaCap(code.pma) &&
+      !(code.pma.capVerified === true && code.pma.maxForeign === 0)
+        ? "PT PMA"
+        : undefined,
       riskLevel !== "Unknown" ? `${riskLevel} risk` : undefined,
       code.section ? `Section ${code.section}` : undefined,
     ]

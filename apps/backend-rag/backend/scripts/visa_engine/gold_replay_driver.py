@@ -8,9 +8,13 @@ that can be compared with production:
   ``traffic_source=synthetic_gold``.  The driver token is read only from the
   operator-owned token file; it has no CLI option and is never logged.
 * ``--offline`` verifies, compiles, and evaluates the highest-sequence signed
-  PRODUCTION pack actually present in ``contracts/packs``.  This proves only
-  what that repository artifact does; it never claims that the artifact is the
-  active production pack.
+  PRODUCTION pack actually present in ``contracts/packs``.  It then calls the
+  same deterministic, no-I/O policy adapter helper as the public evaluate path.
+  This proves only what that repository artifact and those checked-out policy
+  adapters do; it never claims that the artifact is the active production pack.
+  Offline mode runs inside the repository's backend environment and therefore
+  requires the serving stack's lock-pinned dependencies; it is not a standalone
+  stdlib utility.
 
 The JSON report keeps every divergence visible.  By default every divergent
 persona has ``"explanation": null`` and therefore makes the command exit 1.
@@ -48,7 +52,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from pydantic import ValidationError
 
 from backend.scripts.visa_engine.activate_pack import _load_strict_json
-from backend.services.visa_engine import evaluator
+from backend.services.visa_engine import evaluate_path, evaluator
 from backend.services.visa_engine.api_models import VisaOracleEvaluateRequest
 from backend.services.visa_engine.bundle import (
     StaticTrustStore,
@@ -58,7 +62,11 @@ from backend.services.visa_engine.bundle import (
 from backend.services.visa_engine.compiler import build_compiled_pack
 from backend.services.visa_engine.enums import Environment
 from backend.services.visa_engine.evaluator import DecisionIdentity, build_decision_identity
-from backend.services.visa_engine.models import ApplicantFacts, Decision, RulePackRef
+from backend.services.visa_engine.models import (
+    ApplicantFacts,
+    Decision,
+    RulePackRef,
+)
 from backend.tests.services.visa_engine import _gold_fixtures as gf
 from backend.tests.services.visa_engine.gold_replay import (
     _decision_actual,
@@ -303,16 +311,25 @@ def replay_offline_decisions(
     )
     compiled = build_compiled_pack(verified.pack)
 
-    decisions = tuple(
-        evaluator.evaluate(
-            build_persona_request(persona).applicant_facts(),
+    decisions: list[Decision] = []
+    for persona in PERSONAS:
+        request = build_persona_request(persona)
+        facts = request.applicant_facts()
+        decision = evaluator.evaluate(
+            facts,
             compiled,
             effective_at=evaluated_at,
             observed_at=evaluated_at,
             identity_provider=_offline_identity_provider,
         )
-        for persona in PERSONAS
-    )
+        decisions.append(
+            evaluate_path.apply_public_policy_adapters(
+                decision,
+                facts,
+                compiled,
+                disclosed_review_flags=request.effective_review_flags(),
+            )
+        )
     logger.info(
         "offline replay used repository signed pack file=%s sequence=%d version=%s; "
         "active production status was not checked",
@@ -320,7 +337,7 @@ def replay_offline_decisions(
         compiled.sequence,
         compiled.version,
     )
-    return decisions, pack_path
+    return tuple(decisions), pack_path
 
 
 def _normalized_expected(persona: Persona) -> dict[str, Any]:
@@ -603,6 +620,14 @@ def build_offline_report(
             "decision_identity": (
                 "offline-only non-secret provider; not production integrity evidence"
             ),
+            "policy_adapters": list(evaluate_path.PUBLIC_POLICY_ADAPTER_NAMES),
+            "runtime_operations_excluded": [
+                "active_database_binding",
+                "retention_gate",
+                "pricing",
+                "sealing",
+                "persistence",
+            ],
         },
         explanations=explanations,
     )

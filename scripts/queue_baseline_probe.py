@@ -551,8 +551,20 @@ def fetch_run_timing_minutes(
 
 
 def fetch_run_jobs(repo: str, run_id: int) -> tuple[list[dict[str, Any]], str | None]:
-    """GET .../actions/runs/{run_id}/jobs -> jobs list (name/conclusion), for ejection class."""
-    cmd = ["gh", "api", f"repos/{repo}/actions/runs/{run_id}/jobs", "-f", "per_page=100"]
+    """GET .../actions/runs/{run_id}/jobs -> jobs list (name/conclusion), for ejection class.
+
+    `-X GET` is NOT optional here: `gh api` switches its default method to POST the instant
+    any `-f`/`-F` field is present, unless `-X`/`--method` says otherwise. Missing it here
+    made every job fetch 404 silently (caught by `classify_ejection`'s empty-jobs-list
+    fallback, which just returns "CODE" — the INFRA job-name-signature branch was dead code
+    on every real call). Verified live 2026-08-14: the 2026-08-12 baseline record declared
+    `ejections.total == 0` for a day the ejection-attribution module's own PR-timeline reading
+    (scripts/queue_ejection_attribution.py) independently found 13 real ejections that same
+    day — this fetch's 404 is why classify_ejection() below never saw a single job. Third
+    instance of this class found the same day (after scripts/suite_growth_probe.py and
+    scripts/queue_ejection_attribution.py); see PR description.
+    """
+    cmd = ["gh", "api", f"repos/{repo}/actions/runs/{run_id}/jobs", "-X", "GET", "-f", "per_page=100"]
     try:
         proc = _run_gh(cmd, timeout=GH_TIMEOUT_SHORT)
     except subprocess.TimeoutExpired as exc:

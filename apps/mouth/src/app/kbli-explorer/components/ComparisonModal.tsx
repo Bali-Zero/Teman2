@@ -52,7 +52,7 @@ export default function ComparisonModal({
       case "Title":
         return <span className="text-sm text-silver">{detail.title}</span>;
       case "PMA Status": {
-        const badge = getPmaBadge(detail.pma_status);
+        const badge = getPmaBadge(detail);
         return <span className={badge.className}>{badge.label}</span>;
       }
       case "Risk Level": {
@@ -107,7 +107,10 @@ export default function ComparisonModal({
                 </Dialog.Description>
               </div>
               <Dialog.Close asChild>
-                <button className="p-2 rounded-lg hover:bg-surface-editorial-elevated text-[#888] hover:text-white transition-colors" aria-label="Close comparison">
+                <button
+                  className="p-2 rounded-lg hover:bg-surface-editorial-elevated text-[#888] hover:text-white transition-colors"
+                  aria-label="Close comparison"
+                >
                   <X size={18} />
                 </button>
               </Dialog.Close>

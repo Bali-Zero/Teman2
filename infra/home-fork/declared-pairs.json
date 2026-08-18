@@ -745,6 +745,42 @@
       "live": "/Library/LaunchDaemons/com.nuzantara.fw-guard.plist",
       "repo": "infra/launchagents/mini/com.nuzantara.fw-guard.plist",
       "machines": ["mini"]
+    },
+    {
+      "live": "~/.config/ghostty/config",
+      "repo": "infra/ghostty/config",
+      "machines": ["all"],
+      "_note": "Ghostty fleet profile, added 2026-08-18. ~/.config is not a git repo, so these installed copies had no history and no backup before this. Installed by infra/ghostty/install.sh, which validates and rolls back on failure; infra/ghostty/verify.sh is the local check, this lint the fleet-wide one against origin/main. Entry point: it only declares the include chain."
+    },
+    {
+      "live": "~/.config/ghostty/fleet.ghostty",
+      "repo": "infra/ghostty/fleet.ghostty",
+      "machines": ["all"],
+      "_note": "Ghostty fleet profile, added 2026-08-18. ~/.config is not a git repo, so these installed copies had no history and no backup before this. Installed by infra/ghostty/install.sh, which validates and rolls back on failure; infra/ghostty/verify.sh is the local check, this lint the fleet-wide one against origin/main. Shared base, identical on all three hosts."
+    },
+    {
+      "live": "~/.config/ghostty/keys.ghostty",
+      "repo": "infra/ghostty/keys.ghostty",
+      "machines": ["all"],
+      "_note": "Ghostty fleet profile, added 2026-08-18. ~/.config is not a git repo, so these installed copies had no history and no backup before this. Installed by infra/ghostty/install.sh, which validates and rolls back on failure; infra/ghostty/verify.sh is the local check, this lint the fleet-wide one against origin/main. Keybinds and command-palette entries, identical on all three hosts."
+    },
+    {
+      "live": "~/.config/ghostty/machine.ghostty",
+      "repo": "infra/ghostty/machines/pro.ghostty",
+      "machines": ["pro"],
+      "_note": "Ghostty fleet profile, added 2026-08-18. ~/.config is not a git repo, so these installed copies had no history and no backup before this. Installed by infra/ghostty/install.sh, which validates and rolls back on failure; infra/ghostty/verify.sh is the local check, this lint the fleet-wide one against origin/main. Installed under a FIXED live name from a per-host source, so the entry point can include one stable filename everywhere; hence three entries sharing this live path, each scoped to its own machine."
+    },
+    {
+      "live": "~/.config/ghostty/machine.ghostty",
+      "repo": "infra/ghostty/machines/m5.ghostty",
+      "machines": ["m5"],
+      "_note": "Ghostty fleet profile, added 2026-08-18. ~/.config is not a git repo, so these installed copies had no history and no backup before this. Installed by infra/ghostty/install.sh, which validates and rolls back on failure; infra/ghostty/verify.sh is the local check, this lint the fleet-wide one against origin/main. See the pro entry for why this live path appears three times."
+    },
+    {
+      "live": "~/.config/ghostty/machine.ghostty",
+      "repo": "infra/ghostty/machines/mini.ghostty",
+      "machines": ["mini"],
+      "_note": "Ghostty fleet profile, added 2026-08-18. ~/.config is not a git repo, so these installed copies had no history and no backup before this. Installed by infra/ghostty/install.sh, which validates and rolls back on failure; infra/ghostty/verify.sh is the local check, this lint the fleet-wide one against origin/main. See the pro entry for why this live path appears three times."
     }
   ],
   "allow": [

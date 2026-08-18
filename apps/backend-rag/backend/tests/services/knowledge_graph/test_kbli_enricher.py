@@ -46,7 +46,7 @@ async def test_enrich_single_code_retry_logic(mock_qdrant):
 
 
 @pytest.mark.asyncio
-async def test_concurrency_control():
+async def test_concurrency_control(mock_qdrant):
     enricher = KBLIEnricher(concurrency=2)
     # Verifichiamo che il semaforo sia inizializzato correttamente
     assert enricher.semaphore._value == 2

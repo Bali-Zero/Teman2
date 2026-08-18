@@ -17,6 +17,9 @@ export interface KBLIRawCode {
   pma_prioritas: boolean;
   pma_nota: string | null;
   pma_source: string | null;
+  pma_official_basis?: string | null;
+  pma_source_vintage?: string | null;
+  pma_verification_status?: "located" | "declared_gap";
   _source: string;
 }
 
