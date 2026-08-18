@@ -124,12 +124,19 @@ leaving a broken config; the fix is to drop three lines from the machine profile
 
 ## Known gaps
 
-- **Mini has no Nerd font.** The fleet `font-family` silently falls back to plain
-  `JetBrains Mono`, which has no icon glyphs, so prompt segments render as tofu.
-  `verify.sh` reports this rather than letting it pass unseen. Fix:
-  `brew install --cask font-jetbrains-mono-nerd-font`.
 - **Agent-team panes do not open in Ghostty.** Claude Code hosts teammate panes
   in tmux or iTerm2 only; in a bare Ghostty window it falls back to an external
   tmux session or fails outright. Running Claude Code inside `tmux` makes panes
-  appear in the Ghostty window. tmux is installed on Pro (3.6a) and absent on M5.
-  See `docs/runbooks/ghostty-fleet.md`.
+  appear in the Ghostty window. The tmux binary is present on all three machines
+  (measured 2026-08-18: Pro 3.7b, M5 3.7b, Mini 3.6a) but the binary is only the
+  prerequisite — the panes appear when Claude Code actually runs INSIDE a
+  session. The palette entry "Claude: agent-pane session (tmux)" and `cmd+alt+n,
+  t` both type the attach command. See `docs/runbooks/ghostty-fleet.md`.
+- **`global:` keybinds need a per-machine Accessibility grant.** Without it the
+  quick-terminal binding is silently inert — no error, nothing happens. The
+  grant cannot be probed remotely (the runbook documents the read-only local
+  check); press the chord once after install to know.
+
+Two gaps this file used to list are cured and guarded: Mini's missing Nerd font
+(installed 2026-08-18; `verify.sh` still checks resolution) and M5's missing
+tmux (installed 2026-08-18).

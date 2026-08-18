@@ -15,8 +15,12 @@
 #  `background-opacity` needs a full restart; blur and the Dock icon are not
 #  documented either way, so treat a relaunch as the reliable route for all three.
 #
-#  NOT every line here changes something. Of the 51 non-repeatable settings this
-#  file declares, 24 RESOLVE to Ghostty 1.3.1's own default. They are kept
+#  NOT every line here changes something. Of the 56 non-repeatable settings this
+#  file declares, 26 RESOLVE to Ghostty 1.3.1's own default (both numbers
+#  measured 2026-08-18 with the method below, this file alone in an isolated
+#  XDG_CONFIG_HOME — absence from `+show-config --default=false` = pin;
+#  font-family and font-feature are excluded as REPEATABLE, per the entry
+#  point's own documentation). They are kept
 #  on purpose — an explicit value is a pin that survives an upstream default
 #  flip, and it makes the posture readable instead of implied — but they are
 #  NOT choices, and nothing here should describe them as if they were.
@@ -71,6 +75,15 @@ theme = Catppuccin Mocha
 # foreground/background pairs emitted by TUIs without repainting the theme.
 minimum-contrast = 1.5
 
+# Interpret terminal colours in Display P3 instead of sRGB. Every panel this
+# fleet renders on is P3 (M5 laptop, Pro's displays, the Vision Pro virtual
+# display), so sRGB was leaving gamut on the table; Mocha's saturated accents
+# are exactly the colours that gain. This is a CHOICE with a visible effect:
+# colours render slightly more vivid than the theme's sRGB authors saw. If a
+# colour-matched screenshot comparison ever matters, revert to `srgb`.
+# macOS-only key; inert elsewhere.
+window-colorspace = display-p3
+
 # ─── Window & glass ────────────────────────────────────────────────────────
 # macos-glass-regular is a real value on macOS >= 26 and needs background-opacity
 # < 1 to have any effect. Measured 2026-08-18: Pro and M5 run 27.0, Mini runs
@@ -117,6 +130,13 @@ cursor-style = block
 cursor-style-blink = false
 mouse-hide-while-typing = true
 
+# Hovering a split focuses it — no click, no chord. On a screen holding an
+# agent session, a log tail and a shell, the pane you are reading is the pane
+# your keystrokes reach. Scoped by Ghostty to the FOCUSED WINDOW only: mousing
+# over an unfocused window neither raises nor focuses anything, so this cannot
+# steal focus across windows.
+focus-follows-mouse = true
+
 # ─── Long-running commands ─────────────────────────────────────────────────
 # Deploys, pytest suites, LLM panels and fly builds outlive your attention.
 # 'unfocused' notifies only when you are looking at something else; 45s keeps
@@ -149,6 +169,15 @@ bell-features = no-system,no-audio,attention,title
 # the xterm-256color fallback when the install cannot happen.
 shell-integration = detect
 shell-integration-features = cursor,sudo,title,ssh-env,ssh-terminfo,path
+
+# ─── Quick terminal ────────────────────────────────────────────────────────
+# The drop-down surface behind cmd+alt+` (bound in keys.ghostty). Position is
+# a PIN (top is the default); the size is a choice: 35% of the screen height,
+# full width — enough for a log peek or a one-liner without covering the work
+# underneath. Changing position requires a full Ghostty restart (documented);
+# autohide-on-focus-loss and follow-the-space are the defaults and are right.
+quick-terminal-position = top
+quick-terminal-size = 35%
 
 # ─── Clipboard & selection ─────────────────────────────────────────────────
 # copy-on-select stays OFF: selecting text to READ it must never overwrite the
@@ -216,6 +245,14 @@ macos-secure-input-indication = true
 macos-applescript = false
 
 # ─── Safety ────────────────────────────────────────────────────────────────
+# PIN of the upstream default, kept explicit for the same reason as
+# macos-applescript above: title reporting (CSI 21 t) lets the running program
+# read the window title back — the reference calls it "a common security
+# issue", escalating to code execution with a crafted title plus minor user
+# interaction. A terminal that ssh's into three machines keeps this closed on
+# purpose, visibly.
+title-report = false
+
 confirm-close-surface = true
 # Closing a split or tab stays undoable for two minutes instead of five seconds.
 # Deliberately not longer: an un-expired undo keeps the closed session ALIVE, and
