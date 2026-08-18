@@ -4988,9 +4988,11 @@ This branch was reconciled with `origin/main` at
 `993e4e868a6e8210328f69ccd136ca9d5c54d776`; the only merge conflict was the
 mechanically maintained `docs/AI_ONBOARDING.md` test-count text, resolved to
 current main. The feature fence was ten files after reconciliation; the later
-CI-discovery fix adds only `.github/workflows/tests.yml`, so the current fence
-is eleven files relative to main. The generated onboarding documentation no
-longer differs.
+CI-discovery fix added only `.github/workflows/tests.yml`, temporarily making
+the fence eleven files relative to main. The full-suite namespace repair
+recorded in §30.12 later removes the empty test-package marker and returns the
+current fence to ten files. The generated onboarding documentation no longer
+differs.
 
 The selected path remains `CodexExecClient`, authenticated by the operator's
 existing ChatGPT subscription. The dormant `OpenAIResponsesClient` remains
@@ -5141,3 +5143,26 @@ in PR review metadata rather than self-attested here: any edit that writes a
 verdict into this file necessarily creates a new, unreviewed SHA. The merge,
 deployment, privacy, runtime-host, real-data, and cutover gates remain outside
 this PR and outside this document's authority.
+
+### 30.12 Full-suite namespace repair and unarmed BOT-V2 gate debt (2026-08-18)
+
+GitHub's full backend suite exposed a collection-order defect after the §30.11
+freeze. The branch-added empty `backend/tests/llm/__init__.py` made Pytest bind
+the new test directory as top-level package `llm`; later legacy tests importing
+`llm.adapters.base` then resolved that test package instead of production
+`backend/llm` and failed with `ModuleNotFoundError`. Removing only the empty
+package marker restores the intended standalone test-module collection and
+returns the current fence to ten files. The bot suites plus both legacy import
+tests pass together in one process at the repaired head. The exact final-head
+verdict remains PR review metadata for the same anti-self-attestation reason
+stated at the end of §30.11.
+
+A separate pre-existing file, `scripts/ci/bot_provider_gate.py`, remains
+**BUILT-NOT-ARMED**: no GitHub workflow invokes it. Its current G1 policy encodes
+the older no-OAuth-provider decision, so a manual run against this lane flags
+the sanctioned `CodexExecClient`; its declared scope also names
+`apps/backend-rag/backend/scripts/bot`, while this offline harness lives at the
+repository-root `scripts/bot`. This has no current CI or runtime effect, but it
+is an explicit follow-up gate: the lint's policy and scope must be reconciled
+before anyone arms it. This PR neither changes nor bypasses that out-of-fence
+guard.
