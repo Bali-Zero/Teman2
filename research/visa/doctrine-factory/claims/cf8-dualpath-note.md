@@ -7,7 +7,7 @@ sources:
   - research/visa/doctrine-factory/nb2-answers/cf8-dualpath-response-log.jsonl (CF8DP-1, CF8DP-3)
   - research/visa/doctrine-factory/nb2-answers/cf8-dualpath-citation-audit.json
 discovered_by: agent/air-m5/ops/cf8-dualpath (Sonnet hand, owner-prompted 2026-08-18)
-adversarial_review: kimi-k3-narrow-refutation-applied (session_a6256a19-6a35-4f6a-993e-dc383748b071)
+adversarial_review: kimi-k3
 ---
 
 # CF-8 refinement: owner dual-pathway hypothesis, checked against NB-2
