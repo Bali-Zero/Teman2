@@ -6,10 +6,10 @@ discovered_by: "Fable/Sonnet session (M5), corrected after independent Kimi K3 a
 sources:
   - "memory: decision_wa_openai_provider_subscription_path_owner_ruling_2026_08_15 (owner ruling: ChatGPT Pro subscription via codex exec, never OPENAI_WA_PROVIDER_API_KEY)"
   - "memory: project_bot_openai_lane_governance_codex_orchestrator_2026_08_15 (NO-WIRING fence and close-gate sequence)"
-  - "PR #4216 current head 6cb663dd66c67ed8d84dc204508eafe3c6d0c5de and its 12-file net diff, re-verified live on Air-M5 and Pro"
+  - "PR #4216 head 6cb663dd66c67ed8d84dc204508eafe3c6d0c5de, merged as 67eb3be94cb9be9abaae00b372446389e971cf4f, and its 12-file net diff, re-verified live on Air-M5 and Pro"
   - "PR #4194 threat model at head 28f70f026, read this turn"
   - "PR #4197 failure matrix, read this turn"
-  - ".agents/skills/bot/SKILL.md, live-state entry dated 2026-08-18"
+  - ".agents/skills/bot/SKILL.md, live-state entry dated 2026-08-19"
   - "codex-cli 0.147.0 local help for exec --ephemeral, --ignore-user-config, --ignore-rules, and sandbox controls, measured this turn"
 adversarial_review: kimi-k3
 review_corroboration: "gemini-3.1-pro"
@@ -27,22 +27,34 @@ plan and was re-measured from its exact current head.
   missing-owner-authorization gate for the gated merge/deploy/cutover progression; it does not
   waive generator-not-grader review, privacy, PII, runtime-host, rollback, or no-outward-send
   gates.
-- #4216 remains inert and NO-WIRING at head
+- #4216 remains inert and NO-WIRING at source head
   `6cb663dd66c67ed8d84dc204508eafe3c6d0c5de`. Independent Fable review re-ran the 513 focused
   tests, confirmed the 12-file fence and zero runtime importers, returned PASS, moved the PR from
-  draft to ready, and armed the canonical merge queue. The PR checks are green or intentionally
-  skipped, and GitHub reports mergeable/CLEAN.
-- The merge queue has nevertheless rejected the unchanged head twice. Merge-group
-  `ca65adfef0ef86f502b5fcd186dc1f3e76676059` failed run `32157479924` at the required
+  draft to ready, and armed the canonical merge queue.
+- The first two merge groups were rejected by the same runner-infrastructure signature.
+  Merge-group `ca65adfef0ef86f502b5fcd186dc1f3e76676059` failed run `32157479924` at the required
   `Immune enforcement` step `Codex seat corpus` after 71 seconds; after an independent
   PASS-REQUEUED verdict, merge-group `8b8d233e3da9c6e000aab36a0a1c04e5521776e0` failed the
-  same step in run `32159641457` after 79 seconds. Both logs contain no command output between
+  same step in run `32159641457` after 79 seconds. Both logs contained no command output between
   step start and exit 1: the bounded `apt_install.sh zsh zsh` could not deliver `zsh`, so neither
   pytest corpus started. The same step passed on the PR run, the four affected CI/helper/test
-  files are byte-identical across PR, merge-group, and `main`, and local re-runs passed 13/13,
-  14/14, and 56/56. This is a repeatable GitHub runner apt-mirror gate failure, not an adapter
-  regression. Anti-loop policy therefore leaves #4216 ready but outside the queue until a
-  delayed retry or an independently reviewed CI cure; it is not merged or deployed.
+  files were byte-identical across PR, merge-group, and `main`, and local re-runs passed 13/13,
+  14/14, and 56/56. This was an apt-mirror failure, not an adapter regression.
+- A read-only rerun of only that failed workflow then passed in 5m59s: `apt update` timed out, the
+  cached install still delivered `/usr/bin/zsh`, and the real 14-test and 56-test corpora passed.
+  Independent Fable issued `PASS-REQUEUED-FINAL` and requeued once under an explicit terminal
+  anti-loop rule. Final merge-group `67eb3be94cb9be9abaae00b372446389e971cf4f` completed all
+  26/26 workflows successfully, including the previously failing immune gate, full backend,
+  frontend, E2E, security, and secret scans. GitHub merged #4216 at `2026-08-18T17:26:10Z`, and
+  `origin/main` was independently observed at that exact merge commit.
+- CI workflow `32165589346` deployed that exact commit successfully: pre-deploy validation and
+  82 core tests passed; pre/post SQL and Python migrations passed; the Fly rolling deploy passed
+  in 6m22s; the workflow health and synthetic RAG smoke tests passed without rollback. A separate
+  post-workflow probe returned `HTTP 200` and `{"status":"healthy"}` from
+  `https://nuzantara-rag.fly.dev/health`. The merged adapter file is present, while a commit-pinned
+  grep found no runtime importer, config flag, or gateway reference outside the two dormant
+  adapter modules and their tests. Deployment therefore changed code availability only; it did
+  not activate a provider or attach to WhatsApp traffic.
 - The selected blind-bench client is now `CodexSubscriptionBenchClient`, a narrow facade over
   `CodexExecClient`. It never checks `OPENAI_WA_PROVIDER_API_KEY`, and candidate calls are strictly
   sequential.
@@ -75,8 +87,8 @@ plan and was re-measured from its exact current head.
   control is disabled. That exact account setting has not been verified. Real client text, PII,
   WA-mirror data, live shadowing, Fly credential placement, serving, activation, and cutover
   remain **NO-GO** until that privacy gate and a named Pro-side broker/supervisor design pass
-  independent review. A future CI-green merge/deploy of the dormant NO-WIRING files does not
-  activate the provider and is a separate gate.
+  independent review. The now-completed CI-green merge/deploy of the dormant NO-WIRING files did
+  not activate the provider and remains separate from any future serving gate.
 
 ## 0. Decision and authority boundary
 
@@ -91,10 +103,11 @@ The provider route is an owner decision, not an open architecture vote:
 
 The original version of this document did **not** authorize a runtime flag, a gateway branch, a
 credential move, live WhatsApp traffic, a deploy, a cutover, or a merge. Zero later supplied the
-point-7 owner authorization recorded in the live reconciliation above. The #4216 diff itself
-remains NO-WIRING, and the technical/privacy gates still determine which authorized action is safe
-to execute. Stage 1 remains an operator-run, de-identified, offline evaluation. It is deliberately
-not called "shadow" because it does not observe or attach to the live reply path.
+point-7 owner authorization recorded in the live reconciliation above. The independently reviewed
+dormant merge and CI deploy are now complete, but the #4216 diff itself remains NO-WIRING, and the
+technical/privacy gates still determine which later action is safe to execute. Stage 1 remains an
+operator-run, de-identified, offline evaluation. It is deliberately not called "shadow" because
+it does not observe or attach to the live reply path.
 
 The [official Codex authentication documentation](https://learn.chatgpt.com/docs/auth) confirms
 that the CLI supports both ChatGPT subscription sign-in and API-key sign-in. That establishes that
@@ -320,9 +333,10 @@ serving. Zero's point-7 authorization permits progression only as each remaining
 - no comparison sink for PII-derived content has been approved;
 - no native system/tool/history parity exists in `CodexExecClient`;
 - no subscription capacity/SLA has been demonstrated for client traffic;
-- no cutover, fallback, deploy, merge, or outward publication is mechanically safe before its
-  corresponding review, privacy, runtime-host, CI, and rollback gate is green; Legge 5 continues
-  to prohibit any client-facing test send.
+- the dormant merge and CI deploy completed only after their review, CI, and rollback gates were
+  green; no runtime activation, cutover, fallback, live shadow, or outward publication is safe
+  before its separate privacy/runtime-host/review gate is green, and Legge 5 continues to prohibit
+  any client-facing test send.
 
 A future live-shadow proposal needs a new owner mandate that formally amends the fence, a new ADR,
 a named execution/broker architecture, a lawful PII basis, bounded concurrency/backpressure, a

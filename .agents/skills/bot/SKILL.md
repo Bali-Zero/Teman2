@@ -22,22 +22,30 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 
 ## 1. LIVE STATE (last update 2026-08-19 — keep current)
 
-- **🧪 CHATGPT PRO ADAPTER LIVE TEST — SYNTHETIC STAGE 1 GREEN; MERGE QUEUE BLOCKED BY
-  REPEATED RUNNER APT FAILURE; REAL WA STILL NO-GO (2026-08-19, supersedes the stale
-  #4216/#4301 implementation snapshot immediately below).**
-  Zero explicitly authorized point 7 and told the lane to start live tests. The current #4216
-  head is `6cb663dd66c67ed8d84dc204508eafe3c6d0c5de` (12 files), GitHub reports
-  `mergeStateStatus=CLEAN`/`mergeable=MERGEABLE`, and all observed checks are green or
-  intentionally skipped. Independent Fable review repeated 513/513 focused tests, confirmed the
-  12-file/no-importer fence, returned PASS, moved #4216 to ready, and armed the canonical queue;
-  it remains NO-WIRING. The unchanged head was then ejected twice by required merge-group
-  `Immune enforcement` runs `32157479924` and `32159641457`: both failed only at `Codex seat
-corpus` after 71s/79s, with no output after step start because bounded
-  `apt_install.sh zsh zsh` could not deliver `zsh`; neither pytest corpus started. The affected
-  CI/helper/test blobs are identical across PR/merge-group/main, while the PR run and local
-  re-runs passed 13/13 + 14/14 + 56/56. After the second identical signature the anti-loop rule
-  left the PR ready, CLEAN, outside the queue, not merged and not deployed. A delayed retry or
-  independently reviewed CI cure is required before requeue.
+- **🧪 CHATGPT PRO ADAPTER LIVE TEST — SYNTHETIC STAGE 1 GREEN; DORMANT ADAPTER MERGED +
+  DEPLOYED; REAL WA STILL NO-GO (2026-08-19, supersedes the stale #4216/#4301 implementation
+  snapshot immediately below).**
+  Zero explicitly authorized point 7 and told the lane to start live tests. #4216 source head
+  `6cb663dd66c67ed8d84dc204508eafe3c6d0c5de` contains 12 files and remains strictly NO-WIRING.
+  Independent Fable review repeated 513/513 focused tests, confirmed the 12-file/no-importer
+  fence, returned PASS, moved #4216 to ready, and armed the canonical queue. The unchanged head
+  was ejected twice by required merge-group `Immune enforcement` runs `32157479924` and
+  `32159641457`: both failed only at `Codex seat corpus` after 71s/79s, with no output after step
+  start because bounded `apt_install.sh zsh zsh` could not deliver `zsh`; neither pytest corpus
+  started. The affected CI/helper/test blobs were identical across PR/merge-group/main, while the
+  PR run and local re-runs passed 13/13 + 14/14 + 56/56. A read-only rerun of only the failed
+  workflow then passed in 5m59s (`apt update` timed out, cached install delivered
+  `/usr/bin/zsh`, and both 14/14 + 56/56 corpora ran). Independent Fable issued
+  `PASS-REQUEUED-FINAL`; the third and explicitly final merge-group
+  `67eb3be94cb9be9abaae00b372446389e971cf4f` passed all 26/26 workflows. GitHub merged #4216 at
+  `2026-08-18T17:26:10Z`, and `origin/main` was independently observed at that exact commit.
+  CI deploy workflow `32165589346` then passed on that same SHA: pre-deploy validation + 82 core
+  tests, pre/post SQL and Python migrations, Fly rolling deploy (6m22s), health, and synthetic RAG
+  smoke all succeeded with no rollback. An independent probe returned `HTTP 200` and
+  `{"status":"healthy"}` from `https://nuzantara-rag.fly.dev/health`. Commit-pinned inspection
+  confirmed the adapter is present but has zero runtime importer, config flag, or gateway
+  reference outside the two dormant adapter modules and their tests: deployed does **not** mean
+  activated, serving, shadowing, or connected to WhatsApp.
   On Pro, `codex-cli 0.147.0` reports `Logged in using ChatGPT`. From the exact PR head, a real
   `CodexExecClient` Terra call returned an exact random synthetic sentinel in 6.9s. The role-aware
   multi-turn blind harness then ran sequentially across Terra/Luna/Sol and all 3/3 returned the
@@ -53,9 +61,9 @@ corpus` after 71s/79s, with no output after step start because bounded
   yet verified. Official policy says Pro Codex conversations may be used for training unless that
   control is off. Therefore the live verdict is **GO only for synthetic, de-identified,
   operator-controlled Pro probes** and **NO-GO for client text/PII, WA mirror, live shadow, Fly
-  credentials, activation, serving, cutover, or any outward test send**. A CI-green merge/deploy
-  of the dormant NO-WIRING files is a separate gate and would not activate the provider. The
-  corrected authoritative plan is
+  credentials, activation, serving, cutover, or any outward test send**. The completed CI-green
+  merge/deploy changed code availability only and did not activate the provider. The corrected
+  authoritative plan is
   `research/operations/2026-08-18-bot-openai-shadow-wiring-plan.md`; next gate is the account
   privacy check plus a named Pro-side fail-off broker/supervisor design and independent review.
   Generator-not-grader and Legge 5 remain unchanged despite the owner authorization.
