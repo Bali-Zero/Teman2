@@ -104,15 +104,18 @@ class _FakeProcess:
         *,
         communicate_delay: float = 0.0,
         communicate_raises: BaseException | None = None,
+        wait_delay: float = 0.0,
     ) -> None:
         self._stdout = stdout
         self._stderr = stderr
         self.returncode = returncode
         self._delay = communicate_delay
         self._communicate_raises = communicate_raises
+        self._wait_delay = wait_delay
         self.received_input: bytes | None = None
         self.killed = False
         self.waited = False
+        self.wait_completed = False
 
     async def communicate(self, input: bytes | None = None) -> tuple[bytes, bytes]:  # noqa: A002
         self.received_input = input
@@ -127,6 +130,9 @@ class _FakeProcess:
 
     async def wait(self) -> int:
         self.waited = True
+        if self._wait_delay:
+            await asyncio.sleep(self._wait_delay)
+        self.wait_completed = True
         return self.returncode
 
 
@@ -991,6 +997,41 @@ class TestTimeout:
 
         assert proc.killed is True
         assert proc.waited is True
+        assert proc.wait_completed is True
+
+    @pytest.mark.asyncio
+    async def test_guilt_repeated_cancellation_still_finishes_reap(
+        self,
+        tmp_path,
+        fake_exec: _FakeSubprocessExec,
+    ) -> None:
+        """A second cancellation during cleanup must not orphan the child."""
+        client = _make_available_client(tmp_path)
+        proc = _FakeProcess(
+            b"",
+            b"",
+            0,
+            communicate_delay=5.0,
+            wait_delay=0.05,
+        )
+        fake_exec.queue(proc)
+
+        task = asyncio.ensure_future(client.generate("hello"))
+        await asyncio.sleep(0.01)
+        task.cancel()
+
+        for _ in range(100):
+            if proc.waited:
+                break
+            await asyncio.sleep(0.001)
+        assert proc.waited is True
+
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+        assert proc.killed is True
+        assert proc.wait_completed is True
 
     @pytest.mark.asyncio
     async def test_innocence_fast_call_does_not_timeout(
@@ -1052,6 +1093,7 @@ class TestTimeout:
         assert exc_info.value.__cause__ is None
         assert proc.killed is True
         assert proc.waited is True
+        assert proc.wait_completed is True
 
     @pytest.mark.asyncio
     async def test_guilt_real_cancellation_kills_reaps_and_repropagates(
@@ -1085,6 +1127,7 @@ class TestTimeout:
 
         assert proc.killed is True
         assert proc.waited is True
+        assert proc.wait_completed is True
 
 
 # ---------------------------------------------------------------------------

@@ -540,13 +540,33 @@ class CodexExecResult:
 
 
 async def _kill_and_reap(proc: Any) -> None:
-    """Terminate a timed-out child and wait for it so no zombie remains.
-    Mirrors `claude_oauth_client.py::_kill_and_reap` exactly — same failure
-    mode, same fix."""
+    """Kill and reap a child, deferring repeated caller cancellation.
+
+    The first caller cancellation is caught by ``generate()`` before this
+    helper runs. A second ``Task.cancel()`` can still arrive while
+    ``proc.wait()`` is in flight. Shield one stable wait task, finish the
+    reap, then propagate that later cancellation; suppressing
+    ``CancelledError`` around a bare wait would return before the child was
+    actually reaped.
+    """
     with contextlib.suppress(ProcessLookupError):
         proc.kill()
-    with contextlib.suppress(Exception):
-        await proc.wait()
+
+    wait_task = asyncio.ensure_future(proc.wait())
+    deferred_cancellation: asyncio.CancelledError | None = None
+    while True:
+        try:
+            await asyncio.shield(wait_task)
+            break
+        except asyncio.CancelledError as exc:
+            if wait_task.cancelled():
+                break
+            deferred_cancellation = exc
+        except Exception:
+            break
+
+    if deferred_cancellation is not None:
+        raise deferred_cancellation
 
 
 def _strip_known_lines(text: str, *known: str) -> str:
