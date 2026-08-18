@@ -77,8 +77,9 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
   **Current state of the two gate-prep PRs** (the historical snapshot's DRAFT/BLOCKED wording for
   them is superseded too): #4194 (threat model + privacy plan) and #4197 (failure matrix) were
   reconciled to the final adapter evidence head `1dcdd670d` — subscription-provider coverage,
-  single-token R1 frontmatter, Fable gate recorded in their bodies — then un-drafted and entered
-  the merge queue on 2026-08-19.
+  single-token `adversarial_review: kimi-k3` frontmatter, Fable gate recorded in the documents'
+  own Adversarial-review sections (the PR descriptions still carry draft-era text) — then
+  un-drafted and entered the merge queue on 2026-08-19.
 
 - **🤖 HISTORICAL OPENAI WA-PROVIDER SNAPSHOT — SUPERSEDED BY THE LIVE TEST ENTRY ABOVE.**
   Retained only as the chronology that produced #4216/#4301; do not use its old branch heads,
