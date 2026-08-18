@@ -45,10 +45,23 @@ check_true() {  # check_true <name> <shell-test-exit-code>
 
 TMP="$(mktemp -d)"
 SERVER_PID=""
+SERVER_PORT=""
+
+stop_fake_server() {
+    local pid="${SERVER_PID:-}"
+    SERVER_PID=""
+    SERVER_PORT=""
+    [ -n "$pid" ] || return 0
+    kill "$pid" 2>/dev/null || true
+    wait "$pid" 2>/dev/null || true
+}
+
 cleanup() {
-    [ -n "$SERVER_PID" ] && kill "$SERVER_PID" 2>/dev/null
-    wait "$SERVER_PID" 2>/dev/null
-    rm -rf "$TMP"
+    local status=$?
+    trap - EXIT
+    stop_fake_server
+    rm -rf -- "$TMP"
+    exit "$status"
 }
 trap cleanup EXIT
 
@@ -83,21 +96,21 @@ with http.server.HTTPServer(("127.0.0.1", port), Handler) as httpd:
     httpd.serve_forever()
 PYEOF
 
-start_fake_server() {  # start_fake_server <http-code>  -> prints the port
-    [ -n "$SERVER_PID" ] && { kill "$SERVER_PID" 2>/dev/null; wait "$SERVER_PID" 2>/dev/null; }
+start_fake_server() {  # start_fake_server <http-code> -> sets SERVER_PORT
+    stop_fake_server
     rm -f "$TMP/port.txt"
     python3 "$TMP/fake_server.py" "$1" >"$TMP/port.txt" 2>"$TMP/server.err" &
     SERVER_PID=$!
     for _ in $(seq 1 50); do
-        [ -s "$TMP/port.txt" ] && break
+        if [ -s "$TMP/port.txt" ]; then
+            IFS= read -r SERVER_PORT < "$TMP/port.txt"
+            [ -n "$SERVER_PORT" ] && return 0
+        fi
         sleep 0.1
     done
-    cat "$TMP/port.txt"
-}
-
-stop_fake_server() {
-    [ -n "$SERVER_PID" ] && { kill "$SERVER_PID" 2>/dev/null; wait "$SERVER_PID" 2>/dev/null; }
-    SERVER_PID=""
+    echo "fake HTTP server failed to publish a port" >&2
+    stop_fake_server
+    return 1
 }
 
 # A port nothing is listening on (bind-then-close, never serve): curl gets an
@@ -168,7 +181,8 @@ file_mode() {  # file_mode <path> -> octal mode (e.g. "600"), empty if missing
 echo "GUILT — a 5xx must page as SICK, not fold into ALIVE"
 
 ROOT="$TMP/w-sick-guilt"; make_world "$ROOT"; install_plist "$ROOT"
-PORT="$(start_fake_server 500)"
+start_fake_server 500 || exit 1
+PORT="$SERVER_PORT"
 RC="$(run_wrapper "$ROOT" "$PORT" COOLDOWN_S=0)"
 check "500 with plist present -> wrapper exits 1 (alert sent)" 1 "$RC"
 check "exactly one page recorded" 1 "$(n_pages "$ROOT")"
@@ -195,7 +209,8 @@ echo
 echo "INNOCENCE — process up and CORRECT must not page"
 
 ROOT="$TMP/w-ok-200"; make_world "$ROOT"; install_plist "$ROOT"
-PORT="$(start_fake_server 200)"
+start_fake_server 200 || exit 1
+PORT="$SERVER_PORT"
 RC="$(run_wrapper "$ROOT" "$PORT" COOLDOWN_S=0)"
 check "200 -> wrapper exits 0" 0 "$RC"
 check "no page sent" 0 "$(n_pages "$ROOT")"
@@ -204,7 +219,8 @@ check_true "log names the state ALIVE" \
 stop_fake_server
 
 ROOT="$TMP/w-ok-401"; make_world "$ROOT"; install_plist "$ROOT"
-PORT="$(start_fake_server 401)"
+start_fake_server 401 || exit 1
+PORT="$SERVER_PORT"
 RC="$(run_wrapper "$ROOT" "$PORT" COOLDOWN_S=0)"
 check "401 (JWT-gated, still up) -> wrapper exits 0" 0 "$RC"
 check "no page sent" 0 "$(n_pages "$ROOT")"
@@ -230,7 +246,8 @@ echo "GUILT/INNOCENCE — SICK mirrors DEAD's two shared guards, not just its me
 
 # Active-active guard: no plist here + no FORCE_CHECK => stay silent even SICK.
 ROOT="$TMP/w-sick-noop"; make_world "$ROOT"
-PORT="$(start_fake_server 503)"
+start_fake_server 503 || exit 1
+PORT="$SERVER_PORT"
 RC="$(run_wrapper "$ROOT" "$PORT" COOLDOWN_S=0)"
 check "503, no plist, no FORCE_CHECK -> no-op exit 0 (not this host)" 0 "$RC"
 check "no page sent" 0 "$(n_pages "$ROOT")"
@@ -251,11 +268,13 @@ stop_fake_server
 # and the cooldown gate exactly as production does; it fails on the reverted commit
 # (single shared last_action_ts suppresses the SICK page) and passes on the fix.
 ROOT="$TMP/w-sick-recent-ok-does-not-suppress"; make_world "$ROOT"; install_plist "$ROOT"
-PORT="$(start_fake_server 200)"
+start_fake_server 200 || exit 1
+PORT="$SERVER_PORT"
 RC0="$(run_wrapper "$ROOT" "$PORT" COOLDOWN_S=1800)"
 check "priming healthy tick -> wrapper exits 0 (writes its own ok state)" 0 "$RC0"
 stop_fake_server
-PORT="$(start_fake_server 500)"
+start_fake_server 500 || exit 1
+PORT="$SERVER_PORT"
 RC="$(run_wrapper "$ROOT" "$PORT" COOLDOWN_S=1800)"
 check "500 right after a recent HEALTHY tick -> exit 1 (fresh incident pages immediately)" 1 "$RC"
 check "a recent last_ok_ts does NOT suppress the first SICK page" 1 "$(n_pages "$ROOT")"
@@ -270,7 +289,8 @@ stop_fake_server
 # real SICK tick primes the alert state via write_alert_state, then an immediate second
 # real SICK tick against the same root must be suppressed by the cooldown it just wrote.
 ROOT="$TMP/w-sick-recent-alert-suppresses"; make_world "$ROOT"; install_plist "$ROOT"
-PORT="$(start_fake_server 500)"
+start_fake_server 500 || exit 1
+PORT="$SERVER_PORT"
 RC0="$(run_wrapper "$ROOT" "$PORT" COOLDOWN_S=1800)"
 check "priming SICK tick -> wrapper exits 1 (alert sent)" 1 "$RC0"
 check "priming SICK tick pages exactly once" 1 "$(n_pages "$ROOT")"
