@@ -181,8 +181,64 @@ def test_backs_line_wraps_onto_continuation_line() -> None:
     assert records["CL-X-04"].backs == ("el.a", "el.b", "el.c", "el.d", "el.e")
 
 
+def test_product_conditional_state_line_parses_per_product_map() -> None:
+    """kimi-k3 adversarial finding (2026-08-18): real example ``CL-D-FUNDS``
+    has a MIXED state line — VERIFIED for D1/D12, VERIFIED-WITH-CAVEAT for
+    D2 — that ``_STATE_RE`` alone would resolve to plain VERIFIED for
+    every product. Guilt: a D2 lookup must resolve VERIFIED-WITH-CAVEAT.
+    Innocence: D1/D12 lookups must still resolve plain VERIFIED (not
+    downgraded, not deadlocked by a hard ledger-inconsistency error)."""
+
+    text = """
+**CL-Q-01 — Financial-proof minima.** D1/D12 numeric; D2 no hardcoded figure.
+- **State: VERIFIED** for D1/D12 (numeric, primary-adjacent sourcing); **VERIFIED-WITH-CAVEAT** for D2 (no
+  hardcoded national figure).
+- Products: D1, D2, D12.
+"""
+    records = parse_claim_ledger_text(text, source_name="<test>")
+    rec = records["CL-Q-01"]
+    assert rec.product_states == {"D1": "VERIFIED", "D12": "VERIFIED", "D2": "VERIFIED-WITH-CAVEAT"}
+    assert rec.state_for_product("D2") == "VERIFIED-WITH-CAVEAT"
+    assert rec.compilable_for_product("D2") is True
+    assert rec.state_for_product("D1") == "VERIFIED"
+    assert rec.state_for_product("D12") == "VERIFIED"
+    # An unnamed product falls back to the claim-wide (first-token) state
+    # rather than crashing or silently defaulting to compilable.
+    assert rec.state_for_product("E31B") == rec.state
+
+
+def test_ordinary_single_state_claim_has_no_product_states() -> None:
+    """Innocence twin: the ordinary (non-product-conditional) shape must
+    NOT be mistaken for one — a single ``**TOKEN**`` with no ``for X``
+    clause leaves ``product_states`` ``None``."""
+
+    text = """
+**CL-Q-02 — Ordinary claim.** Text.
+- **State: VERIFIED.** Products: Q.
+"""
+    records = parse_claim_ledger_text(text, source_name="<test>")
+    assert records["CL-Q-02"].product_states is None
+
+
 @pytest.mark.skipif(not _CLAIMS_DIR.exists(), reason="doctrine-factory claims not present in this checkout")
 class TestRealLedgers:
+    def test_cl_d_funds_is_product_conditional_with_correct_per_product_states(self) -> None:
+        """The real live example that triggered the kimi-k3 finding."""
+
+        paths = [
+            _CLAIMS_DIR / "e2a-claim-ledger.md",
+            _CLAIMS_DIR / "e2b-batch1-claim-ledger.md",
+            _CLAIMS_DIR / "e2b-batch2-claim-ledger.md",
+            _CLAIMS_DIR / "e3a-cf1-resolution.md",
+        ]
+        ledger = load_claim_ledgers(paths)
+        rec = ledger["CL-D-FUNDS"]
+        assert rec.product_states == {"D1": "VERIFIED", "D12": "VERIFIED", "D2": "VERIFIED-WITH-CAVEAT"}
+        assert rec.compilable_for_product("D2") is True
+        assert rec.state_for_product("D2") == "VERIFIED-WITH-CAVEAT"
+        assert rec.state_for_product("D1") == "VERIFIED"
+        assert rec.state_for_product("D12") == "VERIFIED"
+
     def test_all_slice_claims_resolve_and_are_compilable(self) -> None:
         paths = [
             _CLAIMS_DIR / "e2a-claim-ledger.md",

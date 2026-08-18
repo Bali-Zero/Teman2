@@ -129,8 +129,16 @@ _STATE_BULLET_SPAN_RE = re.compile(
     re.MULTILINE | re.DOTALL,
 )
 #: Matches every ``**TOKEN** for PRODUCTLIST`` clause inside a state
-#: bullet — ``PRODUCTLIST`` is a ``/``-joined list like ``D1/D12``.
-_PRODUCT_STATE_CLAUSE_RE = re.compile(r"\*\*(" + "|".join(CLAIM_STATES) + r")\*\*\s+for\s+([A-Za-z0-9/]+)")
+#: bullet — ``PRODUCTLIST`` is a ``/``-joined list like ``D1/D12``. The
+#: optional ``(?:State:\s*)?`` covers the FIRST clause, whose bold span
+#: opens at the bullet's own ``**State: `` prefix (e.g.
+#: ``**State: VERIFIED**``) rather than at the token itself — every
+#: SUBSEQUENT clause in the same line opens its own fresh ``**`` right at
+#: the token (e.g. ``**VERIFIED-WITH-CAVEAT**``), so the prefix is never
+#: present there.
+_PRODUCT_STATE_CLAUSE_RE = re.compile(
+    r"\*\*(?:State:\s*)?(" + "|".join(CLAIM_STATES) + r")\*\*\s+for\s+([A-Za-z0-9/]+)"
+)
 
 
 def _parse_product_conditional_states(bullet_text: str) -> dict[str, str] | None:

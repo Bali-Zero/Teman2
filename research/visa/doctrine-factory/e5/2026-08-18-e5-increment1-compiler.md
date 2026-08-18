@@ -109,7 +109,8 @@ same semantic, zero schema change.
 ## Lint proofs (guilt + innocence)
 
 `backend/tests/scripts/test_visa_engine_compile_claims.py` and
-`backend/tests/services/visa_engine/test_claim_ledger.py`, 25 + 11 = 36 tests, all green:
+`backend/tests/services/visa_engine/test_claim_ledger.py`, 31 + 16 = 47 tests, all green
+(counts after the kimi-k3 review round below — see per-finding test additions):
 
 - **VERIFIED-only**: guilt on CONFLICTING/STALE/UNVERIFIED/unknown-claim_id/zero-claim_ids/
   missing-caveat-note; innocence on VERIFIED, VERIFIED-WITH-CAVEAT-with-note, multiple
@@ -170,4 +171,95 @@ adapter's own logic.
 
 ## Adversarial review
 
-<!-- filled in after the kimi run completes -->
+Kimi K3 refutation run against the diff (`claim_ledger.py` + `compile_claims.py`,
+generator≠grader, ~8 minute timebox, full transcript inspected turn-by-turn). Dispositions:
+
+1. **[P0, CONFIRMED, cured]** `_HEADER_RE`/`_STATE_RE` were not line-anchored — an inline bold
+   reference mid-prose matching the exact `**CL-<id> — <name>.**` shape could open a spurious
+   second header block for an already-open claim, corrupting its boundary. Fixed: both regexes
+   anchored to line start (optional bullet prefix, covers both real header shapes across the
+   four ledger files) — verified identical 90-header match count before/after.
+2. **[P1, CONFIRMED, cured]** Same-file duplicate `claim_id` headers with different states would
+   silently last-wins-overwrite (the corruption vector for finding 1). Fixed: duplicate detection
+   is now unconditional (same-file AND cross-file), raising `ClaimLedgerError` on any state
+   mismatch.
+3. **[P1, CONFIRMED, cured]** `{c["claim_id"] for c in caveats}` raised a bare
+   `KeyError`/`TypeError` on a malformed caveats entry (missing key, non-dict entry, wrong type),
+   contradicting the module's "never a bare traceback for a data problem" contract. Fixed:
+   per-entry type/presence checks emit a `LintFinding` instead.
+4. **[P1, CONFIRMED, cured]** A caveat entry with an empty/missing `note` satisfied the lint —
+   the brief requires the caveat be propagated, not stubbed. Fixed: `note` must be a non-empty
+   (`.strip()`-truthy) string.
+5. **[P0, CONFIRMED, cured]** Live-data finding: `CL-D-FUNDS` (`e2a-claim-ledger.md:229`) has a
+   product-conditional state line on ONE bullet — `VERIFIED` for D1/D12, `VERIFIED-WITH-CAVEAT`
+   for D2 — which `_STATE_RE` alone resolves to plain `VERIFIED` claim-wide (first-token match).
+   A D2 rule citing `CL-D-FUNDS` would then compile with NO caveat requirement, silently
+   bypassing lint 1's core guarantee for exactly the product that needs it. Confirmed by grep
+   this is the ONLY claim across all four loaded ledger files with this shape
+   (`grep -n "for D1/D12" claims/*.md` and a broader multi-state-per-line sweep both return one
+   hit) — raising a hard `ClaimLedgerError` here would therefore deadlock the D1/D12 rules that
+   legitimately need the plain-VERIFIED resolution, so **option (b), per-product state parsing**,
+   was chosen over a hard reject: `ClaimRecord.product_states: dict[str, str] | None` (populated
+   only for this narrow "two-or-more `**TOKEN** for PRODUCTS`" clause shape) +
+   `state_for_product()`/`compilable_for_product()`, and `lint_verified_only` now takes
+   `product_code` and consults the per-product state, not the claim-wide one. Verified: the real
+   26-rule manifest's D2 `el.d2-funds-usd-2000` entry already carried a `CL-D-FUNDS` caveat note
+   defensively (the manifest author had already anticipated this) — the fix makes that caveat
+   actually load-bearing rather than a no-op, and the D1/D12 funds rules (plain VERIFIED for
+   their product) still pass without needing one. Guilt/innocence tests added at both layers:
+   `test_product_conditional_state_line_parses_per_product_map` /
+   `test_cl_d_funds_is_product_conditional_with_correct_per_product_states` (parser), and
+   `test_guilt_product_conditional_claim_without_caveat_is_rejected_for_its_caveated_product` /
+   `test_innocence_product_conditional_claim_passes_for_its_verified_products` /
+   `test_innocence_product_conditional_claim_with_caveat_passes_for_d2` (lint).
+6. **[P1, VERIFIED NOT-AN-ISSUE, no change]** Kimi flagged "overstay lint trusts guards
+   collected inside `not` subtrees" as a possible bypass — e.g. does
+   `not(eq immigration.currently_in_indonesia false)`, sitting as an `all`-sibling of an
+   unguarded `overstay_days` reference, get wrongly credited as a protective onshore guard?
+   Traced `_walk_overstay_gating`: `local_true_facts` is only ever populated from a DIRECT
+   `{"op":"eq","value":true}` child of an `all` node; a `not` node's own `op` is `"not"`, so it
+   is never such a direct child and contributes NOTHING to `all_ancestor_facts` regardless of
+   what its subtree contains — confirmed with a concrete repro
+   (`test_guilt_not_wrapped_negative_onshore_check_does_not_count_as_a_guard`): the sibling
+   overstay leaf is still flagged, i.e. the phrasing is *rejected* (a declined P2 false-positive
+   elsewhere in this review, not a bypass — rejection is the safe direction). Independently,
+   team-lead's Kleene-logic read reaches the same conclusion from the runtime-semantics side:
+   for an OFFSHORE applicant, `immigration.currently_in_indonesia` is `false`, so
+   `not(all[onshore==true, overstay...])` — even in the shape kimi worried about at the
+   *condition-tree* level — evaluates to `not(FALSE) = TRUE` without ever needing
+   `overstay_days`; the only state where it could matter is `onshore == UNKNOWN`, and
+   R-OVERSTAY-PLANNING's own binding ruling already requires the onshore fact to be asked before
+   overstay is ever reached in the interview flow, so that branch resolves before the rule tree
+   is even evaluated with overstay unknown. Two independent readings (structural walker-code
+   trace + runtime Kleene-logic trace) agree: no fix needed. Mirror innocence test added
+   (`test_innocence_real_onshore_guard_still_protects_a_not_wrapped_overstay_leaf`): a REAL
+   onshore guard as an `all`-sibling of a `not`-wrapped overstay leaf still protects it, as
+   expected.
+7. **[P2, declined, out of scope]** `not(eq value:false)` / `neq false` guard phrasings are
+   rejected (false positives, safe) rather than recognized as de-Morgan-equivalent guards —
+   would bite real authoring eventually but is not a hole; declined this increment.
+8. **[P2, declined, out of scope]** The docstring's `known(onshore)`-as-alternative-guard
+   promise is not implemented (and would be semantically wrong if it were — `known` is not
+   `== true`). Documented gap, not fixed.
+9. **[P2, declined, out of scope]** `compile_claims.py` does not enforce the full
+   `compile_pack.py` invariant set (AST depth/node limits, `FACT_LITERAL_KIND_MISMATCH`,
+   "eligibility cannot derive support solely from known/unknown", etc.) — this increment only
+   builds a `Rule`-schema-valid intermediate, not a pack-ready one; those invariants are
+   `compile_pack.py`'s job in a later increment.
+10. **[P2, declined, out of scope]** `manifest` is not dict-checked at the top level before
+    `.get("rules")` — a malformed JSON root (array/scalar) raises `AttributeError` rather than a
+    `LintFinding`.
+11. **[P2, declined, out of scope]** `claim_ids` entries of a non-`str` type (dict/None) raise
+    `TypeError` on `ledger.get(...)` rather than reporting a finding.
+12. **[P2, declined, out of scope]** `--out` write failures (e.g. missing parent directory) are
+    uncaught.
+13. **[P2, declined, out of scope]** `rule_id` uniqueness across manifest entries is not
+    enforced — two entries with the same `rule_id` both compile, ambiguous for downstream pack
+    assembly.
+14. **[P2, declined, out of scope]** `product_code` is a free string with no enum/allow-list
+    validation.
+
+**Net: 2 P0 + 3 P1 confirmed and cured, 1 P1 independently verified as a non-issue (two
+independent readings — walker-code trace and runtime Kleene-logic trace — agree), 8 P2 declined
+as out of scope for this increment's literal brief (VERIFIED-only lint + R-OVERSTAY-PLANNING
+lint + slice rules).**

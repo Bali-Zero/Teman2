@@ -152,6 +152,81 @@ class TestVerifiedOnlyLint:
         )
         assert findings == []
 
+    def test_guilt_product_conditional_claim_without_caveat_is_rejected_for_its_caveated_product(
+        self,
+    ) -> None:
+        """kimi-k3 P0 finding (2026-08-18): CL-D-FUNDS is VERIFIED for
+        D1/D12 but VERIFIED-WITH-CAVEAT for D2 on ONE state line —
+        ``ClaimRecord.state`` alone (first token) would resolve to plain
+        VERIFIED for every product, silently bypassing the caveat
+        requirement for D2. A D2 rule citing it with no caveat must be
+        REJECTED — proving the per-product lookup, not the claim-wide
+        state, is what the lint actually consults."""
+
+        ledger = {
+            "CL-D-FUNDS": ClaimRecord(
+                claim_id="CL-D-FUNDS",
+                state="VERIFIED",
+                header="Financial-proof minima.",
+                backs=(),
+                source_file="<test>",
+                product_states={"D1": "VERIFIED", "D12": "VERIFIED", "D2": "VERIFIED-WITH-CAVEAT"},
+            )
+        }
+        findings = lint_verified_only(
+            rule_id="el.d2-funds",
+            claim_ids=["CL-D-FUNDS"],
+            caveats=[],
+            ledger=ledger,
+            product_code="D2",
+        )
+        assert findings and "no matching caveat note" in findings[0].message
+
+    def test_innocence_product_conditional_claim_passes_for_its_verified_products(self) -> None:
+        """Innocence twin: D1/D12 rules citing the SAME product-conditional
+        claim must pass without needing a caveat — their per-product state
+        is plain VERIFIED, not VERIFIED-WITH-CAVEAT."""
+
+        ledger = {
+            "CL-D-FUNDS": ClaimRecord(
+                claim_id="CL-D-FUNDS",
+                state="VERIFIED",
+                header="Financial-proof minima.",
+                backs=(),
+                source_file="<test>",
+                product_states={"D1": "VERIFIED", "D12": "VERIFIED", "D2": "VERIFIED-WITH-CAVEAT"},
+            )
+        }
+        for product_code in ("D1", "D12"):
+            findings = lint_verified_only(
+                rule_id=f"el.{product_code.lower()}-funds",
+                claim_ids=["CL-D-FUNDS"],
+                caveats=[],
+                ledger=ledger,
+                product_code=product_code,
+            )
+            assert findings == [], f"{product_code} should not require a caveat"
+
+    def test_innocence_product_conditional_claim_with_caveat_passes_for_d2(self) -> None:
+        ledger = {
+            "CL-D-FUNDS": ClaimRecord(
+                claim_id="CL-D-FUNDS",
+                state="VERIFIED",
+                header="Financial-proof minima.",
+                backs=(),
+                source_file="<test>",
+                product_states={"D1": "VERIFIED", "D12": "VERIFIED", "D2": "VERIFIED-WITH-CAVEAT"},
+            )
+        }
+        findings = lint_verified_only(
+            rule_id="el.d2-funds",
+            claim_ids=["CL-D-FUNDS"],
+            caveats=[{"claim_id": "CL-D-FUNDS", "note": "statute delegates the figure; portal hardcodes it"}],
+            ledger=ledger,
+            product_code="D2",
+        )
+        assert findings == []
+
 
 # ---------------------------------------------------------------------------
 # Lint 2 — R-OVERSTAY-PLANNING: guilt + innocence
@@ -235,6 +310,50 @@ class TestOverstayPlanningLint:
 
     def test_innocence_no_overstay_reference_at_all_passes(self) -> None:
         when = {"fact": "intent.purposes", "op": "intersects", "values": ["TOURISM"]}
+        findings = lint_overstay_planning(rule_id="hf.test", when=when)
+        assert findings == []
+
+    def test_guilt_not_wrapped_negative_onshore_check_does_not_count_as_a_guard(self) -> None:
+        """kimi-k3 P1 finding to VERIFY (2026-08-18): does a guard-shaped
+        leaf inside a ``not`` subtree wrongly get credited as protecting a
+        SIBLING overstay reference? ``not(eq onshore false)`` is a
+        de Morgan-equivalent of ``onshore==true`` in ordinary boolean
+        logic, but this walker only ever collects a local_true_fact from a
+        DIRECT ``{"op":"eq","value":True}`` child of an ``all`` node — a
+        ``not`` node is never such a child (its own ``op`` is ``"not"``),
+        so it must contribute NOTHING to ``all_ancestor_facts``. Confirmed
+        by this test: the sibling overstay leaf is still flagged — the
+        walker does not (incorrectly) treat the not-wrapped check as a
+        guard. (This is also why the phrasing is rejected elsewhere as a
+        declined P2 false-positive, not a bypass: it is REJECTED, i.e.
+        safe, never silently accepted.)"""
+
+        when = {
+            "op": "all",
+            "args": [
+                {
+                    "op": "not",
+                    "arg": {"fact": "immigration.currently_in_indonesia", "op": "eq", "value": False},
+                },
+                {"fact": "immigration.overstay_days", "op": "gt", "value": 0},
+            ],
+        }
+        findings = lint_overstay_planning(rule_id="hf.test", when=when)
+        assert findings, "a not-wrapped negative-onshore-check must NOT protect a sibling overstay leaf"
+
+    def test_innocence_real_onshore_guard_still_protects_a_not_wrapped_overstay_leaf(self) -> None:
+        """The mirror case: a REAL onshore guard (a direct true-eq sibling)
+        must still protect an overstay reference even when that reference
+        itself sits inside a ``not`` — the guard is an AND-sibling of the
+        `not` node, so it holds regardless of what's inside the `not`."""
+
+        when = {
+            "op": "all",
+            "args": [
+                {"fact": "immigration.currently_in_indonesia", "op": "eq", "value": True},
+                {"op": "not", "arg": {"fact": "immigration.overstay_days", "op": "eq", "value": 0}},
+            ],
+        }
         findings = lint_overstay_planning(rule_id="hf.test", when=when)
         assert findings == []
 

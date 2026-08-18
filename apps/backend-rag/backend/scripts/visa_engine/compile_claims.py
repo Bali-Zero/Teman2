@@ -369,7 +369,11 @@ def compile_manifest(
         # parse, so a claim problem is never masked by a schema problem).
         report.findings.extend(
             lint_verified_only(
-                rule_id=rule_id, claim_ids=claim_ids, caveats=caveats, ledger=ledger
+                rule_id=rule_id,
+                claim_ids=claim_ids,
+                caveats=caveats,
+                ledger=ledger,
+                product_code=product_code if isinstance(product_code, str) else "<unknown>",
             )
         )
 
