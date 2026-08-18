@@ -15,8 +15,11 @@
 #   * inverting the exit contract            -> 7 of 11 fail
 #   * dropping vercel.json from the paths    -> 1 fails
 #   * fetch failure treated as SKIP          -> 1 fails
-#   * removing the production guard          -> 3 fail  (re-measured 2026-08-18)
+#   * removing the production guard entirely -> 4 fail  (measured 2026-08-18)
 #   * keying it on the literal "main" instead of $PROD_BRANCH -> 2 fail, one in each direction
+#   * dropping the VERCEL_ENV arm, leaving the branch test alone -> 1 fail
+#   * making the guard unconditional (`if true`) -> 11 fail. Recorded because it is the shape a
+#     future "just always build, it is safer" edit would take, and it must not pass quietly.
 #
 #   CORRECTED 2026-08-18, and the wrong version is quoted because it is the reason nobody looked.
 #   This header used to say: removing the `$REF = main` guard fails nothing, the `base == HEAD`
@@ -24,11 +27,11 @@
 #   OUTCOME (main always builds), which is the thing that matters." The first two clauses were
 #   true. The last one was not, and it is the one that got believed. The suite asserted main
 #   always builds in the only two shapes it had: no previous SHA, and a previous SHA equal to
-#   HEAD. Every real production deployment has a previous SHA pointing at an EARLIER commit —
-#   the one shape that was never written down. In it both guards were bypassed and main skipped,
-#   which is what froze balizero.com for three days from 2026-08-15. A mutation that kills
-#   nothing is worth a second look: here it was not redundancy, it was a guard that could not be
-#   reached from the case that mattered, and the note explained the zero away instead of chasing it.
+#   HEAD. It never asserted the shape a production deployment takes once the project has one
+#   behind it — a previous SHA pointing at an EARLIER commit. There both guards were bypassed and
+#   main skipped, which is what froze balizero.com for three days from 2026-08-15. A mutation that
+#   kills nothing is worth a second look: here it was not redundancy, it was a guard unreachable
+#   from the case that mattered, and the note explained the zero away instead of chasing it.
 #   * grep exiting >=2                       -> 0 fail. Genuinely UNCOVERED: this corpus has no
 #     way to make grep itself error. The branch is written fail-open and reviewed, not proven.
 #   * pointer reverted to a bare invocation  -> 4 fail, every one as `rc=127 (DEPLOYMENT ERROR)`.
@@ -49,6 +52,12 @@ set -uo pipefail
 
 SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../ci" && pwd)/vercel_should_build.sh"
 [ -f "$SCRIPT" ] || { echo "FATAL: script not found at $SCRIPT"; exit 2; }
+
+# The guard reads VERCEL_ENV, so the corpus must own its value rather than inherit one. A shell
+# that happens to export VERCEL_ENV=production would turn every SKIP case green-to-red at once and
+# the failure would look like a code defect. Empty is neither "production" nor unset-and-guessed;
+# per-case assignments below still win, because the caller's environment beats this default.
+export VERCEL_ENV=
 
 PASS=0; FAIL=0
 ROOT=$(mktemp -d)
@@ -177,6 +186,19 @@ PROD_PREV=$(git -C "$WORK" rev-parse HEAD)
 commit "docs/release-note.md" "docs only, on the configured production branch"
 VERCEL_GIT_PROD_BRANCH=release VERCEL_GIT_COMMIT_REF=release VERCEL_GIT_PREVIOUS_SHA="$PROD_PREV" \
   run BUILD "the configured production branch gets the guard, whatever it is called"
+
+# The ref is not the environment. `vercel --prod` promotes whatever branch it is pointed at, and
+# that deployment is production however its ref reads — so a branch test alone can skip a real
+# production build. VERCEL_ENV is the documented variable for this question and answers it
+# directly. Raised by an adversarial review of the first version of this fix, which keyed on the
+# branch alone; the case below is that review's own repro.
+VERCEL_ENV=production VERCEL_GIT_COMMIT_REF=release VERCEL_GIT_PREVIOUS_SHA="$PROD_PREV" \
+  run BUILD "VERCEL_ENV=production on a NON-production branch (vercel --prod)"
+
+# INNOCENCE for that arm: a preview is still a preview, and a docs-only preview still skips.
+# Without this, keying on the environment could quietly become "always build".
+VERCEL_ENV=preview VERCEL_GIT_COMMIT_REF=release VERCEL_GIT_PREVIOUS_SHA="$PROD_PREV" \
+  run SKIP "VERCEL_ENV=preview, docs-only delta -> still skips"
 git -C "$WORK" checkout -q main
 
 echo
