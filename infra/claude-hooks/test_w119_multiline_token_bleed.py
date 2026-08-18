@@ -38,6 +38,19 @@ is fixed the same way; `WT_REMOVE_GIT_RE` likewise.
 Fix: confine the inter-token separator inside all three repeated groups to
 same-line whitespace (`[ \\t]+`, no `\\n`) instead of `\\s+`.
 
+NOT VACUOUS — verified by hand, not assumed. Each of the three "innocence"
+cases below (`_rm_bleed_case`, `_cpmv_bleed_case`, `_wt_remove_bleed_case`) was
+re-run with `git stash push -- infra/claude-hooks/worktree_isolation.py`
+(reverting ONLY the regex fix, corpus untouched) and confirmed to FAIL against
+that pre-fix hook — 2/3 on the first draft, in fact: the `cp`/`mv` repro
+originally had a trailing line after the `cd` target, and `_extract_write_targets`
+takes only the LAST swept token (`toks[-1]`) as the destination, so that extra
+line supplied a different (implausible, filtered-out) final token and the case
+passed for the wrong reason. Fixed by ending the repro right at the bled-in
+`cd` target. If you are tempted to trim these assertions as redundant someday:
+they are not — each one is a REAL guard against a REAL regex, verified to bite
+before the fix existed, not a mirror of the fix's own logic.
+
 Run:  python3 infra/claude-hooks/test_w119_multiline_token_bleed.py
       pytest infra/claude-hooks/test_w119_multiline_token_bleed.py -q
 """
