@@ -41,6 +41,43 @@ Two hard lints, both compile errors (never warnings):
    which product/claim the rule belongs to — it is a standing invariant
    for every rule this compiler ever emits, not a per-rule opt-in.
 
+E5 increment 2 (2026-08-18) adds two more hard lints, each motivated by a
+real defect confirmed in the active pack ``rulepack-prod-007.source.json``:
+
+3. **UNSATISFIABLE-CONDITION.** ``el.e33e.deposit-income-basis`` is
+   logically unsatisfiable: brute-force over the boolean abstraction (each
+   *distinct* leaf condition — by canonical-JSON identity — treated as an
+   independent atom) finds zero of its 64 assignments (6 distinct leaves)
+   that satisfy the ``when``. Treating identical leaves as the SAME atom is
+   what makes the contradiction visible at all — E33E's outer ``all``
+   re-asserts ``bank_deposit_usd/at_state_bank/in_own_name/
+   passive_monthly_income_usd`` as a plain conjunction while its inner
+   branch demands their XOR, and only sharing the atom across both
+   occurrences lets brute-force see that. This check is sound for
+   UNSAT-by-*structure* (independent atoms is the most permissive possible
+   reading: if even that has no satisfying assignment, the rule can never
+   fire under any stricter, arithmetic-aware semantics either) but
+   deliberately blind to *arithmetic* contradictions — e.g. it cannot see
+   that ``x > 5`` and ``x < 3`` are the same variable and treats them as
+   two unrelated atoms. Do not extend this into an arithmetic solver; that
+   is a different, much harder tool. Guarded: a ``when`` with more than 20
+   distinct leaves is not brute-forced (2**20 is already over a million
+   assignments per rule) — the compiler emits an explicit
+   "satisfiability not checked (N leaves > 20)" report note instead of
+   silently skipping.
+
+4. **VACUOUS-RULE.** ``el.e33g.income-60k-manual`` claims (by name) to
+   gate on income but its ``when`` is the same remote-work block
+   literally duplicated twice — it references zero income facts, and the
+   literal ``60000`` appears nowhere in the pack. Two purely mechanical
+   checks (never rule-name/intent inference — that is form, not entity):
+   (a) duplicate-subtree: an ``all``/``any`` node with two
+   structurally-identical (canonical-JSON-equal) children is a compile
+   error — the duplication itself is the smell; (b) an OPTIONAL manifest
+   entry field ``must_reference_facts: [fact paths]`` lets an author
+   assert "this rule is about fact X" and have the compiler prove every
+   listed fact actually appears in the derived ``required_facts``.
+
 Usage::
 
     PYTHONPATH=. python -m backend.scripts.visa_engine.compile_claims \\
@@ -179,7 +216,11 @@ def lint_verified_only(
 
     findings: list[LintFinding] = []
     if not claim_ids:
-        findings.append(LintFinding(rule_id, "declares zero claim_ids — every compiled rule must be claim-backed"))
+        findings.append(
+            LintFinding(
+                rule_id, "declares zero claim_ids — every compiled rule must be claim-backed"
+            )
+        )
         return findings
 
     caveated_claim_ids: set[str] = set()
@@ -190,7 +231,9 @@ def lint_verified_only(
         cid = caveat.get("claim_id")
         note = caveat.get("note")
         if not isinstance(cid, str) or not cid:
-            findings.append(LintFinding(rule_id, f"caveats[{i}] has a missing/empty claim_id: {caveat!r}"))
+            findings.append(
+                LintFinding(rule_id, f"caveats[{i}] has a missing/empty claim_id: {caveat!r}")
+            )
             continue
         if not isinstance(note, str) or not note.strip():
             findings.append(
@@ -313,6 +356,238 @@ def lint_overstay_planning(*, rule_id: str, when: dict[str, Any]) -> list[LintFi
 
 
 # ---------------------------------------------------------------------------
+# Lint 3: UNSATISFIABLE-CONDITION
+# ---------------------------------------------------------------------------
+
+#: Above this many DISTINCT leaves, 2**N brute-force assignments becomes
+#: too expensive to run per-rule at compile time (2**21 already exceeds two
+#: million). This is a declared limit, not a silent skip — the compiler
+#: reports the exact leaf count in a report note when it is hit.
+_MAX_LEAVES_FOR_SAT_CHECK = 20
+
+
+def _canonical_key(node: Any) -> str:
+    """Canonical-JSON identity for a condition node — the basis on which
+    two leaves (Lint 3) or two subtrees (Lint 4) are considered "the same".
+    """
+
+    return json.dumps(node, sort_keys=True)
+
+
+def _safe_args(condition: dict[str, Any]) -> list[Any]:
+    """``condition.get("args", [])`` is not safe on its own: a manifest can
+    carry the KEY with a JSON ``null`` (or any non-list) value, in which
+    case the default never applies and iterating the result raises —
+    exactly the "bare traceback for a data problem" this module's own
+    docstring forbids (kimi-k3 finding, 2026-08-18). Malformed ``args`` is
+    treated as "no children" here; ``Rule.model_validate`` (later in
+    ``compile_manifest``) is what actually rejects the malformed shape.
+    """
+
+    args = condition.get("args")
+    return args if isinstance(args, list) else []
+
+
+#: A compiled boolean "shape" node: ``("const", bool)`` for a fixed truth
+#: value, ``("leaf", canonical_key)`` for a boolean atom, or
+#: ``("all"|"any", tuple[_Shape, ...])`` / ``("not", _Shape)`` for a
+#: combinator. Compiling `when` into this form ONCE means the brute-force
+#: loop below evaluates plain tuples/strings — no `json.dumps` re-run per
+#: leaf per assignment (kimi-k3 perf finding, 2026-08-18: the naive
+#: re-serialize-every-lookup approach did ~2**20 x leaf-count `json.dumps`
+#: calls at exactly the boundary this lint is documented to still check).
+_Shape = tuple[Any, ...]
+
+
+def _compile_boolean_shape(condition: Any, leaves: dict[str, Any]) -> _Shape:
+    """Compile ``condition`` into a ``_Shape`` AND collect every distinct
+    leaf (by canonical-JSON identity) into ``leaves`` — same traversal that
+    used to be two separate functions, now one pass so collection and
+    evaluation can never disagree about what counts as a leaf.
+    """
+
+    if not isinstance(condition, dict):
+        # Malformed/non-dict node: never fabricate an UNSAT finding out of
+        # a shape this walker doesn't understand — `Rule.model_validate`
+        # owns rejecting it.
+        return ("const", True)
+
+    op = condition.get("op")
+    if op in ("all", "any"):
+        children = tuple(_compile_boolean_shape(a, leaves) for a in _safe_args(condition))
+        return (op, children)
+    if op == "not":
+        return ("not", _compile_boolean_shape(condition.get("arg"), leaves))
+
+    key = _canonical_key(condition)
+    leaves[key] = condition
+    return ("leaf", key)
+
+
+def _evaluate_boolean_shape(shape: _Shape, assignment: dict[str, bool]) -> bool:
+    """Evaluate a pre-compiled ``_Shape`` under a full leaf assignment —
+    pure structural boolean algebra (AND/OR/NOT), no arithmetic, no fact
+    semantics.
+    """
+
+    kind = shape[0]
+    if kind == "const":
+        return bool(shape[1])
+    if kind == "all":
+        return all(_evaluate_boolean_shape(c, assignment) for c in shape[1])
+    if kind == "any":
+        return any(_evaluate_boolean_shape(c, assignment) for c in shape[1])
+    if kind == "not":
+        return not _evaluate_boolean_shape(shape[1], assignment)
+    return assignment[shape[1]]  # kind == "leaf"
+
+
+def lint_unsatisfiable_condition(
+    *, rule_id: str, when: dict[str, Any]
+) -> tuple[list[LintFinding], str | None]:
+    """UNSATISFIABLE-CONDITION lint (see module docstring, Lint 3).
+
+    Returns ``(findings, skip_note)`` — ``skip_note`` is set (and
+    ``findings`` empty) when the leaf count exceeds
+    ``_MAX_LEAVES_FOR_SAT_CHECK``: the check was NOT run, and that must be
+    visible in the report rather than silently indistinguishable from
+    "checked and satisfiable".
+
+    A `when` with ZERO distinct leaves (e.g. ``{"op": "any", "args": []}``)
+    is still fully evaluated, not short-circuited as trivially satisfiable
+    — an empty ``any`` is Kleene-FALSE and genuinely unsatisfiable, and an
+    early "no leaves -> pass" return would have missed exactly that
+    (kimi-k3 finding, 2026-08-18). The brute-force loop below handles this
+    for free: 0 leaves means ``2**0 == 1`` assignment (the empty one), and
+    that single evaluation IS the answer.
+    """
+
+    leaves: dict[str, Any] = {}
+    shape = _compile_boolean_shape(when, leaves)
+
+    if len(leaves) > _MAX_LEAVES_FOR_SAT_CHECK:
+        return [], (
+            f"{rule_id}: satisfiability not checked "
+            f"({len(leaves)} leaves > {_MAX_LEAVES_FOR_SAT_CHECK})"
+        )
+
+    keys = list(leaves.keys())
+    total = 1 << len(keys)
+    for bits in range(total):
+        assignment = {key: bool((bits >> i) & 1) for i, key in enumerate(keys)}
+        if _evaluate_boolean_shape(shape, assignment):
+            return [], None
+
+    return (
+        [
+            LintFinding(
+                rule_id,
+                "condition is UNSATISFIABLE — brute-force over "
+                f"{len(keys)} distinct leaf condition(s) (each treated as an "
+                f"independent boolean atom) finds zero of {total} assignments "
+                "that satisfy `when`; this rule can never fire. NOTE: this "
+                "check is sound for UNSAT-by-structure but blind to "
+                "arithmetic contradictions between different leaves (e.g. "
+                "x>5 AND x<3) — if this fired, the tree really is "
+                "structurally self-contradictory, not merely "
+                "arithmetic-narrow.",
+            )
+        ],
+        None,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Lint 4: VACUOUS-RULE
+# ---------------------------------------------------------------------------
+
+
+def _find_duplicate_subtrees(condition: Any, rule_id: str) -> list[LintFinding]:
+    """Mechanical duplicate-subtree detection (see module docstring, Lint 4a):
+    an ``all``/``any`` node with two structurally-identical
+    (canonical-JSON-equal) children is a compile error — the duplication
+    itself is the smell, independent of what the rule is named or what it
+    claims to be about.
+    """
+
+    findings: list[LintFinding] = []
+    if not isinstance(condition, dict):
+        return findings
+
+    op = condition.get("op")
+    if op in ("all", "any"):
+        args = _safe_args(condition)
+        seen: dict[str, int] = {}
+        for i, arg in enumerate(args):
+            key = _canonical_key(arg)
+            first_index = seen.get(key)
+            if first_index is not None:
+                findings.append(
+                    LintFinding(
+                        rule_id,
+                        f"{op!r} node has two structurally identical children "
+                        f"(args[{first_index}] == args[{i}]) — a duplicated "
+                        "child adds no logical content beyond a single copy "
+                        "(VACUOUS-RULE): if the intent was two DIFFERENT "
+                        "conditions, one of them was never actually written",
+                    )
+                )
+            else:
+                seen[key] = i
+        for arg in args:
+            findings.extend(_find_duplicate_subtrees(arg, rule_id))
+    elif op == "not":
+        findings.extend(_find_duplicate_subtrees(condition.get("arg"), rule_id))
+
+    return findings
+
+
+def lint_duplicate_subtree(*, rule_id: str, when: dict[str, Any]) -> list[LintFinding]:
+    """VACUOUS-RULE lint, part (a): duplicate-subtree detection (see module
+    docstring, Lint 4).
+    """
+
+    return _find_duplicate_subtrees(when, rule_id)
+
+
+def lint_must_reference_facts(
+    *, rule_id: str, must_reference_facts: list[str], derived_facts: list[str]
+) -> list[LintFinding]:
+    """VACUOUS-RULE lint, part (b): the OPTIONAL manifest field
+    ``must_reference_facts`` (see module docstring, Lint 4). An author
+    declares "this rule is about fact X"; the compiler proves every listed
+    fact actually appears in the ``when``-derived ``required_facts`` — a
+    mechanical proof, never an inference from the rule's name or claim_ids.
+    """
+
+    findings: list[LintFinding] = []
+    derived_set = set(derived_facts)
+    for i, fact in enumerate(must_reference_facts):
+        if not isinstance(fact, str):
+            # A non-string (and possibly unhashable, e.g. a dict/list)
+            # entry must never crash `fact not in derived_set` — that is
+            # exactly the bare-traceback-on-a-data-problem contract this
+            # module's own docstring forbids (kimi-review-adjacent finding,
+            # 2026-08-18: team-lead's parallel gate on this diff).
+            findings.append(
+                LintFinding(rule_id, f"must_reference_facts[{i}] is not a string: {fact!r}")
+            )
+            continue
+        if fact not in derived_set:
+            findings.append(
+                LintFinding(
+                    rule_id,
+                    f"manifest entry declares must_reference_facts includes "
+                    f"{fact!r} but the rule's condition tree never references "
+                    f"it (derived required_facts: {sorted(derived_set)!r}) — "
+                    "VACUOUS-RULE: the rule claims to be about a fact it "
+                    "never actually checks",
+                )
+            )
+    return findings
+
+
+# ---------------------------------------------------------------------------
 # Compiler entrypoint
 # ---------------------------------------------------------------------------
 
@@ -321,6 +596,10 @@ class CompilationReport:
     def __init__(self) -> None:
         self.findings: list[LintFinding] = []
         self.compiled: list[CompiledEntry] = []
+        #: Declared-limit notes (never silent) — e.g. Lint 3's
+        #: satisfiability-not-checked skip when a `when` has too many
+        #: distinct leaves to brute-force.
+        self.notes: list[str] = []
 
     @property
     def ok(self) -> bool:
@@ -334,6 +613,10 @@ class CompilationReport:
             lines.append(f"FAILED — {len(self.findings)} finding(s):")
             for f in self.findings:
                 lines.append(f"  - {f}")
+        if self.notes:
+            lines.append(f"NOTES — {len(self.notes)} declared-limit note(s):")
+            for note in self.notes:
+                lines.append(f"  - {note}")
         return "\n".join(lines)
 
 
@@ -345,12 +628,16 @@ def compile_manifest(
 
     entries = manifest.get("rules")
     if not isinstance(entries, list) or not entries:
-        report.findings.append(LintFinding("<manifest>", "manifest.rules must be a non-empty array"))
+        report.findings.append(
+            LintFinding("<manifest>", "manifest.rules must be a non-empty array")
+        )
         return report
 
     for entry in entries:
         if not isinstance(entry, dict):
-            report.findings.append(LintFinding("<manifest>", f"manifest entry is not an object: {entry!r}"))
+            report.findings.append(
+                LintFinding("<manifest>", f"manifest entry is not an object: {entry!r}")
+            )
             continue
 
         rule_src = entry.get("rule")
@@ -381,6 +668,15 @@ def compile_manifest(
         if isinstance(when, dict):
             report.findings.extend(lint_overstay_planning(rule_id=rule_id, when=when))
 
+            # Lint 3 — UNSATISFIABLE-CONDITION.
+            unsat_findings, skip_note = lint_unsatisfiable_condition(rule_id=rule_id, when=when)
+            report.findings.extend(unsat_findings)
+            if skip_note is not None:
+                report.notes.append(skip_note)
+
+            # Lint 4a — VACUOUS-RULE: duplicate-subtree detection.
+            report.findings.extend(lint_duplicate_subtree(rule_id=rule_id, when=when))
+
         # Derive required_facts from `when` — never trust a manifest-supplied
         # value (mirrors compile_pack.py's compiler-level invariant, applied
         # here at authoring time instead of at pack-assembly time). Parse
@@ -393,8 +689,34 @@ def compile_manifest(
             parsed_when = parse_condition(when)
             derived_facts = sorted(collect_fact_paths(parsed_when))
         except (ValidationError, ValueError, TypeError) as exc:
-            report.findings.append(LintFinding(rule_id, f"condition tree could not be parsed: {exc}"))
+            report.findings.append(
+                LintFinding(rule_id, f"condition tree could not be parsed: {exc}")
+            )
             continue
+
+        # Lint 4b — VACUOUS-RULE: optional must_reference_facts assertion.
+        # Absent (key missing, or explicit JSON null) means "not declared" —
+        # anything else that isn't a list is malformed and must be flagged,
+        # never silently coerced to "not declared" (kimi-k3 finding,
+        # 2026-08-18: `entry.get(...) or []` previously swallowed falsy-but-
+        # present values like `""`/`0` as if the field were simply absent).
+        raw_must_reference_facts = entry.get("must_reference_facts")
+        if raw_must_reference_facts is None:
+            pass
+        elif isinstance(raw_must_reference_facts, list):
+            report.findings.extend(
+                lint_must_reference_facts(
+                    rule_id=rule_id,
+                    must_reference_facts=raw_must_reference_facts,
+                    derived_facts=derived_facts,
+                )
+            )
+        else:
+            report.findings.append(
+                LintFinding(
+                    rule_id, "manifest entry's must_reference_facts must be a list when present"
+                )
+            )
 
         rule_payload = {**rule_src, "required_facts": derived_facts}
         try:
@@ -411,7 +733,9 @@ def compile_manifest(
             continue
 
         report.compiled.append(
-            CompiledEntry(product_code=product_code, claim_ids=claim_ids, caveats=caveats, rule=rule)
+            CompiledEntry(
+                product_code=product_code, claim_ids=claim_ids, caveats=caveats, rule=rule
+            )
         )
 
     return report
@@ -423,9 +747,13 @@ def load_manifest(path: Path) -> dict[str, Any]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--claims", nargs="+", required=True, type=Path, help="claim ledger markdown file(s)")
+    parser.add_argument(
+        "--claims", nargs="+", required=True, type=Path, help="claim ledger markdown file(s)"
+    )
     parser.add_argument("--manifest", required=True, type=Path, help="rule-authoring manifest JSON")
-    parser.add_argument("--out", type=Path, default=None, help="write compiled rules JSON here on success")
+    parser.add_argument(
+        "--out", type=Path, default=None, help="write compiled rules JSON here on success"
+    )
     args = parser.parse_args(argv)
 
     try:

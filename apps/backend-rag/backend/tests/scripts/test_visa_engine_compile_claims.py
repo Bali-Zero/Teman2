@@ -14,13 +14,26 @@ from pathlib import Path
 
 from backend.scripts.visa_engine.compile_claims import (
     compile_manifest,
+    lint_duplicate_subtree,
+    lint_must_reference_facts,
     lint_overstay_planning,
+    lint_unsatisfiable_condition,
     lint_verified_only,
     load_claim_ledgers,
     load_manifest,
     main,
 )
 from backend.services.visa_engine.claim_ledger import ClaimRecord
+
+_PACK_PATH = (
+    Path(__file__).resolve().parents[3]
+    / "backend"
+    / "services"
+    / "visa_engine"
+    / "contracts"
+    / "packs"
+    / "rulepack-prod-007.source.json"
+)
 
 _REPO_ROOT = Path(__file__).resolve().parents[5]
 _CLAIMS_DIR = _REPO_ROOT / "research" / "visa" / "doctrine-factory" / "claims"
@@ -36,7 +49,9 @@ _LEDGER_FILES = [
 
 
 def _rec(claim_id: str, state: str) -> ClaimRecord:
-    return ClaimRecord(claim_id=claim_id, state=state, header="test", backs=(), source_file="<test>")
+    return ClaimRecord(
+        claim_id=claim_id, state=state, header="test", backs=(), source_file="<test>"
+    )
 
 
 def _minimal_rule(rule_id: str = "el.test-rule", *, when: dict | None = None) -> dict:
@@ -48,7 +63,11 @@ def _minimal_rule(rule_id: str = "el.test-rule", *, when: dict | None = None) ->
         "priority": 100,
         "valid_period": {"from": "2026-07-24T00:00:00Z", "to": None},
         "when": when or {"fact": "intent.purposes", "op": "intersects", "values": ["FAMILY"]},
-        "effect": {"type": "SUPPORT", "reason_code": "PURPOSE_PRODUCT_MATCH", "covered_purposes": ["FAMILY"]},
+        "effect": {
+            "type": "SUPPORT",
+            "reason_code": "PURPOSE_PRODUCT_MATCH",
+            "covered_purposes": ["FAMILY"],
+        },
         "on_unknown": "NEEDS_INPUT",
         "source_refs": ["570f2bc4-5120-561f-90ba-58fcd9507514"],
         "explanation_key": f"explain.{rule_id}",
@@ -73,21 +92,29 @@ class TestVerifiedOnlyLint:
 
     def test_guilt_stale_claim_is_rejected(self) -> None:
         ledger = {"CL-X-01": _rec("CL-X-01", "STALE")}
-        findings = lint_verified_only(rule_id="el.x", claim_ids=["CL-X-01"], caveats=[], ledger=ledger)
+        findings = lint_verified_only(
+            rule_id="el.x", claim_ids=["CL-X-01"], caveats=[], ledger=ledger
+        )
         assert findings and "STALE" in findings[0].message
 
     def test_guilt_unverified_claim_is_rejected(self) -> None:
         ledger = {"CL-X-01": _rec("CL-X-01", "UNVERIFIED")}
-        findings = lint_verified_only(rule_id="el.x", claim_ids=["CL-X-01"], caveats=[], ledger=ledger)
+        findings = lint_verified_only(
+            rule_id="el.x", claim_ids=["CL-X-01"], caveats=[], ledger=ledger
+        )
         assert findings and "UNVERIFIED" in findings[0].message
 
     def test_guilt_unknown_claim_id_is_rejected(self) -> None:
-        findings = lint_verified_only(rule_id="el.x", claim_ids=["CL-GHOST-01"], caveats=[], ledger={})
+        findings = lint_verified_only(
+            rule_id="el.x", claim_ids=["CL-GHOST-01"], caveats=[], ledger={}
+        )
         assert findings and "does not resolve" in findings[0].message
 
     def test_guilt_caveat_with_verified_with_caveat_but_no_note(self) -> None:
         ledger = {"CL-X-01": _rec("CL-X-01", "VERIFIED-WITH-CAVEAT")}
-        findings = lint_verified_only(rule_id="el.x", claim_ids=["CL-X-01"], caveats=[], ledger=ledger)
+        findings = lint_verified_only(
+            rule_id="el.x", claim_ids=["CL-X-01"], caveats=[], ledger=ledger
+        )
         assert findings and "no matching caveat note" in findings[0].message
 
     def test_guilt_zero_claim_ids(self) -> None:
@@ -129,7 +156,9 @@ class TestVerifiedOnlyLint:
 
     def test_innocence_verified_claim_passes(self) -> None:
         ledger = {"CL-X-01": _rec("CL-X-01", "VERIFIED")}
-        findings = lint_verified_only(rule_id="el.x", claim_ids=["CL-X-01"], caveats=[], ledger=ledger)
+        findings = lint_verified_only(
+            rule_id="el.x", claim_ids=["CL-X-01"], caveats=[], ledger=ledger
+        )
         assert findings == []
 
     def test_innocence_verified_with_caveat_and_matching_note_passes(self) -> None:
@@ -221,7 +250,12 @@ class TestVerifiedOnlyLint:
         findings = lint_verified_only(
             rule_id="el.d2-funds",
             claim_ids=["CL-D-FUNDS"],
-            caveats=[{"claim_id": "CL-D-FUNDS", "note": "statute delegates the figure; portal hardcodes it"}],
+            caveats=[
+                {
+                    "claim_id": "CL-D-FUNDS",
+                    "note": "statute delegates the figure; portal hardcodes it",
+                }
+            ],
             ledger=ledger,
             product_code="D2",
         )
@@ -333,13 +367,19 @@ class TestOverstayPlanningLint:
             "args": [
                 {
                     "op": "not",
-                    "arg": {"fact": "immigration.currently_in_indonesia", "op": "eq", "value": False},
+                    "arg": {
+                        "fact": "immigration.currently_in_indonesia",
+                        "op": "eq",
+                        "value": False,
+                    },
                 },
                 {"fact": "immigration.overstay_days", "op": "gt", "value": 0},
             ],
         }
         findings = lint_overstay_planning(rule_id="hf.test", when=when)
-        assert findings, "a not-wrapped negative-onshore-check must NOT protect a sibling overstay leaf"
+        assert findings, (
+            "a not-wrapped negative-onshore-check must NOT protect a sibling overstay leaf"
+        )
 
     def test_innocence_real_onshore_guard_still_protects_a_not_wrapped_overstay_leaf(self) -> None:
         """The mirror case: a REAL onshore guard (a direct true-eq sibling)
@@ -359,6 +399,417 @@ class TestOverstayPlanningLint:
 
 
 # ---------------------------------------------------------------------------
+# Lint 3 — UNSATISFIABLE-CONDITION: guilt + innocence
+# ---------------------------------------------------------------------------
+
+#: Copied verbatim from ``el.e33e.deposit-income-basis`` in
+#: ``backend/services/visa_engine/contracts/packs/rulepack-prod-007.source.json``
+#: (2026-08-18) — the real E5-increment-2 defect this lint exists to catch.
+#: The outer `all` re-asserts the same four deposit/state-bank/own-name/
+#: passive-income leaves that the inner `any` demands an XOR of, so the
+#: whole tree is unsatisfiable once identical leaves are treated as the
+#: SAME boolean atom.
+_E33E_DEPOSIT_INCOME_BASIS_WHEN: dict = {
+    "op": "all",
+    "args": [
+        {
+            "op": "all",
+            "args": [
+                {"op": "intersects", "fact": "intent.purposes", "values": ["RETIREMENT"]},
+                {"op": "gte", "fact": "derived.age_years", "value": 55},
+                {
+                    "op": "any",
+                    "args": [
+                        {
+                            "op": "all",
+                            "args": [
+                                {
+                                    "op": "all",
+                                    "args": [
+                                        {
+                                            "op": "gte",
+                                            "fact": "secondhome.bank_deposit_usd",
+                                            "value": 50000,
+                                        },
+                                        {
+                                            "op": "eq",
+                                            "fact": "secondhome.bank_deposit_at_state_bank",
+                                            "value": True,
+                                        },
+                                        {
+                                            "op": "eq",
+                                            "fact": "secondhome.bank_deposit_in_own_name",
+                                            "value": True,
+                                        },
+                                    ],
+                                },
+                                {
+                                    "op": "not",
+                                    "arg": {
+                                        "op": "gte",
+                                        "fact": "secondhome.passive_monthly_income_usd",
+                                        "value": 3000,
+                                    },
+                                },
+                            ],
+                        },
+                        {
+                            "op": "all",
+                            "args": [
+                                {
+                                    "op": "not",
+                                    "arg": {
+                                        "op": "all",
+                                        "args": [
+                                            {
+                                                "op": "gte",
+                                                "fact": "secondhome.bank_deposit_usd",
+                                                "value": 50000,
+                                            },
+                                            {
+                                                "op": "eq",
+                                                "fact": "secondhome.bank_deposit_at_state_bank",
+                                                "value": True,
+                                            },
+                                            {
+                                                "op": "eq",
+                                                "fact": "secondhome.bank_deposit_in_own_name",
+                                                "value": True,
+                                            },
+                                        ],
+                                    },
+                                },
+                                {
+                                    "op": "gte",
+                                    "fact": "secondhome.passive_monthly_income_usd",
+                                    "value": 3000,
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        },
+        {
+            "op": "all",
+            "args": [
+                {"op": "intersects", "fact": "intent.purposes", "values": ["RETIREMENT"]},
+                {"op": "gte", "fact": "derived.age_years", "value": 55},
+                {
+                    "op": "all",
+                    "args": [
+                        {"op": "gte", "fact": "secondhome.bank_deposit_usd", "value": 50000},
+                        {
+                            "op": "eq",
+                            "fact": "secondhome.bank_deposit_at_state_bank",
+                            "value": True,
+                        },
+                        {"op": "eq", "fact": "secondhome.bank_deposit_in_own_name", "value": True},
+                    ],
+                },
+                {"op": "gte", "fact": "secondhome.passive_monthly_income_usd", "value": 3000},
+            ],
+        },
+    ],
+}
+
+
+class TestUnsatisfiableConditionLint:
+    def test_guilt_e33e_deposit_income_basis_is_unsatisfiable(self) -> None:
+        """The real E33E defect: brute-force over 6 distinct leaves finds
+        zero of 64 assignments that satisfy `when`."""
+
+        findings, skip_note = lint_unsatisfiable_condition(
+            rule_id="el.e33e.deposit-income-basis", when=_E33E_DEPOSIT_INCOME_BASIS_WHEN
+        )
+        assert skip_note is None
+        assert len(findings) == 1
+        assert "UNSATISFIABLE" in findings[0].message
+        assert "6 distinct leaf" in findings[0].message
+        assert "64 assignments" in findings[0].message
+
+    def test_guilt_e33e_matches_pack_on_disk(self) -> None:
+        """Anti-drift: the frozen fixture above must still equal the live
+        pack's `when` — if the pack changes, this test forces the fixture
+        (and the finding it proves) to be re-verified, not silently stale."""
+
+        pack = json.loads(_PACK_PATH.read_text(encoding="utf-8"))
+        rule = next(r for r in pack["rules"] if r["rule_id"] == "el.e33e.deposit-income-basis")
+        assert rule["when"] == _E33E_DEPOSIT_INCOME_BASIS_WHEN
+
+    def test_innocence_satisfiable_condition_passes(self) -> None:
+        when = {
+            "op": "all",
+            "args": [
+                {"op": "intersects", "fact": "intent.purposes", "values": ["RETIREMENT"]},
+                {"op": "gte", "fact": "derived.age_years", "value": 55},
+            ],
+        }
+        findings, skip_note = lint_unsatisfiable_condition(rule_id="hf.test", when=when)
+        assert findings == []
+        assert skip_note is None
+
+    def test_guilt_simple_contradiction_by_shared_leaf_is_caught(self) -> None:
+        """A minimal `A AND NOT A` (same leaf, negated) must be flagged —
+        sanity check the shared-atom mechanism independent of E33E's size.
+
+        (Renamed from a stray "innocence" prefix — kimi-k3 finding,
+        2026-08-18: the assertion was always correct, the test's own
+        guilt/innocence naming convention was violated by the name.)
+        """
+
+        leaf = {"op": "eq", "fact": "immigration.currently_in_indonesia", "value": True}
+        when = {"op": "all", "args": [leaf, {"op": "not", "arg": leaf}]}
+        findings, skip_note = lint_unsatisfiable_condition(rule_id="hf.test", when=when)
+        assert skip_note is None
+        assert findings and "UNSATISFIABLE" in findings[0].message
+
+    def test_innocence_no_leaves_passes(self) -> None:
+        findings, skip_note = lint_unsatisfiable_condition(
+            rule_id="hf.test", when={"op": "all", "args": []}
+        )
+        assert findings == []
+        assert skip_note is None
+
+    def test_guilt_empty_any_is_unsatisfiable(self) -> None:
+        """kimi-k3 finding (2026-08-18): `{"op": "any", "args": []}` is
+        Kleene-FALSE (an `any` of nothing has nothing to make it true) —
+        genuinely unsatisfiable, and has ZERO leaves. The original
+        `if not leaves: return [], None` early-return would have missed
+        this entirely; the fix removed that special case so the general
+        brute-force (with `2**0 == 1` assignment) evaluates it for real."""
+
+        findings, skip_note = lint_unsatisfiable_condition(
+            rule_id="hf.empty-any", when={"op": "any", "args": []}
+        )
+        assert skip_note is None
+        assert findings and "UNSATISFIABLE" in findings[0].message
+
+    def test_guilt_empty_any_nested_under_all_with_other_leaves_is_unsatisfiable(self) -> None:
+        """The same defect nested one level down, alongside a real leaf —
+        confirms the fix isn't special-casing "when IS exactly empty-any"."""
+
+        when = {
+            "op": "all",
+            "args": [
+                {"fact": "intent.purposes", "op": "intersects", "values": ["TOURISM"]},
+                {"op": "any", "args": []},
+            ],
+        }
+        findings, skip_note = lint_unsatisfiable_condition(rule_id="hf.test", when=when)
+        assert skip_note is None
+        assert findings and "UNSATISFIABLE" in findings[0].message
+
+    def test_innocence_malformed_null_args_does_not_crash(self) -> None:
+        """kimi-k3 finding (2026-08-18): `condition.get("args", [])` only
+        applies its default when the KEY is absent — a manifest with
+        `"args": null` (or any non-list) previously crashed the compiler
+        with an uncaught TypeError instead of degrading gracefully. Must
+        never raise; malformed `args` is treated as "no children" here
+        (schema validation elsewhere is what actually rejects the shape)."""
+
+        for malformed in (None, "not-a-list", 5, {"not": "a-list-either"}):
+            findings, skip_note = lint_unsatisfiable_condition(
+                rule_id="hf.test", when={"op": "all", "args": malformed}
+            )
+            # Must not raise. `all` with (effectively) zero children is
+            # vacuously satisfiable, never a finding.
+            assert findings == []
+            assert skip_note is None
+
+    def test_guilt_more_than_twenty_leaves_is_skipped_with_declared_note(self) -> None:
+        """21 distinct leaves must NOT be brute-forced (2**21 is too much
+        per-rule compute) — the compiler must emit an explicit note, never
+        silence. Silence is not success (task brief, verbatim)."""
+
+        leaves = [{"op": "eq", "fact": f"synthetic.leaf_{i}", "value": True} for i in range(21)]
+        when = {"op": "all", "args": leaves}
+        findings, skip_note = lint_unsatisfiable_condition(rule_id="hf.synthetic-21", when=when)
+        assert findings == []
+        assert skip_note is not None
+        assert "21 leaves > 20" in skip_note
+        assert "hf.synthetic-21" in skip_note
+
+    def test_innocence_exactly_twenty_leaves_is_checked_not_skipped(self) -> None:
+        """The boundary: 20 leaves (all True, trivially satisfiable) must
+        still be brute-forced, not skipped — the limit is `> 20`."""
+
+        leaves = [{"op": "eq", "fact": f"synthetic.leaf_{i}", "value": True} for i in range(20)]
+        when = {"op": "all", "args": leaves}
+        findings, skip_note = lint_unsatisfiable_condition(rule_id="hf.synthetic-20", when=when)
+        assert findings == []
+        assert skip_note is None
+
+
+# ---------------------------------------------------------------------------
+# Lint 4 — VACUOUS-RULE: guilt + innocence
+# ---------------------------------------------------------------------------
+
+#: Copied verbatim from ``el.e33g.income-60k-manual`` in
+#: ``backend/services/visa_engine/contracts/packs/rulepack-prod-007.source.json``
+#: (2026-08-18) — the real E5-increment-2 defect: the rule's name promises
+#: an income check, but its `when` is the same remote-work block literally
+#: duplicated twice, and references zero income facts (the literal 60000
+#: appears nowhere in the pack).
+_E33G_INCOME_60K_MANUAL_WHEN: dict = {
+    "op": "all",
+    "args": [
+        {
+            "op": "all",
+            "args": [
+                {"op": "intersects", "fact": "intent.purposes", "values": ["REMOTE_WORK"]},
+                {"op": "eq", "fact": "work.employer_is_indonesian_entity", "value": False},
+                {"op": "eq", "fact": "work.serves_indonesian_clients", "value": False},
+                {"op": "eq", "fact": "work.indonesia_source_compensation", "value": False},
+            ],
+        },
+        {
+            "op": "all",
+            "args": [
+                {"op": "intersects", "fact": "intent.purposes", "values": ["REMOTE_WORK"]},
+                {"op": "eq", "fact": "work.employer_is_indonesian_entity", "value": False},
+                {"op": "eq", "fact": "work.serves_indonesian_clients", "value": False},
+                {"op": "eq", "fact": "work.indonesia_source_compensation", "value": False},
+            ],
+        },
+    ],
+}
+
+
+class TestDuplicateSubtreeLint:
+    def test_guilt_e33g_income_60k_manual_has_duplicate_subtree(self) -> None:
+        findings = lint_duplicate_subtree(
+            rule_id="el.e33g.income-60k-manual", when=_E33G_INCOME_60K_MANUAL_WHEN
+        )
+        assert len(findings) == 1
+        assert "structurally identical children" in findings[0].message
+        assert "args[0] == args[1]" in findings[0].message
+
+    def test_guilt_e33g_matches_pack_on_disk(self) -> None:
+        pack = json.loads(_PACK_PATH.read_text(encoding="utf-8"))
+        rule = next(r for r in pack["rules"] if r["rule_id"] == "el.e33g.income-60k-manual")
+        assert rule["when"] == _E33G_INCOME_60K_MANUAL_WHEN
+
+    def test_guilt_duplicate_detected_nested_inside_any(self) -> None:
+        leaf = {"op": "eq", "fact": "immigration.currently_in_indonesia", "value": True}
+        when = {"op": "any", "args": [leaf, leaf]}
+        findings = lint_duplicate_subtree(rule_id="hf.test", when=when)
+        assert findings
+
+    def test_guilt_duplicate_detected_deep_in_tree(self) -> None:
+        leaf = {"op": "eq", "fact": "immigration.currently_in_indonesia", "value": True}
+        when = {
+            "op": "all",
+            "args": [
+                {"op": "intersects", "fact": "intent.purposes", "values": ["TOURISM"]},
+                {"op": "all", "args": [leaf, leaf]},
+            ],
+        }
+        findings = lint_duplicate_subtree(rule_id="hf.test", when=when)
+        assert findings
+
+    def test_innocence_two_different_children_pass(self) -> None:
+        when = {
+            "op": "all",
+            "args": [
+                {"op": "intersects", "fact": "intent.purposes", "values": ["TOURISM"]},
+                {"op": "eq", "fact": "intent.entry_pattern", "value": "MULTIPLE"},
+            ],
+        }
+        findings = lint_duplicate_subtree(rule_id="hf.test", when=when)
+        assert findings == []
+
+    def test_innocence_slightly_different_children_do_not_false_positive(self) -> None:
+        """Two leaves that differ by a single value must NOT be flagged —
+        this is a structural-equality check, not a fuzzy one."""
+
+        when = {
+            "op": "any",
+            "args": [
+                {"op": "eq", "fact": "intent.entry_pattern", "value": "MULTIPLE"},
+                {"op": "eq", "fact": "intent.entry_pattern", "value": "SINGLE"},
+            ],
+        }
+        findings = lint_duplicate_subtree(rule_id="hf.test", when=when)
+        assert findings == []
+
+    def test_innocence_malformed_null_args_does_not_crash(self) -> None:
+        """kimi-k3 finding (2026-08-18), same class as the satisfiability
+        lint's fix: `"args": null` (or any non-list) must never raise."""
+
+        for malformed in (None, "not-a-list", 5, {"not": "a-list-either"}):
+            findings = lint_duplicate_subtree(
+                rule_id="hf.test", when={"op": "any", "args": malformed}
+            )
+            assert findings == []
+
+
+class TestMustReferenceFactsLint:
+    def test_guilt_declared_fact_never_derived_is_rejected(self) -> None:
+        findings = lint_must_reference_facts(
+            rule_id="el.e33g.income-60k-manual",
+            must_reference_facts=["secondhome.passive_monthly_income_usd"],
+            derived_facts=["intent.purposes", "work.employer_is_indonesian_entity"],
+        )
+        assert findings and "secondhome.passive_monthly_income_usd" in findings[0].message
+
+    def test_innocence_absent_field_means_no_check(self) -> None:
+        """The field is OPTIONAL — a manifest entry that doesn't declare it
+        must never be flagged for anything (checked at the compile_manifest
+        level via an empty list default, see TestCompileManifest)."""
+
+        findings = lint_must_reference_facts(
+            rule_id="el.x", must_reference_facts=[], derived_facts=["intent.purposes"]
+        )
+        assert findings == []
+
+    def test_innocence_declared_fact_is_derived_passes(self) -> None:
+        findings = lint_must_reference_facts(
+            rule_id="el.x",
+            must_reference_facts=["intent.purposes"],
+            derived_facts=["intent.purposes", "work.employer_is_indonesian_entity"],
+        )
+        assert findings == []
+
+    def test_guilt_unhashable_entry_reports_finding_never_crashes(self) -> None:
+        """team-lead parallel-gate finding (2026-08-18): a non-string (and
+        possibly unhashable, e.g. a dict) entry in must_reference_facts
+        must never blow up `fact not in derived_set` with a bare TypeError
+        — that is exactly the "never a bare traceback for a data problem"
+        contract this module's own docstring commits to."""
+
+        for bad_entry in ({"typo": 1}, ["nested", "list"], 123, None):
+            findings = lint_must_reference_facts(
+                rule_id="el.x",
+                must_reference_facts=[bad_entry],
+                derived_facts=["intent.purposes"],
+            )
+            assert findings, f"expected a finding for {bad_entry!r}"
+            assert "is not a string" in findings[0].message
+
+    def test_guilt_unhashable_entry_end_to_end_via_compile_manifest(self) -> None:
+        """Same defect, exercised through the real entrypoint so a future
+        refactor of compile_manifest's must_reference_facts wiring can't
+        silently reopen the crash."""
+
+        ledger = {"CL-X-01": _rec("CL-X-01", "VERIFIED")}
+        manifest = {
+            "rules": [
+                {
+                    "product_code": "X",
+                    "claim_ids": ["CL-X-01"],
+                    "caveats": [],
+                    "must_reference_facts": [{"typo": 1}],
+                    "rule": _minimal_rule(),
+                }
+            ]
+        }
+        report = compile_manifest(manifest, ledger)  # must not raise
+        assert not report.ok
+        assert "is not a string" in report.render()
+
+
+# ---------------------------------------------------------------------------
 # Full compiler: end-to-end guilt + innocence
 # ---------------------------------------------------------------------------
 
@@ -368,7 +819,12 @@ class TestCompileManifest:
         ledger = {"CL-X-01": _rec("CL-X-01", "CONFLICTING")}
         manifest = {
             "rules": [
-                {"product_code": "X", "claim_ids": ["CL-X-01"], "caveats": [], "rule": _minimal_rule()}
+                {
+                    "product_code": "X",
+                    "claim_ids": ["CL-X-01"],
+                    "caveats": [],
+                    "rule": _minimal_rule(),
+                }
             ]
         }
         report = compile_manifest(manifest, ledger)
@@ -389,7 +845,12 @@ class TestCompileManifest:
         ledger = {"CL-X-01": _rec("CL-X-01", "VERIFIED")}
         manifest = {
             "rules": [
-                {"product_code": "X", "claim_ids": ["CL-X-01"], "caveats": [], "rule": _minimal_rule()}
+                {
+                    "product_code": "X",
+                    "claim_ids": ["CL-X-01"],
+                    "caveats": [],
+                    "rule": _minimal_rule(),
+                }
             ]
         }
         report = compile_manifest(manifest, ledger)
@@ -413,6 +874,158 @@ class TestCompileManifest:
         report = compile_manifest(manifest, ledger)
         assert report.ok
         assert list(report.compiled[0].rule.required_facts) == ["intent.purposes"]
+
+    def test_guilt_unsatisfiable_when_fails_whole_report(self) -> None:
+        ledger = {"CL-X-01": _rec("CL-X-01", "VERIFIED")}
+        rule = _minimal_rule(
+            rule_id="el.e33e.deposit-income-basis", when=_E33E_DEPOSIT_INCOME_BASIS_WHEN
+        )
+        manifest = {
+            "rules": [
+                {"product_code": "E33E", "claim_ids": ["CL-X-01"], "caveats": [], "rule": rule}
+            ]
+        }
+        report = compile_manifest(manifest, ledger)
+        assert not report.ok
+        assert report.compiled == []
+        assert "UNSATISFIABLE" in report.render()
+
+    def test_guilt_duplicate_subtree_when_fails_whole_report(self) -> None:
+        ledger = {"CL-X-01": _rec("CL-X-01", "VERIFIED")}
+        rule = _minimal_rule(rule_id="el.e33g.income-60k-manual", when=_E33G_INCOME_60K_MANUAL_WHEN)
+        manifest = {
+            "rules": [
+                {"product_code": "E33G", "claim_ids": ["CL-X-01"], "caveats": [], "rule": rule}
+            ]
+        }
+        report = compile_manifest(manifest, ledger)
+        assert not report.ok
+        assert report.compiled == []
+        assert "structurally identical children" in report.render()
+
+    def test_guilt_must_reference_facts_declared_but_absent_fails(self) -> None:
+        ledger = {"CL-X-01": _rec("CL-X-01", "VERIFIED")}
+        manifest = {
+            "rules": [
+                {
+                    "product_code": "X",
+                    "claim_ids": ["CL-X-01"],
+                    "caveats": [],
+                    "must_reference_facts": ["secondhome.passive_monthly_income_usd"],
+                    "rule": _minimal_rule(),
+                }
+            ]
+        }
+        report = compile_manifest(manifest, ledger)
+        assert not report.ok
+        assert "secondhome.passive_monthly_income_usd" in report.render()
+
+    def test_innocence_must_reference_facts_declared_and_present_passes(self) -> None:
+        ledger = {"CL-X-01": _rec("CL-X-01", "VERIFIED")}
+        manifest = {
+            "rules": [
+                {
+                    "product_code": "X",
+                    "claim_ids": ["CL-X-01"],
+                    "caveats": [],
+                    "must_reference_facts": ["intent.purposes"],
+                    "rule": _minimal_rule(),
+                }
+            ]
+        }
+        report = compile_manifest(manifest, ledger)
+        assert report.ok
+
+    def test_innocence_manifest_without_must_reference_facts_field_passes(self) -> None:
+        """Confirms the field is genuinely optional at the compile_manifest
+        level, not merely optional in the helper's signature."""
+
+        ledger = {"CL-X-01": _rec("CL-X-01", "VERIFIED")}
+        manifest = {
+            "rules": [
+                {
+                    "product_code": "X",
+                    "claim_ids": ["CL-X-01"],
+                    "caveats": [],
+                    "rule": _minimal_rule(),
+                }
+            ]
+        }
+        report = compile_manifest(manifest, ledger)
+        assert report.ok
+
+    def test_guilt_falsy_non_list_must_reference_facts_is_rejected_not_swallowed(self) -> None:
+        """kimi-k3 finding (2026-08-18): `entry.get(...) or []` treated any
+        FALSY-but-present value (`""`, `0`, `False`) as if the field were
+        simply absent, silently skipping the "must be a list" check. Only
+        an explicit JSON null (or a genuinely missing key) should mean
+        "not declared"; anything else non-list is malformed."""
+
+        ledger = {"CL-X-01": _rec("CL-X-01", "VERIFIED")}
+        for falsy_non_list in ("", 0, False):
+            manifest = {
+                "rules": [
+                    {
+                        "product_code": "X",
+                        "claim_ids": ["CL-X-01"],
+                        "caveats": [],
+                        "must_reference_facts": falsy_non_list,
+                        "rule": _minimal_rule(),
+                    }
+                ]
+            }
+            report = compile_manifest(manifest, ledger)
+            assert not report.ok, f"expected rejection for must_reference_facts={falsy_non_list!r}"
+            assert "must be a list" in report.render()
+
+    def test_innocence_null_must_reference_facts_means_not_declared(self) -> None:
+        """Explicit JSON null IS treated as absent — distinguishing "not
+        declared" from "declared wrong" is the point of the fix above."""
+
+        ledger = {"CL-X-01": _rec("CL-X-01", "VERIFIED")}
+        manifest = {
+            "rules": [
+                {
+                    "product_code": "X",
+                    "claim_ids": ["CL-X-01"],
+                    "caveats": [],
+                    "must_reference_facts": None,
+                    "rule": _minimal_rule(),
+                }
+            ]
+        }
+        report = compile_manifest(manifest, ledger)
+        assert report.ok
+
+    def test_guilt_synthetic_21_leaves_reports_note_and_still_compiles(self) -> None:
+        """End-to-end through `compile_manifest`: a `when` with 21 distinct
+        (real, FactPath-valid) leaves must skip the satisfiability check —
+        never brute-force it — and the skip note must be visible in the
+        rendered report even though the rule has no OTHER defect and
+        compiles clean. Silence is not success (task brief, verbatim)."""
+
+        from backend.services.visa_engine.enums import FactPath
+
+        # Exclude immigration.overstay_days — Lint 2 (R-OVERSTAY-PLANNING)
+        # flags any reference to it regardless of `op`, and this fixture is
+        # testing Lint 3's skip-note in isolation.
+        fact_paths = [f.value for f in FactPath if f.value != "immigration.overstay_days"]
+        assert len(fact_paths) >= 21, "need >=21 real FactPath members for this fixture"
+        leaves = [{"op": "known", "fact": fp} for fp in fact_paths[:21]]
+        when = {"op": "all", "args": leaves}
+
+        ledger = {"CL-X-01": _rec("CL-X-01", "VERIFIED")}
+        rule = _minimal_rule(rule_id="hf.synthetic-21", when=when)
+        manifest = {
+            "rules": [{"product_code": "X", "claim_ids": ["CL-X-01"], "caveats": [], "rule": rule}]
+        }
+        report = compile_manifest(manifest, ledger)
+        assert report.ok, report.render()
+        assert len(report.notes) == 1
+        assert "21 leaves > 20" in report.notes[0]
+        rendered = report.render()
+        assert "NOTES" in rendered
+        assert "21 leaves > 20" in rendered
 
 
 # ---------------------------------------------------------------------------
