@@ -73,6 +73,35 @@ BASE="${VERCEL_GIT_PREVIOUS_SHA:-}"
 
 log() { printf 'should-build: %s\n' "$1" >&2; }
 
+# The production branch never skips. Not on a missing previous SHA, and not on a present one.
+#
+# The guard used to live inside the `[ -z "$BASE" ]` block below, on the reasoning that the
+# danger was comparing main against main and reading the empty diff as "nothing to build". That
+# named the right danger and only half the doors. On main `VERCEL_GIT_PREVIOUS_SHA` is normally
+# SET, so the block was skipped entirely and the production guard inside it never ran.
+#
+# What that variable actually holds is the previous *attempted* deployment — including attempts
+# this script itself skipped, and attempts Vercel cancelled because a newer commit superseded
+# them. It does NOT hold what is live. So the base walks forward past a frontend commit whose own
+# build never shipped, and every later commit is judged against that base and correctly finds no
+# frontend change. The stranded commit is then unreachable: no future diff ever spans it again.
+#
+# Measured on 2026-08-18. balizero.com was serving f6dfda99, built 2026-08-15, while main was 75
+# commits ahead: 272 files changed in between, 30 of them frontend paths. The individual builds
+# saw 4 and 18 files and skipped, each of them right about its own base and all of them wrong
+# about production. Among the stranded commits was #4178, which removed `Avg reply: 2 min` — a
+# claim measured false against 189 message pairs (average ~9h) — so the page kept serving a
+# number we had already proven wrong, for three days, with every check green.
+#
+# The asymmetry at the top of this file settles which way to fail: an unnecessary production
+# build costs ~6 minutes, a wrongly skipped one serves stale code across the whole public surface
+# until a human happens to notice. The savings were never here anyway — the 2026-07-29
+# measurement put 83% of build minutes in PR previews, and that is where they stay.
+if [ -n "$REF" ] && [ "$REF" = "$PROD_BRANCH" ]; then
+  log "production branch '$REF' -> BUILD (a previous SHA names the last attempt, not what is live)"
+  exit 1
+fi
+
 if [ -z "$BASE" ]; then
   # No previous deployment on this ref — this is the case that matters. Measured on the real
   # billing data, first deployments are 89% of the waste: most PRs here are one or two commits
@@ -88,10 +117,9 @@ if [ -z "$BASE" ]; then
   # "cannot fetch" and nothing else. A fail-open branch that does not say WHICH stage opened
   # cannot be repaired from its own evidence. So: cheapest-first resolution, each stage
   # announcing itself without replaying Git stderr, which may contain an authenticated URL.
-  if [ "$REF" = "$PROD_BRANCH" ]; then
-    log "production branch with no previous deployment -> BUILD (never risk a stale production)"
-    exit 1
-  fi
+  # (The production check that used to sit here has moved above this block, where it can also see
+  # the deployments that DO have a previous SHA — which is all of them, on main. Leaving a copy
+  # here would be unreachable code that reads like a second line of defence.)
 
   # (1) The merge queue puts the BASE COMMIT in the ref name:
   #     gh-readonly-queue/<base-branch>/pr-<n>-<base-sha>
