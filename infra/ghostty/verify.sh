@@ -101,9 +101,20 @@ fi
 
 # The configured working directory has to exist, or every new window opens
 # somewhere unintended. This is what catches a foreign profile in practice.
-WD="$(XDG_CONFIG_HOME="$XDG_PARENT" "$GHOSTTY_BIN" +show-config --default=false 2>/dev/null | sed -n 's/^working-directory = //p' | head -1)"
-if [ -n "$WD" ] && [ ! -d "$WD" ]; then
-  bad "working-directory does not exist on this machine: $WD"; RC=$((RC|2))
+# Capture the STATUS, not just the text. With `2>/dev/null` and an empty-string
+# test, a ghostty that cannot run at all leaves WD empty and this check silently
+# VANISHES instead of failing — the verifier then reports a clean profile it
+# never actually inspected. An unusable binary is a finding of its own.
+EFFECTIVE="$(XDG_CONFIG_HOME="$XDG_PARENT" "$GHOSTTY_BIN" +show-config --default=false 2>&1)"; ERC=$?
+if [ $ERC -ne 0 ]; then
+  bad "+show-config failed (rc=$ERC) — the effective config could not be read, so nothing below was verified against it"
+  note "$(printf '%s' "$EFFECTIVE" | head -2)"
+  RC=$((RC|4))
+else
+  WD="$(printf '%s\n' "$EFFECTIVE" | sed -n 's/^working-directory = //p' | head -1)"
+  if [ -n "$WD" ] && [ ! -d "$WD" ]; then
+    bad "working-directory does not exist on this machine: $WD"; RC=$((RC|2))
+  fi
 fi
 [ $drift -eq 0 ] && ok "installed copies match the repo source"
 
@@ -113,8 +124,14 @@ fi
 # XDG_CONFIG_HOME so the configured family cannot answer for the tested one.
 FAM="$(grep -m1 '^font-family = ' "$SRC_DIR/fleet.ghostty" | sed 's/^font-family = //')"
 if [ -n "$FAM" ]; then
-  FOUT="$(XDG_CONFIG_HOME=/nonexistent-xdg "$GHOSTTY_BIN" +show-face --font-family="$FAM" --string=A 2>&1)"
-  if printf '%s' "$FOUT" | grep -qF "$FAM"; then
+  FOUT="$(XDG_CONFIG_HOME=/nonexistent-xdg "$GHOSTTY_BIN" +show-face --font-family="$FAM" --string=A 2>&1)"; FRC=$?
+  if [ $FRC -ne 0 ]; then
+    # Distinguish "this font is missing" from "this binary cannot answer". Both
+    # used to land in the same branch, which told the reader to install a font
+    # when the real problem was the tool doing the asking.
+    bad "+show-face failed (rc=$FRC) — cannot tell whether '$FAM' resolves: $FOUT"
+    RC=$((RC|4))
+  elif printf '%s' "$FOUT" | grep -qF "$FAM"; then
     ok "font resolves: $FAM"
   else
     warn "font '$FAM' does NOT resolve here — falling back to: $FOUT"
@@ -162,10 +179,16 @@ if [ -f "$APPSUP" ]; then
   # only substitute when the capture is empty (file unreadable).
   APPSUP_SETTINGS="$(grep -cvE '^[[:space:]]*(#.*)?$' "$APPSUP" 2>/dev/null)"
   case "$APPSUP_SETTINGS" in
-    ''|*[!0-9]*) bad "cannot count settings in $APPSUP — treating as a finding, not as empty"
-                 RC=$((RC|4)); APPSUP_SETTINGS=0 ;;
+    ''|*[!0-9]*) APPSUP_SETTINGS=unreadable ;;
   esac
-  if [ "$APPSUP_SETTINGS" -gt 0 ]; then
+  if [ "$APPSUP_SETTINGS" = unreadable ]; then
+    # NOT folded into 0. An earlier version set it to 0 here and then fell
+    # through to the "present but empty" branch below, so the verifier printed
+    # BOTH "cannot count" and "present but empty (no effect)" — one of which is
+    # a claim it had just said it could not make. Unreadable is its own verdict.
+    bad "cannot read $APPSUP — it OUTRANKS this profile and its contents are unknown"
+    RC=$((RC|4))
+  elif [ "$APPSUP_SETTINGS" -gt 0 ]; then
     bad "$APPSUP holds $APPSUP_SETTINGS setting(s) and takes PRECEDENCE over everything installed here"
     RC=$((RC|1))
   else

@@ -44,7 +44,7 @@ keybind = resize/down=resize_split:down,10
 keybind = resize/equal=equalize_splits
 keybind = resize/escape=deactivate_key_table
 keybind = resize/cmd+r=deactivate_key_table
-keybind = resize/catch_all=deactivate_key_table
+keybind = resize/unconsumed:catch_all=deactivate_key_table
 
 # ─── Keeping a long session ────────────────────────────────────────────────
 # Dump the whole scrollback to a file and open it — the honest way to keep a

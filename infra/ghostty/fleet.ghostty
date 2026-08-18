@@ -15,8 +15,8 @@
 #  `background-opacity` needs a full restart; blur and the Dock icon are not
 #  documented either way, so treat a relaunch as the reliable route for all three.
 #
-#  NOT every line here changes something. Of the 52 scalar settings this file
-#  declares, 24 are byte-identical to Ghostty 1.3.1's own default. They are kept
+#  NOT every line here changes something. Of the 51 non-repeatable settings this
+#  file declares, 24 RESOLVE to Ghostty 1.3.1's own default. They are kept
 #  on purpose — an explicit value is a pin that survives an upstream default
 #  flip, and it makes the posture readable instead of implied — but they are
 #  NOT choices, and nothing here should describe them as if they were.

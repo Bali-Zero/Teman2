@@ -235,6 +235,124 @@ else
 fi
 rm -rf "$H4"
 
+# ═══════════════════════════════ Guard 3 — rollback, in BOTH of its two worlds
+# Added after a cross-family reviewer proved the whole `restore()` body could be
+# replaced with `return 0` and this corpus stayed green. A recovery path nothing
+# exercises is a recovery path nobody knows is broken.
+#
+# A source tree with a deliberately invalid setting: the install completes the
+# copies, then Ghostty rejects the result, then rollback runs. That is the ONLY
+# path on which restore() exists.
+broken_source() {
+    local dir
+    dir="$(mktemp -d)"
+    cp "$SRC/config" "$SRC/fleet.ghostty" "$SRC/keys.ghostty" "$SRC/install.sh" "$dir/"
+    mkdir -p "$dir/machines"
+    cp "$SRC"/machines/*.ghostty "$dir/machines/"
+    printf '\nfont-size = not-a-number\n' >>"$dir/fleet.ghostty"
+    printf '%s' "$dir"
+}
+
+# UPGRADE: something was already installed. It must come back byte-for-byte.
+CASES=$((CASES + 1))
+H5="$(mktemp -d)"
+mkdir -p "$H5/.config/ghostty"
+printf '# the config that was here before\nfont-size = 21\n' >"$H5/.config/ghostty/config"
+BEFORE_SHA="$(shasum -a 256 "$H5/.config/ghostty/config" | cut -d' ' -f1)"
+BS="$(broken_source)"
+HOME="$H5" bash "$BS/install.sh" >/dev/null 2>&1
+IRC=$?
+AFTER_SHA="$(shasum -a 256 "$H5/.config/ghostty/config" 2>/dev/null | cut -d' ' -f1)"
+if [[ "$IRC" == "0" ]]; then
+    fail "rollback/upgrade: install REPORTED SUCCESS with an invalid source"
+elif [[ "$BEFORE_SHA" != "$AFTER_SHA" ]]; then
+    fail "rollback/upgrade: the previous config was NOT restored" "before=$BEFORE_SHA" "after=${AFTER_SHA:-<file gone>}"
+else
+    pass "guilt — a rejected config rolls back and the previous one returns byte-identical"
+fi
+rm -rf "$H5" "$BS"
+
+# FRESH: nothing was installed. Rollback must remove what it placed, not leave a
+# half-written config while reporting that nothing was lost.
+CASES=$((CASES + 1))
+H6="$(mktemp -d)"
+BS="$(broken_source)"
+HOME="$H6" bash "$BS/install.sh" >/dev/null 2>&1
+IRC=$?
+SURVIVORS="$(ls -A "$H6/.config/ghostty" 2>/dev/null | grep -vE '^\.backup-' | wc -l | tr -d ' ')"
+if [[ "$IRC" == "0" ]]; then
+    fail "rollback/fresh: install REPORTED SUCCESS with an invalid source"
+elif [[ "$SURVIVORS" != "0" ]]; then
+    fail "rollback/fresh: $SURVIVORS file(s) left behind after a failed install" "$(ls -A "$H6/.config/ghostty" 2>/dev/null | tr '\n' ' ')"
+else
+    pass "guilt — a failed FRESH install leaves nothing behind"
+fi
+rm -rf "$H6" "$BS"
+
+# ══════════════════════════ Guard 4 — a tool that cannot answer is not a pass
+# verify.sh shells out to the Ghostty binary for four separate questions. If the
+# binary cannot answer one of them, that is a finding — not a silent skip and
+# certainly not an "ok". `GHOSTTY_BIN` is overridable, so this is testable with a
+# stand-in that answers some subcommands and fails others.
+fake_ghostty() {
+    local dir fail_on
+    dir="$(mktemp -d)"
+    fail_on="$1"
+    cat >"$dir/ghostty" <<EOF
+#!/usr/bin/env bash
+case "\$1" in
+  --version)         echo "Ghostty 1.3.1"; exit 0 ;;
+  +validate-config)  exit 0 ;;
+  $fail_on)          echo "stand-in: refusing $fail_on" >&2; exit 3 ;;
+  +show-config)      echo "working-directory = \$HOME"; exit 0 ;;
+  +show-face)        echo "found in face \"\$(sed -n 's/^--font-family=//p' <<<"\$2")\""; exit 0 ;;
+  +ssh-cache)        echo "no hosts"; exit 0 ;;
+  *)                 exit 0 ;;
+esac
+EOF
+    chmod +x "$dir/ghostty"
+    printf '%s' "$dir/ghostty"
+}
+
+for SUB in +ssh-cache +show-config +show-face; do
+    CASES=$((CASES + 1))
+    H7="$(build_home "$MACHINE")"
+    FG="$(fake_ghostty "$SUB")"
+    OUT="$(HOME="$H7" GHOSTTY_BIN="$FG" bash "$VERIFY" 2>&1)"
+    RC=$?
+    if [[ "$RC" == "0" ]]; then
+        fail "guard4: verify PASSED while the binary could not answer $SUB" "$(tail -3 <<<"$OUT")"
+    elif ! grep -q -- "$SUB" <<<"$OUT"; then
+        fail "guard4: verify failed but never named $SUB as the reason" "$(grep -iE 'FAIL' <<<"$OUT" | head -2)"
+    else
+        pass "guilt — a binary that cannot answer $SUB is a failure that names itself (rc=$RC)"
+    fi
+    rm -rf "$H7" "$(dirname "$FG")"
+done
+
+# ═══════════════════ Guard 5 — unreadable is its own verdict, not "empty"
+# The Application Support guard once set its count to 0 when the count FAILED,
+# then fell through to the success branch, so the verifier printed both "cannot
+# count" and "present but empty (no effect)" — the second contradicting the
+# first. Unreadable and empty must never share an outcome.
+CASES=$((CASES + 1))
+H8="$(build_home "$MACHINE")"
+printf 'font-size = 9\n' >"$H8/$APPSUP_REL"
+chmod 000 "$H8/$APPSUP_REL"
+OUT="$(HOME="$H8" bash "$VERIFY" 2>&1)"
+RC=$?
+if [[ "$RC" == "0" ]]; then
+    fail "guard5: an UNREADABLE higher-priority config passed clean"
+elif grep -qi 'present but empty' <<<"$OUT"; then
+    fail "guard5: verify called an unreadable file empty — a claim it had just said it could not make" "$(grep -iE 'application support|cannot read' <<<"$OUT")"
+elif ! grep -qi 'cannot read' <<<"$OUT"; then
+    fail "guard5: failed, but not because the file is unreadable" "$(grep -iE 'FAIL' <<<"$OUT" | head -2)"
+else
+    pass "guilt — an unreadable Application Support config is its own verdict, never 'empty'"
+fi
+chmod 644 "$H8/$APPSUP_REL"
+rm -rf "$H8"
+
 echo
 if ((FAILURES > 0)); then
     echo "FAIL: $FAILURES of $CASES ghostty-guard cases"
