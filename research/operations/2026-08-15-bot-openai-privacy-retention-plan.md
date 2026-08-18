@@ -9,12 +9,73 @@ sources:
   - .agents/skills/bot/SKILL.md §1 LIVE STATE — WA_HISTORY_TURNS=12, meta_inbox tables, existing memory-bleed containment (P0-MEM)
   - apps/backend-rag/backend/services/integrations/wa_inbox_bot.py (re-read this turn — payload shape sent to the orchestrator)
   - research/operations/2026-08-15-bot-openai-provider-threat-model.md (companion document, same session)
-adversarial_review: kimi-k3
+  - https://openai.com/policies/how-your-data-is-used-to-improve-model-performance/ (official individual-vs-business training distinction, checked 2026-08-18)
+  - https://help.openai.com/en/articles/5722486-api-data-usage-policies (official ChatGPT/Codex controls, checked 2026-08-18)
+  - https://help.openai.com/en/articles/7039943-data-usage-for-consumer-services-faq (official consumer access controls, checked 2026-08-18)
+  - PR #4216 final head 847a5e834 and its ADR (subscription-backed offline lane)
+adversarial_review: >-
+  Historical plan reviewed by Kimi K3 and Gemini; R28 adapter review Kimi K3
+  SHIP plus Gemini 3.7 Flash High degraded fallback SHIP after Gemini 3.1 Pro
+  FIX-FIRST; mandatory final Fable/Claude on-disk gate pending
 ---
 
 # Zantara WA bot — OpenAI provider privacy & retention plan
 
-## ⚠️ Snapshot header — NOT FROZEN, per Zero/team-lead HOLD order
+## R28 subscription-lane correction — 2026-08-18
+
+This section is authoritative for PR #4216. The earlier plan below was written for a dedicated
+OpenAI API Project and a discarded live-shadow design. The selected current path is instead a
+human-run, local `CodexExecClient` authenticated through the operator's ChatGPT Pro subscription.
+It is completely unwired: no real WhatsApp export, client row, runtime flag, worker, deploy, or
+cutover is in scope.
+
+The API retention controls described in §2 below cannot be projected onto the subscription lane.
+In particular:
+
+- the dormant `OpenAIResponsesClient` sets `store:false`, but the selected subscription adapter
+  never calls that client or the Responses API directly;
+- `codex exec --ephemeral` is evidence about local Codex session-file behavior, not a declaration
+  of OpenAI-side retention, training, human-review, or DPA status;
+- OpenAI's current official material distinguishes individual ChatGPT/Codex services from business
+  products and the API. Individual-service content may be used for model improvement depending on
+  account controls, and Codex has controls that are partly separate from ChatGPT controls. The
+  effective settings for the operator account were not inspected or recorded by this lane;
+- therefore the business/API defaults, project-level ZDR/MAM, and `store:false` analysis below are
+  **not evidence** that a ChatGPT Pro/Codex subscription invocation has the same treatment.
+
+### Current data minimization controls
+
+PR #4216 implements only a preparation harness. Default corpus input must be structured JSONL with
+canonical `user`/`assistant` roles and a local conversation identifier. The identifier remains
+in-memory, only user targets are emitted, history is capped at 12 independently redacted/scanned
+turns, and unsafe or unattributable input clears accumulated history. Plain WhatsApp TXT yields no
+default fixture. Historical role-blind mode is explicit, builder-comparison-only, rejected by the
+benchmark loader, and cannot support promotion.
+
+Blind transcripts and label keys are written separately with private permissions (`0700` run
+directory, `0600` files). Those controls reduce local leakage but do not legalize provider egress.
+No real export was processed and no client-specific blind benchmark was run.
+
+### Gates before any real client text
+
+1. Independent human privacy/legal review of the de-identified corpus, not just automated regex
+   scanning.
+2. Live verification of the exact ChatGPT/Codex account's training and Codex environment controls,
+   plus a documented retention/human-access basis applicable to that product and account. API
+   settings are not substitutes.
+3. A defensible UU PDP / Art. 56 basis and consent/disclosure path for the exact processor,
+   destination, purpose, data categories, and retention regime. No such artifact is supplied here.
+4. Stronger isolation than a read-only coding-agent sandbox before any real client text is passed
+   to the CLI.
+5. A separate runtime architecture and fresh threat/privacy review. Fly does not inherit this
+   Air-M5 user's local CLI or ChatGPT OAuth state, and PR #4216 contains no runtime wiring.
+6. Mandatory final Fable/Claude on-disk gate, followed by the repository's normal PR checks. No
+   merge, deploy, traffic, or cutover is authorized by this plan.
+
+**Privacy verdict:** synthetic, non-PII offline probing only. Real WhatsApp data, even de-identified
+by the automated builder, remains BLOCKED until every gate above has evidence.
+
+## ⚠️ Historical snapshot header — SUPERSEDED by R28 above
 
 **Base**: `origin/main` @ `7e66a8b3d003de0327e1ff7669e038b467ee8a94` (verifier and implementer
 worktrees share this merge-base). **The implementer worktree (`.worktrees/bot-openai-adapter`) has
@@ -31,10 +92,11 @@ snapshot and stays valid; the code-level "live diff finding" in §3.4 does, and 
 
 ## Scope and posture
 
-This is a **planning document**, not an implementation. It answers: what would have to be true
-before real client WhatsApp traffic is allowed to touch OpenAI's API. It does not authorize
-sending anything — CLAUDE.md §14's fail-closed doctrine is the default state and stays the default
-state until every item below is closed with **evidence**, not a claim.
+The historical body is a **planning document**, not an implementation. It answers what would have
+to be true before real client WhatsApp traffic is allowed to touch a dedicated OpenAI API Project.
+It does not authorize sending anything. R28 above applies the same fail-closed posture to the later
+ChatGPT Pro/Codex subscription choice and identifies the additional product-regime gap: API data
+controls are not proof of subscription treatment.
 
 ---
 
@@ -114,6 +176,9 @@ out to be.
 ---
 
 ## 2. Retention — planning assumption and what would change it
+
+**Historical API-path scope:** this section applies to the dormant Responses/API-key design. It is
+not the retention contract for the selected ChatGPT Pro/Codex subscription adapter; see R28 above.
 
 **Default planning assumption (per OpenAI's own documentation, fetched this session):**
 
@@ -237,7 +302,12 @@ the endpoint, providerless.
 
 ---
 
-## 3.4 Live diff finding — the current shadow implementation has zero code-level enforcement of §3
+## 3.4 Historical live-diff finding — the deleted shadow design had no §3 enforcement
+
+The `_shadow_provider.py`/`OPENAI_SHADOW` path described in this section was deleted before final
+PR #4216. The current subscription adapter has no live call site at all, so the former boolean-only
+arming defect is not a property of the final diff. The risk class remains relevant to any future
+wiring and is preserved below as archaeology; R28 above is the current disposition.
 
 Cross-checked against the implementer worktree (`.worktrees/bot-openai-adapter`,
 `_shadow_provider.py`/`openai_responses_client.py`) this session, alongside the companion threat
@@ -271,6 +341,12 @@ implementer worktree is uncommitted and moving (see snapshot header); do not car
 as fact about the eventual PR without re-reading the frozen diff.
 
 ## 4. Open items handed to downstream lanes
+
+**R28 update:** V3's selected-provider matrix now exists in
+`research/operations/2026-08-15-bot-provider-failure-matrix.md` and is reconciled to PR #4216 head
+`847a5e834`. It confirms the lane is offline-only and that there is currently nothing to roll back
+from. The historical handoff below remains useful for a future serve-stage, but it is not an open
+request to wire the current adapter.
 
 - **V3 (failure matrix)**: whether an OpenAI outage/rate-limit needs the SAME fail-closed posture
   Zero already ruled for Gemini SPOF (C6: "fail-closed permanent, no external fallback egress") —

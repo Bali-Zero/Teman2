@@ -23,12 +23,69 @@ sources:
   - developers.openai.com/api/docs/guides/tools (WebSearch this turn — mcp/web_search/file_search tool types)
   - OpenAI Responses API refusal/incomplete_details schema (WebSearch this turn, community + developer docs)
   - OpenAI sk-proj- Projects launch date (WebSearch this turn — April 2024, corrects an earlier "since 2023" draft claim)
-adversarial_review: kimi-k3
+  - PR #4216 final head 847a5e834 (Codex subscription adapter, offline harness, tests, CI, and ADR)
+  - research/operations/2026-08-15-bot-provider-failure-matrix.md (R28 reconciliation)
+adversarial_review: >-
+  Historical draft reviewed by Kimi K3 and Gemini; R28 adapter review Kimi K3
+  SHIP plus Gemini 3.7 Flash High degraded fallback SHIP after Gemini 3.1 Pro
+  FIX-FIRST; mandatory final Fable/Claude on-disk gate pending
 ---
 
 # Zantara WA bot — OpenAI provider threat model
 
-## ⚠️ Snapshot header — NOT FROZEN, per Zero/team-lead HOLD order
+## R28 current frozen-diff reassessment — 2026-08-18
+
+This section is authoritative for the current PR. The long-form body beneath it is preserved as
+review archaeology: it threat-modeled an earlier Responses-API-key design and, before that, a
+discarded pseudo-shadow branch. Whenever an earlier sentence conflicts with this section, this
+section wins.
+
+**Frozen target:** PR #4216 head `847a5e834`, reconciled with `origin/main` at
+`993e4e868a6e8210328f69ccd136ca9d5c54d776`. The current fence is eleven files: the standalone
+subscription adapter and test, the dormant Responses adapter and test, role-aware corpus/benchmark
+tooling and tests, the ADR, test-package marker, and the existing CI workflow. `config.py`,
+`llm_gateway.py`, WhatsApp routers/workers, live settings, secrets, and the bot skill's LIVE STATE
+are unchanged. There is no live importer, flag, shadow dispatch, client traffic, deploy, or cutover.
+
+**Selected provider:** `CodexExecClient`, using the operator's existing ChatGPT Pro subscription
+through headless `codex exec`. The `OpenAIResponsesClient` remains dormant and receives no paid API
+key. Zero's later subscription ruling supersedes the earlier council's API-key choice **for this
+human-run offline evidence lane only**. It does not authorize personal subscription credentials as
+a Fly service credential. Historical F1/F3 below therefore remain valid runtime bans, but no longer
+describe the selected offline adapter as prohibited code.
+
+### Current threat disposition
+
+| Surface | Current control/evidence | Residual gate |
+| --- | --- | --- |
+| Credential and cost | No `OPENAI_WA_PROVIDER_API_KEY` or paid API call. Availability checks the configured local `CODEX_HOME` auth file. Fresh isolated homes reported `Not logged in` and failed controlled exec attempts with HTTP 401; the earlier Keychain inference is superseded | Credential presence is not credential liveness. Production host/identity and subscription-automation suitability remain operator architecture decisions |
+| PII and real-data egress | No real WA export or client row was processed. The corpus builder requires structured role-aware JSONL, keeps conversation identifiers in memory only, emits only user targets, caps history at 12, independently redacts/scans each turn, and clears accumulated history after unsafe/unattributable input | Independent human privacy/legal review is mandatory before any export is processed or any fixture reaches the provider. Raw WA/OSINT remains on Pro and must never be copied to Air-M5 |
+| Process isolation | Fixed argv uses neutral temporary cwd, read-only sandbox, `--ephemeral`, `--ignore-user-config`, `--ignore-rules`, stdin-only prompt, reduced env allowlist, and an allowlisted model | A coding agent in a read-only sandbox is not a no-tools/no-host-read process. Stronger isolation must be independently approved before any real client text |
+| Lifecycle and exception boundary | Launch, timeout, auth, output-shape, process, tempdir, and generic communication failures map to sanitized typed errors. Timeout, arbitrary communication failure, single cancellation, and repeated cancellation kill and fully reap the child before returning/propagating | Real subscription quota/usage-window wording remains unmeasured and has no dedicated class; ambiguous seat-wide failures must stop the lane |
+| Persistence | The final adapter probe returned a synthetic sentinel exactly, held the observed session-file count at `3273 -> 3273`, and found no sentinel beneath the searched `~/.codex` tree | This is narrow evidence for one call and searched surfaces, not universal non-persistence proof |
+| Context and tool parity | Offline fixtures now carry canonical roles plus up to 12 prior turns. The benchmark defaults to a narrow `CodexSubscriptionBenchClient` facade and invokes candidates sequentially | The adapter is text-in/text-out: no native tool calls, RAG state, citations, or production ReAct parity. A blind conversational-safety score cannot prove end-to-end replacement quality |
+| Runtime reachability | None. Fly does not inherit this Air-M5 user's CLI binary or ChatGPT OAuth state | A separate architecture, default-off wiring PR, threat review, and serve-stage gate would be required; PR #4216 cannot be promoted by configuration |
+| Dormant Responses client | Still stateless with `store:false`, no live consumer, and no key | Historical API-retention analysis remains relevant only if that separate path is ever revived with explicit paid-key authorization |
+
+### Verification and verdict
+
+One addopts-free process collected and passed **482 tests**: 71 subscription-adapter, 163 dormant
+Responses-adapter, and 248 corpus/benchmark tests. The two offline harness test files are explicitly
+collected by the backend PR CI job. Targeted Ruff `F,I`, workflow YAML parsing, Prettier, and
+`git diff --check` passed.
+
+Kimi K3 returned SHIP. Gemini 3.1 Pro returned FIX-FIRST; the two code findings were accepted and
+closed: a second cancellation can no longer interrupt reaping, and the offline harness tests are
+now in CI discovery. The focused Gemini 3.1 Pro re-review timed out and produced no verdict. The
+declared continuity fallback, Gemini 3.7 Flash High, returned SHIP with
+`degraded_execution: true`. The repository's mandatory final Fable/Claude on-disk gate remains
+pending.
+
+**Threat verdict:** SHIP only as **unwired offline evidence tooling**; BLOCK for real WhatsApp
+data, shadow traffic, serving, merge, deploy, or cutover. The threat model must be run again against
+the actual future runtime design because that design does not exist in this PR.
+
+## ⚠️ Historical snapshot header — SUPERSEDED by R28 above
 
 **Base**: `origin/main` @ `7e66a8b3d003de0327e1ff7669e038b467ee8a94` (verifier and implementer
 worktrees share this merge-base — confirmed via `git merge-base HEAD origin/main` in both, this
@@ -91,14 +148,15 @@ scaffolding, it is the only way to get a verdict on what's actually there now.
 
 ## Reader's contract
 
-This is a **verifier lane**, independent from the implementer lane building the OpenAI-provider
-PR. Nothing here arms, merges, or deploys anything. Scope is bounded by the mandate: a threat
-model for introducing **OpenAI API (project service account, API key or WIF, Responses API)** as
-an LLM provider behind (or alongside) the Zantara WA bot's RAG orchestrator. Council verdict
-already ratified (5-family, unanimous): **NO-GO** on ChatGPT/Codex OAuth-subscription tokens as a
-WA runtime credential; **CONDITIONAL-GO** on OpenAI API with a least-privilege project service
-account. This document does not re-litigate that ruling — it assumes CONDITIONAL-GO and
-threat-models the conditions.
+This was a **verifier lane**, independent from the implementer lane building the OpenAI-provider
+PR. Nothing here arms, merges, or deploys anything. The historical mandate below was bounded to
+introducing **OpenAI API (project service account, API key or WIF, Responses API)** behind (or
+alongside) the Zantara WA bot's RAG orchestrator. Its then-ratified council verdict was **NO-GO** on
+ChatGPT/Codex OAuth-subscription tokens as a WA runtime credential and **CONDITIONAL-GO** on an
+OpenAI API project service account. Zero later selected ChatGPT Pro for a strictly local, human-run
+offline evidence adapter. R28 above reconciles those decisions: the runtime ban stands, while the
+offline adapter is admitted but remains unwired. The remainder of this document preserves the
+earlier API-path analysis and must not be used to override R28's current disposition.
 
 **CORRECTED post-Kimi-refutation, verified this turn**: an earlier draft of this paragraph said
 the orchestrator "today runs exclusively on Gemini." That is false-by-flag, not by architecture.
@@ -143,11 +201,13 @@ provider usage (real-time, client free-text, tool-calling, the full RAG context 
 a regex that flags "any `AsyncOpenAI` import" would break the embedder on day one (over-match,
 scar-family #3) — see §Gate V2, pattern G7.
 
-## §Fence compliance — implementation-lane checklist (added per team-lead, council-ratified)
+## §Historical fence compliance — original API-key implementation checklist
 
-The council (5-family panel) established explicit fences for the implementation lane, distinct from
-this document's own review-only scope. Restated here as a checklist because this verifier lane's
-freeze re-review (§Freeze re-review below) must check against it:
+The council (5-family panel) established these fences for the original API-key implementation lane,
+distinct from this document's own review-only scope. They are preserved because they explain the
+discarded design and dormant Responses client. R28 above is authoritative for the later
+subscription-backed offline lane; the runtime/privacy fences below remain useful, but the
+API-key-only credential selection is no longer the current offline choice.
 
 - Lane implementation = **SOLO client standalone + test HTTP-boundary + corpus/bench locali + ADR
   NO-WIRING**. FORBIDDEN: modifications to `config.py`, `llm_gateway.py`, any shadow dead-code,
@@ -497,10 +557,12 @@ own count) all checked out. Noted for calibration, not treated as an objection.
    placeholder §Refutation log at the time) — it is resolved by this section actually existing now,
    with real re-verification behind every ACCEPTED item above.
 
-## §Freeze re-review — prepared prompts, NOT YET RUN
+## §Historical freeze re-review prompts — SUPERSEDED
 
-Do not execute either prompt until team-lead signals the implementer's diff is frozen (committed,
-PR open). Fill in `<IMPLEMENTER_PR_URL>` at that point.
+These prompts targeted an intermediate Responses/API-key snapshot and are retained for provenance.
+Do not execute them against the current subscription adapter: their credential and client
+assumptions are obsolete. R28 above records the review actually run against final PR #4216 head
+`847a5e834`; a future runtime-wiring diff requires a fresh prompt written for that concrete design.
 
 **Ground truth as of THIS revision (do not re-derive, verify against the FROZEN diff instead):** the
 shadow-provider design (Findings 5/6/7) is already gone — reworked away before this diff existed —
@@ -662,4 +724,3 @@ prompt text, not actioned this pass since the prompt is not executed until freez
 below — item (g) added to the Kimi K3 prompt for the two omitted checks; the item-(f)-vs-output-format
 contradiction Kimi flagged is left as a known wrinkle in the prompt text (not blocking, since the
 prompt is not executed until freeze and can be re-tightened then).
-
