@@ -339,8 +339,13 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     RouterEntry(name="team_analytics", process_groups=_API, tags=("team",)),
     RouterEntry(name="team_drive", process_groups=_API, tags=("team", "integrations")),
     # ── Telegram ──
+    # telegram_webhook removed 2026-08-18 (Zero ruled REMOVE): structurally dead
+    # since inception — the `api` process it was mounted on runs
+    # initialize_services_light(), which sets app.state.channel_router = None
+    # by design, so Depends(get_channel_router) 503'd on every request. The live
+    # Telegram channel is Pro OpenClaw (CLAUDE.md §12), not this Fly-side surface.
+    # See .claude/skills/modus/PENDING-ARMS.md (closed lines) for the measurement.
     RouterEntry(name="telegram", process_groups=_API, tags=("channels",)),
-    RouterEntry(name="telegram_webhook", process_groups=_API, tags=("channels",)),
     # ── Twitter / X ──
     # Re-enabled 2026-04-29 (P0-6 zero-crash audit). Was previously DISABLED
     # 2026-04-03 ("CRC broken, OAuth incomplete"); the CRC handshake was

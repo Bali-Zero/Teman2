@@ -4,14 +4,10 @@ domain: http-webhooks
 census_date: "2026-06-13"
 edges:
   # ── inbound ──
-  - {
-      id: webhook-telegram-in,
-      kind: http_webhook,
-      direction: in,
-      machine: fly,
-      status: ALIVE,
-      consumer: "routers/telegram_webhook.py:245 (update_id dedup, ack-first, intel+fad callbacks)",
-    }
+  # webhook-telegram-in removed 2026-08-18 (Zero ruled REMOVE): routers/telegram_webhook.py
+  # deleted — the route was structurally dead by design (its `api` process always had
+  # app.state.channel_router = None, so Depends(get_channel_router) 503'd on every
+  # request). See .claude/skills/modus/PENDING-ARMS.md (closed lines) for the measurement.
   - id: webhook-whatsapp-in
     kind: http_webhook
     direction: in

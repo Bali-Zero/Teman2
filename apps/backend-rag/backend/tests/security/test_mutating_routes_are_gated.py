@@ -132,7 +132,8 @@ INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
         "per public_endpoints.py; an unauthenticated client asks for a link.",
     ),
     # ── Signed/verified webhooks: identity SHOULD be proven by signature, not
-    #    JWT — architecturally these three routes are correctly public. BUT
+    #    JWT — architecturally these two routes are correctly public. (A third,
+    #    /webhook/telegram, was removed 2026-08-18 — see below.) BUT
     #    a 2026-07-17 adversarial-review pass (Codex, independently re-verified
     #    by this session reading the handler source) found the ACTUAL
     #    verification depth does not match what each entry's PUBLIC_ENDPOINTS
@@ -159,15 +160,10 @@ INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
         "no X-Hub-Signature-256 HMAC verification of the actual message "
         "payload at all. The registry reason overclaims — see PENDING-ARMS.",
     ),
-    IntentionalPublicMutation(
-        "POST",
-        "/webhook/telegram",
-        "Telegram bot webhook. VERIFIED 2026-07-17: telegram_webhook.py's "
-        "POST handler (line 252) has NO secret-token check (Telegram's own "
-        "X-Telegram-Bot-Api-Secret-Token mechanism is never verified) — any "
-        "caller can POST a forged update, including callback_query with an "
-        "'intel:' prefix that reaches intel-voting logic. See PENDING-ARMS.",
-    ),
+    # /webhook/telegram entry removed 2026-08-18 (Zero ruled REMOVE): the router it
+    # named, telegram_webhook.py, no longer exists — the route was structurally dead
+    # by design (its process never had a live ChannelRouter). See
+    # .claude/skills/modus/PENDING-ARMS.md (closed lines) for the measurement.
     # ── Bridge (Pro<->Fly): X-Bridge-Auth hmac.compare_digest in-router ──
     IntentionalPublicMutation(
         "POST",

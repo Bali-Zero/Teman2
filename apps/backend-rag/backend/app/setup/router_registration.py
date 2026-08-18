@@ -139,7 +139,7 @@ def include_routers(api: FastAPI) -> None:
         team_drive,
         # team_members,  # DISABLED: duplicates team.py /members endpoint (audit 2026-04-03)
         telegram,
-        telegram_webhook,
+        # telegram_webhook removed 2026-08-18 (Zero ruled REMOVE) — see router_manifest.py
         twitter,  # RE-ENABLED 2026-04-29 (P0-6 zero-crash audit) — CRC was actually working
         visa_check,  # [4APPS] Homepage Visa Check app (Clock + Match branches)
         visa_oracle,
@@ -316,9 +316,8 @@ def include_routers(api: FastAPI) -> None:
     # Communication routers (notifications removed - will be MCP)
     api.include_router(websocket.router)
     api.include_router(telegram.router)  # Telegram bot integration (query endpoints)
-    api.include_router(
-        telegram_webhook.router,
-    )  # [NEW] Telegram webhook (multi-channel architecture)
+    # telegram_webhook include_router removed 2026-08-18 (Zero ruled REMOVE) — see
+    # router_manifest.py for the measured 503-by-design mechanism.
     # RE-ENABLED 2026-04-29 (P0-6 zero-crash audit). The CRC handshake at
     # backend/app/routers/twitter.py was actually correct; the disable from
     # 2026-04-03 was conservative. Now lives behind the ack-first
@@ -586,7 +585,7 @@ def include_light_routers(api: FastAPI) -> None:
         team_drive,
         # team_members,  # DISABLED: duplicates team.py /members endpoint (audit 2026-04-03)
         telegram,
-        telegram_webhook,
+        # telegram_webhook removed 2026-08-18 (Zero ruled REMOVE) — see router_manifest.py
         twitter,  # RE-ENABLED 2026-04-29 (P0-6 zero-crash audit) — CRC was actually working
         visa_check,  # [4APPS] Homepage Visa Check app (Clock + Match branches)
         visa_oracle,
@@ -730,7 +729,7 @@ def include_light_routers(api: FastAPI) -> None:
     # Communication routers
     api.include_router(websocket.router)
     api.include_router(telegram.router)
-    api.include_router(telegram_webhook.router)
+    # telegram_webhook include_router removed 2026-08-18 (Zero ruled REMOVE)
     api.include_router(twitter.router)  # P0-6 re-enabled 2026-04-29
     api.include_router(twitter.webhook_router)  # P0-6 re-enabled 2026-04-29
     api.include_router(
