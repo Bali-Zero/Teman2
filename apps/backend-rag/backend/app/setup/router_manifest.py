@@ -195,6 +195,8 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     # backend/app/auth/public_endpoints.py); /all, /search and /scenario keep
     # requiring auth on both processes.
     RouterEntry(name="dynamic_pricing", process_groups=_BOTH, tags=("pricing",)),
+    # ── E33 Second Home (internal console, F4a case entrance) ──
+    RouterEntry(name="e33_cases", process_groups=_API, tags=("e33",)),
     # ── EventBus ──
     RouterEntry(name="event_bus", process_groups=_API, tags=("infra",)),
     # ── Experience / Skill / Metabolic (SCAR: PR #54/#55/#60) ──
