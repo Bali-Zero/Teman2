@@ -359,7 +359,7 @@ Dispatched to re-check the 13 rows Kimi did not individually re-derive. Findings
    same topic. `CL-CROSS-04` (T4, E33F/E33G) is `CONFLICTING` but has a co-topic `VERIFIED` companion
    (`CL-CROSS-03`, same provenance query) — non-blocking.
 
-**CL-E31C-01 / CL-E31F-01 — category identity, closed via production-catalog cross-reference.** E31C
+**CL-E31C-01 — category identity, closed via production-catalog cross-reference.** E31C
 = "Family Visa Child of Legal Mixed Marriage" (child of a legally-mixed WNA-WNI marriage); E31F =
 "Family Visa Anak Dengan Orang Tua WNI" (child reuniting with an Indonesian-citizen parent). Both
 definitions are unambiguous in the live production catalog, resolving the NB-2-source-only confusion
@@ -370,3 +370,23 @@ definitions are unambiguous in the live production catalog, resolving the NB-2-s
   same evidentiary class already accepted for the sibling `CL-E31B-legal-01`/`CL-E31D-legal-01`
   claims). Products: E31C, E31F. Provenance: production seed catalog (no new NB-2 query — none
   needed; `CL-E31BCDEF-01`'s CONFLICTING state is an NB-2-source artifact, not a production gap).
+- Cross-reference: paired with `CL-E31F-01` below — same evidentiary block (E31C+E31F category
+  identity was originally written as one dual-id claim); split into two complete headers only so
+  each id resolves independently under the compiler's one-id-per-header grammar. No content
+  re-adjudicated.
+
+**CL-E31F-01 — category identity, closed via production-catalog cross-reference.** E31C
+= "Family Visa Child of Legal Mixed Marriage" (child of a legally-mixed WNA-WNI marriage); E31F =
+"Family Visa Anak Dengan Orang Tua WNI" (child reuniting with an Indonesian-citizen parent). Both
+definitions are unambiguous in the live production catalog, resolving the NB-2-source-only confusion
+`CL-E31BCDEF-01` flags between the two family-grouped answers.
+- Source: `seed_visa_types_complete_2026.py:1186-1196` (E31C), `:1228-1238` (E31F) — authoritative,
+  independent of NB-2, `source: zantara_curated_2026`.
+- **State: VERIFIED-WITH-CAVEAT** (production-catalog cross-reference, not a fresh NB-2 pinpoint;
+  same evidentiary class already accepted for the sibling `CL-E31B-legal-01`/`CL-E31D-legal-01`
+  claims). Products: E31C, E31F. Provenance: production seed catalog (no new NB-2 query — none
+  needed; `CL-E31BCDEF-01`'s CONFLICTING state is an NB-2-source artifact, not a production gap).
+- Cross-reference: paired with `CL-E31C-01` above — same evidentiary block (E31C+E31F category
+  identity was originally written as one dual-id claim); split into two complete headers only so
+  each id resolves independently under the compiler's one-id-per-header grammar. No content
+  re-adjudicated.

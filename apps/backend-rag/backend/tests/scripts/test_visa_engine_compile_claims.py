@@ -23,7 +23,7 @@ from backend.scripts.visa_engine.compile_claims import (
     load_manifest,
     main,
 )
-from backend.services.visa_engine.claim_ledger import ClaimRecord
+from backend.services.visa_engine.claim_ledger import ClaimRecord, parse_claim_ledger_text
 
 _PACK_PATH = (
     Path(__file__).resolve().parents[3]
@@ -45,6 +45,12 @@ _LEDGER_FILES = [
     _CLAIMS_DIR / "e2b-batch1-claim-ledger.md",
     _CLAIMS_DIR / "e2b-batch2-claim-ledger.md",
     _CLAIMS_DIR / "e3a-cf1-resolution.md",
+    # E5 increment 3, seq-9 fold (2026-08-19): wired in for the blocked7
+    # manifest's E23U/E23V/E30E/E30F/E33A/E33B/E33C rules — see
+    # TestLedgerHygiene below for the dual-header + product-state-clause
+    # regressions these two files' fixes are pinned by.
+    _CLAIMS_DIR / "e2b-batch3-claim-ledger.md",
+    _CLAIMS_DIR / "e2c-blocked5-claim-ledger.md",
 ]
 
 
@@ -1026,6 +1032,130 @@ class TestCompileManifest:
         rendered = report.render()
         assert "NOTES" in rendered
         assert "21 leaves > 20" in rendered
+
+
+# ---------------------------------------------------------------------------
+# E5 increment 3, Step 1 — ledger hygiene regressions (dual-header split +
+# product-state-clause trap), see
+# research/visa/doctrine-factory/e5/2026-08-19-e5-increment3-spec.md Step 1.
+# ---------------------------------------------------------------------------
+
+
+class TestLedgerHygiene:
+    """Pins the two 2026-08-19 ledger fixes and proves — against the REAL
+    parser, never by re-reading the regex — that the pre-fix shapes really
+    were broken (guilt) and the post-fix shapes really do resolve correctly
+    (innocence). Anti-hallucination discipline: every assertion below was
+    verified by an actual ``parse_claim_ledger_text``/``load_claim_ledgers``
+    call before being written into this file.
+    """
+
+    # -- 1a: e2b-batch3 dual-header split (CL-E31C-01 / CL-E31F-01) --------
+
+    def test_innocence_cl_e31c_01_resolves_with_full_id_post_fix(self) -> None:
+        ledger = load_claim_ledgers(_LEDGER_FILES)
+        record = ledger["CL-E31C-01"]
+        assert record.state == "VERIFIED-WITH-CAVEAT"
+        assert record.compilable
+
+    def test_innocence_cl_e31f_01_resolves_post_fix(self) -> None:
+        ledger = load_claim_ledgers(_LEDGER_FILES)
+        record = ledger["CL-E31F-01"]
+        assert record.state == "VERIFIED-WITH-CAVEAT"
+        assert record.compilable
+
+    def test_guilt_unsplit_dual_header_shape_never_created_cl_e31f_01(self) -> None:
+        """Reproduces the PRE-FIX shape (a single ``**CL-E31C-01 /
+        CL-E31F-01 — ...**`` header) in an isolated fixture — never against
+        the real ledger file, which is now fixed — and proves it: (a) never
+        creates a ``CL-E31F-01`` record at all, and (b) truncates the first
+        id to the bare ``CL-E31C`` (the ``-01`` suffix is consumed by
+        ``_HEADER_RE``'s backtrack onto the literal hyphen inside
+        ``E31C-01`` as its id/name separator — verified empirically against
+        the real regex before writing this assertion). This is WHY the split
+        in Step 1a was structurally necessary, not merely cosmetic."""
+
+        old_broken_shape = (
+            "**CL-E31C-01 / CL-E31F-01 — category identity, closed via "
+            "production-catalog cross-reference.** E31C = \"Family Visa "
+            "Child of Legal Mixed Marriage\"; E31F = \"Family Visa Anak "
+            "Dengan Orang Tua WNI\".\n"
+            "- Source: seed_visa_types_complete_2026.py.\n"
+            "- **State: VERIFIED-WITH-CAVEAT** (dual-header pre-fix shape). "
+            "Products: E31C, E31F.\n"
+        )
+        records = parse_claim_ledger_text(old_broken_shape, source_name="fixture-old-dual-header")
+        assert "CL-E31F-01" not in records
+        assert "CL-E31C-01" not in records
+        assert "CL-E31C" in records  # the truncated survivor — proves the mis-parse, not a no-op
+
+    # -- 1b: e2c-blocked5 product-state-clause trap (CL-E33B-03) -----------
+
+    def test_innocence_cl_e33b_03_state_for_product_e33b_post_fix(self) -> None:
+        ledger = load_claim_ledgers(_LEDGER_FILES)
+        record = ledger["CL-E33B-03"]
+        assert record.state_for_product("E33B") == "VERIFIED-WITH-CAVEAT"
+        assert record.compilable_for_product("E33B")
+        # The real parser returns `None`, not a literal `{}`, when the state
+        # bullet contains fewer than 2 `**TOKEN** for PRODUCTS` clauses (see
+        # claim_ledger.py::_parse_product_conditional_states) — `not record.
+        # product_states` is the falsy check that actually matches the
+        # runtime type, verified against the live parser before writing this
+        # assertion (the increment-3 spec's literal "== {}" wording does not
+        # match the field's real `dict | None` type; recorded as a spec
+        # wording note in the implementer report, not a re-adjudication of
+        # the claim's content).
+        assert not record.product_states
+
+    def test_guilt_old_product_state_clause_shape_produces_spurious_split(self) -> None:
+        """Reproduces the PRE-FIX ``**VERIFIED** for the duration figure
+        (...); **UNVERIFIED** for the flat ...`` shape in an isolated
+        fixture and proves it trips ``_PRODUCT_STATE_CLAUSE_RE`` into a
+        spurious ``product_states={"the": ...}`` split — "the" comes from
+        the regex's product-list capture group greedily matching only the
+        word "the" out of "the duration figure" / "the flat ...". This is
+        exactly the defect Step 1b's rewrite (a single plain state bullet,
+        with the nuance moved to prose that cannot match ``**TOKEN** for``)
+        eliminates."""
+
+        old_broken_shape = (
+            "**CL-E33B-03 — Duration and sponsor per primary law.** "
+            "Multiple entry.\n"
+            "- Source: some source.\n"
+            "- **State: VERIFIED** for the duration figure (5/10 years, "
+            "machine-audited VERIFIED); **UNVERIFIED** for the flat "
+            "sponsor-always-mandatory reading specifically, pending "
+            "reconciliation. Products: E33B.\n"
+        )
+        records = parse_claim_ledger_text(old_broken_shape, source_name="fixture-old-e33b-03")
+        record = records["CL-E33B-03"]
+        assert record.product_states == {"the": "UNVERIFIED"}
+
+    # -- 1c: e2c SUPERSEDED (CF-17) marker never becomes an authoritative
+    #    claim state — proven against the real, unmodified ledger file. ----
+
+    def test_innocence_e2c_superseded_marker_stays_non_compilable(self) -> None:
+        """CF-17's in-block ``- **State: SUPERSEDED (Level 6 side).**``
+        bullet (``e2c-blocked5-claim-ledger.md``) lives inside
+        ``CL-E33C-03``'s header block (it is the LAST ``**CL-...**`` header
+        in the file, so its block runs to end-of-file) but is the SECOND
+        ``- **State: ...**`` bullet in that block — ``_STATE_RE`` only ever
+        resolves the FIRST one. Prove the SUPERSEDED marker never won: (a)
+        ``CL-E33C-03`` itself resolves to its own real first-bullet state,
+        ``VERIFIED`` (compilable), never ``SUPERSEDED``; (b) no claim_id in
+        the merged ledger resolves to state ``SUPERSEDED`` at all — the
+        marker is descriptive prose about a cross-level conflict resolution
+        (CF-17 has no ``**CL-...**`` header of its own), not a claim any
+        rule could ever cite, so it is non-compilable by never being a
+        resolvable claim_id in the first place."""
+
+        ledger = load_claim_ledgers(_LEDGER_FILES)
+        e33c_03 = ledger["CL-E33C-03"]
+        assert e33c_03.state == "VERIFIED"
+        assert e33c_03.compilable
+
+        superseded_claims = [cid for cid, rec in ledger.items() if rec.state == "SUPERSEDED"]
+        assert superseded_claims == []
 
 
 # ---------------------------------------------------------------------------
