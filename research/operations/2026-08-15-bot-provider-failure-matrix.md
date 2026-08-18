@@ -1,116 +1,239 @@
 ---
-date: 2026-08-15
+date: 2026-08-18
 domain: operations
-client_case: "internal — BOT-V3 gate-prep for the Zantara WA OpenAI shadow-provider adapter (Merge-OS-adjacent \"BOT-V\" verification line, task #15; council context: NO-GO on ChatGPT/Codex OAuth as WA runtime credential, CONDITIONAL-GO on OpenAI API with least-privilege service account + Responses API)"
-discovered_by: "lane-c-security (verifier lane) — direct code inspection this session, one general-purpose subagent for the idempotency/give-up-ledger deep-read (its file:line citations independently re-executed and spot-verified against disk in this session, not trusted on report alone)"
+client_case: "internal — BOT-V3 gate-prep for the Zantara WhatsApp ChatGPT Pro subscription provider"
+discovered_by: "Codex orchestrator on Air-M5, resumed from the 2026-08-15 BOT-V lane and re-grounded against current main plus adapter head"
 sources:
-  - "apps/backend-rag/backend/app/routers/whatsapp_chat.py:884-996 (inbound dedup, ON CONFLICT)"
-  - "apps/backend-rag/backend/services/integrations/wa_outbox_worker.py (claim/fence/coalesce/retry/give-up ledger, MAX_ATTEMPTS/CLAIM_LEASE_SECONDS/RETRY_BACKOFF_BASE_SECONDS constants)"
-  - "apps/backend-rag/backend/services/integrations/wa_inbox_bot.py (generate_bot_reply:467, _tell_a_human:208, 5 exits)"
-  - "apps/backend-rag/backend/services/integrations/wa_bot_outcomes.py (BotStandingCondition)"
-  - "apps/backend-rag/backend/services/rag/agentic/llm_gateway.py (Gemini primary generation, _alert_quota_exhausted, OpenRouter refusal gate, asyncio.wait_for timeout)"
-  - "apps/backend-rag/backend/llm/config.py (ModelName, KNOWN_GEMINI_MODELS allowlist, _model_from_env)"
-  - "apps/backend-rag/backend/app/core/config.py (Settings.openrouter_enabled default False)"
-  - ".agents/skills/bot/SKILL.md (LIVE STATE 2026-08-12 give-up-silence cure, §3 Anatomy, §5 blood-bought rules)"
-  - "apps/backend-rag/backend/tests/unit/routers/test_wa_meta_inbox_onconflict.py"
-  - "UNCOMMITTED WIP, NOT on origin/main, flagged throughout — worktree .worktrees/bot-openai-adapter, branch agent/air-m5/bot/openai-adapter: apps/backend-rag/backend/llm/openai_responses_client.py, apps/backend-rag/backend/services/rag/agentic/_shadow_provider.py, uncommitted diffs to app/core/config.py and services/rag/agentic/llm_gateway.py"
-adversarial_review: none yet — this document is itself gate-prep, no code ships with it
+  - "origin/main at 993e4e868a6e8210328f69ccd136ca9d5c54d776, fetched 2026-08-18"
+  - "PR #4216 adapter head b7b2d6652: apps/backend-rag/backend/llm/codex_exec_client.py and tests"
+  - "PR #4216 ADR: research/operations/2026-08-15-adr-wa-runtime-openai-provider.md"
+  - "PR #4301 branch agent/air-m5/ops/bot-corner-reconfirm-2026-08-18: research/operations/2026-08-18-bot-openai-shadow-wiring-plan.md"
+  - "apps/backend-rag/backend/app/routers/whatsapp_chat.py"
+  - "apps/backend-rag/backend/services/integrations/wa_outbox_worker.py"
+  - "apps/backend-rag/backend/services/integrations/wa_inbox_bot.py"
+  - "apps/backend-rag/backend/services/rag/agentic/llm_gateway.py"
+  - "apps/backend-rag/backend/app/core/config.py"
+  - "codex-cli 0.147.0 local exec help, measured 2026-08-18"
+adversarial_review: kimi-k3
 ---
 
-# BOT-V3 — failure matrix, idempotency, and the rollback-to-Gemini proof
+# BOT-V3 — selected-provider failure matrix, idempotency, and rollback truth
 
-## Snapshot
+## Executive verdict
 
-Worked from `origin/main` at **`7e66a8b3d003de0327e1ff7669e038b467ee8a94`** (2026-08-14T15:41:15Z, #4181 — `git merge-base HEAD origin/main` confirms this session's worktree, `.worktrees/ops-bot-failure-matrix` / branch `agent/air-m5/ops/bot-failure-matrix`, branched exactly here, no drift). Every claim about the **committed tree** (§1 Gemini/OpenRouter columns, §2, §3 legs (a)/(b), §4) is anchored to this SHA and was re-executed against disk in this session. Claims that cite the **uncommitted WIP** (`.worktrees/bot-openai-adapter`) are separately timestamped where they appear and are explicitly non-authoritative — see §0.
+The selected candidate is the ChatGPT Pro subscription adapter in
+`codex_exec_client.py`, invoked through headless `codex exec`. It is **not** the dormant
+`openai_responses_client.py` API-key client. The previous version of this document described the
+dormant client's HTTP 401/429/5xx taxonomy as though it covered "the OpenAI shadow". It did not.
 
-## 0. Scope, and two corrections made mid-mandate (declared, not hidden)
+Current verdict: **offline evidence only; not ready for shadow wiring or client traffic**. The
+adapter has a strong constructed-test baseline around subprocess lifecycle and sanitized failures,
+but material boundaries remain unmeasured or unimplemented: subscription quota classification,
+ephemeral session proof, inherited rule/tool isolation, partial-output detection, generic stdin
+communication errors, concurrency/backpressure, and a production execution host.
 
-**Correction 1 — the adapter is further along than the mandate assumed.** This session's mandate framed the OpenAI adapter as not existing yet ("un'altra sessione lo farà"). On the committed history, that's true: `openai_responses_client.py` and `_shadow_provider.py` are absent from every commit reachable from `origin/main`. But a **separate, live, uncommitted worktree** (`.worktrees/bot-openai-adapter`, branch `agent/air-m5/bot/openai-adapter`, diff sitting *above* `7e66a8b3d`, **not frozen**) already contains a substantially complete shadow-only OpenAI Responses client. It is a **moving target**: between this document's first draft and its independent review, that worktree's files changed again on disk (new test directories appeared under `apps/backend-rag/backend/tests/llm/`, `apps/backend-rag/backend/tests/rag/`, `scripts/bot/`; `_shadow_provider.py` grew a `_pending_tasks`-draining mechanism at `close()` that wasn't there on first read) — confirmed live, mtimes re-checked at 2026-08-15 00:50 WITA (2026-08-14T16:50:53Z). **Every citation into that worktree below is therefore a snapshot, not ground truth** — stated at the timestamp it was taken, explicitly not load-bearing for §3's conclusion, which rests entirely on the committed tree. Recommend a coordination check with whoever owns that lane / BOT-V1 before either session commits.
+## 0. Frozen evidence boundary
 
-**Correction 2 — the provider question is a tripartition, not a binary (lead's correction, verified independently in this revision).** The reply path's fallback chain is not "Gemini or nothing" — `apps/backend-rag/backend/llm/providers/openrouter.py` + `apps/backend-rag/backend/llm/provider_registry.py` + `LLMGateway._call_openrouter` (`llm_gateway.py:1145-1187`) constitute a **real, committed, code-live third path**: OpenRouter, reachable only as a last-resort fallback after every Gemini model in the tier chain is exhausted (`llm_gateway.py:715-736`), hard-gated off by `Settings.openrouter_enabled` (default `False`, `app/core/config.py:130`, a COS-LAW-013 PII/compliance switch — orthogonal to model selection). §1 and §3 below are revised to state Gemini (live, default, unconditional) / OpenRouter (committed, code-real, gated off) / OpenAI (uncommitted WIP only) as three distinct tiers, not two.
+This report separates three kinds of evidence:
 
-## 1. Failure matrix
+- **MEASURED** — observed from the installed CLI or current repository state in this session;
+- **CONSTRUCTED** — proved by a deterministic test double or synthetic fixture, not observed from
+  a real vendor failure;
+- **UNMEASURED** — reasoned from code or named as a required probe; no passing claim is made.
 
-Two columns, not three — deliberately. The tripartition from §0/§3 (Gemini / OpenRouter / OpenAI) still holds, but OpenRouter does not earn its own column here: it is reachable only after the Gemini tier chain is exhausted (`llm_gateway.py:715-736`), and once reached it runs through the *same* generic `except Exception` catch-all as every Gemini failure in this matrix — it has no distinct failure taxonomy of its own to report, only "same as Gemini, plus one more hop, when armed" (which it isn't, by default). The two columns that matter architecturally are the **live Gemini path** (Ring #5/#7 of `.agents/skills/bot/SKILL.md` §3 — the only thing that ever reaches a client today, OpenRouter included) and the **OpenAI shadow branch** (uncommitted WIP — fire-and-forget, discarded, architecturally incapable of touching the served answer). Each row gives both, because a future real adapter inherits its client-facing obligations from the Gemini column, not from the shadow column's current (deliberately silent) behavior.
+The selected adapter evidence is frozen at PR #4216 head `b7b2d6652`. Live-path evidence was
+rechecked against current `origin/main` at `993e4e868a6e8210328f69ccd136ca9d5c54d776`.
+`git diff HEAD..origin/main` was empty for all cited WhatsApp hot files before this revision.
 
-| Failure | Expected behavior | Gemini path (LIVE, origin/main) — real observable | OpenAI shadow (WIP, uncommitted) — real observable | What must reach the client |
-|---|---|---|---|---|
-| **401/403** (invalid/revoked key, permission) | Non-retryable; alert operator; do not burn quota retrying your own misconfiguration | `google.genai.errors.ClientError` (4xx family, per `llm_gateway.py:116` docstring) propagates via `except Exception as gen_exc: ... raise` (`llm_gateway.py:907-911`, `:1029-1033`) up through `generate_bot_reply` → one of 3 `RuntimeError` raises in `wa_inbox_bot.py` (608/659/691) → `wa_outbox_worker.py` retries up to `MAX_ATTEMPTS=5` (line 132) → `error=f"bot_generate_failed_after_{attempts}_attempts: {gen_exc}"` (line 816) | `OpenAIAPIError(401/403, body)` raised immediately, NOT retried (`openai_responses_client.py:376`, 4xx excluded from `_RETRYABLE_STATUS_CODES` line 84 — WIP snapshot 2026-08-15 00:50 WITA, see §0) → caught by `_shadow_provider._run_shadow`'s `except Exception` (line 175) → `logger.warning("OpenAI shadow: generation failed, discarded: %s", exc)` (line 176). **No ledger entry, no alert, no retry — a WARNING log line is the only trace.** | Never silence (2026-08-12 SKILL.md cure): on the Gemini path, after 5 exhausted attempts the client gets nothing further automatically unless `WA_OUTBOX_MANNERS_ENABLED` fires an apology (default OFF, `_manners_enabled()` line 158), but **a human IS notified** via `_tell_a_human` before the raise (`wa_inbox_bot.py:208-272`, 30-min per-thread dedup) for 3 of the 5 exits. The shadow branch has no client-facing obligation at all today — it never served anything to lose. |
-| **429** (rate limit / quota) | Retry with backoff on transient signal; distinguish "will self-clear" from "balance depleted"; alert operator; never silently swallow | `_is_429_signal`/`_classify_quota_exhaustion` (`llm_gateway.py:95-157`) distinguishes `rate_limited`/`balance_depleted`/`quota_exhausted` from the SDK's int/str-inconsistent error shape; `_alert_quota_exhausted` (line 160) sends `AlertLevel.CRITICAL`, title "Gemini quota exhausted", `dedup_key=f"{_QUOTA_ALERT_DEDUP_KEY}:{subtype}"` (`_QUOTA_ALERT_DEDUP_KEY="gemini_quota_exhausted"`, line 92) — **then re-raises unchanged** (line 910/911); comment states plainly "Architecture is fail-closed by design (no external LLM fallback) — this alert IS the mitigation (spec O1)" (line 189-190). Line 716 attempts an OpenRouter fallback on total Gemini failure, but `Settings.openrouter_enabled` defaults `False` (`app/core/config.py:130`, "only with Zero's explicit authorization") — the fallback is code that exists and is inert by default. Real incident: SKILL.md LIVE STATE 2026-08-10, 4th prepay depletion, measured live (`429 RESOURCE_EXHAUSTED`, `All Gemini models failed`). | Retried up to 2x with exponential backoff (0.5s, 1.0s — `openai_responses_client.py:351,365`, WIP snapshot per §0), then `OpenAIAPIError(429, body)` if still failing → same catch-all discard as the 401 row. | Gemini path: a CRITICAL operator alert fires (real, paged); no automatic client-facing message beyond the standard give-up flow above. Shadow: nothing — same as 401 row. |
-| **5xx** (server error) | Retry transient, alert if persistent | Same catch-all as 401/429 rows (`except Exception ... raise`); no dedicated 5xx classification distinct from the 429/quota path — a bare 500 from Gemini is NOT auto-detected as "quota" by `_classify_quota_exhaustion` (returns `None` unless a 429/RESOURCE_EXHAUSTED signal matches, line 149-150), so **a pure 5xx gets NO operator alert today** — it silently falls through to the generic retry-then-give-up ledger path with no CRITICAL alert, only the eventual `bot_generate_failed_after_5_attempts` ledger row. **This is a real gap, not a design choice** — worth a line in BOT-V2's gate contract. | Retried up to 2x, `_RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}` (line 86) → `OpenAIAPIError(5xx, body)` after exhaustion → same discard. | Same as 401 row for both paths, PLUS the Gemini-side alert gap just named. |
-| **Timeout** | Bounded wait, then treated as a transient failure | `asyncio.wait_for(..., timeout=HttpTimeoutConstants.DEFAULT_TIMEOUT)` (`llm_gateway.py:899-904`, `:1021-1026`) → `asyncio.TimeoutError` caught by the same generic `except Exception as gen_exc: await _alert_quota_exhausted(...); raise` — `_classify_quota_exhaustion` correctly returns `None` for a plain timeout (not a 429 signal), so **same gap as the 5xx row: a timeout gets no CRITICAL alert**, only the downstream retry/give-up ledger. | `httpx.TimeoutException`/`httpx.TransportError` retried 2x (except at :348) → `OpenAINetworkError(str(exc))` raised at :361 (WIP snapshot per §0) → same discard as above. | Same pattern as 401/5xx rows. |
-| **Malformed tool call** | Never crash the caller; surface as a structured, inspectable failure, not silent data corruption | Gemini path uses native function calling (`function_calling_config=types.FunctionCallingConfig(mode="AUTO")`, `llm_gateway.py:838`; `response.function_calls` checked at lines 945, 1104-1119) — this is SDK-parsed, not hand-rolled JSON, so a malformed tool call at this layer would surface as an SDK-level exception, caught by the same generic `except Exception` as every other row (no distinct handling found). | `_parse_responses_payload` (def at `openai_responses_client.py:163`) builds `ToolCall(call_id, name, arguments)` from the raw API JSON **without ever validating that `arguments` is parseable JSON** (lines 185-191, WIP snapshot per §0) — a malformed `arguments` string is stored as-is, no exception. **Worse: `_run_shadow`'s comparison log (`_shadow_provider.py:189-205`) does not include `tool_calls` or `arguments` in its logged fields at all.** A malformed tool call in the shadow branch today is invisible even in its own observability — the log line that exists cannot show it. **This is the weakest cell of the whole matrix: no real observable exists for it in the current shadow code**, a finding in itself. | Gemini: falls into the generic retry/give-up path like every other exception. Shadow: nothing reaches anyone, and the failure mode isn't even distinguishable in the log from a clean generation with an empty `tool_calls` tuple. |
-| **Partial / truncated response** | Never silently drop content the client would reasonably expect to be complete; if truncation is unavoidable, say so | **Already a named, measured, live defect** (SKILL.md LIVE STATE 2026-08-11, "A REPLY TOO LONG FOR WHATSAPP IS CUT MID-WORD AND NOTHING SAYS SO"): `whatsapp_service.send_message` enforces the Cloud API's 4,096-char limit with `text[:4096]` — a silent mid-word cut, no marker, measured at ~10% of ordinary questions, worst case 13,671→4,096 chars (70% of the answer vanishes). A cure is in flight on a separate branch (`backend-rag-wa-escalation-lane`: cut at a boundary + a short localized note that never promises a continuation). This is the Gemini path's own existing partial-response defect — it predates and is unrelated to the OpenAI shadow work. | On a 200 response with an empty/partial `output` array, `_parse_responses_payload` degrades to `LLMResult(text="", refusal=False, ...)` with no exception (`openai_responses_client.py:163-212` roughly, WIP snapshot per §0) — not an error at all, and it IS observable: the comparison log's `shadow_chars` field (`_shadow_provider.py:199`) would read `0`, a real if implicit signal. | Gemini: the client silently receives a truncated answer today — this is the one row where the "never silent" rule is currently violated in production, tracked separately, cure in flight. Shadow: nothing reaches the client either way. |
-| **Refusal / content filter** | Distinguish "the model declined on policy grounds" from a transport/API error; never present a refusal as if it were a normal answer | Gemini path: no equivalent first-class `refusal` concept found in `llm_gateway.py` — the closest analog is the RAG system's own **abstain** mechanism (5 named gates, SSOT `_abstain_policy.py`, cited in SKILL.md §5 as "the product") — architecturally a *retrieval-confidence* refusal, not a *model-safety* refusal, and a materially different thing a reviewer should not conflate with OpenAI's content-policy refusal. | First-class support: `LLMResult.refusal: bool` + `refusal_reason: str \| None`, parsed from a `type == "refusal"` output item (`openai_responses_client.py:183-184, 193-197`, WIP snapshot per §0) — module docstring is explicit that "Refusal is NOT an error... HTTP 200 with an output item of type 'refusal'" (line 41). Logged in the comparison line as `shadow_refusal: result.refusal` (`_shadow_provider.py:200`) — the ONE failure-adjacent field in this whole matrix that IS captured today, by design. | Gemini: an abstain reaches the client as an explicit, honest "I don't have grounded information" (or, per the 2026-08-11 LIVE STATE entries, sometimes as raw silence via the same raise-path as every other row — a known, separately tracked defect class, NOT this matrix's subject). Shadow: nothing reaches the client; the refusal is only ever a comparison-log field. |
+No client data, WhatsApp export, secret, provider call, config change, runtime flag, deploy, merge,
+or outward message was used to produce this report.
 
-## 2. Idempotency of the reply path
+## 1. Provider tripartition — do not collapse these lanes
 
-**Inbound dedup (Meta webhook double-delivery — real, at-least-once, per Meta's own delivery guarantee):** `whatsapp_chat.py:955-962` (verified verbatim on disk, this session):
+1. **Gemini — live primary.** The agentic RAG gateway uses a native system instruction, structured
+   history, and Gemini function declarations. Its answer can reach the WhatsApp outbox.
+2. **OpenRouter — committed fallback, gated OFF.** The gateway contains `_call_openrouter`, but
+   `Settings.openrouter_enabled` defaults to `False`. It is not the selected migration route.
+3. **Codex subscription — selected candidate, completely dormant.** `CodexExecClient` has no live
+   importer, no setting, no gateway branch, and no worker branch. No runtime credential is
+   represented in the repository or authorized by this lane; external Fly secret state was not
+   inspected and remains UNMEASURED. The adapter accepts one prompt string and returns one text
+   string. It is not a native tool-calling peer of the Gemini interface.
+
+`openai_responses_client.py` is a fourth code artifact but not an armed provider lane: Zero ruled
+that `OPENAI_WA_PROVIDER_API_KEY` will not be provisioned. Its HTTP matrix is historical evidence
+for that dormant alternative only.
+
+## 2. Failure matrix for `CodexExecClient`
+
+| Failure or boundary | Frozen adapter behavior | Evidence | Required disposition before offline Stage 1 | Client-facing implication today |
+| --- | --- | --- | --- | --- |
+| Binary missing, path absent, non-executable, or auth file absent/empty | `available=False`; `generate()` raises `CodexExecUnavailableError` before spawn. The ADR also measured that macOS Keychain auth may let the CLI authenticate even when an isolated `CODEX_HOME` lacks `auth.json`, so this gate is deliberately over-strict and is not equivalent to real credential state | CONSTRUCTED filesystem tests plus MEASURED Keychain caveat in ADR §30.4 | Keep fail-closed; bench must report `SKIPPED_UNAVAILABLE`, never a pass. Record that file presence is only a local gate proxy | None; there is no live caller |
+| Binary disappears or becomes unusable after availability check | Launch `OSError` maps to sanitized `CodexExecUnavailableError` | CONSTRUCTED tests | Preserve mapping and prove no child/tempdir leak | None |
+| Temp directory creation fails | Maps to sanitized `CodexExecUnavailableError` | CONSTRUCTED test | Preserve typed failure | None |
+| Invalid model, prompt, or timeout | Positive model allowlist; empty prompt and non-finite/non-positive timeout rejected before spawn | CONSTRUCTED tests | Preserve the already-correct validation; style cleanup is not a Stage 1 gate | None |
+| Auth material exists but token is revoked/expired | On non-zero exit, sanitized stderr is matched against auth-death phrases; match raises `CodexExecAuthError` without raw stderr | Classifier behavior is CONSTRUCTED. Only `not logged in` was MEASURED through `codex login status`; the remaining vocabulary plus the wording and exit shape of a real failed `codex exec` are UNMEASURED | Measure an actual controlled `codex exec` auth-death or use a documented real incident; record CLI version; do not treat the status-command vocabulary as proof of the exec-command failure shape | None; future path must page an operator and fail closed |
+| ChatGPT Pro usage window / quota / seat throttle | No dedicated classifier. Unless vendor text accidentally matches auth vocabulary, it becomes generic `CodexExecProcessError(exit_code)` | UNMEASURED | Add a distinct sanitized quota/usage-window class only after measuring actual CLI output with Zero's authorization; abort replay, do not rotate seats silently | None; future shadow must never degrade Gemini or consume all O1/O2 capacity |
+| Vendor account enforcement / suspension | The accepted subscription-automation ToS residual could present as auth death, quota, or a generic non-zero exit; the current classifier cannot distinguish a dead token from a disabled seat | UNMEASURED | Treat any ambiguous seat-wide failure as operator-only and stop the lane. Do not rotate accounts or relabel it as transient without evidence | None; future runtime suitability remains blocked |
+| Sandbox, policy, approval, or inherited-rule rejection | Non-zero exit becomes generic process error; argv has `--sandbox read-only` and `--ignore-user-config`, but not `--ignore-rules` | Partly MEASURED from CLI help; failure wording UNMEASURED | Evaluate `--ignore-rules`; add if safe. Build guilt/innocence probes for hooks/rules and agentic host reads | None |
+| Prompt write / `communicate()` failure other than timeout/cancel | Child is killed/reaped, then the original arbitrary exception is re-raised | CONSTRUCTED test | Add a sanitized typed communication error; no raw OS/provider exception should escape a provider boundary | None |
+| Wall-clock timeout | Child killed and reaped; `CodexExecTimeoutError`; prompt/raw output excluded from message | CONSTRUCTED test | Preserve; offline runner uses a fixed timeout and records the typed class | None |
+| Caller cancellation | Child killed/reaped; `CancelledError` propagates unchanged | CONSTRUCTED test | Preserve; prove tempdir cleanup after real task cancellation | None |
+| Other non-zero exit | `CodexExecProcessError` carries numeric exit code only | CONSTRUCTED test | Preserve sanitization; extend matrix only after real failure samples exist | None |
+| Exit zero with empty/whitespace stdout | `CodexExecOutputShapeError` | CONSTRUCTED tests | Preserve; bench counts as failed candidate, never empty success | None |
+| Exit zero with truncated or partial non-empty text | Accepted as success; the current plain-text result carries no completion/truncation metadata | UNMEASURED and undetectable under the frozen adapter contract | Evaluate CLI 0.147.0's `--output-schema` as a candidate shape constraint, but do not assume it supplies completion metadata. Adopt or reject it by probe; score obvious truncation in the offline rubric | None |
+| Model refusal or safety block expressed as prose | Returned as ordinary text; `CodexExecResult` has no refusal field | UNMEASURED | Evaluate whether `--output-schema` can expose a stable refusal field without weakening isolation; otherwise classify by the offline rubric. Do not pretend parity with Responses API refusal objects | None |
+| Native function/tool call | Unsupported: the adapter has no tool-schema input or structured tool-call output | MEASURED from function signature and fixed argv | Stage 1 precomputes retrieval/tool results and evaluates final synthesis only; native tool parity is out of scope | None |
+| Session transcript persistence | Frozen argv omits `--ephemeral`; CLI 0.147.0 help explicitly offers it | MEASURED argv/help mismatch; actual filesystem residue not yet probed | Add `--ephemeral`; sentinel before/after filesystem test must show zero new rollout/session file and zero prompt residue | None; blocks any replay beyond synthetic de-identified text |
+| Ambient repo/user context | Fresh empty cwd and `--ignore-user-config` are present; coding-agent tools still exist and read-only is not a no-tools contract | Fresh-cwd/hook behavior partly MEASURED in adapter ADR; host-read isolation UNMEASURED | Synthetic sentinel and hostile-prompt tests; no real client text until stronger OS isolation is independently approved | None |
+| Secret/environment exposure | Child env is reduced to PATH/HOME/TERM/LANG/LC_ALL/TMPDIR plus CODEX_HOME; prompt goes through stdin, not argv/env | CONSTRUCTED tests | Preserve; test prompt absent from argv/env/logs; CODEX_HOME path itself must not enter result artifacts | None |
+| Tempdir removal failure | `shutil.rmtree(..., ignore_errors=True)` hides cleanup failure | UNMEASURED | Add a cleanup-verification test or explicit sanitized diagnostic; offline runner must detect residue | None |
+| Parallel calls / inbound burst | One subprocess per `generate()`; no semaphore or queue in the client | UNMEASURED | Offline Stage 1 concurrency is exactly 1. Any future dispatcher needs its own bound, drop policy, and resource test | None |
+| Retry/backoff | Client performs no retry | MEASURED from code | Correct for fail-closed offline evidence. Future retry policy belongs to a caller and requires idempotency/quota rules | None |
+
+### Load-bearing conclusion
+
+The adapter's current tests prove that many **constructed** process failures are sanitized and
+cleaned up. They do not prove how Codex CLI reports a dead subscription, a usage cap, a safety
+rejection, or a partial completion in the real service. The gate must never convert a simulated
+stderr string into a claim about measured vendor behavior.
+
+## 3. Offline Stage 1 failure semantics
+
+Stage 1 is the de-identified replay proposed in PR #4301 on branch
+`agent/air-m5/ops/bot-corner-reconfirm-2026-08-18`, file
+`research/operations/2026-08-18-bot-openai-shadow-wiring-plan.md`. That proposal is not yet on
+this branch or `main`; the requirements below are repeated here so this document does not depend
+on an unresolvable local path. It is not a live shadow branch.
+
+The runner must:
+
+1. use `CodexExecClient`, never infer the selected provider from a generic "OpenAI" label;
+2. run only on an operator machine already authenticated to the declared ChatGPT Pro seat;
+3. use `--ephemeral`, a fresh cwd, ignored user config/rules as validated, and concurrency 1;
+4. never retry auth, quota, policy, or unknown non-zero exits automatically;
+5. record only the typed outcome, numeric exit code where already exposed, model, latency, and
+   de-identified fixture ID — never raw stderr, auth paths, credentials, phone numbers, or source
+   message IDs;
+6. fail the entire run if no selected-provider call succeeds, if quota interrupts the registered
+   sample, or if a session/prompt residue sentinel is found;
+7. keep blind output and provider-label key separate with `0600` files in a `0700` run directory;
+8. make `(run_id, fixture_id, provider, model)` the idempotency key.
+
+There is no tool-call row to compare at this stage. Retrieval/tool outputs are precomputed by the
+existing local RAG path and serialized into the prompt package. The result measures final synthesis
+under that approximation only.
+
+## 4. Idempotency of the real WhatsApp reply path
+
+The provider candidate is not in this path, so these are current Gemini-path invariants a future
+design must preserve rather than claims about Codex:
+
+### Inbound deduplication — closed
+
+`whatsapp_chat._handle_meta_inbox_message` inserts the inbound message with:
+
 ```sql
-INSERT INTO meta_inbox_messages (
-    thread_id, meta_message_id, direction, sender_role, body,
-    media_type, status, webhook_id
-)
-VALUES ($1, $2, 'inbound', 'customer', $3, $4, 'received', $5)
 ON CONFLICT (meta_message_id) WHERE meta_message_id IS NOT NULL
     DO NOTHING
 RETURNING id
 ```
-Dedup key = Meta's `wamid` via a **partial unique index** (migration 206). `inbound is None` on the `RETURNING` short-circuits the whole downstream branch (bot-reply enqueue, `wa_outbox` insert, lines 971-995) — a webhook retry produces zero new rows, zero new replies. **Historical note, closed**: `test_wa_meta_inbox_onconflict.py` documents that before migration 206, `ON CONFLICT (meta_message_id)` with no `WHERE` predicate raised `InvalidColumnReferenceError` against the partial index and silently rolled back every inbound insert (2026-06-04 incident) — a negative-guard test locks this shut. Currently correct on disk.
 
-**Worker crash / restart mid-generation or mid-send:** a per-row lease (`CLAIM_LEASE_SECONDS=300`, `wa_outbox_worker.py:118`) with a ~60s heartbeat keeps a live worker's claim fresh; every state transition is fenced (`WHERE id=$1 AND claim_token=$2 AND status=$3 RETURNING id`) — a lost race returns `"fenced"` and aborts silently rather than double-acting. Two-different-replies-to-one-message is prevented by `_coalesce_thread_bursts` (lines 434-476): once one reply of a thread is claimed, every other pending row of the same thread is marked `failed`/`error='superseded_by_coalescing'`, and the generator always re-reads the latest thread state — one send covers a burst.
+Meta's `wamid` is the dedup key. A duplicate returns no new row and does not enqueue a second bot
+reply.
 
-**GAP, acknowledged in the code's own comment, not accidental: the outbound WhatsApp Graph API call is NOT idempotent.** `wa_outbox_worker.py:1072-1083`:
-```
-# 8. The Graph send has now IRREVERSIBLY happened. Everything below is
-#    best-effort bookkeeping ... documented residual double-send window
-#    (spec P5): a crash or a lost fence exactly here can leave the ledger
-#    unable to record 'sent', and a reclaimer could hand the row to a
-#    second worker that sends again. We do not implement reconciliation
-#    for this ... out of scope for F1a.
-```
-Confirmed no reconciliation job exists anywhere in the tree. Runtime self-report: `"RESIDUAL DOUBLE-SEND WINDOW hit"` (line 1111) is logged loudly when the window is hit, but nothing prevents it. **State plainly for the gate: a duplicate client-facing WhatsApp message is possible today, in a narrow crash window between the Graph send succeeding and the ledger commit landing — a declared, accepted residual, not a hidden defect.** BOT-V2's contract should decide whether an OpenAI-primary path is required to close this gap or inherits it as-is.
+### Worker lease, fence, and burst coalescing — closed for generation ownership
 
-**The give-up ledger is `wa_outbox.status='failed'` + `meta_inbox_messages.status='failed'`/`.error=<text>` — no separate table.** Distinct, greppable error strings per cause (all re-verified this session, `wa_outbox_worker.py`): `bot_generate_failed_after_{N}_attempts` (816) vs `bot_standing_condition_after_{N}_attempts` (814, deliberately distinct — "the bot was off" ≠ "it crashed"), `send_failed_after_{N}_attempts` (1028), `aborted_human_takeover`/`_pre_send` (706/946), `24h_window_closed` (985), `superseded_by_coalescing` (464), `thread_missing` (674). Below `MAX_ATTEMPTS=5` (132), a row re-enters `pending` with exponential backoff (`RETRY_BACKOFF_BASE_SECONDS=30`, 133) and is picked up by the next `process_outbox_once` tick — **no cron, no separate sweep, the scheduler loop itself is the retry mechanism.** Once `status='failed'`, there is no automatic retry — it requires operator action, or (if `WA_OUTBOX_MANNERS_ENABLED`, default OFF) a canned apology.
+`wa_outbox_worker` uses a 300-second claim lease, renews it during generation, fences transitions
+on `id + claim_token + status`, and marks other pending rows in the same thread
+`superseded_by_coalescing`. A lost claimant cannot commit state after its fence is gone.
 
-**No status column has no dedicated `retrying`/`give_up` enum value** — "gave up" is inferred from `status='failed'` + reading `.error`, never a first-class flag. Worth naming as a readability gap for whoever consumes this ledger downstream (echoes the SKILL.md LIVE STATE finding that `24h_window_closed` (84 occurrences) and a genuine crash-failure are spelled identically in the error ranking, causing the same class of misread).
+Generation failures back off from 30 seconds and stop after five attempts. The give-up row is
+durable. Client apology/manners behavior is a separate default-OFF flag and must not be treated as
+guaranteed delivery.
 
-## 3. Rollback to Gemini is config-only — the tripartite proof, and the finding
+### Outbound Graph send — residual double-send window remains
 
-**The premise does not hold today, and the reason is worth stating precisely rather than glossing over.** "Rollback to Gemini is config-only" presupposes a live path that could route generation somewhere other than Gemini, from which one would roll back. This is genuinely a **three-way question**, not two — the committed tree already has THREE tiers, and any claim that names only Gemini/OpenAI misses the one that actually exists and works today:
+After Meta accepts the irreversible send but before the ledger records `sent`, a crash can let a
+reclaimer send again. The code logs `RESIDUAL DOUBLE-SEND WINDOW hit`; no reconciliation job closes
+it. A provider migration neither creates nor cures this window. Any future serve-stage must state
+it rather than claiming end-to-end exactly-once delivery.
 
-- **Tier 1 — Gemini, live, default, unconditional.** The primary and only path that has ever served a client.
-- **Tier 2 — OpenRouter, committed, code-real, hard-gated OFF.** A genuine second-vendor fallback (`llm_gateway.py:715-736` calls `self._call_openrouter()`, method at `:1145-1187`, which lazily constructs an `OpenRouterClient` via `_get_openrouter_client()` at `:344-365`) — but reachable ONLY as a last-resort after every Gemini model in the tier chain has failed, and it hard-refuses (`OpenRouterClient._ensure_enabled()` raises `OpenRouterDisabledError`) unless `Settings.openrouter_enabled` is `True` (default `False`, `app/core/config.py:130`, a COS-LAW-013 PII/compliance switch — orthogonal to model choice, not a provider-selection knob). It has never been a way to make anything *primary*, only a Gemini-exhaustion fallback.
-- **Tier 3 — OpenAI, not on the committed tree at all.** Exists only as the moving, uncommitted WIP described in §0 — shadow-only, fire-and-forget, architecturally incapable of touching a served response.
+### Offline replay idempotency — new, separate keyspace
 
-Verified three independent ways against the committed tree at the SHA in §Snapshot:
+The Stage 1 run never writes to `meta_inbox_messages`, `wa_outbox`, or any client-facing table. Its
+idempotency key is the local run key defined in §3. Replaying fixtures must not manufacture larger
+sample counts by duplicating rows.
 
-1. **`backend/llm/config.py` — the canonical model-selection SSOT (Ring #7 of `.agents/skills/bot/SKILL.md` §3)** — is Gemini-only by a hardcoded allowlist, not by a default that could be overridden:
-   ```python
-   KNOWN_GEMINI_MODELS = frozenset({
-       "gemini-3.5-flash", "gemini-3.5-flash-lite",
-       "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash",
-   })
-   ```
-   `_model_from_env` (lines 32-55) refuses (logs, keeps default) any env value not in this set. Setting `PRIMARY_MODEL_NAME=gpt-5.1` today would be **refused and silently corrected back to `gemini-3.5-flash`** — this SSOT's config surface literally cannot express "not Gemini." (This says nothing about Tier 2 — OpenRouter is not selected through `ModelName` at all, it's a separate code path entirely, which is exactly why treating it as part of the same allowlist would have been wrong.)
+### Live-path gaps and trip observables carried forward
 
-2. **`LLMGateway`'s *primary* generation is architecturally single-vendor — but it is NOT true that no vendor branch exists anywhere in the class, and an earlier draft of this section overstated that.** `self._genai_client` (the primary path) is constructed exclusively via `_get_genai_client()` → `get_genai_client()` (Google's `google-genai` SDK, three assignment sites: `llm_gateway.py:258/293/1284`, none elsewhere) — `ModelName.PRIMARY`/`FALLBACK`/`CHANNEL` (read at `:263-269`) select *which Gemini model slug*, never *which vendor*, and there is no way to reach a non-Gemini client on the *primary* path. But Tier 2 above IS a real, live, second-vendor conditional branch inside this same class (`:715-736`, `:1145-1187`) — it is dead-by-default only because `openrouter_enabled` gates it off, not because the branch doesn't exist. The corrected claim: **no live vendor branch outside the OpenRouter last-resort fallback, which is itself hard-gated by an unrelated compliance switch and only ever a Gemini-exhaustion path, never a primary-selection mechanism.**
+This rewrite changes the candidate-provider matrix but must not erase verified baseline findings
+from the previous revision:
 
-3. **The uncommitted WIP's own `agentic_rag_provider` field is a declared-but-unconsumed placeholder — Tier 3 has no equivalent to Tier 2's gate at all.** `app/core/config.py` (WIP diff, `.worktrees/bot-openai-adapter`, snapshot per §0 — not frozen) adds `agentic_rag_provider: str = "gemini"` with a validator that refuses any value except `"gemini"`, and its own comment says explicitly: *"switching the primary provider is a separate mandate this PR does not implement."* Repo-wide grep, re-run in this revision across both worktrees, confirms zero readers of `settings.agentic_rag_provider` anywhere outside that field's own validator — nothing branches on it, unlike Tier 2's `openrouter_enabled`, which IS read and IS wired to a real branch.
+- **Gemini 5xx/timeout alert gap remains open.** `LLMGateway` routes a provider exception through
+  `_alert_quota_exhausted`, but `_classify_quota_exhaustion` returns no subtype unless it sees a
+  429/`RESOURCE_EXHAUSTED`-shaped signal. A pure 5xx or timeout is re-raised into the worker's
+  retry/give-up path without the dedicated CRITICAL quota alert. A future Codex serve-stage must
+  not use "alerts fired" as its only trip signal or inherit this blind spot silently.
+- **Current trip observables remain usable:** the deduplicated `gemini_quota_exhausted` CRITICAL
+  alert for classified quota failures; exact `wa_outbox.error` families such as
+  `bot_generate_failed_after_{N}_attempts` and `send_failed_after_{N}_attempts`; and the
+  `RESIDUAL DOUBLE-SEND WINDOW hit` log line. `bot_standing_condition_after_{N}_attempts` must be
+  excluded from provider-failure rates because it means the bot was disabled, not that generation
+  crashed.
+- **Historical findings are not current selected-provider gates:** the old malformed-tool
+  comparison-log finding belonged to the discarded `_shadow_provider.py` design, and the
+  4,096-character truncation history remains recorded in `.agents/skills/bot/SKILL.md`. Neither is
+  silently promoted into evidence about `CodexExecClient`.
 
-**So the honest state is: there is nothing to roll back FROM, on the OpenAI axis specifically — Tier 2 already demonstrates the repo knows how to build a gated, config-controlled alternate path, and Tier 3 does not yet have that.** The OpenAI shadow branch (`_shadow_provider.maybe_dispatch`, fire-and-forget, exceptions swallowed, never awaited by the caller) is architecturally incapable of ever affecting a served response, by construction, not by convention. Disarming `OPENAI_SHADOW` is trivially, provably config-only — because it never touched anything to begin with.
+## 5. Rollback truth
 
-**Primary finding, in bold, per the mandate's own instruction ("se serve un code change è un FINDING, non una nota"):**
+There is currently nothing to roll back from:
 
-> **Making OpenAI primary at all, even once, requires a code change today — not a config flip — and the repo already contains the template for what that change should look like.** Two structural gaps stand between the current code and a state where "rollback to Gemini" would even be a meaningful, testable claim: (a) `KNOWN_GEMINI_MODELS`/`_model_from_env` in `backend/llm/config.py` would need to become provider-aware (a model slug tagged with its vendor, not a bare Gemini-only allowlist), and (b) `LLMGateway`'s primary-generation call site would need a real conditional branch selecting the OpenAI client the same way it already selects OpenRouter on exhaustion — today it hardwires Gemini for anything but last-resort fallback. **Until both land, the FIRST move away from Gemini is already a code deploy, which means the question "can we roll back via config alone" cannot be answered yes OR no for a system that has no config-driven forward path either.** The minimal surface that would make a *future* rollback genuinely config-only is exactly those two changes, mirroring Tier 2's own pattern: a dedicated boolean gate read live at call time (`Settings.openrouter_enabled`'s exact shape, `app/core/config.py:130` + `is_available` read-at-call-time discipline, `openrouter.py:63-69`), refuse-unknown discipline identical to `_model_from_env`'s (unknown/misconfigured provider → log + keep the last-known-good, never 404 the client-facing path). BOT-V2's gate contract should require exactly this — not invent a new pattern when a proven one already ships in this codebase.
+- Gemini is the only unconditional live generation provider;
+- OpenRouter is committed but default-OFF;
+- `CodexExecClient` is absent from every live path;
+- no Codex runtime credential is represented in the repo or authorized by this lane; actual Fly
+  secret inventory was not inspected and remains UNMEASURED;
+- no OpenAI/Codex runtime flag exists.
 
-## 4. §Auto-trip inputs (for the future V6 shadow→staff→N% rollout)
+Therefore "rollback to Gemini is config-only" is not yet a valid production claim. It describes a
+future architecture, not current state. Offline Stage 1 rollback is simply stopping the local
+runner; it changes no runtime state.
 
-Observables already measurable today, on `origin/main`, without any new code — usable as auto-trip signal candidates once a real (non-shadow) rollout exists:
+A future shadow design requires a new, default-OFF flag and must prove that disabling it prevents
+all subprocess dispatch without changing the Gemini answer. A future serve design needs another
+flag/ADR/gate. Neither is authorized here, and the current NO-WIRING fence must be formally amended
+before either file surface can exist.
 
-- **`gemini_quota_exhausted` CRITICAL alert** (`llm_gateway.py:92,160-204`) — dedup'd per subtype (`balance_depleted`/`rate_limited`/`quota_exhausted`). Already fires today; a future OpenAI-primary path needs its own equivalent before it can be trusted at any rollout percentage above shadow.
-- **`wa_outbox.error` ledger, by exact string** — `bot_generate_failed_after_{N}_attempts`, `send_failed_after_{N}_attempts` counts per rolling window are a ready-made numerator for an auto-trip rate; `bot_standing_condition_after_{N}_attempts` must be excluded from that numerator (it means "the bot was off", not "the provider is failing" — conflating the two, per SKILL.md's own established finding, mis-ranks the real problem).
-- **`"RESIDUAL DOUBLE-SEND WINDOW hit"` log line** (`wa_outbox_worker.py:1111`) — a direct, already-logged count of the one acknowledged non-idempotency gap; any rollout plan should track its rate as a floor invariant (it should not get WORSE under a new provider).
-- **`shadow_refusal` / `divergence_chars` fields in the "OpenAI shadow comparison" log line** (`_shadow_provider.py:189-205`, WIP snapshot per §0) — already computed today, at zero cost to the served path, for every shadow-armed request; this is the natural quality/divergence auto-trip input once shadow starts actually running (`OPENAI_SHADOW` is currently off everywhere).
-- **Gap to close before relying on it**: no equivalent `tool_calls`/malformed-tool signal exists in the shadow comparison log today (§1 row 5) — an auto-trip that should watch for silent tool-call corruption has nothing to read yet.
-- **Gap to close before relying on it**: no 5xx/timeout-specific CRITICAL alert exists on the Gemini path (§1 rows 3-4) — only 429/quota is classified and alerted; a rollout auto-trip modeled on "alerts fired" would be blind to a pure 5xx/timeout storm on either provider until this is added.
+## 6. Gates that remain open
+
+- [ ] #4216 rebased/reconciled with current main without widening its 11-file fence.
+- [ ] `--ephemeral` added and session/prompt-residue sentinel proven.
+- [ ] `--ignore-rules` and coding-agent host-read surface dispositioned.
+- [ ] Generic communicate failures mapped to a sanitized typed error.
+- [ ] Auth-death wording measured against a controlled real CLI failure.
+- [ ] Subscription quota/usage-window behavior measured with Zero's authorization and quota budget.
+- [ ] Role-aware, multi-turn de-identified corpus completed.
+- [ ] Bench path actually invokes `CodexExecClient`.
+- [ ] Offline runner concurrency fixed at 1 and idempotency proved.
+- [x] Final frozen diff reviewed by Kimi K3 and Gemini 3.1 Pro.
+- [ ] #4194 threat model rerun against the final adapter head.
+- [ ] No config, gateway, worker, secret, live traffic, merge, or deploy until a separate mandate.
+
+## Adversarial review
+
+Kimi K3 reviewed the source-grounded diff, initially returned `FIX-FIRST`, and required the
+rewrite to preserve the live Gemini pure-5xx/timeout alert gap and exact trip observables. It also
+required the cross-branch Stage 1 plan to be self-contained here, Fly secret state to remain
+`UNMEASURED`, the Keychain caveat and vendor-enforcement boundary to be explicit, and
+`--output-schema` to remain a probe rather than a promised solution. Those findings were accepted.
+
+Gemini 3.1 Pro then reviewed an inline, read-only evidence bundle and caught a remaining evidence
+compression in the auth row. The classifier is constructed; only the `Not logged in` phrase was
+measured through `codex login status`; the remaining vocabulary and a real failed `codex exec`
+shape are unmeasured. The row now states exactly that distinction. An earlier Gemini attempt that
+mutated the file was discarded and does not count as review evidence.
+
+Final frozen-diff verdicts: **Kimi K3 — SHIP; Gemini 3.1 Pro — SHIP.** No reviewer authorized live
+traffic, credentials, config, gateway or worker wiring, merge, deploy, or cutover.
