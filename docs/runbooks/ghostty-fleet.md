@@ -97,8 +97,10 @@ the Ghostty window:
 tmux new-session -s claude    # then start claude inside it
 ```
 
-tmux is installed on Pro (3.6a). It is **absent on M5**, the primary workstation —
-so there, agent teams have no backend at all until `brew install tmux`.
+tmux is now present on all three: Pro 3.7b, M5 3.7b (installed 2026-08-18 —
+until then the primary workstation had no backend at all), Mini 3.6a. Installing
+the binary only makes the fix _available_; the panes appear only when Claude Code
+is actually running **inside** a session, because the first branch tests `$TMUX`.
 
 Work that does not need a pane is unaffected: background agents, the Workflow
 tool, and MCP-hosted seats (for example the Codex second-opinion server) run as
