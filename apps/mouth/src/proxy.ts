@@ -27,15 +27,21 @@ const INTERNAL_ROUTES = [
   "/notifications",
 ];
 
-// /email, /calendar, /knowledge, /documents are NOT routes on kita — they map
-// 1:1 to standalone apps on their own subdomains (mail/calendar/knowledge/
-// drive.balizero.com). See APP_SUBDOMAIN_ROUTE_MAP in the APP DOMAIN block.
+// /knowledge is NOT a route on kita — it maps 1:1 to a standalone app on its
+// own subdomain. See APP_SUBDOMAIN_ROUTE_MAP in the APP DOMAIN block.
 const APP_SUBDOMAIN_ROUTE_MAP: Record<string, string> = {
-  "/email": "mail.balizero.com",
-  "/calendar": "calendar.balizero.com",
   "/knowledge": "knowledge.balizero.com",
-  "/documents": "drive.balizero.com",
 };
+
+// /email leaves the fleet: mail.balizero.com is gone, and Bali Zero mail lives
+// in Zoho. An existing Zoho session lands straight in the inbox; without one,
+// Zoho bounces through its own login and comes back here.
+const ZOHO_MAILBOX_URL = "https://mail.zoho.com/zm/";
+
+// Retired: the standalone calendar/drive apps were deleted in 7f287c623
+// (2026-04-17) and their DNS now answers 404 DEPLOYMENT_NOT_FOUND, so these
+// paths must not be redirected off-site any more.
+const RETIRED_APP_ROUTES = ["/calendar", "/documents"];
 
 // Public routes for balizero.com
 const PUBLIC_CATEGORIES = [
@@ -462,10 +468,32 @@ export function proxy(request: NextRequest) {
       return redirectResponse;
     }
 
-    // Redirect ghost internal routes (/email, /calendar, /knowledge, /documents)
-    // to their real standalone-app subdomains. These paths have no route on kita
-    // and previously fell through to the (blog)/[category] catch-all, rendering
-    // "Category not found" with public nav instead of the actual app.
+    // /email → the Zoho mailbox. Zoho has no path that corresponds to a kita
+    // one, so every /email/* lands on the inbox rather than composing a path.
+    if (pathname === "/email" || pathname.startsWith("/email/")) {
+      return crossOriginRedirect(request, new URL(ZOHO_MAILBOX_URL), 302);
+    }
+
+    // Retired app routes go to the dashboard. Same reason the ghost-route
+    // redirect below exists: without this they fall through to the
+    // (blog)/[category] catch-all and render "Category not found".
+    if (
+      RETIRED_APP_ROUTES.some(
+        (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+      )
+    ) {
+      const redirectResponse = NextResponse.redirect(
+        new URL("/dashboard", request.url),
+        302,
+      );
+      redirectResponse.headers.set("x-pathname", pathname);
+      return redirectResponse;
+    }
+
+    // Redirect ghost internal routes (/knowledge) to their real standalone-app
+    // subdomains. These paths have no route on kita and previously fell through
+    // to the (blog)/[category] catch-all, rendering "Category not found" with
+    // public nav instead of the actual app.
     for (const [routePrefix, targetHost] of Object.entries(
       APP_SUBDOMAIN_ROUTE_MAP,
     )) {
@@ -473,9 +501,9 @@ export function proxy(request: NextRequest) {
         const deepPath = pathname.slice(routePrefix.length) || "/";
         const targetUrl = new URL(deepPath, `https://${targetHost}`);
         targetUrl.search = request.nextUrl.search;
-        // Cross-origin (kita → mail/calendar/drive/knowledge): route through
-        // crossOriginRedirect so an RSC prefetch of <Link href="/email"> gets
-        // 204 instead of a cross-origin 302 that trips a console CORS error.
+        // Cross-origin (kita → knowledge): route through crossOriginRedirect
+        // so an RSC prefetch of <Link href="/knowledge"> gets 204 instead of a
+        // cross-origin 302 that trips a console CORS error.
         return crossOriginRedirect(request, targetUrl, 302);
       }
     }
