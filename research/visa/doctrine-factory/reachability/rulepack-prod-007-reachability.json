@@ -1,0 +1,933 @@
+{
+  "blocked_product_codes": [
+    "E23U",
+    "E23V",
+    "E28B",
+    "E28C",
+    "E28D",
+    "E28F",
+    "E30E",
+    "E30F",
+    "E33A",
+    "E33B",
+    "E33C"
+  ],
+  "environment": "PRODUCTION",
+  "not_asked_facts": [
+    "commercial.service_fee_budget_idr",
+    "commercial.wants_quote",
+    "immigration.last_entry_date",
+    "intent.desired_entry_date",
+    "intent.requested_product_code"
+  ],
+  "not_asked_facts_source": "apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.ts",
+  "orphan_rules": [],
+  "pack_path": "apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-007.source.json",
+  "persona_corpus_codes_absent_from_pack": [
+    "E31"
+  ],
+  "persona_corpus_product_codes": [
+    "C1",
+    "E23",
+    "E28A",
+    "E31",
+    "E33G"
+  ],
+  "persona_corpus_source": "apps/backend-rag/backend/tests/services/visa_engine/test_evaluator_gold.py",
+  "product_count": 38,
+  "products": [
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days",
+        "hf.a1.not-bvk-nationality"
+      ],
+      "product_code": "A1",
+      "product_version_id": "aee1a12d-3285-526e-8a6f-3d8467fe5d72",
+      "reachable": true,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": [
+        "el.a1.tourism"
+      ]
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days",
+        "hf.b1.not-voa-nationality"
+      ],
+      "product_code": "B1",
+      "product_version_id": "4e30cbe0-c4bf-59be-9bf8-513e66946e44",
+      "reachable": true,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": [
+        "el.b1.tourism"
+      ]
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days",
+        "hf.bridging.offshore",
+        "hf.bridging.from-visit-itk",
+        "hf.bridging.to-bridging"
+      ],
+      "product_code": "BRIDGING",
+      "product_version_id": "760025cf-d51d-5687-9e98-b921010b9018",
+      "reachable": true,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.bridging.adverse-history",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": [
+        "el.bridging.t3-window-manual",
+        "el.bridging.overstay-shield-payment",
+        "el.bridging.source-status-verify",
+        "el.bridging.destination-stated"
+      ]
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days"
+      ],
+      "product_code": "C1",
+      "product_version_id": "7a07cbb0-564f-5c3f-9720-6ad62c4789cd",
+      "reachable": true,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": [
+        "el.c1.tourism-family"
+      ]
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days"
+      ],
+      "product_code": "C2",
+      "product_version_id": "de433757-f7af-5762-ad65-41bc16bc2ae1",
+      "reachable": true,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": [
+        "el.c2.business",
+        "el.c2.corporate-sponsor-type"
+      ]
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days"
+      ],
+      "product_code": "C6",
+      "product_version_id": "8cf5e09b-6e02-536f-aeca-4aaecaca09c7",
+      "reachable": true,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": [
+        "el.c6.social"
+      ]
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days"
+      ],
+      "product_code": "D1",
+      "product_version_id": "374e79e0-f0bf-5291-8cba-974e794e210a",
+      "reachable": true,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": [
+        "el.d1-multi-entry-support",
+        "el.d1-passport-validity",
+        "el.d1-funds-usd-2000",
+        "el.d1-cv-required",
+        "el.d1-itinerary-required",
+        "el.d1-support-letter"
+      ]
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days",
+        "hf.d12-onshore-conversion-excluded"
+      ],
+      "product_code": "D12",
+      "product_version_id": "63f64a7e-2bff-5a48-8c3b-7ad5349e8c91",
+      "reachable": true,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": [
+        "el.d12-multi-entry-support",
+        "el.d12-passport-validity",
+        "el.d12-funds-usd-5000",
+        "el.d12-cv-required",
+        "el.d12-itinerary-required",
+        "el.d12-support-letter"
+      ]
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days"
+      ],
+      "product_code": "D2",
+      "product_version_id": "306725c1-7269-5c45-a4b8-188265fcf4d8",
+      "reachable": true,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": [
+        "el.d2-multi-entry-support",
+        "el.d2-passport-validity",
+        "el.d2-funds-usd-2000",
+        "el.d2-cv-required",
+        "el.d2-itinerary-required",
+        "el.d2-support-letter"
+      ]
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days"
+      ],
+      "product_code": "E23",
+      "product_version_id": "e1d761e9-56c5-57c3-9c01-986d3c333157",
+      "reachable": true,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": [
+        "el.e23-employment-support",
+        "el.e23-operational-work-boundary"
+      ]
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days"
+      ],
+      "product_code": "E23U",
+      "product_version_id": "fa143e97-b444-5ae4-9b05-6365f15e3ec7",
+      "reachable": false,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": []
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days"
+      ],
+      "product_code": "E23V",
+      "product_version_id": "e8a1d738-daa7-5c99-a0c6-800b25579129",
+      "reachable": false,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": []
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days",
+        "hf.e28a.paid-capital-below-min",
+        "hf.e28a.total-investment-below-min"
+      ],
+      "product_code": "E28A",
+      "product_version_id": "c8277316-c29d-5fde-bf9f-2611099a0029",
+      "reachable": true,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": [
+        "el.e28a.investment"
+      ]
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days"
+      ],
+      "product_code": "E28B",
+      "product_version_id": "ca8c1177-ad94-5261-82a6-68bc912d31bb",
+      "reachable": false,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.e28b.usd-threshold-manual",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": []
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days"
+      ],
+      "product_code": "E28C",
+      "product_version_id": "b074270f-fa7c-598b-a728-81ca89432364",
+      "reachable": false,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.e28c.usd-threshold-manual",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": []
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days"
+      ],
+      "product_code": "E28D",
+      "product_version_id": "ee4fef98-3497-507c-8486-225932364e26",
+      "reachable": false,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.e28d.usd-threshold-turnover-manual",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": []
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days"
+      ],
+      "product_code": "E28F",
+      "product_version_id": "2df6f723-7fc3-585a-b26f-0e8c060a2d8d",
+      "reachable": false,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.e28f.ikn-threshold-manual",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": []
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days"
+      ],
+      "product_code": "E30",
+      "product_version_id": "94d26bed-b3ba-5b9a-9c6c-9c137854293c",
+      "reachable": true,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": [
+        "el.e30-student-support",
+        "el.e30-living-cost-2000.e30",
+        "el.e30-passport-validity.e30"
+      ]
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days",
+        "hf.e30a-level-band"
+      ],
+      "product_code": "E30A",
+      "product_version_id": "5028908f-25be-5ef1-91b9-0d6bccfc0e1f",
+      "reachable": true,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": [
+        "el.e30-student-support",
+        "el.e30-living-cost-2000.e30a",
+        "el.e30-passport-validity.e30a"
+      ]
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days",
+        "hf.e30b-level-band"
+      ],
+      "product_code": "E30B",
+      "product_version_id": "904d99ec-d198-5eb8-9dc4-0b2047e49137",
+      "reachable": true,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": [
+        "el.e30-student-support",
+        "el.e30-living-cost-2000.e30b",
+        "el.e30-passport-validity.e30b",
+        "el.e30b-izin-belajar"
+      ]
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days"
+      ],
+      "product_code": "E30E",
+      "product_version_id": "19e3ea6c-95c6-5998-b9d7-efc77f583589",
+      "reachable": false,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": []
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days"
+      ],
+      "product_code": "E30F",
+      "product_version_id": "235f5dfc-2feb-5d5b-ab09-0f4e4122819e",
+      "reachable": false,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": []
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days"
+      ],
+      "product_code": "E31A",
+      "product_version_id": "e2a49f0f-74af-5a15-ab0b-6273fbcd40ce",
+      "reachable": true,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": [
+        "el.e31a-spouse-wni-support",
+        "el.e31a-funds-2000",
+        "el.e31a-spousal-work-article-61",
+        "el.e31a-kitap-prerequisites"
+      ]
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days"
+      ],
+      "product_code": "E31B",
+      "product_version_id": "5d5f9bd4-349b-54d7-841a-784c0afba068",
+      "reachable": true,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": [
+        "el.e31b-spouse-itas-support",
+        "el.e31b-sponsor-itas-itap"
+      ]
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days"
+      ],
+      "product_code": "E31C",
+      "product_version_id": "62ab2d13-1d7e-5048-9cf7-9622c0098439",
+      "reachable": true,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": [
+        "el.e31c-child-mixed-marriage-support",
+        "el.e31c-mixed-marriage-parents"
+      ]
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days"
+      ],
+      "product_code": "E31D",
+      "product_version_id": "3204e973-59da-5da1-bad0-06a7172e5b2c",
+      "reachable": true,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": [
+        "el.e31d-stepchild-support",
+        "el.e31d-step-parent-relation",
+        "el.e31d-sponsor-mixed-marriage"
+      ]
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days",
+        "hf.e31e-adult-excluded",
+        "hf.e31e-married-excluded"
+      ],
+      "product_code": "E31E",
+      "product_version_id": "1266d5cb-84a3-51f7-b82d-c6b756254074",
+      "reachable": true,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": [
+        "el.e31e-child-itas-support",
+        "el.e31e-sponsor-itas-itap"
+      ]
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days"
+      ],
+      "product_code": "E31F",
+      "product_version_id": "3f7f6a94-32c8-54d7-b1d4-4d89082edbcc",
+      "reachable": true,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": [
+        "el.e31f-child-wni-parent-support",
+        "el.e31f-adult-age-review"
+      ]
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days"
+      ],
+      "product_code": "E31G",
+      "product_version_id": "fbc980d5-47b6-5f16-974d-25158dfffc06",
+      "reachable": true,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": [
+        "el.e31g-parent-wni-child-support"
+      ]
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days"
+      ],
+      "product_code": "E31H",
+      "product_version_id": "1185c36d-833c-5e41-8e0d-6e4f7c8f7378",
+      "reachable": true,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": [
+        "el.e31h-parent-itas-child-support",
+        "el.e31h-sponsor-itas-itap"
+      ]
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days"
+      ],
+      "product_code": "E31J",
+      "product_version_id": "4a4a0f7c-a6a0-5835-acd6-8a096342ef68",
+      "reachable": true,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": [
+        "el.e31j-sibling-itas-support",
+        "el.e31j-sponsor-itas-itap",
+        "el.e31j-dependency-age"
+      ]
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days"
+      ],
+      "product_code": "E33",
+      "product_version_id": "cf4d7f3d-1253-5036-8953-79ab3d3e7009",
+      "reachable": true,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.e33.work-rangkap-kegiatan",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": [
+        "el.e33.deposit-basis",
+        "el.e33.property-basis",
+        "el.e33.property-qualification",
+        "el.e33.guarantee-maintenance"
+      ]
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days"
+      ],
+      "product_code": "E33A",
+      "product_version_id": "5c18e265-ddb2-5010-8d24-a2f19df89850",
+      "reachable": false,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.e33a.central-government-invitation",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": []
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days"
+      ],
+      "product_code": "E33B",
+      "product_version_id": "32b6fb5f-5a24-5763-95f9-0b77be18353c",
+      "reachable": false,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.e33b.expertise-qualification",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": []
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days"
+      ],
+      "product_code": "E33C",
+      "product_version_id": "9cc14fee-49dc-5549-8bc8-90bdaf52d1f3",
+      "reachable": false,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.e33c.central-government-invitation",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": []
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days",
+        "hf.e33e.age-below-55"
+      ],
+      "product_code": "E33E",
+      "product_version_id": "796d09bd-3220-5c91-a6ce-e3a99a9b0ddb",
+      "reachable": true,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": [
+        "el.e33e.age-55-59-disputed-band",
+        "el.e33e.retirement",
+        "el.e33e.deposit-income-basis"
+      ]
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days",
+        "hf.e33f.sponsor-required",
+        "hf.e33f.age-below-55"
+      ],
+      "product_code": "E33F",
+      "product_version_id": "7c1da88f-f7cd-571a-95c2-7da32463d3e6",
+      "reachable": true,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": [
+        "el.e33f.retirement"
+      ]
+    },
+    {
+      "add_score_rule_ids": [],
+      "exclude_rule_ids": [
+        "hf.citizen",
+        "hf.overstay-exceeds-60-days",
+        "hf.e33g.indonesian-employer",
+        "hf.e33g.indonesian-source-compensation"
+      ],
+      "product_code": "E33G",
+      "product_version_id": "51e023ea-3229-5233-b88f-cb204b5df713",
+      "reachable": true,
+      "require_review_rule_ids": [
+        "review.calling-visa",
+        "review.active-overstay",
+        "review.e33g.local-market",
+        "review.e33g.local-company-ownership",
+        "review.citizenship-conflict",
+        "review.minor-without-guardian"
+      ],
+      "support_rule_ids": [
+        "el.e33g.income-60k-manual",
+        "el.e33g.remote-work"
+      ]
+    }
+  ],
+  "products_with_zero_scoped_rules": [],
+  "products_without_positive_persona": [
+    "A1",
+    "B1",
+    "BRIDGING",
+    "C2",
+    "C6",
+    "D1",
+    "D12",
+    "D2",
+    "E23U",
+    "E23V",
+    "E28B",
+    "E28C",
+    "E28D",
+    "E28F",
+    "E30",
+    "E30A",
+    "E30B",
+    "E30E",
+    "E30F",
+    "E31A",
+    "E31B",
+    "E31C",
+    "E31D",
+    "E31E",
+    "E31F",
+    "E31G",
+    "E31H",
+    "E31J",
+    "E33",
+    "E33A",
+    "E33B",
+    "E33C",
+    "E33E",
+    "E33F"
+  ],
+  "reachable_product_codes": [
+    "A1",
+    "B1",
+    "BRIDGING",
+    "C1",
+    "C2",
+    "C6",
+    "D1",
+    "D12",
+    "D2",
+    "E23",
+    "E28A",
+    "E30",
+    "E30A",
+    "E30B",
+    "E31A",
+    "E31B",
+    "E31C",
+    "E31D",
+    "E31E",
+    "E31F",
+    "E31G",
+    "E31H",
+    "E31J",
+    "E33",
+    "E33E",
+    "E33F",
+    "E33G"
+  ],
+  "required_facts_ast_mismatches": [],
+  "rule_count": 104,
+  "rule_pack_id": "453ee842-7f35-5d77-b460-31d67e2784c2",
+  "sequence": 7,
+  "total_fact_paths": 44,
+  "unused_fact_paths": [
+    "commercial.service_fee_budget_idr",
+    "commercial.wants_quote",
+    "immigration.last_entry_date",
+    "intent.desired_entry_date",
+    "person.birth_date",
+    "process.application_channel",
+    "sponsor.type",
+    "work.employer_country_code"
+  ],
+  "used_fact_paths": [
+    "derived.age_years",
+    "derived.has_indonesian_citizenship",
+    "derived.is_minor",
+    "family.marriage_registered",
+    "family.relation_to_sponsor",
+    "family.sponsor_confirmed",
+    "family.sponsor_nationalities",
+    "family.sponsor_status_code",
+    "immigration.current_status_code",
+    "immigration.current_status_expiry",
+    "immigration.currently_in_indonesia",
+    "immigration.overstay_days",
+    "immigration.violation_history",
+    "intent.entry_pattern",
+    "intent.purposes",
+    "intent.requested_product_code",
+    "intent.stay_days",
+    "investment.investment_capital_idr",
+    "investment.paid_up_capital_idr",
+    "investment.proposed_role",
+    "investment.pt_pma_committed",
+    "person.marital_status",
+    "person.nationalities",
+    "process.wants_onshore_conversion",
+    "secondhome.bank_deposit_at_state_bank",
+    "secondhome.bank_deposit_in_own_name",
+    "secondhome.bank_deposit_usd",
+    "secondhome.passive_monthly_income_usd",
+    "secondhome.qualifying_property_value_usd",
+    "study.admission_confirmed",
+    "study.level",
+    "study.sponsor_confirmed",
+    "work.employer_is_indonesian_entity",
+    "work.indonesia_source_compensation",
+    "work.indonesian_work_sponsor_confirmed",
+    "work.serves_indonesian_clients"
+  ],
+  "version": "2026.8.11"
+}

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.nuzantara.intake-health-report — W0 read-only daily health snapshot of
+  the document-intake organism (2026-08-15).
+
+  Daily 07:30 WITA tick: scripts/intake_health_report.py reads the local
+  Postgres nuzantara_dev (SELECT-only, opened with
+  default_transaction_read_only=on) and reports review load, the empty-OCR
+  noise class, blob presence for the review feed, the companies-table
+  sanity check, done-but-orphaned queue rows, zombie claimed proposals,
+  committed-but-undelivered documents, the worker's own log inode, and 24h
+  freshness counters — one JSON object, one Telegram digest line, and a
+  tier=p0 escalation per breached threshold. NEVER writes to the DB and
+  never mutates a proposal/queue row (Law 2 — PII stays local; only
+  integers/rates/booleans ever leave this machine).
+
+  Pro-only (intake DB lives on the local Pro nuzantara_dev — W87 postgres
+  access-wall discipline: do NOT install this on Mini/M5).
+
+  Kill switch: INTAKE_HEALTH_REPORT_ENABLED=false (checked in the wrapper —
+  the disabled path writes its own status=disabled heartbeat and exits
+  before spawning python).
+
+  Install:
+    cp infra/launchagents/com.nuzantara.intake-health-report.plist \
+       ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) \
+       ~/Library/LaunchAgents/com.nuzantara.intake-health-report.plist
+
+  Plist permissions hardened to 0444 per cicatrix P0-3.
+
+  TZ NOTE (verbale #11): launchd's StartCalendarInterval has NO timezone
+  field — "07:30 daily = WITA" holds ONLY while the host's system TZ is set
+  to Asia/Makassar. A TZ drift on the host silently shifts this cron's wall-
+  clock time with no error anywhere. The freshness organ (wa-mirror-
+  freshness-liveness, StartInterval-based) is unaffected by this class of
+  drift since it computes business hours via ZoneInfo("Asia/Makassar") in
+  code, not off the host's system TZ — that asymmetry between the two W0
+  guardians is easy to miss if you assume they share a TZ dependency.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nuzantara.intake-health-report</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/nuzantara/scripts/intake_health_report_run.sh</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>INTAKE_HEALTH_REPORT_ENABLED</key>
+        <string>true</string>
+    </dict>
+
+    <!-- 07:30 WITA daily. -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>7</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/intake-health-report.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/intake-health-report.err.log</string>
+
+    <key>KeepAlive</key>
+    <false/>
+
+    <key>ThrottleInterval</key>
+    <integer>120</integer>
+</dict>
+</plist>

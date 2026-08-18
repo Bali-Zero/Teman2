@@ -1,0 +1,53 @@
+[
+  {
+    "decision_id": "00000000-0000-0000-0000-0000000000a1",
+    "verdict": "HUMAN_REVIEW_REQUIRED",
+    "traffic_source": "real",
+    "rule_pack_sequence": 7,
+    "ruleset_activation_id": "act-7-prod",
+    "environment": "PRODUCTION",
+    "engine_mode": "SHADOW",
+    "grounding_summary": [
+      {"claim_kind": "VERDICT", "claim_code": "HUMAN_REVIEW_REQUIRED", "source_record_ids": []},
+      {"claim_kind": "REVIEW_REASON", "claim_code": "VALID_REASON_X", "source_record_ids": ["r1"]},
+      {"claim_kind": "REVIEW_REASON", "claim_code": null, "source_record_ids": ["r2"]}
+    ]
+  },
+  {
+    "decision_id": "00000000-0000-0000-0000-0000000000a2",
+    "verdict": "HUMAN_REVIEW_REQUIRED",
+    "traffic_source": "real",
+    "rule_pack_sequence": 7,
+    "ruleset_activation_id": "act-7-test",
+    "environment": "TEST",
+    "engine_mode": "SHADOW",
+    "grounding_summary": [
+      {"claim_kind": "VERDICT", "claim_code": "HUMAN_REVIEW_REQUIRED", "source_record_ids": []},
+      {"claim_kind": "REVIEW_REASON", "claim_code": "SHOULD_NOT_APPEAR_IN_PRODUCTION_AUDIT", "source_record_ids": []}
+    ]
+  },
+  {
+    "decision_id": "00000000-0000-0000-0000-0000000000a3",
+    "verdict": "SUPPORTED_CANDIDATES",
+    "traffic_source": "real",
+    "rule_pack_sequence": 7,
+    "ruleset_activation_id": "act-7-prod",
+    "environment": "PRODUCTION",
+    "engine_mode": "ENFORCE",
+    "grounding_summary": [
+      {"claim_kind": "VERDICT", "claim_code": "SUPPORTED_CANDIDATES", "source_record_ids": ["r3"]}
+    ]
+  },
+  {
+    "decision_id": "00000000-0000-0000-0000-0000000000a4",
+    "verdict": "SUPPORTED_CANDIDATES",
+    "traffic_source": "real",
+    "rule_pack_sequence": 7,
+    "ruleset_activation_id": "act-7-prod",
+    "environment": "PRODUCTION",
+    "engine_mode": "SHADOW",
+    "grounding_summary": [
+      {"claim_kind": "VERDICT", "claim_code": "SUPPORTED_CANDIDATES", "source_record_ids": ["r4"]}
+    ]
+  }
+]

@@ -11,7 +11,7 @@
 │   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐            │
 │   │   MOUTH     │    │  BACKEND    │    │   QDRANT    │    │  POSTGRES   │            │
 │   │  (Next.js)  │───▶│  (FastAPI)  │───▶│  (Vectors)  │    │  (Memory)   │            │
-│   │  Frontend   │    │   RAG API   │    │  93K+ docs  │    │  CRM/Facts  │            │
+│   │  Frontend   │    │   RAG API   │    │ Live index  │    │  CRM/Facts  │            │
 │   └─────────────┘    └──────┬──────┘    └─────────────┘    └─────────────┘            │
 │                             │                                                          │
 │                    ┌────────▼────────┐                                                 │
@@ -156,7 +156,7 @@
 │                                                                                         │
 │  ┌─────────────────────────────────────────────────────────────────────────────────┐   │
 │  │ 1. VECTOR SEARCH TOOL (Primary)                                                 │   │
-│  │    ├── Federated search across 8 Qdrant collections (93K+ docs)               │   │
+│  │    ├── Federated search across the canonical Qdrant registry                   │   │
 │  │    ├── Hybrid mode: Dense (1536D) + BM25 Sparse + RRF fusion (ENABLED)        │   │
 │  │    ├── CrossEncoder reranking: ms-marco-MiniLM-L-6-v2 (local, ENABLED)        │   │
 │  │    └── Pipeline: BM25+Dense → RRF → CrossEncoder top-20→top-5                │   │
@@ -270,17 +270,8 @@
 │    └─────────────────────────────────────────────────────────────────────────────────┘ │
 │                                                                                         │
 │    ┌─────────────────────────────────────────────────────────────────────────────────┐ │
-│    │  QDRANT COLLECTIONS (93,283+ documents)                                         │ │
-│    │  ┌────────────────┬─────────┬────────────────────────────────────────────────┐ │ │
-│    │  │ Collection     │ Docs    │ Content                                        │ │ │
-│    │  ├────────────────┼─────────┼────────────────────────────────────────────────┤ │ │
-│    │  │ visa_oracle    │ 1,612   │ Visa & Immigration                            │ │ │
-│    │  │ kbli_unified   │ 8,886   │ Business Codes (KBLI 2025)                    │ │ │
-│    │  │ legal_unified  │ 5,041   │ Legal Framework                               │ │ │
-│    │  │ tax_genius     │ 895     │ Tax Regulations                               │ │ │
-│    │  │ knowledge_base │ 37,272  │ General Knowledge                             │ │ │
-│    │  │ bali_zero_team │ 51      │ Team & Pricing                                │ │ │
-│    │  └────────────────┴─────────┴────────────────────────────────────────────────┘ │ │
+│    │  QDRANT COLLECTIONS (live inventory is not stored in this diagram)              │ │
+│    │  Run: python3 scripts/docs_sync.py --json                                       │ │
 │    └─────────────────────────────────────────────────────────────────────────────────┘ │
 │                                                                                         │
 │    OUTPUT: 10 candidate documents with scores                                          │

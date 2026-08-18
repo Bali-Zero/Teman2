@@ -76,10 +76,9 @@ must not normalize into calm).
 
 - `git fetch` in the `git_alignment` probe refreshes remote-tracking refs — it changes what
   the checkout KNOWS, never what it RUNS. Escape: `--no-fetch` (fleet-stream uses it).
-- Wrapped tools write their own self-state when probed: `docs_sync --check` writes
-  `.docs_sync_cache.json` (now gitignored so it can never dirty a probed checkout);
-  `organism_stale_detector` appends to its own `~/.organism/alerts/` channel. These are the
-  wrapped tools' designed outputs, not proprioception acting on the world.
+- `docs_sync --check` is read-only. `organism_stale_detector` appends to its own
+  `~/.organism/alerts/` channel; that is the wrapped tool's designed output, not
+  proprioception acting on the world.
 - Evidence lines are redacted (`redact()`: token-shaped substrings → `<REDACTED>`) because
   wrapped output can quote log lines.
 

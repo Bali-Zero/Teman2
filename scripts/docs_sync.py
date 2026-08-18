@@ -1,40 +1,36 @@
 #!/usr/bin/env python3
-"""DocSentinel — Automated Documentation Stats Synchronizer.
+"""Generate live documentation state without committing that state.
 
-Extracts live metrics from the Nuzantara codebase and injects them into
-markdown files between <!-- DOCSYNC:KEY_START --> / <!-- DOCSYNC:KEY_END -->
-markers. Keeps README.md, INDEX.md, docs/AI_ONBOARDING.md and
-docs/runbooks/README.md in sync with actual code state.
-(CLAUDE.md was a target until F44 removed its markers — kept out on purpose.)
+``--json`` is the source of truth for volatile counts and inventories. Tracked
+markdown keeps only stable pointers between ``DOCSYNC`` markers. ``--check``
+validates those protected pointer blocks, optionally only for files named by a
+merge-base changed-file list; it never compares whole-repository counts.
 
 Spec: docs/DOCSYNC_SENTINEL.md
 Implementation: 2026-04-15 (Sprint 5.1.5 lean)
 
 Usage:
-    python scripts/docs_sync.py            # update markers in-place
-    python scripts/docs_sync.py --check    # CI mode: exit 1 if stale
-    python scripts/docs_sync.py --diff     # show what would change
-    python scripts/docs_sync.py --json     # raw stats as JSON
-    python scripts/docs_sync.py --quiet    # hook mode (no output on success)
+    python scripts/docs_sync.py                    # restore stable pointers
+    python scripts/docs_sync.py --check            # validate all pointers
+    python scripts/docs_sync.py --check \
+        --changed-files-from /tmp/changed.txt      # diff-local CI mode
+    python scripts/docs_sync.py --json             # live derived state
 
 No external dependencies. Python stdlib only.
 """
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import os
 import re
 import sys
-import tempfile
 import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-CACHE_PATH = REPO_ROOT / ".docs_sync_cache.json"
 
 # ---------------------------------------------------------------------------
 # Target files + markers
@@ -44,7 +40,21 @@ TARGET_FILES = [
     REPO_ROOT / "INDEX.md",
     REPO_ROOT / "docs" / "AI_ONBOARDING.md",
     REPO_ROOT / "docs" / "runbooks" / "README.md",
+    REPO_ROOT / "docs" / "DOCS_INVENTORY.md",
 ]
+
+EXPECTED_MARKERS: dict[str, tuple[str, ...]] = {
+    "README.md": ("TECH_STATS",),
+    "INDEX.md": (
+        "LIVING_ORGANS",
+        "WORKFLOWS_INDEX",
+        "SKILLS_INDEX",
+        "AUTOMATION_COVERAGE",
+    ),
+    "docs/AI_ONBOARDING.md": ("QUICK_NUMBERS",),
+    "docs/runbooks/README.md": ("RUNBOOKS_INDEX",),
+    "docs/DOCS_INVENTORY.md": ("DOCS_INVENTORY",),
+}
 
 # Marker regex: captures everything between START and END markers (inclusive).
 MARKER_RE = re.compile(
@@ -349,18 +359,11 @@ def automation_coverage() -> dict[str, int]:
     return {"plists": len(labels), "documented": documented}
 
 
-_QDRANT_FALLBACK = {
-    "collections": 10,
-    "documents": 93283,
-    "embedding_model": "text-embedding-3-small",
-}
-
-
 def get_qdrant_stats() -> dict[str, Any]:
-    """Fetch Qdrant stats. Try direct Qdrant /collections, fallback to /health or cache.
+    """Fetch Qdrant stats when credentials are available.
 
-    The Fly /health endpoint does NOT expose collection/document counts currently.
-    Direct Qdrant query works only if QDRANT_URL + QDRANT_API_KEY are exported.
+    Missing live access is represented explicitly. A committed cache or a hardcoded
+    fallback would turn a historical observation into apparently-current state.
     """
     qdrant_url = os.environ.get("QDRANT_URL")
     qdrant_key = os.environ.get("QDRANT_API_KEY")
@@ -389,148 +392,59 @@ def get_qdrant_stats() -> dict[str, Any]:
                 except (urllib.error.URLError, TimeoutError, ValueError, OSError):
                     continue
             return {
+                "status": "live",
                 "collections": len(collection_names),
                 "documents": total_docs,
-                "embedding_model": _QDRANT_FALLBACK["embedding_model"],
+                "embedding_model": "text-embedding-3-small",
             }
         except (urllib.error.URLError, TimeoutError, ValueError, OSError):
             pass
-    # Fallback to cache → hardcoded defaults
-    cached = _load_cache().get("qdrant")
-    if cached and cached.get("documents", 0) > 0:
-        return cached
-    return _QDRANT_FALLBACK
+    return {
+        "status": "unavailable",
+        "collections": None,
+        "documents": None,
+        "embedding_model": "text-embedding-3-small",
+    }
 
 
-def get_kg_stats() -> dict[str, int]:
-    """KG stats — cached hardcoded (changes rarely)."""
-    return _load_cache().get("kg", {"nodes": 108068, "edges": 242827})
-
-
-# ---------------------------------------------------------------------------
-# Cache
-# ---------------------------------------------------------------------------
-
-def _load_cache() -> dict[str, Any]:
-    if not CACHE_PATH.exists():
-        return {}
+def get_kg_stats() -> dict[str, Any]:
+    """Return explicitly sourced KG counts, or an honest unavailable state."""
     try:
-        return json.loads(CACHE_PATH.read_text())
-    except (json.JSONDecodeError, OSError):
-        return {}
-
-
-def _save_cache(stats: dict[str, Any]) -> None:
-    try:
-        CACHE_PATH.write_text(json.dumps(stats, indent=2))
-    except OSError:
-        pass  # Cache write failure is non-fatal
+        nodes = int(os.environ["DOCSYNC_KG_NODES"])
+        edges = int(os.environ["DOCSYNC_KG_EDGES"])
+    except (KeyError, ValueError):
+        return {"status": "unavailable", "nodes": None, "edges": None}
+    return {"status": "environment", "nodes": nodes, "edges": edges}
 
 
 # ---------------------------------------------------------------------------
-# Templates (one per marker key)
+# Stable pointer templates (one per managed marker key)
 # ---------------------------------------------------------------------------
 
-def _render_living_organs(stats: dict[str, Any]) -> str:
-    """Render LIVING_ORGANS marker: table of all apps + packages."""
-    lines = [
-        "",
-        f"**Apps:** {stats['app_count']} · **Packages:** {stats['package_count']}",
-        "",
-        "| App | Ruolo |",
-        "| --- | ----- |",
-    ]
-    for app in stats["apps"]:
-        overview = app["overview"].replace("|", "\\|")
-        lines.append(f"| `{app['name']}` | {overview} |")
-    lines.append("")
-    return "\n".join(lines)
+ARTIFACT_URL = (
+    "https://github.com/Bali-Zero/Teman2/actions/workflows/"
+    "docs-inventory-refresh.yml"
+)
 
 
-def _render_runbooks_index(stats: dict[str, Any]) -> str:
-    """Render RUNBOOKS_INDEX marker: table of all runbooks with titles."""
-    lines = [
-        "",
-        f"**Runbooks:** {len(stats['runbooks'])} (git-tracked in `docs/runbooks/`)",
-        "",
-        "| Runbook | Title |",
-        "| ------- | ----- |",
-    ]
-    for rb in stats["runbooks"]:
-        title = rb["title"].replace("|", "\\|")
-        lines.append(f"| [`{rb['file']}`]({rb['file']}) | {title} |")
-    lines.append("")
-    return "\n".join(lines)
-
-
-def _render_workflows_index(stats: dict[str, Any]) -> str:
-    """Render WORKFLOWS_INDEX marker: infra/workflows scripts with meta."""
-    lines = ["", "| File | Name | Description |", "| ---- | ---- | ----------- |"]
-    for wf in stats["workflows"]:
-        desc = wf["description"].replace("|", "\\|")
-        lines.append(f"| `infra/workflows/{wf['file']}` | {wf['name']} | {desc} |")
-    lines.append("")
-    return "\n".join(lines)
-
-
-def _render_skills_index(stats: dict[str, Any]) -> str:
-    """Render SKILLS_INDEX marker: repo-tracked .claude/skills."""
-    lines = [
-        "",
-        "| Skill | Description (truncated) |",
-        "| ----- | ----------------------- |",
-    ]
-    for sk in stats["skills"]:
-        desc = sk["description"].replace("|", "\\|")
-        lines.append(f"| `.claude/skills/{sk['name']}/` | {desc} |")
-    lines.append("")
-    return "\n".join(lines)
-
-
-def _render_automation_coverage(stats: dict[str, Any]) -> str:
-    """Render AUTOMATION_COVERAGE marker: plists vs documentation coverage."""
-    cov = stats["automation_coverage"]
-    pct = round(100 * cov["documented"] / cov["plists"]) if cov["plists"] else 0
+def _pointer(topic: str) -> str:
     return (
-        f"\n`{cov['plists']} plist tracked in infra/launchagents/ · "
-        f"{cov['documented']} documented in automation_catalog.json + "
-        f"AUTOMATIONS_REFERENCE.md ({pct}% coverage)`\n"
+        "\n"
+        f"Current state for {topic} is intentionally not stored in git. Run "
+        "`python3 scripts/docs_sync.py --json` or download the latest "
+        f"[docs-derived-state CI artifact]({ARTIFACT_URL}).\n"
     )
 
 
-TEMPLATES: dict[str, Any] = {
-    "RUNBOOKS_INDEX": _render_runbooks_index,
-    "WORKFLOWS_INDEX": _render_workflows_index,
-    "SKILLS_INDEX": _render_skills_index,
-    "AUTOMATION_COVERAGE": _render_automation_coverage,
-    "BACKEND_STATS": lambda s: (
-        f"\n- **Backend:** Python 3.11+, FastAPI, "
-        f"{s['routers']} routers, {s['services']} services, "
-        f"{s['test_files']} test files\n"
-    ),
-    "VECTOR_STATS": lambda s: (
-        f"\n- **Vector Collections:** {s['qdrant']['collections']} live on Fly.io "
-        f"({s['qdrant']['documents']:,} documents), "
-        f"{s['qdrant']['collections']} defined in code\n"
-    ),
-    "EMBEDDING_FROZEN": lambda s: (
-        f"\n### Embedding — `{s['qdrant']['embedding_model']}` "
-        f"(1536 dims) FROZEN. Never change without re-indexing plan.\n"
-    ),
-    "TECH_STATS": lambda s: (
-        f"\n- Backend: FastAPI · {s['routers']} routers · {s['services']} services\n"
-        f"- Vector DB: Qdrant · {s['qdrant']['collections']} collections · "
-        f"{s['qdrant']['documents']:,} documents\n"
-        f"- Knowledge Graph: {s['kg']['nodes']:,} nodes · {s['kg']['edges']:,} edges\n"
-        f"- Apps: {s['app_count']} · Packages: {s['package_count']}\n"
-        f"- Version: {s['version']}\n"
-    ),
-    "QUICK_NUMBERS": lambda s: (
-        f"\n`{s['routers']} routers · {s['services']} services · "
-        f"{s['test_files']} tests · {s['qdrant']['collections']} Qdrant collections · "
-        f"{s['qdrant']['documents']:,} vectors · {s['kg']['nodes']:,} KG nodes`\n"
-    ),
-    "LIVING_ORGANS": _render_living_organs,
+TEMPLATES: dict[str, str] = {
+    "TECH_STATS": _pointer("technical counts"),
+    "QUICK_NUMBERS": _pointer("quick numbers"),
+    "LIVING_ORGANS": _pointer("apps and packages inventory"),
+    "WORKFLOWS_INDEX": _pointer("workflow inventory"),
+    "SKILLS_INDEX": _pointer("skill inventory"),
+    "AUTOMATION_COVERAGE": _pointer("automation coverage"),
+    "RUNBOOKS_INDEX": _pointer("runbook inventory"),
+    "DOCS_INVENTORY": _pointer("documentation inventory"),
 }
 
 
@@ -538,21 +452,8 @@ TEMPLATES: dict[str, Any] = {
 # Stats gathering
 # ---------------------------------------------------------------------------
 
-def gather_stats(*, read_only: bool = False) -> dict[str, Any]:
-    """Collect all stats from codebase.
-
-    read_only=True skips the cache refresh below. Used by --check/--diff/--json:
-    those modes are documented (and, for --check, relied on by CI) as
-    non-mutating, but this function used to call `_save_cache` unconditionally
-    — every "read-only" invocation quietly dirtied `.docs_sync_cache.json` on
-    disk. The tracked cache itself must stay committed: CI's docs-sync.yml
-    workflow has no QDRANT_URL/QDRANT_API_KEY, so `get_qdrant_stats()` falls
-    back to this committed snapshot rather than the older hardcoded
-    `_QDRANT_FALLBACK` — untracking it would make --check fail on every
-    triggering PR (verified empirically: removing the file flips
-    `--check` from OK to STALE). This flag only stops the SIDE-EFFECT write,
-    never the read.
-    """
+def gather_stats() -> dict[str, Any]:
+    """Collect live/tree-derived state without writing any repository file."""
     qdrant = get_qdrant_stats()
     kg = get_kg_stats()
     stats = {
@@ -571,21 +472,21 @@ def gather_stats(*, read_only: bool = False) -> dict[str, Any]:
         "skills": list_skills(),
         "automation_coverage": automation_coverage(),
     }
-    if not read_only:
-        # Refresh cache with successful fetches
-        _save_cache({"qdrant": qdrant, "kg": kg})
     return stats
 
 
 # ---------------------------------------------------------------------------
-# Marker injection (atomic write)
+# Marker canonicalization
 # ---------------------------------------------------------------------------
 
-def inject_markers(path: Path, stats: dict[str, Any]) -> tuple[bool, str, str]:
-    """Update all markers in file. Returns (changed, old_content, new_content)."""
-    if not path.exists():
-        return (False, "", "")
-    original = path.read_text()
+def canonicalize_content(rel: str, original: str) -> tuple[str, list[str]]:
+    """Return canonical protected blocks for one managed relative path."""
+    found = [m.group("key") for m in MARKER_RE.finditer(original)]
+    errors = [
+        f"{rel}: expected exactly one {key} marker pair, found {found.count(key)}"
+        for key in EXPECTED_MARKERS[rel]
+        if found.count(key) != 1
+    ]
 
     def _replace(match: re.Match[str]) -> str:
         key = match.group("key")
@@ -594,46 +495,42 @@ def inject_markers(path: Path, stats: dict[str, Any]) -> tuple[bool, str, str]:
         if key not in TEMPLATES:
             # Unknown marker: leave untouched
             return match.group(0)
-        try:
-            new_body = TEMPLATES[key](stats)
-        except Exception as exc:
-            print(
-                f"WARN: template {key} failed: {exc}",
-                file=sys.stderr,
-            )
-            return match.group(0)
-        return f"{start_tag}{new_body}{end_tag}"
+        return f"{start_tag}{TEMPLATES[key]}{end_tag}"
 
     updated = MARKER_RE.sub(_replace, original)
-    return (updated != original, original, updated)
+    return updated, errors
 
 
-def _write_atomic(path: Path, content: str) -> None:
-    """Atomic write: temp file in same dir + rename. Preserves perms."""
-    tmp_fd, tmp_name = tempfile.mkstemp(
-        prefix=".docs_sync_", dir=str(path.parent)
-    )
-    try:
-        with os.fdopen(tmp_fd, "w") as fh:
-            fh.write(content)
-            fh.flush()
-            os.fsync(fh.fileno())
-        # Preserve original perms if file exists
-        if path.exists():
-            st = path.stat()
-            os.chmod(tmp_name, st.st_mode)
-        os.replace(tmp_name, path)
-    except Exception:
-        # Cleanup temp on failure
-        try:
-            os.unlink(tmp_name)
-        except OSError:
-            pass
-        raise
+def inject_markers(path: Path) -> tuple[bool, str, str, list[str]]:
+    """Canonicalize one managed file and report structural marker errors."""
+    rel = path.relative_to(REPO_ROOT).as_posix()
+    if not path.exists():
+        return (False, "", "", [f"{rel}: managed file is missing"])
+    original = path.read_text()
+    updated, errors = canonicalize_content(rel, original)
+    return (updated != original, original, updated, errors)
 
 
-def content_checksum(s: str) -> str:
-    return hashlib.sha256(s.encode()).hexdigest()[:12]
+def _targets_for_changed_file_list(changed_file_list: Path | None) -> list[Path]:
+    """Return only targets this delta can be guilty of changing.
+
+    A judge change validates the whole protected surface. All other deltas are
+    strictly local: unrelated code/count changes select no tracked docs.
+    """
+    if changed_file_list is None:
+        return TARGET_FILES
+    changed = {
+        line.strip().removeprefix("./")
+        for line in changed_file_list.read_text().splitlines()
+        if line.strip()
+    }
+    if "scripts/docs_sync.py" in changed:
+        return TARGET_FILES
+    return [
+        target
+        for target in TARGET_FILES
+        if target.relative_to(REPO_ROOT).as_posix() in changed
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -645,7 +542,7 @@ def main() -> int:
     parser.add_argument(
         "--check",
         action="store_true",
-        help="CI mode: exit 1 if any marker would change (without writing)",
+        help="Exit 1 on a hand-edited/malformed stable pointer (no writes)",
     )
     parser.add_argument(
         "--diff",
@@ -658,53 +555,62 @@ def main() -> int:
     parser.add_argument(
         "--quiet", action="store_true", help="Suppress output on success (hook mode)"
     )
+    parser.add_argument(
+        "--changed-files-from",
+        type=Path,
+        help="Newline-delimited merge-base delta; makes --check diff-local",
+    )
     args = parser.parse_args()
 
-    # --check/--diff/--json are all documented as non-mutating; none of them
-    # may leave .docs_sync_cache.json touched on disk.
-    stats = gather_stats(read_only=args.check or args.diff or args.json)
-
     if args.json:
-        print(json.dumps(stats, indent=2, default=str))
+        print(json.dumps(gather_stats(), indent=2, default=str))
         return 0
+    if args.changed_files_from and not (args.check or args.diff):
+        parser.error("--changed-files-from requires --check or --diff")
+    if args.changed_files_from and not args.changed_files_from.is_file():
+        parser.error(f"changed-file list not found: {args.changed_files_from}")
 
     any_changed = False
     changes: list[str] = []
-    for target in TARGET_FILES:
-        changed, old, new = inject_markers(target, stats)
+    errors: list[str] = []
+    for target in _targets_for_changed_file_list(args.changed_files_from):
+        changed, _old, new, target_errors = inject_markers(target)
+        errors.extend(target_errors)
         if not changed:
             continue
         any_changed = True
         rel = target.relative_to(REPO_ROOT)
         if args.diff or args.check:
-            old_sum = content_checksum(old)
-            new_sum = content_checksum(new)
-            changes.append(f"  {rel}: {old_sum} → {new_sum}")
+            changes.append(f"  {rel}: protected pointer was hand-edited")
         if args.check or args.diff:
             continue
-        _write_atomic(target, new)
+        target.write_text(new)
         if not args.quiet:
             print(f"updated: {rel}")
 
     if args.check:
-        if any_changed:
-            print("DOCSYNC STALE — run: python scripts/docs_sync.py", file=sys.stderr)
-            for line in changes:
+        if any_changed or errors:
+            print("DOCSYNC HAND-EDIT — restore with: python3 scripts/docs_sync.py", file=sys.stderr)
+            for line in errors + changes:
                 print(line, file=sys.stderr)
             return 1
         if not args.quiet:
-            print("DOCSYNC OK (no changes)")
+            print("DOCSYNC OK (generator valid; no protected hand-edits)")
         return 0
 
     if args.diff:
-        if any_changed:
+        if any_changed or errors:
             print("Would change:")
-            for line in changes:
+            for line in errors + changes:
                 print(line)
         else:
             print("No changes.")
         return 0
 
+    if errors:
+        for line in errors:
+            print(f"DOCSYNC ERROR: {line}", file=sys.stderr)
+        return 1
     if not any_changed and not args.quiet:
         print("DOCSYNC OK (no changes)")
     return 0

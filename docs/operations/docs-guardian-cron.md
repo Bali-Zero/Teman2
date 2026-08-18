@@ -7,9 +7,9 @@
 
 Weekly guardian that:
 
-1. Runs `scripts/docs_sync.py` (best-effort DOCSYNC marker sync).
-2. Runs `scripts/docs_audit.py` to regenerate `docs/DOCS_INVENTORY.md`.
-3. Sends a Telegram alert via `~/.claude/scripts/hotfix-notify.sh` only when the audit reports a delta (exit code ≠ 0). No delta = silent run.
+1. Runs `scripts/docs_audit.py` against a temporary inventory artifact.
+2. Archives eligible orphan docs and proposes broken-link repairs in a PR.
+3. Sends a Telegram alert only when the audit reports actionable delta.
 
 ## Install
 
@@ -33,7 +33,7 @@ echo "exit=$?"
 Expected behavior:
 
 - **No delta** → no output, exit 0, no Telegram.
-- **Delta** (new STALE / broken / orphan) → Telegram alert with summary, `docs/DOCS_INVENTORY.md` updated.
+- **Delta** (broken / orphan) → Telegram alert and, when actionable, a repair PR. No volatile inventory is committed.
 
 ## Uninstall
 
@@ -43,6 +43,6 @@ crontab -l | grep -v docs-guardian | crontab -
 
 ## Related automation
 
-- `docs/DOCS_INVENTORY.md` — auto-generated output.
+- `docs/DOCS_INVENTORY.md` — stable pointer to the generated artifact.
 - `docs/AUTOMATIONS_REFERENCE.md` — complementary live-system-health snapshot (different cron, `com.nuzantara.automations-reference` LaunchAgent, nightly 23:15 WITA).
-- `.github/workflows/docs-guardian.yml` — CI counterpart running `docs_audit.py --check` on PRs touching `docs/**`.
+- `.github/workflows/docs-guardian.yml` — diff-local generator-correctness sentinel.

@@ -15,8 +15,17 @@ Verdict per peer (structured signals, never substring — W82):
   not report green).
 
 Alerting (via tg gateway, never the Bot API directly):
-- dark ≥ DARK_AFTER_S (default 1800s) → ONE p0 per dark-transition
-  (state file remembers; the gateway's 6h dedup is the second belt)
+- dark ≥ DARK_AFTER_S (default 1800s) → first p0 for the dark-transition
+- then RE-ESCALATION on a widening ladder (6h, 24h, daily thereafter).
+  Genesis 2026-08-17: the Mini was dark 2026-08-14→17. fleet_watch alerted
+  correctly at minute 30 and then logged the dark for 236762s (~65h) in
+  silence, because one bool said "already alerted". A single message that
+  is missed makes a three-day-dead node indistinguishable from a recovered
+  one — the outage stops being reported the moment it stops being news.
+  State carries the stage reached, so a skipped ladder rung (watcher itself
+  down) collapses into ONE message for the CURRENT stage, never a burst.
+  Dedup keys are per-stage, otherwise the gateway's own 6h dedup — the
+  second belt against spam — would swallow every re-alert.
 - recovery after an alerted dark → digest event
 State: ``~/.organism/fleet_watch/state.json``.
 
@@ -39,6 +48,15 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 PEERS_CONFIG = REPO_ROOT / "infra" / "fleet-watch" / "peers.json"
 DARK_AFTER_S = int(os.environ.get("FLEET_WATCH_DARK_AFTER_S", "1800"))
 SSH_TIMEOUT_S = 8
+
+
+def _ladder() -> tuple[int, ...]:
+    raw = os.environ.get("FLEET_WATCH_REALERT_LADDER_S", "21600,86400")
+    return tuple(sorted(int(x) for x in raw.split(",") if x.strip()))
+
+
+def _realert_period() -> int:
+    return int(os.environ.get("FLEET_WATCH_REALERT_PERIOD_S", "86400"))
 
 TAILSCALE_CANDIDATES = (
     "/Applications/Tailscale.app/Contents/MacOS/Tailscale",
@@ -114,6 +132,34 @@ def check_ssh(alias: str, run: Runner = _run) -> bool | None:
     return proc.returncode == 0
 
 
+def due_alert_stage(dark_for: float) -> int:
+    """How many p0s SHOULD have been sent by now for a dark of this length.
+
+    0 = below threshold, 1 = the transition alert, 2+ = re-escalations.
+    Monotonic in ``dark_for`` by construction: the caller compares it to the
+    stage already sent, so an unsent rung is never replayed twice and a
+    skipped one collapses to a single current-stage message.
+    """
+    if dark_for < DARK_AFTER_S:
+        return 0
+    stage = 1
+    for rung in _ladder():
+        if dark_for >= rung:
+            stage += 1
+    period = _realert_period()
+    if period > 0 and dark_for >= period:
+        stage += int((dark_for - period) // period)
+    return stage
+
+
+def _sent_stage(entry: dict) -> int:
+    """Stage already delivered, tolerating state files written before this."""
+    raw = entry.get("alert_stage")
+    if isinstance(raw, int) and raw >= 0:
+        return raw
+    return 1 if entry.get("alerted") else 0
+
+
 def notify_gateway(
     tier: str, dedup_key: str, text: str, run: Runner = _run
 ) -> str:
@@ -156,13 +202,19 @@ def tick(
         signals = [s for s in (ts_ok, ssh_ok) if s is not None]
         probes_run += len(signals)
         entry = state.setdefault(
-            name, {"dark_since": None, "alerted": False, "last_ok": None}
+            name,
+            {
+                "dark_since": None,
+                "alerted": False,
+                "alert_stage": 0,
+                "last_ok": None,
+            },
         )
         if not signals:
             print(f"fleet_watch: {name} UNPROBEABLE (no signal ran)")
             continue
         if any(signals):
-            if entry["alerted"]:
+            if _sent_stage(entry) > 0:
                 outcome = notify(
                     "digest",
                     f"fleet:{name}-recovered:{day}",
@@ -171,25 +223,36 @@ def tick(
                     f"{socket.gethostname().split('.')[0]}).",
                 )
                 print(f"fleet_watch: {name} recovered -> digest ({outcome})")
-            entry.update({"dark_since": None, "alerted": False, "last_ok": now})
+            entry.update(
+                {
+                    "dark_since": None,
+                    "alerted": False,
+                    "alert_stage": 0,
+                    "last_ok": now,
+                }
+            )
             continue
         # both signals explicitly failed → dark
         if entry["dark_since"] is None:
             entry["dark_since"] = now
         dark_for = now - entry["dark_since"]
-        if dark_for >= DARK_AFTER_S and not entry["alerted"]:
+        due = due_alert_stage(dark_for)
+        sent = _sent_stage(entry)
+        if due > sent:
             mins = int(dark_for // 60)
+            still = "" if sent == 0 else "STILL "
             outcome = notify(
                 "p0",
-                f"fleet:{name}-dark:{day}",
-                f"P0 fleet-watch: {name} is DARK — Tailscale offline AND ssh "
-                f"unreachable for {mins}m (watched from "
+                f"fleet:{name}-dark:{day}:s{due}",
+                f"P0 fleet-watch: {name} is {still}DARK — Tailscale offline "
+                f"AND ssh unreachable for {mins}m (watched from "
                 f"{socket.gethostname().split('.')[0]}). Its own watchdogs "
                 f"die with it: this is the only alarm. Needs power/network "
                 f"check on site.",
             )
+            entry["alert_stage"] = due
             entry["alerted"] = True
-            print(f"fleet_watch: {name} DARK {mins}m -> p0 ({outcome})")
+            print(f"fleet_watch: {name} DARK {mins}m -> p0 stage {due} ({outcome})")
         else:
             print(f"fleet_watch: {name} dark {int(dark_for)}s (threshold {DARK_AFTER_S}s)")
     return state, probes_run

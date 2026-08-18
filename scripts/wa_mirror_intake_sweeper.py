@@ -41,6 +41,17 @@ Environment:
 - WA_MIRROR_MEDIA_TYPES              (default "document,image" — comma list)
 - WA_MIRROR_TEXT_SWEEP_BATCH          (default 100 — direct text rows promoted per tick)
 - WA_MIRROR_TEXT_START_ID             (optional — same seed semantics for text rows)
+
+Exit codes (poison breaker, verbale #3, post-refuter Qwen 3.8 Max, 2026-08-17):
+  0  normal tick, including a tick with SOME poison rows (< storm threshold)
+     — a digest-tier Telegram line is still sent so poison is never silent.
+  2  a POISON STORM this tick: `poison >= max(5, ceil(0.2 * scanned))`. A P0
+     Telegram alert fires and the tick returns non-zero ON PURPOSE so launchd
+     records the run as FAILED — the old unconditional `return 0` meant a
+     systemic misclassification (e.g. a broken migration) could silently
+     drain the entire backlog at full rate with launchd showing green every
+     time. `crm_poison` (CRM-identity-only failures, verbale #2) never counts
+     toward the storm threshold — those never drop a document.
 """
 from __future__ import annotations
 
@@ -48,8 +59,11 @@ import asyncio
 import fcntl
 import hashlib
 import logging
+import math
 import os
+import subprocess
 import sys
+import time
 from pathlib import Path
 
 import asyncpg
@@ -59,7 +73,24 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "apps" / "backen
 from backend.services.intake.enqueue import enqueue
 from backend.services.intake.routing import normalize_sender_phone
 
+# The tg_notify gateway parser (scripts/tg_gateway_verdict.py) — repo root on
+# sys.path so this resolves whether the module is run directly or loaded via
+# importlib (tests), same pattern as scripts/intake_health_report.py.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from scripts.tg_gateway_verdict import extract_gateway_verdict  # noqa: E402
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+
 logger = logging.getLogger("wa_mirror_sweeper")
+
+# The absolute python3 candidates tg_notify.py is spawned with (W108 — the
+# alarm must not share the failure mode of a possibly-broken venv PATH
+# resolution). tg_notify.py is stdlib-only by design for exactly this reason.
+_PY3_CANDIDATES: tuple[str, ...] = (
+    "/usr/bin/python3",
+    "/opt/homebrew/bin/python3",
+    "/usr/local/bin/python3",
+)
 
 STATE_DIR = Path.home() / ".cell-bridge-state"
 LAST_ID_FILE = STATE_DIR / "wa_mirror_sweep_last_id.txt"
@@ -71,6 +102,78 @@ _DEFAULT_BATCH = 25
 _DEFAULT_TEXT_BATCH = 100
 _CRM_ACTOR = "wa-mirror-crm-writer@balizero.com"
 _LEAD_SOURCE = "whatsapp_auto"
+
+# --------------------------------------------------------------------------- #
+# Transient-vs-permanent exception classification (dossier C-31, 2026-08-15;
+# widened post-refuter Qwen 3.8 Max finding #1, 2026-08-17).
+#
+# The media loop's per-row `except Exception: ... break` is correct for a
+# TRANSIENT failure (DB/connection hiccup — retry the SAME row next tick) but
+# wrong for a PERMANENT one (bad data, a constraint violation): breaking
+# without advancing the watermark freezes it on that row forever, starving
+# every later media row behind it. Classify by exclusion — anything
+# connectivity-shaped is transient; everything else is a poison row, logged
+# and skipped forward so the tick keeps moving.
+#
+# `asyncio.TimeoutError` and the builtin `TimeoutError` are the same class on
+# Python 3.11+ but were distinct before — both listed so this stays correct
+# regardless of interpreter version.
+#
+# The original tuple only caught connection-shaped failures. It missed the
+# retryable Postgres error classes below — all confirmed live (asyncpg 0.31.0,
+# apps/backend-rag/.venv) NOT to be subclasses of any pre-existing entry, so
+# each was silently misclassified as permanent poison and the row it hit was
+# dropped forever instead of being retried next tick:
+#   - QueryCanceledError    — a statement_timeout cancel mid-CRM-upsert
+#   - DeadlockDetectedError / SerializationError — lock/serialization conflict
+#     (the CRM upsert takes pg_advisory_xact_lock + SELECT...FOR UPDATE)
+#   - OperatorInterventionError — covers AdminShutdownError, CrashShutdownError,
+#     CannotConnectNowError, IdleSessionTimeoutError (a DB restart/maintenance
+#     window, not a data defect)
+#   - InsufficientResourcesError — covers OutOfMemoryError,
+#     TooManyConnectionsError, DiskFullError (resource pressure, not poison)
+#   - PostgresSystemError — server-side I/O/system failure
+# Deliberately conservative: constraint/data errors (UniqueViolationError,
+# UndefinedTableError, DataError, ValueError, ...) stay OUTSIDE this tuple and
+# permanent, per the existing classify-by-exclusion contract.
+# --------------------------------------------------------------------------- #
+_TRANSIENT_EXCEPTIONS: tuple[type[BaseException], ...] = (
+    asyncpg.PostgresConnectionError,
+    asyncpg.InterfaceError,
+    OSError,
+    TimeoutError,
+    asyncio.TimeoutError,
+    asyncpg.QueryCanceledError,
+    asyncpg.DeadlockDetectedError,
+    asyncpg.SerializationError,
+    asyncpg.OperatorInterventionError,
+    asyncpg.InsufficientResourcesError,
+    asyncpg.PostgresSystemError,
+)
+
+
+def _is_transient(exc: BaseException) -> bool:
+    """True for connectivity-shaped failures worth retrying next tick."""
+    return isinstance(exc, _TRANSIENT_EXCEPTIONS)
+
+
+def _exc_summary(exc: BaseException) -> str:
+    """PII-safe one-line exception summary for the media-loop error logs
+    (verbale #6, post-refuter Qwen 3.8 Max, P2).
+
+    ``asyncpg.PostgresError.__str__()`` appends ``DETAIL``/``HINT`` when the
+    server supplies them, and a constraint-violation DETAIL on a phone-keyed
+    table (``clients.phone_normalized`` UNIQUE) can embed the raw offending
+    phone value — doubling the poison-row ERROR call sites that could leak
+    PII into ``wa-mirror-intake-sweeper.log``. A Postgres exception is
+    therefore summarized as its type + sqlstate ONLY, never its message.
+    Anything else (OSError, ValueError, ...) is not DB-error-shaped and does
+    not carry that DETAIL/HINT risk, so it keeps its message.
+    """
+    if isinstance(exc, asyncpg.PostgresError):
+        return f"{type(exc).__name__}[{getattr(exc, 'sqlstate', '-')}]"
+    return f"{type(exc).__name__}: {exc}"
+
 
 # --------------------------------------------------------------------------- #
 # Internal-sender guard (2026-06-29).
@@ -497,6 +600,40 @@ async def _sweep_text_clients(pool: asyncpg.Pool, batch: int) -> dict[str, int]:
     return counters
 
 
+def _resolve_py3() -> str:
+    for candidate in _PY3_CANDIDATES:
+        if Path(candidate).is_file():
+            return candidate
+    return sys.executable  # last resort — never crash over interpreter resolution
+
+
+def _tg_notify(tier: str, dedup_key: str, text: str) -> bool:
+    """Route the poison breaker's alert through the tg_notify gateway.
+
+    Module-level side effect, monkeypatchable (same pattern as
+    scripts/intake_health_report.py::_tg_notify) — never raises, so a
+    Telegram/gateway hiccup never turns a completed sweep tick into a crash.
+    `text` MUST carry counts only (poison/crm_poison/scanned/watermark) —
+    never a row id, phone, or exception body (Law 2 / UU-PDP).
+    """
+    try:
+        gateway = _REPO_ROOT / "scripts" / "tg_notify.py"
+        if not gateway.is_file():
+            logger.warning("[wa_mirror_sweep] tg_notify.py missing at %s", gateway)
+            return False
+        res = subprocess.run(
+            [_resolve_py3(), str(gateway), "--tier", tier,
+             "--source", "wa-mirror-sweeper", "--dedup-key", dedup_key, "--", text],
+            capture_output=True, text=True, timeout=30,
+        )
+        verdict = extract_gateway_verdict(res.stderr)
+        logger.info("[wa_mirror_sweep] tg_notify: %s", verdict or f"NESSUN verdetto rc={res.returncode}")
+        return res.returncode == 0 and verdict is not None
+    except Exception as exc:  # never raises
+        logger.warning("[wa_mirror_sweep] tg_notify failed: %s", exc)
+        return False
+
+
 async def run_one_tick() -> int:
     db_url = os.getenv(
         "INTAKE_DATABASE_URL",
@@ -552,6 +689,8 @@ async def run_one_tick() -> int:
         blob_missing = 0
         direct_media = 0
         group_media = 0
+        poison = 0
+        crm_poison = 0
         max_done = watermark
 
         for r in rows:
@@ -562,7 +701,18 @@ async def run_one_tick() -> int:
                 logger.warning("[wa_mirror_sweep] row %d missing id/path, skipping", rid)
                 max_done = max(max_done, rid)  # don't re-scan a structurally-bad row
                 continue
-            if not os.path.exists(blob_path):
+            # verbale #4 (post-refuter Qwen 3.8 Max, P2): `os.path.exists()`
+            # passes for a DIRECTORY or an unreadable file too. compute_blob_hash()
+            # then does a bare `open(blob_path, "rb")`, which raises
+            # IsADirectoryError/PermissionError — both OSError subclasses, so
+            # `_is_transient()` (OSError is transient) classified them as
+            # retry-worthy and `break`-froze the watermark on that row forever
+            # (the exact pre-fix pathology, reproduced for this input shape).
+            # `os.path.isfile()` + `os.access(..., os.R_OK)` catch both shapes
+            # HERE, before enqueue()/compute_blob_hash() ever opens the path,
+            # so a bad blob is counted and advanced past like any other
+            # missing blob instead of freezing the tick.
+            if not (os.path.isfile(blob_path) and os.access(blob_path, os.R_OK)):
                 blob_missing += 1
                 logger.warning("[wa_mirror_sweep] row %d blob missing on disk, skipping", rid)
                 max_done = max(max_done, rid)  # blob gone; never coming back, advance past it
@@ -580,13 +730,32 @@ async def run_one_tick() -> int:
                             note_kind="media",
                         )
                 except Exception as exc:
+                    if _is_transient(exc):
+                        logger.error(
+                            "[wa_mirror_sweep] CRM phone upsert failed for media row %d "
+                            "(transient, retrying next tick): %s",
+                            rid,
+                            _exc_summary(exc),
+                            exc_info=not isinstance(exc, asyncpg.PostgresError),
+                        )
+                        break
+                    # PERMANENT CRM-identity failure (verbale #2, post-refuter
+                    # Qwen 3.8 Max): the CRM upsert is a phone->client_id HINT,
+                    # not the document itself. Dropping the row here (the old
+                    # `continue`) skipped enqueue() entirely and lost the media
+                    # document — a constraint violation on the CRM side is not
+                    # a reason to lose a client's passport/document. Record the
+                    # loss of the identity hint, keep client_id_hint=None, and
+                    # FALL THROUGH so the row still reaches enqueue() below.
+                    crm_poison += 1
                     logger.error(
-                        "[wa_mirror_sweep] CRM phone upsert failed for media row %d: %s",
+                        "[wa_mirror_sweep] CRM phone upsert failed for media row %d "
+                        "(permanent, CRM identity hint dropped — document still enqueued): %s",
                         rid,
-                        exc,
-                        exc_info=True,
+                        _exc_summary(exc),
+                        exc_info=not isinstance(exc, asyncpg.PostgresError),
                     )
-                    break
+                    client_id_hint = None
             else:
                 group_media += 1
             try:
@@ -602,11 +771,26 @@ async def run_one_tick() -> int:
                     source_context=_source_context(r),
                 )
             except Exception as exc:
+                if _is_transient(exc):
+                    logger.error(
+                        "[wa_mirror_sweep] enqueue failed for row %d "
+                        "(transient, retrying next tick): %s",
+                        rid,
+                        _exc_summary(exc),
+                        exc_info=not isinstance(exc, asyncpg.PostgresError),
+                    )
+                    # Do NOT advance past a transient failure — retry next tick.
+                    break
+                poison += 1
                 logger.error(
-                    "[wa_mirror_sweep] enqueue failed for row %d: %s", rid, exc, exc_info=True
+                    "[wa_mirror_sweep] enqueue failed for row %d "
+                    "(poison row, advancing past it): %s",
+                    rid,
+                    _exc_summary(exc),
+                    exc_info=not isinstance(exc, asyncpg.PostgresError),
                 )
-                # Do NOT advance past a transient failure — retry next tick.
-                break
+                max_done = max(max_done, rid)
+                continue
             if result.was_new:
                 enqueued_new += 1
             else:
@@ -617,9 +801,49 @@ async def run_one_tick() -> int:
             _save_watermark(max_done)
         logger.info(
             "[wa_mirror_sweep] done: scanned=%d direct=%d group=%d new=%d dup=%d "
-            "blob_missing=%d watermark=%d",
-            len(rows), direct_media, group_media, enqueued_new, already, blob_missing, max_done,
+            "blob_missing=%d poison=%d crm_poison=%d watermark=%d",
+            len(rows),
+            direct_media,
+            group_media,
+            enqueued_new,
+            already,
+            blob_missing,
+            poison,
+            crm_poison,
+            max_done,
         )
+
+        # Poison breaker (verbale #3, post-refuter Qwen 3.8 Max, P1). The tick
+        # used to `return 0` unconditionally no matter how many rows were
+        # poisoned — a systemic misclassification (e.g. a broken migration)
+        # could silently drain the entire backlog at full rate with launchd
+        # recording a clean success every tick. Any poison at all is worth a
+        # digest line (never silent); a STORM — a large fraction of the batch
+        # poisoned in one tick — is worth a P0 and a non-zero exit so launchd
+        # marks the run FAILED. crm_poison never counts toward the storm
+        # threshold: a CRM-identity-only failure (verbale #2) never drops a
+        # document, so it is not the "backlog silently draining" failure mode
+        # this breaker exists to catch.
+        scanned = len(rows)
+        today = time.strftime("%Y-%m-%d")
+        if poison + crm_poison > 0:
+            _tg_notify(
+                "digest",
+                f"wa-mirror-sweeper:poison:{today}",
+                f"wa-mirror sweeper poison this tick: poison={poison} "
+                f"crm_poison={crm_poison} scanned={scanned} watermark={max_done}",
+            )
+        storm_threshold = max(5, math.ceil(0.2 * scanned))
+        if poison >= storm_threshold:
+            _tg_notify(
+                "p0",
+                "wa-mirror-sweeper:poison-storm",
+                f"wa-mirror sweeper POISON STORM: poison={poison}/{scanned} "
+                f"(>= threshold {storm_threshold}); watermark={max_done}. "
+                "Likely a systemic misclassification, not per-row bad data — "
+                "check recent enqueue()/schema changes before requeuing.",
+            )
+            return 2
         return 0
     finally:
         await pool.close()

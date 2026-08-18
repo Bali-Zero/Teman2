@@ -2,7 +2,11 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { describe, expect, it } from "vitest";
-import { SUPPORT_REASON_COPY, buildEngineOutcome } from "./engine-adapter";
+import {
+  REVIEW_REASON_COPY,
+  SUPPORT_REASON_COPY,
+  buildEngineOutcome,
+} from "./engine-adapter";
 import { TEST_NOW, makeVisaOracleResponse } from "./visa-oracle-test-fixture";
 
 describe("Visa Oracle authoritative outcome adapter", () => {
@@ -391,5 +395,202 @@ describe("support reasons are sentences, not machine codes", () => {
     // rules stopped parsing, would make the assertion below vacuously true.
     expect(codes.length).toBeGreaterThanOrEqual(13);
     expect(codes.filter((code) => !(code in SUPPORT_REASON_COPY))).toEqual([]);
+  });
+});
+
+describe("review reasons cover every code the current pack can emit", () => {
+  const HERE = path.dirname(fileURLToPath(import.meta.url));
+  const PACKS_DIR = path.resolve(
+    HERE,
+    "../../../../../../..",
+    "apps/backend-rag/backend/services/visa_engine/contracts/packs",
+  );
+
+  /**
+   * Unlike SUPPORT reason codes (grown purely additively, seq-1 through
+   * seq-8, `supportReasonCodesInPack` above safely globs every file), the
+   * HUMAN_REVIEW taxonomy was CONSOLIDATED at seq-6: rulepack-prod-001/002/
+   * 004/005 carried 51-53 granular review codes that were renamed/merged
+   * down to a stable 14 in seq-6/7/8 (verified identical across those
+   * three). Globbing every pack file for review codes would resurrect that
+   * dead pre-seq-6 taxonomy as a permanent "known gap" that can never
+   * actually fire again — so this reads only the pack with the HIGHEST
+   * `sequence` field on disk (the one closest to going live, same
+   * "not-yet-activated" blind-spot concern `supportReasonCodesInPack`
+   * documents, without the false positives a full-file glob would add).
+   */
+  function latestProductionPackFile(): string {
+    const files = fs
+      .readdirSync(PACKS_DIR)
+      .filter((name) => /^rulepack-prod-\d+\.source\.json$/.test(name));
+    if (files.length === 0) {
+      throw new Error(`no production packs found under ${PACKS_DIR}`);
+    }
+    let best: { file: string; sequence: number } | null = null;
+    for (const name of files) {
+      const full = path.join(PACKS_DIR, name);
+      const payload = JSON.parse(fs.readFileSync(full, "utf-8")) as {
+        sequence?: unknown;
+      };
+      // A pack without a numeric `sequence` cannot be compared — skip it
+      // rather than let it silently win via a sentinel default (a pack
+      // missing this field is malformed, not "oldest").
+      if (typeof payload.sequence !== "number") continue;
+      if (best === null || payload.sequence > best.sequence) {
+        best = { file: full, sequence: payload.sequence };
+      }
+    }
+    if (best === null) {
+      throw new Error(`no pack under ${PACKS_DIR} had a numeric sequence`);
+    }
+    return best.file;
+  }
+
+  function reviewReasonCodesInPack(): string[] {
+    const payload = JSON.parse(
+      fs.readFileSync(latestProductionPackFile(), "utf-8"),
+    ) as { rules?: Array<Record<string, unknown>> };
+    const codes = new Set<string>();
+    for (const rule of payload.rules ?? []) {
+      const effect = rule.effect as Record<string, unknown> | undefined;
+      if (
+        rule.stage === "HUMAN_REVIEW" &&
+        effect &&
+        typeof effect.reason_code === "string"
+      ) {
+        codes.add(effect.reason_code);
+      }
+    }
+    return [...codes].sort();
+  }
+
+  // Codes the backend emits itself, independent of any rule pack. These
+  // never appear in a pack's `rules[]`, so no glob over pack JSON can
+  // discover them — they have to be named here, from three sources in
+  // evaluate_path.py:
+  //   - `_DISCLOSED_REVIEW_REASON_CODES` (11 `DisclosedReviewFlag` entries)
+  //   - `_apply_minor_privacy_hold`'s `MINOR_GUARDIAN_PRIVACY_REVIEW`
+  //   - the decisive-source gate (`_apply_decisive_source_gate` family,
+  //     ~line 1030) and the safety-critical source hold
+  //     (`_apply_safety_critical_source_hold`, ~line 1136): each forces
+  //     `state: HUMAN_REVIEW_REQUIRED` with its own review reasons when a
+  //     legally decisive/safety-critical source isn't CURRENT. Missed in
+  //     the first cut of this test — `DECISIVE_SOURCE_STALE` is proven
+  //     live-emitted in research/visa/2026-08-15-gold-replay-live-post-
+  //     notice-report.json (persona 9/10, "actual").
+  const PACK_INDEPENDENT_REVIEW_REASON_CODES = [
+    "CONFLICTING_IMMIGRATION_STATUS_REVIEW",
+    "DECISIVE_PRIMARY_SOURCE_NOT_APPLICABLE",
+    "DECISIVE_SOURCE_FRESHNESS_UNKNOWN",
+    "DECISIVE_SOURCE_STALE",
+    "DISCLOSED_ACTIVITY_BOUNDARY_REVIEW",
+    "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW",
+    "DISCLOSED_CRIMINAL_RECORD_REVIEW",
+    "DISCLOSED_DIPLOMATIC_PASSPORT_REVIEW",
+    "DISCLOSED_HEALTH_CONCERN_REVIEW",
+    "DISCLOSED_MULTI_PURPOSE_TRIP_REVIEW",
+    "DISCLOSED_PEP_OR_SANCTIONS_REVIEW",
+    "DISCLOSED_PRIOR_VISA_REFUSAL_REVIEW",
+    "DISCLOSED_SOURCE_OF_FUNDS_REVIEW",
+    "DISCLOSED_UNCERTAINTY_REVIEW",
+    "MINOR_GUARDIAN_PRIVACY_REVIEW",
+    "SAFETY_CRITICAL_PRIMARY_SOURCE_NOT_APPLICABLE",
+    "SAFETY_CRITICAL_SOURCE_FRESHNESS_UNKNOWN",
+    "SAFETY_CRITICAL_SOURCE_STALE",
+  ];
+
+  // Real, currently-emittable review reason codes with no copy yet (QW-4a
+  // scope: rename the stale keys + prove exhaustiveness; QW-4b, separately
+  // gated on copy-deck approval, writes the actual sentences). Every entry
+  // here must shrink out as QW-4b lands copy for it — the test below fails
+  // if a code that already has copy is still listed, and fails if a REAL
+  // unmapped code appears that isn't listed. A THIRD test below fails if an
+  // entry here stops naming a real code (renamed/retired upstream) — this
+  // list is not exempt from going stale the same way REVIEW_REASON_COPY's
+  // keys were.
+  const KNOWN_UNMAPPED_REVIEW_REASON_CODES = [
+    // From rulepack-prod-007+ (HUMAN_REVIEW stage):
+    "E28B_USD_THRESHOLD_MANUAL_CHECK",
+    "E28C_USD_THRESHOLD_AND_INSTRUMENT_CHECK",
+    "E28D_USD_THRESHOLD_AND_TURNOVER_CHECK",
+    "E28F_IKN_THRESHOLD_MANUAL_CHECK",
+    "E33B_EXPERTISE_QUALIFICATION_CHECK",
+    "E33G_EXCLUDES_LOCAL_COMPANY_OWNERSHIP",
+    "E33_WORK_RANGKAP_KEGIATAN_GATED",
+    "GOVT_INVITATION_REQUIRED",
+    // Pack-independent (evaluate_path.py):
+    "CONFLICTING_IMMIGRATION_STATUS_REVIEW",
+    "DECISIVE_PRIMARY_SOURCE_NOT_APPLICABLE",
+    "DECISIVE_SOURCE_FRESHNESS_UNKNOWN",
+    "DECISIVE_SOURCE_STALE",
+    "DISCLOSED_AMBIGUOUS_SPONSOR_REVIEW",
+    "DISCLOSED_CRIMINAL_RECORD_REVIEW",
+    "DISCLOSED_DIPLOMATIC_PASSPORT_REVIEW",
+    "DISCLOSED_HEALTH_CONCERN_REVIEW",
+    "DISCLOSED_MULTI_PURPOSE_TRIP_REVIEW",
+    "DISCLOSED_PEP_OR_SANCTIONS_REVIEW",
+    "DISCLOSED_PRIOR_VISA_REFUSAL_REVIEW",
+    "DISCLOSED_SOURCE_OF_FUNDS_REVIEW",
+    "DISCLOSED_UNCERTAINTY_REVIEW",
+    "MINOR_GUARDIAN_PRIVACY_REVIEW",
+    "SAFETY_CRITICAL_PRIMARY_SOURCE_NOT_APPLICABLE",
+    "SAFETY_CRITICAL_SOURCE_FRESHNESS_UNKNOWN",
+    "SAFETY_CRITICAL_SOURCE_STALE",
+  ];
+
+  it("names every code the current pack + backend can emit, mapped or in the known gap", () => {
+    const allRealCodes = [
+      ...reviewReasonCodesInPack(),
+      ...PACK_INDEPENDENT_REVIEW_REASON_CODES,
+    ].sort();
+    // Guard the guard: a glob/parse that silently found nothing would make
+    // every assertion below vacuously true. 14 pack + 18 pack-independent.
+    expect(allRealCodes.length).toBeGreaterThanOrEqual(32);
+
+    const unaccounted = allRealCodes.filter(
+      (code) =>
+        !(code in REVIEW_REASON_COPY) &&
+        !KNOWN_UNMAPPED_REVIEW_REASON_CODES.includes(code),
+    );
+    expect(unaccounted).toEqual([]);
+  });
+
+  it("never lets a stale key sit in the copy map", () => {
+    const allRealCodes = new Set([
+      ...reviewReasonCodesInPack(),
+      ...PACK_INDEPENDENT_REVIEW_REASON_CODES,
+    ]);
+    const staleKeys = Object.keys(REVIEW_REASON_COPY).filter(
+      (code) => !allRealCodes.has(code),
+    );
+    expect(staleKeys).toEqual([]);
+  });
+
+  it("keeps the known-gap list honest: no entry there already has copy", () => {
+    // If QW-4b lands copy for a code, that code must be removed from
+    // KNOWN_UNMAPPED_REVIEW_REASON_CODES in the same change — otherwise the
+    // gap list silently stops shrinking and stops meaning anything.
+    const alreadyMapped = KNOWN_UNMAPPED_REVIEW_REASON_CODES.filter(
+      (code) => code in REVIEW_REASON_COPY,
+    );
+    expect(alreadyMapped).toEqual([]);
+  });
+
+  it("keeps the known-gap list honest: no entry there names a code that stopped being real", () => {
+    // Mirror image of the stale-key test above, but for
+    // KNOWN_UNMAPPED_REVIEW_REASON_CODES instead of REVIEW_REASON_COPY: if
+    // an upstream rename/retirement drops a code this list still names, that
+    // entry becomes a dead placeholder no other assertion here would catch
+    // (it isn't a REVIEW_REASON_COPY key, so the stale-key test can't see
+    // it; it has no copy, so the "already has copy" test can't see it
+    // either).
+    const allRealCodes = new Set([
+      ...reviewReasonCodesInPack(),
+      ...PACK_INDEPENDENT_REVIEW_REASON_CODES,
+    ]);
+    const phantomEntries = KNOWN_UNMAPPED_REVIEW_REASON_CODES.filter(
+      (code) => !allRealCodes.has(code),
+    );
+    expect(phantomEntries).toEqual([]);
   });
 });

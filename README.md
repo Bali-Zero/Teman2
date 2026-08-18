@@ -6,7 +6,8 @@ Production AI-powered business intelligence platform for **Bali Zero** — Indon
 
 ## Architecture
 
-Monorepo powered by agentic RAG with Knowledge Graph (live app/router/service counts in **Tech Stack** below — auto-synced by `scripts/docs_sync.py`).
+Monorepo powered by agentic RAG with Knowledge Graph. Live repository state is
+available from `python3 scripts/docs_sync.py --json` and CI artifacts.
 
 ```
 nuzantara/
@@ -34,11 +35,7 @@ nuzantara/
 ## Tech Stack
 
 <!-- DOCSYNC:TECH_STATS_START -->
-- Backend: FastAPI · 330 routers · 697 services
-- Vector DB: Qdrant · 12 collections · 104,154 documents
-- Knowledge Graph: 108,068 nodes · 242,827 edges
-- Apps: 32 · Packages: 6
-- Version: 5.2.0
+Current state for technical counts is intentionally not stored in git. Run `python3 scripts/docs_sync.py --json` or download the latest [docs-derived-state CI artifact](https://github.com/Bali-Zero/Teman2/actions/workflows/docs-inventory-refresh.yml).
 <!-- DOCSYNC:TECH_STATS_END -->
 
 ## Search Pipeline (enabled 2026-03-24)
