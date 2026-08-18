@@ -36,7 +36,7 @@ from scripts.bot.wa_blind_bench import (  # noqa: E402
     _safe_fixture_ref,
     run_bench,
 )
-from scripts.bot.wa_blind_bench import (
+from scripts.bot.wa_blind_bench import (  # noqa: E402
     CodexSubscriptionBenchClient as _RealCodexSubscriptionBenchClient,
 )
 
