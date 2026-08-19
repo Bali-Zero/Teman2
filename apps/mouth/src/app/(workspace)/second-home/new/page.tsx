@@ -178,7 +178,7 @@ export default function NewSecondHomeCasePage() {
           </p>
           <p>
             <strong className="text-[var(--foreground)]">Price</strong> — IDR
-            39,000,000 all-inclusive (base E33). Dependent pricing is not live
+            35,000,000 all-inclusive (base E33). Dependent pricing is not live
             yet.
           </p>
         </div>
