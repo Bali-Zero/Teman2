@@ -113,6 +113,40 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
 ## LIVE STATE (update on every state change — whoever changes state updates this section)
 
+- 2026-08-19 (M5, second entry — CP3 GO executed): **SEQ-9 IS LIVE IN PRODUCTION SHADOW.**
+  Zero's GO on the CP3 package (incl. decision #4: ship with the el.c2/el.e31c residuals,
+  cure in seq-10). Chain of custody, every link verified: PR #4332 merged (`952a6b4a388`,
+  00:28:28Z) → merged pack bytes proven byte-identical to the CP3-approved candidate
+  (sha256 `e3c1457952722706ec59b0a23e66c7d7a6a7b88735cda982b54957f5e4648660`) → signed on M5
+  from a detached worktree at that commit after a fresh `compile_pack` RC 0 (kid
+  `prod-2026-07-1`, self-verified; signed `payload_sha256
+  47feff8246c608c7c6085ffdac776fdc020bb56688d5f35a0a3e685eb40f271e` — the value seq-10 must
+  chain to) → signed bundle PR #4338 (bundle-only, armed) → two-login activation on prod
+  primary (`0801696b541568` via fly proxy from Pro; superuser pw fetched machine-side to a
+  0600 file, deleted after; ephemeral roles `visa_pack_writer_ceremony_260819` /
+  `visa_activation_ceremony_260819` minted stdin→psql and dropped same session).
+  `activate_pack --yes`: anti-rollback pre-gate passed against seq-7
+  (`3d068aef…9719f82`), pack row inserted, **activation_id
+  `6655b8f9-3db8-42a4-82f0-34bd9ce625d5`**, actor `fable-session-m5`, reason
+  `seq9-shadow-activation-260819`. Independent DB re-verification: exactly ONE open
+  activation = seq-9 opened 2026-08-19T00:41:25.348033Z, seq-7 system_period closed the
+  SAME instant, `no_gap = t`, zero ceremony roles left. Live smoke 4/4 HTTP 200, **every
+  response citing `sequence=9 version=2026.8.19`**, audit rows bound to the new
+  activation_id; all-UNKNOWN → HUMAN_REVIEW_REQUIRED (fail-closed ✓). SHADOW stays on;
+  ENFORCE untouched (still NO-GO, DPIA/analytics-TTL Zero-only).
+  **FINDING (pre-existing, NOT a seq-9 regression — measured, byte-compared):** the IT and
+  NG smokes returned HRR with single reason `DECISIVE_SOURCE_STALE`: **18/29 pack sources
+  are past their 7-day `MAX_AGE_SINCE_VERIFIED_AT` window today** (most `verified_at
+  2026-08-06`, the VOA country list `2026-08-08`) — stamps byte-identical in seq-7, so
+  production has been stale-abstaining on every portal-source-decisive path since
+  ~2026-08-13/15. The freshness guardrail is working as designed; what is missing is the
+  OPERATIONAL CADENCE (re-verify portal sources + re-stamp `verified_at` in a new signed
+  pack at least every 7 days), without which the SHADOW ledger abstains forever and
+  G-a/G-c can never mature. Conclusive-path witnesses (IT full-facts → [B1,C1], NG →
+  CALLING_VISA_REVIEW) are unreachable until that re-attestation lands — folded into the
+  seq-10 scope (ledger row). Ceremony evidence: probe outputs + audit-row queries in the
+  session scratchpad; smoke rows labelled `synthetic_driver` (G-a uncontaminated).
+
 - 2026-08-19 (M5, E5 increment 3 — the seq-9 fold): **SEQ-9 CANDIDATE BUILT, GATED, AND ON ITS
   PR; CP3 PRESENTED TO ZERO. SHADOW/ENFORCE UNCHANGED (seq-7 stays active until CP4).**
   Everything in the 08-18 NEXT line except the ceremony itself: (1) the two seq-9 signing-gate
