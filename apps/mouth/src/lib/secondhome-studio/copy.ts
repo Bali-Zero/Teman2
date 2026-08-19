@@ -72,16 +72,23 @@ export const COPY = {
     capital: {
       heading: "How much capital could you place in the required deposit?",
       body: "The standard bank route requires USD 130,000 in your own name at a state-owned (BUMN) Indonesian bank.",
-      // FIXED-FROM-DECK #1 (guard-over-match, superscar #3): the deck's
-      // draft was "The threshold must be met through one qualifying
-      // deposit. Split deposits do not qualify." — a true, compliant
-      // disclaimer, but "Split deposits" literally trips the spec §6
-      // splitDeposit pattern (/split(ting)?\s+.*deposit/i matches on the
-      // substring, not the sentence's polarity — it can't tell "you may
-      // split your deposit" from "split deposits don't qualify"). Per
-      // instructions: fix the string, don't weaken the test. Reworded to
-      // drop the literal word "split" while keeping the same fact.
-      why: "The threshold must be met through a single qualifying deposit — deposits divided across multiple accounts do not qualify.",
+      // FIXED-FROM-DECK #1 (guard-over-match, superscar #3), ROUND 2
+      // (fix-mandate P0-C2): the deck's original draft was "The threshold
+      // must be met through one qualifying deposit. Split deposits do not
+      // qualify." — a true, compliant disclaimer, but "Split deposits"
+      // literally trips the spec §6 splitDeposit pattern
+      // (/split(ting)?\s+.*deposit/i matches the substring, not the
+      // sentence's polarity). The FIRST rewrite dodged that regex by
+      // restating the same forbidden concept in a synonym ("deposits
+      // divided across multiple accounts do not qualify") — an under-match
+      // (superscar #3's twin failure mode): the guard's FORM changed, the
+      // banned FACT it exists to keep un-stated did not, and a sibling test
+      // celebrated that the euphemism evaded detection as if it were a
+      // feature. RULING: state the rule POSITIVELY only — no mention of
+      // divided/multiple/split accounts in any form. The sweep gained a
+      // dedicated `splitDepositEuphemism` pattern so this class can't
+      // silently reopen (forbidden-claims.test.ts).
+      why: "The threshold must be met through a single qualifying deposit in your own name.",
       options: {
         ready_130k: "USD 130,000 is ready",
         close_100k_130k: "USD 100,000 to under USD 130,000",
@@ -188,8 +195,12 @@ export const COPY = {
         "A USD 50,000 deposit paired with USD 3,000/month income matches the E33E senior pattern — a 5-year permit.",
       seniorIncomeOnlyStrong:
         "USD 3,000/month income alone matches the E33F senior pattern — a 1-year permit, with a 6-year cumulative cap.",
+      // P2-C14: "and you're there" reads as an eligibility confirmation
+      // (an arrival/conclusion idiom) rather than a preliminary fit-check
+      // result — reworded to name what happens next instead of declaring
+      // the applicant has arrived.
       depositReadyStrong:
-        "USD 130,000, held in your own name at a state-owned (BUMN) Indonesian bank, is the core requirement for the base E33 deposit route — and you're there.",
+        "USD 130,000, held in your own name at a state-owned (BUMN) Indonesian bank, is the core requirement for the base E33 deposit route — your answers align with it. We verify the evidence next.",
       capitalCloseVerify:
         "You're close to the USD 130,000 deposit threshold. Let's verify the exact figure with you — the deposit must be the full USD 130,000, held in your own name at a state-owned (BUMN) Indonesian bank.",
       capitalBelowThreshold:
@@ -295,6 +306,21 @@ export const COPY = {
         range:
           "Timing varies by bank and their own KYC process — typical, not a promise.",
       },
+      // P1-C9: buildTimeline swaps this second step by route/product — the
+      // bank-deposit step above used to render unconditionally, telling a
+      // property applicant or an E33F (income-only, explicitly "without
+      // the deposit") applicant to place a deposit they were never asked
+      // for.
+      propertyEvidence: {
+        title: "Provide your property evidence",
+        range:
+          "Timing depends on our pending property validation standard (addendum 007), once published — typical, not a promise.",
+      },
+      incomeEvidence: {
+        title: "Prepare your income evidence",
+        range:
+          "Timing depends on gathering and verifying your income documentation — typical, not a promise.",
+      },
       filing: {
         title: "We file your application",
         range:
@@ -376,26 +402,39 @@ export const COPY = {
 
   price: {
     label: "Your all-inclusive figure",
-    note: "One figure, everything included — nothing decomposed, nothing added later.",
+    // P2-2: "nothing added later" contradicted the dependentsNote right
+    // below it (dependents ARE priced separately, in the free fit memo) —
+    // scoped the claim to the main applicant instead of dropping it.
+    note: "One figure, everything included for the main applicant.",
     dependentsNote:
       "Dependents are priced in your free fit memo, not shown here.",
   },
 
   whatsapp: {
     button: "Ask us to review my plan",
+    // P0-C3(c)/P1-B: mirrors the EXACT <=6 bullets
+    // `whatsapp-bullets.ts::buildWhatsAppBullets` sends (Route, Age band,
+    // Funding position, Family, Timing, Fit-check result) — no plan link,
+    // no readiness row. The previous 8-field template (ageBand/route/
+    // funding/property/family/timeline/location/verdict) had already
+    // drifted from the implementation before this fix; this is the single
+    // template both agree with going forward.
     prefillTemplate:
       "Hello Bali Zero. I completed the Second Home Studio fit-check.\n\n" +
+      "Route: {{route}}\n" +
       "Age band: {{ageBand}}\n" +
-      "Route considered: {{route}}\n" +
       "Funding position: {{funding}}\n" +
-      "Property position: {{property}}\n" +
-      "Family members: {{family}}\n" +
-      "Preferred timing: {{timeline}}\n" +
-      "Current location: {{location}}\n" +
+      "Family: {{family}}\n" +
+      "Timing: {{timing}}\n" +
       "Fit-check result: {{verdict}}\n\n" +
       "I understand this is a preliminary fit-check and that the final decision rests with Imigrasi. Please review the route and tell me what evidence you need next.",
+    // P0-C3(c)/P1-B: the old sentence ("Only the answers shown above will
+    // be added to your message") under-described what actually happens —
+    // WhatsAppLeadButton POSTs a lead capture (this same summary) BEFORE
+    // the wa.me redirect, and the previous copy said nothing about that.
+    // Rewritten to name both the capture and the pre-fill honestly.
     privacy:
-      "Only the answers shown above will be added to your message. Review them before sending.",
+      "Tapping the button shares this summary with Bali Zero so we can prepare your review, and opens WhatsApp with the same summary pre-filled — check it before you send.",
     note: "We don't collect your name or email here — WhatsApp is the only handoff.",
   },
 

@@ -48,12 +48,23 @@ function edgeCaseIncomplete(reasons: string[] = []): Verdict {
 }
 
 /** Rows 2-4 (and the 60_plus/neither fallthrough of row 6): evaluate the
- *  base E33 deposit route purely from the capital band. */
+ *  base E33 deposit route purely from the capital band.
+ *
+ *  `isUnsureRoute` (P2-7, conductor-ruled spec amendment): a user who never
+ *  committed to a route must not get a hard "not eligible" — when the
+ *  deposit evaluation would otherwise be not_eligible AND the route is
+ *  "unsure", it downgrades to edge_case instead (product stays null).
+ *
+ *  The `== null` guards (not `===`) are P0-C1 defense-in-depth: a value
+ *  that bypassed the codec's validation (e.g. a directly-constructed
+ *  PlanState missing a field) must never fall through as if it were a real
+ *  answer — `undefined` is caught exactly like `null`. */
 function evaluateDepositCapital(
   capital: PlanState["capital"],
   reasons: string[],
+  isUnsureRoute: boolean,
 ): Verdict {
-  if (capital === null) return edgeCaseIncomplete(reasons);
+  if (capital == null) return edgeCaseIncomplete(reasons);
 
   if (capital === "ready_130k") {
     return {
@@ -75,7 +86,7 @@ function evaluateDepositCapital(
 
   // below_100k
   return {
-    band: "not_eligible",
+    band: isUnsureRoute ? "edge_case" : "not_eligible",
     product: null,
     reasons: [
       ...reasons,
@@ -88,28 +99,42 @@ function evaluateDepositCapital(
 
 export function evaluatePlan(p: PlanState): Verdict {
   // Globally required answers (row 7 backstop) — age and route are asked
-  // first in the wizard flow and gate every other question.
-  if (p.age === null || p.route === null) {
+  // first in the wizard flow and gate every other question. `== null`
+  // (P0-C1 defense-in-depth) catches `undefined` exactly like `null`, so a
+  // PlanState with an ABSENT field (bypassing the codec's own validation)
+  // can never sail through as if the field were a real answer.
+  if (p.age == null || p.route == null) {
     return edgeCaseIncomplete();
   }
+
+  const isUnsureRoute = p.route === "unsure";
 
   // Row 1 (highest priority, independent of age): the property route is
   // ALWAYS edge_case — never a green "qualified", honest pending-standard
   // note always present, plus a does-not-qualify reason for the property
   // statuses that never qualify regardless of validation outcome.
+  //
+  // P1-A: 55-59 loses none of its mandatory disclosure just because the
+  // route happens to be property — spec §0 requires the signed-disclosure
+  // note on EVERY 55-59 case, not only the deposit/senior-funding path.
   if (p.route === "property") {
-    if (p.property === null) return edgeCaseIncomplete();
+    if (p.property == null) return edgeCaseIncomplete();
 
     const reasons: string[] = [REASON_KEYS.propertyPendingStandard];
     if (p.property === "villa_land_leasehold" || p.property === "none") {
       reasons.push(REASON_KEYS.propertyDoesNotQualify);
     }
 
+    const is5559 = p.age === "55_59";
+    if (is5559) {
+      reasons.push(REASON_KEYS.seniorBersyarat);
+    }
+
     return {
       band: "edge_case",
       product: null,
       reasons,
-      humanReviewNote: null,
+      humanReviewNote: is5559 ? HUMAN_REVIEW_KEYS.age5559Disclosure : null,
     };
   }
 
@@ -117,13 +142,13 @@ export function evaluatePlan(p: PlanState): Verdict {
   // (component-level) a prominent RouteComparator. The reason is prepended
   // so it always appears first in the returned array below.
   const reasons: string[] = [];
-  if (p.route === "unsure") {
+  if (isUnsureRoute) {
     reasons.push(REASON_KEYS.unsureRoute);
   }
 
   // Row 5: age 55-59 is ALWAYS edge_case (BERSYARAT), whatever the funding.
   if (p.age === "55_59") {
-    if (p.seniorFunding === null) return edgeCaseIncomplete(reasons);
+    if (p.seniorFunding == null) return edgeCaseIncomplete(reasons);
 
     const product =
       p.seniorFunding === "deposit_50k_income"
@@ -147,7 +172,7 @@ export function evaluatePlan(p: PlanState): Verdict {
 
   // Row 6: age 60_plus.
   if (p.age === "60_plus") {
-    if (p.seniorFunding === null) return edgeCaseIncomplete(reasons);
+    if (p.seniorFunding == null) return edgeCaseIncomplete(reasons);
 
     if (p.seniorFunding === "deposit_50k_income") {
       return {
@@ -169,11 +194,11 @@ export function evaluatePlan(p: PlanState): Verdict {
 
     // "neither" or "not_applicable" falls through to the base E33 deposit
     // rows (a 60+ can still take the base route with the full 130k).
-    return evaluateDepositCapital(p.capital, reasons);
+    return evaluateDepositCapital(p.capital, reasons, isUnsureRoute);
   }
 
   // age === "under_55": rows 2-4, driven purely by capital.
-  return evaluateDepositCapital(p.capital, reasons);
+  return evaluateDepositCapital(p.capital, reasons, isUnsureRoute);
 }
 
 /** Convenience re-export for callers that want the literal band list. */

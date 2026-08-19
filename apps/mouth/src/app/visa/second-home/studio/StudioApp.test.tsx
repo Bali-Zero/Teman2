@@ -5,6 +5,7 @@ import { usePricingData } from "@/hooks/usePricingData";
 import {
   emptyPlan,
   encodePlanFragment,
+  savePlan,
 } from "@/lib/secondhome-studio/plan-codec";
 import type { PlanState } from "@/lib/secondhome-studio/types";
 import { StudioApp } from "./StudioApp";
@@ -16,7 +17,11 @@ import { StudioApp } from "./StudioApp";
  * asked for: full happy path -> strong fit, 55-59 -> edge case + disclosure,
  * property -> edge case (never "strong match"), checklist toggle updates
  * the meter, fragment-load lands on verdict, malformed fragment -> first
- * question.
+ * question — plus the fix-mandate round-1 additions: P1-C6 (malformed
+ * fragment must not resurrect an old localStorage plan), P2-3 (focus moves
+ * to the new stage heading on step transitions), P2-4 (radiogroup/radio
+ * roles on single-select steps), P1-C9 (CustodyMap conditional on
+ * verdict.product).
  */
 
 vi.mock("@/hooks/usePricingData", () => ({
@@ -31,8 +36,17 @@ function mockPrice(price: string | null) {
   });
 }
 
+/** Single-select options render as role="radio" (P2-4); nav buttons and
+ *  the family step's multi-select toggles stay role="button". Try both so
+ *  every existing call site keeps working unchanged. */
 function clickButton(name: string) {
-  fireEvent.click(screen.getByRole("button", { name }));
+  const el =
+    screen.queryByRole("button", { name }) ??
+    screen.queryByRole("radio", { name });
+  if (!el) {
+    throw new Error(`No button or radio option found with name "${name}"`);
+  }
+  fireEvent.click(el);
 }
 
 function fullPlan(overrides: Partial<PlanState> = {}): PlanState {
@@ -179,6 +193,19 @@ describe("StudioApp", () => {
     });
   });
 
+  it("P1-C6: a malformed fragment does NOT resurrect an old localStorage plan — a PRESENT fragment always wins, even invalid", async () => {
+    savePlan(fullPlan()); // an old saved strong-fit-eligible plan
+    window.location.hash = "#p=thisisnotvalidjsononcedecoded";
+    render(<StudioApp />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: /how old are you/i }),
+      ).toBeInTheDocument();
+    });
+    expect(screen.queryByRole("heading", { name: /strong match/i })).toBeNull();
+  });
+
   it("renders no price block when usePricingData abstains (null)", async () => {
     mockPrice(null);
     window.location.hash = `#p=${encodePlanFragment(fullPlan())}`;
@@ -186,5 +213,156 @@ describe("StudioApp", () => {
 
     await screen.findByRole("heading", { name: /strong match/i });
     expect(screen.queryByText("Your all-inclusive figure")).toBeNull();
+  });
+
+  describe("P2-3 — focus moves to the new stage heading on step transitions", () => {
+    it("moves focus to the route heading after clicking Continue on the age step", async () => {
+      render(<StudioApp />);
+
+      clickButton("Under 55");
+      clickButton("Continue");
+
+      await waitFor(() => {
+        expect(document.activeElement).toBe(
+          screen.getByRole("heading", {
+            name: /which route are you considering/i,
+          }),
+        );
+      });
+    });
+
+    it("moves focus to the verdict heading after the final user-driven Continue click", async () => {
+      render(<StudioApp />);
+
+      clickButton("Under 55");
+      clickButton("Continue");
+      clickButton("Bank deposit");
+      clickButton("Continue");
+      clickButton("USD 130,000 is ready");
+      clickButton("Continue");
+      clickButton("Continue"); // family
+      clickButton("As soon as possible");
+      clickButton("Continue");
+      clickButton("In Indonesia");
+      clickButton("See your fit-check result");
+
+      await waitFor(() => {
+        expect(document.activeElement).toBe(
+          screen.getByRole("heading", { name: /strong match/i }),
+        );
+      });
+    });
+
+    it("does not steal focus on initial mount (first question heading is not auto-focused)", () => {
+      render(<StudioApp />);
+      const heading = screen.getByRole("heading", {
+        name: /how old are you/i,
+      });
+      expect(document.activeElement).not.toBe(heading);
+    });
+
+    it("does not steal focus on a hydration jump straight to the verdict page (a saved link is not a user click)", async () => {
+      window.location.hash = `#p=${encodePlanFragment(fullPlan())}`;
+      render(<StudioApp />);
+      const heading = await screen.findByRole("heading", {
+        name: /strong match/i,
+      });
+      expect(document.activeElement).not.toBe(heading);
+    });
+  });
+
+  describe("P2-4 — single-select steps expose radiogroup/radio roles; family stays multi-select", () => {
+    it("the age step's options render as a radiogroup of radio buttons", () => {
+      render(<StudioApp />);
+      expect(screen.getByRole("radiogroup")).toBeInTheDocument();
+      const radios = screen.getAllByRole("radio");
+      expect(radios).toHaveLength(3);
+      for (const radio of radios) {
+        expect(radio).toHaveAttribute("aria-checked");
+      }
+    });
+
+    it("selecting a radio option updates aria-checked", () => {
+      render(<StudioApp />);
+      clickButton("Under 55");
+      expect(screen.getByRole("radio", { name: "Under 55" })).toHaveAttribute(
+        "aria-checked",
+        "true",
+      );
+      expect(screen.getByRole("radio", { name: "55–59" })).toHaveAttribute(
+        "aria-checked",
+        "false",
+      );
+    });
+
+    it("the family step (multi-select) has no radiogroup and uses aria-pressed toggle buttons", async () => {
+      render(<StudioApp />);
+      clickButton("Under 55");
+      clickButton("Continue");
+      clickButton("Bank deposit");
+      clickButton("Continue");
+      clickButton("USD 130,000 is ready");
+      clickButton("Continue");
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("heading", { name: /who would you want/i }),
+        ).toBeInTheDocument();
+      });
+      expect(screen.queryByRole("radiogroup")).toBeNull();
+      expect(screen.queryByRole("radio")).toBeNull();
+      const spouse = screen.getByRole("button", { name: "Spouse" });
+      expect(spouse).toHaveAttribute("aria-pressed", "false");
+      fireEvent.click(spouse);
+      expect(spouse).toHaveAttribute("aria-pressed", "true");
+    });
+  });
+
+  describe("P1-C9 — CustodyMap renders only for deposit-holding verdicts (E33/E33E)", () => {
+    it("under_55 deposit strong_fit (E33): CustodyMap renders", async () => {
+      window.location.hash = `#p=${encodePlanFragment(fullPlan())}`;
+      render(<StudioApp />);
+      await screen.findByRole("heading", { name: /strong match/i });
+      expect(screen.getByText("Your money stays yours")).toBeInTheDocument();
+    });
+
+    it("60_plus income-only strong_fit (E33F): CustodyMap does NOT render", async () => {
+      window.location.hash = `#p=${encodePlanFragment(
+        fullPlan({
+          age: "60_plus",
+          capital: null,
+          seniorFunding: "income_only_3k",
+        }),
+      )}`;
+      render(<StudioApp />);
+      await screen.findByRole("heading", { name: /strong match/i });
+      expect(screen.queryByText("Your money stays yours")).toBeNull();
+    });
+
+    it("property route edge_case (no product): CustodyMap does NOT render", async () => {
+      window.location.hash = `#p=${encodePlanFragment(
+        fullPlan({
+          route: "property",
+          capital: null,
+          property: "none",
+        }),
+      )}`;
+      render(<StudioApp />);
+      await screen.findByRole("heading", { name: /needs human review/i });
+      expect(screen.queryByText("Your money stays yours")).toBeNull();
+    });
+
+    it("60_plus deposit strong_fit (E33E): CustodyMap renders", async () => {
+      window.location.hash = `#p=${encodePlanFragment(
+        fullPlan({
+          age: "60_plus",
+          capital: null,
+          seniorFunding: "deposit_50k_income",
+        }),
+      )}`;
+      render(<StudioApp />);
+      await screen.findByRole("heading", { name: /strong match/i });
+      expect(screen.getByText("Your money stays yours")).toBeInTheDocument();
+    });
   });
 });

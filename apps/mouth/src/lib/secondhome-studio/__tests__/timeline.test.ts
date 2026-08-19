@@ -115,6 +115,63 @@ describe("horizon variant — documents step pace note differs by horizon", () =
   });
 });
 
+describe("P1-C9 — the second step is route/product-aware (never a blind bank-deposit instruction)", () => {
+  it("default call (no route/product args) still returns bank_deposit — unchanged for every existing caller", () => {
+    const steps = buildTimeline("asap", "in_indonesia");
+    expect(steps[1].id).toBe("bank_deposit");
+  });
+
+  it("route=property replaces the second step with property_evidence, never bank_deposit", () => {
+    const steps = buildTimeline("asap", "in_indonesia", "property", null);
+    expect(steps).toHaveLength(7);
+    expect(steps[1].id).toBe("property_evidence");
+    expect(steps.map((s) => s.id)).not.toContain("bank_deposit");
+    expect(getCopy(steps[1].titleKey)).not.toBe(steps[1].titleKey);
+    expect(getCopy(steps[1].rangeKey)).not.toBe(steps[1].rangeKey);
+  });
+
+  it("product=E33F (income-only) replaces the second step with income_evidence, never bank_deposit", () => {
+    const steps = buildTimeline("asap", "in_indonesia", "deposit", "E33F");
+    expect(steps[1].id).toBe("income_evidence");
+    expect(steps.map((s) => s.id)).not.toContain("bank_deposit");
+    expect(getCopy(steps[1].titleKey)).not.toBe(steps[1].titleKey);
+    expect(getCopy(steps[1].rangeKey)).not.toBe(steps[1].rangeKey);
+  });
+
+  it("innocence: product=E33E (deposit-holding senior route) keeps bank_deposit", () => {
+    const steps = buildTimeline("asap", "in_indonesia", "deposit", "E33E");
+    expect(steps[1].id).toBe("bank_deposit");
+  });
+
+  it("innocence: route=deposit + product=E33 (base strong_fit) keeps bank_deposit", () => {
+    const steps = buildTimeline("asap", "in_indonesia", "deposit", "E33");
+    expect(steps[1].id).toBe("bank_deposit");
+  });
+
+  it("innocence: route=unsure keeps bank_deposit (evaluated as deposit per rules.ts row 8)", () => {
+    const steps = buildTimeline("asap", "in_indonesia", "unsure", "E33");
+    expect(steps[1].id).toBe("bank_deposit");
+  });
+
+  it("property route wins over product even if product happens to be non-null", () => {
+    const steps = buildTimeline("asap", "in_indonesia", "property", null);
+    expect(steps[1].id).toBe("property_evidence");
+  });
+
+  it("owner/step count/order are unchanged regardless of route/product", () => {
+    const steps = buildTimeline("asap", "in_indonesia", "property", null);
+    expect(steps.map((s) => s.ownerKey)).toEqual([
+      "you",
+      "you",
+      "balizero",
+      "imigrasi",
+      "you",
+      "balizero",
+      "you",
+    ]);
+  });
+});
+
 describe("every range label reads as typical, not a promise", () => {
   it("every step's range copy hedges with 'typical'/'varies' and never promises or guarantees", () => {
     const steps = buildTimeline("asap", "in_indonesia");

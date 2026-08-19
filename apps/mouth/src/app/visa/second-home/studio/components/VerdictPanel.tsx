@@ -1,17 +1,23 @@
 "use client";
 
+import type { Ref } from "react";
 import { getCopy } from "@/lib/secondhome-studio/copy";
 import type { Verdict } from "@/lib/secondhome-studio/types";
 
 export interface VerdictPanelProps {
   verdict: Verdict;
+  /** Forwarded to the `<h1>` fit-check heading so StudioApp can move focus
+   *  to it on the question-wizard -> verdict transition (P2-3) — the
+   *  heading carries `tabIndex={-1}` so a non-interactive element can
+   *  still be a programmatic focus target. */
+  headingRef?: Ref<HTMLHeadingElement>;
 }
 
 /** Renders the fit-check result: band heading/body (verbatim from copy.ts,
  *  which guarantees "the final decision rests with Imigrasi" is present),
  *  the reason list, and the human-review disclosure when present.
  *  NEVER renders a numeric score — spec §0 hard constraint. */
-export function VerdictPanel({ verdict }: VerdictPanelProps) {
+export function VerdictPanel({ verdict, headingRef }: VerdictPanelProps) {
   const heading = getCopy(`verdict.bands.${verdict.band}.heading`);
   const body = getCopy(`verdict.bands.${verdict.band}.body`);
 
@@ -39,6 +45,8 @@ export function VerdictPanel({ verdict }: VerdictPanelProps) {
         Your fit-check result
       </p>
       <h1
+        ref={headingRef}
+        tabIndex={-1}
         style={{
           margin: 0,
           fontFamily: "var(--font-serif, Georgia, serif)",

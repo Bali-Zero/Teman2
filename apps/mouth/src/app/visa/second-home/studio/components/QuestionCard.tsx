@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useId, type ReactNode, type Ref } from "react";
 
 export interface QuestionCardProps {
   heading: string;
@@ -8,18 +8,33 @@ export interface QuestionCardProps {
   /** "Why we ask" aside body — collapsed by default, always keyboard
    *  reachable via the native <details>/<summary> disclosure pattern. */
   why: string;
+  /** Single-select answer options (P2-4): rendered inside a
+   *  `role="radiogroup"` container, `aria-labelledby` the heading — pass
+   *  `<OptionButton variant="radio" .../>` elements. Omit for a
+   *  multi-select step (family) — those keep the plain toggle-button
+   *  markup via `children` instead. */
+  options?: ReactNode;
+  /** Forwarded to the stage `<h2>` so the caller can move focus to it on
+   *  step transitions (P2-3) — the heading carries `tabIndex={-1}` so a
+   *  non-interactive element can still be a programmatic focus target. */
+  headingRef?: Ref<HTMLHeadingElement>;
   children: ReactNode;
 }
 
 /** Chrome wrapper for one wizard screen: heading/body (from copy.ts),
- *  a collapsible "Why we ask" aside, and a slot for the answer UI (option
- *  cards, or a custom control set like the family step). */
+ *  a collapsible "Why we ask" aside, an optional radiogroup-wrapped
+ *  options slot, and a slot for anything else (option cards, a custom
+ *  control set like the family step, and/or the Back/Continue nav row). */
 export function QuestionCard({
   heading,
   body,
   why,
+  options,
+  headingRef,
   children,
 }: QuestionCardProps) {
+  const headingId = useId();
+
   return (
     <div
       style={{
@@ -32,6 +47,9 @@ export function QuestionCard({
       }}
     >
       <h2
+        id={headingId}
+        ref={headingRef}
+        tabIndex={-1}
         style={{
           margin: 0,
           fontFamily: "var(--font-serif, Georgia, serif)",
@@ -64,6 +82,15 @@ export function QuestionCard({
           {why}
         </p>
       </details>
+      {options ? (
+        <div
+          role="radiogroup"
+          aria-labelledby={headingId}
+          style={{ display: "grid", gap: "var(--space-2, 0.5rem)" }}
+        >
+          {options}
+        </div>
+      ) : null}
       <div style={{ display: "grid", gap: "var(--space-2, 0.5rem)" }}>
         {children}
       </div>
@@ -75,16 +102,34 @@ export interface OptionButtonProps {
   label: string;
   selected: boolean;
   onSelect: () => void;
+  /** "radio" (P2-4): single-select question steps — renders `role="radio"`
+   *  + `aria-checked`, intended for use inside a `role="radiogroup"`
+   *  container. Default keeps the original plain toggle-button semantics
+   *  (`aria-pressed`) used by the family multi-select step, where more
+   *  than one option can be true at once.
+   *
+   *  Arrow-key roving-tabindex movement between radio options is left as
+   *  a future enhancement — Tab-order navigation between options still
+   *  works today; only the announced role/state changed here. */
+  variant?: "radio" | "toggle";
 }
 
 /** Large, keyboard-focusable option card. Never strips the native focus
  *  ring (accessibility — spec §0 "visible focus"). */
-export function OptionButton({ label, selected, onSelect }: OptionButtonProps) {
+export function OptionButton({
+  label,
+  selected,
+  onSelect,
+  variant = "toggle",
+}: OptionButtonProps) {
+  const isRadio = variant === "radio";
   return (
     <button
       type="button"
       onClick={onSelect}
-      aria-pressed={selected}
+      role={isRadio ? "radio" : undefined}
+      aria-checked={isRadio ? selected : undefined}
+      aria-pressed={isRadio ? undefined : selected}
       style={{
         padding: "var(--space-3, 0.85rem) var(--space-4, 1.1rem)",
         borderRadius: 8,

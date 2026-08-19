@@ -1,3 +1,5 @@
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { COPY } from "../copy";
@@ -7,6 +9,16 @@ import { COPY } from "../copy";
  * SPEC-secondhome-studio-phaseB.md §6. Case-insensitive by design (the
  * spec calls this out explicitly) — every pattern below carries the `i`
  * flag.
+ *
+ * `splitDepositEuphemism` and `youreThere` are fix-mandate-round-1
+ * additions (P0-C2 / P2-C14), not part of the original spec §6 list:
+ * - P0-C2: the FIRST rewrite of `capital.why` dodged `splitDeposit` by
+ *   restating the same forbidden concept in a synonym ("deposits divided
+ *   across multiple accounts do not qualify") — an under-match
+ *   (superscar #3's twin failure mode). This pattern catches that class
+ *   directly, independent of the literal word "split".
+ * - P2-C14: "and you're there" reads as an eligibility confirmation
+ *   (arrival/conclusion idiom) rather than a preliminary fit-check result.
  */
 const FORBIDDEN_PATTERNS: Record<string, RegExp> = {
   priceUsd1500: /US?D?\s*\$?\s*1[,.]?500/i,
@@ -20,7 +32,16 @@ const FORBIDDEN_PATTERNS: Record<string, RegExp> = {
   lps: /\bLPS\b/i,
   bsiOrSharia: /\bBSI\b|sharia/i,
   splitDeposit: /split(ting)?\s+.*deposit/i,
+  splitDepositEuphemism:
+    /divided\s+across\s+multiple\s+accounts|multiple\s+accounts?\s+do(es)?\s+not\s+qualify/i,
+  youreThere: /you'?re\s+there|you\s+are\s+there/i,
 };
+
+/** Generalized IDR price-literal check for the JSX source-scan (P2-C13) —
+ *  broader than PRICE_LITERAL_PATTERN below (which only pins the two
+ *  known historical values, 35M/39M): any IDR figure with 6+ digits
+ *  hardcoded directly into a component would bypass usePricingData. */
+const JSX_PRICE_LITERAL_RE = /\bIDR\s*[0-9][0-9.,]{5,}/i;
 
 /** No hardcoded IDR price literal anywhere — the figure renders only from
  *  usePricingData. Covers both the pre-repricing (39M) and current (35M)
@@ -138,6 +159,22 @@ describe("guilt fixtures — each pattern actually fires on a known-bad string",
       pattern: "splitDeposit",
       text: "You may consider splitting your deposit across two accounts.",
     },
+    {
+      pattern: "splitDepositEuphemism",
+      text: "Deposits divided across multiple accounts do not qualify.",
+    },
+    {
+      pattern: "splitDepositEuphemism",
+      text: "Multiple accounts do not qualify for the threshold.",
+    },
+    {
+      pattern: "youreThere",
+      text: "USD 130,000 is the core requirement — and you're there.",
+    },
+    {
+      pattern: "youreThere",
+      text: "Once you hit the threshold, you are there.",
+    },
   ];
 
   it.each(guiltCases)("$pattern fires on: $text", ({ pattern, text }) => {
@@ -203,13 +240,29 @@ describe("innocence pins — legitimate copy must NOT trip the guard (superscar 
     ).toBe(false);
   });
 
-  it("the rewritten capital.why string (no literal 'split') does not trip splitDeposit", () => {
-    // The copy deck's own draft here — "Split deposits do not qualify." —
-    // DOES trip this pattern (proven below); copy.ts carries a reworded
-    // version that keeps the same fact without the literal word "split".
+  it("P0-C2: the positive-only capital.why sentence trips neither splitDeposit nor its euphemism pattern", () => {
+    // ROUND 2 of the same guard-over-match/under-match cycle
+    // (superscar #3): the deck's original draft ("Split deposits do not
+    // qualify") tripped splitDeposit (proven below); the FIRST rewrite
+    // dodged splitDeposit but restated the SAME forbidden concept in a
+    // synonym ("deposits divided across multiple accounts do not
+    // qualify") — an under-match the guard couldn't see. The current
+    // copy states the rule positively, with no mention of
+    // divided/multiple/split accounts at all.
     expect(FORBIDDEN_PATTERNS.splitDeposit.test(COPY.wizard.capital.why)).toBe(
       false,
     );
+    expect(
+      FORBIDDEN_PATTERNS.splitDepositEuphemism.test(COPY.wizard.capital.why),
+    ).toBe(false);
+  });
+
+  it("P2-C14: depositReadyStrong no longer reads as an arrival/conclusion idiom", () => {
+    expect(
+      FORBIDDEN_PATTERNS.youreThere.test(
+        COPY.verdict.reasons.depositReadyStrong,
+      ),
+    ).toBe(false);
   });
 
   it("documents the deck's own draft phrasing WOULD have tripped splitDeposit (why the rewrite was needed)", () => {
@@ -267,8 +320,38 @@ describe("positive pins — required phrasing is actually present", () => {
     expect(COPY.whatsapp.privacy.toLowerCase()).toContain("review");
   });
 
+  it("P0-C3(c)/P1-B: whatsapp.privacy names Bali Zero and describes BOTH the capture and the pre-fill honestly", () => {
+    // Supersedes the earlier P1-B guidance ("mentions plan link") — P0-C3
+    // removed the plan link from the payload entirely, so the honest
+    // sentence no longer mentions one; it must still name who receives the
+    // data and that WhatsApp gets pre-filled with it.
+    expect(COPY.whatsapp.privacy).toContain("Bali Zero");
+    expect(COPY.whatsapp.privacy.toLowerCase()).toContain("whatsapp");
+    expect(COPY.whatsapp.privacy.toLowerCase()).not.toContain("plan link");
+  });
+
   it("whatsapp prefill template names the fit-check result, never an assessment/certificate/score", () => {
     expect(COPY.whatsapp.prefillTemplate).toContain("Fit-check result:");
+  });
+
+  it("P0-C3(c): whatsapp prefill template mirrors the 6 bullets exactly, with no plan-link placeholder", () => {
+    for (const label of [
+      "Route:",
+      "Age band:",
+      "Funding position:",
+      "Family:",
+      "Timing:",
+      "Fit-check result:",
+    ]) {
+      expect(COPY.whatsapp.prefillTemplate).toContain(label);
+    }
+    expect(COPY.whatsapp.prefillTemplate.toLowerCase()).not.toContain(
+      "readiness",
+    );
+    expect(COPY.whatsapp.prefillTemplate.toLowerCase()).not.toContain(
+      "saved plan",
+    );
+    expect(COPY.whatsapp.prefillTemplate).not.toMatch(/https?:\/\//);
   });
 });
 
@@ -310,5 +393,142 @@ describe("terminology delta — 'fit-check result' only, never assessment/certif
         "This is a preliminary fit assessment, not an approval.",
       ),
     ).toBe(true);
+  });
+});
+
+/**
+ * P2-C13 (Codex) — the sweep above only ever walked `COPY`'s object tree,
+ * so a forbidden claim hardcoded DIRECTLY into a component's JSX (a
+ * literal string never routed through `getCopy`) was invisible to it.
+ * This half source-scans every non-test `.tsx` file under
+ * `app/visa/second-home/studio/` for string/template-literal content and
+ * runs the SAME `FORBIDDEN_PATTERNS` (plus a generalized IDR price-literal
+ * check) over what it finds.
+ *
+ * `extractStringLiterals` is a small hand-rolled tokenizer (comments vs.
+ * string/template literals), not a full JS parser — "pragmatic regex is
+ * fine" per the fix mandate. It is comment-aware in BOTH directions: a
+ * `//`/`/* *\/` comment is matched and discarded as one token (so a quoted
+ * phrase INSIDE a comment is never mistaken for a real string literal),
+ * and a string literal containing `//` (e.g. a `https://...` URL) is
+ * matched as a single string token because the tokenizer decides by the
+ * character at the CURRENT scan position, not by the first `//` anywhere
+ * in the line — verified directly below with both cases.
+ */
+const STRING_TOKEN_RE =
+  /\/\*[\s\S]*?\*\/|\/\/[^\n]*|'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*`/g;
+
+function extractStringLiterals(src: string): string[] {
+  const out: string[] = [];
+  for (const match of src.matchAll(STRING_TOKEN_RE)) {
+    const token = match[0];
+    if (token.startsWith("//") || token.startsWith("/*")) continue;
+    out.push(token.slice(1, -1));
+  }
+  return out;
+}
+
+const STUDIO_SRC_DIR = join(
+  __dirname,
+  "..",
+  "..",
+  "..",
+  "app",
+  "visa",
+  "second-home",
+  "studio",
+);
+
+function listTsxFiles(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      out.push(...listTsxFiles(full));
+    } else if (
+      entry.isFile() &&
+      entry.name.endsWith(".tsx") &&
+      !entry.name.endsWith(".test.tsx")
+    ) {
+      out.push(full);
+    }
+  }
+  return out;
+}
+
+const studioTsxFiles = listTsxFiles(STUDIO_SRC_DIR);
+
+describe("extractStringLiterals — the tokenizer itself (guilt + innocence fixtures)", () => {
+  it("guilt: catches a forbidden phrase inside a real string literal", () => {
+    const src = `const x = "You can open the account at any bank.";`;
+    const hit = extractStringLiterals(src).some((s) =>
+      FORBIDDEN_PATTERNS.anyBank.test(s),
+    );
+    expect(hit).toBe(true);
+  });
+
+  it("guilt: catches a generalized IDR price literal beyond 35M/39M", () => {
+    const src = `const x = "IDR 42,500,000 total.";`;
+    const hit = extractStringLiterals(src).some((s) =>
+      JSX_PRICE_LITERAL_RE.test(s),
+    );
+    expect(hit).toBe(true);
+  });
+
+  it("innocence: a forbidden-looking phrase INSIDE a // line comment is not extracted as a string", () => {
+    const src = `// any bank works here, this is only a comment\nconst x = "USD 130,000";`;
+    const hit = extractStringLiterals(src).some((s) =>
+      FORBIDDEN_PATTERNS.anyBank.test(s),
+    );
+    expect(hit).toBe(false);
+  });
+
+  it("innocence: a forbidden-looking phrase INSIDE a /* */ block comment is not extracted as a string", () => {
+    const src = `/**\n * any bank — historical note only\n */\nconst x = "USD 130,000";`;
+    const hit = extractStringLiterals(src).some((s) =>
+      FORBIDDEN_PATTERNS.anyBank.test(s),
+    );
+    expect(hit).toBe(false);
+  });
+
+  it("a string literal containing '//' (a URL) is extracted whole, not truncated at the comment-like slashes", () => {
+    const src = `const x = "https://balizero.com/visa/second-home/studio";`;
+    const literals = extractStringLiterals(src);
+    expect(literals).toContain("https://balizero.com/visa/second-home/studio");
+  });
+});
+
+describe("source-scan — JSX string literals under app/visa/second-home/studio/ (P2-C13)", () => {
+  it("scans a non-trivial number of files (guards against an empty/broken walk)", () => {
+    expect(studioTsxFiles.length).toBeGreaterThan(5);
+  });
+
+  it.each(Object.entries(FORBIDDEN_PATTERNS))(
+    "no JSX string/template literal in the studio tree matches the %s pattern",
+    (name, pattern) => {
+      const violations: string[] = [];
+      for (const file of studioTsxFiles) {
+        const src = readFileSync(file, "utf8");
+        for (const literal of extractStringLiterals(src)) {
+          if (pattern.test(literal)) {
+            violations.push(`${file}: ${JSON.stringify(literal)}`);
+          }
+        }
+      }
+      expect(violations, violations.join("\n")).toEqual([]);
+    },
+  );
+
+  it("no JSX string/template literal contains a generalized IDR price literal", () => {
+    const violations: string[] = [];
+    for (const file of studioTsxFiles) {
+      const src = readFileSync(file, "utf8");
+      for (const literal of extractStringLiterals(src)) {
+        if (JSX_PRICE_LITERAL_RE.test(literal)) {
+          violations.push(`${file}: ${JSON.stringify(literal)}`);
+        }
+      }
+    }
+    expect(violations, violations.join("\n")).toEqual([]);
   });
 });

@@ -1,16 +1,24 @@
 /**
  * Second Home Studio — plan persistence codec (spec §5, SavePlanBar).
  *
- * Wizard answers never leave the browser: they live in component state,
- * `localStorage` (key `bz_shs_plan_v1`), and a base64url-encoded URL
- * fragment for "copy plan link". Nothing is posted anywhere.
+ * Wizard answers stay client-side within THIS module: they live in
+ * component state, `localStorage` (key `bz_shs_plan_v1`), and a
+ * base64url-encoded URL fragment for "copy plan link". This module itself
+ * posts nothing anywhere — the two surfaces that DO share a plan outside
+ * the browser are the copied plan link (a URL the user chooses to send)
+ * and the WhatsApp handoff (`WhatsAppHandoff`/`whatsapp-bullets.ts`), which
+ * POSTs a lead capture to `/api/lead/capture` when the user taps the CTA
+ * (P0-C3/C4, P1-B).
  *
  * Every function here is defensive-by-construction: a malformed fragment,
  * a wrong schema version, an oversized payload, a corrupted localStorage
  * value, or an SSR environment with no `window` all resolve to a safe
  * fallback (`null` or a fresh plan) — NEVER a throw. This module runs both
  * server-side (the thin page.tsx shell) and client-side (StudioApp), so
- * every `window`/`localStorage` touch is guarded.
+ * every `window`/`localStorage` touch is guarded — INCLUDING the
+ * `window.localStorage` property access itself (P2-C12): it is a getter
+ * that can throw `SecurityError` in opaque-origin/strict-privacy contexts
+ * merely by being read, before any method call on it.
  */
 
 import type { PlanState } from "./types";
@@ -40,22 +48,98 @@ export function emptyPlan(): PlanState {
 }
 
 function hasLocalStorage(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    // P2-C12: `window.localStorage` is a GETTER — merely reading it (the
+    // `typeof` check below) can throw `SecurityError` in opaque-origin or
+    // strict-privacy-mode contexts, before any method is ever called on
+    // the returned object. The try/catch has to wrap the property access
+    // itself, not just the calls made against it.
+    return (
+      typeof window.localStorage !== "undefined" && window.localStorage !== null
+    );
+  } catch {
+    return false;
+  }
+}
+
+// P0-C1 (Codex-verified): every PlanState enum field must be validated by
+// PRESENCE + whitelist membership, not just "not null". A fragment that
+// simply OMITS a key (e.g. age/route absent) previously sailed through as
+// `undefined`, and `evaluatePlan`'s `=== null` guards let `undefined` slip
+// past as if it were a real answer — a crafted link could manufacture a
+// strong_fit verdict this way. Every set below mirrors types.ts verbatim.
+const AGE_BANDS = new Set<string>(["under_55", "55_59", "60_plus"]);
+const ROUTE_INTENTS = new Set<string>(["deposit", "property", "unsure"]);
+const CAPITAL_BANDS = new Set<string>([
+  "ready_130k",
+  "close_100k_130k",
+  "below_100k",
+]);
+const SENIOR_FUNDINGS = new Set<string>([
+  "deposit_50k_income",
+  "income_only_3k",
+  "neither",
+  "not_applicable",
+]);
+const PROPERTY_STATUSES = new Set<string>([
+  "owns_qualifying_strata",
+  "buying_completed_strata",
+  "villa_land_leasehold",
+  "none",
+]);
+const TIMELINE_HORIZONS = new Set<string>([
+  "asap",
+  "this_quarter",
+  "exploring",
+]);
+const LOCATIONS = new Set<string>(["in_indonesia", "abroad"]);
+
+/** `undefined` (an ABSENT key) is neither `null` nor a set member, so it is
+ *  correctly rejected here without a separate presence check. */
+function isNullOrOneOf(value: unknown, allowed: Set<string>): boolean {
+  return value === null || (typeof value === "string" && allowed.has(value));
+}
+
+function isValidFamily(value: unknown): value is PlanState["family"] {
+  if (typeof value !== "object" || value === null) return false;
+  const f = value as Record<string, unknown>;
   return (
-    typeof window !== "undefined" &&
-    typeof window.localStorage !== "undefined" &&
-    window.localStorage !== null
+    typeof f.spouse === "boolean" &&
+    typeof f.children === "number" &&
+    f.children >= 0 &&
+    typeof f.parents === "number" &&
+    f.parents >= 0
   );
 }
 
-/** Minimal structural check — enough to reject garbage/foreign JSON and a
- *  schema-version mismatch without over-fitting to every field's type. */
+function isValidChecklist(value: unknown): value is Record<string, boolean> {
+  if (typeof value !== "object" || value === null) return false;
+  return Object.values(value as Record<string, unknown>).every(
+    (v) => typeof v === "boolean",
+  );
+}
+
+/** Full structural check — every PlanState field is validated by presence
+ *  and type/whitelist, never just "not null" (P0-C1, absorbs/supersedes
+ *  P2-1). Any violation anywhere resolves to `false` — a fresh plan is
+ *  always safer than a partially-trusted one. */
 function isValidPlanShape(value: unknown): value is PlanState {
   if (typeof value !== "object" || value === null) return false;
   const obj = value as Record<string, unknown>;
+
   if (obj.v !== 1) return false;
-  if (typeof obj.family !== "object" || obj.family === null) return false;
-  if (typeof obj.checklist !== "object" || obj.checklist === null) return false;
+  if (!isNullOrOneOf(obj.age, AGE_BANDS)) return false;
+  if (!isNullOrOneOf(obj.route, ROUTE_INTENTS)) return false;
+  if (!isNullOrOneOf(obj.capital, CAPITAL_BANDS)) return false;
+  if (!isNullOrOneOf(obj.seniorFunding, SENIOR_FUNDINGS)) return false;
+  if (!isNullOrOneOf(obj.property, PROPERTY_STATUSES)) return false;
+  if (!isNullOrOneOf(obj.horizon, TIMELINE_HORIZONS)) return false;
+  if (!isNullOrOneOf(obj.location, LOCATIONS)) return false;
+  if (!isValidFamily(obj.family)) return false;
+  if (!isValidChecklist(obj.checklist)) return false;
   if (typeof obj.updatedAt !== "string") return false;
+
   return true;
 }
 
@@ -83,16 +167,31 @@ export function loadPlan(): PlanState | null {
 
 /**
  * Removes the saved plan from localStorage (SavePlanBar's "Clear saved
- * plan" action — copy deck §7, `savePlan.clearButton`). SSR-safe, never
- * throws: no-op when there is no `window`/`localStorage`, or when the key
- * was never set.
+ * plan" action — copy deck §7, `savePlan.clearButton`) AND strips any
+ * `#p=...` plan fragment from the current URL (P2-C11) — otherwise a
+ * "cleared" plan reappears on the next reload because the fragment still
+ * decodes to the old answers. SSR-safe, never throws: no-op when there is
+ * no `window`/`localStorage`/`history`, or when nothing was ever saved.
  */
 export function clearPlan(): void {
-  if (!hasLocalStorage()) return;
-  try {
-    window.localStorage.removeItem(PLAN_STORAGE_KEY);
-  } catch {
-    // Storage blocked/unavailable — no-op.
+  if (hasLocalStorage()) {
+    try {
+      window.localStorage.removeItem(PLAN_STORAGE_KEY);
+    } catch {
+      // Storage blocked/unavailable — no-op.
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      window.history.replaceState(
+        null,
+        "",
+        window.location.pathname + window.location.search,
+      );
+    } catch {
+      // history API unavailable/blocked — no-op.
+    }
   }
 }
 

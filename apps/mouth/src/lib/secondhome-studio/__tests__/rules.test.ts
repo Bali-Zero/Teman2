@@ -142,6 +142,72 @@ describe("row 1 — property route: ALWAYS edge_case, NEVER strong/likely fit", 
   });
 });
 
+describe("P1-A — property route + age 55-59 keeps the mandatory disclosure note", () => {
+  it.each(ALL_PROPERTY_STATUSES)(
+    "property=%s: seniorBersyarat reason + age5559Disclosure note present (guilt would be note null)",
+    (property) => {
+      const v = evaluatePlan(
+        basePlan({ age: "55_59", route: "property", property }),
+      );
+      expect(v.band).toBe("edge_case");
+      expect(v.reasons).toContain(REASON_KEYS.seniorBersyarat);
+      expect(v.humanReviewNote).toBe(HUMAN_REVIEW_KEYS.age5559Disclosure);
+    },
+  );
+
+  it("qualifying property + 55-59: pending-standard + seniorBersyarat, in that order", () => {
+    const v = evaluatePlan(
+      basePlan({
+        age: "55_59",
+        route: "property",
+        property: "owns_qualifying_strata",
+      }),
+    );
+    expect(v.reasons).toEqual([
+      REASON_KEYS.propertyPendingStandard,
+      REASON_KEYS.seniorBersyarat,
+    ]);
+  });
+
+  it("non-qualifying property + 55-59: pending-standard + does-not-qualify + seniorBersyarat", () => {
+    const v = evaluatePlan(
+      basePlan({
+        age: "55_59",
+        route: "property",
+        property: "villa_land_leasehold",
+      }),
+    );
+    expect(v.reasons).toEqual([
+      REASON_KEYS.propertyPendingStandard,
+      REASON_KEYS.propertyDoesNotQualify,
+      REASON_KEYS.seniorBersyarat,
+    ]);
+  });
+
+  it("innocence: under_55 + property keeps humanReviewNote null", () => {
+    const v = evaluatePlan(
+      basePlan({ age: "under_55", route: "property", property: "none" }),
+    );
+    expect(v.humanReviewNote).toBeNull();
+  });
+
+  it("innocence: 60_plus + property keeps humanReviewNote null", () => {
+    const v = evaluatePlan(
+      basePlan({ age: "60_plus", route: "property", property: "none" }),
+    );
+    expect(v.humanReviewNote).toBeNull();
+  });
+
+  it("property status missing at 55-59 still resolves to incomplete, not a silent disclosure skip", () => {
+    const v = evaluatePlan(
+      basePlan({ age: "55_59", route: "property", property: null }),
+    );
+    expect(v.band).toBe("edge_case");
+    expect(v.reasons).toEqual([REASON_KEYS.incompleteAnswers]);
+    expect(v.humanReviewNote).toBeNull();
+  });
+});
+
 describe("rows 2-4 — under_55 + deposit route, driven by capital", () => {
   it("row 2: ready_130k => strong_fit E33", () => {
     const v = evaluatePlan(
@@ -438,6 +504,95 @@ describe("row 8 — route=unsure evaluated as deposit, with an added reason", ()
       basePlan({ age: "under_55", route: "unsure", capital: "ready_130k" }),
     );
     expect(v.reasons).not.toContain(REASON_KEYS.propertyPendingStandard);
+  });
+});
+
+describe("P2-7 — route=unsure never gives a hard 'not eligible' (conductor-ruled spec amendment)", () => {
+  it("under_55 + unsure + below_100k => edge_case, never not_eligible (guilt: not_eligible)", () => {
+    const v = evaluatePlan(
+      basePlan({ age: "under_55", route: "unsure", capital: "below_100k" }),
+    );
+    expect(v.band).toBe("edge_case");
+    expect(v.band).not.toBe("not_eligible");
+    expect(v.product).toBeNull();
+    expect(v.reasons).toEqual([
+      REASON_KEYS.unsureRoute,
+      REASON_KEYS.capitalBelowThreshold,
+      REASON_KEYS.seniorRoutesExistNote,
+    ]);
+  });
+
+  it("innocence: route=deposit + below_100k is still a hard not_eligible", () => {
+    const v = evaluatePlan(
+      basePlan({ age: "under_55", route: "deposit", capital: "below_100k" }),
+    );
+    expect(v.band).toBe("not_eligible");
+  });
+
+  it("innocence: unsure + ready_130k is still strong_fit", () => {
+    const v = evaluatePlan(
+      basePlan({ age: "under_55", route: "unsure", capital: "ready_130k" }),
+    );
+    expect(v.band).toBe("strong_fit");
+    expect(v.product).toBe("E33");
+  });
+
+  it("60_plus + unsure + seniorFunding=neither + below_100k => edge_case, not not_eligible", () => {
+    const v = evaluatePlan(
+      basePlan({
+        age: "60_plus",
+        route: "unsure",
+        seniorFunding: "neither",
+        capital: "below_100k",
+      }),
+    );
+    expect(v.band).toBe("edge_case");
+    expect(v.band).not.toBe("not_eligible");
+  });
+});
+
+describe("P0-C1 — evaluatePlan defense-in-depth: undefined fields never manufacture a verdict", () => {
+  it("age/route absent (undefined, not null) resolves to edge_case incomplete, never strong_fit", () => {
+    const crafted = {
+      v: 1,
+      family: { spouse: false, children: 0, parents: 0 },
+      checklist: {},
+      updatedAt: "x",
+      capital: "ready_130k",
+    } as unknown as PlanState;
+    const v = evaluatePlan(crafted);
+    expect(v.band).toBe("edge_case");
+    expect(v.band).not.toBe("strong_fit");
+    expect(v.product).toBeNull();
+  });
+
+  it("property absent (undefined) on the property route resolves to incomplete, never a fit band", () => {
+    const crafted = {
+      v: 1,
+      age: "under_55",
+      route: "property",
+      family: { spouse: false, children: 0, parents: 0 },
+      checklist: {},
+      updatedAt: "x",
+    } as unknown as PlanState;
+    const v = evaluatePlan(crafted);
+    expect(v.band).toBe("edge_case");
+    expect(v.reasons).toEqual([REASON_KEYS.incompleteAnswers]);
+  });
+
+  it("seniorFunding absent (undefined) at 55-59 resolves to incomplete, never a product", () => {
+    const crafted = {
+      v: 1,
+      age: "55_59",
+      route: "deposit",
+      family: { spouse: false, children: 0, parents: 0 },
+      checklist: {},
+      updatedAt: "x",
+    } as unknown as PlanState;
+    const v = evaluatePlan(crafted);
+    expect(v.band).toBe("edge_case");
+    expect(v.product).toBeNull();
+    expect(v.reasons).toEqual([REASON_KEYS.incompleteAnswers]);
   });
 });
 

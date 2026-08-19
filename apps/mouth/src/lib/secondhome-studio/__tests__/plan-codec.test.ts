@@ -22,6 +22,24 @@ function toB64Url(s: string): string {
     .replace(/=+$/, "");
 }
 
+/** A fully-valid, fully-populated plan — shared by the clearPlan URL-strip
+ *  test (P2-C11) and the P0-C1/P2-1 shape-validation table below. */
+function fullPlanFixture(): PlanState {
+  return {
+    v: 1,
+    age: "under_55",
+    route: "deposit",
+    capital: "ready_130k",
+    seniorFunding: null,
+    property: null,
+    family: { spouse: false, children: 0, parents: 0 },
+    horizon: "asap",
+    location: "in_indonesia",
+    checklist: { x: true },
+    updatedAt: "2026-08-19T00:00:00.000Z",
+  };
+}
+
 describe("emptyPlan", () => {
   it("returns a fresh v1 plan with all-null answers and an empty checklist", () => {
     const plan = emptyPlan();
@@ -158,6 +176,11 @@ describe("savePlan / loadPlan — localStorage roundtrip", () => {
 describe("clearPlan — SavePlanBar 'Clear saved plan' action", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    window.location.hash = "";
+  });
+
+  afterEach(() => {
+    window.location.hash = "";
   });
 
   it("removes a previously saved plan so loadPlan returns null", () => {
@@ -172,6 +195,152 @@ describe("clearPlan — SavePlanBar 'Clear saved plan' action", () => {
   it("is a safe no-op when nothing was ever saved", () => {
     expect(() => clearPlan()).not.toThrow();
     expect(loadPlan()).toBeNull();
+  });
+
+  it("P2-C11: also strips a #p= plan fragment from the URL, so a 'cleared' plan cannot reappear on reload", () => {
+    savePlan({ ...emptyPlan(), age: "under_55" });
+    window.location.hash = `#p=${encodePlanFragment(fullPlanFixture())}`;
+    expect(window.location.hash).not.toBe("");
+
+    clearPlan();
+
+    expect(window.location.hash).toBe("");
+  });
+
+  it("P2-C11: stripping the fragment is a safe no-op when there was no fragment to begin with", () => {
+    window.location.hash = "";
+    expect(() => clearPlan()).not.toThrow();
+    expect(window.location.hash).toBe("");
+  });
+});
+
+describe("P0-C1 / P2-1 — isValidPlanShape validates PRESENCE + whitelist for EVERY PlanState key", () => {
+  it("accepts a fully-valid, fully-populated plan", () => {
+    const encoded = toB64Url(JSON.stringify(fullPlanFixture()));
+    expect(decodePlanFragment(encoded)).toEqual(fullPlanFixture());
+  });
+
+  it("rejects the crafted ABSENT-field fragment that used to manufacture a strong_fit verdict (P0-C1, Codex-verified)", () => {
+    // age/route are ABSENT (not null) — the old validator only checked
+    // v/family/checklist/updatedAt, so this shape decoded successfully and
+    // evaluatePlan's `=== null` guards let the missing fields slip through
+    // as "under_55 + deposit + ready_130k" => strong_fit E33.
+    const crafted = toB64Url(
+      JSON.stringify({
+        v: 1,
+        family: {},
+        checklist: {},
+        updatedAt: "x",
+        capital: "ready_130k",
+      }),
+    );
+    expect(decodePlanFragment(crafted)).toBeNull();
+  });
+
+  const REQUIRED_KEYS: (keyof PlanState)[] = [
+    "age",
+    "route",
+    "capital",
+    "seniorFunding",
+    "property",
+    "family",
+    "horizon",
+    "location",
+    "checklist",
+    "updatedAt",
+  ];
+
+  it.each(REQUIRED_KEYS)(
+    "rejects the fragment when '%s' is absent (per-field absence table test)",
+    (key) => {
+      const obj: Record<string, unknown> = { ...fullPlanFixture() };
+      delete obj[key];
+      const encoded = toB64Url(JSON.stringify(obj));
+      expect(decodePlanFragment(encoded)).toBeNull();
+    },
+  );
+
+  it("rejects an out-of-whitelist enum value (age: 123, not a real AgeBand)", () => {
+    const obj = { ...fullPlanFixture(), age: 123 };
+    expect(decodePlanFragment(toB64Url(JSON.stringify(obj)))).toBeNull();
+  });
+
+  it("rejects an out-of-whitelist enum value (horizon: 'next_year')", () => {
+    const obj = { ...fullPlanFixture(), horizon: "next_year" };
+    expect(decodePlanFragment(toB64Url(JSON.stringify(obj)))).toBeNull();
+  });
+
+  it("rejects the exact crafted-link fragment from the refuter report (strong_fit + raw dot-paths)", () => {
+    const obj = {
+      ...fullPlanFixture(),
+      age: "under_55",
+      route: "deposit",
+      capital: 123,
+      horizon: "next_year",
+    };
+    expect(decodePlanFragment(toB64Url(JSON.stringify(obj)))).toBeNull();
+  });
+
+  it("rejects a family with a non-boolean spouse", () => {
+    const obj = {
+      ...fullPlanFixture(),
+      family: { spouse: "yes", children: 0, parents: 0 },
+    };
+    expect(decodePlanFragment(toB64Url(JSON.stringify(obj)))).toBeNull();
+  });
+
+  it("rejects a family with a negative children count", () => {
+    const obj = {
+      ...fullPlanFixture(),
+      family: { spouse: false, children: -1, parents: 0 },
+    };
+    expect(decodePlanFragment(toB64Url(JSON.stringify(obj)))).toBeNull();
+  });
+
+  it("rejects a checklist with a non-boolean value", () => {
+    const obj = { ...fullPlanFixture(), checklist: { x: "yes" } };
+    expect(decodePlanFragment(toB64Url(JSON.stringify(obj)))).toBeNull();
+  });
+
+  it("innocence: an empty checklist ({}) is still valid", () => {
+    const obj = { ...fullPlanFixture(), checklist: {} };
+    expect(decodePlanFragment(toB64Url(JSON.stringify(obj)))).not.toBeNull();
+  });
+});
+
+describe("P2-C12 — a throwing localStorage GETTER never crashes the codec", () => {
+  let originalDescriptor: PropertyDescriptor | undefined;
+
+  beforeEach(() => {
+    originalDescriptor = Object.getOwnPropertyDescriptor(
+      window,
+      "localStorage",
+    );
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      get() {
+        throw new DOMException("The operation is insecure.", "SecurityError");
+      },
+    });
+  });
+
+  afterEach(() => {
+    if (originalDescriptor) {
+      Object.defineProperty(window, "localStorage", originalDescriptor);
+    }
+  });
+
+  it("loadPlan returns null and never throws", () => {
+    expect(() => loadPlan()).not.toThrow();
+    expect(loadPlan()).toBeNull();
+  });
+
+  it("savePlan is a safe no-op and never throws", () => {
+    expect(() => savePlan(emptyPlan())).not.toThrow();
+  });
+
+  it("clearPlan is a safe no-op and never throws", () => {
+    expect(() => clearPlan()).not.toThrow();
   });
 });
 

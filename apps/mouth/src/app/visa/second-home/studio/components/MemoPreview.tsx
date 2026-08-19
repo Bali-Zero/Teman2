@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { getCopy } from "@/lib/secondhome-studio/copy";
 import type { PlanState } from "@/lib/secondhome-studio/types";
 
@@ -45,11 +46,50 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** P2-5: on desktop the rail is a STATIC summary (the `.bz-shs-memo`
+ *  CSS below neutralises pointer-events on the toggle), but a native
+ *  `<summary>` remains keyboard-focusable and Enter/Space still fires the
+ *  browser's default toggle — so a keyboard/AT user could focus an
+ *  element with no visible affordance and have it silently collapse the
+ *  panel. Detects the same `(min-width: 900px)` breakpoint the CSS below
+ *  keys off, and when true removes the summary from the tab order
+ *  (`tabIndex={-1}`) and hides it from the accessibility tree
+ *  (`aria-hidden`) — mobile keeps the full native collapsible behavior
+ *  unchanged. Guarded against `window.matchMedia` being absent (jsdom by
+ *  default has no `matchMedia`) so this can never throw or change
+ *  behavior for any test that doesn't explicitly stub it — it silently
+ *  stays in the "mobile/interactive" default. */
+function useIsDesktopStatic(): boolean {
+  const [isDesktopStatic, setIsDesktopStatic] = useState(false);
+
+  useEffect(() => {
+    if (
+      typeof window === "undefined" ||
+      typeof window.matchMedia !== "function"
+    ) {
+      return;
+    }
+    const mq = window.matchMedia("(min-width: 900px)");
+    const update = () => setIsDesktopStatic(mq.matches);
+    update();
+    if (typeof mq.addEventListener === "function") {
+      mq.addEventListener("change", update);
+      return () => mq.removeEventListener("change", update);
+    }
+    return undefined;
+  }, []);
+
+  return isDesktopStatic;
+}
+
 /** Live-filling summary of the plan-in-progress. Desktop: static right
- *  rail. Mobile: a native collapsible (spec §4 "collapsible on mobile") —
+ *  rail (P2-5: non-interactive — no focusable/keyboard-togglable toggle).
+ *  Mobile: a native collapsible (spec §4 "collapsible on mobile") —
  *  implemented as one <details> whose disclosure toggle is neutralised via
  *  CSS at desktop widths rather than duplicating markup per breakpoint. */
 export function MemoPreview({ plan }: MemoPreviewProps) {
+  const isDesktopStatic = useIsDesktopStatic();
+
   return (
     <details
       className="bz-shs-memo"
@@ -62,6 +102,8 @@ export function MemoPreview({ plan }: MemoPreviewProps) {
       }}
     >
       <summary
+        tabIndex={isDesktopStatic ? -1 : undefined}
+        aria-hidden={isDesktopStatic ? true : undefined}
         style={{
           cursor: "pointer",
           fontWeight: 600,

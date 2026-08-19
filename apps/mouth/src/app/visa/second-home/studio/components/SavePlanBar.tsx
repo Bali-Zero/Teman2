@@ -6,6 +6,7 @@ import {
   encodePlanFragment,
   savePlan,
 } from "@/lib/secondhome-studio/plan-codec";
+import { relevantPlan } from "@/lib/secondhome-studio/sequence";
 import type { PlanState } from "@/lib/secondhome-studio/types";
 
 const STUDIO_PATH = "/visa/second-home/studio";
@@ -33,7 +34,13 @@ const buttonStyle: React.CSSProperties = {
 /** "Your plan stays on this device" bar (spec §5). Answers auto-save on
  *  every change (StudioApp calls plan-codec's savePlan after each answer)
  *  — the explicit "Save on this device" button here is a reassurance
- *  affordance, not the only save path. */
+ *  affordance, not the only save path.
+ *
+ *  P0-C3(e): this is the ONLY carrier of the shareable plan link — the
+ *  WhatsApp handoff no longer transports one. P2-6: the copied link is
+ *  built from `relevantPlan(plan)`, not the raw plan, so an
+ *  abandoned-branch answer (e.g. a leftover `capital` value after
+ *  switching to the property route) never leaks into a shared link. */
 export function SavePlanBar({ plan, onClear }: SavePlanBarProps) {
   const [savedFeedback, setSavedFeedback] = useState(false);
   const [copiedFeedback, setCopiedFeedback] = useState(false);
@@ -46,7 +53,7 @@ export function SavePlanBar({ plan, onClear }: SavePlanBarProps) {
 
   async function handleCopyLink() {
     if (typeof window === "undefined") return;
-    const url = `${window.location.origin}${STUDIO_PATH}#p=${encodePlanFragment(plan)}`;
+    const url = `${window.location.origin}${STUDIO_PATH}#p=${encodePlanFragment(relevantPlan(plan))}`;
     try {
       await navigator.clipboard.writeText(url);
       setCopiedFeedback(true);

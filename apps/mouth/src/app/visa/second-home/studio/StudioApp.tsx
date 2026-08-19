@@ -1,10 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type Ref } from "react";
 import { ConsentBanner } from "@/components/visa/ConsentBanner";
 import { usePricingData } from "@/hooks/usePricingData";
 import { getCopy } from "@/lib/secondhome-studio/copy";
 import { evaluatePlan } from "@/lib/secondhome-studio/rules";
+import {
+  computeSequence,
+  type QuestionId,
+} from "@/lib/secondhome-studio/sequence";
 import {
   E33_LIVE_PRICE_CATEGORY,
   E33_LIVE_PRICE_KEY,
@@ -43,56 +47,14 @@ import { SavePlanBar } from "./components/SavePlanBar";
  *
  * Question order: age -> route -> [deposit/unsure? capital] ->
  * [55+? seniorFunding] -> [property? property] -> family -> horizon ->
- * location -> VERDICT. The sequence is recomputed from the CURRENT plan on
- * every render (never cached against a stale branch), so answering an
- * earlier question (e.g. switching route from deposit to property, or
- * seniorFunding from "neither" to "income_only_3k") immediately changes
- * what the NEXT step is — no dangling questions from an abandoned branch.
+ * location -> VERDICT. The sequence (computeSequence, hoisted to
+ * `lib/secondhome-studio/sequence.ts` — P2-6) is recomputed from the
+ * CURRENT plan on every render (never cached against a stale branch), so
+ * answering an earlier question (e.g. switching route from deposit to
+ * property, or seniorFunding from "neither" to "income_only_3k")
+ * immediately changes what the NEXT step is — no dangling questions from
+ * an abandoned branch.
  */
-
-type QuestionId =
-  | "age"
-  | "route"
-  | "capital"
-  | "seniorFunding"
-  | "property"
-  | "family"
-  | "horizon"
-  | "location";
-
-function computeSequence(p: PlanState): QuestionId[] {
-  const seq: QuestionId[] = ["age", "route"];
-
-  if (p.route === "property") {
-    seq.push("property");
-  } else if (p.age === "55_59") {
-    // Row 5 (rules.ts): 55-59 is always edge_case from seniorFunding alone
-    // — capital is never consulted for this age band.
-    seq.push("seniorFunding");
-  } else if (p.age === "60_plus") {
-    seq.push("seniorFunding");
-    // Row 6 fallthrough: only "neither"/"not_applicable" (or not yet
-    // answered) reaches the base deposit rows, so only THEN is capital
-    // needed. Once seniorFunding matches a senior product, capital is
-    // skipped entirely — this branch re-evaluates every render, so the
-    // skip takes effect the moment seniorFunding resolves.
-    if (
-      p.seniorFunding === null ||
-      p.seniorFunding === "neither" ||
-      p.seniorFunding === "not_applicable"
-    ) {
-      seq.push("capital");
-    }
-  } else {
-    // under_55 (or age not yet known — capital is the conservative
-    // default until age resolves; by the time we actually reach this
-    // position in the sequence, age is always answered for real).
-    seq.push("capital");
-  }
-
-  seq.push("family", "horizon", "location");
-  return seq;
-}
 
 /** "family" has no null representation in PlanState (default is a real,
  *  valid "no family members" answer) — treated as always-answered so
@@ -221,6 +183,9 @@ interface QuestionStageProps {
   onBack: () => void;
   onContinue: () => void;
   canGoBack: boolean;
+  /** Forwarded to QuestionCard's stage heading so StudioApp can move focus
+   *  to it on step transitions (P2-3). */
+  headingRef: Ref<HTMLHeadingElement>;
 }
 
 function QuestionStage({
@@ -230,6 +195,7 @@ function QuestionStage({
   onBack,
   onContinue,
   canGoBack,
+  headingRef,
 }: QuestionStageProps) {
   const nav = (
     <NavRow
@@ -252,15 +218,17 @@ function QuestionStage({
           heading={getCopy(`${base}.heading`)}
           body={getCopy(`${base}.body`)}
           why={getCopy(`${base}.why`)}
-        >
-          {options.map((opt) => (
+          headingRef={headingRef}
+          options={options.map((opt) => (
             <OptionButton
               key={opt}
+              variant="radio"
               label={getCopy(`${base}.options.${opt}`)}
               selected={plan.age === opt}
               onSelect={() => onSelect({ age: opt })}
             />
           ))}
+        >
           {nav}
         </QuestionCard>
       );
@@ -273,15 +241,17 @@ function QuestionStage({
           heading={getCopy(`${base}.heading`)}
           body={getCopy(`${base}.body`)}
           why={getCopy(`${base}.why`)}
-        >
-          {options.map((opt) => (
+          headingRef={headingRef}
+          options={options.map((opt) => (
             <OptionButton
               key={opt}
+              variant="radio"
               label={getCopy(`${base}.options.${opt}`)}
               selected={plan.route === opt}
               onSelect={() => onSelect({ route: opt })}
             />
           ))}
+        >
           {nav}
         </QuestionCard>
       );
@@ -298,15 +268,17 @@ function QuestionStage({
           heading={getCopy(`${base}.heading`)}
           body={getCopy(`${base}.body`)}
           why={getCopy(`${base}.why`)}
-        >
-          {options.map((opt) => (
+          headingRef={headingRef}
+          options={options.map((opt) => (
             <OptionButton
               key={opt}
+              variant="radio"
               label={getCopy(`${base}.options.${opt}`)}
               selected={plan.capital === opt}
               onSelect={() => onSelect({ capital: opt })}
             />
           ))}
+        >
           {nav}
         </QuestionCard>
       );
@@ -325,15 +297,17 @@ function QuestionStage({
           heading={getCopy(`${base}.heading`)}
           body={getCopy(`${base}.body`)}
           why={getCopy(`${base}.why`)}
-        >
-          {options.map((opt) => (
+          headingRef={headingRef}
+          options={options.map((opt) => (
             <OptionButton
               key={opt}
+              variant="radio"
               label={getCopy(`${base}.options.${opt}`)}
               selected={plan.seniorFunding === opt}
               onSelect={() => onSelect({ seniorFunding: opt })}
             />
           ))}
+        >
           {nav}
         </QuestionCard>
       );
@@ -351,15 +325,17 @@ function QuestionStage({
           heading={getCopy(`${base}.heading`)}
           body={getCopy(`${base}.body`)}
           why={getCopy(`${base}.why`)}
-        >
-          {options.map((opt) => (
+          headingRef={headingRef}
+          options={options.map((opt) => (
             <OptionButton
               key={opt}
+              variant="radio"
               label={getCopy(`${base}.options.${opt}`)}
               selected={plan.property === opt}
               onSelect={() => onSelect({ property: opt })}
             />
           ))}
+        >
           {nav}
         </QuestionCard>
       );
@@ -375,7 +351,11 @@ function QuestionStage({
           heading={getCopy(`${base}.heading`)}
           body={getCopy(`${base}.body`)}
           why={getCopy(`${base}.why`)}
+          headingRef={headingRef}
         >
+          {/* Multi-select (P2-4): stays a plain group of toggle buttons —
+             aria-pressed, no radiogroup/radio roles — since this is the
+             only step where more than one option can be true at once. */}
           <OptionButton
             label={getCopy(`${base}.options.spouse`)}
             selected={plan.family.spouse}
@@ -437,15 +417,17 @@ function QuestionStage({
           heading={getCopy(`${base}.heading`)}
           body={getCopy(`${base}.body`)}
           why={getCopy(`${base}.why`)}
-        >
-          {options.map((opt) => (
+          headingRef={headingRef}
+          options={options.map((opt) => (
             <OptionButton
               key={opt}
+              variant="radio"
               label={getCopy(`${base}.options.${opt}`)}
               selected={plan.horizon === opt}
               onSelect={() => onSelect({ horizon: opt })}
             />
           ))}
+        >
           {nav}
         </QuestionCard>
       );
@@ -458,15 +440,17 @@ function QuestionStage({
           heading={getCopy(`${base}.heading`)}
           body={getCopy(`${base}.body`)}
           why={getCopy(`${base}.why`)}
-        >
-          {options.map((opt) => (
+          headingRef={headingRef}
+          options={options.map((opt) => (
             <OptionButton
               key={opt}
+              variant="radio"
               label={getCopy(`${base}.options.${opt}`)}
               selected={plan.location === opt}
               onSelect={() => onSelect({ location: opt })}
             />
           ))}
+        >
           {nav}
         </QuestionCard>
       );
@@ -482,10 +466,27 @@ export function StudioApp() {
   const hydratedOnce = useRef(false);
   const { price } = usePricingData(E33_LIVE_PRICE_KEY, E33_LIVE_PRICE_CATEGORY);
 
-  // Client-only hydration: URL fragment wins over localStorage; a
-  // malformed/absent fragment falls back to loadPlan(), which itself falls
-  // back to a fresh plan. Runs once — SSR/first client render both use the
-  // fresh-plan default so there is no hydration mismatch.
+  // P2-3: the stage heading (QuestionCard's <h2> or VerdictPanel's <h1> —
+  // only one is ever mounted at a time) is focused on a user-driven step
+  // transition. `userNavigatedRef` gates it so neither the initial mount
+  // NOR the hydration jump below (which can land straight on the verdict
+  // page from a saved link) steals focus on page load — only an explicit
+  // Continue/Back click does.
+  const stageHeadingRef = useRef<HTMLHeadingElement>(null);
+  const userNavigatedRef = useRef(false);
+
+  useEffect(() => {
+    if (!userNavigatedRef.current) return;
+    stageHeadingRef.current?.focus();
+  }, [stepIndex]);
+
+  // Client-only hydration: a PRESENT URL fragment always wins over
+  // localStorage — even when it fails to decode (P1-C6): a
+  // malformed/invalid fragment must resolve to a FRESH plan, never
+  // silently fall back to an old saved plan (which could show a stale
+  // verdict the URL never asked for). localStorage is consulted ONLY when
+  // there is no fragment at all. Runs once — SSR/first client render both
+  // use the fresh-plan default so there is no hydration mismatch.
   useEffect(() => {
     if (hydratedOnce.current) return;
     hydratedOnce.current = true;
@@ -495,13 +496,10 @@ export function StudioApp() {
       ? window.location.hash.slice(1)
       : window.location.hash;
 
-    let resolved: PlanState | null = null;
-    if (rawHash.startsWith("p=")) {
-      resolved = decodePlanFragment(rawHash.slice(2));
-    }
-    if (resolved === null) {
-      resolved = loadPlan();
-    }
+    const hasFragment = rawHash.startsWith("p=");
+    const resolved = hasFragment
+      ? decodePlanFragment(rawHash.slice(2))
+      : loadPlan();
 
     const finalPlan = resolved ?? emptyPlan();
     setPlan(finalPlan);
@@ -517,10 +515,12 @@ export function StudioApp() {
   }
 
   function continueStep() {
+    userNavigatedRef.current = true;
     setStepIndex((idx) => Math.min(idx + 1, computeSequence(plan).length));
   }
 
   function goBack() {
+    userNavigatedRef.current = true;
     setStepIndex((idx) => Math.max(0, idx - 1));
   }
 
@@ -540,6 +540,11 @@ export function StudioApp() {
   const isVerdictStage = stepIndex >= sequence.length;
   const currentQuestion = isVerdictStage ? null : sequence[stepIndex];
   const verdict = isVerdictStage ? evaluatePlan(plan) : null;
+  // P1-C9: CustodyMap only makes sense for deposit-holding routes — a
+  // property or E33F (income-only, no deposit) verdict never shows it.
+  const showCustodyMap =
+    verdict !== null &&
+    (verdict.product === "E33" || verdict.product === "E33E");
 
   return (
     <div
@@ -580,12 +585,14 @@ export function StudioApp() {
               ← Back to your answers
             </button>
           </div>
-          <VerdictPanel verdict={verdict} />
-          <CustodyMap />
+          <VerdictPanel verdict={verdict} headingRef={stageHeadingRef} />
+          {showCustodyMap ? <CustodyMap /> : null}
           <RouteComparator highlight={plan.route === "unsure"} />
           <TimelineView
             horizon={plan.horizon ?? "exploring"}
             location={plan.location ?? "in_indonesia"}
+            route={plan.route}
+            product={verdict.product}
           />
           <ReadinessChecklist plan={plan} onToggle={toggleChecklistItem} />
           {price ? (
@@ -654,6 +661,7 @@ export function StudioApp() {
               onBack={goBack}
               onContinue={continueStep}
               canGoBack={stepIndex > 0}
+              headingRef={stageHeadingRef}
             />
           </main>
           <aside>

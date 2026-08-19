@@ -2,18 +2,34 @@
 
 import { getCopy } from "@/lib/secondhome-studio/copy";
 import { buildTimeline } from "@/lib/secondhome-studio/timeline";
-import type { Location, TimelineHorizon } from "@/lib/secondhome-studio/types";
+import type {
+  Location,
+  RouteIntent,
+  TimelineHorizon,
+  Verdict,
+} from "@/lib/secondhome-studio/types";
 
 export interface TimelineViewProps {
   horizon: TimelineHorizon;
   location: Location;
+  /** P1-C9 (optional, defaults preserve the original always-bank-deposit
+   *  second step): route/product make the second step honest about what
+   *  the applicant actually needs to do — property never had a bank
+   *  deposit, E33F is explicitly "without the deposit". */
+  route?: RouteIntent | null;
+  product?: Verdict["product"];
 }
 
 /** Renders buildTimeline()'s 7 public steps — each with a heading, body
  *  (range label), and an owner chip (You / Bali Zero / Imigrasi). Every
  *  range is "typical, not a promise" per copy.ts — no promised dates. */
-export function TimelineView({ horizon, location }: TimelineViewProps) {
-  const steps = buildTimeline(horizon, location);
+export function TimelineView({
+  horizon,
+  location,
+  route = null,
+  product = null,
+}: TimelineViewProps) {
+  const steps = buildTimeline(horizon, location, route, product);
 
   return (
     <section
