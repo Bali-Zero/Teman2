@@ -37,6 +37,10 @@ _PIN = "0.147.0"
 _PACKAGE_WIRE = json.dumps({"question": "SYNTHETIC-CLIENT-TEXT-a8f3", "chunks": []})
 _RESULT_TEXT = "SYNTHETIC-MODEL-ANSWER-c71e"
 
+# Sentinel for _Broker.claim_results: answer this claim with a 200 whose body
+# is NOT JSON (an LB error page under a misconfigured proxy).
+_NON_JSON_200 = "NON_JSON_200"
+
 
 def _config(**overrides: Any) -> DaemonConfig:
     defaults: dict[str, Any] = {
@@ -93,13 +97,14 @@ class _StubCodex:
 class _Broker:
     """Scripted broker behind an `httpx.MockTransport`.
 
-    `claim_results` is consumed one per /claim POST (a dict payload, or None
-    for "no job"). `complete_script` is consumed one per /complete POST: an
-    int HTTP status, or an exception instance to raise at the transport.
-    When a script runs dry, claims answer "no job" and completes answer 200.
+    `claim_results` is consumed one per /claim POST (a dict payload, None
+    for "no job", or the `_NON_JSON_200` sentinel for a 200 with a non-JSON
+    body). `complete_script` is consumed one per /complete POST: an int HTTP
+    status, or an exception instance to raise at the transport. When a
+    script runs dry, claims answer "no job" and completes answer 200.
     """
 
-    claim_results: list[dict[str, Any] | None] = field(default_factory=list)
+    claim_results: list[dict[str, Any] | str | None] = field(default_factory=list)
     complete_script: list[int | Exception] = field(default_factory=list)
     claim_requests: list[httpx.Request] = field(default_factory=list)
     complete_requests: list[httpx.Request] = field(default_factory=list)
@@ -110,6 +115,12 @@ class _Broker:
             result = self.claim_results.pop(0) if self.claim_results else None
             if result is None:
                 return httpx.Response(200, json={"job_id": None})
+            if result == _NON_JSON_200:
+                return httpx.Response(
+                    200,
+                    content=b"<html>upstream gateway error</html>",
+                    headers={"Content-Type": "text/html"},
+                )
             return httpx.Response(200, json=result)
         if request.url.path == "/api/wa-broker/complete":
             self.complete_requests.append(request)
@@ -300,6 +311,29 @@ class TestHappyPath:
 
 
 # ---------------------------------------------------------------------------
+# Claim robustness — a 200 that is not JSON is a blip, not a loop crash
+# ---------------------------------------------------------------------------
+
+
+class TestClaimRobustness:
+    @pytest.mark.asyncio
+    async def test_guilt_non_json_200_claim_is_a_failed_claim_not_a_crash(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """A 200 whose body is an LB error page (Kimi round-1 named gap):
+        must degrade to "no job" — and must not poison the next claim."""
+        broker = _Broker(claim_results=[_NON_JSON_200, _claim_payload()])
+        daemon = _daemon(broker)
+        daemon._version_ok = True
+
+        with caplog.at_level("WARNING"):
+            assert await daemon._claim() is None
+        assert any("non-JSON" in record.getMessage() for record in caplog.records)
+
+        assert await daemon._claim() is not None  # loop not poisoned
+
+
+# ---------------------------------------------------------------------------
 # Completion idempotency — chaos row 3
 # ---------------------------------------------------------------------------
 
@@ -445,6 +479,64 @@ class TestErrorMapping:
         [body] = _complete_bodies(broker)
         assert body["error_class"] is None
         assert len(body["result_text"]) == 65536
+
+    @pytest.mark.asyncio
+    async def test_guilt_nul_in_result_is_cli_failure(self) -> None:
+        """PostgreSQL TEXT cannot hold U+0000: the router 422s it and the
+        daemon's 4xx branch never retries — so the daemon pre-scans and
+        fails the job TYPED instead of losing it untyped (Kimi round-1 F2)."""
+        broker = _Broker(claim_results=[_claim_payload()])
+        daemon = _daemon(broker, _StubCodex(text="answer\x00tail"))
+        daemon._version_ok = True
+
+        claim = await daemon._claim()
+        await daemon._execute_and_complete(claim)
+
+        [body] = _complete_bodies(broker)
+        assert body["error_class"] == "cli_failure"
+        assert body["result_text"] is None
+
+    @pytest.mark.asyncio
+    async def test_guilt_multibyte_result_under_char_cap_over_byte_cap(self) -> None:
+        """50k 3-byte chars pass the 65,536-CHAR cap but encode to ~150KB —
+        over the router's 128KiB stream cap. Posting would 413 and the
+        4xx-never-retry branch would abandon the job untyped (Kimi round-1
+        F1, verified by execution); the byte pre-check must fail it TYPED."""
+        text = "€" * 50_000  # € = 3 bytes in UTF-8
+        assert len(text) <= daemon_module._RESULT_TEXT_MAX  # passes the char cap
+        broker = _Broker(claim_results=[_claim_payload()])
+        daemon = _daemon(broker, _StubCodex(text=text))
+        daemon._version_ok = True
+
+        claim = await daemon._claim()
+        await daemon._execute_and_complete(claim)
+
+        [body] = _complete_bodies(broker)
+        assert body["error_class"] == "oversized_output"
+        assert body["result_text"] is None
+
+    @pytest.mark.asyncio
+    async def test_innocence_multibyte_under_both_caps_is_sent_and_measured_as_wired(
+        self,
+    ) -> None:
+        """40k 3-byte chars ≈ 120,018 encoded bytes — under _RESULT_BYTES_MAX,
+        so it must be SENT. And the wire bytes must equal `_encode_body` of
+        the parsed body: the measuring stick and the wire share one encoder,
+        so the byte pre-check can never drift from what actually ships."""
+        text = "€" * 40_000
+        broker = _Broker(claim_results=[_claim_payload()])
+        daemon = _daemon(broker, _StubCodex(text=text))
+        daemon._version_ok = True
+
+        claim = await daemon._claim()
+        await daemon._execute_and_complete(claim)
+
+        [request] = broker.complete_requests
+        body = json.loads(request.content)
+        assert body["error_class"] is None
+        assert body["result_text"] == text
+        assert request.headers["Content-Type"] == "application/json"
+        assert request.content == daemon_module._encode_body(body)
 
 
 # ---------------------------------------------------------------------------

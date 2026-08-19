@@ -14,7 +14,7 @@
 	<string>zantara-codex</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>/Users/zantara-codex/bin/wa-codex-broker-wrapper.sh</string>
+		<string>/usr/local/libexec/wa-codex-broker-wrapper.sh</string>
 	</array>
 	<key>WorkingDirectory</key>
 	<string>/Users/zantara-codex</string>

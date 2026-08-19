@@ -3,8 +3,14 @@
 #
 # Runs as the login-less user `zantara-codex` on Pro (spec §4.1,
 # research/operations/2026-08-19-bot-chatgpt-provider-broker-spec.md). The
-# LIVE copy is /Users/zantara-codex/bin/wa-codex-broker-wrapper.sh, placed
-# there by scripts/provision_zantara_codex.sh; the pair is declared in
+# LIVE copy is /usr/local/libexec/wa-codex-broker-wrapper.sh — ROOT-OWNED,
+# outside any user-writable $HOME, per the declared-pairs charter for
+# system-domain LaunchDaemon payloads (fw-guard precedent 2026-08-14): the
+# process runs AS zantara-codex, so a compromised zantara-codex identity
+# gains no privilege by editing a home-dir wrapper, but a root-owned payload
+# denies it PERSISTENCE — it cannot rewrite what launchd will execute at
+# the next restart. Same for the runtime tree in /usr/local/lib. Placed by
+# scripts/provision_zantara_codex.sh; the pair is declared in
 # infra/home-fork/declared-pairs.json (superscar #1 — re-run provisioning
 # after changing this file, the merge alone leaves the live copy stale).
 #
@@ -22,8 +28,9 @@
 set -u
 
 HOME_DIR="/Users/zantara-codex"
+RUNTIME_DIR="/usr/local/lib/wa-codex-broker"
 ENV_FILE="$HOME_DIR/.wa-codex-broker.env"
-VENV_PY="$HOME_DIR/wa-broker/.venv/bin/python3"
+VENV_PY="$RUNTIME_DIR/.venv/bin/python3"
 TAG="wa-codex-broker-wrapper"
 ORGAN_ID="pro.wa_codex_broker"
 SIDECAR_DIR="$HOME_DIR/.organism/last_seen"
@@ -70,8 +77,8 @@ if [ ! -x "$VENV_PY" ]; then
     exit 78
 fi
 
-cd "$HOME_DIR/wa-broker" || { heartbeat "refused" "cd failed"; exit 78; }
-export PYTHONPATH="$HOME_DIR/wa-broker"
+cd "$RUNTIME_DIR" || { heartbeat "refused" "cd failed"; exit 78; }
+export PYTHONPATH="$RUNTIME_DIR"
 
 heartbeat "starting" "exec daemon"
 exec "$VENV_PY" -m backend.services.integrations.wa_codex_daemon

@@ -53,6 +53,8 @@ the one-time ``codex login`` (spec §Solo-operatore).
 from __future__ import annotations
 
 import asyncio
+import contextlib
+import json
 import logging
 import os
 import re
@@ -79,11 +81,34 @@ from backend.llm.codex_exec_client import (
 
 logger = logging.getLogger(__name__)
 
-# Server-side transport bound (wa_broker router: `result_text` max_length
-# 65536). Enforced HERE as well, BEFORE posting: a longer result is reported
-# as error_class="oversized_output", never truncated-and-sent — a silently
-# truncated answer is a corrupt answer wearing the success shape.
+# Server-side transport bounds, BOTH enforced HERE before posting (a breach
+# is reported as error_class="oversized_output", never truncated-and-sent —
+# a silently truncated answer is a corrupt answer wearing the success shape):
+#
+# 1. `_RESULT_TEXT_MAX` mirrors the router's Pydantic `max_length=65536`,
+#    which counts CHARACTERS.
+# 2. `_RESULT_BYTES_MAX` guards the router's SEPARATE stream cap
+#    `_MAX_BODY_BYTES = 128 KiB`, which counts JSON-ENCODED BYTES — a
+#    60,000-char answer of 3-byte UTF-8 characters passes the char cap and
+#    still encodes to ~180 KB (measured, Kimi round-1 F1), which the router
+#    413s and the daemon's 4xx-never-retry branch would then abandon
+#    untyped. The pre-check measures with EXACTLY the encoding `_complete`
+#    sends (see `_encode_body`), so what is measured is what goes on the
+#    wire. 120 KiB leaves declared headroom (~8 KiB) for the JSON envelope
+#    (ids, key, exec_ms) under the router's 128 KiB.
 _RESULT_TEXT_MAX = 65536
+_RESULT_BYTES_MAX = 120 * 1024
+
+
+def _encode_body(body: dict[str, object]) -> bytes:
+    """The ONE encoder for /complete bodies — also the measuring stick for
+    `_RESULT_BYTES_MAX`. Matches what httpx's `json=` would produce today
+    (`ensure_ascii=False, separators=(",", ":")`), but owned here so the
+    byte pre-check can never drift from the bytes actually sent if httpx
+    changes its encoder."""
+    return json.dumps(body, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode(
+        "utf-8"
+    )
 
 # How often the CLI version pin is re-verified while the loop runs.
 _VERSION_RECHECK_S = 300.0
@@ -162,6 +187,15 @@ def compute_budget_s(deadline_at: str, server_now: str, net_margin_s: float) -> 
     The result is counted down on ``time.monotonic()`` by the exec timeout.
     Raises ``ValueError`` on unparseable timestamps — a malformed claim is
     a contract break, not a zero budget.
+
+    ``net_margin_s`` does DOUBLE DUTY, declared (Kimi round-1 F5): it
+    absorbs both the claim response's return transit (``server_now`` is
+    stamped before the response travels back to Pro — that transit is real
+    deadline time this function cannot see) and any residual margin for the
+    completion POST. A claim leg slower than the margin means the exec can
+    outlive the lease and complete into a 410 — convergent (the server-side
+    fold already happened), just wasted work. Size ``WA_BROKER_NET_MARGIN_S``
+    against measured claim latency, not hope.
     """
     deadline = datetime.fromisoformat(deadline_at)
     now = datetime.fromisoformat(server_now)
@@ -233,8 +267,18 @@ class WaCodexDaemon:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
-            stdout_b, _ = await asyncio.wait_for(proc.communicate(), timeout=15.0)
-        except (OSError, asyncio.TimeoutError):
+            try:
+                stdout_b, _ = await asyncio.wait_for(proc.communicate(), timeout=15.0)
+            except asyncio.TimeoutError:
+                # A hung `codex --version` is precisely the broken-binary
+                # state this probe guards — without the kill it would leak
+                # one child per re-check, forever (Kimi round-1 F3).
+                with contextlib.suppress(ProcessLookupError):
+                    proc.kill()
+                with contextlib.suppress(asyncio.TimeoutError, OSError):
+                    await asyncio.wait_for(proc.wait(), timeout=5.0)
+                return None
+        except OSError:
             return None
         if proc.returncode != 0:
             return None
@@ -277,7 +321,14 @@ class WaCodexDaemon:
         if response.status_code != 200:
             logger.warning("wa-codex-daemon: claim HTTP %s", response.status_code)
             return None
-        data = response.json()
+        try:
+            data = response.json()
+        except ValueError:
+            # A 200 whose body is not JSON (an LB error page, a truncated
+            # response) is a transport blip, not a loop crash — treat it
+            # like any failed claim (Kimi round-1 named test gap).
+            logger.warning("wa-codex-daemon: claim returned non-JSON 200")
+            return None
         if not data.get("job_id"):
             return None
         try:
@@ -317,9 +368,14 @@ class WaCodexDaemon:
             "error_class": error_class,
             "exec_ms": exec_ms,
         }
+        encoded = _encode_body(body)
         for attempt in range(_COMPLETE_ATTEMPTS):
             try:
-                response = await self._http.post("/api/wa-broker/complete", json=body)
+                response = await self._http.post(
+                    "/api/wa-broker/complete",
+                    content=encoded,
+                    headers={"Content-Type": "application/json"},
+                )
             except httpx.HTTPError as exc:
                 logger.warning(
                     "wa-codex-daemon: complete transport error (attempt %d/%d, job %s): %s",
@@ -385,9 +441,14 @@ class WaCodexDaemon:
         completion_key = uuid.uuid4().hex
 
         if not self._version_ok:
-            # Unreachable in the plain single-flight order (the loop checks
-            # before claiming), kept as a guard so a claimed job is NEVER
-            # executed on a drifted binary if the ordering ever changes.
+            # Guard against a KNOWN-drifted state reaching an exec. Honest
+            # scope (Kimi round-1 F4): this reads the CACHED verdict, so a
+            # binary upgraded between two re-checks executes for up to
+            # `_VERSION_RECHECK_S` before the flip — the guard catches
+            # drift the daemon has already SEEN, and chaos row 8's bound is
+            # the re-check interval, not zero. A per-exec version probe
+            # would close that window at the cost of a subprocess inside
+            # every job's budget; deliberately not taken.
             await self._complete(
                 claim, completion_key, result_text=None, error_class="cli_version_mismatch", exec_ms=None
             )
@@ -448,12 +509,35 @@ class WaCodexDaemon:
             text = result.text
             if not text.strip():
                 error_class = "empty_output"
+            elif "\x00" in text:
+                # PostgreSQL TEXT cannot store U+0000; the router 422s it
+                # with instructions to report cli_failure — pre-scan here so
+                # the job fails TYPED and fast instead of folding at the
+                # lease deadline behind an unretried 422 (Kimi round-1 F2).
+                logger.warning(
+                    "wa-codex-daemon: result for job %s contains NUL — cli_failure",
+                    claim.job_id,
+                )
+                error_class = "cli_failure"
             elif len(text) > _RESULT_TEXT_MAX:
-                # Cap BEFORE posting; never truncate-and-send.
+                # Char cap (router Pydantic max_length). BEFORE posting;
+                # never truncate-and-send.
                 logger.warning(
                     "wa-codex-daemon: result for job %s exceeds %d chars — oversized_output",
                     claim.job_id,
                     _RESULT_TEXT_MAX,
+                )
+                error_class = "oversized_output"
+            elif len(_encode_body({"result_text": text})) > _RESULT_BYTES_MAX:
+                # Byte cap (router stream cap) measured with the SAME
+                # encoder `_complete` sends with — a multibyte-heavy answer
+                # can pass the char cap and still 413 at the router, where
+                # the 4xx-never-retry branch would abandon it untyped
+                # (Kimi round-1 F1, measured: 60k chars -> ~180KB).
+                logger.warning(
+                    "wa-codex-daemon: result for job %s exceeds %d encoded bytes — oversized_output",
+                    claim.job_id,
+                    _RESULT_BYTES_MAX,
                 )
                 error_class = "oversized_output"
             else:

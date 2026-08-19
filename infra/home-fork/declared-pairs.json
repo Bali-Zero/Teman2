@@ -806,10 +806,10 @@
       "machines": ["mini"]
     },
     {
-      "live": "/Users/zantara-codex/bin/wa-codex-broker-wrapper.sh",
+      "live": "/usr/local/libexec/wa-codex-broker-wrapper.sh",
       "repo": "infra/launchagents/wrappers/wa-codex-broker-wrapper.sh",
       "machines": ["pro"],
-      "_note": "WA codex broker daemon wrapper (BOT-V4 S2 PR-6), copied by scripts/provision_zantara_codex.sh into the login-less zantara-codex user's home on Pro. Absolute path by necessity: the ~ convention expands to the RUNNING user, and this payload lives in ANOTHER user's 0700 home. Expected lint behavior on Pro when run as nuzantara: the live path reads as not-on-disk (permission wall) and lands in the skipped diagnostic — that is the honest state, not clean; only a root-run lint can verify the pair for real. Re-run provisioning after changing the repo twin: the merge alone never updates the live copy (W107 delivery gotcha)."
+      "_note": "WA codex broker daemon wrapper (BOT-V4 S2 PR-6), installed root-owned by scripts/provision_zantara_codex.sh. System-domain LaunchDaemon payload under the registry's absolute-prefix exception (fw-guard precedent 2026-08-14): the daemon runs AS the login-less zantara-codex user, and a root-owned payload outside any user-writable $HOME denies a compromised zantara-codex identity persistence across restarts. World-readable, so the lint can verify this pair as any user. Re-run provisioning after changing the repo twin: the merge alone never updates the live copy (W107 delivery gotcha)."
     }
   ],
   "allow": [
