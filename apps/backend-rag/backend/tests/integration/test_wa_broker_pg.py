@@ -54,6 +54,7 @@ _BROKER_MIGRATIONS = (
     _MIGRATIONS_DIR / "270_wa_broker_jobs.sql",
     _MIGRATIONS_DIR / "271_wa_broker_gauge_half_open_at.sql",
     _MIGRATIONS_DIR / "272_wa_broker_package_text.sql",
+    _MIGRATIONS_DIR / "273_wa_broker_completion_digest.sql",
 )
 
 _SCHEMA = "wa_broker_it"
@@ -1221,3 +1222,138 @@ async def test_typed_failure_fold_is_atomic_with_terminalization(
             "SELECT state FROM broker_jobs WHERE job_id = $1", offered.job_id
         )
     ) == "failed"
+
+
+async def test_builder_wire_text_survives_transport_with_matching_hash(
+    conn: asyncpg.Connection,
+) -> None:
+    """Codex re-verdict r5, finding 1 — end to end: the bytes the BUILDER
+    emits (wire_text, the SSOT serializer) travel offer->claim untouched
+    and still hash to the package_hash the builder computed. This is the
+    whole contract the broker daemon will verify; the earlier fidelity test
+    proved the column, this proves the domain — to_payload()'s 7-field
+    serialization could never satisfy it (it contains the hash itself)."""
+    import hashlib as _hashlib
+
+    from backend.services.rag.agentic import wa_package_builder as wpb
+
+    fields = {
+        "history": [{"role": "user", "content": "berapa modal disetor?"}],
+        "chunks": [{"text": "BKPM 5/2025", "source": "kb"}],
+        "pricing_block": None,
+        "persona_digest": "persona-d",
+        "evidence_inputs": {"domain": "company", "evidence_score": 0.8},
+        "thread_epoch": 2,
+    }
+    pkg = wpb.ContextPackage(package_hash=wpb._package_hash(**fields), **fields)
+
+    await _seed_alive_gauge(conn)
+    outbox_id, thread_id, tok = await _outbox_row(conn)
+    offered = await wa_broker.offer_job(
+        conn,
+        outbox_id=outbox_id,
+        thread_id=thread_id,
+        claim_token=tok,
+        outbox_expected_status="generating",
+        package=pkg.wire_text(),
+        evidence_inputs="{}",
+        package_hash=pkg.package_hash,
+        thread_epoch=2,
+    )
+    assert offered.outcome is OfferOutcome.OFFERED
+    leased = await wa_broker.claim_job(conn, in_flight=0, last_exec_ms=None)
+    assert leased is not None
+    assert (
+        _hashlib.sha256(leased["package"].encode("utf-8")).hexdigest()
+        == leased["package_hash"]
+    )
+
+
+async def test_same_completion_key_with_different_payload_conflicts(
+    conn: asyncpg.Connection,
+) -> None:
+    """Codex re-verdict r5, finding 2 (GUILT): the contract promises
+    CONFLICT for a corrupted retry — same completion_key and fence, but a
+    DIFFERENT payload. Before completion_digest (migration 273) the replay
+    check compared only key/fence/state, so that branch was unreachable:
+    result B under A's key answered REPLAY 200 while the worker consumed A."""
+    await _seed_alive_gauge(conn)
+    outbox_id, thread_id, tok = await _outbox_row(conn)
+    offered = await _offer(conn, outbox_id, thread_id, tok)
+    assert offered.outcome is OfferOutcome.OFFERED
+    leased = await wa_broker.claim_job(conn, in_flight=0, last_exec_ms=None)
+    assert leased is not None
+    fence = leased["fence_token"]
+
+    accepted = await wa_broker.complete_job(
+        conn,
+        job_id=offered.job_id,
+        fence_token=fence,
+        completion_key="attempt-1",
+        result_text="result A",
+        error_class=None,
+        exec_ms=10,
+    )
+    assert accepted is CompleteStatus.ACCEPTED
+
+    # Same key, different TEXT -> CONFLICT (never a silent 200).
+    different_text = await wa_broker.complete_job(
+        conn,
+        job_id=offered.job_id,
+        fence_token=fence,
+        completion_key="attempt-1",
+        result_text="result B",
+        error_class=None,
+        exec_ms=10,
+    )
+    assert different_text is CompleteStatus.CONFLICT
+
+    # Same key, typed FAILURE instead of the accepted success -> CONFLICT.
+    different_kind = await wa_broker.complete_job(
+        conn,
+        job_id=offered.job_id,
+        fence_token=fence,
+        completion_key="attempt-1",
+        result_text=None,
+        error_class="exec_timeout",
+        exec_ms=10,
+    )
+    assert different_kind is CompleteStatus.CONFLICT
+
+
+async def test_identical_retry_still_replays_after_consumption(
+    conn: asyncpg.Connection,
+) -> None:
+    """INNOCENCE twin: the digest is frozen OUTSIDE the payload columns, so
+    consume_result NULLing result_text does not turn a legitimate identical
+    retry (lost HTTP response, late re-POST) into a false CONFLICT."""
+    await _seed_alive_gauge(conn)
+    outbox_id, thread_id, tok = await _outbox_row(conn)
+    offered = await _offer(conn, outbox_id, thread_id, tok)
+    assert offered.outcome is OfferOutcome.OFFERED
+    leased = await wa_broker.claim_job(conn, in_flight=0, last_exec_ms=None)
+    assert leased is not None
+    fence = leased["fence_token"]
+
+    accepted = await wa_broker.complete_job(
+        conn,
+        job_id=offered.job_id,
+        fence_token=fence,
+        completion_key="attempt-1",
+        result_text="the reply",
+        error_class=None,
+        exec_ms=10,
+    )
+    assert accepted is CompleteStatus.ACCEPTED
+    assert (await wa_broker.consume_result(conn, offered.job_id)) == "the reply"
+
+    replay = await wa_broker.complete_job(
+        conn,
+        job_id=offered.job_id,
+        fence_token=fence,
+        completion_key="attempt-1",
+        result_text="the reply",
+        error_class=None,
+        exec_ms=10,
+    )
+    assert replay is CompleteStatus.REPLAY

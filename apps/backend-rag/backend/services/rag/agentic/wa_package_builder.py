@@ -140,6 +140,13 @@ class ContextPackage:
         lists/dicts inside them — handing out the internal references
         would let a caller mutate content after `package_hash` was
         computed, silently divorcing the payload from its own hash.
+
+        NOT the broker wire format: this 7-key view INCLUDES package_hash,
+        so its serialization can never equal the bytes the hash covers —
+        offering `json.dumps(to_payload())` as broker_jobs.package makes
+        every broker-side hash verification fail by construction (Codex S2
+        re-verdict r5, finding 1). The envelope the broker receives and
+        verifies is ``wire_text()``; the hash travels beside it.
         """
         return copy.deepcopy(
             {
@@ -150,6 +157,31 @@ class ContextPackage:
                 "evidence_inputs": self.evidence_inputs,
                 "thread_epoch": self.thread_epoch,
                 "package_hash": self.package_hash,
+            }
+        )
+
+    def wire_text(self) -> str:
+        """The EXACT bytes offered to the broker as broker_jobs.package —
+        and, verbatim, the bytes ``package_hash`` covers.
+
+        One serializer (``_canonical_wire``) produces both this string and
+        the string ``_package_hash`` digests, so the hash domain and the
+        wire bytes cannot drift apart (Codex S2 re-verdict r5, finding 1:
+        the 7-field ``to_payload()`` serialization inevitably differed from
+        the 6-field hash domain — a broker recomputing sha256 over the
+        received bytes rejected every healthy package). The transport
+        stores this as TEXT (migration 272) precisely so these bytes
+        survive offer->claim untouched: ``sha256(wire_text()) ==
+        package_hash`` holds end to end.
+        """
+        return _canonical_wire(
+            {
+                "history": self.history,
+                "chunks": self.chunks,
+                "pricing_block": self.pricing_block,
+                "persona_digest": self.persona_digest,
+                "evidence_inputs": self.evidence_inputs,
+                "thread_epoch": self.thread_epoch,
             }
         )
 
@@ -358,6 +390,16 @@ def _cap_chunks(chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return capped[:_MAX_CHUNKS]
 
 
+def _canonical_wire(payload: dict[str, Any]) -> str:
+    """The ONE serializer for the broker envelope — used by BOTH
+    ``ContextPackage.wire_text()`` and ``_package_hash``, so the bytes on
+    the wire and the bytes under the digest are the same function's output
+    by construction (Codex S2 re-verdict r5, finding 1). `sort_keys=True`
+    makes it independent of dict insertion order; compact `separators` plus
+    `ensure_ascii=False` keep it deterministic for identical content."""
+    return json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+
+
 def _package_hash(
     history: list[dict[str, str]],
     chunks: list[dict[str, Any]],
@@ -366,12 +408,9 @@ def _package_hash(
     evidence_inputs: dict[str, Any],
     thread_epoch: int,
 ) -> str:
-    """Content-addressed sha256 hex digest over the 6 non-hash fields.
-
-    `sort_keys=True` makes the digest independent of dict insertion order;
-    the compact `separators` plus `ensure_ascii=False` keep the
-    serialization deterministic for identical logical content.
-    """
+    """Content-addressed sha256 hex digest over the 6 non-hash fields —
+    digested over exactly ``_canonical_wire`` of them, i.e. exactly the
+    string ``wire_text()`` later emits."""
     payload = {
         "history": history,
         "chunks": chunks,
@@ -380,8 +419,7 @@ def _package_hash(
         "evidence_inputs": evidence_inputs,
         "thread_epoch": thread_epoch,
     }
-    encoded = json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
-    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+    return hashlib.sha256(_canonical_wire(payload).encode("utf-8")).hexdigest()
 
 
 async def build_context_package(

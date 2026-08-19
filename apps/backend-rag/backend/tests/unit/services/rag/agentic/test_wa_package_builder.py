@@ -725,3 +725,31 @@ class TestChunkCap:
 
         assert len(package.chunks) == 8
         assert "dropping" in caplog.text and "chunk" in caplog.text
+
+
+def test_wire_text_is_exactly_the_bytes_package_hash_covers() -> None:
+    """Codex S2 re-verdict r5, finding 1 (GUILT): the hash domain and the
+    wire bytes must be the SAME function's output. Before wire_text()
+    existed, the only serialization on offer was to_payload() — 7 fields
+    INCLUDING package_hash — so a broker recomputing sha256 over the
+    received bytes rejected every healthy package by construction."""
+    import hashlib
+    import json
+
+    fields: dict[str, Any] = {
+        "history": [{"role": "user", "content": "hi"}],
+        "chunks": [{"text": "chunk", "source": "s"}],
+        "pricing_block": {"category": {"svc": {"price": "1"}}},
+        "persona_digest": "digest",
+        "evidence_inputs": {"domain": "visa"},
+        "thread_epoch": 3,
+    }
+    pkg = ContextPackage(package_hash=wpb_module._package_hash(**fields), **fields)
+
+    wire = pkg.wire_text()
+    assert hashlib.sha256(wire.encode("utf-8")).hexdigest() == pkg.package_hash
+    # The wire is the 6-field envelope — the hash travels BESIDE it, never
+    # inside it (a hash cannot cover bytes that contain themselves).
+    assert "package_hash" not in json.loads(wire)
+    # And it is NOT the to_payload() serialization, which does carry it.
+    assert "package_hash" in pkg.to_payload()

@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import asyncio
 import enum
+import hashlib
 import logging
 import os
 import uuid
@@ -706,6 +707,18 @@ async def complete_job(
     if error_class is not None and error_class not in ALLOWED_ERROR_CLASSES:
         raise ValueError("unknown error_class (not in transport vocabulary)")
 
+    # Non-PII fingerprint of THIS attempt's payload, frozen on the row at
+    # accept time (migration 273; Codex re-verdict r5, finding 2): the
+    # replay check compares it, so the promised CONFLICT for "same
+    # completion_key, different payload" is actually reachable — and it
+    # survives consume_result NULLing result_text, so a late corrupted
+    # retry conflicts instead of replaying even after consumption.
+    completion_digest = (
+        f"err:{error_class}"
+        if error_class is not None
+        else "ok:" + hashlib.sha256((result_text or "").encode("utf-8")).hexdigest()
+    )
+
     # Each accepted CAS folds its own outcome into the breaker in the SAME
     # transaction (Codex re-verdict r2, finding 2): a typed failure that
     # commits leased->failed without folding is permanently invisible — the
@@ -723,7 +736,7 @@ async def complete_job(
                 SET state = 'failed', package = NULL, evidence_inputs = NULL,
                     result_text = NULL, completed_at = now(),
                     completion_key = $3, error_class = $4, exec_ms = $5,
-                    outcome = 'broker_failed'
+                    completion_digest = $6, outcome = 'broker_failed'
                 WHERE job_id = $1 AND fence_token = $2 AND state = 'leased'
                   AND deadline_at > now()
                 RETURNING job_id, mode
@@ -733,6 +746,7 @@ async def complete_job(
                 completion_key,
                 error_class,
                 exec_ms,
+                completion_digest,
             )
             if row is not None and row["mode"] == "serve":
                 await record_breaker_result(conn, success=False)
@@ -742,7 +756,8 @@ async def complete_job(
                 """
                 UPDATE broker_jobs
                 SET state = 'completed_pending_consume', result_text = $4,
-                    completed_at = now(), completion_key = $3, exec_ms = $5
+                    completed_at = now(), completion_key = $3, exec_ms = $5,
+                    completion_digest = $6
                 WHERE job_id = $1 AND fence_token = $2 AND state = 'leased'
                   AND deadline_at > now()
                 RETURNING job_id, mode
@@ -752,30 +767,41 @@ async def complete_job(
                 completion_key,
                 result_text,
                 exec_ms,
+                completion_digest,
             )
             if row is not None and row["mode"] == "serve":
                 await record_breaker_result(conn, success=True)
     if row is not None:
         return CompleteStatus.ACCEPTED
 
-    # CAS missed. Same (completion_key, fence_token) on the same job = the
-    # retry of a completion we already accepted (the first response was lost
-    # in transit): idempotent 200. The replay check deliberately does NOT
-    # compare text — the consumer may already have NULLed it; completion_key
-    # equality IS the identity of the attempt (it is minted once per exec).
-    # Replay eligibility REQUIRES the original fence and a post-acceptance
-    # state, and 'expired' takes precedence over key equality (S2
-    # cross-family review, finding 6): a completion whose consumer died and
-    # was reaped is GONE — its acceptance no longer stands, and answering
-    # REPLAY would tell the broker its result was delivered.
+    # CAS missed. Same (completion_key, fence_token, payload fingerprint)
+    # on the same job = the retry of a completion we already accepted (the
+    # first response was lost in transit): idempotent 200. The replay check
+    # compares the frozen completion_digest, NOT the live text — the
+    # consumer may already have NULLed result_text, but the digest survives
+    # (migration 273), so a corrupted retry that reuses key+fence with a
+    # DIFFERENT payload gets the CONFLICT the contract promises instead of
+    # a false REPLAY (Codex re-verdict r5, finding 2). Replay eligibility
+    # REQUIRES the original fence and a post-acceptance state, and
+    # 'expired' takes precedence over key equality (S2 cross-family
+    # review, finding 6): a completion whose consumer died and was reaped
+    # is GONE — its acceptance no longer stands, and answering REPLAY
+    # would tell the broker its result was delivered.
     prior = await conn.fetchrow(
-        "SELECT completion_key, fence_token, state FROM broker_jobs WHERE job_id = $1",
+        """
+        SELECT completion_key, fence_token, state, completion_digest
+        FROM broker_jobs WHERE job_id = $1
+        """,
         job_id,
     )
     if prior is None or prior["state"] == "expired":
         return CompleteStatus.GONE
     if prior["state"] in ("completed_pending_consume", "consumed", "failed"):
-        if prior["completion_key"] == completion_key and prior["fence_token"] == fence_token:
+        if (
+            prior["completion_key"] == completion_key
+            and prior["fence_token"] == fence_token
+            and prior["completion_digest"] == completion_digest
+        ):
             return CompleteStatus.REPLAY
         return CompleteStatus.CONFLICT
     return CompleteStatus.GONE
