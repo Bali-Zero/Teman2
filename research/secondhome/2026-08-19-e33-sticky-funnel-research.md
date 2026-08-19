@@ -205,8 +205,12 @@ independent ideation seats; their divergences from the surviving design are name
 
 1. **GO/scope for Phase B** (the Studio core) and whether Phase A (pack re-authoring)
    starts in the same wave.
-2. **Price posture**: hold 39M (mid-market, transparent) vs react to Flado 35M / Gaya 30M.
-   Recommendation: hold and out-tool them — the scan says nobody competes on product.
+2. **Price posture** — ✅ **RULED same day (Zero, 2026-08-19): reprice to IDR 35,000,000,
+   matching Flado.** The "hold 39M" recommendation below is recorded as written and was
+   overridden by the owner; the repricing PR carries the change across PricingTool and
+   every consuming surface. ~~hold 39M (mid-market, transparent) vs react to Flado 35M /
+   Gaya 30M. Recommendation: hold and out-tool them — the scan says nobody competes on
+   product.~~
 3. **Dependent pricing** (12M/person draft) — confirming it unlocks the family module of
    the cost view.
 4. **Languages**: IT/ID landings are already F4c; the scan adds RU/ZH/KO/FR as the
