@@ -217,11 +217,12 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     """Sanity: the KBLI gold-set rule is path-scoped to kbli-gold-all.json
     only — not the other KBLI files, which stay on the closed-writer-set
     path rules in AUTO_APPROVE_RULES."""
-    assert len(CONTENT_KEYED_RULES) == 9  # +1: infra/llm-credentials/declared.json sha256_16 (2026-08-12)
+    assert len(CONTENT_KEYED_RULES) == 10  # +1: infra/llm-credentials/declared.json sha256_16 (2026-08-12)
     # +1: apps/backend-rag/backend/scripts/visa_engine/gold_replay_driver.py public_key (2026-08-13)
     # +1: research/visa/2026-08-12-gold-replay-live-report.json payload_sha256 (2026-08-13)
     # +1: scripts/lint_telegram_tokens.py KNOWN_COMPROMISED sha256[:16] key (2026-08-14)
     # +1: traffic-source fail-closed proof identity/integrity anchors (2026-08-15)
+    # +1: fold_pack_seq10.py seq-9 chain anchor exact-value pin (2026-08-19)
     path_pat, _content_pat, reason = CONTENT_KEYED_RULES[1]
     assert path_pat.search(KBLI_GOLD_ALL)
     assert not path_pat.search("apps/mouth/data/KBLI_2025_FINAL_CLEAN.json")
@@ -930,3 +931,88 @@ def test_innocence_traffic_source_ride_along_is_not_approved() -> None:
         + '"'
     )
     assert content_pat.match(compound) is None
+
+
+# --- fold_pack_seq10.py seq-9 chain anchor rule (2026-08-19) ----------------
+#
+# Context (PR #4350): CI's Detect Secrets gate flagged
+# apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq10.py:99 as an
+# unaudited "Hex High Entropy String" — _EXPECTED_SEQ9_PAYLOAD_SHA256, the
+# content-derived sha256 of the PUBLIC signed seq-9 RulePack payload (same
+# value class as the contracts/packs/rulepack-*.json rule in
+# AUTO_APPROVE_RULES: hashes of public legal documents, never credentials).
+# The fold script pins it so the seq-10 chain link is triple-derived at run
+# time (declared == anchor == recomputed from the seq-9 source bytes) and any
+# mismatch aborts the fold.
+#
+# Content-keyed and pinned to the EXACT anchor value, not a hex shape: this
+# is production code with an open surface for future edits — a real
+# credential pasted anywhere else in the file (or even another 64-hex value
+# on this line) stays flagged. The approved line is the bare
+# continuation-string line of the parenthesized assignment, end-anchored.
+
+FOLD_PACK_SEQ10 = "apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq10.py"
+FOLD_PACK_SEQ10_ANCHOR = (
+    "47feff8246c608c7c6085ffdac776fdc020bb56688d5f35a0a3e685eb40f271e"
+)
+
+
+def test_fold_seq10_rule_registered_and_scoped_to_exactly_one_file() -> None:
+    path_pat, _content_pat, reason = CONTENT_KEYED_RULES[9]
+    assert path_pat.search(FOLD_PACK_SEQ10)
+    assert not path_pat.search(
+        "apps/backend-rag/backend/scripts/visa_engine/gold_replay_driver.py"
+    )
+    assert not path_pat.search(
+        "apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq11.py"
+    )
+    assert not path_pat.search("scripts/fold_pack_seq10.py")
+    assert "credential" in reason
+
+
+def test_guilt_fold_seq10_real_finding_approved() -> None:
+    """The exact real line 99 in the fold script must be approved — read live
+    off disk, so this fails if the file and rule ever drift, not merely if
+    someone edits a string literal in this test."""
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[9]
+    lines = Path(FOLD_PACK_SEQ10).read_text(encoding="utf-8").splitlines()
+    real_line = lines[98]  # line 99, 1-indexed
+    assert real_line == f'    "{FOLD_PACK_SEQ10_ANCHOR}"'
+    assert content_pat.match(real_line), f"should be approved: {real_line!r}"
+
+
+def test_innocence_fold_seq10_other_hex_value_not_approved() -> None:
+    """A DIFFERENT 64-hex bare string line must not be approved — proves the
+    rule is pinned to the exact anchor value, not merely to the shape."""
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[9]
+    other_hex_line = '    "' + "a" * 64 + '"'
+    assert content_pat.match(other_hex_line) is None
+
+
+def test_innocence_fold_seq10_uppercase_not_approved() -> None:
+    """The same value uppercased must not be approved — the anchor is
+    lowercase hex, matching hashlib.hexdigest's own output."""
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[9]
+    uppercase_line = f'    "{FOLD_PACK_SEQ10_ANCHOR.upper()}"'
+    assert content_pat.match(uppercase_line) is None
+
+
+def test_innocence_fold_seq10_ride_along_statement_not_approved() -> None:
+    """The value followed by a second statement or token on the same line
+    must not launder the ride-along — end-anchored, same discipline as every
+    other rule in this list."""
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[9]
+    for compound in (
+        f'    "{FOLD_PACK_SEQ10_ANCHOR}"; import os',
+        f'    "{FOLD_PACK_SEQ10_ANCHOR}" "second_token"',
+    ):
+        assert content_pat.match(compound) is None, f"must NOT be approved: {compound!r}"
+
+
+def test_innocence_fold_seq10_keyed_assignment_not_approved() -> None:
+    """A JSON-style keyed line carrying the same value must not be approved —
+    the rule approves only the bare continuation-string shape of the
+    parenthesized assignment, never a `"key": "value"` shape."""
+    _path_pat, content_pat, _reason = CONTENT_KEYED_RULES[9]
+    keyed_line = f'    "payload_sha256": "{FOLD_PACK_SEQ10_ANCHOR}",'
+    assert content_pat.match(keyed_line) is None

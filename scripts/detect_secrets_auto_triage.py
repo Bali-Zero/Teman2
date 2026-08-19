@@ -296,6 +296,30 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "reproduce the reviewed ceremony; exact path/key/shape only, never "
         "bearer material",
     ),
+    # fold_pack_seq10.py: _EXPECTED_SEQ9_PAYLOAD_SHA256 is the chain anchor —
+    # the content-derived sha256 of the PUBLIC signed seq-9 RulePack payload
+    # (same value class as the contracts/packs/rulepack-*.json rule in
+    # AUTO_APPROVE_RULES: hashes of public legal documents, never
+    # credentials). The fold script pins it so the seq-10 chain link is
+    # triple-derived at run time (declared == anchor == recomputed from the
+    # seq-9 source bytes) and any mismatch aborts the fold.
+    #
+    # Content-keyed and pinned to the EXACT anchor value, not a hex shape:
+    # this is production code with an open surface for future edits — a real
+    # credential pasted anywhere else in the file (or even another 64-hex
+    # value on this line) stays flagged. The approved line is the bare
+    # continuation-string line of the parenthesized assignment, end-anchored.
+    (
+        re.compile(
+            r"^apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq10\.py$"
+        ),
+        re.compile(
+            r'^\s*"47feff8246c608c7c6085ffdac776fdc020bb56688d5f35a0a3e685eb40f271e"\s*$'
+        ),
+        "fold_pack_seq10.py: seq-9 chain anchor — content-derived sha256 of "
+        "the public signed seq-9 RulePack payload, triple-derived at run "
+        "time; exact value pinned, never a credential",
+    ),
 ]
 
 # Each rule is (pattern, reason). The pattern matches the file path
