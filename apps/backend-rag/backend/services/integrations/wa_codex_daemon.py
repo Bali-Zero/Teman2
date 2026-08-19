@@ -185,8 +185,10 @@ def compute_budget_s(deadline_at: str, server_now: str, net_margin_s: float) -> 
     Pure function of server fields (chaos row 6): the local wall clock is
     never an input, so Pro clock skew cannot shrink or inflate the budget.
     The result is counted down on ``time.monotonic()`` by the exec timeout.
-    Raises ``ValueError`` on unparseable timestamps — a malformed claim is
-    a contract break, not a zero budget.
+    Raises ``ValueError`` on unparseable timestamps and ``TypeError`` on an
+    aware/naive mix (Kimi round-2 L3 — both fields come from one server
+    serializer, so the mix is a server bug) — a malformed claim is a
+    contract break, not a zero budget.
 
     ``net_margin_s`` does DOUBLE DUTY, declared (Kimi round-1 F5): it
     absorbs both the claim response's return transit (``server_now`` is
@@ -388,7 +390,15 @@ class WaCodexDaemon:
                     await asyncio.sleep(_COMPLETE_BACKOFF_S[min(attempt, len(_COMPLETE_BACKOFF_S) - 1)])
                 continue
             if response.status_code == 200:
-                status = response.json().get("status")
+                try:
+                    status = response.json().get("status")
+                except ValueError:
+                    # A 200 whose body is not JSON (LB error page) — same
+                    # guard as the claim side (Kimi round-2 L1). If the 200
+                    # was fake and the completion never landed, the lease
+                    # reaper folds the job; a re-POST would be same-key-safe
+                    # but a 200 is the server's word that it processed us.
+                    status = "unknown-non-json-200"
                 logger.info(
                     "wa-codex-daemon: completion %s for job %s (outcome=%s)",
                     status,
@@ -456,7 +466,7 @@ class WaCodexDaemon:
 
         try:
             budget_s = compute_budget_s(claim.deadline_at, claim.server_now, self._config.net_margin_s)
-        except ValueError:
+        except (ValueError, TypeError):
             logger.error(
                 "wa-codex-daemon: unparseable deadline fields for job %s — contract break",
                 claim.job_id,

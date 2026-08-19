@@ -105,7 +105,7 @@ class _Broker:
     """
 
     claim_results: list[dict[str, Any] | str | None] = field(default_factory=list)
-    complete_script: list[int | Exception] = field(default_factory=list)
+    complete_script: list[int | str | Exception] = field(default_factory=list)
     claim_requests: list[httpx.Request] = field(default_factory=list)
     complete_requests: list[httpx.Request] = field(default_factory=list)
 
@@ -127,6 +127,12 @@ class _Broker:
             action = self.complete_script.pop(0) if self.complete_script else 200
             if isinstance(action, Exception):
                 raise action
+            if action == _NON_JSON_200:
+                return httpx.Response(
+                    200,
+                    content=b"<html>upstream gateway error</html>",
+                    headers={"Content-Type": "text/html"},
+                )
             body = {"status": "accepted"} if action == 200 else {"detail": "scripted"}
             return httpx.Response(action, json=body)
         raise AssertionError(f"unexpected path: {request.url.path}")
@@ -227,6 +233,25 @@ class TestBudget:
     def test_guilt_unparseable_timestamp_raises(self) -> None:
         with pytest.raises(ValueError):
             compute_budget_s("not-a-timestamp", "2020-01-01T00:00:00+00:00", 1.0)
+
+    @pytest.mark.asyncio
+    async def test_guilt_aware_naive_timestamp_mix_completes_cli_failure(self) -> None:
+        """An aware/naive mix raises TypeError, not ValueError (Kimi
+        round-2 L3) — the contract-break catch must cover BOTH so the job
+        fails typed instead of dying in the loop's generic handler."""
+        broker = _Broker(
+            claim_results=[_claim_payload(server_now="2020-01-01T00:00:00")]  # naive
+        )
+        codex = _StubCodex()
+        daemon = _daemon(broker, codex)
+        daemon._version_ok = True
+
+        claim = await daemon._claim()
+        await daemon._execute_and_complete(claim)
+
+        assert codex.calls == []  # contract break — never spawned
+        [body] = _complete_bodies(broker)
+        assert body["error_class"] == "cli_failure"
 
     @pytest.mark.asyncio
     async def test_exec_timeout_reported_without_spawning_when_budget_spent(self) -> None:
@@ -407,6 +432,20 @@ class TestCompletionRetry:
         await daemon._execute_and_complete(claim)
 
         assert len(broker.complete_requests) == 1
+
+    @pytest.mark.asyncio
+    async def test_guilt_non_json_200_complete_does_not_escape(self) -> None:
+        """A 200 /complete answer whose body is an LB error page (Kimi
+        round-2 L1): the same guard as the claim side — `_complete` must
+        absorb it, not let ValueError escape to the loop's generic catch."""
+        broker = _Broker(claim_results=[_claim_payload()], complete_script=[_NON_JSON_200])
+        daemon = _daemon(broker)
+        daemon._version_ok = True
+
+        claim = await daemon._claim()
+        await daemon._execute_and_complete(claim)  # must not raise
+
+        assert len(broker.complete_requests) == 1  # a 200 is final — no retry
 
 
 # ---------------------------------------------------------------------------

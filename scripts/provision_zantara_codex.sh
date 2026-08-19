@@ -79,10 +79,16 @@ done
 if id "${BROKER_USER}" >/dev/null 2>&1; then
     log "user ${BROKER_USER}: SKIP (exists)"
 else
+    # -password gets a random THROWAWAY (Kimi round-2 L4): some macOS
+    # versions prompt interactively without it, which hangs a sudo script.
+    # The value protects nothing — the shell is /usr/bin/false, login is
+    # impossible, and it is never used again — so its brief argv exposure
+    # is noise, not a secret (the argv ban guards secrets).
     sysadminctl -addUser "${BROKER_USER}" \
         -fullName "Zantara Codex Broker" \
         -home "${BROKER_HOME}" \
-        -shell /usr/bin/false
+        -shell /usr/bin/false \
+        -password "$(head -c16 /dev/urandom | xxd -p)"
     dscl . -create "/Users/${BROKER_USER}" IsHidden 1
     log "user ${BROKER_USER}: DONE (login-less, hidden)"
 fi
@@ -169,6 +175,19 @@ CANARY_FILE_A="${BROKER_HOME}/.codex/backup_credentials.txt"
 CANARY_FILE_B="${BROKER_HOME}/.aws-credentials"
 if [ -f "${CANARY_FILE_A}" ] && [ -f "${CANARY_FILE_B}" ] && [ -f "${CANARY_RECORD}" ]; then
     log "canaries: SKIP (planted)"
+elif [ -f "${CANARY_FILE_A}" ] || [ -f "${CANARY_FILE_B}" ] || [ -f "${CANARY_RECORD}" ]; then
+    # Partial state (Kimi round-2 L2): regenerating here would overwrite
+    # planted values while the Fly secret still scans for the old ones —
+    # the tripwire silently disarmed in both directions. Refuse loudly;
+    # planted values are never overwritten. The operator reconciles by
+    # hand: the surviving 0600 files/record hold the truth (readable as
+    # root), or delete ALL THREE to intentionally re-plant + re-import.
+    log "ERROR: canary state is PARTIAL — refusing to regenerate:"
+    for f in "${CANARY_FILE_A}" "${CANARY_FILE_B}" "${CANARY_RECORD}"; do
+        log "  $([ -f "$f" ] && echo present || echo MISSING): $f"
+    done
+    log "  Reconcile manually (or remove all three to re-plant), then re-run."
+    exit 1
 else
     CANARY_A="bzcanary-$(head -c16 /dev/urandom | xxd -p)"
     CANARY_B="bzcanary-$(head -c16 /dev/urandom | xxd -p)"
