@@ -22,6 +22,41 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 
 ## 1. LIVE STATE (last update 2026-08-19 — keep current)
 
+- **📐 BOT-V4 BROKER SPEC SHIPPED (#4333, merged 2026-08-19T00:47:54Z) — THE CHATGPT-PROVIDER
+  ROUTE NOW HAS A PANEL-SIGNED BUILD CONTRACT; STILL DOCS-ONLY, REAL WA STILL NO-GO (2026-08-19,
+  supersedes the liveness-smoke headline immediately below as the lane's current state).**
+  Zero closed the account-privacy gate by attestation and ordered the transition («già fatto,
+  quindi passiamo a chatgpt» — recorded in memory
+  `decision_wa_openai_provider_subscription_path_owner_ruling_2026_08_15`, §2026-08-19). The
+  resulting spec (`research/operations/2026-08-19-bot-chatgpt-provider-broker-spec.md`) went
+  through FOUR adversarial rounds — Codex GPT-5.6 BLOCKED(22)→BLOCKED(5 NEW)→FIX-FIRST(4)→SHIP,
+  Kimi K3 FIX-FIRST(10)→FIX-FIRST(3)→FIX-FIRST(2)→SHIP, agy SHIP, plus a fresh-context Sonnet
+  proofread that caught a real stale-sibling contradiction — every finding dispositioned in the
+  spec's §8.
+  - **Architecture that survived the panel** (v1's pull-park design did NOT): the broker leg
+    runs SYNCHRONOUSLY inside the existing `wa_outbox` claim — thread lock held, zero new row
+    states, coalescing/fence/reclaimer untouched by construction; a new `broker_jobs` table is
+    transport with a full PII lifecycle (`completed_pending_consume`→`consumed`, payload
+    NULL-at-terminal, verified 7d purge); ONE finalization pipeline serves both providers so
+    every gate runs on the RETURNED text; the codex path uses deterministic retrieval
+    (conditionally Gemini-free — an S2 zero-LLM acceptance test decides, not an assertion);
+    Pro side runs as a dedicated login-less `zantara-codex` user with egress secret/canary
+    scans.
+  - **Stage-1 pre-registration is FROZEN at the same merge**
+    (`research/operations/2026-08-19-bot-stage1-registration.md` + 72 synthetic fixtures in
+    `scripts/bot/fixtures/stage1_synthetic/`, SHA-256-pinned): 6 scoring categories, zero
+    tolerance on fabrication/scaffold-leak/price-splitting with dual-scorer adjudication,
+    per-domain accuracy floors, transport-error and scorer-blinding invalidation rules. Kimi K3
+    refuted it (FIX-FIRST, 5 gate-coverage findings, folded before the freeze) → SHIP. The 4
+    encoded facts verified: 2.5 mld paid-up (BKPM 5/2025), 80y Hak Pakai + 80y HGB (PP 18/2021),
+    Rp 1,000,000/day overstay (PP 45/2024).
+  - **What is still NO-GO, by the spec's own ladder**: real client text touches the codex route
+    only after gates G-P1..P6 (live Codex data-control verification `operator[gui]`; UU PDP /
+    Art. 56 basis artifact `operator[business]`; named DLP policy with measured recall;
+    shadow-sink design; quota classifier from S1.5; owner acceptance of the probed credential
+    residual). Cutover (S4) is the owner's switch alone. Next build step: S2 flag-OFF per the
+    spec; S1/S1.5 can run offline in parallel.
+
 - **🧪 CHATGPT PRO ADAPTER LIVE TEST — SYNTHETIC LIVENESS SMOKE GREEN (NOT the full Stage 1
   evaluation); DORMANT ADAPTER MERGED + DEPLOYED; REAL WA STILL NO-GO (2026-08-19, supersedes
   the stale #4216/#4301 implementation snapshot immediately below).**
