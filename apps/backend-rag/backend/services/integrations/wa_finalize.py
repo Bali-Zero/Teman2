@@ -18,7 +18,8 @@ Behavior contract:
       identical exceptions).
     * ``provider="codex"`` maps the spec's typed outcomes onto the same
       sequence: every branch where the TEXT ITSELF is defective (empty payload,
-      internal-monologue leak, scaffold-only output, empty after strip/format,
+      internal-monologue leak — including inside a grounded abstain answer,
+      scaffold-only output, empty after strip/format, oversized output,
       pricing veto, secret-egress hit) returns ``DEFECT`` WITHOUT serving a stub
       and WITHOUT telling a human — the caller fails off to the Gemini leg,
       which regenerates and re-enters this pipeline, so the client still gets
@@ -139,12 +140,28 @@ class FinalizeOutcome(str, Enum):
     DEFECT = "defect"  # nothing sendable — gemini: caller raises; codex: fail-off
 
 
+class FinalizeProvider(str, Enum):
+    """Which generation leg produced the payload.
+
+    An Enum rather than a free string because a typo ("Codex", "codeX") on a
+    free string would silently disarm every codex-only policy and run the
+    payload down the Gemini branch — the PR-3 adversarial review reproduced
+    exactly that. ``FinalizeProvider(value)`` raises ``ValueError`` on any
+    unknown value, so a misconfigured caller fails loudly at the first call.
+    """
+
+    GEMINI = "gemini"
+    CODEX = "codex"
+
+
 @dataclass(frozen=True)
 class FinalizeResult:
     outcome: FinalizeOutcome
     text: str = ""
-    # Why a human was (already) told, or None. On SEND outcomes the pipeline
-    # has performed the notification itself via the caller's `tell_a_human`.
+    # Why a human was told, or None. On SEND outcomes the pipeline has
+    # ATTEMPTED the notification via the caller's `tell_a_human` (delivery
+    # semantics are the callback's own — wa_inbox_bot's helper never raises
+    # and dedups per-thread; a callback that raises is contained and logged).
     human_reason: str | None = None
     # DEFECT only: machine token naming the defect class.
     defect_reason: str | None = None
@@ -237,44 +254,119 @@ def _starts_with_internal_monologue_leak(answer: str) -> bool:
 
 # Amounts ATTACHED to a currency marker — the entity this veto exists for is
 # "a price the model asserts", and the price form in this bot's answers is
-# currency-marked (Rp/IDR/USD/$). Bare numbers are deliberately OUT of scope:
-# regulatory figures like "2,5 miliar modal disetor" legitimately come from
-# retrieved chunks without a currency prefix, and vetoing them would be a
-# family-#3 over-match blocking correct answers.
+# currency-marked (Rp/IDR/USD/$), optionally with an Indonesian multiplier
+# (jt/juta/rb/ribu/k/miliar/milyar/bn/triliun). Bare numbers are deliberately
+# OUT of scope: regulatory figures like "2,5 miliar modal disetor" legitimately
+# come from retrieved chunks without a currency prefix, and vetoing them would
+# be a family-#3 over-match blocking correct answers.
+#
+# Three anti-scars, each a reproduced case from the PR-3 adversarial review:
+# * an amount never crosses a newline and never absorbs a following bare
+#   number ("Rp 3.500.000\n30 days" is 3500000, not 350000030) — horizontal
+#   whitespace only around the amount, and NO whitespace inside it;
+# * multipliers are canonicalized ("Rp 99 juta" == "Rp 99.000.000"), so an
+#   invented price cannot pass on its spelling;
+# * source numbers are extracted per TOKEN, never from a concatenation of the
+#   whole source ("Rp 12.345" followed by "67 days" can never authorize an
+#   invented "Rp 34.567").
+_AMOUNT_MULTIPLIERS: dict[str, float] = {
+    "k": 1e3,
+    "rb": 1e3,
+    "ribu": 1e3,
+    "jt": 1e6,
+    "juta": 1e6,
+    "miliar": 1e9,
+    "milyar": 1e9,
+    "bn": 1e9,
+    "triliun": 1e12,
+}
+_MULT_PATTERN = r"(?:jt|juta|rb|ribu|k|miliar|milyar|bn|triliun)"
 _CURRENCY_AMOUNT_RE = re.compile(
-    r"(?:\bRp\.?|\bIDR\b|\bUSD\b|\$)\s*([0-9][0-9.,\s]*[0-9]|[0-9])"
-    r"|([0-9][0-9.,\s]*[0-9]|[0-9])\s*(?:\bIDR\b|\bUSD\b)",
+    r"(?:(?P<cur1>\bRp\.?|\bIDR|\bUSD|\$)[ \t]*(?P<amt1>\d(?:[\d.,]*\d)?)"
+    r"(?:[ \t]*(?P<mul1>" + _MULT_PATTERN + r")\b)?)"
+    r"|(?:(?P<amt2>\d(?:[\d.,]*\d)?)(?:[ \t]*(?P<mul2>" + _MULT_PATTERN + r")\b)?"
+    r"[ \t]*(?P<cur2>IDR|USD)\b)",
     re.IGNORECASE,
 )
 
-# Amounts shorter than this many digits are not vetoable: "Rp 5jt" captures
-# only "5", and near-any source contains a lone digit — matching it would make
-# the veto decorative. Declared limit: multiplier forms (jt/juta/miliar) are
-# out of this veto's scan; the label gate + PricingTool grounding own them.
-_PRICE_VETO_MIN_DIGITS = 4
+# Veto floors per currency family: IDR prices below Rp 1.000 do not exist in
+# this business (and tiny amounts would fire on noise); dollar prices are real
+# from $10 up (the review's "$999" case must be vetoable).
+_VETO_FLOORS: dict[str, int] = {"USD": 10, "IDR": 1000}
 
 
-def _normalized_digits(amount: str) -> str:
-    return re.sub(r"[^0-9]", "", amount)
+def _canonical_currency(cur: str) -> str:
+    c = cur.strip().rstrip(".").upper()
+    return "USD" if c in ("$", "USD") else "IDR"
+
+
+def _canonical_value(amount: str, multiplier: str | None) -> int | None:
+    """Integer value of an amount string, multiplier applied. None if unparseable."""
+    s = amount.strip()
+    if not s:
+        return None
+    if multiplier:
+        # A decimal form is allowed before a multiplier ("3,5 juta"); a grouped
+        # form ("3.500 juta") canonicalizes by stripping separators.
+        normalized = s.replace(",", ".")
+        try:
+            if normalized.count(".") == 1 and len(normalized.split(".")[1]) <= 2:
+                base = float(normalized)
+            else:
+                base = float(re.sub(r"[.,]", "", s))
+        except ValueError:
+            return None
+        return int(round(base * _AMOUNT_MULTIPLIERS[multiplier.lower()]))
+    digits = re.sub(r"[.,]", "", s)
+    if not digits.isdigit():
+        return None
+    return int(digits)
+
+
+def _currency_amounts(text: str) -> list[tuple[str, int]]:
+    """(currency_family, canonical_value) for every currency-marked amount in text."""
+    out: list[tuple[str, int]] = []
+    for m in _CURRENCY_AMOUNT_RE.finditer(text):
+        cur = m.group("cur1") or m.group("cur2") or ""
+        amt = m.group("amt1") or m.group("amt2") or ""
+        mul = m.group("mul1") or m.group("mul2")
+        value = _canonical_value(amt, mul)
+        if value is not None:
+            out.append((_canonical_currency(cur), value))
+    return out
 
 
 def price_tokens_outside_sources(text: str, price_sources: Sequence[str]) -> list[str]:
-    """Digit-strings of currency-marked amounts in ``text`` absent from every source.
+    """Canonical amounts in ``text`` that no source contains, as "CUR:value" strings.
 
     ``price_sources`` should be the serialized PricingTool block of the frozen
     package plus the retrieved chunk texts — an amount is legitimate if ANY of
-    them contains it (digit-normalized substring match, so "Rp 3.500.000" in
-    the answer matches "3500000" or "3,500,000" in a source).
+    them contains the same canonical VALUE ("Rp 3,5 juta" in the answer matches
+    "Rp 3.500.000" or a bare "3500000" in a source). Chunks are included on
+    purpose: answers legitimately quote currency-marked regulatory fees that
+    come from retrieval, not from PricingTool, and excluding them would fail
+    off every such answer. Declared residual (review MAJOR-7): a figure present
+    in a chunk could semantically launder a wrong "service fee" — accepted
+    because the Gemini leg has the identical exposure today with NO veto at
+    all, and the label gate + PricingTool grounding remain the primary control.
     """
-    normalized_sources = [_normalized_digits(s) for s in price_sources]
+    source_values: set[int] = set()
+    for src in price_sources:
+        for _cur, value in _currency_amounts(src):
+            source_values.add(value)
+        # Discrete numeric tokens too (a pricing block may write the amount
+        # without repeating the currency marker beside it) — each token
+        # canonicalized ALONE, never concatenated with its neighbors.
+        for token in re.findall(r"\d(?:[\d.,]*\d)?", src):
+            value = _canonical_value(token, None)
+            if value is not None:
+                source_values.add(value)
     offenders: list[str] = []
-    for match in _CURRENCY_AMOUNT_RE.finditer(text):
-        amount = match.group(1) or match.group(2) or ""
-        digits = _normalized_digits(amount)
-        if len(digits) < _PRICE_VETO_MIN_DIGITS:
+    for cur, value in _currency_amounts(text):
+        if value < _VETO_FLOORS[cur]:
             continue
-        if not any(digits in src for src in normalized_sources):
-            offenders.append(digits)
+        if value not in source_values:
+            offenders.append(f"{cur}:{value}")
     return offenders
 
 
@@ -287,11 +379,28 @@ _SECRET_EGRESS_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
         re.compile(r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b"),
     ),
     (
+        # Covers both config-style (`api_key = xxxx`) and JSON auth-file
+        # fragments (`"refresh_token":"1//xxxx"`) — the closing quote of a
+        # JSON key sits between the name and the colon, and the value charset
+        # includes `/` and `+` (OAuth refresh tokens carry both). The review
+        # reproduced both misses against the first version of this pattern.
         "token_assignment",
         re.compile(
-            r"(?i)\b(?:api[_-]?key|access[_-]?token|refresh[_-]?token"
-            r"|client[_-]?secret|authorization)\b\s*[:=]\s*['\"]?[A-Za-z0-9_.\-]{16,}"
+            r"(?i)[\"']?\b(?:api[_-]?key|access[_-]?token|refresh[_-]?token"
+            r"|client[_-]?secret|id[_-]?token|authorization)\b[\"']?\s*[:=]\s*"
+            r"[\"']?[A-Za-z0-9_./+\-]{16,}"
         ),
+    ),
+    (
+        # Any "Bearer <opaque>" / "Basic <opaque>" value, with or without an
+        # Authorization: prefix (the space after the scheme word means
+        # token_assignment above cannot reach the real token — this shape
+        # owns it). Prose innocence: "the bearer of the visa" has
+        # no 16-char opaque token after it, and the digit lookahead keeps a
+        # long hyphenated English word ("Bearer responsibility-holder") from
+        # firing — real opaque tokens carry digits.
+        "bearer_token",
+        re.compile(r"(?i)\b(?:bearer|basic)\s+(?=[A-Za-z0-9_./+\-=]*\d)[A-Za-z0-9_./+\-=]{16,}"),
     ),
 )
 
@@ -361,8 +470,8 @@ async def finalize_wa_answer(
     data: dict[str, Any],
     query: str,
     thread_id: Any,
-    provider: str = "gemini",
-    tell_a_human: Callable[[str], Awaitable[Any]] | None = None,
+    tell_a_human: Callable[[str], Awaitable[Any]],
+    provider: str | FinalizeProvider = FinalizeProvider.GEMINI,
     price_sources: Sequence[str] | None = None,
     secret_scan: bool = False,
     canary_tokens: Sequence[str] = (),
@@ -376,20 +485,47 @@ async def finalize_wa_answer(
             ``context_length``, ``evidence_score``).
         query: the customer query (drives stub localization only).
         thread_id: for log lines — this function never touches the DB.
-        provider: ``"gemini"`` (behavior-preserving inline path) or
-            ``"codex"`` (typed-outcome path; see module docstring).
-        tell_a_human: one-argument async callable ``(reason) -> accepted``.
-            The pipeline calls it exactly where the pre-extraction code called
+        tell_a_human: REQUIRED one-argument async callable ``(reason)``. The
+            pipeline calls it exactly where the pre-extraction code called
             ``_tell_a_human`` — stub paths on both providers, defect paths on
             the Gemini provider only (a codex defect fails off to the Gemini
             leg, which still owes the client an answer and re-enters here).
-        price_sources / secret_scan / canary_tokens: codex-only egress vetoes,
-            inert unless supplied (see module docstring).
+            Required rather than defaulted (review MAJOR-9): an optional
+            notifier makes "forgot to wire it" indistinguishable from "chose
+            silence", which is the exact contract inversion the 2026-08-12
+            scar in the /bot corner records. A callback that raises is
+            contained here — a notifier failure must never corrupt the
+            outcome.
+        provider: ``FinalizeProvider`` (or its string value). An unknown
+            string raises ``ValueError`` — a typo must never silently disarm
+            the codex policies.
+        price_sources / secret_scan / canary_tokens: codex egress vetoes. On
+            the codex provider ``price_sources`` and ``secret_scan=True`` are
+            MANDATORY (``ValueError`` otherwise): the protections are part of
+            the route, not options (review BLOCKER-2 — fail-closed, never
+            fail-open).
     """
+    provider = FinalizeProvider(provider)
+    if provider is FinalizeProvider.CODEX and (price_sources is None or not secret_scan):
+        raise ValueError(
+            "wa-finalize: provider='codex' requires price_sources and "
+            "secret_scan=True — refusing a fail-open configuration"
+        )
 
     async def _tell(reason: str) -> None:
-        if tell_a_human is not None:
+        try:
             await tell_a_human(reason)
+        # Containment, not delegation: wa_inbox_bot's helper already never
+        # raises, but this pipeline must not depend on every future caller
+        # honoring that — a notifier failure must never replace or corrupt
+        # the outcome being returned.
+        except Exception as exc:
+            logger.error(
+                "wa-finalize: tell_a_human(%s) raised for thread %s: %s",
+                reason,
+                thread_id,
+                exc,
+            )
 
     # Why a human needs to look at this thread, or None. Set at most once —
     # every later site guards on `is None`, so the FIRST (most specific) cause
@@ -420,8 +556,42 @@ async def finalize_wa_answer(
         # evidence and would be identical whichever provider wrote the text,
         # so it deliberately behaves the same on both legs.
         substantive = _abstain_answer_worth_sending(data)
+
+        # Structural text checks the early return used to SKIP (review
+        # BLOCKER-1, reproduced): a grounded abstain payload is still MODEL
+        # TEXT, and the label changes the confidence, not the text-safety
+        # obligations — a monologue leak or an [ESCALATE] marker inside it
+        # gets the same treatment as on the non-abstain path.
+        escalate_in_substantive = False
+        if substantive and _starts_with_internal_monologue_leak(substantive):
+            if provider is FinalizeProvider.CODEX:
+                return FinalizeResult(
+                    outcome=FinalizeOutcome.DEFECT,
+                    defect_reason="internal_monologue_leak",
+                    defect_message=(
+                        f"wa-finalize: internal-monologue leak in codex output, "
+                        f"thread {thread_id}"
+                    ),
+                )
+            logger.warning(
+                "wa-inbox bot: internal-monologue marker inside grounded abstain "
+                "answer for thread %s; discarding payload and serving safe abstention",
+                thread_id,
+            )
+            human_reason = "internal_monologue_leak"
+            substantive = ""
+        if substantive and "[ESCALATE]" in substantive:
+            # POLICY marker (spec §2.3): identical handling on both providers.
+            escalate_in_substantive = True
+            substantive = substantive.replace("[ESCALATE]", "").strip()
+            if len(substantive) < _ABSTAIN_MIN_SENDABLE_CHARS:
+                # The marker was load-bearing bulk — nothing substantive left.
+                if human_reason is None:
+                    human_reason = "persona_escalate_marker"
+                substantive = ""
+
         if substantive:
-            if provider == "codex":
+            if provider is FinalizeProvider.CODEX:
                 veto = _codex_egress_veto(
                     substantive,
                     price_sources=price_sources,
@@ -442,9 +612,13 @@ async def finalize_wa_answer(
                 thread_id,
                 len(substantive),
             )
+            reason = "persona_escalate_marker" if escalate_in_substantive else None
+            if reason is not None:
+                await _tell(reason)
             return FinalizeResult(
                 outcome=FinalizeOutcome.SEND,
                 text=substantive + get_localized_stub("low_confidence_note", language),
+                human_reason=reason,
             )
 
         # Never surface the endpoint's raw answer on this branch. The baseline
@@ -467,7 +641,11 @@ async def finalize_wa_answer(
             data.get("abstain_reason"),
         )
         answer = _safe_abstain_reply(query)
-        human_reason = "rag_abstain"
+        # First cause wins (same rule as every other site): a leak or marker
+        # found inside the discarded substantive text is the more specific
+        # reason than the generic abstain label.
+        if human_reason is None:
+            human_reason = "rag_abstain"
     else:
         answer = (data.get("answer") or "").strip()
         if not answer:
@@ -477,7 +655,7 @@ async def finalize_wa_answer(
             # and ends in silence. Tell a human BEFORE the raise, because the
             # raise is precisely what makes this silent. (Gemini leg only: a
             # codex defect fails off to the Gemini leg, which still answers.)
-            if provider == "gemini":
+            if provider is FinalizeProvider.GEMINI:
                 await _tell("empty_rag_answer")
             return FinalizeResult(
                 outcome=FinalizeOutcome.DEFECT,
@@ -486,7 +664,7 @@ async def finalize_wa_answer(
             )
 
         if _starts_with_internal_monologue_leak(answer):
-            if provider == "codex":
+            if provider is FinalizeProvider.CODEX:
                 # TEXT_DEFECT (spec §2.3): a different generator can
                 # legitimately cure a defective text — fail off instead of
                 # serving the stub the Gemini leg would serve.
@@ -535,7 +713,7 @@ async def finalize_wa_answer(
             # marker was the whole payload — report THAT (first cause wins,
             # same rule as every other site), never the generic emptiness.
             reason = human_reason or "empty_after_escalate_strip"
-            if provider == "gemini":
+            if provider is FinalizeProvider.GEMINI:
                 await _tell(reason)
             return FinalizeResult(
                 outcome=FinalizeOutcome.DEFECT,
@@ -549,7 +727,7 @@ async def finalize_wa_answer(
         # the channel formatter — see _strip_kg_workflow_scaffold docstring.
         answer = _strip_kg_workflow_scaffold(answer)
         if not answer:
-            if provider == "codex":
+            if provider is FinalizeProvider.CODEX:
                 # TEXT_DEFECT: scaffold-only output is a broken text, and the
                 # Gemini leg can produce a real answer — fail off.
                 return FinalizeResult(
@@ -574,7 +752,7 @@ async def finalize_wa_answer(
     # above already returned DEFECT for codex): a fixed stub carries no prices
     # and no secrets, and vetoing it would turn a POLICY refusal into a
     # spurious fail-off loop.
-    if provider == "codex" and human_reason != "rag_abstain":
+    if provider is FinalizeProvider.CODEX and human_reason != "rag_abstain":
         veto = _codex_egress_veto(
             answer,
             price_sources=price_sources,
@@ -600,7 +778,7 @@ async def finalize_wa_answer(
     answer = format_rich_text(answer, "whatsapp")
     if not answer:
         reason = human_reason or "empty_after_channel_format"
-        if provider == "gemini":
+        if provider is FinalizeProvider.GEMINI:
             await _tell(reason)
         return FinalizeResult(
             outcome=FinalizeOutcome.DEFECT,
@@ -610,6 +788,21 @@ async def finalize_wa_answer(
             ),
         )
     post_format_len = len(answer)
+
+    if provider is FinalizeProvider.CODEX and post_format_len > _WHATSAPP_HARD_SEND_LIMIT:
+        # TEXT_DEFECT (spec §2.3 "malformed/oversized output"): on the codex
+        # leg an oversized answer fails off to the Gemini leg instead of
+        # being cut mid-content by the sender's hard limit — a truncated
+        # answer can lose its disclaimer or conclusion, and a different
+        # generator can legitimately produce one that fits.
+        return FinalizeResult(
+            outcome=FinalizeOutcome.DEFECT,
+            defect_reason="oversized_output",
+            defect_message=(
+                f"wa-finalize: codex output {post_format_len} chars post-format "
+                f"exceeds the WhatsApp single-message limit, thread {thread_id}"
+            ),
+        )
 
     if post_format_len > _WHATSAPP_HARD_SEND_LIMIT:
         logger.warning(
