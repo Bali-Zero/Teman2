@@ -2,6 +2,7 @@
 date: 2026-08-19
 domain: visa
 client_case: none (product/funnel design for the E33 Second Home vertical)
+adversarial_review: codex
 sources:
   - 5-seat panel (2026-08-19): Codex GPT-5.6 sol (xhigh), Kimi K3, Gemini 3.1 Pro (agy), plus 2 Sonnet web researchers (competitor scan + global residency-program UX scan)
   - Competitor sites probed live: letsmoveindonesia.com, emerhub.com, flado.id, cekindo.com, balivisas.com, ilaglobalconsulting.com, sevenstonesindonesia.com, indonesiavisas.id, atlys.com, ivisa.com, visahq.com
@@ -187,6 +188,18 @@ before the WhatsApp click.
 Navigator completion; % opening the memo preview; scenario comparisons per user; returns
 to the plan within 7/30 days; WhatsApp handoffs carrying full context; advisor-reported
 "conversation started warm" rate.
+
+## Adversarial review
+
+Codex GPT-5.6 sol (xhigh) served as the cross-family refuter on the synthesized
+concept: it killed Gemini's top-ranked yield simulator (projecting deposit returns is
+investment advice, outside our perimeter), rejected any numeric eligibility score
+(reads as approval probability regardless of disclaimers), and its cut list — no email
+gate, no public uploads, no chatbot-as-hero, no accumulating "value counter" — is
+recorded as §4 and survived synthesis intact. Kimi K3 and Gemini 3.1 Pro were
+independent ideation seats; their divergences from the surviving design are named in
+§3/§4 rather than averaged away. Market claims come from two live web scans
+(competitor + global) with URLs, not from any seat's memory.
 
 ## 7. Open decisions for Zero (Legge 5)
 
