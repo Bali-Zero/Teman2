@@ -8,6 +8,7 @@ export const config = {
     "/garuda-voa/:path*",
     "/api/cockpit/:path*",
     "/api/garuda-voa/:path*",
+    "/api/llm-costs/recommendations",
   ],
 };
 
@@ -26,7 +27,8 @@ export async function middleware(req: NextRequest) {
   const isAuthRoute = req.nextUrl.pathname === "/api/cockpit/auth";
   const isProtectedApi =
     req.nextUrl.pathname.startsWith("/api/cockpit/") ||
-    req.nextUrl.pathname.startsWith("/api/garuda-voa/");
+    req.nextUrl.pathname.startsWith("/api/garuda-voa/") ||
+    req.nextUrl.pathname === "/api/llm-costs/recommendations";
   const hasSession = isAuthRoute ? false : await hasValidCockpitSession(req);
   if (!isAuthRoute && isProtectedApi && !hasSession) {
     return NextResponse.json(

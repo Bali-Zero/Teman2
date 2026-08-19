@@ -174,9 +174,35 @@ describe("GARUDA internal preview boundaries", () => {
       "app/api/cockpit/decisions/route.ts",
       "app/api/cockpit/intent/create/route.ts",
       "app/api/garuda-voa/evaluate/route.ts",
+      "app/api/llm-costs/recommendations/route.ts",
     ]) {
       expect(source(route)).toContain("hasValidCockpitSession");
     }
+  });
+
+  it("routes recommendations through the private middleware and session gate", () => {
+    const middleware = source("middleware.ts");
+    const costDashboard = source("app/cost-dashboard/page.tsx");
+
+    expect(middleware).toContain('"/api/llm-costs/recommendations"');
+    expect(middleware).toContain(
+      'req.nextUrl.pathname === "/api/llm-costs/recommendations"',
+    );
+    expect(costDashboard).toContain("<PinGate>");
+    expect(costDashboard).toContain("<RecommendationPanel />");
+  });
+
+  it("carries the cockpit bearer through recommendation reads and writes", () => {
+    const panel = source("components/RecommendationPanel.tsx");
+
+    expect(panel).toContain("useCockpitSession");
+    expect(panel).toContain("const { authorization, relock }");
+    expect(panel).toContain("headers: { authorization }");
+    expect(panel).toContain('"content-type": "application/json"');
+    expect(panel.match(/status === 401/g)).toHaveLength(2);
+    expect(panel.match(/relock\(\)/g)).toHaveLength(2);
+    expect(panel).toContain("if (!response.ok)");
+    expect(panel).toContain("[authorization, load, relock]");
   });
 
   it("uses the shared same-origin JSON guard on every local mutation", () => {
