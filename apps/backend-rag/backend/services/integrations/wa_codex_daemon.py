@@ -199,7 +199,7 @@ class WaCodexDaemon:
         # `transport` exists for tests: it lets them drive THIS construction
         # path (header attachment included) against a MockTransport instead
         # of bypassing it with a pre-built client.
-        self._http = http_client or httpx.AsyncClient(
+        self._http = http_client or httpx.AsyncClient(  # golden-rule-10-exempt: daemon-lifetime persistent client, closed in run_forever's finally
             base_url=config.base_url,
             headers={"X-API-Key": config.broker_key},
             timeout=httpx.Timeout(10.0, read=20.0),
