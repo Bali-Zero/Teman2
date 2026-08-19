@@ -202,6 +202,109 @@ class TestLoginEndpoint:
         conn.execute.assert_awaited_once()
 
     @pytest.mark.integration
+    def test_login_does_not_spawn_autoclockin_for_a_service_account(
+        self,
+        client: TestClient,
+        mock_db_pool,
+    ) -> None:
+        """PANOPTICON caller gate: a service-role login must not even spawn the
+        auto-clock-in task. Before this, the gate was `role != "client"`, which
+        is true for role="monitoring" — the login-healthcheck probe would spawn
+        a coroutine every 5 minutes that the callee's own guard then discarded.
+        This asserts the caller now agrees with the callee instead of relying
+        on it to catch what the caller let through.
+        """
+        _pool, conn = mock_db_pool
+        conn.fetchrow = AsyncMock(return_value=_user_row(role="monitoring"))
+        conn.execute = AsyncMock(return_value="UPDATE 1")
+
+        audit_service = MagicMock()
+        audit_service.pool = object()
+        audit_service.connect = AsyncMock()
+        audit_service.log_auth_event = AsyncMock()
+
+        brute_force_detector = MagicMock()
+        brute_force_detector.is_blocked = AsyncMock(return_value=False)
+        brute_force_detector.clear_on_success = AsyncMock()
+        brute_force_detector.record_failure = AsyncMock()
+
+        redis_manager = MagicMock()
+        redis_manager.get_async_client.return_value = AsyncMock()
+
+        with (
+            patch(
+                "backend.services.monitoring.audit_service.get_audit_service",
+                return_value=audit_service,
+            ),
+            patch(
+                "backend.services.security.brute_force.BruteForceDetector",
+                return_value=brute_force_detector,
+            ),
+            patch(
+                "backend.core.redis_manager.RedisManager.get_instance", return_value=redis_manager
+            ),
+            patch("backend.app.routers.auth.verify_password", return_value=True),
+            patch("backend.app.routers.auth.spawn") as mock_spawn,
+        ):
+            response = client.post(
+                "/api/auth/login",
+                json={"email": "test@balizero.com", "pin": "123456"},
+            )
+
+        assert response.status_code == 200
+        mock_spawn.assert_not_called()
+
+    @pytest.mark.integration
+    def test_login_spawns_autoclockin_for_a_real_job_title(
+        self,
+        client: TestClient,
+        mock_db_pool,
+    ) -> None:
+        """Innocence: the service-account exclusion above must not exclude a
+        real colleague. This column holds free-text job titles, not a fixed
+        enum — 'Tax Care' is a real role in this system, not a placeholder.
+        """
+        _pool, conn = mock_db_pool
+        conn.fetchrow = AsyncMock(return_value=_user_row(role="Tax Care"))
+        conn.execute = AsyncMock(return_value="UPDATE 1")
+
+        audit_service = MagicMock()
+        audit_service.pool = object()
+        audit_service.connect = AsyncMock()
+        audit_service.log_auth_event = AsyncMock()
+
+        brute_force_detector = MagicMock()
+        brute_force_detector.is_blocked = AsyncMock(return_value=False)
+        brute_force_detector.clear_on_success = AsyncMock()
+        brute_force_detector.record_failure = AsyncMock()
+
+        redis_manager = MagicMock()
+        redis_manager.get_async_client.return_value = AsyncMock()
+
+        with (
+            patch(
+                "backend.services.monitoring.audit_service.get_audit_service",
+                return_value=audit_service,
+            ),
+            patch(
+                "backend.services.security.brute_force.BruteForceDetector",
+                return_value=brute_force_detector,
+            ),
+            patch(
+                "backend.core.redis_manager.RedisManager.get_instance", return_value=redis_manager
+            ),
+            patch("backend.app.routers.auth.verify_password", return_value=True),
+            patch("backend.app.routers.auth.spawn") as mock_spawn,
+        ):
+            response = client.post(
+                "/api/auth/login",
+                json={"email": "test@balizero.com", "pin": "123456"},
+            )
+
+        assert response.status_code == 200
+        mock_spawn.assert_called_once()
+
+    @pytest.mark.integration
     def test_login_rejects_bad_credentials(
         self,
         client: TestClient,

@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.utils.service_accounts import non_human_roles_sql_array
 
 router = APIRouter(prefix="/api/team", tags=["team"])
 
@@ -62,6 +63,9 @@ async def get_team_members(
             user_email,
         )
 
+        # Service accounts (e.g. the login-healthcheck probe, role "monitoring")
+        # are excluded alongside clients on every branch below: this is the
+        # human-facing team roster, not an access gate — see service_accounts.py.
         if visibility_rules:
             # User has specific visibility rules - use them
             visible_emails = [rule["visible_member_email"] for rule in visibility_rules]
@@ -70,8 +74,10 @@ async def get_team_members(
                 """SELECT id, email, name, full_name, role, department, active, avatar
                    FROM team_members
                    WHERE email = ANY($1::text[]) AND active = TRUE
+                     AND role <> ALL($2::text[])
                    ORDER BY name""",
                 visible_emails,
+                non_human_roles_sql_array(),
             )
         elif user_dept in ["board", "founders", "management"] or user_role in (
             "founder",
@@ -84,7 +90,9 @@ async def get_team_members(
                 """SELECT id, email, name, full_name, role, department, active, avatar
                    FROM team_members
                    WHERE active = TRUE
+                     AND role <> ALL($1::text[])
                    ORDER BY name""",
+                non_human_roles_sql_array(),
             )
         else:
             # Default: see only members of same department
@@ -92,8 +100,10 @@ async def get_team_members(
                 """SELECT id, email, name, full_name, role, department, active, avatar
                    FROM team_members
                    WHERE department = $1 AND active = TRUE
+                     AND role <> ALL($2::text[])
                    ORDER BY name""",
                 user_dept,
+                non_human_roles_sql_array(),
             )
 
         return [

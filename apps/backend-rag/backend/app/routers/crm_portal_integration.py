@@ -23,6 +23,7 @@ from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.deps.crm_access import get_crm_user_filter
 from backend.app.utils.crm_utils import verify_client_access
 from backend.app.utils.logging_utils import get_logger
+from backend.app.utils.service_accounts import is_human_team_member
 from backend.services.portal._rbac import ClientContext
 
 if TYPE_CHECKING:
@@ -100,8 +101,12 @@ class UnreadCountResponse(BaseModel):
 
 
 def require_team_auth(current_user: dict = Depends(get_current_user)) -> dict:
-    """Ensure user is team member, not client"""
-    if current_user.get("role") == "client":
+    """Ensure user is a real team member — neither a client nor a service account.
+
+    8 endpoints here send messages to real clients and grant portal-status
+    visibility; "not a client" is not the same question as "is a colleague".
+    """
+    if not is_human_team_member(current_user.get("role")):
         raise HTTPException(
             status_code=403,
             detail="This endpoint is only accessible to team members",
