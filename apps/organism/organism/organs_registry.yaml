@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 551c80c948965a58708633fc652497eb510faf84de8fae9f24342b15373c51c2
+checksum: e11245a037596cf5ea58dc1873607bad171fc8d0d18dc5bb14d65f72706ad55f
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2025,8 +2025,8 @@ organs:
     unreadable to other users by design. Kill switch WA_CODEX_BROKER_ENABLED=false
     (clean exit stays down under KeepAlive.SuccessfulExit=false). Lane is flag-OFF
     (WA_GENERATION_PROVIDER defaults to gemini) until the owner-gated S4 cutover;
-    the daemon itself is inert until the operator provisions the host
-    (scripts/provision_zantara_codex.sh) and logs the seat in.'
+    the daemon itself is inert until the operator provisions the host (scripts/provision_zantara_codex.sh)
+    and logs the seat in.'
   cicatrix_refs: []
 - id: pro.wr2_daily_carousel
   runtime: pro_launchd
