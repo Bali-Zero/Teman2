@@ -149,6 +149,7 @@ def include_routers(api: FastAPI) -> None:
         wa_actions,
         wa_inbox,  # /api/wa-inbox/* WA Meta Inbox console (scoped key auth)
         wa_mirror_messages,
+        wa_package,  # [BOT-V4 S2] /api/wa-package/build deterministic codex-route package builder
         war_room_dashboard,
         webhooks,
         websocket,
@@ -338,6 +339,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(wa_mirror_messages.router)  # Read-only wa-mirror CRM timeline API
     api.include_router(wa_actions.router)  # WA Copilot S1.10 action_queue CRUD
     api.include_router(wa_inbox.router)  # /api/wa-inbox/* WA Meta Inbox console (scoped key)
+    api.include_router(wa_package.router)  # [BOT-V4 S2] deterministic codex-route package builder
     api.include_router(instagram_chat.router)  # Instagram DM auto-reply via RAG
     api.include_router(instagram_chat.webhook_router)  # [NEW] Instagram webhook
     api.include_router(intel_lake.router)  # Intel Lake Wave 1 ingest (mig 168)
@@ -897,6 +899,7 @@ def include_heavy_routers(api: FastAPI) -> None:
         oracle_ingest,
         oracle_universal,
         voice,
+        wa_package,  # [BOT-V4 S2] /api/wa-package/build deterministic codex-route package builder
         whatsapp_chat,
     )
 
@@ -984,6 +987,9 @@ def include_heavy_routers(api: FastAPI) -> None:
 
     # WhatsApp Chat (RAG-backed intelligent triage)
     api.include_router(whatsapp_chat.router)
+
+    # BOT-V4 S2: deterministic codex-route context-package builder (internal-only)
+    api.include_router(wa_package.router)
 
     # Dashboard aggregation routers (all under /api/dashboard — proxied to rag)
     api.include_router(dashboard.router)
