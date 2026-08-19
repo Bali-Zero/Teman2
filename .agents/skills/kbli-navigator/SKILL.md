@@ -70,6 +70,25 @@ openclaw. studia /bot dove abbiamo messo direttamente chatgpt con abbonamento pr
   probes, new ≥ old) is the gate that lets the OpenClaw path be deleted. Seat reality (all
   measured 2026-08-19): Pro logged in; M5 probe-positive (0.147.0 + auth.json 0600); Mini
   AUTH_DEAD/headless; BKPM none.
+- **🟢 P2a LANDED the same day — implemented, tested, and INDEPENDENTLY verified.** App-repo
+  (M5, no remote) commits `0500fa3..b31840c` (5 atomic): `KBLIContextPackage.swift` (660 l. —
+  recursive allowlist with fail-closed schema snapshot over all 1,559 records,
+  byte-budgeted question-matched `per_skala`, `pma_conflict` on 50111/50112,
+  `bali_moratorium_status` rename, anchors/budgets per design), `KBLIAnswerGate.swift`
+  (158 l. — NFKC + code-bound % gate), `KBLICodexRunner.swift` (523 l. — stdin-only,
+  ephemeral argv, realPath-bound spawn, pgid kill, intent sidecar + launch sweep,
+  single-flight, zero auto-retry), `KBLIBrain` wiring (BKPM = marker-check FIRST,
+  fail-closed stub, never OR'd with the seat probe; OpenClaw path behind a build-time
+  constant, still compiled). Verification was generator≠grader twice over: the implementer's
+  own subagent re-read spec-vs-source (clean), and the conductor re-ran ALL THREE test
+  suites from a fresh M5→Pro rsync (`packagetest`/`gatetest`/`codexrunnertest` all green,
+  RC=0 — including the real-subprocess pgid+cwd sweep tests) and re-verified both built
+  bundles (Mach-O universal, correct `BZVariant`, BKPM `articles/`=0). Three real bugs were
+  caught by the tests and fixed (inverse-frequency search scoring; decimal-aware sentence
+  splitter in the gate; `realpath` canonicalization for `/var` vs `/private/var` in the
+  launch-sweep cwd match). Deferred to P2b, declared not faked: the ~25-question benchmark,
+  3 of 4 crash-injection transitions, the real BKPM marker mechanism. **NOT fleet-installed**
+  — P2c installs only after the benchmark gate (design §8/§9).
 - **🔴 NEW RED ROW — the canonical dataset contradicts itself on the exact cured trap codes.**
   Measured this session on `data/source_documents/KBLI_2025_FINAL_CLEAN.json`: `25200`,
   `51101`, `79122` carry `pma_status=TERBATAS` (caps 49/49/0) while each record's own
