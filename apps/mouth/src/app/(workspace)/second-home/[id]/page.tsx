@@ -128,7 +128,7 @@ export default function SecondHomeCaseDetailPage() {
             currentStage={caseDetail.stage}
             allowedNextStages={caseDetail.allowed_next_stages}
             basis={caseDetail.basis}
-            evidence={caseDetail.evidence}
+            guaranteeEvidenceComplete={caseDetail.guarantee_evidence_complete}
           />
           <GuaranteePanel
             guarantee={caseDetail.guarantee}

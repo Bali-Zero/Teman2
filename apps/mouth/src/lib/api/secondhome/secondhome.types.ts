@@ -204,6 +204,16 @@ export interface CaseDetail extends CaseSummary {
   allowed_next_stages: E33Stage[];
   guarantee: GuaranteeInfo | null;
   forecasts: CaseForecast[];
+  /**
+   * Mirrors `E33Case.guarantee_evidence_complete` server-side (backend
+   * addition, 2026-08-19 reconciliation) — basis proof collected AND filed
+   * to Immigration. This is the SOLE source of truth for gating
+   * guarantee_proof_due → annual_maintenance; there is no client-side
+   * recomputation of this value (the earlier local mirror was deleted —
+   * client-side mirrors of domain logic drift, unlike the state-machine
+   * table mirror, which stays pinned by test).
+   */
+  guarantee_evidence_complete: boolean;
 }
 
 export interface SecondHomeSummary {

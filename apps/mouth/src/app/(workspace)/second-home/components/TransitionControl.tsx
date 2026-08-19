@@ -10,11 +10,9 @@ import { ApiError } from "@/lib/api/error-handler";
 import { STAGE_LABELS } from "@/lib/api/secondhome/state-machine";
 import type {
   E33Stage,
-  EvidenceRefView,
   GuaranteeBasis,
 } from "@/lib/api/secondhome/secondhome.types";
 import { useAdvanceSecondHomeCase } from "@/hooks/useSecondHome";
-import { isGuaranteeEvidenceComplete } from "./guarantee-evidence";
 
 /**
  * Advance-stage control. `allowedNextStages` comes from the CaseDetail
@@ -22,24 +20,28 @@ import { isGuaranteeEvidenceComplete } from "./guarantee-evidence";
  * authoritative (already excludes itap_eval while the flag is off); this
  * component does not recompute it from the local state-machine mirror.
  *
- * `basis`/`evidence` are used ONLY to proactively disable
- * guarantee_proof_due → annual_maintenance when the guarantee evidence is
- * incomplete (backend hardening 2026-08-19 rejects that transition with
- * 409 otherwise) — a convenience, not a second source of truth; the server
- * message is still surfaced verbatim on any 409.
+ * `guaranteeEvidenceComplete` (server field, 2026-08-19 reconciliation —
+ * mirrors `E33Case.guarantee_evidence_complete`) is the SOLE source of
+ * truth for proactively disabling guarantee_proof_due → annual_maintenance
+ * when the guarantee evidence is incomplete (backend hardening rejects that
+ * transition with 409 otherwise). There is no client-side recomputation of
+ * this value — a prior local mirror (`guarantee-evidence.ts`) was deleted
+ * per team-lead direction, since client-side mirrors of domain logic drift.
+ * The server message is still surfaced verbatim on any 409 regardless.
+ * `basis` is kept only to word the helper text (which proof type is meant).
  */
 export function TransitionControl({
   caseId,
   currentStage,
   allowedNextStages,
   basis,
-  evidence,
+  guaranteeEvidenceComplete,
 }: {
   caseId: string;
   currentStage: E33Stage;
   allowedNextStages: E33Stage[];
   basis: GuaranteeBasis;
-  evidence: EvidenceRefView[];
+  guaranteeEvidenceComplete: boolean;
 }) {
   const toast = useToast();
   const advance = useAdvanceSecondHomeCase(caseId);
@@ -51,9 +53,8 @@ export function TransitionControl({
   // excludes itap_eval, but never render it even if it slipped through.
   const offeredStages = allowedNextStages.filter((s) => s !== "itap_eval");
 
-  const evidenceComplete = isGuaranteeEvidenceComplete(basis, evidence);
   const annualMaintenanceGated =
-    currentStage === "guarantee_proof_due" && !evidenceComplete;
+    currentStage === "guarantee_proof_due" && !guaranteeEvidenceComplete;
 
   if (offeredStages.length === 0) {
     return (
