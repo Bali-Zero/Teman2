@@ -165,6 +165,26 @@ _INFRA = (
         "wa-mirror intake document upload — X-CRM-Write-Key + WA_MIRROR_CRM_WRITE_ENABLED auth in-router",
         match="template",
     ),
+    # BOT-V4 S2 broker transport (Codex re-verdict, finding 1): the Pro
+    # broker daemon authenticates with the DEDICATED WA_BROKER_KEY via
+    # require_wa_broker_key (constant-time, fail-closed when unconfigured,
+    # rate-limited on failures). That key is NOT in the general API-key
+    # list, so without these entries HybridAuthMiddleware read the
+    # X-API-Key header, rejected the unknown key, and the documented
+    # single-credential contract 401'd before the route's own gate ever
+    # ran — the service only worked with two undocumented credentials.
+    PublicEndpoint(
+        "/api/wa-broker/claim",
+        Category.INFRA,
+        "codex broker claim — dedicated WA_BROKER_KEY auth in-router (require_wa_broker_key)",
+        match="exact",
+    ),
+    PublicEndpoint(
+        "/api/wa-broker/complete",
+        Category.INFRA,
+        "codex broker complete — dedicated WA_BROKER_KEY auth in-router (require_wa_broker_key)",
+        match="exact",
+    ),
 )
 
 _AUTH = (
