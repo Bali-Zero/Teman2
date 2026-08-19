@@ -91,6 +91,7 @@ class _FakePool:
     ) -> None:
         self._conn = conn
         self.acquired = 0
+        self.released = 0
         self._release_exc_on = release_exc_on_acquire
         self._enter_exc_on = enter_exc_on_acquire
 
@@ -106,6 +107,7 @@ class _FakePool:
                 return pool._conn
 
             async def __aexit__(self, *exc: Any) -> bool:
+                pool.released += 1
                 if pool._release_exc_on == self._n and exc[0] is None:
                     raise RuntimeError("release failed")
                 return False
@@ -554,6 +556,28 @@ async def test_release_failure_after_certain_non_offered_keeps_the_outcome(
     result = await _run(pool=pool)
     assert result.reason == "offer:broker_absent"
     assert not result.fail
+    stubs.wait_for_job.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_cancellation_during_offer_releases_the_connection_and_propagates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Codex r5: CancelledError is a BaseException — a manual __aexit__
+    call outside a finally would be SKIPPED by cancellation during
+    offer_job, leaving the connection checked out and hanging
+    pool.close() at shutdown. The real async-with must release exactly
+    once, and the cancellation must PROPAGATE (never be swallowed into a
+    fall-off or fail)."""
+    import asyncio
+
+    stubs = _wire_stubs(monkeypatch)
+    stubs.offer_job.side_effect = asyncio.CancelledError()
+    pool = _FakePool(ScriptedConn())
+    with pytest.raises(asyncio.CancelledError):
+        await _run(pool=pool)
+    assert pool.acquired == 1
+    assert pool.released == 1
     stubs.wait_for_job.assert_not_awaited()
 
 

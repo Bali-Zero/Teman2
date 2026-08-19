@@ -160,7 +160,13 @@ async def attempt(
     outbox_expected_status: str,
     thread: Any,
 ) -> CodexLegResult:
-    """Run the codex leg for one claimed row. Never raises."""
+    """Run the codex leg for one claimed row.
+
+    Never raises — except cancellation (``BaseException``), which must
+    propagate: swallowing it would break asyncio shutdown semantics, and
+    every acquire in this module is a real async-with, so a cancelled leg
+    leaks no connection.
+    """
     try:
         return await _attempt(
             pool,
@@ -262,46 +268,58 @@ async def _attempt(
     #             certain non-OFFERED outcome stands (fall off with it);
     #             after OFFERED the durable job makes fail the safe
     #             reading of an unhealthy pool.
-    try:
-        offer_cm = pool.acquire()
-        offer_conn = await offer_cm.__aenter__()
-    except Exception as exc:
-        logger.warning(
-            "wa_codex_leg: offer connection acquire failed (outbox=%s): %s",
-            outbox_id,
-            type(exc).__name__,
-        )
-        return CodexLegResult(reason=f"offer_acquire_error:{type(exc).__name__}")
-
+    # A REAL async-with does the acquire/release choreography (Codex r5):
+    # CancelledError is a BaseException, so a manual __aexit__ call placed
+    # outside a finally is SKIPPED by cancellation during offer_job — the
+    # connection stays checked out and pool.close() hangs shutdown. The
+    # with-protocol releases on every exit path, cancellation included;
+    # cancellation itself then PROPAGATES (the one deliberate exception to
+    # attempt's never-raises contract — swallowing it would break asyncio
+    # semantics). ``entered`` distinguishes an acquire-ENTRY failure
+    # (certain: offer_job never ran) from a RELEASE failure (classified
+    # against the known offer outcome below).
     offer: wa_broker.OfferResult | None = None
     call_exc: Exception | None = None
     release_exc: Exception | None = None
+    entered = False
     try:
-        offer = await wa_broker.offer_job(
-            offer_conn,
-            outbox_id=outbox_id,
-            thread_id=thread_id,
-            claim_token=claim_token,
-            outbox_expected_status=outbox_expected_status,
-            package=wire,
-            evidence_inputs=json.dumps(evidence_inputs, sort_keys=True),
-            package_hash=package_hash,
-            thread_epoch=epoch,
-        )
+        async with pool.acquire() as offer_conn:
+            entered = True
+            try:
+                offer = await wa_broker.offer_job(
+                    offer_conn,
+                    outbox_id=outbox_id,
+                    thread_id=thread_id,
+                    claim_token=claim_token,
+                    outbox_expected_status=outbox_expected_status,
+                    package=wire,
+                    evidence_inputs=json.dumps(evidence_inputs, sort_keys=True),
+                    package_hash=package_hash,
+                    thread_epoch=epoch,
+                )
+            except Exception as exc:
+                call_exc = exc
     except Exception as exc:
-        call_exc = exc
-    try:
-        await offer_cm.__aexit__(None, None, None)
-    except Exception as exc:
+        if not entered:
+            logger.warning(
+                "wa_codex_leg: offer connection acquire failed "
+                "(outbox=%s): %s",
+                outbox_id,
+                type(exc).__name__,
+            )
+            return CodexLegResult(
+                reason=f"offer_acquire_error:{type(exc).__name__}"
+            )
         release_exc = exc
 
     if call_exc is not None or offer is None:
+        exc_name = type(call_exc).__name__ if call_exc is not None else "NoResult"
         logger.error(
             "wa_codex_leg: offer outcome uncertain (outbox=%s): %s",
             outbox_id,
-            type(call_exc).__name__,
+            exc_name,
         )
-        return CodexLegResult(fail=f"offer_uncertain:{type(call_exc).__name__}")
+        return CodexLegResult(fail=f"offer_uncertain:{exc_name}")
     if offer.outcome is not wa_broker.OfferOutcome.OFFERED:
         logger.info(
             "wa_codex_leg: offer fell off (outbox=%s outcome=%s)",
