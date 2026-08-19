@@ -539,17 +539,31 @@ async def test_breaker_denies_and_demotes_orphaned_half_open() -> None:
     sql, args = demote_calls[0]
     assert "breaker_state = 'open', breaker_opened_at = now()" in sql
     assert "NOT EXISTS" in sql
+    # The orphan window anchors on the transition's OWN clock — NEVER on
+    # updated_at, which every claim_job poll refreshes (a polling broker
+    # kept the threshold from ever maturing; Codex re-verdict, finding 2).
+    # Whitespace-normalized: the raw SQL wraps across lines, and a bare
+    # substring check on the pretty-printed text passes vacuously when the
+    # anchor column and the comparator sit on different lines (mutation run
+    # 2026-08-19 proved the un-normalized form blind to exactly the
+    # regression it exists to catch).
+    flat_sql = " ".join(sql.split())
+    assert "breaker_half_open_at <= now()" in flat_sql
+    assert "updated_at <=" not in flat_sql
     assert args == (wa_broker.HALF_OPEN_ORPHAN_S,)
 
 
 @pytest.mark.asyncio
 async def test_breaker_denies_when_open_and_cas_loses() -> None:
     """GUILT: past-open but not-yet-cooled — the CAS attempt runs but
-    matches zero rows, so admission is still refused."""
+    matches zero rows, so admission is still refused. The CAS also stamps
+    breaker_half_open_at (the orphan guard's anchor — finding 2)."""
     conn = ScriptedConn(fetchrow_results=[{"breaker_state": "open"}, None])
 
     assert await wa_broker.breaker_admits(conn) is False
-    cas_calls = conn.sql_with_args("SET breaker_state = 'half_open', updated_at = now()")
+    cas_calls = conn.sql_with_args(
+        "SET breaker_state = 'half_open', breaker_half_open_at = now()"
+    )
     assert cas_calls
     _, args = cas_calls[0]
     assert args == (wa_broker.BREAKER_OPEN_SECONDS,)
@@ -576,7 +590,7 @@ async def test_record_breaker_result_success_resets_to_closed() -> None:
     reset_calls = conn.sql_with_args("breaker_state")
     assert reset_calls
     _, args = reset_calls[0]
-    assert args == ("closed", None, 0)
+    assert args == ("closed", None, None, 0)
 
 
 @pytest.mark.asyncio
@@ -594,13 +608,16 @@ async def test_record_breaker_result_count_below_one_issues_no_sql() -> None:
 async def test_record_breaker_result_failure_is_one_statement_and_logs_only_when_open(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """GUILT + INNOCENCE together: the failure path is ONE atomic
-    INSERT..ON CONFLICT..RETURNING per call — the CASE logic (threshold
-    trip, half_open->open demotion, count folding) runs entirely DB-side, so
-    this test cannot re-derive it; it asserts the WIRING instead: exactly
-    one statement per call, and the WARNING log tracks the RETURNED state
-    (never a locally-recomputed count) — silent for 'closed', loud for
-    'open'."""
+    """GUILT + INNOCENCE together: the failure path is the ADMISSION
+    advisory lock followed by ONE atomic INSERT..ON CONFLICT..RETURNING per
+    call — the lock serializes the open-flip against in-flight offers
+    (Codex re-verdict, finding 3: without it an offer admitted before the
+    third failure could still create a job after the breaker opened), and
+    the CASE logic (threshold trip, half_open->open demotion, count
+    folding) runs entirely DB-side, so this test cannot re-derive it; it
+    asserts the WIRING: lock-then-INSERT per call, and the WARNING log
+    tracks the RETURNED state (never a locally-recomputed count) — silent
+    for 'closed', loud for 'open'."""
     conn = ScriptedConn(
         fetchrow_results=[
             {"breaker_state": "closed", "consecutive_failures": 1},
@@ -619,8 +636,13 @@ async def test_record_breaker_result_failure_is_one_statement_and_logs_only_when
         await wa_broker.record_breaker_result(conn, success=False)
         assert any("circuit breaker OPEN" in r.message for r in caplog.records)
 
-    assert len(conn.executed) == 3
-    for sql, args in conn.executed:
+    assert len(conn.executed) == 6
+    locks = conn.executed[0::2]
+    inserts = conn.executed[1::2]
+    for sql, args in locks:
+        assert "pg_advisory_xact_lock" in sql
+        assert args == ()
+    for sql, args in inserts:
         assert "INSERT INTO wa_broker_gauge" in sql
         assert "RETURNING breaker_state, consecutive_failures" in sql
         assert args == (wa_broker.BREAKER_TRIP_AFTER, 1)
@@ -629,15 +651,19 @@ async def test_record_breaker_result_failure_is_one_statement_and_logs_only_when
 @pytest.mark.asyncio
 async def test_record_breaker_result_folds_a_batch_count_into_one_call() -> None:
     """count lets a batch of expiries (the reaper) fold into ONE statement
-    instead of looping record_breaker_result once per row (finding 4)."""
+    (after the admission lock) instead of looping record_breaker_result
+    once per row (finding 4)."""
     conn = ScriptedConn(
         fetchrow_results=[{"breaker_state": "open", "consecutive_failures": 5}],
     )
 
     await wa_broker.record_breaker_result(conn, success=False, count=5)
 
-    assert len(conn.executed) == 1
-    _, args = conn.executed[0]
+    assert len(conn.executed) == 2
+    lock_sql, lock_args = conn.executed[0]
+    assert "pg_advisory_xact_lock" in lock_sql
+    assert lock_args == ()
+    _, args = conn.executed[1]
     assert args == (wa_broker.BREAKER_TRIP_AFTER, 5)
 
 

@@ -198,6 +198,20 @@ INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
         "/api/crm/internal/clients/{client_id}/documents/upload",
         "wa-mirror intake document upload — same X-CRM-Write-Key gate as upsert-by-phone.",
     ),
+    # ── BOT-V4 broker: dedicated WA_BROKER_KEY checked in-router ──
+    IntentionalPublicMutation(
+        "POST",
+        "/api/wa-broker/claim",
+        "Codex broker claim — require_wa_broker_key in-router (constant-time; "
+        "401 when WA_BROKER_KEY unset — unconfigured = surface OFF, not open; "
+        "failed auth rate-limited). Same handler-owned-auth class as "
+        "X-CRM-Write-Key (wa_broker.py).",
+    ),
+    IntentionalPublicMutation(
+        "POST",
+        "/api/wa-broker/complete",
+        "Codex broker complete — same require_wa_broker_key gate as claim.",
+    ),
     IntentionalPublicMutation(
         "POST",
         "/api/intel/lake/observations",

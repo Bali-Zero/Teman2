@@ -43,8 +43,16 @@ _DB_URL = os.environ.get(
     "postgresql://nuzantara@localhost:5432/nuzantara_test",
 )
 
-_MIGRATION_270 = (
-    Path(__file__).resolve().parents[2] / "db" / "migrations_v2" / "270_wa_broker_jobs.sql"
+_MIGRATIONS_DIR = Path(__file__).resolve().parents[2] / "db" / "migrations_v2"
+
+# EVERY wa_broker migration, in order — a fixture that pins one file builds
+# a schema the source has already outgrown (the 271 column would raise
+# UndefinedColumnError on half the breaker paths while the suite blamed the
+# code). New broker migrations get appended here in the same PR that adds
+# them; the UndefinedColumnError blast radius is the tripwire for forgetting.
+_BROKER_MIGRATIONS = (
+    _MIGRATIONS_DIR / "270_wa_broker_jobs.sql",
+    _MIGRATIONS_DIR / "271_wa_broker_gauge_half_open_at.sql",
 )
 
 _SCHEMA = "wa_broker_it"
@@ -72,8 +80,9 @@ async def conn() -> AsyncIterator[asyncpg.Connection]:
         await c.execute(f"CREATE SCHEMA {_SCHEMA}")
         await c.execute(f"SET search_path TO {_SCHEMA}")
         await c.execute(_PARENT_STUBS)
-        forward, _rollback = split_migration_sql(_MIGRATION_270.read_text(encoding="utf-8"))
-        await c.execute(forward)
+        for migration in _BROKER_MIGRATIONS:
+            forward, _rollback = split_migration_sql(migration.read_text(encoding="utf-8"))
+            await c.execute(forward)
         yield c
     finally:
         await c.execute(f"DROP SCHEMA IF EXISTS {_SCHEMA} CASCADE")
@@ -723,3 +732,168 @@ async def test_retention_sweep_under_one_snapshot(
     removed = await wa_broker.sweep_terminal_rows(pool)
     assert removed == 1
     assert await conn.fetchval("SELECT count(*) FROM broker_jobs") == 0
+
+
+# ── S2 re-verdict round: findings 2, 4, 5 driven on the REAL schema ─────────
+
+
+async def test_orphaned_half_open_demotes_despite_fresh_polling(
+    conn: asyncpg.Connection,
+) -> None:
+    """finding 2 (GUILT): a half_open gauge whose canary result was lost
+    must demote to open after the orphan window EVEN WHILE the broker keeps
+    polling — every claim_job refreshes updated_at, so the guard must
+    anchor on breaker_half_open_at, never on the heartbeat. This is the
+    exact input that kept the old guard from ever firing."""
+    await conn.execute(
+        """
+        INSERT INTO wa_broker_gauge
+            (id, broker_last_seen_at, breaker_state, breaker_opened_at,
+             breaker_half_open_at, updated_at)
+        VALUES (1, now(), 'half_open',
+                now() - INTERVAL '10 minutes',
+                now() - ($1 * INTERVAL '1 second') - INTERVAL '1 second',
+                now())
+        """,
+        wa_broker.HALF_OPEN_ORPHAN_S,
+    )
+    # Fresh heartbeat right now — the old updated_at anchor reads "recent".
+    await wa_broker.claim_job(conn, in_flight=0, last_exec_ms=None)
+
+    assert await wa_broker.breaker_admits(conn) is False
+    row = await conn.fetchrow(
+        "SELECT breaker_state, breaker_half_open_at FROM wa_broker_gauge WHERE id = 1"
+    )
+    assert row["breaker_state"] == "open"
+    assert row["breaker_half_open_at"] is None
+
+
+async def test_fresh_half_open_survives_the_orphan_guard(
+    conn: asyncpg.Connection,
+) -> None:
+    """finding 2 (INNOCENCE): a half_open entered moments ago (canary
+    legitimately in flight) is NOT demoted — denial yes, demotion no."""
+    await conn.execute(
+        """
+        INSERT INTO wa_broker_gauge
+            (id, broker_last_seen_at, breaker_state, breaker_opened_at,
+             breaker_half_open_at, updated_at)
+        VALUES (1, now(), 'half_open', now() - INTERVAL '10 minutes',
+                now(), now())
+        """
+    )
+
+    assert await wa_broker.breaker_admits(conn) is False
+    assert (
+        await conn.fetchval("SELECT breaker_state FROM wa_broker_gauge WHERE id = 1")
+    ) == "half_open"
+
+
+async def test_reaper_fold_is_atomic_with_terminalization(
+    pool: asyncpg.Pool, conn: asyncpg.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """finding 4 (GUILT): if the breaker fold crashes, the terminalization
+    must roll back WITH it — otherwise the expired jobs became unfindable
+    while their failures never reached the breaker. Proven by making
+    record_breaker_result raise: the jobs must still be 'offered'
+    afterwards, and a clean retry must then expire them AND open the
+    breaker."""
+    await _seed_alive_gauge(conn)
+
+    async def _offer_one_and_expire_deadline() -> None:
+        outbox_id, thread_id, tok = await _outbox_row(conn)
+        offered = await wa_broker.offer_job(
+            conn,
+            outbox_id=outbox_id,
+            thread_id=thread_id,
+            claim_token=tok,
+            outbox_expected_status="generating",
+            package='{"k": 1}',
+            evidence_inputs="{}",
+            package_hash="h",
+            thread_epoch=1,
+        )
+        assert offered.outcome is OfferOutcome.OFFERED
+        await conn.execute(
+            "UPDATE broker_jobs SET deadline_at = now() - INTERVAL '1 second' "
+            "WHERE state = 'offered'"
+        )
+
+    # Cycle 1 — the crash: the fold raises, so terminalization must roll
+    # back with it and the job must still be reappable.
+    await _offer_one_and_expire_deadline()
+    real_record = wa_broker.record_breaker_result
+
+    async def _exploding_record(*args: object, **kwargs: object) -> None:
+        raise RuntimeError("crash between terminalize and fold")
+
+    monkeypatch.setattr(wa_broker, "record_breaker_result", _exploding_record)
+    with pytest.raises(RuntimeError):
+        await wa_broker.expire_stale_jobs(pool)
+
+    states = [r["state"] for r in await conn.fetch("SELECT state FROM broker_jobs")]
+    assert states and all(s == "offered" for s in states)
+
+    # Clean retry observes the SAME job again — nothing was lost.
+    monkeypatch.setattr(wa_broker, "record_breaker_result", real_record)
+    result = await wa_broker.expire_stale_jobs(pool)
+    assert result.serve_expired == 1
+
+    # MAX_DEPTH is 1, so reach the trip threshold one offer at a time.
+    for _ in range(wa_broker.BREAKER_TRIP_AFTER - 1):
+        await _offer_one_and_expire_deadline()
+        result = await wa_broker.expire_stale_jobs(pool)
+        assert result.serve_expired == 1
+    assert (
+        await conn.fetchval("SELECT breaker_state FROM wa_broker_gauge WHERE id = 1")
+    ) == "open"
+
+
+async def test_offer_package_is_a_jsonb_object_under_the_production_codec(
+    conn: asyncpg.Connection,
+) -> None:
+    """finding 5 (GUILT): the production pool registers a jsonb codec whose
+    encoder is json.dumps (backend/app/core/database.py) — a bare
+    ``$3::jsonb`` bind made asyncpg re-serialize the already-serialized
+    package string, storing a JSONB *string* instead of an object
+    (``package ? 'messages'`` would fail in prod while every codec-less
+    test stayed green). The ``::text::jsonb`` double cast types the bind as
+    text, so no codec applies on either pool. This connection registers the
+    PROD codec and proves the stored value is an object."""
+    import json as _json
+
+    codec_conn = await asyncpg.connect(_DB_URL)
+    try:
+        await codec_conn.execute(f"SET search_path TO {_SCHEMA}")
+        await codec_conn.set_type_codec(
+            "jsonb", encoder=_json.dumps, decoder=_json.loads, schema="pg_catalog"
+        )
+        await _seed_alive_gauge(codec_conn)
+        outbox_id, thread_id, tok = await _outbox_row(codec_conn)
+        offered = await wa_broker.offer_job(
+            codec_conn,
+            outbox_id=outbox_id,
+            thread_id=thread_id,
+            claim_token=tok,
+            outbox_expected_status="generating",
+            package='{"messages": [], "persona_digest": "d"}',
+            evidence_inputs='{"domain": "visa"}',
+            package_hash="h",
+            thread_epoch=1,
+        )
+        assert offered.outcome is OfferOutcome.OFFERED
+        types = await codec_conn.fetchrow(
+            """
+            SELECT jsonb_typeof(package) AS pkg, jsonb_typeof(evidence_inputs) AS ev
+            FROM broker_jobs WHERE job_id = $1
+            """,
+            offered.job_id,
+        )
+        assert types["pkg"] == "object"
+        assert types["ev"] == "object"
+        assert await codec_conn.fetchval(
+            "SELECT package ? 'messages' FROM broker_jobs WHERE job_id = $1",
+            offered.job_id,
+        )
+    finally:
+        await codec_conn.close()

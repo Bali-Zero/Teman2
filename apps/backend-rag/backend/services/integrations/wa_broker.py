@@ -216,14 +216,20 @@ async def breaker_admits(conn: asyncpg.Connection) -> bool:
         # Orphan guard: a half_open gauge with no outstanding job whose
         # canary result never arrived (worker crashed between consume and
         # record). Demote to open with a FRESH cooldown — conservative,
-        # never admit from here.
+        # never admit from here. Anchored on breaker_half_open_at — the
+        # transition's OWN clock (migration 271) — NEVER on updated_at:
+        # every claim_job poll refreshes updated_at, so a polling broker
+        # kept the orphan threshold from ever maturing and half_open was
+        # absorbing forever (Codex re-verdict, finding 2).
         await conn.execute(
             """
             UPDATE wa_broker_gauge
             SET breaker_state = 'open', breaker_opened_at = now(),
-                updated_at = now()
+                breaker_half_open_at = NULL, updated_at = now()
             WHERE id = 1 AND breaker_state = 'half_open'
-              AND updated_at <= now() - ($1 * INTERVAL '1 second')
+              AND breaker_half_open_at IS NOT NULL
+              AND breaker_half_open_at
+                  <= now() - ($1 * INTERVAL '1 second')
               AND NOT EXISTS (
                   SELECT 1 FROM broker_jobs
                   WHERE state IN ('offered', 'leased',
@@ -235,7 +241,8 @@ async def breaker_admits(conn: asyncpg.Connection) -> bool:
     cas = await conn.fetchrow(
         """
         UPDATE wa_broker_gauge
-        SET breaker_state = 'half_open', updated_at = now()
+        SET breaker_state = 'half_open', breaker_half_open_at = now(),
+            updated_at = now()
         WHERE id = 1 AND breaker_state = 'open'
           AND breaker_opened_at IS NOT NULL
           AND breaker_opened_at <= now() - ($1 * INTERVAL '1 second')
@@ -257,25 +264,42 @@ async def record_breaker_result(
     threshold race), and no second statement is needed for the failed-canary
     demotion. ``count`` lets the reaper report a batch of expiries in one
     call (finding 4).
+
+    The failure path also takes the ADMISSION advisory xact lock before
+    flipping state (Codex re-verdict, finding 3): ``offer_job`` holds that
+    lock from its admission read to its transaction COMMIT, so an
+    open-flip can no longer land between ``breaker_admits`` saying yes and
+    the job INSERT committing — "no new admission after open" becomes a
+    serialization fact, not a hope. A ``Pool`` argument is wrapped in its
+    own transaction here; a bare ``Connection`` MUST already be inside one
+    (the advisory xact lock would otherwise release at statement end) —
+    the reaper's atomic fold is exactly that caller.
     """
+    if isinstance(conn, asyncpg.Pool):
+        async with conn.acquire() as leased_conn, leased_conn.transaction():
+            await record_breaker_result(leased_conn, success=success, count=count)
+        return
     if success:
         await _gauge_upsert(
             conn,
             breaker_state="closed",
             breaker_opened_at=None,
+            breaker_half_open_at=None,
             consecutive_failures=0,
         )
         return
     if count < 1:
         return
+    await conn.execute(_ADMISSION_LOCK_SQL)
     row = await conn.fetchrow(
         """
         INSERT INTO wa_broker_gauge
             (id, consecutive_failures, breaker_state, breaker_opened_at,
-             updated_at)
+             breaker_half_open_at, updated_at)
         VALUES (1, $2::int,
                 CASE WHEN $2::int >= $1::int THEN 'open' ELSE 'closed' END,
                 CASE WHEN $2::int >= $1::int THEN now() ELSE NULL END,
+                NULL,
                 now())
         ON CONFLICT (id) DO UPDATE
         SET consecutive_failures
@@ -292,6 +316,7 @@ async def record_breaker_result(
                      AND wa_broker_gauge.consecutive_failures + $2::int
                          >= $1::int THEN now()
                 ELSE wa_broker_gauge.breaker_opened_at END,
+            breaker_half_open_at = NULL,
             updated_at = now()
         RETURNING breaker_state, consecutive_failures
         """,
@@ -321,7 +346,8 @@ async def _revert_canary_cas(conn: asyncpg.Connection) -> None:
     await conn.execute(
         """
         UPDATE wa_broker_gauge
-        SET breaker_state = 'open', updated_at = now()
+        SET breaker_state = 'open', breaker_half_open_at = NULL,
+            updated_at = now()
         WHERE id = 1 AND breaker_state = 'half_open'
         """,
     )
@@ -427,7 +453,8 @@ async def offer_job(
                     INSERT INTO broker_jobs
                         (outbox_id, thread_id, mode, package, evidence_inputs,
                          package_hash, thread_epoch, deadline_at)
-                    VALUES ($1, $2, 'serve', $3::jsonb, $4::jsonb, $5, $6,
+                    VALUES ($1, $2, 'serve', $3::text::jsonb,
+                            $4::text::jsonb, $5, $6,
                             now() + ($7 * INTERVAL '1 second'))
                     RETURNING job_id
                     """,
@@ -748,32 +775,44 @@ async def expire_stale_jobs(pool: asyncpg.Pool) -> ReapResult:
     mint a row this reaper can never reach — an unreapable PII state.
     (A DB CHECK tying the state to completed_at is the follow-up migration,
     tracked for PR-5; this makes the reaper safe regardless.)
+
+    Terminalization and the breaker fold run in ONE transaction (Codex
+    re-verdict, finding 4): as separate statements, a crash between them
+    made the expired jobs unfindable forever while their failures never
+    reached the breaker — the fold was lost, the breaker stayed closed.
+    Atomic: a crash before COMMIT leaves the jobs offered/leased and the
+    next reaper tick observes them again.
     """
-    rows = await pool.fetch(
-        """
-        UPDATE broker_jobs
-        SET state = 'expired', package = NULL, evidence_inputs = NULL,
-            result_text = NULL,
-            outcome = COALESCE(outcome, 'expired_' || state)
-        WHERE (mode = 'serve' AND state IN ('offered', 'leased')
-                 AND deadline_at <= now())
-           OR (state = 'completed_pending_consume'
-                 AND COALESCE(completed_at, created_at)
-                     <= now() - ($1 * INTERVAL '1 second'))
-           OR (mode = 'shadow' AND state IN ('offered', 'leased')
-                 AND expires_at IS NOT NULL AND expires_at <= now())
-        RETURNING mode, outcome
-        """,
-        LEASE_TTL_S * 3,
-    )
-    result = ReapResult()
-    for row in rows:
-        if row["outcome"] == "expired_completed_pending_consume":
-            result.consumer_expired += 1
-        elif row["mode"] == "shadow":
-            result.shadow_expired += 1
-        else:
-            result.serve_expired += 1
+    async with pool.acquire() as conn, conn.transaction():
+        rows = await conn.fetch(
+            """
+            UPDATE broker_jobs
+            SET state = 'expired', package = NULL, evidence_inputs = NULL,
+                result_text = NULL,
+                outcome = COALESCE(outcome, 'expired_' || state)
+            WHERE (mode = 'serve' AND state IN ('offered', 'leased')
+                     AND deadline_at <= now())
+               OR (state = 'completed_pending_consume'
+                     AND COALESCE(completed_at, created_at)
+                         <= now() - ($1 * INTERVAL '1 second'))
+               OR (mode = 'shadow' AND state IN ('offered', 'leased')
+                     AND expires_at IS NOT NULL AND expires_at <= now())
+            RETURNING mode, outcome
+            """,
+            LEASE_TTL_S * 3,
+        )
+        result = ReapResult()
+        for row in rows:
+            if row["outcome"] == "expired_completed_pending_consume":
+                result.consumer_expired += 1
+            elif row["mode"] == "shadow":
+                result.shadow_expired += 1
+            else:
+                result.serve_expired += 1
+        if result.serve_expired:
+            await record_breaker_result(
+                conn, success=False, count=result.serve_expired
+            )
     if result.total:
         logger.info(
             "wa_broker: reaper expired %d stale job(s) (serve=%d consumer=%d shadow=%d)",
@@ -782,8 +821,6 @@ async def expire_stale_jobs(pool: asyncpg.Pool) -> ReapResult:
             result.consumer_expired,
             result.shadow_expired,
         )
-    if result.serve_expired:
-        await record_breaker_result(pool, success=False, count=result.serve_expired)
     return result
 
 

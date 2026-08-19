@@ -378,3 +378,32 @@ def test_fail_bucket_rate_limits_one_source_without_blocking_others(
     # in-test proof that FAIL and AUTH are genuinely separate buckets).
     ok = client.post("/api/wa-broker/claim", json={}, headers={"X-API-Key": configured_key})
     assert ok.status_code == 200
+
+
+def test_broker_paths_are_armed_in_the_public_endpoints_registry() -> None:
+    """Codex re-verdict F1 armed-check (W81: built != armed).
+
+    The auth model for these two routes is handler-owned (require_wa_broker_key
+    inside the router), which is only legal if the global API-key middleware is
+    told to stand down via PUBLIC_ENDPOINTS. This pins the two entries so a
+    registry cleanup cannot silently re-arm the global middleware in front of
+    the router (double-auth → every codex-daemon call 401s), and equally so the
+    router's own gate stays the one that answers.
+    """
+    from backend.app.auth.public_endpoints import PUBLIC_ENDPOINTS
+
+    broker_entries = {
+        ep.prefix: ep for ep in PUBLIC_ENDPOINTS if ep.prefix.startswith("/api/wa-broker")
+    }
+    assert set(broker_entries) == {"/api/wa-broker/claim", "/api/wa-broker/complete"}
+
+    # Both must be EXACT matches — a prefix/template entry would also exempt
+    # any FUTURE broker route from the middleware before its handler-owned
+    # auth exists.
+    assert all(ep.match == "exact" for ep in broker_entries.values())
+
+    # And the exemption actually fires for the real request paths.
+    assert any(ep.matches("/api/wa-broker/claim") for ep in PUBLIC_ENDPOINTS)
+    assert any(ep.matches("/api/wa-broker/complete") for ep in PUBLIC_ENDPOINTS)
+    # Innocence: a sibling path the router does NOT own stays behind auth.
+    assert not any(ep.matches("/api/wa-broker/other") for ep in PUBLIC_ENDPOINTS)
