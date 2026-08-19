@@ -184,6 +184,8 @@ jobs:
               scripts/cron-runner.sh|\
               scripts/test_cron_runner_alert.sh|\
               scripts/test_cron_single_voice.sh|\
+              scripts/login-healthcheck.sh|\
+              scripts/test_login_healthcheck_alert.sh|\
               scripts/dlq_autopilot.py|\
               scripts/tests/test_dlq_terminal_speaks_once.py|\
               apps/evaluator/nlm_deep_research/scripts/*|\
@@ -526,6 +528,22 @@ jobs:
           # anywhere. All three exits are asserted — a fix that covers only the path
           # that bit you is half a fix.
           bash scripts/test_cron_runner_alert.sh
+
+      - name: login-healthcheck alarm-channel corpus (dead channel must be loud, not routine)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # Measured 2026-08-19 on Pro: status=ok 0/2940, "telegram: missing
+          # creds" logged 61/61 times an alert was due — every alarm died at
+          # the gateway and the script called it a routine log line, exit
+          # code and Genoma last_error unchanged either way. A dead alarm
+          # channel and a dead login were indistinguishable to anything
+          # reading this probe's state. Hardened to route through
+          # scripts/tg_notify.py (the gateway, not a raw curl — the first
+          # draft's raw curl was itself a NEW direct sender against the
+          # anti-regrowth lint below, caught by this same job) with a
+          # distinct loud exit code + sidecar marker when the gateway
+          # cannot be reached at all.
+          bash scripts/test_login_healthcheck_alert.sh
 
       - name: WR2 wrapper failure-voice corpora (BOTH wrappers, 9 + 8 launchd jobs)
         if: steps.paths.outputs.relevant == 'true'
