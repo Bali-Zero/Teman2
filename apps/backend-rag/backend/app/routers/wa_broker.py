@@ -29,16 +29,19 @@ import logging
 import threading
 import time
 import uuid
+from typing import TypeVar
 
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from backend.app.core.config import settings
 from backend.app.deps.database import get_database_pool
 from backend.services.integrations import wa_broker
 
 logger = logging.getLogger(__name__)
+
+_ModelT = TypeVar("_ModelT", bound=BaseModel)
 
 router = APIRouter(prefix="/api/wa-broker", tags=["wa-broker"])
 
@@ -198,15 +201,46 @@ class CompleteResponse(BaseModel):
     status: str
 
 
+# These routes are exempt from HybridAuthMiddleware (PUBLIC_ENDPOINTS), so
+# require_wa_broker_key is the ONLY thing in front of them — and a Pydantic
+# body parameter would silently move it: FastAPI buffers and JSON-parses the
+# COMPLETE body before resolving dependencies, so an unauthenticated caller
+# could force arbitrary allocation/parsing pre-auth, and malformed JSON
+# answered 422 without ever charging the failed-auth bucket (Codex
+# re-verdict r7, proven by probe: dependency_called=False on a bad body).
+# Cure: no body parameter in the signature (dependencies then resolve
+# without touching the body), and the handler reads the body itself AFTER
+# auth, streaming under a hard cap.
+_MAX_BODY_BYTES = 128 * 1024  # complete's legit max ≈ 64KiB text + overhead
+
+
+async def _read_bounded_body(request: Request, model: type[_ModelT]) -> _ModelT:
+    body = bytearray()
+    async for chunk in request.stream():
+        body.extend(chunk)
+        if len(body) > _MAX_BODY_BYTES:
+            raise HTTPException(status_code=413, detail="body too large")
+    try:
+        return model.model_validate_json(bytes(body) or b"{}")
+    except ValidationError as exc:
+        # include_input=False: complete bodies carry client-conversation
+        # text — never echo it back in an error payload.
+        raise HTTPException(
+            status_code=422,
+            detail=exc.errors(include_url=False, include_context=False, include_input=False),
+        ) from exc
+
+
 @router.post(
     "/claim",
     response_model=ClaimResponse,
     dependencies=[Depends(require_wa_broker_key)],
 )
 async def claim(
-    body: ClaimRequest,
+    request: Request,
     pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> ClaimResponse:
+    body = await _read_bounded_body(request, ClaimRequest)
     async with pool.acquire() as conn:
         row = await wa_broker.claim_job(
             conn,
@@ -231,9 +265,10 @@ async def claim(
     dependencies=[Depends(require_wa_broker_key)],
 )
 async def complete(
-    body: CompleteRequest,
+    request: Request,
     pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> CompleteResponse:
+    body = await _read_bounded_body(request, CompleteRequest)
     if (body.result_text is None) == (body.error_class is None):
         raise HTTPException(
             status_code=422,

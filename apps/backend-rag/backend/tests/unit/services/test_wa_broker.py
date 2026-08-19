@@ -4,9 +4,10 @@ Covers the worker-side leg (offer_job/wait_for_job/consume_result/
 discard_completion), the shared circuit breaker persisted on
 wa_broker_gauge (breaker_admits/record_breaker_result), and the
 reaper/retention passes (expire_stale_jobs, sweep_terminal_rows). The
-endpoint-side leg (claim_job/complete_job) is exercised indirectly through
-the router test suite (it is mocked there, never given real SQL), so it is
-not duplicated here.
+endpoint-side leg (claim_job/complete_job) is exercised mainly through the
+router suite (mocked there) and the real-PG integration suite; the one
+exception here is complete_job's blank-result_text refusal (r6), asserted
+directly because it must fire BEFORE any SQL runs.
 
 Updated for the S2 cross-family review fixes (2 BLOCKER + 7 MAJOR): the
 breaker gained a half_open state (renamed breaker_allows -> breaker_admits),

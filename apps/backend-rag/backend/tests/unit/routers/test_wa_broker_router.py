@@ -452,3 +452,61 @@ def test_complete_rejects_blank_result_text(client: TestClient, configured_key: 
             headers={"X-API-Key": configured_key},
         )
         assert resp.status_code == 422, f"blank {blank!r} was accepted"
+
+
+# ── auth-before-body + bounded body (Codex re-verdict r7) ─────────────────
+
+
+def test_unauthenticated_malformed_json_is_a_401_charged_to_the_fail_bucket(
+    client: TestClient, configured_key: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """GUILT: with a Pydantic body parameter FastAPI parsed the COMPLETE
+    body before resolving dependencies — malformed JSON answered 422
+    without the auth dependency ever running (proven by probe:
+    dependency_called=False), so an unauthenticated prober was never
+    charged to the failed-auth bucket. Auth now genuinely runs first: the
+    body is not even read for an unauthenticated caller, and the probes
+    are damped like any other wrong-key traffic."""
+    monkeypatch.setattr(wa_broker_router, "_FAIL_LIMIT_PER_MINUTE", 3)
+    wrong = {"X-API-Key": "not-the-key"}
+    for _ in range(3):
+        resp = client.post(
+            "/api/wa-broker/complete",
+            content=b'{"broken json',
+            headers={**wrong, "content-type": "application/json"},
+        )
+        assert resp.status_code == 401  # not 422 — auth answered first
+    damped = client.post(
+        "/api/wa-broker/complete",
+        content=b'{"broken json',
+        headers={**wrong, "content-type": "application/json"},
+    )
+    assert damped.status_code == 429
+
+
+def test_authenticated_malformed_json_is_a_422(
+    client: TestClient, configured_key: str
+) -> None:
+    """INNOCENCE: a legitimate broker with a bug still gets the 422 it
+    needs to debug — after auth, from the handler's own bounded parse."""
+    resp = client.post(
+        "/api/wa-broker/complete",
+        content=b'{"broken json',
+        headers={"X-API-Key": configured_key, "content-type": "application/json"},
+    )
+    assert resp.status_code == 422
+
+
+def test_oversize_body_is_cut_off_at_the_cap(
+    client: TestClient, configured_key: str
+) -> None:
+    """GUILT: the handler reads the body under a hard cap — a huge ignored
+    extra field can no longer force unbounded allocation (the legit max
+    complete body is ~64KiB of result_text; the cap is 128KiB)."""
+    huge = '{"padding": "' + "x" * (wa_broker_router._MAX_BODY_BYTES + 1024) + '"}'
+    resp = client.post(
+        "/api/wa-broker/complete",
+        content=huge.encode(),
+        headers={"X-API-Key": configured_key, "content-type": "application/json"},
+    )
+    assert resp.status_code == 413
