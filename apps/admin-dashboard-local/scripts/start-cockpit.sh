@@ -18,7 +18,7 @@ fi
 cd "$APP_ROOT"
 
 # Source optional local settings first. Protected launcher-derived values and
-# the file-backed HMAC key are exported afterwards and cannot be overridden by
+# both file-backed keys are exported afterwards and cannot be overridden by
 # .env.
 if [ -f .env ]; then set -a; source .env; set +a; fi
 
@@ -75,7 +75,7 @@ fi
 
 # Verify pool config
 if [ -z "${DATABASE_URL_LOCAL:-}" ] && [ -z "${FLY_TUNNEL_URL:-}" ]; then
-    echo "WARNING: neither DATABASE_URL_LOCAL nor FLY_TUNNEL_URL set" >&2
+    echo "INFO: no database configured; GARUDA preview/login remain available, but DB-backed widgets will be unavailable" >&2
 fi
 
 echo "Starting Zantara Cockpit on http://127.0.0.1:3100/cockpit"

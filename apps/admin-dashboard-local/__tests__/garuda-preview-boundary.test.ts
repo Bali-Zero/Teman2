@@ -57,6 +57,8 @@ describe("GARUDA internal preview boundaries", () => {
       'PREVIEW_CWD="$BACKEND_ROOT/backend/services/garuda_flow"',
     );
     expect(launcher).toContain('"$PREVIEW_CWD/.env"');
+    expect(launcher).toContain("GARUDA preview/login remain available");
+    expect(launcher).toContain("DB-backed widgets will be unavailable");
     expect(launcher).not.toContain('COCKPIT_REPO_ROOT="${COCKPIT_REPO_ROOT:-');
   });
 
