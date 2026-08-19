@@ -548,3 +548,37 @@ async def test_single_giant_chunk_is_rejected_before_buffering() -> None:
         )
     assert excinfo.value.status_code == 413
     assert spy.iterated is False, "oversize chunk was buffered before the cap check"
+
+
+def test_complete_rejects_nul_in_result_text_and_key(
+    client: TestClient, configured_key: str
+) -> None:
+    """GUILT (Codex re-verdict r9): PostgreSQL TEXT cannot store U+0000, and
+    the JSON escape backslash-u0000 passes plain string validation — without
+    the _no_nul validator the completion UPDATE itself 500'd, retried
+    identically by the broker until the lease deadline (stuck job + breaker
+    fold). It must die here as a 422 the broker can act on. Raw JSON bodies
+    so the real model_validate_json path decodes the escape."""
+    nul_text_body = (
+        '{"job_id":"11111111-1111-1111-1111-111111111111",'
+        '"fence_token":"22222222-2222-2222-2222-222222222222",'
+        '"completion_key":"key-12345","result_text":"answer\\u0000tail"}'
+    )
+    resp = client.post(
+        "/api/wa-broker/complete",
+        content=nul_text_body.encode(),
+        headers={"X-API-Key": configured_key, "content-type": "application/json"},
+    )
+    assert resp.status_code == 422
+
+    nul_key_body = (
+        '{"job_id":"11111111-1111-1111-1111-111111111111",'
+        '"fence_token":"22222222-2222-2222-2222-222222222222",'
+        '"completion_key":"key-123\\u000045","result_text":"a real answer"}'
+    )
+    resp = client.post(
+        "/api/wa-broker/complete",
+        content=nul_key_body.encode(),
+        headers={"X-API-Key": configured_key, "content-type": "application/json"},
+    )
+    assert resp.status_code == 422

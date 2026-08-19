@@ -716,6 +716,19 @@ async def complete_job(
             "empty result_text is not a completion — report it as "
             "error_class='empty_output'"
         )
+    # PostgreSQL TEXT cannot store U+0000 (Codex re-verdict r9, proven by
+    # probe: CharacterNotInRepertoireError on the bind). Without this check
+    # the completion UPDATE itself failed AFTER the guards passed — a 500
+    # the broker retries identically until the lease deadline, turning one
+    # poisoned output into a stuck job plus a breaker fold. The router
+    # rejects the same shape at the HTTP edge (422); this copy guards
+    # direct callers of the reusable boundary. error_class needs no check:
+    # the closed vocabulary above already excludes NUL.
+    if "\x00" in completion_key or (result_text is not None and "\x00" in result_text):
+        raise ValueError(
+            "NUL (U+0000) is not storable in TEXT — sanitize the output or "
+            "report it as error_class='cli_failure'"
+        )
 
     # Non-PII fingerprint of THIS attempt's payload, frozen on the row at
     # accept time (migration 273; Codex re-verdict r5, finding 2): the

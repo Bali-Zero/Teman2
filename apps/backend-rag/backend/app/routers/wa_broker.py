@@ -183,6 +183,25 @@ class CompleteRequest(BaseModel):
             )
         return v
 
+    @field_validator("completion_key", "result_text")
+    @classmethod
+    def _no_nul(cls, v: str | None) -> str | None:
+        # PostgreSQL TEXT cannot store U+0000 (Codex re-verdict r9, proven
+        # by probe: CharacterNotInRepertoireError on the bind): the JSON
+        # escape backslash-u0000 passes string validation, so without this
+        # check the completion UPDATE itself failed — a 500 the broker retries
+        # IDENTICALLY until the lease deadline, turning one poisoned output
+        # into a stuck job plus a breaker fold. Refuse it as a 422 the
+        # broker can act on. complete_job enforces the same rule for
+        # direct callers. (The package wire is immune by construction:
+        # json.dumps escapes NUL, so no raw 0x00 reaches that column.)
+        if v is not None and "\x00" in v:
+            raise ValueError(
+                "NUL (U+0000) is not storable in TEXT — sanitize the output "
+                "or report error_class='cli_failure'"
+            )
+        return v
+
     @field_validator("error_class")
     @classmethod
     def _error_class_in_vocabulary(cls, v: str | None) -> str | None:

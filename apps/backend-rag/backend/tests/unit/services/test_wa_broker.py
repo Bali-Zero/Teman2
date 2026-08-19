@@ -821,3 +821,35 @@ async def test_complete_job_refuses_blank_result_text_before_any_sql() -> None:
                 exec_ms=1,
             )
     assert conn.executed == []
+
+
+@pytest.mark.asyncio
+async def test_complete_job_refuses_nul_before_any_sql() -> None:
+    """GUILT (Codex re-verdict r9): PostgreSQL TEXT cannot store U+0000
+    (proven by probe: CharacterNotInRepertoireError on the bind), so a NUL
+    that reaches the UPDATE becomes a 500 the broker retries identically
+    until the lease deadline — a stuck job plus a breaker fold. The
+    reusable boundary refuses it BEFORE any SQL, in both string inputs."""
+    conn = ScriptedConn()
+
+    with pytest.raises(ValueError, match="NUL"):
+        await wa_broker.complete_job(
+            conn,
+            job_id=uuid.uuid4(),
+            fence_token=uuid.uuid4(),
+            completion_key="key-nul-1",
+            result_text="answer\x00tail",
+            error_class=None,
+            exec_ms=1,
+        )
+    with pytest.raises(ValueError, match="NUL"):
+        await wa_broker.complete_job(
+            conn,
+            job_id=uuid.uuid4(),
+            fence_token=uuid.uuid4(),
+            completion_key="key\x00nul-2",
+            result_text="a real answer",
+            error_class=None,
+            exec_ms=1,
+        )
+    assert conn.executed == []
