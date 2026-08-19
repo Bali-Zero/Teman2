@@ -787,6 +787,12 @@
       "repo": "infra/ghostty/machines/mini.ghostty",
       "machines": ["mini"],
       "_note": "Ghostty fleet profile, added 2026-08-18. ~/.config is not a git repo, so these installed copies had no history and no backup before this. Installed by infra/ghostty/install.sh, which validates and rolls back on failure; infra/ghostty/verify.sh is the local check, this lint the fleet-wide one against origin/main. See the pro entry for why this live path appears three times."
+    },
+    {
+      "live": "~/scripts/kc-watchdog.sh",
+      "repo": "infra/launchagents/wrappers/kc-watchdog.sh",
+      "machines": ["mini"],
+      "_note": "Promoted 2026-08-19 by the healer tick (proprioception finding: launchagent_canon home_fork_target, no repo canon existed). Script kills knowledgeconstructiond (Apple Intelligence / IntelligencePlatformCore), which on this headless server iterates every contact requesting avatars from contactsd forever (~1.3k req/min), blows its own memory cap, gets corpsed by the kernel, and respawns (measured: 40% self-CPU + 85% contactsd; launchctl disable alone insufficient, XPC on-demand respawn). Self-contained, no secrets, kill switch `touch ~/.kc-watchdog-off`. Live copy untouched by this promotion (already correct) — only repo tracking added, plus the plist canon at infra/launchagents/com.nuzantara.kc-watchdog.plist for DR."
     }
   ],
   "allow": [
