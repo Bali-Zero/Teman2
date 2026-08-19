@@ -340,9 +340,9 @@ export function GarudaPreviewClient() {
             {busy ? "Running real engine..." : "Run internal pre-screen"}
           </button>
           <p className="garuda-privacy-note">
-            No GARUDA case payload is persisted. Authentication audit rows
-            contain no case fields; the synthetic request exists only for this
-            local process invocation.
+            No GARUDA case payload is persisted. No authentication audit row is
+            persisted. The synthetic request exists only for this local process
+            invocation.
           </p>
         </form>
 

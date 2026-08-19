@@ -24,19 +24,15 @@ for the accessor that encodes this split on the object itself). The
 engine still computes the D-14 reading internally for staff
 (`safe_clock.filing_window_opens_for`) — it just never crosses the wire.
 
-The same boundary applies to decline REASONS, not just dates (fix
-2026-07-27, cross-family review): `services.garuda_flow.eligibility.screen()`
-composes its ``decline_reasons`` as English audit prose at runtime — it can
-name an internal checkpoint (e.g. "below D-10 pilot threshold") because
-that string is meant for the historical case sheet, not the archive response,
-and constants.py / safe_clock.py mark D-10 as internal-only.
-`VoaResponse` therefore carries `reason_codes: list[str]` — stable,
-neutral, language-agnostic machine codes
-(`services.garuda_flow.eligibility.DeclineCode`) — and NO LONGER a
-`reasons` field of raw prose. The prose is still computed and PERSISTED
-(`garuda_voa_checks.decline_reasons`) for audit; it simply never leaves
-this process. The former public result pages are retired; these codes remain
-available only in the authenticated owner archive.
+The same boundary applies to decline REASONS, not just dates. Historical
+rows created by the retired public prototype may contain English decline
+prose in `garuda_voa_checks.decline_reasons`, including internal-checkpoint
+wording. This read-only archive never exposes that prose. `VoaResponse`
+instead carries `reason_codes: list[str]` — stable, neutral,
+language-agnostic machine codes
+(`services.garuda_flow.eligibility.DeclineCode`) — and has no raw-prose
+`reasons` field. The former public result pages are retired; the neutral
+codes remain available only in the authenticated owner archive.
 
 Issuance-only submission-window gate (owner ruling 2026-07-27,
 `services.garuda_flow.operating_calendar`): a VOA is issued in a few
@@ -97,11 +93,10 @@ class VoaResponse(BaseModel):
     not in doubt.
 
     Same treatment for decline reasons: `reason_codes` carries ONLY the
-    stable neutral codes from `services.garuda_flow.eligibility.DeclineCode`
-    — never the engine-internal English audit prose
-    (`VoaVerdict.decline_reasons`), which can name an internal checkpoint
-    (e.g. "D-10 pilot threshold") and is never translated. That prose is
-    still persisted server-side for audit; it has no field here."""
+    stable neutral codes from `services.garuda_flow.eligibility.DeclineCode`.
+    Historical rows may still contain legacy English decline prose, including
+    internal-checkpoint wording, but this read-only response has no field for
+    it and never exposes it."""
 
     model_config = ConfigDict(extra="forbid")
 

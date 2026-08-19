@@ -25,12 +25,14 @@ This engine therefore gives a PRELIMINARY verdict built only from what it
 mechanically can derive; see ``_build_eligibility_input`` for the exact
 mapping and the documented defaults for the rest.
 
-Serialization boundary (spec §6, charter — non-negotiable): only the
-published D-7 Ngurah Rai deadline may leave the engine. D-14/D-10/D-3/
-D-1 are INTERNAL Bali Zero checkpoints. ``VoaVerdict`` encodes this split
-structurally via ``published_filing_deadline`` / ``client_facing_checkpoints``
-/ ``internal_checkpoints`` so a caller cannot leak an internal checkpoint
-by simply forgetting to filter ``stay_window.checkpoints``.
+Serialization boundary (spec §6, charter — non-negotiable): D-14 is never
+serialized. D-10/D-3/D-1 may be serialized only by the authenticated
+owner-local preview, never to the read-only historical archive or a public
+surface. The archive may carry only the published D-7 Ngurah Rai deadline.
+``VoaVerdict`` encodes this provenance split structurally via
+``published_filing_deadline`` / ``client_facing_checkpoints`` /
+``internal_checkpoints`` so every adapter must select its permitted fields
+instead of serializing ``stay_window.checkpoints`` directly.
 
 Issuance-only submission-window gate (owner ruling, 2026-07-27): a VOA is
 issued in a few hours, so the issuance rule accepts a request up
@@ -111,12 +113,13 @@ class VoaVerdict:
     """One combined result: eligibility decision + Safe Clock dates.
 
     ``stay_window.checkpoints`` mixes 1 published-source mark (D-7) with 4
-    internal ones (D-14/D-10/D-3/D-1) — see the module docstring. The
-    legacy accessor name ``client_facing_checkpoints`` describes that
-    provenance; it does not authorize a public surface. Use
-    ``published_filing_deadline`` / ``client_facing_checkpoints`` /
-    ``internal_checkpoints`` below; never read ``stay_window.checkpoints``
-    directly from a response builder.
+    internal ones (D-14/D-10/D-3/D-1) — see the module docstring. D-14 is
+    engine-only; D-10/D-3/D-1 are eligible only for the authenticated
+    owner-local preview, never the archive or a public surface. The legacy
+    accessor name ``client_facing_checkpoints`` describes provenance; it
+    does not authorize a public surface. Use ``published_filing_deadline`` /
+    ``client_facing_checkpoints`` / ``internal_checkpoints`` below; never
+    read ``stay_window.checkpoints`` directly from a response builder.
     """
 
     decision: Decision
@@ -151,8 +154,11 @@ class VoaVerdict:
 
     @property
     def internal_checkpoints(self) -> list[SafeCheckpoint]:
-        """D-14/D-10/D-3/D-1 — Bali Zero staff only, never serialized to a
-        stateless preview or owner-archive response (charter, spec §6)."""
+        """Return the engine-internal checkpoints.
+
+        D-14 is never serialized. D-10/D-3/D-1 may be serialized only by the
+        authenticated owner-local preview, never to an archive or public surface.
+        """
         return [c for c in self.stay_window.checkpoints if not c.client_facing]
 
     def checkpoint_at(self, label: str) -> date:
