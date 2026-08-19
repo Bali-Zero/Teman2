@@ -1,5 +1,5 @@
 #!/bin/bash
-# setup-cockpit-pin.sh — interactive PIN initialization
+# setup-cockpit-pin.sh — interactive high-entropy passphrase initialization
 # Creates ~/.config/zantara-cockpit/{pin.hash, hmac.key}
 # v2 panel: file mode 0600
 
@@ -13,31 +13,40 @@ mkdir -p "$CONFIG_DIR"
 chmod 0700 "$CONFIG_DIR"
 
 if [ -f "$PIN_HASH_FILE" ]; then
-    read -r -p "PIN already exists at $PIN_HASH_FILE. Overwrite? (y/N) " ans
+    read -r -p "Passphrase already exists at $PIN_HASH_FILE. Overwrite? (y/N) " ans
     if [ "$ans" != "y" ]; then exit 0; fi
 fi
 
-echo "Enter new cockpit PIN (6-12 digits/chars):"
-read -rs -p "PIN: " PIN
+echo "Enter a high-entropy cockpit passphrase (16-64 characters, max 72 UTF-8 bytes):"
+read -rs -p "Passphrase: " PIN
 echo
-read -rs -p "Confirm: " PIN2
+read -rs -p "Confirm passphrase: " PIN2
 echo
 
 if [ "$PIN" != "$PIN2" ]; then
-    echo "ERROR: PINs do not match" >&2
+    echo "ERROR: passphrases do not match" >&2
     exit 1
 fi
 
-if [ ${#PIN} -lt 6 ]; then
-    echo "ERROR: PIN must be at least 6 characters" >&2
-    exit 1
-fi
-
-# Generate bcrypt hash using node (bcryptjs from monorepo)
-HASH=$(cd "$(dirname "$0")/.." && node -e "
-const bcrypt = require('bcryptjs');
-console.log(bcrypt.hashSync(process.argv[1], 12));
-" "$PIN")
+# Validate with the same JavaScript character and UTF-8 byte bounds as the
+# runtime verifier, then hash. Plaintext crosses the process boundary only on
+# stdin — never argv, process listings, or environment variables.
+HASH=$(
+    printf '%s' "$PIN" | (
+        cd "$(dirname "$0")/.."
+        node -e '
+const fs = require("node:fs");
+const bcrypt = require("bcryptjs");
+const passphrase = fs.readFileSync(0, "utf8");
+const utf8Bytes = Buffer.byteLength(passphrase, "utf8");
+if (passphrase.length < 16 || passphrase.length > 64 || utf8Bytes > 72) {
+  console.error("ERROR: passphrase must be 16-64 characters and at most 72 UTF-8 bytes");
+  process.exit(1);
+}
+process.stdout.write(bcrypt.hashSync(passphrase, 12));
+'
+    )
+) || exit 1
 
 echo "$HASH" > "$PIN_HASH_FILE"
 chmod 0600 "$PIN_HASH_FILE"
@@ -49,6 +58,6 @@ if [ ! -f "$HMAC_KEY_FILE" ]; then
     echo "Generated new HMAC key at $HMAC_KEY_FILE"
 fi
 
-echo "OK: PIN saved to $PIN_HASH_FILE (mode 0600)"
+echo "OK: passphrase hash saved to $PIN_HASH_FILE (mode 0600)"
 echo "    HMAC key at $HMAC_KEY_FILE"
 echo "Now run: bash scripts/start-cockpit.sh"

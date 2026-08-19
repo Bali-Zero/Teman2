@@ -1,9 +1,13 @@
 /**
- * Cockpit auth: bcrypt PIN + in-memory rate-limit.
- * Rate-limit per-client-ID: 5 failures in 5min window → 5min lockout.
+ * Cockpit auth: bcrypt passphrase + one bounded in-memory failure bucket.
+ * The service binds directly to loopback and has no trusted proxy, so request
+ * headers never choose rate-limit keys. Five failures in 5min → 5min lockout.
  * Panel finding 4-LLM v2: rate-limit active from S1 (NOT deferred to S5).
  */
 import bcrypt from "bcryptjs";
+
+export const MIN_PASSPHRASE_LENGTH = 16;
+export const MAX_PASSPHRASE_LENGTH = 64;
 
 const MAX_FAILURES = 5;
 const WINDOW_MS = 5 * 60 * 1000;
@@ -11,53 +15,127 @@ const LOCKOUT_MS = 5 * 60 * 1000;
 
 interface FailureRecord {
   count: number;
+  inFlight: number;
   firstFailureAt: number;
   lockedUntil: number;
 }
 
-const failureMap = new Map<string, FailureRecord>();
+export interface PassphraseAttemptReservation {
+  readonly record: FailureRecord;
+  completed: boolean;
+}
 
-export async function verifyPin(pin: string, hash: string): Promise<boolean> {
-  if (!pin || !hash || typeof pin !== "string") return false;
+let failureBucket: FailureRecord | null = null;
+
+function activeFailureBucket(now: number): FailureRecord | null {
+  const record = failureBucket;
+  if (!record) return null;
+
+  if (record.lockedUntil > 0) {
+    if (now < record.lockedUntil) return record;
+    failureBucket = null;
+    return null;
+  }
+  if (record.inFlight === 0 && now - record.firstFailureAt >= WINDOW_MS) {
+    failureBucket = null;
+    return null;
+  }
+  return record;
+}
+
+export async function verifyPassphrase(
+  passphrase: string,
+  hash: string,
+): Promise<boolean> {
+  if (
+    !hash ||
+    typeof passphrase !== "string" ||
+    passphrase.length < MIN_PASSPHRASE_LENGTH ||
+    passphrase.length > MAX_PASSPHRASE_LENGTH ||
+    new TextEncoder().encode(passphrase).byteLength > 72
+  ) {
+    return false;
+  }
   try {
-    return await bcrypt.compare(pin, hash);
+    return await bcrypt.compare(passphrase, hash);
   } catch {
     return false;
   }
 }
 
-export function recordFailure(clientId: string): void {
+export function recordFailure(): void {
   const now = Date.now();
-  const r = failureMap.get(clientId);
-  if (!r || now - r.firstFailureAt > WINDOW_MS) {
-    failureMap.set(clientId, {
+  const record = activeFailureBucket(now);
+  if (!record) {
+    failureBucket = {
       count: 1,
+      inFlight: 0,
       firstFailureAt: now,
       lockedUntil: 0,
-    });
+    };
     return;
   }
-  r.count += 1;
-  if (r.count >= MAX_FAILURES) r.lockedUntil = now + LOCKOUT_MS;
+  record.count += 1;
+  if (record.count >= MAX_FAILURES) record.lockedUntil = now + LOCKOUT_MS;
 }
 
-export function isLockedOut(clientId: string): boolean {
-  const r = failureMap.get(clientId);
-  if (!r) return false;
+export function reservePassphraseAttempt(): PassphraseAttemptReservation | null {
   const now = Date.now();
-  if (r.lockedUntil > 0 && now < r.lockedUntil) return true;
-  if (r.lockedUntil > 0 && now >= r.lockedUntil) {
-    failureMap.delete(clientId);
-    return false;
+  let record = activeFailureBucket(now);
+  if (!record) {
+    record = {
+      count: 0,
+      inFlight: 0,
+      firstFailureAt: now,
+      lockedUntil: 0,
+    };
+    failureBucket = record;
   }
-  return false;
+  if (
+    record.lockedUntil > now ||
+    record.count + record.inFlight >= MAX_FAILURES
+  ) {
+    return null;
+  }
+  record.inFlight += 1;
+  return { record, completed: false };
 }
 
-export function resetRateLimit(clientId: string): void {
-  failureMap.delete(clientId);
+export function completePassphraseAttempt(
+  reservation: PassphraseAttemptReservation,
+  succeeded: boolean,
+): void {
+  if (reservation.completed) return;
+  reservation.completed = true;
+
+  if (failureBucket !== reservation.record) {
+    if (!succeeded) recordFailure();
+    return;
+  }
+
+  const record = reservation.record;
+  record.inFlight = Math.max(0, record.inFlight - 1);
+  if (!succeeded) {
+    record.count += 1;
+    if (record.count >= MAX_FAILURES) {
+      record.lockedUntil = Date.now() + LOCKOUT_MS;
+    }
+  } else if (record.count === 0 && record.inFlight === 0) {
+    failureBucket = null;
+  }
 }
 
-export function readPinHash(): string | null {
+export function isLockedOut(): boolean {
+  const now = Date.now();
+  const record = activeFailureBucket(now);
+  return record !== null && record.lockedUntil > now;
+}
+
+export function resetRateLimit(): void {
+  failureBucket = null;
+}
+
+export function readPassphraseHash(): string | null {
   const fs = require("node:fs");
   const path = require("node:path");
   const os = require("node:os");

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPool } from "../../../lib/db";
+import { sameOriginJsonFailure } from "@/lib/cockpit-request-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,13 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
+  const guardFailure = sameOriginJsonFailure(req);
+  if (guardFailure) {
+    return NextResponse.json(
+      { error: guardFailure.error },
+      { status: guardFailure.status },
+    );
+  }
   const body = (await req.json()) as { id?: number; status?: string };
   const id = Number(body.id);
   const nextStatus = body.status;

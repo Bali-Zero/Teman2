@@ -1,19 +1,39 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useCallback, useState } from "react";
+import { CockpitSessionProvider } from "@/lib/cockpit-session-context";
+
+interface LoginResponse {
+  token: string;
+  expires_in: number;
+}
+
+function isLoginResponse(value: unknown): value is LoginResponse {
+  if (!value || typeof value !== "object") return false;
+  const response = value as Partial<LoginResponse>;
+  return (
+    typeof response.token === "string" &&
+    response.token.length > 0 &&
+    typeof response.expires_in === "number" &&
+    Number.isInteger(response.expires_in) &&
+    response.expires_in > 0
+  );
+}
 
 export function PinGate({ children }: { children: React.ReactNode }) {
-  const [authed, setAuthed] = useState(false);
-  const [pin, setPin] = useState("");
+  const [token, setToken] = useState<string | null>(null);
+  const [passphrase, setPassphrase] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    fetch("/api/cockpit/cron/list").then((r) => {
-      if (r.ok) setAuthed(true);
-    });
-  }, []);
+  const relock = useCallback(() => setToken(null), []);
 
-  if (authed) return <>{children}</>;
+  if (token) {
+    return (
+      <CockpitSessionProvider token={token} relock={relock}>
+        {children}
+      </CockpitSessionProvider>
+    );
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -23,19 +43,25 @@ export function PinGate({ children }: { children: React.ReactNode }) {
       const r = await fetch("/api/cockpit/auth", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ pin }),
+        body: JSON.stringify({ passphrase }),
       });
       if (r.status === 429) {
         setErr("rate-limited: try again in 5 minutes");
         return;
       }
       if (!r.ok) {
-        setErr("invalid PIN");
+        setErr("invalid passphrase");
         return;
       }
-      setAuthed(true);
-    } catch (e: any) {
-      setErr(e.message);
+      const response: unknown = await r.json();
+      if (!isLoginResponse(response)) {
+        setErr("invalid authentication response");
+        return;
+      }
+      setPassphrase("");
+      setToken(response.token);
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : "authentication failed");
     } finally {
       setBusy(false);
     }
@@ -60,13 +86,15 @@ export function PinGate({ children }: { children: React.ReactNode }) {
           minWidth: 320,
         }}
       >
-        <div className="cockpit-widget-title">ZANTARA COCKPIT — PIN</div>
+        <div className="cockpit-widget-title">ZANTARA COCKPIT — PASSPHRASE</div>
         <input
           type="password"
-          value={pin}
-          onChange={(e) => setPin(e.target.value)}
+          value={passphrase}
+          onChange={(e) => setPassphrase(e.target.value)}
           autoFocus
-          maxLength={20}
+          minLength={16}
+          maxLength={64}
+          autoComplete="current-password"
           style={{
             display: "block",
             width: "100%",
@@ -86,7 +114,7 @@ export function PinGate({ children }: { children: React.ReactNode }) {
         )}
         <button
           type="submit"
-          disabled={busy || !pin}
+          disabled={busy || passphrase.length < 16}
           className="cockpit-action-button"
           style={{ marginTop: 16, width: "100%" }}
         >

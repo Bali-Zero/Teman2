@@ -1,25 +1,42 @@
 # admin-dashboard-local
 
-Pro-only LLM cost dashboard. **Not deployed anywhere.**
+Pro-only operator dashboard. **Not deployed anywhere.**
 
 - No Vercel config
 - No Fly config
 - `next.config.mjs` refuses to start unless `LOCAL_ONLY=1`
+- every start command binds explicitly to `127.0.0.1:3100`
+- Host validation is DNS-rebinding/origin hygiene; loopback socket binding is
+  the actual network-isolation boundary
+- owner surfaces use an expiring HMAC-signed Bearer token established by a
+  high-entropy passphrase; the token exists only in React memory, so refresh
+  deliberately relocks the surface
 - Reads Postgres directly (local socket) or via Fly tunnel (port 15432)
 
 ## Start
 
 ```bash
-bash scripts/start-cost-dashboard.sh
+bash scripts/start-cockpit.sh
 ```
 
-That activates `LOCAL_ONLY=1`, runs `next dev -p 3100`, and opens
-`http://localhost:3100/cost-dashboard` in your default browser.
+That activates `LOCAL_ONLY=1` and runs Next on loopback only. Configure the
+passphrase first with `bash scripts/setup-cockpit-pin.sh`.
+
+## GARUDA VOA internal preview
+
+`http://127.0.0.1:3100/garuda-voa` is an owner-only synthetic-data workbench.
+Its same-origin API invokes the real Python GARUDA engine through a fixed
+`execFile` module adapter. It never uploads, pays, writes CRM/portal data,
+persists a GARUDA case payload, emits analytics, or sends anything externally.
+Authentication attempts do create payload-free audit rows. The launcher
+derives `COCKPIT_REPO_ROOT` from the Git worktree that contains the launcher;
+an environment or `.env` value cannot redirect it to a sibling checkout.
 
 ## Data source
 
 `app/lib/db.ts` chooses `DATABASE_URL_LOCAL` first; if missing, falls back
-to `FLY_TUNNEL_URL`. If neither is set, startup fails with a clear error.
+to `FLY_TUNNEL_URL`. If neither is set, the launcher prints a warning and
+DB-backed routes remain unavailable until one is configured.
 
 ## What it shows
 
