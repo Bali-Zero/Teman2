@@ -204,7 +204,7 @@ def build_internal_preview(
 
     return InternalPreviewResponse(
         decision=verdict.decision.value,
-        reason_codes=verdict.decline_codes,
+        reason_codes=list(dict.fromkeys(verdict.decline_codes)),
         case_type=request.case_type,
         entry_date=request.entry_date,
         expiry_date=verdict.stay_window.expiry_date,

@@ -37,10 +37,13 @@ ssh -M -S /tmp/garuda-internal-web.sock -fnNT \
   pro
 ```
 
-Open exactly `http://localhost:3100/garuda-voa` in the browser. Do not open
-`http://127.0.0.1:3100/garuda-voa`: the socket intentionally binds to
-`127.0.0.1`, but authentication and request guards require the exact
-`localhost` browser origin, including its port.
+Open `http://localhost:3100/garuda-voa` as the canonical browser URL. The
+server permits loopback host variants (`localhost`, `127.0.0.1`, and `::1`),
+but each cockpit-session token has an exact-origin audience: use the same
+host and port that minted it. The socket intentionally binds to `127.0.0.1`.
+Use `http://127.0.0.1:3100/garuda-voa` only as an explicit loopback
+alternative, with a token minted for that exact origin. This does not
+authorize a non-loopback origin.
 
 For a local production-mode verification, from this directory:
 

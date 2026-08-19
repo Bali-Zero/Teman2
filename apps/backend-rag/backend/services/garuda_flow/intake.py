@@ -82,10 +82,12 @@ class CaseType(str, Enum):
 
 
 class Purpose(str, Enum):
-    """The 4 VOA-permitted purposes (constants.py: "tourism, family visits,
-    transit and short business meetings only — no work allowed"). The enum
-    itself IS the ``simple_tourism`` / ``work_or_business_purpose`` guard:
-    there is no 5th, work-shaped value to pick."""
+    """B1-permitted purposes, distinct from this pilot's eligibility.
+
+    B1 permits tourism, family visits, transit and short business meetings;
+    this pilot accepts simple tourism only. Business meetings are also marked
+    as a business-purpose exclusion; family purpose is not a traveller group.
+    """
 
     TOURISM = "tourism"
     FAMILY = "family"
@@ -239,7 +241,7 @@ def _build_eligibility_input(request: VoaIntakeRequest, *, today: date) -> Eligi
 
     return EligibilityInput(
         nationality_entry_eligible=True,
-        simple_tourism=True,
+        simple_tourism=request.purpose is Purpose.TOURISM,
         single_adult_traveler=request.travellers == 1,
         clean_ordinary_passport=True,
         passport_valid_6mo_from_entry=passport_valid,
@@ -248,7 +250,7 @@ def _build_eligibility_input(request: VoaIntakeRequest, *, today: date) -> Eligi
         is_extension=request.case_type is CaseType.EXTENSION,
         days_until_expiry=days_left,
         family_or_group=request.travellers > 1,
-        work_or_business_purpose=False,
+        work_or_business_purpose=request.purpose is Purpose.BUSINESS_MEETING,
     )
 
 

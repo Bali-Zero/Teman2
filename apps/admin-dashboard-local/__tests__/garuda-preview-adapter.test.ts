@@ -211,6 +211,49 @@ describe("GARUDA Python execFile adapter", () => {
     });
   });
 
+  it.each([
+    { reasonCodes: ["PURPOSE_NOT_ELIGIBLE"] },
+    { reasonCodes: ["GROUP_CASE"] },
+    { reasonCodes: ["PURPOSE_NOT_ELIGIBLE", "GROUP_CASE"] },
+  ])(
+    "accepts unique bounded decline code sets: $reasonCodes",
+    async ({ reasonCodes }) => {
+      const result = {
+        ...VALID_RESULT,
+        decision: "DECLINE",
+        reason_codes: reasonCodes,
+      };
+      engineResult(result);
+
+      await expect(runGarudaPreview("{}")).resolves.toEqual(result);
+    },
+  );
+
+  it.each([
+    { reasonCodes: ["PURPOSE_NOT_ELIGIBLE", "PURPOSE_NOT_ELIGIBLE"] },
+    { reasonCodes: ["GROUP_CASE", "GROUP_CASE"] },
+    {
+      reasonCodes: [
+        "PURPOSE_NOT_ELIGIBLE",
+        "GROUP_CASE",
+        "PURPOSE_NOT_ELIGIBLE",
+      ],
+    },
+  ])(
+    "rejects duplicate decline codes: $reasonCodes",
+    async ({ reasonCodes }) => {
+      engineResult({
+        ...VALID_RESULT,
+        decision: "DECLINE",
+        reason_codes: reasonCodes,
+      });
+
+      await expect(runGarudaPreview("{}")).rejects.toMatchObject({
+        code: "preview_unavailable",
+      });
+    },
+  );
+
   it("requires the engine's manual-routing code for uncovered issuance", async () => {
     engineResult(VALID_UNCOVERED_RESULT);
     await expect(runGarudaPreview("{}")).resolves.toEqual(

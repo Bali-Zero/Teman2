@@ -235,6 +235,7 @@ function isReasonCodeArray(value: unknown): value is string[] {
   return (
     Array.isArray(value) &&
     value.length <= MAX_REASON_CODES &&
+    new Set(value).size === value.length &&
     value.every((item) => typeof item === "string" && DECLINE_CODES.has(item))
   );
 }

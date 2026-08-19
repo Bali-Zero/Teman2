@@ -59,6 +59,50 @@ def test_accepted_issuance_uses_real_pricing_and_no_internal_checkpoints() -> No
     assert "last_legal_day" not in response.model_dump()
 
 
+@pytest.mark.parametrize(
+    ("purpose", "travellers", "expected_decision", "expected_codes"),
+    [
+        ("tourism", 1, "ACCEPT", []),
+        ("family", 1, "DECLINE", ["PURPOSE_NOT_ELIGIBLE"]),
+        ("transit", 1, "DECLINE", ["PURPOSE_NOT_ELIGIBLE"]),
+        ("business-meeting", 1, "DECLINE", ["PURPOSE_NOT_ELIGIBLE"]),
+        ("tourism", 2, "DECLINE", ["GROUP_CASE"]),
+        (
+            "business-meeting",
+            2,
+            "DECLINE",
+            ["PURPOSE_NOT_ELIGIBLE", "GROUP_CASE"],
+        ),
+    ],
+)
+def test_purpose_and_group_reason_codes_are_unique_stable_and_prose_free(
+    purpose: str,
+    travellers: int,
+    expected_decision: str,
+    expected_codes: list[str],
+) -> None:
+    response = build_internal_preview(
+        _request(purpose=purpose, travellers=travellers),
+        today=_TODAY,
+        generated_at=_NOW,
+    )
+
+    assert response.decision == expected_decision
+    assert response.reason_codes == expected_codes
+    assert len(response.reason_codes) == len(set(response.reason_codes))
+
+    payload = response.model_dump_json()
+    for internal_text in (
+        "not a simple-tourism case",
+        "work/business purpose",
+        "not a single adult traveler",
+        "family/group case",
+        "D-14",
+        "D14",
+    ):
+        assert internal_text not in payload
+
+
 def test_declined_case_emits_only_neutral_reason_codes() -> None:
     response = build_internal_preview(
         _request(passport_expiry_date="2026-09-01"),
