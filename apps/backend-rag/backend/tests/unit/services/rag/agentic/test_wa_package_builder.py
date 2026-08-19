@@ -561,6 +561,16 @@ class TestGreetingWordBoundary:
             )
             assert isinstance(package, ContextPackage), f"{query!r} was declared unbuildable"
 
+    def test_elongation_does_not_fire_mid_sentence(self) -> None:
+        """Codex round 4: 'What is an HII region?' lowercases to a
+        mid-sentence 'hii' — the elongated form is a colloquial OPENER, so
+        it only counts at the start of the message; mid-sentence it is
+        jargon, never a greeting."""
+        from backend.services.rag.agentic.query_planner import QueryDomain, QueryPlanner
+
+        plan = QueryPlanner().plan("What is an HII region?")
+        assert plan.domain is not QueryDomain.GREETING
+
     async def test_actual_greetings_still_gate(self) -> None:
         # Includes the colloquial elongations WhatsApp greetings actually
         # arrive in (Codex round 3: a strict trailing \b regressed these)

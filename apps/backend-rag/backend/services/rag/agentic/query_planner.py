@@ -190,11 +190,18 @@ _GREETING_KEYWORDS: frozenset[str] = frozenset(
 # zeroes the collection list. The boundary must NOT reject the colloquial
 # elongation WhatsApp greetings actually arrive in ("hii", "heyy",
 # "ciaooo") — a strict \b after the keyword regressed exactly those
-# (Codex round 3; the over-match cure birthing its under-match twin, W94),
-# so the final letter may repeat before the boundary. Sorted for
+# (Codex round 3; the over-match cure birthing its under-match twin, W94).
+# The elongated form (final letter repeated ≥1) is accepted only at the
+# START of the message: colloquial greetings open a message, while an
+# elongated-looking token mid-sentence is jargon — "What is an HII
+# region?" lowercases to a mid-sentence "hii" and must NOT gate (Codex
+# round 4). The exact keyword stays boundary-matched anywhere. Sorted for
 # deterministic order (never iterate a set into anything order-bearing).
 _GREETING_WORD_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
-    re.compile(r"\b" + re.escape(kw) + re.escape(kw[-1]) + r"*\b")
+    re.compile(
+        r"\b" + re.escape(kw) + r"\b"
+        r"|^\W*" + re.escape(kw) + re.escape(kw[-1]) + r"+\b"
+    )
     for kw in sorted(_GREETING_KEYWORDS)
 )
 
