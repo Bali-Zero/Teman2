@@ -14,6 +14,10 @@ from pydantic import BaseModel
 
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.utils.crm_utils import is_crm_admin
+from backend.app.utils.service_accounts import (
+    NON_HUMAN_ROLES_SQL,
+    non_human_roles_sql_array,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +103,7 @@ async def get_overview(
 
             # Team members count
             total_team = await conn.fetchval(
-                "SELECT COUNT(*) FROM team_members WHERE role NOT IN ('client')",
+                f"SELECT COUNT(*) FROM team_members WHERE role NOT IN ({NON_HUMAN_ROLES_SQL})",
             )
 
             # Active today (clocked in)
@@ -315,13 +319,13 @@ async def get_team_stats(
                     LEFT JOIN crm_stats cs ON tm.email = cs.email
                     LEFT JOIN email_stats es ON tm.email = es.email
                     LEFT JOIN kb_stats kb ON tm.email = kb.email
-                    WHERE tm.role NOT IN ('client')
+                    WHERE tm.role <> ALL($2::text[])
                       AND tm.email NOT LIKE '%test%'
                       AND tm.email NOT LIKE '%demo%'
                       AND tm.email NOT LIKE '%example%'
                     ORDER BY COALESCE(ms.messages, 0) DESC
                 """
-                rows = await conn.fetch(query, start_date_obj)
+                rows = await conn.fetch(query, start_date_obj, non_human_roles_sql_array())
                 period_info = f"from {start_date}"
             else:
                 query = """
@@ -383,13 +387,13 @@ async def get_team_stats(
                     LEFT JOIN crm_stats cs ON tm.email = cs.email
                     LEFT JOIN email_stats es ON tm.email = es.email
                     LEFT JOIN kb_stats kb ON tm.email = kb.email
-                    WHERE tm.role NOT IN ('client')
+                    WHERE tm.role <> ALL($2::text[])
                       AND tm.email NOT LIKE '%test%'
                       AND tm.email NOT LIKE '%demo%'
                       AND tm.email NOT LIKE '%example%'
                     ORDER BY COALESCE(ms.messages, 0) DESC
                 """
-                rows = await conn.fetch(query, days)
+                rows = await conn.fetch(query, days, non_human_roles_sql_array())
                 period_info = f"last {days} days"
 
         return {

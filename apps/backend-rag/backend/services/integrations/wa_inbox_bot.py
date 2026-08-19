@@ -50,7 +50,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import re
 from typing import Any
 
 import asyncpg
@@ -58,151 +57,23 @@ import httpx
 
 from backend.app.core.config import settings
 from backend.app.rag_proxy import get_rag_worker_url
-from backend.channels.format import format_rich_text
 from backend.services.integrations.human_escalation_notifier import notify_human_telegram
 from backend.services.integrations.wa_bot_outcomes import BotStandingCondition
-from backend.services.rag.agentic._reasoning_stubs import get_localized_stub
-from backend.services.rag.agentic.query_helpers import detect_query_language
+from backend.services.integrations.wa_finalize import (
+    # Re-exported for existing importers (tests exercise these through this
+    # module's namespace): the post-generation helpers moved to wa_finalize in
+    # the BOT-V4 S2 extraction — ONE pipeline shared by both generation legs.
+    _ABSTAIN_MIN_SENDABLE_CHARS as _ABSTAIN_MIN_SENDABLE_CHARS,
+)
+from backend.services.integrations.wa_finalize import (
+    FinalizeOutcome,
+    finalize_wa_answer,
+)
+from backend.services.integrations.wa_finalize import (
+    _abstain_answer_worth_sending as _abstain_answer_worth_sending,
+)
 
 logger = logging.getLogger("zantara.backend")
-
-# ── KG workflow-scaffold strip (client-voice hardening, 2026-07-25) ──────
-# `orchestrator_core.py::_format_workflow_for_prompt` appends an internal
-# diagnostics block to the RAG answer on some queries — a "## SUGGESTED
-# WORKFLOW (from <source>, confidence: NN%)" heading, the workflow name,
-# a numbered step list, and an optional "**Confidence**: ..." line — ALWAYS
-# closed by the literal trailer sentence below (`_KG_WORKFLOW_TRAILER`,
-# copied verbatim from orchestrator_core.py). That block is internal
-# diagnostics for an operator reading the raw answer, not a WhatsApp
-# client, and has been observed CONTRADICTING the actual answer (e.g. an
-# E33G remote-worker answer followed by a local-employment IMTA/TKA
-# workflow it never asked for).
-#
-# We do NOT edit orchestrator_core.py (another lane owns it, and the block
-# may be legitimate for other consumers like the web chat UI) — this strip
-# lives at the WhatsApp channel boundary instead.
-#
-# Anchored on the two literal strings the emitter ALWAYS writes together
-# (heading prefix + closing sentence, both from the SAME
-# `_format_workflow_for_prompt` call) rather than a loose "workflow"
-# keyword — see .claude/rules/cicatrix-superscar.md family #3
-# (guard-over-match) for why a bare-substring match would be unsafe: a
-# legitimate client answer ("il nostro workflow di onboarding...") must
-# never be caught by this. The non-greedy DOTALL match between the two
-# anchors also means only the block itself is removed, never content that
-# happens to follow it (e.g. the KG fast-path's reasoning text, which is
-# appended AFTER the workflow block in some code paths and must survive).
-_KG_WORKFLOW_TRAILER = (
-    "IMPORTANT: This is a suggested workflow. Always verify current requirements with the user."
-)
-_KG_WORKFLOW_SCAFFOLD_RE = re.compile(
-    r"\s*##\s+SUGGESTED WORKFLOW \(from .*?" + re.escape(_KG_WORKFLOW_TRAILER),
-    re.DOTALL,
-)
-
-# The 2026-08-11 KBLI baseline caught Gemini starting otherwise client-visible
-# answers with the prompt's private XML section name (three of 25 probes).
-# Do not try to recover a "final" paragraph from such a payload: the leaked
-# block has no guaranteed delimiter and any guessed split could still expose
-# chain-of-thought or unsupported claims.  At the WhatsApp boundary the safe
-# behavior is to discard the entire payload and serve the normal localized
-# source-honest refusal.  Anchor at the beginning so a legitimate discussion
-# *about* an internal-monologue bug is not caught mid-answer.
-_INTERNAL_MONOLOGUE_LEAK_RE = re.compile(
-    r"^[^A-Za-z0-9]{0,32}internal[ _-]+monologue"
-    r"(?:[ _-]+instructions)?(?:[^A-Za-z0-9]|$)",
-    re.IGNORECASE,
-)
-
-
-# An abstain payload is worth sending when it actually contains an answer.
-# Measured 2026-08-11 across 16 cold questions in 8 languages: 7 came back
-# `abstain=true`, and 3 of those carried a complete on-topic answer. The old
-# consumer discarded all 7.
-#
-# Deliberately NOT a quality judgement — this module cannot re-score evidence and
-# must not try. It asks one thing: is there prose here, or only the residue of a
-# refusal? The floor is length, because the refusal shapes the RAG emits are
-# short ("Je suis prêt pour votre prochaine question." — 43 chars, measured) and
-# a real answer to any question this bot receives is not.
-_ABSTAIN_MIN_SENDABLE_CHARS = 200
-
-
-def _abstain_answer_worth_sending(data: dict[str, Any]) -> str:
-    """The answer text inside an abstain payload, or "" if there is none worth sending.
-
-    Returns the CLEANED, formatted text so the caller ships exactly what it
-    inspected — an earlier shape that returned a bool and let the caller re-derive
-    the text is how two code paths end up disagreeing about the same message.
-    """
-    # GROUNDING FIRST, length second. Added after a two-seat adversarial review
-    # (Codex gpt-5.6-sol xhigh + Gemini 3.1 Pro, briefed to refute, reviewed
-    # independently) returned the same verdict on the first version of this
-    # function: gating on text length alone "measures fluency, not support" and
-    # "can preferentially release the most confidently hallucinated answer" —
-    # on immigration/tax advice, where a wrong capital requirement or overstay
-    # rule carries real liability and a disclaimer does not neutralise it.
-    #
-    # They are right, and this module's OWN measurements say so too. Of the 7
-    # abstains observed across 16 cold questions, the 5 carrying real answers
-    # all had retrieved context (`context_length` 1-2); the 2 carrying junk had
-    # `context_length == 0` — "Je suis prêt pour votre prochaine question." and
-    # a Russian "I already provided the basic information". `context_length == 0`
-    # with `evidence_score == 0.0` is the signature of the model writing from
-    # parametric memory with nothing retrieved behind it. That is the one shape
-    # that must never reach a client, and length cannot tell it apart.
-    #
-    # So this sends only the case the label gate exists FOR: evidence was
-    # retrieved, and scored below the domain threshold. It never sends the case
-    # where there was no evidence at all.
-    try:
-        context_length = int(data.get("context_length") or 0)
-    except (TypeError, ValueError):
-        context_length = 0
-    try:
-        evidence = float(data.get("evidence_score") or 0.0)
-    except (TypeError, ValueError):
-        evidence = 0.0
-    if context_length <= 0 or evidence <= 0.0:
-        return ""
-
-    raw = (data.get("answer") or "").strip()
-    if len(raw) < _ABSTAIN_MIN_SENDABLE_CHARS:
-        return ""
-    cleaned = _strip_kg_workflow_scaffold(raw)
-    cleaned = format_rich_text(cleaned, "whatsapp")
-    # Re-check AFTER cleaning: the scaffold strip and the channel formatter can
-    # both shrink the text, and a payload that was only scaffold must not be
-    # rescued by its own length before the scaffold was removed.
-    if len(cleaned.strip()) < _ABSTAIN_MIN_SENDABLE_CHARS:
-        return ""
-    return cleaned.strip()
-
-
-def _strip_kg_workflow_scaffold(answer: str) -> str:
-    """Remove the internal KG-workflow diagnostics block, if present.
-
-    Safe to call on any answer text — a no-op when the block is absent
-    (the common case).
-    """
-    return _KG_WORKFLOW_SCAFFOLD_RE.sub("", answer).strip()
-
-
-def _safe_abstain_reply(query: str) -> str:
-    """Return the reasoning engine's localized, source-honest refusal.
-
-    This is intentionally derived from the customer query, never from the
-    endpoint's ``answer`` field: a low-evidence response can still contain
-    fluent unsupported claims even when the endpoint correctly labels it
-    ``abstain=true``.
-    """
-    language = detect_query_language(query)
-    return get_localized_stub("abstain", language)
-
-
-def _starts_with_internal_monologue_leak(answer: str) -> bool:
-    """Return whether a model payload opens with a private prompt marker."""
-    return bool(_INTERNAL_MONOLOGUE_LEAK_RE.match(answer))
 
 
 async def _tell_a_human(*, phone: str, reason: str, thread_id: Any) -> bool:
@@ -271,32 +142,6 @@ async def _tell_a_human(*, phone: str, reason: str, thread_id: Any) -> bool:
     )
     return accepted
 
-
-# Mirrors whatsapp_service.WHATSAPP_BODY_LIMIT (WhatsApp Cloud API's
-# message-body limit). Duplicated as a local constant rather than imported —
-# this module's job ends at "the text to send"; the cut belongs to
-# whatsapp_service.fit_to_whatsapp_limit, which as of 2026-08-11 cuts at a
-# word boundary and marks it instead of severing mid-word. That placement is
-# deliberate and was CORRECTED here: a first version of the cure lived in this
-# module, and a census showed send_message has ~14 non-test call sites (outbox
-# worker, conversations router, compliance alerts, client-value predictor) of
-# which only two chunk beforehand — curing this producer would have left the
-# other eleven severing words. This warning stays because it is the only place
-# that knows the thread id and the pre-format length.
-#
-# NOT derived from backend/prompts/channel_overlays.py's
-# ChannelConfig(name="whatsapp", max_words=150, ...): that number is a
-# WORD-count *prompt instruction* to the LLM ("try to keep it short"),
-# empirically NOT obeyed (the production evidence behind this PR was
-# ~450 words / 2923 chars, generated WITH that overlay active) — which is
-# exactly why this fix is deterministic post-processing instead of a
-# stronger instruction. Converting a word budget into a char threshold
-# here would answer a different question ("is this reply longer than our
-# style guideline?") than the one this check needs to answer ("is real
-# content about to be physically deleted by whatsapp_service.py's hard
-# cutoff?"). Coupling to ChannelConfig.max_words was considered and
-# rejected for that reason, not overlooked — see PR description.
-_WHATSAPP_HARD_SEND_LIMIT = 4096
 
 # How many prior turns of the thread to feed the orchestrator as context.
 _HISTORY_TURNS = 12
@@ -539,197 +384,28 @@ async def generate_bot_reply(pool: asyncpg.Pool, thread: Any) -> str:
         resp.raise_for_status()
         data = resp.json()
 
-    # Why a human needs to look at this thread, or None. Set at most once —
-    # every later site guards on `is None`, so the FIRST (most specific) cause
-    # is the one reported rather than whichever check happens to run last.
-    human_reason: str | None = None
+    # The post-generation sequence (abstain handling, monologue-leak and
+    # [ESCALATE] handling, KG-scaffold strip, channel formatting, human
+    # notification) is the SHARED pipeline in ``wa_finalize`` — extracted in
+    # BOT-V4 S2 so the codex broker leg runs the exact same policy instead of
+    # a drifting copy. ``provider="gemini"`` is behavior-preserving: same
+    # branch order, same log lines, same notification points, and the defect
+    # messages raised below are the same RuntimeError strings as before the
+    # extraction, so the worker's retry ladder and the ledger vocabulary are
+    # unchanged.
+    async def _tell(reason: str) -> bool:
+        return await _tell_a_human(phone=phone, reason=reason, thread_id=thread_id)
 
-    if data.get("abstain"):
-        # Zero's ruling (2026-08-11), on measurement: an abstain does NOT mean
-        # "no content". Probed live across 16 cold questions in 8 languages,
-        # SEVEN came back flagged `abstain=true` and three of those carried a
-        # complete, on-topic answer — the two German ones and an Indonesian one
-        # opened straight into the real PT PMA steps. Sending the stub instead
-        # would throw away a written answer and hand the client a refusal.
-        #
-        # This does NOT touch the abstain gates. Their generation-vs-label
-        # divergence is panel-ruled and tripwire-tested (CLAUDE.md §9) — the
-        # label gate MARKS confidence, it does not decide whether advice may
-        # exist. Reading the label as "discard the text" was this consumer's
-        # error, not the gate's. `_abstain_answer_worth_sending` re-checks
-        # grounding itself (context_length/evidence_score), so this can never
-        # rescue the ungrounded-but-fluent case a length check alone would miss.
-        #
-        # A substantive answer is sent WITHOUT going through `human_reason`
-        # below — the client got a real, on-topic answer, so nothing here is a
-        # refusal that needs a human's eyes.
-        substantive = _abstain_answer_worth_sending(data)
-        if substantive:
-            language = detect_query_language(query)
-            logger.info(
-                "wa-inbox bot: abstain on thread %s carried %d chars of answer — "
-                "sending it with the caution note rather than the stub",
-                thread_id,
-                len(substantive),
-            )
-            return substantive + get_localized_stub("low_confidence_note", language)
-
-        # Never surface the endpoint's raw answer on this branch. The baseline
-        # caught an abstain-labelled payload that still asserted Rp 10bn.
-        #
-        # RAG refused. Until 2026-08-11 this raised, the worker burned five
-        # retries and the client got SILENCE — while the answer being discarded
-        # was, on the measured cases, the persona telling the client that the
-        # team had been notified and would reply within one business hour. That
-        # promise is taught by the prompt's ESCALATION section, and nothing on
-        # this path performed it: the message was a promise nobody kept, thrown
-        # away before anyone could read it.
-        #
-        # Zero's ruling (2026-08-10): "rifiuto + avviso a un umano". So: send
-        # the localized refusal, and actually tell a human — via the single
-        # `human_reason` choke point below, shared with the other three causes
-        # (internal-monologue leak, [ESCALATE] marker, workflow-only output).
-        logger.info(
-            "wa-inbox bot: serving localized safe abstention for thread %s (reason=%r)",
-            thread_id,
-            data.get("abstain_reason"),
-        )
-        answer = _safe_abstain_reply(query)
-        human_reason = "rag_abstain"
-    else:
-        answer = (data.get("answer") or "").strip()
-        if not answer:
-            # Measured deterministic, not transient: the 2026-08-10 battery got
-            # a 0-character answer 5 times out of 5 on the same question, so the
-            # retry ladder below cannot rescue this — it only spends attempts
-            # and ends in silence. Tell a human BEFORE the raise, because the
-            # raise is precisely what makes this silent.
-            await _tell_a_human(phone=phone, reason="empty_rag_answer", thread_id=thread_id)
-            raise RuntimeError(f"wa-inbox bot: empty RAG answer for thread {thread_id}")
-
-        if _starts_with_internal_monologue_leak(answer):
-            logger.warning(
-                "wa-inbox bot: internal-monologue marker at start of RAG output "
-                "for thread %s; discarding payload and serving safe abstention",
-                thread_id,
-            )
-            answer = _safe_abstain_reply(query)
-            if human_reason is None:
-                human_reason = "internal_monologue_leak"
-
-        # Strip an [ESCALATE] marker if the persona emitted one (mirror whatsapp_chat.py).
-        #
-        # Until now this MIRRORED THE FORM AND NOT THE EFFECT: `whatsapp_chat.py`
-        # captures the same marker, strips it, sends the answer and then calls
-        # `notify_human_telegram`. This module deleted the marker and called
-        # nothing — the persona asked for a human and the request was erased in
-        # transit. Verified on main before this change: zero telegram/notify
-        # references in the whole file.
-        #
-        # INERT TODAY, ON PURPOSE — say it plainly rather than let a reader assume
-        # coverage. **No prompt in this backend asks the model to emit the token**
-        # (grepped 2026-08-11: the only occurrences are the two places that look for
-        # it), and a live probe saw it 0/14. So this branch cannot fire yet. It is
-        # here because the alternative — a second escalation path invented later —
-        # is how this file and whatsapp_chat.py drifted apart in the first place.
-        #
-        # It exists for the case `abstain` provably cannot catch: a message that
-        # asks a real question AND asks for a person retrieves an answer, does not
-        # abstain, and reaches nobody (measured 2026-08-11: 2 of 4 such messages did
-        # not abstain, and all 4 promised the client a callback).
-        #
-        # ARMING IT IS A SEPARATE CHANGE, and NOT just a prompt line: the prompt is
-        # shared by every consumer, and `blog_ask.py` / `agentic_rag.py` /
-        # `channels/web` return the answer with NO strip at all (0 occurrences of
-        # the token in any of them). Teaching the model to emit it without first
-        # moving the strip somewhere central would print an internal token to blog
-        # readers. Tracked in PENDING-ARMS.
-        if "[ESCALATE]" in answer and human_reason is None:
-            human_reason = "persona_escalate_marker"
-        answer = answer.replace("[ESCALATE]", "").strip()
-        if not answer:
-            # `human_reason` is already "persona_escalate_marker" whenever the
-            # marker was the whole payload — report THAT (first cause wins,
-            # same rule as every other site), never the generic emptiness.
-            await _tell_a_human(
-                phone=phone,
-                reason=human_reason or "empty_after_escalate_strip",
-                thread_id=thread_id,
-            )
-            raise RuntimeError(
-                f"wa-inbox bot: answer empty after ESCALATE strip, thread {thread_id}"
-            )
-
-        # Remove internal KG-workflow diagnostics before the answer ever reaches
-        # the channel formatter — see _strip_kg_workflow_scaffold docstring.
-        answer = _strip_kg_workflow_scaffold(answer)
-        if not answer:
-            logger.info(
-                "wa-inbox bot: workflow-only RAG output for thread %s; "
-                "serving localized safe abstention",
-                thread_id,
-            )
-            if human_reason is None:
-                human_reason = "workflow_only_output"
-            answer = _safe_abstain_reply(query)
-
-    # Channel boundary: convert the orchestrator's generic markdown into
-    # WhatsApp-safe formatting (*bold*, unicode bullets, no raw ##/**/[N]
-    # noise) — see backend/channels/format.py::format_rich_text. Length is
-    # tracked pre- AND post-format (not enforced — see
-    # _WHATSAPP_HARD_SEND_LIMIT docstring for why 150-word ChannelConfig
-    # guidance is the wrong unit for this) so the eventual chunked-sending
-    # lane inherits a real length distribution instead of a guess.
-    pre_format_len = len(answer)
-    answer = format_rich_text(answer, "whatsapp")
-    if not answer:
-        await _tell_a_human(
-            phone=phone,
-            reason=human_reason or "empty_after_channel_format",
-            thread_id=thread_id,
-        )
-        raise RuntimeError(
-            f"wa-inbox bot: answer empty after channel formatting, thread {thread_id}"
-        )
-    post_format_len = len(answer)
-
-    if post_format_len > _WHATSAPP_HARD_SEND_LIMIT:
-        logger.warning(
-            "wa-inbox bot: reply for thread %s is %d chars post-format (%d "
-            "pre-format), exceeds WhatsApp's %d-char single-message limit — "
-            "whatsapp_service.fit_to_whatsapp_limit will cut it at a boundary "
-            "and mark it on send. This module deliberately does NOT cut: the "
-            "send is the choke point (~14 call sites, only 2 of which chunk), "
-            "so curing it here would cure one producer and leave the rest "
-            "severing words mid-token.",
-            thread_id,
-            post_format_len,
-            pre_format_len,
-            _WHATSAPP_HARD_SEND_LIMIT,
-        )
-
-    logger.info(
-        "wa-inbox bot generated reply for thread %s (%d chars post-format, %d chars pre-format)",
-        thread_id,
-        post_format_len,
-        pre_format_len,
+    result = await finalize_wa_answer(
+        data=data,
+        query=query,
+        thread_id=thread_id,
+        provider="gemini",
+        tell_a_human=_tell,
     )
-
-    if human_reason is not None:
-        # The REPLY-PRODUCING causes land here; the silent exits above call the
-        # same helper before they raise. (An earlier version of this comment
-        # said "one call site rather than four" — true then, and the reason the
-        # silent paths were never covered: a single bottom-of-function call
-        # site cannot be reached by a function that leaves via `raise`.)
-        #
-        # All causes mean the same thing operationally: the client did not get
-        # an answer to what they asked (or explicitly asked for a person). The
-        # copy the client reads is deliberately unchanged by this branch, so
-        # nothing here can turn into a promise of a reply. Body withheld on
-        # purpose (`message_text=None` inside the helper): routing a NEW trigger
-        # through the cleartext payload would widen exactly the third-party
-        # exposure CLAUDE.md §14 constrains. The thread ref is what makes the
-        # omission workable — the notified human can open the thread.
-        await _tell_a_human(phone=phone, reason=human_reason, thread_id=thread_id)
-
-    return answer
+    if result.outcome is FinalizeOutcome.DEFECT:
+        # The worker's guard turns this into retry/backoff and eventually
+        # ``failed`` — never a wrong send (see the Raises section above). The
+        # pipeline has already told a human on the paths that warrant it.
+        raise RuntimeError(result.defect_message)
+    return result.text

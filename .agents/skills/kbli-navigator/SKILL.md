@@ -43,7 +43,79 @@ session reads this corner; it does not browse `research/`.
 Also stale in `20-the-honest-map-blocked-bali-codes.md` and its `_INDEX.md` row: the blocked count
 is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
-## 1. LIVE STATE (last update 2026-08-13 — keep current)
+## 1. LIVE STATE (last update 2026-08-19 — keep current)
+
+**🟢 2026-08-19 — PHASE 2 IS OPEN, AND NOT WITH OPENCLAW: ZERO ORDERED THE CHAT BRAIN ONTO
+CHATGPT PRO VIA `codex exec` (the /bot pattern); THE MORNING'S READ-ONLY BKPM AUDIT CLOSED THE
+DATASET-STALENESS QUESTION; AND THE DESIGN'S OWN REFUTER FOUND A NEW DATASET SELF-CONTRADICTION
+ON THE TRAP CODES.** Zero, verbatim: _«aggiorna il corner e comincia la phase 2 ma non con
+openclaw. studia /bot dove abbiamo messo direttamente chatgpt con abbonamento pro»_.
+
+- **Phase 2 route change (supersedes the 2026-08-09 design's brain choice).** The chat brain
+  becomes ChatGPT Pro consumed through headless `codex exec` — a Swift `KBLICodexRunner`
+  porting the /bot lane's proven `codex_exec_client.py` invariants (stdin-only prompt,
+  `--ephemeral --ignore-user-config --ignore-rules`, neutral tempdir cwd, minimal env with
+  `/opt/homebrew/bin` in PATH — codex is a Node shebang script, re-measured this session —
+  process-GROUP kill, output caps, single-flight, typed auth-death) + a deterministic
+  allowlist context package from the bundled dataset (zero LLM planners, measured cap 64KiB,
+  worst case 58.4KiB on 61108) + a deterministic post-generation gate (cited codes ⊆ package,
+  % figures must match `pma_max_asing`). No broker, no Fly, no server surface. Design doc:
+  `research/operations/2026-08-19-kbli-navigator-phase2-codex-chat-design.md` — Codex GPT-5.6
+  sol refute-stance, EIGHT live rounds on Pro: BLOCKED(13) → BLOCKED(10) → BLOCKED(7) →
+  BLOCKED(5) → FIX-FIRST(5) → FIX-FIRST(3) → FIX-FIRST(2) → **SHIP**; 45 findings folded or
+  declared, every measurable claim re-verified on the canonical before folding. SHIP scope is INTERNAL fleet only; BKPM chat is explicitly gated
+  (isolation + seat + G-P1 training-toggle — §6 owner bundle, honest-offline default). The
+  ~25-question benchmark (78-question team test + cured traps) with ABSOLUTE floors (zero
+  fabrications, ≥80% accuracy, ≤10% wrongful abstention, 100% abstention on out-of-corpus
+  probes, new ≥ old) is the gate that lets the OpenClaw path be deleted. Seat reality (all
+  measured 2026-08-19): Pro logged in; M5 probe-positive (0.147.0 + auth.json 0600); Mini
+  AUTH_DEAD/headless; BKPM none.
+- **🔴 NEW RED ROW — the canonical dataset contradicts itself on the exact cured trap codes.**
+  Measured this session on `data/source_documents/KBLI_2025_FINAL_CLEAN.json`: `25200`,
+  `51101`, `79122` carry `pma_status=TERBATAS` (caps 49/49/0) while each record's own
+  `intel_2026.zantaraOpener` editorial text claims Open — 79122 verbatim: _«Nationally this
+  carries PMA status: Open»_. The chat design cures its own exposure by excluding `intel_2026`
+  from the package allowlist. **Exposure VERIFIED same day (static trace + live production MCP
+  probes): the contradictory text reaches NO client surface** — and not by accident:
+  `withNeutralKbliChatOpener` (TS, `kbli-editorial-certification.ts:105-113`) /
+  `with_neutral_kbli_chat_opener` (Python, `kbli_editorial_certification.py:235-253`)
+  unconditionally overwrite `zantaraOpener` with neutral text at EVERY loader boundary
+  (mouth `kbli-data.server.ts:160-165` + `kbli-data.ts:400` — so `page.tsx:1050` only ever
+  sees neutral text; `reindex_kbli_2025_final.py` L182; `kg_kbli_resync.py` L148-155);
+  `chat_kbli`'s direct-lookup path deliberately never selects the `content` column, and
+  `inspect_kbli`'s response schema has no editorial field at all. Live probes on all 3
+  codes: correct or no-leak. The mouth gold store's own authored text for 51101/79122 is
+  already correct — the "Open" sentence lives ONLY in canonical `intel_2026`. Three
+  declared residuals: (1) the live Qdrant collections' provenance is structurally protected
+  but not empirically proven (the live probes answered via direct lookup, not semantic
+  retrieval); (2) the live `kg_nodes` KG is STALE — `inspect_kbli` returns
+  NOT_VERIFIED/declared_gap where the canonical says TERBATAS (protective by accident;
+  `kg_kbli_resync.py` exists to fix it — its run is its own lane); (3) the non-production
+  sandbox `apps/kbli-navigator` gold store carries an even worse authored text for 79122
+  ("Fully open — 100% foreign ownership"), registry-gated to null so never rendered, but
+  the text exists on disk. **The DATA defect itself stays open** — the wrong editorial
+  sentences in canonical `intel_2026` on those 3 codes still want their own cure lane even
+  though nothing serves them. **Second defect, found by the design's round-4
+  refuter and censused this session: the STRUCTURED fields contradict each other on exactly 2
+  records** — `50111` and `50112` carry `pma_max_asing=49` while their own `pma_kondisi` reads
+  _"Hanya PMDN (100% domestik)"_ (class sweep over all 1,559: no other hits). Which field is
+  right needs adjudication against the Annex (sea-transport entries) — its own cure lane; the
+  Phase-2 chat refuses the ownership axis on those 2 records until then.
+- **Cross-lane find handed to /bot (PENDING-ARMS row opened):** the deployed
+  `codex_exec_client.py` kills only the direct child (`proc.kill()`, line 553, no process
+  group) while the broker spec's §2 promises "kill process group on expiry" — spec-vs-impl
+  gap, W81 class.
+- **The morning's read-only BKPM audit (Mini) closed the staleness question honestly.** Zip
+  `build/KBLI-Navigator-BKPM.zip` on M5 intact (sha256 `c6c62fc8…`, 106MB). The zip's dataset
+  is rev `a5721756` (8/8) vs main `3dafab17` (15/8) — but a field-by-field diff on all 1,559
+  records restricted to the Swift-DECODED fields (`Models.swift`: pma_status, pma_max_asing,
+  pma_cap_verified, per_skala, l4_bali, intel_2026…) found **zero differences → no rebuild
+  owed**. #4215 (merged 15/8, "release verified KBLI Navigator") closed the PMA axis — all 3
+  axes (licensing, PMA, crosswalk) now 100% honest on the canonical. The 3 hand-off blockers
+  are unchanged (chat — this Phase 2's job; adhoc signature; GUI QA). Detector on Pro: still
+  disarmed, but `~/scripts/cron-runner.sh` is now byte-identical to the repo (the W107 re-copy
+  precondition is met; the arming sequence in the 2026-08-13 entry below still applies).
+  INTERNAL app on Mini: CANNOT-VERIFY (TCC headless).
 
 **🟢 2026-08-13 — THE BATCH-A ANCESTRY IS PROVEN LIVE AS A CLASS, THE TRI-STATE IS ON THE CANONICAL, AND
 THE GOLD-PAGE GAP FINALLY HAS ITS CAUSE.** Four PRs merged this round: `#4129`, `#4126`, `#4141`
@@ -230,7 +302,7 @@ false-positive pinned by a test.
 3. No human has GUI-opened the two new apps yet (bundles proven by content; native GUI QA = 30 seconds
    of Zero's eyes).
 
-**NEXT — Phase 2 "the chat perfect on KBLI" (DESIGNED, awaiting Zero's GO — do not start without it):**
+**NEXT — Phase 2 "the chat perfect on KBLI" (SUPERSEDED 2026-08-19 on the brain choice — Zero's GO arrived WITH a route change: ChatGPT Pro via `codex exec`, not OpenClaw and not chat_kbli-first; see the 2026-08-19 LIVE STATE entry + the design doc. The benchmark requirement below carries over; the rest of this block is the historical 2026-08-09 design):**
 one brain only: a new `KBLIBrainClient` (Swift, URLSession) → prod `chat_kbli` (the cured brain:
 canonical + 314 gold + `kbli_documents` + the exact-code retrieval fix), current code-card context
 rides with the question; API key read from a LOCAL file, never bundled, chat hides gracefully where the
