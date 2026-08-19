@@ -13,7 +13,10 @@ call; `codex` need not be installed to run this file.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
+import signal
+import time
 
 import pytest
 
@@ -109,6 +112,12 @@ class _FakeProcess:
         self._stdout = stdout
         self._stderr = stderr
         self.returncode = returncode
+        # A real `asyncio.subprocess.Process` always has a pid; the fake
+        # must too (PR-6: `_kill_and_reap` calls `os.getpgid(proc.pid)`).
+        # OUR OWN pid is the one safe fake value: its pgid equals the test
+        # runner's, so the group-kill guard SKIPS it — a made-up number
+        # could name a real, innocent process group on the machine.
+        self.pid = os.getpid()
         self._delay = communicate_delay
         self._communicate_raises = communicate_raises
         self._wait_delay = wait_delay
@@ -1266,3 +1275,145 @@ class TestSanitizedErrors:
         message = str(exc_info.value)
         assert prompt not in message
         assert "Not logged in" not in message  # raw stderr never echoed into the message
+
+
+# ---------------------------------------------------------------------------
+# Process-group kill (BOT-V4 S2 PR-6, spec §7 chaos row 5: "kill process
+# group on expiry"). REAL subprocesses, deliberately not `fake_exec` — the
+# fake cannot represent a grandchild, and a grandchild is the entire point:
+# `codex exec` spawns descendants of its own, so a direct-child-only
+# `proc.kill()` leaves them alive past a wall-clock timeout.
+# ---------------------------------------------------------------------------
+
+
+class TestProcessGroupKill:
+    @pytest.mark.asyncio
+    async def test_guilt_timeout_kills_grandchildren_via_process_group(
+        self,
+        tmp_path,
+    ) -> None:
+        """The fake binary backgrounds a grandchild `sleep` and then blocks;
+        after the wall-clock timeout the WHOLE process group must be dead.
+        This pins BOTH halves of the cure: without `start_new_session=True`
+        the guard in `_kill_and_reap` skips the group-kill (shared pgid),
+        and without the `os.killpg` the group is never signalled — either
+        mutation leaves the grandchild alive and turns this test red."""
+        client = _make_available_client(tmp_path, timeout_s=1.0)
+        pid_file = tmp_path / "grandchild.pid"
+        binary = tmp_path / "codex"
+        binary.write_text(
+            "#!/bin/sh\n"
+            "sleep 300 &\n"
+            f'echo $! > "{pid_file}"\n'
+            "exec sleep 300\n"
+        )
+        binary.chmod(0o755)
+
+        with pytest.raises(CodexExecTimeoutError):
+            await client.generate("hello")
+
+        assert pid_file.exists(), "fake binary never ran — harness broken, not a verdict"
+        grandchild_pid = int(pid_file.read_text().strip())
+        assert grandchild_pid > 1
+
+        deadline = time.monotonic() + 5.0
+        alive = True
+        while time.monotonic() < deadline:
+            try:
+                os.kill(grandchild_pid, 0)
+            except ProcessLookupError:
+                alive = False
+                break
+            await asyncio.sleep(0.05)
+        if alive:
+            # Clean up the leak BEFORE failing, so a red run does not strand
+            # a 300s sleep on the test machine.
+            with contextlib.suppress(ProcessLookupError):
+                os.kill(grandchild_pid, signal.SIGKILL)
+        assert alive is False, (
+            f"grandchild pid={grandchild_pid} survived the timeout kill — "
+            "the process group was not killed (chaos row 5 violated)"
+        )
+
+    @pytest.mark.asyncio
+    async def test_innocence_kill_and_reap_never_kills_our_own_group(self) -> None:
+        """A process spawned WITHOUT `start_new_session` shares OUR process
+        group; `_kill_and_reap`'s guard must skip the group-kill for it —
+        `os.killpg` on our own pgid would SIGKILL the test runner itself, so
+        this test's own survival past the call IS the assertion. The
+        direct-child backstop must still kill and reap the child."""
+        proc = await asyncio.create_subprocess_exec(
+            "/bin/sleep",
+            "300",
+            stdin=asyncio.subprocess.DEVNULL,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        # Precondition, not an assumption: same group as the test runner.
+        assert os.getpgid(proc.pid) == os.getpgid(0)
+
+        await client_module._kill_and_reap(proc)
+
+        # We are alive to assert this — the guard did not fire on our group —
+        # and the child was still killed and reaped by the direct backstop.
+        assert proc.returncode is not None
+
+    @pytest.mark.asyncio
+    async def test_guilt_reap_is_bounded_when_orphans_hold_the_pipes(
+        self,
+        tmp_path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """CPython 3.11 resolves `proc.wait()` only when ALL pipe transports
+        disconnect (`_call_connection_lost`), not when the process dies — so
+        a descendant holding the inherited stdout/stderr write ends kept the
+        pre-PR-6 `_kill_and_reap` pending FOREVER on a child that was
+        already dead and OS-reaped (measured live: >90s hang). This pins the
+        `_REAP_ABANDON_S` bound on the exact shape the group-kill guard
+        skips: a child in OUR OWN process group (no `start_new_session`),
+        killed via the direct backstop only, whose grandchild survives
+        holding the pipes."""
+        monkeypatch.setattr(client_module, "_REAP_ABANDON_S", 0.5)
+        pid_file = tmp_path / "orphan.pid"
+        script = tmp_path / "holder.sh"
+        script.write_text(
+            "#!/bin/sh\n"
+            "sleep 300 &\n"
+            f'echo $! > "{pid_file}"\n'
+            "exec sleep 300\n"
+        )
+        script.chmod(0o755)
+        proc = await asyncio.create_subprocess_exec(
+            str(script),
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            # Deliberately NOT start_new_session: shared pgid makes the
+            # group-kill guard skip, exercising the backstop + bounded wait.
+        )
+        for _ in range(100):
+            if pid_file.exists() and pid_file.read_text().strip():
+                break
+            await asyncio.sleep(0.05)
+        orphan_pid = int(pid_file.read_text().strip())
+
+        reap = asyncio.ensure_future(client_module._kill_and_reap(proc))
+        deadline = time.monotonic() + 3.0  # 6x the patched abandon bound
+        bounded = False
+        while time.monotonic() < deadline:
+            if reap.done():
+                bounded = True
+                break
+            await asyncio.sleep(0.05)
+
+        # Unstick + clean up the orphan EITHER WAY: killing it closes the
+        # pipes, which lets a regressed (unbounded) reap resolve so this
+        # test FAILS instead of hanging the whole suite.
+        with contextlib.suppress(ProcessLookupError):
+            os.kill(orphan_pid, signal.SIGKILL)
+        await reap
+
+        assert bounded is True, (
+            "_kill_and_reap hung past its abandon deadline on a dead child "
+            "whose orphaned descendant held the pipe FDs"
+        )

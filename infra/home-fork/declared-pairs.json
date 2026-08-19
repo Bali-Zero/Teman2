@@ -804,6 +804,12 @@
       "live": "~/Library/LaunchAgents/com.nuzantara.kc-watchdog.plist",
       "repo": "infra/launchagents/com.nuzantara.kc-watchdog.plist",
       "machines": ["mini"]
+    },
+    {
+      "live": "/usr/local/libexec/wa-codex-broker-wrapper.sh",
+      "repo": "infra/launchagents/wrappers/wa-codex-broker-wrapper.sh",
+      "machines": ["pro"],
+      "_note": "WA codex broker daemon wrapper (BOT-V4 S2 PR-6), installed root-owned by scripts/provision_zantara_codex.sh. System-domain LaunchDaemon payload under the registry's absolute-prefix exception (fw-guard precedent 2026-08-14): the daemon runs AS the login-less zantara-codex user, and a root-owned payload outside any user-writable $HOME denies a compromised zantara-codex identity persistence across restarts. World-readable, so the lint can verify this pair as any user. Re-run provisioning after changing the repo twin: the merge alone never updates the live copy (W107 delivery gotcha)."
     }
   ],
   "allow": [

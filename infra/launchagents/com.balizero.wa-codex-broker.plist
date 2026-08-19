@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- LaunchDAEMON, not LaunchAgent (deliberate, spec §4.1): zantara-codex
+	     is a login-less user, and a LaunchAgent for a user who never logs in
+	     never runs (scar family #2, armed-to-nothing). Installed by
+	     scripts/provision_zantara_codex.sh into /Library/LaunchDaemons with
+	     UserName demotion — launchd starts it at boot as zantara-codex, no
+	     session required. -->
+	<key>Label</key>
+	<string>com.balizero.wa-codex-broker</string>
+	<key>UserName</key>
+	<string>zantara-codex</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/usr/local/libexec/wa-codex-broker-wrapper.sh</string>
+	</array>
+	<key>WorkingDirectory</key>
+	<string>/Users/zantara-codex</string>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>HOME</key>
+		<string>/Users/zantara-codex</string>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/bin:/bin</string>
+	</dict>
+	<!-- The wrapper exec's the daemon's REAL blocking loop (scar family #7:
+	     exec-to-long-running-server is the legitimate KeepAlive shape).
+	     SuccessfulExit=false: a graceful SIGTERM stop (exit 0) stays down;
+	     a crash or a startup refusal (version-pin mismatch, exit != 0)
+	     restarts, throttled below so a persistent refusal cannot storm. -->
+	<key>KeepAlive</key>
+	<dict>
+		<key>SuccessfulExit</key>
+		<false/>
+	</dict>
+	<key>ThrottleInterval</key>
+	<integer>30</integer>
+	<key>StandardOutPath</key>
+	<string>/Users/zantara-codex/logs/wa-codex-broker.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/zantara-codex/logs/wa-codex-broker.err</string>
+</dict>
+</plist>

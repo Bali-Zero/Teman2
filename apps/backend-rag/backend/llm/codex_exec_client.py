@@ -339,6 +339,7 @@ import math
 import os
 import re
 import shutil
+import signal
 import tempfile
 import time
 from dataclasses import dataclass
@@ -539,6 +540,21 @@ class CodexExecResult:
     latency_ms: float
 
 
+# Upper bound on how long `_kill_and_reap` waits for `proc.wait()` to
+# resolve after the kill signals have been delivered. This is NOT the time
+# a SIGKILLed child needs to die (milliseconds): it bounds a measured
+# CPython 3.11 transport behavior — `BaseSubprocessTransport._wait()`
+# resolves its waiters only in `_call_connection_lost`, which fires only
+# when ALL pipe transports have disconnected, and a surviving DESCENDANT of
+# the child holds the inherited stdout/stderr write ends open indefinitely.
+# Measured live (PR-6 mutation run, 2026-08-20): with the group-kill
+# disabled, `_kill_and_reap` hung >90s on a dead, already-OS-reaped child
+# whose grandchild held the pipes. The group-kill makes that shape rare;
+# this deadline makes it impossible to hang the caller when it happens
+# anyway (guard skip-branch, cross-uid kill failure).
+_REAP_ABANDON_S = 5.0
+
+
 async def _kill_and_reap(proc: Any) -> None:
     """Kill and reap a child, deferring repeated caller cancellation.
 
@@ -548,15 +564,62 @@ async def _kill_and_reap(proc: Any) -> None:
     reap, then propagate that later cancellation; suppressing
     ``CancelledError`` around a bare wait would return before the child was
     actually reaped.
+
+    The wait is BOUNDED by ``_REAP_ABANDON_S``: `proc.wait()`'s resolution
+    is tied to pipe disconnection, not to process death (see the constant's
+    comment), so an unbounded wait here could hang the calling coroutine
+    forever on a child that is already dead and OS-reaped. When the
+    deadline expires the wait task is cancelled and the reap is abandoned
+    with a warning — at that point every kill signal has long been
+    delivered and `proc.returncode` (set by the child watcher independent
+    of pipes) tells the truth about the child.
     """
+    # Group-kill FIRST (chaos row 5 / spec "kill process group on expiry"):
+    # `codex exec` spawns descendants of its own, and killing only the direct
+    # child leaves those grandchildren alive holding stdout/stderr pipes —
+    # `communicate()`'s reader would then hang past the kill. The spawn site
+    # sets `start_new_session=True`, making the child a session leader whose
+    # pgid == its pid, so the guard below can never target OUR OWN group:
+    # killing our own pgid would take down the daemon itself. The guard is a
+    # backstop, not dead code — it also protects any future caller that
+    # passes a process spawned WITHOUT `start_new_session`.
+    # `OSError` covers the whole failure class here: `ProcessLookupError`
+    # (child already reaped) and `PermissionError` (cross-uid signal) are
+    # both `OSError` subclasses.
+    with contextlib.suppress(OSError):
+        pgid = os.getpgid(proc.pid)
+        if pgid != os.getpgid(0):
+            os.killpg(pgid, signal.SIGKILL)
+    # Direct-child kill stays as the belt under the group-kill braces: if the
+    # group-kill was skipped (pgid lookup failed, or the guard matched), the
+    # child itself must still die before we wait on it.
     with contextlib.suppress(ProcessLookupError):
         proc.kill()
 
     wait_task = asyncio.ensure_future(proc.wait())
     deferred_cancellation: asyncio.CancelledError | None = None
+    deadline = time.monotonic() + _REAP_ABANDON_S
     while True:
         try:
-            await asyncio.shield(wait_task)
+            await asyncio.wait_for(
+                asyncio.shield(wait_task),
+                timeout=max(0.0, deadline - time.monotonic()),
+            )
+            break
+        except asyncio.TimeoutError:
+            # ABANDON path (see `_REAP_ABANDON_S`): the child is killed and
+            # OS-reaped; only the transport's pipe bookkeeping is stuck on
+            # FDs held by orphaned descendants. `wait_for` cancelled the
+            # shield wrapper, never `wait_task` itself — cancel it
+            # explicitly so it does not linger pending forever.
+            wait_task.cancel()
+            logger.warning(
+                "codex_exec: reap abandoned after %.1fs — child killed "
+                "(returncode=%r) but pipe bookkeeping never resolved "
+                "(descendants holding inherited pipe FDs)",
+                _REAP_ABANDON_S,
+                proc.returncode,
+            )
             break
         except asyncio.CancelledError as exc:
             if wait_task.cancelled():
@@ -934,6 +997,17 @@ class CodexExecClient:
                     stdin=asyncio.subprocess.PIPE,
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
+                    # The child becomes its own session (and process-group)
+                    # leader so that `_kill_and_reap` can SIGKILL the WHOLE
+                    # group: `codex exec` spawns its own descendants, and a
+                    # `proc.kill()` on the direct child alone leaves those
+                    # grandchildren alive past a wall-clock timeout — the
+                    # broker spec ("kill process group on expiry", chaos
+                    # row 5) requires the whole tree dead. Also the
+                    # precondition for the `pgid != our own pgid` guard in
+                    # `_kill_and_reap`: a session leader's pgid is its own
+                    # pid, never ours.
+                    start_new_session=True,
                 )
             except OSError as exc:
                 # R25-5 fix (2026-08-15 THAW round): `FileNotFoundError`

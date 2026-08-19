@@ -711,6 +711,41 @@ async def test_finalize_receives_codex_provider_and_the_frozen_evidence(
 
 
 @pytest.mark.asyncio
+async def test_finalize_receives_env_derived_canary_tokens(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """PR-6 canary wiring (spec 4.3): the values planted in the
+    zantara-codex sandbox arrive as the WA_CODEX_CANARY_TOKENS Fly secret
+    and MUST reach finalize's canary scan — an empty tuple here means the
+    canary half of the tripwire is silently disarmed."""
+    monkeypatch.setenv("WA_CODEX_CANARY_TOKENS", "canary-alpha-1, canary-beta-2 ,")
+    stubs = _wire_stubs(monkeypatch)
+    conn = ScriptedConn(
+        fetchrow_results=[{"human_handling": False, "handling_version": 3}]
+    )
+    await _run(conn=conn)
+    kwargs = stubs.finalize.await_args.kwargs
+    assert kwargs["canary_tokens"] == ("canary-alpha-1", "canary-beta-2")
+
+
+@pytest.mark.asyncio
+async def test_no_canary_env_passes_an_empty_tuple_scan_still_armed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Innocence: unset env is a legal state (pre-provisioning) — empty
+    canaries, but secret_scan stays True (the pattern half never disarms)."""
+    monkeypatch.delenv("WA_CODEX_CANARY_TOKENS", raising=False)
+    stubs = _wire_stubs(monkeypatch)
+    conn = ScriptedConn(
+        fetchrow_results=[{"human_handling": False, "handling_version": 3}]
+    )
+    await _run(conn=conn)
+    kwargs = stubs.finalize.await_args.kwargs
+    assert kwargs["canary_tokens"] == ()
+    assert kwargs["secret_scan"] is True
+
+
+@pytest.mark.asyncio
 async def test_finalize_defect_falls_off_to_gemini(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
