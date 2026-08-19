@@ -1,7 +1,35 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
-import { cockpitLoginFailureMessage } from "@/components/cockpit/PinGate";
+import type { FormEvent, ReactElement } from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const reactHarness = vi.hoisted(() => ({
+  cursor: 0,
+  setters: [] as Array<ReturnType<typeof vi.fn>>,
+  stateValues: [] as unknown[],
+}));
+
+vi.mock("react", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react")>();
+  return {
+    ...actual,
+    useCallback: <T>(callback: T) => callback,
+    useState: <T>(initial: T) => {
+      const index = reactHarness.cursor++;
+      const value =
+        index < reactHarness.stateValues.length
+          ? (reactHarness.stateValues[index] as T)
+          : initial;
+      return [value, reactHarness.setters[index] ?? vi.fn()] as const;
+    },
+  };
+});
+
+import {
+  AUTHENTICATION_UNAVAILABLE_MESSAGE,
+  cockpitLoginFailureMessage,
+  PinGate,
+} from "@/components/cockpit/PinGate";
 
 function source(relativePath: string): string {
   return readFileSync(path.join(process.cwd(), relativePath), "utf8");
@@ -165,6 +193,28 @@ describe("GARUDA internal preview boundaries", () => {
 });
 
 describe("PinGate login feedback", () => {
+  beforeEach(() => {
+    reactHarness.cursor = 0;
+    reactHarness.setters = [vi.fn(), vi.fn(), vi.fn(), vi.fn()];
+    reactHarness.stateValues = [null, "SYNTHETIC_INPUT_SECRET", null, false];
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  async function submitPinGate(): Promise<void> {
+    reactHarness.cursor = 0;
+    const gate = PinGate({ children: null }) as ReactElement<{
+      children: ReactElement<{
+        onSubmit: (event: FormEvent) => Promise<void>;
+      }>;
+    }>;
+    await gate.props.children.props.onSubmit({
+      preventDefault: vi.fn(),
+    } as unknown as FormEvent);
+  }
+
   it("identifies an origin or host rejection with the canonical URL", () => {
     expect(cockpitLoginFailureMessage(403)).toBe(
       "origin/host blocked: use http://localhost:3100",
@@ -178,5 +228,46 @@ describe("PinGate login feedback", () => {
     expect(message).toBe("invalid passphrase");
     expect(message).not.toContain(syntheticPassphrase);
     expect(message).not.toContain("origin/host");
+  });
+
+  it("preserves the bounded rate-limit message", () => {
+    expect(cockpitLoginFailureMessage(429)).toBe(
+      "rate-limited: try again in 5 minutes",
+    );
+  });
+
+  it("redacts malformed successful authentication responses", async () => {
+    const responseSecret = "SYNTHETIC_RESPONSE_SECRET";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue(responseSecret),
+      }),
+    );
+
+    await submitPinGate();
+
+    const renderedErrors = JSON.stringify(reactHarness.setters[2].mock.calls);
+    expect(reactHarness.setters[2]).toHaveBeenLastCalledWith(
+      AUTHENTICATION_UNAVAILABLE_MESSAGE,
+    );
+    expect(renderedErrors).not.toContain(responseSecret);
+    expect(renderedErrors).not.toContain("SYNTHETIC_INPUT_SECRET");
+  });
+
+  it("redacts network exception messages", async () => {
+    const networkSecret = "SYNTHETIC_NETWORK_SECRET";
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error(networkSecret)));
+
+    await submitPinGate();
+
+    const renderedErrors = JSON.stringify(reactHarness.setters[2].mock.calls);
+    expect(reactHarness.setters[2]).toHaveBeenLastCalledWith(
+      AUTHENTICATION_UNAVAILABLE_MESSAGE,
+    );
+    expect(renderedErrors).not.toContain(networkSecret);
+    expect(renderedErrors).not.toContain("SYNTHETIC_INPUT_SECRET");
   });
 });

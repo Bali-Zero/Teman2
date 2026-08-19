@@ -7,6 +7,8 @@ interface LoginResponse {
   expires_in: number;
 }
 
+export const AUTHENTICATION_UNAVAILABLE_MESSAGE = "authentication unavailable";
+
 function isLoginResponse(value: unknown): value is LoginResponse {
   if (!value || typeof value !== "object") return false;
   const response = value as Partial<LoginResponse>;
@@ -24,7 +26,8 @@ export function cockpitLoginFailureMessage(status: number): string {
   if (status === 403) {
     return "origin/host blocked: use http://localhost:3100";
   }
-  return "authentication failed";
+  if (status === 429) return "rate-limited: try again in 5 minutes";
+  return AUTHENTICATION_UNAVAILABLE_MESSAGE;
 }
 
 export function PinGate({ children }: { children: React.ReactNode }) {
@@ -53,23 +56,19 @@ export function PinGate({ children }: { children: React.ReactNode }) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ passphrase }),
       });
-      if (r.status === 429) {
-        setErr("rate-limited: try again in 5 minutes");
-        return;
-      }
       if (!r.ok) {
         setErr(cockpitLoginFailureMessage(r.status));
         return;
       }
       const response: unknown = await r.json();
       if (!isLoginResponse(response)) {
-        setErr("invalid authentication response");
+        setErr(AUTHENTICATION_UNAVAILABLE_MESSAGE);
         return;
       }
       setPassphrase("");
       setToken(response.token);
-    } catch (error) {
-      setErr(error instanceof Error ? error.message : "authentication failed");
+    } catch {
+      setErr(AUTHENTICATION_UNAVAILABLE_MESSAGE);
     } finally {
       setBusy(false);
     }
