@@ -583,26 +583,6 @@ _VISA_ORACLE = (
         "Visa Check Match result page — shareable URL, the hash is the access token",
         match="template",
     ),
-    # GARUDA VOA public request funnel (routers/garuda_voa.py, Slice A,
-    # BUILD-SPEC-SLICE-A-2026-07-27.md). Anonymous, no PII — the intake is
-    # enum/date/bool/ISO-code only (case_type/nationality/entry_date/
-    # passport_expiry_date/voa_expiry_date/extension_already_used/purpose/
-    # travellers/self_pay); see the "no PII column" comment on migration
-    # 261_garuda_voa_checks.sql. Rate-limited per-IP by RateLimitMiddleware
-    # via the generic "/api/" bucket, same class as Visa Check v1. Exact/
-    # template matches only — no blanket "/api/visa/" prefix.
-    PublicEndpoint(
-        "/api/visa/voa",
-        Category.VISA_ORACLE,
-        "GARUDA VOA request funnel submission — anonymous eligibility + Safe Clock verdict, no PII",
-        match="exact",
-    ),
-    PublicEndpoint(
-        "/api/visa/voa/{hash}",
-        Category.VISA_ORACLE,
-        "GARUDA VOA result page — shareable URL, the hash is the access token",
-        match="template",
-    ),
 )
 
 _BRIDGE = (

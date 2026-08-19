@@ -5,11 +5,11 @@ inputs: ``screen()`` takes ``days_until_expiry`` as a caller-supplied int
 and ``passport_valid_6mo_from_entry`` as a caller-supplied bool, and
 ``MIN_PASSPORT_VALIDITY_DAYS`` (constants.py) was consumed by nothing
 (BUILD-SPEC-SLICE-A-2026-07-27.md §2 trap 3). This module closes that gap
-and orchestrates the whole verdict for the public ``/api/visa/voa``
-funnel: derive the two missing facts from raw dates → ``screen()`` →
-``compute_stay()`` → one combined, auditable result. No I/O, no HTTP.
+and orchestrates the verdict for the stateless owner preview: derive the two
+missing facts from raw dates → ``screen()`` → ``compute_stay()`` → one
+combined, auditable result. No I/O, no HTTP.
 
-Field contract (spec §5 — the WHOLE PII surface of this funnel):
+Field contract (spec §5 — the whole bounded input surface of this preview):
 ``case_type`` (issuance | extension) · ``nationality`` (ISO-3) ·
 ``entry_date`` · ``passport_expiry_date`` · ``voa_expiry_date`` (extension
 only) · ``extension_already_used`` (bool) · ``purpose`` (enum) ·
@@ -20,33 +20,33 @@ Some of ``EligibilityInput``'s SOP §1 criteria have no matching field in
 this 9-field wizard (no nationality-eligibility dataset shipped yet, no
 interview-only signals like "clean ordinary passport" or "prior
 overstay/blacklist" — those are things a human staff member reads off a
-document or a conversation, not something an anonymous web form can ask).
-This funnel therefore gives a PRELIMINARY verdict built only from what it
+document or a conversation, not something this synthetic preview can ask).
+This engine therefore gives a PRELIMINARY verdict built only from what it
 mechanically can derive; see ``_build_eligibility_input`` for the exact
 mapping and the documented defaults for the rest.
 
-Client-facing boundary (spec §6, charter — non-negotiable): only the
-published D-7 Ngurah Rai deadline may ever reach a visitor. D-14/D-10/D-3/
+Serialization boundary (spec §6, charter — non-negotiable): only the
+published D-7 Ngurah Rai deadline may leave the engine. D-14/D-10/D-3/
 D-1 are INTERNAL Bali Zero checkpoints. ``VoaVerdict`` encodes this split
 structurally via ``published_filing_deadline`` / ``client_facing_checkpoints``
 / ``internal_checkpoints`` so a caller cannot leak an internal checkpoint
 by simply forgetting to filter ``stay_window.checkpoints``.
 
 Issuance-only submission-window gate (owner ruling, 2026-07-27): a VOA is
-issued in a few hours, so the online funnel accepts an issuance request up
+issued in a few hours, so the issuance rule accepts a request up
 to the day BEFORE arrival — counting Bali Zero's systems closed on
 Saturday, Sunday, and any Indonesian national holiday / cuti bersama
 (`operating_calendar.py`; follow-up ruling, same session). This SUPERSEDES
 the charter's blanket "urgent case" exclusion FOR ISSUANCE ONLY — the
-online 9-field wizard never had a mechanical "urgent" signal to begin with
+bounded 9-field request never had a mechanical "urgent" signal to begin with
 (no field in `VoaIntakeRequest` maps to `EligibilityInput.urgent_case`), so
 this gate is what actually governs how close to arrival an issuance request
 may be submitted. It does NOT touch the extension path: extensions require
 an in-person photo/interview (since 29 May 2025) and keep their own runway
 gate — now identical to the published D-7 filing deadline itself (owner
 ruling 2026-07-27, see `eligibility.screen`) — untouched by this ruling.
-``VoaVerdict.submit_by_date`` carries the one date this rule can ever show a
-visitor — Bali Zero's OWN operational commitment, never an immigration
+``VoaVerdict.submit_by_date`` carries the one date this rule can expose —
+Bali Zero's OWN operational commitment, never an immigration
 rule — and is ``None`` when it cannot be computed (see
 `operating_calendar.last_open_day_before`).
 """
@@ -110,8 +110,10 @@ class VoaIntakeRequest:
 class VoaVerdict:
     """One combined result: eligibility decision + Safe Clock dates.
 
-    ``stay_window.checkpoints`` mixes 1 client-facing mark (D-7) with 4
-    internal ones (D-14/D-10/D-3/D-1) — see the module docstring. Use
+    ``stay_window.checkpoints`` mixes 1 published-source mark (D-7) with 4
+    internal ones (D-14/D-10/D-3/D-1) — see the module docstring. The
+    legacy accessor name ``client_facing_checkpoints`` describes that
+    provenance; it does not authorize a public surface. Use
     ``published_filing_deadline`` / ``client_facing_checkpoints`` /
     ``internal_checkpoints`` below; never read ``stay_window.checkpoints``
     directly from a response builder.
@@ -122,16 +124,15 @@ class VoaVerdict:
     stay_window: StayWindow
     # Parallel to ``decline_reasons`` (same length/order) — the wire-safe
     # machine-code twin. See `eligibility.DeclineCode` docstring: this is
-    # the ONLY form of a decline reason `app/routers/garuda_voa.py` may
-    # ever serialize to a visitor.
+    # the ONLY form of a decline reason an adapter may ever serialize.
     decline_codes: list[str] = field(default_factory=list)
     # Issuance-only (owner ruling 2026-07-27): the last day Bali Zero's own
     # systems are open strictly before `entry_date` — the ONE date this
-    # gate may ever show a visitor, and it is Bali Zero's OWN operational
+    # gate may ever expose, and it is Bali Zero's OWN operational
     # commitment, never an immigration deadline. Always `None` for an
     # extension case (untouched by this rule) and for an issuance case
-    # whose `entry_date` falls past `operating_calendar.COVERAGE_END`
-    # (fail-closed — see `_issuance_submission_verdict`).
+    # whose full last-open-day calculation is outside the materialized
+    # operating-calendar coverage (see `_issuance_submission_verdict`).
     submit_by_date: date | None = None
 
     @property
@@ -140,17 +141,18 @@ class VoaVerdict:
 
     @property
     def published_filing_deadline(self) -> date:
-        """The ONE date a visitor may ever be shown (D-7)."""
+        """The one externally sourced deadline the engine may expose (D-7)."""
         return self.stay_window.published_filing_deadline
 
     @property
     def client_facing_checkpoints(self) -> list[SafeCheckpoint]:
+        """Legacy name for the published-source D-7 checkpoint."""
         return [c for c in self.stay_window.checkpoints if c.client_facing]
 
     @property
     def internal_checkpoints(self) -> list[SafeCheckpoint]:
         """D-14/D-10/D-3/D-1 — Bali Zero staff only, never serialized to a
-        visitor (charter, spec §6)."""
+        stateless preview or owner-archive response (charter, spec §6)."""
         return [c for c in self.stay_window.checkpoints if not c.client_facing]
 
     def checkpoint_at(self, label: str) -> date:
@@ -166,13 +168,13 @@ _EXTENSION_LIMIT_REASON = (
 _ARRIVAL_TOO_SOON_REASON = (
     "past our online submission cutoff for this arrival date (Bali Zero "
     "systems closed weekends and Indonesian national holidays/cuti "
-    "bersama) — hand off to the ordinary Bali Zero channel, which is not "
-    "bound by this online cutoff"
+    "bersama) — hand off to the manual Bali Zero channel, which is not "
+    "bound by this internal preview cutoff"
 )
 
 _ARRIVAL_DATE_UNCONFIRMED_REASON = (
-    "arrival date falls past the decreed 2026 holiday calendar "
-    "(operating_calendar.COVERAGE_END) — the online cutoff cannot be "
+    "arrival date is outside the materialized operating calendar coverage — "
+    "the internal preview cutoff cannot be "
     "computed without guessing; hand off to a human"
 )
 
@@ -181,7 +183,7 @@ def _issuance_submission_verdict(
     *, entry_date: date, today: date
 ) -> tuple[date | None, DeclineCode | None, str | None]:
     """Owner ruling (2026-07-27): a VOA is issued in a few hours, so the
-    online funnel accepts an issuance request up to the day BEFORE arrival —
+    issuance rule accepts a request up to the day BEFORE arrival —
     Bali Zero's systems being closed weekends + Indonesian national
     holidays/cuti bersama (`operating_calendar.py`). Issuance-only; never
     called for an extension case.
@@ -190,11 +192,11 @@ def _issuance_submission_verdict(
 
     - ``submit_by_date`` — the last open day strictly before ``entry_date``.
       Bali Zero's OWN operational commitment, never an immigration rule.
-      ``None`` only when it cannot be computed at all (`entry_date` past
-      `operating_calendar.COVERAGE_END` — fail-closed, never guessed); this
-      routes to a human rather than silently declining or accepting.
+      ``None`` only when the full calculation is outside
+      ``operating_calendar.COVERAGE_START`` / ``COVERAGE_END``; this routes
+      to a human rather than publishing a guessed date.
     - ``decline_code``/``decline_reason`` are both ``None`` when the
-      visitor is still within the window (``today <= submit_by_date``).
+      request is still within the window (``today <= submit_by_date``).
     """
     submit_by = operating_calendar.last_open_day_before(entry_date)
     if submit_by is None:
@@ -268,7 +270,7 @@ def build_verdict(request: VoaIntakeRequest, *, today: date) -> VoaVerdict:
 
     # Issuance-only submission-window gate (owner ruling 2026-07-27) — see
     # `_issuance_submission_verdict` and the module docstring. `screen()`
-    # doesn't know about this either — it's a VOA-funnel operational rule,
+    # doesn't know about this either — it's a B1 operational rule,
     # not a generic pilot-intake criterion — so it's layered on here,
     # exactly like the extension-limit rule above. Never runs for an
     # extension case.

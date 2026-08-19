@@ -1,14 +1,13 @@
-"""Persistence for the garuda_voa_checks table.
+"""Historical persistence adapter for the ``garuda_voa_checks`` archive.
 
-Append-only semantics for result rows, same convention as
-``visa_check/repository.py``: edits happen only to ``view_count`` /
-``share_count``. One row = one shareable ``/visa/voa/<hash>`` page.
+The public creator and result pages are retired. Existing rows remain
+readable through the owner-only archive GET; the active internal preview is
+stateless and never calls ``save_voa_check``. Historical counters remain in
+the row shape for backward-compatible decoding.
 
 The verdict (decision + Safe Clock dates) is FROZEN at submission time and
-simply read back on GET — it is not recomputed against "today" on every
-view (unlike the Visa Check Clock branch's checkpoints, which don't depend
-on the current date). A shared result link must not flip from ACCEPT to
-DECLINE just because someone opened it later.
+simply read back on owner GET — it is not recomputed against "today" during
+archive review.
 """
 
 from __future__ import annotations
@@ -50,7 +49,7 @@ class VoaCheckResult:
     # Issuance-only (owner ruling 2026-07-27, `garuda_flow.operating_calendar`):
     # Bali Zero's OWN submit-by commitment, never an immigration deadline.
     # Always None for an extension case, and for an issuance case whose
-    # entry_date falls past operating_calendar.COVERAGE_END (fail-closed).
+    # entry date is outside the materialized operating-calendar coverage.
     submit_by_date: date | None
     price_idr: int | None
     price_source: str | None
