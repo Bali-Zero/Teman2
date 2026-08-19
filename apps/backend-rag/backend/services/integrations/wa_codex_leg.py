@@ -281,6 +281,7 @@ async def _attempt(
     offer: wa_broker.OfferResult | None = None
     call_exc: Exception | None = None
     release_exc: Exception | None = None
+    body_cancel: BaseException | None = None
     entered = False
     try:
         async with pool.acquire() as offer_conn:
@@ -299,7 +300,25 @@ async def _attempt(
                 )
             except Exception as exc:
                 call_exc = exc
+            except BaseException as exc:
+                # Cancellation (or another BaseException) — remember it
+                # BEFORE it enters __aexit__ (Codex r6): if the release
+                # then raises a plain Exception, PEP 3134 makes that
+                # exception REPLACE the cancellation (burying it in
+                # __context__), the outer except-Exception would swallow
+                # it into a fail, and the worker would retry instead of
+                # stopping. The re-raise below restores it.
+                body_cancel = exc
+                raise
     except Exception as exc:
+        if body_cancel is not None:
+            logger.error(
+                "wa_codex_leg: connection release failed while cancelling "
+                "(outbox=%s): %s",
+                outbox_id,
+                type(exc).__name__,
+            )
+            raise body_cancel
         if not entered:
             logger.warning(
                 "wa_codex_leg: offer connection acquire failed "

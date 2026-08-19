@@ -78,9 +78,12 @@ class _FakePool:
     hands out the one scripted conn so the drift-re-read script drives it.
 
     ``release_exc_on_acquire`` (1-based) makes THAT acquire's __aexit__
-    raise — the connection-release-after-commit shape from Codex r3.
-    ``enter_exc_on_acquire`` makes THAT acquire's __aenter__ raise — the
-    certain nothing-ran-yet shape from Codex r4."""
+    raise on a CLEAN exit — the connection-release-after-commit shape from
+    Codex r3. ``enter_exc_on_acquire`` makes THAT acquire's __aenter__
+    raise — the certain nothing-ran-yet shape from Codex r4.
+    ``release_exc_on_error_exit`` makes THAT acquire's __aexit__ raise
+    while an exception is ALREADY propagating — the release-replaces-
+    cancellation shape from Codex r6."""
 
     def __init__(
         self,
@@ -88,12 +91,14 @@ class _FakePool:
         *,
         release_exc_on_acquire: int | None = None,
         enter_exc_on_acquire: int | None = None,
+        release_exc_on_error_exit: int | None = None,
     ) -> None:
         self._conn = conn
         self.acquired = 0
         self.released = 0
         self._release_exc_on = release_exc_on_acquire
         self._enter_exc_on = enter_exc_on_acquire
+        self._release_exc_on_error = release_exc_on_error_exit
 
     def acquire(self) -> Any:
         pool = self
@@ -110,6 +115,8 @@ class _FakePool:
                 pool.released += 1
                 if pool._release_exc_on == self._n and exc[0] is None:
                     raise RuntimeError("release failed")
+                if pool._release_exc_on_error == self._n and exc[0] is not None:
+                    raise RuntimeError("release failed during unwind")
                 return False
 
         return _CM()
@@ -577,6 +584,27 @@ async def test_cancellation_during_offer_releases_the_connection_and_propagates(
     with pytest.raises(asyncio.CancelledError):
         await _run(pool=pool)
     assert pool.acquired == 1
+    assert pool.released == 1
+    stubs.wait_for_job.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_release_failure_cannot_replace_a_propagating_cancellation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Codex r6: when the release raises a plain Exception WHILE a
+    CancelledError is propagating out of offer_job, PEP 3134 chaining
+    makes the release error replace the cancellation — an outer
+    except-Exception would swallow it into a fail and the worker would
+    retry instead of stopping. The leg must restore and re-raise the
+    cancellation."""
+    import asyncio
+
+    stubs = _wire_stubs(monkeypatch)
+    stubs.offer_job.side_effect = asyncio.CancelledError()
+    pool = _FakePool(ScriptedConn(), release_exc_on_error_exit=1)
+    with pytest.raises(asyncio.CancelledError):
+        await _run(pool=pool)
     assert pool.released == 1
     stubs.wait_for_job.assert_not_awaited()
 
