@@ -787,6 +787,17 @@
       "repo": "infra/ghostty/machines/mini.ghostty",
       "machines": ["mini"],
       "_note": "Ghostty fleet profile, added 2026-08-18. ~/.config is not a git repo, so these installed copies had no history and no backup before this. Installed by infra/ghostty/install.sh, which validates and rolls back on failure; infra/ghostty/verify.sh is the local check, this lint the fleet-wide one against origin/main. See the pro entry for why this live path appears three times."
+    },
+    {
+      "live": "~/scripts/kc-watchdog.sh",
+      "repo": "infra/launchagents/wrappers/kc-watchdog.sh",
+      "machines": ["mini"],
+      "_note": "Healer cure 2026-08-19: kc-watchdog.sh had NO repo canon at all (W69/proprioception home_fork_target finding). It periodically kills the runaway macOS knowledgeconstructiond process on this headless server (~40% CPU self, ~85% CPU on contactsd, memory-leaking iteration over 100k contacts). Promoted verbatim, StartInterval=15 cron via com.nuzantara.kc-watchdog.plist, no functional change."
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.kc-watchdog.plist",
+      "repo": "infra/launchagents/com.nuzantara.kc-watchdog.plist",
+      "machines": ["mini"]
     }
   ],
   "allow": [
