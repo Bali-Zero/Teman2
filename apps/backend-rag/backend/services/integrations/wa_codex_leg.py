@@ -97,6 +97,13 @@ logger = logging.getLogger(__name__)
 
 CUSTOMER_WINDOW_HOURS = 24
 
+
+class _StandDownFenceLost(Exception):
+    """The atomic stand-down abort found the claim fence gone — another
+    worker owns the row now. Raised inside the abort transaction so the
+    discard rolls back with it: the new owner's own leg re-runs the drift
+    protocol against the still-pending completion."""
+
 # The package build is a route decision (embedding + Qdrant, target well
 # under T_exec) — never borrow the RAG client's 120s chat timeout for it.
 _BUILD_TIMEOUT = httpx.Timeout(10.0, connect=5.0)
@@ -141,6 +148,7 @@ async def attempt(
     *,
     outbox_id: int,
     thread_id: int,
+    message_id: int,
     claim_token: uuid.UUID,
     outbox_expected_status: str,
     thread: Any,
@@ -151,6 +159,7 @@ async def attempt(
             pool,
             outbox_id=outbox_id,
             thread_id=thread_id,
+            message_id=message_id,
             claim_token=claim_token,
             outbox_expected_status=outbox_expected_status,
             thread=thread,
@@ -170,6 +179,7 @@ async def _attempt(
     *,
     outbox_id: int,
     thread_id: int,
+    message_id: int,
     claim_token: uuid.UUID,
     outbox_expected_status: str,
     thread: Any,
@@ -222,7 +232,16 @@ async def _attempt(
         )
         return CodexLegResult(reason="build_contract_break")
 
-    evidence_inputs = built.get("evidence_inputs") or {}
+    # ONE representation of the sealed fact (Codex r2 finding 1): every
+    # downstream read — the offer row's evidence_inputs, the finalize
+    # pipeline's frozen-evidence verdict, the pricing veto's sources —
+    # parses from the WIRE, the exact bytes package_hash covers. A
+    # response-level copy could diverge from the sealed one and steer the
+    # abstain policy with values the hash never covered, which is why the
+    # build response no longer carries one. A malformed wire raises here,
+    # pre-offer, and falls off via the outer catch.
+    parsed_wire = json.loads(wire)
+    evidence_inputs = parsed_wire.get("evidence_inputs") or {}
 
     async with pool.acquire() as offer_conn:
         offer = await wa_broker.offer_job(
@@ -244,7 +263,23 @@ async def _attempt(
         )
         return CodexLegResult(reason=f"offer:{offer.outcome.value}")
 
-    wait = await wa_broker.wait_for_job(pool, offer.job_id)
+    # From here on an OFFERED job is DURABLE: an untyped failure can no
+    # longer be an in-claim fall-off — the daemon may complete the job and
+    # the thread may drift while we cannot see it, so generating in this
+    # claim would skip the drift protocol entirely (Codex r2 finding 2).
+    # The typed non-COMPLETED outcomes below stay fall-offs: their
+    # transitions leave no pending completion behind.
+    try:
+        wait = await wa_broker.wait_for_job(pool, offer.job_id)
+    except Exception as exc:
+        logger.error(
+            "wa_codex_leg: wait failed after durable offer (outbox=%s "
+            "job=%s): %s",
+            outbox_id,
+            offer.job_id,
+            type(exc).__name__,
+        )
+        return CodexLegResult(fail=f"wait_error:{type(exc).__name__}")
     if wait.outcome is not wa_broker.WaitOutcome.COMPLETED:
         # FAILED and DEADLINE were folded into the breaker by their
         # transition owners (complete_job / the wait CAS) — no fold here.
@@ -288,12 +323,44 @@ async def _attempt(
             or bool(fresh["human_handling"])
             or int(fresh["handling_version"]) != epoch
         ):
-            async with pool.acquire() as discard_conn:
-                await wa_broker.discard_completion(
-                    discard_conn, offer.job_id, reason="takeover"
-                )
+            # Stand-down is ATOMIC (Codex r2 finding 3): the drift verdict
+            # terminalizes the outbox row, discards the completion and
+            # writes the ledger sentinel in ONE transaction — a crash can
+            # no longer lose the verdict between a committed discard and a
+            # never-committed abort (where the reclaimer would requeue the
+            # row and a retry would regenerate what the verdict forbade).
+            # Fence FIRST: if the claim is gone, the raise rolls the whole
+            # transaction back and the new owner re-runs the drift
+            # protocol against the still-pending completion.
+            async with pool.acquire() as abort_conn:
+                async with abort_conn.transaction():
+                    fenced = await abort_conn.fetchrow(
+                        """
+                        UPDATE wa_outbox SET status = 'failed'
+                        WHERE id = $1 AND claim_token = $2 AND status = $3
+                        RETURNING id
+                        """,
+                        outbox_id,
+                        claim_token,
+                        outbox_expected_status,
+                    )
+                    if fenced is None:
+                        raise _StandDownFenceLost()
+                    await wa_broker.discard_completion(
+                        abort_conn, offer.job_id, reason="takeover"
+                    )
+                    await abort_conn.execute(
+                        """
+                        UPDATE meta_inbox_messages
+                        SET status = 'failed',
+                            error = 'aborted_human_takeover_codex_drift'
+                        WHERE id = $1
+                        """,
+                        message_id,
+                    )
             logger.info(
-                "wa_codex_leg: completion discarded on drift (outbox=%s job=%s)",
+                "wa_codex_leg: completion discarded on drift, row aborted "
+                "(outbox=%s job=%s)",
                 outbox_id,
                 offer.job_id,
             )
@@ -301,6 +368,13 @@ async def _attempt(
 
         async with pool.acquire() as consume_conn:
             text = await wa_broker.consume_result(consume_conn, offer.job_id)
+    except _StandDownFenceLost:
+        logger.warning(
+            "wa_codex_leg: stand-down fence lost (outbox=%s job=%s)",
+            outbox_id,
+            offer.job_id,
+        )
+        return CodexLegResult(fail="stand_down_fence_lost")
     except Exception as exc:
         logger.error(
             "wa_codex_leg: post-completion verification failed (outbox=%s "
@@ -327,13 +401,12 @@ async def _attempt(
     # formatting, and the codex-only egress vetoes (pricing against the
     # frozen package's own price sources; secret-egress scan — both
     # MANDATORY, the pipeline refuses a fail-open configuration). Price
-    # sources come from the SAME wire the executor answered from, parsed
-    # here rather than re-fetched so the veto can never run against a
-    # different retrieval than the answer used. canary_tokens is empty
-    # until PR-6: the daemon is what plants canaries in the sandbox, and
-    # only it can know their values — the pattern half of the scan is
-    # armed regardless.
-    parsed_wire = json.loads(wire)
+    # sources come from the SAME sealed wire the executor answered from
+    # (parsed once, above) so the veto can never run against a different
+    # retrieval than the answer used. canary_tokens is empty until PR-6:
+    # the daemon is what plants canaries in the sandbox, and only it can
+    # know their values — the pattern half of the scan is armed
+    # regardless.
     price_sources: list[str] = [
         str(chunk.get("text", "")) for chunk in parsed_wire.get("chunks", [])
     ]

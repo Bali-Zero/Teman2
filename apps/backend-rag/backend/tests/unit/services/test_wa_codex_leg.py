@@ -36,7 +36,7 @@ from backend.services.integrations.wa_finalize import (
 
 
 class ScriptedConn:
-    """Minimal fetchrow-scripted conn for the drift re-read."""
+    """Minimal scripted conn for the drift re-read + atomic stand-down."""
 
     def __init__(
         self,
@@ -53,6 +53,23 @@ class ScriptedConn:
         if self._fetchrow_exc is not None:
             raise self._fetchrow_exc
         return self._fetchrow.pop(0) if self._fetchrow else None
+
+    async def execute(self, sql: str, *args: Any) -> str:
+        self.executed.append((sql, args))
+        return "UPDATE 1"
+
+    def transaction(self) -> Any:
+        class _Tx:
+            async def __aenter__(self) -> None:
+                return None
+
+            async def __aexit__(self, *exc: Any) -> bool:
+                return False
+
+        return _Tx()
+
+    def sql_contains(self, needle: str) -> bool:
+        return any(needle in sql for sql, _ in self.executed)
 
 
 class _FakePool:
@@ -104,17 +121,16 @@ def _build_response(payload: dict[str, Any]) -> MagicMock:
 _GOOD_WIRE = (
     '{"history":[],"chunks":[{"text":"KITAS costs Rp 12.000.000","score":0.9}],'
     '"pricing_block":null,"persona_digest":"pd",'
-    '"evidence_inputs":{"abstain":false},"thread_epoch":3}'
+    '"evidence_inputs":{"abstain":false,"context_length":2,'
+    '"evidence_score":0.85},"thread_epoch":3}'
 )
 
+# NOTE the build response carries NO evidence_inputs copy: the S2 gate's
+# round 2 struck the unsealed top-level field from the contract — every
+# consumer read comes from the sealed wire.
 _GOOD_BUILD = {
     "package_wire": _GOOD_WIRE,
     "package_hash": "abc123",
-    "evidence_inputs": {
-        "abstain": False,
-        "context_length": 2,
-        "evidence_score": 0.85,
-    },
     "unbuildable": None,
 }
 
@@ -190,6 +206,7 @@ async def _run(
         _FakePool(conn or ScriptedConn()),  # type: ignore[arg-type]
         outbox_id=42,
         thread_id=7,
+        message_id=4200,
         claim_token=uuid.uuid4(),
         outbox_expected_status="generating",
         thread=thread or _thread(),
@@ -367,10 +384,15 @@ async def test_completed_with_takeover_drift_discards_and_stands_down(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Spec 2.3: a takeover during exec means the completion must never be
-    sent AND must never trigger a fresh generation."""
+    sent AND must never trigger a fresh generation. The verdict is ATOMIC
+    (Codex r2 finding 3): fenced outbox abort + discard + ledger sentinel
+    in one transaction, owned by the leg."""
     stubs = _wire_stubs(monkeypatch)
     conn = ScriptedConn(
-        fetchrow_results=[{"human_handling": True, "handling_version": 3}]
+        fetchrow_results=[
+            {"human_handling": True, "handling_version": 3},
+            {"id": 42},  # atomic stand-down abort: fenced RETURNING
+        ]
     )
     result = await _run(conn=conn)
     assert result.stand_down is True
@@ -378,6 +400,8 @@ async def test_completed_with_takeover_drift_discards_and_stands_down(
     stubs.discard_completion.assert_awaited_once()
     assert stubs.discard_completion.await_args.kwargs["reason"] == "takeover"
     stubs.consume_result.assert_not_awaited()
+    assert conn.sql_contains("UPDATE wa_outbox SET status = 'failed'")
+    assert conn.sql_contains("aborted_human_takeover_codex_drift")
 
 
 @pytest.mark.asyncio
@@ -389,12 +413,16 @@ async def test_completed_with_epoch_drift_discards_and_stands_down(
     cannot."""
     stubs = _wire_stubs(monkeypatch)
     conn = ScriptedConn(
-        fetchrow_results=[{"human_handling": False, "handling_version": 4}]
+        fetchrow_results=[
+            {"human_handling": False, "handling_version": 4},
+            {"id": 42},  # atomic stand-down abort: fenced RETURNING
+        ]
     )
     result = await _run(conn=conn)
     assert result.stand_down is True
     stubs.discard_completion.assert_awaited_once()
     stubs.consume_result.assert_not_awaited()
+    assert conn.sql_contains("aborted_human_takeover_codex_drift")
 
 
 @pytest.mark.asyncio
@@ -599,16 +627,107 @@ async def test_discard_failure_after_detected_drift_fails_closed(
 ) -> None:
     """Drift WAS detected but the discard broke: neither a stand-down (the
     completion is still pending-consume) nor a fall-off (fail-open) — the
-    retry ladder re-claims with a fresh thread read."""
+    retry ladder re-claims with a fresh thread read. The transaction rolls
+    the fenced abort back with it, so the row is still claimable."""
     stubs = _wire_stubs(monkeypatch)
     stubs.discard_completion.side_effect = RuntimeError("pg gone")
     conn = ScriptedConn(
-        fetchrow_results=[{"human_handling": True, "handling_version": 3}]
+        fetchrow_results=[
+            {"human_handling": True, "handling_version": 3},
+            {"id": 42},  # abort fence holds; the discard after it breaks
+        ]
     )
     result = await _run(conn=conn)
     assert result.fail == "post_completion:RuntimeError"
     assert not result.stand_down
     stubs.consume_result.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stand_down_fence_lost_rolls_back_and_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The fence goes FIRST inside the atomic abort: when the claim is
+    gone, the raise rolls the whole transaction back — the discard never
+    runs, the still-pending completion is left for the new owner's own
+    drift protocol."""
+    stubs = _wire_stubs(monkeypatch)
+    conn = ScriptedConn(
+        fetchrow_results=[
+            {"human_handling": True, "handling_version": 3},
+            None,  # abort fence returns no row: claim reclaimed elsewhere
+        ]
+    )
+    result = await _run(conn=conn)
+    assert result.fail == "stand_down_fence_lost"
+    assert not result.stand_down
+    stubs.discard_completion.assert_not_awaited()
+    stubs.consume_result.assert_not_awaited()
+
+
+# ── post-offer uncertainty is fail-closed (Codex r2 finding 2) ──────────────
+
+
+@pytest.mark.asyncio
+async def test_wait_exception_after_durable_offer_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """After OFFERED the job is durable: an UNTYPED wait failure means the
+    daemon may have completed and the thread may have drifted while we
+    could not see it — falling off to Gemini in this claim would skip the
+    drift protocol entirely. The typed FAILED/DEADLINE outcomes keep
+    falling off (their transitions leave no pending completion)."""
+    stubs = _wire_stubs(monkeypatch)
+    stubs.wait_for_job.side_effect = RuntimeError("pg gone")
+    result = await _run()
+    assert result.fail == "wait_error:RuntimeError"
+    assert result.text is None and not result.stand_down
+    stubs.consume_result.assert_not_awaited()
+    stubs.discard_completion.assert_not_awaited()
+
+
+# ── evidence comes ONLY from the sealed wire (Codex r2 finding 1) ───────────
+
+
+@pytest.mark.asyncio
+async def test_evidence_is_read_from_the_sealed_wire_never_a_response_copy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Guilt: a build response smuggling a DIVERGENT top-level
+    evidence_inputs (abstain=false) alongside a wire whose SEALED copy says
+    abstain=true must not steer the finalize verdict — the leg parses
+    evidence out of the bytes the hash covers, and the stray key is
+    ignored."""
+    divergent_wire = (
+        '{"history":[],"chunks":[{"text":"c","score":0.1}],'
+        '"pricing_block":null,"persona_digest":"pd",'
+        '"evidence_inputs":{"abstain":true,"context_length":0,'
+        '"evidence_score":0.0},"thread_epoch":3}'
+    )
+    stubs = _wire_stubs(
+        monkeypatch,
+        build={
+            "package_wire": divergent_wire,
+            "package_hash": "abc123",
+            "unbuildable": None,
+            # The stray unsealed copy a divergent/hostile response could carry:
+            "evidence_inputs": {
+                "abstain": False,
+                "context_length": 2,
+                "evidence_score": 0.85,
+            },
+        },
+    )
+    conn = ScriptedConn(
+        fetchrow_results=[{"human_handling": False, "handling_version": 3}]
+    )
+    await _run(conn=conn)
+    data = stubs.finalize.await_args.kwargs["data"]
+    assert data["abstain"] is True
+    assert data["context_length"] == 0
+    assert data["evidence_score"] == 0.0
+    # The offer row's evidence_inputs is the SEALED copy too.
+    assert '"abstain": true' in stubs.offer_job.await_args.kwargs["evidence_inputs"]
 
 
 @pytest.mark.asyncio

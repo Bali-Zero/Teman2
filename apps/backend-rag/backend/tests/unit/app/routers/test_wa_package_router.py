@@ -32,6 +32,7 @@ from pydantic import ValidationError
 
 from backend.app.routers.wa_package import (
     WaPackageBuildRequest,
+    WaPackageBuildResponse,
     build_wa_package,
     require_internal_caller,
     router,
@@ -96,7 +97,15 @@ class TestBuildWaPackageRoute:
         assert response.unbuildable is None
         assert response.package_wire
         assert response.package_hash
-        assert isinstance(response.evidence_inputs, dict)
+        # S2 adversarial gate round 2, finding 1: the top-level evidence_inputs
+        # copy was struck — an unsealed copy can diverge from the sealed one
+        # inside package_wire. Consumers parse evidence_inputs OUT OF the wire.
+        assert not hasattr(response, "evidence_inputs")
+        assert set(WaPackageBuildResponse.model_fields) == {
+            "package_wire",
+            "package_hash",
+            "unbuildable",
+        }
 
         # Load-bearing: package_hash must cover package_wire's EXACT bytes
         # (mirrors _package_hash/_canonical_wire in wa_package_builder.py —

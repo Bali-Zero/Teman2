@@ -79,15 +79,18 @@ class WaPackageBuildResponse(BaseModel):
     returned ``to_payload()`` here, whose own docstring says it is NOT the
     wire format (its 7-key view includes package_hash itself): a consumer
     re-serializing that dict would produce bytes the hash does not cover
-    and every broker-side verification would reject a valid package. One
-    representation of the sealed fact crosses this contract, plus the hash
-    and the (unsealed, no-hash-contract) evidence_inputs the offer row
-    stores alongside it.
+    and every broker-side verification would reject a valid package.
+    EXACTLY one representation of the sealed fact crosses this contract —
+    the wire plus its hash, nothing else. An earlier draft also returned a
+    top-level ``evidence_inputs`` copy; the S2 adversarial gate (round 2)
+    struck it: an unsealed copy can diverge from the sealed one inside the
+    wire and steer the consumer's frozen-evidence abstain verdict with
+    values the hash never covered. Consumers parse evidence_inputs OUT OF
+    the wire.
     """
 
     package_wire: str | None = None
     package_hash: str | None = None
-    evidence_inputs: dict[str, Any] | None = None
     unbuildable: str | None = None
 
 
@@ -141,5 +144,4 @@ async def build_wa_package(
     return WaPackageBuildResponse(
         package_wire=package.wire_text(),
         package_hash=package.package_hash,
-        evidence_inputs=package.evidence_inputs,
     )

@@ -798,6 +798,7 @@ async def _process_claimed_row(
                     pool,
                     outbox_id=outbox_id,
                     thread_id=thread_id,
+                    message_id=message_id,
                     claim_token=claim_token,
                     outbox_expected_status=expected_status,
                     thread=thread,
@@ -831,34 +832,14 @@ async def _process_claimed_row(
                 await heartbeat_task
 
         if codex_stand_down:
-            # Same shape as the pre-generation takeover abort above, with
-            # its own ledger sentinel so the two abort classes stay
-            # distinguishable (a deliberately-different class spelled
-            # identically is what made the give-up ledger unreadable).
-            fenced = await conn.fetchrow(
-                """
-                UPDATE wa_outbox SET status = 'failed'
-                WHERE id = $1 AND claim_token = $2 AND status = $3
-                RETURNING id
-                """,
-                outbox_id,
-                claim_token,
-                expected_status,
-            )
-            if fenced is None:
-                logger.warning(
-                    "wa_outbox: fence lost before codex-drift abort (outbox=%s)",
-                    outbox_id,
-                )
-                return "fenced"
-            await conn.execute(
-                """
-                UPDATE meta_inbox_messages
-                SET status = 'failed', error = 'aborted_human_takeover_codex_drift'
-                WHERE id = $1
-                """,
-                message_id,
-            )
+            # The leg ALREADY terminalized the row: its drift verdict runs
+            # the fenced wa_outbox abort, the completion discard and the
+            # 'aborted_human_takeover_codex_drift' ledger sentinel in ONE
+            # transaction (Codex r2 finding 3 — two separate commits left
+            # a crash window where the reclaimer would requeue a row whose
+            # verdict said never-regenerate). Nothing to mutate here; the
+            # sentinel keeps this abort class distinguishable from the
+            # pre-generation and pre-send takeover aborts.
             logger.info(
                 "wa_outbox: aborted codex row for thread %s "
                 "(takeover/epoch drift during broker exec)",

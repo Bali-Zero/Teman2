@@ -969,8 +969,10 @@ async def test_codex_stand_down_aborts_without_generation(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Spec 2.3: drift at consume time discards the completion and stands
-    down — NO Gemini generation replaces it, and the ledger names the class
-    distinctly from the other takeover aborts."""
+    down — NO Gemini generation replaces it. Since the r2 atomicity cure
+    the LEG owns the whole abort (fenced outbox UPDATE + discard + ledger
+    sentinel in one transaction — pinned in test_wa_codex_leg.py); the
+    worker's stand-down branch mutates NOTHING on the claim conn."""
     monkeypatch.setenv("WA_GENERATION_PROVIDER", "codex")
     monkeypatch.setattr(
         wa_outbox_worker.wa_codex_leg,
@@ -988,7 +990,6 @@ async def test_codex_stand_down_aborts_without_generation(
         fetchrow_results=[
             {**_thread_row(human_handling=False), "handling_version": 3},
             {"id": 73},  # generating-transition fenced RETURNING
-            {"id": 73},  # stand-down abort fenced RETURNING
         ],
         fetchval_results=[True],
         fetch_results=[[candidate], []],
@@ -1001,8 +1002,11 @@ async def test_codex_stand_down_aborts_without_generation(
     assert result == "aborted_human"
     gemini_spy.assert_not_awaited()
     svc.send_message.assert_not_awaited()
-    assert any("aborted_human_takeover_codex_drift" in s for s, _ in conn.executed)
-    assert conn.sql_contains("UPDATE wa_outbox SET status = 'failed'")
+    # The worker performs NO abort of its own — the leg already did, atomically.
+    assert not conn.sql_contains("aborted_human_takeover_codex_drift")
+    assert not any(
+        "UPDATE wa_outbox SET status = 'failed'" in s for s, _ in conn.executed
+    )
 
 
 @pytest.mark.asyncio
