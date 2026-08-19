@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { ApiClientBase } from "./client";
+import { ApiClientBase, PORTAL_IMPERSONATION_STORAGE_KEY } from "./client";
 import { UserProfile } from "@/types";
 
 // Mock localStorage
@@ -99,7 +99,9 @@ describe("ApiClientBase", () => {
   });
 
   describe("Portal Impersonation (cross-operator inheritance regression)", () => {
-    const IMPERSONATION_KEY = "bz_portal_impersonation_v1";
+    // Storage key comes from the imported PORTAL_IMPERSONATION_STORAGE_KEY
+    // constant (see import above) — no local literal, single source of truth
+    // with client.ts.
 
     beforeEach(() => {
       global.fetch = vi.fn().mockResolvedValue({
@@ -116,7 +118,7 @@ describe("ApiClientBase", () => {
       // and pushes it into the live api client's in-memory field.
       client.setPortalImpersonation(42);
       localStorageMock.setItem(
-        IMPERSONATION_KEY,
+        PORTAL_IMPERSONATION_STORAGE_KEY,
         JSON.stringify({ id: 42, email: "client@example.com", fullName: null }),
       );
       expect(client.getPortalImpersonation()).toBe(42);
@@ -127,9 +129,11 @@ describe("ApiClientBase", () => {
       // 1. The persisted key must be gone — a fresh page/context mount must
       //    have nothing to rehydrate from.
       expect(localStorageMock.removeItem).toHaveBeenCalledWith(
-        IMPERSONATION_KEY,
+        PORTAL_IMPERSONATION_STORAGE_KEY,
       );
-      expect(localStorageMock.getItem(IMPERSONATION_KEY)).toBeNull();
+      expect(
+        localStorageMock.getItem(PORTAL_IMPERSONATION_STORAGE_KEY),
+      ).toBeNull();
 
       // 2. The in-memory id must be reset too — this is what actually rides
       //    on the next request, independent of storage.
@@ -153,7 +157,9 @@ describe("ApiClientBase", () => {
       expect(client.getPortalImpersonation()).toBeNull();
       // No impersonation key ever existed — removeItem is safe to call
       // regardless (storage.removeItem on a missing key is a no-op).
-      expect(localStorageMock.getItem(IMPERSONATION_KEY)).toBeNull();
+      expect(
+        localStorageMock.getItem(PORTAL_IMPERSONATION_STORAGE_KEY),
+      ).toBeNull();
     });
 
     it("a plain page reload while still logged in legitimately re-seeds impersonation from storage (must NOT regress)", () => {
@@ -163,7 +169,7 @@ describe("ApiClientBase", () => {
       // very first portal fetch after reload still carries as_client.
       localStorageMock.setItem("auth_token", "still-logged-in-token");
       localStorageMock.setItem(
-        IMPERSONATION_KEY,
+        PORTAL_IMPERSONATION_STORAGE_KEY,
         JSON.stringify({ id: 7, email: "other@example.com", fullName: null }),
       );
 
