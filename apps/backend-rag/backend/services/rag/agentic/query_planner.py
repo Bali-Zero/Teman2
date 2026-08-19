@@ -176,7 +176,33 @@ _GREETING_KEYWORDS: frozenset[str] = frozenset(
         "thank you",
         "grazie",
         "terima kasih",
+        "makasih",
+        "terimakasih",
     }
+)
+
+# Word-boundary patterns for the greeting keywords, precompiled once. The
+# greeting lane needs boundaries where the domain lanes do not: its keywords
+# are short ordinary-language tokens ("hi", "hey") that live INSIDE common
+# English words — bare substring scoring classified "Which visa options are
+# available?" as GREETING via the "hi" in "which" (Codex S2 re-verdict,
+# major; scar family #3 over-match), and GREETING is the one verdict that
+# zeroes the collection list. The boundary must NOT reject the colloquial
+# elongation WhatsApp greetings actually arrive in ("hii", "heyy",
+# "ciaooo") — a strict \b after the keyword regressed exactly those
+# (Codex round 3; the over-match cure birthing its under-match twin, W94).
+# The elongated form (final letter repeated ≥1) is accepted only at the
+# START of the message: colloquial greetings open a message, while an
+# elongated-looking token mid-sentence is jargon — "What is an HII
+# region?" lowercases to a mid-sentence "hii" and must NOT gate (Codex
+# round 4). The exact keyword stays boundary-matched anywhere. Sorted for
+# deterministic order (never iterate a set into anything order-bearing).
+_GREETING_WORD_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
+    re.compile(
+        r"\b" + re.escape(kw) + r"\b"
+        r"|^\W*" + re.escape(kw) + re.escape(kw[-1]) + r"+\b"
+    )
+    for kw in sorted(_GREETING_KEYWORDS)
 )
 
 _NEWS_KEYWORDS: frozenset[str] = frozenset(
@@ -382,8 +408,8 @@ class QueryPlanner:
         # Keyword-based classification
         scores: dict[QueryDomain, int] = dict.fromkeys(QueryDomain, 0)
 
-        for kw in _GREETING_KEYWORDS:
-            if kw in query_lower:
+        for pattern in _GREETING_WORD_PATTERNS:
+            if pattern.search(query_lower):
                 scores[QueryDomain.GREETING] += 3  # High weight for greetings
 
         for kw in _PRICING_KEYWORDS:

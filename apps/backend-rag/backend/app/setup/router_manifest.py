@@ -394,6 +394,9 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     RouterEntry(
         name="wa_mirror_messages", process_groups=_API, tags=("channels", "crm", "wa-mirror")
     ),
+    # BOT-V4 S2 (D2): deterministic codex-route context-package builder —
+    # RAG-heavy (needs SearchService + AgenticRAGOrchestrator), internal-only.
+    RouterEntry(name="wa_package", process_groups=_RAG, tags=("channels", "wa-broker")),
     RouterEntry(name="whatsapp_chat", process_groups=_BOTH, tags=("channels", "rag")),
     RouterEntry(name="whatsapp_conversations", process_groups=_API, tags=("channels",)),
     # ── Workflow ──

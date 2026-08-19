@@ -1057,6 +1057,7 @@ class SearchService:
         tier_filter: list[TierLevel] = None,
         collection_override: str | None = None,
         apply_filters: bool | None = None,
+        fallback_to_plain: bool = True,
     ) -> dict[str, Any]:
         """
         Hybrid search combining dense vectors and BM25 sparse vectors.
@@ -1074,6 +1075,13 @@ class SearchService:
             tier_filter: Optional specific tier filter
             collection_override: Force specific collection
             apply_filters: If True, apply tier/exclude_repealed filters
+            fallback_to_plain: If True (default, historical behavior), any
+                error in the hybrid path falls back to `self.search()` —
+                which runs LLM query expansion (Gemini, via QueryExpander).
+                Pass False on paths with a zero-LLM contract (the WA
+                codex-route package builder, BOT-V4 S2): the error is
+                re-raised so the caller degrades WITHOUT an LLM ever being
+                reachable from this call.
 
         Returns:
             Search results with hybrid search metadata
@@ -1187,6 +1195,12 @@ class SearchService:
 
         except Exception as e:
             logger.error("Hybrid search error: %s", e, exc_info=True)
+            if not fallback_to_plain:
+                # Zero-LLM contract path (BOT-V4 S2): `self.search()` runs
+                # Gemini query expansion, so falling back here would put an
+                # LLM call on a path that promised none. Re-raise instead —
+                # the caller owns the degradation.
+                raise
             # Fallback to regular search on error
             return await self.search(
                 query=query,

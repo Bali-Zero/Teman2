@@ -287,7 +287,7 @@ const en = {
     "The code is sent exactly as typed. The interface does not translate a description into a permit code.",
   "q.family_marriage_registered": "Is the marriage officially registered?",
   "q.family_marriage_registered.hint":
-    "Choose Not applicable if your family relationship is not a marriage.",
+    "If your sponsor is your parent, this asks about your parents' marriage. Choose Not applicable if the family relationship involves no marriage.",
   "why.family_marriage_registered":
     "The engine receives yes, no, or UNKNOWN; no registration status is inferred.",
   "q.family_sponsor_confirmed":
@@ -1000,7 +1000,7 @@ const id: Record<Keys, string> = {
     "Kode dikirim persis seperti yang diketik. Antarmuka tidak menerjemahkan deskripsi menjadi kode izin.",
   "q.family_marriage_registered": "Apakah pernikahan tercatat secara resmi?",
   "q.family_marriage_registered.hint":
-    "Pilih Tidak berlaku jika hubungan keluarga Anda bukan pernikahan.",
+    "Jika sponsor Anda adalah orang tua, pertanyaan ini mengenai pernikahan orang tua Anda. Pilih Tidak berlaku jika hubungan keluarga tidak melibatkan pernikahan.",
   "why.family_marriage_registered":
     "Mesin menerima ya, tidak, atau UNKNOWN; status pencatatan tidak disimpulkan.",
   "q.family_sponsor_confirmed":

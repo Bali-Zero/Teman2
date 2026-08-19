@@ -13,6 +13,20 @@ interface FastAPIValidationError {
 }
 
 /**
+ * localStorage key for superuser portal impersonation ("view as client X").
+ * Single source of truth — this module owns the key because it is also the
+ * one that reads/consumes it (constructor seed + request() injection +
+ * clearToken() teardown, below). AdminImpersonationContext
+ * (contexts/AdminImpersonationContext.tsx) imports this constant rather than
+ * re-typing the literal: the two sides MUST agree on the exact key, and a
+ * future rename/version-bump (_v1 -> _v2) done in only one place would leave
+ * the context writing/restoring a key clearToken() no longer clears —
+ * silently reviving the cross-operator impersonation-inheritance bug this
+ * key exists to guard against.
+ */
+export const PORTAL_IMPERSONATION_STORAGE_KEY = "bz_portal_impersonation_v1";
+
+/**
  * Base API client with token management and request handling.
  * This is the core class that all domain-specific API modules extend or use.
  * Implements IApiClient interface for type-safe dependency injection.
@@ -47,7 +61,7 @@ export class ApiClientBase implements IApiClient {
       // Seed impersonation from localStorage so the very first portal fetch
       // on page reload already carries as_client.
       try {
-        const rawImp = localStorage.getItem("bz_portal_impersonation_v1");
+        const rawImp = localStorage.getItem(PORTAL_IMPERSONATION_STORAGE_KEY);
         if (rawImp) {
           const parsed = JSON.parse(rawImp) as { id?: number };
           if (typeof parsed.id === "number") {
@@ -102,9 +116,21 @@ export class ApiClientBase implements IApiClient {
     this.token = null;
     this.csrfToken = null;
     this.userProfile = null;
+    // Reset superuser impersonation together with the session. Without this,
+    // logging out (or a token-expiry 401, below) leaves the in-memory
+    // portalImpersonationClientId set AND the localStorage key that
+    // AdminImpersonationContext restores on mount — so the very next login
+    // in this browser, even by a DIFFERENT superuser, silently inherits the
+    // previous operator's impersonation target on every portal request.
+    this.portalImpersonationClientId = null;
     if (typeof window !== "undefined") {
       safeStorage.removeItem("auth_token");
       safeStorage.removeItem("user_profile");
+      try {
+        localStorage.removeItem(PORTAL_IMPERSONATION_STORAGE_KEY);
+      } catch {
+        // ignore — impersonation storage is optional, same as the read path
+      }
     }
   }
 

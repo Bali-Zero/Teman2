@@ -62,7 +62,8 @@ lifecycle all deployed. Tracker Day-90 armed but gated (see §5).
 
 ## 3. Owner decisions (2026-07-23, binding)
 
-- **Pricing**: base E33 = **IDR 39,000,000 ALL-INCLUSIVE**. NEVER decompose
+- **Pricing**: base E33 = **IDR 35,000,000 ALL-INCLUSIVE** (repriced from 39M on
+  2026-08-19, Zero ruling D2 — match Flado). NEVER decompose
   into PNBP + service fee in any client-facing material.
 - **Fit Memo**: **FREE** (no paid fit assessment).
 - **Dependent pricing**: flat add-on per person, draft **IDR 12M/person**
@@ -110,6 +111,17 @@ lifecycle all deployed. Tracker Day-90 armed but gated (see §5).
 - **Waiver** (#3059): 3 unpatchable npm advisories waived in tests.yml
   (GHSA-frvp-7c67-39w9, GHSA-9mqv-5hh9-4cgg, GHSA-c96f-x56v-gq3h) —
   **REMOVE when upstream patches ship.**
+- **Studio** (2026-08-19, #4359): public fit-check wizard at
+  `/visa/second-home/studio`, fully client-side — no new backend, plan
+  state in localStorage `bz_shs_plan_v1` + URL fragment `#p=`. Verdicts are
+  BANDS (strong_fit/likely_fit/edge_case/not_eligible), never numeric
+  scores; 55–59 and the property route are always `edge_case` with a
+  signed-disclosure note. WhatsApp handoff = ≤6 branch-aware bullets via
+  the existing `/api/lead/capture` (mirrors `lead_capture.py:38-47`), no
+  plan URL in the payload — the plan link travels only via user-initiated
+  copy. Landing CTA on `/visa/second-home` links to it. **LIVE (probed
+  2026-08-19)**: `/visa/second-home/studio` 200 on balizero.com, CTA on
+  landing, sitemap listed.
 
 ## 5. Open phases (the roadmap to "done")
 
