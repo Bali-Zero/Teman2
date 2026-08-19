@@ -101,6 +101,7 @@ from typing import Any
 
 import asyncpg
 
+from backend.services.integrations import wa_codex_leg
 from backend.services.integrations.wa_bot_outcomes import BotStandingCondition
 
 logger = logging.getLogger(__name__)
@@ -591,7 +592,12 @@ async def process_outbox_once(
 
         try:
             return await _process_claimed_row(
-                conn, claimed_row, claim_token, whatsapp_service, bot_generate_fn
+                conn,
+                claimed_row,
+                claim_token,
+                whatsapp_service,
+                bot_generate_fn,
+                pool=pool,
             )
         finally:
             # MUST always run: this is a session-scoped advisory lock on a
@@ -622,8 +628,16 @@ async def _process_claimed_row(
     claim_token: uuid.UUID,
     whatsapp_service: Any,
     bot_generate_fn: BotGenerateFn,
+    *,
+    pool: asyncpg.Pool,
 ) -> str:
-    """Everything after a row is claimed and its thread lock is held."""
+    """Everything after a row is claimed and its thread lock is held.
+
+    ``pool`` is needed by the codex broker leg only (``wait_for_job`` runs
+    its deadline CAS on its own acquired connections; the thread-context
+    loader acquires its own too) — everything else on this path stays on
+    ``conn`` under the advisory lock.
+    """
     outbox_id = row["id"]
     thread_id = row["thread_id"]
     message_id = row["message_id"]
@@ -643,11 +657,12 @@ async def _process_claimed_row(
     if needs_generation:
         await _coalesce_thread_bursts(conn, thread_id, outbox_id)
 
-    # Load the thread (human_handling gate + 24h window source).
+    # Load the thread (human_handling gate + 24h window source;
+    # handling_version = the epoch the codex leg fences its offer against).
     thread = await conn.fetchrow(
         """
         SELECT thread_id, counterpart_phone, human_handling,
-               last_customer_at
+               last_customer_at, handling_version
         FROM meta_inbox_threads
         WHERE thread_id = $1
         """,
@@ -759,8 +774,42 @@ async def _process_claimed_row(
             _lease_heartbeat_loop(conn, outbox_id, claim_token)
         )
         gen_exc: Exception | None = None
+        codex_stand_down = False
         try:
-            body_text = await bot_generate_fn(thread)
+            # Codex broker leg (BOT-V4 S2 PR-5) — attempted BEFORE the
+            # Gemini call, inside the same heartbeat span. attempt() never
+            # raises: every broker outcome that is not a consumed
+            # completion falls off to the Gemini leg below in the SAME
+            # claim, consuming zero retry attempts. stand_down means a
+            # takeover/epoch drift was detected at consume time — the
+            # completion was discarded and NO generation may replace it.
+            body_text = ""
+            if wa_codex_leg.provider_is_codex():
+                leg = await wa_codex_leg.attempt(
+                    pool,
+                    conn,
+                    outbox_id=outbox_id,
+                    thread_id=thread_id,
+                    claim_token=claim_token,
+                    outbox_expected_status=expected_status,
+                    thread=thread,
+                )
+                if leg.stand_down:
+                    codex_stand_down = True
+                elif leg.text is not None:
+                    body_text = leg.text
+                    logger.info(
+                        "wa_outbox: codex leg served outbox=%s", outbox_id
+                    )
+                else:
+                    logger.info(
+                        "wa_outbox: codex leg fell off to Gemini "
+                        "(outbox=%s reason=%s)",
+                        outbox_id,
+                        leg.reason,
+                    )
+            if not codex_stand_down and not body_text:
+                body_text = await bot_generate_fn(thread)
         except Exception as exc:  # deliberately broad — see the retry/failed handling below
             gen_exc = exc
             body_text = ""
@@ -768,6 +817,42 @@ async def _process_claimed_row(
             heartbeat_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await heartbeat_task
+
+        if codex_stand_down:
+            # Same shape as the pre-generation takeover abort above, with
+            # its own ledger sentinel so the two abort classes stay
+            # distinguishable (a deliberately-different class spelled
+            # identically is what made the give-up ledger unreadable).
+            fenced = await conn.fetchrow(
+                """
+                UPDATE wa_outbox SET status = 'failed'
+                WHERE id = $1 AND claim_token = $2 AND status = $3
+                RETURNING id
+                """,
+                outbox_id,
+                claim_token,
+                expected_status,
+            )
+            if fenced is None:
+                logger.warning(
+                    "wa_outbox: fence lost before codex-drift abort (outbox=%s)",
+                    outbox_id,
+                )
+                return "fenced"
+            await conn.execute(
+                """
+                UPDATE meta_inbox_messages
+                SET status = 'failed', error = 'aborted_human_takeover_codex_drift'
+                WHERE id = $1
+                """,
+                message_id,
+            )
+            logger.info(
+                "wa_outbox: aborted codex row for thread %s "
+                "(takeover/epoch drift during broker exec)",
+                thread_id,
+            )
+            return "aborted_human"
 
         if gen_exc is not None:
             # A STANDING condition — auto-reply switched off, or no customer

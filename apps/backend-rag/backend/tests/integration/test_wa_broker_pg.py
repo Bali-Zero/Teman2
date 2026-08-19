@@ -55,6 +55,7 @@ _BROKER_MIGRATIONS = (
     _MIGRATIONS_DIR / "271_wa_broker_gauge_half_open_at.sql",
     _MIGRATIONS_DIR / "272_wa_broker_package_text.sql",
     _MIGRATIONS_DIR / "273_wa_broker_completion_digest.sql",
+    _MIGRATIONS_DIR / "274_wa_broker_completed_at_check.sql",
 )
 
 _SCHEMA = "wa_broker_it"
@@ -634,15 +635,19 @@ async def test_reaper_classifies_expiries_and_feeds_only_serve_to_breaker(
             outbox_id,
             thread_id,
         )
-    # One dead-consumer acceptance with completed_at NULL (finding 8: the
-    # COALESCE on created_at is what makes this row reachable at all).
+    # One dead-consumer acceptance past the grace. completed_at was NULL in
+    # the pre-274 version of this row (exercising finding 8's COALESCE on
+    # created_at); migration 274's CHECK now makes that malformed shape
+    # UNWRITABLE — pinned by test_completed_pending_consume_requires_completed_at
+    # — so the reachable dead-consumer world always carries completed_at and
+    # the COALESCE stays as belt-and-braces for pre-274 rows only.
     await conn.execute(
         """
         INSERT INTO broker_jobs
             (outbox_id, thread_id, mode, state, result_text, package_hash,
-             thread_epoch, deadline_at, completed_at, created_at)
+             thread_epoch, deadline_at, completed_at)
         VALUES ($1, $2, 'serve', 'completed_pending_consume', 'secret', 'h',
-                1, now(), NULL, now() - INTERVAL '10 minutes')
+                1, now(), now() - INTERVAL '10 minutes')
         """,
         c[0],
         c[1],
@@ -1357,3 +1362,38 @@ async def test_identical_retry_still_replays_after_consumption(
         exec_ms=10,
     )
     assert replay is CompleteStatus.REPLAY
+
+
+@pytest.mark.asyncio
+async def test_completed_pending_consume_requires_completed_at(pool) -> None:
+    """GUILT for migration 274 (the follow-up expire_stale_jobs' docstring
+    promised to PR-5): a malformed writer minting completed_pending_consume
+    WITHOUT completed_at would anchor the dead-consumer grace on nothing —
+    the CHECK makes that row unwritable, not merely reapable."""
+    async with pool.acquire() as conn:
+        await _seed_alive_gauge(conn)
+        outbox_id, thread_id, tok = await _outbox_row(conn)
+        with pytest.raises(asyncpg.CheckViolationError):
+            await conn.execute(
+                """
+                INSERT INTO broker_jobs
+                    (outbox_id, thread_id, mode, state, package,
+                     package_hash, thread_epoch, deadline_at)
+                VALUES ($1, $2, 'serve', 'completed_pending_consume',
+                        '{}', 'h', 1, now() + INTERVAL '15 second')
+                """,
+                outbox_id,
+                thread_id,
+            )
+        # INNOCENCE: the same row WITH completed_at is accepted.
+        await conn.execute(
+            """
+            INSERT INTO broker_jobs
+                (outbox_id, thread_id, mode, state, package,
+                 package_hash, thread_epoch, deadline_at, completed_at)
+            VALUES ($1, $2, 'serve', 'completed_pending_consume',
+                    '{}', 'h', 1, now() + INTERVAL '15 second', now())
+            """,
+            outbox_id,
+            thread_id,
+        )

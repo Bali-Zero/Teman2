@@ -20,6 +20,8 @@ about to declare unbuildable).
 
 from __future__ import annotations
 
+import hashlib
+import json
 from types import SimpleNamespace
 from typing import Any
 
@@ -92,15 +94,28 @@ class TestBuildWaPackageRoute:
         response = await build_wa_package(request, orchestrator=orchestrator)
 
         assert response.unbuildable is None
-        assert response.package is not None
-        assert set(response.package.keys()) == {
+        assert response.package_wire
+        assert response.package_hash
+        assert isinstance(response.evidence_inputs, dict)
+
+        # Load-bearing: package_hash must cover package_wire's EXACT bytes
+        # (mirrors _package_hash/_canonical_wire in wa_package_builder.py —
+        # sha256 hex digest over the wire text, no prefix).
+        recomputed_hash = hashlib.sha256(response.package_wire.encode("utf-8")).hexdigest()
+        assert recomputed_hash == response.package_hash
+
+        # The wire excludes package_hash by design (the hash covers the
+        # other 6 fields only — hashing a payload that includes its own
+        # hash would be circular).
+        wire_payload = json.loads(response.package_wire)
+        assert "package_hash" not in wire_payload
+        assert set(wire_payload.keys()) == {
             "history",
             "chunks",
             "pricing_block",
             "persona_digest",
             "evidence_inputs",
             "thread_epoch",
-            "package_hash",
         }
         # The router calls the D3 wrapper off the SAME orchestrator.core it
         # got via Depends(get_orchestrator) — never a second/new retriever.
@@ -114,7 +129,7 @@ class TestBuildWaPackageRoute:
 
         response = await build_wa_package(request, orchestrator=orchestrator)
 
-        assert response.package is None
+        assert response.package_wire is None
         assert response.unbuildable == "greeting_domain"
 
     async def test_greeting_query_never_spends_the_curated_qa_lookup(self) -> None:

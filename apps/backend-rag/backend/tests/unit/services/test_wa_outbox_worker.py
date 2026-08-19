@@ -861,3 +861,145 @@ async def test_heartbeat_started_during_generation_and_cancelled_after() -> None
 
     assert result == "sent"
     assert events == ["started", "cancelled"]
+
+
+# ── BOT-V4 S2 PR-5: codex broker leg wiring ────────────────────────────────
+
+
+def _generation_conn(outbox_id: int, *, presend_human: bool = False) -> ScriptedConn:
+    """The full needs_generation→sent script (thread load, generating fence,
+    pre-send fence, final commit, staged receipt; advisory lock,
+    human_handling re-read, window_open)."""
+    return ScriptedConn(
+        fetchrow_results=[
+            {**_thread_row(human_handling=False), "handling_version": 3},
+            {"id": outbox_id},  # generating-transition fenced RETURNING
+            {"id": outbox_id},  # pre-send fence RETURNING
+            {"id": outbox_id},  # final commit RETURNING
+            None,  # no staged receipt
+        ],
+        fetchval_results=[True, presend_human, True],
+        fetch_results=[[_candidate(outbox_id, thread_id=7, message_id=outbox_id * 100, needs_generation=True)], []],
+    )
+
+
+@pytest.mark.asyncio
+async def test_codex_leg_not_attempted_when_provider_absent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """S2 ships dark: with WA_GENERATION_PROVIDER unset the leg is never
+    invoked and the Gemini path is byte-for-byte the pre-PR-5 one."""
+    monkeypatch.delenv("WA_GENERATION_PROVIDER", raising=False)
+    attempt_spy = AsyncMock()
+    monkeypatch.setattr(wa_outbox_worker.wa_codex_leg, "attempt", attempt_spy)
+
+    conn = _generation_conn(70)
+    pool = _make_pool(conn)
+    svc = _wa_service(send_result={"messages": [{"id": "wamid.CX0"}]})
+
+    result = await process_outbox_once(pool, svc, _bot_gen)
+
+    assert result == "sent"
+    attempt_spy.assert_not_awaited()
+    assert any("generated bot reply" in str(a) for _, a in conn.executed)
+
+
+@pytest.mark.asyncio
+async def test_codex_leg_serves_body_and_gemini_is_not_called(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("WA_GENERATION_PROVIDER", "codex")
+    monkeypatch.setattr(
+        wa_outbox_worker.wa_codex_leg,
+        "attempt",
+        AsyncMock(
+            return_value=wa_outbox_worker.wa_codex_leg.CodexLegResult(
+                text="broker reply", reason="completed"
+            )
+        ),
+    )
+    gemini_spy = AsyncMock(return_value="gemini reply")
+
+    conn = _generation_conn(71)
+    pool = _make_pool(conn)
+    svc = _wa_service(send_result={"messages": [{"id": "wamid.CX1"}]})
+
+    result = await process_outbox_once(pool, svc, gemini_spy)
+
+    assert result == "sent"
+    gemini_spy.assert_not_awaited()
+    assert any("broker reply" in str(a) for _, a in conn.executed)
+
+
+@pytest.mark.asyncio
+async def test_codex_leg_fall_off_uses_gemini_in_the_same_claim(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Design invariant: broker outcomes consume ZERO retry attempts — the
+    fall-off lands on the Gemini leg inside the same claim and the row still
+    reaches 'sent' with no attempts increment anywhere."""
+    monkeypatch.setenv("WA_GENERATION_PROVIDER", "codex")
+    monkeypatch.setattr(
+        wa_outbox_worker.wa_codex_leg,
+        "attempt",
+        AsyncMock(
+            return_value=wa_outbox_worker.wa_codex_leg.CodexLegResult(
+                reason="offer:breaker_open"
+            )
+        ),
+    )
+    gemini_spy = AsyncMock(return_value="gemini reply")
+
+    conn = _generation_conn(72)
+    pool = _make_pool(conn)
+    svc = _wa_service(send_result={"messages": [{"id": "wamid.CX2"}]})
+
+    result = await process_outbox_once(pool, svc, gemini_spy)
+
+    assert result == "sent"
+    gemini_spy.assert_awaited_once()
+    assert any("gemini reply" in str(a) for _, a in conn.executed)
+    assert not any(
+        "attempts = " in s and "status = 'pending'" in s for s, _ in conn.executed
+    ), "a broker fall-off must never enter the retry ladder"
+
+
+@pytest.mark.asyncio
+async def test_codex_stand_down_aborts_without_generation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Spec 2.3: drift at consume time discards the completion and stands
+    down — NO Gemini generation replaces it, and the ledger names the class
+    distinctly from the other takeover aborts."""
+    monkeypatch.setenv("WA_GENERATION_PROVIDER", "codex")
+    monkeypatch.setattr(
+        wa_outbox_worker.wa_codex_leg,
+        "attempt",
+        AsyncMock(
+            return_value=wa_outbox_worker.wa_codex_leg.CodexLegResult(
+                stand_down=True, reason="drift"
+            )
+        ),
+    )
+    gemini_spy = AsyncMock(return_value="gemini reply")
+
+    candidate = _candidate(73, thread_id=7, message_id=7300, needs_generation=True)
+    conn = ScriptedConn(
+        fetchrow_results=[
+            {**_thread_row(human_handling=False), "handling_version": 3},
+            {"id": 73},  # generating-transition fenced RETURNING
+            {"id": 73},  # stand-down abort fenced RETURNING
+        ],
+        fetchval_results=[True],
+        fetch_results=[[candidate], []],
+    )
+    pool = _make_pool(conn)
+    svc = _wa_service()
+
+    result = await process_outbox_once(pool, svc, gemini_spy)
+
+    assert result == "aborted_human"
+    gemini_spy.assert_not_awaited()
+    svc.send_message.assert_not_awaited()
+    assert any("aborted_human_takeover_codex_drift" in s for s, _ in conn.executed)
+    assert conn.sql_contains("UPDATE wa_outbox SET status = 'failed'")
