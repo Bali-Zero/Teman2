@@ -20,7 +20,36 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 - **Bali Zero team**: work-support assistant. Check-in via WA (opens the free Meta 24h window),
   CRM nudges, PII-light briefings. Persona = "assistente operativo interno", not sales.
 
-## 1. LIVE STATE (last update 2026-08-19 — keep current)
+## 1. LIVE STATE (last update 2026-08-20 — keep current)
+
+- **🏗️ BOT-V4 S2 BUILT AND DEPLOYED FLAG-OFF (2026-08-20) — THE BROKER EXISTS IN PROD, DARK;
+  THE PRO DAEMON EXISTS ON MAIN, UNPROVISIONED; REAL WA STILL NO-GO (supersedes the spec-shipped
+  headline below as the lane's current state).** Six PRs, every one through the adversarial
+  gate before merge (generator≠grader; Codex seat quota-dead until Aug 22 → Kimi K3 was the
+  cross-family seat): #4346 (router+service+m270) · #4348 (leg) · #4347 (worker wire) · #4351
+  (finalization) · #4373 (package wire + m271-274) · #4377 (Pro daemon + process-group kill +
+  provisioning; Kimi ladder FIX-FIRST(9)→cured→SHIP→hygiene-cures→SHIP on the cure delta).
+  Single S2 deploy from Pro 2026-08-19T22:15Z (v4154): migrations 270-274 verified in the prod
+  ledger by direct query; PROVE-LIVE green — `/health` 200, `POST /api/wa-broker/claim` and
+  `/complete` answer **401 "wa-broker key required"** without a key (live but dark, by design),
+  `rag` machine STARTED post-deploy (the stopped-after-deploy scar did not repeat), `drive†`
+  standby. First deploy attempt aborted honestly: the release machine died pulling the 628MB
+  image inside flyctl's default wait — retry with `--release-command-timeout 10m` landed it;
+  migrations never ran on the failed attempt (verified by its logs: only "Pulling container
+  image"). Merge-queue footnote: the PR was ejected TWICE by the known apt-mirror stall in
+  `scripts/ci/apt_install.sh zsh` (W118 class, now failing loud with a named cause — the
+  CodeQL reds on the queue refs were the ejection's EFFECT, completed minutes after);
+  third traversal merged. Engineering findings worth reuse: CPython 3.11
+  `BaseSubprocessTransport._wait()` resolves only when ALL pipe transports disconnect — an
+  orphaned grandchild holding inherited stdout keeps `proc.wait()` pending forever on a dead,
+  OS-reaped child (measured >90s), hence the daemon client's bounded reap
+  (`_REAP_ABANDON_S=5s`) + `start_new_session` + `killpg`; and the /complete byte-cap must be
+  measured with the EXACT wire encoder (`_encode_body` is both measuring stick and wire —
+  60k 3-byte chars pass the 65,536-char cap and 413 at the router's 128KiB stream cap).
+  **WhatsApp still runs on Gemini** (`WA_GENERATION_PROVIDER` defaults off, test-pinned).
+  What remains before any real client text: Pro provisioning + codex login (ledger rows,
+  operator-gated), Fly secrets `WA_BROKER_KEY` + `WA_CODEX_CANARY_TOKENS`, seat sentinel,
+  the G-P1..P6 ladder, and the S4 cutover which is the owner's switch alone.
 
 - **📐 BOT-V4 BROKER SPEC SHIPPED (#4333, merged 2026-08-19T00:47:54Z) — THE CHATGPT-PROVIDER
   ROUTE NOW HAS A PANEL-SIGNED BUILD CONTRACT; STILL DOCS-ONLY, REAL WA STILL NO-GO (2026-08-19,
