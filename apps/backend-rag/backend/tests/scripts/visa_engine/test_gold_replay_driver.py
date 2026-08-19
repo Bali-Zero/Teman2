@@ -21,7 +21,7 @@ from backend.tests.services.visa_engine import _gold_fixtures as gf
 from backend.tests.services.visa_engine.test_evaluator_gold import PERSONAS
 
 _GOLD_AT = gf.GOLD_EFFECTIVE_AT
-_OFFLINE_AT = datetime(2026, 8, 12, 12, 0, tzinfo=timezone.utc)
+_OFFLINE_AT = datetime(2026, 8, 19, 12, 0, tzinfo=timezone.utc)
 
 
 def _fixture_decisions() -> tuple[Decision, ...]:
