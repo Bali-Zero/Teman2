@@ -161,8 +161,6 @@ async def get_voa(
     repo = GarudaVoaRepository(db_pool)
     try:
         saved = await repo.get_voa_check(hash)
-        if saved is not None:
-            await repo.bump_view_count(hash)
     except (asyncpg.PostgresError, asyncpg.InterfaceError):
         logger.exception("garuda_voa: DB read failed for hash=%s", hash)
         raise HTTPException(status_code=500, detail="Could not load VOA check")

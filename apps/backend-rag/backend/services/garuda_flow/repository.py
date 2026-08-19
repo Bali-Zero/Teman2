@@ -209,10 +209,3 @@ class GarudaVoaRepository:
             share_count=row["share_count"] or 0,
             created_at=row["created_at"],
         )
-
-    async def bump_view_count(self, hash_: str) -> None:
-        async with self._pool.acquire() as conn:
-            await conn.execute(
-                "UPDATE garuda_voa_checks SET view_count = view_count + 1 WHERE hash = $1",
-                hash_,
-            )

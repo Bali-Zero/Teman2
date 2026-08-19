@@ -1,10 +1,8 @@
-"""GARUDA VOA pricing bridge.
+"""Exact-key PricingTool bridge for the stateless GARUDA internal preview.
 
-The owner archive and stateless internal preview share this bridge so both
-resolve the same official catalogue row. Prices are
-never literals here: :class:`PricingService` loads the PricingTool source of
-truth and the existing Visa Check candidate ranker disambiguates the two B1
-rows.
+Prices are never literals here. Each case type maps to one official catalogue
+key, and any missing, malformed, or mismatched row fails closed without fuzzy
+search or ranking.
 """
 
 from __future__ import annotations

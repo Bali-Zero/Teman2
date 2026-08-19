@@ -77,12 +77,10 @@ class TestVoaResponseBoundary:
 async def test_get_voa_reads_back_the_stored_verdict(monkeypatch) -> None:
     from backend.app.routers import garuda_voa as router_mod
 
-    async def _fake_load(self, hash_: str):
-        return _stored_result(hash_)
-
-    bump = AsyncMock()
-    monkeypatch.setattr(router_mod.GarudaVoaRepository, "get_voa_check", _fake_load)
-    monkeypatch.setattr(router_mod.GarudaVoaRepository, "bump_view_count", bump)
+    repository = type("RepositorySpy", (), {})()
+    repository.get_voa_check = AsyncMock(side_effect=lambda hash_: _stored_result(hash_))
+    repository.save_voa_check = AsyncMock()
+    monkeypatch.setattr(router_mod, "GarudaVoaRepository", lambda _pool: repository)
 
     response = await router_mod.get_voa(hash="voa1234567890ab", db_pool=None)
 
@@ -92,7 +90,8 @@ async def test_get_voa_reads_back_the_stored_verdict(monkeypatch) -> None:
     assert response.submit_by_date == date(2026, 7, 31)
     assert response.price_idr == 790_000
     assert "result_url" not in response.model_dump()
-    bump.assert_awaited_once_with("voa1234567890ab")
+    repository.get_voa_check.assert_awaited_once_with("voa1234567890ab")
+    repository.save_voa_check.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -164,9 +163,7 @@ def test_anonymous_cannot_read_owner_archive() -> None:
     async def _anonymous() -> dict[str, object]:
         raise HTTPException(status_code=401, detail="Authentication required")
 
-    response = TestClient(_auth_test_app(_anonymous)).get(
-        "/api/visa/voa/voa1234567890ab"
-    )
+    response = TestClient(_auth_test_app(_anonymous)).get("/api/visa/voa/voa1234567890ab")
     assert response.status_code == 401
 
 
@@ -181,9 +178,7 @@ def test_non_owner_cannot_read_owner_archive(user: dict[str, str]) -> None:
     async def _current_user() -> dict[str, str]:
         return user
 
-    response = TestClient(_auth_test_app(_current_user)).get(
-        "/api/visa/voa/voa1234567890ab"
-    )
+    response = TestClient(_auth_test_app(_current_user)).get("/api/visa/voa/voa1234567890ab")
     assert response.status_code == 403
     assert response.json() == {"detail": "Owner access required"}
 
@@ -195,14 +190,11 @@ def test_owner_can_read_historical_archive(monkeypatch) -> None:
         return _stored_result(hash_)
 
     monkeypatch.setattr(router_mod.GarudaVoaRepository, "get_voa_check", _get)
-    monkeypatch.setattr(router_mod.GarudaVoaRepository, "bump_view_count", AsyncMock())
 
     async def _owner() -> dict[str, str]:
         return {"email": "zero@balizero.com", "role": "admin"}
 
-    response = TestClient(_auth_test_app(_owner)).get(
-        "/api/visa/voa/voa1234567890ab"
-    )
+    response = TestClient(_auth_test_app(_owner)).get("/api/visa/voa/voa1234567890ab")
     assert response.status_code == 200
     assert response.json()["hash"] == "voa1234567890ab"
     assert "result_url" not in response.json()
