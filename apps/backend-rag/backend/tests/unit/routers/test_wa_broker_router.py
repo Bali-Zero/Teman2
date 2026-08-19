@@ -9,8 +9,17 @@ settings at call time, so patching the live settings object is enough.
 Unlike the auth suite, most tests here also monkeypatch the service-layer
 functions (`wa_broker.claim_job` / `wa_broker.complete_job` as imported into
 the router module) so the router's own logic — response mapping, the 422
-XOR validation, the CompleteStatus -> HTTP status table, and the in-process
-rate limiter — is exercised without any real SQL.
+XOR validation, the error_class vocabulary gate, the Postgres-int ceiling,
+the CompleteStatus -> HTTP status table, and the two-bucket rate limiter —
+is exercised without any real SQL.
+
+Updated for the S2 cross-family review fixes (2 BLOCKER + 7 MAJOR): the
+rate limiter is now TWO buckets split by auth outcome (finding 1, the
+BLOCKER — a single pre-auth bucket let unauthenticated flooding starve the
+legitimate broker), CompleteRequest.error_class must be a member of
+wa_broker.ALLOWED_ERROR_CLASSES (finding 7), and exec_ms/last_exec_ms are
+bounded to the Postgres INT ceiling so an out-of-range value 422s here
+instead of 500ing in asyncpg (finding 10).
 """
 
 from __future__ import annotations
@@ -32,14 +41,17 @@ BROKER_KEY = "wa-broker-secret-test-key-0001"
 
 
 @pytest.fixture(autouse=True)
-def _reset_rate_limit_window():
+def _reset_rate_limit_state():
     """Module-level rate-limit globals must not leak state between tests
-    (order-independence)."""
-    wa_broker_router._rate_window_start = 0.0
-    wa_broker_router._rate_window_count = 0
+    (order-independence): both the authenticated-bucket window and the
+    per-source failed-auth dict."""
+    wa_broker_router._auth_window_start = 0.0
+    wa_broker_router._auth_window_count = 0
+    wa_broker_router._fail_windows.clear()
     yield
-    wa_broker_router._rate_window_start = 0.0
-    wa_broker_router._rate_window_count = 0
+    wa_broker_router._auth_window_start = 0.0
+    wa_broker_router._auth_window_count = 0
+    wa_broker_router._fail_windows.clear()
 
 
 @pytest.fixture
@@ -100,9 +112,7 @@ def test_rejects_when_server_key_unconfigured(
     """If wa_broker_key is None server-side, every request is denied —
     even one that presents a plausible-looking key."""
     monkeypatch.setattr(settings, "wa_broker_key", None)
-    resp = client.post(
-        "/api/wa-broker/claim", json={}, headers={"X-API-Key": BROKER_KEY}
-    )
+    resp = client.post("/api/wa-broker/claim", json={}, headers={"X-API-Key": BROKER_KEY})
     assert resp.status_code == 401
 
 
@@ -111,9 +121,7 @@ def test_claim_accepts_exact_key_with_no_job_available(
 ) -> None:
     monkeypatch.setattr(wa_broker_router.wa_broker, "claim_job", AsyncMock(return_value=None))
 
-    resp = client.post(
-        "/api/wa-broker/claim", json={}, headers={"X-API-Key": configured_key}
-    )
+    resp = client.post("/api/wa-broker/claim", json={}, headers={"X-API-Key": configured_key})
 
     assert resp.status_code == 200
     assert resp.json() == {
@@ -126,9 +134,7 @@ def test_claim_accepts_exact_key_with_no_job_available(
     }
 
 
-def test_complete_also_gated_by_the_same_key(
-    client: TestClient, configured_key: str
-) -> None:
+def test_complete_also_gated_by_the_same_key(client: TestClient, configured_key: str) -> None:
     """Mutating route must enforce the same scoped key as /claim."""
     resp = client.post("/api/wa-broker/complete", json=_complete_body())
     assert resp.status_code == 401
@@ -152,9 +158,7 @@ def test_claim_returns_leased_job_with_isoformat_clocks(
         "deadline_at": deadline_at,
         "server_now": server_now,
     }
-    monkeypatch.setattr(
-        wa_broker_router.wa_broker, "claim_job", AsyncMock(return_value=fake_row)
-    )
+    monkeypatch.setattr(wa_broker_router.wa_broker, "claim_job", AsyncMock(return_value=fake_row))
 
     resp = client.post(
         "/api/wa-broker/claim",
@@ -172,16 +176,40 @@ def test_claim_returns_leased_job_with_isoformat_clocks(
     assert body["server_now"] == server_now.isoformat()
 
 
-# ── complete ─────────────────────────────────────────────────────────────
+def test_claim_rejects_last_exec_ms_above_postgres_int_ceiling(
+    client: TestClient, configured_key: str
+) -> None:
+    """finding 10: an unbounded field passes Pydantic and then 500s in
+    asyncpg (INT overflow) instead of 422ing here."""
+    resp = client.post(
+        "/api/wa-broker/claim",
+        json={"last_exec_ms": 2**31},
+        headers={"X-API-Key": configured_key},
+    )
+    assert resp.status_code == 422
+
+
+def test_claim_accepts_last_exec_ms_at_postgres_int_ceiling(
+    client: TestClient, configured_key: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """INNOCENCE: the ceiling value itself must still be accepted."""
+    monkeypatch.setattr(wa_broker_router.wa_broker, "claim_job", AsyncMock(return_value=None))
+    resp = client.post(
+        "/api/wa-broker/claim",
+        json={"last_exec_ms": 2**31 - 1},
+        headers={"X-API-Key": configured_key},
+    )
+    assert resp.status_code == 200
+
+
+# ── complete: result_text / error_class XOR ────────────────────────────────
 
 
 def test_complete_rejects_both_result_text_and_error_class(
     client: TestClient, configured_key: str
 ) -> None:
-    body = _complete_body(error_class="codex_timeout")  # result_text also present
-    resp = client.post(
-        "/api/wa-broker/complete", json=body, headers={"X-API-Key": configured_key}
-    )
+    body = _complete_body(error_class="exec_timeout")  # result_text also present
+    resp = client.post("/api/wa-broker/complete", json=body, headers={"X-API-Key": configured_key})
     assert resp.status_code == 422
 
 
@@ -189,9 +217,7 @@ def test_complete_rejects_neither_result_text_nor_error_class(
     client: TestClient, configured_key: str
 ) -> None:
     body = _complete_body(result_text=None)  # no error_class either
-    resp = client.post(
-        "/api/wa-broker/complete", json=body, headers={"X-API-Key": configured_key}
-    )
+    resp = client.post("/api/wa-broker/complete", json=body, headers={"X-API-Key": configured_key})
     assert resp.status_code == 422
 
 
@@ -203,10 +229,56 @@ def test_complete_accepts_exactly_one_of_the_two_fields(
     monkeypatch.setattr(
         wa_broker_router.wa_broker, "complete_job", AsyncMock(return_value=CompleteStatus.ACCEPTED)
     )
-    body = _complete_body(result_text=None, error_class="codex_timeout")
-    resp = client.post(
-        "/api/wa-broker/complete", json=body, headers={"X-API-Key": configured_key}
+    body = _complete_body(result_text=None, error_class="exec_timeout")
+    resp = client.post("/api/wa-broker/complete", json=body, headers={"X-API-Key": configured_key})
+    assert resp.status_code == 200
+
+
+# ── complete: error_class vocabulary (finding 7) ────────────────────────────
+
+
+def test_complete_rejects_error_class_outside_allowed_vocabulary(
+    client: TestClient, configured_key: str
+) -> None:
+    """GUILT: free text in error_class must never reach a terminal row —
+    it is retained OUTSIDE the payload-NULL guarantee."""
+    body = _complete_body(result_text=None, error_class="totally_made_up_reason")
+    resp = client.post("/api/wa-broker/complete", json=body, headers={"X-API-Key": configured_key})
+    assert resp.status_code == 422
+
+
+def test_complete_accepts_error_class_inside_allowed_vocabulary(
+    client: TestClient, configured_key: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """INNOCENCE: every value the router validator accepts is one of the
+    module's own ALLOWED_ERROR_CLASSES — SSOT, no drift between the two."""
+    monkeypatch.setattr(
+        wa_broker_router.wa_broker, "complete_job", AsyncMock(return_value=CompleteStatus.ACCEPTED)
     )
+    body = _complete_body(result_text=None, error_class="oversized_output")
+    resp = client.post("/api/wa-broker/complete", json=body, headers={"X-API-Key": configured_key})
+    assert resp.status_code == 200
+
+
+# ── complete: exec_ms Postgres int ceiling (finding 10) ─────────────────────
+
+
+def test_complete_rejects_exec_ms_above_postgres_int_ceiling(
+    client: TestClient, configured_key: str
+) -> None:
+    body = _complete_body(exec_ms=2**31)
+    resp = client.post("/api/wa-broker/complete", json=body, headers={"X-API-Key": configured_key})
+    assert resp.status_code == 422
+
+
+def test_complete_accepts_exec_ms_at_postgres_int_ceiling(
+    client: TestClient, configured_key: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        wa_broker_router.wa_broker, "complete_job", AsyncMock(return_value=CompleteStatus.ACCEPTED)
+    )
+    body = _complete_body(exec_ms=2**31 - 1)
+    resp = client.post("/api/wa-broker/complete", json=body, headers={"X-API-Key": configured_key})
     assert resp.status_code == 200
 
 
@@ -227,9 +299,7 @@ def test_complete_status_mapping(
     expected_http: int,
     expected_body: dict | None,
 ) -> None:
-    monkeypatch.setattr(
-        wa_broker_router.wa_broker, "complete_job", AsyncMock(return_value=status)
-    )
+    monkeypatch.setattr(wa_broker_router.wa_broker, "complete_job", AsyncMock(return_value=status))
 
     resp = client.post(
         "/api/wa-broker/complete",
@@ -242,13 +312,32 @@ def test_complete_status_mapping(
         assert resp.json() == expected_body
 
 
-# ── rate limit ───────────────────────────────────────────────────────────
+# ── rate limit — two buckets split by auth outcome (S2 finding 1, BLOCKER) ──
 
 
-def test_rate_limit_blocks_after_threshold_then_a_fresh_window_passes(
+def test_unauthenticated_flood_does_not_starve_the_authenticated_bucket(
     client: TestClient, configured_key: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(wa_broker_router, "_RATE_LIMIT_PER_MINUTE", 3)
+    """BLOCKER fix (S2 cross-family review, finding 1): the first build
+    shared ONE pre-auth bucket across every caller, so 121 bad-key requests
+    exhausted the same ceiling the legitimate broker needed — starving
+    completion delivery for the rest of the window. Unauthenticated traffic
+    must only ever be able to touch the FAIL bucket; the AUTH bucket a
+    valid-key caller draws from must stay untouched by any amount of
+    bad-key flooding."""
+    monkeypatch.setattr(wa_broker_router.wa_broker, "claim_job", AsyncMock(return_value=None))
+
+    for _ in range(150):  # comfortably over the OLD shared 120/min ceiling
+        client.post("/api/wa-broker/claim", json={}, headers={"X-API-Key": "wrong-key"})
+
+    ok = client.post("/api/wa-broker/claim", json={}, headers={"X-API-Key": configured_key})
+    assert ok.status_code == 200
+
+
+def test_auth_bucket_rate_limits_the_authenticated_caller(
+    client: TestClient, configured_key: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(wa_broker_router, "_AUTH_LIMIT_PER_MINUTE", 3)
     monkeypatch.setattr(wa_broker_router.wa_broker, "claim_job", AsyncMock(return_value=None))
 
     fake_now = {"t": 1_000.0}
@@ -268,35 +357,24 @@ def test_rate_limit_blocks_after_threshold_then_a_fresh_window_passes(
     assert fifth.status_code == 200
 
 
-def test_rate_limit_counts_failed_auth_attempts_too(
+def test_fail_bucket_rate_limits_one_source_without_blocking_others(
     client: TestClient, configured_key: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Credential guessing must hit the same ceiling as legitimate traffic.
-
-    The first version of this gate incremented the counter only AFTER a
-    successful auth, so wrong-key attempts could be retried forever without a
-    single 429 — the opposite of the brute-force bound the limiter exists for
-    (found by the S2 test lane's adversarial pass). Guilt: wrong-key attempts
-    beyond the ceiling get 429, not another free 401.
-    """
-    monkeypatch.setattr(wa_broker_router, "_RATE_LIMIT_PER_MINUTE", 3)
-    fake_now = {"t": 1_000.0}
-    monkeypatch.setattr(wa_broker_router.time, "monotonic", lambda: fake_now["t"])
+    monkeypatch.setattr(wa_broker_router, "_FAIL_LIMIT_PER_MINUTE", 3)
+    monkeypatch.setattr(wa_broker_router.wa_broker, "claim_job", AsyncMock(return_value=None))
 
     wrong = {"X-API-Key": "guess-attempt-not-the-key"}
     for _ in range(3):
-        assert (
-            client.post("/api/wa-broker/claim", json={}, headers=wrong).status_code == 401
-        )
+        resp = client.post("/api/wa-broker/claim", json={}, headers=wrong)
+        assert resp.status_code == 401
 
-    fourth = client.post("/api/wa-broker/claim", json={}, headers=wrong)
-    assert fourth.status_code == 429
+    damped = client.post("/api/wa-broker/claim", json={}, headers=wrong)
+    assert damped.status_code == 429
 
-    # The throttle bounds the whole surface: inside the exhausted window even
-    # the right key is throttled; a fresh window lets the legitimate caller
-    # straight back through (innocence: the ordering change cannot starve it).
-    right = {"X-API-Key": configured_key}
-    assert client.post("/api/wa-broker/claim", json={}, headers=right).status_code == 429
-    fake_now["t"] += 61.0
-    monkeypatch.setattr(wa_broker_router.wa_broker, "claim_job", AsyncMock(return_value=None))
-    assert client.post("/api/wa-broker/claim", json={}, headers=right).status_code == 200
+    # INNOCENCE: the damped source presenting the VALID key still gets 200 —
+    # the fail bucket only ever damps that source's 401 response rate, it
+    # can never block a legitimate authenticated request from the same
+    # source (TestClient always presents as one host, so this is also the
+    # in-test proof that FAIL and AUTH are genuinely separate buckets).
+    ok = client.post("/api/wa-broker/claim", json={}, headers={"X-API-Key": configured_key})
+    assert ok.status_code == 200

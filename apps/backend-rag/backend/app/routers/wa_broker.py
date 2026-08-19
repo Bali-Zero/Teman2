@@ -26,12 +26,13 @@ from __future__ import annotations
 
 import hmac
 import logging
+import threading
 import time
 import uuid
 
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from backend.app.core.config import settings
 from backend.app.deps.database import get_database_pool
@@ -41,24 +42,65 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/wa-broker", tags=["wa-broker"])
 
-# Rate limit (spec H13): the legitimate broker is single-flight and polls
-# ~1/s, so this ceiling is far above any honest cadence and far below a
-# useful brute-force rate. In-process sliding window — two api workers means
-# two windows, which still bounds the aggregate at 2x this figure.
-_RATE_LIMIT_PER_MINUTE = 120
-_rate_window_start: float = 0.0
-_rate_window_count: int = 0
+# Rate limiting (spec H13) — TWO buckets, split BY AUTH OUTCOME (S2
+# cross-family review, finding 1). The first build shared one pre-auth
+# bucket across all callers, which handed any unauthenticated remote a kill
+# switch: 121 bad-key requests starved the legitimate broker — including
+# completion delivery — for the rest of the window.
+#
+#  - AUTH bucket: consumed only by requests carrying the VALID key. Bounds
+#    DB work from a runaway authenticated broker; unauthenticated traffic
+#    cannot touch it, so it cannot be weaponized for denial of service.
+#  - FAIL buckets: per-source, consumed only by FAILED auths. Damps the
+#    401-response rate per source. The actual brute-force defense is the
+#    credential itself (dedicated high-entropy key, constant-time compare)
+#    — an in-process counter is damping, not the security boundary, and
+#    this docstring deliberately does not claim otherwise.
+#
+# Windows are fixed and per-process (two api workers => 2x the aggregate),
+# guarded by a lock because sync FastAPI dependencies run in a threadpool.
+_AUTH_LIMIT_PER_MINUTE = 120
+_FAIL_LIMIT_PER_MINUTE = 30
+_FAIL_SOURCES_MAX = 1024  # bound the dict so a spoofed-source flood can't grow it
+
+_rate_lock = threading.Lock()
+_auth_window_start: float = 0.0
+_auth_window_count: int = 0
+_fail_windows: dict[str, tuple[float, int]] = {}
 
 
-def _rate_limit_check() -> None:
-    global _rate_window_start, _rate_window_count
+def _auth_bucket_take() -> bool:
+    """One slot from the authenticated bucket. True = allowed."""
+    global _auth_window_start, _auth_window_count
     now = time.monotonic()
-    if now - _rate_window_start >= 60.0:
-        _rate_window_start = now
-        _rate_window_count = 0
-    _rate_window_count += 1
-    if _rate_window_count > _RATE_LIMIT_PER_MINUTE:
-        raise HTTPException(status_code=429, detail="wa-broker rate limit")
+    with _rate_lock:
+        if now - _auth_window_start >= 60.0:
+            _auth_window_start = now
+            _auth_window_count = 0
+        _auth_window_count += 1
+        return _auth_window_count <= _AUTH_LIMIT_PER_MINUTE
+
+
+def _fail_bucket_take(source: str) -> bool:
+    """One slot from the per-source failed-auth bucket. True = respond 401
+    normally; False = damp with 429. When the table is full, new sources
+    fall through to 401 undamped — a full table must degrade against the
+    ATTACKER (less damping), never against the legitimate broker."""
+    now = time.monotonic()
+    with _rate_lock:
+        window = _fail_windows.get(source)
+        if window is None or now - window[0] >= 60.0:
+            if window is None and len(_fail_windows) >= _FAIL_SOURCES_MAX:
+                # Drop expired windows before giving up on tracking.
+                for key in [k for k, (start, _) in _fail_windows.items() if now - start >= 60.0]:
+                    del _fail_windows[key]
+                if len(_fail_windows) >= _FAIL_SOURCES_MAX:
+                    return True
+            _fail_windows[source] = (now, 1)
+            return True
+        start, count = window
+        _fail_windows[source] = (start, count + 1)
+        return count + 1 <= _FAIL_LIMIT_PER_MINUTE
 
 
 def require_wa_broker_key(request: Request) -> None:
@@ -66,24 +108,32 @@ def require_wa_broker_key(request: Request) -> None:
 
     Constant-time comparison; 401 when the key is missing, wrong, or not
     configured server-side (unconfigured = the surface is OFF, not open).
+    Auth runs FIRST; each request is then charged to the bucket matching
+    its outcome — see the module comment for why the split is load-bearing.
     """
-    # Rate limit BEFORE the auth verdict, so failed attempts count too: a
-    # limiter that increments only on successful auth throttles a legitimate
-    # caller misbehaving but leaves credential-guessing completely unthrottled
-    # — the opposite of the brute-force bound the ceiling exists for. (Found
-    # by the S2 test lane's adversarial pass, 2026-08-19.)
-    _rate_limit_check()
     configured = getattr(settings, "wa_broker_key", None)
     provided = request.headers.get("X-API-Key")
-    if not configured or not provided or not hmac.compare_digest(provided, configured):
-        raise HTTPException(status_code=401, detail="wa-broker key required")
+    if configured and provided and hmac.compare_digest(provided, configured):
+        if not _auth_bucket_take():
+            raise HTTPException(status_code=429, detail="wa-broker rate limit")
+        return
+    source = request.client.host if request.client else "unknown"
+    if not _fail_bucket_take(source):
+        raise HTTPException(status_code=429, detail="wa-broker rate limit")
+    raise HTTPException(status_code=401, detail="wa-broker key required")
+
+
+# PostgreSQL INT ceiling: values above it pass an unbounded Pydantic field
+# and then 500 in asyncpg instead of 422 here (S2 cross-family review,
+# finding 10).
+_PG_INT_MAX = 2**31 - 1
 
 
 class ClaimRequest(BaseModel):
     # Broker-reported queue state — the /claim poll IS the liveness heartbeat
     # (spec 2.1), including polls that find no job.
     in_flight: int = Field(0, ge=0, le=16)
-    last_exec_ms: int | None = Field(None, ge=0)
+    last_exec_ms: int | None = Field(None, ge=0, le=_PG_INT_MAX)
 
 
 class ClaimResponse(BaseModel):
@@ -103,7 +153,20 @@ class CompleteRequest(BaseModel):
     completion_key: str = Field(min_length=8, max_length=128)
     result_text: str | None = Field(None, max_length=65536)
     error_class: str | None = Field(None, max_length=64)
-    exec_ms: int | None = Field(None, ge=0)
+    exec_ms: int | None = Field(None, ge=0, le=_PG_INT_MAX)
+
+    @field_validator("error_class")
+    @classmethod
+    def _error_class_in_vocabulary(cls, v: str | None) -> str | None:
+        # error_class is RETAINED on terminal rows, outside the payload-NULL
+        # guarantee — free text here would let a buggy broker persist
+        # exception messages or identifiers indefinitely (S2 cross-family
+        # review, finding 7). Closed vocabulary, one SSOT in the service.
+        if v is not None and v not in wa_broker.ALLOWED_ERROR_CLASSES:
+            raise ValueError(
+                "error_class must be one of: " + ", ".join(sorted(wa_broker.ALLOWED_ERROR_CLASSES))
+            )
+        return v
 
 
 class CompleteResponse(BaseModel):

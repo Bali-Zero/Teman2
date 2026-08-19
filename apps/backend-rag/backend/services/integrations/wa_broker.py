@@ -74,6 +74,14 @@ DEFAULT_ABSENT_AFTER_S = 45
 BREAKER_TRIP_AFTER = 3
 BREAKER_OPEN_SECONDS = 300
 
+# How long a half_open gauge may sit with NO outstanding job before the next
+# admission check demotes it back to open (fresh cooldown). Reachable only if
+# the canary's worker crashes between consuming the result and recording the
+# outcome — without this exit, half_open would be an absorbing state and the
+# codex route dark forever. Sized above deadline + consume grace so it can
+# never fire while a legitimate canary is still being processed.
+HALF_OPEN_ORPHAN_S = 120
+
 # Terminal-row retention (spec 2, Codex NEW-1).
 TERMINAL_RETENTION_DAYS = 7
 
@@ -85,6 +93,25 @@ WAIT_POLL_SECONDS = 0.2
 _ADMISSION_LOCK_SQL = "SELECT pg_advisory_xact_lock(hashtext('wa_broker_admission'))"
 
 _TERMINAL_STATES = ("consumed", "expired", "failed")
+
+# The transport's CLOSED vocabulary for typed terminal failures. error_class
+# is retained on terminal rows (outside the payload-NULL guarantee), so it
+# must never be able to carry free text — exception messages, identifiers,
+# client content (S2 cross-family review, finding 7). The broker daemon
+# (PR-6) maps its failure modes INTO this set; widening it is a reviewed
+# diff by construction. The router validates against this same frozenset so
+# the two surfaces cannot drift (W114).
+ALLOWED_ERROR_CLASSES = frozenset(
+    {
+        "exec_timeout",  # codex subprocess exceeded its budget
+        "cli_failure",  # codex CLI exited non-zero / unparseable output
+        "cli_version_mismatch",  # daemon version pin refused to exec (chaos row 8)
+        "spawn_failure",  # subprocess could not be started
+        "oversized_output",  # result exceeded the transport bound (chaos row 7)
+        "empty_output",  # CLI exited 0 with nothing usable
+        "policy_refusal",  # CLI-level refusal, no usable text
+    }
+)
 
 
 def deadline_seconds() -> int:
@@ -136,7 +163,7 @@ class WaitResult:
     error_class: str | None = None
 
 
-async def _gauge_upsert(conn: asyncpg.Connection, **fields: Any) -> None:
+async def _gauge_upsert(conn: asyncpg.Connection | asyncpg.Pool, **fields: Any) -> None:
     """Lazy-seeding upsert of the single gauge row (id=1).
 
     The migration deliberately seeds nothing (no DML in DDL); the first
@@ -160,30 +187,77 @@ async def _gauge_upsert(conn: asyncpg.Connection, **fields: Any) -> None:
 # ──────────────────────────────────────────────────────────────────────────
 
 
-async def breaker_allows(conn: asyncpg.Connection) -> bool:
-    """True when the breaker is closed, or open-past-cooldown (half-open
-    canary allowed). The admission depth cap bounds half-open concurrency:
-    at most MAX_DEPTH canaries can be outstanding even with several workers.
+async def breaker_admits(conn: asyncpg.Connection) -> bool:
+    """Admission check WITH the half-open state machine (S2 cross-family
+    review, finding 3 — the first build returned True on open-past-cooldown
+    without ever consuming the canary slot, so one failed canary left
+    ``cooled_down`` permanently true and the breaker stopped breaking).
+
+    closed      -> admit.
+    half_open   -> deny (exactly one canary is already out).
+    open        -> CAS open->half_open once the cooldown has elapsed; the
+                   single CAS winner carries the canary. ``breaker_opened_at``
+                   is deliberately NOT touched here: if the offer aborts
+                   before launching (fence lost -> transaction rollback, see
+                   ``offer_job``), the gauge reverts to open with its clock
+                   intact and the next admission needs no fresh cooldown.
+    A failed canary goes half_open->open with a NEW ``breaker_opened_at``
+    (in ``record_breaker_result``), so each failed canary buys a full
+    cooldown before the next one — the behavior the spec names.
     """
     row = await conn.fetchrow(
-        """
-        SELECT breaker_state,
-               breaker_opened_at IS NOT NULL
-               AND breaker_opened_at <= now() - ($1 * INTERVAL '1 second')
-                   AS cooled_down
-        FROM wa_broker_gauge WHERE id = 1
-        """,
-        BREAKER_OPEN_SECONDS,
+        "SELECT breaker_state FROM wa_broker_gauge WHERE id = 1",
     )
     if row is None:  # gauge not seeded yet -> broker has never spoken
         return False
     if row["breaker_state"] == "closed":
         return True
-    return bool(row["cooled_down"])
+    if row["breaker_state"] == "half_open":
+        # Orphan guard: a half_open gauge with no outstanding job whose
+        # canary result never arrived (worker crashed between consume and
+        # record). Demote to open with a FRESH cooldown — conservative,
+        # never admit from here.
+        await conn.execute(
+            """
+            UPDATE wa_broker_gauge
+            SET breaker_state = 'open', breaker_opened_at = now(),
+                updated_at = now()
+            WHERE id = 1 AND breaker_state = 'half_open'
+              AND updated_at <= now() - ($1 * INTERVAL '1 second')
+              AND NOT EXISTS (
+                  SELECT 1 FROM broker_jobs
+                  WHERE state IN ('offered', 'leased',
+                                  'completed_pending_consume'))
+            """,
+            HALF_OPEN_ORPHAN_S,
+        )
+        return False
+    cas = await conn.fetchrow(
+        """
+        UPDATE wa_broker_gauge
+        SET breaker_state = 'half_open', updated_at = now()
+        WHERE id = 1 AND breaker_state = 'open'
+          AND breaker_opened_at IS NOT NULL
+          AND breaker_opened_at <= now() - ($1 * INTERVAL '1 second')
+        RETURNING id
+        """,
+        BREAKER_OPEN_SECONDS,
+    )
+    return cas is not None
 
 
-async def record_breaker_result(conn: asyncpg.Connection, *, success: bool) -> None:
-    """Fold one codex-leg outcome into the shared breaker state."""
+async def record_breaker_result(
+    conn: asyncpg.Connection | asyncpg.Pool, *, success: bool, count: int = 1
+) -> None:
+    """Fold codex-leg outcomes into the shared breaker state.
+
+    The failure path is ONE atomic statement — increment, trip decision and
+    half_open->open demotion together — so no offer can slip between "the
+    count reached the threshold" and "the breaker opened" (finding 3's
+    threshold race), and no second statement is needed for the failed-canary
+    demotion. ``count`` lets the reaper report a batch of expiries in one
+    call (finding 4).
+    """
     if success:
         await _gauge_upsert(
             conn,
@@ -192,32 +266,65 @@ async def record_breaker_result(conn: asyncpg.Connection, *, success: bool) -> N
             consecutive_failures=0,
         )
         return
+    if count < 1:
+        return
     row = await conn.fetchrow(
         """
-        INSERT INTO wa_broker_gauge (id, consecutive_failures, updated_at)
-        VALUES (1, 1, now())
+        INSERT INTO wa_broker_gauge
+            (id, consecutive_failures, breaker_state, breaker_opened_at,
+             updated_at)
+        VALUES (1, $2::int,
+                CASE WHEN $2::int >= $1::int THEN 'open' ELSE 'closed' END,
+                CASE WHEN $2::int >= $1::int THEN now() ELSE NULL END,
+                now())
         ON CONFLICT (id) DO UPDATE
-        SET consecutive_failures = wa_broker_gauge.consecutive_failures + 1,
+        SET consecutive_failures
+                = wa_broker_gauge.consecutive_failures + $2::int,
+            breaker_state = CASE
+                WHEN wa_broker_gauge.breaker_state = 'half_open' THEN 'open'
+                WHEN wa_broker_gauge.breaker_state = 'closed'
+                     AND wa_broker_gauge.consecutive_failures + $2::int
+                         >= $1::int THEN 'open'
+                ELSE wa_broker_gauge.breaker_state END,
+            breaker_opened_at = CASE
+                WHEN wa_broker_gauge.breaker_state = 'half_open' THEN now()
+                WHEN wa_broker_gauge.breaker_state = 'closed'
+                     AND wa_broker_gauge.consecutive_failures + $2::int
+                         >= $1::int THEN now()
+                ELSE wa_broker_gauge.breaker_opened_at END,
             updated_at = now()
-        RETURNING consecutive_failures
+        RETURNING breaker_state, consecutive_failures
         """,
+        BREAKER_TRIP_AFTER,
+        count,
     )
-    failures = row["consecutive_failures"] if row else 1
-    if failures >= BREAKER_TRIP_AFTER:
-        await conn.execute(
-            """
-            UPDATE wa_broker_gauge
-            SET breaker_state = 'open', breaker_opened_at = now(),
-                updated_at = now()
-            WHERE id = 1 AND breaker_state <> 'open'
-            """,
-        )
+    if row is not None and row["breaker_state"] == "open":
         logger.warning(
-            "wa_broker: circuit breaker OPEN after %d consecutive failures "
-            "(codex route disabled for %ds)",
-            failures,
+            "wa_broker: circuit breaker OPEN (%d consecutive failures; "
+            "codex route disabled for %ds per cooldown)",
+            row["consecutive_failures"],
             BREAKER_OPEN_SECONDS,
         )
+
+
+async def _revert_canary_cas(conn: asyncpg.Connection) -> None:
+    """Undo a ``breaker_admits`` open->half_open CAS when the offer aborts
+    after admission WITHOUT creating a job (fence lost / leg already spent):
+    early returns commit the offer transaction, so the CAS must be reverted
+    explicitly or the canary slot is consumed by a non-offer. The CAS never
+    touched ``breaker_opened_at``, so the original cooldown clock stands.
+    Safe unconditionally: offers serialize on the admission lock, and a
+    half_open state at this point can only be this transaction's own CAS —
+    a PRIOR canary's half_open would have refused admission before the
+    fence code ran.
+    """
+    await conn.execute(
+        """
+        UPDATE wa_broker_gauge
+        SET breaker_state = 'open', updated_at = now()
+        WHERE id = 1 AND breaker_state = 'half_open'
+        """,
+    )
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -265,17 +372,23 @@ async def offer_job(
         if gauge is None or not gauge["broker_alive"]:
             return OfferResult(OfferOutcome.BROKER_ABSENT)
 
-        if not await breaker_allows(conn):
-            return OfferResult(OfferOutcome.BREAKER_OPEN)
-
         depth = await conn.fetchval(
             "SELECT count(*) FROM broker_jobs WHERE state IN ('offered', 'leased')",
         )
         if int(depth or 0) >= MAX_DEPTH:
             return OfferResult(OfferOutcome.QUEUE_FULL)
 
-        # Route marker, fenced on the outbox claim. If the fence is gone the
-        # transaction rolls back having written nothing.
+        # Breaker LAST among the admission checks: breaker_admits may CAS
+        # open->half_open (consuming the canary slot), so it must not run
+        # when depth/liveness would refuse anyway. NOTE: the early returns
+        # below COMMIT this transaction (only exceptions roll back), so the
+        # post-admission failure exits explicitly revert the CAS via
+        # _revert_canary_cas — a canary slot is only spent by an offer that
+        # actually creates a job.
+        if not await breaker_admits(conn):
+            return OfferResult(OfferOutcome.BREAKER_OPEN)
+
+        # Route marker, fenced on the outbox claim.
         fenced = await conn.fetchrow(
             """
             UPDATE wa_outbox SET generation_route = 'codex'
@@ -294,33 +407,46 @@ async def offer_job(
                 "SELECT generation_route IS NOT NULL FROM wa_outbox WHERE id = $1",
                 outbox_id,
             )
-            return OfferResult(
-                OfferOutcome.ALREADY_SPENT if already else OfferOutcome.FENCE_LOST
-            )
+            await _revert_canary_cas(conn)
+            return OfferResult(OfferOutcome.ALREADY_SPENT if already else OfferOutcome.FENCE_LOST)
 
+        # SAVEPOINT around the INSERT (S2 cross-family review, finding 2):
+        # a UniqueViolationError aborts the enclosing PostgreSQL transaction,
+        # so catching it WITHOUT a savepoint would roll back the
+        # generation_route marker written above — reporting ALREADY_SPENT
+        # while leaving the durable fence NULL, exactly the historical hole
+        # the marker exists to close (once retention removes the job row,
+        # the outbox row could spend a second codex leg). The nested
+        # transaction() is a savepoint here: the unique violation rolls back
+        # only the INSERT, and the marker repair COMMITS with the outer
+        # transaction.
         try:
-            job_id = await conn.fetchval(
-                """
-                INSERT INTO broker_jobs
-                    (outbox_id, thread_id, mode, package, evidence_inputs,
-                     package_hash, thread_epoch, deadline_at)
-                VALUES ($1, $2, 'serve', $3::jsonb, $4::jsonb, $5, $6,
-                        now() + ($7 * INTERVAL '1 second'))
-                RETURNING job_id
-                """,
-                outbox_id,
-                thread_id,
-                package,
-                evidence_inputs,
-                package_hash,
-                thread_epoch,
-                t_exec,
-            )
+            async with conn.transaction():
+                job_id = await conn.fetchval(
+                    """
+                    INSERT INTO broker_jobs
+                        (outbox_id, thread_id, mode, package, evidence_inputs,
+                         package_hash, thread_epoch, deadline_at)
+                    VALUES ($1, $2, 'serve', $3::jsonb, $4::jsonb, $5, $6,
+                            now() + ($7 * INTERVAL '1 second'))
+                    RETURNING job_id
+                    """,
+                    outbox_id,
+                    thread_id,
+                    package,
+                    evidence_inputs,
+                    package_hash,
+                    thread_epoch,
+                    t_exec,
+                )
         except asyncpg.UniqueViolationError:
             # uq_broker_jobs_serve_outbox: the leg was already spent by a
             # path that did not set the marker (should not happen — the two
             # writes are one transaction — but the DB is the invariant's
-            # owner, so honor its verdict rather than assume).
+            # owner, so honor its verdict rather than assume). The marker
+            # written above survives the savepoint rollback and commits,
+            # repairing the missing historical fence.
+            await _revert_canary_cas(conn)
             return OfferResult(OfferOutcome.ALREADY_SPENT)
 
     logger.info(
@@ -384,9 +510,7 @@ async def wait_for_job(
         await asyncio.sleep(poll_seconds)
 
 
-async def consume_result(
-    conn: asyncpg.Connection, job_id: uuid.UUID
-) -> str | None:
+async def consume_result(conn: asyncpg.Connection, job_id: uuid.UUID) -> str | None:
     """Single-consumer CAS: completed_pending_consume -> consumed.
 
     Returns the result text, atomically NULLing every payload column in the
@@ -408,9 +532,7 @@ async def consume_result(
     return row["result_text"] if row else None
 
 
-async def discard_completion(
-    conn: asyncpg.Connection, job_id: uuid.UUID, *, reason: str
-) -> None:
+async def discard_completion(conn: asyncpg.Connection, job_id: uuid.UUID, *, reason: str) -> None:
     """Consume-and-discard (thread-epoch drift, spec 2.3): the completion is
     never used, the payload is NULLed, the typed outcome names why. The
     discarded leg still counts as the row's one codex leg — generation_route
@@ -513,8 +635,17 @@ async def complete_job(
     no state change). A DIFFERENT payload for an already-completed job ->
     CONFLICT (409) — never a second generation. Anything else -> GONE (410).
     """
-    if result_text is not None and error_class is not None:
-        raise ValueError("completion carries either result_text or error_class")
+    # XOR, enforced HERE and not only at the router (S2 cross-family review,
+    # finding 5): this is a reusable transport boundary that claims the
+    # invariant, so a direct call with both None must not slide into the
+    # success branch and mint a completed_pending_consume with a NULL result.
+    if (result_text is None) == (error_class is None):
+        raise ValueError("completion carries exactly one of result_text / error_class")
+    # Closed vocabulary for the retained terminal field (finding 7): the
+    # router validates the same set at the HTTP edge; this second copy of the
+    # check guards direct callers of the reusable boundary.
+    if error_class is not None and error_class not in ALLOWED_ERROR_CLASSES:
+        raise ValueError("unknown error_class (not in transport vocabulary)")
 
     if error_class is not None:
         row = await conn.fetchrow(
@@ -553,22 +684,25 @@ async def complete_job(
     if row is not None:
         return CompleteStatus.ACCEPTED
 
-    # CAS missed. Same completion_key on the same job = the retry of a
-    # completion we already accepted (the first response was lost in
-    # transit): idempotent 200. Note the replay check deliberately does NOT
+    # CAS missed. Same (completion_key, fence_token) on the same job = the
+    # retry of a completion we already accepted (the first response was lost
+    # in transit): idempotent 200. The replay check deliberately does NOT
     # compare text — the consumer may already have NULLed it; completion_key
     # equality IS the identity of the attempt (it is minted once per exec).
+    # Replay eligibility REQUIRES the original fence and a post-acceptance
+    # state, and 'expired' takes precedence over key equality (S2
+    # cross-family review, finding 6): a completion whose consumer died and
+    # was reaped is GONE — its acceptance no longer stands, and answering
+    # REPLAY would tell the broker its result was delivered.
     prior = await conn.fetchrow(
-        "SELECT completion_key, state FROM broker_jobs WHERE job_id = $1",
+        "SELECT completion_key, fence_token, state FROM broker_jobs WHERE job_id = $1",
         job_id,
     )
-    if prior is not None and prior["completion_key"] == completion_key:
-        return CompleteStatus.REPLAY
-    if prior is not None and prior["state"] in (
-        "completed_pending_consume",
-        "consumed",
-        "failed",
-    ):
+    if prior is None or prior["state"] == "expired":
+        return CompleteStatus.GONE
+    if prior["state"] in ("completed_pending_consume", "consumed", "failed"):
+        if prior["completion_key"] == completion_key and prior["fence_token"] == fence_token:
+            return CompleteStatus.REPLAY
         return CompleteStatus.CONFLICT
     return CompleteStatus.GONE
 
@@ -578,13 +712,44 @@ async def complete_job(
 # ──────────────────────────────────────────────────────────────────────────
 
 
-async def expire_stale_jobs(pool: asyncpg.Pool) -> int:
+@dataclass
+class ReapResult:
+    """Per-cause expiry counts (S2 cross-family review, finding 4): the
+    aggregate mixed serve expiry, dead-consumer cleanup and shadow expiry,
+    so no caller could reconstruct the breaker signal. Only ``serve_expired``
+    is a codex-leg failure; the other two are housekeeping."""
+
+    serve_expired: int = 0
+    consumer_expired: int = 0
+    shadow_expired: int = 0
+
+    @property
+    def total(self) -> int:
+        return self.serve_expired + self.consumer_expired + self.shadow_expired
+
+
+async def expire_stale_jobs(pool: asyncpg.Pool) -> ReapResult:
     """Expire whatever outlived its budget, NULLing payloads in the same
     UPDATE (spec 2): serve jobs past deadline_at (offered/leased), a
-    completed_pending_consume whose consumer died (lease grace passed), and
+    completed_pending_consume whose consumer died (grace passed), and
     shadow jobs past their own expires_at (Kimi N1).
+
+    Serve-mode deadline expiries are folded into the breaker HERE, not left
+    to the caller (finding 4 + scar family #2 — a signal a caller must
+    remember to forward is a signal that dies): if a worker crashes and the
+    reaper becomes the only observer, repeated serve expiries still open the
+    breaker. No double count: the worker's own ``wait_for_job`` CAS makes
+    the row terminal, so the reaper never sees the expiries a live worker
+    already observed and recorded.
+
+    The dead-consumer predicate anchors on COALESCE(completed_at,
+    created_at) (finding 8): migration 270 does not force completed_at to be
+    set on completed_pending_consume, and a malformed writer could otherwise
+    mint a row this reaper can never reach — an unreapable PII state.
+    (A DB CHECK tying the state to completed_at is the follow-up migration,
+    tracked for PR-5; this makes the reaper safe regardless.)
     """
-    result = await pool.execute(
+    rows = await pool.fetch(
         """
         UPDATE broker_jobs
         SET state = 'expired', package = NULL, evidence_inputs = NULL,
@@ -593,19 +758,33 @@ async def expire_stale_jobs(pool: asyncpg.Pool) -> int:
         WHERE (mode = 'serve' AND state IN ('offered', 'leased')
                  AND deadline_at <= now())
            OR (state = 'completed_pending_consume'
-                 AND completed_at <= now() - ($1 * INTERVAL '1 second'))
+                 AND COALESCE(completed_at, created_at)
+                     <= now() - ($1 * INTERVAL '1 second'))
            OR (mode = 'shadow' AND state IN ('offered', 'leased')
                  AND expires_at IS NOT NULL AND expires_at <= now())
+        RETURNING mode, outcome
         """,
         LEASE_TTL_S * 3,
     )
-    try:
-        count = int(result.split()[-1])
-    except (ValueError, IndexError, AttributeError):
-        count = 0
-    if count:
-        logger.info("wa_broker: reaper expired %d stale job(s)", count)
-    return count
+    result = ReapResult()
+    for row in rows:
+        if row["outcome"] == "expired_completed_pending_consume":
+            result.consumer_expired += 1
+        elif row["mode"] == "shadow":
+            result.shadow_expired += 1
+        else:
+            result.serve_expired += 1
+    if result.total:
+        logger.info(
+            "wa_broker: reaper expired %d stale job(s) (serve=%d consumer=%d shadow=%d)",
+            result.total,
+            result.serve_expired,
+            result.consumer_expired,
+            result.shadow_expired,
+        )
+    if result.serve_expired:
+        await record_breaker_result(pool, success=False, count=result.serve_expired)
+    return result
 
 
 async def sweep_terminal_rows(pool: asyncpg.Pool) -> int:
@@ -615,27 +794,38 @@ async def sweep_terminal_rows(pool: asyncpg.Pool) -> int:
     logs an ERROR with a distinctive marker if the post-sweep count is not
     zero — that marker is the alarm hook.
     """
-    result = await pool.execute(
-        """
-        DELETE FROM broker_jobs
-        WHERE state IN ('consumed', 'expired', 'failed')
-          AND created_at <= now() - ($1 * INTERVAL '1 day')
-        """,
-        TERMINAL_RETENTION_DAYS,
-    )
-    try:
-        removed = int(result.split()[-1])
-    except (ValueError, IndexError, AttributeError):
-        removed = 0
+    # DELETE and the residue check run under ONE repeatable-read snapshot
+    # (S2 cross-family review, finding 11): as separate autocommit
+    # statements, a row turning terminal between them read as "SWEEP
+    # INEFFECTIVE" though it was never eligible during the sweep — a false
+    # alarm on the alarm hook. Under one snapshot the check sees exactly the
+    # world the DELETE acted on, minus what it deleted: residue > 0 now
+    # means the DELETE genuinely failed to remove an eligible row. (RR
+    # serialization conflicts are not a practical concern here: nothing
+    # updates week-old terminal rows.)
+    async with pool.acquire() as conn:
+        async with conn.transaction(isolation="repeatable_read"):
+            result = await conn.execute(
+                """
+                DELETE FROM broker_jobs
+                WHERE state IN ('consumed', 'expired', 'failed')
+                  AND created_at <= now() - ($1 * INTERVAL '1 day')
+                """,
+                TERMINAL_RETENTION_DAYS,
+            )
+            try:
+                removed = int(result.split()[-1])
+            except (ValueError, IndexError, AttributeError):
+                removed = 0
 
-    residue = await pool.fetchval(
-        """
-        SELECT count(*) FROM broker_jobs
-        WHERE state IN ('consumed', 'expired', 'failed')
-          AND created_at <= now() - ($1 * INTERVAL '1 day')
-        """,
-        TERMINAL_RETENTION_DAYS,
-    )
+            residue = await conn.fetchval(
+                """
+                SELECT count(*) FROM broker_jobs
+                WHERE state IN ('consumed', 'expired', 'failed')
+                  AND created_at <= now() - ($1 * INTERVAL '1 day')
+                """,
+                TERMINAL_RETENTION_DAYS,
+            )
     if int(residue or 0) != 0:
         logger.error(
             "wa_broker: RETENTION SWEEP INEFFECTIVE — %d terminal broker_jobs "
