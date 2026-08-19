@@ -116,6 +116,51 @@ class TestAutoClockInIfNeeded:
         conn.execute.assert_not_awaited()
 
     @pytest.mark.asyncio
+    async def test_auto_clockin_skips_service_accounts(self) -> None:
+        """A service account is not a person — an unattended probe never clocks in.
+
+        The login-healthcheck probe authenticates against kita every 5 minutes on
+        a @balizero.com address, so the email guard below does not catch it: only
+        the role does. Without this, the probe files one attendance record per day,
+        forever, into the table that feeds HR.
+        """
+        from backend.app.routers.auth import _auto_clockin_if_needed
+
+        pool, conn = _make_pool(fetchval_result=0)
+
+        result = await _auto_clockin_if_needed(
+            pool=pool,
+            user_id="probe-001",
+            email="healthcheck@balizero.com",
+            role="monitoring",
+        )
+
+        assert result is False
+        conn.fetchval.assert_not_awaited()
+        conn.execute.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_auto_clockin_still_fires_for_a_real_team_role(self) -> None:
+        """Innocence: excluding service accounts must not exclude colleagues.
+
+        Guards the fix above against being written as "skip everything unusual".
+        'Tax Lead' is a real role held by real people in this system.
+        """
+        from backend.app.routers.auth import _auto_clockin_if_needed
+
+        pool, conn = _make_pool(fetchval_result=0)
+
+        result = await _auto_clockin_if_needed(
+            pool=pool,
+            user_id="user-777",
+            email="someone@balizero.com",
+            role="Tax Lead",
+        )
+
+        assert result is True
+        conn.execute.assert_awaited_once()
+
+    @pytest.mark.asyncio
     async def test_auto_clockin_skips_non_balizero_email(self) -> None:
         """Non-@balizero.com emails (external accounts) are skipped."""
         from backend.app.routers.auth import _auto_clockin_if_needed

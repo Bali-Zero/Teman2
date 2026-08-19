@@ -75,11 +75,27 @@ openclaw. studia /bot dove abbiamo messo direttamente chatgpt con abbonamento pr
   `51101`, `79122` carry `pma_status=TERBATAS` (caps 49/49/0) while each record's own
   `intel_2026.zantaraOpener` editorial text claims Open — 79122 verbatim: _«Nationally this
   carries PMA status: Open»_. The chat design cures its own exposure by excluding `intel_2026`
-  from the package allowlist, but `zantaraOpener` is RENDERED by
-  `apps/mouth/src/app/kbli/[code]/page.tsx:1050` (gold store) and indexed by
-  `index_kbli_gold_content.py` — whether the contradiction is client-visible on those surfaces
-  (is 79122 gold? does the canonical copy feed any renderer?) needs its own verification lane.
-  NOT cured here; do not let this row go stale. **Second defect, found by the design's round-4
+  from the package allowlist. **Exposure VERIFIED same day (static trace + live production MCP
+  probes): the contradictory text reaches NO client surface** — and not by accident:
+  `withNeutralKbliChatOpener` (TS, `kbli-editorial-certification.ts:105-113`) /
+  `with_neutral_kbli_chat_opener` (Python, `kbli_editorial_certification.py:235-253`)
+  unconditionally overwrite `zantaraOpener` with neutral text at EVERY loader boundary
+  (mouth `kbli-data.server.ts:160-165` + `kbli-data.ts:400` — so `page.tsx:1050` only ever
+  sees neutral text; `reindex_kbli_2025_final.py` L182; `kg_kbli_resync.py` L148-155);
+  `chat_kbli`'s direct-lookup path deliberately never selects the `content` column, and
+  `inspect_kbli`'s response schema has no editorial field at all. Live probes on all 3
+  codes: correct or no-leak. The mouth gold store's own authored text for 51101/79122 is
+  already correct — the "Open" sentence lives ONLY in canonical `intel_2026`. Three
+  declared residuals: (1) the live Qdrant collections' provenance is structurally protected
+  but not empirically proven (the live probes answered via direct lookup, not semantic
+  retrieval); (2) the live `kg_nodes` KG is STALE — `inspect_kbli` returns
+  NOT_VERIFIED/declared_gap where the canonical says TERBATAS (protective by accident;
+  `kg_kbli_resync.py` exists to fix it — its run is its own lane); (3) the non-production
+  sandbox `apps/kbli-navigator` gold store carries an even worse authored text for 79122
+  ("Fully open — 100% foreign ownership"), registry-gated to null so never rendered, but
+  the text exists on disk. **The DATA defect itself stays open** — the wrong editorial
+  sentences in canonical `intel_2026` on those 3 codes still want their own cure lane even
+  though nothing serves them. **Second defect, found by the design's round-4
   refuter and censused this session: the STRUCTURED fields contradict each other on exactly 2
   records** — `50111` and `50112` carry `pma_max_asing=49` while their own `pma_kondisi` reads
   _"Hanya PMDN (100% domestik)"_ (class sweep over all 1,559: no other hits). Which field is
