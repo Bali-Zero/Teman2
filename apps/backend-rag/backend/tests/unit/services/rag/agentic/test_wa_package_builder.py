@@ -121,18 +121,22 @@ def _visa_retriever() -> FakeRetriever:
 
 
 def _real_pricing_result(query: str) -> dict[str, Any]:
-    """The REAL wire shape of `PricingService.search_service()` (measured on
-    backend/services/pricing/pricing_service.py, success branch). A fake that
-    speaks the code's imagination instead of the wire's is two copies of the
-    same hypothesis confirming each other (W114). This one carries the exact
-    fields the sanitizer must DROP.
+    """The REAL wire shape of `PricingService.search_service()` — 2026 data:
+    per-category values are DICTS keyed by the public service name
+    (`filtered_results[category_name] = items` on the scorer's dict path),
+    NOT lists. The first draft of this fake modeled a list and thereby
+    masked a sanitizer that dropped every real 2026 match (Codex S2
+    re-verdict, blocker) — a fake speaking the code's imagination instead
+    of the wire's is two copies of one hypothesis confirming each other
+    (W114). The real-service contract test below is the standing cure: this
+    fake's shape is pinned against the live JSON, not against memory.
     """
     return {
         "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2026",
         "search_query": query,
         "results": {
-            "kitas_permits": [
-                {
+            "kitas_permits": {
+                "Working KITAS (E23)": {
                     "name": "Working KITAS (E23)",
                     "price": "Rp 5.000.000",
                     "duration": "12 months",
@@ -142,7 +146,7 @@ def _real_pricing_result(query: str) -> dict[str, Any]:
                     "icon_id": "kitas",
                     "description_en": "internal-facing description",
                 }
-            ]
+            }
         },
         "contact_info": {
             "whatsapp": "+62 821 3454 721",
@@ -156,15 +160,15 @@ def _real_pricing_result(query: str) -> dict[str, Any]:
 _SANITIZED_PRICING = {
     "search_query": PRICING_VISA_QUERY,
     "results": {
-        "kitas_permits": [
-            {
+        "kitas_permits": {
+            "Working KITAS (E23)": {
                 "name": "Working KITAS (E23)",
                 "price": "Rp 5.000.000",
                 "duration": "12 months",
                 "validity": "1 year",
                 "notes": "sponsor required",
             }
-        ]
+        }
     },
 }
 
@@ -467,6 +471,99 @@ class TestPricingGate:
             )
         assert package.pricing_block is None
         assert fake_pricing.queries == []
+
+    async def test_legacy_list_category_shape_still_sanitizes(self) -> None:
+        """The scorer's legacy-fixture path emits `[entry, ...]` per category
+        — both wire shapes must survive the allowlist (symmetry: a fix that
+        covers only the shape that bit is half a fix)."""
+        legacy = _real_pricing_result(PRICING_VISA_QUERY)
+        legacy["results"] = {
+            "kitas_permits": [
+                {
+                    "name": "Working KITAS (E23)",
+                    "price": "Rp 5.000.000",
+                    "icon_id": "kitas",
+                }
+            ]
+        }
+        fake_pricing = FakePricingService(legacy)
+        with patch.object(wpb_module, "get_pricing_service", return_value=fake_pricing):
+            package = await build_context_package(
+                query=PRICING_VISA_QUERY,
+                history=[],
+                thread_epoch=0,
+                retriever=_visa_retriever(),
+            )
+        assert package.pricing_block == {
+            "search_query": PRICING_VISA_QUERY,
+            "results": {
+                "kitas_permits": [{"name": "Working KITAS (E23)", "price": "Rp 5.000.000"}]
+            },
+        }
+
+    async def test_real_pricing_service_contract_survives_the_sanitizer(self) -> None:
+        """W114 antidote at the TRUE boundary: run the REAL PricingService
+        (its wire is the official 2026 JSON on disk — no network) through the
+        sanitizer. This is the test the fake could never carry: if the wire
+        shape drifts, THIS goes red while the fake stays green. It is exactly
+        the test that would have caught the first sanitizer dropping every
+        real 2026 match.
+        """
+        from backend.services.pricing.pricing_service import get_pricing_service
+
+        raw = get_pricing_service().search_service("quanto costa il KITAS?")
+        assert isinstance(raw.get("results"), dict) and raw["results"], (
+            "real pricing lookup for KITAS returned no results — "
+            "the contract test needs a matching query"
+        )
+        sanitized = wpb_module._sanitize_pricing_block(raw)
+        assert sanitized is not None, "sanitizer dropped a REAL 2026 pricing match"
+        assert set(sanitized.keys()) == {"search_query", "results"}
+        rendered = str(sanitized)
+        assert "contact_info" not in rendered
+        assert "wa.me" not in rendered
+        assert "_sub_block" not in rendered
+        for category_value in sanitized["results"].values():
+            entries = (
+                category_value.values() if isinstance(category_value, dict) else category_value
+            )
+            for entry in entries:
+                assert set(entry.keys()) <= set(wpb_module._PRICING_ENTRY_FIELDS)
+
+
+# ============================================================================
+# 4bis. Greeting word-boundary (Codex S2 re-verdict, major — scar family #3)
+# ============================================================================
+
+
+class TestGreetingWordBoundary:
+    """`_GREETING_KEYWORDS` are short ordinary-language tokens; bare substring
+    scoring turned "Which visa options are available?" into GREETING via the
+    "hi" inside "which" — and GREETING is the one verdict that zeroes the
+    collection list, so this PR's route would have sent real visa questions
+    to the Gemini leg as `unbuildable`. Guilt AND innocence, per the family
+    #3 antidote: no guard ships without both.
+    """
+
+    async def test_real_questions_containing_hi_substrings_build_packages(self) -> None:
+        for query in ("Which visa options are available?", "What is this visa?"):
+            package = await build_context_package(
+                query=query,
+                history=[],
+                thread_epoch=0,
+                retriever=_visa_retriever(),
+            )
+            assert isinstance(package, ContextPackage), f"{query!r} was declared unbuildable"
+
+    async def test_actual_greetings_still_gate(self) -> None:
+        for query in ("hi", "hey", "ciao!", "thank you", "hi there"):
+            with pytest.raises(PackageUnbuildable):
+                await build_context_package(
+                    query=query,
+                    history=[],
+                    thread_epoch=0,
+                    retriever=FakeRetriever(),
+                )
 
 
 # ============================================================================

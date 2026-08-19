@@ -179,6 +179,18 @@ _GREETING_KEYWORDS: frozenset[str] = frozenset(
     }
 )
 
+# Word-boundary patterns for the greeting keywords, precompiled once. The
+# greeting lane needs boundaries where the domain lanes do not: its keywords
+# are short ordinary-language tokens ("hi", "hey") that live INSIDE common
+# English words — bare substring scoring classified "Which visa options are
+# available?" as GREETING via the "hi" in "which" (Codex S2 re-verdict,
+# major; scar family #3 over-match), and GREETING is the one verdict that
+# zeroes the collection list. Sorted for deterministic order (never iterate
+# a set into anything order-bearing).
+_GREETING_WORD_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
+    re.compile(r"\b" + re.escape(kw) + r"\b") for kw in sorted(_GREETING_KEYWORDS)
+)
+
 _NEWS_KEYWORDS: frozenset[str] = frozenset(
     {
         "news",
@@ -382,8 +394,8 @@ class QueryPlanner:
         # Keyword-based classification
         scores: dict[QueryDomain, int] = dict.fromkeys(QueryDomain, 0)
 
-        for kw in _GREETING_KEYWORDS:
-            if kw in query_lower:
+        for pattern in _GREETING_WORD_PATTERNS:
+            if pattern.search(query_lower):
                 scores[QueryDomain.GREETING] += 3  # High weight for greetings
 
         for kw in _PRICING_KEYWORDS:

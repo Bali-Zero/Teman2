@@ -278,6 +278,17 @@ def _sanitize_pricing_block(raw: Any) -> dict[str, Any] | None:
     number + wa.me link), `disclaimer`, `official_notice`, error/suggestion
     prose, and the internal `_sub_block` annotation (S2 cross-family
     review, finding 2). Returns None when nothing price-shaped survives.
+
+    The wire (measured on `PricingService.search_service`, and pinned by the
+    real-service contract test in `test_wa_package_builder.py` — S2 re-verdict
+    round, W114) carries per-category values in TWO shapes:
+      - 2026 data: `{service_name: entry_dict}` — a dict keyed by the public
+        service name (`filtered_results[category_name] = items` on the dict
+        path of the scorer);
+      - legacy list fixtures: `[entry_dict, ...]`.
+    A dict whose values are dicts is a service map, never a single entry —
+    the earlier draft read it as one entry and silently dropped every real
+    2026 match (Codex re-verdict, blocker).
     """
     if not isinstance(raw, dict):
         return None
@@ -292,15 +303,28 @@ def _sanitize_pricing_block(raw: Any) -> dict[str, Any] | None:
         return kept or None
 
     clean_results: dict[str, Any] = {}
+    dropped_categories = 0
     for category, items in results.items():
         if isinstance(items, list):
             kept_items = [e for e in (_filter_entry(item) for item in items) if e]
             if kept_items:
                 clean_results[str(category)] = kept_items
-        else:
-            kept_entry = _filter_entry(items)
-            if kept_entry:
-                clean_results[str(category)] = kept_entry
+                continue
+        elif isinstance(items, dict):
+            kept_services = {}
+            for service_name, entry in items.items():
+                kept_entry = _filter_entry(entry)
+                if kept_entry:
+                    kept_services[str(service_name)] = kept_entry
+            if kept_services:
+                clean_results[str(category)] = kept_services
+                continue
+        dropped_categories += 1
+    if dropped_categories:
+        logger.info(
+            "wa_package_builder: dropped %d pricing categor(ies) with no allowlisted entries",
+            dropped_categories,
+        )
     if not clean_results:
         return None
     return {"search_query": str(raw.get("search_query", "")), "results": clean_results}
