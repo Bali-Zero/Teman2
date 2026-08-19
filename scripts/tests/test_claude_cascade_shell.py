@@ -131,6 +131,7 @@ def _fake_fleet(
         "kimi": home / ".kimi-code/bin/kimi",
         "codex": home / ".local/bin/codex",
         "ollama": home / ".local/bin/ollama",
+        "fm": home / ".local/bin/fm",
     }.items():
         provider_body = provider_bodies.get(
             label,
@@ -165,6 +166,10 @@ def _fake_fleet(
         "CLAUDE_CODE_OAUTH_TOKEN_5": TOKEN_VALUES["token5"],
         "CLAUDE_CODE_OAUTH_TOKEN": TOKEN_VALUES["legacy"],
         "CLAUDE_CASCADE_OLLAMA_BIN": str(home / ".local/bin/ollama"),
+        # Without this override a macOS 27 host would invoke the REAL
+        # /usr/bin/fm (PATH contains /usr/bin) and the corpus would stop
+        # being hermetic on exactly the machines that have the new tier.
+        "CLAUDE_CASCADE_FM_BIN": str(home / ".local/bin/fm"),
     }
     return call_log, temp_dir, env
 
@@ -639,12 +644,12 @@ def test_paid_anthropic_bedrock_and_vertex_environment_is_scrubbed(
             assert value not in result.stderr
 
 
-@pytest.mark.parametrize("successful_provider", ("agy", "kimi", "codex", "ollama"))
+@pytest.mark.parametrize("successful_provider", ("agy", "kimi", "codex", "ollama", "fm"))
 def test_cross_family_provider_environments_are_hermetic(
     tmp_path: Path,
     successful_provider: str,
 ) -> None:
-    provider_order = ("agy", "kimi", "codex", "ollama")
+    provider_order = ("agy", "kimi", "codex", "ollama", "fm")
     provider_bodies = {
         label: (
             f'printf "provider-{label}-success\\n"\nexit 0'
@@ -694,6 +699,87 @@ def test_cross_family_provider_environments_are_hermetic(
         for line in lines
         if line.startswith("nonclaude-")
     ] == expected_attempts
+
+
+def _provider_attempts(call_log: Path) -> list[str]:
+    return [
+        line.removeprefix("nonclaude-")
+        for line in call_log.read_text(encoding="utf-8").splitlines()
+        if line.startswith("nonclaude-")
+    ]
+
+
+def test_fm_is_the_zero_daemon_last_resort_after_ollama(tmp_path: Path) -> None:
+    """GUILT: with every seat and every provider dead, tier6 fm answers —
+    and only after ollama has been tried (order asserted, not assumed)."""
+    provider_bodies = {label: "exit 1" for label in ("agy", "kimi", "codex", "ollama")}
+    provider_bodies["fm"] = 'printf "fm-answer\\n"\nexit 0'
+    call_log, _, env = _fake_fleet(tmp_path, _default_bodies(), provider_bodies)
+
+    result = _run_cascade(env, "grunt prompt")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "fm-answer\n"
+    assert "used: tier6 fm-apple-on-device" in result.stderr
+    assert _provider_attempts(call_log) == ["agy", "kimi", "codex", "ollama", "fm"]
+
+
+def test_ollama_success_never_reaches_fm(tmp_path: Path) -> None:
+    """INNOCENCE: a healthy tier5 keeps tier6 untouched."""
+    provider_bodies = {label: "exit 1" for label in ("agy", "kimi", "codex")}
+    provider_bodies["ollama"] = 'printf "ollama-answer\\n"\nexit 0'
+    provider_bodies["fm"] = 'printf "fm-answer\\n"\nexit 0'
+    call_log, _, env = _fake_fleet(tmp_path, _default_bodies(), provider_bodies)
+
+    result = _run_cascade(env, "grunt prompt")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "ollama-answer\n"
+    assert "fm" not in _provider_attempts(call_log)
+
+
+def test_fm_kill_switch_disables_tier6(tmp_path: Path) -> None:
+    provider_bodies = {label: "exit 1" for label in ("agy", "kimi", "codex", "ollama")}
+    provider_bodies["fm"] = 'printf "fm-answer\\n"\nexit 0'
+    call_log, _, env = _fake_fleet(tmp_path, _default_bodies(), provider_bodies)
+    env["CLAUDE_CASCADE_FM"] = "0"
+
+    result = _run_cascade(env, "grunt prompt")
+
+    assert result.returncode == 1
+    assert "ALL TIERS FAILED" in result.stderr
+    assert "tier6 fm disabled" in result.stderr
+    assert "fm" not in _provider_attempts(call_log)
+
+
+def test_missing_fm_binary_skips_cleanly(tmp_path: Path) -> None:
+    """A macOS 26 machine (no /usr/bin/fm) must skip, not crash — the tier is
+    additive and the pre-existing ALL TIERS FAILED contract is preserved."""
+    provider_bodies = {label: "exit 1" for label in ("agy", "kimi", "codex", "ollama")}
+    call_log, _, env = _fake_fleet(tmp_path, _default_bodies(), provider_bodies)
+    env["CLAUDE_CASCADE_FM_BIN"] = str(tmp_path / "does-not-exist" / "fm")
+
+    result = _run_cascade(env, "grunt prompt")
+
+    assert result.returncode == 1
+    assert "tier6 fm not installed" in result.stderr
+    assert "ALL TIERS FAILED" in result.stderr
+    assert "fm" not in _provider_attempts(call_log)
+
+
+def test_fm_empty_output_is_a_failure_not_a_success(tmp_path: Path) -> None:
+    """Exit 0 with nothing on stdout is the W84/W89 lie — the last tier must
+    refuse it so the caller sees a dead cascade, not a silent empty answer."""
+    provider_bodies = {label: "exit 1" for label in ("agy", "kimi", "codex", "ollama")}
+    provider_bodies["fm"] = "exit 0"
+    call_log, _, env = _fake_fleet(tmp_path, _default_bodies(), provider_bodies)
+
+    result = _run_cascade(env, "grunt prompt")
+
+    assert result.returncode == 1
+    assert "fm returned empty output" in result.stderr
+    assert "ALL TIERS FAILED" in result.stderr
+    assert _provider_attempts(call_log)[-1] == "fm"
 
 
 _CODEX_SPARK_PROBE = (
