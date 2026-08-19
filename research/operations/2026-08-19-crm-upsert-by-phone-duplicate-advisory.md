@@ -63,6 +63,16 @@ defaults: `reject_ambiguous: bool = False` (`crm_clients.py:1329`) and
 A `crm_push` collision returns `client_id: None` and would print `acted on id=None`. The traffic
 we measured is the defaults path.
 
+That is an inference from log format, so it was checked directly. `com.balizero.wa-mirror-auto-promote`
+was **running at the time of measurement** — `launchctl list` gives PID `44281`, exit status `0`,
+with a `-selfheal` companion job beside it. Its plist executes
+`/Users/nuzantara/scripts/wa-mirror-auto-promote-leads.py` — a `$HOME` path, not the repo file
+(cicatrix family #1). That copy was compared: `cmp -s` reports the live file **byte-identical** to
+the repo copy, and it contains **zero** occurrences of `reject_ambiguous` and **zero** of
+`restore_if_archived`. The two copies do not diverge today, so the reading above holds for the
+code that actually executes — but the deployment path means a repo-side fix would not reach the
+running job on its own.
+
 ## What was measured
 
 Live log, app `nuzantara-rag`, machine `1781e5eda03438`, ~2026-08-19T14:29Z: the warning fired
