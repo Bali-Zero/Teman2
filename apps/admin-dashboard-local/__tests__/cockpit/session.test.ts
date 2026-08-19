@@ -11,6 +11,7 @@ import { cockpitHostname, isAllowedCockpitHost } from "@/lib/cockpit-host";
 const SECRET =
   "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 const NOW = Date.UTC(2026, 7, 19, 8, 0, 0);
+const AUDIENCE = "http://localhost:3100";
 
 function request(
   pathname: string,
@@ -19,9 +20,13 @@ function request(
     token?: string;
     cookieToken?: string;
     extraAuthorization?: string;
+    requestOrigin?: string;
   } = {},
 ): NextRequest {
-  const headers = new Headers({ host: options.host ?? "localhost:3100" });
+  const requestOrigin = options.requestOrigin ?? AUDIENCE;
+  const headers = new Headers({
+    host: options.host ?? new URL(requestOrigin).host,
+  });
   if (options.token) {
     headers.set("authorization", `Bearer ${options.token}`);
   }
@@ -31,41 +36,45 @@ function request(
   if (options.cookieToken) {
     headers.set("cookie", `cockpit-session=${options.cookieToken}`);
   }
-  return new NextRequest(`http://localhost:3100${pathname}`, { headers });
+  return new NextRequest(`${requestOrigin}${pathname}`, { headers });
 }
 
 describe("cockpit signed session", () => {
   beforeEach(() => {
-    process.env.COCKPIT_HMAC_KEY = SECRET;
+    process.env.COCKPIT_SESSION_KEY = SECRET;
   });
 
   afterEach(() => {
-    delete process.env.COCKPIT_HMAC_KEY;
+    delete process.env.COCKPIT_SESSION_KEY;
   });
 
   it("accepts a valid, unexpired token", async () => {
-    const token = await createCockpitSessionToken(SECRET, {
+    const token = await createCockpitSessionToken(SECRET, AUDIENCE, {
       nowMs: NOW,
       nonce: "fixed-synthetic-nonce",
     });
-    expect(await verifyCockpitSessionToken(token, SECRET, NOW + 1_000)).toBe(
-      true,
-    );
+    expect(
+      await verifyCockpitSessionToken(token, SECRET, AUDIENCE, NOW + 1_000),
+    ).toBe(true);
   });
 
   it("rejects missing, forged, and expired tokens", async () => {
-    const token = await createCockpitSessionToken(SECRET, {
+    const token = await createCockpitSessionToken(SECRET, AUDIENCE, {
       nowMs: NOW,
       maxAgeSeconds: 60,
       nonce: "fixed-synthetic-nonce",
     });
     const forged = `${token.slice(0, -1)}${token.endsWith("A") ? "B" : "A"}`;
 
-    expect(await verifyCockpitSessionToken(null, SECRET, NOW)).toBe(false);
-    expect(await verifyCockpitSessionToken(forged, SECRET, NOW)).toBe(false);
-    expect(await verifyCockpitSessionToken(token, SECRET, NOW + 60_000)).toBe(
+    expect(await verifyCockpitSessionToken(null, SECRET, AUDIENCE, NOW)).toBe(
       false,
     );
+    expect(await verifyCockpitSessionToken(forged, SECRET, AUDIENCE, NOW)).toBe(
+      false,
+    );
+    expect(
+      await verifyCockpitSessionToken(token, SECRET, AUDIENCE, NOW + 60_000),
+    ).toBe(false);
   });
 
   it("middleware rejects protected APIs without a valid token", async () => {
@@ -78,7 +87,7 @@ describe("cockpit signed session", () => {
   });
 
   it("rejects a valid token presented only as a cookie", async () => {
-    const token = await createCockpitSessionToken(SECRET, {
+    const token = await createCockpitSessionToken(SECRET, AUDIENCE, {
       nonce: "fixed-synthetic-nonce",
     });
     const cookieOnly = request("/api/garuda-voa/evaluate", {
@@ -90,7 +99,7 @@ describe("cockpit signed session", () => {
   });
 
   it("rejects malformed and multiple Authorization credentials", async () => {
-    const token = await createCockpitSessionToken(SECRET, {
+    const token = await createCockpitSessionToken(SECRET, AUDIENCE, {
       nonce: "fixed-synthetic-nonce",
     });
     expect(
@@ -109,7 +118,7 @@ describe("cockpit signed session", () => {
   });
 
   it("middleware accepts a valid token and applies private headers", async () => {
-    const token = await createCockpitSessionToken(SECRET, {
+    const token = await createCockpitSessionToken(SECRET, AUDIENCE, {
       nonce: "fixed-synthetic-nonce",
     });
     const response = await middleware(
@@ -121,7 +130,7 @@ describe("cockpit signed session", () => {
   });
 
   it("host gate is fail-closed even with a valid token", async () => {
-    const token = await createCockpitSessionToken(SECRET, {
+    const token = await createCockpitSessionToken(SECRET, AUDIENCE, {
       nonce: "fixed-synthetic-nonce",
     });
     const response = await middleware(
@@ -131,6 +140,24 @@ describe("cockpit signed session", () => {
       }),
     );
     expect(response.status).toBe(403);
+  });
+
+  it("binds a signed token to the exact origin including port", async () => {
+    const token = await createCockpitSessionToken(SECRET, AUDIENCE, {
+      nonce: "fixed-synthetic-nonce",
+    });
+
+    expect(
+      await verifyCockpitSessionToken(token, SECRET, "http://localhost:4100"),
+    ).toBe(false);
+    expect(
+      await hasValidCockpitSession(
+        request("/api/cockpit/session", {
+          token,
+          requestOrigin: "http://localhost:4100",
+        }),
+      ),
+    ).toBe(false);
   });
 });
 

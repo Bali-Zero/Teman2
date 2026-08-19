@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 
 export const COCKPIT_SESSION_MAX_AGE_SECONDS = 12 * 60 * 60;
 
-const VERSION = 1;
+const VERSION = 2;
 const CLOCK_SKEW_SECONDS = 60;
 const MIN_SECRET_CHARACTERS = 32;
 const encoder = new TextEncoder();
@@ -12,6 +12,7 @@ interface SessionPayload {
   iat: number;
   exp: number;
   nonce: string;
+  aud: string;
 }
 
 interface CreateSessionOptions {
@@ -47,7 +48,21 @@ function base64UrlToBytes(value: string): Uint8Array<ArrayBuffer> {
 
 function assertSecret(secret: string): void {
   if (secret.trim().length < MIN_SECRET_CHARACTERS) {
-    throw new Error("cockpit HMAC key is missing or too short");
+    throw new Error("cockpit session key is missing or too short");
+  }
+}
+
+function isExactOrigin(value: string): boolean {
+  try {
+    return new URL(value).origin === value;
+  } catch {
+    return false;
+  }
+}
+
+function assertAudience(audience: string): void {
+  if (!isExactOrigin(audience)) {
+    throw new Error("cockpit session audience must be an exact origin");
   }
 }
 
@@ -81,15 +96,17 @@ function randomNonce(): string {
   return bytesToBase64Url(bytes);
 }
 
-export function readCockpitHmacKey(): string | null {
-  const secret = process.env.COCKPIT_HMAC_KEY?.trim() ?? "";
+export function readCockpitSessionKey(): string | null {
+  const secret = process.env.COCKPIT_SESSION_KEY?.trim() ?? "";
   return secret.length >= MIN_SECRET_CHARACTERS ? secret : null;
 }
 
 export async function createCockpitSessionToken(
   secret: string,
+  audience: string,
   options: CreateSessionOptions = {},
 ): Promise<string> {
+  assertAudience(audience);
   const nowSeconds = Math.floor((options.nowMs ?? Date.now()) / 1000);
   const maxAgeSeconds =
     options.maxAgeSeconds ?? COCKPIT_SESSION_MAX_AGE_SECONDS;
@@ -102,6 +119,7 @@ export async function createCockpitSessionToken(
     iat: nowSeconds,
     exp: nowSeconds + maxAgeSeconds,
     nonce: options.nonce ?? randomNonce(),
+    aud: audience,
   };
   const encodedPayload = bytesToBase64Url(
     encoder.encode(JSON.stringify(payload)),
@@ -111,24 +129,30 @@ export async function createCockpitSessionToken(
 }
 
 function isSessionPayload(value: unknown): value is SessionPayload {
-  if (!value || typeof value !== "object") return false;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const payload = value as Partial<SessionPayload>;
+  const keys = Object.keys(payload);
   return (
+    keys.length === 5 &&
+    keys.every((key) => ["v", "iat", "exp", "nonce", "aud"].includes(key)) &&
     payload.v === VERSION &&
     Number.isInteger(payload.iat) &&
     Number.isInteger(payload.exp) &&
     typeof payload.nonce === "string" &&
     payload.nonce.length >= 16 &&
-    payload.nonce.length <= 64
+    payload.nonce.length <= 64 &&
+    typeof payload.aud === "string" &&
+    isExactOrigin(payload.aud)
   );
 }
 
 export async function verifyCockpitSessionToken(
   token: string | null | undefined,
   secret: string,
+  expectedAudience: string,
   nowMs: number = Date.now(),
 ): Promise<boolean> {
-  if (!token) return false;
+  if (!token || !isExactOrigin(expectedAudience)) return false;
   try {
     const parts = token.split(".");
     if (parts.length !== 2) return false;
@@ -145,6 +169,7 @@ export async function verifyCockpitSessionToken(
     if (payload.exp - payload.iat > COCKPIT_SESSION_MAX_AGE_SECONDS) {
       return false;
     }
+    if (payload.aud !== expectedAudience) return false;
 
     const key = await importHmacKey(secret);
     return await crypto.subtle.verify(
@@ -169,11 +194,12 @@ export async function hasValidCockpitSession(
   request: NextRequest,
   nowMs: number = Date.now(),
 ): Promise<boolean> {
-  const secret = readCockpitHmacKey();
+  const secret = readCockpitSessionKey();
   if (!secret) return false;
   return verifyCockpitSessionToken(
     readCockpitBearerToken(request),
     secret,
+    request.nextUrl.origin,
     nowMs,
   );
 }

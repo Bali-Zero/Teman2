@@ -8,10 +8,11 @@ Pro-only operator dashboard. **Not deployed anywhere.**
 - every start command binds explicitly to `127.0.0.1:3100`
 - Host validation is DNS-rebinding/origin hygiene; loopback socket binding is
   the actual network-isolation boundary
-- owner surfaces use an expiring HMAC-signed Bearer token established by a
-  high-entropy passphrase; the token exists only in React memory, so refresh
-  deliberately relocks the surface
-- Reads Postgres directly (local socket) or via Fly tunnel (port 15432)
+- owner surfaces use an expiring, exact-origin HMAC-signed Bearer token
+  established by a high-entropy passphrase; the token exists only in React
+  memory, so refresh deliberately relocks the surface
+- DB-backed widgets read Postgres directly (local socket) or via a Fly tunnel
+  (port 15432); GARUDA preview and login do not require a database
 
 ## Start
 
@@ -28,15 +29,22 @@ passphrase first with `bash scripts/setup-cockpit-pin.sh`.
 Its same-origin API invokes the real Python GARUDA engine through a fixed
 `execFile` module adapter. It never uploads, pays, writes CRM/portal data,
 persists a GARUDA case payload, emits analytics, or sends anything externally.
-Authentication attempts do create payload-free audit rows. The launcher
-derives `COCKPIT_REPO_ROOT` from the Git worktree that contains the launcher;
-an environment or `.env` value cannot redirect it to a sibling checkout.
+Authentication and rate limiting are memory-only and perform no database
+writes. The launcher derives `COCKPIT_REPO_ROOT` from the Git worktree that
+contains the launcher; an environment or `.env` value cannot redirect it to a
+sibling checkout. The Python child uses an absolute backend `PYTHONPATH` and a
+fixed GARUDA cwd that is rejected if it contains a `.env` file.
 
 ## Data source
 
 `app/lib/db.ts` chooses `DATABASE_URL_LOCAL` first; if missing, falls back
 to `FLY_TUNNEL_URL`. If neither is set, the launcher prints a warning and
 DB-backed routes remain unavailable until one is configured.
+
+`setup-cockpit-pin.sh` preserves `hmac.key` for existing audit-chain records
+and rotates the separate `session.key` whenever the passphrase is set or
+changed. Both keys are file-backed with mode `0600`; neither can be overridden
+by the optional app `.env` during launcher startup.
 
 ## What it shows
 

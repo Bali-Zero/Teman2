@@ -17,6 +17,7 @@ import { createCockpitSessionToken } from "@/lib/cockpit-session";
 
 const SECRET =
   "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+const AUDIENCE = "http://localhost:3100";
 const SYNTHETIC_BODY = JSON.stringify({
   case_type: "extension",
   nationality: "USA",
@@ -67,12 +68,12 @@ async function apiRequest(
 
 describe("GARUDA internal same-origin API", () => {
   beforeEach(() => {
-    process.env.COCKPIT_HMAC_KEY = SECRET;
+    process.env.COCKPIT_SESSION_KEY = SECRET;
     mocks.runGarudaPreview.mockReset();
   });
 
   afterEach(() => {
-    delete process.env.COCKPIT_HMAC_KEY;
+    delete process.env.COCKPIT_SESSION_KEY;
   });
 
   it("independently rejects missing and forged sessions", async () => {
@@ -84,14 +85,14 @@ describe("GARUDA internal same-origin API", () => {
   });
 
   it("rejects a valid token carried only by a port-agnostic cookie", async () => {
-    const token = await createCockpitSessionToken(SECRET);
+    const token = await createCockpitSessionToken(SECRET, AUDIENCE);
     const response = await POST(await apiRequest({ cookieToken: token }));
     expect(response.status).toBe(401);
     expect(mocks.runGarudaPreview).not.toHaveBeenCalled();
   });
 
   it("independently rejects a non-loopback Host header", async () => {
-    const token = await createCockpitSessionToken(SECRET);
+    const token = await createCockpitSessionToken(SECRET, AUDIENCE);
     const response = await POST(
       await apiRequest({ host: "garuda.example.com", token }),
     );
@@ -100,7 +101,7 @@ describe("GARUDA internal same-origin API", () => {
   });
 
   it("runs the adapter for a valid local signed session", async () => {
-    const token = await createCockpitSessionToken(SECRET);
+    const token = await createCockpitSessionToken(SECRET, AUDIENCE);
     mocks.runGarudaPreview.mockResolvedValue({
       decision: "ACCEPT",
       reason_codes: [],
@@ -113,7 +114,7 @@ describe("GARUDA internal same-origin API", () => {
   });
 
   it("rejects oversized and non-JSON requests before invoking Python", async () => {
-    const token = await createCockpitSessionToken(SECRET);
+    const token = await createCockpitSessionToken(SECRET, AUDIENCE);
     const oversized = await POST(
       await apiRequest({ token, contentLength: 4_097 }),
     );
@@ -126,7 +127,7 @@ describe("GARUDA internal same-origin API", () => {
   });
 
   it("rejects cross-port and same-site browser requests before Python", async () => {
-    const token = await createCockpitSessionToken(SECRET);
+    const token = await createCockpitSessionToken(SECRET, AUDIENCE);
     const crossPort = await POST(
       await apiRequest({ token, origin: "http://localhost:4100" }),
     );
@@ -139,7 +140,7 @@ describe("GARUDA internal same-origin API", () => {
   });
 
   it("maps schema errors to 400 without exposing engine details", async () => {
-    const token = await createCockpitSessionToken(SECRET);
+    const token = await createCockpitSessionToken(SECRET, AUDIENCE);
     mocks.runGarudaPreview.mockResolvedValue({
       ok: false,
       error: "invalid_request",
@@ -151,7 +152,7 @@ describe("GARUDA internal same-origin API", () => {
   });
 
   it("maps the engine size boundary to a sanitized 400", async () => {
-    const token = await createCockpitSessionToken(SECRET);
+    const token = await createCockpitSessionToken(SECRET, AUDIENCE);
     mocks.runGarudaPreview.mockResolvedValue({
       ok: false,
       error: "request_too_large",
@@ -163,7 +164,7 @@ describe("GARUDA internal same-origin API", () => {
   });
 
   it("returns a generic 503 for unexpected adapter errors", async () => {
-    const token = await createCockpitSessionToken(SECRET);
+    const token = await createCockpitSessionToken(SECRET, AUDIENCE);
     mocks.runGarudaPreview.mockRejectedValue(
       new Error("secret at /Users/operator/private/path"),
     );

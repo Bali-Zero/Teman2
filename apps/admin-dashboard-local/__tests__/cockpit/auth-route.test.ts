@@ -33,6 +33,7 @@ import {
 const SECRET =
   "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 const VALID_PASSPHRASE = "synthetic-valid-passphrase-2026";
+const AUDIENCE = "http://localhost:3100";
 
 function request(
   options: {
@@ -65,7 +66,8 @@ function request(
 
 describe("cockpit auth route boundary", () => {
   beforeEach(() => {
-    process.env.COCKPIT_HMAC_KEY = SECRET;
+    process.env.COCKPIT_SESSION_KEY = SECRET;
+    delete process.env.COCKPIT_HMAC_KEY;
     resetRateLimit();
     mocks.insertAuditRow.mockReset().mockResolvedValue(1n);
     mocks.readPassphraseHash.mockReset().mockReturnValue("synthetic-hash");
@@ -77,7 +79,7 @@ describe("cockpit auth route boundary", () => {
   });
 
   afterEach(() => {
-    delete process.env.COCKPIT_HMAC_KEY;
+    delete process.env.COCKPIT_SESSION_KEY;
     resetRateLimit();
   });
 
@@ -97,18 +99,10 @@ describe("cockpit auth route boundary", () => {
       expires_in: number;
     };
     expect(body.expires_in).toBe(COCKPIT_SESSION_MAX_AGE_SECONDS);
-    expect(await verifyCockpitSessionToken(body.token, SECRET)).toBe(true);
-    expect(mocks.insertAuditRow).toHaveBeenCalledWith(
-      SECRET,
-      expect.objectContaining({
-        action: "auth.passphrase",
-        params: {},
-        result: "success",
-      }),
+    expect(await verifyCockpitSessionToken(body.token, SECRET, AUDIENCE)).toBe(
+      true,
     );
-    expect(JSON.stringify(mocks.insertAuditRow.mock.calls)).not.toContain(
-      VALID_PASSPHRASE,
-    );
+    expect(mocks.insertAuditRow).not.toHaveBeenCalled();
   });
 
   it("bounds parallel bcrypt work at the global failure limit", async () => {
@@ -165,37 +159,26 @@ describe("cockpit auth route boundary", () => {
     expect(mocks.insertAuditRow).not.toHaveBeenCalled();
   });
 
-  it("records the memory failure before waiting for audit I/O", async () => {
-    for (let attempt = 0; attempt < 4; attempt += 1) {
-      await POST(request());
+  it("records failures entirely in memory without audit I/O", async () => {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      expect((await POST(request())).status).toBe(401);
     }
 
-    let finishAudit: (() => void) | undefined;
-    mocks.insertAuditRow.mockImplementationOnce(
-      () =>
-        new Promise<bigint>((resolve) => {
-          finishAudit = () => resolve(1n);
-        }),
-    );
-    const fifth = POST(request());
-    await vi.waitFor(() => expect(isLockedOut()).toBe(true));
-    finishAudit?.();
-    expect((await fifth).status).toBe(401);
+    expect(isLockedOut()).toBe(true);
+    expect(mocks.insertAuditRow).not.toHaveBeenCalled();
   });
 
-  it("keeps denials denied but fails closed on a success audit outage", async () => {
+  it("authenticates without a database audit dependency", async () => {
     mocks.insertAuditRow.mockRejectedValue(new Error("synthetic audit outage"));
     const denied = await POST(request());
     expect(denied.status).toBe(401);
 
     resetRateLimit();
-    const acceptedWithoutAudit = await POST(
+    const acceptedWithoutDatabase = await POST(
       request({ passphrase: VALID_PASSPHRASE }),
     );
-    expect(acceptedWithoutAudit.status).toBe(503);
-    expect(await acceptedWithoutAudit.json()).toEqual({
-      error: "audit_unavailable",
-    });
-    expect(acceptedWithoutAudit.headers.get("set-cookie")).toBeNull();
+    expect(acceptedWithoutDatabase.status).toBe(200);
+    expect(acceptedWithoutDatabase.headers.get("set-cookie")).toBeNull();
+    expect(mocks.insertAuditRow).not.toHaveBeenCalled();
   });
 });

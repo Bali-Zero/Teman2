@@ -80,6 +80,7 @@ export interface GarudaProcessConfig {
   backendRoot: string;
   pythonExecutable: string;
   modulePath: string;
+  trustedCwd: string;
 }
 
 export interface GarudaInternalCheckpoint {
@@ -134,20 +135,34 @@ export function resolveGarudaProcessConfig(
     "garuda_flow",
     "internal_preview_cli.py",
   );
+  const trustedCwd = path.dirname(modulePath);
   if (!existsSync(pythonExecutable) || !existsSync(modulePath)) {
     throw new GarudaPreviewAdapterError(
       "preview_misconfigured",
       "GARUDA preview runtime is unavailable",
     );
   }
-  return { backendRoot, pythonExecutable, modulePath };
+  if (existsSync(path.join(trustedCwd, ".env"))) {
+    throw new GarudaPreviewAdapterError(
+      "preview_misconfigured",
+      "GARUDA preview runtime directory must not contain a .env file",
+    );
+  }
+  return { backendRoot, pythonExecutable, modulePath, trustedCwd };
 }
 
 export function buildGarudaChildEnvironment(
+  backendRoot: string,
   source: NodeJS.ProcessEnv = process.env,
 ): Record<string, string> {
+  if (!path.isAbsolute(backendRoot)) {
+    throw new GarudaPreviewAdapterError(
+      "preview_misconfigured",
+      "GARUDA backend root must be absolute",
+    );
+  }
   const childEnv: Record<string, string> = {
-    PYTHONPATH: ".",
+    PYTHONPATH: path.resolve(backendRoot),
     PYTHONIOENCODING: "utf-8",
     PYTHONUTF8: "1",
   };
@@ -412,14 +427,15 @@ export async function runGarudaPreview(
     );
   }
 
-  const { backendRoot, pythonExecutable } = resolveGarudaProcessConfig();
+  const { backendRoot, pythonExecutable, trustedCwd } =
+    resolveGarudaProcessConfig();
   return await new Promise<GarudaPreviewResult | GarudaSanitizedError>(
     (resolve, reject) => {
       const child = execFile(
         pythonExecutable,
         ["-m", GARUDA_PREVIEW_MODULE],
         {
-          cwd: backendRoot,
+          cwd: trustedCwd,
           encoding: "utf8",
           timeout: GARUDA_PREVIEW_TIMEOUT_MS,
           maxBuffer: GARUDA_PREVIEW_MAX_OUTPUT_BYTES,
@@ -427,7 +443,7 @@ export async function runGarudaPreview(
           // Next augments ProcessEnv with a required NODE_ENV field. Keep it
           // out of the real child allowlist and narrow-cast only at the Node
           // API boundary.
-          env: buildGarudaChildEnvironment() as NodeJS.ProcessEnv,
+          env: buildGarudaChildEnvironment(backendRoot) as NodeJS.ProcessEnv,
         },
         (error, stdout) => {
           if (error) {

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   execFile: vi.fn(),
-  existsSync: vi.fn(() => true),
+  existsSync: vi.fn((_candidate: string) => true),
   stdinEnd: vi.fn(),
 }));
 
@@ -75,7 +75,9 @@ describe("GARUDA Python execFile adapter", () => {
   beforeEach(() => {
     process.env.COCKPIT_REPO_ROOT = "/synthetic/repo";
     mocks.execFile.mockReset();
-    mocks.existsSync.mockReset().mockReturnValue(true);
+    mocks.existsSync
+      .mockReset()
+      .mockImplementation((candidate: string) => !candidate.endsWith("/.env"));
     mocks.stdinEnd.mockReset();
   });
 
@@ -85,8 +87,10 @@ describe("GARUDA Python execFile adapter", () => {
       pythonExecutable: "/synthetic/repo/apps/backend-rag/.venv/bin/python",
       modulePath:
         "/synthetic/repo/apps/backend-rag/backend/services/garuda_flow/internal_preview_cli.py",
+      trustedCwd:
+        "/synthetic/repo/apps/backend-rag/backend/services/garuda_flow",
     });
-    expect(mocks.existsSync).toHaveBeenCalledTimes(2);
+    expect(mocks.existsSync).toHaveBeenCalledTimes(3);
   });
 
   it("fails configuration when the fixed CLI module is absent", () => {
@@ -97,8 +101,17 @@ describe("GARUDA Python execFile adapter", () => {
     );
   });
 
+  it("fails closed when the trusted child cwd contains a .env", () => {
+    mocks.existsSync.mockReset().mockReturnValue(true);
+
+    expect(() => resolveGarudaProcessConfig()).toThrowError(
+      "GARUDA preview runtime directory must not contain a .env file",
+    );
+  });
+
   it("invokes the fixed module with minimal env and one JSON stdin", async () => {
     process.env.COCKPIT_HMAC_KEY = "must-not-cross";
+    process.env.COCKPIT_SESSION_KEY = "must-not-cross";
     process.env.DATABASE_URL = "must-not-cross";
     engineResult(VALID_RESULT);
 
@@ -113,17 +126,22 @@ describe("GARUDA Python execFile adapter", () => {
       "backend.services.garuda_flow.internal_preview_cli",
     ]);
     expect(options).toMatchObject({
-      cwd: "/synthetic/repo/apps/backend-rag",
+      cwd: "/synthetic/repo/apps/backend-rag/backend/services/garuda_flow",
       timeout: 5_000,
       maxBuffer: 65_536,
     });
-    expect(options.env).toEqual(buildGarudaChildEnvironment());
+    expect(options.env).toEqual(
+      buildGarudaChildEnvironment("/synthetic/repo/apps/backend-rag"),
+    );
+    expect(options.env.PYTHONPATH).toBe("/synthetic/repo/apps/backend-rag");
     expect(options.env).not.toHaveProperty("COCKPIT_HMAC_KEY");
+    expect(options.env).not.toHaveProperty("COCKPIT_SESSION_KEY");
     expect(options.env).not.toHaveProperty("DATABASE_URL");
     expect(options.env).not.toHaveProperty("FLY_TUNNEL_URL");
     expect(mocks.stdinEnd).toHaveBeenCalledWith(body, "utf8");
 
     delete process.env.COCKPIT_HMAC_KEY;
+    delete process.env.COCKPIT_SESSION_KEY;
     delete process.env.DATABASE_URL;
   });
 

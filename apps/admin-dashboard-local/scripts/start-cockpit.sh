@@ -1,6 +1,6 @@
 #!/bin/bash
 # start-cockpit.sh — launch Zantara Cockpit dev server on port 3100
-# Loads HMAC key from ~/.config/zantara-cockpit/hmac.key
+# Loads separate audit-HMAC and session keys from ~/.config/zantara-cockpit/
 # Refuses to start if the passphrase is not configured.
 
 set -euo pipefail
@@ -28,6 +28,7 @@ export COCKPIT_REPO_ROOT="$LAUNCHER_REPO_ROOT"
 CONFIG_DIR="$COCKPIT_OPERATOR_HOME/.config/zantara-cockpit"
 PIN_HASH_FILE="$CONFIG_DIR/pin.hash"
 HMAC_KEY_FILE="$CONFIG_DIR/hmac.key"
+SESSION_KEY_FILE="$CONFIG_DIR/session.key"
 
 if [ ! -f "$PIN_HASH_FILE" ]; then
     echo "ERROR: passphrase not configured. Run: bash scripts/setup-cockpit-pin.sh" >&2
@@ -39,9 +40,22 @@ if [ ! -f "$HMAC_KEY_FILE" ]; then
     exit 1
 fi
 
+if [ ! -f "$SESSION_KEY_FILE" ]; then
+    echo "ERROR: session key missing. Run: bash scripts/setup-cockpit-pin.sh" >&2
+    exit 1
+fi
+
+for PROTECTED_KEY_FILE in "$HMAC_KEY_FILE" "$SESSION_KEY_FILE"; do
+    if [ ! -s "$PROTECTED_KEY_FILE" ] || [ "$(stat -f '%Lp' "$PROTECTED_KEY_FILE")" != "600" ]; then
+        echo "ERROR: protected cockpit key must be non-empty with mode 0600: $PROTECTED_KEY_FILE" >&2
+        exit 1
+    fi
+done
+
 BACKEND_ROOT="$COCKPIT_REPO_ROOT/apps/backend-rag"
 PREVIEW_PYTHON="$BACKEND_ROOT/.venv/bin/python"
 PREVIEW_MODULE="$BACKEND_ROOT/backend/services/garuda_flow/internal_preview_cli.py"
+PREVIEW_CWD="$BACKEND_ROOT/backend/services/garuda_flow"
 
 if [ ! -x "$PREVIEW_PYTHON" ]; then
     echo "ERROR: GARUDA preview Python missing or not executable: $PREVIEW_PYTHON" >&2
@@ -50,6 +64,12 @@ fi
 
 if [ ! -f "$PREVIEW_MODULE" ]; then
     echo "ERROR: GARUDA preview CLI module missing: $PREVIEW_MODULE" >&2
+    exit 1
+fi
+
+
+if [ -e "$PREVIEW_CWD/.env" ] || [ -L "$PREVIEW_CWD/.env" ]; then
+    echo "ERROR: GARUDA preview cwd must not contain a .env file: $PREVIEW_CWD" >&2
     exit 1
 fi
 
@@ -63,8 +83,10 @@ echo "  COCKPIT_REPO_ROOT=$COCKPIT_REPO_ROOT"
 echo "  Passphrase hash file: $PIN_HASH_FILE"
 echo
 
-# Read the protected key last so neither the parent shell nor .env can replace
-# the file-backed value selected by this launcher.
+# Read both protected keys last so neither the parent shell nor .env can
+# replace the file-backed values selected by this launcher. The audit key is
+# intentionally stable; setup rotates only the session key.
 export COCKPIT_HMAC_KEY="$(<"$HMAC_KEY_FILE")"
+export COCKPIT_SESSION_KEY="$(<"$SESSION_KEY_FILE")"
 
 exec ./node_modules/.bin/next dev -H 127.0.0.1 -p 3100

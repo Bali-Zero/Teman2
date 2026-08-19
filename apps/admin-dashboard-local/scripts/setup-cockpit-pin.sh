@@ -1,13 +1,15 @@
 #!/bin/bash
 # setup-cockpit-pin.sh — interactive high-entropy passphrase initialization
-# Creates ~/.config/zantara-cockpit/{pin.hash, hmac.key}
+# Creates ~/.config/zantara-cockpit/{pin.hash,hmac.key,session.key}
 # v2 panel: file mode 0600
 
 set -euo pipefail
+umask 077
 
 CONFIG_DIR="$HOME/.config/zantara-cockpit"
 PIN_HASH_FILE="$CONFIG_DIR/pin.hash"
 HMAC_KEY_FILE="$CONFIG_DIR/hmac.key"
+SESSION_KEY_FILE="$CONFIG_DIR/session.key"
 
 mkdir -p "$CONFIG_DIR"
 chmod 0700 "$CONFIG_DIR"
@@ -54,10 +56,17 @@ chmod 0600 "$PIN_HASH_FILE"
 # Generate HMAC key if missing (32 random bytes hex)
 if [ ! -f "$HMAC_KEY_FILE" ]; then
     head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n' > "$HMAC_KEY_FILE"
-    chmod 0600 "$HMAC_KEY_FILE"
     echo "Generated new HMAC key at $HMAC_KEY_FILE"
 fi
+chmod 0600 "$HMAC_KEY_FILE"
+
+# Session signing is deliberately separate from audit-chain signing. Rotate
+# this key after every successful passphrase setup so changing the passphrase
+# invalidates every token issued under the previous setup.
+head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n' > "$SESSION_KEY_FILE"
+chmod 0600 "$SESSION_KEY_FILE"
 
 echo "OK: passphrase hash saved to $PIN_HASH_FILE (mode 0600)"
-echo "    HMAC key at $HMAC_KEY_FILE"
+echo "    Audit HMAC key at $HMAC_KEY_FILE"
+echo "    Rotated session key at $SESSION_KEY_FILE (mode 0600)"
 echo "Now run: bash scripts/start-cockpit.sh"

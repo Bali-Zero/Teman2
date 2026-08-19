@@ -53,14 +53,21 @@ describe("GARUDA internal preview boundaries", () => {
     expect(launcher).toContain(
       '"$BACKEND_ROOT/backend/services/garuda_flow/internal_preview_cli.py"',
     );
+    expect(launcher).toContain(
+      'PREVIEW_CWD="$BACKEND_ROOT/backend/services/garuda_flow"',
+    );
+    expect(launcher).toContain('"$PREVIEW_CWD/.env"');
     expect(launcher).not.toContain('COCKPIT_REPO_ROOT="${COCKPIT_REPO_ROOT:-');
   });
 
-  it("loads optional env before exporting the protected file HMAC key", () => {
+  it("loads optional env before exporting both protected file keys", () => {
     const launcher = source("scripts/start-cockpit.sh");
     const envOffset = launcher.indexOf("source .env");
     const hmacOffset = launcher.indexOf(
       'export COCKPIT_HMAC_KEY="$(<"$HMAC_KEY_FILE")"',
+    );
+    const sessionOffset = launcher.indexOf(
+      'export COCKPIT_SESSION_KEY="$(<"$SESSION_KEY_FILE")"',
     );
     const protectedRootOffset = launcher.indexOf(
       'export COCKPIT_REPO_ROOT="$LAUNCHER_REPO_ROOT"',
@@ -68,10 +75,26 @@ describe("GARUDA internal preview boundaries", () => {
     const protectedKeyPathOffset = launcher.indexOf(
       'HMAC_KEY_FILE="$CONFIG_DIR/hmac.key"',
     );
+    const sessionKeyPathOffset = launcher.indexOf(
+      'SESSION_KEY_FILE="$CONFIG_DIR/session.key"',
+    );
     expect(envOffset).toBeGreaterThan(-1);
     expect(protectedRootOffset).toBeGreaterThan(envOffset);
     expect(protectedKeyPathOffset).toBeGreaterThan(envOffset);
+    expect(sessionKeyPathOffset).toBeGreaterThan(envOffset);
     expect(hmacOffset).toBeGreaterThan(envOffset);
+    expect(sessionOffset).toBeGreaterThan(envOffset);
+    expect(source("scripts/setup-cockpit-pin.sh")).toContain(
+      'chmod 0600 "$SESSION_KEY_FILE"',
+    );
+  });
+
+  it("keeps passphrase authentication independent of database audit", () => {
+    const authRoute = source("app/api/cockpit/auth/route.ts");
+    expect(authRoute).not.toContain("cockpit-pg");
+    expect(authRoute).not.toContain("insertAuditRow");
+    expect(authRoute).toContain("readCockpitSessionKey");
+    expect(authRoute).toContain("req.nextUrl.origin");
   });
 
   it("sets no-store and noindex headers on page and API", () => {
