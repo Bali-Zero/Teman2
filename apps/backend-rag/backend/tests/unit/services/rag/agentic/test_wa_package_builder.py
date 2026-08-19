@@ -10,6 +10,25 @@ AST scan of the module's own source proving it carries no `backend.llm`
 import at all — so the runtime tripwire isn't the only thing standing
 between this path and an LLM call.
 
+S2 cross-family (Codex) review round — each finding carries its own
+guilt+innocence pair here:
+  - finding 1: the builder must pass `fallback_to_plain=False` to
+    `hybrid_search` (SearchService's default error fallback runs Gemini
+    query expansion — the wiring assertion is the guard the FakeRetriever
+    can actually witness);
+  - finding 2: `pricing_block` is reduced to a per-field allowlist —
+    contact_info (WhatsApp number, wa.me link), disclaimers and internal
+    annotations are dropped by construction (the fake speaks the REAL wire
+    shape measured on `PricingService.search_service`, W114);
+  - findings 3+8: history is rebuilt to exactly {"role","content"} with
+    capped lengths — extra keys (phone, crm_id) never reach the payload;
+  - finding 4: the current query is appended as the final user turn, so it
+    is in the payload AND in the hash;
+  - finding 5: `to_payload()` returns a deep copy — mutating one payload
+    cannot corrupt the package or a later payload;
+  - finding 6: chunk order is a deterministic total order (-score,
+    collection, text), independent of collection-arrival order.
+
 Also covers: the allowlist schema (exactly 7 payload keys, exactly 3 keys
 per chunk even when the fake retriever hands back extra metadata), the
 GREETING/no-collections `PackageUnbuildable` gate, the pricing-intent gate
@@ -47,12 +66,15 @@ class FakeRetriever:
     module's own cap to prove the cap fires) and records nothing beyond
     what a test needs — `search_collection` is intentionally NOT
     implemented, since D1 uses `hybrid_search` only (see the dispatch-choice
-    docstring in `wa_package_builder.py`).
+    docstring in `wa_package_builder.py`). `fallback_to_plain` defaults to
+    True to mirror the REAL signature, so only an explicit False from the
+    builder can make the flag assertion pass.
     """
 
     def __init__(self, hits_by_collection: dict[str, list[dict[str, Any]]] | None = None) -> None:
         self._hits_by_collection = hits_by_collection or {}
         self.calls: list[str] = []
+        self.fallback_flags: list[bool] = []
 
     async def hybrid_search(
         self,
@@ -61,8 +83,10 @@ class FakeRetriever:
         user_level: int,
         limit: int,
         collection_override: str,
+        fallback_to_plain: bool = True,
     ) -> dict[str, Any]:
         self.calls.append(collection_override)
+        self.fallback_flags.append(fallback_to_plain)
         hits = self._hits_by_collection.get(collection_override, [])
         return {"query": query, "results": list(hits), "collection": collection_override}
 
@@ -96,6 +120,55 @@ def _visa_retriever() -> FakeRetriever:
     )
 
 
+def _real_pricing_result(query: str) -> dict[str, Any]:
+    """The REAL wire shape of `PricingService.search_service()` (measured on
+    backend/services/pricing/pricing_service.py, success branch). A fake that
+    speaks the code's imagination instead of the wire's is two copies of the
+    same hypothesis confirming each other (W114). This one carries the exact
+    fields the sanitizer must DROP.
+    """
+    return {
+        "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2026",
+        "search_query": query,
+        "results": {
+            "kitas_permits": [
+                {
+                    "name": "Working KITAS (E23)",
+                    "price": "Rp 5.000.000",
+                    "duration": "12 months",
+                    "validity": "1 year",
+                    "notes": "sponsor required",
+                    "_sub_block": "monthly_tax_basic",
+                    "icon_id": "kitas",
+                    "description_en": "internal-facing description",
+                }
+            ]
+        },
+        "contact_info": {
+            "whatsapp": "+62 821 3454 721",
+            "wa_link": "https://wa.me/6282134547211",
+            "email": "zero@balizero.com",
+        },
+        "disclaimer": {"it": "prezzi soggetti a variazione"},
+    }
+
+
+_SANITIZED_PRICING = {
+    "search_query": PRICING_VISA_QUERY,
+    "results": {
+        "kitas_permits": [
+            {
+                "name": "Working KITAS (E23)",
+                "price": "Rp 5.000.000",
+                "duration": "12 months",
+                "validity": "1 year",
+                "notes": "sponsor required",
+            }
+        ]
+    },
+}
+
+
 class FakePricingService:
     def __init__(self, result: dict[str, Any]) -> None:
         self._result = result
@@ -127,8 +200,14 @@ class TestZeroLLMAcceptanceCriterion:
         monkeypatch.setattr("backend.llm.claude_oauth_client.complete", _explode)
         monkeypatch.setattr("backend.llm.ollama_client.ollama_generate", _explode)
         monkeypatch.setattr("backend.llm.ollama_client.ollama_chat", _explode)
+        # The retriever-fallback LLM (S2 review, finding 1): GeminiService is
+        # what SearchService's plain-search fallback would construct.
+        monkeypatch.setattr(
+            "backend.services.llm_clients.gemini_service.GeminiService",
+            _explode,
+        )
 
-        fake_pricing = FakePricingService({"key": "kitas_permits", "price": "Rp 5.000.000"})
+        fake_pricing = FakePricingService(_real_pricing_result(PRICING_VISA_QUERY))
         with patch.object(wpb_module, "get_pricing_service", return_value=fake_pricing):
             package = await build_context_package(
                 query=PRICING_VISA_QUERY,
@@ -148,7 +227,7 @@ class TestZeroLLMAcceptanceCriterion:
             "thread_epoch",
             "package_hash",
         }
-        assert package.pricing_block == {"key": "kitas_permits", "price": "Rp 5.000.000"}
+        assert package.pricing_block == _SANITIZED_PRICING
 
     def test_module_source_has_no_backend_llm_import(self) -> None:
         """Static proof, independent of the runtime tripwires above: the
@@ -169,6 +248,22 @@ class TestZeroLLMAcceptanceCriterion:
                 if module.startswith("backend.llm"):
                     offending.append(module)
         assert offending == [], f"wa_package_builder.py imports backend.llm: {offending}"
+
+    async def test_builder_disables_the_hybrid_search_llm_fallback(self) -> None:
+        """finding 1 (BLOCKER): SearchService.hybrid_search's default error
+        fallback is `self.search()`, which runs Gemini query expansion. The
+        builder must pass fallback_to_plain=False on EVERY collection call —
+        the wiring this fake can actually witness.
+        """
+        retriever = _visa_retriever()
+        await build_context_package(
+            query=VISA_QUERY,
+            history=[],
+            thread_epoch=0,
+            retriever=retriever,
+        )
+        assert retriever.calls, "expected at least one hybrid_search call"
+        assert retriever.fallback_flags == [False] * len(retriever.calls)
 
 
 # ============================================================================
@@ -209,6 +304,71 @@ class TestAllowlistSchema:
         for chunk in package.chunks:
             assert set(chunk.keys()) == {"collection", "text", "score"}
 
+    async def test_history_extra_keys_are_dropped(self) -> None:
+        """findings 3+8 (GUILT): a caller-supplied entry smuggling phone /
+        crm_id keys must reach the payload as {"role","content"} ONLY."""
+        package = await build_context_package(
+            query=VISA_QUERY,
+            history=[
+                {
+                    "role": "user",
+                    "content": "earlier question",
+                    "phone": "+62 812 0000 0000",
+                    "crm_id": "client-42",
+                }
+            ],
+            thread_epoch=0,
+            retriever=_visa_retriever(),
+        )
+        for turn in package.history:
+            assert set(turn.keys()) == {"role", "content"}
+        assert "+62 812 0000 0000" not in str(package.to_payload())
+
+    async def test_history_content_is_capped_and_logged(self, caplog) -> None:
+        """findings 3+8: an annotation caps nothing — the builder truncates
+        oversized content defensively and DECLARES the truncation (W97)."""
+        with caplog.at_level(
+            logging.INFO, logger="backend.services.rag.agentic.wa_package_builder"
+        ):
+            package = await build_context_package(
+                query=VISA_QUERY,
+                history=[{"role": "user", "content": "x" * 10_000}],
+                thread_epoch=0,
+                retriever=_visa_retriever(),
+            )
+        assert len(package.history[0]["content"]) == wpb_module._MAX_HISTORY_CONTENT_CHARS
+        assert "truncat" in caplog.text and "history" in caplog.text
+
+    async def test_current_query_is_the_final_user_turn(self) -> None:
+        """finding 4 (BLOCKER): the generator must receive the question it is
+        answering — the payload history ends with the current query."""
+        package = await build_context_package(
+            query=VISA_QUERY,
+            history=[
+                {"role": "user", "content": "hi"},
+                {"role": "assistant", "content": "hello"},
+            ],
+            thread_epoch=0,
+            retriever=_visa_retriever(),
+        )
+        assert package.history[-1] == {"role": "user", "content": VISA_QUERY}
+
+    async def test_to_payload_returns_an_independent_copy(self) -> None:
+        """finding 5 (INNOCENCE of the frozen claim): mutating one payload
+        must not corrupt the package or a later payload."""
+        package = await build_context_package(
+            query=VISA_QUERY,
+            history=[],
+            thread_epoch=0,
+            retriever=_visa_retriever(),
+        )
+        first = package.to_payload()
+        first["chunks"].clear()
+        first["history"].append({"role": "user", "content": "injected"})
+        second = package.to_payload()
+        assert second["chunks"], "second payload lost its chunks to the first's mutation"
+        assert second["history"][-1] == {"role": "user", "content": VISA_QUERY}
+
 
 # ============================================================================
 # 3. GREETING / no-collections gate
@@ -243,8 +403,8 @@ class TestUnbuildableGate:
 
 
 class TestPricingGate:
-    async def test_pricing_intent_query_populates_pricing_block(self) -> None:
-        fake_pricing = FakePricingService({"key": "kitas_permits", "price": "Rp 5.000.000"})
+    async def test_pricing_intent_query_populates_sanitized_pricing_block(self) -> None:
+        fake_pricing = FakePricingService(_real_pricing_result(PRICING_VISA_QUERY))
         with patch.object(wpb_module, "get_pricing_service", return_value=fake_pricing):
             package = await build_context_package(
                 query=PRICING_VISA_QUERY,
@@ -252,8 +412,49 @@ class TestPricingGate:
                 thread_epoch=0,
                 retriever=_visa_retriever(),
             )
-        assert package.pricing_block == {"key": "kitas_permits", "price": "Rp 5.000.000"}
+        assert package.pricing_block == _SANITIZED_PRICING
         assert fake_pricing.queries == [PRICING_VISA_QUERY]
+
+    async def test_pricing_block_never_carries_contact_or_internal_fields(self) -> None:
+        """finding 2 (BLOCKER, GUILT): the WhatsApp number, wa.me link,
+        disclaimer and _sub_block annotation from the REAL wire shape must
+        be dropped by construction — 'no contact info' is part of the
+        allowlist, not a hope about upstream."""
+        fake_pricing = FakePricingService(_real_pricing_result(PRICING_VISA_QUERY))
+        with patch.object(wpb_module, "get_pricing_service", return_value=fake_pricing):
+            package = await build_context_package(
+                query=PRICING_VISA_QUERY,
+                history=[],
+                thread_epoch=0,
+                retriever=_visa_retriever(),
+            )
+        rendered = str(package.to_payload())
+        assert "+62 821 3454 721" not in rendered
+        assert "wa.me" not in rendered
+        assert "_sub_block" not in rendered
+        assert "disclaimer" not in rendered
+        assert "contact_info" not in rendered
+
+    async def test_priceless_pricing_result_becomes_none(self) -> None:
+        """finding 2 (INNOCENCE): the no-match wire shape (message +
+        suggestion + contact_info, no `results`) sanitizes to None, not to
+        a contact-info-only block."""
+        no_match = {
+            "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2026",
+            "search_query": PRICING_VISA_QUERY,
+            "message": "No service found",
+            "suggestion": "Contact support",
+            "contact_info": {"whatsapp": "+62 821 3454 721"},
+        }
+        fake_pricing = FakePricingService(no_match)
+        with patch.object(wpb_module, "get_pricing_service", return_value=fake_pricing):
+            package = await build_context_package(
+                query=PRICING_VISA_QUERY,
+                history=[],
+                thread_epoch=0,
+                retriever=_visa_retriever(),
+            )
+        assert package.pricing_block is None
 
     async def test_non_pricing_query_leaves_pricing_block_none(self) -> None:
         fake_pricing = FakePricingService({"key": "should-not-be-used"})
@@ -311,6 +512,46 @@ class TestHashDeterminism:
             retriever=mutated_retriever,
         )
         assert baseline.package_hash != mutated.package_hash
+
+    async def test_different_query_same_history_changes_the_hash(self) -> None:
+        """finding 4 (GUILT): two different questions over identical history
+        and identical retrieval must never share a package_hash."""
+        hits = {
+            "visa_oracle": [_hit("KITAS requires a sponsor letter and passport copy.", 0.82)],
+            "legal_unified_hybrid": [_hit("Immigration law UU 6/2011 governs stay permits.", 0.55)],
+        }
+        package_a = await build_context_package(
+            query="What documents do I need for a KITAS work permit?",
+            history=[{"role": "user", "content": "hi"}],
+            thread_epoch=3,
+            retriever=FakeRetriever(hits),
+        )
+        package_b = await build_context_package(
+            query="How long does a KITAS work permit renewal take?",
+            history=[{"role": "user", "content": "hi"}],
+            thread_epoch=3,
+            retriever=FakeRetriever(hits),
+        )
+        assert package_a.package_hash != package_b.package_hash
+
+    async def test_chunk_order_is_independent_of_collection_arrival_order(self) -> None:
+        """finding 6 (MAJOR): QueryPlanner merges cross-domain collections
+        through a set (per-process iteration order). The package must not
+        depend on it — proven with score-TIED hits, where only the
+        deterministic (collection, text) tiebreak keeps the order stable."""
+        hits = {
+            "visa_oracle": [_hit("Visa fact.", 0.60)],
+            "legal_unified_hybrid": [_hit("Legal fact.", 0.60)],
+        }
+        package = await build_context_package(
+            query=VISA_QUERY,
+            history=[],
+            thread_epoch=0,
+            retriever=FakeRetriever(hits),
+        )
+        assert [c["collection"] for c in package.chunks] == sorted(
+            c["collection"] for c in package.chunks
+        )
 
 
 # ============================================================================

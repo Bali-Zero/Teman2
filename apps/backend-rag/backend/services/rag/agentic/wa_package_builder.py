@@ -30,6 +30,7 @@ phone, no `wa:` subject, no CRM fields, no source paths.
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import logging
@@ -58,6 +59,28 @@ logger = logging.getLogger(__name__)
 _MAX_CHUNKS = 8
 _MAX_CHUNK_CHARS = 4000
 _CHUNKS_PER_COLLECTION_LIMIT = 3
+
+# History hygiene (S2 cross-family review, findings 3+8): the builder OWNS
+# its payload allowlist, so history entries are rebuilt to exactly
+# {"role", "content"} — a caller-supplied extra key (phone, crm_id, ...)
+# is dropped, never forwarded. Content is capped at the WA message ceiling.
+_MAX_HISTORY_ROLE_CHARS = 32
+_MAX_HISTORY_CONTENT_CHARS = 4096
+
+# pricing_block per-field allowlist (S2 cross-family review, finding 2):
+# PricingService.search_service() returns contact_info (WhatsApp number,
+# wa.me link), disclaimers and raw catalogue entries with internal
+# annotations (_sub_block). Only these fields may cross into the package —
+# "no phone" is part of the spec's allowlist contract.
+_PRICING_ENTRY_FIELDS: tuple[str, ...] = (
+    "key",
+    "name",
+    "price",
+    "tier_range",
+    "duration",
+    "validity",
+    "notes",
+)
 
 # Fixed, documented access level for this deterministic, unauthenticated WA
 # path — matches `VectorSearchTool.__init__`'s own default (tools.py:89),
@@ -110,16 +133,25 @@ class ContextPackage:
     package_hash: str
 
     def to_payload(self) -> dict[str, Any]:
-        """Serialize to the exact 7-key allowlist. No extras, ever."""
-        return {
-            "history": self.history,
-            "chunks": self.chunks,
-            "pricing_block": self.pricing_block,
-            "persona_digest": self.persona_digest,
-            "evidence_inputs": self.evidence_inputs,
-            "thread_epoch": self.thread_epoch,
-            "package_hash": self.package_hash,
-        }
+        """Serialize to the exact 7-key allowlist. No extras, ever.
+
+        Returns a DEEP COPY (S2 cross-family review, finding 5):
+        `frozen=True` freezes the field BINDINGS, not the mutable
+        lists/dicts inside them — handing out the internal references
+        would let a caller mutate content after `package_hash` was
+        computed, silently divorcing the payload from its own hash.
+        """
+        return copy.deepcopy(
+            {
+                "history": self.history,
+                "chunks": self.chunks,
+                "pricing_block": self.pricing_block,
+                "persona_digest": self.persona_digest,
+                "evidence_inputs": self.evidence_inputs,
+                "thread_epoch": self.thread_epoch,
+                "package_hash": self.package_hash,
+            }
+        )
 
 
 def _build_persona_digest(channel: str = "whatsapp") -> str:
@@ -157,11 +189,17 @@ async def _search_collection_chunks(
     and reserved for the always-small curated_qa lookup).
     """
     try:
+        # fallback_to_plain=False is LOAD-BEARING for the zero-LLM criterion
+        # (S2 cross-family review, finding 1): SearchService.hybrid_search's
+        # default error fallback is self.search(), which runs Gemini query
+        # expansion. With False it re-raises instead, and this except block
+        # is the whole degradation — no LLM is reachable from this call.
         result = await retriever.hybrid_search(
             query=query,
             user_level=_SEARCH_USER_LEVEL,
             limit=_CHUNKS_PER_COLLECTION_LIMIT,
             collection_override=collection,
+            fallback_to_plain=False,
         )
     except Exception:
         logger.warning(
@@ -189,6 +227,83 @@ async def _search_collection_chunks(
             },
         )
     return chunks
+
+
+def _sanitize_history(history: list[dict[str, str]], query: str) -> list[dict[str, str]]:
+    """Rebuild history to EXACTLY {"role", "content"} entries + the current turn.
+
+    S2 cross-family review, findings 3, 4 and 8:
+      - extra keys on a caller-supplied entry (phone, crm_id, ...) are
+        DROPPED, never forwarded — the builder owns its allowlist at
+        runtime, not just in a type annotation;
+      - role/content are capped (a type annotation bounds nothing) with the
+        drop LOGGED (W97);
+      - the CURRENT query is appended as the final user turn, so the
+        generator receives the question it must answer and `package_hash`
+        distinguishes two different questions over identical history.
+    """
+    sanitized: list[dict[str, str]] = []
+    dropped_keys = 0
+    truncated = 0
+    for entry in history:
+        if not isinstance(entry, dict):
+            continue
+        role = str(entry.get("role", ""))[:_MAX_HISTORY_ROLE_CHARS]
+        content = str(entry.get("content", ""))
+        if len(content) > _MAX_HISTORY_CONTENT_CHARS:
+            content = content[:_MAX_HISTORY_CONTENT_CHARS]
+            truncated += 1
+        dropped_keys += len(set(entry.keys()) - {"role", "content"})
+        sanitized.append({"role": role, "content": content})
+    if dropped_keys:
+        logger.info(
+            "wa_package_builder: dropped %d non-allowlisted history key(s)",
+            dropped_keys,
+        )
+    if truncated:
+        logger.info(
+            "wa_package_builder: truncated %d history content(s) over the %d-char cap",
+            truncated,
+            _MAX_HISTORY_CONTENT_CHARS,
+        )
+    sanitized.append({"role": "user", "content": query[:_MAX_HISTORY_CONTENT_CHARS]})
+    return sanitized
+
+
+def _sanitize_pricing_block(raw: Any) -> dict[str, Any] | None:
+    """Reduce PricingService.search_service() output to the per-field allowlist.
+
+    Keeps: `search_query` and, per category, each entry filtered to
+    `_PRICING_ENTRY_FIELDS`. Drops by construction: `contact_info` (WhatsApp
+    number + wa.me link), `disclaimer`, `official_notice`, error/suggestion
+    prose, and the internal `_sub_block` annotation (S2 cross-family
+    review, finding 2). Returns None when nothing price-shaped survives.
+    """
+    if not isinstance(raw, dict):
+        return None
+    results = raw.get("results")
+    if not isinstance(results, dict) or not results:
+        return None
+
+    def _filter_entry(entry: Any) -> dict[str, Any] | None:
+        if not isinstance(entry, dict):
+            return None
+        kept = {k: entry[k] for k in _PRICING_ENTRY_FIELDS if k in entry}
+        return kept or None
+
+    clean_results: dict[str, Any] = {}
+    for category, items in results.items():
+        if isinstance(items, list):
+            kept_items = [e for e in (_filter_entry(item) for item in items) if e]
+            if kept_items:
+                clean_results[str(category)] = kept_items
+        else:
+            kept_entry = _filter_entry(items)
+            if kept_entry:
+                clean_results[str(category)] = kept_entry
+    if not clean_results:
+        return None
+    return {"search_query": str(raw.get("search_query", "")), "results": clean_results}
 
 
 def _cap_chunks(chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -259,10 +374,15 @@ async def build_context_package(
     criterion, spec §2.2) — see `test_codex_package_builder_invokes_zero_llms`.
 
     Args:
-        query: The user's raw message text.
+        query: The user's raw message text. Appended to the payload history
+            as the final user turn (and therefore hashed) — the generator
+            must receive the question it is answering, and two different
+            questions over identical history must never share a
+            `package_hash` (S2 cross-family review, finding 4).
         history: Up to 12 turns of `{"role", "content"}` conversation
-            history (spec §2.2 "12-turn history") — passed through verbatim,
-            this function does not truncate or otherwise validate it.
+            history (spec §2.2 "12-turn history") — SANITIZED here to
+            exactly those two keys with capped lengths, extras dropped and
+            logged (S2 cross-family review, findings 3+8).
         thread_epoch: The caller's monotonic thread-epoch counter, frozen
             into the package and re-verified unchanged at finalization
             (spec §2.3).
@@ -299,14 +419,26 @@ async def build_context_package(
     if curated_qa_block:
         chunks.append({"collection": "curated_qa", "text": curated_qa_block, "score": 1.0})
 
+    retrieved: list[dict[str, Any]] = []
     for collection in ordered_collections:
-        chunks.extend(await _search_collection_chunks(retriever, collection, query))
+        retrieved.extend(await _search_collection_chunks(retriever, collection, query))
+    # Deterministic total order BEFORE the cap (S2 cross-family review,
+    # finding 6): QueryPlanner merges cross-domain collections through a
+    # set, whose iteration order varies per process (PYTHONHASHSEED) — two
+    # workers building the same turn must not disagree on which chunks
+    # survive the cap, their order, or the resulting package_hash. Sorting
+    # by (-score, collection, text) removes collection-arrival order from
+    # the outcome entirely. The curated_qa chunk stays pinned first.
+    retrieved.sort(key=lambda c: (-float(c["score"]), c["collection"], c["text"]))
+    chunks.extend(retrieved)
 
     chunks = _cap_chunks(chunks)
 
     pricing_block: dict[str, Any] | None = None
     if has_pricing_intent(query):
-        pricing_block = get_pricing_service().search_service(query)
+        pricing_block = _sanitize_pricing_block(get_pricing_service().search_service(query))
+
+    payload_history = _sanitize_history(history, query)
 
     persona_digest = _build_persona_digest()
 
@@ -327,7 +459,7 @@ async def build_context_package(
     }
 
     package_hash = _package_hash(
-        history=history,
+        history=payload_history,
         chunks=chunks,
         pricing_block=pricing_block,
         persona_digest=persona_digest,
@@ -336,7 +468,7 @@ async def build_context_package(
     )
 
     return ContextPackage(
-        history=history,
+        history=payload_history,
         chunks=chunks,
         pricing_block=pricing_block,
         persona_digest=persona_digest,

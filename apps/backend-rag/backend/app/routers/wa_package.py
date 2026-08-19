@@ -6,12 +6,15 @@ the deterministic ``ContextPackage`` (D1, ``wa_package_builder.py``) for one
 WA turn, or reports the query as unbuildable so the caller routes it to the
 Gemini leg (spec §2.2, "unclassifiable -> Gemini leg").
 
-Auth: no route-level dependency here by design. ``HybridAuthMiddleware``
-(``backend/middleware/hybrid_auth.py``) already fail-closed rejects any
-request without a recognized credential (X-API-Key / X-Internal-Key / JWT)
-before it reaches this router, and this path is deliberately NOT added to
-``PUBLIC_ENDPOINTS`` (``backend/app/auth/public_endpoints.py``). No new auth
-scheme is invented here.
+Auth: two layers, neither invented here (S2 cross-family review, finding 7).
+``HybridAuthMiddleware`` (``backend/middleware/hybrid_auth.py``) fail-closed
+rejects any request without a recognized credential before it reaches this
+router, and this path is deliberately NOT in ``PUBLIC_ENDPOINTS``. On top of
+that, ``require_internal_caller`` below enforces the per-endpoint SCOPE the
+middleware alone cannot: authentication is not authorization, and a portal
+user's valid JWT must not be able to drive this internal builder (embedding
++ Qdrant cost on every call). Only the middleware's ``internal`` service
+identity (X-Internal-Key) or an ``admin`` may call it.
 """
 
 from __future__ import annotations
@@ -19,10 +22,11 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from backend.app.dependencies import get_orchestrator
+from backend.services.rag.agentic.query_plan import QueryDomain
 from backend.services.rag.agentic.query_planner import QueryPlanner
 from backend.services.rag.agentic.wa_package_builder import (
     PackageUnbuildable,
@@ -34,9 +38,26 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/wa-package", tags=["channels", "wa-broker"])
 
 
+def require_internal_caller(request: Request) -> None:
+    """Per-endpoint scope on top of HybridAuthMiddleware's authentication.
+
+    The middleware stores the authenticated identity on ``request.state.user``
+    (``hybrid_auth.py``: X-Internal-Key -> role "internal"). Fail-closed: a
+    missing/unshaped state (middleware disabled, unexpected wiring) is a 403,
+    never a pass.
+    """
+    user = getattr(request.state, "user", None)
+    role = user.get("role") if isinstance(user, dict) else None
+    if role not in ("internal", "admin"):
+        raise HTTPException(status_code=403, detail="internal callers only")
+
+
 class WaPackageHistoryMessage(BaseModel):
-    role: str
-    content: str
+    # Bounded at the transport (S2 cross-family review, finding 8): an
+    # annotation caps nothing — 24 unbounded contents would be parsed,
+    # hashed and re-serialized in full. 4096 matches the WA message ceiling.
+    role: str = Field(..., max_length=32)
+    content: str = Field(..., max_length=4096)
 
 
 class WaPackageBuildRequest(BaseModel):
@@ -57,7 +78,11 @@ class WaPackageBuildResponse(BaseModel):
     unbuildable: str | None = None
 
 
-@router.post("/build", response_model=WaPackageBuildResponse)
+@router.post(
+    "/build",
+    response_model=WaPackageBuildResponse,
+    dependencies=[Depends(require_internal_caller)],
+)
 async def build_wa_package(
     request: WaPackageBuildRequest,
     orchestrator: Any = Depends(get_orchestrator),
@@ -74,10 +99,19 @@ async def build_wa_package(
     # no-collections gate — so the router and the builder can never
     # disagree about what counts as classifiable.
     plan = QueryPlanner().plan(request.query)
-    curated_qa_block = await orchestrator.core.curated_qa_grounding_block(
-        request.query,
-        {"domain": plan.domain.value},
-    )
+
+    # Cost guard, not a routing decision (S2 cross-family review, finding
+    # 9): a GREETING query is about to be declared unbuildable by D1's own
+    # gate — prefetching curated-QA for it would spend an embedding + a
+    # Qdrant search per "ciao". Same pure function, same query, so this can
+    # never disagree with the builder's verdict; the builder still OWNS
+    # the unbuildable decision.
+    curated_qa_block = ""
+    if plan.domain is not QueryDomain.GREETING:
+        curated_qa_block = await orchestrator.core.curated_qa_grounding_block(
+            request.query,
+            {"domain": plan.domain.value},
+        )
 
     try:
         package = await build_context_package(
