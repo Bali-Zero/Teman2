@@ -1,15 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { Phone } from "lucide-react";
 import { useTranslation } from "@/i18n";
 import { OFFERED_LOCALES } from "@/i18n/types";
 import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
 import { ConsentBanner } from "@/components/visa/ConsentBanner";
 import { usePricingData } from "@/hooks/usePricingData";
-
-// Exact PricingTool SSOT identity (bali_zero_official_prices_2026.json).
-const E33_LIVE_PRICE_KEY = "E33 Second Home (5 Years)";
-const E33_LIVE_PRICE_CATEGORY = "kitas_permits";
+import {
+  E33_LIVE_PRICE_CATEGORY,
+  E33_LIVE_PRICE_KEY,
+} from "@/lib/secondhome-studio/pricing-key";
 
 /**
  * E33 Second Home Visa landing — Fit-Memo funnel (2026-07-24).
@@ -474,6 +475,60 @@ export function SecondHomeLanding() {
             </details>
           ))}
         </div>
+      </section>
+
+      {/* ── STUDIO CTA — self-serve fit-check, alternative to the WhatsApp
+          handoff below. English-only by design (the Studio itself is
+          EN-only per its frozen spec), so this section is not routed
+          through the locale dictionary like the rest of the page. ── */}
+      <section
+        style={{
+          ...cardStyle,
+          border: "1px solid var(--accent-funnel)",
+          gap: "var(--space-3, 1rem)",
+          textAlign: "center",
+          justifyItems: "center",
+          padding: "var(--space-5, 2rem)",
+        }}
+      >
+        <h2
+          style={{
+            margin: 0,
+            fontFamily: "var(--font-serif, Georgia, serif)",
+            fontSize: "clamp(1.4rem, 3.4vw, 1.9rem)",
+            color: "var(--text-primary)",
+          }}
+        >
+          Check your fit in 3 minutes
+        </h2>
+        <p
+          style={{
+            margin: 0,
+            lineHeight: 1.6,
+            color: "var(--color-text-muted)",
+            maxWidth: "38rem",
+          }}
+        >
+          Free, anonymous, no email needed. Your answers stay on your device
+          until you choose to share them.
+        </p>
+        <Link
+          href="/visa/second-home/studio"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "var(--space-3, 0.85rem) var(--space-5, 1.5rem)",
+            borderRadius: 8,
+            border: "1px solid var(--accent-funnel)",
+            color: "var(--accent-funnel-text, var(--accent-funnel))",
+            fontWeight: 600,
+            textDecoration: "none",
+            minHeight: 44,
+          }}
+        >
+          Start the fit-check
+        </Link>
       </section>
 
       {/* ── CTA — the only action: free Fit Memo via WhatsApp handoff ── */}

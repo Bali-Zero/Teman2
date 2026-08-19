@@ -454,7 +454,14 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
       "marital_status",
       "family_sponsor_nationalities",
       ...(needsPermitCode ? ["family_sponsor_status_code"] : []),
-      ...(facts.family_relation === "SPOUSE"
+      // PARENT added 2026-08-19 (seq-10 companion change, Kimi refuter
+      // finding 1): E31C's engine rules require the PARENTS' registered
+      // marriage (`family.marriage_registered`), but this question only
+      // fired for SPOUSE — so every PARENT-relation interview shipped the
+      // fact UNKNOWN by construction and the seq-10 HARD_FILTER would
+      // dead-end those applicants in NEEDS_INPUT with no way to answer.
+      ...(facts.family_relation === "SPOUSE" ||
+      facts.family_relation === "PARENT"
         ? ["family_marriage_registered"]
         : []),
       "family_sponsor_confirmed",
