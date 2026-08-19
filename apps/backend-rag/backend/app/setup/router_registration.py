@@ -67,6 +67,7 @@ def include_routers(api: FastAPI) -> None:
         documents_proxy,
         dream,
         dynamic_pricing,  # [NEW] Dynamic scenario pricing
+        e33_cases,  # [E33] Second Home internal console — case entrance (F4a)
         episodic_memory,
         event_bus,  # [EVENT] EventBus monitoring
         experience,  # [EXP] Experience Library — trajectory recording/query
@@ -279,6 +280,7 @@ def include_routers(api: FastAPI) -> None:
 
     # Compliance routers
     api.include_router(compliance_alerts.router)
+    api.include_router(e33_cases.router)  # [E33] Second Home internal console
     api.include_router(lkpm.router)  # LKPM Investment Activity Reports
 
     # Analytics routers (Admin/reporting)
@@ -527,6 +529,7 @@ def include_light_routers(api: FastAPI) -> None:
         debug,
         documents_proxy,
         dynamic_pricing,  # public price lookup (/api/pricing/service) — _API
+        e33_cases,  # [E33] Second Home internal console — case entrance (F4a)
         event_bus,
         experience,  # [EXP] Experience Library — trajectory recording/query (PR #54)
         federation,
@@ -710,6 +713,7 @@ def include_light_routers(api: FastAPI) -> None:
 
     # Compliance routers
     api.include_router(compliance_alerts.router)
+    api.include_router(e33_cases.router)  # [E33] Second Home internal console
     api.include_router(lkpm.router)
 
     # Analytics routers
