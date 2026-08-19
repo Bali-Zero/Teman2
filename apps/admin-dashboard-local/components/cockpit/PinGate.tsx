@@ -19,6 +19,14 @@ function isLoginResponse(value: unknown): value is LoginResponse {
   );
 }
 
+export function cockpitLoginFailureMessage(status: number): string {
+  if (status === 401) return "invalid passphrase";
+  if (status === 403) {
+    return "origin/host blocked: use http://localhost:3100";
+  }
+  return "authentication failed";
+}
+
 export function PinGate({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [passphrase, setPassphrase] = useState("");
@@ -50,7 +58,7 @@ export function PinGate({ children }: { children: React.ReactNode }) {
         return;
       }
       if (!r.ok) {
-        setErr("invalid passphrase");
+        setErr(cockpitLoginFailureMessage(r.status));
         return;
       }
       const response: unknown = await r.json();

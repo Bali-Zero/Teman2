@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { cockpitLoginFailureMessage } from "@/components/cockpit/PinGate";
 
 function source(relativePath: string): string {
   return readFileSync(path.join(process.cwd(), relativePath), "utf8");
@@ -32,11 +33,25 @@ describe("GARUDA internal preview boundaries", () => {
     const packageJson = JSON.parse(source("package.json")) as {
       scripts: Record<string, string>;
     };
-    expect(packageJson.scripts.dev).toContain("-H 127.0.0.1");
-    expect(packageJson.scripts.start).toContain("-H 127.0.0.1");
-    expect(source("scripts/start-cockpit.sh")).toContain(
-      "next dev -H 127.0.0.1 -p 3100",
+    expect(packageJson.scripts.dev).toBe(
+      "next dev --webpack -H 127.0.0.1 -p 3100",
     );
+    expect(packageJson.scripts.start).toBe("next start -H 127.0.0.1 -p 3100");
+    expect(source("scripts/start-cockpit.sh")).toContain(
+      "next dev --webpack -H 127.0.0.1 -p 3100",
+    );
+    expect(source("scripts/start-cockpit.sh")).toContain(
+      "http://localhost:3100/cockpit",
+    );
+  });
+
+  it("documents the exact browser origin and production-mode commands", () => {
+    const readme = source("README.md");
+    expect(readme).toContain("http://localhost:3100/garuda-voa");
+    expect(readme).toContain("-L 127.0.0.1:3100:127.0.0.1:3100");
+    expect(readme).toContain("http://127.0.0.1:3100/garuda-voa");
+    expect(readme).toContain("LOCAL_ONLY=1 npm run build");
+    expect(readme).toContain("npm run start");
   });
 
   it("derives the preview checkout from its own Git worktree", () => {
@@ -146,5 +161,22 @@ describe("GARUDA internal preview boundaries", () => {
     ]) {
       expect(source(route)).toContain("sameOriginJsonFailure");
     }
+  });
+});
+
+describe("PinGate login feedback", () => {
+  it("identifies an origin or host rejection with the canonical URL", () => {
+    expect(cockpitLoginFailureMessage(403)).toBe(
+      "origin/host blocked: use http://localhost:3100",
+    );
+  });
+
+  it("keeps an invalid passphrase distinct without echoing input", () => {
+    const syntheticPassphrase = "not-a-real-passphrase";
+    const message = cockpitLoginFailureMessage(401);
+
+    expect(message).toBe("invalid passphrase");
+    expect(message).not.toContain(syntheticPassphrase);
+    expect(message).not.toContain("origin/host");
   });
 });

@@ -78,7 +78,7 @@ if [ -z "${DATABASE_URL_LOCAL:-}" ] && [ -z "${FLY_TUNNEL_URL:-}" ]; then
     echo "INFO: no database configured; GARUDA preview/login remain available, but DB-backed widgets will be unavailable" >&2
 fi
 
-echo "Starting Zantara Cockpit on http://127.0.0.1:3100/cockpit"
+echo "Starting Zantara Cockpit on http://localhost:3100/cockpit"
 echo "  COCKPIT_REPO_ROOT=$COCKPIT_REPO_ROOT"
 echo "  Passphrase hash file: $PIN_HASH_FILE"
 echo
@@ -89,4 +89,4 @@ echo
 export COCKPIT_HMAC_KEY="$(<"$HMAC_KEY_FILE")"
 export COCKPIT_SESSION_KEY="$(<"$SESSION_KEY_FILE")"
 
-exec ./node_modules/.bin/next dev -H 127.0.0.1 -p 3100
+exec ./node_modules/.bin/next dev --webpack -H 127.0.0.1 -p 3100

@@ -16,16 +16,51 @@ Pro-only operator dashboard. **Not deployed anywhere.**
 
 ## Start
 
+Run the canonical development launcher on Pro:
+
 ```bash
 bash scripts/start-cockpit.sh
 ```
 
-That activates `LOCAL_ONLY=1` and runs Next on loopback only. Configure the
-passphrase first with `bash scripts/setup-cockpit-pin.sh`.
+That activates `LOCAL_ONLY=1` and runs Next with webpack on the loopback socket
+only. Configure the passphrase first with
+`bash scripts/setup-cockpit-pin.sh`.
+
+From the thin-client machine, keep the local and Pro ports identical:
+
+```bash
+ssh -M -S /tmp/garuda-internal-web.sock -fnNT \
+  -L 127.0.0.1:3100:127.0.0.1:3100 \
+  -o ExitOnForwardFailure=yes \
+  -o ServerAliveInterval=30 \
+  -o ServerAliveCountMax=3 \
+  pro
+```
+
+Open exactly `http://localhost:3100/garuda-voa` in the browser. Do not open
+`http://127.0.0.1:3100/garuda-voa`: the socket intentionally binds to
+`127.0.0.1`, but authentication and request guards require the exact
+`localhost` browser origin, including its port.
+
+For a local production-mode verification, from this directory:
+
+```bash
+LOCAL_ONLY=1 npm run build
+
+LOCAL_ONLY=1 \
+COCKPIT_REPO_ROOT="$(git rev-parse --show-toplevel)" \
+COCKPIT_HMAC_KEY="$(<"$HOME/.config/zantara-cockpit/hmac.key")" \
+COCKPIT_SESSION_KEY="$(<"$HOME/.config/zantara-cockpit/session.key")" \
+npm run start
+```
+
+This remains a loopback-only local verification; it is not a deployment
+procedure. GARUDA preview/login remain available without a database, while
+DB-backed widgets still require their documented local connection.
 
 ## GARUDA VOA internal preview
 
-`http://127.0.0.1:3100/garuda-voa` is an owner-only synthetic-data workbench.
+`http://localhost:3100/garuda-voa` is an owner-only synthetic-data workbench.
 Its same-origin API invokes the real Python GARUDA engine through a fixed
 `execFile` module adapter. It never uploads, pays, writes CRM/portal data,
 persists a GARUDA case payload, emits analytics, or sends anything externally.

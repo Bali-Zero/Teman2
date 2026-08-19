@@ -4,7 +4,7 @@
   "private": true,
   "description": "Pro-only internal operations cockpit. NOT deployed anywhere — localhost:3100.",
   "scripts": {
-    "dev": "next dev -H 127.0.0.1 -p 3100",
+    "dev": "next dev --webpack -H 127.0.0.1 -p 3100",
     "build": "next build --webpack",
     "start": "next start -H 127.0.0.1 -p 3100",
     "test": "vitest run",
