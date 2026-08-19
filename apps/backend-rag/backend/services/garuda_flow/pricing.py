@@ -1,8 +1,7 @@
 """Exact-key PricingTool bridge for the stateless GARUDA internal preview.
 
 Prices are never literals here. Each case type maps to one official catalogue
-key, and any missing, malformed, or mismatched row fails closed without fuzzy
-search or ranking.
+key, and any missing, malformed, or mismatched row fails closed.
 """
 
 from __future__ import annotations
