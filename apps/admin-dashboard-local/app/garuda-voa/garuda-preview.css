@@ -34,7 +34,11 @@ body {
   min-height: 100vh;
   padding: 2rem clamp(1rem, 4vw, 4rem) 4rem;
   background:
-    radial-gradient(circle at 85% 0%, rgba(86, 154, 116, 0.13), transparent 32rem),
+    radial-gradient(
+      circle at 85% 0%,
+      rgba(86, 154, 116, 0.13),
+      transparent 32rem
+    ),
     #090b0b;
 }
 
@@ -51,7 +55,9 @@ body {
   border: 1px solid #ff796f;
   color: #ff938a;
   background: rgba(255, 121, 111, 0.08);
-  font: 700 0.74rem/1 ui-monospace, monospace;
+  font:
+    700 0.74rem/1 ui-monospace,
+    monospace;
   letter-spacing: 0.12em;
 }
 
@@ -137,7 +143,9 @@ body {
 
 .garuda-card-heading span {
   color: #77d99b;
-  font: 700 0.72rem/1 ui-monospace, monospace;
+  font:
+    700 0.72rem/1 ui-monospace,
+    monospace;
 }
 
 .garuda-card-heading h2 {
@@ -245,7 +253,9 @@ body {
 }
 
 .garuda-decision span {
-  font: 700 0.68rem/1 ui-monospace, monospace;
+  font:
+    700 0.68rem/1 ui-monospace,
+    monospace;
   letter-spacing: 0.12em;
 }
 
@@ -326,7 +336,9 @@ body {
 
 .garuda-checkpoints span {
   color: #f2bd72;
-  font: 700 0.72rem/1 ui-monospace, monospace;
+  font:
+    700 0.72rem/1 ui-monospace,
+    monospace;
 }
 
 .garuda-checkpoints p {
@@ -368,4 +380,3 @@ body {
     grid-template-columns: 1fr;
   }
 }
-
