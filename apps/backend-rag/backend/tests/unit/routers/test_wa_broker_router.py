@@ -437,3 +437,18 @@ def test_non_ascii_key_is_a_401_not_an_unthrottled_500(
         "/api/wa-broker/claim", json={}, headers={"X-API-Key": configured_key}
     )
     assert ok.status_code == 200
+
+
+def test_complete_rejects_blank_result_text(client: TestClient, configured_key: str) -> None:
+    """Codex re-verdict r6, finding 1 (GUILT): '' and whitespace pass the
+    XOR shape but are failures — accepting one would mint a completion with
+    nothing to send AND fold success into the breaker (a half_open canary
+    returning nothing would close it). 422 at the edge; complete_job
+    enforces the same for direct callers."""
+    for blank in ("", "   ", "\n\t"):
+        resp = client.post(
+            "/api/wa-broker/complete",
+            json=_complete_body(result_text=blank),
+            headers={"X-API-Key": configured_key},
+        )
+        assert resp.status_code == 422, f"blank {blank!r} was accepted"

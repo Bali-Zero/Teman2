@@ -164,6 +164,22 @@ class CompleteRequest(BaseModel):
     error_class: str | None = Field(None, max_length=64)
     exec_ms: int | None = Field(None, ge=0, le=_PG_INT_MAX)
 
+    @field_validator("result_text")
+    @classmethod
+    def _result_text_not_blank(cls, v: str | None) -> str | None:
+        # Empty/whitespace output is a failure wearing the success shape
+        # (Codex re-verdict r6, finding 1): it would pass the XOR, mint a
+        # completed_pending_consume with nothing to send, and fold
+        # success=True — a half_open canary returning nothing would close
+        # the breaker. The vocabulary names it: error_class='empty_output'.
+        # complete_job enforces the same rule for direct callers.
+        if v is not None and not v.strip():
+            raise ValueError(
+                "empty result_text is not a completion — report "
+                "error_class='empty_output' instead"
+            )
+        return v
+
     @field_validator("error_class")
     @classmethod
     def _error_class_in_vocabulary(cls, v: str | None) -> str | None:

@@ -34,7 +34,7 @@ import copy
 import hashlib
 import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from backend.prompts.channel_overlays import CHANNEL_CONFIGS
@@ -131,6 +131,33 @@ class ContextPackage:
     evidence_inputs: dict[str, Any]
     thread_epoch: int
     package_hash: str
+    # Wire snapshot, sealed at construction (Codex S2 re-verdict r6,
+    # finding 2): `frozen=True` freezes the field BINDINGS only — the
+    # nested lists/dicts stay mutable, so serializing them lazily would let
+    # `pkg.history[-1]["content"] = ...` between build and offer divorce
+    # the wire bytes from package_hash. Serializing ONCE here, and
+    # verifying the hash against the snapshot in __post_init__, makes the
+    # pair immutable together for the object's whole life.
+    _wire: str = field(init=False, repr=False, compare=False, default="")
+
+    def __post_init__(self) -> None:
+        wire = _canonical_wire(
+            {
+                "history": self.history,
+                "chunks": self.chunks,
+                "pricing_block": self.pricing_block,
+                "persona_digest": self.persona_digest,
+                "evidence_inputs": self.evidence_inputs,
+                "thread_epoch": self.thread_epoch,
+            }
+        )
+        digest = hashlib.sha256(wire.encode("utf-8")).hexdigest()
+        if digest != self.package_hash:
+            raise ValueError(
+                "package_hash does not cover this package's wire bytes "
+                "(hash/wire integrity is sealed at construction)"
+            )
+        object.__setattr__(self, "_wire", wire)
 
     def to_payload(self) -> dict[str, Any]:
         """Serialize to the exact 7-key allowlist. No extras, ever.
@@ -169,21 +196,15 @@ class ContextPackage:
         wire bytes cannot drift apart (Codex S2 re-verdict r5, finding 1:
         the 7-field ``to_payload()`` serialization inevitably differed from
         the 6-field hash domain — a broker recomputing sha256 over the
-        received bytes rejected every healthy package). The transport
-        stores this as TEXT (migration 272) precisely so these bytes
-        survive offer->claim untouched: ``sha256(wire_text()) ==
+        received bytes rejected every healthy package). Returns the
+        SNAPSHOT sealed in ``__post_init__`` (r6, finding 2): a post-build
+        mutation of the nested lists/dicts can no longer change what goes
+        on the wire, so the hash verified at construction stays true. The
+        transport stores this as TEXT (migration 272) precisely so these
+        bytes survive offer->claim untouched: ``sha256(wire_text()) ==
         package_hash`` holds end to end.
         """
-        return _canonical_wire(
-            {
-                "history": self.history,
-                "chunks": self.chunks,
-                "pricing_block": self.pricing_block,
-                "persona_digest": self.persona_digest,
-                "evidence_inputs": self.evidence_inputs,
-                "thread_epoch": self.thread_epoch,
-            }
-        )
+        return self._wire
 
 
 def _build_persona_digest(channel: str = "whatsapp") -> str:

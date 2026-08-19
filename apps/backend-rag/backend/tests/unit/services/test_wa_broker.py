@@ -798,3 +798,25 @@ async def test_sweep_terminal_rows_logs_error_marker_when_residue_remains(
 
     assert removed == 2
     assert any("RETENTION SWEEP INEFFECTIVE" in rec.message for rec in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_complete_job_refuses_blank_result_text_before_any_sql() -> None:
+    """Codex re-verdict r6, finding 1 — the reusable boundary enforces the
+    same rule as the HTTP edge: blank output is a failure wearing the
+    success shape (it would fold success=True and close a half_open
+    canary's breaker). Refused BEFORE any SQL runs."""
+    conn = ScriptedConn()
+
+    for blank in ("", "   ", "\n\t"):
+        with pytest.raises(ValueError, match="empty_output"):
+            await wa_broker.complete_job(
+                conn,
+                job_id=uuid.uuid4(),
+                fence_token=uuid.uuid4(),
+                completion_key="key-blank",
+                result_text=blank,
+                error_class=None,
+                exec_ms=1,
+            )
+    assert conn.executed == []

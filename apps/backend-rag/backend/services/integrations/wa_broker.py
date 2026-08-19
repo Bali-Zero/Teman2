@@ -706,6 +706,16 @@ async def complete_job(
     # check guards direct callers of the reusable boundary.
     if error_class is not None and error_class not in ALLOWED_ERROR_CLASSES:
         raise ValueError("unknown error_class (not in transport vocabulary)")
+    # Empty/whitespace output is a FAILURE wearing the success shape (Codex
+    # re-verdict r6, finding 1): '' passes the XOR, would mint a
+    # completed_pending_consume with nothing to send, and would fold
+    # success=True — a half_open canary returning nothing would CLOSE the
+    # breaker. The vocabulary already names this failure: empty_output.
+    if result_text is not None and not result_text.strip():
+        raise ValueError(
+            "empty result_text is not a completion — report it as "
+            "error_class='empty_output'"
+        )
 
     # Non-PII fingerprint of THIS attempt's payload, frozen on the row at
     # accept time (migration 273; Codex re-verdict r5, finding 2): the
