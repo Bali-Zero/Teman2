@@ -113,7 +113,16 @@ def require_wa_broker_key(request: Request) -> None:
     """
     configured = getattr(settings, "wa_broker_key", None)
     provided = request.headers.get("X-API-Key")
-    if configured and provided and hmac.compare_digest(provided, configured):
+    # Encoded-bytes comparison (Codex re-verdict r3): compare_digest on two
+    # str objects REFUSES non-ASCII with a TypeError, and Starlette hands
+    # headers through as latin-1 text, so a raw `X-API-Key: \xff` from an
+    # UNAUTHENTICATED client raised here — before _fail_bucket_take — turning
+    # the auth gate into an unthrottled 500 amplifier. Bytes accept anything.
+    if (
+        configured
+        and provided
+        and hmac.compare_digest(provided.encode("utf-8"), configured.encode("utf-8"))
+    ):
         if not _auth_bucket_take():
             raise HTTPException(status_code=429, detail="wa-broker rate limit")
         return

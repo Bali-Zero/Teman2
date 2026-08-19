@@ -407,3 +407,33 @@ def test_broker_paths_are_armed_in_the_public_endpoints_registry() -> None:
     assert any(ep.matches("/api/wa-broker/complete") for ep in PUBLIC_ENDPOINTS)
     # Innocence: a sibling path the router does NOT own stays behind auth.
     assert not any(ep.matches("/api/wa-broker/other") for ep in PUBLIC_ENDPOINTS)
+
+
+def test_non_ascii_key_is_a_401_not_an_unthrottled_500(
+    client: TestClient, configured_key: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """GUILT (Codex re-verdict r3): hmac.compare_digest on two str objects
+    refuses non-ASCII with a TypeError, and Starlette exposes raw header
+    bytes as latin-1 text — so an unauthenticated `X-API-Key: \\xff` ("ÿ")
+    raised BEFORE _fail_bucket_take, turning the auth gate into an
+    unthrottled 500 amplifier. Cured by comparing encoded bytes: the probe
+    must be an ordinary 401, charged to the fail bucket like any other
+    wrong key (the damping proves the charge)."""
+    monkeypatch.setattr(wa_broker_router, "_FAIL_LIMIT_PER_MINUTE", 3)
+    monkeypatch.setattr(wa_broker_router.wa_broker, "claim_job", AsyncMock(return_value=None))
+
+    # httpx refuses non-ASCII in a str header value — send the raw byte the
+    # way the wire would carry it (latin-1), which Starlette decodes to "ÿ".
+    evil = {b"X-API-Key": "ÿ".encode("latin-1")}
+    for _ in range(3):
+        resp = client.post("/api/wa-broker/claim", json={}, headers=evil)
+        assert resp.status_code == 401
+
+    damped = client.post("/api/wa-broker/claim", json={}, headers=evil)
+    assert damped.status_code == 429
+
+    # INNOCENCE: the real key (ASCII) still authenticates.
+    ok = client.post(
+        "/api/wa-broker/claim", json={}, headers={"X-API-Key": configured_key}
+    )
+    assert ok.status_code == 200
