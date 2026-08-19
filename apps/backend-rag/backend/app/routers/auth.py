@@ -525,7 +525,16 @@ async def login(
             )
 
             # PANOPTICON: Auto clock-in on team login
-            if user["role"] != "client":
+            # Stale caller-side gate removed: `!= "client"` duplicated, less
+            # correctly, the guard `_auto_clockin_if_needed` already applies as
+            # its own first statement (`is_human_team_member`, see there). Under
+            # the old gate a service-role login (e.g. the login-healthcheck
+            # probe, role='monitoring') still spawned a coroutine that the
+            # callee immediately rejected before any write — ~288/day of
+            # pointless spawns, never an attendance record. This makes the
+            # caller agree with the callee instead of relying on the callee to
+            # catch what the caller let through.
+            if is_human_team_member(user["role"]):
                 spawn(
                     _auto_clockin_if_needed(db_pool, str(user["id"]), user["email"], user["role"]),
                     name=f"auto-clockin:{user['email']}",

@@ -138,7 +138,8 @@ def include_routers(api: FastAPI) -> None:
         team_activity,
         team_analytics,
         team_drive,
-        # team_members,  # DISABLED: duplicates team.py /members endpoint (audit 2026-04-03)
+        # team_members removed 2026-08-19 (audit 2026-04-03: dead duplicate of team.py's
+        # /members endpoint; the file existed but was never registered — see router_manifest.py)
         telegram,
         # telegram_webhook removed 2026-08-18 (Zero ruled REMOVE) — see router_manifest.py
         twitter,  # RE-ENABLED 2026-04-29 (P0-6 zero-crash audit) — CRC was actually working
@@ -423,7 +424,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(team.router)  # Team member visibility management
     api.include_router(team_activity.router)
     api.include_router(team_analytics.router)
-    # api.include_router(team_members.router)  # DISABLED: duplicates team.py (audit 2026-04-03)
+    # team_members.router removed 2026-08-19 — see router_manifest.py
     api.include_router(media.router)
     # api.include_router(audio.router)  # Already included in app_factory.py with prefix="/api"
     api.include_router(voice.router)  # Fast voice endpoint for realtime voice AI
@@ -588,7 +589,8 @@ def include_light_routers(api: FastAPI) -> None:
         team_activity,
         team_analytics,
         team_drive,
-        # team_members,  # DISABLED: duplicates team.py /members endpoint (audit 2026-04-03)
+        # team_members removed 2026-08-19 (audit 2026-04-03: dead duplicate of team.py's
+        # /members endpoint; the file existed but was never registered — see router_manifest.py)
         telegram,
         # telegram_webhook removed 2026-08-18 (Zero ruled REMOVE) — see router_manifest.py
         twitter,  # RE-ENABLED 2026-04-29 (P0-6 zero-crash audit) — CRC was actually working
@@ -786,7 +788,7 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(team.router)
     api.include_router(team_activity.router)
     api.include_router(team_analytics.router)
-    # api.include_router(team_members.router)  # DISABLED: duplicates team.py (audit 2026-04-03)
+    # team_members.router removed 2026-08-19 — see router_manifest.py
 
     # Media router
     api.include_router(media.router)

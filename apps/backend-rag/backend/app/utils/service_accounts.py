@@ -18,7 +18,9 @@ caller allowed here", and for those a service account genuinely is a
 non-client. See the module-level note in ``services/whatsapp_identity.py`` for
 one such case that is correct as written.
 
-This module imports nothing, so it cannot participate in an import cycle.
+This module imports nothing itself, and the package it lives in
+(``backend.app.utils``) is kept free of import-time settings access, so
+importing this module never requires production secrets to be configured.
 """
 
 from __future__ import annotations

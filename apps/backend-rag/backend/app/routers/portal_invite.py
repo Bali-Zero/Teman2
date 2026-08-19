@@ -20,6 +20,7 @@ from backend.app.core.config import settings
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.services.internal_email import send_internal_email
 from backend.app.utils.logging_utils import get_logger
+from backend.app.utils.service_accounts import is_human_team_member
 from backend.services.portal import InviteService
 
 logger = get_logger(__name__)
@@ -175,8 +176,9 @@ async def send_invitation(
 
     Requires team authentication. Creates invite token and sends email via Brevo.
     """
-    # Verify team member role (not client)
-    if current_user.get("role") == "client":
+    # Verify team member role — neither a client nor a service account. This
+    # mints a live Brevo invitation email, so "not a client" is the wrong test.
+    if not is_human_team_member(current_user.get("role")):
         raise HTTPException(
             status_code=403,
             detail="Clients cannot send invitations",
@@ -247,7 +249,7 @@ async def get_client_invitations(
 
     Returns invitation history with status (pending/used/expired).
     """
-    if current_user.get("role") == "client":
+    if not is_human_team_member(current_user.get("role")):
         raise HTTPException(
             status_code=403,
             detail="Clients cannot view invitation history",
@@ -276,7 +278,7 @@ async def resend_invitation(
     """
     Resend invitation to a client (creates new token).
     """
-    if current_user.get("role") == "client":
+    if not is_human_team_member(current_user.get("role")):
         raise HTTPException(
             status_code=403,
             detail="Clients cannot resend invitations",

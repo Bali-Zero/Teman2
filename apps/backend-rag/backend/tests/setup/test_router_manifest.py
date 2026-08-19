@@ -15,6 +15,7 @@ These tests ensure:
 
 from __future__ import annotations
 
+import hashlib
 import importlib
 from pathlib import Path
 
@@ -40,7 +41,8 @@ NON_ROUTER_FILES: frozenset[str] = frozenset(
         "system_observability",  # mounted separately in app_factory
         "memory_vector",  # orphan router — not registered anywhere (never was)
         # twitter: RE-ENABLED 2026-04-29 (P0-6 zero-crash audit) — now in manifest.
-        "team_members",  # DISABLED: duplicates team.py (audit 2026-04-03)
+        # team_members: REMOVED 2026-08-19 (was DISABLED, duplicated team.py) — file
+        # deleted rather than whitelisted here now that it no longer exists.
         "rag_proxy",  # not in routers dir — lives in backend/app/
     }
 )
@@ -55,6 +57,72 @@ MODULE_ROUTER_NAMES: frozenset[str] = frozenset(
         "notifications_admin",
     }
 )
+
+
+#: sha256 of router files that exist on disk but are deliberately excluded from
+#: ROUTER_MANIFEST (see NON_ROUTER_FILES above) because they are orphaned or
+#: superseded duplicates — never registered in any FastAPI app, in any process.
+#:
+#: 2026-08-19 audit: a fix for service-account role exclusion (#4353) was
+#: applied to team_members.py, an already-disabled duplicate of team.py's
+#: /members endpoint — the fix ran nowhere, and CI stayed green, because
+#: nothing checked whether an edited-but-unregistered router file was being
+#: mistaken for live code. team_members.py was deleted rather than pinned
+#: here (dead code + a false-confidence test suite of its own — no reason to
+#: keep it). This registry is the general form of that catch: if a file
+#: below changes, something edited a router that serves zero traffic, and
+#: this test forces an explicit acknowledgement instead of a silent no-op.
+DEAD_ROUTER_FILE_HASHES: dict[str, str] = {
+    "memory_vector": "5b15bdb8bc2ca82fbe94118f90b80204a2256a4cf31a71ee1aa8f172077ef8b7",
+}
+
+
+class TestDeadRouterFilesAreNoticedWhenEdited:
+    """A fix applied to an unregistered router must not pass silently.
+
+    Guilt: editing a dead router file (content, not just whitespace) must fail
+    this test — otherwise a future "fix" here runs nowhere and nobody notices,
+    same as team_members.py in the 2026-08-19 audit.
+    Innocence: an untouched dead router file must pass.
+    """
+
+    def test_dead_router_files_are_hash_pinned(self) -> None:
+        for stem, expected_hash in DEAD_ROUTER_FILE_HASHES.items():
+            path = ROUTERS_DIR / f"{stem}.py"
+            assert path.is_file(), (
+                f"{stem}.py is listed in DEAD_ROUTER_FILE_HASHES but no longer exists — "
+                f"remove its entry (or, if it still exists elsewhere, re-point the path)"
+            )
+            actual_hash = hashlib.sha256(path.read_bytes()).hexdigest()
+            assert actual_hash == expected_hash, (
+                f"{stem}.py changed, but router_manifest.py's NON_ROUTER_FILES still marks "
+                f"it as unregistered — any fix made here runs in NO production process. "
+                f"Either (a) register it in router_manifest.py + router_registration.py and "
+                f"remove it from NON_ROUTER_FILES, (b) find and fix the LIVE router that "
+                f"actually serves this route instead, or (c) if this edit is deliberately "
+                f"to dead code (e.g. a comment), update the recorded hash in this file to "
+                f"acknowledge you know it will never run."
+            )
+
+    def test_dead_router_hashes_cover_every_disabled_duplicate(self) -> None:
+        """Innocence for the registry itself: every NON_ROUTER_FILES entry whose
+        comment says it is disabled/superseded rather than mounted-elsewhere must
+        be either hash-pinned above or gone. Prevents the registry from silently
+        losing coverage the way team_members.py's whitelist entry outlived the
+        fact that anyone was still editing it.
+        """
+        # Files legitimately outside the manifest for reasons OTHER than
+        # "duplicate/dead code" — mounted separately, or not a router at all.
+        not_dead_code = {"__init__", "root_endpoints", "audio", "system_observability", "rag_proxy"}
+        disabled_duplicates = NON_ROUTER_FILES - not_dead_code
+        for stem in disabled_duplicates:
+            path = ROUTERS_DIR / f"{stem}.py"
+            if path.is_file():
+                assert stem in DEAD_ROUTER_FILE_HASHES, (
+                    f"{stem}.py is a disabled/orphaned router file still on disk, but is not "
+                    f"hash-pinned in DEAD_ROUTER_FILE_HASHES — a future edit to it would pass "
+                    f"silently. Add it."
+                )
 
 
 class TestManifestIntegrity:
