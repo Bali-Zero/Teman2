@@ -116,6 +116,23 @@ class _StandDownFenceLost(Exception):
 _BUILD_TIMEOUT = httpx.Timeout(10.0, connect=5.0)
 
 
+def _canary_tokens() -> tuple[str, ...]:
+    """Canary values for the egress scan (spec 4.3), from the env.
+
+    The daemon-side provisioning (`scripts/provision_zantara_codex.sh`)
+    plants canary FILES in the `zantara-codex` sandbox precisely to be leak
+    tripwires; the SAME values are set here (Fly secret
+    ``WA_CODEX_CANARY_TOKENS``, comma-separated) so `finalize_wa_answer`
+    can veto any answer that carries one. Unset/empty = no canary half —
+    the pattern half of the secret scan stays armed regardless
+    (`secret_scan=True` below is unconditional). Read per-call, not at
+    import: a rotated Fly secret must take effect on restart without a
+    code change, and tests can drive both states without reload tricks.
+    """
+    raw = os.getenv("WA_CODEX_CANARY_TOKENS", "")
+    return tuple(token for token in (part.strip() for part in raw.split(",")) if token)
+
+
 def provider_is_codex() -> bool:
     """Env-read live on every claim; absent/anything-else -> Gemini leg."""
     return os.getenv("WA_GENERATION_PROVIDER", "").strip().lower() == "codex"
@@ -503,10 +520,11 @@ async def _attempt(
     # MANDATORY, the pipeline refuses a fail-open configuration). Price
     # sources come from the SAME sealed wire the executor answered from
     # (parsed once, above) so the veto can never run against a different
-    # retrieval than the answer used. canary_tokens is empty until PR-6:
-    # the daemon is what plants canaries in the sandbox, and only it can
-    # know their values — the pattern half of the scan is armed
-    # regardless.
+    # retrieval than the answer used. canary_tokens come from the env
+    # (PR-6 wiring, spec 4.3): provisioning plants canary files in the
+    # zantara-codex sandbox and the same values arrive here as the
+    # WA_CODEX_CANARY_TOKENS Fly secret — the pattern half of the scan is
+    # armed regardless of whether any canaries are configured.
     price_sources: list[str] = [
         str(chunk.get("text", "")) for chunk in parsed_wire.get("chunks", [])
     ]
@@ -536,7 +554,7 @@ async def _attempt(
         provider="codex",
         price_sources=price_sources,
         secret_scan=True,
-        canary_tokens=(),
+        canary_tokens=_canary_tokens(),
     )
     if result.outcome is FinalizeOutcome.DEFECT or not result.text.strip():
         # TEXT_DEFECT (spec 2.3): a different generator can legitimately
