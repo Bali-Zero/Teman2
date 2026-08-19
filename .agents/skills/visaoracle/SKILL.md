@@ -113,6 +113,34 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
 ## LIVE STATE (update on every state change — whoever changes state updates this section)
 
+- 2026-08-19 (M5, third entry — seq-10 SHIPPED end-to-end): **SEQ-10 IS LIVE IN PRODUCTION
+  SHADOW — and the stale-abstain era is over.** Zero's order "procedi con seq-10: re-stamp
+  fonti + cura el.c2/el.e31c" executed in one session. Chain of custody: fold
+  (`fold_pack_seq10.py`, deterministic+idempotent, source sha256 `1ff7383f…`) → 2-family
+  adversarial refutation (Codex sol xhigh REJECT→cured; Kimi K3 MAJOR→cured; every finding
+  re-verified, HF gained FAMILY+PARENT scoping, companion mouth change makes the interview
+  ask `family_marriage_registered` for PARENT) → PR #4350 merged (`f99680a17`, 10:06Z;
+  survived 2 runner blips + 1 ReDoS flake + 2 DIRTY ejections + a Detect-Secrets cure that
+  became auto-triage CONTENT_KEYED_RULES #10) → signed on M5 (payload `188442baee0af899…`,
+  kid `prod-2026-07-1`, signed_at 10:09Z) → bundle PR #4365 merged (`310eb17f1`, 11:36Z) →
+  two-login activation 9→10 (activation `11a305cc-ade7-467f-a872-7c2b790c09c5`,
+  `fable-session-m5`, open_count=1, ephemeral roles dropped) → LIVE SMOKE 5/5 on prod:
+  IT full-facts → `SUPPORTED_CANDIDATES` **[B1, C1] with ZERO review reasons** (no
+  `DECISIVE_SOURCE_STALE` — first conclusive portal-path verdict since ~08-13), NG →
+  `CALLING_VISA_REVIEW` (mechanism armed), all-UNKNOWN → fail-closed, E31C guilt
+  (marriage=false) → E31C ABSENT from candidates (exclusion surfaces as absence — the API
+  has no excluded-list field), E31C innocence (marriage=true) → E31C rank 2 with
+  `REQ_MIXED_MARRIAGE_PARENTS`. Content: 17 sources re-stamped (QW-5 verbatim-quote method,
+  `inc4-pack-edits/freshness-restamp-2026-08-19.md`), `ee8fe5b8` dropped at zero refs,
+  `el.c2.corporate-sponsor-type` RETIRED behavior-preserving (tightening REFUTED by the live
+  C2 page → CF-17), `el.e31c-mixed-marriage-parents` tightened + new
+  `hf.e31c-marriage-not-registered` grounded by CL-E31C-02/03. PENDING-ARMS 1008+1009
+  closed; NEW rows: 7-day re-attestation cadence (owner Zero, Legge 5), E30-family pricing
+  (PNBP+3jt owner rule), E30A re-sourcing, interview EDIT no-op. Freshness clock: the
+  re-stamp buys until ~2026-08-26. ENFORCE untouched — still NO-GO (DPIA/analytics-TTL are
+  Zero-only). Gate status: G-c evidence now accumulating on conclusive verdicts; G-a still
+  needs the MATCH-lane arming + traffic.
+
 - 2026-08-19 (M5, second entry — CP3 GO executed): **SEQ-9 IS LIVE IN PRODUCTION SHADOW.**
   Zero's GO on the CP3 package (incl. decision #4: ship with the el.c2/el.e31c residuals,
   cure in seq-10). Chain of custody, every link verified: PR #4332 merged (`952a6b4a388`,
