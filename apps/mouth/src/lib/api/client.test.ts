@@ -98,6 +98,82 @@ describe("ApiClientBase", () => {
     });
   });
 
+  describe("Portal Impersonation (cross-operator inheritance regression)", () => {
+    const IMPERSONATION_KEY = "bz_portal_impersonation_v1";
+
+    beforeEach(() => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({}),
+      });
+    });
+
+    it("clearToken() removes the impersonation key from storage AND stops injecting as_client into subsequent requests", async () => {
+      // Simulate a superuser (zero@) who is viewing as client 42 — the
+      // AdminImpersonationContext both persists the target to localStorage
+      // and pushes it into the live api client's in-memory field.
+      client.setPortalImpersonation(42);
+      localStorageMock.setItem(
+        IMPERSONATION_KEY,
+        JSON.stringify({ id: 42, email: "client@example.com", fullName: null }),
+      );
+      expect(client.getPortalImpersonation()).toBe(42);
+
+      // logout() -> clearToken()
+      client.clearToken();
+
+      // 1. The persisted key must be gone — a fresh page/context mount must
+      //    have nothing to rehydrate from.
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith(
+        IMPERSONATION_KEY,
+      );
+      expect(localStorageMock.getItem(IMPERSONATION_KEY)).toBeNull();
+
+      // 2. The in-memory id must be reset too — this is what actually rides
+      //    on the next request, independent of storage.
+      expect(client.getPortalImpersonation()).toBeNull();
+
+      // 3. The real property under test: a DIFFERENT superuser logging in
+      //    right after must NOT have as_client silently attached to their
+      //    portal calls.
+      await (client as any).request("/api/portal/clients");
+      const callArgs = (global.fetch as any).mock.calls[0];
+      const requestedUrl = callArgs[0] as string;
+      expect(requestedUrl).not.toContain("as_client=");
+    });
+
+    it("clearToken() does not throw and still clears the ordinary session when no impersonation was ever set", () => {
+      // Innocence: a regular client/employee logging out (never impersonating)
+      // must not be affected by the impersonation-clearing logic.
+      client.setToken("plain-token");
+      expect(() => client.clearToken()).not.toThrow();
+      expect(client.getToken()).toBeNull();
+      expect(client.getPortalImpersonation()).toBeNull();
+      // No impersonation key ever existed — removeItem is safe to call
+      // regardless (storage.removeItem on a missing key is a no-op).
+      expect(localStorageMock.getItem(IMPERSONATION_KEY)).toBeNull();
+    });
+
+    it("a plain page reload while still logged in legitimately re-seeds impersonation from storage (must NOT regress)", () => {
+      // This is the moment impersonation SHOULD persist: the operator never
+      // logged out, they just refreshed the tab. ApiClientBase's constructor
+      // seeds portalImpersonationClientId from localStorage precisely so the
+      // very first portal fetch after reload still carries as_client.
+      localStorageMock.setItem("auth_token", "still-logged-in-token");
+      localStorageMock.setItem(
+        IMPERSONATION_KEY,
+        JSON.stringify({ id: 7, email: "other@example.com", fullName: null }),
+      );
+
+      // clearToken() is never called on a reload — only the constructor runs.
+      const reloadedClient = new ApiClientBase(baseUrl);
+
+      expect(reloadedClient.getPortalImpersonation()).toBe(7);
+    });
+  });
+
   describe("User Profile Management", () => {
     it("should set and get user profile", () => {
       const profile: UserProfile = {

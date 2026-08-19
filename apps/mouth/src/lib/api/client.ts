@@ -102,9 +102,21 @@ export class ApiClientBase implements IApiClient {
     this.token = null;
     this.csrfToken = null;
     this.userProfile = null;
+    // Reset superuser impersonation together with the session. Without this,
+    // logging out (or a token-expiry 401, below) leaves the in-memory
+    // portalImpersonationClientId set AND the localStorage key that
+    // AdminImpersonationContext restores on mount — so the very next login
+    // in this browser, even by a DIFFERENT superuser, silently inherits the
+    // previous operator's impersonation target on every portal request.
+    this.portalImpersonationClientId = null;
     if (typeof window !== "undefined") {
       safeStorage.removeItem("auth_token");
       safeStorage.removeItem("user_profile");
+      try {
+        localStorage.removeItem("bz_portal_impersonation_v1");
+      } catch {
+        // ignore — impersonation storage is optional, same as the read path
+      }
     }
   }
 
