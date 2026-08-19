@@ -176,6 +176,8 @@ _GREETING_KEYWORDS: frozenset[str] = frozenset(
         "thank you",
         "grazie",
         "terima kasih",
+        "makasih",
+        "terimakasih",
     }
 )
 
@@ -185,10 +187,15 @@ _GREETING_KEYWORDS: frozenset[str] = frozenset(
 # English words — bare substring scoring classified "Which visa options are
 # available?" as GREETING via the "hi" in "which" (Codex S2 re-verdict,
 # major; scar family #3 over-match), and GREETING is the one verdict that
-# zeroes the collection list. Sorted for deterministic order (never iterate
-# a set into anything order-bearing).
+# zeroes the collection list. The boundary must NOT reject the colloquial
+# elongation WhatsApp greetings actually arrive in ("hii", "heyy",
+# "ciaooo") — a strict \b after the keyword regressed exactly those
+# (Codex round 3; the over-match cure birthing its under-match twin, W94),
+# so the final letter may repeat before the boundary. Sorted for
+# deterministic order (never iterate a set into anything order-bearing).
 _GREETING_WORD_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
-    re.compile(r"\b" + re.escape(kw) + r"\b") for kw in sorted(_GREETING_KEYWORDS)
+    re.compile(r"\b" + re.escape(kw) + re.escape(kw[-1]) + r"*\b")
+    for kw in sorted(_GREETING_KEYWORDS)
 )
 
 _NEWS_KEYWORDS: frozenset[str] = frozenset(

@@ -546,7 +546,13 @@ class TestGreetingWordBoundary:
     """
 
     async def test_real_questions_containing_hi_substrings_build_packages(self) -> None:
-        for query in ("Which visa options are available?", "What is this visa?"):
+        # "history" doubles as the innocence case for the elongation
+        # tolerance: \b + "hi" + i* must not fire inside it.
+        for query in (
+            "Which visa options are available?",
+            "What is this visa?",
+            "What is the history of visa regulations?",
+        ):
             package = await build_context_package(
                 query=query,
                 history=[],
@@ -556,7 +562,24 @@ class TestGreetingWordBoundary:
             assert isinstance(package, ContextPackage), f"{query!r} was declared unbuildable"
 
     async def test_actual_greetings_still_gate(self) -> None:
-        for query in ("hi", "hey", "ciao!", "thank you", "hi there"):
+        # Includes the colloquial elongations WhatsApp greetings actually
+        # arrive in (Codex round 3: a strict trailing \b regressed these)
+        # and the Indonesian colloquial thanks the old substring matcher
+        # never covered either.
+        for query in (
+            "hi",
+            "hey",
+            "ciao!",
+            "thank you",
+            "hi there",
+            "hii",
+            "heyy",
+            "hellooo",
+            "ciaooo",
+            "halooo",
+            "makasih",
+            "terimakasih",
+        ):
             with pytest.raises(PackageUnbuildable):
                 await build_context_package(
                     query=query,
