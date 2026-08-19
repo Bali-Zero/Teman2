@@ -148,7 +148,7 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   (sha256 `e3c1457952722706ec59b0a23e66c7d7a6a7b88735cda982b54957f5e4648660`) → signed on M5
   from a detached worktree at that commit after a fresh `compile_pack` RC 0 (kid
   `prod-2026-07-1`, self-verified; signed `payload_sha256
-  47feff8246c608c7c6085ffdac776fdc020bb56688d5f35a0a3e685eb40f271e` — the value seq-10 must
+47feff8246c608c7c6085ffdac776fdc020bb56688d5f35a0a3e685eb40f271e` — the value seq-10 must
   chain to) → signed bundle PR #4338 (bundle-only, armed) → two-login activation on prod
   primary (`0801696b541568` via fly proxy from Pro; superuser pw fetched machine-side to a
   0600 file, deleted after; ephemeral roles `visa_pack_writer_ceremony_260819` /
@@ -165,7 +165,7 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   **FINDING (pre-existing, NOT a seq-9 regression — measured, byte-compared):** the IT and
   NG smokes returned HRR with single reason `DECISIVE_SOURCE_STALE`: **18/29 pack sources
   are past their 7-day `MAX_AGE_SINCE_VERIFIED_AT` window today** (most `verified_at
-  2026-08-06`, the VOA country list `2026-08-08`) — stamps byte-identical in seq-7, so
+2026-08-06`, the VOA country list `2026-08-08`) — stamps byte-identical in seq-7, so
   production has been stale-abstaining on every portal-source-decisive path since
   ~2026-08-13/15. The freshness guardrail is working as designed; what is missing is the
   OPERATIONAL CADENCE (re-verify portal sources + re-stamp `verified_at` in a new signed
