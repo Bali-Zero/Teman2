@@ -764,12 +764,16 @@ async def _process_claimed_row(
         # the duration of this await so a slow (but alive) generation is
         # never reclaimed out from under this worker. It runs on the SAME
         # connection as the rest of this function; that is only safe because
-        # bot_generate_fn (wa_inbox_bot.generate_bot_reply) never touches
-        # this connection — it acquires its own from the pool internally and
-        # talks to the RAG process over HTTP. The heartbeat is always
-        # cancelled and awaited-to-completion in `finally`, BEFORE the
-        # exception/success handling below touches `conn` again, so there is
-        # never a concurrent query in flight on this connection.
+        # NEITHER generation leg touches this connection while it runs —
+        # bot_generate_fn (wa_inbox_bot.generate_bot_reply) acquires its own
+        # from the pool internally and talks to the RAG process over HTTP,
+        # and wa_codex_leg.attempt is pool-only BY CONTRACT (it is not even
+        # handed this connection; asyncpg allows one operation in flight per
+        # connection, so sharing it would race the heartbeat into
+        # InterfaceError). The heartbeat is always cancelled and
+        # awaited-to-completion in `finally`, BEFORE the exception/success
+        # handling below touches `conn` again, so there is never a
+        # concurrent query in flight on this connection.
         heartbeat_task = asyncio.create_task(
             _lease_heartbeat_loop(conn, outbox_id, claim_token)
         )
@@ -783,11 +787,15 @@ async def _process_claimed_row(
             # claim, consuming zero retry attempts. stand_down means a
             # takeover/epoch drift was detected at consume time — the
             # completion was discarded and NO generation may replace it.
+            # fail means the drift verification itself broke AFTER a
+            # completion existed — fail-closed: nothing may be generated
+            # in THIS claim (the raise below takes the retry ladder; the
+            # retry re-claims with a fresh thread read and its spent
+            # offer routes it to Gemini on current context).
             body_text = ""
             if wa_codex_leg.provider_is_codex():
                 leg = await wa_codex_leg.attempt(
                     pool,
-                    conn,
                     outbox_id=outbox_id,
                     thread_id=thread_id,
                     claim_token=claim_token,
@@ -796,6 +804,10 @@ async def _process_claimed_row(
                 )
                 if leg.stand_down:
                     codex_stand_down = True
+                elif leg.fail:
+                    raise RuntimeError(
+                        f"codex_post_completion_failure:{leg.fail}"
+                    )
                 elif leg.text is not None:
                     body_text = leg.text
                     logger.info(

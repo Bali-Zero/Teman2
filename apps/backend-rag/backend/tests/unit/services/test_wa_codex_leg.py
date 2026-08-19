@@ -29,18 +29,53 @@ from backend.services.integrations.wa_broker import (
     WaitOutcome,
     WaitResult,
 )
+from backend.services.integrations.wa_finalize import (
+    FinalizeOutcome,
+    FinalizeResult,
+)
 
 
 class ScriptedConn:
     """Minimal fetchrow-scripted conn for the drift re-read."""
 
-    def __init__(self, fetchrow_results: list[Any] | None = None) -> None:
+    def __init__(
+        self,
+        fetchrow_results: list[Any] | None = None,
+        *,
+        fetchrow_exc: Exception | None = None,
+    ) -> None:
         self.executed: list[tuple[str, tuple[Any, ...]]] = []
         self._fetchrow = list(fetchrow_results or [])
+        self._fetchrow_exc = fetchrow_exc
 
     async def fetchrow(self, sql: str, *args: Any) -> Any:
         self.executed.append((sql, args))
+        if self._fetchrow_exc is not None:
+            raise self._fetchrow_exc
         return self._fetchrow.pop(0) if self._fetchrow else None
+
+
+class _FakePool:
+    """The leg is pool-only by contract (the worker's claim connection
+    carries a concurrent heartbeat — Codex r1 finding 4): every acquire()
+    hands out the one scripted conn so the drift-re-read script drives it."""
+
+    def __init__(self, conn: ScriptedConn) -> None:
+        self._conn = conn
+        self.acquired = 0
+
+    def acquire(self) -> Any:
+        pool = self
+
+        class _CM:
+            async def __aenter__(self) -> ScriptedConn:
+                pool.acquired += 1
+                return pool._conn
+
+            async def __aexit__(self, *exc: Any) -> bool:
+                return False
+
+        return _CM()
 
 
 def _thread(
@@ -66,10 +101,20 @@ def _build_response(payload: dict[str, Any]) -> MagicMock:
     return resp
 
 
+_GOOD_WIRE = (
+    '{"history":[],"chunks":[{"text":"KITAS costs Rp 12.000.000","score":0.9}],'
+    '"pricing_block":null,"persona_digest":"pd",'
+    '"evidence_inputs":{"abstain":false},"thread_epoch":3}'
+)
+
 _GOOD_BUILD = {
-    "package_wire": '{"query":"q","thread_epoch":3}',
+    "package_wire": _GOOD_WIRE,
     "package_hash": "abc123",
-    "evidence_inputs": {"chunks": 2},
+    "evidence_inputs": {
+        "abstain": False,
+        "context_length": 2,
+        "evidence_score": 0.85,
+    },
     "unbuildable": None,
 }
 
@@ -83,9 +128,13 @@ def _wire_stubs(
     wait: WaitResult | None = None,
     consume: str | None = "the broker reply",
     query: str = "what is a KITAS?",
+    finalize: FinalizeResult | None = None,
 ) -> SimpleNamespace:
     """Install fakes; return the namespace of spies."""
     monkeypatch.setenv("WA_GENERATION_PROVIDER", "codex")
+    # The autoreply kill switch gates the leg BEFORE the provider switch
+    # (Codex r1 finding 2) — armed here so every test past gate 0 runs.
+    monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
 
     load = AsyncMock(return_value=(query, [{"role": "user", "content": "hi"}]))
     monkeypatch.setattr(wa_codex_leg, "_load_thread_context", load)
@@ -96,6 +145,16 @@ def _wire_stubs(
     else:
         client.post = AsyncMock(return_value=_build_response(build or _GOOD_BUILD))
     monkeypatch.setattr(wa_codex_leg, "_get_rag_client", AsyncMock(return_value=client))
+
+    # Default finalize: SEND with the consumed text unchanged, so the
+    # fall-off/stand-down tests stay focused on their own gate. The tests
+    # that pin the FINALIZATION contract override this.
+    fin = AsyncMock(
+        return_value=finalize
+        if finalize is not None
+        else FinalizeResult(outcome=FinalizeOutcome.SEND, text=consume or "")
+    )
+    monkeypatch.setattr(wa_codex_leg, "finalize_wa_answer", fin)
 
     stub = SimpleNamespace(
         # Real enums/dataclasses so identity comparisons are meaningful.
@@ -119,6 +178,7 @@ def _wire_stubs(
     monkeypatch.setattr(wa_codex_leg, "wa_broker", stub)
     stub.rag_client = client
     stub.load_thread_context = load
+    stub.finalize = fin
     return stub
 
 
@@ -127,8 +187,7 @@ async def _run(
     thread: dict[str, Any] | None = None,
 ) -> wa_codex_leg.CodexLegResult:
     return await wa_codex_leg.attempt(
-        MagicMock(),  # pool — consumed only by fakes here
-        conn or ScriptedConn(),
+        _FakePool(conn or ScriptedConn()),  # type: ignore[arg-type]
         outbox_id=42,
         thread_id=7,
         claim_token=uuid.uuid4(),
@@ -273,7 +332,7 @@ async def test_offer_passes_wire_hash_and_epoch_verbatim(
     assert kwargs["package"] == _GOOD_BUILD["package_wire"]
     assert kwargs["package_hash"] == _GOOD_BUILD["package_hash"]
     assert kwargs["thread_epoch"] == 3
-    assert '"chunks": 2' in kwargs["evidence_inputs"]
+    assert '"context_length": 2' in kwargs["evidence_inputs"]
 
 
 # ── wait / consume ──────────────────────────────────────────────────────────
@@ -398,3 +457,170 @@ def test_stub_namespace_mirrors_the_real_module() -> None:
         "record_breaker_result",
     ):
         assert hasattr(wa_broker, name), f"stub names {name}, real module does not"
+
+
+# ── gate 0: the autoreply kill switch (Codex r1 finding 2) ──────────────────
+
+
+@pytest.mark.asyncio
+async def test_autoreply_off_falls_off_before_any_io(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """WA_INBOX_BOT_AUTOREPLY off must silence the codex route exactly as it
+    silences the Gemini one: the leg steps aside with zero IO, the worker
+    proceeds to bot_generate_fn, and ITS first statement raises the
+    BotStandingCondition that owns this switch. Innocence is every other
+    test in this file (the harness arms the flag)."""
+    stubs = _wire_stubs(monkeypatch)
+    monkeypatch.delenv("WA_INBOX_BOT_AUTOREPLY")
+    result = await _run()
+    assert result.text is None and not result.stand_down and not result.fail
+    assert result.reason == "autoreply_disabled"
+    stubs.load_thread_context.assert_not_awaited()
+    stubs.rag_client.post.assert_not_awaited()
+    stubs.offer_job.assert_not_awaited()
+
+
+# ── finalization (Codex r1 finding 1) ───────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_served_text_is_the_finalized_text_not_the_raw_completion(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The consumed completion is NEVER returned raw — what the worker sends
+    is finalize_wa_answer's output (mutation pin: deleting the finalize call
+    would return 'the broker reply' here and go red)."""
+    stubs = _wire_stubs(
+        monkeypatch,
+        finalize=FinalizeResult(outcome=FinalizeOutcome.SEND, text="FINALIZED"),
+    )
+    conn = ScriptedConn(
+        fetchrow_results=[{"human_handling": False, "handling_version": 3}]
+    )
+    result = await _run(conn=conn)
+    assert result.text == "FINALIZED"
+    stubs.finalize.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_finalize_receives_codex_provider_and_the_frozen_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The pipeline runs in its fail-closed codex configuration: provider
+    'codex', secret_scan armed, price sources from the SAME wire the
+    executor answered from, and the abstain verdict inputs from the FROZEN
+    evidence — never recomputed."""
+    stubs = _wire_stubs(monkeypatch)
+    conn = ScriptedConn(
+        fetchrow_results=[{"human_handling": False, "handling_version": 3}]
+    )
+    await _run(conn=conn)
+    kwargs = stubs.finalize.await_args.kwargs
+    assert kwargs["provider"] == "codex"
+    assert kwargs["secret_scan"] is True
+    assert "KITAS costs Rp 12.000.000" in kwargs["price_sources"]
+    assert callable(kwargs["tell_a_human"])
+    assert kwargs["query"] == "what is a KITAS?"
+    assert kwargs["data"]["answer"] == "the broker reply"
+    assert kwargs["data"]["abstain"] is False
+    assert kwargs["data"]["context_length"] == 2
+    assert kwargs["data"]["evidence_score"] == 0.85
+
+
+@pytest.mark.asyncio
+async def test_finalize_defect_falls_off_to_gemini(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Spec 2.3 TEXT_DEFECT: a defective codex text fails off so the Gemini
+    leg regenerates and re-enters the same pipeline — never sent, never a
+    stand-down, never the retry ladder."""
+    stubs = _wire_stubs(
+        monkeypatch,
+        finalize=FinalizeResult(
+            outcome=FinalizeOutcome.DEFECT,
+            defect_reason="oversized_output",
+            defect_message="too long",
+        ),
+    )
+    conn = ScriptedConn(
+        fetchrow_results=[{"human_handling": False, "handling_version": 3}]
+    )
+    result = await _run(conn=conn)
+    assert result.text is None and not result.stand_down and not result.fail
+    assert result.reason == "finalize:oversized_output"
+    stubs.record_breaker_result.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_finalize_blank_send_text_falls_off(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Defensive: SEND promises non-empty text; a blank slipping through
+    would otherwise read falsy in the worker and cascade into a Gemini
+    generation AFTER a consumed completion."""
+    stubs = _wire_stubs(
+        monkeypatch,
+        finalize=FinalizeResult(outcome=FinalizeOutcome.SEND, text="   "),
+    )
+    conn = ScriptedConn(
+        fetchrow_results=[{"human_handling": False, "handling_version": 3}]
+    )
+    result = await _run(conn=conn)
+    assert result.text is None and not result.stand_down
+    assert result.reason == "finalize:blank_send_text"
+    assert stubs.finalize.await_count == 1
+
+
+# ── post-completion verification is fail-closed (Codex r1 finding 3) ────────
+
+
+@pytest.mark.asyncio
+async def test_drift_reread_failure_fails_closed_not_off(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A completion exists and drift can no longer be ruled out: a broken
+    drift re-read must take the worker's retry ladder (fail), NEVER an
+    in-claim fall-off that would let Gemini answer from the pre-drift
+    thread snapshot with the drift check silently skipped."""
+    stubs = _wire_stubs(monkeypatch)
+    conn = ScriptedConn(fetchrow_exc=RuntimeError("pg gone"))
+    result = await _run(conn=conn)
+    assert result.fail == "post_completion:RuntimeError"
+    assert result.text is None and not result.stand_down
+    assert result.reason == ""
+    stubs.consume_result.assert_not_awaited()
+    stubs.record_breaker_result.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_discard_failure_after_detected_drift_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Drift WAS detected but the discard broke: neither a stand-down (the
+    completion is still pending-consume) nor a fall-off (fail-open) — the
+    retry ladder re-claims with a fresh thread read."""
+    stubs = _wire_stubs(monkeypatch)
+    stubs.discard_completion.side_effect = RuntimeError("pg gone")
+    conn = ScriptedConn(
+        fetchrow_results=[{"human_handling": True, "handling_version": 3}]
+    )
+    result = await _run(conn=conn)
+    assert result.fail == "post_completion:RuntimeError"
+    assert not result.stand_down
+    stubs.consume_result.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_consume_failure_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stubs = _wire_stubs(monkeypatch)
+    stubs.consume_result.side_effect = RuntimeError("pg gone")
+    conn = ScriptedConn(
+        fetchrow_results=[{"human_handling": False, "handling_version": 3}]
+    )
+    result = await _run(conn=conn)
+    assert result.fail == "post_completion:RuntimeError"
+    assert result.text is None
+    stubs.record_breaker_result.assert_not_awaited()

@@ -1003,3 +1003,47 @@ async def test_codex_stand_down_aborts_without_generation(
     svc.send_message.assert_not_awaited()
     assert any("aborted_human_takeover_codex_drift" in s for s, _ in conn.executed)
     assert conn.sql_contains("UPDATE wa_outbox SET status = 'failed'")
+
+
+@pytest.mark.asyncio
+async def test_codex_leg_fail_takes_the_retry_ladder_never_gemini_in_claim(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Codex r1 finding 3, fail-closed: when the leg's post-completion
+    verification breaks, a completion exists and drift can no longer be
+    ruled out — nothing may be generated in THIS claim. The worker takes
+    its retry ladder (fresh claim, fresh thread read; the spent offer
+    routes the retry to Gemini on current context)."""
+    monkeypatch.setenv("WA_GENERATION_PROVIDER", "codex")
+    monkeypatch.setattr(
+        wa_outbox_worker.wa_codex_leg,
+        "attempt",
+        AsyncMock(
+            return_value=wa_outbox_worker.wa_codex_leg.CodexLegResult(
+                fail="post_completion:InterfaceError"
+            )
+        ),
+    )
+    gemini_spy = AsyncMock(return_value="gemini reply")
+
+    candidate = _candidate(74, thread_id=7, message_id=7400, needs_generation=True)
+    conn = ScriptedConn(
+        fetchrow_results=[
+            {**_thread_row(human_handling=False), "handling_version": 3},
+            {"id": 74},  # generating-transition fenced RETURNING
+            {"id": 74},  # retry-requeue fenced RETURNING
+        ],
+        fetchval_results=[True],
+        fetch_results=[[candidate], []],
+    )
+    pool = _make_pool(conn)
+    svc = _wa_service()
+
+    result = await process_outbox_once(pool, svc, gemini_spy)
+
+    assert result == "retry"
+    gemini_spy.assert_not_awaited()
+    svc.send_message.assert_not_awaited()
+    assert any(
+        "status = 'pending'" in s and "attempts = " in s for s, _ in conn.executed
+    ), "a post-completion failure must take the retry requeue"

@@ -1,23 +1,53 @@
 """WA outbox worker's codex broker leg (BOT-V4 S2 PR-5).
 
-Route decision + offer + wait + consume for ONE claimed ``wa_outbox`` row
-(spec research/operations/2026-08-19-bot-chatgpt-provider-broker-spec.md,
-section 2.1). The leg runs INSIDE the worker's claim, before the Gemini
-generation call, and every broker outcome that is not a consumed completion
-FALLS OFF to the Gemini leg in the same claim — consuming zero retry
-attempts. ``attempt`` therefore NEVER raises: any internal failure is a
-fall-off, never an exception into the worker's retry ladder.
+Route decision + offer + wait + consume + finalize for ONE claimed
+``wa_outbox`` row (spec
+research/operations/2026-08-19-bot-chatgpt-provider-broker-spec.md, section
+2.1). The leg runs INSIDE the worker's claim, before the Gemini generation
+call, and every broker outcome that is not a consumed-and-finalized
+completion FALLS OFF to the Gemini leg in the same claim — consuming zero
+retry attempts. ``attempt`` therefore NEVER raises: any internal failure is
+a fall-off — except a failure INSIDE the post-completion section (drift
+verification / discard / consume), which is returned as ``fail`` so the
+worker takes its retry ladder instead of generating in this claim: at that
+point a completion exists and drift can no longer be ruled out, so an
+in-claim replacement built on the stale thread snapshot would be exactly
+the fail-open the drift check exists to prevent. The retry re-claims with a
+fresh thread read; its offer lands ``ALREADY_SPENT`` and the Gemini leg
+answers from CURRENT context.
 
 The codex leg runs IFF all of (spec 2.1 route decision):
-  1. ``WA_GENERATION_PROVIDER == "codex"`` — env, read live per claim
-     (mirrors ``WA_INBOX_BOT_AUTOREPLY``); absent -> Gemini. S2 ships dark.
-  2. The 24h customer-care window has >= 2 x T_exec of margin left — a row
+  1. ``is_bot_autoreply_enabled()`` — the SAME ``WA_INBOX_BOT_AUTOREPLY``
+     kill switch the Gemini leg honors as its first statement. The leg
+     steps aside when it is off so ``generate_bot_reply`` raises its
+     ``BotStandingCondition`` exactly as today — the switch keeps ONE
+     owner and the codex route cannot out-live it.
+  2. ``WA_GENERATION_PROVIDER == "codex"`` — env, read live per claim;
+     absent -> Gemini. S2 ships dark.
+  3. The 24h customer-care window has >= 2 x T_exec of margin left — a row
      about to lose its send window never waits on a broker round-trip.
-  3. The context package builds (``POST /api/wa-package/build``, the RAG
+  4. The context package builds (``POST /api/wa-package/build``, the RAG
      process owns the retriever); unbuildable -> Gemini.
-  4. ``offer_job`` returns OFFERED — admission lock, gauge liveness,
+  5. ``offer_job`` returns OFFERED — admission lock, gauge liveness,
      breaker, depth and the wa_outbox fence are all checked inside the
      offer transaction; every other outcome -> Gemini.
+
+A consumed completion is NEVER returned raw: it runs through
+``finalize_wa_answer(provider="codex")`` — the SHARED post-generation
+pipeline both legs use (abstain policy from the FROZEN evidence, monologue
+leak, scaffold strip, channel formatting, size cap, pricing veto against
+the frozen package's price sources, secret-egress scan). A text DEFECT
+falls off to the Gemini leg, which regenerates and re-enters the same
+pipeline (spec 2.3 TEXT_DEFECT).
+
+Connection discipline: this module NEVER touches the worker's claim
+connection — every DB statement runs on a connection acquired from the
+pool. The worker's lease heartbeat runs concurrently on the claim
+connection for the whole duration of this leg, and asyncpg allows exactly
+one operation in flight per connection: sharing it would make the
+heartbeat and the leg race into ``InterfaceError``. The offer fence needs
+no shared session state — it is a row-level CAS on ``claim_token`` +
+status, visible from any connection.
 
 Breaker discipline — this module records NOTHING into the breaker. Folds
 belong to transition owners only (``wait_for_job``'s deadline CAS,
@@ -45,14 +75,22 @@ import asyncpg
 import httpx
 
 from backend.services.integrations import wa_broker
+from backend.services.integrations.wa_finalize import (
+    FinalizeOutcome,
+    finalize_wa_answer,
+)
 
-# Same-package deliberate reuse of the bot leg's lazy-singleton RAG client
-# and thread-context loader: ONE persistent HTTP client per process (Golden
-# Rule #10) serving both legs, and the codex leg answers from the SAME
-# query/history the Gemini leg would see — two loaders would drift (W114).
+# Same-package deliberate reuse of the bot leg's lazy-singleton RAG client,
+# thread-context loader, notifier and kill switch: ONE persistent HTTP
+# client per process (Golden Rule #10) serving both legs, the codex leg
+# answers from the SAME query/history the Gemini leg would see (two loaders
+# would drift — W114), the human-notification wiring stays in the one
+# module whose tests patch it, and the autoreply switch keeps ONE owner.
 from backend.services.integrations.wa_inbox_bot import (
     _get_rag_client,
     _load_thread_context,
+    _tell_a_human,
+    is_bot_autoreply_enabled,
 )
 
 logger = logging.getLogger(__name__)
@@ -87,17 +125,19 @@ def _window_margin_ok(thread: Any, *, margin_s: float) -> bool:
 
 @dataclass
 class CodexLegResult:
-    """Exactly one of three shapes: text (send it), stand_down (abort the
-    row, do NOT generate), or neither (fall off to the Gemini leg)."""
+    """Exactly one of four shapes: text (send it), stand_down (abort the
+    row, do NOT generate), fail (worker raises -> retry ladder, nothing
+    may be generated in THIS claim), or none of those (fall off to the
+    Gemini leg in the same claim)."""
 
     text: str | None = None
     stand_down: bool = False
+    fail: str = ""
     reason: str = ""
 
 
 async def attempt(
     pool: asyncpg.Pool,
-    conn: asyncpg.Connection,
     *,
     outbox_id: int,
     thread_id: int,
@@ -109,7 +149,6 @@ async def attempt(
     try:
         return await _attempt(
             pool,
-            conn,
             outbox_id=outbox_id,
             thread_id=thread_id,
             claim_token=claim_token,
@@ -128,7 +167,6 @@ async def attempt(
 
 async def _attempt(
     pool: asyncpg.Pool,
-    conn: asyncpg.Connection,
     *,
     outbox_id: int,
     thread_id: int,
@@ -136,6 +174,12 @@ async def _attempt(
     outbox_expected_status: str,
     thread: Any,
 ) -> CodexLegResult:
+    if not is_bot_autoreply_enabled():
+        # The Gemini leg raises BotStandingCondition for this as its FIRST
+        # statement; the route steps aside so that owner still says so —
+        # a provider switch must never out-rank the kill switch.
+        return CodexLegResult(reason="autoreply_disabled")
+
     margin_s = 2.0 * wa_broker.deadline_seconds()
     if not _window_margin_ok(thread, margin_s=margin_s):
         return CodexLegResult(reason="window_margin")
@@ -178,19 +222,20 @@ async def _attempt(
         )
         return CodexLegResult(reason="build_contract_break")
 
-    offer = await wa_broker.offer_job(
-        conn,
-        outbox_id=outbox_id,
-        thread_id=thread_id,
-        claim_token=claim_token,
-        outbox_expected_status=outbox_expected_status,
-        package=wire,
-        evidence_inputs=json.dumps(
-            built.get("evidence_inputs") or {}, sort_keys=True
-        ),
-        package_hash=package_hash,
-        thread_epoch=epoch,
-    )
+    evidence_inputs = built.get("evidence_inputs") or {}
+
+    async with pool.acquire() as offer_conn:
+        offer = await wa_broker.offer_job(
+            offer_conn,
+            outbox_id=outbox_id,
+            thread_id=thread_id,
+            claim_token=claim_token,
+            outbox_expected_status=outbox_expected_status,
+            package=wire,
+            evidence_inputs=json.dumps(evidence_inputs, sort_keys=True),
+            package_hash=package_hash,
+            thread_epoch=epoch,
+        )
     if offer.outcome is not wa_broker.OfferOutcome.OFFERED or offer.job_id is None:
         logger.info(
             "wa_codex_leg: offer fell off (outbox=%s outcome=%s)",
@@ -214,32 +259,58 @@ async def _attempt(
             reason=f"wait:{wait.outcome.value}:{wait.error_class or ''}"
         )
 
-    # Drift check (spec 2.3), BEFORE consuming: a takeover — or a
-    # takeover+release, which moves handling_version without leaving
-    # human_handling true — during exec means this completion must never
-    # be sent AND must never trigger a fresh generation.
-    fresh = await conn.fetchrow(
-        """
-        SELECT human_handling, handling_version
-        FROM meta_inbox_threads
-        WHERE thread_id = $1
-        """,
-        thread_id,
-    )
-    if (
-        fresh is None
-        or bool(fresh["human_handling"])
-        or int(fresh["handling_version"]) != epoch
-    ):
-        await wa_broker.discard_completion(conn, offer.job_id, reason="takeover")
-        logger.info(
-            "wa_codex_leg: completion discarded on drift (outbox=%s job=%s)",
+    # Post-completion section — FAIL-CLOSED. A completion now exists; if
+    # the drift verification (or the discard/consume it commands) breaks,
+    # this claim may neither serve nor regenerate: classifying such a
+    # failure as an ordinary fall-off would let the Gemini leg answer from
+    # the pre-drift thread snapshot with the drift check silently skipped.
+    # ``fail`` sends the worker down its retry ladder instead — the retry
+    # re-claims with a fresh thread read, and the spent offer routes it to
+    # Gemini on CURRENT context. The unconsumed completion is reaped by
+    # the dead-consumer grace (its ``completed_at`` anchor is guaranteed
+    # by migration 274).
+    try:
+        # Drift check (spec 2.3), BEFORE consuming: a takeover — or a
+        # takeover+release, which moves handling_version without leaving
+        # human_handling true — during exec means this completion must
+        # never be sent AND must never trigger a fresh generation.
+        async with pool.acquire() as check_conn:
+            fresh = await check_conn.fetchrow(
+                """
+                SELECT human_handling, handling_version
+                FROM meta_inbox_threads
+                WHERE thread_id = $1
+                """,
+                thread_id,
+            )
+        if (
+            fresh is None
+            or bool(fresh["human_handling"])
+            or int(fresh["handling_version"]) != epoch
+        ):
+            async with pool.acquire() as discard_conn:
+                await wa_broker.discard_completion(
+                    discard_conn, offer.job_id, reason="takeover"
+                )
+            logger.info(
+                "wa_codex_leg: completion discarded on drift (outbox=%s job=%s)",
+                outbox_id,
+                offer.job_id,
+            )
+            return CodexLegResult(stand_down=True, reason="drift")
+
+        async with pool.acquire() as consume_conn:
+            text = await wa_broker.consume_result(consume_conn, offer.job_id)
+    except Exception as exc:
+        logger.error(
+            "wa_codex_leg: post-completion verification failed (outbox=%s "
+            "job=%s): %s",
             outbox_id,
             offer.job_id,
+            type(exc).__name__,
         )
-        return CodexLegResult(stand_down=True, reason="drift")
+        return CodexLegResult(fail=f"post_completion:{type(exc).__name__}")
 
-    text = await wa_broker.consume_result(conn, offer.job_id)
     if text is None or not text.strip():
         # Lost a race with the reaper's dead-consumer grace (or a defect no
         # owner may fold twice) — the job's fold already happened at its
@@ -251,4 +322,65 @@ async def _attempt(
         )
         return CodexLegResult(reason="consume_lost")
 
-    return CodexLegResult(text=text, reason="completed")
+    # Finalize — the SHARED pipeline, provider="codex" (spec 2.3): abstain
+    # verdict from the FROZEN evidence, text-defect checks, channel
+    # formatting, and the codex-only egress vetoes (pricing against the
+    # frozen package's own price sources; secret-egress scan — both
+    # MANDATORY, the pipeline refuses a fail-open configuration). Price
+    # sources come from the SAME wire the executor answered from, parsed
+    # here rather than re-fetched so the veto can never run against a
+    # different retrieval than the answer used. canary_tokens is empty
+    # until PR-6: the daemon is what plants canaries in the sandbox, and
+    # only it can know their values — the pattern half of the scan is
+    # armed regardless.
+    parsed_wire = json.loads(wire)
+    price_sources: list[str] = [
+        str(chunk.get("text", "")) for chunk in parsed_wire.get("chunks", [])
+    ]
+    if parsed_wire.get("pricing_block") is not None:
+        price_sources.append(
+            json.dumps(parsed_wire["pricing_block"], ensure_ascii=False, sort_keys=True)
+        )
+
+    phone = str(thread["counterpart_phone"])
+
+    async def _tell(reason: str) -> bool:
+        return await _tell_a_human(phone=phone, reason=reason, thread_id=thread_id)
+
+    result = await finalize_wa_answer(
+        data={
+            "answer": text,
+            "abstain": bool(evidence_inputs.get("abstain")),
+            "abstain_reason": (
+                "frozen_evidence_label" if evidence_inputs.get("abstain") else None
+            ),
+            "context_length": evidence_inputs.get("context_length"),
+            "evidence_score": evidence_inputs.get("evidence_score"),
+        },
+        query=query,
+        thread_id=thread_id,
+        tell_a_human=_tell,
+        provider="codex",
+        price_sources=price_sources,
+        secret_scan=True,
+        canary_tokens=(),
+    )
+    if result.outcome is FinalizeOutcome.DEFECT or not result.text.strip():
+        # TEXT_DEFECT (spec 2.3): a different generator can legitimately
+        # cure a defective text — fall off so the Gemini leg regenerates
+        # and re-enters the same pipeline. The blank-text guard is
+        # defensive: SEND promises non-empty text, and a blank slipping
+        # through would otherwise cascade into a Gemini generation AFTER
+        # a consumed completion.
+        logger.info(
+            "wa_codex_leg: finalize rejected completion (outbox=%s job=%s "
+            "reason=%s)",
+            outbox_id,
+            offer.job_id,
+            result.defect_reason or "blank_send_text",
+        )
+        return CodexLegResult(
+            reason=f"finalize:{result.defect_reason or 'blank_send_text'}"
+        )
+
+    return CodexLegResult(text=result.text, reason="completed")
