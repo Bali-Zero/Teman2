@@ -28,11 +28,15 @@ Env:
   INTAKE_HEALTH_ALL_EMPTY_MAX                default 0.5 (breach if quarantine all-pages-empty rate > N)
   INTAKE_HEALTH_ZOMBIE_MAX                   default 0  (breach if zombie count > N)
   INTAKE_HEALTH_SUPERSEDED_TIMEOUT_MS        default 60000 (statement_timeout for the C-07b query)
+  INTAKE_HEALTH_CONNECTION_CLOSE_TIMEOUT_SECONDS
+                                               default 5 (asyncpg connection-close bound)
 
 Flags: --dry-run (skip Telegram + state-file write; heartbeat still fires) ·
-       --json-only (pure read: skip Telegram + state-file write + heartbeat too)
+       --json-only (no success side effects: skip Telegram + state-file write +
+       success heartbeat; failures still emit heartbeat=error)
 
-Exit: 0 always, except a DSN/connect failure (logged, heartbeat status=error) -> 1.
+Exit: 0 after a completed/disabled/lock-held run; 1 after a connect, gather,
+      report-build, persistence, or connection-close failure (heartbeat=error).
 """
 from __future__ import annotations
 
@@ -41,6 +45,7 @@ import asyncio
 import fcntl
 import json
 import logging
+import math
 import os
 import plistlib
 import subprocess
@@ -66,6 +71,12 @@ ORGAN_ID = "pro.intake_health_report"
 STATE_PATH = Path.home() / ".agent" / "decisions" / "state" / "intake_health_report.json"
 LOCK_FILE = Path.home() / ".cell-bridge-state" / "intake_health_report.lock"
 DEFAULT_DSN = "postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev"
+DEFAULT_SUPERSEDED_TIMEOUT_MS = 60_000
+# Matches the five-second asyncpg close bound used by the PG bridge and both
+# WR2 supervisors. Set INTAKE_HEALTH_LOG_LEVEL=DEBUG to record actual close
+# latency, then tune the env override if a future driver/proxy needs a
+# different measured bound; no code edit or frozen re-estimate is required.
+DEFAULT_CONNECTION_CLOSE_TIMEOUT_SECONDS = 5.0
 REPO_WORKER_PLIST_PATH = _REPO / "infra" / "launchagents" / "com.nuzantara.intake-worker.plist"
 # The INSTALLED launchd plist — the one actually driving the running worker —
 # takes precedence over the repo copy (verbale #8, superscar #1 HOME-fork):
@@ -239,7 +250,13 @@ def _write_state(report: dict[str, Any]) -> None:
         tmp.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         os.replace(tmp, STATE_PATH)
     except OSError as exc:
-        logger.warning("[intake_health_report] state write failed: %s", exc)
+        # Persistence is part of completing this organ's run. Swallowing an
+        # OSError here made launchd see rc=0 and the final heartbeat say `ok`
+        # even though the durable report was never updated. Log only the type
+        # (the exception message may contain a local/client-derived path), then
+        # let run() emit the canonical error heartbeat and rc=1.
+        logger.warning("[intake_health_report] state write failed: %s", type(exc).__name__)
+        raise
 
 
 def _acquire_lock_or_exit() -> int | None:
@@ -512,6 +529,90 @@ def _thresholds_from_env() -> dict[str, float]:
     }
 
 
+def _timeouts_from_env() -> tuple[int, float]:
+    """Parse and validate every operator-configurable timeout before connect."""
+    superseded_timeout_ms = int(
+        os.getenv(
+            "INTAKE_HEALTH_SUPERSEDED_TIMEOUT_MS",
+            str(DEFAULT_SUPERSEDED_TIMEOUT_MS),
+        )
+    )
+    connection_close_timeout_seconds = float(
+        os.getenv(
+            "INTAKE_HEALTH_CONNECTION_CLOSE_TIMEOUT_SECONDS",
+            str(DEFAULT_CONNECTION_CLOSE_TIMEOUT_SECONDS),
+        )
+    )
+    if superseded_timeout_ms <= 0:
+        raise ValueError("superseded timeout must be positive")
+    if (
+        not math.isfinite(connection_close_timeout_seconds)
+        or connection_close_timeout_seconds <= 0
+    ):
+        raise ValueError("connection-close timeout must be finite and positive")
+    return superseded_timeout_ms, connection_close_timeout_seconds
+
+
+async def _close_connection(conn: Any, *, timeout_seconds: float) -> None:
+    """Close an asyncpg connection within the configured liveness bound.
+
+    asyncpg exposes both ``Connection.close(timeout=...)`` and the synchronous
+    ``Connection.terminate()`` escape hatch.  The driver's timeout is the
+    primary bound; the matching loop watchdog is defense-in-depth for a close
+    coroutine that catches cancellation and keeps waiting.  Deliberately use
+    the *current* task rather than spawning a close task: ``asyncio.run()``
+    waits for cancellation-resistant pending tasks during shutdown, which
+    would otherwise move the hang from this function to runner teardown.
+    """
+    loop = asyncio.get_running_loop()
+    started_at = loop.time()
+    deadline = started_at + timeout_seconds
+    forced_termination = False
+
+    def force_terminate() -> None:
+        nonlocal forced_termination
+        forced_termination = True
+        try:
+            conn.terminate()
+        except Exception as exc:  # noqa: BLE001 — close error remains canonical
+            logger.warning(
+                "[intake_health_report] connection terminate failed: %s",
+                type(exc).__name__,
+            )
+
+    timeout = asyncio.timeout_at(deadline)
+    watchdog: asyncio.TimerHandle | None = None
+    try:
+        async with timeout:
+            # __aenter__ schedules the task cancellation first; scheduling the
+            # terminate callback second at the same absolute deadline means a
+            # cancellation-resistant close sees both signals without leaving a
+            # child task behind for asyncio.run() to reap.
+            watchdog = loop.call_at(deadline, force_terminate)
+            await conn.close(timeout=timeout_seconds)
+        # asyncio.Timeout only raises automatically when CancelledError escapes
+        # the body.  A broken close can suppress it and return after terminate;
+        # keep the failure verdict rather than laundering that path as success.
+        if timeout.expired():
+            raise TimeoutError("connection close exceeded deadline")
+    except (Exception, asyncio.CancelledError):  # caller owns phase reporting
+        # Mirrors the established asyncpg cleanup convention in the PG bridge
+        # and WR2 supervisors: a close failure/timeout must not leave the
+        # transport alive after this run releases its single-instance flock.
+        if not forced_termination:
+            force_terminate()
+        raise
+    finally:
+        if watchdog is not None:
+            watchdog.cancel()
+        logger.debug(
+            "[intake_health_report] connection close elapsed_seconds=%.3f "
+            "timeout_seconds=%.3f",
+            loop.time() - started_at,
+            timeout_seconds,
+        )
+
+
 async def run(*, dry_run: bool, json_only: bool) -> int:
     if os.getenv("INTAKE_HEALTH_REPORT_ENABLED", "true").strip().lower() in ("0", "false", "no"):
         logger.info("[intake_health_report] disabled via INTAKE_HEALTH_REPORT_ENABLED — no-op")
@@ -527,14 +628,12 @@ async def run(*, dry_run: bool, json_only: bool) -> int:
         # meant the organ went fully dark (no digest, no P0, no heartbeat)
         # until a human found the hung process by hand. Now it says so.
         date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        # W0 recheck fast-follow (2026-08-18): "error" put this organ outside
-        # healer_receptor_registry.py's HEALTHY_STATUSES set, so a normal
-        # lock-contention tick (a manual debug run, a launchd overlap) got
-        # classified dead and triggered the autonomous healer session against
-        # a perfectly healthy organ — the exact failure class #4223 existed to
-        # kill, reopened through this branch. Lock-held-and-skipped is a
-        # no-op, not a failure.
-        _heartbeat("ok", "lock held, skipped")
+        # A skipped contender has learned nothing about the lock owner's
+        # health.  Keep rc=0 and the operator digest, but do NOT refresh the
+        # shared heartbeat sidecar: publishing either `ok` or `error` here
+        # overwrites the owner's last real verdict with a claim this process
+        # cannot support.  The healer therefore continues to consume the
+        # previous run's status/timestamp and can still detect it as dead/stale.
         _tg_notify(
             "digest",
             f"intake-health:lock-held:{date_key}",
@@ -542,8 +641,18 @@ async def run(*, dry_run: bool, json_only: bool) -> int:
         )
         return 0
     try:
+        try:
+            timeout_ms, connection_close_timeout_seconds = _timeouts_from_env()
+        except (TypeError, ValueError, OverflowError) as exc:
+            error_type = type(exc).__name__
+            logger.error(
+                "[intake_health_report] timeout configuration failed: %s",
+                error_type,
+            )
+            _heartbeat("error", f"timeout configuration failed: {error_type}")
+            return 1
+
         dsn = os.getenv("INTAKE_DATABASE_URL") or os.getenv("LOCAL_DATABASE_URL") or DEFAULT_DSN
-        timeout_ms = int(os.getenv("INTAKE_HEALTH_SUPERSEDED_TIMEOUT_MS", "60000"))
         try:
             # statement_timeout at the SESSION level (verbale #7): every
             # gather() query except _fetch_superseded_orphans ran unbounded —
@@ -562,26 +671,63 @@ async def run(*, dry_run: bool, json_only: bool) -> int:
                 timeout=20,
             )
         except Exception as exc:  # noqa: BLE001
-            logger.error("[intake_health_report] DB connect failed: %s", exc)
-            _heartbeat("error", f"db connect failed: {exc}")
+            error_type = type(exc).__name__
+            logger.error("[intake_health_report] DB connect failed: %s", error_type)
+            _heartbeat("error", f"db connect failed: {error_type}")
             return 1
 
+        failure: Exception | None = None
+        failure_phase = "gather"
         try:
-            report = await gather(conn, superseded_timeout_ms=timeout_ms)
+            try:
+                report = await gather(conn, superseded_timeout_ms=timeout_ms)
+
+                failure_phase = "report"
+                thresholds = _thresholds_from_env()
+                breaches = evaluate_breaches(report, thresholds)
+                report["breaches"] = breaches
+
+                print(json.dumps(report, indent=2, sort_keys=True))
+
+                if not json_only and not dry_run:
+                    failure_phase = "persist"
+                    _write_state(report)
+            except Exception as exc:  # noqa: BLE001 — canonical liveness boundary
+                failure = exc
         finally:
-            await conn.close()
+            try:
+                await _close_connection(
+                    conn,
+                    timeout_seconds=connection_close_timeout_seconds,
+                )
+            except Exception as exc:  # noqa: BLE001 — close is part of run completion
+                if failure is None:
+                    failure = exc
+                    failure_phase = "connection close"
+                else:
+                    logger.warning(
+                        "[intake_health_report] connection close also failed after %s "
+                        "failure: %s",
+                        failure_phase,
+                        type(exc).__name__,
+                    )
 
-        thresholds = _thresholds_from_env()
-        breaches = evaluate_breaches(report, thresholds)
-        report["breaches"] = breaches
-
-        print(json.dumps(report, indent=2, sort_keys=True))
+        if failure is not None:
+            # Never serialize the exception message into observability: gather
+            # can touch Intake rows, so a message could carry PII. The stable
+            # phase plus exception TYPE is sufficient for triage and safe for
+            # the shared heartbeat channel.
+            error_type = type(failure).__name__
+            logger.error(
+                "[intake_health_report] %s failed: %s",
+                failure_phase,
+                error_type,
+            )
+            _heartbeat("error", f"{failure_phase} failed: {error_type}")
+            return 1
 
         if json_only:
             return 0
-
-        if not dry_run:
-            _write_state(report)
 
         # Heartbeat reflects the ORGAN (did the report complete?), never the
         # FINDING (are there breaches?) — same rule as wa_mirror_freshness_
@@ -614,7 +760,14 @@ async def run(*, dry_run: bool, json_only: bool) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0] if __doc__ else "")
     parser.add_argument("--dry-run", action="store_true", help="no Telegram, no state-file write")
-    parser.add_argument("--json-only", action="store_true", help="pure read: JSON to stdout, no side effects at all")
+    parser.add_argument(
+        "--json-only",
+        action="store_true",
+        help=(
+            "JSON to stdout with no success side effects; failures still emit "
+            "heartbeat=error"
+        ),
+    )
     args = parser.parse_args()
     return asyncio.run(run(dry_run=args.dry_run, json_only=args.json_only))
 
