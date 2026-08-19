@@ -449,7 +449,12 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
 #   handshake at backend/app/routers/twitter.py was actually correct; the
 #   register-time block was conservative. Re-registered above in the
 #   "Twitter / X" section with ack-first persistence (P0-6 audit).
-# team_members — duplicates team.py /members endpoint (audit 2026-04-03)
+# team_members — REMOVED 2026-08-19. Disabled 2026-04-03 as a duplicate of
+#   team.py's /members endpoint, but the file itself stayed on disk — a 2026-08-19
+#   fix for service-account exclusion was applied to this dead copy and ran
+#   nowhere in production (audit found the fix on the wrong router; see
+#   team.py::get_team_members for the live query). Deleted rather than kept
+#   "fixed" here, to not leave a disabled duplicate that looks handled.
 # whatsapp_chat.alias_router — legacy alias causes duplicate responses
 # audio — included separately in app_factory.py
 

@@ -24,6 +24,7 @@ from backend.app.utils.service_accounts import (
 )
 
 ROUTERS = Path(__file__).resolve().parents[3] / "app" / "routers"
+DEPS = Path(__file__).resolve().parents[3] / "app" / "deps"
 
 
 class TestIsHumanTeamMember:
@@ -110,3 +111,83 @@ class TestNoCallSiteKeepsItsOwnCopy:
             f"expected the routers package at {ROUTERS}, found almost nothing — "
             "the audit above would pass vacuously"
         )
+
+
+class TestNoCallSiteUsesClientAsAProxyForStaff:
+    """Class-audit, generalized (2026-08-19 audit, Defect 2): the SQL-level
+    audit above (``role NOT IN ('client')``) is blind to the Python-level
+    equivalent — ``current_user.get("role") == "client"`` — which is exactly
+    the form four LIVE dependency/guard functions used to grant team-level
+    authority (require_team_member, require_team_auth, and inline checks in
+    portal_invite.py + agentic_rag.py). "Not a client" is not the same
+    question as "is a colleague"; a service account passes the old check.
+
+    This is the test that would have failed BEFORE the fix. It scans both
+    routers/ and deps/ — the earlier audit missed deps/auth.py entirely
+    because it only ever looked at routers/.
+    """
+
+    HARDCODED = re.compile(
+        r"""\.get\(\s*['"]role['"][^)]*\)\s*(?:==|!=)\s*['"]client['"]"""
+        r"""|\[\s*['"]role['"]\s*\]\s*(?:==|!=)\s*['"]client['"]""",
+        re.IGNORECASE,
+    )
+
+    #: Files that compare role to the literal "client" for a purpose OTHER
+    #: than "is this not a client, therefore staff" (Defect 2's bug shape).
+    #: auth.py asks "IS this a client" to populate client-only JWT/profile
+    #: fields and drive login-redirect logic — the opposite direction, and
+    #: explicitly verified correct (login 403 + the auto-clockin guard are
+    #: out of scope for this audit). portal.py's endpoints are client-portal
+    #: -only by design (module docstring: "All endpoints require client
+    #: authentication"), so denying non-clients there is the intended
+    #: admission gate, not a staff-authority proxy a service account could
+    #: exploit. Both were carved out deliberately, not overlooked — same
+    #: spirit as NON_ROUTER_FILES in test_router_manifest.py.
+    ACCESS_GATE_ALLOWLIST = frozenset({"auth.py", "portal.py"})
+
+    def _scan(self, root: Path) -> list[str]:
+        offenders: list[str] = []
+        for path in sorted(root.glob("*.py")):
+            if path.name in self.ACCESS_GATE_ALLOWLIST:
+                continue
+            text = path.read_text(encoding="utf-8")
+            for match in self.HARDCODED.finditer(text):
+                line_no = text.count("\n", 0, match.start()) + 1
+                offenders.append(f"{path.name}:{line_no}: {match.group(0)}")
+        return offenders
+
+    def test_no_router_or_dep_hardcodes_the_client_only_exclusion(self) -> None:
+        offenders = self._scan(ROUTERS) + self._scan(DEPS)
+        assert not offenders, (
+            "these checks partition team-vs-client by hand instead of using "
+            "service_accounts.is_human_team_member, so a service account would pass "
+            "a guard meant to gate team-level authority:\n  " + "\n  ".join(offenders)
+        )
+
+    def test_the_probe_finds_the_pattern_it_is_looking_for(self) -> None:
+        assert self.HARDCODED.search('if user.get("role") == "client":')
+        assert self.HARDCODED.search("if current_user.get('role') == 'client':")
+        assert self.HARDCODED.search('current_user["role"] == "client" and x != y')
+        assert not self.HARDCODED.search("is_human_team_member(current_user.get(\"role\"))")
+        assert not self.HARDCODED.search('user.get("role") == "admin"')
+
+    def test_the_deps_directory_was_actually_scanned(self) -> None:
+        assert len(list(DEPS.glob("*.py"))) >= 3, (
+            f"expected the deps package at {DEPS}, found almost nothing — "
+            "the audit above would pass vacuously"
+        )
+
+    def test_allowlist_entries_still_exist_and_still_need_the_exemption(self) -> None:
+        """An exemption is an assertion about the file, not a formality
+        (W109): if auth.py/portal.py are ever rewritten to no longer contain
+        this pattern, the allowlist entry becomes a silent, unneeded blind
+        spot in the audit and must be removed."""
+        for name in self.ACCESS_GATE_ALLOWLIST:
+            path = ROUTERS / name
+            assert path.is_file(), f"{name} is allowlisted but no longer exists — remove it"
+            text = path.read_text(encoding="utf-8")
+            assert self.HARDCODED.search(text), (
+                f"{name} is allowlisted as a deliberate exception, but no longer contains "
+                "the pattern — remove the now-unnecessary exemption"
+            )
