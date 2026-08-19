@@ -53,6 +53,7 @@ _MIGRATIONS_DIR = Path(__file__).resolve().parents[2] / "db" / "migrations_v2"
 _BROKER_MIGRATIONS = (
     _MIGRATIONS_DIR / "270_wa_broker_jobs.sql",
     _MIGRATIONS_DIR / "271_wa_broker_gauge_half_open_at.sql",
+    _MIGRATIONS_DIR / "272_wa_broker_package_text.sql",
 )
 
 _SCHEMA = "wa_broker_it"
@@ -849,17 +850,17 @@ async def test_reaper_fold_is_atomic_with_terminalization(
     ) == "open"
 
 
-async def test_offer_package_is_a_jsonb_object_under_the_production_codec(
+async def test_offer_evidence_inputs_is_a_jsonb_object_under_the_production_codec(
     conn: asyncpg.Connection,
 ) -> None:
     """finding 5 (GUILT): the production pool registers a jsonb codec whose
     encoder is json.dumps (backend/app/core/database.py) — a bare
-    ``$3::jsonb`` bind made asyncpg re-serialize the already-serialized
-    package string, storing a JSONB *string* instead of an object
-    (``package ? 'messages'`` would fail in prod while every codec-less
-    test stayed green). The ``::text::jsonb`` double cast types the bind as
-    text, so no codec applies on either pool. This connection registers the
-    PROD codec and proves the stored value is an object."""
+    ``::jsonb`` bind made asyncpg re-serialize the already-serialized
+    string, storing a JSONB *string* instead of an object while every
+    codec-less test stayed green. The ``::text::jsonb`` double cast types
+    the bind as text, so no codec applies on either pool. Asserted on
+    evidence_inputs — the one payload still stored as jsonb; package moved
+    to TEXT in migration 272 (see the byte-fidelity test below)."""
     import json as _json
 
     codec_conn = await asyncpg.connect(_DB_URL)
@@ -882,18 +883,65 @@ async def test_offer_package_is_a_jsonb_object_under_the_production_codec(
             thread_epoch=1,
         )
         assert offered.outcome is OfferOutcome.OFFERED
-        types = await codec_conn.fetchrow(
-            """
-            SELECT jsonb_typeof(package) AS pkg, jsonb_typeof(evidence_inputs) AS ev
-            FROM broker_jobs WHERE job_id = $1
-            """,
+        assert (
+            await codec_conn.fetchval(
+                "SELECT jsonb_typeof(evidence_inputs) FROM broker_jobs WHERE job_id = $1",
+                offered.job_id,
+            )
+        ) == "object"
+        assert await codec_conn.fetchval(
+            "SELECT evidence_inputs ? 'domain' FROM broker_jobs WHERE job_id = $1",
             offered.job_id,
         )
-        assert types["pkg"] == "object"
-        assert types["ev"] == "object"
-        assert await codec_conn.fetchval(
-            "SELECT package ? 'messages' FROM broker_jobs WHERE job_id = $1",
-            offered.job_id,
+    finally:
+        await codec_conn.close()
+
+
+async def test_package_bytes_survive_offer_to_claim_verbatim(
+    conn: asyncpg.Connection,
+) -> None:
+    """Codex re-verdict r4 (GUILT): the package is a hash-sealed envelope —
+    wa_package_builder computes package_hash ONCE over the canonical
+    serialization, and the broker verifies the claimed bytes against it.
+    Stored as JSONB the bytes could not survive: Postgres normalizes key
+    order and whitespace on ingest ('{"history": [], "chunks": []}' came
+    back '{"chunks": [], "history": []}', measured), so every hash
+    verification would reject a valid package, the job would expire, and
+    repeated rejections would open the breaker on healthy traffic.
+    Migration 272 makes the column TEXT: this offers a deliberately
+    NON-canonical serialization (spaces, reverse-sorted keys) under the
+    PRODUCTION codec and asserts the claimed value is byte-identical —
+    the exact property sha256 needs."""
+    import hashlib as _hashlib
+    import json as _json
+
+    quirky = '{"history": [ ],   "chunks": [],  "zeta": {"b": 1, "a": 2}}'
+    codec_conn = await asyncpg.connect(_DB_URL)
+    try:
+        await codec_conn.execute(f"SET search_path TO {_SCHEMA}")
+        await codec_conn.set_type_codec(
+            "jsonb", encoder=_json.dumps, decoder=_json.loads, schema="pg_catalog"
+        )
+        await _seed_alive_gauge(codec_conn)
+        outbox_id, thread_id, tok = await _outbox_row(codec_conn)
+        offered = await wa_broker.offer_job(
+            codec_conn,
+            outbox_id=outbox_id,
+            thread_id=thread_id,
+            claim_token=tok,
+            outbox_expected_status="generating",
+            package=quirky,
+            evidence_inputs="{}",
+            package_hash=_hashlib.sha256(quirky.encode("utf-8")).hexdigest(),
+            thread_epoch=1,
+        )
+        assert offered.outcome is OfferOutcome.OFFERED
+        leased = await wa_broker.claim_job(codec_conn, in_flight=0, last_exec_ms=None)
+        assert leased is not None
+        assert leased["package"] == quirky  # byte-identical, not just equivalent
+        assert (
+            _hashlib.sha256(leased["package"].encode("utf-8")).hexdigest()
+            == leased["package_hash"]
         )
     finally:
         await codec_conn.close()

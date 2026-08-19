@@ -452,13 +452,20 @@ async def offer_job(
         # only the INSERT, and the marker repair COMMITS with the outer
         # transaction.
         try:
+            # The two payload casts are DELIBERATELY different (do not
+            # unify): package is TEXT (migration 272 — a hash-sealed
+            # envelope whose bytes must survive verbatim; jsonb would
+            # normalize key order/whitespace and break package_hash for
+            # every job), while evidence_inputs stays jsonb via
+            # ::text::jsonb (no byte contract; the double cast keeps the
+            # bind codec-agnostic under the production pool's jsonb codec).
             async with conn.transaction():
                 job_id = await conn.fetchval(
                     """
                     INSERT INTO broker_jobs
                         (outbox_id, thread_id, mode, package, evidence_inputs,
                          package_hash, thread_epoch, deadline_at)
-                    VALUES ($1, $2, 'serve', $3::text::jsonb,
+                    VALUES ($1, $2, 'serve', $3::text,
                             $4::text::jsonb, $5, $6,
                             now() + ($7 * INTERVAL '1 second'))
                     RETURNING job_id
@@ -630,13 +637,14 @@ async def claim_job(
     )
 
     fence_token = uuid.uuid4()
-    # package::text — the response contract is a STRING (the broker verifies
-    # the exact bytes against package_hash), and under the production pool's
-    # jsonb codec a bare `package` decodes to a dict: the router's
-    # ClaimResponse(package=<dict>) then 500s AFTER this lease UPDATE
-    # autocommitted, stranding the job leased until its deadline (Codex
-    # re-verdict r2, finding 1). ::text is codec-agnostic — the read-side
-    # mirror of offer_job's ::text::jsonb.
+    # package is a TEXT column (migration 272, Codex re-verdict r4): the
+    # envelope's bytes must survive offer->claim untouched so the broker's
+    # hash verification against package_hash can ever hold — jsonb storage
+    # normalized key order and whitespace, silently breaking the hash for
+    # every package. TEXT also closes r2 finding 1 by construction: no jsonb
+    # codec applies, so the row value is always the str the router's
+    # ClaimResponse requires (a bare jsonb bind decoded to a dict under the
+    # production codec and 500'd AFTER this lease UPDATE autocommitted).
     row = await conn.fetchrow(
         """
         UPDATE broker_jobs
@@ -649,7 +657,7 @@ async def claim_job(
             FOR UPDATE SKIP LOCKED
             LIMIT 1
         )
-        RETURNING job_id, fence_token, package::text AS package, package_hash,
+        RETURNING job_id, fence_token, package, package_hash,
                   deadline_at, now() AS server_now
         """,
         fence_token,
