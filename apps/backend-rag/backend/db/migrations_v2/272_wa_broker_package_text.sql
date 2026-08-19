@@ -13,11 +13,19 @@
 -- evidence_inputs keeps jsonb: it has no byte-hash contract.
 -- The table ships dark (flag-OFF lane, no broker daemon yet): the rewrite
 -- ALTER takes is on an empty-or-tiny table.
+--
+-- squawk changing-column-type is suppressed on BOTH statements for that
+-- same reason: the ACCESS EXCLUSIVE lock it warns about is on a table with
+-- zero live traffic and zero other readers (censused above), and the type
+-- change IS the point of the migration. Each ALTER is kept on ONE line
+-- because squawk-cli 2.62.0 only honors the ignore comment for a
+-- single-line statement (measured: the identical two-line form still
+-- fires the rule).
 
-ALTER TABLE broker_jobs
-    ALTER COLUMN package TYPE TEXT USING package::text;
+-- squawk-ignore changing-column-type
+ALTER TABLE broker_jobs ALTER COLUMN package TYPE TEXT USING package::text;
 
 -- === ROLLBACK ===
 
-ALTER TABLE broker_jobs
-    ALTER COLUMN package TYPE JSONB USING package::jsonb;
+-- squawk-ignore changing-column-type
+ALTER TABLE broker_jobs ALTER COLUMN package TYPE JSONB USING package::jsonb;
