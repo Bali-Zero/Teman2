@@ -46,6 +46,7 @@ import { GET as getVoaResultTombstone } from "./visa/voa/[hash]/route";
 const APP_DIR = path.dirname(fileURLToPath(import.meta.url));
 const VISA_DIR = path.join(APP_DIR, "visa");
 const PUBLIC_API_SCHEMA = path.join(APP_DIR, "..", "lib", "api", "schema.d.ts");
+const LOCALES_DIR = path.join(APP_DIR, "..", "i18n", "locales");
 const BASE = "https://balizero.com";
 
 /**
@@ -147,14 +148,36 @@ describe("sitemap — visa funnel findability", () => {
 
   it("keeps GARUDA out of the checked-in public API client contract", () => {
     const schema = fs.readFileSync(PUBLIC_API_SCHEMA, "utf8");
-    expect(schema).not.toContain('"/api/visa/voa"');
-    expect(schema).not.toContain('"/api/visa/voa/{hash}"');
+    for (const retiredMarker of [
+      '"/api/visa/voa"',
+      '"/api/visa/voa/{hash}"',
+      "VoaRequest",
+      "VoaResponse",
+      'CaseType: "issuance" | "extension"',
+      "backend__services__garuda_flow__intake__Purpose",
+      "submit_voa_api_visa_voa_post",
+      "get_voa_api_visa_voa__hash__get",
+    ]) {
+      expect(schema).not.toContain(retiredMarker);
+    }
 
     const publicSource = schema.match(
       /PublicLeadSource:[\s\S]*?;\n\s+\/\*\*/,
     )?.[0];
     expect(publicSource).toBeDefined();
     expect(publicSource).not.toContain('"garuda_voa"');
+  });
+
+  it("removes retired GARUDA copy from every translated public bundle", () => {
+    for (const locale of ["en", "id", "it"]) {
+      const raw = fs.readFileSync(
+        path.join(LOCALES_DIR, `${locale}.json`),
+        "utf8",
+      );
+      const messages = JSON.parse(raw) as Record<string, unknown>;
+      expect(messages).not.toHaveProperty("garudaVoa");
+      expect(raw).not.toContain('"garudaVoa"');
+    }
   });
 
   it("does NOT list per-visitor result pages", async () => {

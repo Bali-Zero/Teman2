@@ -18875,11 +18875,6 @@ export interface components {
       extension: components["schemas"]["ExtensionPolicy"];
       stay: components["schemas"]["StayPolicy"];
     };
-    /**
-     * CaseType
-     * @enum {string}
-     */
-    CaseType: "issuance" | "extension";
     /** ChatRequest */
     ChatRequest: {
       /** Check Hash */
@@ -25997,92 +25992,6 @@ export interface components {
       /** Total Stay */
       total_stay?: string | null;
     };
-    /** VoaRequest */
-    VoaRequest: {
-      case_type: components["schemas"]["CaseType"];
-      /**
-       * Entry Date
-       * Format: date
-       */
-      entry_date: string;
-      /**
-       * Extension Already Used
-       * @default false
-       */
-      extension_already_used: boolean;
-      /** Nationality */
-      nationality: string;
-      /**
-       * Passport Expiry Date
-       * Format: date
-       */
-      passport_expiry_date: string;
-      purpose: components["schemas"]["backend__services__garuda_flow__intake__Purpose"];
-      /** Self Pay */
-      self_pay: boolean;
-      /** Travellers */
-      travellers: number;
-      /** Voa Expiry Date */
-      voa_expiry_date?: string | null;
-    };
-    /**
-     * VoaResponse
-     * @description Client-facing verdict. Deliberately has NO field for the D-14
-     *     filing-window-opens date, nor for the D-10/D-3/D-1 internal
-     *     checkpoints — `published_filing_deadline` (D-7) is the ONLY Safe Clock
-     *     date this schema can ever carry. D-14 is withheld not because it is
-     *     internal but because the source is self-contradictory on it (see the
-     *     module docstring above); D-7 is stated identically everywhere and is
-     *     not in doubt.
-     *
-     *     Same treatment for decline reasons: `reason_codes` carries ONLY the
-     *     stable neutral codes from `services.garuda_flow.eligibility.DeclineCode`
-     *     — never the engine-internal English audit prose
-     *     (`VoaVerdict.decline_reasons`), which can name an internal checkpoint
-     *     (e.g. "D-10 pilot threshold") and is never translated. That prose is
-     *     still persisted server-side for audit; it has no field here.
-     */
-    VoaResponse: {
-      case_type: components["schemas"]["CaseType"];
-      /** Decision */
-      decision: string;
-      /**
-       * Entry Date
-       * Format: date
-       */
-      entry_date: string;
-      /**
-       * Expiry Date
-       * Format: date
-       */
-      expiry_date: string;
-      /** Expiry Is Estimated */
-      expiry_is_estimated: boolean;
-      /** Hash */
-      hash: string;
-      /**
-       * Last Legal Day
-       * Format: date
-       */
-      last_legal_day: string;
-      /** Nationality */
-      nationality: string;
-      /** Price Idr */
-      price_idr: number | null;
-      /** Price Source */
-      price_source: string | null;
-      /**
-       * Published Filing Deadline
-       * Format: date
-       */
-      published_filing_deadline: string;
-      /** Reason Codes */
-      reason_codes: string[];
-      /** Result Url */
-      result_url: string;
-      /** Submit By Date */
-      submit_by_date: string | null;
-    };
     /**
      * VoiceQueryRequest
      * @description Simple voice query request.
@@ -27016,16 +26925,6 @@ export interface components {
        */
       to: string[];
     };
-    /**
-     * Purpose
-     * @description The 4 VOA-permitted purposes (constants.py: "tourism, family visits,
-     *     transit and short business meetings only — no work allowed"). The enum
-     *     itself IS the ``simple_tourism`` / ``work_or_business_purpose`` guard:
-     *     there is no 5th, work-shaped value to pick.
-     * @enum {string}
-     */
-    backend__services__garuda_flow__intake__Purpose:
-      "tourism" | "family" | "transit" | "business-meeting";
     /**
      * Purpose
      * @enum {string}
@@ -50910,70 +50809,6 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["MatchResponse"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  submit_voa_api_visa_voa_post: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["VoaRequest"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["VoaResponse"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  get_voa_api_visa_voa__hash__get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        hash: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["VoaResponse"];
         };
       };
       /** @description Validation Error */
