@@ -53,3 +53,21 @@ def test_advisory_review_fails_visibly_for_missing_output_or_cli_error() -> None
     assert "AI review unavailable" not in review_step
     assert "review artifact is missing" in workflow
     assert "empty review output — nothing to post." not in workflow
+
+
+def test_cli_failure_diagnostics_are_bounded_and_opaque() -> None:
+    review_step = _review_step()
+
+    assert "Claude CLI stdout base64 (max 2000 bytes)" in review_step
+    assert "head -c 2000 /tmp/review.txt | base64 -w 0" in review_step
+    assert "Claude CLI stderr base64 (max 2000 bytes)" in review_step
+    assert "head -c 2000 /tmp/review.err | base64 -w 0" in review_step
+    assert "head -c 2000 /tmp/review.txt | sed -n" not in review_step
+    assert "head -20 /tmp/review.err" not in review_step
+
+
+def test_base64_diagnostics_terminate_before_workflow_commands() -> None:
+    review_step = _review_step()
+
+    assert "head -c 2000 /tmp/review.txt | base64 -w 0\n            echo\n            echo \"::endgroup::\"" in review_step
+    assert "head -c 2000 /tmp/review.err | base64 -w 0\n            echo\n            echo \"::endgroup::\"" in review_step

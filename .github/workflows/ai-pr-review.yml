@@ -133,7 +133,14 @@ jobs:
             echo "ok=true" >> "$GITHUB_OUTPUT"
           else
             echo "::error title=AI review failed::claude CLI exited nonzero."
-            head -20 /tmp/review.err || true
+            echo "::group::Claude CLI stdout base64 (max 2000 bytes)"
+            head -c 2000 /tmp/review.txt | base64 -w 0
+            echo
+            echo "::endgroup::"
+            echo "::group::Claude CLI stderr base64 (max 2000 bytes)"
+            head -c 2000 /tmp/review.err | base64 -w 0
+            echo
+            echo "::endgroup::"
             exit 1
           fi
 
