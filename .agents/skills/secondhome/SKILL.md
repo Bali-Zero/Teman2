@@ -62,7 +62,8 @@ lifecycle all deployed. Tracker Day-90 armed but gated (see §5).
 
 ## 3. Owner decisions (2026-07-23, binding)
 
-- **Pricing**: base E33 = **IDR 39,000,000 ALL-INCLUSIVE**. NEVER decompose
+- **Pricing**: base E33 = **IDR 35,000,000 ALL-INCLUSIVE** (repriced from 39M on
+  2026-08-19, Zero ruling D2 — match Flado). NEVER decompose
   into PNBP + service fee in any client-facing material.
 - **Fit Memo**: **FREE** (no paid fit assessment).
 - **Dependent pricing**: flat add-on per person, draft **IDR 12M/person**
