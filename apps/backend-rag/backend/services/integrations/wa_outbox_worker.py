@@ -782,16 +782,16 @@ async def _process_claimed_row(
         try:
             # Codex broker leg (BOT-V4 S2 PR-5) — attempted BEFORE the
             # Gemini call, inside the same heartbeat span. attempt() never
-            # raises: every broker outcome that is not a consumed
-            # completion falls off to the Gemini leg below in the SAME
-            # claim, consuming zero retry attempts. stand_down means a
-            # takeover/epoch drift was detected at consume time — the
-            # completion was discarded and NO generation may replace it.
-            # fail means the drift verification itself broke AFTER a
-            # completion existed — fail-closed: nothing may be generated
-            # in THIS claim (the raise below takes the retry ladder; the
-            # retry re-claims with a fresh thread read and its spent
-            # offer routes it to Gemini on current context).
+            # raises and answers in one of four shapes (its module
+            # docstring is the contract): text (send it) · stand_down
+            # (drift verdict — the leg already terminalized the row
+            # atomically, NO generation may replace it) · fall-off (a
+            # CERTAIN pre-durable outcome: Gemini answers in this same
+            # claim, zero retry attempts consumed) · fail (an UNCERTAIN
+            # outcome at/after a durable boundary — offer, wait, or the
+            # post-completion drift protocol: the raise below takes the
+            # retry ladder, because generating in THIS claim could run
+            # Gemini beside a durable job or an unverified completion).
             body_text = ""
             if wa_codex_leg.provider_is_codex():
                 leg = await wa_codex_leg.attempt(
@@ -806,9 +806,7 @@ async def _process_claimed_row(
                 if leg.stand_down:
                     codex_stand_down = True
                 elif leg.fail:
-                    raise RuntimeError(
-                        f"codex_post_completion_failure:{leg.fail}"
-                    )
+                    raise RuntimeError(f"codex_leg_failure:{leg.fail}")
                 elif leg.text is not None:
                     body_text = leg.text
                     logger.info(

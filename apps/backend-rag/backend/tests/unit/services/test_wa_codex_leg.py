@@ -78,17 +78,21 @@ class _FakePool:
     hands out the one scripted conn so the drift-re-read script drives it.
 
     ``release_exc_on_acquire`` (1-based) makes THAT acquire's __aexit__
-    raise — the connection-release-after-commit shape from Codex r3."""
+    raise — the connection-release-after-commit shape from Codex r3.
+    ``enter_exc_on_acquire`` makes THAT acquire's __aenter__ raise — the
+    certain nothing-ran-yet shape from Codex r4."""
 
     def __init__(
         self,
         conn: ScriptedConn,
         *,
         release_exc_on_acquire: int | None = None,
+        enter_exc_on_acquire: int | None = None,
     ) -> None:
         self._conn = conn
         self.acquired = 0
         self._release_exc_on = release_exc_on_acquire
+        self._enter_exc_on = enter_exc_on_acquire
 
     def acquire(self) -> Any:
         pool = self
@@ -97,6 +101,8 @@ class _FakePool:
             async def __aenter__(self) -> ScriptedConn:
                 pool.acquired += 1
                 self._n = pool.acquired
+                if pool._enter_exc_on == self._n:
+                    raise RuntimeError("acquire failed")
                 return pool._conn
 
             async def __aexit__(self, *exc: Any) -> bool:
@@ -516,6 +522,53 @@ async def test_connection_release_failure_after_offered_is_uncertain(
     stubs.offer_job.assert_awaited_once()
     stubs.wait_for_job.assert_not_awaited()
     stubs.consume_result.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_offer_acquire_entry_failure_is_a_certain_fall_off(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Codex r4 finding 2: failing to ENTER the acquire means offer_job
+    never ran — nothing durable exists, so burning a retry attempt would
+    be wrong. Certain outcome: fall off to Gemini in the same claim."""
+    stubs = _wire_stubs(monkeypatch)
+    pool = _FakePool(ScriptedConn(), enter_exc_on_acquire=1)
+    result = await _run(pool=pool)
+    assert result.reason == "offer_acquire_error:RuntimeError"
+    assert not result.fail and not result.stand_down
+    stubs.offer_job.assert_not_awaited()
+    stubs.wait_for_job.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_release_failure_after_certain_non_offered_keeps_the_outcome(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Codex r4 finding 2: a known non-OFFERED admission verdict is
+    CERTAIN — a release failure after it must not launder it into
+    offer_uncertain and burn a retry attempt."""
+    stubs = _wire_stubs(
+        monkeypatch, offer=OfferResult(OfferOutcome.BROKER_ABSENT)
+    )
+    pool = _FakePool(ScriptedConn(), release_exc_on_acquire=1)
+    result = await _run(pool=pool)
+    assert result.reason == "offer:broker_absent"
+    assert not result.fail
+    stubs.wait_for_job.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_offered_without_job_id_is_a_contract_break_fail(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Codex r4 finding 1: OFFERED with no id is a broken transport
+    contract over a possibly-durable job — Gemini beside it could never
+    be waited on, consumed or discarded. Retry ladder, never fall-off."""
+    stubs = _wire_stubs(monkeypatch, offer=OfferResult(OfferOutcome.OFFERED))
+    result = await _run()
+    assert result.fail == "offer_contract_break:missing_job_id"
+    assert result.text is None and not result.stand_down
+    stubs.wait_for_job.assert_not_awaited()
 
 
 def test_stub_namespace_mirrors_the_real_module() -> None:

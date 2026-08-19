@@ -866,11 +866,10 @@ async def expire_stale_jobs(pool: asyncpg.Pool) -> ReapResult:
     already observed and recorded.
 
     The dead-consumer predicate anchors on COALESCE(completed_at,
-    created_at) (finding 8): migration 270 does not force completed_at to be
-    set on completed_pending_consume, and a malformed writer could otherwise
-    mint a row this reaper can never reach — an unreapable PII state.
-    (A DB CHECK tying the state to completed_at is the follow-up migration,
-    tracked for PR-5; this makes the reaper safe regardless.)
+    created_at) (finding 8). Migration 274 (landed with PR-5) now makes a
+    completed_pending_consume row WITHOUT completed_at unwritable at the
+    schema, so the COALESCE is belt-and-braces for rows minted before 274
+    — the reaper stays safe regardless of which side the row came from.
 
     Terminalization and the breaker fold run in ONE transaction (Codex
     re-verdict, finding 4): as separate statements, a crash between them

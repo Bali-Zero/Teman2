@@ -4,17 +4,24 @@ Route decision + offer + wait + consume + finalize for ONE claimed
 ``wa_outbox`` row (spec
 research/operations/2026-08-19-bot-chatgpt-provider-broker-spec.md, section
 2.1). The leg runs INSIDE the worker's claim, before the Gemini generation
-call, and every broker outcome that is not a consumed-and-finalized
-completion FALLS OFF to the Gemini leg in the same claim — consuming zero
-retry attempts. ``attempt`` therefore NEVER raises: any internal failure is
-a fall-off — except a failure INSIDE the post-completion section (drift
-verification / discard / consume), which is returned as ``fail`` so the
-worker takes its retry ladder instead of generating in this claim: at that
-point a completion exists and drift can no longer be ruled out, so an
-in-claim replacement built on the stale thread snapshot would be exactly
-the fail-open the drift check exists to prevent. The retry re-claims with a
-fresh thread read; its offer lands ``ALREADY_SPENT`` and the Gemini leg
-answers from CURRENT context.
+call. ``attempt`` NEVER raises; it answers in exactly one of four shapes:
+
+  text        — a consumed, finalized completion: the worker sends it.
+  stand_down  — drift verdict: the leg has ALREADY terminalized the row
+                atomically; the worker generates nothing.
+  fall-off    — a CERTAIN pre-durable outcome (gates, load, build, offer
+                admission refusals, typed FAILED/DEADLINE waits, consume
+                lost, finalize DEFECT): the Gemini leg answers in the SAME
+                claim, consuming zero retry attempts.
+  fail        — an UNCERTAIN outcome at or after a durable boundary
+                (``offer_uncertain`` / ``offer_contract_break`` /
+                ``wait_error`` / ``post_completion`` /
+                ``stand_down_fence_lost``): the worker raises into its
+                retry ladder — generating in THIS claim could run Gemini
+                beside a durable job or a completion whose drift was
+                never ruled out. The retry re-claims with a fresh thread
+                read; a durable offer answers it ``ALREADY_SPENT`` and the
+                Gemini leg answers from CURRENT context.
 
 The codex leg runs IFF all of (spec 2.1 route decision):
   1. ``is_bot_autoreply_enabled()`` — the SAME ``WA_INBOX_BOT_AUTOREPLY``
@@ -243,43 +250,81 @@ async def _attempt(
     parsed_wire = json.loads(wire)
     evidence_inputs = parsed_wire.get("evidence_inputs") or {}
 
-    # The offer boundary is FAIL-CLOSED (Codex r3): once offer_job has
-    # begun, an exception's transactional outcome is uncertain — the job
-    # and its generation_route marker may already be committed (offer_job
-    # commits inside; even the connection RELEASE on this block's exit can
-    # raise after a durable OFFERED). Falling off here would run Gemini in
-    # this claim while a durable job exists, skipping the drift protocol
-    # entirely — the same class the wait cure closed, one boundary
-    # earlier. The retry ladder resolves the uncertainty: a committed
-    # offer answers the retry with ALREADY_SPENT (Gemini on fresh
-    # context); an uncommitted one simply offers again.
+    # The offer boundary is FAIL-CLOSED only where the outcome is
+    # genuinely UNCERTAIN (Codex r3, sharpened by r4): the three phases
+    # are separated because they carry three different certainties.
+    #   entry   — acquiring the connection failed: offer_job never ran,
+    #             nothing durable exists -> fall off (certain).
+    #   call    — offer_job raised: the job and its generation_route
+    #             marker may already be committed -> fail (uncertain; the
+    #             retry answers ALREADY_SPENT or offers afresh).
+    #   release — the connection release raised AFTER a known result: a
+    #             certain non-OFFERED outcome stands (fall off with it);
+    #             after OFFERED the durable job makes fail the safe
+    #             reading of an unhealthy pool.
     try:
-        async with pool.acquire() as offer_conn:
-            offer = await wa_broker.offer_job(
-                offer_conn,
-                outbox_id=outbox_id,
-                thread_id=thread_id,
-                claim_token=claim_token,
-                outbox_expected_status=outbox_expected_status,
-                package=wire,
-                evidence_inputs=json.dumps(evidence_inputs, sort_keys=True),
-                package_hash=package_hash,
-                thread_epoch=epoch,
-            )
+        offer_cm = pool.acquire()
+        offer_conn = await offer_cm.__aenter__()
     except Exception as exc:
-        logger.error(
-            "wa_codex_leg: offer outcome uncertain (outbox=%s): %s",
+        logger.warning(
+            "wa_codex_leg: offer connection acquire failed (outbox=%s): %s",
             outbox_id,
             type(exc).__name__,
         )
-        return CodexLegResult(fail=f"offer_uncertain:{type(exc).__name__}")
-    if offer.outcome is not wa_broker.OfferOutcome.OFFERED or offer.job_id is None:
+        return CodexLegResult(reason=f"offer_acquire_error:{type(exc).__name__}")
+
+    offer: wa_broker.OfferResult | None = None
+    call_exc: Exception | None = None
+    release_exc: Exception | None = None
+    try:
+        offer = await wa_broker.offer_job(
+            offer_conn,
+            outbox_id=outbox_id,
+            thread_id=thread_id,
+            claim_token=claim_token,
+            outbox_expected_status=outbox_expected_status,
+            package=wire,
+            evidence_inputs=json.dumps(evidence_inputs, sort_keys=True),
+            package_hash=package_hash,
+            thread_epoch=epoch,
+        )
+    except Exception as exc:
+        call_exc = exc
+    try:
+        await offer_cm.__aexit__(None, None, None)
+    except Exception as exc:
+        release_exc = exc
+
+    if call_exc is not None or offer is None:
+        logger.error(
+            "wa_codex_leg: offer outcome uncertain (outbox=%s): %s",
+            outbox_id,
+            type(call_exc).__name__,
+        )
+        return CodexLegResult(fail=f"offer_uncertain:{type(call_exc).__name__}")
+    if offer.outcome is not wa_broker.OfferOutcome.OFFERED:
         logger.info(
             "wa_codex_leg: offer fell off (outbox=%s outcome=%s)",
             outbox_id,
             offer.outcome.value,
         )
         return CodexLegResult(reason=f"offer:{offer.outcome.value}")
+    if release_exc is not None:
+        logger.error(
+            "wa_codex_leg: connection release failed after durable offer "
+            "(outbox=%s): %s",
+            outbox_id,
+            type(release_exc).__name__,
+        )
+        return CodexLegResult(fail=f"offer_uncertain:{type(release_exc).__name__}")
+    if offer.job_id is None:
+        # OFFERED without an id is a broken transport contract over a
+        # possibly-durable job — falling off would run Gemini beside it
+        # with no way to ever wait/consume/discard (Codex r4 finding 1).
+        logger.error(
+            "wa_codex_leg: OFFERED without job_id (outbox=%s)", outbox_id
+        )
+        return CodexLegResult(fail="offer_contract_break:missing_job_id")
 
     # From here on an OFFERED job is DURABLE: an untyped failure can no
     # longer be an in-claim fall-off — the daemon may complete the job and
