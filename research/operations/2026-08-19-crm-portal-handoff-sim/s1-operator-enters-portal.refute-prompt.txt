@@ -1,0 +1,86 @@
+You are an independent, adversarial code-correctness reviewer. Your job: try to REFUTE each finding
+below. Default assumption is "this finding is wrong" — only let it survive if the cited evidence
+genuinely supports the claim. Do not be polite about it; if a citation is misread, a path doesn't
+exist, or the conclusion doesn't follow, say so plainly.
+
+REPO: /Users/nuzantara/nuzantara (Bali Zero monorepo — Next.js frontend "mouth" + FastAPI backend
+"backend-rag"). You have read access to this filesystem — actually open the cited files and check
+line numbers/content before judging.
+
+SCENARIO: An operator (staff member) is logged into kita.balizero.com (internal CRM app). In the
+same browser they navigate to https://my.balizero.com/portal (the CLIENT-facing self-service
+portal). Both subdomains share the same cookie `nz_access_token` (domain=.balizero.com). Question:
+what happens, and is it a genuine authorization defect?
+
+FINDINGS TO REVIEW (produced by a prior analyst):
+
+1) TITLE: "Superuser self-lookup fallback in get_current_client silently authorizes a
+   client-portal view keyed on a coincidental email match, for one specific admin"
+   CLAIM: apps/backend-rag/backend/app/routers/portal.py get_current_client() (~line 122-213):
+   when the JWT belongs to an email in settings.admin_emails_set (a 3-address allowlist:
+   zero@, asya@, antonellosiano@balizero.com — config.py ~line 998-1022) AND no ?as_client query
+   param is supplied, the code runs `SELECT id, email, full_name FROM clients WHERE
+   LOWER(email)=LOWER($1)` using the ADMIN'S OWN staff email as the lookup key (~line 157-179). If
+   a `clients` row happens to exist with that same email (verified live: client_id=68,
+   email=zero@balizero.com, practices=0, documents=0, portal_messages=0 — the other two admin
+   emails have NO matching clients row), the function returns 200 with `impersonating: False` and
+   that client's full profile (full_name/email/phone/whatsapp/nationality/passport_number/
+   passport_expiry/date_of_birth/gender/address/assigned_to — see GET /profile handler ~line
+   1092-1173) — WITHOUT going through the explicit ?as_client branch's audit log
+   (_log_impersonation, ~line 97-119, called only at ~line 199-205). Framing: a presence check
+   ("does a clients row exist with this email") is standing in for an authorization decision
+   ("is this admin allowed to view portal data through the client identity"), and it silently
+   skips the audit trail that the intentional impersonation path has.
+   Note for your review: the exposed data belongs to the ADMIN'S OWN email address (not another
+   client's data) — assess whether that changes the severity or the correctness of calling this
+   an authorization defect.
+
+2) TITLE: "Edge proxy portal gate checks cookie presence, not validity or identity"
+   CLAIM: apps/mouth/src/proxy.ts `hasPortalSession()` (~line 157-159) is
+   `Boolean(request.cookies.get('nz_access_token')?.value)` — presence-only, never decodes the
+   JWT or checks role/claims. Used at the my.balizero.com portal-domain gate (~line 259-280) to
+   decide whether to let a request through to the portal shell vs bounce to
+   /portal/login-upgraded. Reproduced live:
+     curl -sS -o /dev/null -D - "https://my.balizero.com/portal"
+       -> HTTP 307 to /portal/login-upgraded (no cookie)
+     curl -sS -o /dev/null -D - --cookie "nz_access_token=junk-not-a-real-jwt-12345"
+       "https://my.balizero.com/portal"
+       -> HTTP 200, x-matched-path: /portal (garbage cookie value still passes)
+   Note for your review: the code has a comment saying this middleware exists to avoid a UX flash
+   / console-logged 401, NOT as the real auth boundary — the real check is backend
+   get_current_client() (finding 1). Assess whether "presence-only edge gate" is still a valid
+   distinct finding given that framing, or whether it's expected/correct layering.
+
+3) TITLE: "Portal layout's cookie-auth catch block treats every non-200 identically as
+   bounce-to-login, discarding the distinction between 'not a client' (403) and 'no client
+   selected' (422)"
+   CLAIM: apps/mouth/src/app/portal/(authenticated)/layout.tsx cookie-based auth branch (~line
+   160-195) wraps `api.portal.getProfile()` in try/catch; the catch block (~line 190-192) is
+   empty (`catch { /* comment */ }`) and unconditionally falls through to
+   `router.replace(portalLoginHref(...))` at ~line 194, regardless of the thrown status code. Only
+   the SEPARATE localStorage-token branch (~line 149) actually inspects
+   `error.statusCode === 401`. apps/mouth/src/lib/api/client.ts (~line 373-403) throws a generic
+   `ApiError` class for both 403 and 422 (422 gets special MESSAGE formatting only, not special
+   control flow).
+
+YOUR TASK:
+- Open every cited file:line yourself and confirm or refute what's claimed there.
+- For finding 1: is this actually a security defect, or is "an admin sees their own linked client
+  record without an extra click" a non-issue? Does bypassing the audit log matter if it's the
+  admin's own data? Could this fallback cause a WRITE-path problem (e.g. PATCH /profile from an
+  admin silently editing a client row they didn't mean to touch) — check if there's a PATCH/PUT
+  profile endpoint reachable via the same get_current_client dependency.
+  - **A concrete route to check for a WRITE consequence**: apps/backend-rag/backend/app/routers/portal.py
+    defines `UpdateProfileRequest` (~line 1176) — read to line ~1220-1260 for the PATCH/PUT
+    handler that consumes it, confirm whether it also depends on `get_current_client` and would
+    silently write to `clients.id=68` (zero@balizero.com's own row) if the same admin PATCHes
+    their profile while in this fallback state.
+- For finding 2: is "presence-only cookie check at the edge" a real finding worth flagging
+  separately from finding 1, or just restating that auth happens in the backend (expected
+  defense-in-depth layering, not a bug)?
+- For finding 3: does the blanket catch{} actually hide useful diagnostic signal, or is
+  bounce-to-login the objectively CORRECT/safe behavior regardless of status code (i.e. is this
+  really a defect, or just an observability nitpick)?
+
+Answer for EACH of the 3 findings: SURVIVES or REFUTED, with the file:line or command output that
+decides it. Be concise — this is a correctness audit, not a rewrite.
