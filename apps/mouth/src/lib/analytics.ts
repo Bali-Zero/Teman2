@@ -235,21 +235,6 @@ export function trackLeadCreated(source: string): void {
   trackEvent("lead_created", { source });
 }
 
-/** Track when a document is uploaded */
-export function trackDocumentUploaded(documentType: string): void {
-  sendGA4Event("document_uploaded", {
-    event_category: "Engagement",
-    document_type: documentType,
-  });
-  trackEvent("document_uploaded", { document_type: documentType });
-}
-
-/** Track when a user logs into the portal */
-export function trackPortalLogin(): void {
-  sendGA4Event("portal_login", { event_category: "Engagement" });
-  trackEvent("portal_login", {});
-}
-
 /**
  * Track the lead-capture WhatsApp handoff (WhatsAppLeadButton — articles +
  * KBLI Navigator). Fired BEFORE navigating to wa.me; `transport_type:
@@ -403,30 +388,9 @@ function dispatchPropertyCTAClicked(
   });
 }
 
-/** Track property article-page CTA interaction (article slug + CTA type) */
-export function trackPropertyArticleCTA(
-  articleSlug: string,
-  ctaType: string,
-): void {
-  dispatchPropertyCTAClicked({ article_slug: articleSlug, cta_type: ctaType });
-}
-
 /** Track property analyze button clicked */
 export function trackPropertyAnalyzeCTA(lat: number, lng: number): void {
   dispatchPropertyCTAClicked({ cta_type: "analyze", lat, lng });
-}
-
-/** Track AskZantara question on property article */
-export function trackPropertyChatQuestion(articleSlug: string): void {
-  sendGA4Event("property_chat_question", {
-    event_category: "Property",
-    article_slug: articleSlug,
-  });
-  trackEvent("property_chat_question", { article_slug: articleSlug });
-  void trackFunnelEvent("property_chat_question", {
-    sessionId: getOrCreateSessionId(),
-    payload: { article_slug: articleSlug },
-  });
 }
 
 /** Track property WhatsApp CTA click */
