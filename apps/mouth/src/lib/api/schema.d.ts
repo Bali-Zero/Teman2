@@ -16300,40 +16300,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/visa/voa": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Submit Voa */
-    post: operations["submit_voa_api_visa_voa_post"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/visa/voa/{hash}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Get Voa */
-    get: operations["get_voa_api_visa_voa__hash__get"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/api/voice/elevenlabs/kbli-audit": {
     parameters: {
       query?: never;
@@ -21818,7 +21784,7 @@ export interface components {
       };
       /** Result Hash */
       result_hash?: string | null;
-      source: components["schemas"]["LeadSource"];
+      source: components["schemas"]["PublicLeadSource"];
       /** Utm */
       utm?: {
         [key: string]: unknown;
@@ -21839,13 +21805,12 @@ export interface components {
       whatsapp_url: string;
     };
     /**
-     * LeadSource
+     * PublicLeadSource
      * @enum {string}
      */
-    LeadSource:
+    PublicLeadSource:
       | "visa_clock"
       | "visa_match"
-      | "garuda_voa"
       | "kbli_decoder"
       | "kbli_builder"
       | "tax_gap"
