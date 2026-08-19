@@ -486,6 +486,10 @@ class WaCodexDaemon:
         started = time.monotonic()
         error_class: str | None = None
         result_text: str | None = None
+        # `result` non-None ⟺ generate returned ⟺ no except ran ⟺ error_class
+        # is None — branching on it below keeps the variable definitely
+        # initialized (CodeQL cannot track the error_class correlation).
+        result = None
         try:
             result = await self._codex.generate(claim.package, timeout_s=budget_s)
         except CodexExecTimeoutError:
@@ -515,7 +519,7 @@ class WaCodexDaemon:
         exec_ms = int((time.monotonic() - started) * 1000)
         self._last_exec_ms = exec_ms
 
-        if error_class is None:
+        if result is not None:
             text = result.text
             if not text.strip():
                 error_class = "empty_output"
@@ -608,7 +612,7 @@ class WaCodexDaemon:
         try:
             await asyncio.wait_for(self._stop.wait(), timeout=seconds)
         except asyncio.TimeoutError:
-            pass
+            pass  # timeout = the normal poll-interval wake; stop stays unset
 
 
 def main() -> None:
