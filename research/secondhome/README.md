@@ -52,9 +52,10 @@ Pasal 33(10)(d) still reads **60** — operate on 55, disclose the ambiguity
 **DECIDED 2026-07-23:**
 
 - **Fit Memo** → **FREE** (the E33 fit assessment is free; no paid Fit Memo).
-- **Pricing** → **IDR 39,000,000 all-inclusive** for the base E33 (5y). Never
+- **Pricing** → **IDR 35,000,000 all-inclusive** for the base E33 (5y). Never
   decompose into PNBP + service fee in any client-facing material (org rule:
-  single all-inclusive price; Fable-5 gate item 4.5).
+  single all-inclusive price; Fable-5 gate item 4.5). Repriced from 39M on
+  2026-08-19 (Zero ruling D2 — match Flado).
 - **Branch merge** → the content-freeze and fact-registry branches are
   approved for Claude-session review & merge (master list item 0.1).
 - **Dependent pricing** → **start price-alignment work now** (no final number

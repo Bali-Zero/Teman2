@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 08499d8c2fbda0e97b0195d7ecc371b423ddfd651509a3aff24f652c7bec2275
+checksum: 551c80c948965a58708633fc652497eb510faf84de8fae9f24342b15373c51c2
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -1981,6 +1981,28 @@ organs:
     path: ~/.organism/last_seen/mini.tg_digest_flush.json
     timestamp_field: ts
     status_field: status
+- id: mini.kc_watchdog
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 300
+  owner_module: infra/launchagents/wrappers/kc-watchdog.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.kc-watchdog
+  severity_on_silence: warning
+  notes: 'Kills the runaway macOS knowledgeconstructiond process on this headless
+    server every 15s (measured 2026-08-19: unbounded rubric iteration burns ~40% CPU
+    self + ~85% CPU on contactsd, memory-leaks past its own cap, gets corpse-killed
+    by the kernel, and respawns — launchctl disable alone does not stop it). Retrofitted
+    with genes 2026-08-19 (organ-conformance gate G1/G2/G5/G9).'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.kc_watchdog.json
+    timestamp_field: ts
+    status_field: status
 - id: pro.wr2_daily_carousel
   runtime: pro_launchd
   type: cron
@@ -2399,13 +2421,13 @@ organs:
     host: pro
     label: com.nuzantara.intake-health-report
   severity_on_silence: warning
-  notes: W0 read-only guardian, daily 07:30 WITA. SELECT-only against local
-    nuzantara_dev (Law 2) — review load, C-02 empty-OCR noise class, C-01 blob
-    presence for the review feed, C-29 companies-table sanity, C-07
-    done-without-proposal orphans, C-05 zombie review_claimed proposals, C-08
-    undelivered committed documents, the intake-worker's own log inode, and
-    24h freshness counters. One JSON object plus one Telegram digest line plus
-    a p0 escalation per breached threshold. Never writes DB.
+  notes: W0 read-only guardian, daily 07:30 WITA. SELECT-only against local nuzantara_dev
+    (Law 2) — review load, C-02 empty-OCR noise class, C-01 blob presence for the
+    review feed, C-29 companies-table sanity, C-07 done-without-proposal orphans,
+    C-05 zombie review_claimed proposals, C-08 undelivered committed documents, the
+    intake-worker's own log inode, and 24h freshness counters. One JSON object plus
+    one Telegram digest line plus a p0 escalation per breached threshold. Never writes
+    DB.
   cicatrix_refs: []
   bridge_source:
     type: state_file
@@ -2423,13 +2445,12 @@ organs:
     host: pro
     label: com.nuzantara.wa-mirror-freshness-liveness
   severity_on_silence: warning
-  notes: W0 read-only guardian, every 900s. SELECT-only max(created_at) off
-    whatsapp_message_context (local nuzantara_dev). ONLY during business
-    hours Mon-Sat 08:00-20:00 Asia/Makassar, alerts --tier p0 (dedup key
-    wa-mirror:freshness:stale) once when the newest row is older than
-    WA_FRESHNESS_MAX_AGE_MIN (default 360min) — a dead intake channel during
-    business hours, not the benign overnight quiet Law 6 already covers.
-    Never writes DB.
+  notes: W0 read-only guardian, every 900s. SELECT-only max(created_at) off whatsapp_message_context
+    (local nuzantara_dev). ONLY during business hours Mon-Sat 08:00-20:00 Asia/Makassar,
+    alerts --tier p0 (dedup key wa-mirror:freshness:stale) once when the newest row
+    is older than WA_FRESHNESS_MAX_AGE_MIN (default 360min) — a dead intake channel
+    during business hours, not the benign overnight quiet Law 6 already covers. Never
+    writes DB.
   cicatrix_refs: []
   bridge_source:
     type: state_file
