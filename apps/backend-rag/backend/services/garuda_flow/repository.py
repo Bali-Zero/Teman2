@@ -2,8 +2,8 @@
 
 The public creator and result pages are retired. Existing rows remain
 readable through the owner-only archive GET; the active internal preview is
-stateless and never calls ``save_voa_check``. Historical counters remain in
-the row shape for backward-compatible decoding.
+stateless, and this adapter has no archive-write capability. Historical
+counters remain in the row shape for backward-compatible decoding.
 
 The verdict (decision + Safe Clock dates) is FROZEN at submission time and
 simply read back on owner GET — it is not recomputed against "today" during
@@ -20,11 +20,10 @@ from typing import Any
 
 from backend.services.garuda_flow.eligibility import Decision
 from backend.services.garuda_flow.intake import CaseType, Purpose
-from backend.services.visa_check.repository import new_visa_hash
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["GarudaVoaRepository", "VoaCheckResult", "new_visa_hash"]
+__all__ = ["GarudaVoaRepository", "VoaCheckResult"]
 
 
 @dataclass(frozen=True)
@@ -61,100 +60,6 @@ class VoaCheckResult:
 class GarudaVoaRepository:
     def __init__(self, pool: Any) -> None:
         self._pool = pool
-
-    async def save_voa_check(
-        self,
-        *,
-        case_type: CaseType,
-        nationality: str,
-        entry_date: date,
-        passport_expiry_date: date,
-        voa_expiry_date: date | None,
-        extension_already_used: bool,
-        purpose: Purpose,
-        travellers: int,
-        self_pay: bool,
-        decision: Decision,
-        decline_reasons: list[str],
-        decline_codes: list[str],
-        expiry_date: date,
-        last_legal_day: date,
-        expiry_is_estimated: bool,
-        published_filing_deadline: date,
-        submit_by_date: date | None,
-        price_idr: int | None,
-        price_source: str | None,
-    ) -> VoaCheckResult:
-        hash_ = new_visa_hash()
-        created_at = datetime.utcnow()
-        async with self._pool.acquire() as conn:
-            await conn.execute(
-                """
-                INSERT INTO garuda_voa_checks
-                    (hash, created_at,
-                     case_type, nationality, entry_date, passport_expiry_date,
-                     voa_expiry_date, extension_already_used, purpose,
-                     travellers, self_pay,
-                     decision, decline_reasons, decline_codes,
-                     expiry_date, last_legal_day, expiry_is_estimated,
-                     published_filing_deadline, submit_by_date,
-                     price_idr, price_source)
-                VALUES ($1, $2,
-                        $3, $4, $5, $6,
-                        $7, $8, $9,
-                        $10, $11,
-                        $12, $13::jsonb, $14::jsonb,
-                        $15, $16, $17,
-                        $18, $19,
-                        $20, $21)
-                """,
-                hash_,
-                created_at,
-                case_type.value,
-                nationality,
-                entry_date,
-                passport_expiry_date,
-                voa_expiry_date,
-                extension_already_used,
-                purpose.value,
-                travellers,
-                self_pay,
-                decision.value,
-                json.dumps(decline_reasons),
-                json.dumps(decline_codes),
-                expiry_date,
-                last_legal_day,
-                expiry_is_estimated,
-                published_filing_deadline,
-                submit_by_date,
-                price_idr,
-                price_source,
-            )
-        return VoaCheckResult(
-            hash=hash_,
-            case_type=case_type,
-            nationality=nationality,
-            entry_date=entry_date,
-            passport_expiry_date=passport_expiry_date,
-            voa_expiry_date=voa_expiry_date,
-            extension_already_used=extension_already_used,
-            purpose=purpose,
-            travellers=travellers,
-            self_pay=self_pay,
-            decision=decision,
-            decline_reasons=decline_reasons,
-            decline_codes=decline_codes,
-            expiry_date=expiry_date,
-            last_legal_day=last_legal_day,
-            expiry_is_estimated=expiry_is_estimated,
-            published_filing_deadline=published_filing_deadline,
-            submit_by_date=submit_by_date,
-            price_idr=price_idr,
-            price_source=price_source,
-            view_count=0,
-            share_count=0,
-            created_at=created_at,
-        )
 
     async def get_voa_check(self, hash_: str) -> VoaCheckResult | None:
         async with self._pool.acquire() as conn:
