@@ -330,6 +330,14 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Dependency at this age is assessed case by case. We check how it applies to you.",
     "Status ketergantungan pada usia ini dinilai per kasus. Kami memeriksa penerapannya untuk Anda.",
   ),
+  // EXCLUDE code (hf.e31c-marriage-not-registered, seq-10). Exclusion
+  // reasons flow through the same reasonMessage fallback as candidate
+  // reasons, so without this entry the raw code would render at a real
+  // reader (Codex refuter finding 3 / Kimi finding 7, 2026-08-19).
+  REQ_PARENTS_MARRIAGE_REGISTERED: text(
+    "This route requires official proof of the parents' legally registered marriage. Without a registered marriage, this visa is not available.",
+    "Jalur ini memerlukan bukti resmi perkawinan orang tua yang tercatat secara sah. Tanpa perkawinan tercatat, visa ini tidak tersedia.",
+  ),
   D12_CUMULATIVE_STAY_ADVISOR_CHECK: text(
     "Long or repeated stays are counted cumulatively. We check your total against the limit with one of our advisors.",
     "Masa tinggal panjang atau berulang dihitung secara kumulatif. Kami memeriksa total Anda terhadap batasnya bersama konsultan kami.",

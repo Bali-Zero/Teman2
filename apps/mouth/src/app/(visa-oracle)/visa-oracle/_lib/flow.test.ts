@@ -367,6 +367,36 @@ describe("onshore/offshore canonical fact collection", () => {
   });
 });
 
+describe("seq-10 companion: the marriage question fires for PARENT-relation family interviews", () => {
+  // Kimi refuter finding 1 (2026-08-19): E31C's engine rules require the
+  // PARENTS' registered marriage, but this question only fired for SPOUSE —
+  // every PARENT-relation interview shipped `family.marriage_registered`
+  // UNKNOWN by construction, so the seq-10 HARD_FILTER would dead-end those
+  // applicants in NEEDS_INPUT with no way to ever answer the question.
+  it("asks family_marriage_registered when the sponsor is a parent", () => {
+    const ids = getCategoryQuestionIds({
+      category: "family",
+      family_relation: "PARENT",
+    } as OracleFacts);
+    expect(ids).toContain("family_marriage_registered");
+  });
+
+  it("still asks it for SPOUSE, and not for CHILD (innocence)", () => {
+    expect(
+      getCategoryQuestionIds({
+        category: "family",
+        family_relation: "SPOUSE",
+      } as OracleFacts),
+    ).toContain("family_marriage_registered");
+    expect(
+      getCategoryQuestionIds({
+        category: "family",
+        family_relation: "CHILD",
+      } as OracleFacts),
+    ).not.toContain("family_marriage_registered");
+  });
+});
+
 describe("editing, pruning and branch projection", () => {
   it("editing category removes stale descendants from the abandoned branch", () => {
     let state = startOffshore("work");
