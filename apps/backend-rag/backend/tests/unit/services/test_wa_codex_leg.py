@@ -75,11 +75,20 @@ class ScriptedConn:
 class _FakePool:
     """The leg is pool-only by contract (the worker's claim connection
     carries a concurrent heartbeat — Codex r1 finding 4): every acquire()
-    hands out the one scripted conn so the drift-re-read script drives it."""
+    hands out the one scripted conn so the drift-re-read script drives it.
 
-    def __init__(self, conn: ScriptedConn) -> None:
+    ``release_exc_on_acquire`` (1-based) makes THAT acquire's __aexit__
+    raise — the connection-release-after-commit shape from Codex r3."""
+
+    def __init__(
+        self,
+        conn: ScriptedConn,
+        *,
+        release_exc_on_acquire: int | None = None,
+    ) -> None:
         self._conn = conn
         self.acquired = 0
+        self._release_exc_on = release_exc_on_acquire
 
     def acquire(self) -> Any:
         pool = self
@@ -87,9 +96,12 @@ class _FakePool:
         class _CM:
             async def __aenter__(self) -> ScriptedConn:
                 pool.acquired += 1
+                self._n = pool.acquired
                 return pool._conn
 
             async def __aexit__(self, *exc: Any) -> bool:
+                if pool._release_exc_on == self._n and exc[0] is None:
+                    raise RuntimeError("release failed")
                 return False
 
         return _CM()
@@ -201,9 +213,10 @@ def _wire_stubs(
 async def _run(
     conn: ScriptedConn | None = None,
     thread: dict[str, Any] | None = None,
+    pool: _FakePool | None = None,
 ) -> wa_codex_leg.CodexLegResult:
     return await wa_codex_leg.attempt(
-        _FakePool(conn or ScriptedConn()),  # type: ignore[arg-type]
+        pool or _FakePool(conn or ScriptedConn()),  # type: ignore[arg-type]
         outbox_id=42,
         thread_id=7,
         message_id=4200,
@@ -460,13 +473,49 @@ async def test_consume_lost_falls_off_without_second_fold(
 
 @pytest.mark.asyncio
 async def test_attempt_never_raises(monkeypatch: pytest.MonkeyPatch) -> None:
-    """An escape from the leg must never enter the worker's retry ladder:
-    broker outcomes consume zero attempts by design."""
+    """A PRE-OFFER escape from the leg is a fall-off, never an exception
+    into the worker's retry ladder — before the offer nothing durable
+    exists, so Gemini in the same claim is safe."""
+    stubs = _wire_stubs(monkeypatch)
+    stubs.load_thread_context.side_effect = RuntimeError("boom")
+    result = await _run()
+    assert result.text is None and not result.stand_down and not result.fail
+    assert result.reason == "internal_error:RuntimeError"
+
+
+# ── the offer boundary is fail-closed (Codex r3) ────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_offer_exception_is_uncertain_never_a_fall_off(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Once offer_job has begun, an exception's transactional outcome is
+    uncertain — the job may be committed. Falling off would run Gemini in
+    this claim beside a durable job, skipping the drift protocol; the
+    retry ladder resolves it (ALREADY_SPENT or a fresh offer)."""
     stubs = _wire_stubs(monkeypatch)
     stubs.offer_job.side_effect = RuntimeError("boom")
     result = await _run()
+    assert result.fail == "offer_uncertain:RuntimeError"
     assert result.text is None and not result.stand_down
-    assert result.reason == "internal_error:RuntimeError"
+    stubs.wait_for_job.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_connection_release_failure_after_offered_is_uncertain(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The Codex r3 shape verbatim: offer_job returns OFFERED, then the
+    pool-acquire block's EXIT raises during connection release. The offer
+    is durable — this must take the retry ladder, never Gemini."""
+    stubs = _wire_stubs(monkeypatch)
+    pool = _FakePool(ScriptedConn(), release_exc_on_acquire=1)
+    result = await _run(pool=pool)
+    assert result.fail == "offer_uncertain:RuntimeError"
+    stubs.offer_job.assert_awaited_once()
+    stubs.wait_for_job.assert_not_awaited()
+    stubs.consume_result.assert_not_awaited()
 
 
 def test_stub_namespace_mirrors_the_real_module() -> None:

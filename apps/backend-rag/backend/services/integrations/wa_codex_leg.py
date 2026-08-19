@@ -243,18 +243,36 @@ async def _attempt(
     parsed_wire = json.loads(wire)
     evidence_inputs = parsed_wire.get("evidence_inputs") or {}
 
-    async with pool.acquire() as offer_conn:
-        offer = await wa_broker.offer_job(
-            offer_conn,
-            outbox_id=outbox_id,
-            thread_id=thread_id,
-            claim_token=claim_token,
-            outbox_expected_status=outbox_expected_status,
-            package=wire,
-            evidence_inputs=json.dumps(evidence_inputs, sort_keys=True),
-            package_hash=package_hash,
-            thread_epoch=epoch,
+    # The offer boundary is FAIL-CLOSED (Codex r3): once offer_job has
+    # begun, an exception's transactional outcome is uncertain — the job
+    # and its generation_route marker may already be committed (offer_job
+    # commits inside; even the connection RELEASE on this block's exit can
+    # raise after a durable OFFERED). Falling off here would run Gemini in
+    # this claim while a durable job exists, skipping the drift protocol
+    # entirely — the same class the wait cure closed, one boundary
+    # earlier. The retry ladder resolves the uncertainty: a committed
+    # offer answers the retry with ALREADY_SPENT (Gemini on fresh
+    # context); an uncommitted one simply offers again.
+    try:
+        async with pool.acquire() as offer_conn:
+            offer = await wa_broker.offer_job(
+                offer_conn,
+                outbox_id=outbox_id,
+                thread_id=thread_id,
+                claim_token=claim_token,
+                outbox_expected_status=outbox_expected_status,
+                package=wire,
+                evidence_inputs=json.dumps(evidence_inputs, sort_keys=True),
+                package_hash=package_hash,
+                thread_epoch=epoch,
+            )
+    except Exception as exc:
+        logger.error(
+            "wa_codex_leg: offer outcome uncertain (outbox=%s): %s",
+            outbox_id,
+            type(exc).__name__,
         )
+        return CodexLegResult(fail=f"offer_uncertain:{type(exc).__name__}")
     if offer.outcome is not wa_broker.OfferOutcome.OFFERED or offer.job_id is None:
         logger.info(
             "wa_codex_leg: offer fell off (outbox=%s outcome=%s)",
