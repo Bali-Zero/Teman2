@@ -148,6 +148,7 @@ def include_routers(api: FastAPI) -> None:
         visa_oracle_evaluate,  # [W1] Visa Oracle v2 evaluate read-path (public, SHADOW era)
         voice,
         wa_actions,
+        wa_broker,  # /api/wa-broker/* codex broker transport (dedicated key, BOT-V4 S2)
         wa_inbox,  # /api/wa-inbox/* WA Meta Inbox console (scoped key auth)
         wa_mirror_messages,
         wa_package,  # [BOT-V4 S2] /api/wa-package/build deterministic codex-route package builder
@@ -339,6 +340,7 @@ def include_routers(api: FastAPI) -> None:
     )  # Omnichannel WhatsApp conversations API (dashboard only)
     api.include_router(wa_mirror_messages.router)  # Read-only wa-mirror CRM timeline API
     api.include_router(wa_actions.router)  # WA Copilot S1.10 action_queue CRUD
+    api.include_router(wa_broker.router)  # /api/wa-broker/* codex broker transport (dedicated key)
     api.include_router(wa_inbox.router)  # /api/wa-inbox/* WA Meta Inbox console (scoped key)
     api.include_router(wa_package.router)  # [BOT-V4 S2] deterministic codex-route package builder
     api.include_router(instagram_chat.router)  # Instagram DM auto-reply via RAG
@@ -598,6 +600,7 @@ def include_light_routers(api: FastAPI) -> None:
         visa_oracle,
         visa_oracle_evaluate,  # [W1] Visa Oracle v2 evaluate read-path (public, SHADOW era)
         wa_actions,
+        wa_broker,  # /api/wa-broker/* codex broker transport (dedicated key, BOT-V4 S2)
         wa_inbox,  # /api/wa-inbox/* WA Meta Inbox console (scoped key auth)
         wa_mirror_messages,
         war_room_dashboard,
@@ -746,6 +749,7 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(whatsapp_conversations.router)
     api.include_router(wa_mirror_messages.router)  # /api/wa/messages read-only mirror timeline
     api.include_router(wa_actions.router)  # WA Copilot S1.10 action_queue CRUD
+    api.include_router(wa_broker.router)  # /api/wa-broker/* codex broker transport (dedicated key)
     api.include_router(wa_inbox.router)  # /api/wa-inbox/* WA Meta Inbox console (scoped key)
     api.include_router(instagram_chat.router)
     api.include_router(instagram_chat.webhook_router)
