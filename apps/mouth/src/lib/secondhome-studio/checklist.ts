@@ -1,5 +1,13 @@
 /**
- * Second Home Studio — the 10-item readiness checklist (spec §5).
+ * Second Home Studio — the 10-item readiness checklist.
+ *
+ * Item content sourced from the copy deck's "DOCUMENT READINESS" section
+ * (COPY-DECK-studio.md §5) — supersedes the original spec-sketch list
+ * (flagged in the delivery report): the deck's list is route-complete,
+ * covering property-route and senior-income-route evidence the original
+ * sketch omitted. `PlanState.checklist` is a free-form `Record<string,
+ * boolean>` (not a frozen enum), so swapping item ids/content here does
+ * not touch the frozen types.ts contract.
  *
  * Checkboxes only, no uploads. Progress is a "readiness meter" — copy
  * always frames this as preparation, never approval likelihood.
@@ -15,54 +23,54 @@ export interface ChecklistItem {
 
 export const CHECKLIST_ITEMS: readonly ChecklistItem[] = [
   {
+    id: "passport_bio_page",
+    titleKey: "checklist.items.passportBioPage.title",
+    whyKey: "checklist.items.passportBioPage.why",
+  },
+  {
     id: "passport_validity",
     titleKey: "checklist.items.passportValidity.title",
     whyKey: "checklist.items.passportValidity.why",
   },
   {
-    id: "passport_scan",
-    titleKey: "checklist.items.passportScan.title",
-    whyKey: "checklist.items.passportScan.why",
+    id: "passport_photo",
+    titleKey: "checklist.items.passportPhoto.title",
+    whyKey: "checklist.items.passportPhoto.why",
   },
   {
-    id: "proof_of_funds",
-    titleKey: "checklist.items.proofOfFunds.title",
-    whyKey: "checklist.items.proofOfFunds.why",
+    id: "residential_address",
+    titleKey: "checklist.items.residentialAddress.title",
+    whyKey: "checklist.items.residentialAddress.why",
   },
   {
-    id: "personal_statement",
-    titleKey: "checklist.items.personalStatement.title",
-    whyKey: "checklist.items.personalStatement.why",
+    id: "personal_history",
+    titleKey: "checklist.items.personalHistory.title",
+    whyKey: "checklist.items.personalHistory.why",
   },
   {
-    id: "photos",
-    titleKey: "checklist.items.photos.title",
-    whyKey: "checklist.items.photos.why",
+    id: "bank_deposit_evidence",
+    titleKey: "checklist.items.bankDepositEvidence.title",
+    whyKey: "checklist.items.bankDepositEvidence.why",
   },
   {
-    id: "address_abroad",
-    titleKey: "checklist.items.addressAbroad.title",
-    whyKey: "checklist.items.addressAbroad.why",
+    id: "passive_income_evidence",
+    titleKey: "checklist.items.passiveIncomeEvidence.title",
+    whyKey: "checklist.items.passiveIncomeEvidence.why",
   },
   {
-    id: "health_insurance",
-    titleKey: "checklist.items.healthInsurance.title",
-    whyKey: "checklist.items.healthInsurance.why",
+    id: "property_documents",
+    titleKey: "checklist.items.propertyDocuments.title",
+    whyKey: "checklist.items.propertyDocuments.why",
   },
   {
-    id: "family_documents",
-    titleKey: "checklist.items.familyDocuments.title",
-    whyKey: "checklist.items.familyDocuments.why",
+    id: "family_records",
+    titleKey: "checklist.items.familyRecords.title",
+    whyKey: "checklist.items.familyRecords.why",
   },
   {
-    id: "travel_plan",
-    titleKey: "checklist.items.travelPlan.title",
-    whyKey: "checklist.items.travelPlan.why",
-  },
-  {
-    id: "deposit_source",
-    titleKey: "checklist.items.depositSource.title",
-    whyKey: "checklist.items.depositSource.why",
+    id: "existing_visa_permit",
+    titleKey: "checklist.items.existingVisaPermit.title",
+    whyKey: "checklist.items.existingVisaPermit.why",
   },
 ];
 

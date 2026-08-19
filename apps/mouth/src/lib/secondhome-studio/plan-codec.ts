@@ -81,6 +81,21 @@ export function loadPlan(): PlanState | null {
   }
 }
 
+/**
+ * Removes the saved plan from localStorage (SavePlanBar's "Clear saved
+ * plan" action — copy deck §7, `savePlan.clearButton`). SSR-safe, never
+ * throws: no-op when there is no `window`/`localStorage`, or when the key
+ * was never set.
+ */
+export function clearPlan(): void {
+  if (!hasLocalStorage()) return;
+  try {
+    window.localStorage.removeItem(PLAN_STORAGE_KEY);
+  } catch {
+    // Storage blocked/unavailable — no-op.
+  }
+}
+
 /** UTF-8-safe string -> base64url. Works in Node (Buffer, used by tests and
  *  SSR) and in the browser (TextEncoder + btoa, used by the client bundle)
  *  without deprecated escape/unescape. */

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   PLAN_STORAGE_KEY,
+  clearPlan,
   decodePlanFragment,
   emptyPlan,
   encodePlanFragment,
@@ -154,6 +155,26 @@ describe("savePlan / loadPlan — localStorage roundtrip", () => {
   });
 });
 
+describe("clearPlan — SavePlanBar 'Clear saved plan' action", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it("removes a previously saved plan so loadPlan returns null", () => {
+    savePlan({ ...emptyPlan(), age: "under_55" });
+    expect(loadPlan()).not.toBeNull();
+
+    clearPlan();
+    expect(loadPlan()).toBeNull();
+    expect(window.localStorage.getItem(PLAN_STORAGE_KEY)).toBeNull();
+  });
+
+  it("is a safe no-op when nothing was ever saved", () => {
+    expect(() => clearPlan()).not.toThrow();
+    expect(loadPlan()).toBeNull();
+  });
+});
+
 describe("SSR-safety — functions never throw when window is undefined", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -163,6 +184,11 @@ describe("SSR-safety — functions never throw when window is undefined", () => 
     vi.stubGlobal("window", undefined);
     expect(() => savePlan(emptyPlan())).not.toThrow();
     expect(loadPlan()).toBeNull();
+  });
+
+  it("clearPlan is a no-op without window", () => {
+    vi.stubGlobal("window", undefined);
+    expect(() => clearPlan()).not.toThrow();
   });
 
   it("encodePlanFragment / decodePlanFragment still work without window (Node/Buffer path)", () => {

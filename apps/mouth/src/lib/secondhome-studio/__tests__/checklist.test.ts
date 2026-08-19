@@ -39,8 +39,8 @@ describe("readiness", () => {
       ...emptyPlan(),
       checklist: {
         passport_validity: true,
-        passport_scan: true,
-        photos: false,
+        passport_photo: true,
+        residential_address: false,
         unknown_id_not_in_the_list: true,
       },
     };

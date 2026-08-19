@@ -50,9 +50,11 @@ function allCopyStrings(): CopyEntry[] {
   return out;
 }
 
-describe("forbidden-claims sweep — every string in COPY", () => {
-  const entries = allCopyStrings();
+// Hoisted to module scope so every describe block below shares one walk of
+// the (large, deck-sourced) COPY tree.
+const entries = allCopyStrings();
 
+describe("forbidden-claims sweep — every string in COPY", () => {
   it("the sweep actually walks a non-trivial number of strings (guards against an empty/broken walk)", () => {
     expect(entries.length).toBeGreaterThan(40);
   });
@@ -163,7 +165,6 @@ describe("innocence pins — legitimate copy must NOT trip the guard (superscar 
   });
 
   it("the actual copy module uses the safe 'non-working' framing somewhere and it passes the sweep", () => {
-    const entries = allCopyStrings();
     const hasNonWorking = entries.some((e) => /non-working/i.test(e.value));
     // Not a hard requirement of this module (no copy currently needs to
     // describe work rights explicitly), but if it's ever added it must use
@@ -201,16 +202,45 @@ describe("innocence pins — legitimate copy must NOT trip the guard (superscar 
       ),
     ).toBe(false);
   });
+
+  it("the rewritten capital.why string (no literal 'split') does not trip splitDeposit", () => {
+    // The copy deck's own draft here — "Split deposits do not qualify." —
+    // DOES trip this pattern (proven below); copy.ts carries a reworded
+    // version that keeps the same fact without the literal word "split".
+    expect(FORBIDDEN_PATTERNS.splitDeposit.test(COPY.wizard.capital.why)).toBe(
+      false,
+    );
+  });
+
+  it("documents the deck's own draft phrasing WOULD have tripped splitDeposit (why the rewrite was needed)", () => {
+    expect(
+      FORBIDDEN_PATTERNS.splitDeposit.test(
+        "The threshold must be met through one qualifying deposit. Split deposits do not qualify.",
+      ),
+    ).toBe(true);
+  });
 });
 
 describe("positive pins — required phrasing is actually present", () => {
   it("custody copy contains 'state-owned' and 'own name'", () => {
-    const custodyStrings = Object.values(COPY.custody)
-      .map((step) => `${step.title} ${step.body}`)
+    const custodyStrings = [
+      COPY.custody.eyebrow,
+      COPY.custody.intro,
+      ...Object.values(COPY.custody.steps).map(
+        (step) => `${step.title} ${step.body}`,
+      ),
+      COPY.custody.disclaimer,
+    ]
       .join(" ")
       .toLowerCase();
     expect(custodyStrings).toContain("state-owned");
     expect(custodyStrings).toContain("own name");
+  });
+
+  it("custody step 3 keeps the withdrawal/compliance warning (copy-deck critique #2)", () => {
+    const step3 = COPY.custody.steps.step3.body.toLowerCase();
+    expect(step3).toMatch(/withdraw|moving them|move them/);
+    expect(step3).toContain("compliance");
   });
 
   it("every verdict band body states the final decision rests with Imigrasi", () => {
@@ -225,5 +255,60 @@ describe("positive pins — required phrasing is actually present", () => {
     const dependentsNote = COPY.wizard.family.dependentsNote.toLowerCase();
     expect(dependentsNote).toContain("fit memo");
     expect(PRICE_LITERAL_PATTERN.test(dependentsNote)).toBe(false);
+  });
+
+  it("save-plan bar carries the deck's link warning and clear-plan action string", () => {
+    expect(COPY.savePlanBar.linkWarning.toLowerCase()).toContain("link");
+    expect(COPY.savePlanBar.linkWarning.toLowerCase()).toMatch(/view|see/);
+    expect(COPY.savePlanBar.clearButton.toLowerCase()).toContain("clear");
+  });
+
+  it("whatsapp block carries the deck's privacy string (review-before-send)", () => {
+    expect(COPY.whatsapp.privacy.toLowerCase()).toContain("review");
+  });
+
+  it("whatsapp prefill template names the fit-check result, never an assessment/certificate/score", () => {
+    expect(COPY.whatsapp.prefillTemplate).toContain("Fit-check result:");
+  });
+});
+
+describe("terminology delta — 'fit-check result' only, never assessment/certificate/eligibility score", () => {
+  it("no copy string ever says 'assessment'", () => {
+    const violations = entries.filter((e) => /assessment/i.test(e.value));
+    expect(
+      violations,
+      `"assessment" found in: ${violations.map((v) => v.path).join(", ")}`,
+    ).toEqual([]);
+  });
+
+  it("no copy string ever says 'certificate'", () => {
+    const violations = entries.filter((e) => /certificate/i.test(e.value));
+    expect(
+      violations,
+      `"certificate" found in: ${violations.map((v) => v.path).join(", ")}`,
+    ).toEqual([]);
+  });
+
+  it("no copy string ever says 'eligibility score'", () => {
+    const violations = entries.filter((e) =>
+      /eligibility\s+score/i.test(e.value),
+    );
+    expect(
+      violations,
+      `"eligibility score" found in: ${violations.map((v) => v.path).join(", ")}`,
+    ).toEqual([]);
+  });
+
+  it("'fit-check result' is actually used in the copy", () => {
+    const hasPhrase = entries.some((e) => /fit-check result/i.test(e.value));
+    expect(hasPhrase).toBe(true);
+  });
+
+  it("the deck's own draft ('a preliminary fit assessment') would have tripped the assessment ban (why the rewrite was needed)", () => {
+    expect(
+      /assessment/i.test(
+        "This is a preliminary fit assessment, not an approval.",
+      ),
+    ).toBe(true);
   });
 });
