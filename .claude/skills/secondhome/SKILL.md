@@ -126,6 +126,15 @@ BY DESIGN until the first real case (F4b).
 - **Content**: canonical guide patched, 16 contradictory articles noIndexed,
   CTA sweep, wrong-code sweep, re-slugs `e33f-spouse`→`e31b`,
   `e33e-child`→`e31e` (+301s).
+- **Studio** (2026-08-19, #4359): public fit-check wizard at
+  `/visa/second-home/studio`, fully client-side — no new backend, plan
+  state in localStorage `bz_shs_plan_v1` + URL fragment `#p=`. Verdicts are
+  BANDS (strong_fit/likely_fit/edge_case/not_eligible), never numeric
+  scores; 55–59 and the property route are always `edge_case` with a
+  signed-disclosure note. WhatsApp handoff = ≤6 branch-aware bullets via
+  the existing `/api/lead/capture` (mirrors `lead_capture.py:38-47`), no
+  plan URL in the payload — the plan link travels only via user-initiated
+  copy. Landing CTA on `/visa/second-home` links to it.
 
 ## 4bis. LIVE STATE — built ≠ armed (probed on prod 2026-07-25)
 
@@ -142,6 +151,7 @@ same turn — never a report. Re-verify before trusting; update when you change 
 | Day-90 kill switch | ❌ **STILL UNPROVISIONED** — prod query on `system_settings` for `%e33%`/`%guarantee%` returns **0 rows** (2026-07-30) — unprovisioned BY DESIGN until F4b (entrance now exists; F4b unblocks at the first real case).                                                                                                                                                                                                                                                                                                                                                                                       |
 | Day-90 cron        | ⚠️ **EXISTS AND RUNS — AND IS BLOCKED EVERY TIME.** The workflow the old row said was missing was added by **#3110**; it fires daily 23:10 UTC and has **4 green runs**. Reading the run BODY instead of its checkmark: `"status":"blocked"`, `"reason":"switch_not_provisioned"`. Green ✅ on GitHub, zero work done                                                                                                                                                                                                                                                                                        |
 | Engine output      | ⚠️ **ROW SUPERSEDED**: the 2026-08-12 gold-personas sweep vs PROD (seq-7) found prod coherent with its pack — 18/23 match, 5 residuals were probe bugs, ZERO prod defects; persona 55-59 gets SUPPORTED + advisory `E33E_AGE_55_59_ADVISOR_CHECK`, not HUMAN_REVIEW. The review-saturation finding below is historical. See `/visaoracle` corner (MOS memories 12221/12225).                                                                                                                                                                                                                                 |
+| Studio             | ✅ **LIVE (probed 2026-08-19)** — `/visa/second-home/studio` 200 on balizero.com, content + radiogroup roles server-rendered; CTA on `/visa/second-home` landing links to it; sitemap lists it (commit `2ce6d0457`); 256 vitest tests pin rules/codec/copy/whatsapp-contract; adversarial round-1 (Codex + Kimi cross-family) cures landed in the same PR (#4359).                                                                                                                                                                                                                                           |
 
 ### The review-saturation finding (2026-07-25)
 
