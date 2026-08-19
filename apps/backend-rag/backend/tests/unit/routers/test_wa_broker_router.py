@@ -510,3 +510,41 @@ def test_oversize_body_is_cut_off_at_the_cap(
         headers={"X-API-Key": configured_key, "content-type": "application/json"},
     )
     assert resp.status_code == 413
+
+
+@pytest.mark.asyncio
+async def test_single_giant_chunk_is_rejected_before_buffering() -> None:
+    """GUILT (Codex re-verdict r8): ASGI does not bound chunk size — a
+    cached-body middleware or transport may hand the ENTIRE request over as
+    ONE chunk, and a cap checked after body.extend() would copy a
+    multi-hundred-MB body into the buffer before the 413 fired. The spy
+    proves the oversize chunk is refused UNCONSUMED: iterating it (what
+    bytearray.extend does) flips the flag, so a check-after-extend mutant
+    turns this red."""
+    from fastapi import HTTPException
+
+    class SpyChunk:
+        def __init__(self, size: int) -> None:
+            self._size = size
+            self.iterated = False
+
+        def __len__(self) -> int:
+            return self._size
+
+        def __iter__(self):
+            self.iterated = True
+            return iter(b"")
+
+    spy = SpyChunk(wa_broker_router._MAX_BODY_BYTES + 1)
+
+    class FakeRequest:
+        async def stream(self):
+            yield spy
+
+    with pytest.raises(HTTPException) as excinfo:
+        await wa_broker_router._read_bounded_body(
+            FakeRequest(),  # type: ignore[arg-type]
+            wa_broker_router.CompleteRequest,
+        )
+    assert excinfo.value.status_code == 413
+    assert spy.iterated is False, "oversize chunk was buffered before the cap check"

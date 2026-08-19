@@ -217,9 +217,13 @@ _MAX_BODY_BYTES = 128 * 1024  # complete's legit max ≈ 64KiB text + overhead
 async def _read_bounded_body(request: Request, model: type[_ModelT]) -> _ModelT:
     body = bytearray()
     async for chunk in request.stream():
-        body.extend(chunk)
-        if len(body) > _MAX_BODY_BYTES:
+        # Cap check BEFORE buffering (Codex re-verdict r8): ASGI does not
+        # bound chunk size — cached-body middleware or a transport may yield
+        # the ENTIRE request as one chunk, and extending first would copy a
+        # multi-hundred-MB body into this buffer before the 413 ever fired.
+        if len(body) + len(chunk) > _MAX_BODY_BYTES:
             raise HTTPException(status_code=413, detail="body too large")
+        body.extend(chunk)
     try:
         return model.model_validate_json(bytes(body) or b"{}")
     except ValidationError as exc:
