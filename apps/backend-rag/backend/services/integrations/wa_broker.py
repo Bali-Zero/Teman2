@@ -42,7 +42,6 @@ import logging
 import os
 import uuid
 from dataclasses import dataclass
-from typing import Any
 
 import asyncpg
 
@@ -163,25 +162,6 @@ class WaitResult:
     error_class: str | None = None
 
 
-async def _gauge_upsert(conn: asyncpg.Connection | asyncpg.Pool, **fields: Any) -> None:
-    """Lazy-seeding upsert of the single gauge row (id=1).
-
-    The migration deliberately seeds nothing (no DML in DDL); the first
-    writer creates the row.
-    """
-    cols = ", ".join(fields)
-    placeholders = ", ".join(f"${i + 1}" for i in range(len(fields)))
-    updates = ", ".join(f"{c} = EXCLUDED.{c}" for c in fields)
-    await conn.execute(
-        f"""
-        INSERT INTO wa_broker_gauge (id, {cols}, updated_at)
-        VALUES (1, {placeholders}, now())
-        ON CONFLICT (id) DO UPDATE SET {updates}, updated_at = now()
-        """,
-        *fields.values(),
-    )
-
-
 # ──────────────────────────────────────────────────────────────────────────
 # Circuit breaker (persisted on the gauge — shared across workers)
 # ──────────────────────────────────────────────────────────────────────────
@@ -258,6 +238,18 @@ async def record_breaker_result(
 ) -> None:
     """Fold codex-leg outcomes into the shared breaker state.
 
+    Every terminal serve transition folds HERE, by its transition owner, in
+    the owner's own transaction (Codex re-verdict r2, finding 2):
+    ``wait_for_job``'s deadline CAS and ``complete_job``'s two accepted
+    branches each fold the outcome they committed, and the reaper folds only
+    what IT expired — one fold per terminal outcome, no double count, no
+    "the caller will remember to forward it" (scar family #2).
+
+    The success path is GUARDED — it closes from half_open (canary success)
+    and resets the streak from closed, but never touches an ``open`` gauge:
+    a success arriving while open is a straggler leased before the trip, and
+    the cooldown+canary discipline stays the only exit from open.
+
     The failure path is ONE atomic statement — increment, trip decision and
     half_open->open demotion together — so no offer can slip between "the
     count reached the threshold" and "the breaker opened" (finding 3's
@@ -280,12 +272,25 @@ async def record_breaker_result(
             await record_breaker_result(leased_conn, success=success, count=count)
         return
     if success:
-        await _gauge_upsert(
-            conn,
-            breaker_state="closed",
-            breaker_opened_at=None,
-            breaker_half_open_at=None,
-            consecutive_failures=0,
+        # Guarded: never close from 'open'. A success arriving while the
+        # breaker is open is a STRAGGLER — a job leased before the trip —
+        # and the failures that opened the breaker are fresher evidence;
+        # letting it slam the state closed would bypass the cooldown+canary
+        # discipline that is the one sanctioned exit from open. From
+        # half_open this IS the canary succeeding (-> closed); from closed
+        # it resets the consecutive-failure streak.
+        await conn.execute(
+            """
+            INSERT INTO wa_broker_gauge
+                (id, breaker_state, breaker_opened_at, breaker_half_open_at,
+                 consecutive_failures, updated_at)
+            VALUES (1, 'closed', NULL, NULL, 0, now())
+            ON CONFLICT (id) DO UPDATE
+            SET breaker_state = 'closed', breaker_opened_at = NULL,
+                breaker_half_open_at = NULL, consecutive_failures = 0,
+                updated_at = now()
+            WHERE wa_broker_gauge.breaker_state <> 'open'
+            """
         )
         return
     if count < 1:
@@ -519,16 +524,28 @@ async def wait_for_job(
             return WaitResult(WaitOutcome.DEADLINE)
         if row["deadline_passed"]:
             # CAS to expired ourselves so a late /complete gets 410 (spec 2).
-            expired = await pool.fetchrow(
-                """
-                UPDATE broker_jobs
-                SET state = 'expired', package = NULL, evidence_inputs = NULL,
-                    result_text = NULL, outcome = 'expired_deadline'
-                WHERE job_id = $1 AND state IN ('offered', 'leased')
-                RETURNING job_id
-                """,
-                job_id,
-            )
+            # The CAS owner folds its own transition into the breaker, in the
+            # SAME transaction (Codex re-verdict r2, finding 2): this is the
+            # COMMON serve-expiry path — a live worker terminalizes the row
+            # here, so the reaper never sees it, and before this fold the
+            # breaker was blind to every deadline expiry a live worker
+            # observed. Serve only: shadow expiries are housekeeping, exactly
+            # as in the reaper's classification.
+            async with pool.acquire() as cas_conn:
+                async with cas_conn.transaction():
+                    expired = await cas_conn.fetchrow(
+                        """
+                        UPDATE broker_jobs
+                        SET state = 'expired', package = NULL,
+                            evidence_inputs = NULL, result_text = NULL,
+                            outcome = 'expired_deadline'
+                        WHERE job_id = $1 AND state IN ('offered', 'leased')
+                        RETURNING job_id, mode
+                        """,
+                        job_id,
+                    )
+                    if expired is not None and expired["mode"] == "serve":
+                        await record_breaker_result(cas_conn, success=False)
             if expired is not None:
                 return WaitResult(WaitOutcome.DEADLINE)
             # A /complete slid in between our read and the CAS — loop once
@@ -613,6 +630,13 @@ async def claim_job(
     )
 
     fence_token = uuid.uuid4()
+    # package::text — the response contract is a STRING (the broker verifies
+    # the exact bytes against package_hash), and under the production pool's
+    # jsonb codec a bare `package` decodes to a dict: the router's
+    # ClaimResponse(package=<dict>) then 500s AFTER this lease UPDATE
+    # autocommitted, stranding the job leased until its deadline (Codex
+    # re-verdict r2, finding 1). ::text is codec-agnostic — the read-side
+    # mirror of offer_job's ::text::jsonb.
     row = await conn.fetchrow(
         """
         UPDATE broker_jobs
@@ -625,8 +649,8 @@ async def claim_job(
             FOR UPDATE SKIP LOCKED
             LIMIT 1
         )
-        RETURNING job_id, fence_token, package, package_hash, deadline_at,
-                  now() AS server_now
+        RETURNING job_id, fence_token, package::text AS package, package_hash,
+                  deadline_at, now() AS server_now
         """,
         fence_token,
         LEASE_TTL_S,
@@ -674,40 +698,55 @@ async def complete_job(
     if error_class is not None and error_class not in ALLOWED_ERROR_CLASSES:
         raise ValueError("unknown error_class (not in transport vocabulary)")
 
+    # Each accepted CAS folds its own outcome into the breaker in the SAME
+    # transaction (Codex re-verdict r2, finding 2): a typed failure that
+    # commits leased->failed without folding is permanently invisible — the
+    # reaper only accounts rows IT transitions and skips already-terminal
+    # ones. Success folds too, or the breaker can never close: nothing else
+    # in the transport ever records success, so consecutive_failures never
+    # reset and a half_open canary's success never landed (the orphan guard
+    # then demoted it back to open — open forever). Serve only, matching the
+    # reaper's classification; shadow legs are housekeeping.
     if error_class is not None:
-        row = await conn.fetchrow(
-            """
-            UPDATE broker_jobs
-            SET state = 'failed', package = NULL, evidence_inputs = NULL,
-                result_text = NULL, completed_at = now(),
-                completion_key = $3, error_class = $4, exec_ms = $5,
-                outcome = 'broker_failed'
-            WHERE job_id = $1 AND fence_token = $2 AND state = 'leased'
-              AND deadline_at > now()
-            RETURNING job_id
-            """,
-            job_id,
-            fence_token,
-            completion_key,
-            error_class,
-            exec_ms,
-        )
+        async with conn.transaction():
+            row = await conn.fetchrow(
+                """
+                UPDATE broker_jobs
+                SET state = 'failed', package = NULL, evidence_inputs = NULL,
+                    result_text = NULL, completed_at = now(),
+                    completion_key = $3, error_class = $4, exec_ms = $5,
+                    outcome = 'broker_failed'
+                WHERE job_id = $1 AND fence_token = $2 AND state = 'leased'
+                  AND deadline_at > now()
+                RETURNING job_id, mode
+                """,
+                job_id,
+                fence_token,
+                completion_key,
+                error_class,
+                exec_ms,
+            )
+            if row is not None and row["mode"] == "serve":
+                await record_breaker_result(conn, success=False)
     else:
-        row = await conn.fetchrow(
-            """
-            UPDATE broker_jobs
-            SET state = 'completed_pending_consume', result_text = $4,
-                completed_at = now(), completion_key = $3, exec_ms = $5
-            WHERE job_id = $1 AND fence_token = $2 AND state = 'leased'
-              AND deadline_at > now()
-            RETURNING job_id
-            """,
-            job_id,
-            fence_token,
-            completion_key,
-            result_text,
-            exec_ms,
-        )
+        async with conn.transaction():
+            row = await conn.fetchrow(
+                """
+                UPDATE broker_jobs
+                SET state = 'completed_pending_consume', result_text = $4,
+                    completed_at = now(), completion_key = $3, exec_ms = $5
+                WHERE job_id = $1 AND fence_token = $2 AND state = 'leased'
+                  AND deadline_at > now()
+                RETURNING job_id, mode
+                """,
+                job_id,
+                fence_token,
+                completion_key,
+                result_text,
+                exec_ms,
+            )
+            if row is not None and row["mode"] == "serve":
+                await record_breaker_result(conn, success=True)
     if row is not None:
         return CompleteStatus.ACCEPTED
 

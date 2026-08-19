@@ -414,7 +414,7 @@ async def test_wait_for_job_deadline_cas_expires_and_nulls_payload() -> None:
     pool = ScriptedConn(
         fetchrow_results=[
             {"state": "offered", "error_class": None, "deadline_passed": True},
-            {"job_id": job_id},  # expiry CAS succeeded
+            {"job_id": job_id, "mode": "serve"},  # expiry CAS succeeded
         ],
     )
 
@@ -427,6 +427,34 @@ async def test_wait_for_job_deadline_cas_expires_and_nulls_payload() -> None:
     assert "evidence_inputs = NULL" in cas_sql
     assert "result_text = NULL" in cas_sql
     assert cas_args == (job_id,)
+    # The CAS owner folds its own serve expiry into the breaker, in the same
+    # transaction (Codex re-verdict r2, finding 2): lock, then the failure
+    # fold. Before this, the COMMON path — a live worker observing its own
+    # deadline — never reached the breaker at all.
+    assert len(pool.executed) == 4
+    lock_sql, _ = pool.executed[2]
+    assert "pg_advisory_xact_lock" in lock_sql
+    fold_sql, fold_args = pool.executed[3]
+    assert "consecutive_failures" in fold_sql
+    assert fold_args == (wa_broker.BREAKER_TRIP_AFTER, 1)
+
+
+@pytest.mark.asyncio
+async def test_wait_for_job_shadow_deadline_expiry_does_not_fold() -> None:
+    """INNOCENCE twin: a shadow-mode expiry is housekeeping (same
+    classification the reaper uses) — terminalized, never folded."""
+    job_id = uuid.uuid4()
+    pool = ScriptedConn(
+        fetchrow_results=[
+            {"state": "offered", "error_class": None, "deadline_passed": True},
+            {"job_id": job_id, "mode": "shadow"},
+        ],
+    )
+
+    result = await wa_broker.wait_for_job(pool, job_id, poll_seconds=0)
+
+    assert result.outcome is wa_broker.WaitOutcome.DEADLINE
+    assert len(pool.executed) == 2  # poll + CAS, no lock, no fold
 
 
 @pytest.mark.asyncio
@@ -582,15 +610,23 @@ async def test_breaker_admits_when_open_and_cas_wins() -> None:
 
 
 @pytest.mark.asyncio
-async def test_record_breaker_result_success_resets_to_closed() -> None:
+async def test_record_breaker_result_success_resets_to_closed_but_never_from_open() -> None:
+    """The success upsert must carry the straggler guard IN THE STATEMENT: a
+    success arriving while the breaker is open belongs to a job leased
+    before the trip, and closing on it would bypass the cooldown+canary
+    discipline. (The behavioral proof runs on real PG; this pins the guard's
+    presence so a 'simplifying' rewrite cannot drop it.)"""
     conn = ScriptedConn()
 
     await wa_broker.record_breaker_result(conn, success=True)
 
-    reset_calls = conn.sql_with_args("breaker_state")
-    assert reset_calls
-    _, args = reset_calls[0]
-    assert args == ("closed", None, None, 0)
+    assert len(conn.executed) == 1
+    sql, args = conn.executed[0]
+    flat_sql = " ".join(sql.split())
+    assert "breaker_state = 'closed'" in flat_sql
+    assert "consecutive_failures = 0" in flat_sql
+    assert "WHERE wa_broker_gauge.breaker_state <> 'open'" in flat_sql
+    assert args == ()
 
 
 @pytest.mark.asyncio

@@ -897,3 +897,279 @@ async def test_offer_package_is_a_jsonb_object_under_the_production_codec(
         )
     finally:
         await codec_conn.close()
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Codex round-2: every terminal serve transition folds atomically into the
+# breaker — deadline (worker-observed), typed-failure, success, and the
+# straggler-success guard against a stale success bypassing the cooldown.
+# ──────────────────────────────────────────────────────────────────────────
+
+
+async def test_claim_returns_package_as_text_under_the_production_codec(
+    conn: asyncpg.Connection,
+) -> None:
+    """The router's ClaimResponse contract is a STRING (the broker verifies
+    the exact bytes against package_hash) — a bare ``package`` bind under the
+    production pool's jsonb codec (backend/app/core/database.py) decodes to a
+    dict and 500s the router AFTER the lease UPDATE already autocommitted,
+    stranding the job leased until its deadline. ``claim_job``'s
+    ``package::text AS package`` types the RETURNING column as text so no
+    codec applies, mirroring ``offer_job``'s own ``::text::jsonb`` double
+    cast (see test_offer_package_is_a_jsonb_object_under_the_production_codec
+    above — same defect class, opposite side of the wire)."""
+    import json as _json
+
+    await _seed_alive_gauge(conn)
+    outbox_id, thread_id, claim = await _outbox_row(conn)
+    offered = await _offer(conn, outbox_id, thread_id, claim)
+    assert offered.outcome is OfferOutcome.OFFERED
+
+    codec_conn = await asyncpg.connect(_DB_URL)
+    try:
+        await codec_conn.execute(f"SET search_path TO {_SCHEMA}")
+        await codec_conn.set_type_codec(
+            "jsonb", encoder=_json.dumps, decoder=_json.loads, schema="pg_catalog"
+        )
+        leased = await wa_broker.claim_job(codec_conn, in_flight=0, last_exec_ms=None)
+        assert leased is not None
+        assert leased["job_id"] == offered.job_id
+        # GUILT (without the ::text cure): the codec decodes package to a
+        # dict here, and this isinstance(..., str) fails.
+        assert isinstance(leased["package"], str)
+        assert _json.loads(leased["package"]) == {"history": [], "chunks": []}
+    finally:
+        await codec_conn.close()
+
+
+async def test_worker_observed_deadline_expiry_folds_into_the_breaker(
+    conn: asyncpg.Connection, pool: asyncpg.Pool
+) -> None:
+    """GUILT: ``wait_for_job``'s own deadline CAS — not only the reaper — must
+    feed the breaker. A live worker that observes its OWN job blow its
+    deadline is exactly the codex-leg-failure signal the breaker exists to
+    count; if this fold were missing, a broker that always polls its own
+    jobs (never leaving expiry to the reaper) would never trip the breaker
+    at all. MAX_DEPTH is 1, so the loop offers one job at a time — the prior
+    job's deadline CAS terminalizes it before the next offer can admit."""
+    await _seed_alive_gauge(conn)
+    for i in range(wa_broker.BREAKER_TRIP_AFTER):
+        outbox_id, thread_id, claim = await _outbox_row(conn)
+        offered = await _offer(conn, outbox_id, thread_id, claim)
+        assert offered.outcome is OfferOutcome.OFFERED
+        await conn.execute(
+            "UPDATE broker_jobs SET deadline_at = now() - INTERVAL '1 second' "
+            "WHERE job_id = $1",
+            offered.job_id,
+        )
+        waited = await wa_broker.wait_for_job(pool, offered.job_id, poll_seconds=0)
+        assert waited.outcome is WaitOutcome.DEADLINE
+        if i == 0:
+            assert (
+                await conn.fetchval(
+                    "SELECT consecutive_failures FROM wa_broker_gauge WHERE id = 1"
+                )
+            ) == 1
+    assert (
+        await conn.fetchval("SELECT breaker_state FROM wa_broker_gauge WHERE id = 1")
+    ) == "open"
+
+
+async def test_shadow_deadline_observed_by_a_waiter_does_not_fold(
+    conn: asyncpg.Connection, pool: asyncpg.Pool
+) -> None:
+    """INNOCENCE twin of the previous test: a shadow-mode job hitting its own
+    deadline_at is housekeeping, not a codex-leg failure — mirroring the
+    reaper's own mode == 'serve' gate on the fold. Only a live SERVE waiter's
+    deadline CAS may touch the breaker."""
+    await _seed_alive_gauge(conn)
+    outbox_id, thread_id, _claim = await _outbox_row(conn)
+    job_id = await conn.fetchval(
+        """
+        INSERT INTO broker_jobs
+            (outbox_id, thread_id, mode, state, package_hash, thread_epoch,
+             deadline_at, expires_at)
+        VALUES ($1, $2, 'shadow', 'offered', 'h', 1,
+                now() - INTERVAL '1 second', now() + INTERVAL '1 hour')
+        RETURNING job_id
+        """,
+        outbox_id,
+        thread_id,
+    )
+    waited = await wa_broker.wait_for_job(pool, job_id, poll_seconds=0)
+    assert waited.outcome is WaitOutcome.DEADLINE
+    gauge = await conn.fetchrow("SELECT * FROM wa_broker_gauge WHERE id = 1")
+    assert gauge["consecutive_failures"] == 0
+    assert gauge["breaker_state"] == "closed"
+
+
+async def test_typed_failure_completion_folds_into_the_breaker(
+    conn: asyncpg.Connection,
+) -> None:
+    """GUILT: ``complete_job``'s typed-failure branch (``error_class`` set,
+    terminal 'failed') must fold into the breaker exactly like a deadline
+    expiry. This is the ONLY observer for a codex CLI that reports its own
+    error before ever reaching its deadline (``cli_failure``/``exec_timeout``
+    with time to spare) — uncured, ``complete_job`` never calls
+    ``record_breaker_result`` at all, so this failure signal never reaches
+    the gauge and the breaker stays permanently closed no matter how many
+    typed failures land. MAX_DEPTH is 1; 'failed' is terminal, so depth frees
+    each cycle for the next offer."""
+    await _seed_alive_gauge(conn)
+    for i in range(wa_broker.BREAKER_TRIP_AFTER):
+        outbox_id, thread_id, claim = await _outbox_row(conn)
+        offered = await _offer(conn, outbox_id, thread_id, claim)
+        assert offered.outcome is OfferOutcome.OFFERED
+        leased = await wa_broker.claim_job(conn, in_flight=0, last_exec_ms=None)
+        assert leased is not None
+        status = await wa_broker.complete_job(
+            conn,
+            job_id=offered.job_id,
+            fence_token=leased["fence_token"],
+            completion_key=f"fail-{i}",
+            result_text=None,
+            error_class="exec_timeout",
+            exec_ms=5,
+        )
+        assert status is CompleteStatus.ACCEPTED
+    assert (
+        await conn.fetchval("SELECT breaker_state FROM wa_broker_gauge WHERE id = 1")
+    ) == "open"
+
+
+async def test_successful_completion_resets_the_failure_streak(
+    conn: asyncpg.Connection,
+) -> None:
+    """GUILT: a codex leg that SUCCEEDS after some failures must reset
+    ``consecutive_failures`` and close the breaker via ``complete_job``'s OWN
+    success fold — not only via the standalone ``record_breaker_result``
+    API surface an operator might call by hand. Two typed failures first
+    (below trip threshold), then one success."""
+    await _seed_alive_gauge(conn)
+    for i in range(2):
+        outbox_id, thread_id, claim = await _outbox_row(conn)
+        offered = await _offer(conn, outbox_id, thread_id, claim)
+        assert offered.outcome is OfferOutcome.OFFERED
+        leased = await wa_broker.claim_job(conn, in_flight=0, last_exec_ms=None)
+        assert leased is not None
+        status = await wa_broker.complete_job(
+            conn,
+            job_id=offered.job_id,
+            fence_token=leased["fence_token"],
+            completion_key=f"fail-{i}",
+            result_text=None,
+            error_class="exec_timeout",
+            exec_ms=5,
+        )
+        assert status is CompleteStatus.ACCEPTED
+    assert (
+        await conn.fetchval(
+            "SELECT consecutive_failures FROM wa_broker_gauge WHERE id = 1"
+        )
+    ) == 2
+
+    outbox_id, thread_id, claim = await _outbox_row(conn)
+    offered = await _offer(conn, outbox_id, thread_id, claim)
+    assert offered.outcome is OfferOutcome.OFFERED
+    leased = await wa_broker.claim_job(conn, in_flight=0, last_exec_ms=None)
+    assert leased is not None
+    status = await wa_broker.complete_job(
+        conn,
+        job_id=offered.job_id,
+        fence_token=leased["fence_token"],
+        completion_key="ok-1",
+        result_text="ok",
+        error_class=None,
+        exec_ms=100,
+    )
+    assert status is CompleteStatus.ACCEPTED
+    gauge = await conn.fetchrow("SELECT * FROM wa_broker_gauge WHERE id = 1")
+    assert gauge["consecutive_failures"] == 0
+    assert gauge["breaker_state"] == "closed"
+
+
+async def test_straggler_success_while_open_does_not_close_the_breaker(
+    conn: asyncpg.Connection,
+) -> None:
+    """INNOCENCE guard on ``record_breaker_result(success=True)``: stale
+    evidence from BEFORE the trip (a canary-unrelated success landing while
+    the breaker is already open — e.g. a slow-but-eventually-successful
+    completion for a job offered before the breaker tripped) must NOT bypass
+    the cooldown+canary discipline. Only a canary win (through
+    ``breaker_admits``'s half_open CAS) may close the breaker; an unguarded
+    success reset would let a straggler undo an open breaker's cooldown
+    entirely."""
+    await _seed_alive_gauge(conn)
+    for _ in range(wa_broker.BREAKER_TRIP_AFTER):
+        await wa_broker.record_breaker_result(conn, success=False)
+    gauge = await conn.fetchrow("SELECT * FROM wa_broker_gauge WHERE id = 1")
+    assert gauge["breaker_state"] == "open"
+
+    await wa_broker.record_breaker_result(conn, success=True)
+    gauge = await conn.fetchrow("SELECT * FROM wa_broker_gauge WHERE id = 1")
+    assert gauge["breaker_state"] == "open"
+    assert gauge["breaker_opened_at"] is not None
+
+
+async def test_typed_failure_fold_is_atomic_with_terminalization(
+    conn: asyncpg.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Mirrors test_reaper_fold_is_atomic_with_terminalization for the
+    complete_job typed-failure path (Codex re-verdict pattern, applied to a
+    second call site): if the breaker fold crashes, the UPDATE that
+    terminalizes the job to 'failed' must roll back WITH it — otherwise the
+    job vanishes into a state the caller's CAS-based retry can never
+    re-observe (fence_token already spent server-side, state no longer
+    'leased') while its failure never reached the breaker. Proven by making
+    record_breaker_result raise mid-completion: the job must still be
+    'leased' afterwards, and a clean retry with the SAME completion_key must
+    then both accept and terminalize it."""
+    await _seed_alive_gauge(conn)
+    outbox_id, thread_id, claim = await _outbox_row(conn)
+    offered = await _offer(conn, outbox_id, thread_id, claim)
+    assert offered.outcome is OfferOutcome.OFFERED
+    leased = await wa_broker.claim_job(conn, in_flight=0, last_exec_ms=None)
+    assert leased is not None
+    fence = leased["fence_token"]
+
+    real_record = wa_broker.record_breaker_result
+
+    async def _exploding_record(*args: object, **kwargs: object) -> None:
+        raise RuntimeError("crash between terminalize and fold")
+
+    # Cycle 1 — the crash: the fold raises, so terminalization must roll
+    # back with it and the job must still be leased (re-completable).
+    monkeypatch.setattr(wa_broker, "record_breaker_result", _exploding_record)
+    with pytest.raises(RuntimeError):
+        await wa_broker.complete_job(
+            conn,
+            job_id=offered.job_id,
+            fence_token=fence,
+            completion_key="crash-key",
+            result_text=None,
+            error_class="exec_timeout",
+            exec_ms=5,
+        )
+    assert (
+        await conn.fetchval(
+            "SELECT state FROM broker_jobs WHERE job_id = $1", offered.job_id
+        )
+    ) == "leased"
+
+    # Clean retry, SAME completion_key: nothing was lost.
+    monkeypatch.setattr(wa_broker, "record_breaker_result", real_record)
+    status = await wa_broker.complete_job(
+        conn,
+        job_id=offered.job_id,
+        fence_token=fence,
+        completion_key="crash-key",
+        result_text=None,
+        error_class="exec_timeout",
+        exec_ms=5,
+    )
+    assert status is CompleteStatus.ACCEPTED
+    assert (
+        await conn.fetchval(
+            "SELECT state FROM broker_jobs WHERE job_id = $1", offered.job_id
+        )
+    ) == "failed"
