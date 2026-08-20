@@ -453,6 +453,61 @@
         "description_en": "Onshore annual extension of an existing E33F Second Home senior permit. USD 3,000/month passive income proof is re-validated at each extension.",
         "icon_id": "kitas-investor"
       },
+      "E30A Education Visa (1 Year)": {
+        "category": "kitas_permits",
+        "key": "E30A Education Visa (1 Year)",
+        "name": "E30A Education Visa (1 Year)",
+        "price": "9.000.000 IDR",
+        "duration": "",
+        "validity": "1 year",
+        "notes": "All-inclusive price.",
+        "description_en": "Education Visa / KITAS (E30A) for foreign students enrolled at an Indonesian primary or secondary school (pendidikan dasar/menengah). Valid 1 year, renewable; non-working residency tied to active enrollment.",
+        "icon_id": "kitas-investor"
+      },
+      "E30A Education Visa (2 Years)": {
+        "category": "kitas_permits",
+        "key": "E30A Education Visa (2 Years)",
+        "name": "E30A Education Visa (2 Years)",
+        "price": "11.500.000 IDR",
+        "duration": "",
+        "validity": "2 years",
+        "notes": "All-inclusive price.",
+        "description_en": "Education Visa / KITAS (E30A) for foreign students enrolled at an Indonesian primary or secondary school (pendidikan dasar/menengah). Valid 2 years, renewable; non-working residency tied to active enrollment.",
+        "icon_id": "kitas-investor"
+      },
+      "E30B Higher Education (1 Year)": {
+        "category": "kitas_permits",
+        "key": "E30B Higher Education (1 Year)",
+        "name": "E30B Higher Education (1 Year)",
+        "price": "9.000.000 IDR",
+        "duration": "",
+        "validity": "1 year",
+        "notes": "All-inclusive price.",
+        "description_en": "Higher Education Visa / KITAS (E30B) for foreign students enrolled at an Indonesian university or higher-education institution (pendidikan tinggi). Valid 1 year, renewable; non-working residency tied to active enrollment.",
+        "icon_id": "kitas-investor"
+      },
+      "E30B Higher Education (2 Years)": {
+        "category": "kitas_permits",
+        "key": "E30B Higher Education (2 Years)",
+        "name": "E30B Higher Education (2 Years)",
+        "price": "11.500.000 IDR",
+        "duration": "",
+        "validity": "2 years",
+        "notes": "All-inclusive price.",
+        "description_en": "Higher Education Visa / KITAS (E30B) for foreign students enrolled at an Indonesian university or higher-education institution (pendidikan tinggi). Valid 2 years, renewable; non-working residency tied to active enrollment.",
+        "icon_id": "kitas-investor"
+      },
+      "E30B Higher Education (4 Years)": {
+        "category": "kitas_permits",
+        "key": "E30B Higher Education (4 Years)",
+        "name": "E30B Higher Education (4 Years)",
+        "price": "15.000.000 IDR",
+        "duration": "",
+        "validity": "4 years",
+        "notes": "All-inclusive price.",
+        "description_en": "Higher Education Visa / KITAS (E30B) for foreign students enrolled at an Indonesian university or higher-education institution (pendidikan tinggi). Valid 4 years, renewable; non-working residency tied to active enrollment.",
+        "icon_id": "kitas-investor"
+      },
       "Spouse 1 Year (Altus/Onshore)": {
         "category": "kitas_permits",
         "key": "Spouse 1 Year (Altus/Onshore)",

@@ -43,7 +43,41 @@ session reads this corner; it does not browse `research/`.
 Also stale in `20-the-honest-map-blocked-bali-codes.md` and its `_INDEX.md` row: the blocked count
 is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
-## 1. LIVE STATE (last update 2026-08-19 — keep current)
+## 1. LIVE STATE (last update 2026-08-20 — keep current)
+
+**🟡 2026-08-20 — P2b BENCHMARK: TOOLING READY + CORPUS FROZEN + OLD BRAIN MEASURED DEAD; THE
+RUN ITSELF IS SUSPENDED ON THE SEAT'S USAGE LIMIT (resumes after 2026-08-22 08:30).** Full
+runbook + frozen identities: `scripts/kbli_bench/README.md` (this PR). The short of it:
+(a) **corpus frozen** — `scripts/kbli_bench/p2b_corpus.json`, sha `487bc9509d01…`, 29 questions
+(25 verbatim from the 2026-08-11 WA grounding battery + 1 EN trap variant + 3 out-of-corpus
+probes), classification MEASURED against the §3 allowlist on the canonical: 8 structured /
+18 known-gap / 3 probes; expected tuples verified on the dataset (51101→49 single-majority,
+79122→0 domestic+faith, 25200→49 Menhan, 68200 absent, moratorium rule/date/source). Freeze
+finding: `l4_bali.moratorium.virtual_office` ("BANNED as PMA domicile in Bali") EXISTS in the
+dataset but the design's allowlist serializes only `moratorium.{rule,effective,source}` — the
+fact is not served, so Q15 grades as known-gap; candidate allowlist addition for a later
+increment. With n=8 structured, floor (iii) ≤10% wrongful abstention admits ZERO. (b) **the
+OLD brain is DEAD, measured twice** — OpenClaw `zantara-kbli` on Mini fails 7/7 models in its
+cascade (openai-codex OAuth refresh dead, openrouter/deepseek 401s, even the local-ollama hop
+dies on a broken gateway key); verbatim outputs in `scripts/kbli_bench/oldbrain_probes/`;
+probe 3 due at resume for the ≥3-probe absence corroboration. The §8 "where reachable" clause
+covers this: the ABSOLUTE floors are the gate; new-vs-old will be declared as trivially
+satisfied against an unreachable baseline, never sold as a win. Reviving OpenClaw's auth is
+`operator[credential]` and nobody's goal — P2c deletes it. (c) **Swift harness built and
+independently verified** — app-repo commit `112241c0` (`Tests/benchrunner/main.swift`, 373 l.,
+zero `Sources/` changes): `run` mode = production path exactly (package builder cold-chat →
+`KBLICodexRunner` with its own pinned argv/model → real `KBLIAnswerGate.check`), serial,
+no-retry, errors recorded; `extract` mode grades arbitrary text (the old brain, if ever
+revived) with the SAME gate. Conductor re-verified: compile RC=0 on Pro from fresh rsync,
+extract guilt+innocence smoke (25200→"100%" rejected `actual:49`; 51101→"49%" accepted), spot
+greps for no-retry/pinned-model/real-gate. (d) **scoring tool**
+`scripts/kbli_bench/score_p2b.py` — independent deterministic tuple re-check (8/8
+guilt+innocence corpus, multi-code+multi-figure clauses rejected as unverifiable mirroring the
+Swift gate), sol judge-prompt emitter, floors calculator. (e) **the blocker, measured**: the
+ChatGPT Pro seat answers `You've hit your usage limit … try again at Aug 22nd, 2026 8:30 AM`
+— both serving (`terra`) and judging (`sol`) ride that seat; paying is barred (standing rule),
+substituting a seat would benchmark a different product. Run A→B ordering per §8 unchanged.
+PENDING-ARMS row opened.**
 
 **🟢 2026-08-19 — PHASE 2 IS OPEN, AND NOT WITH OPENCLAW: ZERO ORDERED THE CHAT BRAIN ONTO
 CHATGPT PRO VIA `codex exec` (the /bot pattern); THE MORNING'S READ-ONLY BKPM AUDIT CLOSED THE
@@ -70,6 +104,25 @@ openclaw. studia /bot dove abbiamo messo direttamente chatgpt con abbonamento pr
   probes, new ≥ old) is the gate that lets the OpenClaw path be deleted. Seat reality (all
   measured 2026-08-19): Pro logged in; M5 probe-positive (0.147.0 + auth.json 0600); Mini
   AUTH_DEAD/headless; BKPM none.
+- **🟢 P2a LANDED the same day — implemented, tested, and INDEPENDENTLY verified.** App-repo
+  (M5, no remote) commits `0500fa3..b31840c` (5 atomic): `KBLIContextPackage.swift` (660 l. —
+  recursive allowlist with fail-closed schema snapshot over all 1,559 records,
+  byte-budgeted question-matched `per_skala`, `pma_conflict` on 50111/50112,
+  `bali_moratorium_status` rename, anchors/budgets per design), `KBLIAnswerGate.swift`
+  (158 l. — NFKC + code-bound % gate), `KBLICodexRunner.swift` (523 l. — stdin-only,
+  ephemeral argv, realPath-bound spawn, pgid kill, intent sidecar + launch sweep,
+  single-flight, zero auto-retry), `KBLIBrain` wiring (BKPM = marker-check FIRST,
+  fail-closed stub, never OR'd with the seat probe; OpenClaw path behind a build-time
+  constant, still compiled). Verification was generator≠grader twice over: the implementer's
+  own subagent re-read spec-vs-source (clean), and the conductor re-ran ALL THREE test
+  suites from a fresh M5→Pro rsync (`packagetest`/`gatetest`/`codexrunnertest` all green,
+  RC=0 — including the real-subprocess pgid+cwd sweep tests) and re-verified both built
+  bundles (Mach-O universal, correct `BZVariant`, BKPM `articles/`=0). Three real bugs were
+  caught by the tests and fixed (inverse-frequency search scoring; decimal-aware sentence
+  splitter in the gate; `realpath` canonicalization for `/var` vs `/private/var` in the
+  launch-sweep cwd match). Deferred to P2b, declared not faked: the ~25-question benchmark,
+  3 of 4 crash-injection transitions, the real BKPM marker mechanism. **NOT fleet-installed**
+  — P2c installs only after the benchmark gate (design §8/§9).
 - **🔴 NEW RED ROW — the canonical dataset contradicts itself on the exact cured trap codes.**
   Measured this session on `data/source_documents/KBLI_2025_FINAL_CLEAN.json`: `25200`,
   `51101`, `79122` carry `pma_status=TERBATAS` (caps 49/49/0) while each record's own

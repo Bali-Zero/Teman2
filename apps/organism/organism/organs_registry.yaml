@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 551c80c948965a58708633fc652497eb510faf84de8fae9f24342b15373c51c2
+checksum: 2db42b7730eba415f51571ca1afa40e72bbb4f44c93505f711731f4b23bd7614
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2003,6 +2003,31 @@ organs:
     path: ~/.organism/last_seen/mini.kc_watchdog.json
     timestamp_field: ts
     status_field: status
+- id: pro.wa_codex_broker
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 0
+  owner_module: infra/launchagents/wrappers/wa-codex-broker-wrapper.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wa-codex-broker
+  severity_on_silence: warning
+  notes: 'WA codex broker daemon (BOT-V4 S2 PR-6, spec research/operations/2026-08-19-bot-chatgpt-provider-broker-spec.md).
+    LaunchDAEMON (/Library/LaunchDaemons, UserName demotion) running as the login-less
+    zantara-codex user: single-flight claim/exec/complete loop against the Fly wa-broker
+    endpoints. Liveness ground truth is the SERVER-side claim-poll gauge (every POST
+    /claim upserts it; silence converges to BROKER_ABSENT within DEFAULT_ABSENT_AFTER_S)
+    - NOT this sidecar, hence expected_hb_seconds 0: the wrapper writes the sidecar
+    only at start and on refusal exits (env unfilled, venv missing, version-pin refusal
+    surfaces in the daemon log), and the sidecar lives in the zantara-codex home,
+    unreadable to other users by design. Kill switch WA_CODEX_BROKER_ENABLED=false
+    (clean exit stays down under KeepAlive.SuccessfulExit=false). Lane is flag-OFF
+    (WA_GENERATION_PROVIDER defaults to gemini) until the owner-gated S4 cutover;
+    the daemon itself is inert until the operator provisions the host (scripts/provision_zantara_codex.sh)
+    and logs the seat in.'
+  cicatrix_refs: []
 - id: pro.wr2_daily_carousel
   runtime: pro_launchd
   type: cron
@@ -2455,5 +2480,25 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.wa_mirror_freshness_liveness.json
+    timestamp_field: ts
+    status_field: status
+- id: mini.secrets_perms_sweep
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 21600
+  owner_module: infra/launchagents/wrappers/mini-secrets-perms-sweep.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.secrets-perms-sweep
+  severity_on_silence: warning
+  notes: 'recurring sweep+fix of group/other-readable secret-named files (memory notes,
+    tokens, keys) via secrets_permissions_audit.py --fix — closes the one-shot debt
+    from PR #3621 (born via organ_birth.py, genes imprinted 2026+)'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.secrets_perms_sweep.json
     timestamp_field: ts
     status_field: status

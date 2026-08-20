@@ -8,6 +8,10 @@
 #   3. Kimi Code K3
 #   4. codex exec --sandbox read-only (ChatGPT Pro)
 #   5. ollama run qwen3.5:9b (Pro/Mini local safety net)
+#   6. fm respond (Apple on-device Foundation Model, macOS 27+ — zero-daemon
+#      last resort for machines where no Ollama server is running; ~3B quality,
+#      grunt shapes only. Benchmarked 2026-08-19: 12/15 vs qwen3.5:9b 14/15 on
+#      triage/classify/extract. Kill switch: CLAUDE_CASCADE_FM=0)
 #
 # Usage:
 #   claude-cascade.sh "<prompt text>" [--model MODEL] [--agent AGENT_NAME]
@@ -678,6 +682,53 @@ try_ollama() {
     return 0
 }
 
+# Tier 6: Apple on-device Foundation Model via the fm CLI (ships with macOS 27).
+# This is the zero-daemon last resort: unlike tier 5 it needs no Ollama server,
+# no model pull, and no RAM residency — the system model is always present on a
+# macOS 27 machine once `sudo fm license` has been accepted. Quality is ~3B
+# (benchmark 2026-08-19: 12/15 vs qwen3.5:9b 14/15 on grunt shapes), so it adds
+# cascade depth for machines/moments where tier 5 is dead (M5 by policy runs no
+# Ollama daemon; Pro after a panic), never a preferred seat. An unlicensed fm
+# exits non-zero and lands in the fail-visible error path below, same as any
+# dead tier. Kill switch: CLAUDE_CASCADE_FM=0.
+try_fm() {
+    local fm_bin="${CLAUDE_CASCADE_FM_BIN:-/usr/bin/fm}"
+    if [ "${CLAUDE_CASCADE_FM:-1}" = "0" ]; then
+        echo "  [skip] tier6 fm disabled (CLAUDE_CASCADE_FM=0)" >&2
+        return 99
+    fi
+    [ ! -x "$fm_bin" ] && { echo "  [skip] tier6 fm not installed (macOS 27+ only)" >&2; return 99; }
+    if [ -n "$AGENT" ]; then
+        echo "  [skip] tier6 fm — --agent=$AGENT requires Claude tier" >&2
+        return 99
+    fi
+    local tmpout tmperr exit_code
+    new_temp_file
+    tmpout="$REPLY"
+    new_temp_file
+    tmperr="$REPLY"
+    echo "  [try] tier6 fm apple-on-device" >&2
+    build_isolated_provider_env
+    run_bounded "$tmpout" "$tmperr" "tier6 fm" \
+        "${ISOLATED_PROVIDER_ENV[@]}" \
+        "$fm_bin" respond --no-stream --greedy "$PROMPT"
+    exit_code=$?
+    if [ "$exit_code" -ne 0 ]; then
+        echo "  [error] fm exit=$exit_code" >&2
+        rm -f "$tmpout" "$tmperr"
+        return "$exit_code"
+    fi
+    if [ ! -s "$tmpout" ]; then
+        echo "  [error] fm returned empty output" >&2
+        rm -f "$tmpout" "$tmperr"
+        return 97
+    fi
+    cat "$tmpout"
+    rm -f "$tmpout" "$tmperr"
+    echo "[claude-cascade] used: tier6 fm-apple-on-device" >&2
+    return 0
+}
+
 # ============= CASCADE =============
 echo "[claude-cascade] starting (prompt ${#PROMPT} chars, agent='$AGENT', model='$MODEL')" >&2
 
@@ -790,6 +841,9 @@ try_codex && exit 0
 
 # Tier 5: Ollama local (always-on safety net)
 try_ollama && exit 0
+
+# Tier 6: Apple on-device Foundation Model (macOS 27+, zero-daemon last resort)
+try_fm && exit 0
 
 echo "[claude-cascade] ALL TIERS FAILED" >&2
 exit 1

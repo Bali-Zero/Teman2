@@ -104,7 +104,12 @@ jobs:
 
       - name: Install Claude CLI
         if: steps.guard.outputs.has_token == 'true' && steps.input.outputs.diff_bytes != '0'
-        run: npm install -g @anthropic-ai/claude-code
+        # The pin (#4390) lives ONCE, in scripts/install-claude-code.sh, which the
+        # production image and the node provisioner also call. Installing it inline
+        # here left this runner with no `claude --version` at all: on 2026-08-20 npm
+        # exited 0 and `which claude` succeeded while the CLI could not run, so a
+        # bare install is not evidence the review step has a working CLI.
+        run: bash scripts/install-claude-code.sh
 
       - name: Run advisory review
         id: review

@@ -725,3 +725,74 @@ class TestChunkCap:
 
         assert len(package.chunks) == 8
         assert "dropping" in caplog.text and "chunk" in caplog.text
+
+
+def test_wire_text_is_exactly_the_bytes_package_hash_covers() -> None:
+    """Codex S2 re-verdict r5, finding 1 (GUILT): the hash domain and the
+    wire bytes must be the SAME function's output. Before wire_text()
+    existed, the only serialization on offer was to_payload() — 7 fields
+    INCLUDING package_hash — so a broker recomputing sha256 over the
+    received bytes rejected every healthy package by construction."""
+    import hashlib
+    import json
+
+    fields: dict[str, Any] = {
+        "history": [{"role": "user", "content": "hi"}],
+        "chunks": [{"text": "chunk", "source": "s"}],
+        "pricing_block": {"category": {"svc": {"price": "1"}}},
+        "persona_digest": "digest",
+        "evidence_inputs": {"domain": "visa"},
+        "thread_epoch": 3,
+    }
+    pkg = ContextPackage(package_hash=wpb_module._package_hash(**fields), **fields)
+
+    wire = pkg.wire_text()
+    assert hashlib.sha256(wire.encode("utf-8")).hexdigest() == pkg.package_hash
+    # The wire is the 6-field envelope — the hash travels BESIDE it, never
+    # inside it (a hash cannot cover bytes that contain themselves).
+    assert "package_hash" not in json.loads(wire)
+    # And it is NOT the to_payload() serialization, which does carry it.
+    assert "package_hash" in pkg.to_payload()
+
+
+def test_post_build_mutation_cannot_divorce_wire_from_hash() -> None:
+    """Codex re-verdict r6, finding 2 (GUILT): frozen=True freezes the
+    field bindings, not the nested lists/dicts — with a lazily-serialized
+    wire, `pkg.history[-1]["content"] = ...` between build and offer made
+    sha256(wire_text()) != package_hash and the broker rejected a healthy
+    package. The wire is now SEALED at construction: mutating the nested
+    state afterwards changes nothing on the wire."""
+    import hashlib
+
+    fields: dict[str, Any] = {
+        "history": [{"role": "user", "content": "original"}],
+        "chunks": [],
+        "pricing_block": None,
+        "persona_digest": "d",
+        "evidence_inputs": {},
+        "thread_epoch": 1,
+    }
+    pkg = ContextPackage(package_hash=wpb_module._package_hash(**fields), **fields)
+    wire_before = pkg.wire_text()
+
+    pkg.history[-1]["content"] = "tampered after build"
+
+    assert pkg.wire_text() == wire_before
+    assert hashlib.sha256(pkg.wire_text().encode("utf-8")).hexdigest() == pkg.package_hash
+    assert "tampered" not in pkg.wire_text()
+
+
+def test_context_package_refuses_a_hash_that_does_not_cover_its_bytes() -> None:
+    """The seal is verified at construction: a package_hash that does not
+    cover the wire bytes is a builder bug, refused loudly instead of
+    travelling to the broker and failing there as a mystery rejection."""
+    with pytest.raises(ValueError, match="does not cover"):
+        ContextPackage(
+            history=[],
+            chunks=[],
+            pricing_block=None,
+            persona_digest="d",
+            evidence_inputs={},
+            thread_epoch=1,
+            package_hash="not-the-right-hash",
+        )

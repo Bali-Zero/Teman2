@@ -67,14 +67,30 @@ class WaPackageBuildRequest(BaseModel):
 
 
 class WaPackageBuildResponse(BaseModel):
-    """Exactly one of `package` / `unbuildable` is populated.
+    """Exactly one of `package_wire` / `unbuildable` is populated.
 
     HTTP 200 either way: an unbuildable intent is a ROUTE decision for the
     worker (send this row to the Gemini leg), not a server error — see
     ``PackageUnbuildable``'s docstring.
+
+    ``package_wire`` is the SEALED ENVELOPE — verbatim the bytes
+    ``package_hash`` covers (``ContextPackage.wire_text()``), which is what
+    ``offer_job`` must store and the broker verifies. The earlier draft
+    returned ``to_payload()`` here, whose own docstring says it is NOT the
+    wire format (its 7-key view includes package_hash itself): a consumer
+    re-serializing that dict would produce bytes the hash does not cover
+    and every broker-side verification would reject a valid package.
+    EXACTLY one representation of the sealed fact crosses this contract —
+    the wire plus its hash, nothing else. An earlier draft also returned a
+    top-level ``evidence_inputs`` copy; the S2 adversarial gate (round 2)
+    struck it: an unsealed copy can diverge from the sealed one inside the
+    wire and steer the consumer's frozen-evidence abstain verdict with
+    values the hash never covered. Consumers parse evidence_inputs OUT OF
+    the wire.
     """
 
-    package: dict[str, Any] | None = None
+    package_wire: str | None = None
+    package_hash: str | None = None
     unbuildable: str | None = None
 
 
@@ -125,4 +141,7 @@ async def build_wa_package(
         logger.info("wa_package: unbuildable reason=%s", exc.reason)
         return WaPackageBuildResponse(unbuildable=exc.reason)
 
-    return WaPackageBuildResponse(package=package.to_payload())
+    return WaPackageBuildResponse(
+        package_wire=package.wire_text(),
+        package_hash=package.package_hash,
+    )

@@ -387,6 +387,11 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
         tags=("channels", "crm", "wa-copilot"),
     ),
     RouterEntry(
+        name="wa_broker",
+        process_groups=_API,
+        tags=("channels", "wa-broker"),
+    ),
+    RouterEntry(
         name="wa_inbox",
         process_groups=_API,
         tags=("channels", "wa-meta-inbox"),

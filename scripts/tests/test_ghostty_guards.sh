@@ -78,7 +78,7 @@ build_home() {
     local machine="$1" root
     root="$(mktemp -d)"
     mkdir -p "$root/.config/ghostty" "$root/Library/Application Support/com.mitchellh.ghostty"
-    cp "$SRC/config" "$SRC/fleet.ghostty" "$SRC/keys.ghostty" "$root/.config/ghostty/"
+    cp "$SRC/config" "$SRC/fleet.ghostty" "$SRC/keys.ghostty" "$SRC/verify-latest.sh" "$root/.config/ghostty/"
     cp "$SRC/machines/$machine.ghostty" "$root/.config/ghostty/machine.ghostty"
     printf '%s' "$root"
 }
@@ -246,7 +246,7 @@ rm -rf "$H4"
 broken_source() {
     local dir
     dir="$(mktemp -d)"
-    cp "$SRC/config" "$SRC/fleet.ghostty" "$SRC/keys.ghostty" "$SRC/install.sh" "$dir/"
+    cp "$SRC/config" "$SRC/fleet.ghostty" "$SRC/keys.ghostty" "$SRC/verify-latest.sh" "$SRC/install.sh" "$dir/"
     mkdir -p "$dir/machines"
     cp "$SRC"/machines/*.ghostty "$dir/machines/"
     printf '\nfont-size = not-a-number\n' >>"$dir/fleet.ghostty"
