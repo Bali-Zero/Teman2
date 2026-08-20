@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { CheckCircle, Circle, Loader, User } from "lucide-react";
+import { CheckCircle, Circle, Loader } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ProcessTimelineStep } from "@/lib/api/portal/portal.types";
 
@@ -98,15 +98,6 @@ export function ProcessStepper({ steps, className }: ProcessStepperProps) {
                     day: "numeric",
                     year: "numeric",
                   })}
-                  {step.changed_by && step.changed_by !== "system" && (
-                    <span className="ml-1.5">
-                      <User
-                        className="w-3 h-3 inline -mt-0.5"
-                        style={{ color: "var(--bz-text-3)" }}
-                      />{" "}
-                      {step.changed_by.split("@")[0]}
-                    </span>
-                  )}
                 </p>
               )}
             </div>
