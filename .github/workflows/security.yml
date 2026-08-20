@@ -554,33 +554,46 @@ jobs:
   codeql:
     name: CodeQL Analysis
     needs: [changes]
-    # Path-aware skip — TWO LAYERS, because actionlint refuses `matrix.*` in
-    # a job-level `if:` (verified live 2026-08-20 — "context matrix is not
-    # allowed here", schema only permits github/inputs/needs/vars there; an
-    # earlier draft of this gate assumed otherwise and actionlint caught it
-    # before merge). Layer 1 (this `if:`, job-level, union of both
-    # languages): the whole job — both matrix legs, i.e. both
-    # "CodeQL Analysis (python)" and "CodeQL Analysis (javascript)" required
-    # contexts — skips only when NEITHER language's domain matched (measured
-    # on 120 sampled merged PRs: 38% of PRs, vs. 43%/52% skip individually —
-    # the union is necessarily smaller than either leg alone). Layer 2 (step
-    # `if:` below, where `matrix.*` IS legal) then skips the three EXPENSIVE
-    # steps — Initialize/Autobuild/Analyze, ~14.6min for python alone — for
-    # whichever single language this run didn't need, while the job itself
-    # still reports a clean `success` (not merely `skipped`) for that leg,
-    # which satisfies its required context unambiguously. The only residual
-    # cost on a python-only PR is the JS leg's runner spin-up + checkout —
-    # not the analysis. Domains verified live by extension count
+    # Path-aware skip — ONE LAYER ONLY, and the missing second layer is the
+    # whole point. THERE IS DELIBERATELY NO JOB-LEVEL `if:` HERE. Do not add
+    # one back.
+    #
+    # An earlier version of this job carried a job-level `if:` whose comment
+    # asserted that skipping the job would still deliver "both required
+    # contexts". That assertion was never measured and is FALSE: when a
+    # MATRIX job is skipped at job level, GitHub emits ONE check run named
+    # for the bare job (`CodeQL Analysis`) — it does NOT expand the matrix,
+    # so `CodeQL Analysis (python)` and `CodeQL Analysis (javascript)`, both
+    # of which branch protection lists as required, never report at all.
+    # A required context that never reports stays pending forever, so the PR
+    # reads BLOCKED with every check green and nothing to point at.
+    # Measured live on PR #4452 (a docs-only change): 41 pass, 12 skipping,
+    # 0 fail, 0 cancelled, 0 review required — and permanently unmergeable,
+    # with `CodeQL Analysis: skipped` in the run and the two suffixed
+    # contexts absent from `gh pr checks` entirely. Any PR touching neither
+    # Python nor JavaScript hit this; PRs that touch code did not, which is
+    # why four of them merged in the same hour and hid it.
+    #
+    # The cost saving lives entirely in the per-leg step `if:` below (where
+    # `matrix.*` IS legal — actionlint refuses it in a job-level `if:`:
+    # "context matrix is not allowed here"). That layer skips the three
+    # EXPENSIVE steps — Initialize/Autobuild/Analyze, ~14.6min for python
+    # alone — for whichever language this run didn't need, while the leg
+    # still reports a clean `success` and satisfies its required context.
+    # What removing the job-level `if:` costs is only the runner spin-up +
+    # checkout for both legs on the ~38% of PRs that need neither language.
+    # That is the correct trade: seconds of runner time against a class of
+    # PR that can never merge. Domains verified live by extension count
     # (2026-08-20): apps/evaluator, packages/cell-core, apps/nuzantara-mcp
     # are Python; packages/core is TSX/TS.
-    if: >-
-      !cancelled() &&
-      (
-        (github.event_name != 'pull_request' && github.event_name != 'merge_group') ||
-        needs.changes.result != 'success' ||
-        needs.changes.outputs.run_codeql_python != 'false' ||
-        needs.changes.outputs.run_codeql_js != 'false'
-      )
+    #
+    # The `if:` that REMAINS is not a path filter and must stay: without any
+    # job-level `if:`, a failed or skipped `changes` job would make this job
+    # skip through `needs:` — the identical bug by another door. `!cancelled()`
+    # runs this job even when `changes` did not succeed, which is what the
+    # fail-open `needs.changes.result != 'success'` term in RUN_THIS_LANGUAGE
+    # below is written to handle (unknown domains → analyse both languages).
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
