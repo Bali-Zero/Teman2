@@ -13,6 +13,7 @@ Run:  python3 -m pytest scripts/tests/test_unreachable_workflow_conditions.py -q
 from __future__ import annotations
 
 import importlib.util
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -263,3 +264,70 @@ def test_scar_pin_precure_text_of_the_real_step_is_flagged(tmp_path):
     assert result.parse_error is None
     assert len(result.findings) == 1, result.findings
     assert "Telegram alert" in result.findings[0].condition.scope
+
+
+# --- The alarm must NAME the ref it fired on, never assert one -----------------
+#
+# Second half of the same defect, and the half a satisfiability checker cannot
+# see: widening the condition to `schedule || push-on-develop` made the step
+# REACHABLE, but its title and body still read "... on main", so on a develop
+# push the alarm would have reported the wrong branch and sent whoever read it
+# at 07:30 to look at a branch that was fine (W114/W106 — a message that
+# inventories mutable state will lie). The condition and the message were
+# written the same day from the same belief; these assertions stop them from
+# being able to disagree again.
+
+_ALARM_NAME_MARKER = "Telegram alert — production image failed to BUILD"
+_ALARM_BODY_MARKER = "image failed to BUILD"
+_BRANCH_LITERAL_RE = re.compile(r"\b(main|develop|master)\b")
+
+
+def _alarm_human_text(workflow_text: str) -> list[str]:
+    """The alarm's HUMAN-FACING strings: its `name:` line and the body line the
+    owner actually reads. Deliberately NOT the `if:` — that one has to name
+    branches, it is the condition. Fails loud rather than returning an empty
+    list, so a renamed step can never read as 'no branch literals found'."""
+    lines = [
+        line
+        for line in workflow_text.splitlines()
+        if (_ALARM_NAME_MARKER in line and line.lstrip().startswith("- name:"))
+        or (_ALARM_BODY_MARKER in line and "<b>" in line)
+    ]
+    assert len(lines) == 2, (
+        "expected exactly the alarm's name line and its body line; got "
+        f"{len(lines)}: {lines!r} — the step was renamed or its body reworded, "
+        "so this scar-pin is no longer looking at the alarm it was written for"
+    )
+    return lines
+
+
+def test_scar_pin_alarm_names_the_ref_instead_of_hardcoding_a_branch():
+    """INNOCENCE: today's alarm carries no branch literal in the text a human
+    reads, and does interpolate the real ref."""
+    text = (REPO_ROOT / ".github" / "workflows" / "security.yml").read_text(encoding="utf-8")
+    human = _alarm_human_text(text)
+    for line in human:
+        assert not _BRANCH_LITERAL_RE.search(line), (
+            f"the alarm asserts a branch instead of naming one: {line.strip()!r} — "
+            "it can fire on a develop push AND on the scheduled run, so a "
+            "hardcoded branch name is wrong on at least one of them"
+        )
+    assert any("${REF}" in line for line in human), (
+        "the alarm body must interpolate the ref it fired on"
+    )
+    assert "REF: ${{ github.ref_name }}" in text, (
+        "REF must come from github.ref_name in the step's env: block"
+    )
+
+
+def test_guilt_rehardcoding_the_branch_in_the_alarm_is_caught():
+    """GUILT: the next person who writes 'on main' back into the alarm gets a
+    red, not a lying alert. Mutates a copy in memory — the tracked file is
+    never touched."""
+    text = (REPO_ROOT / ".github" / "workflows" / "security.yml").read_text(encoding="utf-8")
+    regressed = text.replace("failed to BUILD on ${REF}", "failed to BUILD on main")
+    assert regressed != text, "the body line moved — update this mutation to match"
+    human = _alarm_human_text(regressed)
+    assert any(_BRANCH_LITERAL_RE.search(line) for line in human), (
+        "the regression must be visible in the alarm's human-facing text"
+    )

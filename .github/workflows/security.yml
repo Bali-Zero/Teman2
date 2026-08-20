@@ -247,9 +247,18 @@ jobs:
       # scheduled workflows (e.g. cron-cert-monitor.yml) already read
       # `secrets.TELEGRAM_BOT_TOKEN`/`secrets.TELEGRAM_OWNER_CHAT_ID` live under
       # `on: schedule:` with no special-casing.
-      - name: Telegram alert — production image failed to BUILD on main
+      # The alert NAMES the ref it fired on rather than asserting one. The step
+      # used to be titled "... on main" and say so in its body — true while the
+      # only trigger was a push to main, and a lie the moment the condition
+      # above gained the `develop` push and the scheduled run. An alert that
+      # inventories mutable state mislead exactly the person reading it at
+      # 07:30 (W114/W106), and it is the same belief that produced the
+      # condition, so the two must not be able to disagree. `github.ref_name`
+      # is `develop` on the push and the default branch on the scheduled run.
+      - name: Telegram alert — production image failed to BUILD
         if: failure() && (github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/develop'))
         env:
+          REF: ${{ github.ref_name }}
           SHA: ${{ github.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -267,7 +276,7 @@ jobs:
           # column 0 CLOSES the YAML scalar, and the file stops being valid
           # YAML — caught by actionlint before this ever ran.
           TEXT="$(printf '%s\n' \
-            "🐳 <b>nuzantara-rag image failed to BUILD on main</b>" \
+            "🐳 <b>nuzantara-rag image failed to BUILD on ${REF}</b>" \
             "" \
             "<code>${SHA:0:8}</code>" \
             "" \
