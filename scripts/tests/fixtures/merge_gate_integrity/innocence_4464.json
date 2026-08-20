@@ -1,0 +1,360 @@
+{
+  "_comment": "Recorded LIVE 2026-08-21 via gh api against Bali-Zero/Teman2 \u2014 real merge under the merge-queue-main regime. Used as the INNOCENCE case for scripts/probe_merge_gate_integrity.py: every required context has a merge_group job that completed successfully before (or within grace of) the merge decision.",
+  "pr_number": 4464,
+  "pr_title": "security(actions): SHA-pin third-party GitHub Actions + write-permission first-party jobs",
+  "merge_commit_sha": "20f7289e753bc336871370e1bc1d6928557ef27b",
+  "merged_at": "2026-08-20T20:25:03Z",
+  "merge_group_jobs": [
+    {
+      "completed_at": "2026-08-20T19:59:27Z",
+      "conclusion": "success",
+      "name": "check-docs-sync",
+      "started_at": "2026-08-20T19:58:58Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T19:59:30Z",
+      "conclusion": "success",
+      "name": "npm lock honors manifest",
+      "started_at": "2026-08-20T19:58:58Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T19:59:30Z",
+      "conclusion": "success",
+      "name": "asyncpg-lint",
+      "started_at": "2026-08-20T19:59:01Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T19:59:25Z",
+      "conclusion": "success",
+      "name": "root-guard",
+      "started_at": "2026-08-20T19:59:01Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T19:59:29Z",
+      "conclusion": "success",
+      "name": "actionlint \u2014 workflow schema + expression gate",
+      "started_at": "2026-08-20T19:58:58Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T19:59:31Z",
+      "conclusion": "success",
+      "name": "yield-optimizer PII gate tests",
+      "started_at": "2026-08-20T19:59:01Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T19:59:31Z",
+      "conclusion": "success",
+      "name": "inventory-check",
+      "started_at": "2026-08-20T19:59:03Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T19:59:33Z",
+      "conclusion": "success",
+      "name": "S7 yield dispatch gate tests",
+      "started_at": "2026-08-20T19:59:09Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T19:59:35Z",
+      "conclusion": "success",
+      "name": "R1 gate \u2014 adversarial review present",
+      "started_at": "2026-08-20T19:58:59Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T19:59:41Z",
+      "conclusion": "success",
+      "name": "Canary self-test + incremental mutation",
+      "started_at": "2026-08-20T19:59:00Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T19:59:41Z",
+      "conclusion": "success",
+      "name": "brand-api-gate",
+      "started_at": "2026-08-20T19:58:59Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T19:59:41Z",
+      "conclusion": "success",
+      "name": "Lint",
+      "started_at": "2026-08-20T19:59:04Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T20:04:10Z",
+      "conclusion": "success",
+      "name": "antidotes",
+      "started_at": "2026-08-20T19:59:08Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T19:59:45Z",
+      "conclusion": "success",
+      "name": "Harness floor recompute",
+      "started_at": "2026-08-20T19:59:04Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T19:59:46Z",
+      "conclusion": "success",
+      "name": "prepush-guards",
+      "started_at": "2026-08-20T19:58:58Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T20:00:07Z",
+      "conclusion": "success",
+      "name": "P6 parallelize-hypothesis falsifiable gates",
+      "started_at": "2026-08-20T19:58:58Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T19:59:48Z",
+      "conclusion": "success",
+      "name": "lesson-harvester-gate",
+      "started_at": "2026-08-20T19:59:00Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T19:59:49Z",
+      "conclusion": "success",
+      "name": "verify-the-verifiers",
+      "started_at": "2026-08-20T19:59:08Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T20:00:02Z",
+      "conclusion": "success",
+      "name": "cost-breaker-tests",
+      "started_at": "2026-08-20T19:58:58Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T20:00:10Z",
+      "conclusion": "success",
+      "name": "apps/mouth compiles",
+      "started_at": "2026-08-20T19:59:03Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T20:00:19Z",
+      "conclusion": "success",
+      "name": "P3 static validation (enforcing)",
+      "started_at": "2026-08-20T19:59:03Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T19:59:29Z",
+      "conclusion": "success",
+      "name": "P3 runtime gates G1/G1-DLP/G4 (monitor \u2014 runs on Pro)",
+      "started_at": "2026-08-20T19:59:03Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T19:59:40Z",
+      "conclusion": "success",
+      "name": "Prove hooks bite only the guilty",
+      "started_at": "2026-08-20T19:59:04Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T19:59:55Z",
+      "conclusion": "success",
+      "name": "Every guard proves guilt AND innocence",
+      "started_at": "2026-08-20T19:59:07Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T20:00:43Z",
+      "conclusion": "success",
+      "name": "Every organ is born with its genes",
+      "started_at": "2026-08-20T19:59:00Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T19:59:43Z",
+      "conclusion": "success",
+      "name": "Hot-zone enforcement",
+      "started_at": "2026-08-20T19:59:06Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T20:01:12Z",
+      "conclusion": "success",
+      "name": "prettier --check (changed files)",
+      "started_at": "2026-08-20T19:59:08Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T20:00:13Z",
+      "conclusion": "success",
+      "name": "Change map (security)",
+      "started_at": "2026-08-20T19:59:04Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T20:18:14Z",
+      "conclusion": "success",
+      "name": "Detect Secrets",
+      "started_at": "2026-08-20T19:59:03Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T20:01:00Z",
+      "conclusion": "success",
+      "name": "Safety Dependency Check",
+      "started_at": "2026-08-20T20:00:15Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T20:03:10Z",
+      "conclusion": "success",
+      "name": "Snyk Node.js Security",
+      "started_at": "2026-08-20T20:00:16Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T20:01:15Z",
+      "conclusion": "success",
+      "name": "Snyk Python Security",
+      "started_at": "2026-08-20T20:00:17Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T20:08:21Z",
+      "conclusion": "success",
+      "name": "CodeQL Analysis (python)",
+      "started_at": "2026-08-20T20:00:15Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T20:03:33Z",
+      "conclusion": "success",
+      "name": "CodeQL Analysis (javascript)",
+      "started_at": "2026-08-20T20:00:16Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T20:03:27Z",
+      "conclusion": "success",
+      "name": "Snyk Docker Security",
+      "started_at": "2026-08-20T20:00:19Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T20:01:11Z",
+      "conclusion": "success",
+      "name": "Bandit Python Security",
+      "started_at": "2026-08-20T20:00:19Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T20:18:24Z",
+      "conclusion": "success",
+      "name": "Security Summary",
+      "started_at": "2026-08-20T20:18:20Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T20:00:06Z",
+      "conclusion": "success",
+      "name": "Change map",
+      "started_at": "2026-08-20T19:58:58Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T20:01:50Z",
+      "conclusion": "success",
+      "name": "Shared Core Package Tests",
+      "started_at": "2026-08-20T20:00:12Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T20:24:39Z",
+      "conclusion": "success",
+      "name": "Backend Tests (Python)",
+      "started_at": "2026-08-20T20:00:12Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T20:00:44Z",
+      "conclusion": "success",
+      "name": "Evaluator Critical Tests",
+      "started_at": "2026-08-20T20:00:12Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T20:07:27Z",
+      "conclusion": "success",
+      "name": "E2E Tests (Playwright)",
+      "started_at": "2026-08-20T20:00:11Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T20:01:24Z",
+      "conclusion": "success",
+      "name": "MCP Server Tests",
+      "started_at": "2026-08-20T20:00:13Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T20:01:52Z",
+      "conclusion": "success",
+      "name": "Frontend Tests (Next.js) (admin-dashboard, false)",
+      "started_at": "2026-08-20T20:00:14Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T20:06:41Z",
+      "conclusion": "success",
+      "name": "Frontend Tests (Next.js) (mouth, true)",
+      "started_at": "2026-08-20T20:00:14Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-08-20T20:25:04Z",
+      "conclusion": "success",
+      "name": "Test Summary",
+      "started_at": "2026-08-20T20:24:59Z",
+      "status": "completed"
+    }
+  ],
+  "required_contexts": [
+    "actionlint \u2014 workflow schema + expression gate",
+    "antidotes",
+    "asyncpg-lint",
+    "Backend Tests (Python)",
+    "Bandit Python Security",
+    "brand-api-gate",
+    "Canary self-test + incremental mutation",
+    "CodeQL Analysis (javascript)",
+    "CodeQL Analysis (python)",
+    "cost-breaker-tests",
+    "Detect Secrets",
+    "E2E Tests (Playwright)",
+    "Every guard proves guilt AND innocence",
+    "Every organ is born with its genes",
+    "Frontend Tests (Next.js) (mouth, true)",
+    "Harness floor recompute",
+    "Hot-zone enforcement",
+    "lesson-harvester-gate",
+    "MCP Server Tests",
+    "npm lock honors manifest",
+    "P3 static validation (enforcing)",
+    "P6 parallelize-hypothesis falsifiable gates",
+    "prepush-guards",
+    "Prove hooks bite only the guilty",
+    "R1 gate \u2014 adversarial review present",
+    "root-guard",
+    "verify-the-verifiers"
+  ]
+}
