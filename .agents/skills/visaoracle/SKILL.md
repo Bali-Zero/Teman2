@@ -1192,7 +1192,7 @@ merge-conflict.
 
 - Own worktree via `scripts/agent_start.py`; the main checkout stays read-only.
 - generator≠grader before every push: cross-family adversarial review (Codex or Gemini seat) of the track's diff; the author never grades its own work.
-- Final on-disk gate = an Opus 5 max-effort session per track (RULED 2026-08-20, was Fable — CLAUDE.md §5); never delegated to the implementer.
+- Final on-disk gate = an Opus 5 xhigh-effort session per track (RULED 2026-08-20, was Fable — CLAUDE.md §5); never delegated to the implementer.
 - Pre-push runs on the track's own machine (3 machines = 3 independent push queues). On M5: quiet-window rule — first loadavg value < 8 and zero real pytest processes before pushing.
 - All established truths in this skill bind every track — including the single all-inclusive client price ruling (never a PNBP-vs-fee split).
 

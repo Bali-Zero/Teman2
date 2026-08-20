@@ -17,7 +17,7 @@ description: >
 > modus (`.claude/skills/modus/SKILL.md`) is the LOOP; this skill is the FAN-OUT ARM the
 > loop reaches for at Gear 3. Doctrine: `sota-architecture-loop` (council gate, asymmetric
 > adversarial review) · executable ancestors: `infra/workflows/README.md`. Nothing here
-> overrides the modus final-gate invariant: **Opus 5 max effort does the last on-disk grep**
+> overrides the modus final-gate invariant: **Opus 5 xhigh effort does the last on-disk grep**
 > (Fable is out of the workflow, RULED 2026-08-20 — CLAUDE.md §5) **— never delegable, never
 > cascadable.**
 
@@ -122,7 +122,7 @@ Workflow({ scriptPath: "infra/workflows/verify-template.js", args: {
 **council — strategic decision** (inline script): proponent lane drafts the position →
 3 external chairs in parallel (Codex red-team: _find the flaw, default defective_ · agy
 costruttivo: _save it by improving it_ · Kimi/GLM refuter: _falsify the core claim_) →
-Opus 5 max effort synthesizes VERDICTS-AS-LEADS into the decision artifact on disk. Max 3 external
+Opus 5 xhigh effort synthesizes VERDICTS-AS-LEADS into the decision artifact on disk. Max 3 external
 chairs, rounds capped at 2, never "do you all agree?" (conformity hallucination).
 
 **sweep — corpus-scale ground** (pipeline, no barrier): readers fan out per organ/domain

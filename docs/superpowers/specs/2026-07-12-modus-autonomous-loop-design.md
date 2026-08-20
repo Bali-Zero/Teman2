@@ -17,7 +17,7 @@ Two external LLMs (Codex, Gemini), run blind to each other with an explicitly ad
 > not an autonomous agentic loop."_
 
 This spec closes that gap **without** touching the invariant that governs the whole ecosystem: the
-final gate never cascades; window dead → task SUSPENDS. _(Gate model updated 2026-08-20: Opus 5 max
+final gate never cascades; window dead → task SUSPENDS. _(Gate model updated 2026-08-20: Opus 5 xhigh
 effort, not Fable — CLAUDE.md §5. The invariant itself is unchanged.)_
 
 ### What the review got wrong (grounded on disk, this turn)
@@ -40,12 +40,12 @@ and queue→autonomous-consumer.
 
 ## 1. The four approved decisions
 
-| #       | Decision                    | Choice                                                             | Meaning                                                                                                                                                                                                                                                                                                                                                                                   |
-| ------- | --------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **B**   | Autonomy level              | **B (full loop)**                                                  | Queue fills itself AND consumes itself. Morning = PRs already open, awaiting Zero's merge.                                                                                                                                                                                                                                                                                                |
-| **2.1** | What may auto-execute       | **Green-class only**                                               | Only low-blast-radius, in-perimeter work auto-runs (probe-found broken test, regulatory delta capture, known-endpoint 500, lint/format). Anything touching migration / auth / billing / deploy / secret / business → deposited as **proposal (A-mode)**, waits for Zero. Line = modus Gear-3 "cure-while-diagnosing" + CLAUDE.md §2 operator carve-out. No new safety threshold invented. |
-| **3.1** | Model routing + quota-death | **Opus director, Opus 5 max-effort gate, quota-dead → `deferred`** | Loop sessions run **Opus** as director (Zero's 2026-07-12 "non voglio pagare"). At the final gate, if the Opus 5 window is dead, the session **does not degrade** — it returns the task as `deferred`, surfacing next morning as "ready but awaiting gate". Never-cascade made persistent in the queue. _(Gate model was Fable until RULED 2026-08-20 — CLAUDE.md §5.)_                   |
-| **3.3** | Consumption budget          | **Hard cap K/night**                                               | At most K green tasks per quota window, then stop. A bad night cannot burn the whole MAX window.                                                                                                                                                                                                                                                                                          |
+| #       | Decision                    | Choice                                                               | Meaning                                                                                                                                                                                                                                                                                                                                                                                   |
+| ------- | --------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **B**   | Autonomy level              | **B (full loop)**                                                    | Queue fills itself AND consumes itself. Morning = PRs already open, awaiting Zero's merge.                                                                                                                                                                                                                                                                                                |
+| **2.1** | What may auto-execute       | **Green-class only**                                                 | Only low-blast-radius, in-perimeter work auto-runs (probe-found broken test, regulatory delta capture, known-endpoint 500, lint/format). Anything touching migration / auth / billing / deploy / secret / business → deposited as **proposal (A-mode)**, waits for Zero. Line = modus Gear-3 "cure-while-diagnosing" + CLAUDE.md §2 operator carve-out. No new safety threshold invented. |
+| **3.1** | Model routing + quota-death | **Opus director, Opus 5 xhigh-effort gate, quota-dead → `deferred`** | Loop sessions run **Opus** as director (Zero's 2026-07-12 "non voglio pagare"). At the final gate, if the Opus 5 window is dead, the session **does not degrade** — it returns the task as `deferred`, surfacing next morning as "ready but awaiting gate". Never-cascade made persistent in the queue. _(Gate model was Fable until RULED 2026-08-20 — CLAUDE.md §5.)_                   |
+| **3.3** | Consumption budget          | **Hard cap K/night**                                                 | At most K green tasks per quota window, then stop. A bad night cannot burn the whole MAX window.                                                                                                                                                                                                                                                                                          |
 
 ---
 
@@ -103,7 +103,7 @@ domain cron → [U1 write_escalation] → queue (JSONL + SQLite mirror, dedup UN
 
 ## 3. Invariants it must never break
 
-- **Never-cascade final gate (HARD):** dead Opus 5 window → `deferred`, never the gate on a weaker model. Zero exceptions. (Gate model: Opus 5 max effort, RULED 2026-08-20 — was Fable.)
+- **Never-cascade final gate (HARD):** dead Opus 5 window → `deferred`, never the gate on a weaker model. Zero exceptions. (Gate model: Opus 5 xhigh effort, RULED 2026-08-20 — was Fable.)
 - **Scar #5 sibling-race:** every session in its own `agent_start.py` worktree; main untouched.
 - **Scar #10 split-brain:** consumer on ONE machine; second host graceful-exits on `machine` guard.
 - **Scar #2 esiste≠armato:** consumer health proved by queue state (pending→resolved), not launchd exit 0.
@@ -140,4 +140,4 @@ domain cron → [U1 write_escalation] → queue (JSONL + SQLite mirror, dedup UN
 
 - never-cascade final gate (Codex), 10 scar families (Gemini). This design makes modus _proactive_ while
   keeping its _discipline_: green-class gate in front of execution, un-cascadable final gate (Opus 5
-  max effort, RULED 2026-08-20 — was Fable) at the end.
+  xhigh effort, RULED 2026-08-20 — was Fable) at the end.

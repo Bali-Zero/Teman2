@@ -24,7 +24,7 @@ Hard invariants (do not relax without a new spec):
     real process spawning is a separate, deliberately-not-built step.
   - Never-cascade final gate (HARD, spec §3): a quota-dead Opus 5 window at
     the final gate must route to defer_task(), never to a weaker model
-    (RULED 2026-08-20: the final gate is Opus 5 max effort, not Fable — see
+    (RULED 2026-08-20: the final gate is Opus 5 xhigh effort, not Fable — see
     CLAUDE.md §5; the never-cascade invariant is unchanged).
   - Fail-open: any read/import error is logged and the process exits 0 —
     this must never crash the launchd job (scar #2 esiste≠armato).
@@ -235,7 +235,7 @@ def _spawn_session(task: dict[str, Any]) -> list[str]:
         "--print",
         "--dangerously-skip-permissions",  # headless unattended run inside its own worktree only
         f"Invoke skill modus. Mandate: {mandate}. Task job={job}. "
-        f"Worktree: {worktree}. Final gate is Opus 5 max effort and must never "
+        f"Worktree: {worktree}. Final gate is Opus 5 xhigh effort and must never "
         "cascade to a weaker model; if the Opus 5 window is quota-dead at the "
         "final gate, leave the task deferred instead of degrading.",
     ]
