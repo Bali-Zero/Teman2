@@ -24,7 +24,7 @@ jobs:
       MAX_TOTAL_VOLUME_GB: "60"
       MAX_DEDICATED_IPV4: "1"
     steps:
-      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # master
 
       - name: Inventory billable Fly.io resources
         id: check

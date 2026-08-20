@@ -20,6 +20,13 @@
 #     neither flag; appending would break them). Their transcript retention remains
 #     harness state — the one declared residual, now scoped precisely.
 #
+# v4 (2026-08-21): fleet-arming — Keychain access over non-interactive ssh (Pro/Mini) fails
+# with "User interaction is not allowed" (locked, not absent). Credential gate now falls
+# back to ~/.qwen/settings.json IFF its mode is exactly 0600 AS FOUND (before step 0's own
+# chmod runs — else the fallback's own mode check would be neutered by step 0) and
+# env.BAILIAN_TOKEN_PLAN_API_KEY is non-empty; logs which source was accepted (never the
+# value — W106 class).
+#
 set -euo pipefail
 
 KEYCHAIN_SERVICE="qwen-cloud-code-token"
@@ -28,7 +35,16 @@ SETTINGS="$HOME/.qwen/settings.json"
 die() { printf '❌ qwen-cloud-code: %s\n' "$*" >&2; exit 1; }
 
 # ---------------------------------------------------------------- 0. Durable perms re-assertion (first, so refused paths also re-assert)
-[ -f "$SETTINGS" ] && chmod 0600 "$SETTINGS" 2>/dev/null || true
+# Capture the mode as FOUND before tightening it: step 4's settings.json fallback must
+# judge the state a caller actually left it in, not the state we just silently fixed —
+# a file discovered 0644 has an untrusted disclosure history (family #4, "secret in the
+# clear") even after this chmod hardens it going forward. Fixing before judging would
+# make the "only if exactly 0600" gate below vacuous (check≠action, W99/W109 class).
+SETTINGS_FOUND_MODE=""
+if [ -f "$SETTINGS" ]; then
+  SETTINGS_FOUND_MODE="$(stat -f '%Lp' "$SETTINGS" 2>/dev/null || stat -c '%a' "$SETTINGS" 2>/dev/null || true)"
+  chmod 0600 "$SETTINGS" 2>/dev/null || true
+fi
 
 # ---------------------------------------------------------------- 1. Legge 5 verb/flag scan
 for arg in "$@"; do
@@ -60,13 +76,46 @@ if [ "$REVIEW_MODE" = "1" ]; then
   ARGS+=("--approval-mode=plan" "--chat-recording=false")
 fi
 
-# ---------------------------------------------------------------- 4. Credential gate (Keychain only)
-if ! TOKEN="$(security find-generic-password -s "$KEYCHAIN_SERVICE" -w 2>/dev/null)"; then
-  die "Keychain service '$KEYCHAIN_SERVICE' absent — seat UNARMED.
-    Operator cure (value-preserving, no rotation needed):
-      security add-generic-password -s '$KEYCHAIN_SERVICE' -a qwen-cloud-code -w '<credential>'"
+# ---------------------------------------------------------------- 4. Credential gate (Keychain, settings.json fallback when Keychain is locked)
+# Over ssh (Pro/Mini non-interactive), `security find-generic-password` fails with
+# "User interaction is not allowed" — a locked-Keychain state, not an absent-secret
+# state. Both must arm the seat if a usable ~/.qwen/settings.json exists. The `if
+# TOKEN="$(...)"` form is errexit-safe (condition context is exempt from `set -e`,
+# W101 class) — no `|| true` needed here.
+TOKEN=""
+TOKEN_SOURCE=""
+if TOKEN="$(security find-generic-password -s "$KEYCHAIN_SERVICE" -w 2>/dev/null)" && [ -n "$TOKEN" ]; then
+  TOKEN_SOURCE="keychain"
+else
+  TOKEN=""
+  if [ -f "$SETTINGS" ]; then
+    if [ "$SETTINGS_FOUND_MODE" = "600" ]; then
+      SETTINGS_TOKEN="$(python3 -c '
+import json, sys
+try:
+    with open(sys.argv[1]) as f:
+        d = json.load(f)
+    print(d.get("env", {}).get("BAILIAN_TOKEN_PLAN_API_KEY", ""))
+except Exception:
+    print("")
+' "$SETTINGS" 2>/dev/null || true)"
+      if [ -n "$SETTINGS_TOKEN" ]; then
+        TOKEN="$SETTINGS_TOKEN"
+        TOKEN_SOURCE="settings.json"
+      fi
+    fi
+  fi
 fi
-[ -n "$TOKEN" ] || die "Keychain entry '$KEYCHAIN_SERVICE' is empty"
+
+if [ -z "$TOKEN" ]; then
+  die "Keychain service '$KEYCHAIN_SERVICE' absent or locked (e.g. non-interactive ssh) AND
+    '$SETTINGS' fallback unavailable (missing / not exactly 0600 / no env.BAILIAN_TOKEN_PLAN_API_KEY) — seat UNARMED.
+    Operator cure (value-preserving, no rotation needed):
+      security add-generic-password -s '$KEYCHAIN_SERVICE' -a qwen-cloud-code -w '<credential>'
+    or ensure '$SETTINGS' is chmod 0600 with env.BAILIAN_TOKEN_PLAN_API_KEY set."
+fi
+# Log WHICH source was accepted, never the value (W106 class: name the source, not the secret).
+printf 'qwen-cloud-code: token source accepted: %s\n' "$TOKEN_SOURCE" >&2
 
 # ---------------------------------------------------------------- 5. Binary
 QWEN_BIN="$(command -v qwen || true)"

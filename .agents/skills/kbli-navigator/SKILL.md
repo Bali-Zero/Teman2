@@ -3405,7 +3405,8 @@ the production instead of after.
 
 ### Seats (unchanged — they govern F2's ambiguous bucket) — family-independent by design
 
-- **Mente immobile / final gate**: **Fable 5** (max effort, interactive) — batch plans + acceptance
+- **Mente immobile / final gate**: **Opus 5** (xhigh effort, interactive) — RULED 2026-08-20, was
+  Fable 5 (Fable is out of the workflow, CLAUDE.md §5) — batch plans + acceptance
   criteria, quarantine adjudication, the final EMPIRICAL gate against raw vault evidence, sign-off.
   Never extracts, never writes data. Window dead → program SUSPENDS at a batch boundary (durable
   state carries; no weaker substitute for the final gate).
@@ -3433,8 +3434,9 @@ revision; per-code lease `agent_lock:kbli-dossier:<code>`.
 - **D5 Independent verification** (anti-correlation): the refuter does BLIND re-extraction, does not
   grade its own work; divergence → quarantine. Cross-family and image-grounded, never a review of the
   text-pack (W100).
-- **D6 Batch gate**: deterministic censuses + gates G13–G17 → **Fable final empirical gate** against
-  RAW vault evidence, never seat summaries → sign-off → compiler emits canonical vNext.
+- **D6 Batch gate**: deterministic censuses + gates G13–G17 → **Opus 5 xhigh-effort final empirical
+  gate** (RULED 2026-08-20, was Fable) against RAW vault evidence, never seat summaries →
+  sign-off → compiler emits canonical vNext.
 
 ### Definition of DONE (unchanged, now machine-computed)
 

@@ -156,13 +156,13 @@ jobs:
         # individual failed steps still surface red on the PR rollup; this
         # if-guard prevents that visual noise without changing policy.
         if: ${{ env.SONAR_TOKEN != '' }}
-        uses: sonarsource/sonarqube-scan-action@master
+        uses: sonarsource/sonarqube-scan-action@ad8210318ac8bb816e41990d5af2b304f7a6c213 # master
         env:
           SONAR_HOST_URL: https://sonarcloud.io
 
       - name: SonarQube Quality Gate Check
         if: ${{ env.SONAR_TOKEN != '' }}
-        uses: sonarsource/sonarqube-quality-gate-action@master
+        uses: sonarsource/sonarqube-quality-gate-action@7a5fffe8e523c40e0c740b6bc2712ab503e52efa # master
         timeout-minutes: 5
         continue-on-error: true
 
