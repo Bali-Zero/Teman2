@@ -64,6 +64,11 @@ class WaPackageBuildRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=4096)
     history: list[WaPackageHistoryMessage] = Field(default_factory=list, max_length=24)
     thread_epoch: int
+    # G-P3 DLP gate: redact history/chunks free-text fields before the
+    # package is sealed. Default False preserves the pre-G-P3 contract for
+    # any other caller; the codex-bound leg (the only caller today, see
+    # wa_codex_leg.py) sends True.
+    dlp: bool = False
 
 
 class WaPackageBuildResponse(BaseModel):
@@ -87,11 +92,20 @@ class WaPackageBuildResponse(BaseModel):
     wire and steer the consumer's frozen-evidence abstain verdict with
     values the hash never covered. Consumers parse evidence_inputs OUT OF
     the wire.
+
+    ``reversal_map`` (G-P3) travels ALONGSIDE the sealed wire, never inside
+    it: placeholder -> original PII value, populated only when the request
+    asked for ``dlp=True`` and the package actually redacted something.
+    Absent (None) on every unbuildable response and on any dlp=False build.
+    The caller is trusted to keep this local and never persist/log it (see
+    `wa_codex_leg._attempt`, the only caller today) — this endpoint does
+    not log it either.
     """
 
     package_wire: str | None = None
     package_hash: str | None = None
     unbuildable: str | None = None
+    reversal_map: dict[str, str] | None = None
 
 
 @router.post(
@@ -136,6 +150,7 @@ async def build_wa_package(
             thread_epoch=request.thread_epoch,
             retriever=orchestrator.core.retriever,
             curated_qa_block=curated_qa_block,
+            dlp=request.dlp,
         )
     except PackageUnbuildable as exc:
         logger.info("wa_package: unbuildable reason=%s", exc.reason)
@@ -144,4 +159,5 @@ async def build_wa_package(
     return WaPackageBuildResponse(
         package_wire=package.wire_text(),
         package_hash=package.package_hash,
+        reversal_map=package.reversal_map or None,
     )
