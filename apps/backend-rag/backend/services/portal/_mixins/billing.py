@@ -11,6 +11,7 @@ from typing import Any
 import asyncpg
 import httpx
 
+from backend.app.services.crm.audit_logger import audit_logger
 from backend.app.utils.logging_utils import get_logger
 from backend.phone_lock import lock_phone_cores, phone_core
 from backend.services.common.cache import cache_invalidating
@@ -248,6 +249,10 @@ class PortalBillingMixin:
         Side effects when fields are actually changed:
         - Inserts a notification_alerts record (portal_profile_update) for the CRM bell
         - Inserts a portal_messages record (client_to_team) so the team sees the change
+        - Inserts a crm_audit_log record (old/new values, actor tagged as the
+          client) — the same structured trail the CRM's own PATCH path writes
+          via @audit_change, so a client self-service edit is no longer
+          invisible to that trail. Best-effort: never fails the update.
         - Cache invalidation handled by the router layer
 
         Returns the updated profile.
@@ -266,6 +271,19 @@ class PortalBillingMixin:
 
                 params.append(client_id)
                 set_clause = ", ".join(set_parts)
+
+                # Capture pre-update values for the audit trail. This is a
+                # standalone read (not the phone-lock convergence loop
+                # below, which only re-reads phone/whatsapp to compute its
+                # lock set) so it covers whichever editable fields changed
+                # and always runs BEFORE the UPDATE.
+                audit_old_row = await conn.fetchrow(
+                    f"SELECT {', '.join(safe_fields.keys())} FROM clients WHERE id = $1",
+                    client_id,
+                )
+                audit_old_state = (
+                    {k: audit_old_row[k] for k in safe_fields} if audit_old_row else {}
+                )
 
                 async with conn.transaction():
                     if "phone" in safe_fields or "whatsapp" in safe_fields:
@@ -366,6 +384,47 @@ class PortalBillingMixin:
                 except Exception as e:
                     logger.warning(
                         "Failed to insert portal_messages record for client %s: %s", client_id, e
+                    )
+
+                # Structured audit trail (crm_audit_log) — the same trail the
+                # CRM's PATCH /api/crm/clients/{id} path writes via
+                # @audit_change. Actor is tagged "portal-client:<email>" (not
+                # a bare email) so an operator reading the trail can tell a
+                # client self-service edit apart from a staff-made change —
+                # this repo has no prior non-staff convention for this
+                # column beyond "system" for fully-automated jobs, and a
+                # client is a human actor, not "system". Never allowed to
+                # fail the profile update itself (log_state_change already
+                # never raises — it wraps its own DB call — but the wrapper
+                # here matches the notification_alerts/portal_messages
+                # pattern above and upgrades to ERROR so a swallowed audit
+                # failure is never a silent hole).
+                try:
+                    actor_email = current_user.get("email") or f"client-{client_id}"
+                    audit_ok = await audit_logger.log_state_change(
+                        entity_type="client",
+                        entity_id=client_id,
+                        old_state=audit_old_state,
+                        new_state=safe_fields,
+                        user_email=f"portal-client:{actor_email}",
+                        change_type="update",
+                        metadata={"source": "portal_self_service", "client_id": client_id},
+                    )
+                    if not audit_ok:
+                        logger.error(
+                            "crm_audit_log write returned failure for portal profile "
+                            "update, client %s fields %s",
+                            client_id,
+                            list(safe_fields.keys()),
+                        )
+                except Exception as e:
+                    logger.error(
+                        "crm_audit_log write raised for portal profile update, "
+                        "client %s fields %s: %s",
+                        client_id,
+                        list(safe_fields.keys()),
+                        e,
+                        exc_info=True,
                     )
 
             return await self._get_profile_data(conn, client_id)
