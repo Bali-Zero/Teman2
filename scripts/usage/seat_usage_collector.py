@@ -16,7 +16,17 @@ Sorgenti (tutte best-effort, stdlib only):
     input_tokens/output_tokens | prompt_tokens/completion_tokens).
   - Cost-ledger locale: ~/.agent/cost-ledger/*.jsonl (output dell'exporter PG
     già armato) → per confronto/offline mirror della parte API.
-  - agy / kimi: conteggio invocazioni dai log se le dir esistono (no token).
+  - agy: ~/.gemini/antigravity-cli/log/cli-*.log (un file per invocazione CLI,
+    verificato "logging before google.Init" in testa al file) → conteggio
+    invocazioni, no token. Identità confermata da `installation_id` nella
+    stessa dir (2026-08-20: fissato un bug per cui il collettore contava file
+    ESTRANEI in ~/.openclaw/logs, la dir del bridge OpenClaw, e li pubblicava
+    come "agy logs").
+  - kimi: ~/.kimi-code/sessions/**/session_* (una dir per sessione, pinnata
+    da session_index.jsonl) → conteggio invocazioni, no token. Identità
+    confermata da `session_index.jsonl` nella dir base.
+  - Entrambi: senza il marcatore d'identità la dir NON viene contata —
+    status "unknown", mai un numero inventato da una dir non verificata.
 
 Output: JSON snapshot (default ~/.agent/cost-ledger/seat_usage_snapshot.json)
 con schema {generated_at, seats:[{id, source, status, days:{...}, metrics}]}.
@@ -194,13 +204,47 @@ def collect_codex(codex_home: str, since: datetime) -> dict:
     return out
 
 
-def collect_invocations(log_dir: str, since: datetime) -> dict:
-    """Best-effort: conta file di log recenti (agy, kimi) — nessun token."""
-    p = Path(os.path.expanduser(log_dir))
+def collect_invocations(base_dir: str, since: datetime, *, identity_marker: str, entity_glob: str) -> dict:
+    """Best-effort: conta le ENTITÀ (file o dir) che sono davvero un'invocazione
+    della CLI — mai un conteggio cieco di TUTTO ciò che sta nella home della
+    CLI. Nessun token qui, solo conteggio invocazioni.
+
+    Bug reale (2026-08-20): il chiamante G1 puntava a `~/.openclaw/logs` —
+    la home del bridge OpenClaw (git-sync.log, t4_monitor.log, pipeline nb),
+    che non ha NULLA a che fare con `agy`/Antigravity — e un `rglob("*")`
+    cieco su quella dir tornava un numero plausibile (11) di file altrui,
+    pubblicato come "id": "G1", "source": "agy logs". Uno zero sarebbe
+    saltato all'occhio; un piccolo numero plausibile no.
+
+    Antidoto: prova d'identità PRIMA di contare. `identity_marker` è un file
+    caratteristico che esiste SOLO nella home reale di quella CLI (es.
+    `installation_id` per Antigravity, `session_index.jsonl` per Kimi) — se
+    `base_dir` esiste ma il marcatore manca, la dir potrebbe essere estranea:
+    status "unknown", MAI un conteggio. Solo col marcatore presente si conta
+    via `entity_glob` (relativo a `base_dir`, `glob.glob(..., recursive=True)`
+    — supporta `**`), filtrato per mtime >= since. Il glob stesso è già
+    scoping-per-entità (es. `log/cli-*.log`, non l'intero albero) così cache/
+    telemetry/updater/scratch della CLI non si sommano come se fossero
+    invocazioni.
+    """
+    base = os.path.expanduser(base_dir)
+    p = Path(base)
     if not p.is_dir():
         return {"status": "absent"}
-    n = sum(1 for f in p.rglob("*") if f.is_file() and f.stat().st_mtime >= since.timestamp())
-    return {"status": "ok", "recent_files": n}
+    if not (p / identity_marker).exists():
+        return {
+            "status": "unknown",
+            "note": (f"marcatore d'identita' '{identity_marker}' assente in {p} — "
+                     "non verificabile che questa dir appartenga al seat atteso, nessun conteggio"),
+        }
+    n = 0
+    for fp in glob.glob(os.path.join(base, entity_glob), recursive=True):
+        try:
+            if os.path.getmtime(fp) >= since.timestamp():
+                n += 1
+        except OSError:
+            continue
+    return {"status": "ok", "recent_invocations": n}
 
 
 def collect_api_mirror(export_dir: str, since: datetime) -> dict:
@@ -260,8 +304,16 @@ def main() -> int:
                       "metrics": fmt_metrics(r.get("days", {})) if r.get("days") else None,
                       "note": r.get("note")})
 
-    seats.append({"id": "G1", "source": "agy logs", **collect_invocations("~/.openclaw/logs", since)})
-    seats.append({"id": "K1", "source": "kimi logs", **collect_invocations("~/.kimi-code", since)})
+    seats.append({"id": "G1", "source": "agy (antigravity-cli) invocation logs", **collect_invocations(
+        "~/.gemini/antigravity-cli", since,
+        identity_marker="installation_id",
+        entity_glob="log/cli-*.log",
+    )})
+    seats.append({"id": "K1", "source": "kimi-code session dirs", **collect_invocations(
+        "~/.kimi-code", since,
+        identity_marker="session_index.jsonl",
+        entity_glob="sessions/**/session_*",
+    )})
     seats.append({"id": "TP1", "source": "dashscope", "status": "pending_probe1",
                   "note": "crediti Token Plan: endpoint da individuare in PROBE-1"})
 
