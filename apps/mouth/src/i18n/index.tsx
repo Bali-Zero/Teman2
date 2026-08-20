@@ -65,10 +65,30 @@ function pageOwnsLang(): boolean {
   );
 }
 
-export function I18nProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = React.useState<Locale>(DEFAULT_LOCALE);
+export function I18nProvider({
+  children,
+  initialLocale,
+}: {
+  children: React.ReactNode;
+  /**
+   * Pins the provider's locale for a route whose language IS the URL — the
+   * localized `/visa/second-home/{it,id}` SSG pages (2026-08-20). State
+   * initializes to it directly (no effect needed for the first render, so
+   * SSR/SSG output is already in the right language), and the init effect
+   * below skips the `?lang=`/saved-preference restore entirely: a visitor's
+   * saved "en" preference must never flip a page that is served in Italian
+   * back to English. Omitting this prop is byte-identical to prior
+   * behavior — pinned by the existing `?lang=`/localStorage tests.
+   */
+  initialLocale?: Locale;
+}) {
+  const [locale, setLocaleState] = React.useState<Locale>(
+    initialLocale ?? DEFAULT_LOCALE,
+  );
 
   React.useEffect(() => {
+    if (initialLocale) return;
+
     // `?lang=<locale>` lets a shared link set the UI-chrome language for THIS
     // VISIT only (2026-08-20). Strict whitelist — this is a user-controlled
     // input (searchParams), so it is validated against LOCALES and never
@@ -88,7 +108,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
       setLocaleState(saved as Locale);
       if (!pageOwnsLang()) document.documentElement.lang = saved;
     }
-  }, []);
+  }, [initialLocale]);
 
   const setLocale = React.useCallback((newLocale: Locale) => {
     setLocaleState(newLocale);
