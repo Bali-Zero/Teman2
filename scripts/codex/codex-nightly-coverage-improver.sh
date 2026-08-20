@@ -22,6 +22,23 @@ mkdir -p "$STATE_DIR" "$LOG_DIR"
 # shellcheck source=/Users/nuzantara/scripts/codex-automation-lib.sh
 [ -f "$CODEX_AUTOMATION_LIB" ] && source "$CODEX_AUTOMATION_LIB"
 
+# Seat rotation (2026-08-20): alternate between the ChatGPT Pro subscriptions
+# instead of pinning to whichever CODEX_HOME the codex CLI defaults to.
+# scripts/lib/codex_seat.sh is the single source for the seat list and the
+# rotation counter — do not re-derive either here (W106b: a duplicated list
+# is the very defect that file exists to kill). Judged by REPLY at call time,
+# never by this script's own exit code (W104).
+CODEX_SEAT_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" 2>/dev/null && pwd)/codex_seat.sh"
+if [ -f "$CODEX_SEAT_LIB" ]; then
+    # shellcheck disable=SC1090
+    . "$CODEX_SEAT_LIB"
+    CODEX_SEAT="$(codex_seat_pick 2>/dev/null || true)"
+    if [ -n "$CODEX_SEAT" ]; then
+        export CODEX_HOME="$CODEX_SEAT"
+        echo "[$(basename "$0")] codex seat: $CODEX_SEAT" >&2
+    fi
+fi
+
 CODEX_TIMEOUT=2400  # 40 min
 COVERAGE_THRESHOLD=50  # files below this get prioritized
 MAX_NEW_LOC=200
