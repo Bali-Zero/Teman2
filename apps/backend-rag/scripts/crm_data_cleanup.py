@@ -256,6 +256,16 @@ async def backfill_last_interaction(conn: asyncpg.Connection, dry_run: bool) -> 
     sì che un secondo run non tocchi nulla. Estende il pattern pre-esistente
     (solo `practices.updated_at`) anche a `interactions.interaction_date`,
     prendendo il MAX tra le due fonti per client.
+
+    NON aggiungere `created_at` (o altre colonne "sempre popolate") a questa
+    query per far sparire i NULL residui. Da PR #4475 (2026-08-21) NULL su
+    questo campo HA UN SIGNIFICATO PRECISO: "non abbiamo mai avuto un contatto
+    reale con questo cliente" — non "dato mancante da riempire". Sostituirlo
+    con una data-placeholder ricrea esattamente il difetto che quella PR ha
+    corretto (il campo tornava a mentire, stavolta nella direzione opposta:
+    tutti "contattati" invece che tutti "silenziosi"). Ogni riga che questa
+    funzione tocca è già verificata contro un fatto reale in `practices` o
+    `interactions` — quello è il limite, non un dettaglio implementativo.
     """
     rows = await conn.fetch(
         """
