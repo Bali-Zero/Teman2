@@ -4,11 +4,30 @@ name: cron - fly watcher (every 15 min)
 # Snapshot of Fly status for runtime apps that still live on Fly.
 # Qdrant moved to Qdrant Cloud; do not check the retired nuzantara-qdrant app.
 # Alerts if any app has machines NOT in expected state or unhealthy checks.
+#
+# 2026-08-20 rework (post-mortem of the 2026-08-18 rag outage):
+# - The `vm` machine check (CPU/disk/load pressure telemetry) no longer PAGES.
+#   The postgres primary's vm check sits critical for hours at a time under
+#   shared-CPU contention, which had this workflow red on EVERY run (31/35 on
+#   2026-08-18) — an alert storm that buried the one real anomaly of that day
+#   (rag worker stopped 2h, CRM serving 503s, found by a human). vm-critical
+#   now emits a ::warning:: only; pg/role and every other named check still page.
+# - Delivery is judged, not assumed (W104): the old `curl ... >/dev/null || true`
+#   could fail forever in silence. scripts/ci/telegram_notify.sh reads
+#   Telegram's reply and fails the step loudly when the message did NOT arrive.
+# - workflow_dispatch gains `test_alert` to prove the channel end-to-end on
+#   demand: an alarm whose healthy state is silence needs a self-probe that
+#   distinguishes healthy-silent from dead.
 
 on:
   schedule:
     - cron: "*/15 * * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      test_alert:
+        description: "Send a test Telegram message through the real alert path"
+        type: boolean
+        default: false
 
 concurrency:
   group: cron-fly-watcher
@@ -17,12 +36,30 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # 10 = the checkout-budget floor (scripts/lint_workflow_timeout_floor.py):
+    # this job now checks out the repo for scripts/ci/telegram_notify.sh, and
+    # a job's floor is the checkout, not its script.
+    timeout-minutes: 10
     steps:
+      - uses: actions/checkout@v7
+
       - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Test alert (channel liveness probe)
+        if: github.event_name == 'workflow_dispatch' && inputs.test_alert
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_OWNER_CHAT_ID: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          bash scripts/ci/telegram_notify.sh --parse-mode HTML \
+            --text "🧪 <b>fly-watcher</b> test alert — channel liveness probe. Run: ${RUN_URL}"
 
       - name: Snapshot fly status (runtime apps)
         id: snap
+        # Run even if the test-alert probe failed: a dispatch with a broken
+        # Telegram channel must still monitor the fleet.
+        if: ${{ !cancelled() }}
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
@@ -32,7 +69,7 @@ jobs:
           for app in nuzantara-rag nuzantara-postgres; do
             RAW=$(flyctl status --json -a "$app" 2>&1 || true)
             SUMMARY=$(RAW="$RAW" python3 <<'PY' 2>/dev/null || echo "PARSE_ERROR"
-          import json, os, sys
+          import json, os, re, sys
           try:
               d = json.loads(os.environ.get("RAW", ""))
           except Exception:
@@ -58,15 +95,35 @@ jobs:
               for m in machines
               if m.get("state") not in ("started", "stopped")
           ]
-          unhealthy = 0
+          # Split unhealthy checks: `vm` bundles cpu/io/load (pressure
+          # telemetry — flaps for hours on shared hosts; paging on it had
+          # this workflow red on every run and deafened the channel) with
+          # checkDisk/memory (real outage precursors: disk-full flips PG
+          # readonly). A vm critical downgrades to telemetry ONLY when every
+          # failing sub-check is pressure-class; disk/memory failures — or
+          # an output too broken to name its failing sub-check — still page.
+          VM_PRESSURE = {"cpu", "io", "checkLoad"}
+
+          def vm_pressure_only(check):
+              failing = re.findall(
+                  r"\[✗\]\s*([A-Za-z]+):", check.get("output") or ""
+              )
+              return bool(failing) and all(n in VM_PRESSURE for n in failing)
+
+          unhealthy_svc = 0
+          unhealthy_vm = 0
           for m in machines:
               for c in (m.get("checks") or []):
-                  if c.get("status") not in ("passing", None):
-                      unhealthy += 1
+                  if c.get("status") in ("passing", None):
+                      continue
+                  if c.get("name") == "vm" and vm_pressure_only(c):
+                      unhealthy_vm += 1
+                  else:
+                      unhealthy_svc += 1
           print(
               f"total={total}|started={started}|expected_stopped={expected_stopped}|"
               f"unexpected_stopped={unexpected_stopped}|bad={','.join(bad_states) or 'none'}|"
-              f"unhealthy={unhealthy}"
+              f"unhealthy_svc={unhealthy_svc}|unhealthy_vm={unhealthy_vm}"
           )
           PY
           )
@@ -80,7 +137,8 @@ jobs:
             TOTAL=$(echo "$SUMMARY" | tr '|' '\n' | grep ^total= | cut -d= -f2)
             UNEXPECTED_STOPPED=$(echo "$SUMMARY" | tr '|' '\n' | grep ^unexpected_stopped= | cut -d= -f2)
             BAD=$(echo "$SUMMARY" | tr '|' '\n' | grep ^bad= | cut -d= -f2)
-            UNHEALTHY=$(echo "$SUMMARY" | tr '|' '\n' | grep ^unhealthy= | cut -d= -f2)
+            UNHEALTHY_SVC=$(echo "$SUMMARY" | tr '|' '\n' | grep ^unhealthy_svc= | cut -d= -f2)
+            UNHEALTHY_VM=$(echo "$SUMMARY" | tr '|' '\n' | grep ^unhealthy_vm= | cut -d= -f2)
             if [ "${TOTAL:-0}" -lt 1 ] || [ "${STARTED:-0}" -lt 1 ]; then
               OVERALL_OK=0
             fi
@@ -90,8 +148,11 @@ jobs:
             if [ "${BAD:-none}" != "none" ]; then
               OVERALL_OK=0
             fi
-            if [ "${UNHEALTHY:-0}" -gt 0 ]; then
+            if [ "${UNHEALTHY_SVC:-0}" -gt 0 ]; then
               OVERALL_OK=0
+            fi
+            if [ "${UNHEALTHY_VM:-0}" -gt 0 ]; then
+              echo "::warning::[$app] vm pressure check critical (${UNHEALTHY_VM}) — telemetry, not paged"
             fi
           done
           {
@@ -106,19 +167,17 @@ jobs:
           fi
 
       - name: Telegram alert on anomaly
-        if: failure()
+        # Anchored to the snapshot's own conclusion: a failed test-alert
+        # probe must not masquerade as a fleet anomaly.
+        if: failure() && steps.snap.conclusion == 'failure'
         env:
-          BOT: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          CHAT: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_OWNER_CHAT_ID: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
           REPORT: ${{ steps.snap.outputs.report }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          [ -z "$BOT" ] || [ -z "$CHAT" ] && { echo "Telegram secrets missing"; exit 0; }
-          TEXT="⚠️ <b>fly-watcher</b> anomaly
-          ${REPORT:-no report}
-          Run: ${RUN_URL}"
-          curl -sS -m 10 -X POST \
-            "https://api.telegram.org/bot${BOT}/sendMessage" \
-            -d "chat_id=${CHAT}" \
-            --data-urlencode "text=${TEXT}" \
-            -d "parse_mode=HTML" >/dev/null || true
+          TEXT="$(printf '%s\n' \
+            "⚠️ <b>fly-watcher</b> anomaly" \
+            "${REPORT:-no report}" \
+            "Run: ${RUN_URL}")"
+          bash scripts/ci/telegram_notify.sh --parse-mode HTML --text "$TEXT"

@@ -16,6 +16,26 @@ name: cron - fly restart loop detector (every 15 min)
 # 2026-06-27 (infra/fly-oom-detector): also alerts on recent OOM/restart events
 # even when Fly successfully restarts the machine and all checks are green again.
 # Without this, an API OOM can be operationally invisible after recovery.
+#
+# 2026-08-20 (post-mortem of the 2026-08-18 rag outage): recovery widened for
+# nuzantara-rag ONLY — a stopped non-standby machine whose PROCESS GROUP has
+# no started member (group DOWN, regardless of exit history: flyctl truncates
+# events, so older stops carry no readable exit code) now queues for
+# force-start. On 18/8 the rag worker was stopped 78s after a deploy with
+# exit_code=0, so the crashed-only rule above structurally could not see it:
+# CRM served 503s for ~2h until a human noticed. On nuzantara-rag no group is
+# EVER legitimately at zero (api runs auto_stop='off'; rag/drive have no Fly
+# Proxy service, hence no autostop). The group-guard also means a stopped
+# leftover beside a live replacement is never started (old image next to new
+# = split-brain). Deliberate maintenance parking: set repo variable
+# FLY_AUTOHEAL_PAUSED=true to pause force-starts (detection still alerts).
+# Postgres keeps the crashed-only rule: an operator-stopped PG member must
+# not be fought by a robot. The `vm` pressure-only criticals no longer alert
+# (same split as cron-fly-watcher — they had this alerting every cooldown
+# window for days), and Telegram delivery now goes through
+# scripts/ci/telegram_notify.sh (judges the API reply — W104) instead of a
+# swallowed curl, with force-start failures reported as failures, never as
+# "recovered".
 
 on:
   schedule:
@@ -29,11 +49,16 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # 10 = the checkout-budget floor (scripts/lint_workflow_timeout_floor.py):
+    # this job now checks out the repo for scripts/ci/telegram_notify.sh, and
+    # a job's floor is the checkout, not its script.
+    timeout-minutes: 10
     env:
       COOLDOWN_KEY: fly-restart-detector-cooldown-v1
       COOLDOWN_SECONDS: "1800"
     steps:
+      - uses: actions/checkout@v7
+
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Restore cooldown state
@@ -82,8 +107,8 @@ jobs:
 
           for app in nuzantara-rag nuzantara-postgres; do
             RAW=$(flyctl status --json -a "$app" 2>&1 || true)
-            SUMMARY=$(RAW="$RAW" python3 <<'PY' 2>/dev/null || echo "PARSE_ERROR"
-          import hashlib, json, os, sys
+            SUMMARY=$(RAW="$RAW" APP="$app" python3 <<'PY' 2>/dev/null || echo "PARSE_ERROR"
+          import datetime, hashlib, json, os, re, sys
           try:
               d = json.loads(os.environ.get("RAW", ""))
           except Exception:
@@ -109,17 +134,38 @@ jobs:
               for m in machines
               if m.get("state") not in ("started", "stopped")
           ]
-          unhealthy = 0
+          # Same split as cron-fly-watcher (2026-08-20): a `vm` critical is
+          # telemetry ONLY when every failing sub-check is pressure-class
+          # (cpu/io/load — flaps for hours on shared CPU; alerting on it
+          # every cooldown window is its own storm). checkDisk/memory
+          # failures, or an output too broken to name its failing sub-check,
+          # still count as service-grade and alert.
+          VM_PRESSURE = {"cpu", "io", "checkLoad"}
+
+          def vm_pressure_only(check):
+              failing = re.findall(
+                  r"\[✗\]\s*([A-Za-z]+):", check.get("output") or ""
+              )
+              return bool(failing) and all(n in VM_PRESSURE for n in failing)
+
+          unhealthy_svc = 0
+          unhealthy_vm = 0
           for m in machines:
               for c in (m.get("checks") or []):
-                  if c.get("status") not in ("passing", None):
-                      unhealthy += 1
+                  if c.get("status") in ("passing", None):
+                      continue
+                  if c.get("name") == "vm" and vm_pressure_only(c):
+                      unhealthy_vm += 1
+                  else:
+                      unhealthy_svc += 1
           # Crashed-stopped detection: a stopped machine whose most-recent exit
           # event carries a non-zero exit_code (app crashed), as opposed to a
           # clean idle autostop (no exit_event / exit_code 0). These are the
           # machines that will NOT self-recover from a later fixing deploy.
           crashed = []
+          clean_stopped = []
           oom = []
+          now = datetime.datetime.now(datetime.timezone.utc)
 
           def process_group(machine):
               config = machine.get("config") or {}
@@ -130,6 +176,10 @@ jobs:
                   or metadata.get("process_group")
                   or "unknown"
               )
+
+          started_groups = {
+              process_group(m) for m in machines if m.get("state") == "started"
+          }
 
           for m in machines:
               machine_id = m.get("id", "?")
@@ -159,10 +209,43 @@ jobs:
                   and str(last_exit) != "0"
               ):
                   crashed.append(machine_id)
+              elif (
+                  os.environ.get("APP") == "nuzantara-rag"
+                  and m.get("state") == "stopped"
+                  and not is_expected_standby
+                  and group not in started_groups
+              ):
+                  # 2026-08-18 incident class: a stopped non-standby machine
+                  # whose PROCESS GROUP has no started member — the group is
+                  # DOWN, not a leftover beside a live replacement (starting
+                  # a leftover would boot an old image next to the new one:
+                  # split-brain, superscar #10). Exit history is deliberately
+                  # NOT consulted: flyctl truncates events, so an older stop
+                  # has no readable exit code anyway. On THIS app no group is
+                  # ever legitimately at zero (api: auto_stop off; rag/drive:
+                  # no Fly Proxy service). Deliberate maintenance parking =>
+                  # set repo variable FLY_AUTOHEAL_PAUSED=true (checked by
+                  # the recover step). Age-guard >180s so a rolling deploy's
+                  # transient stop is never raced; an unageable machine stays
+                  # eligible (per-machine cooldown bounds it).
+                  age_ok = True
+                  ua = m.get("updated_at")
+                  if ua:
+                      try:
+                          ts = datetime.datetime.fromisoformat(
+                              str(ua).replace("Z", "+00:00")
+                          )
+                          age_ok = (now - ts).total_seconds() > 180
+                      except Exception:
+                          age_ok = True
+                  if age_ok:
+                      clean_stopped.append(machine_id)
           print(
               f"total={total}|started={started}|expected_stopped={expected_stopped}|"
               f"unexpected_stopped={unexpected_stopped}|bad={','.join(bad) or 'none'}|"
-              f"unhealthy={unhealthy}|crashed={','.join(crashed) or 'none'}|"
+              f"unhealthy_svc={unhealthy_svc}|unhealthy_vm={unhealthy_vm}|"
+              f"crashed={','.join(crashed) or 'none'}|"
+              f"clean_stopped={','.join(clean_stopped) or 'none'}|"
               f"oom={','.join(oom) or 'none'}"
           )
           PY
@@ -178,7 +261,8 @@ jobs:
             EXPECTED_STOPPED=$(echo "$SUMMARY" | tr '|' '\n' | grep ^expected_stopped= | cut -d= -f2)
             UNEXPECTED_STOPPED=$(echo "$SUMMARY" | tr '|' '\n' | grep ^unexpected_stopped= | cut -d= -f2)
             BAD=$(echo "$SUMMARY" | tr '|' '\n' | grep ^bad= | cut -d= -f2)
-            UNHEALTHY=$(echo "$SUMMARY" | tr '|' '\n' | grep ^unhealthy= | cut -d= -f2)
+            UNHEALTHY_SVC=$(echo "$SUMMARY" | tr '|' '\n' | grep ^unhealthy_svc= | cut -d= -f2)
+            UNHEALTHY_VM=$(echo "$SUMMARY" | tr '|' '\n' | grep ^unhealthy_vm= | cut -d= -f2)
             CRASHED=$(echo "$SUMMARY" | tr '|' '\n' | grep ^crashed= | cut -d= -f2)
             OOM=$(echo "$SUMMARY" | tr '|' '\n' | grep ^oom= | cut -d= -f2)
             if [ "${UNEXPECTED_STOPPED:-0}" -gt 0 ] || [ "${BAD:-none}" != "none" ]; then
@@ -187,11 +271,14 @@ jobs:
                 mark_alerted "${app}_state"
               fi
             fi
-            if [ "${UNHEALTHY:-0}" -gt 0 ]; then
+            if [ "${UNHEALTHY_SVC:-0}" -gt 0 ]; then
               if should_alert "${app}_health"; then
-                ALERTS="${ALERTS}❤️‍🩹 <b>${app}</b>: ${UNHEALTHY} unhealthy health checks"$'\n'
+                ALERTS="${ALERTS}❤️‍🩹 <b>${app}</b>: ${UNHEALTHY_SVC} unhealthy health checks"$'\n'
                 mark_alerted "${app}_health"
               fi
+            fi
+            if [ "${UNHEALTHY_VM:-0}" -gt 0 ]; then
+              echo "::warning::[$app] vm pressure check critical (${UNHEALTHY_VM}) — telemetry, not alerted"
             fi
             # Surface OOM/restart events even if Fly already restarted the
             # machine and the current health check is green. Deduplicate by
@@ -214,6 +301,19 @@ jobs:
             # Queue crashed-stopped machines for auto-recovery (own cooldown per machine).
             if [ "${CRASHED:-none}" != "none" ] && [ -n "${CRASHED}" ]; then
               for mid in $(echo "$CRASHED" | tr ',' ' '); do
+                if should_alert "${app}_recover_${mid}"; then
+                  RECOVER="${RECOVER}${app}/${mid}"$'\n'
+                  mark_alerted "${app}_recover_${mid}"
+                fi
+              done
+            fi
+            # 2026-08-20: clean-stopped non-standby machines on nuzantara-rag
+            # (requested_stop / exit 0 — the 2026-08-18 outage class) also
+            # queue for recovery. The python side emits this list ONLY for
+            # that app; see the header comment for why postgres is excluded.
+            CLEAN_STOPPED=$(echo "$SUMMARY" | tr '|' '\n' | grep ^clean_stopped= | cut -d= -f2)
+            if [ "${CLEAN_STOPPED:-none}" != "none" ] && [ -n "${CLEAN_STOPPED}" ]; then
+              for mid in $(echo "$CLEAN_STOPPED" | tr ',' ' '); do
                 if should_alert "${app}_recover_${mid}"; then
                   RECOVER="${RECOVER}${app}/${mid}"$'\n'
                   mark_alerted "${app}_recover_${mid}"
@@ -246,45 +346,56 @@ jobs:
       # rate-limited by its own cooldown key. A successful fixing deploy + this
       # force-start = the machine actually runs the new image. Idle autostop
       # machines are never touched (they are not flagged crashed).
-      - name: Auto-recover crashed machines
+      - name: Auto-recover stopped machines
         id: recover
-        if: steps.check.outputs.recover != ''
+        # FLY_AUTOHEAL_PAUSED=true (repo variable) is the maintenance switch:
+        # set it before deliberately parking a machine so the robot does not
+        # fight the operator; unset to re-arm. Detection/alerting continue
+        # either way — only the force-start is paused.
+        if: steps.check.outputs.recover != '' && vars.FLY_AUTOHEAL_PAUSED != 'true'
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
           RECOVER: ${{ steps.check.outputs.recover }}
         run: |
           set -uo pipefail
-          echo "$RECOVER" | while IFS= read -r line; do
+          OK_LIST=""
+          FAIL_LIST=""
+          while IFS= read -r line; do
             [ -z "$line" ] && continue
             app="${line%%/*}"
             mid="${line##*/}"
-            echo "Recovering crashed machine ${mid} on ${app}..."
-            if flyctl machine start "$mid" -a "$app" 2>&1; then
+            echo "Recovering machine ${mid} on ${app}..."
+            RC=0
+            flyctl machine start "$mid" -a "$app" 2>&1 || RC=$?
+            if [ "$RC" -eq 0 ]; then
               echo "  -> start issued OK"
+              OK_LIST="${OK_LIST}${app}/${mid} "
             else
-              echo "  -> start FAILED (will alert)"
+              echo "  -> start FAILED (rc=${RC})"
+              FAIL_LIST="${FAIL_LIST}${app}/${mid} "
             fi
-          done
-          # Re-read state post-start so the alert reflects what we attempted.
-          echo "recovered=$(echo "$RECOVER" | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
+          done <<< "$RECOVER"
+          # Only machines whose start actually succeeded are reported
+          # recovered; a failed start is its own, louder, alert line.
+          echo "recovered=${OK_LIST}" >> "$GITHUB_OUTPUT"
+          echo "recover_failed=${FAIL_LIST}" >> "$GITHUB_OUTPUT"
 
       - name: Telegram alert
-        if: steps.check.outputs.alerts != '' || steps.recover.outputs.recovered != ''
+        if: steps.check.outputs.alerts != '' || steps.recover.outputs.recovered != '' || steps.recover.outputs.recover_failed != ''
         env:
-          BOT: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          CHAT: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_OWNER_CHAT_ID: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
           ALERTS: ${{ steps.check.outputs.alerts }}
           RECOVERED: ${{ steps.recover.outputs.recovered }}
+          RECOVER_FAILED: ${{ steps.recover.outputs.recover_failed }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          [ -z "$BOT" ] || [ -z "$CHAT" ] && { echo "Telegram secrets missing"; exit 0; }
           RECOVER_LINE=""
-          [ -n "${RECOVERED:-}" ] && RECOVER_LINE="🔧 <b>auto-recovered (force-start):</b> ${RECOVERED}"$'\n'
-          TEXT="🛫 <b>fly-restart-detector</b>
-          ${ALERTS}${RECOVER_LINE}
-          Run: ${RUN_URL}"
-          curl -sS -m 10 -X POST \
-            "https://api.telegram.org/bot${BOT}/sendMessage" \
-            -d "chat_id=${CHAT}" \
-            --data-urlencode "text=${TEXT}" \
-            -d "parse_mode=HTML" >/dev/null || true
+          [ -n "${RECOVERED:-}" ] && RECOVER_LINE="🔧 <b>force-start OK:</b> ${RECOVERED}"$'\n'
+          FAILED_LINE=""
+          [ -n "${RECOVER_FAILED:-}" ] && FAILED_LINE="🛑 <b>force-start FAILED — machine still down:</b> ${RECOVER_FAILED}"$'\n'
+          TEXT="$(printf '%s\n' \
+            "🛫 <b>fly-restart-detector</b>" \
+            "${ALERTS}${RECOVER_LINE}${FAILED_LINE}" \
+            "Run: ${RUN_URL}")"
+          bash scripts/ci/telegram_notify.sh --parse-mode HTML --text "$TEXT"
