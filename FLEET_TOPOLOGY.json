@@ -144,6 +144,50 @@
             "operational_notes": [
               "qwen3.8-max carries a Limited-time Night 50% Off discount per the console — schedule future TP1-heavy H24 batch lanes at night to exploit this."
             ]
+          },
+          "models_measured_2026_08_21": {
+            "_doc": "Empirical qwen-seat-fleet arming probe (qwen -p 'PONG-<id>' --model <id>, judged by output content, watchdog-guarded, ssh -n remote recipe on Pro/Mini). NOT a re-audit of TP1 billing/console truth above — flags a contradiction with console_verified_2026_08_14.roster.NOT_in_plan for kimi-k2/k2.7/k3 and MiniMax-M2.7/M3 (those returned live PONG here, under the same BAILIAN_TOKEN_PLAN_API_KEY, while the dated kimi-k2.5/2.6 and MiniMax-M2.5 snapshots the console marked PHANTOM correctly 403'd). Open question NOT resolved by this probe: whether the PASS-ing kimi/MiniMax calls draw from the flat TP1 quota or fall through to metered billing outside the plan. See MODEL_ROSTER.md Alibaba TP1 section, dated sub-table, for full detail.",
+            "method": "qwen -p \"Reply with exactly: PONG-<id>\" --model <id>, 60-90s watchdog, judged by stdout content never exit code",
+            "pass_all_three_machines": [
+              "qwen3-coder-plus",
+              "qwen3-coder",
+              "qwen3-coder-flash",
+              "qwen3-coder-next",
+              "qwen3-max-2026-01-23",
+              "qwen3-max",
+              "qwen3.5-plus",
+              "qwen3.6-flash",
+              "qwen3.7-plus",
+              "qwen3.7-max",
+              "qwen3.8-max",
+              "qwen3.8-max-preview",
+              "qwen3-vl-plus",
+              "qwen3-asr-flash",
+              "glm-4",
+              "glm-4.5",
+              "glm-4.7",
+              "glm-5.2",
+              "kimi-k2",
+              "kimi-k2.7",
+              "kimi-k3",
+              "MiniMax-M2.7",
+              "MiniMax-M3",
+              "deepseek-v3",
+              "deepseek-v4",
+              "deepseek-v4-pro"
+            ],
+            "fail_403_access_denied_m5_measured": [
+              "kimi-k2.5",
+              "kimi-k2.6",
+              "glm-5",
+              "glm-5.1",
+              "MiniMax-M2.5",
+              "qwen3.6-plus",
+              "deepseek-v4-flash"
+            ],
+            "fail_not_reprobed_on_pro_mini": "denial is a token-scope property (account-level), not a machine property — not re-run per machine",
+            "machines_probed": ["M5", "Pro", "Mini"],
+            "pro_mini_probe_gotcha": "first attempt used ssh without -n inside a while-read loop — ssh consumed the loop's own stdin and only 1 of 26 models ran per machine; fixed with ssh -n, then 26/26 completed on both"
           }
         }
       }
