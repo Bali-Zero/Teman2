@@ -52,6 +52,7 @@ import { KBLIPageTracker } from "@/components/kbli/KBLIPageTracker";
 import { KBLIConsultationCTA } from "@/components/kbli/KBLIConsultationCTA";
 import { KBLICommonQuestions } from "@/components/kbli/KBLICommonQuestions";
 import { FunnelFrame } from "@balizero/core";
+import { GOOGLE_RATING, GOOGLE_REVIEW_COUNT } from "@/lib/trust-figures";
 
 const ZantaraChat = lazy(() =>
   import("@/components/kbli/ZantaraChat").then((mod) => ({
@@ -188,7 +189,11 @@ export default async function KBLICodePage({
       <FunnelFrame
         funnel="kbli"
         sessionId="SSR"
-        trust={{ clientCount: 5000, rating: 4.9, responseMinutes: 15 }}
+        trust={{
+          clientCount: 5000,
+          rating: GOOGLE_RATING,
+          reviewCount: GOOGLE_REVIEW_COUNT,
+        }}
       >
         <article className="pb-28">
           {/* BREADCRUMB */}

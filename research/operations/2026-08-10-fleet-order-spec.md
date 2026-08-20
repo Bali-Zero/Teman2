@@ -74,8 +74,8 @@ under measurement · **UNARMED** = registered, awaiting arming steps · **RETIRE
 
 | Seat | Position | Stage | Status |
 |---|---|---|---|
-| **Fable 5** | **The Judge** — final on-disk gate + Gear-3 harness verdict gate + conductor when Zero opens a Fable session. Strategy only by motivated exception (gate allowance has absolute precedence) | Gate | ARMED |
-| **Opus 5** | **The Architect** — interactive default, strategy, client quotes, Gear-2 verdicts (when builder ≠ Anthropic — §3.2), **Gear-3-harness-verdict fallback ONLY, forbidden for the final on-disk and WR2 gates** (panel fix Codex#9) | Strategy, Gate-2 | ARMED |
+| **Fable 5** | *(RULED 2026-08-20 — out of the workflow, see §4 below)* No automated role. Conductor only when Zero opens a Fable session manually (`/model claude-fable-5`) | — | manual only |
+| **Opus 5** | **The Architect and The Judge** — interactive default, strategy, client quotes, Gear-2 verdicts (when builder ≠ Anthropic — §3.2), **and (RULED 2026-08-20) the final on-disk gate + Gear-3 harness verdict gate + WR2 content gate, xhigh effort, all gears** — superseding the Codex#9 panel fix that forbade this seat from those two gates while Fable held them | Strategy, Gate-all | ARMED |
 | **Sonnet 5** | **The First Builder** — primary implementer, subagent fan-out | Build | ARMED |
 | **Haiku 4.5** | **The Foot Soldier** — triage, intake synthesis, classification above the deterministic floor, light batch | Intake | ARMED |
 
@@ -222,7 +222,7 @@ qwen2.5:7b / qwen3:4b Mini keeper & sentry. PII lanes NEVER leave this tier — 
 | A1 | antonellosiano@gmail.com | Claude Max 20x | interactive/architect daily driver |
 | A2 | kaiser198719871987@gmail.com | Claude Max 20x | subagents/build + Cowork cloud |
 | A3 | applevisionpro1987@gmail.com | Claude Max 20x | cron/batch — **designated donor**. Donor semantics (panel fix GLM#1/Gemini#8): scheduler-level pause — the cron auto-pause hook stops SCHEDULING new jobs on A3; in-flight requests finish; nothing is killed. A3 therefore hosts only preemptible work (grunt/batch), never primary builds |
-| AZ | **zero@balizero.com** | Claude Team **Premium** | **GATE PRIMARY** — the dedicated Fable weekly allowance lives here |
+| AZ | **zero@balizero.com** | Claude Team **Premium** | **GATE PRIMARY** — the dedicated allowance for the final on-disk gate lives here (Opus 5 xhigh effort, RULED 2026-08-20; was Fable's dedicated weekly allowance) |
 | O1 | antonellosiano@gmail.com | ChatGPT Pro | refuter primary (Sol) |
 | O2 | **zero@balizero.com** | ChatGPT Pro | builders (Terra/Luna) + Sol backup |
 | G1 | Google AI Ultra (account email → §8; credential: agy OAuth on disk) | — | agy / NotebookLM / Antigravity |
@@ -249,9 +249,10 @@ slot is a silently-dead cron lane, W104 class).
   `~/.claude-zero-team`→legacy AZ duplicate (verify, likely retire).
   Note (panel disposition of Gemini#6, REJECTED fix): `~/.claude`=AZ on M5 is Zero's
   DELIBERATE 2026-07-22 decision (M5 is the coding station on the Team seat) — do not "fix" it
-  by remapping; the Fable weekly allowance is protected by MODEL ROUTING (interactive default =
-  Opus, Fable only for gates/motivated exceptions — rulings 2026-07-22/25), not by profile
-  segregation.
+  by remapping; the gate allowance on this seat is protected by MODEL ROUTING (interactive
+  default = Opus 5 xhigh; Opus 5 xhigh for the gate roles, RULED 2026-08-20 — Fable is out of the
+  workflow entirely, superseding the 2026-07-22/25 "Fable only for gates" framing), not by
+  profile segregation.
   **The whole profile→seat mapping is UNARMED until fingerprinted** (panel fix Codex#4): at
   cswap arming, run `claude auth status` under each `CLAUDE_CONFIG_DIR` and record the
   authenticated identity next to the mapping — a presumed mapping can impersonate or drain the
@@ -308,18 +309,18 @@ Four distinct organs called "gate". Conflating them is the W86-class drift this 
 
 | Gate | What it judges | Who | Fallback |
 |---|---|---|---|
-| **Final on-disk gate** (modus VERIFY) | the last empirical grep/disk/live check of every task | Fable 5, max effort | **NONE. Never cascades.** All Anthropic accounts dead → task SUSPENDS |
-| **WR2 content gate** | on-disk editorial content | Fable 5 | **NONE.** Window dead → SUSPEND (explicitly outside the 2026-08-09 ruling) |
-| **Gear-3 harness verdict gate** | the Evidence Pack of a Gear-3 task (PASS/PWC/REWORK/BLOCK) | Fable 5 first, rotating AZ→A2→A3→A1 | **Ruling Zero 2026-08-09**: only when NO account can run Fable → Opus 5 `effort=max`, verdict marked `gate_degraded: fable→opus` in check + pack. Never pay |
+| **Final on-disk gate** (modus VERIFY) | the last empirical grep/disk/live check of every task | **Opus 5, xhigh effort — ALL gears** (RULED 2026-08-20, supersedes the Gear-3-only Fable carve-out below) | **NONE. Never cascades to a weaker model.** All Anthropic accounts dead → task SUSPENDS |
+| **WR2 content gate** | on-disk editorial content | **Opus 5, xhigh effort** (RULED 2026-08-20 — was Fable 5) | **NONE.** Window dead → SUSPEND |
+| **Gear-3 harness verdict gate** | the Evidence Pack of a Gear-3 task (PASS/PWC/REWORK/BLOCK) | **Opus 5, xhigh effort**, rotating AZ→A2→A3→A1 (RULED 2026-08-20 — supersedes the 2026-08-09 ruling's "Fable 5 first, degrade to Opus" two-tier chain; Opus 5 IS the seat now, no degradation) | **NONE.** All Anthropic accounts dead → queue in PENDING-ARMS. Never pay |
 | **Gear-2 verdict** | standard feature PRs | Opus 5 + AI-review action + CI | ordinary cascade rules |
 
-The Fable-paid contingency applies to every row: metered Fable is never purchased.
+None of these rows route to metered Fable — Fable is out of the workflow (RULED 2026-08-20); the
+Fable-paid contingency is moot for the same reason (CLAUDE.md §5).
 
 **Sequencing note (panel fix Gemini#2):** the final on-disk check (modus VERIFY) PRECEDES the
-Gear-3 verdict gate. The Opus fallback of row 3 applies ONLY to the verdict stage — the window
-where Fable passed the on-disk check and died before the verdict. It never substitutes the
-on-disk check itself: if that check cannot run on Fable, the task suspends before any verdict
-exists. No contradiction, no bypass.
+Gear-3 verdict gate. Both now run on Opus 5 (RULED 2026-08-20), so there is no cross-model
+fallback to reason about: if Opus 5 is unavailable for either stage, the task suspends/queues
+rather than cascading to a weaker model. No contradiction, no bypass.
 
 **Floor note (panel fix GLM#5):** gear classification is the DETERMINISTIC FLOOR computed from
 the diff (harness §1), recomputed by CI — never the conductor's choice. Publishing this table

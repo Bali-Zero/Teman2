@@ -219,10 +219,29 @@ def _client(app: FastAPI) -> AsyncClient:
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://t")
 
 
-async def _crm_counts(pool: asyncpg.Pool) -> tuple[int, int]:
+async def _crm_counts(pool: asyncpg.Pool, tag: str) -> tuple[int, int]:
+    """Count CRM rows SCOPED to this seed's tag — never globally.
+
+    Under pytest-xdist the CI database is shared by every worker: 18+ test
+    files insert into ``clients`` concurrently, so a global ``count(*)``
+    moves between ``before`` and ``after`` for reasons unrelated to the
+    endpoint under test (measured live: (2,0) -> (4,1) with zero writes
+    from this file). Scoping by the per-run tag makes the invariant
+    xdist-safe while still catching the write paths these endpoints have:
+    they always route through the resolved candidate, which is a seeded,
+    tag-named client. DECLARED limitation: a rogue write that invents a
+    client with an untagged name AND attaches a practice to it would
+    escape this scoped guard.
+    """
     async with pool.acquire() as conn:
-        c = await conn.fetchval("SELECT count(*) FROM clients")
-        p = await conn.fetchval("SELECT count(*) FROM practices")
+        c = await conn.fetchval(
+            "SELECT count(*) FROM clients WHERE full_name LIKE $1", f"{tag}%",
+        )
+        p = await conn.fetchval(
+            """SELECT count(*) FROM practices pr
+               JOIN clients cl ON cl.id = pr.client_id
+               WHERE cl.full_name LIKE $1""", f"{tag}%",
+        )
     return c, p
 
 
@@ -753,7 +772,7 @@ def test_no_parametrize_in_this_module_freezes_an_absolute_instant() -> None:
 async def test_approve_live_claim_owned_by_other_rejected_without_write(pool, seed):
     """An own-chat reviewer cannot approve a live lease currently held by admin."""
     pid = seed["p_owner"]
-    before = await _crm_counts(pool)
+    before = await _crm_counts(pool, seed["tag"])
     admin_app = _make_app(pool, ADMIN)
     async with _client(admin_app) as admin_client:
         claimed = await admin_client.post(f"/api/intake/review/{pid}/claim")
@@ -766,7 +785,7 @@ async def test_approve_live_claim_owned_by_other_rejected_without_write(pool, se
             json={"claim_token": claimed.json()["claim_token"]},
         )
     assert denied.status_code == 403, denied.text
-    assert await _crm_counts(pool) == before
+    assert await _crm_counts(pool, seed["tag"]) == before
 
     async with _client(_make_app(pool, ADMIN)) as cleanup_client:
         released = await cleanup_client.post(f"/api/intake/review/{pid}/release")
@@ -785,7 +804,7 @@ async def test_approve_rejects_malformed_and_wrong_claim_tokens(
 ):
     """Approve validates token syntax and equality before planning any CRM write."""
     pid = seed["p_owner"]
-    before = await _crm_counts(pool)
+    before = await _crm_counts(pool, seed["tag"])
     app = _make_app(pool, TEAM_OWNER)
     async with _client(app) as cl:
         claimed = await cl.post(f"/api/intake/review/{pid}/claim")
@@ -800,7 +819,7 @@ async def test_approve_rejects_malformed_and_wrong_claim_tokens(
             params={"claim_token": claimed.json()["claim_token"]},
         )
     assert released.status_code == 200, released.text
-    assert await _crm_counts(pool) == before
+    assert await _crm_counts(pool, seed["tag"]) == before
 
 
 async def test_release_wrong_token_409(pool, seed):
@@ -927,7 +946,7 @@ async def test_reject_writes_no_crm_rows(pool, seed):
     not a CRM write. Detailed audit-row assertions live in
     test_reject_writes_audit_row.
     """
-    before = await _crm_counts(pool)
+    before = await _crm_counts(pool, seed["tag"])
     pid = seed["p_owner"]
     app = _make_app(pool, ADMIN)
     async with _client(app) as cl:
@@ -935,7 +954,7 @@ async def test_reject_writes_no_crm_rows(pool, seed):
         rr = await cl.post(f"/api/intake/review/{pid}/reject",
                            json={"claim_token": rc.json()["claim_token"]})
     assert rr.status_code == 200, rr.text
-    after = await _crm_counts(pool)
+    after = await _crm_counts(pool, seed["tag"])
     assert after == before, f"CRM mutated by reject! {before} -> {after}"
     async with pool.acquire() as conn:
         n_audit = await conn.fetchval(
@@ -969,7 +988,7 @@ async def test_approve_requires_claim_409(pool, seed):
 
 async def test_approve_dry_run_after_claim(pool, seed):
     """FASE 5B: claim then approve → 200 dry-run, zero CRM write."""
-    before = await _crm_counts(pool)
+    before = await _crm_counts(pool, seed["tag"])
     app = _make_app(pool, ADMIN)
     pid = seed["p_owner"]
     async with _client(app) as cl:
@@ -983,7 +1002,7 @@ async def test_approve_dry_run_after_claim(pool, seed):
     body = ra.json()
     assert body["dry_run"] is True
     assert body["status"] == "review_claimed"  # P0#9: not advanced
-    after = await _crm_counts(pool)
+    after = await _crm_counts(pool, seed["tag"])
     assert after == before
 
 
@@ -1022,7 +1041,7 @@ async def test_approve_dry_run_never_calls_crm_pusher(pool, seed, monkeypatch):
 
 async def test_zero_crm_write(pool, seed):
     """Full exercise of every endpoint must NOT mutate clients/practices."""
-    before = await _crm_counts(pool)
+    before = await _crm_counts(pool, seed["tag"])
     app = _make_app(pool, ADMIN)
     pid = seed["p_owner"]
     async with _client(app) as cl:
@@ -1033,7 +1052,7 @@ async def test_zero_crm_write(pool, seed):
                       params={"claim_token": rc.json()["claim_token"]})
         await cl.post(f"/api/intake/review/{pid}/approve")
         await cl.post(f"/api/intake/review/{pid}/reject")
-    after = await _crm_counts(pool)
+    after = await _crm_counts(pool, seed["tag"])
     assert before == after, f"CRM mutated! clients/practices {before} -> {after}"
 
 

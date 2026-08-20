@@ -8,11 +8,14 @@ export interface TrustNumber {
 }
 
 export interface AppTrustStripProps {
-  items: [TrustNumber, TrustNumber, TrustNumber];
+  items: [TrustNumber, TrustNumber] | [TrustNumber, TrustNumber, TrustNumber];
 }
 
-/** 3-number strip: concrete metrics only. X_BRAND_VOICE — never
- * "5k+ clients ★4.9"; prefer "5,021 visas filed since 2019". */
+/** Two or three concrete metrics. Three was once the only shape; the tuple
+ * accepts two because a strip is better short than padded with a number
+ * nobody measured. X_BRAND_VOICE — never "5k+ clients ★4.9", and a rating
+ * or a review count is not a substitute for a retired claim; prefer
+ * "5,021 visas filed since 2019". */
 export const AppTrustStrip: FC<AppTrustStripProps> = ({ items }) => {
   return (
     <ul

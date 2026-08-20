@@ -277,8 +277,17 @@ export function useCrmStats() {
           api.crm.getInteractionStats(),
         ]);
 
-      const clientStats =
-        clientResult.status === "fulfilled" ? clientResult.value : null;
+      // clientStats backs totalClients, the count clients/page.tsx renders as
+      // "N total" with no isError guard of its own — it relies on this
+      // query's isError instead. A failed fetch here must surface as a query
+      // error, not silently coalesce into 0 (a stats-endpoint 503 was
+      // rendering as a legitimate empty book). practice/interaction stats
+      // keep degrading independently below — that tolerance is a separate,
+      // unrelated concern.
+      if (clientResult.status === "rejected") {
+        throw clientResult.reason;
+      }
+      const clientStats = clientResult.value;
       const practiceStats =
         practiceResult.status === "fulfilled" ? practiceResult.value : null;
       const interactionStats =
@@ -287,18 +296,18 @@ export function useCrmStats() {
           : null;
 
       return {
-        totalClients: clientStats?.total ?? 0,
+        totalClients: clientStats.total,
         activePractices: practiceStats?.active_practices ?? 0,
         revenue: {
           total: practiceStats?.revenue?.total_revenue ?? 0,
           paid: practiceStats?.revenue?.paid_revenue ?? 0,
           outstanding: practiceStats?.revenue?.outstanding_revenue ?? 0,
         },
-        byStatus: clientStats?.by_status ?? {},
+        byStatus: clientStats.by_status ?? {},
         interactions: interactionStats ?? null,
-        passportExpired: clientStats?.passport_expired ?? 0,
-        passportExpiringSoon: clientStats?.passport_expiring_soon ?? 0,
-        silent30d: clientStats?.silent_30d ?? 0,
+        passportExpired: clientStats.passport_expired ?? 0,
+        passportExpiringSoon: clientStats.passport_expiring_soon ?? 0,
+        silent30d: clientStats.silent_30d ?? 0,
       };
     },
     staleTime: 5 * 60 * 1000, // 5 minutes

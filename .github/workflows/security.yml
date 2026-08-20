@@ -331,7 +331,7 @@ jobs:
           python scripts/check_cve_exceptions.py
 
       - name: Run Snyk (Python, JSON for exception filtering)
-        uses: snyk/actions/python@master
+        uses: snyk/actions/python@12140f4059e244892ae643824a95459a102120dd # master
         continue-on-error: true # we make the decision in the next step
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
@@ -477,7 +477,7 @@ jobs:
             -f apps/backend-rag/Dockerfile .
 
       - name: Run Snyk (Docker)
-        uses: snyk/actions/docker@master
+        uses: snyk/actions/docker@12140f4059e244892ae643824a95459a102120dd # master
         continue-on-error: true # vulnerability findings stay advisory (see job comment)
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
@@ -620,11 +620,11 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Initialize CodeQL
         if: env.RUN_THIS_LANGUAGE == 'true'
-        uses: github/codeql-action/init@v4.37.7
+        uses: github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
         with:
           languages: ${{ matrix.language }}
           queries: security-extended,security-and-quality
@@ -632,11 +632,11 @@ jobs:
 
       - name: Autobuild
         if: env.RUN_THIS_LANGUAGE == 'true'
-        uses: github/codeql-action/autobuild@v4.37.7
+        uses: github/codeql-action/autobuild@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
 
       - name: Perform CodeQL Analysis
         if: env.RUN_THIS_LANGUAGE == 'true'
-        uses: github/codeql-action/analyze@v4.37.7
+        uses: github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
         with:
           category: "/language:${{matrix.language}}"
 

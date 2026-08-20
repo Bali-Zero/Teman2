@@ -1,4 +1,5 @@
 import { FunnelFrame } from "@balizero/core";
+import { GOOGLE_RATING, GOOGLE_REVIEW_COUNT } from "@/lib/trust-figures";
 import { TaxCalendarBody } from "@/components/funnel/TaxCalendarBody";
 import { TAX_DEADLINES, getRegencies } from "@/app/api/tax-calendar/deadlines";
 
@@ -9,7 +10,11 @@ export default function TaxCalendarPage() {
     <FunnelFrame
       funnel="tax"
       sessionId="SSR"
-      trust={{ clientCount: 5000, rating: 4.9, responseMinutes: 15 }}
+      trust={{
+        clientCount: 5000,
+        rating: GOOGLE_RATING,
+        reviewCount: GOOGLE_REVIEW_COUNT,
+      }}
     >
       <header style={{ marginBottom: "var(--space-6)" }}>
         <h1 style={{ fontSize: "2rem", fontWeight: 700, margin: 0 }}>

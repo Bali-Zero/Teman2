@@ -110,6 +110,10 @@ testsprite_tests/tmp/
 
 # Next.js / Frontend
 .next/
+# a renamed .next build cache (.trash/.next-verify3210/...) escaped the .next/
+# rule above and cost 135 MB in a quarantine commit on 2026-08-20 — ignore the
+# rename target too.
+.trash/
 out/
 build/
 dist/

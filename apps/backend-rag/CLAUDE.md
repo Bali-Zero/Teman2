@@ -297,7 +297,8 @@ apps/backend-rag/
 │   ├── llm/                # LLM clients (Gemini, Ollama, OpenRouter)
 │   ├── prompts/            # ⭐ Prompt SSOT (zantara_core.py)
 │   └── migrations/         # Custom migration system (migration_NNN_*.py; runner: backend/db/migration_manager.py)
-├── tests/                  # Unit + integration tests (backend/tests — separate from top-level apps/backend-rag/tests)
+├── (tests live under backend/tests/ — the top-level apps/backend-rag/tests/ orphan tree, never
+│    collected by CI, was deleted 2026-08-21; its 4 CI-used files moved into backend/tests/)
 ├── .venv/                  # ⚠️ ALWAYS .venv, not venv
 └── fly.toml
 ```

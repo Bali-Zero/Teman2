@@ -10,9 +10,9 @@
 #       up -d
 #
 # WHY an overlay and not Docker `profiles:` on the same file:
-#   The TEST path (apps/backend-rag/tests/integration/conftest.py via pytest-docker)
-#   uses ONLY docker-compose.test.yml and REQUIRES the datastores on the host
-#   network with published ports (Qdrant 6334, Redis 6380). Putting the datastores
+#   The TEST path (backend/tests/integration/, via pytest-docker) uses ONLY
+#   docker-compose.test.yml and REQUIRES the datastores on the host network
+#   with published ports (Qdrant 6334, Redis 6380). Putting the datastores
 #   on `internal: true` would break that suite (gate G2 = suite identical). By
 #   keeping the base file BYTE-IDENTICAL and adding confinement here, G2 holds
 #   by construction: the file the CI uses does not change one line.

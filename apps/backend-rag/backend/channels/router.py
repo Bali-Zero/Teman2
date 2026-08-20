@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 
 from backend.channels.base import BaseChannel
 from backend.channels.optimizations import message_deduplicator
+from backend.core.cache import invalidate_cache
 
 logger = logging.getLogger(__name__)
 
@@ -351,6 +352,17 @@ class ChannelRouter:
                 if client_id:
                     message.metadata["client_id"] = client_id
 
+            # 1.5 A recognized CRM client just reached out on a live channel —
+            # that is a real interaction, not a proxy for one. This method is
+            # only reached from the inbound leg of route_message (the outbound
+            # reply persist at step 8.5 never calls it), so this can never
+            # fire on an outbound-only send (team broadcast, bot reply,
+            # reactivation email). See CLAUDE.md-adjacent note in
+            # crm_interactions.py for the other two legitimate write sites
+            # (manual team log, practice creation) that this complements.
+            if client_id:
+                await self._touch_client_interaction(client_id, db_pool)
+
             # 2. Classify intent and score priority
             from backend.services.communication import routing_engine
 
@@ -394,6 +406,32 @@ class ChannelRouter:
 
         except Exception as e:
             logger.debug("Routing enrichment failed (non-fatal): %s", e)
+
+    async def _touch_client_interaction(self, client_id: int, db_pool: Any) -> None:
+        """Record that a known client made real contact on a live channel.
+
+        `clients.last_interaction_date` used to be written ONLY when a team
+        member manually logged an interaction or created a practice — an
+        inbound WhatsApp/Telegram/web message from a client already in the
+        CRM never touched it, so every dashboard/campaign/sort reading the
+        column was measuring interface adoption, not the relationship.
+
+        Non-blocking: a failure here must never break message routing (the
+        caller's outer try/except already covers this, this one just adds a
+        named log line so the specific mutation is diagnosable).
+        """
+        try:
+            await db_pool.execute(
+                "UPDATE clients SET last_interaction_date = NOW() WHERE id = $1",
+                client_id,
+            )
+            await invalidate_cache("zantara:crm_clients_stats:*")
+        except Exception as e:
+            logger.debug(
+                "Could not touch last_interaction_date for client=%s: %s",
+                client_id,
+                e,
+            )
 
     async def _resolve_client_id(self, message: ChannelMessage, db_pool: Any) -> int | None:
         """Resolve CRM client_id from channel-specific identifiers."""

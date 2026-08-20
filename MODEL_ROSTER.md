@@ -26,14 +26,14 @@ body, not silently smoothed over.
 
 ## Anthropic — door: `claude` CLI, OAuth only (SDK / `ANTHROPIC_API_KEY` banned, CLAUDE.md §5)
 
-| Model                                                                                      | Role / strengths                                                                                                                                                                                                                                                                                                                                                                                                                                      | Effort notes                                                                                                                                                                        |
-| ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `claude-fable-5`                                                                           | **Final on-disk gate for the Gear-3/large-feature class** (ruling Zero 2026-08-19 — small interventions, Gear 1-2, close on Opus 5; selector = the CI-recomputed gear floor) + WR2 content gate + Phase-2 council judge. Orchestrator-only, never a builder. Within its class: never cascades — window dead → task SUSPENDS. Team-seat inclusion caps at ~50%/week; past that it's paid credits, barred by the Fable-paid contingency (CLAUDE.md §5). | max, always                                                                                                                                                                         |
-| `claude-opus-5`                                                                            | Interactive conductor default (ratified 2026-07-25) **+ final reviewer for small interventions — Gear 1-2 (ruling Zero 2026-08-19)**. Architecture, red-team, long-horizon agentic work. **Thinks by default** — omitting `thinking` now thinks; `max_tokens` caps thinking+answer. Separate rate-limit bucket from the 4.x pool.                                                                                                                     | `low`/`medium` punch above their weight — primary cost/latency lever. `xhigh` = coding/agentic sweet spot. `thinking:{disabled}` only accepted at effort ≤ `high` (400 above that). |
-| `claude-opus-4-8`                                                                          | Valid pin, non-Fable-capable seat — drop-in predecessor of Opus 5 at the same price ($5/$25 MTok). Not deprecated.                                                                                                                                                                                                                                                                                                                                    | same 5-level scale                                                                                                                                                                  |
-| `claude-sonnet-5`                                                                          | **Implementer workhorse** — structured I/O, BUILD-stage default in modus §Arsenal ("Fable designs, Sonnet builds, Fable verifies"). New tokenizer: **~+30% tokens** for the same text vs 4.6 — re-measure `max_tokens`/compaction triggers with `count_tokens`, never a blanket multiplier.                                                                                                                                                           | `xhigh` sweet spot                                                                                                                                                                  |
-| `claude-sonnet-4-6`                                                                        | Valid pin — legacy HOME wrappers (`~/scripts/`) not yet migrated, and the nb-agents slug micro-prompt exception (probe wobble on 5).                                                                                                                                                                                                                                                                                                                  | —                                                                                                                                                                                   |
-| `claude-haiku-4-5` (`claude-haiku-4-5-20251001` — only family member with a real dated ID) | Grunt lane inside workflows (format/extract/classify) + cheap VLM pre-pass.                                                                                                                                                                                                                                                                                                                                                                           | default                                                                                                                                                                             |
+| Model                                                                                      | Role / strengths                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Effort notes                                                                                                                                                                                              |
+| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `claude-fable-5`                                                                           | **No automated role (RULED 2026-08-20 — Fable out of the workflow).** Existing, valid alias — Zero may still open a session on it manually (`/model claude-fable-5`); no doctrine, skill, cron, or script auto-routes to it. Was: final on-disk gate for the Gear-3/large-feature class + WR2 content gate + Phase-2 council judge (see `claude-opus-5` row below for where those roles live now).                                                                                                                                               | n/a — manual only                                                                                                                                                                                         |
+| `claude-opus-5`                                                                            | Interactive conductor default (ratified 2026-07-25) **+ final on-disk gate for ALL gears, WR2 content gate, and Phase-2 council judge (RULED 2026-08-20, superseding the 2026-08-19 Gear-3/Gear-1-2 split — those roles no longer route to Fable at all)**. Architecture, red-team, long-horizon agentic work. Gate roles: xhigh effort, never cascades to a weaker model, window dead → task SUSPENDS. **Thinks by default** — omitting `thinking` now thinks; `max_tokens` caps thinking+answer. Separate rate-limit bucket from the 4.x pool. | `low`/`medium` punch above their weight — primary cost/latency lever. `xhigh` = coding/agentic sweet spot; gate roles run `max`. `thinking:{disabled}` only accepted at effort ≤ `high` (400 above that). |
+| `claude-opus-4-8`                                                                          | Valid pin, non-gate seat — drop-in predecessor of Opus 5 at the same price ($5/$25 MTok). Not deprecated.                                                                                                                                                                                                                                                                                                                                                                                                                                        | same 5-level scale                                                                                                                                                                                        |
+| `claude-sonnet-5`                                                                          | **Implementer workhorse** — structured I/O, BUILD-stage default in modus §Arsenal ("Opus 5 designs, Sonnet builds, Opus 5 verifies"). New tokenizer: **~+30% tokens** for the same text vs 4.6 — re-measure `max_tokens`/compaction triggers with `count_tokens`, never a blanket multiplier.                                                                                                                                                                                                                                                    | `xhigh` sweet spot                                                                                                                                                                                        |
+| `claude-sonnet-4-6`                                                                        | Valid pin — legacy HOME wrappers (`~/scripts/`) not yet migrated, and the nb-agents slug micro-prompt exception (probe wobble on 5).                                                                                                                                                                                                                                                                                                                                                                                                             | —                                                                                                                                                                                                         |
+| `claude-haiku-4-5` (`claude-haiku-4-5-20251001` — only family member with a real dated ID) | Grunt lane inside workflows (format/extract/classify) + cheap VLM pre-pass.                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | default                                                                                                                                                                                                   |
 
 Whole-family-5 gotchas (CLAUDE.md §5, non-obvious): min cacheable prompt drops to 512 tokens on
 Opus 5 (1024 on 4.8); `temperature`/`top_p`/`top_k`/`budget_tokens` removed (400 if sent), no
@@ -146,6 +146,53 @@ API-confirmed): MiniMax M2.5, kimi-k2.5/2.6/2.7. PROBE-4 (the planned MiniMax sa
 verification) is moot — there is nothing on this account to probe. Using either requires adding
 it to this plan or sourcing a different account, a Zero decision, not a probe.
 
+### Coding-plan models measured 2026-08-21 (qwen-seat-fleet arming, empirical CLI probe)
+
+**⚠️ Contradicts the 2026-08-14 PHANTOM line above — flagged, NOT auto-resolved here.** This
+session's task was arming the seat + wrapper fleet-wide, not re-auditing TP1 billing; the
+discrepancy below needs a console-side check (which underlying balance a call draws from) before
+either classification is trusted blindly. Two independent measurements, both empirical, disagree
+with each other AND with the 2026-08-14 console read:
+
+1. `GET /v1/models` on both DashScope base URLs (`coding-intl` and `coding`, identical response)
+   returned exactly 10 ids: `qwen3-coder-plus`, `qwen3-max-2026-01-23`, `qwen3-coder-next`,
+   `glm-4.7`, `kimi-k2.5`, `qwen3.5-plus`, `glm-5`, `MiniMax-M2.5`, `qwen3.6-plus`,
+   `qwen3.7-plus`.
+2. Live `qwen -p "..." --model <id>` calls (the thing that actually matters) show **4 of those
+   10 listed ids return `403 Access to model denied`** (`kimi-k2.5`, `glm-5`, `MiniMax-M2.5`,
+   `qwen3.6-plus`) — the listing endpoint is not a reliable access oracle (own W-class: judge the
+   reply, never a name/listing proxy) — while **16 ids NOT in that listing return PONG**,
+   including `kimi-k2`, `kimi-k2.7`, `kimi-k3`, `MiniMax-M2.7`, `MiniMax-M3` — i.e. the specific
+   _dated_ kimi/MiniMax snapshots the 2026-08-14 census marked PHANTOM fail, but _other_ numbered
+   snapshots of the same model families succeed live, under the same `BAILIAN_TOKEN_PLAN_API_KEY`.
+   Open question this session did not resolve: do the PASS-ing kimi/MiniMax calls draw from the
+   flat TP1 quota, or silently fall through to metered pay-as-you-go billing outside the plan? A
+   console spend-ledger check is needed before routing any real traffic to them.
+
+**PASS (26/26 on M5, Pro, AND Mini — probed once per model per machine, `qwen -p "Reply with
+exactly: PONG-<id>" --model <id>`, judged by output content, watchdog-guarded)**:
+`qwen3-coder-plus` · `qwen3-coder` · `qwen3-coder-flash` · `qwen3-coder-next` ·
+`qwen3-max-2026-01-23` · `qwen3-max` · `qwen3.5-plus` · `qwen3.6-flash` · `qwen3.7-plus` ·
+`qwen3.7-max` · `qwen3.8-max` · `qwen3.8-max-preview` · `qwen3-vl-plus` · `qwen3-asr-flash` ·
+`glm-4` · `glm-4.5` · `glm-4.7` · `glm-5.2` · `kimi-k2` · `kimi-k2.7` · `kimi-k3` ·
+`MiniMax-M2.7` · `MiniMax-M3` · `deepseek-v3` · `deepseek-v4` · `deepseek-v4-pro`.
+
+**FAIL (M5 only, `403 Access to model denied` — plan-account-level, so presumed identical on
+Pro/Mini; not re-probed there since the denial is a token-scope property, not a machine
+property)**: `kimi-k2.5` · `kimi-k2.6` · `glm-5` · `glm-5.1` · `MiniMax-M2.5` · `qwen3.6-plus` ·
+`deepseek-v4-flash` (note: distinct from the ARMED `deepseek-v4-flash-0731` above — a bare
+`deepseek-v4-flash` alias without the date suffix is denied; the dated one that's in production
+use is unaffected by this finding).
+
+Remote-probe recipe used (avoids the ssh-eats-the-loop trap, W-class: `ssh` without `-n` inside a
+`while read` loop consumes the loop's own stdin — first attempt silently ran only 1 of 26 models
+per machine before this was caught and fixed):
+
+```bash
+ssh -n -o BatchMode=yes -o ConnectTimeout=15 <pro|mini> \
+  "export PATH=/opt/homebrew/bin:\$PATH; perl -e 'alarm 150; exec @ARGV' qwen -p '<prompt>' --model '<id>' < /dev/null"
+```
+
 **Hard NOs, whole wing** (spec §2.5): client PII (Law 2 — PII intake is SEA-LION/local, never this
 wing), client-facing outputs, merge/deploy, final gates, NUZANTARA/infra credentials in the
 model-visible env.
@@ -180,10 +227,10 @@ Implementer routing is **task-shaped across the full roster above**, not Sonnet-
   (heterogeneity per modus §Arsenal's inversion rationale).
 - **Refuter always a different family from the builder** — generator≠grader, family-exclusion is
   hard (fleet-order-spec §3.2).
-- **Final-gate split (ruling Zero 2026-08-19)** — Fable 5 is the final reviewer for the
-  **Gear-3/large-feature class only**; Gear 1-2 small interventions close on **Opus 5**. Selector =
-  the CI-recomputed deterministic gear floor, never the conductor's choice (CLAUDE.md §5,
-  AGENTS.md §17.1, FLEET_TOPOLOGY `_invariants`). The WR2 content gate stays unconditionally Fable.
+- **Final gate, all gears (ruling Zero 2026-08-20, supersedes the 2026-08-19 gear split)** — **Opus 5,
+  xhigh effort** is the final reviewer for every gear, the Gear-3 harness verdict gate, and the WR2
+  content gate. Fable 5 is out of the workflow (CLAUDE.md §5, AGENTS.md §17.1, FLEET_TOPOLOGY
+  `_invariants`) — used only when Zero opens a session on it manually.
 
 This widens the implementer menu; it does not remove Sonnet 5 as the sane default for
 well-specified, testable BUILD units.

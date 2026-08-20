@@ -89,6 +89,22 @@ SEGMENTS: dict[str, dict] = {
     "S4": {
         "label": "Active client, no contact 120d+ (relationship health)",
         "pitch": "a quick check-in on their current status and any pending needs",
+        # RESTRICTED 2026-08-21 (team-lead mandate, S7 segment-4 review): the pitch text
+        # says "a quick check-in", which presupposes a relationship that has gone quiet —
+        # but `last_interaction_date` is written in exactly one place
+        # (backend/.../crm_interactions.py, "UPDATE clients SET last_interaction_date =
+        # NOW()") ONLY when a team member manually logs an interaction. It is never
+        # touched by inbound WhatsApp, client creation, or practice activity. So NULL
+        # here does not mean "we have gone quiet on them" — it means "nobody on the team
+        # has ever clicked that button", which is true for clients we may never have
+        # actually served. Measured 2026-08-21: of 501 clients the un-restricted clause
+        # matched, only 124 (25%) had ever had a practice on file. Sending the "check-in"
+        # pitch to the other 376 would be a first-ever contact disguised as a follow-up.
+        # The EXISTS clause below requires at least one practice (any status — open,
+        # completed, or cancelled all prove a service relationship actually existed) so
+        # this segment only reaches clients the pitch's own premise is true for. DO NOT
+        # remove this clause to "simplify" the query — it is the entire point of the
+        # segment restriction, not incidental filtering.
         "sql": """
             SELECT c.id, c.full_name, c.nationality, c.assigned_to,
                    'last_contact' AS document_type, NULL::int AS days_until_expiry,
@@ -96,6 +112,7 @@ SEGMENTS: dict[str, dict] = {
             FROM clients c
             WHERE c.deleted_at IS NULL AND c.status='active'
               AND (c.last_interaction_date IS NULL OR c.last_interaction_date < now()-interval '120 days')
+              AND EXISTS (SELECT 1 FROM practices p WHERE p.client_id = c.id)
             ORDER BY c.last_interaction_date ASC NULLS FIRST
         """,
     },
