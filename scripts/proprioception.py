@@ -74,6 +74,7 @@ KNOWN_BOUNDARY_CLASSES = [
     "process<->process",        # e.g. /health/detailed provenance — NO PROBE in v1 (A2)
     "seat<->armed",             # AI-seat credential/quota vs live probe (arsenal, #2)
     "worktree<->gate",          # does git actually invoke a pre-push hook in this worktree (#2)
+    "tunnel<->reachable",       # declared network tunnel/forward vs live reachability (2026-08-21)
 ]
 
 SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=15",
@@ -1030,6 +1031,26 @@ DEFAULT_REGISTRY: list[dict] = [
         "verdict_key": "status",
         "ok_values": [],
         "fix_hint": "python3 infra/vcr/cli.py check --seat <s> --host m5 --auth-context interactive (drafts/2026-08-03-vcr-pilot-v2.1-and-build-workflow.md)",
+    },
+    {
+        # M5-only launchd SSH tunnel (com.balizero.flowkit-pro-tunnel) that
+        # WR2 image-gen depends on for FlowKit reachability. Found live
+        # 2026-08-21 (dispatch "revive dead organs") with ZERO coverage
+        # anywhere: no heartbeat sidecar, no proprioception entry, no alert —
+        # its stderr log accumulated 800+ "Operation timed out" lines across
+        # 5+ days while nothing watched. This entry is the cure: on-demand
+        # (no M5 daemon per CLAUDE.md §1), piggybacking on whatever already
+        # triggers a proprioception sweep each session, same pattern as
+        # arsenal_seats_vcr_m5 above. Severity P2, not P1: WR2_IMAGE_BACKEND
+        # "auto" (default) silently falls back to Playwright when this tunnel
+        # is down — a cost/latency finding, never data loss.
+        "id": "flowkit_tunnel", "type": "wrap",
+        "target": ["python3", "{repo}/scripts/check_flowkit_tunnel.py", "--quiet"],
+        "class": "tunnel<->reachable",
+        "boundary": "flowkit ssh tunnel (M5->Pro, 127.0.0.1:8100/9222) <-> live HTTP reachability",
+        "machines": ["m5"], "tags": ["fast", "wr2"], "timeout_sec": 15,
+        "severity": "P2", "parse": "exit_code",
+        "fix_hint": "launchctl print gui/$(id -u)/com.balizero.flowkit-pro-tunnel; tail ~/Library/Logs/flowkit-pro-tunnel.err — WR2 falls back to Playwright automatically (auto backend), no data loss while down",
     },
 ]
 
