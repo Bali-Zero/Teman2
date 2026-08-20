@@ -181,7 +181,8 @@ jobs:
               --app nuzantara-rag \
               --remote-only \
               --dockerfile apps/backend-rag/Dockerfile \
-              --config apps/backend-rag/fly.toml 2>&1 | tee fly-deploy.log
+              --config apps/backend-rag/fly.toml \
+              --build-arg GIT_SHA=${{ github.sha }} 2>&1 | tee fly-deploy.log
             status=${PIPESTATUS[0]}
             set -e
 
