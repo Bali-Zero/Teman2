@@ -115,6 +115,50 @@ def collect_claude(profile_dir: str, since: datetime) -> dict:
     return out
 
 
+def _extract_cumulative_token_usage(event: dict) -> dict | None:
+    """Estrae lo snapshot CUMULATIVO di token da un evento di sessione Codex.
+
+    Bug reale (2026-08-20, "in=3.3e11/giorno"): ogni riga `token_count` di
+    ~/.codex/sessions/**/*.jsonl porta DUE oggetti fratelli —
+    `info.total_token_usage` (cumulativo per l'INTERA sessione, monotono
+    non-decrescente: cresce ad ogni turno) e `info.last_token_usage` (delta
+    del solo ultimo turno). La vecchia `collect_codex` faceva una DFS cieca
+    sull'intero albero JSON di ogni riga e sommava OGNI dict con
+    {input_tokens,output_tokens} che trovava — cioè sommava sia il
+    cumulativo (che ri-conta tutto il traffico pregresso ad ogni evento) sia
+    il delta, per ogni evento di sessioni con centinaia di eventi. Su una
+    sessione con n eventi token_count il termine dominante è la somma dei
+    total_token_usage crescenti (~n * totale_finale / 2) — con n~900 e un
+    totale finale nell'ordine delle centinaia di migliaia, il risultato
+    esplode di diversi ordini di grandezza oltre il consumo reale.
+
+    Qui si estrae SOLO `total_token_usage` (il cumulativo autoritativo che
+    Codex stesso calcola) e il chiamante ne tiene solo l'ULTIMO per
+    sessione (last-wins) — quello è già il totale corretto dell'intera
+    sessione, non va mai sommato più volte.
+    """
+    payload = event.get("payload") if isinstance(event, dict) else None
+    if isinstance(payload, dict) and payload.get("type") == "token_count":
+        info = payload.get("info")
+        if isinstance(info, dict):
+            total = info.get("total_token_usage")
+            if isinstance(total, dict):
+                ti = total.get("input_tokens")
+                to = total.get("output_tokens")
+                if isinstance(ti, int) and isinstance(to, int):
+                    return {"input_tokens": ti, "output_tokens": to}
+    # schema drift tollerato: formati legacy piatti a livello top
+    # ({input_tokens,output_tokens} o {prompt_tokens,completion_tokens})
+    # trattati come lo snapshot cumulativo CORRENTE (last-wins) — mai
+    # sommati riga per riga come faceva la DFS precedente.
+    if isinstance(event, dict):
+        ti = event.get("input_tokens", event.get("prompt_tokens"))
+        to = event.get("output_tokens", event.get("completion_tokens"))
+        if isinstance(ti, int) and isinstance(to, int):
+            return {"input_tokens": ti, "output_tokens": to}
+    return None
+
+
 def collect_codex(codex_home: str, since: datetime) -> dict:
     out = {"status": "ok", "days": defaultdict(lambda: defaultdict(int))}
     root = Path(codex_home) / "sessions"
@@ -128,28 +172,21 @@ def collect_codex(codex_home: str, since: datetime) -> dict:
             if os.path.getmtime(fp) < since.timestamp():
                 continue
             day = datetime.fromtimestamp(os.path.getmtime(fp), WITA).strftime("%d/%m")
+            last_total: dict | None = None  # ultimo cumulativo visto in QUESTA sessione
             with open(fp, encoding="utf-8", errors="replace") as fh:
                 for line in fh:
-                    if "tokens" not in line:
+                    if "token" not in line:
                         continue
                     try:
                         j = json.loads(line)
                     except Exception:
                         continue
-                    # schema drift tollerato: cerca in profondità coppie note
-                    stack = [j]
-                    while stack:
-                        node = stack.pop()
-                        if isinstance(node, dict):
-                            ti = node.get("input_tokens", node.get("prompt_tokens"))
-                            to = node.get("output_tokens", node.get("completion_tokens"))
-                            if isinstance(ti, int) and isinstance(to, int):
-                                out["days"][day]["in"] += ti
-                                out["days"][day]["out"] += to
-                            else:
-                                stack.extend(node.values())
-                        elif isinstance(node, list):
-                            stack.extend(node)
+                    usage = _extract_cumulative_token_usage(j)
+                    if usage is not None:
+                        last_total = usage
+            if last_total is not None:
+                out["days"][day]["in"] += last_total.get("input_tokens", 0) or 0
+                out["days"][day]["out"] += last_total.get("output_tokens", 0) or 0
         except Exception as e:
             out["status"] = "partial"
             out.setdefault("errors", []).append(f"{fp}: {e}")
