@@ -552,12 +552,34 @@ log "OK pulled to $NEW_HEAD ($COMMITS_BEHIND commits from $TARGET_REMOTE)"
 # Keep the launchd-safe deployed script in sync with the repo source. The
 # LaunchAgent executes ~/scripts/mini-git-pull.sh because macOS TCC can block
 # direct execution from ~/Desktop.
+#
+# 2026-08-20 hardening (W120b): this file IS the script currently executing
+# (bash reads it in buffered chunks as it runs). An in-place `cp` onto the
+# open path truncates+rewrites the SAME inode mid-read — later lines get
+# read from the new file's bytes at the OLD file's offsets, producing torn
+# garbage ("syntax error near unexpected token" on a line that looks fine
+# on disk afterward, because by the time anyone inspects it the write has
+# completed). Reproduced live: any tick where the repo copy differs from
+# the deployed copy at invocation time (e.g. right after a PR touching this
+# file merges, before the NEXT tick's pull — which is every time this file
+# changes) corrupts that one tick's run. Fix: write to a tmpfile then
+# atomic `mv` (rename) over the target — POSIX guarantees a reader with the
+# file already open keeps reading the OLD, still-valid inode until it
+# closes, unaffected by the rename; only the *next* invocation sees the new
+# content.
 mkdir -p "$HOME/scripts" 2>/dev/null
 if [ -f "$REPO/scripts/mini/mini-git-pull.sh" ]; then
   if ! cmp -s "$REPO/scripts/mini/mini-git-pull.sh" "$HOME/scripts/mini-git-pull.sh" 2>/dev/null; then
-    cp "$REPO/scripts/mini/mini-git-pull.sh" "$HOME/scripts/mini-git-pull.sh" 2>>"$LOG_FILE" && \
-      chmod 755 "$HOME/scripts/mini-git-pull.sh" 2>/dev/null && \
-      log "  updated ~/scripts/mini-git-pull.sh from repo source"
+    SELF_UPDATE_TMP=$(mktemp "$HOME/scripts/.mini-git-pull.sh.XXXXXX" 2>/dev/null)
+    if [ -n "$SELF_UPDATE_TMP" ] \
+        && cp "$REPO/scripts/mini/mini-git-pull.sh" "$SELF_UPDATE_TMP" 2>>"$LOG_FILE" \
+        && chmod 755 "$SELF_UPDATE_TMP" 2>/dev/null \
+        && mv -f "$SELF_UPDATE_TMP" "$HOME/scripts/mini-git-pull.sh" 2>>"$LOG_FILE"; then
+      log "  updated ~/scripts/mini-git-pull.sh from repo source (atomic rename)"
+    else
+      rm -f "$SELF_UPDATE_TMP" 2>/dev/null
+      log "  WARN: self-update of ~/scripts/mini-git-pull.sh failed"
+    fi
   fi
 fi
 
