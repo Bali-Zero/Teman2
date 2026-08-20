@@ -36,8 +36,9 @@ Patterned on `lint_pg_dsn_credentials.py` (2026-08-21), itself patterned on
 An explicit, deliberate assertion by the author that a credential-shaped
 literal is synthetic — the comment marker `synthetic-google-oauth-credential`
 on the same line or the line directly above — suppresses a finding (same
-contract as the sibling lints). Placeholders (a body of ≤4 distinct
-characters, e.g. `GOCSPX-xxxxxxxxxx`) never fire.
+contract as the sibling lints). Placeholders (a body of ≤2 distinct
+characters, e.g. `GOCSPX-xxxxxxxxxx`) never fire; anything longer or more
+varied must carry the marker explicitly.
 
 Exit codes: 0 clean · 1 finding · 2 could not scan (never silently clean).
 """

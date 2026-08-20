@@ -73,6 +73,10 @@ def test_google_oauth_lint_innocence_env_reads_and_markers_pass():
         'ratio = "1//2"  # prose, not a token',
         "the token shape is 1// followed by a long body",
         "an id looks like 123456-example.apps.googleusercontent.com",  # doc prose
+        # Anchored credential-shape in docs, deliberately marked (the marker
+        # is the ONLY escape once an anchor + full-length body are present):
+        "refresh_token: 1//" + REF_BODY + "  # synthetic-google-oauth-credential",
+        'GOCSPX tracking label: "GOCSPX-' + "abcd" * 6 + '"  # synthetic-google-oauth-credential',
     ]
     for text in innocent:
         assert lint.scan_text(text, "ok.py") == [], f"false positive on: {text[:50]}…"
