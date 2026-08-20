@@ -144,13 +144,13 @@
       "import": "@balizero/core/components/apps/AppTrustStrip",
       "source": "packages/core/components/apps/AppTrustStrip.tsx",
       "props": {
-        "items": "[TrustNumber, TrustNumber, TrustNumber]"
+        "items": "[TrustNumber, TrustNumber] | [TrustNumber, TrustNumber, TrustNumber]"
       },
       "useWhen": [
         "trust",
         "social proof"
       ],
-      "example": "<AppTrustStrip items={/* [TrustNumber, TrustNumber, TrustNumber] */} />"
+      "example": "<AppTrustStrip items={/* [TrustNumber, TrustNumber] | [TrustNumber, TrustNumber, TrustNumber] */} />"
     },
     {
       "name": "AppWhatsAppCTA",
@@ -515,14 +515,14 @@
       "source": "packages/core/components/TrustBand.tsx",
       "props": {
         "clientCount": "number",
-        "rating": "number",
-        "responseMinutes": "number"
+        "rating": "string",
+        "reviewCount": "number"
       },
       "useWhen": [
         "trust",
         "social proof"
       ],
-      "example": "<TrustBand clientCount={/* number */} rating={/* number */} responseMinutes={/* number */} />"
+      "example": "<TrustBand clientCount={/* number */} rating={/* string */} reviewCount={/* number */} />"
     },
     {
       "name": "WhatsAppFAB",
