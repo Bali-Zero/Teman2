@@ -129,21 +129,27 @@ jobs:
           print(f"triple={','.join(triple)}")
           PY
 
+      - name: Checkout code (for the Telegram gateway script)
+        uses: actions/checkout@v7
+
       - name: Telegram alert — same job red in consecutive queue runs
         if: steps.check.outputs.repeated != ''
         env:
-          BOT: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          CHAT: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+          # The gateway reads TELEGRAM_BOT_TOKEN / TELEGRAM_OWNER_CHAT_ID
+          # from env first (scripts/tg_notify.py token chain). Routing
+          # through tg_notify.py is not optional: lint_tg_direct_senders.py
+          # fails CI on any NEW file mentioning the Bot API directly — the
+          # consolidated-sender doctrine (2026-07-06 census, monotone
+          # grandfather). tg_notify exits 0 on every outcome (fail-open),
+          # so a missing secret degrades to a spool entry, never a red job.
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_OWNER_CHAT_ID: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
           REPEATED: ${{ steps.check.outputs.repeated }}
           TRIPLE: ${{ steps.check.outputs.triple }}
           REPO: ${{ github.repository }}
           RUN_ID: ${{ github.event.workflow_run.id }}
         run: |
           set -euo pipefail
-          if [ -z "${BOT}" ] || [ -z "${CHAT}" ]; then
-            echo "::warning::Telegram secrets missing — cannot alert"
-            exit 0
-          fi
           if [ -n "${TRIPLE}" ]; then
             N=3
             JOBS="${TRIPLE}"
@@ -152,6 +158,8 @@ jobs:
             JOBS="${REPEATED}"
           fi
           TEXT="MAIN RED: ${JOBS} failed in ${N} consecutive queue runs — pause merges, cure main. https://github.com/${REPO}/actions/runs/${RUN_ID}"
-          curl -sS -m 10 -X POST "https://api.telegram.org/bot${BOT}/sendMessage" \
-            --data-urlencode "chat_id=${CHAT}" \
-            --data-urlencode "text=${TEXT}"
+          # Dedup on the failing-job SET: a new combination alerts
+          # immediately, a repeat of the same one rides the gateway's
+          # throttle ladder instead of paging again.
+          KEY="main-red-$(printf '%s' "${JOBS}" | sha256sum | cut -c1-12)"
+          python3 scripts/tg_notify.py --tier p0 --source main-red-breaker --dedup-key "${KEY}" "${TEXT}"
