@@ -187,13 +187,30 @@ def pending_arms_overdue() -> tuple[list[str], list[str]]:
             cwd=str(_repo_root()),
         )
         data = json.loads(proc.stdout or "{}")
+        # The reporter emits per-entry "class", not "classification" (see
+        # pending_arms_report.py, the "class": e.cls key). This read used the
+        # latter for its whole life, so e.get(...) was always None, the filter
+        # was always empty, and this branch never once fired against the real
+        # ledger — 262 overdue TECH-DEBT entries reported as silence.
+        # The COUNT now comes from counts.tech_debt_overdue, which the reporter
+        # computes itself: a future key rename can then cost us the top-artifact
+        # detail but can no longer zero the alarm.
+        counts = data.get("counts") or {}
+        n_overdue = counts.get("tech_debt_overdue") or 0
         overdue = [
             e for e in data.get("entries", [])
-            if e.get("overdue") and e.get("classification") == "TECH-DEBT"
+            if e.get("overdue") and e.get("class") == "TECH-DEBT"
         ]
-        if overdue:
-            top = overdue[0].get("artifact", "?")[:70]
-            lines.append(f"{len(overdue)} armamenti sospesi OVERDUE — top: {top}")
+        if n_overdue and not overdue:
+            # counts and entries disagree: the per-entry vocabulary drifted
+            # again. Say so — this is the exact silence that hid the bug above.
+            errs.append(
+                f"pending-arms: {n_overdue} overdue by counts, 0 matched in entries "
+                "(per-entry key drift?)"
+            )
+        if n_overdue or overdue:
+            top = overdue[0].get("artifact", "?")[:70] if overdue else "?"
+            lines.append(f"{n_overdue or len(overdue)} armamenti sospesi OVERDUE — top: {top}")
     except Exception as e:
         errs.append(f"pending-arms: reporter failed ({type(e).__name__})")
     return lines, errs
