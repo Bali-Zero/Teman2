@@ -475,6 +475,22 @@ class TestMessages:
         mock_portal_service.send_message.assert_awaited_once()
         assert mock_portal_service.send_message.await_args.kwargs["practice_id"] == 603
 
+    def test_send_message_client_not_found_returns_404_not_500(
+        self, client, mock_portal_service
+    ):
+        """DEFECT 1: if the portal account is linked to a soft-deleted
+        client, send_message raises ValueError('Client X not found') —
+        same not-found shape as get_dashboard (BUG C) — and must surface
+        as 404, not a 500."""
+        mock_portal_service.send_message.side_effect = ValueError("Client 42 not found")
+
+        response = client.post(
+            "/api/portal/messages",
+            json={"content": "hello"},
+        )
+
+        assert response.status_code == 404
+
     def test_mark_message_read(self, client, mock_portal_service):
         """Mark message as read."""
         mock_portal_service.mark_message_read.return_value = {"success": True}

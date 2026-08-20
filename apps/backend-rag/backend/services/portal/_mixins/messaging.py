@@ -108,6 +108,8 @@ class PortalMessagingMixin:
                 "SELECT email FROM clients WHERE id = $1 AND deleted_at IS NULL",
                 client_id,
             )
+            if not client:
+                raise ValueError(f"Client {client_id} not found")
 
             message = await conn.fetchrow(
                 """
@@ -149,13 +151,21 @@ class PortalMessagingMixin:
         *,
         current_user: ClientContext,
     ) -> dict[str, Any]:
-        """Mark a message as read."""
+        """Mark a message as read.
+
+        Only `team_to_client` messages can be marked read by the client —
+        mirrors the operator-side guard in `crm_portal_integration.py`
+        (`mark_client_message_read`, which restricts to `client_to_team`).
+        Without this, a client could mark one of their OWN outbound
+        messages read and forge a "the team has read this" signal.
+        """
         async with self.pool.acquire() as conn:
             result = await conn.execute(
                 """
                 UPDATE portal_messages
                 SET read_at = NOW()
-                WHERE id = $1 AND client_id = $2 AND read_at IS NULL
+                WHERE id = $1 AND client_id = $2
+                AND direction = 'team_to_client' AND read_at IS NULL
                 """,
                 message_id,
                 client_id,
