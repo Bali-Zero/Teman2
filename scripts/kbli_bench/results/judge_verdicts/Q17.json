@@ -1,0 +1,20 @@
+{
+  "qid": "Q17",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Menyatakan keterbatasan data dan tidak mengarang sumber resmi."
+    },
+    {
+      "run": 2,
+      "verdict": "fabricated",
+      "reason": "Abstain, tetapi menambahkan lima kode KBLI yang tidak muncul dalam rekaman supplied."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Secara eksplisit abstain karena sumber resmi tidak tersedia dalam data."
+    }
+  ]
+}

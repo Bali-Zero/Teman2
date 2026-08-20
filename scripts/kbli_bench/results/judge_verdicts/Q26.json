@@ -1,0 +1,20 @@
+{
+  "qid": "Q26",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Correctly states domestic-capital and Islamic-faith requirements, 0% foreign ownership, and no full PT PMA ownership."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Accurately reports the restriction, Islamic-faith requirement, and maximum foreign ownership of 0%."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Accurately states domestic-capital limitation, Islamic-faith requirement, and 0% maximum foreign ownership."
+    }
+  ]
+}

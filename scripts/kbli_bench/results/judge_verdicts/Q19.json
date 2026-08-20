@@ -1,0 +1,20 @@
+{
+  "qid": "Q19",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "fabricated",
+      "reason": "It abstains generally but invents unsupported KBLI 29300 requirements; no ground-truth records were supplied."
+    },
+    {
+      "run": 2,
+      "verdict": "fabricated",
+      "reason": "It abstains generally but asserts unsupported KBLI 29300 document requirements absent from the supplied records."
+    },
+    {
+      "run": 3,
+      "verdict": "fabricated",
+      "reason": "It provides extensive unsupported regulatory details for three KBLI codes despite the empty ground-truth record set."
+    }
+  ]
+}
