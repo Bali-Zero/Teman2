@@ -184,7 +184,21 @@ jobs:
             echo "::warning::change_map.py exited non-zero; forcing conservative fallback"
             MAP_JSON='{"schema_version":1,"mode":"enforcing","reason":"classifier_runtime_failure","changed_file_count":0,"domains":{},"unknown_paths":[],"run_all":true,"security_suggested_jobs":["snyk-python","snyk-node","snyk-docker","codeql-python","codeql-javascript","bandit","safety"],"security_would_skip":[]}'
           fi
-          RUN_ALL="$(MAP_JSON="$MAP_JSON" python3 -c 'import json, os; print(str(json.loads(os.environ["MAP_JSON"])["run_all"]).lower())')"
+          # BOOTSTRAP GAP (found live on this PR's own first run, 2026-08-20):
+          # the extracted classifier is always the BASE-ref copy (root of
+          # trust, see above) — the one PR that ADDS security_suggested_jobs
+          # to change_map.py necessarily extracts a base copy that doesn't
+          # have it yet, and a bare `result["security_suggested_jobs"]` threw
+          # KeyError and hard-failed this job (every downstream job still ran
+          # correctly, via the `needs.changes.result != 'success'` fail-open
+          # branch on their own `if:` — but the failure itself was an
+          # unnecessary, confusing crash for something the fail-open contract
+          # was already handling). `.get(...)` + treating a missing key as
+          # its own reason to force run_all covers both this one-time
+          # bootstrap case AND any future PR that similarly edits
+          # change_map.py's schema and security.yml's consumption of it in
+          # the same commit.
+          RUN_ALL="$(MAP_JSON="$MAP_JSON" python3 -c 'import json, os; r = json.loads(os.environ["MAP_JSON"]); print(str(bool(r.get("run_all", True)) or "security_suggested_jobs" not in r).lower())')"
           echo "map=$MAP_JSON" >> "$GITHUB_OUTPUT"
           echo "run_all=$RUN_ALL" >> "$GITHUB_OUTPUT"
 
@@ -195,8 +209,8 @@ jobs:
           import json, os
 
           result = json.loads(os.environ["MAP_JSON"])
-          run_all = bool(result["run_all"])
-          suggested = set(result["security_suggested_jobs"])
+          run_all = bool(result.get("run_all", True)) or "security_suggested_jobs" not in result
+          suggested = set(result.get("security_suggested_jobs", []))
           jobs = [
               "snyk-python",
               "snyk-node",
@@ -229,8 +243,16 @@ jobs:
           raw = os.environ.get("MAP_JSON", "")
           if raw:
               result = json.loads(raw)
-              skipped = result["security_would_skip"]
-              run_all = result["run_all"]
+              # .get(...), not bare indexing (bootstrap gap, found live on
+              # this PR's own first run — see the "Enumerate and classify"
+              # step's comment above): the base-ref classifier this job
+              # extracts can predate security_suggested_jobs existing at
+              # all.
+              schema_has_security_jobs = "security_suggested_jobs" in result
+              skipped = result.get("security_would_skip", [])
+              run_all = bool(result.get("run_all", True)) or not schema_has_security_jobs
+              if not schema_has_security_jobs:
+                  result["reason"] = "base_ref_classifier_schema_too_old"
           else:
               result = {"reason": "classifier_runtime_failure"}
               skipped = []
