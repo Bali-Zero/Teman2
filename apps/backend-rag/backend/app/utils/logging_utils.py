@@ -39,6 +39,47 @@ def sanitize_log_path(path: str) -> str:
     return path_text
 
 
+# CWE-117 log forging: any C0 control character other than CR/LF (which get
+# their own explicit .replace() below, matching the pattern CodeQL's
+# py/log-injection help text recognizes) plus DEL.
+_LOG_CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
+
+def sanitize_for_log(value: Any, max_len: int = 200) -> str:
+    """Neutralize a value before it is interpolated into a log message.
+
+    A value that reaches a log call unmodified lets whoever controls it
+    forge fake log lines (CWE-117 / CWE-93): embed `\\r\\n` and the next
+    "line" of the log reads as a separate, attacker-authored entry. In this
+    codebase every `logger.*` call is also a Sentry breadcrumb, and Sentry's
+    PII redaction is per-KEY — it does not scrub the message text — so an
+    unsanitized interpolation is a route for injected content (and any PII
+    riding along with it) to leave the machine unredacted.
+
+    Strips CR/LF (the primary line-forging vector) and other C0/DEL control
+    characters, then truncates so one field can't blow out a log line.
+    Never raises: takes any value, coerces via `str()`, returns `"None"` for
+    `None` rather than the string `"None"`-via-str (same result, explicit).
+
+    Args:
+        value: The value about to be interpolated into a log message.
+        max_len: Truncate to this length (default 200 — long enough for a
+            useful log line, short enough to bound PII/log-forgery blast
+            radius). Pass a smaller value for fields you only log a preview
+            of (e.g. free-text search queries, message subjects).
+
+    Returns:
+        A single-line, length-bounded string safe to interpolate into a log
+        message.
+    """
+    text = "None" if value is None else str(value)
+    text = text.replace("\r\n", " ").replace("\r", " ").replace("\n", " ")
+    text = _LOG_CONTROL_CHARS_RE.sub("", text)
+    if len(text) > max_len:
+        text = text[: max_len - 3] + "..."
+    return text
+
+
 def get_logger(name: str) -> logging.Logger:
     """
     Get a logger instance for a module.

@@ -20,6 +20,7 @@ from backend.app.utils.logging_utils import (
     log_error,
     log_success,
     log_warning,
+    sanitize_for_log,
     sanitize_log_path,
 )
 
@@ -62,6 +63,97 @@ class TestSanitizeLogPath:
 
             assert sanitized == "/api/auth/verify-magic/[REDACTED]"
             assert raw_token not in sanitized
+
+
+class TestSanitizeForLog:
+    """CWE-117 log injection: a value logged verbatim lets whoever controls
+    it forge fake log lines / Sentry breadcrumbs. `sanitize_for_log` is the
+    class-wide cure — one function, applied at every logging call site
+    identified by the 2026-08-21 py/log-injection sweep (904 CodeQL alerts).
+    """
+
+    # --- Guilt: the attack from CodeQL's own py/log-injection help text ---
+
+    def test_strips_crlf_forged_log_line(self):
+        # CodeQL's documented attack: %0D%0A decodes to \r\n. A naive
+        # `logger.info(f"User name: {name}")` would print TWO log lines.
+        attack = "Guest\r\nUser name: Admin"
+
+        sanitized = sanitize_for_log(attack)
+
+        assert "\n" not in sanitized
+        assert "\r" not in sanitized
+        # The forged second "entry" must not read as its own line.
+        assert sanitized.count("User name:") == 1 or "\nUser name: Admin" not in sanitized
+
+    def test_strips_bare_lf(self):
+        sanitized = sanitize_for_log("line1\nFAKE ERROR: something bad happened")
+        assert "\n" not in sanitized
+
+    def test_strips_bare_cr(self):
+        # Bare \r alone (no \n) can still overwrite a terminal/log-viewer line.
+        sanitized = sanitize_for_log("progress: 50%\rprogress: FAKE 100% DONE")
+        assert "\r" not in sanitized
+
+    def test_strips_other_control_characters(self):
+        # ANSI/terminal-escape and other C0 control chars beyond CR/LF.
+        sanitized = sanitize_for_log("clean\x1b[31mFAKE RED TEXT\x1b[0m\x00tail")
+        assert "\x1b" not in sanitized
+        assert "\x00" not in sanitized
+
+    def test_truncates_long_input(self):
+        sanitized = sanitize_for_log("A" * 500, max_len=50)
+        assert len(sanitized) == 50
+        assert sanitized.endswith("...")
+
+    # --- Innocence: legitimate values survive readable ---
+
+    def test_preserves_ordinary_message(self):
+        assert sanitize_for_log("Client not found") == "Client not found"
+
+    def test_preserves_ordinary_id(self):
+        assert sanitize_for_log("a1b2c3d4-uuid-like-id") == "a1b2c3d4-uuid-like-id"
+
+    def test_preserves_unicode_and_emoji(self):
+        # Bali Zero logs are full of these (🧠, client names in Bahasa, etc.)
+        # — sanitization must not mangle legitimate non-ASCII content.
+        msg = "🧠 Client Budi Santoso — visa renewal"
+        assert sanitize_for_log(msg) == msg
+
+    def test_short_input_not_truncated(self):
+        assert sanitize_for_log("ok", max_len=200) == "ok"
+
+    # --- Type coercion / edge cases ---
+
+    def test_none_becomes_string_none(self):
+        assert sanitize_for_log(None) == "None"
+
+    def test_coerces_non_string_types(self):
+        assert sanitize_for_log(404) == "404"
+        assert sanitize_for_log(True) == "True"
+
+    def test_coerces_exception_object(self):
+        # str(exc) can itself echo attacker-controlled text (e.g. a
+        # ValueError message built from request data) — must be sanitized
+        # the same as any other logged value.
+        exc = ValueError("bad input\r\nFAKE: admin escalated")
+        sanitized = sanitize_for_log(exc)
+        assert "\n" not in sanitized
+        assert "\r" not in sanitized
+
+    def test_never_raises_on_weird_input(self):
+        class Unstringable:
+            def __str__(self):
+                return "weird\r\nobject"
+
+        sanitized = sanitize_for_log(Unstringable())
+        assert "\r" not in sanitized
+        assert "\n" not in sanitized
+
+    def test_idempotent(self):
+        once = sanitize_for_log("Guest\r\nAdmin")
+        twice = sanitize_for_log(once)
+        assert once == twice
 
 
 class TestGetLogger:
