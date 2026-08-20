@@ -106,6 +106,10 @@ CORPSE_SWEEP_FRESH_S = int(os.getenv("DLQ_CORPSE_SWEEP_FRESH_S", str(6 * 3600)))
 CONFIDENCE_RETRY = 0.95           # no-code-change retry threshold
 CONFIDENCE_AIDER = 0.90           # code-change aider threshold
 REASONING_TIMEOUT_S = 90          # claude --print timeout
+# 3-value classification (restart|config|code|unknown), same class as the
+# sentinel_lib/classifier.py TRANSIENT/DETERMINISTIC/UNKNOWN triage — Haiku,
+# per that live precedent (`--model haiku`).
+DLQ_REASON_MODEL = os.getenv("DLQ_REASON_MODEL", "claude-haiku-4-5-20251001")
 
 
 def _isolated_cwd() -> Path:
@@ -600,6 +604,7 @@ Rules:
                     "claude", "--print",
                     "--safe-mode", "--strict-mcp-config",
                     "--mcp-config", '{"mcpServers":{}}',
+                    "--model", DLQ_REASON_MODEL,
                     prompt,
                 ],
                 timeout=attempt_timeout,

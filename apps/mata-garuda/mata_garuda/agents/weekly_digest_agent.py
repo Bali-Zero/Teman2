@@ -10,6 +10,7 @@ Layer 4 Analista. Autonomy L1.
 from __future__ import annotations
 
 import logging
+import os
 import subprocess
 import time
 from datetime import datetime, timedelta, timezone
@@ -115,6 +116,13 @@ def build_analysis_prompt(rows: list[dict[str, str]], now: datetime | None = Non
     )
 
 
+# Cross-domain trend/risk/opportunity synthesis over up to 80 items — real
+# editorial judgment, not bounded extraction. CLAUDE.md root §5: implementer
+# synthesis = Sonnet 5 (not the Haiku-class grunt used for daily_briefing's
+# single-item TL;DR).
+WEEKLY_DIGEST_MODEL = os.environ.get("WEEKLY_DIGEST_MODEL", "claude-sonnet-5")
+
+
 def call_claude(prompt: str, timeout: int = 120) -> str:
     deadline = time.monotonic() + timeout
     chain = claude_token_chain()
@@ -125,7 +133,7 @@ def call_claude(prompt: str, timeout: int = 120) -> str:
         attempt_timeout = max(0.1, remaining / (len(chain) - position))
         try:
             result = _run_process_group(
-                ["claude", "--print", "-p", prompt],
+                ["claude", "--print", "-p", prompt, "--model", WEEKLY_DIGEST_MODEL],
                 timeout=attempt_timeout,
                 env=provider_cli_env("claude", token),
             )
