@@ -622,7 +622,47 @@ class TestProcessDocuments:
         response = client.get("/api/portal/process/required-documents")
 
         assert response.status_code == 200
-        assert response.json()["data"] == [completed_doc]
+        # The DB row carries `team_member_notes`; the CLIENT response must not.
+        # It is the operator's internal note (authoring UI: "Team Notes" /
+        # "Add notes for the team..."), and the client-facing note is
+        # `description`. Asserting the response equals the raw row would pin
+        # the leak — that is what this assertion used to do.
+        expected = {k: v for k, v in completed_doc.items() if k != "team_member_notes"}
+        assert response.json()["data"] == [expected]
+
+    def test_required_documents_never_expose_team_member_notes(
+        self,
+        client: TestClient,
+        mock_db_pool,
+    ) -> None:
+        """Internal staff notes must not reach the client, even when set."""
+        row = {
+            "id": 8,
+            "practice_id": 82,
+            "process_name": "KITAS",
+            "process_status": "on_process",
+            "document_type": "passport",
+            "document_label": "Passport copy",
+            "description": "Please re-upload, the scan is blurry",
+            "is_required": True,
+            "uploaded_by_client": False,
+            "status": "pending",
+            "client_notes": None,
+            "team_member_notes": "INTERNAL: chase the agent, client is unreliable",
+        }
+        mock_db_pool._mock_conn.fetch.return_value = [row]
+
+        response = client.get("/api/portal/process/required-documents")
+
+        assert response.status_code == 200
+        payload = response.json()["data"]
+        assert payload, "expected one document in the response"
+        for item in payload:
+            assert "team_member_notes" not in item
+        # the client-facing note still travels
+        assert payload[0]["description"] == "Please re-upload, the scan is blurry"
+        # and the internal text appears nowhere in the serialised body
+        assert "INTERNAL:" not in response.text
 
 
 # ============================================
