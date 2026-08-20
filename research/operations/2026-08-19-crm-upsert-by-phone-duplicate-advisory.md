@@ -222,8 +222,8 @@ five, and a second seat produced the two it had missed):
 
 **The shared phone lands on `:192`, the silent one.** That is the whole point: because the endpoint
 answers `client_id: None`, the refusal arrives at the caller as an unremarkable "no id" and exits
-without a word, while the warning written to name it sits four exits further down waiting for a
-response shape this caller can never receive.
+without a word, while the warning written to name it sits two exits further down (`:214`, guarded at
+`:209`) waiting for a response shape this caller can never receive.
 
 So a shared-phone refusal produces exactly **one** line in the entire system, and it is the line
 seven causes share. Both warnings written to name this cause are unreachable: the server's `N
@@ -349,7 +349,7 @@ times**, all three real:
   redraft's *"nothing is logged anywhere"*. It exists and cannot fire.
 - **And the refusal is logged one layer up** (`crm_delivery.py:391-397`) — against the *next*
   redraft's "dropped silently". The defect is not silence but collapse: every cause, one string.
-  (How many causes that is took a fourth seat — see Round 4.)
+  (How many causes that is took a third seat — see Round 4.)
 
 Three drafts of one correction, three refutations. The retraction was the easy part; **every**
 sentence written to replace it was wrong on first attempt, and the most dangerous one was the
