@@ -239,6 +239,8 @@ jobs:
               scripts/ci/check_required_workflow_conformance.py|\
               scripts/tests/test_required_context_map.py|\
               scripts/tests/test_check_required_workflow_conformance.py|\
+              scripts/ci/lint_unreachable_workflow_conditions.py|\
+              scripts/tests/test_unreachable_workflow_conditions.py|\
               infra/required.d/contexts.json|\
               infra/guard-conformance/registry.json|\
               infra/guard-conformance/check_guard_conformance.py|\
@@ -370,7 +372,8 @@ jobs:
             scripts/tests/test_drive_watchdog_tier_ratchet.py \
             scripts/test_lint_test_reward_hacking.py \
             scripts/tests/test_required_context_map.py \
-            scripts/tests/test_check_required_workflow_conformance.py ; do
+            scripts/tests/test_check_required_workflow_conformance.py \
+            scripts/tests/test_unreachable_workflow_conditions.py ; do
             if [ -f "$t" ]; then
               echo "::group::$t"
               python -m pytest "$t" -q || fail=1
@@ -849,6 +852,24 @@ jobs:
           # clean today — a censused guard that no workflow actually runs against
           # live data is theater (W81).
           python3 scripts/ci/check_required_workflow_conformance.py
+
+      - name: "Unreachable workflow if: conditions (security.yml orphaned-alarm class)"
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # scripts/ci/lint_unreachable_workflow_conditions.py + its corpus
+          # (test_unreachable_workflow_conditions.py, in the batch loop above)
+          # shipped together, curing security.yml's Telegram-alert `if:` in
+          # the same PR (commit 4e2d8367e / #4218 narrowed `on.push.branches`
+          # and orphaned it — armed and mute for four days, until the
+          # 2026-08-20 unbuildable-image incident alarmed nobody). The
+          # guilt+innocence corpus above proves the CHECKER can still bite;
+          # this step proves the REAL repo tree is clean today — a censused
+          # guard that no workflow actually runs against live data is
+          # theater (W81). Verified empirically (2026-08-20): 93 tracked
+          # workflows, 10 in-scope `if:` conditions, 0 findings, 6 UNDECIDED
+          # (all outside the declared decidable shape — see the tool's own
+          # module docstring — never silently read as clean).
+          python3 scripts/ci/lint_unreachable_workflow_conditions.py
 
       - name: declared-pairs.json is valid JSON with sane shape
         if: steps.paths.outputs.relevant == 'true'
