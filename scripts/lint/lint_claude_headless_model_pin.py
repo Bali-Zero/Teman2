@@ -47,11 +47,13 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import io
 import json
 import os
 import re
 import subprocess
 import sys
+import tokenize
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -78,6 +80,102 @@ _engine = _load_engine()
 # substring — same anchoring discipline as the engine's own FLAG_PRINT_RE).
 MODEL_FLAG_RE = re.compile(r"(?<![\w-])--model(?![\w-])")
 
+_STRING_PREFIX_RE = re.compile(r"^[A-Za-z]*")
+
+
+def _strip_python_triple_quoted_strings(raw_lines: list) -> list:
+    """Blank the CONTENT of every Python triple-quoted string literal
+    (module/function/class docstrings, and any other `\"\"\"`/`'''`
+    literal) before anchor scanning — using Python's own `tokenize` module
+    to find the real spans, NOT a hand-rolled quote scanner.
+
+    Discovered false-positive (2026-08-20, follow-up to the model-pin PR):
+    prose like `\"\"\"Claude via Max plan OAuth (subprocess to ``claude
+    -p``).\"\"\"` trips ANCHOR_BARE_CLAUDE_RE + FLAG_PRINT_RE exactly like a
+    real invocation would — the docstring is narrating the module's own
+    behavior in English, not spawning anything.
+
+    GOTCHA that killed the first (regex) version of this function, same
+    session: `scripts/generate_automations_excel.py:271` has
+    `stripped.startswith('\"\"\"')` — a SINGLE-quoted 3-character string
+    literal whose CONTENT happens to be `\"\"\"`. A raw substring scan for
+    the token `\"\"\"` cannot tell that apart from a real triple-quote
+    opener; it read this as an unterminated docstring start and blanked
+    every line onward up to the next accidental `\"\"\"` occurrence — which
+    silently deleted the anchor for a genuinely real, unpinned invocation
+    (`[\"claude\", \"--print\", prompt]`) almost 30 lines later, at line 299.
+    `tokenize` already solves exactly this (it is a real Python lexer, not
+    a substring search): a STRING token's `.string` is the token's own raw
+    source text, so `'\"\"\"'` tokenizes as ONE single-quoted STRING token
+    whose text starts with `'`, never mistaken for a triple-quote opener.
+
+    Every real subprocess argv anchor in this repo is a short
+    single/double-quoted token inside an argv list (`[\"claude\",
+    \"--print\", ...]`) or a `claude_bin`-style variable, never a
+    triple-quoted literal — so this function ONLY blanks tokens whose raw
+    text (after any string-prefix letters: f/r/b/u and combinations) starts
+    with `\"\"\"` or `'''`; ordinary single/double-quoted tokens (including
+    the real argv-token anchors) are left completely untouched.
+
+    On a file that does not tokenize cleanly (should not happen for a
+    tracked, syntactically valid `.py` file, but the rest of this module
+    already tolerates unreadable input) this returns `raw_lines` unchanged
+    — declared blind spot, same fail-open policy as `_strip_heredoc_bodies`
+    for an unterminated marker."""
+    out = list(raw_lines)
+    source = "\n".join(out) + "\n"
+    try:
+        tokens = list(tokenize.generate_tokens(io.StringIO(source).readline))
+    except (tokenize.TokenError, IndentationError, SyntaxError, ValueError):
+        return out
+
+    for tok in tokens:
+        if tok.type != tokenize.STRING:
+            continue
+        body = _STRING_PREFIX_RE.sub("", tok.string, count=1)
+        if not (body.startswith('"""') or body.startswith("'''")):
+            continue  # a real single/double-quoted token — leave it alone
+        (sr, sc), (er, ec) = tok.start, tok.end
+        sr -= 1  # tokenize rows are 1-based; raw_lines/out are 0-based
+        er -= 1
+        if sr == er:
+            line = out[sr]
+            out[sr] = line[:sc] + " " * (ec - sc) + line[ec:]
+        else:
+            first = out[sr]
+            out[sr] = first[:sc] + " " * (len(first) - sc)
+            for j in range(sr + 1, er):
+                out[j] = ""
+            last = out[er]
+            out[er] = " " * ec + last[ec:]
+    return out
+
+
+_SHELL_PRINT_VERB_RE = re.compile(r"^\s*(?:echo|printf|log)\b")
+
+
+def _shell_bare_anchor_is_print_string(line: str, anchor_start: int) -> bool:
+    """True when a "bare" anchor on a shell line sits inside a quoted
+    string argument to a known print-verb (echo/printf/log) — e.g.
+    `echo "[DRY RUN] Would run claude -p ..."` or `log "DRY RUN: claude
+    -p (...)"`. These are diagnostic/log STRINGS narrating the real
+    invocation in prose, not the invocation itself, and trip
+    ANCHOR_BARE_CLAUDE_RE + FLAG_PRINT_RE purely because the message
+    happens to name the command.
+
+    Deliberately narrow (family #3 discipline — an exclusion is a guard
+    with the sign flipped, and needs its own guilt+innocence pair): only
+    lines that START with a print verb qualify, and only when the anchor
+    sits inside an ODD count of unescaped double-quotes on that line — a
+    real invocation chained/piped AFTER an echo on the SAME line (e.g.
+    `echo "..." ; claude -p "$x" --model foo`) has an EVEN quote count in
+    front of the `claude` token (outside the echoed string) and is never
+    excluded by this check."""
+    if not _SHELL_PRINT_VERB_RE.match(line):
+        return False
+    prefix = line[:anchor_start]
+    return _engine._count_unescaped(prefix, '"') % 2 == 1
+
 
 def check_file(path: Path, repo_root: Path) -> list:
     """Same anchor→window pipeline as lint_claude_headless_limits.check_file,
@@ -90,13 +188,44 @@ def check_file(path: Path, repo_root: Path) -> list:
         return findings
 
     raw_lines = _engine._strip_heredoc_bodies(raw_lines)
+    is_python = path.suffix == ".py"
+    if is_python:
+        raw_lines = _strip_python_triple_quoted_strings(raw_lines)
     stripped_lines = [_engine._strip_comment(line) for line in raw_lines]
     anchors = _engine._find_anchors(stripped_lines)
+
+    if is_python:
+        # "bare" kind is a SHELL concept (an unquoted command word) with no
+        # valid Python equivalent: subprocess.run() takes either an argv
+        # LIST of quoted string tokens (-> "quoted" kind) or a single quoted
+        # command string (still inside quotes) — there is no Python syntax
+        # where an executed `claude` token is neither. Empirically, every
+        # "bare" Python finding measured live (2026-08-20 follow-up) was a
+        # logger/raise/print/f-string message or a regex/argparse-help
+        # string narrating the invocation in prose — never the invocation
+        # itself. Declared blind spot (not hidden): a Python string holding
+        # LITERAL SHELL SCRIPT TEXT with an unpinned `claude -p` (e.g. a
+        # wrapper-generator writing a .sh template) would also be dropped
+        # here — none exist in this repo today (verified by grep before
+        # writing this exclusion), and such a file's OWN `.sh` output, once
+        # written to disk, is still scanned directly by the shell path.
+        anchors = [(ln, kind) for ln, kind in anchors if kind != "bare"]
+    else:
+        kept = []
+        for ln, kind in anchors:
+            if kind == "bare":
+                am = _engine.ANCHOR_BARE_CLAUDE_RE.search(stripped_lines[ln])
+                if am and _shell_bare_anchor_is_print_string(
+                    stripped_lines[ln], am.start()
+                ):
+                    continue  # echo/log/printf narration, not a real call
+            kept.append((ln, kind))
+        anchors = kept
+
     if not anchors:
         return findings
 
     rel = str(path.relative_to(repo_root))
-    is_python = path.suffix == ".py"
 
     for pos, (anchor_line, anchor_kind) in enumerate(anchors):
         if is_python:
@@ -362,6 +491,114 @@ def selftest() -> int:
                 return cmd  # never spawned
             ''')
         check_ok("non-executing argv builder is out of scope", check(repo) == [])
+
+        # ---- INNOCENCE: multi-line module docstring narrating the real
+        # invocation in prose (2026-08-20 follow-up — exact shape of
+        # apps/backend-rag/backend/llm/claude_oauth_client.py:1) ----
+        repo = make_repo(tmp_path / "innocent_module_docstring")
+        write(repo, "scripts/oauth_client.py", '''\
+            """Claude via Max plan OAuth (subprocess to ``claude -p``).
+
+            Project policy: all Claude integrations must use the Max plan
+            OAuth token, never ANTHROPIC_API_KEY.
+            """
+            import subprocess
+
+            def call():
+                return subprocess.run(
+                    ["claude", "--print", "-p", prompt, "--model", "haiku"],
+                )
+            ''')
+        check_ok(
+            "multi-line module docstring never matches",
+            check(repo) == [],
+        )
+
+        # ---- INNOCENCE: one-line function docstring, same-line open+close
+        # (e.g. `"""Load the agent .md body ..."""` style) ----
+        repo = make_repo(tmp_path / "innocent_oneline_docstring")
+        write(repo, "scripts/oneline.py", '''\
+            def helper():
+                """Isolated cwd for `claude --print` subprocess call."""
+                return 1
+            ''')
+        check_ok("one-line docstring never matches", check(repo) == [])
+
+        # ---- GUILT still stands: a REAL bare invocation textually adjacent
+        # to (right after) a docstring is still flagged — the stripper only
+        # blanks the docstring SPAN, not the code around it ----
+        repo = make_repo(tmp_path / "guilt_after_docstring")
+        write(repo, "scripts/after_doc.py", '''\
+            """Some module doing `claude -p` things, for humans to read."""
+            import subprocess
+
+            def call():
+                return subprocess.run(["claude", "--print", "-p", prompt])
+            ''')
+        findings = check(repo)
+        check_ok(
+            "real invocation after a docstring is still flagged",
+            len(findings) == 1,
+        )
+
+        # ---- REGRESSION: a single-quoted string whose CONTENT is `"""`
+        # must never be misread as a triple-quote opener (2026-08-20 —
+        # the exact bug that killed the first regex-based version of the
+        # stripper on scripts/generate_automations_excel.py:271, silently
+        # blanking a real invocation ~30 lines later) ----
+        repo = make_repo(tmp_path / "guilt_quote_lookalike")
+        write(repo, "scripts/lookalike.py", '''\
+            import subprocess
+
+            def classify(stripped):
+                if stripped.startswith('"""'):
+                    return "docstring"
+                return "other"
+
+            def call(prompt):
+                return subprocess.run(["claude", "--print", prompt])
+            ''')
+        findings = check(repo)
+        check_ok(
+            "single-quoted 3-double-quote-content string never mistaken "
+            "for a triple-quote opener (real invocation past it still "
+            "flagged)",
+            len(findings) == 1
+            and findings[0].file == "scripts/lookalike.py",
+        )
+
+        # ---- INNOCENCE: shell echo/log dry-run narration (2026-08-20
+        # follow-up — exact shape of
+        # infra/launchagents/wrappers/cron-agent.sh:391-392) ----
+        repo = make_repo(tmp_path / "innocent_shell_echo")
+        write(repo, "infra/launchagents/wrappers/dryrun.sh", '''\
+            #!/bin/bash
+            claude_bin="${CRON_AGENT_CLAUDE_BIN:-claude}"
+            if [ "$dry_run" = "1" ]; then
+                echo "[DRY RUN] Would run claude -p with prompt from $f"
+                log "DRY RUN: claude -p (${#prompt} chars)"
+                return 0
+            fi
+            "$claude_bin" -p --model "$cron_model" "$prompt"
+            ''')
+        check_ok(
+            "echo/log dry-run narration of claude -p never matches",
+            check(repo) == [],
+        )
+
+        # ---- GUILT still stands: a REAL invocation chained AFTER an echo
+        # on the SAME line is still flagged (proves the quote-parity check
+        # doesn't overreach past the echoed string) ----
+        repo = make_repo(tmp_path / "guilt_after_echo_same_line")
+        write(repo, "infra/launchagents/wrappers/chained.sh", '''\
+            #!/bin/bash
+            echo "starting" ; claude -p "$prompt"
+            ''')
+        findings = check(repo)
+        check_ok(
+            "real invocation chained after echo on the same line is still flagged",
+            len(findings) == 1,
+        )
 
         # ---- freeze / lint / monotone roundtrip ----
         repo = make_repo(tmp_path / "roundtrip")
