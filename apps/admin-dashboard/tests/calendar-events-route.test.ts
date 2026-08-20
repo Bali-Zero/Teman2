@@ -2,15 +2,24 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 /**
- * CodeQL js/command-line-injection #2311/#2312/#2313 (2026-08-21):
- * GET/POST/DELETE built a `gog` shell command with a template string and ran
- * it via `child_process.exec`, which spawns `/bin/sh -c <string>`. A
- * `calendarId`/`summary`/`eventId` containing shell metacharacters (`;`,
- * `$(...)`, backticks, a stray `"`) could break out of its quoted slot and
- * run arbitrary shell. The fix swaps `exec` + string concatenation for
- * `execFile` + an argv array — no shell is ever spawned, so each array
- * element reaches the `gog` binary as exactly one argument no matter what
- * characters it contains.
+ * Two distinct vulnerability classes on this route, both from CodeQL
+ * (js/command-line-injection #2311/#2312/#2313, 2026-08-21) and a follow-up
+ * security review on the first fix:
+ *
+ * 1. SHELL injection (CWE-78) — the original bug. GET/POST/DELETE built a
+ *    `gog` shell command with a template string and ran it via
+ *    `child_process.exec`, which spawns `/bin/sh -c <string>`. Fixed by
+ *    switching to `execFile` + an argv array: no shell is ever spawned, so
+ *    shell metacharacters in a value are inert wherever they reach `gog` at
+ *    all.
+ * 2. ARGUMENT injection / flag smuggling (CWE-88) — execFile's own residual
+ *    risk. gog is built on alecthomas/kong, which (like effectively every
+ *    CLI-parsing library) reads any `-`-prefixed argv token as a candidate
+ *    FLAG regardless of which array slot it lands in. A calendarId of
+ *    `--upload-file=/etc/passwd` carries no shell risk but could still be
+ *    reinterpreted by gog itself. Fixed by allow-listing every field to the
+ *    shape it must have (never a blocklist), explicitly rejecting anything
+ *    that starts with `-`.
  *
  * `child_process` is mocked at the module the route imports, so `exec` and
  * `execFile` resolve to the same spies the route calls.
@@ -36,6 +45,7 @@ vi.mock("child_process", () => ({
 const { GET, POST, DELETE } = await import("@/app/api/calendar/events/route");
 
 const SHELL_PAYLOAD = '"; touch /tmp/pwned; echo "';
+const VALID_CAL_ID = "team@balizero.com";
 
 function getReq(search: string): NextRequest {
   return new NextRequest(
@@ -58,23 +68,43 @@ beforeEach(() => {
   );
 });
 
-describe("/api/calendar/events GET — command injection", () => {
-  it("GUILT: a calendarId with shell metacharacters never reaches a shell", async () => {
+describe("/api/calendar/events GET", () => {
+  it("GUILT (shell): a calendarId with shell metacharacters is rejected by shape validation, never reaches a process", async () => {
     const res = await GET(
       getReq(`?calendarId=${encodeURIComponent(SHELL_PAYLOAD)}`),
     );
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(400);
     expect(execMock).not.toHaveBeenCalled();
-    expect(execFileMock).toHaveBeenCalledTimes(1);
-    const [file, args] = execFileMock.mock.calls[0];
-    expect(file).toBe("/opt/homebrew/bin/gog");
-    // The whole payload must survive as ONE argv element — never split,
-    // never interpreted, never used to grow the args array.
-    expect(args).toContain(SHELL_PAYLOAD);
-    expect(args.filter((a: string) => a === SHELL_PAYLOAD)).toHaveLength(1);
+    expect(execFileMock).not.toHaveBeenCalled();
   });
 
-  it("INNOCENCE: a normal request resolves the parsed events", async () => {
+  it("GUILT (argv flag smuggling): a calendarId starting with '-' is rejected, not passed to gog", async () => {
+    const res = await GET(
+      getReq(`?calendarId=${encodeURIComponent("--upload-file=/etc/passwd")}`),
+    );
+    expect(res.status).toBe(400);
+    expect(execFileMock).not.toHaveBeenCalled();
+  });
+
+  it("GUILT (argv flag smuggling): a days value starting with '-' is rejected", async () => {
+    const res = await GET(
+      getReq(
+        `?calendarId=${VALID_CAL_ID}&days=${encodeURIComponent("--evil")}`,
+      ),
+    );
+    expect(res.status).toBe(400);
+    expect(execFileMock).not.toHaveBeenCalled();
+  });
+
+  it("GUILT (argv flag smuggling): a max value starting with '-' is rejected", async () => {
+    const res = await GET(
+      getReq(`?calendarId=${VALID_CAL_ID}&max=${encodeURIComponent("--evil")}`),
+    );
+    expect(res.status).toBe(400);
+    expect(execFileMock).not.toHaveBeenCalled();
+  });
+
+  it("INNOCENCE: a normal request resolves the parsed events with the exact argv", async () => {
     execFileMock.mockImplementation((_file, _args, cb) =>
       cb(null, {
         stdout: JSON.stringify({
@@ -83,7 +113,7 @@ describe("/api/calendar/events GET — command injection", () => {
         stderr: "",
       }),
     );
-    const res = await GET(getReq("?calendarId=team-cal&days=7&max=10"));
+    const res = await GET(getReq(`?calendarId=${VALID_CAL_ID}&days=7&max=10`));
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.success).toBe(true);
@@ -93,7 +123,7 @@ describe("/api/calendar/events GET — command injection", () => {
     expect(args).toEqual([
       "calendar",
       "events",
-      "team-cal",
+      VALID_CAL_ID,
       "--days",
       "7",
       "--max",
@@ -101,18 +131,29 @@ describe("/api/calendar/events GET — command injection", () => {
       "--json",
     ]);
   });
+
+  it("INNOCENCE: 'primary' is an accepted calendarId shape", async () => {
+    const res = await GET(getReq("?calendarId=primary"));
+    expect(res.status).toBe(200);
+    expect(execFileMock).toHaveBeenCalledTimes(1);
+  });
 });
 
-describe("/api/calendar/events POST — command injection", () => {
-  it("GUILT: a summary with shell metacharacters never reaches a shell", async () => {
+describe("/api/calendar/events POST", () => {
+  const validBody = {
+    summary: "Team sync",
+    from: "2026-08-21T10:00:00Z",
+    to: "2026-08-21T11:00:00Z",
+  };
+
+  it("GUILT (shell): a summary with shell metacharacters survives as one inert argv element (execFile, not exec)", async () => {
     execFileMock.mockImplementation((_file, _args, cb) =>
       cb(null, { stdout: "{}", stderr: "" }),
     );
     const res = await POST(
       postReq({
+        ...validBody,
         summary: SHELL_PAYLOAD,
-        from: "2026-08-21T10:00:00Z",
-        to: "2026-08-21T11:00:00Z",
         description: "`whoami`",
       }),
     );
@@ -120,8 +161,6 @@ describe("/api/calendar/events POST — command injection", () => {
     expect(execMock).not.toHaveBeenCalled();
     const [file, args] = execFileMock.mock.calls[0];
     expect(file).toBe("/opt/homebrew/bin/gog");
-    expect(args).toContain(SHELL_PAYLOAD);
-    expect(args).toContain("`whoami`");
     // Injected content must not have grown the argv beyond the fields
     // actually supplied (summary/from/to/description + fixed flags + --json).
     expect(args).toEqual([
@@ -140,17 +179,53 @@ describe("/api/calendar/events POST — command injection", () => {
     ]);
   });
 
+  it("GUILT (argv flag smuggling): a summary starting with '-' is rejected, not passed to gog", async () => {
+    const res = await POST(
+      postReq({ ...validBody, summary: "--upload-file=/etc/passwd" }),
+    );
+    expect(res.status).toBe(400);
+    expect(execFileMock).not.toHaveBeenCalled();
+  });
+
+  it("GUILT (argv flag smuggling): a description starting with '-' is rejected", async () => {
+    const res = await POST(
+      postReq({ ...validBody, description: "--evil-flag" }),
+    );
+    expect(res.status).toBe(400);
+    expect(execFileMock).not.toHaveBeenCalled();
+  });
+
+  it("GUILT (argv flag smuggling): a location starting with '-' is rejected", async () => {
+    const res = await POST(postReq({ ...validBody, location: "--evil-flag" }));
+    expect(res.status).toBe(400);
+    expect(execFileMock).not.toHaveBeenCalled();
+  });
+
+  it("GUILT (argv flag smuggling): an attendees value starting with '-' is rejected", async () => {
+    const res = await POST(postReq({ ...validBody, attendees: "--evil-flag" }));
+    expect(res.status).toBe(400);
+    expect(execFileMock).not.toHaveBeenCalled();
+  });
+
+  it("GUILT (argv flag smuggling): a calendarId starting with '-' is rejected", async () => {
+    const res = await POST(
+      postReq({ ...validBody, calendarId: "--upload-file=/etc/passwd" }),
+    );
+    expect(res.status).toBe(400);
+    expect(execFileMock).not.toHaveBeenCalled();
+  });
+
+  it("GUILT: a non-ISO 'from'/'to' (including a flag-shaped one) is rejected", async () => {
+    const res = await POST(postReq({ ...validBody, from: "--evil" }));
+    expect(res.status).toBe(400);
+    expect(execFileMock).not.toHaveBeenCalled();
+  });
+
   it("INNOCENCE: a legitimate create still works and rejects incomplete payloads", async () => {
     execFileMock.mockImplementation((_file, _args, cb) =>
       cb(null, { stdout: JSON.stringify({ id: "evt1" }), stderr: "" }),
     );
-    const res = await POST(
-      postReq({
-        summary: "Team sync",
-        from: "2026-08-21T10:00:00Z",
-        to: "2026-08-21T11:00:00Z",
-      }),
-    );
+    const res = await POST(postReq(validBody));
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json).toEqual({ success: true, event: { id: "evt1" } });
@@ -160,32 +235,82 @@ describe("/api/calendar/events POST — command injection", () => {
     expect(bad.status).toBe(400);
     expect(execFileMock).not.toHaveBeenCalled();
   });
+
+  it("INNOCENCE: description/location/attendees with ordinary hyphens still work", async () => {
+    execFileMock.mockImplementation((_file, _args, cb) =>
+      cb(null, { stdout: "{}", stderr: "" }),
+    );
+    const res = await POST(
+      postReq({
+        ...validBody,
+        description: "Q3 planning - budget review",
+        location: "Meeting Room - 2nd floor",
+        attendees: "a@balizero.com,b@balizero.com",
+      }),
+    );
+    expect(res.status).toBe(200);
+    const [, args] = execFileMock.mock.calls[0];
+    expect(args).toContain("--description");
+    expect(args).toContain("Q3 planning - budget review");
+    expect(args).toContain("--attendees");
+    expect(args).toContain("a@balizero.com,b@balizero.com");
+  });
 });
 
-describe("/api/calendar/events DELETE — command injection", () => {
-  it("GUILT: an eventId with shell metacharacters never reaches a shell", async () => {
+describe("/api/calendar/events DELETE", () => {
+  it("GUILT (shell): an eventId with shell metacharacters is rejected by shape validation, never reaches a process", async () => {
+    const res = await DELETE(
+      getReq(
+        `?eventId=${encodeURIComponent(SHELL_PAYLOAD)}&calendarId=${VALID_CAL_ID}`,
+      ),
+    );
+    expect(res.status).toBe(400);
+    expect(execMock).not.toHaveBeenCalled();
+    expect(execFileMock).not.toHaveBeenCalled();
+  });
+
+  it("GUILT (argv flag smuggling): an eventId starting with '-' is rejected, not passed to gog", async () => {
+    const res = await DELETE(
+      getReq(
+        `?eventId=${encodeURIComponent("--force")}&calendarId=${VALID_CAL_ID}`,
+      ),
+    );
+    expect(res.status).toBe(400);
+    expect(execFileMock).not.toHaveBeenCalled();
+  });
+
+  it("GUILT (argv flag smuggling): a calendarId starting with '-' is rejected", async () => {
+    const res = await DELETE(
+      getReq(
+        `?eventId=abc123&calendarId=${encodeURIComponent("--upload-file=/etc/passwd")}`,
+      ),
+    );
+    expect(res.status).toBe(400);
+    expect(execFileMock).not.toHaveBeenCalled();
+  });
+
+  it("INNOCENCE: missing eventId is rejected before any process spawns", async () => {
+    const res = await DELETE(getReq(`?calendarId=${VALID_CAL_ID}`));
+    expect(res.status).toBe(400);
+    expect(execFileMock).not.toHaveBeenCalled();
+  });
+
+  it("INNOCENCE: a valid eventId+calendarId deletes with the exact argv", async () => {
     execFileMock.mockImplementation((_file, _args, cb) =>
       cb(null, { stdout: "", stderr: "" }),
     );
     const res = await DELETE(
-      getReq(`?eventId=${encodeURIComponent(SHELL_PAYLOAD)}&calendarId=cal1`),
+      getReq(`?eventId=abc123XYZ&calendarId=${VALID_CAL_ID}`),
     );
     expect(res.status).toBe(200);
-    expect(execMock).not.toHaveBeenCalled();
     const [file, args] = execFileMock.mock.calls[0];
     expect(file).toBe("/opt/homebrew/bin/gog");
     expect(args).toEqual([
       "calendar",
       "delete",
-      "cal1",
-      SHELL_PAYLOAD,
+      VALID_CAL_ID,
+      "abc123XYZ",
       "--force",
     ]);
-  });
-
-  it("INNOCENCE: missing eventId is rejected before any process spawns", async () => {
-    const res = await DELETE(getReq("?calendarId=cal1"));
-    expect(res.status).toBe(400);
-    expect(execFileMock).not.toHaveBeenCalled();
   });
 });
