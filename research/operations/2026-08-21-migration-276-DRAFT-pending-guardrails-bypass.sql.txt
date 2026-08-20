@@ -73,8 +73,20 @@ CREATE TABLE IF NOT EXISTS orphan_client_reassignment_archive (
     UNIQUE (migration_name, client_id)
 );
 
+-- Note (adversarial review, 2026-08-21): the ari@balizero.com typo row (1 of the 324
+-- orphans) is a mislabeled assignment, not a genuine orphan — Ari already owns that
+-- client under a misspelled email. It is intentionally left in this migration's generic
+-- orphan pool rather than special-cased here; the one-line correction
+-- (assigned_to = 'ari@balizero.com' -> 'ari.firda@balizero.com') is recommended as a
+-- separate, smaller follow-up migration, tracked outside this water-filling change.
 WITH team AS (
-    SELECT tm_email FROM (VALUES
+    -- SELECT DISTINCT: hardens against a duplicate literal row in the VALUES list
+    -- (copy-paste, or a future rewrite that builds this CTE from a join/view instead
+    -- of a literal list) silently double-counting that person's current_n and
+    -- corrupting every downstream level/allocation computation with no error raised.
+    -- Confirmed as a real corruption mode, not hypothetical — see Test 5 in
+    -- 2026-08-21-orphan-reassignment-water-filling-robustness-test.md (PR #4473).
+    SELECT DISTINCT tm_email FROM (VALUES
         ('damar@balizero.com'),
         ('surya@balizero.com'),
         ('vino@balizero.com'),
