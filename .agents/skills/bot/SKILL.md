@@ -82,6 +82,26 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
   - Small gap, noted not built: 1,089 calls / 0.8M input tokens in 45d carry an EMPTY `endpoint`
     label in `llm_cost_events` — unattributed call sites.
 
+- **⚡ BOT-V4 S3 ARMED (2026-08-20) — THE PRO DAEMON IS LIVE AND HEARTBEATING IN PROD; THE LANE
+  IS NO LONGER DARK SERVER-SIDE, STILL FLAG-OFF FOR WA (supersedes the S2 headline below as the
+  lane's current state).** Zero executed the three operator steps on Pro (provisioning script @
+  `7f64f86a1`, 08:39 WITA; one-time `codex login` as zantara-codex — `codex-cli 0.147.0`,
+  matching the env pin; `sudo launchctl bootstrap system`); the session minted `WA_BROKER_KEY`
+  entirely in root-land (python heredoc → 0600 env file + 0600 `/var/root` import file) and
+  shipped it WITH the canary record in ONE `fly secrets import` on stdin — the key never touched
+  argv, shell history, or the session transcript. Proof-of-armed, all measured: `launchctl
+print` → state=running, pid 78690, never exited, user zantara-codex; `wa_broker_gauge` row
+  present AND ADVANCING (`broker_last_seen_at` 01:11:48Z→01:12:48Z, breaker closed, 0
+  consecutive failures) — the daemon itself is the keyed prober, so keyed claims are landing
+  200 end-to-end without any session ever holding the key; unkeyed claim still 401 (negative
+  control); `rag` machine STARTED on the post-import release (scar checked, did not bite).
+  Benign measured footnotes (recorded in the closing PR's script comments): sysadminctl's
+  `-password` did not take — the account has NO `AuthenticationAuthority`, which is safer (no
+  hash, nothing to authenticate against) and it did not hang; the runtime venv is Python 3.14.6
+  (daemon needs stdlib+httpx only). **WhatsApp still runs on Gemini** — what remains before any
+  real client text: the seat sentinel (own PR, ledger row), the G-P1..P6 ladder, and the S4
+  cutover which is the owner's switch alone (`WA_GENERATION_PROVIDER` — no session may flip it).
+
 - **🏗️ BOT-V4 S2 BUILT AND DEPLOYED FLAG-OFF (2026-08-20) — THE BROKER EXISTS IN PROD, DARK;
   THE PRO DAEMON EXISTS ON MAIN, UNPROVISIONED; REAL WA STILL NO-GO (supersedes the spec-shipped
   headline below as the lane's current state).** Six PRs, every one through the adversarial

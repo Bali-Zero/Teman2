@@ -129,6 +129,28 @@
         ".claude/skills/modus/PENDING-ARMS.md (the closed 2026-08-08 repo-sync line)"
       ],
       "require_bound_marker": true
+    },
+    {
+      "id": "upsert-by-phone-refusal-branches-reach-the-warning",
+      "pattern": "\\b(rejected_ambiguous|skipped_archived)\\b[^.\\n]{0,120}\\b(reach(es|ed)?|hits?|prints?|logs?|logged|emits?|fires?|triggers?|raggiung\\w+|stampa\\w*)\\b|\\b(reach(es|ed)?|hits?|prints?|logs?|logged|emits?|fires?|triggers?)\\b[^.\\n]{0,120}\\b(rejected_ambiguous|skipped_archived)\\b|acted on id=None",
+      "context_pattern": "upsert-by-phone|upsert_client_by_phone|crm_clients|matched_count|acted on id",
+      "context_window": 5,
+      "source": "measured on disk 2026-08-20: crm_clients.py control flow (AST) + pytest backend/tests/routers/test_crm_clients_upsert_by_phone.py --log-cli-level=WARNING (14 passed) + a throwaway two-row probe on the router's own harness proving skipped_no_change reaches 1546 with zero UPDATEs",
+      "retracted": "2026-08-20",
+      "prs": ["#4374"],
+      "what_was_claimed": "that the duplicate-phone warning of POST /api/crm/clients/upsert-by-phone is reached by the two REFUSAL branches -- `rejected_ambiguous` (crm_clients.py:1396) and `skipped_archived` (1415) -- and prints `acted on id=...` from them; and, in the crm_push discussion, that a crm_push collision `would print acted on id=None`",
+      "why_retracted": [
+        "SCOPE: ONLY THE MECHANISM IS RETRACTED. The note's headline finding -- that the warning can print `acted on id=X` for a row nothing was written to -- is TRUE. It was attributed to the wrong branches. Do not read this entry as retracting the finding; see what_still_stands, and do not 'correct' the note back toward `acted on id=X is always true`, which is false.",
+        "THE REFUSAL BRANCHES RETURN FIRST. `upsert_client_by_phone` runs from crm_clients.py:1341 to its last statement at 1552, no nested function. The three early exits return at 1396 (16 spaces, rejected_ambiguous), 1415 (20, skipped_archived) and 1491 (20, skipped_not_found), all nested inside the transaction block. The guard `if result.get('matched_count', 0) > 1:` is at 1543 at indentation 4, after all of them; the logger.warning( it protects is at 1546-1551. Control cannot arrive there from a branch that already returned.",
+        "MEASURED. pytest backend/tests/routers/test_crm_clients_upsert_by_phone.py --log-cli-level=WARNING (14 passed) emits exactly one such line, from test_multi_match_reports_count. test_reject_ambiguous_refuses_before_any_mutation, which asserts matched_count 2 with action rejected_ambiguous -- the precise case the claim described -- emits nothing.",
+        "AND crm_push's COLLISION PRINTS NOTHING, not `acted on id=None`: with reject_ambiguous=True (crm_push.py:163, sole occurrence) the endpoint returns at 1396 without logging.",
+        "HOW IT SURVIVED REVIEW. The adversarial seat was handed three specific claims and answered all three correctly. This one was structural, not numeric -- every file:line in it was right, and only the assertion that control REACHES one of them was wrong. Citation-checking passes cleanly over that shape."
+      ],
+      "what_still_stands": "THE HEADLINE FINDING, now with the right mechanism and an empirical proof: the warning DOES fire for a row nothing was written to, via `skipped_no_change`. At crm_clients.py:1461 an empty `set_parts` skips the UPDATE entirely and 1475 sets action='skipped_no_change'; `result` is still bound at 1477 carrying the real matched_count, so 1543 passes and 1546 prints `acted on id=<cid>`. Reproduced 2026-08-20 against the router's own test harness: two rows sharing a phone with nothing to write gave action=skipped_no_change, matched_count=2, ZERO UPDATE statements executed, and the log line `upsert-by-phone: 2 clients share a phone (acted on id=7)`. This is on the PRODUCTION path -- wa-mirror-auto-promote-leads.py omits reject_ambiguous, and an idempotent re-promotion of an already-promoted lead is exactly the no-op case. Also still standing: the note's two-callers finding (crm_push.py sets reject_ambiguous=True + restore_if_archived=False; the wa-mirror script omits both), and, separately verified, that crm_push.py:209-213 carries a warning for the ambiguous refusal that CANNOT FIRE, while crm_delivery.py:391-397 logs the refusal under a detail string (crm_push.py:345-350) shared by all SEVEN return-None causes of _ensure_client_on_fly -- the shared phone exits at :192 (2xx with no client_id), one of the three silent ones.",
+      "correction_lives_in": [
+        "research/operations/2026-08-19-crm-upsert-by-phone-duplicate-advisory.md (section: RETRACTED[upsert-by-phone-refusal-branches-reach-the-warning])"
+      ],
+      "require_bound_marker": true
     }
   ],
   "phrase_directives": [

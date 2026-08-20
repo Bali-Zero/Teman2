@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: e11245a037596cf5ea58dc1873607bad171fc8d0d18dc5bb14d65f72706ad55f
+checksum: 2db42b7730eba415f51571ca1afa40e72bbb4f44c93505f711731f4b23bd7614
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2480,5 +2480,25 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.wa_mirror_freshness_liveness.json
+    timestamp_field: ts
+    status_field: status
+- id: mini.secrets_perms_sweep
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 21600
+  owner_module: infra/launchagents/wrappers/mini-secrets-perms-sweep.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.secrets-perms-sweep
+  severity_on_silence: warning
+  notes: 'recurring sweep+fix of group/other-readable secret-named files (memory notes,
+    tokens, keys) via secrets_permissions_audit.py --fix — closes the one-shot debt
+    from PR #3621 (born via organ_birth.py, genes imprinted 2026+)'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.secrets_perms_sweep.json
     timestamp_field: ts
     status_field: status

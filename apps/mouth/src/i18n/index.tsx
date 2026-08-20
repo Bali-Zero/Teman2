@@ -69,6 +69,20 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = React.useState<Locale>(DEFAULT_LOCALE);
 
   React.useEffect(() => {
+    // `?lang=<locale>` lets a shared link set the UI-chrome language for THIS
+    // VISIT only (2026-08-20). Strict whitelist — this is a user-controlled
+    // input (searchParams), so it is validated against LOCALES and never
+    // written anywhere but React state + `<html lang>` (guarded exactly like
+    // the localStorage path below). It takes precedence over a saved
+    // preference but is deliberately NOT persisted to localStorage: a link
+    // must not overwrite a visitor's explicit saved choice for future visits.
+    const urlLang = new URLSearchParams(window.location.search).get("lang");
+    if (urlLang && LOCALES.includes(urlLang as Locale)) {
+      setLocaleState(urlLang as Locale);
+      if (!pageOwnsLang()) document.documentElement.lang = urlLang;
+      return;
+    }
+
     const saved = localStorage.getItem("blog-language");
     if (saved && LOCALES.includes(saved as Locale)) {
       setLocaleState(saved as Locale);

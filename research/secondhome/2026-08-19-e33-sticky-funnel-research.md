@@ -163,7 +163,7 @@ before the WhatsApp click.
 
 | Studio module | Existing asset | Gap to close |
 |---|---|---|
-| Navigator brain | Visa Oracle v2 engine + signed RulePack | **pack re-authoring** (the review-saturation fix) — until then, Phase-1 runs on a small curated deterministic rule set (age/route/capital bands) |
+| Navigator brain | Visa Oracle v2 engine + signed RulePack | ~~**pack re-authoring** (the review-saturation fix) — until then, Phase-1 runs on a small curated deterministic rule set (age/route/capital bands)~~ ✅ **SUPERSEDED 2026-08-20**: shipped at seq-6 (PR #3940, `afabccc2b`) — `review.e33.guarantee-maintenance` → `el.e33.guarantee-maintenance` (stage ELIGIBILITY), HR rules 67→15 (prod-010 today: 18 HR / 69 ELIGIBILITY / 23 HF). Real gap now: ENFORCE (DPIA-gated) + the 7-day re-attestation cadence organ, not re-authoring. |
 | Fit Memo artifact | Free-Fit-Memo owner decision; brand system | PDF/regen pipeline + memo template |
 | Cost view | PricingTool (39M; E33E/F rows) | dependent pricing display waits on the 12M decision (draft, not live) |
 | Timeline | 13-stage `e33_lifecycle` | public 7-step simplification |
@@ -175,10 +175,19 @@ before the WhatsApp click.
 
 ## 6. Recommended phasing
 
-- **Phase A (parallel, its own lane): RulePack re-authoring** — the review-stage rewrite
+- ~~**Phase A (parallel, its own lane): RulePack re-authoring** — the review-stage rewrite
   (65 HUMAN_REVIEW rules; the inverted `review.e33.guarantee-maintenance` trigger),
   re-sign + activation ceremony + adversarial review. This is the Navigator's real brain;
-  the Studio ships against curated rules first and swaps the engine in when ENFORCE opens.
+  the Studio ships against curated rules first and swaps the engine in when ENFORCE opens.~~
+  ✅ **SUPERSEDED 2026-08-20**: this shipped at seq-6 (PR #3940 "a requirement is a
+  condition, not a proof", commit `afabccc2b`) — `review.e33.guarantee-maintenance` became
+  `el.e33.guarantee-maintenance` (stage ELIGIBILITY, effect SUPPORT), HUMAN_REVIEW rules
+  collapsed 67→15 (prod-010 today: 18 HR / 69 ELIGIBILITY / 23 HF). The 2026-08-12
+  gold-personas sweep vs PROD (seq-7) found prod coherent, zero defects, and source-freshness
+  stale-abstain was cured by seq-10 (fold #4350 + signed bundle #4365, merged 2026-08-19).
+  What remains open in the visa-oracle lane is different work: the 7-day re-attestation
+  cadence organ (expires ~2026-08-26, owner Zero) and ENFORCE (DPIA-gated). The Studio's
+  ENGINE swap-in therefore waits on ENFORCE, not on any re-authoring.
 - **Phase B — Studio core loop** (§3 items 1–8) on `/visa/second-home`: this is the
   sticky product. No accounts, no uploads, no AI. Measurable from day one.
 - **Phase C — second ring** (comparators, share mode, email course, concierge, radar).
