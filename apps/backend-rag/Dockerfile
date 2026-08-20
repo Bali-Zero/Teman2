@@ -152,10 +152,31 @@ COPY --from=node22 /usr/local/lib/node_modules /usr/local/lib/node_modules
 # first draft used `grep -Eq '^v(2[2-9]|[3-9][0-9])\.'`, which reads correctly and
 # would have rejected node v100 — a range written as a pattern is a form standing in
 # for a quantity, and it goes wrong at exactly the boundary nobody tests.
+#
+# THE INSTALL IS NO LONGER A BARE `npm install -g @anthropic-ai/claude-code`
+# (changed 2026-08-20). Unpinned, it made this production image's build depend on a
+# third party publishing ATOMICALLY — and on 2026-08-19T23:57:54Z it did not: the
+# umbrella published 2.1.237 while `@anthropic-ai/claude-code-linux-x64@2.1.237`
+# did not exist (`npm view` → E404), so the platform-native binary never resolved,
+# the postinstall bailed, and `which claude` below failed the build with nothing in
+# this repository changed. `linux-arm64` and `darwin-arm64` published normally, so a
+# `docker build` on an M-series Mac SUCCEEDED throughout — the machine most likely
+# to be used for triage was structurally unable to reproduce the red.
+#
+# This is the SAME CLASS as the NodeSource 403 documented above — a third-party
+# input to a production image build that moves on its own. That cure deleted the APT
+# dependency and left this npm one standing.
+#
+# The version is now resolved against the platform tarball this image actually
+# needs; the script explains the choice and fails closed naming upstream. On an
+# ordinary day it installs `latest`, exactly as before. Corpus (fake registry, both
+# skew directions): scripts/tests/test_install_claude_code_version_skew.sh
+COPY scripts/install-claude-code.sh /usr/local/bin/install-claude-code.sh
+
 RUN ln -sf /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
     && node --version && npm --version \
     && [ "$(node -p 'process.versions.node.split(".")[0]')" -ge 22 ] \
-    && npm install -g @anthropic-ai/claude-code \
+    && sh /usr/local/bin/install-claude-code.sh \
     && npm cache clean --force \
     && rm -rf /root/.npm \
     && node --version && which claude && claude --version

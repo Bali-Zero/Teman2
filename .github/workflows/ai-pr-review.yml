@@ -104,7 +104,11 @@ jobs:
 
       - name: Install Claude CLI
         if: steps.guard.outputs.has_token == 'true' && steps.input.outputs.diff_bytes != '0'
-        run: npm install -g @anthropic-ai/claude-code
+        run: |
+          # Unpinned `npm install -g` broke on 2026-08-19 when upstream published
+          # the umbrella package without its linux-x64 platform build. This runner
+          # is linux-x64. Same installer as the production image.
+          bash scripts/install-claude-code.sh
 
       - name: Run advisory review
         id: review

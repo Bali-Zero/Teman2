@@ -154,6 +154,8 @@ jobs:
               scripts/ci/prepush_tip_drift.sh|\
               scripts/ci/apt_install.sh|\
               scripts/ci/test_apt_install.sh|\
+              scripts/install-claude-code.sh|\
+              scripts/tests/test_install_claude_code_version_skew.sh|\
               .husky/pre-commit|\
               scripts/tests/test_husky_pii_pass_overmatch.py|\
               scripts/tests/test_pii_gate_merge_scope.sh|\
@@ -796,6 +798,16 @@ jobs:
           # Postgres phase silently skipped the Qdrant phase entirely. Measured on the
           # bucket: the qdrant nightly is missing for exactly the night PG failed.
           bash scripts/test_fly_backup_phases.sh
+
+      - name: Claude-CLI installer corpus (upstream partial publish must not break the image)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # Upstream published @anthropic-ai/claude-code 2.1.237 without publishing
+          # its linux-x64 platform build, so every unpinned `npm install -g` failed
+          # while the repo had not changed a line — and an M-series Mac still built
+          # the image fine, so local triage could not reproduce it. Fake registry,
+          # both skew directions, guilt and innocence.
+          bash scripts/tests/test_install_claude_code_version_skew.sh
 
       - name: Merge-queue re-arm corpora (classifier + population, guilt + innocence)
         if: steps.paths.outputs.relevant == 'true'
