@@ -143,3 +143,16 @@ export function useTranslation(): I18nContextValue {
   if (!ctx) throw new Error("useTranslation must be used within I18nProvider");
   return ctx;
 }
+
+/**
+ * Optional variant of useTranslation() for components that render on some
+ * routes with an <I18nProvider> ancestor and on others without one — e.g.
+ * ConsentBanner, shared across /visa/second-home/* (wrapped by that route's
+ * layout.tsx) and /visa itself (no I18nProvider anywhere in its layout
+ * chain, verified 2026-08-20). useTranslation() would throw there (the
+ * white-screen class scripts/lint_i18n_providers.sh exists to catch);
+ * returns null instead so the caller can carry its own EN-only fallback.
+ */
+export function useOptionalTranslation(): I18nContextValue | null {
+  return React.useContext(I18nContext);
+}
