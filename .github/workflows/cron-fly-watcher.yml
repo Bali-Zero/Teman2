@@ -18,6 +18,10 @@ jobs:
   run:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # actions:read is required by the edge gate below to read the previous
+    # run's conclusion; this block also drops every other default grant.
+    permissions:
+      actions: read
     steps:
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
@@ -105,8 +109,35 @@ jobs:
             exit 1
           fi
 
-      - name: Telegram alert on anomaly
+      # Runners are stateless, so a PERSISTENT anomaly re-alerted on every run:
+      # measured 22-41 sends/day for 6+ straight days (2026-08-14..20, one
+      # unhealthy pg vm-check) before this gate existed. The previous completed
+      # run's conclusion IS the state: alert only on the green→red edge.
+      # Fail-OPEN: if the API cannot answer, send — a gate that cannot verify
+      # must not silence (superscar #2).
+      - name: Edge gate — page only on green→red transition
+        id: edge
         if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          WF_FILE=$(basename "${GITHUB_WORKFLOW_REF%%@*}")
+          # Skip cancelled/skipped runs when reading the state: a budget-kill
+          # reads as `cancelled` (W118), never ran the alert step, and must not
+          # reset the streak — else every timeout inside a persistent outage
+          # re-arms the pager (Kimi K3 refutation, 2026-08-20).
+          PREV=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/${WF_FILE}/runs?status=completed&per_page=10" \
+            --jq '[.workflow_runs[].conclusion | select(. == "success" or . == "failure")][0] // "unknown"' 2>/dev/null || echo unknown)
+          echo "previous completed run: ${PREV:-none}"
+          if [ "$PREV" = "failure" ]; then
+            echo "send=no" >> "$GITHUB_OUTPUT"
+            echo "condition already paged at onset — repeat alert suppressed"
+          else
+            echo "send=yes" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Telegram alert on anomaly
+        if: failure() && steps.edge.outputs.send == 'yes'
         env:
           BOT: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           CHAT: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
