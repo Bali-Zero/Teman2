@@ -196,6 +196,20 @@ async def test_fetch_pending_html_selects_on_drive_url_not_canva_url():
 
 
 @pytest.mark.asyncio
+async def test_fetch_pending_html_excludes_parked_drafts():
+    """GUILT+INNOCENCE (vision-quota circuit breaker, 2026-08-20): a draft
+    parked by WR2_VISION_MAX_TRANSIENT consecutive VisionTransient releases
+    (html_vision_parked_until set in the future) must be excluded from the
+    fetch; a never-parked draft (NULL) or one whose park window already
+    elapsed (<= NOW()) is fetchable with no extra query."""
+    conn = AsyncMock()
+    conn.fetch.return_value = []
+    await fetch_pending_html_draft_ids(conn, limit=2)
+    sql = conn.fetch.call_args[0][0]
+    assert "html_vision_parked_until IS NULL OR html_vision_parked_until <= NOW()" in sql
+
+
+@pytest.mark.asyncio
 async def test_acquire_html_lease_sets_heartbeat_and_guards_drive_url():
     conn = AsyncMock()
     fake_row = {"id": "abc", "topic": "T", "tone": "analitico", "slides_json": "{}"}
@@ -279,6 +293,29 @@ async def test_persist_html_enqueues_per_recipient_and_skips_duplicate():
 
 
 @pytest.mark.asyncio
+async def test_persist_html_result_resets_vision_circuit_breaker_on_success():
+    """A successful render proves the vision chain is not (fully) dead — the
+    terminal promote-to-'rendered' UPDATE must clear both circuit-breaker
+    columns so a past transient streak never outlives a real success."""
+    conn = _conn_with_txn()
+    conn.execute.return_value = "UPDATE 1"
+    conn.fetchrow.side_effect = [
+        {"thread_id": 1, "window_open": True},
+        {"id": 10},
+    ]
+    await persist_html_result_and_enqueue_notifications(
+        conn, draft_id="abc", lease_owner="w1", drive_url="https://d/x",
+        recipients=["+62A"], message_body="link",
+    )
+    # first execute() call is the promote UPDATE (wa_outbox INSERTs follow, per
+    # recipient, inside the transaction loop below it)
+    sql = conn.execute.call_args_list[0][0][0]
+    assert "SET status = 'rendered'" in sql
+    assert "html_vision_transient_streak = 0" in sql
+    assert "html_vision_parked_until = NULL" in sql
+
+
+@pytest.mark.asyncio
 async def test_requeue_rerender_resets_gate_fields_with_guards():
     """GUILT (W82): the requeue verb must clear BOTH re-entry gates (status +
     drive_url) and carry the lease CAS + status whitelist in the same statement."""
@@ -291,6 +328,19 @@ async def test_requeue_rerender_resets_gate_fields_with_guards():
     assert "html_render_attempts = 0" in sql  # fresh retry budget on re-entry
     assert "lease_owner IS NULL" in sql
     assert "status IN ('rendered', 'render_failed', 'drafts_imaged_checked')" in sql
+
+
+@pytest.mark.asyncio
+async def test_requeue_rerender_resets_vision_circuit_breaker_fields():
+    """A draft previously parked by the vision-quota circuit breaker must not
+    stay invisible to fetch_pending_html_draft_ids forever after a manual
+    re-queue — both breaker columns reset alongside html_render_attempts."""
+    conn = AsyncMock()
+    conn.fetchrow.return_value = {"id": "abc"}
+    assert await requeue_draft_for_rerender(conn, "abc") is True
+    sql = conn.fetchrow.call_args[0][0]
+    assert "html_vision_transient_streak = 0" in sql
+    assert "html_vision_parked_until = NULL" in sql
 
 
 @pytest.mark.asyncio
@@ -345,6 +395,19 @@ async def test_rebrief_resets_status_and_gate_trio_atomically():
     ):
         assert excluded not in sql
     assert conn.fetchrow.call_args[0][1] == "abc"
+
+
+@pytest.mark.asyncio
+async def test_rebrief_resets_vision_circuit_breaker_fields():
+    """Same reasoning as the requeue verb: a rebriefed draft must not stay
+    invisible to fetch_pending_html_draft_ids because of a stale park window
+    from a PREVIOUS generation of this draft."""
+    conn = AsyncMock()
+    conn.fetchrow.return_value = {"id": "abc"}
+    assert await rebrief_draft(conn, "abc") is True
+    sql = conn.fetchrow.call_args[0][0]
+    assert "html_vision_transient_streak = 0" in sql
+    assert "html_vision_parked_until = NULL" in sql
 
 
 @pytest.mark.asyncio

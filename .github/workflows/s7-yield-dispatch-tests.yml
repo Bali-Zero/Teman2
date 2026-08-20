@@ -1,0 +1,54 @@
+name: S7 yield dispatch gate tests
+
+# Guilt+innocence+mutation-verified corpus for scripts/s7_yield_dispatch.py --
+# the fail-closed per-assignee delivery gate that recapita S7 Yield WhatsApp
+# pitch drafts to the Bali Zero team member a client is assigned to, and NEVER
+# to a default recipient when that resolution fails (team-lead mandate,
+# 2026-08-20). Without a workflow naming it, scripts/tests/*.py only runs in
+# the nightly report-only sweep (scripts-tests-sweep.yml), which is cicatrix
+# superscar #2 ("exists != armed") for a guardrail whose whole point is to be
+# armed -- same rationale as yield-optimizer-pii-gate-tests.yml, which this
+# file mirrors.
+#
+# `paths:` filtered to the gate + its sidecar producer + its test (small,
+# well-scoped surface) -- safe because this workflow is NOT added to
+# branch-protection required checks here (repo-settings action, operator-gated
+# per CLAUDE.md §13); it runs informationally on every PR that touches the
+# gate, same as most workflows in this repo.
+
+on:
+  pull_request:
+    paths:
+      - "scripts/s7_yield_dispatch.py"
+      - "scripts/s7_yield_draft_local.py"
+      - "scripts/tests/test_s7_yield_dispatch.py"
+      - ".github/workflows/s7-yield-dispatch-tests.yml"
+  merge_group:
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/s7_yield_dispatch.py"
+      - "scripts/s7_yield_draft_local.py"
+      - "scripts/tests/test_s7_yield_dispatch.py"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: s7-yield-dispatch-tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
+
+jobs:
+  gate-tests:
+    name: S7 yield dispatch gate tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run guilt + innocence + RBAC + cooldown + CLI tests
+        run: |
+          python3 -m pip install --quiet --disable-pip-version-check pytest
+          python3 -m pytest scripts/tests/test_s7_yield_dispatch.py -v
+      - name: Sanity-compile the sidecar producer
+        run: python3 -m py_compile scripts/s7_yield_draft_local.py

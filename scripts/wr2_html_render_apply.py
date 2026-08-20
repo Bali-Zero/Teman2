@@ -33,12 +33,19 @@ vision fail-closed), WR2_HTML_MAX_ATTEMPTS (circuit breaker, default 3),
 WR2_NOTIFY_RECIPIENTS (comma phones; default the two below), WR2_HTML_HEARTBEAT_SECS (60),
 WR2_RUNTIME_SHA_GATE (C2 deploy-fork content-gate: off|warn|strict, default warn —
 warn logs provenance problems and proceeds; strict refuses impure boots and aborts
-pre-Drive when HEAD moves mid-run, releasing the lease without burning an attempt).
+pre-Drive when HEAD moves mid-run, releasing the lease without burning an attempt),
+WR2_VISION_MAX_TRANSIENT (2026-08-20 vision-quota circuit breaker: consecutive
+transient VisionTransient releases on the SAME draft before it is parked —
+html_vision_parked_until — instead of immediately requeued, default 3),
+WR2_VISION_COOLDOWN_S (shared with claude_vision.py's process-wide rate-limit
+cooldown; also the per-draft park duration once WR2_VISION_MAX_TRANSIENT is hit,
+default 3600).
 """
 
 from __future__ import annotations
 
 import asyncio
+import datetime
 import logging
 import os
 import re
@@ -1327,7 +1334,9 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
                     UPDATE war_room_drafts
                        SET status = 'rendered_shadow', drive_url_shadow = $2,
                            lease_owner = NULL, lease_acquired_at = NULL,
-                           lease_heartbeat_at = NULL, updated_at = NOW()
+                           lease_heartbeat_at = NULL, updated_at = NOW(),
+                           html_vision_transient_streak = 0,
+                           html_vision_parked_until = NULL
                      WHERE id = $1 AND lease_owner = $3 AND status = 'rendering'
                     """,
                     draft_id, web, owner,
@@ -1413,16 +1422,56 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
             # this release path records its status instead of crashing on a closed
             # connection and leaving the draft stuck in 'rendering'.
             main_conn = await _ensure_live(main_conn, pool_conn_dsn)
+            # "No attempt burned" had no CEILING (2026-08-20 SCAR): a draft that
+            # kept landing on a dead quota window bounced status='rendering' ->
+            # released, forever, every launchd tick, with html_render_attempts
+            # never incrementing. html_vision_transient_streak is a SEPARATE
+            # counter, independent of (and a backstop for) the process-wide
+            # cooldown in claude_vision.py — once it reaches
+            # WR2_VISION_MAX_TRANSIENT consecutive releases, the draft is parked
+            # (html_vision_parked_until) instead of being immediately requeued,
+            # so fetch_pending_html_draft_ids skips it until the window plausibly
+            # resets. This is NOT the terminal status='parked' value (that means
+            # "no usable source, needs a human") — status stays
+            # 'drafts_imaged_checked' so the draft resumes on its OWN once
+            # parked_until passes.
+            max_transient = int(os.environ.get("WR2_VISION_MAX_TRANSIENT", "3"))
+            streak = (
+                await main_conn.fetchval(
+                    "SELECT COALESCE(html_vision_transient_streak, 0) "
+                    "FROM war_room_drafts WHERE id=$1",
+                    draft_id,
+                )
+                or 0
+            ) + 1
+            parked_until: datetime.datetime | None = None
+            if streak >= max_transient:
+                cooldown_s = float(os.environ.get("WR2_VISION_COOLDOWN_S", "3600"))
+                parked_until = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
+                    seconds=cooldown_s
+                )
             await main_conn.execute(
                 """
                 UPDATE war_room_drafts
                    SET status='drafts_imaged_checked', lease_owner=NULL,
-                       lease_acquired_at=NULL, lease_heartbeat_at=NULL, updated_at=NOW()
+                       lease_acquired_at=NULL, lease_heartbeat_at=NULL, updated_at=NOW(),
+                       html_vision_transient_streak=$3,
+                       html_vision_parked_until=$4
                  WHERE id=$1 AND lease_owner=$2 AND status='rendering'
                 """,
-                draft_id, owner,
+                draft_id, owner, streak, parked_until,
             )
-            logger.warning("draft %s vision transient (%s) — no attempt burned: %s", draft_id, type(exc).__name__, exc)
+            if parked_until is not None:
+                logger.warning(
+                    "draft %s parked:vision_quota after %d consecutive transient "
+                    "releases (no attempt burned) — resumes at %s: %s",
+                    draft_id, streak, parked_until.isoformat(), exc,
+                )
+                return f"parked:vision_quota:{exc}"
+            logger.warning(
+                "draft %s vision transient (%s) — no attempt burned (streak %d/%d): %s",
+                draft_id, type(exc).__name__, streak, max_transient, exc,
+            )
             return f"rate_limited:{exc}"
         except Exception as exc:
             # transient render/Drive failure OR an unexpected bug — either way the
@@ -1463,12 +1512,17 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
                 )
                 return f"render_failed:{exc}"
             # record attempt + release for retry (ownership-gated so a stolen lease doesn't count)
+            # A real (non-vision) failure breaks any consecutive-transient streak
+            # the draft was building — reset it so an unrelated render/Drive
+            # hiccup doesn't count toward the vision-quota park threshold.
             await main_conn.execute(
                 """
                 UPDATE war_room_drafts
                    SET html_render_attempts = $3::int,
                        status='drafts_imaged_checked', lease_owner=NULL,
-                       lease_acquired_at=NULL, lease_heartbeat_at=NULL, updated_at=NOW()
+                       lease_acquired_at=NULL, lease_heartbeat_at=NULL, updated_at=NOW(),
+                       html_vision_transient_streak = 0,
+                       html_vision_parked_until = NULL
                  WHERE id=$1 AND lease_owner=$2 AND status='rendering'
                 """,
                 draft_id, owner, attempts,
@@ -1608,10 +1662,13 @@ async def run(dry_run: bool = False, draft_id: str | None = None) -> int:
                 logger.info("draft %s -> %s", did, result)
                 if result.startswith("rendered") or result == "shadow_done":
                     successes += 1
-                elif result.startswith("rate_limited"):
+                elif result.startswith("rate_limited") or result.startswith("parked:vision_quota"):
                     # quota is exhausted account-wide — further drafts this run
-                    # would hit the same 429. Stop draining; the draft stays
-                    # queued (no attempt burned) and renders on a later tick.
+                    # would hit the same 429 (or the process-wide cooldown in
+                    # claude_vision.py, which now makes that check itself
+                    # zero-cost). Stop draining anyway to skip the redundant
+                    # DB lease claim/release round-trip; the draft stays queued
+                    # (no attempt burned) and renders on a later tick.
                     logger.warning("drain-loop halting early: vision quota rate-limited")
                     rate_limited_halt = True
                     break
