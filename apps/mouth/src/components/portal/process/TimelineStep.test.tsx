@@ -10,7 +10,6 @@ function makeStep(overrides: Partial<ProcessStep> = {}): ProcessStep {
     completed: false,
     is_current: false,
     changed_at: null,
-    changed_by: null,
     ...overrides,
   };
 }
@@ -55,10 +54,7 @@ describe("TimelineStep", () => {
   it("formats changed_at into a date line; hides line when null", () => {
     const { rerender, container } = render(
       <TimelineStep
-        step={makeStep({
-          changed_at: "2026-04-18T10:15:00Z",
-          changed_by: "asya",
-        })}
+        step={makeStep({ changed_at: "2026-04-18T10:15:00Z" })}
         onSelect={() => {}}
         isLast={false}
       />,
@@ -67,18 +63,33 @@ describe("TimelineStep", () => {
     const p = container.querySelector("p");
     expect(p).not.toBeNull();
     expect(p!.textContent || "").toMatch(/2026/);
-    // changed_by appended with separator
-    expect(p!.textContent || "").toMatch(/asya/);
 
     rerender(
       <TimelineStep
-        step={makeStep({ changed_at: null, changed_by: null })}
+        step={makeStep({ changed_at: null })}
         onSelect={() => {}}
         isLast={false}
       />,
     );
     // No date paragraph
     expect(container.querySelector("p")).toBeNull();
+  });
+
+  it("never renders a staff actor identity next to the date, even if a stale payload still carries changed_by", () => {
+    // ProcessStep no longer declares `changed_by` — this simulates a stale
+    // cached/legacy response that still includes it, to prove the
+    // component ignores it rather than merely lacking a type for it.
+    const staleStep = {
+      ...makeStep({ changed_at: "2026-04-18T10:15:00Z" }),
+      changed_by: "staff@example.com",
+    } as ProcessStep;
+    const { container } = render(
+      <TimelineStep step={staleStep} onSelect={() => {}} isLast={false} />,
+    );
+    const p = container.querySelector("p");
+    expect(p).not.toBeNull();
+    expect(p!.textContent || "").not.toMatch(/staff@example\.com/);
+    expect(p!.textContent || "").not.toMatch(/@/);
   });
 
   it("fires onSelect when the button is clicked", () => {

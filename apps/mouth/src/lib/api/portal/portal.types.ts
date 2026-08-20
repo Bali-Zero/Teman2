@@ -453,7 +453,9 @@ export interface ProcessTimelineStep {
   completed: boolean;
   is_current: boolean;
   changed_at: string | null;
-  changed_by: string | null;
+  // NOTE: no `changed_by` — this is a client-facing payload and that field
+  // is a staff email address (practice_status_log actor). The backend
+  // query intentionally does not select it; do not reintroduce it here.
 }
 
 export interface ProcessTimeline {
@@ -461,7 +463,8 @@ export interface ProcessTimeline {
   practice_name: string;
   practice_category: string;
   current_status: string;
-  assigned_to: string | null;
+  // NOTE: no `assigned_to` — client-facing; that field is the case
+  // officer's staff email (clients.assigned_to). Do not reintroduce it.
   start_date: string | null;
   completion_date: string | null;
   expiry_date: string | null;
