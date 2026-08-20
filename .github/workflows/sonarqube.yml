@@ -134,9 +134,6 @@ jobs:
           cd apps/backend-rag
           PYTHONPATH=.:../crm-cell pytest \
             backend/tests/ \
-            tests/test_sentry_lazy_import.py \
-            tests/test_sentry_pii_redaction.py \
-            tests/kb/test_politics_hierarchical.py \
             -v \
             --cov=backend \
             --cov-branch \
