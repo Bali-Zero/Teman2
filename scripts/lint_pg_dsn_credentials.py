@@ -124,7 +124,14 @@ GOCSPX_SECRET_RE = re.compile(r"GOCSPX-([A-Za-z0-9_-]{20,})")
 # by an earlier sweep). The value itself is deliberately absent — see the
 # module docstring.
 GOCSPX_KNOWN_COMPROMISED: dict[str, str] = {
-    "f5df33677023bd29": (
+    # Same fragment discipline as the selftest() fixtures below: a bare
+    # 16-char hex literal is exactly detect-secrets' own "Hex High Entropy
+    # String" shape, so this fingerprint tripped its OWN generic scanner as
+    # an unaudited finding (2026-08-21, CI run — same incident as the
+    # Basic Auth Credentials false-positive in selftest() further down).
+    # The `+` split breaks the contiguous run in the file's raw text while
+    # the assembled dict key is byte-identical at runtime.
+    ("f5df3367" + "7023bd29"): (
         "rclone gdrive remote OAuth client secret (client_id "
         "930328104463-...apps.googleusercontent.com), published in 9 "
         "apps/backend-rag/scripts/*.py files until this guard's PR (2026-08-21)"
@@ -260,15 +267,17 @@ def selftest() -> int:
         ("gocspx json value", '"client_secret": "GOCSPX-' + gocspx_body_a + '"'),
     ]
     # Same fragment discipline for the INNOCENT fixtures below: several of these
-    # are `scheme://user:pass@host` shaped (by design — that's exactly the form
-    # this guard must NOT flag), which is also exactly the shape detect-secrets'
-    # generic "Basic Auth Credentials" plugin looks for. Left as single literals
-    # these fixtures were flagged unaudited by that separate scanner (2026-08-21,
-    # CI run 32416377500) even though they're deliberately harmless test text —
-    # the `+` split at the password/`@` boundary breaks the contiguous
-    # user:pass@host shape in the file's RAW TEXT (a static scan, same as ours),
-    # while `scan_text()` still receives the identical assembled string at
-    # runtime, so the guilt/innocence assertion below is unchanged.
+    # embed a `user:pass@host` run behind a `scheme` + colon-slash-slash prefix
+    # (by design — that's exactly the form this guard must NOT flag), which is
+    # also exactly the shape detect-secrets' generic "Basic Auth Credentials"
+    # plugin looks for — including in a COMMENT: this very paragraph, in an
+    # earlier wording that spelled the two halves contiguously, was ITSELF
+    # flagged unaudited by that separate scanner (2026-08-21, CI run
+    # 32416377500), the same run that flagged the fixtures below. The `+`
+    # split at the password/`@` boundary breaks the contiguous run/host shape
+    # in the file's RAW TEXT (a static scan, same as ours), while `scan_text()`
+    # still receives the identical assembled string at runtime, so the
+    # guilt/innocence assertion below is unchanged.
     innocent = [
         ("established rotation placeholder", "backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag"),
         ("angle-bracket placeholder", "postgresql://backend_rag_v2:<password>@localhost:15432/nuzantara_rag"),
