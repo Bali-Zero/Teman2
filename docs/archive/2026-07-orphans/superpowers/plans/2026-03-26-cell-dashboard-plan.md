@@ -53,7 +53,7 @@ Frontend (apps/mouth/):
 fly proxy 15432:5432 -a nuzantara-postgres &
 
 # Create table
-psql "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag" -c "
+psql "postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag" -c "
 CREATE TABLE IF NOT EXISTS cell_pulse_log (
     id SERIAL PRIMARY KEY,
     pulse_number INT NOT NULL,
@@ -225,7 +225,7 @@ PYTHONPATH=. timeout 130 python -m cell.main
 Then verify:
 
 ```bash
-psql "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag" -c "SELECT pulse_number, health_status, response_time_ms, budget_spent, created_at FROM cell_pulse_log ORDER BY created_at DESC LIMIT 5;"
+psql "postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag" -c "SELECT pulse_number, health_status, response_time_ms, budget_spent, created_at FROM cell_pulse_log ORDER BY created_at DESC LIMIT 5;"
 ```
 
 Expected: 2 rows with health_status='green'

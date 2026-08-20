@@ -13,7 +13,7 @@ Completare i 3 gap residui di GraphRAG 2.0 deployed (2026-04-07): entity linker 
   2. Activate trimodal RRF weight>0
   3. Generate community summaries
 - KG collection: `legal_unified_hybrid_hybrid` (68,519 total), Qdrant Cloud key in memory
-- DB tunnel: `postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag`
+- DB tunnel: `postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag`
 - Target: `apps/backend-rag/backend/` (kg, queries, rag)
 
 ## Scope SÌ (3 subtask coordinati)

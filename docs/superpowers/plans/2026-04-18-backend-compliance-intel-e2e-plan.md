@@ -428,7 +428,7 @@ DELETE FROM system_settings WHERE key LIKE 'compliance_alert_%';
 
 ```bash
 # With the transaction BEGIN/ROLLBACK wrapper, this checks syntax w/o committing
-psql postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag \
+psql postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag \
     -c "BEGIN; $(cat apps/backend-rag/backend/db/migrations_v2/114_compliance_alerts.sql); ROLLBACK;"
 ```
 
@@ -636,7 +636,7 @@ import asyncpg
 async def db_tx() -> asyncpg.Connection:
     url = os.environ.get(
         "TEST_DATABASE_URL",
-        "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag",
+        "postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag",
     )
     conn = await asyncpg.connect(url)
     tx = conn.transaction()
@@ -1260,7 +1260,7 @@ from backend.services.compliance.predictive_engine import ComplianceForecast
 
 _DEFAULT_DB_URL = os.environ.get(
     "TEST_DATABASE_URL",
-    "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag",
+    "postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag",
 )
 
 
@@ -4630,7 +4630,7 @@ Note: if `kg_proposals` schema differs from `(source_id, entity_id, status, payl
 PYTHONPATH=. python -c "
 import asyncio, asyncpg
 async def main():
-    conn = await asyncpg.connect('postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag')
+    conn = await asyncpg.connect('postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag')
     rows = await conn.fetch(
         \"SELECT column_name, data_type FROM information_schema.columns \"
         \"WHERE table_name='kg_proposals' ORDER BY ordinal_position\")

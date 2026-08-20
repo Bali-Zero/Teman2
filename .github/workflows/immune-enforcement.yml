@@ -303,6 +303,32 @@ jobs:
           python scripts/lint_telegram_tokens.py --selftest
           python scripts/lint_telegram_tokens.py --all
 
+      - name: No literal backend_rag_v2 DSN password in the tree — prove the guard, then scan
+        # DELIBERATELY NOT gated on steps.paths.outputs.relevant, same reason as
+        # the Telegram-token lint above: this guard's SUBJECT is every tracked
+        # text file, and the shape it exists to catch is a DSN pasted into a
+        # doc, a plan, or a session transcript — paths an "immune-relevant"
+        # filter never names (W81).
+        #
+        # Born 2026-08-21 from a live incident: a production `backend_rag_v2`
+        # Postgres password reached origin/main from TWO independent files
+        # (apps/wa-mirror/scripts/api_server.py, 2026-08-06 — squash-merged
+        # out of history but public while the PR was open; apps/backend-rag/
+        # scripts/sync_targeted.py, live from 2026-05-23 — the day AFTER the
+        # sweep that redacted the FIRST leak's copies, proving a sweep bonifies
+        # the past and not the future). Once in the tree, the second literal
+        # was copy-pasted into 24 more locations across docs/plans/sessions
+        # before this guard existed to catch it. `detect-secrets` ships no
+        # detector for a bare DSN password (no recognizable key-shape prefix),
+        # and `secrets_permissions_audit.py` matches by file NAME/path and
+        # deliberately never opens contents.
+        #
+        # --selftest FIRST: "--all reports OK" is worth nothing until the guilt
+        # fixtures prove the scanner can still fail.
+        run: |
+          python scripts/lint_pg_dsn_credentials.py --selftest
+          python scripts/lint_pg_dsn_credentials.py --all
+
       - name: Gateway callers must read the VERDICT, not the exit code
         # Same reasoning as the lint above, same deliberate absence of a paths
         # gate: this guard's SUBJECT is every Python caller of tg_notify.py, and
