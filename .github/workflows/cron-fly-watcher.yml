@@ -36,7 +36,10 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # 10 = the checkout-budget floor (scripts/lint_workflow_timeout_floor.py):
+    # this job now checks out the repo for scripts/ci/telegram_notify.sh, and
+    # a job's floor is the checkout, not its script.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
 
