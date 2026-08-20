@@ -91,13 +91,18 @@ is the axis she never measured.
 - Per-PR runner-minute anatomy (ledger-only PR #4434, a single `.md` diff): 53 checks, 84 runner-min: **Detect Secrets
   19 min** (full working-tree scan of **18,967 tracked files** against `.secrets.baseline`, deliberately not
   domain-gated), **CodeQL Analysis (python) 13 min** (custom job in security.yml, required) **+ Analyze (python) 11 min
-  + Analyze (javascript-typescript) 3 min** — the latter pair comes from GitHub's **CodeQL default setup**
-  (`dynamic/github-code-scanning/codeql`, event `dynamic`; the repo API reports `state: not-configured`, i.e. it is
-  enabled above the repo, org-level) and duplicates the custom job: **~13.7 runner-min/PR, not required**. Which of
-  the two is redundant [measured on origin/main]: the custom job runs `queries: security-extended,security-and-quality`
-  + `.github/codeql-config.yml` (one filter); default setup runs the `default` suite, a strict subset → **the default
-  setup is the redundant one** (Codex objection C4 answered with data; the workflow `codeql-analysis.yml` listed as
-  "active" last ran 2026-02-14 and is NOT the source — the source is `dynamic/github-code-scanning/codeql`).
+  + Analyze (javascript-typescript) 3 min** — the latter pair comes from GitHub's **Code Quality** feature, **not**
+  CodeQL default setup as first written here (**corrected 2026-08-21, see §13.1**): the runs are named `Code Quality:
+  CodeQL Setup` (main pushes) / `Code Quality: PR #N` (PRs), event `dynamic`, 2 jobs per run, **713 runs in the 7 days
+  to 2026-08-20** [reported, orchestrating session] — while the actual CodeQL default-setup API
+  (`repos/{owner}/{repo}/code-scanning/default-setup`) reports `state: not-configured` and org security
+  configuration 17 ("GitHub recommended") has **zero attached repositories** [measured:
+  `gh api orgs/Bali-Zero/code-security/configurations/17/repositories` → `[]`]. Code Quality lives at repo Settings →
+  **Code quality** (separate from Advanced Security / code scanning) and has no REST surface of its own
+  (`repos/{owner}/{repo}/code-quality` → `404` [measured]) — the shared `dynamic` event name is what caused the
+  original misattribution. It still duplicates the custom job's coverage regardless of mechanism:
+  **~13.7 runner-min/PR, not required** (Codex objection C4's underlying point — a redundant analysis pair — holds;
+  its *attribution* to org-level default setup did not, see §13.1 and the corrected Adversarial-review rows below).
 - PR mix, 258 merged in 7d: docs **84 (33%)**, fix 74, feat 73, chore 17. **29 PRs (11%) touch ONLY
   `.claude/skills/modus/PENDING-ARMS.md`**; 72 (28%) are markdown/json-only. Docs PRs: median 55 min open→merge, p25 37.
 
@@ -197,8 +202,11 @@ this week was reasoning nobody reads, at a budget nobody chose per task.
 | # | Lever | Recovers (per PR unless noted) | Risk | Effort | Enforced where | 7-day proof |
 |---|---|---|---|---|---|---|
 | **L0** | **Reasoning budget tied to the gear**: interactive sessions default to `effort=medium` (Opus 5) for Gear 1-2 turns, `xhigh` for Gear 3 design/verify turns, `max` reserved for the final on-disk gate; routine ship-tail turns (status, ledger, recap) never at `xhigh`/`max`. Implementation: `/effort` per session + a modus §STAGE 0 line; a weekly census of output-token composition as the receptor | the largest single number: ~86% of 32.3M output tok/7d is thinking; at 63% Fable share. Even a 30% cut in thinking on Gear 1-2 turns ≈ 8M output tok/week | LOW-MED: under-thinking a Gear-3 decision is the failure mode → gear-gated, never blanket; the final gate untouched | `/effort` + doctrine line (operator-gated) | output tokens/PR ↓ ≥25% with correction-PR rate flat |
-| L1 | **Queue batching**: `min_entries_to_merge` 1→3, wait 2→4 min | merge_group runner-min ÷ ~2-3 at today's cadence (10 PRs/80 min) AND fewer evictions (re-entry ratio 1.5 → ~1.1); 0 wall-clock | LOW, config-only, reversible (`gh api` ruleset PATCH) | minutes | ruleset | merge_group runs ÷ merged PRs ≤ 1.15 over 7 days (today 1.5) |
-| L2 | **Disable the duplicate CodeQL default setup** (org/repo Settings → Code security) OR drop the custom job and make `Analyze (*)` the required contexts | ~13.7 runner-min | LOW (one of two identical analyses) | `operator[gui]` (setting) or 1 PR + branch-protection PATCH | GitHub setting | `Analyze (python)` absent from PR checks; CodeQL alerts count unchanged |
+| L13 | **Take `npm audit` out of the required merge-queue gate** (advisory/nightly job instead of a `merge_group`/`pull_request` blocker) — new lever, see §13.3 | kills the class of failure that made 2026-08-17 a lost day: 19 failures across 4 PRs, 9-17 re-entries each, 29-33 h open→merge (#4264 never merged) | LOW-MED: a genuinely new advisory on a used package is still caught, just nightly instead of same-day-blocking | 1 PR | tests.yml / new nightly workflow | 0 queue-required failures on `npm audit` over 7 days; nightly run still reports advisories |
+| L14 | **Cache `~/.cache/ms-playwright` keyed on the playwright version** — new lever, see §13.3 | the 2026-08-19 tail (8 failures on `Install Playwright browsers`), network-bound install time on every job | LOW (standard `actions/cache` pattern) | 1 PR | tests.yml | `Install Playwright browsers` ≤ 1 min on cache hit; cache hit-rate ≥ 90% over 7 days |
+| L15 | **Main-red circuit breaker**: same required job failing on ≥2 consecutive queue groups → pause the queue + alert instead of rebuilding 30 min × N — new lever, see §13.3 | the wasted rebuild cost of every PR that churns behind a broken main (2026-08-17/19 tail) | MED: needs a safe pause that releases itself once the job is green again, never blocks a legitimately cured main | 1-2 PRs | tests.yml / merge-queue tooling | no group rebuilt >1× against a main-red window; alert fires ≤5 min after the 2nd consecutive same-job failure |
+| L1 | **DOWNGRADED by measurement, 2026-08-21 — see §13.2.** ~~Queue batching: `min_entries_to_merge` 1→3, wait 2→4 min~~ — re-entry rises steeply with group size (24%→85% at size 3), so batching would move most merges into the worst bucket; do not flip until the conditional failure rate is understood. Superseded as the top lever by L13-L15 (the tail, not the batching) | merge_group runner-min ÷ ~2-3 at today's cadence (10 PRs/80 min) AND fewer evictions (re-entry ratio 1.5 → ~1.1); 0 wall-clock — **claim not actioned, see §13.2** | LOW, config-only, reversible (`gh api` ruleset PATCH) | minutes | ruleset | merge_group runs ÷ merged PRs ≤ 1.15 over 7 days (today 1.5) — retained as the metric to watch, not a target to hit by flipping this lever |
+| L2 | **DONE 2026-08-21 (Code Quality disabled).** Not CodeQL default setup as first identified (corrected, §13.1) — the duplicate was GitHub's separate **Code Quality** feature; disabled at repo Settings → Code quality | ~13.7 runner-min | LOW (one of two identical analyses) | session, via GUI (corrected from `operator[gui]` — the session executed it directly) | GitHub setting | `Code Quality`-named `dynamic`-event runs = 0 since 2026-08-20T18:40Z [measured 2026-08-20T18:51:39Z] |
 | L3 | **Diff-scope Detect Secrets on PRs** (scan `hotzone_changed_files.sh` output only) + keep the full-tree scan on `push: main` and nightly | ~15-17 min runner; ~15 min wall-clock on docs-only PRs | MED: a secret in an UNCHANGED file is caught by the nightly, not the PR (acceptable: it is already on main) | 1 PR | security.yml | Detect Secrets ≤ 2 min on PRs; nightly full scan green; baseline unchanged |
 | L4 | **Stop the serial double-run** — option A: make `pull_request` Backend Tests "impacted domains + smoke" and keep the queue run as THE gate; option B: skip the queue run when the queue merge-commit **tree hash** equals the tree the PR run tested (only true when main did not move) | option A ≈ 25-28 min wall-clock per PR; option B rarely fires at 37 merges/day | **MED-HIGH**: A moves failure discovery to the queue (ejection = +60 min for that PR; cross-PR coupling still caught); B is safe but low-yield | spike + 1 PR | tests.yml | median open→merge ≤ 40 min; queue failure rate not above today's 9% |
 | L5 | **Docs lane**: a PR whose diff is 100% in `DOC_PREFIXES/SUFFIXES` (already defined in `change_map.py`) runs actionlint + diff-scoped secrets + doc lints only; ledger writes ride in the feature PR that caused them (already the modus rule W86 for docs_sync) | 28-33% of PRs drop from ~55 min/80 runner-min to <5 min/<10 runner-min | LOW-MED: required contexts must still be *satisfied* (skipped-with-success pattern already proven by #4181) | 1 PR | change_map + required-check `if:` | docs-only PR median ≤ 8 min; ledger-only PR count/week ↓ |
@@ -210,8 +218,11 @@ this week was reasoning nobody reads, at a budget nobody chose per task.
 | L12 | **CI setup consolidation**: fewer, fatter jobs (shared checkout/setup/cache per workflow), pinned base images from GHCR (kills the Docker Hub `toomanyrequests` queue failures), `actions/cache` hit-rate audit | up to ~33 runner-min/PR (32% of step-minutes) | LOW-MED (workflow refactor, actionlint-gated) | 2-3 PRs | workflows | setup-class step-min/PR ≤ 15 |
 | L11 | **Seat arming**: agy re-login (`operator[gui]`); GLM shim: map to a model name the CLI accepts or pin Claude Code < 2.1.237 for that config dir; Codex O1 waits for 22/8 | restores 2 council families | LOW | minutes | arsenal_probe | PONG from each |
 
-**Order of attack** (highest yield per risk): **L0 → L1 → L2 → L3 → L5 → L12 → L7 → L9(i) → L6 → L8 → L4(A) →
-L9(ii)**. L10/L11 are owner/operator actions and gate everything else's denominator. Codex's risk-adjusted order
+**Order of attack** (highest yield per risk): **L0 → L13 → L14 → L15 → L2 → L3 → L5 → L12 → L7 → L9(i) → L6 → L8 →
+L4(A) → L9(ii)**. **Corrected 2026-08-21 (see §13.2/§13.3):** L1 dropped out of this ranking — do not flip
+`min_entries_to_merge` until the conditional failure rate (24%→85% re-entry by group size) is understood; L13-L15
+(the tail, not the batching) take its place as the next lever after L0. L2 is DONE (Code Quality disabled, §13.1).
+L10/L11 are owner/operator actions and gate everything else's denominator. Codex's risk-adjusted order
 (C4 → C3 → C2 → C6 → C5 → C8) agrees on the CI head of the list and ranks the Gemini lever last because it buys
 dollars, not windows — accepted.
 
@@ -238,9 +249,12 @@ gh api repos/{owner}/{repo}/rulesets/19779175 > /tmp/ruleset-19779175.before.jso
 # PATCH min_entries_to_merge=3, min_entries_to_merge_wait_minutes=4 (rules[].parameters) — session, not operator
 # proof: gh run list --workflow tests.yml --event merge_group --created ">=$(date -v+1d +%F)" | wc -l  vs merged PRs
 
-# L2 — who runs 'Analyze (python)': default setup above the repo (org-level)
-gh api repos/{owner}/{repo}/code-scanning/default-setup          # state: not-configured (repo) → check org Settings → Code security
-gh run view 32381473497 --json workflowName,event                 # "CodeQL | dynamic"
+# L2 — DONE 2026-08-21: who ran 'Analyze (python)' was GitHub's Code Quality feature, not org-level CodeQL default
+# setup (corrected, §13.1) — code-scanning/default-setup genuinely reports not-configured, it just wasn't the source
+gh api repos/{owner}/{repo}/code-scanning/default-setup          # state: not-configured (true, but not the answer)
+gh api orgs/{org}/code-security/configurations/17/repositories   # [] — zero attached repos, confirms no org default setup
+gh api "repos/{owner}/{repo}/actions/runs?event=dynamic&created=>=<disable-ts>" \
+  --jq '[.workflow_runs[]|select(.name|startswith("Code Quality"))]|length'   # proof: 0 after disablement
 
 # L3 — detect-secrets on changed files only (prove equivalence on the last 20 PRs before switching)
 for n in $(gh pr list --state merged --limit 20 --json number --jq '.[].number'); do
@@ -259,14 +273,14 @@ wc -c ~/.claude/CLAUDE.md CLAUDE.md .claude/rules/*.md ~/.claude/projects/-Users
 
 ## 10. PENDING-ARMS lines proposed
 
-- opened 2026-08-21 (m5, audit session) | **CodeQL runs twice per PR — the custom `codeql` job in security.yml (required) and GitHub's default setup (`dynamic/github-code-scanning/codeql`, enabled above the repo) — ~13.7 runner-min/PR with zero marginal value** | missing arming step: disable default setup at the org level OR make `Analyze (python|javascript-typescript)` the required contexts and delete the custom job | owner: `operator[gui]` for the setting, session for the PR variant | proof: `gh pr checks <next PR>` shows one CodeQL pair.
+- opened 2026-08-21 (m5, audit session), **CLOSED 2026-08-21** | **CodeQL ran twice per PR — the custom `codeql` job in security.yml (required) and, mischaracterized at open as CodeQL's org-level default setup, actually GitHub's separate Code Quality feature (`Code Quality: CodeQL Setup` / `Code Quality: PR #N`, event `dynamic`) — ~13.7 runner-min/PR with zero marginal value (see §13.1)** | arming step taken: disabled at repo Settings → Code quality by the session (GUI action, not `operator[gui]` after all) | owner: session | proof: `Code Quality`-named `dynamic`-event runs = 0 since 2026-08-20T18:40Z, checked 2026-08-20T18:51:39Z.
 - opened 2026-08-21 (m5) | **merge queue never batches (`min_entries_to_merge: 1`)** | arming step: ruleset PATCH to 3 / wait 4 min, record before/after | owner: session | proof: merge_group runs/day ÷ merged PRs/day ≤ 0.5 after 7 days.
 - opened 2026-08-21 (m5) | **`claude-glm` shim dead with exit 0 on Claude Code 2.1.237 (`unrecognized_model glm-5.2`)** — the first-call refuter seat is un-armed and `arsenal_probe.py` would read RC 0 as alive | arming step: probe must judge the REPLY (`PONG`), not RC; shim: acceptable model alias or pinned CLI for that config dir | owner: session | proof: `claude-glm -p PONG` prints PONG.
 - opened 2026-08-21 (m5) | **agy AUTH DEAD on M5** ("You are not logged into Antigravity") since 2026-08-21 00:14 | arming step: interactive re-login | owner: `operator[gui]` | proof: `agy -p PONG`.
 - opened 2026-08-21 (m5) | **`wr2.oracle` still enabled and LLM-reaching after the WR2 stop** (sibling finding) | arming step: disable or prove a consumer | owner: session (Pro) | proof: `launchctl print gui/$(id -u)/com.balizero.wr2.oracle` → disabled, or a named reader of its output.
 - opened 2026-08-21 (m5) | **Gemini metered pool has no proactive spend cap and no explicit cache** (L8) | arming step: breaker on `rag.gateway.chat` USD/day + `cachedContents` for the static prefix, shadow A/B first | owner: session | proof: `llm_cost_events` cache-hit ≥ 60%, $/day ↓ with msgs flat.
 - opened 2026-08-21 (m5) | **The deterministic gear floor (`compute_floor`, harness-floor.yml) has no ceiling: a floor-1 diff still pays council + cross-family refuters + Evidence Pack + `xhigh` thinking** (this doc §8, L0/L6) | arming step: modus §STAGE 0 amendment "floor 1 ⇒ effort medium, no council, no external refuter unless requested" + shadow refuter on a 20% sample | owner: `operator[business]` for the doctrine line, session for the receipt | proof: 20 floor-1 PRs logged with external-seat calls ≤ 0.2/PR and revert rate ≤ baseline.
-- opened 2026-08-21 (m5) | **Merge-queue re-entry amplification: 388 merge_group runs for 258 merged PRs since 2026-08-14 (ratio 1.5)** — `min_entries_to_merge: 1` + ~37 main pushes/day evicts and re-runs | arming step: L1 ruleset PATCH (batch 3 / wait 4 min), then re-measure | owner: session | proof: ratio ≤ 1.15 over 7 days.
+- opened 2026-08-21 (m5) | **Merge-queue re-entry amplification: 388 merge_group runs for 258 merged PRs since 2026-08-14 (ratio 1.5)** — `min_entries_to_merge: 1` + ~37 main pushes/day evicts and re-runs | arming step **corrected 2026-08-21 (§13.2)**: NOT the L1 ruleset PATCH — re-measurement (392 runs / 264 PRs / 303 groups, re-entry 24%→85% by group size) shows batching would move most merges into the worst re-entry bucket; arm L13-L15 (the tail levers) instead, then re-measure | owner: session | proof: ratio ≤ 1.15 over 7 days (metric retained; batching is not the path to it).
 - opened 2026-08-21 (m5) | **Interactive model mix is non-compliant with two standing rulings** (2026-07-25 Opus default; 2026-08-19 "Fable never on small diffs"): Fable = 56% of messages / 63% of output tokens on M5 in 7d, ~86% of which is thinking | arming step: owner ratifies or restores; session default `/model opus` + `/effort` per gear | owner: `operator[business]` | proof: weekly model-mix census from transcripts.
 - opened 2026-08-21 (m5) | **auto-loaded doctrine has no size budget** (148 KB local / 155 KB origin/main, growing ~7 KB/week) | arming step: pointer-format restore of superscar W95-W119 + CI cap lint with guilt+innocence tests | owner: session | proof: `wc -c` of the auto-loaded set ≤ 100 KB on main.
 
@@ -274,7 +288,10 @@ wc -c ~/.claude/CLAUDE.md CLAUDE.md .claude/rules/*.md ~/.claude/projects/-Users
 
 - L10 model mix (Fable 56% of interactive turns vs §5 Opus-5 default) — business decision, Legge 5.
 - agy re-login, Qwen credential, Codex O1 window (22/8 08:30) — credentials only the owner holds.
-- Org-level CodeQL default setup toggle — GitHub GUI.
+- ~~Org-level CodeQL default setup toggle — GitHub GUI.~~ **RESOLVED 2026-08-21 (§13.1):** not org-level CodeQL
+  default setup after all (org security configuration 17 has zero attached repositories) — it was the repo-level
+  **Code Quality** feature, and the session disabled it directly at repo Settings → Code quality; no operator
+  action was needed.
 - Whether the WR2 pipeline (now stopped) is retired or re-designed with a real publisher — business.
 
 ## 12. Checklist pre-arming for any NEW automation or gate (machine-checkable)
@@ -284,6 +301,97 @@ A lint reads the PR and fails unless the new plist/workflow/hook/required-check 
 `skip_predicate` (when it may not run), `sunset` (the metric that would retire it). The organism already has the
 shape (`automation_catalog.json` has `produces`/`consumes`, `change_map.py` has domains) — what is missing is the
 field and the lint, not the idea.
+
+## 13. Post-merge corrections (2026-08-21)
+
+PR #4454 (which shipped this document) froze on arm — Agent PR Contract rule 2 ("arm means freeze"; every follow-up
+goes in a new PR from a fresh `origin/main`). This section is that follow-up. The CodeQL correction (13.1) is applied
+in place above (§2, §7 L2/L1/Order-of-attack, §9, §10, §11, and both C4 rows in the Adversarial review); 13.1 here
+only records the proof metric. 13.2-13.4 are new findings from a fresh measurement pass after the document shipped.
+
+### 13.1 CodeQL duplicate — proof metric
+
+`repos/{owner}/{repo}/code-scanning/default-setup` genuinely reports `state: not-configured`; org security
+configuration 17 ("GitHub recommended") has **zero attached repositories**
+[measured: `gh api orgs/Bali-Zero/code-security/configurations/17/repositories` → `[]`]; `repos/{owner}/{repo}/code-quality`
+has no REST surface (`404` [measured]). The duplicate pair (`Analyze (python)` / `Analyze (javascript-typescript)`,
+~13.7 runner-min/PR, 713 runs/7d [reported]) is GitHub's separate **Code Quality** feature (repo Settings → Code
+quality), not CodeQL default setup — both happen to fire under the Actions `dynamic` event, which is what caused
+the original misattribution throughout this document and in both council seats' C4 rows (a second-order W65
+instance: the refuter's own refutation was also wrong on attribution). **Status: DISABLED 2026-08-21 ~02:35 WITA
+(2026-08-20T18:35Z)** by the session, through the repo settings page (operator-GUI class action executed by the
+session). Proof metric, run now:
+`gh api "repos/Bali-Zero/Teman2/actions/runs?event=dynamic&created=>=2026-08-20T18:40:00Z" --jq '[.workflow_runs[]|select(.name|startswith("Code Quality"))]|length'`
+→ **0**, checked 2026-08-20T18:51:39Z.
+
+### 13.2 L1 (merge-queue batching) — DOWNGRADED by measurement
+
+Objection raised by the peer session (nuzantara-75); measured here. Method: 392 `merge_group` runs of `tests.yml`
+since 2026-08-14; queue branch `gh-readonly-queue/main/pr-<N>-<base_sha>`; a run is chained to the run whose
+`head_sha` equals its `<base_sha>` AND was created within 120 s (entries of one speculative group are built
+together; without the time bound the chain crosses merges via the main tip and collapses to one group — measured).
+**PROXY, declared**: group = maximal time-bounded chain. Link-gap histogram: ≤30s 63, ≤120s 26, ≤10m 99, ≤1h 152, >1h 51.
+
+`runs=392 · prs=264 · groups=303 · runs/PR 1.48 · 23% of PRs re-enter at least once`
+
+| Group size | Groups | Later re-entry | Rate | Any non-success | Runs |
+|---|---|---|---|---|---|
+| 1 | 243 | 59 | 24% | 30 | 243 |
+| 2 | 40 | 14 | 35% | 6 | 80 |
+| 3 | 13 | 11 | **85%** | 10 | 39 |
+| 4 | 5 | 4 | 80% | 2 | 20 |
+| 5 | 2 | 1 | 50% | 1 | 10 |
+
+Attempts per PR: `1:203 2:35 3:10 4:4 5:4 6:4 7:3 8:1` → 26 PRs (10%) with ≥3 attempts consume 119 runs (30%).
+`merge_group` conclusions: success 329 · failure 57 · cancelled 3 · pending 3 → **15% queue-red on PR-green code**
+(57 failure + 3 cancelled of 392).
+
+**Verdict**: re-entry rises steeply with group size (`ALLGREEN`: one red re-queues the whole group). Flipping
+`min_entries_to_merge` 1→3 would move most merges into the 85% bucket — the gross ×2.5→×1.8 saving is eaten by
+fatter re-entries. **L1 is downgraded** to "do not flip until the conditional failure rate is understood." The
+sharper lever is the tail (13.3): why 26 PRs needed 3-8 attempts, and why 15% of queue runs go red on code that was
+green on the PR run.
+
+### 13.3 Tail anatomy + three replacement levers (L13-L15)
+
+Failed `merge_group` runs of `tests.yml`, 60 runs, by day × failing step (`Test Summary` aggregator excluded):
+
+| Day | PRs | Failing step (count) |
+|---|---|---|
+| 2026-08-14 | 7 | Run tests (with coverage) 12 · Initialize containers 1 · Run E2E 1 |
+| 2026-08-15 | 1 | Initialize containers 1 |
+| 2026-08-17 | 4 | **npm audit 19** |
+| 2026-08-18 | 10 | Run unit tests 8 · Install Playwright browsers 1 |
+| 2026-08-19 | 6 | **Install Playwright browsers 8** · Run E2E 1 · Initialize containers 1 |
+| 2026-08-20 | 7 | Run unit tests 5 · Initialize containers 2 · Run E2E 1 |
+
+2026-08-17: one upstream advisory turned the queue red for a day — PRs #4243/#4244/#4247/#4264 re-entered 9-17× each
+(29-33 h open→merge, #4264 never merged).
+
+**Reading**: the re-entry tail is NOT per-PR flakiness — it is **main-red windows** in which every queued PR churns
+(30 min × N) until main is cured. Three levers, none of them batching (added to §7 as L13-L15, ranked right after L0):
+
+- **L13** — `npm audit` is a non-hermetic required gate (an external advisory feed can flip green code red with zero
+  repo change); move it to an advisory or nightly job, never a queue gate.
+- **L14** — Playwright browser install is network-bound; cache `~/.cache/ms-playwright` keyed on the playwright
+  version.
+- **L15** — when the same required job fails for ≥2 consecutive queue groups, the queue should PAUSE and alert
+  rather than rebuild — a "main-red circuit breaker".
+
+### 13.4 Consumer-map lesson (W107 form)
+
+The orphan-tree deletion (PR #4459, open as of 2026-08-21) had two consumers invisible to a
+`git grep apps/backend-rag/tests/` census: `.github/workflows/sonarqube.yml` (paths written as `tests/...` after
+`cd apps/backend-rag` — confirmed on `origin/main` at lines 136-139: `backend/tests/`, `tests/test_sentry_lazy_import.py`,
+`tests/test_sentry_pii_redaction.py`, `tests/kb/test_politics_hierarchical.py`; fix lives in PR #4461, open as of
+2026-08-21) and `apps/backend-rag/scripts/backend_stability_gate.py` (a pytest argument list inside a Python script
+— confirmed on `origin/main`: `"tests/test_migrations.py"` in the migration-suite invocation; fixed inside #4459
+itself, after the required check `Backend Tests (Python)` went red first).
+
+**Rule**: enumerate consumers by **basename** across the whole tree, never by the path prefix you expect to find
+them under — a census anchored on the wrong token is the W107 shape (23 counted where 9 were): grepping
+`apps/backend-rag/tests/` as a path prefix misses every consumer that references the tree by its cwd-relative
+`tests/...` form instead.
 
 ## Adversarial review
 
@@ -301,7 +409,7 @@ was re-probed on disk by the author before being folded in.
 | C1 | "54% post-PR" is a location, not a cause; 14% Bash share can't explain it | **ACCEPTED, reframed** | decomposition: post-PR output = tool-less turns 62%, CI babysitting 4% → the cause is reasoning budget, not babysitting (§3) |
 | C2 | cheap PR run may push logic failures into the queue (9% fail rate already); batching needs arrival-rate check | **ACCEPTED** | L4(A) kept MED-HIGH and late; L1 yield conditional on burstiness (10 PRs/80 min bursts observed) |
 | C3 | markdown/json ≠ non-executable; META-gate true-positive rate unmeasured; ledger batching timing unmeasured | **ACCEPTED, narrowed** | docs lane = `DOC_PREFIXES/SUFFIXES` of `change_map.py` minus registries/workflows/prompts; META gates keep running (fast) |
-| C4 | `codeql-analysis.yml` is absent → can't be the cure; "0 value" unproven without query-suite comparison | **ACCEPTED, then closed with data** | source = default setup (`dynamic/github-code-scanning/codeql`); custom = `security-extended,security-and-quality` ⊃ default suite → default is redundant (§2) |
+| C4 | `codeql-analysis.yml` is absent → can't be the cure; "0 value" unproven without query-suite comparison | **ACCEPTED, then closed with data** | source = default setup (`dynamic/github-code-scanning/codeql`); custom = `security-extended,security-and-quality` ⊃ default suite → default is redundant (§2). **Corrected 2026-08-21**: the "source" identification here was itself wrong — the duplicate is GitHub's Code Quality feature, not CodeQL default setup (`code-scanning/default-setup` genuinely reports `not-configured`; org config 17 has 0 attached repos). The redundancy finding (two analyses of the same code) stands; the mechanism named for it did not (§13.1) |
 | C5 | file/line/path predicates are weak semantic proxies; revert-rate can't falsify silent regressions | **ACCEPTED** | §8: Gear 1 skips LLM seats only, never a machine gate; shadow refuter on a 20% random sample; any shadow-only defect revokes the class |
 | C6 | bytes removed ≠ quota recovered (prefix already cached); minimal-context subagents can't drop safety rules | **ACCEPTED** | L7 reframed as context-room + subagent-boot lever; cut = catalogs + superscar narratives, never PII/worktree/merge rules |
 | C7 | no datum supports "owner's choice for the week"; 56% is message share not token share | **ACCEPTED, withdrawn** | token-weighted share measured: Fable 63% of output; L10 = owner decision, no inference |
@@ -318,7 +426,7 @@ was re-probed on disk by the author before being folded in.
 | C7 | refuted pending evidence: two standing rulings (2026-07-25 Opus default; 2026-08-19 "Fable never on small diffs") | **ACCEPTED** | CLAUDE.md §104 and §112 on origin/main, verbatim quote confirmed; L10 reframed as non-compliance until a newer ruling |
 | C6 | weakened: the superscar design is per-family narratives, not 1-line per scar; the drift is 10× vs its own "~2k token" header | **ACCEPTED** | L7 trim target = scar-level inline bodies, family skeleton kept |
 | C2 | weakened: smoke-only PR run concentrates detection in the queue; ejection = +60 min; gain holds only if queue failure rate stays flat | **ACCEPTED** (same as Codex) | L4(A) gated on the B3 tripwire (7d queue failure rate ≤ 2× baseline) |
-| C4 | "confirmed": `codeql-analysis.yml` active + absent → delete it, cleanest win | **REFUTED on attribution** (W65: the refuter also hallucinates) | that workflow's last run is 2026-02-14; the live duplicate is `dynamic/github-code-scanning/codeql` (default setup, `default` suite ⊂ custom `security-extended`); cure = disable default setup at org level |
+| C4 | "confirmed": `codeql-analysis.yml` active + absent → delete it, cleanest win | **REFUTED on attribution** (W65: the refuter also hallucinates) | that workflow's last run is 2026-02-14; the live duplicate is `dynamic/github-code-scanning/codeql` (default setup, `default` suite ⊂ custom `security-extended`); cure = disable default setup at org level. **Corrected 2026-08-21**: Kimi's own attribution here was *also* wrong — the live duplicate is GitHub's Code Quality feature (`Code Quality: CodeQL Setup` / `Code Quality: PR #N`), not CodeQL default setup; org security configuration 17 has zero attached repositories, so no default setup runs above this repo. A second-order W65 instance: the refuter's refutation was wrong on the same axis it refuted. Cure executed anyway (right action, wrong mechanism named): disabled at repo Settings → Code quality (§13.1) |
 | C9 | orphan tree is 310 files, not 276 | **REFUTED** | `git ls-tree -r origin/main apps/backend-rag/tests \| grep -c test_*.py` = 276 |
 | C8 | only the static system prompt is cacheable; if it is ~2K of 16K the gain caps near today's 12% | **ACCEPTED as probe-first** | L8 step 0 = log static vs volatile token split per call for 24 h before building |
 | C1 | agreement with caveat: part of post-PR output is doctrine-mandated queue-watch | **ACCEPTED** | and now measured: babysitting is 4% of post-PR output; reasoning is the mass |
