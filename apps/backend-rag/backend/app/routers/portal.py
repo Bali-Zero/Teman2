@@ -1127,12 +1127,19 @@ async def get_profile(
                     tm.avatar as assigned_to_avatar
                 FROM clients c
                 LEFT JOIN team_members tm ON c.assigned_to = tm.email
-                WHERE c.id = $1
+                WHERE c.id = $1 AND c.deleted_at IS NULL
                 """,
                 client["client_id"],
             )
 
             if not row:
+                # Row missing OR soft-deleted (deleted_at IS NULL above) -> not
+                # found, not a 500. Every other client-scoped portal endpoint
+                # resolves the client through PortalService, which filters
+                # `... WHERE id = $1 AND deleted_at IS NULL` and 404s the same
+                # way (see get_dashboard's "BUG C" comment) — this raw-SQL
+                # handler now matches that gate instead of serving an archived
+                # client's passport/DOB/address (2026-08-20).
                 raise HTTPException(status_code=404, detail="Profile not found")
 
             return {
