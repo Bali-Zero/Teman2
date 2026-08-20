@@ -384,7 +384,11 @@ async def get_companies(
             "data": companies,
         }
     except ValueError as e:
-        # Client soft-deleted / gone → not-found, not a 500 (see get_dashboard).
+        # CORRECTED 2026-08-20: portal_service.get_companies has no
+        # `deleted_at` filter (unlike get_dashboard) and nothing in its
+        # current body raises ValueError, so this branch does NOT cover a
+        # soft-deleted client — it is a defensive not-found guard only,
+        # currently unreachable dead code kept in case that changes.
         logger.warning(f"Companies client not found for client {client['client_id']}: {e}")
         raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
@@ -515,9 +519,11 @@ async def get_tax_overview(
             "data": data,
         }
     except ValueError as e:
-        # Client soft-deleted / gone (portal_service filters
-        # `deleted_at IS NULL`) -> not-found, not a 500. Consistent
-        # with get_dashboard (BUG C).
+        # CORRECTED 2026-08-20: portal_service.get_tax_overview has no
+        # `deleted_at` filter (unlike get_dashboard) and nothing in its
+        # current body raises ValueError, so this branch does NOT cover a
+        # soft-deleted client — it is a defensive not-found guard only,
+        # currently unreachable dead code kept in case that changes.
         logger.warning(
             f"Client not found in get_tax_overview for client {client['client_id']}: {e}"
         )
@@ -804,9 +810,11 @@ async def get_messages(
             "data": data,
         }
     except ValueError as e:
-        # Client soft-deleted / gone (portal_service filters
-        # `deleted_at IS NULL`) -> not-found, not a 500. Consistent
-        # with get_dashboard (BUG C).
+        # CORRECTED 2026-08-20: portal_service.get_messages has no
+        # `deleted_at` filter (unlike get_dashboard) and nothing in its
+        # current body raises ValueError, so this branch does NOT cover a
+        # soft-deleted client — it is a defensive not-found guard only,
+        # currently unreachable dead code kept in case that changes.
         logger.warning(f"Client not found in get_messages for client {client['client_id']}: {e}")
         raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
@@ -877,9 +885,11 @@ async def mark_message_read(
     except HTTPException:
         raise
     except ValueError as e:
-        # Client soft-deleted / gone (portal_service filters
-        # `deleted_at IS NULL`) -> not-found, not a 500. Consistent
-        # with get_dashboard (BUG C).
+        # CORRECTED 2026-08-20: portal_service.mark_message_read has no
+        # `deleted_at` filter (unlike get_dashboard) and nothing in its
+        # current body raises ValueError, so this branch does NOT cover a
+        # soft-deleted client — it is a defensive not-found guard only,
+        # currently unreachable dead code kept in case that changes.
         logger.warning(
             f"Client not found in mark_message_read for client {client['client_id']}: {e}"
         )
@@ -915,9 +925,11 @@ async def get_preferences(
             "data": preferences,
         }
     except ValueError as e:
-        # Client soft-deleted / gone (portal_service filters
-        # `deleted_at IS NULL`) -> not-found, not a 500. Consistent
-        # with get_dashboard (BUG C).
+        # CORRECTED 2026-08-20: portal_service.get_preferences has no
+        # `deleted_at` filter (unlike get_dashboard) and nothing in its
+        # current body raises ValueError, so this branch does NOT cover a
+        # soft-deleted client — it is a defensive not-found guard only,
+        # currently unreachable dead code kept in case that changes.
         logger.warning(f"Client not found in get_preferences for client {client['client_id']}: {e}")
         raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
@@ -957,9 +969,11 @@ async def update_preferences(
             "data": preferences,
         }
     except ValueError as e:
-        # Client soft-deleted / gone (portal_service filters
-        # `deleted_at IS NULL`) -> not-found, not a 500. Consistent
-        # with get_dashboard (BUG C).
+        # CORRECTED 2026-08-20: portal_service.update_preferences has no
+        # `deleted_at` filter (unlike get_dashboard) and nothing in its
+        # current body raises ValueError, so this branch does NOT cover a
+        # soft-deleted client — it is a defensive not-found guard only,
+        # currently unreachable dead code kept in case that changes.
         logger.warning(
             f"Client not found in update_preferences for client {client['client_id']}: {e}"
         )
@@ -1003,9 +1017,11 @@ async def get_timeline(
             "data": data,
         }
     except ValueError as e:
-        # Client soft-deleted / gone (portal_service filters
-        # `deleted_at IS NULL`) -> not-found, not a 500. Consistent
-        # with get_dashboard (BUG C).
+        # CORRECTED 2026-08-20: portal_service.get_timeline has no
+        # `deleted_at` filter (unlike get_dashboard) and nothing in its
+        # current body raises ValueError, so this branch does NOT cover a
+        # soft-deleted client — it is a defensive not-found guard only,
+        # currently unreachable dead code kept in case that changes.
         logger.warning(f"Client not found in get_timeline for client {client['client_id']}: {e}")
         raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
