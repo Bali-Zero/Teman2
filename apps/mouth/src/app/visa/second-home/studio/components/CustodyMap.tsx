@@ -58,15 +58,35 @@ export function CustodyMap() {
             key={step}
             style={{ display: "grid", gap: "var(--space-1, 0.3rem)" }}
           >
-            <div style={{ display: "flex", gap: "var(--space-2, 0.5rem)" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "var(--space-2, 0.5rem)",
+              }}
+            >
+              {/* Step badge — matches the timeline's rounded, bordered
+               *  "owner chip" language (TimelineView.tsx) instead of a bare
+               *  numeral, aria-hidden since the number is decorative
+               *  (the step order is already conveyed by the <ol>). */}
               <span
                 aria-hidden
                 style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  width: 24,
+                  height: 24,
+                  borderRadius: "50%",
+                  border: "1.5px solid var(--accent-funnel)",
                   fontFamily: "var(--font-serif, Georgia, serif)",
+                  fontSize: "0.8rem",
+                  fontWeight: 600,
                   color: "var(--accent-funnel-text, var(--accent-funnel))",
                 }}
               >
-                {i + 1}.
+                {i + 1}
               </span>
               <strong style={{ color: "var(--text-primary)" }}>
                 {getCopy(`custody.steps.${step}.title`)}
