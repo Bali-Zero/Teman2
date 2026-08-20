@@ -842,6 +842,24 @@
       "live": "~/Library/LaunchAgents/com.nuzantara.visa-freshness-sentinel.plist",
       "repo": "infra/launchagents/com.nuzantara.visa-freshness-sentinel.plist",
       "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/eventbus/meta_dispatcher.py",
+      "repo": "infra/eventbus/meta_dispatcher.py",
+      "machines": ["pro"],
+      "_note": "UNDECLARED live payload found 2026-08-20 (family #1): plist com.balizero.meta-dispatcher execs this HOME copy directly (ProgramArguments greps /Users/nuzantara/scripts/eventbus/meta_dispatcher.py), running (launchctl list shows a live PID). Verified byte-identical to repo/origin-main sha256 0cf1d3e5... on Pro. NOT widened to m5: M5 also carries a real file at the same path, but it is dormant (0 launchd/crontab references — M5 has no daemon/cron per CLAUDE.md) AND it DIVERGES from repo (stale — missing the REDISCLI_AUTH/BZ_REDIS_HOST env-driven Redis fix and the claude-sonnet-5 model-pin migration). Declaring it here would immediately fail --check on someone else's pre-existing drift rather than catch new drift — same call as the codex/nightly-autofix-ci.sh precedent above. Mini has no ~/scripts/eventbus/ at all (confirmed via ssh, its repo checkout also lives at ~/nuzantara not ~/Desktop/nuzantara)."
+    },
+    {
+      "live": "~/scripts/eventbus/intel_dedup_gateway.py",
+      "repo": "infra/eventbus/intel_dedup_gateway.py",
+      "machines": ["pro", "m5"],
+      "_note": "UNDECLARED live payload found 2026-08-20 (family #1): plist com.balizero.intel-dedup-gateway execs this HOME copy directly, running on Pro. Verified byte-identical to repo/origin-main sha256 52871616... on BOTH Pro and M5. M5 included even though inert there (0 launchd/crontab references — M5 has no daemon/cron per CLAUDE.md): same reasoning as wr2-external-bench-run.sh/codex-automation-lib.sh above — declaring an inert-but-identical copy makes a future drift on it visible instead of silent. Mini has no ~/scripts/eventbus/ at all — not declared."
+    },
+    {
+      "live": "~/scripts/eventbus/research_sentinel.py",
+      "repo": "infra/eventbus/research_sentinel.py",
+      "machines": ["pro", "m5"],
+      "_note": "UNDECLARED live payload found 2026-08-20 (family #1): plist com.balizero.research-sentinel execs this HOME copy directly, running on Pro. Verified byte-identical to repo/origin-main sha256 858c17c6... on BOTH Pro and M5. M5 included even though inert there (0 launchd/crontab references): same reasoning as the sibling intel_dedup_gateway.py entry above. Mini has no ~/scripts/eventbus/ at all — not declared. Sibling plist com.balizero.observatory was investigated in the same sweep and is NOT part of this family: its ProgramArguments execs /Users/nuzantara/agents/.observatory/observatory.py, a structurally different directory (agents/.observatory/, not scripts/eventbus/) — left undeclared here, own ledger row if ever promoted."
     }
   ],
   "allow": [
