@@ -226,12 +226,39 @@ jobs:
       # failures at 19:57, 19:58, 20:06, 20:20 and 20:24, recovering by 20:42 — broke
       # the production image build repeatedly without anyone being told.
       #
-      # Restricted to pushes on main on purpose: on a pull request the author already
-      # has the signal, and duplicating it there would only train people to ignore the
-      # channel. `secrets.*` is available on main pushes.
-      - name: Telegram alert — production image failed to BUILD on main
-        if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+      # Restricted to non-PR triggers on purpose: on a pull request the author
+      # already has the signal, and duplicating it there would only train people
+      # to ignore the channel. That was originally written as `event_name=='push'
+      # && ref=='refs/heads/main'`, which commit 4e2d8367e (#4218, 2026-08-16)
+      # orphaned: narrowing `on.push.branches` from `[main, develop]` to
+      # `[develop]` means GitHub's own branch filter now guarantees
+      # `event_name=='push' ⟹ ref=='refs/heads/develop'` — the old conjunct
+      # against `refs/heads/main` became a standing contradiction, so this step
+      # could never fire on a push, and under `schedule` (the daily backstop
+      # #4218 named as the intended replacement) `event_name` is never `'push'`
+      # either. The alarm was armed and mute. Proven live: the 2026-08-20
+      # unbuildable image (upstream `claude-code@2.1.237` published without its
+      # `linux-x64` tarball) alarmed nobody. The condition below now names
+      # exactly the two triggers this `on:` block can actually deliver a
+      # failure() run through — a push to `develop`, or the daily `schedule`
+      # run (which always executes against the default branch, i.e. main).
+      # `secrets.*` is available on both: `schedule` only ever fires on the
+      # default branch, never a fork PR context, and this repo's other
+      # scheduled workflows (e.g. cron-cert-monitor.yml) already read
+      # `secrets.TELEGRAM_BOT_TOKEN`/`secrets.TELEGRAM_OWNER_CHAT_ID` live under
+      # `on: schedule:` with no special-casing.
+      # The alert NAMES the ref it fired on rather than asserting one. The step
+      # used to be titled "... on main" and say so in its body — true while the
+      # only trigger was a push to main, and a lie the moment the condition
+      # above gained the `develop` push and the scheduled run. An alert that
+      # inventories mutable state mislead exactly the person reading it at
+      # 07:30 (W114/W106), and it is the same belief that produced the
+      # condition, so the two must not be able to disagree. `github.ref_name`
+      # is `develop` on the push and the default branch on the scheduled run.
+      - name: Telegram alert — production image failed to BUILD
+        if: failure() && (github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/develop'))
         env:
+          REF: ${{ github.ref_name }}
           SHA: ${{ github.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -249,7 +276,7 @@ jobs:
           # column 0 CLOSES the YAML scalar, and the file stops being valid
           # YAML — caught by actionlint before this ever ran.
           TEXT="$(printf '%s\n' \
-            "🐳 <b>nuzantara-rag image failed to BUILD on main</b>" \
+            "🐳 <b>nuzantara-rag image failed to BUILD on ${REF}</b>" \
             "" \
             "<code>${SHA:0:8}</code>" \
             "" \
