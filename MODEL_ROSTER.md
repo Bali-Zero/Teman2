@@ -146,6 +146,53 @@ API-confirmed): MiniMax M2.5, kimi-k2.5/2.6/2.7. PROBE-4 (the planned MiniMax sa
 verification) is moot — there is nothing on this account to probe. Using either requires adding
 it to this plan or sourcing a different account, a Zero decision, not a probe.
 
+### Coding-plan models measured 2026-08-21 (qwen-seat-fleet arming, empirical CLI probe)
+
+**⚠️ Contradicts the 2026-08-14 PHANTOM line above — flagged, NOT auto-resolved here.** This
+session's task was arming the seat + wrapper fleet-wide, not re-auditing TP1 billing; the
+discrepancy below needs a console-side check (which underlying balance a call draws from) before
+either classification is trusted blindly. Two independent measurements, both empirical, disagree
+with each other AND with the 2026-08-14 console read:
+
+1. `GET /v1/models` on both DashScope base URLs (`coding-intl` and `coding`, identical response)
+   returned exactly 10 ids: `qwen3-coder-plus`, `qwen3-max-2026-01-23`, `qwen3-coder-next`,
+   `glm-4.7`, `kimi-k2.5`, `qwen3.5-plus`, `glm-5`, `MiniMax-M2.5`, `qwen3.6-plus`,
+   `qwen3.7-plus`.
+2. Live `qwen -p "..." --model <id>` calls (the thing that actually matters) show **4 of those
+   10 listed ids return `403 Access to model denied`** (`kimi-k2.5`, `glm-5`, `MiniMax-M2.5`,
+   `qwen3.6-plus`) — the listing endpoint is not a reliable access oracle (own W-class: judge the
+   reply, never a name/listing proxy) — while **16 ids NOT in that listing return PONG**,
+   including `kimi-k2`, `kimi-k2.7`, `kimi-k3`, `MiniMax-M2.7`, `MiniMax-M3` — i.e. the specific
+   _dated_ kimi/MiniMax snapshots the 2026-08-14 census marked PHANTOM fail, but _other_ numbered
+   snapshots of the same model families succeed live, under the same `BAILIAN_TOKEN_PLAN_API_KEY`.
+   Open question this session did not resolve: do the PASS-ing kimi/MiniMax calls draw from the
+   flat TP1 quota, or silently fall through to metered pay-as-you-go billing outside the plan? A
+   console spend-ledger check is needed before routing any real traffic to them.
+
+**PASS (26/26 on M5, Pro, AND Mini — probed once per model per machine, `qwen -p "Reply with
+exactly: PONG-<id>" --model <id>`, judged by output content, watchdog-guarded)**:
+`qwen3-coder-plus` · `qwen3-coder` · `qwen3-coder-flash` · `qwen3-coder-next` ·
+`qwen3-max-2026-01-23` · `qwen3-max` · `qwen3.5-plus` · `qwen3.6-flash` · `qwen3.7-plus` ·
+`qwen3.7-max` · `qwen3.8-max` · `qwen3.8-max-preview` · `qwen3-vl-plus` · `qwen3-asr-flash` ·
+`glm-4` · `glm-4.5` · `glm-4.7` · `glm-5.2` · `kimi-k2` · `kimi-k2.7` · `kimi-k3` ·
+`MiniMax-M2.7` · `MiniMax-M3` · `deepseek-v3` · `deepseek-v4` · `deepseek-v4-pro`.
+
+**FAIL (M5 only, `403 Access to model denied` — plan-account-level, so presumed identical on
+Pro/Mini; not re-probed there since the denial is a token-scope property, not a machine
+property)**: `kimi-k2.5` · `kimi-k2.6` · `glm-5` · `glm-5.1` · `MiniMax-M2.5` · `qwen3.6-plus` ·
+`deepseek-v4-flash` (note: distinct from the ARMED `deepseek-v4-flash-0731` above — a bare
+`deepseek-v4-flash` alias without the date suffix is denied; the dated one that's in production
+use is unaffected by this finding).
+
+Remote-probe recipe used (avoids the ssh-eats-the-loop trap, W-class: `ssh` without `-n` inside a
+`while read` loop consumes the loop's own stdin — first attempt silently ran only 1 of 26 models
+per machine before this was caught and fixed):
+
+```bash
+ssh -n -o BatchMode=yes -o ConnectTimeout=15 <pro|mini> \
+  "export PATH=/opt/homebrew/bin:\$PATH; perl -e 'alarm 150; exec @ARGV' qwen -p '<prompt>' --model '<id>' < /dev/null"
+```
+
 **Hard NOs, whole wing** (spec §2.5): client PII (Law 2 — PII intake is SEA-LION/local, never this
 wing), client-facing outputs, merge/deploy, final gates, NUZANTARA/infra credentials in the
 model-visible env.
