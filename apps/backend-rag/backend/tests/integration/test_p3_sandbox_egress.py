@@ -3,8 +3,10 @@
 Spec: research/operations/specs/P3-test-prod-sandbox.md §6.
 
 These are the binary acceptance criteria for the sandbox egress chokepoint. They
-require Docker (a running `--profile sandbox` stack) and are SKIPPED where Docker
-is absent (M5 thin-client, CI without docker-in-docker). Run on Pro:
+require the `sandbox-agent` container from this overlay to already be UP, and are
+SKIPPED otherwise (M5 thin-client, CI runners — CI has a working docker daemon but
+never brings this stack up, so the skip condition checks the container, not just
+docker itself). Run on Pro:
 
     docker compose \
       -f apps/backend-rag/docker-compose.test.yml \
@@ -54,9 +56,35 @@ def _docker_available() -> bool:
         return False
 
 
+def _sandbox_agent_running() -> bool:
+    """The `sandbox-agent` service from the compose overlay is UP, not just docker.
+
+    `_docker_available()` alone is not a sufficient skip condition: GitHub-hosted
+    CI runners have a working docker daemon (`docker info` returns 0) but never run
+    `docker compose ... up -d --build` for this overlay — that step only happens on
+    Pro. Without this check, moving this file into a CI-collected path (as opposed
+    to the orphan tree it lived in before) makes every test in here execute for
+    real against a container that was never started, failing on a false "allowlist
+    too tight" instead of skipping.
+    """
+    if not _docker_available():
+        return False
+    try:
+        proc = subprocess.run(
+            [*COMPOSE, "ps", "-q", "sandbox-agent"],
+            capture_output=True, text=True, timeout=10,
+        )
+        return proc.returncode == 0 and proc.stdout.strip() != ""
+    except Exception:  # noqa: BLE001
+        return False
+
+
 pytestmark = pytest.mark.skipif(
-    not _docker_available(),
-    reason="Docker not available — P3 sandbox gates run on Pro (workhorse), not M5/CI.",
+    not _sandbox_agent_running(),
+    reason=(
+        "sandbox-agent container not running — P3 sandbox gates run on Pro "
+        "(workhorse) after `docker compose ... up -d --build`, not CI/M5."
+    ),
 )
 
 
