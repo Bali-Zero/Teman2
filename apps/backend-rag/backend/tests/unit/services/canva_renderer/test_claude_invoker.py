@@ -11,6 +11,7 @@ import subprocess
 
 import pytest
 
+from backend.services.canva_renderer import claude_invoker
 from backend.services.canva_renderer.claude_invoker import (
     DEFAULT_CLAUDE_MODEL,
     CanvaInvokeError,
@@ -71,9 +72,24 @@ class TestInvokeClaudeApplyModelPin:
     scripts/lint/lint_claude_headless_model_pin.py. Pure argv-construction
     check via a monkeypatched subprocess.run — no real Claude CLI spawned,
     so no skip marker needed (unlike the real-subprocess tests this file's
-    docstring defers elsewhere)."""
+    docstring defers elsewhere).
+
+    invoke_claude_apply() also reads a REAL userspace file first
+    (~/.claude/skills/canva-apply.md, this module's runbook single-source)
+    before it ever reaches subprocess.run — on a CI runner's ephemeral $HOME
+    that file does not exist, so both tests here also monkeypatch
+    APPLICA_RUNBOOK_PATH to a tmp file with dummy content, keeping this
+    class's own claim ("no real Claude CLI spawned") true without silently
+    depending on the operator machine's userspace skill install.
+    """
+
+    def _stub_runbook(self, tmp_path, monkeypatch) -> None:
+        runbook = tmp_path / "canva-apply.md"
+        runbook.write_text("dummy runbook body\n", encoding="utf-8")
+        monkeypatch.setattr(claude_invoker, "APPLICA_RUNBOOK_PATH", runbook)
 
     def test_argv_carries_a_pinned_model(self, tmp_path, monkeypatch) -> None:
+        self._stub_runbook(tmp_path, monkeypatch)
         pending = tmp_path / "canva_pending.json"
         pending.write_text(json.dumps({"pages": []}))
 
@@ -99,6 +115,7 @@ class TestInvokeClaudeApplyModelPin:
         assert model == DEFAULT_CLAUDE_MODEL
 
     def test_model_is_overridable(self, tmp_path, monkeypatch) -> None:
+        self._stub_runbook(tmp_path, monkeypatch)
         pending = tmp_path / "canva_pending.json"
         pending.write_text(json.dumps({"pages": []}))
 
