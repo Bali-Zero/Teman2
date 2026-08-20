@@ -14,6 +14,14 @@ pending_gates:
   - "No price goes live without PricingTool + explicit owner sign-off"
 ---
 
+> ⚠️ **SUPERSEDED 2026-08-20 (Zero ruling).** The flat 12M/person add-on
+> proposed below is superseded. E33 family members now use the EXISTING
+> PricingTool rows: Dependent KITAS 1y (13.5M onshore / 11M offshore, extend
+> 9M), later path Dependent KITAP + MERP (33M); Spouse KITAS is a DISTINCT
+> product line with its own pricing (Spouse 1y 13.5M onshore / 11M offshore).
+> Never a bespoke E33 add-on price. See `.claude/skills/secondhome/SKILL.md`
+> §3 (Owner decisions). Historical content below preserved as-is.
+
 # E33 Second Home — Dependent (Family) Pricing Draft
 
 Proposal for Zero. Nothing here is client-facing or authorized. All numbers
