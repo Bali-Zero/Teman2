@@ -22,6 +22,66 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 
 ## 1. LIVE STATE (last update 2026-08-20 — keep current)
 
+- **📉 IMPLICIT PREFIX-CACHE: VERIFIED HEALTHY, NOTHING TO BUILD — July's 0% was the LEDGER'S
+  blindness, and the live answering model has been the FALLBACK since 08-10 (2026-08-20, measured
+  on `llm_cost_events` read-only + git forensics; adversarial pass: Kimi K3 — 2 claims tightened,
+  1 refuted and re-cured with new queries).** The 2026-08-11 panel bullet below left ONE caching
+  task: verify the byte-identical static prefix. Done:
+  - **The request shape is cache-correct.** Assembly traced on origin/main: static template first
+    (`{today_wita}` at char ~87 = daily variance only), `{user_memory}` at 83-90% of the template,
+    `{query}` right after it, per-request blocks (curated_qa grounding, KG workflow, entities)
+    tail-appended via `additional_context`, the self-correction retry resends the system prompt
+    byte-identical, chat contents append-only. Static prefix ≈8.2k tokens (char-derived,
+    corroborated by the hit sizes below) — above the implicit-cache minimum, which on the 3.x
+    family is **4,096 tokens (up from 2,048 on 2.5; ai.google.dev/gemini-api/docs/caching,
+    fetched 2026-08-20)**.
+  - **`system_instruction` participates in the prefix match — settled by construction, not by
+    clustering**: two gateway calls at 08-09 21:57Z have `input_tokens` 10,631/10,757 with
+    `cache_hit_tokens` 8,166/8,167 — their contents were ~2.5k tokens, SMALLER than the hit, so
+    the matched prefix can only include the system prompt. (The distribution agrees: 286 hits,
+    min 7,923 / p25 8,183 ≈ the static prefix; p50-p75 at 12-14k = matches extending past it
+    into user_memory and/or contents.)
+  - **The gateway ledger was BLIND until 2026-08-09 17:47Z.** #2845 (07-19) started recording
+    gateway cost events without extracting `cached_content_token_count` (its diff contains zero
+    cache fields), so `cache_hit_tokens` sat at 0 by construction; #3914 wired
+    `extract_gemini_usage` into the gateway and the first real gateway hit appears 36 minutes
+    after its merge (18:23Z). July's 0.0% over ~23M input tokens is unmeasured and not
+    recoverable from the ledger — do NOT read it as "caching was broken", and do NOT read the
+    per-model aggregates (3.5-flash "2.1%" vs 2.5-flash "12.4%") as a model property: 3.5's
+    denominator is ~100% blind tokens (its traffic ended 08-09), while 2.5 carried the sighted
+    days. The same artifact explains the verifier's 0-of-483 on 3.5 vs 9.5% on 2.5.
+  - **Sighted hit rate: 11-21% of input tokens on the probe-burst days** (08-09/10/11), ~16% of
+    calls with any hit (286 of ~1,776). The ceiling on cold same-bucket bursts is ~50% (8k prefix
+    on 16k avg input); no shape defect was found in the traced assembly — the residual gap is
+    attributable to Google's best-effort TTL/routing PLUS prefix fragmentation (per-language
+    byte-0 header, team/creator persona prepends), which this data cannot apportion. The only
+    code-side lever left is EXPLICIT caching, which per the panel's own math pays only above
+    ~3.6-4.8 calls/hour sustained; background traffic is **3-17 calls/DAY (~$0.05/day)** —
+    SKIPPED, with numbers.
+  - **The verifier caches only across self-correction re-verifications** (shared
+    preamble+query+context prefix; only the draft differs): 110 hits on its 2.5 rows, min 238 /
+    p50 ~2k ≈ the shared portion, 63% of input when it hits. Its ~55-token static preamble alone
+    can never meet any documented minimum — fine as-is, nothing worth restructuring.
+  - **🔀 SIDE-FINDING, corner-correcting: the live answering model is `gemini-2.5-flash` since
+    2026-08-10** — 100% of `rag.gateway.chat` rows since then (1,615 calls), zero 3.5 attempts
+    recorded. Mechanism found in git, not guessed: #3939 (merged 08-10, "wire the model knob that
+    already existed as a secret nobody read") made the RAG honor the pre-existing
+    `PRIMARY_MODEL_NAME` Fly secret — the same secret the credit-sentinel bullet below records as
+    `gemini-2.5-flash`. So the #2611 promotion to 3.5-flash was silently undone by wiring the
+    knob: deliberate mechanism, but whether 2.5-as-primary is the INTENDED steady state is a Zero
+    call nobody has made explicitly. (Cache-wise it is mildly favorable: 2,048 minimum vs 4,096.)
+  - **The #1 consumer of the metered seat is our own probing, not clients**: the 08-09→08-11
+    probe batteries burned ~$13 (28M input tokens, 1,695 gateway calls) against a ~$0.05/day
+    background. Future batteries: fire the variants inside a tight time window and reuse
+    phrasings — the docs' own guidance is "send requests with similar prefix in a short amount
+    of time"; on 08-10 that shape got 13.9% cached for free.
+  - **Consequence for the "semantic cache + local intent tier" lane** (2026-08-19 near-free-tools
+    panel, lane 1): PREMATURE at ~0 client traffic, and cache hits bypass the abstain gate (§2
+    truth #4) so it is safety-sensitive by construction. Deferred to go-public, not built
+    quietly.
+  - Small gap, noted not built: 1,089 calls / 0.8M input tokens in 45d carry an EMPTY `endpoint`
+    label in `llm_cost_events` — unattributed call sites.
+
 - **🏗️ BOT-V4 S2 BUILT AND DEPLOYED FLAG-OFF (2026-08-20) — THE BROKER EXISTS IN PROD, DARK;
   THE PRO DAEMON EXISTS ON MAIN, UNPROVISIONED; REAL WA STILL NO-GO (supersedes the spec-shipped
   headline below as the lane's current state).** Six PRs, every one through the adversarial
