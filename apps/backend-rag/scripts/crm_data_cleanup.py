@@ -247,16 +247,29 @@ async def cleanup_practice_statuses(conn: asyncpg.Connection, dry_run: bool) -> 
 
 
 async def backfill_last_interaction(conn: asyncpg.Connection, dry_run: bool) -> dict[str, int]:
-    """Backfill last_interaction_date da practices recenti."""
+    """Backfill last_interaction_date da segnali storici reali (practices + interactions).
+
+    Copre solo i client per cui last_interaction_date è NULL ma esiste GIÀ un
+    fatto verificabile altrove nel DB (una practice aggiornata o un'interazione
+    loggata prima che i due write-site esistessero/venissero raggiunti) — MAI
+    una data inventata. Idempotente: la WHERE last_interaction_date IS NULL fa
+    sì che un secondo run non tocchi nulla. Estende il pattern pre-esistente
+    (solo `practices.updated_at`) anche a `interactions.interaction_date`,
+    prendendo il MAX tra le due fonti per client.
+    """
     rows = await conn.fetch(
         """
-        SELECT c.id, MAX(p.updated_at) AS last_practice_update
+        SELECT c.id, MAX(sub.last_date) AS last_known_contact
         FROM clients c
-        JOIN practices p ON p.client_id = c.id
+        JOIN (
+            SELECT client_id, updated_at AS last_date FROM practices
+            UNION ALL
+            SELECT client_id, interaction_date AS last_date FROM interactions
+        ) sub ON sub.client_id = c.id
         WHERE c.last_interaction_date IS NULL
           AND c.deleted_at IS NULL
         GROUP BY c.id
-        HAVING MAX(p.updated_at) IS NOT NULL
+        HAVING MAX(sub.last_date) IS NOT NULL
         """
     )
     fixed = 0
@@ -264,10 +277,10 @@ async def backfill_last_interaction(conn: asyncpg.Connection, dry_run: bool) -> 
         if not dry_run:
             await conn.execute(
                 "UPDATE clients SET last_interaction_date = $1, updated_at = NOW() WHERE id = $2",
-                row["last_practice_update"], row["id"],
+                row["last_known_contact"], row["id"],
             )
         fixed += 1
-        logger.debug(f"  backfill: id={row['id']} last_interaction → {row['last_practice_update']}")
+        logger.debug(f"  backfill: id={row['id']} last_interaction → {row['last_known_contact']}")
 
     logger.info(f"[last_interaction] {fixed} records backfilled (dry_run={dry_run})")
     return {"backfilled": fixed}
