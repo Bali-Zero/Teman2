@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import { promisify } from "util";
 
-const execAsync = promisify(exec);
+import { logger } from "@/lib/logger";
+
+// execFile (not exec) — argv is passed as an array straight to the binary,
+// never through a shell. calendarId/days/max/summary/etc. are user-provided
+// (query params or JSON body); with `exec` + a template string they could
+// break out of the intended argument via shell metacharacters (CodeQL
+// js/command-line-injection #2311/#2312/#2313, 2026-08-21). execFile makes
+// that class of injection structurally impossible — each array element
+// becomes exactly one argv token, no matter what characters it contains.
+const execFileAsync = promisify(execFile);
 
 const GOG_PATH = "/opt/homebrew/bin/gog";
 const TEAM_CALENDAR_ID =
@@ -15,9 +24,16 @@ export async function GET(request: NextRequest) {
     const days = searchParams.get("days") || "30";
     const max = searchParams.get("max") || "50";
 
-    const { stdout } = await execAsync(
-      `${GOG_PATH} calendar events "${calendarId}" --days ${days} --max ${max} --json`,
-    );
+    const { stdout } = await execFileAsync(GOG_PATH, [
+      "calendar",
+      "events",
+      calendarId,
+      "--days",
+      days,
+      "--max",
+      max,
+      "--json",
+    ]);
 
     const data = JSON.parse(stdout || '{"events":[]}');
     interface CalendarEvent {
@@ -58,7 +74,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    console.error("Calendar API error:", error);
+    logger.error("Calendar API error:", error);
     return NextResponse.json(
       { success: false, error: message },
       { status: 500 },
@@ -87,23 +103,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let cmd = `${GOG_PATH} calendar create "${calendarId}" --summary "${summary}" --from "${from}" --to "${to}"`;
+    const args = [
+      "calendar",
+      "create",
+      String(calendarId),
+      "--summary",
+      String(summary),
+      "--from",
+      String(from),
+      "--to",
+      String(to),
+    ];
 
-    if (description) cmd += ` --description "${description}"`;
-    if (location) cmd += ` --location "${location}"`;
-    if (attendees) cmd += ` --attendees "${attendees}"`;
-    if (withMeet) cmd += ` --with-meet`;
+    if (description) args.push("--description", String(description));
+    if (location) args.push("--location", String(location));
+    if (attendees) args.push("--attendees", String(attendees));
+    if (withMeet) args.push("--with-meet");
 
-    cmd += " --json";
+    args.push("--json");
 
-    const { stdout } = await execAsync(cmd);
+    const { stdout } = await execFileAsync(GOG_PATH, args);
     const event = JSON.parse(stdout || "{}");
 
     return NextResponse.json({ success: true, event });
   } catch (error) {
-    console.error("Calendar create error:", error);
+    logger.error("Calendar create error:", error);
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : String(error) },
+      {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 },
     );
   }
@@ -122,15 +151,22 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await execAsync(
-      `${GOG_PATH} calendar delete "${calendarId}" "${eventId}" --force`,
-    );
+    await execFileAsync(GOG_PATH, [
+      "calendar",
+      "delete",
+      calendarId,
+      eventId,
+      "--force",
+    ]);
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Calendar delete error:", error);
+    logger.error("Calendar delete error:", error);
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : String(error) },
+      {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 },
     );
   }
