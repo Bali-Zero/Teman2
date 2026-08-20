@@ -1,7 +1,25 @@
 """Failure classifier: deterministic rules first, Claude CLI fallback."""
 import json
+import os
 import re
 import subprocess
+from pathlib import Path
+
+
+def _isolated_cwd() -> Path:
+    """Context-diet cwd for the `claude --print` classify fallback (2026-08-20).
+
+    Empty dir -> no CLAUDE.md auto-discovery; --safe-mode (set at the call
+    site) additionally skips skills/hooks/memory. Measured on Pro (CLI
+    2.1.237, Haiku): repo cwd = 92,397 ambient tokens, neutral cwd = 43,426,
+    --safe-mode + --strict-mcp-config + this isolated cwd = 22,408. This
+    classify prompt is a pure self-contained f-string with no tool access, so
+    skills/hooks/CLAUDE.md/MCP are pure overhead on this cron lane. Follows
+    the in-repo precedent scripts/wr3_dispatch_v2.py::_ISOLATED_CWD.
+    """
+    path = Path(os.environ.get("SENTINEL_CLAUDE_CWD", "/tmp/sentinel-claude-cwd"))
+    path.mkdir(parents=True, exist_ok=True)
+    return path
 
 TRANSIENT_PATTERNS = [
     r"HTTP 5\d\d",
@@ -144,8 +162,14 @@ def classify_with_llm(error_text: str, job_name: str) -> dict:
 
     try:
         proc = subprocess.run(
-            ["claude", "--print", prompt],
+            [
+                "claude", "--print",
+                "--safe-mode", "--strict-mcp-config",
+                "--mcp-config", '{"mcpServers":{}}',
+                prompt,
+            ],
             capture_output=True, text=True, timeout=30,
+            cwd=str(_isolated_cwd()),
         )
         if proc.returncode != 0:
             return {"type": "UNKNOWN", "subtype": "cli_failed", "fix_pattern": None, "confidence": 0.0}
