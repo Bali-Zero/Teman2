@@ -1,6 +1,6 @@
 """Tests for portal profile update."""
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -211,9 +211,12 @@ async def test_update_profile_phone_lock_fails_closed_on_nonconvergence():
     cooperative writers for all 3 convergence rounds must abort the update
     (fail CLOSED), never proceed while the row's current core is unlocked."""
     service, mock_conn = _make_service()
-    # Every re-read shows a DIFFERENT phone (fresh core each time) — the lock
-    # set can never cover the row's current cores.
+    # First item is the audit-trail pre-update read (one call, always, before
+    # the transaction); the remaining three are the phone-lock convergence
+    # loop's re-reads. Every re-read there shows a DIFFERENT phone (fresh
+    # core each time) — the lock set can never cover the row's current cores.
     mock_conn.fetchrow.side_effect = [
+        {**_PROFILE_ROW, "phone": "+62800000000", "phone_normalized": "62800000000"},
         {**_PROFILE_ROW, "phone": "+62811111111", "phone_normalized": "62811111111"},
         {**_PROFILE_ROW, "phone": "+62822222222", "phone_normalized": "62822222222"},
         {**_PROFILE_ROW, "phone": "+62833333333", "phone_normalized": "62833333333"},
@@ -270,3 +273,92 @@ async def test_update_profile_whatsapp_only_takes_phone_lock():
     assert lock_sqls  # the whatsapp-only update DID take the phonecore lock
     update_sqls = [c[0][0] for c in mock_conn.execute.call_args_list if "UPDATE clients" in c[0][0]]
     assert update_sqls and "whatsapp" in update_sqls[0]
+
+
+# ============================================
+# CRM AUDIT TRAIL (crm_audit_log)
+#
+# The portal write path used to update `clients` and only ever notify two
+# soft channels (notification_alerts, portal_messages) — never the
+# structured `crm_audit_log` table the CRM's own PATCH path writes via
+# @audit_change. These tests pin the fix: update_profile now calls
+# CRMAuditLogger.log_state_change (reused, not reimplemented) with an
+# actor tagged unambiguously as the client, is a no-op when nothing was
+# actually written, and can never fail the client's own update.
+# ============================================
+
+_AUDIT_LOG_TARGET = "backend.services.portal._mixins.billing.audit_logger.log_state_change"
+
+
+@pytest.mark.asyncio
+async def test_update_profile_writes_crm_audit_log_entry():
+    """GUILT: a real field change writes a crm_audit_log entry (via the
+    existing CRMAuditLogger.log_state_change API) naming the changed
+    field, with old and new values, and an actor tagged as the client —
+    not a bare staff-indistinguishable email."""
+    service, _mock_conn = _make_service(
+        fetchrow_return={**_PROFILE_ROW, "address": "OLD ADDRESS"},
+    )
+
+    with patch(_AUDIT_LOG_TARGET, new=AsyncMock(return_value=True)) as mock_audit:
+        result = await service.update_profile(
+            client_id=1,
+            fields={"address": "NEW ADDRESS"},
+            current_user={"client_id": 1, "email": "c1@example.com"},
+        )
+
+    assert result is not None
+    mock_audit.assert_awaited_once()
+    kwargs = mock_audit.call_args.kwargs
+    assert kwargs["entity_type"] == "client"
+    assert kwargs["entity_id"] == 1
+    assert kwargs["old_state"] == {"address": "OLD ADDRESS"}
+    assert kwargs["new_state"] == {"address": "NEW ADDRESS"}
+    # Actor must be unambiguously the client, not a bare email — an
+    # operator can't tell "client" from "staff" out of an @domain alone.
+    assert kwargs["user_email"] == "portal-client:c1@example.com"
+    assert kwargs["change_type"] == "update"
+
+
+@pytest.mark.asyncio
+async def test_update_profile_non_editable_fields_write_no_audit_row():
+    """INNOCENCE: an update whose fields are all non-editable (safe_fields
+    empty, no UPDATE runs) writes NO crm_audit_log row — an audit trail
+    that records non-events is noise."""
+    service, _mock_conn = _make_service()
+
+    with patch(_AUDIT_LOG_TARGET, new=AsyncMock(return_value=True)) as mock_audit:
+        result = await service.update_profile(
+            client_id=1,
+            fields={"full_name": "HACKED", "nationality": "RU"},
+            current_user={"client_id": 1, "email": "c1@example.com"},
+        )
+
+    assert result is not None
+    mock_audit.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_update_profile_audit_log_failure_does_not_raise():
+    """RESILIENCE: if the crm_audit_log write raises, the profile update
+    still succeeds (the client is never blocked by an audit-plumbing bug)
+    AND the failure is logged loudly — never swallowed silently."""
+    service, _mock_conn = _make_service()
+
+    with (
+        patch(
+            _AUDIT_LOG_TARGET, new=AsyncMock(side_effect=Exception("audit db exploded"))
+        ) as mock_audit,
+        patch("backend.services.portal._mixins.billing.logger") as mock_logger,
+    ):
+        result = await service.update_profile(
+            client_id=1,
+            fields={"address": "NEW ADDRESS"},
+            current_user={"client_id": 1, "email": "c1@example.com"},
+        )
+
+    assert result is not None  # the client's own update was not affected
+    mock_audit.assert_awaited_once()
+    assert mock_logger.error.called, "audit failure must be logged, not swallowed silently"
+    logged = " ".join(str(c) for c in mock_logger.error.call_args_list)
+    assert "crm_audit_log" in logged

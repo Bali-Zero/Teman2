@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, type ReactNode, type Ref } from "react";
+import { ChevronRight } from "lucide-react";
 
 export interface QuestionCardProps {
   heading: string;
@@ -62,14 +63,28 @@ export function QuestionCard({
       <p style={{ margin: 0, lineHeight: 1.6, color: "var(--text-primary)" }}>
         {body}
       </p>
-      <details style={{ fontSize: "var(--text-sm, 0.88rem)" }}>
+      <details
+        className="bz-shs-why"
+        style={{ fontSize: "var(--text-sm, 0.88rem)" }}
+      >
         <summary
+          className="bz-shs-why-summary"
           style={{
             cursor: "pointer",
             color: "var(--color-text-muted)",
             fontWeight: 600,
+            listStyle: "none",
+            display: "flex",
+            alignItems: "center",
+            gap: "var(--space-1, 0.35rem)",
           }}
         >
+          <ChevronRight
+            size={14}
+            aria-hidden
+            className="bz-shs-why-chevron"
+            style={{ flexShrink: 0 }}
+          />
           Why we ask
         </summary>
         <p
@@ -94,6 +109,47 @@ export function QuestionCard({
       <div style={{ display: "grid", gap: "var(--space-2, 0.5rem)" }}>
         {children}
       </div>
+      {/* Single instance per render (only one question stage is ever
+       *  mounted at a time) — matches the local-<style> pattern already
+       *  used by ProgressRail/MemoPreview. Transitions here are already
+       *  covered by StudioApp's `.bz-shs-layout * { transition: none }`
+       *  reduced-motion rule, since QuestionCard only ever renders inside
+       *  that container — no separate media query needed. */}
+      <style>{`
+        .bz-shs-why-summary::-webkit-details-marker {
+          display: none;
+        }
+        .bz-shs-why-chevron {
+          transition: transform 150ms ease-out;
+        }
+        .bz-shs-why[open] > .bz-shs-why-summary .bz-shs-why-chevron {
+          transform: rotate(90deg);
+        }
+        /* OptionButton (P2 design pass): border/background driven by the
+         * data-selected attribute rather than inline styles, so :hover can
+         * actually take effect — an inline style attribute always beats a
+         * stylesheet rule regardless of pseudo-class, so a hover rule
+         * targeting a JS-computed inline border/background would silently
+         * never apply. */
+        .bz-shs-option {
+          border: 1px solid var(--color-border-subtle);
+          background: transparent;
+          transition:
+            border-color 150ms ease-out,
+            background-color 150ms ease-out;
+        }
+        .bz-shs-option:hover {
+          border-color: var(--accent-funnel);
+          background: color-mix(in srgb, var(--accent-funnel) 6%, transparent);
+        }
+        .bz-shs-option[data-selected="true"] {
+          border: 2px solid var(--accent-funnel);
+          background: color-mix(in srgb, var(--accent-funnel) 12%, transparent);
+        }
+        .bz-shs-option[data-selected="true"]:hover {
+          background: color-mix(in srgb, var(--accent-funnel) 16%, transparent);
+        }
+      `}</style>
     </div>
   );
 }
@@ -114,8 +170,77 @@ export interface OptionButtonProps {
   variant?: "radio" | "toggle";
 }
 
+/** Decorative leading affordance for a radio-variant option: an empty ring
+ *  that fills with an accent dot when selected. `aria-hidden` — the radio
+ *  semantics live on the parent `role="radio"`/`aria-checked` button, this
+ *  is purely visual and contributes nothing to its accessible name. */
+function RadioAffordance({ selected }: { selected: boolean }) {
+  return (
+    <span
+      aria-hidden
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+        width: 20,
+        height: 20,
+        borderRadius: "50%",
+        border: selected
+          ? "2px solid var(--accent-funnel)"
+          : "1.5px solid var(--color-border-subtle)",
+      }}
+    >
+      {selected ? (
+        <span
+          style={{
+            width: 10,
+            height: 10,
+            borderRadius: "50%",
+            background: "var(--accent-funnel)",
+          }}
+        />
+      ) : null}
+    </span>
+  );
+}
+
+/** Decorative leading affordance for a toggle-variant option (the family
+ *  multi-select step): a small square that fills with a check mark when
+ *  selected. `aria-hidden` for the same reason as RadioAffordance. */
+function CheckAffordance({ selected }: { selected: boolean }) {
+  return (
+    <span
+      aria-hidden
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+        width: 20,
+        height: 20,
+        borderRadius: 5,
+        border: selected
+          ? "2px solid var(--accent-funnel)"
+          : "1.5px solid var(--color-border-subtle)",
+        background: selected ? "var(--accent-funnel)" : "transparent",
+        color: "var(--text-on-accent, #fff)",
+        fontSize: 13,
+        lineHeight: 1,
+      }}
+    >
+      {selected ? "✓" : null}
+    </span>
+  );
+}
+
 /** Large, keyboard-focusable option card. Never strips the native focus
- *  ring (accessibility — spec §0 "visible focus"). */
+ *  ring (accessibility — spec §0 "visible focus"). Border/background are
+ *  driven by the `bz-shs-option` CSS class + `data-selected` attribute
+ *  (see QuestionCard's local <style>) rather than inline styles, so hover
+ *  can layer on top; the leading radio/check affordance is decorative
+ *  (`aria-hidden`) — the real selected-state semantics stay on
+ *  `role`/`aria-checked`/`aria-pressed`, unchanged. */
 export function OptionButton({
   label,
   selected,
@@ -130,13 +255,14 @@ export function OptionButton({
       role={isRadio ? "radio" : undefined}
       aria-checked={isRadio ? selected : undefined}
       aria-pressed={isRadio ? undefined : selected}
+      className="bz-shs-option"
+      data-selected={selected ? "true" : "false"}
       style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "var(--space-3, 0.75rem)",
         padding: "var(--space-3, 0.85rem) var(--space-4, 1.1rem)",
         borderRadius: 8,
-        border: selected
-          ? "2px solid var(--accent-funnel)"
-          : "1px solid var(--color-border-subtle)",
-        background: selected ? "var(--surface-base)" : "transparent",
         color: "var(--text-primary)",
         textAlign: "left",
         cursor: "pointer",
@@ -145,7 +271,12 @@ export function OptionButton({
         fontFamily: "inherit",
       }}
     >
-      {label}
+      {isRadio ? (
+        <RadioAffordance selected={selected} />
+      ) : (
+        <CheckAffordance selected={selected} />
+      )}
+      <span>{label}</span>
     </button>
   );
 }

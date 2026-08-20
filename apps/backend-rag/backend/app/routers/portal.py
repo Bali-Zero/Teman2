@@ -1042,7 +1042,11 @@ async def get_required_documents(
                 SELECT
                     prd.id, prd.practice_id, prd.document_type, prd.document_label,
                     prd.description, prd.is_required, prd.uploaded_by_client,
-                    prd.status, prd.client_notes, prd.team_member_notes,
+                    -- team_member_notes is DELIBERATELY not selected: it is the
+                    -- operator's internal note (authoring UI labels it "Team Notes"
+                    -- / "Add notes for the team..."). The client-facing note is
+                    -- `description`, which the portal already renders.
+                    prd.status, prd.client_notes,
                     COALESCE(pt.name, p.practice_type_code) as process_name,
                     p.status as process_status
                 FROM practice_required_documents prd
@@ -1066,7 +1070,6 @@ async def get_required_documents(
                 "uploaded_by_client": row["uploaded_by_client"],
                 "status": row["status"],
                 "client_notes": row["client_notes"],
-                "team_member_notes": row["team_member_notes"],
             }
             for row in rows
         ]
