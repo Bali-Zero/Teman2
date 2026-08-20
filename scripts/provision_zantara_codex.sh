@@ -32,6 +32,14 @@
 #      UserName, never a LaunchAgent) and bootstraps it ONLY when the env
 #      file has no placeholders left — half-configured is refused, not
 #      half-armed (superscar #2).
+#   8. Installs the S3 seat-probe pair (Piece A of the seat sentinel,
+#      research/operations/2026-08-19-bot-chatgpt-provider-broker-spec.md):
+#      /usr/local/var/wa-codex-broker (shared state dir), the probe wrapper
+#      + script (root-owned, same fresh-copy-every-run discipline as step
+#      3), and its own LaunchDAEMON. Bootstrapped UNCONDITIONALLY — unlike
+#      the broker, the probe needs no WA_BROKER_KEY (it only reads
+#      WA_CODEX_BIN/CODEX_HOME from the same env file), so it is useful
+#      even before the operator fills the placeholders.
 #
 # What it deliberately does NOT do (spec §Solo-operatore — operator actions):
 #   - `codex login` as zantara-codex (one-time device-code flow):
@@ -50,17 +58,27 @@ set -euo pipefail
 BROKER_USER="zantara-codex"
 BROKER_HOME="/Users/${BROKER_USER}"
 RUNTIME_DIR="/usr/local/lib/wa-codex-broker"
+STATE_DIR="/usr/local/var/wa-codex-broker"
 WRAPPER_DST="/usr/local/libexec/wa-codex-broker-wrapper.sh"
 ENV_FILE="${BROKER_HOME}/.wa-codex-broker.env"
 CANARY_RECORD="/var/root/wa-codex-canaries.txt"
 PLIST_LABEL="com.balizero.wa-codex-broker"
 PLIST_DST="/Library/LaunchDaemons/${PLIST_LABEL}.plist"
 
+# S3 seat-probe pair (Piece A of the seat sentinel — step 8 below).
+PROBE_WRAPPER_DST="/usr/local/libexec/wa-codex-seat-probe-wrapper.sh"
+PROBE_SCRIPT_DST="${RUNTIME_DIR}/seat_probe.py"
+PROBE_PLIST_LABEL="com.balizero.wa-codex-seat-probe"
+PROBE_PLIST_DST="/Library/LaunchDaemons/${PROBE_PLIST_LABEL}.plist"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 BACKEND_SRC="${REPO_ROOT}/apps/backend-rag/backend"
 WRAPPER_SRC="${REPO_ROOT}/infra/launchagents/wrappers/wa-codex-broker-wrapper.sh"
 PLIST_SRC="${REPO_ROOT}/infra/launchagents/${PLIST_LABEL}.plist"
+PROBE_SCRIPT_SRC="${REPO_ROOT}/scripts/wa_codex_seat_probe.py"
+PROBE_WRAPPER_SRC="${REPO_ROOT}/infra/launchagents/wrappers/wa-codex-seat-probe-wrapper.sh"
+PROBE_PLIST_SRC="${REPO_ROOT}/infra/launchagents/${PROBE_PLIST_LABEL}.plist"
 
 log() { echo "[provision-zantara-codex] $*"; }
 
@@ -69,7 +87,8 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 for src in "${BACKEND_SRC}/services/integrations/wa_codex_daemon.py" \
-    "${BACKEND_SRC}/llm/codex_exec_client.py" "${WRAPPER_SRC}" "${PLIST_SRC}"; do
+    "${BACKEND_SRC}/llm/codex_exec_client.py" "${WRAPPER_SRC}" "${PLIST_SRC}" \
+    "${PROBE_SCRIPT_SRC}" "${PROBE_WRAPPER_SRC}" "${PROBE_PLIST_SRC}"; do
     if [ ! -f "$src" ]; then
         log "ERROR: source file missing: $src (run from a current repo checkout)"
         exit 1
@@ -216,16 +235,67 @@ if grep -q "__FILL_ME__" "${ENV_FILE}"; then
     log "bootstrap: SKIP — env file still has __FILL_ME__ placeholders."
     log "  After filling it (and codex login), arm with:"
     log "    sudo launchctl bootstrap system ${PLIST_DST}"
+elif launchctl print "system/${PLIST_LABEL}" >/dev/null 2>&1; then
+    # Loaded-state is checked EXPLICITLY (Kimi r1 M2): the old pattern read
+    # ANY bootstrap failure as "already loaded" (2>/dev/null + rc), so a
+    # malformed plist or a permission error green-ticked as armed — the
+    # installer itself reproducing superscar #2. And kickstart -k does NOT
+    # re-read a changed plist; only bootout+bootstrap does.
+    log "bootstrap: SKIP (already loaded). A CHANGED plist needs a reload:"
+    log "    sudo launchctl bootout system/${PLIST_LABEL} && sudo launchctl bootstrap system ${PLIST_DST}"
+    log "  (kickstart -k restarts the job but does NOT re-read the plist)"
 else
     set +e
-    launchctl bootstrap system "${PLIST_DST}" 2>/dev/null
+    BOOT_ERR="$(launchctl bootstrap system "${PLIST_DST}" 2>&1)"
     BOOT_RC=$?
     set -e
     if [ "${BOOT_RC}" -eq 0 ]; then
         log "bootstrap: DONE (daemon armed)"
+    elif printf '%s' "${BOOT_ERR}" | grep -qi "already loaded\|already bootstrapped\|service already"; then
+        # Kimi r2 #1: launchctl print can transiently fail while the service
+        # IS loaded — then bootstrap answers "already loaded". That state is
+        # ARMED, not broken: hard-failing here would page on a healthy daemon.
+        log "bootstrap: SKIP (bootstrap says already loaded — print missed it)"
     else
-        log "bootstrap: already loaded (rc=${BOOT_RC}) — restart with:"
-        log "    sudo launchctl kickstart -k system/${PLIST_LABEL}"
+        log "ERROR: bootstrap FAILED (rc=${BOOT_RC}): ${BOOT_ERR}"
+        exit 1
+    fi
+fi
+
+# --- 8. seat probe (S3, Piece A) ------------------------------------------
+install -d -o "${BROKER_USER}" -g staff -m 0755 "${STATE_DIR}"
+log "seat-probe state dir ${STATE_DIR}: DONE"
+
+# Fresh copy every run, same reasoning as step 3: the merge alone never
+# updates a live copy (superscar #1).
+install -o root -g wheel -m 0644 "${PROBE_SCRIPT_SRC}" "${PROBE_SCRIPT_DST}"
+install -o root -g wheel -m 0755 "${PROBE_WRAPPER_SRC}" "${PROBE_WRAPPER_DST}"
+log "seat-probe script + wrapper: DONE (root-owned)"
+
+install -o root -g wheel -m 0644 "${PROBE_PLIST_SRC}" "${PROBE_PLIST_DST}"
+log "seat-probe plist installed: ${PROBE_PLIST_DST}"
+# Unconditional bootstrap — the probe needs no WA_BROKER_KEY (only
+# WA_CODEX_BIN/CODEX_HOME from the shared env file), so it is useful even
+# while the broker's own env-file placeholders are still unfilled.
+if launchctl print "system/${PROBE_PLIST_LABEL}" >/dev/null 2>&1; then
+    # Same explicit loaded-check as the broker section above (Kimi r1 M2).
+    log "seat-probe bootstrap: SKIP (already loaded). A CHANGED plist needs a reload:"
+    log "    sudo launchctl bootout system/${PROBE_PLIST_LABEL} && sudo launchctl bootstrap system ${PROBE_PLIST_DST}"
+    log "  (kickstart -k restarts the job but does NOT re-read the plist)"
+else
+    set +e
+    PROBE_BOOT_ERR="$(launchctl bootstrap system "${PROBE_PLIST_DST}" 2>&1)"
+    PROBE_BOOT_RC=$?
+    set -e
+    if [ "${PROBE_BOOT_RC}" -eq 0 ]; then
+        log "seat-probe bootstrap: DONE (armed)"
+    elif printf '%s' "${PROBE_BOOT_ERR}" | grep -qi "already loaded\|already bootstrapped\|service already"; then
+        # Kimi r2 #1, symmetric with the broker section (W101-recidiva lesson:
+        # a fix that covers only the phase that bit you is half a fix).
+        log "seat-probe bootstrap: SKIP (bootstrap says already loaded — print missed it)"
+    else
+        log "ERROR: seat-probe bootstrap FAILED (rc=${PROBE_BOOT_RC}): ${PROBE_BOOT_ERR}"
+        exit 1
     fi
 fi
 
@@ -235,3 +305,15 @@ log "     sudo -u ${BROKER_USER} CODEX_HOME=${BROKER_HOME}/.codex HOME=${BROKER_
 log "2) fill ${ENV_FILE} (WA_BROKER_KEY, WA_CODEX_CLI_VERSION_PIN)"
 log "3) fly secrets import -a nuzantara-rag < ${CANARY_RECORD}"
 log "4) re-run this script (or launchctl bootstrap) to arm"
+log "5) arm Piece B (the reader — Kimi r1 M3: the probe writes a status file"
+log "   NOBODY reads until this runs) as the NORMAL cron user, not root:"
+log "   add a cron-runner crontab entry for"
+log "     infra/launchagents/wrappers/wa-codex-seat-sentinel.sh"
+log "   from this machine's MAIN checkout (~/nuzantara — NEVER a .worktrees/"
+log "   lane path: lanes get reaped after merge and the cron would point at"
+log "   nothing; Kimi r2 #4). Same pattern as the other cron-runner lines"
+log "   in \`crontab -l\`, e.g. every 15 minutes."
+log "NOTE (Kimi r2 #3): the probe bootstraps with RunAtLoad, so its FIRST run"
+log "   fires NOW — before step 1's login — and records auth_death. Expect ONE"
+log "   RED 'AUTH DEAD' page from the first sentinel run if it lands within"
+log "   the probe's 6h cadence of your login; the next probe run clears it."
