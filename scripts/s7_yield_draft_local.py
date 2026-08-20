@@ -143,6 +143,19 @@ SEGMENTS: dict[str, dict] = {
 }
 
 
+def display_name_for(full_name: str | None) -> str:
+    """First name + last-initial only (e.g. 'Andrea M.') — the Law-2 WhatsApp
+    payload allowlist forbids a client's full name in a team-member message
+    (SYMBIOSIS.md derogation, 2026-08-21). Never emits more than one initial
+    even for multi-part surnames; falls back to 'Client' when unnamed."""
+    parts = (full_name or "").split()
+    if not parts:
+        return "Client"
+    if len(parts) == 1:
+        return parts[0]
+    return f"{parts[0]} {parts[-1][0].upper()}."
+
+
 def lang_for(nationality: str | None) -> str:
     """Infer draft language from nationality (language pref column is unpopulated)."""
     n = (nationality or "").strip().lower()
@@ -280,6 +293,7 @@ def main() -> int:
                     "assigned_to": row.get("assigned_to"),
                     "segment": seg,
                     "lang": lang,
+                    "display_name": display_name_for(row.get("full_name")),
                     "pitch": pitch_text,
                     "signals": {
                         "document_type": row.get("document_type"),
