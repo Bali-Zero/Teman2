@@ -494,10 +494,16 @@ def _expire_stale_quarantine_refs(*, apply: bool, log_path: Path | None = None) 
       - Deletes via the two-argument `git update-ref -d <ref> <sha>`: a ref
         that moved between enumeration and deletion FAILS instead of being
         clobbered.
-      - `git update-ref -d` against a ref that is already gone prints
-        "error: cannot lock ref ...: unable to resolve reference ..." and
-        returns 1 — that is "already gone", not a failure; it is NOT
-        reported as an expiry failure.
+      - `git update-ref -d` wraps EVERY failure in "cannot lock ref ..." —
+        that wrapper alone does NOT mean "already gone". Two distinct
+        causes share it: an absent ref adds "...: unable to resolve
+        reference ..."; a MOVED ref (present, but not at the expected sha)
+        adds "...: is at <X> but expected <Y>". Only the "unable to resolve
+        reference" case is "already gone" and skipped as routine (NOT
+        reported as an expiry failure); the moved case is left untouched
+        and logged as a WARNING naming what happened, never conflated with
+        "already gone" (that would misreport an active write to this
+        namespace during the sweep as unremarkable noise).
       - Never halts: if a single run would expire more than
         QUARANTINE_SWEEP_ALARM refs, logs a loud [ALARM] and proceeds —
         halting here would recreate the silent-backlog disease this cures.
@@ -549,9 +555,25 @@ def _expire_stale_quarantine_refs(*, apply: bool, log_path: Path | None = None) 
         result = _run_git(["update-ref", "-d", ref, sha], check=False)
         if result.returncode != 0:
             stderr = (result.stderr or "").strip()
-            if "unable to resolve reference" in stderr or "cannot lock ref" in stderr:
-                # Already gone — not a failure, see docstring gotcha above.
+            # "cannot lock ref" is the wrapper both git prints on ANY -d
+            # failure — it does NOT by itself mean "already gone". Two
+            # distinct messages share it:
+            #   absent: "cannot lock ref '<r>': unable to resolve reference '<r>'"
+            #   moved:  "cannot lock ref '<r>': is at <X> but expected <Y>"
+            # Only "unable to resolve reference" means the ref no longer
+            # exists (see docstring gotcha above) — matching on "cannot lock
+            # ref" alone silently swallowed the moved case too, misreporting
+            # an active write to this namespace during the sweep as routine
+            # already-gone noise.
+            if "unable to resolve reference" in stderr:
                 logger.info("quarantine ref %s already gone (%s)", ref, stderr)
+                continue
+            if "but expected" in stderr:
+                logger.warning(
+                    "quarantine ref %s MOVED between enumeration and "
+                    "deletion — NOT expired, left untouched (%s)",
+                    ref, stderr,
+                )
                 continue
             logger.error(
                 "failed to expire quarantine ref %s (rc=%d): %s",

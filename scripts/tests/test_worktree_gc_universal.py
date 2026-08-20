@@ -783,6 +783,59 @@ class TestExpireStaleQuarantineRefs:
         assert expired == 0  # nothing NEW was deleted — it was already gone
         assert not any("failed to expire" in r.message for r in caplog.records)
 
+    def test_moved_ref_survives_and_is_not_conflated_with_already_gone(
+        self, gc_repo, monkeypatch, caplog,
+    ):
+        """Regression (team-lead review, 2026-08-2x): `git update-ref -d`
+        wraps BOTH the absent-ref case and the moved-ref case in "cannot
+        lock ref ..." — matching on that wrapper alone silently swallowed
+        a ref that MOVED between enumeration and deletion (present, but not
+        at the sha the sweep expected) as ordinary "already gone" noise.
+        A moved ref means something else wrote to this namespace mid-sweep
+        — exactly the event an operator needs to see, not something to
+        hide. Prove: the ref survives, it is NOT counted as expired, and it
+        is not logged as "already gone"."""
+        mod, repo, env = gc_repo
+        stale_sha = _make_quarantine_ref(
+            repo, "moved", mod.QUARANTINE_TTL_DAYS + 1, env,
+        )
+        # Simulate the ref moving to a NEW sha between enumeration and
+        # deletion (e.g. re-quarantined by a concurrent run) — the sweep's
+        # candidate list still carries the OLD (now-stale) sha.
+        # A different days_old (still > TTL) yields a different committer
+        # date and therefore a different commit sha — `git commit-tree` is
+        # otherwise fully deterministic (same tree/parent/message/author),
+        # so an identical call here would silently reproduce stale_sha.
+        fresh_sha = _make_quarantine_ref(
+            repo, "moved", mod.QUARANTINE_TTL_DAYS + 2, env,
+        )
+        assert fresh_sha != stale_sha
+        stale_entry = {
+            "ref": "refs/agent-quarantine/moved",
+            "sha": stale_sha,  # stale — the ref has already moved past this
+            "committer_date": datetime.now(timezone.utc) - timedelta(days=31),
+        }
+        monkeypatch.setattr(mod, "_list_quarantine_refs", lambda: [stale_entry])
+
+        with caplog.at_level("WARNING"):
+            expired = mod._expire_stale_quarantine_refs(apply=True)
+
+        assert expired == 0, "a moved ref must not be counted as expired"
+        current = _git(
+            ["rev-parse", "--verify", "refs/agent-quarantine/moved"],
+            cwd=repo, env=env, check=False,
+        )
+        assert current.returncode == 0, "the ref must survive"
+        assert current.stdout.strip() == fresh_sha, (
+            "the ref must still point at its CURRENT (fresh) sha, untouched"
+        )
+        assert not any(
+            "already gone" in r.message for r in caplog.records
+        ), "a moved ref must never be reported as already gone"
+        assert any(
+            "MOVED" in r.message for r in caplog.records
+        ), "a moved ref must be logged as its own distinct case"
+
     def test_expiry_appends_receipt_log_with_refname_sha_date(self, gc_repo):
         """Never silent: every expiry writes (full refname, sha, committer
         date) to the receipt log file."""
