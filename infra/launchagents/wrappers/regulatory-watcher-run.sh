@@ -469,6 +469,41 @@ if [ $SUCCESS -eq 0 ]; then
     cat "$TMPOUT" >> "$LOG"
 fi
 
+# Verifies the MODEL is actually installed, not just the `ollama` binary. Before
+# this check, a missing model reached `ollama run` directly: measured live
+# 2026-08-20 on Pro, that spends several seconds attempting a network
+# pull-manifest round-trip ("pulling manifest" spinner) before failing with a
+# generic `Error: pull model manifest: file does not exist` (exit 1) — a real
+# non-zero exit, but slow, unnecessarily network-dependent for a tier whose
+# whole point is local/offline, and logged identically to a daemon-down or OOM
+# failure. Reads /api/tags (not `ollama list`, which has an independent history
+# in this repo of answering empty while the API answers correctly) so a known
+# miss is fast, local-only, and distinguishable in the log from "daemon
+# unreachable".
+_ollama_model_ready() {
+    local model="$1"
+    local base="${OLLAMA_API_BASE:-http://127.0.0.1:11434}"
+    local tags
+    tags="$(curl -sf -m 5 "${base}/api/tags" 2>/dev/null)"
+    if [ -z "$tags" ]; then
+        echo "  [ollama-precheck] daemon unreachable at ${base}" >&2
+        return 1
+    fi
+    if printf '%s' "$tags" | python3 -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    sys.exit(1)
+names = {m.get('name') for m in data.get('models', [])}
+sys.exit(0 if '$model' in names else 1)
+"; then
+        return 0
+    fi
+    echo "  [ollama-precheck] model '$model' not installed (daemon reachable, tags checked)" >&2
+    return 1
+}
+
 # Tier 4: Ollama local (always available, lower quality but free + unlimited).
 # Last resort — nothing left to cascade to, so a partial result is accepted
 # rather than discarded, but it is marked DEGRADED (never silently "clean")
@@ -476,19 +511,23 @@ fi
 # could actually check".
 DEGRADED=0
 if [ $SUCCESS -eq 0 ]; then
-    echo "[$(date)] tier 3 failed/exhausted — falling back to ollama qwen3.5:9b local" >> "$LOG"
-    > "$TMPOUT"
-    /opt/homebrew/bin/ollama run qwen3.5:9b "$PROMPT_GENERIC" >"$TMPOUT" 2>&1
-    EXIT=$?
-    if [ $EXIT -eq 0 ] && ensure_delta "$TMPOUT"; then
-        SUCCESS=1
-        USED_LLM="ollama-qwen3.5:9b-local"
-        if delta_is_partial; then
-            DEGRADED=1
-            echo "[$(date)] tier 4 landed but partial=true — ALL 4 tiers failed to complete a real scan, accepting as DEGRADED (not a clean 0-new day)" >> "$LOG"
+    if ! _ollama_model_ready "qwen3.5:9b" 2>>"$LOG"; then
+        echo "[$(date)] tier 4 ollama — model qwen3.5:9b not ready (missing or daemon down), skipping" >> "$LOG"
+    else
+        echo "[$(date)] tier 3 failed/exhausted — falling back to ollama qwen3.5:9b local" >> "$LOG"
+        > "$TMPOUT"
+        /opt/homebrew/bin/ollama run qwen3.5:9b "$PROMPT_GENERIC" >"$TMPOUT" 2>&1
+        EXIT=$?
+        if [ $EXIT -eq 0 ] && ensure_delta "$TMPOUT"; then
+            SUCCESS=1
+            USED_LLM="ollama-qwen3.5:9b-local"
+            if delta_is_partial; then
+                DEGRADED=1
+                echo "[$(date)] tier 4 landed but partial=true — ALL 4 tiers failed to complete a real scan, accepting as DEGRADED (not a clean 0-new day)" >> "$LOG"
+            fi
         fi
+        cat "$TMPOUT" >> "$LOG"
     fi
-    cat "$TMPOUT" >> "$LOG"
 fi
 
 if [ $SUCCESS -eq 1 ] && [ $DEGRADED -eq 1 ]; then
