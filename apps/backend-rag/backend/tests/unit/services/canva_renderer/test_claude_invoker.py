@@ -6,11 +6,16 @@ spawn/timeout is tested separately (needs Claude CLI, skipped in CI).
 
 from __future__ import annotations
 
+import json
+import subprocess
+
 import pytest
 
 from backend.services.canva_renderer.claude_invoker import (
+    DEFAULT_CLAUDE_MODEL,
     CanvaInvokeError,
     extract_canva_urls,
+    invoke_claude_apply,
 )
 
 
@@ -58,3 +63,59 @@ class TestExtractCanvaUrls:
     def test_raises_on_empty_output(self) -> None:
         with pytest.raises(CanvaInvokeError, match="empty output"):
             extract_canva_urls("")
+
+
+class TestInvokeClaudeApplyModelPin:
+    """Model pin added 2026-08-20 (token-cuts round2): this call was bare
+    (no --model), inheriting the profile default — grandfathered by
+    scripts/lint/lint_claude_headless_model_pin.py. Pure argv-construction
+    check via a monkeypatched subprocess.run — no real Claude CLI spawned,
+    so no skip marker needed (unlike the real-subprocess tests this file's
+    docstring defers elsewhere)."""
+
+    def test_argv_carries_a_pinned_model(self, tmp_path, monkeypatch) -> None:
+        pending = tmp_path / "canva_pending.json"
+        pending.write_text(json.dumps({"pages": []}))
+
+        captured: dict[str, list[str]] = {}
+
+        def fake_run(argv, **kwargs):
+            captured["argv"] = list(argv)
+
+            class _R:
+                returncode = 0
+                stdout = '{"design_id":"DABC12345","edit_url":"https://www.canva.com/d/abc"}'
+                stderr = ""
+
+            return _R()
+
+        monkeypatch.setattr(subprocess, "run", fake_run)
+        invoke_claude_apply(pending)
+
+        assert "argv" in captured, "invoke_claude_apply never called subprocess.run"
+        argv = captured["argv"]
+        assert "--model" in argv, f"no --model flag in {argv!r}"
+        model = argv[argv.index("--model") + 1]
+        assert model == DEFAULT_CLAUDE_MODEL
+
+    def test_model_is_overridable(self, tmp_path, monkeypatch) -> None:
+        pending = tmp_path / "canva_pending.json"
+        pending.write_text(json.dumps({"pages": []}))
+
+        captured: dict[str, list[str]] = {}
+
+        def fake_run(argv, **kwargs):
+            captured["argv"] = list(argv)
+
+            class _R:
+                returncode = 0
+                stdout = '{"design_id":"DABC12345","edit_url":"https://www.canva.com/d/abc"}'
+                stderr = ""
+
+            return _R()
+
+        monkeypatch.setattr(subprocess, "run", fake_run)
+        invoke_claude_apply(pending, model="claude-opus-5")
+
+        model = captured["argv"][captured["argv"].index("--model") + 1]
+        assert model == "claude-opus-5"
