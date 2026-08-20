@@ -100,13 +100,38 @@ TARGET_REMOTE="origin"
 # canonical case.
 #
 # Cost-bounded: typical repo has <100 symlinks; full scan is ~50 ms.
+#
+# 2026-08-20 hardening (W120, family #3 guard-over-match): a raw
+# local-FS-vs-origin-tree comparison can't tell "foreign content that a
+# checkout would destroy" (the .venv case above) from "content that is
+# EXACTLY what our own HEAD already tracks, just an older type than
+# origin/main's" — a plain type-change commit (e.g. a directory
+# converted to a symlink upstream) reads identically to the dangerous
+# case unless we also ask HEAD. `git merge --ff-only` handles a clean
+# type-change natively; it only needs protecting from local drift HEAD
+# doesn't know about. So for every mismatching path we also resolve
+# HEAD's own tracked kind and only flag when local disagrees with HEAD
+# too — a stale-but-clean checkout (local == HEAD) is safe to let the
+# ff-only merge resolve on its own.
+_head_tracked_kind() {
+  local line
+  line=$(git ls-tree HEAD -- "$1" 2>/dev/null)
+  case "$line" in
+    120000\ *) echo "symlink" ;;
+    040000\ *) echo "dir" ;;
+    100644\ *|100755\ *) echo "file" ;;
+    *) echo "absent" ;;
+  esac
+}
+
 check_type_mismatch() {
   local mismatch_count=0
   local mismatch_first=""
 
   # Pass 1: every symlink declared in origin/main must be a symlink
   # locally (or absent — pull will create it). If it's a real file or
-  # dir, we have a mismatch.
+  # dir, we have a mismatch — UNLESS local matches what our own HEAD
+  # already tracks (safe stale-checkout type-change, see note above).
   # ls-tree format is `<mode> SP <type> SP <hash> TAB <path>`. We extract
   # the path field (everything after the TAB) via awk.
   while IFS= read -r path; do
@@ -119,15 +144,17 @@ check_type_mismatch() {
     elif [ -f "$path" ]; then fs_kind="file"
     fi
     if [ "$fs_kind" != "symlink" ]; then
+      [ "$(_head_tracked_kind "$path")" = "$fs_kind" ] && continue
       mismatch_count=$((mismatch_count + 1))
       [ -z "$mismatch_first" ] && mismatch_first="$path (origin=symlink, local=$fs_kind)"
     fi
   done < <(git ls-tree -r "$TARGET_REF" 2>/dev/null | awk -F'\t' '$1 ~ /^120000/ {print $2}')
 
   # Pass 2: every regular file declared in origin/main must NOT be a
-  # local dir or symlink. (Files are 100644/100755.) Dirs in git are
-  # implicit (tree entries appear when -t flag is used; we don't use -t
-  # so this pass only sees files. We focus on files-vs-dir conflicts.)
+  # local dir or symlink (same HEAD-matches-local exemption as Pass 1).
+  # (Files are 100644/100755.) Dirs in git are implicit (tree entries
+  # appear when -t flag is used; we don't use -t so this pass only sees
+  # files. We focus on files-vs-dir conflicts.)
   while IFS= read -r path; do
     [ -z "$path" ] && continue
     [ -e "$path" ] || [ -L "$path" ] || continue
@@ -137,6 +164,7 @@ check_type_mismatch() {
     elif [ -f "$path" ]; then fs_kind="file"
     fi
     if [ "$fs_kind" != "file" ]; then
+      [ "$(_head_tracked_kind "$path")" = "$fs_kind" ] && continue
       mismatch_count=$((mismatch_count + 1))
       [ -z "$mismatch_first" ] && mismatch_first="$path (origin=file, local=$fs_kind)"
     fi
