@@ -113,11 +113,12 @@ def test_whatsapp_strips_single_bare_citation_marker():
 
 
 def test_whatsapp_strips_multi_bare_citation_marker():
-    """The marker must be TRAILING (immediately before the sentence-final
-    period) to strip — see the anchor-fix note on _BARE_CITATION_RE. This
-    case was previously mid-sentence ("[1, 5] in the regulation.") and
-    stripped anywhere; that shape is now covered by the mid-sentence
-    INNOCENCE tests below, which prove it must survive untouched."""
+    """Strips regardless of position — see PENDING-ARMS 2026-08-10: the
+    marker no longer needs to be trailing to strip; it only needs to lack a
+    preceding statute anchor. See the mid-paragraph guilt case further down
+    for a bracket that survived the old trailing-only anchor and must not
+    survive this one, and the Pasal/Ayat/UU/PP/Permenkumham INNOCENCE cases
+    for the shape that must survive regardless of position."""
     result = format_rich_text("As stated in the regulation [1, 5].", "whatsapp")
     assert result == "As stated in the regulation."
 
@@ -169,6 +170,85 @@ def test_whatsapp_preserves_indonesian_multi_subarticle_marker_mid_sentence():
     or a lone sentence-terminal mark at end-of-text/end-of-line."""
     text = "Perpres 10/2021 Pasal 6 [1] dan [3] berlaku."
     assert format_rich_text(text, "whatsapp") == text
+
+
+# ── WhatsApp: PENDING-ARMS 2026-08-10 — entity, not position ────────────
+#
+# The trailing-position anchor above was itself the defect: measured live
+# against a real WhatsApp answer, a mid-paragraph RAG index survived
+# ("...HGB land [1, 5]. While the provided texts state...") because a
+# sentence continued after it, while a genuine 'Pasal 19 [3].' sub-article
+# at true end-of-sentence was deleted because it WAS trailing. Position lied
+# in both directions on the same regex. The cases below pin the entity-based
+# replacement: what precedes the bracket decides, never where it sits.
+
+
+def test_whatsapp_strips_mid_paragraph_citation_index_followed_by_more_prose():
+    """Guilt — the leak half of PENDING-ARMS 2026-08-10, reconstructed with
+    synthetic text (not the real client-bound answer): a bracket citation
+    at end-of-SENTENCE but not end-of-paragraph used to survive because more
+    prose followed on the same line. It must now strip regardless."""
+    text = (
+        "The property can be owned as a private house or an apartment unit "
+        "built on Hak Pakai or HGB land [1, 5]. While the provided texts "
+        "state this, further verification is advised."
+    )
+    result = format_rich_text(text, "whatsapp")
+    assert "[1, 5]" not in result
+    assert result == (
+        "The property can be owned as a private house or an apartment unit "
+        "built on Hak Pakai or HGB land. While the provided texts "
+        "state this, further verification is advised."
+    )
+
+
+def test_whatsapp_preserves_sentence_final_subarticle_marker():
+    """Guilt — the corruption half of PENDING-ARMS 2026-08-10: a genuine
+    'Pasal N [M]' that happens to sit at end-of-sentence (the exact shape
+    the trailing anchor used to delete) must now survive, because the
+    discriminator is the preceding statute token, not position."""
+    text = "Izin tinggal ini diatur dalam Pasal 19 [3]."
+    assert format_rich_text(text, "whatsapp") == text
+
+
+def test_whatsapp_preserves_subarticle_marker_at_start_of_line():
+    """Innocence: the statute anchor and its bracket sit at the very start
+    of a line (no preceding prose) — must still be recognized and survive."""
+    text = "Pasal 5 [1] mengatur syarat domisili."
+    assert format_rich_text(text, "whatsapp") == text
+
+
+def test_whatsapp_preserves_subarticle_marker_inside_a_table_row():
+    """Innocence: the same reference shape inside a pipe-delimited table
+    row (a shape the LLM sometimes emits for comparison tables) must not
+    be treated differently from prose."""
+    text = "| KITAS | 1 year | Pasal 8 [1] |\n| KITAP | 5 years | Pasal 9 [2] |"
+    assert format_rich_text(text, "whatsapp") == text
+
+
+def test_whatsapp_strips_index_adjacent_to_a_real_subarticle_marker():
+    """Innocence + guilt in one line: a protected statute chain and a bare
+    RAG index sit right next to each other. The fix must tell them apart by
+    entity, not merely by "is there a Pasal somewhere nearby"."""
+    text = "Pasal 19 [2] states the requirement [7]. See details below."
+    result = format_rich_text(text, "whatsapp")
+    assert "Pasal 19 [2]" in result
+    assert "[7]" not in result
+    assert result == "Pasal 19 [2] states the requirement. See details below."
+
+
+def test_whatsapp_preserves_ayat_uu_pp_permenkumham_subarticle_markers():
+    """Innocence: the other statute-reference forms actually used in this
+    repo's legal parser/ontology and KB corpus (Ayat, UU, PP, Permenkumham)
+    — not just Pasal — must be recognized as anchors too."""
+    cases = [
+        "Ayat 2 [1] menjelaskan pengecualian.",
+        "UU 6/2011 [4] tentang Keimigrasian.",
+        "PP 34/2021 [2] mengatur lebih lanjut.",
+        "Permenkumham 22/2023 [1] mengubah ketentuan.",
+    ]
+    for text in cases:
+        assert format_rich_text(text, "whatsapp") == text, text
 
 
 def test_whatsapp_preserves_named_regulation_citation():

@@ -8,6 +8,7 @@ output automatically.
 from __future__ import annotations
 
 import re
+from bisect import bisect_right
 from dataclasses import dataclass
 from typing import Any
 
@@ -75,20 +76,79 @@ def get_capabilities(channel: str) -> ChannelCapabilities:
 # brackets is a deliberately narrow match on the bracket CONTENT (entity: a
 # numeric citation index), but content alone is not enough: Indonesian
 # statutes cite sub-articles the same shape, e.g. "Pasal 19 [2]," or
-# "Pasal 6 [1] dan [3] berlaku." — an earlier version of this regex had no
-# positional anchor and stripped those mid-sentence, corrupting the legal
-# citation ("Pasal 6 dan berlaku." — meaning-changing). The entity this
-# guard actually targets is a TRAILING RAG source-index marker, so the
-# match is anchored to a trailing position: end-of-text, immediately
-# before a newline, or immediately before a single sentence-terminal mark
-# (./!/?) that itself sits at end-of-text/end-of-line. A bracket followed
-# by more prose (a comma, "dan", any word) is never trailing and survives
-# untouched. See .claude/rules/cicatrix-superscar.md family #3
-# (guard-over-match) for why that distinction matters.
-_BARE_CITATION_RE = re.compile(
-    r"\s*\[\d+(?:,\s*\d+)*\]"
-    r"(?=[.!?]?\s*(?:\n|\Z))"
+# "Pasal 6 [1] dan [3] berlaku."
+#
+# PENDING-ARMS 2026-08-10: an earlier version anchored on TRAILING POSITION
+# (end-of-text / before a newline / before a lone sentence-terminal mark at
+# end-of-text/end-of-line) instead of on the entity. That anchor lied both
+# ways on the same regex, measured live against production WhatsApp
+# answers: a raw RAG index mid-paragraph ("...HGB land [1, 5]. While the
+# provided texts state...") is NOT trailing and reached a paying client
+# untouched, while a genuine sub-article marker that happened to sit at
+# end-of-sentence ("Pasal 19 [3].") WAS trailing and got deleted, corrupting
+# the legal citation. Position is a proxy for "RAG index vs. statute
+# reference" that lies in both directions.
+#
+# The real discriminator is what PRECEDES the bracket, not where it sits:
+# a digits-only bracket immediately after a statute-reference token (or
+# chained to one via "dan"/"and"/"," — "Pasal 6 [1] dan [3]") is a
+# sub-article citation and must survive untouched, regardless of position.
+# Anything else is a bare RAG index and is stripped, regardless of
+# position. Tokens below are the statute-reference vocabulary actually
+# used in this repo's legal parser/ontology (backend/core/legal/constants.py
+# PASAL_PATTERN/AYAT_MARKER_PREFIX, backend/services/knowledge_graph/
+# ontology.py HURUF/ANGKA) and KB/test corpus (UU, PP, Perpres,
+# Permenkumham, Permenaker, Permenkes, PMK, Perda, Keppres) — not an
+# imagined list. See .claude/rules/cicatrix-superscar.md family #3
+# (guard-over-match) for why entity-over-form matters.
+_STATUTE_TOKEN = (
+    r"Pasal|Ayat|huruf|angka|UU|PP|Perpres|Permenkumham|Permenaker|"
+    r"Permenkes|PMK|Perda|Keppres"
 )
+
+# A statute anchor ("Pasal 19", "UU 6/2011") immediately followed by one
+# digits-only bracket citation, optionally chained to more of the same via
+# "dan"/"and"/",". The whole span is a legal sub-article reference, never
+# RAG noise — used to shield the matching brackets from _BARE_CITATION_RE.
+_PROTECTED_STATUTE_CITATION_RE = re.compile(
+    rf"\b(?:{_STATUTE_TOKEN})\s+[\w./-]+"
+    r"(?:\s*\[\d+(?:,\s*\d+)*\])"
+    r"(?:\s*(?:dan|and|,)\s*\[\d+(?:,\s*\d+)*\])*",
+    re.IGNORECASE,
+)
+
+_BARE_CITATION_RE = re.compile(r"\s*\[\d+(?:,\s*\d+)*\]")
+
+
+def _strip_bare_citation_markers(text: str) -> str:
+    """Remove RAG source-index markers like ' [5]'/' [1, 5]' anywhere in
+    the text, while leaving a genuine Indonesian statute sub-reference like
+    'Pasal 19 [2]' byte-identical — see _BARE_CITATION_RE docstring.
+
+    Overlap lookup is a binary search on `protected_starts`, not a linear
+    scan of every protected span per candidate match: an answer with many
+    Pasal references and many citation indices made a naive O(matches *
+    protected_spans) scan quadratic (measured: 144K chars -> 17s), which on
+    this repo's own legal-regex track record (redos scar cluster,
+    cicatrix-superscar.md family #2, W95) is exactly the shape that turns
+    into a pre-push/production stall. `_PROTECTED_STATUTE_CITATION_RE`
+    yields non-overlapping, left-to-right-sorted spans by construction, so
+    `bisect_right` finds the one candidate span that could contain a given
+    match start in O(log k).
+    """
+    protected_spans = [m.span() for m in _PROTECTED_STATUTE_CITATION_RE.finditer(text)]
+    protected_starts = [start for start, _ in protected_spans]
+
+    def _replace(match: re.Match[str]) -> str:
+        start, end = match.span()
+        idx = bisect_right(protected_starts, start) - 1
+        if idx >= 0:
+            p_start, p_end = protected_spans[idx]
+            if start < p_end and end > p_start:
+                return match.group(0)
+        return ""
+
+    return _BARE_CITATION_RE.sub(_replace, text)
 
 
 def format_rich_text(text: str, channel: str) -> str:
@@ -144,7 +204,7 @@ def format_rich_text(text: str, channel: str) -> str:
         # Strip horizontal rules
         text = re.sub(r"^[-*_]{3,}$", "", text, flags=re.MULTILINE)
         # Strip bare numeric citation markers ([5], [1, 5])
-        text = _BARE_CITATION_RE.sub("", text)
+        text = _strip_bare_citation_markers(text)
         # Collapse blank-line buildup left by the strips above
         text = re.sub(r"\n{3,}", "\n\n", text)
         return text.strip()
@@ -233,7 +293,7 @@ def _strip_markdown(text: str) -> str:
     text = re.sub(r"!\[.*?\]\(.*?\)", "", text)
     # Remove bare numeric citation markers ([5], [1, 5]) — see
     # _BARE_CITATION_RE docstring for why this is a safe, narrow match.
-    text = _BARE_CITATION_RE.sub("", text)
+    text = _strip_bare_citation_markers(text)
     # Remove horizontal rules
     text = re.sub(r"^[-*_]{3,}$", "", text, flags=re.MULTILINE)
     # Collapse multiple blank lines
