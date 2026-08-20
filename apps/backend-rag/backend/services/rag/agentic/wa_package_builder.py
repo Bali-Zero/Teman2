@@ -49,6 +49,7 @@ from backend.services.rag.agentic._abstain_policy import build_abstain_policy
 from backend.services.rag.agentic.query_plan import QueryDomain
 from backend.services.rag.agentic.query_planner import QueryPlanner
 from backend.services.rag.agentic.reasoning_utils import calculate_evidence_score
+from backend.services.rag.agentic.wa_dlp import redact_package_fields
 
 logger = logging.getLogger(__name__)
 
@@ -131,6 +132,15 @@ class ContextPackage:
     evidence_inputs: dict[str, Any]
     thread_epoch: int
     package_hash: str
+    # DLP reversal map (G-P3), placeholder -> original PII value. Populated
+    # ONLY when `build_context_package(dlp=True)` redacted this package's
+    # history/chunks; empty otherwise. Deliberately EXCLUDED from
+    # `_canonical_wire`/`__post_init__`'s hash domain, from `to_payload()`
+    # and from `wire_text()` — it is not part of the 7-key allowlist and
+    # must never enter the wire package, the package_hash inputs, or a log
+    # line (spec: "never leaves Fly"). `repr=False` so an accidental
+    # `logger.debug(package)`/`repr(package)` cannot print original PII.
+    reversal_map: dict[str, str] = field(default_factory=dict, repr=False, compare=False)
     # Wire snapshot, sealed at construction (Codex S2 re-verdict r6,
     # finding 2): `frozen=True` freezes the field BINDINGS only — the
     # nested lists/dicts stay mutable, so serializing them lazily would let
@@ -450,6 +460,7 @@ async def build_context_package(
     thread_epoch: int,
     retriever: Any,
     curated_qa_block: str = "",
+    dlp: bool = False,
 ) -> ContextPackage:
     """Build the deterministic context package for the WA codex-route leg.
 
@@ -475,6 +486,16 @@ async def build_context_package(
             none. MUST come from `OrchestratorCore.curated_qa_grounding_block`
             (D3) — this function trusts the caller's domain/staleness gating
             and never re-derives it.
+        dlp: G-P3 DLP gate. When True, every `history[i]["content"]`,
+            `chunks[i]["text"]` AND `pricing_block["search_query"]` (M1 —
+            the pricing lookup's own echo of the customer's raw query) is
+            redacted (`wa_dlp.redact_package_fields`) BEFORE
+            `evidence_inputs`/`package_hash` are computed, so the sealed
+            package and its hash cover only the REDACTED content.
+            `evidence_inputs["dlp"]` records whether this build asked for
+            redaction, inside the hash domain. The codex-bound build path
+            passes True; the Gemini leg never calls this function with
+            dlp=True (default False preserves existing callers unchanged).
 
     Raises:
         PackageUnbuildable: the deterministic domain gate could not classify
@@ -482,6 +503,11 @@ async def build_context_package(
             any domain plan whose `collections` list is empty). The caller
             routes the row to the Gemini leg instead of borrowing an LLM
             planner into this path.
+        PackageUnbuildable("dlp_error"): the DLP redaction step raised
+            (detector exception, or the fail-closed overflow guard when a
+            single package would need more than `wa_dlp.MAX_PLACEHOLDERS`
+            distinct redacted values) — fail-closed, never a partially
+            redacted package (spec G-P3 rule 7).
     """
     plan = QueryPlanner().plan(query)
 
@@ -523,6 +549,43 @@ async def build_context_package(
 
     payload_history = _sanitize_history(history, query)
 
+    # G-P3 DLP gate — runs AFTER chunks are capped and history sanitized,
+    # BEFORE evidence_inputs/package_hash are computed: everything hashed
+    # and sealed below is the REDACTED content, never the original (spec
+    # rule: "package_hash computed over the REDACTED content"). Fail-closed
+    # by construction — ANY exception from the redact step (detector bug,
+    # or wa_dlp's own >MAX_PLACEHOLDERS overflow guard) becomes
+    # PackageUnbuildable so the row falls off to the Gemini leg instead of
+    # shipping a partially-redacted or unredacted package.
+    #
+    # M1 (Kimi adversarial review, verified): `pricing_block["search_query"]`
+    # is the customer's RAW query, verbatim (pricing_service.py sets it from
+    # the same `query` argument `_sanitize_pricing_block` keeps untouched) —
+    # without threading it through the SAME redaction state as history, a
+    # NIK in the query would be redacted in `history[-1]["content"]` but
+    # ship unredacted a few keys over in `pricing_block.search_query`, into
+    # both the wire and the hash. Passed into `redact_package_fields` so it
+    # shares dedup/placeholder-numbering with the history copy of the same
+    # string, then spliced back before hashing.
+    reversal_map: dict[str, str] = {}
+    if dlp:
+        pricing_search_query = (
+            pricing_block.get("search_query") if pricing_block is not None else None
+        )
+        try:
+            dlp_result = redact_package_fields(payload_history, chunks, pricing_search_query)
+        except Exception as exc:
+            logger.info(
+                "wa_package_builder: dlp redaction failed error=%s",
+                type(exc).__name__,
+            )
+            raise PackageUnbuildable(reason="dlp_error") from exc
+        payload_history = dlp_result.history
+        chunks = dlp_result.chunks
+        reversal_map = dlp_result.reversal_map
+        if pricing_block is not None:
+            pricing_block = {**pricing_block, "search_query": dlp_result.search_query}
+
     persona_digest = _build_persona_digest()
 
     # Evidence inputs are FROZEN here — finalization (spec §2.3) reads these
@@ -539,6 +602,12 @@ async def build_context_package(
         "domain": plan.domain.value,
         "label_threshold": abstain_policy.label_threshold,
         "abstain": abstain_policy.label_abstains(evidence_score),
+        # Kimi-7 (MINOR): inside the hash domain by design — a future
+        # caller that forgets `dlp=True` produces a package distinguishable
+        # downstream (evidence_inputs is what finalize/consumers read out
+        # of the sealed wire) instead of one indistinguishable from a
+        # properly-redacted build.
+        "dlp": dlp,
     }
 
     package_hash = _package_hash(
@@ -558,4 +627,5 @@ async def build_context_package(
         evidence_inputs=evidence_inputs,
         thread_epoch=thread_epoch,
         package_hash=package_hash,
+        reversal_map=reversal_map,
     )
