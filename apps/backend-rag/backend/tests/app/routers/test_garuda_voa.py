@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date, datetime, timezone
 from unittest.mock import AsyncMock
 
@@ -198,3 +199,62 @@ def test_owner_can_read_historical_archive(monkeypatch) -> None:
     assert response.status_code == 200
     assert response.json()["hash"] == "voa1234567890ab"
     assert "result_url" not in response.json()
+
+
+def test_owner_archive_deduplicates_historical_decline_codes(monkeypatch) -> None:
+    from backend.app.routers import garuda_voa as router_mod
+    from backend.services.garuda_flow.eligibility import Decision
+
+    saved = replace(
+        _stored_result(),
+        decision=Decision.DECLINE,
+        decline_codes=[
+            "PURPOSE_NOT_ELIGIBLE",
+            "GROUP_CASE",
+            "GROUP_CASE",
+            "PURPOSE_NOT_ELIGIBLE",
+        ],
+    )
+
+    async def _get(self, hash_: str):
+        return saved
+
+    monkeypatch.setattr(router_mod.GarudaVoaRepository, "get_voa_check", _get)
+
+    async def _owner() -> dict[str, str]:
+        return {"email": "zero@balizero.com", "role": "admin"}
+
+    response = TestClient(_auth_test_app(_owner)).get("/api/visa/voa/voa1234567890ab")
+
+    assert response.status_code == 200
+    assert response.json()["reason_codes"] == ["PURPOSE_NOT_ELIGIBLE", "GROUP_CASE"]
+
+
+def test_owner_archive_unknown_decline_code_fails_closed_without_leak(
+    monkeypatch,
+    caplog,
+) -> None:
+    from backend.app.routers import garuda_voa as router_mod
+    from backend.services.garuda_flow.eligibility import Decision
+
+    unknown_code = "UNKNOWN_ARCHIVE_CODE_DO_NOT_LEAK"
+    saved = replace(
+        _stored_result(),
+        decision=Decision.DECLINE,
+        decline_codes=[unknown_code],
+    )
+
+    async def _get(self, hash_: str):
+        return saved
+
+    monkeypatch.setattr(router_mod.GarudaVoaRepository, "get_voa_check", _get)
+
+    async def _owner() -> dict[str, str]:
+        return {"email": "zero@balizero.com", "role": "admin"}
+
+    response = TestClient(_auth_test_app(_owner)).get("/api/visa/voa/voa1234567890ab")
+
+    assert response.status_code == 500
+    assert response.json() == {"detail": "Could not load VOA check"}
+    assert unknown_code not in response.text
+    assert unknown_code not in caplog.text

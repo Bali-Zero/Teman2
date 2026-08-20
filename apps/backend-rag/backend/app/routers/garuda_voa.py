@@ -28,11 +28,12 @@ The same boundary applies to decline REASONS, not just dates. Historical
 rows created by the retired public prototype may contain English decline
 prose in `garuda_voa_checks.decline_reasons`, including internal-checkpoint
 wording. This read-only archive never exposes that prose. `VoaResponse`
-instead carries `reason_codes: list[str]` — stable, neutral,
-language-agnostic machine codes
-(`services.garuda_flow.eligibility.DeclineCode`) — and has no raw-prose
-`reasons` field. The former public result pages are retired; the neutral
-codes remain available only in the authenticated owner archive.
+instead carries allowlisted, order-preserving `reason_codes` from
+`services.garuda_flow.eligibility.DeclineCode` and has no raw-prose
+`reasons` field. Duplicate historical codes are collapsed at this archive
+boundary; an unknown stored code fails closed with a generic error and is
+never reflected or logged. The former public result pages are retired; the
+neutral codes remain available only in the authenticated owner archive.
 
 Issuance-only submission-window gate (owner ruling 2026-07-27,
 `services.garuda_flow.operating_calendar`): a VOA is issued in a few
@@ -64,6 +65,7 @@ from pydantic import BaseModel, ConfigDict
 from backend.app.dependencies import get_database_pool
 from backend.app.deps.owner import require_owner
 from backend.app.utils.logging_utils import get_logger
+from backend.services.garuda_flow.eligibility import DeclineCode
 from backend.services.garuda_flow.intake import CaseType
 from backend.services.garuda_flow.repository import (
     GarudaVoaRepository,
@@ -71,6 +73,8 @@ from backend.services.garuda_flow.repository import (
 )
 
 logger = get_logger(__name__)
+
+_ARCHIVE_LOAD_ERROR = "Could not load VOA check"
 
 router = APIRouter(
     prefix="/api/visa",
@@ -96,13 +100,14 @@ class VoaResponse(BaseModel):
     stable neutral codes from `services.garuda_flow.eligibility.DeclineCode`.
     Historical rows may still contain legacy English decline prose, including
     internal-checkpoint wording, but this read-only response has no field for
-    it and never exposes it."""
+    it and never exposes it. Unknown stored codes fail closed before response
+    serialization."""
 
     model_config = ConfigDict(extra="forbid")
 
     hash: str
     decision: str  # "ACCEPT" | "DECLINE"
-    reason_codes: list[str]
+    reason_codes: list[DeclineCode]
     case_type: CaseType
     nationality: str
     entry_date: date
@@ -124,11 +129,29 @@ class VoaResponse(BaseModel):
 # ============================================================
 
 
+def _normalize_archive_decline_codes(values: list[str]) -> list[DeclineCode]:
+    """Validate and deduplicate legacy codes at the owner archive boundary."""
+    normalized: list[DeclineCode] = []
+    seen: set[DeclineCode] = set()
+
+    for value in values:
+        try:
+            code = DeclineCode(value)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=500, detail=_ARCHIVE_LOAD_ERROR) from None
+        if code in seen:
+            continue
+        seen.add(code)
+        normalized.append(code)
+
+    return normalized
+
+
 def _build_response(saved: VoaCheckResult) -> VoaResponse:
     return VoaResponse(
         hash=saved.hash,
         decision=saved.decision.value,
-        reason_codes=saved.decline_codes,
+        reason_codes=_normalize_archive_decline_codes(saved.decline_codes),
         case_type=saved.case_type,
         nationality=saved.nationality,
         entry_date=saved.entry_date,
@@ -158,7 +181,7 @@ async def get_voa(
         saved = await repo.get_voa_check(hash)
     except (asyncpg.PostgresError, asyncpg.InterfaceError):
         logger.exception("garuda_voa: DB read failed for hash=%s", hash)
-        raise HTTPException(status_code=500, detail="Could not load VOA check")
+        raise HTTPException(status_code=500, detail=_ARCHIVE_LOAD_ERROR)
     if not saved:
         raise HTTPException(status_code=404, detail="VOA check not found")
     return _build_response(saved)
