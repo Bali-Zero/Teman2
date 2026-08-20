@@ -1,0 +1,84 @@
+name: cron - Gemini burn-rate guard (every 3h)
+
+# Complements cron-llm-credit-sentinel.yml, which catches a depletion AFTER
+# it happens (within ~20 minutes). This one looks for the one shape a
+# reactive probe cannot see coming: Gemini spend accelerating well above its
+# own trailing baseline, which can burn an unknown remaining prepay balance
+# faster than expected. Google's API exposes no remaining-balance figure —
+# verified against the installed google-genai SDK, 2026-08-20 — so this
+# never claims "N days left"; it only measures rate vs its own history and
+# says so in the alert text.
+#
+# Same architecture as the sentinel and for the same reason: it runs INSIDE
+# the Fly machine so it can reuse the live Postgres connection + the same
+# AlertService/Telegram channel every other server-side alert uses, instead
+# of shipping new credentials to GitHub Actions. This workflow only needs
+# FLY_API_TOKEN, which already exists as a secret.
+
+on:
+  schedule:
+    - cron: "17 */3 * * *" # offset from :00 so it never races the 20-min sentinel
+  workflow_dispatch: {}
+
+concurrency:
+  group: cron-gemini-burn-guard
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Measure Gemini burn rate inside prod
+        id: guard
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -uo pipefail
+          # Errexit-immune capture — see cron-llm-credit-sentinel.yml for the
+          # full rationale (W101, 4th instance): a bare OUT=$(flyctl ...)
+          # under Actions' `bash -e {0}` would abort the step on a failed
+          # probe before the STATE parsing below ever runs.
+          RC=0
+          OUT=$(flyctl ssh console -a nuzantara-rag \
+                  -C "python3 -m backend.services.hardening.gemini_burn_guard_cli" 2>&1) || RC=$?
+
+          # Same secret-redaction boundary as the sentinel workflow (this repo
+          # is PUBLIC): a Telegram send failure can echo the bot token in an
+          # httpx error string, which is a channel the code-side redaction
+          # filter (backend/core/secret_log_redaction.py) cannot see because
+          # it only touches records that go through `logging`.
+          OUT=$(printf '%s\n' "$OUT" | sed -E 's/(bot[0-9]{5,}):[A-Za-z0-9_-]{20,}/\1:<redacted>/g')
+
+          echo "$OUT"
+          STATE=$(printf '%s\n' "$OUT" | sed -n 's/^STATE=//p' | tail -1)
+
+          if [ -z "$STATE" ]; then
+            case "$OUT" in
+              *"No module named"*|*ModuleNotFoundError*)
+                echo "::error::il burn-guard NON è nell'immagine di nuzantara-rag (rc=$RC) — redeploy; fino ad allora il burn-rate NON è sorvegliato"
+                exit 1
+                ;;
+            esac
+            echo "::warning::burn-guard non ha prodotto uno STATE (rc=$RC) — macchina irraggiungibile?"
+            exit 0
+          fi
+
+          echo "state=$STATE" >> "$GITHUB_OUTPUT"
+          case "$STATE" in
+            accelerating)
+              echo "::warning::Gemini burn in accelerazione — alert inviato (o già in cooldown, vedi ALERT_SENT sopra)"
+              exit 1
+              ;;
+            cannot_verify)
+              echo "::warning::impossibile misurare il ritmo (Postgres irraggiungibile?) — nessun allarme falso, nessun all-clear falso"
+              ;;
+            *)
+              echo "ritmo normale"
+              ;;
+          esac
