@@ -93,6 +93,15 @@ describe("sitemap — visa funnel findability", () => {
     expect(urls).toContain(`${BASE}/visa/voa`);
   });
 
+  it("lists the localized second-home routes (it/id, 2026-08-20)", async () => {
+    // /visa/second-home/[locale] is a dynamic segment, excluded structurally
+    // from staticVisaRoutes()'s walk (see comment above) — so this is the
+    // only guard that would catch these two URLs missing from the sitemap.
+    const urls = (await sitemap()).map((e) => e.url);
+    expect(urls).toContain(`${BASE}/visa/second-home/it`);
+    expect(urls).toContain(`${BASE}/visa/second-home/id`);
+  });
+
   it("does NOT list per-visitor result pages", async () => {
     const urls = (await sitemap()).map((e) => e.url);
     const leaked = urls.filter((u) =>

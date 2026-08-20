@@ -146,6 +146,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/visa/match",
     "/visa/clock",
     "/visa/second-home",
+    // Localized SSG variants (2026-08-20) — see
+    // app/visa/second-home/[locale]/page.tsx. Dynamic `[locale]` routes are
+    // excluded structurally from staticVisaRoutes()'s walk (sitemap.test.ts),
+    // same as any other bracketed segment, so they must be listed here by
+    // hand — same pattern the studio/ sibling already uses.
+    "/visa/second-home/it",
+    "/visa/second-home/id",
     "/visa/second-home/studio",
     // `/visa/voa` shipped 2026-07-27 and was live-but-unreachable for a day:
     // no inbound link anywhere in the site AND absent here, so the only way
