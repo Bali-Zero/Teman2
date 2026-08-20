@@ -77,8 +77,32 @@ scope. For each candidate it applies the panel's safety model:
      is made of: the daily cron reaped 0 for days with zero external signal.
      Registry entry: apps/organism/organism/organs_registry.yaml
      id=pro.worktree_gc_universal.
+ 10. Quarantine ref TTL sweep (2026-08-2x): refs/agent-quarantine/* (written
+     by rule 4's two preservation tracks) is a durable BACKSTOP for work
+     that would otherwise be orphaned — never a queue anyone works off. With
+     no expiry it grew to 612 refs fleet-wide by 2026-08-20, oldest dated
+     2026-05-31, invisible to `git branch`. Measured value of the backlog is
+     low (a full census on one machine found every ref an orphan stash
+     nobody ever returned for). Policy: expire any refs/agent-quarantine/*
+     ref whose COMMITTER DATE is older than QUARANTINE_TTL_DAYS (30 — a full
+     month of recoverability). Never silent (every expiry is logged AND
+     appended to a receipt file under .agent-receipts/, and the run reports
+     a quarantine_expired count same as removed/quarantined/etc.), never
+     halting on a large sweep (a run that would expire more than
+     QUARANTINE_SWEEP_ALARM refs logs a loud [ALARM] and proceeds — halting
+     would recreate the exact silent-backlog disease this cures), --apply
+     gated like every other destructive action in this file. Touches ONLY
+     refs whose full name starts with refs/agent-quarantine/ — asserted
+     per-ref in _expire_stale_quarantine_refs(), never just trusted from the
+     for-each-ref query that produced the candidate list. This is a NEW
+     ref-deletion capability for this organ; the pre-existing invariant that
+     it NEVER runs `git branch -D`/`-d` (rule 5) is unchanged and remains
+     grep-verifiable — the sweep only ever calls `git update-ref -d` against
+     the agent-quarantine namespace, never `git branch`.
 
-Kill switch: WORKTREE_GC_ENABLED=false → no-op exit 0.
+Kill switches: WORKTREE_GC_ENABLED=false → no-op exit 0 (whole organ, incl.
+the quarantine sweep). QUARANTINE_TTL_ENABLED=false → skip ONLY the
+quarantine-ref TTL sweep; worktree reaping still runs.
 Run: python scripts/worktree_gc_universal.py [--apply] [--quiet]
 """
 from __future__ import annotations
@@ -91,7 +115,7 @@ import shutil
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -113,6 +137,12 @@ MIN_AGE_MIN = 15          # skip worktrees touched in the last 15 min (active)
 DEFAULT_MAX_AGE_HOURS = 24
 MAX_REMOVE_ALARM = 5      # WARN if a single run removes more than this
 QUARANTINE_REF_PREFIX = "refs/agent-quarantine"
+
+# Quarantine ref TTL sweep (module docstring rule 10, 2026-08-2x policy).
+QUARANTINE_TTL_DAYS = 30
+QUARANTINE_TTL_ENABLED_ENV = "QUARANTINE_TTL_ENABLED"
+QUARANTINE_SWEEP_ALARM = 50   # WARN (never halt) if a run would expire more than this
+QUARANTINE_EXPIRY_LOG = REPO_ROOT / ".agent-receipts" / "quarantine-ttl-expired.log"
 
 # Worktrees that must NEVER be GC'd, regardless of age/state.
 # Matched by resolved absolute path.
@@ -171,6 +201,15 @@ def _run_git(args, *, cwd=None, check=True):
 
 def _kill_switch_active() -> bool:
     return os.environ.get(KILL_SWITCH_ENV, "true").strip().lower() in (
+        "false", "0", "no", "off", "disabled",
+    )
+
+
+def _quarantine_ttl_disabled() -> bool:
+    """Same convention as _kill_switch_active() (KILL_SWITCH_ENV) — its OWN
+    switch, so the quarantine-ref TTL sweep can be disabled without also
+    disabling worktree reaping. Default enabled (unset/"true" -> False)."""
+    return os.environ.get(QUARANTINE_TTL_ENABLED_ENV, "true").strip().lower() in (
         "false", "0", "no", "off", "disabled",
     )
 
@@ -403,6 +442,141 @@ def _unique_ref(base_ref: str, sha_hint: str) -> str:
     return f"{base_ref}-{sha_hint[:8]}"
 
 
+def _list_quarantine_refs() -> list[dict]:
+    """Enumerate every refs/agent-quarantine/* ref with its sha + committer
+    date, via a single `git for-each-ref` call (cheap — no per-ref
+    subprocess, same reasoning as _collect_live_cwds()'s one-shot lsof).
+
+    Each entry: {ref: full refname (str), sha: str, committer_date:
+    datetime|None}. committer_date is None when git could not resolve one
+    (malformed/empty field) — callers must treat None as "cannot determine
+    age" and never expire that ref (fail-closed on the deletion side; an
+    unknown age must never read as "old enough").
+    """
+    out = _run_git(
+        ["for-each-ref",
+         "--format=%(refname)%00%(objectname)%00%(committerdate:iso-strict)",
+         QUARANTINE_REF_PREFIX + "/"],
+        check=True,
+    ).stdout
+    entries: list[dict] = []
+    for line in out.splitlines():
+        if not line.strip():
+            continue
+        parts = line.split("\x00")
+        if len(parts) != 3:
+            logger.warning("unparseable for-each-ref line, skipping: %r", line)
+            continue
+        ref, sha, date_str = parts
+        committer_date = None
+        if date_str:
+            try:
+                committer_date = datetime.fromisoformat(date_str)
+            except ValueError:
+                logger.warning(
+                    "quarantine ref %s has an unparseable committer date "
+                    "%r — keeping (cannot determine age)", ref, date_str,
+                )
+        entries.append({"ref": ref, "sha": sha, "committer_date": committer_date})
+    return entries
+
+
+def _expire_stale_quarantine_refs(*, apply: bool, log_path: Path | None = None) -> int:
+    """Expire refs/agent-quarantine/* refs whose committer date is older
+    than QUARANTINE_TTL_DAYS (module docstring rule 10). Returns the count
+    expired (apply) or that WOULD be expired (dry-run).
+
+    Safety, mirroring the rest of this file:
+      - Touches ONLY refs whose FULL NAME starts with
+        QUARANTINE_REF_PREFIX + "/" — asserted PER-REF here, never just
+        trusted from the for-each-ref query that produced the candidate
+        list (a guard that trusts its input is not a guard).
+      - Deletes via the two-argument `git update-ref -d <ref> <sha>`: a ref
+        that moved between enumeration and deletion FAILS instead of being
+        clobbered.
+      - `git update-ref -d` against a ref that is already gone prints
+        "error: cannot lock ref ...: unable to resolve reference ..." and
+        returns 1 — that is "already gone", not a failure; it is NOT
+        reported as an expiry failure.
+      - Never halts: if a single run would expire more than
+        QUARANTINE_SWEEP_ALARM refs, logs a loud [ALARM] and proceeds —
+        halting here would recreate the silent-backlog disease this cures.
+      - dry-run touches NOTHING on disk (no delete, no log-file write) —
+        only logs to stdout what it WOULD do.
+    """
+    entries = _list_quarantine_refs()
+    cutoff = datetime.now(timezone.utc) - timedelta(days=QUARANTINE_TTL_DAYS)
+
+    candidates: list[dict] = []
+    for e in entries:
+        ref = e["ref"]
+        if not ref.startswith(QUARANTINE_REF_PREFIX + "/"):
+            # Defense in depth: the for-each-ref query already scopes this
+            # namespace, but a guard that trusts its input is not a guard.
+            logger.error(
+                "quarantine TTL sweep saw a ref OUTSIDE %s/ — refusing to "
+                "touch it: %s", QUARANTINE_REF_PREFIX, ref,
+            )
+            continue
+        cd = e["committer_date"]
+        if cd is None:
+            continue  # already logged by _list_quarantine_refs(); keep it
+        if cd < cutoff:
+            candidates.append(e)
+
+    if len(candidates) > QUARANTINE_SWEEP_ALARM:
+        logger.warning(
+            "[ALARM] quarantine TTL sweep %s %d refs older than %dd in one "
+            "run (threshold %d) — proceeding; a large backlog is the "
+            "disease this sweep cures, not a reason to stop draining it",
+            "would expire" if not apply else "is expiring", len(candidates),
+            QUARANTINE_TTL_DAYS, QUARANTINE_SWEEP_ALARM,
+        )
+
+    if not apply:
+        for e in candidates:
+            logger.info(
+                "[dry-run] would expire quarantine ref %s (%s, committed %s)",
+                e["ref"], e["sha"][:10], e["committer_date"].isoformat(),
+            )
+        return len(candidates)
+
+    log_path = log_path or QUARANTINE_EXPIRY_LOG
+    expired = 0
+    log_lines: list[str] = []
+    for e in candidates:
+        ref, sha, cd = e["ref"], e["sha"], e["committer_date"]
+        result = _run_git(["update-ref", "-d", ref, sha], check=False)
+        if result.returncode != 0:
+            stderr = (result.stderr or "").strip()
+            if "unable to resolve reference" in stderr or "cannot lock ref" in stderr:
+                # Already gone — not a failure, see docstring gotcha above.
+                logger.info("quarantine ref %s already gone (%s)", ref, stderr)
+                continue
+            logger.error(
+                "failed to expire quarantine ref %s (rc=%d): %s",
+                ref, result.returncode, stderr,
+            )
+            continue
+        expired += 1
+        line = f"{datetime.now(timezone.utc).isoformat()}\t{ref}\t{sha}\t{cd.isoformat()}"
+        logger.info("expired quarantine ref: %s", line)
+        log_lines.append(line)
+
+    if log_lines:
+        try:
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            with log_path.open("a", encoding="utf-8") as fh:
+                for line in log_lines:
+                    fh.write(line + "\n")
+        except Exception as exc:  # noqa: BLE001 — best-effort, never crash the sweep
+            logger.warning(
+                "could not append quarantine expiry log %s: %s", log_path, exc,
+            )
+
+    return expired
+
+
 def _quarantine(worktree: Path, slug: str, *, apply: bool) -> bool:
     """Create a quarantine ref capturing the worktree's current tree+untracked.
 
@@ -631,10 +805,23 @@ def gc(*, apply: bool, max_age_hours: float) -> dict[str, Any]:
             "investigate possible loop bug", removed,
         )
 
+    # Quarantine ref TTL sweep (rule 10) — independent kill switch, but
+    # still gated by the whole-organ kill switch above (this line is only
+    # reached when that one is enabled).
+    quarantine_expired = 0
+    if _quarantine_ttl_disabled():
+        logger.info(
+            "%s=false — quarantine TTL sweep disabled, skipping",
+            QUARANTINE_TTL_ENABLED_ENV,
+        )
+    else:
+        quarantine_expired = _expire_stale_quarantine_refs(apply=apply)
+
     logger.info(
         "done: removed=%d quarantined=%d reclaimed_unpushed=%d kept_active=%d "
-        "phantom=%d apply=%s",
-        removed, quarantined, reclaimed_unpushed, kept_active, pruned_phantom, apply,
+        "phantom=%d quarantine_expired=%d apply=%s",
+        removed, quarantined, reclaimed_unpushed, kept_active, pruned_phantom,
+        quarantine_expired, apply,
     )
     return {
         "disabled": False,
@@ -643,6 +830,7 @@ def gc(*, apply: bool, max_age_hours: float) -> dict[str, Any]:
         "reclaimed_unpushed": reclaimed_unpushed,
         "kept_active": kept_active,
         "phantom": pruned_phantom,
+        "quarantine_expired": quarantine_expired,
         "apply": apply,
     }
 
@@ -685,6 +873,7 @@ def main() -> int:
                     f"removed={report['removed']} quarantined={report['quarantined']} "
                     f"reclaimed_unpushed={report['reclaimed_unpushed']} "
                     f"kept_active={report['kept_active']} phantom={report['phantom']} "
+                    f"quarantine_expired={report['quarantine_expired']} "
                     f"apply={report['apply']}"
                 )
                 _heartbeat("ok", detail)

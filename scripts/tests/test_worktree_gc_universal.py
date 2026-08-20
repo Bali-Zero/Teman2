@@ -22,6 +22,7 @@ import shutil
 import subprocess
 import sys
 import time
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -102,6 +103,65 @@ class TestKillSwitch:
     def test_true_is_enabled(self, monkeypatch):
         monkeypatch.setenv(gc.KILL_SWITCH_ENV, "true")
         assert gc._kill_switch_active() is False
+
+
+# ---------------------------------------------------------------------------
+# _quarantine_ttl_disabled  (env QUARANTINE_TTL_ENABLED — its OWN switch,
+# independent of WORKTREE_GC_ENABLED, matching the same convention)
+# ---------------------------------------------------------------------------
+
+
+class TestQuarantineTtlKillSwitch:
+    def test_false_disables(self, monkeypatch):
+        monkeypatch.setenv(gc.QUARANTINE_TTL_ENABLED_ENV, "false")
+        assert gc._quarantine_ttl_disabled() is True
+
+    def test_zero_disables(self, monkeypatch):
+        monkeypatch.setenv(gc.QUARANTINE_TTL_ENABLED_ENV, "0")
+        assert gc._quarantine_ttl_disabled() is True
+
+    def test_unset_is_enabled(self, monkeypatch):
+        monkeypatch.delenv(gc.QUARANTINE_TTL_ENABLED_ENV, raising=False)
+        assert gc._quarantine_ttl_disabled() is False
+
+    def test_true_is_enabled(self, monkeypatch):
+        monkeypatch.setenv(gc.QUARANTINE_TTL_ENABLED_ENV, "true")
+        assert gc._quarantine_ttl_disabled() is False
+
+
+# ---------------------------------------------------------------------------
+# _list_quarantine_refs  (parses NUL-delimited `git for-each-ref` output)
+# ---------------------------------------------------------------------------
+
+
+class TestListQuarantineRefs:
+    def test_parses_nul_delimited_lines(self, monkeypatch):
+        sample = (
+            "refs/agent-quarantine/foo\x00" + "a" * 40 +
+            "\x002026-01-01T00:00:00+00:00\n" +
+            "refs/agent-quarantine/bar\x00" + "b" * 40 +
+            "\x002026-02-02T03:04:05+08:00\n"
+        )
+        monkeypatch.setattr(gc, "_run_git", lambda *a, **k: _FakeProc(sample))
+        entries = gc._list_quarantine_refs()
+        assert len(entries) == 2
+        assert entries[0]["ref"] == "refs/agent-quarantine/foo"
+        assert entries[0]["sha"] == "a" * 40
+        assert entries[0]["committer_date"].year == 2026
+        assert entries[0]["committer_date"].tzinfo is not None
+
+    def test_empty_output(self, monkeypatch):
+        monkeypatch.setattr(gc, "_run_git", lambda *a, **k: _FakeProc(""))
+        assert gc._list_quarantine_refs() == []
+
+    def test_unparseable_date_kept_as_none_not_dropped(self, monkeypatch, caplog):
+        sample = "refs/agent-quarantine/weird\x00" + "c" * 40 + "\x00not-a-date\n"
+        monkeypatch.setattr(gc, "_run_git", lambda *a, **k: _FakeProc(sample))
+        with caplog.at_level("WARNING"):
+            entries = gc._list_quarantine_refs()
+        assert len(entries) == 1
+        assert entries[0]["committer_date"] is None
+        assert any("unparseable" in r.message for r in caplog.records)
 
 
 # ---------------------------------------------------------------------------
@@ -401,11 +461,39 @@ def _load_gc_module(repo_root: Path):
     mod.REPO_ROOT = repo_root
     mod.WORKTREES_DIR = repo_root / ".worktrees"
     mod.ALLOWLIST_PATHS = {str(repo_root.resolve())}
+    # Quarantine TTL sweep writes its receipt log under REPO_ROOT/.agent-receipts/
+    # by default; this constant is bound at module-exec time (before REPO_ROOT
+    # is repointed above), so it must be repointed explicitly here too — same
+    # reasoning as WORKTREES_DIR two lines up. Without this, a test using the
+    # DEFAULT log path would append to the real worktree's .agent-receipts/
+    # instead of tmp_path (W96 discipline).
+    mod.QUARANTINE_EXPIRY_LOG = repo_root / ".agent-receipts" / "quarantine-ttl-expired.log"
     return mod
 
 
 def _add_worktree(repo, wt_path, branch, env, *, base="main"):
     _git(["worktree", "add", "-b", branch, str(wt_path), base], cwd=repo, env=env)
+
+
+def _make_quarantine_ref(repo: Path, slug: str, days_old: float, env: dict) -> str:
+    """Create refs/agent-quarantine/<slug> pointing at a NEW commit object
+    backdated `days_old` days via GIT_COMMITTER_DATE (per the brief: build
+    fixtures in the tmp throwaway repo, never against real refs). Returns
+    the commit sha."""
+    backdated = datetime.now(timezone.utc) - timedelta(days=days_old)
+    date_str = backdated.strftime("%Y-%m-%dT%H:%M:%S+00:00")
+    commit_env = dict(env)
+    commit_env["GIT_COMMITTER_DATE"] = date_str
+    commit_env["GIT_AUTHOR_DATE"] = date_str
+    tree = _git(["rev-parse", "HEAD^{tree}"], cwd=repo, env=env).stdout.strip()
+    parent = _git(["rev-parse", "HEAD"], cwd=repo, env=env).stdout.strip()
+    sha = _git(
+        ["commit-tree", tree, "-p", parent, "-m", f"quarantine {slug}"],
+        cwd=repo, env=commit_env,
+    ).stdout.strip()
+    ref = f"refs/agent-quarantine/{slug}"
+    _git(["update-ref", ref, sha], cwd=repo, env=env)
+    return sha
 
 
 def _age_path(path: Path, hours: float):
@@ -568,6 +656,193 @@ class TestGcIntegration:
         mod.gc(apply=False, max_age_hours=mod.DEFAULT_MAX_AGE_HOURS)
 
         assert wt.exists()
+
+
+# ---------------------------------------------------------------------------
+# _expire_stale_quarantine_refs (rule 10, 2026-08-2x quarantine TTL sweep) —
+# real git repo under tmp_path, real refs/agent-quarantine/* refs backdated
+# via GIT_COMMITTER_DATE (never the real repo's refs, per the brief).
+# ---------------------------------------------------------------------------
+
+
+class TestExpireStaleQuarantineRefs:
+    def test_ref_older_than_ttl_is_expired(self, gc_repo):
+        """GUILT: a quarantine ref committed 31+ days ago IS expired."""
+        mod, repo, env = gc_repo
+        _make_quarantine_ref(repo, "old-one", mod.QUARANTINE_TTL_DAYS + 1, env)
+
+        expired = mod._expire_stale_quarantine_refs(apply=True)
+
+        assert expired == 1
+        check = _git(
+            ["rev-parse", "--verify", "refs/agent-quarantine/old-one"],
+            cwd=repo, env=env, check=False,
+        )
+        assert check.returncode != 0, "expired ref must no longer resolve"
+
+    def test_ref_within_ttl_survives(self, gc_repo):
+        """INNOCENCE: a 29-day-old ref (< 30-day TTL) survives."""
+        mod, repo, env = gc_repo
+        _make_quarantine_ref(repo, "recent-one", mod.QUARANTINE_TTL_DAYS - 1, env)
+
+        expired = mod._expire_stale_quarantine_refs(apply=True)
+
+        assert expired == 0
+        check = _git(
+            ["rev-parse", "--verify", "refs/agent-quarantine/recent-one"],
+            cwd=repo, env=env, check=False,
+        )
+        assert check.returncode == 0, "a ref inside the TTL must survive"
+
+    def test_refs_outside_namespace_never_touched(self, gc_repo):
+        """INNOCENCE: a branch, a tag, and a remote-tracking ref — however
+        old — are never touched, no matter what else the sweep expires."""
+        mod, repo, env = gc_repo
+        old_env = dict(env)
+        old_env["GIT_COMMITTER_DATE"] = "2020-01-01T00:00:00+00:00"
+        old_env["GIT_AUTHOR_DATE"] = "2020-01-01T00:00:00+00:00"
+        _git(["tag", "-a", "ancient-tag", "-m", "old"], cwd=repo, env=old_env)
+        before_branch = _git(["rev-parse", "main"], cwd=repo, env=env).stdout.strip()
+        before_tag = _git(["rev-parse", "ancient-tag"], cwd=repo, env=env).stdout.strip()
+        before_remote = _git(
+            ["rev-parse", "origin/main"], cwd=repo, env=env,
+        ).stdout.strip()
+        # One genuinely guilty quarantine ref alongside them, so the sweep
+        # has real work to do while touching neither of the three above.
+        _make_quarantine_ref(repo, "guilty", mod.QUARANTINE_TTL_DAYS + 1, env)
+
+        expired = mod._expire_stale_quarantine_refs(apply=True)
+
+        assert expired == 1  # only the quarantine ref
+        assert _git(["rev-parse", "main"], cwd=repo, env=env).stdout.strip() == before_branch
+        assert _git(["rev-parse", "ancient-tag"], cwd=repo, env=env).stdout.strip() == before_tag
+        assert (
+            _git(["rev-parse", "origin/main"], cwd=repo, env=env).stdout.strip()
+            == before_remote
+        )
+
+    def test_dry_run_expires_nothing(self, gc_repo):
+        """INNOCENCE: dry-run reports the candidate count but deletes
+        nothing and writes no log file."""
+        mod, repo, env = gc_repo
+        _make_quarantine_ref(repo, "old-dry", mod.QUARANTINE_TTL_DAYS + 1, env)
+
+        would_expire = mod._expire_stale_quarantine_refs(apply=False)
+
+        assert would_expire == 1  # correctly counts the candidate
+        check = _git(
+            ["rev-parse", "--verify", "refs/agent-quarantine/old-dry"],
+            cwd=repo, env=env, check=False,
+        )
+        assert check.returncode == 0, "dry-run must not delete anything"
+        assert not mod.QUARANTINE_EXPIRY_LOG.exists(), (
+            "dry-run must not write the receipt log either"
+        )
+
+    def test_kill_switch_expires_nothing(self, gc_repo, monkeypatch):
+        """INNOCENCE: QUARANTINE_TTL_ENABLED=false disables the sweep end
+        to end (through gc()), even though the worktree-reap loop still
+        runs."""
+        mod, repo, env = gc_repo
+        monkeypatch.setenv(mod.QUARANTINE_TTL_ENABLED_ENV, "false")
+        _make_quarantine_ref(repo, "old-killswitch", mod.QUARANTINE_TTL_DAYS + 1, env)
+
+        report = mod.gc(apply=True, max_age_hours=mod.DEFAULT_MAX_AGE_HOURS)
+
+        assert report["quarantine_expired"] == 0
+        check = _git(
+            ["rev-parse", "--verify", "refs/agent-quarantine/old-killswitch"],
+            cwd=repo, env=env, check=False,
+        )
+        assert check.returncode == 0, "kill switch must prevent expiry"
+
+    def test_already_gone_ref_is_not_reported_as_a_failure(
+        self, gc_repo, monkeypatch, caplog,
+    ):
+        """GOTCHA (from the brief): `git update-ref -d` against a ref that
+        no longer exists prints 'unable to resolve reference ...' and
+        returns 1 — that's 'already gone', not a bug, and must not be
+        logged as a failure or crash the sweep."""
+        mod, repo, env = gc_repo
+        sha = _make_quarantine_ref(repo, "vanishing", mod.QUARANTINE_TTL_DAYS + 1, env)
+        # Simulate the ref disappearing between enumeration and deletion.
+        _git(
+            ["update-ref", "-d", "refs/agent-quarantine/vanishing", sha],
+            cwd=repo, env=env,
+        )
+        stale_entry = {
+            "ref": "refs/agent-quarantine/vanishing",
+            "sha": sha,
+            "committer_date": datetime.now(timezone.utc) - timedelta(days=31),
+        }
+        monkeypatch.setattr(mod, "_list_quarantine_refs", lambda: [stale_entry])
+
+        with caplog.at_level("ERROR"):
+            expired = mod._expire_stale_quarantine_refs(apply=True)
+
+        assert expired == 0  # nothing NEW was deleted — it was already gone
+        assert not any("failed to expire" in r.message for r in caplog.records)
+
+    def test_expiry_appends_receipt_log_with_refname_sha_date(self, gc_repo):
+        """Never silent: every expiry writes (full refname, sha, committer
+        date) to the receipt log file."""
+        mod, repo, env = gc_repo
+        sha = _make_quarantine_ref(repo, "logged-one", mod.QUARANTINE_TTL_DAYS + 1, env)
+
+        mod._expire_stale_quarantine_refs(apply=True)
+
+        log_path = mod.QUARANTINE_EXPIRY_LOG
+        assert log_path.exists()
+        content = log_path.read_text()
+        assert "refs/agent-quarantine/logged-one" in content
+        assert sha in content
+
+    def test_large_sweep_alarms_but_proceeds(self, gc_repo, caplog):
+        """Alarm, never halt: a run that would expire more than
+        QUARANTINE_SWEEP_ALARM refs logs a loud [ALARM] and still expires
+        every one of them — it does not stop draining the backlog."""
+        mod, repo, env = gc_repo
+        n = mod.QUARANTINE_SWEEP_ALARM + 1
+        for i in range(n):
+            _make_quarantine_ref(repo, f"bulk-{i}", mod.QUARANTINE_TTL_DAYS + 1, env)
+
+        with caplog.at_level("WARNING"):
+            expired = mod._expire_stale_quarantine_refs(apply=True)
+
+        assert expired == n
+        assert any("[ALARM]" in r.message for r in caplog.records)
+
+    def test_ref_outside_namespace_from_a_compromised_lister_is_refused(
+        self, gc_repo, monkeypatch, caplog,
+    ):
+        """Defense in depth: assert per-ref in CODE, not just in the query.
+        Even if _list_quarantine_refs() were to somehow return an
+        out-of-namespace entry, the sweep must refuse to touch it — a guard
+        that only trusts its own query is not a guard."""
+        mod, repo, env = gc_repo
+        fake_entries = [{
+            "ref": "refs/heads/main",
+            "sha": "d" * 40,
+            "committer_date": datetime(2000, 1, 1, tzinfo=timezone.utc),
+        }]
+        monkeypatch.setattr(mod, "_list_quarantine_refs", lambda: fake_entries)
+        calls = []
+        real_run_git = mod._run_git
+
+        def spy(args, **kw):
+            calls.append(args)
+            return real_run_git(args, **kw)
+
+        monkeypatch.setattr(mod, "_run_git", spy)
+
+        with caplog.at_level("ERROR"):
+            expired = mod._expire_stale_quarantine_refs(apply=True)
+
+        assert expired == 0
+        assert not any(
+            len(c) >= 2 and c[0] == "update-ref" and "-d" in c for c in calls
+        ), "must never call update-ref -d for a ref outside refs/agent-quarantine/"
+        assert any("OUTSIDE" in r.message for r in caplog.records)
 
 
 # ---------------------------------------------------------------------------
