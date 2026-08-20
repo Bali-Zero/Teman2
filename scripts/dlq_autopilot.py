@@ -106,14 +106,6 @@ CORPSE_SWEEP_FRESH_S = int(os.getenv("DLQ_CORPSE_SWEEP_FRESH_S", str(6 * 3600)))
 CONFIDENCE_RETRY = 0.95           # no-code-change retry threshold
 CONFIDENCE_AIDER = 0.90           # code-change aider threshold
 REASONING_TIMEOUT_S = 90          # claude --print timeout
-# Model pin (2026-08-20, token-cuts round2): claude_reason() below was bare
-# (no --model at all — grep confirms zero "model" occurrences before this),
-# inheriting whatever the ambient profile default happened to be. It runs
-# on a 30-min cron (com.nuzantara.dlq-autopilot.plist) whenever the DLQ is
-# non-empty. The task is bounded structured classification (fix_type +
-# confidence from an error log tail, JSON-only output) — sonnet is the
-# minimum-sufficient tier for this, matching the repo's implementer default.
-REASONING_MODEL = os.getenv("DLQ_CLAUDE_MODEL", "claude-sonnet-5")
 
 
 def _isolated_cwd() -> Path:
@@ -606,7 +598,6 @@ Rules:
             result = _run_process_group(
                 [
                     "claude", "--print",
-                    "--model", REASONING_MODEL,
                     "--safe-mode", "--strict-mcp-config",
                     "--mcp-config", '{"mcpServers":{}}',
                     prompt,
