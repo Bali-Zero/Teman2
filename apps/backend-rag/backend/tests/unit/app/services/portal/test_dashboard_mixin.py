@@ -626,3 +626,118 @@ async def test_get_timeline_continues_when_optional_sources_fail() -> None:
     assert result["scope"] == "portal"
     assert result["entries"]
     assert all(entry["type"] == "deadline" for entry in result["entries"])
+
+
+# ---------------------------------------------------------------------------
+# Ghost-document regression — the dashboard's document reads must use the
+# SAME visibility predicate as the vault (client_visible AND deleted_at IS
+# NULL AND COALESCE(is_archived, FALSE) = FALSE), not client_visible alone.
+#
+# Before the fix: an operator archiving a document, or a client soft-deleting
+# their own, correctly vanished it from the vault (services/portal/_mixins/
+# documents.py) and correctly 404'd on download — but it kept counting on
+# the dashboard tile, kept listing on the visa tab, the company tab, and the
+# activity timeline. Root cause per migration db/migrations_v2/236_portal_
+# documents_purpose_softdelete.sql:11-16 ("The vault list query filters
+# deleted_at IS NULL"): the invariant was documented for one consumer and
+# never backfilled into these four.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_get_dashboard_document_count_hides_archived_and_deleted() -> None:
+    service, conn = _service_with_conn()
+    conn.fetchrow.side_effect = [
+        {"id": 1, "full_name": "Client One", "email": "client@example.com"},
+        None,  # visa_practice
+        {"total": 2, "pending": 1},  # doc_counts
+    ]
+    conn.fetch.side_effect = [[], []]  # companies, action_items
+    conn.fetchval.return_value = 0
+
+    result = await service.get_dashboard(1, current_user=_ctx())
+
+    assert result["documents"] == {"total": 2, "pending": 1}
+    doc_counts_sql = conn.fetchrow.call_args_list[2].args[0]
+    assert "client_visible = true" in doc_counts_sql
+    assert "deleted_at IS NULL" in doc_counts_sql
+    assert "COALESCE(is_archived, FALSE) = FALSE" in doc_counts_sql
+
+
+@pytest.mark.asyncio
+async def test_get_visa_status_documents_hide_archived_and_deleted() -> None:
+    service, conn = _service_with_conn()
+    conn.fetchrow.side_effect = [
+        {"id": 1},
+        None,  # current_visa
+    ]
+    conn.fetch.side_effect = [
+        [],  # visa_history
+        [],  # documents
+    ]
+
+    result = await service.get_visa_status(1, current_user=_ctx())
+
+    assert result["documents"] == []
+    docs_sql = conn.fetch.call_args_list[1].args[0]
+    assert "d.client_visible = true" in docs_sql
+    assert "d.deleted_at IS NULL" in docs_sql
+    assert "COALESCE(d.is_archived, FALSE) = FALSE" in docs_sql
+
+
+@pytest.mark.asyncio
+async def test_get_company_detail_documents_hide_archived_and_deleted() -> None:
+    service, conn = _service_with_conn()
+    conn.fetchrow.side_effect = [
+        {"role": "director", "is_primary": True, "ownership_percentage": 50},
+        {
+            "id": 10,
+            "company_name": "PT Test",
+            "company_type": "PMA",
+            "nib": None,
+            "npwp_company": None,
+            "kbli_code": None,
+            "status": "active",
+            "registered_address": None,
+            "company_email": None,
+            "company_phone": None,
+            "akta_pendirian_no": None,
+            "akta_pendirian_date": None,
+            "sk_menhumkam_no": None,
+            "custom_fields": {},
+        },
+    ]
+    conn.fetch.side_effect = [
+        [],  # practices
+        [],  # documents
+        [],  # directors
+    ]
+
+    result = await service.get_company_detail(1, 10, current_user=_ctx())
+
+    assert result["documents"] == []
+    docs_sql = conn.fetch.call_args_list[1].args[0]
+    assert "d.client_visible = true" in docs_sql
+    assert "d.deleted_at IS NULL" in docs_sql
+    assert "COALESCE(d.is_archived, FALSE) = FALSE" in docs_sql
+
+
+@pytest.mark.asyncio
+async def test_get_timeline_recent_documents_hide_archived_and_deleted() -> None:
+    service, conn = _service_with_conn()
+    conn.fetch.side_effect = [
+        [],  # timeline_events
+        [],  # messages
+        [],  # documents
+        [],  # practices
+    ]
+
+    result = await service.get_timeline(1, limit=30, current_user=_ctx())
+
+    # No document entries synthesized (only derived deadline entries remain —
+    # see test_get_timeline_continues_when_optional_sources_fail for that shape).
+    assert not [e for e in result["entries"] if e["type"] == "document"]
+    docs_sql = conn.fetch.call_args_list[2].args[0]
+    assert "client_visible = true" in docs_sql
+    assert "deleted_at IS NULL" in docs_sql
+    assert "COALESCE(is_archived, FALSE) = FALSE" in docs_sql

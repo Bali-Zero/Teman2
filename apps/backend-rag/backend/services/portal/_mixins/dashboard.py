@@ -15,6 +15,7 @@ import asyncpg
 
 from backend.app.utils.logging_utils import get_logger
 from backend.services.common.cache import cache_invalidating
+from backend.services.portal._document_visibility import document_visibility_clause
 from backend.services.portal._rbac import ClientContext, require_client_access
 
 logger = get_logger(__name__)
@@ -148,13 +149,13 @@ class PortalDashboardMixin:
             doc_counts = None
             try:
                 doc_counts = await conn.fetchrow(
-                    """
+                    f"""
                     SELECT
                         COUNT(*) as total,
                         COUNT(*) FILTER (WHERE status = 'pending') as pending
                     FROM documents
                     WHERE client_id = $1
-                    AND client_visible = true
+                    AND {document_visibility_clause()}
                     """,
                     client_id,
                 )
@@ -386,12 +387,12 @@ class PortalDashboardMixin:
 
             # Get immigration documents
             documents = await conn.fetch(
-                """
+                f"""
                 SELECT d.id, d.document_type, d.file_name, d.status,
                        d.expiry_date, d.file_url, d.file_id, d.file_size_kb, d.created_at
                 FROM documents d
                 WHERE d.client_id = $1
-                AND d.client_visible = true
+                AND {document_visibility_clause("d")}
                 AND d.document_type IN (
                     'passport', 'photo', 'cv', 'sponsor_letter',
                     'sktt', 'stm', 'kitas_card', 'merp', 'visa'
@@ -625,14 +626,14 @@ class PortalDashboardMixin:
 
             # Get company documents
             documents = await conn.fetch(
-                """
+                f"""
                 SELECT d.id, d.document_type, d.file_name, d.status, d.file_url, d.file_id
                 FROM documents d
                 JOIN practices p ON p.id = d.practice_id
                 JOIN practice_types pt ON pt.id = p.practice_type_id
                 WHERE p.client_id = $1
                 AND pt.category = 'company'
-                AND d.client_visible = true
+                AND {document_visibility_clause("d")}
                 ORDER BY d.created_at DESC
                 """,
                 client_id,
@@ -980,10 +981,10 @@ class PortalDashboardMixin:
             # Get recent documents
             try:
                 documents = await conn.fetch(
-                    """
+                    f"""
                     SELECT id, document_type, file_name, status, created_at
                     FROM documents
-                    WHERE client_id = $1 AND client_visible = true
+                    WHERE client_id = $1 AND {document_visibility_clause()}
                     ORDER BY created_at DESC
                     LIMIT $2
                     """,
