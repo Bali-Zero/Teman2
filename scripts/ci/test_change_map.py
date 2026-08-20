@@ -314,6 +314,129 @@ class ChangeMapTests(unittest.TestCase):
             ["backend-tests", "frontend-tests", "e2e-tests"],
         )
 
+    # -- security.yml routing (security_suggested_jobs / security_would_skip) --
+
+    def test_guilt_backend_change_runs_python_dep_and_sast_security_jobs(
+        self,
+    ) -> None:
+        result = cm.classify(["apps/backend-rag/backend/app/main.py"])
+        self.assertFalse(result["run_all"])
+        self.assertEqual(
+            result["security_suggested_jobs"],
+            ["snyk-python", "safety", "snyk-docker", "bandit", "codeql-python"],
+        )
+        self.assertEqual(
+            result["security_would_skip"], ["snyk-node", "codeql-javascript"]
+        )
+
+    def test_innocence_frontend_only_change_skips_python_security_jobs(
+        self,
+    ) -> None:
+        # mouth is JS/TS -- none of snyk-python/safety/snyk-docker/bandit
+        # scan anything under apps/mouth/, and codeql-python has no python
+        # file to react to.
+        result = cm.classify(["apps/mouth/src/app.tsx"])
+        self.assertFalse(result["run_all"])
+        self.assertEqual(
+            result["security_suggested_jobs"], ["snyk-node", "codeql-javascript"]
+        )
+        for job in ("snyk-python", "safety", "snyk-docker", "bandit", "codeql-python"):
+            self.assertIn(job, result["security_would_skip"])
+
+    def test_innocence_docs_only_skips_every_security_job(self) -> None:
+        result = cm.classify(["docs/runbooks/ci.md", "research/operations/note.json"])
+        self.assertFalse(result["run_all"])
+        self.assertEqual(result["security_suggested_jobs"], [])
+        self.assertEqual(result["security_would_skip"], list(cm.SECURITY_JOBS))
+
+    def test_guilt_bandit_target_directory_runs_bandit_only_python_job(self) -> None:
+        # apps/backend-rag/backend/ is bandit's exact `-r` target -- distinct
+        # from the broader backend_python domain, which also covers
+        # apps/crm-cell/ and packages/cell-core/ (neither bandit-scanned).
+        result = cm.classify(["apps/backend-rag/backend/services/foo.py"])
+        self.assertIn("bandit", result["security_suggested_jobs"])
+
+    def test_innocence_backend_domain_outside_bandit_target_skips_bandit(self) -> None:
+        for path in (
+            "apps/crm-cell/crm_cell/main.py",
+            "packages/cell-core/cell_core/base.py",
+        ):
+            with self.subTest(path=path):
+                result = cm.classify([path])
+                self.assertFalse(result["run_all"])
+                self.assertNotIn("bandit", result["security_suggested_jobs"])
+                self.assertIn("bandit", result["security_would_skip"])
+                # still a backend_python change -- the dependency/build scans
+                # DO apply (snyk-docker's Dockerfile COPYs both trees).
+                self.assertIn("snyk-python", result["security_suggested_jobs"])
+                self.assertIn("snyk-docker", result["security_suggested_jobs"])
+
+    def test_guilt_bandit_config_edit_reruns_bandit(self) -> None:
+        result = cm.classify(["apps/backend-rag/pyproject.toml"])
+        self.assertIn("bandit", result["security_suggested_jobs"])
+
+    def test_innocence_non_python_file_under_bandit_target_skips_bandit(self) -> None:
+        # Live case, 2026-08-20 sample (PR #4413): a signed rulepack .json
+        # under apps/backend-rag/backend/ changes nothing `bandit -r`
+        # (python-only by nature of the tool) would report.
+        result = cm.classify(
+            [
+                "apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-012.signed.json"
+            ]
+        )
+        self.assertFalse(result["run_all"])
+        self.assertNotIn("bandit", result["security_suggested_jobs"])
+        self.assertIn("bandit", result["security_would_skip"])
+        # still backend_python -- the dependency/build scans DO apply.
+        self.assertIn("snyk-python", result["security_suggested_jobs"])
+
+    def test_guilt_codeql_reacts_to_language_not_domain(self) -> None:
+        # apps/nuzantara-mcp/ has no snyk-python/bandit/safety route (those
+        # scan apps/backend-rag/ specifically) but IS python source, so
+        # CodeQL's python leg must still see it.
+        result = cm.classify(["apps/nuzantara-mcp/server.py"])
+        self.assertFalse(result["run_all"])
+        self.assertEqual(result["security_suggested_jobs"], ["codeql-python"])
+
+    def test_guilt_manifest_edit_runs_every_security_job(self) -> None:
+        # A dependency-manifest edit is tagged security_sensitive
+        # (PYTHON_MANIFEST_NAMES) regardless of directory -- the coarse
+        # catch-all applies, matching the existing TEST_JOBS behaviour for
+        # the same input.
+        result = cm.classify(["apps/backend-rag/requirements.txt"])
+        self.assertFalse(result["run_all"])
+        self.assertEqual(result["security_suggested_jobs"], list(cm.SECURITY_JOBS))
+
+    def test_guilt_cve_exception_honour_scripts_run_everything(self) -> None:
+        for path in (
+            "scripts/check_cve_exceptions.py",
+            "scripts/filter_snyk_findings.py",
+            "scripts/filter_safety_findings.py",
+            "scripts/detect_secrets_auto_triage.py",
+            "scripts/detect_secrets_check_unaudited.py",
+            ".secrets.baseline",
+        ):
+            with self.subTest(path=path):
+                result = cm.classify([path])
+                self.assertFalse(result["run_all"])
+                self.assertTrue(result["domains"]["security_sensitive"])
+                self.assertEqual(
+                    result["security_suggested_jobs"], list(cm.SECURITY_JOBS)
+                )
+
+    def test_guilt_unclassified_path_runs_every_security_job(self) -> None:
+        # Same fail-closed contract as TEST_JOBS: an unknown path forces
+        # run_all, which forces every security job too.
+        result = cm.classify(["apps/new-product/runtime.rs"])
+        self.assertTrue(result["run_all"])
+        self.assertEqual(result["security_suggested_jobs"], list(cm.SECURITY_JOBS))
+        self.assertEqual(result["security_would_skip"], [])
+
+    def test_guilt_security_workflow_self_edit_runs_everything(self) -> None:
+        result = cm.classify([".github/workflows/security.yml"])
+        self.assertFalse(result["run_all"])
+        self.assertEqual(result["security_suggested_jobs"], list(cm.SECURITY_JOBS))
+
     def test_cli_stdout_is_one_compact_json_line(self) -> None:
         script = Path(__file__).with_name("change_map.py")
         completed = subprocess.run(

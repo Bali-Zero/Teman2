@@ -69,8 +69,218 @@ concurrency:
   cancel-in-progress: ${{ (github.ref != 'refs/heads/main') && github.event_name != 'merge_group' }}
 
 jobs:
+  changes:
+    name: Change map (security)
+    if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      # Fail-open defaults (superscar #2 "esiste ≠ armato"): any failure of
+      # the classifier corpus, the enumerator, or this step's own JSON
+      # parsing leaves steps.classify.outputs.* unset, and every `|| 'true'`
+      # below then makes the corresponding job run. There is no path from a
+      # broken classifier to a silently-skipped security scan.
+      #
+      # `detect-secrets` deliberately has NO output/flag here — it is never
+      # gated on this job's decision (superscar #4 "secret in the clear": a
+      # secret can land via any file type, so that job stays unconditional
+      # in its own `if:`-free job definition below).
+      run_all: ${{ steps.classify.outputs.run_all || 'true' }}
+      run_snyk_python: ${{ steps.classify.outputs.run_snyk_python || 'true' }}
+      run_snyk_node: ${{ steps.classify.outputs.run_snyk_node || 'true' }}
+      run_snyk_docker: ${{ steps.classify.outputs.run_snyk_docker || 'true' }}
+      run_codeql_python: ${{ steps.classify.outputs.run_codeql_python || 'true' }}
+      run_codeql_javascript: ${{ steps.classify.outputs.run_codeql_javascript || 'true' }}
+      run_bandit: ${{ steps.classify.outputs.run_bandit || 'true' }}
+      run_safety: ${{ steps.classify.outputs.run_safety || 'true' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # ROOT OF TRUST (mirrors tests.yml's `changes` job, CRITICAL-1
+      # 2026-08-14): a PR that weakens which security jobs get selected could,
+      # in the SAME commit, edit change_map.py to under-report its own
+      # domain — self-approving a skip of e.g. CodeQL or Bandit. Extract the
+      # classifier from BASE_SHA (main's tip for a PR, the queue's base for
+      # merge_group) and run ONLY that copy for the rest of this job — a PR
+      # can propose a change to the classifier, but that change judges every
+      # OTHER PR first and only starts judging PRs once merged. `scripts/ci/`
+      # is CODEOWNERS TIER 1 (defense in depth) and is itself mapped to
+      # security_sensitive in change_map.py, so a PR editing the classifier
+      # is classified run_all=true by the OLD copy doing the judging.
+      - name: Extract trusted classifier (base ref)
+        id: extract
+        env:
+          BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+        run: |
+          set -uo pipefail
+          CLASSIFIER_DIR="$RUNNER_TEMP/trusted-classifier"
+          mkdir -p "$CLASSIFIER_DIR"
+          OK=true
+          for f in scripts/ci/change_map.py scripts/ci/test_change_map.py scripts/ci/hotzone_changed_files.sh; do
+            if ! git show "${BASE_SHA}:${f}" > "$CLASSIFIER_DIR/$(basename "$f")" 2>/dev/null; then
+              echo "::warning::could not extract $f from base ref $BASE_SHA — treating classifier as untrusted for this run"
+              OK=false
+            fi
+          done
+          chmod +x "$CLASSIFIER_DIR/hotzone_changed_files.sh" 2>/dev/null || true
+          echo "dir=$CLASSIFIER_DIR" >> "$GITHUB_OUTPUT"
+          echo "ok=$OK" >> "$GITHUB_OUTPUT"
+
+      - name: Verify change-map guilt and innocence corpus
+        id: classifier-tests
+        continue-on-error: true
+        env:
+          CLASSIFIER_DIR: ${{ steps.extract.outputs.dir }}
+          EXTRACT_OK: ${{ steps.extract.outputs.ok }}
+        run: |
+          set -uo pipefail
+          if [ "$EXTRACT_OK" != "true" ]; then
+            echo "::error::base-ref classifier extraction failed — refusing to trust a corpus that didn't run"
+            exit 1
+          fi
+          python3 "$CLASSIFIER_DIR/test_change_map.py"
+
+      # merge_group base/head SHAs (established pattern — see tests.yml,
+      # hot-zone-pr-gate.yml, harness-floor.yml): under a merge queue entry
+      # github.event.pull_request.* is unset, so the merge_group.* SHAs take
+      # priority via `||`. hotzone_changed_files.sh resolves the merge-base
+      # with pure git and only falls back to the PR files API (which needs
+      # PR_NUMBER) if that fails.
+      - name: Enumerate and classify this PR's files
+        id: classify
+        continue-on-error: true
+        env:
+          BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
+          CLASSIFIER_TEST_OUTCOME: ${{ steps.classifier-tests.outcome }}
+          CLASSIFIER_DIR: ${{ steps.extract.outputs.dir }}
+          EXTRACT_OK: ${{ steps.extract.outputs.ok }}
+        run: |
+          set -uo pipefail
+          CHANGED_FILE="$RUNNER_TEMP/security-change-map-changed-files.txt"
+
+          if [ "$EXTRACT_OK" != "true" ] || [ "$CLASSIFIER_TEST_OUTCOME" != "success" ]; then
+            echo "::warning::classifier untrusted or corpus failed; recommendation defaults to all jobs"
+            printf '%s\n' '__CHANGE_MAP_ENUMERATION_ERROR__' > "$CHANGED_FILE"
+          elif ! bash "$CLASSIFIER_DIR/hotzone_changed_files.sh" \
+            "$BASE_SHA" "$HEAD_SHA" "$PR_NUMBER" > "$CHANGED_FILE"; then
+            echo "::warning::changed-file enumeration failed; recommendation defaults to all jobs"
+            printf '%s\n' '__CHANGE_MAP_ENUMERATION_ERROR__' > "$CHANGED_FILE"
+          fi
+
+          # HIGH-4 (mirrors tests.yml): capture the classifier's own exit
+          # code explicitly rather than trusting a bare command-substitution
+          # under `set -uo pipefail` (no `-e` — see W101 in
+          # cicatrix-superscar.md).
+          if ! MAP_JSON="$(python3 "$CLASSIFIER_DIR/change_map.py" < "$CHANGED_FILE")"; then
+            echo "::warning::change_map.py exited non-zero; forcing conservative fallback"
+            MAP_JSON='{"schema_version":1,"mode":"enforcing","reason":"classifier_runtime_failure","changed_file_count":0,"domains":{},"unknown_paths":[],"run_all":true,"security_suggested_jobs":["snyk-python","snyk-node","snyk-docker","codeql-python","codeql-javascript","bandit","safety"],"security_would_skip":[]}'
+          fi
+          RUN_ALL="$(MAP_JSON="$MAP_JSON" python3 -c 'import json, os; print(str(json.loads(os.environ["MAP_JSON"])["run_all"]).lower())')"
+          echo "map=$MAP_JSON" >> "$GITHUB_OUTPUT"
+          echo "run_all=$RUN_ALL" >> "$GITHUB_OUTPUT"
+
+          # Per-job explicit booleans (superscar #3 "guard-over-match"): exact
+          # membership against the parsed security_suggested_jobs list, never
+          # a substring check on the raw JSON.
+          JOB_FLAGS="$(MAP_JSON="$MAP_JSON" python3 -c '
+          import json, os
+
+          result = json.loads(os.environ["MAP_JSON"])
+          run_all = bool(result["run_all"])
+          suggested = set(result["security_suggested_jobs"])
+          jobs = [
+              "snyk-python",
+              "snyk-node",
+              "snyk-docker",
+              "codeql-python",
+              "codeql-javascript",
+              "bandit",
+              "safety",
+          ]
+          for job in jobs:
+              flag = run_all or job in suggested
+              output_name = "run_" + job.replace("-", "_")
+              value = "true" if flag else "false"
+              print(f"{output_name}={value}")
+          ')"
+          echo "$JOB_FLAGS" >> "$GITHUB_OUTPUT"
+          echo "::notice::security change-map: $MAP_JSON"
+
+      - name: Publish change-map decision
+        if: always()
+        env:
+          MAP_JSON: ${{ steps.classify.outputs.map }}
+          CLASSIFIER_TEST_OUTCOME: ${{ steps.classifier-tests.outcome }}
+          CLASSIFY_OUTCOME: ${{ steps.classify.outcome }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+
+          raw = os.environ.get("MAP_JSON", "")
+          if raw:
+              result = json.loads(raw)
+              skipped = result["security_would_skip"]
+              run_all = result["run_all"]
+          else:
+              result = {"reason": "classifier_runtime_failure"}
+              skipped = []
+              run_all = True
+
+          lines = [
+              "## Change map (security) — enforcing",
+              "",
+              f"- Classifier corpus: `{os.environ['CLASSIFIER_TEST_OUTCOME']}`",
+              f"- Classification step: `{os.environ['CLASSIFY_OUTCOME']}`",
+              f"- Reason: `{result.get('reason', 'unknown')}`",
+              f"- Conservative fallback (run everything): `{str(run_all).lower()}`",
+              "",
+              "`detect-secrets` is never gated — it always runs regardless of this map.",
+              "",
+          ]
+          if skipped:
+              lines.append("Jobs this run will SKIP:")
+              lines.extend(f"- {job}" for job in skipped)
+          else:
+              lines.append("No security job is being skipped for this run.")
+
+          summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary_path:
+              with open(summary_path, "a", encoding="utf-8") as fh:
+                  fh.write("\n".join(lines) + "\n")
+          PY
+
   snyk-python:
     name: Snyk Python Security
+    needs: [changes]
+    # Path-aware skip (change-map, 2026-08-20 — see `changes` job above and
+    # scripts/ci/change_map.py::_suggested_security_jobs). Not a required
+    # branch-protection context (verified against
+    # `gh api repos/.../branches/main/protection` 2026-08-20 — absent from
+    # the contexts list, unlike CodeQL/Bandit/Detect Secrets below), so a
+    # `skipped` conclusion here has no merge-blocking effect either way.
+    # `!cancelled()` + the event-name branch + `needs.changes.result` check
+    # follow the exact pattern tests.yml uses for its own path-aware jobs —
+    # see backend-tests there for the full rationale (HIGH-3: a stale
+    # run_*=false published before a later `changes` step fails must not
+    # survive; `!cancelled()`: a cancelled workflow run gets no verdict, not
+    # a false pass).
+    if: >-
+      !cancelled() &&
+      (
+        (github.event_name != 'pull_request' && github.event_name != 'merge_group') ||
+        needs.changes.result != 'success' ||
+        needs.changes.outputs.run_snyk_python != 'false'
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # Blocking gate — HIGH/CRITICAL CVEs fail the job unless the finding is
@@ -121,6 +331,16 @@ jobs:
 
   snyk-node:
     name: Snyk Node.js Security
+    needs: [changes]
+    # Path-aware skip — see snyk-python above for the full rationale. Not a
+    # required context.
+    if: >-
+      !cancelled() &&
+      (
+        (github.event_name != 'pull_request' && github.event_name != 'merge_group') ||
+        needs.changes.result != 'success' ||
+        needs.changes.outputs.run_snyk_node != 'false'
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # Blocking gate — see snyk-python. Exceptions honoured via
@@ -173,6 +393,21 @@ jobs:
 
   snyk-docker:
     name: Snyk Docker Security
+    needs: [changes]
+    # Path-aware skip — see snyk-python above for the full rationale. Not a
+    # required context. Trigger is the backend_python domain (see
+    # change_map.py::_suggested_security_jobs): the Dockerfile's COPY
+    # instructions pull apps/backend-rag/backend, packages/cell-core,
+    # apps/crm-cell (CLAUDE.md §11 deploy) — all three are inside that
+    # domain, so an edit to any of them (Dockerfile included, tagged both
+    # backend_python and security_sensitive) reruns this job.
+    if: >-
+      !cancelled() &&
+      (
+        (github.event_name != 'pull_request' && github.event_name != 'merge_group') ||
+        needs.changes.result != 'success' ||
+        needs.changes.outputs.run_snyk_docker != 'false'
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 20
     # This job does TWO different things and they deserve different verdicts:
@@ -285,19 +520,43 @@ jobs:
             "${RUN_URL}")"
           bash scripts/ci/telegram_notify.sh --parse-mode HTML --text "$TEXT"
 
-  codeql:
-    name: CodeQL Analysis
+  # CodeQL used to be one `strategy.matrix` job ("CodeQL Analysis", legs
+  # ["python", "javascript"]) generating the two required contexts below by
+  # GitHub's own `<job name> (<matrix value>)` naming. Split into two plain
+  # jobs 2026-08-20 SOLELY to make path-aware skipping possible: a job's
+  # top-level `if:` does not have access to the `matrix` context (only
+  # `github`, `needs`, `vars`, `inputs` — confirmed live via actionlint and
+  # GitHub's own context-availability table), so a per-language skip
+  # decision cannot be expressed inside a matrix job's `if:`. `name:` is set
+  # literally to the exact required-context strings the matrix used to
+  # generate, so branch protection needs no change.
+  codeql-python:
+    name: CodeQL Analysis (python)
+    needs: [changes]
+    # Path-aware skip. REQUIRED context (branch protection context
+    # "CodeQL Analysis (python)" — verified 2026-08-20 via
+    # `gh api repos/.../branches/main/protection`), so a `skipped` conclusion
+    # here is what satisfies the merge gate for a PR with no Python file in
+    # its diff — the same skip-satisfies-required pattern tests.yml's own
+    # required contexts (e.g. "Backend Tests (Python)") already rely on.
+    #
+    # Language-shaped, not domain-shaped (see change_map.py::PYTHON_SUFFIXES):
+    # CodeQL's autobuild compiles whatever Python source exists anywhere in
+    # the checkout, so this is gated on "does the diff contain a .py/.pyi
+    # file", independent of which product domain it nominally belongs to.
+    if: >-
+      !cancelled() &&
+      (
+        (github.event_name != 'pull_request' && github.event_name != 'merge_group') ||
+        needs.changes.result != 'success' ||
+        needs.changes.outputs.run_codeql_python != 'false'
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
       actions: read
       contents: read
       security-events: write
-
-    strategy:
-      fail-fast: false
-      matrix:
-        language: ["python", "javascript"]
 
     steps:
       - name: Checkout code
@@ -306,7 +565,7 @@ jobs:
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4.37.6
         with:
-          languages: ${{ matrix.language }}
+          languages: python
           queries: security-extended,security-and-quality
           config-file: ./.github/codeql-config.yml
 
@@ -316,10 +575,66 @@ jobs:
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4.37.6
         with:
-          category: "/language:${{matrix.language}}"
+          category: "/language:python"
+
+  codeql-javascript:
+    name: CodeQL Analysis (javascript)
+    needs: [changes]
+    # Path-aware skip — see codeql-python above for the full rationale.
+    # REQUIRED context "CodeQL Analysis (javascript)" (verified 2026-08-20).
+    # Gated on "does the diff contain a .js/.jsx/.ts/.tsx/.mjs/.cjs file"
+    # (change_map.py::JS_TS_SUFFIXES).
+    if: >-
+      !cancelled() &&
+      (
+        (github.event_name != 'pull_request' && github.event_name != 'merge_group') ||
+        needs.changes.result != 'success' ||
+        needs.changes.outputs.run_codeql_javascript != 'false'
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4.37.6
+        with:
+          languages: javascript
+          queries: security-extended,security-and-quality
+          config-file: ./.github/codeql-config.yml
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v4.37.6
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4.37.6
+        with:
+          category: "/language:javascript"
 
   bandit:
     name: Bandit Python Security
+    needs: [changes]
+    # Path-aware skip. REQUIRED context (branch protection context
+    # "Bandit Python Security" — verified 2026-08-20), so a `skipped`
+    # conclusion satisfies the merge gate, mirroring the CodeQL job above and
+    # tests.yml's own required contexts. Trigger is a direct path check
+    # (apps/backend-rag/backend/ — bandit's exact `-r` target — or
+    # apps/backend-rag/pyproject.toml, its `-c` config), narrower than the
+    # full backend_python domain (see change_map.py::_suggested_security_jobs
+    # docstring for why).
+    if: >-
+      !cancelled() &&
+      (
+        (github.event_name != 'pull_request' && github.event_name != 'merge_group') ||
+        needs.changes.result != 'success' ||
+        needs.changes.outputs.run_bandit != 'false'
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # Blocking gate (A1 fix 2026-06-13): this job is in the merge-blocking
@@ -388,6 +703,17 @@ jobs:
 
   safety:
     name: Safety Dependency Check
+    needs: [changes]
+    # Path-aware skip — see snyk-python above for the full rationale. Not a
+    # required context. Same trigger as snyk-python (both scan exactly
+    # apps/backend-rag/requirements.txt).
+    if: >-
+      !cancelled() &&
+      (
+        (github.event_name != 'pull_request' && github.event_name != 'merge_group') ||
+        needs.changes.result != 'success' ||
+        needs.changes.outputs.run_safety != 'false'
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # Blocking gate — HIGH/CRITICAL CVEs fail the job unless the finding is
@@ -433,6 +759,13 @@ jobs:
   detect-secrets:
     name: Detect Secrets
     runs-on: ubuntu-latest
+    # DELIBERATELY UNCONDITIONAL (2026-08-20): every other job in this
+    # workflow gates on the `changes` job's path-aware recommendation
+    # (scripts/ci/change_map.py::_suggested_security_jobs) — this one never
+    # will. A secret can land via any file type (a .md, a fixture, a
+    # generated .json), so cicatrix-superscar #4 "secret in the clear" bars
+    # any path filter here, no exceptions. No `needs: [changes]`, no `if:`.
+    #
     # Run 31312661093 measured 19m34s in the scan alone and was cancelled at
     # the 20m job limit after every gating step had succeeded. Keep this gate
     # blocking, but give runner variance enough headroom to report its verdict.
@@ -506,7 +839,8 @@ jobs:
         snyk-python,
         snyk-node,
         snyk-docker,
-        codeql,
+        codeql-python,
+        codeql-javascript,
         bandit,
         safety,
         detect-secrets,
