@@ -19,6 +19,7 @@ import os
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel, Field
 
 from backend.app.utils.logging_utils import get_logger
 
@@ -109,6 +110,53 @@ async def run_lkpm_deadline_notifier(request: Request) -> dict[str, Any]:
     result = await notifier.check_and_notify()
     logger.info("LKPM deadline notifier: %s", result)
     return {"service": "lkpm_deadlines", **result}
+
+
+class TeamWhatsAppRequest(BaseModel):
+    """Request for the 'send WhatsApp text to a team member, by email' primitive.
+
+    `team_email`, never a phone number — the caller (scripts/s7_yield_dispatch.py)
+    must not resolve or hold a phone itself; that happens server-side in
+    team_whatsapp_sender.py so the active/has-a-number check cannot be
+    bypassed by a bug in the caller's own gate.
+    """
+
+    team_email: str = Field(..., description="Bali Zero team member's @balizero.com email")
+    text: str = Field(..., min_length=1, max_length=4096, description="Message text")
+
+
+@router.post("/team-whatsapp")
+async def run_team_whatsapp_send(body: TeamWhatsAppRequest, request: Request) -> dict[str, Any]:
+    """Send free-form WhatsApp text to a Bali Zero team member, resolved
+    server-side from team_members by email.
+
+    Built for the S7 Yield WhatsApp digest (Law-2 derogation authorized
+    2026-08-21, see SYMBIOSIS.md — "il cancello vive anche lato server"): an
+    inactive or unknown assignee is rejected HERE independently of whatever
+    the caller's own client-side gate already decided — the same fact
+    checked twice. No fallback recipient exists on any path.
+    """
+    _verify_api_key(request)
+    db_pool = _get_db_pool(request)
+
+    from backend.services.crm.team_whatsapp_sender import (
+        TeamMemberNotFound,
+        TeamMemberNoWhatsApp,
+        send_to_team_member,
+    )
+
+    try:
+        result = await send_to_team_member(db_pool, body.team_email, body.text)
+    except TeamMemberNotFound as exc:
+        raise HTTPException(
+            status_code=404, detail="team member not found or not active"
+        ) from exc
+    except TeamMemberNoWhatsApp as exc:
+        raise HTTPException(
+            status_code=422, detail="team member has no WhatsApp number on file"
+        ) from exc
+    logger.info("Team WhatsApp send: service=team_whatsapp status=ok")
+    return {"service": "team_whatsapp", **result}
 
 
 @router.post("/welcome-pending")

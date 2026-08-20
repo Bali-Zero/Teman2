@@ -232,6 +232,10 @@ on:
       # the drift check_watcher_coverage.py exists to catch — caught here on
       # main-push-failure-watch's own run 32395393032, 2026-08-20.
       - yield-optimizer PII gate tests
+      # Added 2026-08-20 (scripts/s7_yield_dispatch.py PR): caught by
+      # check_watcher_coverage.py on this PR's own first run, same
+      # self-conformance it exists for.
+      - S7 yield dispatch gate tests
     types: [completed]
     # 2026-08-20 CI-churn cure — see the matching GOTCHA above for the
     # measurement and the empirical proof this narrows run CREATION, never
