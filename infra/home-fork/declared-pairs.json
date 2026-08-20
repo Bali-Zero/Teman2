@@ -860,6 +860,16 @@
       "repo": "infra/eventbus/research_sentinel.py",
       "machines": ["pro", "m5"],
       "_note": "UNDECLARED live payload found 2026-08-20 (family #1): plist com.balizero.research-sentinel execs this HOME copy directly, running on Pro. Verified byte-identical to repo/origin-main sha256 858c17c6... on BOTH Pro and M5. M5 included even though inert there (0 launchd/crontab references): same reasoning as the sibling intel_dedup_gateway.py entry above. Mini has no ~/scripts/eventbus/ at all — not declared. Sibling plist com.balizero.observatory was investigated in the same sweep and is NOT part of this family: its ProgramArguments execs /Users/nuzantara/agents/.observatory/observatory.py, a structurally different directory (agents/.observatory/, not scripts/eventbus/) — left undeclared here, own ledger row if ever promoted."
+    },
+    {
+      "live": "~/scripts/pro-llm-burn-alarm.sh",
+      "repo": "infra/launchagents/wrappers/pro-llm-burn-alarm.sh",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.llm-burn-alarm.plist",
+      "repo": "infra/launchagents/com.nuzantara.llm-burn-alarm.plist",
+      "machines": ["pro"]
     }
   ],
   "allow": [

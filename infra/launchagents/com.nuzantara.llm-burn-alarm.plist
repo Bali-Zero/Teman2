@@ -2,29 +2,15 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>Label</key>
-    <string>com.nuzantara.llm-burn-alarm</string>
-    <key>EnvironmentVariables</key>
-    <dict>
-        <key>HOME</key>
-        <string>/Users/nuzantara</string>
-        <key>PATH</key>
-        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
-    </dict>
+    <key>Label</key><string>com.nuzantara.llm-burn-alarm</string>
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/nuzantara/nuzantara-deploy/scripts/llm_burn_alarm_run.sh</string>
+        <string>/Users/nuzantara/scripts/pro-llm-burn-alarm.sh</string>
     </array>
-    <key>StartInterval</key>
-    <integer>3600</integer>
-    <key>RunAtLoad</key>
-    <true/>
-    <key>KeepAlive</key>
-    <false/>
-    <key>StandardOutPath</key>
-    <string>/Users/nuzantara/logs/fase0-llm-burn-alarm.out.log</string>
-    <key>StandardErrorPath</key>
-    <string>/Users/nuzantara/logs/fase0-llm-burn-alarm.err.log</string>
+    <key>StartInterval</key><integer>3600</integer>
+    <key>RunAtLoad</key><false/>
+    <key>StandardOutPath</key><string>/tmp/com.nuzantara.llm-burn-alarm.out</string>
+    <key>StandardErrorPath</key><string>/tmp/com.nuzantara.llm-burn-alarm.err</string>
 </dict>
 </plist>
