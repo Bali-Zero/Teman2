@@ -272,19 +272,6 @@ class PortalBillingMixin:
                 params.append(client_id)
                 set_clause = ", ".join(set_parts)
 
-                # Capture pre-update values for the audit trail. This is a
-                # standalone read (not the phone-lock convergence loop
-                # below, which only re-reads phone/whatsapp to compute its
-                # lock set) so it covers whichever editable fields changed
-                # and always runs BEFORE the UPDATE.
-                audit_old_row = await conn.fetchrow(
-                    f"SELECT {', '.join(safe_fields.keys())} FROM clients WHERE id = $1",
-                    client_id,
-                )
-                audit_old_state = (
-                    {k: audit_old_row[k] for k in safe_fields} if audit_old_row else {}
-                )
-
                 async with conn.transaction():
                     if "phone" in safe_fields or "whatsapp" in safe_fields:
                         # Phone AND whatsapp are OWNERSHIP columns: intake
@@ -340,6 +327,26 @@ class PortalBillingMixin:
                                 "phone_lock_convergence_failed — concurrent phone "
                                 "writers, retry the profile update"
                             )
+                    # Capture pre-update values for the audit trail. Placed
+                    # HERE deliberately: inside the same transaction as the
+                    # UPDATE, and AFTER the phone-lock block above, so for a
+                    # phone/whatsapp write the row is already locked when we
+                    # read it. Read outside the transaction, another writer
+                    # could land between the read and the UPDATE and the trail
+                    # would record an old value that was never the value we
+                    # overwrote — an audit row that states a wrong prior value
+                    # is worse than no audit row, because it reads as evidence.
+                    # (It does NOT close the lost-update gap on non-phone
+                    # fields — there is no version column on `clients` either
+                    # side of the handoff; that is a wider design change and is
+                    # named in this PR's body, not fixed here.)
+                    audit_old_row = await conn.fetchrow(
+                        f"SELECT {', '.join(safe_fields.keys())} FROM clients WHERE id = $1",
+                        client_id,
+                    )
+                    audit_old_state = (
+                        {k: audit_old_row[k] for k in safe_fields} if audit_old_row else {}
+                    )
                     await conn.execute(
                         f"UPDATE clients SET {set_clause}, updated_at = NOW() WHERE id = ${len(params)} AND deleted_at IS NULL",
                         *params,
