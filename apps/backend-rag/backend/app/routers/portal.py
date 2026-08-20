@@ -1042,7 +1042,11 @@ async def get_required_documents(
                 SELECT
                     prd.id, prd.practice_id, prd.document_type, prd.document_label,
                     prd.description, prd.is_required, prd.uploaded_by_client,
-                    prd.status, prd.client_notes, prd.team_member_notes,
+                    -- team_member_notes is DELIBERATELY not selected: it is the
+                    -- operator's internal note (authoring UI labels it "Team Notes"
+                    -- / "Add notes for the team..."). The client-facing note is
+                    -- `description`, which the portal already renders.
+                    prd.status, prd.client_notes,
                     COALESCE(pt.name, p.practice_type_code) as process_name,
                     p.status as process_status
                 FROM practice_required_documents prd
@@ -1066,7 +1070,6 @@ async def get_required_documents(
                 "uploaded_by_client": row["uploaded_by_client"],
                 "status": row["status"],
                 "client_notes": row["client_notes"],
-                "team_member_notes": row["team_member_notes"],
             }
             for row in rows
         ]
@@ -1127,12 +1130,19 @@ async def get_profile(
                     tm.avatar as assigned_to_avatar
                 FROM clients c
                 LEFT JOIN team_members tm ON c.assigned_to = tm.email
-                WHERE c.id = $1
+                WHERE c.id = $1 AND c.deleted_at IS NULL
                 """,
                 client["client_id"],
             )
 
             if not row:
+                # Row missing OR soft-deleted (deleted_at IS NULL above) -> not
+                # found, not a 500. Every other client-scoped portal endpoint
+                # resolves the client through PortalService, which filters
+                # `... WHERE id = $1 AND deleted_at IS NULL` and 404s the same
+                # way (see get_dashboard's "BUG C" comment) — this raw-SQL
+                # handler now matches that gate instead of serving an archived
+                # client's passport/DOB/address (2026-08-20).
                 raise HTTPException(status_code=404, detail="Profile not found")
 
             return {

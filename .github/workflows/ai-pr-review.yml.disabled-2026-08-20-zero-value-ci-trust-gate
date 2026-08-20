@@ -1,5 +1,45 @@
 name: AI PR review (advisory)
 
+# DISABLED 2026-08-20 (token-cuts round2 — measured, not guessed):
+#
+# Every "Run advisory review" step in the last ~30h / 100 runs sampled
+# (10 spread across the window) failed the SAME way, ~4s after starting:
+#
+#   Ignoring 2 permissions.allow entries from .claude/settings.json: this
+#   workspace has not been trusted. Run Claude Code interactively here once
+#   and accept the trust dialog, or set
+#   projects["/home/runner/work/Teman2/Teman2"].hasTrustDialogAccepted: true
+#   in /home/runner/.claude.json.
+#
+# The step still reports job conclusion "success" (the run: block's own
+# if/else always exits 0 — cicatrix superscar #2, esiste≠armato: green that
+# lies), but `ok` is set to false, so "Post advisory comment" — gated on
+# `steps.review.outputs.ok == 'true'` — was SKIPPED on every single sampled
+# run. Zero PRs (checked #4426, #4425, #4424, #4423, #4421, #4420, #4418)
+# ever received the "🤖 Advisory AI review" comment in that window. This is
+# a CI-side workspace-trust gate, unrelated to CLAUDE_CODE_OAUTH_TOKEN/quota
+# despite the warning text's guess — it fails locally before any model call,
+# so it was NOT burning tokens, only GitHub Actions minutes (Node setup +
+# `claude` CLI install) on every qualifying PR sync (~80 runs/day) for zero
+# advisory value.
+#
+# Re-enabling this for real (not just silencing the false-green) needs a
+# fix at "Run advisory review", not a model pin: write
+# ~/.claude.json with projects["<runner workspace>"].hasTrustDialogAccepted
+# = true before the `claude -p` call (or an equivalent non-interactive
+# trust-acceptance flag if the CLI grows one), THEN pin --model (this
+# workflow's call was itself bare, same class as
+# infra/claude-headless-model-pin/grandfathered.json — never fixed here
+# since restoring flow means restoring real per-PR token spend, the
+# opposite of this mandate). That is a deliberate "turn a real feature back
+# on" decision for the codeowner (Legge 5 territory — it changes what gets
+# spent, not just what gets wasted), not a "cut waste" one — left disabled
+# rather than silently repaired.
+#
+# To re-enable: `git mv` this file back to `.github/workflows/ai-pr-review.yml`,
+# apply the trust-dialog fix above, and re-verify against a live PR before
+# trusting the green again.
+
 # Layer 2 of PR verification. Layer 1 = the required CI tests (the hard gate).
 # This runs Claude on the diff of PRs touching sensitive surfaces and posts an
 # ADVISORY comment (scope creep, reward-hacking, correctness/invariant smells).

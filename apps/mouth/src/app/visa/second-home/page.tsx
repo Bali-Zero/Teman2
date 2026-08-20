@@ -15,6 +15,14 @@ export const metadata: Metadata = {
   },
   alternates: {
     canonical: "https://balizero.com/visa/second-home",
+    // Localized variants shipped 2026-08-20 (it/id) — see
+    // app/visa/second-home/[locale]/page.tsx. Same map on all three URLs.
+    languages: {
+      en: "https://balizero.com/visa/second-home",
+      it: "https://balizero.com/visa/second-home/it",
+      id: "https://balizero.com/visa/second-home/id",
+      "x-default": "https://balizero.com/visa/second-home",
+    },
   },
 };
 

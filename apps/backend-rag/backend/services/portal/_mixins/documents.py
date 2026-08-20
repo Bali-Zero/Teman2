@@ -30,6 +30,7 @@ from backend.app.utils.logging_utils import get_logger
 from backend.services.common.background import spawn
 from backend.services.common.cache import cache_invalidating
 from backend.services.pii.violation_store import hash_subject
+from backend.services.portal._document_visibility import document_visibility_clause
 from backend.services.portal._rbac import ClientContext, require_client_access
 from backend.services.portal.document_processing import (
     DocumentOCR,
@@ -196,7 +197,7 @@ class PortalDocumentsMixin:
     ) -> list[dict[str, Any]]:
         """Get all client-visible documents."""
         async with self.pool.acquire() as conn:
-            query = """
+            query = f"""
                 SELECT d.id, d.document_type, d.file_name, d.status,
                        d.expiry_date, d.file_url, d.file_id, d.file_size_kb, d.created_at,
                        d.document_purpose,
@@ -205,9 +206,7 @@ class PortalDocumentsMixin:
                 LEFT JOIN practices p ON p.id = d.practice_id
                 LEFT JOIN practice_types pt ON pt.id = p.practice_type_id
                 WHERE d.client_id = $1
-                AND d.client_visible = true
-                AND d.deleted_at IS NULL
-                AND COALESCE(d.is_archived, FALSE) = FALSE
+                AND {document_visibility_clause("d")}
             """
             params = [client_id]
 
@@ -247,14 +246,12 @@ class PortalDocumentsMixin:
         """Download a client-visible document through the portal proxy."""
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(
-                """
+                f"""
                 SELECT id, file_name, file_id, file_url, mime_type, status, storage_type
                 FROM documents
                 WHERE id = $1
                   AND client_id = $2
-                  AND client_visible = true
-                  AND deleted_at IS NULL
-                  AND COALESCE(is_archived, FALSE) = FALSE
+                  AND {document_visibility_clause()}
                 LIMIT 1
                 """,
                 document_id,
@@ -388,14 +385,12 @@ class PortalDocumentsMixin:
         async with self.pool.acquire() as conn:
             async with conn.transaction():
                 row = await conn.fetchrow(
-                    """
+                    f"""
                     UPDATE documents
                     SET deleted_at = NOW(), deleted_by = $3
                     WHERE id = $1
                       AND client_id = $2
-                      AND client_visible = true
-                      AND deleted_at IS NULL
-                      AND COALESCE(is_archived, FALSE) = FALSE
+                      AND {document_visibility_clause()}
                     RETURNING id, file_name, document_type
                     """,
                     document_id,
@@ -1261,21 +1256,36 @@ This is an automated notification from Bali Zero CRM.
                         lead_email,
                     )
 
-                # Also insert CRM notification alert for the bell
+                # Also insert CRM notification alert for the bell.
+                #
+                # `uq_notification_alert_daily` is a plain CREATE UNIQUE INDEX
+                # (migration_071_notification_alerts.py:34), not a named
+                # constraint — `ON CONFLICT ON CONSTRAINT <name>` only accepts
+                # an actual unique/exclusion constraint, so that form raised on
+                # every call and this insert never once landed (silently
+                # swallowed by the except below, logged at DEBUG). The
+                # column-list form matches any unique index on those columns,
+                # constraint or not — same form already used by the two other
+                # writers of this table: welcome_email_service.py:287 and the
+                # profile-update path pinned by
+                # test_portal_profile_update.py:82.
                 try:
                     await conn.execute(
                         """
                         INSERT INTO notification_alerts
                             (client_id, alert_type, status, message, email_subject)
                         VALUES ($1, 'portal_document_upload', 'sent', $2, $3)
-                        ON CONFLICT ON CONSTRAINT uq_notification_alert_daily DO NOTHING
+                        ON CONFLICT (client_id, alert_type, created_date) DO NOTHING
                         """,
                         client_id,
                         f"{client['full_name']} uploaded {document_type.replace('_', ' ')} via portal",
                         f"[Portal] {client['full_name']} uploaded {document_type.replace('_', ' ').title()}",
                     )
                 except Exception as alert_err:
-                    logger.debug("CRM alert insert failed (non-critical): %s", alert_err)
+                    # This used to be logger.debug — an exception that fires on
+                    # EVERY call (see above) is invisible by construction at
+                    # DEBUG. Warning so a future regression here is seen.
+                    logger.warning("CRM alert insert failed (non-critical): %s", alert_err)
 
         except Exception as e:
             # Don't fail upload if notification fails

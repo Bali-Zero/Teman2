@@ -1,0 +1,51 @@
+name: yield-optimizer PII gate tests
+
+# Guilt+innocence+class-guard for scripts/yield_optimizer_pitch_gate.py — the
+# deterministic PII fail-closed gate for yield-optimizer's Step 3 (draft
+# pitch). yield-optimizer is a Claude Sonnet-5 AGENT with unrestricted Bash
+# access (~/.claude/agents/yield-optimizer.md, cron Sunday 04:00 WITA on
+# Pro); its "Ollama unreachable: STOP, no fallback to cloud" rule used to
+# live only as prose an LLM has to remember every run. This file is the
+# per-PR consumer of the test suite that proves the code-level gate holds —
+# without a workflow naming it, scripts/tests/*.py only runs in the nightly
+# report-only sweep (scripts-tests-sweep.yml), which is cicatrix superscar #2
+# ("exists != armed") for a guardrail whose whole point is to be armed.
+#
+# `paths:` filtered to just the gate + its test (small, well-scoped surface,
+# unlike asyncpg-lint's deliberate full-repo scan) — safe because this
+# workflow is NOT added to branch-protection required checks here (that is a
+# repo-settings action, operator-gated per CLAUDE.md §13); it runs informationally
+# on every PR that touches the gate, same as most workflows in this repo.
+
+on:
+  pull_request:
+    paths:
+      - "scripts/yield_optimizer_pitch_gate.py"
+      - "scripts/tests/test_yield_optimizer_pitch_gate.py"
+      - ".github/workflows/yield-optimizer-pii-gate-tests.yml"
+  merge_group:
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/yield_optimizer_pitch_gate.py"
+      - "scripts/tests/test_yield_optimizer_pitch_gate.py"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: yield-optimizer-pii-gate-tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
+
+jobs:
+  gate-tests:
+    name: yield-optimizer PII gate tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run guilt + innocence + class-guard + CLI tests
+        run: |
+          python3 -m pip install --quiet --disable-pip-version-check pytest
+          python3 -m pytest scripts/tests/test_yield_optimizer_pitch_gate.py -v

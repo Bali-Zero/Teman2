@@ -60,7 +60,7 @@ If a brand's IG handle has changed or account no longer active, log in output fi
 
 For each brand in Tier 1+2:
 
-- Use Antigravity CLI `agy` (Gemini 3.1 Pro, Google AI Ultra sub): `printf '%s' "$PROMPT" | agy -p --print-timeout 5m` to fetch IG profile recent 12 posts.
+- Use Antigravity CLI `agy` (Gemini 3.1 Pro, Google AI Ultra sub): `agy -p "$PROMPT" --print-timeout 5m` to fetch IG profile recent 12 posts. agy has NO stdin path — piping the prompt in (`printf ... | agy -p`) binds the next flag as the literal prompt and returns RC 0 with empty output, silently burning quota (measured 2026-08-15). Pass the prompt as `-p`'s own argv value.
 - Extract: cover image description, caption first 200 chars, slides_count if visible, likes/comments/saves if scraped.
 - For Tier 3 (trend reports): fetch URL via WebFetch, summarize key metrics + design recommendations.
 

@@ -92,6 +92,15 @@ FROM node:22-trixie-slim AS node22
 # ========================================
 FROM python:3.11-slim
 
+# Build identity (2026-08-20): bake the deploying commit SHA into the image so
+# /health can say WHICH version is actually running, not just that a process
+# answers. Set via `flyctl deploy --build-arg GIT_SHA=<sha>` in
+# .github/workflows/fly-deploy.yml (${{ github.sha }}). A build that omits the
+# arg (e.g. local `docker build`) gets the empty default below; the health
+# router (backend/app/routers/health.py::_resolve_build_sha) normalizes that
+# to the explicit "unknown" marker at import time — never a fabricated SHA.
+ARG GIT_SHA=""
+
 # Install runtime dependencies:
 # - curl + ca-certificates: healthcheck
 # - nodejs + npm: required by the `claude` CLI (Claude Code), used by
@@ -237,6 +246,9 @@ ENV PYTHONPATH=/app:/app/backend:/app/packages/cell-core:/app/apps/crm-cell:/hom
 ENV PATH=/home/nuzantara/.local/bin:$PATH
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+# Build identity: promote the ARG declared above to a runtime ENV var so
+# backend/app/routers/health.py can read it via os.getenv at import time.
+ENV GIT_SHA=${GIT_SHA}
 
 # Aggressive cleanup to reduce image size
 RUN find /home/nuzantara/.local -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true \

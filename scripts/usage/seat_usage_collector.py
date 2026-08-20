@@ -16,7 +16,17 @@ Sorgenti (tutte best-effort, stdlib only):
     input_tokens/output_tokens | prompt_tokens/completion_tokens).
   - Cost-ledger locale: ~/.agent/cost-ledger/*.jsonl (output dell'exporter PG
     già armato) → per confronto/offline mirror della parte API.
-  - agy / kimi: conteggio invocazioni dai log se le dir esistono (no token).
+  - agy: ~/.gemini/antigravity-cli/log/cli-*.log (un file per invocazione CLI,
+    verificato "logging before google.Init" in testa al file) → conteggio
+    invocazioni, no token. Identità confermata da `installation_id` nella
+    stessa dir (2026-08-20: fissato un bug per cui il collettore contava file
+    ESTRANEI in ~/.openclaw/logs, la dir del bridge OpenClaw, e li pubblicava
+    come "agy logs").
+  - kimi: ~/.kimi-code/sessions/**/session_* (una dir per sessione, pinnata
+    da session_index.jsonl) → conteggio invocazioni, no token. Identità
+    confermata da `session_index.jsonl` nella dir base.
+  - Entrambi: senza il marcatore d'identità la dir NON viene contata —
+    status "unknown", mai un numero inventato da una dir non verificata.
 
 Output: JSON snapshot (default ~/.agent/cost-ledger/seat_usage_snapshot.json)
 con schema {generated_at, seats:[{id, source, status, days:{...}, metrics}]}.
@@ -115,6 +125,50 @@ def collect_claude(profile_dir: str, since: datetime) -> dict:
     return out
 
 
+def _extract_cumulative_token_usage(event: dict) -> dict | None:
+    """Estrae lo snapshot CUMULATIVO di token da un evento di sessione Codex.
+
+    Bug reale (2026-08-20, "in=3.3e11/giorno"): ogni riga `token_count` di
+    ~/.codex/sessions/**/*.jsonl porta DUE oggetti fratelli —
+    `info.total_token_usage` (cumulativo per l'INTERA sessione, monotono
+    non-decrescente: cresce ad ogni turno) e `info.last_token_usage` (delta
+    del solo ultimo turno). La vecchia `collect_codex` faceva una DFS cieca
+    sull'intero albero JSON di ogni riga e sommava OGNI dict con
+    {input_tokens,output_tokens} che trovava — cioè sommava sia il
+    cumulativo (che ri-conta tutto il traffico pregresso ad ogni evento) sia
+    il delta, per ogni evento di sessioni con centinaia di eventi. Su una
+    sessione con n eventi token_count il termine dominante è la somma dei
+    total_token_usage crescenti (~n * totale_finale / 2) — con n~900 e un
+    totale finale nell'ordine delle centinaia di migliaia, il risultato
+    esplode di diversi ordini di grandezza oltre il consumo reale.
+
+    Qui si estrae SOLO `total_token_usage` (il cumulativo autoritativo che
+    Codex stesso calcola) e il chiamante ne tiene solo l'ULTIMO per
+    sessione (last-wins) — quello è già il totale corretto dell'intera
+    sessione, non va mai sommato più volte.
+    """
+    payload = event.get("payload") if isinstance(event, dict) else None
+    if isinstance(payload, dict) and payload.get("type") == "token_count":
+        info = payload.get("info")
+        if isinstance(info, dict):
+            total = info.get("total_token_usage")
+            if isinstance(total, dict):
+                ti = total.get("input_tokens")
+                to = total.get("output_tokens")
+                if isinstance(ti, int) and isinstance(to, int):
+                    return {"input_tokens": ti, "output_tokens": to}
+    # schema drift tollerato: formati legacy piatti a livello top
+    # ({input_tokens,output_tokens} o {prompt_tokens,completion_tokens})
+    # trattati come lo snapshot cumulativo CORRENTE (last-wins) — mai
+    # sommati riga per riga come faceva la DFS precedente.
+    if isinstance(event, dict):
+        ti = event.get("input_tokens", event.get("prompt_tokens"))
+        to = event.get("output_tokens", event.get("completion_tokens"))
+        if isinstance(ti, int) and isinstance(to, int):
+            return {"input_tokens": ti, "output_tokens": to}
+    return None
+
+
 def collect_codex(codex_home: str, since: datetime) -> dict:
     out = {"status": "ok", "days": defaultdict(lambda: defaultdict(int))}
     root = Path(codex_home) / "sessions"
@@ -128,28 +182,21 @@ def collect_codex(codex_home: str, since: datetime) -> dict:
             if os.path.getmtime(fp) < since.timestamp():
                 continue
             day = datetime.fromtimestamp(os.path.getmtime(fp), WITA).strftime("%d/%m")
+            last_total: dict | None = None  # ultimo cumulativo visto in QUESTA sessione
             with open(fp, encoding="utf-8", errors="replace") as fh:
                 for line in fh:
-                    if "tokens" not in line:
+                    if "token" not in line:
                         continue
                     try:
                         j = json.loads(line)
                     except Exception:
                         continue
-                    # schema drift tollerato: cerca in profondità coppie note
-                    stack = [j]
-                    while stack:
-                        node = stack.pop()
-                        if isinstance(node, dict):
-                            ti = node.get("input_tokens", node.get("prompt_tokens"))
-                            to = node.get("output_tokens", node.get("completion_tokens"))
-                            if isinstance(ti, int) and isinstance(to, int):
-                                out["days"][day]["in"] += ti
-                                out["days"][day]["out"] += to
-                            else:
-                                stack.extend(node.values())
-                        elif isinstance(node, list):
-                            stack.extend(node)
+                    usage = _extract_cumulative_token_usage(j)
+                    if usage is not None:
+                        last_total = usage
+            if last_total is not None:
+                out["days"][day]["in"] += last_total.get("input_tokens", 0) or 0
+                out["days"][day]["out"] += last_total.get("output_tokens", 0) or 0
         except Exception as e:
             out["status"] = "partial"
             out.setdefault("errors", []).append(f"{fp}: {e}")
@@ -157,13 +204,47 @@ def collect_codex(codex_home: str, since: datetime) -> dict:
     return out
 
 
-def collect_invocations(log_dir: str, since: datetime) -> dict:
-    """Best-effort: conta file di log recenti (agy, kimi) — nessun token."""
-    p = Path(os.path.expanduser(log_dir))
+def collect_invocations(base_dir: str, since: datetime, *, identity_marker: str, entity_glob: str) -> dict:
+    """Best-effort: conta le ENTITÀ (file o dir) che sono davvero un'invocazione
+    della CLI — mai un conteggio cieco di TUTTO ciò che sta nella home della
+    CLI. Nessun token qui, solo conteggio invocazioni.
+
+    Bug reale (2026-08-20): il chiamante G1 puntava a `~/.openclaw/logs` —
+    la home del bridge OpenClaw (git-sync.log, t4_monitor.log, pipeline nb),
+    che non ha NULLA a che fare con `agy`/Antigravity — e un `rglob("*")`
+    cieco su quella dir tornava un numero plausibile (11) di file altrui,
+    pubblicato come "id": "G1", "source": "agy logs". Uno zero sarebbe
+    saltato all'occhio; un piccolo numero plausibile no.
+
+    Antidoto: prova d'identità PRIMA di contare. `identity_marker` è un file
+    caratteristico che esiste SOLO nella home reale di quella CLI (es.
+    `installation_id` per Antigravity, `session_index.jsonl` per Kimi) — se
+    `base_dir` esiste ma il marcatore manca, la dir potrebbe essere estranea:
+    status "unknown", MAI un conteggio. Solo col marcatore presente si conta
+    via `entity_glob` (relativo a `base_dir`, `glob.glob(..., recursive=True)`
+    — supporta `**`), filtrato per mtime >= since. Il glob stesso è già
+    scoping-per-entità (es. `log/cli-*.log`, non l'intero albero) così cache/
+    telemetry/updater/scratch della CLI non si sommano come se fossero
+    invocazioni.
+    """
+    base = os.path.expanduser(base_dir)
+    p = Path(base)
     if not p.is_dir():
         return {"status": "absent"}
-    n = sum(1 for f in p.rglob("*") if f.is_file() and f.stat().st_mtime >= since.timestamp())
-    return {"status": "ok", "recent_files": n}
+    if not (p / identity_marker).exists():
+        return {
+            "status": "unknown",
+            "note": (f"marcatore d'identita' '{identity_marker}' assente in {p} — "
+                     "non verificabile che questa dir appartenga al seat atteso, nessun conteggio"),
+        }
+    n = 0
+    for fp in glob.glob(os.path.join(base, entity_glob), recursive=True):
+        try:
+            if os.path.getmtime(fp) >= since.timestamp():
+                n += 1
+        except OSError:
+            continue
+    return {"status": "ok", "recent_invocations": n}
 
 
 def collect_api_mirror(export_dir: str, since: datetime) -> dict:
@@ -223,8 +304,16 @@ def main() -> int:
                       "metrics": fmt_metrics(r.get("days", {})) if r.get("days") else None,
                       "note": r.get("note")})
 
-    seats.append({"id": "G1", "source": "agy logs", **collect_invocations("~/.openclaw/logs", since)})
-    seats.append({"id": "K1", "source": "kimi logs", **collect_invocations("~/.kimi-code", since)})
+    seats.append({"id": "G1", "source": "agy (antigravity-cli) invocation logs", **collect_invocations(
+        "~/.gemini/antigravity-cli", since,
+        identity_marker="installation_id",
+        entity_glob="log/cli-*.log",
+    )})
+    seats.append({"id": "K1", "source": "kimi-code session dirs", **collect_invocations(
+        "~/.kimi-code", since,
+        identity_marker="session_index.jsonl",
+        entity_glob="sessions/**/session_*",
+    )})
     seats.append({"id": "TP1", "source": "dashscope", "status": "pending_probe1",
                   "note": "crediti Token Plan: endpoint da individuare in PROBE-1"})
 

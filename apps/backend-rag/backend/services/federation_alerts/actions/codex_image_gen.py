@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from backend.services.federation_alerts.actions._codex_seat import codex_seat_home
 from backend.services.federation_alerts.actions.registry import (
     ActionResult,
     register_action,
@@ -56,13 +57,21 @@ _STRIPPED_ENV_KEYS: frozenset[str] = frozenset(
 
 
 def _safe_env() -> dict[str, str]:
-    """Strip provider API keys before spawning Codex subprocess.
+    """Strip provider API keys before spawning Codex subprocess, pin a seat.
 
     Mirrors codex_xhigh_fix._safe_env. The backend-rag parent process
     legitimately holds OPENAI_API_KEY for text-embedding-3-small, but
     image generation must run via Codex OAuth — never per-call billing.
+
+    CODEX_HOME (2026-08-20): see codex_xhigh_fix._safe_env for why — same
+    daemon, same dead-default-seat risk, same fix via the shared
+    _codex_seat.codex_seat_home() door.
     """
-    return {k: v for k, v in os.environ.items() if k not in _STRIPPED_ENV_KEYS}
+    env = {k: v for k, v in os.environ.items() if k not in _STRIPPED_ENV_KEYS}
+    seat = codex_seat_home()
+    if seat:
+        env["CODEX_HOME"] = seat
+    return env
 
 
 def _safe_name(s: str, default: str = "asset") -> str:

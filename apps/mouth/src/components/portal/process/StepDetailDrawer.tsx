@@ -88,16 +88,6 @@ export function StepDetailDrawer({ step, open, onClose }: Props) {
                     {formatDate(step.changed_at)}
                   </dd>
                 </div>
-                {step.changed_by && (
-                  <div>
-                    <dt className="text-xs uppercase tracking-[2px] text-[var(--bz-copper-text,var(--tx-secondary))] mb-1">
-                      Changed by
-                    </dt>
-                    <dd className="text-[var(--tx-primary)]">
-                      {step.changed_by}
-                    </dd>
-                  </div>
-                )}
               </dl>
             </div>
           )}

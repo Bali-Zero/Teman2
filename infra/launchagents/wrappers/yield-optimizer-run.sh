@@ -25,7 +25,16 @@ echo "[$(date)] yield-optimizer run starting for $WEEK" >> "$LOG"
 PROMPT="Run yield-optimizer agent for week $WEEK ($DATE).
 Read ~/.claude/agents/yield-optimizer.md for full spec.
 - Pull CRM via Postgres (apply 6 opportunity rules R1-R6, cap 20)
-- Generate WhatsApp pitches via Ollama qwen3.5:9b LOCAL (NEVER cloud LLM for CRM PII)
+- Generate WhatsApp pitches by piping a JSON payload (client_id, name, language,
+  fact, pitch_goal) on STDIN to \`python3 ~/nuzantara/scripts/yield_optimizer_pitch_gate.py\`
+  for EVERY opportunity, one call per opportunity. This is the ONLY sanctioned way to
+  draft a pitch — it is the deterministic PII fail-closed gate (2026-08-20 hardening):
+  it talks to local Ollama qwen3.5:9b ONLY and NEVER falls back to a cloud model. Never
+  call \`ollama run\` directly and never improvise another way to draft a pitch.
+  Exit 0 = pitch text on stdout, use it verbatim. Exit 2 = SKIPPED_OLLAMA_FAIL (Ollama is
+  down) — skip that opportunity, do NOT retry it with any other model/tool/CLI, and note
+  it as skipped in the report. If most/all calls return exit 2, stop and report Ollama is
+  down instead of continuing.
 - Output to ~/nuzantara/research/commercial/${WEEK}-yield-opportunities.md
 - Telegram digest to TELEGRAM_OWNER_CHAT_ID
 - Emit eventbus learning.updated event

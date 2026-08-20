@@ -226,6 +226,32 @@ describe("BillingPage", () => {
     expect(mockRefetch).toHaveBeenCalledOnce();
   });
 
+  // The operator's lifecycle is unpaid -> partial -> paid. STATUS_MAP knew only
+  // "paid" and "pending", so both "unpaid" and "partial" fell through to the
+  // `?? STATUS_MAP.none` fallback and the client saw a grey "None" badge on a
+  // bill they had partly settled.
+  it("names the operator's real payment states instead of falling back to None", () => {
+    mockState({
+      data: {
+        summary: {
+          total_invoiced: 10_000_000,
+          total_paid: 4_000_000,
+          total_pending: 6_000_000,
+          count: 2,
+        },
+        invoices: [
+          { ...BILLING.invoices[0], id: 3, payment_status: "partial" },
+          { ...BILLING.invoices[1], id: 4, payment_status: "unpaid" },
+        ],
+      },
+    });
+    render(<BillingPage />);
+
+    expect(screen.getByText("Partially paid")).toBeInTheDocument();
+    expect(screen.getByText("Unpaid")).toBeInTheDocument();
+    expect(screen.queryByText("None")).not.toBeInTheDocument();
+  });
+
   it("renders the empty state when there are no invoices", () => {
     mockState({
       data: {

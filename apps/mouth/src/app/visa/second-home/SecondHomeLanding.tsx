@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Phone } from "lucide-react";
 import { useTranslation } from "@/i18n";
-import { OFFERED_LOCALES } from "@/i18n/types";
+import { OFFERED_LOCALES, type Locale } from "@/i18n/types";
 import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
 import { ConsentBanner } from "@/components/visa/ConsentBanner";
 import { usePricingData } from "@/hooks/usePricingData";
@@ -56,6 +56,37 @@ const cardStyle: React.CSSProperties = {
   alignContent: "start",
 };
 
+/**
+ * Real routes for the localized second-home variants (2026-08-20) — the only
+ * locales this landing has a dedicated SSG page for today. An OFFERED_LOCALES
+ * entry with no route here (there are none right now: en/id/it all route)
+ * falls back to the pre-2026-08-20 client-side `setLocale` button so a
+ * future locale offered before its route ships still degrades gracefully
+ * instead of linking to a 404.
+ */
+const LOCALE_ROUTE: Partial<Record<Locale, string>> = {
+  en: "/visa/second-home",
+  it: "/visa/second-home/it",
+  id: "/visa/second-home/id",
+};
+
+const switcherItemStyle = (isActive: boolean): React.CSSProperties => ({
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: "4px 10px",
+  borderRadius: 4,
+  border: `1px solid ${isActive ? "var(--accent-funnel)" : "var(--color-border-subtle)"}`,
+  background: isActive ? "var(--surface-raised)" : "transparent",
+  color: "var(--text-primary)",
+  fontSize: "0.75rem",
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  textDecoration: "none",
+  cursor: "pointer",
+  minHeight: 32,
+});
+
 function LanguageSwitcher() {
   const { locale, setLocale } = useTranslation();
   return (
@@ -64,28 +95,35 @@ function LanguageSwitcher() {
       aria-label="Language"
       style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}
     >
-      {OFFERED_LOCALES.map((l) => (
-        <button
-          key={l}
-          type="button"
-          onClick={() => setLocale(l)}
-          aria-pressed={locale === l}
-          style={{
-            padding: "4px 10px",
-            borderRadius: 4,
-            border: `1px solid ${locale === l ? "var(--accent-funnel)" : "var(--color-border-subtle)"}`,
-            background: locale === l ? "var(--surface-raised)" : "transparent",
-            color: "var(--text-primary)",
-            fontSize: "0.75rem",
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-            cursor: "pointer",
-            minHeight: 32,
-          }}
-        >
-          {l}
-        </button>
-      ))}
+      {OFFERED_LOCALES.map((l) => {
+        const isActive = locale === l;
+        const href = LOCALE_ROUTE[l];
+        if (href) {
+          return (
+            <Link
+              key={l}
+              href={href}
+              aria-current={isActive ? "page" : undefined}
+              style={switcherItemStyle(isActive)}
+            >
+              {l}
+            </Link>
+          );
+        }
+        // No dedicated route yet for an offered locale — keep the old
+        // client-side switch so it never links to a 404.
+        return (
+          <button
+            key={l}
+            type="button"
+            onClick={() => setLocale(l)}
+            aria-pressed={isActive}
+            style={switcherItemStyle(isActive)}
+          >
+            {l}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -102,7 +140,14 @@ export function SecondHomeLanding() {
     }));
 
   return (
-    <div style={{ display: "grid", gap: "var(--space-6, 3rem)" }}>
+    // data-funnel="visa" (2026-08-20 design pass): resolves --accent-funnel
+    // to the visa funnel's red identity instead of the editorial-theme
+    // default blue (see StudioApp.tsx for the full explanation — same
+    // defect, same fix, this route has no AppFrame ancestor either).
+    <div
+      data-funnel="visa"
+      style={{ display: "grid", gap: "var(--space-6, 3rem)" }}
+    >
       <LanguageSwitcher />
 
       {/* ── HERO ── */}

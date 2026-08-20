@@ -241,6 +241,8 @@ jobs:
               scripts/ci/check_required_workflow_conformance.py|\
               scripts/tests/test_required_context_map.py|\
               scripts/tests/test_check_required_workflow_conformance.py|\
+              scripts/ci/lint_unreachable_workflow_conditions.py|\
+              scripts/tests/test_unreachable_workflow_conditions.py|\
               infra/required.d/contexts.json|\
               infra/guard-conformance/registry.json|\
               infra/guard-conformance/check_guard_conformance.py|\
@@ -372,7 +374,8 @@ jobs:
             scripts/tests/test_drive_watchdog_tier_ratchet.py \
             scripts/test_lint_test_reward_hacking.py \
             scripts/tests/test_required_context_map.py \
-            scripts/tests/test_check_required_workflow_conformance.py ; do
+            scripts/tests/test_check_required_workflow_conformance.py \
+            scripts/tests/test_unreachable_workflow_conditions.py ; do
             if [ -f "$t" ]; then
               echo "::group::$t"
               python -m pytest "$t" -q || fail=1
@@ -862,6 +865,24 @@ jobs:
           # live data is theater (W81).
           python3 scripts/ci/check_required_workflow_conformance.py
 
+      - name: "Unreachable workflow if: conditions (security.yml orphaned-alarm class)"
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # scripts/ci/lint_unreachable_workflow_conditions.py + its corpus
+          # (test_unreachable_workflow_conditions.py, in the batch loop above)
+          # shipped together, curing security.yml's Telegram-alert `if:` in
+          # the same PR (commit 4e2d8367e / #4218 narrowed `on.push.branches`
+          # and orphaned it — armed and mute for four days, until the
+          # 2026-08-20 unbuildable-image incident alarmed nobody). The
+          # guilt+innocence corpus above proves the CHECKER can still bite;
+          # this step proves the REAL repo tree is clean today — a censused
+          # guard that no workflow actually runs against live data is
+          # theater (W81). Verified empirically (2026-08-20): 93 tracked
+          # workflows, 10 in-scope `if:` conditions, 0 findings, 6 UNDECIDED
+          # (all outside the declared decidable shape — see the tool's own
+          # module docstring — never silently read as clean).
+          python3 scripts/ci/lint_unreachable_workflow_conditions.py
+
       - name: declared-pairs.json is valid JSON with sane shape
         if: steps.paths.outputs.relevant == 'true'
         run: |
@@ -940,6 +961,23 @@ jobs:
           if [ -f scripts/lint/test_lint_claude_headless_limits.py ]; then
             python3 -m pip install --quiet pytest
             python3 -m pytest scripts/lint/test_lint_claude_headless_limits.py -q
+          fi
+
+      # Claude-headless-model-pin lint: the SAME class of gap recurring on
+      # its own sibling. lint_claude_headless_model_pin.py (introduced
+      # #4430, 2026-08-20) reuses the exact engine armed above, but was
+      # itself merged without ever being wired into any workflow — built,
+      # guilt+innocence-tested, and dormant, precisely the family #2
+      # (Esiste ≠ Armato) shape the comment above this block already names.
+      # Arms it here for real (same reasoning: pure repo-tree scan, no
+      # $HOME dependency). --selftest runs first, same discipline as the
+      # retracted-claims/telegram-tokens lints below — "--all reports OK"
+      # is worth nothing until the guilt path is proven on THIS runner.
+      - name: Claude-headless-model-pin lint (-p/--print carries --model)
+        run: |
+          if [ -f scripts/lint/lint_claude_headless_model_pin.py ]; then
+            python3 scripts/lint/lint_claude_headless_model_pin.py --selftest
+            python3 scripts/lint/lint_claude_headless_model_pin.py
           fi
 
       # The two ledger gates below run on EVERY PR (cheap: parse one markdown

@@ -550,6 +550,84 @@ async def test_apply_one_rate_limit_does_not_burn_attempt(monkeypatch):
     assert "drafts_imaged_checked" in sqls
 
 
+async def _run_apply_one_vision_transient(monkeypatch, *, prior_streak: int):
+    """Shared scaffold (mirrors test_apply_one_rate_limit_does_not_burn_attempt
+    above): drives _apply_one through a VisionRateLimited render failure, with
+    conn.fetchval standing in for the current html_vision_transient_streak
+    read. Returns (result, streak_update_call) where streak_update_call is the
+    conn.execute() call whose SQL wrote html_vision_transient_streak."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    import scripts.wr2_html_render_apply as html
+    from wr2_html_renderer.claude_vision import VisionRateLimited
+
+    conn = MagicMock()
+    conn.execute = AsyncMock()
+    conn.fetchval = AsyncMock(return_value=prior_streak)
+    conn.close = AsyncMock()
+    monkeypatch.setattr(html.asyncpg, "connect", AsyncMock(return_value=conn))
+    monkeypatch.setattr(
+        html._pg, "acquire_html_lease_and_fetch",
+        AsyncMock(return_value={"slides_json": {"slides": [{"headline": "H"}]}}),
+    )
+    monkeypatch.setattr(html, "_heartbeat_loop", AsyncMock())
+    monkeypatch.setattr(html, "_normalize_heroes", lambda slides, *a, **k: slides)
+
+    class _Srv:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+    monkeypatch.setattr(html, "_HeroServer", lambda *a, **k: _Srv())
+    monkeypatch.setattr(
+        html, "_render_carousel",
+        AsyncMock(side_effect=VisionRateLimited("429")),
+    )
+    monkeypatch.setenv("WR2_VISION_REQUIRED", "1")
+
+    import uuid as _uuid
+    result = await html._apply_one("postgres://x", _uuid.uuid4(), "owner-1")
+
+    streak_call = next(
+        c for c in conn.execute.call_args_list
+        if "html_vision_transient_streak" in str(c.args[0])
+    )
+    return result, streak_call
+
+
+@pytest.mark.asyncio
+async def test_apply_one_vision_transient_streak_increments_without_parking(monkeypatch):
+    """INNOCENCE: below WR2_VISION_MAX_TRANSIENT the draft is released for a
+    normal retry — status stays effectively 'rate_limited', the streak column
+    is written as fetched-value + 1, and NO park timestamp is set."""
+    monkeypatch.setenv("WR2_VISION_MAX_TRANSIENT", "3")
+    result, streak_call = await _run_apply_one_vision_transient(monkeypatch, prior_streak=1)
+
+    assert result.startswith("rate_limited")
+    assert not result.startswith("parked:vision_quota")
+    draft_id, owner, streak, parked_until = streak_call.args[1:5]
+    assert streak == 2  # prior 1 + this release
+    assert parked_until is None
+
+
+@pytest.mark.asyncio
+async def test_apply_one_fourth_consecutive_transient_parks_draft(monkeypatch):
+    """GUILT: the 4th consecutive VisionTransient release (prior streak 3,
+    WR2_VISION_MAX_TRANSIENT=3) parks the draft — html_vision_parked_until set
+    ~WR2_VISION_COOLDOWN_S in the future, and the reported outcome is
+    'parked:vision_quota', not a plain 'rate_limited' retry."""
+    import datetime
+
+    monkeypatch.setenv("WR2_VISION_MAX_TRANSIENT", "3")
+    monkeypatch.setenv("WR2_VISION_COOLDOWN_S", "1800")
+    result, streak_call = await _run_apply_one_vision_transient(monkeypatch, prior_streak=3)
+
+    assert result.startswith("parked:vision_quota")
+    draft_id, owner, streak, parked_until = streak_call.args[1:5]
+    assert streak == 4
+    assert parked_until is not None
+    delta_s = (parked_until - datetime.datetime.now(datetime.timezone.utc)).total_seconds()
+    assert 1700 < delta_s < 1900  # ~1800s, generous margin for test wall-clock
+
+
 # ── take_label hard gate through _apply_one — integration (2026-07-16
 #    red-team finding #1 coverage gap): confirm the tri-state PrepublishStatus
 #    actually drives release_lease_permanent() correctly at the real call

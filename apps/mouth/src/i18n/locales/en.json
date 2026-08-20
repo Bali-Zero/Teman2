@@ -28,7 +28,14 @@
       "viewFullTeam": "View full team",
       "learnMore": "Learn more"
     },
-    "error": "Something went wrong. Please refresh the page."
+    "error": "Something went wrong. Please refresh the page.",
+    "consent": {
+      "text": "We use session data to provide visa guidance. By continuing, you agree to our",
+      "privacyPolicy": "Privacy Policy",
+      "and": "and",
+      "termsOfService": "Terms of Service",
+      "dismiss": "Got it"
+    }
   },
   "home": {
     "hero": {

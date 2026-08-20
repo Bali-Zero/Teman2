@@ -107,7 +107,7 @@ jobs:
       # -----------------------------------------------------------------
       - name: Checkout base ref
         if: steps.kill_switch.outputs.disabled != 'true'
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
           fetch-depth: 0
@@ -115,7 +115,7 @@ jobs:
 
       - name: Set up Python
         if: steps.kill_switch.outputs.disabled != 'true'
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.12"
 

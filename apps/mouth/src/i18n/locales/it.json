@@ -28,7 +28,14 @@
       "viewFullTeam": "Vedi il team completo",
       "learnMore": "Scopri di più"
     },
-    "error": "Qualcosa è andato storto. Ricarica la pagina."
+    "error": "Qualcosa è andato storto. Ricarica la pagina.",
+    "consent": {
+      "text": "Utilizziamo i dati di sessione per offrirti assistenza sui visti. Continuando, accetti",
+      "privacyPolicy": "la nostra Informativa sulla Privacy",
+      "and": "e",
+      "termsOfService": "i nostri Termini di Servizio",
+      "dismiss": "Ho capito"
+    }
   },
   "home": {
     "hero": {

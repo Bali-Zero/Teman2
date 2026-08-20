@@ -143,6 +143,19 @@ SEGMENTS: dict[str, dict] = {
 }
 
 
+def display_name_for(full_name: str | None) -> str:
+    """First name + last-initial only (e.g. 'Andrea M.') — the Law-2 WhatsApp
+    payload allowlist forbids a client's full name in a team-member message
+    (SYMBIOSIS.md derogation, 2026-08-21). Never emits more than one initial
+    even for multi-part surnames; falls back to 'Client' when unnamed."""
+    parts = (full_name or "").split()
+    if not parts:
+        return "Client"
+    if len(parts) == 1:
+        return parts[0]
+    return f"{parts[0]} {parts[-1][0].upper()}."
+
+
 def lang_for(nationality: str | None) -> str:
     """Infer draft language from nationality (language pref column is unpopulated)."""
     n = (nationality or "").strip().lower()
@@ -250,7 +263,11 @@ def main() -> int:
         rows = fetch_rows(meta["sql"], pgpass, args.limit)
         drafted = 0
         out_path = STAGING / f"{seg}-{ts}-drafts.md"
-        with out_path.open("w") as f:
+        sidecar_path = STAGING / f"{seg}-{ts}-drafts.jsonl"
+        # Sidecar consumed by scripts/s7_yield_dispatch.py — structured, one line
+        # per client, so the dispatcher never has to parse the markdown (which is
+        # for human review only). `pitch` is None in --dry-run or on draft failure.
+        with out_path.open("w") as f, sidecar_path.open("w") as sf:
             f.write(f"# S7 Yield drafts — {seg}: {meta['label']}\n")
             f.write(f"_Generated {ts} · LOCAL Ollama {OLLAMA_MODEL} · DRAFT ONLY (do not auto-send)_\n\n")
             for row in rows:
@@ -259,20 +276,37 @@ def main() -> int:
                 nat = row.get("nationality")
                 lang = lang_for(nat)
                 f.write(f"## client_id={cid} · owner={row.get('assigned_to') or '(unassigned)'} · lang={lang}\n")
+                pitch_text = None
                 if args.dry_run:
                     f.write(f"- {row.get('document_type')} days={row.get('days_until_expiry')} expiry={row.get('expiry_date')}\n\n")
                 else:
                     try:
-                        pitch = draft_pitch(name, nat or "", lang, meta["pitch"],
+                        pitch_text = draft_pitch(name, nat or "", lang, meta["pitch"],
                                             row.get("document_type"), row.get("days_until_expiry"),
                                             row.get("expiry_date"))
-                        f.write(f"**Pitch ({lang})**:\n> {pitch}\n\n")
+                        f.write(f"**Pitch ({lang})**:\n> {pitch_text}\n\n")
                         drafted += 1
                     except Exception as e:  # noqa: BLE001
                         f.write(f"_draft failed: {type(e).__name__}_\n\n")
+                sf.write(json.dumps({
+                    "client_id": cid,
+                    "assigned_to": row.get("assigned_to"),
+                    "segment": seg,
+                    "lang": lang,
+                    "display_name": display_name_for(row.get("full_name")),
+                    "pitch": pitch_text,
+                    "signals": {
+                        "document_type": row.get("document_type"),
+                        "days_until_expiry": row.get("days_until_expiry"),
+                        "expiry_date": str(row.get("expiry_date")) if row.get("expiry_date") is not None else None,
+                    },
+                }) + "\n")
                 # privacy log: client_id ONLY, never name
                 print(f"[S7] {seg} client_id={cid} drafted={not args.dry_run}")
-        summary[seg] = {"pulled": len(rows), "drafted": drafted, "file": str(out_path)}
+        # Bozze/sidecar contengono nomi/pitch cliente — 0600 (cicatrix #4).
+        out_path.chmod(0o600)
+        sidecar_path.chmod(0o600)
+        summary[seg] = {"pulled": len(rows), "drafted": drafted, "file": str(out_path), "sidecar": str(sidecar_path)}
         print(f"[S7] {seg}: pulled={len(rows)} drafted={drafted} -> {out_path}")
 
     print("[S7] SUMMARY " + json.dumps(summary))

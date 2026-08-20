@@ -11,6 +11,7 @@ from typing import Any
 import asyncpg
 import httpx
 
+from backend.app.services.crm.audit_logger import audit_logger
 from backend.app.utils.logging_utils import get_logger
 from backend.phone_lock import lock_phone_cores, phone_core
 from backend.services.common.cache import cache_invalidating
@@ -67,7 +68,9 @@ class PortalBillingMixin:
                     i.practice_id,
                     pt.name AS practice_name,
                     pt.category AS practice_category,
+                    i.paid_amount_idr,
                     p.payment_status,
+                    p.paid_amount,
                     p.quoted_price
                 FROM invoices i
                 JOIN practices p ON p.id = i.practice_id
@@ -80,14 +83,34 @@ class PortalBillingMixin:
 
         invoices = []
         total_invoiced = 0.0
-        total_paid = 0.0
+
+        # Money received is tracked on the PRACTICE (`practices.paid_amount`,
+        # incremented by the operator's reconciliation in the same transaction
+        # that moves payment_status). Crediting `amount_idr` on status == "paid"
+        # — as this did until 2026-08-20 — cannot see a partial payment: the
+        # operator's lifecycle is unpaid -> partial -> paid, and every invoice
+        # under a partial practice contributed 0 to Paid and its full amount to
+        # Outstanding. A client who had paid half was shown the whole bill.
+        #
+        # paid_amount is per PRACTICE while this list is per INVOICE, and a
+        # practice can carry several invoices (the unique constraint was
+        # dropped), so credit each practice ONCE. It is capped at what that
+        # practice was actually invoiced: these three figures answer "of what we
+        # billed you, how much is settled", so a payment running ahead of
+        # invoicing must not make Outstanding negative. Nothing is hidden by the
+        # cap — the raw per-invoice figure is returned as `paid_amount_idr`.
+        invoiced_by_practice: dict[int, float] = {}
+        paid_by_practice: dict[int, float] = {}
 
         for row in rows:
             amount = float(row["amount_idr"] or 0)
-            payment_status = row["payment_status"] or "pending"
+            # "unpaid", not "pending": pending is not a state this system emits.
+            payment_status = row["payment_status"] or "unpaid"
             total_invoiced += amount
-            if payment_status == "paid":
-                total_paid += amount
+
+            practice_id = row["practice_id"]
+            invoiced_by_practice[practice_id] = invoiced_by_practice.get(practice_id, 0.0) + amount
+            paid_by_practice[practice_id] = float(row["paid_amount"] or 0)
 
             invoices.append(
                 {
@@ -106,14 +129,24 @@ class PortalBillingMixin:
                     "practice_name": row["practice_name"],
                     "practice_category": row["practice_category"],
                     "payment_status": payment_status,
+                    "paid_amount_idr": float(row["paid_amount_idr"])
+                    if row["paid_amount_idr"] is not None
+                    else None,
                 }
             )
+
+        total_paid = sum(
+            min(paid, invoiced_by_practice[practice_id])
+            for practice_id, paid in paid_by_practice.items()
+        )
 
         return {
             "invoices": invoices,
             "summary": {
                 "total_invoiced": total_invoiced,
                 "total_paid": total_paid,
+                # Non-negative by construction: every practice's credit is
+                # capped at what that same practice was invoiced.
                 "total_pending": total_invoiced - total_paid,
                 "count": len(invoices),
             },
@@ -248,6 +281,10 @@ class PortalBillingMixin:
         Side effects when fields are actually changed:
         - Inserts a notification_alerts record (portal_profile_update) for the CRM bell
         - Inserts a portal_messages record (client_to_team) so the team sees the change
+        - Inserts a crm_audit_log record (old/new values, actor tagged as the
+          client) — the same structured trail the CRM's own PATCH path writes
+          via @audit_change, so a client self-service edit is no longer
+          invisible to that trail. Best-effort: never fails the update.
         - Cache invalidation handled by the router layer
 
         Returns the updated profile.
@@ -322,6 +359,26 @@ class PortalBillingMixin:
                                 "phone_lock_convergence_failed — concurrent phone "
                                 "writers, retry the profile update"
                             )
+                    # Capture pre-update values for the audit trail. Placed
+                    # HERE deliberately: inside the same transaction as the
+                    # UPDATE, and AFTER the phone-lock block above, so for a
+                    # phone/whatsapp write the row is already locked when we
+                    # read it. Read outside the transaction, another writer
+                    # could land between the read and the UPDATE and the trail
+                    # would record an old value that was never the value we
+                    # overwrote — an audit row that states a wrong prior value
+                    # is worse than no audit row, because it reads as evidence.
+                    # (It does NOT close the lost-update gap on non-phone
+                    # fields — there is no version column on `clients` either
+                    # side of the handoff; that is a wider design change and is
+                    # named in this PR's body, not fixed here.)
+                    audit_old_row = await conn.fetchrow(
+                        f"SELECT {', '.join(safe_fields.keys())} FROM clients WHERE id = $1",
+                        client_id,
+                    )
+                    audit_old_state = (
+                        {k: audit_old_row[k] for k in safe_fields} if audit_old_row else {}
+                    )
                     await conn.execute(
                         f"UPDATE clients SET {set_clause}, updated_at = NOW() WHERE id = ${len(params)} AND deleted_at IS NULL",
                         *params,
@@ -366,6 +423,47 @@ class PortalBillingMixin:
                 except Exception as e:
                     logger.warning(
                         "Failed to insert portal_messages record for client %s: %s", client_id, e
+                    )
+
+                # Structured audit trail (crm_audit_log) — the same trail the
+                # CRM's PATCH /api/crm/clients/{id} path writes via
+                # @audit_change. Actor is tagged "portal-client:<email>" (not
+                # a bare email) so an operator reading the trail can tell a
+                # client self-service edit apart from a staff-made change —
+                # this repo has no prior non-staff convention for this
+                # column beyond "system" for fully-automated jobs, and a
+                # client is a human actor, not "system". Never allowed to
+                # fail the profile update itself (log_state_change already
+                # never raises — it wraps its own DB call — but the wrapper
+                # here matches the notification_alerts/portal_messages
+                # pattern above and upgrades to ERROR so a swallowed audit
+                # failure is never a silent hole).
+                try:
+                    actor_email = current_user.get("email") or f"client-{client_id}"
+                    audit_ok = await audit_logger.log_state_change(
+                        entity_type="client",
+                        entity_id=client_id,
+                        old_state=audit_old_state,
+                        new_state=safe_fields,
+                        user_email=f"portal-client:{actor_email}",
+                        change_type="update",
+                        metadata={"source": "portal_self_service", "client_id": client_id},
+                    )
+                    if not audit_ok:
+                        logger.error(
+                            "crm_audit_log write returned failure for portal profile "
+                            "update, client %s fields %s",
+                            client_id,
+                            list(safe_fields.keys()),
+                        )
+                except Exception as e:
+                    logger.error(
+                        "crm_audit_log write raised for portal profile update, "
+                        "client %s fields %s: %s",
+                        client_id,
+                        list(safe_fields.keys()),
+                        e,
+                        exc_info=True,
                     )
 
             return await self._get_profile_data(conn, client_id)
