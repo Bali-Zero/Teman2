@@ -90,10 +90,10 @@ export default function PracticeDetailPage({ params }: Props) {
           <>
             {isBlocked && (
               <div className="mb-6">
-                <BlockedStateCTA
-                  practiceId={practiceId}
-                  reason={data.assigned_to ?? null}
-                />
+                {/* No `reason` prop: the BE payload carries no client-safe
+                    blocked-reason field today (see BlockedStateCTA JSDoc).
+                    Do not source this from staff-identity fields. */}
+                <BlockedStateCTA practiceId={practiceId} />
               </div>
             )}
             <ProcessTimeline steps={data.steps} onSelect={setSelected} />

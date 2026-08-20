@@ -548,6 +548,17 @@ export function StudioApp() {
 
   return (
     <div
+      // data-funnel="visa" (2026-08-20 design pass): without this attribute
+      // --accent-funnel falls through to the site's default `editorial`
+      // theme value (#3a6dff, McKinsey blue — packages/core/tokens/themes/
+      // editorial.css) instead of the visa funnel's own red identity
+      // (semantic.css [data-theme="editorial"] [data-funnel="visa"]). Every
+      // accent in this tree already reads var(--accent-funnel) correctly —
+      // the token was never hardcoded, it was just never scoped. Matches
+      // the other /visa funnel pages, which get this via AppFrame's
+      // `funnel="visa"` prop (packages/core/components/apps/AppFrame.tsx);
+      // this route has no AppFrame ancestor, so it sets the attribute here.
+      data-funnel="visa"
       style={{
         display: "grid",
         gap: "var(--space-5, 2rem)",
@@ -682,6 +693,16 @@ export function StudioApp() {
         @media (min-width: 900px) {
           .bz-shs-layout {
             grid-template-columns: minmax(0, 1fr) 320px;
+          }
+          /* Desktop layout balance (2026-08-20 design pass): the memo rail
+           * used to sit static at the top of its column and scroll away as
+           * a tall question card grew below it, leaving a "dead" empty
+           * column on wide viewports. align-items:start above already
+           * keeps the rail from stretching to the main column's height —
+           * required for sticky to have room to move within. */
+          .bz-shs-layout > aside {
+            position: sticky;
+            top: var(--space-5, 2rem);
           }
         }
         @media (prefers-reduced-motion: reduce) {

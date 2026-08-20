@@ -79,7 +79,6 @@ export function TimelineStep({ step, onSelect, isLast }: Props) {
         {dateText && (
           <p className="text-xs text-[var(--bz-copper-text,var(--tx-secondary))]">
             {dateText}
-            {step.changed_by ? ` · ${step.changed_by}` : ""}
           </p>
         )}
       </button>

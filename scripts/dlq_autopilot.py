@@ -106,6 +106,28 @@ CORPSE_SWEEP_FRESH_S = int(os.getenv("DLQ_CORPSE_SWEEP_FRESH_S", str(6 * 3600)))
 CONFIDENCE_RETRY = 0.95           # no-code-change retry threshold
 CONFIDENCE_AIDER = 0.90           # code-change aider threshold
 REASONING_TIMEOUT_S = 90          # claude --print timeout
+# 3-value classification (restart|config|code|unknown), same class as the
+# sentinel_lib/classifier.py TRANSIENT/DETERMINISTIC/UNKNOWN triage — Haiku,
+# per that live precedent (`--model haiku`).
+DLQ_REASON_MODEL = os.getenv("DLQ_REASON_MODEL", "claude-haiku-4-5-20251001")
+
+
+def _isolated_cwd() -> Path:
+    """Context-diet cwd for the claude_reason() `claude --print` spawn (2026-08-20).
+
+    Empty dir -> no CLAUDE.md auto-discovery; --safe-mode (set at the call
+    site) additionally skips skills/hooks/memory. Measured on Pro (CLI
+    2.1.237, Haiku): repo cwd = 92,397 ambient tokens, neutral cwd = 43,426,
+    --safe-mode + --strict-mcp-config + this isolated cwd = 22,408. The
+    claude_reason() prompt is a pure self-contained f-string with no tool
+    access, so skills/hooks/CLAUDE.md/MCP are pure overhead on this cron lane
+    (<=48 ticks/day). dispatch_aider() below is NOT touched — it legitimately
+    needs cwd=NUZANTARA_ROOT to operate on the checkout. Follows the in-repo
+    precedent scripts/wr3_dispatch_v2.py::_ISOLATED_CWD.
+    """
+    path = Path(os.environ.get("DLQ_CLAUDE_CWD", "/tmp/dlq-claude-cwd"))
+    path.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 def _run_process_group(
@@ -113,6 +135,7 @@ def _run_process_group(
     *,
     timeout: float,
     env: dict[str, str] | None = None,
+    cwd: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
     """Run a CLI in its own session and reap its full process tree on timeout."""
     proc = subprocess.Popen(
@@ -121,6 +144,7 @@ def _run_process_group(
         stderr=subprocess.PIPE,
         text=True,
         env=env,
+        cwd=cwd,
         start_new_session=True,
     )
     try:
@@ -576,9 +600,16 @@ Rules:
 
         try:
             result = _run_process_group(
-                ["claude", "--print", prompt],
+                [
+                    "claude", "--print",
+                    "--safe-mode", "--strict-mcp-config",
+                    "--mcp-config", '{"mcpServers":{}}',
+                    "--model", DLQ_REASON_MODEL,
+                    prompt,
+                ],
                 timeout=attempt_timeout,
                 env=_claude_oauth_env(token),
+                cwd=str(_isolated_cwd()),
             )
         except subprocess.TimeoutExpired:
             logger.warning(f"{job}: {label} timed out")

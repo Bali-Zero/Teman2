@@ -115,6 +115,13 @@ class HealthResponse(BaseModel):
 
     status: str
     version: str
+    # Build identity (2026-08-20): the commit SHA actually running in this
+    # process, baked in at `docker build --build-arg GIT_SHA=<sha>` (see
+    # health.py::BUILD_SHA). `version` above is a hand-maintained label and
+    # says nothing about WHICH commit is live — this field is the answer to
+    # that question. Defaults to "unknown" only as a safety net; every call
+    # site in health.py passes the real resolved value explicitly.
+    build_sha: str = "unknown"
     database: dict[str, Any]
     embeddings: dict[str, Any]
 

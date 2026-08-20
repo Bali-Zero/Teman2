@@ -1221,6 +1221,66 @@ async def test_restore_uses_valid_event_type_on_separate_conn() -> None:
     assert "document_restored" not in sql
 
 
+# ---------------------------------------------------------------------------
+# notification_alerts ON CONFLICT — uq_notification_alert_daily is a plain
+# CREATE UNIQUE INDEX (migration_071_notification_alerts.py:34), not a named
+# constraint. `ON CONFLICT ON CONSTRAINT <name>` only accepts an actual
+# unique/exclusion constraint, so that form raised on EVERY call and the
+# operator's in-app bell never once fired for a client upload — silently
+# swallowed by the except below (previously logged at DEBUG, invisible by
+# construction for a 100%-failure-rate exception). The column-list form is
+# the one the table's two other writers already use successfully:
+# welcome_email_service.py:287 and the profile-update path pinned by
+# test_portal_profile_update.py:82.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_notify_lead_alert_insert_uses_column_list_conflict_form() -> None:
+    service, mock_conn = _make_service_with_fetchrow(
+        {"full_name": "Client One", "assigned_to": "lead@example.com"}
+    )
+    qa_support_mail_sink = MagicMock()
+    qa_support_mail_sink.send_document_notification = AsyncMock()
+
+    await service._notify_lead_about_document(
+        client_id=1,
+        document_name="passport.pdf",
+        document_type="passport",
+        qa_support_mail_sink=qa_support_mail_sink,
+    )
+
+    alert_sql = mock_conn.execute.call_args.args[0]
+    assert "notification_alerts" in alert_sql
+    assert "ON CONFLICT (client_id, alert_type, created_date) DO NOTHING" in alert_sql
+    assert "ON CONFLICT ON CONSTRAINT" not in alert_sql
+
+
+@pytest.mark.asyncio
+async def test_notify_lead_alert_insert_failure_logs_warning_not_debug() -> None:
+    service, mock_conn = _make_service_with_fetchrow(
+        {"full_name": "Client One", "assigned_to": "lead@example.com"}
+    )
+    mock_conn.execute.side_effect = RuntimeError(
+        'constraint "uq_notification_alert_daily" for table "notification_alerts" does not exist'
+    )
+    qa_support_mail_sink = MagicMock()
+    qa_support_mail_sink.send_document_notification = AsyncMock()
+
+    with patch("backend.services.portal._mixins.documents.logger") as mock_logger:
+        # Must not raise — a broken bell insert must never break the upload.
+        await service._notify_lead_about_document(
+            client_id=1,
+            document_name="passport.pdf",
+            document_type="passport",
+            qa_support_mail_sink=qa_support_mail_sink,
+        )
+
+    mock_logger.warning.assert_called_once()
+    assert "CRM alert insert failed" in mock_logger.warning.call_args.args[0]
+    mock_logger.debug.assert_not_called()
+
+
 @pytest.mark.asyncio
 async def test_timeline_failure_does_not_break_soft_delete() -> None:
     """If the audit-log INSERT fails, the soft-delete result still succeeds —

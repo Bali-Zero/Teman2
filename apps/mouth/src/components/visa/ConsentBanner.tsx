@@ -2,11 +2,33 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useOptionalTranslation } from "@/i18n";
 
 const CONSENT_KEY = "visa_oracle_consent";
 
+// Fallback for routes that mount this banner OUTSIDE any <I18nProvider>
+// ancestor — /visa itself has none anywhere in its layout chain (verified
+// 2026-08-20), while /visa/second-home/* (landing + Studio) does via that
+// route's layout.tsx. useOptionalTranslation() returns null there instead
+// of throwing (the useTranslation() white-screen class), so this banner
+// carries its own EN default rather than assume a provider is present.
+const CONSENT_EN_FALLBACK = {
+  text: "We use session data to provide visa guidance. By continuing, you agree to our",
+  privacyPolicy: "Privacy Policy",
+  and: "and",
+  termsOfService: "Terms of Service",
+  dismiss: "Got it",
+} as const;
+
+function useConsentCopy() {
+  const i18n = useOptionalTranslation();
+  return (key: keyof typeof CONSENT_EN_FALLBACK): string =>
+    i18n ? i18n.t(`common.consent.${key}`) : CONSENT_EN_FALLBACK[key];
+}
+
 export function ConsentBanner() {
   const [visible, setVisible] = useState(false);
+  const tc = useConsentCopy();
 
   useEffect(() => {
     // SSR guard: only run in the browser
@@ -40,22 +62,21 @@ export function ConsentBanner() {
           className="text-sm text-center sm:text-left"
           style={{ color: "var(--tx-secondary)" }}
         >
-          We use session data to provide visa guidance. By continuing, you agree
-          to our{" "}
+          {tc("text")}{" "}
           <Link
             href="/visa/privacy"
             className="underline hover:opacity-80 transition-opacity"
             style={{ color: "var(--bz-accent)" }}
           >
-            Privacy Policy
+            {tc("privacyPolicy")}
           </Link>{" "}
-          and{" "}
+          {tc("and")}{" "}
           <Link
             href="/visa/terms"
             className="underline hover:opacity-80 transition-opacity"
             style={{ color: "var(--bz-accent)" }}
           >
-            Terms of Service
+            {tc("termsOfService")}
           </Link>
           .
         </p>
@@ -67,7 +88,7 @@ export function ConsentBanner() {
             color: "#ffffff",
           }}
         >
-          Got it
+          {tc("dismiss")}
         </button>
       </div>
     </div>

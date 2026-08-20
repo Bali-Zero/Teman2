@@ -119,6 +119,14 @@ def _strip_anthropic_env(env: dict) -> dict:
     return out
 
 
+# Extraction target is legal obligations (deadline_pattern, sanction_if_missed)
+# from raw regulation text into structured compliance data — the same class
+# of stakes that keeps the RAG evidence gates per-domain-strict rather than
+# flat (CLAUDE.md root §9 "tax advice at low evidence = safety regression").
+# Not the bounded-extraction/Haiku default: Sonnet 5 per CLAUDE.md root §5.
+OBLIGATION_ENGINE_MODEL = os.environ.get("OBLIGATION_ENGINE_MODEL", "claude-sonnet-5")
+
+
 def _run_claude_cli(prompt: str, *, timeout_seconds: float = 120.0) -> str:
     """Default claude_runner: subprocess to `claude --print`.
 
@@ -127,7 +135,7 @@ def _run_claude_cli(prompt: str, *, timeout_seconds: float = 120.0) -> str:
     """
     env = _strip_anthropic_env(os.environ)
     completed = subprocess.run(
-        ["claude", "--print", prompt],
+        ["claude", "--print", prompt, "--model", OBLIGATION_ENGINE_MODEL],
         check=False,
         capture_output=True,
         text=True,

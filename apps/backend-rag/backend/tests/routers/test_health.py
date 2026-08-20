@@ -204,3 +204,119 @@ class TestHealthEndpoints:
         assert semantic["hits"] == sem_hits_before + 1
         assert semantic["misses"] == sem_misses_before + 1
         assert semantic["hits_by_match_type"]["match_type=semantic"] >= 1
+
+
+class TestBuildSha:
+    """build_sha (2026-08-20): the git commit SHA baked into the image via
+    GIT_SHA at `docker build --build-arg` time (see
+    .github/workflows/fly-deploy.yml + Dockerfile). Before this, /health's
+    `version` field was a frozen literal ("v100-qdrant") that could not say
+    WHICH commit was actually running — cicatrix family #2 (esiste != armato).
+
+    Two behaviors are load-bearing here: build_sha reflects the resolved
+    value when GIT_SHA was set at build time, and it reads as the explicit
+    "unknown" marker -- never a fabricated or silently-omitted SHA -- when
+    the build never received one (local dev, a build that skipped the arg).
+    """
+
+    @pytest.mark.unit
+    def test_resolve_build_sha_reads_env_when_set(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("GIT_SHA", "abc1234def5678")
+        assert health_module._resolve_build_sha() == "abc1234def5678"
+
+    @pytest.mark.unit
+    def test_resolve_build_sha_is_unknown_when_env_absent(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("GIT_SHA", raising=False)
+        assert health_module._resolve_build_sha() == "unknown"
+
+    @pytest.mark.unit
+    def test_resolve_build_sha_is_unknown_when_env_blank(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # A Docker build arg default of "" (never passed at deploy time)
+        # must normalize the same as a fully-absent env var — never surface
+        # an empty string as if it were a real identity.
+        monkeypatch.setenv("GIT_SHA", "   ")
+        assert health_module._resolve_build_sha() == "unknown"
+
+    @pytest.mark.integration
+    def test_health_surfaces_resolved_build_sha(
+        self, app: FastAPI, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Pins the WIRING: every HealthResponse(...) call site in
+        health_check() must pass build_sha=BUILD_SHA through to the JSON
+        payload, and the pre-existing `version` field must stay untouched
+        (other consumers read it — see health.py module docstring)."""
+        monkeypatch.setattr(health_module, "BUILD_SHA", "deadbeefcafe")
+        app.state.process_mode = "light"
+        app.state.search_service = None
+
+        response = client.get("/health")
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["build_sha"] == "deadbeefcafe"
+        assert body["version"] == "v100-qdrant"
+
+    @pytest.mark.integration
+    def test_health_surfaces_unknown_build_sha_when_unresolved(
+        self, app: FastAPI, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A health payload that guesses its own identity is worse than one
+        that admits it does not know -- pin the unresolved case end-to-end,
+        not just at the resolver-function level above."""
+        monkeypatch.setattr(health_module, "BUILD_SHA", "unknown")
+        app.state.process_mode = "light"
+        app.state.search_service = None
+
+        response = client.get("/health")
+
+        assert response.status_code == 200
+        assert response.json()["build_sha"] == "unknown"
+
+    @pytest.mark.unit
+    def test_build_sha_constant_is_bound_to_the_resolver(self) -> None:
+        """Pin the BINDING, not just the two ends of it.
+
+        `BUILD_SHA = _resolve_build_sha()` is the one line no other test in
+        this class can see: the unit tests call the resolver directly and the
+        integration tests monkeypatch the constant, so both stay green if the
+        module were changed to `BUILD_SHA = "v100-qdrant"` — re-contracting
+        the exact frozen-literal disease this feature exists to cure.
+        """
+        assert health_module.BUILD_SHA == health_module._resolve_build_sha()
+
+    @pytest.mark.unit
+    def test_every_health_response_construction_passes_build_sha(self) -> None:
+        """All SEVEN HealthResponse(...) sites, not just the one branch an
+        integration test happens to walk.
+
+        Measured 2026-08-20: dropping `build_sha=BUILD_SHA` from a single
+        call site left the whole suite green, because only the `light`
+        process-mode path is exercised end-to-end. Six of the seven could
+        silently lose the field. Read the wiring structurally instead of
+        hoping a request routes through it (cicatrix W107: cure the class,
+        not the instance that bit you).
+        """
+        import ast
+        import pathlib
+
+        source = pathlib.Path(health_module.__file__).read_text()
+        sites = [
+            node
+            for node in ast.walk(ast.parse(source))
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "HealthResponse"
+        ]
+        # Anti-vacuity (W84): zero sites traversed is not a clean verdict.
+        assert len(sites) >= 7, f"expected >=7 HealthResponse sites, found {len(sites)}"
+
+        missing = [
+            node.lineno
+            for node in sites
+            if "build_sha" not in {kw.arg for kw in node.keywords if kw.arg}
+        ]
+        assert not missing, f"HealthResponse without build_sha at lines {missing}"

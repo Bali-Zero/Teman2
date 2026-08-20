@@ -28,7 +28,14 @@
       "viewFullTeam": "Lihat tim lengkap",
       "learnMore": "Pelajari lebih lanjut"
     },
-    "error": "Terjadi kesalahan. Silakan muat ulang halaman."
+    "error": "Terjadi kesalahan. Silakan muat ulang halaman.",
+    "consent": {
+      "text": "Kami menggunakan data sesi untuk memberikan panduan visa. Dengan melanjutkan, Anda menyetujui",
+      "privacyPolicy": "Kebijakan Privasi",
+      "and": "dan",
+      "termsOfService": "Ketentuan Layanan",
+      "dismiss": "Mengerti"
+    }
   },
   "home": {
     "hero": {

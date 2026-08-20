@@ -29,6 +29,29 @@ logger = logging.getLogger(__name__)
 STARTUP_WARMUP_DEADLINE_S = float(os.getenv("STARTUP_WARMUP_DEADLINE_S", "180"))
 
 
+def _resolve_build_sha() -> str:
+    """Read the git commit SHA baked into this image at build time.
+
+    Cicatrix family #2 (esiste != armato): before this, /health could say
+    the process was alive but never WHICH commit was actually running — the
+    `version` field below is a hand-maintained label, not a build identity.
+    `GIT_SHA` is set via `docker build --build-arg GIT_SHA=<sha>` from
+    `.github/workflows/fly-deploy.yml` (`${{ github.sha }}`) and baked into
+    the image as an ENV var (Dockerfile) — read ONCE here at import time.
+    No subprocess, no request-time `git` shell-out, no latency added.
+
+    Local dev / any build that did not pass the arg reads as the explicit
+    "unknown" marker, on purpose — never a fabricated or silently-omitted
+    SHA. A health endpoint that guesses its own identity is worse than one
+    that admits it does not know.
+    """
+    raw = os.getenv("GIT_SHA", "").strip()
+    return raw if raw else "unknown"
+
+
+BUILD_SHA = _resolve_build_sha()
+
+
 _qdrant_client: httpx.AsyncClient | None = None
 
 
@@ -273,6 +296,7 @@ async def health_check(request: Request, response: Response) -> HealthResponse:
             return HealthResponse(
                 status="unhealthy",
                 version="v100-qdrant",
+                build_sha=BUILD_SHA,
                 database={
                     "status": "unknown",
                     "type": "postgresql",
@@ -294,6 +318,7 @@ async def health_check(request: Request, response: Response) -> HealthResponse:
             return HealthResponse(
                 status="unhealthy",
                 version="v100-qdrant",
+                build_sha=BUILD_SHA,
                 database={
                     "status": "unknown",
                     "type": "postgresql",
@@ -322,6 +347,7 @@ async def health_check(request: Request, response: Response) -> HealthResponse:
                 return HealthResponse(
                     status=status_override or "healthy",
                     version="v100-qdrant",
+                    build_sha=BUILD_SHA,
                     database={"status": "connected", "type": "postgresql"},
                     embeddings={
                         "status": "operational",
@@ -334,6 +360,7 @@ async def health_check(request: Request, response: Response) -> HealthResponse:
             return HealthResponse(
                 status="initializing",
                 version="v100-qdrant",
+                build_sha=BUILD_SHA,
                 database={"status": "initializing", "message": "Warming up Qdrant connections"},
                 embeddings={"status": "initializing", "message": "Loading embedding model"},
             )
@@ -376,6 +403,7 @@ async def health_check(request: Request, response: Response) -> HealthResponse:
             return HealthResponse(
                 status=status_override or "healthy",
                 version="v100-qdrant",
+                build_sha=BUILD_SHA,
                 database={
                     "status": "connected",
                     "type": "qdrant",
@@ -396,6 +424,7 @@ async def health_check(request: Request, response: Response) -> HealthResponse:
             return HealthResponse(
                 status="initializing",
                 version="v100-qdrant",
+                build_sha=BUILD_SHA,
                 database={"status": "partial", "message": "Services starting"},
                 embeddings={"status": "loading", "message": str(ae)},
             )
@@ -406,6 +435,7 @@ async def health_check(request: Request, response: Response) -> HealthResponse:
         return HealthResponse(
             status="degraded",
             version="v100-qdrant",
+            build_sha=BUILD_SHA,
             database={"status": "error", "error": str(e)},
             embeddings={"status": "error", "error": str(e)},
         )

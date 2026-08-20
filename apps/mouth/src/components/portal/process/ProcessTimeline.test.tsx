@@ -10,7 +10,6 @@ function makeStep(overrides: Partial<ProcessStep> = {}): ProcessStep {
     completed: false,
     is_current: false,
     changed_at: null,
-    changed_by: null,
     ...overrides,
   };
 }
