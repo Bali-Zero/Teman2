@@ -1085,9 +1085,16 @@ jobs:
       )
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Job-level, not step-level: an advisory finding must never flip this
-    # job's conclusion to something a future required-check addition (or a
-    # human reading the Checks tab) could mistake for a code regression.
+    # Two-layer advisory design (hardened after Codex red-team round 1 on
+    # this PR): (1) the audit step below NEVER exits non-zero on an advisory
+    # finding — it captures the gate's verdict, surfaces it as a ::warning +
+    # job summary, and exits 0 — so this job's check-run conclusion stays
+    # green even if the context is ever added to required checks by mistake
+    # (job-level continue-on-error alone does NOT guarantee that: it keeps
+    # the workflow green while the check run can still conclude failure).
+    # (2) continue-on-error then keeps a MACHINERY break (the gate's own
+    # test suite failing — our code, actionable) visible as a red job
+    # without taking the whole workflow run hostage.
     continue-on-error: true
     steps:
       - name: Checkout code
@@ -1124,9 +1131,27 @@ jobs:
         # they failed the gate on EVERY PR repo-wide. Production-dependency
         # threshold stays at high.
         run: |
+          set -euo pipefail
+          # The gate's own test suite fails this job RED (our machinery,
+          # actionable, fail-loud) — everything below it never does.
           python3 scripts/ci/test_npm_audit_gate.py
           npm audit --audit-level=high --omit=dev --json > "$RUNNER_TEMP/audit.json" || true
+          set +e
           python3 scripts/ci/npm_audit_gate.py "$RUNNER_TEMP/audit.json"
+          GATE_RC=$?
+          set -e
+          if [ "${GATE_RC}" -ne 0 ]; then
+            echo "::warning::npm audit advisory (non-blocking, L13): gate exit ${GATE_RC} — see the job summary"
+            {
+              echo "### npm audit — advisory finding (non-blocking)"
+              echo ""
+              echo "The gate exited ${GATE_RC}. Advisory-only since 2026-08-21 (token-ceremony"
+              echo "audit, lever L13): the finding is real and worth triaging, but it is never"
+              echo "grounds to eject a queue entry or block a PR whose diff never touched a"
+              echo "dependency."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit 0
 
   packages-core-tests:
     name: Shared Core Package Tests
