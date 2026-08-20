@@ -68,7 +68,9 @@ class PortalBillingMixin:
                     i.practice_id,
                     pt.name AS practice_name,
                     pt.category AS practice_category,
+                    i.paid_amount_idr,
                     p.payment_status,
+                    p.paid_amount,
                     p.quoted_price
                 FROM invoices i
                 JOIN practices p ON p.id = i.practice_id
@@ -81,14 +83,34 @@ class PortalBillingMixin:
 
         invoices = []
         total_invoiced = 0.0
-        total_paid = 0.0
+
+        # Money received is tracked on the PRACTICE (`practices.paid_amount`,
+        # incremented by the operator's reconciliation in the same transaction
+        # that moves payment_status). Crediting `amount_idr` on status == "paid"
+        # — as this did until 2026-08-20 — cannot see a partial payment: the
+        # operator's lifecycle is unpaid -> partial -> paid, and every invoice
+        # under a partial practice contributed 0 to Paid and its full amount to
+        # Outstanding. A client who had paid half was shown the whole bill.
+        #
+        # paid_amount is per PRACTICE while this list is per INVOICE, and a
+        # practice can carry several invoices (the unique constraint was
+        # dropped), so credit each practice ONCE. It is capped at what that
+        # practice was actually invoiced: these three figures answer "of what we
+        # billed you, how much is settled", so a payment running ahead of
+        # invoicing must not make Outstanding negative. Nothing is hidden by the
+        # cap — the raw per-invoice figure is returned as `paid_amount_idr`.
+        invoiced_by_practice: dict[int, float] = {}
+        paid_by_practice: dict[int, float] = {}
 
         for row in rows:
             amount = float(row["amount_idr"] or 0)
-            payment_status = row["payment_status"] or "pending"
+            # "unpaid", not "pending": pending is not a state this system emits.
+            payment_status = row["payment_status"] or "unpaid"
             total_invoiced += amount
-            if payment_status == "paid":
-                total_paid += amount
+
+            practice_id = row["practice_id"]
+            invoiced_by_practice[practice_id] = invoiced_by_practice.get(practice_id, 0.0) + amount
+            paid_by_practice[practice_id] = float(row["paid_amount"] or 0)
 
             invoices.append(
                 {
@@ -107,14 +129,24 @@ class PortalBillingMixin:
                     "practice_name": row["practice_name"],
                     "practice_category": row["practice_category"],
                     "payment_status": payment_status,
+                    "paid_amount_idr": float(row["paid_amount_idr"])
+                    if row["paid_amount_idr"] is not None
+                    else None,
                 }
             )
+
+        total_paid = sum(
+            min(paid, invoiced_by_practice[practice_id])
+            for practice_id, paid in paid_by_practice.items()
+        )
 
         return {
             "invoices": invoices,
             "summary": {
                 "total_invoiced": total_invoiced,
                 "total_paid": total_paid,
+                # Non-negative by construction: every practice's credit is
+                # capped at what that same practice was invoiced.
                 "total_pending": total_invoiced - total_paid,
                 "count": len(invoices),
             },

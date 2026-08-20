@@ -510,6 +510,11 @@ export interface PortalInvoice {
   practice_name: string;
   practice_category: string;
   payment_status: string;
+  /** Amount reconciled against THIS invoice. `null` when a payment was
+   *  recorded on the practice without naming an invoice — the summary's
+   *  `total_paid` reads the practice-level figure, so it can be non-zero
+   *  while this is null. */
+  paid_amount_idr: number | null;
 }
 
 export interface BillingSummary {
