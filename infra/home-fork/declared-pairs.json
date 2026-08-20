@@ -812,6 +812,18 @@
       "_note": "WA codex broker daemon wrapper (BOT-V4 S2 PR-6), installed root-owned by scripts/provision_zantara_codex.sh. System-domain LaunchDaemon payload under the registry's absolute-prefix exception (fw-guard precedent 2026-08-14): the daemon runs AS the login-less zantara-codex user, and a root-owned payload outside any user-writable $HOME denies a compromised zantara-codex identity persistence across restarts. World-readable, so the lint can verify this pair as any user. Re-run provisioning after changing the repo twin: the merge alone never updates the live copy (W107 delivery gotcha)."
     },
     {
+      "live": "/usr/local/libexec/wa-codex-seat-probe-wrapper.sh",
+      "repo": "infra/launchagents/wrappers/wa-codex-seat-probe-wrapper.sh",
+      "machines": ["pro"],
+      "_note": "S3 seat-probe wrapper (Piece A of the seat sentinel pair, research/operations/2026-08-19-bot-chatgpt-provider-broker-spec.md), installed root-owned by scripts/provision_zantara_codex.sh step 8. Same fw-guard precedent (2026-08-14) as the broker wrapper above and the same absolute-prefix exception — this LaunchDAEMON also runs AS the login-less zantara-codex user. World-readable, so the lint can verify this pair as any user. Re-run provisioning after changing the repo twin: the merge alone never updates the live copy (W107 delivery gotcha)."
+    },
+    {
+      "live": "/usr/local/lib/wa-codex-broker/seat_probe.py",
+      "repo": "scripts/wa_codex_seat_probe.py",
+      "machines": ["pro"],
+      "_note": "S3 seat-probe payload (Piece A) that the wrapper above execs, installed root-owned alongside the daemon's own runtime tree (same /usr/local/lib/wa-codex-broker RUNTIME_DIR, same fresh-copy-every-run discipline as the daemon code in step 3 — a merge alone never updates this live copy, W107 delivery gotcha). Imports backend.llm.codex_exec_client._AUTH_DEATH_RE from the sibling `backend/` package that step 3 already installs into this same directory tree — the two payloads share one runtime root by design, so they cannot disagree about the auth-death regex without both copies being re-provisioned together."
+    },
+    {
       "live": "~/scripts/mini-secrets-perms-sweep.sh",
       "repo": "infra/launchagents/wrappers/mini-secrets-perms-sweep.sh",
       "machines": ["mini"]

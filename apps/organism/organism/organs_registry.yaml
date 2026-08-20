@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 2db42b7730eba415f51571ca1afa40e72bbb4f44c93505f711731f4b23bd7614
+checksum: 1a4406c5474645e5b26eff55b9e3e1132547410c3273580f64b7a9872d4a90b1
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2027,6 +2027,29 @@ organs:
     (WA_GENERATION_PROVIDER defaults to gemini) until the owner-gated S4 cutover;
     the daemon itself is inert until the operator provisions the host (scripts/provision_zantara_codex.sh)
     and logs the seat in.'
+  cicatrix_refs: []
+- id: pro.wa_codex_seat_probe
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 0
+  owner_module: infra/launchagents/wrappers/wa-codex-seat-probe-wrapper.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wa-codex-seat-probe
+  severity_on_silence: warning
+  notes: 'WA codex seat probe (BOT-V4 S3 Piece A, spec research/operations/2026-08-19-bot-chatgpt-provider-broker-spec.md
+    section 4.4). One-shot LaunchDAEMON (StartInterval 6h + RunAtLoad, UserName demotion
+    to zantara-codex): codex login status + 1-token synthetic exec, classified with
+    the daemon''s _AUTH_DEATH_RE, enum-only verdict written to /usr/local/var/wa-codex-broker/seat-status.json
+    (0640 group staff - nuzantara reads via the group bit). Liveness ground truth
+    is that STATUS FILE: scripts/wa_codex_seat_sentinel.py (Piece B, cron-runner as
+    nuzantara) pages probe_silent when the file is missing or older than 2x the probe
+    interval - hence expected_hb_seconds 0 here, like the broker: the sidecar is written
+    only at start and on refusal exits, and lives in the zantara-codex home, unreadable
+    to other users by design. Kill switch WA_CODEX_SEAT_PROBE_ENABLED=false in the
+    shared env file (clean exit; the probe never reads WA_BROKER_KEY).'
   cicatrix_refs: []
 - id: pro.wr2_daily_carousel
   runtime: pro_launchd
