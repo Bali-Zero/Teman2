@@ -157,11 +157,25 @@ COPY --from=node22 /usr/local/lib/node_modules /usr/local/lib/node_modules
 # (changed 2026-08-20). Unpinned, it made this production image's build depend on a
 # third party publishing ATOMICALLY — and on 2026-08-19T23:57:54Z it did not: the
 # umbrella published 2.1.237 while `@anthropic-ai/claude-code-linux-x64@2.1.237`
-# did not exist (`npm view` → E404), so the platform-native binary never resolved,
-# the postinstall bailed, and `which claude` below failed the build with nothing in
-# this repository changed. `linux-arm64` and `darwin-arm64` published normally, so a
-# `docker build` on an M-series Mac SUCCEEDED throughout — the machine most likely
-# to be used for triage was structurally unable to reproduce the red.
+# did not exist (probed separately: `npm view` → E404), with nothing in this
+# repository changed.
+#
+# READ THE FAILURE IN ORDER, because it is not where you would look. From the
+# build log of job 96279824564:
+#
+#   1.341  added 1 package in 852ms          <- npm exits 0. NO error code at all.
+#   1.606  /usr/local/bin/claude             <- `which claude` SUCCEEDS.
+#   1.607  Error: claude native binary not installed.
+#
+# npm reported success, the JS launcher landed on PATH, and the ONLY step that knew
+# anything was wrong was `claude --version` — the CLI's own runtime self-check, the
+# last link of this chain. That final assertion is the entire reason a broken image
+# did not ship; it is a gate, not a flourish. Grepping the build log for `npm error`
+# finds nothing, which is exactly how this reads as someone else's problem.
+#
+# `linux-arm64` and `darwin-arm64` published normally, so a `docker build` on an
+# M-series Mac SUCCEEDED throughout — the machine most likely to be used for triage
+# was structurally unable to reproduce the red.
 #
 # This is the SAME CLASS as the NodeSource 403 documented above — a third-party
 # input to a production image build that moves on its own. That cure deleted the APT

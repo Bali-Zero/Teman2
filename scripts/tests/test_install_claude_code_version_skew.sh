@@ -111,7 +111,12 @@ if [ "\$1" = "install" ]; then
   # last argument is the spec
   spec="\${@: -1}"
   printf '%s\n' "\$spec" >> "${dir}/installed.log"
-  if [ "\${FAKE_NPM_INSTALL_LEAVES_NO_CLAUDE:-0}" != "1" ]; then
+  if [ "\${FAKE_NPM_INSTALL_BROKEN_CLAUDE:-0}" = "1" ]; then
+    # The REAL failure of 2026-08-20: npm exits 0, the JS launcher lands on
+    # PATH, and only running it reveals the native binary behind it is absent.
+    printf '#!/usr/bin/env bash\necho "Error: claude native binary not installed." >&2\nexit 1\n' > "${dir}/bin/claude"
+    chmod +x "${dir}/bin/claude"
+  elif [ "\${FAKE_NPM_INSTALL_LEAVES_NO_CLAUDE:-0}" != "1" ]; then
     printf '#!/usr/bin/env bash\necho "1.2.3 (fake)"\n' > "${dir}/bin/claude"
     chmod +x "${dir}/bin/claude"
   fi
@@ -208,6 +213,32 @@ if [ "$RC" = "0" ]; then
     fail "no-claude world: exited 0 after installing a CLI that is not on PATH"
 else
     ok "a successful npm install that leaves no 'claude' on PATH fails closed"
+fi
+rm -rf "$W"
+
+# ---------------------------------------------------------------------------
+# GUILT 5 — THE ACTUAL SHAPE OF THE 2026-08-20 FAILURE, and the one an earlier
+# draft of this script would have passed.
+#
+# From the incident's own build log (job 96279824564), in order:
+#     1.341  added 1 package in 852ms          npm exits 0, no error code
+#     1.606  /usr/local/bin/claude             `which claude` SUCCEEDS
+#     1.607  Error: claude native binary not installed.
+#
+# So neither "npm exited 0" nor "a file called claude exists" is evidence. Only
+# RUNNING it is. A guard that stops one step earlier is blind to the disease it
+# was written for.
+# ---------------------------------------------------------------------------
+W="$(mktemp -d)"
+build_world "$W" linux x64 glibc "2.1.237" "2.1.237" "2.1.237"
+RC="$( ( PATH="$W/bin:${HERMETIC_PATH}" FAKE_NPM_INSTALL_BROKEN_CLAUDE=1 sh "${SCRIPT}" ) \
+        > "$W/stdout.log" 2> "$W/stderr.log"; echo "$?" )"
+if [ "$RC" = "0" ]; then
+    fail "broken-binary world: exited 0 — npm said success and a launcher exists, but the CLI does not run"
+elif ! grep -q "native binary not installed" "$W/stderr.log"; then
+    fail "broken-binary world: failed without surfacing the CLI's own reason"
+else
+    ok "a claude on PATH that cannot RUN fails closed, and the CLI's own reason is surfaced"
 fi
 rm -rf "$W"
 

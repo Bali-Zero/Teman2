@@ -135,11 +135,37 @@ fi
 echo "claude-code: installing ${PKG}@${CC_VERSION}"
 npm install -g "${PKG}@${CC_VERSION}"
 
-# The install is not the outcome; a resolvable `claude` on PATH is. Asserted
-# here as well as in the caller so a direct invocation of this script is
-# self-verifying rather than trusting its own exit code.
+# The install is not the outcome, and NEITHER IS A FILE ON PATH.
+#
+# An earlier draft of this block checked only `command -v claude` and then
+# printed `claude --version 2>/dev/null || echo '<version unreadable>'`. That
+# would have passed the exact failure this script exists for. Read the build log
+# of the incident (job 96279824564) in order:
+#
+#     1.341  added 1 package in 852ms          <- npm exits 0. No error code.
+#     1.606  /usr/local/bin/claude             <- `which claude` SUCCEEDS.
+#     1.607  Error: claude native binary not installed.
+#
+# npm reports success; the JS launcher lands on PATH; only the CLI's own
+# runtime self-check knows the native binary behind it is missing. A guard that
+# stops at "is there a file called claude" is blind to the whole disease, and
+# `2>/dev/null || echo` would have swallowed the one line that tells the truth.
+#
+# So `claude --version` is an ASSERTION here, not a decoration — and it matters
+# beyond this file: the Dockerfile ends its RUN chain with `&& claude --version`
+# and would have caught it anyway, but `.github/workflows/ai-pr-review.yml` and
+# `scripts/ruslana-node/install.sh` call this script with nothing after it. A
+# check that lives only in one of three callers is not a check.
 command -v claude >/dev/null 2>&1 || {
     echo "FATAL: ${PKG}@${CC_VERSION} installed but no 'claude' landed on PATH." >&2
     exit 1
 }
-echo "claude-code: installed $(claude --version 2>/dev/null || echo '<version unreadable>')"
+
+CC_REPORTED_VERSION="$(claude --version 2>&1)" || {
+    echo "FATAL: ${PKG}@${CC_VERSION} installed and 'claude' is on PATH, but it does not run:" >&2
+    echo "${CC_REPORTED_VERSION}" >&2
+    echo "       npm exiting 0 is not proof the CLI works — the platform-native binary" >&2
+    echo "       behind the launcher can be missing while every earlier step succeeds." >&2
+    exit 1
+}
+echo "claude-code: installed ${CC_REPORTED_VERSION}"
