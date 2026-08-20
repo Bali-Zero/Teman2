@@ -122,7 +122,6 @@ const pendingDocument: ClientRequiredDocument = {
   uploaded_by_client: false,
   status: "pending",
   client_notes: null,
-  team_member_notes: null,
 };
 
 const secondPendingDocument: ClientRequiredDocument = {
