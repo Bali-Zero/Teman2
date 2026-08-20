@@ -662,8 +662,15 @@ try_codex() {
 _ollama_model_ready() {
     local model="$1"
     local base="${OLLAMA_API_BASE:-http://127.0.0.1:11434}"
+    # Overridable (mirrors the other provider-binary overrides in this cascade) —
+    # a hermetic test harness fakes the whole `ollama` binary via PATH-free
+    # absolute overrides, but this precheck talks HTTP directly (by design:
+    # see the comment above `_ollama_model_ready`, not the `ollama` binary),
+    # so without its own seam it always hits a real, unreachable 127.0.0.1
+    # in CI and the tier silently vanishes from every test scenario.
+    local curl_bin="${CLAUDE_CASCADE_OLLAMA_CURL_BIN:-curl}"
     local tags
-    tags="$(curl -sf -m 5 "${base}/api/tags" 2>/dev/null)"
+    tags="$("$curl_bin" -sf -m 5 "${base}/api/tags" 2>/dev/null)"
     if [ -z "$tags" ]; then
         echo "  [ollama-precheck] daemon unreachable at ${base}" >&2
         return 1
