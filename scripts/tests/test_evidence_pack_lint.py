@@ -32,6 +32,7 @@ from evidence_pack_lint import (  # noqa: E402
     compute_floor,
     effort_for_gear,
     lint,
+    sum_numstat,
 )
 
 GOOD_RECEIPT = {
@@ -410,6 +411,99 @@ def test_ceiling_innocence_no_diff_context_returns_no_assertion():
     assert compute_ceiling([], 3, {"council": True}) == (3, [])
 
 
+def test_ceiling_guilt_measured_overrides_pack_lie_no_false_ceiling():
+    """GUILT (adversarial-review 2026-08-21, team-lead hardening): the pack
+    self-declares net_lines=10 but the MEASURED value is 400 — shape (b)
+    must NOT be asserted (measured wins), so a Gear-3 + council pack over
+    this 2-file non-hot-zone diff is NOT flagged. Without this precedence,
+    an author could dodge the ceiling entirely by under-reporting net_lines
+    in the pack."""
+    diff = ["apps/backend-rag/backend/services/a.py", "apps/backend-rag/backend/services/b.py"]
+    ceiling, reasons = compute_ceiling(
+        diff, 3, {"net_lines": 10, "council": True}, measured_net_lines=400
+    )
+    assert ceiling == 3
+    assert reasons == []
+
+
+def test_ceiling_guilt_measured_used_when_pack_omits_net_lines():
+    """GUILT, the reverse case: the pack OMITS net_lines entirely, but a
+    measured value of 20 is supplied — shape (b) IS asserted from the
+    measured value alone, and the gear-3+council over-provisioning is
+    flagged."""
+    diff = ["apps/backend-rag/backend/services/a.py", "apps/backend-rag/backend/services/b.py"]
+    ceiling, reasons = compute_ceiling(diff, 3, {"council": True}, measured_net_lines=20)
+    assert ceiling == 1
+    assert reasons
+    assert reasons[0].startswith("ceiling: Gear 1 shape")
+    # measured source -> no self-declared notice anywhere in reasons
+    assert not any("self-declared" in r for r in reasons)
+
+
+def test_ceiling_innocence_self_declared_net_lines_emits_notice():
+    """INNOCENCE (still passes/fails on its own merits) + NOTICE: when NO
+    measured value is supplied and the pack alone carries net_lines, the
+    self-declared value is still used for shape (b), but a distinguishable
+    "ceiling (notice)" line names the lower-trust source — never a
+    violation on its own."""
+    diff = ["apps/backend-rag/backend/services/a.py", "apps/backend-rag/backend/services/b.py"]
+    ceiling, reasons = compute_ceiling(diff, 3, {"council": True, "net_lines": 20})
+    assert ceiling == 1
+    assert any(r.startswith("ceiling (notice): net_lines self-declared") for r in reasons)
+    # AND the primary guilt reason (no override) is still present, first
+    assert reasons[0].startswith("ceiling: Gear 1 shape")
+
+
+def test_ceiling_innocence_self_declared_notice_does_not_fire_when_measured_present():
+    """INNOCENCE: supplying a measured value suppresses the self-declared
+    notice entirely, even if the pack ALSO carries its own net_lines."""
+    diff = ["apps/backend-rag/backend/services/a.py", "apps/backend-rag/backend/services/b.py"]
+    ceiling, reasons = compute_ceiling(
+        diff, 3, {"council": True, "net_lines": 999}, measured_net_lines=20
+    )
+    assert ceiling == 1
+    assert not any("self-declared" in r for r in reasons)
+
+
+def test_lint_end_to_end_measured_net_lines_overrides_pack_lie(tmp_repo):
+    """GUILT/INNOCENCE wired through lint(): the pack lies (net_lines=10)
+    but the caller supplies the real measured value (400) via lint()'s
+    measured_net_lines parameter — no false ceiling."""
+    root, write_brief, write_pack = tmp_repo
+    write_brief(gear=3)
+    pack_path = write_pack(
+        dissent=[{"seat": "codex-sol", "objection": "x", "status": "PLAUSIBLE"}],
+        council=True,
+        net_lines=10,
+    )
+    diff = ["apps/backend-rag/backend/services/a.py", "apps/backend-rag/backend/services/b.py"]
+    rc, violations = lint(pack_path, root, diff, measured_net_lines=400)
+    assert rc == 0
+    assert violations == []
+
+
+# --------------------------------------------------------- sum_numstat (pure fn)
+
+
+def test_sum_numstat_basic_sum():
+    text = "10\t2\tfoo.py\n5\t0\tbar.py\n"
+    assert sum_numstat(text) == (10 - 2) + (5 - 0)
+
+
+def test_sum_numstat_skips_binary_files():
+    """Binary files report "-\t-\tpath" per git's numstat format — their
+    line count is unknowable, not zero, so they must be excluded rather
+    than counted as 0/0."""
+    text = "10\t2\tfoo.py\n-\t-\timage.png\n"
+    assert sum_numstat(text) == 8
+
+
+def test_sum_numstat_empty_and_malformed_lines_ignored():
+    assert sum_numstat("") == 0
+    assert sum_numstat("\n\n") == 0
+    assert sum_numstat("not-a-numstat-line\n10\t2\tfoo.py\n") == 8
+
+
 # --------------------------------------------------------- effort_for_gear (pure fn)
 
 
@@ -539,3 +633,72 @@ def test_effort_for_cli_matches_effort_for_gear():
         capture_output=True, text=True, timeout=30, cwd=str(REPO),
     )
     assert proc.returncode == 3
+
+
+def _write_full_tree(tmp_path, *, gear, pack_overrides):
+    evidence_dir = tmp_path / "evidence"
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+    (evidence_dir / "brief.yml").write_text(
+        yaml.safe_dump({"task_id": "ops-test", "gear": gear, "grader": "codex-sol"}),
+        encoding="utf-8",
+    )
+    pack = {
+        "brief_ref": "evidence/brief.yml",
+        "receipts": [GOOD_RECEIPT],
+        "dissent": [{"seat": "codex-sol", "objection": "x", "status": "PLAUSIBLE"}],
+        "pii_scan": "clean",
+    }
+    pack.update(pack_overrides)
+    (tmp_path / "evidence" / "pack.yml").write_text(
+        yaml.safe_dump(pack, sort_keys=False), encoding="utf-8"
+    )
+    return tmp_path / "evidence" / "pack.yml"
+
+
+def test_net_lines_cli_flag_overrides_pack_lie_end_to_end(tmp_path):
+    """--net-lines, given a diff shaped like predicate (b), wins over the
+    pack's own (lying) net_lines field — reaching compute_ceiling() through
+    the full CLI entry point, not just lint() called in-process."""
+    pack_path = _write_full_tree(
+        tmp_path, gear=3, pack_overrides={"council": True, "net_lines": 10}
+    )
+    changed = tmp_path / "changed.txt"
+    changed.write_text(
+        "apps/backend-rag/backend/services/a.py\n"
+        "apps/backend-rag/backend/services/b.py\n",
+        encoding="utf-8",
+    )
+    proc = subprocess.run(
+        [
+            sys.executable, str(SCRIPTS / "evidence_pack_lint.py"),
+            str(pack_path), "--repo-root", str(tmp_path),
+            "--changed-files-file", str(changed), "--net-lines", "400",
+        ],
+        capture_output=True, text=True, timeout=30, cwd=str(REPO),
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr  # measured wins -> no false ceiling
+
+
+def test_numstat_file_cli_flag_wired_end_to_end(tmp_path):
+    """--numstat-file sums via sum_numstat() and reaches compute_ceiling()
+    through the CLI, flagging the same gear-3+council over-provisioning
+    --net-lines would (pack omits net_lines entirely here)."""
+    pack_path = _write_full_tree(tmp_path, gear=3, pack_overrides={"council": True})
+    changed = tmp_path / "changed.txt"
+    changed.write_text(
+        "apps/backend-rag/backend/services/a.py\n"
+        "apps/backend-rag/backend/services/b.py\n",
+        encoding="utf-8",
+    )
+    numstat = tmp_path / "numstat.txt"
+    numstat.write_text("15\t5\tapps/backend-rag/backend/services/a.py\n", encoding="utf-8")
+    proc = subprocess.run(
+        [
+            sys.executable, str(SCRIPTS / "evidence_pack_lint.py"),
+            str(pack_path), "--repo-root", str(tmp_path),
+            "--changed-files-file", str(changed), "--numstat-file", str(numstat),
+        ],
+        capture_output=True, text=True, timeout=30, cwd=str(REPO),
+    )
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert "gear_override" in (proc.stdout + proc.stderr)

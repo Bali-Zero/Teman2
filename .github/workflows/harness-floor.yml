@@ -304,6 +304,40 @@ jobs:
           echo "::notice::published default harness/fable-gate=success (gear ${GEAR} < 3)"
 
       # -----------------------------------------------------------------
+      # Step 7a5 — measured net lines for evidence_pack_lint's rule 7
+      # (gear ceiling), merge-base anchored (never a two-dot diff against
+      # the live base tip — the exact W102 lie the changed-files
+      # enumeration above already avoids). BEST-EFFORT and non-blocking:
+      # if the merge-base can't be resolved, this step just skips emitting
+      # --numstat-file — evidence_pack_lint.py then falls back to the
+      # pack's own self-declared `net_lines:` (with its own NOTICE) or
+      # asserts nothing, it never treats "couldn't measure" as "measured
+      # zero" (that would be a false small-shape signal on a large diff).
+      # Gated the same as Step 7b — it only feeds that step.
+      # -----------------------------------------------------------------
+      - name: Compute measured net lines (merge-base anchored, best-effort)
+        if: |
+          steps.kill_switch.outputs.disabled != 'true' &&
+          steps.brief.outputs.present == 'true' &&
+          steps.gearcheck.outputs.gear == '3'
+        id: netlines
+        env:
+          BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha }}
+        run: |
+          set -u
+          MERGE_BASE="$(git merge-base "$BASE_SHA" "$HEAD_SHA" 2>/dev/null || true)"
+          if [[ -z "$MERGE_BASE" ]]; then
+            echo "::notice::merge-base not resolvable — net-lines measurement skipped for this run (evidence_pack_lint falls back to pack-declared net_lines with a NOTICE, or asserts nothing)"
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git diff --no-renames --numstat "$MERGE_BASE" "$HEAD_SHA" > /tmp/net-lines-numstat.txt
+          echo "available=true" >> "$GITHUB_OUTPUT"
+          echo "measured net-lines numstat (merge-base $MERGE_BASE):"
+          cat /tmp/net-lines-numstat.txt
+
+      # -----------------------------------------------------------------
       # Step 7b — Gear-3, floor satisfied: validate the ACTUAL Evidence
       # Pack (evidence/pack.yml), not just the brief's declared gear field.
       # Adversarial-review finding 2026-08-10: the first cut of this
@@ -313,6 +347,9 @@ jobs:
       # + pack.yml at the SAME relative layout the linter expects
       # (brief_ref: "evidence/brief.yml" resolves against --repo-root), so
       # this reuses the exact same check_* rules a local run would.
+      # --numstat-file (Step 7a5) is passed only when it was actually
+      # produced — never a bare/empty arg that could read as "0 net lines
+      # measured" (adversarial-review finding 2026-08-21).
       # -----------------------------------------------------------------
       - name: Gear-3 — validate evidence/pack.yml against the Evidence Pack contract
         if: |
@@ -322,6 +359,7 @@ jobs:
         id: packlint
         env:
           HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha }}
+          NETLINES_AVAILABLE: ${{ steps.netlines.outputs.available }}
         run: |
           set -u
           # Same bootstrap-window exemption as the floor-computation step
@@ -339,10 +377,15 @@ jobs:
           fi
           git show "$HEAD_SHA:evidence/pack.yml" > /tmp/evidence-check/evidence/pack.yml
           cp /tmp/brief.yml /tmp/evidence-check/evidence/brief.yml
+          EXTRA_ARGS=()
+          if [[ "$NETLINES_AVAILABLE" == "true" ]]; then
+            EXTRA_ARGS+=(--numstat-file /tmp/net-lines-numstat.txt)
+          fi
           python3 scripts/evidence_pack_lint.py \
             /tmp/evidence-check/evidence/pack.yml \
             --repo-root /tmp/evidence-check \
-            --changed-files-file /tmp/changed-files.txt
+            --changed-files-file /tmp/changed-files.txt \
+            "${EXTRA_ARGS[@]}"
 
       # -----------------------------------------------------------------
       # Step 7c — Gear-3, floor satisfied, pack conformant: this workflow

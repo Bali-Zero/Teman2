@@ -96,14 +96,21 @@ WHAT IT VALIDATES (an Evidence Pack YAML, default path evidence/pack.yml):
                         diff from declaring LESS gear than a hot-zone hit
                         demands; the ceiling stops the opposite — a diff
                         shaped like a docs/ledger-only or small (<=2 files,
-                        <=60 net lines, pack-declared) change may not
-                        silently declare Gear 3 while also convening a
-                        `council` or dispatching >=3 graders. REJECTED
-                        unless the pack carries a non-empty, reasoned
-                        `gear_override:` one-liner — in which case it is
-                        REPORTED (stderr NOTICE), never a violation. Floor
-                        always wins when the two conflict: a hot-zone hit
-                        floors AND ceilings at 3, silently. See
+                        <=60 net lines) change may not silently declare
+                        Gear 3 while also convening a `council` or
+                        dispatching >=3 graders. REJECTED unless the pack
+                        carries a non-empty, reasoned `gear_override:`
+                        one-liner — in which case it is REPORTED (stderr
+                        NOTICE), never a violation. The net-line count
+                        prefers a MEASURED value (--net-lines /
+                        --numstat-file, a real `git diff --numstat` sum)
+                        over the pack's own self-declared `net_lines:` field
+                        (adversarial-review finding 2026-08-21 — a pack
+                        under-reporting its size must not escape the
+                        ceiling); falling back to the self-declared value
+                        also emits a "ceiling (notice)" line naming that
+                        fact. Floor always wins when the two conflict: a
+                        hot-zone hit floors AND ceilings at 3, silently. See
                         compute_ceiling()'s own docstring for the full
                         contract. Skipped, same as rule 6, whenever
                         --changed-files-file is not supplied.
@@ -125,14 +132,26 @@ a lint that scanned nothing must not report clean):
 
 CLI:
   python3 scripts/evidence_pack_lint.py [PACK_PATH] [--repo-root DIR]
-      [--changed-files-file PATH] [--print-floor] [--effort-for GEAR]
-      [--json] [--selftest]
+      [--changed-files-file PATH] [--net-lines INT] [--numstat-file PATH]
+      [--print-floor] [--effort-for GEAR] [--json] [--selftest]
 
   PACK_PATH        defaults to evidence/pack.yml (relative to --repo-root)
   --repo-root      defaults to the git top-level, else cwd
   --changed-files-file  newline-delimited changed-path list (the output of
                         scripts/ci/hotzone_changed_files.sh) — enables rules
                         6 (floor) and 7 (ceiling)
+  --net-lines INT  a pre-computed net-line count (e.g. `git diff --numstat
+                    "$BASE" "$HEAD" | awk '{a+=$1;d+=$2} END {print a-d}'`,
+                    merge-base anchored — never a two-dot diff, W102) for
+                    rule 7's shape (b). Takes precedence over --numstat-file,
+                    which takes precedence over the pack's own self-declared
+                    `net_lines:` field. No effect without
+                    --changed-files-file.
+  --numstat-file PATH  raw `git diff --numstat` output (tab-separated
+                    added/deleted/path per line, `-`/`-` for binary files
+                    skipped) — this script sums added-deleted itself so
+                    callers don't need the awk one-liner. Ignored if
+                    --net-lines is also given.
   --print-floor    given --changed-files-file, print the computed floor int
                     and exit 0 (no pack read) — lets any caller (CI, a human)
                     ask "what floor would this diff impose" without spinning
@@ -234,7 +253,10 @@ CEILING_HEAVY_GRADER_DISPATCH_MIN = 3
 
 
 def compute_ceiling(
-    changed_paths: list[str], declared_gear: int | None, pack: dict[str, Any]
+    changed_paths: list[str],
+    declared_gear: int | None,
+    pack: dict[str, Any],
+    measured_net_lines: int | None = None,
 ) -> tuple[int, list[str]]:
     """Returns (ceiling, reasons). Mirrors compute_floor()'s lower-bound-only
     shape but at the opposite end: it names a Gear-1-shaped diff (never a
@@ -245,13 +267,20 @@ def compute_ceiling(
     A diff is Gear-1-SHAPED when either:
       (a) every changed path is docs/ledger/markdown/json-only
           (DOCS_LEDGER_EXTENSIONS), or
-      (b) it touches at most CEILING_SMALL_DIFF_MAX_FILES files AND the pack
-          declares `net_lines` (the session's own 30s count, per the audit's
-          §8 ship-path spec — this function does not shell out to git to
-          derive it, staying pure like compute_floor) at or under
-          CEILING_SMALL_DIFF_MAX_NET_LINES.
-    net_lines being ABSENT from the pack does not assert shape (b) — an
-    unmeasured diff is not evidence of smallness.
+      (b) it touches at most CEILING_SMALL_DIFF_MAX_FILES files AND its net
+          line count is at or under CEILING_SMALL_DIFF_MAX_NET_LINES.
+    The net-line count for (b) is `measured_net_lines` when the caller
+    supplies one (a real `git diff --numstat` sum, computed OUTSIDE this
+    function — it stays pure, no I/O, like compute_floor). MEASURED ALWAYS
+    WINS over the pack's own `net_lines:` field (adversarial-review finding
+    2026-08-21 — a pack declaring 10 while the real diff is 400 lines must
+    not silently escape the ceiling just because the author under-reported
+    it). Only when `measured_net_lines` is absent does this function fall
+    back to the pack-declared `net_lines`, and it then ADDS an informational
+    "ceiling (notice): net_lines self-declared (no --net-lines supplied)"
+    line — self-declared data is lower-trust, and the caller should know
+    which source decided shape (b). Neither source present -> shape (b) is
+    simply not asserted (an unmeasured diff is not evidence of smallness).
 
     FLOOR ALWAYS WINS: if changed_paths hits the hot-zone (compute_floor==3),
     this function returns (3, []) immediately — a hot-zone docs file still
@@ -263,11 +292,13 @@ def compute_ceiling(
     `grader_dispatches >= CEILING_HEAVY_GRADER_DISPATCH_MIN`. A Gear-3 pack
     with neither is not over-provisioned by this signal and gets no reason.
 
-    Reason-string contract for the caller (lint()): an entry NOT prefixed
-    "ceiling (overridden)" is a hard violation (guilt — fail); an entry
-    prefixed "ceiling (overridden)" is informational only (the pack supplied
-    a non-empty `gear_override` one-liner) and must NOT be added to
-    `violations` — "the ceiling does not fail, it reports."
+    Reason-string contract for the caller (lint()): an entry that starts
+    with the bare "ceiling: " prefix (colon directly after the word) is a
+    hard violation (guilt — fail). Any entry with a parenthetical qualifier
+    right after "ceiling" — "ceiling (overridden): ..." (a non-empty
+    `gear_override` was supplied) or "ceiling (notice): ..." (self-declared
+    net_lines was consulted) — is informational only and must NOT be added
+    to `violations`; "the ceiling does not fail, it reports."
     """
     pack = pack if isinstance(pack, dict) else {}
     changed_paths = changed_paths or []
@@ -285,16 +316,35 @@ def compute_ceiling(
     docs_shaped = all(
         any(f.endswith(ext) for ext in DOCS_LEDGER_EXTENSIONS) for f in changed_paths
     )
-    net_lines = pack.get("net_lines")
-    net_lines_known = type(net_lines) is int  # exclude bool (True/False is not a count)
+
+    net_lines: int | None
+    net_lines_source: str | None
+    if type(measured_net_lines) is int:  # exclude bool — True/False is not a count
+        net_lines = measured_net_lines
+        net_lines_source = "measured"
+    else:
+        raw = pack.get("net_lines")
+        if type(raw) is int:
+            net_lines = raw
+            net_lines_source = "pack"
+        else:
+            net_lines = None
+            net_lines_source = None
+
     small_shaped = (
         len(changed_paths) <= CEILING_SMALL_DIFF_MAX_FILES
-        and net_lines_known
+        and net_lines is not None
         and net_lines <= CEILING_SMALL_DIFF_MAX_NET_LINES
     )
 
     if not (docs_shaped or small_shaped):
         return 3, []  # not a Gear-1-shaped diff — no ceiling to assert
+
+    reasons: list[str] = []
+    if small_shaped and net_lines_source == "pack":
+        reasons.append(
+            "ceiling (notice): net_lines self-declared (no --net-lines supplied)"
+        )
 
     council = bool(pack.get("council"))
     grader_dispatches = pack.get("grader_dispatches")
@@ -309,13 +359,13 @@ def compute_ceiling(
             return 1, [
                 f"ceiling (overridden): Gear 1 shape — declared Gear 3 with {cause}, "
                 f"overridden: {override.strip()}"
-            ]
+            ] + reasons
         return 1, [
             "ceiling: Gear 1 shape — declared Gear 3 with "
             f"{cause}; declare the reason in `gear_override:`"
-        ]
+        ] + reasons
 
-    return 1, []
+    return 1, reasons
 
 
 # ---------------------------------------------------------------------------
@@ -513,6 +563,7 @@ def lint(
     pack_path: Path,
     repo_root: Path,
     changed_files: list[str] | None,
+    measured_net_lines: int | None = None,
 ) -> tuple[int, list[str]]:
     """Returns (exit_code, violations). exit_code: 0 clean, 1 guilty, 2 blind."""
     if not pack_path.exists():
@@ -555,14 +606,18 @@ def lint(
         print("evidence_pack_lint: NOTICE — no --changed-files-file supplied, "
               "gear-floor check (rule 6) skipped for this run", file=sys.stderr)
     else:
-        # Ceiling (rule 7 — see compute_ceiling() docstring): an "(overridden)"
-        # reason is a REPORT, never a violation — it does not fail the pack.
-        _ceiling, ceiling_reasons = compute_ceiling(changed_files, gear, pack)
+        # Ceiling (rule 7 — see compute_ceiling() docstring): only the BARE
+        # "ceiling: " prefix is a violation. Any parenthetical-qualified
+        # variant — "ceiling (overridden): ..." or "ceiling (notice): ..." —
+        # is a REPORT, never a violation, and does not fail the pack.
+        _ceiling, ceiling_reasons = compute_ceiling(
+            changed_files, gear, pack, measured_net_lines
+        )
         for reason in ceiling_reasons:
-            if reason.startswith("ceiling (overridden)"):
-                print(f"evidence_pack_lint: NOTICE — {reason}", file=sys.stderr)
-            else:
+            if reason.startswith("ceiling: "):
                 violations.append(reason)
+            else:
+                print(f"evidence_pack_lint: NOTICE — {reason}", file=sys.stderr)
 
     return (1 if violations else 0), violations
 
@@ -576,6 +631,35 @@ def _read_changed_files(path_str: str | None) -> list[str] | None:
     p = Path(path_str)
     text = p.read_text(encoding="utf-8")
     return [line.strip() for line in text.splitlines() if line.strip()]
+
+
+def sum_numstat(text: str) -> int:
+    """Sum `git diff --numstat` output into a single net-line count
+    (added - deleted), the measured source for compute_ceiling()'s rule-7
+    shape (b) — pure function, no I/O, so it's testable directly (mirrors
+    compute_floor()). Each line is "<added>\\t<deleted>\\t<path>"; binary
+    files report "-\\t-\\tpath" per git's own numstat format and are
+    skipped (their line-count is unknowable, not zero — excluding rather
+    than miscounting them as 0 added/0 deleted). Malformed lines (wrong
+    column count, non-numeric added/deleted where not "-") are skipped the
+    same way — this function degrades gracefully rather than raising on a
+    single garbled line from an unexpected git version."""
+    net = 0
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split("\t")
+        if len(parts) < 2:
+            continue
+        added_s, deleted_s = parts[0], parts[1]
+        if added_s == "-" or deleted_s == "-":
+            continue  # binary file — numstat can't report a line count
+        try:
+            net += int(added_s) - int(deleted_s)
+        except ValueError:
+            continue
+    return net
 
 
 def selftest() -> int:
@@ -900,6 +984,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("pack_path", nargs="?", default="evidence/pack.yml")
     parser.add_argument("--repo-root", default=None)
     parser.add_argument("--changed-files-file", default=None)
+    parser.add_argument("--net-lines", type=int, default=None, metavar="INT")
+    parser.add_argument("--numstat-file", default=None, metavar="PATH")
     parser.add_argument("--print-floor", action="store_true")
     parser.add_argument("--effort-for", type=int, default=None, metavar="GEAR")
     parser.add_argument("--json", action="store_true")
@@ -933,7 +1019,20 @@ def main(argv: list[str] | None = None) -> int:
     if not pack_path.is_absolute():
         pack_path = repo_root / pack_path
 
-    exit_code, violations = lint(pack_path, repo_root, changed_files)
+    # --net-lines wins outright; --numstat-file is a convenience so callers
+    # don't need to re-derive the awk one-liner themselves; neither given ->
+    # None, and compute_ceiling() falls back to the pack's self-declared
+    # net_lines (with its own NOTICE).
+    measured_net_lines: int | None = args.net_lines
+    if measured_net_lines is None and args.numstat_file:
+        try:
+            numstat_text = Path(args.numstat_file).read_text(encoding="utf-8")
+        except OSError as exc:
+            print(f"evidence_pack_lint: --numstat-file unreadable: {exc}", file=sys.stderr)
+            return 3
+        measured_net_lines = sum_numstat(numstat_text)
+
+    exit_code, violations = lint(pack_path, repo_root, changed_files, measured_net_lines)
 
     if args.json:
         import json as _json
