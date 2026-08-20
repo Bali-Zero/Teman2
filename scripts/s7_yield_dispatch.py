@@ -91,6 +91,9 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 PG_SH = REPO_ROOT / "scripts" / "pg.sh"
 TG_NOTIFY = REPO_ROOT / "scripts" / "tg_notify.py"
 
+sys.path.insert(0, str(REPO_ROOT))
+from scripts.tg_gateway_verdict import extract_gateway_verdict  # noqa: E402
+
 STAGING = Path(os.environ.get("S7_STAGING", str(Path.home() / ".nuzantara-staging" / "s7-yield")))
 DEFAULT_COOLDOWN_DAYS = 90
 BATCH_SIZE = 5  # clients per WhatsApp message — readability, not the 4096-char limit (WhatsAppService already fits that)
@@ -599,9 +602,12 @@ def notify_zero(
     """Aggregate counts ONLY — zero client_id/nomi/numeri verso Telegram.
 
     Interprete ASSOLUTO (sys.executable, mai `python3` risolto via PATH dopo
-    aver sorgentato un venv — W107/W108), rc sempre catturato+loggato, e
-    l'intera chiamata è wrapped: un gateway morto non deve mai far fallire
-    il dispatcher stesso.
+    aver sorgentato un venv — W107/W108), l'intera chiamata è wrapped (un
+    gateway morto non deve mai far fallire il dispatcher stesso), e il
+    VERDETTO stampato su stderr è quello letto — MAI il solo exit code
+    (W104/`test_gateway_callers_read_the_verdict.py`): `tg_notify.py` esce 0
+    anche su `deduped`/`p0_overflow_spooled`/`p0_unsent_spooled`, che NON
+    sono una consegna.
     """
     mode = "DRY-RUN" if dry_run else "INVIATO"
     lines = [
@@ -625,7 +631,8 @@ def notify_zero(
             text=True,
             timeout=20,
         )
-        print(f"[S7-dispatch] tg_notify rc={proc.returncode}")
+        verdict = extract_gateway_verdict(proc.stderr)
+        print(f"[S7-dispatch] tg_notify: {verdict or f'NESSUN verdetto rc={proc.returncode}'}")
     except Exception as exc:  # noqa: BLE001 -- alert gateway must never crash the dispatcher
         print(f"[S7-dispatch] tg_notify invocation failed: {type(exc).__name__}: {exc}", file=sys.stderr)
 
