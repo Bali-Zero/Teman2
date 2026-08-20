@@ -53,21 +53,25 @@ from pathlib import Path
 
 # --- The three credential shapes -------------------------------------------
 # `GOCSPX-` is Google's OAuth client-secret prefix — unambiguous, no anchor
-# needed. The body is 10+ of the URL-safe set (the published one: 28).
-CLIENT_SECRET_RE = re.compile(r"GOCSPX-([A-Za-z0-9_-]{10,})")
+# needed. The body is 20+ of the URL-safe set (the published one: 28).
+CLIENT_SECRET_RE = re.compile(r"GOCSPX-([A-Za-z0-9_-]{20,})")
 
 # OAuth refresh tokens are `1//` + a long URL-safe body (the published one:
-# 100 chars). Quote-anchored: a bare `1//` can appear in odd strings, but a
-# quoted `1//…20+` is a credential literal — exact on this tree (census
-# 2026-08-21: zero hits outside the nine guilty files).
-REFRESH_TOKEN_RE = re.compile(r"[\"']1//([0-9A-Za-z_-]{20,})")
+# 100 chars). Anchored on quote OR assignment delimiters (`=`, `:`) with
+# optional spacing, so DSN/.env/YAML shapes (`X=1//…`, `refresh_token: 1//…`)
+# fire alongside quoted literals, while prose mentions of the `1//` shape
+# (no anchor character) stay silent. Body 20+ chars (Codex red-team round 1:
+# the quote-only anchor let `refresh_token=1//…` sail through).
+REFRESH_TOKEN_RE = re.compile(r"[\"'=:]\s*1//([0-9A-Za-z_-]{20,})")
 
 # A client id is not a credential by itself — but it is the invariant third
 # member of the copy-paste blob this guard exists against, so its presence
-# says "the pair may be next to me". Census 2026-08-21: the only hits in the
-# whole tree were the nine guilty files. The synthetic marker is the escape
-# for documentation examples.
-CLIENT_ID_RE = re.compile(r"([0-9]{6,}-[a-z0-9]+\.apps\.googleusercontent\.com)")
+# says "the pair may be next to me". Shape tightened to the real thing
+# (10-13 digits, 20+ lowercase-alnum host part) after Codex red-team round 1
+# flagged doc-prose like `123456-example.apps.googleusercontent.com` firing.
+# Census 2026-08-21: the only hits in the whole tree were the nine guilty
+# files. The synthetic marker is the escape for documentation examples.
+CLIENT_ID_RE = re.compile(r"([0-9]{10,13}-[a-z0-9]{20,}\.apps\.googleusercontent\.com)")
 
 # SHA-256 (first 16 hex) of values known to have been published on
 # origin/main, so a re-introduction is NAMED ("this is the 2026-08-21 leak"),
@@ -91,9 +95,13 @@ _RULES: tuple[tuple[str, re.Pattern[str], bool], ...] = (
     ("google-oauth-client-id", CLIENT_ID_RE, False),
 )
 
-# A body of a handful of distinct characters is a human writing a placeholder
-# (`GOCSPX-xxxxxxxxxx`), not entropy from a credential issuer.
-_PLACEHOLDER_MAX_DISTINCT = 4
+# A body of one or two distinct characters is a human writing a placeholder
+# (`GOCSPX-xxxxxxxxxx`), not entropy from a credential issuer. Narrowed from
+# the sibling lint's ≤4 after Codex red-team round 1 constructed a
+# deterministic false negative (`abcdabcd…` body sailing through): a real
+# 28-char base64url body with ≤2 distinct chars is ~2^-140; anything longer
+# must carry the synthetic marker explicitly.
+_PLACEHOLDER_MAX_DISTINCT = 2
 
 # Same contract as the sibling lints: marker on the same line or the line
 # directly above.
@@ -211,6 +219,9 @@ def selftest() -> int:
         ("constant assignment", 'OAUTH_CLIENT_SECRET = "GOCSPX-' + sec_body + '"'),
         ("refresh token in payload", '"refresh_token": "1//' + ref_body + '",'),
         ("single-quoted refresh token", "OAUTH_REFRESH_TOKEN = '1//" + ref_body + "'"),
+        ("env-file assignment, no quotes", "OAUTH_REFRESH_TOKEN=1//" + ref_body),
+        ("yaml colon shape", "refresh_token: 1//" + ref_body),
+        ("low-entropy repeated-chunk body", 'SECRET = "GOCSPX-' + "abcd" * 7 + '"'),
         ("client id literal", 'OAUTH_CLIENT_ID = "' + cid_body + '"'),
     ]
     innocent = [
@@ -220,7 +231,9 @@ def selftest() -> int:
         ("synthetic marker same line", 'SECRET = "GOCSPX-' + sec_body + '"  # synthetic-google-oauth-credential'),
         ("synthetic marker line above", "# synthetic-google-oauth-credential\nSECRET = \"GOCSPX-" + sec_body + '"'),
         ("short 1// string not a token", 'ratio = "1//2"  # not a credential'),
-        ("unquoted 1// mention", "the token shape is 1// followed by a long body"),
+        ("prose 1// mention, no anchor", "the token shape is 1// followed by a long body"),
+        ("yaml-looking prose under 20 chars", "refresh_token: 1//short"),
+        ("doc-prose client id shape", "an id looks like 123456-example.apps.googleusercontent.com"),
         ("docs prose mentioning the prefix", "client secrets start with GOCSPX- and must stay in env"),
     ]
 

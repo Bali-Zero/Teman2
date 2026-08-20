@@ -34,6 +34,9 @@ def test_google_oauth_lint_guilt_flagged():
     guilty = [
         '"client_secret": "GOCSPX-' + SEC_BODY + '",',
         'OAUTH_REFRESH_TOKEN = "1//' + REF_BODY + '"',
+        "OAUTH_REFRESH_TOKEN=1//" + REF_BODY,  # .env shape, no quotes
+        "refresh_token: 1//" + REF_BODY,  # YAML shape
+        'S = "GOCSPX-' + "abcd" * 6 + '"',  # low-entropy chunk body still fires
         'OAUTH_CLIENT_ID = "' + CID + '"',
     ]
     for text in guilty:
@@ -68,6 +71,8 @@ def test_google_oauth_lint_innocence_env_reads_and_markers_pass():
         'S = "GOCSPX-' + SEC_BODY + '"  # synthetic-google-oauth-credential',
         "# synthetic-google-oauth-credential\n" + 'S = "GOCSPX-' + SEC_BODY + '"',
         'ratio = "1//2"  # prose, not a token',
+        "the token shape is 1// followed by a long body",
+        "an id looks like 123456-example.apps.googleusercontent.com",  # doc prose
     ]
     for text in innocent:
         assert lint.scan_text(text, "ok.py") == [], f"false positive on: {text[:50]}…"
