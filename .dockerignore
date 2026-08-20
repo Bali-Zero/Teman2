@@ -12,6 +12,11 @@
 !apps/backend-rag/requirements-prod.lock.txt
 !apps/backend-rag/requirements.lock.txt
 !apps/backend-rag/Dockerfile
+
+# The Claude-CLI installer the Dockerfile COPYs before its npm install (see
+# scripts/install-claude-code.sh) — fleet-level because CI and the node
+# provisioner call the same file.
+!scripts/install-claude-code.sh
 !apps/backend-rag/*.py
 
 # cell-core package (editable install target)
