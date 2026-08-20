@@ -17,6 +17,10 @@ jobs:
   run:
     runs-on: ubuntu-latest
     timeout-minutes: 3
+    # actions:read is required by the edge gate below to read the previous
+    # run's conclusion; this block also drops every other default grant.
+    permissions:
+      actions: read
     steps:
       - name: GET /api/admin/drive/poll/status
         id: poll
@@ -49,8 +53,33 @@ jobs:
             exit 1
           fi
 
-      - name: Telegram alert on failure
+      # Same disease as cron-fly-watcher (latent here, measured there): a
+      # */15 schedule with no runner state re-alerts a persistent failure
+      # every run. Page only on the green→red edge; fail-OPEN if the API
+      # cannot answer (a gate that cannot verify must not silence).
+      - name: Edge gate — page only on green→red transition
+        id: edge
         if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          WF_FILE=$(basename "${GITHUB_WORKFLOW_REF%%@*}")
+          # Skip cancelled/skipped runs when reading the state: a budget-kill
+          # reads as `cancelled` (W118), never ran the alert step, and must not
+          # reset the streak — else every timeout inside a persistent outage
+          # re-arms the pager (Kimi K3 refutation, 2026-08-20).
+          PREV=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/${WF_FILE}/runs?status=completed&per_page=10" \
+            --jq '[.workflow_runs[].conclusion | select(. == "success" or . == "failure")][0] // "unknown"' 2>/dev/null || echo unknown)
+          echo "previous completed run: ${PREV:-none}"
+          if [ "$PREV" = "failure" ]; then
+            echo "send=no" >> "$GITHUB_OUTPUT"
+            echo "condition already paged at onset — repeat alert suppressed"
+          else
+            echo "send=yes" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Telegram alert on failure
+        if: failure() && steps.edge.outputs.send == 'yes'
         env:
           BOT: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           CHAT: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
