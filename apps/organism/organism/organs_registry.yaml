@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 1a4406c5474645e5b26eff55b9e3e1132547410c3273580f64b7a9872d4a90b1
+checksum: b69040a5ea206c3901e9a6b721d4fd173c57e98dcbed7fede7484e959c3a2ff6
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2523,5 +2523,25 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/mini.secrets_perms_sweep.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.visa_freshness_sentinel
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 21600
+  owner_module: infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.visa-freshness-sentinel
+  severity_on_silence: warning
+  notes: Alerts Telegram BEFORE the active Visa Oracle RulePack OFFICIAL_PORTAL sources
+    cross their freshness_policy window (7-day), so DECISIVE_SOURCE_STALE never trips
+    silently (born via organ_birth.py, genes imprinted 2026+)
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.visa_freshness_sentinel.json
     timestamp_field: ts
     status_field: status
