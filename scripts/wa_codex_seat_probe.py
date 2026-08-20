@@ -293,7 +293,9 @@ def write_status_atomic(status: ProbeStatus, path: Path) -> None:
     gid=20(staff)) and reads via the group bit; "others" get nothing. The
     payload is enum-only by design, but family-#4 hygiene says grant the one
     reader, not the world (this probe's process group is staff, so the tmp
-    file inherits it)."""
+    file inherits it). CodeQL's py/overly-permissive-file flags ANY group
+    bit — dismissed as won't-fix (alert #8634): the group bit IS the channel
+    this organ exists to provide; 0600 would sever probe→sentinel."""
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_name = tempfile.mkstemp(
         dir=str(path.parent), prefix=".seat-status-", suffix=".tmp"
