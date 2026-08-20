@@ -467,13 +467,7 @@ jobs:
           uv pip install --system -r requirements.lock.txt
           # Editable cell-core workspace dep (out-of-tree)
           uv pip install --system -e ../../packages/cell-core
-          # pytest-xdist added 2026-08-21 (token-ceremony CI-critical-path audit,
-          # research/operations/2026-08-21-token-ceremony-ci-system-audit.md):
-          # `-n auto --dist loadfile` below is what actually shortens the job —
-          # declared here AND in requirements-test.txt (scripts/tests/
-          # test_test_deps_declared.py's guilt check pins the two together, same
-          # rule fakeredis already follows).
-          uv pip install --system pytest pytest-cov pytest-asyncio pytest-mock fakeredis pytest-xdist
+          uv pip install --system pytest pytest-cov pytest-asyncio pytest-mock fakeredis
 
       - name: pip-audit
         run: |
@@ -636,15 +630,18 @@ jobs:
         run: |
           cd apps/backend-rag
           set -o pipefail
-          # xdist added 2026-08-21 (token-ceremony CI-critical-path audit).
-          # `--dist loadfile` sends whole FILES to a worker, never splitting a
-          # file's tests across workers — the safe distribution mode when
-          # cross-test isolation inside a file has never been audited class-
-          # wide; module/class-scoped fixtures and any load-bearing test
-          # ORDER inside one file survive unchanged. Measured on Mini
-          # (research/operations/2026-08-21-token-ceremony-ci-system-audit.md
-          # + this PR body): serial vs `-n 4 --dist loadfile` on
-          # backend/tests/unit, 0 tests that failed only under xdist.
+          # xdist was briefly in this PR and was REMOVED 2026-08-21 (Kimi,
+          # lane continuation): under `-n auto --dist loadfile` every worker
+          # shares the SAME test Postgres (DATABASE_URL above), so a counting
+          # test in one file observed another worker's parallel writes —
+          # backend/tests/routers/test_intake_review.py::
+          # test_approve_live_claim_owned_by_other_rejected_without_write
+          # read (4, 1) where serial reads (2, 0). That is the 2026-07-14
+          # shared-Postgres scar the audit (L9(ii)) rates MED-HIGH: xdist
+          # needs per-worker DBs (nuzantara_test_gw{n}), which is its own
+          # spike PR. This PR keeps the safe levers only (queue-only
+          # coverage, npm-audit advisory, Playwright cache, main-red
+          # breaker).
           COV_ARGS=()
           if [ "$COLLECT_COVERAGE" = "true" ]; then
             COV_ARGS=(--cov=backend --cov-branch --cov-report=xml:coverage.xml)
@@ -656,7 +653,6 @@ jobs:
             tests/kb/test_politics_hierarchical.py \
             ../../scripts/bot/test_build_deid_corpus.py \
             ../../scripts/bot/test_wa_blind_bench.py \
-            -n auto --dist loadfile \
             -q -ra --no-header --durations=50 \
             --ignore=backend/tests/e2e \
             "${COV_ARGS[@]}" \
