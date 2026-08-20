@@ -90,10 +90,30 @@ WHAT IT VALIDATES (an Evidence Pack YAML, default path evidence/pack.yml):
                         then, a change to one list without the other is a
                         silent-drift risk a human reviewer should catch.
 
+  7. gear ceiling  — the MIRROR of rule 6 (2026-08-21 audit,
+                        research/operations/2026-08-21-token-ceremony-ci-
+                        system-audit.md §7 lever L6 / §8): the floor stops a
+                        diff from declaring LESS gear than a hot-zone hit
+                        demands; the ceiling stops the opposite — a diff
+                        shaped like a docs/ledger-only or small (<=2 files,
+                        <=60 net lines, pack-declared) change may not
+                        silently declare Gear 3 while also convening a
+                        `council` or dispatching >=3 graders. REJECTED
+                        unless the pack carries a non-empty, reasoned
+                        `gear_override:` one-liner — in which case it is
+                        REPORTED (stderr NOTICE), never a violation. Floor
+                        always wins when the two conflict: a hot-zone hit
+                        floors AND ceilings at 3, silently. See
+                        compute_ceiling()'s own docstring for the full
+                        contract. Skipped, same as rule 6, whenever
+                        --changed-files-file is not supplied.
+
 Floor check is SKIPPED (not silently passed — an explicit NOTICE on stderr)
 when --changed-files-file is not supplied: not every invocation of this linter
 has PR-diff context (e.g. a spot-check of a pack on a laptop). The CI workflow
-(harness-floor.yml) is the required check that always supplies it.
+(harness-floor.yml) is the required check that always supplies it. The
+ceiling check (rule 7) is skipped under the same condition, for the same
+reason.
 
 VERDICT / EXIT CODES (fail-visible, superscar #2 "esiste != armato" antidote:
 a lint that scanned nothing must not report clean):
@@ -105,16 +125,22 @@ a lint that scanned nothing must not report clean):
 
 CLI:
   python3 scripts/evidence_pack_lint.py [PACK_PATH] [--repo-root DIR]
-      [--changed-files-file PATH] [--print-floor] [--json] [--selftest]
+      [--changed-files-file PATH] [--print-floor] [--effort-for GEAR]
+      [--json] [--selftest]
 
   PACK_PATH        defaults to evidence/pack.yml (relative to --repo-root)
   --repo-root      defaults to the git top-level, else cwd
   --changed-files-file  newline-delimited changed-path list (the output of
-                        scripts/ci/hotzone_changed_files.sh) — enables rule 6
+                        scripts/ci/hotzone_changed_files.sh) — enables rules
+                        6 (floor) and 7 (ceiling)
   --print-floor    given --changed-files-file, print the computed floor int
                     and exit 0 (no pack read) — lets any caller (CI, a human)
                     ask "what floor would this diff impose" without spinning
                     up a second implementation of HOTZONE_PATTERNS
+  --effort-for GEAR  print effort_for_gear(GEAR) (medium/xhigh) and exit 0
+                    (no pack, no repo-root needed) — lets a wrapper look up
+                    "what effort should this gear run at" without importing
+                    this module; exit 3 (usage error) if GEAR isn't 1/2/3
   --json           machine-readable {"exit": N, "violations": [...]} on stdout
   --selftest       run the embedded guilt+innocence corpus and exit 0/1
 
@@ -187,6 +213,134 @@ def compute_floor(changed_files: list[str]) -> int:
             if fnmatch.fnmatchcase(f, pat):
                 return 3
     return 1
+
+
+# ---------------------------------------------------------------------------
+# Gear CEILING (2026-08-21 audit, research/operations/2026-08-21-token-
+# ceremony-ci-system-audit.md §7 lever L6 / §8): the floor above already
+# stops a diff from declaring LESS gear than a hot-zone hit demands, but
+# nothing stopped the opposite — a Gear-1-shaped diff paying for a council,
+# cross-family refuters and `xhigh` thinking it never needed (measured: 65%
+# of declared gears are Gear-3, 70% of Agent dispatches are graders). The
+# ceiling is the mirror rule: "the model may only raise, never lower, the
+# floor" gets a matching "a trivial diff may not silently over-provision
+# Gear-3 machinery either" — with an explicit, reasoned escape hatch
+# (`gear_override`) for the genuine exception, never a hard ban.
+# ---------------------------------------------------------------------------
+DOCS_LEDGER_EXTENSIONS: tuple[str, ...] = (".md", ".json")
+CEILING_SMALL_DIFF_MAX_FILES = 2
+CEILING_SMALL_DIFF_MAX_NET_LINES = 60
+CEILING_HEAVY_GRADER_DISPATCH_MIN = 3
+
+
+def compute_ceiling(
+    changed_paths: list[str], declared_gear: int | None, pack: dict[str, Any]
+) -> tuple[int, list[str]]:
+    """Returns (ceiling, reasons). Mirrors compute_floor()'s lower-bound-only
+    shape but at the opposite end: it names a Gear-1-shaped diff (never a
+    Gear-2 ceiling — like the floor, the "standard PR" middle bucket needs
+    human judgment no diff shape alone can carry) and flags an over-
+    provisioned Gear-3 declaration against it.
+
+    A diff is Gear-1-SHAPED when either:
+      (a) every changed path is docs/ledger/markdown/json-only
+          (DOCS_LEDGER_EXTENSIONS), or
+      (b) it touches at most CEILING_SMALL_DIFF_MAX_FILES files AND the pack
+          declares `net_lines` (the session's own 30s count, per the audit's
+          §8 ship-path spec — this function does not shell out to git to
+          derive it, staying pure like compute_floor) at or under
+          CEILING_SMALL_DIFF_MAX_NET_LINES.
+    net_lines being ABSENT from the pack does not assert shape (b) — an
+    unmeasured diff is not evidence of smallness.
+
+    FLOOR ALWAYS WINS: if changed_paths hits the hot-zone (compute_floor==3),
+    this function returns (3, []) immediately — a hot-zone docs file still
+    floors AND ceilings at 3, silently, never a conflicting verdict.
+
+    On a Gear-1-shaped, non-hot-zone diff, a `declared_gear == 3` pack is
+    only "heavy" (worth flagging) if it also carries a convened `council`
+    (pack["council"] truthy — non-empty list or True) or
+    `grader_dispatches >= CEILING_HEAVY_GRADER_DISPATCH_MIN`. A Gear-3 pack
+    with neither is not over-provisioned by this signal and gets no reason.
+
+    Reason-string contract for the caller (lint()): an entry NOT prefixed
+    "ceiling (overridden)" is a hard violation (guilt — fail); an entry
+    prefixed "ceiling (overridden)" is informational only (the pack supplied
+    a non-empty `gear_override` one-liner) and must NOT be added to
+    `violations` — "the ceiling does not fail, it reports."
+    """
+    pack = pack if isinstance(pack, dict) else {}
+    changed_paths = changed_paths or []
+
+    if not changed_paths:
+        # No diff context at all — nothing to assert a shape against.
+        return 3, []
+
+    if compute_floor(changed_paths) == 3:
+        # Floor wins over ceiling when they conflict (mandate rule, see
+        # module docstring reference above) — a hot-zone hit floors AND
+        # ceilings at 3, silently.
+        return 3, []
+
+    docs_shaped = all(
+        any(f.endswith(ext) for ext in DOCS_LEDGER_EXTENSIONS) for f in changed_paths
+    )
+    net_lines = pack.get("net_lines")
+    net_lines_known = type(net_lines) is int  # exclude bool (True/False is not a count)
+    small_shaped = (
+        len(changed_paths) <= CEILING_SMALL_DIFF_MAX_FILES
+        and net_lines_known
+        and net_lines <= CEILING_SMALL_DIFF_MAX_NET_LINES
+    )
+
+    if not (docs_shaped or small_shaped):
+        return 3, []  # not a Gear-1-shaped diff — no ceiling to assert
+
+    council = bool(pack.get("council"))
+    grader_dispatches = pack.get("grader_dispatches")
+    heavy_graders = (
+        type(grader_dispatches) is int and grader_dispatches >= CEILING_HEAVY_GRADER_DISPATCH_MIN
+    )
+
+    if declared_gear == 3 and (council or heavy_graders):
+        cause = "council" if council else f"{grader_dispatches} grader dispatches"
+        override = pack.get("gear_override")
+        if isinstance(override, str) and override.strip():
+            return 1, [
+                f"ceiling (overridden): Gear 1 shape — declared Gear 3 with {cause}, "
+                f"overridden: {override.strip()}"
+            ]
+        return 1, [
+            "ceiling: Gear 1 shape — declared Gear 3 with "
+            f"{cause}; declare the reason in `gear_override:`"
+        ]
+
+    return 1, []
+
+
+# ---------------------------------------------------------------------------
+# Effort per gear (same audit, lever L0: "reasoning budget tied to the
+# gear" — ~86% of output tokens are thinking, and effort is the primary
+# cost/latency lever on Opus 5, cf. CLAUDE.md §5). `max` is deliberately
+# ABSENT from this mapping: the gate adjudication step is the one place
+# that may reach for it, and only via an explicit `effort_override` a
+# session sets by hand — never this function's default for any gear.
+# ---------------------------------------------------------------------------
+GEAR_EFFORT: dict[int, str] = {1: "medium", 2: "xhigh", 3: "xhigh"}
+
+
+def effort_for_gear(gear: int) -> str:
+    """GUILT (implicit, via ValueError): a gear outside {1,2,3}, or not a
+    genuine int (bool/float coercion — same VALID_GEARS trap check_gear_floor
+    already guards), raises rather than silently guessing an effort level.
+    INNOCENCE: gear 1 -> "medium", gear 2/3 -> "xhigh" (Gear-3's own `max`
+    reservation is the caller's explicit choice, not this function's)."""
+    if type(gear) is not int or gear not in GEAR_EFFORT:
+        raise ValueError(
+            f"effort_for_gear: gear must be exactly one of {tuple(GEAR_EFFORT)} (int), "
+            f"got {gear!r}"
+        )
+    return GEAR_EFFORT[gear]
 
 
 def approx_tokens(raw: bytes) -> int:
@@ -400,6 +554,15 @@ def lint(
     if changed_files is None:
         print("evidence_pack_lint: NOTICE — no --changed-files-file supplied, "
               "gear-floor check (rule 6) skipped for this run", file=sys.stderr)
+    else:
+        # Ceiling (rule 7 — see compute_ceiling() docstring): an "(overridden)"
+        # reason is a REPORT, never a violation — it does not fail the pack.
+        _ceiling, ceiling_reasons = compute_ceiling(changed_files, gear, pack)
+        for reason in ceiling_reasons:
+            if reason.startswith("ceiling (overridden)"):
+                print(f"evidence_pack_lint: NOTICE — {reason}", file=sys.stderr)
+            else:
+                violations.append(reason)
 
     return (1 if violations else 0), violations
 
@@ -443,6 +606,30 @@ def selftest() -> int:
         check("compute_floor: no hit -> 1",
               compute_floor(["docs/notes.md", "research/operations/x.md"]) == 1)
         check("compute_floor: empty list -> 1", compute_floor([]) == 1)
+
+        # ---- unit-level: compute_ceiling / effort_for_gear are pure too ----
+        docs_diff = ["docs/x.md"]
+        _c, r = compute_ceiling(docs_diff, 3, {"council": True})
+        check("compute_ceiling: guilt — gear-3 + council on 1-file md diff",
+              bool(r) and r[0].startswith("ceiling:") and "gear_override" in r[0])
+        _c, r = compute_ceiling(docs_diff, 3, {"council": True, "gear_override": "hotfix, verified live"})
+        check("compute_ceiling: innocence — gear_override reports, does not fail",
+              bool(r) and r[0].startswith("ceiling (overridden)"))
+        _c, r = compute_ceiling(["apps/backend-rag/backend/app/auth/session.py"], 3, {"council": True})
+        check("compute_ceiling: innocence — floor wins, hotzone diff silent", r == [])
+        big_diff = [f"apps/backend-rag/backend/f{i}.py" for i in range(8)]
+        _c, r = compute_ceiling(big_diff, 3, {"council": True})
+        check("compute_ceiling: innocence — real 8-file backend diff not gear-1-shaped", r == [])
+        _c, r = compute_ceiling(docs_diff, 3, {})
+        check("compute_ceiling: innocence — gear-3 with no council/graders is not heavy", r == [])
+        check("effort_for_gear: 1 -> medium", effort_for_gear(1) == "medium")
+        check("effort_for_gear: 2 -> xhigh", effort_for_gear(2) == "xhigh")
+        check("effort_for_gear: 3 -> xhigh", effort_for_gear(3) == "xhigh")
+        try:
+            effort_for_gear(4)
+            check("effort_for_gear: guilt — invalid gear raises", False)
+        except ValueError:
+            check("effort_for_gear: guilt — invalid gear raises", True)
 
         # ---- innocence: a fully-conformant Gear-1 pack passes --------------
         write(root / "evidence" / "brief.yml", {
@@ -580,6 +767,33 @@ def selftest() -> int:
         rc, viol = lint(root / "evidence" / "pack.yml", root, ["docs/readme.md"])
         check("innocence: gear 1 on non-hotzone diff passes", rc == 0 and viol == [])
 
+        # ---- guilt: gear-3 pack + council over a Gear-1-shaped docs diff -------
+        write(root / "evidence" / "brief.yml", {"task_id": "x", "gear": 3, "grader": "y"})
+        write(root / "evidence" / "pack.yml", {
+            "brief_ref": "evidence/brief.yml",
+            "receipts": [good_receipt],
+            "dissent": [{"seat": "codex-sol", "objection": "x", "status": "PLAUSIBLE"}],
+            "pii_scan": "clean",
+            "council": True,
+        })
+        rc, viol = lint(root / "evidence" / "pack.yml", root, ["docs/x.md"])
+        check("guilt: gear-3 + council on a docs-only diff rejected (ceiling)", rc == 1)
+        check("guilt: ceiling message names gear_override",
+              any("gear_override" in v for v in viol))
+
+        # ---- innocence: same pack, but gear_override reports instead of failing
+        write(root / "evidence" / "pack.yml", {
+            "brief_ref": "evidence/brief.yml",
+            "receipts": [good_receipt],
+            "dissent": [{"seat": "codex-sol", "objection": "x", "status": "PLAUSIBLE"}],
+            "pii_scan": "clean",
+            "council": True,
+            "gear_override": "hotfix under active incident, verified live",
+        })
+        rc, viol = lint(root / "evidence" / "pack.yml", root, ["docs/x.md"])
+        check("innocence: gear_override on the same diff passes (ceiling reports, not fails)",
+              rc == 0 and viol == [])
+
         # ---- guilt: empty/missing receipts on a Gear-3 pack --------------------
         write(root / "evidence" / "brief.yml", {"task_id": "x", "gear": 3, "grader": "y"})
         write(root / "evidence" / "pack.yml", {
@@ -687,12 +901,21 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--repo-root", default=None)
     parser.add_argument("--changed-files-file", default=None)
     parser.add_argument("--print-floor", action="store_true")
+    parser.add_argument("--effort-for", type=int, default=None, metavar="GEAR")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--selftest", action="store_true")
     args = parser.parse_args(argv)
 
     if args.selftest:
         return selftest()
+
+    if args.effort_for is not None:
+        try:
+            print(effort_for_gear(args.effort_for))
+        except ValueError as exc:
+            print(f"evidence_pack_lint: {exc}", file=sys.stderr)
+            return 3
+        return 0
 
     repo_root = Path(args.repo_root).resolve() if args.repo_root else repo_root_default()
 

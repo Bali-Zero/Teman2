@@ -28,7 +28,9 @@ from evidence_pack_lint import (  # noqa: E402
     check_pii_scan_clean,
     check_receipts_have_provenance,
     check_size_budget,
+    compute_ceiling,
     compute_floor,
+    effort_for_gear,
     lint,
 )
 
@@ -297,6 +299,146 @@ def test_gear_floor_guilt_float_type_rejected():
     assert "int" in violations[0]
 
 
+# --------------------------------------------------------- compute_ceiling (pure fn)
+
+
+def test_ceiling_guilt_gear3_council_on_docs_diff_rejected():
+    """GUILT: a Gear-3 pack that also convened a `council` over a 1-file
+    markdown diff is over-provisioned — rejected unless `gear_override`
+    explains why."""
+    ceiling, reasons = compute_ceiling(["docs/notes.md"], 3, {"council": True})
+    assert ceiling == 1
+    assert reasons
+    assert reasons[0].startswith("ceiling: Gear 1 shape")
+    assert "gear_override" in reasons[0]
+
+
+def test_ceiling_guilt_gear3_many_grader_dispatches_on_json_diff_rejected():
+    """GUILT: the same over-provisioning signal via >=3 grader dispatches
+    instead of a council — ledger/json-only diff."""
+    ceiling, reasons = compute_ceiling(
+        ["evidence/ledger.json"], 3, {"grader_dispatches": 3}
+    )
+    assert ceiling == 1
+    assert reasons
+    assert "3 grader dispatches" in reasons[0]
+
+
+def test_ceiling_innocence_gear_override_reports_not_fails():
+    """INNOCENCE: the exact guilty shape above, but with a non-empty
+    `gear_override` — the ceiling REPORTS (a distinguishable
+    "ceiling (overridden)" line), it does not produce a violation. The
+    caller (lint()) is responsible for keeping such a line out of
+    `violations` — this test pins the string contract that decision relies
+    on."""
+    ceiling, reasons = compute_ceiling(
+        ["docs/notes.md"], 3, {"council": True, "gear_override": "verified live, one-off"}
+    )
+    assert ceiling == 1
+    assert reasons
+    assert reasons[0].startswith("ceiling (overridden)")
+    assert "verified live" in reasons[0]
+
+
+def test_ceiling_innocence_empty_override_is_not_an_override():
+    """GUILT (edge of the innocence test above): an empty/whitespace-only
+    `gear_override` string does not count as "present and non-empty" — it
+    must still fail like the no-override case."""
+    ceiling, reasons = compute_ceiling(["docs/notes.md"], 3, {"council": True, "gear_override": "   "})
+    assert ceiling == 1
+    assert reasons
+    assert not reasons[0].startswith("ceiling (overridden)")
+
+
+def test_ceiling_innocence_hotzone_diff_floor_stands_silent():
+    """INNOCENCE: the floor always wins — a hot-zone (`apps/.../auth/*`)
+    docs-shaped diff floors AND ceilings at 3, silently, even with a
+    council declared. Never a conflicting verdict."""
+    hotzone = ["apps/backend-rag/backend/app/auth/session.py"]
+    ceiling, reasons = compute_ceiling(hotzone, 3, {"council": True})
+    assert ceiling == 3
+    assert reasons == []
+
+
+def test_ceiling_innocence_real_backend_diff_gear3_passes():
+    """INNOCENCE: an 8-file, non-docs backend diff is not Gear-1-shaped by
+    either predicate (not docs/json-only, more than 2 files) — a Gear-3
+    declaration with a council on it is not flagged at all."""
+    big_diff = [f"apps/backend-rag/backend/services/f{i}.py" for i in range(8)]
+    ceiling, reasons = compute_ceiling(big_diff, 3, {"council": True})
+    assert ceiling == 3
+    assert reasons == []
+
+
+def test_ceiling_innocence_gear3_without_council_or_graders_not_heavy():
+    """INNOCENCE: a Gear-3 pack on a Gear-1-shaped diff with NO council and
+    no (or <3) grader dispatches is not flagged — the ceiling only fires on
+    the heavyweight signals, never on gear==3 alone."""
+    assert compute_ceiling(["docs/notes.md"], 3, {}) == (1, [])
+    assert compute_ceiling(["docs/notes.md"], 3, {"grader_dispatches": 2}) == (1, [])
+
+
+def test_ceiling_innocence_gear1_declared_never_flagged():
+    """INNOCENCE: the ceiling only concerns itself with a Gear-3
+    declaration — a Gear-1-shaped diff correctly declaring gear 1 (even
+    with a council key present, e.g. leftover from a template) is not
+    this rule's problem."""
+    assert compute_ceiling(["docs/notes.md"], 1, {"council": True}) == (1, [])
+
+
+def test_ceiling_innocence_small_diff_below_net_lines_cap_flagged_too():
+    """GUILT: shape predicate (b) — <=2 files, pack-declared net_lines
+    <=60, outside hot zones — triggers the same over-provisioning check as
+    the docs/json predicate (a)."""
+    small_diff = ["apps/backend-rag/backend/services/tiny.py"]
+    ceiling, reasons = compute_ceiling(small_diff, 3, {"council": True, "net_lines": 12})
+    assert ceiling == 1
+    assert reasons
+
+
+def test_ceiling_innocence_unknown_net_lines_does_not_assert_small_shape():
+    """INNOCENCE: predicate (b) requires the pack to actually DECLARE
+    net_lines — a diff with no net_lines key is not assumed small just
+    because it is short on files."""
+    small_diff = ["apps/backend-rag/backend/services/tiny.py"]
+    assert compute_ceiling(small_diff, 3, {"council": True}) == (3, [])
+
+
+def test_ceiling_innocence_no_diff_context_returns_no_assertion():
+    """INNOCENCE: an empty changed-paths list (no diff context) asserts
+    nothing — mirrors compute_floor's None-context skip in lint()."""
+    assert compute_ceiling([], 3, {"council": True}) == (3, [])
+
+
+# --------------------------------------------------------- effort_for_gear (pure fn)
+
+
+def test_effort_for_gear_mapping():
+    """Gear 1 -> medium (the cost/latency lever for routine turns); Gear 2
+    and Gear 3 -> xhigh. `max` is never returned — it is an explicit,
+    opt-in escalation a session makes by hand, never this function's
+    default for any gear."""
+    assert effort_for_gear(1) == "medium"
+    assert effort_for_gear(2) == "xhigh"
+    assert effort_for_gear(3) == "xhigh"
+
+
+def test_effort_for_gear_guilt_invalid_gear_raises():
+    """GUILT: a gear outside {1,2,3} raises rather than guessing."""
+    with pytest.raises(ValueError):
+        effort_for_gear(4)
+    with pytest.raises(ValueError):
+        effort_for_gear(0)
+
+
+def test_effort_for_gear_guilt_bool_type_rejected():
+    """GUILT: same bool-is-an-int coercion trap check_gear_floor already
+    guards against (`True in (1,2,3)` is True in bare Python) — gear must
+    be a genuine int."""
+    with pytest.raises(ValueError):
+        effort_for_gear(True)
+
+
 # --------------------------------------------------------- compute_floor (pure fn)
 
 
@@ -319,6 +461,36 @@ def test_lint_end_to_end_innocent_pack_passes(tmp_repo):
     pack_path = write_pack()
     rc, violations = lint(pack_path, root, None)
     assert rc == 0 and violations == []
+
+
+def test_lint_end_to_end_guilt_ceiling_gear3_council_docs_diff(tmp_repo):
+    """GUILT, wired through lint(): a Gear-3 pack with a council over a
+    docs-only diff fails, naming gear_override in the violation."""
+    root, write_brief, write_pack = tmp_repo
+    write_brief(gear=3)
+    pack_path = write_pack(
+        dissent=[{"seat": "codex-sol", "objection": "x", "status": "PLAUSIBLE"}],
+        council=True,
+    )
+    rc, violations = lint(pack_path, root, ["docs/notes.md"])
+    assert rc == 1
+    assert any("gear_override" in v for v in violations)
+
+
+def test_lint_end_to_end_innocence_ceiling_override_reports_not_fails(tmp_repo):
+    """INNOCENCE, wired through lint(): the exact same guilty shape, but
+    with gear_override set — lint() must NOT add the "(overridden)" reason
+    to violations, so the pack passes clean."""
+    root, write_brief, write_pack = tmp_repo
+    write_brief(gear=3)
+    pack_path = write_pack(
+        dissent=[{"seat": "codex-sol", "objection": "x", "status": "PLAUSIBLE"}],
+        council=True,
+        gear_override="verified live, one-off",
+    )
+    rc, violations = lint(pack_path, root, ["docs/notes.md"])
+    assert rc == 0
+    assert violations == []
 
 
 def test_lint_end_to_end_blind_on_missing_pack(tmp_repo):
@@ -349,3 +521,21 @@ def test_print_floor_cli_matches_compute_floor(tmp_path):
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert int(proc.stdout.strip()) == compute_floor(["fly.toml", "docs/readme.md"]) == 3
+
+
+def test_effort_for_cli_matches_effort_for_gear():
+    """The --effort-for CLI mode agrees with the pure function, and exits
+    with a usage error (3) on an invalid gear rather than printing garbage."""
+    for gear in (1, 2, 3):
+        proc = subprocess.run(
+            [sys.executable, str(SCRIPTS / "evidence_pack_lint.py"), "--effort-for", str(gear)],
+            capture_output=True, text=True, timeout=30, cwd=str(REPO),
+        )
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+        assert proc.stdout.strip() == effort_for_gear(gear)
+
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPTS / "evidence_pack_lint.py"), "--effort-for", "9"],
+        capture_output=True, text=True, timeout=30, cwd=str(REPO),
+    )
+    assert proc.returncode == 3
