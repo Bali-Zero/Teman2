@@ -153,12 +153,13 @@ COPY --from=node22 /usr/local/lib/node_modules /usr/local/lib/node_modules
 # would have rejected node v100 — a range written as a pattern is a form standing in
 # for a quantity, and it goes wrong at exactly the boundary nobody tests.
 #
-# THE INSTALL IS NO LONGER A BARE `npm install -g @anthropic-ai/claude-code`
-# (changed 2026-08-20). Unpinned, it made this production image's build depend on a
-# third party publishing ATOMICALLY — and on 2026-08-19T23:57:54Z it did not: the
-# umbrella published 2.1.237 while `@anthropic-ai/claude-code-linux-x64@2.1.237`
-# did not exist (probed separately: `npm view` → E404), with nothing in this
-# repository changed.
+# THE PIN IS DELIBERATE (#4390, 2026-08-20) AND IT NOW LIVES IN ONE PLACE.
+# `@anthropic-ai/claude-code@2.1.237` (published 2026-08-19T23:57:54Z) fails
+# `claude --version` IN-IMAGE with "Error: claude native binary not installed.":
+# its optionalDependencies demand `@anthropic-ai/claude-code-linux-x64@2.1.237`,
+# which upstream never published (`npm view` → E404, that package still at 2.1.236).
+# 2.1.236 is the last verified-good release. Bump deliberately after verifying the
+# install flow in a real build — never back to floating latest.
 #
 # READ THE FAILURE IN ORDER, because it is not where you would look. From the
 # build log of job 96279824564:
@@ -181,10 +182,12 @@ COPY --from=node22 /usr/local/lib/node_modules /usr/local/lib/node_modules
 # input to a production image build that moves on its own. That cure deleted the APT
 # dependency and left this npm one standing.
 #
-# The version is now resolved against the platform tarball this image actually
-# needs; the script explains the choice and fails closed naming upstream. On an
-# ordinary day it installs `latest`, exactly as before. Corpus (fake registry, both
-# skew directions): scripts/tests/test_install_claude_code_version_skew.sh
+# The version string is NOT repeated here. It lives once in
+# scripts/install-claude-code.sh, which the AI-review Action and the node
+# provisioner also call; the installer verifies the pin has a published build for
+# THIS platform before installing, asserts the CLI actually runs, and reports when
+# the pin has fallen behind — a pin nothing re-measures is a countdown.
+# Corpus (fake registry): scripts/tests/test_install_claude_code_version_skew.sh
 COPY scripts/install-claude-code.sh /usr/local/bin/install-claude-code.sh
 
 RUN ln -sf /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \

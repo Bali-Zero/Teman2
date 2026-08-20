@@ -1,63 +1,72 @@
 #!/bin/sh
-# Install the `claude` CLI into the production image at a version that CAN
-# actually install on this image's platform.
+# Install the `claude` CLI at a DELIBERATE, pinned version — and prove it works.
 #
-# WHY THIS EXISTS (measured 2026-08-20, not reasoned).
+# ── WHY A PIN, AND WHY THIS FILE OWNS IT ────────────────────────────────────
 #
-# `npm install -g @anthropic-ai/claude-code` — unpinned, which is what the
-# Dockerfile did until this file existed — makes a production image build
-# depend on a third party publishing ATOMICALLY. It does not.
+# On 2026-08-19T23:57:54Z upstream published `@anthropic-ai/claude-code@2.1.237`
+# whose `optionalDependencies` demand `@anthropic-ai/claude-code-linux-x64@2.1.237`
+# — a version that was never published (`npm view` → E404; that platform package
+# was still at 2.1.236 from 19:23:24Z, and the musl sibling likewise). Every
+# unpinned `npm install -g` on linux-x64 then produced a CLI that could not run.
 #
-# On 2026-08-19T23:57:54Z the umbrella package published 2.1.237. Its
-# `optionalDependencies` demand `@anthropic-ai/claude-code-linux-x64@2.1.237`,
-# and that version DID NOT EXIST — `npm view` answered
+# READ THE FAILURE IN ORDER, because it is not where you would look. From the
+# build log of job 96279824564:
 #
-#     npm error code E404
-#     npm error 404 No match found for version 2.1.237
+#   1.341  added 1 package in 852ms     <- npm exits 0. NO error code at all.
+#   1.606  /usr/local/bin/claude        <- `which claude` SUCCEEDS.
+#   1.607  Error: claude native binary not installed.
 #
-# while the platform package's newest published build was still 2.1.236
-# (19:23:24Z). The umbrella resolved, the platform-native binary did not, the
-# postinstall bailed with "the platform-native optional dependency was not
-# downloaded", and the Dockerfile's `which claude` gate failed the build. The
-# repository had not changed by one line. `Snyk Docker Security` went red on
-# PR #4387 at 01:08:56Z; the SAME job had passed minutes earlier on PR #4384,
-# whose image built at ~00:55Z.
+# npm reported success and the JS launcher landed on PATH. Only `claude --version`
+# — the CLI's own runtime self-check — knew. Grepping that log for `npm error`
+# finds nothing, which is exactly how this reads as someone else's problem.
 #
-# THE TRAP THAT KEEPS THIS INVISIBLE: `darwin-arm64@2.1.237` and
-# `linux-arm64@2.1.237` were published normally. Only `linux-x64` and its musl
-# sibling were missing — so `docker build` on an M-series Mac SUCCEEDS while CI
-# and Fly fail, and "works for me" is wrong for a structural reason rather than
-# by luck. The development machine was incapable of reproducing the red.
+# The trap that kept it invisible: `linux-arm64@2.1.237` and `darwin-arm64@2.1.237`
+# published normally. Only linux-x64 (and musl) were missing — so `docker build` on
+# an M-series Mac SUCCEEDS while CI and Fly fail, and the machine most likely to be
+# used for triage is structurally unable to reproduce the red.
 #
-# WHY NOT A HARD PIN: a pinned number is a measurement of the world frozen into
-# a constant that nobody re-takes; it stops receiving upstream fixes and rots
-# silently. So the version is PROBED at build time against the artifact this
-# image actually needs, and the normal-day behaviour is unchanged: if the
-# `latest` dist-tag is installable here, that is exactly what gets installed.
-# Only when upstream is mid-publish does this degrade — to the newest version
-# both packages agree on — and it SAYS so in the build log.
+# PR #4390 answered this by pinning to 2.1.236, deliberately, at two call sites,
+# with the rule "bump after verifying the install flow, never back to floating
+# latest". That decision stands and this file implements it rather than replacing
+# it — an earlier draft of this script auto-resolved to "the newest version that
+# CAN install", which is a weaker promise: a version that installs is not a version
+# that WORKS, and adopting an unverified release automatically is how you inherit
+# the next bad one without anyone deciding to.
 #
-# WHY NOT A RETRY: the missing tarball does not exist. Retrying cannot create
-# it. A retry is the remedy that looks right when the cause is "slow"; the
-# cause here is "absent".
+# What this file adds to a bare `npm install -g <pkg>@<pin>`:
 #
-# This is the same shape as the NodeSource 403 recorded in the Dockerfile
-# comment above the caller: a third-party input to a production image build
-# that moves on its own, invisible to `git diff`. That cure removed the APT
-# dependency and left this npm one, of the same class, in place.
+#   1. ONE pin, not three. It lived in the Dockerfile and in ai-pr-review.yml, and
+#      scripts/ruslana-node/install.sh was still on floating latest — a class audit
+#      that named three call sites and cured two.
+#   2. The pin is VERIFIED INSTALLABLE for this image's own platform before the
+#      install, so an upstream partial publish fails with a sentence naming
+#      upstream instead of a mystery three steps later.
+#   3. The CLI is RUN, not merely located. `command -v claude` succeeded during the
+#      whole incident. Only `claude --version` disagreed, and ai-pr-review.yml never
+#      ran it at all.
+#   4. The pin does not rot silently. Every run reports whether a newer installable
+#      version exists — a NOTICE, never a failure. A comment that says "2.1.236 is
+#      last verified-good, bump deliberately" is a countdown unless something
+#      re-measures it; this is that something.
+#
+# Corpus (fake registry, both skew directions): scripts/tests/test_install_claude_code_version_skew.sh
 
 set -eu
 
 PKG="@anthropic-ai/claude-code"
 
-# ---------------------------------------------------------------------------
-# Which platform build does THIS image need?
-#
-# Derived from the interpreter that will run the CLI, never hardcoded: an image
-# built for a different architecture must ask about its own tarball, not about
-# amd64's. `ldd` decides glibc-vs-musl the same way — by asking, not assuming
-# the base image is still the Debian one it is today.
-# ---------------------------------------------------------------------------
+# ── THE PIN ─────────────────────────────────────────────────────────────────
+# Single source of truth for all three call sites. Bump DELIBERATELY, in a PR,
+# after verifying the install flow in a real build. Never set to "latest".
+# 2.1.236 (2026-08-18T18:45Z) is the last verified-good release; 2.1.237 is the
+# one that shipped without a linux-x64 build.
+PINNED_VERSION="${CLAUDE_CODE_PIN:-2.1.236}"
+
+# ── Which platform build does THIS machine need? ────────────────────────────
+# Derived from the interpreter that will run the CLI, never hardcoded: this same
+# script runs in a linux/amd64 image, on a linux-x64 CI runner, and on an
+# arm64 Mac. `ldd` decides glibc-vs-musl by asking, not by assuming the base
+# image is still the Debian one it is today.
 NODE_PLATFORM="$(node -p 'process.platform')"
 NODE_ARCH="$(node -p 'process.arch')"
 
@@ -68,104 +77,77 @@ fi
 
 PLATFORM_PKG="${PKG}-${NODE_PLATFORM}-${NODE_ARCH}${LIBC_SUFFIX}"
 
-echo "claude-code: this image needs ${PLATFORM_PKG}"
+echo "claude-code: pin ${PINNED_VERSION}; this machine needs ${PLATFORM_PKG}"
 
-# ---------------------------------------------------------------------------
-# Read both version lists.
-#
-# `npm view <pkg> versions --json` prints a JSON array (or a bare string when a
-# package has exactly one version). Quoted semver tokens are extracted rather
-# than the JSON parsed, so this needs no jq in the image.
+# ── Read the platform package's published versions ──────────────────────────
+# `npm view <pkg> versions --json` prints a JSON array (or a bare string for a
+# single-version package). Quoted semver tokens are extracted rather than the
+# JSON parsed, so this needs no jq in the image.
 #
 # Every capture is `|| true`-guarded and then checked for emptiness EXPLICITLY:
-# under `set -e` a bare pipeline whose last stage finds nothing would abort the
-# script here, and every diagnostic below it would be unreachable code on the
-# one path it exists for.
-# ---------------------------------------------------------------------------
+# under `set -e` a bare pipeline whose last stage matches nothing would abort the
+# script here, and every diagnostic below it would be unreachable code on the one
+# path it exists for.
 list_versions() {
     npm view "$1" versions --json 2>/dev/null | grep -o '"[0-9][^"]*"' | tr -d '"' || true
 }
 
 PLATFORM_VERSIONS="$(list_versions "${PLATFORM_PKG}")"
-if [ -z "${PLATFORM_VERSIONS}" ]; then
-    echo "FATAL: ${PLATFORM_PKG} has no published versions on the npm registry." >&2
-    echo "       Upstream ships no build for ${NODE_PLATFORM}/${NODE_ARCH}${LIBC_SUFFIX}." >&2
-    echo "       This is an UPSTREAM publishing gap, not a defect in this repository." >&2
-    exit 1
-fi
 
-UMBRELLA_VERSIONS="$(list_versions "${PKG}")"
-if [ -z "${UMBRELLA_VERSIONS}" ]; then
-    echo "FATAL: ${PKG} has no published versions on the npm registry." >&2
-    echo "       The registry is unreachable or the package moved." >&2
-    echo "       This is an UPSTREAM condition, not a defect in this repository." >&2
-    exit 1
-fi
-
-# ---------------------------------------------------------------------------
-# Prefer `latest` — normal-day behaviour is byte-for-byte what the unpinned
-# install did. Fall back only when upstream is mid-publish.
-# ---------------------------------------------------------------------------
-LATEST="$(npm view "${PKG}" version 2>/dev/null || true)"
-
-CC_VERSION=""
-if [ -n "${LATEST}" ] && printf '%s\n' "${PLATFORM_VERSIONS}" | grep -Fxq "${LATEST}"; then
-    CC_VERSION="${LATEST}"
-    echo "claude-code: latest (${LATEST}) has a published ${PLATFORM_PKG} build"
-else
-    # The newest version BOTH packages publish. Ordered by the umbrella's own
-    # list so the choice follows upstream's ordering rather than a string sort,
-    # which gets 2.1.9-vs-2.1.10 wrong.
-    PLATFORM_LIST_FILE="$(mktemp)"
-    printf '%s\n' "${PLATFORM_VERSIONS}" > "${PLATFORM_LIST_FILE}"
-    CC_VERSION="$(printf '%s\n' "${UMBRELLA_VERSIONS}" | grep -Fxf "${PLATFORM_LIST_FILE}" | tail -n 1 || true)"
-    rm -f "${PLATFORM_LIST_FILE}"
-
-    if [ -z "${CC_VERSION}" ]; then
-        echo "FATAL: no version of ${PKG} has a matching ${PLATFORM_PKG} build." >&2
-        echo "       The two packages share no version at all." >&2
-        echo "       This is an UPSTREAM publishing gap, not a defect in this repository." >&2
-        exit 1
+if ! printf '%s\n' "${PLATFORM_VERSIONS}" | grep -Fxq "${PINNED_VERSION}"; then
+    echo "FATAL: cannot confirm a published ${PLATFORM_PKG}@${PINNED_VERSION}." >&2
+    if [ -z "${PLATFORM_VERSIONS}" ]; then
+        echo "       That package reports NO versions at all — either upstream ships no" >&2
+        echo "       build for ${NODE_PLATFORM}/${NODE_ARCH}${LIBC_SUFFIX}, or the registry is unreachable." >&2
+    else
+        echo "       It publishes other versions but not this one (newest: $(printf '%s\n' "${PLATFORM_VERSIONS}" | tail -n 1))." >&2
     fi
-
-    echo "claude-code: UPSTREAM SKEW — latest is '${LATEST:-<unreadable>}' but ${PLATFORM_PKG}" >&2
-    echo "claude-code: has no such build; falling back to ${CC_VERSION}, the newest both publish." >&2
+    echo "       Installing anyway is exactly the 2026-08-20 failure: npm would exit 0" >&2
+    echo "       and the CLI would not run. Fix the pin, or wait for upstream." >&2
+    exit 1
 fi
 
-echo "claude-code: installing ${PKG}@${CC_VERSION}"
-npm install -g "${PKG}@${CC_VERSION}"
+# ── Install the pin ─────────────────────────────────────────────────────────
+echo "claude-code: installing ${PKG}@${PINNED_VERSION}"
+npm install -g "${PKG}@${PINNED_VERSION}"
 
-# The install is not the outcome, and NEITHER IS A FILE ON PATH.
-#
-# An earlier draft of this block checked only `command -v claude` and then
-# printed `claude --version 2>/dev/null || echo '<version unreadable>'`. That
-# would have passed the exact failure this script exists for. Read the build log
-# of the incident (job 96279824564) in order:
-#
-#     1.341  added 1 package in 852ms          <- npm exits 0. No error code.
-#     1.606  /usr/local/bin/claude             <- `which claude` SUCCEEDS.
-#     1.607  Error: claude native binary not installed.
-#
-# npm reports success; the JS launcher lands on PATH; only the CLI's own
-# runtime self-check knows the native binary behind it is missing. A guard that
-# stops at "is there a file called claude" is blind to the whole disease, and
-# `2>/dev/null || echo` would have swallowed the one line that tells the truth.
-#
-# So `claude --version` is an ASSERTION here, not a decoration — and it matters
-# beyond this file: the Dockerfile ends its RUN chain with `&& claude --version`
-# and would have caught it anyway, but `.github/workflows/ai-pr-review.yml` and
-# `scripts/ruslana-node/install.sh` call this script with nothing after it. A
-# check that lives only in one of three callers is not a check.
+# ── Prove it RUNS. A file named `claude` is not evidence. ───────────────────
+# `command -v claude` succeeded throughout the incident this script exists for;
+# only running it disagreed. The Dockerfile ends its RUN chain with
+# `&& claude --version` and would have caught it there, but ai-pr-review.yml and
+# scripts/ruslana-node/install.sh call this script with nothing after it — a check
+# that lives in one of three callers is not a check.
 command -v claude >/dev/null 2>&1 || {
-    echo "FATAL: ${PKG}@${CC_VERSION} installed but no 'claude' landed on PATH." >&2
+    echo "FATAL: ${PKG}@${PINNED_VERSION} installed but no 'claude' landed on PATH." >&2
     exit 1
 }
 
 CC_REPORTED_VERSION="$(claude --version 2>&1)" || {
-    echo "FATAL: ${PKG}@${CC_VERSION} installed and 'claude' is on PATH, but it does not run:" >&2
+    echo "FATAL: ${PKG}@${PINNED_VERSION} installed and 'claude' is on PATH, but it does not run:" >&2
     echo "${CC_REPORTED_VERSION}" >&2
     echo "       npm exiting 0 is not proof the CLI works — the platform-native binary" >&2
     echo "       behind the launcher can be missing while every earlier step succeeds." >&2
     exit 1
 }
 echo "claude-code: installed ${CC_REPORTED_VERSION}"
+
+# ── What re-measures the pin ────────────────────────────────────────────────
+# A NOTICE, never a failure: a pin that nobody revisits stops receiving upstream
+# fixes, and the comment declaring it "last verified-good" ages into a false
+# statement with nothing to contradict it. This prints, in every build log, how
+# far behind the pin actually is. It must never break a build, so a registry it
+# cannot read simply says so.
+UMBRELLA_VERSIONS="$(list_versions "${PKG}")"
+if [ -n "${UMBRELLA_VERSIONS}" ]; then
+    _common_file="$(mktemp)"
+    printf '%s\n' "${PLATFORM_VERSIONS}" > "${_common_file}"
+    NEWEST_INSTALLABLE="$(printf '%s\n' "${UMBRELLA_VERSIONS}" | grep -Fxf "${_common_file}" | tail -n 1 || true)"
+    rm -f "${_common_file}"
+    if [ -n "${NEWEST_INSTALLABLE}" ] && [ "${NEWEST_INSTALLABLE}" != "${PINNED_VERSION}" ]; then
+        echo "claude-code: NOTICE — pin is ${PINNED_VERSION}; ${NEWEST_INSTALLABLE} is the newest version"
+        echo "claude-code: both ${PKG} and ${PLATFORM_PKG} publish. Bump deliberately after"
+        echo "claude-code: verifying the install flow — this notice is not a failure."
+    fi
+else
+    echo "claude-code: NOTICE — could not read ${PKG} versions; pin staleness not measured this run."
+fi

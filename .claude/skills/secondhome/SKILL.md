@@ -204,8 +204,11 @@ ceremony + adversarial review. Propose it; never hand-edit a signed pack.
   from the console);
   **F4b** then seed `e33_guarantee_scan_enabled` and prove it by a real alert row
   on a seeded case, not by a green run;
-  **F4c** `/it/` + `/id/` landings (404 today) and the `/visa/second-home-e33`
-  wrong-page URL.
+  **F4c** ✅ **CORRECTED 2026-08-20**: `/it/`+`/id/` PATH landings were never
+  the mechanism — the landing is fully localized (66 keys EN/IT/ID) behind an
+  on-page language switcher since `f2b325b79` (2026-07-24). Residual: the
+  `/visa/second-home-e33` wrong-page URL (301, fixed in a sibling PR) and
+  SEO-grade localized rendering (SSR/hreflang) — a D4 decision for Zero.
   Then: harvest QA corrections rounds 3–5 to prod Qdrant
   (review-gated — wrong E33F/KITAP rows are LIVE until then); send addenda **007**
   (Imigrasi) and **008** (banks), both in `~/Downloads/` — operator[physical]:

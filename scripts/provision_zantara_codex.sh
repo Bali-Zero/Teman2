@@ -40,9 +40,10 @@
 #   - `fly secrets import` of the canary record on nuzantara-rag.
 #
 # Interpreter note (declared): the venv is built from whatever `python3`
-# resolves to for root at run time (Pro measured 3.11.15, 2026-08-19). The
-# daemon needs only stdlib + httpx; pin the interpreter here if that ever
-# stops being true.
+# resolves to for root at run time (Pro measured 3.11.15 on 2026-08-19; the
+# live 2026-08-20 provisioning run built on 3.14.6 — the resolution moves
+# between runs). The daemon needs only stdlib + httpx; pin the interpreter
+# here if that ever stops being true.
 
 set -euo pipefail
 
@@ -84,6 +85,11 @@ else
     # The value protects nothing — the shell is /usr/bin/false, login is
     # impossible, and it is never used again — so its brief argv exposure
     # is noise, not a secret (the argv ban guards secrets).
+    # Measured on the live 2026-08-20 Pro run (macOS 27): sysadminctl printed
+    # its "No clear text password" warning ANYWAY, did not hang, and created
+    # the account with NO AuthenticationAuthority at all — a safer outcome
+    # than designed (no hash = nothing to authenticate against). The flag
+    # stays for the older macOS versions the hang was reported on.
     sysadminctl -addUser "${BROKER_USER}" \
         -fullName "Zantara Codex Broker" \
         -home "${BROKER_HOME}" \
