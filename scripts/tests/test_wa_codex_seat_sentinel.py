@@ -212,7 +212,7 @@ def test_innocence_run_exits_0_when_both_sources_are_readable_and_healthy(
     `_read_gauge` cablato a restituire sempre None farebbe passare il test
     di CANNOT-VERIFY per la ragione sbagliata."""
     monkeypatch.setattr(wa, "_read_probe_status", lambda: (_probe(), 10.0))
-    monkeypatch.setattr(wa, "_read_gauge", lambda: _gauge())
+    monkeypatch.setattr(wa, "_read_gauge", _gauge)
     sent: list[str] = []
     monkeypatch.setattr(
         wa,
@@ -260,7 +260,7 @@ def test_guilt_failed_red_delivery_exits_nonzero_so_the_receipt_alarm_fires(
     canale rimasto e la receipt-alarm del cron-runner, che scatta SOLO su
     exit non-zero: quindi non-zero deve essere."""
     monkeypatch.setattr(wa, "_read_probe_status", lambda: (_probe("auth_death", 1, 1), 10.0))
-    monkeypatch.setattr(wa, "_read_gauge", lambda: _gauge())
+    monkeypatch.setattr(wa, "_read_gauge", _gauge)
     monkeypatch.setattr(
         wa,
         "send_to_gateway",
@@ -282,7 +282,7 @@ def test_innocence_failed_warn_delivery_still_exits_0(
     i WARN trasforma ogni outage del tier digest in un page, e niente
     diventa rosso."""
     monkeypatch.setattr(wa, "_read_probe_status", lambda: (_probe("other_failure", 0, 1), 10.0))
-    monkeypatch.setattr(wa, "_read_gauge", lambda: _gauge())
+    monkeypatch.setattr(wa, "_read_gauge", _gauge)
     monkeypatch.setattr(
         wa,
         "send_to_gateway",
@@ -302,7 +302,7 @@ def test_run_exits_0_even_with_red_verdicts_because_the_verdict_travels_by_alert
     verdetto viaggia via Telegram, non via exit code — stessa convenzione di
     wa_session_liveness.py. Il 2 resta riservato al 'non ho potuto guardare'."""
     monkeypatch.setattr(wa, "_read_probe_status", lambda: (None, None))
-    monkeypatch.setattr(wa, "_read_gauge", lambda: _gauge())
+    monkeypatch.setattr(wa, "_read_gauge", _gauge)
     sent: list[str] = []
     monkeypatch.setattr(
         wa,

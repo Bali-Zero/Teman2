@@ -288,9 +288,12 @@ def probe(env: Mapping[str, str] | None = None) -> ProbeStatus:
 
 def write_status_atomic(status: ProbeStatus, path: Path) -> None:
     """tmp+rename in the SAME directory (atomic on one filesystem) — Piece B
-    never observes a half-written file. Mode 0644: Piece B runs as a
-    DIFFERENT user (nuzantara) and must be able to read this file even
-    though it lives under a directory this probe (zantara-codex) owns."""
+    never observes a half-written file. Mode 0640, group staff: Piece B runs
+    as a DIFFERENT user (nuzantara, a staff member — measured on Pro:
+    gid=20(staff)) and reads via the group bit; "others" get nothing. The
+    payload is enum-only by design, but family-#4 hygiene says grant the one
+    reader, not the world (this probe's process group is staff, so the tmp
+    file inherits it)."""
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_name = tempfile.mkstemp(
         dir=str(path.parent), prefix=".seat-status-", suffix=".tmp"
@@ -298,7 +301,7 @@ def write_status_atomic(status: ProbeStatus, path: Path) -> None:
     try:
         with os.fdopen(fd, "w") as handle:
             handle.write(status.to_json())
-        os.chmod(tmp_name, 0o644)
+        os.chmod(tmp_name, 0o640)
         os.replace(tmp_name, str(path))
     except BaseException:
         with contextlib.suppress(OSError):

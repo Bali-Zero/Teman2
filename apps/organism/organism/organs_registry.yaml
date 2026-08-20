@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: c16640746ed5899fa4a55fcf3789e4bde45417f3a5c4ba0285066989ecb5f7c5
+checksum: 1a4406c5474645e5b26eff55b9e3e1132547410c3273580f64b7a9872d4a90b1
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2043,12 +2043,13 @@ organs:
     section 4.4). One-shot LaunchDAEMON (StartInterval 6h + RunAtLoad, UserName demotion
     to zantara-codex): codex login status + 1-token synthetic exec, classified with
     the daemon''s _AUTH_DEATH_RE, enum-only verdict written to /usr/local/var/wa-codex-broker/seat-status.json
-    (0644). Liveness ground truth is that STATUS FILE: scripts/wa_codex_seat_sentinel.py
-    (Piece B, cron-runner as nuzantara) pages probe_silent when the file is missing
-    or older than 2x the probe interval - hence expected_hb_seconds 0 here, like the
-    broker: the sidecar is written only at start and on refusal exits, and lives in
-    the zantara-codex home, unreadable to other users by design. Kill switch WA_CODEX_SEAT_PROBE_ENABLED=false
-    in the shared env file (clean exit; the probe never reads WA_BROKER_KEY).'
+    (0640 group staff - nuzantara reads via the group bit). Liveness ground truth
+    is that STATUS FILE: scripts/wa_codex_seat_sentinel.py (Piece B, cron-runner as
+    nuzantara) pages probe_silent when the file is missing or older than 2x the probe
+    interval - hence expected_hb_seconds 0 here, like the broker: the sidecar is written
+    only at start and on refusal exits, and lives in the zantara-codex home, unreadable
+    to other users by design. Kill switch WA_CODEX_SEAT_PROBE_ENABLED=false in the
+    shared env file (clean exit; the probe never reads WA_BROKER_KEY).'
   cicatrix_refs: []
 - id: pro.wr2_daily_carousel
   runtime: pro_launchd
