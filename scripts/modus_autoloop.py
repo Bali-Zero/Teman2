@@ -22,8 +22,10 @@ Hard invariants (do not relax without a new spec):
     intended launch, spawns nothing. Only an explicit "false" builds (and
     logs) the spawn argv via _spawn_session — which itself never execs;
     real process spawning is a separate, deliberately-not-built step.
-  - Never-cascade final gate (HARD, spec §3): a quota-dead Fable window at
-    the final gate must route to defer_task(), never to a weaker model.
+  - Never-cascade final gate (HARD, spec §3): a quota-dead Opus 5 window at
+    the final gate must route to defer_task(), never to a weaker model
+    (RULED 2026-08-20: the final gate is Opus 5 max effort, not Fable — see
+    CLAUDE.md §5; the never-cascade invariant is unchanged).
   - Fail-open: any read/import error is logged and the process exits 0 —
     this must never crash the launchd job (scar #2 esiste≠armato).
 """
@@ -233,9 +235,9 @@ def _spawn_session(task: dict[str, Any]) -> list[str]:
         "--print",
         "--dangerously-skip-permissions",  # headless unattended run inside its own worktree only
         f"Invoke skill modus. Mandate: {mandate}. Task job={job}. "
-        f"Worktree: {worktree}. Final gate is Fable and must never cascade to a "
-        "weaker model; if the Fable window is quota-dead at the final gate, "
-        "leave the task deferred instead of degrading.",
+        f"Worktree: {worktree}. Final gate is Opus 5 max effort and must never "
+        "cascade to a weaker model; if the Opus 5 window is quota-dead at the "
+        "final gate, leave the task deferred instead of degrading.",
     ]
     logger.info("would launch: %s in worktree %s", job, worktree)
     return argv
@@ -244,9 +246,10 @@ def _spawn_session(task: dict[str, Any]) -> list[str]:
 def defer_task(job: dict[str, Any] | str) -> None:
     """Record a task as 'deferred' (never 'resolved') when the final gate is quota-dead.
 
-    Implements the never-cascade invariant (spec §3.1/§3): a dead Fable
-    window at the final gate must never be routed to a weaker model. The
-    task stays in the queue as deferred so it resurfaces next run instead
+    Implements the never-cascade invariant (spec §3.1/§3): a dead Opus 5
+    window at the final gate must never be routed to a weaker model
+    (RULED 2026-08-20: the final gate is Opus 5, not Fable — CLAUDE.md §5).
+    The task stays in the queue as deferred so it resurfaces next run instead
     of being silently dropped or falsely marked resolved.
     """
     from sentinel_lib import escalations
@@ -258,7 +261,7 @@ def defer_task(job: dict[str, Any] | str) -> None:
             "status": "deferred",
             "reason": "final_gate_quota_dead",
             "note": (
-                "Fable final-gate window was quota-dead at execution time. "
+                "Opus 5 final-gate window was quota-dead at execution time. "
                 "Never-cascade invariant: routed to deferred, NOT downgraded "
                 "to a weaker model. Will resurface for a future run."
             ),

@@ -35,7 +35,7 @@ while true; do
     log "pulled $new new/changed drafts (total $n) — audit tail: $audit"
     if (cd "$WT" && git add "$DRAFTS_REL" && git commit \
         -m "chore(kbli): checkpoint drafts ($n) — Terra regen reconcile" \
-        -m "Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>") >>"$LOG" 2>&1; then
+        -m "Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>") >>"$LOG" 2>&1; then
       log "committed checkpoint ($n drafts)"
     else
       log "COMMIT FAILED (hooks?) — drafts stay staged-dirty, retry next tick"

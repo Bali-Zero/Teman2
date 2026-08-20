@@ -1,11 +1,11 @@
 {
   "_version": "1.4",
-  "_updated": "2026-08-19b (accounts estate: +A4 antozero1987 +A5 sianoantonello, both Max 20x — Zero's correction, supersedes the 2026-08-10 'no A4 exists' resolution; A5 verified live as Mini's ~/.claude login). Earlier same day: final-gate gear split, ruling Zero: Fable 5 reviews the Gear-3/large-feature class only; Gear 1-2 small interventions close on Opus 5; selector = the CI-recomputed gear floor. Earlier 2026-08-14: console ground truth folded in: TP1 = Pro Plan, active 2026-08-08->2026-09-09, auto-renewal ENABLED (flipped by Zero same evening), 7-day rolling quota 56.31% used/within-plan; 14-model roster console-verified, MiniMax M2.5 and kimi-k2.x marked PHANTOM (not in this plan at all, PROBE-4 moot); Anthropic-protocol door + unexploited capabilities registered. Previous same-day: PROBE-1-residual closed with 7-day TP1 production burn-rate data (qwen3.8-max/qwen3.7-plus/deepseek-v4-flash-0731 PROBATION->ARMED). research/operations/2026-08-14-probe1-tp1-burn-rate.md. Earlier: 2026-08-10 panel-amended fleet-order spec: emails, GLM dual-door, DeepSeek re-admission, quorum semantics)",
+  "_updated": "2026-08-20 (Zero ruling, Legge 5, verbatim: 'Togliere Fable 5 dal workflow, lo uso solo io quando voglio.' — Fable 5 is out of every automated/doctrinal role in this file: final on-disk gate, Gear-3 harness verdict gate, WR2 content gate all now route to Opus 5 max effort; the 2026-08-09 and 2026-08-19 rulings below are superseded, kept for provenance. Fable stays a valid model choice ONLY for a session Zero opens manually. See CLAUDE.md §5, research/operations/2026-08-21-token-ceremony-ci-system-audit.md). Earlier — 2026-08-19b (accounts estate: +A4 antozero1987 +A5 sianoantonello, both Max 20x — Zero's correction, supersedes the 2026-08-10 'no A4 exists' resolution; A5 verified live as Mini's ~/.claude login). Earlier same day: final-gate gear split, ruling Zero: Fable 5 reviews the Gear-3/large-feature class only; Gear 1-2 small interventions close on Opus 5; selector = the CI-recomputed gear floor. Earlier 2026-08-14: console ground truth folded in: TP1 = Pro Plan, active 2026-08-08->2026-09-09, auto-renewal ENABLED (flipped by Zero same evening), 7-day rolling quota 56.31% used/within-plan; 14-model roster console-verified, MiniMax M2.5 and kimi-k2.x marked PHANTOM (not in this plan at all, PROBE-4 moot); Anthropic-protocol door + unexploited capabilities registered. Previous same-day: PROBE-1-residual closed with 7-day TP1 production burn-rate data (qwen3.8-max/qwen3.7-plus/deepseek-v4-flash-0731 PROBATION->ARMED). research/operations/2026-08-14-probe1-tp1-burn-rate.md. Earlier: 2026-08-10 panel-amended fleet-order spec: emails, GLM dual-door, DeepSeek re-admission, quorum semantics)",
   "_doc": "SSOT for the CLOUD fleet: orchestrators, accounts, role fallback chains. Local Ollama assignments stay in MODEL_TOPOLOGY.json (unchanged). Rationale: research/operations/2026-08-09-quattro-gruppi-e-continuita.md. Law: AGENTS.md §17 + CLAUDE.md.",
   "_invariants": [
-    "Gear-3 harness gate (ruling Zero 2026-08-09): Fable 5 first, rotating across ALL Anthropic accounts; only when NO account can run Fable, fall back to Opus 5 effort=max with gate_degraded:'fable->opus' recorded in the verdict check and Evidence Pack. Never pay per-token to unblock.",
-    "Final-gate gear split (ruling Zero 2026-08-19): Fable 5 (max) is the final reviewer/gate for the Gear-3/large-feature class ONLY; Gear 1-2 small interventions close on Opus 5. Selector = the CI-recomputed deterministic gear floor, never a conductor choice. Fable is never spent on small diffs; never pay per-token either way. WR2 content gate untouched (unconditionally Fable).",
-    "WR2 on-disk content gate: UNCHANGED and out of this file's scope — unconditionally Fable, no fallback, window dead => SUSPEND.",
+    "Final on-disk gate, ALL gears (ruling Zero 2026-08-20, supersedes both rulings below): Opus 5, max effort, rotating across ALL Anthropic accounts (AZ->A2->A3->A1). Never cascades to a weaker model; all accounts dead => task SUSPENDS/QUEUES. Fable 5 is out of the workflow — manual-only via Zero's own /model, never auto-routed, never pay per-token.",
+    "SUPERSEDED 2026-08-09 ruling (kept for provenance): Gear-3 harness gate was Fable 5 first, rotating across ALL Anthropic accounts; only when NO account could run Fable, fall back to Opus 5 effort=max with gate_degraded:'fable->opus' recorded in the verdict check and Evidence Pack.",
+    "SUPERSEDED 2026-08-19 ruling (kept for provenance): final-gate gear split had Fable 5 (max) as the final reviewer/gate for the Gear-3/large-feature class ONLY, with Gear 1-2 closing on Opus 5; WR2 content gate then stayed unconditionally Fable. RULED 2026-08-20: both tiers and the WR2 gate now close on Opus 5, max effort — no fallback, window dead => SUSPEND.",
     "PII lanes = local models only (MODEL_TOPOLOGY roles). No cloud fallback ever: fail-closed, queue.",
     "Client-facing outputs (quotes, comms) = Anthropic interactive session only.",
     "No external seat ever merges or deploys. Ship is mechanical: PR -> required checks -> armed auto-merge -> fly-deploy.yml.",
@@ -46,7 +46,7 @@
         "AZ": {
           "email": "zero@balizero.com",
           "plan": "Claude Team seat Premium",
-          "lane": "GATE PRIMARY (dedicated Fable weekly allowance lives here) + escalations"
+          "lane": "GATE PRIMARY (dedicated allowance for the final on-disk gate lives here — Opus 5 max effort, RULED 2026-08-20; was Fable's dedicated weekly allowance) + escalations"
         }
       }
     },
@@ -178,18 +178,14 @@
   },
   "role_chains": {
     "_doc": "Escalate IN ORDER within a chain; each hop logged in the task evidence. Steps: rotate_account (same model) -> next model in chain -> queue. Cross-family hops mark degraded_execution:true in the Evidence Pack.",
-    "fable_gate_gear3": {
+    "gear3_final_gate": {
+      "_renamed_from": "fable_gate_gear3 (RULED 2026-08-20: Fable out of the workflow; key renamed, single Opus-5 tier replaces the old two-tier fable->opus degradation)",
       "chain": [
-        {
-          "model": "claude-fable-5",
-          "accounts": ["AZ", "A2", "A3", "A1"],
-          "note": "AZ first (dedicated allowance); A1 last to avoid cannibalizing the live interactive line; A3's window is freed by pausing cron if needed (donor rule)"
-        },
         {
           "model": "claude-opus-5",
           "effort": "max",
-          "accounts": ["least-loaded"],
-          "note": "RULING ZERO 2026-08-09: only when NO account can run Fable. Verdict recorded with gate_degraded:'fable->opus'."
+          "accounts": ["AZ", "A2", "A3", "A1"],
+          "note": "AZ first (dedicated allowance); A1 last to avoid cannibalizing the live interactive line; A3's window is freed by pausing cron if needed (donor rule). RULED 2026-08-20: this is the whole chain — no fable->opus degradation left to fall back to."
         }
       ],
       "on_exhaustion": "queue in PENDING-ARMS (all Anthropic accounts dead). Never pay."
@@ -377,7 +373,7 @@
           "model": "family-conditional: builder=Anthropic -> gemini-agy(G1) -> codex(O1); builder=non-Anthropic -> opus-5(A1,A2) first"
         }
       ],
-      "note": "Gear-2 verdict seat must be a different family than the main builder (AGENTS 17.1). Builder seats never issue verdicts; exhaustion queues the PR. Final-review split (ruling Zero 2026-08-19): the final on-disk review for Gear 1-2 closes on Opus 5 — Fable is never spent on small diffs (see _invariants).",
+      "note": "Gear-2 verdict seat must be a different family than the main builder (AGENTS 17.1). Builder seats never issue verdicts; exhaustion queues the PR. The final on-disk review for Gear 1-2 closes on Opus 5, same as Gear 3 now does (RULED 2026-08-20: Fable is out of the workflow entirely, see _invariants).",
       "on_exhaustion": "queue"
     },
     "reasoner": {
