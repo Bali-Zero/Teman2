@@ -7,6 +7,7 @@ reporting, and update-only mode (create_if_missing=False).
 
 from __future__ import annotations
 
+import logging
 from unittest.mock import AsyncMock
 
 import pytest
@@ -346,3 +347,121 @@ def test_update_only_mode_skips_when_not_found(
     assert body["action"] == "skipped_not_found"
     assert body["client_id"] is None
     assert conn.fetchval.await_count == 0  # never inserted
+
+
+_ADVISORY = "clients share a phone"
+_LOGGER = "backend.app.routers.crm_clients"
+
+
+def _advisory_lines(caplog: pytest.LogCaptureFixture) -> list[str]:
+    return [r.getMessage() for r in caplog.records if _ADVISORY in r.getMessage()]
+
+
+def test_shared_phone_advisory_names_a_noop_as_such(
+    client: TestClient, write_enabled: None, mock_db_pool, caplog: pytest.LogCaptureFixture
+) -> None:
+    """GUILT for the sentence itself: two rows share the phone and there is
+    NOTHING to write (recap is human-owned, no name/notes change), so no UPDATE
+    runs — the advisory must say `action=skipped_no_change`, never claim a write.
+
+    This is the case the merged advisory note got wrong: `result` is bound at the
+    enrich branch even when `set_parts` is empty, so the guard is reached with a
+    real matched_count for a row nothing happened to. On the caller that takes the
+    model defaults (the wa-mirror promoter) this is the COMMON case, not a corner.
+    """
+    _pool, conn = mock_db_pool
+    row = {
+        "id": 7,
+        "full_name": "Real Human",
+        "notes": "",
+        "deleted_at": None,
+        "strategic_recap_source": "manual",  # human edit wins -> no recap write
+        "updated_at": None,
+    }
+    conn.fetch.return_value = [row, {**row, "id": 9}]
+
+    with caplog.at_level(logging.WARNING, logger=_LOGGER):
+        resp = client.post(
+            "/api/crm/clients/upsert-by-phone",
+            json={
+                "phone_normalized": "6281234567",
+                "strategic_recap": "auto-generated summary",
+            },
+            headers=HEADERS,
+        )
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["action"] == "skipped_no_change"
+    assert body["matched_count"] == 2
+    # Nothing was written: only the advisory locks executed, no UPDATE.
+    assert not [c for c in conn.execute.await_args_list if "UPDATE" in str(c.args[0])]
+
+    lines = _advisory_lines(caplog)
+    assert len(lines) == 1, lines
+    assert "action=skipped_no_change" in lines[0]
+    assert "id=7" in lines[0]
+    # The retracted wording claimed a write on every firing.
+    assert "acted on" not in lines[0]
+
+
+def test_shared_phone_advisory_names_a_real_write_as_such(
+    client: TestClient, write_enabled: None, mock_db_pool, caplog: pytest.LogCaptureFixture
+) -> None:
+    """INNOCENCE: the same guard, same two-row collision, but with something to
+    write. The advisory must report the acting outcome — the fix must not make
+    every firing look like a no-op."""
+    _pool, conn = mock_db_pool
+    conn.fetch.return_value = [
+        {"id": 1, "full_name": "Spouse A", "notes": "", "deleted_at": None,
+         "strategic_recap_source": None, "updated_at": None},
+        {"id": 2, "full_name": "Spouse B", "notes": "", "deleted_at": None,
+         "strategic_recap_source": None, "updated_at": None},
+    ]
+
+    with caplog.at_level(logging.WARNING, logger=_LOGGER):
+        resp = client.post(
+            "/api/crm/clients/upsert-by-phone",
+            json={"phone_normalized": "6281234567", "notes_append": "x"},
+            headers=HEADERS,
+        )
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["action"] == "enriched"
+
+    lines = _advisory_lines(caplog)
+    assert len(lines) == 1, lines
+    assert "action=enriched" in lines[0]
+    assert "id=1" in lines[0]
+
+
+def test_sole_match_writes_no_advisory_at_all(
+    client: TestClient, write_enabled: None, mock_db_pool, caplog: pytest.LogCaptureFixture
+) -> None:
+    """INNOCENCE: one match is not a collision — the guard is `> 1`, so a
+    no-op on a SINGLE row must stay silent rather than gain a new alarm."""
+    _pool, conn = mock_db_pool
+    conn.fetch.return_value = [
+        {
+            "id": 7,
+            "full_name": "Real Human",
+            "notes": "",
+            "deleted_at": None,
+            "strategic_recap_source": "manual",
+            "updated_at": None,
+        }
+    ]
+
+    with caplog.at_level(logging.WARNING, logger=_LOGGER):
+        resp = client.post(
+            "/api/crm/clients/upsert-by-phone",
+            json={
+                "phone_normalized": "6281234567",
+                "strategic_recap": "auto-generated summary",
+            },
+            headers=HEADERS,
+        )
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["action"] == "skipped_no_change"
+    assert _advisory_lines(caplog) == []
