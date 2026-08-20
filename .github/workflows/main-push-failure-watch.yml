@@ -221,6 +221,15 @@ on:
       # reachability (see its own docstring); caught by that gate on this
       # PR's own first CI run, exactly the self-conformance it exists for.
       - Harness floor & gate publisher
+      # Added 2026-08-20 (scripts/s7_yield_dispatch.py PR): both entries below
+      # were caught by check_watcher_coverage.py on this PR's own first run,
+      # same self-conformance it exists for. `yield-optimizer PII gate tests`
+      # predates this PR (yield-optimizer-pii-gate-tests.yml) and was already
+      # an uncovered gap on main — fixed in the same PR rather than left
+      # dangling, since it is the identical registration this PR is already
+      # touching, not a separate concern.
+      - yield-optimizer PII gate tests
+      - S7 yield dispatch gate tests
     types: [completed]
     # 2026-08-20 CI-churn cure — see the matching GOTCHA above for the
     # measurement and the empirical proof this narrows run CREATION, never
