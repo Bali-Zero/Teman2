@@ -221,14 +221,20 @@ on:
       # reachability (see its own docstring); caught by that gate on this
       # PR's own first CI run, exactly the self-conformance it exists for.
       - Harness floor & gate publisher
-      # Added 2026-08-20 (scripts/s7_yield_dispatch.py PR): both entries below
-      # were caught by check_watcher_coverage.py on this PR's own first run,
-      # same self-conformance it exists for. `yield-optimizer PII gate tests`
-      # predates this PR (yield-optimizer-pii-gate-tests.yml) and was already
-      # an uncovered gap on main — fixed in the same PR rather than left
-      # dangling, since it is the identical registration this PR is already
-      # touching, not a separate concern.
+      # Added 2026-08-21: yield-optimizer-pii-gate-tests.yml (built PR #4449,
+      # scripts/yield_optimizer_pitch_gate.py's guilt+innocence+class-guard
+      # suite) triggers on pull_request with a `paths:` filter only — same
+      # non-reachable-but-still-required-for-coverage shape as actionlint /
+      # hot-zone-enforcement / Prettier (changed files) / Harness floor above.
+      # check_watcher_coverage.py's contract is name-set membership against
+      # this file's `name:`, not alert-path reachability (see its own
+      # docstring); the workflow shipped without this entry, which is exactly
+      # the drift check_watcher_coverage.py exists to catch — caught here on
+      # main-push-failure-watch's own run 32395393032, 2026-08-20.
       - yield-optimizer PII gate tests
+      # Added 2026-08-20 (scripts/s7_yield_dispatch.py PR): caught by
+      # check_watcher_coverage.py on this PR's own first run, same
+      # self-conformance it exists for.
       - S7 yield dispatch gate tests
     types: [completed]
     # 2026-08-20 CI-churn cure — see the matching GOTCHA above for the
