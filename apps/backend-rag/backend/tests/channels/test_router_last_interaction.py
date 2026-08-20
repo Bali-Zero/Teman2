@@ -20,7 +20,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from backend.channels.base import ChannelMessage
+from backend.channels.base import ChannelMessage, ChannelResponse
 from backend.channels.router import ChannelRouter
 
 # ---------------------------------------------------------------------------
@@ -139,3 +139,70 @@ async def test_enrich_skips_touch_when_db_pool_unavailable():
     await router._enrich_with_routing(_make_message(), "whatsapp")
 
     router._touch_client_interaction.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# End-to-end failure isolation — the exact scenario a reviewer must be able
+# to see proven: Postgres refuses the last_interaction_date UPDATE while the
+# rest of the pipeline is healthy. A tracking write must never gate a reply.
+# ---------------------------------------------------------------------------
+
+
+def _make_delivery_tracking_adapter() -> tuple[AsyncMock, dict]:
+    """Adapter whose stream_response records completion — the observable
+    proxy for "the client received their reply"."""
+    delivered = {"count": 0}
+    adapter = AsyncMock()
+    adapter.channel_name = "whatsapp"
+    adapter.timeout = 30
+    adapter.update_interval = 1
+    adapter.supports_markdown = True
+    adapter.supports_media = False
+    adapter.max_message_length = 4096
+    adapter.receive_message = AsyncMock(return_value=_make_message())
+
+    async def _consume(channel_id, stream):
+        async for _ in stream:
+            pass
+        delivered["count"] += 1
+
+    adapter.stream_response = AsyncMock(side_effect=_consume)
+    return adapter, delivered
+
+
+def _make_answering_engine(text: str = "Il KITAS costa X — chiedi al team.") -> MagicMock:
+    async def _stream(message, channel_config):
+        yield ChannelResponse(text=text, metadata={"event_type": "answer"})
+
+    engine = MagicMock()
+    engine.process_message = _stream
+    return engine
+
+
+@pytest.mark.asyncio
+async def test_message_still_delivered_when_last_interaction_write_fails():
+    """Postgres is down FOR THE UPDATE ONLY (everything else on the pool
+    still works, as a real outage rarely takes down every query uniformly).
+    route_message must not raise, and the client must still get their reply.
+    """
+    adapter, delivered = _make_delivery_tracking_adapter()
+    router = ChannelRouter(_make_answering_engine())
+    router.register_adapter("whatsapp", adapter)
+
+    async def _execute_side_effect(sql, *args, **kwargs):
+        if "UPDATE clients" in sql and "last_interaction_date" in sql:
+            raise RuntimeError("connection refused")
+        return None
+
+    db_pool = AsyncMock()
+    db_pool.execute = AsyncMock(side_effect=_execute_side_effect)
+    router._db_pool = db_pool
+    router._resolve_client_id = AsyncMock(return_value=101)
+
+    patch_route, patch_thread = _patch_enrichment_internals()
+    with patch_route, patch_thread:
+        # Must not raise — a raised exception here is exactly the "silenced
+        # WhatsApp" failure mode the reviewer flagged.
+        await router.route_message("whatsapp", {"some": "payload"})
+
+    assert delivered["count"] == 1, "reply must stream even though the touch failed"
