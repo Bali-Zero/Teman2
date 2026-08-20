@@ -2,7 +2,7 @@
 date: 2026-08-19
 domain: operations
 client_case: none
-adversarial_review: codex
+adversarial_review: kimi-k3
 sources:
   - apps/backend-rag/backend/app/routers/crm_clients.py
   - apps/backend-rag/backend/services/intake/crm_push.py
@@ -59,9 +59,17 @@ That breadth is not accidental — the comment above it cites Codex 2026-07-19 r
 defaults: `reject_ambiguous: bool = False` (`crm_clients.py:1329`) and
 `restore_if_archived: bool = True` (`crm_clients.py:1321`).
 
-**The live log shows which one is running.** The observed warnings read `acted on id=<integer>`.
-A `crm_push` collision returns `client_id: None` and would print `acted on id=None`. The traffic
-we measured is the defaults path.
+**The live log shows which one is running** — for a stronger reason than this note first gave.
+`crm_push` can never emit this warning at all: with `reject_ambiguous=True` any `matched_count > 1`
+returns at 1396, before the guard at 1543 is reached, and any `matched_count <= 1` fails that
+guard's `> 1`. So every `N clients share a phone` line in the log comes from a request whose
+`reject_ambiguous` was not `True` — and of the two callers in the repo, that is the defaults path.
+(Strictly, the log proves the *flag value*, not the caller; a third caller sending an explicit
+`False` would look the same. The launchctl evidence below is what names this one.)
+RETRACTED[upsert-by-phone-refusal-branches-reach-the-warning]: the first
+version argued this from the printed id instead — *"a `crm_push` collision … would print `acted on
+id=None`"* — which is false, because that collision prints nothing at all. The conclusion held; its
+premise did not.
 
 That is an inference from log format, so it was checked directly. `com.balizero.wa-mirror-auto-promote`
 was **running at the time of measurement** — `launchctl list` gives PID `44281`, exit status `0`,
@@ -124,21 +132,117 @@ consumes it to decide its own delivery, and `wa-mirror-auto-promote-leads.py:845
 `action` and `matched_count` into its audit record. Nothing surfaces the collision to a human on
 `kita.balizero.com`. The sentence asks for a review that no surface offers.
 
-## The log can assert an action that did not happen
+## The log can assert an action that did not happen — right finding, wrong branches
 
-Two return paths carry `matched_count > 1` while mutating nothing — `rejected_ambiguous`
-(`crm_clients.py:1396`, returns `client_id: None`) and `skipped_archived` (`crm_clients.py:1415`,
-returns the id and explicitly does not act). Both reach the log line at 1543, which prints
-`acted on id=…`. The `action` field — the one value in `result` that names what actually
-happened — is never logged.
+The first version of this section was **right in its headline and wrong in its mechanism**, and the
+first attempt to correct it made things worse by retracting the headline too. Both errors are
+recorded below because the sequence is the lesson.
 
-Reachability, precisely:
+**RETRACTED[upsert-by-phone-refusal-branches-reach-the-warning]** — what is withdrawn is the
+attribution, not the finding. The note asserted that the two *refusal* branches, `rejected_ambiguous`
+and `skipped_archived`, *"both reach the log line at 1543, which prints `acted on id=…`"*. They do
+not. `upsert_client_by_phone` runs from `crm_clients.py:1341` to its last statement at 1552 with no
+nested function; its early exits return at 1396 (16 spaces, `rejected_ambiguous`), 1415 (20,
+`skipped_archived`) and 1491 (20, `skipped_not_found`), all nested inside the transaction block,
+while the guard `if result.get("matched_count", 0) > 1:` sits at 1543 (indentation 4) and the
+`logger.warning(` it protects spans 1546-1551. A branch that returned cannot arrive there. One run
+of `pytest backend/tests/routers/test_crm_clients_upsert_by_phone.py --log-cli-level=WARNING` (14
+passed) shows it: `test_reject_ambiguous_refuses_before_any_mutation`, which asserts
+`matched_count: 2` with `action: "rejected_ambiguous"`, emits **nothing**. For the same reason a
+`crm_push` collision does not print `acted on id=None` — it prints nothing at all.
 
-- `rejected_ambiguous` **is reachable in-repo**, via `crm_push.py`, and prints `acted on id=None`.
-- `skipped_archived` with `matched_count > 1` is **not** reachable from either in-repo caller:
-  `crm_push` short-circuits at 1393 before reaching 1405, and the defaults path has
-  `restore_if_archived=True` so it restores instead of skipping. It needs a caller passing
-  `reject_ambiguous=False` **and** `restore_if_archived=False`, which neither does today.
+**But the headline is true, by a path neither version named.** At 1461 an empty `set_parts` skips
+the UPDATE entirely and 1475 sets `action = "skipped_no_change"` — and `result` is still bound at
+1477, carrying the real `matched_count`. So 1543 passes and 1546 prints `acted on id=<cid>` for a
+row nothing was written to.
+
+Reproduced, not argued. A throwaway probe on the router's own test harness — two rows sharing a
+phone, nothing to write:
+
+```
+action= skipped_no_change   matched= 2   UPDATE statements executed= 0
+WARNING crm_clients.py:1546 upsert-by-phone: 2 clients share a phone (acted on id=7)
+```
+
+This sits on the **production** path, not a hypothetical one. `wa-mirror-auto-promote-leads.py`
+omits `reject_ambiguous`, and re-promoting an already-promoted lead — same name, notes not stale,
+no recap — is exactly how `set_parts` comes out empty. The four warnings seen in ~40 seconds of live
+log during a bulk upsert stream are, on this evidence, as likely to be no-ops as writes, and the
+line cannot tell you which. That is the original finding, and it stands.
+
+The only combination not covered by the test suite is precisely this one: a test asserts
+`skipped_no_change` (`test_crm_clients_upsert_by_phone.py:183`) and another asserts the multi-match
+warning, but nothing exercises the two together.
+
+**A second, independent gap in the same lane.** The ambiguous refusal *is* logged in `crm_push.py`,
+by a warning written for exactly this case:
+
+```python
+# crm_push.py:204-214
+matched_count = data.get("matched_count") if isinstance(data, dict) else None
+if isinstance(matched_count, int) and matched_count > 1:
+    logger.warning("intake.crm_push.upsert_ambiguous matched=%s — refusing delivery ...")
+```
+
+**That warning cannot fire.** `crm_push` hardcodes `reject_ambiguous: True` (`crm_push.py:163`, the
+only occurrence in the file, against the only URL construction at 171), so on a shared phone the
+endpoint refuses first and answers `client_id: None` — asserted exactly, field for field, by
+`test_reject_ambiguous_refuses_before_any_mutation`. `crm_push` reads that at 190, and at **191-192**
+does a bare `return None` with no log, twelve lines before the `matched_count > 1` check it would
+have tripped. Two guards were added for one hazard in different review rounds; the later one at the
+server made the earlier one at the client unreachable — and the unreachable one is the only one that
+speaks.
+
+Its guilt test passes anyway. `test_shared_phone_ambiguity_fails_closed`
+(`test_crm_push.py:433-451`) hands the client `{"client_id": 777, "was_created": False,
+"matched_count": 3}` — a response the endpoint cannot produce for the body this caller sends — and
+asserts the request body **zero** times. Its sibling twenty lines down,
+`test_archived_fly_match_fails_closed`, asserts it **twice** (`restore_if_archived is False`,
+`reject_ambiguous is True`). The neighbouring test performs the precise check that would have
+exposed the impossibility.
+
+The refusal is not invisible, though — a second draft of this paragraph claimed that too, and the
+refuters killed it. It surfaces one layer up, at `crm_delivery.py:391-397`, as
+`intake.delivery.identity_unresolved … detail=…`. What it cannot tell you is **why**: when
+`_ensure_client_on_fly` returns `None`, `crm_push.py:345-350` attaches one fixed string —
+`"phone-upsert could not resolve an UNAMBIGUOUS Fly client id"` — to *every* cause.
+
+There are seven of them (`_ensure_client_on_fly` spans 132-221; a third draft of this paragraph said
+five, and a second seat produced the two it had missed):
+
+| exit | cause | preceding line of its own |
+|---|---|---|
+| `:156` | phone digits outside 6-20 | — **silent** |
+| `:178` | transport error / timeout | `upsert_unreachable` (:177) |
+| `:185` | HTTP ≥ 400 | `upsert_failed` (:180) |
+| `:189` | unparseable JSON body | — **silent** |
+| `:192` | 2xx carrying no `client_id` | — **silent** |
+| `:202` | archived sole match | `upsert_archived_match` (:198) |
+| `:214` | `matched_count > 1` with an id | `upsert_ambiguous` (:209) — **unreachable** |
+
+**The shared phone lands on `:192`, the silent one.** That is the whole point: because the endpoint
+answers `client_id: None`, the refusal arrives at the caller as an unremarkable "no id" and exits
+without a word, while the warning written to name it sits two exits further down (`:214`, guarded at
+`:209`) waiting for a response shape this caller can never receive.
+
+So a shared-phone refusal produces exactly **one** line in the entire system, and it is the line
+seven causes share. Both warnings written to name this cause are unreachable: the server's `N
+clients share a phone` (it returned at 1396, never reaching the guard at 1543) and the client's
+`upsert_ambiguous`. The observability is inverted for a demonstrable reason — the risky writes
+announce themselves, the protective refusal arrives anonymous. "How often does a shared phone stop a
+delivery?" is unanswerable from the logs, not because nobody wrote the line but because both lines
+that were written can never run.
+
+**The `action` field is never logged, and that is now the whole fix.** `result["action"]` is the one
+value that separates `enriched` from `skipped_no_change` — the difference between a write and a
+no-op — and it is the value the line drops. Adding it to the warning costs one format argument and
+turns a sentence that can lie into one that cannot.
+
+**Why the false version survived review.** The adversarial seat was pointed at the claims it was
+handed — file:line accuracy, the 802/849 inference, the "no in-repo caller" assertion — and it
+answered all three. Nobody asked whether control flow reaches 1543, so nobody looked. The failure
+mode is that the claim was *structural*: every `file:line` in it was correct, and only the assertion
+that control arrives at one of them was wrong. Citation-checking passes cleanly over that shape.
 
 ## Meta-pattern
 
@@ -157,6 +261,14 @@ which caller carries it.
 **An alarm that mostly fires on correct outcomes.** 412 benign firings arrive in the same words
 as the 437 that are not, so whoever reads the stream learns to stop reading — which is how the
 next real one is missed.
+
+**And the same shape one level up, in this document.** The advisory line drops `action`, the one
+field that separates a write from a no-op, so it cannot be wrong in a way anyone notices. The first
+correction to this note dropped the *mechanism* and kept the confidence, and would have deleted a
+true finding to fix a wrong citation. In both cases the defect is not a false statement but a
+missing distinction, and in both cases it took an outside party — a refuter, a lint — to name it.
+Rounds 2-4 below are the record: four drafts, three seats, and the most dangerous version was not
+the original error but the over-confident repair of it.
 
 ## Open questions (human decision — `operator[business]`)
 
@@ -191,5 +303,77 @@ independently on disk before being accepted; all three were real, and two were l
    neither is an operator review surface, which is the claim that survives.
 
 One correction to the seat, verified on disk: it reported both no-action paths as reachable via
-`crm_push.py`. Only `rejected_ambiguous` is — `reject_ambiguous=True` returns at 1393, before the
-`skipped_archived` branch at 1405 can be reached. Stated precisely in the section above.
+`crm_push.py`. Only `rejected_ambiguous` is — with `reject_ambiguous=True` the guard at 1393 returns
+at 1396, before the `if rows:` block at 1405 (and the archived branch at 1409) can be reached.
+
+### Round 2 — the branch attribution retracted, 2026-08-20
+
+Re-reading the code to plan a follow-up fix, one day after this note merged in #4374, the branch
+attribution did not add up: `rejected_ambiguous` and `skipped_archived` `return`, and the log line
+is below them. Measured, confirmed false, and registered as
+`RETRACTED[upsert-by-phone-refusal-branches-reach-the-warning]`.
+
+Two things about how it got through. The seat answered the questions it was handed, and this was
+not one of them — a refuter that verifies the claims you give it cannot catch the claim you never
+doubted. And the claim was *structural*, not numeric: every `file:line` in it was right, so a
+citation check passes straight over it.
+
+Then the correction went wrong three separate ways, each caught by a different mechanism:
+
+1. **Two wrong figures inside the correction itself** — the `logger.warning(` call put at 1543 (that
+   is the *guard*; the call is at 1546) and its indentation given as 4 (it is 8). Caught by
+   re-measuring on disk in the same turn the paragraph was written.
+2. **A second home for the same false claim, in this same file.** The lint added in this PR flagged
+   line 62, where the identical premise supported a *different* conclusion. Having corrected the
+   section I remembered writing, I never searched for the claim elsewhere; the class-audit was done
+   by the machine, not by me. (The conclusion survives on a stronger argument: a `crm_push`
+   collision prints nothing at all.)
+3. **And the retraction over-reached** — see Round 3. It withdrew the headline along with the
+   branches, which would have deleted a true finding about production behaviour.
+
+### Round 3 — the refuter, pointed at the replacement (Kimi K3, cross-family)
+
+An independent seat from a different training family (`kimi -m kimi-code/k3`) was given the *new*
+sentences, not the retracted ones, with instructions to re-derive every line number and attack the
+strongest claim hardest. It confirmed the control-flow findings and refuted the replacement **three
+times**, all three real:
+
+- **The headline was true after all.** Against *"the warning is reachable only from a path that
+  acted, so `acted on id=X` is always true"*, it produced `skipped_no_change` (`crm_clients.py:1475`,
+  reached when `set_parts` is empty at 1461) — bound into `result` at 1477 with the real
+  `matched_count`, therefore reaching 1543. Reproduced on the router's own harness: two rows,
+  **zero UPDATEs**, and the log says `acted on id=7`. **This is the objection that mattered**: the
+  correction was about to retract a true statement about production, which is a strictly worse
+  outcome than the original mis-citation.
+- **A dedicated log exists for the ambiguous refusal** (`crm_push.py:209-213`) — against the
+  redraft's *"nothing is logged anywhere"*. It exists and cannot fire.
+- **And the refusal is logged one layer up** (`crm_delivery.py:391-397`) — against the *next*
+  redraft's "dropped silently". The defect is not silence but collapse: every cause, one string.
+  (How many causes that is took a third seat — see Round 4.)
+
+Three drafts of one correction, three refutations. The retraction was the easy part; **every**
+sentence written to replace it was wrong on first attempt, and the most dangerous one was the
+correction that went too far. The seat also caught the function-span figure (`1341-1554` counted two
+trailing blank lines; the last statement is at 1552) and a loose claim that the log identifies the
+*caller* when it can only identify the *flag value*.
+
+### Round 4 — a second seat on the numbers (GLM)
+
+GLM was dispatched independently on the `crm_push` half and **refuted the taxonomy**: the function
+has **seven** `return None` sites, not five — `:156` (phone digits outside 6-20, reachable because
+the caller's guard at `:320` tests only `not sender_phone`) and `:192` (a 2xx with no `client_id`)
+were both missing — and the split is four-that-log / three-silent, not three/two. Re-derived on
+disk before accepting it; both additions are real, and `:192` turns out to be *the* exit a
+shared-phone refusal actually takes, which sharpens the finding rather than denting it.
+
+Worth recording how my own check failed: the probe I wrote looked back twelve lines from each
+`return` for a `logger.` call, and duly attributed the `upsert_failed` warning to the two silent
+exits below it — a *proximity* proxy standing in for a *branch* relationship. GLM read the branch
+structure. A probe that measures nearness will report a relationship that isn't there.
+
+Seat note: the intended first refuter, Codex `gpt-5.6-terra`, was quota-dead (`usage limit … try
+again Aug 22`) and the cascade moved to Kimi, then GLM. GLM's transport printed
+`unrecognized_model` for `glm-5.2[1m]` and `glm-4.7` while still returning a full verdict — an
+error line above a usable answer, which is worth naming because the first draft of this paragraph
+read the error and declared the seat mute **without opening its output**. Same failure as
+everything else on this page: a claim about something I had not looked at.
