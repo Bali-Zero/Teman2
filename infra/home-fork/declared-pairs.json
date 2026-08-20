@@ -820,6 +820,16 @@
       "live": "~/Library/LaunchAgents/com.nuzantara.secrets-perms-sweep.plist",
       "repo": "infra/launchagents/com.nuzantara.secrets-perms-sweep.plist",
       "machines": ["mini"]
+    },
+    {
+      "live": "~/scripts/pro-visa-freshness-sentinel.sh",
+      "repo": "infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.visa-freshness-sentinel.plist",
+      "repo": "infra/launchagents/com.nuzantara.visa-freshness-sentinel.plist",
+      "machines": ["pro"]
     }
   ],
   "allow": [
