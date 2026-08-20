@@ -326,6 +326,24 @@ jobs:
           HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha }}
         run: |
           set -u
+          # This job's checkout (Step 1) is BASE, not HEAD — the "grader
+          # self-protects" pattern (see the bootstrap-window comment on the
+          # file-existence check below). scripts/evidence_pack_lint.py as it
+          # exists in THIS run is therefore whatever origin/main carried at
+          # PR-open/sync time, which may predate any PR (like this one) that
+          # is still teaching the script --numstat-file. Probe the capability
+          # of the copy we can actually execute before promising it — this
+          # stays self-consistent both before and after such a PR merges.
+          if [[ ! -f scripts/evidence_pack_lint.py ]]; then
+            echo "::notice::scripts/evidence_pack_lint.py not in base checkout yet (bootstrap run) — net-lines measurement skipped"
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! python3 scripts/evidence_pack_lint.py --help 2>&1 | grep -q -- '--numstat-file'; then
+            echo "::notice::the evidence_pack_lint.py copy in use (checked out from base $BASE_SHA) does not support --numstat-file yet — net-lines measurement skipped for this run; self-consistent once this PR merges and base's copy is updated"
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           MERGE_BASE="$(git merge-base "$BASE_SHA" "$HEAD_SHA" 2>/dev/null || true)"
           if [[ -z "$MERGE_BASE" ]]; then
             echo "::notice::merge-base not resolvable — net-lines measurement skipped for this run (evidence_pack_lint falls back to pack-declared net_lines with a NOTICE, or asserts nothing)"
