@@ -439,8 +439,48 @@ def test_sole_match_writes_no_advisory_at_all(
     client: TestClient, write_enabled: None, mock_db_pool, caplog: pytest.LogCaptureFixture
 ) -> None:
     """INNOCENCE: one match is not a collision — the guard is `> 1`, so a
-    no-op on a SINGLE row must stay silent rather than gain a new alarm."""
+    no-op on a SINGLE row must stay silent rather than gain a new alarm.
+
+    `_advisory_lines(caplog) == []` is vacuous on its own: it passes just as
+    well if caplog capture is misconfigured, the logger name/propagation is
+    off, or `_advisory_lines`'s match string stops matching the real
+    advisory format — any of those makes the list empty for the WRONG
+    reason. So before trusting silence, this test first proves — through
+    this exact fixture/caplog/logger wiring, in THIS test — that the
+    capture chain CAN see an advisory: it drives the same production code
+    path through a genuine duplicate-match write (the fixture reused from
+    test_shared_phone_advisory_names_a_real_write_as_such) and asserts that
+    DOES produce a line. Only then does it clear caplog and assert silence
+    on the sole-match case below.
+    """
     _pool, conn = mock_db_pool
+
+    # --- positive control: a genuine duplicate-match write must be visible
+    # through this same caplog/logger wiring, via the real advisory code path.
+    conn.fetch.return_value = [
+        {"id": 1, "full_name": "Spouse A", "notes": "", "deleted_at": None,
+         "strategic_recap_source": None, "updated_at": None},
+        {"id": 2, "full_name": "Spouse B", "notes": "", "deleted_at": None,
+         "strategic_recap_source": None, "updated_at": None},
+    ]
+    with caplog.at_level(logging.WARNING, logger=_LOGGER):
+        control_resp = client.post(
+            "/api/crm/clients/upsert-by-phone",
+            json={"phone_normalized": "6281234567", "notes_append": "x"},
+            headers=HEADERS,
+        )
+    assert control_resp.status_code == 200, control_resp.text
+    assert control_resp.json()["action"] == "enriched"
+    control_lines = _advisory_lines(caplog)
+    assert len(control_lines) == 1, (
+        "positive control saw no advisory line for a genuine duplicate-match "
+        "write — caplog capture, logger propagation, or _advisory_lines's "
+        "match string is broken here, so the silence assertion below would "
+        "be meaningless"
+    )
+    caplog.clear()
+
+    # --- case under test: a single match is not a collision, must stay silent.
     conn.fetch.return_value = [
         {
             "id": 7,
