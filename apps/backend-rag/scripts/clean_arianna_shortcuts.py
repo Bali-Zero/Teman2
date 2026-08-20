@@ -1,11 +1,21 @@
 import asyncio
+import os
 import time
 
 import httpx
 
-OAUTH_CLIENT_ID = "930328104463-m3g4gq72095rip08269kvt8s7et9ev12.apps.googleusercontent.com"
-OAUTH_CLIENT_SECRET = "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"
-OAUTH_REFRESH_TOKEN = "1//0gbiun0bBkNVCCgYIARAAGBASNwF-L9IrGvLMkg0QQ7fz0x98C1zyFqsCvzyijl7NjxUXoJ8K_-BAN8t-ZuQyT5uIv2iVJUPSiMA"
+OAUTH_CLIENT_ID = os.environ.get("GOOGLE_OAUTH_CLIENT_ID_RCLONE", "")
+OAUTH_CLIENT_SECRET = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET_RCLONE", "")
+OAUTH_REFRESH_TOKEN = os.environ.get("GOOGLE_OAUTH_REFRESH_TOKEN", "")
+
+if not (OAUTH_CLIENT_ID and OAUTH_CLIENT_SECRET and OAUTH_REFRESH_TOKEN):
+    raise SystemExit(
+        "Google OAuth credentials moved to the environment (2026-08-21, "
+        "secret-in-repo exposure): set GOOGLE_OAUTH_CLIENT_ID_RCLONE, "
+        "GOOGLE_OAUTH_CLIENT_SECRET_RCLONE and GOOGLE_OAUTH_REFRESH_TOKEN. "
+        "The hardcoded literals remain in git history -- rotation on Google "
+        "Cloud Console is operator[secret]."
+    )
 
 _token = ""
 _token_expiry = 0

@@ -178,5 +178,8 @@ jobs:
           # to catch. This is Stage 2 of that workflow's own staged plan
           # ("genuinely-passing -> promote to a real per-file workflow entry"),
           # applied to the two files this PR authored, not to the other 173.
+          # test_lint_google_oauth_credentials.py (2026-08-21): stdlib only,
+          # same family (secret-literal guard), same reason to be here and not
+          # in the non-gating sweep.
           python3 -m pip -q install pytest httpx structlog asyncpg
-          python3 -m pytest scripts/tests/test_tg_gateway.py scripts/tests/test_agent_job_telegram_gateway.py scripts/tests/test_nlm_alarm_gateway.py -q
+          python3 -m pytest scripts/tests/test_tg_gateway.py scripts/tests/test_agent_job_telegram_gateway.py scripts/tests/test_nlm_alarm_gateway.py scripts/tests/test_lint_google_oauth_credentials.py -q

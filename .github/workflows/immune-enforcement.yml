@@ -303,6 +303,28 @@ jobs:
           python scripts/lint_telegram_tokens.py --selftest
           python scripts/lint_telegram_tokens.py --all
 
+      - name: No hardcoded Google OAuth credentials in the tree — prove the guard, then scan
+        # DELIBERATELY NOT gated on steps.paths.outputs.relevant, same reason as
+        # the Telegram-token lint above: this guard's SUBJECT is every tracked
+        # text file, and the shape it exists to catch is an OAuth blob pasted
+        # into a script, a doc, or a plan — paths an "immune-relevant" filter
+        # never names (W81).
+        #
+        # Born 2026-08-21 from a live census: ONE Google OAuth credential
+        # triple (client_id / GOCSPX- client secret / 1// refresh token, from
+        # an rclone gdrive remote setup) was copy-pasted into NINE one-off
+        # scripts under apps/backend-rag/scripts/ and sat green on origin/main
+        # for months — detect-secrets ships no GOCSPX-/1// detector, and
+        # secrets_permissions_audit.py matches by file NAME, never contents.
+        # A hardcoded refresh token is a LIVE long-lived credential; rotation
+        # on Google Cloud Console is operator[secret] (PENDING-ARMS).
+        #
+        # --selftest FIRST: "--all reports OK" is worth nothing until the guilt
+        # fixtures prove the scanner can still fail.
+        run: |
+          python scripts/lint_google_oauth_credentials.py --selftest
+          python scripts/lint_google_oauth_credentials.py --all
+
       - name: Gateway callers must read the VERDICT, not the exit code
         # Same reasoning as the lint above, same deliberate absence of a paths
         # gate: this guard's SUBJECT is every Python caller of tg_notify.py, and
