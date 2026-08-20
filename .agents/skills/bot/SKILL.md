@@ -1756,7 +1756,7 @@ LANGFUSE_ENABLED` or set back to `true`) is an operator action AFTER this PR mer
   same PR/turn** — a stale corner is worse than no corner.
 - Every build lane runs in its own worktree via `scripts/agent_start.py` (lane `backend-rag`);
   main checkout is read-only for agents.
-- Fable sessions orchestrate + final-gate; edits/commits/pushes go to Sonnet implementers
+- Opus 5 sessions orchestrate + final-gate (RULED 2026-08-20 — Fable is out of the workflow, CLAUDE.md §5); edits/commits/pushes go to Sonnet implementers
   (hook-enforced). Adversarial review before merge on client-facing surfaces.
 - Off-limits without a fresh mandate: `zantara_core.py` (+ prompt chain in place), `fly.toml`,
   `.env*`. The prompt v4 lane has Zero's mandate but is ADDITIVE ONLY (new file + flag).
