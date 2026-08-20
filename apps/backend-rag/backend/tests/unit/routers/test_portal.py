@@ -670,6 +670,65 @@ class TestProfile:
         response = client.get("/api/portal/profile")
         assert response.status_code == 404
 
+    def test_get_profile_archived_client_returns_404(self, client, mock_db_pool):
+        """
+        2026-08-20 class-fix: an archived client (clients.deleted_at set) must
+        get the same 404 every other portal endpoint gives — get_profile was
+        one of two raw-SQL handlers that bypassed the deleted_at IS NULL gate
+        every sibling resolves through PortalService. In production the
+        WHERE clause filters the row out, so asyncpg's fetchrow returns None
+        exactly like the not-found case above.
+        """
+        conn = mock_db_pool._mock_conn
+        conn.fetchrow.return_value = None
+
+        response = client.get("/api/portal/profile")
+
+        assert response.status_code == 404
+        # GUILT, mutation-sensitive: the 404 above is only proof the row was
+        # absent — this proves it is absent *because the query excludes
+        # soft-deleted rows*, not merely because the mock defaults to None.
+        # Removing "AND c.deleted_at IS NULL" from the router's SQL turns
+        # this assertion red even though the 404 assertion above stays green.
+        sql = conn.fetchrow.call_args.args[0]
+        assert "deleted_at IS NULL" in sql, (
+            "GET /api/portal/profile no longer filters deleted_at — an "
+            "archived client's passport/DOB/address would be served again"
+        )
+
+    def test_get_profile_success_query_still_scoped_to_client_id(self, client, mock_db_pool):
+        """
+        INNOCENCE: a live client (not archived) still gets 200 with their
+        data — the deleted_at gate must not turn into a blanket 404.
+        """
+        conn = mock_db_pool._mock_conn
+        conn.fetchrow.return_value = {
+            "id": 42,
+            "full_name": "Jane Live",
+            "email": "jane@example.com",
+            "phone": "+62812000000",
+            "whatsapp": "+62812000000",
+            "nationality": "IT",
+            "passport_number": "Z99999999",
+            "passport_expiry": datetime(2029, 1, 1).date(),
+            "date_of_birth": datetime(1990, 5, 5).date(),
+            "gender": "F",
+            "address": "Jl. Test Rd, Bali",
+            "created_at": datetime(2024, 1, 1, tzinfo=timezone.utc),
+            "assigned_to": "agent@balizero.com",
+            "assigned_to_name": "Agent Smith",
+            "assigned_to_avatar": None,
+        }
+
+        response = client.get("/api/portal/profile")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["data"]["full_name"] == "Jane Live"
+        sql = conn.fetchrow.call_args.args[0]
+        assert "WHERE c.id = $1" in sql
+        assert "deleted_at IS NULL" in sql
+
     def test_update_profile_success(self, client, mock_portal_service):
         """Update profile fields."""
         mock_portal_service.update_profile.return_value = {
