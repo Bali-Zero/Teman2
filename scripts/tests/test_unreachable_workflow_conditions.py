@@ -331,3 +331,202 @@ def test_guilt_rehardcoding_the_branch_in_the_alarm_is_caught():
     assert any(_BRANCH_LITERAL_RE.search(line) for line in human), (
         "the regression must be visible in the alarm's human-facing text"
     )
+
+
+# ================================================== cross-family refuter (Kimi K3) fixes
+#
+# Four false-accusation paths a cross-family refuter found in this guard
+# itself, reproduced independently before being fixed (a refuter can
+# hallucinate too — cicatrix-superscar #6). Each test below asserts the
+# FALSE ACCUSATION does not happen: the guard is about to become a required
+# check, so wrongly reporting a reachable if: as unreachable hard-blocks an
+# innocent PR — the severe class this whole file exists to prevent.
+
+
+def test_guilt_case_insensitive_event_name_and_ref_are_not_flagged(tmp_path):
+    """GitHub's `==`/`!=` operators ignore case for the whole compared
+    string (docs.github.com/en/actions/reference/workflows-and-actions/
+    expressions: "GitHub ignores case when comparing strings", verified
+    2026-08-20) — 'Push' == the real 'push' event, and 'REFS/HEADS/MAIN' ==
+    the real 'refs/heads/main'. Pre-fix this input was flagged with 2
+    findings and exit 1 while both conditions are true on a real run."""
+    workflow = """\
+on:
+  push:
+    branches: [main]
+jobs:
+  a:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'Push'
+    steps:
+      - run: echo hi
+        if: github.ref == 'REFS/HEADS/MAIN'
+"""
+    _write_workflow(tmp_path, "fake-case.yml", workflow)
+    _git_repo(tmp_path)
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-q", "-m", "init")
+
+    proc = _run_cli(tmp_path)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "UNREACHABLE" not in proc.stdout, proc.stdout
+    assert "0 finding(s)" in proc.stdout, proc.stdout
+
+
+def test_guilt_github_glob_plus_metachar_is_not_flagged(tmp_path):
+    """GitHub's filter-pattern glob defines `+` as "one or more of the
+    preceding character" — `branches: ['ma+n']` matches a real push to
+    branch 'maaan'. `fnmatch` treats `+` as an ordinary literal character
+    (verified: `fnmatch.fnmatch('maaan', 'ma+n')` is False) — pre-fix this
+    mismatch made the guard treat 'maaan' as never matching the `on:`
+    filter and flag the if: as unreachable, when GitHub would actually run
+    it."""
+    workflow = """\
+on:
+  push:
+    branches: ['ma+n']
+jobs:
+  a:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/maaan'
+    steps:
+      - run: echo hi
+"""
+    _write_workflow(tmp_path, "fake-glob.yml", workflow)
+    _git_repo(tmp_path)
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-q", "-m", "init")
+
+    proc = _run_cli(tmp_path)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "UNREACHABLE" not in proc.stdout, proc.stdout
+
+
+def test_guilt_backslash_metachar_is_not_flagged():
+    """Same class as the `+` case, for GitHub's other glob-only
+    metacharacter (`\\`, escape-the-next-character) — unit-level via
+    `extract_trigger_paths`, confirming the push trigger's ref is left
+    unconstrained (never mismodeled as a literal-backslash fnmatch)."""
+    on_block = {"push": {"branches": [r"release\*"]}}
+    trigger_paths = mod.extract_trigger_paths(on_block)
+    assert len(trigger_paths) == 1
+    assert trigger_paths[0].ref_matcher is mod._any_ref, (
+        "a branches: pattern containing '\\\\' must fall back to an "
+        "unconstrained ref, never be matched via fnmatch"
+    )
+
+
+def test_guilt_job_if_after_steps_does_not_swap_line_numbers(tmp_path):
+    """A job-level `if:` written textually AFTER `steps:` (legal YAML — key
+    order inside a mapping is free) used to get the STEP's line number, and
+    the step's `if:` got the JOB's — a required check that sends the
+    reviewer to the wrong `if:` while its own docstring promised it never
+    could. Distinct if:-texts here so the assertion cannot pass by
+    coincidence (an ambiguous same-text case is covered separately)."""
+    workflow = """\
+on:
+  push:
+    branches: [develop]
+jobs:
+  a:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi
+        if: github.event_name == 'push' && github.ref == 'refs/heads/STEPBRANCH'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/JOBBRANCH'
+"""
+    path = _write_workflow(tmp_path, "fake-lineno.yml", workflow)
+    result = mod.analyze_workflow(path, tmp_path)
+    assert result.parse_error is None
+    assert len(result.findings) == 2, result.findings
+
+    by_scope = {f.condition.scope: f.condition for f in result.findings}
+    job_cond = by_scope["job:a"]
+    step_cond = next(c for scope, c in by_scope.items() if scope != "job:a")
+
+    assert "JOBBRANCH" in job_cond.text
+    assert "STEPBRANCH" in step_cond.text
+    # Line 10 is the job-level if:, line 9 is the step's — verified against
+    # the raw text above (1-indexed, counting from `on:`).
+    assert job_cond.line == 10, (job_cond.line, workflow.splitlines())
+    assert step_cond.line == 9, (step_cond.line, workflow.splitlines())
+
+
+def test_guilt_ambiguous_duplicate_if_text_gets_no_line_never_a_wrong_one(tmp_path):
+    """When job-if and step-if carry the IDENTICAL text (so which raw line
+    belongs to which cannot be recovered from text alone), the guard must
+    leave BOTH without a line number rather than guess — the contract is
+    'never a wrong line, only an absent one'."""
+    workflow = """\
+on:
+  push:
+    branches: [develop]
+jobs:
+  a:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+"""
+    path = _write_workflow(tmp_path, "fake-ambiguous.yml", workflow)
+    result = mod.analyze_workflow(path, tmp_path)
+    assert result.parse_error is None
+    assert len(result.findings) == 2, result.findings
+    assert all(f.condition.line is None for f in result.findings), [
+        (f.condition.scope, f.condition.line) for f in result.findings
+    ]
+
+
+def test_guilt_assumed_satisfiable_ref_is_not_folded_into_clean_report(tmp_path):
+    """A `schedule`-only if: naming a specific `ref` is 'satisfiable' only
+    because this guard cannot disprove an unconstrained/unknown ref
+    (declared limit #2) — that verdict must land in its own
+    'SATISFIABLE ONLY UNDER AN ASSUMED/UNKNOWN REF' bucket, never silently
+    under the green 'every in-scope if: is satisfiable' line, and must
+    never be a finding (exit 0)."""
+    workflow = """\
+on:
+  schedule:
+    - cron: "0 0 * * *"
+jobs:
+  a:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' && github.ref == 'refs/heads/main'
+    steps:
+      - run: echo hi
+"""
+    path = _write_workflow(tmp_path, "fake-assumed.yml", workflow)
+    result = mod.analyze_workflow(path, tmp_path)
+    assert result.parse_error is None
+    assert result.findings == []
+    assert len(result.assumed_satisfiable) == 1, result.assumed_satisfiable
+
+    _git_repo(tmp_path)
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-q", "-m", "init")
+    proc = _run_cli(tmp_path)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "SATISFIABLE ONLY UNDER AN ASSUMED/UNKNOWN REF" in proc.stdout, proc.stdout
+    assert "every in-scope if: is satisfiable" not in proc.stdout, proc.stdout
+
+
+def test_innocence_mixed_definite_and_assumed_witness_stays_in_clean_report(tmp_path):
+    """A condition satisfiable via BOTH a real (push-branch) trigger path
+    AND an unconstrained (schedule) one must NOT land in the
+    assumed-satisfiable bucket — it is genuinely, definitely satisfiable
+    already, without needing to assume anything."""
+    on_block = {
+        "push": {"branches": ["main"]},
+        "schedule": [{"cron": "0 0 * * *"}],
+    }
+    trigger_paths = mod.extract_trigger_paths(on_block)
+    _, _, ast = mod.analyze_condition(
+        "github.event_name == 'schedule' || "
+        "(github.event_name == 'push' && github.ref == 'refs/heads/main')",
+        trigger_paths,
+    )
+    assert ast is not None
+    assert any(mod._evaluate_certain(ast, tp) for tp in trigger_paths), (
+        "a real push-branch witness must be provable without assuming an unknown ref"
+    )

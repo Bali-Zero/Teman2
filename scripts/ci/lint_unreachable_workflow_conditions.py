@@ -68,23 +68,56 @@ empty finding list from a blind or capped scan must never read as clean):
      measurement of the world), so `schedule`'s ref is left unconstrained
      rather than guessed. Same reasoning for `merge_group` (real ref is
      `refs/heads/gh-readonly-queue/...`, never asserted equal to anything).
+     Within the modeled `branches:` glob subset, only `fnmatch`'s own
+     metacharacters (`*`, `?`, `[seq]`, `[!seq]`) are given GitHub's
+     meaning; a pattern using `+` ("one or more of the preceding char" in
+     GitHub's own filter-pattern glob) or `\\` (GitHub's escape character) is
+     OUTSIDE that subset — `fnmatch` treats both as ordinary literal
+     characters (verified empirically: `fnmatch.fnmatch('maaan', 'ma+n')`
+     is `False`, but GitHub's glob would match it) — so any `branches:`
+     entry containing either character collapses that push trigger's ref to
+     UNCONSTRAINED rather than mismodeling it (same bias-to-silence
+     reasoning as above: more matches -> more satisfiable -> only ever a
+     missed detection, never a false accusation). The opposite kind of gap
+     — `fnmatch`'s `*`/`?` matching across a `/` where GitHub's glob would
+     not — is left unaddressed on purpose: it makes `fnmatch` MORE
+     permissive than GitHub in that one case, which can only widen
+     "satisfiable", i.e. it is a missed-detection risk, never a
+     false-accusation one.
   3. `on.push.paths` / `on.pull_request.paths` and any `types:` filter are
      never modeled — they gate whether a run STARTS at all, not what
      `github.event_name`/`github.ref` it carries once it does; irrelevant to
      this module's question.
+  4. STRING COMPARISON CASE-FOLDING — GitHub's own `==`/`!=` operators
+     ignore case for the whole compared string ("GitHub ignores case when
+     comparing strings" — docs.github.com/en/actions/reference/
+     workflows-and-actions/expressions, verified 2026-08-20), so
+     `github.event_name == 'Push'` is true on an actual `push` event and
+     `github.ref == 'REFS/HEADS/MAIN'` is true against the real
+     `refs/heads/main`. This module casefolds both sides of every
+     `event_name`/`ref` comparison to match. Inside `_push_ref_matcher`,
+     the ref literal's `refs/heads/` prefix check is casefolded for that
+     same documented reason; whether the extracted branch text then matches
+     one of `branches:`'s glob patterns is ALSO matched casefolded, but
+     that second fold is a separate, deliberate PERMISSIVE BIAS, not a
+     claim about GitHub's real (case-sensitive, per git) branch-name
+     matching — see `_push_ref_matcher`'s docstring.
 
-Verified empirically against this repo (2026-08-20, 93 tracked workflows):
-exactly 5 `if:` conditions mention `github.event_name` or `github.ref`
-across 4 files; one (`main-push-failure-watch.yml`'s `alert` job, which
-compares `github.event.workflow_run.event`/`.head_branch` — fields outside
-this module's shape) is UNDECIDED by design; the other four, including the
-cured `security.yml` condition, are all satisfiable and unflagged.
+A condition judged satisfiable ONLY because at least one witnessing trigger
+path's ref was `_any_ref` (unconstrained/unknown, declared limit #2) — i.e.
+no trigger path this workflow's `on:` block can produce proves it true
+without that assumption — is never folded into the "every in-scope if: is
+satisfiable" clean report. It is counted and printed in its own
+"SATISFIABLE ONLY UNDER AN ASSUMED/UNKNOWN REF" section instead (exit code
+unchanged): a decision made on a value this module admits it cannot know
+must never be presented as the same kind of coverage as a proven one.
 
 Usage:
     python3 scripts/ci/lint_unreachable_workflow_conditions.py [--repo-root .]
 
-Exit codes: 0 zero findings (an UNDECIDED-only or fully-clean run) ·
-1 one or more unreachable `if:` conditions found ·
+Exit codes: 0 zero findings (an UNDECIDED-only, assumed-satisfiable-only, or
+fully-clean run — none of these are a "finding") · 1 one or more unreachable
+`if:` conditions found ·
 2 CANNOT VERIFY — PyYAML missing, `git ls-files` failed, zero tracked
 workflow files matched, or a workflow file failed to parse as YAML
 (W84 "esiste ≠ armato": a blind/broken scan must never exit 0).
@@ -96,6 +129,7 @@ import fnmatch
 import re
 import subprocess
 import sys
+from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
@@ -147,12 +181,51 @@ def _any_ref(_: str) -> bool:
     return True
 
 
+_REFS_HEADS_PREFIX = "refs/heads/"
+
+# GitHub's filter-pattern glob defines `+` ("one or more of the preceding
+# character") and `\` (escape the next character) on top of the `*`/`?`/
+# `[seq]`/`[!seq]` subset `fnmatch` already shares the meaning of. `fnmatch`
+# treats both as ordinary literal characters instead (declared limit #2) —
+# a `branches:` entry using either is outside the modeled subset.
+_GITHUB_GLOB_ONLY_METACHARS = ("+", "\\")
+
+
+def _branches_use_unmodeled_glob_syntax(branches: list[str]) -> bool:
+    return any(any(ch in b for ch in _GITHUB_GLOB_ONLY_METACHARS) for b in branches)
+
+
 def _push_ref_matcher(branches: list[str]) -> Callable[[str], bool]:
+    """Decides whether a `github.ref == '<ref_literal>'` comparison could be
+    true for a push trigger constrained to `branches:` patterns.
+
+    Two DIFFERENT case-folding decisions live here, kept deliberately
+    distinct (declared limit #4):
+
+      1. The `refs/heads/` PREFIX check on `ref_literal` is casefolded
+         because GitHub's `==` operator itself ignores case for the whole
+         compared string (docs.github.com/en/actions/reference/
+         workflows-and-actions/expressions: "GitHub ignores case when
+         comparing strings") — this fold is CORRECT per GitHub's documented
+         expression semantics, not a bias.
+      2. Whether the branch text extracted from `ref_literal` then matches
+         one of `branches:`'s glob patterns is ALSO matched casefolded, but
+         real git branch names ARE case-sensitive, so this second fold is
+         NOT a claim about how GitHub actually matches branch names — it is
+         a DELIBERATE PERMISSIVE BIAS (rule 4: bias toward silence). It can
+         only turn a real finding into a missed detection (more matches ->
+         more satisfiable), never manufacture a false accusation.
+    """
+
     def matcher(ref_literal: str) -> bool:
-        if not ref_literal.startswith("refs/heads/"):
+        if not ref_literal.casefold().startswith(_REFS_HEADS_PREFIX.casefold()):
             return False
-        branch = ref_literal[len("refs/heads/") :]
-        return any(fnmatch.fnmatch(branch, pattern) for pattern in branches if isinstance(pattern, str))
+        branch = ref_literal[len(_REFS_HEADS_PREFIX) :]
+        return any(
+            fnmatch.fnmatch(branch.casefold(), pattern.casefold())
+            for pattern in branches
+            if isinstance(pattern, str)
+        )
 
     return matcher
 
@@ -190,13 +263,25 @@ def extract_trigger_paths(on_block: Any) -> list[TriggerPath]:
             continue
         if event == "push" and isinstance(cfg, dict) and _is_exact_branch_push(cfg):
             branches = [b for b in cfg["branches"] if isinstance(b, str)]
-            paths.append(
-                TriggerPath(
-                    event="push",
-                    ref_matcher=_push_ref_matcher(branches),
-                    description=f"push (branches: {branches!r})",
+            if _branches_use_unmodeled_glob_syntax(branches):
+                paths.append(
+                    TriggerPath(
+                        event="push",
+                        ref_matcher=_any_ref,
+                        description=(
+                            f"push (branches: {branches!r}, glob syntax outside the "
+                            "modeled subset [+ or \\ present] -> ref unconstrained)"
+                        ),
+                    )
                 )
-            )
+            else:
+                paths.append(
+                    TriggerPath(
+                        event="push",
+                        ref_matcher=_push_ref_matcher(branches),
+                        description=f"push (branches: {branches!r})",
+                    )
+                )
         else:
             paths.append(TriggerPath(event=event, ref_matcher=_any_ref, description=event))
     return paths
@@ -395,18 +480,52 @@ class _Parser:
 
 
 def _evaluate(node: tuple, trigger: TriggerPath) -> bool:
+    """`event_name` comparisons are casefolded per GitHub's documented `==`
+    semantics ("GitHub ignores case when comparing strings" — declared
+    limit #4); `ref` comparisons delegate to `trigger.ref_satisfies`, which
+    does its own casefolding (see `_push_ref_matcher`)."""
     kind = node[0]
     if kind == "free":
         return True
     if kind == "cmp":
         _, cfield, literal = node
         if cfield == "event_name":
-            return trigger.event == literal
+            return trigger.event.casefold() == literal.casefold()
         return trigger.ref_satisfies(literal)
     if kind == "and":
         return _evaluate(node[1], trigger) and _evaluate(node[2], trigger)
     if kind == "or":
         return _evaluate(node[1], trigger) or _evaluate(node[2], trigger)
+    raise AssertionError(f"unknown AST node kind {kind!r}")  # pragma: no cover
+
+
+def _evaluate_certain(node: tuple, trigger: TriggerPath) -> bool:
+    """Same shape and casefolding as `_evaluate`, but a `ref` comparison
+    against a trigger path whose ref is UNCONSTRAINED (`trigger.ref_matcher
+    is _any_ref`) counts as UNKNOWN — i.e. NOT true — rather than assumed
+    true. Used only to separate 'genuinely satisfiable' (this function
+    returns True for some trigger path) from 'satisfiable only because an
+    unknown ref could not be disproven' (`_evaluate` says True, this
+    function says False for every trigger path) — declared limit #4's third
+    bucket. Deliberately conservative on `and`/`or`: an unknown operand
+    reads as False here even where the real value might make the whole
+    expression true, because the question this function answers is 'is
+    there a trigger path that proves it WITHOUT guessing', not 'what is the
+    real value'."""
+    kind = node[0]
+    if kind == "free":
+        return True
+    if kind == "cmp":
+        _, cfield, literal = node
+        if cfield == "event_name":
+            return trigger.event.casefold() == literal.casefold()
+        if trigger.ref_matcher is _any_ref:
+            return False
+        return trigger.ref_satisfies(literal)
+    if kind == "and":
+        return _evaluate_certain(node[1], trigger) and _evaluate_certain(node[2], trigger)
+    if kind == "or":
+        return _evaluate_certain(node[1], trigger) or _evaluate_certain(node[2], trigger)
     raise AssertionError(f"unknown AST node kind {kind!r}")  # pragma: no cover
 
 
@@ -422,7 +541,7 @@ def _explain(node: tuple, trigger: TriggerPath) -> tuple[bool, str]:
     if kind == "cmp":
         _, cfield, literal = node
         if cfield == "event_name":
-            val = trigger.event == literal
+            val = trigger.event.casefold() == literal.casefold()
             return val, f"event_name=='{literal}' is {val} (trigger event: '{trigger.event}')"
         val = trigger.ref_satisfies(literal)
         return val, f"ref=='{literal}' is {val}"
@@ -479,14 +598,79 @@ _IF_LINE_RE = re.compile(r"^(?P<indent>\s*)if:\s?(?P<rest>.*)$")
 _BLOCK_SCALAR_INDICATORS = (">", ">-", ">+", "|", "|-", "|+")
 
 
+def _fold_block_scalar_body(indicator: str, indent_len: int, lines: list[str], start: int) -> tuple[str, int]:
+    """Approximates YAML's real block-scalar folding for the body starting
+    at `lines[start]` (the line after `if: <indicator>`), well enough to
+    usually reconstruct PyYAML's own parsed string for line-matching
+    (`_attach_line_numbers` never trusts a MISmatch here to attach a wrong
+    line — a folding gap just means one more condition falls back to no
+    line number, never a wrong one). Returns (folded_text, next_index).
+
+    LITERAL (`|`, `|-`, `|+`): every line break is kept verbatim — this
+    module never folds a `|` scalar.
+    FOLDED (`>`, `>-`, `>+`, the shape this repo's own multi-line `if:`
+    conditions actually use, verified live 2026-08-20 against
+    `main-push-failure-watch.yml`): a line break between two lines both at
+    the block's OWN base indentation folds to a single space; a break next
+    to a blank line, or a line indented MORE than the base, is kept
+    literal, per YAML's documented folding rule — this is what lets a
+    `>`-folded condition's wrapped continuation lines reconstruct the exact
+    same string PyYAML parses.
+    """
+    literal = indicator.startswith("|")
+    base_indent_len: int | None = None
+    segments: list[str] = []
+    prev_kind: str | None = None  # "normal" | "more_indented" | "blank" | None (first line)
+    j = start
+    while j < len(lines):
+        line = lines[j]
+        if line.strip() == "":
+            if base_indent_len is None:
+                # Leading blank lines inside the block are part of the
+                # scalar too, but with no content yet to anchor a fold
+                # decision on — treat as a paragraph break once content
+                # starts; skip for now (matches YAML: leading blanks don't
+                # set the indentation).
+                j += 1
+                continue
+            segments.append("\n")
+            prev_kind = "blank"
+            j += 1
+            continue
+        cur_indent_len = len(line) - len(line.lstrip())
+        if base_indent_len is None:
+            if cur_indent_len <= indent_len:
+                break
+            base_indent_len = cur_indent_len
+        if cur_indent_len < base_indent_len:
+            break
+        content = line[base_indent_len:]
+        if literal:
+            segments.append(content if prev_kind is None else "\n" + content)
+        else:
+            more_indented = content.startswith((" ", "\t"))
+            kind = "more_indented" if more_indented else "normal"
+            if prev_kind is None:
+                segments.append(content)
+            elif prev_kind == "normal" and kind == "normal":
+                segments.append(" " + content)
+            else:
+                segments.append("\n" + content)
+            prev_kind = kind
+        j += 1
+    return "".join(segments), j
+
+
 def _raw_if_lines(text: str) -> list[tuple[int, str]]:
     """Best-effort (file line number, folded if-text) pairs scanned straight
     from the raw file text, in document order — used ONLY to attach a line
     number to each structurally-found `if:` for reporting. The actual
     satisfiability analysis always uses PyYAML's parsed value (declared
-    limit: this function's block-scalar folding is an approximation of
-    YAML's real folding rules, good enough to locate a line, not trusted for
-    anything else)."""
+    limit: `_fold_block_scalar_body`'s folding is an approximation of
+    YAML's real folding rules, good enough to locate a line for the common
+    shapes this repo uses, not trusted for anything else — a mismatch here
+    can only cost a line number via `_attach_line_numbers`'s exact-text
+    match, never attach a wrong one)."""
     lines = text.splitlines()
     out: list[tuple[int, str]] = []
     i = 0
@@ -496,24 +680,10 @@ def _raw_if_lines(text: str) -> list[tuple[int, str]]:
             indent = m.group("indent")
             rest = m.group("rest").rstrip()
             if rest in _BLOCK_SCALAR_INDICATORS:
-                collected: list[str] = []
-                j = i + 1
-                base_indent_len: int | None = None
-                while j < len(lines):
-                    line = lines[j]
-                    if line.strip() == "":
-                        j += 1
-                        continue
-                    cur_indent_len = len(line) - len(line.lstrip())
-                    if base_indent_len is None:
-                        if cur_indent_len <= len(indent):
-                            break
-                        base_indent_len = cur_indent_len
-                    if cur_indent_len < base_indent_len:
-                        break
-                    collected.append(line.strip())
-                    j += 1
-                rest = " ".join(collected)
+                rest, next_i = _fold_block_scalar_body(rest, len(indent), lines, i + 1)
+                out.append((i + 1, rest))
+                i = next_i
+                continue
             out.append((i + 1, rest))
         i += 1
     return out
@@ -544,16 +714,49 @@ def _iter_if_conditions(doc: dict[str, Any], file_rel: str) -> list[IfCondition]
     return conditions
 
 
+def _normalize_raw_if_text(rest: str) -> str:
+    """Strips one layer of matching outer quotes from a raw if:-line's tail
+    (the common `if: "expr"` / `if: 'expr'` shape) so it can be compared
+    against PyYAML's already-unquoted parsed value. Never attempts full
+    YAML scalar folding beyond what `_raw_if_lines` already does for block
+    scalars — a text that still does not match after this is left
+    unmatched, not guessed at."""
+    if len(rest) >= 2 and rest[0] == rest[-1] and rest[0] in ("'", '"'):
+        return rest[1:-1]
+    return rest
+
+
 def _attach_line_numbers(conditions: list[IfCondition], raw_lines: list[tuple[int, str]]) -> None:
-    """Best-effort positional match: both `conditions` (structural traversal
-    of a dict PyYAML preserves in document order) and `raw_lines` (a
-    top-to-bottom scan) visit `if:` occurrences in the same order. A count
-    mismatch (e.g. a `with:` parameter that happens to be a step literally
-    named `if`, or a block-scalar shape this module's folding does not
-    match) degrades to a missing line number for the unmatched tail — never
-    a WRONG line, only an absent one."""
-    for cond, (line_no, _rest) in zip(conditions, raw_lines):
-        cond.line = line_no
+    """Matches each condition to its raw file line BY TEXT, never by
+    traversal ORDER. `conditions` is a STRUCTURAL traversal (job `if:`
+    always visited before that job's step `if:`s, per `_iter_if_conditions`
+    — regardless of where the job-level `if:` key actually sits in the
+    file); `raw_lines` is a RAW top-to-bottom scan. A job-level `if:`
+    written textually AFTER `steps:` (legal YAML — key order inside a
+    mapping is free) makes the two lists visit the same two conditions in
+    OPPOSITE order, so a positional zip silently SWAPS their line numbers
+    (verified live, 2026-08-20 — reproduced with exactly this shape; the
+    old docstring here claimed this "degrades to a missing line number …
+    never a WRONG line", which was false — the claim was the worse half of
+    the defect, see this PR's commit message).
+
+    A condition's (quote-normalized) text that occurs EXACTLY ONCE among
+    `conditions` and EXACTLY ONCE among `raw_lines` is unambiguous and gets
+    that line. Any text that repeats — on either side — is genuinely
+    ambiguous (which occurrence is which cannot be recovered from text
+    alone) and is left with `line=None` for every condition sharing it:
+    an absent line number, never a guessed one."""
+    text_to_lines: dict[str, list[int]] = {}
+    for line_no, rest in raw_lines:
+        text_to_lines.setdefault(_normalize_raw_if_text(rest), []).append(line_no)
+    cond_text_counts = Counter(c.text for c in conditions)
+
+    for cond in conditions:
+        candidate_lines = text_to_lines.get(cond.text, [])
+        if len(candidate_lines) == 1 and cond_text_counts[cond.text] == 1:
+            cond.line = candidate_lines[0]
+        # else: zero raw matches, or the text repeats somewhere -> ambiguous,
+        # leave cond.line at its default (None).
 
 
 @dataclass
@@ -570,11 +773,25 @@ class Undecided:
 
 
 @dataclass
+class AssumedSatisfiable:
+    """A condition this module calls 'satisfiable', where every trigger
+    path that makes it true does so only via an UNCONSTRAINED
+    (`_any_ref`) ref — i.e. this module could not DISPROVE it, but the
+    verdict is not proven against a real, modeled ref either (declared
+    limit #4's third bucket). Never counted as a clean, proven pass."""
+
+    condition: IfCondition
+    on_summary: str
+    mechanism: str
+
+
+@dataclass
 class WorkflowResult:
     file: str
     parse_error: str | None = None
     findings: list[Finding] = field(default_factory=list)
     undecided: list[Undecided] = field(default_factory=list)
+    assumed_satisfiable: list[AssumedSatisfiable] = field(default_factory=list)
     in_scope_count: int = 0
 
 
@@ -619,6 +836,15 @@ def analyze_workflow(path: Path, repo_root: Path) -> WorkflowResult:
                 "    (workflow's `on:` block produced zero trigger paths)"
             )
             result.findings.append(Finding(condition=cond, on_summary=on_summary, mechanism=mechanism))
+        else:
+            assert ast is not None
+            if any(_evaluate_certain(ast, tp) for tp in trigger_paths):
+                continue  # proven true against at least one modeled/real trigger path
+            witnesses = [tp for tp in trigger_paths if _evaluate(ast, tp)]
+            mechanism = "\n".join(f"    - {tp.description}: {_explain(ast, tp)[1]}" for tp in witnesses)
+            result.assumed_satisfiable.append(
+                AssumedSatisfiable(condition=cond, on_summary=on_summary, mechanism=mechanism)
+            )
     return result
 
 
@@ -665,6 +891,7 @@ def main(argv: list[str] | None = None) -> int:
     parse_errors: list[tuple[str, str]] = []
     all_findings: list[Finding] = []
     all_undecided: list[Undecided] = []
+    all_assumed: list[AssumedSatisfiable] = []
     total_in_scope = 0
 
     for wf in workflows:
@@ -675,6 +902,7 @@ def main(argv: list[str] | None = None) -> int:
         total_in_scope += result.in_scope_count
         all_findings.extend(result.findings)
         all_undecided.extend(result.undecided)
+        all_assumed.extend(result.assumed_satisfiable)
 
     if parse_errors:
         print(
@@ -689,7 +917,8 @@ def main(argv: list[str] | None = None) -> int:
     print(
         f"lint_unreachable_workflow_conditions: {len(workflows)} workflow(s) scanned, "
         f"{total_in_scope} if: condition(s) in scope (name github.event_name/github.ref), "
-        f"{len(all_findings)} finding(s), {len(all_undecided)} not analyzed"
+        f"{len(all_findings)} finding(s), {len(all_undecided)} not analyzed, "
+        f"{len(all_assumed)} satisfiable-only-under-assumed-ref"
     )
 
     if all_findings:
@@ -712,7 +941,25 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  ? {loc} [{c.scope}]: {c.text}")
             print(f"    reason: {u.reason}")
 
-    if not all_findings and not all_undecided:
+    if all_assumed:
+        print(
+            f"\nSATISFIABLE ONLY UNDER AN ASSUMED/UNKNOWN REF ({len(all_assumed)} of "
+            f"{total_in_scope} in-scope condition(s)) — this guard could not DISPROVE"
+        )
+        print(
+            "these, but the 'satisfiable' verdict rests entirely on an unconstrained trigger "
+            "path (declared limit #2/#4), never a proven reachable ref — not the same kind of "
+            "coverage as a proven pass, and never counted as one:"
+        )
+        for a in all_assumed:
+            c = a.condition
+            loc = f"{c.file}:{c.line}" if c.line else c.file
+            print(f"  ~ {loc} [{c.scope}]: {c.text}")
+            print(f"    {a.on_summary}")
+            print(f"    mechanism (evaluated per assumed-ref trigger path):")
+            print(a.mechanism)
+
+    if not all_findings and not all_undecided and not all_assumed:
         print("  ✓ every in-scope if: is satisfiable under at least one real trigger path")
 
     return 1 if all_findings else 0
