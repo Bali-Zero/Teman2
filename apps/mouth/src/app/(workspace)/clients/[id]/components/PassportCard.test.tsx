@@ -3,6 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PassportCard } from "./PassportCard";
 import { api } from "@/lib/api";
 
+const { mockTrackDocumentUploaded } = vi.hoisted(() => ({
+  mockTrackDocumentUploaded: vi.fn(),
+}));
+
 vi.mock("@/lib/api", () => ({
   api: {
     crm: {
@@ -11,6 +15,10 @@ vi.mock("@/lib/api", () => ({
     post: vi.fn(),
     request: vi.fn(),
   },
+}));
+
+vi.mock("@/lib/analytics", () => ({
+  trackDocumentUploaded: mockTrackDocumentUploaded,
 }));
 
 vi.mock("sonner", () => ({
@@ -115,5 +123,64 @@ describe("PassportCard", () => {
       );
       expect(onRefresh).toHaveBeenCalled();
     });
+  });
+
+  it("fires trackDocumentUploaded('passport') on a successful upload (GA4 document_uploaded — PENDING-ARMS #779)", async () => {
+    vi.mocked(api.post).mockResolvedValue({ success: true });
+
+    render(
+      <PassportCard
+        client={client as any}
+        documents={[]}
+        formatDate={(value) => value}
+        onRefresh={vi.fn()}
+        clientId={42}
+      />,
+    );
+
+    const input = screen.getByLabelText("Upload passport");
+    const file = new File(["passport bytes"], "passport.jpg", {
+      type: "image/jpeg",
+    });
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith(
+        "/api/crm/clients/42/documents/upload",
+        expect.objectContaining({ document_type: "passport" }),
+      );
+    });
+    await waitFor(() => {
+      expect(mockTrackDocumentUploaded).toHaveBeenCalledTimes(1);
+    });
+    expect(mockTrackDocumentUploaded).toHaveBeenCalledWith("passport");
+  });
+
+  it("innocence: does not fire trackDocumentUploaded when the upload fails", async () => {
+    vi.mocked(api.post).mockResolvedValue({
+      success: false,
+      message: "storage quota exceeded",
+    });
+
+    render(
+      <PassportCard
+        client={client as any}
+        documents={[]}
+        formatDate={(value) => value}
+        onRefresh={vi.fn()}
+        clientId={42}
+      />,
+    );
+
+    const input = screen.getByLabelText("Upload passport");
+    const file = new File(["passport bytes"], "passport.jpg", {
+      type: "image/jpeg",
+    });
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalled();
+    });
+    expect(mockTrackDocumentUploaded).not.toHaveBeenCalled();
   });
 });

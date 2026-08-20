@@ -403,14 +403,6 @@ function dispatchPropertyCTAClicked(
   });
 }
 
-/** Track property article-page CTA interaction (article slug + CTA type) */
-export function trackPropertyArticleCTA(
-  articleSlug: string,
-  ctaType: string,
-): void {
-  dispatchPropertyCTAClicked({ article_slug: articleSlug, cta_type: ctaType });
-}
-
 /** Track property analyze button clicked */
 export function trackPropertyAnalyzeCTA(lat: number, lng: number): void {
   dispatchPropertyCTAClicked({ cta_type: "analyze", lat, lng });

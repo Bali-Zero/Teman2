@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { logger } from "@/lib/logger";
 import { api } from "@/lib/api";
+import { trackDocumentUploaded } from "@/lib/analytics";
 import { fileToBase64 } from "@/lib/utils";
 import type { ClientProfile, ClientDocument } from "@/lib/api/crm/crm.types";
 import {
@@ -252,6 +253,7 @@ export function PassportCard({
 
       if (response.success) {
         toast.success("Passport uploaded — OCR in corso...");
+        trackDocumentUploaded("passport");
         pollOcrStatus();
       } else {
         toast.error("Upload failed", { description: response.message });

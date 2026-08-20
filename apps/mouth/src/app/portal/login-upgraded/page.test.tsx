@@ -8,13 +8,19 @@ import {
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockLogin, mockLoggerError, mockLoggerInfo, mockRouterReplace } =
-  vi.hoisted(() => ({
-    mockLogin: vi.fn(),
-    mockLoggerError: vi.fn(),
-    mockLoggerInfo: vi.fn(),
-    mockRouterReplace: vi.fn(),
-  }));
+const {
+  mockLogin,
+  mockLoggerError,
+  mockLoggerInfo,
+  mockRouterReplace,
+  mockTrackPortalLogin,
+} = vi.hoisted(() => ({
+  mockLogin: vi.fn(),
+  mockLoggerError: vi.fn(),
+  mockLoggerInfo: vi.fn(),
+  mockRouterReplace: vi.fn(),
+  mockTrackPortalLogin: vi.fn(),
+}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -67,6 +73,10 @@ vi.mock("framer-motion", async () => {
 
 vi.mock("@/lib/api/public-auth", () => ({
   publicAuth: { login: mockLogin },
+}));
+
+vi.mock("@/lib/analytics", () => ({
+  trackPortalLogin: mockTrackPortalLogin,
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -272,6 +282,58 @@ describe("UpgradedLoginPage (WS3 day pass)", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("fires trackPortalLogin exactly once on a successful login (GA4 portal_login — PENDING-ARMS #779)", async () => {
+    mockLogin.mockResolvedValue({
+      access_token: "synthetic-token",
+      token_type: "Bearer",
+      user: {
+        id: "client-2",
+        email: "synthetic.tracked@example.test",
+        name: "Synthetic Tracked Client",
+        role: "client",
+      },
+      redirectTo: "/portal",
+    });
+    render(<UpgradedLoginPage />);
+
+    const email = screen.getByRole("textbox", { name: "Corporate Email" });
+    fireEvent.change(email, {
+      target: { value: "synthetic.tracked@example.test" },
+    });
+    fireEvent.submit(email.closest("form")!);
+
+    const pin = await screen.findByLabelText("Access PIN");
+    fireEvent.change(pin, { target: { value: "1234" } });
+    fireEvent.submit(pin.closest("form")!);
+
+    await waitFor(() => {
+      expect(mockTrackPortalLogin).toHaveBeenCalledTimes(1);
+    });
+    expect(mockTrackPortalLogin).toHaveBeenCalledWith();
+  });
+
+  it("innocence: does not fire trackPortalLogin when login is denied", async () => {
+    mockLogin.mockRejectedValue(
+      Object.assign(new Error("synthetic auth failure"), {
+        response: { status: 401 },
+      }),
+    );
+    render(<UpgradedLoginPage />);
+
+    const email = screen.getByRole("textbox", { name: "Corporate Email" });
+    fireEvent.change(email, {
+      target: { value: "synthetic.denied@example.test" },
+    });
+    fireEvent.submit(email.closest("form")!);
+
+    const pin = await screen.findByLabelText("Access PIN");
+    fireEvent.change(pin, { target: { value: "1234" } });
+    fireEvent.submit(pin.closest("form")!);
+
+    await screen.findByRole("alert");
+    expect(mockTrackPortalLogin).not.toHaveBeenCalled();
   });
 
   it("never forwards credentials, email, current URL, or raw auth errors to telemetry", async () => {

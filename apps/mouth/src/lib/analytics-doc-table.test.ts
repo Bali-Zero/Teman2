@@ -19,6 +19,14 @@ import { describe, expect, it } from "vitest";
  * forgotten, so the fix is not a tidier row: it is a check that fails when
  * the two disagree.
  *
+ * A fourth retirement (PENDING-ARMS #779 follow-up, 2026-08-21) removed
+ * `trackPropertyArticleCTA`: zero call-sites anywhere in the monorepo, and
+ * its only GA4 surface (`property_cta_clicked` via `dispatchPropertyCTAClicked`)
+ * had already been absorbed by `trackPropertyAnalyzeCTA` per the MYTHOS D5
+ * consolidation note on that dispatcher. This time the row and the export
+ * were removed in the same change, so the floor below drops from 10 to 9
+ * rather than the table going stale a fourth time.
+ *
  * Declared limits, so nobody reads a green run as more than it is. This
  * checks the Helper and GA4-Event columns; the Category column is free text
  * that no code consumes, and a wrong one passes. It checks that every
@@ -33,11 +41,12 @@ const MODULE_PATH = join(__dirname, "analytics.ts");
 
 const HEADING = "### 17.6 Pre-existing Helpers Reference";
 
-/** Rows the two retirements above removed. Pinned so they cannot creep back. */
+/** Rows the retirements above removed. Pinned so they cannot creep back. */
 const RETIRED = [
   "trackVisaQuizCompleted",
   "trackVisaResultViewed",
   "trackVisaCallingBlock",
+  "trackPropertyArticleCTA",
 ];
 
 interface DocRow {
@@ -142,11 +151,12 @@ function findBodyBrace(source: string, paren: number): number {
 /**
  * Returns every GA4 event name a helper can reach, directly or through the
  * dispatchers it calls. It collects from all dispatchers rather than
- * returning at the first one: `trackPropertyArticleCTA` and
- * `trackPropertyAnalyzeCTA` both route through `dispatchPropertyCTAClicked`,
- * which is deliberate — `property_cta_clicked` is the canonical event and
- * `cta_type` separates them — but nothing guarantees a future helper calls
- * only one dispatcher, or that the first one it calls is the emitting one.
+ * returning at the first one: `trackPropertyAnalyzeCTA` routes through
+ * `dispatchPropertyCTAClicked` (until 2026-08-21 it shared that dispatcher
+ * with the now-retired `trackPropertyArticleCTA` — `property_cta_clicked`
+ * was the canonical event and `cta_type` separated them), but nothing
+ * guarantees a future helper calls only one dispatcher, or that the first
+ * one it calls is the emitting one.
  */
 function eventsEmittedBy(source: string, helper: string): string[] {
   const body = extractBody(source, `export function ${helper}(`);
@@ -178,8 +188,10 @@ describe("DOCUMENTATION.md §17.6 helper table", () => {
   it("finds a table with the shape it is supposed to guard", () => {
     // Without a floor, an emptied table would satisfy every per-row assertion
     // below by having no rows to check. Without the uniqueness check, so would
-    // a table of N copies of one correct row.
-    expect(rows.length).toBeGreaterThanOrEqual(10);
+    // a table of N copies of one correct row. 9, not 10: the
+    // trackPropertyArticleCTA retirement above dropped a live row, and the
+    // floor has to follow the real table down or it stops meaning anything.
+    expect(rows.length).toBeGreaterThanOrEqual(9);
     expect(new Set(rows.map((r) => r.helper)).size).toBe(rows.length);
   });
 
@@ -208,7 +220,7 @@ describe("DOCUMENTATION.md §17.6 helper table", () => {
     // One reached through a dispatcher, one direct. If the dispatcher
     // indirection ever stops resolving, the first of these fails for a reason
     // that has nothing to do with the doc being wrong.
-    expect(eventsEmittedBy(module, "trackPropertyArticleCTA")).toContain(
+    expect(eventsEmittedBy(module, "trackPropertyAnalyzeCTA")).toContain(
       "property_cta_clicked",
     );
     expect(eventsEmittedBy(module, "trackVisaChatQuestion")).toContain(

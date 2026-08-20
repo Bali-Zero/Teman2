@@ -9,6 +9,7 @@ import { Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cormorant } from "@balizero/core/fonts/cormorant";
 import { useSystemSound } from "@/hooks/useSystemSound";
+import { trackPortalLogin } from "@/lib/analytics";
 import { publicAuth } from "@/lib/api/public-auth";
 import { sanitizeRedirect } from "@/lib/auth/sanitizeRedirect";
 import { logger } from "@/lib/logger";
@@ -140,6 +141,7 @@ function UpgradedLoginPageInner() {
     try {
       const loginResult = await publicAuth.login(normalizedEmail, pin);
       setLoginStage("success");
+      trackPortalLogin();
       play("access_granted");
 
       const urlParams = new URLSearchParams(globalThis.location.search);
