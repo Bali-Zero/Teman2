@@ -104,7 +104,11 @@ jobs:
 
       - name: Install Claude CLI
         if: steps.guard.outputs.has_token == 'true' && steps.input.outputs.diff_bytes != '0'
-        run: npm install -g @anthropic-ai/claude-code
+        # Pinned 2026-08-20: @anthropic-ai/claude-code@2.1.237 (2026-08-19T23:57Z) fails
+        # `claude --version` with "Error: claude native binary not installed." — same
+        # class-audit as apps/backend-rag/Dockerfile. 2.1.236 is last verified-good.
+        # Bump deliberately after verifying the install flow, never back to floating latest.
+        run: npm install -g @anthropic-ai/claude-code@2.1.236
 
       - name: Run advisory review
         id: review
