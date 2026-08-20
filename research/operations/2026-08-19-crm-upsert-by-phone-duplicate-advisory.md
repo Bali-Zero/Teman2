@@ -208,7 +208,7 @@ refuters killed it. It surfaces one layer up, at `crm_delivery.py:391-397`, as
 `"phone-upsert could not resolve an UNAMBIGUOUS Fly client id"` — to *every* cause.
 
 There are seven of them (`_ensure_client_on_fly` spans 132-221; a third draft of this paragraph said
-five, and a second seat produced the two it had missed):
+five, and a third seat — GLM, Round 4 — produced the two it had missed):
 
 | exit | cause | preceding line of its own |
 |---|---|---|
@@ -222,8 +222,8 @@ five, and a second seat produced the two it had missed):
 
 **The shared phone lands on `:192`, the silent one.** That is the whole point: because the endpoint
 answers `client_id: None`, the refusal arrives at the caller as an unremarkable "no id" and exits
-without a word, while the warning written to name it sits two exits further down (`:214`, guarded at
-`:209`) waiting for a response shape this caller can never receive.
+without a word, while the warning written to name it sits two exits further down (`:209-213`, guarded
+at `:204`, returning at `:214`) waiting for a response shape this caller can never receive.
 
 So a shared-phone refusal produces exactly **one** line in the entire system, and it is the line
 seven causes share. Both warnings written to name this cause are unreachable: the server's `N
@@ -277,8 +277,15 @@ the original error but the over-confident repair of it.
    client. "Duplicate" may be the wrong word for many of them, and a merge would destroy a real
    distinction.
 2. Should `wa-mirror-auto-promote-leads.py` adopt `crm_push.py`'s posture? That is the smallest
-   change with the largest effect, but it converts ~849 silent writes into refusals — a
-   behaviour change on a live lead pipeline, not a bug fix.
+   change with the largest effect: up to ~849 collision groups would stop being acted on and
+   start being refused. Two corrections to an earlier draft of this line, which called them
+   "~849 silent writes" — they are neither necessarily silent nor necessarily writes. The
+   advisory does fire on every one of them (it simply did not say *what* it had done, which is
+   what #4387 fixed), and the refusal side is logged one layer up as
+   `intake.delivery.identity_unresolved`; and an unknown share of those groups resolve to
+   `skipped_no_change`, where nothing is written at all. Still a behaviour change on a live lead
+   pipeline, not a bug fix — but the count is of *collision groups*, not of writes prevented,
+   and that number has not been measured.
 3. Is resurrecting an archived card ever the intent on the auto-promote path? `crm_push.py` says
    no, in writing, for identity resolution. Whether the lead-promotion path has a different and
    legitimate answer is a business call, not a code call.
@@ -357,7 +364,7 @@ correction that went too far. The seat also caught the function-span figure (`13
 trailing blank lines; the last statement is at 1552) and a loose claim that the log identifies the
 *caller* when it can only identify the *flag value*.
 
-### Round 4 — a second seat on the numbers (GLM)
+### Round 4 — a third seat on the numbers (GLM)
 
 GLM was dispatched independently on the `crm_push` half and **refuted the taxonomy**: the function
 has **seven** `return None` sites, not five — `:156` (phone digits outside 6-20, reachable because
