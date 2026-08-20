@@ -74,6 +74,38 @@ UNDER-match (the actual #4459 defect) ships a red required check. Only the
 COMMON_BASENAMES skip-list narrows the search, and only for names common
 enough that scanning them would be pure noise.
 
+PROSE-MENTION FILTER (2026-08-21, real-corpus replay finding — a SECOND
+over-match, distinct from the common-basename one above): a REAL replay
+against this repo's own `apps/backend-rag/tests/test_sentry_lazy_import.py`
+found 3 of 20 "LIVE" hits that name the file only in PROSE, never consume
+it — a `#` comment line, and two Python module docstrings, all three
+narrating the exact incident this tool's own #4459 motivation section
+describes. A guard that blocks a legitimate push on prose is the guard
+getting disabled (cicatrix-superscar.md #3 / W105 — an over-match annoying
+enough turns into a #2 "esiste ≠ armato" via the escape hatch). Two
+independent filters, applied in this order, downgrade such a hit to
+`docs-mention`:
+  1. Any hit whose line, after `.lstrip()`, starts with `#` — a whole-line
+     comment — in a kind where `#` is the comment marker (python, shell,
+     workflow, docker-compose, makefile, husky, pyproject, pytest.ini,
+     other). A TRAILING end-of-line comment does NOT qualify (the line
+     does not start with `#`) — that shape still carries a real code
+     statement earlier on the same line.
+  2. For `.py` targets specifically: a hit whose line falls inside a
+     DOCSTRING's line range (module/class/function/async-function, the
+     first statement, an `Expr` wrapping a string `Constant`) — found via
+     `ast.parse` + `ast.walk`, never a heuristic guess at where a
+     docstring "probably" ends. An `import`/`from` of the stem, or a
+     string literal OUTSIDE any docstring range (list/tuple/call
+     args — the actual #4459 `backend_stability_gate.py` shape) is
+     UNCHANGED by this filter and stays LIVE; that is the guilt tripwire
+     this filter must never swallow (scripts/tests/test_consumer_map.py).
+     If `ast.parse` fails (the file does not parse as Python — a template,
+     a deliberately-broken fixture, a Python-2-only script), this tool
+     fails CLOSED: the hit stays LIVE and a one-line note goes to stderr
+     naming the file — silently skipping the filter would be silently
+     TRUSTING an unreadable file's structure, which is backwards.
+
 Exit codes: 0 = clean (no LIVE consumer found for any target). 1 = at least
 one LIVE consumer found — this diff is not safe to push as-is. 2 = usage
 error (not a git repo, bad `--base` ref, git itself unavailable).
@@ -86,6 +118,7 @@ Run:
 from __future__ import annotations
 
 import argparse
+import ast
 import subprocess
 import sys
 from pathlib import Path
@@ -98,6 +131,26 @@ from pathlib import Path
 # a defensive guess. `--include-common` forces the scan anyway.
 # ---------------------------------------------------------------------------
 COMMON_BASENAMES: frozenset[str] = frozenset({"conftest.py", "__init__.py"})
+
+# Kinds where "#" is the comment marker — a hit whose line, after lstrip(),
+# starts with "#" is a comment naming the file, not a consumer of it (module
+# docstring "PROSE-MENTION FILTER" item 1). Excludes "package.json" (JSON has
+# no comments — a leading "#" there is not valid JSON and would never be a
+# real hit) and "plist" (XML, comments are `<!-- -->`). "docs-mention" is
+# already handled upstream and never reaches this check.
+HASH_COMMENT_KINDS: frozenset[str] = frozenset(
+    {
+        "python",
+        "shell",
+        "workflow",
+        "docker-compose",
+        "makefile",
+        "husky",
+        "pyproject",
+        "pytest.ini",
+        "other",
+    }
+)
 
 EXCLUDE_DIR_PREFIXES: tuple[str, ...] = ("docs/archive/", "research/")
 EXCLUDE_EXACT_PATHS: frozenset[str] = frozenset(
@@ -222,6 +275,53 @@ def _git_grep_basename(needle: str, cwd: Path | None) -> list[tuple[str, int, st
     return hits
 
 
+def _read_file_at_head(path: str, cwd: Path | None) -> str | None:
+    """The consuming FILE's own full content at HEAD (not the target's) —
+    needed to compute docstring line ranges, since a single grep hit line has
+    no idea whether it sits inside one. Returns None on any git failure
+    (unreadable, binary, path vanished between grep and here) — callers treat
+    that the same as an unparseable file: fail closed, stay LIVE, note it.
+    """
+    result = _git(["show", f"HEAD:{path}"], cwd=cwd)
+    if result.returncode != 0:
+        return None
+    return result.stdout
+
+
+def _python_docstring_line_ranges(source: str) -> list[tuple[int, int]]:
+    """[(start_line, end_line), ...] (1-indexed, inclusive) for every
+    docstring in `source` — module, class, function, and async-function, at
+    every nesting depth (`ast.walk` visits the whole tree, not just the top
+    level). A docstring is a node's first body statement, an `Expr` wrapping
+    a string `Constant` — the same shape Python itself uses to recognize one.
+    Raises SyntaxError (propagated, not swallowed) if `source` does not parse
+    as Python — the caller decides the fail-closed behavior for that, this
+    function's only job is the AST walk.
+    """
+    tree = ast.parse(source)
+    ranges: list[tuple[int, int]] = []
+    docstring_owners = (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+    for node in ast.walk(tree):
+        if not isinstance(node, docstring_owners):
+            continue
+        body = getattr(node, "body", None)
+        if not body:
+            continue
+        first = body[0]
+        if (
+            isinstance(first, ast.Expr)
+            and isinstance(first.value, ast.Constant)
+            and isinstance(first.value.value, str)
+        ):
+            end = getattr(first, "end_lineno", first.lineno)
+            ranges.append((first.lineno, end))
+    return ranges
+
+
+def _in_any_range(lineno: int, ranges: list[tuple[int, int]]) -> bool:
+    return any(start <= lineno <= end for start, end in ranges)
+
+
 def find_consumers(
     targets: list[tuple[str, str | None]],
     include_common: bool,
@@ -237,6 +337,13 @@ def find_consumers(
     """
     all_target_paths = {p for old, new in targets for p in (old, new) if p}
     rows: list[tuple[str, str, str, str]] = []
+    # Per-CALL caches (not per-target — the same consuming file can be hit by
+    # multiple targets, e.g. two deleted files both mentioned in one README):
+    # docstring ranges keyed by the CONSUMING file's path, and a set of paths
+    # already warned about (unparseable-Python note printed once per file,
+    # never once per hit).
+    docstring_cache: dict[str, list[tuple[int, int]] | None] = {}
+    warned_unparseable: set[str] = set()
 
     for old_path, new_path in targets:
         basename = old_path.rsplit("/", 1)[-1]
@@ -265,6 +372,33 @@ def find_consumers(
                 seen_locations.add(loc)
                 kind = _classify_kind(path)
                 verdict = "docs-mention" if kind == "docs-mention" else "LIVE"
+
+                # PROSE-MENTION FILTER (module docstring, same name) — a hit
+                # that only NAMES the file in prose is not a consumer.
+                if verdict == "LIVE" and kind in HASH_COMMENT_KINDS and content.lstrip().startswith("#"):
+                    verdict = "docs-mention"
+                elif verdict == "LIVE" and kind == "python":
+                    if path not in docstring_cache:
+                        source = _read_file_at_head(path, cwd)
+                        if source is None:
+                            docstring_cache[path] = None
+                        else:
+                            try:
+                                docstring_cache[path] = _python_docstring_line_ranges(source)
+                            except SyntaxError:
+                                docstring_cache[path] = None
+                        if docstring_cache[path] is None and path not in warned_unparseable:
+                            print(
+                                f"consumer_map: could not read/parse {path} as Python "
+                                "at HEAD — docstring filter skipped for it, hit(s) stay "
+                                "LIVE (fail-closed).",
+                                file=sys.stderr,
+                            )
+                            warned_unparseable.add(path)
+                    ranges = docstring_cache[path]
+                    if ranges is not None and _in_any_range(lineno, ranges):
+                        verdict = "docs-mention"
+
                 rows.append((loc, kind, basename, verdict))
 
     return rows

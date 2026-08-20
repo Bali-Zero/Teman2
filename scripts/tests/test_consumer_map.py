@@ -197,6 +197,141 @@ def test_innocence_docs_only_mention_is_not_a_finding(tmp_path: Path) -> None:
     assert "CONSUMER_MAP_LIVE_COUNT=0" in result.stdout
 
 
+# ---------------------------------------------------------------------------
+# PROSE-MENTION FILTER (2026-08-21, real-corpus replay finding): a comment
+# line or a Python docstring naming the file is not a consumer of it. Real
+# shapes found live in apps/backend-rag/backend/tests/integration/zantara/
+# test_tier1_fallback.py:32 (comment) and apps/backend-rag/backend/tests/
+# test_no_global_cwd_mutation.py:12 + scripts/tests/test_no_import_time_
+# chdir_in_tests.py:11 (module docstrings), all narrating the SAME incident
+# this tool's own module-docstring #4459 motivation describes.
+# ---------------------------------------------------------------------------
+
+
+def test_innocence_comment_line_mention_is_not_a_finding(tmp_path: Path) -> None:
+    """A hit whose line, after lstrip(), starts with '#' is a comment naming
+    the file, not a consumer — must be docs-mention, exit 0."""
+    repo = _init_repo(tmp_path)
+    target = repo / "apps" / "backend-rag" / "tests" / "test_gone_orphan.py"
+    _write(target, "def test_x(): pass\n")
+    _write(
+        repo / "apps" / "backend-rag" / "backend" / "tests" / "test_other.py",
+        "# see also tests/test_gone_orphan.py for the historical incident\n"
+        "def test_y(): pass\n",
+    )
+    base = _commit_all(repo, "base")
+
+    target.unlink()
+    _commit_all(repo, "delete")
+
+    result = _run(repo, "--base", base)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "docs-mention" in result.stdout
+    assert "| LIVE" not in result.stdout
+    assert "CONSUMER_MAP_LIVE_COUNT=0" in result.stdout
+
+
+def test_innocence_trailing_comment_on_a_code_line_still_counts_as_live(
+    tmp_path: Path,
+) -> None:
+    """The comment filter is WHOLE-LINE only (line must START with '#' after
+    lstrip): a real code statement with a trailing end-of-line comment must
+    NOT be swallowed — it still carries a real reference."""
+    repo = _init_repo(tmp_path)
+    target = repo / "apps" / "backend-rag" / "tests" / "test_gone_trailing.py"
+    _write(target, "def test_x(): pass\n")
+    _write(
+        repo / "Makefile",
+        'test:\n\tpytest apps/backend-rag/tests/test_gone_trailing.py  # noqa\n',
+    )
+    base = _commit_all(repo, "base")
+
+    target.unlink()
+    _commit_all(repo, "delete")
+
+    result = _run(repo, "--base", base)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "| LIVE" in result.stdout
+
+
+def test_innocence_python_docstring_mention_is_not_a_finding(tmp_path: Path) -> None:
+    """A hit that lives only inside a Python module docstring is prose, not
+    a consumer — must be docs-mention, exit 0."""
+    repo = _init_repo(tmp_path)
+    target = repo / "apps" / "backend-rag" / "tests" / "test_gone_doc.py"
+    _write(target, "def test_x(): pass\n")
+    _write(
+        repo / "apps" / "backend-rag" / "backend" / "tests" / "test_narrator.py",
+        '"""This module explains why test_gone_doc.py was retired.\n\n'
+        "Historical context in prose only, no import, no string reference\n"
+        'outside this docstring.\n"""\n\n'
+        "def test_y(): pass\n",
+    )
+    base = _commit_all(repo, "base")
+
+    target.unlink()
+    _commit_all(repo, "delete")
+
+    result = _run(repo, "--base", base)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "docs-mention" in result.stdout
+    assert "| LIVE" not in result.stdout
+    assert "CONSUMER_MAP_LIVE_COUNT=0" in result.stdout
+
+
+def test_guilt_docstring_mention_does_not_swallow_a_real_reference_in_the_same_file(
+    tmp_path: Path,
+) -> None:
+    """Guilt tripwire (team-lead's explicit ask): the SAME file has BOTH a
+    docstring mention of the basename AND a real list-literal string
+    reference (the #4459 backend_stability_gate.py shape) to it — the
+    docstring hit must downgrade to docs-mention, but the list-literal hit
+    must stay LIVE. The docstring filter must never swallow a real
+    consumer just because it lives near a prose mention in the same file."""
+    repo = _init_repo(tmp_path)
+    target = repo / "apps" / "backend-rag" / "tests" / "test_gone_both.py"
+    _write(target, "def test_x(): pass\n")
+    _write(
+        repo / "apps" / "backend-rag" / "scripts" / "gate_and_doc.py",
+        '"""Runs REQUIRED, including test_gone_both.py, per the gate below."""\n\n'
+        "REQUIRED = [\n"
+        '    "tests/test_gone_both.py",\n'
+        "]\n",
+    )
+    base = _commit_all(repo, "base")
+
+    target.unlink()
+    _commit_all(repo, "delete")
+
+    result = _run(repo, "--base", base)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "docs-mention" in result.stdout
+    assert "| LIVE" in result.stdout
+    assert "CONSUMER_MAP_LIVE_COUNT=1" in result.stdout
+
+
+def test_innocence_unparseable_python_fails_closed_to_live(tmp_path: Path) -> None:
+    """A .py consuming file that does not parse (syntax error) must fail
+    CLOSED: the docstring filter is skipped for it, the hit stays LIVE, and
+    a note is printed — never silently trusted as prose."""
+    repo = _init_repo(tmp_path)
+    target = repo / "apps" / "backend-rag" / "tests" / "test_gone_syntax.py"
+    _write(target, "def test_x(): pass\n")
+    _write(
+        repo / "apps" / "backend-rag" / "backend" / "broken.py",
+        "def not valid python syntax here test_gone_syntax.py (\n",
+    )
+    base = _commit_all(repo, "base")
+
+    target.unlink()
+    _commit_all(repo, "delete")
+
+    result = _run(repo, "--base", base)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "| LIVE" in result.stdout
+    assert "could not read/parse" in result.stderr or "could not read/parse" in result.stdout
+
+
 def test_innocence_no_deleted_or_renamed_files_is_clean(tmp_path: Path) -> None:
     """A push that only ADDS/MODIFIES files (nothing deleted or renamed)
     must be a trivial clean pass — this is the common case, most pushes."""
