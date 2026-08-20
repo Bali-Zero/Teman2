@@ -37,10 +37,38 @@ ENV_FILE="$HOME_DIR/.wa-codex-broker.env"
 VENV_PY="$RUNTIME_DIR/.venv/bin/python3"
 PROBE_SCRIPT="$RUNTIME_DIR/seat_probe.py"
 TAG="wa-codex-seat-probe-wrapper"
+ORGAN_ID="pro.wa_codex_seat_probe"
+SIDECAR_DIR="$HOME_DIR/.organism/last_seen"
+
+# G2_heartbeat — sidecar at start and on every refusal exit, same shape as
+# the broker wrapper. The probe's liveness ground truth is its STATUS FILE
+# (the sentinel pages probe_silent past 2x the interval), not this sidecar
+# — the registry entry carries expected_hb_seconds=0 accordingly; the
+# sidecar exists so a refusal exit is distinguishable from never-having-run
+# (and it lives in the zantara-codex home, unreadable to other users by
+# design, same as the broker's).
+heartbeat() { # $1 status, $2 note
+    mkdir -p "$SIDECAR_DIR" 2>/dev/null || return 0
+    printf '{"ts":"%s","status":"%s","note":"%s"}\n' \
+        "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" > "$SIDECAR_DIR/$ORGAN_ID.json"
+}
 
 if [ ! -f "$ENV_FILE" ]; then
     echo "$TAG: env file missing: $ENV_FILE - refusing to run (run provisioning)" >&2
+    heartbeat "refused" "env file missing"
     exit 78 # EX_CONFIG
+fi
+
+# G5_kill_switch — operator stop without uninstall (set in the shared env
+# file). Extracted the same subshell way as the two keys below — this
+# wrapper deliberately never `set -a`-sources the whole file (WA_BROKER_KEY
+# lives there). Clean exit 0 under StartInterval simply skips this run; the
+# disabled heartbeat keeps a healer from resurrecting an intentional stop.
+PROBE_ENABLED="$(. "$ENV_FILE" >/dev/null 2>&1; printf '%s' "${WA_CODEX_SEAT_PROBE_ENABLED:-true}")"
+if [ "$PROBE_ENABLED" = "false" ]; then
+    echo "$TAG: WA_CODEX_SEAT_PROBE_ENABLED=false - kill switch active, exiting clean" >&2
+    heartbeat "disabled" "kill switch"
+    exit 0
 fi
 
 # Extract ONLY the two keys this probe consumes. A `set -a` source would
@@ -61,14 +89,17 @@ if [ -n "$CODEX_HOME" ]; then export CODEX_HOME; else unset CODEX_HOME; fi
 
 if [ ! -x "$VENV_PY" ]; then
     echo "$TAG: venv python missing or not executable: $VENV_PY - run provisioning" >&2
+    heartbeat "refused" "venv python missing"
     exit 78
 fi
 if [ ! -f "$PROBE_SCRIPT" ]; then
     echo "$TAG: probe script missing: $PROBE_SCRIPT - run provisioning" >&2
+    heartbeat "refused" "probe script missing"
     exit 78
 fi
 
-cd "$RUNTIME_DIR" || exit 78
+cd "$RUNTIME_DIR" || { heartbeat "refused" "cd failed"; exit 78; }
 export PYTHONPATH="$RUNTIME_DIR"
 
+heartbeat "starting" "exec probe"
 exec "$VENV_PY" "$PROBE_SCRIPT"
