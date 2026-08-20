@@ -125,6 +125,7 @@ on:
       - cron - fly cost alert (weekly Mon 09:00 WITA)
       - cron - fly restart loop detector (every 15 min)
       - cron - fly watcher (every 15 min)
+      - cron - Gemini burn-rate guard (every 3h)
       - Cron — KG staging promotion
       - cron - LLM credit sentinel (every 20 min)
       - cron - notifiers all (daily 00:00 WITA)
