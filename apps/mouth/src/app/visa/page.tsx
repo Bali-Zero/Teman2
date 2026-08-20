@@ -22,7 +22,6 @@ export default function VisaEntryPage() {
           items={[
             { value: "5,021", label: "visas filed since 2019" },
             { value: "24+", label: "visa categories supported" },
-            { value: "4.8h", label: "avg first-reply on WhatsApp" },
           ]}
         />
       }

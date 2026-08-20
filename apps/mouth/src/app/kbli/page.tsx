@@ -8,6 +8,7 @@ import { KBLISectorGrid } from "@/components/kbli/KBLISectorGrid";
 import { ZantaraChat } from "@/components/kbli/ZantaraChat";
 import { KBLIPersonaDoors } from "@/components/kbli/KBLIPersonaDoors";
 import { FunnelFrame } from "@balizero/core";
+import { GOOGLE_RATING, GOOGLE_REVIEW_COUNT } from "@/lib/trust-figures";
 
 export const metadata: Metadata = {
   title: "KBLI 2025 Navigator — Indonesia Business Classification Guide",
@@ -41,7 +42,11 @@ export default async function KBLIHomePage({
     <FunnelFrame
       funnel="kbli"
       sessionId="SSR"
-      trust={{ clientCount: 5000, rating: 4.9, responseMinutes: 15 }}
+      trust={{
+        clientCount: 5000,
+        rating: GOOGLE_RATING,
+        reviewCount: GOOGLE_REVIEW_COUNT,
+      }}
     >
       <div className="space-y-16">
         {/* ── HERO ── */}
