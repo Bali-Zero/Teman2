@@ -113,6 +113,41 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
 ## LIVE STATE (update on every state change — whoever changes state updates this section)
 
+- 2026-08-20 (M5, fourth entry — seq-11 SHIPPED end-to-end): **SEQ-11 IS LIVE IN PRODUCTION
+  SHADOW — E30A/E30B now carry a resolvable `pricing_key`.** The executed half of Zero's
+  E30-family pricing order ("E30 Education Visa ti ho detto +3jt sul PNBP", single
+  all-inclusive price per ruling R1 2026-07-17): canonical prices landed in #4383
+  (`bali_zero_official_prices_2026.json` +5 education entries, mouth copy regenerated via
+  `sync_frontend_prices.py`), and seq-11 binds them into the pack. Chain of custody, every
+  link verified: fold `fold_pack_seq11.py` (deterministic + idempotent, source sha256
+  `32e548aa07021a9c…`, only delta vs seq-10 = `pricing_key` on E30A/E30B; PRICING-RESOLUTION
+  gate resolves every key against the canonical price file before mutation) → PR #4393
+  merged (`0d04da077`) with 16-test corpus (`test_seq11_pack.py`: chain gate recomputed from
+  bytes, 26/12 pricing parity with positive controls, byte-invariance, E30/E30E/E30F
+  honestly-unpriced pin) → signed on M5 kid `prod-2026-07-1`
+  (`rule_pack_id 5c3974ab-bb15-5a73-b74f-f9f0af88a4a7`, payload_sha256
+  `836acc511bcadd41c28284e7f00bd8be27c6109ebcc5536f7053c3f61eaa2865`, previous =
+  `188442baee0af899…` = signed seq-10 payload, triple-derived) → bundle PR #4398 merged
+  (`1c27a620e`) → two-login ceremony 10→11 (TAG 260820a): pre-state open activation seq-10
+  `11a305cc…`, trust-store verify + anti-rollback pre-gate PASS, activation
+  `6acb05c8-5d03-4bf6-b889-b81f318cd46c` by `fable-session-m5`, post-state seq-11 sole open
+  activation (open_count=1), ephemeral roles dropped to zero. Live smoke 2/2 both citing
+  `sequence=11 / version 2026.8.20`: full-facts family case → `SUPPORTED_CANDIDATES`
+  (conclusive, same states as seq-10 — the pack delta is pricing-only); all-unknown →
+  `HUMAN_REVIEW_REQUIRED` (fail-safe intact). The evaluate surface exposes no price fields
+  (candidate keys checked live), so `pricing_key` consumption is proven by the merged 26/26
+  resolution parity, not by an HTTP smoke. Two CI defects found and cured en route, both
+  frozen-measurement class: Detect Secrets needed CONTENT_KEYED_RULES #11 (exact-value pin
+  for the seq-10 chain anchor in the fold script), and `test_gold_replay_driver.py`'s
+  `_OFFLINE_AT` was a frozen wall date (2026-08-19T12:00Z) that rejected every future signed
+  pack — now derived as max(pack `signed_at`)+1h, structurally immune. Source freshness is
+  INHERITED from seq-10's re-stamp (seq-11 does not touch `source_records`): the ~7-day
+  portal window still expires ~2026-08-26 — the re-attestation cadence ledger row (owner
+  Zero, `operator[business]`) is unchanged and now covers seq-11. Still open on the E30
+  lane: E30/E30E/E30F remain deliberately unpriced (Ditjen pages read "Data Belum
+  Tersedia" — needs Zero's number, ledger row stays open). ENFORCE unchanged: NO-GO
+  (DPIA/analytics-TTL are Zero-only).
+
 - 2026-08-19 (M5, third entry — seq-10 SHIPPED end-to-end): **SEQ-10 IS LIVE IN PRODUCTION
   SHADOW — and the stale-abstain era is over.** Zero's order "procedi con seq-10: re-stamp
   fonti + cura el.c2/el.e31c" executed in one session. Chain of custody: fold
