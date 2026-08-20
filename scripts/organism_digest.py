@@ -201,15 +201,22 @@ def pending_arms_overdue() -> tuple[list[str], list[str]]:
             e for e in data.get("entries", [])
             if e.get("overdue") and e.get("class") == "TECH-DEBT"
         ]
-        if n_overdue and not overdue:
-            # counts and entries disagree: the per-entry vocabulary drifted
-            # again. Say so — this is the exact silence that hid the bug above.
+        # On this call-path the two sides must agree exactly: the reporter
+        # derives counts from the same entries list, and TECH-DEBT-OVERDUE is
+        # `cls == "TECH-DEBT" and overdue and not merged_pr_refs` — the last
+        # term only being non-empty under --check-pr-refs, which we never pass.
+        # So ANY inequality is drift, not just a total wipeout: checking only
+        # `not overdue` would stay silent while HALF the entries renamed a key.
+        if n_overdue != len(overdue):
             errs.append(
-                f"pending-arms: {n_overdue} overdue by counts, 0 matched in entries "
-                "(per-entry key drift?)"
+                f"pending-arms: {n_overdue} overdue by counts, {len(overdue)} matched "
+                "in entries (per-entry key drift?)"
             )
         if n_overdue or overdue:
-            top = overdue[0].get("artifact", "?")[:70] if overdue else "?"
+            # `or "?"` and not a get() default: a drifted payload can carry the
+            # key with a null value, and None[:70] would raise inside the
+            # catch-all below — losing the alarm to fix a detail.
+            top = (overdue[0].get("artifact") or "?")[:70] if overdue else "?"
             lines.append(f"{n_overdue or len(overdue)} armamenti sospesi OVERDUE — top: {top}")
     except Exception as e:
         errs.append(f"pending-arms: reporter failed ({type(e).__name__})")

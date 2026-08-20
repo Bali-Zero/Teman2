@@ -132,6 +132,42 @@ def test_scar_pin_old_classification_key_is_loud_not_silent(monkeypatch, tmp_pat
     assert any("key drift" in e for e in errs), "the drift itself must be named"
 
 
+def test_partial_drift_is_caught_too_not_only_a_total_wipeout(monkeypatch, tmp_path):
+    """The first cure only fired when NOTHING matched. Half a ledger renaming
+    a key is the likelier drift and would have slipped through reporting a
+    counts-derived number with a `top:` drawn from the surviving sample.
+    Guarding on inequality — not emptiness — is what closes that."""
+    entries = [_entry("TECH-DEBT")] * 5 + [
+        {"artifact": "**drifted**", "classification": "TECH-DEBT", "overdue": True}
+    ] * 5
+    lines, errs = _run(
+        monkeypatch,
+        tmp_path,
+        {"counts": {"total": 10, "tech_debt_overdue": 10}, "entries": entries},
+    )
+    assert len(lines) == 1
+    assert "10 armamenti sospesi OVERDUE" in lines[0], "the count still comes from counts"
+    assert any("key drift" in e for e in errs), "5 of 10 matching must NOT read as healthy"
+    assert any("10 overdue by counts, 5 matched" in e for e in errs)
+
+
+def test_null_artifact_does_not_swallow_the_alarm(monkeypatch, tmp_path):
+    """A drifted payload can carry `artifact` present-but-null. `None[:70]`
+    would raise inside the catch-all and cost the whole line — losing the
+    alarm to fix a detail."""
+    row = _entry("TECH-DEBT")
+    row["artifact"] = None
+    lines, errs = _run(
+        monkeypatch,
+        tmp_path,
+        {"counts": {"total": 1, "tech_debt_overdue": 1}, "entries": [row]},
+    )
+    assert len(lines) == 1
+    assert "1 armamenti sospesi OVERDUE" in lines[0]
+    assert "?" in lines[0]
+    assert errs == []
+
+
 def test_reporter_absent_is_not_an_error(monkeypatch, tmp_path):
     """A repo without the reporter is not a fault — stay quiet, per the
     existing guard at the top of the function."""
