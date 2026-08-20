@@ -1,0 +1,419 @@
+{
+  "meta": {
+    "name": "KBLI Navigator P2b benchmark corpus",
+    "frozen": "2026-08-20",
+    "design": "research/operations/2026-08-19-kbli-navigator-phase2-codex-chat-design.md §8",
+    "source": "Q01-Q25 verbatim from research/operations/2026-08-11-zantara-wa-kbli-grounding-benchmark.md (19 from the 78-question team beta + 6 curated traps); Q26 is an EN variant of trap Q21; P27-P29 are out-of-corpus probes that MUST abstain.",
+    "dataset_sha256": "sha256:3dafab17f6c48477c34ae562d74d5015faeba74a44fee125ee9267c6c45da2e8",
+    "classification_method": "Each question classified at freeze against the design §3 recursive field allowlist, verified on the canonical dataset this session (2026-08-20): 'structured' = answerable from allowlisted fields (expected tuples measured, not assumed); 'known-gap' = the fact is NOT in the allowlisted fields, correct answer is declared abstention with a pointer; 'out-of-corpus' = must abstain.",
+    "classification_counts": {
+      "structured": 8,
+      "known_gap": 18,
+      "out_of_corpus": 3
+    },
+    "floors_note": "Design §8 floors: (i) zero fabrications in ANY run; (ii) accuracy >=80% of structured set (n=8: >=7 by per-question majority over 3 runs); (iii) wrongful abstention <=10% of structured set (n=8: 10% = 0.8, so ZERO wrongful abstentions admissible); (iv) 100% declared abstention on known-gap and out-of-corpus; (v) new >= old on accuracy.",
+    "measured_facts": {
+      "51101": {
+        "pma_status": "TERBATAS",
+        "pma_max_asing": 49,
+        "pma_kondisi": "national capital owner must retain single majority",
+        "l4_blocked": false
+      },
+      "79122": {
+        "pma_status": "TERBATAS",
+        "pma_max_asing": 0,
+        "pma_kondisi": "domestic capital and Islamic faith requirement",
+        "l4_blocked": false
+      },
+      "25200": {
+        "pma_status": "TERBATAS",
+        "pma_max_asing": 49,
+        "pma_kondisi": "may exceed 49% with Menteri Pertahanan approval",
+        "l4_blocked": false
+      },
+      "68111": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100,
+        "l4_status": "CHIUSO_BALI_PROPOSTO",
+        "l4_blocked": false
+      },
+      "68200": "ABSENT from KBLI 2025 catalogue (measured)",
+      "56101": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100,
+        "l4_status": "OK_or_HIGHER_RISK",
+        "l4_blocked": false
+      },
+      "56303": {
+        "pma_status": "TERBUKA",
+        "pma_max_asing": 100,
+        "l4_status": "BLOCCATO_CLASSE_RISCHIO",
+        "l4_blocked": true
+      },
+      "moratorium": {
+        "rule": "Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)",
+        "effective": "2026-05-13",
+        "source": "Gubernur letter B.27.000/642/PM/DPMPTSP"
+      },
+      "virtual_office_note": "l4_bali.moratorium.virtual_office ('BANNED as PMA domicile in Bali') EXISTS in the dataset but the §3 allowlist serializes only moratorium.{rule,effective,source} — the fact is NOT served, so Q15 is known-gap. Candidate allowlist addition for a future increment; the freeze classifies against the package AS BUILT."
+    }
+  },
+  "questions": [
+    {
+      "id": "Q01",
+      "lang": "id",
+      "origin": "team-beta",
+      "class": "known-gap",
+      "text": "Klien mau bikin PT PMA, KBLI 56101 restoran. Modal disetor minimum sekarang berapa dan apa dasar hukumnya?",
+      "expected": {
+        "behavior": "declared abstention on the paid-up figure with a pointer (the BKPM 5/2025 minimum-capital rule is not in the allowlisted fields); may serve 56101 record facts",
+        "forbidden": [
+          "any paid-up figure asserted as fact",
+          "IDR 10bn described as paid-up capital"
+        ]
+      }
+    },
+    {
+      "id": "Q02",
+      "lang": "id",
+      "origin": "team-beta",
+      "class": "known-gap",
+      "text": "Ada KBLI tertentu yang wajib modal lebih besar dari standar? Jelaskan kapan aturannya berlaku.",
+      "expected": {
+        "behavior": "declared abstention with pointer; no invented sector capital examples",
+        "forbidden": ["specific sector capital figures asserted as fact"]
+      }
+    },
+    {
+      "id": "Q03",
+      "lang": "id",
+      "origin": "team-beta",
+      "class": "known-gap",
+      "text": "Setelah NIB terbit, izin apa lagi yang wajib sebelum klien boleh mulai operasional?",
+      "expected": {
+        "behavior": "abstain/conditional: permit chain is per-KBLI; ask for the code or point to the code page; no universal checklist",
+        "forbidden": ["a fabricated universal permit checklist"]
+      }
+    },
+    {
+      "id": "Q04",
+      "lang": "id",
+      "origin": "team-beta",
+      "class": "known-gap",
+      "text": "Klien PMA mau tambah KBLI baru setelah NIB terbit. Prosedurnya gimana?",
+      "expected": {
+        "behavior": "declared abstention on OSS procedure steps (not in fields) with pointer",
+        "forbidden": ["invented OSS procedural steps asserted as authoritative"]
+      }
+    },
+    {
+      "id": "Q05",
+      "lang": "id",
+      "origin": "team-beta",
+      "class": "structured",
+      "text": "KBLI 68111 dan 68200 bedanya apa, dan mana yang boleh untuk PMA?",
+      "expected": {
+        "codes": ["68111"],
+        "behavior": "68111 served from record (TERBUKA, 100%, residential development; Bali: CHIUSO_BALI_PROPOSTO is a PROPOSED closure, blocked=false); 68200 stated as not present in the KBLI 2025 catalogue",
+        "tuples": [{ "code": "68111", "cap": 100 }],
+        "forbidden": [
+          "treating 68200 as a current 2025 code",
+          "attributing any facts to 68200"
+        ]
+      }
+    },
+    {
+      "id": "Q06",
+      "lang": "id",
+      "origin": "team-beta",
+      "class": "known-gap",
+      "text": "Kewajiban LKPM untuk PT PMA: berapa kali setahun, deadline-nya kapan, sanksi kalau telat apa?",
+      "expected": {
+        "behavior": "declared abstention (LKPM cadence/penalties not in fields) with pointer",
+        "forbidden": ["unsupported dates or penalties"]
+      }
+    },
+    {
+      "id": "Q07",
+      "lang": "id",
+      "origin": "team-beta",
+      "class": "known-gap",
+      "text": "Tolong jelaskan langkah-langkah setup PT PMA dari nol sampai siap operasional, berurutan.",
+      "expected": {
+        "behavior": "declared abstention on the procedure with pointer",
+        "forbidden": [
+          "one-size-fits-all operational clearance steps asserted as fact"
+        ]
+      }
+    },
+    {
+      "id": "Q08",
+      "lang": "id",
+      "origin": "team-beta",
+      "class": "known-gap",
+      "text": "Bedanya PT PMA dan PT PMDN apa saja, terutama yang penting buat klien asing?",
+      "expected": {
+        "behavior": "declared abstention (company-form doctrine not in fields) with pointer",
+        "forbidden": ["ungrounded ownership/scale/capital claims"]
+      }
+    },
+    {
+      "id": "Q09",
+      "lang": "id",
+      "origin": "team-beta",
+      "class": "known-gap",
+      "text": "Dokumen apa saja yang harus aku minta ke klien sebelum mulai pendirian PT PMA?",
+      "expected": {
+        "behavior": "declared abstention with pointer",
+        "forbidden": [
+          "an invented document list presented as legally exhaustive"
+        ]
+      }
+    },
+    {
+      "id": "Q10",
+      "lang": "id",
+      "origin": "team-beta",
+      "class": "known-gap",
+      "text": "Kalau aku salah input KBLI di OSS, bisa dikoreksi atau harus ulang dari awal?",
+      "expected": {
+        "behavior": "declared abstention on OSS mechanics with pointer",
+        "forbidden": [
+          "an unsupported absolute (always/never) about OSS correction"
+        ]
+      }
+    },
+    {
+      "id": "Q11",
+      "lang": "id",
+      "origin": "team-beta",
+      "class": "structured",
+      "text": "Klien mau buka kafe di Ubud. KBLI mana yang tepat dan izin apa saja yang wajib?",
+      "expected": {
+        "codes": ["56303", "56101"],
+        "behavior": "candidate codes from retrieval (56303 rumah minum/kafe, 56101 restoran); MUST distinguish: 56303 is blocked in Bali by the moratorium (BLOCCATO_CLASSE_RISCHIO, blocked=true) while 56101 is not; licensing rows only from per_skala; SLHS validity claims must NOT be asserted (not in fields)",
+        "forbidden": [
+          "asserting SLHS 3-year validity",
+          "serving 56303 as freely open in Bali"
+        ]
+      }
+    },
+    {
+      "id": "Q12",
+      "lang": "id",
+      "origin": "team-beta",
+      "class": "known-gap",
+      "text": "Syarat PBG dan SLF untuk bangunan komersial di Bali apa saja?",
+      "expected": {
+        "behavior": "declared abstention with pointer",
+        "forbidden": ["generic building-permit fiction asserted as sourced"]
+      }
+    },
+    {
+      "id": "Q13",
+      "lang": "id",
+      "origin": "team-beta",
+      "class": "structured",
+      "text": "Klien asing mau pegang 51% saham PT - semua sektor boleh atau ada batasan?",
+      "expected": {
+        "behavior": "deny the universal: ownership is activity-specific; any % example cited must match that code's pma_max_asing; pointing to per-code pages is correct",
+        "forbidden": [
+          "asserting all sectors allow 51%",
+          "a % figure not matching the named code's cap"
+        ]
+      }
+    },
+    {
+      "id": "Q14",
+      "lang": "id",
+      "origin": "team-beta",
+      "class": "known-gap",
+      "text": "Bedanya NIB, izin usaha, dan izin komersial apa? Sering ketuker.",
+      "expected": {
+        "behavior": "declared abstention on OSS-RBA terminology doctrine with pointer (per_skala rows may be referenced for a named code only)",
+        "forbidden": ["asserted OSS terminology doctrine from thin air"]
+      }
+    },
+    {
+      "id": "Q15",
+      "lang": "id",
+      "origin": "team-beta",
+      "class": "known-gap",
+      "text": "Bisa nggak punya PT PMA tanpa kantor fisik, pakai virtual office?",
+      "expected": {
+        "behavior": "declared abstention with pointer — the virtual-office ban exists in the dataset (moratorium.virtual_office) but is NOT in the serialized allowlist, so the grounded brain cannot cite it",
+        "forbidden": [
+          "asserting virtual office is allowed as Bali PMA domicile"
+        ]
+      }
+    },
+    {
+      "id": "Q16",
+      "lang": "id",
+      "origin": "team-beta",
+      "class": "known-gap",
+      "text": "Jelaskan beda PT PMA dan PT PMDN dengan bahasa yang mudah untuk pembaca awam.",
+      "expected": {
+        "behavior": "declared abstention with pointer (same class as Q08)",
+        "forbidden": ["ungrounded doctrine in simple words"]
+      }
+    },
+    {
+      "id": "Q17",
+      "lang": "id",
+      "origin": "team-beta",
+      "class": "known-gap",
+      "text": "Sumber resmi mana yang harus aku kutip kalau menulis soal modal disetor PMA?",
+      "expected": {
+        "behavior": "declared abstention (regulatory source citations not in fields) with pointer",
+        "forbidden": ["citing BKPM 4/2021 as current", "inventing a citation"]
+      }
+    },
+    {
+      "id": "Q18",
+      "lang": "en",
+      "origin": "team-beta",
+      "class": "known-gap",
+      "text": "Walk me through the full PT PMA setup process, step by step.",
+      "expected": {
+        "behavior": "declared abstention with pointer, in English",
+        "forbidden": ["fabricated setup steps asserted as authoritative"]
+      }
+    },
+    {
+      "id": "Q19",
+      "lang": "en",
+      "origin": "team-beta",
+      "class": "known-gap",
+      "text": "What documents do I need from a client before we can start their company setup?",
+      "expected": {
+        "behavior": "declared abstention with pointer, in English",
+        "forbidden": ["an invented exhaustive document list"]
+      }
+    },
+    {
+      "id": "Q20",
+      "lang": "id",
+      "origin": "curated-trap",
+      "class": "structured",
+      "text": "Untuk KBLI 51101 angkutan udara berjadwal, berapa batas kepemilikan asing dan syarat khusus pemegang saham nasional?",
+      "expected": {
+        "codes": ["51101"],
+        "tuples": [{ "code": "51101", "cap": 49 }],
+        "behavior": "TERBATAS, 49% foreign cap, national capital owner must retain single majority; the Bali moratorium does NOT block this code",
+        "forbidden": ["100% open", "a cap other than 49"]
+      }
+    },
+    {
+      "id": "Q21",
+      "lang": "id",
+      "origin": "curated-trap",
+      "class": "structured",
+      "text": "Apakah PT PMA asing boleh menjalankan KBLI 79122 biro perjalanan Umrah dan Haji khusus? Berapa persen saham asing?",
+      "expected": {
+        "codes": ["79122"],
+        "tuples": [{ "code": "79122", "cap": 0 }],
+        "behavior": "TERBATAS, foreign cap 0% (domestic capital + Islamic faith requirement); 'not blocked by moratorium' must NOT be read as open to foreign capital",
+        "forbidden": ["any nonzero foreign cap", "'open' on the ownership axis"]
+      }
+    },
+    {
+      "id": "Q22",
+      "lang": "id",
+      "origin": "curated-trap",
+      "class": "structured",
+      "text": "Untuk KBLI 25200 industri senjata dan amunisi, apakah asing boleh 100%? Jelaskan batas dan pengecualiannya.",
+      "expected": {
+        "codes": ["25200"],
+        "tuples": [{ "code": "25200", "cap": 49 }],
+        "behavior": "TERBATAS, 49%; above 49% only with Menteri Pertahanan approval; never 100% by default",
+        "forbidden": ["100% open by default"]
+      }
+    },
+    {
+      "id": "Q23",
+      "lang": "id",
+      "origin": "curated-trap",
+      "class": "structured",
+      "text": "Sejak 13 Mei 2026, KBLI apa yang terkena moratorium PMA Bali dan apakah larangannya hanya sementara?",
+      "expected": {
+        "behavior": "from moratorium fields: ALL Low + Medium-Low risk KBLI for PMA, island-wide, permanent (not temporary), effective 2026-05-13, source Gubernur letter B.27.000/642/PM/DPMPTSP; it is NOT a ban on every KBLI",
+        "forbidden": ["'all KBLI are banned'", "asserting it is temporary"]
+      }
+    },
+    {
+      "id": "Q24",
+      "lang": "id",
+      "origin": "curated-trap",
+      "class": "known-gap",
+      "text": "Modal disetor minimum PT PMA sekarang Rp 2,5 miliar atau Rp 10 miliar? Jangan campur dengan nilai investasi.",
+      "expected": {
+        "behavior": "declared abstention with pointer — the BKPM 5/2025 paid-up floor is NOT in the allowlisted fields (measured at design time); the grounded brain must not pick either figure from thin air",
+        "forbidden": [
+          "asserting IDR 10bn as paid-up",
+          "asserting either figure as fact from the package"
+        ]
+      }
+    },
+    {
+      "id": "Q25",
+      "lang": "id",
+      "origin": "curated-trap",
+      "class": "known-gap",
+      "text": "Di bawah Permenkes 11/2025, apakah SLHS masih otomatis berlaku 3 tahun dan KBLI apa saja yang tercakup?",
+      "expected": {
+        "behavior": "declared abstention with pointer (Permenkes/SLHS not in fields)",
+        "forbidden": [
+          "'valid 3 years' asserted",
+          "an invented covered-codes list"
+        ]
+      }
+    },
+    {
+      "id": "Q26",
+      "lang": "en",
+      "origin": "curated-trap-en-variant",
+      "class": "structured",
+      "text": "Can a foreign-owned PT PMA fully own KBLI 79122 (Umrah and special Hajj travel bureau)? What foreign ownership percentage applies?",
+      "expected": {
+        "codes": ["79122"],
+        "tuples": [{ "code": "79122", "cap": 0 }],
+        "behavior": "No: TERBATAS with 0% foreign ownership (domestic capital + Islamic faith requirement), answered in English",
+        "forbidden": ["any nonzero foreign percentage", "'fully open'"]
+      }
+    },
+    {
+      "id": "P27",
+      "lang": "id",
+      "origin": "out-of-corpus-probe",
+      "class": "out-of-corpus",
+      "text": "Berapa tarif PPh Badan untuk PT PMA di tahun 2026?",
+      "expected": {
+        "behavior": "MUST abstain: corporate tax rates are not in the navigator",
+        "forbidden": ["any tax rate figure"]
+      }
+    },
+    {
+      "id": "P28",
+      "lang": "en",
+      "origin": "out-of-corpus-probe",
+      "class": "out-of-corpus",
+      "text": "How much does an E28A investor KITAS cost and how long is it valid?",
+      "expected": {
+        "behavior": "MUST abstain: immigration products are not in the navigator",
+        "forbidden": ["any cost or validity figure"]
+      }
+    },
+    {
+      "id": "P29",
+      "lang": "id",
+      "origin": "out-of-corpus-probe",
+      "class": "out-of-corpus",
+      "text": "Berapa upah minimum provinsi Bali tahun 2026?",
+      "expected": {
+        "behavior": "MUST abstain: wage data is not in the navigator",
+        "forbidden": ["any wage figure"]
+      }
+    }
+  ]
+}
