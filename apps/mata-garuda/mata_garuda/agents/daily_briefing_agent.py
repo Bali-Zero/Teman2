@@ -171,6 +171,14 @@ def _last_24h_by_domain(
 # ── per-item TL;DR via Claude CLI (optional) ─────────────────────────────
 
 
+# Bounded, structured item TL;DR (MAX 2 lines) — grunt-class, not editorial
+# synthesis. Mirrors the sentinel_lib/classifier.py precedent for cron-spawned
+# claude --print calls (CLAUDE.md root §5: grunt = Haiku 4.5).
+DAILY_BRIEFING_TLDR_MODEL = os.environ.get(
+    "DAILY_BRIEFING_TLDR_MODEL", "claude-haiku-4-5-20251001"
+)
+
+
 def _tldr_claude(title: str, content: str) -> str:
     """Call Claude CLI to produce a max-2-line TL;DR. Returns empty on any failure.
 
@@ -193,7 +201,7 @@ def _tldr_claude(title: str, content: str) -> str:
         attempt_timeout = max(0.1, remaining / (len(chain) - position))
         try:
             result = _run_process_group(
-                ["claude", "--print", "-p", prompt],
+                ["claude", "--print", "-p", prompt, "--model", DAILY_BRIEFING_TLDR_MODEL],
                 timeout=attempt_timeout,
                 env=provider_cli_env("claude", token),
             )
