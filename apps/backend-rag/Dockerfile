@@ -152,10 +152,15 @@ COPY --from=node22 /usr/local/lib/node_modules /usr/local/lib/node_modules
 # first draft used `grep -Eq '^v(2[2-9]|[3-9][0-9])\.'`, which reads correctly and
 # would have rejected node v100 — a range written as a pattern is a form standing in
 # for a quantity, and it goes wrong at exactly the boundary nobody tests.
+# Pinned 2026-08-20: @anthropic-ai/claude-code@2.1.237 (published 2026-08-19T23:57Z) fails
+# `claude --version` IN-IMAGE with "Error: claude native binary not installed." — the
+# native-binary install flow this Dockerfile relies on is not satisfied by that release.
+# 2.1.236 (2026-08-18T18:45Z) is the last verified-good version. Bump deliberately after
+# verifying the install flow in a real build — never back to floating latest.
 RUN ln -sf /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
     && node --version && npm --version \
     && [ "$(node -p 'process.versions.node.split(".")[0]')" -ge 22 ] \
-    && npm install -g @anthropic-ai/claude-code \
+    && npm install -g @anthropic-ai/claude-code@2.1.236 \
     && npm cache clean --force \
     && rm -rf /root/.npm \
     && node --version && which claude && claude --version
