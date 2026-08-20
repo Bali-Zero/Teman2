@@ -20,6 +20,7 @@ test pins the ACTUAL shape, not an invented one.
 from __future__ import annotations
 
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -182,3 +183,105 @@ def test_collect_codex_ignores_lines_without_token_keyword(tmp_path):
     day = next(iter(result["days"].values()))
     assert day["in"] == 10
     assert day["out"] == 2
+
+
+# ------------------------------------------------------ collect_invocations
+#
+# Regression pin for the 2026-08-20 "G1 counts OpenClaw's files as agy
+# invocations" bug: seat_usage_collector.py::main() had G1 pointed at
+# ~/.openclaw/logs (the OpenClaw bridge home — git-sync.log, t4_monitor.log,
+# nlm pipeline logs, nothing to do with agy/Antigravity) and a blind
+# `rglob("*")` file count over it published a plausible-looking number
+# ("recent_files": 11) as if it were agy invocations. A zero would have been
+# noticed; a small plausible number was not. The fix requires an identity
+# marker (a file characteristic of the seat's real home dir) to exist BEFORE
+# any count is trusted — absent marker => status "unknown", never a number.
+
+
+def test_collect_invocations_wrong_directory_reports_unknown_not_a_count(tmp_path):
+    """Guilt: point the collector at a directory that is real, non-empty,
+    and recently touched — but has NOTHING to do with the claimed seat (no
+    identity marker). This is exactly the shape of the live 2026-08-20 bug
+    (an existing, populated, foreign directory). Must report status
+    "unknown" and must NOT emit any invocation count."""
+    foreign = tmp_path / "openclaw-logs"
+    (foreign / "log").mkdir(parents=True)
+    # foreign files that would have been miscounted by the old blind rglob
+    for name in ("git-sync.log", "t4_monitor.log", "nlm_nb4_pipeline.log"):
+        (foreign / name).write_text("noise")
+    # even a file that happens to MATCH the entity_glob shape must not save it —
+    # identity is checked first, independent of what the glob would find
+    (foreign / "log" / "cli-20260101_000000.log").write_text("not really antigravity")
+
+    result = suc.collect_invocations(
+        str(foreign), SINCE,
+        identity_marker="installation_id",
+        entity_glob="log/cli-*.log",
+    )
+    assert result["status"] == "unknown"
+    assert "recent_invocations" not in result
+    assert "installation_id" in result["note"]
+
+
+def test_collect_invocations_real_source_with_marker_counts_correctly(tmp_path):
+    """Innocence: a directory that DOES carry the identity marker is counted
+    normally — entity_glob scoped to the real invocation-log shape, filtered
+    by mtime, cache/scratch/telemetry siblings ignored because the glob
+    never reaches them."""
+    home = tmp_path / "antigravity-cli"
+    (home / "log").mkdir(parents=True)
+    (home / "cache").mkdir()
+    (home / "installation_id").write_text("fake-id-not-a-secret")
+    # 2 recent invocation logs + 1 stale (outside window) + 1 non-matching cache file
+    (home / "log" / "cli-20260820_120000.log").write_text("logging before google.Init")
+    (home / "log" / "cli-20260820_130000.log").write_text("logging before google.Init")
+    stale = home / "log" / "cli-20200101_000000.log"
+    stale.write_text("logging before google.Init")
+    old_time = datetime(2020, 1, 1, tzinfo=timezone.utc).timestamp()
+    os.utime(stale, (old_time, old_time))
+    (home / "cache" / "onboarding.json").write_text("{}")  # must NOT be counted
+
+    since = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    result = suc.collect_invocations(
+        str(home), since,
+        identity_marker="installation_id",
+        entity_glob="log/cli-*.log",
+    )
+    assert result["status"] == "ok"
+    assert result["recent_invocations"] == 2
+
+
+def test_collect_invocations_kimi_session_dirs_still_counted_correctly(tmp_path):
+    """Innocence 2: K1 (kimi-code) gets the same treatment — session_*
+    directories nested under sessions/<workdir>/ are the real per-session
+    unit, must still be counted after the shared function was hardened."""
+    home = tmp_path / "kimi-code"
+    (home / "sessions" / "wd_nuzantara_abc123").mkdir(parents=True)
+    (home / "sessions" / "wd_scratchpad_def456").mkdir(parents=True)
+    (home / "session_index.jsonl").write_text('{"sessionId":"x"}\n')
+    (home / "sessions" / "wd_nuzantara_abc123" / "session_11111111").mkdir()
+    (home / "sessions" / "wd_nuzantara_abc123" / "session_22222222").mkdir()
+    (home / "sessions" / "wd_scratchpad_def456" / "session_33333333").mkdir()
+    (home / "cache").mkdir()
+    (home / "cache" / "query-store").mkdir()  # must NOT be counted
+
+    since = datetime(2000, 1, 1, tzinfo=timezone.utc)
+    result = suc.collect_invocations(
+        str(home), since,
+        identity_marker="session_index.jsonl",
+        entity_glob="sessions/**/session_*",
+    )
+    assert result["status"] == "ok"
+    assert result["recent_invocations"] == 3
+
+
+def test_collect_invocations_absent_dir_unaffected_by_identity_check(tmp_path):
+    """Innocence: a seat whose CLI was never installed on this machine keeps
+    reporting "absent" (not "unknown") — the identity check only applies
+    once the base dir exists."""
+    result = suc.collect_invocations(
+        str(tmp_path / "never-installed"), SINCE,
+        identity_marker="installation_id",
+        entity_glob="log/cli-*.log",
+    )
+    assert result["status"] == "absent"
