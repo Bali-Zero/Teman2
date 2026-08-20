@@ -179,6 +179,23 @@ def test_a_carrier_below_the_threshold_is_still_ignored():
     assert evaluate({"vulnerabilities": {"prisma": carrier(severity="moderate")}}, WAIVE) == []
 
 
+def test_a_carrier_ignores_non_string_via_entries():
+    """Kills a surviving mutant: `carries` filters `via` with `isinstance(x, str)`,
+    but nothing in the corpus gave it a `via` entry that is neither a string (a
+    carrier name) nor a dict (an advisory object — which routes the vuln away
+    from this branch entirely, via `advisory_ids`). Without the filter, a
+    non-string/non-dict junk element (e.g. `None`, from a malformed/older npm
+    audit shape) leaks into the human-readable message as the literal 'None'.
+    """
+    bad = evaluate(
+        {"vulnerabilities": {"prisma": carrier(via=("deepmerge-ts", None, "prisma"))}},
+        WAIVE,
+    )
+    assert len(bad) == 1, bad
+    assert "None" not in bad[0][3], bad
+    assert "deepmerge-ts" in bad[0][3] and "prisma" in bad[0][3], bad
+
+
 def test_a_real_advisory_still_reads_not_waived():
     """Innocence: the new branch must not swallow the ordinary unwaived case."""
     bad = evaluate({"vulnerabilities": {"lodash": vuln(ids=("GHSA-unknown",))}}, WAIVE)
