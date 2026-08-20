@@ -4,6 +4,9 @@
  */
 
 import { getExactSnapshotPrice } from "@/lib/pricing-snapshot";
+import enMessages from "@/i18n/locales/en.json";
+import itMessages from "@/i18n/locales/it.json";
+import idMessages from "@/i18n/locales/id.json";
 
 const SECOND_HOME_PRICE = getExactSnapshotPrice(
   "kitas_permits",
@@ -159,6 +162,49 @@ export const SECOND_HOME_FAQS: FAQItem[] = [
     category: "visas",
   },
 ];
+
+// Dictionary bundles for the localized second-home FAQ builder below. `en` is
+// included so the localized routes and the EN canonical can share one code
+// path if ever needed, even though the EN page keeps using the hand-authored
+// SECOND_HOME_FAQS above (byte-identical to en.json's secondHome.faq today).
+const SECOND_HOME_DICTIONARIES = {
+  en: enMessages,
+  it: itMessages,
+  id: idMessages,
+} as const;
+
+type SecondHomeFaqLocale = keyof typeof SECOND_HOME_DICTIONARIES;
+
+/**
+ * FAQ items for the localized `/visa/second-home/{it,id}` SSG routes
+ * (2026-08-20) — built directly from the vetted i18n dictionaries, never new
+ * copy (mechanism-only build, spec 2026-08-20 §6). Mirrors SECOND_HOME_FAQS
+ * (hand-authored EN, 1:1 with en.json's secondHome.faq) but reads the
+ * dictionary directly so it/id can never drift from the translator's source
+ * of truth. `q6`/`a6` (the price FAQ) uses the same all-inclusive snapshot
+ * price SECOND_HOME_FAQS uses — this runs server-side at request/build time,
+ * so there is no live pricing fetch to await; if the snapshot ever abstains
+ * (returns null), item 6 is dropped entirely, mirroring the client
+ * (`SecondHomeLanding`)'s own `price !== null` filter — never replaced with
+ * new, un-vetted prose.
+ */
+export function getLocalizedSecondHomeFaqs(
+  locale: SecondHomeFaqLocale,
+): FAQItem[] {
+  const faq = SECOND_HOME_DICTIONARIES[locale].secondHome.faq as Record<
+    string,
+    string
+  >;
+  const price = SECOND_HOME_PRICE;
+  const questionNumbers = price ? [1, 2, 3, 4, 5, 6] : [1, 2, 3, 4, 5];
+
+  return questionNumbers.map((n) => ({
+    question: faq[`q${n}`],
+    answer:
+      n === 6 && price ? faq.a6.replace("{{price}}", price) : faq[`a${n}`],
+    category: "visas",
+  }));
+}
 
 // Generate JSON-LD schema from FAQ items
 export function generateFAQSchema(items: FAQItem[]) {
