@@ -16,10 +16,26 @@ from pathlib import Path
 import pytest
 
 # `["codex", "exec", ...]` in either quote style — an argv element, not prose.
-_ARGV_CODEX_EXEC = re.compile(r"""(['"])codex\1\s*,\s*(['"])exec\2""")
+# Up to 6 intervening quoted tokens are tolerated between "codex" and "exec"
+# (2026-08-20, W-class under-match found while arming seat rotation on the
+# nightly cron trio: `create_subprocess_exec("codex", "--profile", "xhigh",
+# "exec", ...)` has "--profile", "xhigh" between them — the old adjacency-only
+# pattern missed codex_xhigh_fix.py and codex_visual_orchestrator.py, both
+# real spawns with no seat).
+_ARGV_CODEX_EXEC = re.compile(
+    r"""(['"])codex\1\s*,\s*(?:['"][^'"]*['"]\s*,\s*){0,6}(['"])exec\2"""
+)
 # `codex exec` as a command word: start of line/pipe/`&&`/`$(`, optionally with
-# a leading path, an `env VAR=…` prefix, or a `timeout N` prefix.
-_SHELL_CODEX_EXEC = re.compile(r"(^|[|&;(]|\s)(\S*/)?codex\s+exec\b")
+# a leading path, an `env VAR=…` prefix, or a `timeout N` prefix. Up to 6
+# `--flag [value]` tokens are tolerated between "codex" and "exec" for the
+# same reason as the argv pattern above — `codex --profile xhigh exec "$P"`
+# and `codex --ignore-user-config --sandbox workspace-write --ephemeral --cd
+# "$ROOT" exec "$P"` are both real invocations the bare-adjacency pattern
+# missed (all three nightly codex/*.sh crons, live on Pro, none seat-aware
+# until this fix).
+_SHELL_CODEX_EXEC = re.compile(
+    r"(^|[|&;(]|\s)(\S*/)?codex(\s+--?[\w][\w-]*(=\S+)?(\s+\S+)?){0,6}\s+exec\b"
+)
 
 LIB = Path(__file__).resolve().parents[2] / "scripts" / "lib" / "codex_seat.sh"
 
@@ -270,10 +286,17 @@ def test_no_call_site_invokes_codex_without_choosing_a_seat() -> None:
         if path.suffix == ".py":
             real = bool(_ARGV_CODEX_EXEC.search(body))
         else:
+            # Join `\`-newline continuations into their logical line first —
+            # the real codex-nightly-autofix-ci.sh invocation puts `codex
+            # --ignore-user-config ... \` and `exec "$PROMPT" ...` on two
+            # separate physical lines; scanning physical lines alone can
+            # never see them as one command (same class of miss as the
+            # adjacency-only pattern above, one line up the stack).
+            logical_body = re.sub(r"\\\n[ \t]*", " ", body)
             real = any(
                 _SHELL_CODEX_EXEC.search(line)
                 and not line.lstrip().startswith("#")
-                for line in body.splitlines()
+                for line in logical_body.splitlines()
             )
         if not real:
             continue
@@ -298,3 +321,112 @@ def test_the_search_list_is_overridable(tmp_path: Path) -> None:
     ).split()
 
     assert [Path(p).name for p in out] == ["custom-seat", ".codex"]
+
+
+# ---------------------------------------------------------------------------
+# Per-call-site: the four scripts/codex/*.sh nightly crons (2026-08-20 arming)
+#
+# Each guilt case proves the wrapper ITSELF — not just the lib in isolation
+# above — now resolves and exports a seat before it would spawn codex. Each
+# innocence case proves the opposite direction: with no live seat anywhere
+# under HOME, the wrapper degrades to codex's own default (no CODEX_HOME
+# forced empty, no crash, no seat line printed) rather than failing loud or
+# silently on a class of input the guilt case doesn't cover.
+#
+# All four are run with their own DRY_RUN escape hatch so no `codex`
+# subprocess, no GitHub API, and no runtime-worktree git checkout ever
+# fires — CODEX_AUTOMATION_LIB is pointed at a nonexistent path so the real
+# ~/scripts/codex/automation-lib.sh (which does a real `git fetch` before its
+# own dry-run gate — codex-nightly-autofix-ci.sh only) never loads either.
+# ---------------------------------------------------------------------------
+
+ROOT = Path(__file__).resolve().parents[2]
+
+_SEAT_LINE_RE = re.compile(r"codex seat: (\S+)")
+
+
+def _cron_case(
+    script: str, dry_run_var: str, *, extra_env: dict[str, str] | None = None
+) -> dict[str, str]:
+    return {"script": script, "dry_run_var": dry_run_var, "extra": extra_env or {}}
+
+
+CRON_CASES = [
+    _cron_case("codex-daily-research-actor.sh", "CODEX_RESEARCH_DRY_RUN"),
+    _cron_case("codex-nightly-coverage-improver.sh", "CODEX_COVERAGE_DRY_RUN"),
+    _cron_case("codex-overnight-runner.sh", "CODEX_OVERNIGHT_DRY_RUN"),
+    _cron_case(
+        "codex-nightly-autofix-ci.sh",
+        "CODEX_AUTOFIX_DRY_RUN",
+        # Short-circuits at "No failed runs found" before ever reaching its
+        # own dry-run gate — same clean, codex-free exit, no `gh` call.
+        extra_env={"CODEX_AUTOFIX_FAILED_RUNS_JSON": "[]"},
+    ),
+]
+
+
+def _run_cron(tmp_path: Path, case: dict[str, str], *, seat: bool) -> subprocess.CompletedProcess[str]:
+    home = tmp_path / "home"
+    if seat:
+        _seat(home, ".codex-o2")
+    else:
+        home.mkdir(parents=True, exist_ok=True)
+    # Every *_STATE_DIR / *_LOG_DIR / *_REPO_ROOT env var this family of
+    # scripts reads shares one prefix per script — set the ones each script
+    # actually consults to keep every side effect inside tmp_path.
+    prefix = case["dry_run_var"].removesuffix("_DRY_RUN")
+    env = {
+        **os.environ,
+        "HOME": str(home),
+        case["dry_run_var"]: "1",
+        f"{prefix}_STATE_DIR": str(tmp_path / "state"),
+        f"{prefix}_LOG_DIR": str(tmp_path / "log"),
+        f"{prefix}_REPO_ROOT": str(tmp_path / "repo"),
+        "CODEX_AUTOMATION_LIB": str(tmp_path / "no-such-lib.sh"),
+        **case["extra"],
+    }
+    (tmp_path / "repo").mkdir(parents=True, exist_ok=True)
+    if prefix == "CODEX_RESEARCH":
+        env["CODEX_RESEARCH_OVERNIGHT_BACKLOG_DIR"] = str(tmp_path / "backlog")
+    return subprocess.run(
+        ["bash", str(ROOT / "scripts" / "codex" / case["script"])],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+    )
+
+
+@pytest.mark.parametrize("case", CRON_CASES, ids=[c["script"] for c in CRON_CASES])
+def test_guilt_the_cron_wrapper_now_resolves_a_seat_before_running(
+    tmp_path: Path, case: dict[str, str]
+) -> None:
+    proc = _run_cron(tmp_path, case, seat=True)
+    assert proc.returncode == 0, proc.stderr
+    m = _SEAT_LINE_RE.search(proc.stderr)
+    assert m, f"no seat line in stderr:\n{proc.stderr}"
+    assert m.group(1).endswith(".codex-o2")
+
+
+@pytest.mark.parametrize("case", CRON_CASES, ids=[c["script"] for c in CRON_CASES])
+def test_innocence_the_cron_wrapper_degrades_cleanly_with_no_live_seat(
+    tmp_path: Path, case: dict[str, str]
+) -> None:
+    """No seat anywhere under HOME must NOT crash the wrapper and must NOT
+    print a seat line — CODEX_HOME stays unset (codex's own default), the
+    fail-open this class of fix must keep, never a silent wrong seat."""
+    proc = _run_cron(tmp_path, case, seat=False)
+    assert proc.returncode == 0, proc.stderr
+    assert "codex seat:" not in proc.stderr, proc.stderr
+
+
+def test_all_four_cron_wrappers_source_the_one_true_seat_lib() -> None:
+    """Static shape check, cheap and specific: every wrapper's seat block
+    sources scripts/lib/codex_seat.sh by its real relative path and calls
+    codex_seat_pick — not a hand-rolled re-derivation of the seat list
+    (W106b), and not a typo'd path that would silently no-op every run."""
+    for case in CRON_CASES:
+        body = (ROOT / "scripts" / "codex" / case["script"]).read_text(encoding="utf-8")
+        assert "../lib" in body and "codex_seat.sh" in body, case["script"]
+        assert "codex_seat_pick" in body, case["script"]
+        assert "export CODEX_HOME=" in body, case["script"]
