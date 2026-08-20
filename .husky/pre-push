@@ -121,14 +121,18 @@ echo "✅ Skipping full test suite (covered by pre-commit hooks)"
 #
 # CI's `Backend Tests (Python)` required check (.github/workflows/tests.yml)
 # is a verified STRICT SUPERSET of what this hook runs: same `backend/tests/`
-# base, same `--ignore=backend/tests/e2e`, PLUS three files this hook never
-# runs (tests/test_sentry_lazy_import.py, tests/test_sentry_pii_redaction.py,
-# tests/kb/test_politics_hierarchical.py), PLUS --cov, PLUS a
+# base, same `--ignore=backend/tests/e2e`, PLUS --cov, PLUS a
 # backend_stability_gate.py step, PLUS REDIS_URL (4 occurrences in
 # tests.yml, 0 in this file). No test that runs ONLY locally was found while
 # looking. So a genuine regression this local suite would have caught, CI
 # catches too, every time — while the 30% zero-verdict tax was pure local
 # cost for zero unique safety benefit.
+# (2026-08-21: tests.yml used to also list three files this hook never ran —
+# tests/test_sentry_lazy_import.py, tests/test_sentry_pii_redaction.py,
+# tests/kb/test_politics_hierarchical.py — from the orphan apps/backend-rag/tests/
+# tree, which pytest.ini's `testpaths = backend/tests` never collected. That
+# tree is deleted; those 3 files moved under backend/tests/, so both this
+# hook's `backend/tests/` scope and tests.yml's now collect them the same way.)
 #
 # Verdict: PREPUSH_RUN_BACKEND now DEFAULTS TO 0 — the suite below is
 # opt-in only (PREPUSH_FULL=1 or PREPUSH_PATHAWARE=0, both handled right

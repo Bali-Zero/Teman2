@@ -614,9 +614,6 @@ jobs:
           set -o pipefail
           PYTHONPATH=.:../crm-cell pytest \
             backend/tests/ \
-            tests/test_sentry_lazy_import.py \
-            tests/test_sentry_pii_redaction.py \
-            tests/kb/test_politics_hierarchical.py \
             ../../scripts/bot/test_build_deid_corpus.py \
             ../../scripts/bot/test_wa_blind_bench.py \
             -q -ra --no-header --durations=50 \
