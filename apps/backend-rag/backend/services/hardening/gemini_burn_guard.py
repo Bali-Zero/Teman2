@@ -12,16 +12,23 @@ size of the tank.
 
 What IS obtainable — and what this module watches — is the *rate* of
 spend, from ``llm_cost_events`` (the ledger every Gemini call already
-writes to, migration 117). Measured against the last four depletion
-episodes (2026-08-06, 08-10/11, 08-12, 08-17, read from
-``cron-llm-credit-sentinel`` run history): consumption was FLAT right up
-to the wall each time — there was no preceding spike this guard, or any
-rate-based guard, would have caught. This module does not claim to
-predict those. What it protects against is a DIFFERENT failure mode a
-flat-rate reading would miss: a runaway loop, a bug, or a traffic burst
-that burns the (unknown) remaining balance far faster than usual — the
-one shape where "sooner than the operator expects" is both true and
-knowable from the rate alone.
+writes to, migration 117). Checked this against the real incident this
+module exists for: of the failure timestamps in
+``cron-llm-credit-sentinel`` run history, most (2026-08-06, two of the
+three 08-12 blips, 08-17) turned out on inspection to be GitHub Actions
+infrastructure noise unrelated to Gemini at all (the `setup-flyctl`
+action download hitting GitHub's own rate limit / a transient socket
+error — verified by reading each run's raw log, not inferred from the
+"failure" conclusion). The one genuine, sustained depletion in that
+window — the one that silenced WhatsApp — was NOT flat: llm_cost_events
+at hourly resolution shows spend jump from near-zero to ~$1-2.4/hour
+starting 2026-08-09 18:00 UTC and stay elevated for ~56 hours (with two
+brief self-recovering flutters) before the sustained wall on 08-11
+~05:00. A 72h-vs-14d guard sampling every 3h would have measured that
+ramp on its first tick after onset, ~32 hours before the wall. This
+module does not claim to catch every future depletion — Google's API
+still exposes no balance to make that guarantee possible — but the one
+real case checked here IS the ramp shape, not the flat one.
 
 Two numbers only, both honest about what they are:
     recent   — total $ spent on Gemini in the last N hours (default 72h)

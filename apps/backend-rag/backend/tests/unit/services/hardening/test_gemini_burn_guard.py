@@ -86,11 +86,19 @@ async def test_ordinary_variance_under_threshold_stays_silent():
 
 
 @pytest.mark.asyncio
-async def test_flat_burn_matching_the_real_2026_08_11_outage_shape_stays_silent():
-    """The exact regression this module must never produce: the four real
-    historical depletions showed FLAT spend right up to the wall, never a
-    preceding spike. A guard that alerts on steady-state burn would be
-    noise, not signal."""
+async def test_steady_state_noise_stays_silent():
+    """Day-to-day variance within the same order of magnitude must never
+    alert — a guard that fires on ordinary noise gets muted within a week.
+
+    NOTE (corrected 2026-08-20, do not restate the earlier claim this test
+    used to encode): this is NOT the shape of the real 2026-08-09/11
+    depletion. That episode was verified (llm_cost_events, hourly
+    resolution) to be a step-function RAMP — near-zero spend through
+    2026-08-09 17:00 UTC, then a jump to ~$1-2.4/hour starting 18:00 UTC
+    that stayed elevated for ~56h before the sustained wall. A 72h-vs-14d
+    guard WOULD have measured that ramp — see
+    test_ramp_shaped_like_the_real_2026_08_09_depletion_alerts_with_lead_time
+    below for the shape that actually happened."""
 
     async def fetch():
         return (_stats("3.62"), _stats("3.40"))  # ~1.06x — normal day-to-day noise
@@ -99,6 +107,37 @@ async def test_flat_burn_matching_the_real_2026_08_11_outage_shape_stays_silent(
     guard = _guard(fetch, sent)
     verdict = await guard.check()
     assert (verdict.state, sent) == (BurnState.NORMAL, [])
+
+
+@pytest.mark.asyncio
+async def test_ramp_shaped_like_the_real_2026_08_09_depletion_alerts_with_lead_time():
+    """The real incident this guard exists for. Verified against
+    llm_cost_events (provider='gemini') at hourly resolution: the 14-day
+    baseline before 2026-08-09 ran near-zero (~$0.03-0.05/hour equivalent);
+    at 2026-08-09 18:00 UTC spend jumped to $1.14 in one hour and stayed
+    elevated ($0.06-$2.44/hour) for the next ~56 hours, with two brief
+    self-recovering flutters (~08-10 02:00-04:00, ~08-10 18:00-19:00)
+    before the sustained wall that silenced WhatsApp from 2026-08-11 ~05:00
+    to 2026-08-12 ~01:00-02:00 (confirmed via the sentinel's own
+    STATE=depleted log lines across that window, not inferred).
+
+    A 72h-window guard sampling every 3h would have measured this ramp on
+    its first tick after onset — roughly 2026-08-09 21:00 — about 8 hours
+    before even the first flutter and ~32 hours before the sustained wall.
+    """
+
+    async def fetch():
+        return (
+            _stats("1.14", calls=33, top_model="gemini-2.5-flash", top_model_usd="1.10"),
+            _stats("0.05"),  # 14-day baseline, normalised to the same window length
+        )
+
+    sent: list = []
+    guard = _guard(fetch, sent)
+    verdict = await guard.check()
+    assert verdict.state is BurnState.ACCELERATING
+    assert len(sent) == 1
+    assert "gemini-2.5-flash" in sent[0]
 
 
 @pytest.mark.asyncio
