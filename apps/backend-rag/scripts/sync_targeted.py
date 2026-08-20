@@ -38,7 +38,7 @@ elif "localhost" in DB:
     DB = DB.replace("localhost", "127.0.0.1")
 
 if not DB:
-    DB = "postgresql://backend_rag_v2:2zEjit43IF6gNUV@127.0.0.1:15432/nuzantara_rag?sslmode=disable"
+    DB = "postgresql://backend_rag_v2:<<ROTATED_2026_08_21_see_DATABASE_URL_env>>@127.0.0.1:15432/nuzantara_rag?sslmode=disable"
 
 OAUTH_CLIENT_ID = "930328104463-m3g4gq72095rip08269kvt8s7et9ev12.apps.googleusercontent.com"
 OAUTH_CLIENT_SECRET = "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"
