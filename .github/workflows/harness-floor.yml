@@ -45,6 +45,14 @@ name: Harness floor & gate publisher
 # bypass) — the first cut of the kill switch skipped every remaining step including the publish,
 # which would have deadlocked every PR the moment the context became required.
 #
+# NAME NOTE (2026-08-21): `harness/fable-gate` does NOT invoke Fable and never has — it relays a
+# verdict a Gear-3 session already reached (scripts/harness_fable_gate.py is a publisher with no
+# verdict logic). Zero ruled Fable out of the interactive workflow; that changes WHO reaches the
+# verdict, not WHETHER a Gear-3 PR must carry one, so this check is unaffected by the routing
+# change. The context string stays as-is: it is the literal string branch protection matches, and
+# it is also named in FLEET_TOPOLOGY.json and in dated research captures that record what was true
+# when written.
+#
 # ARMING NOTE (operator/session): adding `harness/fable-gate` to branch protection's
 # required_status_checks is a branch-protection change — tracked in modus PENDING-ARMS. As of
 # 2026-08-10 this promotion is BLOCKED, not merely pending: (a) `harness/fable-gate` is a classic
