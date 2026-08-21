@@ -643,9 +643,24 @@ def probe_jules(timeout: float) -> tuple[str, str, int]:
     if res.timed_out and not live:
         return TIMEOUT, ev or "probe timed out", latency_ms
 
-    status = LIVE if live else AUTH_DEAD # Assuming auth dead for now if it fails, or maybe classify_generic?
-    # Wait, the prompt says: "Healthy means rc=0 AND at least one source line. Never print or embed the API key; the existing scrub() must cover the evidence tail."
-    status = classify_generic(res.stdout + res.stderr, live, "jules", is_ssh_context())
+    combined = res.stdout + res.stderr
+    # 2026-08-21 (healer tick, Mini): jules_dispatch.py's own credential-missing
+    # shape — "jules_dispatch: no API key — add it with: security
+    # add-generic-password ..." (get_api_key(), exit 2) — carries no 401/oauth
+    # marker and previously fell through classify_generic() to a bare
+    # UNKNOWN_ERR, same class as the nlm fix above: a Keychain lookup that
+    # genuinely found nothing (`security find-generic-password -s
+    # jules-api-key` -> item not found, verified on this host) is a
+    # provisioning gap, not an ambiguous failure — CRED_UNAVAILABLE names it
+    # precisely and puts it in CONTEXT_LIMITED, matching how glm's identical
+    # "credential missing" shape is already classified. Matched before
+    # classify_generic (mirrors probe_nlm's AUTH_DEAD special-case) so the
+    # existing UNKNOWN_ERR guilt case (empty stdout, rc=0, no error text —
+    # test_probe_jules_no_sources_is_unknown_err) stays untouched: that shape
+    # never contains this marker.
+    if not live and re.search(r"no API key", combined, re.IGNORECASE):
+        return CRED_UNAVAILABLE, ev or "jules credential missing", latency_ms
+    status = classify_generic(combined, live, "jules", is_ssh_context())
     return status, ev, latency_ms
 
 
