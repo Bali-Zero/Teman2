@@ -34,33 +34,6 @@ _MIGRATION_256_PATH = _BACKEND_DIR / "db" / "migrations_v2" / "256_visa_traffic_
 _MIGRATION_257_PATH = (
     _BACKEND_DIR / "db" / "migrations_v2" / "257_visa_request_category_extension.sql"
 )
-# 262-266 are never forward-applied by this file's own fixture (it only needs
-# 252/255/256/257) — they are read here purely so setup can defensively clear
-# them if a WORKER-FRESH clone of the migrated template DB already carries
-# them forward (every per-xdist-worker database is cloned straight from the
-# fully-migrated template, so this is the normal starting state, not an
-# edge case). Without this, `rollback_252`'s bare `DROP TABLE
-# public.visa_decisions` fails with `DependentObjectsStillExistError`: 264
-# adds `visa_decision_legal_hold_events`, whose FK depends on
-# `visa_decisions`, and 252's rollback (correctly) predates 264 and knows
-# nothing about it — mirrors the exact FK-dependency shape migration 252 vs.
-# 250 already has (see `_DROP_MIGRATION_252_FK_DEPENDENCIES_SQL` in
-# conftest.py). Existence-gated (never on a DB that never had them) and
-# copied verbatim from `test_evaluate_endpoint.py::evaluate_schema`, the
-# sibling fixture that already had to solve this same problem for its own
-# (wider) migration set — same conditional-`to_regclass`/
-# `to_regprocedure`/`information_schema.columns` style, so both fixtures
-# stay correct independent of which one a given worker happens to run
-# first, or whether it runs at all.
-_MIGRATION_262_PATH = _BACKEND_DIR / "db" / "migrations_v2" / "262_visa_evaluate_idempotency.sql"
-_MIGRATION_263_PATH = _BACKEND_DIR / "db" / "migrations_v2" / "263_visa_evaluate_response_hmac.sql"
-_MIGRATION_264_PATH = (
-    _BACKEND_DIR / "db" / "migrations_v2" / "264_visa_decision_retention_policy.sql"
-)
-_MIGRATION_265_PATH = (
-    _BACKEND_DIR / "db" / "migrations_v2" / "265_visa_decision_trace_integrity.sql"
-)
-_MIGRATION_266_PATH = _BACKEND_DIR / "db" / "migrations_v2" / "266_visa_retention_evidence.sql"
 
 
 def _green_fixture() -> tuple[list[dict[str, object]], RulePack, uuid.UUID]:
@@ -169,43 +142,12 @@ async def shadow_evidence_schema(db_pool: asyncpg.Pool, visa_schema: None) -> As
     last also makes setup crash-robust: a previous run that died mid-test
     can leave new-category rows behind, and the 256/255 column drops +
     252's table drop clear them before 257's rollback is ever attempted.
-
-    Defensive pre-clear of 266-262 (setup only, existence-gated): a fresh
-    per-xdist-worker database is cloned straight from the fully-migrated
-    template, so it already carries 264's ``visa_decision_legal_hold_events``
-    forward — its FK on ``visa_decisions`` would otherwise fail 252's bare
-    ``DROP TABLE`` below with ``DependentObjectsStillExistError`` on this
-    fixture's very first invocation on that worker. Previously masked by
-    accident: serial collection always ran ``test_evaluate_endpoint.py``
-    first (alphabetically before this file), and ITS ``evaluate_schema``
-    fixture already tears 262-266 down at teardown — see this constant's
-    module-level comment. This file must not depend on that ordering.
     """
     forward_252, rollback_252 = _read_migration(_MIGRATION_252_PATH, 252)
     forward_255, rollback_255 = _read_migration(_MIGRATION_255_PATH, 255)
     forward_256, rollback_256 = _read_migration(_MIGRATION_256_PATH, 256)
     forward_257, rollback_257 = _read_migration(_MIGRATION_257_PATH, 257)
-    _, rollback_262 = _read_migration(_MIGRATION_262_PATH, 262)
-    _, rollback_263 = _read_migration(_MIGRATION_263_PATH, 263)
-    _, rollback_264 = _read_migration(_MIGRATION_264_PATH, 264)
-    _, rollback_265 = _read_migration(_MIGRATION_265_PATH, 265)
-    _, rollback_266 = _read_migration(_MIGRATION_266_PATH, 266)
     async with db_pool.acquire() as conn:
-        if await conn.fetchval(
-            "SELECT to_regprocedure('public.visa_decision_retention_evidence()') IS NOT NULL"
-        ):
-            await conn.execute(rollback_266)
-        if await conn.fetchval(
-            "SELECT 1 FROM information_schema.columns "
-            "WHERE table_schema = 'public' AND table_name = 'visa_decisions' "
-            "AND column_name = 'trace_sha256'"
-        ):
-            await conn.execute(rollback_265)
-        if await conn.fetchval("SELECT to_regclass('public.visa_decision_retention_policies')"):
-            await conn.execute(rollback_264)
-        if await conn.fetchval("SELECT to_regclass('public.visa_evaluate_idempotency')"):
-            await conn.execute(rollback_263)
-        await conn.execute(rollback_262)
         await conn.execute(rollback_256)
         await conn.execute(rollback_255)
         await conn.execute(rollback_252)
