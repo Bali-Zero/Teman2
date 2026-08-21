@@ -375,8 +375,13 @@ jobs:
         # detect-secrets job's job — it only proves the tool's own
         # guilt/innocence/canary-gate corpus still passes, so a future edit
         # that quietly breaks the canary mechanism is caught here, not the
-        # next time someone happens to run --selftest by hand.
+        # next time someone happens to run --selftest by hand. Needs the
+        # real `detect-secrets` binary — this job's earlier steps are pure
+        # regex scanners and never install it (only the sibling
+        # `detect-secrets` job in security.yml does), so it is installed
+        # here, same unpinned form as that job.
         run: |
+          pip install detect-secrets
           python scripts/detect_secrets_check_file.py --selftest
 
       - name: Gateway callers must read the VERDICT, not the exit code

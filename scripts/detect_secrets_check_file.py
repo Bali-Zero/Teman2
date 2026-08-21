@@ -136,7 +136,7 @@ def find_results_for_file(
     return False, []
 
 
-_CANARY_SECRET_BODY = "kQ4tX8" + "cH2wL9dR6pS3" + "vN5u"  # synthetic, 22 chars, never a real credential — same shape as the GOCSPX guilt fixture below so it reliably trips the same plugins
+_CANARY_SECRET_BODY = "kQ4tX8" + "cH2wL9dR6pS3" + "vN5u"  # pragma: allowlist secret — synthetic, 22 chars, never a real credential; committed (not selftest-only) because _write_canary uses it on every real run, unlike the sibling guards' guilt fixtures which live only inside selftest()
 
 
 def _write_canary(scratch_dir: Path) -> Path:
