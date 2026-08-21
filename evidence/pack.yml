@@ -1,61 +1,127 @@
 brief_ref: evidence/brief.yml
-plan_ref: "the harness gate's own recovery procedure deadlocks the PR it is meant to unblock (measured on #4543)"
+plan_ref:
+  "the harness gate's own recovery procedure deadlocks the PR it is meant to unblock (measured
+  on #4543)"
 diff:
   behaviour_change: none
-  net_lines: "CODE +29/-3 (harness-floor.yml, comment block only); WHOLE DIFF +117/-246 including the two evidence files, whose large deletion count is the previous task's pack being replaced. Measured at merge-base 5b4354892 with git diff <merge-base> --numstat, never two-dot against a moving origin/main (W102), and written LAST as a 1-for-1 swap so the value describes the tree containing it."
+  net_lines: "CODE +44/-3; WHOLE DIFF +183/-243; measured at merge-base 9def77f51, three-dot, after every other edit."
 receipts:
-  - claim: "The two runs on #4543's head SHA live in DIFFERENT check suites; the PR's rollup kept the failing one"
-    cmd: 'gh api repos/Bali-Zero/Teman2/commits/33f12fb4a.../check-runs?filter=all --jq ''select(.name=="Harness floor recompute")|.completed_at,.conclusion,.check_suite.id'' -> 14:01:20Z success suite 88072653107 / 13:51:47Z failure suite 88070314010'
+  - claim:
+      "The two runs on #4543's head SHA live in DIFFERENT check suites; the PR's rollup kept the
+      failing one"
+    cmd:
+      'gh api "repos/Bali-Zero/Teman2/commits/33f12fb4af43777430d0a0873653079891f639d8/check-runs?filter=all"
+      --jq ''.check_runs[]|select(.name=="Harness floor recompute")|"\(.completed_at) \(.conclusion) suite=\(.check_suite.id)"''
+      -> THREE rows today: 14:07:22Z success suite 88070314010 (the post-cure rerun), 14:01:20Z success
+      suite 88072653107 (the dispatch), 13:51:47Z failure suite 88070314010 (the pull_request attempt the
+      PR was pinned to). The first two rows ARE the deadlock; the third row is the cure and did not exist
+      during the incident.'
     exit: 0
     ts: "2026-08-21T16:26:04Z"
     seat: session (m5)
-  - claim: "The default filter hides the contradiction: check-runs returns ONLY the green run unless filter=all is passed"
-    cmd: "same endpoint without filter=all -> one row, success"
+  - claim:
+      "The default filter hides the contradiction: check-runs returns ONLY the green run unless filter=all
+      is passed"
+    cmd:
+      "same endpoint WITHOUT filter=all (the default, filter=latest) -> it drops the failure row. During
+      the incident that left exactly one row, success; re-run today it leaves two success rows because the
+      cure added one. The invariant recorded here is that filter=latest HIDES THE RED ROW, and it reproduces
+      on demand: comm -23 <all rows> <latest rows> -> the 13:51:47Z failure."
     exit: 0
     ts: "2026-08-21T16:26:04Z"
     seat: session (m5)
-  - claim: "gh run rerun on the ORIGINAL pull_request run cleared the rollup; mergeStateStatus BLOCKED -> CLEAN"
-    cmd: "gh run rerun 32489011695; gh pr view 4543 --json mergeStateStatus -> CLEAN"
+  - claim:
+      gh run rerun on the ORIGINAL pull_request run cleared the rollup; mergeStateStatus BLOCKED ->
+      CLEAN
+    cmd: gh run rerun 32489011695; gh pr view 4543 --json mergeStateStatus -> CLEAN
     exit: 0
     ts: "2026-08-21T16:26:04Z"
     seat: session (m5)
-  - claim: "The documented flow was actually followed first, and did not work — this is not a hypothetical"
-    cmd: "gh workflow run harness-floor.yml --ref agent/air-m5/ops/gate-header-truth -> run 32489857553 workflow_dispatch success on 33f12fb4a, PR still BLOCKED"
+  - claim: The documented flow was actually followed first, and did not work — this is not a hypothetical
+    cmd:
+      gh workflow run harness-floor.yml --ref agent/air-m5/ops/gate-header-truth -> run 32489857553 workflow_dispatch
+      success on 33f12fb4a, PR still BLOCKED
     exit: 0
     ts: "2026-08-21T16:26:04Z"
     seat: session (m5)
   - claim: "No behaviour change: the workflow's non-comment body is byte-identical to origin/main"
-    cmd: "git show origin/main:<wf> | grep -v '^\\s*#' > a; grep -v '^\\s*#' <wf> > b; diff -q a b"
+    cmd: git show origin/main:<wf> | grep -v '^\s*#' > a; grep -v '^\s*#' <wf> > b; diff -q a b
     exit: 0
     ts: "2026-08-21T16:26:04Z"
     seat: session (m5)
-  - claim: "actionlint passes on the rewritten workflow"
-    cmd: "actionlint .github/workflows/harness-floor.yml"
+  - claim: actionlint passes on the rewritten workflow
+    cmd: actionlint .github/workflows/harness-floor.yml
     exit: 0
     ts: "2026-08-21T16:26:04Z"
     seat: session (m5)
 dissent:
-  - seat: session (m5), against its own earlier fix in #4543
-    objection: "In #4543 I 'fixed' a wrong net_lines by writing a precise value measured at the PREVIOUS SHA — the same disease at higher confidence, in the one field a gate had already conditioned. The gate returned REWORK-BUILD for it. This pack therefore measures net_lines LAST, at the merge base, after every other edit, and writes it as a 1-for-1 line swap so the value describes the tree that contains it."
+  - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
+    objection:
+      "The W111 scoping was FACTUALLY BACKWARDS. W111's own incident was #3463 re-run against
+      refs/pull/3463/merge -- a PULL-REQUEST merge ref, not merge_group. The note narrowed the scar onto
+      the one event type it did not happen on, and replaced it with a categorical 'a pull_request re-run
+      ... nothing about it is stale', which is exactly W111's original scenario. Superscar #6 / W78, in
+      a header every session reads."
     status: CONFIRMED
-  - seat: gear3-final-gate (opus 5, on #4543)
-    objection: "CI cannot catch a wrong net_lines: evidence_pack_lint prefers a MEASURED --net-lines/--numstat-file over the pack field because the field is untrustworthy, but a STRING field yields None and the rule never fires. Green lint is not evidence for this field."
+  - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
+    objection:
+      "CASE A is safe for THIS job for a reason the note did not give: the workflow checks out
+      a PINNED base sha (github.event.pull_request.base.sha), never refs/pull/N/merge, so no moving ref
+      exists for a rerun to resolve differently. Unstated, a reader copies CASE A to a workflow that DOES
+      check out a merge ref."
+    status: CONFIRMED
+  - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
+    objection:
+      "Receipt #1's jq was not runnable as written (missing .check_runs[]) and listed 2 of 3 rows;
+      receipt #2's recorded output is false at its own timestamp; sources attributed run 32489102357 to
+      #4543 when it belongs to #4544."
+    status: CONFIRMED
+  - seat: session (m5), against its own earlier fix in
+    objection:
+      "In #4543 I 'fixed' a wrong net_lines by writing a precise value measured at the PREVIOUS
+      SHA — the same disease at higher confidence, in the one field a gate had already conditioned. The
+      gate returned REWORK-BUILD for it. This pack therefore measures net_lines LAST, at the merge base,
+      after every other edit, and writes it as a 1-for-1 line swap so the value describes the tree that
+      contains it."
+    status: CONFIRMED
+  - seat: gear3-final-gate (opus 5, on
+    objection:
+      "CI cannot catch a wrong net_lines: evidence_pack_lint prefers a MEASURED --net-lines/--numstat-file
+      over the pack field because the field is untrustworthy, but a STRING field yields None and the rule
+      never fires. Green lint is not evidence for this field."
     status: CONFIRMED
   - seat: session (m5), scoping the change rather than widening it
-    objection: "Rewriting the corollary could be read as repealing W111. It is not, and a note that merely dropped the prohibition would be a regression: a merge_group rerun replays a ref whose base moved. The rewrite scopes the ban to merge_group explicitly instead of leaving it implied."
+    objection:
+      "Rewriting the corollary could be read as repealing W111. It is not, and a note that merely
+      dropped the prohibition would be a regression: a merge_group rerun replays a ref whose base moved.
+      The rewrite scopes the ban to merge_group explicitly instead of leaving it implied."
     status: CONFIRMED
 residual_risks:
-  - "The quoted suite ids are one incident's measurement, not constants. The note frames them as the #4543 evidence, not as values to expect."
-  - "This diff does not change the job, so it cannot itself prove the new procedure works; the proof is #4543's own history, already on main."
-  - "The modus PENDING-ARMS row opened for this defect is NOT closed by this diff — that file carries a merge=union driver and is deliberately kept out of a hot-zone PR. It gets its own follow-up."
+  - "CLAUDE.md's Agent PR Contract rule 3 still reads unqualified at origin/main -- 'never use a bare
+    gh run rerun'. A workflow header cannot scope CLAUDE.md, so once this lands the two artifacts disagree.
+    Named follow-up: a CLAUDE.md PR carrying the same scoping. Recorded rather than relying on the header
+    to win by itself."
+  - "#4549 is NOT a second reproduction of the deadlock and must not be cited as one: it has no workflow_dispatch
+    run at all. It independently confirms CASE A's REMEDY a second time -- a weaker, different claim."
+  - "The quoted suite ids are one incident's measurement, not constants. The note frames them as the #4543
+    evidence, not as values to expect."
+  - "This diff does not change the job, so it cannot itself prove the new procedure works; the proof is
+    #4543's own history, already on main."
+  - The modus PENDING-ARMS row opened for this defect is NOT closed by this diff — that file carries a merge=union
+    driver and is deliberately kept out of a hot-zone PR. It gets its own follow-up.
 sources:
-  - "PR #4543 run history (32489011695 pull_request, 32489857553 workflow_dispatch, 32489102357)"
-  - "memory discovery_workflow_dispatch_rerun_does_not_clear_a_prs_rollup_2026_08_21"
+  - "PR #4543 run history: 32489011695 (pull_request, the run the PR was pinned to) and 32489857553 (workflow_dispatch,
+    the documented flow)"
+  - "Run 32489102357 was previously cited here as #4543's — it is NOT, it belongs to #4544 (agent/air-m5/ops/readme-promote-timing,
+    sha 36c755d6). Caught by the Gear-3 gate."
+  - memory discovery_workflow_dispatch_rerun_does_not_clear_a_prs_rollup_2026_08_21
 tests:
-  - "None applicable: comment-only. The behavioural proof is the byte-identical non-comment body receipt, which is stronger here than a test would be."
+  - "None applicable: comment-only. The behavioural proof is the byte-identical non-comment body receipt,
+    which is stronger here than a test would be."
 static:
-  - "actionlint 1.7.12 exit 0"
+  - actionlint 1.7.12 exit 0
 runtime_proof:
-  - "None claimed. Nothing in this diff executes; the consumer-map records that both consumers are unchanged, so merged == live."
+  - None claimed. Nothing in this diff executes; the consumer-map records that both consumers are unchanged,
+    so merged == live.
 pii_scan: clean
 size_tokens: 1300

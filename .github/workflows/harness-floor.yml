@@ -97,11 +97,26 @@ name: Harness floor recompute
 #     manual re-check outside a PR). Use: gh workflow run harness-floor.yml --ref <branch>
 #     (the `workflow_dispatch:` trigger below exists for exactly this).
 #
-# The W111 prohibition (CLAUDE.md Agent PR Contract rule 3) is NOT repealed — it is scoped. It
-# forbids replaying a run whose object is STALE: a merge-queue `merge_group` ref whose base moved
-# underneath. A `pull_request` re-run has an identical head SHA and re-reads an external commit
-# status that did not exist the first time; nothing about it is stale. Do NOT `gh run rerun` a
-# merge_group run.
+# The W111 prohibition (CLAUDE.md Agent PR Contract rule 3) is NOT repealed. It is scoped — and the
+# scoping has to be stated precisely, because an earlier draft of this note got it backwards.
+#
+# W111's real hazard is a run whose ref RESOLVES THROUGH A MOVING BASE. Its own incident was
+# #3463 re-run against `refs/pull/3463/merge` — a PULL-REQUEST merge ref, not a merge_group one.
+# So "reruns are only dangerous on merge_group" is FALSE, and the earlier draft of this note said
+# exactly that, narrowing the scar onto the one event type it did not happen on (superscar #6 /
+# W78: the wrong scar propagated, here into a header every session reads).
+#
+# CASE A is safe FOR THIS JOB for a specific, checkable reason — not because pull_request reruns
+# are inherently safe. This workflow checks out
+#   ref: github.event.merge_group.base_sha || github.event.pull_request.base.sha || 'main'
+# i.e. a PINNED base SHA. It never checks out `refs/pull/N/merge`, so there is no moving ref for a
+# rerun to resolve differently. The only input that changed between attempts is the external
+# commit status, which is what we want re-read. A job that DOES check out a merge ref keeps W111
+# in full force, and `gh run rerun` on it is still forbidden — as it is on a merge_group run,
+# where the queue's own `mq requeue` is the instrument.
+#
+# Before copying CASE A to another workflow, check that workflow's `ref:`. If it resolves through
+# a moving base, CASE A does not transfer.
 #
 # DIAGNOSTIC TRAP, because it costs an hour otherwise: `gh api .../commits/<sha>/check-runs`
 # defaults to `filter=latest` and returns only the GREEN run, while `gh pr checks` shows the RED
