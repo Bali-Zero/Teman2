@@ -320,6 +320,27 @@
         }
       }
     },
+    "google-oauth-credentials-lint": {
+      "source": "scripts/lint_google_oauth_credentials.py",
+      "census": {
+        "method": "ast-def-prefix",
+        "prefix": "_guard_"
+      },
+      "test_file": "scripts/tests/test_lint_google_oauth_credentials.py",
+      "guards": {
+        "_guard_google_oauth_credential": {
+          "scar": ["#3-scope-skips-surface"],
+          "guilt": [
+            "test_google_oauth_lint_guilt_flagged",
+            "test_google_oauth_lint_names_known_compromised_by_fingerprint"
+          ],
+          "innocence": [
+            "test_google_oauth_lint_innocence_env_reads_and_markers_pass",
+            "test_google_oauth_lint_clean_on_real_tree"
+          ]
+        }
+      }
+    },
     "evidence_pack_lint": {
       "_doc": "PR-3 of the fleet-order program (harness-v2-teman2.md \u00a75 / fleet-order-spec.md \u00a74). scripts/evidence_pack_lint.py validates an Evidence Pack YAML against 6 rules \u2014 each `check_*` function IS a guard in the superscar #3 sense (it accepts/rejects an artifact on a structural signal), so it ships with the same guilt+innocence discipline as bridge_reply_guards/wr2_editorial_pregate rather than being exempted as 'just a schema check'.",
       "source": "scripts/evidence_pack_lint.py",

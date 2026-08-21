@@ -114,6 +114,18 @@ repos:
         language: system
         types: [text]
 
+      # ── GOOGLE OAUTH CREDENTIAL (2026-08-21) ───────────────────────────────
+      # ONE OAuth credential triple (client_id / GOCSPX- client secret / 1//
+      # refresh token, rclone gdrive remote family) was copy-pasted into NINE
+      # one-off scripts under apps/backend-rag/scripts/ and sat green on
+      # origin/main for months: detect-secrets ships no GOCSPX-/1// detector.
+      # (Redaction merged separately in #4484; this hook arms the guard.)
+      - id: no-google-oauth-credential
+        name: "No hardcoded Google OAuth credentials in the tree"
+        entry: python3 scripts/lint_google_oauth_credentials.py
+        language: system
+        types: [text]
+
       - id: root-guard
         name: "Root whitelist (prevent scratch accumulation)"
         entry: python scripts/root_guard.py

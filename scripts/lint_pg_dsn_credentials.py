@@ -299,7 +299,7 @@ def selftest() -> int:
         ("gocspx placeholder, repeated char", "GOCSPX-" + "X" * 28),
         ("gocspx prefix without body", "# see the GOCSPX- prefix convention in the module docstring"),
         ("env-var read, no gocspx literal", 'OAUTH_CLIENT_SECRET = os.environ["GOOGLE_OAUTH_CLIENT_SECRET_RCLONE"]'),
-        ("bare client_id, not a secret", '"client_id": "930328104463-m3g4gq72095rip08269kvt8s7et9ev12.apps.googleusercontent.com"'),
+        ("bare client_id, not a secret", '"client_id": "000000000000-abcdefghijklmnopqrstuvwxyzabcdef00.apps.googleusercontent.com  # synthetic-google-oauth-credential"'),
     ]
 
     failures = []
