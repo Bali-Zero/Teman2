@@ -123,7 +123,7 @@ case_result "innocence-ordinary-command-intact-no-redacted-marker" "$ok"
 # A freshly created log must be born 0600 (umask 077), never 0644.
 tmp5="$(mktemp -d)"; cleanup_dirs+=("$tmp5")
 run_hook "$tmp5" "Bash" "echo fresh"
-mode="$(stat -f '%Lp' "$tmp5/logs/codex-spalla-trigger.jsonl" 2>/dev/null \
+mode="$(python3 -c 'import os,sys;print(oct(os.stat(sys.argv[1]).st_mode & 0o777)[2:])' "$tmp5/logs/codex-spalla-trigger.jsonl" 2>/dev/null \
     || stat -c '%a' "$tmp5/logs/codex-spalla-trigger.jsonl" 2>/dev/null)"
 ok=1
 [ "$mode" = "600" ] && ok=0
