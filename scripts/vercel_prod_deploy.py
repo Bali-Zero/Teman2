@@ -273,6 +273,55 @@ def _git(*args: str) -> str | None:
     return out.stdout.strip()
 
 
+# Three attempts at a 120s timeout plus backoff worst-cases at ~368s — comfortably inside the
+# 900s cadence, so a genuinely dead network degrades on THIS tick instead of wedging the organ
+# into the next one.
+FETCH_ATTEMPTS = 3
+FETCH_BACKOFF_S = (3.0, 9.0)
+
+
+def _fetch_main() -> tuple[bool, str]:
+    """Refresh origin/main, riding out a TRANSIENT failure instead of degrading on it.
+
+    This is the only network step on the unattended path, and it runs every 900s on a machine
+    whose network measurably flaps. Measured on Mini the day the organ was armed: of the first
+    five runs one could not fetch, the system log showed three network-configuration changes
+    and a Wi-Fi change in the five minutes before it, and the good run that followed took 39s
+    against a usual 4s. Degrading on a lone blip is correct but expensive — it costs 15 minutes
+    of blindness — so the one-shot network action is wrapped in a bounded retry (superscar #8).
+
+    Returns (ok, detail). On failure `detail` is what git actually SAID. `_git` deliberately
+    collapses every cause into `None`, which is right for a caller that only needs "could not
+    look" — but it left the operator-facing message unable to name the cause, and a refused
+    connection, DNS, a dead credential and a 120s timeout call for four different answers. The
+    discriminator that was available that day and invisible in the log: `gh api` answered over
+    HTTPS in the same second the SSH fetch failed. A message that does not name its cause sends
+    the reader away from it (W106).
+    """
+    detail = "no attempt ran"
+    for attempt in range(1, FETCH_ATTEMPTS + 1):
+        try:
+            subprocess.run(
+                ["git", "fetch", "--no-tags", "--quiet", "origin", "main"],
+                capture_output=True, text=True, check=True, timeout=120,
+            )
+        except subprocess.TimeoutExpired:
+            detail = "timed out after 120s"
+        except subprocess.CalledProcessError as exc:
+            said = ((exc.stderr or "") + " " + (exc.output or "")).strip()
+            detail = (" ".join(said.split())[:200]) or f"git exited {exc.returncode}"
+        except Exception as exc:  # noqa: BLE001 — no git, not a repo: still "could not look"
+            detail = f"{type(exc).__name__}: {exc}"[:200]
+        else:
+            if attempt > 1:
+                print(f"  fetch recovered on attempt {attempt} (transient)")
+            return True, f"attempt {attempt}"
+        if attempt < FETCH_ATTEMPTS:
+            print(f"  fetch attempt {attempt} failed ({detail}) — retrying")
+            time.sleep(FETCH_BACKOFF_S[min(attempt - 1, len(FETCH_BACKOFF_S) - 1)])
+    return False, detail
+
+
 def _deploy_relevant_head() -> tuple[str, str]:
     """The newest commit on main that can change the built app, plus how it was obtained.
 
@@ -288,8 +337,9 @@ def _deploy_relevant_head() -> tuple[str, str]:
     Degrades to main HEAD — the old behaviour — when git cannot answer, and SAYS so. Being
     unable to look is not evidence that no frontend commit exists.
     """
-    if _git("fetch", "--no-tags", "--quiet", "origin", "main") is None:
-        return _main_head(), "main HEAD — git fetch failed, could not filter by path"
+    fetched, why = _fetch_main()
+    if not fetched:
+        return _main_head(), f"main HEAD — git fetch failed ({why}), could not filter by path"
     sha = _git("log", "-1", "--format=%H", "origin/main", "--", *BUNDLE_PATHS, *BUNDLE_EXCLUDE)
     if sha is None:
         return _main_head(), "main HEAD — git log failed, could not filter by path"

@@ -72,6 +72,19 @@ hb=$(echo "$r" | cut -f1)
 [ "$(field "$hb" status)" = "warning" ] \
     && ok "rc=3 -> warning (NOT ok, NOT error)" || bad "rc=3 must be warning" "$hb"
 
+# A SUCCESSFUL promote off a DEGRADED target. Found by running the real cure on Mini with a
+# poisoned fetch, not by reading the code: main HEAD happened to have a READY build, so the
+# broken-fetch run promoted it and exited 0. Reading the marker only under rc=3 wrote a clean
+# `ok` over a dead fetch - green while blind (superscar #2). The first case in this file is the
+# innocence half: an ordinary promote, no marker, must still be plain `ok`.
+r=$(run_case 0 'target commit   : deadbeef
+  chosen as     : main HEAD — git fetch failed (ssh: Connection refused), could not filter by path
+OK — balizero.com serves deadbeef (promoted dpl_x, no rebuild)' Mini-Pro2)
+hb=$(echo "$r" | cut -f1)
+[ "$(field "$hb" status)" = "warning" ] \
+    && ok "rc=0 + degraded target -> warning (not a clean ok)" \
+    || bad "a promote off a degraded target must not read as healthy" "$hb"
+
 # The one a code-only mapping gets wrong. argparse exits 2 when the cure does not know
 # --promote-only: nothing ran. If that wore "warning" it would read as the benign
 # nothing-to-promote and stay green over a dead organ for as long as nobody looked.

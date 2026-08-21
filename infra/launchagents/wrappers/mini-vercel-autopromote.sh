@@ -99,10 +99,24 @@ OUT=$(cd "$REPO" && /usr/bin/python3 "$CURE" --promote-only 2>&1) || RC=$?
 # Judge the OUTPUT, not only the code (W104): the log is what a human reads at 07:30.
 printf '%s\n' "$OUT" >> "$LOG"
 
+# The degraded-target marker is read on EVERY exit code, not only on rc=3. Measured live on
+# 2026-08-21 against the real Vercel account with a poisoned fetch: main HEAD HAPPENED to have
+# a READY build, so a run whose fetch was broken promoted it and exited 0 - and this wrapper,
+# which only looked for the marker under rc=3, would have written a clean `ok` and hidden a
+# dead fetch for as long as it stayed dead. The rc=3 comment below is right that Vercel skips
+# main HEAD for all but a few merges a day; USUALLY is not NEVER, and superscar #2 is exactly
+# the organ that stays green while blind. `if` and not `&&`, so no errexit can decapitate it
+# (W101).
+DEGRADED=0
+if printf '%s' "$OUT" | grep -q 'main HEAD — git'; then DEGRADED=1; fi
+
 case "$RC" in
     0)
         # Both good outcomes: production was already current, or it just got promoted.
-        if printf '%s' "$OUT" | grep -q 'promoted'; then
+        if [ "$DEGRADED" = 1 ]; then
+            heartbeat "warning" "promoted a degraded target - git could not be asked"
+            log "DEGRADED TARGET - promoted main HEAD; the fetch is broken, the promote was luck"
+        elif printf '%s' "$OUT" | grep -q 'promoted'; then
             heartbeat "ok" "promoted"
             log "PROMOTED — production moved"
         else
@@ -117,7 +131,7 @@ case "$RC" in
         # a blind organ, not a quiet one (W106b: could-not-verify is never the same verdict as
         # nothing-to-do). The cure NAMES this in its own output, so read the output, not the
         # code alone (W104).
-        if printf '%s' "$OUT" | grep -q 'main HEAD — git'; then
+        if [ "$DEGRADED" = 1 ]; then
             heartbeat "error" "cure could not determine the target commit (git degraded)"
             log "DEGRADED TARGET — the cure fell back to main HEAD; it will never promote"
         else
