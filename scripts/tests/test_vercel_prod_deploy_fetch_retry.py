@@ -45,10 +45,24 @@ sys.path.insert(0, str(SCRIPTS))
 
 vpd = pytest.importorskip("vercel_prod_deploy")
 
-WRAPPER = (
-    pathlib.Path(__file__).resolve().parents[2]
-    / "infra/launchagents/wrappers/mini-vercel-autopromote.sh"
-)
+REPO = pathlib.Path(__file__).resolve().parents[2]
+WRAPPER = REPO / "infra/launchagents/wrappers/mini-vercel-autopromote.sh"
+PLIST = REPO / "infra/launchagents/com.nuzantara.vercel-autopromote.plist"
+
+
+def _cadence_s() -> int:
+    """The organ's tick, READ from the plist that defines it.
+
+    Hardcoding 900 here would be a measure of the world frozen into a constant: true the day it
+    was written, and silently wrong the day someone lowers StartInterval — with this test still
+    green while the retry outlives the tick (W106). The bound has to be asked, not remembered.
+    """
+    m = re.search(
+        r"<key>StartInterval</key>\s*<integer>(\d+)</integer>",
+        PLIST.read_text(encoding="utf-8"),
+    )
+    assert m, "the plist no longer declares a StartInterval — re-pin this test"
+    return int(m.group(1))
 SHA = "665bfd40d77b10c3bac91a9e3d3309a4df3c186f"
 
 
@@ -105,8 +119,10 @@ def test_the_retry_is_bounded_and_ends_inside_the_tick(monkeypatch, naps):
     ok, _ = vpd._fetch_main()
     assert ok is False
     assert len(rec.calls) == vpd.FETCH_ATTEMPTS
-    # 900s is the cadence; a retry that outlives it would wedge the organ into the next tick.
-    assert vpd.FETCH_ATTEMPTS * 120 + sum(naps) < 900
+    # A retry that outlives the tick would wedge the organ into the next one. The cadence comes
+    # from the plist, so lowering StartInterval without shortening the retry turns this red.
+    worst = vpd.FETCH_ATTEMPTS * 120 + sum(naps)
+    assert worst < _cadence_s(), f"worst-case fetch {worst}s >= tick {_cadence_s()}s"
 
 
 # ------------------------------------------------- guilt: the failure names its own cause

@@ -34,6 +34,7 @@ on:
     paths:
       - "scripts/vercel_prod_deploy.py"
       - "infra/launchagents/wrappers/mini-vercel-autopromote.sh"
+      - "infra/launchagents/com.nuzantara.vercel-autopromote.plist"
       - "scripts/tests/test_vercel_prod_deploy_promote_only.py"
       - "scripts/tests/test_vercel_prod_deploy_fetch_retry.py"
       - "scripts/tests/test_mini_vercel_autopromote_wrapper.sh"
