@@ -482,6 +482,7 @@ certifi==2026.7.22 \
     # via
     #   httpcore
     #   httpx
+    #   langchain-openai
     #   requests
     #   sentry-sdk
 cffi==2.1.1 \
@@ -1454,9 +1455,9 @@ langfuse==4.14.3 \
     --hash=sha256:a3f77d11d8dcf440f28678271c7ea1aab01c51e372fa344661c038434122f8df \
     --hash=sha256:eba25be6da7e5eeb640b28d7a0910f5c40cc6449eeaef89ba5d282d9db1a355d
     # via -r requirements-prod.txt
-langgraph==1.2.10 \
-    --hash=sha256:05a183a746ed570a06c7c1b879920163509a75df9e44e92dd2238218d677fd37 \
-    --hash=sha256:52c48bd42fa31a1de0e1c0f0ebfe342e11ca2957b8b3563f83dbd60d8e30f921
+langgraph==1.2.11 \
+    --hash=sha256:8bab70de7b2d00b5300fb289bcf38d8b241400f3184c1e95e8ce706fb0e8686b \
+    --hash=sha256:9ecfe11e50d338b34b15cf4d8a442642de103e8ae6971320efba84e4542eb363
     # via
     #   -r requirements-prod.txt
     #   langchain
