@@ -1,8 +1,8 @@
 #!/bin/bash
 # pro.llm_burn_alarm — burn-rate alarm on llm_cost_events — trailing 24h vs 7-day median, names endpoint+model
 # Born via scripts/organ_birth.py (DNA/GENOME 2026-07-06): genes imprinted at birth.
-# Canon: infra/launchagents/wrappers/pro-llm_burn_alarm.sh
-# Live:  ~/scripts/pro-llm_burn_alarm.sh (declared pair, node=pro)
+# Canon: infra/launchagents/wrappers/pro-llm-burn-alarm.sh
+# Live:  ~/scripts/pro-llm-burn-alarm.sh (declared pair, node=pro)
 
 set -u   # G9_fail_visible: unset vars crash, they do not expand empty
 
