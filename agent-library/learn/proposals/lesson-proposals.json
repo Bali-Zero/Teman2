@@ -5,13 +5,14 @@
   "_enforcement": "none",
   "recurrence_threshold": 3,
   "totals": {
-    "scars_scanned": 14,
+    "scars_scanned": 15,
     "mechanical_candidates": 9,
     "consultive": 1,
-    "rejected_no_anchor": 4
+    "rejected_no_anchor": 5
   },
   "recurring_patterns": {
     "w_numbers": {
+      "W107": 3,
       "W108": 3,
       "W64": 3,
       "W68": 3,
@@ -113,6 +114,7 @@
       ],
       "recurring_via": {
         "w": [
+          "W107",
           "W108"
         ],
         "family": []
@@ -255,6 +257,10 @@
     },
     {
       "title": "🐛 W117 (P0 STRUCTURAL): la guardia non aveva un buco — non poteva VEDERE il gesto, e a fidarmi del ramo sbagliato avrei scritto codice morto",
+      "reason": "no objective anchor (G1)"
+    },
+    {
+      "title": "🐛 W121 (P1 STRUCTURAL): il mutation testing girava su BYTECODE AVVELENATO — lo strumento che misura se il corpus morde stava giudicando una versione del codice diversa da quella sul disco",
       "reason": "no objective anchor (G1)"
     },
     {
