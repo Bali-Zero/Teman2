@@ -220,6 +220,77 @@ class ConductorRouterTest(unittest.TestCase):
         self.assertIsNone(plan.primary)
         self.assertFalse(plan.separate_builder_session_required)
 
+    def test_read_only_requires_valid_policy_and_host_evidence(self) -> None:
+        cases = (
+            (
+                "malformed_policy_timestamp",
+                replace(policy(), as_of="not-an-iso-timestamp"),
+                "policy_timestamp_invalid",
+            ),
+            (
+                "invalid_max_health_age",
+                replace(policy(), max_health_age_days=-1),
+                "policy_max_health_age_invalid",
+            ),
+            (
+                "malformed_host_timestamp",
+                replace(
+                    policy(),
+                    host_observations=(
+                        HostObservation(
+                            host="pro",
+                            available=True,
+                            observed_at="not-an-iso-timestamp",
+                        ),
+                    ),
+                ),
+                "host_observation_timestamp_invalid",
+            ),
+            (
+                "stale_host_evidence",
+                replace(
+                    policy(),
+                    host_observations=(
+                        HostObservation(
+                            host="pro",
+                            available=True,
+                            observed_at="2026-08-19",
+                        ),
+                    ),
+                ),
+                "host_observation_stale",
+            ),
+            (
+                "missing_host_evidence",
+                replace(policy(), host_observations=()),
+                "host_observation_missing",
+            ),
+        )
+
+        for name, invalid_policy, reason in cases:
+            with self.subTest(name=name):
+                plan = plan_dispatch(
+                    session=session(),
+                    task=task(TaskClass.READ_ONLY, "mechanical"),
+                    candidates=(),
+                    policy=invalid_policy,
+                )
+
+                self.assertEqual(plan.decision, Decision.ABSTAIN)
+                self.assertEqual(plan.abstention_reason, reason)
+
+    def test_read_only_allows_with_valid_policy_and_host_evidence(self) -> None:
+        plan = plan_dispatch(
+            session=session(),
+            task=task(TaskClass.READ_ONLY, "mechanical"),
+            candidates=(),
+            policy=policy(),
+        )
+
+        self.assertEqual(plan.decision, Decision.ALLOW)
+        self.assertEqual(plan.selection_reason_codes, ("read_only_conductor_retained",))
+        self.assertIsNone(plan.abstention_reason)
+
     def test_sol_delegates_mechanical_work_to_luna_and_keeps_conductor_role(
         self,
     ) -> None:

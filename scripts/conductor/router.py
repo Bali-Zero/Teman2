@@ -119,6 +119,31 @@ def plan_dispatch(
         )
 
     if task.task_class is TaskClass.READ_ONLY:
+        as_of, policy_rejection = _policy_clock(policy)
+        if policy_rejection is not None:
+            return _abstain(
+                session=session,
+                task=task,
+                policy=policy,
+                task_profile_hash=task_profile_hash,
+                assignments=(conductor_assignment,),
+                rejections=(),
+                reason=policy_rejection,
+            )
+        assert as_of is not None
+        _, host_policy_rejection = _host_observations(
+            policy, as_of, require_current_observation=True
+        )
+        if host_policy_rejection is not None:
+            return _abstain(
+                session=session,
+                task=task,
+                policy=policy,
+                task_profile_hash=task_profile_hash,
+                assignments=(conductor_assignment,),
+                rejections=(),
+                reason=host_policy_rejection,
+            )
         return DispatchPlan(
             decision=Decision.ALLOW,
             conductor=session,
@@ -379,8 +404,14 @@ def _policy_clock(policy: RoutingPolicy) -> tuple[datetime | None, str | None]:
 
 
 def _host_observations(
-    policy: RoutingPolicy, as_of: datetime
+    policy: RoutingPolicy,
+    as_of: datetime,
+    *,
+    require_current_observation: bool = False,
 ) -> tuple[Mapping[str, HostObservation] | None, str | None]:
+    if require_current_observation and not policy.host_observations:
+        return None, "host_observation_missing"
+
     observations: dict[str, HostObservation] = {}
     for observation in policy.host_observations:
         if not isinstance(observation.host, str) or not observation.host:
@@ -394,6 +425,10 @@ def _host_observations(
             return None, "host_observation_timestamp_invalid"
         if observed_at > as_of:
             return None, "host_observation_timestamp_future"
+        if require_current_observation and as_of - observed_at > timedelta(
+            days=policy.max_health_age_days
+        ):
+            return None, "host_observation_stale"
         observations[observation.host] = observation
     return observations, None
 
