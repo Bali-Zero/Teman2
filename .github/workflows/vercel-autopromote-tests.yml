@@ -1,0 +1,72 @@
+name: Vercel auto-promote organ tests
+
+# Executor for the corpora that prove the mini.vercel_autopromote organ -- the cron that
+# promotes an already-built Vercel deployment so a merged frontend PR reaches balizero.com
+# without a human running anything.
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# The organ shipped on 2026-08-21 with three corpora and NO workflow naming any of them, which
+# is superscar #2 ("exists != armed") applied to the guards of an organ built to cure exactly
+# that: `scripts-tests-sweep.yml` collects only `test_*.py` and is `continue-on-error`, so it
+# gates nothing (W108), and a `.sh` corpus is invisible to pytest collection altogether -- the
+# wrapper's 13 cases ran nowhere at all. Same shape and rationale as
+# `s7-yield-dispatch-tests.yml` and `intake-review-reader-liveness.yml`.
+#
+# `paths:` filtered to the cure, the wrapper, the plist and their corpora -- safe because this
+# workflow is NOT added to branch-protection required checks here (a repo-settings action,
+# operator-gated per CLAUDE.md §13); it runs on every PR that touches the organ.
+
+on:
+  pull_request:
+    paths:
+      - "scripts/vercel_prod_deploy.py"
+      - "infra/launchagents/wrappers/mini-vercel-autopromote.sh"
+      - "infra/launchagents/com.nuzantara.vercel-autopromote.plist"
+      - "scripts/tests/test_vercel_prod_deploy_promote_only.py"
+      - "scripts/tests/test_vercel_prod_deploy_fetch_retry.py"
+      - "scripts/tests/test_mini_vercel_autopromote_wrapper.sh"
+      - ".github/workflows/vercel-autopromote-tests.yml"
+  merge_group:
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/vercel_prod_deploy.py"
+      - "infra/launchagents/wrappers/mini-vercel-autopromote.sh"
+      - "infra/launchagents/com.nuzantara.vercel-autopromote.plist"
+      - "scripts/tests/test_vercel_prod_deploy_promote_only.py"
+      - "scripts/tests/test_vercel_prod_deploy_fetch_retry.py"
+      - "scripts/tests/test_mini_vercel_autopromote_wrapper.sh"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vercel-autopromote-tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
+
+jobs:
+  organ-tests:
+    name: Vercel auto-promote organ tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: The cure refuses to build under --promote-only, and says which outcome it hit
+        run: |
+          python3 -m pip install --quiet --disable-pip-version-check pytest
+          python3 -m pytest scripts/tests/test_vercel_prod_deploy_promote_only.py -v
+
+      - name: A transient fetch is ridden out, a persistent one names its own cause
+        run: python3 -m pytest scripts/tests/test_vercel_prod_deploy_fetch_retry.py -v
+
+      # The wrapper is the half that decides what the fleet SEES. Its corpus runs the real
+      # script in a disposable world (temp HOME, shimmed hostname, stand-in cure), so a
+      # heartbeat that lies about a degraded target goes red here rather than on Mini at 07:30.
+      - name: The wrapper reports each outcome as a distinct, honest state
+        run: bash scripts/tests/test_mini_vercel_autopromote_wrapper.sh
+
+      - name: The wrapper still parses (a shell syntax error is a silent dead organ)
+        run: bash -n infra/launchagents/wrappers/mini-vercel-autopromote.sh

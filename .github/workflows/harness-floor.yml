@@ -1,17 +1,21 @@
-name: Harness floor & gate publisher
+name: Harness floor recompute
 
 # PR-3 of the fleet-order program (research/operations/2026-08-10-fleet-order-spec.md §4/§7;
-# research/operations/2026-08-09-harness-v2-teman2.md §1/§6).
+# research/operations/2026-08-09-harness-v2-teman2.md §1/§6). Redesigned 2026-08-21 — see the
+# REDESIGNED note further down for the full rationale; this opening paragraph is kept current
+# with that redesign, not the original 2026-08-10 draft.
 #
 # TWO responsibilities live in one job because they share one contract: `harness/fable-gate` must
 # be a SAFE required status check. GitHub branch protection has no per-label required-check
-# scoping — a status only ever published manually (by scripts/harness_fable_gate.py, run by a real
-# Gear-3 Fable gate session) would leave that context "Expected — Waiting for status" FOREVER on
-# every ordinary PR if it were simply added to required_status_checks. So this workflow is ALSO the
-# DEFAULT PUBLISHER: on any PR that is not declaring Gear-3 (no evidence/brief.yml, or a brief
-# declaring gear < 3), it self-publishes a neutral `harness/fable-gate` success — the same pattern
-# "Hot-zone enforcement" already uses (unconditionally required, internally a no-op for PRs it does
-# not apply to). Only a Gear-3 brief is left PENDING for the real gate session to publish for real.
+# scoping — a status only ever published manually (by scripts/harness_fable_gate.py, run by the
+# gate session) would leave that context "Expected — Waiting for status" FOREVER on every ordinary
+# PR if it were simply added to required_status_checks, AND (separately) never carries over to the
+# merge queue's synthetic test-merge SHA at all (see (a) below). So THIS JOB — not a status it
+# posts — is the thing branch protection requires: for any PR that is not declaring Gear-3 (no
+# evidence/brief.yml, or a brief declaring gear < 3), the job itself concludes success — the same
+# pattern "Hot-zone enforcement" already uses (unconditionally required, internally a no-op for
+# PRs it does not apply to). Only on a Gear-3 brief does this job's own conclusion depend on
+# READING (never writing) whether the gate session already posted a real verdict.
 #
 # Floor recompute (harness-v2 §1 "il modello può solo alzare la classe, mai abbassarla sotto il
 # floor"): the deterministic floor is computed ONCE, unconditionally (brief or not — adversarial-
@@ -39,12 +43,10 @@ name: Harness floor & gate publisher
 #
 # KILL SWITCH: `vars.HARNESS_ENFORCEMENT` (named to match harness-v2-teman2.md §10's documented
 # switch — adversarial-review finding 2026-08-10: an earlier draft used a workflow-local name that
-# matched nothing anyone would ever set). Disabling it does NOT leave `harness/fable-gate` merely
-# unpublished: once this check is a required status, "kill switch enabled" must never be WORSE than
-# normal operation, so this step publishes a default success itself before exiting (graceful
-# bypass) — the first cut of the kill switch skipped every remaining step including the publish,
-# which would have deadlocked every PR the moment the context became required.
+# matched nothing anyone would ever set). Disabling it is now a plain `exit 0` (see the redesign
+# note below for why this no longer needs a publish step at all).
 #
+ agent/air-m5/ops/fable-gate-name-note
 # NAME NOTE (2026-08-21): `harness/fable-gate` does NOT invoke Fable and never has — it relays a
 # verdict a Gear-3 session already reached (scripts/harness_fable_gate.py is a publisher with no
 # verdict logic). Zero ruled Fable out of the interactive workflow; that changes WHO reaches the
@@ -64,10 +66,55 @@ name: Harness floor & gate publisher
 # turn into a hard block rather than today's harmless failed step. Both need a design decision
 # (synthetic-SHA relay strategy; fork-PR write-permission strategy) before the flip is safe.
 
+# REDESIGNED 2026-08-21 (research/operations/2026-08-21-fable-gate-required-promotion.md) —
+# `harness/fable-gate` promotion to a required check was BLOCKED as of 2026-08-10 for two reasons
+# that are now BOTH resolved, not merely worked around:
+#
+#   (a) SYNTHETIC-SHA RELAY was real: a status manually posted (by scripts/harness_fable_gate.py)
+#       on a PR's real head SHA never carries over to the merge queue's synthetic test-merge SHA
+#       — requiring the commit-status context directly would have deadlocked the queue forever.
+#       FIX: this workflow's OWN JOB is now the required check, not a status it posts. A GitHub
+#       Actions job's check-run is natively associated with whatever SHA the job executes against
+#       — real PR head, workflow_dispatch ref, or the merge queue's synthetic SHA alike — exactly
+#       like the already-required `hot-zone-enforcement` and `R1 gate` jobs in this repo. No relay
+#       needed; the "not applicable" cases (kill-switch, no-brief/floor<3, gear<3) now just `exit
+#       0` as this job's own conclusion instead of writing a separate status.
+#
+#   (b) FORK-PR WRITE PERMISSION was real: a fork PR's default GITHUB_TOKEN is read-only on this
+#       public repo, so the `gh api .../statuses/<sha>` WRITE in the default-publish steps could
+#       fail for external contributors — harmless while unrequired, a hard block once required.
+#       FIX: this workflow no longer WRITES a commit status anywhere, ever (verified by
+#       scripts/tests/test_harness_gate_read.py's static source-scan, not just this comment) — the
+#       "not applicable" cases need no external call at all, and the one case that still needs an
+#       externally-decided verdict (Gear-3, floor satisfied, pack conformant) only READS whether
+#       scripts/harness_fable_gate.py already posted one, via scripts/ci/harness_gate_read.py.
+#       Reading a public commit-status needs no elevated token scope — safe on a fork's read-only
+#       token by construction, not by convention.
+#
+# scripts/harness_fable_gate.py is UNCHANGED: it remains the durable, timestamped audit-trail
+# record of the gate session's verdict (harness-v2-teman2.md §6) — only this workflow's OWN
+# behavior around that record changed, from "leave the context unpublished" to "read it back".
+#
+# OPERATIONAL COROLLARY: a completed Actions job has no native "pending forever" state distinct
+# from "failed", so a Gear-3 PR with no verdict posted yet fails this job exactly like a
+# REWORK/BLOCK verdict would (same red X, different message). After the gate session posts a
+# verdict, it re-triggers via `gh workflow run harness-floor.yml --ref <branch>` (the
+# `workflow_dispatch:` trigger below exists for exactly this) — never a bare `gh run rerun` on
+# this run's own stale object (CLAUDE.md Agent PR Contract rule 3 / cicatrix W111).
+#
+# ARMING NOTE (operator/session): with (a) and (b) resolved, the one action left is adding the
+# job's check name ("Harness floor recompute") to branch protection's required_status_checks —
+# a GUI/branch-protection change, tracked in modus PENDING-ARMS, deliberately left to the operator
+# (see the design doc's §Solo-operatore). This workflow's own behavior is otherwise ready for it.
+ main
+
 on:
   pull_request:
     types: [opened, synchronize, reopened]
   merge_group:
+  workflow_dispatch: {} # re-trigger surface for the operational corollary above — no inputs
+    # needed: `github.sha` already resolves to the dispatched ref's current tip, which every
+    # HEAD_SHA/BASE_SHA fallback chain below now includes.
 
 concurrency:
   group: harness-floor-${{ github.event.pull_request.number || github.ref }}
@@ -76,7 +123,7 @@ concurrency:
 permissions:
   contents: read
   pull-requests: read
-  statuses: write
+  statuses: read # READ only — this workflow never posts a commit status (see redesign note above)
 
 jobs:
   harness-floor:
@@ -85,25 +132,18 @@ jobs:
     timeout-minutes: 10
     steps:
       # -----------------------------------------------------------------
-      # Step 0 — kill switch. Graceful bypass: publish the SAME default
-      # success this workflow would publish for an ordinary non-Gear-3 PR,
-      # then exit — never worse than normal operation once the context is
-      # required (see header note).
+      # Step 0 — kill switch. Graceful bypass is now a plain `exit 0`: this
+      # job's own conclusion IS the check-run (no separate status to keep
+      # in sync — see the redesign note in the file header), so "kill
+      # switch enabled" is never worse than normal operation by construction,
+      # not by a publish call that could itself fail on a fork PR.
       # -----------------------------------------------------------------
       - name: Kill switch
         id: kill_switch
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -u
           if [[ "${{ vars.HARNESS_ENFORCEMENT }}" == "false" ]]; then
-            echo "::notice::HARNESS_ENFORCEMENT=false — publishing default harness/fable-gate=success (graceful bypass) and exiting"
-            gh api "repos/${{ github.repository }}/statuses/${SHA}" \
-              -f state=success \
-              -f context='harness/fable-gate' \
-              -f description='HARNESS_ENFORCEMENT=false — kill switch bypass' \
-              > /dev/null || echo "::warning::kill-switch bypass publish failed (e.g. fork PR read-only token) — context stays unpublished"
+            echo "::notice::HARNESS_ENFORCEMENT=false — graceful bypass, exiting 0"
             echo "disabled=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -112,12 +152,16 @@ jobs:
       # -----------------------------------------------------------------
       # Step 1 — checkout the BASE ref (anti pull_request_target trap, same
       # as hot-zone-pr-gate.yml); enough history for the merge-base diff.
+      # `workflow_dispatch` fallback to 'main': that event carries no PR/
+      # merge_group base at all — this workflow's only target branch IS
+      # main, so 'main' is the correct base for a manual re-trigger's own
+      # recompute, not a guess.
       # -----------------------------------------------------------------
       - name: Checkout base ref
         if: steps.kill_switch.outputs.disabled != 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+          ref: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha || 'main' }}
           fetch-depth: 0
           filter: blob:none
 
@@ -141,8 +185,8 @@ jobs:
         if: steps.kill_switch.outputs.disabled != 'true'
         id: diff
         env:
-          BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha || 'main' }}
+          HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha || github.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
@@ -170,77 +214,160 @@ jobs:
         id: detfloor
         run: |
           set -u
-          # BOOTSTRAP WINDOW (same pattern as hot-zone-pr-gate.yml's own
-          # `test_hotzone_changed_files.sh` self-test, and same reasoning:
-          # this step checks out the BASE ref, which does not carry
-          # scripts/evidence_pack_lint.py until the very PR that introduces
-          # it (this one) actually merges. Not a disarm vector — once the
-          # script is on main, every future PR's base checkout has it, and
-          # no PR can make it disappear from HEAD without also removing it
-          # from base after merge. Found live on this PR's own first CI run
-          # ("No such file or directory") — a real gap the local sandbox
-          # simulation could not have caught, since the sandbox always had
-          # the file.
+          # CORRECTED 2026-08-21 (independent cross-family review, Kimi K3,
+          # finding #3 — "most dangerous latent defect", CONFIRMED FALSE the
+          # claim this comment used to make): `scripts/evidence_pack_lint.py`
+          # is NOT new — it already exists on origin/main and has for a long
+          # time, so this is not a live bootstrap window at all. The old
+          # "not a disarm vector ... no PR can make it disappear from HEAD
+          # without also removing it from base after merge" reasoning was
+          # simply wrong: a PR CAN delete this script from its own base-facing
+          # tree; that deletion PR's own CI run still checks out the OLD base
+          # (which still has the file, since Step 1 checks out base, not the
+          # deletion PR's own head) and passes normally; the file is then
+          # gone from main, and EVERY subsequent PR's base checkout silently
+          # hits this branch forever — permanently downgrading the floor to
+          # 1 (permissive) repo-wide, with zero red anywhere. There is no
+          # legitimate reason for this script to ever be missing from a
+          # healthy base checkout, so the correct behavior is fail-closed,
+          # not a graceful skip.
           if [[ ! -f scripts/evidence_pack_lint.py ]]; then
-            echo "::notice::scripts/evidence_pack_lint.py not in base checkout yet (bootstrap run) — floor defaults to 1, permissive, for THIS run only"
-            echo "floor=1" >> "$GITHUB_OUTPUT"
-            exit 0
+            echo "::error::scripts/evidence_pack_lint.py is missing from the base checkout — this script is not new (it predates this workflow's own bootstrap), so its absence means it was deleted from main, not that we are in a legitimate bootstrap window. Failing closed rather than silently defaulting the floor to 1."
+            exit 1
           fi
           FLOOR=$(python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/changed-files.txt)
           echo "floor=$FLOOR" >> "$GITHUB_OUTPUT"
           echo "deterministic floor for this diff: $FLOOR"
 
       # -----------------------------------------------------------------
-      # Step 4 — does this PR carry evidence/brief.yml at HEAD? FAIL CLOSED
-      # (adversarial-review finding 2026-08-10) if the HEAD commit itself
-      # cannot be resolved after a fetch attempt — that is "cannot verify",
-      # never "no brief". The original `git fetch ... || true` swallowed
-      # fetch failures and let an unresolvable commit read as "file legit-
-      # imately absent from that tree", silently defaulting to success on a
-      # PR this workflow never actually inspected.
+      # Step 4 — does THIS PR'S OWN DIFF carry evidence/brief.yml? FAIL
+      # CLOSED (adversarial-review finding 2026-08-10) if the HEAD commit
+      # itself cannot be resolved after a fetch attempt — that is "cannot
+      # verify", never "no brief". The original `git fetch ... || true`
+      # swallowed fetch failures and let an unresolvable commit read as
+      # "file legitimately absent from that tree", silently defaulting to
+      # success on a PR this workflow never actually inspected.
+      #
+      # CORRECTED 2026-08-21 (independent Gear-3 review round 1, F1, CRITICAL):
+      # the previous version checked `git cat-file -e "$HEAD_SHA:evidence/brief.yml"`
+      # — TREE presence, not DIFF membership. `evidence/brief.yml` is a
+      # tracked file at a FIXED repo-root path: whatever the most recently
+      # merged Gear-3 PR (e.g. #4474) left there stays in the tree and is
+      # inherited by every subsequent branch, whether or not THAT branch
+      # ever touches it. Under the old Step 7c (a no-op notice, never a
+      # failure) this was harmless — the job always passed regardless. Under
+      # the new read-based Step 7c it is not: EVERY PR in the repo would
+      # inherit `gear: 3` from whatever the last Gear-3 PR declared and take
+      # the Gear-3 path, repo-wide, for a required check. Verified live: a
+      # single-file docs-ledger PR (#4535) already showed gear=3 from #4474's
+      # leftover pack.
+      #
+      # CORRECTED AGAIN 2026-08-21 (independent Gear-3 review round 2, same
+      # PR): round 1's fix was two inline conditions here, pinned only by a
+      # test that reimplemented the same two lines itself rather than
+      # exercising this file — reverting these conditions locally left every
+      # test green. Fix: the check now lives in
+      # scripts/ci/tracked_file_present_in_diff.sh (same shape as the
+      # existing hotzone_changed_files.sh / vercel_should_build.sh, both
+      # already `run:`-invoked rather than reimplemented inline), and the
+      # test corpus (scripts/tests/test_harness_floor_brief_diff_membership.sh)
+      # invokes that exact file — a mutation to the check is now visible to
+      # both the workflow and the test from the same source.
       # -----------------------------------------------------------------
-      - name: Does this PR carry evidence/brief.yml?
+      - name: Does this PR's own diff carry evidence/brief.yml?
         if: steps.kill_switch.outputs.disabled != 'true'
         id: brief
         env:
-          HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha }}
+          HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha || github.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          MERGE_GROUP_HEAD_REF: ${{ github.event.merge_group.head_ref }}
         run: |
           set -u
+          # Bootstrap-window exemption (same pattern as evidence_pack_lint.py
+          # and harness_gate_read.py elsewhere in this file — CAUGHT LIVE on
+          # this PR's own first CI run after round 2 landed: Step 1 checks
+          # out the BASE ref, which lacks this script until this very PR
+          # merges, so an unguarded call here dies on a raw "command not
+          # found" (bash exit 127), failing THIS PR's own required check on
+          # a script THIS PR itself introduces). The fallback does NOT
+          # degrade to tree-presence-only (that would silently reopen F1 for
+          # any OTHER PR whose base checkout also predates this merge) — it
+          # inlines the exact same two-condition check the external script
+          # performs, so the diff-membership guarantee holds through the
+          # bootstrap window too, not just after it.
+          #
+          # SENTINEL-GATED (cross-family review, Kimi K3, finding #3 —
+          # extended to this call site 2026-08-21): the first version of this
+          # guard inlined its check on ANY missing script, with no bound on
+          # WHICH PR that applies to — a standing fail-open, same shape as
+          # the harness_gate_read.py defect Kimi found: a future PR that
+          # deletes scripts/ci/tracked_file_present_in_diff.sh would pass its
+          # own CI (base still has it, pre-merge) and, once merged, every
+          # later PR would silently inline a permanently-stale copy of this
+          # check forever — never calling the shared script again, and
+          # defeating the whole reason it was extracted (round-2 note above:
+          # a mutation to the check must be visible to workflow AND test from
+          # the same source). Fixed the same way as Step 7c: the inline
+          # fallback fires ONLY for this PR's own number (the one legitimate
+          # bootstrap window) — for every other PR, a missing script fails
+          # closed.
+          BOOTSTRAP_PR="4539" # this PR's own number — the one legitimate bootstrap window for this script
+          if [[ ! -f scripts/ci/tracked_file_present_in_diff.sh ]]; then
+            RESOLVED_PR="${PR_NUMBER:-}"
+            if [[ -z "$RESOLVED_PR" && "$MERGE_GROUP_HEAD_REF" =~ pr-([0-9]+)- ]]; then
+              RESOLVED_PR="${BASH_REMATCH[1]}"
+            fi
+            if [[ "$RESOLVED_PR" != "$BOOTSTRAP_PR" ]]; then
+              echo "::error::scripts/ci/tracked_file_present_in_diff.sh is missing from the base checkout, and this is PR #${RESOLVED_PR:-unknown}, not the declared one-time bootstrap PR (#$BOOTSTRAP_PR) — failing closed. A missing script here means it was deleted from main, not that we are in a legitimate bootstrap window."
+              exit 1
+            fi
+            echo "::notice::scripts/ci/tracked_file_present_in_diff.sh not in base checkout yet (bootstrap run for PR #$BOOTSTRAP_PR only) — inlining its check for THIS run only"
+            if git cat-file -e "${HEAD_SHA}:evidence/brief.yml" 2>/dev/null && grep -qxF "evidence/brief.yml" /tmp/changed-files.txt; then
+              echo "present=true" >> "$GITHUB_OUTPUT"
+              git show "${HEAD_SHA}:evidence/brief.yml" > /tmp/brief.yml
+            else
+              echo "present=false" >> "$GITHUB_OUTPUT"
+              echo "::notice::evidence/brief.yml is not present-and-diff-touched at HEAD (bootstrap-window inline check) — not a harness-gated task (pending the floor check below)"
+            fi
+            exit 0
+          fi
           git fetch --no-tags --depth=200 origin "$HEAD_SHA" >/dev/null 2>&1 || true
           if ! git cat-file -e "${HEAD_SHA}^{commit}" 2>/dev/null; then
             echo "::error::HEAD commit ${HEAD_SHA} could not be resolved after fetch — failing closed (cannot verify whether evidence/brief.yml exists, this is NOT the same as 'no brief')"
             exit 1
           fi
-          if git cat-file -e "$HEAD_SHA:evidence/brief.yml" 2>/dev/null; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
-            git show "$HEAD_SHA:evidence/brief.yml" > /tmp/brief.yml
-          else
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::no evidence/brief.yml at HEAD — not a harness-gated task (pending the floor check below)"
-          fi
+          RESULT="$(bash scripts/ci/tracked_file_present_in_diff.sh "$HEAD_SHA" evidence/brief.yml /tmp/changed-files.txt)"
+          case "$RESULT" in
+            present)
+              echo "present=true" >> "$GITHUB_OUTPUT"
+              git show "$HEAD_SHA:evidence/brief.yml" > /tmp/brief.yml
+              ;;
+            inherited)
+              echo "present=false" >> "$GITHUB_OUTPUT"
+              echo "::notice::evidence/brief.yml exists at HEAD but was NOT touched by this PR's own diff (inherited from a prior merge, e.g. the last Gear-3 PR) — not THIS PR's brief, not a harness-gated task for it"
+              ;;
+            absent)
+              echo "present=false" >> "$GITHUB_OUTPUT"
+              echo "::notice::no evidence/brief.yml at HEAD — not a harness-gated task (pending the floor check below)"
+              ;;
+            *)
+              echo "::error::tracked_file_present_in_diff.sh returned an unrecognized value: '$RESULT' — failing closed"
+              exit 1
+              ;;
+          esac
 
       # -----------------------------------------------------------------
       # Step 5a — no brief, and the diff does NOT hit the floor: genuinely
-      # not a harness task. Publish the default neutral status so
-      # `harness/fable-gate` can safely be a required check without
-      # bricking ordinary PRs.
+      # not a harness task. Nothing to publish any more (see redesign note
+      # in the file header) — this job's own `exit 0` here IS the passing
+      # check-run, on whatever SHA it is running against.
       # -----------------------------------------------------------------
-      - name: Publish default harness/fable-gate (no brief, floor < 3 — not applicable)
+      - name: Not a harness task (no brief, floor < 3 — not applicable)
         if: |
           steps.kill_switch.outputs.disabled != 'true' &&
           steps.brief.outputs.present != 'true' &&
           steps.detfloor.outputs.floor != '3'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: |
-          set -u
-          gh api "repos/${{ github.repository }}/statuses/${SHA}" \
-            -f state=success \
-            -f context='harness/fable-gate' \
-            -f description='not a harness task (no evidence/brief.yml, floor below Gear-3) — fable-gate not applicable' \
-            > /dev/null
-          echo "::notice::published default harness/fable-gate=success (no brief, floor < 3)"
+        run: echo "::notice::not a harness task (no evidence/brief.yml, floor below Gear-3) — passing"
 
       # -----------------------------------------------------------------
       # Step 5b — no brief, but the diff DOES hit the deterministic floor
@@ -287,29 +414,21 @@ jobs:
           fi
 
       # -----------------------------------------------------------------
-      # Step 7a — floor satisfied, but this is not a Gear-3 task: the
-      # Fable verdict gate does not apply (harness-v2 §6 — Gear 2 closes
-      # with an Opus verdict + AI-review + CI, Gear 1 with CI alone).
-      # Publish the default neutral status so a Gear-1/2 harness task is
-      # never blocked waiting on a gate it was never meant to pass through.
+      # Step 7a — floor satisfied, but this is not a Gear-3 task: the gate
+      # verdict does not apply (harness-v2 §6 — Gear 2 closes with a
+      # session verdict + AI-review + CI, Gear 1 with CI alone). Nothing to
+      # publish — this job's own `exit 0` is the passing check-run for a
+      # Gear-1/2 harness task, never blocked on a gate it was never meant
+      # to pass through.
       # -----------------------------------------------------------------
-      - name: Publish default harness/fable-gate (gear < 3 — not applicable)
+      - name: Not a Gear-3 task (gear < 3 — fable-gate not applicable)
         if: |
           steps.kill_switch.outputs.disabled != 'true' &&
           steps.brief.outputs.present == 'true' &&
           steps.gearcheck.outputs.gear != '3'
         env:
-          GH_TOKEN: ${{ github.token }}
-          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           GEAR: ${{ steps.gearcheck.outputs.gear }}
-        run: |
-          set -u
-          gh api "repos/${{ github.repository }}/statuses/${SHA}" \
-            -f state=success \
-            -f context='harness/fable-gate' \
-            -f description="gear ${GEAR} — fable-gate is Gear-3 only, not applicable" \
-            > /dev/null
-          echo "::notice::published default harness/fable-gate=success (gear ${GEAR} < 3)"
+        run: echo "::notice::gear ${GEAR} — fable-gate is Gear-3 only, not applicable — passing"
 
       # -----------------------------------------------------------------
       # Step 7a5 — measured net lines for evidence_pack_lint's rule 7
@@ -330,22 +449,24 @@ jobs:
           steps.gearcheck.outputs.gear == '3'
         id: netlines
         env:
-          BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha || 'main' }}
+          HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha || github.sha }}
         run: |
           set -u
           # This job's checkout (Step 1) is BASE, not HEAD — the "grader
-          # self-protects" pattern (see the bootstrap-window comment on the
-          # file-existence check below). scripts/evidence_pack_lint.py as it
+          # self-protects" pattern. scripts/evidence_pack_lint.py as it
           # exists in THIS run is therefore whatever origin/main carried at
-          # PR-open/sync time, which may predate any PR (like this one) that
-          # is still teaching the script --numstat-file. Probe the capability
-          # of the copy we can actually execute before promising it — this
-          # stays self-consistent both before and after such a PR merges.
+          # PR-open/sync time — legitimately missing --numstat-file support
+          # if a PR teaching the script that flag hasn't merged yet (feature
+          # absence, not file absence). But the FILE itself is not new (see
+          # Step 3's corrected comment on the same false-safety claim, Kimi
+          # K3 finding #3) — its total absence means it was deleted from
+          # main, not a bootstrap window. Distinguish the two: missing FILE
+          # fails closed; missing FLAG degrades gracefully (this step exists
+          # specifically to probe the flag before promising it).
           if [[ ! -f scripts/evidence_pack_lint.py ]]; then
-            echo "::notice::scripts/evidence_pack_lint.py not in base checkout yet (bootstrap run) — net-lines measurement skipped"
-            echo "available=false" >> "$GITHUB_OUTPUT"
-            exit 0
+            echo "::error::scripts/evidence_pack_lint.py is missing from the base checkout — not a legitimate bootstrap window (see Step 3's comment). Failing closed rather than silently skipping net-lines measurement."
+            exit 1
           fi
           if ! python3 scripts/evidence_pack_lint.py --help 2>&1 | grep -q -- '--numstat-file'; then
             echo "::notice::the evidence_pack_lint.py copy in use (checked out from base $BASE_SHA) does not support --numstat-file yet — net-lines measurement skipped for this run; self-consistent once this PR merges and base's copy is updated"
@@ -376,6 +497,17 @@ jobs:
       # --numstat-file (Step 7a5) is passed only when it was actually
       # produced — never a bare/empty arg that could read as "0 net lines
       # measured" (adversarial-review finding 2026-08-21).
+      #
+      # CORRECTED 2026-08-21 (independent Gear-3 review, F1/F4 symmetric
+      # fix): same tree-presence-vs-diff-membership defect as Step 4, on the
+      # pack side. Validating a `pack.yml` that merely EXISTS at HEAD (left
+      # by a prior Gear-3 PR) against THIS PR's own diff grades one task's
+      # work against a completely different task's evidence — it can pass
+      # by accident (this repo's own Step 7b did exactly that against this
+      # very PR's first draft, because #4474's leftover pack happened to
+      # name this same hot-zone file). `evidence/pack.yml` must ALSO be in
+      # this PR's own changed-files set, or this step fails closed — a
+      # Gear-3 PR authors BOTH files together, never validates a stale one.
       # -----------------------------------------------------------------
       - name: Gear-3 — validate evidence/pack.yml against the Evidence Pack contract
         if: |
@@ -384,22 +516,63 @@ jobs:
           steps.gearcheck.outputs.gear == '3'
         id: packlint
         env:
-          HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha }}
+          HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha || github.sha }}
           NETLINES_AVAILABLE: ${{ steps.netlines.outputs.available }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          MERGE_GROUP_HEAD_REF: ${{ github.event.merge_group.head_ref }}
         run: |
           set -u
-          # Same bootstrap-window exemption as the floor-computation step
-          # above (this job checks out BASE, which lacks the script until
-          # this very PR merges) — NOTICE, not a crash, and not reachable
-          # by any PR after this one.
+          # Same corrected reasoning as Step 3 (Kimi K3 finding #3):
+          # scripts/evidence_pack_lint.py is not new, so its absence from
+          # base means it was deleted from main, not a bootstrap window —
+          # fail closed rather than silently skipping pack validation.
           if [[ ! -f scripts/evidence_pack_lint.py ]]; then
-            echo "::notice::scripts/evidence_pack_lint.py not in base checkout yet (bootstrap run) — pack validation skipped for THIS run only"
-            exit 0
+            echo "::error::scripts/evidence_pack_lint.py is missing from the base checkout — not a legitimate bootstrap window (see Step 3's comment). Failing closed rather than silently skipping pack validation."
+            exit 1
           fi
           mkdir -p /tmp/evidence-check/evidence
-          if ! git cat-file -e "$HEAD_SHA:evidence/pack.yml" 2>/dev/null; then
-            echo "::error::gear 3 declared in evidence/brief.yml but evidence/pack.yml is missing at HEAD — a Gear-3 task needs both"
-            exit 1
+          # Same bootstrap-window exemption as Step 4, and same sentinel fix
+          # (cross-family review, Kimi K3, finding #3, extended here
+          # 2026-08-21 — this call site had the same unbounded-inline
+          # fail-open as Step 4 before its fix): the inline fallback fires
+          # ONLY for this PR's own number, never for any other PR whose base
+          # checkout is missing the script for an unrelated reason.
+          BOOTSTRAP_PR="4539" # this PR's own number — the one legitimate bootstrap window for this script
+          if [[ ! -f scripts/ci/tracked_file_present_in_diff.sh ]]; then
+            RESOLVED_PR="${PR_NUMBER:-}"
+            if [[ -z "$RESOLVED_PR" && "$MERGE_GROUP_HEAD_REF" =~ pr-([0-9]+)- ]]; then
+              RESOLVED_PR="${BASH_REMATCH[1]}"
+            fi
+            if [[ "$RESOLVED_PR" != "$BOOTSTRAP_PR" ]]; then
+              echo "::error::scripts/ci/tracked_file_present_in_diff.sh is missing from the base checkout, and this is PR #${RESOLVED_PR:-unknown}, not the declared one-time bootstrap PR (#$BOOTSTRAP_PR) — failing closed. A missing script here means it was deleted from main, not that we are in a legitimate bootstrap window."
+              exit 1
+            fi
+            echo "::notice::scripts/ci/tracked_file_present_in_diff.sh not in base checkout yet (bootstrap run for PR #$BOOTSTRAP_PR only) — inlining its check for THIS run only"
+            if ! git cat-file -e "${HEAD_SHA}:evidence/pack.yml" 2>/dev/null; then
+              echo "::error::gear 3 declared in evidence/brief.yml but evidence/pack.yml is missing at HEAD — a Gear-3 task needs both"
+              exit 1
+            fi
+            if ! grep -qxF "evidence/pack.yml" /tmp/changed-files.txt; then
+              echo "::error::gear 3 declared in evidence/brief.yml (authored by this diff) but evidence/pack.yml was NOT touched by this diff — a Gear-3 PR must author BOTH files together in the same diff, never validate a pack.yml inherited from a prior PR"
+              exit 1
+            fi
+          else
+            RESULT="$(bash scripts/ci/tracked_file_present_in_diff.sh "$HEAD_SHA" evidence/pack.yml /tmp/changed-files.txt)"
+            case "$RESULT" in
+              present) : ;; # falls through to validation below
+              absent)
+                echo "::error::gear 3 declared in evidence/brief.yml but evidence/pack.yml is missing at HEAD — a Gear-3 task needs both"
+                exit 1
+                ;;
+              inherited)
+                echo "::error::gear 3 declared in evidence/brief.yml (authored by this diff) but evidence/pack.yml was NOT touched by this diff — a Gear-3 PR must author BOTH files together in the same diff, never validate a pack.yml inherited from a prior PR"
+                exit 1
+                ;;
+              *)
+                echo "::error::tracked_file_present_in_diff.sh returned an unrecognized value: '$RESULT' — failing closed"
+                exit 1
+                ;;
+            esac
           fi
           git show "$HEAD_SHA:evidence/pack.yml" > /tmp/evidence-check/evidence/pack.yml
           cp /tmp/brief.yml /tmp/evidence-check/evidence/brief.yml
@@ -414,16 +587,71 @@ jobs:
             "${EXTRA_ARGS[@]}"
 
       # -----------------------------------------------------------------
-      # Step 7c — Gear-3, floor satisfied, pack conformant: this workflow
-      # deliberately does NOT publish anything for harness/fable-gate. It
-      # stays pending until the real gate session runs
-      # scripts/harness_fable_gate.py with an actual verdict — that is the
-      # entire point of the required check.
+      # Step 7c — Gear-3, floor satisfied, pack conformant: this job's own
+      # conclusion now depends on READING whether the gate session already
+      # posted a real `harness/fable-gate` verdict — never on writing one.
+      # scripts/ci/harness_gate_read.py (scripts/tests/test_harness_gate_read.py
+      # is its guilt+innocence corpus, including static proofs it can never
+      # publish) resolves the PR's REAL head sha for each event shape
+      # (direct on pull_request/workflow_dispatch, a live `gh pr view` on
+      # merge_group — see that script's own docstring for why the queue
+      # ref's embedded sha is NOT it) and mirrors the found state as this
+      # step's exit code. No verdict yet -> FAILS, same red as a real
+      # REWORK/BLOCK, distinguished only by the message — see the
+      # OPERATIONAL COROLLARY note in the file header for the re-trigger
+      # flow this implies.
+      #
+      # BOOTSTRAP GUARD added 2026-08-21 (independent Gear-3 review round 1,
+      # F6): the three evidence_pack_lint.py siblings above each guard
+      # `[[ ! -f scripts/evidence_pack_lint.py ]]` because Step 1 checks out
+      # BASE, which lacks any script THIS PR itself introduces until it
+      # merges. This step calls a brand-new script and had no such guard —
+      # this PR's own first CI run would have died on a raw
+      # "can't open file" (exit 2) instead of the established NOTICE+skip,
+      # masking the real Step-4/7b defects (F1/F4) behind an unrelated crash.
+      #
+      # SENTINEL-GATED, not a bare skip (independent cross-family review,
+      # Kimi K3, finding #3 — reclassified: unlike evidence_pack_lint.py
+      # above, scripts/ci/harness_gate_read.py IS genuinely new here, so
+      # its guard cannot simply hard-fail — but a bare `[[ ! -f ... ]] ->
+      # exit 0` is a standing fail-open: a FUTURE PR that deletes this
+      # script would pass its own CI (base still has it, pre-merge) and,
+      # once merged, silently and permanently exit every subsequent Gear-3
+      # PR's verdict read with 0 — no red anywhere, forever. Fixed: the
+      # skip only fires for THIS PR's own number (the one legitimate
+      # bootstrap window) — for every other PR, a missing script fails
+      # closed. PR_NUMBER resolves from pull_request directly or, on
+      # merge_group, from the GitHub-minted head_ref (same shape
+      # harness_gate_read.py's own PR_NUMBER_RE already parses — cannot be
+      # spoofed by a fork PR's content).
       # -----------------------------------------------------------------
-      - name: Gear-3 — pack conformant, fable-gate left for the real gate session
+      - name: Gear-3 — read the real gate verdict
         if: |
           steps.kill_switch.outputs.disabled != 'true' &&
           steps.brief.outputs.present == 'true' &&
           steps.gearcheck.outputs.gear == '3'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          MERGE_GROUP_HEAD_REF: ${{ github.event.merge_group.head_ref }}
         run: |
-          echo "::notice::gear 3 declared, floor satisfied, evidence/pack.yml conformant — harness/fable-gate is intentionally NOT auto-published; scripts/harness_fable_gate.py must post a real verdict before this PR can merge"
+          set -u
+          BOOTSTRAP_PR="4539" # this PR's own number — the one legitimate bootstrap window for this script
+          if [[ ! -f scripts/ci/harness_gate_read.py ]]; then
+            RESOLVED_PR="${PR_NUMBER:-}"
+            if [[ -z "$RESOLVED_PR" && "$MERGE_GROUP_HEAD_REF" =~ pr-([0-9]+)- ]]; then
+              RESOLVED_PR="${BASH_REMATCH[1]}"
+            fi
+            if [[ "$RESOLVED_PR" == "$BOOTSTRAP_PR" ]]; then
+              echo "::notice::scripts/ci/harness_gate_read.py not in base checkout yet (bootstrap run for PR #$BOOTSTRAP_PR only) — verdict read skipped for THIS run only"
+              exit 0
+            fi
+            echo "::error::scripts/ci/harness_gate_read.py is missing from the base checkout, and this is PR #${RESOLVED_PR:-unknown}, not the declared one-time bootstrap PR (#$BOOTSTRAP_PR) — failing closed. A missing script here means it was deleted from main, not that we are in a legitimate bootstrap window."
+            exit 1
+          fi
+          python3 scripts/ci/harness_gate_read.py \
+            --event-name "${{ github.event_name }}" \
+            --repo "${{ github.repository }}" \
+            --pr-head-sha "${{ github.event.pull_request.head.sha }}" \
+            --merge-group-head-ref "${{ github.event.merge_group.head_ref }}" \
+            --dispatch-sha "${{ github.event_name == 'workflow_dispatch' && github.sha || '' }}"
