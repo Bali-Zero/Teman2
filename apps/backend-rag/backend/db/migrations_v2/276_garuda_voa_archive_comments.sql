@@ -1,5 +1,5 @@
 -- ============================================================
--- 275_garuda_voa_archive_comments.sql
+-- 276_garuda_voa_archive_comments.sql
 -- Forward metadata correction for the retired GARUDA VOA funnel.
 --
 -- Migration 261 may already be recorded with its full-file checksum, so its
