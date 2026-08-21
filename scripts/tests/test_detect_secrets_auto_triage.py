@@ -43,6 +43,7 @@ failure — a real digest getting rejected because the anchor now bites.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from scripts.detect_secrets_auto_triage import CONTENT_KEYED_RULES, classify, triage
@@ -217,7 +218,22 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     """Sanity: the KBLI gold-set rule is path-scoped to kbli-gold-all.json
     only — not the other KBLI files, which stay on the closed-writer-set
     path rules in AUTO_APPROVE_RULES."""
-    assert len(CONTENT_KEYED_RULES) == 13  # +1: infra/llm-credentials/declared.json sha256_16 (2026-08-12)
+    # This count is a DELIBERATE speed bump, not bureaucracy (2026-08-21 audit:
+    # a directory-wide AUTO_APPROVE_RULES entry had forgiven a real Google
+    # OAuth triple for months, and 49/100 entries share that broad shape) —
+    # it forces whoever adds a new auto-approval rule to also name it, date
+    # it, and explain why it's not a credential, right here. Do NOT delete
+    # this assert to "fix" a failure; see the structural property check
+    # below for what a fix should actually add.
+    assert len(CONTENT_KEYED_RULES) == 13, (
+        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 13. "
+        "If you just ADDED a rule: bump this number AND append a `# +1: <what> "
+        "(<date>, PR #NNNN)` line below, matching the existing trail's format — "
+        "that comment IS the audit record this assert exists to force. "
+        "If you REMOVED a rule: lower the number and drop its `# +1:` line. "
+        "Do not change this number without touching the comment trail."
+    )
+    # +1: infra/llm-credentials/declared.json sha256_16 (2026-08-12)
     # +1: apps/backend-rag/backend/scripts/visa_engine/gold_replay_driver.py public_key (2026-08-13)
     # +1: research/visa/2026-08-12-gold-replay-live-report.json payload_sha256 (2026-08-13)
     # +1: scripts/lint_telegram_tokens.py KNOWN_COMPROMISED sha256[:16] key (2026-08-14)
@@ -231,6 +247,46 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     assert not path_pat.search("apps/mouth/data/KBLI_2025_FINAL_CLEAN.json")
     assert not path_pat.search("data/kbli-filiera/some_manifest.json")
     assert "credential" in reason
+
+
+def test_content_keyed_rules_are_well_formed_and_anchored() -> None:
+    """Property check, ADDED ALONGSIDE the hand-maintained count above, not
+    instead of it (2026-08-21, team-lead review: the count is a deliberate
+    speed bump that forces a name+date declaration per rule; replacing it
+    would make adding a bad rule painless again). This one catches a
+    MALFORMED or unsafely-unanchored rule regardless of how many there are —
+    something the count alone can never verify.
+
+    `classify()` matches every rule with `.search()`, not `.match()` — a
+    path or content pattern without a start anchor would match as a
+    substring ANYWHERE in the path/line, which is exactly the #3
+    guard-over-match failure mode (cicatrix-superscar.md) this file's own
+    CONTENT_KEYED_RULES mechanism exists to avoid for the broader
+    AUTO_APPROVE_RULES list."""
+    for idx, entry in enumerate(CONTENT_KEYED_RULES):
+        assert len(entry) == 3, f"CONTENT_KEYED_RULES[{idx}] is not a 3-tuple: {entry!r}"
+        path_pat, content_pat, reason = entry
+        assert isinstance(path_pat, re.Pattern), (
+            f"CONTENT_KEYED_RULES[{idx}] path is not a compiled re.Pattern: {path_pat!r}"
+        )
+        assert isinstance(content_pat, re.Pattern), (
+            f"CONTENT_KEYED_RULES[{idx}] content is not a compiled re.Pattern: {content_pat!r}"
+        )
+        assert isinstance(reason, str) and reason.strip(), (
+            f"CONTENT_KEYED_RULES[{idx}] reason is empty or not a string"
+        )
+        # `(^|/)` anchors to the start of the path OR a path-component
+        # boundary — both are legitimate; a pattern with neither would
+        # match anywhere via .search().
+        assert path_pat.pattern.startswith("^") or path_pat.pattern.startswith("(^|/)"), (
+            f"CONTENT_KEYED_RULES[{idx}] path pattern is not start-anchored, "
+            f"so .search() would match it as a substring anywhere: {path_pat.pattern!r}"
+        )
+        assert content_pat.pattern.startswith("^"), (
+            f"CONTENT_KEYED_RULES[{idx}] content pattern is not start-anchored, "
+            f"so .search() would match it as a substring anywhere in the line: "
+            f"{content_pat.pattern!r}"
+        )
 
 
 def test_guilt_kbli_gold_real_pr3181_findings_approved() -> None:
