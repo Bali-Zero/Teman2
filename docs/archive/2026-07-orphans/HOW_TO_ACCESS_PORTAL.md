@@ -55,7 +55,7 @@
 cd apps/backend-rag
 
 # Carica DATABASE_URL
-export DATABASE_URL="postgresql://postgres:Balizero2020!@db.yxyibhwacnausqfqbrtd.supabase.co:5432/postgres"
+export DATABASE_URL="postgresql://postgres:<REDACTED_2026_08_21_see_supabase_dashboard>@db.yxyibhwacnausqfqbrtd.supabase.co:5432/postgres"
 
 # Crea account
 python backend/scripts/create_portal_test_user_simple.py \
