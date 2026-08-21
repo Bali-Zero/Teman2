@@ -15,7 +15,7 @@ sources:
   - research/operations/2026-08-09-harness-v2-teman2.md §6/§9
   - .claude/skills/modus/PENDING-ARMS.md (2026-08-10 entry, three tracked design gaps — read in full during the independent review round, see below)
   - evidence/brief.yml + evidence/pack.yml (origin/main, PR #4474, read as a live precedent — and, per finding F1 below, as the live repro of the bug that precedent exposed)
-adversarial_review: pending-cross-family-kimi-k3
+adversarial_review: kimi-k3
 ---
 
 # Unblocking `harness/fable-gate` promotion to a required status check
@@ -172,11 +172,18 @@ it."
   branch above, including `main()` integration tests (see F2 below) and a static write-verb proof
   hardened past a live counterexample (see F3 below). `test_no_write_shaped_string_literal_appears_anywhere_in_the_code`
   scans the script's full AST (constants only — safe against its own docstrings, see that test's
-  own docstring for why) for exact write-verb flags and write-shaped value prefixes, proving the
-  script is incapable of publishing anything, by construction, not merely observed not to in the
-  paths the behavioral tests happen to walk — with its own guilt pin
+  own docstring for why) for exact write-verb flags and write-shaped value prefixes, catching the
+  specific counterexample the round-1 reviewer supplied — with its own guilt pin
   (`test_write_shaped_literal_scan_actually_catches_the_reviewers_counterexample`) proving the scan
-  is not vacuously green.
+  is not vacuously green. **Downgraded here per Kimi K3 finding #4 (below): this is a lint against
+  one coding style, not a proof of incapability.** A write built as `"-" + "f"` or
+  `"sta" + "te=success"` (string concatenation instead of a literal), or a raw `os.system("gh api
+  ... -f state=success")`, contains no banned *constant* and would pass this scan; likewise
+  `test_script_only_calls_gh_with_read_subcommands` passes any `_run_gh` call containing the
+  substring `"api"`, write or not. The honest claim is "observed not to write, under this script's
+  actual coding style, with two live counterexample classes closed" — not "incapable by
+  construction." Closing the class (AST-level call-argument analysis rather than string-constant
+  scanning) is not done in this PR; see the disposition table below.
 
 - **`scripts/ci/tracked_file_present_in_diff.sh`** (new, added in round 2 / G3) — the diff-membership
   check itself, extracted out of the workflow YAML so both `harness-floor.yml` and its test corpus
@@ -277,13 +284,37 @@ contains zero Claude entries, because a same-family review shares failure modes 
 reviewing (cicatrix-superscar.md family #6, "anti-hallucination blindness" — the whole point of
 crossing families is that a defect invisible to one model's blind spots is often visible to another's).
 
-A genuine cross-family review (Kimi K3, Moonshot) is in progress against this PR's real pushed diff
-as this section is being written. Its verbatim verdict, findings, and the resulting
-`adversarial_review:` frontmatter token will be recorded here — and only here, once real — before
-this PR is armed to merge. Until that lands, the frontmatter token above (`pending-cross-family-kimi-k3`)
-deliberately does **not** satisfy `KNOWN_SEATS`/`human-*`/`exempt-*`, so the R1 gate stays correctly
-red: a token is an assertion about who reviewed, and it is written when there is a real answer, never
-adjusted to turn a check green.
+A genuine cross-family review — **Kimi K3 (Moonshot)** — was dispatched against this PR's real
+pushed diff (all four workflow/script files plus the two helper scripts the workflow delegates to,
+plus the publisher's verdict mapping in `scripts/harness_fable_gate.py`). It returned **8 findings**,
+2 of which falsify the design doc's original headline framing outright, and one of which it named
+the most dangerous latent defect of the set. Verdict, verbatim in substance (condensed for length —
+the reviewer's own words are quoted where load-bearing):
+
+> "The two defects that actually falsify the headline claim are #1 and #2; #3 is the most dangerous
+> *latent* one because it fails silently and repo-wide."
+
+| # | Severity | Finding | Disposition |
+|---|---|---|---|
+| K1 | **CRITICAL, repo-wide** | **Required-check name spoofing.** Branch protection matches required checks by check-run *name* + app (GitHub Actions), never by originating workflow file. Any PR — including a fork PR, once a maintainer approves its first Actions run — can add its own `on: pull_request` workflow with a job named `Harness floor recompute` that just `exit 0`s; the Actions runtime mints a green check-run with the required name regardless of the read-only fork token, because creating a check-run is not a token operation. Nothing anywhere verifies the passing run actually came from `harness-floor.yml`. This directly falsifies "impossible to merge a Gear-3 PR without a real gate verdict" — it is a level *below* forging the status (K2): the PR doesn't even need to post one, it can mint the required check-run itself. | **NOT fixed in this PR — deliberate.** This is repo-wide: all 27 of this repo's current required contexts share the identical weakness (independently confirmed: `gh api .../branches/main/protection/required_status_checks --jq '.checks[].context'` — 27 entries, all name+app matched, none path-verified). It is not this design's regression to fix and a narrow patch here would not close it for the other 26. Written up as its own PENDING-ARMS entry (`.claude/skills/modus/PENDING-ARMS.md`, 2026-08-21, "Required-check name spoofing is repo-wide") with its own severity, left for a dedicated design pass. |
+| K2 | HIGH | **`decide()` accepts `success` from any poster — same as F5, but the design doc's headline claim needed correcting, not just F5's callout.** A same-repo PR can add `permissions: statuses: write` and POST `context=harness/fable-gate, state=success` on its own head; Step 7c reads it back and passes. | **Already scoped out as F5** (pre-existing PENDING-ARMS gap b) — but the *wording* of the headline claim elsewhere in this doc and the PR body still said "real verdict" in two places. **Fixed**: both instances rewritten to "posted status," with an explicit note that "posted" ≠ "real/attested" (see the two corrected passages above, under "A regression this design deliberately introduces"). |
+| K3 | **CRITICAL** — "the most dangerous latent one" | **Bootstrap guards were re-armable fail-opens via deletion from main.** `[[ ! -f <script> ]] -> exit 0`/floor-default on the BASE checkout, at 4 call sites. A future PR that deletes the guarded script passes its own CI (base still has it, pre-merge); once merged, every subsequent PR silently and permanently takes the fallback path — no red anywhere, forever. The Step-3 comment's own prior reasoning ("no PR can make it disappear from HEAD without also removing it from base after merge") conceded the vector without closing it. | **Fixed, all instances.** `evidence_pack_lint.py`'s three guards (Steps 3, 7a5, 7b) hard-fail instead of degrading — that script predates this workflow's own bootstrap, so its absence means deletion, never a legitimate bootstrap window. `harness_gate_read.py`'s guard (Step 7c) and `tracked_file_present_in_diff.sh`'s two guards (Steps 4, 7b) are genuinely new to this PR, so they can't hard-fail outright — instead sentinel-gated to `BOOTSTRAP_PR="4539"` (this PR's own number, resolved from `PR_NUMBER` or the GitHub-minted `merge_group` head_ref regex): the skip/inline fires ONLY for this PR, fails closed for every other PR. Pinned by `scripts/tests/test_harness_floor_bootstrap_sentinel.sh` (8 tests: guilt on PR #9999 via both event shapes and on an unresolvable PR number, innocence on PR #4539 via both event shapes and on script-present, plus 2 scar-pins that *count* — not merely detect the presence of — the sentinel at all 3 call sites, so a partial revert is caught). |
+| K4 | MEDIUM | **"Provably incapable of writing" is a lint, not a proof.** The AST scan bans exact string constants; `"-" + "f"`, `"sta" + "te=success"`, or `os.system(...)` contain no banned constant and would pass. | **Wording downgraded** in the "What ships" section above — from "incapable of publishing anything, by construction" to "observed not to write, under this script's actual coding style, with the reviewer's specific counterexample class closed." Closing the underlying gap (call-argument-level AST analysis, not string-constant scanning) is not attempted in this PR. |
+| K5 | MEDIUM | **merge_group batch resolution reads only the ONE PR named in the queue ref**, while Steps 4/7b evaluate the *cumulative* group diff. If an earlier PR in a batched group is the Gear-3 one and the later-named PR's head happens to carry its own `success` status, the group could merge with the earlier PR's verdict never read on this path. In practice bounded by the pre-queue requirement that each PR show the job green on its own head before entering the queue — but the design doc's "each entry gets its own ref/run" claim rested on an anecdotal "4 distinct refs across 60 runs" measurement, not a documented guarantee. | **Assumption now stated explicitly, not fixed as a mechanism.** This design doc's "What ships"/resolution description already relies on GitHub's own queue-admission semantics (a PR must be green on its own head before it can enter the queue) — that reliance is now named as an assumption this PR depends on but does not independently verify or enforce, distinct from the measured-but-anecdotal "4 distinct refs" data point. |
+| K6 | LOW (precision, not security) | **TOCTOU on `headRefOid`.** The doc's "GitHub ejects a queue entry the instant new commits land" is an operational race-cancellation guarantee, not an atomic one — a run that completes and reports green before ejection cancels it could leave an orphaned-but-green check-run on an abandoned synthetic SHA. All failure directions are already fail-closed; this is a wording precision issue. | **Noted, not changed mechanically** — the "guaranteed" language in "What ships" above describes GitHub's cancellation behavior, which is real; this note records that it's a race, not an atomic guarantee, for anyone reasoning about worst-case timing later. |
+| K7 | MEDIUM (scope bound) | **Diff-membership is content-blind, and Gear-3 is self-declared outside the floor pattern list.** Any PR touching both `evidence/brief.yml` and the relevant file satisfies membership regardless of content; conversely, gate-worthy work on paths `compute_floor()` doesn't pattern-match can self-declare `gear: 2` and pass via Step 7a with no verdict ever required. The claim "impossible to merge a Gear-3 PR without a verdict" holds only for "diff touched the brief AND the brief declares gear 3 AND the floor's pattern list caught the diff." | **Scope bound now stated explicitly** (see the corrected passage under "A regression this design deliberately introduces" above, and restated in the PR body): enforcement is opt-in wherever `compute_floor()`'s pattern list is silent — a pre-existing design property this PR does not change, but which bounds every claim this doc makes about what "no posted status ⇒ no merge" actually covers. |
+| K8 | LOW (availability, not security) | **The combined-status read is unpaginated** (`gh api .../commits/{sha}/status`, no `--paginate`). If the statuses array is capped and `harness/fable-gate` falls off the first page, the read returns `(None, None)` → PENDING → exit 1. Already fail-closed, so this is an availability edge case, not a security one. | **Noted, not fixed** — worth a one-line follow-up (`--paginate` or an explicit page-count check) but not blocking; recorded here so it isn't rediscovered cold. |
+
+Claims Kimi independently verified as holding, unchanged: the fork-PR read paths need only
+`pull-requests: read` / `statuses: read` and genuinely never write (blocker (b) holds, with K1's
+caveat that fork-safety of the WRITE path doesn't imply integrity of the CHECK-RUN identity itself);
+`pull_request`/`workflow_dispatch` SHA resolution is direct from GitHub-minted event payloads with no
+spoof surface; `merge_group` head_ref parsing can't be spoofed and every unparseable/unresolvable
+case fails closed; `decide()`'s fail-closed mapping is correct and well-pinned; the F1 diff-membership
+fix itself (round 1's most severe finding) is sound.
+
+`adversarial_review: kimi-k3` in the frontmatter above is written now because there is a real answer
+— this is that answer, not an adjustment made to turn the R1 gate green.
 
 ## Operational corollary — the retrigger flow this design implies
 
@@ -320,8 +351,12 @@ PR merged under this system to date, including the one that added the gear-ceili
 workflow now enforces, merged **without** a real posted verdict, because nothing checked for one.
 
 The new Step 7c changes that: a Gear-3 PR now cannot pass the *already-required* `Harness floor
-recompute` job without a real verdict posted first. This is not a side effect to apologize for — it
-is the entire reason this task exists.
+recompute` job without a `harness/fable-gate` status posted first. This is not a side effect to
+apologize for — it is the entire reason this task exists. **Precisely stated (corrected here per the
+Kimi K3 review below, finding #2): "posted" is not "real" — `harness_gate_read.py::decide()` accepts
+a literal `success` string from any credential with `statuses: write`, same-repo or not. What this
+design makes true is "no posted status ⇒ no merge," not "no real, attested gate verdict ⇒ no merge."
+That gap is F5/PENDING-ARMS gap (b), explicitly out of this task's scope — see §Solo-operatore.**
 
 **A second, unintended regression was found and fixed before shipping (F1 above), and it is worth
 naming explicitly because it is the more dangerous of the two.** The first draft of this diff would
@@ -330,8 +365,10 @@ Step 4 tested tree presence of `evidence/brief.yml` rather than this PR's own di
 that file, sitting at a fixed repo-root path, is inherited by every branch from whatever the last
 Gear-3 PR left there. An independent review caught this before merge, with a live repro (a
 single-file docs PR inheriting `gear: 3` from PR #4474). The fix (Steps 4 and 7b now require diff
-membership, not just tree presence) is what actually makes "no real verdict ⇒ no merge" true **only
-for PRs that are genuinely Gear-3**, rather than accidentally true for the entire repository.
+membership, not just tree presence) is what actually makes "no posted status ⇒ no merge" true **only
+for PRs that are genuinely Gear-3** — and, per Kimi K3 finding #7 below, only for the diff shapes
+`compute_floor()`'s pattern list actually catches — rather than accidentally true for the entire
+repository.
 
 ## §Solo-operatore
 
@@ -385,6 +422,10 @@ not perform it:
 - Did not design or build verdict provenance/attestation (PENDING-ARMS gap (b), F5) — genuinely out
   of this task's scope, left explicitly open with an escalated-severity note in §Solo-operatore
   rather than silently dropped or falsely claimed as covered.
+- Did not design or build a defense against required-check name spoofing (Kimi K3 finding K1) —
+  repo-wide across all 27 required contexts today, not specific to `harness/fable-gate` or introduced
+  by this PR. Written up as its own PENDING-ARMS entry with its own severity rather than folded into
+  this task's scope or silently left implicit.
 
 ## Answers to the four mandate items
 

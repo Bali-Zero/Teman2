@@ -193,21 +193,26 @@ jobs:
         id: detfloor
         run: |
           set -u
-          # BOOTSTRAP WINDOW (same pattern as hot-zone-pr-gate.yml's own
-          # `test_hotzone_changed_files.sh` self-test, and same reasoning:
-          # this step checks out the BASE ref, which does not carry
-          # scripts/evidence_pack_lint.py until the very PR that introduces
-          # it (this one) actually merges. Not a disarm vector — once the
-          # script is on main, every future PR's base checkout has it, and
-          # no PR can make it disappear from HEAD without also removing it
-          # from base after merge. Found live on this PR's own first CI run
-          # ("No such file or directory") — a real gap the local sandbox
-          # simulation could not have caught, since the sandbox always had
-          # the file.
+          # CORRECTED 2026-08-21 (independent cross-family review, Kimi K3,
+          # finding #3 — "most dangerous latent defect", CONFIRMED FALSE the
+          # claim this comment used to make): `scripts/evidence_pack_lint.py`
+          # is NOT new — it already exists on origin/main and has for a long
+          # time, so this is not a live bootstrap window at all. The old
+          # "not a disarm vector ... no PR can make it disappear from HEAD
+          # without also removing it from base after merge" reasoning was
+          # simply wrong: a PR CAN delete this script from its own base-facing
+          # tree; that deletion PR's own CI run still checks out the OLD base
+          # (which still has the file, since Step 1 checks out base, not the
+          # deletion PR's own head) and passes normally; the file is then
+          # gone from main, and EVERY subsequent PR's base checkout silently
+          # hits this branch forever — permanently downgrading the floor to
+          # 1 (permissive) repo-wide, with zero red anywhere. There is no
+          # legitimate reason for this script to ever be missing from a
+          # healthy base checkout, so the correct behavior is fail-closed,
+          # not a graceful skip.
           if [[ ! -f scripts/evidence_pack_lint.py ]]; then
-            echo "::notice::scripts/evidence_pack_lint.py not in base checkout yet (bootstrap run) — floor defaults to 1, permissive, for THIS run only"
-            echo "floor=1" >> "$GITHUB_OUTPUT"
-            exit 0
+            echo "::error::scripts/evidence_pack_lint.py is missing from the base checkout — this script is not new (it predates this workflow's own bootstrap), so its absence means it was deleted from main, not that we are in a legitimate bootstrap window. Failing closed rather than silently defaulting the floor to 1."
+            exit 1
           fi
           FLOOR=$(python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/changed-files.txt)
           echo "floor=$FLOOR" >> "$GITHUB_OUTPUT"
@@ -253,6 +258,8 @@ jobs:
         id: brief
         env:
           HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha || github.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          MERGE_GROUP_HEAD_REF: ${{ github.event.merge_group.head_ref }}
         run: |
           set -u
           # Bootstrap-window exemption (same pattern as evidence_pack_lint.py
@@ -267,8 +274,33 @@ jobs:
           # inlines the exact same two-condition check the external script
           # performs, so the diff-membership guarantee holds through the
           # bootstrap window too, not just after it.
+          #
+          # SENTINEL-GATED (cross-family review, Kimi K3, finding #3 —
+          # extended to this call site 2026-08-21): the first version of this
+          # guard inlined its check on ANY missing script, with no bound on
+          # WHICH PR that applies to — a standing fail-open, same shape as
+          # the harness_gate_read.py defect Kimi found: a future PR that
+          # deletes scripts/ci/tracked_file_present_in_diff.sh would pass its
+          # own CI (base still has it, pre-merge) and, once merged, every
+          # later PR would silently inline a permanently-stale copy of this
+          # check forever — never calling the shared script again, and
+          # defeating the whole reason it was extracted (round-2 note above:
+          # a mutation to the check must be visible to workflow AND test from
+          # the same source). Fixed the same way as Step 7c: the inline
+          # fallback fires ONLY for this PR's own number (the one legitimate
+          # bootstrap window) — for every other PR, a missing script fails
+          # closed.
+          BOOTSTRAP_PR="4539" # this PR's own number — the one legitimate bootstrap window for this script
           if [[ ! -f scripts/ci/tracked_file_present_in_diff.sh ]]; then
-            echo "::notice::scripts/ci/tracked_file_present_in_diff.sh not in base checkout yet (bootstrap run) — inlining its check for THIS run only"
+            RESOLVED_PR="${PR_NUMBER:-}"
+            if [[ -z "$RESOLVED_PR" && "$MERGE_GROUP_HEAD_REF" =~ pr-([0-9]+)- ]]; then
+              RESOLVED_PR="${BASH_REMATCH[1]}"
+            fi
+            if [[ "$RESOLVED_PR" != "$BOOTSTRAP_PR" ]]; then
+              echo "::error::scripts/ci/tracked_file_present_in_diff.sh is missing from the base checkout, and this is PR #${RESOLVED_PR:-unknown}, not the declared one-time bootstrap PR (#$BOOTSTRAP_PR) — failing closed. A missing script here means it was deleted from main, not that we are in a legitimate bootstrap window."
+              exit 1
+            fi
+            echo "::notice::scripts/ci/tracked_file_present_in_diff.sh not in base checkout yet (bootstrap run for PR #$BOOTSTRAP_PR only) — inlining its check for THIS run only"
             if git cat-file -e "${HEAD_SHA}:evidence/brief.yml" 2>/dev/null && grep -qxF "evidence/brief.yml" /tmp/changed-files.txt; then
               echo "present=true" >> "$GITHUB_OUTPUT"
               git show "${HEAD_SHA}:evidence/brief.yml" > /tmp/brief.yml
@@ -401,17 +433,19 @@ jobs:
         run: |
           set -u
           # This job's checkout (Step 1) is BASE, not HEAD — the "grader
-          # self-protects" pattern (see the bootstrap-window comment on the
-          # file-existence check below). scripts/evidence_pack_lint.py as it
+          # self-protects" pattern. scripts/evidence_pack_lint.py as it
           # exists in THIS run is therefore whatever origin/main carried at
-          # PR-open/sync time, which may predate any PR (like this one) that
-          # is still teaching the script --numstat-file. Probe the capability
-          # of the copy we can actually execute before promising it — this
-          # stays self-consistent both before and after such a PR merges.
+          # PR-open/sync time — legitimately missing --numstat-file support
+          # if a PR teaching the script that flag hasn't merged yet (feature
+          # absence, not file absence). But the FILE itself is not new (see
+          # Step 3's corrected comment on the same false-safety claim, Kimi
+          # K3 finding #3) — its total absence means it was deleted from
+          # main, not a bootstrap window. Distinguish the two: missing FILE
+          # fails closed; missing FLAG degrades gracefully (this step exists
+          # specifically to probe the flag before promising it).
           if [[ ! -f scripts/evidence_pack_lint.py ]]; then
-            echo "::notice::scripts/evidence_pack_lint.py not in base checkout yet (bootstrap run) — net-lines measurement skipped"
-            echo "available=false" >> "$GITHUB_OUTPUT"
-            exit 0
+            echo "::error::scripts/evidence_pack_lint.py is missing from the base checkout — not a legitimate bootstrap window (see Step 3's comment). Failing closed rather than silently skipping net-lines measurement."
+            exit 1
           fi
           if ! python3 scripts/evidence_pack_lint.py --help 2>&1 | grep -q -- '--numstat-file'; then
             echo "::notice::the evidence_pack_lint.py copy in use (checked out from base $BASE_SHA) does not support --numstat-file yet — net-lines measurement skipped for this run; self-consistent once this PR merges and base's copy is updated"
@@ -463,23 +497,36 @@ jobs:
         env:
           HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha || github.sha }}
           NETLINES_AVAILABLE: ${{ steps.netlines.outputs.available }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          MERGE_GROUP_HEAD_REF: ${{ github.event.merge_group.head_ref }}
         run: |
           set -u
-          # Same bootstrap-window exemption as the floor-computation step
-          # above (this job checks out BASE, which lacks the script until
-          # this very PR merges) — NOTICE, not a crash, and not reachable
-          # by any PR after this one.
+          # Same corrected reasoning as Step 3 (Kimi K3 finding #3):
+          # scripts/evidence_pack_lint.py is not new, so its absence from
+          # base means it was deleted from main, not a bootstrap window —
+          # fail closed rather than silently skipping pack validation.
           if [[ ! -f scripts/evidence_pack_lint.py ]]; then
-            echo "::notice::scripts/evidence_pack_lint.py not in base checkout yet (bootstrap run) — pack validation skipped for THIS run only"
-            exit 0
+            echo "::error::scripts/evidence_pack_lint.py is missing from the base checkout — not a legitimate bootstrap window (see Step 3's comment). Failing closed rather than silently skipping pack validation."
+            exit 1
           fi
           mkdir -p /tmp/evidence-check/evidence
-          # Same bootstrap-window exemption as Step 4, and same reason it
-          # inlines rather than degrades to tree-presence-only (CAUGHT LIVE
-          # alongside Step 4's identical defect on this PR's own first CI
-          # run — this call site needed the exact same fix).
+          # Same bootstrap-window exemption as Step 4, and same sentinel fix
+          # (cross-family review, Kimi K3, finding #3, extended here
+          # 2026-08-21 — this call site had the same unbounded-inline
+          # fail-open as Step 4 before its fix): the inline fallback fires
+          # ONLY for this PR's own number, never for any other PR whose base
+          # checkout is missing the script for an unrelated reason.
+          BOOTSTRAP_PR="4539" # this PR's own number — the one legitimate bootstrap window for this script
           if [[ ! -f scripts/ci/tracked_file_present_in_diff.sh ]]; then
-            echo "::notice::scripts/ci/tracked_file_present_in_diff.sh not in base checkout yet (bootstrap run) — inlining its check for THIS run only"
+            RESOLVED_PR="${PR_NUMBER:-}"
+            if [[ -z "$RESOLVED_PR" && "$MERGE_GROUP_HEAD_REF" =~ pr-([0-9]+)- ]]; then
+              RESOLVED_PR="${BASH_REMATCH[1]}"
+            fi
+            if [[ "$RESOLVED_PR" != "$BOOTSTRAP_PR" ]]; then
+              echo "::error::scripts/ci/tracked_file_present_in_diff.sh is missing from the base checkout, and this is PR #${RESOLVED_PR:-unknown}, not the declared one-time bootstrap PR (#$BOOTSTRAP_PR) — failing closed. A missing script here means it was deleted from main, not that we are in a legitimate bootstrap window."
+              exit 1
+            fi
+            echo "::notice::scripts/ci/tracked_file_present_in_diff.sh not in base checkout yet (bootstrap run for PR #$BOOTSTRAP_PR only) — inlining its check for THIS run only"
             if ! git cat-file -e "${HEAD_SHA}:evidence/pack.yml" 2>/dev/null; then
               echo "::error::gear 3 declared in evidence/brief.yml but evidence/pack.yml is missing at HEAD — a Gear-3 task needs both"
               exit 1
@@ -533,14 +580,29 @@ jobs:
       # OPERATIONAL COROLLARY note in the file header for the re-trigger
       # flow this implies.
       #
-      # BOOTSTRAP GUARD added 2026-08-21 (independent Gear-3 review, F6): the
-      # three siblings above (floor compute, net-lines, pack validation) each
-      # guard `[[ ! -f scripts/evidence_pack_lint.py ]]` because Step 1 checks
-      # out BASE, which lacks any script THIS PR itself introduces until it
+      # BOOTSTRAP GUARD added 2026-08-21 (independent Gear-3 review round 1,
+      # F6): the three evidence_pack_lint.py siblings above each guard
+      # `[[ ! -f scripts/evidence_pack_lint.py ]]` because Step 1 checks out
+      # BASE, which lacks any script THIS PR itself introduces until it
       # merges. This step calls a brand-new script and had no such guard —
       # this PR's own first CI run would have died on a raw
       # "can't open file" (exit 2) instead of the established NOTICE+skip,
       # masking the real Step-4/7b defects (F1/F4) behind an unrelated crash.
+      #
+      # SENTINEL-GATED, not a bare skip (independent cross-family review,
+      # Kimi K3, finding #3 — reclassified: unlike evidence_pack_lint.py
+      # above, scripts/ci/harness_gate_read.py IS genuinely new here, so
+      # its guard cannot simply hard-fail — but a bare `[[ ! -f ... ]] ->
+      # exit 0` is a standing fail-open: a FUTURE PR that deletes this
+      # script would pass its own CI (base still has it, pre-merge) and,
+      # once merged, silently and permanently exit every subsequent Gear-3
+      # PR's verdict read with 0 — no red anywhere, forever. Fixed: the
+      # skip only fires for THIS PR's own number (the one legitimate
+      # bootstrap window) — for every other PR, a missing script fails
+      # closed. PR_NUMBER resolves from pull_request directly or, on
+      # merge_group, from the GitHub-minted head_ref (same shape
+      # harness_gate_read.py's own PR_NUMBER_RE already parses — cannot be
+      # spoofed by a fork PR's content).
       # -----------------------------------------------------------------
       - name: Gear-3 — read the real gate verdict
         if: |
@@ -549,11 +611,22 @@ jobs:
           steps.gearcheck.outputs.gear == '3'
         env:
           GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          MERGE_GROUP_HEAD_REF: ${{ github.event.merge_group.head_ref }}
         run: |
           set -u
+          BOOTSTRAP_PR="4539" # this PR's own number — the one legitimate bootstrap window for this script
           if [[ ! -f scripts/ci/harness_gate_read.py ]]; then
-            echo "::notice::scripts/ci/harness_gate_read.py not in base checkout yet (bootstrap run) — verdict read skipped for THIS run only"
-            exit 0
+            RESOLVED_PR="${PR_NUMBER:-}"
+            if [[ -z "$RESOLVED_PR" && "$MERGE_GROUP_HEAD_REF" =~ pr-([0-9]+)- ]]; then
+              RESOLVED_PR="${BASH_REMATCH[1]}"
+            fi
+            if [[ "$RESOLVED_PR" == "$BOOTSTRAP_PR" ]]; then
+              echo "::notice::scripts/ci/harness_gate_read.py not in base checkout yet (bootstrap run for PR #$BOOTSTRAP_PR only) — verdict read skipped for THIS run only"
+              exit 0
+            fi
+            echo "::error::scripts/ci/harness_gate_read.py is missing from the base checkout, and this is PR #${RESOLVED_PR:-unknown}, not the declared one-time bootstrap PR (#$BOOTSTRAP_PR) — failing closed. A missing script here means it was deleted from main, not that we are in a legitimate bootstrap window."
+            exit 1
           fi
           python3 scripts/ci/harness_gate_read.py \
             --event-name "${{ github.event_name }}" \
