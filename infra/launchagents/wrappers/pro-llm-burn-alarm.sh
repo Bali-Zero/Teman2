@@ -49,11 +49,12 @@ trap 'rm -f "$PIDFILE"' EXIT
 
 # ---- payload (cron one-shot; G8_keepalive_sane: plist uses StartInterval, no KeepAlive)
 log "run start"
-# REPO is the canonical Pro main checkout (~/Desktop/nuzantara is a symlink to
-# this same tree, origin-tracked) — llm_burn_alarm.py resolves scripts/pg.sh
-# and scripts/tg_notify.py as siblings via __file__, so it must run FROM the
-# full repo tree, not a standalone HOME copy (only this wrapper is forked,
-# per G3_declared_pair — the payload script stays repo-relative).
+# REPO is the canonical Pro main checkout (the pre-migration ~/Desktop path
+# is a symlink to this same tree, origin-tracked) — llm_burn_alarm.py
+# resolves scripts/pg.sh and scripts/tg_notify.py as siblings via __file__,
+# so it must run FROM the full repo tree, not a standalone HOME copy (only
+# this wrapper is forked, per G3_declared_pair — the payload script stays
+# repo-relative).
 REPO="$HOME/nuzantara"
 # Telegram + Postgres credentials for tg_notify.py / scripts/pg.sh — sourced
 # here, never baked into the plist (VADEMECUM: no secrets in plists).
