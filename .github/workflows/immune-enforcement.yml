@@ -352,6 +352,38 @@ jobs:
           python scripts/lint_google_oauth_credentials.py --selftest
           python scripts/lint_google_oauth_credentials.py --all
 
+      - name: Local detect-secrets pre-flight tool — prove it can still fail
+        # DELIBERATELY NOT gated on steps.paths.outputs.relevant, same reason
+        # as the lints above: this tool's SUBJECT is its own guilt/innocence
+        # corpus, not a path in the diff (W81 — a guard armed against paths
+        # its subject never touches is armed to nothing).
+        #
+        # Born 2026-08-21 from a real false-negative: an ad-hoc local
+        # verification snippet did `results.get('scripts/foo.py', [])` — a
+        # fixed key ASSUMED to match. `detect-secrets` keys a finding by a
+        # path relative to the invoking PROCESS's CWD, not the repo root, so
+        # a wrong-CWD scan produced a silent false "clean" on a file with a
+        # REAL unaudited finding (CI caught what the local check missed).
+        # `scripts/detect_secrets_check_file.py` is the fix, and it goes
+        # further than patching that one mechanism: it never trusts an
+        # absent key on its own, because `detect-secrets`' `results` dict has
+        # no separate "files examined" manifest — a synthetic canary secret
+        # is scanned alongside the caller's real file(s) in the SAME
+        # invocation, and an absent key for a real file is trusted as clean
+        # ONLY once the canary proves THIS invocation's detection actually
+        # works. This step does not scan the tree with it — that is the
+        # detect-secrets job's job — it only proves the tool's own
+        # guilt/innocence/canary-gate corpus still passes, so a future edit
+        # that quietly breaks the canary mechanism is caught here, not the
+        # next time someone happens to run --selftest by hand. Needs the
+        # real `detect-secrets` binary — this job's earlier steps are pure
+        # regex scanners and never install it (only the sibling
+        # `detect-secrets` job in security.yml does), so it is installed
+        # here, same unpinned form as that job.
+        run: |
+          pip install detect-secrets
+          python scripts/detect_secrets_check_file.py --selftest
+
       - name: Gateway callers must read the VERDICT, not the exit code
         # Same reasoning as the lint above, same deliberate absence of a paths
         # gate: this guard's SUBJECT is every Python caller of tg_notify.py, and
