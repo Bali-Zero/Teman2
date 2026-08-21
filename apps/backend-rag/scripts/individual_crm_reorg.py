@@ -22,18 +22,14 @@ import httpx
 logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(message)s", datefmt="%H:%M:%S")
 logger = logging.getLogger(__name__)
 
-OAUTH_CLIENT_ID = os.environ.get("GOOGLE_OAUTH_CLIENT_ID_RCLONE", "")
-OAUTH_CLIENT_SECRET = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET_RCLONE", "")
-OAUTH_REFRESH_TOKEN = os.environ.get("GOOGLE_OAUTH_REFRESH_TOKEN", "")
-
-if not (OAUTH_CLIENT_ID and OAUTH_CLIENT_SECRET and OAUTH_REFRESH_TOKEN):
-    raise SystemExit(
-        "Google OAuth credentials moved to the environment (2026-08-21, "
-        "secret-in-repo exposure): set GOOGLE_OAUTH_CLIENT_ID_RCLONE, "
-        "GOOGLE_OAUTH_CLIENT_SECRET_RCLONE and GOOGLE_OAUTH_REFRESH_TOKEN. "
-        "The hardcoded literals remain in git history -- rotation on Google "
-        "Cloud Console is operator[secret]."
-    )
+# OAuth credentials from rclone gdrive remote (antonellosiano@gmail.com)
+# These can access folders owned by all team members.
+# IMPORTANT: set GOOGLE_OAUTH_CLIENT_ID_RCLONE, GOOGLE_OAUTH_CLIENT_SECRET_RCLONE,
+# and GOOGLE_OAUTH_REFRESH_TOKEN as env vars.
+# Rotate GOCSPX-*** on Google Cloud Console if previously committed in plaintext.
+OAUTH_CLIENT_ID = os.environ["GOOGLE_OAUTH_CLIENT_ID_RCLONE"]
+OAUTH_CLIENT_SECRET = os.environ["GOOGLE_OAUTH_CLIENT_SECRET_RCLONE"]
+OAUTH_REFRESH_TOKEN = os.environ["GOOGLE_OAUTH_REFRESH_TOKEN"]
 
 INDIVIDUAL_CRM_ID = "1mNi2FkhZqP9inJH2Y1taXLCgS95UkYk4"
 STANDARD_SUBS = ["00_Profile", "01_Immigration", "02_Company", "03_Tax", "04_Family", "99_Misc"]

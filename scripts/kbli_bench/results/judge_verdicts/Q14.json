@@ -1,0 +1,20 @@
+{
+  "qid": "Q14",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "fabricated",
+      "reason": "Abstains on doctrine but invents unsupported KBLI codes and empty perizinan fields absent from all supplied records."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Clearly declares the terminology gap and points only to code-specific permitting data without asserting doctrine."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Clearly abstains and explains that the supplied KBLI data does not define the terminology."
+    }
+  ]
+}

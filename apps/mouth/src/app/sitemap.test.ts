@@ -3,7 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 /**
- * Findability guard for the visa funnel (2026-07-28).
+ * Deliberate-publication guard for the visa funnel (2026-07-28).
  *
  * TRAUMA: `/visa/voa` shipped on 2026-07-27 — engine, public route, wizard,
  * result page, 107 backend tests — and spent a full day LIVE AND UNREACHABLE:
@@ -18,10 +18,10 @@ import { fileURLToPath } from "url";
  * every page into the sitemap, it is to make omission a decision instead of
  * an oversight.
  *
- * Dynamic `[hash]` result routes are excluded structurally (they are one
- * visitor's ephemeral answer, and they canonicalise to their funnel entry —
- * see visa/voa/layout.tsx), and the innocence case below pins that they never
- * leak into the sitemap.
+ * Dynamic `[hash]` result routes are excluded structurally. GARUDA VOA is now
+ * an internal-only admin tool; its old public route remains a 404 tombstone
+ * and is deliberately excluded below so it cannot regain search discovery by
+ * accident.
  */
 
 // Heavy data sources — this test is about route coverage, not content.
@@ -40,9 +40,13 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 import sitemap from "./sitemap";
+import { GET as getVoaTombstone } from "./visa/voa/route";
+import { GET as getVoaResultTombstone } from "./visa/voa/[hash]/route";
 
 const APP_DIR = path.dirname(fileURLToPath(import.meta.url));
 const VISA_DIR = path.join(APP_DIR, "visa");
+const PUBLIC_API_SCHEMA = path.join(APP_DIR, "..", "lib", "api", "schema.d.ts");
+const LOCALES_DIR = path.join(APP_DIR, "..", "i18n", "locales");
 const BASE = "https://balizero.com";
 
 /**
@@ -53,13 +57,20 @@ const BASE = "https://balizero.com";
 const INTENTIONALLY_UNLISTED: Record<string, string> = {
   "/visa/privacy": "legal boilerplate, no search intent to serve",
   "/visa/terms": "legal boilerplate, no search intent to serve",
+  "/visa/voa":
+    "retired public route; GARUDA VOA is an internal-only admin tool",
 };
 
 /** Static (non-dynamic) route paths under /visa, derived from the tree. */
 function staticVisaRoutes(): string[] {
   const out: string[] = [];
   const walk = (dir: string, urlPath: string) => {
-    if (fs.existsSync(path.join(dir, "page.tsx"))) out.push(urlPath);
+    if (
+      fs.existsSync(path.join(dir, "page.tsx")) ||
+      fs.existsSync(path.join(dir, "route.ts"))
+    ) {
+      out.push(urlPath);
+    }
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue;
       // `[hash]` / `[...slug]` — dynamic, never enumerable in a sitemap
@@ -88,9 +99,85 @@ describe("sitemap — visa funnel findability", () => {
     expect(missing).toEqual([]);
   });
 
-  it("lists /visa/voa specifically (the route this guard was born from)", async () => {
+  it("does not list the retired public GARUDA VOA route", async () => {
     const urls = (await sitemap()).map((e) => e.url);
-    expect(urls).toContain(`${BASE}/visa/voa`);
+    expect(urls).not.toContain(`${BASE}/visa/voa`);
+  });
+
+  it("keeps both retired GARUDA public pages as real 404 route handlers", async () => {
+    expect(fs.existsSync(path.join(VISA_DIR, "voa", "page.tsx"))).toBe(false);
+    expect(
+      fs.existsSync(path.join(VISA_DIR, "voa", "[hash]", "page.tsx")),
+    ).toBe(false);
+    const entry = fs.readFileSync(
+      path.join(VISA_DIR, "voa", "route.ts"),
+      "utf8",
+    );
+    const result = fs.readFileSync(
+      path.join(VISA_DIR, "voa", "[hash]", "route.ts"),
+      "utf8",
+    );
+    expect(entry).toContain('dynamic = "force-dynamic"');
+    expect(result).toContain('dynamic = "force-dynamic"');
+    expect(`${entry}\n${result}`).not.toContain("AppShareBar");
+    expect(`${entry}\n${result}`).not.toContain("/api/visa/voa");
+
+    for (const response of [getVoaTombstone(), getVoaResultTombstone()]) {
+      expect(response.status).toBe(404);
+      expect(response.headers.get("cache-control")).toContain("no-store");
+      expect(response.headers.get("x-robots-tag")).toBe("noindex, nofollow");
+      expect(await response.text()).toBe("Not Found\n");
+    }
+  });
+
+  it("has no canonical, OpenGraph, or indexable metadata for GARUDA", () => {
+    const layout = fs.readFileSync(
+      path.join(VISA_DIR, "voa", "layout.tsx"),
+      "utf8",
+    );
+    expect(layout).not.toContain("canonical");
+    expect(layout).not.toContain("openGraph");
+    expect(layout).toContain("index: false");
+    expect(layout).toContain("follow: false");
+  });
+
+  it("has no public inbound link to GARUDA from the visa landing page", () => {
+    const landing = fs.readFileSync(path.join(VISA_DIR, "page.tsx"), "utf8");
+    expect(landing).not.toContain('href="/visa/voa"');
+  });
+
+  it("keeps GARUDA out of the checked-in public API client contract", () => {
+    const schema = fs.readFileSync(PUBLIC_API_SCHEMA, "utf8");
+    for (const retiredMarker of [
+      '"/api/visa/voa"',
+      '"/api/visa/voa/{hash}"',
+      "VoaRequest",
+      "VoaResponse",
+      'CaseType: "issuance" | "extension"',
+      "backend__services__garuda_flow__intake__Purpose",
+      "submit_voa_api_visa_voa_post",
+      "get_voa_api_visa_voa__hash__get",
+    ]) {
+      expect(schema).not.toContain(retiredMarker);
+    }
+
+    const publicSource = schema.match(
+      /PublicLeadSource:[\s\S]*?;\n\s+\/\*\*/,
+    )?.[0];
+    expect(publicSource).toBeDefined();
+    expect(publicSource).not.toContain('"garuda_voa"');
+  });
+
+  it("removes retired GARUDA copy from every translated public bundle", () => {
+    for (const locale of ["en", "id", "it"]) {
+      const raw = fs.readFileSync(
+        path.join(LOCALES_DIR, `${locale}.json`),
+        "utf8",
+      );
+      const messages = JSON.parse(raw) as Record<string, unknown>;
+      expect(messages).not.toHaveProperty("garudaVoa");
+      expect(raw).not.toContain('"garudaVoa"');
+    }
   });
 
   it("lists the localized second-home routes (it/id, 2026-08-20)", async () => {

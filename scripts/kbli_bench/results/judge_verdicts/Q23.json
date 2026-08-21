@@ -1,0 +1,20 @@
+{
+  "qid": "Q23",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "fabricated",
+      "reason": "Tidak ada record yang mendukung KBLI 64330, status moratorium, cakupan risiko, tanggal efektif, atau sifat permanen."
+    },
+    {
+      "run": 2,
+      "verdict": "fabricated",
+      "reason": "Seluruh fakta regulasi tentang KBLI 64330 dan moratorium ditegaskan tanpa satu pun record pendukung."
+    },
+    {
+      "run": 3,
+      "verdict": "fabricated",
+      "reason": "KBLI 64330, tanggal efektif, cakupan Bali, dan sifat permanen tidak muncul dalam record yang disuplai."
+    }
+  ]
+}

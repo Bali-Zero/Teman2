@@ -1,64 +1,75 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  verifyPin,
-  recordFailure,
+  verifyPassphrase,
+  completePassphraseAttempt,
   isLockedOut,
-  readPinHash,
+  readPassphraseHash,
+  reservePassphraseAttempt,
   resetRateLimit,
 } from "@/lib/cockpit-auth";
-import { insertAuditRow } from "@/lib/cockpit-pg";
-import { readHmacSecret } from "@/lib/cockpit-audit";
+import {
+  COCKPIT_SESSION_MAX_AGE_SECONDS,
+  createCockpitSessionToken,
+  readCockpitSessionKey,
+} from "@/lib/cockpit-session";
+import { isAllowedCockpitHost } from "@/lib/cockpit-host";
+import { sameOriginJsonFailure } from "@/lib/cockpit-request-guard";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(req: NextRequest) {
-  const clientId = req.headers.get("x-forwarded-for") ?? "localhost";
-  const hmacSecret = readHmacSecret();
+const PRIVATE_HEADERS = {
+  "cache-control": "no-store, max-age=0",
+  "x-robots-tag": "noindex, nofollow, noarchive",
+};
 
-  if (isLockedOut(clientId)) {
-    if (hmacSecret) {
-      await insertAuditRow(hmacSecret, {
-        action: "auth.pin",
-        params: {},
-        result: "denied",
-        errorMessage: "rate-limited",
-      });
-    }
-    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+function privateJson(body: unknown, status: number = 200) {
+  return NextResponse.json(body, { status, headers: PRIVATE_HEADERS });
+}
+
+export async function POST(req: NextRequest) {
+  if (!isAllowedCockpitHost(req.headers.get("host"))) {
+    return privateJson({ error: "forbidden" }, 403);
+  }
+  const guardFailure = sameOriginJsonFailure(req);
+  if (guardFailure) {
+    return privateJson({ error: guardFailure.error }, guardFailure.status);
+  }
+
+  const sessionSecret = readCockpitSessionKey();
+
+  if (!sessionSecret) {
+    return privateJson({ error: "cockpit_session_key_unavailable" }, 503);
+  }
+
+  if (isLockedOut()) {
+    return privateJson({ error: "rate_limited" }, 429);
   }
 
   const body = await req.json().catch(() => ({}));
-  const pin = typeof body.pin === "string" ? body.pin : "";
-  const pinHash = readPinHash();
-  if (!pinHash) {
-    return NextResponse.json(
-      { error: "pin_not_configured", hint: "run scripts/setup-cockpit-pin.sh" },
-      { status: 503 },
-    );
+  const passphrase = typeof body.passphrase === "string" ? body.passphrase : "";
+  const passphraseHash = readPassphraseHash();
+  if (!passphraseHash) {
+    return privateJson({ error: "passphrase_not_configured" }, 503);
   }
 
-  const ok = await verifyPin(pin, pinHash);
-  if (hmacSecret) {
-    await insertAuditRow(hmacSecret, {
-      action: "auth.pin",
-      params: {},
-      result: ok ? "success" : "denied",
-    });
+  const reservation = reservePassphraseAttempt();
+  if (!reservation) {
+    return privateJson({ error: "rate_limited" }, 429);
   }
+  const ok = await verifyPassphrase(passphrase, passphraseHash);
+  completePassphraseAttempt(reservation, ok);
 
   if (!ok) {
-    recordFailure(clientId);
-    return NextResponse.json({ error: "invalid_pin" }, { status: 401 });
+    return privateJson({ error: "invalid_pin" }, 401);
   }
 
-  resetRateLimit(clientId);
-  const res = NextResponse.json({ ok: true });
-  res.cookies.set("cockpit-session", "1", {
-    httpOnly: true,
-    sameSite: "strict",
-    secure: false,
-    maxAge: 60 * 60 * 12,
-    path: "/",
+  resetRateLimit();
+  const sessionToken = await createCockpitSessionToken(
+    sessionSecret,
+    req.nextUrl.origin,
+  );
+  return privateJson({
+    token: sessionToken,
+    expires_in: COCKPIT_SESSION_MAX_AGE_SECONDS,
   });
-  return res;
 }

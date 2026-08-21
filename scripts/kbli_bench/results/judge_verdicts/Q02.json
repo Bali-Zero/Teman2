@@ -1,0 +1,20 @@
+{
+  "qid": "Q02",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the capital-rule gap, abstains from explanation, and invents no sector capital figures."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains because the required capital data is unavailable; no unsupported capital requirement is asserted."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "States the known gap and declines to confirm any higher-capital KBLI; no regulatory fact is invented."
+    }
+  ]
+}

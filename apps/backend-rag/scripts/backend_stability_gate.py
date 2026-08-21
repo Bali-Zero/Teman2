@@ -38,7 +38,7 @@ def build_gate_commands() -> list[list[str]]:
             "backend/tests/db/test_legacy_promotion_migrations.py",
             "backend/tests/db/test_migration_165.py",
             "backend/tests/db/test_migration_166.py",
-            "tests/test_migrations.py",
+            "backend/tests/db/test_migrations.py",
             "-q",
         ],
         [

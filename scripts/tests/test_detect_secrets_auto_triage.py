@@ -217,9 +217,10 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     """Sanity: the KBLI gold-set rule is path-scoped to kbli-gold-all.json
     only — not the other KBLI files, which stay on the closed-writer-set
     path rules in AUTO_APPROVE_RULES."""
-    assert len(CONTENT_KEYED_RULES) == 14  # +1: infra/llm-credentials/declared.json sha256_16 (2026-08-12)
+    assert len(CONTENT_KEYED_RULES) == 15  # +1: infra/llm-credentials/declared.json sha256_16 (2026-08-12)
     # +1: apps/backend-rag/backend/scripts/visa_engine/gold_replay_driver.py public_key (2026-08-13)
     # +1: research/visa/2026-08-12-gold-replay-live-report.json payload_sha256 (2026-08-13)
+    # +1: scripts/kbli_bench/results/p2b_score.json corpus_sha256 (2026-08-21, #4422 via main merge)
     # +2: scripts/lint_google_oauth_credentials.py KNOWN_COMPROMISED fingerprints + selftest fragment (2026-08-21, appended last — this list is positionally indexed)
     # +1: scripts/lint_telegram_tokens.py KNOWN_COMPROMISED sha256[:16] key (2026-08-14)
     # +1: traffic-source fail-closed proof identity/integrity anchors (2026-08-15)
@@ -1189,7 +1190,7 @@ def test_google_oauth_known_compromised_rule_registered() -> None:
     """Appended-last rule (this list is positionally indexed): approves only
     the 16-hex dict-key lines carrying the exact 2026-08-21 publication
     marker, only in the OAuth guard's own file."""
-    path_pat, content_pat, reason = CONTENT_KEYED_RULES[12]
+    path_pat, content_pat, reason = CONTENT_KEYED_RULES[13]
     assert path_pat.search(GOOGLE_OAUTH_LINT)
     assert not path_pat.search("scripts/lint_telegram_tokens.py")
     assert "never key material" in reason
@@ -1201,7 +1202,7 @@ def test_google_oauth_known_compromised_rule_registered() -> None:
 
 
 def test_google_oauth_selftest_fragment_rule_registered() -> None:
-    path_pat, content_pat, _reason = CONTENT_KEYED_RULES[13]
+    path_pat, content_pat, _reason = CONTENT_KEYED_RULES[14]
     assert path_pat.search(GOOGLE_OAUTH_LINT)
     frag = '    ref_body = "0c" + "defghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-abcd"'
     assert content_pat.match(frag)

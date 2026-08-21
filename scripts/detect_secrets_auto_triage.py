@@ -368,6 +368,27 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "the public signed seq-11 RulePack payload, triple-derived at run "
         "time; exact value pinned, never a credential",
     ),
+    # scripts/kbli_bench/results/p2b_score.json (PR #4422, KBLI Navigator
+    # Phase 2b benchmark run): corpus_sha256 is the content-derived sha256 of
+    # the frozen benchmark corpus (scripts/kbli_bench/p2b_corpus.json), the
+    # same value quoted verbatim in the run's own research report
+    # (research/operations/2026-08-20-kbli-navigator-p2b-benchmark.md
+    # frontmatter `sources:`) — a recomputable integrity anchor over a
+    # tracked, public test-corpus file, never a credential.
+    #
+    # Content-keyed to this one reviewed results file, not path-only:
+    # results/*.json can carry other future benchmark output with different
+    # fields, so a real credential landing on any other key or in any other
+    # results file stays unaudited. Line must be exactly
+    # `"corpus_sha256": "<64-hex>"`, end-anchored (optional trailing comma).
+    (
+        re.compile(r"^scripts/kbli_bench/results/p2b_score\.json$"),
+        re.compile(r'^\s*"corpus_sha256"\s*:\s*"[0-9a-f]{64}"\s*,?\s*$'),
+        "KBLI Navigator P2b benchmark score report: corpus_sha256 is the "
+        "content-derived sha256 of the frozen public benchmark corpus, "
+        "quoted verbatim in the run's own research report — an integrity "
+        "anchor, never a credential",
+    ),
     # APPEND-ONLY from here: scripts/tests/test_detect_secrets_auto_triage.py
     # indexes this list POSITIONALLY — inserting a rule mid-list shifts every
     # later index and breaks the per-rule registration tests (measured the

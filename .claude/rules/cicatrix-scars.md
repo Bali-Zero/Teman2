@@ -1068,3 +1068,116 @@ E il verdetto nomina la propria causa: `unaccounted` è l'unico termine di `degr
 **Reference:** `backend/services/mail_loop/loop.py` (`_Ending`, `RunSummary.unaccounted`, il mapping senza `else` in `_route_and_draft`) · `backend/services/mail_loop/cli.py` (`_report`) · corpus `test_loop.py` (crash post-spostamento + «la legge non può fare zero in somma») e `test_preflight_and_env.py` (il verdetto nomina la causa) · runbook `docs/runbooks/zoho-mail-loop.md` §11 — PR #3615. 9 mutanti su 9 uccisi.
 
 **PROVE-LIVE 2026-08-18 (post-merge #4318):** `install_worktree_hooks.sh` run, self-verify green (34/34 innocence + W80 guard OK). Reconstructed repro of the incident shape (harmless `rm -f` line 1 targeting `@asamuzakjp/css-color`, unrelated `cd` into a worktree on line 6, trailing `2>&1`) ran clean, no false block — fix confirmed live in `~/.claude/hooks/worktree_isolation.py`. Caveat: reconstructed from the two verbatim fragments this entry quotes, not a byte-identical replay of the original 9-line command.
+
+
+---
+
+### 🐛 W88 (2026-06-27): cherry-mente-sul-contenuto
+
+W88 (cherry-mente-sul-contenuto, 2026-06-27: `git merge-base
+--is-ancestor` / `git cherry` segnano un branch "non su main" appena lo SHA non è antenato — ma un branch
+SQUASH-merged o riportato per rework È GIÀ su main per CONTENUTO mentre SHA e patch-id divergono. Un
+"orphan report" di 28 worktree era ~80% stale: ~5 vivi veri, il resto già su main, e 3 capitoli KBLI
+sarebbero REGREDITI se rebasati. Antidoto MANDATORIO: deletable-safe SOLO se `git diff origin/main...<br>`
+è VUOTO o pura-cancellazione (subset) — verifica per CONTENUTO, MAI per patch-equivalenza/ancestor-solo.
+Reso eseguibile in `scripts/branch_graveyard_cleanup.sh::content_on_main()` + nuova categoria
+"Content-on-main & deletable". GOTCHA-NEL-GOTCHA (stesso giorno, il fix è ricaduto nella malattia che
+curava): la PRIMA versione del check usava `git diff origin/main...branch` (THREE-DOT) — ma post-squash
+il merge-base è ARRETRATO, quindi il three-dot conta come "branch-only" ogni riga che main ha cambiato
+dopo quel base → FALSO NEGATIVO. Prova vissuta: un file con blob byte-identico su main dava lo stesso
+"+155 added" sotto three-dot. Il three-dot è ESSO STESSO un proxy che mente — la trappola W88 al secondo
+grado. Cura definitiva: confronto **blob-per-file** sui soli file che il branch ha autorato dal merge-base
+(`git rev-parse branch:f == main:f`), MAI il three-dot. Il check buggato trovava 2 content-on-main, quello
+corretto ne trova 9 (i 7 persi erano i falsi negativi)).
+
+**Reference:** spostato verbatim da `cicatrix-superscar.md` durante il trim boot-tax del 2026-08-21 (famiglia #9 (state-schema mutation drift)); resoconto condensato, nessun dettaglio ulteriore fu mai catturato separatamente.
+
+---
+
+### 🐛 W101 (2026-07-18): pre-push fail-closed decapitato da sh -e
+
+W101 (pre-push fail-closed decapitato da sh -e, 2026-07-18: il gate path-aware documenta "classifier exit≠0 → FULL suite" ma l'assegnazione nuda VERDICT_OUTPUT="$(...)" sotto lo sh -e del wrapper husky abortisce PRIMA del check → ogni worktree su branch senza scripts/prepush_classify.py (pre 2026-07-17) hard-blocca il push col codice 2 invece di degradare alla suite piena; il ramo di fallback esisteva, non poteva scattare. Antidoto: cattura errexit-immune `|| VERDICT_RC=$?`+ tripwire test_prepush_failclosed.sh).
+
+**Reference:** spostato verbatim da `cicatrix-superscar.md` durante il trim boot-tax del 2026-08-21 (famiglia #2 (Esiste ≠ Armato)); resoconto condensato, nessun dettaglio ulteriore fu mai catturato separatamente.
+
+---
+
+### 🐛 W101-recidiva-fly-backup (2026-07-27): il gate del fly-backup riporta PARTIAL ma la Fase 2 non parte mai — codice morto sotto pipeline nuda
+
+W101-recidiva-fly-backup (2026-07-27: `infra/scripts/fly-backup.sh` esegue Postgres poi Qdrant e riporta un PARTIAL nominando la fase caduta — ma le due invocazioni erano **pipeline nude** sotto `set -euo pipefail`, quindi al fallimento del PG bash abortiva sulla pipeline stessa: `PG_EXIT=${PIPESTATUS[0]}` non veniva MAI assegnato, **la Fase 2 non partiva** e il report PARTIAL era codice morto sull'unico percorso per cui esiste. `${PIPESTATUS[0]}` era già corretto sul pipe (W97): non arrivava a girare. **Misurato sull'artefatto, non ragionato**: il notturno qdrant manca per il 2026-07-26 — la notte del fallimento PG — ed è presente il 20-25 e il 27, quindi **W106 non fu "27h senza backup Postgres" ma senza Postgres E Qdrant**, e la seconda perdita era invisibile perché solo il primo aveva un guardiano. Trovata seguendo l'EXIT CODE in uscita dall'organo appena riparato ("il mio allarme arriva davvero fino a `cron-state.sh`?"), non cercando difetti. Antidoto: errexit disarmato attorno a ogni fase (`set +e`…`set -e`) e giudizio per codice CATTURATO, mai per essere sopravvissuti; corpus `scripts/test_fly_backup_phases.sh` con la clausola di **SIMMETRIA** — un fix che copre solo la fase che ti ha morso è mezzo fix. Gemello dello stesso giorno: `cron-state.sh`(27 job Pro, incl. il backup delle 03:00) scriveva ricevute e non parlava, mentre il gemello `cron-wrapper.sh` allarmava — 4 job seduti in un `failed` mai letto).
+
+**Reference:** spostato verbatim da `cicatrix-superscar.md` durante il trim boot-tax del 2026-08-21 (famiglia #2 (Esiste ≠ Armato) / #9); resoconto condensato, nessun dettaglio ulteriore fu mai catturato separatamente.
+
+---
+
+### 🐛 W106b (2026-07-27): il CHECKOUT è il proxy, e la cura prescritta è il danno
+
+W106b (il CHECKOUT è il proxy, e la cura prescritta è il danno — 2026-07-27: i due guardiani HOME-fork — `lint_home_fork.check_pairs` e `proprioception.probe_home_fork_scripts`, gemelli con la stessa logica — confrontavano la copia VIVA col checkout LOCALE e, a ogni differenza, stampavano «realign live from repo». Ma sanno CHE due copie differiscono, mai QUALE lato è stantio. Su M5 il checkout main è **144 commit indietro per progetto** (tirarlo corre contro ~45 worktree vivi) mentre entrambe le copie vive combaciavano **esattamente** con `origin/main`: il report di proprioception ha aperto la sessione con quel P1, e seguirne il rimedio avrebbe sovrascritto un `worktree_isolation.py` corrente con uno di due giorni prima — cioè la guardia che tiene gli agent fuori dal main checkout, regredita dalla cura di un'altra guardia. Non è il confronto a essere sbagliato, è il **riferimento**: un checkout è un proxy di «cosa dice il repo» e mente ogni volta che è indietro. Antidoto: attribuire il lato interrogando `origin/main` (la copia della FLOTTA) — solo `live≠origin/main` è un HOME-fork; `live==origin/main` è CHECKOUT-STALE, altro proprietario, exit 0 di default (`--strict-checkout` per elevarlo), e il messaggio dice esplicitamente «do NOT realign live from this checkout». GOTCHA-NEL-GOTCHA: la prima stesura della sonda faceva `sha256(proc.stdout)` assumendo bytes; sotto un doppio `text=True` alza `TypeError`, che nessun `except` copriva — la guardia che prometteva di degradare moriva. E terzo strato: **nessun workflow eseguiva i test di `proprioception.py`**, per questo 2 di essi potevano stare rossi in permanenza su M5 (leggevano il `machine_label()` REALE: verdi solo su Mini). Corpus `scripts/tests/test_home_fork_stale_side_attribution.py`, colpevolezza+innocenza su ENTRAMBI i gemelli. **QUARTO strato, trovato il giorno dopo: la cura era ASIMMETRICA fra i gemelli** — `proprioception` faceva `git fetch` prima di confrontare, `lint_home_fork` **mai** (0 occorrenze di `fetch`), quindi arbitrava con un `origin/main` letto dal solo object store locale, che può essere stale esattamente quanto il checkout che è lì per arbitrare: con un ref vecchio il test di direzione può NOMINARE il lato corrente come stantio e prescrivere di sovrascriverlo — la trauma W106b un piano sotto, col meccanismo della cura come vettore. È l'asimmetria, non il meccanismo, che l'ha tenuta nascosta: chiamare due strumenti «gemelli con la stessa logica» e curarne uno solo. Antidoto: fetch refs-only anche nel lint + `--no-fetch` come nel gemello, e il fallimento del fetch va in **exit bit 4 (CANNOT-VERIFY), mai in bit 1 (drift)** — offline è stato naturale (Legge 6) e un healer che legge «c'è un fork» quando la verità è «non ho potuto controllare» spende una sessione LLM su una premessa falsa. Dove i gemelli DEVONO divergere: il gemello è un segnalatore (il fetch fallito è una riga di evidenza in un report che legge un umano), il lint produce un EXIT CODE su cui agisce un healer — stessa informazione, il canale che ciascun consumatore legge davvero. Resta aperto (ledger) il caso in cui ENTRAMBI i lati sono ugualmente indietro: `check_pairs` confronta live↔checkout PRIMA e corto-circuita se coincidono, quindi non chiede mai a origin/main — pinnato da `test_known_gap_both_sides_equally_behind_reads_clean`)
+
+**Reference:** spostato verbatim da `cicatrix-superscar.md` durante il trim boot-tax del 2026-08-21 (famiglia #9 (state-schema mutation drift) / #1 (HOME-fork)); resoconto condensato, nessun dettaglio ulteriore fu mai catturato separatamente.
+
+---
+
+### 🐛 W107 (2026-07-28): ho curato UN wrapper su CINQUE e ho chiamato chiusa la malattia — e la cura andava al più piccolo
+
+W107 (ho curato UN wrapper su CINQUE e ho chiamato chiusa la malattia — e la cura andava al più piccolo, 2026-07-28: il 27/7 do voce a `cron-state.sh`— scriveva ricevute e non allarmava — e mi fermo lì. Il mattino dopo, andando a chiedere «ha davvero sparato?», censisco i produttori leggendo il campo `source` nelle ricevute su Pro e ne trovo **cinque**, non uno: `cron-runner`36 ricevute ·`cron-state`28 ·`cron-wrapper`9 ·`launchagent-state-bridge`5 ·`openclaw-bridge`4. Quello curato **non era il più grande**: `cron-runner.sh`è invocato **30 volte** (25 crontab + 5 plist) contro le 27 di cron-state, e non nominava NESSUN gateway (0 occorrenze di `tg_notify|telegram|alert`). Esito: **4 ricevute cron-runner in stato failed**, di cui **due nelle 24h successive al fix** — `garuda_indexer` exit=1 il 27/07 20:36 e `run_ops_briefing` exit=1 il 27/07 00:00 — con **zero**`cron-fail:` da nessuna parte: 0 su 239 righe di archivio P0, 0 su 54 in pending. E non c'era una seconda via: il `cron_sensor` della Cell legge sì quelle ricevute, ma su una **whitelist di 9 job** (`fly_pg_backup`, `t4_monitor`, …) e per **staleness** (periodo scaduto), mai per uno `status` failed — nessuno dei 4 falliti vi compare. Curare un wrapper su cinque non taglia il rischio di un quinto: sposta soltanto QUALE job muore in silenzio. Antidoto di classe (la regola che avevo perfino citato — _pattern-fix = class-audit_): il censimento si fa sui **PRODUTTORI**, leggendo il campo `source` DENTRO le ricevute, mai contando i job o fidandosi del wrapper che ti ha morso; e la voce si prova eseguendola in un mondo finto (copia del wrapper in tmp + finto `tg_notify.py` accanto e la state-dir su tmp) — zero budget P0 speso, e distingue «non ha sparato» da «non è passato di lì». Corpus `scripts/test_cron_runner_alert.sh`: colpevolezza su **tutte e tre** le uscite (job fallito · script assente = armato-a-vuoto W81 · runner invocato senza argomenti, che non scrive nemmeno la ricevuta) + innocenza + fail-open provato due volte, mutation-verified (14/20 con la cura disattivata). **GOTCHA di consegna**: `~/scripts/cron-runner.sh` su Pro è un **file reale** (non symlink come cron-state) e byte-identico al repo — quindi il merge da solo lo lascia inerte, va ricopiato; su Mini è un **antenato di 10 righe** del 19/04 che fa solo `exec` e non scrive ricevuta alcuna, ma lì è **inerte davvero** (0 invocazioni in crontab, 0 ricevute) — la divergenza è reale, il rischio no. Nessuna delle due era dichiarata in `declared-pairs.json`: per questo il lint dava Mini `clean 96/96` con 123 righe di divergenza sotto. Coperte entrambe qui da **una** riga `machines: ["all"]`. **GOTCHA di misura**: quella dir **non è un registro di cron** — 231 file di cui solo **99** sono ricevute `.last.json`, il resto sono contatori (`codex_autofix_ci_count*<data>`) e archivi; una sonda che globba tutta la dir e legge l'assenza di `status` come fallimento riporta ~132 falliti dove sono **7**. **NON curato qui, misurato**: esiste un sesto wrapper, `wr2-cron-wrapper.sh`(14 job launchd), che non scrive ricevuta e non chiama il gateway — ma per disegno, si appoggia al `missed_runs_alerter`; se QUELLO sia armato non l'ho verificato, ed è una riga a ledger, non una cura da infilare qui. **E la trappola finale è stata mia**: il primo censimento dava a `cron-wrapper`23 invocazioni contro 9 ricevute, uno scarto che non esiste — un grep su `cron-wrapper.sh` cattura anche `wr2-cron-wrapper.sh`. Ancorato il basename, il conto è 9 su 9. Il probe che misura una malattia può averla)
+
+**Reference:** spostato verbatim da `cicatrix-superscar.md` durante il trim boot-tax del 2026-08-21 (famiglia #2 (Esiste ≠ Armato)); resoconto condensato, nessun dettaglio ulteriore fu mai catturato separatamente.
+
+---
+
+### 🐛 W109b (2026-07-29): due PR che RIMPICCIOLISCONO lo stesso registro monotono sono accoppiate anche senza condividere una riga
+
+W109b (due PR che RIMPICCIOLISCONO lo stesso registro monotono sono accoppiate anche senza condividere una riga, 2026-07-29: il lint anti-regrowth del gateway Telegram ammette solo che `infra/tg-gateway/grandfathered.json` si RIDUCA rispetto a `origin/main`. #3418 ne toglie 1, #3420 ne toglie 18 da una base precedente — dalla base dell'altra, ciascuna metà appare CRESCITA e il required diventa rosso senza che nessuno dei due diff sia sbagliato e senza alcun conflitto testuale che git possa segnalare. Si risolve solo mergiando main e ri-derivando (174 − 18 − 1 = 155). Parente di `lesson_two_prs_with_zero_shared_files_can_be_mutually_blocking_halves`: l'overlap dei file misura chi CONFLIGGE, non chi DIPENDE — e un registro monotono crea dipendenza fra diff disgiunti)
+
+**Reference:** spostato verbatim da `cicatrix-superscar.md` durante il trim boot-tax del 2026-08-21 (famiglia #9 (state-schema mutation drift)); resoconto condensato, nessun dettaglio ulteriore fu mai catturato separatamente.
+
+---
+
+### 🐛 W120 (2026-08-21): la sentinella di QUESTA famiglia non era armata, e il suo silenzio si leggeva come buona notizia
+
+W120 (la sentinella di QUESTA famiglia non era armata, e il suo silenzio si leggeva come buona notizia — 2026-08-21: `pending_arms_report.py --json` emette ogni entry con la chiave **`class`**; `organism_digest.pending_arms_overdue()` leggeva **`classification`**, che non è mai stata emessa. Quindi `e.get(...)` tornava sempre `None`, il filtro era sempre vuoto, e il ramo `if overdue:` non è scattato **una sola volta** — codice morto sull'unico percorso per cui esiste (W116) sopra un ledger che porta **280 TECH-DEBT overdue su 441 aperte**. Nessun errore, nessun rosso: il digest di OGNI sessione semplicemente non diceva nulla sugli armamenti sospesi, **e il nulla si legge come «non c'è niente di scaduto»**. Un allarme che non suona è indistinguibile da un mondo sano — questa è la firma della famiglia #2 applicata al suo stesso guardiano. Trovata inseguendo un sintomo DIVERSO (`reporter failed (TimeoutExpired)`, che è reale, transitorio e fail-visible: il reporter misurato gira in 0,24s contro un budget di 4s): il timeout era rumore, il difetto vero stava sotto e non aveva sintomo. Antidoto: il CONTEGGIO si prende da `counts.tech_debt_overdue`, che il reporter calcola da sé — così una futura deriva di vocabolario per-entry costa il dettaglio del top-artifact ma **non può più azzerare l'allarme**; e se `counts` ed `entries` si contraddicono il digest lo DICE (`key drift?`) invece di tacere. Corpus `test_organism_digest_pending_arms.py`, colpevolezza + innocenza + scar-pin sul vecchio nome, mutation-verified su 3 mutanti. Parente diretta di W114: due lati che non hanno mai concordato il vocabolario, e nessuno dei due file era sbagliato da solo. **GOTCHA, e mi ha morso mentre scrivevo QUESTA riga**: la prima stesura diceva `262 su 407` — numeri veri, misurati, e presi dal **main checkout di M5, 251 commit indietro**, il cui ledger è un altro file (`#4167` contro `#4434`, 952 righe contro 1054). Nello stesso PR body citavo `280` come PROVE-LIVE, misurato nel worktree: chi legge conclude che la cura ha cambiato il conteggio, mentre sono due ledger diversi. È **W106b applicata alla prosa** — il checkout è un proxy di «cosa dice il repo» e mente ogni volta che è indietro, anche quando lo interroghi solo per scriverci sopra un numero. Il refuter ha visto lo scarto e l'ha attribuito a deriva temporale del ledger: plausibile e **falso**, e l'ho scoperto solo ri-misurando invece di accettare la spiegazione (W113 — anche la correzione mente). Corollario: un numero pubblicato va misurato dove il codice vive, non dove ti trovi. **E la sonda che l'ha risolto era essa stessa rotta al primo colpo**: un `cd` nel primo ramo di un ciclo è persistito nel secondo, quindi ho misurato due volte lo stesso checkout e ne ho ricavato «identici» — la conferma più tranquillizzante possibile, e completamente vuota)
+
+**Reference:** spostato verbatim da `cicatrix-superscar.md` durante il trim boot-tax del 2026-08-21 (famiglia #2 (Esiste ≠ Armato)); resoconto condensato, nessun dettaglio ulteriore fu mai catturato separatamente.
+
+---
+
+### 🐛 W81-armamento-sospeso (2026-06-15): ~20 cron "green storico" armati a vuoto — il verde memorizzato mente
+
+W81 (Armamento Sospeso: ~20 cron "green storico" che `launchctl` dà a exit 127/78 — il verde memorizzato mente, costruito≠attivato)
+
+**Reference:** spostato verbatim da `cicatrix-superscar.md` durante il trim boot-tax del 2026-08-21 (famiglia #2 (Esiste ≠ Armato) / #1 (HOME-fork — deploy worktree `~/Desktop/nuzantara-deploy` sparito)); resoconto condensato, mai stato bold-wrapped nell'originale, nessun dettaglio ulteriore fu mai catturato separatamente. Numero collide con un W-number esistente di topic diverso (`W81`) — disambiguato con suffisso descrittivo.
+
+---
+
+### 🐛 W81b-dlq-blind-heal-loop (2026-06-15): il TERMINAL-guard skippa per sempre 14 DLQ "corpses" con state=ok mai puliti
+
+W81b (DLQ blind heal-loop, 2026-06-15: 28 entry DLQ, 14 "corpses" con state=ok mai puliti — il TERMINAL-guard di process_entry li skippa per sempre e il W70-resurrect copre solo job in job_registry.json, che ne contiene 3; antidoto: **corpse-sweep incondizionato** in dlq_autopilot.py che ad ogni tick drena ogni entry il cui state-file dice ok)
+
+**Reference:** spostato verbatim da `cicatrix-superscar.md` durante il trim boot-tax del 2026-08-21 (famiglia #2 (Esiste ≠ Armato)); resoconto condensato, mai stato bold-wrapped nell'originale, nessun dettaglio ulteriore fu mai catturato separatamente. Numero collide con un W-number esistente di topic diverso (`W81b`) — disambiguato con suffisso descrittivo.
+
+---
+
+### 🐛 W84-tcc-dead (2026-06-16): launchd ha perso il grant TCC verso `~/Desktop` senza cambiare codice/plist/permessi
+
+W84 (green-but-TCC-dead launchd cron, 2026-06-16: 2 LaunchAgent M5 sotto `~/Desktop` — incl. `verify-connectome` il guardiano-dei-guardiani — con `LastExitStatus=0` VERDE mentre il log dice `Operation not permitted`; il contesto **launchd ha perso il grant TCC/Full-Disk-Access** verso `~/Desktop` SENZA cambiare codice/plist/permessi — **vettore nuovo: lo stato-di-attivazione TCC è un principal separato da iTerm**; prova che il verde mente: STESSO plist su Pro dà exit 1 onesto. Antidoto: `launchd_liveness_detector.py` PR #1518 incrocia exit-code col CONTENUTO del log; cura=solo-operatore. La W81-estensione si estende ancora: leggi anche lo stato-di-attivazione **TCC**, non solo merge/install).
+
+**Reference:** spostato verbatim da `cicatrix-superscar.md` durante il trim boot-tax del 2026-08-21 (famiglia #2 (Esiste ≠ Armato) / #1 (HOME-fork — nota cross-famiglia)); resoconto condensato, mai stato bold-wrapped nell'originale, nessun dettaglio ulteriore fu mai catturato separatamente. Numero collide con un W-number esistente di topic diverso (`W84`) — disambiguato con suffisso descrittivo.
+
+---
+
+### ℹ️ W47 (no independent record)
+
+Citato solo per numero nella famiglia #8 (network flap / proxy fragility) come `W47.` accanto a W49/W55/W32 — nessun dettaglio verbale fu mai catturato separatamente nel ponte, e nessuna traccia esiste altrove nel corpus. Vedi W32/W49/W55 per la stessa famiglia con dettaglio pieno.
+
+---
+
+### ℹ️ W59 (no independent record)
+
+Citato come "sibling-race madre" nella famiglia #5 (sibling-race / shared-worktree chaos) — nessun corpo narrativo fu mai catturato separatamente da W62/W63/W80, che coprono la stessa famiglia con dettaglio pieno.
+
+---
+
+### ℹ️ W68b (no independent record)
+
+Citato nella famiglia #3 (guard-over-match) come variante minore di W68 — `_guard_property_zoning` che matcha "lease" — nessun dettaglio ulteriore oltre quello già coperto dall'entry W68 (villa-leasehold zoning, archiviata).

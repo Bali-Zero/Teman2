@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field, field_validator
 from backend.app.dependencies import get_database_pool
 from backend.app.utils.logging_utils import get_logger
 from backend.services.lead_capture.repository import LeadIntentRepository, new_intent_id
-from backend.services.lead_capture.source import LeadSource
+from backend.services.lead_capture.source import PublicLeadSource
 from backend.services.lead_capture.whatsapp_deeplink import build_whatsapp_url
 
 logger = get_logger(__name__)
@@ -40,7 +40,7 @@ class ContextLine(BaseModel):
 
 
 class LeadCaptureRequest(BaseModel):
-    source: LeadSource
+    source: PublicLeadSource
     # Free-form context for the lead_intents.context JSONB column.
     # The WA deeplink message uses the separate `whatsapp_context` list.
     context: dict[str, Any] = Field(default_factory=dict)
@@ -93,21 +93,22 @@ async def capture_lead(
     """
     repo = LeadIntentRepository(db_pool)
     intent_id = new_intent_id()
+    source = payload.source.to_persisted()
 
     try:
         wa_url = build_whatsapp_url(
-            source=payload.source,
+            source=source,
             context_lines=[(line.label, line.value) for line in payload.whatsapp_context],
             result_hash=payload.result_hash,
             lead_intent_id=intent_id,
         )
     except Exception:
-        logger.exception("lead_capture: deeplink build failed source=%s", payload.source)
+        logger.exception("lead_capture: deeplink build failed source=%s", source.value)
         raise HTTPException(status_code=500, detail="Could not build WhatsApp link")
 
     try:
         intent = await repo.insert(
-            source=payload.source,
+            source=source,
             context=payload.context,
             utm=payload.utm,
             fingerprint=payload.client_fingerprint,
@@ -115,12 +116,12 @@ async def capture_lead(
             intent_id=intent_id,
         )
     except (asyncpg.PostgresError, asyncpg.InterfaceError):
-        logger.exception("lead_capture: DB insert failed source=%s", payload.source)
+        logger.exception("lead_capture: DB insert failed source=%s", source.value)
         raise HTTPException(status_code=500, detail="Could not persist lead")
 
     logger.info(
         "lead_capture.ok source=%s intent_id=%s",
-        payload.source.value,
+        source.value,
         intent.id,
     )
     return LeadCaptureResponse(

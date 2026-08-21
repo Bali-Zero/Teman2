@@ -264,6 +264,17 @@ uses `--no-renames`, so a rename is always delete+add (both paths visible).
 Run:
     python3 scripts/prepush_classify.py <<< "$FILES"
     python3 scripts/prepush_classify.py apps/backend-rag/backend/foo.py
+
+SEPARATE MODE (2026-08-21, PR #4459 aftermath): `--check-consumers [--base
+REF]` is a DIFFERENT, git-based check bolted onto this same CLI purely so
+the hook has one script to invoke — it does NOT share the classify()/
+_innocent_reason() SSOT above, does NOT touch stdout's "full"/"skip-backend"
+contract, and is never reached unless `--check-consumers` is literally the
+first argument. See `_run_consumer_check()` and scripts/consumer_map.py
+(the actual detection logic — exclusions, kind classification, the
+basename-over-match tradeoff — is documented there, not duplicated here).
+Exit codes in this mode: 0 clean, 1 live consumer(s) found (see
+CONSUMER_MAP_LIVE_COUNT=N on the last stdout line), 2 usage/git error.
 """
 from __future__ import annotations
 
@@ -968,8 +979,42 @@ def _log_full(unknown: list[str], total: int) -> None:
     )
 
 
+def _run_consumer_check(args: list[str]) -> int:
+    """`--check-consumers [--base REF]` — a thin CLI adapter over
+    scripts/consumer_map.py, deliberately NOT part of the classify()/
+    _innocent_reason() SSOT above (module docstring "SEPARATE MODE").
+
+    That SSOT stays a pure, git-free function of a file list — this mode is
+    git-based BY NECESSITY (it needs to know which files were DELETED or
+    RENAMED, information `git diff --name-only` alone erases: see
+    consumer_map.py's own RENAME SAFETY note). It lives in THIS CLI only so
+    `.husky/pre-push` has one script to invoke for both concerns; it shares
+    the file, not the contract, and every actual exclusion/classification
+    rule lives in consumer_map.py, not duplicated here.
+    """
+    base = "origin/main"
+    if "--base" in args:
+        i = args.index("--base")
+        if i + 1 < len(args):
+            base = args[i + 1]
+    try:
+        import consumer_map  # sibling module — scripts/ is sys.path[0] when
+        # this file is run as `python3 scripts/prepush_classify.py ...`
+        # (the interpreter puts the launched script's own directory first).
+    except ImportError as exc:
+        print(
+            f"⚠️  --check-consumers: could not import consumer_map.py ({exc}) "
+            "— treating as unverifiable, not a finding.",
+            file=sys.stderr,
+        )
+        return 2
+    return consumer_map.main(["--base", base])
+
+
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
+    if args and args[0] == "--check-consumers":
+        return _run_consumer_check(args)
     try:
         files = _read_input(args)
     except Exception as exc:  # noqa: BLE001 - fail-closed on ANY read error

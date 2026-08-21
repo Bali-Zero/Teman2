@@ -23,8 +23,6 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from backend.app.core.config import settings
-
 logger = logging.getLogger(__name__)
 
 # Authoritative pricing JSON, 2026 edition.
@@ -44,6 +42,20 @@ _FLAT_CATEGORIES = (
 
 # Categories whose value is ``{sub_block: {service_name: entry}}``.
 _NESTED_CATEGORIES = ("tax_accounting",)
+
+
+def _support_contacts() -> tuple[str, str]:
+    """Load application settings only for contact fallbacks that need them.
+
+    Exact catalogue lookups are pure file reads and intentionally do not
+    initialize the application's environment-backed settings object. This
+    keeps narrow stateless consumers, including GARUDA's child process, free
+    of unrelated database/JWT/API-key requirements.
+    """
+
+    from backend.app.core.config import settings
+
+    return settings.SUPPORT_EMAIL, settings.SUPPORT_WHATSAPP
 
 
 def _format_tier_range(tier_range: list[str] | tuple[str, str] | None) -> str | None:
@@ -152,11 +164,12 @@ class PricingService:
             Pricing data for the requested service type
         """
         if not self.loaded:
+            support_email, support_whatsapp = _support_contacts()
             return {
                 "error": "Official prices not loaded",
                 "fallback_contact": {
-                    "email": settings.SUPPORT_EMAIL,
-                    "whatsapp": settings.SUPPORT_WHATSAPP,
+                    "email": support_email,
+                    "whatsapp": support_whatsapp,
                 },
             }
 
@@ -192,9 +205,7 @@ class PricingService:
         if not self.loaded:
             return None
 
-        for category, service_name, entry in _iter_service_entries(
-            self.prices.get("services", {})
-        ):
+        for category, service_name, entry in _iter_service_entries(self.prices.get("services", {})):
             if service_name != key:
                 continue
             return {
@@ -210,11 +221,12 @@ class PricingService:
     def get_all_prices(self) -> dict[str, Any]:
         """Get all official prices"""
         if not self.loaded:
+            support_email, support_whatsapp = _support_contacts()
             return {
                 "error": "Official prices not loaded",
                 "fallback_contact": {
-                    "email": settings.SUPPORT_EMAIL,
-                    "whatsapp": settings.SUPPORT_WHATSAPP,
+                    "email": support_email,
+                    "whatsapp": support_whatsapp,
                 },
             }
         return self.prices
@@ -385,11 +397,12 @@ class PricingService:
                 "contact_info": contact_info,
                 "disclaimer": self.prices.get("disclaimer", {}),
             }
+        support_email, _support_whatsapp = _support_contacts()
         return {
             "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2026",
             "search_query": query,
             "message": f"No service found for '{query}'",
-            "suggestion": f"Contact {settings.SUPPORT_EMAIL} for custom quotes",
+            "suggestion": f"Contact {support_email} for custom quotes",
             "contact_info": contact_info,
         }
 
@@ -561,7 +574,8 @@ class PricingService:
         consultant, tax & accounting, urgent processing.
         """
         if not self.loaded:
-            return f"⚠️ Official prices not available. Contact {settings.SUPPORT_EMAIL}"
+            support_email, _support_whatsapp = _support_contacts()
+            return f"⚠️ Official prices not available. Contact {support_email}"
 
         context_parts = [
             "🔒 BALI ZERO OFFICIAL PRICES 2026 (DO NOT GENERATE - USE THESE EXACT VALUES)",
@@ -615,8 +629,9 @@ class PricingService:
 
         # Contact info
         contact = self._contact_info()
+        support_email, support_whatsapp = _support_contacts()
         context_parts.append(
-            f"Contact: {contact.get('email', settings.SUPPORT_EMAIL)} | WhatsApp: {contact.get('whatsapp', settings.SUPPORT_WHATSAPP)}",
+            f"Contact: {contact.get('email', support_email)} | WhatsApp: {contact.get('whatsapp', support_whatsapp)}",
         )
 
         return "\n".join(context_parts)

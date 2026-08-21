@@ -648,11 +648,56 @@ try_codex() {
     return 98
 }
 
+# Verifies the MODEL is actually installed, not just the `ollama` binary. Before
+# this check, a missing model reached `ollama run` directly: measured live
+# 2026-08-20 on Pro, that spends several seconds attempting a network
+# pull-manifest round-trip ("pulling manifest" spinner) before failing with a
+# generic `Error: pull model manifest: file does not exist` (exit 1) — a real,
+# non-zero exit (so try_ollama's own exit-code check was never silently wrong),
+# but slow, unnecessarily network-dependent for a tier whose whole point is
+# local/offline, and logged identically to a daemon-down or OOM failure.
+# Reads /api/tags (not `ollama list`, which has an independent history in this
+# repo of answering empty while the API answers correctly) so a known miss is
+# fast, local-only, and distinguishable in the log from "daemon unreachable".
+_ollama_model_ready() {
+    local model="$1"
+    local base="${OLLAMA_API_BASE:-http://127.0.0.1:11434}"
+    # Overridable (mirrors the other provider-binary overrides in this cascade) —
+    # a hermetic test harness fakes the whole `ollama` binary via PATH-free
+    # absolute overrides, but this precheck talks HTTP directly (by design:
+    # see the comment above `_ollama_model_ready`, not the `ollama` binary),
+    # so without its own seam it always hits a real, unreachable 127.0.0.1
+    # in CI and the tier silently vanishes from every test scenario.
+    local curl_bin="${CLAUDE_CASCADE_OLLAMA_CURL_BIN:-curl}"
+    local tags
+    tags="$("$curl_bin" -sf -m 5 "${base}/api/tags" 2>/dev/null)"
+    if [ -z "$tags" ]; then
+        echo "  [ollama-precheck] daemon unreachable at ${base}" >&2
+        return 1
+    fi
+    if printf '%s' "$tags" | python3 -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    sys.exit(1)
+names = {m.get('name') for m in data.get('models', [])}
+sys.exit(0 if '$model' in names else 1)
+"; then
+        return 0
+    fi
+    echo "  [ollama-precheck] model '$model' not installed (daemon reachable, tags checked)" >&2
+    return 1
+}
+
 try_ollama() {
     local ollama_bin="${CLAUDE_CASCADE_OLLAMA_BIN:-/opt/homebrew/bin/ollama}"
     [ ! -x "$ollama_bin" ] && { echo "  [skip] ollama not installed" >&2; return 99; }
     if [ -n "$AGENT" ]; then
         echo "  [skip] tier5 ollama — --agent=$AGENT requires Claude tier" >&2
+        return 99
+    fi
+    if ! _ollama_model_ready "qwen3.5:9b"; then
         return 99
     fi
     local tmpout tmperr exit_code

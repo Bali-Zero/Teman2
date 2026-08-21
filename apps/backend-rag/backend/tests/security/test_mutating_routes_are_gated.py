@@ -314,14 +314,6 @@ INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
         "Match submission — anonymous visa-recommendation insert "
         "(nationality/purpose/duration/budget only, no PII).",
     ),
-    IntentionalPublicMutation(
-        "POST",
-        "/api/visa/voa",
-        "VOA request submission — anonymous B1 eligibility insert "
-        "(case type/nationality/dates/purpose/travellers/self-pay only, no PII). "
-        "Same shape and rationale as the visa/match and visa/clock siblings above: "
-        "the row carries no identity, so the hash cannot expose a person.",
-    ),
     # ── Visa Oracle v2 evaluate read-path (W1, routers/visa_oracle_evaluate.py):
     #    anonymous by design (the v2 interview runs pre-account). Engine
     #    evaluation + SHADOW audit row; abuse controls verified in-router. ──

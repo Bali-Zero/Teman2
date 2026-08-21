@@ -99,12 +99,27 @@ repos:
         language: system
         types: [text]
 
+      # ── PG DSN CREDENTIAL (2026-08-21) ──────────────────────────────────────
+      # A production `backend_rag_v2` Postgres password reached origin/main
+      # TWICE from two independent files (apps/wa-mirror/scripts/api_server.py,
+      # 2026-08-06 — squash-merged out of history but public while the PR was
+      # open; apps/backend-rag/scripts/sync_targeted.py, live 2026-05-23..
+      # 2026-08-21) and, once in the tree, got copy-pasted into 24 more
+      # locations across docs/plans/sessions. detect-secrets ships no detector
+      # for a bare DSN password (no recognizable prefix), and
+      # secrets_permissions_audit.py matches by NAME/path, never contents.
+      - id: no-pg-dsn-credential
+        name: "No literal backend_rag_v2 DSN password in the tree"
+        entry: python3 scripts/lint_pg_dsn_credentials.py
+        language: system
+        types: [text]
+
       # ── GOOGLE OAUTH CREDENTIAL (2026-08-21) ───────────────────────────────
       # ONE OAuth credential triple (client_id / GOCSPX- client secret / 1//
       # refresh token, rclone gdrive remote family) was copy-pasted into NINE
       # one-off scripts under apps/backend-rag/scripts/ and sat green on
       # origin/main for months: detect-secrets ships no GOCSPX-/1// detector.
-      # Redacted to env reads in the same PR that arms this guard.
+      # (Redaction merged separately in #4484; this hook arms the guard.)
       - id: no-google-oauth-credential
         name: "No hardcoded Google OAuth credentials in the tree"
         entry: python3 scripts/lint_google_oauth_credentials.py

@@ -22,6 +22,7 @@ from datetime import date, timedelta
 
 from backend.services.garuda_flow.operating_calendar import (
     COVERAGE_END,
+    COVERAGE_START,
     OPERATING_CALENDAR,
     is_open,
     last_open_day_before,
@@ -31,6 +32,9 @@ from backend.services.garuda_flow.operating_calendar import (
 class TestIsOpen:
     def test_ordinary_weekday_is_open(self) -> None:
         assert is_open(date(2026, 7, 29)) is True  # Wednesday, no holiday
+
+    def test_date_before_materialized_coverage_is_not_certified_open(self) -> None:
+        assert is_open(COVERAGE_START - timedelta(days=1)) is False
 
     def test_saturday_is_closed(self) -> None:
         assert is_open(date(2026, 8, 15)) is False
@@ -86,7 +90,22 @@ class TestLastOpenDayBeforeOrdinaryCases:
         assert last_open_day_before(date(2026, 7, 30)) == date(2026, 7, 29)
 
 
-class TestCoverageEndFailClosed:
+class TestCoverageBounds:
+    def test_materialized_coverage_starts_when_the_stored_subset_begins(self) -> None:
+        assert COVERAGE_START == date(2026, 7, 28)
+
+    def test_day_before_coverage_start_returns_none(self) -> None:
+        assert last_open_day_before(COVERAGE_START - timedelta(days=1)) is None
+
+    def test_coverage_start_has_no_certified_prior_open_day(self) -> None:
+        assert last_open_day_before(COVERAGE_START) is None
+
+    def test_day_after_coverage_start_can_use_the_boundary_day(self) -> None:
+        assert last_open_day_before(COVERAGE_START + timedelta(days=1)) == COVERAGE_START
+
+    def test_january_2026_is_uncovered_not_guessed_open(self) -> None:
+        assert last_open_day_before(date(2026, 1, 6)) is None
+
     def test_departure_past_coverage_end_returns_none(self) -> None:
         assert last_open_day_before(COVERAGE_END + timedelta(days=5)) is None
 
@@ -98,7 +117,7 @@ class TestCoverageEndFailClosed:
         # fails closed.
         assert last_open_day_before(COVERAGE_END) is not None
 
-    def test_departure_the_day_after_coverage_end_fails_closed(self) -> None:
+    def test_departure_the_day_after_coverage_end_is_uncovered(self) -> None:
         assert last_open_day_before(COVERAGE_END + timedelta(days=1)) is None
 
 
