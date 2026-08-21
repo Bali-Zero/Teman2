@@ -1,0 +1,20 @@
+{
+  "qid": "Q04",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Declares the procedural gap and redirects to code-specific data without inventing OSS steps."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains from the missing procedure and offers a code-based lookup."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Clearly abstains from asserting unsupported steps, documents, or permits."
+    }
+  ]
+}

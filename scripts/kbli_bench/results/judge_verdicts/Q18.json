@@ -1,0 +1,20 @@
+{
+  "qid": "Q18",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Explicitly abstains because the navigator lacks the requested process; no unsupported regulatory facts are asserted."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Gate rejection explicitly withholds unverifiable guidance; no regulatory facts are asserted."
+    },
+    {
+      "run": 3,
+      "verdict": "fabricated",
+      "reason": "After abstaining, it invents specific KBLI codes and PMA-openness or Bali-moratorium coverage absent from the supplied records."
+    }
+  ]
+}
