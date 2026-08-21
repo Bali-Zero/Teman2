@@ -1,88 +1,61 @@
-task_id: ops-organ-staleness-cadence
+task_id: ops-corollary-rerun-truth
 gear: 3
-l_level: L2
+l_level: L3
 gate_class: opus
 objective: |
-  The organism's heartbeat RECEPTOR could not read one of the words its organs write, and
-  dropped the reason on nearly every finding it did produce.
+  `.github/workflows/harness-floor.yml`'s OPERATIONAL COROLLARY told the gate session to re-trigger
+  the required job with `gh workflow run --ref` and forbade `gh run rerun` outright. That is wrong
+  for the ordinary case, and it deadlocked the first real Gear-3 PR to follow it.
 
-  1. `UNHEALTHY_STATUSES` held {failed, fail, degraded, error}. An organ writing
-     status="warning" produced silence. Three organs write it right now, one per fleet node.
-     The one that proves the cost is `mini.vercel_autopromote`, born 2026-08-21: all THREE of
-     its not-working paths write `warning` — "skipped: previous run still alive", "degraded
-     target - git could not be asked", "no READY build to promote". Its own source comment
-     reasons the case out loud ("A skip is not health ... the sidecar must not spell them the
-     same way") and then picks a word this reader does not know. Intent documented in the
-     writer, defeated in the reader.
+  Measured on #4543 (2026-08-21): a `workflow_dispatch` run creates its check-run in a DIFFERENT
+  CHECK SUITE from the `pull_request` event's, and that check-run does not enter the PR's
+  statusCheckRollup AT ALL — it is an ABSENT entry, not a superseded one. #4543's rollup holds
+  exactly ONE `Harness floor recompute` entry and it points at the pull_request run; the dispatch
+  run appears nowhere in it. So the dispatch went green (suite 88072653107, 14:01:20Z) while the PR
+  kept the old failure (suite 88070314010, 13:51:47Z) and stayed BLOCKED. The escapes from there
+  are all expensive — a new commit means a new head SHA and the verdict is bound to the old one;
+  close+reopen fires a fresh `pull_request` run on the unchanged SHA but costs the PR's state.
+  `gh run rerun` on the original pull_request run — same SHA, same suite, verdict now posted —
+  took it to CLEAN, and is the cheap one.
 
-  2. The finding's `detail` was built from `metadata.note` only. Measured across the live
-     fleet: 57 sidecars carry a note at the TOP level, exactly 1 nests it under `metadata`.
-     So on 57 of 58 the organ's stated cause was discarded and the finding degraded to a bare
-     "breathing but status=failed" — the state, never the reason.
-
-  3. Found while arming the fix: the 44-case corpus for this detector had NO named executor.
-     It ran only inside the generic `scripts/tests/` sweep, which is continue-on-error and
-     therefore green by construction (W108). Armed in organ-conformance.yml — and on its
-     first real CI run it immediately failed, exposing a test that was green on exactly one
-     machine in the fleet since the day it was written (2026-08-20, #4467 — not 2026-08-07,
-     which is when the jurisdiction MECHANISM landed; a fact-check caught the conflation).
+  This diff rewrites the corollary to name both cases and their conditions, and states the W111
+  prohibition precisely instead of banning the instrument that works. CORRECTED after round 2: an
+  earlier draft of this sentence said W111 protects "a stale merge-queue ref". It does not. W111's
+  own incident was #3463 replayed against refs/pull/3463/merge -- a PULL-REQUEST merge ref -- so
+  "reruns are only dangerous on merge_group" is FALSE, and the shipped header says so in terms.
+  What scopes CASE A is not the event type but THIS workflow's pinned pull_request.base.sha.
 constraints:
-  - "The two status vocabularies stay SEPARATE. `warning` carries two populations — an organ
-    that is blind, and routine advisory traffic (all three *.agent_worktree_cleanup organs say
-    'WIP worktree skipped (Nx)', which is true and ordinary). Merging warning into
-    UNHEALTHY_STATUSES would spell those two the same way, which is the exact mistake the
-    change exists to fix, one floor down."
-  - "A warning must NOT become a P1 boundary divergence. Three permanent advisories at P1 on
-    every node forever is how a channel earns being ignored — the failure this detector was
-    born to end, re-created one severity up. Exempted via proprioception's existing
-    findings_list verdict_key/ok_values; stale/dead_channel/corrupt/unhealthy still DIVERGE."
-  - "`metadata.note` keeps precedence when both are present, so the pre-existing population's
-    findings are byte-identical to before."
-  - "DEFAULT_STALE_DAYS is NOT touched. A per-organ cadence source already exists
-    (organs_registry.yaml declares expected_hb_seconds for 169 organs) and wiring the detector
-    to it is a behaviour change for 169 organs — its own lane, not a rider on a vocabulary fix."
-  - "`~/.claude/hooks/` and `~/.claude/settings.json` are operator-only control plane and are
-    not touched, even though the SessionStart wiring gap is named in the findings."
+  - "Comment text only. No behaviour change: the job, its steps, triggers and permissions must
+    remain byte-identical to origin/main."
+  - "The W111 prohibition must NOT be repealed, only scoped. `gh run rerun` on a `merge_group` run
+    stays forbidden, and the rewritten note must say so explicitly rather than leaving it implied."
 acceptance:
-  - "A sidecar with status=warning produces a finding, and that finding is NOT spelled the same
-    as a failed one."
-  - "The finding repeats the organ's own reason whether the note is flat or nested, with
-    metadata winning when both exist."
-  - "Widening the vocabulary accuses nobody new: ok / disabled / no-status stay silent, and a
-    stale organ is still reported once as stale and never also as a warning."
-  - "Every finding kind lands in exactly one group of the human report — no kind double-printed,
-    none vanishing."
-  - "The corpus has a NAMED executor in CI that can go red, in both of organ-conformance.yml's
-    filters, pinned by a test so the arming cannot silently regress."
-  - "The whole suite is green under every fleet hostname AND a synthetic CI hostname — not just
-    on the machine that wrote it."
-  - "An independent grader with fresh context, not this diff's author, chooses the mutations —
-    the author choosing his own mutants is the wrong person choosing them."
+  - "The corollary names CASE A (pull_request run exists on this head SHA -> gh run rerun) and
+    CASE B (no such run -> gh workflow run --ref), each with its condition."
+  - "It states the mechanism (different check suites; the dispatch run does not enter the PR's
+    rollup at all) with the measured suite ids and run ids, so a reader can verify rather than
+    trust."
+  - "It records the diagnostic trap ACCURATELY: pagination is what hides the row (check-runs
+    returns 30 by default against ~55-63 on a PR head, so per_page=100 is mandatory and filter=all
+    alone does NOT surface the red row); filter=all separately re-adds attempts superseded within
+    their own suite; then compare check_suite.id."
+  - "actionlint exit 0; the workflow's non-comment body byte-identical to origin/main."
 consumer_map:
-  - "`scripts/organism_stale_detector.py` — run by `scripts/hooks/organism_alert_sessionstart.sh`
-    (live on Pro and Mini via untracked local settings; NOT in the tracked .claude/settings.json,
-    and absent on M5) and wrapped by `scripts/proprioception.py` as probe `organs_heartbeat`."
-  - "`scripts/proprioception.py` — its last.json is read by proprioception_sessionstart.sh, which
-    IS wired in the tracked settings on all three nodes. On M5 this is the ONLY path by which a
-    heartbeat finding reaches a session."
-  - "`~/.organism/alerts/open.jsonl` — written by this detector under --emit, read by nothing in
-    the tracked tree. Not a second delivery channel; named so it is not mistaken for one."
-  - "No runtime/daemon consumes the changed code — nothing to deploy, CI is the prove-live surface."
+  - "`.github/workflows/harness-floor.yml` header — read by every session that opens the workflow
+    to find out why the check is red."
+  - "`scripts/ci/harness_gate_read.py` — CORRECTED: this is the artifact that actually reaches a
+    blocked session, because it PRINTS the recovery instruction as the CI failure annotation at the
+    moment of need. It still carried the repealed `gh workflow run --ref` text when this pack was
+    first written; fixed in #4558."
+  - "`docs/runbooks/merge-queue-discipline.md` §6quater and `CLAUDE.md` Agent PR Contract rule 3 —
+    landed in #4557 (merged 2026-08-21T20:18Z). An earlier revision of this consumer map said
+    'no other artifact carries it', which was false at the moment it was written."
+  - "No runtime surface: the job's behaviour is unchanged, so merged == live here."
 risks:
-  - "Behaviour change to expect: on a node whose only finding is a warning, the SessionStart hook
-    now prints an ORGANISM block where it used to stay silent. That is the point, and it is one
-    line per warning — 3 fleet-wide at time of writing."
-  - "The severity split lives in TWO files and is only true if both agree. Mitigated by a
-    cross-artifact pin test that fails if proprioception loses verdict_key/ok_values."
-  - "CORRECTED at HEAD by a fact-check, and the correction is the point: this line used to read
-    '10 other calls still omit host=, some passing for the wrong reason'. That was true when
-    written mid-PR and went stale inside the same PR — a later commit swept them. Measured at HEAD
-    by AST: 40 call sites, 5 still omit host=, and NONE of the 5 can exhibit the failure mode.
-    Four write no jurisdiction-scoped fixture at all (no fixture; wr2.html_apply.runtime x2;
-    mata_garuda.consumer_lag_check — `wr2`/`mata_garuda` are absent from ORGAN_PREFIX_HOST, which
-    holds only pro/mini/m5/cell/infra), and the fifth writes infra.eventbus_redis_mini, which is
-    in CROSS_HOST_SIDECAR_SOURCES so _is_foreign_jurisdiction returns False on every host by
-    design. host= is a no-op at all five; there is nothing left to pin."
-grader: independent refuter subagent on an immutable snapshot (never the live worktree — a reviewer reading a tree under mutation reports the mutation as a defect) + CI itself, which refuted the corpus on the first armed run
-budget: ~2 subagents, no council (single-concern reader fix; the divergent-priors gate does not fire)
+  - "The suite ids quoted are from one measured incident. They are evidence of the mechanism, not a
+    constant; the note presents them as the #4543 measurement, not as values to expect again."
+  - "If GitHub ever makes a dispatch check-run enter the PR's rollup, CASE A stops being necessary
+    and this note becomes conservative rather than wrong. Acceptable failure direction."
+grader: independent-review-session (fresh context, not the author)
+budget: ~1 subagent, no council
 pii: none

@@ -1,185 +1,237 @@
 brief_ref: evidence/brief.yml
-plan_ref: "the heartbeat receptor could not read status=warning, and dropped the organ's stated reason on 57 of 58 note-bearing sidecars; arming its corpus then exposed a test green on one machine only"
+plan_ref:
+  "the harness gate's own recovery procedure deadlocks the PR it is meant to unblock (measured
+  on #4543)"
 diff:
-  files: 6
-  net_lines: "Stated against a NAMED SHA, never against HEAD — and that reframing is the correction, not a detail. This field first read +310/-9 measured at 01704d2b2 and was never re-read as three later commits in the same PR grew the corpus; the field claimed HEAD, so it was not merely old, it was false. But 'measured now at HEAD' cannot be repaired by more care: this file is PART of the diff it describes, so the moment a commit touching pack.yml lands, any embedded figure describes the previous commit. An independent checker watched exactly that happen live — it verified the recomputed numbers, and a new commit landed mid-check that made them stale again. So the honest form is a fixed reference point, reproducible forever: `git diff --no-renames --numstat 5b4354892 350c87896` = workflow 28/0, proprioception 8/0, detector 74/8, corpus 546/7, brief 76/30, pack 154/211. Merge-base anchored, never two-dot against a moving origin/main (W102). For any later commit, re-run the command with that commit's SHA. The irony is kept on purpose: this is a PR about a receptor that could not read current state."
-  behaviour_change: "yes, and stated: a node whose only finding is a warning now prints an ORGANISM block at SessionStart where it previously stayed silent (3 warnings fleet-wide at time of writing). No pre-existing finding kind changes verdict; metadata.note keeps precedence so existing findings are byte-identical."
+  behaviour_change: none
+  net_lines: "CODE +81/-3 (comments only, proven structurally); WHOLE DIFF +364/-261 (net +103); measured at merge-base 9def77f51..head d3e3dea43+1 with `git diff --numstat`, LAST, iterated to a fixed point."
 receipts:
-  - claim: "status=warning was invisible: UNHEALTHY_STATUSES holds exactly {failed, fail, degraded, error} on origin/main, and `warning` is not in it"
-    cmd: "git show origin/main:scripts/organism_stale_detector.py | grep -n 'UNHEALTHY_STATUSES: frozenset'"
+  - claim:
+      "The two runs on #4543's head SHA live in DIFFERENT check suites; the PR's rollup kept the
+      failing one"
+    cmd:
+      'gh api "repos/Bali-Zero/Teman2/commits/33f12fb4af43777430d0a0873653079891f639d8/check-runs?filter=all&per_page=100"
+      --jq ''.check_runs[]|select(.name=="Harness floor recompute")|"\(.completed_at) \(.conclusion) suite=\(.check_suite.id)"''
+      -> THREE rows today, newest first: 14:07:22Z success suite 88070314010, 14:01:20Z success
+      suite 88072653107 (the dispatch), 13:51:47Z failure suite 88070314010 (the pull_request attempt the
+      PR was pinned to). Rows TWO AND THREE are the deadlock; row ONE is the post-cure rerun, i.e. the cure,
+      and it did not exist during the incident. `&per_page=100` is load-bearing: without it this same command
+      returns only the first TWO rows -- re-measured 2026-08-21, which is how an earlier version of this
+      receipt came to record an output its own command could not produce.'
     exit: 0
-    ts: "2026-08-21T16:12:00Z"
-    seat: session (m5)
-  - claim: "the vercel organ writes `warning` on THREE not-working paths (lines 49, 131, 157 of the live wrapper), so the state this reader cannot see is the state that organ reports when blind"
-    cmd: "ssh mini 'grep -n \"heartbeat \\\"\" ~/scripts/mini-vercel-autopromote.sh'"
+    ts: "2026-08-21T21:02:06Z"
+    seat: "session (m5)"
+  - claim:
+      "CORRECTED, and the correction REVERSES this receipt's original claim: PAGINATION hides the row you
+      need, not filter=latest. filter=latest drops only attempts superseded WITHIN their own suite, so during
+      the #4543 deadlock the default would have returned BOTH rows and there was no contradiction to hide"
+    cmd:
+      'gh api "repos/Bali-Zero/Teman2/commits/76edf60e29846e4e45b41842da7110aa64b55036/check-runs?filter=all"
+      --jq ''"total=\(.total_count) returned=\(.check_runs|length) failures=\([.check_runs[]|select(.conclusion=="failure")]|length)"''
+      -> total=55 returned=30 failures=0; the identical URL with &per_page=100 appended -> total=55
+      returned=55 failures=1. Run verbatim this session, both exit 0. The URL MUST be quoted (& is a
+      shell metacharacter) and "failure" MUST be quoted inside the jq filter, or jq answers
+      "function not defined: failure/0" — an earlier revision of this receipt recorded a command that
+      exited 127, which is the same defect dissent[2] raised against receipt 1.'
     exit: 0
-    ts: "2026-08-21T16:16:00Z"
-    seat: session (m5) -> mini
-  - claim: "fleet status census: pro {ok:142, failed:12, degraded:2, fail:2, warning:1, ok:up-to-date:1, no-key:2}, mini {ok:13, warning:1, no-key:1}, m5 {ok:4, warning:1, no-key:1} — exactly 3 warnings, one per node, all *.agent_worktree_cleanup"
-    cmd: "python3 <census script> run locally and piped to `ssh pro`/`ssh mini` over stdin (read-only, json.load per sidecar)"
+    ts: "2026-08-21T21:02:07Z"
+    seat: "session (m5)"
+  - claim:
+      gh run rerun on the ORIGINAL pull_request run cleared the rollup; mergeStateStatus BLOCKED ->
+      CLEAN
+    cmd: gh run rerun 32489011695; gh pr view 4543 --json mergeStateStatus -> CLEAN
     exit: 0
-    ts: "2026-08-21T16:18:00Z"
-    seat: session (m5) -> pro, mini
-  - claim: "the note is FLAT on 57 sidecars and nested under metadata on exactly 1 — so the metadata-only lookup dropped the reason on 57 of 58"
-    cmd: "same census: counts top-level note/last_error vs metadata.note/last_error; pro 45/1, mini 9/0, m5 3/0"
+    ts: "2026-08-21T14:06:41Z"
+    seat: "session (m5)"
+  - claim: The documented flow was actually followed first, and did not work — this is not a hypothetical
+    cmd:
+      gh workflow run harness-floor.yml --ref agent/air-m5/ops/gate-header-truth -> run 32489857553 workflow_dispatch
+      success on 33f12fb4a, PR still BLOCKED
     exit: 0
-    ts: "2026-08-21T16:18:00Z"
-    seat: session (m5) -> pro, mini
-  - claim: "BEFORE/AFTER on Pro's real sidecars, same data minutes apart: old code emits 5 findings all bare 'breathing but status=failed'; new code emits the same 5 carrying 'backoff active until 1787356684', 'kick_stuck: draft ... stuck in briefed >2.0h' and 'label not loaded' (x2), plus 1 warning that did not exist as a finding"
-    cmd: "git show origin/main:scripts/organism_stale_detector.py | ssh pro 'python3 - --no-cross-host-sync'  THEN  ssh pro 'python3 - --no-cross-host-sync' < scripts/organism_stale_detector.py"
+    ts: "2026-08-21T14:00:37Z"
+    seat: "session (m5)"
+  - claim: "No behaviour change: the workflow's non-comment body is byte-identical to origin/main"
+    cmd: git show origin/main:<wf> | grep -v '^\s*#' > a; grep -v '^\s*#' <wf> > b; diff -q a b
     exit: 0
-    ts: "2026-08-21T16:23:00Z"
-    seat: session (m5) -> pro
-  - claim: "both runs were read-only: no --emit, and --no-cross-host-sync so the detector's own ssh refresh (which writes local sidecar copies) never ran"
-    cmd: "flags inspected in scripts/organism_stale_detector.py main(): --emit gates emit_alerts(), --no-cross-host-sync gates sync_cross_host_sidecars()"
+    ts: "2026-08-21T21:02:08Z"
+    seat: "session (m5)"
+  - claim: actionlint passes on the rewritten workflow
+    cmd: actionlint .github/workflows/harness-floor.yml
     exit: 0
-    ts: "2026-08-21T16:23:00Z"
-    seat: session (m5)
-  - claim: "the corpus is green: 45 passed"
-    cmd: "PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_organism_stale_detector.py -q"
-    exit: 0
-    ts: "2026-08-21T16:41:00Z"
-    seat: session (m5)
-  - claim: "mutation round 1 on the detector — 7 mutants, 7 killed, in a throwaway copy under the scratchpad (never the live worktree: a reviewer reading a tree under mutation reports the mutation as a real defect). M7 SURVIVED the first attempt and was killed only after the test was strengthened"
-    cmd: "copy detector+proprioception+corpus to scratchpad/mut, apply each mutation with a count==1 anchor assertion, run pytest, restore"
-    exit: 0
-    ts: "2026-08-21T16:28:00Z"
-    seat: session (m5)
-  - claim: "mutation round 2 on the CI arming — 5 mutants (drop the run step; drop the corpus from either filter; drop the subject from either filter), 5 killed"
-    cmd: "same harness against a scratchpad copy of .github/workflows/organ-conformance.yml"
-    exit: 0
-    ts: "2026-08-21T16:33:00Z"
-    seat: session (m5)
-  - claim: "the two path filters in organ-conformance.yml agree — all three added paths appear in BOTH on.push.paths and the in-job git-diff pathspec (a path in one only is armed for pull_request and silently skipped post-merge, a regression that file records happening before)"
-    cmd: "python3: yaml.safe_load then regex the CHANGED= pathspec; set-difference both ways"
-    exit: 0
-    ts: "2026-08-21T16:33:00Z"
-    seat: session (m5)
-  - claim: "actionlint passes on the edited workflow locally, and the CI actionlint check is SUCCESS on this HEAD (its earlier FAILURE was `curl: (35) Recv failure: Connection reset by peer` fetching the pinned binary — network, not the diff)"
-    cmd: "actionlint .github/workflows/organ-conformance.yml ; gh run view <run> --log-failed"
-    exit: 0
-    ts: "2026-08-21T16:40:00Z"
-    seat: session (m5) + github-actions
-  - claim: "the suite is green under every fleet hostname AND a synthetic CI hostname after the host pin: air-m5 / nuzantara / mini-pro2 / fv-az1234-567 all 45 passed"
-    cmd: 'python3 -c ''socket.gethostname=lambda:"<HN>"'' then pytest, for each of the four'
-    exit: 0
-    ts: "2026-08-21T16:38:00Z"
-    seat: session (m5)
-  - claim: "the host pin is load-bearing, not decoration: removing it again goes RED under a CI hostname"
-    cmd: "mutate the pin away in place, re-run under fv-az1234-567, restore"
-    exit: 1
-    ts: "2026-08-21T16:38:00Z"
-    seat: session (m5)
-  - claim: "a per-organ cadence source ALREADY exists and this detector reads none of it: organs_registry.yaml declares expected_hb_seconds for 169 organs (mini.vercel_autopromote = 900 at line 2570), and the detector contains zero references to that registry while applying a flat 7 days — 604800s against a declared 900s, a factor of 672"
-    cmd: "git show origin/main:apps/organism/organism/organs_registry.yaml | grep -c expected_hb_seconds ; git show origin/main:scripts/organism_stale_detector.py | grep -c 'organs_registry\\|expected_hb_seconds'"
-    exit: 0
-    ts: "2026-08-21T16:36:00Z"
-    seat: session (m5)
-  - claim: "the delivery hook's own header claims a wiring the repo does not have: tracked .claude/settings.json wires exactly three SessionStart hooks (escalations, proprioception, organism_digest) and organism_alert_sessionstart.sh is not among them; live, Pro and Mini DO have it, M5 does not"
-    cmd: "git show origin/main:.claude/settings.json | python3 -c '<print SessionStart commands>' ; grep -o organism_alert_sessionstart ~/.claude/settings.json (m5) and via ssh pro/mini"
-    exit: 0
-    ts: "2026-08-21T16:37:00Z"
-    seat: session (m5) -> pro, mini
-  - claim: 'the refuter''s three claimed survivors are real: R1 (proprioception not in -> in), R2 (_sidecar_note drops last_error), R3 (WARNING loses "warn") all passed 45/45 before the fix; two OTHER mutations I tried (UNHEALTHY loses "error", note[:120] -> note[:0]) were already killed'
-    cmd: "scratchpad copy + per-mutation count==1 anchor assertion + pytest, PYTHONDONTWRITEBYTECODE=1"
-    exit: 0
-    ts: "2026-08-21T16:52:00Z"
-    seat: session (m5)
-  - claim: "status=refused is written from 8 call sites by two organs registered in organs_registry.yaml, and is in NEITHER vocabulary"
-    cmd: 'git grep -n ''heartbeat "refused"'' origin/main -- infra/launchagents/ ; grep -n ''UNHEALTHY_STATUSES: frozenset|WARNING_STATUSES: frozenset'' scripts/organism_stale_detector.py ; git show origin/main:apps/organism/organism/organs_registry.yaml | grep -n wa_codex'
-    exit: 0
-    ts: "2026-08-21T16:50:00Z"
-    seat: session (m5)
-  - claim: "blast radius of the refused blind spot is ZERO today — neither organ is loaded on Pro: no plist, no launchctl label, no sidecar. It would bite on the day either is armed"
-    cmd: "ssh pro 'launchctl list | grep -i wa.codex ; ls ~/Library/LaunchAgents/ | grep -i wa.codex ; cat ~/.organism/last_seen/pro.wa_codex_*.json'"
-    exit: 0
-    ts: "2026-08-21T16:50:00Z"
-    seat: session (m5) -> pro
-  - claim: "after the cure, 8/8 mutants killed — the refuter's three, the refused removal, and three that could only be killed AFTER the jurisdiction pins (deleting the arsenal_probe exemption; removing either benign-allow-list entry), which is the proof the tautologies are gone"
-    cmd: "scratchpad copy mut4 + 8 anchored mutations + pytest each, PYTHONDONTWRITEBYTECODE=1"
-    exit: 0
-    ts: "2026-08-21T16:58:00Z"
-    seat: session (m5)
-  - claim: "49 tests green under all four hostnames (air-m5, nuzantara, mini-pro2, fv-az1234-567) and ruff clean"
-    cmd: "socket.gethostname monkeypatch per hostname + pytest ; ruff check"
-    exit: 0
-    ts: "2026-08-21T16:59:00Z"
-    seat: session (m5)
-  - claim: 'the second chooser''s 13 mutants re-run against the CURRENT head: 3 already dead from round 2, 7 still surviving (drop "fail"; note[-120:]; cap removed; age_days 99.0; status "unknown"; warning group unsorted; unhealthy count hardcoded 0)'
-    cmd: "scratchpad mut5 + 10 anchored mutations + pytest each, PYTHONDONTWRITEBYTECODE=1"
-    exit: 0
-    ts: "2026-08-21T17:04:00Z"
-    seat: session (m5)
-  - claim: "after round-3 cures: 9/9 killed, zero survivors — the 7 above plus deleting the dead_channel and corrupt rendering lines outright"
-    cmd: "scratchpad mut6 + 9 anchored mutations + pytest each, PYTHONDONTWRITEBYTECODE=1"
-    exit: 0
-    ts: "2026-08-21T17:08:00Z"
-    seat: session (m5)
-  - claim: "53 tests green under all four hostnames (air-m5, nuzantara, mini-pro2, fv-az1234-567); ruff clean"
-    cmd: "socket.gethostname monkeypatch per hostname + pytest ; ruff check"
-    exit: 0
-    ts: "2026-08-21T17:09:00Z"
-    seat: session (m5)
-  - claim: "the all-clear sentence is the SessionStart hook's only branch and was unpinned: rewording it survives (the hook then alarms every session forever), and — because the hook match is a SUBSTRING — making the findings header read 'not all organs breathing' also survives and makes the hook exit 0 on real findings. Simulated against the hook's own case-statement: 5 findings, hook exits 0"
-    cmd: "scratchpad mut7: two anchored mutations + pytest; then the hook's case-statement replayed in bash against the mutated header"
-    exit: 0
-    ts: "2026-08-21T17:16:00Z"
-    seat: session (m5)
-  - claim: "after the contract pin: 3/3 killed including drift from the CONSUMER side (the test reads the sentinel out of the hook rather than copying it, so a one-sided change on either side fails)"
-    cmd: "scratchpad mut8: mutate the producer's all-clear, the producer's findings header, and the hook's own literal; pytest each"
-    exit: 0
-    ts: "2026-08-21T17:18:00Z"
-    seat: session (m5)
-  - claim: "54 tests green under all four hostnames; ruff clean ON THE FILES THIS PR EDITS (organism_stale_detector.py, the corpus). NOT literally true of proprioception.py as a whole file: it carries 3 pre-existing E741 `l`-variable errors, identical at the merge-base and untouched by this diff — stated precisely because a fact-check flagged the shorthand"
-    cmd: "socket.gethostname monkeypatch per hostname + pytest ; ruff check"
-    exit: 0
-    ts: "2026-08-21T17:19:00Z"
-    seat: session (m5)
-  - claim: "the fact-check's three findings re-measured independently: numstat at HEAD is corpus 546/7, detector 74/8, workflow 28/0, proprioception 8/0 (NOT the +310/-9 the pack claimed); exactly 5 host-less call sites remain of 40 total, none with a jurisdiction-scoped fixture except infra.eventbus_redis_mini which CROSS_HOST_SIDECAR_SOURCES exempts on every host; the test was born 938698e1f 2026-08-20 20:31 UTC, not 2026-08-07"
-    cmd: "git diff --no-renames --numstat 5b4354892 HEAD ; AST walk over the corpus for scan_sidecars*/host= keyword ; git log -S <test name> --format='%h %ad'"
-    exit: 0
-    ts: "2026-08-21T17:26:00Z"
-    seat: session (m5)
-  - claim: "commit bcf4ed0f1's own message says three later commits 'added ~263 lines to the corpus'. FALSE — measured `git diff --no-renames --numstat 01704d2b2 350c87896` gives 329/5 for the corpus (the '~17' it gives for the detector is right: 17/1). The figure was ESTIMATED rather than measured, inside the very commit whose subject is a number written once and never re-read. A pushed commit message cannot be amended, so the correction lives here, where it is citable"
-    cmd: "git diff --no-renames --numstat 01704d2b2 350c87896 -- scripts/tests/test_organism_stale_detector.py scripts/organism_stale_detector.py"
-    exit: 0
-    ts: "2026-08-21T17:34:00Z"
-    seat: session (m5)
+    ts: "2026-08-21T21:02:08Z"
+    seat: "session (m5)"
 dissent:
-  - seat: "github-actions (organ-conformance, first armed run)"
-    objection: "The corpus this PR calls a strength is machine-dependent: test_innocence_unrelated_organ_named_like_arsenal_probe_prefix_still_flags omitted host=, inherited socket.gethostname(), and asserted the anchored-regex behaviour ONLY on M5 — on Pro, Mini and every runner its m5.-prefixed fixture is skipped as foreign-jurisdiction before the regex is consulted, so `len(findings) == 1` failed against an empty list. Green on exactly one machine in the fleet since the day it was written (2026-08-20, #4467) — an earlier draft of this entry said 2026-08-07, which is when the jurisdiction MECHANISM landed (111049e8c), not this test; a later fact-check caught the conflation and it is corrected here rather than quietly dropped."
+  - seat: "gear3-final-gate (opus 5, fresh context, read-only, not the author)"
+    objection:
+      "The W111 scoping was FACTUALLY BACKWARDS. W111's own incident was #3463 re-run against
+      refs/pull/3463/merge -- a PULL-REQUEST merge ref, not merge_group. The note narrowed the scar onto
+      the one event type it did not happen on, and replaced it with a categorical 'a pull_request re-run
+      ... nothing about it is stale', which is exactly W111's original scenario. Superscar #6 / W78, in
+      a header every session reads."
     status: CONFIRMED
-    resolution: "Reproduced locally under four hostnames (green on air-m5, red on nuzantara, mini-pro2, fv-az1234-567). Pinned host='air-m5', matching what its own sibling test already does. Re-verified green under all four; removing the pin goes red again. The remaining host-less calls were then swept too — see the refuter dissent below, which supplied the per-site verdict that made the sweep well-specified rather than blanket."
-  - seat: "self-mutation round 1 (M7)"
-    objection: 'Reverting the report''s grouping predicate to `kind != "unhealthy"` left all tests passing, so the corpus did not actually pin the grouping. That mutation makes a `warning` organ render ALSO under ''not breathing'' as `stale -1.0d` — a breathing organ described as mute, carrying an invented negative age.'
+  - seat: "gear3-final-gate (opus 5, fresh context, read-only, not the author)"
+    objection:
+      "CASE A is safe for THIS job for a reason the note did not give: the workflow checks out
+      a PINNED base sha (github.event.pull_request.base.sha), never refs/pull/N/merge, so no moving ref
+      exists for a rerun to resolve differently. Unstated, a reader copies CASE A to a workflow that DOES
+      check out a merge ref."
     status: CONFIRMED
-    resolution: "Test strengthened from two membership asserts to also assert the organ appears ONCE, that 'not breathing' is absent from the report, and that neither the mute glyph nor the -1.0d age appears. Mutant then killed."
-  - seat: "independent grounding subagent (fresh context, origin/main only)"
-    objection: "Framing the lane around DEFAULT_STALE_DAYS is wrong twice over: --stale-days is declared but passed by no live caller, and the per-organ cadence this PR calls missing is already declared for 169 organs in organs_registry.yaml — a registry the detector never opens. The audit of 2026-07-19 recorded it as a known unimplemented gap, not a discovery."
+  - seat: "gear3-final-gate (opus 5, fresh context, read-only, not the author)"
+    objection:
+      "Receipt #1's jq was not runnable as written (missing .check_runs[]) and listed 2 of 3 rows;
+      receipt #2's recorded output is false at its own timestamp; sources attributed run 32489102357 to
+      #4543 when it belongs to #4544."
     status: CONFIRMED
-    resolution: "Re-measured independently rather than taken on trust (169 organs; zero registry references in the detector; the 900s vs 604800s factor of 672). The threshold is deliberately NOT touched here — wiring a cadence source is a behaviour change for 169 organs and gets its own lane. Both facts are recorded in the PR body so the 'seen and left alone' ledger is complete."
-  - seat: "independent refuter subagent (fresh context, immutable snapshot at b91e16e34)"
-    objection: 'Three mutations survive ALL of this PR''s tests, and four of the corpus''s older tests are tautological on a CI runner. (1) proprioception.py''s findings_list branch has ZERO behavioural coverage anywhere in the repo: flipping `not in` to `in` inverts the severity split — warnings become the DIVERGED ones while stale/dead_channel/corrupt/unhealthy silently RECONCILE, real P1s suppressed on the organism''s own heartbeat guardian — and every test stays green, because the new pin only regexes proprioception''s SOURCE TEXT. (2) `_sidecar_note`''s `last_error` fallback is untested; deleting it survives. (3) `warn` is in WARNING_STATUSES but no fixture uses it; removing it survives. Separately: `status="refused"`, written from 8 call sites by two REGISTERED organs (wa-codex-broker, wa-codex-seat-probe) and meaning the organ refused to START before exiting 78, is in NEITHER vocabulary — the same blind spot as `warning`, on a louder word, and squarely in scope since this PR''s own method is to grep the fleet for the vocabulary organs actually write.'
+  - seat: "session (m5), against its own earlier fix in #4543"
+    objection:
+      "In #4543 I 'fixed' a wrong net_lines by writing a precise value measured at the PREVIOUS
+      SHA — the same disease at higher confidence, in the one field a gate had already conditioned. The
+      gate returned REWORK-BUILD for it. This pack therefore measures net_lines LAST, at the merge base,
+      after every other edit, and writes it as a 1-for-1 line swap so the value describes the tree that
+      contains it."
     status: CONFIRMED
-    resolution: "All four re-measured here rather than taken on trust, and all four cured. `refused` added to UNHEALTHY (not WARNING: a refusal to start is not 'not working this tick'). Three new tests kill the three survivors, the proprioception one BEHAVIOURALLY — it calls run_wrap through the real DEFAULT_REGISTRY entry with only its target swapped for a stub, so it pins the shipping verdict_key/ok_values and not a copy. The 5 tautological sites were pinned to the jurisdiction each scenario means (Pro for pro./infra. fixtures, M5 for the arsenal_probe exemption), never a blanket host=. Re-mutation: 8/8 killed, including three that could only be killed after the pins (deleting the arsenal_probe exemption outright, and removing either benign-allow-list entry) because jurisdiction used to drop the fixture before the logic under test ran. Suite green under all four hostnames at 49 tests."
-  - seat: "second independent mutation-chooser (fresh context, told only which mutants were already dead)"
-    objection: "13 mutations distinct from the author's 12, and ALL 13 survived — zero kills. Root cause named precisely: the corpus never asserts `.status` or `.age_days` on an unhealthy/warning finding (both ship in to_dict() -> --json -> proprioception and -> --emit), never uses the bare short forms `fail`/`warn`, never asserts the 120-char note cap, and exercises `_human_report` from exactly ONE test that constructs neither a dead_channel nor a corrupt finding — so those two rendering branches, the per-group counts and the sort order were print-only dead code as far as mutation coverage went."
+  - seat: "gear3-final-gate (opus 5, on #4543)"
+    objection:
+      "CI cannot catch a wrong net_lines: evidence_pack_lint prefers a MEASURED --net-lines/--numstat-file
+      over the pack field because the field is untrustworthy, but a STRING field yields None and the rule
+      never fires. Green lint is not evidence for this field."
     status: CONFIRMED
-    resolution: "Re-run against the CURRENT head rather than the snapshot it read: 3 of its 13 (drop `warn`, flip note/last_error, drop last_error) were ALREADY dead from the round-2 cures, and 7 still stood. All 7 cured plus the two dead rendering branches — 4 new tests: short-form vocabulary, the shipped .status/.age_days fields including through to_dict(), front-truncation and the cap actually capping, and a _human_report pass over all five kinds asserting each renders exactly once with truthful group counts and deterministic order. Re-mutation: 9/9 killed, zero survivors. DELIBERATELY NOT pinned, and this is a scope disagreement not an oversight: its rows J/K/L asked for exact glyphs and exact prose. The new test asserts those branches EXECUTE and name their organ, but leaves the wording free — pinning prose makes a corpus fight legitimate rewording, which is its own defect (the same reason cicatrix W112 exists)."
-  - seat: "second mutation-chooser, follow-up grep on the glyph question"
-    objection: "Checked whether any consumer parses the report's glyphs: none does — every other glyph hit in the repo belongs to an unrelated module using the same convention for its own output. The single real consumer, organism_alert_sessionstart.sh, captures the whole report and branches on exactly one literal, the all-clear sentence, passing everything else through verbatim. Agreed the glyphs should not be pinned; nothing to change."
+  - seat: "session (m5), scoping the change rather than widening it"
+    objection:
+      "Rewriting the corollary could be read as repealing W111. It is not, and a note that merely
+      dropped the prohibition would be a regression: a merge_group rerun replays a ref whose base moved.
+      SUPERSEDED BY dissent[0], which is what actually shipped. The note does NOT scope the ban to merge_group: it says in terms that reruns are only dangerous on merge_group is FALSE, and scopes CASE A by this workflow PINNED base ref instead. This entry describes a draft that dissent[0] caused to be reversed; it is kept for the trail, not as a description of the diff that ships."
     status: CONFIRMED
-    resolution: "Agreement on the glyphs — and its measurement handed over the finding neither chooser had named: if the hook's ENTIRE decision is one sentence, that sentence is not prose, it is an interface, and it was unpinned. Both drift directions survived all 53 tests, the worse one silently: the hook matches a SUBSTRING, so a findings header reading 'not all organs breathing' contains the all-clear literal and the hook exits 0 on real findings (over-match, cicatrix family #3, pointing the wrong way). Pinned now by a test that reads the sentinel OUT OF THE HOOK rather than copying it, asserting two-sidedly: the all-clear must carry it, and no report carrying any of the five finding kinds may contain it. That is the exact boundary of the do-not-pin-prose rule — prose a consumer PARSES is a contract."
-  - seat: "independent claim-checker (fresh context, snapshot at 4fffbaef8, fact-accuracy only)"
-    objection: "Three false claims, ALL of them in this PR's own evidence narrative rather than in its code. (1) `diff.net_lines` says +310/-9 and claims to be measured against HEAD; it was true at 01704d2b2 and never recomputed as three later commits added ~263 lines to the corpus and ~17 to the detector. (2) The brief's risks section says '10 other calls still omit host=, some passing for the wrong reason'; at HEAD only 5 remain and none of them can exhibit that failure mode — four write no jurisdiction-scoped fixture at all and the fifth is cross-host whitelisted. (3) 'green on exactly one machine since 2026-08-07' is false as stated: the jurisdiction mechanism landed 2026-08-07 (111049e8c) but the test itself did not exist until 2026-08-20 (#4467), so it cannot have been green-on-one-machine for 13 of those days. Also imprecise: 'ruff clean' is true for the files this PR edits, not for proprioception.py as a whole (3 pre-existing E741)."
+  - seat: "gear3-final-gate (opus 5, fresh context, read-only, not the author) - round 2 on 76edf60e2"
+    objection:
+      "The DIAGNOSTIC TRAP paragraph named a mechanism that cannot occur in the state a reader consults it
+      in. It said check-runs defaults to filter=latest and returns only the GREEN run. filter=latest drops a
+      check-run only once a SAME-SUITE rerun supersedes it, which is not the deadlock state - during the
+      #4543 deadlock the default would have returned both rows. What actually hides the red row is
+      PAGINATION, which the paragraph never mentioned: the endpoint returns 30 of ~55-63 rows. So the
+      prescribed remedy (pass filter=all) does not by itself surface the row."
     status: CONFIRMED
-    resolution: "All three re-measured here rather than accepted: numstat recomputed at HEAD; the 5 remaining host-less sites enumerated by AST and each shown host-independent by construction (four unscoped prefixes, one in CROSS_HOST_SIDECAR_SOURCES); the test's birth commit confirmed as 938698e1f, 2026-08-20 20:31 UTC. All three corrected in place and the correction stated, not quietly dropped — including in the test docstring, where the wrong date had reached the CODE. The ruff claim is now scoped to the edited files. Kept as the sharpest finding of the whole PR: a change about a receptor reading stale state shipped evidence that went stale inside its own PR, because a number written mid-work was never re-read. The checker also self-corrected a shell-redirect bug that had made finding 2 look false on its first pass, and said so — which is the reason to trust the rest of its report."
-  - seat: "independent correction-checker (fresh context, sent to verify the CORRECTIONS, not the original claims)"
-    objection: "Checked whether the three corrections were themselves true, since a correction that lies is worse than the error it replaces and nobody had checked them. All four verified TRUE and independently re-derived (40 call sites / 5 host-less / each fixture named; 111049e8c dated 2026-08-07 introducing _is_foreign_jurisdiction; 938698e1f dated 2026-08-20 20:31 UTC introducing the test; 3 E741 at proprioception.py 382/411/415, byte-identical at the merge-base and untouched by this diff). Two things it added that the correction had not: (a) the recomputed net_lines went stale AGAIN one commit later, live, while it was reading — because this file is part of the diff it describes, which no amount of care fixes; (b) commit bcf4ed0f1's own message says '~263 lines' where the measurement is 329/5."
+  - seat: "session (m5), re-measuring the gate objection on this PR own head SHA rather than accepting it"
+    objection:
+      "Verified before acting, because a refuter hallucinates too (W65). On 76edf60e2: no per_page ->
+      returned=30 of 54, failures=0; filter=all with no per_page -> returned=30 of 55, failures=0;
+      filter=all&per_page=100 -> returned=55, failures=1. The gate is right and the paragraph shipped in the
+      previous revision was wrong. Corrected in the header, in the brief acceptance criterion, in receipts 1
+      and 2, and in the session memory note that carried the same false mechanism - which would otherwise
+      have propagated it to the next session."
     status: CONFIRMED
-    resolution: "Both taken. (a) net_lines is reframed to state a NAMED SHA with the exact command to reproduce it, instead of an eternal-present 'measured at HEAD' that can never be true of the commit it sits in — the checker's framing is better than the correction's and is adopted. (b) Re-measured: 329/5, not ~263; the figure was estimated rather than measured, inside the commit whose subject is precisely that failure. A pushed message cannot be amended, so it is corrected in a receipt above. The checker also declined to vouch for one line it could not verify — a claim about the previous checker's own process, which it has no access to — and flagged it as unverifiable instead of counting it either way. That is the behaviour that makes the rest of its report worth acting on."
-  - seat: "session (m5), self-refutation of its own first report to the operator"
-    objection: "I told the operator the detector might not act on the status field at all, and that the 7-day threshold was the hole. Both were wrong: scan_sidecars_status produces real unhealthy findings, and the freshness axis fires on 1 sidecar out of 183 fleet-wide — it is nearly dead, not the live gap."
-    status: RETRACTED
-    resolution: "Corrected to the operator in the same session, before any code was written, and the lane was re-aimed at the two defects the measurement actually supports."
+  - seat: "gear3-final-gate (opus 5) - round 2, provenance findings"
+    objection:
+      "Two dissent seat scalars were unquoted and ended mid-phrase: YAML ate #4543 and everything after it as
+      a comment. The linter only checks non-emptiness, so CI could not see it. Separately, receipt 1 recorded
+      an output its own recorded command cannot produce (2 rows, not 3), and dissent[5] described a draft
+      that dissent[0] had already caused to be reversed - both CONFIRMED, with no marker telling a reader
+      which one describes the artifact that ships."
+    status: CONFIRMED
+  - seat: "gear3-final-gate (opus 5, fresh context, round 3 on ea0801247, did not run round 2)"
+    objection:
+      "Round-2 condition 2 and 4 were applied to the WORKFLOW only and left standing in brief.yml, which
+      then contradicted its own acceptance criterion two blocks down. A condition is not satisfied by
+      editing the file the reviewer quoted - it is satisfied when the claim is gone from every artifact
+      that repeats it. Also: the ESCAPE paragraph added for condition 4 pointed the reader at CASE B,
+      which the same header proves is inert on an open BLOCKED PR - the fix introduced a contradiction
+      with the block above it."
+    status: CONFIRMED
+  - seat: "gear3-final-gate (opus 5) - round 3, on the precision paragraph"
+    objection:
+      "The note quotes its own ref: expression and concludes i.e. a PINNED base SHA. The third branch is
+      'main', a MOVING ref, and it is the branch workflow_dispatch falls through to. A reader applying the
+      note's own transfer test to this very workflow gets the opposite answer. Separately, the paragraph
+      argues pinning away W111's hazard without stating the flip side: a rerun replays the ORIGINAL event
+      payload, so the base checkout - and the helper scripts the job executes - stay frozen at PR-event
+      time. Pinning removes the stale-BASE hazard; it does not make the rerun current."
+    status: CONFIRMED
+  - seat: "session (m5), verifying the two conditions the gate REASONED rather than executed"
+    objection:
+      "Two findings were derived from the file, not observed, so they were checked before being acted on
+      (W65). Both hold. The trigger list really is types: [opened, synchronize, reopened], so close+reopen
+      does fire a fresh pull_request run on the unchanged head SHA - a cheap escape the previous text
+      denied outright. And the ref: expression really does carry 'main' as its third branch. Neither was
+      taken on the refuter's word."
+    status: CONFIRMED
+  - seat: "session (m5), against its own round-2 repair"
+    objection:
+      "Receipt 2 was rewritten in round 2 to cure a non-reproducing command, and the replacement did not
+      run either: exit 127 unquoted (& is a shell metacharacter), and jq answers 'function not defined:
+      failure/0' when the literal is unquoted inside the filter. The same defect dissent[2] raised against
+      receipt 1, reproduced one receipt over, in the commit that claimed to fix it. The command now in the
+      file was extracted from the YAML and executed verbatim this session: exit 0, output identical to the
+      one recorded."
+    status: CONFIRMED
+  - seat: "gear3-final-gate (opus 5, fresh context, round 4 on e48c1b0f5, did not run earlier rounds)"
+    objection:
+      "The head commit's own subject was 'a condition is satisfied when the claim is gone from every
+      artifact, not from the one the reviewer quoted' -- and the repealed instruction was still standing
+      in the two artifacts a session actually meets. Worst: scripts/ci/harness_gate_read.py PRINTS it as
+      the CI failure annotation, i.e. it is pushed at a session at the instant it is stuck, which is a
+      strictly worse home than a header a session may or may not open. The gate read it live in this PR's
+      own red X. Also: the consumer_map asserted 'no other artifact carries it', false since #4557; and
+      residual_risks[0] named a follow-up that had merged five minutes before the commit was authored."
+    status: CONFIRMED
+  - seat: "session (m5), verifying and then acting on the round-4 findings"
+    objection:
+      "Re-measured before acting (W65). harness_gate_read.py:193-194 and its docstring at :42-45 did carry
+      the repealed text; #4549 does have 9 pull_request runs and ZERO workflow_dispatch, so the runbook
+      sentence 'cost two sessions the same detour' -- which this same session wrote in #4557 -- is false;
+      and the runbook quoted the ref: expression with '|| main' truncated. Fixed in #4558, not here: those
+      are code and sibling-doc surfaces, and folding them in would cost this PR its comment-only proof."
+    status: CONFIRMED
+  - seat: "gear3-final-gate (opus 5, fresh context, round 5 on d3e3dea43, did not run earlier rounds)"
+    objection:
+      "Three more instances of the one disease this pack names four times -- a value written once and never
+      re-read. (a) brief.yml's objective still said the diff 'scopes the W111 prohibition to what it
+      actually protects (a stale merge-queue ref)', which is the draft dissent[0] reversed in round 2 and
+      the opposite of what the shipped header says; unchanged since the first commit, it survived four
+      rounds. (b) All six receipt ts fields were frozen at one instant 33s before the branch's first
+      commit, while receipt[1] had been rewritten twice since and its own text claimed 'run verbatim this
+      session'. (c) size_tokens said 1300, correct at the first commit and never re-read while the pack
+      grew to 15079 bytes -- 3769 by the linter's own bytes/4 metric, 2.9x off. The linter checks ts for
+      non-emptiness only and never reads size_tokens at all, so green lint was not evidence for any of
+      the three."
+    status: CONFIRMED
+  - seat: "session (m5), on the shape of its own repair"
+    objection:
+      "Fixing the timestamps, this session first wrote four stamps with invented second-level precision --
+      fabricating exactly the kind of measured-looking value the finding is about. Caught before commit:
+      the four receipts were RE-EXECUTED and stamped with the instants actually captured at run time
+      (21:02:06-08Z), and the two incident receipts carry the real event times read from the run API
+      (14:06:41Z attempt-2 start, 14:00:37Z dispatch creation) rather than a session time they never
+      happened at. size_tokens is now iterated to a fixed point like net_lines."
+    status: CONFIRMED
+residual_risks:
+  - "CLOSED, and the previous revision shipped this line already stale. It read: CLAUDE.md's Agent PR
+    Contract rule 3 still reads unqualified at origin/main, named follow-up a CLAUDE.md PR carrying the
+    same scoping. That follow-up had ALREADY landed -- 61f87383c / PR #4557, merged 2026-08-21T20:18:14Z,
+    five minutes before this branch's next commit was authored. Same disease as dissent[3] and dissent[4],
+    a value written once and never re-read, relocated from net_lines into residual_risks. The residual that
+    ACTUALLY remained was scripts/ci/harness_gate_read.py, which PRINTS the repealed instruction as the CI
+    failure annotation at the moment of need -- found by the round-4 gate, fixed in #4558."
+  - "#4549 is NOT a second reproduction of the deadlock and must not be cited as one: it has no workflow_dispatch
+    run at all. It independently confirms CASE A's REMEDY a second time -- a weaker, different claim."
+  - "The quoted suite ids are one incident's measurement, not constants. The note frames them as the #4543
+    evidence, not as values to expect."
+  - "This diff does not change the job, so it cannot itself prove the new procedure works; the proof is
+    #4543's own history, already on main."
+  - The modus PENDING-ARMS row opened for this defect is NOT closed by this diff — that file carries a merge=union
+    driver and is deliberately kept out of a hot-zone PR. It gets its own follow-up.
+sources:
+  - "PR #4543 run history: 32489011695 (pull_request, the run the PR was pinned to) and 32489857553 (workflow_dispatch,
+    the documented flow)"
+  - "Run 32489102357 was previously cited here as #4543's — it is NOT, it belongs to #4544 (agent/air-m5/ops/readme-promote-timing,
+    sha 36c755d6). Caught by the Gear-3 gate."
+  - memory discovery_workflow_dispatch_rerun_does_not_clear_a_prs_rollup_2026_08_21
+tests:
+  - "None applicable: comment-only. The behavioural proof is the byte-identical non-comment body receipt,
+    which is stronger here than a test would be."
+static:
+  - actionlint 1.7.12 exit 0
+runtime_proof:
+  - None claimed. Nothing in this diff executes; the consumer-map records that both consumers are unchanged,
+    so merged == live.
 pii_scan: clean
+size_tokens: 4215
