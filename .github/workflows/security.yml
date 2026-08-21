@@ -825,6 +825,20 @@ jobs:
       - name: Install detect-secrets
         run: pip install detect-secrets
 
+      - name: Guilt+innocence corpus (L3 diff-scope + nightly-alert composer)
+        # Self-contained regression tripwire for this job's own behavior — see
+        # each test file's header for what it proves (diff-scope: a changed-
+        # file secret goes red on the PR path and is invisible there while the
+        # nightly full-tree path still catches it; nightly-alert: the composer
+        # quotes a real summary verbatim, never fabricates one when none was
+        # captured, and does not swallow the gateway's exit code). Runs BEFORE
+        # the real scan below so a broken corpus fails loud here rather than
+        # silently degrading the scan it exists to guard. No network, no repo
+        # baseline touched — both scripts work against throwaway tmp fixtures.
+        run: |
+          bash scripts/tests/test_detect_secrets_diff_scope.sh
+          bash scripts/tests/test_detect_secrets_nightly_alert.sh
+
       - name: Decide scan scope
         # L3 (see the job header above): pull_request/merge_group scan only
         # the diff's files; every other event keeps the full-tree scan.
@@ -937,7 +951,48 @@ jobs:
         # scripts/detect_secrets_auto_triage.py pre-marks known false positives
         # by path pattern; any residue is a genuine new finding that needs
         # human eyes.
-        run: python scripts/detect_secrets_check_unaudited.py
+        #
+        # L3 nightly alert (2026-08-21, see the step below): capture this
+        # script's own stdout+stderr to a file so a failing full-tree run can
+        # quote it in the Telegram alert without a second execution. No
+        # pipe/tee here on purpose (W101/W97 — a pipe can mask the upstream
+        # exit code): the exit status is captured explicitly via `$?` and
+        # re-raised, so a finding still fails this step exactly as before.
+        run: |
+          set -uo pipefail
+          OUT="$(python scripts/detect_secrets_check_unaudited.py 2>&1)"
+          RC=$?
+          printf '%s\n' "$OUT"
+          printf '%s\n' "$OUT" > /tmp/unaudited-findings.txt
+          exit "$RC"
+
+      - name: Telegram alert — nightly full-tree scan failed
+        # L3 (audit lever, see this job's header comment above): the
+        # diff-scoped PR/queue path only sees changed files — a failure of
+        # THIS event's full-tree run is the net for anything else, so it gets
+        # a dedicated, content-bearing page (scripts/ci/detect_secrets_nightly_alert.sh)
+        # rather than relying only on main-push-failure-watch.yml's generic
+        # "Security Scanning failed" ping, which names the workflow, never
+        # the job or the finding.
+        #
+        # Gated on event name alone, not steps.scope.outputs.mode: "Decide
+        # scan scope" sets mode=full unconditionally for any non-pull_request/
+        # merge_group event (see that step), so schedule/workflow_dispatch
+        # always implies full-tree — and an earlier-step failure (pip
+        # install, the scan crashing) skips "Decide scan scope" entirely,
+        # which would leave its output unset and silently disarm an
+        # output-keyed condition. Push:develop full-tree runs are
+        # DELIBERATELY not covered here (out of this lever's scope, and
+        # main-push-failure-watch.yml doesn't see them either — its trigger
+        # filters branches:[main]).
+        if: failure() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_OWNER_CHAT_ID: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+          EVENT_NAME: ${{ github.event_name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SUMMARY_FILE: /tmp/unaudited-findings.txt
+        run: bash scripts/ci/detect_secrets_nightly_alert.sh
 
   security-summary:
     name: Security Summary
