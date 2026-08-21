@@ -33,6 +33,29 @@ together; neither blocks (`permissionDecision` is always "allow" here).
 Cannot-verify (unreadable file / unrecognized transcript shape) stays fully
 silent rather than claim a count it does not have — same discipline as the
 blocking path's W106b guard just below.
+
+SUBAGENT EXEMPTION (2026-08-21, lane-ship mandate): a session was hard-blocked
+on this gate while running as a SUBAGENT — a context with no `Agent` tool of
+its own (the current harness does not let a dispatched subagent dispatch a
+further subagent), so "zero subagent dispatch in the last 300 lines" is a
+structural impossibility for it, not a signal that direct work should stop.
+Two independent markers identify that context, checked BEFORE any transcript
+read (`is_subagent_context`, right below `GATED_TOOLS`):
+  1. `payload["agent_id"]` — DOCUMENTED (code.claude.com/docs/en/hooks,
+     checked 2026-08-21): "Present only when the hook fires inside a
+     subagent call." Primary signal.
+  2. `transcript_path` containing a `subagents` path component — UNDOCUMENTED
+     but empirically verified live on 2026-08-21: a subagent's own dedicated
+     transcript file lives at
+     `<project>/<session>/subagents/agent-a<lane>-<hash>.jsonl`, confirmed
+     against real on-disk files including the hook-author's own live
+     transcript during this very investigation (every line of that file
+     carried `"agentId"` and `"isSidechain":true`; the parent session's own
+     transcript file carried neither — 0 occurrences of both). Fallback
+     signal, kept in case a harness version omits `agent_id` on some events.
+A main-session transcript with zero dispatches past the threshold keeps
+blocking exactly as before — this exemption is scoped to the two markers
+above, never to "transcript looks quiet."
 """
 import json
 import os
@@ -76,6 +99,19 @@ TRANSCRIPT_SHAPE_MARKERS = ('"tool_use"', '"tool_result"', '"role":"assistant"',
                             '"role": "assistant"')
 
 GATED_TOOLS = {"Bash", "Edit", "Write"}
+
+
+def is_subagent_context(payload):
+    """True when this PreToolUse call fires inside a dispatched subagent's own
+    turn. See the module docstring's SUBAGENT EXEMPTION note for the evidence
+    behind each signal. Checked BEFORE any transcript read — cheap, and works
+    even if the transcript file has not been flushed yet."""
+    if payload.get("agent_id"):
+        return True
+    transcript_path = payload.get("transcript_path") or ""
+    if transcript_path and "subagents" in pathlib.PurePath(transcript_path).parts:
+        return True
+    return False
 
 # Disarm-notice: at most once per session (keyed on transcript basename), so a
 # 6400-line session gets ONE reminder, not one per Bash call.
@@ -208,6 +244,15 @@ def main():
 
     tool_name = payload.get("tool_name") or payload.get("name") or ""
     if tool_name not in GATED_TOOLS:
+        sys.exit(0)
+
+    if is_subagent_context(payload):
+        sys.stderr.write(
+            "[ORCHESTRATE-GATE] subagent context detected (agent_id or "
+            "subagents/ transcript path) — exempt: a dispatched subagent has "
+            "no Agent tool of its own, so it cannot satisfy 'zero dispatch in "
+            f"last {RECENT_LINES} lines' by legitimate means. Not blocking.\n"
+        )
         sys.exit(0)
 
     transcript_path = payload.get("transcript_path", "")

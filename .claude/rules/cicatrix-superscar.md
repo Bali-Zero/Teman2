@@ -1,340 +1,249 @@
 # cicatrix-superscar.md — le 10 famiglie (PONTE)
 
-> **Questo file è un PONTE, non l'enciclopedia.** Le ~86 cicatrici singole dell'organismo
-> si raggruppano in **10 superscar** (famiglie/generi) + alcune orfane. Qui c'è, per ogni
-> famiglia: la **malattia** (il difetto strutturale che genera tutte le istanze), il
-> **segnale-precoce** (cosa vedi PRIMA che morda di nuovo), l'**antidoto strutturale**
-> (la regola che ucciderebbe l'intera famiglia), e i **membri**.
+> **PONTE, non enciclopedia.** ~99 cicatrici si raggruppano in 10 superscar (famiglie) + orfane.
+> Per famiglia: **malattia** (difetto strutturale), **segnale-precoce**, **antidoto strutturale**,
+> **membri** (riferimento a 3-8 parole — il corpo pieno vive SOLO in `cicatrix-scars.md`/`-archive.md`,
+> mai qui). Dettaglio → `scar query "<tema>"` (lessicale su entrambi i file-corpo; `--list` indice,
+> `--family N` salta a un cluster) o grep il W-number.
 >
-> **Per il dettaglio di una scar specifica → segui il ponte:** il corpo completo
-> (TRAUMA/ANTIBODY/GOTCHA verbatim) vive in `cicatrix-scars.md` (recenti) + `cicatrix-scars-archive.md`
-> (storiche). Cercalo con la CLI **`scar query "<tema>"`** (ricerca lessicale zero-dependency su
-> entrambi i file-corpo — `scar query --list` per l'indice, `scar query --family N` per saltare a un
-> cluster qui), oppure grep per W-number.
+> **Perché esiste:** il blob piatto pesava ~28k token/sessione (W77: "cataloga il trauma ma non lo
+> promuove a struttura"). **Corretto 2026-08-21 (audit boot-tax):** ricaduto nella propria malattia —
+> corpi lunghi incollati qui invece che in `cicatrix-scars.md`, ~72KB/sessione+subagent
+> (`research/operations/2026-08-21-token-ceremony-ci-system-audit.md`). Spostati verbatim 13 corpi (3
+> disambiguati da collisioni numero: `W81-armamento-sospeso`, `W81b-dlq-blind-heal-loop`,
+> `W84-tcc-dead`). Budget **≤14KB**, `scripts/tests/test_superscar_budget.py`. Genesi: clustering
+> Gemini 3.5 Flash High + gate W65 + review Antonello, 2026-06-14.
 >
-> **Perché esiste:** il blob piatto delle cicatrici pesava ~28k token a ogni sessione (W77:
-> "l'organismo cataloga il trauma ma non lo promuove a struttura"). Questo file È la promozione
-> a struttura — ~2k token che coprono di più. Genesi: clustering Gemini 3.5 Flash High su 86 scar +
-> gate W65 (W-number tutti verificati su disco) + review one-by-one Antonello, 2026-06-14.
->
-> **Dominanza (dato):** 4 famiglie — #1 HOME-fork, #2 Esiste≠Armato, #5 Sibling-race, #4 Secret-clear —
-> coprono il **65-75%** delle 86 cicatrici. L'organismo non ha 86 malattie: ne ha ~10, e 4 dominano.
+> **Dominanza:** #1 HOME-fork, #2 Esiste≠Armato, #5 Sibling-race, #4 Secret-clear coprono 65-75%.
 
 ---
 
 ## #1 — HOME-fork drift (deploy-path desync)
 
-**MALATTIA:** il runtime esegue una **copia in `$HOME`** (o un path hardcodato di un utente/macchina)
-che diverge silenziosamente dal repo "source of truth". Il fix entra nel repo ma la copia viva non lo
-vede — o, peggio, lavoro vivo nella copia HOME non torna mai nel repo.
+**MALATTIA:** il runtime esegue una copia in `$HOME` (path hardcodato utente/macchina) che diverge
+silenziosamente dal repo. Il fix entra nel repo, la copia viva non lo vede.
 
-**SEGNALE-PRECOCE:** plist/cron/script che invoca file da `~/scripts/`, `~/.openclaw/bin/`, `~/bin/`
-invece che dal repo; path assoluti con username specifico (`/Users/nuzantara/`, Air decommissionato);
-"due copie byte-identical" di un file.
+**SEGNALE-PRECOCE:** plist/cron che invoca `~/scripts/`, `~/.openclaw/bin/` invece del repo; path con
+username specifico; "due copie byte-identical".
 
-**ANTIDOTO:** lint CI che fallisce se un file eseguito-live diverge (`cmp -s`) dalla versione tracciata
-su git, o se una config live punta a un path-HOME invece che al repo. Divieto di cold-copy di ambienti
-tra macchine. **Ma il confronto va fatto contro `origin/main`, non contro il checkout locale** — un
-checkout indietro accusa la copia viva di una divergenza che ha causato lui, e il rimedio «realign live
-from repo» diventa la regressione (W106b, famiglia #9).
-**→ ESEGUIBILE (IMMUNE FORGE 2026-07-05, #1970):** `scripts/lint_home_fork.py` — `--check` sha256 su
-coppie dichiarate (`infra/home-fork/declared-pairs.json`, **97** coppie al 2026-07-29 — erano 11 alla nascita, il numero qui era rimasto fermo a quel giorno; merge runtime con proprioception),
-`--discover` payload HOME-eseguiti non dichiarati da plist+crontab (classificatore payload-vs-dato,
-`.worktrees/*`=finding W81), exit 1|2|4 fail-visible; primo run live: 18 payload non dichiarati + 1 fork viva (mlx).
+**ANTIDOTO:** lint CI `cmp -s` file-eseguito-live vs versione tracciata su git, confrontato contro
+`origin/main` mai contro il checkout locale — un checkout indietro accusa la copia viva (W106b, #9).
+**→ ESEGUIBILE:** `scripts/lint_home_fork.py` — sha256 su coppie dichiarate (97), `--discover` payload
+non dichiarati, exit 1|2|4.
 
 **MEMBRI:** W50/W51/W52 (madre — wrapper/plist/script fork) · W68/W72/W73 (bridge `~/.openclaw/bin/`) ·
-W70 (path-drift `Projects/nuzantara` Air) · W76 (repomap cron su checkout stale) · M5-dev-env (venv+marketplace
-copiati con path `/Users/nuzantara/`) · TAC wa-mirror 2026-06-14 (HOME-fork 510+ righe non promosse) ·
-W81 (deploy worktree `~/Desktop/nuzantara-deploy` sparito → ~20 cron critici armati a vuoto su host morto, 2026-06-15).
-**→ dettaglio:** archive (W50/W51/W52/W68/W76/M5-dev-env) + cicatrix-scars.md (W70) · `scar query "home-fork"`
+W70 (path-drift Air) · W76 (repomap su checkout stale) · M5-dev-env (venv+marketplace path sbagliato) ·
+TAC wa-mirror (HOME-fork non promossa) · W81-armamento-sospeso (deploy worktree sparito, 2026-06-15).
+**→ dettaglio:** archive (W50/W51/W52/W68/W76/M5-dev-env) + cicatrix-scars.md (W70/W81-armamento-sospeso) · `scar query "home-fork"`
 
-> _Nota cross-famiglia:_ **W84** (TCC-dead launchd cron, vedi #2) è imparentata: il wrapper vive sotto `~/Desktop` (path-HOME TCC-protetto) ed è quella collocazione a renderlo decertificabile. Antidoto HOME-fork applicabile: rilocare i wrapper fuori da `~/Desktop` (come fanno i 2 cron sani).
+> _Cross-famiglia:_ **W84-tcc-dead** (#2) imparentata — wrapper sotto `~/Desktop` TCC-protetto.
 
 ---
 
 ## #2 — Esiste ≠ Armato (cron theater / blind autopilot)
 
-**MALATTIA:** demoni/cron/processi risultano "verdi" (exit 0, `KeepAlive` attivo) ma mascherano worker
-morti, loop infiniti, eccezioni ingoiate, output vuoti — falsa illusione di protezione.
+**MALATTIA:** demoni/cron "verdi" (exit 0, KeepAlive attivo) mascherano worker morti, eccezioni
+ingoiate, output vuoti — falsa illusione di protezione.
 
-**SEGNALE-PRECOCE:** log intasati di noise stderr che annega i veri avvisi; `except` troppo permissivi;
-`/health` che controlla il web ma non i worker sottostanti; un cron "green every Sunday" con la dir di
-output vuota; `log_tail="exit 1 after 3 attempts"` (false friend, zero diagnostica).
+**SEGNALE-PRECOCE:** `/health` che controlla il web non i worker; cron "green every Sunday" con output
+vuoto; `except` permissivi; log-tail senza diagnostica.
 
-**ANTIDOTO:** monitora l'**esito reale / heartbeat end-to-end nel DB**, non il PID/exit-code. RUN il
-guardiano e leggi il suo verdetto prima di fidarti del verde. Falla visibile + allarme proattivo se non
-ci sono prove-di-vita. _(Regola madre: «green ≠ working — leggi l'OUTPUT, non l'exit code».)_
-**W81 estende:** leggi anche lo **STATO DI ATTIVAZIONE** — costruito≠attivato. Un artefatto/cron/PR/fix che
-esiste ma non è merged/installed/propagated/armed/committed è **sospeso, non vivo**. Antidoto della famiglia
-"Armamento Sospeso": un _reconciliation-report_ (segnalatore, non auto-attuatore) che allarma su
-"costruito-ma-non-attivato >48h", distinguendo il firebreak legittimo (publish/Legge-5/business) dal debito tecnico.
-**→ ESEGUIBILE (IMMUNE FORGE 2026-07-05, #1972):** `scripts/pending_arms_report.py` — parsa il ledger
-`PENDING-ARMS.md`, allarma su righe aperte >48h classificate TECH-DEBT vs OPERATOR-GATED vs FIREBREAK;
-segnalatore puro (mai scrive), `--strict` exit 1 solo su debito overdue.
+**ANTIDOTO:** monitora l'esito reale/heartbeat DB, non PID/exit-code («green ≠ working — leggi
+l'OUTPUT»). W81: anche lo STATO DI ATTIVAZIONE — costruito≠attivato è sospeso, non vivo. W120: la sonda
+deve leggere la STESSA chiave che il reporter emette, o l'allarme si azzera muto.
+**→ ESEGUIBILE:** `scripts/pending_arms_report.py` — allarma righe `PENDING-ARMS.md` aperte >48h.
 
-**MEMBRI:** W74 (reflexion cron-theater F21 + evoskill 0-pressure F18) · W69 (decadimento entropico
-inosservabile / required-checks disarmati) · W64/W34 (asyncpg silent-death, manca `InterfaceError`) ·
-W71 (verify_mcp_integrity glyph-bug: gira e mente) · W32 (pg-bridge morto silenzioso) · 503-RAG
-(health=200 ma RAG worker stoppato) · W70 (sentinel log_tail cieco) · W81 (Armamento Sospeso: ~20 cron
-"green storico" che `launchctl` dà a exit 127/78 — il verde memorizzato mente, costruito≠attivato) · W81b (DLQ blind heal-loop, 2026-06-15: 28 entry DLQ, 14 "corpses" con state=ok mai puliti — il TERMINAL-guard di process_entry li skippa per sempre e il W70-resurrect copre solo job in job_registry.json, che ne contiene 3; antidoto: **corpse-sweep incondizionato** in dlq_autopilot.py che ad ogni tick drena ogni entry il cui state-file dice ok) · W84 (green-but-TCC-dead launchd cron, 2026-06-16: 2 LaunchAgent M5 sotto `~/Desktop` — incl. `verify-connectome` il guardiano-dei-guardiani — con `LastExitStatus=0` VERDE mentre il log dice `Operation not permitted`; il contesto **launchd ha perso il grant TCC/Full-Disk-Access** verso `~/Desktop` SENZA cambiare codice/plist/permessi — **vettore nuovo: lo stato-di-attivazione TCC è un principal separato da iTerm**; prova che il verde mente: STESSO plist su Pro dà exit 1 onesto. Antidoto: `launchd_liveness_detector.py` PR #1518 incrocia exit-code col CONTENUTO del log; cura=solo-operatore. La W81-estensione si estende ancora: leggi anche lo stato-di-attivazione **TCC**, non solo merge/install). · **W87 (Postgres access-wall, 2026-06-26: MCP `postgres-nuzantara` VERDE in lista `✔ Connected` ma morto al primo query — identità local-dev `nuzantara_dev_readonly`/`nuzantara_dev` cablata contro il proxy PROD `:15432`; ricorrente da settimane. La combo viva è `nuzantara_readonly`/`nuzantara_rag`. Antidoto: `scripts/pg.sh` PR #1745 + memory `reference_postgres_access_one_true_way`. GOTCHA: `✔ Connected` = handshake TCP, non auth+query — prova `SELECT 1` reale)** ·
-**W98 (dependabot lock-regen bypassa il `!=` anti-malware del manifest, 2026-07-13: #2349 mette fastapi 0.136.3/MAL-2026-4750 nei lock e IN PROD con Snyk/Socket verdi — il vincolo esisteva in requirements.txt ma nessuno lo arma all'install del lock; payload `fastar` salvo solo perché extra-gated. Antidoto: `test_lock_honors_requirements.py`, ogni pin del lock deve soddisfare il manifest in CI)** ·
-**W84-tccutil-recidiva (2026-07-08: di fronte a un blocco W84-style, `tccutil reset All` scambiato per "diagnostica read-only" — in realtà resetta i grant TCC di TUTTE le app sul Mac, scope OS-wide, non solo l'accesso Desktop della shell bloccata. Sintomo locale e "cura" condividono la superficie TCC ma scope opposti: la cura scoped-corretta è operator-only via System Settings, mai un comando che tocca lo stato TCC globale. Antidoto: qualunque comando il cui effetto è "reset"/"revoke" senza scope esplicito va trattato come distruttivo by default, mai lanciato come probe)**.
-**W97 (display-cap + pipe-mask, 2026-07-13: tre strumenti stampano liste troncate `[:40]` lette a valle come liste COMPLETE — 4 audit "trovano esattamente 40" con membership che cambia, la lista vera era 105, un retry-round rigenera solo i primi 40; stesso giorno un `git push | tail` in background riporta "completed exit 0" con push BOCCIATO dal hook — la pipe maschera l'RC. Antidoto: mai slicing su liste consumate come complete (dichiarare `N di M`), RC esplicito `; echo RC=$?` sui comandi il cui exit conta, e "esattamente N tondo ricorrente" = sospetta un cap)**.
-**W101 (pre-push fail-closed decapitato da sh -e, 2026-07-18: il gate path-aware documenta "classifier exit≠0 → FULL suite" ma l'assegnazione nuda VERDICT_OUTPUT="$(...)" sotto lo sh -e del wrapper husky abortisce PRIMA del check → ogni worktree su branch senza scripts/prepush_classify.py (pre 2026-07-17) hard-blocca il push col codice 2 invece di degradare alla suite piena; il ramo di fallback esisteva, non poteva scattare. Antidoto: cattura errexit-immune `|| VERDICT_RC=$?`+ tripwire test_prepush_failclosed.sh)**.
-**W104 (`redis-cli` esce 0 e mette `NOAUTH` su STDOUT, 2026-07-25: Redis guadagna una password e i ~10 call-site dell’albero cron-agent-python la ignorano — chi legge l’rc, o confronta lo stdout con `"1"`, prende il RIFIUTO per "chiave assente"/"comando riuscito". Due organi morti in silenzio: il dedup del log-anomaly-detector fail-open a **288 Telegram/giorno** (chiavi `bz:log-anomaly:*` su Redis: **0**, non ne aveva mai scritta una) per tre traceback del **5 luglio** in job SANI — li teneva "freschi" un secondo difetto indipendente, `_line_is_fresh` che dichiara fresca ogni riga senza timestamp, e la riga matchata è letteralmente `Traceback (most recent call last):`, che un timestamp non ce l’ha mai; e l’event-bus `cron:reports` fermo **26.5 giorni** mentre `_publish_redis_event`(con `check=False`) loggava `redis_event_published`**7957 volte** e `redis_publish_failed` **0**. Antidoto: giudica la REPLY (`^(NOAUTH|WRONGPASS|NOPERM|ERR|LOADING|BUSY|READONLY|…)`), mai l’exit code; auth via `REDISCLI_AUTH` e non `-a` (argv/`ps`, #4); freschezza log per POSIZIONE (eredita il timestamp di sopra); rifiuto LOGGATO. GOTCHA: il primo anticorpo scritto era un check sull’rc — **decorativo per costruzione**, la cura che si riammala della malattia che cura)**.
-**W101-recidiva-fly-backup (2026-07-27: `infra/scripts/fly-backup.sh` esegue Postgres poi Qdrant e riporta un PARTIAL nominando la fase caduta — ma le due invocazioni erano **pipeline nude** sotto `set -euo pipefail`, quindi al fallimento del PG bash abortiva sulla pipeline stessa: `PG_EXIT=${PIPESTATUS[0]}` non veniva MAI assegnato, **la Fase 2 non partiva** e il report PARTIAL era codice morto sull'unico percorso per cui esiste. `${PIPESTATUS[0]}` era già corretto sul pipe (W97): non arrivava a girare. **Misurato sull'artefatto, non ragionato**: il notturno qdrant manca per il 2026-07-26 — la notte del fallimento PG — ed è presente il 20-25 e il 27, quindi **W106 non fu "27h senza backup Postgres" ma senza Postgres E Qdrant**, e la seconda perdita era invisibile perché solo il primo aveva un guardiano. Trovata seguendo l'EXIT CODE in uscita dall'organo appena riparato ("il mio allarme arriva davvero fino a `cron-state.sh`?"), non cercando difetti. Antidoto: errexit disarmato attorno a ogni fase (`set +e`…`set -e`) e giudizio per codice CATTURATO, mai per essere sopravvissuti; corpus `scripts/test_fly_backup_phases.sh` con la clausola di **SIMMETRIA** — un fix che copre solo la fase che ti ha morso è mezzo fix. Gemello dello stesso giorno: `cron-state.sh`(27 job Pro, incl. il backup delle 03:00) scriveva ricevute e non parlava, mentre il gemello `cron-wrapper.sh` allarmava — 4 job seduti in un `failed` mai letto)**.
-**W107 (ho curato UN wrapper su CINQUE e ho chiamato chiusa la malattia — e la cura andava al più piccolo, 2026-07-28: il 27/7 do voce a `cron-state.sh`— scriveva ricevute e non allarmava — e mi fermo lì. Il mattino dopo, andando a chiedere «ha davvero sparato?», censisco i produttori leggendo il campo `source` nelle ricevute su Pro e ne trovo **cinque**, non uno: `cron-runner`36 ricevute ·`cron-state`28 ·`cron-wrapper`9 ·`launchagent-state-bridge`5 ·`openclaw-bridge`4. Quello curato **non era il più grande**: `cron-runner.sh`è invocato **30 volte** (25 crontab + 5 plist) contro le 27 di cron-state, e non nominava NESSUN gateway (0 occorrenze di `tg_notify|telegram|alert`). Esito: **4 ricevute cron-runner in stato failed**, di cui **due nelle 24h successive al fix** — `garuda_indexer` exit=1 il 27/07 20:36 e `run_ops_briefing` exit=1 il 27/07 00:00 — con **zero**`cron-fail:` da nessuna parte: 0 su 239 righe di archivio P0, 0 su 54 in pending. E non c'era una seconda via: il `cron_sensor` della Cell legge sì quelle ricevute, ma su una **whitelist di 9 job** (`fly_pg_backup`, `t4_monitor`, …) e per **staleness** (periodo scaduto), mai per uno `status` failed — nessuno dei 4 falliti vi compare. Curare un wrapper su cinque non taglia il rischio di un quinto: sposta soltanto QUALE job muore in silenzio. Antidoto di classe (la regola che avevo perfino citato — _pattern-fix = class-audit_): il censimento si fa sui **PRODUTTORI**, leggendo il campo `source` DENTRO le ricevute, mai contando i job o fidandosi del wrapper che ti ha morso; e la voce si prova eseguendola in un mondo finto (copia del wrapper in tmp + finto `tg_notify.py` accanto e la state-dir su tmp) — zero budget P0 speso, e distingue «non ha sparato» da «non è passato di lì». Corpus `scripts/test_cron_runner_alert.sh`: colpevolezza su **tutte e tre** le uscite (job fallito · script assente = armato-a-vuoto W81 · runner invocato senza argomenti, che non scrive nemmeno la ricevuta) + innocenza + fail-open provato due volte, mutation-verified (14/20 con la cura disattivata). **GOTCHA di consegna**: `~/scripts/cron-runner.sh` su Pro è un **file reale** (non symlink come cron-state) e byte-identico al repo — quindi il merge da solo lo lascia inerte, va ricopiato; su Mini è un **antenato di 10 righe** del 19/04 che fa solo `exec` e non scrive ricevuta alcuna, ma lì è **inerte davvero** (0 invocazioni in crontab, 0 ricevute) — la divergenza è reale, il rischio no. Nessuna delle due era dichiarata in `declared-pairs.json`: per questo il lint dava Mini `clean 96/96` con 123 righe di divergenza sotto. Coperte entrambe qui da **una** riga `machines: ["all"]`. **GOTCHA di misura**: quella dir **non è un registro di cron** — 231 file di cui solo **99** sono ricevute `.last.json`, il resto sono contatori (`codex_autofix_ci_count*<data>`) e archivi; una sonda che globba tutta la dir e legge l'assenza di `status` come fallimento riporta ~132 falliti dove sono **7**. **NON curato qui, misurato**: esiste un sesto wrapper, `wr2-cron-wrapper.sh`(14 job launchd), che non scrive ricevuta e non chiama il gateway — ma per disegno, si appoggia al `missed_runs_alerter`; se QUELLO sia armato non l'ho verificato, ed è una riga a ledger, non una cura da infilare qui. **E la trappola finale è stata mia**: il primo censimento dava a `cron-wrapper`23 invocazioni contro 9 ricevute, uno scarto che non esiste — un grep su `cron-wrapper.sh` cattura anche `wr2-cron-wrapper.sh`. Ancorato il basename, il conto è 9 su 9. Il probe che misura una malattia può averla)** ·
-**W108 (19 wrapper su 20 falliscono muti, per DUE cause indipendenti — e il ventesimo riporta il guasto sull'interprete che si è appena rotto, 2026-07-28: nei venti `apps/evaluator/nlm_deep_research/scripts/run*_.sh`, **sedici** avevano la cattura `EXIT_CODE=${PIPESTATUS[0]}` dopo una pipeline NUDA sotto `set -euo pipefail` (errexit aborta SULLA pipeline: cattura, allarme ed `exit` sono codice morto sull'unico percorso per cui esistono — W101 alla quarta generazione, stavolta ×16), **diciotto** avevano il curl dentro `if [ -n "$TELEGRAM_BOT_TOKEN" ] … >/dev/null 2>&1 || true`(nell'ambiente povero di token del cron non fa nulla **e non lascia traccia di non aver fatto nulla**), e **uno** moriva PRIMA del job su `source <assente> || true`— sotto `set -e` bash tratta il `source` fallito come **special builtin** ed ESCE, il `||` non gira mai (bash 3.2.57; 16 call-site nel repo, 15 con guardia `[ -f ]`, 1 no). **La forma nuova è il ventesimo**: `run_nb5_t4_monitor.sh` era già sul gateway e comunque muto, perché invocava l'allarme con `python3` risolto **via PATH dopo aver sorgentato il venv** — il segnalatore gira sull'interprete la cui corruzione è tra le cause principali del fallimento che deve riportare: **l'allarme condivide il modo di guasto della cosa che riporta**. Antidoto: interprete ASSOLUTO nel gateway, `rc` sempre loggato, `set +e`…`set -e` attorno a ogni job, `[ -f X ] && source X`. GOTCHA: in locale passava per **accidente dell'ordine del PATH** (`/opt/homebrew/bin/python3` schermava il venv rotto) — la macchina di sviluppo era strutturalmente incapace di riprodurre il rosso, e il difetto è emerso solo dopo aver ARMATO il test su ogni PR, perché prima girava solo nel `scripts/tests/ sweep`, `continue-on-error` e in nessun required. GOTCHA-2: il primo mondo finto, troppo povero, riportò 17/20 misurando la propria povertà — quasi tutti morivano al proprio «No virtualenv found» prima di arrivare al job)** ·
-**W110 (un residuo non tracciato nel checkout era un organo che pubblicava il battito dell'ORGANO SBAGLIATO, 2026-07-30: in bash `local X` su un nome che il CHIAMANTE ha dichiarato `readonly` fallisce **lasciando visibile il valore del chiamante**, e il wrapper `( … ) || :` fa proseguire con dati altrui — `readonly _organism_hb_id=x` prima di una chiamata per `probe.real` pubblica `x.json`; con `_organism_hb_path` ombreggiato la scrittura va su un path relativo del chiamante, quindi **il sidecar dell'organo vero non compare mai e un organo VIVO invecchia in `dead`** — e la directory rimasta fa poi riuscire `mv` inghiottendo il file, exit 0. Il test passava da settimane: asserisce solo che il chiamante è SOPRAVVISSUTO. Antidoto: provare che il legame ha preso su OGNI local derivata (anche le tardive), rifiutare una destinazione-directory, e un test che esegue il corpus in un cwd temporaneo pretendendo zero residui (W96). Parenti nella stessa tornata: il validatore d'orologio controllava i CAMPI e non le DATE, e il test di vocabolario leggeva le CONDIZIONI del classificatore e non i suoi ESITI)** ·
-**W116 (l'allarme suonava sull'esito GIUSTO, e la guardia che doveva ripararlo era IRRAGGIUNGIBILE, 2026-08-05: il mail_loop vede 12 messaggi, li declina tutti, li lascia tutti in inbox — l'esito voluto — e spara `degraded=true` + P0 con la riga `routed=0 drafted=0 draft_failures=0 missing_folders=[] errors=0`, che non nomina nessuna causa perché non ce n'era. **Un allarme che suona sull'esito corretto è un allarme che nessuno legge**, ed è così che si perde il prossimo vero. La prima cura (`routed == 0 and unroutable < seen`) passava colpevolezza e innocenza ma era **codice morto**: con `routed == 0` e senza errori/cartelle-mancanti ogni messaggio visto è già `unroutable`, quindi la condizione è falsa per costruzione — cancellare l'INTERO ramo non rendeva rosso niente. **Un mutante che sopravvive non è sempre un test mancante: a volte è una guardia che non poteva scattare.** E la sua prova di colpevolezza arrivava a `degraded is True` dal ramo `errors or missing_folders` due righe sopra: premessa vacua, asserzione verde. La cura-della-cura (una legge di conservazione `unaccounted = seen - routed - left_in_inbox - message_errors`) poteva leggere **−1**, riprodotto dal vivo: `routed += 1` stava prima della bozza, e un crash non-`DraftUnavailable` risaliva al gestore per-messaggio che aggiungeva `message_errors` a un messaggio già contato instradato. **Una somma che cancella è più silenziosa di un ramo morto** — quel −1 assorbe un +1 autentico nello stesso run e la legge riporta in pari nascondendo due difetti. Antidoto: superficie più piccola, non controllo più grande — `_handle_one` restituisce un finale e non tocca i contatori, il chiamante ne incrementa uno solo e **senza `else`**, così un finale non mappato cade in `unaccounted`; e il verdetto NOMINA la propria causa (`unaccounted` è l'unico termine di `degraded` senza un secondo sintomo). Quarto strato, linea W113: il commit che diceva «ho corretto le sopra-affermazioni» ne conteneva una nuova — «un solo sito di incremento per contatore», mentre `message_errors` ne ha due; la proprietà vera è **un incremento per MESSAGGIO**. **Quinto strato, e chiude il cerchio**: la riga di ledger aperta CHIUDENDO questa cicatrice accusava il ponte di citare W110/W111/W112 senza corpo — falso, i corpi sono lì nella forma `### 🐛 W110 (P1 STRUCTURAL): …`, e la mia regex pretendeva solo spazi tra i cancelletti e il numero. Il controllo d'innocenza non ha salvato perché era **omogeneo**: usava `W116`, appena scritto da me nella forma che la sonda si aspettava. **Un controllo d'innocenza costruito con l'oggetto che hai appena creato conferma la tua convenzione, non la realtà.** Sbagliato per FORMA nel file che contiene W112)** ·
-**W118 (un required `cancelled` non è un required `failure`, e non compare in nessuna ricerca di rossi — 2026-08-18: repo fermo **11 ore**, PR verdi espulse dalla coda senza un solo check da indicare. Metà-#2 della doppia causa: `apt-get` non ha un timeout SUO, quindi lo step `Require zsh` di organ-conformance ha mangiato **10m15s due volte** contro un `timeout-minutes: 10` (lo step da solo 9m37s, gli altri fra 1s e 28s, durate storiche 31s-1m11s) e GitHub riporta il kill da budget come `cancelled` — required non-verde, nessuna causa nominata, ogni sweep «cerca i falliti» torna pulito e CONFERMA che non c'è niente. Stesso silenzio prodotto dal fail-fast di matrix, che cancella la gemella quando la gemella è il required. Antidoto: `scripts/ci/apt_install.sh` — limiti propri di apt (`Acquire::*::Timeout`, `Retries`, `DPkg::Lock::Timeout`) + tetto 120s + fail-closed su `command -v`, su **tutte** le 7 invocazioni dei 6 workflow (class-audit W107), corpus armato nel required `antidotes` e non nello sweep continue-on-error (W108). GOTCHA: la mia prima cura era 3 tentativi × 180s = **9 minuti dentro un budget di 10** — non evita di esaurirlo, lo garantisce; il retry è il rimedio che SEMBRA giusto quando la causa è «lento». Riconoscimento precoce: verde che non si mergia e nessun rosso ⇒ non cercare il rosso, **cerca il cancelled**)** ·
-**W120 (la sentinella di QUESTA famiglia non era armata, e il suo silenzio si leggeva come buona notizia — 2026-08-21: `pending_arms_report.py --json` emette ogni entry con la chiave **`class`**; `organism_digest.pending_arms_overdue()` leggeva **`classification`**, che non è mai stata emessa. Quindi `e.get(...)` tornava sempre `None`, il filtro era sempre vuoto, e il ramo `if overdue:` non è scattato **una sola volta** — codice morto sull'unico percorso per cui esiste (W116) sopra un ledger che porta **280 TECH-DEBT overdue su 441 aperte**. Nessun errore, nessun rosso: il digest di OGNI sessione semplicemente non diceva nulla sugli armamenti sospesi, **e il nulla si legge come «non c'è niente di scaduto»**. Un allarme che non suona è indistinguibile da un mondo sano — questa è la firma della famiglia #2 applicata al suo stesso guardiano. Trovata inseguendo un sintomo DIVERSO (`reporter failed (TimeoutExpired)`, che è reale, transitorio e fail-visible: il reporter misurato gira in 0,24s contro un budget di 4s): il timeout era rumore, il difetto vero stava sotto e non aveva sintomo. Antidoto: il CONTEGGIO si prende da `counts.tech_debt_overdue`, che il reporter calcola da sé — così una futura deriva di vocabolario per-entry costa il dettaglio del top-artifact ma **non può più azzerare l'allarme**; e se `counts` ed `entries` si contraddicono il digest lo DICE (`key drift?`) invece di tacere. Corpus `test_organism_digest_pending_arms.py`, colpevolezza + innocenza + scar-pin sul vecchio nome, mutation-verified su 3 mutanti. Parente diretta di W114: due lati che non hanno mai concordato il vocabolario, e nessuno dei due file era sbagliato da solo. **GOTCHA, e mi ha morso mentre scrivevo QUESTA riga**: la prima stesura diceva `262 su 407` — numeri veri, misurati, e presi dal **main checkout di M5, 251 commit indietro**, il cui ledger è un altro file (`#4167` contro `#4434`, 952 righe contro 1054). Nello stesso PR body citavo `280` come PROVE-LIVE, misurato nel worktree: chi legge conclude che la cura ha cambiato il conteggio, mentre sono due ledger diversi. È **W106b applicata alla prosa** — il checkout è un proxy di «cosa dice il repo» e mente ogni volta che è indietro, anche quando lo interroghi solo per scriverci sopra un numero. Il refuter ha visto lo scarto e l'ha attribuito a deriva temporale del ledger: plausibile e **falso**, e l'ho scoperto solo ri-misurando invece di accettare la spiegazione (W113 — anche la correzione mente). Corollario: un numero pubblicato va misurato dove il codice vive, non dove ti trovi. **E la sonda che l'ha risolto era essa stessa rotta al primo colpo**: un `cd` nel primo ramo di un ciclo è persistito nel secondo, quindi ho misurato due volte lo stesso checkout e ne ho ricavato «identici» — la conferma più tranquillizzante possibile, e completamente vuota)** ·
-**→ dettaglio:** cicatrix-scars.md (W70/W84/W110/W118) + archive (W34/W32/W64/W69/W71/W74/503) + inline-only (W87/W97/W104/W108/W116/W120) · `scar query "esiste non armato"`
+**MEMBRI:** W74 (reflexion cron-theater) · W69 (required-checks disarmati) · W64/W34 (asyncpg
+silent-death) · W71 (verify_mcp_integrity gira e mente) · W32 (pg-bridge morto silenzioso) · 503-RAG
+(health=200, worker stoppato) · W70 (sentinel log_tail cieco) · W81-armamento-sospeso (~20 cron green
+storico exit 127/78) · W81b-dlq-blind-heal-loop (14 DLQ corpses mai puliti) · W84-tcc-dead (launchd
+perde grant TCC) · W84-tccutil-recidiva (`tccutil reset All` scambiato per read-only) · W87 (Postgres
+access-wall, dev identity su proxy PROD) · W97 (display-cap `[:40]` letto come completo) · W98
+(dependabot bypassa `!=` anti-malware) · W101 (pre-push fail-closed decapitato da `sh -e`) ·
+W101-recidiva-fly-backup (PARTIAL: Fase 2 mai parte) · W104 (`redis-cli` esce 0 con NOAUTH su stdout) ·
+W107 (curato 1 wrapper su 5) · W108 (19/20 cron muti, 2 cause) · W110 (heartbeat sull'organo sbagliato)
+· W116 (allarme su esito giusto, cura codice morto) · W118 (11h fermo, nessun check rosso) · W120
+(sentinella della famiglia stessa disarmata).
+**→ dettaglio:** cicatrix-scars.md (resto) + archive (W34/W32/W64/W69/W71/W74/503) · `scar query "esiste non armato"`
 
 ---
 
-## #3 — Guard-over-match (substring trapping) — **E il gemello UNDER-match (W82)**
+## #3 — Guard-over-match (substring trapping) — gemello UNDER-match (W82)
 
-**MALATTIA:** una guardia decide su **substring testuale**, non su entità/intento. Due segni opposti, stessa
-radice: **OVER-match** = layer anti-allucinazione (`_guard_*`) con trigger a sotto-stringa che clobberano
-risposte CORRETTE (match troppo ampio / escape-clause irraggiungibile). **UNDER-match (W82)** = guardia che
-sorveglia una frase-letterale e lascia passare il FATTO marcio se riformulato, in tabella, o in altra lingua →
-resta VERDE mentre il sito mente. Falso-positivo (over) e falso-negativo (under) sono lo stesso bug a segno
-invertito: il match è sulla forma, non sul fatto.
+**MALATTIA:** guardia decide su substring testuale, non entità/intento. OVER-match = trigger troppo
+ampio clobbera risposte corrette. UNDER-match = sorveglia una frase-letterale, il fatto marcio
+riformulato/tabulato/altra-lingua sfugge, resta verde.
 
-**SEGNALE-PRECOCE:** guardia definita con `if "keyword" in testo:` o `.includes(needle)` (substring, non
-word-boundary né entità); escape-clause che tiene/scusa solo su UNA frase esatta (gating irraggiungibile o
-lista-di-frasi fragile); trigger corti (`lease`/`ota`/`rent`/`tax`) che matchano dentro parole più lunghe;
-**[under]** un guardiano di freschezza/integrità che cerca `stale_pattern` literal e si dichiara verde mentre
-lo stesso codice/norma è marcio altrove; scope che salta strutturalmente una superficie ("translations audited
-separately" = audited mai).
+**SEGNALE-PRECOCE:** `if "keyword" in testo` (non word-boundary); escape-clause su UNA frase esatta;
+trigger corti (`lease`/`429`) che matchano dentro token più lunghi; scope che salta una superficie
+"per dopo".
 
-**ANTIDOTO:** nessuna guardia mergiata senza un test di **innocenza** (NON scatta su un caso legittimo
-limitrofo) **E** di colpevolezza. Match su **entità/intento**, mai bare-substring: word-boundary
-(`_contains_any_word`) o intento compositivo [over]; **fact-key strutturato** (codice KBLI / sigla visto /
-numero-norma, language-invariant) con anchor tolleranti a contesto-tabella [under]. Escape negative-gating
-(default passthrough). Nessuna superficie esclusa "per dopo" senza un secondo guardiano che la copra.
-**→ ESEGUIBILE (IMMUNE FORGE 2026-07-05, #1973 merged 07-06):** `infra/guard-conformance/`
-(registry.json + check_guard_conformance.py + CI `guard-conformance.yml`): guardia censita senza test di
-colpevolezza E innocenza = FAIL; anti-phantom W65 sui riferimenti; armed-check W81 (il workflow esegue
-direttamente W83/W84, prima non eseguiti da nessun workflow); W85 pinned da `infra/claude-hooks/test_w85_stash_readonly.py`.
+**ANTIDOTO:** nessuna guardia senza test di innocenza E colpevolezza, su entità/intento mai bare-substring.
+**→ ESEGUIBILE:** `infra/guard-conformance/` — censita senza guilt+innocence = FAIL CI.
 
-**MEMBRI:** W68 (villa-leasehold zoning) · W72 (B211/KITAS deflesso) · W73 (5 over-match in un colpo +
-asse linguistico) · W77 (wa-mirror, stessa classe) · W68b (`_guard_property_zoning` "lease") ·
-**W82 (UNDER-match — content-freshness-sentinel: substring + cieco alle traduzioni → fatto stale resta verde)** ·
-**W83 (OVER-match su guard di COMANDO — worktree-isolation hook: `ssh host git pull` / `cd <wt> && git` / git-verb-in-quote falsi-block; fix = `_strip_noise` pre-scan + dispatcher segment-anchored)** ·
-**W84 (OVER-match — lo `_strip_noise` di W83 usava `[^q]*` che matcha i newline → quota orfana cross-line (apostrofo IT / `ssh '...'`) fonde i comandi → phantom write-target; fix = char-class senza `\n` + classifier scarta `\`/`|`. Un fix che partorisce il bug gemello)** ·
-**W85 (OVER-match — `BLOCKED_SUBCMD_RE` ha `stash` nudo → `git stash list`/`show` read-only bloccati come `stash push`/`pop`; fix = enumerare i mutanti `stash (push|pop|apply|drop|...)` o allow-list `stash (list|show)`. TERZO over-match consecutivo della STESSA guardia in 2 giorni — la #3 sul worktree-isolation non si chiude con un fix puntuale)** ·
-**W91 (OVER-match — l'ECCEZIONE ff-only-pull di #2022 usava `"--ff-only" in cmd_scan`: un flag citato in un COMMENTO shell apre l'eccezione per un pull NUDO — `_strip_noise` non copre i commenti; fix = `FFONLY_PULL_SEGMENT_RE` ancorata al segmento pull, stop a `|;&#\n`. QUARTO over-match della stessa guardia: anche un'eccezione è una guardia a segno invertito, vuole guilt+innocence propri)** ·
-**W92 (OVER-match — il canale FILE-WRITE dello stesso hook risolve i path RELATIVI dentro quote ssh contro il cwd LOCALE di sessione → `ssh mini '… cp X scripts/f.py'` bloccato come write nel main checkout M5; né pre-cd né cd-in-comando aiutano (usa il cwd di SESSIONE); anche l'append heredoc /scar è bloccato. Workaround: path assoluti remoti / path assoluto in `.worktrees/`. QUINTO over-match: il fix W83 coprì solo il dispatcher git-verb, non il classificatore write-target)**.
-**W94 (UNDER-match — l'esenzione remote-dispatch del worktree-isolation era WHOLE-COMMAND su entrambi i canali: `ssh mini hostname && cp /tmp/x scripts/f.py` passava — il cp locale scrive su main sotto copertura dell'ssh; gemello latente W83 sul canale git. Fix = esenzione segment-scoped (`_segments()` + verdetto per-posizione) + `_git_verb_verdict()` puro, corpus guilt+innocence 9/9. SESTA istanza della stessa guardia: un'esenzione è una guardia a segno invertito, e il fix di un over-match partorisce l'under-match gemello se il corpus non copre la COMPOSIZIONE)**.
-**W99 (check≠action FUORI dalle guardie regex — composer.\_normalize_skeleton verifica `href="_base.css"` loose ma sostituisce sul pattern strict con `>`: skeleton self-closing `/>` passano il check e saltano l'inject di `_fonts.css` → 6/9 slide dipinte in font di sistema, incluse 4/9 di un carosello GIÀ PUBBLICATO; il renderer lo SAPEVA (`montserrat=false`) e lo declassava a logger.warning (cross-famiglia #2). Fix = anchor su `<head>` + `n==0` ValueError + hard-gate BRAND FONT NOT LOADED + sweep test su tutta la layout library. OTTAVA istanza: la firma è ogni coppia `if X in s: s.replace(Y,…)` con X≠Y)** ·
-**W95 (OVER + UNDER sulla STESSA RIGA — l'anti-reward-hacking linter, 2026-07-12: `lint_test_reward_hacking.py:150` filtra i test su `name.startswith("test_")` senza guardare i DECORATORI → boccia `test_client`, che è una `@pytest.fixture` e non ha dovere di asserire (over-match: la forma, non l'entità — ha bloccato un commit legittimo); e cammina solo su `ast.FunctionDef`, MAI su `AsyncFunctionDef` → cieco alla maggioranza dei test di questo repo, che sono `async def` (under-match: **297 RH005 latenti** misurati live). Fix: `_is_fixture()` su decoratore + corpus guilt(un test senza assert ACCANTO a una fixture scatta ancora)+innocence(la fixture no). Il ramo async DICHIARATO e non attivato — 297 findings non si triagiano di straforo. SETTIMA istanza: stavolta la guardia difettosa è il **guardiano dei test stessi**)** ·
-**W105 (OVER-match + il suo gemello UNDER, 2026-07-26 — OTTAVA istanza sulla stessa guardia: `_resolve_under_worktrees` TRONCAVA il verdetto al primo segmento sotto `.worktrees/` (`return Path(wt_root, rel.parts[0])`), quindi rimuovere `.worktrees/<outer>/.worktrees/<inner>` veniva rifiutato citando nome e sporcizia di `<outer>` — un worktree annidato HA `<outer>` come prefisso ma NON È `<outer>`: forma del path, non entità nominata. Il pericolo oltre l'attrito: l'altra via d'uscita che il messaggio suggerisce è `AGENT_WORKTREE_ENFORCEMENT=false`, che disarma tutto — un over-match abbastanza fastidioso trasforma una #3 in una #2. Il fix ovvio da solo avrebbe partorito l'UNDER gemello (W94): `.worktrees/` è gitignorato, quindi `git status` in un worktree ESTERNO è cieco a uno annidato → `rm -rf <outer>` con `<inner>` sporco legge CLEAN e il lavoro muore in silenzio. Cura in due tempi: risolvere al worktree PIÙ INTERNO che `git worktree list` conosce (troncatura solo come fallback — è anche ciò che àncora correttamente `rm -rf <wt>/subdir`, protezione W80), e giudicare OGNI VITTIMA della rimozione (`_worktrees_strictly_inside`), non solo il token scritto. Metà della cura era a monte ed è **CHIUSA** (#3197, merge `3fbef8c085`, 2026-07-26): `agent_start.py` non deriva più `REPO_ROOT` da `__file__` — che puntava `WORKTREES_DIR` a `<worktree>/.worktrees` e annidava senza rifiuto (W63), e la copia SBAGLIATA era quella comoda, perché ogni lane fa `cd` nel worktree e `python scripts/agent_start.py` lì è il quick-start documentato — ma da `git rev-parse --git-common-dir`, che risponde col main checkout anche da dentro un worktree linkato. Stessa derivazione che l'hook di isolamento già usava (`infra/claude-hooks/worktree_isolation.py::_derive_repo_root`): due strumenti che devono concordare su «dov'è il main» non inventano due risposte. Signature-guarded (una root senza `scripts/agent_start.py` è rifiutata, così un cwd finito in un ALTRO repo non ri-punta il broker) con fallback allo script-relative se git manca, e il rifiuto di annidamento resta il backstop che tiene onesto il fallback. **ROUND 2 sullo stesso diff, stesso refuter: REFUTED, altre 5 istanze della STESSA lezione nello stesso file** — registro morto che fa risorgere la troncatura (l'outer pulito fa passare l'inner sporco), `rm -rf <symlink>/*`, `/*/ ` scartato come metacarattere, un worktree NOMINATO `.worktrees` giudicato per i figli, e `git -C <p> status` che risponde per il checkout che RACCHIUDE `<p>` (una dir ordinaria sotto `.worktrees/` bloccata per la sporcizia del MAIN — difetto pre-esistente, non regressione). La morale della morale: «l'entità, non la forma» non si applica una volta e via — va ri-cercata in OGNI predicato della guardia, perché ogni predicato è un posto dove una forma può mentire su un'entità)** ·
-**W109 (OVER-match FUORI dalle regex: la guardia giudica per COLLOCAZIONE invece che per ENTITÀ, 2026-07-29 — il gate che ripara i report del nb-curator perché passino il required R1 prepende `adversarial_review: exempt-machine-report # … (generated artifact, not a research deliverable)`. Sulla sua directory di output fa la cosa giusta 15 volte su 16: la sedicesima è `2026-05-28-nb3-kbli-corrections.md`, un report di correzione KBLI 2025 verificato su Peraturan BPS 7/2025 (623pp letta direttamente), con `sources:`, `discovered_by:` e una riga «Decisione → operatore». Ha frontmatter senza la chiave R1, cioè ESATTAMENTE la forma che `--fix` riscrive: il gate gli avrebbe scritto dentro che non è un deliverable, e il required R1 sarebbe passato **su quell'affermazione falsa**. L'esenzione non è una formalità, è un'ASSERZIONE sul documento. Antidoto: rifiutare (exit 4, file intatto) ogni documento il cui frontmatter dichiari `sources`/`client_case`/`discovered_by` — le chiavi che CLAUDE.md §15 rende obbligatorie per un deliverable e che uno snapshot macchina non ha mai; limite DICHIARATO nel codice (vede solo chi HA frontmatter). Corollario di misura: contare i file da riparare con `head -1 | grep '^---$'` ne dà 10, il gate ne trova 11 — la prima riga è un proxy, la dichiarazione è l'entità)** ·
-**W112 (il FORMATTATORE è uno scrittore che nessuno controlla, e giudica per FORMA, 2026-07-30: dentro i paragrafi lunghi di `.claude/rules/cicatrix-superscar.md` Prettier legge testo LETTERALE come delimitatori di enfasi e li SCAMBIA — `bz:log-anomaly:*` diventa `bz:log-anomaly:_` (un glob di chiave Redis ridotto a un underscore) e `_line_is_fresh` / `_publish_redis_event` perdono l'underscore iniziale a favore di un `*`: chi greppa quei nomi non trova NIENTE. Più 68 spazi cancellati accanto agli inline-code (`redis-cli`esce 0 e mette`NOAUTH`su STDOUT). E non è danno storico, è **ARMATO**: scrivere la prosa CORRETTA fa fallire `prettier --check` (RC 1) su righe che prima accettava — inclusa una che questo branch non ha autorato — e `--write` la ri-rompe, quindi la prosa giusta non era committabile. Il file è iniettato nel context di OGNI sessione ed è greppato da `scar query`, cioè il formattatore aveva autorità sul CONTENUTO di un record di cicatrice. Prova che è il formattatore e non un errore d'autore: lo STESSO record W104 vive anche in `cicatrix-scars.md`, che è prettier-clean e porta i token INTATTI — solo la copia nel ponte è marcia. **Un record che esiste due volte è il proprio tripwire.** Cura: `.prettierignore` sui tre file cicatrix (`prettier --file-info` ora risponde `"ignored": true`) + restauro dei token dai corpi, che sono il riferimento. GOTCHA: la mia stessa regex di rilevamento ha over-matchato `> _Nota cross-famiglia:_`, che è enfasi italica legittima — la sonda che misura una malattia può averla (W107), e per questo ogni candidato va letto IN CONTESTO prima di "restaurarlo")** ·
-**W115 (la regola stava nel commento e non era armata; poi la cura, messa DOPO la scelta del vincitore, non filtrava — metteva il veto, 2026-08-05: il router del `mail_loop` instradava **6 messaggi su 7 con un solo marcatore debole** (cinque `tax`, uno `meeting`), zero strumenti decisivi — la posta di un cliente in `_Tax` per il piè di pagina di un fornitore. Il divieto era **già scritto** in `_DECISIVE` («nessun gemello nel linguaggio ordinario, quindi un colpo solo non è coincidenza») e mai applicato: un commento che enuncia un invariante non lo applica. Ma il vero insegnamento è la cura: controllare «vincitore tutto-debole → UNKNOWN» **dopo** aver scelto il vincitore faceva collassare l'intero verdetto — «work permit … could we set a meeting or an appointment» dà ADMIN 2-1 su due deboli, e il veto buttava via `work permit`, l'unico marcatore giusto. **Un filtro che gira dopo la selezione non filtra: mette il veto** — la corsia debole deve FARSI DA PARTE. Terzo strato: pretendere corroborazione per i codici corti (`c1`,`c2`,`d12` — a Bali anche indirizzi, «Villa C2») sul percorso decisivo ha **spostato** il buco, non chiuso: il token respinto lì vinceva dal percorso a conteggio. Due percorsi che decidono la stessa cosa devono porre la STESSA domanda (`_lane_is_credible`, interrogato da entrambi, prima del ranking). Misurato: 71 instradamenti su 106 contro i 68 della prima stesura — **la correzione ha ALZATO il recall mentre chiudeva i buchi**. GOTCHA: **il mutation testing non poteva trovarlo per costruzione** — una mutation prova che il TUO corpus si accorge se il TUO codice cambia, non che la regola sia nel posto giusto; è servito un seat esterno con l'ordine di refutare, che ha portato un caso e non un'opinione. GOTCHA-2: il corpus generato è cieco agli OMOGRAFI (`_landmines()` tiene solo sotto-stringhe strette, quindi un marcatore che È una parola intera — `visto`/«ho visto», `tanah`/Tanah Lot, `imposte`/persiane — è fuori scansione per costruzione, ed è esattamente la classe che serviva). GOTCHA-3: mentre curavo due log che stampavano l'oggetto, la falla più grossa era altrove — `draft.py` passava il messaggio INTERO del cliente come `claude -p <prompt>`, cioè sulla riga di comando, leggibile da `ps` (299 processi di altri utenti su questa macchina); quando curi una classe chiedi dove ALTRO passa lo stesso dato, non solo dove passa nello stesso modo)** ·
-**W117 (UNDER-match al grado zero: la guardia non aveva un buco, NON POTEVA VEDERE il gesto — NONA istanza sulla stessa guardia, 2026-08-10: `ssh pro 'cd ~/nuzantara && git reset --hard origin/main'` arrivava a `_git_verb_verdict()` come `no_blocked_verb`, perché `_strip_noise()` svuota il testo tra apici PER DISEGNO (W83, così `grep "git pull"` non è un comando) — il payload spariva prima della scansione e **l'esenzione remote-dispatch non veniva nemmeno consultata**. La prima stesura della cura stava dentro quel ramo: codice morto sull'unico percorso per cui esiste (W116), scoperto perché ho MISURATO `_strip_noise` sul comando vero prima di scrivere, invece di ragionare su quale ramo «doveva» essere. Il gesto era mio: riallineando il checkout main di Pro ho scartato 159 entry dell'indice di dedup pubblicazioni — perderlo **RI-PUBBLICA articoli già pubblicati** — e 24 escalation aperte. L'organismo sapeva già: `runtime_state_allowlist.json` nomina quei file e `scripts/pro/pro-git-pull.sh` esiste per riallineare tenendoli, col suo commento che scrive verbatim la conseguenza che ho prodotto. La conoscenza c'era, l'enforcement no. Recupero da un SECONDO domicilio (run record della pipeline · `escalations.sqlite` con `raw_json`), mai da git. Cura: canale NUOVO che rilegge il payload ssh (`_ssh_payloads`) e poi gli applica `_strip_noise` DENTRO (un verbo citato resta innocente); solo i verbi che SCARTANO contenuto non committato; fail-closed se il payload non nomina un path; `ssh pro git pull` resta esente. GOTCHA: l'esenzione `.worktrees` vive in `_names_main_checkout` e in nessun altro posto — un mutante è sopravvissuto contro una seconda copia, e non era un test mancante ma una **guardia ridondante che era anche un under-match** (`cd <worktree> && git -C ~/nuzantara reset --hard` nomina entrambi e il corto-circuito passava il reset sul main); e giudica per COMPONENTE, non basename, perché un reset in `~/nuzantara/apps` scarta comunque tutto il worktree)** ·
-**W119 (2026-08-18, DECIMA istanza sulla stessa guardia — non substring/forma stavolta, ma CONFINE DI ISTRUZIONE mancante: `RM_RF_RE`/`WT_REMOVE_GIT_RE`/`CPMV_RE` raccolgono gli argomenti con `(?:\s+TOKEN)+`, e `\s` matcha il newline — una Bash tool call multi-riga è più istruzioni separate da un a-capo, che bash tratta come `;`, ma queste regex no: il gruppo di cattura risucchiava token OLTRE la riga `rm`/`cp`/`git worktree remove`, attraverso ogni riga successiva, fino al primo `|;&)`. Incidente vissuto: `rm -f "$VAR/pkg"` a riga 1 (innocuo, sotto `node_modules/` gitignored, noise-stripped a `rm -f ""`) e un `cd /repo/.worktrees/<questo-worktree>/apps/mouth` scollegato a riga 6 — quel target del `cd` è finito risucchiato come argomento di `rm`, bloccando l'intero comando come "rimozione worktree sporco non armato". Cura: separatore inter-token confinato a `[ \t]+` (mai `\n`) nei tre gruppi ripetuti — la stessa logica di scoping-per-riga che W84 già impose allo strip delle quote. GOTCHA: la MIA prima diagnosi riportata a un peer ("giudica per forma del path, non entità" — inquadratura W109-style) era sbagliata; la misura diretta (ripassare il comando vero per la regex) ha rivelato un meccanismo di parsing cross-linea completamente diverso — un'inquadratura sbagliata per la cura non avrebbe toccato il bug reale)** ·
-**→ dettaglio:** cicatrix-scars.md (W73/W82/W83/W84/W85/W92/W112/W117/W119) + archive (W68/W72) + inline-only (W91/W94/W95/W99/W105/W109/W115) · `scar query "guard over-match"`
-**PR-1 landing 2026-08-10 (no W-number, corpo in PENDING-ARMS.md "closed 2026-08-10 ... landing session"):** `git branch -D $(...)` da dentro un worktree ha blast radius repo-wide (branch refs sono condivisi) ma la worktree-isolation hook giudica solo per cwd/target — un'op distruttiva repo-wide da un cwd non-main passa indenne. NONA istanza della classe "la guardia giudica la forma/collocazione, non la vera portata dell'operazione".
+**MEMBRI:** W68 (villa-leasehold zoning) · W72 (B211/KITAS deflesso) · W73 (5 over-match in un colpo) ·
+W77 (wa-mirror, asse linguistico) · W68b (variante di W68) · W82 (freshness-sentinel cieco alle
+traduzioni) · W83 (3 falsi BLOCK ssh/cd/quote) · W84 (`[^q]*` matcha newline, fonde comandi cross-line)
+· W85 (`stash` nudo blocca anche `list`/`show`) · W91 (flag in un commento apre l'eccezione) · W92
+(path relativo in quote ssh vs cwd sessione) · W94 (esenzione remote-dispatch WHOLE-COMMAND) · W95
+(linter reward-hacking blocca una fixture, cieco ad `async def`) · W99 (skeleton self-closing salta
+font-inject) · W105 (troncatura primo segmento `.worktrees/`) · W109 (esenzione per collocazione non
+contenuto) · W112 (Prettier riscrive i propri record di cicatrice) · W115 (veto post-selezione, non
+filtro pre) · W117 (`_strip_noise` svuota payload prima dell'esenzione) · W119 (`\s` separatore
+attraversa il newline).
+**→ dettaglio:** cicatrix-scars.md (resto) + archive (W68/W72) · `scar query "guard over-match"`
+**PR-1 landing (no W-number, corpo in `PENDING-ARMS.md`):** `git branch -D` da worktree ha blast radius repo-wide ma la guardia giudica solo cwd/target.
 
 ---
 
 ## #4 — Secret in the clear (world-readable credentials)
 
-**MALATTIA:** segreti di produzione (DB password, API key) esposti sul filesystem con permessi larghi,
-bypassando il secret-manager della piattaforma (Fly secrets). Anche i `.bak` ereditano l'esposizione.
+**MALATTIA:** segreti prod (DB password, API key) esposti sul filesystem con permessi larghi,
+bypassando Fly secrets. `.bak` eredita l'esposizione.
 
-**SEGNALE-PRECOCE:** `cat`/`echo` di file con chiavi su ssh (finisce nel transcript); backup `.bak`
-creati senza chmod restrittivo; `.env`/`.plist` con umask di default (0644/0444); un secret sullo
-stesso stdin che `bash -s` consuma come script (W75).
+**SEGNALE-PRECOCE:** `cat`/`echo` di file-chiave su ssh; backup `.bak` senza chmod; secret sullo stesso
+stdin che `bash -s` consuma.
 
-**ANTIDOTO:** enforcing `chmod 0600` su tutta la famiglia di dotfiles (live + `.bak*`); MAI `cat` di un
-file-secret in diagnosi (leggi via codice/log/DB); minimizza la persistenza del secret sul FS locale;
-rotazione se un valore è stato world-readable storicamente.
-**→ ESEGUIBILE (IMMUNE FORGE 2026-07-05, #1971):** `scripts/secrets_permissions_audit.py` — match per
-NOME/percorso (mai apre contenuti), `.bak*` eredita la sensibilità della base, `--fix` chmod 0600 con
-re-verify, blind-scan guard exit 2 (0 file attraversati ≠ pulito, W84); primo sweep Mini: 14 file stretti.
+**ANTIDOTO:** `chmod 0600` su dotfiles (live + `.bak*`); mai `cat` di un secret in diagnosi; rotazione
+se world-readable storicamente.
+**→ ESEGUIBILE:** `scripts/secrets_permissions_audit.py` — `--fix` chmod 0600, blind-scan guard exit 2.
 
-**MEMBRI:** P0 2026-06-03 (`apps/cell/.env` readable by `cat`) · W65 (skills-bridge `.bak` 64-hex key) ·
-W75 (nuz_db_refresh fly-ssh secret leak su pipe) · P0 2026-05-21 (postgres pw in 32 file) ·
-2026-04-29 (plist world-readable).
+**MEMBRI:** P0 2026-06-03 (`apps/cell/.env` readable) · W65 (skills-bridge `.bak` 64-hex key) · W75
+(fly-ssh secret leak su pipe) · P0 2026-05-21 (postgres pw in 32 file) · 2026-04-29 (plist
+world-readable).
 **→ dettaglio:** cicatrix-scars.md (P0-cell.env) + archive (2026-05-21/04-29/W65/W75) · `scar query "secret cleartext"`
 
 ---
 
 ## #5 — Sibling-race / shared-worktree chaos
 
-**MALATTIA:** agenti/cron paralleli usano lo stesso checkout (`~/Desktop/nuzantara`) o worktree
-contemporaneamente → collisioni su stash, drift del branch attivo, distruzione silente di modifiche
-altrui in volo, o reap di un worktree mentre ci si lavora.
+**MALATTIA:** agenti/cron paralleli usano lo stesso checkout o worktree → collisioni stash, distruzione
+silente di modifiche altrui, reap mentre ci si lavora.
 
-**SEGNALE-PRECOCE:** più processi che fanno `git checkout` o lavorano nella cartella globale invece di
-preallocarsi un ambiente isolato; un worktree pulito-ma-scaduto (reap-eligibile mentre vivo); file
-untracked che non sono tuoi (drift di sessione parallela).
+**SEGNALE-PRECOCE:** processi che fanno `git checkout` nella cartella globale; worktree
+pulito-ma-scaduto reap-eligibile mentre vivo; untracked non tuoi.
 
-**ANTIDOTO:** ogni agent run in un `git worktree` dedicato (`scripts/agent_start.py`), distrutto a fine
-run; reap solo a 2-AND (nessun processo vivo nel worktree AND branch già in origin/main); **leave-dirty
-intenzionale** verso il lavoro sibling (non committare/stashare/scartare roba altrui).
+**ANTIDOTO:** ogni agent in un `git worktree` dedicato (`agent_start.py`); reap solo a 2-AND (nessun
+processo vivo AND già su origin/main); leave-dirty verso lavoro sibling.
 
-**MEMBRI:** W62 (6 ops worktree abbandonati, TTL violato) · W63 (nested worktree) · W80 (reap di worktree
-pulito con commit non-mergiati) · agent-library-evolver (REPO_ROOT condiviso con wr2-deploy-puller) ·
-W59 (sibling-race madre) · 2026-04-29 (untracked persi mid-session).
-**→ dettaglio:** cicatrix-scars.md (W80) + archive (W62/W63/evolver) + inline-only (W59) · `scar query "sibling worktree"`
+**MEMBRI:** W62 (6 worktree abbandonati, TTL violato) · W63 (nested worktree) · W80 (reap con commit
+non-mergiati) · agent-library-evolver (REPO_ROOT condiviso) · W59 (sibling-race madre) · 2026-04-29
+(untracked persi).
+**→ dettaglio:** cicatrix-scars.md (W80/W59) + archive (W62/W63/evolver) · `scar query "sibling worktree"`
 
 ---
 
 ## #6 — Anti-hallucination blindness (phantom citations)
 
-**MALATTIA:** in catene multi-agente un LLM "immagina" file/righe/conclusioni plausibili; l'agente o tool
-successivo le prende per vere senza verifica, e costruisce contro un fantasma.
+**MALATTIA:** un LLM "immagina" file/righe/conclusioni plausibili; l'agente a valle le prende per vere
+senza verifica.
 
-**SEGNALE-PRECOCE:** piano dettagliato basato solo su un `report.md` o uno "state schema" prodotto da un
-altro LLM, senza un audit fisico preliminare; un `file:line` citato da un report mai ri-eseguito in
-questo turno; un refuter/verifier che "boccia" senza che tu abbia ri-grepato.
+**SEGNALE-PRECOCE:** piano basato solo su un report LLM senza audit fisico; `file:line` mai
+ri-eseguito; refuter che boccia senza ri-grepare.
 
-**ANTIDOTO:** la Regola d'Oro — mai costruire su un file/path citato da un log o report senza aver fatto
-`find`/`ls`/`cat` per validarlo fisicamente **in questo turno**. Anche il refuter allucina (W65): l'ultimo
-grep del padre non si delega mai.
+**ANTIDOTO:** mai costruire su un path citato senza `find`/`ls`/`cat` in QUESTO turno. Anche il refuter
+allucina (W65).
 
-**MEMBRI:** ℹ️ META 2026-06-05 (13-agent WR2 autopsy, 3 file:line fantasma) · W74 (phantom
-`vendor/evoskill/cli/scorer.py`) · W65 (refuter falso-refuta una security finding) · W78 (cicatrice-sbagliata-propagata) ·
-**W100 (same-family blind agreement certifica 7 false-clean su 8, 2026-07-18: lane Sonnet D1+D5 KBLI Lot-1 verifica la STRUTTURA (crosswalk) e mai il CONTENUTO (semantica payload, esistenza fonte) — l'accordo interno alto misurava fedeltà di trascrizione, non verità; 8/13 flip còlti solo da seat cross-family (Codex 2 + GLM-vision 5 + 1 per regola-di-divergenza dopo che il red-team sul report FIRMATO ha còlto il conduttore stesso in un "picked verdict"). Antidoto: D5 di famiglia DIVERSA e IMAGE-GROUNDED (ri-estrazione cieca da render, mai review del text-pack) obbligatorio nel protocollo; un provenance pointer non è un content check; mai citare IAA come evidenza di verità senza dichiarare la parentela dei seat; il report firmato passa dal red-team esterno PRIMA dello ship. Terza generazione della linea: W65 "anche il refuter allucina" → W90 "anche il ground-truth invecchia" → W100 "anche l'accordo mente — e anche la firma"** ·
-**W90 (ground-truth verifier stantio, 2026-07-02: NB-3 "conferma" con citazioni pulite i numeri PMA PRE-risoluzione-lampiran — il catalogo dentro NB è uno snapshot del nostro dataset vecchio; 3 verdetti sbagliati in un run, near-miss di patch invertite. Antidoto: freshness-check data-fonte-NB vs data-risoluzione-strato prima di agire su un verdetto numerico; ogni re-grounding emette lista di invalidazione delle superfici derivate. W65 diceva "anche il refuter allucina"; W90: "anche il ground-truth invecchia")**.
-**W113 RETRACTED[kim-2025-17x-error-amplification-as-cause] RETRACTED[kim-2025-ranking-supports-the-no-peer-rule] (anche la CORREZIONE mente, e la si guarda meno di tutto il resto — 2026-08-02: ritrattare il `17.2×` di Kim et al. ha prodotto **tre claim falsi nuovi, tutti scritti da me correggendo il precedente**. «`Centralized` la migliore» è finita **su main in due PR**: la Table 5 dà `Decentralized 0.477 > SAS 0.466 > Centralized 0.463 > Hybrid 0.452 > Independent 0.370` — Centralized è **terza**, sotto il singolo agente, il paper scrive *"no single architecture dominates"*, e `Decentralized` **È** il peer-to-peer ed è il **più alto**, cioè il contrario della regola per cui la citavo. Ripiegato su «più il ranking (`Centralized > Independent`)»: coppia **vera** (0.463 > 0.370) e non-sequitur, perché `Independent` non è peer-to-peer — **un claim indebolito è ancora un claim**. E ri-verificando alla fonte nello stesso turno: la frase citata «verbatim in §4.3» sta in **§1**, mentre §4.3 porta gli `Aₑtrace` (`Centralized 4.4 · **Decentralized 7.8** · Independent 17.2`) — il **7.8**, il solo numero che riguardi il peer-to-peer, non l'avevamo mai letto; e `+80,9%` era `+80,8%` **su un solo abbinamento task-architettura**. Passa perché **ogni round adversariale è puntato sul claim da RITIRARE e nessuno sulla frase che lo SOSTITUISCE** — una correzione si legge come la parte sicura del diff (4 round Codex, 31 obiezioni, 29 reali, 0 derogate). La malattia si è ripetuta **dentro la cura** tre volte: il primo lint accettava `Independent` come direttiva e **assolveva il testo per cui esisteva**; il secondo legava l'assoluzione a `no coordination`, che vive dentro quell'endorsement; il terzo bandiva i token deboli ma direttiva e token si cercano nella stessa finestra, quindi **il testo colpevole se li fornisce da solo**. Antidoto: la frase di sostituzione è un claim NUOVO — ri-derivala dalla fonte in quel turno e punta il refuter su di essa (*«caccia la frase che ho scritto, non quella che ho tolto»*); se il sostegno non è verificabile **cancellalo, non indebolirlo**; assolve **solo** un marcatore che NOMINA il claim (`RETRACTED[<id>]`, `scripts/lint_retracted_claims.py` + `infra/retracted-claims/registry.json`, armato su OGNI PR fuori dal path-filter di `immune-enforcement.yml`, `--selftest` prima di `--all`); e **un pattern scritto dall'istanza che hai trovato cattura l'istanza che hai trovato** — la prima regex prendeva solo la formulazione esatta che avevo scritto io. GOTCHA: la guardia ha morso il proprio autore **tre volte in un'ora**, registrato invece che zittito; la mia sonda di PROVE-LIVE giudicava per FORMA (`grep -c 'Centralized best'` = 1, ma era la citazione DENTRO la retrattazione — W107); due obiezioni erano artefatti di un mio diff **two-dot** contro un main avanzato (W102); e il ledger chiudeva citando «39 check» quando il conto misurato era **55** — un numero RICORDATO dentro la chiusura di una lezione su W88))** ·
-**→ dettaglio:** cicatrix-scars.md (W78) + archive (META-autopsy/W65/W74) + inline-only (W90/W113) · `scar query "phantom citation"` · `lessons_hallucinating_tool_output_is_diabolical`
+**MEMBRI:** META 2026-06-05 (13-agent autopsy, 3 file:line fantasma) · W74 (phantom scorer.py) · W65
+(refuter falso-refuta) · W78 (cicatrice-sbagliata-propagata) · W100 (blind agreement, 7 false-clean su
+8) · W90 (ground-truth verifier stantio) · W113 (la correzione stessa mente). Linea: W65→W90→W100→W113.
+**→ dettaglio:** cicatrix-scars.md (W78/resto) + archive (META-autopsy/W65/W74) · `scar query "phantom citation"`
 
 ---
 
 ## #7 — Daemon-vs-cron KeepAlive misconfig
 
-**MALATTIA:** launchd configurato `KeepAlive=true` su uno script di natura one-shot/transiente → ogni
-exit è letto come "morto" → restart storm; i figli `nohup` nel process-group vengono SIGTERM-killati ad
-ogni ciclo.
+**MALATTIA:** `KeepAlive=true` su script one-shot → ogni exit letto come morto → restart storm; figli
+`nohup` SIGTERM-killati ogni ciclo.
 
-**SEGNALE-PRECOCE:** `KeepAlive=true` + payload `exec <one-shot>` o `nohup … &` dentro un LaunchAgent;
-contatore `runs` che CRESCE su una finestra; un figlio sano killato da SIGTERM-dall'esterno (non crash).
+**SEGNALE-PRECOCE:** `KeepAlive=true` + `exec <one-shot>` o `nohup … &`; contatore `runs` che cresce.
 
-**ANTIDOTO:** sostituire lo pseudo-demone con un **loop bloccante reale** nel wrapper (`while true; do …;
-sleep N; done`) così launchd non cicla mai; oppure, se è davvero un cron, `StartInterval` + niente
-KeepAlive. Grep `exec ` in tutto ciò che gira `KeepAlive=true`.
-**→ ESEGUIBILE (IMMUNE FORGE 2026-07-05, #1975):** `scripts/lint_plist_keepalive.py` — lint statico
-repo-side: plist tracked con KeepAlive truthy → wrapper risolto e classificato (`nohup &`=FAIL W67;
-`exec`=WARN, legittimo se il target è un server long-running — `--strict` lo eleva); exit 4 su plist
-malformati (day-1: trovato e corretto XML illegale in branch-cleanup.weekly).
+**ANTIDOTO:** loop bloccante reale (`while true; do …; sleep N; done`) o `StartInterval` senza
+KeepAlive.
+**→ ESEGUIBILE:** `scripts/lint_plist_keepalive.py` — `nohup &`=FAIL.
 
-**MEMBRI:** W67/W67b (wa-mirror reconnect storm ~22s + retry-stop/keepalive) · W60 (Fly api machine
-flapping) · 2026-04-29 (53 LaunchAgents, solo 13% KeepAlive corretti).
+**MEMBRI:** W67/W67b (wa-mirror reconnect storm) · W60 (Fly api flapping) · 2026-04-29 (53
+LaunchAgents, 13% corretti).
 **→ dettaglio:** archive (W60/04-29/W67/W67b) · `scar query "keepalive daemon cron"`
 
 ---
 
 ## #8 — Network flap / proxy fragility
 
-**MALATTIA:** componenti long-running o connessioni ad-hoc crashano a cascata e perdono transazioni
-quando l'infra di rete esterna (proxy, WireGuard, Postgres-proxy) vive i normali brevi flap.
+**MALATTIA:** componenti long-running crashano a cascata sui normali brevi flap di rete
+(proxy/WireGuard/Postgres-proxy).
 
-**SEGNALE-PRECOCE:** chiamata diretta singola a un network service (DB/API) non protetta da retry/reload;
-log pieni di `TimeoutError`/`gaierror`; un alerter single-attempt che droppa sul primo fail.
+**SEGNALE-PRECOCE:** chiamata singola non protetta da retry; log pieni di `TimeoutError`; alerter
+single-attempt.
 
-**ANTIDOTO:** socket persistenti con keep-alive (`SELECT 1`); azioni puntuali avvolte in retry-loop con
-backoff; cattura completa delle eccezioni di connessione (`asyncpg.InterfaceError` oltre a `PostgresError`).
+**ANTIDOTO:** socket persistenti keep-alive; retry-loop con backoff; cattura `InterfaceError` oltre
+`PostgresError`.
 
-**MEMBRI:** W49 (`wr2_canva_lease_watchdog` 98 TimeoutError lifetime) · W55 (Telegram alerter single-attempt
-drop) · W32 (interface error ignorato silenzioso) · W47.
-**→ dettaglio:** archive (W49/W55/W32) + inline-only (W47) · `scar query "network flap proxy retry"`
+**MEMBRI:** W49 (canva watchdog 98 TimeoutError) · W55 (Telegram single-attempt drop) · W32 (interface
+error ignorato) · W47 (solo numero citato, nessun dettaglio).
+**→ dettaglio:** archive (W49/W55/W32) + cicatrix-scars.md (W47) · `scar query "network flap proxy retry"`
 
 ---
 
 ## #9 — State-schema mutation drift
 
-**MALATTIA:** uno step isolato cambia una proprietà o il formato di un payload JSON / file-di-stato; i
-lettori non allineati a valle si rompono.
+**MALATTIA:** uno step cambia formato di un payload JSON/file-stato; lettori a valle non allineati si
+rompono.
 
-**SEGNALE-PRECOCE:** modifica "veloce" ai dati intermedi passati su code-path disaccoppiati (DLQ, redis
-stream, event bus, `*.last.json`) senza scope end-to-end di chi li legge; **un segnale di STATO (merged?
-stale? fresh?) letto da un proxy (SHA-ancestor, patch-id, timestamp, substring) invece che dal CONTENUTO
-reale** — `git cherry`/`--is-ancestor` che dicono "non-mergiato" su un branch già-su-main per squash (W88).
+**SEGNALE-PRECOCE:** modifica ai dati intermedi (DLQ, redis, `*.last.json`) senza scope end-to-end; uno
+stato letto da un proxy (SHA/timestamp) invece che dal CONTENUTO.
 
-**ANTIDOTO:** i cambi di schema sui contratti inter-servizio (incluso file di stato) richiedono deploy
-unificato + scansione completa dei partecipanti; mai cambiare un formato condiviso da un solo lato.
-**Regola-stato (W88, MANDATORIA):** quando decidi "X è già su main / già fatto / stale", verifica per
-**CONTENUTO** (diff vuoto/subset), **mai** per patch-equivalenza, SHA-ancestor o timestamp — il proxy
-mente quando il contenuto è arrivato per un'altra via (squash/rework). Reso eseguibile, non solo documentato:
-`scripts/branch_graveyard_cleanup.sh::content_on_main()`.
+**ANTIDOTO:** deploy unificato sui contratti condivisi. W88: "già su main/stale" si verifica per
+CONTENUTO (diff vuoto/subset), mai patch-equivalenza/SHA-ancestor/timestamp.
+**→ ESEGUIBILE:** `scripts/branch_graveyard_cleanup.sh::content_on_main()`.
 
-**MEMBRI:** W54 (timestamp ISO-8601 schianta il check di staleness) · W53 (DLQ TERMINAL suppression gate
-mancante al ricevente) · W61 (autopilot_attempts droppati da `add_to_dlq`) · **W86 (DOCSYNC stale —
-auto-merge-a-verde mergia il commit-feature PRIMA che il commit docs_sync bump atterri → il
-contratto-derivato `AI_ONBOARDING.md` test/router/service count resta stale su main → il gate
-`check-docs-sync` boccia la PR backend successiva, innocente. Antidoto: il `docs_sync.py` regen va
-nello STESSO commit della feature, MAI separato — con `--auto` non esiste "poi", merge al primo
-verde. 2026-06-23, PR #1670→#1672)** · **W88 (cherry-mente-sul-contenuto, 2026-06-27: `git merge-base
---is-ancestor` / `git cherry` segnano un branch "non su main" appena lo SHA non è antenato — ma un branch
-SQUASH-merged o riportato per rework È GIÀ su main per CONTENUTO mentre SHA e patch-id divergono. Un
-"orphan report" di 28 worktree era ~80% stale: ~5 vivi veri, il resto già su main, e 3 capitoli KBLI
-sarebbero REGREDITI se rebasati. Antidoto MANDATORIO: deletable-safe SOLO se `git diff origin/main...<br>`
-è VUOTO o pura-cancellazione (subset) — verifica per CONTENUTO, MAI per patch-equivalenza/ancestor-solo.
-Reso eseguibile in `scripts/branch_graveyard_cleanup.sh::content_on_main()` + nuova categoria
-"Content-on-main & deletable". GOTCHA-NEL-GOTCHA (stesso giorno, il fix è ricaduto nella malattia che
-curava): la PRIMA versione del check usava `git diff origin/main...branch` (THREE-DOT) — ma post-squash
-il merge-base è ARRETRATO, quindi il three-dot conta come "branch-only" ogni riga che main ha cambiato
-dopo quel base → FALSO NEGATIVO. Prova vissuta: un file con blob byte-identico su main dava lo stesso
-"+155 added" sotto three-dot. Il three-dot è ESSO STESSO un proxy che mente — la trappola W88 al secondo
-grado. Cura definitiva: confronto **blob-per-file** sui soli file che il branch ha autorato dal merge-base
-(`git rev-parse branch:f == main:f`), MAI il three-dot. Il check buggato trovava 2 content-on-main, quello
-corretto ne trova 9 (i 7 persi erano i falsi negativi))**.
-**W102 (two-dot diff = accusa la PR dei file di MAIN, 2026-07-24: il gate `hot-zone-pr-gate.yml` enumerava con `git diff BASE HEAD` mentre `pull_request.base.sha` è il tip CORRENTE di main → ogni branch indietro si vedeva attribuiti, al contrario, tutti i file che MAIN aveva guadagnato dal branch point; PR #3057 (2 soli .mdx) hard-bloccata dal required check per aver "modificato .github/CODEOWNERS". La regola era giusta, mentiva l'INPUT. Antidoto: enumerazione ancorata al MERGE-BASE (`scripts/ci/hotzone_changed_files.sh`, semantica "Files changed" di GitHub) + fail-loud invece di lista vuota-cieca + corpus guilt/innocence/scar-pin che il gate esegue su sé stesso a ogni run. SPECCHIO di W88: là il proxy nega un contenuto già su main, qui ne afferma uno mai toccato — chi generalizza una delle due rompe l'altra)**.
-**W106 (il proxy è una MISURA CONGELATA, 2026-07-26: `fly-pg-backup.sh` decideva quale delle due credenziali fly fosse viva da un `unset FLY_API_TOKEN` cablato — giusto il 2026-06-03, quando il token env era stantio e schermava quello valido di `~/.fly/config.yml`. Il 2026-07-26 il mondo si INVERTE (config REFUSED, env valido) e quella cura butta l'unica credenziale funzionante: **produzione 27h senza backup**, con la HA sana per tutto il tempo. Difetto di secondo grado, peggiore: **anche la DIAGNOSI era ancorata** — il ramo di errore stampava `most common cause: stale FLY_API_TOKEN`, accusando la credenziale che funzionava e spingendo chi legge lontano dalla causa; cura e messaggio nascono dalla stessa convinzione e scadono INSIEME. Qui il proxy non è uno SHA né un timestamp: è una misura del mondo congelata in una costante, e nessuno la ri-misura. Antidoto: SONDA (`scripts/lib/fly_credential.sh`) e **logga quale sorgente hai accettato**; la sonda deve misurare il LAVORO, non la credenziale — `auth whoami` passa per un token con scope su un'altra app e muore dopo su `Could not find App`; prova ogni credenziale dell'ambiente, non solo la prima; corpus che asserisce ENTRAMBI i mondi storici, così la cura non è ancorabile a oggi. Riconoscimento precoce: ogni commento «X è stantio, quindi facciamo sempre Z» è un conto alla rovescia — chiedi che cosa lo ri-misura)** ·
-**W106b (il CHECKOUT è il proxy, e la cura prescritta è il danno — 2026-07-27: i due guardiani HOME-fork — `lint_home_fork.check_pairs` e `proprioception.probe_home_fork_scripts`, gemelli con la stessa logica — confrontavano la copia VIVA col checkout LOCALE e, a ogni differenza, stampavano «realign live from repo». Ma sanno CHE due copie differiscono, mai QUALE lato è stantio. Su M5 il checkout main è **144 commit indietro per progetto** (tirarlo corre contro ~45 worktree vivi) mentre entrambe le copie vive combaciavano **esattamente** con `origin/main`: il report di proprioception ha aperto la sessione con quel P1, e seguirne il rimedio avrebbe sovrascritto un `worktree_isolation.py` corrente con uno di due giorni prima — cioè la guardia che tiene gli agent fuori dal main checkout, regredita dalla cura di un'altra guardia. Non è il confronto a essere sbagliato, è il **riferimento**: un checkout è un proxy di «cosa dice il repo» e mente ogni volta che è indietro. Antidoto: attribuire il lato interrogando `origin/main` (la copia della FLOTTA) — solo `live≠origin/main` è un HOME-fork; `live==origin/main` è CHECKOUT-STALE, altro proprietario, exit 0 di default (`--strict-checkout` per elevarlo), e il messaggio dice esplicitamente «do NOT realign live from this checkout». GOTCHA-NEL-GOTCHA: la prima stesura della sonda faceva `sha256(proc.stdout)` assumendo bytes; sotto un doppio `text=True` alza `TypeError`, che nessun `except` copriva — la guardia che prometteva di degradare moriva. E terzo strato: **nessun workflow eseguiva i test di `proprioception.py`**, per questo 2 di essi potevano stare rossi in permanenza su M5 (leggevano il `machine_label()` REALE: verdi solo su Mini). Corpus `scripts/tests/test_home_fork_stale_side_attribution.py`, colpevolezza+innocenza su ENTRAMBI i gemelli. **QUARTO strato, trovato il giorno dopo: la cura era ASIMMETRICA fra i gemelli** — `proprioception` faceva `git fetch` prima di confrontare, `lint_home_fork` **mai** (0 occorrenze di `fetch`), quindi arbitrava con un `origin/main` letto dal solo object store locale, che può essere stale esattamente quanto il checkout che è lì per arbitrare: con un ref vecchio il test di direzione può NOMINARE il lato corrente come stantio e prescrivere di sovrascriverlo — la trauma W106b un piano sotto, col meccanismo della cura come vettore. È l'asimmetria, non il meccanismo, che l'ha tenuta nascosta: chiamare due strumenti «gemelli con la stessa logica» e curarne uno solo. Antidoto: fetch refs-only anche nel lint + `--no-fetch` come nel gemello, e il fallimento del fetch va in **exit bit 4 (CANNOT-VERIFY), mai in bit 1 (drift)** — offline è stato naturale (Legge 6) e un healer che legge «c'è un fork» quando la verità è «non ho potuto controllare» spende una sessione LLM su una premessa falsa. Dove i gemelli DEVONO divergere: il gemello è un segnalatore (il fetch fallito è una riga di evidenza in un report che legge un umano), il lint produce un EXIT CODE su cui agisce un healer — stessa informazione, il canale che ciascun consumatore legge davvero. Resta aperto (ledger) il caso in cui ENTRAMBI i lati sono ugualmente indietro: `check_pairs` confronta live↔checkout PRIMA e corto-circuita se coincidono, quindi non chiede mai a origin/main — pinnato da `test_known_gap_both_sides_equally_behind_reads_clean`)** ·
-**W109b (due PR che RIMPICCIOLISCONO lo stesso registro monotono sono accoppiate anche senza condividere una riga, 2026-07-29: il lint anti-regrowth del gateway Telegram ammette solo che `infra/tg-gateway/grandfathered.json` si RIDUCA rispetto a `origin/main`. #3418 ne toglie 1, #3420 ne toglie 18 da una base precedente — dalla base dell'altra, ciascuna metà appare CRESCITA e il required diventa rosso senza che nessuno dei due diff sia sbagliato e senza alcun conflitto testuale che git possa segnalare. Si risolve solo mergiando main e ri-derivando (174 − 18 − 1 = 155). Parente di `lesson_two_prs_with_zero_shared_files_can_be_mutually_blocking_halves`: l'overlap dei file misura chi CONFLIGGE, non chi DIPENDE — e un registro monotono crea dipendenza fra diff disgiunti)** ·
-**W111 (`gh run rerun` RIGIOCA un merge-ref STANTIO — «ho rilanciato il check» non è «l'ho testato contro main di adesso», 2026-07-30: #3463 era rossa per un difetto che #3465 aveva appena mergiato; `git show refs/pull/3463/merge:<file> | grep -c <marcatore>` dava **0**, quindi il re-run stava per fallire per una ragione inesistente e quel rosso avrebbe letto come prova che la cura non funziona. Ri-punta il ref solo un HEAD NUOVO (`update-branch`): dopo, la stessa sonda dà **2**. Forma W88 un piano sopra — il GESTO è il proxy. Gemello: con la merge queue **né `autoMergeRequest` né `isInMergeQueue` da soli** dicono se una PR è armata (due PR davano l'esatto inverso l'una dell'altra), e `--squash` viene rifiutato in partenza)** ·
-**W114 (i due lati non hanno MAI concordato, e il fake condivideva l'immaginazione del codice — 2026-08-05: il `mail_loop` leggeva i nomi che Zoho mette sul FILO (`folderId`, `messageId`, `fromAddress`) essendo cablato a `ZohoEmailService`, che li **traduce di proposito** in snake_case perché i suoi altri dieci consumatori sono scritti su quella forma. Non è una proprietà cambiata sotto un lettore allineato: è un lettore scritto contro un vocabolario mai emesso. Nove punti di lettura, una causa: nessuna cartella si risolveva (l'id dell'inbox degradava alla stringa `"inbox"` → `UNABLE_TO_PARSE_DATA_TYPE`, un errore che punta a LORO), nessun messaggio aveva id, **ogni bozza indirizzata a nessuno**, classificazione sull'anteprima da 100 caratteri, `is_bulk` permanentemente falso. Più due difetti di comportamento: `get_email` pretende un `folder_id` che il loop non passava mai, e **marca letto** — quindi una `--dry-run`, che promette di non mutare nulla, avrebbe segnato letta l'INTERA inbox non letta. **Venti test verdi sopra zero righe vive**, perché il fixture parlava anch'esso la lingua del filo: due copie della stessa ipotesi che si confermano a vicenda non sono evidenza. Antidoto: il fake va messo al confine **HTTP** (`_request`, con payload misurati sull'API viva), non al confine del servizio, così la trasformazione VERA gira sotto ogni campo letto — `test_backend_contract.py`, mutation-verified 17/2/1. A monte la causa era un **confronto** mai fatto: `/admin/zoho/auth` portava una copia hardcoded della lista di scope, scollegata da `ZohoOAuthService.SCOPES` — nessuno dei due file era sbagliato da solo, ed è l'endpoint a cui si mandano gli umani. GOTCHA: `missing_folders: []` era costruito pigramente per messaggio, quindi «lista vuota» significava *o* «ci sono tutte» *o* «il controllo non è mai partito», e leggeva vuota per una casella che non ne aveva NESSUNA; e il messaggio d'errore di `cli.py` **inventariava** lo stato del grant («porta solo messages.ALL») — vero il giorno in cui fu scritto, letto esattamente da chi alle 07:30 cerca la causa. Un messaggio che inventaria stato mutevole mentirà (parente di W106))** ·
-**W118 (tre proxy della merge queue che mentono, e un INPUT che cambia senza che cambi il repo — 2026-08-18: (i) `autoMergeRequest` legge **false** mentre la PR è DENTRO la coda — rilevato in contemporanea su due PR con `isInMergeQueue=true`; il campo vero è `mergeQueueEntry.state`. (ii) Un'entry può restare **UNMERGEABLE bloccata senza che GitHub la espella**: 48 minuti a pos=2 tenendo ferma quella a pos=3; cura `dequeuePullRequest` + ri-arm nudo, e il campo dell'input è **`id`**, NON `pullRequestId`. (iii) Un CodeQL rosso su un queue-ref può essere l'**EFFETTO** dell'espulsione, mai la causa: `ref 'refs/heads/gh-readonly-queue/…' not found` perché il ri-basamento aveva già cancellato il ref sotto un upload in volo — chi lo legge come causa cerca un difetto in un diff sano. E la causa a monte non era nostra affatto: l'advisory `GHSA-ggr8-5vv4-36mx` pubblicato alle 13:32:13Z ha reso rosso un required **87 secondi** prima dell'ultimo merge riuscito, perché `npm audit` interroga il DB advisory LIVE — il nostro albero non è cambiato di una riga, è cambiato il mondo. Estende W106 in avanti: lì il proxy era una misura congelata in una costante, qui l'INPUT di un gate è una risorsa esterna che si muove da sola, e nessun `git diff` la mostra)** ·
-**→ dettaglio:** cicatrix-scars.md (W86/W111/W118) + archive (W53/W54/W61) + inline-only (W106/W109/W114) · `scar query "schema drift json contract"`
-**PR-1 landing 2026-08-10 (no W-number, corpo in PENDING-ARMS.md "closed 2026-08-10 ... landing session"):** GitHub's PR mergeability (`mergeable`/`mergeStateStatus`) NON onora `.gitattributes merge=union` — una PR può leggere CONFLICTING/DIRTY server-side mentre `git merge` locale sugli stessi due ref risolve pulito. Il campo di mergeability è esso stesso un proxy che mente sui file a merge-driver custom; cura = pre-merge locale + push. Gemello: `autoMergeRequest` non sopravvive a un transito per CONFLICTING — GitHub lo azzera silenziosamente e non lo riarma da solo una volta tornato mergeable; va ri-controllato via GraphQL e riarmato.
+**MEMBRI:** W54 (timestamp schianta staleness-check) · W53 (DLQ TERMINAL gate mancante) · W61
+(autopilot_attempts droppati) · W86 (DOCSYNC stale, boccia PR innocente) · W88 (cherry mente sul
+contenuto post-squash) · W102 (two-dot diff accusa PR dei file di main) · W106 (proxy congelato sceglie
+credenziale morta) · W106b (il checkout stesso è il proxy) · W109b (2 PR che si bloccano a vicenda) ·
+W111 (`gh run rerun` rigioca merge-ref stantio) · W114 (fake e codice condividono l'immaginazione) ·
+W118 (3 proxy merge-queue che mentono).
+**→ dettaglio:** cicatrix-scars.md (resto) + archive (W53/W54/W61) · `scar query "schema drift json contract"`
+**PR-1 landing (no W-number, corpo in `PENDING-ARMS.md`):** mergeability GitHub non onora
+`merge=union`; `autoMergeRequest` non sopravvive a un transito CONFLICTING, va riarmato via GraphQL.
 
 ---
 
 ## #10 — Active-active split-brain
 
-**MALATTIA:** un componente architettato come **singleton** finisce eseguito in parallelo su host diversi
-(Pro + Mini), ognuno credendosi unico → carico duplicato, dati corrotti, alert spettrali.
+**MALATTIA:** componente singleton eseguito in parallelo su host diversi (Pro+Mini), ognuno credendosi
+unico → carico duplicato, alert spettrali.
 
-**SEGNALE-PRECOCE:** `localhost` come hostname in un servizio fleet-wide; nessuna master-election;
-notifiche/alert che arrivano da una macchina che "non dovrebbe" inviarli; un `runs`/`attempt` che sale su
-un nodo che credevi spento.
+**SEGNALE-PRECOCE:** `localhost` come hostname fleet-wide; nessuna master-election; alert da una
+macchina "che non dovrebbe".
 
-**ANTIDOTO:** Single-Source-of-Truth nel DB o un campo dichiarativo (`expected_status`/`assigned_node`)
-che il servizio legge su QUALSIASI macchina e fa graceful-exit se `node≠hostname`; bootout+disable
-persistente dell'istanza legacy.
+**ANTIDOTO:** Single-Source-of-Truth nel DB (`expected_status`/`assigned_node`); graceful-exit se
+`node≠hostname`; bootout+disable persistente dell'istanza legacy.
 
-**MEMBRI:** W67c (wa-mirror Telegram spam dal Mini, non dal Pro) · 2026-05-07 (12+1 mata_garuda
-LaunchAgents active-active) · NLM feeder split-brain (redis locale vs host parametrizzato).
+**MEMBRI:** W67c (wa-mirror Telegram spam dal Mini) · 2026-05-07 (12+1 mata_garuda active-active) · NLM
+feeder split-brain.
 **→ dettaglio:** archive (mata_garuda/NLM-feeder/W67c) · `scar query "active-active split-brain"`
 
 ---
 
-## Orfane (NON forzate in un cluster — uniche per natura)
+## Orfane (uniche per natura, non forzate in un cluster)
 
-Queste non sono famiglie ricorrenti; restano scar singole consultabili nel file dettaglio:
-
-- **W38** — `backend_rag_v2` NOSUPERUSER (hardening strutturale, non un bug)
-- **P3 FLAKY** — `test_duplicate_alert_id_skipped` (clock-race puro in un test) — **CURATA 2026-08-02**: l'orologio è congelato (holder che il test avanza, MAI un iteratore di tick — il `logging` di Python legge `time.time()` per ogni LogRecord e ne esaurisce uno sizeato sul numero di alert). E il mutation ha trovato di peggio: il test asseriva un CONTEGGIO, quindi con la guardia di deduplica CANCELLATA restava verde — riscrivere la stessa chiave non fa crescere un dict, cioè testava una proprietà dei dict e non del codice. «Skipped» significa che sopravvive il PRIMO alert, e ora è quello che asserisce; aggiunta l'innocenza (due alert a un secondo di distanza restano due) che non ha mai avuto.
+- **W38** — `backend_rag_v2` NOSUPERUSER (hardening, non un bug)
+- **P3 FLAKY** — clock-race in un test — **CURATA 2026-08-02**: orologio congelato, non un iteratore di
+  tick; mutation ha trovato di peggio (test asseriva un CONTEGGIO, verde con la dedup cancellata).
 - **W33** — kill-switch operatore su auto-remediation
-- **W40 / SQL v2 migrations** — collisione da numerazione manuale migrazioni
-- **W39** — Dependabot bump (manutenzione di routine)
+- **W40** — collisione numerazione migrazioni
+- **W39** — Dependabot bump (routine)
 - **Atlas migrate-lint paywall** — costo terze-parti, non bug
-- **Deploy crash / Dockerfile cell-core missing** — ordering di promozione nel monorepo CI
-- **W96** — test non isolati scrivono STATO DI PRODUZIONE (default `Path.home()` nei worker + test che non mocka la catena di visibilità → 24 fixture nella review-queue WR2 reale + TG P0 spurio a ogni pre-push, 2026-07-13; antidoto di classe: conftest autouse che redirige `WR2_OUTPUT_ROOT`/TG a tmp_path + immune-organ di quarantena nel reconciler; candidata 11ª famiglia "test-writes-prod" se recidiva su altra superficie)
+- **Deploy crash / Dockerfile cell-core** — ordering promozione monorepo CI
+- **W96** — test non isolati scrivono STATO DI PRODUZIONE (`Path.home()` default nei worker)
 
 **→ dettaglio:** grep il W-number in `cicatrix-scars.md` / `cicatrix-scars-archive.md`.
 
 ---
 
-> **Manutenzione:** quando nasce una scar nuova, aggiungila al suo cluster qui (1 riga in MEMBRI +
-> aggiorna l'antidoto se la scar lo rafforza); il corpo completo va in `cicatrix-scars.md` come oggi.
-> Se una scar non rientra in nessuna delle 10 → è una candidata-orfana, OPPURE il segnale che serve una
-> **11ª superscar** (rivedi il clustering). Genesi e metodo: `research/operations/` + skill `opus-mythos`
-> (superseded 2026-07-02 → il metodo TAC vive in `modus` Gear 3, `.claude/skills/modus/SKILL.md`).
+> **Manutenzione:** scar nuova → 1 riga in MEMBRI qui, corpo pieno SOLO in `cicatrix-scars.md`. Se stai
+> per incollare più di 1-2 frasi in MEMBRI, quello è un corpo: scrivilo in `cicatrix-scars.md` e lascia
+> qui 3-8 parole + numero (regola nata dall'audit 2026-08-21 che ha corretto 13 violazioni proprie).
+> Non rientra in nessuna delle 10 → candidata-orfana o serve un'11ª superscar. Metodo: skill `modus`
+> Gear 3 (`.claude/skills/modus/SKILL.md`).

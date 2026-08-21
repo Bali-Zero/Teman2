@@ -150,6 +150,64 @@ def test_guilt_canonical_checkout_stamp_still_flags_stale(tmp_path):
     assert findings[0].kind == "stale"
 
 
+# ---------------------------------------------------------------------------
+# arsenal_probe non-primary-node exemption (sibling fix to organism_digest.py::
+# stale_heartbeats()'s existing ARSENAL_PROBE_PRIMARY_NODE check — same class
+# as the .worktrees/ exemption above). docs/runbooks/arsenal-probe.md §How it
+# is armed: only Mini has a recurring healer-armed refresh; M5/Pro reports are
+# on-demand only (a manual `--table` run or infra/vcr/cli.py's `check` path).
+# organism_digest.py already skips m5/pro's arsenal_probe stamp when computing
+# its "silent Nh" digest line; this detector read the SAME sidecar dir with the
+# SAME blanket 7-day rule and had no such exemption — found live 2026-08-21 when
+# m5.arsenal_probe.json (last refreshed 2026-08-12, 8.7d old) was reported as a
+# dead cron even though no cron for it has ever existed on M5 (CLAUDE.md: M5 has
+# no daemon/cron H24 by design).
+# ---------------------------------------------------------------------------
+
+
+def test_innocence_m5_arsenal_probe_stamp_not_flagged_stale(tmp_path):
+    """M5's arsenal_probe heartbeat has no recurring promise — an old stamp is
+    an unrefreshed on-demand snapshot, not a broken cron, and must NOT flag."""
+    d = str(tmp_path)
+    old = time.time() - 9 * 86400
+    _write(d, "m5.arsenal_probe", {"ts": old, "status": "ok"})
+    findings = scan_sidecars(d, stale_days=7)
+    assert findings == [], f"m5 arsenal_probe stamp wrongly flagged stale: {findings}"
+
+
+def test_guilt_mini_arsenal_probe_stamp_still_flags_stale(tmp_path):
+    """Mini IS the primary/healer-armed node — its stamp going stale for 9 days
+    IS a broken promise and must still flag. Proves the exemption is scoped to
+    the non-primary machine, not to the arsenal_probe organ family at large."""
+    d = str(tmp_path)
+    old = time.time() - 9 * 86400
+    _write(d, "mini.arsenal_probe", {"ts": old, "status": "ok"})
+    findings = scan_sidecars(d, stale_days=7, host="mini-pro2")
+    assert len(findings) == 1
+    assert findings[0].organ_id == "mini.arsenal_probe"
+    assert findings[0].kind == "stale"
+
+
+def test_innocence_pro_arsenal_probe_stamp_not_flagged_stale(tmp_path):
+    """Pro is also non-primary per the runbook — same exemption applies."""
+    d = str(tmp_path)
+    old = time.time() - 9 * 86400
+    _write(d, "pro.arsenal_probe", {"ts": old, "status": "ok"})
+    findings = scan_sidecars(d, stale_days=7, host="nuzantara")
+    assert findings == [], f"pro arsenal_probe stamp wrongly flagged stale: {findings}"
+
+
+def test_innocence_unrelated_organ_named_like_arsenal_probe_prefix_still_flags(tmp_path):
+    """The stem regex is anchored (^...$) — an unrelated organ that merely
+    starts with a machine label must not accidentally match and get exempted."""
+    d = str(tmp_path)
+    old = time.time() - 9 * 86400
+    _write(d, "m5.arsenal_probe_extra", {"ts": old, "status": "ok"})
+    findings = scan_sidecars(d, stale_days=7)
+    assert len(findings) == 1
+    assert findings[0].organ_id == "m5.arsenal_probe_extra"
+
+
 def test_finding_is_serializable(tmp_path):
     d = str(tmp_path)
     _write(d, "pro.x", {"ts": time.time() - 30 * 86400, "status": "ok"})
@@ -475,13 +533,19 @@ def test_innocence_cross_host_allowlisted_organ_still_flags_on_m5(tmp_path):
 
 def test_innocence_m5_own_sidecar_still_flags_on_m5(tmp_path):
     """INNOCENCE: an m5.* sidecar scanned on M5 is squarely in-jurisdiction —
-    the new skip must never suppress a machine's own organs."""
+    the new skip must never suppress a machine's own organs.
+
+    Deliberately NOT named "m5.arsenal_probe" here: that specific organ_id
+    is now exempt on its own separate grounds (the arsenal_probe
+    non-primary-node exemption above, 2026-08-21) regardless of jurisdiction
+    — using it would conflate two independent exemptions in one assertion.
+    """
     d = str(tmp_path)
     old = time.time() - 30 * 86400
-    _write(d, "m5.arsenal_probe", {"ts": old, "status": "ok"})
+    _write(d, "m5.some_other_organ", {"ts": old, "status": "ok"})
     findings = scan_sidecars(d, stale_days=7, host="air-m5")
     assert len(findings) == 1
-    assert findings[0].organ_id == "m5.arsenal_probe"
+    assert findings[0].organ_id == "m5.some_other_organ"
 
 
 def test_innocence_unrecognised_prefix_keeps_reporting(tmp_path):

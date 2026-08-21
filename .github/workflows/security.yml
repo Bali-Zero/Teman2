@@ -783,6 +783,18 @@ jobs:
     # one scanner in this file where "better ten unnecessary scans than one
     # skipped wrongly" has no exception, and it always runs on every
     # pull_request/merge_group/push/schedule trigger, exactly as before.
+    #
+    # Scan WIDTH is a different question from WHETHER the job runs
+    # (2026-08-21, token-ceremony CI-critical-path audit, lever L3 —
+    # research/operations/2026-08-21-token-ceremony-ci-system-audit.md):
+    # on pull_request/merge_group the scan is scoped to the files the diff
+    # touches, because a secret can only ENTER through a changed file. A
+    # secret sitting in an UNCHANGED file is already on main — the daily +
+    # weekly scheduled full-tree scans (and any push/workflow_dispatch run)
+    # are the net that catches those, per the audit's own risk note. The
+    # full scan measured 19m34s on run 31312661093; the diff-scoped scan is
+    # seconds. The gate semantics are unchanged: any NEW finding in a
+    # changed file still arrives unaudited and still fails the job below.
     runs-on: ubuntu-latest
     # Run 31312661093 measured 19m34s in the scan alone and was cancelled at
     # the 20m job limit after every gating step had succeeded. Keep this gate
@@ -813,14 +825,93 @@ jobs:
       - name: Install detect-secrets
         run: pip install detect-secrets
 
-      - name: Run detect-secrets scan
+      - name: Decide scan scope
+        # L3 (see the job header above): pull_request/merge_group scan only
+        # the diff's files; every other event keeps the full-tree scan.
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          MQ_BASE: ${{ github.event.merge_group.base_sha }}
+          MQ_HEAD: ${{ github.event.merge_group.head_sha }}
         run: |
-          detect-secrets scan \
-            --baseline .secrets.baseline \
-            --exclude-files 'node_modules/.*' \
-            --exclude-files '\.venv/.*' \
-            --exclude-files 'venv/.*' \
-            --exclude-files '\.git/.*'
+          set -euo pipefail
+          if [ "${EVENT_NAME}" != "pull_request" ] && [ "${EVENT_NAME}" != "merge_group" ]; then
+            echo "full-tree scan (event: ${EVENT_NAME})"
+            echo "mode=full" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "${EVENT_NAME}" = "pull_request" ]; then
+            BASE="${PR_BASE}"; HEAD="${PR_HEAD}"; PRN="${PR_NUMBER}"
+          else
+            BASE="${MQ_BASE}"; HEAD="${MQ_HEAD}"; PRN=""
+          fi
+          # hotzone_changed_files.sh anchors on the merge-base (three-dot,
+          # exactly what the PR "Files changed" tab shows) and exits 3 when
+          # it cannot determine the changed set — `set -e` turns that into a
+          # RED job here, never a blind green (the script's own contract).
+          if [ -n "${PRN}" ]; then
+            bash scripts/ci/hotzone_changed_files.sh "${BASE}" "${HEAD}" "${PRN}" > /tmp/changed_all.txt
+          else
+            bash scripts/ci/hotzone_changed_files.sh "${BASE}" "${HEAD}" > /tmp/changed_all.txt
+          fi
+          # A diff can DELETE files, and detect-secrets errors on a path that
+          # does not exist in the worktree — scan only what is still there.
+          : > /tmp/changed_existing.txt
+          while IFS= read -r f; do
+            [ -f "$f" ] && printf '%s\n' "$f" >> /tmp/changed_existing.txt
+          done < /tmp/changed_all.txt
+          COUNT=$(wc -l < /tmp/changed_existing.txt | tr -d ' ')
+          echo "diff-scope: ${COUNT} scannable file(s) out of $(wc -l < /tmp/changed_all.txt | tr -d ' ') changed"
+          if [ "${COUNT}" -eq 0 ]; then
+            # Enumeration SUCCEEDED — hotzone_changed_files.sh exits 3 when
+            # it cannot determine the changed set, so a blind/lying scan set
+            # never reaches this line (that is the W84 tripwire, upstream).
+            # Zero scannable files here is therefore a TRUTHFUL statement:
+            # the diff is empty, or everything it touched was deleted — and
+            # a deletion cannot introduce a secret (Codex red-team round 1:
+            # the previous fail-on-0 blocked legitimate deletion-only PRs).
+            # Report the no-op explicitly — never the word "clean": this
+            # step scanned nothing.
+            echo "diff-scope: nothing to scan (empty or deletion-only diff; enumeration succeeded)"
+            echo "mode=noop" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "mode=diff" >> "$GITHUB_OUTPUT"
+
+      - name: Run detect-secrets scan
+        env:
+          SCAN_MODE: ${{ steps.scope.outputs.mode }}
+        run: |
+          set -euo pipefail
+          if [ "${SCAN_MODE}" = "noop" ]; then
+            # Empty or deletion-only diff — the Decide step proved the
+            # enumeration succeeded; there is nothing a scan could find.
+            echo "scan skipped: nothing to scan (see Decide scan scope)"
+          elif [ "${SCAN_MODE}" = "diff" ]; then
+            # Explicit paths keep repo-relative keys, so baseline audit
+            # decisions for known false positives in those files still
+            # match and stay filtered (verified against detect-secrets on
+            # a fixture: decisions preserved, new findings arrive unaudited,
+            # unscanned entries pruned — ephemeral in this workspace).
+            # Portable array build, no mapfile: bash 3.2-safe (fleet macs).
+            FILES=()
+            while IFS= read -r f; do
+              FILES+=("$f")
+            done < /tmp/changed_existing.txt
+            detect-secrets scan \
+              --baseline .secrets.baseline \
+              "${FILES[@]}"
+          else
+            detect-secrets scan \
+              --baseline .secrets.baseline \
+              --exclude-files 'node_modules/.*' \
+              --exclude-files '\.venv/.*' \
+              --exclude-files 'venv/.*' \
+              --exclude-files '\.git/.*'
+          fi
 
       - name: Auto-triage new findings
         # The scan step above updates .secrets.baseline in place with any new

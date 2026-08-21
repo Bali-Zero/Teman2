@@ -92,7 +92,6 @@ export default function VisaClockPage() {
           items={[
             { value: "5,021", label: "visas filed since 2019" },
             { value: "5", label: "checkpoints (D-60 → D-1)" },
-            { value: "4.8h", label: "avg first-reply on WhatsApp" },
           ]}
         />
       }
