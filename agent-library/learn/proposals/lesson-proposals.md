@@ -7,9 +7,9 @@
 > (P7 §3.4). Kill-switch: `LESSON_HARVESTER_OFF=1`.
 
 - scars scanned: **15**
-- mechanical candidates (recurring ≥3): **9**
+- mechanical candidates (recurring ≥3): **10**
 - consultive (single-occurrence): **1**
-- rejected (no objective anchor, G1): **5**
+- rejected (no objective anchor, G1): **4**
 
 ## Recurring patterns (the objective recurrence signal, G4)
 
@@ -35,6 +35,7 @@
 - **✅ W81 (FIXED): i 3 loop di apprendimento WR3 erano "verdi ma vuoti" — malattia-madre "Omeostasi Tautologica" (telemetria-verde ≠ delta-di-stato); F20+F21 curati come codice+test, F18 escalato (2026-06-14)** [P2] — recurring via: W64
 - **🐛 W118 (P0 STRUCTURAL): il repo è stato fermo 11 ore per DUE cause indipendenti che si nascondevano a vicenda, e nessuna delle due lasciava un check rosso da indicare** [UNKNOWN] — recurring via: W107, W108
 - **🐛 W119 (P1 STRUCTURAL): il gruppo di cattura degli argomenti leggeva `\s` come separatore — un `rm -f` di riga 1 è stato accusato del `cd` di riga 6** [UNKNOWN] — recurring via: W84, W85
+- **🐛 W121 (P1 STRUCTURAL): il mutation testing girava su BYTECODE AVVELENATO — lo strumento che misura se il corpus morde stava giudicando una versione del codice diversa da quella sul disco** [UNKNOWN] — recurring via: W107
 - **🐛 W83 (P2 STRUCTURAL): il worktree-isolation hook decide su substring testuale → 3 falsi BLOCK in una sessione (git pull remoto ssh, `cd <worktree> && git`, git-verb dentro una stringa quotata) (2026-06-16)** [P2] — recurring via: W68, W72, W73, W77, W79, W82, W83
 - **🐛 W84 (P2 STRUCTURAL): `_strip_noise` del worktree-isolation hook usa `[^q]*` che MATCHA i newline → in un comando multi-riga una quota orfana (apostrofo IT / apertura `ssh '...'`) si accoppia cross-line, fonde i comandi e fa leakare i pattern grep nello scan redirect → phantom write-target (2026-06-16)** [P2] — recurring via: W68, W72, W73, W77, W79, W82, W83, W84
 - **🐛 W85 (P3 STRUCTURAL): il worktree-isolation hook ha `stash` in `BLOCKED_SUBCMD_RE` senza distinguere il sottocomando → `git stash list` / `git stash show` (read-only) bloccati come se fossero `stash push`/`pop` (2026-06-17)** [P3] — recurring via: W68, W72, W73, W77, W82, W83, W84, W85
@@ -48,5 +49,4 @@
 - 🐛 W111 (P2 STRUCTURAL): `gh run rerun` rigioca un merge-ref STANTIO — «ho rilanciato il check» non è «l'ho testato contro main di adesso» — no objective anchor (G1)
 - 🐛 W112 (P1 STRUCTURAL): il formattatore è uno scrittore che nessuno controlla, e giudica per FORMA — no objective anchor (G1)
 - 🐛 W117 (P0 STRUCTURAL): la guardia non aveva un buco — non poteva VEDERE il gesto, e a fidarmi del ramo sbagliato avrei scritto codice morto — no objective anchor (G1)
-- 🐛 W121 (P1 STRUCTURAL): il mutation testing girava su BYTECODE AVVELENATO — lo strumento che misura se il corpus morde stava giudicando una versione del codice diversa da quella sul disco — no objective anchor (G1)
 - 🚨 P0 SECURITY: `apps/cell/.env` holds prod superuser password in cleartext, readable by plain `cat` (2026-06-03) — no objective anchor (G1)

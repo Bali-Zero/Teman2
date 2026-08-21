@@ -30,7 +30,7 @@ Famiglia #2: green ≠ working, applicata allo strumento di verifica invece che 
 
 **GOTCHA — non è un difetto di questo ciclo, è di tutti.** Nessun ciclo di mutation in questo repo disattiva la scrittura del bytecode oggi; questa cicatrice è stata trovata perché il caso è caduto dal lato rumoroso. Quelli caduti dal lato silenzioso non hanno lasciato traccia da cercare — è un limite dichiarato di questa entry, non un invito a fidarsi degli esiti passati.
 
-**Reference:** memory `discovery_mutation_testing_can_run_on_poisoned_bytecode_2026_08_21` · parenti diretti [[lesson_a_corpus_can_pass_the_wrong_implementation_too_2026_08_21]] e [[lesson_mutation_guard_save_restore_reference_cannot_catch_shipped_weakness_2026_08_21]] · W107 (la sonda che misura una malattia può averla).
+**Reference:** memory `discovery_mutation_testing_can_run_on_poisoned_bytecode_2026_08_21` · scoperta durante PR #4521 (commit `988684c92`, "mutation-verified 10/10 across both") sul branch `agent/air-m5/ops/vercel-autopromote` — lo stesso worktree `ops-vercel-autopromote` citato sopra · parenti diretti [[lesson_a_corpus_can_pass_the_wrong_implementation_too_2026_08_21]] e [[lesson_mutation_guard_save_restore_reference_cannot_catch_shipped_weakness_2026_08_21]] · W107 (la sonda che misura una malattia può averla).
 
 ---
 

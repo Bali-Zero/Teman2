@@ -6,9 +6,9 @@
   "recurrence_threshold": 3,
   "totals": {
     "scars_scanned": 15,
-    "mechanical_candidates": 9,
+    "mechanical_candidates": 10,
     "consultive": 1,
-    "rejected_no_anchor": 5
+    "rejected_no_anchor": 4
   },
   "recurring_patterns": {
     "w_numbers": {
@@ -145,6 +145,22 @@
       "note": "Recurring objective pattern (>=3). Candidate for an EXECUTABLE antibody via scar_replay -> test -> SHADOW -> (human-gate) -> enforcement. NOT auto-applied."
     },
     {
+      "title": "🐛 W121 (P1 STRUCTURAL): il mutation testing girava su BYTECODE AVVELENATO — lo strumento che misura se il corpus morde stava giudicando una versione del codice diversa da quella sul disco",
+      "severity": "UNKNOWN",
+      "w_numbers": [
+        "W107",
+        "W121"
+      ],
+      "recurring_via": {
+        "w": [
+          "W107"
+        ],
+        "family": []
+      },
+      "pipeline": "mechanical",
+      "note": "Recurring objective pattern (>=3). Candidate for an EXECUTABLE antibody via scar_replay -> test -> SHADOW -> (human-gate) -> enforcement. NOT auto-applied."
+    },
+    {
       "title": "🐛 W83 (P2 STRUCTURAL): il worktree-isolation hook decide su substring testuale → 3 falsi BLOCK in una sessione (git pull remoto ssh, `cd <worktree> && git`, git-verb dentro una stringa quotata) (2026-06-16)",
       "severity": "P2",
       "w_numbers": [
@@ -257,10 +273,6 @@
     },
     {
       "title": "🐛 W117 (P0 STRUCTURAL): la guardia non aveva un buco — non poteva VEDERE il gesto, e a fidarmi del ramo sbagliato avrei scritto codice morto",
-      "reason": "no objective anchor (G1)"
-    },
-    {
-      "title": "🐛 W121 (P1 STRUCTURAL): il mutation testing girava su BYTECODE AVVELENATO — lo strumento che misura se il corpus morde stava giudicando una versione del codice diversa da quella sul disco",
       "reason": "no objective anchor (G1)"
     },
     {
