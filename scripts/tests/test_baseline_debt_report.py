@@ -138,7 +138,7 @@ def test_broad_approved_live_file_without_credential_shape_is_innocent(tmp_path)
     (repo / "scripts").mkdir()
     (repo / "scripts" / "detect_secrets_auto_triage.py").write_text(AUTO_TRIAGE_STUB)
     clean = repo / "scripts" / "clean_dev_script.py"
-    clean.write_text("DATABASE_URL = 'postgresql://nuzantara:localdevpw@localhost:5432/nuzantara'\n")
+    clean.write_text("DATABASE_URL = 'postgresql://nuzantara:nuzantara_local_dev@localhost:5432/nuzantara'\n")
     _write_baseline(
         repo,
         {
