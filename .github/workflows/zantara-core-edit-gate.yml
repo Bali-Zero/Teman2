@@ -1,0 +1,102 @@
+name: zantara-core-edit-gate
+
+# NEW 2026-08-21 (invariant-enforcement-map audit) — closes a measured gap:
+# apps/backend-rag/backend/prompts/zantara_core.py (the bot's
+# prompt-injection SECURITY_BOUNDARY, imported by ~20 modules across every
+# live channel — WhatsApp/Telegram/Instagram/Web Chat) is one of the four
+# files CLAUDE.md §5 names as an "off-limits file (top-level hard boundary)".
+# Measured that day: it was the ONLY one of the four with ZERO automated
+# visibility — no CODEOWNERS entry (fly.toml at least gets a toothless
+# review-request label), no CI check, nothing. Full analysis + the other
+# three files' actual (mostly absent) enforcement:
+# research/operations/2026-08-21-invariant-enforcement-map.md.
+#
+# This does NOT block an edit outright — CLAUDE.md §2's ship-lifecycle-
+# ownership doctrine means the session ships without human review by design,
+# so a hard block would just get routed around. It requires the edit to be
+# DECLARED in the PR body (`Zantara-Core-Edit: <reason>`), mirroring the
+# `adversarial_review:` token this repo already uses for the R1 gate.
+#
+# NON-REQUIRED on landing, by design — matches this repo's own onboarding
+# convention for a new signal (see catE-sovereignty-lint.yml's header:
+# observe a review cycle before it can gate a branch-protection-required
+# merge, W69 BUCO #1 lesson: arming a check as required without a
+# skip→success sentinel can pend-forever / block innocents). Promoting this
+# into required_status_checks is a branch-protection change and therefore
+# operator[gui] per CLAUDE.md §13 — tracked as a §Solo-operatore item in the
+# audit above, not something this workflow arms itself.
+#
+# Scope: pull_request only (not merge_group) — the question this gate asks
+# ("did THIS PR's author declare the edit in the PR body") does not change
+# between PR-head review and merge-group re-entry, so re-running it there
+# would be exactly the L4-option-B duplicate-work shape the 2026-08-21
+# world-patterns-import-map §1.1 flags — no need to invite it here.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+    paths:
+      - "apps/backend-rag/backend/prompts/zantara_core.py"
+      - "scripts/lint_zantara_core_edit_declared.py"
+      - ".github/workflows/zantara-core-edit-gate.yml"
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: zantara-core-edit-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  declared-intent:
+    name: zantara-core-edit-declared
+    runs-on: ubuntu-latest
+    # 10m floor (scripts/lint_workflow_timeout_floor.py, actionlint CI gate):
+    # `actions/checkout` on this repo intermittently takes ~2 minutes, and a
+    # job that runs out reports as `cancelled` not `failure` — a cancelled
+    # required check never turns green by itself and shows nothing red to
+    # fix. Size the budget by the checkout, not by this job's own script.
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          filter: blob:none
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      # Merge-base anchored (three-dot semantics), the same trusted
+      # enumerator hot-zone-pr-gate.yml already uses for the sibling
+      # CODEOWNERS-self-mod decision — never a two-dot diff (W102: a
+      # behind-main branch would get accused of files it never touched).
+      - name: Enumerate changed files
+        id: diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -u
+          if ! CHANGED=$(bash scripts/ci/hotzone_changed_files.sh "$BASE_SHA" "$HEAD_SHA" "${PR_NUMBER:-}"); then
+            echo "::error::Could not determine the changed-file set — failing closed"
+            exit 1
+          fi
+          {
+            echo "changed_files<<ZCE_EOF"
+            echo "$CHANGED"
+            echo "ZCE_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      # PR_BODY is passed via `env:`, never interpolated into the script
+      # text — the officially-recommended pattern for untrusted
+      # ${{ github.event.pull_request.body }} content in a run: step.
+      - name: Check declared-intent
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          CHANGED_FILES: ${{ steps.diff.outputs.changed_files }}
+        run: |
+          python3 scripts/lint_zantara_core_edit_declared.py

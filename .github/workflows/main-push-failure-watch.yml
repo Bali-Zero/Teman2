@@ -251,6 +251,15 @@ on:
       # ONLY because the checker requires it — main-red-breaker.yml is the
       # owned file this PR ships.
       - Main Red Breaker
+      # Added 2026-08-21: zantara-core-edit-gate.yml (invariant-enforcement-map
+      # audit, PR #4519) triggers on `pull_request` only — same non-reachable-
+      # but-still-required-for-coverage shape as actionlint / hot-zone-
+      # enforcement / Prettier (changed files) / Harness floor above.
+      # check_watcher_coverage.py's contract is name-set membership against
+      # this file's `name:`, not alert-path reachability (see its own
+      # docstring); caught by check_watcher_coverage.py on this PR's own
+      # first run.
+      - zantara-core-edit-gate
     types: [completed]
     # 2026-08-20 CI-churn cure — see the matching GOTCHA above for the
     # measurement and the empirical proof this narrows run CREATION, never
