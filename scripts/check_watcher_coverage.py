@@ -29,6 +29,21 @@ WHAT IT CHECKS:
      otherwise, which just accumulate forever without being wrong).
   3. The watcher does not list its OWN name (self-trigger risk).
 
+KNOWN LIMIT (not a gap this file closes): the contract above is pure
+name-set membership against the watcher's declared list — it proves a
+workflow is LISTED, not that a failure of that workflow actually reaches
+anyone. A `pull_request`-only workflow (actionlint, hot-zone-enforcement,
+Prettier, Harness floor, and now zantara-core-edit-gate) can never fire
+the `push`/`schedule`-on-main `workflow_run` event the watcher's own
+`alert` job's `if:` requires (see main-push-failure-watch.yml's SCOPE
+comment) — it is listed, this script reports green, and the alert path is
+still structurally unreachable for it. That is by design (the list is
+deliberately over-inclusive so adding a workflow never requires a
+push-vs-pull_request judgment call) but it means green here is narrower
+than it looks: verify alert-path reachability separately for any workflow
+whose failure actually needs a human paged, do not read this script's
+exit 0 as "someone gets told."
+
 Design note carried from the watcher's own build: two live workflow `name:`
 fields are unquoted YAML plain scalars containing " #" (`Golden Rule #10 —
 httpx pattern lint`, `Guard conformance (superscar #3 enforcement)`) — YAML
