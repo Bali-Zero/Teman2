@@ -114,8 +114,13 @@ case "$RC" in
     0)
         # Both good outcomes: production was already current, or it just got promoted.
         if [ "$DEGRADED" = 1 ]; then
-            heartbeat "warning" "promoted a degraded target - git could not be asked"
-            log "DEGRADED TARGET - promoted main HEAD; the fetch is broken, the promote was luck"
+            # The note names the STATE, not an action. rc=0 covers two different histories —
+            # it promoted main HEAD's build, or main HEAD was already what production served —
+            # and this branch cannot tell them apart. Saying "promoted" here would be a
+            # heartbeat that misdescribes what happened in the second case, which is the exact
+            # defect class this whole organ keeps finding.
+            heartbeat "warning" "degraded target — git could not be asked"
+            log "DEGRADED TARGET — the cure fell back to main HEAD and exited 0; the fetch is broken"
         elif printf '%s' "$OUT" | grep -q 'promoted'; then
             heartbeat "ok" "promoted"
             log "PROMOTED — production moved"

@@ -85,6 +85,22 @@ hb=$(echo "$r" | cut -f1)
     && ok "rc=0 + degraded target -> warning (not a clean ok)" \
     || bad "a promote off a degraded target must not read as healthy" "$hb"
 
+# rc=0 off a degraded target has TWO histories — it promoted main HEAD's build, or main HEAD was
+# already what production served — and the wrapper cannot tell them apart. Raised by a
+# cross-family refuter on the diff: a note reading "promoted" would misdescribe the second one.
+# The status must still be warning, and the note must not claim an action.
+r=$(run_case 0 'target commit   : deadbeef
+  chosen as     : main HEAD — git fetch failed (ssh: Connection refused), could not filter by path
+production already includes this commit — nothing to do' Mini-Pro2)
+hb=$(echo "$r" | cut -f1)
+[ "$(field "$hb" status)" = "warning" ] \
+    && ok "rc=0 + degraded + nothing promoted -> still warning" \
+    || bad "a degraded already-current run must not read as healthy" "$hb"
+case "$(field "$hb" note)" in
+    *promoted*) bad "the note claims a promote that never happened" "$hb" ;;
+    *) ok "the note names the degraded state, not an action it cannot know" ;;
+esac
+
 # The one a code-only mapping gets wrong. argparse exits 2 when the cure does not know
 # --promote-only: nothing ran. If that wore "warning" it would read as the benign
 # nothing-to-promote and stay green over a dead organ for as long as nobody looked.

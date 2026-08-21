@@ -273,7 +273,7 @@ def _git(*args: str) -> str | None:
     return out.stdout.strip()
 
 
-# Three attempts at a 120s timeout plus backoff worst-cases at ~368s — comfortably inside the
+# Three attempts at a 120s timeout plus 3s+9s backoff worst-case at 372s — comfortably inside
 # 900s cadence, so a genuinely dead network degrades on THIS tick instead of wedging the organ
 # into the next one.
 FETCH_ATTEMPTS = 3
