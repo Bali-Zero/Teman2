@@ -44,6 +44,11 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+from scripts.tg_gateway_verdict import extract_gateway_verdict, gateway_delivered  # noqa: E402
+
 # --- calibration (console read 2026-08-14, Part 4 of the burn-rate doc) ----
 CALIBRATION = {
     "date": "2026-08-14",
@@ -192,7 +197,14 @@ def build_report(readings: list[HostReading], now: dt.datetime) -> tuple[str, fl
     return "\n".join(lines), pct, exit_code
 
 
-def send_alert(report: str, pct: float, repo_root: Path) -> None:
+def send_alert(report: str, pct: float, repo_root: Path) -> bool:
+    """Send via tg_notify.py and judge the gateway's VERDICT, not its survival.
+
+    Contract enforced by scripts/tests/test_gateway_callers_read_the_verdict.py:
+    tg_notify exits 0 even on refusal, printing `tg_notify: <verdict>` to
+    stderr — a caller trusting returncode reads a refusal as a delivery
+    (W104). The returned bool comes from the parsed verdict.
+    """
     tier = "P0" if pct >= CRIT_PCT else "P1"
     tg = repo_root / "scripts" / "tg_notify.py"
     proc = subprocess.run(
@@ -200,8 +212,14 @@ def send_alert(report: str, pct: float, repo_root: Path) -> None:
          "--dedup-key", f"qwen-quota-{dt.date.today().isoformat()}", report],
         capture_output=True, text=True,
     )
-    # Judge the gateway's REPLY, never just survival (W104/W107 family).
-    sys.stderr.write(f"tg_notify rc={proc.returncode} out={proc.stdout.strip()[:200]}\n")
+    verdict = extract_gateway_verdict(proc.stderr)
+    delivered = False if verdict is None else gateway_delivered(verdict)
+    sys.stderr.write(
+        f"tg_notify rc={proc.returncode} verdict={verdict or 'MISSING'} delivered={delivered}\n"
+    )
+    if not delivered:
+        sys.stderr.write("ALERT NOT DELIVERED — the quota warning above reached nobody\n")
+    return delivered
 
 
 def selftest() -> int:
@@ -276,7 +294,9 @@ def main() -> int:
     report, pct, exit_code = build_report(readings, now)
     print(report)
     if args.alert and exit_code in (1, 2):
-        send_alert(report, pct, Path(__file__).resolve().parent.parent)
+        if not send_alert(report, pct, Path(__file__).resolve().parent.parent):
+            # threshold crossed AND nobody was told: CANNOT-DELIVER dominates
+            return 4
     return exit_code
 
 
