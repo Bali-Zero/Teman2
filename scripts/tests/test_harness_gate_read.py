@@ -489,3 +489,47 @@ def test_script_context_constant_matches_the_publisher():
     sys.path.insert(0, str(REPO / "scripts"))
     import harness_fable_gate  # noqa: E402
     assert hgr.CONTEXT == harness_fable_gate.CONTEXT
+
+
+def _mentions_are_all_prohibitions(text: str, phrase: str) -> bool:
+    """True if every occurrence of `phrase` is negated by a marker within the 60 characters
+    before it. Used instead of a bare `phrase not in text`, because the CORRECT text has to name
+    the wrong command in order to forbid it — a guard that bans the mention bans the cure along
+    with the disease (cicatrix #3, guard-over-match). The first draft of these two tests did
+    exactly that and failed against the very text it was written to protect."""
+    markers = ("do not", "don't", "never", "used to say", "instead of", "not ")
+    idx = text.lower().find(phrase.lower())
+    while idx != -1:
+        window = text.lower()[max(0, idx - 60) : idx]
+        if not any(m in window for m in markers):
+            return False
+        idx = text.lower().find(phrase.lower(), idx + 1)
+    return True
+
+
+def test_pending_message_prescribes_rerun_and_only_forbids_workflow_dispatch():
+    """The PENDING annotation is the one place a blocked session is GUARANTEED to read, so a wrong
+    recovery command there costs more than a wrong one in any doc.
+
+    It used to prescribe `gh workflow run harness-floor.yml --ref <branch>` and forbid
+    `gh run rerun` outright. That is backwards for this job and deadlocked #4543: a
+    workflow_dispatch run puts its check-run in a DIFFERENT check suite, and that check-run never
+    enters the PR's statusCheckRollup at all, so the dispatch goes green while the PR stays
+    BLOCKED. Nothing pinned the sentence, so it could regrow silently. This pins it."""
+    _, msg = hgr.decide(None)
+    assert "gh run rerun" in msg, "PENDING message must name the command that actually works"
+    assert _mentions_are_all_prohibitions(msg, "gh workflow run"), (
+        "PENDING message may mention `gh workflow run` only to forbid it: an un-negated mention "
+        "sends a blocked PR to a run that cannot clear its rollup"
+    )
+
+
+def test_module_docstring_does_not_prescribe_workflow_dispatch_as_the_cure():
+    """Same regression, one level up: the docstring is what a session reads when it goes looking
+    for WHY the check is red. It carried the same repealed instruction as the annotation. A
+    historical mention ("used to say ...") is fine; a prescription is not."""
+    doc = hgr.__doc__ or ""
+    assert "gh run rerun" in doc, "module docstring should name the working recovery command"
+    assert _mentions_are_all_prohibitions(doc, "gh workflow run harness-floor.yml --ref"), (
+        "module docstring must not prescribe workflow_dispatch as the recovery path"
+    )

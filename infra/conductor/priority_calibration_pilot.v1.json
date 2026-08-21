@@ -1,0 +1,43 @@
+{
+  "schema_version": "priority-calibration-pilot.v1",
+  "benchmark_id": "conductor-priority-pilot",
+  "benchmark_version": "1.0.0",
+  "roster": [
+    {
+      "endpoint_id": "claude-claude-haiku-4-5",
+      "task_profile_ids": ["mechanical"]
+    },
+    {
+      "endpoint_id": "claude-claude-opus-5",
+      "task_profile_ids": ["architecture", "hard_build", "review"]
+    },
+    {
+      "endpoint_id": "claude-claude-sonnet-5",
+      "task_profile_ids": ["standard_build", "hard_build"]
+    },
+    {
+      "endpoint_id": "codex-gpt-5.6-luna",
+      "task_profile_ids": ["mechanical"]
+    },
+    {
+      "endpoint_id": "codex-gpt-5.6-sol",
+      "task_profile_ids": ["architecture", "hard_build", "review"]
+    },
+    {
+      "endpoint_id": "codex-gpt-5.6-terra",
+      "task_profile_ids": ["standard_build", "hard_build"]
+    },
+    {
+      "endpoint_id": "kimi-kimi-for-coding",
+      "task_profile_ids": ["standard_build"]
+    },
+    {
+      "endpoint_id": "ollama-deepseek-r1-32b",
+      "task_profile_ids": ["architecture"]
+    },
+    {
+      "endpoint_id": "qwen-qwen3-coder-plus",
+      "task_profile_ids": ["standard_build"]
+    }
+  ]
+}

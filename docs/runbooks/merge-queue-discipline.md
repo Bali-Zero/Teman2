@@ -256,7 +256,11 @@ matrix job's suffixed required context never shows up under any name at all (§2
 never reported" class; scar `discovery_skipped_matrix_job_never_emits_its_required_contexts`).
 
 **Re-running a check by hand never uses `gh run rerun` on a stale ref (W111)** — it replays the OLD
-merge commit; `gh pr update-branch` first, or use `mq requeue` / `queue_rearm.sh --apply`.
+merge commit; `gh pr update-branch` first, or use `mq requeue` / `queue_rearm.sh --apply`. **One
+scoped exception, measured 2026-08-21:** when the red is an external commit status on an UNCHANGED
+head SHA (a Gear-3 gate verdict posted after the run finished) and the workflow checks out a pinned
+base SHA rather than a merge ref, `gh run rerun` on the original `pull_request` run is the only
+instrument that clears the rollup — see §6quinquies.
 
 Test: `scripts/tests/test_pr_watch.sh` (fake `gh`, no network). `mq watch` is the post-arm drift
 guard for one PR against its armed SHA; `pr_watch.sh` is the terminal-state watcher for one or many
@@ -321,10 +325,61 @@ retried.**
   SYSTEMATIC failure that retrying will reproduce forever. Separate the two before retrying —
   see §6ter, which is the shape that actually bit this repo on 2026-07-27/28.
 
-`gh run rerun <run_id> --failed` is the right gesture ONLY in the INFRA case, and note the trap
-before using it: **`rerun` replays the OLD merge commit**, so on a branch that has since fallen
-behind it re-tests a stale base — `gh pr update-branch` first
-(`lesson_gh_run_rerun_replays_the_stale_merge_commit_2026_07_27`).
+`gh run rerun <run_id> --failed` is the right gesture in the INFRA case and in the
+EXTERNAL-STATUS case (§6quinquies), and note the trap before using it: **`rerun` replays the OLD merge
+commit**, so on a branch that has since fallen behind it re-tests a stale base — `gh pr
+update-branch` first (`lesson_gh_run_rerun_replays_the_stale_merge_commit_2026_07_27`).
+
+---
+
+## 6quinquies. The red is an external commit status, not the code
+
+A job that reads a commit status on the head SHA — the Gear-3 `harness/fable-gate` verdict is the
+one in this repo — fails identically whether the verdict is REWORK or simply **not posted yet**.
+Once the gate session posts it, the job has to run again, and the obvious gesture is the wrong one.
+
+**Do not use `gh workflow run --ref`.** A `workflow_dispatch` run creates its check-run in a
+DIFFERENT CHECK SUITE from the `pull_request` event's, and it does not enter the PR's
+`statusCheckRollup` **at all** — it is an absent entry, not a superseded one. Measured on #4543:
+the rollup holds exactly ONE `Harness floor recompute` entry and it points at the `pull_request`
+run; the dispatch run appears nowhere in it. So the dispatch goes green while the PR stays BLOCKED.
+This deadlocked #4543. (#4549 hit the same PENDING red but was cured by a rerun without ever taking the dispatch path — measured: 9 `pull_request` runs on its branch, **zero** `workflow_dispatch`. It is a second confirmation of the REMEDY, not of the deadlock.)
+
+**Use `gh run rerun <the original pull_request run id>`.** Find it with:
+
+```bash
+gh run list --branch <branch> --workflow <file>.yml --json databaseId,event,headSha,conclusion
+```
+
+and take the row whose `event` is `pull_request` and whose `headSha` is the PR's current head. Same
+SHA, same suite, verdict now posted — the rollup clears.
+
+**Why this does not repeal W111.** W111's hazard is a run whose ref RESOLVES THROUGH A MOVING BASE;
+its own incident was #3463 replayed against `refs/pull/3463/merge` — a pull-request merge ref, so
+"reruns are only dangerous on merge_group" is false. The exception here is not "pull_request reruns
+are safe"; it is that on the `pull_request` path _this_ workflow checks out
+`github.event.pull_request.base.sha` — a PINNED SHA — and never `refs/pull/N/merge`, so there is no
+moving ref for the rerun to resolve differently.
+
+Read the expression **per branch**, not as a whole. In full it is
+`github.event.merge_group.base_sha || github.event.pull_request.base.sha || 'main'`, and that third
+branch IS a moving ref — it is the one `workflow_dispatch` falls through to. So the expression as a
+whole is not "pinned"; only the branch a `pull_request` rerun takes is. **Before copying this to
+another workflow, read that workflow's `ref:` — and read the branch YOUR event takes.**
+
+And the honest limit: a rerun replays the ORIGINAL event payload, so the base checkout — and with
+it the versions of the helper scripts the job executes — stays frozen at PR-event time. A rerun
+will not pick up a base-side fix that landed on main since; only a new `pull_request` event will.
+Pinning makes the staleness deterministic; it does not make the rerun current.
+
+**Diagnostic trap.** While diagnosing, `gh pr checks` and `gh api …/check-runs` will appear to
+contradict each other. The cause is **pagination**, not the filter: the endpoint returns 30 rows by
+default and a PR head here carries ~55-63 check-runs. Measured on `76edf60e2` — no `per_page`:
+`returned=30 failures=0`; `filter=all` with no `per_page`: **still** `returned=30 failures=0`;
+`filter=all&per_page=100`: `returned=55 failures=1`. So `per_page=100` (or `--paginate`) is
+mandatory; `filter=all` alone reports zero failures on a head that has one. `filter=all` does a
+different job — it re-adds attempts superseded _within_ their own suite. Then compare
+`check_suite.id`, which is the field that actually explains the disagreement.
 
 **Do not classify by job name, and do not classify from a snapshot.** An empty `conclusion` is
 _"not yet known"_, never _"no failure"_ — #3326 was read while `in_progress`/`conclusion=∅` and

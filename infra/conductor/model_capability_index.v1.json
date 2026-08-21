@@ -1,0 +1,2879 @@
+{
+  "schema_version": "model-capability-index.v1",
+  "generated_at": "2026-08-21",
+  "generation": {
+    "style": "deterministic checked-in projection",
+    "inputs": [
+      "capability_ontology.v1.json",
+      "task_profiles.v1.json",
+      "model_cards/*.json",
+      "endpoint_profiles/*.json",
+      "inventory_observations.v1.json"
+    ],
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#4",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "model_count": 80,
+  "endpoint_count": 81,
+  "models": [
+    {
+      "model_card_id": "aisingapore-qwen-sea-lion-v4-32b-it-q4-k-m",
+      "family": "aisingapore",
+      "kind": "language",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        },
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "bge-m3",
+      "family": "bge",
+      "kind": "embedding",
+      "routing_status": "eligible",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Local-Ollama",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "claude-fable-5",
+      "family": "claude-5",
+      "kind": "language",
+      "routing_status": "manual_only",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "Anthropic Claude models overview | https://platform.claude.com/docs/en/about-claude/models/overview",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "claude-haiku-4-5",
+      "family": "claude-4",
+      "kind": "language",
+      "routing_status": "eligible",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "Anthropic Claude models overview | https://platform.claude.com/docs/en/about-claude/models/overview",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "claude-opus-4-8",
+      "family": "claude-4",
+      "kind": "language",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "Anthropic Introducing Claude Opus 4.8 | https://www.anthropic.com/news/claude-opus-4-8",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "claude-opus-5",
+      "family": "claude-5",
+      "kind": "language",
+      "routing_status": "eligible",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "Anthropic Claude models overview | https://platform.claude.com/docs/en/about-claude/models/overview",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "claude-sonnet-4-6",
+      "family": "claude-4",
+      "kind": "language",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "Anthropic Introducing Claude Sonnet 4.6 | https://www.anthropic.com/news/claude-sonnet-4-6",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "claude-sonnet-5",
+      "family": "claude-5",
+      "kind": "language",
+      "routing_status": "eligible",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "Anthropic What's new in Claude Sonnet 5 | https://platform.claude.com/docs/en/about-claude/models/whats-new-sonnet-5",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "codex-auto-review",
+      "family": "codex",
+      "kind": "service",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "OpenAI Running Codex safely | https://openai.com/index/running-codex-safely/",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "deepseek-chat-v3-0324",
+      "family": "deepseek-v3",
+      "kind": "language",
+      "routing_status": "deprecated",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    },
+    {
+      "model_card_id": "deepseek-r1-32b",
+      "family": "deepseek",
+      "kind": "language",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Local-Ollama",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "deepseek-v3",
+      "family": "deepseek",
+      "kind": "language",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://github.com/deepseek-ai/DeepSeek-V3 | DeepSeek-V3 | accessed 2026-08-21 | Exact claim: DeepSeek-V3 is a 671B-total/37B-activated MoE language model with a 128K context length and documented MLA, DeepSeekMoE, auxiliary-loss-free balancing, and multi-token prediction.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "deepseek-v4-flash-0731",
+      "family": "deepseek-v4",
+      "kind": "language",
+      "routing_status": "eligible",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    },
+    {
+      "model_card_id": "deepseek-v4-flash",
+      "family": "deepseek",
+      "kind": "language",
+      "routing_status": "denied",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21.fail_403_access_denied_m5_measured",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "deepseek-v4-pro",
+      "family": "deepseek-v4",
+      "kind": "language",
+      "routing_status": "probation",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
+        },
+        {
+          "level": "declared",
+          "ref": "https://api-docs.deepseek.com/guides/json_mode/ | JSON Output | accessed 2026-08-21 | Exact claim: the official JSON Output guide includes deepseek-v4-pro with json_object and documents these prompt constraints.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "deepseek-v4",
+      "family": "deepseek",
+      "kind": "language",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "gemini-3-flash-preview",
+      "family": "gemini-3",
+      "kind": "language",
+      "routing_status": "deprecated",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        },
+        {
+          "level": "declared",
+          "ref": "Google Gemini 3 Flash Preview model page | https://ai.google.dev/gemini-api/docs/models/gemini-3-flash-preview",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "gemini-3.1-pro",
+      "family": "gemini-3",
+      "kind": "language",
+      "routing_status": "eligible",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Google",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "Google Gemini 3.1 Pro preview model page | https://ai.google.dev/gemini-api/docs/models/gemini-3.1-pro-preview",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "gemini-3.5-flash",
+      "family": "gemini-3",
+      "kind": "language",
+      "routing_status": "eligible",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Google",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "Google Gemini 3.5 Flash model page | https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "gemini-deepthink",
+      "family": "gemini",
+      "kind": "service",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#role_chains.strategy_panel",
+          "observed_at": "2026-08-20"
+        },
+        {
+          "level": "declared",
+          "ref": "Google Gemini 3 Deep Think announcement | https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-3-deep-think/",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "gemini-spark",
+      "family": "gemini-spark",
+      "kind": "service",
+      "routing_status": "manual_only",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Google",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "Google Introducing Gemini Spark | https://blog.google/innovation-and-ai/products/gemini-app/next-evolution-gemini-app/",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "gemma3-27b",
+      "family": "gemma3",
+      "kind": "vision",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        },
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "gemma4-26b",
+      "family": "gemma4",
+      "kind": "vision",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        },
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "glm-4.5",
+      "family": "glm",
+      "kind": "language",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "glm-4.7",
+      "family": "glm",
+      "kind": "language",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/coding-plan-faq | FAQ | accessed 2026-08-21 | Exact claim: glm-4.7 has a 202,752-token context length.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "glm-4",
+      "family": "glm",
+      "kind": "language",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "glm-5.1",
+      "family": "glm",
+      "kind": "language",
+      "routing_status": "denied",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21.fail_403_access_denied_m5_measured",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "glm-5.2",
+      "family": "glm",
+      "kind": "language",
+      "routing_status": "eligible",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#z.ai",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/newly-released-models | Newly released models | accessed 2026-08-21 | Exact claim: glm-5.2 documents a 1M-token context and long-horizon reasoning, text generation, and coding capabilities.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "glm-5",
+      "family": "glm",
+      "kind": "language",
+      "routing_status": "denied",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21.fail_403_access_denied_m5_measured",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/coding-plan-faq | FAQ | accessed 2026-08-21 | Exact claim: glm-5 has a 202,752-token context length.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "glm-ocr",
+      "family": "glm",
+      "kind": "vision",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://github.com/zai-org/GLM-OCR | GLM-OCR: Accurate x Fast x Comprehensive | accessed 2026-08-21 | Exact claim: GLM-OCR documents a two-stage document OCR pipeline with image/PDF input and JSON/Markdown output formats.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "gpt-5.3-codex-spark",
+      "family": "gpt-5.3",
+      "kind": "language",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "OpenAI Introducing GPT-5.3-Codex-Spark | https://openai.com/index/introducing-gpt-5-3-codex-spark/",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "gpt-5.4-mini",
+      "family": "gpt-5.4",
+      "kind": "language",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "OpenAI GPT-5.4 mini Model | https://developers.openai.com/api/docs/models/gpt-5.4-mini",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "gpt-5.4",
+      "family": "gpt-5.4",
+      "kind": "language",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "OpenAI GPT-5.4 Model | https://developers.openai.com/api/docs/models/gpt-5.4",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "gpt-5.5",
+      "family": "gpt-5.5",
+      "kind": "language",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "OpenAI GPT-5.5 Model | https://developers.openai.com/api/docs/models/gpt-5.5",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "gpt-5.6-luna",
+      "family": "gpt-5.6",
+      "kind": "language",
+      "routing_status": "eligible",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#2",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "OpenAI GPT-5.6 Luna Model | https://developers.openai.com/api/docs/models/gpt-5.6-luna",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "gpt-5.6-sol",
+      "family": "gpt-5.6",
+      "kind": "language",
+      "routing_status": "eligible",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#2",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "OpenAI GPT-5.6 Sol Model | https://developers.openai.com/api/docs/models/gpt-5.6-sol",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "gpt-5.6-terra",
+      "family": "gpt-5.6",
+      "kind": "language",
+      "routing_status": "eligible",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#2",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "OpenAI GPT-5.6 Terra Model | https://developers.openai.com/api/docs/models/gpt-5.6-terra",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "gpt-image-2",
+      "family": "gpt-image",
+      "kind": "image",
+      "routing_status": "eligible",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#2",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "OpenAI GPT Image 2 Model | https://developers.openai.com/api/docs/models/gpt-image-2",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "gpt-reserve",
+      "family": "gpt",
+      "kind": "language",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "happyhorse-1.1-i2v",
+      "family": "happyhorse",
+      "kind": "video",
+      "routing_status": "listed_unexploited",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.unexploited_capabilities",
+          "observed_at": "2026-08-14"
+        },
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/video-generate-edit-model | Video generation and editing | accessed 2026-08-21 | Exact claim: happyhorse-1.1-i2v is first-frame image-to-video with audio and 480P/720P/1080P, 3-15 second, 24 fps MP4 output.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "happyhorse-1.1-r2v",
+      "family": "happyhorse",
+      "kind": "video",
+      "routing_status": "listed_unexploited",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.unexploited_capabilities",
+          "observed_at": "2026-08-14"
+        },
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/video-generate-edit-model | Video generation and editing | accessed 2026-08-21 | Exact claim: happyhorse-1.1-r2v is reference-image-to-video with audio and 480P/720P/1080P, 3-15 second, 24 fps MP4 output.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "happyhorse-1.1-t2v",
+      "family": "happyhorse",
+      "kind": "video",
+      "routing_status": "listed_unexploited",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.unexploited_capabilities",
+          "observed_at": "2026-08-14"
+        },
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/video-generate-edit-model | Video generation and editing | accessed 2026-08-21 | Exact claim: happyhorse-1.1-t2v is text-to-video with audio and 480P/720P/1080P, 3-15 second, 24 fps MP4 output.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "kimi-for-coding-highspeed",
+      "family": "kimi",
+      "kind": "language",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Moonshot",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "kimi-for-coding",
+      "family": "kimi",
+      "kind": "language",
+      "routing_status": "eligible",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Moonshot",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "kimi-k2.5",
+      "family": "kimi",
+      "kind": "language",
+      "routing_status": "denied",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21.fail_403_access_denied_m5_measured",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://github.com/MoonshotAI/Kimi-K2.5 | Kimi-K2.5 | accessed 2026-08-21 | Exact claim: Kimi K2.5 is a native multimodal agentic model using MoonViT with a 256K context.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "kimi-k2.6",
+      "family": "kimi",
+      "kind": "language",
+      "routing_status": "denied",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21.fail_403_access_denied_m5_measured",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/visual-reasoning | Usage of visual reasoning models | accessed 2026-08-21 | Exact claim: kimi-k2.6 is listed as a hybrid-thinking model with enable_thinking control.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "kimi-k2.7",
+      "family": "kimi",
+      "kind": "language",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "kimi-k2",
+      "family": "kimi",
+      "kind": "language",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://github.com/MoonshotAI/Kimi-K2 | Kimi-K2 | accessed 2026-08-21 | Exact claim: Kimi K2 is a 1T-total/32B-activated MoE language model with 128K context and documented tool-use/reasoning capabilities.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "kimi-k3",
+      "family": "kimi",
+      "kind": "language",
+      "routing_status": "eligible",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Moonshot",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "minimax-m2.5",
+      "family": "minimax",
+      "kind": "language",
+      "routing_status": "phantom",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.roster.NOT_in_plan",
+          "observed_at": "2026-08-14"
+        },
+        {
+          "level": "declared",
+          "ref": "https://platform.minimax.io/docs/api-reference/api-overview | API Overview | accessed 2026-08-21 | Exact claim: MiniMax-M2.5 documents text generation, tool-call triggering, and a 204,800-token total input/output maximum.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "minimax-m2.7",
+      "family": "MiniMax",
+      "kind": "language",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://platform.minimax.io/docs/api-reference/api-overview | API Overview | accessed 2026-08-21 | Exact claim: MiniMax-M2.7 documents text generation, tool-call triggering, and a 204,800-token total input/output maximum.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "minimax-m3",
+      "family": "MiniMax",
+      "kind": "language",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "nomic-embed-text",
+      "family": "nomic",
+      "kind": "embedding",
+      "routing_status": "eligible",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Local-Ollama",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "notebooklm-default",
+      "family": "notebooklm",
+      "kind": "service",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Google",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "Google NotebookLM Help: Learn about NotebookLM | https://support.google.com/notebooklm/answer/16164461?hl=en",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "qwen-audio-3.0-realtime-plus",
+      "family": "qwen",
+      "kind": "audio",
+      "routing_status": "listed_unexploited",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.unexploited_capabilities",
+          "observed_at": "2026-08-14"
+        },
+        {
+          "level": "declared",
+          "ref": "https://www.alibabacloud.com/help/en/model-studio/qwen-audio-realtime-user-guides | Qwen-Audio real-time voice model | accessed 2026-08-21 | Exact claim: qwen-audio-3.0-realtime-plus documents real-time voice interaction with audio and text output plus cloned-voice support.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "qwen-audio-3.0-tts-plus",
+      "family": "qwen",
+      "kind": "audio",
+      "routing_status": "listed_unexploited",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.unexploited_capabilities",
+          "observed_at": "2026-08-14"
+        },
+        {
+          "level": "declared",
+          "ref": "https://docs.qwencloud.com/developer-guides/speech/tts-models | TTS models | accessed 2026-08-21 | Exact claim: qwen-audio-3.0-tts-plus documents streaming synthesis, custom voices, and instruction control.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "qwen2.5-7b",
+      "family": "qwen2.5",
+      "kind": "language",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        },
+        {
+          "level": "declared",
+          "ref": "https://qwenlm.github.io/blog/qwen2.5-llm/ | Qwen2.5-LLM: Extending the boundary of LLMs | accessed 2026-08-21 | Exact claim: Qwen2.5-7B has a 128K context and 8K generation length.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "qwen2.5vl-7b",
+      "family": "qwen2.5vl",
+      "kind": "vision",
+      "routing_status": "eligible",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Local-Ollama",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "qwen3-4b",
+      "family": "qwen3",
+      "kind": "language",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        },
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://qwenlm.github.io/blog/qwen3/ | Qwen3: Think Deeper, Act Faster | accessed 2026-08-21 | Exact claim: Qwen3-4B is a listed Qwen3 model with a 32K context length.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "qwen3-8b",
+      "family": "qwen3",
+      "kind": "language",
+      "routing_status": "eligible",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        },
+        {
+          "level": "declared",
+          "ref": "https://qwenlm.github.io/blog/qwen3/ | Qwen3: Think Deeper, Act Faster | accessed 2026-08-21 | Exact claim: Qwen3-8B is a listed Qwen3 model with a 128K context length.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "qwen3-asr-flash",
+      "family": "qwen3",
+      "kind": "audio",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/asr-model | Speech recognition models | accessed 2026-08-21 | Exact claim: qwen3-asr-flash is documented for automatic speech recognition and emotion recognition.",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/qwen-asr-api-reference | Qwen-ASR API reference | accessed 2026-08-21 | Exact claim: qwen3-asr-flash offline HTTP requests are limited to 5 minutes of audio or 10 MB.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "qwen3-coder-flash",
+      "family": "qwen3",
+      "kind": "language",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "qwen3-coder-next",
+      "family": "qwen3",
+      "kind": "language",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/qwen-coder | Code capabilities (Qwen-Coder) | accessed 2026-08-21 | Exact claim: qwen3-coder-next documents code generation, code completion, and tool calls.",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/coding-plan-faq | FAQ | accessed 2026-08-21 | Exact claim: qwen3-coder-next has a 262,144-token context length.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "qwen3-coder-plus",
+      "family": "qwen3",
+      "kind": "language",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/coding-plan-faq | FAQ | accessed 2026-08-21 | Exact claim: qwen3-coder-plus has a 1,000,000-token context length.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "qwen3-coder",
+      "family": "qwen3",
+      "kind": "language",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "qwen3-max-2026-01-23",
+      "family": "qwen3",
+      "kind": "language",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/coding-plan-faq | FAQ | accessed 2026-08-21 | Exact claim: qwen3-max-2026-01-23 has a 262,144-token context length.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "qwen3-max",
+      "family": "qwen3",
+      "kind": "language",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/model-pricing | Model pricing | accessed 2026-08-21 | Exact claim: qwen3-max is documented as the current equivalent of qwen3-max-2026-01-23, whose documented context ceiling is 262,144 tokens.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "qwen3-vl-8b",
+      "family": "qwen-3",
+      "kind": "vision",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "qwen3-vl-plus",
+      "family": "qwen3",
+      "kind": "vision",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "qwen3.5-9b",
+      "family": "qwen3.5",
+      "kind": "vision",
+      "routing_status": "eligible",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    },
+    {
+      "model_card_id": "qwen3.5-plus",
+      "family": "qwen3",
+      "kind": "language",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/qwen3-5-plus | qwen3.5-plus Model Info | accessed 2026-08-21 | Exact claim: qwen3.5-plus accepts text, image, and video input; supports Function Calling, Structured Outputs, Web Search, Prefix Completion, Context Caching, and Batch.",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/coding-plan-faq | FAQ | accessed 2026-08-21 | Exact claim: qwen3.5-plus has a 1,000,000-token context length.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "qwen3.6-flash",
+      "family": "qwen-3",
+      "kind": "language",
+      "routing_status": "probation",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
+        },
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/qwen3-6-flash | qwen3.6-flash Model Info | accessed 2026-08-21 | Exact claim: text, image, and video input; text output; 1,000,000-token context; 65,536-token output limit; Function Calling and related documented features; Batch Inference is region-dependent.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "qwen3.6-plus",
+      "family": "qwen3",
+      "kind": "language",
+      "routing_status": "denied",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21.fail_403_access_denied_m5_measured",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "qwen3.7-max",
+      "family": "qwen-3",
+      "kind": "language",
+      "routing_status": "probation",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
+        },
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/qwen3-7-max | qwen3.7-max Model Info | accessed 2026-08-21 | Exact claim: qwen3.7-max has text input/output, a 1,000,000-token context, a 131,072-token output limit, documents Structured Outputs, and has region-dependent documented feature support.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "qwen3.7-plus",
+      "family": "qwen-3",
+      "kind": "language",
+      "routing_status": "eligible",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
+        },
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/coding-plan-faq | FAQ | accessed 2026-08-21 | Exact claim: qwen3.7-plus has a 1,000,000-token context length.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "qwen3.8-27b-mlx",
+      "family": "qwen-3",
+      "kind": "language",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "qwen3.8-max-preview",
+      "family": "qwen3",
+      "kind": "language",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "qwen3.8-max",
+      "family": "qwen-3",
+      "kind": "language",
+      "routing_status": "eligible",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
+        },
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/qwen3-8-max | qwen3.8-max Model Info | accessed 2026-08-21 | Exact claim: qwen3.8-max documents text, image, and video input; text output; Function Calling, Structured Outputs, Web Search, Prefix Completion, and Context Caching; Batch Inference is region-dependent.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "wan2.7-image-pro",
+      "family": "wan2.7",
+      "kind": "image",
+      "routing_status": "listed_unexploited",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.unexploited_capabilities",
+          "observed_at": "2026-08-14"
+        },
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/wan-image-generation-and-editing-api-reference | Wan2.7 - image generation and editing | accessed 2026-08-21 | Exact claim: wan2.7-image-pro documents text-to-image generation at up to 4K output.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "model_card_id": "wan2.7-image",
+      "family": "wan2.7",
+      "kind": "image",
+      "routing_status": "listed_unexploited",
+      "automated_routing": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.unexploited_capabilities",
+          "observed_at": "2026-08-14"
+        },
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/wan-image-generation-and-editing-api-reference | Wan2.7 - image generation and editing | accessed 2026-08-21 | Exact claim: wan2.7-image documents text/image generation and editing modes with 1K/2K output.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "endpoints": [
+    {
+      "endpoint_id": "agy-gemini-3-flash-preview",
+      "model_card_id": "gemini-3-flash-preview",
+      "engine": "agy",
+      "model_identifier": "google-gemini-cli/gemini-3-flash-preview",
+      "auth_surface": "google_oauth_subscription",
+      "routing_status": "deprecated",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "agy-gemini-3.1-pro",
+      "model_card_id": "gemini-3.1-pro",
+      "engine": "agy",
+      "model_identifier": "gemini-3.1-pro",
+      "auth_surface": "google_oauth_subscription",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Google",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "agy-gemini-3.5-flash",
+      "model_card_id": "gemini-3.5-flash",
+      "engine": "agy",
+      "model_identifier": "gemini-3.5-flash",
+      "auth_surface": "google_oauth_subscription",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Google",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "agy-gemini-deepthink",
+      "model_card_id": "gemini-deepthink",
+      "engine": "agy",
+      "model_identifier": "gemini-deepthink",
+      "auth_surface": "google_oauth_subscription",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#role_chains.strategy_panel",
+          "observed_at": "2026-08-20"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "claude-claude-fable-5",
+      "model_card_id": "claude-fable-5",
+      "engine": "claude",
+      "model_identifier": "claude-fable-5",
+      "auth_surface": "anthropic_oauth_subscription",
+      "routing_status": "manual_only",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "claude-claude-haiku-4-5",
+      "model_card_id": "claude-haiku-4-5",
+      "engine": "claude",
+      "model_identifier": "claude-haiku-4-5-20251001",
+      "auth_surface": "anthropic_oauth_subscription",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "claude-claude-opus-4-8",
+      "model_card_id": "claude-opus-4-8",
+      "engine": "claude",
+      "model_identifier": "claude-opus-4-8",
+      "auth_surface": "anthropic_oauth_subscription",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "claude-claude-opus-5",
+      "model_card_id": "claude-opus-5",
+      "engine": "claude",
+      "model_identifier": "claude-opus-5",
+      "auth_surface": "anthropic_oauth_subscription",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "claude-claude-sonnet-4-6",
+      "model_card_id": "claude-sonnet-4-6",
+      "engine": "claude",
+      "model_identifier": "claude-sonnet-4-6",
+      "auth_surface": "anthropic_oauth_subscription",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "claude-claude-sonnet-5",
+      "model_card_id": "claude-sonnet-5",
+      "engine": "claude",
+      "model_identifier": "claude-sonnet-5",
+      "auth_surface": "anthropic_oauth_subscription",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "claude-glm-glm-4.5",
+      "model_card_id": "glm-4.5",
+      "engine": "claude-glm",
+      "model_identifier": "glm-4.5",
+      "auth_surface": "unknown",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "claude-glm-glm-4.7",
+      "model_card_id": "glm-4.7",
+      "engine": "claude-glm",
+      "model_identifier": "glm-4.7",
+      "auth_surface": "unknown",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "claude-glm-glm-4",
+      "model_card_id": "glm-4",
+      "engine": "claude-glm",
+      "model_identifier": "glm-4",
+      "auth_surface": "unknown",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "claude-glm-glm-5.1",
+      "model_card_id": "glm-5.1",
+      "engine": "claude-glm",
+      "model_identifier": "glm-5.1",
+      "auth_surface": "unknown",
+      "routing_status": "denied",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21.fail_403_access_denied_m5_measured",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "claude-glm-glm-5.2",
+      "model_card_id": "glm-5.2",
+      "engine": "claude-glm",
+      "model_identifier": "glm-5.2",
+      "auth_surface": "unknown",
+      "routing_status": "eligible",
+      "automated_routing": true,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#z.ai",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "claude-glm-glm-5",
+      "model_card_id": "glm-5",
+      "engine": "claude-glm",
+      "model_identifier": "glm-5",
+      "auth_surface": "unknown",
+      "routing_status": "denied",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21.fail_403_access_denied_m5_measured",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "codex-codex-auto-review",
+      "model_card_id": "codex-auto-review",
+      "engine": "codex",
+      "model_identifier": "codex-auto-review",
+      "auth_surface": "openai_chatgpt_subscription",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "codex-gpt-5.3-codex-spark",
+      "model_card_id": "gpt-5.3-codex-spark",
+      "engine": "codex",
+      "model_identifier": "gpt-5.3-codex-spark",
+      "auth_surface": "openai_chatgpt_subscription",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "codex-gpt-5.4-mini",
+      "model_card_id": "gpt-5.4-mini",
+      "engine": "codex",
+      "model_identifier": "gpt-5.4-mini",
+      "auth_surface": "openai_chatgpt_subscription",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "codex-gpt-5.4",
+      "model_card_id": "gpt-5.4",
+      "engine": "codex",
+      "model_identifier": "gpt-5.4",
+      "auth_surface": "openai_chatgpt_subscription",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "codex-gpt-5.5",
+      "model_card_id": "gpt-5.5",
+      "engine": "codex",
+      "model_identifier": "gpt-5.5",
+      "auth_surface": "openai_chatgpt_subscription",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "codex-gpt-5.6-luna",
+      "model_card_id": "gpt-5.6-luna",
+      "engine": "codex",
+      "model_identifier": "gpt-5.6-luna",
+      "auth_surface": "openai_chatgpt_subscription",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#2",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "codex-gpt-5.6-sol",
+      "model_card_id": "gpt-5.6-sol",
+      "engine": "codex",
+      "model_identifier": "gpt-5.6-sol",
+      "auth_surface": "openai_chatgpt_subscription",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#2",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "codex-gpt-5.6-terra",
+      "model_card_id": "gpt-5.6-terra",
+      "engine": "codex",
+      "model_identifier": "gpt-5.6-terra",
+      "auth_surface": "openai_chatgpt_subscription",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#2",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "codex-gpt-reserve",
+      "model_card_id": "gpt-reserve",
+      "engine": "codex",
+      "model_identifier": "gpt-reserve",
+      "auth_surface": "openai_chatgpt_subscription",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "codex-imagegen-gpt-image-2",
+      "model_card_id": "gpt-image-2",
+      "engine": "codex-imagegen",
+      "model_identifier": "$imagegen",
+      "auth_surface": "openai_chatgpt_subscription",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#2",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "gemini-spark-gui-gemini-spark",
+      "model_card_id": "gemini-spark",
+      "engine": "gemini-spark-gui",
+      "model_identifier": "gemini-spark",
+      "auth_surface": "manual_gui",
+      "routing_status": "manual_only",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Google",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "kimi-kimi-for-coding-highspeed",
+      "model_card_id": "kimi-for-coding-highspeed",
+      "engine": "kimi",
+      "model_identifier": "kimi-for-coding-highspeed",
+      "auth_surface": "unknown",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["pro"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Moonshot",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "kimi-kimi-for-coding",
+      "model_card_id": "kimi-for-coding",
+      "engine": "kimi",
+      "model_identifier": "kimi-for-coding",
+      "auth_surface": "unknown",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["pro"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Moonshot",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "kimi-kimi-k2.5",
+      "model_card_id": "kimi-k2.5",
+      "engine": "kimi",
+      "model_identifier": "kimi-k2.5",
+      "auth_surface": "unknown",
+      "routing_status": "denied",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21.fail_403_access_denied_m5_measured",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "kimi-kimi-k2.6",
+      "model_card_id": "kimi-k2.6",
+      "engine": "kimi",
+      "model_identifier": "kimi-k2.6",
+      "auth_surface": "unknown",
+      "routing_status": "denied",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21.fail_403_access_denied_m5_measured",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "kimi-kimi-k2.7",
+      "model_card_id": "kimi-k2.7",
+      "engine": "kimi",
+      "model_identifier": "kimi-k2.7",
+      "auth_surface": "unknown",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "kimi-kimi-k2",
+      "model_card_id": "kimi-k2",
+      "engine": "kimi",
+      "model_identifier": "kimi-k2",
+      "auth_surface": "unknown",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "kimi-kimi-k3",
+      "model_card_id": "kimi-k3",
+      "engine": "kimi",
+      "model_identifier": "k3",
+      "auth_surface": "unknown",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["pro"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Moonshot",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "notebooklm-mcp-notebooklm-default",
+      "model_card_id": "notebooklm-default",
+      "engine": "notebooklm-mcp",
+      "model_identifier": "notebooklm-default",
+      "auth_surface": "google_oauth_subscription",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Google",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "ollama-aisingapore-qwen-sea-lion-v4-32b-it-q4-k-m",
+      "model_card_id": "aisingapore-qwen-sea-lion-v4-32b-it-q4-k-m",
+      "engine": "ollama",
+      "model_identifier": "aisingapore/Qwen-SEA-LION-v4-32B-IT:q4_k_m",
+      "auth_surface": "local_runtime",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "ollama-bge-m3",
+      "model_card_id": "bge-m3",
+      "engine": "ollama",
+      "model_identifier": "bge-m3",
+      "auth_surface": "local_runtime",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Local-Ollama",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "ollama-deepseek-r1-32b",
+      "model_card_id": "deepseek-r1-32b",
+      "engine": "ollama",
+      "model_identifier": "deepseek-r1:32b",
+      "auth_surface": "local_runtime",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Local-Ollama",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "ollama-gemma3-27b",
+      "model_card_id": "gemma3-27b",
+      "engine": "ollama",
+      "model_identifier": "gemma3:27b",
+      "auth_surface": "local_runtime",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "ollama-gemma4-26b",
+      "model_card_id": "gemma4-26b",
+      "engine": "ollama",
+      "model_identifier": "gemma4:26b",
+      "auth_surface": "local_runtime",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "ollama-glm-ocr",
+      "model_card_id": "glm-ocr",
+      "engine": "ollama",
+      "model_identifier": "glm-ocr",
+      "auth_surface": "local_runtime",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "ollama-nomic-embed-text",
+      "model_card_id": "nomic-embed-text",
+      "engine": "ollama",
+      "model_identifier": "nomic-embed-text",
+      "auth_surface": "local_runtime",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Local-Ollama",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "ollama-qwen2.5-7b",
+      "model_card_id": "qwen2.5-7b",
+      "engine": "ollama",
+      "model_identifier": "qwen2.5:7b",
+      "auth_surface": "local_runtime",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "ollama-qwen2.5vl-7b",
+      "model_card_id": "qwen2.5vl-7b",
+      "engine": "ollama",
+      "model_identifier": "qwen2.5vl:7b",
+      "auth_surface": "local_runtime",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Local-Ollama",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "ollama-qwen3-4b",
+      "model_card_id": "qwen3-4b",
+      "engine": "ollama",
+      "model_identifier": "qwen3:4b",
+      "auth_surface": "local_runtime",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "ollama-qwen3-8b",
+      "model_card_id": "qwen3-8b",
+      "engine": "ollama",
+      "model_identifier": "qwen3:8b",
+      "auth_surface": "local_runtime",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "ollama-qwen3-vl-8b",
+      "model_card_id": "qwen3-vl-8b",
+      "engine": "ollama",
+      "model_identifier": "qwen3-vl:8b",
+      "auth_surface": "local_runtime",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "ollama-qwen3.5-9b",
+      "model_card_id": "qwen3.5-9b",
+      "engine": "ollama",
+      "model_identifier": "qwen3.5:9b",
+      "auth_surface": "local_runtime",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "ollama-qwen3.8-27b-mlx",
+      "model_card_id": "qwen3.8-27b-mlx",
+      "engine": "ollama",
+      "model_identifier": "qwen3.8:27b-mlx",
+      "auth_surface": "local_runtime",
+      "routing_status": "known_unmeasured",
+      "automated_routing": false,
+      "machine_allowlist": ["mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-deepseek-chat-v3-0324",
+      "model_card_id": "deepseek-chat-v3-0324",
+      "engine": "qwen",
+      "model_identifier": "openrouter/deepseek/deepseek-chat-v3-0324",
+      "auth_surface": "unknown",
+      "routing_status": "deprecated",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-deepseek-v3",
+      "model_card_id": "deepseek-v3",
+      "engine": "qwen",
+      "model_identifier": "deepseek-v3",
+      "auth_surface": "unknown",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-deepseek-v4-flash-0731",
+      "model_card_id": "deepseek-v4-flash-0731",
+      "engine": "qwen",
+      "model_identifier": "deepseek-v4-flash-0731",
+      "auth_surface": "unknown",
+      "routing_status": "eligible",
+      "automated_routing": true,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-deepseek-v4-flash",
+      "model_card_id": "deepseek-v4-flash",
+      "engine": "qwen",
+      "model_identifier": "deepseek-v4-flash",
+      "auth_surface": "unknown",
+      "routing_status": "denied",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21.fail_403_access_denied_m5_measured",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-deepseek-v4-pro",
+      "model_card_id": "deepseek-v4-pro",
+      "engine": "qwen",
+      "model_identifier": "deepseek-v4-pro",
+      "auth_surface": "unknown",
+      "routing_status": "probation",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-deepseek-v4",
+      "model_card_id": "deepseek-v4",
+      "engine": "qwen",
+      "model_identifier": "deepseek-v4",
+      "auth_surface": "unknown",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-glm-5.2-tp1",
+      "model_card_id": "glm-5.2",
+      "engine": "qwen",
+      "model_identifier": "glm-5.2",
+      "auth_surface": "unknown",
+      "routing_status": "probation",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-happyhorse-1.1-i2v",
+      "model_card_id": "happyhorse-1.1-i2v",
+      "engine": "qwen",
+      "model_identifier": "happyhorse-1.1-i2v",
+      "auth_surface": "unknown",
+      "routing_status": "listed_unexploited",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.unexploited_capabilities",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-happyhorse-1.1-r2v",
+      "model_card_id": "happyhorse-1.1-r2v",
+      "engine": "qwen",
+      "model_identifier": "happyhorse-1.1-r2v",
+      "auth_surface": "unknown",
+      "routing_status": "listed_unexploited",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.unexploited_capabilities",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-happyhorse-1.1-t2v",
+      "model_card_id": "happyhorse-1.1-t2v",
+      "engine": "qwen",
+      "model_identifier": "happyhorse-1.1-t2v",
+      "auth_surface": "unknown",
+      "routing_status": "listed_unexploited",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.unexploited_capabilities",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-minimax-m2.5",
+      "model_card_id": "minimax-m2.5",
+      "engine": "qwen",
+      "model_identifier": "MiniMax-M2.5",
+      "auth_surface": "unknown",
+      "routing_status": "phantom",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.roster.NOT_in_plan",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-minimax-m2.7",
+      "model_card_id": "minimax-m2.7",
+      "engine": "qwen",
+      "model_identifier": "minimax-m2.7",
+      "auth_surface": "unknown",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-minimax-m3",
+      "model_card_id": "minimax-m3",
+      "engine": "qwen",
+      "model_identifier": "minimax-m3",
+      "auth_surface": "unknown",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-qwen-audio-3.0-realtime-plus",
+      "model_card_id": "qwen-audio-3.0-realtime-plus",
+      "engine": "qwen",
+      "model_identifier": "qwen-audio-3.0-realtime-plus",
+      "auth_surface": "unknown",
+      "routing_status": "listed_unexploited",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.unexploited_capabilities",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-qwen-audio-3.0-tts-plus",
+      "model_card_id": "qwen-audio-3.0-tts-plus",
+      "engine": "qwen",
+      "model_identifier": "qwen-audio-3.0-tts-plus",
+      "auth_surface": "unknown",
+      "routing_status": "listed_unexploited",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.unexploited_capabilities",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-qwen3-asr-flash",
+      "model_card_id": "qwen3-asr-flash",
+      "engine": "qwen",
+      "model_identifier": "qwen3-asr-flash",
+      "auth_surface": "unknown",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-qwen3-coder-flash",
+      "model_card_id": "qwen3-coder-flash",
+      "engine": "qwen",
+      "model_identifier": "qwen3-coder-flash",
+      "auth_surface": "unknown",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-qwen3-coder-next",
+      "model_card_id": "qwen3-coder-next",
+      "engine": "qwen",
+      "model_identifier": "qwen3-coder-next",
+      "auth_surface": "unknown",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-qwen3-coder-plus",
+      "model_card_id": "qwen3-coder-plus",
+      "engine": "qwen",
+      "model_identifier": "qwen3-coder-plus",
+      "auth_surface": "unknown",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-qwen3-coder",
+      "model_card_id": "qwen3-coder",
+      "engine": "qwen",
+      "model_identifier": "qwen3-coder",
+      "auth_surface": "unknown",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-qwen3-max-2026-01-23",
+      "model_card_id": "qwen3-max-2026-01-23",
+      "engine": "qwen",
+      "model_identifier": "qwen3-max-2026-01-23",
+      "auth_surface": "unknown",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-qwen3-max",
+      "model_card_id": "qwen3-max",
+      "engine": "qwen",
+      "model_identifier": "qwen3-max",
+      "auth_surface": "unknown",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-qwen3-vl-plus",
+      "model_card_id": "qwen3-vl-plus",
+      "engine": "qwen",
+      "model_identifier": "qwen3-vl-plus",
+      "auth_surface": "unknown",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-qwen3.5-plus",
+      "model_card_id": "qwen3.5-plus",
+      "engine": "qwen",
+      "model_identifier": "qwen3.5-plus",
+      "auth_surface": "unknown",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-qwen3.6-flash",
+      "model_card_id": "qwen3.6-flash",
+      "engine": "qwen",
+      "model_identifier": "qwen-3.6-flash",
+      "auth_surface": "unknown",
+      "routing_status": "probation",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-qwen3.6-plus",
+      "model_card_id": "qwen3.6-plus",
+      "engine": "qwen",
+      "model_identifier": "qwen3.6-plus",
+      "auth_surface": "unknown",
+      "routing_status": "denied",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21.fail_403_access_denied_m5_measured",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-qwen3.7-max",
+      "model_card_id": "qwen3.7-max",
+      "engine": "qwen",
+      "model_identifier": "qwen-3.7-max",
+      "auth_surface": "unknown",
+      "routing_status": "probation",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-qwen3.7-plus",
+      "model_card_id": "qwen3.7-plus",
+      "engine": "qwen",
+      "model_identifier": "qwen-3.7-plus",
+      "auth_surface": "unknown",
+      "routing_status": "eligible",
+      "automated_routing": true,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-qwen3.8-max-preview",
+      "model_card_id": "qwen3.8-max-preview",
+      "engine": "qwen",
+      "model_identifier": "qwen3.8-max-preview",
+      "auth_surface": "unknown",
+      "routing_status": "investigation_required",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-qwen3.8-max",
+      "model_card_id": "qwen3.8-max",
+      "engine": "qwen",
+      "model_identifier": "qwen-3.8-max",
+      "auth_surface": "unknown",
+      "routing_status": "eligible",
+      "automated_routing": true,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-wan2.7-image-pro",
+      "model_card_id": "wan2.7-image-pro",
+      "engine": "qwen",
+      "model_identifier": "wan2.7-image-pro",
+      "auth_surface": "unknown",
+      "routing_status": "listed_unexploited",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.unexploited_capabilities",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    },
+    {
+      "endpoint_id": "qwen-wan2.7-image",
+      "model_card_id": "wan2.7-image",
+      "engine": "qwen",
+      "model_identifier": "wan2.7-image",
+      "auth_surface": "unknown",
+      "routing_status": "listed_unexploited",
+      "automated_routing": false,
+      "machine_allowlist": ["air-m5", "pro", "mini-pro2"],
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.unexploited_capabilities",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    }
+  ]
+}

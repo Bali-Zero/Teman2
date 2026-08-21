@@ -1,0 +1,101 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "gemini-3-flash-preview",
+  "display_name": "Gemini 3 Flash Preview",
+  "identity": {
+    "provider": "google",
+    "family": "gemini-3",
+    "kind": "language",
+    "aliases": ["google-gemini-cli/gemini-3-flash-preview"],
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_TOPOLOGY.json#roles",
+        "observed_at": "2026-06-16"
+      }
+    ]
+  },
+  "routing": {
+    "status": "deprecated",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_TOPOLOGY.json#roles",
+        "observed_at": "2026-06-16"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": 1048576,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "Google Gemini 3 Flash Preview model page | https://ai.google.dev/gemini-api/docs/models/gemini-3-flash-preview",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": 65536,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "Google Gemini 3 Flash Preview model page | https://ai.google.dev/gemini-api/docs/models/gemini-3-flash-preview",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "deprecated_cli_surface",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    },
+    {
+      "id": "declared_capability_profile",
+      "value": "Text, image, video, audio, and PDF input with text output; supports caching, code execution, computer use, file search, function calling, Maps/Search grounding, structured output, thinking, and URL context. Official model page identifies this preview as a legacy/deprecated version of Gemini 3.5 Flash.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "Google Gemini 3 Flash Preview model page | https://ai.google.dev/gemini-api/docs/models/gemini-3-flash-preview",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "declared",
+      "ref": "MODEL_TOPOLOGY.json#roles",
+      "observed_at": "2026-06-16"
+    },
+    {
+      "level": "declared",
+      "ref": "Google Gemini 3 Flash Preview model page | https://ai.google.dev/gemini-api/docs/models/gemini-3-flash-preview",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

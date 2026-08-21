@@ -1,0 +1,123 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "claude-haiku-4-5",
+  "display_name": "Claude Haiku 4.5",
+  "identity": {
+    "provider": "anthropic",
+    "family": "claude-4",
+    "kind": "language",
+    "aliases": ["claude-haiku-4-5-20251001"],
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Anthropic",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "eligible",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Anthropic",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "coding",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "vision",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": 200000,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "Anthropic Claude models overview | https://platform.claude.com/docs/en/about-claude/models/overview",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": 64000,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "Anthropic Claude models overview | https://platform.claude.com/docs/en/about-claude/models/overview",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "dated_identifier_available",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "declared_capability_profile",
+      "value": "Text and image input; text output; manual extended thinking supported; adaptive and interleaved thinking unsupported; intended for fast, cost-efficient coding and agent work.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "Anthropic Claude models overview, Migration guide, and Context windows | https://platform.claude.com/docs/en/about-claude/models/overview | https://platform.claude.com/docs/en/about-claude/models/migration-guide | https://platform.claude.com/docs/en/build-with-claude/context-windows",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "declared",
+      "ref": "MODEL_ROSTER.md#Anthropic",
+      "observed_at": "2026-08-21"
+    },
+    {
+      "level": "declared",
+      "ref": "Anthropic Claude models overview | https://platform.claude.com/docs/en/about-claude/models/overview",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

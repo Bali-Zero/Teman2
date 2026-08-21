@@ -1,0 +1,134 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "claude-opus-5",
+  "display_name": "Claude Opus 5",
+  "identity": {
+    "provider": "anthropic",
+    "family": "claude-5",
+    "kind": "language",
+    "aliases": [],
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Anthropic",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "eligible",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Anthropic",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "coding",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "reasoning_control",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": 1000000,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "Anthropic Claude models overview | https://platform.claude.com/docs/en/about-claude/models/overview",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": 128000,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "Anthropic Claude models overview | https://platform.claude.com/docs/en/about-claude/models/overview",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "final_gate_effort",
+      "value": "max",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "thinking_default",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "declared_capability_profile",
+      "value": "Text and image input; text output; adaptive thinking on by default; intended for complex agentic coding, deep reasoning, enterprise work, and long-horizon tasks. Supports prompt caching, batches, Files, PDF, vision, and server/client tools; web fetch and Priority Tier are unavailable.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "Anthropic Claude models overview and Migration guide | https://platform.claude.com/docs/en/about-claude/models/overview | https://platform.claude.com/docs/en/about-claude/models/migration-guide",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "declared",
+      "ref": "MODEL_ROSTER.md#Anthropic",
+      "observed_at": "2026-08-21"
+    },
+    {
+      "level": "declared",
+      "ref": "Anthropic Claude models overview | https://platform.claude.com/docs/en/about-claude/models/overview",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

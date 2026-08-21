@@ -1,0 +1,93 @@
+{
+  "schema_version": "endpoint-profile.v1",
+  "id": "ollama-qwen3-4b",
+  "model_card_id": "qwen3-4b",
+  "aliases": [],
+  "invocation": {
+    "engine": "ollama",
+    "model_identifier": "qwen3:4b",
+    "harness": "Ollama CLI/service",
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_TOPOLOGY.json#roles",
+        "observed_at": "2026-06-16"
+      }
+    ]
+  },
+  "account_class": {
+    "value": "local-ollama",
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_TOPOLOGY.json#roles",
+        "observed_at": "2026-06-16"
+      }
+    ]
+  },
+  "auth_surface": "local_runtime",
+  "machine_constraints": {
+    "allowlist": ["pro", "mini-pro2"],
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_TOPOLOGY.json#roles",
+        "observed_at": "2026-06-16"
+      }
+    ]
+  },
+  "routing": {
+    "status": "known_unmeasured",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_TOPOLOGY.json#roles",
+        "observed_at": "2026-06-16"
+      }
+    ]
+  },
+  "enforcement": {
+    "mode": "unmeasured",
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_TOPOLOGY.json#roles",
+        "observed_at": "2026-06-16"
+      }
+    ]
+  },
+  "exposed_capabilities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    }
+  ],
+  "restrictions": [
+    {
+      "id": "client_pii",
+      "value": "local policy still applies",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#_invariants",
+          "observed_at": "2026-08-20"
+        }
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "level": "declared",
+      "ref": "MODEL_TOPOLOGY.json#roles",
+      "observed_at": "2026-06-16"
+    }
+  ]
+}

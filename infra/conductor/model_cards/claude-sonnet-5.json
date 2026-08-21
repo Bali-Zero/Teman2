@@ -1,0 +1,123 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "claude-sonnet-5",
+  "display_name": "Claude Sonnet 5",
+  "identity": {
+    "provider": "anthropic",
+    "family": "claude-5",
+    "kind": "language",
+    "aliases": [],
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Anthropic",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "eligible",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Anthropic",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "coding",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "reasoning_control",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": 1000000,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "Anthropic Claude models overview | https://platform.claude.com/docs/en/about-claude/models/overview",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": 128000,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "Anthropic Claude models overview | https://platform.claude.com/docs/en/about-claude/models/overview",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "tokenizer_change",
+      "value": "New tokenizer may produce approximately 30 percent more tokens than Sonnet 4.6 for the same text; this is a model-scoped migration note, not a measured local multiplier.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "Anthropic What's new in Claude Sonnet 5 | https://platform.claude.com/docs/en/about-claude/models/whats-new-sonnet-5",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "declared_capability_profile",
+      "value": "Text and image input; text output; adaptive thinking on by default; intended for agentic planning, coding, browser and terminal tool use, knowledge work, and autonomous workflows.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "Anthropic What's new in Claude Sonnet 5 and Introducing Claude Sonnet 5 | https://platform.claude.com/docs/en/about-claude/models/whats-new-sonnet-5 | https://www.anthropic.com/news/claude-sonnet-5",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "declared",
+      "ref": "MODEL_ROSTER.md#Anthropic",
+      "observed_at": "2026-08-21"
+    },
+    {
+      "level": "declared",
+      "ref": "Anthropic What's new in Claude Sonnet 5 | https://platform.claude.com/docs/en/about-claude/models/whats-new-sonnet-5",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

@@ -1,0 +1,123 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "gemini-spark",
+  "display_name": "Gemini Spark",
+  "identity": {
+    "provider": "google",
+    "family": "gemini-spark",
+    "kind": "service",
+    "aliases": [],
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Google",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "manual_only",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Google",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "knowledge_verification",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Google",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "MODEL_ROSTER.md#Google",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "MODEL_ROSTER.md#Google",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "consumer_account_only",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Google",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "gui_only",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Google",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "schedulable",
+      "value": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Google",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "declared_capability_profile",
+      "value": "24/7 personal-agent service that works proactively in the cloud and integrates with Google Workspace. The cited current India rollout is powered by Gemini 3.6 Flash; this engine claim is rollout-scoped and is not inherited as a generic Gemini Spark model identifier or token limit.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "Google Introducing Gemini Spark and India expansion | https://blog.google/innovation-and-ai/products/gemini-app/next-evolution-gemini-app/ | https://blog.google/intl/en-in/company-news/technology/introducing-gemini-spark-your-247-personal-ai-agent-in-country/",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "declared",
+      "ref": "MODEL_ROSTER.md#Google",
+      "observed_at": "2026-08-21"
+    },
+    {
+      "level": "declared",
+      "ref": "Google Introducing Gemini Spark | https://blog.google/innovation-and-ai/products/gemini-app/next-evolution-gemini-app/",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

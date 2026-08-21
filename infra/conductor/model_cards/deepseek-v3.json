@@ -1,0 +1,117 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "deepseek-v3",
+  "display_name": "deepseek-v3",
+  "identity": {
+    "provider": "deepseek",
+    "family": "deepseek",
+    "kind": "language",
+    "aliases": [],
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "investigation_required",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": 131072,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://github.com/deepseek-ai/DeepSeek-V3 | DeepSeek-V3 | accessed 2026-08-21 | Exact claim: DeepSeek-V3 has a 128K context length.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "declared_architecture",
+      "value": "MoE language model with 671B total parameters and 37B activated parameters; documents Multi-head Latent Attention, DeepSeekMoE, auxiliary-loss-free load balancing, and multi-token prediction training.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://github.com/deepseek-ai/DeepSeek-V3 | DeepSeek-V3 | accessed 2026-08-21 | Exact claim: DeepSeek-V3 documents this architecture and training approach.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "live_probe_result",
+      "value": "PONG on Air-M5, Pro, and Mini-Pro2",
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "billing_plan_eligibility",
+      "value": "unresolved",
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "probed",
+      "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+      "observed_at": "2026-08-21"
+    },
+    {
+      "level": "declared",
+      "ref": "https://github.com/deepseek-ai/DeepSeek-V3 | DeepSeek-V3 | accessed 2026-08-21 | Exact claim: DeepSeek-V3 is a 671B-total/37B-activated MoE language model with a 128K context length and documented MLA, DeepSeekMoE, auxiliary-loss-free balancing, and multi-token prediction.",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

@@ -78,9 +78,87 @@ name: Harness floor recompute
 # OPERATIONAL COROLLARY: a completed Actions job has no native "pending forever" state distinct
 # from "failed", so a Gear-3 PR with no verdict posted yet fails this job exactly like a
 # REWORK/BLOCK verdict would (same red X, different message). After the gate session posts a
-# verdict, it re-triggers via `gh workflow run harness-floor.yml --ref <branch>` (the
-# `workflow_dispatch:` trigger below exists for exactly this) — never a bare `gh run rerun` on
-# this run's own stale object (CLAUDE.md Agent PR Contract rule 3 / cicatrix W111).
+# verdict it must re-trigger this job — and WHICH command to use depends on the case. An earlier
+# version of this note gave only `gh workflow run --ref` and forbade `gh run rerun` outright. That
+# is wrong for the ordinary case and it deadlocked the first real Gear-3 PR to follow it (#4543,
+# measured 2026-08-21):
+#
+#   CASE A — the PR already has a `pull_request` run on this exact head SHA (the normal case).
+#     Find the id:  gh run list --branch <branch> --workflow harness-floor.yml \
+#                     --json databaseId,event,headSha,conclusion
+#                   (pick the row whose `event` is `pull_request` and whose `headSha` is the
+#                   PR's current head — `gh pr checks <N> --json name,link` also carries it)
+#     Use:  gh run rerun <that pull_request run id>
+#     WHY:  a `workflow_dispatch` run creates its check-run in a DIFFERENT CHECK SUITE from the
+#           `pull_request` event's, and it does not enter the PR's statusCheckRollup AT ALL —
+#           it is not a superseded entry, it is an absent one. Measured on #4543: the rollup has
+#           exactly ONE `Harness floor recompute` entry and it points at run 32489011695 (the
+#           pull_request run); the dispatch run 32489857553 appears nowhere in it. So the dispatch
+#           run goes green while the PR keeps the old failure and stays BLOCKED. Measured:
+#           dispatch success in suite 88072653107 at 14:01:20Z, pull_request failure in suite
+#           88070314010 at 13:51:47Z, rollup FAILURE. `gh run rerun` on the pull_request run —
+#           same SHA, same suite, verdict now posted — took it to CLEAN.
+#     ESCAPE, if CASE A is unavailable: `gh run rerun` is refused on a run older than 30 days
+#           (expired). Do NOT fall back to CASE B here — on an OPEN, BLOCKED PR a dispatch run is
+#           inert for exactly the reason above, so it cannot unblock anything. Two escapes do work,
+#           both costlier than CASE A: (a) close and reopen the PR — `pull_request:` below lists
+#           `reopened`, so this fires a fresh run in the PR's own suite on the UNCHANGED head SHA,
+#           leaving the SHA-bound verdict valid, at the cost of the PR's open state; (b) push a new
+#           commit and re-post the verdict on the new head SHA.
+#
+#     NOT COVERED by either case: a Gear-3 PR EJECTED FROM THE MERGE QUEUE with the verdict still
+#           pending. That is a `merge_group` run, where W111 holds in full and `mq requeue` is the
+#           instrument — see the W111 paragraph below.
+#
+#   CASE B — no `pull_request` run exists on this ref yet (a branch pushed with no PR open, or a
+#     manual re-check outside a PR). Use: gh workflow run harness-floor.yml --ref <branch>
+#     (the `workflow_dispatch:` trigger below exists for exactly this).
+#
+# The W111 prohibition (CLAUDE.md Agent PR Contract rule 3) is NOT repealed. It is scoped — and the
+# scoping has to be stated precisely, because an earlier draft of this note got it backwards.
+#
+# W111's real hazard is a run whose ref RESOLVES THROUGH A MOVING BASE. Its own incident was
+# #3463 re-run against `refs/pull/3463/merge` — a PULL-REQUEST merge ref, not a merge_group one.
+# So "reruns are only dangerous on merge_group" is FALSE, and the earlier draft of this note said
+# exactly that, narrowing the scar onto the one event type it did not happen on (superscar #6 /
+# W78: the wrong scar propagated, here into a header every session reads).
+#
+# CASE A is safe FOR THIS JOB for a specific, checkable reason — not because pull_request reruns
+# are inherently safe. This workflow checks out
+#   ref: github.event.merge_group.base_sha || github.event.pull_request.base.sha || 'main'
+# Read that per BRANCH, not as a whole: the branch a `pull_request` rerun takes is
+# `pull_request.base.sha`, a PINNED SHA. (The third branch, `'main'`, IS a moving ref — it is what
+# `workflow_dispatch` falls through to. That is CASE B's business, not CASE A's, but it means the
+# expression as a whole is not "pinned" and the transfer test below has to be applied to the branch
+# YOUR event takes.) On the CASE A path there is no moving ref for the rerun to resolve
+# differently, and the only input that changed between attempts is the external commit status,
+# which is what we want re-read.
+#
+# What a rerun does NOT do, and this is the honest limit: it replays the ORIGINAL EVENT PAYLOAD, so
+# the base checkout — and with it the versions of `evidence_pack_lint.py`, `harness_gate_read.py`
+# and the helper scripts this job actually executes — stays frozen at PR-event time. A CASE A rerun
+# will not pick up a base-side fix that landed on main since; only a new `pull_request` event will.
+# Pinning makes the staleness DETERMINISTIC — it does not remove it, and it does not make the
+# rerun current. A job that DOES check out a merge ref keeps W111
+# in full force, and `gh run rerun` on it is still forbidden — as it is on a merge_group run,
+# where the queue's own `mq requeue` is the instrument.
+#
+# Before copying CASE A to another workflow, check that workflow's `ref:`. If it resolves through
+# a moving base, CASE A does not transfer.
+#
+# DIAGNOSTIC TRAP, because it costs an hour otherwise — and the first version of this paragraph
+# named the WRONG mechanism, so read it precisely:
+#
+#   * PAGINATION is what hides the row you need. `gh api .../commits/<sha>/check-runs` returns
+#     30 rows by default, and a PR head in this repo carries ~55-63 check-runs. Measured on
+#     76edf60e2: no per_page → `returned=30 failures=0`, even WITH `filter=all`; only
+#     `filter=all&per_page=100` → `returned=55 failures=1`. So `per_page=100` (or `--paginate`)
+#     is MANDATORY. Passing `filter=all` alone does NOT surface the red row.
+#   * `filter=all` does a different job: it re-adds attempts SUPERSEDED WITHIN THEIR OWN SUITE.
+#     `filter=latest` never hides a cross-suite run, so it is not what deadlocks you — during the
+#     #4543 deadlock the default would have returned both rows.
+#   * Then compare `check_suite.id`. That is the field that explains a `gh api` / `gh pr checks`
+#     disagreement, and without it the two outputs read like a caching bug.
 #
 # ARMED — NOTHING IS PENDING (corrected 2026-08-21, measured, superseding the ARMING NOTE that
 # stood here). That note said "the one action left is adding the job's check name to branch

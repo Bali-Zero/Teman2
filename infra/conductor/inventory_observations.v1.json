@@ -1,0 +1,68 @@
+{
+  "schema_version": "mir-inventory-observation.v1",
+  "observed_at": "2026-08-21",
+  "method": "Zero-token CLI/version, model-list, and cached-model discovery supplied to the registry implementation; cache discovery is not authentication, quota, or inference proof.",
+  "observations": [
+    {
+      "machine": "pro",
+      "cli_versions": {
+        "codex": "0.148.0",
+        "claude": "2.1.237",
+        "agy": "1.1.17",
+        "kimi": "0.36.1",
+        "qwen": "0.21.12",
+        "ollama": "0.20.2"
+      },
+      "ollama_models": ["qwen3.5:9b", "qwen2.5vl:7b", "bge-m3:latest"]
+    },
+    {
+      "machine": "mini-pro2",
+      "cli_versions": {
+        "codex": "0.148.0",
+        "claude": "2.1.237",
+        "agy": "1.1.17",
+        "qwen": "0.21.12",
+        "ollama": "0.32.14",
+        "kimi": null
+      },
+      "ollama_models": [
+        "qwen3.8:27b-mlx",
+        "glm-ocr",
+        "qwen3-vl:8b",
+        "qwen3.5:9b",
+        "qwen3:8b",
+        "qwen2.5vl:7b",
+        "qwen2.5:7b",
+        "bge-m3",
+        "nomic-embed-text"
+      ]
+    },
+    {
+      "machine": "air-m5",
+      "cli_versions": {
+        "codex": "0.147.0",
+        "claude": "2.1.238",
+        "agy": "1.1.17",
+        "qwen": "0.21.15",
+        "kimi": null,
+        "ollama": null
+      },
+      "ollama_models": []
+    },
+    {
+      "scope": "codex_cache_union",
+      "model_identifiers": [
+        "codex-auto-review",
+        "gpt-5.3-codex-spark",
+        "gpt-5.4",
+        "gpt-5.4-mini",
+        "gpt-5.5",
+        "gpt-5.6-luna",
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-reserve"
+      ],
+      "interpretation": "Discovery only; effective served model, authentication, quota, and inference access remain unverified."
+    }
+  ]
+}

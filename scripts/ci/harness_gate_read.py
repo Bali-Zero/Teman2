@@ -37,13 +37,26 @@ this script only reads that record back.
 WHAT "PENDING" LOOKS LIKE: a completed GitHub Actions job has no native "pending forever, waiting
 for a human" state distinct from "failed" — so a Gear-3 PR with no verdict yet posted fails this
 job exactly like a REWORK/BLOCK verdict would (same red X), with a message that says which case it
-is. That is not a defect: it matches this repo's own established practice
-(docs/runbooks/merge-queue-discipline.md, CLAUDE.md Agent PR Contract rule 3) of re-triggering a
-required check via a fresh, ref-repointed run — never `gh run rerun` on a stale ref — after the
-missing precondition (here: the posted verdict) is satisfied. harness-floor.yml carries a
-`workflow_dispatch:` trigger for exactly this: after posting a verdict, the gate session runs
-`gh workflow run harness-floor.yml --ref <branch>`, which re-executes THIS job at the branch's
-current head, this time finding the verdict and passing.
+is. The cure is to re-run this job once the verdict exists — and WHICH command depends on the
+case, because the obvious one does not work here.
+
+CORRECTED 2026-08-21: this docstring, and the PENDING message below, used to say
+`gh workflow run harness-floor.yml --ref <branch>` and forbid `gh run rerun` outright. That
+deadlocked #4543. (#4549 hit the same PENDING red but was cured by a rerun without ever taking
+the dispatch path -- 9 `pull_request` runs on its branch, zero `workflow_dispatch`. It confirms the
+REMEDY a second time, not the deadlock.) A `workflow_dispatch` run creates its check-run in a DIFFERENT
+CHECK SUITE from the `pull_request` event's, and that check-run does not enter the PR's
+statusCheckRollup AT ALL — an ABSENT entry, not a superseded one. Measured on #4543: the rollup
+holds exactly ONE `Harness floor recompute` entry, pointing at the pull_request run; the dispatch
+run appears nowhere. So the dispatch goes green while the PR keeps the old failure.
+
+On an open PR, re-run the ORIGINAL `pull_request` run: `gh run rerun <that run id>`. Same head SHA,
+same check suite, verdict now posted — the rollup clears. This does not repeal W111 (whose hazard
+is a ref that resolves through a MOVING base): on the pull_request path this workflow checks out
+`github.event.pull_request.base.sha`, a pinned SHA, never `refs/pull/N/merge`. The
+`workflow_dispatch:` trigger remains for the case where there is no PR to unblock. Full procedure,
+including the escapes when no rerunnable run exists:
+docs/runbooks/merge-queue-discipline.md section 6quinquies; CLAUDE.md Agent PR Contract rule 3.
 
 EVENT-TO-SHA RESOLUTION:
   - pull_request  : the PR's real head sha is already directly on the event payload.
@@ -190,8 +203,11 @@ def decide(state: str | None) -> tuple[int, str]:
             1,
             f"PENDING — no {CONTEXT} verdict has been posted yet on this commit. This is NOT a "
             "defect: the gate session has not run scripts/harness_fable_gate.py yet. After it "
-            "posts a verdict, re-trigger this check via `gh workflow run harness-floor.yml "
-            "--ref <branch>` (never a bare `gh run rerun` on this stale run).",
+            "posts a verdict, re-trigger THIS run: `gh run rerun <this run id>`. Do NOT use "
+            "`gh workflow run --ref` — a workflow_dispatch run lands its check-run in a different "
+            "check suite and never enters the PR's rollup at all, so the PR stays BLOCKED "
+            "(measured on #4543). Full procedure: "
+            "docs/runbooks/merge-queue-discipline.md section 6quinquies.",
         )
     if state == "success":
         return 0, f"{CONTEXT} verdict = success"

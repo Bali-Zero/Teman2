@@ -1,0 +1,133 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "qwen3.5-plus",
+  "display_name": "qwen3.5-plus",
+  "identity": {
+    "provider": "alibaba",
+    "family": "qwen3",
+    "kind": "language",
+    "aliases": [],
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "investigation_required",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": 1000000,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/coding-plan-faq | FAQ | accessed 2026-08-21 | Exact claim: qwen3.5-plus has a 1,000,000-token context length.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "vision",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/qwen3-5-plus | qwen3.5-plus Model Info | accessed 2026-08-21 | Exact claim: qwen3.5-plus accepts image and video input and returns text.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "tool_calling",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/qwen3-5-plus | qwen3.5-plus Model Info | accessed 2026-08-21 | Exact claim: qwen3.5-plus documents Function Calling support.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "live_probe_result",
+      "value": "PONG on Air-M5, Pro, and Mini-Pro2",
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "billing_plan_eligibility",
+      "value": "unresolved",
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "probed",
+      "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+      "observed_at": "2026-08-21"
+    },
+    {
+      "level": "declared",
+      "ref": "https://help.aliyun.com/en/model-studio/qwen3-5-plus | qwen3.5-plus Model Info | accessed 2026-08-21 | Exact claim: qwen3.5-plus accepts text, image, and video input; supports Function Calling, Structured Outputs, Web Search, Prefix Completion, Context Caching, and Batch.",
+      "observed_at": "2026-08-21"
+    },
+    {
+      "level": "declared",
+      "ref": "https://help.aliyun.com/en/model-studio/coding-plan-faq | FAQ | accessed 2026-08-21 | Exact claim: qwen3.5-plus has a 1,000,000-token context length.",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

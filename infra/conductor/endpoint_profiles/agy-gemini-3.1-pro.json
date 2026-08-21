@@ -1,0 +1,104 @@
+{
+  "schema_version": "endpoint-profile.v1",
+  "id": "agy-gemini-3.1-pro",
+  "model_card_id": "gemini-3.1-pro",
+  "aliases": [],
+  "invocation": {
+    "engine": "agy",
+    "model_identifier": "gemini-3.1-pro",
+    "harness": null,
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Google",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "account_class": {
+    "value": "google-ai-ultra",
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Google",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "auth_surface": "google_oauth_subscription",
+  "machine_constraints": {
+    "allowlist": ["air-m5", "pro", "mini-pro2"],
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Google",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "known_unmeasured",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Google",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "enforcement": {
+    "mode": "advisory_only",
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Google",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "exposed_capabilities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Google",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "reasoning_control",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Google",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "restrictions": [
+    {
+      "id": "client_pii",
+      "value": "not eligible for PII/local-only routing",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#_invariants",
+          "observed_at": "2026-08-20"
+        }
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "level": "declared",
+      "ref": "MODEL_ROSTER.md#Google",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

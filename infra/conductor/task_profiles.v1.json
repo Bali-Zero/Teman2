@@ -1,0 +1,167 @@
+{
+  "schema_version": "task-profiles.v1",
+  "generated_at": "2026-08-21",
+  "evidence": [
+    {
+      "level": "declared",
+      "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#6.1",
+      "observed_at": "2026-08-21"
+    }
+  ],
+  "profiles": [
+    {
+      "id": "read_only",
+      "mutation": false,
+      "minimum_quality_tier": 0,
+      "minimum_task_score": null,
+      "benchmark_id": null,
+      "benchmark_version": null,
+      "minimum_sample_count": 1,
+      "maximum_dispersion": null,
+      "minimum_context_tokens": null,
+      "minimum_output_tokens": null,
+      "required_capabilities": [],
+      "allowed_modalities": ["language"],
+      "pii_policy": "context_dependent",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#6.1",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "mechanical",
+      "mutation": true,
+      "minimum_quality_tier": 1,
+      "minimum_task_score": 0.7,
+      "benchmark_id": "conductor-priority-pilot",
+      "benchmark_version": "1.0.0",
+      "minimum_sample_count": 5,
+      "maximum_dispersion": 0.05,
+      "minimum_context_tokens": 8192,
+      "minimum_output_tokens": 2048,
+      "required_capabilities": ["coding"],
+      "allowed_modalities": ["language"],
+      "pii_policy": "forbidden_cloud",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#6.1",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "standard_build",
+      "mutation": true,
+      "minimum_quality_tier": 2,
+      "minimum_task_score": 0.75,
+      "benchmark_id": "conductor-priority-pilot",
+      "benchmark_version": "1.0.0",
+      "minimum_sample_count": 5,
+      "maximum_dispersion": 0.05,
+      "minimum_context_tokens": 16384,
+      "minimum_output_tokens": 4096,
+      "required_capabilities": ["coding"],
+      "allowed_modalities": ["language"],
+      "pii_policy": "forbidden_cloud",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#6.1",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "hard_build",
+      "mutation": true,
+      "minimum_quality_tier": 3,
+      "minimum_task_score": 0.8,
+      "benchmark_id": "conductor-priority-pilot",
+      "benchmark_version": "1.0.0",
+      "minimum_sample_count": 5,
+      "maximum_dispersion": 0.04,
+      "minimum_context_tokens": 32768,
+      "minimum_output_tokens": 8192,
+      "required_capabilities": ["coding", "reasoning_control"],
+      "allowed_modalities": ["language"],
+      "pii_policy": "forbidden_cloud",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#6.1",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "architecture",
+      "mutation": false,
+      "minimum_quality_tier": 3,
+      "minimum_task_score": 0.8,
+      "benchmark_id": "conductor-priority-pilot",
+      "benchmark_version": "1.0.0",
+      "minimum_sample_count": 5,
+      "maximum_dispersion": 0.04,
+      "minimum_context_tokens": 32768,
+      "minimum_output_tokens": 8192,
+      "required_capabilities": ["reasoning_control"],
+      "allowed_modalities": ["language"],
+      "pii_policy": "forbidden_cloud",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#6.1",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "review",
+      "mutation": false,
+      "minimum_quality_tier": 3,
+      "minimum_task_score": 0.8,
+      "benchmark_id": "conductor-priority-pilot",
+      "benchmark_version": "1.0.0",
+      "minimum_sample_count": 5,
+      "maximum_dispersion": 0.04,
+      "minimum_context_tokens": 32768,
+      "minimum_output_tokens": 8192,
+      "required_capabilities": ["reasoning_control"],
+      "allowed_modalities": ["language", "vision"],
+      "pii_policy": "forbidden_cloud",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#6.1",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "pii_local",
+      "mutation": false,
+      "minimum_quality_tier": 1,
+      "minimum_task_score": 0.7,
+      "benchmark_id": "conductor-priority-pilot",
+      "benchmark_version": "1.0.0",
+      "minimum_sample_count": 5,
+      "maximum_dispersion": 0.05,
+      "minimum_context_tokens": 8192,
+      "minimum_output_tokens": 2048,
+      "required_capabilities": ["local_only", "pii_safe_local"],
+      "allowed_modalities": ["language", "vision"],
+      "pii_policy": "local_only",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#role_chains.pii_intake",
+          "observed_at": "2026-08-20"
+        }
+      ]
+    }
+  ]
+}

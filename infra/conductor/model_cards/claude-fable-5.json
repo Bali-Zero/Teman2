@@ -1,0 +1,123 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "claude-fable-5",
+  "display_name": "Claude Fable 5",
+  "identity": {
+    "provider": "anthropic",
+    "family": "claude-5",
+    "kind": "language",
+    "aliases": [],
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Anthropic",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "manual_only",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Anthropic",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "coding",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "reasoning_control",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": 1000000,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "Anthropic Claude models overview | https://platform.claude.com/docs/en/about-claude/models/overview",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": 128000,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "Anthropic Claude models overview | https://platform.claude.com/docs/en/about-claude/models/overview",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "manual_session_only",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "declared_capability_profile",
+      "value": "Text and image input; text output; adaptive thinking is always on; intended for long-running agents, software engineering, knowledge work, vision, and science.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "Anthropic Claude models overview and Introducing Claude Fable 5 and Mythos 5 | https://platform.claude.com/docs/en/about-claude/models/overview | https://www.anthropic.com/news/claude-fable-5-mythos-5",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "declared",
+      "ref": "MODEL_ROSTER.md#Anthropic",
+      "observed_at": "2026-08-21"
+    },
+    {
+      "level": "declared",
+      "ref": "Anthropic Claude models overview | https://platform.claude.com/docs/en/about-claude/models/overview",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

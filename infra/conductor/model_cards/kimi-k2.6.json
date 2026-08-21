@@ -1,0 +1,101 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "kimi-k2.6",
+  "display_name": "kimi-k2.6",
+  "identity": {
+    "provider": "moonshot",
+    "family": "kimi",
+    "kind": "language",
+    "aliases": [],
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21.fail_403_access_denied_m5_measured",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "denied",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21.fail_403_access_denied_m5_measured",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21.fail_403_access_denied_m5_measured",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21.fail_403_access_denied_m5_measured",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21.fail_403_access_denied_m5_measured",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "declared_reasoning_control",
+      "value": "Documents hybrid thinking with an enable_thinking control in the provider visual-reasoning guide.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/visual-reasoning | Usage of visual reasoning models | accessed 2026-08-21 | Exact claim: kimi-k2.6 is listed as a hybrid-thinking model with enable_thinking control.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "access_result",
+      "value": "403 Access to model denied",
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21.fail_403_access_denied_m5_measured",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "probed",
+      "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21.fail_403_access_denied_m5_measured",
+      "observed_at": "2026-08-21"
+    },
+    {
+      "level": "declared",
+      "ref": "https://help.aliyun.com/en/model-studio/visual-reasoning | Usage of visual reasoning models | accessed 2026-08-21 | Exact claim: kimi-k2.6 is listed as a hybrid-thinking model with enable_thinking control.",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

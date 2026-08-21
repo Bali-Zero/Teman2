@@ -1,0 +1,85 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "qwen3.8-27b-mlx",
+  "display_name": "Qwen 3.8 27B MLX",
+  "identity": {
+    "provider": "ollama",
+    "family": "qwen-3",
+    "kind": "language",
+    "aliases": ["qwen3.8:27b-mlx"],
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "infra/conductor/inventory_observations.v1.json#observations",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "known_unmeasured",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "infra/conductor/inventory_observations.v1.json#observations",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "probed_fact_boundary",
+      "value": "Discovery only; auth, quota, effective served model, and inference access unverified.",
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "probed",
+      "ref": "infra/conductor/inventory_observations.v1.json#observations",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

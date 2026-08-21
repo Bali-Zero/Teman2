@@ -1,0 +1,117 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "kimi-k2",
+  "display_name": "kimi-k2",
+  "identity": {
+    "provider": "moonshot",
+    "family": "kimi",
+    "kind": "language",
+    "aliases": [],
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "investigation_required",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": 131072,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://github.com/MoonshotAI/Kimi-K2 | Kimi-K2 | accessed 2026-08-21 | Exact claim: Kimi K2 has a 128K context length.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "declared_capabilities",
+      "value": "MoE language model with 1T total and 32B activated parameters; the official model card describes tool use, reasoning, and autonomous problem solving.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://github.com/MoonshotAI/Kimi-K2 | Kimi-K2 | accessed 2026-08-21 | Exact claim: Kimi K2 documents this architecture, 128K context, and these capabilities.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "live_probe_result",
+      "value": "PONG on Air-M5, Pro, and Mini-Pro2",
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "billing_plan_eligibility",
+      "value": "unresolved",
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "probed",
+      "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+      "observed_at": "2026-08-21"
+    },
+    {
+      "level": "declared",
+      "ref": "https://github.com/MoonshotAI/Kimi-K2 | Kimi-K2 | accessed 2026-08-21 | Exact claim: Kimi K2 is a 1T-total/32B-activated MoE language model with 128K context and documented tool-use/reasoning capabilities.",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

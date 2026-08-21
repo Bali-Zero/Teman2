@@ -1,0 +1,123 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "gemini-3.1-pro",
+  "display_name": "Gemini 3.1 Pro",
+  "identity": {
+    "provider": "google",
+    "family": "gemini-3",
+    "kind": "language",
+    "aliases": ["gemini-3.1-pro-preview"],
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Google",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "eligible",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Google",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Google",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "reasoning_control",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Google",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": 1048576,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "Google Gemini 3.1 Pro preview model page | https://ai.google.dev/gemini-api/docs/models/gemini-3.1-pro-preview",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": 65536,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "Google Gemini 3.1 Pro preview model page | https://ai.google.dev/gemini-api/docs/models/gemini-3.1-pro-preview",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "candidate_only_harness",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Google",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "official_api_variant_scope",
+      "value": "Limits and tool capabilities in this card are declared specifically for the official gemini-3.1-pro-preview API identifier; they are not inherited to other Gemini 3.1 family aliases.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "Google Gemini 3.1 Pro preview model page | https://ai.google.dev/gemini-api/docs/models/gemini-3.1-pro-preview",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "declared_capability_profile",
+      "value": "For gemini-3.1-pro-preview: text, image, video, audio, and PDF input with text output; supports caching, code execution, function calling, Maps/Search grounding, structured output, thinking, and URL context; intended for advanced reasoning, synthesis, complex tasks, and coding agents.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "Google Gemini 3.1 Pro preview model page and announcement | https://ai.google.dev/gemini-api/docs/models/gemini-3.1-pro-preview | https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-3-1-pro/",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "declared",
+      "ref": "MODEL_ROSTER.md#Google",
+      "observed_at": "2026-08-21"
+    },
+    {
+      "level": "declared",
+      "ref": "Google Gemini 3.1 Pro preview model page | https://ai.google.dev/gemini-api/docs/models/gemini-3.1-pro-preview",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

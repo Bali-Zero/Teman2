@@ -1,0 +1,106 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "kimi-k2.5",
+  "display_name": "kimi-k2.5",
+  "identity": {
+    "provider": "moonshot",
+    "family": "kimi",
+    "kind": "language",
+    "aliases": [],
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21.fail_403_access_denied_m5_measured",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "denied",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21.fail_403_access_denied_m5_measured",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21.fail_403_access_denied_m5_measured",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": 262144,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21.fail_403_access_denied_m5_measured",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://github.com/MoonshotAI/Kimi-K2.5 | Kimi-K2.5 | accessed 2026-08-21 | Exact claim: Kimi K2.5 has a 256K context length.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21.fail_403_access_denied_m5_measured",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "declared_capabilities",
+      "value": "Native multimodal agentic model using MoonViT; model card documents 1T total and 32B activated parameters.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://github.com/MoonshotAI/Kimi-K2.5 | Kimi-K2.5 | accessed 2026-08-21 | Exact claim: Kimi K2.5 is a native multimodal agentic model using MoonViT with this parameterization and a 256K context.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "access_result",
+      "value": "403 Access to model denied",
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21.fail_403_access_denied_m5_measured",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "probed",
+      "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21.fail_403_access_denied_m5_measured",
+      "observed_at": "2026-08-21"
+    },
+    {
+      "level": "declared",
+      "ref": "https://github.com/MoonshotAI/Kimi-K2.5 | Kimi-K2.5 | accessed 2026-08-21 | Exact claim: Kimi K2.5 is a native multimodal agentic model using MoonViT with a 256K context.",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

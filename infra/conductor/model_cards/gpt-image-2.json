@@ -1,0 +1,101 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "gpt-image-2",
+  "display_name": "GPT Image 2",
+  "identity": {
+    "provider": "openai",
+    "family": "gpt-image",
+    "kind": "image",
+    "aliases": ["$imagegen"],
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#2",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "eligible",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#2",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "image_generation",
+      "value": true,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#2",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#2",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#2",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "surface",
+      "value": "Codex image generation tool",
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#2",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "declared_capability_profile",
+      "value": "Image generation and editing model with text and image input and image output; supports flexible image sizes and high-fidelity input handling. Function calling, structured outputs, fine-tuning, audio, and video are unsupported.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "OpenAI GPT Image 2 Model | https://developers.openai.com/api/docs/models/gpt-image-2",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "probed",
+      "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#2",
+      "observed_at": "2026-08-21"
+    },
+    {
+      "level": "declared",
+      "ref": "OpenAI GPT Image 2 Model | https://developers.openai.com/api/docs/models/gpt-image-2",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

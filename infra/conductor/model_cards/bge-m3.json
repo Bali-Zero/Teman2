@@ -1,0 +1,123 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "bge-m3",
+  "display_name": "BGE M3",
+  "identity": {
+    "provider": "ollama",
+    "family": "bge",
+    "kind": "embedding",
+    "aliases": ["bge-m3"],
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Local-Ollama",
+        "observed_at": "2026-08-21"
+      },
+      {
+        "level": "declared",
+        "ref": "https://ollama.com/library/bge-m3 | title=BGE-M3 Ollama library page | note=The exact bge-m3 package is an embedding model supporting dense, multi-vector, and sparse retrieval across more than 100 languages.",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "eligible",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Local-Ollama",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "embedding",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Local-Ollama",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "local_only",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Local-Ollama",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": 8192,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://ollama.com/library/bge-m3/blobs/6eaafd7b20ee | title=BGE-M3 Ollama model metadata | note=The exact package metadata declares an 8,192-token context and 1,024-dimensional embedding output.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "MODEL_ROSTER.md#Local-Ollama",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "role",
+      "value": "multilingual_embedding",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Local-Ollama",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "embedding_dimensions",
+      "value": "1024",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://huggingface.co/BAAI/bge-m3 | title=BGE-M3 model card | note=The BAAI card declares 1,024-dimensional embeddings and a unified dense, sparse, and ColBERT-style retrieval model.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "multilingual_100_plus",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://huggingface.co/BAAI/bge-m3 | title=BGE-M3 model card | note=The BAAI card documents multilingual support across more than 100 languages.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "declared",
+      "ref": "MODEL_ROSTER.md#Local-Ollama",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

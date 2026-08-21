@@ -1,0 +1,101 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "codex-auto-review",
+  "display_name": "Codex Auto Review",
+  "identity": {
+    "provider": "openai",
+    "family": "codex",
+    "kind": "service",
+    "aliases": [],
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "infra/conductor/inventory_observations.v1.json#observations",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "known_unmeasured",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "infra/conductor/inventory_observations.v1.json#observations",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "approval_review",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "OpenAI Running Codex safely | https://openai.com/index/running-codex-safely/",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "probed_fact_boundary",
+      "value": "Discovery only; auth, quota, effective served model, and inference access unverified.",
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "declared_capability_profile",
+      "value": "Codex permission feature, not a standalone language model: automatically reviews and may approve certain requests that cross the configured sandbox boundary.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "OpenAI Running Codex safely | https://openai.com/index/running-codex-safely/",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "probed",
+      "ref": "infra/conductor/inventory_observations.v1.json#observations",
+      "observed_at": "2026-08-21"
+    },
+    {
+      "level": "declared",
+      "ref": "OpenAI Running Codex safely | https://openai.com/index/running-codex-safely/",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

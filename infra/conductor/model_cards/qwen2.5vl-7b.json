@@ -1,0 +1,128 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "qwen2.5vl-7b",
+  "display_name": "Qwen 2.5 VL 7B",
+  "identity": {
+    "provider": "ollama",
+    "family": "qwen2.5vl",
+    "kind": "vision",
+    "aliases": ["qwen2.5vl:7b"],
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Local-Ollama",
+        "observed_at": "2026-08-21"
+      },
+      {
+        "level": "declared",
+        "ref": "https://ollama.com/library/qwen2.5vl/tags | title=Qwen2.5-VL Ollama library tags | note=The exact qwen2.5vl:7b package is listed as a 125K-context text-and-image model; exact host installation and runtime behavior remain unmeasured.",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "eligible",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Local-Ollama",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "vision",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Local-Ollama",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct | title=Qwen2.5-VL-7B-Instruct model card | note=The upstream card documents image, chart, layout, document, visual-localization, long-video, and visual-agent capabilities; this does not establish quantized local quality.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": 131072,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://ollama.com/library/qwen2.5vl/tags | title=Qwen2.5-VL Ollama library tags | note=Exact qwen2.5vl:7b package is listed with 125K context.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "MODEL_ROSTER.md#Local-Ollama",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "sole_vision_ocr_seat",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Local-Ollama",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "document_understanding",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct | title=Qwen2.5-VL-7B-Instruct model card | note=The upstream card documents document, chart, table, layout, and visual-localization understanding.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "visual_localization",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct | title=Qwen2.5-VL-7B-Instruct model card | note=The upstream card documents visual localization and visual-agent interactions.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "tool_use_declared",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct | title=Qwen2.5-VL-7B-Instruct model card | note=The upstream card documents visual-agent use with computer and phone interaction examples; local tool execution is unmeasured.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "declared",
+      "ref": "MODEL_ROSTER.md#Local-Ollama",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}
