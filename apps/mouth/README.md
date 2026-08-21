@@ -23,9 +23,30 @@ npm run dev
 # Build for production
 npm run build
 
-# Deploy to Vercel
-git push origin main  # Auto-deploys via GitHub integration
+# Reach production
+git push origin main   # builds — see the note below, this is NOT the whole story
 ```
+
+> **Merging to main does not put your code on balizero.com.** Vercel builds the commit and
+> leaves the deployment `STAGED`: built, reachable at its own preview URL, and **not** aliased
+> to any custom domain. Nothing repoints the domains on its own. Measured 2026-08-21: roughly
+> ninety consecutive deployments over two days had built and none had gone live, while
+> production served a commit ~22 hours old — and the same project serves every subdomain
+> (`kita`/`my`/`prime`/`visa`/`tax`/`zantara`), so all of them were stale together.
+>
+> The promote now happens by itself, on a cron on Mini (`mini.vercel_autopromote`, every 15
+> minutes): it finds the newest commit on main that can change the bundle, checks whether
+> production already carries it, and promotes the existing READY build — it never rebuilds.
+> Expect your merge to be live within ~15 minutes, not instantly.
+>
+> To do it by hand from a machine where `vercel whoami` answers:
+> `python3 scripts/vercel_prod_deploy.py --dry-run` reports the gap and changes nothing;
+> without `--dry-run` it promotes, and builds only if no READY build exists.
+> `--promote-only` promotes what is there and refuses to build — the mode the cron runs.
+>
+> Commits that touch no frontend path are deliberately **not** built at all
+> (`scripts/ci/vercel_should_build.sh`), so most merges to main produce no deployment and need
+> no promote.
 
 **Default URLs:**
 
