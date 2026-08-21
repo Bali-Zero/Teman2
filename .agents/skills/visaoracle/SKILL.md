@@ -107,11 +107,200 @@ not an automated ENFORCE threshold.
 
 Round N = 4-lane parallel deep research (Gemini width / Codex architecture+red-team / GLM design /
 web-grounded verification) → orchestrator reports ALL content faithfully to Zero → brainstorm →
-interesting points spawn round N+1 research. No round limit. Fable orchestrates only (no hands,
-hook-enforced); Sonnet implements; research outputs persisted under `research/visa/` in the worktree
+interesting points spawn round N+1 research. No round limit. Opus 5 orchestrates only (no hands,
+hook-enforced — RULED 2026-08-20: Fable is out of the workflow, CLAUDE.md §5); Sonnet implements; research outputs persisted under `research/visa/` in the worktree
 as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
 ## LIVE STATE (update on every state change — whoever changes state updates this section)
+
+- 2026-08-20 (M5, fourth entry — seq-11 SHIPPED end-to-end): **SEQ-11 IS LIVE IN PRODUCTION
+  SHADOW — E30A/E30B now carry a resolvable `pricing_key`.** The executed half of Zero's
+  E30-family pricing order ("E30 Education Visa ti ho detto +3jt sul PNBP", single
+  all-inclusive price per ruling R1 2026-07-17): canonical prices landed in #4383
+  (`bali_zero_official_prices_2026.json` +5 education entries, mouth copy regenerated via
+  `sync_frontend_prices.py`), and seq-11 binds them into the pack. Chain of custody, every
+  link verified: fold `fold_pack_seq11.py` (deterministic + idempotent, source sha256
+  `32e548aa07021a9c…`, only delta vs seq-10 = `pricing_key` on E30A/E30B; PRICING-RESOLUTION
+  gate resolves every key against the canonical price file before mutation) → PR #4393
+  merged (`0d04da077`) with 16-test corpus (`test_seq11_pack.py`: chain gate recomputed from
+  bytes, 26/12 pricing parity with positive controls, byte-invariance, E30/E30E/E30F
+  honestly-unpriced pin) → signed on M5 kid `prod-2026-07-1`
+  (`rule_pack_id 5c3974ab-bb15-5a73-b74f-f9f0af88a4a7`, payload_sha256
+  `836acc511bcadd41c28284e7f00bd8be27c6109ebcc5536f7053c3f61eaa2865`, previous =
+  `188442baee0af899…` = signed seq-10 payload, triple-derived) → bundle PR #4398 merged
+  (`1c27a620e`) → two-login ceremony 10→11 (TAG 260820a): pre-state open activation seq-10
+  `11a305cc…`, trust-store verify + anti-rollback pre-gate PASS, activation
+  `6acb05c8-5d03-4bf6-b889-b81f318cd46c` by `fable-session-m5`, post-state seq-11 sole open
+  activation (open_count=1), ephemeral roles dropped to zero. Live smoke 2/2 both citing
+  `sequence=11 / version 2026.8.20`: full-facts family case → `SUPPORTED_CANDIDATES`
+  (conclusive, same states as seq-10 — the pack delta is pricing-only); all-unknown →
+  `HUMAN_REVIEW_REQUIRED` (fail-safe intact). The evaluate surface exposes no price fields
+  (candidate keys checked live), so `pricing_key` consumption is proven by the merged 26/26
+  resolution parity, not by an HTTP smoke. Two CI defects found and cured en route, both
+  frozen-measurement class: Detect Secrets needed CONTENT_KEYED_RULES #11 (exact-value pin
+  for the seq-10 chain anchor in the fold script), and `test_gold_replay_driver.py`'s
+  `_OFFLINE_AT` was a frozen wall date (2026-08-19T12:00Z) that rejected every future signed
+  pack — now derived as max(pack `signed_at`)+1h, structurally immune. Source freshness is
+  INHERITED from seq-10's re-stamp (seq-11 does not touch `source_records`): the ~7-day
+  portal window still expires ~2026-08-26 — the re-attestation cadence ledger row (owner
+  Zero, `operator[business]`) is unchanged and now covers seq-11. Still open on the E30
+  lane: E30/E30E/E30F remain deliberately unpriced (Ditjen pages read "Data Belum
+  Tersedia" — needs Zero's number, ledger row stays open). ENFORCE unchanged: NO-GO
+  (DPIA/analytics-TTL are Zero-only).
+
+- 2026-08-19 (M5, third entry — seq-10 SHIPPED end-to-end): **SEQ-10 IS LIVE IN PRODUCTION
+  SHADOW — and the stale-abstain era is over.** Zero's order "procedi con seq-10: re-stamp
+  fonti + cura el.c2/el.e31c" executed in one session. Chain of custody: fold
+  (`fold_pack_seq10.py`, deterministic+idempotent, source sha256 `1ff7383f…`) → 2-family
+  adversarial refutation (Codex sol xhigh REJECT→cured; Kimi K3 MAJOR→cured; every finding
+  re-verified, HF gained FAMILY+PARENT scoping, companion mouth change makes the interview
+  ask `family_marriage_registered` for PARENT) → PR #4350 merged (`f99680a17`, 10:06Z;
+  survived 2 runner blips + 1 ReDoS flake + 2 DIRTY ejections + a Detect-Secrets cure that
+  became auto-triage CONTENT_KEYED_RULES #10) → signed on M5 (payload `188442baee0af899…`,
+  kid `prod-2026-07-1`, signed_at 10:09Z) → bundle PR #4365 merged (`310eb17f1`, 11:36Z) →
+  two-login activation 9→10 (activation `11a305cc-ade7-467f-a872-7c2b790c09c5`,
+  `fable-session-m5`, open_count=1, ephemeral roles dropped) → LIVE SMOKE 5/5 on prod:
+  IT full-facts → `SUPPORTED_CANDIDATES` **[B1, C1] with ZERO review reasons** (no
+  `DECISIVE_SOURCE_STALE` — first conclusive portal-path verdict since ~08-13), NG →
+  `CALLING_VISA_REVIEW` (mechanism armed), all-UNKNOWN → fail-closed, E31C guilt
+  (marriage=false) → E31C ABSENT from candidates (exclusion surfaces as absence — the API
+  has no excluded-list field), E31C innocence (marriage=true) → E31C rank 2 with
+  `REQ_MIXED_MARRIAGE_PARENTS`. Content: 17 sources re-stamped (QW-5 verbatim-quote method,
+  `inc4-pack-edits/freshness-restamp-2026-08-19.md`), `ee8fe5b8` dropped at zero refs,
+  `el.c2.corporate-sponsor-type` RETIRED behavior-preserving (tightening REFUTED by the live
+  C2 page → CF-17), `el.e31c-mixed-marriage-parents` tightened + new
+  `hf.e31c-marriage-not-registered` grounded by CL-E31C-02/03. PENDING-ARMS 1008+1009
+  closed; NEW rows: 7-day re-attestation cadence (owner Zero, Legge 5), E30-family pricing
+  (PNBP+3jt owner rule), E30A re-sourcing, interview EDIT no-op. Freshness clock: the
+  re-stamp buys until ~2026-08-26. ENFORCE untouched — still NO-GO (DPIA/analytics-TTL are
+  Zero-only). Gate status: G-c evidence now accumulating on conclusive verdicts; G-a still
+  needs the MATCH-lane arming + traffic.
+
+- 2026-08-19 (M5, second entry — CP3 GO executed): **SEQ-9 IS LIVE IN PRODUCTION SHADOW.**
+  Zero's GO on the CP3 package (incl. decision #4: ship with the el.c2/el.e31c residuals,
+  cure in seq-10). Chain of custody, every link verified: PR #4332 merged (`952a6b4a388`,
+  00:28:28Z) → merged pack bytes proven byte-identical to the CP3-approved candidate
+  (sha256 `e3c1457952722706ec59b0a23e66c7d7a6a7b88735cda982b54957f5e4648660`) → signed on M5
+  from a detached worktree at that commit after a fresh `compile_pack` RC 0 (kid
+  `prod-2026-07-1`, self-verified; signed `payload_sha256
+47feff8246c608c7c6085ffdac776fdc020bb56688d5f35a0a3e685eb40f271e` — the value seq-10 must
+  chain to) → signed bundle PR #4338 (bundle-only, armed) → two-login activation on prod
+  primary (`0801696b541568` via fly proxy from Pro; superuser pw fetched machine-side to a
+  0600 file, deleted after; ephemeral roles `visa_pack_writer_ceremony_260819` /
+  `visa_activation_ceremony_260819` minted stdin→psql and dropped same session).
+  `activate_pack --yes`: anti-rollback pre-gate passed against seq-7
+  (`3d068aef…9719f82`), pack row inserted, **activation_id
+  `6655b8f9-3db8-42a4-82f0-34bd9ce625d5`**, actor `fable-session-m5`, reason
+  `seq9-shadow-activation-260819`. Independent DB re-verification: exactly ONE open
+  activation = seq-9 opened 2026-08-19T00:41:25.348033Z, seq-7 system_period closed the
+  SAME instant, `no_gap = t`, zero ceremony roles left. Live smoke 4/4 HTTP 200, **every
+  response citing `sequence=9 version=2026.8.19`**, audit rows bound to the new
+  activation_id; all-UNKNOWN → HUMAN_REVIEW_REQUIRED (fail-closed ✓). SHADOW stays on;
+  ENFORCE untouched (still NO-GO, DPIA/analytics-TTL Zero-only).
+  **FINDING (pre-existing, NOT a seq-9 regression — measured, byte-compared):** the IT and
+  NG smokes returned HRR with single reason `DECISIVE_SOURCE_STALE`: **18/29 pack sources
+  are past their 7-day `MAX_AGE_SINCE_VERIFIED_AT` window today** (most `verified_at
+2026-08-06`, the VOA country list `2026-08-08`) — stamps byte-identical in seq-7, so
+  production has been stale-abstaining on every portal-source-decisive path since
+  ~2026-08-13/15. The freshness guardrail is working as designed; what is missing is the
+  OPERATIONAL CADENCE (re-verify portal sources + re-stamp `verified_at` in a new signed
+  pack at least every 7 days), without which the SHADOW ledger abstains forever and
+  G-a/G-c can never mature. Conclusive-path witnesses (IT full-facts → [B1,C1], NG →
+  CALLING_VISA_REVIEW) are unreachable until that re-attestation lands — folded into the
+  seq-10 scope (ledger row). Ceremony evidence: probe outputs + audit-row queries in the
+  session scratchpad; smoke rows labelled `synthetic_driver` (G-a uncontaminated).
+
+- 2026-08-19 (M5, E5 increment 3 — the seq-9 fold): **SEQ-9 CANDIDATE BUILT, GATED, AND ON ITS
+  PR; CP3 PRESENTED TO ZERO. SHADOW/ENFORCE UNCHANGED (seq-7 stays active until CP4).**
+  Everything in the 08-18 NEXT line except the ceremony itself: (1) the two seq-9 signing-gate
+  blockers CURED BY RETIREMENT — `el.e33e.deposit-income-basis` proved REDUNDANT, not just UNSAT
+  (CL-E33-04 VERIFIED says deposit AND income, already encoded by healthy `el.e33e.retirement`;
+  the spec's OR assumption was refuted on claim evidence), and `el.e33g.income-60k-manual`
+  retired in favor of the pre-existing `el.e33g.remote-work` + NEW `review.e33g.income-evidence`
+  (OD-1 pattern: the USD 60k/yr requirement has no FactPath, so E33G can no longer reach
+  SUPPORTED silently — a deliberate delta vs OD-3's 27-reachable count, E33G was reachable
+  through the defect). (2) Rule-authoring for the 7 blocked products landed claim-cited through
+  the E5 compiler (0 findings): E30E/E30F real SUPPORT (E30F sponsor-constrained to EDUCATION
+  after a Codex P0 caught the missing conjunct live on the evaluator), E33A/B/C sponsor
+  HARD_FILTERs (SUPPORT shape rejected — W3 factbase "manufactured offer" bug), E23U/E23V
+  requested-product review rules (W3: no safe SUPPORT exists; NOTE: production-inert until the
+  interview collects `intent.requested_product_code` — fact-mapper hard-codes NOT_ASKED; same
+  property as the pre-existing e33 review rules; PENDING-ARMS row opened, Track C/E6 scope).
+  (3) OD-2 fold executed: seq-8's 11 `pricing_key` folded, its broken chain permanently pinned
+  by test; seq-9 chains to seq-7's RECOMPUTED signed payload hash
+  (`3d068aef…9719f82`), `sequence 9`, `version 2026.8.19`, `rule_pack_id 66eb0b4c-…` (uuid5
+  convention). (4) Freshness: E31E's two HARD_FILTERs re-sourced from dead `ecd22722` to
+  primary law `c9e6f0e4` (Permenkumham 22/2023 Pasal 33(2)(h)(5), "belum berusia 18 … dan belum
+  kawin" grounds BOTH predicates); `0497cb52` dropped (0 refs); `ee8fe5b8` CHANGED → de-referenced
+  from all 18 citing rules (each keeps ≥2 sources). (5) The `_LEDGER_FILES` gap CLOSED:
+  batch3+e2c ledgers wired into the compiler tests after fixing two real parser traps found by
+  running the parser (dual-header CL-E31C-01/CL-E31F-01 swallowed both ids; CL-E33B-03's state
+  bullet produced spurious product_states). Assembly is deterministic
+  (`fold_pack.py`, 2 runs byte-identical, sha256 `e3c14579…4648660`, atomic write). VERIFY:
+  2-family refuter quorum (Codex sol-high DO-NOT-SHIP → 7 findings → fix round; Kimi K3 3 P2/3
+  P3 — BOTH drove the real evaluator; Kimi mutation-proved the first test suite content-blind →
+  content-parity + 21 evaluator witness tests added; UNKNOWN semantics proven safe:
+  `on_unknown=NEEDS_INPUT`, no D1/D2/D12-class masking, no exclude-on-UNKNOWN). Gates: 129
+  targeted pytest + 25 vitest + compile_pack RC 0 + R1 green. **KNOWN RESIDUALS (CP3 decision
+  #4):** `el.c2.corporate-sponsor-type` + `el.e31c-mixed-marriage-parents` are the SAME
+  name-promises-untested-predicate class as the cured e33g, byte-inherited from seq-7, NOT cured
+  (no compilable claim grounds a tightening — attempted, stopped; refuters split
+  indefensible-vs-defensible), pinned in tests + ledger; recommended cure = seq-10 after an
+  E31C/C2 doctrine batch. Reachability 27→29 / 9 blocked. CP3 package:
+  `research/visa/doctrine-factory/e5/cp3-decision-package.md`; full delta:
+  `research/visa/doctrine-factory/e5/2026-08-19-e5-increment3-fold.md`. NEXT on Zero's GO:
+  sign (M5 kid `prod-2026-07-1`) → two-login activation → live smoke → then HRR/flag-veto
+  reform (the 26 reformed slice rules deliberately NOT in this fold) and E6/E7.
+
+- 2026-08-18 (M5, doctrine-factory E2/E3 close): **E2 CLOSED, E3 COMPLETE, OD-4 RULED.**
+  E2 (OD-3 arrest criterion): MET — 27/27 REACHABLE products, per the closure verdict in
+  #4278 (merged; #4264 is a closed-without-merge sibling, content blob-identical, no loss).
+  The E2c mini-batch (#4294, merged) closed the 5 query-disposition BLOCKED products;
+  two new conflicts surfaced there: CF-16 (C2 onshore conversion, OPEN, non-blocking) and
+  CF-17 (E33A/B/C internal-DB identity — RESOLVED via hierarchy: primary law governs, the
+  internal DB is superseded, the live pack is already correct). CF-7/8/10/12 RESOLVED via
+  article-level pinpoints (E33E retirement age = 55; KITAP conversion = 3y under Pasal
+  179(1) Permenkumham 22/2023). **CF-8 caveat: further refinement is in #4308 (OPEN,
+  awaiting owner review, NOT yet merged)** — its finding: no 5-year ACCESS route exists;
+  the internal "5" traces to superseded UU 6/2011 Pasal 60(1) and/or KITAP's own 5-year
+  validity period (Pasal 121(1)), not an alternate eligibility pathway. E3: 38/38 Product
+  Doctrine Cards on main (#4250+#4251 slice, #4279 visit, #4280 work/invest, #4282
+  long-stay, #4300 E30 repoint follow-up — all merged). OD-4 RULED by Zero 2026-08-18: no
+  product gets OUT_OF_COMMERCIAL_SCOPE; E28B/C/D/F keep always-REVIEW by design; E23U/V +
+  E33A/B/C doctrine closed via the E2c ledger; E30E/F await rule-authoring only (E5
+  backlog). Decision package: `research/visa/doctrine-factory/e3/od4-decision-package.md`
+  (#4288, merged). ENGINE DEFECTS (seq-9 signing inputs, cross-verified against
+  `origin/main` pack bytes): `el.e33e.deposit-income-basis` is UNSATISFIABLE (brute-force
+  0/64 assignments) and `el.e33g.income-60k-manual` is VACUOUS (duplicated subtree, no
+  income fact, "60000" absent from any pack) — both flagged by the E5 lint compiler,
+  inc-1 #4283 + inc-2 #4291 (both merged, gate 77/77), and RECORDED AS SEQ-9
+  SIGNING-GATE BLOCKERS: neither rule enters the fold uncured. Known gap:
+  `_LEDGER_FILES` in the compiler is a hand-wired list — batch3/e2c ledgers have no CI
+  reader yet (PENDING-ARMS row open, owner E5). OWNER items still open (business,
+  outside repo, per OD-4): internal E33E guide still says 60 (must become 55); E28F
+  internal-DB definition (CF-14); E33A/B/C internal-DB identity (CF-17); noindex ruling.
+  NEXT: E5 rule-authoring (E30E/F + the 5 E2c products), cure the 2 defective rules, fold
+  seq-8→seq-9 (OD-2), freshness 20/20 (replace `ecd22722`), CP3 (Zero) → signing ceremony
+  (M5 key) → activation. Then HRR/flag-veto reform and the E6/E7 path to the ENFORCE gate.
+
+- 2026-08-18 (M5, E5 perimeter — twin-partition: this session owns E5/compiler/backend
+  `visa_engine`; nuzantara-df owns E3 bulk + OD-4): **E5 INCREMENTS 1+2 ARE ON MAIN.**
+  Inc-1 PR #4283 (merge `93b9ae18f`): claim-ledger parser (`claim_ledger.py`, per-product
+  state resolution for the mixed CL-D-FUNDS line) + compiler CLI
+  (`backend/scripts/visa_engine/compile_claims.py`) with hard lints VERIFIED-only and
+  R-OVERSTAY-PLANNING (Zero ruling 2026-08-18: any `immigration.overstay_days` reference
+  must be gated by `immigration.currently_in_indonesia == true` in its ALL-ancestor
+  chain), plus the 26 reformed claim-backed slice rules (D1/D2/D12/E31B/E31D) in
+  `research/visa/doctrine-factory/e5/slice-rule-manifest.json`. Inc-2 PR #4291 (armed at
+  green, gate passed 77/77 tests): lints UNSATISFIABLE-CONDITION and VACUOUS-RULE
+  (duplicate-subtree + optional `must_reference_facts`), each proven on the real seq-7
+  defects `el.e33e.deposit-income-basis` (brute-force UNSAT, 0/64 assignments) and
+  `el.e33g.income-60k-manual` (duplicated block, zero income facts, `60000` absent from
+  the pack) — both independently confirmed on `origin/main` pack bytes and RECORDED AS
+  SEQ-9 SIGNING-GATE BLOCKERS: neither rule enters the fold uncured. OD-4 ratified (Zero
+  via nuzantara-df session, package #4288): no OUT_OF_COMMERCIAL_SCOPE labels, E28B/C/D/F
+  always-HUMAN_REVIEW rules stay as designed, E30E/E30F = pure rule-authoring (next E5
+  increment), E23U/V+E33A/B/C await the E2c ledger. SHADOW/ENFORCE posture unchanged.
 
 - 2026-08-15 (Pro continuation): **THE EXACT PR #4192 FRONTEND CANDIDATE IS
   PROMOTED TO THE PRODUCTION ALIAS.** Interactive Fable independently checked
@@ -1003,7 +1192,7 @@ merge-conflict.
 
 - Own worktree via `scripts/agent_start.py`; the main checkout stays read-only.
 - generator≠grader before every push: cross-family adversarial review (Codex or Gemini seat) of the track's diff; the author never grades its own work.
-- Final on-disk gate = a Fable session per track; never delegated to the implementer.
+- Final on-disk gate = an Opus 5 xhigh-effort session per track (RULED 2026-08-20, was Fable — CLAUDE.md §5); never delegated to the implementer.
 - Pre-push runs on the track's own machine (3 machines = 3 independent push queues). On M5: quiet-window rule — first loadavg value < 8 and zero real pytest processes before pushing.
 - All established truths in this skill bind every track — including the single all-inclusive client price ruling (never a PNBP-vs-fee split).
 

@@ -67,6 +67,7 @@ def include_routers(api: FastAPI) -> None:
         documents_proxy,
         dream,
         dynamic_pricing,  # [NEW] Dynamic scenario pricing
+        e33_cases,  # [E33] Second Home internal console — case entrance (F4a)
         episodic_memory,
         event_bus,  # [EVENT] EventBus monitoring
         experience,  # [EXP] Experience Library — trajectory recording/query
@@ -137,17 +138,20 @@ def include_routers(api: FastAPI) -> None:
         team_activity,
         team_analytics,
         team_drive,
-        # team_members,  # DISABLED: duplicates team.py /members endpoint (audit 2026-04-03)
+        # team_members removed 2026-08-19 (audit 2026-04-03: dead duplicate of team.py's
+        # /members endpoint; the file existed but was never registered — see router_manifest.py)
         telegram,
-        telegram_webhook,
+        # telegram_webhook removed 2026-08-18 (Zero ruled REMOVE) — see router_manifest.py
         twitter,  # RE-ENABLED 2026-04-29 (P0-6 zero-crash audit) — CRC was actually working
         visa_check,  # [4APPS] Homepage Visa Check app (Clock + Match branches)
         visa_oracle,
         visa_oracle_evaluate,  # [W1] Visa Oracle v2 evaluate read-path (public, SHADOW era)
         voice,
         wa_actions,
+        wa_broker,  # /api/wa-broker/* codex broker transport (dedicated key, BOT-V4 S2)
         wa_inbox,  # /api/wa-inbox/* WA Meta Inbox console (scoped key auth)
         wa_mirror_messages,
+        wa_package,  # [BOT-V4 S2] /api/wa-package/build deterministic codex-route package builder
         war_room_dashboard,
         webhooks,
         websocket,
@@ -279,6 +283,7 @@ def include_routers(api: FastAPI) -> None:
 
     # Compliance routers
     api.include_router(compliance_alerts.router)
+    api.include_router(e33_cases.router)  # [E33] Second Home internal console
     api.include_router(lkpm.router)  # LKPM Investment Activity Reports
 
     # Analytics routers (Admin/reporting)
@@ -316,9 +321,8 @@ def include_routers(api: FastAPI) -> None:
     # Communication routers (notifications removed - will be MCP)
     api.include_router(websocket.router)
     api.include_router(telegram.router)  # Telegram bot integration (query endpoints)
-    api.include_router(
-        telegram_webhook.router,
-    )  # [NEW] Telegram webhook (multi-channel architecture)
+    # telegram_webhook include_router removed 2026-08-18 (Zero ruled REMOVE) — see
+    # router_manifest.py for the measured 503-by-design mechanism.
     # RE-ENABLED 2026-04-29 (P0-6 zero-crash audit). The CRC handshake at
     # backend/app/routers/twitter.py was actually correct; the disable from
     # 2026-04-03 was conservative. Now lives behind the ack-first
@@ -336,7 +340,9 @@ def include_routers(api: FastAPI) -> None:
     )  # Omnichannel WhatsApp conversations API (dashboard only)
     api.include_router(wa_mirror_messages.router)  # Read-only wa-mirror CRM timeline API
     api.include_router(wa_actions.router)  # WA Copilot S1.10 action_queue CRUD
+    api.include_router(wa_broker.router)  # /api/wa-broker/* codex broker transport (dedicated key)
     api.include_router(wa_inbox.router)  # /api/wa-inbox/* WA Meta Inbox console (scoped key)
+    api.include_router(wa_package.router)  # [BOT-V4 S2] deterministic codex-route package builder
     api.include_router(instagram_chat.router)  # Instagram DM auto-reply via RAG
     api.include_router(instagram_chat.webhook_router)  # [NEW] Instagram webhook
     api.include_router(intel_lake.router)  # Intel Lake Wave 1 ingest (mig 168)
@@ -420,7 +426,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(team.router)  # Team member visibility management
     api.include_router(team_activity.router)
     api.include_router(team_analytics.router)
-    # api.include_router(team_members.router)  # DISABLED: duplicates team.py (audit 2026-04-03)
+    # team_members.router removed 2026-08-19 — see router_manifest.py
     api.include_router(media.router)
     # api.include_router(audio.router)  # Already included in app_factory.py with prefix="/api"
     api.include_router(voice.router)  # Fast voice endpoint for realtime voice AI
@@ -528,6 +534,7 @@ def include_light_routers(api: FastAPI) -> None:
         debug,
         documents_proxy,
         dynamic_pricing,  # public price lookup (/api/pricing/service) — _API
+        e33_cases,  # [E33] Second Home internal console — case entrance (F4a)
         event_bus,
         experience,  # [EXP] Experience Library — trajectory recording/query (PR #54)
         federation,
@@ -584,14 +591,16 @@ def include_light_routers(api: FastAPI) -> None:
         team_activity,
         team_analytics,
         team_drive,
-        # team_members,  # DISABLED: duplicates team.py /members endpoint (audit 2026-04-03)
+        # team_members removed 2026-08-19 (audit 2026-04-03: dead duplicate of team.py's
+        # /members endpoint; the file existed but was never registered — see router_manifest.py)
         telegram,
-        telegram_webhook,
+        # telegram_webhook removed 2026-08-18 (Zero ruled REMOVE) — see router_manifest.py
         twitter,  # RE-ENABLED 2026-04-29 (P0-6 zero-crash audit) — CRC was actually working
         visa_check,  # [4APPS] Homepage Visa Check app (Clock + Match branches)
         visa_oracle,
         visa_oracle_evaluate,  # [W1] Visa Oracle v2 evaluate read-path (public, SHADOW era)
         wa_actions,
+        wa_broker,  # /api/wa-broker/* codex broker transport (dedicated key, BOT-V4 S2)
         wa_inbox,  # /api/wa-inbox/* WA Meta Inbox console (scoped key auth)
         wa_mirror_messages,
         war_room_dashboard,
@@ -711,6 +720,7 @@ def include_light_routers(api: FastAPI) -> None:
 
     # Compliance routers
     api.include_router(compliance_alerts.router)
+    api.include_router(e33_cases.router)  # [E33] Second Home internal console
     api.include_router(lkpm.router)
 
     # Analytics routers
@@ -730,7 +740,7 @@ def include_light_routers(api: FastAPI) -> None:
     # Communication routers
     api.include_router(websocket.router)
     api.include_router(telegram.router)
-    api.include_router(telegram_webhook.router)
+    # telegram_webhook include_router removed 2026-08-18 (Zero ruled REMOVE)
     api.include_router(twitter.router)  # P0-6 re-enabled 2026-04-29
     api.include_router(twitter.webhook_router)  # P0-6 re-enabled 2026-04-29
     api.include_router(
@@ -739,6 +749,7 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(whatsapp_conversations.router)
     api.include_router(wa_mirror_messages.router)  # /api/wa/messages read-only mirror timeline
     api.include_router(wa_actions.router)  # WA Copilot S1.10 action_queue CRUD
+    api.include_router(wa_broker.router)  # /api/wa-broker/* codex broker transport (dedicated key)
     api.include_router(wa_inbox.router)  # /api/wa-inbox/* WA Meta Inbox console (scoped key)
     api.include_router(instagram_chat.router)
     api.include_router(instagram_chat.webhook_router)
@@ -781,7 +792,7 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(team.router)
     api.include_router(team_activity.router)
     api.include_router(team_analytics.router)
-    # api.include_router(team_members.router)  # DISABLED: duplicates team.py (audit 2026-04-03)
+    # team_members.router removed 2026-08-19 — see router_manifest.py
 
     # Media router
     api.include_router(media.router)
@@ -894,6 +905,7 @@ def include_heavy_routers(api: FastAPI) -> None:
         oracle_ingest,
         oracle_universal,
         voice,
+        wa_package,  # [BOT-V4 S2] /api/wa-package/build deterministic codex-route package builder
         whatsapp_chat,
     )
 
@@ -981,6 +993,9 @@ def include_heavy_routers(api: FastAPI) -> None:
 
     # WhatsApp Chat (RAG-backed intelligent triage)
     api.include_router(whatsapp_chat.router)
+
+    # BOT-V4 S2: deterministic codex-route context-package builder (internal-only)
+    api.include_router(wa_package.router)
 
     # Dashboard aggregation routers (all under /api/dashboard — proxied to rag)
     api.include_router(dashboard.router)

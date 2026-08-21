@@ -229,25 +229,24 @@ function sendGA4Event(
   win.gtag("event", eventName, params);
 }
 
-/** Track when a new lead/client is created in CRM */
+/**
+ * Track a captured lead intent at the WhatsApp handoff — fired by
+ * WhatsAppLeadButton once POST /api/lead/capture has returned 201 and a
+ * `lead_intents` row exists. `source` is a LeadSource wire value.
+ *
+ * Despite the `lead_created` event name, this is NOT the CRM client row.
+ * That row is written later by `scripts/lead_intent_matcher.py`, a
+ * server-side cron that sets `lead_intents.matched_client_id` and
+ * `clients.lead_source`; with no browser there, the CRM event cannot be
+ * emitted through `window.gtag` at all. So this counts intents, not
+ * clients, and the two numbers are expected to differ.
+ *
+ * The event name is load-bearing for the KPI dashboards that read
+ * `lead_created` — rename only as a deliberate, coordinated change.
+ */
 export function trackLeadCreated(source: string): void {
   sendGA4Event("lead_created", { event_category: "Conversion", source });
   trackEvent("lead_created", { source });
-}
-
-/** Track when a document is uploaded */
-export function trackDocumentUploaded(documentType: string): void {
-  sendGA4Event("document_uploaded", {
-    event_category: "Engagement",
-    document_type: documentType,
-  });
-  trackEvent("document_uploaded", { document_type: documentType });
-}
-
-/** Track when a user logs into the portal */
-export function trackPortalLogin(): void {
-  sendGA4Event("portal_login", { event_category: "Engagement" });
-  trackEvent("portal_login", {});
 }
 
 /**
@@ -403,30 +402,9 @@ function dispatchPropertyCTAClicked(
   });
 }
 
-/** Track property article-page CTA interaction (article slug + CTA type) */
-export function trackPropertyArticleCTA(
-  articleSlug: string,
-  ctaType: string,
-): void {
-  dispatchPropertyCTAClicked({ article_slug: articleSlug, cta_type: ctaType });
-}
-
 /** Track property analyze button clicked */
 export function trackPropertyAnalyzeCTA(lat: number, lng: number): void {
   dispatchPropertyCTAClicked({ cta_type: "analyze", lat, lng });
-}
-
-/** Track AskZantara question on property article */
-export function trackPropertyChatQuestion(articleSlug: string): void {
-  sendGA4Event("property_chat_question", {
-    event_category: "Property",
-    article_slug: articleSlug,
-  });
-  trackEvent("property_chat_question", { article_slug: articleSlug });
-  void trackFunnelEvent("property_chat_question", {
-    sessionId: getOrCreateSessionId(),
-    payload: { article_slug: articleSlug },
-  });
 }
 
 /** Track property WhatsApp CTA click */

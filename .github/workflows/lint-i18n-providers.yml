@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Install ripgrep
-        run: sudo apt-get update && sudo apt-get install -y ripgrep
+        run: bash scripts/ci/apt_install.sh rg ripgrep
 
       - name: Run synthetic test suite
         run: bash tests/lint/test_i18n_providers.sh

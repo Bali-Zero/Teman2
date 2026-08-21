@@ -152,6 +152,10 @@ jobs:
               scripts/tests/test_claude_seat_helper.sh|\
               scripts/tests/test_cron_agent_alert_verdict.sh|\
               scripts/ci/prepush_tip_drift.sh|\
+              scripts/ci/apt_install.sh|\
+              scripts/ci/test_apt_install.sh|\
+              scripts/install-claude-code.sh|\
+              scripts/tests/test_install_claude_code_version_skew.sh|\
               .husky/pre-commit|\
               scripts/tests/test_husky_pii_pass_overmatch.py|\
               scripts/tests/test_pii_gate_merge_scope.sh|\
@@ -182,6 +186,8 @@ jobs:
               scripts/cron-runner.sh|\
               scripts/test_cron_runner_alert.sh|\
               scripts/test_cron_single_voice.sh|\
+              scripts/login-healthcheck.sh|\
+              scripts/test_login_healthcheck_alert.sh|\
               scripts/dlq_autopilot.py|\
               scripts/tests/test_dlq_terminal_speaks_once.py|\
               apps/evaluator/nlm_deep_research/scripts/*|\
@@ -235,6 +241,8 @@ jobs:
               scripts/ci/check_required_workflow_conformance.py|\
               scripts/tests/test_required_context_map.py|\
               scripts/tests/test_check_required_workflow_conformance.py|\
+              scripts/ci/lint_unreachable_workflow_conditions.py|\
+              scripts/tests/test_unreachable_workflow_conditions.py|\
               infra/required.d/contexts.json|\
               infra/guard-conformance/registry.json|\
               infra/guard-conformance/check_guard_conformance.py|\
@@ -366,7 +374,8 @@ jobs:
             scripts/tests/test_drive_watchdog_tier_ratchet.py \
             scripts/test_lint_test_reward_hacking.py \
             scripts/tests/test_required_context_map.py \
-            scripts/tests/test_check_required_workflow_conformance.py ; do
+            scripts/tests/test_check_required_workflow_conformance.py \
+            scripts/tests/test_unreachable_workflow_conditions.py ; do
             if [ -f "$t" ]; then
               echo "::group::$t"
               python -m pytest "$t" -q || fail=1
@@ -524,6 +533,22 @@ jobs:
           # anywhere. All three exits are asserted — a fix that covers only the path
           # that bit you is half a fix.
           bash scripts/test_cron_runner_alert.sh
+
+      - name: login-healthcheck alarm-channel corpus (dead channel must be loud, not routine)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # Measured 2026-08-19 on Pro: status=ok 0/2940, "telegram: missing
+          # creds" logged 61/61 times an alert was due — every alarm died at
+          # the gateway and the script called it a routine log line, exit
+          # code and Genoma last_error unchanged either way. A dead alarm
+          # channel and a dead login were indistinguishable to anything
+          # reading this probe's state. Hardened to route through
+          # scripts/tg_notify.py (the gateway, not a raw curl — the first
+          # draft's raw curl was itself a NEW direct sender against the
+          # anti-regrowth lint below, caught by this same job) with a
+          # distinct loud exit code + sidecar marker when the gateway
+          # cannot be reached at all.
+          bash scripts/test_login_healthcheck_alert.sh
 
       - name: WR2 wrapper failure-voice corpora (BOTH wrappers, 9 + 8 launchd jobs)
         if: steps.paths.outputs.relevant == 'true'
@@ -690,6 +715,20 @@ jobs:
           # distinguishable from "never got there".
           bash scripts/tests/test_cron_agent_oauth_cascade.sh
 
+      - name: apt helper corpus (a bounded install that still fails closed)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # scripts/ci/apt_install.sh is called by SIX workflows, so its corpus
+          # belongs in a REQUIRED job (`antidotes`) and not in the scripts/tests
+          # sweep, which is continue-on-error and gates nothing (W108).
+          # Two properties are load-bearing and both are asserted there:
+          # every apt invocation is wrapped in a timeout, and the TOTAL bound
+          # stays well inside a ten-minute job budget. The first attempt at this
+          # cure retried 3x180s inside that same budget — which does not avoid
+          # exhausting it, it guarantees it. A green suite must not let the next
+          # author re-derive that arithmetic.
+          bash scripts/ci/test_apt_install.sh
+
       - name: Codex seat corpus (two paid subscriptions, and a 401 default seat)
         if: steps.paths.outputs.relevant == 'true'
         run: |
@@ -717,7 +756,7 @@ jobs:
           # without this install they would report green while never exercising
           # the shell that actually runs them — coverage theatre. Installing it
           # keeps the skip a machine-local courtesy and never a CI escape.
-          sudo apt-get update -qq && sudo apt-get install -y -qq zsh
+          bash scripts/ci/apt_install.sh zsh zsh
           command -v zsh >/dev/null || { echo "::error::zsh unavailable — the shell corpora would skip, refusing to report green"; exit 1; }
           python -m pip install --quiet pytest
           python -m pytest scripts/tests/test_codex_seat_lib.py -q
@@ -762,6 +801,16 @@ jobs:
           # Postgres phase silently skipped the Qdrant phase entirely. Measured on the
           # bucket: the qdrant nightly is missing for exactly the night PG failed.
           bash scripts/test_fly_backup_phases.sh
+
+      - name: Claude-CLI installer corpus (upstream partial publish must not break the image)
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # Upstream published @anthropic-ai/claude-code 2.1.237 without publishing
+          # its linux-x64 platform build, so every unpinned `npm install -g` failed
+          # while the repo had not changed a line — and an M-series Mac still built
+          # the image fine, so local triage could not reproduce it. Fake registry,
+          # both skew directions, guilt and innocence.
+          bash scripts/tests/test_install_claude_code_version_skew.sh
 
       - name: Merge-queue re-arm corpora (classifier + population, guilt + innocence)
         if: steps.paths.outputs.relevant == 'true'
@@ -815,6 +864,24 @@ jobs:
           # clean today — a censused guard that no workflow actually runs against
           # live data is theater (W81).
           python3 scripts/ci/check_required_workflow_conformance.py
+
+      - name: "Unreachable workflow if: conditions (security.yml orphaned-alarm class)"
+        if: steps.paths.outputs.relevant == 'true'
+        run: |
+          # scripts/ci/lint_unreachable_workflow_conditions.py + its corpus
+          # (test_unreachable_workflow_conditions.py, in the batch loop above)
+          # shipped together, curing security.yml's Telegram-alert `if:` in
+          # the same PR (commit 4e2d8367e / #4218 narrowed `on.push.branches`
+          # and orphaned it — armed and mute for four days, until the
+          # 2026-08-20 unbuildable-image incident alarmed nobody). The
+          # guilt+innocence corpus above proves the CHECKER can still bite;
+          # this step proves the REAL repo tree is clean today — a censused
+          # guard that no workflow actually runs against live data is
+          # theater (W81). Verified empirically (2026-08-20): 93 tracked
+          # workflows, 10 in-scope `if:` conditions, 0 findings, 6 UNDECIDED
+          # (all outside the declared decidable shape — see the tool's own
+          # module docstring — never silently read as clean).
+          python3 scripts/ci/lint_unreachable_workflow_conditions.py
 
       - name: declared-pairs.json is valid JSON with sane shape
         if: steps.paths.outputs.relevant == 'true'
@@ -894,6 +961,23 @@ jobs:
           if [ -f scripts/lint/test_lint_claude_headless_limits.py ]; then
             python3 -m pip install --quiet pytest
             python3 -m pytest scripts/lint/test_lint_claude_headless_limits.py -q
+          fi
+
+      # Claude-headless-model-pin lint: the SAME class of gap recurring on
+      # its own sibling. lint_claude_headless_model_pin.py (introduced
+      # #4430, 2026-08-20) reuses the exact engine armed above, but was
+      # itself merged without ever being wired into any workflow — built,
+      # guilt+innocence-tested, and dormant, precisely the family #2
+      # (Esiste ≠ Armato) shape the comment above this block already names.
+      # Arms it here for real (same reasoning: pure repo-tree scan, no
+      # $HOME dependency). --selftest runs first, same discipline as the
+      # retracted-claims/telegram-tokens lints below — "--all reports OK"
+      # is worth nothing until the guilt path is proven on THIS runner.
+      - name: Claude-headless-model-pin lint (-p/--print carries --model)
+        run: |
+          if [ -f scripts/lint/lint_claude_headless_model_pin.py ]; then
+            python3 scripts/lint/lint_claude_headless_model_pin.py --selftest
+            python3 scripts/lint/lint_claude_headless_model_pin.py
           fi
 
       # The two ledger gates below run on EVERY PR (cheap: parse one markdown

@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 08499d8c2fbda0e97b0195d7ecc371b423ddfd651509a3aff24f652c7bec2275
+checksum: b69040a5ea206c3901e9a6b721d4fd173c57e98dcbed7fede7484e959c3a2ff6
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -1981,6 +1981,76 @@ organs:
     path: ~/.organism/last_seen/mini.tg_digest_flush.json
     timestamp_field: ts
     status_field: status
+- id: mini.kc_watchdog
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 300
+  owner_module: infra/launchagents/wrappers/kc-watchdog.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.kc-watchdog
+  severity_on_silence: warning
+  notes: 'Kills the runaway macOS knowledgeconstructiond process on this headless
+    server every 15s (measured 2026-08-19: unbounded rubric iteration burns ~40% CPU
+    self + ~85% CPU on contactsd, memory-leaks past its own cap, gets corpse-killed
+    by the kernel, and respawns — launchctl disable alone does not stop it). Retrofitted
+    with genes 2026-08-19 (organ-conformance gate G1/G2/G5/G9).'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.kc_watchdog.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.wa_codex_broker
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 0
+  owner_module: infra/launchagents/wrappers/wa-codex-broker-wrapper.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wa-codex-broker
+  severity_on_silence: warning
+  notes: 'WA codex broker daemon (BOT-V4 S2 PR-6, spec research/operations/2026-08-19-bot-chatgpt-provider-broker-spec.md).
+    LaunchDAEMON (/Library/LaunchDaemons, UserName demotion) running as the login-less
+    zantara-codex user: single-flight claim/exec/complete loop against the Fly wa-broker
+    endpoints. Liveness ground truth is the SERVER-side claim-poll gauge (every POST
+    /claim upserts it; silence converges to BROKER_ABSENT within DEFAULT_ABSENT_AFTER_S)
+    - NOT this sidecar, hence expected_hb_seconds 0: the wrapper writes the sidecar
+    only at start and on refusal exits (env unfilled, venv missing, version-pin refusal
+    surfaces in the daemon log), and the sidecar lives in the zantara-codex home,
+    unreadable to other users by design. Kill switch WA_CODEX_BROKER_ENABLED=false
+    (clean exit stays down under KeepAlive.SuccessfulExit=false). Lane is flag-OFF
+    (WA_GENERATION_PROVIDER defaults to gemini) until the owner-gated S4 cutover;
+    the daemon itself is inert until the operator provisions the host (scripts/provision_zantara_codex.sh)
+    and logs the seat in.'
+  cicatrix_refs: []
+- id: pro.wa_codex_seat_probe
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 0
+  owner_module: infra/launchagents/wrappers/wa-codex-seat-probe-wrapper.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wa-codex-seat-probe
+  severity_on_silence: warning
+  notes: 'WA codex seat probe (BOT-V4 S3 Piece A, spec research/operations/2026-08-19-bot-chatgpt-provider-broker-spec.md
+    section 4.4). One-shot LaunchDAEMON (StartInterval 6h + RunAtLoad, UserName demotion
+    to zantara-codex): codex login status + 1-token synthetic exec, classified with
+    the daemon''s _AUTH_DEATH_RE, enum-only verdict written to /usr/local/var/wa-codex-broker/seat-status.json
+    (0640 group staff - nuzantara reads via the group bit). Liveness ground truth
+    is that STATUS FILE: scripts/wa_codex_seat_sentinel.py (Piece B, cron-runner as
+    nuzantara) pages probe_silent when the file is missing or older than 2x the probe
+    interval - hence expected_hb_seconds 0 here, like the broker: the sidecar is written
+    only at start and on refusal exits, and lives in the zantara-codex home, unreadable
+    to other users by design. Kill switch WA_CODEX_SEAT_PROBE_ENABLED=false in the
+    shared env file (clean exit; the probe never reads WA_BROKER_KEY).'
+  cicatrix_refs: []
 - id: pro.wr2_daily_carousel
   runtime: pro_launchd
   type: cron
@@ -2399,13 +2469,13 @@ organs:
     host: pro
     label: com.nuzantara.intake-health-report
   severity_on_silence: warning
-  notes: W0 read-only guardian, daily 07:30 WITA. SELECT-only against local
-    nuzantara_dev (Law 2) — review load, C-02 empty-OCR noise class, C-01 blob
-    presence for the review feed, C-29 companies-table sanity, C-07
-    done-without-proposal orphans, C-05 zombie review_claimed proposals, C-08
-    undelivered committed documents, the intake-worker's own log inode, and
-    24h freshness counters. One JSON object plus one Telegram digest line plus
-    a p0 escalation per breached threshold. Never writes DB.
+  notes: W0 read-only guardian, daily 07:30 WITA. SELECT-only against local nuzantara_dev
+    (Law 2) — review load, C-02 empty-OCR noise class, C-01 blob presence for the
+    review feed, C-29 companies-table sanity, C-07 done-without-proposal orphans,
+    C-05 zombie review_claimed proposals, C-08 undelivered committed documents, the
+    intake-worker's own log inode, and 24h freshness counters. One JSON object plus
+    one Telegram digest line plus a p0 escalation per breached threshold. Never writes
+    DB.
   cicatrix_refs: []
   bridge_source:
     type: state_file
@@ -2423,16 +2493,55 @@ organs:
     host: pro
     label: com.nuzantara.wa-mirror-freshness-liveness
   severity_on_silence: warning
-  notes: W0 read-only guardian, every 900s. SELECT-only max(created_at) off
-    whatsapp_message_context (local nuzantara_dev). ONLY during business
-    hours Mon-Sat 08:00-20:00 Asia/Makassar, alerts --tier p0 (dedup key
-    wa-mirror:freshness:stale) once when the newest row is older than
-    WA_FRESHNESS_MAX_AGE_MIN (default 360min) — a dead intake channel during
-    business hours, not the benign overnight quiet Law 6 already covers.
-    Never writes DB.
+  notes: W0 read-only guardian, every 900s. SELECT-only max(created_at) off whatsapp_message_context
+    (local nuzantara_dev). ONLY during business hours Mon-Sat 08:00-20:00 Asia/Makassar,
+    alerts --tier p0 (dedup key wa-mirror:freshness:stale) once when the newest row
+    is older than WA_FRESHNESS_MAX_AGE_MIN (default 360min) — a dead intake channel
+    during business hours, not the benign overnight quiet Law 6 already covers. Never
+    writes DB.
   cicatrix_refs: []
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.wa_mirror_freshness_liveness.json
+    timestamp_field: ts
+    status_field: status
+- id: mini.secrets_perms_sweep
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 21600
+  owner_module: infra/launchagents/wrappers/mini-secrets-perms-sweep.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.secrets-perms-sweep
+  severity_on_silence: warning
+  notes: 'recurring sweep+fix of group/other-readable secret-named files (memory notes,
+    tokens, keys) via secrets_permissions_audit.py --fix — closes the one-shot debt
+    from PR #3621 (born via organ_birth.py, genes imprinted 2026+)'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.secrets_perms_sweep.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.visa_freshness_sentinel
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 21600
+  owner_module: infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.visa-freshness-sentinel
+  severity_on_silence: warning
+  notes: Alerts Telegram BEFORE the active Visa Oracle RulePack OFFICIAL_PORTAL sources
+    cross their freshness_policy window (7-day), so DECISIVE_SOURCE_STALE never trips
+    silently (born via organ_birth.py, genes imprinted 2026+)
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.visa_freshness_sentinel.json
     timestamp_field: ts
     status_field: status

@@ -1,0 +1,50 @@
+{
+  "_comment": "E5 increment 3, Step 4. Re-sourcing edits for the 2 E31E HARD_FILTER rules whose sole source_ref (ecd22722, the E31E OFFICIAL_PORTAL page) the freshness recheck found does NOT support the under-18/unmarried facts it was cited for (QW-5 record #10, freshness-recheck-2026-08-16.md). These are EDITS to apply against rulepack-prod-007.source.json's rule and source_record entries when seq-9 is assembled (Step 5) — not a standalone pack.",
+  "source_record_edits": [
+    {
+      "source_record_id": "c9e6f0e4-5e84-572d-b1ca-e4e11ab50c24",
+      "edit": "APPEND_LOCATOR",
+      "field": "locators",
+      "current_value": [
+        {"kind": "ARTICLE", "value": "Pasal 42"},
+        {"kind": "ARTICLE", "value": "Pasal 105"},
+        {"kind": "ARTICLE", "value": "Pasal 113"}
+      ],
+      "new_value": [
+        {"kind": "ARTICLE", "value": "Pasal 42"},
+        {"kind": "ARTICLE", "value": "Pasal 105"},
+        {"kind": "ARTICLE", "value": "Pasal 113"},
+        {"kind": "ARTICLE", "value": "Pasal 33"}
+      ],
+      "rationale": "This IMPLEMENTING_REGULATION source_record (Permenkumham Nomor 22 Tahun 2023 tentang Visa dan Izin Tinggal, VERIFIED, canonical_url https://peraturan.bpk.go.id/Download/330147/Permenkumham%20Nomor%2022%20Tahun%202023.pdf) is the SAME document CL-E31E-01 cites (Pasal 33 ayat (2) lettera h angka 5) for the under-18/unmarried child-dependent definition, verbatim: \"anak kandung yang belum berusia 18 (delapan belas) tahun dan belum kawin...\" (e2b-batch1-claim-ledger.md:280-282, provenance VO-FUSED-T13-003/VO-FUSED-T14-005, both VERIFIED). Its existing locators (Pasal 42/105/113) back its OTHER live citations in this pack (el.e30-student-support, el.e30-living-cost-2000.*, el.e30-passport-validity.*, el.e30b-izin-belajar — confirmed by grep: c9e6f0e4 has 0 references in any E31E rule as of seq-7) — this is a genuinely different article of the SAME regulation, so it is an ADDITIONAL locator on the existing multi-purpose record, matching the pack's own convention of accumulating every article this record backs across its citing rules, not a new source_record."
+    }
+  ],
+  "rule_edits": [
+    {
+      "rule_id": "hf.e31e-adult-excluded",
+      "field": "source_refs",
+      "current_value": ["ecd22722-3e42-5808-be18-45fbb7d8e9c5"],
+      "new_value": ["c9e6f0e4-5e84-572d-b1ca-e4e11ab50c24"],
+      "rationale": "ecd22722 (the E31E OFFICIAL_PORTAL page) does not corroborate the under-18 exclusion — re-verified live 2026-08-19 (see freshness-2026-08-19.md), matching QW-5's 2026-08-16 finding. Replaced with the primary-law regulation that DOES ground the fact (Permenkumham 22/2023 Pasal 33(2)(h)(5), via CL-E31E-01, VERIFIED-WITH-CAVEAT)."
+    },
+    {
+      "rule_id": "hf.e31e-married-excluded",
+      "field": "source_refs",
+      "current_value": ["ecd22722-3e42-5808-be18-45fbb7d8e9c5"],
+      "new_value": ["c9e6f0e4-5e84-572d-b1ca-e4e11ab50c24"],
+      "rationale": "Same defect and same cure as hf.e31e-adult-excluded — same sole source_ref (ecd22722), same freshness-recheck finding, same replacement citation and claim (Permenkumham 22/2023 Pasal 33(2)(h)(5) grounds BOTH under-18 AND 'belum kawin'/unmarried in the same clause, per CL-E31E-01's own quoted text). This edit does NOT touch the rule's `when` clause (`marital_status != SINGLE`, which also excludes DIVORCED/WIDOWED, not just MARRIED) — that is a rule-logic question flagged separately by E31E.md §3.2/§4 and out of this Step-4 (sourcing-only) scope."
+    }
+  ],
+  "unchanged_by_design": [
+    {
+      "rule_id": "el.e31e-child-itas-support",
+      "source_refs": ["ecd22722-3e42-5808-be18-45fbb7d8e9c5", "e3572ad2-08a9-55bd-b818-353b3e9db715"],
+      "note": "ecd22722 keeps backing this rule per QW-5 (re-verified live 2026-08-19, see freshness-2026-08-19.md — the page DOES corroborate the ITAS/ITAP-sponsor requirement for the parent). Only ecd22722's own verified_at moves, not source_refs."
+    },
+    {
+      "rule_id": "el.e31e-sponsor-itas-itap",
+      "source_refs": ["e3572ad2-08a9-55bd-b818-353b3e9db715", "ecd22722-3e42-5808-be18-45fbb7d8e9c5"],
+      "note": "Same as above."
+    }
+  ]
+}

@@ -1,0 +1,373 @@
+{
+  "slice": "E5-INCREMENT-3-BLOCKED7",
+  "rules": [
+    {
+      "product_code": "E30E",
+      "claim_ids": [
+        "CL-E30E-01",
+        "CL-E30E-02",
+        "CL-E30E-03",
+        "CL-E30E-05"
+      ],
+      "caveats": [],
+      "rule": {
+        "rule_id": "el.e30e-student-support",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "19e3ea6c-95c6-5998-b9d7-efc77f583589"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-08-19T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "fact": "intent.purposes",
+              "op": "intersects",
+              "values": [
+                "STUDY"
+              ]
+            },
+            {
+              "fact": "study.admission_confirmed",
+              "op": "eq",
+              "value": true
+            },
+            {
+              "fact": "study.sponsor_confirmed",
+              "op": "eq",
+              "value": true
+            },
+            {
+              "fact": "sponsor.type",
+              "op": "in",
+              "values": [
+                "EDUCATION",
+                "INDIVIDUAL"
+              ]
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "PURPOSE_PRODUCT_MATCH",
+          "covered_purposes": [
+            "STUDY"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "c9e6f0e4-5e84-572d-b1ca-e4e11ab50c24",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715",
+          "9248b1d7-9172-54d9-ad61-251e83a2285b"
+        ],
+        "explanation_key": "explain.el.e30e-student-support",
+        "safety_critical": false
+      }
+    },
+    {
+      "product_code": "E30F",
+      "claim_ids": [
+        "CL-E30F-01",
+        "CL-E30F-02",
+        "CL-E30F-03",
+        "CL-E30F-05"
+      ],
+      "caveats": [
+        {
+          "claim_id": "CL-E30F-05",
+          "note": "State VERIFIED-WITH-CAVEAT — the mandatory-sponsor requirement (an accredited Indonesian educational institution participating in the exchange program) rests on internal operational sources only (nb2_visa_types_final.txt, nb2_visa_procedures_guide.txt); no primary-law article pinpoint was located for this specific point (e2b-batch2-claim-ledger.md:328-337). Unlike CL-E30E-05 (Permenkumham 22/2023 Pasal 42, which names EITHER the KEK institution OR a WNI individual guarantor), E30F's sponsor claim names only the institution — no individual-guarantor option is claimed for E30F, so this rule's sponsor.type gate is EDUCATION-only, not {EDUCATION, INDIVIDUAL}."
+        }
+      ],
+      "rule": {
+        "rule_id": "el.e30f-student-support",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "235f5dfc-2feb-5d5b-ab09-0f4e4122819e"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-08-19T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "fact": "intent.purposes",
+              "op": "intersects",
+              "values": [
+                "STUDY"
+              ]
+            },
+            {
+              "fact": "study.admission_confirmed",
+              "op": "eq",
+              "value": true
+            },
+            {
+              "fact": "study.sponsor_confirmed",
+              "op": "eq",
+              "value": true
+            },
+            {
+              "fact": "sponsor.type",
+              "op": "eq",
+              "value": "EDUCATION"
+            }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "PURPOSE_PRODUCT_MATCH",
+          "covered_purposes": [
+            "STUDY"
+          ]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "c9e6f0e4-5e84-572d-b1ca-e4e11ab50c24",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715"
+        ],
+        "explanation_key": "explain.el.e30f-student-support",
+        "safety_critical": false
+      }
+    },
+    {
+      "product_code": "E33A",
+      "claim_ids": [
+        "CL-E33A-01",
+        "CL-E33A-02",
+        "CL-E33A-03"
+      ],
+      "caveats": [],
+      "rule": {
+        "rule_id": "hf.e33a.sponsor-not-government",
+        "stage": "HARD_FILTER",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "5c18e265-ddb2-5010-8d24-a2f19df89850"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-08-19T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "neq",
+          "fact": "sponsor.type",
+          "value": "GOVERNMENT"
+        },
+        "effect": {
+          "type": "EXCLUDE",
+          "reason_code": "E33A_SPONSOR_NOT_GOVERNMENT"
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "6f5135f2-1f77-571f-88ed-26d1d2b9efba",
+          "9248b1d7-9172-54d9-ad61-251e83a2285b"
+        ],
+        "explanation_key": "explain.hf.e33a.sponsor-not-government",
+        "safety_critical": true
+      }
+    },
+    {
+      "product_code": "E33B",
+      "claim_ids": [
+        "CL-E33B-01",
+        "CL-E33B-02",
+        "CL-E33B-04"
+      ],
+      "caveats": [
+        {
+          "claim_id": "CL-E33B-04",
+          "note": "citation-audit verdict PROSE_ONLY — the Pasal 57(2) government-patronage pathway and Pasal 58(1)-(3) self-sponsored/tanpa-Penjamin pathway (incl. the 90-day cooperation-proof requirement) are quoted verbatim in prose with title/date/pasal pinpoints, but the citation-audit tool found no structured sources_used entry on this record. This rule's sponsor.type in {GOVERNMENT, NONE} gate encodes BOTH pathways per this claim's own text — per the sponsor-mandatory tension across CL-E33B-01/03/04 being unresolved by design, this rule deliberately does not pick one pathway over the other."
+        }
+      ],
+      "rule": {
+        "rule_id": "hf.e33b.sponsor-not-government-or-none",
+        "stage": "HARD_FILTER",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "32b6fb5f-5a24-5763-95f9-0b77be18353c"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-08-19T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "not_in",
+          "fact": "sponsor.type",
+          "values": [
+            "GOVERNMENT",
+            "NONE"
+          ]
+        },
+        "effect": {
+          "type": "EXCLUDE",
+          "reason_code": "E33B_SPONSOR_NOT_GOVERNMENT_OR_NONE"
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "6f5135f2-1f77-571f-88ed-26d1d2b9efba",
+          "9248b1d7-9172-54d9-ad61-251e83a2285b"
+        ],
+        "explanation_key": "explain.hf.e33b.sponsor-not-government-or-none",
+        "safety_critical": true
+      }
+    },
+    {
+      "product_code": "E33C",
+      "claim_ids": [
+        "CL-E33C-01",
+        "CL-E33C-02",
+        "CL-E33C-03"
+      ],
+      "caveats": [
+        {
+          "claim_id": "CL-E33C-01",
+          "note": "citation-audit verdict PROSE_ONLY — the Tokoh Dunia governing-identity classification (Kepmen M.IP-08.GR.01.01/2025) is quoted/dated verbatim in prose but the citation-audit tool found no structured sources_used entry on this record. Cited here for E33C's governing identity/category context only — the sponsor.type gate itself is grounded in the plain-VERIFIED CL-E33C-03."
+        },
+        {
+          "claim_id": "CL-E33C-02",
+          "note": "citation-audit verdict PROSE_ONLY, same query record as CL-E33C-01 — permitted/prohibited-activities context only, not itself the basis for the sponsor.type gate (grounded in CL-E33C-03)."
+        }
+      ],
+      "rule": {
+        "rule_id": "hf.e33c.sponsor-not-government-or-none",
+        "stage": "HARD_FILTER",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "9cc14fee-49dc-5549-8bc8-90bdaf52d1f3"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-08-19T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "not_in",
+          "fact": "sponsor.type",
+          "values": [
+            "GOVERNMENT",
+            "NONE"
+          ]
+        },
+        "effect": {
+          "type": "EXCLUDE",
+          "reason_code": "E33C_SPONSOR_NOT_GOVERNMENT_OR_NONE"
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "6f5135f2-1f77-571f-88ed-26d1d2b9efba",
+          "9248b1d7-9172-54d9-ad61-251e83a2285b"
+        ],
+        "explanation_key": "explain.hf.e33c.sponsor-not-government-or-none",
+        "safety_critical": true
+      }
+    },
+    {
+      "product_code": "E23U",
+      "claim_ids": [
+        "CL-E23U-01",
+        "CL-E23U-02",
+        "CL-E23U-03"
+      ],
+      "caveats": [],
+      "rule": {
+        "rule_id": "review.e23u.requested-product",
+        "stage": "HUMAN_REVIEW",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "fa143e97-b444-5ae4-9b05-6365f15e3ec7"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-08-19T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "fact": "intent.purposes",
+              "op": "intersects",
+              "values": [
+                "EMPLOYMENT"
+              ]
+            },
+            {
+              "fact": "intent.requested_product_code",
+              "op": "eq",
+              "value": "E23U"
+            }
+          ]
+        },
+        "effect": {
+          "type": "REQUIRE_REVIEW",
+          "reason_code": "E23U_DIPLOMATIC_HOUSEHOLD_STAFF_REVIEW"
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
+        ],
+        "explanation_key": "explain.review.e23u.requested-product",
+        "safety_critical": false
+      }
+    },
+    {
+      "product_code": "E23V",
+      "claim_ids": [
+        "CL-E23V-01",
+        "CL-E23V-02"
+      ],
+      "caveats": [],
+      "rule": {
+        "rule_id": "review.e23v.requested-product",
+        "stage": "HUMAN_REVIEW",
+        "scope": "PRODUCTS",
+        "product_version_ids": [
+          "e8a1d738-daa7-5c99-a0c6-800b25579129"
+        ],
+        "priority": 100,
+        "valid_period": {
+          "from": "2026-08-19T00:00:00Z",
+          "to": null
+        },
+        "when": {
+          "op": "all",
+          "args": [
+            {
+              "fact": "intent.purposes",
+              "op": "intersects",
+              "values": [
+                "EMPLOYMENT"
+              ]
+            },
+            {
+              "fact": "intent.requested_product_code",
+              "op": "eq",
+              "value": "E23V"
+            }
+          ]
+        },
+        "effect": {
+          "type": "REQUIRE_REVIEW",
+          "reason_code": "E23V_TRADE_OFFICE_STAFF_REVIEW"
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "source_refs": [
+          "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
+        ],
+        "explanation_key": "explain.review.e23v.requested-product",
+        "safety_critical": false
+      }
+    }
+  ]
+}

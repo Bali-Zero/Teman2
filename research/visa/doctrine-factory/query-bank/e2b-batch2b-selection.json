@@ -1,0 +1,227 @@
+[
+  {
+    "query_id": "E2B2-T5-001",
+    "source": "fused-bank",
+    "fused_query_id": "VO-FUSED-T5-001",
+    "topic": "T5",
+    "category": "entry-duration",
+    "target_products": ["ALL"],
+    "text": "Which products are legally single-entry vs multiple-entry, and in which does a single exit permanently void the stay permit?"
+  },
+  {
+    "query_id": "E2B2-T5-002",
+    "source": "fused-bank",
+    "fused_query_id": "VO-FUSED-T5-003",
+    "topic": "T5",
+    "category": "entry-duration",
+    "target_products": ["C1", "C2", "C6"],
+    "text": "For C-series (C1, C2, C6): exact extension mechanics -- how many extensions, of what length, filed where, total resulting stay. Cite source and passage per product."
+  },
+  {
+    "query_id": "E2B2-T5-003",
+    "source": "fused-bank",
+    "fused_query_id": "VO-FUSED-T5-005",
+    "topic": "T5",
+    "category": "entry-duration",
+    "target_products": ["D1", "D2", "D12"],
+    "text": "For D-series (D1, D2, D12): does exiting and re-entering reset the per-entry clock on multiple-entry visas? Any minimum time abroad required? Cite source and passage per product."
+  },
+  {
+    "query_id": "E2B2-T8-001",
+    "source": "fused-bank",
+    "fused_query_id": "VO-FUSED-T8-002",
+    "topic": "T8",
+    "category": "onshore-conversion-kitap",
+    "target_products": ["ALL"],
+    "text": "Are there blackout windows (e.g. pending application) during which the applicant must not exit Indonesia, and for which products? Cite source and passage."
+  },
+  {
+    "query_id": "E2B2-T8-002",
+    "source": "fused-bank",
+    "fused_query_id": "VO-FUSED-T8-004",
+    "topic": "T8",
+    "category": "onshore-conversion-kitap",
+    "target_products": ["E28", "E33", "E31"],
+    "text": "What happens to a KITAS if the holder exits Indonesia without a re-entry permit (MERP), and how is it restored? Is any product exempt? Cite source and passage."
+  },
+  {
+    "query_id": "E2B2-T11-001",
+    "source": "fused-bank",
+    "fused_query_id": "VO-FUSED-T11-001",
+    "topic": "T11",
+    "category": "work-specifics",
+    "target_products": ["E23"],
+    "text": "RPTKA: who files, for what validity, which roles are exempt? Current instrument, cite article."
+  },
+  {
+    "query_id": "E2B2-T1-BRIDGING",
+    "source": "batch2b-authored",
+    "reworked_from": "VO-FUSED-T1-003 (doctrine-card, 17-part, timed out twice in batch-1)",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["BRIDGING"],
+    "text": "For the Indonesian onshore bridging permit (BRIDGING) ONLY, answer just these 5 points, concisely, one short paragraph each: (1) category and legal purpose (why it exists, what gap it bridges); (2) permitted vs prohibited activities while holding it; (3) single or multiple entry, and duration; (4) how many times it can be extended and for how long, and what it converts to; (5) is a sponsor/guarantor required. Cite source title and passage for each of the 5 points."
+  },
+  {
+    "query_id": "E2B2-T1-E31J",
+    "source": "batch2b-authored",
+    "reworked_from": "VO-FUSED-T1-030 family (doctrine-card, timed out in batch-1 per delta note)",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["E31J"],
+    "text": "For E31J (family/dependent index code) ONLY, answer just these 5 points, concisely: (1) category and legal purpose (which family relationship it covers); (2) permitted vs prohibited activities; (3) single or multiple entry, duration per entry and total validity; (4) extension mechanics and onshore conversion path if any; (5) mandatory sponsor/guarantor. Cite source title and passage for each point."
+  },
+  {
+    "query_id": "E2B2-T1-E31BC",
+    "source": "batch2b-authored",
+    "reworked_from": "VO-FUSED-T1 family (E31B, E31C)",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["E31B", "E31C"],
+    "text": "For E31B and E31C separately, answer just these 5 points per product, concisely: (1) category and legal purpose; (2) permitted vs prohibited activities; (3) single or multiple entry, duration per entry and total validity; (4) extension mechanics and onshore conversion path; (5) mandatory sponsor/guarantor. Cite source and passage for each point, per product."
+  },
+  {
+    "query_id": "E2B2-T1-E31DE",
+    "source": "batch2b-authored",
+    "reworked_from": "VO-FUSED-T1 family (E31D, E31E)",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["E31D", "E31E"],
+    "text": "For E31D and E31E separately, answer just these 5 points per product, concisely: (1) category and legal purpose; (2) permitted vs prohibited activities; (3) single or multiple entry, duration per entry and total validity; (4) extension mechanics and onshore conversion path; (5) mandatory sponsor/guarantor. Cite source and passage for each point, per product."
+  },
+  {
+    "query_id": "E2B2-T1-E31FGH",
+    "source": "batch2b-authored",
+    "reworked_from": "VO-FUSED-T1 family (E31F, E31G, E31H)",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["E31F", "E31G", "E31H"],
+    "text": "For E31F, E31G and E31H separately, answer just these 5 points per product, concisely: (1) category and legal purpose; (2) permitted vs prohibited activities; (3) single or multiple entry, duration per entry and total validity; (4) extension mechanics and onshore conversion path; (5) mandatory sponsor/guarantor. Cite source and passage for each point, per product."
+  },
+  {
+    "query_id": "E2B2-T1-E30",
+    "source": "batch2b-authored",
+    "reworked_from": "VO-FUSED-T1 family (E30, E30B)",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["E30", "E30B"],
+    "text": "For E30 and E30B separately, answer just these 5 points per product, concisely: (1) category and legal purpose (institution level, program type); (2) permitted vs prohibited activities; (3) single or multiple entry, duration per entry and total validity; (4) extension mechanics and onshore conversion path; (5) mandatory sponsor/izin belajar. Cite source and passage for each point, per product."
+  },
+  {
+    "query_id": "E2B2-T1-E30EF",
+    "source": "batch2b-authored",
+    "reworked_from": "VO-FUSED-T1 family (E30E, E30F)",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["E30E", "E30F"],
+    "text": "For E30E and E30F separately, answer just these 5 points per product, concisely: (1) category and legal purpose (KEK institution vs exchange program); (2) permitted vs prohibited activities; (3) single or multiple entry, duration per entry and total validity; (4) extension mechanics and onshore conversion path; (5) mandatory sponsor. Cite source and passage for each point, per product."
+  },
+  {
+    "query_id": "E2B2-T1-D1D2",
+    "source": "batch2b-authored",
+    "reworked_from": "VO-FUSED-T1 family (D1, D2)",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["D1", "D2"],
+    "text": "For D1 and D2 separately, answer just these 5 points per product, concisely: (1) category and legal purpose; (2) permitted vs prohibited activities; (3) single or multiple entry, duration per entry and total validity; (4) extension mechanics and onshore conversion path; (5) mandatory sponsor/guarantor. Cite source and passage for each point, per product."
+  },
+  {
+    "query_id": "E2B2-T1-D12",
+    "source": "batch2b-authored",
+    "reworked_from": "VO-FUSED-T1 (D12, highest-remaining rule count among PARTIAL products)",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["D12"],
+    "text": "For D12 ONLY, answer just these 5 points, concisely: (1) category and legal purpose; (2) permitted vs prohibited activities; (3) single or multiple entry, duration per entry and total validity; (4) extension mechanics and onshore conversion path; (5) mandatory sponsor/guarantor. Cite source and passage for each point."
+  },
+  {
+    "query_id": "E2B2-T1-A1B1",
+    "source": "batch2b-authored",
+    "reworked_from": "VO-FUSED-T1 family (A1, B1)",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["A1", "B1"],
+    "text": "For A1 and B1 separately, answer just these 5 points per product, concisely: (1) category and legal purpose; (2) permitted vs prohibited activities; (3) single or multiple entry, duration per entry and total validity; (4) extension mechanics; (5) mandatory sponsor/guarantor. Cite source and passage for each point, per product."
+  },
+  {
+    "query_id": "E2B2-T1-C1C6",
+    "source": "batch2b-authored",
+    "reworked_from": "VO-FUSED-T1 family (C1, C6)",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["C1", "C6"],
+    "text": "For C1 and C6 separately, answer just these 5 points per product, concisely: (1) category and legal purpose; (2) permitted vs prohibited activities; (3) single or multiple entry, duration per entry and total validity; (4) extension mechanics and onshore conversion path; (5) mandatory sponsor/guarantor. Cite source and passage for each point, per product."
+  },
+  {
+    "query_id": "E2B2-T1-C2",
+    "source": "batch2b-authored",
+    "reworked_from": "VO-FUSED-T1 (C2)",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["C2"],
+    "text": "For C2 ONLY, answer just these 5 points, concisely: (1) category and legal purpose; (2) permitted vs prohibited activities; (3) single or multiple entry, duration per entry and total validity; (4) extension mechanics and onshore conversion path; (5) mandatory sponsor/guarantor. Cite source and passage for each point."
+  },
+  {
+    "query_id": "E2B2-T1-E28BC",
+    "source": "batch2b-authored",
+    "reworked_from": "VO-FUSED-T1 family (E28B, E28C, BLOCKED reachability)",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["E28B", "E28C"],
+    "text": "For E28B and E28C separately, answer just these 5 points per product, concisely: (1) category and legal purpose (investment vehicle/entity, applicant role); (2) permitted vs prohibited activities; (3) single or multiple entry, duration per entry and total validity; (4) extension mechanics and onshore conversion path; (5) mandatory sponsor/guarantee. Cite source and passage for each point, per product."
+  },
+  {
+    "query_id": "E2B2-T1-E28DF",
+    "source": "batch2b-authored",
+    "reworked_from": "VO-FUSED-T1 family (E28D, E28F, BLOCKED reachability)",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["E28D", "E28F"],
+    "text": "For E28D and E28F separately, answer just these 5 points per product, concisely: (1) category and legal purpose (branch/subsidiary vs IKN subsidiary); (2) permitted vs prohibited activities; (3) single or multiple entry, duration per entry and total validity; (4) extension mechanics and onshore conversion path; (5) mandatory sponsor/guarantee. Cite source and passage for each point, per product."
+  },
+  {
+    "query_id": "E2B2-CF7-A",
+    "source": "batch2b-authored",
+    "purpose": "CF-7 pinpoint hunt (E33E minimum age 55 vs 60)",
+    "topic": "conflict-probe",
+    "category": "pinpoint-hunt",
+    "target_products": ["E33E"],
+    "text": "Quote VERBATIM, with the exact Pasal/ayat number, the passage in Permenkumham 11/2024 or in Kepmen M.IP-08.GR.01.01/2025 that sets the E33E Silver Hair minimum age -- is it 55 or 60 years? If different instruments give different ages, cite EACH one separately with its own article number, instrument name and effective/adoption date. Do not average or guess -- if no article-level citation exists for a figure, say so explicitly instead of restating the figure without one."
+  },
+  {
+    "query_id": "E2B2-CF7-B",
+    "source": "batch2b-authored",
+    "purpose": "CF-7 pinpoint hunt (Bali counter operational practice for E33E age)",
+    "topic": "conflict-probe",
+    "category": "pinpoint-hunt",
+    "target_products": ["E33E"],
+    "text": "Does any source describe the operational practice at Kantor Imigrasi Ngurah Rai (Bali) or Ditjen Imigrasi generally for the E33E minimum age requirement, as distinct from what the primary legal text says? Quote the passage verbatim, name the source and its date, and state explicitly whether it is a legal-text source or an internal/operational-guide source."
+  },
+  {
+    "query_id": "E2B2-CF8-A",
+    "source": "batch2b-authored",
+    "purpose": "CF-8 pinpoint hunt (E33/E33E KITAP conversion window 3y vs 5y)",
+    "topic": "conflict-probe",
+    "category": "pinpoint-hunt",
+    "target_products": ["E33", "E33E"],
+    "text": "Quote VERBATIM, with the exact Pasal number, the passage in Permenkumham 11/2024 that sets the ITAS-to-ITAP (KITAP) conversion eligibility window for the E33/E33E family -- is it Pasal 179(1), Pasal 76, or another article? Does it set 3 years or a different figure? Separately, does UU 63/2024 (the Omnibus immigration amendment) amend or supersede that article? Distinguish clearly between this legal-text figure and any Bali Zero operational/commercial-guide figure of 5 years, and cite the operational-guide source by name if it appears."
+  },
+  {
+    "query_id": "E2B2-CF10-A",
+    "source": "batch2b-authored",
+    "purpose": "CF-10 pinpoint hunt (E28A KITAP conversion window 3y vs 5+y)",
+    "topic": "conflict-probe",
+    "category": "pinpoint-hunt",
+    "target_products": ["E28A"],
+    "text": "Quote VERBATIM, with the exact Pasal/article number, the passage in PP No. 31/2013 (or any amending regulation) that sets the investor-KITAS-to-KITAP conversion window for E28A -- is it 3 years? Is there a more recent instrument that amends this figure? Distinguish this legal-text figure clearly from any commercial-guide figure of '5+ years', and name the commercial-guide source if it appears in the sources."
+  },
+  {
+    "query_id": "E2B2-CF12-A",
+    "source": "batch2b-authored",
+    "purpose": "CF-12 pinpoint hunt (internal 'E28G' label mismatch)",
+    "topic": "conflict-probe",
+    "category": "pinpoint-hunt",
+    "target_products": ["E28B", "E28C"],
+    "text": "For the internal Bali Zero label 'E28G' (found in nb2_visa_types_final.txt, described as 'Golden Visa 10Y'): does any REAL Kepmen-defined or Permenkumham 11/2024-defined investment tier match either 'Rp 5 miliar' or 'USD 700,000' as its threshold? Compare directly against the E28B (corporate investor, USD 5,000,000 threshold) and E28C (portfolio investor, USD 700,000 threshold per Permenkumham 11/2024) definitions. State explicitly whether 'E28G' is a genuine distinct legal tier or an internal labeling artifact, and quote the 2026-03-28 errata corrige passage verbatim if it appears anywhere in the sources."
+  }
+]

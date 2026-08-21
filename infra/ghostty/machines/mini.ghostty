@@ -1,0 +1,36 @@
+# ── Ghostty · machine profile: MINI (nuzantara@Mini-Pro2, M4 Pro 24GB) ─────
+# Loaded AFTER fleet.ghostty, so anything here overrides the fleet base.
+# Role: H24 server — Ollama, heavy cron, batch. Sits in the office on its own
+# ISP line and is reached over Tailscale, never the LAN.
+# Ghostty here is for the occasional hands-on session, not daily driving.
+
+working-directory = /Users/nuzantara/nuzantara
+
+# Identity: GREEN. Mini is the one that is supposed to be always up.
+cursor-color = #a6e3a1
+cursor-text = #1e1e2e
+split-divider-color = #a6e3a1
+
+macos-icon = custom-style
+macos-icon-frame = plastic
+macos-icon-ghost-color = #a6e3a1
+macos-icon-screen-color = #1e1e2e,#1e2f24
+
+# Measured 2026-08-18: this machine has NO Nerd Font installed, so the fleet's
+# font-family falls back to plain "JetBrains Mono" and powerline/devicon glyphs
+# in the starship prompt render as tofu. Fix by installing the font
+# (`brew install --cask font-jetbrains-mono-nerd-font`) rather than by changing
+# the fleet font — the fallback is silent, which is exactly why it is noted here.
+
+# Server: a hands-on session is rare and usually short. Smaller buffer, and the
+# box is doing real work with its 24 GB.
+scrollback-limit = 16000000
+window-width = 120
+window-height = 34
+
+# ─── Fleet reach (palette, per-machine) ────────────────────────────────────
+# command-palette-entry ACCUMULATES across included files, so per-machine
+# entries live here. Same convention as keys.ghostty: TYPED, never executed —
+# no trailing newline, nothing runs until you press enter.
+command-palette-entry = title:"SSH: pro (dev + runtime)",description:"Pro workhorse (typed, not executed).",action:"text:ssh pro"
+command-palette-entry = title:"SSH: air (M5 workstation)",description:"Antonello's primary seat (typed, not executed).",action:"text:ssh air"

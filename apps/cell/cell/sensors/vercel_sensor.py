@@ -19,9 +19,6 @@ logger = logging.getLogger("cell.sensors.vercel")
 _DEFAULT_SUBDOMAINS = [
     "https://kita.balizero.com",
     "https://my.balizero.com",
-    "https://mail.balizero.com",
-    "https://calendar.balizero.com",
-    "https://drive.balizero.com",
     "https://zantara.balizero.com",
 ]
 

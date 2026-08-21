@@ -239,15 +239,14 @@ def resolve_pricing(model: str) -> dict[str, float]:
         return LLM_PRICING[abbreviated[0]]
     if abbreviated:
         logger.warning(
-            "Ambiguous model slug %r matches %d price rows (%s) — refusing to guess, "
+            "Ambiguous model slug matches %d price rows (%s) — refusing to guess, "
             "using default rates",
-            model,
             len(abbreviated),
             ", ".join(sorted(abbreviated)),
         )
         return LLM_PRICING["unknown"]
 
-    logger.warning("Unknown model pricing: %s, using default rates", model)
+    logger.warning("Unknown model pricing; using default rates")
     return LLM_PRICING["unknown"]
 
 

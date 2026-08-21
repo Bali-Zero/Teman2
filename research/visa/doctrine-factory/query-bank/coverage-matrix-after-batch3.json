@@ -1,0 +1,2602 @@
+{
+  "pack_id": "453ee842-7f35-5d77-b460-31d67e2784c2",
+  "sequence": 7,
+  "version": "2026.8.11",
+  "n_products": 38,
+  "n_rules": 104,
+  "matrix": {
+    "E28A": {
+      "reachability": "REACHABLE",
+      "n_rules": 9,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T3",
+        "T4",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T1-013"
+          ],
+          "batch": "batch1"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T4": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T4-009"
+          ],
+          "batch": "batch1"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "E28B": {
+      "reachability": "BLOCKED",
+      "n_rules": 7,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T3",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T1-E28BC",
+            "E2B2-E28B"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "E28C": {
+      "reachability": "BLOCKED",
+      "n_rules": 7,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T3",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T1-E28BC",
+            "E2B2-E28C"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "E28D": {
+      "reachability": "BLOCKED",
+      "n_rules": 7,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T3",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T1-E28DF",
+            "E2B2-E28D"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "E28F": {
+      "reachability": "BLOCKED",
+      "n_rules": 7,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T3",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T1-E28DF",
+            "E2B2-E28F"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "E33": {
+      "reachability": "REACHABLE",
+      "n_rules": 11,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T14",
+        "T15",
+        "T3",
+        "T4",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T1-032"
+          ],
+          "batch": "batch1"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T14": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T14-002",
+            "VO-FUSED-T14-003",
+            "VO-FUSED-T14-004",
+            "VO-FUSED-T14-005",
+            "VO-FUSED-T14-006"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T4": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T4-004",
+            "VO-FUSED-T4-009",
+            "VO-FUSED-T4-010"
+          ],
+          "batch": "batch1"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "E33A": {
+      "reachability": "BLOCKED",
+      "n_rules": 7,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T3",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T1-032"
+          ],
+          "batch": "batch1"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "E33B": {
+      "reachability": "BLOCKED",
+      "n_rules": 7,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T3",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T1-032"
+          ],
+          "batch": "batch1"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "E33C": {
+      "reachability": "BLOCKED",
+      "n_rules": 7,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T3",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T1-032"
+          ],
+          "batch": "batch1"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "E33E": {
+      "reachability": "REACHABLE",
+      "n_rules": 10,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T14",
+        "T15",
+        "T3",
+        "T4",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T1-032"
+          ],
+          "batch": "batch1"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T14": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T14-002",
+            "VO-FUSED-T14-003",
+            "VO-FUSED-T14-004",
+            "VO-FUSED-T14-005",
+            "VO-FUSED-T14-006"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T4": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T4-004",
+            "VO-FUSED-T4-009",
+            "VO-FUSED-T4-010"
+          ],
+          "batch": "batch1"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "E33F": {
+      "reachability": "REACHABLE",
+      "n_rules": 9,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T14",
+        "T15",
+        "T3",
+        "T4",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T1-032",
+            "VO-FUSED-T1-037"
+          ],
+          "batch": "batch1"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T14": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T14-002",
+            "VO-FUSED-T14-003",
+            "VO-FUSED-T14-004",
+            "VO-FUSED-T14-005",
+            "VO-FUSED-T14-006"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T4": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T4-004",
+            "VO-FUSED-T4-009",
+            "VO-FUSED-T4-010"
+          ],
+          "batch": "batch1"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "E33G": {
+      "reachability": "REACHABLE",
+      "n_rules": 12,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T13",
+        "T15",
+        "T3",
+        "T4",
+        "T6",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T1-032",
+            "VO-FUSED-T1-038"
+          ],
+          "batch": "batch1"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T13": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T13-001",
+            "VO-FUSED-T13-002",
+            "VO-FUSED-T13-003",
+            "VO-FUSED-T13-004",
+            "VO-FUSED-T13-006"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T4": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T4-004",
+            "VO-FUSED-T4-006",
+            "VO-FUSED-T4-009",
+            "VO-FUSED-T4-010"
+          ],
+          "batch": "batch1"
+        },
+        "T6": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T6-001",
+            "VO-FUSED-T6-005"
+          ],
+          "batch": "batch1"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "A1": {
+      "reachability": "REACHABLE",
+      "n_rules": 8,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T3",
+        "T5",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T1-A1B1"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T5": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T5-001"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "B1": {
+      "reachability": "REACHABLE",
+      "n_rules": 8,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T3",
+        "T5",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T1-A1B1"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T5": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T5-001"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "C1": {
+      "reachability": "REACHABLE",
+      "n_rules": 7,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T3",
+        "T5",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T1-C1C6"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T5": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T5-001",
+            "E2B2-T5-002"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "C2": {
+      "reachability": "REACHABLE",
+      "n_rules": 8,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T3",
+        "T5",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B3-C2-IDENTITY",
+            "E2B3-C2-PROCEDURE"
+          ],
+          "batch": "batch3"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T5": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T5-001",
+            "E2B2-T5-002"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "C6": {
+      "reachability": "REACHABLE",
+      "n_rules": 7,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T3",
+        "T5",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T1-C1C6"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T5": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T5-001",
+            "E2B2-T5-002"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "BRIDGING": {
+      "reachability": "REACHABLE",
+      "n_rules": 14,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T3",
+        "T7",
+        "T8",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T1-BRIDGING"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T8": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T8-001"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "E23": {
+      "reachability": "REACHABLE",
+      "n_rules": 8,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T11",
+        "T15",
+        "T3",
+        "T4",
+        "T6",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T1-010"
+          ],
+          "batch": "batch1"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T11": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T11-001"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T4": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T4-009"
+          ],
+          "batch": "batch1"
+        },
+        "T6": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T6-001"
+          ],
+          "batch": "batch1"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "E23U": {
+      "reachability": "BLOCKED",
+      "n_rules": 6,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T1-010"
+          ],
+          "batch": "batch1"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "E23V": {
+      "reachability": "BLOCKED",
+      "n_rules": 6,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T1-010"
+          ],
+          "batch": "batch1"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "E31A": {
+      "reachability": "REACHABLE",
+      "n_rules": 10,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T3",
+        "T7",
+        "T8",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T1-023"
+          ],
+          "batch": "batch1"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T8": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T8-001",
+            "E2B2-T8-002"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "E31B": {
+      "reachability": "REACHABLE",
+      "n_rules": 8,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T3",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T1-E31BC"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "E31C": {
+      "reachability": "REACHABLE",
+      "n_rules": 8,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T3",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T1-E31BC"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "E31D": {
+      "reachability": "REACHABLE",
+      "n_rules": 9,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T3",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T1-E31DE"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "E31E": {
+      "reachability": "REACHABLE",
+      "n_rules": 10,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T3",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T1-E31DE"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "E31F": {
+      "reachability": "REACHABLE",
+      "n_rules": 8,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T3",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T1-E31FGH-RETRY"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "E31G": {
+      "reachability": "REACHABLE",
+      "n_rules": 7,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T3",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T1-E31FGH-RETRY"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "E31H": {
+      "reachability": "REACHABLE",
+      "n_rules": 8,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T3",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T1-E31FGH-RETRY"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "E31J": {
+      "reachability": "REACHABLE",
+      "n_rules": 9,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T3",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T1-E31J"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "D1": {
+      "reachability": "REACHABLE",
+      "n_rules": 12,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T3",
+        "T5",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T1-D1D2-RETRY"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T5": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T5-001",
+            "E2B2-T5-003"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "D2": {
+      "reachability": "REACHABLE",
+      "n_rules": 12,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T3",
+        "T5",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T1-D1D2-RETRY"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T5": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T5-001",
+            "E2B2-T5-003"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "D12": {
+      "reachability": "REACHABLE",
+      "n_rules": 13,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T3",
+        "T4",
+        "T5",
+        "T7",
+        "T8",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T1-D1D2-RETRY",
+            "E2B2-T1-D12"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T4": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T4-009"
+          ],
+          "batch": "batch1"
+        },
+        "T5": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T5-001",
+            "E2B2-T5-003",
+            "E2B2-T5-003"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T8": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T8-001"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "E30": {
+      "reachability": "REACHABLE",
+      "n_rules": 9,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T12",
+        "T15",
+        "T3",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T1-E30-RETRY"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T12": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T12-001",
+            "VO-FUSED-T12-005"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "E30A": {
+      "reachability": "REACHABLE",
+      "n_rules": 10,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T12",
+        "T15",
+        "T3",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T1-019"
+          ],
+          "batch": "batch1"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T12": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T12-001",
+            "VO-FUSED-T12-005"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "E30B": {
+      "reachability": "REACHABLE",
+      "n_rules": 11,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T12",
+        "T15",
+        "T3",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T1-E30-RETRY",
+            "E2B2-T1-E30-RETRY"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T12": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T12-001",
+            "VO-FUSED-T12-005"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T3": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T3-002",
+            "VO-FUSED-T3-005",
+            "VO-FUSED-T3-006",
+            "VO-FUSED-T3-007",
+            "VO-FUSED-T3-010"
+          ],
+          "batch": "batch1"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "E30E": {
+      "reachability": "BLOCKED",
+      "n_rules": 6,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T1-E30-RETRY",
+            "E2B2-T1-E30EF",
+            "E2B2-E30E"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    },
+    "E30F": {
+      "reachability": "BLOCKED",
+      "n_rules": 6,
+      "required_claim_topics": [
+        "T1",
+        "T10",
+        "T15",
+        "T7",
+        "T9"
+      ],
+      "batch2b_topic_states": {
+        "T1": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "E2B2-T1-E30-RETRY",
+            "E2B2-T1-E30EF",
+            "E2B2-E30F"
+          ],
+          "batch": "batch2/batch2b"
+        },
+        "T10": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T10-009"
+          ],
+          "batch": "batch1"
+        },
+        "T15": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T15-001"
+          ],
+          "batch": "batch1"
+        },
+        "T7": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T7-001"
+          ],
+          "batch": "batch1"
+        },
+        "T9": {
+          "state": "ANSWER_OBTAINED",
+          "via": [
+            "VO-FUSED-T9-001"
+          ],
+          "batch": "batch1"
+        }
+      },
+      "batch2b_coverage_state": "ALL_TOPICS_ANSWERED",
+      "pending_topics": []
+    }
+  },
+  "batch3_closure": {
+    "arrest_criterion": "OD-3: no product classified REACHABLE_AND_SUPPORTED with required claims not VERIFIED",
+    "reachable_products_total": 27,
+    "measured_at_start_unverified_topics": {
+      "C2": [
+        "T1"
+      ]
+    },
+    "verdict": "MET",
+    "note": "26/27 REACHABLE products already had every required_claim_topic backed by a VERIFIED or VERIFIED-WITH-CAVEAT claim in the e2a/batch1/batch2/batch2b ledgers before this batch started (many T1 doctrine-card topics close via composition of already-VERIFIED narrower claims, or via cross-reference to the E3a authoritative doctrine cards for D1/D2/D12 already merged to main -- see e2b-batch3-claim-ledger.md Method section for the full per-product accounting). The sole genuine gap was C2's T1 (doctrine-card), a TOTAL GAP after two prior timeouts (E2B2-T1-C2, E2B2-T1-C2-RETRY). Closed this batch via two narrow (2-point each) replacement queries: E2B3-C2-IDENTITY (VERIFIED) and E2B3-C2-PROCEDURE (PROSE_ONLY -> claim state VERIFIED-WITH-CAVEAT per binding pinpoint rule). See CL-C2-01/CL-C2-02/CL-C2-03 in e2b-batch3-claim-ledger.md, and CF-16 for the C2 onshore-conversion conflict this batch surfaced (source disagreement on whether C2 converts to ITAS -- OPEN, symmetric, not arbitrated). CORRECTION after Kimi K3 adversarial review (session session_d4de6961-21f5-4319-84df-0b04067093b7): the first draft's rationale for excluding CF-7/CF-8/CF-10 was factually wrong (claimed T4 absent from E33/E33E/E28A required topics; it is present) and stale (called them OPEN when the batch-2b conflict-report EXTENSION had already RESOLVED all three). A genuine criterion-drift hole was also found and fixed: E30/E30A/E30B's T12 topic carries an UNVERIFIED claim (CL-E30-02, Izin Belajar authority) that was hand-waved as 'not the T1 claim' -- corrected via explicit rule-level adjudication (the pack's E30-family required_facts are all applicant-supplied, never a ministry-identity fact, so the decision is unaffected; the residue is logged RESEARCH_GAP_CANDIDATE, not swept). A follow-up spot-check subagent then found the same drift class in T1/E31C and T1/E31F (their only prior T1 claim, CL-E31BCDEF-01, was CONFLICTING with no VERIFIED companion) -- closed via production-seed-catalog cross-reference (CL-E31C-01/CL-E31F-01). T9's country-list gap (CL-CROSS-06, all 27 products) was also checked against the pack's actual person.nationalities-consuming rules and found non-blocking (only A1/B1 consume it, both with their own independent source_refs). See e2b-batch3-claim-ledger.md's Adversarial review and Follow-up spot-check sections for full detail."
+  }
+}

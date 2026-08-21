@@ -195,6 +195,8 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     # backend/app/auth/public_endpoints.py); /all, /search and /scenario keep
     # requiring auth on both processes.
     RouterEntry(name="dynamic_pricing", process_groups=_BOTH, tags=("pricing",)),
+    # ── E33 Second Home (internal console, F4a case entrance) ──
+    RouterEntry(name="e33_cases", process_groups=_API, tags=("e33",)),
     # ── EventBus ──
     RouterEntry(name="event_bus", process_groups=_API, tags=("infra",)),
     # ── Experience / Skill / Metabolic (SCAR: PR #54/#55/#60) ──
@@ -339,8 +341,13 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     RouterEntry(name="team_analytics", process_groups=_API, tags=("team",)),
     RouterEntry(name="team_drive", process_groups=_API, tags=("team", "integrations")),
     # ── Telegram ──
+    # telegram_webhook removed 2026-08-18 (Zero ruled REMOVE): structurally dead
+    # since inception — the `api` process it was mounted on runs
+    # initialize_services_light(), which sets app.state.channel_router = None
+    # by design, so Depends(get_channel_router) 503'd on every request. The live
+    # Telegram channel is Pro OpenClaw (CLAUDE.md §12), not this Fly-side surface.
+    # See .claude/skills/modus/PENDING-ARMS.md (closed lines) for the measurement.
     RouterEntry(name="telegram", process_groups=_API, tags=("channels",)),
-    RouterEntry(name="telegram_webhook", process_groups=_API, tags=("channels",)),
     # ── Twitter / X ──
     # Re-enabled 2026-04-29 (P0-6 zero-crash audit). Was previously DISABLED
     # 2026-04-03 ("CRC broken, OAuth incomplete"); the CRC handshake was
@@ -380,6 +387,11 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
         tags=("channels", "crm", "wa-copilot"),
     ),
     RouterEntry(
+        name="wa_broker",
+        process_groups=_API,
+        tags=("channels", "wa-broker"),
+    ),
+    RouterEntry(
         name="wa_inbox",
         process_groups=_API,
         tags=("channels", "wa-meta-inbox"),
@@ -387,6 +399,9 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     RouterEntry(
         name="wa_mirror_messages", process_groups=_API, tags=("channels", "crm", "wa-mirror")
     ),
+    # BOT-V4 S2 (D2): deterministic codex-route context-package builder —
+    # RAG-heavy (needs SearchService + AgenticRAGOrchestrator), internal-only.
+    RouterEntry(name="wa_package", process_groups=_RAG, tags=("channels", "wa-broker")),
     RouterEntry(name="whatsapp_chat", process_groups=_BOTH, tags=("channels", "rag")),
     RouterEntry(name="whatsapp_conversations", process_groups=_API, tags=("channels",)),
     # ── Workflow ──
@@ -439,7 +454,12 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
 #   handshake at backend/app/routers/twitter.py was actually correct; the
 #   register-time block was conservative. Re-registered above in the
 #   "Twitter / X" section with ack-first persistence (P0-6 audit).
-# team_members — duplicates team.py /members endpoint (audit 2026-04-03)
+# team_members — REMOVED 2026-08-19. Disabled 2026-04-03 as a duplicate of
+#   team.py's /members endpoint, but the file itself stayed on disk — a 2026-08-19
+#   fix for service-account exclusion was applied to this dead copy and ran
+#   nowhere in production (audit found the fix on the wrong router; see
+#   team.py::get_team_members for the live query). Deleted rather than kept
+#   "fixed" here, to not leave a disabled duplicate that looks handled.
 # whatsapp_chat.alias_router — legacy alias causes duplicate responses
 # audio — included separately in app_factory.py
 

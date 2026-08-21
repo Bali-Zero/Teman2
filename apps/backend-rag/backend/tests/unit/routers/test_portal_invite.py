@@ -9,6 +9,8 @@ from fastapi import HTTPException
 
 from backend.app.routers.portal_invite import (
     SendInviteRequest,
+    get_client_invitations,
+    resend_invitation,
     send_invitation,
     send_portal_invite_email,
 )
@@ -153,3 +155,89 @@ async def test_send_invitation_rejects_client_role() -> None:
         )
 
     assert exc.value.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# Defect 2 (2026-08-19 audit): these three endpoints tested `role == "client"`
+# instead of routing through service_accounts.is_human_team_member. A service
+# account (e.g. the "monitoring" login-healthcheck probe) is not a client, but
+# it is also not a colleague — it must not mint invite emails, view invitation
+# history, or resend invitations either.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_send_invitation_rejects_monitoring_service_account() -> None:
+    """Guilt: the probe must not be able to mint a live Brevo invitation email."""
+    with pytest.raises(HTTPException) as exc:
+        await send_invitation(
+            SendInviteRequest(client_id=1, email="client@example.com"),
+            current_user={"email": "probe@balizero.com", "role": "monitoring"},
+            invite_service=FakeInviteService(),  # type: ignore[arg-type]
+            db_pool=MagicMock(),
+        )
+
+    assert exc.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_get_client_invitations_rejects_monitoring_service_account() -> None:
+    with pytest.raises(HTTPException) as exc:
+        await get_client_invitations(
+            client_id=1,
+            current_user={"email": "probe@balizero.com", "role": "monitoring"},
+            invite_service=FakeInviteService(),  # type: ignore[arg-type]
+        )
+
+    assert exc.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_get_client_invitations_allows_a_realistic_free_text_role() -> None:
+    """Innocence: a real, free-text team-role title must still pass through
+    to the service call (this repo's roles are job titles, not an enum)."""
+    fake_service = FakeInviteService()
+
+    async def _get_client_invitations(client_id: int) -> list[dict[str, object]]:
+        return [{"client_id": client_id, "status": "pending"}]
+
+    fake_service.get_client_invitations = _get_client_invitations  # type: ignore[assignment]
+
+    response = await get_client_invitations(
+        client_id=1,
+        current_user={"email": "board@balizero.com", "role": "Board Member"},
+        invite_service=fake_service,  # type: ignore[arg-type]
+    )
+
+    assert response["success"] is True
+
+
+@pytest.mark.asyncio
+async def test_resend_invitation_rejects_monitoring_service_account() -> None:
+    with pytest.raises(HTTPException) as exc:
+        await resend_invitation(
+            client_id=1,
+            current_user={"email": "probe@balizero.com", "role": "monitoring"},
+            invite_service=FakeInviteService(),  # type: ignore[arg-type]
+        )
+
+    assert exc.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_resend_invitation_allows_a_realistic_free_text_role() -> None:
+    """Innocence: a real, free-text team-role title must still pass through."""
+    fake_service = FakeInviteService()
+
+    async def _resend_invitation(*, client_id: int, created_by: str) -> dict[str, object]:
+        return {"client_id": client_id, "created_by": created_by}
+
+    fake_service.resend_invitation = _resend_invitation  # type: ignore[assignment]
+
+    response = await resend_invitation(
+        client_id=1,
+        current_user={"email": "reception@balizero.com", "role": "Reception"},
+        invite_service=fake_service,  # type: ignore[arg-type]
+    )
+
+    assert response["success"] is True

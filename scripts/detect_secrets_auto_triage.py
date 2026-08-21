@@ -296,6 +296,78 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "reproduce the reviewed ceremony; exact path/key/shape only, never "
         "bearer material",
     ),
+    # fold_pack_seq10.py: _EXPECTED_SEQ9_PAYLOAD_SHA256 is the chain anchor —
+    # the content-derived sha256 of the PUBLIC signed seq-9 RulePack payload
+    # (same value class as the contracts/packs/rulepack-*.json rule in
+    # AUTO_APPROVE_RULES: hashes of public legal documents, never
+    # credentials). The fold script pins it so the seq-10 chain link is
+    # triple-derived at run time (declared == anchor == recomputed from the
+    # seq-9 source bytes) and any mismatch aborts the fold.
+    #
+    # Content-keyed and pinned to the EXACT anchor value, not a hex shape:
+    # this is production code with an open surface for future edits — a real
+    # credential pasted anywhere else in the file (or even another 64-hex
+    # value on this line) stays flagged. The approved line is the bare
+    # continuation-string line of the parenthesized assignment, end-anchored.
+    (
+        re.compile(
+            r"^apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq10\.py$"
+        ),
+        re.compile(
+            r'^\s*"47feff8246c608c7c6085ffdac776fdc020bb56688d5f35a0a3e685eb40f271e"\s*$'
+        ),
+        "fold_pack_seq10.py: seq-9 chain anchor — content-derived sha256 of "
+        "the public signed seq-9 RulePack payload, triple-derived at run "
+        "time; exact value pinned, never a credential",
+    ),
+    # fold_pack_seq11.py: _EXPECTED_SEQ10_PAYLOAD_SHA256 is the chain anchor —
+    # the content-derived sha256 of the PUBLIC signed seq-10 RulePack payload
+    # (same value class as the contracts/packs/rulepack-*.json rule in
+    # AUTO_APPROVE_RULES: hashes of public legal documents, never
+    # credentials). The fold script pins it so the seq-11 chain link is
+    # triple-derived at run time (declared == anchor == recomputed from the
+    # seq-10 source bytes) and any mismatch aborts the fold.
+    #
+    # Content-keyed and pinned to the EXACT anchor value, not a hex shape:
+    # this is production code with an open surface for future edits — a real
+    # credential pasted anywhere else in the file (or even another 64-hex
+    # value on this line) stays flagged. The approved line is the bare
+    # continuation-string line of the parenthesized assignment, end-anchored.
+    (
+        re.compile(
+            r"^apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq11\.py$"
+        ),
+        re.compile(
+            r'^\s*"188442baee0af899e464a696b883d2158e6e362c29d75b61eec5769ba24b9aac"\s*$'
+        ),
+        "fold_pack_seq11.py: seq-10 chain anchor — content-derived sha256 of "
+        "the public signed seq-10 RulePack payload, triple-derived at run "
+        "time; exact value pinned, never a credential",
+    ),
+    # fold_pack_seq12.py: _EXPECTED_SEQ11_PAYLOAD_SHA256 is the chain anchor —
+    # the content-derived sha256 of the PUBLIC signed seq-11 RulePack payload
+    # (same value class as the contracts/packs/rulepack-*.json rule in
+    # AUTO_APPROVE_RULES: hashes of public legal documents, never
+    # credentials). The fold script pins it so the seq-12 chain link is
+    # triple-derived at run time (declared == anchor == recomputed from the
+    # seq-11 source bytes) and any mismatch aborts the fold.
+    #
+    # Content-keyed and pinned to the EXACT anchor value, not a hex shape:
+    # this is production code with an open surface for future edits — a real
+    # credential pasted anywhere else in the file (or even another 64-hex
+    # value on this line) stays flagged. The approved line is the bare
+    # continuation-string line of the parenthesized assignment, end-anchored.
+    (
+        re.compile(
+            r"^apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq12\.py$"
+        ),
+        re.compile(
+            r'^\s*"836acc511bcadd41c28284e7f00bd8be27c6109ebcc5536f7053c3f61eaa2865"\s*$'
+        ),
+        "fold_pack_seq12.py: seq-11 chain anchor — content-derived sha256 of "
+        "the public signed seq-11 RulePack payload, triple-derived at run "
+        "time; exact value pinned, never a credential",
+    ),
 ]
 
 # Each rule is (pattern, reason). The pattern matches the file path

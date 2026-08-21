@@ -74,6 +74,13 @@ async def fetch_pending_html_draft_ids(conn: asyncpg.Connection, limit: int = 3)
     on it (as the Canva-lane fetch does) starves them forever in
     drafts_imaged_checked while the supervisor reconcile keeps kicking them.
     Mirrors the guard already used by acquire_html_lease_and_fetch.
+
+    Excludes a draft while html_vision_parked_until is still in the future —
+    the vision-quota circuit breaker (2026-08-20) parks a draft here after
+    WR2_VISION_MAX_TRANSIENT consecutive transient (rate-limit/timeout)
+    releases so it stops being re-picked every tick against a proven-dead
+    quota window; it becomes fetchable again on its own once the timestamp
+    passes (see migrations_v2/275_war_room_vision_circuit_breaker.sql).
     """
     rows = await conn.fetch(
         """
@@ -81,6 +88,7 @@ async def fetch_pending_html_draft_ids(conn: asyncpg.Connection, limit: int = 3)
          WHERE status = 'drafts_imaged_checked'
            AND drive_url IS NULL
            AND lease_owner IS NULL
+           AND (html_vision_parked_until IS NULL OR html_vision_parked_until <= NOW())
          ORDER BY created_at ASC
          LIMIT $1
         """,
@@ -107,6 +115,11 @@ async def requeue_draft_for_rerender(conn: asyncpg.Connection, draft_id: UUID | 
       without this, a draft that previously exhausted its attempts (or spent
       some) re-enters with a burned circuit breaker and the first transient
       error of the new cycle goes terminal (Codex review 2026-07-13).
+    - `html_vision_transient_streak` resets to 0 / `html_vision_parked_until`
+      resets to NULL (2026-08-20): same reasoning as html_render_attempts —
+      without this a draft parked by the vision-quota circuit breaker would
+      re-enter the lane but stay INVISIBLE to fetch_pending_html_draft_ids
+      until the stale parked_until from the PREVIOUS cycle happened to pass.
 
     Returns True when the draft re-entered the lane, False otherwise.
     """
@@ -115,7 +128,9 @@ async def requeue_draft_for_rerender(conn: asyncpg.Connection, draft_id: UUID | 
         UPDATE war_room_drafts
            SET status = 'drafts_imaged_checked',
                drive_url = NULL,
-               html_render_attempts = 0
+               html_render_attempts = 0,
+               html_vision_transient_streak = 0,
+               html_vision_parked_until = NULL
          WHERE id = $1
            AND lease_owner IS NULL
            AND status IN ('rendered', 'render_failed', 'drafts_imaged_checked')
@@ -213,6 +228,8 @@ async def rebrief_draft(conn: asyncpg.Connection, draft_id: UUID | str) -> bool:
                fact_check_at = NULL,
                drive_url = NULL,
                html_render_attempts = 0,
+               html_vision_transient_streak = 0,
+               html_vision_parked_until = NULL,
                canva_design_id = NULL,
                canva_edit_url = NULL,
                canva_view_url = NULL,
@@ -531,7 +548,9 @@ async def persist_html_result_and_enqueue_notifications(
                    lease_owner = NULL,
                    lease_acquired_at = NULL,
                    lease_heartbeat_at = NULL,
-                   updated_at = NOW()
+                   updated_at = NOW(),
+                   html_vision_transient_streak = 0,
+                   html_vision_parked_until = NULL
              WHERE id = $1 AND lease_owner = $2 AND status = 'rendering'
             """,
             draft_id,

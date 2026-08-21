@@ -1,0 +1,15 @@
+{
+  "_doc": "Bare `claude -p`/`--print` invocations (missing --model) grandfathered at lint birth (2026-08-20). This list only SHRINKS: pin --model at a call site, then remove its file here (or re-run --freeze once every listed file is fixed). A NEW file introducing a bare invocation fails CI \u2014 see scripts/lint/lint_claude_headless_model_pin.py.",
+  "frozen_at": "2026-08-20",
+  "files": [
+    "scripts/cron-agent-python/agent_job.py",
+    "scripts/generate_automations_excel.py",
+    "scripts/sentinel_lib/classifier.py",
+    "scripts/sota_infer_personas.py",
+    "scripts/sota_write_gap_analysis.py",
+    "scripts/supervisor_autofix_tier2.sh",
+    "scripts/wr2_canva_garbage_collector.py",
+    "scripts/wr2_canva_headless_apply.py",
+    "scripts/wr2_validate_master.py"
+  ]
+}

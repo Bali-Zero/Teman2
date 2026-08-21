@@ -228,6 +228,42 @@ becomes visible.
 
 ---
 
+## After arming: watch, don't poll
+
+Measured 2026-08-21: 54% of a PR-session's output tokens were spent AFTER `gh pr create` — hand-polling
+CI — and 14% of all Bash calls were `gh pr checks/view/run`. **The rule: arm `gh pr merge --auto N`
+(nude, per §Session discipline above), then hand it to `scripts/pr_watch.sh N` in a background task or
+`Monitor`, and move on.** Never loop `gh pr checks` by hand waiting for green.
+
+```bash
+gh pr merge --auto 4321          # arm, nude
+scripts/pr_watch.sh 4321         # background/Monitor — do the next thing meanwhile
+```
+
+It emits one line per event (`#N MERGED <ts>`, `#N CLOSED`, `#N REQUIRED-FAILING: <names>` once per
+new failing set, `#N MISSING-REQUIRED: <contexts>`, `#N EJECTED-FROM-QUEUE`) and a final `ALL_DONE` /
+`TIMEOUT`. Multiple PRs in one call are watched together; it exits only once every one of them is
+terminal.
+
+**Never read `autoMergeRequest` to decide "still armed" (W118)** — it reads null/false both while a
+PR is healthily queued and after the queue has ejected it, indistinguishably (the same trap `mq
+watch` avoids by tracking the armed SHA instead). `pr_watch.sh` uses GraphQL `isInMergeQueue` +
+`mergeQueueEntry{state position}` instead, which is what makes `EJECTED-FROM-QUEUE` a real signal.
+
+**`MISSING-REQUIRED` is the skipped-matrix-job scar** — `comm -23 <(required contexts) <(reported
+names)` against the FULL reported-name set (not just required-flagged ones), because a skipped
+matrix job's suffixed required context never shows up under any name at all (§2's "required check
+never reported" class; scar `discovery_skipped_matrix_job_never_emits_its_required_contexts`).
+
+**Re-running a check by hand never uses `gh run rerun` on a stale ref (W111)** — it replays the OLD
+merge commit; `gh pr update-branch` first, or use `mq requeue` / `queue_rearm.sh --apply`.
+
+Test: `scripts/tests/test_pr_watch.sh` (fake `gh`, no network). `mq watch` is the post-arm drift
+guard for one PR against its armed SHA; `pr_watch.sh` is the terminal-state watcher for one or many
+PRs, replacing the hand-poll loop — neither reimplements the other.
+
+---
+
 ## 5. Override procedure (owner admin)
 
 When merge queue blocks a legitimate hotfix and CI infrastructure itself is broken:

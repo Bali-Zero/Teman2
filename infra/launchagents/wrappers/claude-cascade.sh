@@ -8,6 +8,10 @@
 #   3. Kimi Code K3
 #   4. codex exec --sandbox read-only (ChatGPT Pro)
 #   5. ollama run qwen3.5:9b (Pro/Mini local safety net)
+#   6. fm respond (Apple on-device Foundation Model, macOS 27+ — zero-daemon
+#      last resort for machines where no Ollama server is running; ~3B quality,
+#      grunt shapes only. Benchmarked 2026-08-19: 12/15 vs qwen3.5:9b 14/15 on
+#      triage/classify/extract. Kill switch: CLAUDE_CASCADE_FM=0)
 #
 # Usage:
 #   claude-cascade.sh "<prompt text>" [--model MODEL] [--agent AGENT_NAME]
@@ -644,11 +648,56 @@ try_codex() {
     return 98
 }
 
+# Verifies the MODEL is actually installed, not just the `ollama` binary. Before
+# this check, a missing model reached `ollama run` directly: measured live
+# 2026-08-20 on Pro, that spends several seconds attempting a network
+# pull-manifest round-trip ("pulling manifest" spinner) before failing with a
+# generic `Error: pull model manifest: file does not exist` (exit 1) — a real,
+# non-zero exit (so try_ollama's own exit-code check was never silently wrong),
+# but slow, unnecessarily network-dependent for a tier whose whole point is
+# local/offline, and logged identically to a daemon-down or OOM failure.
+# Reads /api/tags (not `ollama list`, which has an independent history in this
+# repo of answering empty while the API answers correctly) so a known miss is
+# fast, local-only, and distinguishable in the log from "daemon unreachable".
+_ollama_model_ready() {
+    local model="$1"
+    local base="${OLLAMA_API_BASE:-http://127.0.0.1:11434}"
+    # Overridable (mirrors the other provider-binary overrides in this cascade) —
+    # a hermetic test harness fakes the whole `ollama` binary via PATH-free
+    # absolute overrides, but this precheck talks HTTP directly (by design:
+    # see the comment above `_ollama_model_ready`, not the `ollama` binary),
+    # so without its own seam it always hits a real, unreachable 127.0.0.1
+    # in CI and the tier silently vanishes from every test scenario.
+    local curl_bin="${CLAUDE_CASCADE_OLLAMA_CURL_BIN:-curl}"
+    local tags
+    tags="$("$curl_bin" -sf -m 5 "${base}/api/tags" 2>/dev/null)"
+    if [ -z "$tags" ]; then
+        echo "  [ollama-precheck] daemon unreachable at ${base}" >&2
+        return 1
+    fi
+    if printf '%s' "$tags" | python3 -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    sys.exit(1)
+names = {m.get('name') for m in data.get('models', [])}
+sys.exit(0 if '$model' in names else 1)
+"; then
+        return 0
+    fi
+    echo "  [ollama-precheck] model '$model' not installed (daemon reachable, tags checked)" >&2
+    return 1
+}
+
 try_ollama() {
     local ollama_bin="${CLAUDE_CASCADE_OLLAMA_BIN:-/opt/homebrew/bin/ollama}"
     [ ! -x "$ollama_bin" ] && { echo "  [skip] ollama not installed" >&2; return 99; }
     if [ -n "$AGENT" ]; then
         echo "  [skip] tier5 ollama — --agent=$AGENT requires Claude tier" >&2
+        return 99
+    fi
+    if ! _ollama_model_ready "qwen3.5:9b"; then
         return 99
     fi
     local tmpout tmperr exit_code
@@ -675,6 +724,53 @@ try_ollama() {
     cat "$tmpout"
     rm -f "$tmpout" "$tmperr"
     echo "[claude-cascade] used: tier5 ollama-qwen3.5:9b-local" >&2
+    return 0
+}
+
+# Tier 6: Apple on-device Foundation Model via the fm CLI (ships with macOS 27).
+# This is the zero-daemon last resort: unlike tier 5 it needs no Ollama server,
+# no model pull, and no RAM residency — the system model is always present on a
+# macOS 27 machine once `sudo fm license` has been accepted. Quality is ~3B
+# (benchmark 2026-08-19: 12/15 vs qwen3.5:9b 14/15 on grunt shapes), so it adds
+# cascade depth for machines/moments where tier 5 is dead (M5 by policy runs no
+# Ollama daemon; Pro after a panic), never a preferred seat. An unlicensed fm
+# exits non-zero and lands in the fail-visible error path below, same as any
+# dead tier. Kill switch: CLAUDE_CASCADE_FM=0.
+try_fm() {
+    local fm_bin="${CLAUDE_CASCADE_FM_BIN:-/usr/bin/fm}"
+    if [ "${CLAUDE_CASCADE_FM:-1}" = "0" ]; then
+        echo "  [skip] tier6 fm disabled (CLAUDE_CASCADE_FM=0)" >&2
+        return 99
+    fi
+    [ ! -x "$fm_bin" ] && { echo "  [skip] tier6 fm not installed (macOS 27+ only)" >&2; return 99; }
+    if [ -n "$AGENT" ]; then
+        echo "  [skip] tier6 fm — --agent=$AGENT requires Claude tier" >&2
+        return 99
+    fi
+    local tmpout tmperr exit_code
+    new_temp_file
+    tmpout="$REPLY"
+    new_temp_file
+    tmperr="$REPLY"
+    echo "  [try] tier6 fm apple-on-device" >&2
+    build_isolated_provider_env
+    run_bounded "$tmpout" "$tmperr" "tier6 fm" \
+        "${ISOLATED_PROVIDER_ENV[@]}" \
+        "$fm_bin" respond --no-stream --greedy "$PROMPT"
+    exit_code=$?
+    if [ "$exit_code" -ne 0 ]; then
+        echo "  [error] fm exit=$exit_code" >&2
+        rm -f "$tmpout" "$tmperr"
+        return "$exit_code"
+    fi
+    if [ ! -s "$tmpout" ]; then
+        echo "  [error] fm returned empty output" >&2
+        rm -f "$tmpout" "$tmperr"
+        return 97
+    fi
+    cat "$tmpout"
+    rm -f "$tmpout" "$tmperr"
+    echo "[claude-cascade] used: tier6 fm-apple-on-device" >&2
     return 0
 }
 
@@ -790,6 +886,9 @@ try_codex && exit 0
 
 # Tier 5: Ollama local (always-on safety net)
 try_ollama && exit 0
+
+# Tier 6: Apple on-device Foundation Model (macOS 27+, zero-daemon last resort)
+try_fm && exit 0
 
 echo "[claude-cascade] ALL TIERS FAILED" >&2
 exit 1

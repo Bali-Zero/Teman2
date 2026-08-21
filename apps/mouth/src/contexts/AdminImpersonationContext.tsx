@@ -20,6 +20,7 @@ import React, {
   useCallback,
 } from "react";
 import { api } from "@/lib/api";
+import { PORTAL_IMPERSONATION_STORAGE_KEY } from "@/lib/api/client";
 
 type ImpersonationTarget = {
   id: number;
@@ -34,7 +35,10 @@ type Ctx = {
   loading: boolean;
 };
 
-const STORAGE_KEY = "bz_portal_impersonation_v1";
+// Single source of truth for the storage key lives in lib/api/client.ts
+// (the module that also reads it on construction and clears it on
+// clearToken()) — imported here, never re-typed, so the two sides cannot
+// drift apart. See the constant's own doc comment for why that matters.
 
 const AdminImpersonationContext = createContext<Ctx>({
   isSuperuser: false,
@@ -55,7 +59,7 @@ export function AdminImpersonationProvider({
   // Restore from localStorage on mount
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(PORTAL_IMPERSONATION_STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as ImpersonationTarget;
         if (parsed && typeof parsed.id === "number") {
@@ -102,10 +106,10 @@ export function AdminImpersonationProvider({
   const setTarget = useCallback((t: ImpersonationTarget | null) => {
     setTargetState(t);
     if (t) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(t));
+      localStorage.setItem(PORTAL_IMPERSONATION_STORAGE_KEY, JSON.stringify(t));
       api.setPortalImpersonation?.(t.id);
     } else {
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(PORTAL_IMPERSONATION_STORAGE_KEY);
       api.setPortalImpersonation?.(null);
     }
   }, []);

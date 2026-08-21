@@ -49,7 +49,9 @@ async def test_get_billing_returns_invoices():
             "practice_id": 10,
             "practice_name": "KITAS B211A",
             "practice_category": "visa",
-            "payment_status": "pending",
+            "payment_status": "unpaid",
+            "paid_amount_idr": None,
+            "paid_amount": 0,
             "quoted_price": 20000000.0,
         },
         {
@@ -66,6 +68,8 @@ async def test_get_billing_returns_invoices():
             "practice_name": "PT PMA Setup",
             "practice_category": "company",
             "payment_status": "paid",
+            "paid_amount_idr": 35000000,
+            "paid_amount": 35000000,
             "quoted_price": 35000000.0,
         },
     ]
@@ -86,6 +90,138 @@ async def test_get_billing_returns_invoices():
     assert result["summary"]["total_pending"] == 20000000.0
     assert result["summary"]["count"] == 2
     assert all(invoice["drive_web_link"] is None for invoice in result["invoices"])
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Partial payments (2026-08-20)
+#
+# The operator's lifecycle is unpaid -> partial -> paid and the money lands in
+# `practices.paid_amount` (and `invoices.paid_amount_idr`) in the same
+# transaction that moves the status. The summary used to credit `amount_idr`
+# only when the status read exactly "paid", so a client who had paid part of a
+# bill was shown Paid = 0 and the FULL amount Outstanding, in warning colour.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def _billing_row(**overrides: object) -> dict[str, object]:
+    """One row shaped exactly like the get_billing SELECT."""
+    row: dict[str, object] = {
+        "id": 1,
+        "invoice_number": "INV-202608-00001",
+        "amount_idr": 10000000.0,
+        "invoice_source": "local_pdf",
+        "drive_file_id": None,
+        "drive_web_link": None,
+        "email_sent_to_client": False,
+        "generated_at": None,
+        "created_at": None,
+        "practice_id": 10,
+        "practice_name": "KITAS B211A",
+        "practice_category": "visa",
+        "paid_amount_idr": None,
+        "payment_status": "unpaid",
+        "paid_amount": 0,
+        "quoted_price": 10000000.0,
+    }
+    row.update(overrides)
+    return row
+
+
+async def _billing_for(rows: list[dict[str, object]]) -> dict[str, object]:
+    mock_conn = AsyncMock()
+    mock_conn.fetch.return_value = rows
+    mock_pool = MagicMock()
+    mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
+    mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
+    return await PortalService(mock_pool).get_billing(
+        client_id=1,
+        current_user={"client_id": 1, "email": "c1@example.com"},
+    )
+
+
+@pytest.mark.asyncio
+async def test_partial_payment_is_credited_not_reported_as_fully_outstanding() -> None:
+    """GUILT: the regression this fix exists for. Half paid must read half paid."""
+    result = await _billing_for(
+        [_billing_row(payment_status="partial", paid_amount=4000000, paid_amount_idr=4000000)]
+    )
+
+    assert result["summary"]["total_invoiced"] == 10000000.0
+    assert result["summary"]["total_paid"] == 4000000.0
+    assert result["summary"]["total_pending"] == 6000000.0
+
+
+@pytest.mark.asyncio
+async def test_a_practice_with_two_invoices_is_credited_once() -> None:
+    """GUILT: paid_amount is per PRACTICE, the list is per INVOICE. Summing it
+    per row would double-count a practice that carries two invoices."""
+    result = await _billing_for(
+        [
+            _billing_row(id=1, amount_idr=6000000.0, practice_id=10, paid_amount=5000000),
+            _billing_row(id=2, amount_idr=4000000.0, practice_id=10, paid_amount=5000000),
+        ]
+    )
+
+    assert result["summary"]["total_invoiced"] == 10000000.0
+    assert result["summary"]["total_paid"] == 5000000.0
+    assert result["summary"]["total_pending"] == 5000000.0
+
+
+@pytest.mark.asyncio
+async def test_payment_ahead_of_invoicing_never_makes_outstanding_negative() -> None:
+    """A practice can be paid beyond what has been invoiced so far. Outstanding
+    is 'of what we billed you, what is left' — it must not go negative."""
+    result = await _billing_for(
+        [_billing_row(amount_idr=3000000.0, paid_amount=10000000, payment_status="paid")]
+    )
+
+    assert result["summary"]["total_paid"] == 3000000.0
+    assert result["summary"]["total_pending"] == 0.0
+
+
+@pytest.mark.asyncio
+async def test_fully_paid_still_reads_fully_paid() -> None:
+    """INNOCENCE: the case that already worked must keep working."""
+    result = await _billing_for(
+        [_billing_row(paid_amount=10000000, payment_status="paid", paid_amount_idr=10000000)]
+    )
+
+    assert result["summary"]["total_paid"] == 10000000.0
+    assert result["summary"]["total_pending"] == 0.0
+
+
+@pytest.mark.asyncio
+async def test_unpaid_reads_nothing_paid() -> None:
+    """INNOCENCE: an untouched invoice must not be credited by the new path."""
+    result = await _billing_for([_billing_row()])
+
+    assert result["summary"]["total_paid"] == 0.0
+    assert result["summary"]["total_pending"] == 10000000.0
+
+
+@pytest.mark.asyncio
+async def test_null_payment_status_reads_unpaid_not_pending() -> None:
+    """'pending' is not a state this system emits — invoice_service.py says so
+    verbatim, and the client's StatusBadge has no entry for it either."""
+    result = await _billing_for([_billing_row(payment_status=None)])
+
+    assert result["invoices"][0]["payment_status"] == "unpaid"
+
+
+@pytest.mark.asyncio
+async def test_per_invoice_paid_amount_is_exposed_including_when_unrecorded() -> None:
+    """The per-invoice figure is passed through raw (None when a payment was
+    reconciled against the practice without naming an invoice), so the capped
+    summary hides nothing."""
+    result = await _billing_for(
+        [
+            _billing_row(id=1, practice_id=10, paid_amount_idr=4000000),
+            _billing_row(id=2, practice_id=11, paid_amount_idr=None),
+        ]
+    )
+
+    assert result["invoices"][0]["paid_amount_idr"] == 4000000.0
+    assert result["invoices"][1]["paid_amount_idr"] is None
 
 
 @pytest.mark.asyncio

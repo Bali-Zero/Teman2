@@ -28,12 +28,24 @@ ORGAN_ID="pro.intake_health_report"
 # shellcheck source=scripts/lib/heartbeat.sh
 source "$REPO_ROOT/scripts/lib/heartbeat.sh"
 
-if [ "${INTAKE_HEALTH_REPORT_ENABLED:-true}" = "false" ]; then
-  organism_heartbeat "$ORGAN_ID" "disabled" "INTAKE_HEALTH_REPORT_ENABLED=false"
-  echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) INTAKE_HEALTH_REPORT_ENABLED=false — skipping run"
-  exit 0
-fi
+# Case-insensitive, and matching the Python side's superset (0|false|no) —
+# verbale #10a: see wa_mirror_freshness_liveness_run.sh's twin comment.
+_intake_health_enabled_lc="$(printf '%s' "${INTAKE_HEALTH_REPORT_ENABLED:-true}" | tr '[:upper:]' '[:lower:]')"
+case "$_intake_health_enabled_lc" in
+  false|0|no)
+    organism_heartbeat "$ORGAN_ID" "disabled" "INTAKE_HEALTH_REPORT_ENABLED=$INTAKE_HEALTH_REPORT_ENABLED"
+    echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) INTAKE_HEALTH_REPORT_ENABLED=$INTAKE_HEALTH_REPORT_ENABLED — skipping run"
+    exit 0
+    ;;
+esac
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
 PYBIN="$REPO_ROOT/apps/backend-rag/.venv/bin/python"
+if [[ ! -x "$PYBIN" ]]; then
+  # The interpreter cannot report its own absence. Use the shell heartbeat
+  # helper already sourced above, with a static PII-free note.
+  organism_heartbeat "$ORGAN_ID" "error" "venv python unavailable"
+  echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) ERROR intake health report venv python unavailable" >&2
+  exit 1
+fi
 exec "$PYBIN" -u "$REPO_ROOT/scripts/intake_health_report.py" "$@"

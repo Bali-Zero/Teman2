@@ -77,8 +77,10 @@ final class ClaudeRunner {
 
     /// Model for AGENT-LESS claude legs (chat, caption, import). Explicit pin per
     /// routing rule 2026-07-14 ("every leg carries an explicit model — never
-    /// inherit the session default"): the interactive default may be Fable 5,
-    /// whose window is the final-gate budget, not the app's. Override via
+    /// inherit the session default"): the interactive session may be running on
+    /// Fable 5 if Zero manually switched to it (`/model claude-fable-5` — Fable
+    /// is out of the workflow otherwise, RULED 2026-08-20), whose window is the
+    /// final-gate budget, not the app's. Override via
     /// WR2_APP_CLAUDE_MODEL when launching from a shell; single-quote-stripped
     /// so it can never break out of the shell quoting in the command line.
     static func headlessModel() -> String {
@@ -123,10 +125,11 @@ final class ClaudeRunner {
         let agentName = agentNameRaw.replacingOccurrences(of: "'", with: "'\\''")
         let agentFlag = agentName.isEmpty ? "" : "--agent '\(agentName)' "
         // Model pin (2026-07-14): agent-less runs must NEVER inherit the session
-        // default model — when that default is Fable 5 (interactive final-gate tier)
-        // every app action dies the moment the Fable window is exhausted, and burns
-        // final-gate quota even when it isn't (routing rule: headless app legs =
-        // Sonnet). Agent runs keep the model pinned in their agent frontmatter.
+        // model — if Zero has manually switched that session to Fable 5 (its only
+        // route since RULED 2026-08-20), every app action dies the moment the
+        // Fable window is exhausted, and burns final-gate quota even when it
+        // isn't (routing rule: headless app legs = Sonnet). Agent runs keep the
+        // model pinned in their agent frontmatter.
         let modelFlag = agentName.isEmpty ? "--model '\(Self.headlessModel())' " : ""
         let cmd = "exec '\(claude)' -p '\(safePrompt)' \(agentFlag)\(modelFlag)"
             + "--output-format stream-json --verbose --permission-mode bypassPermissions"

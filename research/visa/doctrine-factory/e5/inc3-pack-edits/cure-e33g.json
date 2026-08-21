@@ -1,0 +1,114 @@
+{
+  "_comment": "E5 increment 3, Step 3b. Two rule objects, PREPARED ARTIFACTS only — not yet folded into any pack. (1) el.e33g.income-60k-manual, renamed el.e33g.remote-work-configuration: the duplicate-subtree AND(X,X) collapsed to a single X, and the dishonest 'income-60k' name/reason_code (it tested zero income facts) replaced with an honest one describing what the when-clause actually tests. (2) review.e33g.income-evidence: NEW HUMAN_REVIEW rule, product-scoped to E33G, same 4 remote-work facts, so E33G can no longer reach SUPPORTED with zero income evidence — per apps/backend-rag/backend/services/visa_engine/evaluator.py:624-634, a TRUE product-scoped HUMAN_REVIEW rule forces ProductProofStatus.REVIEW and is evaluated BEFORE the ELIGIBILITY stage's true_support is consulted, so this rule overrides el.e33g.remote-work's unconditional SUPPORT for the same facts (verified live this session, not assumed).",
+  "rules": [
+    {
+      "rule_id": "el.e33g.remote-work-configuration",
+      "stage": "ELIGIBILITY",
+      "scope": "PRODUCTS",
+      "priority": 100,
+      "valid_period": {
+        "from": "2026-07-24T00:00:00Z",
+        "to": null
+      },
+      "when": {
+        "op": "all",
+        "args": [
+          {
+            "op": "intersects",
+            "fact": "intent.purposes",
+            "values": ["REMOTE_WORK"]
+          },
+          {
+            "op": "eq",
+            "fact": "work.employer_is_indonesian_entity",
+            "value": false
+          },
+          {
+            "op": "eq",
+            "fact": "work.serves_indonesian_clients",
+            "value": false
+          },
+          {
+            "op": "eq",
+            "fact": "work.indonesia_source_compensation",
+            "value": false
+          }
+        ]
+      },
+      "effect": {
+        "type": "SUPPORT",
+        "reason_code": "E33G_REMOTE_WORK_CONFIGURATION_ELIGIBLE",
+        "covered_purposes": ["FAMILY", "REMOTE_WORK", "TOURISM"]
+      },
+      "on_unknown": "NEEDS_INPUT",
+      "required_facts": [
+        "intent.purposes",
+        "work.employer_is_indonesian_entity",
+        "work.indonesia_source_compensation",
+        "work.serves_indonesian_clients"
+      ],
+      "source_refs": [
+        "6f5135f2-1f77-571f-88ed-26d1d2b9efba",
+        "9248b1d7-9172-54d9-ad61-251e83a2285b"
+      ],
+      "explanation_key": "explain.el.e33g.remote-work-configuration",
+      "safety_critical": false,
+      "product_version_ids": ["51e023ea-3229-5233-b88f-cb204b5df713"],
+      "_change_from_seq7": "rule_id renamed from el.e33g.income-60k-manual; `when` deduped from all(all(4 facts), all(SAME 4 facts)) to all(4 facts) — the outer duplicate-subtree removed, inner content unchanged, so required_facts is unchanged; effect.reason_code renamed from E33G_INCOME_60K_ADVISOR_CHECK (named a check the when-clause never performed) to E33G_REMOTE_WORK_CONFIGURATION_ELIGIBLE (names what the when-clause actually tests). source_refs, covered_purposes, on_unknown, product_version_ids, priority, valid_period, safety_critical all preserved verbatim from seq-7."
+    },
+    {
+      "rule_id": "review.e33g.income-evidence",
+      "stage": "HUMAN_REVIEW",
+      "scope": "PRODUCTS",
+      "priority": 100,
+      "valid_period": {
+        "from": "2026-07-24T00:00:00Z",
+        "to": null
+      },
+      "when": {
+        "op": "all",
+        "args": [
+          {
+            "op": "intersects",
+            "fact": "intent.purposes",
+            "values": ["REMOTE_WORK"]
+          },
+          {
+            "op": "eq",
+            "fact": "work.employer_is_indonesian_entity",
+            "value": false
+          },
+          {
+            "op": "eq",
+            "fact": "work.serves_indonesian_clients",
+            "value": false
+          },
+          {
+            "op": "eq",
+            "fact": "work.indonesia_source_compensation",
+            "value": false
+          }
+        ]
+      },
+      "effect": {
+        "type": "REQUIRE_REVIEW",
+        "reason_code": "E33G_INCOME_EVIDENCE_REVIEW"
+      },
+      "on_unknown": "NEEDS_INPUT",
+      "required_facts": [
+        "intent.purposes",
+        "work.employer_is_indonesian_entity",
+        "work.indonesia_source_compensation",
+        "work.serves_indonesian_clients"
+      ],
+      "source_refs": [
+        "6f5135f2-1f77-571f-88ed-26d1d2b9efba",
+        "9248b1d7-9172-54d9-ad61-251e83a2285b"
+      ],
+      "explanation_key": "explain.review.e33g.income-evidence",
+      "safety_critical": false,
+      "product_version_ids": ["51e023ea-3229-5233-b88f-cb204b5df713"],
+      "_new_rule_rationale": "OD-1 pattern: the USD 60,000/year income floor (CL-E33G-02, VERIFIED-WITH-CAVEAT) is un-modelable — no `work.*` or other FactPath carries an income amount (Anchors, spec Step 3b: 'no work-income fact'; secondhome.passive_monthly_income_usd is passive income, semantically wrong for a remote worker's salary). Rather than silently letting the same 4 configuration facts grant unconditional SUPPORT (which is exactly what el.e33g.remote-work already does, unconditionally, on these same facts), this rule routes the SAME condition to REQUIRE_REVIEW so a human confirms the income evidence before the product can be treated as settled. source_refs are the SAME framing-only citations (6f5135f2 Kepmen M.IP-08.GR.01.01/2025, 9248b1d7 Permenkumham 22/2023 jo 11/2024) already used on every other e33g.* rule in seq-7 — no pack source_record independently backs the USD 60,000 figure at primary-law level (CL-E33G-02's own caveat: sourced from an internal Bali Zero operational guide, not a Kepmen/Permenkumham article pinpoint); this is disclosed, not invented. See cure-e33g.md for the QW-4a reason-code contract note (E33G_INCOME_EVIDENCE_REVIEW is a NEW code, not yet in REVIEW_REASON_COPY or KNOWN_UNMAPPED_REVIEW_REASON_CODES — documented as a concrete edit to apply when seq-9 assembly lands this rule in a real pack, per the QW-4a test's own construction which globs the actual pack file and would otherwise flag a phantom KNOWN_UNMAPPED entry if added prematurely)."
+    }
+  ]
+}

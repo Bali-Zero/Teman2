@@ -745,6 +745,121 @@
       "live": "/Library/LaunchDaemons/com.nuzantara.fw-guard.plist",
       "repo": "infra/launchagents/mini/com.nuzantara.fw-guard.plist",
       "machines": ["mini"]
+    },
+    {
+      "live": "~/.config/ghostty/config",
+      "repo": "infra/ghostty/config",
+      "machines": ["all"],
+      "_note": "Ghostty fleet profile, added 2026-08-18. ~/.config is not a git repo, so these installed copies had no history and no backup before this. Installed by infra/ghostty/install.sh, which validates and rolls back on failure; infra/ghostty/verify.sh is the local check, this lint the fleet-wide one against origin/main. Entry point: it only declares the include chain."
+    },
+    {
+      "live": "~/.config/ghostty/fleet.ghostty",
+      "repo": "infra/ghostty/fleet.ghostty",
+      "machines": ["all"],
+      "_note": "Ghostty fleet profile, added 2026-08-18. ~/.config is not a git repo, so these installed copies had no history and no backup before this. Installed by infra/ghostty/install.sh, which validates and rolls back on failure; infra/ghostty/verify.sh is the local check, this lint the fleet-wide one against origin/main. Shared base, identical on all three hosts."
+    },
+    {
+      "live": "~/.config/ghostty/keys.ghostty",
+      "repo": "infra/ghostty/keys.ghostty",
+      "machines": ["all"],
+      "_note": "Ghostty fleet profile, added 2026-08-18. ~/.config is not a git repo, so these installed copies had no history and no backup before this. Installed by infra/ghostty/install.sh, which validates and rolls back on failure; infra/ghostty/verify.sh is the local check, this lint the fleet-wide one against origin/main. Keybinds and command-palette entries, identical on all three hosts."
+    },
+    {
+      "live": "~/.config/ghostty/verify-latest.sh",
+      "repo": "infra/ghostty/verify-latest.sh",
+      "machines": ["all"],
+      "_note": "Ghostty fleet launcher, added 2026-08-19 (closes the nuz/v dead-path degradation, PENDING-ARMS 2026-08-18). Runs origin/main's verify.sh from a temp extraction, so the guardian executed is always current even where the checkout is behind by policy (W106b). Installed by install.sh; drift watched here and by verify.sh's own pair loop."
+    },
+    {
+      "live": "~/.config/ghostty/machine.ghostty",
+      "repo": "infra/ghostty/machines/pro.ghostty",
+      "machines": ["pro"],
+      "_note": "Ghostty fleet profile, added 2026-08-18. ~/.config is not a git repo, so these installed copies had no history and no backup before this. Installed by infra/ghostty/install.sh, which validates and rolls back on failure; infra/ghostty/verify.sh is the local check, this lint the fleet-wide one against origin/main. Installed under a FIXED live name from a per-host source, so the entry point can include one stable filename everywhere; hence three entries sharing this live path, each scoped to its own machine."
+    },
+    {
+      "live": "~/.config/ghostty/machine.ghostty",
+      "repo": "infra/ghostty/machines/m5.ghostty",
+      "machines": ["m5"],
+      "_note": "Ghostty fleet profile, added 2026-08-18. ~/.config is not a git repo, so these installed copies had no history and no backup before this. Installed by infra/ghostty/install.sh, which validates and rolls back on failure; infra/ghostty/verify.sh is the local check, this lint the fleet-wide one against origin/main. See the pro entry for why this live path appears three times."
+    },
+    {
+      "live": "~/.config/ghostty/machine.ghostty",
+      "repo": "infra/ghostty/machines/mini.ghostty",
+      "machines": ["mini"],
+      "_note": "Ghostty fleet profile, added 2026-08-18. ~/.config is not a git repo, so these installed copies had no history and no backup before this. Installed by infra/ghostty/install.sh, which validates and rolls back on failure; infra/ghostty/verify.sh is the local check, this lint the fleet-wide one against origin/main. See the pro entry for why this live path appears three times."
+    },
+    {
+      "live": "~/scripts/login-healthcheck.sh",
+      "repo": "scripts/login-healthcheck.sh",
+      "machines": ["pro"],
+      "_note": "Promoted to repo canon 2026-08-19 while hardening the alarm-channel-down blindness (61/61 consecutive-failure alerts logged 'telegram: missing creds' and the script still called it a routine log line — exit code and Genoma last_error never said the alarm itself was dead). Was an UNDECLARED live payload before this (family #1) — the plist EnvironmentVariables carry only HOME+PATH, so it was invisible to lint_home_fork.py entirely. Machines measured empirically 2026-08-19, not assumed: locally (Pro) `ls ~/Library/LaunchAgents/ | grep -i login` shows only com.nuzantara.login-healthcheck.plist as a consumer; `ssh mini 'ls ~/Library/LaunchAgents/ | grep -i login; ls ~/scripts/login-healthcheck.sh'` returned no plist match and 'No such file or directory' for the script — Mini has neither. Pro-only, not ['all']. The live HOME copy is a real file (not a symlink, W107 delivery gotcha) and must be manually re-synced after merge — that resync is a follow-up someone else owns, this PR only ships the repo canon + declares the pair so future drift is visible. Revised same day (pre-merge, before any live resync): the first draft hand-rolled a raw curl to Telegram, which itself enrolled a new direct sender against scripts/lint_tg_direct_senders.py's anti-regrowth guard — CI caught it. Alerts now route through scripts/tg_notify.py (sibling-first resolution, same convention as scripts/cron-runner.sh), so the live copy also needs scripts/tg_notify.py present as a sibling — it already is (declared separately, see the tg_notify.py pair above)."
+    },
+    {
+      "live": "~/scripts/kc-watchdog.sh",
+      "repo": "infra/launchagents/wrappers/kc-watchdog.sh",
+      "machines": ["mini"],
+      "_note": "Healer cure 2026-08-19: kc-watchdog.sh had NO repo canon at all (W69/proprioception home_fork_target finding). It periodically kills the runaway macOS knowledgeconstructiond process on this headless server (~40% CPU self, ~85% CPU on contactsd, memory-leaking iteration over 100k contacts). Promoted verbatim, StartInterval=15 cron via com.nuzantara.kc-watchdog.plist, no functional change."
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.kc-watchdog.plist",
+      "repo": "infra/launchagents/com.nuzantara.kc-watchdog.plist",
+      "machines": ["mini"]
+    },
+    {
+      "live": "/usr/local/libexec/wa-codex-broker-wrapper.sh",
+      "repo": "infra/launchagents/wrappers/wa-codex-broker-wrapper.sh",
+      "machines": ["pro"],
+      "_note": "WA codex broker daemon wrapper (BOT-V4 S2 PR-6), installed root-owned by scripts/provision_zantara_codex.sh. System-domain LaunchDaemon payload under the registry's absolute-prefix exception (fw-guard precedent 2026-08-14): the daemon runs AS the login-less zantara-codex user, and a root-owned payload outside any user-writable $HOME denies a compromised zantara-codex identity persistence across restarts. World-readable, so the lint can verify this pair as any user. Re-run provisioning after changing the repo twin: the merge alone never updates the live copy (W107 delivery gotcha)."
+    },
+    {
+      "live": "/usr/local/libexec/wa-codex-seat-probe-wrapper.sh",
+      "repo": "infra/launchagents/wrappers/wa-codex-seat-probe-wrapper.sh",
+      "machines": ["pro"],
+      "_note": "S3 seat-probe wrapper (Piece A of the seat sentinel pair, research/operations/2026-08-19-bot-chatgpt-provider-broker-spec.md), installed root-owned by scripts/provision_zantara_codex.sh step 8. Same fw-guard precedent (2026-08-14) as the broker wrapper above and the same absolute-prefix exception — this LaunchDAEMON also runs AS the login-less zantara-codex user. World-readable, so the lint can verify this pair as any user. Re-run provisioning after changing the repo twin: the merge alone never updates the live copy (W107 delivery gotcha)."
+    },
+    {
+      "live": "/usr/local/lib/wa-codex-broker/seat_probe.py",
+      "repo": "scripts/wa_codex_seat_probe.py",
+      "machines": ["pro"],
+      "_note": "S3 seat-probe payload (Piece A) that the wrapper above execs, installed root-owned alongside the daemon's own runtime tree (same /usr/local/lib/wa-codex-broker RUNTIME_DIR, same fresh-copy-every-run discipline as the daemon code in step 3 — a merge alone never updates this live copy, W107 delivery gotcha). Imports backend.llm.codex_exec_client._AUTH_DEATH_RE from the sibling `backend/` package that step 3 already installs into this same directory tree — the two payloads share one runtime root by design, so they cannot disagree about the auth-death regex without both copies being re-provisioned together."
+    },
+    {
+      "live": "~/scripts/mini-secrets-perms-sweep.sh",
+      "repo": "infra/launchagents/wrappers/mini-secrets-perms-sweep.sh",
+      "machines": ["mini"]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.secrets-perms-sweep.plist",
+      "repo": "infra/launchagents/com.nuzantara.secrets-perms-sweep.plist",
+      "machines": ["mini"]
+    },
+    {
+      "live": "~/scripts/pro-visa-freshness-sentinel.sh",
+      "repo": "infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.visa-freshness-sentinel.plist",
+      "repo": "infra/launchagents/com.nuzantara.visa-freshness-sentinel.plist",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/eventbus/meta_dispatcher.py",
+      "repo": "infra/eventbus/meta_dispatcher.py",
+      "machines": ["pro"],
+      "_note": "UNDECLARED live payload found 2026-08-20 (family #1): plist com.balizero.meta-dispatcher execs this HOME copy directly (ProgramArguments greps /Users/nuzantara/scripts/eventbus/meta_dispatcher.py), running (launchctl list shows a live PID). Verified byte-identical to repo/origin-main sha256 0cf1d3e5... on Pro. NOT widened to m5: M5 also carries a real file at the same path, but it is dormant (0 launchd/crontab references — M5 has no daemon/cron per CLAUDE.md) AND it DIVERGES from repo (stale — missing the REDISCLI_AUTH/BZ_REDIS_HOST env-driven Redis fix and the claude-sonnet-5 model-pin migration). Declaring it here would immediately fail --check on someone else's pre-existing drift rather than catch new drift — same call as the codex/nightly-autofix-ci.sh precedent above. Mini has no ~/scripts/eventbus/ at all (confirmed via ssh, its repo checkout also lives at ~/nuzantara not ~/Desktop/nuzantara)."
+    },
+    {
+      "live": "~/scripts/eventbus/intel_dedup_gateway.py",
+      "repo": "infra/eventbus/intel_dedup_gateway.py",
+      "machines": ["pro", "m5"],
+      "_note": "UNDECLARED live payload found 2026-08-20 (family #1): plist com.balizero.intel-dedup-gateway execs this HOME copy directly, running on Pro. Verified byte-identical to repo/origin-main sha256 52871616... on BOTH Pro and M5. M5 included even though inert there (0 launchd/crontab references — M5 has no daemon/cron per CLAUDE.md): same reasoning as wr2-external-bench-run.sh/codex-automation-lib.sh above — declaring an inert-but-identical copy makes a future drift on it visible instead of silent. Mini has no ~/scripts/eventbus/ at all — not declared."
+    },
+    {
+      "live": "~/scripts/eventbus/research_sentinel.py",
+      "repo": "infra/eventbus/research_sentinel.py",
+      "machines": ["pro", "m5"],
+      "_note": "UNDECLARED live payload found 2026-08-20 (family #1): plist com.balizero.research-sentinel execs this HOME copy directly, running on Pro. Verified byte-identical to repo/origin-main sha256 858c17c6... on BOTH Pro and M5. M5 included even though inert there (0 launchd/crontab references): same reasoning as the sibling intel_dedup_gateway.py entry above. Mini has no ~/scripts/eventbus/ at all — not declared. Sibling plist com.balizero.observatory was investigated in the same sweep and is NOT part of this family: its ProgramArguments execs /Users/nuzantara/agents/.observatory/observatory.py, a structurally different directory (agents/.observatory/, not scripts/eventbus/) — left undeclared here, own ledger row if ever promoted."
     }
   ],
   "allow": [

@@ -1432,16 +1432,6 @@ trackKBLICTA("search_submit", { query_length: 12 });
 trackPropertyCTA("suggestion_click", { suggestion: "Canggu villa zone" });
 ```
 
-#### Article-page property helper (renamed 2026-05-07)
-
-```typescript
-// Old name: trackPropertyCTA  ← freed for funnel-scoped helper above
-trackPropertyArticleCTA(articleSlug: string, ctaType: string): void
-```
-
-> **Note:** `trackPropertyCTA` now refers to the funnel home-block helper.
-> Use `trackPropertyArticleCTA` for article-page CTAs.
-
 ---
 
 ### 17.4 Usage in FunnelFeature
@@ -1495,18 +1485,16 @@ const track = CTA_TRACKER[funnel]; // resolved once per render
 
 ### 17.6 Pre-existing Helpers Reference
 
-| Helper                      | Category    | GA4 Event Name           |
-| --------------------------- | ----------- | ------------------------ |
-| `trackVisaChatQuestion`     | Visa Oracle | `visa_chat_question`     |
-| `trackVisaWhatsAppCTA`      | Visa Oracle | `visa_whatsapp_cta`      |
-| `trackKBLICodeViewed`       | KBLI        | `kbli_code_viewed`       |
-| `trackKBLISearch`           | KBLI        | `kbli_search`            |
-| `trackKBLIChatQuestion`     | KBLI        | `kbli_chat_question`     |
-| `trackTaxDashboardViewed`   | Tax         | `tax_dashboard_viewed`   |
-| `trackPropertyArticleCTA`   | Property    | `property_cta_clicked`   |
-| `trackPropertyAnalyzeCTA`   | Property    | `property_cta_clicked`   |
-| `trackPropertyChatQuestion` | Property    | `property_chat_question` |
-| `trackPropertyWACTA`        | Property    | `property_whatsapp_cta`  |
+| Helper                    | Category    | GA4 Event Name          |
+| ------------------------- | ----------- | ----------------------- |
+| `trackVisaChatQuestion`   | Visa Oracle | `visa_chat_question`    |
+| `trackVisaWhatsAppCTA`    | Visa Oracle | `visa_whatsapp_cta`     |
+| `trackKBLICodeViewed`     | KBLI        | `kbli_code_viewed`      |
+| `trackKBLISearch`         | KBLI        | `kbli_search`           |
+| `trackKBLIChatQuestion`   | KBLI        | `kbli_chat_question`    |
+| `trackTaxDashboardViewed` | Tax         | `tax_dashboard_viewed`  |
+| `trackPropertyAnalyzeCTA` | Property    | `property_cta_clicked`  |
+| `trackPropertyWACTA`      | Property    | `property_whatsapp_cta` |
 
 ---
 

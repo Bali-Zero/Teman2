@@ -6,14 +6,15 @@
 > active rule requires shadow-period + zero false-positives + human-gate
 > (P7 §3.4). Kill-switch: `LESSON_HARVESTER_OFF=1`.
 
-- scars scanned: **12**
-- mechanical candidates (recurring ≥3): **7**
+- scars scanned: **14**
+- mechanical candidates (recurring ≥3): **9**
 - consultive (single-occurrence): **1**
 - rejected (no objective anchor, G1): **4**
 
 ## Recurring patterns (the objective recurrence signal, G4)
 
 **W-numbers seen ≥3×:**
+- `W108` × 3
 - `W64` × 3
 - `W68` × 3
 - `W72` × 3
@@ -22,6 +23,8 @@
 - `W79` × 3
 - `W82` × 4
 - `W83` × 4
+- `W84` × 3
+- `W85` × 3
 
 ## Mechanical candidates (→ scar_replay pipeline, gated)
 
@@ -29,9 +32,11 @@
 - **⚠️ W80 (P2 STRUCTURAL): il WIP-guard del worktree-cleanup protegge SOLO i worktree sporchi → committare-tutto (per soddisfare stop_verify) rende il proprio worktree reap-eligibile mentre ci lavori ancora (2026-06-13)** [P2] — recurring via: W64, W79
 - **⚠️ W82 (P1 STRUCTURAL): il sentinel di freschezza-conoscenza sorveglia la STRINGA, non il FATTO → under-match: lo stesso fatto stale in tabella / altra formulazione / altra lingua sfugge, e il guardiano resta VERDE (2026-06-16)** [P1] — recurring via: W82
 - **✅ W81 (FIXED): i 3 loop di apprendimento WR3 erano "verdi ma vuoti" — malattia-madre "Omeostasi Tautologica" (telemetria-verde ≠ delta-di-stato); F20+F21 curati come codice+test, F18 escalato (2026-06-14)** [P2] — recurring via: W64
+- **🐛 W118 (P0 STRUCTURAL): il repo è stato fermo 11 ore per DUE cause indipendenti che si nascondevano a vicenda, e nessuna delle due lasciava un check rosso da indicare** [UNKNOWN] — recurring via: W108
+- **🐛 W119 (P1 STRUCTURAL): il gruppo di cattura degli argomenti leggeva `\s` come separatore — un `rm -f` di riga 1 è stato accusato del `cd` di riga 6** [UNKNOWN] — recurring via: W84, W85
 - **🐛 W83 (P2 STRUCTURAL): il worktree-isolation hook decide su substring testuale → 3 falsi BLOCK in una sessione (git pull remoto ssh, `cd <worktree> && git`, git-verb dentro una stringa quotata) (2026-06-16)** [P2] — recurring via: W68, W72, W73, W77, W79, W82, W83
-- **🐛 W84 (P2 STRUCTURAL): `_strip_noise` del worktree-isolation hook usa `[^q]*` che MATCHA i newline → in un comando multi-riga una quota orfana (apostrofo IT / apertura `ssh '...'`) si accoppia cross-line, fonde i comandi e fa leakare i pattern grep nello scan redirect → phantom write-target (2026-06-16)** [P2] — recurring via: W68, W72, W73, W77, W79, W82, W83
-- **🐛 W85 (P3 STRUCTURAL): il worktree-isolation hook ha `stash` in `BLOCKED_SUBCMD_RE` senza distinguere il sottocomando → `git stash list` / `git stash show` (read-only) bloccati come se fossero `stash push`/`pop` (2026-06-17)** [P3] — recurring via: W68, W72, W73, W77, W82, W83
+- **🐛 W84 (P2 STRUCTURAL): `_strip_noise` del worktree-isolation hook usa `[^q]*` che MATCHA i newline → in un comando multi-riga una quota orfana (apostrofo IT / apertura `ssh '...'`) si accoppia cross-line, fonde i comandi e fa leakare i pattern grep nello scan redirect → phantom write-target (2026-06-16)** [P2] — recurring via: W68, W72, W73, W77, W79, W82, W83, W84
+- **🐛 W85 (P3 STRUCTURAL): il worktree-isolation hook ha `stash` in `BLOCKED_SUBCMD_RE` senza distinguere il sottocomando → `git stash list` / `git stash show` (read-only) bloccati come se fossero `stash push`/`pop` (2026-06-17)** [P3] — recurring via: W68, W72, W73, W77, W82, W83, W84, W85
 
 ## Consultive (→ judgment pipeline, NOT a hook)
 
