@@ -15,7 +15,7 @@
 # the states where the watcher could NOT speak for itself.
 set -uo pipefail
 
-REPO="/Users/nuzantara/Desktop/nuzantara"
+REPO="/Users/nuzantara/nuzantara"
 WATCHER="$REPO/scripts/qwen_quota_watch.py"
 
 if [ ! -f "$WATCHER" ]; then
