@@ -78,9 +78,35 @@ name: Harness floor recompute
 # OPERATIONAL COROLLARY: a completed Actions job has no native "pending forever" state distinct
 # from "failed", so a Gear-3 PR with no verdict posted yet fails this job exactly like a
 # REWORK/BLOCK verdict would (same red X, different message). After the gate session posts a
-# verdict, it re-triggers via `gh workflow run harness-floor.yml --ref <branch>` (the
-# `workflow_dispatch:` trigger below exists for exactly this) — never a bare `gh run rerun` on
-# this run's own stale object (CLAUDE.md Agent PR Contract rule 3 / cicatrix W111).
+# verdict it must re-trigger this job — and WHICH command to use depends on the case. An earlier
+# version of this note gave only `gh workflow run --ref` and forbade `gh run rerun` outright. That
+# is wrong for the ordinary case and it deadlocked the first real Gear-3 PR to follow it (#4543,
+# measured 2026-08-21):
+#
+#   CASE A — the PR already has a `pull_request` run on this exact head SHA (the normal case).
+#     Use:  gh run rerun <that pull_request run id>
+#     WHY:  a `workflow_dispatch` run creates its check-run in a DIFFERENT CHECK SUITE from the
+#           `pull_request` event's. A PR's statusCheckRollup does not supersede across suites, so
+#           the dispatch run goes green while the PR keeps the old failure and stays BLOCKED —
+#           with no way out, since a new commit means a new head SHA and the verdict is bound to
+#           the old one. Measured on #4543: dispatch success in suite 88072653107 at 14:01:20Z,
+#           pull_request failure in suite 88070314010 at 13:51:47Z, rollup FAILURE. `gh run rerun`
+#           on the pull_request run — same SHA, same suite, verdict now posted — took it to CLEAN.
+#
+#   CASE B — no `pull_request` run exists on this ref yet (a branch pushed with no PR open, or a
+#     manual re-check outside a PR). Use: gh workflow run harness-floor.yml --ref <branch>
+#     (the `workflow_dispatch:` trigger below exists for exactly this).
+#
+# The W111 prohibition (CLAUDE.md Agent PR Contract rule 3) is NOT repealed — it is scoped. It
+# forbids replaying a run whose object is STALE: a merge-queue `merge_group` ref whose base moved
+# underneath. A `pull_request` re-run has an identical head SHA and re-reads an external commit
+# status that did not exist the first time; nothing about it is stale. Do NOT `gh run rerun` a
+# merge_group run.
+#
+# DIAGNOSTIC TRAP, because it costs an hour otherwise: `gh api .../commits/<sha>/check-runs`
+# defaults to `filter=latest` and returns only the GREEN run, while `gh pr checks` shows the RED
+# one. Two probes flatly contradicting each other reads like a caching bug. Pass `filter=all` and
+# compare `check_suite.id` — that is the field that explains it.
 #
 # ARMED — NOTHING IS PENDING (corrected 2026-08-21, measured, superseding the ARMING NOTE that
 # stood here). That note said "the one action left is adding the job's check name to branch

@@ -1,224 +1,61 @@
 brief_ref: evidence/brief.yml
-plan_ref: "PR #4542 — research/operations/2026-08-21-orphan-client-reassignment-plan.md"
+plan_ref: "the harness gate's own recovery procedure deadlocks the PR it is meant to unblock (measured on #4543)"
 diff:
-  files: 6
-  insertions: 867
-  deletions: 390
-  hotzone_hits:
-    - "apps/backend-rag/backend/db/migrations_v2/277_correct_ari_email_typo.sql"
-    - "apps/backend-rag/backend/db/migrations_v2/278_reassign_orphaned_clients_setup_team.sql"
+  behaviour_change: none
+  net_lines: "CODE +29/-3 (harness-floor.yml, comment block only); WHOLE DIFF +117/-246 including the two evidence files, whose large deletion count is the previous task's pack being replaced. Measured at merge-base 5b4354892 with git diff <merge-base> --numstat, never two-dot against a moving origin/main (W102), and written LAST as a 1-for-1 swap so the value describes the tree containing it."
 receipts:
-  - claim: "both source .sql.txt drafts are byte-identical to the two real .sql files the operator copied into migrations_v2/ (sha256 match, independently re-verified)"
-    cmd: "shasum -a 256 research/operations/2026-08-21-migration-277-STAGED-ari-typo-correction.sql.txt apps/backend-rag/backend/db/migrations_v2/277_correct_ari_email_typo.sql research/operations/2026-08-21-migration-278-STAGED-pending-guardrails-bypass.sql.txt apps/backend-rag/backend/db/migrations_v2/278_reassign_orphaned_clients_setup_team.sql"
+  - claim: "The two runs on #4543's head SHA live in DIFFERENT check suites; the PR's rollup kept the failing one"
+    cmd: 'gh api repos/Bali-Zero/Teman2/commits/33f12fb4a.../check-runs?filter=all --jq ''select(.name=="Harness floor recompute")|.completed_at,.conclusion,.check_suite.id'' -> 14:01:20Z success suite 88072653107 / 13:51:47Z failure suite 88070314010'
     exit: 0
-    ts: "2026-08-21T13:27:32Z"
-    seat: "sonnet-5"
-  - claim: "the deleted_at IS NULL filter in both CTEs is load-bearing, not decorative — removing it from the orphan predicate takes the live pool from 323 to 10,215 (measured this run; the number drifts minute to minute with ordinary CRM activity, see dissent below, but the with/without gap is consistently ~9,900+)"
-    cmd: 'scripts/pg.sh -A -F''|'' -c "SELECT COUNT(*) FROM clients c WHERE c.deleted_at IS NULL AND NOT EXISTS (SELECT 1 FROM team_members tm WHERE lower(tm.email)=lower(BTRIM(c.assigned_to)) AND tm.active=true)"; scripts/pg.sh -A -F''|'' -c "SELECT COUNT(*) FROM clients c WHERE NOT EXISTS (SELECT 1 FROM team_members tm WHERE lower(tm.email)=lower(BTRIM(c.assigned_to)) AND tm.active=true)"'
+    ts: "2026-08-21T16:26:04Z"
+    seat: session (m5)
+  - claim: "The default filter hides the contradiction: check-runs returns ONLY the green run unless filter=all is passed"
+    cmd: "same endpoint without filter=all -> one row, success"
     exit: 0
-    ts: "2026-08-21T13:26:37Z"
-    seat: "sonnet-5"
-  - claim: "schema_migrations has no rows yet for 277_correct_ari_email_typo or 278_reassign_orphaned_clients_setup_team, and the last applied migration is 276_garuda_voa_archive_comments — nothing has deployed/applied yet, consistent with the PR not having merged"
-    cmd: 'scripts/pg.sh -A -F''|'' -c "SELECT migration_name FROM schema_migrations WHERE migration_name IN (''277_correct_ari_email_typo'',''278_reassign_orphaned_clients_setup_team'')"'
+    ts: "2026-08-21T16:26:04Z"
+    seat: session (m5)
+  - claim: "gh run rerun on the ORIGINAL pull_request run cleared the rollup; mergeStateStatus BLOCKED -> CLEAN"
+    cmd: "gh run rerun 32489011695; gh pr view 4543 --json mergeStateStatus -> CLEAN"
     exit: 0
-    ts: "2026-08-21T13:20:12Z"
-    seat: "sonnet-5"
-  - claim: "none of the 200|77|27|19|323|324 plan-time reference numbers in 278's header comment sit in an executable (non-comment) line — the CTE chain recomputes from live data at apply time, so a stale comment number is not a defect"
-    cmd: "grep -n -E '\\b(200|77|27|19|323|324)\\b' apps/backend-rag/backend/db/migrations_v2/278_reassign_orphaned_clients_setup_team.sql | grep -v '^\\s*[0-9]*:--'"
-    exit: 1
-    ts: "2026-08-21T13:27:23Z"
-    seat: "sonnet-5"
-  - claim: "client_id 11500 still carries the typo (assigned_to = ari@balizero.com, misspelled) and is still live — migration 277 still targets a real, unfixed row"
-    cmd: 'scripts/pg.sh -A -F''|'' -c "SELECT id, deleted_at IS NULL AS is_live, assigned_to FROM clients WHERE id = 11500"'
+    ts: "2026-08-21T16:26:04Z"
+    seat: session (m5)
+  - claim: "The documented flow was actually followed first, and did not work — this is not a hypothetical"
+    cmd: "gh workflow run harness-floor.yml --ref agent/air-m5/ops/gate-header-truth -> run 32489857553 workflow_dispatch success on 33f12fb4a, PR still BLOCKED"
     exit: 0
-    ts: "2026-08-21T13:26:50Z"
-    seat: "sonnet-5"
-  - claim: "pre-commit hooks (migration-number-uniqueness lint W41, ROLLBACK-marker-presence lint W42, secrets scan, FastAPI import-chain smoke) all pass on the two migration files"
-    cmd: "git commit -m ... (pre-commit hook chain, verbatim output captured in-session)"
+    ts: "2026-08-21T16:26:04Z"
+    seat: session (m5)
+  - claim: "No behaviour change: the workflow's non-comment body is byte-identical to origin/main"
+    cmd: "git show origin/main:<wf> | grep -v '^\\s*#' > a; grep -v '^\\s*#' <wf> > b; diff -q a b"
     exit: 0
-    ts: "2026-08-21T13:17:56Z"
-    seat: "sonnet-5"
-  - claim: "pre-push hook (path-aware full-suite gate, task-marker check) passes and the branch pushes clean to origin"
-    cmd: "git push -u origin agent/air-m5/ops/orphan-clients"
+    ts: "2026-08-21T16:26:04Z"
+    seat: session (m5)
+  - claim: "actionlint passes on the rewritten workflow"
+    cmd: "actionlint .github/workflows/harness-floor.yml"
     exit: 0
-    ts: "2026-08-21T13:18:12Z"
-    seat: "sonnet-5"
-  - claim: "both staged sources' ROLLBACK sections now DELETE FROM schema_migrations in addition to _schema_versions, fixing kimi-k3's CONFIRMED rollback-does-not-unstick-the-runner finding"
-    cmd: "grep -c 'DELETE FROM schema_migrations' research/operations/2026-08-21-migration-277-STAGED-ari-typo-correction.sql.txt research/operations/2026-08-21-migration-278-STAGED-pending-guardrails-bypass.sql.txt"
-    exit: 0
-    ts: "2026-08-21T13:34:31Z"
-    seat: "sonnet-5"
-  - claim: "278's dependency guard now checks both the schema_migrations log row AND the actual clients.assigned_to effect for client 11500, fixing kimi-k3's log-vs-effect finding"
-    cmd: "grep -c 'IF NOT EXISTS ($' research/operations/2026-08-21-migration-278-STAGED-pending-guardrails-bypass.sql.txt"
-    exit: 0
-    ts: "2026-08-21T13:34:52Z"
-    seat: "sonnet-5"
-  - claim: "round 2 (5 findings: 2.1 literal-vs-invariant regression, 2.2 277 false idempotency claim, 2.3 278 false rollback-guard comment, 3.2 unchecked recipients, 3.3 missing BTRIM) — all closed in the staged .txt sources in one pass; INSERT INTO _schema_versions count and DO/END block balance verified post-fix"
-    cmd: "grep -c 'lower(BTRIM(tm.email))' research/operations/2026-08-21-migration-278-STAGED-pending-guardrails-bypass.sql.txt; grep -n '^DO \\$\\$' research/operations/2026-08-21-migration-278-STAGED-pending-guardrails-bypass.sql.txt; grep -n '^END \\$\\$;' research/operations/2026-08-21-migration-278-STAGED-pending-guardrails-bypass.sql.txt"
-    exit: 0
-    ts: "2026-08-21T21:58:00Z"
-    seat: "sonnet-5"
-  - claim: "round 3 defect 1 (self-INSERT into _schema_versions disarming rollback) independently re-verified against the real runner code before curing — migration_base.py forward-then-log ordering, migration_manager.py's rollback_sql read scoped to _schema_versions only"
-    cmd: "sed -n '405,430p;525,550p' apps/backend-rag/backend/db/migration_base.py; sed -n '230,255p' apps/backend-rag/backend/db/migration_manager.py"
-    exit: 0
-    ts: "2026-08-21T22:20:00Z"
-    seat: "sonnet-5"
-  - claim: "self-INSERT into _schema_versions removed from both migrations' forward SQL (round 3 defect 1); 278's UPDATE gained a NULL-safe re-run guard (round 3 defect 2, IS NOT DISTINCT FROM, not the lower(BTRIM(...)) form 277 uses, because 152 of 278's archived old_assigned_to values are NULL)"
-    cmd: "grep -c 'INSERT INTO _schema_versions' research/operations/2026-08-21-migration-277-STAGED-ari-typo-correction.sql.txt research/operations/2026-08-21-migration-278-STAGED-pending-guardrails-bypass.sql.txt; grep -c 'IS NOT DISTINCT FROM archive.old_assigned_to' research/operations/2026-08-21-migration-278-STAGED-pending-guardrails-bypass.sql.txt"
-    exit: 0
-    ts: "2026-08-21T22:26:00Z"
-    seat: "sonnet-5"
-  - claim: "sha256 of both staged .txt sources matches the real .sql files in migrations_v2/ after every round's fix, independently re-verified each time (not trusting team-lead's own verification alone) — round 3's final match: 277=0eb582ee65c6c78b..., 278=9c70dcdcf0b78c2c..."
-    cmd: "shasum -a 256 research/operations/2026-08-21-migration-277-STAGED-ari-typo-correction.sql.txt apps/backend-rag/backend/db/migrations_v2/277_correct_ari_email_typo.sql research/operations/2026-08-21-migration-278-STAGED-pending-guardrails-bypass.sql.txt apps/backend-rag/backend/db/migrations_v2/278_reassign_orphaned_clients_setup_team.sql"
-    exit: 0
-    ts: "2026-08-21T22:30:00Z"
-    seat: "sonnet-5"
-  - claim: "four commits landed on the branch, each scoped to exactly the two migration .sql files (evidence/*.yml never bundled into a migration-fix commit), all pre-commit hooks green each time (migration-number lint, ROLLBACK-marker lint, off-limits check, import-chain smoke)"
-    cmd: "git log --oneline -4 -- apps/backend-rag/backend/db/migrations_v2/277_correct_ari_email_typo.sql apps/backend-rag/backend/db/migrations_v2/278_reassign_orphaned_clients_setup_team.sql"
-    exit: 0
-    ts: "2026-08-21T22:29:00Z"
-    seat: "sonnet-5"
-  - claim: "the live, published PR body (not just this pack) also carried the same named-staff-plus-caseload pattern from its opening draft — corrected in place via gh pr edit (mutable metadata, not a git-history rewrite) the same turn it was flagged, before any further work; the four pushed commits themselves were independently checked clean (one commit message per SHA, individually, after a combined-log grep gave a false positive)"
-    cmd: "gh pr edit 4542 --body-file <redacted-body>; gh pr view 4542 --json body -q .body | grep -c -i '@gmail\\.com|Dea |Rina |Ruslana |Marta '; for sha in b84fbbbf8 f443ee1e5 97a24bfba 7066eee55; do git show -s --format=%B \"$sha\" | grep -iE '@gmail\\.com|\\bDea\\b|\\bRina\\b|\\bRuslana\\b|\\bMarta\\b'; done"
-    exit: 1
-    ts: "2026-08-21T22:50:00Z"
-    seat: "sonnet-5"
-  - claim: "the round-5 guard's orphan_work_count predicate is byte-identical to the orphans CTE predicate it protects — not a re-derivation that could drift: after stripping comment lines and collapsing whitespace, the predicate string occurs exactly twice in 278 and both occurrences are equal"
-    cmd: "python3 - <<'PY' — strip lines starting with --, collapse whitespace, re.findall the predicate 'WHERE c.deleted_at IS NULL AND NOT EXISTS ( SELECT 1 FROM team_members tm WHERE lower(BTRIM(tm.email)) = lower(BTRIM(c.assigned_to)) AND tm.active = true )' against 278_reassign_orphaned_clients_setup_team.sql, assert len(set(matches)) <= 1"
-    exit: 0
-    ts: "2026-08-21T23:30:00Z"
-    seat: "team-lead"
-tests:
-  cmd: "pre-commit hook chain (migration-numbers lint, migration-rollback lint, secrets scan, import-chain smoke) + pre-push path-aware gate — no dedicated pytest module for this data-migration pair (SQL correctness proven by the water-filling robustness test suite already merged in PR #4473, referenced in plan_ref, not re-run here since it is pre-existing/unchanged)"
-  passed: 6
-  failed: 0
-static:
-  lint: ok
-  typecheck: n/a
-  build: n/a
-runtime_proof:
-  - "PR #4542 open, MERGEABLE. autoMergeRequest was found ARMED (enabledBy Balizero1987, enabledAt 2026-08-21T14:13:44Z, mergeMethod MERGE) while finalizing this pack — disarmed via gh pr merge --disable-auto and re-verified null (2026-08-21), per team-lead's repeated explicit instruction that this PR is merged by hand, never --auto. mergeStateStatus BLOCKED by Harness floor recompute (missing evidence/brief.yml — this pack is the direct response) plus routine third-party checks (Snyk x2, CodeQL, npm audit) unrelated to this diff's own correctness."
-  - "kimi-k3 (cross-family refuter, convened by team-lead, never the author's own model) independently verified the water-filling core algorithm in 278 and found it correct: monotone level selection, a member sitting exactly at the level receives 0, deterministic tie-breaks (frac DESC, current_n ASC, tm_email ASC), the remainder lands exactly once, bucket boundaries partition 1..N with no gaps or overlaps, and the counting/assignment CTEs share one snapshot — confirmed by a different-family seat, not merely re-asserted by the builder"
-  - "Round 4 (2026-08-21): SAFE-TO-APPLY, first clean pass after three consecutive DO-NOT-APPLY verdicts. Run with an explicit read perimeter (migration_base.py, migration_manager.py, migrations_v2/*.sql allowed; .env*, backend/data/, client-record fixtures denied) rather than an implicit one — every prior finding that mattered came from the refuter deciding, unprompted, to verify a claim against the real runner code instead of trusting the text it was handed, so round 4 makes that read scope a deliberate, declared choice rather than an accident. Traced both round-3 fixes end-to-end against the runner code (not headers): rollback_sql now lands in _schema_versions, rollback_migration() finds and executes it, the embedded schema_migrations DELETE closes the runner-level gap, and _is_applied() correctly reads false afterward, enabling a real re-apply — the first time in four rounds a rollback has been verified to work end-to-end, not just textually. Independently re-confirmed (not trusted from the builder's own claim) that only migrations 165/166/184 share the self-INSERT anti-pattern. Walked all four execution orders for 278's NULL-safe re-run guard (first legitimate run, unchanged re-run, re-run after human reassignment, re-apply after rollback) and confirmed each behaves correctly."
+    ts: "2026-08-21T16:26:04Z"
+    seat: session (m5)
 dissent:
-  - seat: sonnet-5
-    objection: "Initial framing of migration 278 as a 'strict superset' of the superseded 276-DRAFT was imprecise — 278 also changes behavior (excludes the typo'd client 11500 from its own orphan pool because 277 already corrects it upstream), not merely adds to 276."
-    status: RETRACTED
-    repro: "Full line-by-line diff of 276-DRAFT vs 278 read end-to-end: every <-only block has either a renumbered counterpart or is superseded by 277 now handling the typo case, which is a behavior change, not an addition."
-    resolution: "PR body and this brief describe 278 as 276's successor with a named behavior change, never as a superset."
-  - seat: team-lead
-    objection: "A 1-client drop in the live orphan count between two measurements hours apart might indicate a soft-deleted client silently leaking into the reassignment pool (asymmetric deleted_at filtering between the orphans and current_loads CTEs)."
-    status: RETRACTED
-    repro: "Both CTEs (current_loads L192-198, orphans L200-208 in 278) filter deleted_at IS NULL. Direct measurement: 0 of the live orphan pool are soft-deleted; removing the filter entirely takes the pool from hundreds to 10,000+, confirming the filter is load-bearing, not a no-op that could hide a bug."
-  - seat: team-lead
-    objection: "A gmail-domain address among the 7 non-six active assignees was suspected to be role='client' contamination (a portal-login account miscounted as staff)."
-    status: RETRACTED
-    repro: "SELECT role, active FROM team_members WHERE lower(email)=<the address> returns role='Specialist Advisor', active=true — real staff, not a client-role row. Judged by address domain instead of the record itself; the record disagrees. (Address redacted here — personal gmail, not a company identity the migration needs to name; PII boundary per CLAUDE.md Law 2.)"
-  - seat: sonnet-5
-    objection: "Whether the intervening ±1-2 drift in live counts (orphan pool, individual caseworker loads) between measurements is ordinary reassignment or something else cannot be determined from a point-in-time snapshot alone."
-    status: PLAUSIBLE
-    repro: "Two independent readings this session alone show drift in both directions (orphan pool 324->323, ari.firda@ load 317->319 within 50 seconds of each other) with the six-recipient population + orphan pool + other-staff population closing exactly at every check — consistent with live, ordinary CRM write traffic (56 of ari.firda@'s clients show updated_at in the prior 24h)."
-    resolution: "Irrelevant to migration correctness by design: none of the CTEs consume a cached/comment number, they compute the level from clients/team_members at the moment 278 actually executes."
-  - seat: kimi-k3
-    objection: "277's typo-match predicate looked like a guaranteed no-op — a mixed-case literal compared via lower(...) that could never match."
-    status: RETRACTED
-    repro: "Traced to the conductor's own PII-redaction pass, not the shipped file: team-lead's sed replacement injected uppercase 'TYPO' into the redacted copy sent to the refuter. Line 73 of the real 277_correct_ari_email_typo.sql reads lower(BTRIM(assigned_to)) = 'ari@balizero.com' — all-lowercase, correct — independently re-verified by sonnet-5 with grep against the live file, not the redacted copy."
-    resolution: "Registered as the conductor's redaction artifact, not a false positive by the refuter and not a defect in the migration — Kimi's reasoning on the (corrupted) text it was given was sound."
-  - seat: kimi-k3
-    objection: "Both migrations' ROLLBACK sections only DELETE FROM _schema_versions, never touch schema_migrations — the table migration_base.py::_is_applied() (line 365) actually reads. A rollback restores the data but leaves the runner believing the migration is still applied, so it will never re-apply; for 277 specifically, 278's dependency guard also reads schema_migrations, so it would still pass even after 277's correction was rolled back."
+  - seat: session (m5), against its own earlier fix in #4543
+    objection: "In #4543 I 'fixed' a wrong net_lines by writing a precise value measured at the PREVIOUS SHA — the same disease at higher confidence, in the one field a gate had already conditioned. The gate returned REWORK-BUILD for it. This pack therefore measures net_lines LAST, at the merge base, after every other edit, and writes it as a 1-for-1 line swap so the value describes the tree that contains it."
     status: CONFIRMED
-    repro: "grep 'DELETE FROM' on both staged sources before the fix showed exactly one DELETE (_schema_versions only) per ROLLBACK section; migration_base.py:365 confirmed reading schema_migrations, not _schema_versions."
-    resolution: "Both ROLLBACK sections now also DELETE FROM schema_migrations WHERE migration_name = '<name>' — verified: grep -c 'DELETE FROM schema_migrations' returns 1 in each of the two staged sources post-fix."
-  - seat: kimi-k3
-    objection: "278's dependency guard verified the LOG (a schema_migrations row for 277) but not the EFFECT (whether client 11500 actually carries the corrected email) — a log/data mismatch (e.g. the rollback bug above, before its own fix) would pass the guard on a stale log row."
+  - seat: gear3-final-gate (opus 5, on #4543)
+    objection: "CI cannot catch a wrong net_lines: evidence_pack_lint prefers a MEASURED --net-lines/--numstat-file over the pack field because the field is untrustworthy, but a STRING field yields None and the rule never fires. Green lint is not evidence for this field."
     status: CONFIRMED
-    repro: "(minor severity — no live impact found, hardening only) The guard's only condition, pre-fix, was NOT EXISTS (SELECT 1 FROM schema_migrations WHERE migration_name = '277_correct_ari_email_typo') — no check against clients.assigned_to at all."
-    resolution: "Added a second IF NOT EXISTS clause requiring clients.id=11500 to carry lower(BTRIM(assigned_to))='ari.firda@balizero.com' before 278 proceeds — verified: the 278 source now has 2 IF NOT EXISTS guard checks (grep -c 'IF NOT EXISTS ($' = 2, distinct from the unrelated CREATE TABLE IF NOT EXISTS)."
-  - seat: kimi-k3
-    objection: "Round 2: the fix directly above (the log-vs-effect guard) was itself a defect — it asserted the arbitrary literal assigned_to='ari.firda@balizero.com' instead of the true orphan-predicate invariant. That would permanently false-block 278 under three legitimate scenarios: client 11500 reassigned to a different active operator after 277 runs, the client merged/deleted, or ari.firda@'s roster email changing — all three leave the true invariant satisfied but would trip the literal check forever, fixable only by hand-editing a shipped migration file."
+  - seat: session (m5), scoping the change rather than widening it
+    objection: "Rewriting the corollary could be read as repealing W111. It is not, and a note that merely dropped the prohibition would be a regression: a merge_group rerun replays a ref whose base moved. The rewrite scopes the ban to merge_group explicitly instead of leaving it implied."
     status: CONFIRMED
-    repro: "The guard's second condition, pre-fix, was a bare string equality against one hardcoded email — any of the three scenarios above changes clients.assigned_to for id=11500 to a value other than that literal while the client still has a valid, active owner."
-    resolution: "Rewrote the guard to assert client 11500 does NOT satisfy the same orphan predicate the orphans CTE uses below (deleted_at IS NULL AND NOT EXISTS an active team_members match) — the true invariant, immune to a legitimate future reassignment. This finding is the most instructive in the pack: a guard fix that itself violates 'assert the entity, not a literal form' is still that same defect (cicatrix-superscar.md family #3), even when the fix was written specifically to close a different gap."
-  - seat: kimi-k3
-    objection: "Round 2: 277's header claimed the UPDATE was an unconditional idempotent no-op on re-run. False — it keyed off the archive table's recorded new_assigned_to, not the live value, so a manual re-run after the archive was already populated could silently revert a human reassignment made to client 11500 in the meantime."
-    status: CONFIRMED
-    repro: "The pre-fix UPDATE's WHERE clause had no guard comparing the live assigned_to against the archived old value — any re-run would unconditionally re-apply new_assigned_to regardless of what the live row currently held."
-    resolution: "Added AND lower(BTRIM(c.assigned_to)) = lower(BTRIM(archive.old_assigned_to)) to the UPDATE's WHERE clause, and replaced the false header claim with an honest description of the real re-run risk and the fix."
-  - seat: kimi-k3
-    objection: "Round 2: the comment justifying 278's rollback DELETE FROM schema_migrations claimed 278's own dependency guard would 'still pass' after such a rollback because it reads schema_migrations too. False — that guard reads the row for MIGRATION 277, which a 278 rollback never touches; the claim conflated the two migrations' rows."
-    status: CONFIRMED
-    repro: "278's dependency guard queries schema_migrations WHERE migration_name = '277_correct_ari_email_typo' — a 278 rollback's own DELETE targets '278_reassign_orphaned_clients_setup_team', a disjoint row."
-    resolution: "Corrected the comment to justify the DELETE by 278's own re-applicability alone, which is sufficient on its own without the false claim. A comment asserting the opposite of actual behavior is worse than no comment — it stops the next reader from checking."
-  - seat: kimi-k3
-    objection: "Round 2: the orphans CTE's join condition had no BTRIM on tm.email — a trailing/leading space on a roster email would make the comparison fail and read that person's entire client book as orphaned."
-    status: CONFIRMED
-    repro: "lower(tm.email) = lower(BTRIM(c.assigned_to)) BTRIMs only the client side; team_members.email is operator-entered and not schema-constrained against whitespace."
-    resolution: "Added BTRIM to tm.email: lower(BTRIM(tm.email)) = lower(BTRIM(c.assigned_to))."
-  - seat: kimi-k3
-    objection: "Round 2: the six water-filling recipients (damar/surya/vino/adit/ari.firda/krisna) are literals in the team CTE, never checked against team_members — a stale or misspelled recipient would silently receive zero clients while the level computation still counted them as an active bucket, with no error raised."
-    status: CONFIRMED
-    repro: "No guard existed verifying the six literals resolve to active team_members rows before the water-filling CTEs run."
-    resolution: "Added a standalone guard (existence + active, the same true-invariant pattern as the literal-vs-invariant fix above, deliberately not another arbitrary literal) verifying all six before the archive/reassignment CTEs execute."
-  - seat: kimi-k3
-    objection: "Round 2 (out of scope for this PR, ledgered): MigrationManager.rollback_migration() clears _schema_versions on rollback but never schema_migrations — the table _is_applied() actually reads. Not specific to 277/278: affects all 159 migrations in this repo with a rollback path."
-    status: CONFIRMED
-    repro: "migration_manager.py:249-263 — the rollback transaction's only cleanup statement is DELETE FROM _schema_versions WHERE migration_name = $1; nothing touches schema_migrations."
-    resolution: "Not fixed here — patching the runner while 277/278 are mid-flight through it risks breaking both to fix neither. 277/278 each carry a local, per-migration workaround in their own ROLLBACK sections (an explicit DELETE FROM schema_migrations). Runner-level fix tracked in .claude/skills/modus/PENDING-ARMS.md, opened 2026-08-21."
-  - seat: kimi-k3
-    objection: "Round 3, the most serious finding across all four rounds: round 1's rollback fix (the schema_migrations DELETE added to close the finding above) was dead code. Both migrations' forward SQL carried a self-INSERT into _schema_versions, copied from three historical migrations (165/166/184) under the belief it was harmless defensive redundancy protected by ON CONFLICT DO NOTHING. It was not — BaseMigration.apply() runs the forward SQL first, then calls _log_migration(), which inserts into BOTH schema_migrations and _schema_versions carrying the real rollback_sql; by then the self-INSERT had already claimed the _schema_versions row for that migration_name, so _log_migration()'s own insert silently no-opped on conflict. _schema_versions.rollback_sql stayed NULL forever, and MigrationManager.rollback_migration() reads rollback_sql ONLY from _schema_versions — so round 1's fix, though correct as text, would never have been reached: the runner would log 'No rollback SQL' and do nothing before ever executing it."
-    status: CONFIRMED
-    repro: "migration_base.py:405-421 (self-INSERT + _log_migration's own INSERT, both ON CONFLICT DO NOTHING on migration_name), :534 (forward SQL runs first), :547 (_log_migration runs after) — independently re-verified against the real code by both team-lead and sonnet-5 before the fix was written, not trusted from the refuter's summary alone. Team-lead independently re-checked that only 165/166/184 (of 159 total migration files) share the self-INSERT pattern, rather than trusting the count as asserted."
-    resolution: "Removed the self-INSERT entirely from both 277 and 278 — _log_migration() alone is sufficient, exactly as it is for the other 156 migrations that don't self-insert. 165/166/184 untouched (already applied in production, touching them risks their stored checksum)."
-  - seat: kimi-k3
-    objection: "Round 3: once defect 1's rollback fix actually works, 278's final UPDATE needed a guard against reverting a human reassignment made between a 278 rollback and a subsequent re-apply — the same class of risk 277 already closed in round 2, but NULL-unsafe if copied verbatim: 152 of 278's archived old_assigned_to values are NULL (clients with no assigned_to at all before this migration), and lower(BTRIM(NULL))=lower(BTRIM(NULL)) evaluates to NULL, never TRUE, which would have silently excluded every one of those 152 rows from ever being correctable."
-    status: CONFIRMED
-    repro: "SELECT COUNT(*) FROM orphan_client_reassignment_archive WHERE old_assigned_to IS NULL after a dry run of the archive INSERT returns 152 (measured by team-lead)."
-    resolution: "Added AND c.assigned_to IS NOT DISTINCT FROM archive.old_assigned_to (NULL-safe, not the lower(BTRIM(...))=lower(BTRIM(...)) equality form 277 uses) to 278's final UPDATE, and corrected 278's header, which still claimed an unconditional safe no-op on second run — the same class of false claim already corrected in 277 at round 2."
-  - seat: kimi-k3
-    objection: "Round 4 (SAFE-TO-APPLY, first clean pass after three dirty ones, explicit read perimeter: migration_base.py/migration_manager.py/migrations_v2/*.sql allowed, .env*/backend/data/client-record fixtures denied): two non-blocking observations, not defects. (1) A guard comparing the live value against the archived old value cannot distinguish 'never touched since apply' from 'reverted to exactly the same value it started at' — intrinsic to comparing against a stored old-value, not a defect in this migration; the header now documents this semantics correctly rather than overclaiming. (2) The rollback section's SET lock_timeout/statement_timeout run on a POOLED connection (unlike the forward section, which uses a dedicated connection that gets closed), so the settings persist on that pooled session after commit — benign values, short-lived pool, and a pre-existing pattern across the repo's migrations, not introduced by this PR."
-    status: CONFIRMED
-    repro: "Traced end-to-end against the runner rather than trusting the header text: walked all four execution orders for the NULL-safe guard (first legitimate run — 152 NULL rows update correctly since NULL IS DISTINCT FROM new is true and NULL IS NOT DISTINCT FROM NULL is true; unchanged re-run — no-op; re-run after human reassignment — the human's change survives; re-apply after rollback — proceeds correctly) and confirmed nothing else in the runner (reconciliation path, applied_by, schema_audit.py, checksum, verify()/verify_apply()) reads the removed self-INSERT line."
-    resolution: "Not cured — accepted as inherent to the guard's form (1) and as a benign pre-existing pattern (2). Both recorded in residual_risks below rather than silently dropped."
-  - seat: team-lead
-    objection: "The PR body's opening draft (published to GitHub at PR-open, before this pack existed) named seven staff members alongside their individual client caseloads, including one personal gmail address — on Bali-Zero/Teman2, a PUBLIC repository. This is exactly the boundary CLAUDE.md Law 2 / UU PDP treats as absolute; that the people are colleagues rather than clients does not move it. Same pattern also present in this pack's own dissent/residual_risks and in the unpublished round-4 PR-body-rewrite draft."
-    status: CONFIRMED
-    repro: "gh pr view 4542 --json body -q .body | grep -c -i '@gmail\\.com|Dea |Rina |Ruslana |Marta ' returned 2 (non-zero) before the fix."
-    resolution: "The live PR body was corrected in place the same turn it was flagged (gh pr edit — mutable metadata, not a git-history rewrite, so no delay was defensible) to an aggregate form: '146 clients in total, individually ranging from 1 to 74', no names, no email. Same redaction applied to this pack (two locations) and to the held PR-body rewrite. The four already-pushed commits were independently re-checked and found clean — the exposure was confined to the mutable PR description, never to committed history."
-  - seat: team-lead
-    objection: "The exposure above was not confined to an unpublished draft — it was LIVE on the published PR body, publicly readable on Bali-Zero/Teman2, from 2026-08-21T13:18:24Z to 2026-08-21T14:36:51Z (78 minutes). GitHub retains both the exposed revision and the corrected one in the PR body's edit history — the gh pr edit fix removed the data from the current view, not from GitHub's archive."
-    status: CONFIRMED
-    repro: "PR body edit history queried via the GitHub API; both the pre-fix and post-fix revisions return deletedAt: null."
-    resolution: "Not curable from this side — neither gh pr edit nor any other repo-side action can reach a retained PR-body revision. Escalated to Zero (2026-08-21): a GitHub support removal request for the retained revision, and notifying the affected person, both Legge-5 business decisions outside this task's authority. True cause, recorded honestly rather than as 'PII removed': the information read as an internal operational detail (staff caseload counts), and nobody asked where publishing it on a PUBLIC repo would end up before it went out — a gap the aggregate-form fix closes going forward, not one this fix undoes for the 78 minutes it was already live."
-  - seat: github-actions
-    objection: "Round 5, and the only finding across five rounds that no refuter produced: the six-recipient guard added at round 2 raised 'Migration 278 requires all six water-filling recipients to be active team_members rows -- 6 of 6 are missing or inactive' when CI smoke-applied 278 against a fresh test database with an empty team_members table. The guard was not misfiring — it was enforcing exactly what it said, and what it said was 'these six rows must exist', a condition on the WORLD rather than on the operation. As written, 278 was inapplicable to every environment except production."
-    status: CONFIRMED
-    repro: "Backend Tests (Python) on PR #4542, migration smoke-apply against an empty schema: the RAISE EXCEPTION fires with missing_count = 6 before any CTE runs."
-    resolution: "Subordinated the six-recipient check to IF orphan_work_count > 0, where orphan_work_count counts rows matching the orphans CTE predicate COPIED VERBATIM (not re-derived — a second, diverging copy of that predicate is precisely the defect class round 1 introduced). The true invariant was never 'the six must exist'; it is 'we must not assign a client to a nonexistent or inactive recipient', satisfied vacuously when there is no client to assign. With any pool (production has 323) the check runs unchanged. This is round 2's own literal-vs-invariant lesson one level up, and the contrast sits inside the same file: the OTHER guard, immediately above, asserts 'client 11500 does not satisfy the orphan predicate' and passes vacuously on an empty database."
-    note: "Recorded against seat github-actions rather than folded into a team-lead entry deliberately. Four adversarial rounds read this guard and approved it, round 4 explicitly SAFE-TO-APPLY; none EXECUTED it against an empty table, they only reasoned about its semantics, and the semantics read fine. A refuter that reads and a runner that executes are not redundant reviewers of the same claim."
-  - seat: kimi-k3
-    objection: "Round 5 (targeted single question — 'does this cure reopen the hole the guard closed?' — run from an isolated directory containing only the redacted migration, closing the read-beyond-the-prompt channel round 4 left open by luck of subject matter). Verdict FIX-SOUND, with one residual seam named: the guard's DO block and the later WITH orphans statement are separate statements, so under READ COMMITTED a concurrent committed INSERT INTO clients carrying a NULL or invalid assigned_to, landing between them, would be counted as zero by the guard yet picked up by the CTE and assigned to a possibly-missing literal."
-    status: CONFIRMED
-    repro: "Predicate equivalence checked textually (byte-equivalent to the orphans CTE); the seam is snapshot, not text. BaseMigration.apply() wraps the migration in one transaction, but READ COMMITTED gives each STATEMENT a fresh snapshot."
-    resolution: "Not cured — accepted and declared (see residual_risks). Reaching it requires three conditions at once: zero orphans at guard time, a missing or inactive recipient, AND a live writer creating an orphan inside the window. Any environment where the six recipients are genuinely absent is an empty non-production one with no such writer; anywhere with production traffic orphan_work_count is 323 and the guard runs at full strength. The refuter also established the fix adds no new failure CLASS: the same check-then-act seam already existed at round 4 on the other side (a recipient could be deactivated between the guard and the final UPDATE). Recorded as its own residual-risk line rather than leaning on the pre-existing generic TOCTOU line, because this is a NEW instance the fix introduced, and 'already covered as a class' is not the same as declared."
 residual_risks:
-  - "NEW at round 5, introduced by the round-5 fix itself (kimi-k3, CONFIRMED, accepted): between the recipient guard's DO block and the orphans CTE, READ COMMITTED gives each statement its own snapshot, so a client that becomes orphaned in that window is invisible to the guard but visible to the CTE — the guard can be skipped for a pool it would have protected. Unreachable where it could matter (needs zero orphans at guard time AND a missing/inactive recipient AND a concurrent writer, and the first two only co-occur on empty non-production databases), and it is the same check-then-act class already present before this fix, not a new one."
-  - "Live orphan-pool and caseworker-load counts continue to drift by small amounts (±1-2) during this investigation window due to ordinary CRM activity — expected and immaterial (see dissent above), but means any number quoted in this pack is a snapshot, not a guarantee of what apply-time will show; acceptance criteria are phrased as post-apply re-measurements for this reason, not fixed targets."
-  - "Seven active staff members hold clients outside the six-person water-filling pool (146 clients in total, individually ranging from 1 to 74 — all verified active, non-client-role). Whether any should join future rebalancing rounds is a business decision for Zero (Legge 5), not resolved by this task."
-  - "The 515 team_members rows with role='client' and the dead BaseMigration.dependencies mechanism are both logged in .claude/skills/modus/PENDING-ARMS.md as separate, deliberately-deferred findings — neither touched by this diff."
-  - "PLAUSIBLE (kimi-k3, not cured here — requires an out-of-runner application path to matter): a manual re-run of 278 with the archive table already populated would re-derive and overwrite human reassignments made SINCE the first apply, because the archive's IS DISTINCT FROM guard only protects against re-applying an identical value, not a value that has since been legitimately changed again by a human."
-  - "PLAUSIBLE (kimi-k3, not cured here — same class): a manual `psql -f` application path (outside the migration runner) would not write schema_migrations at all, so 278's dependency guard would wrongly refuse to run even after 277's real effect landed via that path — both risks require applying outside the runner to manifest, and this task's own apply goes through the runner."
-  - "Coordination, not correctness (team-lead, 2026-08-21): 278 reassigns hundreds of live client rows in one transaction while the CRM continues to see ordinary staff activity (measured drift above). Correctness is not at risk (single transaction, coherent snapshot), but a hand-made reassignment landing a moment before 278's transaction starts gets absorbed by 278's water-filling if the hand-picked recipient is not one of the six active caseworkers in its team CTE — worth a line here, not a code change."
-  - "TOCTOU between the guards and the CTEs under Postgres's default READ COMMITTED isolation: a narrow window against a live CRM table. The existing lock_timeout='5s' makes real contention fail clean rather than hang; tightening isolation is a design decision deserving its own review, not a last-minute addition after four rounds already landed."
-  - "current_loads does not normalize the team side of its join (= team.tm_email, not lowercased). Not a live bug today — the six literals are already lowercase — but becomes one the day someone edits that list with different casing."
-  - "Round-4, non-blocking (kimi-k3, not a defect): a guard comparing the live value against the archived old value cannot distinguish 'never touched since apply' from 'reverted to exactly the same value it started at' — intrinsic to comparing against a stored old-value. 277/278's headers now document this semantics correctly."
-  - "Round-4, non-blocking (kimi-k3, not a defect): the rollback section's SET lock_timeout/statement_timeout run on a pooled connection (the forward section uses a dedicated, closed connection) and persist on that session after commit. Benign values, short-lived pool, and a pre-existing pattern across this repo's migrations — noted only because it had never been examined before."
+  - "The quoted suite ids are one incident's measurement, not constants. The note frames them as the #4543 evidence, not as values to expect."
+  - "This diff does not change the job, so it cannot itself prove the new procedure works; the proof is #4543's own history, already on main."
+  - "The modus PENDING-ARMS row opened for this defect is NOT closed by this diff — that file carries a merge=union driver and is deliberately kept out of a hot-zone PR. It gets its own follow-up."
 sources:
-  - "research/operations/2026-08-21-orphan-client-reassignment-plan.md"
-  - "research/operations/2026-08-21-orphan-reassignment-water-filling-robustness-test.md"
-  - "apps/backend-rag/backend/db/migrations_v2/277_correct_ari_email_typo.sql"
-  - "apps/backend-rag/backend/db/migrations_v2/278_reassign_orphaned_clients_setup_team.sql"
-  - "apps/backend-rag/backend/db/migration_base.py"
-  - "apps/backend-rag/backend/db/migration_manager.py"
-  - ".claude/skills/modus/PENDING-ARMS.md"
+  - "PR #4543 run history (32489011695 pull_request, 32489857553 workflow_dispatch, 32489102357)"
+  - "memory discovery_workflow_dispatch_rerun_does_not_clear_a_prs_rollup_2026_08_21"
+tests:
+  - "None applicable: comment-only. The behavioural proof is the byte-identical non-comment body receipt, which is stronger here than a test would be."
+static:
+  - "actionlint 1.7.12 exit 0"
+runtime_proof:
+  - "None claimed. Nothing in this diff executes; the consumer-map records that both consumers are unchanged, so merged == live."
 pii_scan: clean
-size_tokens: 8038
+size_tokens: 1300
