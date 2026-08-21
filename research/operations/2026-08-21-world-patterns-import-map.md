@@ -138,6 +138,28 @@ read-vs-creation tokens for a week; on the Gemini side, read `cachedContentToken
 find the earliest dynamic byte in that prefix and move it to the suffix. Reordering, not rewrite.
 This is the only lever on this list touching **metered** spend rather than flat quota.
 
+> **AMENDED 2026-08-21 — Zero's ruling: the bot leaves Gemini for ChatGPT.**
+> Verbatim: *"Gemini non sara piu il bot ma chatgpt"*, given while approving these levers.
+> The metered pool this section calls "the only real-$ lever" is **Gemini's**, and it is metered
+> precisely because `rag.gateway.chat` — the bot path — runs on the AI-Studio key. If the bot moves
+> to ChatGPT, that pool shrinks toward zero, so **the Gemini half of the first step is optimising a
+> path being retired**: do not build `cachedContents` / `cachedContentTokenCount` work on the
+> "only real-$ lever" rationale. Re-derive which provider still carries metered spend *after* the
+> cutover, and instrument that one.
+>
+> Three things this amendment deliberately does **not** retract:
+> 1. **The Anthropic half stands unchanged.** Prefix ordering and `cache_read_input_tokens` on a
+>    repeating lane are about the session's own burn, which no provider change touches.
+> 2. **A destination is not a switch.** Until the OpenAI path is actually armed, WA still runs on
+>    Gemini — the spend on that pool is live today. The *spend-cap* half of L8 (a proactive USD/day
+>    brake on `rag.gateway.chat`) therefore stays live and arguably gains value: a pool nobody is
+>    optimising any more still needs a brake. Only the *cache* half loses its rationale.
+> 3. **The cutover must not create a replacement metered pool.** The OpenAI lane is
+>    **subscription-only**; a per-token provider key (`OPENAI_WA_PROVIDER_API_KEY`) is barred by the
+>    2026-08-15 owner ruling. Done right the cutover removes metered spend from the bot rather than
+>    moving it. If a session finds itself sizing a cache lever against an OpenAI per-token bill,
+>    that is the signal the cutover went the wrong way, not an invitation to optimise it.
+
 ---
 
 ## §2 — Adopt as discipline (no code, changes how a session behaves)
