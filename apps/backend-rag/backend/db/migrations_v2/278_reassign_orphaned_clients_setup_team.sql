@@ -114,14 +114,21 @@
 -- the affinity check (nationality/language, historical practice
 -- ownership) in the plan doc found no decisive signal.
 --
--- Idempotent AND atomic: the `orphans` CTE re-selects only clients that are
--- STILL unowned, and the entire forward SQL below runs inside ONE Postgres
--- transaction (backend/db/migration_base.py::BaseMigration.apply() wraps
--- SQL execution + verification + logging in `async with conn.transaction()`)
--- — any interruption mid-run rolls back the whole block automatically, so
--- there is no partial state to recover from, only a clean retry. A second
--- run of this migration (or the runner's own re-apply skip via
--- `schema_migrations`/`_schema_versions`) is a safe no-op.
+-- Atomic, but NOT unconditionally idempotent -- corrected 2026-08-21, round
+-- 3, same class of false claim as 277's original header (2.2): the entire
+-- forward SQL below does run inside ONE Postgres transaction
+-- (backend/db/migration_base.py::BaseMigration.apply() wraps SQL execution
+-- + verification + logging in `async with conn.transaction()`), so an
+-- interruption mid-run rolls back cleanly with no partial state. But a
+-- MANUAL re-run via psql after the archive table is already populated is a
+-- different story: the final UPDATE below now carries the same
+-- old-value WHERE guard as 277 (NULL-safe, see below), which makes a
+-- genuine re-run from the same starting state a real no-op -- but it also
+-- means a re-run after a human has since moved one of these clients
+-- elsewhere correctly does nothing to that client, rather than reverting
+-- the human's change. The runner's own re-apply skip (via
+-- `schema_migrations`) is unaffected either way -- it never reaches this
+-- SQL a second time through the runner path.
 
 SET lock_timeout = '5s';
 SET statement_timeout = '60s';
@@ -391,30 +398,52 @@ SET
 FROM orphan_client_reassignment_archive archive
 WHERE archive.migration_name = '278_reassign_orphaned_clients_setup_team'
   AND archive.client_id = c.id
-  AND c.assigned_to IS DISTINCT FROM archive.new_assigned_to;
+  AND c.assigned_to IS DISTINCT FROM archive.new_assigned_to
+  -- Kimi K3 round 3, defect 2 (CONFIRMED, reachable only once defect 1's
+  -- rollback fix actually works): without this guard, rolling back 278 (a
+  -- human reassignment survives rollback because that client's assigned_to
+  -- no longer equals archive.new_assigned_to) then re-applying would find
+  -- those clients no longer orphaned by the `orphans` CTE, but the archive
+  -- table still holds their OLD row from the first apply -- and this
+  -- UPDATE would silently revert them again. NOT the same form as 277's
+  -- `lower(BTRIM(...))=lower(BTRIM(...))` guard: 152 of the archived
+  -- old_assigned_to values are NULL (clients that had no assigned_to at
+  -- all before this migration), and `lower(BTRIM(NULL))=lower(BTRIM(NULL))`
+  -- is NULL, never TRUE in SQL -- that form would silently exclude every
+  -- one of those 152 rows from ever being correctable. IS NOT DISTINCT FROM
+  -- treats NULL=NULL as true, which is what's needed here.
+  AND c.assigned_to IS NOT DISTINCT FROM archive.old_assigned_to;
 
-INSERT INTO _schema_versions (
-    migration_name,
-    migration_number,
-    description,
-    applied_by,
-    checksum
-)
-VALUES (
-    '278_reassign_orphaned_clients_setup_team',
-    278,
-    'Reassign clients with no valid owner across the six setup-team caseworkers, leveling total caseload (runs after 277, which excludes the ari@balizero.com typo from this pool)',
-    'migration-278',
-    'tracked-by-migration-278'
-)
-ON CONFLICT (migration_name) DO NOTHING;
-
--- Note (2026-08-21, staging this copy): the INSERT above is redundant with
--- what backend/db/migration_base.py::BaseMigration._log_migration() already
--- writes automatically after a successful apply() (it writes to BOTH
--- `schema_migrations` — the table `_is_applied()` actually checks — AND
--- `_schema_versions`). Harmless due to ON CONFLICT DO NOTHING; kept as-is
--- from the adversarially-reviewed original rather than restructured here.
+-- Kimi K3 round 3, defect 1 (CONFIRMED, the most serious finding across all
+-- four refuter rounds -- verified by team-lead against migration_base.py /
+-- migration_manager.py, then independently re-verified against the same
+-- code before this fix was written): there used to be a self-INSERT into
+-- `_schema_versions` here, copied from three historical "reconcile"
+-- migrations (165/166/184) under the belief that it was harmless,
+-- defensive redundancy protected by `ON CONFLICT (migration_name) DO
+-- NOTHING` -- see the note this replaces, below. It was not harmless: it
+-- silently disarmed this migration's rollback. `BaseMigration.apply()` runs
+-- the forward SQL first, then calls `_log_migration()`, which itself
+-- inserts into BOTH `schema_migrations` and `_schema_versions` -- the
+-- latter carrying the real `rollback_sql` this time. But by then the
+-- self-INSERT above had already claimed the `_schema_versions` row for
+-- this migration_name, so `_log_migration()`'s own INSERT hit the same ON
+-- CONFLICT DO NOTHING and was discarded. `_schema_versions.rollback_sql`
+-- was left permanently NULL, and `MigrationManager.rollback_migration()`
+-- reads `rollback_sql` ONLY from `_schema_versions` -- never from
+-- `schema_migrations`, where it WAS correctly stored. Removed entirely --
+-- `_log_migration()` alone is sufficient, exactly as it is for the other
+-- 156 migrations in this repo that don't self-insert. Migrations
+-- 165/166/184 are already applied in production and are explicitly out of
+-- scope for this fix (touching them risks their stored checksum).
+--
+-- Original note this replaces, for the record: "the INSERT above is
+-- redundant with what backend/db/migration_base.py::
+-- BaseMigration._log_migration() already writes automatically after a
+-- successful apply() ... Harmless due to ON CONFLICT DO NOTHING; kept
+-- as-is from the adversarially-reviewed original rather than restructured
+-- here." That "harmless" claim was false -- it is the direct cause of
+-- defect 1 above.
 
 -- === ROLLBACK ===
 SET lock_timeout = '5s';

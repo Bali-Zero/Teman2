@@ -93,21 +93,30 @@ WHERE archive.migration_name = '277_correct_ari_email_typo'
   AND c.assigned_to IS DISTINCT FROM archive.new_assigned_to
   AND lower(BTRIM(c.assigned_to)) = lower(BTRIM(archive.old_assigned_to));
 
-INSERT INTO _schema_versions (
-    migration_name,
-    migration_number,
-    description,
-    applied_by,
-    checksum
-)
-VALUES (
-    '277_correct_ari_email_typo',
-    277,
-    'Correct known typo: client 11500 assigned_to ari@balizero.com -> ari.firda@balizero.com (real active Team Leader, verified unique in roster; separate from the 278 water-filling reassignment)',
-    'migration-277',
-    'tracked-by-migration-277'
-)
-ON CONFLICT (migration_name) DO NOTHING;
+-- Kimi K3 refuter finding (2026-08-21, round 3, defect 1, CONFIRMED — the
+-- most serious finding across all four rounds, verified by team-lead
+-- against migration_base.py/migration_manager.py before being handed to
+-- me): there used to be a self-INSERT into `_schema_versions` here, copied
+-- from three historical "reconcile" migrations (165/166/184) under the
+-- belief that it was harmless, defensive redundancy protected by
+-- `ON CONFLICT (migration_name) DO NOTHING`. It was not harmless -- it was
+-- silently disarming this migration's rollback. `BaseMigration.apply()`
+-- runs the forward SQL first, then calls `_log_migration()`, which itself
+-- inserts into BOTH `schema_migrations` and `_schema_versions` -- the
+-- latter carrying the real `rollback_sql` this time. But by then the
+-- self-INSERT above had already claimed the `_schema_versions` row for
+-- this migration_name, so `_log_migration()`'s own INSERT hit the same
+-- ON CONFLICT DO NOTHING and was discarded. `_schema_versions.rollback_sql`
+-- was left permanently NULL, and `MigrationManager.rollback_migration()`
+-- (migration_manager.py) reads `rollback_sql` ONLY from `_schema_versions`
+-- -- never from `schema_migrations`, where it WAS correctly stored. Net
+-- effect: running the runner's rollback path on this migration would log
+-- "No rollback SQL" and do nothing, even though the SQL below this line
+-- exists and is correct. Removed entirely -- `_log_migration()` alone is
+-- sufficient, exactly as it is for the other 156 migrations in this repo
+-- that don't self-insert. Migrations 165/166/184 are already applied in
+-- production and are explicitly out of scope for this fix (touching them
+-- risks their stored checksum).
 
 -- === ROLLBACK ===
 SET lock_timeout = '5s';
