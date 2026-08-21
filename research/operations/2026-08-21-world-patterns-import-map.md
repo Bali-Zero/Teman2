@@ -119,6 +119,86 @@ session-scoped template database: apply migrations once to `test_template`, then
 `-n auto --dist loadfile` on that group alone and measure. The seed-tag scoping already landed in
 `test_intake_review.py::_crm_counts` is the belt to that spike's braces, not a substitute for it.
 
+> **MEASURED 2026-08-21 — corrected below, not closed.** A follow-up session flagged a plausible
+> second-order interaction: PR #4517's static import-graph map (§1.2) can narrow `TEST_TARGETS` to as
+> few as 1 of 1401+ modules on the PR lane, but the per-worker clone above (shipped as PR #4524) runs
+> unconditionally on `-n auto` — so a PR touching one test file could still pay for N worker clones.
+> Measured before writing any code, per the standing rule that a null result is a valid answer — and
+> then a second measurement, below, corrected what that first answer was actually worth:
+>
+> - **CI's actual worker count**: `-n auto` resolves to the runner's core count. Confirmed directly
+>   from a completed job's own log rather than assumed — `arch=x86_64 nproc=4` (step "Runner probe
+>   (temporary, day-0)", job `96706860161`, run `32460574572`, `Backend Tests (Python)`, 2026-08-21).
+>   CI is **N=4**, not the larger number a laptop's core count would suggest.
+> - **Clone cost against a real, CI-shaped database** (migrated, not a toy schema): 135 tables / 26MB /
+>   160 applied migrations locally. An earlier pass on this machine recorded 133/26MB/149; checked
+>   rather than asserted — this same local `nuzantara_test` carries migration 264 in `_schema_versions`
+>   (`executed_at 2026-08-10`) while `visa_decision_legal_hold_events` is physically absent, the
+>   identical out-of-band mutation diagnosed and fixed in PR #4524's own hotfix (#4532). This database
+>   is known-polluted, not a clean baseline: 14 commits genuinely added migration files to
+>   `migrations_v2/` in the last 30 days (some adding several at once, e.g. #3732's 262-267), so most
+>   of the count movement is real migrations landing — but the exact 133→135/149→160 delta cannot be
+>   read as a clean "migrations landed since" figure the way the first draft of this note asserted
+>   without checking. Some of it is pollution, not progress; corrected here rather than left standing.
+>   It does not move the clone-cost verdict below — a couple of tables either way does not change
+>   `CREATE DATABASE … TEMPLATE` timing. `CREATE DATABASE … TEMPLATE` serial median **~0.2-0.24s**;
+>   **N=4 concurrent ~0.6-1.0s wall** (range spans a clean run and one at M5 ambient loadavg 4.08 —
+>   CI's dedicated runner carries neither the loadavg nor the sibling-suite variance a laptop does, so
+>   the low end sits closer to CI's true cost, per the standing rule that the CI job duration is the
+>   authoritative comparison).
+> - **The pathological shape is real, not hypothetical**: forcing `-n 10` against one small test file
+>   still produced `created: 10/10 workers` — xdist does not look at how much work a worker will
+>   actually do before cloning it a database. At N=10 concurrent, wall time was **~2.6-3.0s**: cost
+>   grows **superlinearly** with worker count, not the ~1.5-2.5s a linear 2.5× of the N=4 figure would
+>   predict — Postgres's own concurrent-`CREATE DATABASE` contention, not something this design controls.
+> - **Verdict, scoped to only what was measured here**: at CI's real N=4, the *clone* cost is **sub-1s**,
+>   under roughly 1% of a job whose dependency-install step alone runs into the tens of seconds. That
+>   figure is noise, and no guard against it was built, on purpose. That is the whole of what this
+>   bullet answers. An earlier draft of this note went on to conclude no narrowing mechanism was needed
+>   at all — that inference does not follow from a clone-cost number alone, and it is retracted here
+>   rather than carried forward silently. See the next two points for why.
+> - **The dominant term is worker startup, not database cloning — and this was found only after the
+>   note above was first written.** A later pass timed serial vs. `-n auto` across selections of
+>   increasing size on M5 (10 workers): 27 modules 15.2s serial / 39.1s parallel · 63 modules 34.6s /
+>   43.8s · 104 modules 49.8s / 43.2s · 163 modules 74.0s / 39.1s. Parallel's floor sits at ~39-44s
+>   across more than a 2× range of serial work — that floor is worker-startup overhead, roughly 40× the
+>   clone-cost figure measured above, and it is what actually decides whether a narrow PR selection
+>   should run serial or parallel. **This supersedes, not merely contradicts, the null result above**:
+>   the clone-cost measurement correctly answered a narrower question ("does per-worker cloning add
+>   meaningful cost on top of parallel execution?" — no) but that was never the term deciding whether
+>   parallel is worth it for a small selection. Recorded here as a correction to the record, not a
+>   quiet drop of the earlier note.
+> - **That crossover curve does not transfer to CI, and is recorded as data, not as a threshold.**
+>   Interpolating the two curves above places a crossover around **≈87 modules** — but they were
+>   measured on M5 with **10 workers**, and CI's confirmed count is **N=4** (see the first bullet). A
+>   worker-startup-dominated floor at 10 workers and one at 4 workers are different quantities, not the
+>   same number at different noise levels — the same "a number measured on one shape does not transfer
+>   to a different shape" reasoning this note already applies to clone cost cuts against reusing ≈87
+>   here. **No threshold has been chosen, for exactly that reason.** Placing one needs CI-shaped data:
+>   job durations from real PRs with differing selected-module counts (§1.2's map already produces that
+>   count per PR), read off actual CI runs — not reconstructed from M5's 10-worker shape. That data has
+>   not been gathered yet; if it turns out too thin to place a reliable crossover when gathered, that
+>   should be stated plainly rather than shipping M5's ≈87 with a CI label on it.
+> - **What would reopen this further**: CI-shaped job-duration data (per the point above) arriving in
+>   enough volume to place a real N=4 crossover — at that point this section should become an
+>   implementation, not another note. Until then, the two facts on record are narrower than either
+>   earlier draft claimed: clone cost alone is noise at CI's N=4, and the worker-startup floor that
+>   actually decides serial-vs-parallel has a crossover measured on the wrong worker count, not the
+>   right one.
+>
+> **Related local-only caveat, no other home for it**: two sessions running `pytest -n auto` against
+> the *same local* Postgres collide — pytest-xdist reuses deterministic slot names (`gw0`, `gw1`, …)
+> per invocation, so a second concurrent local run's worker clones target the same database names as
+> the first, and can hit `InvalidCatalogNameError: database "nuzantara_test_gw0" does not exist` when
+> one session's teardown drops a database the other is still using. Traced via `ps aux` to a genuine
+> sibling process, not a bug in this code. **CI is unaffected** — every job gets its own ephemeral
+> Postgres service container, so there is no second session to collide with. Tradeoff considered and
+> deliberately left alone: the worker DB name could carry something session-unique (PID, timestamp) to
+> stop local collisions, but the deterministic name is exactly what lets a crashed run self-heal at the
+> same slot on its next invocation — trading that away needs a stated replacement for the self-heal
+> property, not just a rename. Left as a documented local-dev caveat (run local `-n auto` suites one at
+> a time on the same machine) rather than a code change.
+
 ### 1.4 Cache-aware boot-context ordering
 
 Anthropic's own caching docs: the cache is a **prefix** — everything up to the first changed byte
