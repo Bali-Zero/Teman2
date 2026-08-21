@@ -260,7 +260,7 @@ merge commit; `gh pr update-branch` first, or use `mq requeue` / `queue_rearm.sh
 scoped exception, measured 2026-08-21:** when the red is an external commit status on an UNCHANGED
 head SHA (a Gear-3 gate verdict posted after the run finished) and the workflow checks out a pinned
 base SHA rather than a merge ref, `gh run rerun` on the original `pull_request` run is the only
-instrument that clears the rollup — see §6quater.
+instrument that clears the rollup — see §6quinquies.
 
 Test: `scripts/tests/test_pr_watch.sh` (fake `gh`, no network). `mq watch` is the post-arm drift
 guard for one PR against its armed SHA; `pr_watch.sh` is the terminal-state watcher for one or many
@@ -326,13 +326,13 @@ retried.**
   see §6ter, which is the shape that actually bit this repo on 2026-07-27/28.
 
 `gh run rerun <run_id> --failed` is the right gesture in the INFRA case and in the
-EXTERNAL-STATUS case (§6quater), and note the trap before using it: **`rerun` replays the OLD merge
+EXTERNAL-STATUS case (§6quinquies), and note the trap before using it: **`rerun` replays the OLD merge
 commit**, so on a branch that has since fallen behind it re-tests a stale base — `gh pr
 update-branch` first (`lesson_gh_run_rerun_replays_the_stale_merge_commit_2026_07_27`).
 
 ---
 
-## 6quater. The red is an external commit status, not the code
+## 6quinquies. The red is an external commit status, not the code
 
 A job that reads a commit status on the head SHA — the Gear-3 `harness/fable-gate` verdict is the
 one in this repo — fails identically whether the verdict is REWORK or simply **not posted yet**.

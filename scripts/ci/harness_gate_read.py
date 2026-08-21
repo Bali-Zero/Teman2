@@ -42,7 +42,9 @@ case, because the obvious one does not work here.
 
 CORRECTED 2026-08-21: this docstring, and the PENDING message below, used to say
 `gh workflow run harness-floor.yml --ref <branch>` and forbid `gh run rerun` outright. That
-deadlocked two PRs (#4543, #4549). A `workflow_dispatch` run creates its check-run in a DIFFERENT
+deadlocked #4543. (#4549 hit the same PENDING red but was cured by a rerun without ever taking
+the dispatch path -- 9 `pull_request` runs on its branch, zero `workflow_dispatch`. It confirms the
+REMEDY a second time, not the deadlock.) A `workflow_dispatch` run creates its check-run in a DIFFERENT
 CHECK SUITE from the `pull_request` event's, and that check-run does not enter the PR's
 statusCheckRollup AT ALL — an ABSENT entry, not a superseded one. Measured on #4543: the rollup
 holds exactly ONE `Harness floor recompute` entry, pointing at the pull_request run; the dispatch
@@ -54,7 +56,7 @@ is a ref that resolves through a MOVING base): on the pull_request path this wor
 `github.event.pull_request.base.sha`, a pinned SHA, never `refs/pull/N/merge`. The
 `workflow_dispatch:` trigger remains for the case where there is no PR to unblock. Full procedure,
 including the escapes when no rerunnable run exists:
-docs/runbooks/merge-queue-discipline.md section 6quater; CLAUDE.md Agent PR Contract rule 3.
+docs/runbooks/merge-queue-discipline.md section 6quinquies; CLAUDE.md Agent PR Contract rule 3.
 
 EVENT-TO-SHA RESOLUTION:
   - pull_request  : the PR's real head sha is already directly on the event payload.
@@ -204,8 +206,8 @@ def decide(state: str | None) -> tuple[int, str]:
             "posts a verdict, re-trigger THIS run: `gh run rerun <this run id>`. Do NOT use "
             "`gh workflow run --ref` — a workflow_dispatch run lands its check-run in a different "
             "check suite and never enters the PR's rollup at all, so the PR stays BLOCKED "
-            "(measured on #4543 and #4549). Full procedure: "
-            "docs/runbooks/merge-queue-discipline.md section 6quater.",
+            "(measured on #4543). Full procedure: "
+            "docs/runbooks/merge-queue-discipline.md section 6quinquies.",
         )
     if state == "success":
         return 0, f"{CONTEXT} verdict = success"
