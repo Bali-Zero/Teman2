@@ -33,11 +33,13 @@ is not in that live required-contexts list is recorded as **advisory**, not enfo
 red on `main` forever without blocking anything.
 
 **Numbers**: **24 invariants** enumerated from CLAUDE.md (root) + `~/.claude/CLAUDE.md`.
-**11 enforced-and-required** (a red run blocks merge) · **6 enforced-but-advisory** (a real
-check exists and can fail, but is not in branch-protection's required list, so a red run doesn't
-block anything) · **7 enforced-nowhere** (nothing outside the prompt would catch a violation).
-One of the 24 (`alembic/env.py`) turned out to name a file that **does not exist anywhere in this
-repository** — not a gap in enforcement, a phantom citation in the doctrine itself.
+**8 enforced-and-required** (a red run blocks merge) · **9 enforced-but-advisory-or-client-side**
+(a real check exists and can fail, but either is not in branch-protection's required list so a red
+run doesn't block anything, or is a `.husky/pre-commit` hook whose own remediation path — caught
+live in this PR's own commit — is the exact `--no-verify` bypass Golden Rule #12 bans) · **6
+enforced-nowhere** (nothing outside the prompt would catch a violation). One of the 24
+(`alembic/env.py`) turned out to name a file that **does not exist anywhere in this repository** —
+not a gap in enforcement, a phantom citation in the doctrine itself.
 
 ---
 
@@ -60,8 +62,8 @@ block) · 🔴 enforced nowhere · 👻 phantom (names something that doesn't ex
 | 10 | Evidence-scoring thresholds — 5 named gates, one SSOT, generation≠label divergence intentional | 🟢 | `test_abstain_threshold_convergence.py` + `test_abstain_policy_hardening.py`, same collection path. |
 | 11 | Postgres MCP — read-only for agents | 🟢 | Structural, at the DB-role level, not CI: `nuzantara_readonly` role carries 255 SELECT grants, zero INSERT/UPDATE/DELETE/CREATE (CLAUDE.md §10). Not bypassable by a diff — would need `fly ssh`/direct prod-DB access, itself operator-only. |
 | 12 | Migration PRs auto-run Squawk lint (CLAUDE.md §11) | 🟡 | `migration-lint.yml` job named `Lint` runs Squawk. **Not in required_status_checks** — "auto-run" is true, "gates the merge" is not. |
-| 13 | Off-limits file: `apps/backend-rag/backend/prompts/zantara_core.py` | 🔴→🟡 (this PR) | Zero CODEOWNERS entry, zero CI check before this PR — see §2 and §3. New `zantara-core-edit-gate.yml`, non-required by design (see §3). |
-| 14 | Off-limits file: `fly.toml` | 🟡 (toothless) | `apps/backend-rag/fly.toml` (the only one that exists — see #16) has a CODEOWNERS label, but branch protection has **`require_code_owner_reviews: false`, `required_approving_review_count: 0`** (live `gh api` pull) — the label requests a review nobody is required to give. `hot-zone-pr-gate.yml` also matches it into `HOTZONE_MATCH`, but that flag only feeds a `continue-on-error: true` Redis lease check (CI runners can't reach the lease store anyway) — never a block. |
+| 13 | Off-limits file: `apps/backend-rag/backend/prompts/zantara_core.py` | 🟡→🟡+ (this PR) | **Correction, caught by this session's own commit, not by reasoning about the file tree**: `.husky/pre-commit` Gate 1 (`.husky/pre-commit:404-411`) DOES block a staged commit whose diff names a path matching the basename `zantara_core\.py` — real, blocking (`exit 1`), and observed firing live in this PR's own commit. But: (a) **client-side only** — never re-checked server-side, so a PR from a machine without husky, or one opened via the GitHub web UI, is invisible to it; (b) **the hook's own error message tells the author to bypass it** — "Se la modifica è intenzionale, fai unstage e commetti con `--no-verify`" — the exact command Golden Rule #12 names as never-allowed; (c) **basename substring match, not exact path** (`grep -E "zantara_core\.py"`), so a differently-located file sharing that basename would also trip it (over-match, the safer direction, but still the W105/W107 shape). Zero CODEOWNERS entry and zero server-side/CI check remain true — see §2 and §3. New `zantara-core-edit-gate.yml` adds the first server-side signal, non-required by design (see §3). |
+| 14 | Off-limits file: `fly.toml` | 🟡 (client-side + toothless label) | Same `.husky/pre-commit` Gate 1 blocks any staged path containing `fly\.toml` — same three caveats as #13 (client-side, `--no-verify`-suggested bypass, basename match — this one is intentionally broad: it blocks ALL three `fly.toml` files in the repo, not just `apps/backend-rag/fly.toml`, which is over-inclusive but the safe direction for a security gate per the hook's own header comment). Server-side: `apps/backend-rag/fly.toml` (the only one CLAUDE.md's deploy doctrine actually means — see #16) has a CODEOWNERS label, but branch protection has **`require_code_owner_reviews: false`, `required_approving_review_count: 0`** (live `gh api` pull) — the label requests a review nobody is required to give. `hot-zone-pr-gate.yml` also matches it into `HOTZONE_MATCH`, but that flag only feeds a `continue-on-error: true` Redis lease check (CI runners can't reach the lease store anyway) — never a block. |
 | 15 | Off-limits file: `.env*` | 🟡 (narrow) | Real `.env` files are gitignored (`.gitignore:139 .env*`) so accidental commit is structurally unlikely. `catE-sovereignty-lint.yml` checks `apps/*/.env` world-read **permissions** only (non-required) — nothing checks whether the file's *contents* were edited by automation. |
 | 16 | Off-limits file: `alembic/env.py` | 👻 | **This path does not exist anywhere in the repository.** `find . -path "*alembic/env.py"` returns nothing; the only "alembic" hit in the whole tree is `apps/bali-intel-scraper/backend/db/migrations/alembic.ini`, a different app. This repo's live migration system is `apps/backend-rag/backend/db/migrations_v2/` + `migration_manager.py` (both real, both CODEOWNERS Tier-1, per #12). The doctrine line was never updated when the migration system changed — anti-hallucination-blindness family (superscar #6) applied to the doctrine text itself, not to an agent's tool output. |
 | 17 | **Final on-disk gate** — Opus 5 at effort `max`/`xhigh`, never cascades to a weaker model, window-dead → task SUSPENDS (CLAUDE.md §5, 2026-08-20 ruling) | 🟡 (self-documented blocked) | Mechanized as a commit status `harness/fable-gate`, published by `scripts/harness_fable_gate.py` and self-defaulted to success for non-Gear-3 diffs by `harness-floor.yml` — a real, working piece of CI machinery. **Confirmed absent from `required_status_checks.contexts`** (live `gh api` pull). The workflow's own header (`harness-floor.yml:48-56`) says this is not an oversight: "adding `harness/fable-gate` to branch protection's required_status_checks ... is BLOCKED, not merely pending", naming two open technical objections and concluding "Both need a design decision." A Gear-3 PR — including one that edits an off-limits file (`modus_green_gate.py`'s "perimeter" set feeds this same gear-floor computation) — can merge today with **no gate verdict published at all**. See §4 — the top finding. |
@@ -88,21 +90,36 @@ BE OVERRIDDEN" — referenced by 17 non-test modules by name (`orchestrator_core
 precise count: `grep -rlE 'zantara_core\b' apps/backend-rag/backend --include='*.py'`, excluding
 tests and the version-suffixed sibling files `zantara_core_v2..v5.py`) and therefore live across
 every channel this system serves (WhatsApp, Telegram, Instagram, Web Chat — CLAUDE.md §12).
-Measured against the other three names on the same "off-limits" line:
+Measured against the other three names on the same "off-limits" line — **and corrected mid-audit**
+by this session's own commit output, which showed `.husky/pre-commit` actively blocking a staged
+`zantara_core.py`/`fly.toml`/`alembic/env.py` path (Gate 1, `.husky/pre-commit:404-411`): reasoning
+about the file tree said "no check"; running a real commit said otherwise. All three names that
+exist get that same client-side gate, whose own error message instructs the exact `--no-verify`
+bypass Golden Rule #12 bans — so "protected" here means "protected until an agent follows the
+gate's own suggested remediation." What actually differentiates the four:
 
-- `fly.toml` (real path: `apps/backend-rag/fly.toml`) — has a CODEOWNERS label (toothless, #14).
-- `.env*` — gitignored by convention, has a narrow perm-check (#15).
-- `alembic/env.py` — doesn't exist (#16, 👻).
-- `zantara_core.py` — **had none of the above**: no CODEOWNERS line, no CI check, no lint.
-  Scattered non-CI helper scripts reference it (`scripts/ai-dispatch.sh` preflight dispatcher,
-  `scripts/sentinel_lib/repairer.py`'s `off_limits` exclusion set, `scripts/tech_orchestrator.py`'s
-  `critical_patterns`, `scripts/modus_green_gate.py`'s gear-floor "perimeter") — every one of
-  these is advisory logic *inside a tool a session may or may not invoke*, not a gate a PR must
-  pass.
+- `fly.toml` (real path: `apps/backend-rag/fly.toml`) — client-side gate (above) **plus** a
+  CODEOWNERS label (toothless, review not required, #14) **plus** a `hot-zone-pr-gate.yml`
+  `HOTZONE_MATCH` entry (feeds only a monitor-only Redis lease check, never blocks — #14).
+- `.env*` — **not** covered by the pre-commit gate at all (its regex has no `.env` branch);
+  gitignored by convention instead, plus a narrow, non-required perm-check (#15).
+- `alembic/env.py` — matched by the pre-commit gate's regex, which makes no difference: the path
+  doesn't exist, so the pattern can never fire (#16, 👻).
+- `zantara_core.py` — the client-side gate, and **nothing else**: no CODEOWNERS line (so not even
+  a toothless review-request), no `HOTZONE_MATCH` entry, no server-side signal of any kind before
+  this PR. Scattered non-CI helper scripts also reference it (`scripts/ai-dispatch.sh` preflight
+  dispatcher, `scripts/sentinel_lib/repairer.py`'s `off_limits` exclusion set,
+  `scripts/tech_orchestrator.py`'s `critical_patterns`, `scripts/modus_green_gate.py`'s gear-floor
+  "perimeter") — every one of these is advisory logic *inside a tool a session may or may not
+  invoke*, not a gate a PR must pass, and none of them is server-side either.
 
-An undeclared edit here is an undeclared change to the bot's jailbreak defenses, silently, across
-every live surface — the highest blast-radius, cheapest-to-close gap this audit found with a
-clean, low-risk guard shape (exact single-path match, no content heuristics). Built in §3.
+It remains the thinnest-protected of the four real names — the only one where the sole existing
+signal is the single, bypassable, client-side gate, with nothing behind it. An undeclared edit that
+bypasses (or simply never runs) that one gate is an undeclared change to the bot's jailbreak
+defenses, silently, across every live surface — the highest blast-radius, cheapest-to-close
+server-side gap this audit found, with a clean, low-risk guard shape (exact single-path match, no
+content heuristics). Built in §3, as the first server-side signal for this file — deliberately not
+a replacement for the existing client-side gate, which stays exactly as bypassable as before.
 
 ---
 
@@ -178,8 +195,9 @@ is the single cheapest, highest-leverage, cleanest-guard-shape gap the way `zant
    `merge-queue-watch.yml`'s armed-but-stuck detector) — extending either to "PR open >Nh, author is
    an agent identity, no auto-merge armed, no `operator[...]` label" is a natural next PR, not
    attempted here (scope discipline, §3).
-3. **`zantara_core.py` had zero visibility before this session** (#13). Closed this PR, non-required
-   (§3).
+3. **`zantara_core.py` had zero server-side visibility before this session, and its only existing
+   protection is a client-side gate whose own remediation path is the exact bypass command Golden
+   Rule #12 bans** (#13). First server-side signal closed this PR, non-required (§3).
 4. **PII/OSINT cleartext-to-cloud boundary for ordinary chat text** (#18). Self-declared by the
    doctrine itself, not a new finding — ranked here for blast radius (client PII), not novelty.
 5. **PricingTool-hardcode has no repo-wide guard** (#3). Real client-money risk; not built here
@@ -268,6 +286,19 @@ has no `zantara_core.py` line and does have `fly.toml` at lines 77-78 (§2).
    Guilt tests added for the literal placeholder and five siblings; a mutation check (temporarily
    reasoning through the regex without the denylist) confirmed the placeholder would otherwise have
    passed.
+
+**A fifth correction, not from Kimi — from running this session's own commit.** The pre-fix draft
+(and Kimi's review of it) both said `zantara_core.py` had "no CI check, nothing" beyond scattered
+non-blocking helper-script references. Committing this very PR's files printed `.husky/pre-commit`
+actively blocking on staged off-limits paths (Gate 1) — a real, live, blocking client-side gate
+that had gone unnoticed by grepping `.github/workflows/` and CODEOWNERS, because it lives in
+neither. Corrected in rows #13/#14 and §2: the honest finding was never "zero protection", it was
+"the only protection is one bypassable client-side gate, and the bypass it names is a banned
+command" — a more precise and, if anything, more load-bearing version of the same conclusion. Left
+in as a demonstration of the discipline this whole document argues for: reasoning about a file tree
+is not the same as running the thing, and this session's own anti-hallucination rule ("mai citare
+output di un tool senza averlo eseguito in QUESTO turn") caught a gap in its own earlier reasoning
+only because a real command was run, not because the earlier claim was double-checked harder.
 
 **Raised, not accepted as a fix in this PR** — recorded rather than silently dropped:
 
