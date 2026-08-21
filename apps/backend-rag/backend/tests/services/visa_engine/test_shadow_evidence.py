@@ -237,12 +237,18 @@ async def shadow_evidence_schema(db_pool: asyncpg.Pool, visa_schema: None) -> As
     migration 264 in `_schema_versions` (executed_at recorded) while the
     physical `visa_decision_legal_hold_events` table is absent — the same
     out-of-band, ledger-diverging teardown happened here too, at some
-    point, from ordinary local test runs. Files that touch
-    `visa_decision_legal_hold_events` via raw SQL without restoring it (not
-    fixed here — a separate question, left for whoever picks this up
-    next): ``test_write_substrate.py``, ``test_evaluate_endpoint.py``,
-    ``test_privacy_operations.py`` (all under
-    ``backend/tests/services/visa_engine/``).
+    point, from ordinary local test runs. Files that reference
+    `visa_decision_legal_hold_events` (all under
+    ``backend/tests/services/visa_engine/``): only ``test_evaluate_endpoint.py``,
+    whose own ``evaluate_schema`` fixture already rolls 264 back existence-guarded
+    and re-applies its forward, so it is not a source of the damage. Re-measured
+    2026-08-21 against the current tree while teaching ``test_shadow_match.py`` the
+    same lesson: ``test_write_substrate.py`` and ``test_privacy_operations.py``,
+    named here when this note was written, carry ZERO occurrences of
+    ``legal_hold_events`` or ``264`` — the first provisions its own private
+    per-test database and never reads migration 264, the second opens no database
+    connection at all. Left uncorrected, this sentence sends whoever picks this up
+    next hunting two innocent files.
     """
     forward_252, rollback_252 = _read_migration(_MIGRATION_252_PATH, 252)
     forward_255, rollback_255 = _read_migration(_MIGRATION_255_PATH, 255)
