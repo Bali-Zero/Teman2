@@ -217,7 +217,7 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     """Sanity: the KBLI gold-set rule is path-scoped to kbli-gold-all.json
     only — not the other KBLI files, which stay on the closed-writer-set
     path rules in AUTO_APPROVE_RULES."""
-    assert len(CONTENT_KEYED_RULES) == 12  # +1: infra/llm-credentials/declared.json sha256_16 (2026-08-12)
+    assert len(CONTENT_KEYED_RULES) == 13  # +1: infra/llm-credentials/declared.json sha256_16 (2026-08-12)
     # +1: apps/backend-rag/backend/scripts/visa_engine/gold_replay_driver.py public_key (2026-08-13)
     # +1: research/visa/2026-08-12-gold-replay-live-report.json payload_sha256 (2026-08-13)
     # +1: scripts/lint_telegram_tokens.py KNOWN_COMPROMISED sha256[:16] key (2026-08-14)
@@ -225,6 +225,7 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     # +1: fold_pack_seq10.py seq-9 chain anchor exact-value pin (2026-08-19)
     # +1: fold_pack_seq11.py seq-10 chain anchor exact-value pin (2026-08-20)
     # +1: fold_pack_seq12.py seq-11 chain anchor exact-value pin (2026-08-20)
+    # +1: scripts/kbli_bench/results/p2b_score.json corpus_sha256 integrity anchor (2026-08-21, PR #4422)
     path_pat, _content_pat, reason = CONTENT_KEYED_RULES[1]
     assert path_pat.search(KBLI_GOLD_ALL)
     assert not path_pat.search("apps/mouth/data/KBLI_2025_FINAL_CLEAN.json")
