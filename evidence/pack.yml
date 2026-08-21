@@ -1,97 +1,174 @@
 brief_ref: evidence/brief.yml
 plan_ref: "codex-spalla hook wrote credentials to a world-readable log (2026-08-21)"
 diff:
-  net_lines: "+539/-251 (net +288) for the whole PR diff at merge-base 002ba8e2a..HEAD, measured with `git diff --numstat 002ba8e2a..HEAD | awk '{a+=$1;d+=$2} END{print a, d}'`; code +128/-2, tests +257/-0, evidence +147/-248, registry +7/-1"
+  net_lines: "+890/-252 (net +638) at merge-base 002ba8e2a..HEAD, measured LAST with `git diff --numstat 002ba8e2a..HEAD` and iterated to a fixed point."
   behaviour_change: "none to trigger logic; the log's mode and logged value change by design"
 receipts:
-  - claim: "The live log held real OAuth token material, world-readable. Magnitude by RUN LENGTH, not line count: 14 matching lines, histogram 8x10/5x13/1x46/1x87/1x108 -> 3 runs with secret material: 1 whole token + 2 truncation-clipped partials"
-    cmd: "grep -c 'sk-ant-oat' ~/logs/codex-spalla-trigger.jsonl (-> 14); longest token-shaped run via grep -oE | awk length (-> 108); stat -f '%Lp' (-> 644)"
+  - claim: "The live log held real OAuth token material, world-readable. Magnitude by RUN LENGTH, not line count: 3 runs with secret material -- 1 whole token + 2 truncation-clipped partials"
+    cmd: "grep -c on the literal (-> 14 at this instant); longest token-shaped run via grep -oE | awk length (-> 108); stat -f '%Lp' (-> 644)"
     exit: 0
     ts: "2026-08-21T15:56:47Z"
     seat: "session (m5)"
   - claim: "Magnitude of the 3 secret-bearing runs re-measured by END POSITION inside the 200-char logged field, not by length alone: only the 108-char run ends short of the field's end (complete token); the 87-char and 46-char runs both end EXACTLY at char 200 (the truncation boundary) -- truncation-clipped partials, not two more whole tokens"
-    cmd: "python3: json.loads each matching line's target field, locate the sk-ant-oat run, compare match.end() to len(target) and to the 200-char cap -- no value printed, only lengths/offsets/booleans"
+    cmd: "python3: json.loads each matching line's target field, locate the run, compare match.end() to len(target) and to the 200-char cap -- no value printed, only lengths/offsets/booleans"
     exit: 0
     ts: "2026-08-21T19:49:52Z"
     seat: "implementer (subagent), then INDEPENDENTLY re-measured by the session at 2026-08-21T19:52Z on the live file: 3 runs >=40 chars (46/87/108); the 46 and 87 both end at offset 200 == field length (truncation-clipped), the 108 ends at offset 151 in a 200-char field (complete). Same conclusion, different hands (#4547)"
-  - claim: "Containment applied to the live file ahead of the fix"
-    cmd: "chmod 0600 ~/logs/codex-spalla-trigger.jsonl; stat -f '%Lp' (-> 600); no .bak siblings; it is the only file in ~/logs with such material"
+  - claim: "The quoted LINE counts are an INSTANT, not a fact -- this hook logs the greps that measure it, so each measurement inflates the next. The SECRET-BEARING conclusion is what is stable"
+    cmd: "python3, needle assembled from fragments so the probe's own log line cannot match it: 333,427 lines, 24 matching (was 14 at 15:56Z), histogram 20x10/5x13/1x46/1x87/1x108; runs >=40 chars still exactly (46,end200,len200), (87,end200,len200), (108,end151,len200)"
+    exit: 0
+    ts: "2026-08-21T20:28:09Z"
+    seat: "session (m5), on its own earlier number"
+  - claim: "Containment applied to the live file ahead of the fix, and still in force"
+    cmd: "chmod 0600 ~/logs/codex-spalla-trigger.jsonl; stat -f '%Lp' (-> 600, re-verified 2026-08-21T20:27Z on an 83,818,184-byte / 333,425-line file); no .bak siblings; it is the only file in ~/logs with such material"
     exit: 0
     ts: "2026-08-21T15:56:47Z"
     seat: "session (m5)"
-  - claim: "The registered hook path is the REPO copy — no HOME fork (superscar #1 ruled out)"
+  - claim: "The registered hook path is the REPO copy -- no HOME fork (superscar #1 ruled out)"
     cmd: "ls ~/.claude/hooks/codex-spalla-trigger.sh (-> No such file); grep settings.json (-> CLAUDE_PROJECT_DIR/.claude/hooks/codex-spalla-trigger.sh)"
     exit: 0
     ts: "2026-08-21T15:56:47Z"
     seat: "session (m5)"
-  - claim: "Guilt+innocence suite passes against the fixed hook: 11 guilt, 9 innocence, 1 mode (widened from 3 guilt/1 innocence/1 mode -- the gate's central finding was 10 guilt against only 1 innocence, so 8 innocence forms + 1 Bearer guilt form were added)"
-    cmd: "bash scripts/tests/test_codex_spalla_trigger_redaction.sh"
+  - claim: "THE SECURITY DEFECT the Gear-3 gate returned REWORK-BUILD for: the segment-anchored matcher leaked 12 of 16 probed forms IN FULL. Reproduced before touching anything, then re-measured after: 12/23 guilt forms leaking BEFORE, 0/23 AFTER; innocence 0/9 over-matched in both"
+    cmd: "extract the hook's embedded python verbatim, drive the 23-case guilt corpus + 9-case innocence corpus through it; leaking set BEFORE = APIKEY= apikey= apiKey= AUTHTOKEN= SECRETKEY= accesskey= mytoken= TOKENS= pass= auth= JSON api_key URL-userinfo; all synthetic values"
     exit: 0
-    ts: "2026-08-21T19:49:52Z"
-    seat: session (m5), re-run independently of the implementer
-  - claim: "TARGETED mutation removing ONLY the suffix-segment wildcard `(?:[_-][A-Za-z0-9]+)*` fails exactly the suffixed-var case, and the suite exits non-zero"
-    cmd: "python3 in-place edit removing the wildcard from the hook; bash scripts/tests/test_codex_spalla_trigger_redaction.sh (rc measured WITHOUT a pipe -- a pipe returns tail's rc, W97)"
-    exit: 1
-    ts: "2026-08-21T19:49:52Z"
+    ts: "2026-08-21T20:22Z (before) / 2026-08-21T21:09Z (after)"
     seat: "session (m5)"
-  - claim: "Hook restored to the exact pre-mutation diff after the mutation test; verified by `git diff` matching the original intended narrowing byte-for-byte (a first restore attempt via a /tmp backup silently failed because $$ differs across separate Bash tool invocations -- caught by re-diffing, not assumed); suite green again"
-    cmd: "git diff .claude/hooks/codex-spalla-trigger.sh (-> matches intended diff exactly); bash scripts/tests/test_codex_spalla_trigger_redaction.sh (-> rc 0)"
+  - claim: "A vocabulary-bounded fix would STILL have leaked PGPASSWORD= -- 99 occurrences in the live log -- which is why the shipped matcher splits by WORD: any prefix for TOKEN/SECRET/PASSWORD/PASSWD/CREDENTIAL, bounded vocabulary for KEY only"
+    cmd: "replay v1/v2/candidate/final over all 333,603 target fields of the live log in-process; report only counts and matched NAMES, never values"
     exit: 0
-    ts: "2026-08-21T19:49:52Z"
+    ts: "2026-08-21T20:46:17Z"
+    seat: "session (m5) -- the finding came from the real corpus, not from imagination: the session's own guessed hole list (AWSKEY, DBPASSWORD) missed PGPASSWORD entirely, and PGPASSWORD outnumbered every guessed form 99:0"
+  - claim: "Over-match measured rather than hoped: on the real 333,603-line log this matcher rewrites 2290 lines (0.686%), the segment-only version 1253 (0.376%), the substring version 1875 (0.562%). It redacts MORE of the real corpus than the version rejected for over-matching, along different axes (297 URL-userinfo, ~210 bare-generic auth/pwd/pass, ~120 wide-suffix)"
+    cmd: "same in-process replay; v3-only hits characterised by matched NAME and by (separator, value shape, len>20) -- no value printed"
+    exit: 0
+    ts: "2026-08-21T21:08:37Z"
     seat: "session (m5)"
-  - claim: "The optional leading `(?:--?)?` in the variable-name regex does not widen coverage AND does not change the redacted output at all -- a leading dash is neither alnum nor `.`, so the negative lookbehind already lets the match start right after it either way. Driven side-by-side (with vs without `(?:--?)?`) through the real hook across 22 cases (the full guilt+innocence corpus plus flag-form probes): zero output differences"
-    cmd: "cp hook to scratch, remove `(?:--?)?` only; diff each case's logged target between the two hooks"
+  - claim: "The LEFT wildcard `(?:[A-Za-z0-9]+[_-])*` and the leading `(?:--?)?` were both measured DEAD and both deleted. The lookbehind does the left-hand work and the replacement re-emits group(1) verbatim, so whatever precedes the keyword survives untouched either way"
+    cmd: "drive with/without each construct side by side: left wildcard 0/44 outputs differ; dash group 0/174 outputs differ (whole guilt+innocence corpus plus every vocabulary compound under six lead-ins: bare, -, --, x--, a-b-, foo---)"
     exit: 0
-    ts: "2026-08-21T19:49:52Z"
-    seat: "implementer (subagent) measured the 22-case corpus; the session then tried to BREAK the finding with 6 adversarial dash forms it had not covered (--token=, -key=, x--token=, a-b--API_KEY=, foo---token=, TOKEN=) -- 0/6 differed. The session predicted x--token= would lose a dash and was WRONG: an unconsumed dash before the match span stays in the string either way, so the outputs coincide. Two hands, one conclusion (#4547)"
+    ts: "2026-08-21T20:41Z / 2026-08-21T21:02Z"
+    seat: "session (m5). The dash group was ALSO the only mutant nothing could kill in the first mutation run -- dead weight seen from the test side. Deleting it left 0 unkillable constructs"
+  - claim: "Guilt+innocence+mode suite passes against the fixed hook: 77 cases, 63 guilt / 12 innocence / 2 mode (from 21: 11/9/1)"
+    cmd: "bash scripts/tests/test_codex_spalla_trigger_redaction.sh (rc measured WITHOUT a pipe -- a pipe returns tail's rc, W97)"
+    exit: 0
+    ts: "2026-08-21T21:09Z"
+    seat: "session (m5)"
+  - claim: "MUTATION SET: 54 mutants, 54 KILLED, 0 survivors. Every rule (4), every alternation entry (5 wide words, 21 vocabulary prefixes, 3 bare generics, 3 value alternations), every optional quantifier (plural S?, suffix chain, optional PRE, optional quote), the lookbehind, the case-insensitive flag, the colon separator, BOTH mode defenses, and the redact-before-truncate ORDERING each have at least one case that fails without them. Two mutants are OVER-match mutants (widening KEY to an open prefix, adding KEY to the wide set) and are killed by the innocence corpus, not the guilt corpus"
+    cmd: "python3 driver, PYTHONDONTWRITEBYTECODE=1 (W121): rewrite the hook in place per mutant, run the suite, restore, verify sha256 of the restored file matches the pre-run hash"
+    exit: 0
+    ts: "2026-08-21T21:07Z"
+    seat: "session (m5). An earlier 60-mutant run on an intermediate design left 21 SURVIVORS -- the wide-word branch had silently subsumed most of the vocabulary. That is what motivated collapsing four NAME branches into three; the survivors were the evidence, not a nuisance"
+  - claim: "The three properties the gate found unpinned now each fail their mutant: deleting the double-quoted value alternation fails 4 cases, the single-quoted one 1 case, the explicit `chmod 0600` fails the new pre-existing-0644 mode case (measured after: 644), and reordering to `sys.stdin.read()[:200]` fails the new straddle case"
+    cmd: "included in the 54-mutant run above; the straddle case is a 251-char command whose quoted secret starts at char 190, so truncate-first leaves chars 190..199 in cleartext"
+    exit: 0
+    ts: "2026-08-21T21:07Z"
+    seat: "session (m5)"
 tests:
-  - "scripts/tests/test_codex_spalla_trigger_redaction.sh — 21 named cases, 11 guilt / 9 innocence / 1 mode, run against the REAL hook with a temp HOME."
+  - "scripts/tests/test_codex_spalla_trigger_redaction.sh -- 77 named cases, 63 guilt / 12 innocence / 2 mode, run against the REAL hook with a temp HOME. 54/54 mutants killed."
 static:
   - "actionlint exit 0 on guard-conformance.yml"
   - "shellcheck clean on both the hook and the test"
   - "check_guard_conformance.py -> 0 violations"
 runtime_proof:
   - "The hook is the runtime: the suite invokes the real file, not a copy or a mock, and asserts on the actual log it writes."
+  - "The matcher was additionally replayed over the real 333,603-line production log, not only over hand-written cases -- which is what surfaced PGPASSWORD (99 occurrences) that no hand-written corpus had thought of."
 dissent:
   - seat: implementer subagent (sonnet, fresh context)
-    objection: "The conformance checker's initial PASS was FALSE — is_armed() matched the substring 'scripts/tests/' present in 31 other workflow files, so the registration passed without any workflow actually executing the new .sh test. scripts-tests-sweep.yml collects only test_*.py via pytest and is continue-on-error anyway. This is W81 theater: armed on paper, executed by nothing."
+    objection: "The conformance checker's initial PASS was FALSE -- is_armed() matched the substring 'scripts/tests/' present in 31 other workflow files, so the registration passed without any workflow actually executing the new .sh test. scripts-tests-sweep.yml collects only test_*.py via pytest and is continue-on-error anyway. This is W81 theater: armed on paper, executed by nothing."
     status: CONFIRMED
   - seat: session (m5), on its own measurement
-    objection: "I first recorded the mutated suite as exiting 0, i.e. a test that fails loudly but reports success. False: I had captured tail's exit code through a pipe (W97). Re-measured without the pipe: rc=1. Nearly logged a fabricated defect against the implementer's work."
+    objection: "I first recorded the mutated suite as exiting 0, i.e. a test that fails loudly but reports success. False: I had captured tail's exit code through a pipe (W97). Re-measured without the pipe: rc=1."
     status: RETRACTED
   - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
-    objection: "The redactor closed a SUFFIX off-by-one and opened a PREFIX one of the same family: the variable-name branch required >=1 char before the keyword, so `CLAUDE_CODE_OAUTH_TOKEN_1=` matched while a bare `TOKEN=`/`KEY=`/`SECRET=`/`PASSWORD=` did not. Lowercase names, `--flag=` and header `Name: value` forms also leaked. Driven live through the real hook, 6 leaking cases."
+    objection: "The redactor closed a SUFFIX off-by-one and opened a PREFIX one of the same family: a bare `TOKEN=`/`KEY=`/`SECRET=`/`PASSWORD=` did not match. Lowercase names, `--flag=` and header `Name: value` forms also leaked. Driven live through the real hook, 6 leaking cases."
     status: CONFIRMED
   - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
-    objection: 'The prose claimed "11 real sk-ant-oat values, 108 chars each" in four artifacts, and the residual-risk and rotation decision hang on it. Reconstructed by run length: only ONE run is 108 chars; the histogram is 8x10/5x13/1x46/1x87/1x108, so most matching lines carry the bare literal and no secret. A LINE count was restated as a VALUE count and the maximum as "each" — in the very brief that claims run-length discipline as its method.'
+    objection: 'THE SECURITY DEFECT: the segment-anchored fix over-corrected into a serious UNDER-match. 12 of 16 probed forms leak IN FULL -- APIKEY= apikey= apiKey= AUTHTOKEN= SECRETKEY= accesskey= mytoken= TOKENS= pass= auth=, plus a JSON `{"api_key": "<v>"}` body and a `postgres://user:<v>@db` URL. Cause: the right-side rule demands a `_`/`-` delimiter and the lookbehind forbids matching mid-word, so undelimited compounds never match at all.'
+    status: CONFIRMED
+  - seat: session (m5), on the gate's own proposed design
+    objection: "The gate's prescribed bounded prefix vocabulary closes all 12 forms and still leaks PGPASSWORD= -- 99 occurrences in the live log, more than every hypothetical hole the session had guessed combined. A vocabulary can only contain words someone thought of, and nobody thinks of `PG`. Adopted a stricter variant: any prefix for the five wide words, vocabulary for KEY alone, because KEY is the one word that routinely ends an innocent identifier."
+    status: CONFIRMED
+    resolution: "design widened BEYOND the gate's prescription -- vocabulary for KEY only, open prefix for the five wide words"
+  - seat: mutation run (54 mutants), on the session's own first widened design
+    objection: "21 of 60 mutants SURVIVED: with a wide-word branch present, most of the prefix vocabulary and five of the six credential words were redundant -- deleting them changed nothing. An alternation nothing can fail on is dead weight, exactly like the two wildcards deleted above."
+    status: CONFIRMED
+    resolution: "four NAME branches collapsed to three; mutation re-run 54/54 killed, 0 survivors"
+  - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
+    objection: 'The prose claimed "11 real sk-ant-oat values, 108 chars each" in four artifacts. Reconstructed by run length: only ONE run is 108 chars. A LINE count was restated as a VALUE count and the maximum as "each".'
     status: CONFIRMED
   - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
-    objection: "Redact-before-truncate is not strictly protective, as the comment implied. Redaction SHORTENS the string and pulls previously-truncated bytes into the 200-char window — proven on a 277-char command with a secret at char 253 that truncate-only had cut off."
+    objection: 'The corrected magnitude ("2 whole tokens") was itself imprecise: measured by END POSITION, the 87- and 46-char runs both end EXACTLY at char 200, the field cap -- truncation artifacts, not two more complete secrets. True statement: 1 whole token + 2 truncation-clipped partials.'
     status: CONFIRMED
   - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
-    objection: "check_guard_conformance's is_armed() is substring-based and cannot detect deletion of the run: step that executes this test — verified by simulating the removal, which still reported armed. The executor is genuine today; its removal would not be caught."
+    objection: "Volatile counts (14 lines matching, 13 bare) were already stale -- 23/24 today, because the hook logs the grep that measures it. Anchor every volatile count to its measurement instant, or drop it and keep only the stable conclusion."
+    status: CONFIRMED
+    resolution: "re-measured 24 matching lines at 2026-08-21T20:28Z with a needle assembled from fragments so the probe could not inflate its own denominator; volatile counts dropped from all four artifacts in favour of the stable conclusion"
+  - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
+    objection: "Redact-before-truncate is not strictly protective: redaction SHORTENS the string and pulls previously-truncated bytes into the 200-char window. Proven on a 277-char command with a secret at char 253."
     status: CONFIRMED
   - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
-    objection: 'The corrected magnitude claim ("3 runs carry secret material, 2 of whole-token length") was itself imprecise: "whole-token length" was inferred from raw run LENGTH (87 and 46 chars), not from where the run ends. Reconstructed by END POSITION inside the 200-char logged field: the 108-char run ends at char 151, well short of the field''s end -- a complete token. The 87-char and 46-char runs both end EXACTLY at char 200, the field''s hard cap -- that is what a token gets cut off by truncation looks like, not evidence of two more full-length secrets. True statement: 1 whole token + 2 truncation-clipped partials.'
+    objection: "check_guard_conformance's is_armed() is substring-based and cannot detect deletion of the run: step that executes this test -- verified by simulating the removal, which still reported armed. The executor is genuine today; its removal would not be caught."
     status: CONFIRMED
   - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
-    objection: "The suite shipped with 10 guilt cases and only 1 innocence case for a matcher that had just been WIDENED from a bounded-substring form to a segment-anchored-but-still-substring form. Guilt coverage without a matching innocence corpus does not demonstrate the widening is safe (cicatrix #3, guard-over-match)."
+    objection: "The suite shipped with 10 guilt cases and only 1 innocence case for a matcher that had just been widened. Guilt coverage without a matching innocence corpus does not demonstrate the widening is safe (cicatrix #3)."
     status: CONFIRMED
   - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
-    objection: "The comment's closing line credited an optional leading `(?:--?)?` with helping 'close the class' of coverage. Measured false: a leading dash is neither alnum nor `.`, so the negative lookbehind already permits the match to start immediately after it with or without that group. Removing `(?:--?)?` produced byte-identical redacted output across 22 cases including `--token=`/`-key=` flag forms -- it is not a coverage lever, and (contrary to the implementer's own guess) not even a readability lever, since the dashes survive untouched in the output either way."
+    objection: "The comment claimed the wildcards on BOTH SIDES of the keyword were load-bearing. Measured false for the LEFT one: the lookbehind does that work and the replacement re-emits group(1) verbatim. Only the RIGHT wildcard is load-bearing."
+    status: CONFIRMED
+    resolution: "left wildcard DELETED (0/44 output differences); the same measurement applied to the leading `(?:--?)?` (0/174) deleted that too"
+  - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
+    objection: "The innocence corpus was claimed to span TOKEN/KEY/SECRET/etc substrings, but all 30 keyword occurrences were key/Key/KEY."
+    status: CONFIRMED
+    resolution: "three NON-KEY innocence forms added: PasswordAuthentication=no, TOKENIZER=fast, -k 'secret_scanning'"
+  - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
+    objection: "The dot-lookbehind claim was scoped wrong: `jq '.api_key = 1'` and `cfg.api_key = 'x'` DO get redacted -- only a SINGLE-SEGMENT attribute access is innocent."
+    status: CONFIRMED
+    resolution: "claim rescoped to a SINGLE-SEGMENT attribute access, in the hook comment and in the innocence case label"
+  - seat: "gear3-final-gate (opus 5, fresh context, round 3 on 9ac5e3956) — REWORK-BUILD"
+    objection:
+      "The narrowing traded over-match for a serious UNDER-match: 12 of 16 probed forms leaked in full,
+      including APIKEY= apikey= apiKey= AUTHTOKEN= SECRETKEY= accesskey= mytoken= pass= auth=, JSON
+      api_key, and URL userinfo. Cause: the right-side rule demanded a delimiter, so undelimited compounds
+      never matched at all. Worse, three properties the PR called load-bearing survived deletion with the
+      suite green -- quoted values, the explicit chmod, and redact-before-truncate -- and two of those
+      mutants leaked a secret in full. The hook was sound; the PROOF was not."
+    status: CONFIRMED
+  - seat: "session (m5), verifying the gate before ordering a rebuild"
+    objection:
+      "Re-measured rather than accepted (W65): 12/16 forms confirmed leaking through the real hook. Then
+      re-measured AFTER the rebuild, driving the actual hook end-to-end with synthetic values rather than
+      re-implementing its regex: 0/17 guilt leak, 0/7 innocence over-match. The five declared residuals
+      (PUBKEY= M5KEY= --pin= --otp= Authorization: Basic) were each probed and each really does still
+      leak, so the residual-risk section is accurate rather than reassuring."
+    status: CONFIRMED
+  - seat: "implementer (subagent), against the design the session prescribed"
+    objection:
+      "The bounded prefix vocabulary the session specified was insufficient, and this was found by replaying
+      candidates over the real 333,603-line log rather than by reasoning: it still leaked PGPASSWORD= 99
+      times. The session's hand-guessed hole list (AWSKEY, DBPASSWORD) had missed it entirely, 99:0. That
+      forced the split by WORD instead of by delimiter -- only KEY is vocabulary-bounded, because KEY is the
+      only credential word that routinely ends an innocent identifier (monkey, pubkey, nkeys)."
+    status: CONFIRMED
+  - seat: "session (m5), on its own mutation spot-check"
+    objection:
+      "The session's first independent mutation was a NO-OP: it replaced the first occurrence of '://',
+      which sits in a comment, not the rule -- the same trap that had already cost the earlier implementer
+      a silent non-restore. The suite passed and would have been read as a coverage hole. Redone with a
+      sha256 assertion that the file actually changed BEFORE running the suite: the real mutant is killed
+      2/77, and the restore was verified byte-identical. A mutation result obtained without proving the
+      mutation landed is not a result."
     status: CONFIRMED
 residual_risks:
-  - "Redaction only closes the shapes it can name. A secret passed POSITIONALLY with no variable
-    name (`mytool deploy s3cr3t`) is caught only if it carries a known prefix; the value branch
-    cannot see it. Stated in the hook's own comment rather than left as an implied closed class."
-  - "Redact-before-truncate widens the truncation window by shortening the string, so a secret that
-    used to fall outside the 200 chars can be pulled in. Smaller exposure, not zero."
-  - "The already-leaked material remains valid: 1 whole-token-length run (108 chars, ends at char 151) plus 2 truncation-clipped partials (87 and 46 chars, both ending exactly at the 200-char boundary). The first draft of this pack said 11 tokens -- a LINE count read as a VALUE count; a later draft said 2 whole tokens -- an end-of-truncation-window artifact read as two more complete secrets. Both caught by the Gear-3 gate; the rotation decision hangs on this number, so it is corrected rather than quietly dropped."
-  - "OVER-MATCH (cicatrix #3, the guard-over-match twin of the positional-secret blind spot above): the segment-anchored keyword match has no notion of 'is this actually a secret' -- a legitimately-named non-secret value using a `_KEY=`/`_TOKEN=`-suffixed identifier (an internal cache-partition name, a feature-flag name, ...) redacts just as hard as a real credential would. The guilt/innocence corpus proves the specific forms it enumerates stay innocent; it is not a proof that no such legitimately-named value anywhere can still trip the match. Between over-redacting a non-secret and under-redacting a real one, the hook accepts the former."
-  - "hook-innocence-gate.yml's path filter still does not cover .claude/hooks/ — the hooks that actually run from the repo's own hook dir are outside the gate that exists to prove hooks bite only the guilty. Deliberately not widened here."
+  - "SURVIVING UNDER-MATCH, each driven through the real hook rather than reasoned about: (a) `<any-prefix>KEY=` outside the bounded vocabulary -- `PUBKEY=`, `M5KEY=`, `QKEY=`, `ORIGINALAPIKEY=`, `MACHINEHMACKEY=` leak in full; their delimited twins are caught. This is the deliberate price of keeping `monkey=patch` innocent and is the ONE class where this matcher is knowingly weaker than a bare-substring one: on the live log, 40 distinct names / 136 occurrences the substring version caught and this one does not, though most (KEYWORDS 15, KEYCHAIN 12, StrictHostKeyChecking 21, MONKEYPATCH 3, ONKEYDOWN 2) were that version's own over-match. (b) Credential words outside the six: `--pin=`, `--otp=`, `--salt=`, `--cookie=`. (c) `Authorization:` with anything but `Bearer` -- `Basic <b64>` or an opaque token. (d) A POSITIONAL secret with no name (`mytool deploy s3cr3t`, `mysql -pS3cr3t`, netrc-style `password <v>`) unless it carries a known prefix. (e) An UNQUOTED value containing a space -- only the first word is redacted."
+  - "Redact-before-truncate widens the truncation window by shortening the string, so a secret that used to fall outside the 200 chars can be pulled in. Smaller exposure, not zero. Pinned in the other direction by the straddle case, which proves truncate-first is strictly worse."
+  - "The already-leaked material remains valid: 1 whole-token-length run plus 2 truncation-clipped partials. Two earlier drafts of this pack inflated that (11 tokens -- a LINE count read as a VALUE count; then 2 whole tokens -- an end-of-window artifact read as two more secrets). Both caught by the Gear-3 gate; the rotation decision hangs on this number."
+  - "OVER-MATCH (cicatrix #3), stated with its full damage rather than as value-only: the name match has no notion of whether a value is actually secret, AND (i) it swallows the rest of an unquoted value, so `sed -i 's/key=old/key=new/'` loses its second half entirely, and (ii) it NORMALISES the separator to `=`, so a header or JSON `name: value` is logged as `name=<REDACTED>`. Those lines stop being replayable commands. Concretely over-redacted today: `redis-cli --scan --pattern 'keys:*'` (1 of 35 ordinary-command probes), `PWD=/tmp`, any `FEATURE_FLAG_KEY=`. Measured rate on the real log: 2290 lines / 0.686%, higher than the 1875 / 0.562% of the version rejected for over-matching. Accepted: over-redacting a non-secret beats under-redacting a real one."
+  - "hook-innocence-gate.yml's path filter still does not cover .claude/hooks/ -- the hooks that actually run from the repo's own hook dir are outside the gate that exists to prove hooks bite only the guilty. Deliberately not widened here."
+  - "check_guard_conformance's is_armed() is substring-based, so it cannot detect deletion of the workflow step that executes this suite. The step is genuine today; its removal would not be caught by the registration."
   - "An identical UNTRACKED .codex/hooks/ copy exists in the main checkout; git does not track it, so this diff cannot fix it."
 sources:
-  - ~/logs/codex-spalla-trigger.jsonl (counted, never printed)
+  - ~/logs/codex-spalla-trigger.jsonl (counted and replayed in-process, never printed)
   - .claude/settings.json (hook registration path)
 pii_scan: clean
-size_tokens: 2800
+size_tokens: 5158

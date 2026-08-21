@@ -287,22 +287,33 @@ jobs:
 
       # codex-spalla-trigger.sh (PostToolUse hook, secret hygiene — cicatrix
       # superscar #4). Found world-readable (0644) and never redacting a
-      # logged command that can carry a credential in argv. Measured by run
-      # length, not by line count (the first draft of this note got that
-      # wrong): 3 runs carrying secret material -- 1 whole token + 2
-      # truncation-clipped partials, not "2 whole-token length" (measured by
-      # END POSITION: the two shorter runs both end EXACTLY at the 200-char
-      # truncation boundary, which is a partial cut off mid-value, not proof
-      # of a second and third full-length secret) -- sat in cleartext in
-      # ~/logs/codex-spalla-trigger.jsonl. Same discipline as the steps
-      # above: this is a `.sh` corpus, invisible to scripts-tests-sweep.yml's
-      # pytest collection (it only globs `test_*.py`) even before accounting
-      # for that workflow being continue-on-error/report-only — so the
-      # registry's is_armed() would otherwise "arm" this corpus for free via
-      # the `scripts/tests/` ancestor-directory substring already present in
-      # dozens of other workflows (W81 theater), without anything ever
-      # running it. This step is the ACTUAL executor. Not python — the .sh
-      # runner needs no extra dependency, and the hook itself is bash.
+      # logged command that can carry a credential in argv. Magnitude is
+      # stated as the conclusion that survives re-measurement, not as a count:
+      # 3 runs carrying secret material — 1 whole token plus 2
+      # truncation-clipped partials (measured by END POSITION: the two shorter
+      # runs both end EXACTLY at the 200-char truncation boundary, which is a
+      # partial cut off mid-value, not a second and third full-length secret).
+      # The raw line counts are deliberately NOT quoted here: this hook logs
+      # the greps that measure it, so they inflate on every measurement (14 at
+      # 2026-08-21T15:56Z, 24 at 20:28Z) while the 3 secret-bearing runs do
+      # not move.
+      # The suite this step runs is also the ONLY thing standing between the
+      # matcher and a repeat of its own history: it was rewritten twice, once
+      # for over-matching (a bare substring that ate 7 of 9 ordinary commands)
+      # and once for under-matching (a delimited-segment version that leaked
+      # twelve undelimited forms, and a vocabulary-bounded one that still
+      # leaked PGPASSWORD= 99 times in the live log). 77 cases, and a
+      # 54-mutant run in which every rule and every alternation is killed by
+      # at least one of them.
+      # Same arming discipline as the steps above: this is a `.sh` corpus,
+      # invisible to scripts-tests-sweep.yml's pytest collection (it only
+      # globs `test_*.py`) even before accounting for that workflow being
+      # continue-on-error/report-only — so the registry's is_armed() would
+      # otherwise "arm" this corpus for free via the `scripts/tests/`
+      # ancestor-directory substring already present in dozens of other
+      # workflows (W81 theater), without anything ever running it. This step
+      # is the ACTUAL executor. Not python — the .sh runner needs no extra
+      # dependency, and the hook itself is bash.
       - name: codex-spalla-trigger.sh secret-redaction guilt+innocence
         if: steps.relevant.outputs.run == 'true'
         run: |

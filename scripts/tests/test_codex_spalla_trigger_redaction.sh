@@ -3,51 +3,76 @@
 # hygiene (cicatrix superscar #4 — secret in the clear).
 #
 # The defect this pins: the hook logs `tool_input.command` verbatim to
-# ~/logs/codex-spalla-trigger.jsonl. Measured on the live file before the
-# fix, mode 0644 (world-readable), never redacted: 14 lines match the
-# literal `sk-ant-oat`, and the run-length histogram (8x10, 5x13, 1x46,
-# 1x87, 1x108) says 3 of those runs carry secret material -- 1 whole token
-# (the 108-char run, ending well inside the 200-char field) plus 2
-# truncation-clipped partials (the 87-char and 46-char runs, each ending
-# EXACTLY at the 200-char truncation boundary, measured by end POSITION not
-# by length alone). An earlier draft of this header said "11 values, 108
-# chars each" (a LINE count read as a VALUE count); a later draft said "2
-# whole tokens" (a truncation artifact read as two more complete secrets).
-# Both corrected by the Gear-3 gate. The fix added (a) `umask 077` + an
-# explicit `chmod 0600` for a log that already existed at the old mode
-# (`>>` does NOT change an existing file's mode), and (b) redaction of the
-# secret VALUE before truncation, so the log is safe even if a later
-# rotation/copy widens the mode again.
+# ~/logs/codex-spalla-trigger.jsonl. Measured on the live file before the fix,
+# mode 0644 (world-readable), never redacted.
 #
-# Case 2 below is the load-bearing one: the ORIGINAL redactor (a version
-# that never shipped past review) matched `TOKEN=` and missed
-# `TOKEN_1=`/`TOKEN_5=` — that exact off-by-one is how real tokens were
-# printed by a probe that believed it was redacting. Case 3b is the MIRROR
-# off-by-one, found by the Gear-3 gate on this very diff: a first fix
-# required >=1 char BEFORE the keyword, so it caught `TOKEN_1=` but missed a
-# bare `TOKEN=`. The SHIPPED regex closes both directions the same way: the
-# keyword must be a SEGMENT — delimited by `_`/`-`/string-start on the left
-# (enforced by a negative lookbehind that also excludes a preceding `.`, so
-# `foo.key = x` attribute access stays innocent) and by `_`/`-`/string-end
-# on the right (so `keyfile=`/`KEYSPACE=`/`monkey=` do NOT match — "key" is
-# not a delimited segment in any of those). A separate rule (3) in the hook
-# catches `Authorization: Bearer <value>`, which carries no keyword in a
-# variable NAME at all and so cannot be caught by the assignment-shaped rule
-# above.
+# MAGNITUDE is stated as the STABLE conclusion, not as a count, because the
+# counts are not stable: 3 runs carry secret material — 1 whole token (ends at
+# char 151 inside the 200-char logged field) plus 2 truncation-clipped partials
+# (both ending EXACTLY at char 200, the truncation boundary itself, which is
+# what a value cut off mid-token looks like). Earlier drafts of this header
+# said "11 values, 108 chars each" (a LINE count read as a VALUE count) and
+# then "2 whole tokens" (a truncation artifact read as two more complete
+# secrets); both corrected by the Gear-3 gate. The literal line counts that
+# used to be quoted here ("14 matching lines, 13 bare") were an INSTANT, not a
+# fact — re-measured at 2026-08-21T20:28Z the same file gave 24 matching lines,
+# because this hook logs the very greps that measure it. The 3 secret-bearing
+# runs did not move.
 #
-# The INNOCENCE corpus below is the gate's other central finding: the suite
-# shipped with 10 guilt cases and only ONE innocence case, for a matcher
-# that had just been WIDENED to substring-anywhere. Guilt cases without a
-# matching innocence corpus is not proof the widening is safe (cicatrix #3,
-# guard-over-match). Each innocence case below is a form that LOOKS like it
-# should trip the keyword (contains TOKEN/KEY/SECRET/etc as a substring,
-# with an `=`/`:` somewhere in the command) but must NOT be redacted,
-# because the keyword is not a delimited segment in that form.
+# The fix: (a) `umask 077` + an explicit `chmod 0600` for a log that already
+# existed at the old mode (`>>` does NOT change an existing file's mode), and
+# (b) redaction of the secret VALUE before truncation.
 #
-# Method: run the REAL hook (not a reimplementation) with a temporary HOME
-# per case, feed it a PostToolUse-shaped JSON payload on stdin via python3
-# (so a secret-looking string never has to survive bash quoting), and
-# inspect the resulting log file's content + mode.
+# ── HOW THE MATCHER IS PINNED ────────────────────────────────────────────────
+# The value branch fires on four NAME shapes plus two non-name shapes, and each
+# gets its own case(s) here, because two rounds of history show the failure mode
+# is always an off-by-one at one end of the name:
+#   a. DELIMITED SEGMENT — keyword bounded by `_`/`-`/string-start-or-end, with
+#      an optional plural `s`. v1 of this fix matched `TOKEN=` and missed
+#      `TOKEN_5=` (missing wildcard AFTER — that exact off-by-one is how a probe
+#      printed four real tokens while believing it redacted). v2 required >=1
+#      char BEFORE the keyword and missed a bare `TOKEN=` (the same off-by-one,
+#      mirrored). Both directions have cases below.
+#   b. UNDELIMITED COMPOUND — a bounded PREFIX VOCABULARY immediately followed
+#      by a credential word (`APIKEY=`, `authtoken=`, `accesskey=`, `mytoken=`),
+#      including keyword-then-keyword (`SECRETKEY=`). v2 narrowed so hard that
+#      TWELVE forms leaked in full; the vocabulary is what re-closes them
+#      without re-opening `monkey=patch` (`mon` is not in the vocabulary). Every
+#      vocabulary entry and every credential word has its own case, in the two
+#      loops below — an alternation nothing can fail on is not pinned.
+#   c. ANY alphanumeric prefix + TOKEN/SECRET/PASSWORD/PASSWD/CREDENTIAL, but
+#      NOT `KEY`. Measured, not stylistic: a bounded vocabulary still leaked
+#      `PGPASSWORD=` — 99 occurrences in the live log — because nobody lists
+#      `PG`. The five wide words practically never END an innocent identifier;
+#      `KEY` does (`monkey`, `pubkey`, `nkeys`, `topkey`), so `KEY` stays
+#      bounded and `<any-prefix>KEY=` is a NAMED, measured hole, not a claim of
+#      closure. One case per wide word below.
+#   d. BARE GENERIC — `pass=`, `pwd=`, `auth=`.
+#   plus OPTIONAL QUOTE between name and separator, so a JSON body
+#      (`-d {"api_key": "<v>"}`) is covered, not just shell/header shapes.
+#   e. URL USERINFO — `scheme://user:<secret>@host`.
+#   f. `Authorization: Bearer <v>` / bare `Bearer <v>` — no keyword in a NAME.
+# Plus three properties whose mutants used to SURVIVE (the gate deleted each and
+# the suite still passed; two of them leaked a secret in full): the QUOTED-value
+# alternations, the explicit `chmod` on a PRE-EXISTING log, and the
+# REDACT-BEFORE-TRUNCATE ordering. Each now has a case that fails without it.
+#
+# ── INNOCENCE ────────────────────────────────────────────────────────────────
+# The gate's other central finding: the suite once shipped 10 guilt cases and
+# ONE innocence case for a matcher that had just been widened. Guilt coverage
+# without a matching innocence corpus is not proof the widening is safe
+# (cicatrix #3, guard-over-match). Each innocence case is a form that LOOKS like
+# it should trip the keyword but must NOT be redacted. The corpus deliberately
+# spans more than KEY-substrings: PASSWORD (`PasswordAuthentication=no`), TOKEN
+# (`TOKENIZER=fast`) and SECRET (`-k 'secret_scanning'`) forms are here because
+# an earlier version of this header claimed "TOKEN/KEY/SECRET/etc substrings"
+# while all 30 keyword occurrences in it were `key`/`Key`/`KEY`.
+#
+# Method: run the REAL hook (not a reimplementation) with a temporary HOME per
+# case, feed it a PostToolUse-shaped JSON payload on stdin via python3 (so a
+# secret-looking string never has to survive bash quoting), and inspect the
+# resulting log file's content + mode. Every secret-shaped string below is
+# SYNTHETIC.
 set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -80,6 +105,11 @@ log_line() {  # log_line <home_dir> — last line of that HOME's log, if any
     tail -n1 "$home/logs/codex-spalla-trigger.jsonl" 2>/dev/null
 }
 
+file_mode() {  # file_mode <path>
+    python3 -c 'import os,sys;print(oct(os.stat(sys.argv[1]).st_mode & 0o777)[2:])' "$1" 2>/dev/null \
+        || stat -c '%a' "$1" 2>/dev/null
+}
+
 case_result() {  # case_result <label> <0=pass|1=fail> <category: guilt|innocence|mode>
     local label="$1" ok="$2" category="${3:?category required}"
     total=$((total + 1))
@@ -107,92 +137,196 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# assert_redacted <label> <command> <needle that must NOT survive>
+assert_redacted() {
+    local label="$1" cmd="$2" needle="$3" tmp line ok
+    tmp="$(mktemp -d)"; cleanup_dirs+=("$tmp")
+    run_hook "$tmp" "Bash" "$cmd"
+    line="$(log_line "$tmp")"
+    ok=1
+    [ -n "$line" ] && ! printf '%s' "$line" | grep -qF -- "$needle" && ok=0
+    case_result "$label" "$ok" guilt
+}
+
 # ───────────────────────────────────────────────────────────── GUILT ──
 
 # 1. A live-shaped Anthropic OAuth token inside a Bash command — the exact
 #    historical leak shape (one 108-char run in the live log, cleartext).
-tmp1="$(mktemp -d)"; cleanup_dirs+=("$tmp1")
-TOKEN1="sk-ant-oat01-$(python3 -c 'import secrets; print(secrets.token_hex(48))')"  # 96 hex + prefix, 40+ chars
-run_hook "$tmp1" "Bash" "echo hello && export X=$TOKEN1"
-line1="$(log_line "$tmp1")"
-ok=1
-[ -n "$line1" ] && ! printf '%s' "$line1" | grep -qF -- "$TOKEN1" && ok=0
-case_result "guilt-sk-ant-oat-token-not-in-log" "$ok" guilt
+#    Deliberately assigned to a NON-credential name (`X=`), so ONLY the
+#    `sk-ant-` prefix rule can catch it.
+TOKEN1="sk-ant-oat01-$(python3 -c 'import secrets; print(secrets.token_hex(48))')"
+assert_redacted "guilt-sk-ant-oat-token-not-in-log" \
+    "echo hello && export X=$TOKEN1" "$TOKEN1"
 
-# 2. SUFFIXED variable name — CLAUDE_CODE_OAUTH_TOKEN_5=, not the bare
-#    TOKEN= a naive redactor would only catch. Load-bearing (see header).
-tmp2="$(mktemp -d)"; cleanup_dirs+=("$tmp2")
-run_hook "$tmp2" "Bash" "export CLAUDE_CODE_OAUTH_TOKEN_5=somesecretvalue123"
-line2="$(log_line "$tmp2")"
-ok=1
-[ -n "$line2" ] && ! printf '%s' "$line2" | grep -qF -- "somesecretvalue123" && ok=0
-case_result "guilt-suffixed-oauth-token-var-value-not-in-log" "$ok" guilt
+# 2. SUFFIXED variable name — CLAUDE_CODE_OAUTH_TOKEN_5=, not the bare TOKEN=
+#    a naive redactor would only catch. Pins the RIGHT-side wildcard, the one
+#    measured to be load-bearing (see the hook's comment).
+assert_redacted "guilt-suffixed-oauth-token-var-value-not-in-log" \
+    "export CLAUDE_CODE_OAUTH_TOKEN_5=somesecretvalue123" "somesecretvalue123"
 
-# 3. A GitHub PAT (ghp_...) embedded in a command (e.g. a remote URL).
-tmp3="$(mktemp -d)"; cleanup_dirs+=("$tmp3")
-GHTOKEN="ghp_$(python3 -c 'import secrets; print(secrets.token_hex(18))')"  # 36 hex, real PAT length
-run_hook "$tmp3" "Bash" "git remote set-url origin https://x:$GHTOKEN@github.com/org/repo.git"
-line3="$(log_line "$tmp3")"
-ok=1
-[ -n "$line3" ] && ! printf '%s' "$line3" | grep -qF -- "$GHTOKEN" && ok=0
-case_result "guilt-github-pat-not-in-log" "$ok" guilt
+# 3. A GitHub PAT (ghp_...). NOT placed in a URL: the URL-userinfo rule added
+#    2026-08-22 would also catch it there, which would leave the `gh[pousr]_`
+#    prefix rule unpinned (a mutant deleting it would survive).
+GHTOKEN="ghp_$(python3 -c 'import secrets; print(secrets.token_hex(18))')"
+assert_redacted "guilt-github-pat-ghp-not-in-log" \
+    "echo $GHTOKEN | gh auth login --with-token" "$GHTOKEN"
 
-# 3b. PREFIX off-by-one — the twin of case 2, found by the Gear-3 gate on
-#     this very diff. The first shipped regex required at least one char
-#     BEFORE the keyword (`[A-Z][A-Z0-9_]*TOKEN`), so it caught
-#     CLAUDE_CODE_OAUTH_TOKEN_1= and MISSED a bare TOKEN=. Closing a suffix
-#     off-by-one while opening a prefix one is the same family (#3), so each
-#     of these forms gets its own case rather than one representative.
+# 3a. The fine-grained PAT prefix (github_pat_) — a SEPARATE rule, because
+#     `gh[pousr]_` cannot match it (`gh` followed by `i`). It had no guilt case
+#     at all until 2026-08-22: the rule was unfalsifiable, so deleting it was a
+#     silently surviving mutant.
+GHPAT="github_pat_11ABCDEFG0$(python3 -c 'import secrets; print(secrets.token_hex(12))')"
+assert_redacted "guilt-github-fine-grained-pat-not-in-log" \
+    "echo $GHPAT | gh auth login --with-token" "$GHPAT"
+
+# 3b. PREFIX off-by-one — the twin of case 2. v2 of the regex required at least
+#     one char BEFORE the keyword, so it caught CLAUDE_CODE_OAUTH_TOKEN_1= and
+#     MISSED a bare TOKEN=. Each credential word gets its own bare-segment case
+#     (they are alternations of one shared list — an unpinned entry can be
+#     deleted without any test failing), plus a lowercase and a --flag= form.
 for _form in \
     'export TOKEN=barePrefixSecret001' \
     'export KEY=barePrefixSecret002' \
     'SECRET=barePrefixSecret003' \
     'export PASSWORD=barePrefixSecret004' \
-    'export my_token=lowercaseNameSecret005' \
-    'curl --token=flagFormSecret006'
+    'export PASSWD=barePrefixSecret005' \
+    'export CREDENTIAL=barePrefixSecret006' \
+    'export my_token=lowercaseNameSecret007' \
+    'curl --token=flagFormSecret008'
 do
-    _tmp="$(mktemp -d)"; cleanup_dirs+=("$_tmp")
-    _needle="$(printf '%s' "$_form" | sed 's/.*=//')"
-    run_hook "$_tmp" "Bash" "$_form"
-    _line="$(log_line "$_tmp")"
-    ok=1
-    [ -n "$_line" ] && ! printf '%s' "$_line" | grep -qF -- "$_needle" && ok=0
-    case_result "guilt-prefix-and-form-variant-not-in-log [${_form%%=*}=]" "$ok" guilt
+    assert_redacted "guilt-prefix-and-form-variant [${_form##* }]" \
+        "$_form" "$(printf '%s' "$_form" | sed 's/.*=//')"
 done
 
 # 3c. Header form: a secret after a colon inside a quoted -H argument. Not a
-#     shell assignment at all, which is why the assignment-only branch of the
-#     regex missed it before.
-tmp3c="$(mktemp -d)"; cleanup_dirs+=("$tmp3c")
-run_hook "$tmp3c" "Bash" 'curl -H "X-API-Key: headerFormSecret007" https://example.test'
-line3c="$(log_line "$tmp3c")"
-ok=1
-[ -n "$line3c" ] && ! printf '%s' "$line3c" | grep -qF -- "headerFormSecret007" && ok=0
-case_result "guilt-header-form-secret-not-in-log" "$ok" guilt
+#     shell assignment at all, which is why the assignment-only branch of an
+#     earlier regex missed it.
+assert_redacted "guilt-header-form-secret-not-in-log" \
+    'curl -H "X-API-Key: headerFormSecret009" https://example.test' \
+    "headerFormSecret009"
+
+# 3d. THE GATE'S TWELVE LEAKING FORMS, verbatim. Every one of these was logged
+#     COMPLETE AND UNREDACTED by the segment-only regex, because it demanded a
+#     `_`/`-` delimiter these names do not have. This block is the regression
+#     list; the loops after it are what PIN each alternation.
+assert_redacted "guilt-gate-leak-form [APIKEY=]"    "export APIKEY=gateLeak001"    "gateLeak001"
+assert_redacted "guilt-gate-leak-form [apikey=]"    "export apikey=gateLeak002"    "gateLeak002"
+assert_redacted "guilt-gate-leak-form [apiKey=]"    "export apiKey=gateLeak003"    "gateLeak003"
+assert_redacted "guilt-gate-leak-form [AUTHTOKEN=]" "export AUTHTOKEN=gateLeak004" "gateLeak004"
+assert_redacted "guilt-gate-leak-form [SECRETKEY=]" "export SECRETKEY=gateLeak005" "gateLeak005"
+assert_redacted "guilt-gate-leak-form [accesskey=]" "export accesskey=gateLeak006" "gateLeak006"
+assert_redacted "guilt-gate-leak-form [mytoken=]"   "export mytoken=gateLeak007"   "gateLeak007"
+assert_redacted "guilt-gate-leak-form [TOKENS=]"    "export TOKENS=gateLeak008"    "gateLeak008"
+assert_redacted "guilt-gate-leak-form [--pass=]"    "mysql --pass=gateLeak009"     "gateLeak009"
+assert_redacted "guilt-gate-leak-form [--auth=]"    "curl --auth=gateLeak010"      "gateLeak010"
+assert_redacted "guilt-gate-leak-form [json api_key]" \
+    'curl -d '"'"'{"api_key": "gateLeak011"}'"'"' https://example.test' "gateLeak011"
+assert_redacted "guilt-gate-leak-form [url userinfo]" \
+    "psql postgres://appuser:gateLeak012@db.example.test/mydb" "gateLeak012"
+
+# 3d-bis. ONE CASE PER PREFIX-VOCABULARY ENTRY. The vocabulary now exists for
+#     exactly one word — `KEY` — because `KEY` is the one credential word that
+#     routinely ends an INNOCENT identifier (`monkey`, `pubkey`, `nkeys`,
+#     `topkey`, `dictkeys`), so it cannot take an open prefix without re-opening
+#     `monkey=patch`. Each entry therefore gets a `<prefix>key=` case: with a
+#     `<prefix>token=` case instead, deleting any vocabulary entry would leave
+#     the suite GREEN, because the wide-word branch would cover for it — that is
+#     exactly what the mutation run found and this loop fixes.
+_i=0
+for _pre in api auth access app client private master root admin user session \
+            refresh oauth bearer my id token secret password passwd credential
+do
+    _i=$((_i + 1))
+    _val="vocabSecret$(printf '%03d' "$_i")"
+    assert_redacted "guilt-vocabulary-prefix-with-KEY [${_pre}key=]" \
+        "export ${_pre}key=${_val}" "$_val"
+done
+
+# 3e. ANY-PREFIX + WIDE WORD. The bounded vocabulary above cannot save a prefix
+#     nobody thought to list: `PGPASSWORD=` — the standard Postgres password env
+#     var — occurs 99 times in the live 333k-line log and the vocabulary-only
+#     design leaked EVERY one of them. TOKEN/SECRET/PASSWORD/PASSWD/CREDENTIAL
+#     therefore take ANY alphanumeric prefix; `KEY` deliberately does not.
+#     `zzq`-prefixed so no vocabulary entry can cover for a deleted wide word.
+assert_redacted "guilt-any-prefix-wide-word [PGPASSWORD=]" \
+    "PGPASSWORD=pgRealWorldSecret001 psql -h db -c 'select 1'" "pgRealWorldSecret001"
+_i=0
+for _wide in token secret password passwd credential
+do
+    _i=$((_i + 1))
+    _val="widePrefixSecret$(printf '%03d' "$_i")"
+    assert_redacted "guilt-any-prefix-wide-word [zzq${_wide}=]" \
+        "export zzq${_wide}=${_val}" "$_val"
+done
+
+# 3f. PLURAL — `TOKENS=` leaked in full under the segment-only regex. Pins the
+#     optional `s` on both the segment and the compound branch.
+assert_redacted "guilt-plural-segment [TOKENS=]" \
+    "export TOKENS=pluralSecret001" "pluralSecret001"
+assert_redacted "guilt-plural-compound [apikeys=]" \
+    "export apikeys=pluralSecret002" "pluralSecret002"
+
+# 3g. BARE GENERIC names. Over-redaction is the direction this hook explicitly
+#     accepts (see the hook comment): `PWD=/tmp` is a real over-match this buys.
+assert_redacted "guilt-bare-generic [--pass=]" \
+    "mysql --pass=genericSecret001" "genericSecret001"
+assert_redacted "guilt-bare-generic [--pwd=]" \
+    "sqlcmd --pwd=genericSecret002" "genericSecret002"
+assert_redacted "guilt-bare-generic [--auth=]" \
+    "curl --auth=genericSecret003" "genericSecret003"
+
+# 3h. JSON body: the name is QUOTED, so a quote sits between the name and the
+#     `:` separator. Leaked in full until the optional quote was added.
+assert_redacted "guilt-json-quoted-name [\"api_key\": \"<v>\"]" \
+    'curl -d '"'"'{"api_key": "jsonSecret001"}'"'"' https://example.test' \
+    "jsonSecret001"
+
+# 3i. QUOTED VALUES. Until 2026-08-22 NO guilt case used one, so deleting the
+#     quoted alternations `(?:"[^"]*"|\x27[^\x27]*\x27)` was a SURVIVING mutant
+#     — and with them gone the value branch cannot match a quoted value at all
+#     (the unquoted alternative excludes `"` and `\x27`), so these two commands
+#     logged COMPLETE AND UNREDACTED. One case per quote style.
+assert_redacted "guilt-double-quoted-value" \
+    'export CLAUDE_CODE_OAUTH_TOKEN="dquotedSecret001"' "dquotedSecret001"
+assert_redacted "guilt-single-quoted-value" \
+    "export API_TOKEN='squotedSecret002'" "squotedSecret002"
+
+# 3j. URL USERINFO — `scheme://user:<secret>@host`. No credential-ish NAME
+#     anywhere, so only the dedicated rule can catch it. Uses a generic
+#     password (no known prefix) so the prefix rules cannot cover for it.
+assert_redacted "guilt-url-userinfo-password" \
+    "psql postgres://appuser:urlUserinfoSecret001@db.example.test/mydb" \
+    "urlUserinfoSecret001"
+
+# 3k. REDACT-BEFORE-TRUNCATE ordering. Reordering the hook to
+#     `sys.stdin.read()[:200]` used to be a SURVIVING mutant that leaked ~10
+#     characters of cleartext, because no guilt case had a command longer than
+#     the 200-char window. This one is 251 chars with a quoted secret starting
+#     at char 190: truncate-first leaves chars 190..199 — the marker below — in
+#     the log; redact-first leaves none of it.
+_pad="$(python3 -c 'print("x"*167)')"
+_straddle="ZZSTRADDLE$(python3 -c 'import secrets; print(secrets.token_hex(25))')"
+assert_redacted "guilt-secret-straddling-the-200-char-truncation-boundary" \
+    "echo ${_pad} && export TOKEN=\"${_straddle}\"" "ZZSTRADDLE"
 
 # 4. Bearer/Authorization — carries no keyword in a variable NAME at all, so
-#    the assignment-shaped rule above (cases 1-3c) cannot see it. Only rule 3
-#    in the hook (a dedicated Bearer/Authorization pattern) catches this.
-tmp4g="$(mktemp -d)"; cleanup_dirs+=("$tmp4g")
-run_hook "$tmp4g" "Bash" 'curl -H "Authorization: Bearer abcdefgh12345678" https://x'
-line4g="$(log_line "$tmp4g")"
-ok=1
-[ -n "$line4g" ] && ! printf '%s' "$line4g" | grep -qF -- "abcdefgh12345678" && ok=0
-case_result "guilt-bearer-token-not-in-log" "$ok" guilt
+#    the assignment-shaped rule above cannot see it. Only the dedicated
+#    Bearer/Authorization rule catches this.
+assert_redacted "guilt-bearer-token-not-in-log" \
+    'curl -H "Authorization: Bearer abcdefgh12345678" https://x' \
+    "abcdefgh12345678"
 
 # ───────────────────────────────────────────────────────── INNOCENCE ──
 
-# An ordinary command must survive INTACT — no redaction marker anywhere
-# near it. This is the guard-over-match twin (cicatrix #3): a redactor
-# broad enough to catch every guilt case above must not also eat innocent
-# command text. Each form below contains a keyword substring (TOKEN, KEY,
-# SECRET, ...) that a naive `if "keyword" in text` guard, or the ORIGINAL
-# any-substring regex this diff narrowed, would have wrongly redacted.
+# An ordinary command must survive INTACT — no redaction marker anywhere near
+# it. This is the guard-over-match twin (cicatrix #3): a redactor broad enough
+# to catch every guilt case above must not also eat innocent command text.
 
-assert_intact() {  # assert_intact <label> <home_dir> <expected substring>
-    local label="$1" home="$2" needle="$3"
-    local line ok
-    line="$(log_line "$home")"
+assert_intact() {  # assert_intact <label> <command> <expected substring>
+    local label="$1" cmd="$2" needle="$3" tmp line ok
+    tmp="$(mktemp -d)"; cleanup_dirs+=("$tmp")
+    run_hook "$tmp" "Bash" "$cmd"
+    line="$(log_line "$tmp")"
     ok=1
     if printf '%s' "$line" | grep -qF -- "$needle" \
         && ! printf '%s' "$line" | grep -q "REDACTED"; then
@@ -201,52 +335,64 @@ assert_intact() {  # assert_intact <label> <home_dir> <expected substring>
     case_result "$label" "$ok" innocence
 }
 
-tmp_i1="$(mktemp -d)"; cleanup_dirs+=("$tmp_i1")
-run_hook "$tmp_i1" "Bash" 'gh pr create --title "monkey=patch"'
-assert_intact "innocence-monkey-patch-key-substring-not-a-segment" "$tmp_i1" 'monkey=patch'
+# The eight measured v1 casualties: v1 matched the keyword as a bare substring
+# and mangled these ordinary commands.
+assert_intact "innocence-monkey-patch-key-substring-prefix-not-in-vocabulary" \
+    'gh pr create --title "monkey=patch"' 'monkey=patch'
+assert_intact "innocence-keyfile-flag-key-not-delimited-on-right" \
+    'openssl x509 --keyfile=/etc/x.pem' 'openssl x509 --keyfile=/etc/x.pem'
+assert_intact "innocence-jq-dot-key-single-segment-attribute" \
+    "jq '.key = 1' data.json" "jq '.key = 1' data.json"
+assert_intact "innocence-stricthostkeychecking-camelcase-no-delimiter" \
+    'ssh -o StrictHostKeyChecking=no pro' 'ssh -o StrictHostKeyChecking=no pro'
+assert_intact "innocence-sed-keyword-key-not-delimited-on-right" \
+    'sed -i "s/keyword=old/keyword=new/" f.txt' 's/keyword=old/keyword=new/'
+assert_intact "innocence-keyspace-env-name-key-not-delimited-on-right" \
+    'docker run -e KEYSPACE=prod myimg' 'docker run -e KEYSPACE=prod myimg'
+assert_intact "innocence-publickeypath-camelcase-no-delimiter" \
+    'npm run build -- --publicKeyPath=./pub.pem' 'npm run build -- --publicKeyPath=./pub.pem'
+assert_intact "innocence-redis-keys-command-name-no-assignment" \
+    "redis-cli KEYS '*'" "redis-cli KEYS '*'"
 
-tmp_i2="$(mktemp -d)"; cleanup_dirs+=("$tmp_i2")
-run_hook "$tmp_i2" "Bash" 'openssl x509 --keyfile=/etc/x.pem'
-assert_intact "innocence-keyfile-flag-key-not-delimited-on-right" "$tmp_i2" 'openssl x509 --keyfile=/etc/x.pem'
+# NON-KEY keyword substrings. Added 2026-08-22: this corpus was described as
+# spanning "TOKEN/KEY/SECRET/etc substrings" while every occurrence in it was
+# `key`. These three carry PASSWORD, TOKEN and SECRET substrings instead.
+assert_intact "innocence-password-authentication-camelcase-no-delimiter" \
+    'ssh -o PasswordAuthentication=no pro' 'ssh -o PasswordAuthentication=no pro'
+assert_intact "innocence-tokenizer-token-not-delimited-on-right" \
+    'make TOKENIZER=fast build' 'make TOKENIZER=fast build'
+assert_intact "innocence-secret-scanning-test-selector" \
+    "pytest -k 'secret_scanning' --maxfail=1" "pytest -k 'secret_scanning' --maxfail=1"
 
-tmp_i3="$(mktemp -d)"; cleanup_dirs+=("$tmp_i3")
-run_hook "$tmp_i3" "Bash" "jq '.key = 1' data.json"
-assert_intact "innocence-jq-dot-key-attribute-access" "$tmp_i3" "jq '.key = 1' data.json"
-
-tmp_i4="$(mktemp -d)"; cleanup_dirs+=("$tmp_i4")
-run_hook "$tmp_i4" "Bash" 'ssh -o StrictHostKeyChecking=no pro'
-assert_intact "innocence-stricthostkeychecking-camelcase-no-delimiter" "$tmp_i4" 'ssh -o StrictHostKeyChecking=no pro'
-
-tmp_i5="$(mktemp -d)"; cleanup_dirs+=("$tmp_i5")
-run_hook "$tmp_i5" "Bash" 'sed -i "s/keyword=old/keyword=new/" f.txt'
-assert_intact "innocence-sed-keyword-key-not-delimited-on-right" "$tmp_i5" 's/keyword=old/keyword=new/'
-
-tmp_i6="$(mktemp -d)"; cleanup_dirs+=("$tmp_i6")
-run_hook "$tmp_i6" "Bash" 'docker run -e KEYSPACE=prod myimg'
-assert_intact "innocence-keyspace-env-name-key-not-delimited-on-right" "$tmp_i6" 'docker run -e KEYSPACE=prod myimg'
-
-tmp_i7="$(mktemp -d)"; cleanup_dirs+=("$tmp_i7")
-run_hook "$tmp_i7" "Bash" 'npm run build -- --publicKeyPath=./pub.pem'
-assert_intact "innocence-publickeypath-camelcase-no-delimiter" "$tmp_i7" 'npm run build -- --publicKeyPath=./pub.pem'
-
-tmp_i8="$(mktemp -d)"; cleanup_dirs+=("$tmp_i8")
-run_hook "$tmp_i8" "Bash" "redis-cli KEYS '*'"
-assert_intact "innocence-redis-keys-command-name-no-assignment" "$tmp_i8" "redis-cli KEYS '*'"
-
-tmp_i9="$(mktemp -d)"; cleanup_dirs+=("$tmp_i9")
-run_hook "$tmp_i9" "Bash" "gh pr create --title fix --body ok"
-assert_intact "innocence-ordinary-command-intact-no-redacted-marker" "$tmp_i9" "gh pr create --title fix --body ok"
+assert_intact "innocence-ordinary-command-intact-no-redacted-marker" \
+    "gh pr create --title fix --body ok" "gh pr create --title fix --body ok"
 
 # ──────────────────────────────────────────────────────────────── MODE ──
 
 # A freshly created log must be born 0600 (umask 077), never 0644.
 tmp5="$(mktemp -d)"; cleanup_dirs+=("$tmp5")
 run_hook "$tmp5" "Bash" "echo fresh"
-mode="$(python3 -c 'import os,sys;print(oct(os.stat(sys.argv[1]).st_mode & 0o777)[2:])' "$tmp5/logs/codex-spalla-trigger.jsonl" 2>/dev/null \
-    || stat -c '%a' "$tmp5/logs/codex-spalla-trigger.jsonl" 2>/dev/null)"
+mode="$(file_mode "$tmp5/logs/codex-spalla-trigger.jsonl")"
 ok=1
 [ "$mode" = "600" ] && ok=0
 case_result "mode-fresh-log-is-0600-not-0644 (got: ${mode:-<unreadable>})" "$ok" mode
+
+# A PRE-EXISTING log at the old 0644 must be repaired to 0600. This is the
+# case the explicit `chmod 0600 "$LOG_FILE"` line exists for, and the ONLY one
+# that can fail if it is deleted: `umask 077` governs CREATION only, and `>>`
+# never changes an existing file's mode — so with only the fresh-log case
+# above, deleting that chmod was a SURVIVING mutant that left every
+# already-exposed log (including the real 83 MB one) world-readable forever.
+tmp6="$(mktemp -d)"; cleanup_dirs+=("$tmp6")
+mkdir -p "$tmp6/logs"
+: > "$tmp6/logs/codex-spalla-trigger.jsonl"
+chmod 0644 "$tmp6/logs/codex-spalla-trigger.jsonl"
+premode="$(file_mode "$tmp6/logs/codex-spalla-trigger.jsonl")"
+run_hook "$tmp6" "Bash" "echo preexisting"
+mode6="$(file_mode "$tmp6/logs/codex-spalla-trigger.jsonl")"
+ok=1
+[ "$premode" = "644" ] && [ "$mode6" = "600" ] && ok=0
+case_result "mode-preexisting-0644-log-repaired-to-0600 (before: ${premode:-?}, after: ${mode6:-<unreadable>})" "$ok" mode
 
 echo "---"
 if [ "$fails" -eq 0 ]; then

@@ -19,23 +19,33 @@ set -u  # NOT -e: we want to fail open, not propagate errors.
 # SECRET HYGIENE (added 2026-08-21 after a live leak; cicatrix superscar #4).
 # This hook logs `tool_input.command` verbatim. A Bash tool call can carry a
 # credential in argv, so this log is secret-bearing BY CONSTRUCTION -- and it
-# was being created world-readable (0644) and never redacted. Measured on the
-# live file, mode 0644 and still being appended to: 14 lines match the literal
-# `sk-ant-oat`, but a length histogram of the runs (8x10, 5x13, 1x46, 1x87,
-# 1x108) shows 13 are the bare literal with no secret material -- only 3 runs
-# carry any. Of those 3, magnitude is 1 whole token + 2 truncation-clipped
-# partials, not "2 whole tokens": measured by END POSITION inside the
-# 200-char logged field, the 108-char run ends at char 151 -- well short of
-# the boundary, i.e. a complete token -- while the 87-char and 46-char runs
-# both end EXACTLY at char 200, the truncation boundary itself, which is what
-# a partial cut off mid-token looks like, not proof of two more full-length
-# secrets. CORRECTED 2026-08-21 by the Gear-3 gate, twice: the first draft of
-# this comment said "11 real values, 108 chars each" (a LINE count restated
-# as a VALUE count, and the maximum restated as "each"); a later draft said
-# "2 whole tokens" (a truncation artifact restated as two more complete
-# secrets). The leak is real; the magnitude was inflated both times, in the
-# very comment that preaches counting by run length. Two independent
-# defenses, because either alone fails:
+# was being created world-readable (0644) and never redacted.
+#
+# MAGNITUDE, stated as the STABLE conclusion rather than a count, because the
+# counts here are NOT stable: 3 runs in the live log carry secret material --
+# 1 whole token plus 2 truncation-clipped partials. Measured by END POSITION
+# inside the 200-char logged field: the whole one ends at char 151, well short
+# of the field; the other two end EXACTLY at char 200, the truncation boundary
+# itself, which is what a value cut off mid-token looks like, not proof of two
+# more complete secrets.
+#
+# The line counts this comment used to quote ("14 lines match the literal
+# `sk-ant-oat`, 13 of them bare") were an INSTANT, not a fact. Re-measured on
+# the same file at 2026-08-21T20:28Z: 24 matching lines, histogram 20x10,
+# 5x13, 1x46, 1x87, 1x108 -- the bare-literal noise grew from 13 to 25 in four
+# hours because THIS HOOK LOGS THE GREPS THAT MEASURE IT, so every measurement
+# inflates the next one. The 3 secret-bearing runs did not move. Rule taken
+# from that: anchor a volatile count to its measurement instant, or quote only
+# the conclusion that survives the next measurement.
+#
+# CORRECTED 2026-08-21 by the Gear-3 gate, twice more, before the stale-count
+# correction above: a first draft said "11 real values, 108 chars each" (a LINE
+# count restated as a VALUE count, and the maximum restated as "each"); a later
+# draft said "2 whole tokens" (a truncation artifact restated as two more
+# complete secrets). The leak is real; the magnitude was inflated every time,
+# in the very comment that preaches counting by run length.
+#
+# Two independent defenses, because either alone fails:
 #   (1) umask 077 so the file can never be born readable by anyone else, plus
 #       an explicit chmod for a file that already exists at the old mode --
 #       `>>` does NOT change the mode of an existing file, so the umask alone
@@ -119,47 +129,110 @@ TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 # which pulls bytes that the 200-char window used to cut off INTO the window.
 # Proven on a 277-char command with a secret at char 253: truncate-only left it
 # out; redact-then-truncate brought a following fragment in. The ordering is
-# still right — it is the only order that can redact a secret sitting inside
-# the window at all — but it trades one exposure for a smaller one rather than
-# eliminating exposure.
+# still right -- it is the only order that can redact a secret sitting inside
+# the window at all -- but it trades one exposure for a smaller one rather than
+# eliminating exposure. Pinned by the `straddle` guilt case in the suite: a
+# 251-char command whose quoted secret starts at char 190, so truncate-first
+# leaves 10 characters of it in cleartext and redact-first leaves none.
 #
-# KNOWN BLIND SPOTS of the value branch (a redactor that claims a closed class
-# is worse than one that names its holes): it only fires on `NAME=value` or
-# `NAME: value` shapes. A secret passed positionally with no name at all
-# (`mytool deploy s3cr3t`) is NOT redacted by that branch — only the prefix
-# rules above can catch it, and only if it carries a known prefix.
+# WHAT THE VALUE BRANCH FIRES ON (three NAME shapes plus two non-name shapes --
+# an earlier version of this comment said "only `NAME=value` or `NAME: value`",
+# which was false as soon as the JSON and URL forms below were added):
+#   a. ANY alphanumeric prefix followed by TOKEN / SECRET / PASSWORD / PASSWD /
+#      CREDENTIAL, plus an optional plural `s` and an optional `_`/`-` suffix
+#      chain. Covers the bare word (`TOKEN=`), the delimited compound
+#      (`CLAUDE_CODE_OAUTH_TOKEN_5=`, matched from `TOKEN` onward -- the
+#      lookbehind does the left-hand work, so no left wildcard is needed) and
+#      the UNDELIMITED compound (`AUTHTOKEN=`, `mytoken=`, `PGPASSWORD=`).
+#   b. `KEY`, and ONLY `KEY`, restricted to a bounded PREFIX VOCABULARY (or no
+#      prefix at all): `KEY=`, `API_KEY=`, `APIKEY=`, `accesskey=`,
+#      `SECRETKEY=`. The asymmetry with (a) is measured, not stylistic. `KEY`
+#      is the one credential word that routinely ENDS an innocent identifier --
+#      `monkey`, `pubkey`, `nkeys`, `topkey`, `dictkeys` -- so an open prefix on
+#      it re-opens the exact over-match this hook was rejected for once already.
+#      The five words in (a) practically never do, and a bounded vocabulary for
+#      THEM is what leaked `PGPASSWORD=` 99 times in the live log, because
+#      nobody puts `PG` in a prefix list.
+#   c. a BARE GENERIC name: `pass=`, `pwd=`, `auth=`.
+#   plus, on any of the above, an optional quote between name and separator, so
+#   a JSON body (`-d {"api_key": "<v>"}`) is covered, not just shell/header;
+#   d. URL USERINFO (`scheme://user:<secret>@host`) -- redacts the password
+#      segment only, leaves scheme/user/host readable;
+#   e. `Authorization: Bearer <v>` / bare `Bearer <v>`, which carry no keyword
+#      in a NAME at all.
 #
-# OVER-MATCH residual risk (cicatrix superscar #3, the guard-over-match twin
-# of the under-match spot above): the keyword must be a delimited SEGMENT
-# (see below) to fire, but it is still a bare keyword match with no notion of
-# "is this actually a secret" -- a config line that legitimately names a
-# non-secret value with a `_KEY=`/`_TOKEN=`-suffixed identifier (e.g. an
-# internal cache-partition or feature-flag name) redacts just as hard as a
-# real credential. The guilt/innocence corpus in
-# scripts/tests/test_codex_spalla_trigger_redaction.sh proves the specific
-# forms it enumerates stay innocent; it is not a proof that no legitimately-
-# named non-secret value anywhere can still trip the keyword-segment match.
+# SURVIVING UNDER-MATCH, measured against this exact matcher, not guessed. A
+# redactor that claims a closed class is worse than one that names its holes:
+#   - `<any-prefix>KEY=` where the prefix is outside the vocabulary in (b):
+#     `PUBKEY=`, `M5KEY=`, `QKEY=`, `ORIGINALAPIKEY=`, `MACHINEHMACKEY=` leak
+#     in full. Their DELIMITED twins (`PUB_KEY=`, `ORIGINAL_API_KEY=`) are
+#     caught. This is the deliberate price of keeping `monkey=patch` innocent,
+#     and it is the ONE class where this matcher is knowingly weaker than the
+#     bare-substring version. Measured on the live log at 2026-08-21T21:08Z:
+#     40 distinct names / 136 occurrences that the substring version redacted
+#     and this one does not -- most (`KEYWORDS` 15, `KEYCHAIN` 12,
+#     `StrictHostKeyChecking` 21, `MONKEYPATCH` 3, `ONKEYDOWN` 2) were that
+#     version OVER-matching, but `QKEY` (19), `UKEY` (4), `M5KEY`, `PUBKEY`,
+#     `ORIGINAL*KEY` (3) and `MACHINEHMACKEY` are real credential-shaped names
+#     this hook does not cover.
+#   - Credential words outside the six in (a)+(b): `--pin=`, `--otp=`,
+#     `--salt=`, `--cookie=` all leak.
+#   - `Authorization:` with anything other than `Bearer` (`Basic <b64>`, or an
+#     opaque token with no scheme word) leaks; only the Bearer shape is caught.
+#   - A secret passed POSITIONALLY with no name at all (`mytool deploy s3cr3t`,
+#     `mysql -pS3cr3t`, netrc-style `... password S3cr3t`) is caught only if it
+#     carries a known prefix (rule 1).
+#   - An UNQUOTED value containing a space: only the first word is redacted.
+#
+# OVER-MATCH residual risk (cicatrix superscar #3, the guard-over-match twin of
+# the under-match list above). The keyword must end the NAME (as a delimited
+# segment, a vocabulary compound, or a wide-word suffix) to fire, but it is
+# still a NAME match with no notion of "is this actually a secret", and the
+# damage is not limited to the value. MEASURED on the live 333k-line log at
+# 2026-08-21T20:49Z: this matcher rewrites 2289 lines (0.686%), against 1253
+# (0.376%) for the segment-only version it replaces and 1874 (0.562%) for the
+# bare-substring version before that -- so it redacts MORE of the real corpus
+# than the version that was rejected for over-matching, along different axes
+# (297 URL-userinfo, ~210 bare-generic `auth`/`pwd`/`pass`, ~120 wide-suffix).
+# That is the accepted trade, stated as a number rather than a hope:
+#   - a legitimately-named non-secret (`FEATURE_FLAG_KEY=`, a cache-partition
+#     name, `PWD=/tmp`, `redis-cli --pattern 'keys:*'`) redacts just as hard;
+#   - the replacement SWALLOWS the rest of the unquoted value, so
+#     `sed -i 's/key=old/key=new/'` loses its second half entirely;
+#   - the replacement NORMALISES the separator to `=`, so a header or JSON
+#     `name: value` is rewritten as `name=<REDACTED>`. The log stops being a
+#     replayable command for those lines. Accepted: this is a telemetry log,
+#     not a transcript.
 # Given the choice between over-redacting a non-secret and under-redacting a
-# real one, this hook accepts the former.
+# real one, this hook accepts the former. The guilt/innocence corpus in
+# scripts/tests/test_codex_spalla_trigger_redaction.sh proves the specific
+# forms it enumerates; it is not a proof that no legitimately-named non-secret
+# value anywhere can trip the match.
 #
-# The wildcards on BOTH SIDES of the keyword are the load-bearing detail.
-# A redactor written as `TOKEN=` matches CLAUDE_CODE_OAUTH_TOKEN= and misses
-# CLAUDE_CODE_OAUTH_TOKEN_1= -- that exact off-by-one is how four tokens were
-# printed by a probe that believed it was redacting. But the first version of
-# THIS fix then required at least one char BEFORE the keyword, so it caught
-# CLAUDE_CODE_OAUTH_TOKEN_1= and missed a bare TOKEN= — the same off-by-one,
-# mirrored, found by the Gear-3 gate on this diff. Wildcards on both sides,
-# case-insensitive, are what close the class -- each side is delimited by
-# `_`/`-`/string-start-or-end, plus a negative lookbehind on the left that
-# also excludes a preceding `.` (so `foo.key = x` attribute access is
-# innocent). MEASURED, not assumed: the optional leading `(?:--?)?` does NOT
-# widen coverage and does NOT even change the redacted output -- a leading
-# `-`/`--` is neither alnum nor `.`, so the lookbehind already lets the match
-# start right after it either way. Driven side-by-side (with and without
-# `(?:--?)?`) through the real hook across the full guilt+innocence+flag
-# corpus: byte-identical output in every case, including `--token=`/`-key=`
-# flag forms. It is dead weight in this regex, not a coverage or even a
-# readability lever.
+# On the WILDCARDS. The RIGHT-side one is load-bearing. A redactor written as
+# `TOKEN=` matches CLAUDE_CODE_OAUTH_TOKEN= and misses CLAUDE_CODE_OAUTH_TOKEN_1=
+# -- that exact off-by-one is how four tokens were printed by a probe that
+# believed it was redacting. The first version of THIS fix then required at
+# least one char BEFORE the keyword, so it caught CLAUDE_CODE_OAUTH_TOKEN_1=
+# and missed a bare TOKEN= -- the same off-by-one, mirrored, found by the
+# Gear-3 gate. The LEFT side needs no wildcard at all: the negative lookbehind
+# does that work, and the replacement re-emits group(1) verbatim so whatever
+# preceded the keyword survives untouched. MEASURED, not assumed: adding back
+# `(?:[A-Za-z0-9]+[_-])*` on the left produced byte-identical output across the
+# full 44-case corpus (guilt + innocence + 12 dash/prefix probes), so it was
+# deleted. The optional leading `(?:--?)?` was the same kind of dead weight and
+# is now deleted too: a leading `-`/`--` is neither alnum nor `.`, so the
+# lookbehind already lets the match start right after it, and the unconsumed
+# dashes stay in the string either way. MEASURED across 174 cases (the whole
+# guilt+innocence corpus plus every vocabulary compound under six lead-in
+# shapes: bare, `-`, `--`, `x--`, `a-b-`, `foo---`): byte-identical output with
+# and without it. It was also the ONE mutant in this file's mutation set that
+# nothing could kill -- which is what dead weight looks like from the test
+# side. Flag forms (`--token=`, `-key=`) still redact, and have their own guilt
+# cases. The lookbehind's `.` exclusion is narrower than it
+# looks: it makes a SINGLE-SEGMENT attribute access innocent (`foo.key = x`,
+# `jq '.key = 1'`), but `jq '.api_key = 1'` and `cfg.api_key = "x"` ARE
+# redacted, because the match starts at `key` after the `_`, not at the `.`.
 TARGET_JSON="$(printf '%s' "$TARGET" | python3 -c '
 import sys, re, json
 s = sys.stdin.read()
@@ -167,15 +240,27 @@ s = sys.stdin.read()
 s = re.sub(r"sk-ant-[A-Za-z0-9_-]{8,}", "sk-ant-<REDACTED>", s)
 s = re.sub(r"gh[pousr]_[A-Za-z0-9]{8,}", "gh_<REDACTED>", s)
 s = re.sub(r"github_pat_[A-Za-z0-9_]{8,}", "github_pat_<REDACTED>", s)
-# 2. Anything ASSIGNED to a secret-ish variable name, suffixes included.
+# 2. Anything ASSIGNED to a credential-ish NAME (see the comment above for the
+#    three name shapes, the KEY asymmetry, and what this does NOT catch).
+WIDE = r"(?:TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL)"
+PRE = (r"(?:API|AUTH|ACCESS|APP|CLIENT|PRIVATE|MASTER|ROOT|ADMIN|USER|SESSION"
+       r"|REFRESH|OAUTH|BEARER|MY|ID|TOKEN|SECRET|PASSWORD|PASSWD"
+       r"|CREDENTIAL)")
+TAIL = r"S?(?:[_-][A-Za-z0-9]+)*"
+NAME = (r"(?<![A-Za-z0-9.])(?:"
+        + r"[A-Za-z0-9]*" + WIDE + TAIL   # a. ANY prefix + a wide credential word
+        + r"|" + PRE + r"?KEY" + TAIL     # b. KEY: bounded prefix, or none at all
+        + r"|(?:PASS|PWD|AUTH)"           # c. bare generic name
+        + r")")
+VALUE = r"(?:\"[^\"]*\"|\x27[^\x27]*\x27|[^\s\"\x27]+)"
 s = re.sub(
-    r"(?i)((?<![A-Za-z0-9.])(?:--?)?(?:[A-Za-z0-9]+[_-])*"
-    r"(?:TOKEN|KEY|SECRET|PASSWORD|PASSWD|CREDENTIAL)(?:[_-][A-Za-z0-9]+)*)"
-    r"\s*[=:]\s*(?:\"[^\"]*\"|\x27[^\x27]*\x27|[^\s\"\x27]+)",
+    r"(?i)(" + NAME + r")[\"\x27]?\s*[=:]\s*" + VALUE,
     lambda m: m.group(1) + "=<REDACTED>",
     s,
 )
-# 3. Bearer/Authorization, which carry no keyword in a NAME at all.
+# 3. URL userinfo: scheme://user:<secret>@host -- password segment only.
+s = re.sub(r"([a-zA-Z][a-zA-Z0-9+.-]*://[^\s:/@]+:)[^\s/@]+@", r"\1<REDACTED>@", s)
+# 4. Bearer/Authorization, which carry no keyword in a NAME at all.
 s = re.sub(
     r"(?i)\b(Authorization\s*:\s*Bearer|Bearer)\s+[A-Za-z0-9._-]{8,}",
     r"\1 <REDACTED>",

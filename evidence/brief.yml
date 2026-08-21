@@ -8,50 +8,71 @@ objective: |
   call can carry a credential in argv, so that log is secret-bearing BY CONSTRUCTION.
 
   Found live while hunting a different leak. Mode 0644 (world-readable), 83 MB, still being appended
-  to. Magnitude, measured by RUN LENGTH rather than line count: 14 lines match the literal
-  `sk-ant-oat`, and the histogram of runs is 8x10, 5x13, 1x46, 1x87, 1x108 — so 13 are the bare
-  literal with no secret material and 3 runs carry any. Of those 3, magnitude by END POSITION inside
-  the 200-char logged field is 1 whole token + 2 truncation-clipped partials, not "2 whole tokens":
-  the 108-char run ends at char 151, well short of the field's end (a complete token); the 87-char
-  and 46-char runs both end EXACTLY at char 200, the truncation boundary itself — that is what a
-  token cut off mid-value by truncation looks like, not proof of two more full-length secrets.
-  Counted, never printed.
+  to. MAGNITUDE, stated as the conclusion that survives re-measurement rather than as a count:
+  3 runs in the file carry secret material — 1 whole token plus 2 truncation-clipped partials,
+  measured by END POSITION inside the 200-char logged field (the whole one ends at char 151, well
+  short of the field; the other two end EXACTLY at char 200, the truncation boundary itself, which is
+  what a value cut off mid-token looks like). Counted, never printed.
 
-  The first draft of this brief said "11 real values, 108 chars each" — a line count restated as a
-  value count, and the maximum restated as "each". A later draft said "2 whole tokens" — a
-  truncation artifact restated as two more complete secrets. The Gear-3 gate caught both. Recorded
-  rather than quietly corrected, because the brief claims run-length discipline as its own method
-  and then did not apply it fully, and because the rotation decision hangs on this number.
+  The raw line counts are NOT stable and are therefore no longer quoted as facts: this hook logs the
+  very greps that measure it, so at 2026-08-21T15:56Z the literal matched 14 lines and at
+  2026-08-21T20:28Z it matched 24 (histogram 20x10/5x13/1x46/1x87/1x108). The 3 secret-bearing runs
+  did not move. Two earlier drafts of this brief inflated the magnitude — "11 real values, 108 chars
+  each" (a LINE count restated as a VALUE count, the maximum restated as "each") and then "2 whole
+  tokens" (a truncation artifact restated as two more complete secrets). Both caught by the Gear-3
+  gate, recorded rather than quietly corrected, because the rotation decision hangs on this number.
 
-  Fix: two independent defenses plus a guilt/innocence proof, and registration so the proof
-  actually runs.
+  Fix: two independent defenses (mode + redaction), a matcher that closes both the over-match and the
+  under-match direction, a guilt/innocence/mode corpus in which every rule and every alternation is
+  pinned by a mutant that kills it, and registration so the proof actually runs.
 constraints:
   - "The live file was chmod-ed 0600 immediately, outside this diff. That is containment, not the
     fix — a future rotation or copy recreates the exposure."
   - "Redaction must happen BEFORE truncation: a 200-char window can slice a token and leave a
     usable prefix."
-  - "The redactor must treat the keyword as a SEGMENT on BOTH sides — delimited by `_`/`-`/string
-    start-or-end, not a bare substring match. `TOKEN=` alone catches CLAUDE_CODE_OAUTH_TOKEN= and
-    MISSES CLAUDE_CODE_OAUTH_TOKEN_1= (missing wildcard AFTER); a first fix that required >=1 char
-    BEFORE the keyword caught CLAUDE_CODE_OAUTH_TOKEN_1= and missed a bare TOKEN= (missing wildcard
-    BEFORE) — that exact off-by-one, in both directions, is how a probe printed four tokens while
-    believing it redacted. The segment must ALSO be closed on the right so `keyfile=`/`KEYSPACE=`/
-    `monkey=patch` do NOT match — a keyword substring is not the same as a keyword segment, and a
-    matcher wide enough to catch every guilt shape above must not also eat innocent command text
-    (cicatrix #3, guard-over-match) — the previous version of this hook did exactly that, redacting
-    8 of 20 ordinary commands (0.56%) in a 333k-line log corpus. `Authorization: Bearer <value>` is a
-    separate shape entirely — no keyword in a variable NAME at all — and needs its own rule."
+  - 'The matcher must close BOTH directions at once, which is the whole difficulty. Three attempts
+    on this branch (none of them ever on main — see receipts) failed in alternating directions:
+    v1 matched the keyword as a bare substring and ate ordinary commands; v2 anchored it to a
+    delimited SEGMENT and then leaked twelve undelimited forms (`APIKEY=`, `AUTHTOKEN=`,
+    `SECRETKEY=`, `accesskey=`, `mytoken=`, `TOKENS=`, `pass=`, `auth=`, a JSON `"api_key"` body and
+    a `postgres://user:pw@host` URL) in full; a vocabulary-bounded v3 closed those and still leaked
+    `PGPASSWORD=` 99 times in the live log because nobody lists `PG` as a prefix. The shipped design
+    splits by WORD: TOKEN/SECRET/PASSWORD/PASSWD/CREDENTIAL take ANY prefix, `KEY` takes only a
+    bounded vocabulary — because `KEY` is the one credential word that routinely ends an innocent
+    identifier (`monkey`, `pubkey`, `nkeys`, `topkey`).'
+  - "CORRECTION (Gear-3 gate, 2026-08-22). An earlier draft of this constraint said the substring
+    version redacted `8 of 20 ordinary commands (0.56%) in a 333k-line log corpus`. That welded TWO
+    measurements with TWO different denominators into one parenthetical, receipted neither, and
+    called 8/20 = 40% `0.56%`. Split and receipted, both against named corpora: (i) ON HAND-PICKED
+    ORDINARY COMMANDS the substring version over-matches 7 of the 9 innocence-corpus commands and 6
+    of 35 ordinary-command probes, against 0/9 and 1/35 for the shipped matcher (2026-08-21T21:10Z);
+    (ii) ON THE REAL 333,603-line log it rewrites 1875 lines = 0.562%, against 1253 = 0.376% for the
+    segment-only version and 2290 = 0.686% for the shipped one (2026-08-21T21:08Z). The same draft
+    also called the substring version `the previous version of this hook`: it never existed on main.
+    It was an earlier DRAFT on this branch, superseded before merge — no released version of this
+    hook ever over-matched, because no released version redacted at all."
+  - "`Authorization: Bearer <value>` and `scheme://user:<secret>@host` carry no credential-ish NAME
+    at all and each need their own rule."
   - "No behaviour change to the hook's trigger logic: same rules, same stderr nudge, same fail-open
     posture. Only the log's mode and the logged value change."
 acceptance:
-  - "11 guilt cases (OAuth token, SUFFIXED variable name, GitHub PAT, PREFIX-form/lowercase/flag-form
-    variants, header form, Bearer/Authorization) leave no secret in the log."
-  - "9 innocence cases — an ordinary command, plus 8 forms that contain a TOKEN/KEY/SECRET/etc
-    substring without it being a delimited segment (camelCase, no-delimiter compounds, dot-attribute
-    access, a bare `KEYS` command name) — are logged intact with no spurious REDACTED marker."
-  - "A freshly created log is mode 0600, not 0644."
-  - "A targeted mutation removing ONLY the suffix wildcard makes exactly the suffixed-var case fail
-    — the test is specific, not noisy."
+  - "63 guilt cases (prefix-shaped tokens incl. both GitHub PAT families, bare and suffixed and
+    undelimited credential names, one per prefix-vocabulary entry and one per wide word, plural
+    forms, bare generics, quoted values in both quote styles, a JSON body, a URL userinfo password,
+    a secret straddling the 200-char truncation boundary, and Bearer) leave no secret in the log."
+  - "12 innocence cases are logged intact with no spurious REDACTED marker: the 8 measured casualties
+    of the substring version (`monkey=patch`, `--keyfile=`, `jq '.key = 1'`, `StrictHostKeyChecking=no`,
+    `KEYSPACE=prod`, `--publicKeyPath=`, `sed s/keyword=old/keyword=new/`, `redis-cli KEYS '*'`),
+    three NON-KEY keyword substrings (`PasswordAuthentication=no`, `TOKENIZER=fast`,
+    `-k 'secret_scanning'`) and an ordinary command. Note the SCOPE of the `jq '.key = 1'` case: the
+    lookbehind's `.` exclusion makes a SINGLE-SEGMENT attribute access innocent and nothing wider —
+    `jq '.api_key = 1'` and `cfg.api_key = 'x'` ARE redacted, because the match starts at `key` after
+    the `_`, not at the `.`. An earlier draft stated this as a general 'attribute access is innocent'
+    rule; it never was."
+  - "Both mode defenses are separately provable: a freshly created log is 0600 (umask), and a
+    PRE-EXISTING log at 0644 is repaired to 0600 (explicit chmod — `>>` never changes a mode)."
+  - "Every rule, every alternation entry, every optional quantifier and the redact-before-truncate
+    ORDERING is killed by at least one case: 54/54 mutants killed, zero survivors."
   - "The test is actually EXECUTED by a workflow, not merely referenced."
 consumer_map:
   - "`.claude/hooks/codex-spalla-trigger.sh` — runs on every PostToolUse event in this repo, via
@@ -60,16 +81,26 @@ consumer_map:
   - "`.codex/hooks/codex-spalla-trigger.sh` — an identical UNTRACKED copy exists in the main
     checkout only. Not in this diff because git does not track it; flagged in residual_risks."
 risks:
-  - "The already-leaked material is NOT invalidated by this diff: 1 whole-token-length run (108
-    chars) plus 2 truncation-clipped partials (87 and 46 chars, each ending exactly at the 200-char
-    boundary). Rotation is a credential action only the owner can perform; containment (0600)
-    is done, rotation is not."
+  - "The already-leaked material is NOT invalidated by this diff: 1 whole-token-length run plus 2
+    truncation-clipped partials. Rotation is a credential action only the owner can perform;
+    containment (0600) is done, rotation is not."
   - "hook-innocence-gate.yml's path filter does not cover `.claude/hooks/` at all. Widening it is a
     behaviour change with its own blast radius and is deliberately NOT done here."
-  - "OVER-MATCH (cicatrix #3): the segment-anchored keyword match has no notion of whether a value is
-    actually secret — a legitimately-named non-secret value using a `_KEY=`/`_TOKEN=`-suffixed
-    identifier redacts just as hard as a real credential. The guilt/innocence corpus proves only the
-    named forms; it does not prove no such legitimately-named value anywhere can still trip it."
-grader: independent-review-session (fresh context, not the author) + a targeted mutation re-run by the orchestrator
+  - "SURVIVING UNDER-MATCH, named because a redactor that claims a closed class is worse than one
+    that names its holes: (a) `<any-prefix>KEY=` outside the vocabulary — `PUBKEY=`, `M5KEY=`,
+    `QKEY=`, `ORIGINALAPIKEY=`, `MACHINEHMACKEY=` leak in full, the deliberate price of keeping
+    `monkey=patch` innocent; measured on the live log, 40 distinct names / 136 occurrences that the
+    substring version caught and this one does not, most of them that version's own over-match;
+    (b) credential words outside the six — `--pin=`, `--otp=`, `--salt=`, `--cookie=`;
+    (c) `Authorization:` with anything but `Bearer` (`Basic <b64>`, opaque token);
+    (d) a POSITIONAL secret with no name (`mytool deploy s3cr3t`, `mysql -pS3cr3t`, netrc `password
+    <v>`) unless it carries a known prefix; (e) an UNQUOTED value containing a space (first word
+    only). Each of these was driven through the real hook, not reasoned about."
+  - "OVER-MATCH (cicatrix #3): the match has no notion of whether a value is actually secret, and the
+    damage is not confined to the value — it also swallows the rest of an unquoted value and rewrites
+    the separator to `=`. Measured on the live 333k-line log: this matcher rewrites 2290 lines
+    (0.686%), MORE than the 1875 (0.562%) of the substring version it replaces, along different axes.
+    Accepted deliberately: over-redacting a non-secret beats under-redacting a real one."
+grader: independent-review-session (fresh context, not the author) + a full 54-mutant re-run
 budget: ~2 subagents, no council
 pii: none
