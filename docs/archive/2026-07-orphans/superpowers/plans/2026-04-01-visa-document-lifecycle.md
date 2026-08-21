@@ -97,7 +97,7 @@ PYTHONPATH=. python3 -c "
 import asyncio, asyncpg
 
 async def migrate():
-    conn = await asyncpg.connect('postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag')
+    conn = await asyncpg.connect('postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag')
     from backend.migrations.migration_073_visa_lifecycle import up
     await up(conn)
     await conn.close()
@@ -114,7 +114,7 @@ PYTHONPATH=. python3 -c "
 import asyncio, asyncpg
 
 async def verify():
-    conn = await asyncpg.connect('postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag')
+    conn = await asyncpg.connect('postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag')
     # Check clients columns
     row = await conn.fetchrow(\"\"\"
         SELECT column_name, data_type FROM information_schema.columns

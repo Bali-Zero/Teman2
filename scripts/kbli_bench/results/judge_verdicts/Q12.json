@@ -1,0 +1,20 @@
+{
+  "qid": "Q12",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "fabricated",
+      "reason": "Abstains, but invents an unsupported inventory of five KBLI codes absent from the supplied records."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly abstains and points to the absence of relevant data in Navigator."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Explicitly abstains and points to the absence of relevant KBLI_RECORDS."
+    }
+  ]
+}

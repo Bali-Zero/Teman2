@@ -9,7 +9,7 @@ describe("FunnelFrame", () => {
         funnel="visa"
         sessionId="abc"
         step={{ current: 2, total: 5 }}
-        trust={{ clientCount: 5000, rating: 4.9, responseMinutes: 15 }}
+        trust={{ clientCount: 5000, rating: "4.9", reviewCount: 693 }}
       >
         <div>QUIZ_BODY</div>
       </FunnelFrame>,

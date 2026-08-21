@@ -1,0 +1,20 @@
+{
+  "qid": "Q07",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "correct",
+      "reason": "Explicitly abstains because the Navigator lacks the requested procedure."
+    },
+    {
+      "run": 2,
+      "verdict": "correct",
+      "reason": "Explicitly states the procedural gap and identifies only the Navigator's available scope."
+    },
+    {
+      "run": 3,
+      "verdict": "correct",
+      "reason": "Explicitly declines the missing setup procedure and points to the limited available records."
+    }
+  ]
+}

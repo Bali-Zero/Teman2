@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from urllib.parse import parse_qs, urlparse
 
-from backend.services.lead_capture.source import LeadSource
+import pytest
+from pydantic import ValidationError
+
+from backend.app.routers.lead_capture import LeadCaptureRequest
+from backend.services.lead_capture.source import LeadSource, PublicLeadSource
 from backend.services.lead_capture.whatsapp_deeplink import build_whatsapp_url
 
 
@@ -68,6 +73,33 @@ class TestDeeplinkBuilder:
         )
         body = _body_from(url)
         assert "Reference:" not in body
+
+    def test_retired_garuda_source_never_emits_public_result_path(self):
+        url = build_whatsapp_url(
+            source=LeadSource.GARUDA_VOA,
+            context_lines=[("Case", "internal")],
+            result_hash="legacyhash",
+            lead_intent_id="li_legacy",
+            public_host="https://balizero.com",
+        )
+        body = _body_from(url)
+        assert "/visa/voa" not in body
+        assert "Reference:" not in body
+
+    def test_debug_log_never_contains_raw_message_body(self, caplog):
+        private_value = "visitor-private-context"
+        with caplog.at_level(
+            logging.DEBUG,
+            logger="backend.services.lead_capture.whatsapp_deeplink",
+        ):
+            build_whatsapp_url(
+                source=LeadSource.VISA_CLOCK,
+                context_lines=[("Case", private_value)],
+                result_hash="abc123",
+                lead_intent_id="li_private",
+            )
+        assert private_value not in caplog.text
+        assert "Hi Bali Zero" not in caplog.text
 
     def test_ignores_empty_context_values(self):
         url = build_whatsapp_url(
@@ -140,7 +172,19 @@ class TestSourceEnum:
     def test_all_sources_have_names(self):
         for s in LeadSource:
             assert s.human_name
-            assert s.result_url_path.startswith("/")
+            if s is LeadSource.GARUDA_VOA:
+                assert s.result_url_path is None
+            else:
+                assert s.result_url_path is not None
+                assert s.result_url_path.startswith("/")
+
+    def test_public_capture_rejects_retired_garuda_source(self):
+        with pytest.raises(ValidationError):
+            LeadCaptureRequest.model_validate({"source": "garuda_voa"})
+
+    def test_historical_garuda_value_still_decodes(self):
+        assert LeadSource("garuda_voa") is LeadSource.GARUDA_VOA
+        assert "garuda_voa" not in {source.value for source in PublicLeadSource}
 
     def test_content_funnel_values_are_stable(self):
         # Wire-format values: the mouth frontend sends these literal strings.

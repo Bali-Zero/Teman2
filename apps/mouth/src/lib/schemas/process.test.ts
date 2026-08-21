@@ -25,7 +25,6 @@ const minimalResponse = {
     practice_name: "KITAS Working Visa",
     practice_category: "immigration",
     current_status: "on_process",
-    assigned_to: "asya@balizero.com",
     start_date: "2026-04-01",
     completion_date: null,
     expiry_date: null,
@@ -36,7 +35,6 @@ const minimalResponse = {
         completed: false,
         is_current: true,
         changed_at: "2026-04-01",
-        changed_by: null,
       },
     ],
   },
@@ -60,7 +58,6 @@ describe("ProcessTimelineResponse", () => {
         practice_name: "PMA Setup",
         practice_category: "company",
         current_status: "completed",
-        assigned_to: null,
         start_date: "2026-01-10",
         completion_date: "2026-03-30",
         expiry_date: null,
@@ -71,7 +68,6 @@ describe("ProcessTimelineResponse", () => {
             completed: true,
             is_current: false,
             changed_at: "2026-01-10 09:00:00+00:00",
-            changed_by: "damar@balizero.com",
           },
           {
             status: "sending_invoice",
@@ -79,7 +75,6 @@ describe("ProcessTimelineResponse", () => {
             completed: true,
             is_current: false,
             changed_at: "2026-01-12 11:30:00+00:00",
-            changed_by: "asya@balizero.com",
           },
           {
             status: "completed",
@@ -87,7 +82,6 @@ describe("ProcessTimelineResponse", () => {
             completed: false,
             is_current: true,
             changed_at: "2026-03-30 16:45:00+00:00",
-            changed_by: "zero@balizero.com",
           },
         ],
       },
@@ -174,20 +168,17 @@ describe("ProcessTimelineResponse", () => {
   });
 
   it("handles optional/nullable fields in a step (null, undefined, absent)", () => {
-    // All-null timestamps + user.
+    // All-null timestamp.
     const allNull = ProcessStep.parse({
       status: "inquiry",
       label: "Inquiry",
       completed: false,
       is_current: true,
       changed_at: null,
-      changed_by: null,
     });
     expect(allNull.changed_at).toBeNull();
-    expect(allNull.changed_by).toBeNull();
 
-    // Fields entirely absent — BE single-step fallback uses `.get()` which
-    // may omit `changed_by` from the dict entirely.
+    // Field entirely absent.
     const absent = ProcessStep.parse({
       status: "completed",
       label: "Completed",
@@ -195,7 +186,6 @@ describe("ProcessTimelineResponse", () => {
       is_current: false,
     });
     expect(absent.changed_at).toBeUndefined();
-    expect(absent.changed_by).toBeUndefined();
 
     // Data-level optional/nullable fields.
     const minData = ProcessTimelineData.parse({
@@ -203,8 +193,33 @@ describe("ProcessTimelineResponse", () => {
       current_status: "inquiry",
       steps: [],
     });
-    expect(minData.assigned_to).toBeUndefined();
     expect(minData.practice_name).toBeUndefined();
     expect(minData.start_date).toBeUndefined();
+  });
+
+  it("strips staff-identity fields even if a stale/legacy payload still carries them", () => {
+    // Client-facing schemas intentionally don't declare `changed_by`
+    // (practice_status_log actor) or `assigned_to` (case officer email).
+    // If a stale BE deploy or cached response still sends them, Zod must
+    // drop them rather than let them flow into the parsed object.
+    const withStaffIdentity = ProcessTimelineResponse.parse({
+      success: true,
+      data: {
+        ...minimalResponse.data,
+        assigned_to: "staff@example.com",
+        steps: [
+          {
+            status: "on_process",
+            label: "On Process",
+            completed: false,
+            is_current: true,
+            changed_at: "2026-04-01",
+            changed_by: "staff@example.com",
+          },
+        ],
+      },
+    });
+    expect(withStaffIdentity.data).not.toHaveProperty("assigned_to");
+    expect(withStaffIdentity.data.steps[0]).not.toHaveProperty("changed_by");
   });
 });

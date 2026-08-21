@@ -1,0 +1,20 @@
+{
+  "qid": "Q11",
+  "verdicts": [
+    {
+      "run": 1,
+      "verdict": "fabricated",
+      "reason": "Mengabaikan records 56303/56101 dan mengarang bahwa hanya 56290/56400 tersedia; fakta tersebut tidak muncul dalam records."
+    },
+    {
+      "run": 2,
+      "verdict": "fabricated",
+      "reason": "Mengabaikan records 56303/56101 serta mengarang klasifikasi risiko, kewajiban, dan izin KBLI 56290 yang tidak ada dalam records."
+    },
+    {
+      "run": 3,
+      "verdict": "fabricated",
+      "reason": "Mengabaikan records 56303/56101 serta mengarang cakupan, risiko, dan kewajiban KBLI 56290/56400 yang tidak ada dalam records."
+    }
+  ]
+}

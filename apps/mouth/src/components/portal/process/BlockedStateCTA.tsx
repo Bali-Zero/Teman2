@@ -3,7 +3,14 @@ import { AlertTriangle } from "lucide-react";
 
 interface Props {
   practiceId: string | number;
-  /** Optional reason text (e.g., from assigned_to or a future blocked_reason field). */
+  /**
+   * Optional reason text for a future `blocked_reason` field.
+   *
+   * Client-facing — never source this from a staff-identity field (e.g.
+   * `assigned_to`/`changed_by`). A prior version of this component was fed
+   * `assigned_to` (a staff email) here, which rendered a team member's
+   * email address to the client as the "reason" a practice was blocked.
+   */
   reason?: string | null;
 }
 

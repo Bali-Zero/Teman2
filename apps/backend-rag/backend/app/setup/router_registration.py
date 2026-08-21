@@ -215,7 +215,7 @@ def include_routers(api: FastAPI) -> None:
     if settings.garuda_flow_enabled:
         from backend.app.routers import garuda_voa
 
-        api.include_router(garuda_voa.router)  # /api/visa/voa|voa/{hash} (Slice A)
+        api.include_router(garuda_voa.router)  # owner-only GET /api/visa/voa/{hash}
 
     # CRM routers
     api.include_router(crm_clients.router)
@@ -653,7 +653,7 @@ def include_light_routers(api: FastAPI) -> None:
     if settings.garuda_flow_enabled:
         from backend.app.routers import garuda_voa
 
-        api.include_router(garuda_voa.router)  # /api/visa/voa|voa/{hash} (Slice A)
+        api.include_router(garuda_voa.router)  # owner-only GET /api/visa/voa/{hash}
 
     # Genome-backed registries (light: SQLite via cell-core, no ML deps)
     api.include_router(experience.router)  # [EXP] Experience Library (PR #54)

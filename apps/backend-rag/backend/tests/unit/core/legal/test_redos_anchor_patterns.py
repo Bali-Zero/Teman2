@@ -88,7 +88,49 @@ def _elapsed(rx: re.Pattern, text: str) -> float:
 # low-noise estimator, and a genuinely quadratic pattern is slow in every one of
 # them, which is why this cannot hide a regression. The control test below proves
 # that on the pre-fix quadratic.
-_RATIO_REPEATS = 3
+#
+# RAISED 3 -> 15, 2026-08-20, measured not reasoned (same lineage as the two
+# notes below). PASAL_PATTERN convicted an unrelated PR (#4428, touched only
+# scripts/mini/*.sh) at 0.0046s -> 0.0138s (3.0x, landing exactly on the
+# threshold). Direct measurement at the exact failing scale (n=20k/40k, the
+# real sweep size, real PASAL_PATTERN, process_time, no mock) shows why: the
+# base reading sits only ~1.1-1.4x above SWEEP_RATIO_FLOOR_SECONDS, where noise
+# is still a large fraction of the signal. Confirmed genuinely linear FIRST —
+# direct measurement from n=20k up to n=1.28M on the combinations that actually
+# convicted holds ratio in a 1.7-2.3x band with no sustained growth across six
+# consecutive doublings, so this is noise, not a real regression.
+#
+# 5 (`timeit.Timer.repeat`'s own default — the stdlib ships this number for the
+# same minimum-of-N reasoning) was tried FIRST and was not enough: reproduced
+# 25x locally at repeats=3 (4/25 false convictions, all in the same
+# near-floor/high-ratio shape as the CI failure) and re-ran the SAME 25x loop at
+# repeats=5 — still 2/29 false convictions across two batches, each on a
+# DIFFERENT payload combination (not the same one twice), which is what rules
+# out "just that one combination is bad" as the read. 15 was then tried because
+# Monte Carlo at the real n=20k/40k scale (40-60 trials/combination, repeats in
+# {3, 5, 7, 10, 15}) showed repeats>=10 clearing 3.0x in every batch tried
+# except one 30-trial batch at repeats=5 with a single 4.82x outlier — 15 gives
+# real headroom above the point where the Monte Carlo stopped finding
+# counterexamples, not just the first value that happened to pass once. Verified
+# at 15: 31/31 direct pytest runs on PASAL_PATTERN clean, sustained across a
+# session load range of 8.3-22.6 on this M5 (its own documented Saturazione-M5
+# background load is real and was live for this whole measurement — this is a
+# harder bar than an isolated CI runner, not an easier one), plus 10/10 on
+# AYAT_MARKER_PREFIX and 10/10 on BAB_PATTERN, the two other patterns this file
+# already knew ran close to the floor.
+#
+# Raising SWEEP_N instead (the more direct fix for "too close to the floor")
+# was tried and rejected: doubling it to 40k pushed MANY MORE of the 560 sweep
+# combinations over SWEEP_RATIO_FLOOR_SECONDS at once (not just the marginal
+# ones), so a single parametrized case went from ~1-4s to 29.71s measured — an
+# 8-25x blowup, the wrong trade for a CI-timing fix. Repeats is the cheap lever
+# because it only multiplies the cost of combinations that were ALREADY paying
+# for min-of-k, not every combination in the grid — confirmed empirically too:
+# the full file at repeats=15 (70s worst observed, under the same heavy load)
+# is not dramatically more expensive than at repeats=3, because fewer spurious
+# ratio>3.0 triggers also means fewer trips through the linear-control branch,
+# which is the actually expensive part.
+_RATIO_REPEATS = 15
 
 
 def _elapsed_min(rx: re.Pattern, text: str, repeats: int = _RATIO_REPEATS) -> float:

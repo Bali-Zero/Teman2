@@ -22,6 +22,7 @@ is permitted (CLAUDE.md cost rule: PII boundary, not a flat cloud ban).
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -340,7 +341,127 @@ def _vision_token_chain(env: dict[str, str]) -> list[tuple[str, str]]:
     return chain
 
 
-def _run_claude_json(prompt: str, schema: dict[str, Any], *, timeout_s: int | None = None) -> dict[str, Any] | None:
+# ── chain-wide rate-limit circuit breaker (persists across launchd re-fires) ────
+# Motivation (2026-08-20, measured): when EVERY OAuth seat in the token chain is
+# rate-limited, the one-shot apply-worker correctly released the draft without
+# burning an attempt — but launchd re-fires the WHOLE process on a fixed
+# schedule, so the next tick walked the full seat chain again against a quota
+# window already known dead. Measured cost: ~1,262 `claude --print` vision
+# sessions/day, ~690M cache-write tokens/7d, while every seat was rate-limited
+# for hours. The breaker persists to disk (survives the process exiting between
+# ticks) so a proven-dead window is never re-probed until it plausibly resets.
+_STATE_DIR_DEFAULT = Path.home() / ".agent" / "state"
+_FINGERPRINT_CACHE_MAX_ENTRIES = 500
+
+
+def _cooldown_state_path() -> Path:
+    override = os.environ.get("WR2_VISION_COOLDOWN_STATE", "").strip()
+    return Path(override) if override else _STATE_DIR_DEFAULT / "wr2_vision_cooldown.json"
+
+
+def _fingerprint_cache_path() -> Path:
+    override = os.environ.get("WR2_VISION_FINGERPRINT_CACHE", "").strip()
+    return Path(override) if override else _STATE_DIR_DEFAULT / "wr2_vision_fingerprint_cache.json"
+
+
+def _cooldown_remaining_s() -> float:
+    """Seconds left in an active chain-wide rate-limit cooldown, or 0.0 when
+    there is none — expired, never set, OR the state file is missing/corrupt.
+    Fail-OPEN by design (cicatrix #2 antidote — a bookkeeping file that cannot
+    be read must never read as "cooldown forever"; only a genuinely fresh,
+    readable cooldown blocks a call)."""
+    try:
+        raw = json.loads(_cooldown_state_path().read_text())
+        until = float(raw["cooldown_until"])
+    except Exception:  # noqa: BLE001 — any read/parse failure = no cooldown
+        return 0.0
+    remaining = until - time.time()
+    return remaining if remaining > 0 else 0.0
+
+
+def _set_cooldown(seconds: float, reason: str) -> None:
+    path = _cooldown_state_path()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({
+            "cooldown_until": time.time() + seconds,
+            "set_at": time.time(),
+            "reason": reason,
+        }))
+    except Exception as exc:  # noqa: BLE001 — bookkeeping must never block the release
+        logger.warning("claude vision: could not persist rate-limit cooldown: %s", exc)
+
+
+def _clear_cooldown() -> None:
+    """Best-effort hygiene: a call that actually SUCCEEDED proves the chain is
+    no longer fully dead, so drop any stale cooldown instead of waiting out
+    its full remaining duration."""
+    try:
+        _cooldown_state_path().unlink(missing_ok=True)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _fingerprint_key(png_path: Path, prompt_template: str, discriminator: str) -> str | None:
+    """Content-addressed no-op key: a role+slide discriminator + the prompt
+    TEMPLATE (not the interpolated string, which always differs because it
+    embeds a volatile per-run tmp-dir path) + the actual rendered PIXELS. A real
+    prompt-wording edit still busts the cache; a re-render into a fresh tmpdir
+    that reproduces byte-identical pixels does not. Returns None (never
+    cacheable) if the PNG can't be read — the caller then always calls through."""
+    try:
+        image_bytes = png_path.read_bytes()
+    except OSError:
+        return None
+    digest = hashlib.sha256()
+    for part in (discriminator, prompt_template):
+        digest.update(part.encode("utf-8"))
+        digest.update(b"\0")
+    digest.update(image_bytes)
+    return digest.hexdigest()
+
+
+def _fingerprint_lookup(key: str) -> dict[str, Any] | None:
+    try:
+        cache = json.loads(_fingerprint_cache_path().read_text())
+        entry = cache.get(key)
+    except Exception:  # noqa: BLE001 — fail open: a corrupt/missing cache is a miss
+        return None
+    return entry.get("verdict") if isinstance(entry, dict) else None
+
+
+def _fingerprint_store(key: str, verdict: dict[str, Any]) -> None:
+    """Only ever called on a genuinely SUCCESSFUL parse (see the _succeed()
+    call sites in _run_claude_json below) — a failed/unavailable/rate-limited
+    call must never seed the cache, or a legitimately-broken slide would be
+    skipped forever instead of re-checked."""
+    path = _fingerprint_cache_path()
+    try:
+        try:
+            cache = json.loads(path.read_text())
+            if not isinstance(cache, dict):
+                cache = {}
+        except Exception:  # noqa: BLE001
+            cache = {}
+        cache[key] = {"verdict": verdict, "ts": time.time()}
+        if len(cache) > _FINGERPRINT_CACHE_MAX_ENTRIES:
+            for stale_key, _ in sorted(
+                cache.items(), key=lambda kv: kv[1].get("ts", 0)
+            )[: len(cache) - _FINGERPRINT_CACHE_MAX_ENTRIES]:
+                cache.pop(stale_key, None)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(cache))
+    except Exception as exc:  # noqa: BLE001 — bookkeeping must never block the caller
+        logger.warning("claude vision: could not persist fingerprint cache: %s", exc)
+
+
+def _run_claude_json(
+    prompt: str,
+    schema: dict[str, Any],
+    *,
+    timeout_s: int | None = None,
+    fingerprint_key: str | None = None,
+) -> dict[str, Any] | None:
     """Call the claude CLI with a JSON schema, return the parsed object or None.
 
     Strips ANTHROPIC_API_KEY from the env (defense-in-depth: force OAuth path,
@@ -351,6 +472,28 @@ def _run_claude_json(prompt: str, schema: dict[str, Any], *, timeout_s: int | No
     """
     if timeout_s is None:
         timeout_s = int(os.environ.get("WR2_VISION_TIMEOUT_S", "180"))
+
+    cooldown_remaining = _cooldown_remaining_s()
+    if cooldown_remaining > 0:
+        logger.warning(
+            "claude vision: chain-wide rate-limit cooldown active (%.0fs remaining) "
+            "— skipping call, no subprocess spawned",
+            cooldown_remaining,
+        )
+        raise VisionRateLimited(
+            f"claude vision cooldown active ({cooldown_remaining:.0f}s remaining) — "
+            "the full OAuth chain was rate-limited on a previous call"
+        )
+
+    if fingerprint_key is not None:
+        cached = _fingerprint_lookup(fingerprint_key)
+        if cached is not None:
+            logger.info(
+                "claude vision: fingerprint hit — identical slide/prompt/image "
+                "already verified, skipping call"
+            )
+            return cached
+
     base_env = dict(os.environ)
     # Pin the vision model (default sonnet: vision-capable + solid editorial
     # judgment, lighter/cheaper than opus so it neither burns the MAX-plan quota
@@ -428,16 +571,25 @@ def _run_claude_json(prompt: str, schema: dict[str, Any], *, timeout_s: int | No
             logger.warning("claude vision: stdout not JSON: %s", out[:200])
             return None
 
+        def _succeed(obj: dict[str, Any]) -> dict[str, Any]:
+            # A real success proves the chain is not (fully) dead — drop any
+            # stale cooldown instead of waiting out its full duration, and seed
+            # the no-op cache so an identical re-render doesn't re-verify.
+            _clear_cooldown()
+            if fingerprint_key is not None:
+                _fingerprint_store(fingerprint_key, obj)
+            return obj
+
         # CLI json envelope: schema output lives in `structured_output`.
         structured = envelope.get("structured_output")
         if isinstance(structured, dict):
-            return structured
+            return _succeed(structured)
         result = envelope.get("result")
         if isinstance(result, dict):
-            return result
+            return _succeed(result)
         if isinstance(result, str):
             try:
-                return json.loads(result)
+                return _succeed(json.loads(result))
             except json.JSONDecodeError:
                 logger.warning(
                     "claude vision: no structured_output and result not JSON: %s",
@@ -448,7 +600,12 @@ def _run_claude_json(prompt: str, schema: dict[str, Any], *, timeout_s: int | No
         return None
 
     if saw_rate_limit:
-        raise VisionRateLimited("claude vision rate-limited across all OAuth accounts")
+        cooldown_s = float(os.environ.get("WR2_VISION_COOLDOWN_S", "3600"))
+        _set_cooldown(cooldown_s, "rate_limit")
+        raise VisionRateLimited(
+            f"claude vision rate-limited across all OAuth accounts — cooldown "
+            f"armed for {cooldown_s:.0f}s"
+        )
     if saw_timeout:
         raise VisionTimeout(f"vision call exceeded its {timeout_s}s global budget")
     return None
@@ -456,7 +613,10 @@ def _run_claude_json(prompt: str, schema: dict[str, Any], *, timeout_s: int | No
 
 def claude_design_critic(png_path: Path, slide: dict[str, Any], context: dict[str, Any]) -> Critique:
     """Claude-vision design critic (Tier 3). Returns a Critique with levers."""
-    obj = _run_claude_json(_CRITIC_PROMPT.format(png_path=png_path), _CRITIC_SCHEMA)
+    fp_key = _fingerprint_key(png_path, _CRITIC_PROMPT, f"critic:{png_path.parent.name}")
+    obj = _run_claude_json(
+        _CRITIC_PROMPT.format(png_path=png_path), _CRITIC_SCHEMA, fingerprint_key=fp_key
+    )
     if obj is None:
         # vision unavailable. Default: soft-pass (don't block — historical behavior).
         # WR2_VISION_REQUIRED=1 (v4 condition E / GO#3 c1): FAIL-CLOSED — a carousel
@@ -503,7 +663,10 @@ def claude_design_critic(png_path: Path, slide: dict[str, Any], context: dict[st
 
 def claude_brand_verifier(png_path: Path, slide: dict[str, Any], context: dict[str, Any]) -> Critique:
     """Claude-vision brand verifier (autonomy guardrail). passed=brand intact."""
-    obj = _run_claude_json(_VERIFIER_PROMPT.format(png_path=png_path), _VERIFIER_SCHEMA)
+    fp_key = _fingerprint_key(png_path, _VERIFIER_PROMPT, f"brand:{png_path.parent.name}")
+    obj = _run_claude_json(
+        _VERIFIER_PROMPT.format(png_path=png_path), _VERIFIER_SCHEMA, fingerprint_key=fp_key
+    )
     if obj is None:
         # if the verifier can't run, FAIL CLOSED — don't let an unverified change
         # through (the critic's autonomy must be gated).

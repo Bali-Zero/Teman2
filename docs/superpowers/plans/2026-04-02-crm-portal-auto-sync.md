@@ -1318,17 +1318,17 @@ if __name__ == "__main__":
 
 - [ ] **Step 2: Test dry run locally**
 
-Run: `cd apps/backend-rag && source .venv/bin/activate && DATABASE_URL=postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag PYTHONPATH=. python scripts/backfill_portal_profiles.py --dry-run`
+Run: `cd apps/backend-rag && source .venv/bin/activate && DATABASE_URL=postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag PYTHONPATH=. python scripts/backfill_portal_profiles.py --dry-run`
 Expected: Shows count of clients to backfill and first 10 names
 
 - [ ] **Step 3: Run actual backfill**
 
-Run: `cd apps/backend-rag && source .venv/bin/activate && DATABASE_URL=postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag PYTHONPATH=. python scripts/backfill_portal_profiles.py`
+Run: `cd apps/backend-rag && source .venv/bin/activate && DATABASE_URL=postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag PYTHONPATH=. python scripts/backfill_portal_profiles.py`
 Expected: Created ~1000 records, 0 errors
 
 - [ ] **Step 4: Verify result**
 
-Run: `psql postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag -c "SELECT COUNT(*) FROM team_members WHERE role='client' AND linked_client_id IS NOT NULL;"`
+Run: `psql postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag -c "SELECT COUNT(*) FROM team_members WHERE role='client' AND linked_client_id IS NOT NULL;"`
 Expected: ~1097 (should match total active clients with emails)
 
 - [ ] **Step 5: Commit**

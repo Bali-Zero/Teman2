@@ -15,6 +15,11 @@ import { describe, expect, it } from "vitest";
  * cleanup had named DOCUMENTATION.md as part of its own definition of done
  * both times. The fourth, `trackPropertyWACTA`, simply named the wrong event.
  *
+ * The 2026-08-19 retirement of `trackPortalLogin`, `trackDocumentUploaded`,
+ * `trackPropertyChatQuestion` and `trackPropertyArticleCTA` (all four had zero
+ * call-sites in the monorepo) is the first to remove the export and the row in
+ * the same change, which is what this guard exists to make routine.
+ *
  * A retirement touches two surfaces and it is the second one that gets
  * forgotten, so the fix is not a tidier row: it is a check that fails when
  * the two disagree.
@@ -38,6 +43,10 @@ const RETIRED = [
   "trackVisaQuizCompleted",
   "trackVisaResultViewed",
   "trackVisaCallingBlock",
+  "trackPortalLogin",
+  "trackDocumentUploaded",
+  "trackPropertyChatQuestion",
+  "trackPropertyArticleCTA",
 ];
 
 interface DocRow {
@@ -142,11 +151,12 @@ function findBodyBrace(source: string, paren: number): number {
 /**
  * Returns every GA4 event name a helper can reach, directly or through the
  * dispatchers it calls. It collects from all dispatchers rather than
- * returning at the first one: `trackPropertyArticleCTA` and
- * `trackPropertyAnalyzeCTA` both route through `dispatchPropertyCTAClicked`,
- * which is deliberate — `property_cta_clicked` is the canonical event and
- * `cta_type` separates them — but nothing guarantees a future helper calls
- * only one dispatcher, or that the first one it calls is the emitting one.
+ * returning at the first one. `trackPropertyAnalyzeCTA` reaches
+ * `property_cta_clicked` only through `dispatchPropertyCTAClicked`, and until
+ * the 2026-08-19 retirement `trackPropertyArticleCTA` shared that same
+ * dispatcher — one canonical event, `cta_type` separating the callers. Nothing
+ * guarantees a future helper calls only one dispatcher, or that the first one
+ * it calls is the emitting one, so collect from all of them.
  */
 function eventsEmittedBy(source: string, helper: string): string[] {
   const body = extractBody(source, `export function ${helper}(`);
@@ -178,8 +188,10 @@ describe("DOCUMENTATION.md §17.6 helper table", () => {
   it("finds a table with the shape it is supposed to guard", () => {
     // Without a floor, an emptied table would satisfy every per-row assertion
     // below by having no rows to check. Without the uniqueness check, so would
-    // a table of N copies of one correct row.
-    expect(rows.length).toBeGreaterThanOrEqual(10);
+    // a table of N copies of one correct row. The floor is the row count after
+    // the 2026-08-19 retirement removed two rows (10 -> 8): it guards against a
+    // table gutted by accident, so it tracks legitimate removals downward.
+    expect(rows.length).toBeGreaterThanOrEqual(8);
     expect(new Set(rows.map((r) => r.helper)).size).toBe(rows.length);
   });
 
@@ -208,7 +220,7 @@ describe("DOCUMENTATION.md §17.6 helper table", () => {
     // One reached through a dispatcher, one direct. If the dispatcher
     // indirection ever stops resolving, the first of these fails for a reason
     // that has nothing to do with the doc being wrong.
-    expect(eventsEmittedBy(module, "trackPropertyArticleCTA")).toContain(
+    expect(eventsEmittedBy(module, "trackPropertyAnalyzeCTA")).toContain(
       "property_cta_clicked",
     );
     expect(eventsEmittedBy(module, "trackVisaChatQuestion")).toContain(

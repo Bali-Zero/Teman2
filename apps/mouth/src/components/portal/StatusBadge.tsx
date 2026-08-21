@@ -53,6 +53,8 @@ const STATUS_MAP: Record<
   submitted: { icon: CheckCircle, label: "Submitted", tone: "success" },
   filed: { icon: CheckCircle, label: "Filed", tone: "success" },
   paid: { icon: CheckCircle, label: "Paid", tone: "success" },
+  unpaid: { icon: Clock, label: "Unpaid", tone: "warning" },
+  partial: { icon: Clock, label: "Partially paid", tone: "warning" },
   // Amber group
   applied: { icon: Clock, label: "Applied", tone: "warning" },
   pending: { icon: Clock, label: "Pending", tone: "warning" },

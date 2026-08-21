@@ -154,6 +154,21 @@ def _fake_fleet(
     (home / ".codex").mkdir(parents=True, exist_ok=True)
     (home / ".codex" / "auth.json").write_text("{}", encoding="utf-8")
 
+    # _ollama_model_ready() talks HTTP directly (curl against OLLAMA_API_BASE),
+    # not through the faked `ollama` binary above — without this stub every
+    # scenario that expects tier5 to be TRIED hits a real, unreachable
+    # 127.0.0.1:11434 in CI and the tier silently vanishes before the fake
+    # ollama binary is ever invoked. Unconditionally reports qwen3.5:9b
+    # present: no test scenario here exercises the "model absent" precheck
+    # branch — that path has its own dedicated corpus
+    # (scripts/tests/test_ollama_model_ready.sh) — so this stub exists only
+    # to restore this file's pre-existing "ollama binary controls the
+    # outcome" contract.
+    _write_executable(
+        home / ".local/bin/ollama-curl-stub",
+        'printf \'{"models":[{"name":"qwen3.5:9b"}]}\'',
+    )
+
     env = {
         "HOME": str(home),
         "PATH": "/usr/bin:/bin",
@@ -166,6 +181,7 @@ def _fake_fleet(
         "CLAUDE_CODE_OAUTH_TOKEN_5": TOKEN_VALUES["token5"],
         "CLAUDE_CODE_OAUTH_TOKEN": TOKEN_VALUES["legacy"],
         "CLAUDE_CASCADE_OLLAMA_BIN": str(home / ".local/bin/ollama"),
+        "CLAUDE_CASCADE_OLLAMA_CURL_BIN": str(home / ".local/bin/ollama-curl-stub"),
         # Without this override a macOS 27 host would invoke the REAL
         # /usr/bin/fm (PATH contains /usr/bin) and the corpus would stop
         # being hermetic on exactly the machines that have the new tier.

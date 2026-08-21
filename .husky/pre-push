@@ -121,14 +121,18 @@ echo "✅ Skipping full test suite (covered by pre-commit hooks)"
 #
 # CI's `Backend Tests (Python)` required check (.github/workflows/tests.yml)
 # is a verified STRICT SUPERSET of what this hook runs: same `backend/tests/`
-# base, same `--ignore=backend/tests/e2e`, PLUS three files this hook never
-# runs (tests/test_sentry_lazy_import.py, tests/test_sentry_pii_redaction.py,
-# tests/kb/test_politics_hierarchical.py), PLUS --cov, PLUS a
+# base, same `--ignore=backend/tests/e2e`, PLUS --cov, PLUS a
 # backend_stability_gate.py step, PLUS REDIS_URL (4 occurrences in
 # tests.yml, 0 in this file). No test that runs ONLY locally was found while
 # looking. So a genuine regression this local suite would have caught, CI
 # catches too, every time — while the 30% zero-verdict tax was pure local
 # cost for zero unique safety benefit.
+# (2026-08-21: tests.yml used to also list three files this hook never ran —
+# tests/test_sentry_lazy_import.py, tests/test_sentry_pii_redaction.py,
+# tests/kb/test_politics_hierarchical.py — from the orphan apps/backend-rag/tests/
+# tree, which pytest.ini's `testpaths = backend/tests` never collected. That
+# tree is deleted; those 3 files moved under backend/tests/, so both this
+# hook's `backend/tests/` scope and tests.yml's now collect them the same way.)
 #
 # Verdict: PREPUSH_RUN_BACKEND now DEFAULTS TO 0 — the suite below is
 # opt-in only (PREPUSH_FULL=1 or PREPUSH_PATHAWARE=0, both handled right
@@ -301,6 +305,64 @@ else
         # (whose own stderr banner, e.g. "running FULL suite", describes
         # ITS internal reasoning — not a promise that pytest runs locally);
         # only PREPUSH_FULL=1 / PREPUSH_PATHAWARE=0 actually run it now.
+    fi
+fi
+
+# ============================================================================
+# CONSUMER-MAP — deleted/renamed-file live-consumer check (2026-08-21, #4459)
+#
+# #4459 deleted apps/backend-rag/tests/ (an orphan tree) and went CI-red
+# TWICE: two consumers were invisible to a path-prefix search because each
+# named the deleted files relative to something OTHER than the deleted path
+# — a `cd apps/backend-rag` step in .github/workflows/sonarqube.yml, and a
+# bare string inside a Python list literal in
+# apps/backend-rag/scripts/backend_stability_gate.py:41. scripts/consumer_map.py
+# (invoked here through prepush_classify.py --check-consumers — see that
+# file's module docstring "SEPARATE MODE") searches by BASENAME instead
+# (cicatrix-superscar.md #3: search the entity a reader actually names, not
+# the form of a path), so both shapes are caught before the push leaves this
+# machine.
+#
+# Runs UNCONDITIONALLY — NOT gated by PREPUSH_RUN_BACKEND/DEFAULT-OFF above.
+# That flag only controls whether the local pytest suite runs; this check
+# answers a different question CI's Backend Tests job never asks (CI only
+# ever sees the tree AFTER the deletion, so an elsewhere-living consumer
+# just fails late and unrelated-looking — the exact #4459 pattern). Resolves
+# python3 independently of PYTHON_BIN (which the path-aware gate above may
+# never have set, e.g. under PREPUSH_FULL=1/PREPUSH_PATHAWARE=0) — W108: the
+# reporting interpreter must not share the resolution path of whatever it is
+# diagnosing. Errexit-immune capture (`|| CM_RC=$?`) — W101, same reason as
+# every other captured RC in this file under `sh -e`.
+#
+# rc 0 = clean (silent, matches the tip-drift happy-path silence rationale
+# below). rc 1 = live consumer(s) found — BLOCKS the push, loudly, with the
+# table. rc 2+ = could not verify (not this script's kind of git state, no
+# python3, missing helper) — WARNS, does NOT block: an environment problem
+# here must not wedge a push the way a genuine finding should, the same
+# permissive-but-honest posture the PG/venv skips below take.
+# Kill switch: PREPUSH_SKIP_CONSUMER_MAP=1.
+# ============================================================================
+if [ "${PREPUSH_SKIP_CONSUMER_MAP:-0}" != "1" ]; then
+    CM_PYTHON="$(command -v python3 || command -v python || true)"
+    CM_CLASSIFIER="$PREPUSH_TRUST_ROOT/scripts/prepush_classify.py"
+    if [ -n "$CM_PYTHON" ] && [ -f "$CM_CLASSIFIER" ]; then
+        CM_RC=0
+        CM_OUT="$("$CM_PYTHON" "$CM_CLASSIFIER" --check-consumers --base origin/main 2>&1)" || CM_RC=$?
+        case "$CM_RC" in
+            0) : ;;
+            1)
+                CM_COUNT="$(printf '%s\n' "$CM_OUT" | sed -n 's/^CONSUMER_MAP_LIVE_COUNT=//p')"
+                echo "❌ consumer-map: ${CM_COUNT:-N} live consumers of deleted/renamed files — push blocked."
+                printf '%s\n' "$CM_OUT"
+                exit 1
+                ;;
+            *)
+                echo "⚠️  consumer-map check could not verify this push (rc=$CM_RC) — not blocking, but read below:"
+                printf '%s\n' "$CM_OUT" | sed 's/^/    /'
+                ;;
+        esac
+    else
+        echo "⚠️  consumer-map check skipped — no python3/python on PATH or classifier missing at $CM_CLASSIFIER."
     fi
 fi
 

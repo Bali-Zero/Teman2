@@ -31,6 +31,14 @@ DEFAULT_TIMEOUT_SEC = 2400  # 40 min — bumped from 1500 after empirical
 # 12 pages × ~10 elements each is ~120 inspections. 2400s budgets for
 # pathological cases (Canva MCP rate-limit pauses, transient API stalls).
 DEFAULT_CLAUDE_BIN = "claude"  # resolved from PATH
+# Model pin (2026-08-20, token-cuts round2): this call was bare (no --model),
+# inheriting whatever profile default the invoking shell happened to carry —
+# grandfathered by scripts/lint/lint_claude_headless_model_pin.py. The task is
+# bounded agentic tool-use (apply an already-decided layout via Canva MCP,
+# following a fixed runbook) — no architectural or brand judgment is made
+# here (that already happened upstream in wr2-design-architect/critic), so
+# sonnet is the minimum-sufficient tier, not opus/fable.
+DEFAULT_CLAUDE_MODEL = "claude-sonnet-5"
 # 2026-05-07: APPLICA_WAR_ROOM.md was at apps/war-room/ but that directory was
 # removed in PR #171 (WR1 decommission). The authoritative runbook is now the
 # userspace skill ~/.claude/skills/canva-apply.md (the ADAPTIVE skill that
@@ -161,6 +169,7 @@ def invoke_claude_apply(
     canva_pending_path: Path,
     *,
     claude_bin: str = DEFAULT_CLAUDE_BIN,
+    model: str = DEFAULT_CLAUDE_MODEL,
     timeout_sec: int = DEFAULT_TIMEOUT_SEC,
 ) -> CanvaApplyResult:
     """Run `claude -p` to apply a canva_pending.json and return the design URLs.
@@ -205,7 +214,7 @@ def invoke_claude_apply(
     start = time.monotonic()
     try:
         completed = subprocess.run(
-            [claude_bin, "-p", prompt],
+            [claude_bin, "-p", "--model", model, prompt],
             stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,

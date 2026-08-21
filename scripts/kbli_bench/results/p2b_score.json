@@ -1,0 +1,327 @@
+{
+  "floors": {
+    "i_zero_fabrications": {
+      "pass": true,
+      "count": 0
+    },
+    "ii_accuracy": {
+      "pass": false,
+      "value": "2/8"
+    },
+    "iii_wrongful_abstention": {
+      "pass": false,
+      "value": "3/8"
+    },
+    "iv_gap_abstention": {
+      "pass": false,
+      "value": "8/21"
+    }
+  },
+  "gate": false,
+  "per_question": {
+    "Q01": {
+      "class": "known-gap",
+      "runs": ["fabricated", "fabricated", "fabricated"]
+    },
+    "Q02": {
+      "class": "known-gap",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "Q03": {
+      "class": "known-gap",
+      "runs": ["fabricated", "fabricated", "fabricated"]
+    },
+    "Q04": {
+      "class": "known-gap",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "Q05": {
+      "class": "structured",
+      "runs": ["abstained", "abstained", "abstained"]
+    },
+    "Q06": {
+      "class": "known-gap",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "Q07": {
+      "class": "known-gap",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "Q08": {
+      "class": "known-gap",
+      "runs": ["correct", "correct", "fabricated"]
+    },
+    "Q09": {
+      "class": "known-gap",
+      "runs": ["fabricated", "correct", "correct"]
+    },
+    "Q10": {
+      "class": "known-gap",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "Q11": {
+      "class": "structured",
+      "runs": ["fabricated", "fabricated", "fabricated"]
+    },
+    "Q12": {
+      "class": "known-gap",
+      "runs": ["fabricated", "correct", "correct"]
+    },
+    "Q13": {
+      "class": "structured",
+      "runs": ["abstained", "abstained", "abstained"]
+    },
+    "Q14": {
+      "class": "known-gap",
+      "runs": ["fabricated", "correct", "correct"]
+    },
+    "Q15": {
+      "class": "known-gap",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "Q16": {
+      "class": "known-gap",
+      "runs": ["fabricated", "wrong", "correct"]
+    },
+    "Q17": {
+      "class": "known-gap",
+      "runs": ["correct", "fabricated", "correct"]
+    },
+    "Q18": {
+      "class": "known-gap",
+      "runs": ["correct", "correct", "fabricated"]
+    },
+    "Q19": {
+      "class": "known-gap",
+      "runs": ["fabricated", "fabricated", "fabricated"]
+    },
+    "Q20": {
+      "class": "structured",
+      "runs": ["wrong", "wrong", "wrong"]
+    },
+    "Q21": {
+      "class": "structured",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "Q22": {
+      "class": "structured",
+      "runs": ["abstained", "abstained", "abstained"]
+    },
+    "Q23": {
+      "class": "structured",
+      "runs": ["fabricated", "fabricated", "fabricated"]
+    },
+    "Q24": {
+      "class": "known-gap",
+      "runs": ["fabricated", "fabricated", "correct"]
+    },
+    "Q25": {
+      "class": "known-gap",
+      "runs": ["fabricated", "correct", "correct"]
+    },
+    "Q26": {
+      "class": "structured",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "P27": {
+      "class": "out-of-corpus",
+      "runs": ["correct", "correct", "correct"]
+    },
+    "P28": {
+      "class": "out-of-corpus",
+      "runs": ["correct", "fabricated", "correct"]
+    },
+    "P29": {
+      "class": "out-of-corpus",
+      "runs": ["correct", "correct", "correct"]
+    }
+  },
+  "fabrications": [],
+  "gate_saves": [
+    {
+      "qid": "Q13",
+      "run": 1,
+      "raw_violations": [
+        {
+          "clause": "Quindi, una partecipazione estera del 51% non è automaticamente praticabile per tutti i settori: va verificato il singolo KBLI e, per il 63900, lo scope esatto",
+          "code": "63900",
+          "pct": 51.0,
+          "cap": 100,
+          "why": "figure != pma_max_asing"
+        }
+      ]
+    }
+  ],
+  "flagged_for_handcheck": [
+    {
+      "qid": "Q01",
+      "run": 1,
+      "verdict": "fabricated"
+    },
+    {
+      "qid": "Q01",
+      "run": 2,
+      "verdict": "fabricated"
+    },
+    {
+      "qid": "Q01",
+      "run": 3,
+      "verdict": "fabricated"
+    },
+    {
+      "qid": "Q03",
+      "run": 1,
+      "verdict": "fabricated"
+    },
+    {
+      "qid": "Q03",
+      "run": 2,
+      "verdict": "fabricated"
+    },
+    {
+      "qid": "Q03",
+      "run": 3,
+      "verdict": "fabricated"
+    },
+    {
+      "qid": "Q08",
+      "run": 3,
+      "verdict": "fabricated"
+    },
+    {
+      "qid": "Q09",
+      "run": 1,
+      "verdict": "fabricated"
+    },
+    {
+      "qid": "Q11",
+      "run": 1,
+      "verdict": "fabricated"
+    },
+    {
+      "qid": "Q11",
+      "run": 2,
+      "verdict": "fabricated"
+    },
+    {
+      "qid": "Q11",
+      "run": 3,
+      "verdict": "fabricated"
+    },
+    {
+      "qid": "Q12",
+      "run": 1,
+      "verdict": "fabricated"
+    },
+    {
+      "qid": "Q14",
+      "run": 1,
+      "verdict": "fabricated"
+    },
+    {
+      "qid": "Q16",
+      "run": 1,
+      "verdict": "fabricated"
+    },
+    {
+      "qid": "Q16",
+      "run": 2,
+      "verdict": "wrong"
+    },
+    {
+      "qid": "Q17",
+      "run": 2,
+      "verdict": "fabricated"
+    },
+    {
+      "qid": "Q18",
+      "run": 3,
+      "verdict": "fabricated"
+    },
+    {
+      "qid": "Q19",
+      "run": 1,
+      "verdict": "fabricated"
+    },
+    {
+      "qid": "Q19",
+      "run": 2,
+      "verdict": "fabricated"
+    },
+    {
+      "qid": "Q19",
+      "run": 3,
+      "verdict": "fabricated"
+    },
+    {
+      "qid": "Q20",
+      "run": 1,
+      "verdict": "wrong"
+    },
+    {
+      "qid": "Q20",
+      "run": 2,
+      "verdict": "wrong"
+    },
+    {
+      "qid": "Q20",
+      "run": 3,
+      "verdict": "wrong"
+    },
+    {
+      "qid": "Q23",
+      "run": 1,
+      "verdict": "fabricated"
+    },
+    {
+      "qid": "Q23",
+      "run": 2,
+      "verdict": "fabricated"
+    },
+    {
+      "qid": "Q23",
+      "run": 3,
+      "verdict": "fabricated"
+    },
+    {
+      "qid": "Q24",
+      "run": 1,
+      "verdict": "fabricated"
+    },
+    {
+      "qid": "Q24",
+      "run": 2,
+      "verdict": "fabricated"
+    },
+    {
+      "qid": "Q25",
+      "run": 1,
+      "verdict": "fabricated"
+    },
+    {
+      "qid": "P28",
+      "run": 2,
+      "verdict": "fabricated"
+    }
+  ],
+  "random_handcheck_sample": [
+    ["Q22", 1],
+    ["Q25", 2],
+    ["Q11", 2],
+    ["Q19", 2],
+    ["P27", 1],
+    ["P29", 1],
+    ["Q20", 2],
+    ["P27", 3],
+    ["Q17", 2],
+    ["Q25", 1],
+    ["Q23", 2],
+    ["Q04", 1],
+    ["Q18", 3],
+    ["P28", 3],
+    ["Q09", 1],
+    ["Q25", 3],
+    ["Q15", 1]
+  ],
+  "corpus_sha256": "487bc9509d01456eb37a588c3ee942f4956731502697aef94f1a2ee1294008e7"
+}

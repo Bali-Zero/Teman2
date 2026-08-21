@@ -318,6 +318,68 @@ describe("StudioApp", () => {
     });
   });
 
+  describe("Continue gating (2026-08-20 design pass) — disabled until the step's question is answered", () => {
+    it("guilt: the age step's Continue is disabled before any option is selected", () => {
+      render(<StudioApp />);
+      expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+    });
+
+    it("innocence: selecting an option enables Continue on that same step", () => {
+      render(<StudioApp />);
+      clickButton("Under 55");
+      expect(
+        screen.getByRole("button", { name: "Continue" }),
+      ).not.toBeDisabled();
+    });
+
+    it("guilt: Continue re-disables on the NEXT step until it too is answered (per-step state, not sticky)", async () => {
+      render(<StudioApp />);
+      clickButton("Under 55");
+      clickButton("Continue");
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("heading", {
+            name: /which route are you considering/i,
+          }),
+        ).toBeInTheDocument();
+      });
+      expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+
+      clickButton("Bank deposit");
+      expect(
+        screen.getByRole("button", { name: "Continue" }),
+      ).not.toBeDisabled();
+    });
+
+    it("innocence: the family step (multi-select, always answered) has Continue enabled with zero selections", async () => {
+      render(<StudioApp />);
+      clickButton("Under 55");
+      clickButton("Continue");
+      clickButton("Bank deposit");
+      clickButton("Continue");
+      clickButton("USD 130,000 is ready");
+      clickButton("Continue");
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("heading", { name: /who would you want/i }),
+        ).toBeInTheDocument();
+      });
+      expect(
+        screen.getByRole("button", { name: "Continue" }),
+      ).not.toBeDisabled();
+    });
+
+    it("guilt: clicking a disabled Continue does not advance the step (fireEvent.click on a disabled button is a no-op)", () => {
+      render(<StudioApp />);
+      fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+      expect(
+        screen.getByRole("heading", { name: /how old are you/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
   describe("P1-C9 — CustodyMap renders only for deposit-holding verdicts (E33/E33E)", () => {
     it("under_55 deposit strong_fit (E33): CustodyMap renders", async () => {
       window.location.hash = `#p=${encodePlanFragment(fullPlan())}`;

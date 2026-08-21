@@ -189,9 +189,15 @@ def call_claude_haiku(prompt: str) -> str | None:
 
 def call_agy_gemini(prompt: str) -> str | None:
     try:
+        # agy has NO stdin path (measured 2026-08-13, matches the fix already
+        # live in infra/launchagents/wrappers/*.sh and scripts/ai-dispatch.sh):
+        # `-p` immediately followed by `--print-timeout` binds "--print-timeout"
+        # as the literal prompt argv and leaves "2m" a stray positional; a piped
+        # `input=` is never read. RC 0, garbage/empty output, quota spent for
+        # nothing. Prompt must be `-p`'s own argv value.
         r = subprocess.run(
-            [AGY_BIN, "-p", "--print-timeout", "2m"],
-            input=prompt, capture_output=True, text=True, timeout=LLM_TIMEOUT,
+            [AGY_BIN, "-p", prompt, "--print-timeout", "2m"],
+            capture_output=True, text=True, timeout=LLM_TIMEOUT,
         )
         if r.returncode == 0 and r.stdout.strip():
             return r.stdout.strip()

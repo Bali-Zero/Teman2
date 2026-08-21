@@ -1,0 +1,123 @@
+# merge-gate-integrity-watch.yml — passive, non-provoking check that every
+# required context had REAL, pre-merge compute before a commit landed on
+# `main`, instead of a canary that would deliberately race a live merge.
+#
+# WHY THIS EXISTS (PENDING-ARMS idx~49, .claude/skills/modus/PENDING-ARMS.md,
+# "Branch protection did not hold" / PR #3227): that incident's own gate could
+# not have seen its required checks — every check-suite for the merged commit
+# was created 2-3 seconds BEFORE the merge decision, so nothing had finished
+# computing yet. The team-lead's explicit instruction after reviewing that
+# investigation: build a DETECTOR, never a canary that provokes the same race
+# on live `main` to prove a point. This workflow is that detector, wired to
+# fire once per push to `main` (i.e. once per merge) instead of sitting
+# unexecuted (superscar #2, "esiste != armato" — a script nobody runs is not
+# a script).
+#
+# WHAT IT DOES NOT DO: it never blocks, cancels, or comments on anything, and
+# it is NOT a required check — by construction it can only evaluate a commit
+# AFTER it has already landed, so it structurally cannot gate the merge it is
+# checking (gating it would just move the race one step, not close it). It
+# alerts a human via the same Telegram P0/digest gateway every other watcher
+# in this repo uses (tg_notify.py) so a real finding is never silent, but the
+# finding itself is never auto-acted-on.
+#
+# See scripts/probe_merge_gate_integrity.py for the full mechanism (which
+# merge_group jobs count, why a grace window exists, why exact-name matching)
+# — this file is deliberately thin, matching merge-queue-watch.yml's own
+# "Pure function of captured data; the workflow step just calls it" shape.
+
+name: merge-gate-integrity-watch
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "merge commit SHA to probe (default: current main tip)"
+        required: false
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    name: Verify required checks had real pre-merge compute
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Run the integrity probe
+        id: probe
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ github.event.inputs.sha || github.sha }}
+        run: |
+          set -uo pipefail
+          python3 scripts/probe_merge_gate_integrity.py \
+            --sha "$TARGET_SHA" --json > /tmp/verdict.json
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          cat /tmp/verdict.json
+
+      # Machine-readable rc, never re-derived from prose (W88 — judge by
+      # content, and here the content IS the captured exit code, not a
+      # re-parse of the JSON body).
+      - name: Classify the verdict
+        id: classify
+        run: |
+          rc="${{ steps.probe.outputs.rc }}"
+          case "$rc" in
+            0) echo "tier=none" >> "$GITHUB_OUTPUT" ;;
+            1) echo "tier=p0" >> "$GITHUB_OUTPUT" ;;
+            *) echo "tier=digest" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - name: Alert (VIOLATION -> p0, CANNOT-VERIFY -> digest, clean -> nothing)
+        if: steps.classify.outputs.tier != 'none'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_OWNER_CHAT_ID: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+          TIER: ${{ steps.classify.outputs.tier }}
+          TARGET_SHA: ${{ github.event.inputs.sha || github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -uo pipefail
+          BODY=$(python3 -c "
+          import json
+          d = json.load(open('/tmp/verdict.json'))
+          subj = d.get('subject', '?')
+          if 'error' in d:
+              print(f'CANNOT-VERIFY {subj}: {d[\"error\"]}')
+          else:
+              findings = d.get('findings', [])
+              lines = [f'VIOLATION {subj} — {len(findings)} required context(s) had no real pre-merge result:']
+              lines += [f'  - {f}' for f in findings[:10]]
+              if len(findings) > 10:
+                  lines.append(f'  (+{len(findings) - 10} more)')
+              print(chr(10).join(lines))
+          ")
+          MSG="[merge-gate-integrity-watch] ${BODY}
+          ${RUN_URL}"
+          python3 scripts/tg_notify.py --tier "$TIER" \
+            --source merge-gate-integrity-watch \
+            --dedup-key "mgi-${TARGET_SHA}" \
+            "$MSG"
+
+      # Never exit non-zero on a real finding — this is a signaler, not a
+      # gate, and it is not a required check. A CANNOT-VERIFY still fails the
+      # RUN (not the repo) so a broken probe is visible in the Actions tab
+      # rather than silently doing nothing (superscar #2).
+      - name: Fail the run only on CANNOT-VERIFY, never on a real finding
+        if: steps.classify.outputs.tier == 'digest'
+        run: |
+          echo "::warning::probe could not verify this commit — see the run log above. This is NOT the same as a clean merge; it means the probe itself needs attention."
+          exit 1

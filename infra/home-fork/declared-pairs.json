@@ -812,6 +812,18 @@
       "_note": "WA codex broker daemon wrapper (BOT-V4 S2 PR-6), installed root-owned by scripts/provision_zantara_codex.sh. System-domain LaunchDaemon payload under the registry's absolute-prefix exception (fw-guard precedent 2026-08-14): the daemon runs AS the login-less zantara-codex user, and a root-owned payload outside any user-writable $HOME denies a compromised zantara-codex identity persistence across restarts. World-readable, so the lint can verify this pair as any user. Re-run provisioning after changing the repo twin: the merge alone never updates the live copy (W107 delivery gotcha)."
     },
     {
+      "live": "/usr/local/libexec/wa-codex-seat-probe-wrapper.sh",
+      "repo": "infra/launchagents/wrappers/wa-codex-seat-probe-wrapper.sh",
+      "machines": ["pro"],
+      "_note": "S3 seat-probe wrapper (Piece A of the seat sentinel pair, research/operations/2026-08-19-bot-chatgpt-provider-broker-spec.md), installed root-owned by scripts/provision_zantara_codex.sh step 8. Same fw-guard precedent (2026-08-14) as the broker wrapper above and the same absolute-prefix exception — this LaunchDAEMON also runs AS the login-less zantara-codex user. World-readable, so the lint can verify this pair as any user. Re-run provisioning after changing the repo twin: the merge alone never updates the live copy (W107 delivery gotcha)."
+    },
+    {
+      "live": "/usr/local/lib/wa-codex-broker/seat_probe.py",
+      "repo": "scripts/wa_codex_seat_probe.py",
+      "machines": ["pro"],
+      "_note": "S3 seat-probe payload (Piece A) that the wrapper above execs, installed root-owned alongside the daemon's own runtime tree (same /usr/local/lib/wa-codex-broker RUNTIME_DIR, same fresh-copy-every-run discipline as the daemon code in step 3 — a merge alone never updates this live copy, W107 delivery gotcha). Imports backend.llm.codex_exec_client._AUTH_DEATH_RE from the sibling `backend/` package that step 3 already installs into this same directory tree — the two payloads share one runtime root by design, so they cannot disagree about the auth-death regex without both copies being re-provisioned together."
+    },
+    {
       "live": "~/scripts/mini-secrets-perms-sweep.sh",
       "repo": "infra/launchagents/wrappers/mini-secrets-perms-sweep.sh",
       "machines": ["mini"]
@@ -820,6 +832,44 @@
       "live": "~/Library/LaunchAgents/com.nuzantara.secrets-perms-sweep.plist",
       "repo": "infra/launchagents/com.nuzantara.secrets-perms-sweep.plist",
       "machines": ["mini"]
+    },
+    {
+      "live": "~/scripts/pro-visa-freshness-sentinel.sh",
+      "repo": "infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.visa-freshness-sentinel.plist",
+      "repo": "infra/launchagents/com.nuzantara.visa-freshness-sentinel.plist",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/eventbus/meta_dispatcher.py",
+      "repo": "infra/eventbus/meta_dispatcher.py",
+      "machines": ["pro"],
+      "_note": "UNDECLARED live payload found 2026-08-20 (family #1): plist com.balizero.meta-dispatcher execs this HOME copy directly (ProgramArguments greps /Users/nuzantara/scripts/eventbus/meta_dispatcher.py), running (launchctl list shows a live PID). Verified byte-identical to repo/origin-main sha256 0cf1d3e5... on Pro. NOT widened to m5: M5 also carries a real file at the same path, but it is dormant (0 launchd/crontab references — M5 has no daemon/cron per CLAUDE.md) AND it DIVERGES from repo (stale — missing the REDISCLI_AUTH/BZ_REDIS_HOST env-driven Redis fix and the claude-sonnet-5 model-pin migration). Declaring it here would immediately fail --check on someone else's pre-existing drift rather than catch new drift — same call as the codex/nightly-autofix-ci.sh precedent above. Mini has no ~/scripts/eventbus/ at all (confirmed via ssh, its repo checkout also lives at ~/nuzantara not ~/Desktop/nuzantara)."
+    },
+    {
+      "live": "~/scripts/eventbus/intel_dedup_gateway.py",
+      "repo": "infra/eventbus/intel_dedup_gateway.py",
+      "machines": ["pro", "m5"],
+      "_note": "UNDECLARED live payload found 2026-08-20 (family #1): plist com.balizero.intel-dedup-gateway execs this HOME copy directly, running on Pro. Verified byte-identical to repo/origin-main sha256 52871616... on BOTH Pro and M5. M5 included even though inert there (0 launchd/crontab references — M5 has no daemon/cron per CLAUDE.md): same reasoning as wr2-external-bench-run.sh/codex-automation-lib.sh above — declaring an inert-but-identical copy makes a future drift on it visible instead of silent. Mini has no ~/scripts/eventbus/ at all — not declared."
+    },
+    {
+      "live": "~/scripts/eventbus/research_sentinel.py",
+      "repo": "infra/eventbus/research_sentinel.py",
+      "machines": ["pro", "m5"],
+      "_note": "UNDECLARED live payload found 2026-08-20 (family #1): plist com.balizero.research-sentinel execs this HOME copy directly, running on Pro. Verified byte-identical to repo/origin-main sha256 858c17c6... on BOTH Pro and M5. M5 included even though inert there (0 launchd/crontab references): same reasoning as the sibling intel_dedup_gateway.py entry above. Mini has no ~/scripts/eventbus/ at all — not declared. Sibling plist com.balizero.observatory was investigated in the same sweep and is NOT part of this family: its ProgramArguments execs /Users/nuzantara/agents/.observatory/observatory.py, a structurally different directory (agents/.observatory/, not scripts/eventbus/) — left undeclared here, own ledger row if ever promoted."
+    },
+    {
+      "live": "~/scripts/pro-llm-burn-alarm.sh",
+      "repo": "infra/launchagents/wrappers/pro-llm-burn-alarm.sh",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.llm-burn-alarm.plist",
+      "repo": "infra/launchagents/com.nuzantara.llm-burn-alarm.plist",
+      "machines": ["pro"]
     }
   ],
   "allow": [

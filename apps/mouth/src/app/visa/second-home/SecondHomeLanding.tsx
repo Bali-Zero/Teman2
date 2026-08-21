@@ -140,7 +140,14 @@ export function SecondHomeLanding() {
     }));
 
   return (
-    <div style={{ display: "grid", gap: "var(--space-6, 3rem)" }}>
+    // data-funnel="visa" (2026-08-20 design pass): resolves --accent-funnel
+    // to the visa funnel's red identity instead of the editorial-theme
+    // default blue (see StudioApp.tsx for the full explanation — same
+    // defect, same fix, this route has no AppFrame ancestor either).
+    <div
+      data-funnel="visa"
+      style={{ display: "grid", gap: "var(--space-6, 3rem)" }}
+    >
       <LanguageSwitcher />
 
       {/* ── HERO ── */}

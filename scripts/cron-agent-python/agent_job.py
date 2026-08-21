@@ -45,6 +45,18 @@ if not os.environ.get("REDISCLI_AUTH") and os.environ.get("REDIS_PASSWORD"):
 SECRETS_FILE = HOME / ".nuzantara-secrets.env"
 WITA = timezone(timedelta(hours=8))
 
+# Model pin (2026-08-20, token-cuts round2): the two bare `claude --print`
+# calls below (session bootstrap only — "Session start for X" / "Session
+# init X") had no --model, inheriting the profile default. They are imported
+# by all 21 cron-agent-python job scripts and cached per session scope
+# (daily/weekly/persistent — see get_or_create_session below), so real
+# invocation count is low, but the exposure surface is the widest of any
+# grandfathered call site in the repo. The prompt does no reasoning, just
+# returns a session_id, so haiku is the minimum-sufficient tier — the actual
+# reasoning path (claude_synthesize/claude_agent_sdk above) already routes
+# per-job via agent_config.get_config() and is unaffected by this pin.
+SESSION_BOOTSTRAP_MODEL = "claude-haiku-4-5-20251001"
+
 STATE_DIR.mkdir(parents=True, exist_ok=True)
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -876,7 +888,8 @@ def get_or_create_session(job_name: str, scope: str = "daily") -> str | None:
         import subprocess
         # Start a minimal session to get a session ID
         result = subprocess.run(
-            ["claude", "--print", f"Session start for {job_name} {scope} {datetime.now(WITA).strftime('%Y-%m-%d')}"],
+            ["claude", "--print", "--model", SESSION_BOOTSTRAP_MODEL,
+             f"Session start for {job_name} {scope} {datetime.now(WITA).strftime('%Y-%m-%d')}"],
             capture_output=True, text=True, timeout=30,
             env={**os.environ, "ANTHROPIC_API_KEY": ""},
         )
@@ -886,7 +899,8 @@ def get_or_create_session(job_name: str, scope: str = "daily") -> str | None:
         if not session_match:
             # Try environment variable approach
             env_result = subprocess.run(
-                ["claude", "--print", "--output-format=json", f"Session init {job_name}"],
+                ["claude", "--print", "--output-format=json", "--model", SESSION_BOOTSTRAP_MODEL,
+                 f"Session init {job_name}"],
                 capture_output=True, text=True, timeout=30,
                 env={**os.environ, "ANTHROPIC_API_KEY": ""},
             )

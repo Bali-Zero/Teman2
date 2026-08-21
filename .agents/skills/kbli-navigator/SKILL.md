@@ -45,7 +45,33 @@ is **518 / 33.2%**, not 465 / 29.8%, and `CHIUSO_PMA_NO_BESAR` is **7**, not 20.
 
 ## 1. LIVE STATE (last update 2026-08-20 — keep current)
 
-**🟡 2026-08-20 — P2b BENCHMARK: TOOLING READY + CORPUS FROZEN + OLD BRAIN MEASURED DEAD; THE
+**🔴 2026-08-20 (later) — P2b BENCHMARK EXECUTED: GATE RED, P2c STAYS CLOSED — two surgical
+product defects, ZERO fabrication found.** The seat's usage window reset early (probed
+`SEAT-OK`, never assumed); the suspension entry below is CLOSED. Full run: 29 questions × 3 =
+87 answers on Pro (`codex-cli 0.148.0`, terra serving, sol judging, 0 transport errors), report
+`research/operations/2026-08-20-kbli-navigator-p2b-benchmark.md` (adversarial: Kimi K3 with
+data access, 4 findings folded). Floors: (i) zero-fabrication GREEN (deterministic 87 served +
+87 raw, judge, hand-check 100% flagged + 20% sample — every flagged claim traced to a real
+record field); (iv) gap/probe abstention GREEN 21/21 served; (ii) accuracy RED 4/8; (iii)
+wrongful abstention RED 4/8. The two causes, both curable: **(A) the KBLIAnswerGate
+over-matches correct answers into refusals** — 3 classes measured (α negated mention of an
+absent code, Q05: "68200 non esiste" is unanswerable under `unknownCode`; β exception clause
+quoting its own verified cap, Q22 Menhan; γ multi-code clause with one shared verified cap,
+Q13 + 4 gap-side kills) — superscar family #3 arriving in the product's own gate; **(B) one
+retrieval miss** — "kafe di Ubud" never packages 56303 (judul literally contains "kafe") nor
+56101; the brain then honestly abstained on the ONE Bali-trap structured question. Also cured
+in-lane, committed to the app repo: codex version-pin bump 0.147.0→0.148.0 (`6904c47` +
+fixture `bc7cacb`) after codex auto-updated on Pro (the fail-closed pin refused 87/87 —
+by design), and a REAL fd-leak the re-run suites caught (`8b6081c`: runCapture/versionMatches
+leaked ~4 fds/call; killByTempDirScan × ~600 processes = measured 2559/2560 fds, blinding
+sweep(); green at P2a by process-count threshold, not correctness). Judge-harness lesson
+(W100): sol was fed only the expected-codes record slice while the model answered from its
+real 5-record package → 22/30 fabrication flags were false; next re-run must feed the judge
+the package named in `package_codes`. NEXT (session-owned, blocks P2c): cure A (3 gate rules
+with guilt+innocence corpora), cure B (search scoring), cure the judge harness, re-run this
+exact corpus (sha `487bc950…`) → only a green re-run deletes OpenClaw (build B).
+
+**🟢 (CLOSED 2026-08-20 by the entry above) 2026-08-20 — P2b BENCHMARK: TOOLING READY + CORPUS FROZEN + OLD BRAIN MEASURED DEAD; THE
 RUN ITSELF IS SUSPENDED ON THE SEAT'S USAGE LIMIT (resumes after 2026-08-22 08:30).** Full
 runbook + frozen identities: `scripts/kbli_bench/README.md` (this PR). The short of it:
 (a) **corpus frozen** — `scripts/kbli_bench/p2b_corpus.json`, sha `487bc9509d01…`, 29 questions
@@ -3405,7 +3431,8 @@ the production instead of after.
 
 ### Seats (unchanged — they govern F2's ambiguous bucket) — family-independent by design
 
-- **Mente immobile / final gate**: **Fable 5** (max effort, interactive) — batch plans + acceptance
+- **Mente immobile / final gate**: **Opus 5** (xhigh effort, interactive) — RULED 2026-08-20, was
+  Fable 5 (Fable is out of the workflow, CLAUDE.md §5) — batch plans + acceptance
   criteria, quarantine adjudication, the final EMPIRICAL gate against raw vault evidence, sign-off.
   Never extracts, never writes data. Window dead → program SUSPENDS at a batch boundary (durable
   state carries; no weaker substitute for the final gate).
@@ -3433,8 +3460,9 @@ revision; per-code lease `agent_lock:kbli-dossier:<code>`.
 - **D5 Independent verification** (anti-correlation): the refuter does BLIND re-extraction, does not
   grade its own work; divergence → quarantine. Cross-family and image-grounded, never a review of the
   text-pack (W100).
-- **D6 Batch gate**: deterministic censuses + gates G13–G17 → **Fable final empirical gate** against
-  RAW vault evidence, never seat summaries → sign-off → compiler emits canonical vNext.
+- **D6 Batch gate**: deterministic censuses + gates G13–G17 → **Opus 5 xhigh-effort final empirical
+  gate** (RULED 2026-08-20, was Fable) against RAW vault evidence, never seat summaries →
+  sign-off → compiler emits canonical vNext.
 
 ### Definition of DONE (unchanged, now machine-computed)
 

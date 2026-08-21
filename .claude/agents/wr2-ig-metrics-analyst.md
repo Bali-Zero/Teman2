@@ -56,8 +56,13 @@ Bundle the filtered data into a single Gemini 3.1 Pro prompt:
 
 ```bash
 # agy = Antigravity CLI Gemini 3.1 Pro (Google AI Ultra sub, 1M ctx).
-# Takes prompt + corpus on stdin combined.
-{ printf '%s\n\n--- CORPUS ---\n' "$PROMPT"; cat /tmp/wr2-metrics-corpus.json; } | agy -p --print-timeout 5m
+# agy v1.1.12+ has NO stdin path — `-p` MUST get the prompt as its own argv
+# value. A pipe into `agy -p --print-timeout 5m` binds "--print-timeout" as
+# the literal prompt and never reads stdin: RC 0, empty output, quota spent
+# for nothing (measured 2026-08-15, matches the fix already live in
+# infra/launchagents/wrappers/*.sh and scripts/ai-dispatch.sh since 2026-08-13).
+FULL_PROMPT="$(printf '%s\n\n--- CORPUS ---\n' "$PROMPT"; cat /tmp/wr2-metrics-corpus.json)"
+agy -p "$FULL_PROMPT" --print-timeout 5m
 ```
 
 Where `/tmp/wr2-metrics-corpus.json` contains:

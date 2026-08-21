@@ -1942,7 +1942,7 @@ PYTHONPATH=. python -c "
 import asyncio, asyncpg
 from backend.migrations.migration_100_olympus_tables import apply
 async def main():
-    conn = await asyncpg.connect('postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag?sslmode=disable')
+    conn = await asyncpg.connect('postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag?sslmode=disable')
     await apply(conn)
     tables = await conn.fetch(\"SELECT tablename FROM pg_tables WHERE tablename LIKE 'olympus_%'\")
     print(f'Fly: Created {len(tables)} tables: {[t[\"tablename\"] for t in tables]}')
@@ -1958,7 +1958,7 @@ PYTHONPATH=. python -c "
 import asyncio, asyncpg
 from backend.migrations.migration_101_critical_indexes import apply
 async def main():
-    conn = await asyncpg.connect('postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag?sslmode=disable')
+    conn = await asyncpg.connect('postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag?sslmode=disable')
     await apply(conn)
     print('Fly: Indexes created')
     await conn.close()
@@ -1973,7 +1973,7 @@ PYTHONPATH=. python -c "
 import asyncio, asyncpg
 from backend.migrations.migration_102_materialized_views import apply
 async def main():
-    conn = await asyncpg.connect('postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag?sslmode=disable')
+    conn = await asyncpg.connect('postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag?sslmode=disable')
     await apply(conn)
     mvs = await conn.fetch(\"SELECT matviewname FROM pg_matviews WHERE schemaname = 'public'\")
     print(f'Fly: MVs created: {[m[\"matviewname\"] for m in mvs]}')

@@ -89,6 +89,22 @@ SEGMENTS: dict[str, dict] = {
     "S4": {
         "label": "Active client, no contact 120d+ (relationship health)",
         "pitch": "a quick check-in on their current status and any pending needs",
+        # RESTRICTED 2026-08-21 (team-lead mandate, S7 segment-4 review): the pitch text
+        # says "a quick check-in", which presupposes a relationship that has gone quiet —
+        # but `last_interaction_date` is written in exactly one place
+        # (backend/.../crm_interactions.py, "UPDATE clients SET last_interaction_date =
+        # NOW()") ONLY when a team member manually logs an interaction. It is never
+        # touched by inbound WhatsApp, client creation, or practice activity. So NULL
+        # here does not mean "we have gone quiet on them" — it means "nobody on the team
+        # has ever clicked that button", which is true for clients we may never have
+        # actually served. Measured 2026-08-21: of 501 clients the un-restricted clause
+        # matched, only 124 (25%) had ever had a practice on file. Sending the "check-in"
+        # pitch to the other 376 would be a first-ever contact disguised as a follow-up.
+        # The EXISTS clause below requires at least one practice (any status — open,
+        # completed, or cancelled all prove a service relationship actually existed) so
+        # this segment only reaches clients the pitch's own premise is true for. DO NOT
+        # remove this clause to "simplify" the query — it is the entire point of the
+        # segment restriction, not incidental filtering.
         "sql": """
             SELECT c.id, c.full_name, c.nationality, c.assigned_to,
                    'last_contact' AS document_type, NULL::int AS days_until_expiry,
@@ -96,6 +112,7 @@ SEGMENTS: dict[str, dict] = {
             FROM clients c
             WHERE c.deleted_at IS NULL AND c.status='active'
               AND (c.last_interaction_date IS NULL OR c.last_interaction_date < now()-interval '120 days')
+              AND EXISTS (SELECT 1 FROM practices p WHERE p.client_id = c.id)
             ORDER BY c.last_interaction_date ASC NULLS FIRST
         """,
     },
@@ -141,6 +158,19 @@ SEGMENTS: dict[str, dict] = {
         """,
     },
 }
+
+
+def display_name_for(full_name: str | None) -> str:
+    """First name + last-initial only (e.g. 'Andrea M.') — the Law-2 WhatsApp
+    payload allowlist forbids a client's full name in a team-member message
+    (SYMBIOSIS.md derogation, 2026-08-21). Never emits more than one initial
+    even for multi-part surnames; falls back to 'Client' when unnamed."""
+    parts = (full_name or "").split()
+    if not parts:
+        return "Client"
+    if len(parts) == 1:
+        return parts[0]
+    return f"{parts[0]} {parts[-1][0].upper()}."
 
 
 def lang_for(nationality: str | None) -> str:
@@ -250,7 +280,11 @@ def main() -> int:
         rows = fetch_rows(meta["sql"], pgpass, args.limit)
         drafted = 0
         out_path = STAGING / f"{seg}-{ts}-drafts.md"
-        with out_path.open("w") as f:
+        sidecar_path = STAGING / f"{seg}-{ts}-drafts.jsonl"
+        # Sidecar consumed by scripts/s7_yield_dispatch.py — structured, one line
+        # per client, so the dispatcher never has to parse the markdown (which is
+        # for human review only). `pitch` is None in --dry-run or on draft failure.
+        with out_path.open("w") as f, sidecar_path.open("w") as sf:
             f.write(f"# S7 Yield drafts — {seg}: {meta['label']}\n")
             f.write(f"_Generated {ts} · LOCAL Ollama {OLLAMA_MODEL} · DRAFT ONLY (do not auto-send)_\n\n")
             for row in rows:
@@ -259,20 +293,37 @@ def main() -> int:
                 nat = row.get("nationality")
                 lang = lang_for(nat)
                 f.write(f"## client_id={cid} · owner={row.get('assigned_to') or '(unassigned)'} · lang={lang}\n")
+                pitch_text = None
                 if args.dry_run:
                     f.write(f"- {row.get('document_type')} days={row.get('days_until_expiry')} expiry={row.get('expiry_date')}\n\n")
                 else:
                     try:
-                        pitch = draft_pitch(name, nat or "", lang, meta["pitch"],
+                        pitch_text = draft_pitch(name, nat or "", lang, meta["pitch"],
                                             row.get("document_type"), row.get("days_until_expiry"),
                                             row.get("expiry_date"))
-                        f.write(f"**Pitch ({lang})**:\n> {pitch}\n\n")
+                        f.write(f"**Pitch ({lang})**:\n> {pitch_text}\n\n")
                         drafted += 1
                     except Exception as e:  # noqa: BLE001
                         f.write(f"_draft failed: {type(e).__name__}_\n\n")
+                sf.write(json.dumps({
+                    "client_id": cid,
+                    "assigned_to": row.get("assigned_to"),
+                    "segment": seg,
+                    "lang": lang,
+                    "display_name": display_name_for(row.get("full_name")),
+                    "pitch": pitch_text,
+                    "signals": {
+                        "document_type": row.get("document_type"),
+                        "days_until_expiry": row.get("days_until_expiry"),
+                        "expiry_date": str(row.get("expiry_date")) if row.get("expiry_date") is not None else None,
+                    },
+                }) + "\n")
                 # privacy log: client_id ONLY, never name
                 print(f"[S7] {seg} client_id={cid} drafted={not args.dry_run}")
-        summary[seg] = {"pulled": len(rows), "drafted": drafted, "file": str(out_path)}
+        # Bozze/sidecar contengono nomi/pitch cliente — 0600 (cicatrix #4).
+        out_path.chmod(0o600)
+        sidecar_path.chmod(0o600)
+        summary[seg] = {"pulled": len(rows), "drafted": drafted, "file": str(out_path), "sidecar": str(sidecar_path)}
         print(f"[S7] {seg}: pulled={len(rows)} drafted={drafted} -> {out_path}")
 
     print("[S7] SUMMARY " + json.dumps(summary))

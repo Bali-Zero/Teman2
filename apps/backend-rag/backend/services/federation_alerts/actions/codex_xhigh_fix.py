@@ -29,6 +29,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from backend.services.federation_alerts.actions._codex_seat import codex_seat_home
 from backend.services.federation_alerts.actions.registry import (
     ActionResult,
     register_action,
@@ -60,14 +61,25 @@ _STRIPPED_ENV_KEYS: frozenset[str] = frozenset(
 
 
 def _safe_env() -> dict[str, str]:
-    """Strip provider API keys from subprocess env.
+    """Strip provider API keys from subprocess env, then pin a live seat.
 
     Codex CLI uses OAuth (Pro $200 quota); embedding-only OPENAI_API_KEY
     must stay scoped to backend-rag and NEVER leak into Codex subprocess
     which could open a non-embedding billing path. Defense-in-depth for
     Anthropic, OpenAI, Google providers.
+
+    CODEX_HOME (2026-08-20): without this, every HITL-approved xhigh fix ran
+    against whichever seat the codex CLI defaults to — on Pro that is the
+    dead ~/.codex (401), one env var away from the live ~/.codex-acct2. A
+    missing/unresolvable seat leaves CODEX_HOME untouched (codex's own
+    default), never an empty string (empty reads to codex as "use the
+    default", the opposite of "no seat found").
     """
-    return {k: v for k, v in os.environ.items() if k not in _STRIPPED_ENV_KEYS}
+    env = {k: v for k, v in os.environ.items() if k not in _STRIPPED_ENV_KEYS}
+    seat = codex_seat_home()
+    if seat:
+        env["CODEX_HOME"] = seat
+    return env
 
 
 def _default_project_root() -> Path:
