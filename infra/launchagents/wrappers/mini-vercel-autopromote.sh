@@ -107,8 +107,17 @@ printf '%s\n' "$OUT" >> "$LOG"
 # main HEAD for all but a few merges a day; USUALLY is not NEVER, and superscar #2 is exactly
 # the organ that stays green while blind. `if` and not `&&`, so no errexit can decapitate it
 # (W101).
+#
+# The pattern is the SHARED PREFIX of every fallback, not `main HEAD — git`. The cure degrades
+# three ways and only two of them say "git": the third, "main HEAD — no commit in history
+# touches a bundle path", falls back identically and was invisible to the narrower pattern --
+# so widening the exit codes while leaving the pattern narrow closed one axis and left the
+# other open, under a comment that claimed both. Raised by a cross-family refuter, which is
+# how you find out that verifying ONE axis does not license a claim about the guard. The
+# prefix names the entity (the cure fell back to main HEAD) rather than a wider form: the good
+# path says "newest bundle-relevant commit on main" and cannot match it (superscar #3).
 DEGRADED=0
-if printf '%s' "$OUT" | grep -q 'main HEAD — git'; then DEGRADED=1; fi
+if printf '%s' "$OUT" | grep -q 'main HEAD — '; then DEGRADED=1; fi
 
 case "$RC" in
     0)

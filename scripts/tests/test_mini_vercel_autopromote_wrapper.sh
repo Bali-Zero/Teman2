@@ -101,6 +101,28 @@ case "$(field "$hb" note)" in
     *) ok "the note names the degraded state, not an action it cannot know" ;;
 esac
 
+# The THIRD fallback, the one that does not say "git". `_deploy_relevant_head` degrades three
+# ways and the original marker matched only two, so this run -- an identical fall back to main
+# HEAD -- wrote a clean `ok`. Raised by a cross-family refuter: widening the exit codes while
+# leaving the pattern narrow closed one axis under a comment that claimed both.
+r=$(run_case 0 'target commit   : deadbeef
+  chosen as     : main HEAD — no commit in history touches a bundle path
+OK — balizero.com serves deadbeef (promoted dpl_x, no rebuild)' Mini-Pro2)
+hb=$(echo "$r" | cut -f1)
+[ "$(field "$hb" status)" = "warning" ] \
+    && ok "the non-git fallback is caught too (all three, not two)" \
+    || bad "a degrade that does not say 'git' still read as healthy" "$hb"
+
+# INNOCENCE for the widened pattern (superscar #3: a wider net catches the innocent). The good
+# path names the bundle-relevant commit and must never trip it.
+r=$(run_case 0 'target commit   : deadbeef
+  chosen as     : newest bundle-relevant commit on main
+OK — balizero.com serves deadbeef (promoted dpl_x, no rebuild)' Mini-Pro2)
+hb=$(echo "$r" | cut -f1)
+[ "$(field "$hb" status)" = "ok" ] && [ "$(field "$hb" note)" = "promoted" ] \
+    && ok "a healthy promote is still a plain ok (widened marker does not over-match)" \
+    || bad "the widened marker accused an innocent run" "$hb"
+
 # The one a code-only mapping gets wrong. argparse exits 2 when the cure does not know
 # --promote-only: nothing ran. If that wore "warning" it would read as the benign
 # nothing-to-promote and stay green over a dead organ for as long as nobody looked.

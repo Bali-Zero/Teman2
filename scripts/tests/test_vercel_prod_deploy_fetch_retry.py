@@ -169,8 +169,13 @@ def test_the_degrade_message_still_matches_the_wrappers_own_pattern(monkeypatch)
     monkeypatch.setattr(vpd, "_fetch_main", lambda: (True, "attempt 1"))
     monkeypatch.setattr(vpd, "_git", lambda *a: None)
     _, log_degrade = vpd._deploy_relevant_head()
+    monkeypatch.setattr(vpd, "_git", lambda *a: "")
+    _, empty_degrade = vpd._deploy_relevant_head()
 
-    for message in (fetch_degrade, log_degrade):
+    # ALL THREE fallbacks, not the two that happen to say "git". The third was invisible to the
+    # original marker, so the wrapper wrote a clean `ok` over a cure that had degraded -- one
+    # axis verified, a claim made about the guard.
+    for message in (fetch_degrade, log_degrade, empty_degrade):
         assert needle in message, f"wrapper greps {needle!r}, cure now says {message!r}"
 
 
