@@ -25,7 +25,7 @@ from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 from backend.app.core.config import settings
 from backend.app.dependencies import get_database_pool
-from backend.app.utils.logging_utils import get_logger
+from backend.app.utils.logging_utils import get_logger, sanitize_for_log
 from backend.core.cache import invalidate_cache
 from backend.services.portal.upload_validation import (
     PORTAL_UPLOAD_MIME_TYPES,
@@ -116,7 +116,7 @@ async def _log_impersonation(
             details={"path": path},
         )
     except Exception as e:  # never fail the request because audit broke
-        logger.warning("impersonation audit log failed: %s", e)
+        logger.warning("impersonation audit log failed: %s", sanitize_for_log(e))
 
 
 async def get_current_client(
@@ -307,10 +307,10 @@ async def get_dashboard(
         # `... WHERE id = $1 AND deleted_at IS NULL`). That's a not-found
         # condition, not an internal error — surface 404 so a soft-deleted
         # client's portal doesn't 500 the whole dashboard.
-        logger.warning(f"Dashboard client not found for client {client['client_id']}: {e}")
+        logger.warning(f"Dashboard client not found for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}")
         raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
-        logger.error(f"Failed to get dashboard for client {client['client_id']}: {e}")
+        logger.error(f"Failed to get dashboard for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}")
         raise HTTPException(
             status_code=500,
             detail="Failed to load dashboard",
@@ -349,10 +349,10 @@ async def get_visa_status(
         # Client row is gone / soft-deleted (portal_service filters
         # `... WHERE id = $1 AND deleted_at IS NULL`) → not-found, not a 500.
         # Consistent with get_dashboard above (BUG C).
-        logger.warning(f"Visa client not found for client {client['client_id']}: {e}")
+        logger.warning(f"Visa client not found for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}")
         raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
-        logger.error(f"Failed to get visa status for client {client['client_id']}: {e}")
+        logger.error(f"Failed to get visa status for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}")
         raise HTTPException(
             status_code=500,
             detail="Failed to load visa information",
@@ -385,10 +385,10 @@ async def get_companies(
         }
     except ValueError as e:
         # Client soft-deleted / gone → not-found, not a 500 (see get_dashboard).
-        logger.warning(f"Companies client not found for client {client['client_id']}: {e}")
+        logger.warning(f"Companies client not found for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}")
         raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
-        logger.error(f"Failed to get companies for client {client['client_id']}: {e}")
+        logger.error(f"Failed to get companies for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}")
         raise HTTPException(
             status_code=500,
             detail="Failed to load companies",
@@ -446,11 +446,11 @@ async def get_company_detail(
         # company_id -> not-found, not a 500. Consistent with get_dashboard
         # (BUG C) and the sibling not-found fix in #2149.
         logger.warning(
-            f"Company {company_id} not found or not accessible for client {client['client_id']}: {e}"
+            f"Company {sanitize_for_log(company_id)} not found or not accessible for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}"
         )
         raise HTTPException(status_code=404, detail="Company not found") from e
     except Exception as e:
-        logger.error(f"Failed to get company {company_id} for client {client['client_id']}: {e}")
+        logger.error(f"Failed to get company {sanitize_for_log(company_id)} for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}")
         raise HTTPException(
             status_code=500,
             detail="Failed to load company information",
@@ -480,7 +480,7 @@ async def set_primary_company(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        logger.error("Failed to set primary company: %s", e)
+        logger.error("Failed to set primary company: %s", sanitize_for_log(e))
         raise HTTPException(
             status_code=500,
             detail="Failed to update primary company",
@@ -519,11 +519,11 @@ async def get_tax_overview(
         # `deleted_at IS NULL`) -> not-found, not a 500. Consistent
         # with get_dashboard (BUG C).
         logger.warning(
-            f"Client not found in get_tax_overview for client {client['client_id']}: {e}"
+            f"Client not found in get_tax_overview for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}"
         )
         raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
-        logger.error(f"Failed to get tax overview for client {client['client_id']}: {e}")
+        logger.error(f"Failed to get tax overview for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}")
         raise HTTPException(
             status_code=500,
             detail="Failed to load tax information",
@@ -561,10 +561,10 @@ async def get_documents(
         # Client soft-deleted / gone (portal_service filters
         # `deleted_at IS NULL`) -> not-found, not a 500. Consistent
         # with get_dashboard (BUG C).
-        logger.warning(f"Client not found in get_documents for client {client['client_id']}: {e}")
+        logger.warning(f"Client not found in get_documents for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}")
         raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
-        logger.error(f"Failed to get documents for client {client['client_id']}: {e}")
+        logger.error(f"Failed to get documents for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}")
         raise HTTPException(
             status_code=500,
             detail="Failed to load documents",
@@ -648,10 +648,10 @@ async def upload_document(
         }
     except ValueError as e:
         # Client soft-deleted / gone -> not-found, not a 500 (see get_dashboard).
-        logger.warning(f"Client not found in upload_document for client {client['client_id']}: {e}")
+        logger.warning(f"Client not found in upload_document for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}")
         raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
-        logger.error(f"Failed to upload document for client {client['client_id']}: {e}")
+        logger.error(f"Failed to upload document for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}")
         raise HTTPException(
             status_code=500,
             detail="Failed to upload document",
@@ -691,7 +691,7 @@ async def download_document(
         raise
     except Exception as e:
         logger.error(
-            f"Failed to download document {document_id} for client {client['client_id']}: {e}"
+            f"Failed to download document {sanitize_for_log(document_id)} for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}"
         )
         raise HTTPException(status_code=500, detail="Failed to download document") from e
 
@@ -727,11 +727,11 @@ async def delete_document(
         # Client soft-deleted / gone (portal_service filters
         # `deleted_at IS NULL`) -> not-found, not a 500. Consistent
         # with get_dashboard (BUG C).
-        logger.warning(f"Client not found in delete_document for client {client['client_id']}: {e}")
+        logger.warning(f"Client not found in delete_document for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}")
         raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
         logger.error(
-            f"Failed to delete document {document_id} for client {client['client_id']}: {e}"
+            f"Failed to delete document {sanitize_for_log(document_id)} for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}"
         )
         raise HTTPException(status_code=500, detail="Failed to remove document") from e
 
@@ -764,12 +764,12 @@ async def restore_document(
     except ValueError as e:
         # Client soft-deleted / gone -> not-found, not a 500 (see get_dashboard).
         logger.warning(
-            f"Client not found in restore_document for client {client['client_id']}: {e}"
+            f"Client not found in restore_document for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}"
         )
         raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
         logger.error(
-            f"Failed to restore document {document_id} for client {client['client_id']}: {e}"
+            f"Failed to restore document {sanitize_for_log(document_id)} for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}"
         )
         raise HTTPException(status_code=500, detail="Failed to restore document") from e
 
@@ -807,10 +807,10 @@ async def get_messages(
         # Client soft-deleted / gone (portal_service filters
         # `deleted_at IS NULL`) -> not-found, not a 500. Consistent
         # with get_dashboard (BUG C).
-        logger.warning(f"Client not found in get_messages for client {client['client_id']}: {e}")
+        logger.warning(f"Client not found in get_messages for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}")
         raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
-        logger.error(f"Failed to get messages for client {client['client_id']}: {e}")
+        logger.error(f"Failed to get messages for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}")
         raise HTTPException(
             status_code=500,
             detail="Failed to load messages",
@@ -843,10 +843,10 @@ async def send_message(
         # Client soft-deleted / gone (portal_service filters
         # `deleted_at IS NULL`) -> not-found, not a 500. Consistent
         # with get_dashboard (BUG C).
-        logger.warning(f"Client not found in send_message for client {client['client_id']}: {e}")
+        logger.warning(f"Client not found in send_message for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}")
         raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
-        logger.error(f"Failed to send message for client {client['client_id']}: {e}")
+        logger.error(f"Failed to send message for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}")
         raise HTTPException(
             status_code=500,
             detail="Failed to send message",
@@ -881,11 +881,15 @@ async def mark_message_read(
         # `deleted_at IS NULL`) -> not-found, not a 500. Consistent
         # with get_dashboard (BUG C).
         logger.warning(
-            f"Client not found in mark_message_read for client {client['client_id']}: {e}"
+            f"Client not found in mark_message_read for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}"
         )
         raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
-        logger.error("Failed to mark message %s as read: %s", message_id, e)
+        logger.error(
+            "Failed to mark message %s as read: %s",
+            sanitize_for_log(message_id),
+            sanitize_for_log(e),
+        )
         raise HTTPException(
             status_code=500,
             detail="Failed to update message",
@@ -918,10 +922,10 @@ async def get_preferences(
         # Client soft-deleted / gone (portal_service filters
         # `deleted_at IS NULL`) -> not-found, not a 500. Consistent
         # with get_dashboard (BUG C).
-        logger.warning(f"Client not found in get_preferences for client {client['client_id']}: {e}")
+        logger.warning(f"Client not found in get_preferences for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}")
         raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
-        logger.error(f"Failed to get preferences for client {client['client_id']}: {e}")
+        logger.error(f"Failed to get preferences for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}")
         raise HTTPException(
             status_code=500,
             detail="Failed to load settings",
@@ -961,11 +965,11 @@ async def update_preferences(
         # `deleted_at IS NULL`) -> not-found, not a 500. Consistent
         # with get_dashboard (BUG C).
         logger.warning(
-            f"Client not found in update_preferences for client {client['client_id']}: {e}"
+            f"Client not found in update_preferences for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}"
         )
         raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
-        logger.error(f"Failed to update preferences for client {client['client_id']}: {e}")
+        logger.error(f"Failed to update preferences for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}")
         raise HTTPException(
             status_code=500,
             detail="Failed to update settings",
@@ -1006,10 +1010,10 @@ async def get_timeline(
         # Client soft-deleted / gone (portal_service filters
         # `deleted_at IS NULL`) -> not-found, not a 500. Consistent
         # with get_dashboard (BUG C).
-        logger.warning(f"Client not found in get_timeline for client {client['client_id']}: {e}")
+        logger.warning(f"Client not found in get_timeline for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}")
         raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
-        logger.error(f"Failed to get timeline for client {client['client_id']}: {e}")
+        logger.error(f"Failed to get timeline for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}")
         raise HTTPException(
             status_code=500,
             detail="Failed to load timeline",
@@ -1042,7 +1046,11 @@ async def get_required_documents(
                 SELECT
                     prd.id, prd.practice_id, prd.document_type, prd.document_label,
                     prd.description, prd.is_required, prd.uploaded_by_client,
-                    prd.status, prd.client_notes, prd.team_member_notes,
+                    -- team_member_notes is DELIBERATELY not selected: it is the
+                    -- operator's internal note (authoring UI labels it "Team Notes"
+                    -- / "Add notes for the team..."). The client-facing note is
+                    -- `description`, which the portal already renders.
+                    prd.status, prd.client_notes,
                     COALESCE(pt.name, p.practice_type_code) as process_name,
                     p.status as process_status
                 FROM practice_required_documents prd
@@ -1066,7 +1074,6 @@ async def get_required_documents(
                 "uploaded_by_client": row["uploaded_by_client"],
                 "status": row["status"],
                 "client_notes": row["client_notes"],
-                "team_member_notes": row["team_member_notes"],
             }
             for row in rows
         ]
@@ -1074,8 +1081,8 @@ async def get_required_documents(
     except Exception as e:
         logger.error(
             "Failed to get portal required documents for client %s: %s",
-            client_id,
-            e,
+            sanitize_for_log(client_id),
+            sanitize_for_log(e),
             exc_info=True,
         )
         raise HTTPException(
@@ -1127,12 +1134,19 @@ async def get_profile(
                     tm.avatar as assigned_to_avatar
                 FROM clients c
                 LEFT JOIN team_members tm ON c.assigned_to = tm.email
-                WHERE c.id = $1
+                WHERE c.id = $1 AND c.deleted_at IS NULL
                 """,
                 client["client_id"],
             )
 
             if not row:
+                # Row missing OR soft-deleted (deleted_at IS NULL above) -> not
+                # found, not a 500. Every other client-scoped portal endpoint
+                # resolves the client through PortalService, which filters
+                # `... WHERE id = $1 AND deleted_at IS NULL` and 404s the same
+                # way (see get_dashboard's "BUG C" comment) — this raw-SQL
+                # handler now matches that gate instead of serving an archived
+                # client's passport/DOB/address (2026-08-20).
                 raise HTTPException(status_code=404, detail="Profile not found")
 
             return {
@@ -1166,7 +1180,7 @@ async def get_profile(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to get profile for client {client['client_id']}: {e}")
+        logger.error(f"Failed to get profile for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}")
         raise HTTPException(
             status_code=500,
             detail="Failed to load profile",
@@ -1203,10 +1217,10 @@ async def update_profile(
         # Client soft-deleted / gone (portal_service filters
         # `deleted_at IS NULL`) -> not-found, not a 500. Consistent
         # with get_dashboard (BUG C).
-        logger.warning(f"Client not found in update_profile for client {client['client_id']}: {e}")
+        logger.warning(f"Client not found in update_profile for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}")
         raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
-        logger.error(f"Failed to update profile for client {client['client_id']}: {e}")
+        logger.error(f"Failed to update profile for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}")
         raise HTTPException(
             status_code=500,
             detail="Failed to update profile",

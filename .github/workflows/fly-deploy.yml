@@ -147,7 +147,7 @@ jobs:
       FLY_ACCESS_TOKEN: ${{ secrets.FLY_API_TOKEN }} # flyctl ≥0.3 reads this name
 
     steps:
-      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # master
 
       - name: Run DB migrations via flyctl console
         timeout-minutes: 3 # step-level timeout (flyctl ssh no longer supports --timeout)
@@ -169,7 +169,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # master
 
       - name: Deploy (rolling strategy, monorepo context)
         run: |
@@ -181,7 +181,8 @@ jobs:
               --app nuzantara-rag \
               --remote-only \
               --dockerfile apps/backend-rag/Dockerfile \
-              --config apps/backend-rag/fly.toml 2>&1 | tee fly-deploy.log
+              --config apps/backend-rag/fly.toml \
+              --build-arg GIT_SHA=${{ github.sha }} 2>&1 | tee fly-deploy.log
             status=${PIPESTATUS[0]}
             set -e
 
@@ -226,7 +227,7 @@ jobs:
       FLY_ACCESS_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
     steps:
-      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # master
 
       - name: Pin migration to a fresh-image machine in the api group (sentinel)
         id: sentinel
@@ -351,7 +352,7 @@ jobs:
       FLY_ACCESS_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
     steps:
-      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # master
 
       - name: Wait for new image to be serving
         run: |
@@ -500,7 +501,7 @@ jobs:
       FLY_ACCESS_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
     steps:
-      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # master
 
       - name: Health check (10 tentativi × 30s = 5min max)
         id: health_check

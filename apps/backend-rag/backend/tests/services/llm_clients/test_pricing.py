@@ -1,5 +1,7 @@
 """Tests for LLM pricing configuration and token cost calculator."""
 
+import logging
+
 import pytest
 
 from backend.services.llm_clients.pricing import (
@@ -9,6 +11,7 @@ from backend.services.llm_clients.pricing import (
     create_token_usage,
     get_model_pricing,
     list_available_models,
+    resolve_pricing,
 )
 
 # ---------------------------------------------------------------------------
@@ -149,6 +152,30 @@ def test_get_model_pricing_partial_match() -> None:
     assert "output" in pricing
     # Should match deepseek/deepseek-chat pricing
     assert pricing == LLM_PRICING["deepseek/deepseek-chat"]
+
+
+def test_unknown_model_warning_does_not_log_raw_slug(caplog: pytest.LogCaptureFixture) -> None:
+    """Unknown provider slugs can be caller-controlled and must stay out of logs."""
+    raw_slug = "caller-controlled-model-slug"
+
+    with caplog.at_level(logging.WARNING, logger="backend.services.llm_clients.pricing"):
+        pricing = resolve_pricing(raw_slug)
+
+    assert pricing is LLM_PRICING["unknown"]
+    assert raw_slug not in caplog.text
+    assert caplog.records[-1].args == ()
+
+
+def test_ambiguous_model_warning_does_not_log_raw_slug(caplog: pytest.LogCaptureFixture) -> None:
+    """Ambiguity diagnostics may list known table rows, never the raw input value."""
+    raw_slug = "flash"
+
+    with caplog.at_level(logging.WARNING, logger="backend.services.llm_clients.pricing"):
+        pricing = resolve_pricing(raw_slug)
+
+    assert pricing is LLM_PRICING["unknown"]
+    assert raw_slug not in caplog.records[-1].args
+    assert caplog.records[-1].msg.startswith("Ambiguous model slug matches")
 
 
 # ---------------------------------------------------------------------------

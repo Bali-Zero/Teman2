@@ -38,10 +38,12 @@ from mata_garuda.types import Agent
 
 class TestPathFirewall:
     def test_valid_name(self):
-        validate_agent_name("KBLI News Agent")
+        # Innocence: the firewall returns None and raises nothing on a name
+        # that trips no forbidden pattern.
+        assert validate_agent_name("KBLI News Agent") is None
 
     def test_valid_name_underscores(self):
-        validate_agent_name("regulation_watcher")
+        assert validate_agent_name("regulation_watcher") is None
 
     def test_forbidden_name_frontend(self):
         with pytest.raises(PathFirewallError, match="frontend"):
@@ -256,7 +258,7 @@ class TestMetaAgentRegistration:
 
 class TestCLIRuntime:
     def test_build_command_claude(self):
-        from mata_garuda.runtime.cli_runtime import CLIRuntime
+        from mata_garuda.runtime.cli_runtime import CLIRuntime, DEFAULT_CLAUDE_MODEL
 
         rt = CLIRuntime(model="claude")
         cmd = rt._build_command("hello", system_prompt="You are helpful")
@@ -265,6 +267,21 @@ class TestCLIRuntime:
         assert "--system-prompt" in cmd
         assert "hello" in cmd
         assert "You are helpful" in cmd
+        # A bare "claude" model must never reach the CLI without an explicit
+        # --model — otherwise it silently inherits the CLI profile's default
+        # (e.g. an interactive "opus[1m]" default), not a chosen model.
+        assert "--model" in cmd
+        assert DEFAULT_CLAUDE_MODEL in cmd
+
+    def test_build_command_claude_submodel_alias(self):
+        from mata_garuda.runtime.cli_runtime import CLIRuntime
+
+        rt = CLIRuntime(model="claude:haiku")
+        cmd = rt._build_command("hello")
+        assert cmd[0] == "claude"
+        assert "--model" in cmd
+        assert "haiku" in cmd
+        assert rt._result_model_name() == "claude:haiku"
 
     def test_build_command_agy(self):
         from mata_garuda.runtime.cli_runtime import CLIRuntime

@@ -14,6 +14,17 @@ interface TeamMember {
   avatar: string | null;
 }
 
+// Mirrors backend/app/utils/service_accounts.py NON_HUMAN_ROLES — a role that
+// is not a client is not automatically a colleague. "monitoring" is the
+// login-healthcheck probe: it authenticates like a team member every 5
+// minutes and must never appear in a human-facing roster or assignment list.
+// Keep in sync with the Python SSOT if a new service role is ever added.
+const NON_HUMAN_ROLES = new Set(["client", "monitoring"]);
+
+export function isNonHumanRole(role: string | null | undefined): boolean {
+  return NON_HUMAN_ROLES.has((role ?? "").trim().toLowerCase());
+}
+
 async function fetchTeamMembers(): Promise<TeamMember[]> {
   const res = await api.get<TeamMember[] | { members: TeamMember[] }>(
     "/api/team/members",
@@ -45,7 +56,7 @@ export function useTeamMemberOptions() {
       const normalizedEmail = member.email.trim().toLowerCase();
       if (
         !normalizedEmail ||
-        member.role?.trim().toLowerCase() === "client" ||
+        isNonHumanRole(member.role) ||
         uniqueMembers.has(normalizedEmail)
       ) {
         continue;

@@ -395,13 +395,16 @@ The `/stream` endpoint emits these SSE event types:
 
 ## 15. Channels — Telegram
 
-**Router:** `telegram.py` + `telegram_webhook.py` | **Prefix:** `/api/telegram`
+**Router:** `telegram.py` | **Prefix:** `/api/telegram`
 
-| Method | Path                               | Auth                        | Description                 |
-| ------ | ---------------------------------- | --------------------------- | --------------------------- |
-| POST   | `/api/telegram/webhook`            | **PUBLIC** (webhook secret) | Telegram bot webhook        |
-| GET    | `/api/telegram/conversations`      | Required                    | List Telegram conversations |
-| GET    | `/api/telegram/conversations/{id}` | Required                    | Get conversation messages   |
+> `telegram_webhook.py` (`/webhook/telegram`) was removed 2026-08-18 (Zero ruled
+> REMOVE) — structurally dead by design, the live Telegram channel is Pro OpenClaw
+> per CLAUDE.md §12. See `.claude/skills/modus/PENDING-ARMS.md` (closed lines).
+
+| Method | Path                               | Auth     | Description                 |
+| ------ | ---------------------------------- | -------- | --------------------------- |
+| GET    | `/api/telegram/conversations`      | Required | List Telegram conversations |
+| GET    | `/api/telegram/conversations/{id}` | Required | Get conversation messages   |
 
 ---
 

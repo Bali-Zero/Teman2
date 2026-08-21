@@ -38,11 +38,16 @@ elif "localhost" in DB:
     DB = DB.replace("localhost", "127.0.0.1")
 
 if not DB:
-    DB = "postgresql://backend_rag_v2:2zEjit43IF6gNUV@127.0.0.1:15432/nuzantara_rag?sslmode=disable"
+    DB = "postgresql://backend_rag_v2:<<ROTATED_2026_08_21_see_DATABASE_URL_env>>@127.0.0.1:15432/nuzantara_rag?sslmode=disable"
 
-OAUTH_CLIENT_ID = "930328104463-m3g4gq72095rip08269kvt8s7et9ev12.apps.googleusercontent.com"
-OAUTH_CLIENT_SECRET = "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"
-OAUTH_REFRESH_TOKEN = "1//0gbiun0bBkNVCCgYIARAAGBASNwF-L9IrGvLMkg0QQ7fz0x98C1zyFqsCvzyijl7NjxUXoJ8K_-BAN8t-ZuQyT5uIv2iVJUPSiMA"
+# OAuth credentials from rclone gdrive remote (antonellosiano@gmail.com)
+# These can access folders owned by all team members.
+# IMPORTANT: set GOOGLE_OAUTH_CLIENT_ID_RCLONE, GOOGLE_OAUTH_CLIENT_SECRET_RCLONE,
+# and GOOGLE_OAUTH_REFRESH_TOKEN as env vars.
+# Rotate GOCSPX-*** on Google Cloud Console if previously committed in plaintext.
+OAUTH_CLIENT_ID = os.environ["GOOGLE_OAUTH_CLIENT_ID_RCLONE"]
+OAUTH_CLIENT_SECRET = os.environ["GOOGLE_OAUTH_CLIENT_SECRET_RCLONE"]
+OAUTH_REFRESH_TOKEN = os.environ["GOOGLE_OAUTH_REFRESH_TOKEN"]
 
 COMPANY_SUBFOLDERS = ["00_AKTA", "01_NIB", "02_NPWP", "03_Profile_Perseroan"]
 BALI_ZERO_ROOT_ID = "1hkOeV03YM5-sHbQhswYz809jsrnwC0At"

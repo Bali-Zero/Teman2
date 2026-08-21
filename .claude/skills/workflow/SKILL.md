@@ -6,7 +6,7 @@ description: >
   GLM refuter, Ollama PII-local). USE when the mandate is strategic/wide: architectural
   decision, exhaustive audit/review, corpus research, design tournament, council panel —
   anything needing many independent perspectives or scale one context can't hold. Also the
-  shared protocol for TWIN FABLE SESSIONS (e.g. M5 + Pro) doing joint strategic work:
+  shared protocol for TWIN OPUS SESSIONS (e.g. M5 + Pro) doing joint strategic work:
   disjoint lanes, durable artifacts on disk, handoff via ledger. Invoking this skill IS the
   user's explicit opt-in to the Workflow tool. SKIP for single-lane fixes — that's plain
   modus Gear 1/2 with at most one spalla.
@@ -17,8 +17,9 @@ description: >
 > modus (`.claude/skills/modus/SKILL.md`) is the LOOP; this skill is the FAN-OUT ARM the
 > loop reaches for at Gear 3. Doctrine: `sota-architecture-loop` (council gate, asymmetric
 > adversarial review) · executable ancestors: `infra/workflows/README.md`. Nothing here
-> overrides the modus final-gate invariant: **Fable does the last on-disk grep — never
-> delegable, never cascadable.**
+> overrides the modus final-gate invariant: **Opus 5 xhigh effort does the last on-disk grep**
+> (Fable is out of the workflow, RULED 2026-08-20 — CLAUDE.md §5) **— never delegable, never
+> cascadable.**
 
 ## 0. Opt-in and when to fire
 
@@ -38,8 +39,9 @@ not N workflows), single-file fixes, anything already owned by a live sibling la
 
 ## 1. The contract (non-negotiable)
 
-1. **Fable orchestrates, Sonnet builds, externals grade.** `agent()` lanes default to the
-   session model; pass `model:"sonnet"` for implementer lanes, `model:"haiku"` for grunt.
+1. **Opus 5 orchestrates, Sonnet builds, externals grade.** (Fable is out of the workflow, RULED
+   2026-08-20.) `agent()` lanes default to the session model; pass `model:"sonnet"` for
+   implementer lanes, `model:"haiku"` for grunt.
 2. **generator≠grader, always.** No lane grades its own output; a grader gets FRESH
    context and never sees the generator's answer before deriving its own (D5 pattern).
 3. **Cross-family beats same-family** (W100: same-lane agreement certified 7 false-clean
@@ -62,7 +64,7 @@ a seat that fails its 1-token probe is a dead tier, DECLARED, never silently ski
 | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
 | Sonnet 5 (Claude)          | native `agent(prompt, {model:"sonnet"})`                                                                                                                                                                                                                                                                                                                                                                                               | implementer / reader fan-out             |
 | Codex GPT-5.6 sol (OpenAI) | `codex exec -m gpt-5.6-sol -c model_reasoning_effort=xhigh --sandbox read-only --skip-git-repo-check "<prompt>" < /dev/null` — NOTE 2026-07-19 (timeboxed): sol@high exceeded the 590s Bash cap twice on multi-file R1 reviews; `terra` medium is the reliable R1 default until a latency log says otherwise; on timeout DECLARE and escalate along the cascade                                                                        | red-team / empirical sandbox             |
-| Gemini via agy (Google)    | `agy -p "<prompt>"` (long input: `cat file \| agy -p --print-timeout 5m`)                                                                                                                                                                                                                                                                                                                                                              | costruttivo / corpus width / normativa   |
+| Gemini via agy (Google)    | `agy -p "<prompt>"` (long input: `agy -p "$(cat file)" --print-timeout 5m` — agy has NO stdin path; piping in via `cat file \| agy -p --print-timeout 5m` binds "--print-timeout" as the literal prompt argv and returns RC 0 with empty output, silently burning quota, measured 2026-08-15)                                                                                                                                          | costruttivo / corpus width / normativa   |
 | **Kimi K3 (Moonshot)**     | `kimi -p "<prompt>" -m kimi-code/k3` (coding lane: `-m kimi-code/kimi-for-coding`; grunt: `-highspeed`; scriptable seat: `scripts/kimi_client.py`) — ARMED M5+Pro+Mini 2026-07-19 (probed). NON-PII prompts only (Chinese cloud, Law 2); K3 hyper-proactive on ambiguous tasks — scope tight. Desktop = separate operator-driven surface, see `research/operations/2026-07-19-kimi-arsenal-integration-deepseek-retirement.md`         | refuter #2 / cross-family second opinion |
 | GLM 5.2 (Zhipu)            | `claude-glm` wrapper (Keychain-bound — probe first; dead under locked keychain) — PROMOTED 2026-07-19 (Zero: "glm deve essere un po' più utilizzato"): FIRST-CALL refuter and default R1 seat for compact reviews (<5k chars prompt — z.ai 529s above); it runs the claude CLI shim so it READS FILES AGENTICALLY — hand it paths, don't paste diffs; escalate along the cascade (Kimi → Codex) only on multi-file scope or probe-fail | refuter #1 — USE FIRST, not last-resort  |
 | Ollama (local)             | `ollama run qwen3.5:9b "<prompt>"` (vision: `qwen2.5vl:7b`)                                                                                                                                                                                                                                                                                                                                                                            | PII-bearing transforms, offline          |
@@ -120,7 +122,7 @@ Workflow({ scriptPath: "infra/workflows/verify-template.js", args: {
 **council — strategic decision** (inline script): proponent lane drafts the position →
 3 external chairs in parallel (Codex red-team: _find the flaw, default defective_ · agy
 costruttivo: _save it by improving it_ · Kimi/GLM refuter: _falsify the core claim_) →
-Fable synthesizes VERDICTS-AS-LEADS into the decision artifact on disk. Max 3 external
+Opus 5 xhigh effort synthesizes VERDICTS-AS-LEADS into the decision artifact on disk. Max 3 external
 chairs, rounds capped at 2, never "do you all agree?" (conformity hallucination).
 
 **sweep — corpus-scale ground** (pipeline, no barrier): readers fan out per organ/domain
@@ -138,9 +140,14 @@ kbli-pilot-a1.js`): D1 proposes from evidence → D5 blind-rederives on fresh co
 (image-grounded where the evidence is a render, W100) → divergence escalates to a
 cross-family seat. Copy its structure for any per-record certification program.
 
-## 4. Twin-Fable protocol (M5 + Pro/Mini strategic pair)
+## 4. Twin-Opus protocol (M5 + Pro/Mini strategic pair)
 
-Two Fable sessions on different machines multiply strategy ONLY with hard lane
+> Renamed 2026-08-20 (was "Twin-Fable protocol") — Fable is out of the workflow, RULED 2026-08-20;
+> the interactive/orchestrator default has been Opus 5 since 2026-07-25. Fable may still sit in
+> one leg manually if Zero opens that session with `/model claude-fable-5`, but the protocol
+> itself no longer assumes it.
+
+Two Opus 5 sessions on different machines multiply strategy ONLY with hard lane
 discipline — without it they produce twin-race casualties (PR #2781):
 
 1. **Claim before work**: each session claims a DISJOINT scope in the corner skill's LIVE

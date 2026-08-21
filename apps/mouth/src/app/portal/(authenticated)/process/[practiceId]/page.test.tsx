@@ -26,7 +26,6 @@ function makeData(
     practice_name: "KITAS Investor",
     practice_category: "VISA",
     current_status: "on_process",
-    assigned_to: null,
     steps: [
       {
         status: "inquiry",
@@ -34,7 +33,6 @@ function makeData(
         completed: true,
         is_current: false,
         changed_at: "2026-06-01T09:00:00Z",
-        changed_by: "team",
       },
       {
         status: "on_process",
@@ -42,7 +40,6 @@ function makeData(
         completed: false,
         is_current: true,
         changed_at: "2026-07-10T09:00:00Z",
-        changed_by: "team",
       },
     ],
     ...overrides,
@@ -106,13 +103,14 @@ describe("PracticeDetailPage", () => {
     expect(inquiryBadge.style.color).toContain("--text-tertiary");
   });
 
-  it("shows the blocked CTA with --state-danger styling when cancelled", async () => {
-    await renderPage({
-      current_status: "cancelled",
-      assigned_to: "legal team",
-    });
+  it("shows the blocked CTA with --state-danger styling when cancelled, and never leaks a staff identity as the reason", async () => {
+    await renderPage({ current_status: "cancelled" });
     const alert = screen.getByRole("alert");
-    expect(alert).toHaveTextContent(/Practice blocked: legal team\./i);
+    // No reason field exists on the client-facing payload today, so the
+    // CTA renders its plain fallback text — never a staff email address
+    // (see BlockedStateCTA JSDoc for the incident this guards against).
+    expect(screen.getByText(/^Practice blocked\.$/i)).toBeInTheDocument();
+    expect(alert.textContent || "").not.toMatch(/@/);
     const icon = alert.querySelector("svg");
     expect(icon).toHaveStyle({ color: "var(--state-danger)" });
   });

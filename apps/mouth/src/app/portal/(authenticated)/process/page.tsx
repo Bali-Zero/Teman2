@@ -558,14 +558,6 @@ function ProcessCard({
                     <StatusBadge
                       status={doc.status as keyof typeof STATUS_CONFIG}
                     />
-                    {doc.team_member_notes && (
-                      <span
-                        className="text-xs"
-                        style={{ color: "var(--bz-text-2)" }}
-                      >
-                        Note: {doc.team_member_notes}
-                      </span>
-                    )}
                   </div>
                 </div>
 

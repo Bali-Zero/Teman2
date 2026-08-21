@@ -1,0 +1,101 @@
+[
+  {
+    "query_id": "E2C-E23U-IDENTITY",
+    "source": "e2c-authored",
+    "reworked_from": "VO-FUSED-T1-011 (17-point doctrine-card, never dispatched -- narrowed per batch-3 discipline: 2 points max)",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["E23U"],
+    "text": "For the Indonesian visa/stay-permit index code E23U (work sub-code U) ONLY, answer just these 2 points, concisely: (1) category and legal purpose -- what distinguishes E23U from plain E23 and from E23V; (2) permitted vs prohibited activities while holding it. If the sources do not cover E23U at all, say so explicitly rather than inferring from E23."
+  },
+  {
+    "query_id": "E2C-E23U-DURATION",
+    "source": "e2c-authored",
+    "reworked_from": "VO-FUSED-T1-011 (17-point doctrine-card, never dispatched -- narrowed)",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["E23U"],
+    "text": "For the Indonesian visa/stay-permit index code E23U (work sub-code U) ONLY, answer just these 2 points, concisely: (1) single or multiple entry, and duration per entry and total validity; (2) how many times it can be extended and for how long, and what it converts to (onshore conversion path, if any). If the sources do not cover E23U at all, say so explicitly rather than inferring from E23."
+  },
+  {
+    "query_id": "E2C-E23V-IDENTITY",
+    "source": "e2c-authored",
+    "reworked_from": "VO-FUSED-T1-012 (17-point doctrine-card, never dispatched -- narrowed per batch-3 discipline)",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["E23V"],
+    "text": "For the Indonesian visa/stay-permit index code E23V (work sub-code V) ONLY, answer just these 2 points, concisely: (1) category and legal purpose -- what distinguishes E23V from plain E23 and from E23U; (2) permitted vs prohibited activities while holding it. If the sources do not cover E23V at all, say so explicitly rather than inferring from E23."
+  },
+  {
+    "query_id": "E2C-E23V-DURATION",
+    "source": "e2c-authored",
+    "reworked_from": "VO-FUSED-T1-012 (17-point doctrine-card, never dispatched -- narrowed)",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["E23V"],
+    "text": "For the Indonesian visa/stay-permit index code E23V (work sub-code V) ONLY, answer just these 2 points, concisely: (1) single or multiple entry, and duration per entry and total validity; (2) how many times it can be extended and for how long, and what it converts to (onshore conversion path, if any). If the sources do not cover E23V at all, say so explicitly rather than inferring from E23."
+  },
+  {
+    "query_id": "E2C-E33A-IDENTITY",
+    "source": "e2c-authored",
+    "reworked_from": "VO-FUSED-T1-033 (17-point doctrine-card, never dispatched -- narrowed per batch-3 discipline)",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["E33A"],
+    "text": "For the Indonesian visa/stay-permit index code E33A (part of the E33 second-home/talent family) ONLY, answer just these 2 points, concisely: (1) category and legal purpose -- what distinguishes E33A from plain E33 and from E33B/E33C; (2) permitted vs prohibited activities while holding it. If the sources do not cover E33A at all, say so explicitly."
+  },
+  {
+    "query_id": "E2C-E33A-DURATION",
+    "source": "e2c-authored",
+    "reworked_from": "VO-FUSED-T1-033 (17-point doctrine-card, never dispatched -- narrowed)",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["E33A"],
+    "text": "For the Indonesian visa/stay-permit index code E33A ONLY, answer just these 2 points, concisely: (1) single or multiple entry, and duration per entry and total validity; (2) is a sponsor/guarantor required, and what financial requirement or investment tier does it carry (if any). If the sources do not cover E33A at all, say so explicitly."
+  },
+  {
+    "query_id": "E2C-E33B-IDENTITY",
+    "source": "e2c-authored",
+    "reworked_from": "VO-FUSED-T1-034 (17-point doctrine-card, never dispatched -- narrowed per batch-3 discipline; E33B is the least-documented of the E33A/B/C trio, priority query)",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["E33B"],
+    "text": "For the Indonesian visa/stay-permit index code E33B (part of the E33 second-home/talent family) ONLY, answer just these 2 points, concisely: (1) category and legal purpose -- what qualifying expertise or cooperation basis distinguishes E33B from E33A and E33C; (2) permitted vs prohibited activities while holding it. If the sources do not cover E33B at all, say so explicitly."
+  },
+  {
+    "query_id": "E2C-E33B-DURATION",
+    "source": "e2c-authored",
+    "reworked_from": "VO-FUSED-T1-034 (17-point doctrine-card, never dispatched -- narrowed)",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["E33B"],
+    "text": "For the Indonesian visa/stay-permit index code E33B ONLY, answer just these 2 points, concisely: (1) single or multiple entry, and duration per entry and total validity; (2) is a sponsor/guarantor required, and what qualifying-expertise evidence or cooperation window does it require (if any). If the sources do not cover E33B at all, say so explicitly."
+  },
+  {
+    "query_id": "E2C-E33B-EXTRA",
+    "source": "e2c-authored",
+    "reworked_from": "VO-FUSED-T16-004 (E33B qualifying-expertise verification, target only E33B) -- narrowed to 2 points; E33B priority follow-up",
+    "topic": "T16",
+    "category": "doctrine-lite",
+    "target_products": ["E33B"],
+    "text": "For the Indonesian visa/stay-permit index code E33B ONLY, answer just these 2 points, concisely: (1) what documentary evidence proves the qualifying expertise or cooperation basis (ranking, recency, GPA, or institutional-cooperation proof), and is it declarative or does it require documentary verification; (2) how many times it can be extended and for how long, and what it converts to (onshore conversion path, if any). If the sources do not cover E33B at all, say so explicitly."
+  },
+  {
+    "query_id": "E2C-E33C-IDENTITY",
+    "source": "e2c-authored",
+    "reworked_from": "VO-FUSED-T1-035 (17-point doctrine-card, never dispatched -- narrowed per batch-3 discipline)",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["E33C"],
+    "text": "For the Indonesian visa/stay-permit index code E33C (part of the E33 second-home/talent family) ONLY, answer just these 2 points, concisely: (1) category and legal purpose -- what distinguishes E33C from E33A and E33B; (2) permitted vs prohibited activities while holding it. If the sources do not cover E33C at all, say so explicitly."
+  },
+  {
+    "query_id": "E2C-E33C-DURATION",
+    "source": "e2c-authored",
+    "reworked_from": "VO-FUSED-T1-035 (17-point doctrine-card, never dispatched -- narrowed)",
+    "topic": "T1",
+    "category": "doctrine-lite",
+    "target_products": ["E33C"],
+    "text": "For the Indonesian visa/stay-permit index code E33C ONLY, answer just these 2 points, concisely: (1) single or multiple entry, and duration per entry and total validity; (2) is a sponsor/guarantor required, and what financial requirement or investment tier does it carry (if any). If the sources do not cover E33C at all, say so explicitly."
+  }
+]

@@ -11,7 +11,6 @@ description: >
   `python -c "from backend.app.dependencies import get_current_user; ..."`.
 patterns:
   - apps/backend-rag/**/test_dependenc*.py
-  - apps/backend-rag/tests/test_import_time.py
   - apps/backend-rag/**/test_light_router_startup_imports.py
 rationale: >
   CLAUDE.md §11 pre-deploy sequence names the import-chain check explicitly,
@@ -19,4 +18,15 @@ rationale: >
   Orchestrator trigger table (CLAUDE.md §2) calls this out as an "Import
   chain SPOF" — a broken import here does not fail one feature, it fails
   the whole app's boot.
-verified_match_count: 6
+# 2026-08-21: verified_match_count dropped 6 -> 3, and the literal
+# apps/backend-rag/tests/test_import_time.py pattern was removed, when the
+# never-CI-collected apps/backend-rag/tests/ orphan tree (pytest.ini
+# testpaths = backend/tests never included it) was deleted. That tree also
+# held apps/backend-rag/tests/integration/test_dependencies_comprehensive.py
+# and apps/backend-rag/tests/unit/test_dependency_injection.py, both
+# previously counted here under the test_dependenc* glob — neither was
+# CI-collected either, so this floor's real coverage was always just the 3
+# files that remain: backend/tests/unit/app/test_dependencies.py,
+# backend/tests/unit/app/test_dependencies_critical.py, and
+# backend/tests/unit/app/setup/test_light_router_startup_imports.py.
+verified_match_count: 3

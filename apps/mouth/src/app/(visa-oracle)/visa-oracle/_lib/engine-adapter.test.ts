@@ -510,12 +510,19 @@ describe("review reasons cover every code the current pack can emit", () => {
   // keys were.
   const KNOWN_UNMAPPED_REVIEW_REASON_CODES = [
     // From rulepack-prod-007+ (HUMAN_REVIEW stage):
+    "E23U_DIPLOMATIC_HOUSEHOLD_STAFF_REVIEW",
+    "E23V_TRADE_OFFICE_STAFF_REVIEW",
     "E28B_USD_THRESHOLD_MANUAL_CHECK",
     "E28C_USD_THRESHOLD_AND_INSTRUMENT_CHECK",
     "E28D_USD_THRESHOLD_AND_TURNOVER_CHECK",
     "E28F_IKN_THRESHOLD_MANUAL_CHECK",
     "E33B_EXPERTISE_QUALIFICATION_CHECK",
     "E33G_EXCLUDES_LOCAL_COMPANY_OWNERSHIP",
+    // E5 increment 3 seq-9 fold (2026-08-19): review.e33g.income-evidence
+    // (OD-1 pattern — the USD 60,000/year income floor is un-modelable, no
+    // work-income FactPath exists, see cure-e33g.md). QW-4b (copy-deck
+    // approval) still owns writing the actual sentence.
+    "E33G_INCOME_EVIDENCE_REVIEW",
     "E33_WORK_RANGKAP_KEGIATAN_GATED",
     "GOVT_INVITATION_REQUIRED",
     // Pack-independent (evaluate_path.py):

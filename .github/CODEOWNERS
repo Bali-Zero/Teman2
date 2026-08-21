@@ -55,6 +55,22 @@
 /scripts/ci/test_change_map.py                       @Balizero1987
 /scripts/ci/hotzone_changed_files.sh                 @Balizero1987
 
+# Ring-gating manual kill-switch (Merge-OS v2 round-2 Cure #1, adapted
+# 2026-08-18) — sits in the same trust boundary as the classifier files
+# above: a PR that neuters this script's ability to force the full suite
+# quietly disarms the one operator-controlled emergency lever over the
+# ring-gating the three files above implement.
+/scripts/ci/ring_gating_override.sh                  @Balizero1987
+/scripts/ci/test_ring_gating_override.py             @Balizero1987
+
+# security.yml path-aware gating (2026-08-20) — the flag math that decides
+# which of the seven security scanners a PR actually runs. Same trust
+# boundary as change_map.py above and extracted from BASE_SHA alongside it
+# in security.yml's own `changes` job: a PR could otherwise bypass gating
+# by editing THIS file's rules directly, leaving change_map.py untouched.
+/scripts/ci/security_gate_flags.py                   @Balizero1987
+/scripts/ci/test_security_gate_flags.py              @Balizero1987
+
 # ---------------------------------------------------------------------------
 # Deploy / infra config — TIER 1
 # ---------------------------------------------------------------------------

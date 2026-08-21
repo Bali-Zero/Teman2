@@ -35,6 +35,7 @@ DOMAIN_NAMES = (
     "infra_workflows",
     "docs_content_data",
     "security_sensitive",
+    "fleet_ops",
 )
 
 TEST_JOBS = (
@@ -217,6 +218,55 @@ PREFIX_RULES: tuple[tuple[str, frozenset[str]], ...] = (
     ("config/", frozenset({"infra_workflows", "security_sensitive"})),
     ("data/", frozenset({"backend_python", "docs_content_data"})),
     ("public/", frozenset({"mouth", "docs_content_data"})),
+    # fleet_ops (2026-08-20): top-level scripts/ (outside scripts/ci/, already
+    # mapped above) is NOT mapped as a whole — a per-file coupling census this
+    # PR ran found 19+ scripts/*.py modules silently imported into
+    # apps/backend-rag/backend/tests/{scripts,unit/scripts}/ via a sys.path
+    # shim in that tree's own conftest.py (`from scripts.X import Y` resolves
+    # to the repo-root scripts/ package once the CI job's pytest invocation
+    # has collected any file under it — see scripts/bot/test_*.py, which are
+    # listed as explicit pytest targets in tests.yml and are what actually
+    # puts the repo root on sys.path for every other test in the same run).
+    # The coupled set has NO naming or directory pattern an automated rule
+    # could detect — scripts/drive_token_watchdog.py, scripts/fix_lkpm_q1_
+    # 2026_client_ids.py and scripts/wr2_html_render_apply.py (the last one
+    # is what forced run_all=true, correctly, on PR #4431 the same day this
+    # was written) are all individually imported by backend-tests despite
+    # none of their names suggesting it; one, scripts/sentinel_lib/alerter.py,
+    # is even imported by PRODUCTION backend application code. Mapping scripts/
+    # by directory or prefix at that granularity would be an under-match
+    # (cicatrix #3) waiting to happen. These ten directories are the ONLY
+    # scripts/ subtrees mapped, because each is verified BOTH ways: (a)
+    # contains zero .py files anywhere in its tree, so it is structurally
+    # impossible for the sys.path-import mechanism above to reach it (Python
+    # cannot `import` a .sh/.json/.plist/.md file), and (b) a literal grep for
+    # each directory's own path (trailing slash, to avoid a prefix collision
+    # like "scripts/pro" matching "scripts/probes/…") across every file tree
+    # any of the six tests.yml jobs execute — apps/backend-rag/, apps/
+    # nuzantara-mcp/, apps/evaluator/, apps/mouth/, apps/admin-dashboard/,
+    # apps/wa-mirror/, packages/core/, and tests.yml itself — returns zero
+    # hits, so no job subprocess-invokes anything in them either. All ten are
+    # pure per-machine/per-person fleet-ops payloads (Mini/Pro git-pull
+    # wrappers, Codex overnight cron scripts, Damar/Krisna/Ruslana node
+    # bootstrap installers, LaunchAgent plists, a CLI dispatcher, one static
+    # JSON snapshot, one JSON routing config) with their own narrower CI where
+    # they need it (e.g. scripts/codex/ and scripts/pro/ are swept by
+    # immune-enforcement.yml and guard-conformance.yml — unrelated to and
+    # unaffected by this domain, which only governs tests.yml's six jobs).
+    # `fleet_ops` intentionally maps to ZERO entries in `_suggested_jobs()` —
+    # a change confined to these directories needs none of the six heavy
+    # jobs to verify it, and a change combined with anything else keeps
+    # whatever job set that other path already earns.
+    ("scripts/cli/", frozenset({"fleet_ops"})),
+    ("scripts/codex/", frozenset({"fleet_ops"})),
+    ("scripts/damar-node/", frozenset({"fleet_ops"})),
+    ("scripts/data/", frozenset({"fleet_ops"})),
+    ("scripts/krisna-node/", frozenset({"fleet_ops"})),
+    ("scripts/launchd/", frozenset({"fleet_ops"})),
+    ("scripts/mini/", frozenset({"fleet_ops"})),
+    ("scripts/pro/", frozenset({"fleet_ops"})),
+    ("scripts/review_routes/", frozenset({"fleet_ops"})),
+    ("scripts/ruslana-node/", frozenset({"fleet_ops"})),
 )
 
 DOC_PREFIXES = (

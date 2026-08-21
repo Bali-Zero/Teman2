@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -64,6 +65,22 @@ def _core_organs_expected_here() -> tuple[str, ...]:
 DEFAULT_SIDECAR_DIR = os.path.expanduser("~/.organism/last_seen")
 DEFAULT_ALERTS_FILE = os.path.expanduser("~/.organism/alerts/open.jsonl")
 DEFAULT_STALE_DAYS = 7
+
+# arsenal_probe's AUTOMATED recurring heartbeat is a promise only on its primary
+# node (docs/runbooks/arsenal-probe.md §How it is armed: "Mini (primary)"). Any
+# other node's `<machine>.arsenal_probe.json` is a one-time on-demand stamp from
+# a manual `--table`/VCR-triggered run there (infra/vcr/cli.py check) — its
+# staleness is expected, not a silent outage. Sibling fix to
+# organism_digest.py::stale_heartbeats() (same exemption, same constant name):
+# that module got this exemption, this detector reads the same sidecar dir and
+# had the identical bug (same class as the .worktrees/ runtime-stamp fix a few
+# lines below) — found live 2026-08-21 when a dispatch went out to "revive"
+# m5.arsenal_probe as a dead cron when no cron for it has ever existed on M5
+# (CLAUDE.md: M5 = no daemon/cron H24; the probe is on-demand only there). This
+# detector's blanket 7-day scan flagged the 8.7-day-old on-demand stamp as if
+# it were a broken recurring promise.
+_ARSENAL_PROBE_STEM_RE = re.compile(r"^(?P<machine>[a-z][a-z0-9]*)\.arsenal_probe$")
+ARSENAL_PROBE_PRIMARY_NODE = "mini"
 
 # Cross-host visibility gap (found 2026-07-17, PENDING-ARMS "infra.eventbus_redis_mini
 # heartbeat frozen"): a handful of organ_ids are TCP-probed and written by a cron that
@@ -339,6 +356,9 @@ def scan_sidecars(
             continue
         organ_id = fname[: -len(".json")]
         seen.add(organ_id)
+        m = _ARSENAL_PROBE_STEM_RE.match(organ_id)
+        if m and m.group("machine") != ARSENAL_PROBE_PRIMARY_NODE:
+            continue  # on-demand elsewhere; no recurring promise here, never "silent"
         if _is_foreign_jurisdiction(organ_id, here):
             continue
         path = os.path.join(sidecar_dir, fname)

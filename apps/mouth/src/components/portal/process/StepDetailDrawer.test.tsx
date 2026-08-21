@@ -10,7 +10,6 @@ const step: ProcessStep = {
   completed: false,
   is_current: true,
   changed_at: "2026-04-01T10:30:00Z",
-  changed_by: "alice",
 };
 
 describe("StepDetailDrawer", () => {
@@ -50,9 +49,16 @@ describe("StepDetailDrawer", () => {
     expect(container).toBeInTheDocument();
   });
 
-  it("handles missing changed_by gracefully", () => {
-    const noAuthor: ProcessStep = { ...step, changed_by: null };
-    render(<StepDetailDrawer step={noAuthor} open onClose={() => {}} />);
+  it("never renders a 'Changed by' row or a staff email, even if a stale payload still carries changed_by", () => {
+    // ProcessStep no longer declares `changed_by` — this simulates a stale
+    // cached/legacy response that still includes it, to prove the drawer
+    // ignores it rather than merely lacking a type for it.
+    const staleStep = {
+      ...step,
+      changed_by: "staff@example.com",
+    } as ProcessStep;
+    render(<StepDetailDrawer step={staleStep} open onClose={() => {}} />);
     expect(screen.queryByText("Changed by")).not.toBeInTheDocument();
+    expect(screen.queryByText(/staff@example\.com/)).not.toBeInTheDocument();
   });
 });

@@ -121,7 +121,7 @@ These servers are loaded on-demand via Tool Search:
   "args": [
     "-y",
     "@modelcontextprotocol/server-postgres",
-    "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag"
+    "postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag"
   ],
   "env": {},
   "instructions": "Use for querying the Nuzantara CRM database (clients, practices, leads, team members), reading/writing client data, managing immigration cases, and analyzing business metrics. Database contains all Bali Zero operational data."

@@ -16,8 +16,16 @@ Run:  python3 scripts/tests/test_intake_health_report.py
 from __future__ import annotations
 
 import asyncio
+import fcntl
+import json
+import os
 import pathlib
+import shutil
+import subprocess
 import sys
+import time
+
+import pytest
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
@@ -49,6 +57,7 @@ def _base_kwargs(**overrides):
         zombie_count=0,
         undelivered={"undelivered": 1, "total": 10},
         worker_log_exists=True,
+        worker_plist_source="repo",
         dead_last_24h=4,
         wa_media_last_24h=7,
         generated_at="2026-08-15T00:00:00Z",
@@ -74,6 +83,7 @@ def test_build_report_has_stable_top_level_keys():
         "zombie_review_claimed_null_lease",
         "undelivered_committed",
         "worker_log_inode_exists",
+        "worker_plist_source",
         "dead_last_24h",
         "wa_media_last_24h",
     }
@@ -321,8 +331,467 @@ class _FakeConn:
     async def execute(self, query, *args):
         return "SET"
 
-    async def close(self):
+    async def close(self, *, timeout=None):
         return None
+
+
+class _TrackingConn(_FakeConn):
+    def __init__(self):
+        self.closed = False
+        self.close_timeout = None
+        self.terminated = False
+
+    async def close(self, *, timeout=None):
+        self.close_timeout = timeout
+        self.closed = True
+
+    def terminate(self):
+        self.terminated = True
+
+
+class _CloseFailureConn(_FakeConn):
+    def __init__(self):
+        self.terminated = False
+
+    async def close(self, *, timeout=None):
+        raise RuntimeError("client-close-detail-should-never-reach-heartbeat")
+
+    def terminate(self):
+        self.terminated = True
+
+
+class _CancellationResistantCloseConn(_FakeConn):
+    def __init__(self):
+        self.close_cancellations = 0
+        self.close_returned = False
+        self.close_timeout = None
+        self.terminated = False
+        self._terminated = asyncio.Event()
+
+    async def close(self, *, timeout=None):
+        self.close_timeout = timeout
+        # Test-process failsafe only: a regression must FAIL after a measurable
+        # 500ms instead of hanging the whole pytest worker forever.  Production
+        # is required to call terminate near the configured 10ms deadline.
+        safety_release = asyncio.get_running_loop().call_later(
+            0.5,
+            self._terminated.set,
+        )
+        try:
+            while not self._terminated.is_set():
+                try:
+                    await self._terminated.wait()
+                except asyncio.CancelledError:
+                    # Intentionally suppress every cancellation.  The old
+                    # asyncio.wait_for implementation waited here until the
+                    # failsafe; the production helper must reach its
+                    # synchronous terminate watchdog instead.
+                    self.close_cancellations += 1
+            self.close_returned = True
+        finally:
+            safety_release.cancel()
+
+    def terminate(self):
+        self.terminated = True
+        self._terminated.set()
+
+
+def _install_run_fakes(monkeypatch, tmp_path, conn, heartbeats):
+    async def _fake_connect(*_args, **_kwargs):
+        return conn
+
+    monkeypatch.setattr(ihr.asyncpg, "connect", _fake_connect)
+    monkeypatch.setattr(ihr, "_tg_notify", lambda *a, **k: True)
+    monkeypatch.setattr(
+        ihr,
+        "_heartbeat",
+        lambda status, note="": heartbeats.append((status, note)),
+    )
+    monkeypatch.setattr(ihr, "STATE_PATH", tmp_path / "state.json")
+    monkeypatch.setattr(ihr, "LOCK_FILE", tmp_path / "lock")
+    monkeypatch.setattr(
+        ihr,
+        "worker_log_path",
+        lambda: (tmp_path / "does-not-exist.log", "repo"),
+    )
+    monkeypatch.setenv("INTAKE_HEALTH_REPORT_ENABLED", "true")
+    monkeypatch.delenv("INTAKE_HEALTH_SUPERSEDED_TIMEOUT_MS", raising=False)
+    monkeypatch.delenv("INTAKE_HEALTH_CONNECTION_CLOSE_TIMEOUT_SECONDS", raising=False)
+
+
+# ---------------------------------------------------------------- connect timeouts (verbale #7)
+
+
+def test_connect_sets_session_statement_timeout_and_connect_timeout(tmp_path, monkeypatch):
+    # Records the actual args/kwargs asyncpg.connect() was called with — a
+    # fake connection object at the connect boundary, not just a canned
+    # return value, so a regression to the un-timed-out connect call is
+    # caught even though every individual query still "succeeds" in the fake.
+    recorded = {}
+
+    async def _recording_connect(dsn, **kwargs):
+        recorded["dsn"] = dsn
+        recorded["kwargs"] = kwargs
+        return _FakeConn()
+
+    monkeypatch.setattr(ihr.asyncpg, "connect", _recording_connect)
+    monkeypatch.setattr(ihr, "_tg_notify", lambda *a, **k: True)
+    monkeypatch.setattr(ihr, "_heartbeat", lambda *a, **k: None)
+    monkeypatch.setattr(ihr, "STATE_PATH", tmp_path / "state.json")
+    monkeypatch.setattr(ihr, "LOCK_FILE", tmp_path / "lock")
+    monkeypatch.setattr(ihr, "worker_log_path", lambda: (tmp_path / "does-not-exist.log", "repo"))
+    monkeypatch.setenv("INTAKE_HEALTH_REPORT_ENABLED", "true")
+
+    rc = asyncio.run(ihr.run(dry_run=True, json_only=True))
+
+    assert rc == 0
+    assert recorded["kwargs"].get("timeout") is not None and recorded["kwargs"]["timeout"] <= 20
+    assert recorded["kwargs"]["server_settings"]["statement_timeout"] == "120000"
+    assert recorded["kwargs"]["server_settings"]["default_transaction_read_only"] == "on"
+
+
+@pytest.mark.parametrize(
+    ("env_name", "invalid_value"),
+    (
+        ("INTAKE_HEALTH_SUPERSEDED_TIMEOUT_MS", "client-name-not-an-integer"),
+        ("INTAKE_HEALTH_CONNECTION_CLOSE_TIMEOUT_SECONDS", "client-name-not-a-float"),
+        ("INTAKE_HEALTH_CONNECTION_CLOSE_TIMEOUT_SECONDS", "nan"),
+        ("INTAKE_HEALTH_CONNECTION_CLOSE_TIMEOUT_SECONDS", "0"),
+    ),
+)
+def test_invalid_timeout_configuration_is_reported_before_connect(
+    tmp_path,
+    monkeypatch,
+    env_name,
+    invalid_value,
+):
+    heartbeats = []
+    connect_calls = []
+
+    async def _unexpected_connect(*args, **kwargs):
+        connect_calls.append((args, kwargs))
+        return _FakeConn()
+
+    monkeypatch.setattr(ihr.asyncpg, "connect", _unexpected_connect)
+    monkeypatch.setattr(
+        ihr,
+        "_heartbeat",
+        lambda status, note="": heartbeats.append((status, note)),
+    )
+    monkeypatch.setattr(ihr, "LOCK_FILE", tmp_path / "lock")
+    monkeypatch.setenv("INTAKE_HEALTH_REPORT_ENABLED", "true")
+    monkeypatch.delenv("INTAKE_HEALTH_SUPERSEDED_TIMEOUT_MS", raising=False)
+    monkeypatch.delenv("INTAKE_HEALTH_CONNECTION_CLOSE_TIMEOUT_SECONDS", raising=False)
+    monkeypatch.setenv(env_name, invalid_value)
+
+    rc = asyncio.run(ihr.run(dry_run=True, json_only=True))
+
+    assert rc == 1
+    assert connect_calls == []
+    assert heartbeats == [("error", "timeout configuration failed: ValueError")]
+    assert "client-name" not in heartbeats[0][1]
+
+
+def test_connect_failure_emits_type_only_error_heartbeat(tmp_path, monkeypatch):
+    heartbeats = []
+
+    async def _failing_connect(*_args, **_kwargs):
+        raise RuntimeError("client-record-should-never-reach-heartbeat")
+
+    monkeypatch.setattr(ihr.asyncpg, "connect", _failing_connect)
+    monkeypatch.setattr(
+        ihr,
+        "_heartbeat",
+        lambda status, note="": heartbeats.append((status, note)),
+    )
+    monkeypatch.setattr(ihr, "LOCK_FILE", tmp_path / "lock")
+    monkeypatch.setenv("INTAKE_HEALTH_REPORT_ENABLED", "true")
+
+    rc = asyncio.run(ihr.run(dry_run=True, json_only=True))
+
+    assert rc == 1
+    assert heartbeats == [("error", "db connect failed: RuntimeError")]
+    assert "client-record" not in heartbeats[0][1]
+
+
+def test_connection_close_failure_emits_type_only_error_heartbeat(tmp_path, monkeypatch):
+    conn = _CloseFailureConn()
+    heartbeats = []
+    _install_run_fakes(monkeypatch, tmp_path, conn, heartbeats)
+
+    rc = asyncio.run(ihr.run(dry_run=True, json_only=True))
+
+    assert rc == 1
+    assert conn.terminated is True
+    assert heartbeats == [("error", "connection close failed: RuntimeError")]
+    assert "client-close-detail" not in heartbeats[0][1]
+
+
+def test_connection_close_timeout_is_bounded_and_releases_lock(tmp_path, monkeypatch):
+    conn = _CancellationResistantCloseConn()
+    heartbeats = []
+    _install_run_fakes(monkeypatch, tmp_path, conn, heartbeats)
+    monkeypatch.setenv("INTAKE_HEALTH_CONNECTION_CLOSE_TIMEOUT_SECONDS", "0.01")
+
+    started_at = time.monotonic()
+    rc = asyncio.run(ihr.run(dry_run=True, json_only=True))
+    elapsed = time.monotonic() - started_at
+
+    assert rc == 1
+    assert elapsed < 0.25
+    assert conn.close_cancellations >= 1
+    assert conn.close_returned is True
+    assert conn.close_timeout == pytest.approx(0.01)
+    assert conn.terminated is True
+    assert heartbeats == [("error", "connection close failed: TimeoutError")]
+
+    # The timeout path must reach run()'s outer finally and release its flock;
+    # otherwise the next scheduled tick would remain lock-held forever.
+    next_lock_fd = ihr._acquire_lock_or_exit()
+    try:
+        assert next_lock_fd is not None
+    finally:
+        if next_lock_fd is not None:
+            fcntl.flock(next_lock_fd, fcntl.LOCK_UN)
+            os.close(next_lock_fd)
+
+
+@pytest.mark.parametrize("primary_phase", ("gather", "report", "persist"))
+def test_primary_failure_is_preserved_when_connection_close_also_fails(
+    tmp_path,
+    monkeypatch,
+    primary_phase,
+):
+    conn = _CloseFailureConn()
+    heartbeats = []
+    _install_run_fakes(monkeypatch, tmp_path, conn, heartbeats)
+
+    if primary_phase == "gather":
+        async def _fail_gather(*_args, **_kwargs):
+            raise LookupError("primary-detail-must-stay-private")
+
+        monkeypatch.setattr(ihr, "gather", _fail_gather)
+    elif primary_phase == "report":
+        def _fail_report():
+            raise LookupError("primary-detail-must-stay-private")
+
+        monkeypatch.setattr(ihr, "_thresholds_from_env", _fail_report)
+    else:
+        def _fail_persist(_report):
+            raise LookupError("primary-detail-must-stay-private")
+
+        monkeypatch.setattr(ihr, "_write_state", _fail_persist)
+
+    rc = asyncio.run(
+        ihr.run(
+            dry_run=primary_phase != "persist",
+            json_only=primary_phase != "persist",
+        )
+    )
+
+    assert rc == 1
+    assert conn.terminated is True
+    assert heartbeats == [("error", f"{primary_phase} failed: LookupError")]
+    assert "connection close failed" not in heartbeats[0][1]
+
+
+def test_primary_failure_is_preserved_when_connection_close_times_out(
+    tmp_path,
+    monkeypatch,
+):
+    conn = _CancellationResistantCloseConn()
+    heartbeats = []
+    _install_run_fakes(monkeypatch, tmp_path, conn, heartbeats)
+    monkeypatch.setenv("INTAKE_HEALTH_CONNECTION_CLOSE_TIMEOUT_SECONDS", "0.01")
+
+    async def _fail_gather(*_args, **_kwargs):
+        raise LookupError("primary-detail-must-stay-private")
+
+    monkeypatch.setattr(ihr, "gather", _fail_gather)
+
+    started_at = time.monotonic()
+    rc = asyncio.run(ihr.run(dry_run=True, json_only=True))
+    elapsed = time.monotonic() - started_at
+
+    assert rc == 1
+    assert elapsed < 0.25
+    assert conn.close_cancellations >= 1
+    assert conn.close_returned is True
+    assert conn.terminated is True
+    assert heartbeats == [("error", "gather failed: LookupError")]
+    assert "connection close failed" not in heartbeats[0][1]
+
+
+def test_cooperative_connection_close_uses_driver_timeout_without_terminate(
+    tmp_path,
+    monkeypatch,
+):
+    conn = _TrackingConn()
+    heartbeats = []
+    _install_run_fakes(monkeypatch, tmp_path, conn, heartbeats)
+    monkeypatch.setenv("INTAKE_HEALTH_CONNECTION_CLOSE_TIMEOUT_SECONDS", "0.05")
+
+    started_at = time.monotonic()
+    rc = asyncio.run(ihr.run(dry_run=True, json_only=True))
+    elapsed = time.monotonic() - started_at
+
+    assert rc == 0
+    assert elapsed < 0.25
+    assert conn.closed is True
+    assert conn.close_timeout == pytest.approx(0.05)
+    assert conn.terminated is False
+    assert heartbeats == []
+
+
+def test_gather_failure_emits_error_heartbeat_and_closes_connection(tmp_path, monkeypatch):
+    conn = _TrackingConn()
+    heartbeats = []
+    _install_run_fakes(monkeypatch, tmp_path, conn, heartbeats)
+
+    async def _failing_gather(*_args, **_kwargs):
+        raise LookupError("passport-value-should-never-reach-heartbeat")
+
+    monkeypatch.setattr(ihr, "gather", _failing_gather)
+
+    rc = asyncio.run(ihr.run(dry_run=True, json_only=True))
+
+    assert rc == 1
+    assert conn.closed is True
+    assert heartbeats == [("error", "gather failed: LookupError")]
+    assert "passport-value" not in heartbeats[0][1]
+
+
+def test_report_failure_emits_error_heartbeat_and_closes_connection(tmp_path, monkeypatch):
+    conn = _TrackingConn()
+    heartbeats = []
+    _install_run_fakes(monkeypatch, tmp_path, conn, heartbeats)
+
+    def _failing_thresholds():
+        raise ValueError("company-name-should-never-reach-heartbeat")
+
+    monkeypatch.setattr(ihr, "_thresholds_from_env", _failing_thresholds)
+
+    rc = asyncio.run(ihr.run(dry_run=True, json_only=True))
+
+    assert rc == 1
+    assert conn.closed is True
+    assert heartbeats == [("error", "report failed: ValueError")]
+    assert "company-name" not in heartbeats[0][1]
+
+
+def test_persist_failure_emits_error_heartbeat_and_closes_connection(tmp_path, monkeypatch):
+    conn = _TrackingConn()
+    heartbeats = []
+    _install_run_fakes(monkeypatch, tmp_path, conn, heartbeats)
+
+    def _failing_replace(*_args, **_kwargs):
+        raise PermissionError("client-path-should-never-reach-heartbeat")
+
+    monkeypatch.setattr(ihr.os, "replace", _failing_replace)
+
+    rc = asyncio.run(ihr.run(dry_run=False, json_only=False))
+
+    assert rc == 1
+    assert conn.closed is True
+    assert heartbeats == [("error", "persist failed: PermissionError")]
+    assert "client-path" not in heartbeats[0][1]
+
+
+def test_wrapper_missing_or_non_executable_python_emits_error_heartbeat(tmp_path):
+    for python_state in ("missing", "not-executable"):
+        fake_repo = tmp_path / python_state / "repo"
+        fake_scripts = fake_repo / "scripts"
+        fake_lib = fake_scripts / "lib"
+        fake_lib.mkdir(parents=True)
+        shutil.copy2(REPO_ROOT / "scripts" / "intake_health_report_run.sh", fake_scripts)
+        shutil.copy2(REPO_ROOT / "scripts" / "lib" / "heartbeat.sh", fake_lib)
+
+        if python_state == "not-executable":
+            fake_python = fake_repo / "apps" / "backend-rag" / ".venv" / "bin" / "python"
+            fake_python.parent.mkdir(parents=True)
+            fake_python.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            fake_python.chmod(0o644)
+
+        heartbeat_dir = tmp_path / python_state / "heartbeats"
+        env = os.environ.copy()
+        env.update(
+            {
+                "HOME": str(tmp_path / python_state / "home"),
+                "INTAKE_HEALTH_REPORT_ENABLED": "true",
+                "ORGANISM_LAST_SEEN_DIR": str(heartbeat_dir),
+            }
+        )
+
+        result = subprocess.run(
+            ["/bin/bash", str(fake_scripts / "intake_health_report_run.sh")],
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        assert result.returncode != 0
+        heartbeat = json.loads(
+            (heartbeat_dir / "pro.intake_health_report.json").read_text(encoding="utf-8")
+        )
+        assert heartbeat["status"] == "error"
+        assert heartbeat["note"] == "venv python unavailable"
+
+
+# ---------------------------------------------------------------- worker plist resolution (verbale #8)
+
+
+def test_resolve_worker_plist_path_prefers_installed_over_repo(tmp_path, monkeypatch):
+    installed = tmp_path / "installed.plist"
+    installed.write_text("<plist></plist>")
+    monkeypatch.setattr(ihr, "INSTALLED_WORKER_PLIST_PATH", installed)
+
+    path, source = ihr.resolve_worker_plist_path()
+
+    assert path == installed
+    assert source == "installed"
+
+
+def test_resolve_worker_plist_path_falls_back_to_repo_when_installed_absent(tmp_path, monkeypatch):
+    monkeypatch.setattr(ihr, "INSTALLED_WORKER_PLIST_PATH", tmp_path / "does-not-exist.plist")
+
+    path, source = ihr.resolve_worker_plist_path()
+
+    assert path == ihr.REPO_WORKER_PLIST_PATH
+    assert source == "repo"
+
+
+def test_worker_log_path_reads_installed_plist_when_present(tmp_path, monkeypatch):
+    import plistlib
+
+    installed = tmp_path / "installed.plist"
+    installed.write_bytes(plistlib.dumps({"StandardErrorPath": str(tmp_path / "worker.err.log")}))
+    monkeypatch.setattr(ihr, "INSTALLED_WORKER_PLIST_PATH", installed)
+
+    log_path, source = ihr.worker_log_path()
+
+    assert log_path == tmp_path / "worker.err.log"
+    assert source == "installed"
+
+
+def test_report_records_worker_plist_source(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(ihr, "_tg_notify", lambda *a, **k: True)
+    monkeypatch.setattr(ihr, "_heartbeat", lambda *a, **k: None)
+    monkeypatch.setattr(ihr, "STATE_PATH", tmp_path / "state.json")
+    monkeypatch.setattr(ihr, "LOCK_FILE", tmp_path / "lock")
+    monkeypatch.setattr(ihr, "worker_log_path", lambda: (tmp_path / "does-not-exist.log", "installed"))
+
+    async def _fake_connect(*_args, **_kwargs):
+        return _FakeConn()
+
+    monkeypatch.setattr(ihr.asyncpg, "connect", _fake_connect)
+    monkeypatch.setenv("INTAKE_HEALTH_REPORT_ENABLED", "true")
+
+    rc = asyncio.run(ihr.run(dry_run=True, json_only=True))
+
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert '"worker_plist_source": "installed"' in out
 
 
 def test_dry_run_sends_no_telegram_and_writes_no_state(tmp_path, monkeypatch):
@@ -331,7 +800,7 @@ def test_dry_run_sends_no_telegram_and_writes_no_state(tmp_path, monkeypatch):
     monkeypatch.setattr(ihr, "_heartbeat", lambda *a, **k: None)
     monkeypatch.setattr(ihr, "STATE_PATH", tmp_path / "state.json")
     monkeypatch.setattr(ihr, "LOCK_FILE", tmp_path / "lock")
-    monkeypatch.setattr(ihr, "worker_log_path", lambda: tmp_path / "does-not-exist.log")
+    monkeypatch.setattr(ihr, "worker_log_path", lambda: (tmp_path / "does-not-exist.log", "repo"))
 
     async def _fake_connect(*_args, **_kwargs):
         return _FakeConn()
@@ -352,7 +821,7 @@ def test_non_dry_run_writes_state_and_sends_digest(tmp_path, monkeypatch):
     monkeypatch.setattr(ihr, "_heartbeat", lambda *a, **k: None)
     monkeypatch.setattr(ihr, "STATE_PATH", tmp_path / "state.json")
     monkeypatch.setattr(ihr, "LOCK_FILE", tmp_path / "lock")
-    monkeypatch.setattr(ihr, "worker_log_path", lambda: tmp_path / "does-not-exist.log")
+    monkeypatch.setattr(ihr, "worker_log_path", lambda: (tmp_path / "does-not-exist.log", "repo"))
 
     async def _fake_connect(*_args, **_kwargs):
         return _FakeConn()
@@ -376,7 +845,7 @@ def test_json_only_skips_all_side_effects(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(ihr, "_heartbeat", lambda *a, **k: sent.append(("heartbeat", a)))
     monkeypatch.setattr(ihr, "STATE_PATH", tmp_path / "state.json")
     monkeypatch.setattr(ihr, "LOCK_FILE", tmp_path / "lock")
-    monkeypatch.setattr(ihr, "worker_log_path", lambda: tmp_path / "does-not-exist.log")
+    monkeypatch.setattr(ihr, "worker_log_path", lambda: (tmp_path / "does-not-exist.log", "repo"))
 
     async def _fake_connect(*_args, **_kwargs):
         return _FakeConn()
@@ -391,6 +860,157 @@ def test_json_only_skips_all_side_effects(tmp_path, monkeypatch, capsys):
     assert not (tmp_path / "state.json").exists()
     out = capsys.readouterr().out
     assert '"review_pending_total"' in out
+
+
+def test_json_only_help_distinguishes_success_from_failure_side_effects(
+    monkeypatch,
+    capsys,
+):
+    monkeypatch.setattr(sys, "argv", ["intake_health_report.py", "--help"])
+
+    with pytest.raises(SystemExit) as exc_info:
+        ihr.main()
+
+    assert exc_info.value.code == 0
+    normalized_help = " ".join(capsys.readouterr().out.split())
+    assert "no success side effects" in normalized_help
+    assert "failures still emit heartbeat=error" in normalized_help
+    assert "no success side effects" in (ihr.__doc__ or "")
+
+
+def test_digest_dedup_key_is_date_stamped_not_a_bare_constant(tmp_path, monkeypatch):
+    sent = []
+    monkeypatch.setattr(ihr, "_tg_notify", lambda tier, key, text: sent.append((tier, key)) or True)
+    monkeypatch.setattr(ihr, "_heartbeat", lambda *a, **k: None)
+    monkeypatch.setattr(ihr, "STATE_PATH", tmp_path / "state.json")
+    monkeypatch.setattr(ihr, "LOCK_FILE", tmp_path / "lock")
+    monkeypatch.setattr(ihr, "worker_log_path", lambda: (tmp_path / "does-not-exist.log", "repo"))
+
+    async def _fake_connect(*_args, **_kwargs):
+        return _FakeConn()
+
+    monkeypatch.setattr(ihr.asyncpg, "connect", _fake_connect)
+    monkeypatch.setenv("INTAKE_HEALTH_REPORT_ENABLED", "true")
+
+    rc = asyncio.run(ihr.run(dry_run=False, json_only=False))
+
+    assert rc == 0
+    digest_keys = [k for t, k in sent if t == "digest"]
+    assert len(digest_keys) == 1
+    assert digest_keys[0].startswith("intake-health:daily:")
+    assert digest_keys[0] != "intake-health:daily"
+
+
+def test_heartbeat_is_ok_even_with_breaches_organ_not_finding(tmp_path, monkeypatch):
+    hb = []
+    monkeypatch.setattr(ihr, "_tg_notify", lambda tier, key, text: True)
+    monkeypatch.setattr(ihr, "_heartbeat", lambda status, note="": hb.append((status, note)))
+    monkeypatch.setattr(ihr, "STATE_PATH", tmp_path / "state.json")
+    monkeypatch.setattr(ihr, "LOCK_FILE", tmp_path / "lock")
+    monkeypatch.setattr(ihr, "worker_log_path", lambda: (tmp_path / "does-not-exist.log", "repo"))
+
+    async def _fake_connect(*_args, **_kwargs):
+        return _FakeConn()
+
+    monkeypatch.setattr(ihr.asyncpg, "connect", _fake_connect)
+    monkeypatch.setenv("INTAKE_HEALTH_REPORT_ENABLED", "true")
+
+    rc = asyncio.run(ihr.run(dry_run=False, json_only=False))
+
+    assert rc == 0
+    # worker_log_missing breach fires (file doesn't exist) — heartbeat must
+    # still read "ok", never "degraded" (verbale #2's twin, this organ).
+    assert hb
+    status, note = hb[-1]
+    assert status == "ok"
+    assert "breaches=" in note
+
+
+def test_lock_held_preserves_nonhealthy_sidecar_and_consumer_verdict(
+    tmp_path,
+    monkeypatch,
+):
+    sidecar_dir = tmp_path / "last_seen"
+    sidecar_dir.mkdir()
+    sidecar_path = sidecar_dir / "pro.intake_health_report.json"
+    previous_payload = {
+        "ts": "2026-08-19T00:00:00Z",
+        "status": "error",
+        "note": "previous run failed: RuntimeError",
+    }
+    previous_bytes = (json.dumps(previous_payload) + "\n").encode("utf-8")
+    sidecar_path.write_bytes(previous_bytes)
+
+    heartbeat_calls = []
+    sent = []
+    real_heartbeat = ihr._heartbeat
+
+    def _recording_heartbeat(status, note=""):
+        heartbeat_calls.append((status, note))
+        real_heartbeat(status, note)
+
+    monkeypatch.setenv("ORGANISM_LAST_SEEN_DIR", str(sidecar_dir))
+    monkeypatch.setattr(ihr, "_heartbeat", _recording_heartbeat)
+    monkeypatch.setattr(ihr, "_tg_notify", lambda tier, key, text: sent.append((tier, key, text)) or True)
+    monkeypatch.setattr(ihr, "_acquire_lock_or_exit", lambda: None)
+    monkeypatch.setenv("INTAKE_HEALTH_REPORT_ENABLED", "true")
+
+    rc = asyncio.run(ihr.run(dry_run=False, json_only=False))
+
+    assert rc == 0
+    assert heartbeat_calls == []
+    assert sidecar_path.read_bytes() == previous_bytes
+    assert json.loads(sidecar_path.read_text(encoding="utf-8")) == previous_payload
+    assert len(sent) == 1
+    tier, key, _text = sent[0]
+    assert tier == "digest"
+    assert key.startswith("intake-health:lock-held:")
+
+    # Consumer contract: a skipped contender cannot launder the lock owner's
+    # last real error into HEALTHY_STATUSES.  Exercise the actual healer reader
+    # against a minimal registry rather than restating its status vocabulary.
+    import healer_receptor_registry as hrr
+
+    registry_path = tmp_path / "registry.yaml"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "organs": [
+                    {
+                        "id": "pro.intake_health_report",
+                        "runtime": "pro_launchd",
+                        "type": "cron",
+                        "expected_hb_seconds": 90_000,
+                        "severity_on_silence": "warning",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    consumer_report = hrr.run("pro", registry_path, sidecar_dir)
+
+    assert consumer_report["exit"] == 1
+    assert [entry["id"] for entry in consumer_report["dead"]] == [
+        "pro.intake_health_report"
+    ]
+    assert consumer_report["ok"] == []
+
+
+def test_acquire_lock_hardens_a_pre_existing_loose_lock_file(tmp_path, monkeypatch):
+    lock = tmp_path / "state" / "intake_health_report.lock"
+    lock.parent.mkdir(parents=True)
+    lock.write_text("")
+    lock.chmod(0o644)  # simulate a pre-hardening-era lock file already on disk
+    monkeypatch.setattr(ihr, "LOCK_FILE", lock)
+
+    fd = ihr._acquire_lock_or_exit()
+    try:
+        assert fd is not None
+        assert (lock.stat().st_mode & 0o777) == 0o600
+    finally:
+        if fd is not None:
+            os.close(fd)
 
 
 def test_kill_switch_disabled_short_circuits(monkeypatch, capsys):

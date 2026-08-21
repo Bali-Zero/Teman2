@@ -1,7 +1,13 @@
 """Webhook callback handler for FAD ``fad:*`` Telegram callbacks.
 
-Wired into ``apps/backend-rag/backend/app/routers/telegram_webhook.py``
-ahead of the ChannelRouter fallthrough.
+Until 2026-08-18 this was wired into
+``apps/backend-rag/backend/app/routers/telegram_webhook.py`` ahead of the
+ChannelRouter fallthrough. That router was removed (Zero ruled REMOVE —
+structurally dead by design, see ``.claude/skills/modus/PENDING-ARMS.md``
+closed lines), so ``handle_fad_callback`` currently has no production
+caller; this module and its own test suite
+(``tests/services/federation_alerts/test_webhook_handler.py``) are
+otherwise unaffected and untouched by that removal.
 
 Validation pipeline:
     1. Decode (defensive parser, returns None on malformed)

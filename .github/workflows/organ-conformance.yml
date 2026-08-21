@@ -152,11 +152,11 @@ jobs:
       - name: Require zsh (the G2 corpus executes a real zsh wrapper)
         if: steps.relevant.outputs.hit == 'true'
         run: |
-          if ! command -v zsh >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install --yes zsh
-          fi
-          command -v zsh
+          # Bounded + fail-closed via the shared helper — see its header for the
+          # measurement. Unbounded here, this step ate the job's whole 10-minute
+          # budget twice and the kill surfaced as `cancelled`, which for a
+          # REQUIRED context reads as "not green" with no cause named anywhere.
+          bash scripts/ci/apt_install.sh zsh zsh
 
       # test_the_id_whitelist_is_ascii_not_collation needs a locale that actually
       # COLLATES: `LC_ALL=it_IT.UTF-8` does not create it, and where it is absent
@@ -168,8 +168,7 @@ jobs:
         run: |
           set -euo pipefail
           if ! locale -a | grep -qi '^it_IT.utf-\?8$'; then
-            sudo apt-get update
-            sudo apt-get install --yes locales
+            bash scripts/ci/apt_install.sh - locales
             sudo locale-gen it_IT.UTF-8
             sudo update-locale
           fi

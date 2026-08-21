@@ -347,6 +347,14 @@ const nextConfig: NextConfig = {
       },
       // Note: /chat redirect to zantara.balizero.com is handled by middleware
       // (cannot be here — next.config redirects would conflict with middleware rewrites)
+      // Wrong-page fix (2026-08-20): /visa/second-home-e33 was served 200 by the
+      // (blog)/[category]/[slug] catch-all with ZERO second-home content — the
+      // canonical E33 landing is /visa/second-home. See .claude/skills/secondhome §4bis.
+      {
+        source: "/visa/second-home-e33",
+        destination: "/visa/second-home",
+        permanent: true,
+      },
     ];
   },
 

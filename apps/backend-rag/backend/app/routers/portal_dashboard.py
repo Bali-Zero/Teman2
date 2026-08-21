@@ -15,7 +15,7 @@ from __future__ import annotations
 from typing import Any
 
 import asyncpg
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from backend.app.dependencies import get_database_pool
 from backend.app.routers.portal import get_current_client
@@ -154,6 +154,23 @@ async def summary(
     """Return 3-hero-card data + AI recap in a single round-trip."""
     client_id = client["client_id"]
     async with pool.acquire() as conn:
+        # Verify client exists and is not archived. Every other client-scoped
+        # portal endpoint resolves the client through PortalService, which
+        # filters `... WHERE id = $1 AND deleted_at IS NULL` and 404s
+        # (portal.py get_dashboard's "BUG C"); this router talks to the pool
+        # directly and had no equivalent check, so an archived client's
+        # visa/passport expiry still leaked into "upcoming deadlines" below.
+        # Deliberately NOT wrapped in the graceful-degrade try/except used
+        # for the three data sources — this is an identity check, not an
+        # optional data source, and an unexpected DB error here should 500
+        # like it does for the sibling endpoints, not degrade silently.
+        client_row = await conn.fetchrow(
+            "SELECT id FROM clients WHERE id = $1 AND deleted_at IS NULL",
+            client_id,
+        )
+        if not client_row:
+            raise HTTPException(status_code=404, detail="Client not found")
+
         open_actions = await _fetch_open_actions(conn, client_id)
         deadlines = await _fetch_deadlines(conn, client_id)
         unread = await _fetch_unread_count(conn, client_id)

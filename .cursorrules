@@ -69,7 +69,7 @@ async function fetchData(id: string): Promise<DataResponse | null> {
 ## Critical Paths
 - Backend: `apps/backend-rag/backend/app/{routers,services}/`
 - Frontend: `apps/mouth/src/{app,components,lib}/`
-- Tests: `apps/backend-rag/tests/`
+- Tests: `apps/backend-rag/backend/tests/`
 - MCP RAG: `apps/nuzantara-mcp/`
 - MCP Ops: `apps/nuzantara-mcp-advanced/`
 - Entry Fly.io: `apps/backend-rag/backend/main_cloud.py`

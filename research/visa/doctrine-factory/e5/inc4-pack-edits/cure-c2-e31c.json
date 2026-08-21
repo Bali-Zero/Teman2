@@ -1,0 +1,153 @@
+{
+  "_comment": "E5 increment 4 (seq-10), Phase B — the two CP3-declared lint residuals cured. (1) el.c2.corporate-sponsor-type RETIRED without replacement: its deduplicated subtree is canonical-JSON-identical to el.c2.business's ENTIRE when (verified on seq-9 bytes 2026-08-19), so post-dedupe it is an exact condition-duplicate whose only distinct content is the false-promise reason_code; the grounding attempt for a sponsor.type==EMPLOYER tightening came back REFUTED by the live C2 portal page ('Anda tidak membutuhkan penjamin/sponsor untuk mengajukan visa ini' — see CF-17 in claims/inc4-c2-e31c-claim-ledger.md). (2) el.e31c-mixed-marriage-parents tightened in place (E31A spouse-rule pattern) + paired HARD_FILTER inserted, both grounded by the live E31C page's Persyaratan (CL-E31C-02/03). Applied by fold_pack_seq10.py with ledger-drift checks on every current_value.",
+  "retirements": [
+    {
+      "rule_id": "el.c2.corporate-sponsor-type",
+      "rationale": "VACUOUS-duplicate (all(X,X), the e33g disease) whose deduped X == el.c2.business.when exactly; reason_code C2_CORPORATE_SPONSOR_TYPE_VERIFICATION promises a sponsor-type check the condition never performs and no compilable claim can ground (live portal refutes corporate-sponsor; production catalog says sponsor_required:false; CL-C2-03's mandatory-penjamin reading conflicts — CF-17, OPEN). Retiring removes the false promise with zero behavioral change: el.c2.business keeps granting the identical SUPPORT on the identical facts (witness test pins C2 reachability + absent reason code). el.e33e.deposit-income-basis retirement precedent."
+    }
+  ],
+  "rule_edits": [
+    {
+      "rule_id": "el.e31c-mixed-marriage-parents",
+      "field": "when",
+      "current_value": {
+        "op": "all",
+        "args": [
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "FAMILY"
+                ]
+              },
+              {
+                "fact": "family.relation_to_sponsor",
+                "op": "eq",
+                "value": "PARENT"
+              }
+            ]
+          },
+          {
+            "op": "all",
+            "args": [
+              {
+                "fact": "intent.purposes",
+                "op": "intersects",
+                "values": [
+                  "FAMILY"
+                ]
+              },
+              {
+                "fact": "family.relation_to_sponsor",
+                "op": "eq",
+                "value": "PARENT"
+              }
+            ]
+          }
+        ]
+      },
+      "new_value": {
+        "op": "all",
+        "args": [
+          {
+            "fact": "intent.purposes",
+            "op": "intersects",
+            "values": [
+              "FAMILY"
+            ]
+          },
+          {
+            "fact": "family.relation_to_sponsor",
+            "op": "eq",
+            "value": "PARENT"
+          },
+          {
+            "fact": "family.sponsor_nationalities",
+            "op": "intersects",
+            "values": [
+              "ID"
+            ]
+          },
+          {
+            "fact": "family.marriage_registered",
+            "op": "eq",
+            "value": true
+          }
+        ]
+      },
+      "rationale": "Deduped from all(X,X) (the outer duplicate-subtree removed) AND tightened to the E31A spouse-rule pattern: adds family.sponsor_nationalities ∩ {ID} (the E31C page requires the application letter from the ayah/ibu Warga Negara Indonesia and the WNI parent's Kartu Keluarga — CL-E31C-03) and family.marriage_registered == true (the page requires official proof of the parents' legally registered marriage — CL-E31C-02). reason_code REQ_MIXED_MARRIAGE_PARENTS is KEPT: after this edit it finally tests what it names. rule_id, priority, valid_period, effect, on_unknown, source_refs, explanation_key, product_version_ids all preserved verbatim from seq-9."
+    },
+    {
+      "rule_id": "el.e31c-mixed-marriage-parents",
+      "field": "required_facts",
+      "current_value": [
+        "family.relation_to_sponsor",
+        "intent.purposes"
+      ],
+      "new_value": [
+        "family.marriage_registered",
+        "family.relation_to_sponsor",
+        "family.sponsor_nationalities",
+        "intent.purposes"
+      ],
+      "rationale": "Re-derived from the new when-clause (alphabetical, matching the rule's existing convention)."
+    }
+  ],
+  "insertions": [
+    {
+      "rule_id": "hf.e31c-marriage-not-registered",
+      "stage": "HARD_FILTER",
+      "scope": "PRODUCTS",
+      "priority": 100,
+      "valid_period": {
+        "from": "2026-07-24T00:00:00Z",
+        "to": null
+      },
+      "when": {
+        "op": "all",
+        "args": [
+          {
+            "fact": "intent.purposes",
+            "op": "intersects",
+            "values": [
+              "FAMILY"
+            ]
+          },
+          {
+            "fact": "family.relation_to_sponsor",
+            "op": "eq",
+            "value": "PARENT"
+          },
+          {
+            "fact": "family.marriage_registered",
+            "op": "eq",
+            "value": false
+          }
+        ]
+      },
+      "effect": {
+        "type": "EXCLUDE",
+        "reason_code": "REQ_PARENTS_MARRIAGE_REGISTERED"
+      },
+      "on_unknown": "NEEDS_INPUT",
+      "required_facts": [
+        "family.marriage_registered",
+        "family.relation_to_sponsor",
+        "intent.purposes"
+      ],
+      "source_refs": [
+        "40523028-431b-5ae0-a937-277882f0f243",
+        "e3572ad2-08a9-55bd-b818-353b3e9db715"
+      ],
+      "explanation_key": "explain.hf.e31c-marriage-not-registered",
+      "safety_critical": true,
+      "product_version_ids": [
+        "62ab2d13-1d7e-5048-9cf7-9622c0098439"
+      ],
+      "_new_rule_rationale": "The tightened el.e31c-mixed-marriage-parents alone changes nothing observable: sibling rule el.e31c-child-mixed-marriage-support still grants SUPPORT on FAMILY+PARENT alone (any true SUPPORT suffices — the CP3 live probe reached SUPPORTED with marriage_registered=false through exactly that gap). This HARD_FILTER makes the definitional requirement bite: the E31C page's own Persyaratan requires official proof of the parents' legally registered marriage (CL-E31C-02, quoted verbatim in freshness-restamp-2026-08-19.md §8), so marriage_registered=false is a definitional exclusion (hf.e31e-adult-excluded shape: EXCLUDE + safety_critical + NEEDS_INPUT on UNKNOWN, so the tri-state ASKS rather than assumes). The new EXCLUDE code is user-visible through the adapter's generic reasonMessage fallback (Codex refuter finding 3: without copy it renders as the raw 'Verified reason: REQ_PARENTS_MARRIAGE_REGISTERED') — curated EN/ID copy added to SUPPORT_REASON_COPY in engine-adapter.ts in this same change; the SUPPORT-copy tripwire itself only counts SUPPORT-effect codes, so the map entry is additive. valid_period.from mirrors the pack's standing convention for corrective rules (same value as every seq-7 rule; spec fallback: 'mirror seq-7's valid_period.from exactly'). SCOPING (Codex refuter finding 1, 2026-08-19, empirically reproduced): the first draft's single-leaf when (marriage_registered==false alone) contaminated non-family paths — a STUDY applicant with marriage UNKNOWN got E31C proof BLOCKED_UNKNOWN demanding the marriage fact where seq-9 was silently UNSUPPORTED. The purposes∩FAMILY + relation==PARENT conjuncts make the filter strong-Kleene FALSE on every non-E31C-shaped applicant (all(FALSE,·)=FALSE regardless of the UNKNOWN marriage), restoring seq-9's silence outside the family lane while keeping guilt (FAMILY+PARENT+false → EXCLUDE), innocence (true → no fire) and tri-state (FAMILY+PARENT+UNKNOWN → NEEDS_INPUT asks) intact."
+    }
+  ]
+}

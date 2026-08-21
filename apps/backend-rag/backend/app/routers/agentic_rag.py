@@ -28,6 +28,7 @@ from backend.app.dependencies import (
     get_optional_database_pool,
     get_orchestrator,
 )
+from backend.app.utils.service_accounts import is_human_team_member
 from backend.app.utils.tracing import add_span_event, set_span_status, trace_span
 from backend.core.observability import init_observability, start_traced_span
 from backend.core.observability import is_enabled as _lf_enabled
@@ -1846,8 +1847,8 @@ async def control_ab_test_experiment(
 
     Requires team member access. Allows starting/stopping experiments.
     """
-    # Check if user is team member (not client)
-    if current_user.get("role") == "client":
+    # Check if user is a real team member (neither a client nor a service account)
+    if not is_human_team_member(current_user.get("role")):
         raise HTTPException(
             status_code=403,
             detail="Only team members can control experiments",
@@ -1880,8 +1881,10 @@ async def get_user_exposure(
 
     Useful for debugging and support.
     """
-    # Only allow team members to check other users' exposure
-    if current_user.get("role") == "client" and user_id != current_user.get("email"):
+    # Only allow real team members to check other users' exposure
+    if not is_human_team_member(current_user.get("role")) and user_id != current_user.get(
+        "email"
+    ):
         raise HTTPException(
             status_code=403,
             detail="Can only view your own exposure history",

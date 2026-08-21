@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { Users, Plus, X, Shield, ShieldAlert, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import * as hrApi from "@/lib/api/hr/hr";
-import { useTeamMembers } from "@/hooks/useTeamMembers";
+import { isNonHumanRole, useTeamMembers } from "@/hooks/useTeamMembers";
 import type { HREmployee, EmployeeCreatePayload, PTKPStatus } from "@/types/hr";
 import { Money } from "@balizero/core";
 
@@ -68,7 +68,16 @@ export default function EmployeesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [form, setForm] = useState<EmployeeCreatePayload>({ ...INITIAL_FORM });
-  const { data: teamMembers = [], isLoading: loadingTeam } = useTeamMembers();
+  const { data: rawTeamMembers = [], isLoading: loadingTeam } =
+    useTeamMembers();
+  // This is the HR employee-record form: an admin picking from this list is
+  // creating a payroll/PKWTT record for whoever is selected. It must exclude
+  // clients AND service accounts (e.g. the "monitoring" healthcheck probe) —
+  // neither should ever get an HR record. Previously unfiltered entirely.
+  const teamMembers = useMemo(
+    () => rawTeamMembers.filter((m) => !isNonHumanRole(m.role)),
+    [rawTeamMembers],
+  );
 
   const fetchEmployees = useCallback(async () => {
     try {
@@ -220,6 +229,7 @@ export default function EmployeesPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label
+                htmlFor="hr-employee-team-member"
                 className="block text-xs mb-1"
                 style={{ color: "var(--bz-text-2)" }}
               >
@@ -227,6 +237,7 @@ export default function EmployeesPage() {
               </label>
               <div className="relative">
                 <select
+                  id="hr-employee-team-member"
                   value={form.team_member_id}
                   onChange={(e) =>
                     handleFieldChange("team_member_id", e.target.value)

@@ -28,11 +28,15 @@ Env:
   INTAKE_HEALTH_ALL_EMPTY_MAX                default 0.5 (breach if quarantine all-pages-empty rate > N)
   INTAKE_HEALTH_ZOMBIE_MAX                   default 0  (breach if zombie count > N)
   INTAKE_HEALTH_SUPERSEDED_TIMEOUT_MS        default 60000 (statement_timeout for the C-07b query)
+  INTAKE_HEALTH_CONNECTION_CLOSE_TIMEOUT_SECONDS
+                                               default 5 (asyncpg connection-close bound)
 
 Flags: --dry-run (skip Telegram + state-file write; heartbeat still fires) ·
-       --json-only (pure read: skip Telegram + state-file write + heartbeat too)
+       --json-only (no success side effects: skip Telegram + state-file write +
+       success heartbeat; failures still emit heartbeat=error)
 
-Exit: 0 always, except a DSN/connect failure (logged, heartbeat status=error) -> 1.
+Exit: 0 after a completed/disabled/lock-held run; 1 after a connect, gather,
+      report-build, persistence, or connection-close failure (heartbeat=error).
 """
 from __future__ import annotations
 
@@ -41,6 +45,7 @@ import asyncio
 import fcntl
 import json
 import logging
+import math
 import os
 import plistlib
 import subprocess
@@ -66,7 +71,22 @@ ORGAN_ID = "pro.intake_health_report"
 STATE_PATH = Path.home() / ".agent" / "decisions" / "state" / "intake_health_report.json"
 LOCK_FILE = Path.home() / ".cell-bridge-state" / "intake_health_report.lock"
 DEFAULT_DSN = "postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev"
-WORKER_PLIST_PATH = _REPO / "infra" / "launchagents" / "com.nuzantara.intake-worker.plist"
+DEFAULT_SUPERSEDED_TIMEOUT_MS = 60_000
+# Matches the five-second asyncpg close bound used by the PG bridge and both
+# WR2 supervisors. Set INTAKE_HEALTH_LOG_LEVEL=DEBUG to record actual close
+# latency, then tune the env override if a future driver/proxy needs a
+# different measured bound; no code edit or frozen re-estimate is required.
+DEFAULT_CONNECTION_CLOSE_TIMEOUT_SECONDS = 5.0
+REPO_WORKER_PLIST_PATH = _REPO / "infra" / "launchagents" / "com.nuzantara.intake-worker.plist"
+# The INSTALLED launchd plist — the one actually driving the running worker —
+# takes precedence over the repo copy (verbale #8, superscar #1 HOME-fork):
+# this script's own _REPO is derived from whichever checkout happened to
+# invoke it (main / a worktree / a stale deploy copy), which is not
+# necessarily the checkout the worker was installed from. Reading the repo
+# copy when the two diverge is a false-clean or a false-breach on
+# worker_log_inode_exists, decided by an accident of which checkout ran this
+# report today rather than by what launchd is actually running.
+INSTALLED_WORKER_PLIST_PATH = Path.home() / "Library" / "LaunchAgents" / "com.nuzantara.intake-worker.plist"
 _FALLBACK_WORKER_LOG = Path.home() / "logs" / "intake-worker.launchd.err.log"
 
 # The absolute python3 candidates tg_notify.py is spawned with (W108 — the
@@ -230,12 +250,27 @@ def _write_state(report: dict[str, Any]) -> None:
         tmp.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         os.replace(tmp, STATE_PATH)
     except OSError as exc:
-        logger.warning("[intake_health_report] state write failed: %s", exc)
+        # Persistence is part of completing this organ's run. Swallowing an
+        # OSError here made launchd see rc=0 and the final heartbeat say `ok`
+        # even though the durable report was never updated. Log only the type
+        # (the exception message may contain a local/client-derived path), then
+        # let run() emit the canonical error heartbeat and rc=1.
+        logger.warning("[intake_health_report] state write failed: %s", type(exc).__name__)
+        raise
 
 
 def _acquire_lock_or_exit() -> int | None:
     LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
     fd = os.open(str(LOCK_FILE), os.O_CREAT | os.O_RDWR, 0o600)
+    # O_CREAT's mode argument only applies when the file is CREATED (verbale
+    # #9) — it does not retroactively chmod a lock file that already exists
+    # on disk from an earlier pre-hardening run. Mirrors tg_notify.py's
+    # harden() rationale (same repo, same PR family, and the exact lesson
+    # tg_notify.py already documents in its own docstring).
+    try:
+        os.chmod(LOCK_FILE, 0o600)
+    except OSError as exc:  # noqa: BLE001 — never let a chmod failure block the lock
+        logger.warning("[intake_health_report] lock chmod failed: %s", exc)
     try:
         fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         return fd
@@ -248,20 +283,30 @@ def _acquire_lock_or_exit() -> int | None:
 # ---------------------------------------------------------------- pure helpers (unit-tested, no DB/network)
 
 
-def worker_log_path() -> Path:
+def resolve_worker_plist_path() -> tuple[Path, str]:
+    """Prefer the INSTALLED launchd plist over the repo copy (verbale #8) —
+    returns (path, "installed"|"repo")."""
+    if INSTALLED_WORKER_PLIST_PATH.is_file():
+        return INSTALLED_WORKER_PLIST_PATH, "installed"
+    return REPO_WORKER_PLIST_PATH, "repo"
+
+
+def worker_log_path() -> tuple[Path, str]:
     """Resolve the intake-worker's StandardErrorPath from its own plist —
-    never hardcode a duplicate of what the plist already declares."""
+    never hardcode a duplicate of what the plist already declares. Returns
+    (log_path, plist_source) so the caller can report which plist was read."""
+    plist_path, source = resolve_worker_plist_path()
     try:
-        payload = plistlib.loads(WORKER_PLIST_PATH.read_bytes())
+        payload = plistlib.loads(plist_path.read_bytes())
         raw = payload.get("StandardErrorPath")
         if isinstance(raw, str) and raw:
-            return Path(raw).expanduser()
+            return Path(raw).expanduser(), source
     except (OSError, ValueError) as exc:
         logger.warning(
             "[intake_health_report] could not read worker plist %s (%s) — falling back to %s",
-            WORKER_PLIST_PATH, exc, _FALLBACK_WORKER_LOG,
+            plist_path, exc, _FALLBACK_WORKER_LOG,
         )
-    return _FALLBACK_WORKER_LOG
+    return _FALLBACK_WORKER_LOG, source
 
 
 def blob_presence(paths: list[str]) -> dict[str, Any]:
@@ -288,6 +333,7 @@ def build_report(
     zombie_count: int,
     undelivered: dict[str, int],
     worker_log_exists: bool,
+    worker_plist_source: str,
     dead_last_24h: int,
     wa_media_last_24h: int,
     generated_at: str,
@@ -346,6 +392,7 @@ def build_report(
             "total": int(undelivered.get("total") or 0),
         },
         "worker_log_inode_exists": bool(worker_log_exists),
+        "worker_plist_source": worker_plist_source,
         "dead_last_24h": int(dead_last_24h),
         "wa_media_last_24h": int(wa_media_last_24h),
     }
@@ -453,6 +500,7 @@ async def gather(conn: Any, *, superseded_timeout_ms: int) -> dict[str, Any]:
     undelivered_row = await conn.fetchrow(UNDELIVERED_COMMITTED_SQL)
     dead_row = await conn.fetchrow(DEAD_LAST_24H_SQL)
     wa_media_row = await conn.fetchrow(WA_MEDIA_LAST_24H_SQL)
+    worker_log_p, worker_plist_source = worker_log_path()
 
     return build_report(
         status_counts=dict(status_row),
@@ -464,7 +512,8 @@ async def gather(conn: Any, *, superseded_timeout_ms: int) -> dict[str, Any]:
         superseded_orphans=superseded_orphans,
         zombie_count=zombie_row["n"],
         undelivered=dict(undelivered_row),
-        worker_log_exists=worker_log_path().exists(),
+        worker_log_exists=worker_log_p.exists(),
+        worker_plist_source=worker_plist_source,
         dead_last_24h=dead_row["n"],
         wa_media_last_24h=wa_media_row["n"],
         generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -480,6 +529,90 @@ def _thresholds_from_env() -> dict[str, float]:
     }
 
 
+def _timeouts_from_env() -> tuple[int, float]:
+    """Parse and validate every operator-configurable timeout before connect."""
+    superseded_timeout_ms = int(
+        os.getenv(
+            "INTAKE_HEALTH_SUPERSEDED_TIMEOUT_MS",
+            str(DEFAULT_SUPERSEDED_TIMEOUT_MS),
+        )
+    )
+    connection_close_timeout_seconds = float(
+        os.getenv(
+            "INTAKE_HEALTH_CONNECTION_CLOSE_TIMEOUT_SECONDS",
+            str(DEFAULT_CONNECTION_CLOSE_TIMEOUT_SECONDS),
+        )
+    )
+    if superseded_timeout_ms <= 0:
+        raise ValueError("superseded timeout must be positive")
+    if (
+        not math.isfinite(connection_close_timeout_seconds)
+        or connection_close_timeout_seconds <= 0
+    ):
+        raise ValueError("connection-close timeout must be finite and positive")
+    return superseded_timeout_ms, connection_close_timeout_seconds
+
+
+async def _close_connection(conn: Any, *, timeout_seconds: float) -> None:
+    """Close an asyncpg connection within the configured liveness bound.
+
+    asyncpg exposes both ``Connection.close(timeout=...)`` and the synchronous
+    ``Connection.terminate()`` escape hatch.  The driver's timeout is the
+    primary bound; the matching loop watchdog is defense-in-depth for a close
+    coroutine that catches cancellation and keeps waiting.  Deliberately use
+    the *current* task rather than spawning a close task: ``asyncio.run()``
+    waits for cancellation-resistant pending tasks during shutdown, which
+    would otherwise move the hang from this function to runner teardown.
+    """
+    loop = asyncio.get_running_loop()
+    started_at = loop.time()
+    deadline = started_at + timeout_seconds
+    forced_termination = False
+
+    def force_terminate() -> None:
+        nonlocal forced_termination
+        forced_termination = True
+        try:
+            conn.terminate()
+        except Exception as exc:  # noqa: BLE001 — close error remains canonical
+            logger.warning(
+                "[intake_health_report] connection terminate failed: %s",
+                type(exc).__name__,
+            )
+
+    timeout = asyncio.timeout_at(deadline)
+    watchdog: asyncio.TimerHandle | None = None
+    try:
+        async with timeout:
+            # __aenter__ schedules the task cancellation first; scheduling the
+            # terminate callback second at the same absolute deadline means a
+            # cancellation-resistant close sees both signals without leaving a
+            # child task behind for asyncio.run() to reap.
+            watchdog = loop.call_at(deadline, force_terminate)
+            await conn.close(timeout=timeout_seconds)
+        # asyncio.Timeout only raises automatically when CancelledError escapes
+        # the body.  A broken close can suppress it and return after terminate;
+        # keep the failure verdict rather than laundering that path as success.
+        if timeout.expired():
+            raise TimeoutError("connection close exceeded deadline")
+    except (Exception, asyncio.CancelledError):  # caller owns phase reporting
+        # Mirrors the established asyncpg cleanup convention in the PG bridge
+        # and WR2 supervisors: a close failure/timeout must not leave the
+        # transport alive after this run releases its single-instance flock.
+        if not forced_termination:
+            force_terminate()
+        raise
+    finally:
+        if watchdog is not None:
+            watchdog.cancel()
+        logger.debug(
+            "[intake_health_report] connection close elapsed_seconds=%.3f "
+            "timeout_seconds=%.3f",
+            loop.time() - started_at,
+            timeout_seconds,
+        )
+
+
 async def run(*, dry_run: bool, json_only: bool) -> int:
     if os.getenv("INTAKE_HEALTH_REPORT_ENABLED", "true").strip().lower() in ("0", "false", "no"):
         logger.info("[intake_health_report] disabled via INTAKE_HEALTH_REPORT_ENABLED — no-op")
@@ -489,40 +622,129 @@ async def run(*, dry_run: bool, json_only: bool) -> int:
 
     lock_fd = _acquire_lock_or_exit()
     if lock_fd is None:
+        # Previously exited silently: a hung run (verbale #7 — every gather()
+        # query but one ran unbounded) could hold this flock past the next
+        # scheduled 07:30 tick, and that tick's own return-0-without-a-word
+        # meant the organ went fully dark (no digest, no P0, no heartbeat)
+        # until a human found the hung process by hand. Now it says so.
+        date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        # A skipped contender has learned nothing about the lock owner's
+        # health.  Keep rc=0 and the operator digest, but do NOT refresh the
+        # shared heartbeat sidecar: publishing either `ok` or `error` here
+        # overwrites the owner's last real verdict with a claim this process
+        # cannot support.  The healer therefore continues to consume the
+        # previous run's status/timestamp and can still detect it as dead/stale.
+        _tg_notify(
+            "digest",
+            f"intake-health:lock-held:{date_key}",
+            "🔒 intake-health-report: previous instance still running — this tick skipped",
+        )
         return 0
     try:
-        dsn = os.getenv("INTAKE_DATABASE_URL") or os.getenv("LOCAL_DATABASE_URL") or DEFAULT_DSN
-        timeout_ms = int(os.getenv("INTAKE_HEALTH_SUPERSEDED_TIMEOUT_MS", "60000"))
         try:
-            conn = await asyncpg.connect(
-                dsn, server_settings={"default_transaction_read_only": "on"}
+            timeout_ms, connection_close_timeout_seconds = _timeouts_from_env()
+        except (TypeError, ValueError, OverflowError) as exc:
+            error_type = type(exc).__name__
+            logger.error(
+                "[intake_health_report] timeout configuration failed: %s",
+                error_type,
             )
-        except Exception as exc:  # noqa: BLE001
-            logger.error("[intake_health_report] DB connect failed: %s", exc)
-            _heartbeat("error", f"db connect failed: {exc}")
+            _heartbeat("error", f"timeout configuration failed: {error_type}")
             return 1
 
+        dsn = os.getenv("INTAKE_DATABASE_URL") or os.getenv("LOCAL_DATABASE_URL") or DEFAULT_DSN
         try:
-            report = await gather(conn, superseded_timeout_ms=timeout_ms)
+            # statement_timeout at the SESSION level (verbale #7): every
+            # gather() query except _fetch_superseded_orphans ran unbounded —
+            # a hung jsonb-heavy join could hold the single-instance flock
+            # indefinitely, and the NEXT scheduled tick would then hit the
+            # lock-held branch above. _fetch_superseded_orphans still gets
+            # its own tighter override (default 60000ms) via `SET
+            # statement_timeout` and resets to this session default (not
+            # Postgres's true default) afterward — same 60s guard as before.
+            conn = await asyncpg.connect(
+                dsn,
+                server_settings={
+                    "default_transaction_read_only": "on",
+                    "statement_timeout": "120000",
+                },
+                timeout=20,
+            )
+        except Exception as exc:  # noqa: BLE001
+            error_type = type(exc).__name__
+            logger.error("[intake_health_report] DB connect failed: %s", error_type)
+            _heartbeat("error", f"db connect failed: {error_type}")
+            return 1
+
+        failure: Exception | None = None
+        failure_phase = "gather"
+        try:
+            try:
+                report = await gather(conn, superseded_timeout_ms=timeout_ms)
+
+                failure_phase = "report"
+                thresholds = _thresholds_from_env()
+                breaches = evaluate_breaches(report, thresholds)
+                report["breaches"] = breaches
+
+                print(json.dumps(report, indent=2, sort_keys=True))
+
+                if not json_only and not dry_run:
+                    failure_phase = "persist"
+                    _write_state(report)
+            except Exception as exc:  # noqa: BLE001 — canonical liveness boundary
+                failure = exc
         finally:
-            await conn.close()
+            try:
+                await _close_connection(
+                    conn,
+                    timeout_seconds=connection_close_timeout_seconds,
+                )
+            except Exception as exc:  # noqa: BLE001 — close is part of run completion
+                if failure is None:
+                    failure = exc
+                    failure_phase = "connection close"
+                else:
+                    logger.warning(
+                        "[intake_health_report] connection close also failed after %s "
+                        "failure: %s",
+                        failure_phase,
+                        type(exc).__name__,
+                    )
 
-        thresholds = _thresholds_from_env()
-        breaches = evaluate_breaches(report, thresholds)
-        report["breaches"] = breaches
-
-        print(json.dumps(report, indent=2, sort_keys=True))
+        if failure is not None:
+            # Never serialize the exception message into observability: gather
+            # can touch Intake rows, so a message could carry PII. The stable
+            # phase plus exception TYPE is sufficient for triage and safe for
+            # the shared heartbeat channel.
+            error_type = type(failure).__name__
+            logger.error(
+                "[intake_health_report] %s failed: %s",
+                failure_phase,
+                error_type,
+            )
+            _heartbeat("error", f"{failure_phase} failed: {error_type}")
+            return 1
 
         if json_only:
             return 0
 
-        if not dry_run:
-            _write_state(report)
+        # Heartbeat reflects the ORGAN (did the report complete?), never the
+        # FINDING (are there breaches?) — same rule as wa_mirror_freshness_
+        # liveness.py (verbale #2): a breach is real information, but it does
+        # not mean this organ is unhealthy, and "degraded" made the healer
+        # sentinel treat a completed report carrying findings as a dead organ.
+        _heartbeat("ok", note=f"breaches={len(breaches)}")
 
-        _heartbeat("ok" if not breaches else "degraded", note=f"breaches={len(breaches)}")
-
         if not dry_run:
-            _tg_notify("digest", "intake-health:daily", render_digest(report))
+            # Date-stamped, not a bare constant (verbale #4): a fixed daily
+            # dedup key can knife-edge-collide with tg_notify's own escalating
+            # mute window — once a condition's streak reaches 2, its mute
+            # window is exactly 24h, the same as this cron's own cadence, so
+            # ordinary cron jitter of a few seconds could silently drop that
+            # day's digest line into the existing dedup entry.
+            date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            _tg_notify("digest", f"intake-health:daily:{date_key}", render_digest(report))
             for breach in breaches:
                 _tg_notify("p0", f"intake-health:{breach['metric']}", f"🚨 {breach['message']}")
 
@@ -538,7 +760,14 @@ async def run(*, dry_run: bool, json_only: bool) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0] if __doc__ else "")
     parser.add_argument("--dry-run", action="store_true", help="no Telegram, no state-file write")
-    parser.add_argument("--json-only", action="store_true", help="pure read: JSON to stdout, no side effects at all")
+    parser.add_argument(
+        "--json-only",
+        action="store_true",
+        help=(
+            "JSON to stdout with no success side effects; failures still emit "
+            "heartbeat=error"
+        ),
+    )
     args = parser.parse_args()
     return asyncio.run(run(dry_run=args.dry_run, json_only=args.json_only))
 

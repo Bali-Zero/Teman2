@@ -12,6 +12,7 @@ from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 
+from backend.app.utils.service_accounts import is_human_team_member
 from backend.services.security.token_revocation import (
     RevocationStoreUnavailable,
     is_session_revoked_sync,
@@ -154,13 +155,18 @@ def get_current_user_email(user: Annotated[dict[str, Any], Depends(get_current_u
 
 def require_team_member(user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
     """
-    Dependency that ensures the current user is a team member (not a client).
+    Dependency that ensures the current user is a real person on the team.
+
+    Neither clients nor unattended service accounts (e.g. the login-healthcheck
+    probe, role "monitoring") qualify — this gate grants team-level authority
+    (e33 case creation, CRM intelligence mutations), and "not a client" is not
+    the same question as "is a colleague". See service_accounts.py.
 
     Raises:
-        HTTPException 403: If user is a client
+        HTTPException 403: If user is a client or a service account
     """
-    if user.get("role") == "client":
-        logger.warning(f"Access denied to client user: {user.get('email')}")
+    if not is_human_team_member(user.get("role")):
+        logger.warning(f"Access denied to non-human account: {user.get('email')}")
         raise HTTPException(
             status_code=403,
             detail="Access denied. This endpoint is only accessible to team members.",

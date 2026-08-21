@@ -500,6 +500,104 @@ class TestPortalServiceDashboard:
         assert result["documents"]["total"] == 5
 
 
+class TestPortalServiceMessages:
+    """send_message / mark_message_read guards.
+
+    DEFECT 1: send_message must reject a soft-deleted client with a
+    ValueError (mirrors get_dashboard's "not found" shape) instead of
+    letting `client["email"]` raise a bare TypeError on a None row.
+
+    DEFECT 2: mark_message_read must only flip read_at on `team_to_client`
+    messages — a client marking read a `client_to_team` message they sent
+    themselves would forge a "the team has read this" signal. Mirrors the
+    operator-side guard in `crm_portal_integration.mark_client_message_read`
+    (direction = 'client_to_team').
+    """
+
+    @pytest.mark.asyncio
+    async def test_send_message_soft_deleted_client_raises_value_error(
+        self, mock_pool: tuple
+    ) -> None:
+        from backend.services.portal.portal_service import PortalService
+
+        pool, conn = mock_pool
+        # `deleted_at IS NULL` filter in the SQL means fetchrow returns None
+        # for a soft-deleted client — exactly what the router's ValueError
+        # -> 404 handler expects.
+        conn.fetchrow = AsyncMock(return_value=None)
+
+        service = PortalService(pool)
+        with pytest.raises(ValueError, match="not found"):
+            await service.send_message(
+                999,
+                content="hello",
+                current_user=_ctx(999),
+            )
+
+    @pytest.mark.asyncio
+    async def test_send_message_success_uses_client_email(self, mock_pool: tuple) -> None:
+        from backend.services.portal.portal_service import PortalService
+
+        pool, conn = mock_pool
+        client_row = {"email": "client-1@example.com"}
+        message_row = {
+            "id": 5,
+            "subject": None,
+            "content": "hello",
+            "direction": "client_to_team",
+            "sent_by": "client-1@example.com",
+            "read_at": None,
+            "created_at": datetime.now(timezone.utc),
+            "practice_id": None,
+        }
+        conn.fetchrow = AsyncMock(side_effect=[client_row, message_row])
+
+        service = PortalService(pool)
+        result = await service.send_message(1, content="hello", current_user=_ctx(1))
+
+        assert result["id"] == 5
+        assert result["sent_by"] == "client-1@example.com"
+
+    @pytest.mark.asyncio
+    async def test_mark_message_read_rejects_client_to_team_message(
+        self, mock_pool: tuple
+    ) -> None:
+        """Guilt: a client_to_team message (the client's own outbound
+        message) must NOT be marked read via this path — the SQL guard
+        (direction = 'team_to_client') means the UPDATE matches zero rows
+        even if the id/client_id are otherwise correct."""
+        from backend.services.portal.portal_service import PortalService
+
+        pool, conn = mock_pool
+        # The UPDATE's WHERE clause (direction='team_to_client') excludes
+        # a client_to_team row, so asyncpg reports zero rows touched.
+        conn.execute = AsyncMock(return_value="UPDATE 0")
+
+        service = PortalService(pool)
+        result = await service.mark_message_read(1, 42, current_user=_ctx(1))
+
+        assert result == {"success": False}
+        # Assert the guard is actually IN the SQL, not just that the
+        # mocked return value happens to be zero.
+        executed_sql = conn.execute.await_args.args[0]
+        assert "direction = 'team_to_client'" in executed_sql
+
+    @pytest.mark.asyncio
+    async def test_mark_message_read_accepts_team_to_client_message(
+        self, mock_pool: tuple
+    ) -> None:
+        """Innocence: a genuine team_to_client message is still markable."""
+        from backend.services.portal.portal_service import PortalService
+
+        pool, conn = mock_pool
+        conn.execute = AsyncMock(return_value="UPDATE 1")
+
+        service = PortalService(pool)
+        result = await service.mark_message_read(1, 42, current_user=_ctx(1))
+
+        assert result == {"success": True}
+
+
 class TestPortalServiceVisaStatus:
     @pytest.mark.asyncio
     async def test_get_visa_status_client_not_found(self, mock_pool: tuple) -> None:

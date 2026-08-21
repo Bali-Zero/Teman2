@@ -1542,11 +1542,22 @@ async def upsert_client_by_phone(
 
     if result.get("matched_count", 0) > 1:
         # Do NOT log the phone (PII / UU PDP + log-injection: it's user-supplied).
-        # client_id + matched_count are non-PII DB integers and fully identify the row.
+        # client_id + matched_count are non-PII DB integers and fully identify the
+        # row; `action` is a fixed enum this endpoint sets itself, never user input.
+        #
+        # `action` is load-bearing, not decoration. This line used to read
+        # "acted on id=%s", which is FALSE for `skipped_no_change`: an empty
+        # `set_parts` above skips the UPDATE entirely, yet `result` is still bound
+        # and reaches this guard, so the advisory claimed a write for a row nothing
+        # was written to — on the caller that takes the defaults (the wa-mirror
+        # promoter), where re-promoting an unchanged lead is the common case.
+        # Naming the action is what makes the sentence checkable.
+        # Reference: research/operations/2026-08-19-crm-upsert-by-phone-duplicate-advisory.md
         logger.warning(
-            "upsert-by-phone: %s clients share a phone (acted on id=%s) — "
+            "upsert-by-phone: %s clients share a phone (action=%s id=%s) — "
             "review for possible duplicate-client merge",
             result["matched_count"],
+            result["action"],
             result["client_id"],
         )
     return result

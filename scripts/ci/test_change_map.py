@@ -314,6 +314,104 @@ class ChangeMapTests(unittest.TestCase):
             ["backend-tests", "frontend-tests", "e2e-tests"],
         )
 
+    def test_innocence_fleet_ops_directories_skip_every_test_job(self) -> None:
+        # 2026-08-20: PR #4428 touched only scripts/mini/*.sh (a Mini-machine
+        # git-pull wrapper) and still paid the full ~28min backend suite,
+        # because top-level scripts/ (outside scripts/ci/) has no domain rule
+        # at all and unclassified paths fail closed to run_all=true — correct
+        # by design, but this specific directory is provably safe (see the
+        # fleet_ops block in change_map.py for the two-sided proof: zero .py
+        # files anywhere in the tree, so nothing can import it; zero
+        # references anywhere in the six gated jobs' own code trees or in
+        # tests.yml, so nothing subprocess-invokes it either). This is the
+        # exact PR #4428 diff shape.
+        result = cm.classify(
+            [
+                "scripts/mini/mini-git-pull.sh",
+                "scripts/mini/test-mini-git-pull-self-update-atomic.sh",
+                "scripts/mini/test-mini-git-pull-symlink-typechange-clean.sh",
+            ]
+        )
+        self.assertFalse(result["run_all"])
+        self.assertEqual(result["reason"], "classified")
+        self.assertTrue(result["domains"]["fleet_ops"])
+        self.assertEqual(result["suggested_jobs"], [])
+        self.assertEqual(result["would_skip"], list(cm.TEST_JOBS))
+
+    def test_innocence_every_fleet_ops_directory_skips_every_test_job(self) -> None:
+        # One representative path per mapped directory — guards against a
+        # future edit narrowing one prefix's trailing slash or typo-ing a
+        # directory name in a way a single spot-check on scripts/mini/ alone
+        # would not catch.
+        for path in (
+            "scripts/cli/nz",
+            "scripts/codex/codex-nightly-autofix-ci.sh",
+            "scripts/damar-node/install.sh",
+            "scripts/data/nb_decomm_audit_2026-05-07.json",
+            "scripts/krisna-node/install.sh",
+            "scripts/launchd/com.nuzantara.fly-pg-tunnel.plist",
+            "scripts/mini/mini-git-pull.sh",
+            "scripts/pro/pro-git-pull.sh",
+            "scripts/review_routes/worker-plane-council-v3.json",
+            "scripts/ruslana-node/install.sh",
+        ):
+            with self.subTest(path=path):
+                result = cm.classify([path])
+                self.assertFalse(result["run_all"])
+                self.assertTrue(result["domains"]["fleet_ops"])
+                self.assertEqual(result["suggested_jobs"], [])
+
+    def test_guilt_hidden_backend_test_coupled_scripts_stay_unclassified(
+        self,
+    ) -> None:
+        # Regression tripwire for the census this PR ran: these top-level
+        # scripts/*.py files are silently `from scripts.X import Y`-imported
+        # by apps/backend-rag/backend/tests/{scripts,unit/scripts}/ (verified
+        # live, 2026-08-20 — a sys.path shim in that tree's own conftest.py
+        # resolves `scripts` to the repo-root package once ANY file under it
+        # has been pytest-collected in the same run). None of their names
+        # hint at the coupling — this is exactly the shape a naive
+        # directory/prefix rule on all of scripts/ would have missed, and
+        # exactly why fleet_ops only covers directories proven to contain no
+        # .py at all. If any of these ever starts reporting run_all=false,
+        # something either mapped a domain over it directly or widened an
+        # existing fleet_ops prefix to swallow it — both are a live
+        # under-match on a file backend-tests actually needs to run for.
+        for path in (
+            "scripts/wr2_html_render_apply.py",  # forced run_all=true on PR #4431, same day
+            "scripts/drive_token_watchdog.py",
+            "scripts/fix_lkpm_q1_2026_client_ids.py",
+            "scripts/sentinel_lib/alerter.py",  # imported by PRODUCTION backend code, not just tests
+            "scripts/bot/wa_blind_bench.py",  # scripts/bot/ is pytest-collected directly by tests.yml
+        ):
+            with self.subTest(path=path):
+                result = cm.classify([path])
+                self.assertTrue(result["run_all"])
+                self.assertEqual(result["reason"], "unclassified_paths")
+                self.assertEqual(result["suggested_jobs"], list(cm.TEST_JOBS))
+
+    def test_innocence_loose_top_level_script_outside_mapped_dirs_stays_unclassified(
+        self,
+    ) -> None:
+        # A file living directly in scripts/ (not under any of the ten
+        # fleet_ops directories) must not inherit the exemption just for
+        # sharing the scripts/ prefix — the rule is per-directory, not
+        # repo-wide on scripts/.
+        result = cm.classify(["scripts/pro-mini-healthcheck.sh"])
+        self.assertTrue(result["run_all"])
+        self.assertEqual(result["reason"], "unclassified_paths")
+
+    def test_guilt_fleet_ops_combined_with_backend_change_still_runs_backend(
+        self,
+    ) -> None:
+        # fleet_ops must contribute nothing to the job set, but must not
+        # SUPPRESS what a co-changed backend_python path already earns.
+        result = cm.classify(
+            ["scripts/pro/pro-git-pull.sh", "apps/backend-rag/backend/app/main.py"]
+        )
+        self.assertFalse(result["run_all"])
+        self.assertEqual(result["suggested_jobs"], ["backend-tests", "e2e-tests"])
+
     def test_cli_stdout_is_one_compact_json_line(self) -> None:
         script = Path(__file__).with_name("change_map.py")
         completed = subprocess.run(

@@ -165,6 +165,26 @@ _INFRA = (
         "wa-mirror intake document upload — X-CRM-Write-Key + WA_MIRROR_CRM_WRITE_ENABLED auth in-router",
         match="template",
     ),
+    # BOT-V4 S2 broker transport (Codex re-verdict, finding 1): the Pro
+    # broker daemon authenticates with the DEDICATED WA_BROKER_KEY via
+    # require_wa_broker_key (constant-time, fail-closed when unconfigured,
+    # rate-limited on failures). That key is NOT in the general API-key
+    # list, so without these entries HybridAuthMiddleware read the
+    # X-API-Key header, rejected the unknown key, and the documented
+    # single-credential contract 401'd before the route's own gate ever
+    # ran — the service only worked with two undocumented credentials.
+    PublicEndpoint(
+        "/api/wa-broker/claim",
+        Category.INFRA,
+        "codex broker claim — dedicated WA_BROKER_KEY auth in-router (require_wa_broker_key)",
+        match="exact",
+    ),
+    PublicEndpoint(
+        "/api/wa-broker/complete",
+        Category.INFRA,
+        "codex broker complete — dedicated WA_BROKER_KEY auth in-router (require_wa_broker_key)",
+        match="exact",
+    ),
 )
 
 _AUTH = (
@@ -218,13 +238,12 @@ _WEBHOOKS = (
     ),
     # Removed 2026-04-18: /webhook/twitter webhook_router intentionally
     # disabled (manifest: "CRC broken, OAuth incomplete").
-    PublicEndpoint(
-        "/webhook/telegram",
-        Category.WEBHOOK,
-        "Telegram bot webhook (multi-channel architecture) — the single "
-        "mounted path; /api/telegram/webhook and /api/webhook/telegram "
-        "aliases were removed in 2026-04-18 registry audit.",
-    ),
+    # Removed 2026-08-18 (Zero ruled REMOVE): /webhook/telegram and
+    # telegram_webhook.py itself deleted — the route was structurally dead by
+    # design (the `api` process it was mounted on always had
+    # app.state.channel_router = None, so Depends(get_channel_router) 503'd
+    # on every request; the live Telegram channel is Pro OpenClaw, per
+    # CLAUDE.md §12). See .claude/skills/modus/PENDING-ARMS.md (closed lines).
 )
 
 _OAUTH = (

@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from "react";
 
-import { trackLeadWhatsAppCTA } from "@/lib/analytics";
+import { trackLeadCreated, trackLeadWhatsAppCTA } from "@/lib/analytics";
 
 /** Bare business wa.me link — no-JS href and fallback when capture fails.
  *  Same number used by the backend deeplink builder default. */
@@ -75,6 +75,10 @@ export function WhatsAppLeadButton({
         lead_intent_id: json.lead_intent_id,
         result_ref: resultHash,
       });
+      // Only after the 201 is parsed: a lead_intents row now exists, so the
+      // intent is captured rather than merely attempted. In the catch below
+      // no row was written, which is why this does not fire there.
+      trackLeadCreated(source);
       window.location.href = json.whatsapp_url;
     } catch {
       // Fallback handoff still counts as a CTA click — captured=false

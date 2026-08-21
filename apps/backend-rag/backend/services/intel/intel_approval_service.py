@@ -271,11 +271,14 @@ class IntelApprovalService:
             "image_path": image_path,
         }
 
-        # This WRITE creates the very file `telegram_webhook.handle_intel_callback`
-        # later reads and rewrites from a Telegram callback. The endpoint that reaches
-        # here (`POST /api/intel/staging/approve/{type}/{item_id}`) is defended today
-        # only by `load_staging_item` returning None for a malformed id — remote, and a
-        # side effect of a READ's contract. The service that owns the path judges it.
+        # This WRITE creates the voting-status file. Until 2026-08-18, the removed
+        # `telegram_webhook.handle_intel_callback` also read and rewrote it from a
+        # Telegram callback (that surface was structurally dead — see
+        # .claude/skills/modus/PENDING-ARMS.md, closed lines). The endpoint that
+        # reaches here (`POST /api/intel/staging/approve/{type}/{item_id}`) is
+        # defended today only by `load_staging_item` returning None for a malformed
+        # id — remote, and a side effect of a READ's contract. The service that owns
+        # the path judges it.
         assert_valid_item_id(item_id)
 
         status_file = self.pending_intel_path / f"{item_id}.json"

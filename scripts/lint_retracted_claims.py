@@ -639,6 +639,21 @@ def run_selftest(registry_path: Optional[Path] = None) -> int:
              "Centralized > Independent confirms the no-peer rule (Kim et al.)"),
             ("kim-2025-ranking-supports-the-no-peer-rule",
              "Independent is lowest, therefore use centralized state (2512.08296)"),
+            # The upsert-by-phone claim in wordings other than the one that was
+            # actually written — a pattern written from the instance you found
+            # catches the instance you found (the lesson this registry's second
+            # claim was retracted for).
+            #
+            # DECLARED LIMIT, and it is deliberate: this pattern requires one of
+            # the two BRANCH NAMES. A paraphrase that says only "the advisory can
+            # name an action that did not happen" is NOT flagged — because that
+            # sentence is TRUE (it happens via `skipped_no_change`), and a guard
+            # that flagged it would be pushing readers back toward the false
+            # correction. Only the branch attribution is retracted here.
+            ("upsert-by-phone-refusal-branches-reach-the-warning",
+             "in crm_clients the skipped_archived outcome is logged as acted-on"),
+            ("upsert-by-phone-refusal-branches-reach-the-warning",
+             "the upsert-by-phone advisory fires on rejected_ambiguous too"),
         ]
         # The other half, and the half this guard did not have: text that
         # contains the NUMBER and means something else entirely. `4.4x` is a
@@ -704,6 +719,13 @@ def run_selftest(registry_path: Optional[Path] = None) -> int:
                         # context_pattern exercises the guard just as well.
                         "the repo-sync target is a separate checkout, so the cron writes a side copy",
                         "it is a symlink: stat -L gives 758478 for both, and both git-dirs are ~/nuzantara/.git",
+                    ),
+                    # One disjunct only, for the same per-match reason as above:
+                    # naming a branch AND quoting `acted on id=None` would flag
+                    # twice and fail an assertion about the guard biting.
+                    "upsert-by-phone-refusal-branches-reach-the-warning": (
+                        "the rejected_ambiguous return still reaches the upsert-by-phone advisory line",
+                        "it returns at 1396, inside the transaction, while the guard is at 1543",
                     ),
                 }.get(c.id, (None, None))
                 if probe is None:
