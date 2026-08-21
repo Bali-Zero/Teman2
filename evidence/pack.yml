@@ -1,28 +1,29 @@
 brief_ref: evidence/brief.yml
 plan_ref: "codex-spalla hook wrote credentials to a world-readable log (2026-08-21)"
 diff:
+  net_lines: "+530/-243 (net +287) at merge-base 002ba8e2a..HEAD; code +129/-2, tests +257/-0, evidence +138/-240"
   behaviour_change: "none to trigger logic; the log's mode and logged value change by design"
 receipts:
   - claim: "The live log held real OAuth token material, world-readable. Magnitude by RUN LENGTH, not line count: 14 matching lines, histogram 8x10/5x13/1x46/1x87/1x108 -> 3 runs with secret material: 1 whole token + 2 truncation-clipped partials"
     cmd: "grep -c 'sk-ant-oat' ~/logs/codex-spalla-trigger.jsonl (-> 14); longest token-shaped run via grep -oE | awk length (-> 108); stat -f '%Lp' (-> 644)"
     exit: 0
     ts: "2026-08-21T15:56:47Z"
-    seat: session (m5)
+    seat: "session (m5)"
   - claim: "Magnitude of the 3 secret-bearing runs re-measured by END POSITION inside the 200-char logged field, not by length alone: only the 108-char run ends short of the field's end (complete token); the 87-char and 46-char runs both end EXACTLY at char 200 (the truncation boundary) -- truncation-clipped partials, not two more whole tokens"
     cmd: "python3: json.loads each matching line's target field, locate the sk-ant-oat run, compare match.end() to len(target) and to the 200-char cap -- no value printed, only lengths/offsets/booleans"
     exit: 0
     ts: "2026-08-21T19:49:52Z"
-    seat: session (m5), independent of the implementer
+    seat: "implementer (subagent), then INDEPENDENTLY re-measured by the session at 2026-08-21T19:52Z on the live file: 3 runs >=40 chars (46/87/108); the 46 and 87 both end at offset 200 == field length (truncation-clipped), the 108 ends at offset 151 in a 200-char field (complete). Same conclusion, different hands (#4547)"
   - claim: "Containment applied to the live file ahead of the fix"
     cmd: "chmod 0600 ~/logs/codex-spalla-trigger.jsonl; stat -f '%Lp' (-> 600); no .bak siblings; it is the only file in ~/logs with such material"
     exit: 0
     ts: "2026-08-21T15:56:47Z"
-    seat: session (m5)
+    seat: "session (m5)"
   - claim: "The registered hook path is the REPO copy — no HOME fork (superscar #1 ruled out)"
     cmd: "ls ~/.claude/hooks/codex-spalla-trigger.sh (-> No such file); grep settings.json (-> CLAUDE_PROJECT_DIR/.claude/hooks/codex-spalla-trigger.sh)"
     exit: 0
     ts: "2026-08-21T15:56:47Z"
-    seat: session (m5)
+    seat: "session (m5)"
   - claim: "Guilt+innocence suite passes against the fixed hook: 11 guilt, 9 innocence, 1 mode (widened from 3 guilt/1 innocence/1 mode -- the gate's central finding was 10 guilt against only 1 innocence, so 8 innocence forms + 1 Bearer guilt form were added)"
     cmd: "bash scripts/tests/test_codex_spalla_trigger_redaction.sh"
     exit: 0
@@ -32,17 +33,17 @@ receipts:
     cmd: "python3 in-place edit removing the wildcard from the hook; bash scripts/tests/test_codex_spalla_trigger_redaction.sh (rc measured WITHOUT a pipe -- a pipe returns tail's rc, W97)"
     exit: 1
     ts: "2026-08-21T19:49:52Z"
-    seat: session (m5)
+    seat: "session (m5)"
   - claim: "Hook restored to the exact pre-mutation diff after the mutation test; verified by `git diff` matching the original intended narrowing byte-for-byte (a first restore attempt via a /tmp backup silently failed because $$ differs across separate Bash tool invocations -- caught by re-diffing, not assumed); suite green again"
     cmd: "git diff .claude/hooks/codex-spalla-trigger.sh (-> matches intended diff exactly); bash scripts/tests/test_codex_spalla_trigger_redaction.sh (-> rc 0)"
     exit: 0
     ts: "2026-08-21T19:49:52Z"
-    seat: session (m5)
+    seat: "session (m5)"
   - claim: "The optional leading `(?:--?)?` in the variable-name regex does not widen coverage AND does not change the redacted output at all -- a leading dash is neither alnum nor `.`, so the negative lookbehind already lets the match start right after it either way. Driven side-by-side (with vs without `(?:--?)?`) through the real hook across 22 cases (the full guilt+innocence corpus plus flag-form probes): zero output differences"
     cmd: "cp hook to scratch, remove `(?:--?)?` only; diff each case's logged target between the two hooks"
     exit: 0
     ts: "2026-08-21T19:49:52Z"
-    seat: session (m5), independent of the implementer
+    seat: "implementer (subagent) measured the 22-case corpus; the session then tried to BREAK the finding with 6 adversarial dash forms it had not covered (--token=, -key=, x--token=, a-b--API_KEY=, foo---token=, TOKEN=) -- 0/6 differed. The session predicted x--token= would lose a dash and was WRONG: an unconsumed dash before the match span stays in the string either way, so the outputs coincide. Two hands, one conclusion (#4547)"
 tests:
   - "scripts/tests/test_codex_spalla_trigger_redaction.sh — 21 named cases, 11 guilt / 9 innocence / 1 mode, run against the REAL hook with a temp HOME."
 static:
