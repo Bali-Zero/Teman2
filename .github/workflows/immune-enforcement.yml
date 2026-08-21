@@ -963,6 +963,23 @@ jobs:
             python3 -m pytest scripts/lint/test_lint_claude_headless_limits.py -q
           fi
 
+      # Claude-headless-model-pin lint: the SAME class of gap recurring on
+      # its own sibling. lint_claude_headless_model_pin.py (introduced
+      # #4430, 2026-08-20) reuses the exact engine armed above, but was
+      # itself merged without ever being wired into any workflow — built,
+      # guilt+innocence-tested, and dormant, precisely the family #2
+      # (Esiste ≠ Armato) shape the comment above this block already names.
+      # Arms it here for real (same reasoning: pure repo-tree scan, no
+      # $HOME dependency). --selftest runs first, same discipline as the
+      # retracted-claims/telegram-tokens lints below — "--all reports OK"
+      # is worth nothing until the guilt path is proven on THIS runner.
+      - name: Claude-headless-model-pin lint (-p/--print carries --model)
+        run: |
+          if [ -f scripts/lint/lint_claude_headless_model_pin.py ]; then
+            python3 scripts/lint/lint_claude_headless_model_pin.py --selftest
+            python3 scripts/lint/lint_claude_headless_model_pin.py
+          fi
+
       # The two ledger gates below run on EVERY PR (cheap: parse one markdown
       # file) — they are the reason this check is required at all.
       # A node's IDENTITY in a tailnet is its MagicDNS name — never HostName, never an

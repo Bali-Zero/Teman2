@@ -155,6 +155,45 @@ def _clamp_error_class(value: str) -> str:
     return value[:ERROR_CLASS_MAX_LEN]
 
 
+def _gemini_error_label(exc: BaseException) -> str:
+    """Compose a PII-safe, quota-distinguishing ``error_class`` from a raised
+    exception.
+
+    google-genai's ``APIError`` (base of ``ClientError``/``ServerError``,
+    ``google/genai/errors.py``, verified live against the installed
+    google-genai==2.7.0) carries a structured HTTP ``code`` (int) and a
+    structured API ``status`` string (e.g. ``RESOURCE_EXHAUSTED``,
+    ``INVALID_ARGUMENT``) alongside the bare exception message. Before this,
+    every write site here recorded only ``type(e).__name__``, so a 429
+    quota-exhaustion event (``ClientError``) was indistinguishable in the
+    ledger from an ordinary 400 malformed-request event (also
+    ``ClientError``) — the 2026-08-11 WhatsApp-silent-for-hours outage read
+    only as an anonymous ``ClientError`` count.
+
+    Reads ONLY the structured ``code``/``status`` attributes — never
+    ``str(exc)`` or ``exc.message``, both of which can echo prompt fragments
+    back out (same PII boundary ``_structured_failure_reason`` already
+    follows). Never decides by substring on the message text (cicatrix
+    family #3, guard-over-match has bitten this repo repeatedly on exactly
+    that pattern — see ``llm_gateway._classify_quota_exhaustion``, which
+    reads the same two structured attributes for its own, independent,
+    quota alert). And never CLAIMS a code/status it did not actually read:
+    an exception without these attributes, or carrying the wrong type on
+    them (e.g. a ``bool`` — an ``int`` subclass in Python — on ``code``),
+    degrades to the bare class name, which is exactly the previous
+    behaviour for non-API exceptions (``TimeoutError``, ``ConnectionError``,
+    …) and therefore never turns a successful label into a failed call.
+    """
+    parts = [type(exc).__name__]
+    code = getattr(exc, "code", None)
+    if isinstance(code, int) and not isinstance(code, bool):
+        parts.append(str(code))
+    status = getattr(exc, "status", None)
+    if isinstance(status, str) and status:
+        parts.append(status)
+    return _clamp_error_class(":".join(parts))
+
+
 def _structured_failure_reason(
     response: object,
     raw_text: str,
@@ -584,7 +623,7 @@ class GenAIClient:
             }
         except Exception as e:
             latency_ms = round((time.perf_counter() - t0) * 1000)
-            error_class = type(e).__name__
+            error_class = _gemini_error_label(e)
             logger.error(
                 "LLM call failed",
                 extra={
@@ -822,7 +861,7 @@ class GenAIClient:
         except LLMStructuredOutputError:
             raise
         except Exception as e:
-            error_class = type(e).__name__
+            error_class = _gemini_error_label(e)
             logger.error(
                 "LLM structured call failed",
                 extra={

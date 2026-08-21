@@ -428,6 +428,126 @@ else
     fi
 fi
 
+# ---------------------------------------------------------------------------
+# Case 18 (guilt, PR #4459, 2026-08-21): the CONSUMER-MAP block added to
+# .husky/pre-push must actually BLOCK a push that deletes a file some other
+# tracked file still names by basename — the exact #4459 shape
+# (.github/workflows/*.yml naming the deleted path relative to a `cd`).
+#
+# This runs the REAL extracted block (not a re-typed mirror — same
+# discipline as extract_pathaware_block() in test_prepush_default_off.sh)
+# against a REAL, throwaway git fixture, with PREPUSH_TRUST_ROOT pointed at
+# THIS repo's real scripts/prepush_classify.py + scripts/consumer_map.py —
+# so this proves the actual shipped code blocks, not a stand-in for it.
+# `origin/main` is faked via `update-ref` (no network needed) since the
+# block hardcodes `--base origin/main`.
+# ---------------------------------------------------------------------------
+extract_consumer_map_block() {
+    sed -n '/^if \[ "\${PREPUSH_SKIP_CONSUMER_MAP:-0}" != "1" \]; then$/,/^fi$/p' "$HOOK_FILE"
+}
+
+cm_block="$(extract_consumer_map_block)"
+cm_block_lines="$(printf '%s\n' "$cm_block" | wc -l | tr -d ' ')"
+if [ -z "$cm_block" ] || [ "${cm_block_lines:-0}" -lt 5 ]; then
+    note_fail "guilt (consumer-map, #4459) — could not extract the consumer-map block from $HOOK_FILE (got $cm_block_lines lines)"
+    note_fail "innocence (consumer-map, #4459) — SKIPPED, block extraction failed above"
+else
+    CM18_TMP="$(mktemp -d)"
+    git init -q "$CM18_TMP"
+    git -C "$CM18_TMP" config user.email t@example.invalid
+    git -C "$CM18_TMP" config user.name "Test"
+    mkdir -p "$CM18_TMP/apps/backend-rag/tests" "$CM18_TMP/.github/workflows"
+    printf 'def test_x(): pass\n' > "$CM18_TMP/apps/backend-rag/tests/test_migrations.py"
+    printf 'jobs:\n  test:\n    steps:\n      - run: cd apps/backend-rag && pytest tests/test_migrations.py\n' \
+        > "$CM18_TMP/.github/workflows/sonarqube.yml"
+    git -C "$CM18_TMP" add -A
+    git -C "$CM18_TMP" commit -q -m base
+    CM18_BASE_SHA="$(git -C "$CM18_TMP" rev-parse HEAD)"
+    git -C "$CM18_TMP" update-ref refs/remotes/origin/main "$CM18_BASE_SHA"
+    rm -f "$CM18_TMP/apps/backend-rag/tests/test_migrations.py"
+    git -C "$CM18_TMP" add -A
+    git -C "$CM18_TMP" commit -q -m "delete orphan tests tree"
+
+    out18="$(cd "$CM18_TMP" && PREPUSH_TRUST_ROOT="$REPO_ROOT" sh -e -c "
+$cm_block
+echo REACHED_END
+" 2>&1)"
+    rc18=$?
+    if [ "$rc18" != "0" ] && printf '%s' "$out18" | grep -q 'consumer-map:.*live consumers' \
+        && ! printf '%s' "$out18" | grep -q 'REACHED_END'; then
+        note_pass "guilt (consumer-map, #4459) — a deleted file with a live consumer BLOCKS the push (rc=$rc18)"
+    else
+        note_fail "guilt (consumer-map, #4459) — expected a non-zero blocking exit naming live consumers, got rc=$rc18 out='$out18'"
+    fi
+
+    # -----------------------------------------------------------------------
+    # Case 19 (innocence, PR #4459): the SAME block, against a CLEAN deletion
+    # (a file with zero references anywhere) on the SAME fixture repo, must
+    # NOT block — execution must reach past the block to REACHED_END. This
+    # is not merely "no error" — Case 2/3's own shape (this file's early
+    # cases) already showed a bare non-zero classifier exit is easy to
+    # confuse with "working"; REACHED_END proves the block did not exit 1.
+    # -----------------------------------------------------------------------
+    printf 'def test_never_referenced_anywhere(): pass\n' \
+        > "$CM18_TMP/apps/backend-rag/tests/test_never_referenced_anywhere.py"
+    git -C "$CM18_TMP" add -A
+    git -C "$CM18_TMP" commit -q -m "add an unreferenced file"
+    CM19_BASE_SHA="$(git -C "$CM18_TMP" rev-parse HEAD)"
+    git -C "$CM18_TMP" update-ref refs/remotes/origin/main "$CM19_BASE_SHA"
+    rm -f "$CM18_TMP/apps/backend-rag/tests/test_never_referenced_anywhere.py"
+    git -C "$CM18_TMP" add -A
+    git -C "$CM18_TMP" commit -q -m "delete the unreferenced file — clean"
+
+    out19="$(cd "$CM18_TMP" && PREPUSH_TRUST_ROOT="$REPO_ROOT" sh -e -c "
+$cm_block
+echo REACHED_END
+" 2>&1)"
+    rc19=$?
+    if [ "$rc19" = "0" ] && printf '%s' "$out19" | grep -q 'REACHED_END' \
+        && ! printf '%s' "$out19" | grep -q 'push blocked'; then
+        note_pass "innocence (consumer-map, #4459) — a clean deletion (no consumers anywhere) does NOT block the push"
+    else
+        note_fail "innocence (consumer-map, #4459) — expected rc=0 and REACHED_END, got rc=$rc19 out='$out19'"
+    fi
+
+    rm -rf "$CM18_TMP"
+fi
+
+# ---------------------------------------------------------------------------
+# Case 20 (tripwire, PR #4459): the consumer-map block in the LIVE hook must
+# (a) run UNCONDITIONALLY — outside the `if [ "$PREPUSH_RUN_BACKEND" = "1" ]`
+#     guard, never made to depend on DEFAULT-OFF (2026-08-13) the way the
+#     pytest suite is;
+# (b) capture the classifier's exit code errexit-immune (`|| CM_RC=$?`) —
+#     the W101 shape this whole file exists to catch, now on its 4th call
+#     site in this hook;
+# (c) actually `exit 1` on rc=1 — a block that only echoes would be
+#     decorative (W104: "il primo anticorpo scritto era un check
+#     sull'rc — decorativo per costruzione").
+# ---------------------------------------------------------------------------
+if [ ! -f "$HOOK_FILE" ]; then
+    note_fail "tripwire (consumer-map) — $HOOK_FILE not found (cannot verify)"
+else
+    if printf '%s' "$cm_block" | grep -q '|| CM_RC=\$?' \
+        && printf '%s' "$cm_block" | grep -q 'exit 1' \
+        && printf '%s' "$cm_block" | grep -q -- '--check-consumers'; then
+        note_pass "tripwire (consumer-map) — block is errexit-immune-captured and actually exits 1 on a live finding"
+    else
+        note_fail "tripwire (consumer-map) — block missing the errexit-immune capture, the --check-consumers call, or the blocking exit 1"
+    fi
+
+    # (a) above, checked structurally: the consumer-map block's own `if`
+    # line must appear BEFORE line 366's `if [ "$PREPUSH_RUN_BACKEND" = "1" ]`
+    # guard, i.e. outside and ahead of it, not nested inside.
+    cm_if_line="$(grep -n '^if \[ "\${PREPUSH_SKIP_CONSUMER_MAP:-0}" != "1" \]; then$' "$HOOK_FILE" | head -1 | cut -d: -f1)"
+    run_backend_if_line="$(grep -n '^if \[ "\$PREPUSH_RUN_BACKEND" = "1" \]; then$' "$HOOK_FILE" | head -1 | cut -d: -f1)"
+    if [ -n "$cm_if_line" ] && [ -n "$run_backend_if_line" ] && [ "$cm_if_line" -lt "$run_backend_if_line" ]; then
+        note_pass "tripwire (consumer-map) — block (line $cm_if_line) runs before/outside the PREPUSH_RUN_BACKEND guard (line $run_backend_if_line), not gated by DEFAULT-OFF"
+    else
+        note_fail "tripwire (consumer-map) — could not confirm the block sits outside the PREPUSH_RUN_BACKEND guard (cm=$cm_if_line, guard=$run_backend_if_line)"
+    fi
+fi
+
 echo "---"
 echo "$pass passed, $fail failed"
 

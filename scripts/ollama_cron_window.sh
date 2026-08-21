@@ -38,7 +38,17 @@ case "$ACTION" in
 
         echo "[$DATE] ERROR: Ollama API not responding after 30s"
         echo "[$DATE] Trying to restart LaunchAgent..."
-        launchctl kickstart -k "gui/$(id -u)/homebrew.mxcl.ollama" 2>/dev/null || true
+        # Label corrected 2026-08-20: `homebrew.mxcl.ollama` was retired 2026-08-18
+        # when Pro moved to a single capped manager (see genesis comment in
+        # ollama-single-manager.sh, `com.nuzantara.ollama`, StartInterval 120s) —
+        # a kernel panic post-mortem found homebrew.mxcl.ollama and a
+        # Raycast-owned `ollama serve` fighting over :11434. The kickstart below
+        # had been silently targeting a label that no longer exists on any
+        # machine (`launchctl kickstart` on an unknown label fails quietly under
+        # `2>/dev/null || true`) — a dead recovery path that never fired only
+        # because the primary check above has not failed since the label moved.
+        OLLAMA_LAUNCHD_LABEL="${OLLAMA_LAUNCHD_LABEL:-com.nuzantara.ollama}"
+        launchctl kickstart -k "gui/$(id -u)/${OLLAMA_LAUNCHD_LABEL}" 2>/dev/null || true
         sleep 5
 
         if curl -s --max-time 2 "${OLLAMA_URL}/api/tags" > /dev/null 2>&1; then
