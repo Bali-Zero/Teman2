@@ -105,6 +105,21 @@ receipts:
     exit: 0
     ts: "2026-08-21T16:59:00Z"
     seat: session (m5)
+  - claim: 'the second chooser''s 13 mutants re-run against the CURRENT head: 3 already dead from round 2, 7 still surviving (drop "fail"; note[-120:]; cap removed; age_days 99.0; status "unknown"; warning group unsorted; unhealthy count hardcoded 0)'
+    cmd: "scratchpad mut5 + 10 anchored mutations + pytest each, PYTHONDONTWRITEBYTECODE=1"
+    exit: 0
+    ts: "2026-08-21T17:04:00Z"
+    seat: session (m5)
+  - claim: "after round-3 cures: 9/9 killed, zero survivors — the 7 above plus deleting the dead_channel and corrupt rendering lines outright"
+    cmd: "scratchpad mut6 + 9 anchored mutations + pytest each, PYTHONDONTWRITEBYTECODE=1"
+    exit: 0
+    ts: "2026-08-21T17:08:00Z"
+    seat: session (m5)
+  - claim: "53 tests green under all four hostnames (air-m5, nuzantara, mini-pro2, fv-az1234-567); ruff clean"
+    cmd: "socket.gethostname monkeypatch per hostname + pytest ; ruff check"
+    exit: 0
+    ts: "2026-08-21T17:09:00Z"
+    seat: session (m5)
 dissent:
   - seat: "github-actions (organ-conformance, first armed run)"
     objection: "The corpus this PR calls a strength is machine-dependent: test_innocence_unrelated_organ_named_like_arsenal_probe_prefix_still_flags omitted host=, inherited socket.gethostname(), and asserted the anchored-regex behaviour ONLY on M5 — on Pro, Mini and every runner its m5.-prefixed fixture is skipped as foreign-jurisdiction before the regex is consulted, so `len(findings) == 1` failed against an empty list. Green on exactly one machine in the fleet since 2026-08-07."
@@ -122,6 +137,10 @@ dissent:
     objection: 'Three mutations survive ALL of this PR''s tests, and four of the corpus''s older tests are tautological on a CI runner. (1) proprioception.py''s findings_list branch has ZERO behavioural coverage anywhere in the repo: flipping `not in` to `in` inverts the severity split — warnings become the DIVERGED ones while stale/dead_channel/corrupt/unhealthy silently RECONCILE, real P1s suppressed on the organism''s own heartbeat guardian — and every test stays green, because the new pin only regexes proprioception''s SOURCE TEXT. (2) `_sidecar_note`''s `last_error` fallback is untested; deleting it survives. (3) `warn` is in WARNING_STATUSES but no fixture uses it; removing it survives. Separately: `status="refused"`, written from 8 call sites by two REGISTERED organs (wa-codex-broker, wa-codex-seat-probe) and meaning the organ refused to START before exiting 78, is in NEITHER vocabulary — the same blind spot as `warning`, on a louder word, and squarely in scope since this PR''s own method is to grep the fleet for the vocabulary organs actually write.'
     status: CONFIRMED
     resolution: "All four re-measured here rather than taken on trust, and all four cured. `refused` added to UNHEALTHY (not WARNING: a refusal to start is not 'not working this tick'). Three new tests kill the three survivors, the proprioception one BEHAVIOURALLY — it calls run_wrap through the real DEFAULT_REGISTRY entry with only its target swapped for a stub, so it pins the shipping verdict_key/ok_values and not a copy. The 5 tautological sites were pinned to the jurisdiction each scenario means (Pro for pro./infra. fixtures, M5 for the arsenal_probe exemption), never a blanket host=. Re-mutation: 8/8 killed, including three that could only be killed after the pins (deleting the arsenal_probe exemption outright, and removing either benign-allow-list entry) because jurisdiction used to drop the fixture before the logic under test ran. Suite green under all four hostnames at 49 tests."
+  - seat: "second independent mutation-chooser (fresh context, told only which mutants were already dead)"
+    objection: "13 mutations distinct from the author's 12, and ALL 13 survived — zero kills. Root cause named precisely: the corpus never asserts `.status` or `.age_days` on an unhealthy/warning finding (both ship in to_dict() -> --json -> proprioception and -> --emit), never uses the bare short forms `fail`/`warn`, never asserts the 120-char note cap, and exercises `_human_report` from exactly ONE test that constructs neither a dead_channel nor a corrupt finding — so those two rendering branches, the per-group counts and the sort order were print-only dead code as far as mutation coverage went."
+    status: CONFIRMED
+    resolution: "Re-run against the CURRENT head rather than the snapshot it read: 3 of its 13 (drop `warn`, flip note/last_error, drop last_error) were ALREADY dead from the round-2 cures, and 7 still stood. All 7 cured plus the two dead rendering branches — 4 new tests: short-form vocabulary, the shipped .status/.age_days fields including through to_dict(), front-truncation and the cap actually capping, and a _human_report pass over all five kinds asserting each renders exactly once with truthful group counts and deterministic order. Re-mutation: 9/9 killed, zero survivors. DELIBERATELY NOT pinned, and this is a scope disagreement not an oversight: its rows J/K/L asked for exact glyphs and exact prose. The new test asserts those branches EXECUTE and name their organ, but leaves the wording free — pinning prose makes a corpus fight legitimate rewording, which is its own defect (the same reason cicatrix W112 exists)."
   - seat: "session (m5), self-refutation of its own first report to the operator"
     objection: "I told the operator the detector might not act on the status field at all, and that the 7-day threshold was the hole. Both were wrong: scan_sidecars_status produces real unhealthy findings, and the freshness axis fires on 1 sidecar out of 183 fleet-wide — it is nearly dead, not the live gap."
     status: RETRACTED

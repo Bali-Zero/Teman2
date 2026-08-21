@@ -945,3 +945,121 @@ def test_proprioception_findings_list_actually_splits_severity(tmp_path):
     assert status == prop.DIVERGED and count == 1, (
         f"a warning must not inflate the divergence count beside a real one, got {count}"
     )
+
+
+# ---------------------------------------------------------------------------
+# 2026-08-22, round 3 — a SECOND independent seat chose the mutations, told only
+# which ones were already dead. It tried 13 and 13 survived; after round 2's
+# cures 7 of those still stood. The lesson is not "add more tests": it is that
+# two independent choosers found two disjoint gap sets, and the author found
+# neither. The fields below are the ones that ship in to_dict() -> --json ->
+# proprioception, and the report a human actually reads.
+# ---------------------------------------------------------------------------
+
+
+def test_short_form_statuses_are_recognised(tmp_path):
+    """GUILT: `fail` (like `warn`) is in the vocabulary and no fixture used it.
+
+    Dropping either short form passed every test. They are in the set precisely
+    because shell writers shorten them, which makes them the likeliest way for a
+    real organ to go unheard — the exact bug class this file's history is about.
+    """
+    from organism_stale_detector import scan_sidecars_status
+
+    d = str(tmp_path)
+    _write(d, "short_fail", {"ts": time.time(), "status": "fail", "note": "why-fail"})
+    _write(d, "short_warn", {"ts": time.time(), "status": "warn", "note": "why-warn"})
+    got = {f.organ_id: f for f in scan_sidecars_status(d, now=time.time(), host="air-m5")}
+    assert got["short_fail"].kind == "unhealthy", "bare 'fail' went unheard"
+    assert got["short_warn"].kind == "warning", "bare 'warn' went unheard"
+    assert "why-fail" in got["short_fail"].detail
+    assert "why-warn" in got["short_warn"].detail
+
+
+def test_finding_carries_the_real_status_and_age(tmp_path):
+    """GUILT: `.status` and `.age_days` are shipped fields, not decoration.
+
+    Both survive into `to_dict()`, which is what `--json` prints (read by
+    proprioception) and what `--emit` writes to the alerts file. Nothing asserted
+    either on an unhealthy/warning finding, so `status="unknown"` and
+    `age_days=99.0` both passed — a breathing organ reported as 99 days old to
+    every machine reader.
+    """
+    from organism_stale_detector import scan_sidecars_status
+
+    d = str(tmp_path)
+    _write(d, "sick", {"ts": time.time(), "status": "failed"})
+    _write(d, "blind", {"ts": time.time(), "status": "warning"})
+    got = {f.organ_id: f for f in scan_sidecars_status(d, now=time.time(), host="air-m5")}
+    assert got["sick"].status == "failed" and got["blind"].status == "warning"
+    assert got["sick"].age_days == 0.0 and got["blind"].age_days == 0.0, (
+        "a fresh organ is 0 days old — a non-zero age here is a lie told to "
+        "every consumer of to_dict()"
+    )
+    assert got["sick"].to_dict()["status"] == "failed"
+    assert got["blind"].to_dict()["age_days"] == 0.0
+
+
+def test_note_is_truncated_from_the_front_and_actually_capped(tmp_path):
+    """GUILT: the 120-char cap is what keeps a stack trace out of the alert file.
+
+    Nothing asserted it, so removing the cap entirely OR truncating from the
+    wrong end both passed. A `last_error` carrying a traceback would then be
+    injected whole into every SessionStart context.
+    """
+    from organism_stale_detector import scan_sidecars_status
+
+    d = str(tmp_path)
+    note = "HEAD-" + ("x" * 400) + "-TAIL"
+    _write(d, "chatty", {"ts": time.time(), "status": "failed", "note": note})
+    (finding,) = scan_sidecars_status(d, now=time.time(), host="air-m5")
+    assert "HEAD-" in finding.detail, (
+        "truncated from the wrong end — the front is what identifies the error"
+    )
+    assert "-TAIL" not in finding.detail, "the cap is not capping"
+    assert len(finding.detail) < len(note), "the whole note reached the detail"
+
+
+def test_human_report_renders_every_kind_once_with_truthful_counts():
+    """GUILT: three of the five kinds were never rendered by any test.
+
+    `dead_channel` and `corrupt` have their own branches in `_human_report` and
+    no test constructed either, so both were print-only dead code as far as this
+    corpus was concerned. The group counts were unasserted too — hardcoding the
+    unhealthy count to 0 passed, i.e. a header that lies about how many organs
+    are sick, on the one surface a human actually reads.
+
+    Deliberately asserts STRUCTURE, not prose: organ ids, counts, group headings
+    and ordering. The glyphs and exact wording are left free — pinning those
+    would make the corpus fight legitimate rewording, which is its own defect.
+    """
+    from organism_stale_detector import StaleFinding, _human_report
+
+    findings = [
+        StaleFinding(organ_id="z.warn", kind="warning", age_days=0.0,
+                     status="warning", detail="d1"),
+        StaleFinding(organ_id="a.warn", kind="warning", age_days=0.0,
+                     status="warning", detail="d2"),
+        StaleFinding(organ_id="sick.one", kind="unhealthy", age_days=0.0,
+                     status="failed", detail="d3"),
+        StaleFinding(organ_id="sick.two", kind="unhealthy", age_days=0.0,
+                     status="error", detail="d4"),
+        StaleFinding(organ_id="gone.organ", kind="dead_channel", detail="no sidecar"),
+        StaleFinding(organ_id="broken.organ", kind="corrupt", detail="unparseable"),
+        StaleFinding(organ_id="frozen.organ", kind="stale", age_days=9.0,
+                     status="ok", detail="d5"),
+    ]
+    report = _human_report(findings)
+
+    for organ in ("z.warn", "a.warn", "sick.one", "sick.two",
+                  "gone.organ", "broken.organ", "frozen.organ"):
+        assert report.count(organ) == 1, f"{organ} rendered {report.count(organ)} times:\n{report}"
+
+    assert "7 organ finding(s)" in report, report
+    assert "unhealthy (2)" in report, "the unhealthy group count must be real, not a constant"
+    assert "this tick (2)" in report, "the warning group count must be real, not a constant"
+    assert "(3)" in report, "the not-breathing group holds stale + dead_channel + corrupt"
+
+    # Deterministic ordering inside the warning group — an unsorted group makes
+    # two identical fleets print two different reports.
+    assert report.index("a.warn") < report.index("z.warn"), report
