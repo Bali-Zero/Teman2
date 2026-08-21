@@ -46,7 +46,7 @@ Claude falls back to conservative mode and pings the user to re-certify.
 - `fly ssh console` with DDL/DML that is not `ADD COLUMN IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS` / `UPDATE ... WHERE <pk>`
 - Any `DELETE / DROP / TRUNCATE / UPDATE without WHERE` on prod DB
 - Adding a new Fly app, new cron (OpenClaw or GH Actions scheduled), new paid external provider
-- Editing `fly.toml`, `.env.production`, top-level `package.json`, `alembic/env.py`, `zantara_core.py`
+- Editing `fly.toml`, `.env.production`, top-level `package.json`, `apps/bali-intel-scraper/backend/db/migrations/env.py` (corrected 2026-08-21 — `alembic/env.py` names no file here), `zantara_core.py`
   (already blocked structurally by the `PreToolUse` hook in `~/.claude/settings.json`)
 - Merging a PR whose CI is red (branch protection blocks it anyway in L2)
 - Disabling a guardrail hook or lowering branch protection

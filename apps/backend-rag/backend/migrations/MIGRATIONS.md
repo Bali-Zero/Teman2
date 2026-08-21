@@ -12,10 +12,10 @@ Files here are applied manually or kept as historical reference.
 
 ### Two-tier system
 
-| Tier | Directory | Loader | When used |
-|------|-----------|--------|-----------|
-| **V2 (active)** | `backend/db/migrations_v2/*.sql` | `MigrationManager.discover_migrations()` | Every deploy via `release_command` |
-| **Legacy (manual)** | `backend/migrations/migration_*.py` | None (manual apply) | Historical / ad-hoc |
+| Tier                | Directory                           | Loader                                   | When used                          |
+| ------------------- | ----------------------------------- | ---------------------------------------- | ---------------------------------- |
+| **V2 (active)**     | `backend/db/migrations_v2/*.sql`    | `MigrationManager.discover_migrations()` | Every deploy via `release_command` |
+| **Legacy (manual)** | `backend/migrations/migration_*.py` | None (manual apply)                      | Historical / ad-hoc                |
 
 ### V2 Components
 
@@ -58,6 +58,7 @@ migration_NNNx_description.py
 - Example: `migration_080a_visa_oracle_sessions.py`
 
 **Banned patterns (will fail `test_migration_contract.py`):**
+
 - `migration_NNN.py` when another file with the same NNN exists (bare duplicates)
 - Two files with identical `NNNx` prefix
 - `.sql` files in this directory without a 3-digit number prefix
@@ -65,6 +66,7 @@ migration_NNNx_description.py
 ### Letter suffix ordering rule
 
 When multiple migrations share the same number, use `a/b/c` in **chronological git-commit order**:
+
 - `a` = oldest commit date
 - `b` = next
 - `c` = newest
@@ -191,11 +193,11 @@ PYTHONPATH=. python -m backend.db.migrate apply-all --dry-run
 
 ## Legacy File Types (do NOT create new ones)
 
-| Pattern | Count | Status |
-|---------|-------|--------|
-| `migration_*.py` | ~104 | Legacy manual-apply — DO NOT ADD |
-| `apply_migration_*.py` | 16 | Legacy runner scripts — DO NOT ADD |
-| `*.sql` (unnumbered) | 3 | Legacy bare SQL — DO NOT ADD |
+| Pattern                | Count | Status                             |
+| ---------------------- | ----- | ---------------------------------- |
+| `migration_*.py`       | ~104  | Legacy manual-apply — DO NOT ADD   |
+| `apply_migration_*.py` | 16    | Legacy runner scripts — DO NOT ADD |
+| `*.sql` (unnumbered)   | 3     | Legacy bare SQL — DO NOT ADD       |
 
 These exist for historical reference. The V2 SQL loader is the single path forward.
 
@@ -234,13 +236,14 @@ Migrations applied automatically on deploy:
 ```
 
 **NEVER run migrations directly on prod without `--dry-run` first.**
-**NEVER touch `alembic/env.py`** (separate Alembic system, off-limits per CLAUDE.md).
+**NEVER touch `apps/bali-intel-scraper/backend/db/migrations/env.py`** (separate Alembic system, belonging to bali-intel-scraper, off-limits per CLAUDE.md). Corrected 2026-08-21: this said `alembic/env.py`, which names no file in this repo.
 
 ---
 
 ## Last Updated
 
 2026-04-18 — Migration drift cleanup (Air A4 session)
+
 - Renamed 16 duplicate files (groups 021, 080, 084, 085, 092, 098, 100)
 - Added `MigrationIrreversibleError` + `LEGACY_NO_ROLLBACK_WHITELIST`
 - Added `verify_apply` / `verify_rollback` hooks to `BaseMigration`
