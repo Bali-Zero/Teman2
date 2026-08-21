@@ -555,7 +555,17 @@ jobs:
           uv pip install --system -r requirements.lock.txt
           # Editable cell-core workspace dep (out-of-tree)
           uv pip install --system -e ../../packages/cell-core
-          uv pip install --system pytest pytest-cov pytest-asyncio pytest-mock fakeredis
+          # pytest-xdist re-added 2026-08-21 (world-practice import map §1.3,
+          # research/operations/2026-08-21-world-patterns-import-map.md): the
+          # 2026-08-21 attempt (#4477) had to drop `-n auto --dist loadfile`
+          # because every worker shared the ONE Postgres service DB — see the
+          # "Run unit tests" step below for the fix (per-xdist-worker database,
+          # backend/tests/conftest.py::pytest_configure) and
+          # backend/tests/db/test_xdist_worker_isolation.py for the guilt+
+          # innocence proof. Declared here AND in requirements-test.txt
+          # (scripts/tests/test_test_deps_declared.py's guilt check pins the
+          # two together, same rule fakeredis already follows).
+          uv pip install --system pytest pytest-cov pytest-asyncio pytest-mock fakeredis pytest-xdist
 
       - name: pip-audit
         run: |
@@ -728,18 +738,28 @@ jobs:
         run: |
           cd apps/backend-rag
           set -o pipefail
-          # xdist was briefly in this PR and was REMOVED 2026-08-21 (Kimi,
-          # lane continuation): under `-n auto --dist loadfile` every worker
-          # shares the SAME test Postgres (DATABASE_URL above), so a counting
-          # test in one file observed another worker's parallel writes —
+          # xdist re-added 2026-08-21 (world-practice import map §1.3, spike
+          # PR after #4477/c92ed801 dropped it): the 2026-08-21 attempt hit
+          # exactly the 2026-07-14 shared-Postgres scar (L9(ii)) — under
+          # `-n auto --dist loadfile` every worker shared the ONE test
+          # Postgres (DATABASE_URL above), so a counting test in one file
+          # observed a sibling worker's parallel writes —
           # backend/tests/routers/test_intake_review.py::
           # test_approve_live_claim_owned_by_other_rejected_without_write
-          # read (4, 1) where serial reads (2, 0). That is the 2026-07-14
-          # shared-Postgres scar the audit (L9(ii)) rates MED-HIGH: xdist
-          # needs per-worker DBs (nuzantara_test_gw{n}), which is its own
-          # spike PR. This PR keeps the safe levers only (queue-only
-          # coverage, npm-audit advisory, Playwright cache, main-red
-          # breaker).
+          # read (4, 1) where serial reads (2, 0). The fix is per-xdist-
+          # worker Postgres isolation: backend/tests/conftest.py's
+          # `pytest_configure` clones a throwaway `nuzantara_test_gw{N}`
+          # database (Postgres `CREATE DATABASE ... TEMPLATE`) for every
+          # worker before collection imports any test module, and points
+          # TEST_DATABASE_URL/INTAKE_TEST_DSN/DATABASE_URL at it — a serial
+          # run (no PYTEST_XDIST_WORKER) is completely unaffected. Guilt
+          # (two workers never see each other's rows) + innocence (a serial
+          # run still sees its own) proven in
+          # backend/tests/db/test_xdist_worker_isolation.py, mutation-killed
+          # against the pre-fix behaviour. `--dist loadfile` keeps a whole
+          # file on one worker, never splitting it — the same safe
+          # distribution mode measured clean on Mini before (0 tests that
+          # failed only under xdist on backend/tests/unit).
           COV_ARGS=()
           if [ "$COLLECT_COVERAGE" = "true" ]; then
             COV_ARGS=(--cov=backend --cov-branch --cov-report=xml:coverage.xml)
@@ -774,6 +794,7 @@ jobs:
 
           PYTHONPATH=.:../crm-cell pytest \
             "${TEST_TARGETS[@]}" \
+            -n auto --dist loadfile \
             -q -ra --no-header --durations=50 \
             --ignore=backend/tests/e2e \
             "${COV_ARGS[@]}" \
