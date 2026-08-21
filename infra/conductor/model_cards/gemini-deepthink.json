@@ -1,0 +1,101 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "gemini-deepthink",
+  "display_name": "Gemini DeepThink",
+  "identity": {
+    "provider": "google",
+    "family": "gemini",
+    "kind": "service",
+    "aliases": [],
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "FLEET_TOPOLOGY.json#role_chains.strategy_panel",
+        "observed_at": "2026-08-20"
+      }
+    ]
+  },
+  "routing": {
+    "status": "known_unmeasured",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "FLEET_TOPOLOGY.json#role_chains.strategy_panel",
+        "observed_at": "2026-08-20"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#role_chains.strategy_panel",
+          "observed_at": "2026-08-20"
+        }
+      ]
+    },
+    {
+      "id": "reasoning_control",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#role_chains.strategy_panel",
+          "observed_at": "2026-08-20"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "FLEET_TOPOLOGY.json#role_chains.strategy_panel",
+          "observed_at": "2026-08-20"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "FLEET_TOPOLOGY.json#role_chains.strategy_panel",
+          "observed_at": "2026-08-20"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "declared_capability_profile",
+      "value": "Specialized Gemini reasoning mode that uses parallel reasoning to explore multiple hypotheses; intended for complex science, mathematics, engineering, and research. Official public sources do not declare an independent model identifier, context window, output limit, or complete tool-support matrix for this mode.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "Google Gemini 3 Deep Think announcement | https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-3-deep-think/ | https://blog.google/products-and-platforms/products/gemini/gemini-3-deep-think/",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "declared",
+      "ref": "FLEET_TOPOLOGY.json#role_chains.strategy_panel",
+      "observed_at": "2026-08-20"
+    },
+    {
+      "level": "declared",
+      "ref": "Google Gemini 3 Deep Think announcement | https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-3-deep-think/",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

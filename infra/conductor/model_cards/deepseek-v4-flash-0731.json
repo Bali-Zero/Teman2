@@ -1,0 +1,96 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "deepseek-v4-flash-0731",
+  "display_name": "DeepSeek V4 Flash 0731",
+  "identity": {
+    "provider": "deepseek",
+    "family": "deepseek-v4",
+    "kind": "language",
+    "aliases": [],
+    "evidence": [
+      {
+        "level": "production",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+        "observed_at": "2026-08-14"
+      }
+    ]
+  },
+  "routing": {
+    "status": "eligible",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "production",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+        "observed_at": "2026-08-14"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    },
+    {
+      "id": "reasoning_control",
+      "value": true,
+      "evidence": [
+        {
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "distinct_from_bare_alias",
+      "value": true,
+      "evidence": [
+        {
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "production",
+      "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+      "observed_at": "2026-08-14"
+    }
+  ]
+}

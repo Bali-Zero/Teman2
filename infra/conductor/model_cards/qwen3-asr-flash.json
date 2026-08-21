@@ -1,0 +1,122 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "qwen3-asr-flash",
+  "display_name": "qwen3-asr-flash",
+  "identity": {
+    "provider": "alibaba",
+    "family": "qwen3",
+    "kind": "audio",
+    "aliases": [],
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "investigation_required",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "audio_asr",
+      "value": true,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/asr-model | Speech recognition models | accessed 2026-08-21 | Exact claim: qwen3-asr-flash is an automatic speech recognition model supporting emotion recognition and a documented language set.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "offline_request_limit",
+      "value": "Maximum audio duration is 5 minutes or 10 MB per HTTP request.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/qwen-asr-api-reference | Qwen-ASR API reference | accessed 2026-08-21 | Exact claim: qwen3-asr-flash offline HTTP requests are limited to 5 minutes of audio or 10 MB.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "live_probe_result",
+      "value": "PONG on Air-M5, Pro, and Mini-Pro2",
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "billing_plan_eligibility",
+      "value": "unresolved",
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "probed",
+      "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+      "observed_at": "2026-08-21"
+    },
+    {
+      "level": "declared",
+      "ref": "https://help.aliyun.com/en/model-studio/asr-model | Speech recognition models | accessed 2026-08-21 | Exact claim: qwen3-asr-flash is documented for automatic speech recognition and emotion recognition.",
+      "observed_at": "2026-08-21"
+    },
+    {
+      "level": "declared",
+      "ref": "https://help.aliyun.com/en/model-studio/qwen-asr-api-reference | Qwen-ASR API reference | accessed 2026-08-21 | Exact claim: qwen3-asr-flash offline HTTP requests are limited to 5 minutes of audio or 10 MB.",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

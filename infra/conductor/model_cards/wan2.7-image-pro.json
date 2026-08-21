@@ -1,0 +1,101 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "wan2.7-image-pro",
+  "display_name": "Wan 2.7 Image Pro",
+  "identity": {
+    "provider": "alibaba",
+    "family": "wan2.7",
+    "kind": "image",
+    "aliases": [],
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.unexploited_capabilities",
+        "observed_at": "2026-08-14"
+      }
+    ]
+  },
+  "routing": {
+    "status": "listed_unexploited",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.unexploited_capabilities",
+        "observed_at": "2026-08-14"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "image_generation",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.unexploited_capabilities",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.unexploited_capabilities",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.unexploited_capabilities",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "declared_image_modes",
+      "value": "Documents text-to-image generation at up to 4K output; its Model Info page distinguishes the Pro model from editing-capable standard variants.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/wan-image-generation-and-editing-api-reference | Wan2.7 - image generation and editing | accessed 2026-08-21 | Exact claim: wan2.7-image-pro documents text-to-image generation at up to 4K output.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "wired_to_role_chain",
+      "value": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.unexploited_capabilities",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "declared",
+      "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.unexploited_capabilities",
+      "observed_at": "2026-08-14"
+    },
+    {
+      "level": "declared",
+      "ref": "https://help.aliyun.com/en/model-studio/wan-image-generation-and-editing-api-reference | Wan2.7 - image generation and editing | accessed 2026-08-21 | Exact claim: wan2.7-image-pro documents text-to-image generation at up to 4K output.",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

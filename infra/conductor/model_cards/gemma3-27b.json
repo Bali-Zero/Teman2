@@ -1,0 +1,117 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "gemma3-27b",
+  "display_name": "Gemma 3 27B",
+  "identity": {
+    "provider": "ollama",
+    "family": "gemma3",
+    "kind": "vision",
+    "aliases": ["gemma3:27b"],
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_TOPOLOGY.json#roles",
+        "observed_at": "2026-06-16"
+      },
+      {
+        "level": "declared",
+        "ref": "https://ollama.com/library/gemma3/tags | title=Gemma3 Ollama library tags | note=The exact gemma3:27b package is listed as a 128K-context text-and-image model.",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "known_unmeasured",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "infra/conductor/inventory_observations.v1.json#observations",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    },
+    {
+      "id": "vision",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://huggingface.co/google/gemma-3-27b-pt | title=Gemma 3 27B model card | note=The Google card documents text-and-image input for Gemma 3 27B and support for 140+ languages.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": 131072,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://ollama.com/library/gemma3/tags | title=Gemma3 Ollama library tags | note=Exact gemma3:27b package is listed with 128K context.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "role",
+      "value": "translation",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    },
+    {
+      "id": "multilingual_140_plus",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://huggingface.co/google/gemma-3-27b-pt | title=Gemma 3 27B model card | note=The Google card documents support for 140+ languages.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "declared",
+      "ref": "MODEL_TOPOLOGY.json#roles",
+      "observed_at": "2026-06-16"
+    },
+    {
+      "level": "probed",
+      "ref": "infra/conductor/inventory_observations.v1.json#observations",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

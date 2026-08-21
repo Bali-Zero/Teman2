@@ -1,0 +1,112 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "gpt-5.4-mini",
+  "display_name": "GPT-5.4 Mini",
+  "identity": {
+    "provider": "openai",
+    "family": "gpt-5.4",
+    "kind": "language",
+    "aliases": [],
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "infra/conductor/inventory_observations.v1.json#observations",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "known_unmeasured",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "infra/conductor/inventory_observations.v1.json#observations",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "coding",
+      "value": true,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": 400000,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "OpenAI GPT-5.4 mini Model | https://developers.openai.com/api/docs/models/gpt-5.4-mini",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": 128000,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "OpenAI GPT-5.4 mini Model | https://developers.openai.com/api/docs/models/gpt-5.4-mini",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "probed_fact_boundary",
+      "value": "Discovery only; auth, quota, effective served model, and inference access unverified.",
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "declared_capability_profile",
+      "value": "Text input/output and image input; function calling, structured outputs, web/file search, image generation, code interpreter, hosted shell, apply patch, skills, and computer use are supported; intended for high-volume coding, computer use, and subagent workloads.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "OpenAI GPT-5.4 mini Model and Introducing GPT-5.4 mini and nano | https://developers.openai.com/api/docs/models/gpt-5.4-mini | https://openai.com/index/introducing-gpt-5-4-mini-and-nano/",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "probed",
+      "ref": "infra/conductor/inventory_observations.v1.json#observations",
+      "observed_at": "2026-08-21"
+    },
+    {
+      "level": "declared",
+      "ref": "OpenAI GPT-5.4 mini Model | https://developers.openai.com/api/docs/models/gpt-5.4-mini",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

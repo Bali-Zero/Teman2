@@ -1,0 +1,382 @@
+{
+  "schema_version": "capability-ontology.v1",
+  "generated_at": "2026-08-21",
+  "evidence": [
+    {
+      "level": "declared",
+      "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#5",
+      "observed_at": "2026-08-21"
+    }
+  ],
+  "modalities": [
+    {
+      "id": "language",
+      "description": "Text input/output capability.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "coding",
+      "description": "Code-oriented language work; does not imply mutation authorization.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "vision",
+      "description": "Image understanding or OCR.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Local-Ollama",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "ocr",
+      "description": "Optical character recognition as an explicitly declared modality.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Local-Ollama",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "embedding",
+      "description": "Vector embedding generation.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Local-Ollama",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "image_generation",
+      "description": "Image synthesis.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Alibaba-Token-Plan-TP1",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    },
+    {
+      "id": "video_generation",
+      "description": "Video synthesis.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Alibaba-Token-Plan-TP1",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    },
+    {
+      "id": "video",
+      "description": "Video understanding or generation as an explicitly declared modality.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Local-Ollama",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "audio_tts",
+      "description": "Text-to-speech.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Alibaba-Token-Plan-TP1",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    },
+    {
+      "id": "audio_realtime",
+      "description": "Realtime audio.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Alibaba-Token-Plan-TP1",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    },
+    {
+      "id": "audio_asr",
+      "description": "Speech recognition.",
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "knowledge_verification",
+      "description": "Ground-truth source verification service, not an inference-quality claim.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Google",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "techniques": [
+    {
+      "id": "reasoning_control",
+      "description": "Documented effort/thinking control; exact values remain per endpoint.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "tool_calling",
+      "description": "Tool use exposed by the invocation surface.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    },
+    {
+      "id": "tool_calling_declared",
+      "description": "Declared tool-use support that is not a runtime availability claim.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Local-Ollama",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "approval_review",
+      "description": "Approval or policy review capability; does not authorize mutation.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "OpenAI Running Codex safely | https://openai.com/index/running-codex-safely/",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "multimodal_review",
+      "description": "Visual artifact or screenshot review.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Moonshot",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "local_only",
+      "description": "Eligible only on local Pro or Mini placement.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#_invariants",
+          "observed_at": "2026-08-20"
+        }
+      ]
+    },
+    {
+      "id": "pii_safe_local",
+      "description": "Local lane approved for PII intake; no claim about every prompt or output.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#role_chains.pii_intake",
+          "observed_at": "2026-08-20"
+        }
+      ]
+    }
+  ],
+  "evidence_levels": [
+    {
+      "id": "declared",
+      "meaning": "Repository policy, roster, or vendor/console declaration; not a quality score.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#10",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "probed",
+      "meaning": "Observed availability/feature probe with a documented method.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#10",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "benchmarked",
+      "meaning": "Scored against a versioned task benchmark with traceable sample evidence.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#10",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "production",
+      "meaning": "Measured production outcome or consumption record.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    },
+    {
+      "id": "unmeasured",
+      "meaning": "Explicitly unknown; must not be treated as a positive capability.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#3.2",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "routing_statuses": [
+    {
+      "id": "eligible",
+      "meaning": "Policy permits automated candidate selection subject to fresh endpoint health and task rules.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#3.2",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "manual_only",
+      "meaning": "Known model; never auto-routed.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-20"
+        }
+      ]
+    },
+    {
+      "id": "probation",
+      "meaning": "Known endpoint but never load-bearing or quorum-eligible.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#_invariants",
+          "observed_at": "2026-08-20"
+        }
+      ]
+    },
+    {
+      "id": "phantom",
+      "meaning": "Explicitly absent from the known plan; no live seat.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#role_chains.grunt",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    },
+    {
+      "id": "denied",
+      "meaning": "Observed access denial; unavailable until a new observation changes it.",
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "investigation_required",
+      "meaning": "A probe succeeded but billing/plan eligibility is unresolved; router must not select it.",
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "MODEL_ROSTER.md#Coding-plan-models-measured-2026-08-21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "listed_unexploited",
+      "meaning": "Console-listed specialized capability with no role-chain or use decision.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    },
+    {
+      "id": "deprecated",
+      "meaning": "Known historical surface retained for inventory but not selectable.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#pending_arms",
+          "observed_at": "2026-08-20"
+        }
+      ]
+    },
+    {
+      "id": "known_unmeasured",
+      "meaning": "Known identifier without a current eligibility or health claim.",
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "MODEL_ROSTER.md",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ]
+}

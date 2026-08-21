@@ -1,0 +1,155 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "glm-ocr",
+  "display_name": "GLM OCR",
+  "identity": {
+    "provider": "ollama",
+    "family": "glm",
+    "kind": "vision",
+    "aliases": [],
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "infra/conductor/inventory_observations.v1.json#observations",
+        "observed_at": "2026-08-21"
+      },
+      {
+        "level": "declared",
+        "ref": "https://huggingface.co/zai-org/GLM-OCR | title=GLM-OCR model card | note=The exact upstream GLM-OCR checkpoint is a multimodal OCR and complex-document-understanding model; no exact official Ollama package alias was found.",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "known_unmeasured",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "infra/conductor/inventory_observations.v1.json#observations",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "vision",
+      "value": true,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://huggingface.co/zai-org/GLM-OCR | title=GLM-OCR model card | note=The upstream checkpoint accepts image and text for OCR/document understanding; exact local packaging is unmeasured.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://huggingface.co/zai-org/GLM-OCR | title=GLM-OCR model card | note=The upstream checkpoint uses an image-text input pipeline.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "declared_document_pipeline",
+      "value": "Supports complex-document OCR with layout analysis followed by recognition; README documents image and PDF input and JSON or Markdown output formats.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://github.com/zai-org/GLM-OCR | GLM-OCR: Accurate x Fast x Comprehensive | accessed 2026-08-21 | Exact claim: GLM-OCR documents this two-stage document OCR pipeline, image/PDF input, and JSON/Markdown output formats.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "probed_fact_boundary",
+      "value": "Discovery only; auth, quota, effective served model, and inference access unverified.",
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "ocr",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://huggingface.co/zai-org/GLM-OCR | title=GLM-OCR model card | note=The upstream checkpoint is explicitly designed for OCR, including layout-aware and parallel recognition workflows.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "document_understanding",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://huggingface.co/zai-org/GLM-OCR | title=GLM-OCR model card | note=The upstream checkpoint documents complex document understanding, tables, formulas, and structured extraction.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "supported_languages",
+      "value": "8",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://huggingface.co/zai-org/GLM-OCR | title=GLM-OCR model card | note=The official card documents OCR support for eight languages; exact local alias remains unresolved.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "probed",
+      "ref": "infra/conductor/inventory_observations.v1.json#observations",
+      "observed_at": "2026-08-21"
+    },
+    {
+      "level": "declared",
+      "ref": "https://github.com/zai-org/GLM-OCR | GLM-OCR: Accurate x Fast x Comprehensive | accessed 2026-08-21 | Exact claim: GLM-OCR documents a two-stage document OCR pipeline with image/PDF input and JSON/Markdown output formats.",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

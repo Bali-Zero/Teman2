@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "host_observation_overlay.schema.json",
+  "title": "MIR exact endpoint host observation overlay v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "observations"],
+  "properties": {
+    "schema_version": {
+      "const": "host-observation-overlay.v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T"
+    },
+    "observations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "endpoint_id",
+          "endpoint_profile_hash",
+          "host",
+          "model_identifier",
+          "available",
+          "healthy",
+          "latency_ms",
+          "context_tokens",
+          "output_tokens",
+          "enforcement_mode",
+          "identity_verified",
+          "probe",
+          "observed_at",
+          "expires_at"
+        ],
+        "properties": {
+          "endpoint_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]*$"
+          },
+          "endpoint_profile_hash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "host": {
+            "enum": ["air-m5", "pro", "mini-pro2"]
+          },
+          "model_identifier": {
+            "type": "string",
+            "minLength": 1
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "healthy": {
+            "type": "boolean"
+          },
+          "latency_ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "context_tokens": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "output_tokens": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "enforcement_mode": {
+            "enum": [
+              "enforced",
+              "shadow",
+              "advisory",
+              "advisory_only",
+              "manual_only",
+              "unmeasured"
+            ]
+          },
+          "identity_verified": {
+            "type": "boolean"
+          },
+          "probe": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "version"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "version": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "observed_at": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T"
+          },
+          "expires_at": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T"
+          }
+        }
+      }
+    }
+  }
+}

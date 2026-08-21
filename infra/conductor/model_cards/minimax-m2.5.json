@@ -1,0 +1,111 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "minimax-m2.5",
+  "display_name": "MiniMax M2.5",
+  "identity": {
+    "provider": "minimax",
+    "family": "minimax",
+    "kind": "language",
+    "aliases": ["MiniMax-M2.5", "minimax-2.5"],
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.roster.NOT_in_plan",
+        "observed_at": "2026-08-14"
+      }
+    ]
+  },
+  "routing": {
+    "status": "phantom",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.roster.NOT_in_plan",
+        "observed_at": "2026-08-14"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.roster.NOT_in_plan",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": 204800,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.roster.NOT_in_plan",
+          "observed_at": "2026-08-14"
+        },
+        {
+          "level": "declared",
+          "ref": "https://platform.minimax.io/docs/api-reference/api-overview | API Overview | accessed 2026-08-21 | Exact claim: MiniMax-M2.5 has a 204,800-token maximum for total input plus output.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.roster.NOT_in_plan",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "declared_capabilities",
+      "value": "Text-generation model that documents tool-call triggering; its text-generation guide classifies M2.5 as a reasoning model.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://platform.minimax.io/docs/api-reference/api-overview | API Overview | accessed 2026-08-21 | Exact claim: MiniMax-M2.5 documents text generation, tool-call triggering, and a 204,800-token total input/output maximum.",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://platform.minimax.io/docs/api-reference/text-post | Text Generation | accessed 2026-08-21 | Exact claim: MiniMax-M2.5 is documented as a reasoning model.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "in_tp1_plan",
+      "value": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.roster.NOT_in_plan",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "declared",
+      "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.roster.NOT_in_plan",
+      "observed_at": "2026-08-14"
+    },
+    {
+      "level": "declared",
+      "ref": "https://platform.minimax.io/docs/api-reference/api-overview | API Overview | accessed 2026-08-21 | Exact claim: MiniMax-M2.5 documents text generation, tool-call triggering, and a 204,800-token total input/output maximum.",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

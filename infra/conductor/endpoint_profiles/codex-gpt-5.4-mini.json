@@ -1,0 +1,104 @@
+{
+  "schema_version": "endpoint-profile.v1",
+  "id": "codex-gpt-5.4-mini",
+  "model_card_id": "gpt-5.4-mini",
+  "aliases": [],
+  "invocation": {
+    "engine": "codex",
+    "model_identifier": "gpt-5.4-mini",
+    "harness": null,
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "infra/conductor/inventory_observations.v1.json#observations",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "account_class": {
+    "value": "chatgpt-subscription",
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "infra/conductor/inventory_observations.v1.json#observations",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "auth_surface": "openai_chatgpt_subscription",
+  "machine_constraints": {
+    "allowlist": ["air-m5", "pro", "mini-pro2"],
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "infra/conductor/inventory_observations.v1.json#observations",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "known_unmeasured",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "infra/conductor/inventory_observations.v1.json#observations",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "enforcement": {
+    "mode": "unmeasured",
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "infra/conductor/inventory_observations.v1.json#observations",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "exposed_capabilities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "coding",
+      "value": true,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "restrictions": [
+    {
+      "id": "client_pii",
+      "value": "not eligible for PII/local-only routing",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#_invariants",
+          "observed_at": "2026-08-20"
+        }
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "level": "probed",
+      "ref": "infra/conductor/inventory_observations.v1.json#observations",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

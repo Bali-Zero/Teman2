@@ -1,0 +1,107 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "deepseek-chat-v3-0324",
+  "display_name": "DeepSeek Chat V3 0324",
+  "identity": {
+    "provider": "deepseek",
+    "family": "deepseek-v3",
+    "kind": "language",
+    "aliases": ["openrouter/deepseek/deepseek-chat-v3-0324"],
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_TOPOLOGY.json#roles",
+        "observed_at": "2026-06-16"
+      }
+    ]
+  },
+  "routing": {
+    "status": "deprecated",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_TOPOLOGY.json#roles",
+        "observed_at": "2026-06-16"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    },
+    {
+      "id": "coding",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "legacy_aider_fix",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    },
+    {
+      "id": "retired_route",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "declared",
+      "ref": "MODEL_TOPOLOGY.json#roles",
+      "observed_at": "2026-06-16"
+    }
+  ]
+}

@@ -1,0 +1,117 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "aisingapore-qwen-sea-lion-v4-32b-it-q4-k-m",
+  "display_name": "Qwen SEA-LION v4 32B IT Q4_K_M",
+  "identity": {
+    "provider": "ollama",
+    "family": "aisingapore",
+    "kind": "language",
+    "aliases": ["aisingapore/Qwen-SEA-LION-v4-32B-IT:q4_k_m"],
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_TOPOLOGY.json#roles",
+        "observed_at": "2026-06-16"
+      },
+      {
+        "level": "declared",
+        "ref": "https://huggingface.co/aisingapore/Qwen-SEA-LION-v4-32B-IT | title=Qwen-SEA-LION-v4-32B-IT model card | note=The exact upstream checkpoint is an instruction-tuned text-generation model with a 32K context; the local q4_k_m Ollama alias is not separately documented.",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "known_unmeasured",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "infra/conductor/inventory_observations.v1.json#observations",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://huggingface.co/aisingapore/Qwen-SEA-LION-v4-32B-IT | title=Qwen-SEA-LION-v4-32B-IT model card | note=The official card identifies this checkpoint as an instruction-tuned text-generation model.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "local_only",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": 32768,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://huggingface.co/aisingapore/Qwen-SEA-LION-v4-32B-IT | title=Qwen-SEA-LION-v4-32B-IT model card | note=The official card declares a 32K context for the upstream text checkpoint; the local quantized runtime is unmeasured.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "role",
+      "value": "pii_intake",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    },
+    {
+      "id": "multilingual_sea_languages",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://huggingface.co/aisingapore/Qwen-SEA-LION-v4-32B-IT | title=Qwen-SEA-LION-v4-32B-IT model card | note=The official card lists Burmese, English, Indonesian, Khmer, Lao, Malay, Mandarin, Tagalog, Tamil, Thai, and Vietnamese among supported languages.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "declared",
+      "ref": "MODEL_TOPOLOGY.json#roles",
+      "observed_at": "2026-06-16"
+    },
+    {
+      "level": "probed",
+      "ref": "infra/conductor/inventory_observations.v1.json#observations",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

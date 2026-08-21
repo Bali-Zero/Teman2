@@ -1,0 +1,145 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "qwen3.5-9b",
+  "display_name": "Qwen 3.5 9B",
+  "identity": {
+    "provider": "ollama",
+    "family": "qwen3.5",
+    "kind": "vision",
+    "aliases": ["qwen3.5:9b"],
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_TOPOLOGY.json#roles",
+        "observed_at": "2026-06-16"
+      },
+      {
+        "level": "declared",
+        "ref": "https://ollama.com/library/qwen3.5/tags | title=Qwen3.5 Ollama library tags | note=The exact qwen3.5:9b package is listed as a 256K-context text-and-image model with vision, thinking, coding, and agent-oriented features; local runtime behavior remains unmeasured.",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "eligible",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_TOPOLOGY.json#roles",
+        "observed_at": "2026-06-16"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    },
+    {
+      "id": "coding",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    },
+    {
+      "id": "vision",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://huggingface.co/Qwen/Qwen3.5-9B | title=Qwen3.5-9B model card | note=The exact upstream checkpoint documents an image-text pipeline; this does not establish local quantized quality.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": 262144,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://ollama.com/library/qwen3.5/tags | title=Qwen3.5 Ollama library tags | note=Exact qwen3.5:9b package is listed with 256K context.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "think",
+      "value": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    },
+    {
+      "id": "tool_calling_broken",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    },
+    {
+      "id": "thinking_declared",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://ollama.com/library/qwen3.5/tags | title=Qwen3.5 Ollama library tags | note=The official package page documents thinking support; the existing think=false field remains a local roster observation.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "tool_calling_declared",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://ollama.com/library/qwen3.5/tags | title=Qwen3.5 Ollama library tags | note=The official package page documents tool and agent-oriented features; the existing tool_calling_broken field remains a local observation.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "declared",
+      "ref": "MODEL_TOPOLOGY.json#roles",
+      "observed_at": "2026-06-16"
+    }
+  ]
+}

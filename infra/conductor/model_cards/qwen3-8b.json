@@ -1,0 +1,149 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "qwen3-8b",
+  "display_name": "Qwen 3 8B",
+  "identity": {
+    "provider": "ollama",
+    "family": "qwen3",
+    "kind": "language",
+    "aliases": ["qwen3:8b"],
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_TOPOLOGY.json#roles",
+        "observed_at": "2026-06-16"
+      },
+      {
+        "level": "declared",
+        "ref": "https://ollama.com/library/qwen3/tags | title=Qwen3 Ollama library tags | note=The exact qwen3:8b local package is listed with a 40K context; this package-level limit is kept distinct from the upstream 128K claim.",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "eligible",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_TOPOLOGY.json#roles",
+        "observed_at": "2026-06-16"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    },
+    {
+      "id": "coding",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    },
+    {
+      "id": "tool_calling",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": 40960,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        },
+        {
+          "level": "declared",
+          "ref": "https://qwenlm.github.io/blog/qwen3/ | Qwen3: Think Deeper, Act Faster | accessed 2026-08-21 | Exact claim: Qwen3-8B has a 128K context length.",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://ollama.com/library/qwen3/tags | title=Qwen3 Ollama library tags | note=Exact qwen3:8b package is listed with 40K context.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "think",
+      "value": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    },
+    {
+      "id": "thinking_and_tool_use_declared",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://qwenlm.github.io/blog/qwen3/ | title=Qwen3: Think Deeper, Act Faster | note=The official Qwen source documents switchable thinking/non-thinking modes and agent tool integration; the existing think=false field remains the local roster observation.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "multilingual_100_plus",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://qwenlm.github.io/blog/qwen3/ | title=Qwen3: Think Deeper, Act Faster | note=The official Qwen source documents support for more than 100 languages and dialects.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "declared",
+      "ref": "MODEL_TOPOLOGY.json#roles",
+      "observed_at": "2026-06-16"
+    },
+    {
+      "level": "declared",
+      "ref": "https://qwenlm.github.io/blog/qwen3/ | Qwen3: Think Deeper, Act Faster | accessed 2026-08-21 | Exact claim: Qwen3-8B is a listed Qwen3 model with a 128K context length.",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}
