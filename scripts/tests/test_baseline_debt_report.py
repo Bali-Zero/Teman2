@@ -77,6 +77,17 @@ def _write_baseline(repo: Path, results: dict) -> None:
     )
 
 
+# Synthetic-by-construction OAuth-shaped fixtures for the guilt test below.
+# Assembled via string concatenation rather than written as one contiguous
+# literal, so this test file's own source text never matches the
+# vendor-prefix shapes it exists to test -- the same self-catch class
+# already fixed on lint_pg_dsn_credentials.py (PR #4484) and
+# lint_google_oauth_credentials.py (PR #4489). Defined once and reused in
+# both the fixture and the assertion below so the two copies cannot drift.
+_SYNTHETIC_GOCSPX_SECRET = "GOCSPX-" + "abcdefghijklmnopqrstuvwx"
+_SYNTHETIC_REFRESH_TOKEN = "1//" + ("a" * 40)
+
+
 def test_broad_approved_live_file_with_oauth_shape_is_flagged(tmp_path):
     """GUILT: a file approved by the broad rule, still on HEAD, carrying a
     GOCSPX- literal must show up in high_confidence_shape_files and --strict
@@ -86,8 +97,8 @@ def test_broad_approved_live_file_with_oauth_shape_is_flagged(tmp_path):
     (repo / "scripts" / "detect_secrets_auto_triage.py").write_text(AUTO_TRIAGE_STUB)
     leaky = repo / "scripts" / "leaky_oauth_script.py"
     leaky.write_text(
-        "CLIENT_SECRET = 'GOCSPX-abcdefghijklmnopqrstuvwx'\n"
-        "REFRESH_TOKEN = '1//" + ("a" * 40) + "'\n"
+        f"CLIENT_SECRET = '{_SYNTHETIC_GOCSPX_SECRET}'\n"
+        f"REFRESH_TOKEN = '{_SYNTHETIC_REFRESH_TOKEN}'\n"
     )
     _write_baseline(
         repo,
@@ -115,8 +126,8 @@ def test_broad_approved_live_file_with_oauth_shape_is_flagged(tmp_path):
 
     # never leak the actual value into the report
     report = mod.render_markdown(data)
-    assert "GOCSPX-abcdefghijklmnopqrstuvwx" not in report
-    assert "1//" + ("a" * 40) not in report
+    assert _SYNTHETIC_GOCSPX_SECRET not in report
+    assert _SYNTHETIC_REFRESH_TOKEN not in report
 
 
 def test_broad_approved_live_file_without_credential_shape_is_innocent(tmp_path):
