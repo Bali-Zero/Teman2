@@ -260,6 +260,7 @@ on:
       # docstring); caught by check_watcher_coverage.py on this PR's own
       # first run.
       - zantara-core-edit-gate
+      - Vercel auto-promote organ tests
     types: [completed]
     # 2026-08-20 CI-churn cure — see the matching GOTCHA above for the
     # measurement and the empirical proof this narrows run CREATION, never
