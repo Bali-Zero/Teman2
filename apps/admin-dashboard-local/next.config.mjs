@@ -5,17 +5,29 @@
 if (process.env.LOCAL_ONLY !== "1") {
   throw new Error(
     "admin-dashboard-local is a Pro-only dev tool. Set LOCAL_ONLY=1 to run " +
-      "(use scripts/start-cost-dashboard.sh).",
+      "(use scripts/start-cockpit.sh).",
   );
 }
 
 const nextConfig = {
   reactStrictMode: true,
-  // `output: "standalone"` was removed: this app only runs locally via
-  // `next start -p 3100` (see scripts/start-cost-dashboard.sh). Standalone
-  // is for minimal Docker images, which we explicitly don't need — and it
-  // triggers a runtime warning ("next start does not work with output:
-  // standalone configuration").
+  async headers() {
+    const privateHeaders = [
+      { key: "Cache-Control", value: "no-store, max-age=0" },
+      { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+      { key: "Referrer-Policy", value: "no-referrer" },
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "X-Frame-Options", value: "DENY" },
+    ];
+    return [
+      { source: "/garuda-voa", headers: privateHeaders },
+      { source: "/garuda-voa/:path*", headers: privateHeaders },
+      { source: "/api/garuda-voa/:path*", headers: privateHeaders },
+    ];
+  },
+  // `output: "standalone"` was removed: this app only runs locally through
+  // scripts/start-cockpit.sh. Standalone is for minimal Docker images, which
+  // this loopback-only operator tool does not need.
 };
 
 export default nextConfig;

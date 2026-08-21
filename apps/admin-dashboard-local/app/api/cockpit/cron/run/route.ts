@@ -3,14 +3,21 @@ import { isAgenticCronLabel } from "@/lib/cockpit-allowlist";
 import { startCron } from "@/lib/cockpit-launchctl";
 import { insertAuditRow } from "@/lib/cockpit-pg";
 import { readHmacSecret } from "@/lib/cockpit-audit";
-import { isLockedOut, recordFailure } from "@/lib/cockpit-auth";
+import { hasValidCockpitSession } from "@/lib/cockpit-session";
+import { sameOriginJsonFailure } from "@/lib/cockpit-request-guard";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
-  const clientId = req.headers.get("x-forwarded-for") ?? "localhost";
-  if (isLockedOut(clientId)) {
-    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+  const guardFailure = sameOriginJsonFailure(req);
+  if (guardFailure) {
+    return NextResponse.json(
+      { error: guardFailure.error },
+      { status: guardFailure.status },
+    );
+  }
+  if (!(await hasValidCockpitSession(req))) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
   const body = await req.json().catch(() => ({}));
@@ -18,7 +25,6 @@ export async function POST(req: NextRequest) {
   const reason = typeof body.reason === "string" ? body.reason : "";
 
   if (!isAgenticCronLabel(label)) {
-    recordFailure(clientId);
     return NextResponse.json(
       { error: "not_in_allowlist", label },
       { status: 403 },
