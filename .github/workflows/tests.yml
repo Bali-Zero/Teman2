@@ -105,6 +105,24 @@ jobs:
       run_frontend_tests: ${{ steps.classify.outputs.run_frontend_tests || 'true' }}
       run_packages_core_tests: ${{ steps.classify.outputs.run_packages_core_tests || 'true' }}
       run_e2e_tests: ${{ steps.classify.outputs.run_e2e_tests || 'true' }}
+      # L4 (2026-08-21, token-ceremony CI-critical-path audit,
+      # research/operations/2026-08-21-token-ceremony-ci-system-audit.md §7):
+      # `Backend Tests (Python)` runs the SAME ~21,430-test suite on
+      # `pull_request` AND `merge_group` — median ~29min EITHER event,
+      # measured on 121 paired runs 2026-08-20/21. Verdict divergence between
+      # the two events was 0/63 real flips in that sample (only 2 ambiguous
+      # `None`-conclusion cases) — once a PR's own run is green, the queue's
+      # re-run of the IDENTICAL tree essentially never disagrees. When the
+      # tree really is byte-identical (main did not move between the PR run
+      # and the queue run — measured 3/63, ~4.8%), re-running is provably
+      # redundant, not merely likely-redundant: same tree, same tests, same
+      # environment shape. `backend_tests_tree_sha` and the restore step
+      # below let `backend-tests` skip ONLY that exact, provable case (see
+      # its `if:`) — never a probabilistic "looks similar" skip (family #3
+      # over-match). Defaults to 'false' (never skip) on ANY missing/
+      # ambiguous cache state — fail-open per this job's existing contract.
+      backend_tests_tree_sha: ${{ steps.tree-key.outputs.tree_sha }}
+      backend_tests_tree_verified: ${{ steps.tree-cache.outputs.cache-hit == 'true' && 'true' || 'false' }}
 
     steps:
       - name: Checkout code
@@ -280,6 +298,36 @@ jobs:
           echo "$JOB_FLAGS" >> "$GITHUB_OUTPUT"
           echo "::notice::change-map: $MAP_JSON"
 
+      # L4 companion steps (see the job's `backend_tests_tree_*` outputs
+      # above for the measurement and rationale). Deliberately two SEPARATE
+      # actions/cache calls (restore here, save at the tail of
+      # `backend-tests`) rather than one combined actions/cache: the combined
+      # action auto-saves via a post-hook at the END OF THIS JOB, which would
+      # cache a PASS before `backend-tests` has even started — this job knows
+      # nothing about that job's outcome.
+      - name: Compute backend-tests content-identity key
+        id: tree-key
+        run: |
+          TREE_SHA=$(git rev-parse 'HEAD^{tree}')
+          echo "tree_sha=$TREE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Check prior verdict for this exact backend-tests tree
+        id: tree-cache
+        continue-on-error: true
+        uses: actions/cache/restore@v6
+        with:
+          path: /tmp/backend-tests-verdict.txt
+          key: backend-tests-verdict-v1-${{ steps.tree-key.outputs.tree_sha }}
+
+      # Self-test, unconditional (mirrors "Self-test ring-gating override"
+      # and "Verify change-map guilt and innocence corpus" above): proves the
+      # L4 skip clause's guilt+innocence corpus holds AND that the mirror in
+      # that corpus still matches the literal `if:`/output text in this
+      # file — never gated behind the clause's own output, which would be a
+      # guard that can disable its own guilt test.
+      - name: Self-test backend-tests tree-skip clause (guilt + innocence)
+        run: python3 scripts/ci/test_backend_tests_tree_skip.py
+
       - name: Publish change-map decision
         if: always()
         env:
@@ -396,13 +444,26 @@ jobs:
     # does not get a false pass, it gets no verdict at all, same as before
     # change-map existed. That is intentional, not a gap this rule needs to
     # cover.
+    #
+    # L4 tail clause (2026-08-21, see `changes.outputs.backend_tests_tree_*`
+    # above for the measurement): skips ONLY on `merge_group`, and ONLY when
+    # this exact tree already produced a PASS (byte-identical content, not a
+    # heuristic similarity). `pull_request` is NEVER skipped by this clause —
+    # it is where ground truth gets established in the first place, and it
+    # is the run that actually catches real regressions early (measured: 3 of
+    # 5 real `pull_request` failures in the same sample were in the big "Run
+    # unit tests" step itself, so a PR-side skip would defer most of today's
+    # fast catches to the far more disruptive queue). Any missing/ambiguous
+    # value on the right resolves to `!= 'true'`, i.e. run — fail-open,
+    # consistent with every other clause in this `if:`.
     if: >-
       !cancelled() &&
       (
         (github.event_name != 'pull_request' && github.event_name != 'merge_group') ||
         needs.changes.result != 'success' ||
         needs.changes.outputs.run_backend_tests != 'false'
-      )
+      ) &&
+      !(github.event_name == 'merge_group' && needs.changes.outputs.backend_tests_tree_verified == 'true')
     runs-on: ubuntu-latest
     env:
       HAS_CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN != '' }}
@@ -694,6 +755,35 @@ jobs:
         run: |
           cd apps/backend-rag
           PYTHONPATH=.:../crm-cell coverage report --fail-under=55
+
+      # L4 (2026-08-21) — companion to the `changes` job's restore step: if
+      # this exact job (all its real checks, whatever this event ran) just
+      # passed, record it so a LATER `merge_group` run of a byte-identical
+      # tree can skip re-testing (see backend-tests' `if:` above). `success()`
+      # treats a step skipped by its OWN `if:` (e.g. "Check coverage
+      # threshold" above, off by design on `pull_request`) as non-failing, so
+      # this fires whenever every check that WAS supposed to run for this
+      # event did run and pass — never on a step that failed or was aborted.
+      # Declared cost, accepted (documented, not silently absorbed): a
+      # `merge_group` run skipped this way also skips coverage collection for
+      # that landing commit specifically (coverage is never collected on the
+      # `pull_request` run that produced the cached PASS either — L9(i), same
+      # job). The `--fail-under=55` floor is a standing-state check, not a
+      # per-PR delta, so a real regression introduced by that one commit is
+      # still caught by the NEXT `merge_group` run that actually executes
+      # (main's tree always changes again once another PR lands) — bounded,
+      # self-correcting lag, not a silent hole in the floor.
+      - name: Record backend-tests verdict for this tree (content-identity cache)
+        if: success()
+        run: echo "pass" > /tmp/backend-tests-verdict.txt
+
+      - name: Save verdict cache for this tree
+        if: success()
+        continue-on-error: true
+        uses: actions/cache/save@v6
+        with:
+          path: /tmp/backend-tests-verdict.txt
+          key: backend-tests-verdict-v1-${{ needs.changes.outputs.backend_tests_tree_sha }}
 
       - name: Upload coverage to Codecov
         if: ${{ env.HAS_CODECOV_TOKEN == 'true' && steps.test-scope.outputs.collect_coverage == 'true' }}
