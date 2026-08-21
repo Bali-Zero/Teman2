@@ -17,10 +17,11 @@
 # whole coverage contract, so it is derived, not chosen.
 #
 # REPO PATH — derived from this script's own location, because the checkout
-# path differs per machine (Mini: ~/nuzantara · Pro: ~/Desktop/nuzantara) and
-# a hardcoded path is a machine-specific landmine: the previous literal
-# `/Users/nuzantara/nuzantara` was correct on Mini and exit-66 on the very
-# host the header claimed it was for.
+# path differs per machine and Pro is mid-migration (its crontab still points
+# mostly at the old Desktop-rooted checkout, a minority at the migrated one —
+# superscar #1 HOME-fork drift) — a hardcoded path is a machine-specific
+# landmine: the previous literal `/Users/nuzantara/nuzantara` was correct on
+# Mini and exit-66 on the very host the header claimed it was for.
 #
 # Exit-code mapping (deliberate, W104-aware): the watcher's 1 (WARN) and
 # 2 (CRIT) mean "threshold crossed AND the Telegram alert was already

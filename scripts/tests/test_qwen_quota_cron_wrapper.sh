@@ -25,7 +25,8 @@ check() {  # check <label> <expect-pass|expect-fail> <file>
     # correct from every machine.
     grep -Eq -- '--hosts[[:space:]]+pro,mini,air' "$file" || rc=1
     # And it must not carry a literal checkout path: Mini is ~/nuzantara,
-    # Pro is ~/Desktop/nuzantara, so any literal is wrong on some host.
+    # Pro is mid-migration between a Desktop-rooted checkout and that same
+    # path, so any literal is wrong on some host.
     grep -Eq 'REPO="?/Users/' "$file" && rc=1
     if [ "$expect" = "expect-pass" ] && [ "$rc" -ne 0 ]; then
         echo "FAIL[$label]: shipped wrapper rejected (rc=$rc)"; fails=$((fails+1))
