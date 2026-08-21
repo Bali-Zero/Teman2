@@ -9,6 +9,28 @@ status, via `gh api`, so branch protection can require it and merging a
 Gear-3 PR without a real gate verdict becomes physically impossible ("il
 gate diventa CI-enforced, non prompt-enforced").
 
+THE NAME IS HISTORICAL — THIS SCRIPT NEVER INVOKES FABLE (note added
+2026-08-21). Zero ruled Fable out of the workflow on 2026-08-20, and a reader
+meeting "fable-gate" reasonably concludes this context depends on a model
+that is no longer routed to. It does not: the context is a relay for a
+verdict a SESSION already reached, and it is indifferent to which model
+reached it — the routing question and the "does a Gear-3 PR carry a real
+verdict" question are separate, and only the second one lives here. The
+context string is deliberately NOT renamed: `harness/fable-gate` appears in
+15 tracked files at origin/main — harness-v2-teman2.md, fleet-order-spec.md,
+and dated research captures that record what was true when written. Renaming
+across those is a doctrine change, not a cleanup, and a status context is
+also the exact string branch protection would match. Fix the misreading
+where a reader meets it, not by rewriting the record.
+
+CITATION CORRECTED 2026-08-21 (cross-family review, before merge): an earlier
+draft of this note also cited FLEET_TOPOLOGY.json. It does NOT contain the
+string — `grep -c "fable-gate"` returns 0. What it carried was a role-chain
+key `fable_gate_gear3`, and that key was ALREADY renamed to `gear3_final_gate`
+under the same 2026-08-20 ruling. So the one file cited as a reason not to
+rename had itself already been renamed. The argument stands on the other
+grounds; that citation did not, and is removed rather than quietly dropped.
+
 **PUBLISHER ONLY — NO VERDICT LOGIC.** This script never decides PASS vs
 REWORK vs BLOCK; it only validates that a caller-supplied verdict is one of
 the five legal values, maps it to a GitHub commit-status `state`

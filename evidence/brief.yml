@@ -1,41 +1,61 @@
-task_id: ops-gate-required-unblock
+task_id: ops-gate-header-truth
 gear: 3
 l_level: L3
-gate_class: fable
+gate_class: opus
 objective: |
-  Unblock promoting `harness/fable-gate` to a GitHub branch-protection required status
-  check — the two design problems its own ARMING NOTE (harness-floor.yml, 2026-08-10)
-  names: (a) a manually-posted commit status never carries over to the merge queue's
-  synthetic test-merge SHA; (b) a fork PR's read-only GITHUB_TOKEN breaks the workflow's
-  own `gh api` WRITE calls, hard-blocking external contributors once required. Chosen
-  fix: stop requiring the commit-status directly; require the WORKFLOW JOB itself
-  (`Harness floor recompute`, already required today), natively tied to whatever SHA it
-  runs against (real head / workflow_dispatch ref / merge_group's synthetic SHA), and
-  make it READ (never write) whether scripts/harness_fable_gate.py already posted a
-  verdict. Deliverable is the design + code that make the promotion safe, not the
-  branch-protection flip itself (operator action, §Solo-operatore).
+  Three artifacts in this repo tell a reader that promoting the harness gate to a required
+  branch-protection check is still PENDING and reserved for the operator. It is not, and it never
+  was: `Harness floor recompute` was already a required context before the unblock work of
+  2026-08-21 began — which is exactly why that redesign works. It moved enforcement onto a job
+  branch protection already demanded, instead of onto a hand-posted commit status that would have
+  needed promoting.
+
+  This PR corrects the two artifacts that live in code:
+    - the ARMING NOTE in `.github/workflows/harness-floor.yml` — the one a session touching the
+      gate has to walk past, whereas the research capture has to be sought out;
+    - and, folded in from superseded PR #4537, two comment-only notes explaining that
+      `harness/fable-gate` does NOT invoke Fable — it relays a verdict a session already reached.
+      #4537 went DIRTY when the 2026-08-21 redesign rewrote its anchor point out from under it;
+      its `scripts/harness_fable_gate.py` hunk is carried with ONE phrasing fix — "Fable out of
+      the interactive workflow" becomes "out of the workflow on 2026-08-20", matching CLAUDE.md's
+      ruling verbatim; the 2026-08-20 ruling is not scoped to interactive sessions. Its workflow
+      hunk is re-anchored, since the text it sat against no longer exists.
+
+  The third artifact (the research capture) is corrected in PR #4541. The fourth (the modus
+  PENDING-ARMS row) is deliberately NOT in this diff — see constraints.
 constraints:
-  - '.github/workflows/harness-floor.yml is a CODEOWNERS Tier-1 hot-zone; actionlint must pass and required context name ("Harness floor recompute") stays unchanged'
-  - "the required check must never write a commit status on a fork-triggered pull_request event — verified by static AST source-scan (test_no_write_shaped_string_literal_appears_anywhere_in_the_code), not just behavioral tests"
-  - "a Gear-3 PR with no verdict posted yet must fail the same way a REWORK/BLOCK verdict does (fail-closed), never silently pass as 'pending'"
-  - "the 'is this PR Gear-3' decision (evidence/brief.yml presence) must be scoped to THIS PR's own diff, never to whatever happens to sit in the HEAD tree — evidence/brief.yml is a tracked file at a fixed path and is inherited by every branch from the last Gear-3 PR to touch it (found live during independent review, F1 — see this pack's dissent)"
-  - "scripts/harness_fable_gate.py (the publisher) stays untouched — its contract is sound and orthogonal to both blockers"
+  - "No behaviour change: comment/docstring text only in both files. The YAML `on:`, `jobs:`,
+    `permissions:` blocks and every step remain byte-identical, and the Python module's code is
+    untouched below the docstring."
+  - "The context string `harness/fable-gate` is NOT renamed. It is the literal string branch
+    protection would match, and it appears in 15 tracked files at origin/main including dated
+    research captures. Renaming across those is a doctrine change, not a cleanup."
+  - "The modus PENDING-ARMS ledger is deliberately excluded from this diff: it carries a
+    `merge=union` driver, and GitHub's server-side mergeability does not honour custom merge
+    drivers (PR-1 landing scar), so folding it in would make a clean docs PR read CONFLICTING.
+    It gets its own PR."
+  - "Nothing in this diff may be read as closing design gap (b), verdict provenance. It stays open
+    and the corrected note says so explicitly."
 acceptance:
-  - "scripts/tests/test_harness_gate_read.py: 37/37 pass, including main() integration coverage and an AST write-verb proof"
-  - "scripts/tests/test_harness_floor_brief_diff_membership.sh: 4/4 pass (guilt+innocence for the diff-membership fix)"
-  - "actionlint .github/workflows/harness-floor.yml exits 0"
-  - 'python3 -c ''import yaml; yaml.safe_load(open(".github/workflows/harness-floor.yml"))'' exits 0'
-  - "an independent, non-fork review session (Agent tool, fresh context) reviews the diff cold and returns PASS or PASS-WITH-CONDITIONS before this PR is armed"
+  - "The ARMING NOTE no longer asserts a pending operator action, and states the measured live
+    branch-protection fact together with the command that produced it."
+  - "The note explicitly forbids the plausible-but-wrong finish — adding `harness/fable-gate`
+    itself as a second required context, which resurrects blocker (a)."
+  - "actionlint passes on the rewritten workflow."
+  - "The publisher script still parses (AST) and still exits 0 on --help."
+  - "An independent grader with fresh context, not this diff's author, finds no false claim in the
+    ADDED lines."
 consumer_map:
-  - "harness-floor.yml Step 7c (Gear-3 verdict read) is the only consumer of scripts/ci/harness_gate_read.py"
-  - "harness-floor.yml Steps 4/7b are the only consumers of the diff-membership fix"
-  - "the operator's future branch-protection edit (adding the ALREADY-required 'Harness floor recompute' job — no new name to add) is the sole remaining downstream action, per §Solo-operatore in the design doc"
+  - "`.github/workflows/harness-floor.yml` — read by every PR run of the required job; its header
+    is the artifact sessions actually read before touching the gate."
+  - "`scripts/harness_fable_gate.py` — invoked by a Gear-3 gate session to publish a verdict."
+  - "Neither file's behaviour changes, so there is no runtime surface to prove-live beyond CI."
 risks:
-  - "verdict provenance/attestation (any statuses:write credential can forge a PASS) is a THIRD, separate design gap tracked in .claude/skills/modus/PENDING-ARMS.md (2026-08-10 entry, gap b) — genuinely out of this task's scope, left open, severity now escalated (the signal becomes load-bearing once the operator flips the required-check flag) — see design doc §Solo-operatore"
-  - "gh workflow run harness-floor.yml --ref <branch> (the documented retrigger flow) cannot run on any branch cut before this PR merges, since that branch's harness-floor.yml predates the workflow_dispatch trigger — an inherent one-time bootstrap limitation, not a defect"
-  - "this diff is 5 files / ~1250 net lines, over the ~400-line Agent PR Contract guideline — declared and accepted: the workflow change, its new script, and that script's test corpus are one cohesive unit that cannot be safely split without leaving code unverified in isolation"
-grader: independent-review-session (Agent tool, subagent_type general-purpose, model opus, fresh context — not the diff's author)
-budget:
-  seats: [sonnet-5, opus]
-  fable_gate_est_tokens: 2200
+  - "The corrected note asserts a live measurement. If branch protection changed later, the note
+    would go stale exactly as the one it replaces did. Mitigated by naming the exact command, so a
+    reader can re-run it rather than trusting the assertion."
+  - "Folding #4537 in means closing it; if this PR were abandoned its content would be lost. The
+    close happens only after this PR merges."
+grader: independent-review-session (Agent tool, general-purpose, model sonnet, fresh context — not the diff's author) + cross-family seat (Kimi K3) on the added lines
+budget: ~2 subagents, no council (single-concern comment correction; the divergent-priors gate does not fire)
 pii: none

@@ -1,117 +1,99 @@
 brief_ref: evidence/brief.yml
-plan_ref: "harness/fable-gate required-check promotion unblock (2026-08-21, team-lead mandate)"
+plan_ref: "harness-floor.yml ARMING NOTE says a promotion is pending that already happened (2026-08-21); folds in superseded PR #4537"
 diff:
-  files: 7
-  insertions: 1348
-  deletions: 92
-  hotzone_hits:
-    - ".github/workflows/harness-floor.yml"
+  files: 4
+  net_lines: "CODE +64/-4 (42/4 harness-floor.yml, 22/0 harness_fable_gate.py); WHOLE DIFF +193/-131 including the two evidence files. Measured at merge-base 3b1ca2fbb (git diff <merge-base> --numstat), never two-dot against a moving origin/main — that form attributes main's own commits to this PR (W102). Zero executable lines; the workflow non-comment body is byte-identical."
+  behaviour_change: none
 receipts:
-  - claim: "the new + existing harness_gate_read test suite passes in full (37/37), including main() integration coverage and the AST write-verb proof"
-    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest ../../scripts/tests/test_harness_gate_read.py -q"
+  - claim: "`Harness floor recompute` is ALREADY a required context on main; 27 contexts; app_id 15368; `harness/fable-gate` absent; strict false"
+    cmd: "gh api repos/Bali-Zero/Teman2/branches/main/protection --jq '.required_status_checks | {n:(.checks|length), harness:[...], fable:[...], strict}'"
     exit: 0
-    ts: "2026-08-21T11:14:12Z"
-    seat: "sonnet-5"
-  - claim: "the diff-membership guilt+innocence corpus (F1 fix) passes 4/4"
-    cmd: "bash scripts/tests/test_harness_floor_brief_diff_membership.sh"
+    ts: "2026-08-21T13:23:00Z"
+    seat: session (m5)
+  - claim: "The tracked snapshot agrees and predates the unblock work — generated 2026-08-11"
+    cmd: "grep -m1 generated_at infra/required.d/contexts.json"
     exit: 0
-    ts: "2026-08-21T11:14:30Z"
-    seat: "sonnet-5"
-  - claim: "the modified harness-floor.yml (hot-zone, CODEOWNERS Tier-1) is schema/expression-valid"
+    ts: "2026-08-21T13:23:00Z"
+    seat: session (m5)
+  - claim: "NO BEHAVIOUR CHANGE: the workflow's non-comment body is byte-identical to origin/main"
+    cmd: "git show origin/main:.github/workflows/harness-floor.yml | grep -v '^\\s*#' > /tmp/a.yml; grep -v '^\\s*#' .github/workflows/harness-floor.yml > /tmp/b.yml; diff -q /tmp/a.yml /tmp/b.yml"
+    exit: 0
+    ts: "2026-08-21T13:34:36Z"
+    seat: session (m5)
+  - claim: "actionlint passes on the rewritten workflow"
     cmd: "actionlint .github/workflows/harness-floor.yml"
     exit: 0
-    ts: "2026-08-21T11:14:35Z"
-    seat: "sonnet-5"
-  - claim: "the workflow YAML parses cleanly after every edit"
-    cmd: 'python3 -c "import yaml; yaml.safe_load(open(''.github/workflows/harness-floor.yml''))"'
+    ts: "2026-08-21T13:34:36Z"
+    seat: session (m5)
+  - claim: "The publisher script still parses after the docstring insert"
+    cmd: 'python3 -c ''import ast,io;ast.parse(io.open("scripts/harness_fable_gate.py",encoding="utf-8").read())'''
     exit: 0
-    ts: "2026-08-21T11:14:37Z"
-    seat: "sonnet-5"
-  - claim: "the sibling harness_fable_gate.py test suite (the unchanged publisher) is unaffected"
-    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest ../../scripts/tests/test_harness_fable_gate.py -q"
+    ts: "2026-08-21T13:34:36Z"
+    seat: session (m5)
+  - claim: "FLEET_TOPOLOGY.json does NOT contain the context string, and its Fable-named key was already renamed"
+    cmd: "git show origin/main:FLEET_TOPOLOGY.json | grep -c 'fable-gate'  (prints 0, and grep exits 1 on zero matches -- the ZERO is the finding); then grep -B3 -A6 fable_gate_gear3 -> _renamed_from gear3_final_gate"
+    exit: 1
+    ts: "2026-08-21T13:34:36Z"
+    seat: session (m5)
+  - claim: "The context string really does appear in 15 tracked files at origin/main"
+    cmd: "git grep -l 'harness/fable-gate' origin/main -- . | wc -l"
     exit: 0
-    ts: "2026-08-21T11:14:40Z"
-    seat: "sonnet-5"
-  - claim: "the diff-membership guilt test fails under the OLD (pre-F1-fix) tree-presence-only logic — proves the corpus is not vacuously green"
-    cmd: "bash /tmp/scarpin_test.sh  # test_harness_floor_brief_diff_membership.sh with brief_present() reverted to tree-presence-only"
-    exit: 1
-    ts: "2026-08-21T10:52:00Z"
-    seat: "sonnet-5"
-  - claim: "the three F2 fail-open mutations in main() (sha-unresolvable->0, GhCallError->0, decide()-discarded->0) each turn at least one test red"
-    cmd: "python3 -m pytest scripts/tests/test_harness_gate_read.py -q  # run three times against a /tmp sandbox copy, one mutation applied at a time"
-    exit: 1
-    ts: "2026-08-21T11:00:00Z"
-    seat: "sonnet-5"
-  - claim: "the AST write-verb scan (F3 fix) catches the independent reviewer's exact counterexample function when appended to a real copy of the script, with zero false positives on the script's own docstrings"
-    cmd: "python3 -m pytest scripts/tests/test_harness_gate_read.py -q -k not_context_constant  # against a /tmp sandbox copy with publish_backdoor() appended"
-    exit: 1
-    ts: "2026-08-21T11:08:00Z"
-    seat: "sonnet-5"
+    ts: "2026-08-21T13:34:36Z"
+    seat: session (m5)
 tests:
-  cmd: "pytest scripts/tests/test_harness_gate_read.py -q && bash scripts/tests/test_harness_floor_brief_diff_membership.sh"
-  passed: 41
-  failed: 0
+  - "No new tests: comment-only diff. The behavioural proof is the byte-identical non-comment body receipt above, which is stronger than a test would be here."
+  - "Existing guards exercised by CI on this PR: actionlint, guard-conformance, R1 gate, evidence_pack_lint (this pack, on itself)."
 static:
-  lint: ok
-  typecheck: n/a
-  build: n/a
+  - "actionlint 1.7.12 — exit 0"
+  - "AST parse of scripts/harness_fable_gate.py — ok; grader independently confirmed ast.dump() equality with the docstring stripped"
 runtime_proof:
-  - "harness_gate_read.py --event-name pull_request with no --pr-head-sha fails closed (exit 1, 'could not resolve') — smoke-tested directly, not just via pytest"
-  - "the diff-membership fix (F1) correctly reports 'absent' for a file that exists at HEAD but is not in the PR's own changed-files list, 'present' only when both hold, and 'absent' when the tree lacks the file entirely regardless of what an adversarial changed-files.txt claims"
-  - "the AST write-verb scan flags exactly the 4 offending string constants (state=, context=, -f, -f) in the reviewer's counterexample, at their real line numbers, and flags zero constants in the unmodified script"
+  - "None applicable and none claimed: nothing in this diff executes. Consumer-map in the brief records that both consumers' behaviour is unchanged, so 'live' equals 'merged' here — deliberately stated rather than skipped."
 dissent:
-  - seat: independent-gear3-reviewer
-    objection: "F1 CRITICAL — Step 4 tested evidence/brief.yml's presence in the HEAD tree, not whether THIS PR's own diff touched it. Since the file is tracked at a fixed repo-root path, every branch inherits whatever the last-merged Gear-3 PR (#4474) left there — verified live against origin/main and against a real merged single-file docs PR (#4535) that inherited gear:3 from it. Under the OLD Step 7c (never failed) this was harmless; under the NEW read-based Step 7c it would have put every PR in the repo on the Gear-3 path and broken the already-required 'Harness floor recompute' job repo-wide."
+  - seat: independent-review-session (sonnet, fresh context, not the author)
+    objection: "brief.yml claimed PR #4537's python hunk was 'carried verbatim' — it was edited ('interactive workflow' -> 'the workflow on 2026-08-20')"
     status: CONFIRMED
-    repro: "git show origin/main:evidence/brief.yml declares gear:3 for task_id ops-gear-ceiling-pr4474; PR #4535 (a single .md ledger edit) ran harness_gate_read.py against its real head sha and hit the Gear-3 'PENDING, no verdict' path despite touching nothing hot-zone-shaped."
-    resolution: "Steps 4 and 7b now require BOTH tree presence AND membership in /tmp/changed-files.txt (this PR's own merge-base-anchored diff) before treating brief.yml/pack.yml as authored by this PR. Pinned by scripts/tests/test_harness_floor_brief_diff_membership.sh, verified to fail 2/4 cases under the reverted (pre-fix) logic."
-  - seat: independent-gear3-reviewer
-    objection: "F2 HIGH — main(), the only code path CI actually executes, had zero test coverage. Three independent fail-open mutations (sha-unresolvable returns 0, GhCallError returns 0, decide()'s code discarded and always returns 0) all survived the full 30-test corpus."
+  - seat: independent-review-session (sonnet, fresh context, not the author)
+    objection: "'the highest-traffic of the three' is unverifiable — no command measures which artifact more sessions read"
     status: CONFIRMED
-    repro: "Each mutation applied individually to a /tmp sandbox copy of harness_gate_read.py; pytest run against the unmodified test file showed 0 failures for all three, confirming the gap."
-    resolution: "Added 6 tests calling hgr.main() directly (mocked resolve_real_head_sha/read_fable_gate_state) plus one real subprocess smoke test. Re-verified: each of the three mutations now fails 1-2 tests."
-  - seat: independent-gear3-reviewer
-    objection: 'F3 HIGH — the two static ''proves it can''t publish'' tests matched source TEXT via substring regex, not argv semantics. A 4-line addition building the write via split string constants (field_state = "state=" + verdict; passed as a separate ''-f'' list element) is a fully working status POST and passed all 30 tests.'
+  - seat: independent-review-session (sonnet, fresh context, not the author)
+    objection: "gate_class: opus5-max is outside the declared enum none|opus|fable (nothing machine-checks it, so drift rather than failure)"
     status: CONFIRMED
-    repro: "Reviewer's exact publish_backdoor() function appended verbatim to a real copy of the script; the (then-current) source-scan tests passed with the backdoor present."
-    resolution: "Replaced with an AST scan of every string CONSTANT node for exact write-verb flags (-f/-F/-X/--method/...) and write-shaped value PREFIXES (state=/context=/POST/...), which catches split-construction the same as inline. Re-verified against the exact counterexample: now caught, with a dedicated guilt pin proving the scan itself is not vacuously green, and zero false positives on the script's own docstrings (scans full-source constants, which is safe against prose — see the test's own docstring for why)."
-  - seat: independent-gear3-reviewer
-    objection: "F4 MEDIUM — this PR's design doc claimed it carries its own evidence/brief.yml + pack.yml. It did not; both were still PR #4474's leftover files, so Step 7b would have graded this PR against an unrelated task's evidence pack."
+  - seat: kimi-k3 (cross-family, Moonshot)
+    objection: "Three added locations cite FLEET_TOPOLOGY.json as naming `harness/fable-gate`. It contains the string zero times — a phantom citation (superscar #6), inherited from #4537 and re-asserted here"
     status: CONFIRMED
-    repro: "git diff origin/main --name-only at review time showed no evidence/*.yml changes; the tracked files were byte-identical to origin/main's."
-    resolution: "This PR now genuinely authors its own evidence/brief.yml and evidence/pack.yml (this file), and — as a structural consequence of the F1 fix — could not pass Steps 4/7b any other way, since an untouched brief/pack no longer satisfies the diff-membership requirement."
-  - seat: independent-gear3-reviewer
-    objection: "F5 MEDIUM — .claude/skills/modus/PENDING-ARMS.md's 2026-08-10 entry tracks THREE design gaps (synthetic-SHA relay, verdict provenance/attestation, fork-PR write permission), not the two this task's mandate named. The design doc's §Solo-operatore implied nothing was left open."
+  - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
+    objection: 'An ADDED line in harness-floor.yml attributed design gap (b) to "a dedicated CI-integrity lane". Measured: gap (b) is ledger line 933, owner "me (next session)"; the string CI-integrity occurs once in the whole ledger, at line 1108 — the SIBLING name-spoofing entry. The owner was attached to the wrong of the two rows the paragraph discusses, in the PR whose thesis is that headers must stop asserting unmeasured things'
     status: CONFIRMED
-    repro: "PENDING-ARMS.md line ~933 names gap (b) 'verdict provenance/attestation ... any credential with statuses:write can post PASS on any SHA' verbatim, independent of and predating this task."
-    resolution: "Design doc corrected: gap (b) is explicitly named as out of this task's scope, left open, with an escalated-severity note (the forgeable signal becomes load-bearing for merge-blocking once required, versus inert today)."
-  - seat: independent-gear3-reviewer
-    objection: "F6 MEDIUM — Step 7c called scripts/ci/harness_gate_read.py with no bootstrap-window guard, unlike its three siblings (floor compute, net-lines, pack validation), which each guard against the base checkout predating a script this very PR introduces."
+  - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
+    objection: 'pack net_lines "+~95 / -8" reproduced under no reading at the SHA it was raised against (6ee02427f): code files were +61/-4 there, whole diff +171/-133'
     status: CONFIRMED
-    repro: "This PR's own base checkout (Step 1) lacks scripts/ci/harness_gate_read.py until the PR merges; without a guard, Step 7c would raise a raw file-not-found on its own first CI run."
-    resolution: "Added the same [[ ! -f ... ]] NOTICE+skip guard pattern used by the three sibling steps."
-  - seat: independent-gear3-reviewer
-    objection: "F7 MEDIUM (plausible, not executed — review-only mandate) — the documented 'gh workflow run harness-floor.yml --ref <branch>' recovery flow cannot run on any branch cut before this PR merges, since that branch's own harness-floor.yml predates the workflow_dispatch trigger this PR adds."
-    status: PLAUSIBLE
-    repro: "Not independently executed (review-only mandate); consistent with GitHub's documented behavior that workflow_dispatch runs the workflow AS DEFINED AT THE DISPATCHED REF."
-    resolution: "Documented explicitly in the design doc as an inherent, one-time bootstrap limitation rather than oversold as universally available immediately — not a code fix (there isn't one; every repo's first PR adding a new trigger has this property)."
-  - seat: independent-gear3-reviewer
-    objection: "F8 LOW — the script's docstring/comment claimed PR_NUMBER_RE is 'the same regex shape' as queue_ejection_attribution.py::PR_SHA_RE; the shipped regex is strictly looser (it drops the 40-hex trailing-sha anchor)."
+  - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
+    objection: "receipt R6 recorded exit 0, but grep -c exits 1 on zero matches — the claim reproduces, the exit field did not"
     status: CONFIRMED
-    repro: "PR_SHA_RE = re.compile(r'pr-(\\d+)-([0-9a-f]{40})') vs this script's PR_NUMBER_RE = re.compile(r'pr-(\\d+)-') — visibly different patterns."
-    resolution: "Reworded to 'a looser version of,' with the reason (only the number group is needed; the trailing sha is the base commit at queue time, not useful here) stated explicitly."
+  - seat: session (m5), verifying kimi-k3's finding rather than accepting it
+    objection: "Deleting the citation would have hidden the sharper fact: FLEET_TOPOLOGY.json DID carry `fable_gate_gear3`, already renamed to `gear3_final_gate` by the same 2026-08-20 ruling — the file cited against renaming had itself been renamed"
+    status: CONFIRMED
+  - seat: gear3-final-gate (opus 5, re-gate on 72ac75db0, read-only, not the author)
+    objection: 'REWORK-BUILD. The fix for the net_lines condition replaced an unreproducible approximation with a PRECISE value measured at the PREVIOUS SHA (6ee02427f) — false at the SHA it shipped on, because the same commit also edited harness-floor.yml. The gate named it "the same disease at higher confidence, in the one field the gate conditioned", and refused to soften on a repeat.'
+    status: CONFIRMED
+  - seat: gear3-final-gate (opus 5, re-gate on 72ac75db0, read-only, not the author)
+    objection: "CI cannot catch a wrong net_lines: evidence_pack_lint prefers a MEASURED --net-lines/--numstat-file over the pack field precisely because the field is untrustworthy, but the field here is a STRING, so the int path never engages and the rule never fires. Green lint was not evidence."
+    status: CONFIRMED
+  - seat: gear3-final-gate (opus 5, re-gate on 72ac75db0, read-only, not the author)
+    objection: '"single commit so not stale from an intermediate state" was false as shipped — git rev-list --count origin/main..HEAD was 2. Corrected to past tense against the SHA it was raised at.'
+    status: CONFIRMED
+  - seat: gear3-final-gate (opus 5, re-gate on 72ac75db0, read-only, not the author)
+    objection: '"Two rows, two owners" over-claimed: both ledger rows name the same party, me (next session); only the CI-integrity lane qualifier differs. A small over-claim in a PR about not over-claiming.'
+    status: CONFIRMED
 residual_risks:
-  - "verdict provenance/attestation (PENDING-ARMS gap b) remains fully open — see brief.yml risks and design doc §Solo-operatore for the escalated-severity note; a future task must design it, this one deliberately does not"
-  - "the F7 workflow_dispatch bootstrap limitation means any currently-open PR cut before this merges cannot use the documented retrigger flow until rebased onto post-merge main — inherent, not fixable within this diff"
-  - "the hot-zone/floor pattern-list duplication between evidence_pack_lint.py and hot-zone-pr-gate.yml's bash case-block (pre-existing, declared in that script's own docstring) is untouched by this PR — a fair follow-up, not a blocker here"
-  - "this diff (7 files, ~1250 net lines across evidence/*, the workflow, the new script, its tests, and the design doc) exceeds the Agent PR Contract's ~400-net-line guideline — declared in brief.yml's constraints as a deliberate exception: the workflow change, its new script, and that script's test corpus are one unit that cannot safely ship split, and evidence/* + the design doc are this PR's own required evidence, not separable content"
+  - "Design gap (b), verdict provenance, stays OPEN and is now load-bearing. Nothing here closes it; the corrected note says so explicitly."
+  - "Required-check NAME spoofing (Kimi K1) is repo-wide across all 27 contexts and bounds what this gate guarantees. Own ledger entry, own lane."
+  - "The corrected note asserts a live measurement and could go stale exactly as its predecessor did. Mitigated by naming the command, not just the state."
+  - "The modus PENDING-ARMS row still carries the stale 'flip pending' framing. Excluded here on purpose (merge=union mergeability defect); it needs its own PR and is not closed by this one."
 sources:
-  - ".github/workflows/harness-floor.yml"
-  - "scripts/ci/harness_gate_read.py"
-  - "scripts/tests/test_harness_gate_read.py"
-  - "scripts/tests/test_harness_floor_brief_diff_membership.sh"
-  - "research/operations/2026-08-21-fable-gate-required-promotion.md"
-  - ".claude/skills/modus/PENDING-ARMS.md"
-  - "scripts/harness_fable_gate.py"
+  - research/operations/2026-08-21-fable-gate-required-promotion.md
+  - infra/required.d/contexts.json
+  - CLAUDE.md (2026-08-20 Fable-out ruling, line 114)
+  - PR #4537 (superseded, content carried), PR #4539 (redesign), PR #4541 (research capture correction)
 pii_scan: clean
-size_tokens: 4200
+size_tokens: 1500
