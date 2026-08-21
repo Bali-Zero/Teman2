@@ -1,5 +1,5 @@
 import React from "react";
-import { Star, Users, ShieldCheck, Clock } from "lucide-react";
+import { Star, Users, ShieldCheck } from "lucide-react";
 import { ratingBadge, reviewsShort } from "@/lib/trust-figures";
 
 /**
@@ -36,11 +36,6 @@ export function TrustBar(): React.ReactElement {
           <ShieldCheck size={10} />
           <span>Licensed Notary & Tax Agent</span>
         </span>
-        <span className="opacity-40">·</span>
-        <span className="inline-flex items-center gap-1">
-          <Clock size={10} />
-          <span>Avg reply: 2 min</span>
-        </span>
       </div>
 
       {/* Mobile sticky variant — fixed bottom bar */}
@@ -58,11 +53,6 @@ export function TrustBar(): React.ReactElement {
         <span className="inline-flex items-center gap-1">
           <ShieldCheck size={10} />
           <span>Licensed Notary & Tax Agent</span>
-        </span>
-        <span className="opacity-40">·</span>
-        <span className="inline-flex items-center gap-1">
-          <Clock size={10} />
-          <span>Avg reply: 2 min</span>
         </span>
       </div>
     </>

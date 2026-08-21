@@ -25,6 +25,25 @@ mkdir -p "$LOG_DIR" "$STATE_DIR" "$QUEUE_DIR" "$DONE_DIR" "$FAILED_DIR"
 # shellcheck source=/Users/nuzantara/scripts/codex-automation-lib.sh
 [ -f "$CODEX_AUTOMATION_LIB" ] && source "$CODEX_AUTOMATION_LIB"
 
+# Seat rotation (2026-08-20): alternate between the ChatGPT Pro subscriptions
+# instead of pinning to whichever CODEX_HOME the codex CLI defaults to.
+# scripts/lib/codex_seat.sh is the single source for the seat list and the
+# rotation counter — do not re-derive either here (W106b: a duplicated list
+# is the very defect that file exists to kill). Judged by REPLY at call time,
+# never by this script's own exit code (W104). NOTE: this cron's plist is
+# disabled (W81, since 2026-06-15) — this fix has no live effect today, kept
+# so it does not need rediscovering if the job is ever re-armed.
+CODEX_SEAT_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" 2>/dev/null && pwd)/codex_seat.sh"
+if [ -f "$CODEX_SEAT_LIB" ]; then
+    # shellcheck disable=SC1090
+    . "$CODEX_SEAT_LIB"
+    CODEX_SEAT="$(codex_seat_pick 2>/dev/null || true)"
+    if [ -n "$CODEX_SEAT" ]; then
+        export CODEX_HOME="$CODEX_SEAT"
+        echo "[$(basename "$0")] codex seat: $CODEX_SEAT" >&2
+    fi
+fi
+
 OVERNIGHT_TIMEOUT="${CODEX_OVERNIGHT_TIMEOUT:-28800}"  # 8h hard cap
 LOCK_FILE="${STATE_DIR}/codex_overnight.lock"
 

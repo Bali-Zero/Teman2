@@ -119,3 +119,117 @@ review` section (findings against this file specifically: #1, CF-13's heading/bo
 heading called the disagreement "same-tier internal-material" while its own body correctly says the
 opposite ("NOT a same-tier disagreement... it is a primary-law-vs-internal-material conflict") — cured
 by rewriting the heading to "CROSS-TIER," with a self-note. No finding against this file was rejected.
+
+---
+
+## EXTENSION — CF-7/8/10/12 pinpoint-hunt outcomes (new evidence, batch-2b session)
+
+This EXTENSION does not renumber CF-7/CF-8/CF-10/CF-12 — they remain numbered and their base findings
+recorded in `e2b-batch1-conflict-report.md`. This section records NEW EVIDENCE (5 dedicated
+pinpoint-hunt queries this session: `E2B2-CF7-A`, `E2B2-CF7-B`, `E2B2-CF8-A` [retry], `E2B2-CF10-A`,
+`E2B2-CF12-A`, all `VERIFIED`-audited per `e2b-batch2b-citation-audit.json`) against each, and updates
+each disposition from batch-1's `OPEN` to `RESOLVED` where an article-level primary-law pinpoint was
+actually found — per this task's binding rule, resolution requires a real pinpoint, not a preference.
+`e2b-batch1-conflict-report.md` itself is NOT edited (frozen precedent, matching how batch-1 itself
+never edited e2a's file) — read this section as the authoritative UPDATE to those four dispositions
+going forward.
+
+### CF-7 UPDATE — RESOLVED: E33E minimum age is 55, per multiple article-level primary-law pinpoints
+
+Batch-1's disposition left this OPEN because the only article-level citation found there (`T1-032`'s
+"Art. 33 comma 2 lettera j") self-contradicted its own source's comparison table. This session's two
+dedicated probes (`E2B2-CF7-A`, legal-text pinpoint; `E2B2-CF7-B`, operational-practice pinpoint) found
+clean, mutually-consistent, non-self-contradicting verbatim citations:
+
+- `Permenkumham No. 11 Tahun 2024` (in force 3 May 2024) Pasal 33(2)(j)(4), Pasal 61(1), Pasal 62(1),
+  and Pasal 101(2)(f)(4) — FOUR independent articles, all quoted verbatim in `E2B2-CF7-A`'s answer, all
+  giving **55 (lima puluh lima) tahun**. `Kepmen M.IP-08.GR.01.01/2025`'s own classification annex
+  (in force 1 June 2025, i.e. AFTER Permenkumham 11/2024) independently confirms 55, quoted verbatim in
+  the same answer.
+- The **60-year** figure traces to `Permenkumham No. 22 Tahun 2023` (adopted 22 Aug 2023, i.e. BEFORE
+  the 2024 reform) Pasal 33(2)(j)(4)/Pasal 61(1) — the PRE-REFORM text, superseded by the 2024 amendment
+  on this specific figure. `E2B2-CF7-B` independently confirms Bali Zero's own operational guide
+  (`kitas_e33e_silver_hair_guida_2025.txt`, dated 27 March 2025 — AFTER the 2024 legal change but before
+  this session's query) still states 60 years, i.e. the guide was never updated to reflect the 2024
+  reform.
+- **Disposition: RESOLVED.** 55 years is the current, correctly-dated, article-level-pinpointed legal
+  minimum. The 60-year figure in Bali Zero's operational guide is not "erroneous" in a
+  fabrication sense — it correctly transcribes the PRE-2024-reform text (`Permenkumham 22/2023`) but was
+  never updated after the 2024 amendment changed the figure. Per `source-hierarchy-draft.md` §3.2 and
+  matching CF-11's precedent (a clean primary-law-vs-primary-law/dated-supersession case), the current
+  55-year figure governs; the internal guide should be corrected to reflect the 2024 reform. This does
+  NOT resolve whether the Ngurah Rai counter's actual REAL-WORLD practice still applies 60 (a
+  legal-text-vs-live-enforcement-practice question this batch's sources cannot settle — `E2B2-CF7-B`'s
+  own operational-practice source is dated 27 March 2025, itself possibly stale by now); that narrower
+  question is flagged for an operator field-check, not treated as resolved by this pinpoint.
+
+### CF-8 UPDATE — RESOLVED: E33/E33E KITAP conversion window is 3 years, Pasal 179(1) (not Pasal 76)
+
+Batch-1's disposition left this OPEN, ambiguous between "Pasal 179(1)/Pasal 76". `E2B2-CF8-A`'s retry
+resolves the ambiguity directly: **Pasal 76** governs only visa CANCELLATION by the Director General,
+unrelated to KITAP conversion timing — the answer explicitly states "Non è stabilito l'articolo Pasal
+76". The governing article is **Pasal 179(1)** of `Permenkumham 22/2023` ("...telah berada di Wilayah
+Indonesia paling singkat 3 (tiga) tahun berturut-turut...", quoted verbatim), scoped to the E33/E33E
+family via Pasal 173 huruf f. The answer also confirms neither `Permenkumham 11/2024` nor `UU 63/2024`
+amends this 3-year figure — their reforms target guarantor rules and MERP integration, not the KITAP
+conversion window.
+
+- **Disposition: RESOLVED.** 3 years, Pasal 179(1), is the legal minimum. The 5-year figure in
+  `nb2_golden_visa.txt`/`nb2_visa_types_final.txt` is explicitly identified by the same answer as a
+  general-purpose commercial-guide figure NOT specific to E33/E33E (those guides describe
+  `KITAP-INV`/`KITAP-RET` generically) — the E33E-SPECIFIC internal guide
+  (`kitas_e33e_silver_hair_guida_2025.txt`) actually already states the correct 3-year figure, per the
+  same answer. Not called "erroneous" — the 5-year figure is a real, differently-scoped operational
+  guide value that happens to get quoted against the wrong product family, not a fabrication.
+
+### CF-10 UPDATE — RESOLVED: E28A KITAP conversion window is 3 years, not "5+ years"
+
+`E2B2-CF10-A` finds the same 3-year figure for E28A specifically: `Permenkumham 22/2023` Pasal 179(1),
+scoped to investors via Pasal 173 huruf c ("*penanaman modal asing*" named explicitly among eligible
+categories). Neither `Permenkumham 11/2024` nor `Permenimipas 5/2025` amends this figure — both touch
+guarantor (`penjamin`)/guarantee (`jaminan keimigrasian`) mechanics, not the conversion timing.
+
+- **Disposition: RESOLVED.** 3 years is the legal minimum; the answer itself identifies the "5+ years"
+  commercial-guide figure (`nb2_golden_visa.txt`, `nb2_visa_procedures_guide.txt`) as most likely a
+  deliberate PRUDENTIAL margin — aligning E28A's public-facing guidance with the stricter general
+  standard applied to non-privileged worker categories, or as a buffer against continuity-of-stay
+  rejections — not a legal citation error. Neither figure is called erroneous; the 3-year figure is the
+  binding legal minimum, the 5+-year figure is an operational choice.
+
+### CF-12 UPDATE — RESOLVED (independently corroborating the already-merged section's CL-CROSS-E28-01
+above)
+
+`E2B2-CF12-A`, run before this session was aware of the already-merged section's own `E2B2-E28BC-XCHECK`
+answer above, independently reaches the SAME conclusion: `Kepmen M.IP-08.GR.01.01/2025` defines index
+**E28G** as "*Melakukan pekerjaan sebagai representatif dari Perusahaan Induk yang ditempatkan di
+Perusahaan cabang*" (working as a representative of a foreign parent company posted to its Indonesian
+branch) — a LABOR/EMPLOYMENT index, not an investment tier. The two figures Bali Zero's internal
+materials attach to "E28G" (Rp 5 miliar+ / USD 700,000) trace to two DIFFERENT real products' figures,
+with different confirmation status for each: USD 700,000 is E28C's confirmed 10-year portfolio-investor
+threshold (`Permenkumham 11/2024` Pasal 40(3)) — a clean, uncontested primary-law figure. Rp 5 miliar+
+belongs to E28F's INTERNAL-DB label specifically — but per this batch's own **CF-14** (already-merged
+section above), that label is ITSELF a contested primary-law-vs-internal-DB mismatch (E28F's real
+primary-law meaning is an IKN branch/subsidiary permit, not a real-estate-investor product at all) — so
+"Rp 5 miliar+ traces to E28F" is only true of the DISPUTED internal-DB reading of E28F, not a confirmed
+real E28F threshold the way USD 700,000 is a confirmed real E28C threshold. This is worth stating
+precisely rather than glossing: CF-12's E28G mislabeling and CF-14's E28F mislabeling are TWO SEPARATE,
+independently-real internal-DB defects that happen to share the same root cause
+(`nb2_visa_types_final.txt`'s general unreliability) — CF-12 does not "reinforce" CF-14 by being a
+second, independent sighting of the SAME fact; it reinforces CF-14 only in the weaker sense of adding
+more evidence that this internal file is broadly unreliable across multiple, distinct index letters.
+
+- **Disposition: RESOLVED.** "E28G" as a Golden-Visa label is a confirmed internal-material labeling
+  artifact, independently corroborated by two separate answers in two separate sessions. Recommend:
+  E5/operator confirm whether the "2026-03-28 errata corrige" both this batch's answers reference
+  already addresses this in Bali Zero's CURRENT internal materials, since `E2B2-CF12-A`'s own answer
+  notes the errata document exists but does not confirm it specifically covers the E28G mislabeling
+  (as opposed to the E28B/E28C threshold corrections CL-E28B-05/CL-E28C-05 above already track).
+
+## Adversarial review (EXTENSION)
+
+Full account, covering this EXTENSION section AND the already-merged batch-2 section above (CF-13/14/15)
+— per this task's binding constraint that no section is adversarial-review-exempt — lives in the
+companion claim ledger's own `## Adversarial review (this EXTENSION + re-covering the already-merged
+CF-13/14/15 section)`, run as a single joint pass over both files concatenated. That pass's finding #3
+(the original CF-12 UPDATE draft's imprecise "Rp 5 miliar+ is E28F's real-estate-investor threshold"
+framing) is what produced this section's own reworded CF-12 UPDATE paragraph above.

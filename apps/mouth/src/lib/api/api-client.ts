@@ -9,6 +9,7 @@ import { UploadApi } from "./media/upload.api";
 import { AudioApi } from "./media/audio.api";
 import { ImageApi } from "./media/image.api";
 import { CrmApi } from "./crm/crm.api";
+import { SecondHomeApi } from "./secondhome/secondhome.api";
 import { DriveApi } from "./drive/drive.api";
 import { PortalApi } from "./portal/portal.api";
 import { WhatsAppApi } from "./whatsapp/whatsapp.api";
@@ -110,6 +111,7 @@ export class ApiClient extends ApiClientBase {
   private audioApi: AudioApi;
   private imageApi: ImageApi;
   private crmApi: CrmApi;
+  private secondHomeApi: SecondHomeApi;
   private driveApi: DriveApi;
   private portalApi: PortalApi;
   private whatsappApi: WhatsAppApi;
@@ -135,6 +137,7 @@ export class ApiClient extends ApiClientBase {
     this.audioApi = new AudioApi(this);
     this.imageApi = new ImageApi(this);
     this.crmApi = new CrmApi(this);
+    this.secondHomeApi = new SecondHomeApi(this);
     this.driveApi = new DriveApi(this);
     this.portalApi = new PortalApi(this);
     this.whatsappApi = new WhatsAppApi(this);
@@ -266,6 +269,14 @@ export class ApiClient extends ApiClientBase {
 
   public get crm(): CrmApi {
     return this.crmApi;
+  }
+
+  // ============================================================================
+  // Second Home / E33 (internal console — exposed directly)
+  // ============================================================================
+
+  public get secondHome(): SecondHomeApi {
+    return this.secondHomeApi;
   }
 
   // ============================================================================

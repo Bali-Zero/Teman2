@@ -43,6 +43,7 @@ import json
 import logging
 import os
 import subprocess
+import sys
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -57,6 +58,11 @@ for forbidden in ("ANTHROPIC_API_KEY", "AWS_BEDROCK_ANTHROPIC_KEY", "VERTEX_AI_A
 REPO_ROOT = Path(os.environ.get("NUZANTARA_REPO_ROOT") or
                  Path(__file__).resolve().parent.parent)
 DISPATCH_ROOT = REPO_ROOT / "research" / "dispatch"
+
+# Add repo root to sys.path so `from scripts...` resolves regardless of how
+# this file was invoked (direct path, -m, or from a worktree).
+sys.path.insert(0, str(REPO_ROOT))
+from scripts.lib.codex_seat import codex_seat_env  # noqa: E402
 LOG_DIR = Path.home() / "logs" / "codex-visual-orchestrator"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -229,6 +235,12 @@ async def generate_one(asset: AssetRequest, topic: str, output_dir: Path, slot_i
     logger.info("Generating %s (size=%s)...", asset.name, asset.size)
 
     try:
+        # Seat rotation (2026-08-20): without env=, this subprocess inherits
+        # the parent's full os.environ, which never sets CODEX_HOME — every
+        # generation pinned to whichever seat the codex CLI defaults to.
+        # scripts/lib/codex_seat.codex_seat_env() is the single source for
+        # the seat list; a missing/unresolvable seat leaves CODEX_HOME
+        # exactly as inherited, never forces an empty override.
         proc = await asyncio.create_subprocess_exec(
             "codex",
             "--profile",
@@ -238,6 +250,7 @@ async def generate_one(asset: AssetRequest, topic: str, output_dir: Path, slot_i
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             cwd=str(output_dir),
+            env=codex_seat_env(),
         )
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=300)
         duration = time.time() - start

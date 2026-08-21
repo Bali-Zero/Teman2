@@ -3,7 +3,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/lib/api";
-import { useTeamMemberOptions } from "./useTeamMembers";
+import { isNonHumanRole, useTeamMemberOptions } from "./useTeamMembers";
 
 vi.mock("@/lib/api", () => ({
   api: {
@@ -89,5 +89,59 @@ describe("useTeamMemberOptions", () => {
         avatar: undefined,
       },
     ]);
+  });
+
+  it("excludes service accounts (role monitoring) alongside clients", async () => {
+    vi.mocked(api.get).mockResolvedValue([
+      {
+        id: "human-1",
+        email: "ari@example.test",
+        full_name: "Ari Example",
+        name: "Ari",
+        role: "Tax Care",
+        avatar_url: null,
+        avatar: null,
+      },
+      {
+        id: "probe-1",
+        email: "probe@balizero.com",
+        full_name: "Login Healthcheck Probe",
+        name: "Probe",
+        role: "monitoring",
+        avatar_url: null,
+        avatar: null,
+      },
+    ]);
+
+    const queryClient = createClient();
+    const { result } = renderHook(() => useTeamMemberOptions(), {
+      wrapper: wrapperFor(queryClient),
+    });
+
+    await waitFor(() => {
+      expect(result.current.options).toHaveLength(1);
+    });
+    expect(result.current.options[0].value).toBe("ari@example.test");
+  });
+});
+
+describe("isNonHumanRole", () => {
+  it("flags clients and service accounts (guilt)", () => {
+    expect(isNonHumanRole("client")).toBe(true);
+    expect(isNonHumanRole("Client")).toBe(true);
+    expect(isNonHumanRole("monitoring")).toBe(true);
+    expect(isNonHumanRole("  MONITORING  ")).toBe(true);
+  });
+
+  it("leaves real, free-text team roles alone (innocence)", () => {
+    for (const role of [
+      "Tax Care",
+      "Reception",
+      "Board Member",
+      "admin",
+      "Founder",
+    ]) {
+      expect(isNonHumanRole(role)).toBe(false);
+    }
   });
 });

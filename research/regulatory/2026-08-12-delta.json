@@ -1,0 +1,90 @@
+{
+  "run_at": "2026-08-12T07:08:30+08:00",
+  "today": "2026-08-12",
+  "yesterday_seen_count": 20,
+  "new_today_count": 0,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "http_403",
+      "note": "Blocked, retried once, still 403"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "http_403",
+      "note": "Blocked, retried once, still 403"
+    },
+    {
+      "url": "https://ortax.org/news",
+      "reason": "empty_shell",
+      "note": "200 but client-rendered SPA, title 'Artikel tidak ditemukan'"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "empty_shell",
+      "note": "200 but Elementor JS-rendered; only date-like strings are image filenames, zero real dated entries"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "empty_shell",
+      "note": "200 but AJAX search ignores filter; static fallback is a Cipta Kerja related-docs card list, no dates. Cross-checked PP 23/2026 found there via WebSearch: unverifiable, likely stale cached fragment"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "empty_shell",
+      "note": "200 but Drupal filter-form shell, only nav/menu text (5.4KB visible), no listing in static HTML"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "timeout",
+      "note": "Connection failed, retried once, curl exit 28"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "9 latest articles dated 2026-08-10/11/12; all DJP admin/audit/budget news, none carry a verbatim reg-number citation"
+    },
+    {
+      "url": "https://peraturan.go.id",
+      "reason": "outside_window",
+      "note": "Recently-promulgated list parsed; newest entry Tanggal Penetapan 01 Agustus 2026, older than 48h window"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "checked_no_new",
+      "note": "Homepage parsed; only dated content found was unrelated (football tournament), zero regulation-dated entries"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "Content parsed; newest entry 30 April 2026, far outside 48h window"
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [],
+  "seen_citations": [
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 28 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "PMK Nomor 44 Tahun 2026",
+    "Peraturan Direktur Jenderal Pajak Nomor PER-8/PJ/2026",
+    "Peraturan Menteri Hukum Nomor 13 Tahun 2026"
+  ]
+}

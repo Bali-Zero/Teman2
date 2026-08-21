@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { I18nProvider } from "@/i18n";
 import { getExactSnapshotPrice } from "@/lib/pricing-snapshot";
 import { SecondHomeLanding } from "./SecondHomeLanding";
@@ -14,7 +14,10 @@ import { SecondHomeLanding } from "./SecondHomeLanding";
  *  - FORBIDDEN claims never appear (BSI/sharia equivalence, split deposits,
  *    ITAP conversion, "any bank" placement);
  *  - the only CTA is the WhatsApp lead handoff (free fit memo);
- *  - the ID locale renders (i18n wiring works).
+ *  - the locale switcher exposes real, crawlable links to each variant
+ *    (2026-08-20 — it used to flip locale client-side via a button; each
+ *    offered locale now has its own SSG route, see
+ *    app/visa/second-home/[locale]/page.tsx).
  */
 
 function renderLanding() {
@@ -88,12 +91,21 @@ describe("SecondHomeLanding", () => {
     expect(text).not.toMatch(/12,000,000|12\.000\.000/);
   });
 
-  it("renders the Indonesian locale when selected", () => {
+  it("locale switcher exposes crawlable links to each variant, with aria-current on the active one", () => {
     renderLanding();
 
-    fireEvent.click(screen.getByRole("button", { name: "id" }));
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      /Tinggal di Indonesia hingga 5 tahun/,
-    );
+    const group = within(screen.getByRole("group", { name: "Language" }));
+
+    const en = group.getByRole("link", { name: "en" });
+    expect(en).toHaveAttribute("href", "/visa/second-home");
+    expect(en).toHaveAttribute("aria-current", "page");
+
+    const it = group.getByRole("link", { name: "it" });
+    expect(it).toHaveAttribute("href", "/visa/second-home/it");
+    expect(it).not.toHaveAttribute("aria-current");
+
+    const id = group.getByRole("link", { name: "id" });
+    expect(id).toHaveAttribute("href", "/visa/second-home/id");
+    expect(id).not.toHaveAttribute("aria-current");
   });
 });

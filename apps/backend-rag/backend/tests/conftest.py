@@ -144,10 +144,22 @@ def _wr2_runtime_isolation(tmp_path, monkeypatch):
     Control app this way. Redirect both to tmp_path unconditionally; a test
     that needs its own root still wins by monkeypatching the env itself
     (test-body setenv runs after this autouse fixture).
+
+    Same reasoning, added 2026-08-20: claude_vision.py's chain-wide rate-limit
+    cooldown + no-op fingerprint cache default to ~/.agent/state/*.json — an
+    unmocked test that trips a "rate-limited" path would otherwise write a
+    REAL cooldown file that then blocks the PRODUCTION vision loop for up to
+    WR2_VISION_COOLDOWN_S (default 1h), discovered live when the existing
+    _run_claude_json test battery (rate-limit/timeout/rotation cases) started
+    failing each other in file order via the shared default path.
     """
     monkeypatch.setenv("WR2_OUTPUT_ROOT", str(tmp_path / "wr2-output"))
     monkeypatch.setenv("TG_DRY_RUN", "1")
     monkeypatch.setenv("TG_SPOOL_DIR", str(tmp_path / "tg-spool"))
+    monkeypatch.setenv("WR2_VISION_COOLDOWN_STATE", str(tmp_path / "wr2-vision-cooldown.json"))
+    monkeypatch.setenv(
+        "WR2_VISION_FINGERPRINT_CACHE", str(tmp_path / "wr2-vision-fingerprints.json")
+    )
 
 
 @pytest.fixture

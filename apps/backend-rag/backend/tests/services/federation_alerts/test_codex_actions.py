@@ -18,6 +18,8 @@ from typing import Any
 
 import pytest
 
+import backend.services.federation_alerts.actions.codex_image_gen as _codex_image_gen_mod
+import backend.services.federation_alerts.actions.codex_xhigh_fix as _codex_xhigh_fix_mod
 from backend.services.federation_alerts.actions.codex_image_gen import (
     codex_image_gen_action,
 )
@@ -307,3 +309,63 @@ async def test_no_anthropic_key_in_xhigh_prompt() -> None:
     # by checking that the dry_run reports a framed_prompt larger than
     # the raw user prompt would imply.
     assert result.metadata["framed_prompt_bytes"] > len("Do work")
+
+
+# ---------------------------------------------------------------------------
+# Seat rotation (2026-08-20) — codex_xhigh_fix and codex_image_gen both spawn
+# `codex` directly; before this, neither ever set CODEX_HOME, so both were
+# silently pinned to whichever seat the CLI defaults to (dead ~/.codex on
+# Pro, per scripts/lib/codex_seat.sh's own measurement). Guilt: a live seat
+# lands in the subprocess env. Innocence: no seat found degrades to "leave
+# CODEX_HOME untouched", never a forced-empty override (which codex reads as
+# "use the default" — the opposite of "no seat") and never a raised
+# exception (a seat hint must not be able to break a HITL-approved action).
+# ---------------------------------------------------------------------------
+
+
+def test_xhigh_fix_safe_env_carries_a_live_seat(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        _codex_xhigh_fix_mod, "codex_seat_home", lambda: "/Users/nuzantara/.codex-acct2"
+    )
+    env = _codex_xhigh_fix_mod._safe_env()
+    assert env["CODEX_HOME"] == "/Users/nuzantara/.codex-acct2"
+
+
+def test_xhigh_fix_safe_env_degrades_cleanly_with_no_seat(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(_codex_xhigh_fix_mod, "codex_seat_home", lambda: None)
+    env = _codex_xhigh_fix_mod._safe_env()  # must not raise
+    assert "CODEX_HOME" not in env
+
+
+def test_image_gen_safe_env_carries_a_live_seat(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        _codex_image_gen_mod, "codex_seat_home", lambda: "/Users/nuzantara/.codex-acct2"
+    )
+    env = _codex_image_gen_mod._safe_env()
+    assert env["CODEX_HOME"] == "/Users/nuzantara/.codex-acct2"
+
+
+def test_image_gen_safe_env_degrades_cleanly_with_no_seat(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(_codex_image_gen_mod, "codex_seat_home", lambda: None)
+    env = _codex_image_gen_mod._safe_env()  # must not raise
+    assert "CODEX_HOME" not in env
+
+
+def test_safe_env_still_strips_provider_keys_with_a_seat_set(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The seat wiring must not reopen the Golden Rule #13 hole it sits next
+    to — CODEX_HOME added, ANTHROPIC_API_KEY/OPENAI_API_KEY still gone."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-should-never-reach-codex")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-embedding-only-should-not-leak")
+    monkeypatch.setattr(
+        _codex_xhigh_fix_mod, "codex_seat_home", lambda: "/Users/nuzantara/.codex-acct2"
+    )
+    env = _codex_xhigh_fix_mod._safe_env()
+    assert env["CODEX_HOME"] == "/Users/nuzantara/.codex-acct2"
+    assert "ANTHROPIC_API_KEY" not in env
+    assert "OPENAI_API_KEY" not in env

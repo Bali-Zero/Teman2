@@ -195,6 +195,29 @@ class TestAuthDependencies:
             require_team_member(user)
         assert exc_info.value.status_code == 403
 
+    def test_require_team_member_rejects_monitoring_service_account(self):
+        """Guilt: the login-healthcheck probe (role 'monitoring') is not a
+        client, but it is also not a colleague — it must still be denied.
+        Grants team-level authority to e33_cases.py (incl. visa case
+        creation) and crm_intelligence.py (incl. mutations)."""
+        from fastapi import HTTPException
+
+        from backend.app.dependencies import require_team_member
+
+        user = {"email": "probe@balizero.com", "role": "monitoring"}
+        with pytest.raises(HTTPException) as exc_info:
+            require_team_member(user)
+        assert exc_info.value.status_code == 403
+
+    def test_require_team_member_allows_a_realistic_free_text_role(self):
+        """Innocence: this repo's team roles are free-text job titles, not an
+        enum — a realistic one must still pass."""
+        from backend.app.dependencies import require_team_member
+
+        user = {"email": "dea@balizero.com", "role": "Reception"}
+        result = require_team_member(user)
+        assert result == user
+
     def test_get_current_user_email(self):
         from backend.app.dependencies import get_current_user_email
 

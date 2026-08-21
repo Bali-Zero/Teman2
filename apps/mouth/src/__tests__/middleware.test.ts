@@ -585,16 +585,14 @@ describe("Middleware - Multi-domain Routing", () => {
   });
 
   // =======================================================================
-  // Ghost internal routes (/email, /calendar, /knowledge, /documents) →
-  // real standalone-app subdomains. These paths have no route on kita and
-  // used to fall through to the (blog)/[category] catch-all.
+  // Ghost internal routes (/email, /knowledge) → their real destination, and
+  // retired ones (/calendar, /documents) → the dashboard. These paths have no
+  // route on kita and used to fall through to the (blog)/[category] catch-all.
   // =======================================================================
-  describe("Ghost internal routes redirect to standalone app subdomains", () => {
+  describe("Ghost internal routes redirect to their real destination", () => {
     const cases: Array<[string, string]> = [
-      ["/email", "https://mail.balizero.com/"],
-      ["/calendar", "https://calendar.balizero.com/"],
+      ["/email", "https://mail.zoho.com/zm/"],
       ["/knowledge", "https://knowledge.balizero.com/"],
-      ["/documents", "https://drive.balizero.com/"],
     ];
 
     for (const [from, to] of cases) {
@@ -607,7 +605,45 @@ describe("Middleware - Multi-domain Routing", () => {
       });
     }
 
-    it("preserves deep path and query when redirecting /calendar/event/123", () => {
+    it("preserves deep path and query when redirecting /knowledge/doc/123", () => {
+      const request = createRequest(
+        "https://kita.balizero.com/knowledge/doc/123?tab=details",
+      );
+      const response = proxy(request);
+
+      expect(response.status).toBe(302);
+      expect(response.headers.get("location")).toBe(
+        "https://knowledge.balizero.com/doc/123?tab=details",
+      );
+    });
+
+    // The standalone calendar/drive apps were deleted in 7f287c623 and their
+    // DNS answers 404 DEPLOYMENT_NOT_FOUND. Sending a logged-in user there is
+    // the bug these two pin: the destination must stay on kita.
+    for (const retired of ["/calendar", "/documents"]) {
+      it(`[guilt] keeps ${retired} on kita instead of a dead subdomain`, () => {
+        const request = createRequest(`https://kita.balizero.com${retired}`);
+        const response = proxy(request);
+
+        expect(response.status).toBe(302);
+        expect(response.headers.get("location")).toBe(
+          "https://kita.balizero.com/dashboard",
+        );
+      });
+
+      // The app-domain block noindexes every response it produces, but a newly
+      // created redirect does not inherit the header — the /portal redirect two
+      // branches up re-sets it for the same reason. /calendar is not covered by
+      // robots.ts either, so without this the retirement is crawlable.
+      it(`[guilt] keeps the app-domain noindex header on ${retired}`, () => {
+        const request = createRequest(`https://kita.balizero.com${retired}`);
+        const response = proxy(request);
+
+        expect(response.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
+      });
+    }
+
+    it("[guilt] a deep retired path also lands on the dashboard", () => {
       const request = createRequest(
         "https://kita.balizero.com/calendar/event/123?tab=details",
       );
@@ -615,7 +651,7 @@ describe("Middleware - Multi-domain Routing", () => {
 
       expect(response.status).toBe(302);
       expect(response.headers.get("location")).toBe(
-        "https://calendar.balizero.com/event/123?tab=details",
+        "https://kita.balizero.com/dashboard",
       );
     });
 
@@ -627,10 +663,10 @@ describe("Middleware - Multi-domain Routing", () => {
       expect(response.headers.get("x-pathname")).toBe("/dashboard");
     });
 
-    // The ghost-route redirect is cross-origin (kita → mail/calendar/...), so
-    // an RSC prefetch of <Link href="/email"> must get 204, not a 302 that
-    // trips a console CORS error. The original ghost-route block redirected
-    // manually and skipped the RSC guard — this pins that it no longer does.
+    // The /email and /knowledge redirects are cross-origin, so an RSC prefetch
+    // of <Link href="/email"> must get 204, not a 302 that trips a console CORS
+    // error. The original ghost-route block redirected manually and skipped the
+    // RSC guard — this pins that it no longer does.
     it("[guilt] returns 204 for an RSC prefetch of a ghost route (/email)", () => {
       const request = createRequest("https://kita.balizero.com/email", {
         accept: "text/x-component",
@@ -648,7 +684,7 @@ describe("Middleware - Multi-domain Routing", () => {
 
       expect(response.status).toBe(302);
       expect(response.headers.get("location")).toBe(
-        "https://mail.balizero.com/",
+        "https://mail.zoho.com/zm/",
       );
     });
   });

@@ -69,9 +69,10 @@ export type ProcessStepState = z.infer<typeof ProcessStepState>;
  *   - completed: bool                → step is done
  *   - is_current: bool               → this is the active step
  *   - changed_at: str | None         → timestamp (stringified by `str(row[...])`)
- *   - changed_by: str | None         → user identifier (may be absent entirely
- *                                      on the single-step fallback path where
- *                                      the dict uses `row.get("changed_by")`)
+ *
+ * NOTE: the BE query intentionally does not select `changed_by`
+ * (practice_status_log's actor) — this is a client-facing portal payload
+ * and that field is a staff email address. Do not reintroduce it here.
  */
 export const ProcessStep = z.object({
   status: ProcessStepState,
@@ -79,7 +80,6 @@ export const ProcessStep = z.object({
   completed: z.boolean(),
   is_current: z.boolean(),
   changed_at: z.string().nullable().optional(),
-  changed_by: z.string().nullable().optional(),
 });
 export type ProcessStep = z.infer<typeof ProcessStep>;
 
@@ -90,13 +90,16 @@ export type ProcessStep = z.infer<typeof ProcessStep>;
 /**
  * Inner `data` object of the timeline response.
  * Mirrors the dict returned by `_build_timeline`.
+ *
+ * NOTE: `assigned_to` (the case officer's staff email on `clients`) is
+ * intentionally not part of this client-facing payload — the BE query
+ * doesn't select it. Do not reintroduce it here.
  */
 export const ProcessTimelineData = z.object({
   practice_id: z.number().int().nonnegative(),
   practice_name: z.string().nullable().optional(),
   practice_category: z.string().nullable().optional(),
   current_status: ProcessStepState,
-  assigned_to: z.string().nullable().optional(),
   start_date: z.string().nullable().optional(),
   completion_date: z.string().nullable().optional(),
   expiry_date: z.string().nullable().optional(),

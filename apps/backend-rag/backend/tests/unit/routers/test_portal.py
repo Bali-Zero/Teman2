@@ -475,6 +475,22 @@ class TestMessages:
         mock_portal_service.send_message.assert_awaited_once()
         assert mock_portal_service.send_message.await_args.kwargs["practice_id"] == 603
 
+    def test_send_message_client_not_found_returns_404_not_500(
+        self, client, mock_portal_service
+    ):
+        """DEFECT 1: if the portal account is linked to a soft-deleted
+        client, send_message raises ValueError('Client X not found') —
+        same not-found shape as get_dashboard (BUG C) — and must surface
+        as 404, not a 500."""
+        mock_portal_service.send_message.side_effect = ValueError("Client 42 not found")
+
+        response = client.post(
+            "/api/portal/messages",
+            json={"content": "hello"},
+        )
+
+        assert response.status_code == 404
+
     def test_mark_message_read(self, client, mock_portal_service):
         """Mark message as read."""
         mock_portal_service.mark_message_read.return_value = {"success": True}
@@ -622,7 +638,47 @@ class TestProcessDocuments:
         response = client.get("/api/portal/process/required-documents")
 
         assert response.status_code == 200
-        assert response.json()["data"] == [completed_doc]
+        # The DB row carries `team_member_notes`; the CLIENT response must not.
+        # It is the operator's internal note (authoring UI: "Team Notes" /
+        # "Add notes for the team..."), and the client-facing note is
+        # `description`. Asserting the response equals the raw row would pin
+        # the leak — that is what this assertion used to do.
+        expected = {k: v for k, v in completed_doc.items() if k != "team_member_notes"}
+        assert response.json()["data"] == [expected]
+
+    def test_required_documents_never_expose_team_member_notes(
+        self,
+        client: TestClient,
+        mock_db_pool,
+    ) -> None:
+        """Internal staff notes must not reach the client, even when set."""
+        row = {
+            "id": 8,
+            "practice_id": 82,
+            "process_name": "KITAS",
+            "process_status": "on_process",
+            "document_type": "passport",
+            "document_label": "Passport copy",
+            "description": "Please re-upload, the scan is blurry",
+            "is_required": True,
+            "uploaded_by_client": False,
+            "status": "pending",
+            "client_notes": None,
+            "team_member_notes": "INTERNAL: chase the agent, client is unreliable",
+        }
+        mock_db_pool._mock_conn.fetch.return_value = [row]
+
+        response = client.get("/api/portal/process/required-documents")
+
+        assert response.status_code == 200
+        payload = response.json()["data"]
+        assert payload, "expected one document in the response"
+        for item in payload:
+            assert "team_member_notes" not in item
+        # the client-facing note still travels
+        assert payload[0]["description"] == "Please re-upload, the scan is blurry"
+        # and the internal text appears nowhere in the serialised body
+        assert "INTERNAL:" not in response.text
 
 
 # ============================================
@@ -669,6 +725,65 @@ class TestProfile:
 
         response = client.get("/api/portal/profile")
         assert response.status_code == 404
+
+    def test_get_profile_archived_client_returns_404(self, client, mock_db_pool):
+        """
+        2026-08-20 class-fix: an archived client (clients.deleted_at set) must
+        get the same 404 every other portal endpoint gives — get_profile was
+        one of two raw-SQL handlers that bypassed the deleted_at IS NULL gate
+        every sibling resolves through PortalService. In production the
+        WHERE clause filters the row out, so asyncpg's fetchrow returns None
+        exactly like the not-found case above.
+        """
+        conn = mock_db_pool._mock_conn
+        conn.fetchrow.return_value = None
+
+        response = client.get("/api/portal/profile")
+
+        assert response.status_code == 404
+        # GUILT, mutation-sensitive: the 404 above is only proof the row was
+        # absent — this proves it is absent *because the query excludes
+        # soft-deleted rows*, not merely because the mock defaults to None.
+        # Removing "AND c.deleted_at IS NULL" from the router's SQL turns
+        # this assertion red even though the 404 assertion above stays green.
+        sql = conn.fetchrow.call_args.args[0]
+        assert "deleted_at IS NULL" in sql, (
+            "GET /api/portal/profile no longer filters deleted_at — an "
+            "archived client's passport/DOB/address would be served again"
+        )
+
+    def test_get_profile_success_query_still_scoped_to_client_id(self, client, mock_db_pool):
+        """
+        INNOCENCE: a live client (not archived) still gets 200 with their
+        data — the deleted_at gate must not turn into a blanket 404.
+        """
+        conn = mock_db_pool._mock_conn
+        conn.fetchrow.return_value = {
+            "id": 42,
+            "full_name": "Jane Live",
+            "email": "jane@example.com",
+            "phone": "+62812000000",
+            "whatsapp": "+62812000000",
+            "nationality": "IT",
+            "passport_number": "Z99999999",
+            "passport_expiry": datetime(2029, 1, 1).date(),
+            "date_of_birth": datetime(1990, 5, 5).date(),
+            "gender": "F",
+            "address": "Jl. Test Rd, Bali",
+            "created_at": datetime(2024, 1, 1, tzinfo=timezone.utc),
+            "assigned_to": "agent@balizero.com",
+            "assigned_to_name": "Agent Smith",
+            "assigned_to_avatar": None,
+        }
+
+        response = client.get("/api/portal/profile")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["data"]["full_name"] == "Jane Live"
+        sql = conn.fetchrow.call_args.args[0]
+        assert "WHERE c.id = $1" in sql
+        assert "deleted_at IS NULL" in sql
 
     def test_update_profile_success(self, client, mock_portal_service):
         """Update profile fields."""

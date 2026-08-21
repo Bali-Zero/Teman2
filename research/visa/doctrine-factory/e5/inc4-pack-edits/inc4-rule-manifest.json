@@ -1,0 +1,95 @@
+{
+  "_comment": "E5 increment 4 (seq-10) — compile_claims manifest for the two E31C cure rules. Both bind to the inc4 ledger's claims (CL-E31C-02 marriage-registration requirement, CL-E31C-03 WNI-parent sponsor) and pass the compiler's four hard lints (VERIFIED-only, overstay-planning, unsatisfiable-condition, vacuous-rule/duplicate-subtree + must_reference_facts). The el.c2.corporate-sponsor-type retirement has no manifest entry by design: a retirement is not a compiled rule (el.e33e.deposit-income-basis precedent), and CF-17 records why no C2 tightening claim exists. fold_pack_seq10.py compiles this manifest with the inc4 ledger added to the standing ledger list, then (a) applies el.e31c-mixed-marriage-parents as an in-place EDIT (asserting the compiled body differs from seq-9 ONLY in when/required_facts) and (b) inserts hf.e31c-marriage-not-registered as a new rule.",
+  "rules": [
+    {
+      "rule": {
+        "rule_id": "el.e31c-mixed-marriage-parents",
+        "stage": "ELIGIBILITY",
+        "scope": "PRODUCTS",
+        "priority": 100,
+        "valid_period": { "from": "2026-07-24T00:00:00Z", "to": null },
+        "when": {
+          "op": "all",
+          "args": [
+            { "fact": "intent.purposes", "op": "intersects", "values": ["FAMILY"] },
+            { "fact": "family.relation_to_sponsor", "op": "eq", "value": "PARENT" },
+            {
+              "fact": "family.sponsor_nationalities",
+              "op": "intersects",
+              "values": ["ID"]
+            },
+            { "fact": "family.marriage_registered", "op": "eq", "value": true }
+          ]
+        },
+        "effect": {
+          "type": "SUPPORT",
+          "reason_code": "REQ_MIXED_MARRIAGE_PARENTS",
+          "covered_purposes": ["FAMILY"]
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "required_facts": [
+          "family.marriage_registered",
+          "family.relation_to_sponsor",
+          "family.sponsor_nationalities",
+          "intent.purposes"
+        ],
+        "source_refs": [
+          "40523028-431b-5ae0-a937-277882f0f243",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715"
+        ],
+        "explanation_key": "explain.el.e31c-mixed-marriage-parents",
+        "safety_critical": false,
+        "product_version_ids": ["62ab2d13-1d7e-5048-9cf7-9622c0098439"]
+      },
+      "claim_ids": ["CL-E31C-02", "CL-E31C-03"],
+      "caveats": [
+        {
+          "claim_id": "CL-E31C-03",
+          "note": "The page requires the WNI parent's application letter (item 1) and the WNI parent's Kartu Keluarga (item 9); that the formal penjamin must BE that parent is an inference from those items (typical-case reading) — the foreign-parent-as-penjamin shape is not addressed by the page. Codex refuter finding 4, 2026-08-19."
+        }
+      ],
+      "product_code": "E31C",
+      "must_reference_facts": [
+        "family.marriage_registered",
+        "family.sponsor_nationalities"
+      ]
+    },
+    {
+      "rule": {
+        "rule_id": "hf.e31c-marriage-not-registered",
+        "stage": "HARD_FILTER",
+        "scope": "PRODUCTS",
+        "priority": 100,
+        "valid_period": { "from": "2026-07-24T00:00:00Z", "to": null },
+        "when": {
+          "op": "all",
+          "args": [
+            { "fact": "intent.purposes", "op": "intersects", "values": ["FAMILY"] },
+            { "fact": "family.relation_to_sponsor", "op": "eq", "value": "PARENT" },
+            { "fact": "family.marriage_registered", "op": "eq", "value": false }
+          ]
+        },
+        "effect": {
+          "type": "EXCLUDE",
+          "reason_code": "REQ_PARENTS_MARRIAGE_REGISTERED"
+        },
+        "on_unknown": "NEEDS_INPUT",
+        "required_facts": [
+          "family.marriage_registered",
+          "family.relation_to_sponsor",
+          "intent.purposes"
+        ],
+        "source_refs": [
+          "40523028-431b-5ae0-a937-277882f0f243",
+          "e3572ad2-08a9-55bd-b818-353b3e9db715"
+        ],
+        "explanation_key": "explain.hf.e31c-marriage-not-registered",
+        "safety_critical": true,
+        "product_version_ids": ["62ab2d13-1d7e-5048-9cf7-9622c0098439"]
+      },
+      "claim_ids": ["CL-E31C-02"],
+      "product_code": "E31C",
+      "must_reference_facts": ["family.marriage_registered"]
+    }
+  ]
+}

@@ -9,11 +9,14 @@ this repo, ticking every 2h on Pro.
 
 One file per task, `*.md`, flat in this directory (no subfolders — the
 `done/` idea from the first draft was dropped: this directory is
-git-tracked and the lane never commits, so "done" state lives locally on
-the runner in `~/army/spark/state/done-list.txt`, keyed by
-`<filename>:<sha256-of-content>`. Editing a task file's content makes it
-eligible again — that is intentional, it lets a session refine a stale
-prompt in place instead of renaming the file).
+git-tracked and the lane never commits, so attempt state lives locally on
+the runner in `~/army/spark/state/attempts.jsonl` — an append-only JSONL
+of every ATTEMPT (success and failure), keyed by the sha256 of the task
+file's CONTENT (corrected 2026-08-19: an earlier revision of this README
+described a `done-list.txt` keyed `<filename>:<sha256>` that the runner
+never implemented). Editing a task file's content changes its sha and
+makes it eligible again — that is intentional, it lets a session refine a
+stale prompt in place instead of renaming the file).
 
 ```markdown
 # <short imperative title — becomes the report slug>
@@ -26,8 +29,10 @@ should not imply otherwise, so a plausible-looking diff never gets
 half-written into the output.>
 ```
 
-The lane picks the **oldest not-yet-done** file by mtime, processes exactly
-**one per tick**, and writes its report to
+The lane processes exactly **one task per tick**, preferring the cohort of
+**never-attempted** files (oldest mtime first) over tasks that already
+failed once (which get a single retry round after the fresh cohort drains;
+twice-failed tasks are quarantined), and writes its report to
 `~/army/spark/reports/<date>-<slug>.md`. It never edits this directory,
 never opens a PR, never merges — output is an artifact on disk plus a daily
 Telegram digest (07:00 WITA). Landing anything the report finds useful is

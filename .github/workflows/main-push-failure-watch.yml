@@ -19,9 +19,13 @@ name: Main-push Failure Watch
 # workflow_dispatch runs (operator-initiated; the operator is already
 # watching). The `workflows:` list below is DELIBERATELY over-inclusive
 # (every workflow in the repo, this file's own name excluded) so listing it
-# never requires a push:main/schedule:main judgment call — real filtering
-# happens in the job `if:` below, on the actual event + branch of the run
-# that just completed.
+# never requires a push:main/schedule:main judgment call — the trigger's
+# own `branches: [main]` filter (added 2026-08-20, see GOTCHA below) drops
+# the pull_request/merge_group completions of that over-inclusive list
+# before a run is even CREATED, so most of the noise never shows up in the
+# Actions run list at all; the job `if:` below still does the real event +
+# conclusion judgment (push-vs-schedule-vs-dispatch, failure-vs-success) on
+# the same `head_branch` field, unchanged, as the backstop.
 #
 # Widened to `schedule` 2026-07-26 (task #37): task #37 added the first
 # schedule-triggered workflow that targets main (`Tests & Coverage`'s
@@ -53,6 +57,39 @@ name: Main-push Failure Watch
 #    a WATCHED workflow (a newer push lands mid-run) is routine, not a silent
 #    failure — alerting on it would itself be the noise this design exists to
 #    avoid.
+#  - 2026-08-20 (CI-churn finding): a 100-run sample of one day's Actions
+#    activity found 47 were this workflow's own reactive runs. Re-measured
+#    directly against the live API the same day: `gh api
+#    repos/Bali-Zero/Teman2/actions/workflows/320576288/runs?created=>=2026-
+#    08-20` returned 4,138 runs of THIS workflow alone, against ~8,266
+#    repo-wide — essentially all `conclusion: skipped` or `cancelled`. The
+#    `alert` job's `if:` below already correctly no-ops on everything but a
+#    push/schedule failure, but GitHub still CREATES a run for every
+#    completion of every workflow in the over-inclusive list below —
+#    `pull_request` and `merge_group` completions included — and a
+#    created-then-skipped run still counts, still shows up in the Actions
+#    list, still costs a scheduling round-trip. Added `branches: [main]` to
+#    the trigger below (cuts run CREATION, not coverage — see SCOPE note
+#    above). Verified empirically against this repo's live run history,
+#    not assumed from docs: `workflow_run.head_branch` is the PR's own
+#    head-branch name for `pull_request`-triggered completions of a
+#    watched workflow (e.g. actionlint run 32364422455, head_branch
+#    `agent/air-m5/ops/quarantine-index-2026-08-20`) and
+#    `gh-readonly-queue/main/pr-<n>-<sha>` for `merge_group`-triggered ones
+#    (e.g. actionlint run 32357549625) — NEVER the literal string `main` —
+#    while `push`-to-main and `schedule` completions of a watched workflow
+#    both report `head_branch: main` (tests.yml schedule run 32360788806;
+#    Frontend Live Sentinel push-FAILURE run 32359844277, confirming a real
+#    push-to-main failure keeps `head_branch: main`). The trigger's new
+#    `branches:` filter and the job's `if:` below both gate on that
+#    identical field against that identical value, so the filter can only
+#    additionally exclude runs the job would have skipped anyway — it
+#    cannot silently drop a real push/schedule failure, by construction,
+#    with the job `if:` left completely unchanged as the backstop should
+#    the filter ever behave unexpectedly. `types:` was deliberately NOT
+#    touched: GitHub's docs confirm `workflow_run` only supports
+#    `completed`/`requested`/`in_progress` there — conclusion can only be
+#    filtered inside a job, which is what the `if:` below already does.
 
 on:
   workflow_run:
@@ -184,7 +221,41 @@ on:
       # reachability (see its own docstring); caught by that gate on this
       # PR's own first CI run, exactly the self-conformance it exists for.
       - Harness floor & gate publisher
+      # Added 2026-08-21: yield-optimizer-pii-gate-tests.yml (built PR #4449,
+      # scripts/yield_optimizer_pitch_gate.py's guilt+innocence+class-guard
+      # suite) triggers on pull_request with a `paths:` filter only — same
+      # non-reachable-but-still-required-for-coverage shape as actionlint /
+      # hot-zone-enforcement / Prettier (changed files) / Harness floor above.
+      # check_watcher_coverage.py's contract is name-set membership against
+      # this file's `name:`, not alert-path reachability (see its own
+      # docstring); the workflow shipped without this entry, which is exactly
+      # the drift check_watcher_coverage.py exists to catch — caught here on
+      # main-push-failure-watch's own run 32395393032, 2026-08-20.
+      - yield-optimizer PII gate tests
+      # Added 2026-08-20 (scripts/s7_yield_dispatch.py PR): caught by
+      # check_watcher_coverage.py on this PR's own first run, same
+      # self-conformance it exists for.
+      - S7 yield dispatch gate tests
+      # Added 2026-08-21: main-red-breaker.yml (token-ceremony CI-critical-
+      # path work) triggers on `workflow_run` only — this list's contract is
+      # name-set membership, not alert-path reachability (see header comment
+      # above); caught by check_watcher_coverage.py on this PR's own first
+      # run, same self-conformance it exists for. Out-of-scope line, added
+      # ONLY because the checker requires it — main-red-breaker.yml is the
+      # owned file this PR ships.
+      - Main Red Breaker
     types: [completed]
+    # 2026-08-20 CI-churn cure — see the matching GOTCHA above for the
+    # measurement and the empirical proof this narrows run CREATION, never
+    # coverage: filters on the triggering workflow's own head_branch, the
+    # identical field (and identical target value) the `alert` job's `if:`
+    # below already requires — so this can only additionally exclude runs
+    # that job would have skipped anyway (pull_request/merge_group
+    # completions, whose head_branch is never literally `main`), never one
+    # it would have alerted on. `push`-to-main and `schedule` completions
+    # (the only two the job ever acts on) both report head_branch `main`
+    # and pass through unaffected.
+    branches: [main]
   # Task #41 (2026-07-26): see the `verdict-liveness` job below for why this
   # exists — a reactive workflow_run watcher structurally cannot see the
   # absence of an event, only events themselves.

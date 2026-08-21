@@ -1090,6 +1090,15 @@ class Settings(BaseSettings):
     # Rotate via `fly secrets set WA_INBOX_BOT_PROFILE_KEY=...`.
     wa_inbox_bot_profile_key: str | None = None
 
+    # Dedicated key for the Pro-side codex broker daemon (BOT-V4 S2,
+    # /api/wa-broker/claim + /complete — routers/wa_broker.py). Same
+    # least-privilege shape as wa_inbox_api_key: the route dependency
+    # requires X-API-Key to EQUAL this value (constant-time), so a generic
+    # admin key cannot claim or complete broker jobs. Unset → the two
+    # endpoints answer 401 to everything (surface OFF, not open).
+    # Rotate via `fly secrets set WA_BROKER_KEY=...`.
+    wa_broker_key: str | None = None
+
     # HMAC key for the per-sender pseudonymous long-term-memory subject
     # (`_memory_identity.derive_wa_memory_subject`, W-1 follow-up to P0-MEM
     # #3036). P0-MEM contained a cross-client bleed by disabling long-term

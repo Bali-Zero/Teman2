@@ -209,6 +209,12 @@ def _oauth_cli_env(token: str) -> dict[str, str]:
 DEFAULT_OLLAMA_MODEL = os.environ.get("MATA_GARUDA_OLLAMA_MODEL", "qwen3.5:9b")
 DEFAULT_AGY_MODEL = os.environ.get("MATA_GARUDA_AGY_MODEL", "gemini-3.5-flash")
 DEFAULT_AGY_PRINT_TIMEOUT = os.environ.get("MATA_GARUDA_AGY_PRINT_TIMEOUT", "5m")
+# Sonnet 5: this is the shared execution loop for every mata-garuda Agent
+# (Agent.model defaults to bare "claude", types.py:29), a multi-turn
+# tool-calling reasoning loop — CLAUDE.md root §5 "Implementer
+# subagents/workflows = Sonnet 5". Individual agents can still override with
+# Agent(model="claude:<alias>") the same way "ollama:*"/"agy:*" already work.
+DEFAULT_CLAUDE_MODEL = os.environ.get("MATA_GARUDA_CLAUDE_MODEL", "claude-sonnet-5")
 
 CLI_CONFIGS: dict[str, dict] = {
     "claude": {
@@ -414,6 +420,7 @@ class CLIRuntime:
     ):
         self.ollama_model: str | None = None
         self.agy_model: str | None = None
+        self.claude_model: str | None = None
         if model.startswith("ollama:"):
             self.ollama_model = model.split(":", 1)[1].strip() or DEFAULT_OLLAMA_MODEL
             model = "ollama"
@@ -424,6 +431,11 @@ class CLIRuntime:
             model = "agy"
         elif model == "agy":
             self.agy_model = DEFAULT_AGY_MODEL
+        elif model.startswith("claude:"):
+            self.claude_model = model.split(":", 1)[1].strip() or DEFAULT_CLAUDE_MODEL
+            model = "claude"
+        elif model == "claude":
+            self.claude_model = DEFAULT_CLAUDE_MODEL
 
         if model not in CLI_CONFIGS:
             raise ValueError(
@@ -487,6 +499,12 @@ class CLIRuntime:
             combined = f"<system>\n{system_prompt}\n</system>\n\n{prompt}"
             cmd[cmd.index(prompt)] = combined
 
+        # Always pin an explicit model (bare `claude --print` inherits the
+        # CLI profile's default, e.g. an interactive "opus[1m]" default on
+        # Pro — never what a cron-spawned agent should silently get).
+        if self.config["model_flag"]:
+            cmd.extend([self.config["model_flag"], self.claude_model or DEFAULT_CLAUDE_MODEL])
+
         if extra_flags:
             cmd.extend(extra_flags)
 
@@ -496,6 +514,8 @@ class CLIRuntime:
         """Return the concrete model label to record in CLIResult."""
         if self.model == "agy":
             return f"agy:{self.agy_model or DEFAULT_AGY_MODEL}"
+        if self.model == "claude":
+            return f"claude:{self.claude_model or DEFAULT_CLAUDE_MODEL}"
         return self.model
 
     def _run_subprocess(

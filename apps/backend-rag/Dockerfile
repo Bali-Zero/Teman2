@@ -92,6 +92,15 @@ FROM node:22-trixie-slim AS node22
 # ========================================
 FROM python:3.11-slim
 
+# Build identity (2026-08-20): bake the deploying commit SHA into the image so
+# /health can say WHICH version is actually running, not just that a process
+# answers. Set via `flyctl deploy --build-arg GIT_SHA=<sha>` in
+# .github/workflows/fly-deploy.yml (${{ github.sha }}). A build that omits the
+# arg (e.g. local `docker build`) gets the empty default below; the health
+# router (backend/app/routers/health.py::_resolve_build_sha) normalizes that
+# to the explicit "unknown" marker at import time — never a fabricated SHA.
+ARG GIT_SHA=""
+
 # Install runtime dependencies:
 # - curl + ca-certificates: healthcheck
 # - nodejs + npm: required by the `claude` CLI (Claude Code), used by
@@ -152,10 +161,48 @@ COPY --from=node22 /usr/local/lib/node_modules /usr/local/lib/node_modules
 # first draft used `grep -Eq '^v(2[2-9]|[3-9][0-9])\.'`, which reads correctly and
 # would have rejected node v100 — a range written as a pattern is a form standing in
 # for a quantity, and it goes wrong at exactly the boundary nobody tests.
+#
+# THE PIN IS DELIBERATE (#4390, 2026-08-20) AND IT NOW LIVES IN ONE PLACE.
+# `@anthropic-ai/claude-code@2.1.237` (published 2026-08-19T23:57:54Z) fails
+# `claude --version` IN-IMAGE with "Error: claude native binary not installed.":
+# its optionalDependencies demand `@anthropic-ai/claude-code-linux-x64@2.1.237`,
+# which upstream never published (`npm view` → E404, that package still at 2.1.236).
+# 2.1.236 is the last verified-good release. Bump deliberately after verifying the
+# install flow in a real build — never back to floating latest.
+#
+# READ THE FAILURE IN ORDER, because it is not where you would look. From the
+# build log of job 96279824564:
+#
+#   1.341  added 1 package in 852ms          <- npm exits 0. NO error code at all.
+#   1.606  /usr/local/bin/claude             <- `which claude` SUCCEEDS.
+#   1.607  Error: claude native binary not installed.
+#
+# npm reported success, the JS launcher landed on PATH, and the ONLY step that knew
+# anything was wrong was `claude --version` — the CLI's own runtime self-check, the
+# last link of this chain. That final assertion is the entire reason a broken image
+# did not ship; it is a gate, not a flourish. Grepping the build log for `npm error`
+# finds nothing, which is exactly how this reads as someone else's problem.
+#
+# `linux-arm64` and `darwin-arm64` published normally, so a `docker build` on an
+# M-series Mac SUCCEEDED throughout — the machine most likely to be used for triage
+# was structurally unable to reproduce the red.
+#
+# This is the SAME CLASS as the NodeSource 403 documented above — a third-party
+# input to a production image build that moves on its own. That cure deleted the APT
+# dependency and left this npm one standing.
+#
+# The version string is NOT repeated here. It lives once in
+# scripts/install-claude-code.sh, which the AI-review Action and the node
+# provisioner also call; the installer verifies the pin has a published build for
+# THIS platform before installing, asserts the CLI actually runs, and reports when
+# the pin has fallen behind — a pin nothing re-measures is a countdown.
+# Corpus (fake registry): scripts/tests/test_install_claude_code_version_skew.sh
+COPY scripts/install-claude-code.sh /usr/local/bin/install-claude-code.sh
+
 RUN ln -sf /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
     && node --version && npm --version \
     && [ "$(node -p 'process.versions.node.split(".")[0]')" -ge 22 ] \
-    && npm install -g @anthropic-ai/claude-code \
+    && sh /usr/local/bin/install-claude-code.sh \
     && npm cache clean --force \
     && rm -rf /root/.npm \
     && node --version && which claude && claude --version
@@ -199,6 +246,9 @@ ENV PYTHONPATH=/app:/app/backend:/app/packages/cell-core:/app/apps/crm-cell:/hom
 ENV PATH=/home/nuzantara/.local/bin:$PATH
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+# Build identity: promote the ARG declared above to a runtime ENV var so
+# backend/app/routers/health.py can read it via os.getenv at import time.
+ENV GIT_SHA=${GIT_SHA}
 
 # Aggressive cleanup to reduce image size
 RUN find /home/nuzantara/.local -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true \

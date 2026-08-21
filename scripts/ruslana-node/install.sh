@@ -66,7 +66,10 @@ ok "Gemini CLI: $GEMINI_VERSION"
 
 # ─── 5. Claude CLI (in aggiunta a Gemini) ────────────────────────────────────
 log "Installing Claude CLI..."
-npm install -g @anthropic-ai/claude-code 2>/dev/null || warn "Claude CLI install failed — try manually: npm i -g @anthropic-ai/claude-code"
+# Same installer as CI and the production image: resolves a version whose
+# platform build actually exists. Its diagnostics are NOT swallowed — a
+# silenced installer is how a node ends up with no CLI and no reason why.
+bash "$PROJECT_DIR/scripts/install-claude-code.sh" || warn "Claude CLI install failed — see the message above"
 CLAUDE_VERSION=$(claude --version 2>/dev/null | head -1 || echo "not found")
 ok "Claude CLI: $CLAUDE_VERSION"
 

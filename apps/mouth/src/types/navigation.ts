@@ -47,6 +47,7 @@ export const navigation: NavSection[] = [
     items: [
       { title: "Clients", href: "/clients", icon: "Users" },
       { title: "Process", href: "/process", icon: "FolderKanban" },
+      { title: "Second Home", href: "/second-home", icon: "Home" },
       { title: "Review", href: "/review", icon: "ClipboardCheck" },
       { title: "HR / Payroll", href: "/hr", icon: "Banknote" },
     ],
@@ -56,23 +57,14 @@ export const navigation: NavSection[] = [
     // Block 3: Collaborative
     items: [
       { title: "LKPM", href: "/lkpm", icon: "ClipboardCheck" },
-      {
-        title: "Documents",
-        href: "https://drive.balizero.com",
-        icon: "FolderOpen",
-        external: true,
-      },
       { title: "Partners", href: "/partners", icon: "Handshake" },
       {
         title: "Email",
-        href: "https://mail.balizero.com",
+        // The Zoho mailbox itself. An existing Zoho session lands straight in
+        // the inbox; without one, Zoho bounces through its login and returns
+        // here via ?serviceurl=%2Fzm%2F.
+        href: "https://mail.zoho.com/zm/",
         icon: "Mail",
-        external: true,
-      },
-      {
-        title: "Calendar",
-        href: "https://calendar.balizero.com",
-        icon: "Calendar",
         external: true,
       },
       {
@@ -161,13 +153,13 @@ export const routeTitles: Record<string, string> = {
   "/process": "Process",
   "/process/new": "New Process",
   "/process/deadlines": "Deadlines",
+  "/second-home": "Second Home",
+  "/second-home/new": "New Second Home Case",
   "/review": "Document Review",
-  "/documents": "Documents (Drive)",
   "/knowledge": "Knowledge Base",
   "/team": "Team",
   "/team/timesheet": "Timesheet",
   "/team/calendar": "Team Calendar",
-  "/calendar": "Bali Zero Calendar",
   "/partners": "Partners",
   "/partners/new": "New Partner",
   "/partners/orphaned": "Orphaned Partners",

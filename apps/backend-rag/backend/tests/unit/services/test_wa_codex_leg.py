@@ -1,0 +1,934 @@
+"""Tests for the WA outbox worker's codex broker leg (BOT-V4 S2 PR-5).
+
+Chaos-table ownership (design s2-pr5 §7): rows 2 (ALREADY_SPENT -> Gemini),
+3-adjacent (fall-off semantics), 7 (typed failure -> fall-off), 9 (broker
+dark -> Gemini-only) live here; rows 1/4 are pinned by PR-2's broker suite,
+rows 5/6/8 by PR-6's daemon tests.
+
+Fake discipline: the real ``wa_broker`` enums travel through a stub
+namespace, so every ``is not OfferOutcome.OFFERED`` identity check in the
+module under test runs against the same objects production uses — a fake
+enum would make the comparisons vacuously true (W114: a fake speaking a
+vocabulary the code never emits proves nothing).
+"""
+
+from __future__ import annotations
+
+import uuid
+from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
+from backend.services.integrations import wa_broker, wa_codex_leg
+from backend.services.integrations.wa_broker import (
+    OfferOutcome,
+    OfferResult,
+    WaitOutcome,
+    WaitResult,
+)
+from backend.services.integrations.wa_finalize import (
+    FinalizeOutcome,
+    FinalizeResult,
+)
+
+
+class ScriptedConn:
+    """Minimal scripted conn for the drift re-read + atomic stand-down."""
+
+    def __init__(
+        self,
+        fetchrow_results: list[Any] | None = None,
+        *,
+        fetchrow_exc: Exception | None = None,
+    ) -> None:
+        self.executed: list[tuple[str, tuple[Any, ...]]] = []
+        self._fetchrow = list(fetchrow_results or [])
+        self._fetchrow_exc = fetchrow_exc
+
+    async def fetchrow(self, sql: str, *args: Any) -> Any:
+        self.executed.append((sql, args))
+        if self._fetchrow_exc is not None:
+            raise self._fetchrow_exc
+        return self._fetchrow.pop(0) if self._fetchrow else None
+
+    async def execute(self, sql: str, *args: Any) -> str:
+        self.executed.append((sql, args))
+        return "UPDATE 1"
+
+    def transaction(self) -> Any:
+        class _Tx:
+            async def __aenter__(self) -> None:
+                return None
+
+            async def __aexit__(self, *exc: Any) -> bool:
+                return False
+
+        return _Tx()
+
+    def sql_contains(self, needle: str) -> bool:
+        return any(needle in sql for sql, _ in self.executed)
+
+
+class _FakePool:
+    """The leg is pool-only by contract (the worker's claim connection
+    carries a concurrent heartbeat — Codex r1 finding 4): every acquire()
+    hands out the one scripted conn so the drift-re-read script drives it.
+
+    ``release_exc_on_acquire`` (1-based) makes THAT acquire's __aexit__
+    raise on a CLEAN exit — the connection-release-after-commit shape from
+    Codex r3. ``enter_exc_on_acquire`` makes THAT acquire's __aenter__
+    raise — the certain nothing-ran-yet shape from Codex r4.
+    ``release_exc_on_error_exit`` makes THAT acquire's __aexit__ raise
+    while an exception is ALREADY propagating — the release-replaces-
+    cancellation shape from Codex r6."""
+
+    def __init__(
+        self,
+        conn: ScriptedConn,
+        *,
+        release_exc_on_acquire: int | None = None,
+        enter_exc_on_acquire: int | None = None,
+        release_exc_on_error_exit: int | None = None,
+    ) -> None:
+        self._conn = conn
+        self.acquired = 0
+        self.released = 0
+        self._release_exc_on = release_exc_on_acquire
+        self._enter_exc_on = enter_exc_on_acquire
+        self._release_exc_on_error = release_exc_on_error_exit
+
+    def acquire(self) -> Any:
+        pool = self
+
+        class _CM:
+            async def __aenter__(self) -> ScriptedConn:
+                pool.acquired += 1
+                self._n = pool.acquired
+                if pool._enter_exc_on == self._n:
+                    raise RuntimeError("acquire failed")
+                return pool._conn
+
+            async def __aexit__(self, *exc: Any) -> bool:
+                pool.released += 1
+                if pool._release_exc_on == self._n and exc[0] is None:
+                    raise RuntimeError("release failed")
+                if pool._release_exc_on_error == self._n and exc[0] is not None:
+                    raise RuntimeError("release failed during unwind")
+                return False
+
+        return _CM()
+
+
+def _thread(
+    *,
+    last_customer_at: Any = "fresh",
+    handling_version: int = 3,
+) -> dict[str, Any]:
+    if last_customer_at == "fresh":
+        last_customer_at = datetime.now(timezone.utc) - timedelta(minutes=5)
+    return {
+        "thread_id": 7,
+        "counterpart_phone": "628111",
+        "human_handling": False,
+        "last_customer_at": last_customer_at,
+        "handling_version": handling_version,
+    }
+
+
+def _build_response(payload: dict[str, Any]) -> MagicMock:
+    resp = MagicMock()
+    resp.raise_for_status = MagicMock()
+    resp.json = MagicMock(return_value=payload)
+    return resp
+
+
+_GOOD_WIRE = (
+    '{"history":[],"chunks":[{"text":"KITAS costs Rp 12.000.000","score":0.9}],'
+    '"pricing_block":null,"persona_digest":"pd",'
+    '"evidence_inputs":{"abstain":false,"context_length":2,'
+    '"evidence_score":0.85},"thread_epoch":3}'
+)
+
+# NOTE the build response carries NO evidence_inputs copy: the S2 gate's
+# round 2 struck the unsealed top-level field from the contract — every
+# consumer read comes from the sealed wire.
+_GOOD_BUILD = {
+    "package_wire": _GOOD_WIRE,
+    "package_hash": "abc123",
+    "unbuildable": None,
+}
+
+
+def _wire_stubs(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    build: dict[str, Any] | None = None,
+    build_exc: Exception | None = None,
+    offer: OfferResult | None = None,
+    wait: WaitResult | None = None,
+    consume: str | None = "the broker reply",
+    query: str = "what is a KITAS?",
+    finalize: FinalizeResult | None = None,
+) -> SimpleNamespace:
+    """Install fakes; return the namespace of spies."""
+    monkeypatch.setenv("WA_GENERATION_PROVIDER", "codex")
+    # The autoreply kill switch gates the leg BEFORE the provider switch
+    # (Codex r1 finding 2) — armed here so every test past gate 0 runs.
+    monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
+
+    load = AsyncMock(return_value=(query, [{"role": "user", "content": "hi"}]))
+    monkeypatch.setattr(wa_codex_leg, "_load_thread_context", load)
+
+    client = MagicMock()
+    if build_exc is not None:
+        client.post = AsyncMock(side_effect=build_exc)
+    else:
+        client.post = AsyncMock(return_value=_build_response(build or _GOOD_BUILD))
+    monkeypatch.setattr(wa_codex_leg, "_get_rag_client", AsyncMock(return_value=client))
+
+    # Default finalize: SEND with the consumed text unchanged, so the
+    # fall-off/stand-down tests stay focused on their own gate. The tests
+    # that pin the FINALIZATION contract override this.
+    fin = AsyncMock(
+        return_value=finalize
+        if finalize is not None
+        else FinalizeResult(outcome=FinalizeOutcome.SEND, text=consume or "")
+    )
+    monkeypatch.setattr(wa_codex_leg, "finalize_wa_answer", fin)
+
+    stub = SimpleNamespace(
+        # Real enums/dataclasses so identity comparisons are meaningful.
+        OfferOutcome=OfferOutcome,
+        OfferResult=OfferResult,
+        WaitOutcome=WaitOutcome,
+        WaitResult=WaitResult,
+        deadline_seconds=lambda: 15,
+        offer_job=AsyncMock(
+            return_value=offer
+            if offer is not None
+            else OfferResult(OfferOutcome.OFFERED, job_id=uuid.uuid4())
+        ),
+        wait_for_job=AsyncMock(
+            return_value=wait if wait is not None else WaitResult(WaitOutcome.COMPLETED)
+        ),
+        consume_result=AsyncMock(return_value=consume),
+        discard_completion=AsyncMock(return_value=None),
+        record_breaker_result=AsyncMock(return_value=None),
+    )
+    monkeypatch.setattr(wa_codex_leg, "wa_broker", stub)
+    stub.rag_client = client
+    stub.load_thread_context = load
+    stub.finalize = fin
+    return stub
+
+
+async def _run(
+    conn: ScriptedConn | None = None,
+    thread: dict[str, Any] | None = None,
+    pool: _FakePool | None = None,
+) -> wa_codex_leg.CodexLegResult:
+    return await wa_codex_leg.attempt(
+        pool or _FakePool(conn or ScriptedConn()),  # type: ignore[arg-type]
+        outbox_id=42,
+        thread_id=7,
+        message_id=4200,
+        claim_token=uuid.uuid4(),
+        outbox_expected_status="generating",
+        thread=thread or _thread(),
+    )
+
+
+# ── gate 1: the env provider switch ─────────────────────────────────────────
+
+
+def test_provider_gate_reads_env_live(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("WA_GENERATION_PROVIDER", raising=False)
+    assert wa_codex_leg.provider_is_codex() is False
+    monkeypatch.setenv("WA_GENERATION_PROVIDER", "codex")
+    assert wa_codex_leg.provider_is_codex() is True
+    monkeypatch.setenv("WA_GENERATION_PROVIDER", "  CODEX  ")
+    assert wa_codex_leg.provider_is_codex() is True
+    monkeypatch.setenv("WA_GENERATION_PROVIDER", "gemini")
+    assert wa_codex_leg.provider_is_codex() is False
+
+
+# ── gate 2: 24h-window margin ───────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_window_margin_too_thin_falls_off_before_any_io(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A row about to lose its send window never waits on a broker: with
+    2 x T_exec = 30s required and ~20s left, the leg steps aside before
+    the loader or the HTTP client is ever touched."""
+    stubs = _wire_stubs(monkeypatch)
+    nearly_closed = datetime.now(timezone.utc) - (
+        timedelta(hours=24) - timedelta(seconds=20)
+    )
+    result = await _run(thread=_thread(last_customer_at=nearly_closed))
+    assert result.text is None and not result.stand_down
+    assert result.reason == "window_margin"
+    stubs.load_thread_context.assert_not_awaited()
+    stubs.rag_client.post.assert_not_awaited()
+    stubs.offer_job.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_window_never_opened_falls_off(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stubs = _wire_stubs(monkeypatch)
+    result = await _run(thread=_thread(last_customer_at=None))
+    assert result.reason == "window_margin"
+    stubs.offer_job.assert_not_awaited()
+
+
+# ── gate 3: the package build ───────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_no_customer_message_falls_off_before_http(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stubs = _wire_stubs(monkeypatch, query="")
+    result = await _run()
+    assert result.reason == "no_customer_message"
+    stubs.rag_client.post.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_unbuildable_falls_off_offer_never_called(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stubs = _wire_stubs(
+        monkeypatch,
+        build={"package_wire": None, "package_hash": None, "unbuildable": "greeting"},
+    )
+    result = await _run()
+    assert result.reason == "unbuildable:greeting"
+    stubs.offer_job.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_build_http_error_falls_off(monkeypatch: pytest.MonkeyPatch) -> None:
+    stubs = _wire_stubs(monkeypatch, build_exc=RuntimeError("conn refused"))
+    result = await _run()
+    assert result.reason == "package_build_error"
+    stubs.offer_job.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_build_contract_break_missing_wire_falls_off(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """200 with neither the wire nor an unbuildable reason is a contract
+    break — never offered."""
+    stubs = _wire_stubs(
+        monkeypatch,
+        build={"package_wire": None, "package_hash": None, "unbuildable": None},
+    )
+    result = await _run()
+    assert result.reason == "build_contract_break"
+    stubs.offer_job.assert_not_awaited()
+
+
+# ── gate 4: the offer ───────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "outcome",
+    [
+        OfferOutcome.BROKER_ABSENT,
+        OfferOutcome.BREAKER_OPEN,
+        OfferOutcome.QUEUE_FULL,
+        OfferOutcome.ALREADY_SPENT,
+        OfferOutcome.FENCE_LOST,
+    ],
+)
+async def test_every_non_offered_outcome_falls_off_without_waiting(
+    monkeypatch: pytest.MonkeyPatch, outcome: OfferOutcome
+) -> None:
+    """Chaos rows 2/9: every admission refusal is a route decision, not an
+    error — straight to Gemini, no wait, no consume, no fold."""
+    stubs = _wire_stubs(monkeypatch, offer=OfferResult(outcome))
+    result = await _run()
+    assert result.text is None and not result.stand_down
+    assert result.reason == f"offer:{outcome.value}"
+    stubs.wait_for_job.assert_not_awaited()
+    stubs.consume_result.assert_not_awaited()
+    stubs.record_breaker_result.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_offer_passes_wire_hash_and_epoch_verbatim(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The sealed envelope crosses untouched: offer_job receives EXACTLY the
+    builder's wire string and hash — any re-serialization here would break
+    the byte-fidelity contract PR-2 r4/r5 established."""
+    stubs = _wire_stubs(monkeypatch)
+    await _run()
+    kwargs = stubs.offer_job.await_args.kwargs
+    assert kwargs["package"] == _GOOD_BUILD["package_wire"]
+    assert kwargs["package_hash"] == _GOOD_BUILD["package_hash"]
+    assert kwargs["thread_epoch"] == 3
+    assert '"context_length": 2' in kwargs["evidence_inputs"]
+
+
+# ── wait / consume ──────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("wait_result", "expected_prefix"),
+    [
+        (WaitResult(WaitOutcome.FAILED, error_class="exec_timeout"), "wait:failed"),
+        (WaitResult(WaitOutcome.DEADLINE), "wait:deadline"),
+    ],
+)
+async def test_wait_failed_and_deadline_fall_off_without_consume_or_fold(
+    monkeypatch: pytest.MonkeyPatch,
+    wait_result: WaitResult,
+    expected_prefix: str,
+) -> None:
+    """Chaos row 7 + breaker doctrine: FAILED/DEADLINE were folded by their
+    transition owners — the worker adds NO second fold and simply falls off."""
+    stubs = _wire_stubs(monkeypatch, wait=wait_result)
+    result = await _run()
+    assert result.text is None and not result.stand_down
+    assert result.reason.startswith(expected_prefix)
+    stubs.consume_result.assert_not_awaited()
+    stubs.discard_completion.assert_not_awaited()
+    stubs.record_breaker_result.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_completed_with_takeover_drift_discards_and_stands_down(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Spec 2.3: a takeover during exec means the completion must never be
+    sent AND must never trigger a fresh generation. The verdict is ATOMIC
+    (Codex r2 finding 3): fenced outbox abort + discard + ledger sentinel
+    in one transaction, owned by the leg."""
+    stubs = _wire_stubs(monkeypatch)
+    conn = ScriptedConn(
+        fetchrow_results=[
+            {"human_handling": True, "handling_version": 3},
+            {"id": 42},  # atomic stand-down abort: fenced RETURNING
+        ]
+    )
+    result = await _run(conn=conn)
+    assert result.stand_down is True
+    assert result.text is None
+    stubs.discard_completion.assert_awaited_once()
+    assert stubs.discard_completion.await_args.kwargs["reason"] == "takeover"
+    stubs.consume_result.assert_not_awaited()
+    assert conn.sql_contains("UPDATE wa_outbox SET status = 'failed'")
+    assert conn.sql_contains("aborted_human_takeover_codex_drift")
+
+
+@pytest.mark.asyncio
+async def test_completed_with_epoch_drift_discards_and_stands_down(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A takeover+RELEASE during exec leaves human_handling false but moves
+    handling_version — the epoch comparison catches what the boolean
+    cannot."""
+    stubs = _wire_stubs(monkeypatch)
+    conn = ScriptedConn(
+        fetchrow_results=[
+            {"human_handling": False, "handling_version": 4},
+            {"id": 42},  # atomic stand-down abort: fenced RETURNING
+        ]
+    )
+    result = await _run(conn=conn)
+    assert result.stand_down is True
+    stubs.discard_completion.assert_awaited_once()
+    stubs.consume_result.assert_not_awaited()
+    assert conn.sql_contains("aborted_human_takeover_codex_drift")
+
+
+@pytest.mark.asyncio
+async def test_completed_fresh_consumes_and_returns_text(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stubs = _wire_stubs(monkeypatch)
+    conn = ScriptedConn(
+        fetchrow_results=[{"human_handling": False, "handling_version": 3}]
+    )
+    result = await _run(conn=conn)
+    assert result.text == "the broker reply"
+    assert result.stand_down is False
+    stubs.discard_completion.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_consume_lost_falls_off_without_second_fold(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Losing the reaper's dead-consumer race is a fall-off, not a fold —
+    the job's fold already happened at its transition."""
+    stubs = _wire_stubs(monkeypatch, consume=None)
+    conn = ScriptedConn(
+        fetchrow_results=[{"human_handling": False, "handling_version": 3}]
+    )
+    result = await _run(conn=conn)
+    assert result.text is None and not result.stand_down
+    assert result.reason == "consume_lost"
+    stubs.record_breaker_result.assert_not_awaited()
+
+
+# ── the never-raises contract ───────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_attempt_never_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A PRE-OFFER escape from the leg is a fall-off, never an exception
+    into the worker's retry ladder — before the offer nothing durable
+    exists, so Gemini in the same claim is safe."""
+    stubs = _wire_stubs(monkeypatch)
+    stubs.load_thread_context.side_effect = RuntimeError("boom")
+    result = await _run()
+    assert result.text is None and not result.stand_down and not result.fail
+    assert result.reason == "internal_error:RuntimeError"
+
+
+# ── the offer boundary is fail-closed (Codex r3) ────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_offer_exception_is_uncertain_never_a_fall_off(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Once offer_job has begun, an exception's transactional outcome is
+    uncertain — the job may be committed. Falling off would run Gemini in
+    this claim beside a durable job, skipping the drift protocol; the
+    retry ladder resolves it (ALREADY_SPENT or a fresh offer)."""
+    stubs = _wire_stubs(monkeypatch)
+    stubs.offer_job.side_effect = RuntimeError("boom")
+    result = await _run()
+    assert result.fail == "offer_uncertain:RuntimeError"
+    assert result.text is None and not result.stand_down
+    stubs.wait_for_job.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_connection_release_failure_after_offered_is_uncertain(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The Codex r3 shape verbatim: offer_job returns OFFERED, then the
+    pool-acquire block's EXIT raises during connection release. The offer
+    is durable — this must take the retry ladder, never Gemini."""
+    stubs = _wire_stubs(monkeypatch)
+    pool = _FakePool(ScriptedConn(), release_exc_on_acquire=1)
+    result = await _run(pool=pool)
+    assert result.fail == "offer_uncertain:RuntimeError"
+    stubs.offer_job.assert_awaited_once()
+    stubs.wait_for_job.assert_not_awaited()
+    stubs.consume_result.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_offer_acquire_entry_failure_is_a_certain_fall_off(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Codex r4 finding 2: failing to ENTER the acquire means offer_job
+    never ran — nothing durable exists, so burning a retry attempt would
+    be wrong. Certain outcome: fall off to Gemini in the same claim."""
+    stubs = _wire_stubs(monkeypatch)
+    pool = _FakePool(ScriptedConn(), enter_exc_on_acquire=1)
+    result = await _run(pool=pool)
+    assert result.reason == "offer_acquire_error:RuntimeError"
+    assert not result.fail and not result.stand_down
+    stubs.offer_job.assert_not_awaited()
+    stubs.wait_for_job.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_release_failure_after_certain_non_offered_keeps_the_outcome(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Codex r4 finding 2: a known non-OFFERED admission verdict is
+    CERTAIN — a release failure after it must not launder it into
+    offer_uncertain and burn a retry attempt."""
+    stubs = _wire_stubs(
+        monkeypatch, offer=OfferResult(OfferOutcome.BROKER_ABSENT)
+    )
+    pool = _FakePool(ScriptedConn(), release_exc_on_acquire=1)
+    result = await _run(pool=pool)
+    assert result.reason == "offer:broker_absent"
+    assert not result.fail
+    stubs.wait_for_job.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_cancellation_during_offer_releases_the_connection_and_propagates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Codex r5: CancelledError is a BaseException — a manual __aexit__
+    call outside a finally would be SKIPPED by cancellation during
+    offer_job, leaving the connection checked out and hanging
+    pool.close() at shutdown. The real async-with must release exactly
+    once, and the cancellation must PROPAGATE (never be swallowed into a
+    fall-off or fail)."""
+    import asyncio
+
+    stubs = _wire_stubs(monkeypatch)
+    stubs.offer_job.side_effect = asyncio.CancelledError()
+    pool = _FakePool(ScriptedConn())
+    with pytest.raises(asyncio.CancelledError):
+        await _run(pool=pool)
+    assert pool.acquired == 1
+    assert pool.released == 1
+    stubs.wait_for_job.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_release_failure_cannot_replace_a_propagating_cancellation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Codex r6: when the release raises a plain Exception WHILE a
+    CancelledError is propagating out of offer_job, PEP 3134 chaining
+    makes the release error replace the cancellation — an outer
+    except-Exception would swallow it into a fail and the worker would
+    retry instead of stopping. The leg must restore and re-raise the
+    cancellation."""
+    import asyncio
+
+    stubs = _wire_stubs(monkeypatch)
+    stubs.offer_job.side_effect = asyncio.CancelledError()
+    pool = _FakePool(ScriptedConn(), release_exc_on_error_exit=1)
+    with pytest.raises(asyncio.CancelledError):
+        await _run(pool=pool)
+    assert pool.released == 1
+    stubs.wait_for_job.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_offered_without_job_id_is_a_contract_break_fail(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Codex r4 finding 1: OFFERED with no id is a broken transport
+    contract over a possibly-durable job — Gemini beside it could never
+    be waited on, consumed or discarded. Retry ladder, never fall-off."""
+    stubs = _wire_stubs(monkeypatch, offer=OfferResult(OfferOutcome.OFFERED))
+    result = await _run()
+    assert result.fail == "offer_contract_break:missing_job_id"
+    assert result.text is None and not result.stand_down
+    stubs.wait_for_job.assert_not_awaited()
+
+
+def test_stub_namespace_mirrors_the_real_module() -> None:
+    """The stub in _wire_stubs must name only attributes the real wa_broker
+    exports — a fake speaking an invented vocabulary proves nothing (W114)."""
+    for name in (
+        "OfferOutcome",
+        "OfferResult",
+        "WaitOutcome",
+        "WaitResult",
+        "deadline_seconds",
+        "offer_job",
+        "wait_for_job",
+        "consume_result",
+        "discard_completion",
+        "record_breaker_result",
+    ):
+        assert hasattr(wa_broker, name), f"stub names {name}, real module does not"
+
+
+# ── gate 0: the autoreply kill switch (Codex r1 finding 2) ──────────────────
+
+
+@pytest.mark.asyncio
+async def test_autoreply_off_falls_off_before_any_io(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """WA_INBOX_BOT_AUTOREPLY off must silence the codex route exactly as it
+    silences the Gemini one: the leg steps aside with zero IO, the worker
+    proceeds to bot_generate_fn, and ITS first statement raises the
+    BotStandingCondition that owns this switch. Innocence is every other
+    test in this file (the harness arms the flag)."""
+    stubs = _wire_stubs(monkeypatch)
+    monkeypatch.delenv("WA_INBOX_BOT_AUTOREPLY")
+    result = await _run()
+    assert result.text is None and not result.stand_down and not result.fail
+    assert result.reason == "autoreply_disabled"
+    stubs.load_thread_context.assert_not_awaited()
+    stubs.rag_client.post.assert_not_awaited()
+    stubs.offer_job.assert_not_awaited()
+
+
+# ── finalization (Codex r1 finding 1) ───────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_served_text_is_the_finalized_text_not_the_raw_completion(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The consumed completion is NEVER returned raw — what the worker sends
+    is finalize_wa_answer's output (mutation pin: deleting the finalize call
+    would return 'the broker reply' here and go red)."""
+    stubs = _wire_stubs(
+        monkeypatch,
+        finalize=FinalizeResult(outcome=FinalizeOutcome.SEND, text="FINALIZED"),
+    )
+    conn = ScriptedConn(
+        fetchrow_results=[{"human_handling": False, "handling_version": 3}]
+    )
+    result = await _run(conn=conn)
+    assert result.text == "FINALIZED"
+    stubs.finalize.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_finalize_receives_codex_provider_and_the_frozen_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The pipeline runs in its fail-closed codex configuration: provider
+    'codex', secret_scan armed, price sources from the SAME wire the
+    executor answered from, and the abstain verdict inputs from the FROZEN
+    evidence — never recomputed."""
+    stubs = _wire_stubs(monkeypatch)
+    conn = ScriptedConn(
+        fetchrow_results=[{"human_handling": False, "handling_version": 3}]
+    )
+    await _run(conn=conn)
+    kwargs = stubs.finalize.await_args.kwargs
+    assert kwargs["provider"] == "codex"
+    assert kwargs["secret_scan"] is True
+    assert "KITAS costs Rp 12.000.000" in kwargs["price_sources"]
+    assert callable(kwargs["tell_a_human"])
+    assert kwargs["query"] == "what is a KITAS?"
+    assert kwargs["data"]["answer"] == "the broker reply"
+    assert kwargs["data"]["abstain"] is False
+    assert kwargs["data"]["context_length"] == 2
+    assert kwargs["data"]["evidence_score"] == 0.85
+
+
+@pytest.mark.asyncio
+async def test_finalize_receives_env_derived_canary_tokens(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """PR-6 canary wiring (spec 4.3): the values planted in the
+    zantara-codex sandbox arrive as the WA_CODEX_CANARY_TOKENS Fly secret
+    and MUST reach finalize's canary scan — an empty tuple here means the
+    canary half of the tripwire is silently disarmed."""
+    monkeypatch.setenv("WA_CODEX_CANARY_TOKENS", "canary-alpha-1, canary-beta-2 ,")
+    stubs = _wire_stubs(monkeypatch)
+    conn = ScriptedConn(
+        fetchrow_results=[{"human_handling": False, "handling_version": 3}]
+    )
+    await _run(conn=conn)
+    kwargs = stubs.finalize.await_args.kwargs
+    assert kwargs["canary_tokens"] == ("canary-alpha-1", "canary-beta-2")
+
+
+@pytest.mark.asyncio
+async def test_no_canary_env_passes_an_empty_tuple_scan_still_armed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Innocence: unset env is a legal state (pre-provisioning) — empty
+    canaries, but secret_scan stays True (the pattern half never disarms)."""
+    monkeypatch.delenv("WA_CODEX_CANARY_TOKENS", raising=False)
+    stubs = _wire_stubs(monkeypatch)
+    conn = ScriptedConn(
+        fetchrow_results=[{"human_handling": False, "handling_version": 3}]
+    )
+    await _run(conn=conn)
+    kwargs = stubs.finalize.await_args.kwargs
+    assert kwargs["canary_tokens"] == ()
+    assert kwargs["secret_scan"] is True
+
+
+@pytest.mark.asyncio
+async def test_finalize_defect_falls_off_to_gemini(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Spec 2.3 TEXT_DEFECT: a defective codex text fails off so the Gemini
+    leg regenerates and re-enters the same pipeline — never sent, never a
+    stand-down, never the retry ladder."""
+    stubs = _wire_stubs(
+        monkeypatch,
+        finalize=FinalizeResult(
+            outcome=FinalizeOutcome.DEFECT,
+            defect_reason="oversized_output",
+            defect_message="too long",
+        ),
+    )
+    conn = ScriptedConn(
+        fetchrow_results=[{"human_handling": False, "handling_version": 3}]
+    )
+    result = await _run(conn=conn)
+    assert result.text is None and not result.stand_down and not result.fail
+    assert result.reason == "finalize:oversized_output"
+    stubs.record_breaker_result.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_finalize_blank_send_text_falls_off(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Defensive: SEND promises non-empty text; a blank slipping through
+    would otherwise read falsy in the worker and cascade into a Gemini
+    generation AFTER a consumed completion."""
+    stubs = _wire_stubs(
+        monkeypatch,
+        finalize=FinalizeResult(outcome=FinalizeOutcome.SEND, text="   "),
+    )
+    conn = ScriptedConn(
+        fetchrow_results=[{"human_handling": False, "handling_version": 3}]
+    )
+    result = await _run(conn=conn)
+    assert result.text is None and not result.stand_down
+    assert result.reason == "finalize:blank_send_text"
+    assert stubs.finalize.await_count == 1
+
+
+# ── post-completion verification is fail-closed (Codex r1 finding 3) ────────
+
+
+@pytest.mark.asyncio
+async def test_drift_reread_failure_fails_closed_not_off(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A completion exists and drift can no longer be ruled out: a broken
+    drift re-read must take the worker's retry ladder (fail), NEVER an
+    in-claim fall-off that would let Gemini answer from the pre-drift
+    thread snapshot with the drift check silently skipped."""
+    stubs = _wire_stubs(monkeypatch)
+    conn = ScriptedConn(fetchrow_exc=RuntimeError("pg gone"))
+    result = await _run(conn=conn)
+    assert result.fail == "post_completion:RuntimeError"
+    assert result.text is None and not result.stand_down
+    assert result.reason == ""
+    stubs.consume_result.assert_not_awaited()
+    stubs.record_breaker_result.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_discard_failure_after_detected_drift_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Drift WAS detected but the discard broke: neither a stand-down (the
+    completion is still pending-consume) nor a fall-off (fail-open) — the
+    retry ladder re-claims with a fresh thread read. The transaction rolls
+    the fenced abort back with it, so the row is still claimable."""
+    stubs = _wire_stubs(monkeypatch)
+    stubs.discard_completion.side_effect = RuntimeError("pg gone")
+    conn = ScriptedConn(
+        fetchrow_results=[
+            {"human_handling": True, "handling_version": 3},
+            {"id": 42},  # abort fence holds; the discard after it breaks
+        ]
+    )
+    result = await _run(conn=conn)
+    assert result.fail == "post_completion:RuntimeError"
+    assert not result.stand_down
+    stubs.consume_result.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stand_down_fence_lost_rolls_back_and_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The fence goes FIRST inside the atomic abort: when the claim is
+    gone, the raise rolls the whole transaction back — the discard never
+    runs, the still-pending completion is left for the new owner's own
+    drift protocol."""
+    stubs = _wire_stubs(monkeypatch)
+    conn = ScriptedConn(
+        fetchrow_results=[
+            {"human_handling": True, "handling_version": 3},
+            None,  # abort fence returns no row: claim reclaimed elsewhere
+        ]
+    )
+    result = await _run(conn=conn)
+    assert result.fail == "stand_down_fence_lost"
+    assert not result.stand_down
+    stubs.discard_completion.assert_not_awaited()
+    stubs.consume_result.assert_not_awaited()
+
+
+# ── post-offer uncertainty is fail-closed (Codex r2 finding 2) ──────────────
+
+
+@pytest.mark.asyncio
+async def test_wait_exception_after_durable_offer_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """After OFFERED the job is durable: an UNTYPED wait failure means the
+    daemon may have completed and the thread may have drifted while we
+    could not see it — falling off to Gemini in this claim would skip the
+    drift protocol entirely. The typed FAILED/DEADLINE outcomes keep
+    falling off (their transitions leave no pending completion)."""
+    stubs = _wire_stubs(monkeypatch)
+    stubs.wait_for_job.side_effect = RuntimeError("pg gone")
+    result = await _run()
+    assert result.fail == "wait_error:RuntimeError"
+    assert result.text is None and not result.stand_down
+    stubs.consume_result.assert_not_awaited()
+    stubs.discard_completion.assert_not_awaited()
+
+
+# ── evidence comes ONLY from the sealed wire (Codex r2 finding 1) ───────────
+
+
+@pytest.mark.asyncio
+async def test_evidence_is_read_from_the_sealed_wire_never_a_response_copy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Guilt: a build response smuggling a DIVERGENT top-level
+    evidence_inputs (abstain=false) alongside a wire whose SEALED copy says
+    abstain=true must not steer the finalize verdict — the leg parses
+    evidence out of the bytes the hash covers, and the stray key is
+    ignored."""
+    divergent_wire = (
+        '{"history":[],"chunks":[{"text":"c","score":0.1}],'
+        '"pricing_block":null,"persona_digest":"pd",'
+        '"evidence_inputs":{"abstain":true,"context_length":0,'
+        '"evidence_score":0.0},"thread_epoch":3}'
+    )
+    stubs = _wire_stubs(
+        monkeypatch,
+        build={
+            "package_wire": divergent_wire,
+            "package_hash": "abc123",
+            "unbuildable": None,
+            # The stray unsealed copy a divergent/hostile response could carry:
+            "evidence_inputs": {
+                "abstain": False,
+                "context_length": 2,
+                "evidence_score": 0.85,
+            },
+        },
+    )
+    conn = ScriptedConn(
+        fetchrow_results=[{"human_handling": False, "handling_version": 3}]
+    )
+    await _run(conn=conn)
+    data = stubs.finalize.await_args.kwargs["data"]
+    assert data["abstain"] is True
+    assert data["context_length"] == 0
+    assert data["evidence_score"] == 0.0
+    # The offer row's evidence_inputs is the SEALED copy too.
+    assert '"abstain": true' in stubs.offer_job.await_args.kwargs["evidence_inputs"]
+
+
+@pytest.mark.asyncio
+async def test_consume_failure_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stubs = _wire_stubs(monkeypatch)
+    stubs.consume_result.side_effect = RuntimeError("pg gone")
+    conn = ScriptedConn(
+        fetchrow_results=[{"human_handling": False, "handling_version": 3}]
+    )
+    result = await _run(conn=conn)
+    assert result.fail == "post_completion:RuntimeError"
+    assert result.text is None
+    stubs.record_breaker_result.assert_not_awaited()

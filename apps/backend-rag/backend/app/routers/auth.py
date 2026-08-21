@@ -19,6 +19,7 @@ from backend.app.dependencies import get_database_pool
 from backend.app.models import UserProfile
 from backend.app.utils.cookie_auth import clear_auth_cookies, get_jwt_from_cookie, set_auth_cookies
 from backend.app.utils.logging_utils import get_logger, log_error, log_warning
+from backend.app.utils.service_accounts import is_human_team_member
 from backend.services.common.background import spawn
 from backend.services.pii.violation_store import hash_subject
 
@@ -231,9 +232,6 @@ async def get_current_user(
 # PANOPTICON: Auto Clock-In
 # ============================================================================
 
-_CLIENT_ROLES = frozenset({"client"})
-
-
 async def _auto_clockin_if_needed(
     pool: asyncpg.Pool,
     user_id: str,
@@ -241,7 +239,11 @@ async def _auto_clockin_if_needed(
     role: str,
 ) -> bool:
     """Auto-clock-in team member on first login of the day. Never raises."""
-    if role in _CLIENT_ROLES or not email.endswith("@balizero.com"):
+    # Clients were already excluded here; service accounts are excluded for the
+    # same reason and were not, because they had no role of their own. The
+    # login-healthcheck probe signs in every 5 minutes on a @balizero.com
+    # address, so the email guard below cannot see it — only the role can.
+    if not is_human_team_member(role) or not email.endswith("@balizero.com"):
         return False
     try:
         async with pool.acquire() as conn:
@@ -523,7 +525,16 @@ async def login(
             )
 
             # PANOPTICON: Auto clock-in on team login
-            if user["role"] != "client":
+            # Stale caller-side gate removed: `!= "client"` duplicated, less
+            # correctly, the guard `_auto_clockin_if_needed` already applies as
+            # its own first statement (`is_human_team_member`, see there). Under
+            # the old gate a service-role login (e.g. the login-healthcheck
+            # probe, role='monitoring') still spawned a coroutine that the
+            # callee immediately rejected before any write — ~288/day of
+            # pointless spawns, never an attendance record. This makes the
+            # caller agree with the callee instead of relying on the callee to
+            # catch what the caller let through.
+            if is_human_team_member(user["role"]):
                 spawn(
                     _auto_clockin_if_needed(db_pool, str(user["id"]), user["email"], user["role"]),
                     name=f"auto-clockin:{user['email']}",

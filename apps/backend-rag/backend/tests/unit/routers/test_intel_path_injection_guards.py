@@ -15,14 +15,16 @@ Honest severity, per sink, measured rather than assumed:
   all request-controlled. Probed anonymously against prod it answers 401 (the global
   middleware gates ``/api/...`` before routing), so the reachable population is
   authenticated team members, not the internet.
-* ``telegram_webhook.handle_intel_callback`` — no auth dependency of its own, and
-  ``callback_data`` passes through no URL decoder. ``POST /webhook/telegram`` answers
-  503 today because ``get_channel_router`` fails to resolve — an accidental barrier
-  standing in front of it, not a designed one.
 * ``intel_scraper._publish_staging_item`` — its write is NOT reachable with a malformed
   id today, because ``load_staging_item`` 7 lines above returns None for one and the
   function 404s. That defense is remote and is a side effect of a read's contract; the
   guard makes it local. Said plainly so nobody reads this test as "a live hole closed".
+
+``telegram_webhook.handle_intel_callback`` — the third sink this file originally
+covered — was removed 2026-08-18 along with the rest of ``telegram_webhook.py``
+(Zero ruled REMOVE): the router it lived in was structurally dead by design, so the
+sink was never reachable. See ``.claude/skills/modus/PENDING-ARMS.md`` (closed
+lines) for the measurement.
 """
 
 import ast
@@ -35,7 +37,6 @@ from fastapi import HTTPException
 
 from backend.app.routers import intel as intel_mod
 from backend.app.routers import intel_scraper as scraper_mod
-from backend.app.routers import telegram_webhook as webhook_mod
 from backend.services.intel.intel_staging_service import assert_valid_item_id as canonical
 
 # One traversal payload, used everywhere, so a sink that "passes" cannot be passing
@@ -91,12 +92,12 @@ def _set_settings_attr(monkeypatch, name: str, value: str) -> None:
     the first draft of this file behaved. Patch whichever object is actually there, and
     assert the binding TOOK rather than assuming setattr means read-back (W110).
     """
-    target = webhook_mod.settings
+    target = intel_mod.settings
     if isinstance(getattr(type(target), name, None), property):
         monkeypatch.setattr(type(target), name, property(lambda _self: value), raising=True)
     else:
         monkeypatch.setattr(target, name, value, raising=False)
-    assert getattr(webhook_mod.settings, name) == value, (
+    assert getattr(intel_mod.settings, name) == value, (
         f"redirect of {name} did not take — the code under test still reads the old value"
     )
 
@@ -138,8 +139,8 @@ class TestEveryStagingSinkBindsTheSameValidator:
 
     @pytest.mark.parametrize(
         "module",
-        [intel_mod, scraper_mod, webhook_mod],
-        ids=["intel", "intel_scraper", "telegram_webhook"],
+        [intel_mod, scraper_mod],
+        ids=["intel", "intel_scraper"],
     )
     def test_router_imports_the_shared_validator_object(self, module) -> None:
         assert module.assert_valid_item_id is canonical
@@ -224,67 +225,6 @@ class TestCoverUploadRoute:
         with pytest.raises(HTTPException) as exc:
             await intel_mod.upload_cover_image(type="news", item_id=LEGIT, request=body)
         assert exc.value.status_code == 404
-
-
-class TestTelegramIntelCallback:
-    """`handle_intel_callback` — telegram_webhook.py, the least-protected sink."""
-
-    @staticmethod
-    def _callback(item_id: str) -> dict:
-        return {
-            "id": "cb-1",
-            "data": f"intel:approve:news:{item_id}",
-            "from": {"id": 7, "first_name": "Probe"},
-            "message": {"chat": {"id": 1}, "message_id": 2},
-        }
-
-    @pytest.mark.asyncio
-    async def test_guilt_a_traversal_id_never_reaches_the_status_file(
-        self, tmp_path, monkeypatch
-    ) -> None:
-        _redirect_pending_root(monkeypatch, tmp_path)
-        answered: list = []
-        monkeypatch.setattr(
-            webhook_mod.telegram_bot,
-            "answer_callback_query",
-            lambda *a, **k: answered.append((a, k)),
-        )
-        item_id, target = _escape_target(tmp_path, tmp_path, "zz-webhook-never-exists", ".json")
-
-        handled = await webhook_mod.handle_intel_callback(self._callback(item_id))
-
-        assert handled is False
-        assert not target.exists(), f"the guard let a write escape to {target}"
-        assert answered == []
-
-    @pytest.mark.asyncio
-    async def test_innocence_a_legitimate_id_reaches_the_lookup(
-        self, tmp_path, monkeypatch
-    ) -> None:
-        """
-        A well-formed id for an absent item must still be HANDLED (True) and get the
-        "not found or already processed" answer — that path is downstream of the guard.
-        """
-        _redirect_pending_root(monkeypatch, tmp_path)
-        answered: list = []
-
-        async def _answer(callback_id, text=None, show_alert=False):
-            answered.append(text)
-
-        monkeypatch.setattr(webhook_mod.telegram_bot, "answer_callback_query", _answer)
-
-        handled = await webhook_mod.handle_intel_callback(self._callback(LEGIT))
-
-        assert handled is True
-        assert answered and "not found" in answered[0].lower()
-
-    @pytest.mark.asyncio
-    async def test_innocence_a_non_intel_callback_is_still_declined_the_same_way(
-        self, tmp_path, monkeypatch
-    ) -> None:
-        """The new `return False` must not become the only way to leave this function."""
-        _redirect_pending_root(monkeypatch, tmp_path)
-        assert await webhook_mod.handle_intel_callback({"id": "x", "data": "other:thing"}) is False
 
 
 class TestPublishStagingItem:

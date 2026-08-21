@@ -8,7 +8,7 @@ import re
 import subprocess
 import sys
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -620,8 +620,16 @@ def _init_git_repo(repo: Path, backdate_days: int = 0) -> dict:
         "GIT_COMMITTER_EMAIL": "t@t",
     }
     if backdate_days:
+        # Explicit "+00:00": GIT_AUTHOR_DATE/GIT_COMMITTER_DATE with no offset
+        # is parsed by git in the LOCAL timezone, not UTC — even though this
+        # string was built from time.gmtime(). Measured on this machine
+        # (WITA, UTC+8): the naive string committed 8h EARLIER than intended
+        # (git's own %ct was 28800s less than the real target epoch). Most
+        # callers tolerate that (day-granular thresholds with >1-day margin);
+        # the one that doesn't is the flake this fixes (see the UTC-vs-local
+        # comparison fix at the call site below).
         iso = time.strftime(
-            "%Y-%m-%dT%H:%M:%S", time.gmtime(time.time() - backdate_days * 86400)
+            "%Y-%m-%dT%H:%M:%S+00:00", time.gmtime(time.time() - backdate_days * 86400)
         )
         env["GIT_AUTHOR_DATE"] = iso
         env["GIT_COMMITTER_DATE"] = iso
@@ -2262,6 +2270,14 @@ def test_trusted_ref_tip_date_treats_failed_fetch_as_unresolved(tmp_path):
 def test_trusted_ref_tip_date_succeeds_when_fetch_succeeds(tmp_path):
     """INNOCENCE — the ordinary path (working `origin`, fetch succeeds)
     must still resolve to a real date, unaffected by the guilt fix above.
+
+    `_trusted_ref_tip_date` reads `%ct` and converts it via
+    `datetime.fromtimestamp(ts, tz=timezone.utc).date()` — i.e. it returns a
+    UTC date. Comparing that against LOCAL `date.today()` was the flake: on a
+    non-UTC machine (this fleet runs WITA, UTC+8), local and UTC "today"
+    disagree for the ~8h window straddling local midnight, and the assertion
+    failed with no code defect at all — reproduced live 2026-08-16 UTC vs
+    2026-08-17 local. Compare in the SAME frame the function under test uses.
     """
     sys.path.insert(0, str(AUDIT_SCRIPT.parent))
     import docs_audit  # noqa: E402
@@ -2269,7 +2285,7 @@ def test_trusted_ref_tip_date_succeeds_when_fetch_succeeds(tmp_path):
     repo = _make_git_repo_with_old_doc(tmp_path, backdate_days=200)
     result = docs_audit._trusted_ref_tip_date(repo, "origin/main")
     assert result is not None, "a healthy origin + successful fetch must resolve a tip date"
-    assert result == date.today() - timedelta(days=200)
+    assert result == datetime.now(timezone.utc).date() - timedelta(days=200)
 
 
 # ---------------------------------------------------------------------------

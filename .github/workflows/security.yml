@@ -69,8 +69,246 @@ concurrency:
   cancel-in-progress: ${{ (github.ref != 'refs/heads/main') && github.event_name != 'merge_group' }}
 
 jobs:
+  # Path-aware gating (2026-08-20). Before this job existed, all 8 jobs below
+  # ran on EVERY pull_request and EVERY merge_group entry, unconditionally —
+  # measured live over a 70-minute window at 424.7 runner-minutes total,
+  # 364 min/h, ~39.84 min/run, and merge_group alone was 47.5% of all minutes
+  # this workflow burns. A PR touching only a .md file paid the full bill.
+  #
+  # This job does NOT invent a second classifier. It reuses the exact
+  # `scripts/ci/change_map.py` domain model + `scripts/ci/hotzone_changed_files.sh`
+  # enumerator that tests.yml's own `changes` job (promoted to enforcing
+  # 2026-08-14, PR #4181) already runs in production — same root-of-trust
+  # extraction, same corpus self-test, same manual override, same fail-open
+  # polarity on every layer. GitHub Actions `needs.*.outputs` are scoped to a
+  # single workflow file, so a literal second `changes` job is unavoidable —
+  # but the JUDGING LOGIC (change_map.py) is the identical file, not a fork of it.
+  #
+  # What differs from tests.yml's job is only the DERIVED FLAGS: six test
+  # suites there, seven security scanners here, each with its own trigger
+  # rationale (see the per-job `if:` comments below). detect-secrets is
+  # deliberately absent from every flag here — see its own job for why.
+  changes:
+    name: Change map (security)
+    if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      map: ${{ steps.classify.outputs.map }}
+      # Fail-open defaults (superscar #2 "esiste ≠ armato"): any failure of
+      # the override probe, the classifier corpus, the trusted-extraction
+      # step, the enumerator, or this step's own JSON parsing leaves
+      # steps.classify.outputs.* unset, and every `|| 'true'` below then
+      # makes the corresponding scanner run. There is no path from a broken
+      # classifier to a silently-skipped scan.
+      run_all: ${{ steps.classify.outputs.run_all || 'true' }}
+      run_codeql_python: ${{ steps.classify.outputs.run_codeql_python || 'true' }}
+      run_codeql_js: ${{ steps.classify.outputs.run_codeql_js || 'true' }}
+      run_bandit: ${{ steps.classify.outputs.run_bandit || 'true' }}
+      run_snyk_python: ${{ steps.classify.outputs.run_snyk_python || 'true' }}
+      run_safety: ${{ steps.classify.outputs.run_safety || 'true' }}
+      run_snyk_docker: ${{ steps.classify.outputs.run_snyk_docker || 'true' }}
+      run_snyk_node: ${{ steps.classify.outputs.run_snyk_node || 'true' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # Same discretionary manual lever as tests.yml (Merge-OS round-2 Cure
+      # #1) — ONE operator switch forces the full suite on BOTH workflows
+      # during an incident, rather than two separate variables to remember.
+      # Truth table lives in scripts/ci/ring_gating_override.sh: only the
+      # exact literal "true" activates; every other value (unset, "false",
+      # typo) leaves the classifier deciding, i.e. today's behavior.
+      - name: Manual override — force full suite (Merge-OS round-2 Cure #1)
+        id: override
+        env:
+          MERGEOS_RING_GATING_DISABLED: ${{ vars.MERGEOS_RING_GATING_DISABLED }}
+        run: bash scripts/ci/ring_gating_override.sh >> "$GITHUB_OUTPUT"
+
+      - name: Self-test ring-gating override (guilt + innocence)
+        run: |
+          python3 -m pip install --quiet pyyaml
+          python3 scripts/ci/test_ring_gating_override.py
+
+      # ROOT OF TRUST — identical rationale to tests.yml's own extraction
+      # step: a PR that breaks something CodeQL/Bandit/Snyk would have
+      # caught could, in the same commit, edit change_map.py (or
+      # security_gate_flags.py — see its own module docstring) to
+      # misclassify itself away from the scanner that would have caught it.
+      # Extract all five classifier files from BASE_SHA (main's tip for a
+      # PR, the queue's base for merge_group) and judge with ONLY those
+      # copies — a PR can propose a change to the classifier, but that
+      # change judges every OTHER PR first and only starts judging PRs once
+      # merged. `.github/` and `scripts/ci/` are already PREFIX_RULES
+      # entries mapped to security_sensitive, so a PR editing the classifier
+      # is itself classified run-everything by the OLD copy doing the judging.
+      - name: Extract trusted classifier (base ref)
+        id: extract
+        if: steps.override.outputs.active != 'true'
+        env:
+          BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+        run: |
+          set -uo pipefail
+          CLASSIFIER_DIR="$RUNNER_TEMP/trusted-classifier"
+          mkdir -p "$CLASSIFIER_DIR"
+          OK=true
+          for f in scripts/ci/change_map.py scripts/ci/test_change_map.py scripts/ci/hotzone_changed_files.sh scripts/ci/security_gate_flags.py scripts/ci/test_security_gate_flags.py; do
+            if ! git show "${BASE_SHA}:${f}" > "$CLASSIFIER_DIR/$(basename "$f")" 2>/dev/null; then
+              echo "::warning::could not extract $f from base ref $BASE_SHA — treating classifier as untrusted for this run"
+              OK=false
+            fi
+          done
+          chmod +x "$CLASSIFIER_DIR/hotzone_changed_files.sh" 2>/dev/null || true
+          echo "dir=$CLASSIFIER_DIR" >> "$GITHUB_OUTPUT"
+          echo "ok=$OK" >> "$GITHUB_OUTPUT"
+
+      - name: Verify change-map guilt and innocence corpus
+        id: classifier-tests
+        if: steps.override.outputs.active != 'true'
+        continue-on-error: true
+        env:
+          CLASSIFIER_DIR: ${{ steps.extract.outputs.dir }}
+          EXTRACT_OK: ${{ steps.extract.outputs.ok }}
+        run: |
+          set -uo pipefail
+          if [ "$EXTRACT_OK" != "true" ]; then
+            echo "::error::base-ref classifier extraction failed — refusing to trust a corpus that didn't run"
+            exit 1
+          fi
+          python3 "$CLASSIFIER_DIR/test_change_map.py"
+          python3 "$CLASSIFIER_DIR/test_security_gate_flags.py"
+
+      # merge_group base/head SHAs — same established pattern as
+      # hot-zone-pr-gate.yml / tests.yml / harness-floor.yml.
+      - name: Enumerate and classify this PR's files
+        id: classify
+        if: steps.override.outputs.active != 'true'
+        continue-on-error: true
+        env:
+          BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
+          CLASSIFIER_TEST_OUTCOME: ${{ steps.classifier-tests.outcome }}
+          CLASSIFIER_DIR: ${{ steps.extract.outputs.dir }}
+          EXTRACT_OK: ${{ steps.extract.outputs.ok }}
+        run: |
+          set -uo pipefail
+          CHANGED_FILE="$RUNNER_TEMP/change-map-changed-files.txt"
+
+          if [ "$EXTRACT_OK" != "true" ] || [ "$CLASSIFIER_TEST_OUTCOME" != "success" ]; then
+            echo "::warning::classifier untrusted or corpus failed; recommendation defaults to all scanners"
+            printf '%s\n' '__CHANGE_MAP_ENUMERATION_ERROR__' > "$CHANGED_FILE"
+          elif ! bash "$CLASSIFIER_DIR/hotzone_changed_files.sh" \
+            "$BASE_SHA" "$HEAD_SHA" "$PR_NUMBER" > "$CHANGED_FILE"; then
+            echo "::warning::changed-file enumeration failed; recommendation defaults to all scanners"
+            printf '%s\n' '__CHANGE_MAP_ENUMERATION_ERROR__' > "$CHANGED_FILE"
+          fi
+
+          if ! MAP_JSON="$(python3 "$CLASSIFIER_DIR/change_map.py" < "$CHANGED_FILE")"; then
+            echo "::warning::change_map.py exited non-zero; forcing conservative fallback"
+            MAP_JSON='{"schema_version":1,"mode":"enforcing","reason":"classifier_runtime_failure","changed_file_count":0,"domains":{},"unknown_paths":[],"run_all":true,"suggested_jobs":[],"would_skip":[]}'
+          fi
+          RUN_ALL="$(MAP_JSON="$MAP_JSON" python3 -c 'import json, os; print(str(json.loads(os.environ["MAP_JSON"])["run_all"]).lower())')"
+          echo "map=$MAP_JSON" >> "$GITHUB_OUTPUT"
+          echo "run_all=$RUN_ALL" >> "$GITHUB_OUTPUT"
+
+          # Per-scanner flags, delegated to security_gate_flags.py (the SAME
+          # trusted, BASE_SHA-extracted copy as change_map.py above — root
+          # of trust applies to the flag math too, not just the domain
+          # classification: a PR editing this file's rules directly, leaving
+          # change_map.py untouched, is a distinct bypass this extraction
+          # also closes). See that module for the per-scanner rationale
+          # (docstring + FLAG_DOMAINS table) and
+          # scripts/ci/test_security_gate_flags.py for its guilt/innocence
+          # corpus (run above, alongside test_change_map.py). It also owns
+          # the JS-manifest predicate that closes a verified gap in
+          # change_map.py's own JS-manifest rule (EXACT_RULES matches only
+          # the literal root-level "package.json"/"package-lock.json" —
+          # apps/wa-mirror/package-lock.json, this repo's own nested
+          # lockfile outside the root npm-workspaces tree, falls through to
+          # PREFIX_RULES and is tagged only "wa_mirror", never
+          # "security_sensitive"). Deliberately NOT fixed inside
+          # change_map.py itself: that file is under active review in
+          # another PR the same day (#4441, adding a fleet_ops domain to
+          # unrelated scripts/ subdirectories) — flagged as a worthwhile
+          # upstream follow-up, not fixed here, to avoid two PRs touching
+          # the same CODEOWNERS-tier1 file in parallel.
+          JOB_FLAGS="$(MAP_JSON="$MAP_JSON" python3 "$CLASSIFIER_DIR/security_gate_flags.py" < "$CHANGED_FILE")"
+          echo "$JOB_FLAGS" >> "$GITHUB_OUTPUT"
+          echo "::notice::security change-map: $MAP_JSON"
+          echo "::notice::security gate flags: $JOB_FLAGS"
+
+      - name: Publish change-map decision
+        if: always()
+        env:
+          MAP_JSON: ${{ steps.classify.outputs.map }}
+          CLASSIFIER_TEST_OUTCOME: ${{ steps.classifier-tests.outcome }}
+          CLASSIFY_OUTCOME: ${{ steps.classify.outcome }}
+          OVERRIDE_ACTIVE: ${{ steps.override.outputs.active }}
+          JS_MANIFEST_TOUCHED: ${{ steps.classify.outputs.js_manifest_touched }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+
+          raw = os.environ.get("MAP_JSON", "")
+          if raw:
+              result = json.loads(raw)
+          elif os.environ.get("OVERRIDE_ACTIVE") == "true":
+              result = {"reason": "manual_override_disabled", "run_all": True, "unknown_paths": []}
+          else:
+              result = {"reason": "classifier_runtime_failure", "run_all": True, "unknown_paths": []}
+
+          lines = [
+              "## Security change map",
+              "",
+              f"- Classifier corpus: `{os.environ['CLASSIFIER_TEST_OUTCOME']}`",
+              f"- Classification step: `{os.environ['CLASSIFY_OUTCOME']}`",
+              f"- Conservative fallback (run everything): `{str(result['run_all']).lower()}`",
+              f"- Reason: `{result['reason']}`",
+              f"- JS manifest touched (any path): `{os.environ.get('JS_MANIFEST_TOUCHED', 'unknown')}`",
+          ]
+          if result.get("unknown_paths"):
+              lines.extend(
+                  ["", "Unclassified paths (therefore all scanners run):", ""]
+                  + [f"- `{path}`" for path in result["unknown_paths"]]
+              )
+          lines.append("")
+          lines.append(
+              "detect-secrets always runs regardless of this map — see its own job comment."
+          )
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+              summary.write("\n".join(lines) + "\n")
+          PY
+
   snyk-python:
     name: Snyk Python Security
+    needs: [changes]
+    # Path-aware skip (2026-08-20) — see the `changes` job comment for the
+    # full rationale. `!cancelled()` overrides the inherited skip from
+    # `changes` being pull_request/merge_group-only; the event-name branch
+    # makes this job unconditional on push/schedule/workflow_dispatch;
+    # `needs.changes.result != 'success'` covers a stale published output
+    # surviving a later failure in that job; `!= 'false'` is fail-open on
+    # every other path (unset/malformed output never skips a scan).
+    # Snyk-python scans apps/backend-rag/requirements.txt only — gated on
+    # security_sensitive (which already covers any requirements*.txt /
+    # pyproject.toml / uv.lock change, globally, via change_map.py's
+    # basename rule), not on backend_python: a code-only change cannot
+    # alter the declared dependency set this scanner evaluates.
+    if: >-
+      !cancelled() &&
+      (
+        (github.event_name != 'pull_request' && github.event_name != 'merge_group') ||
+        needs.changes.result != 'success' ||
+        needs.changes.outputs.run_snyk_python != 'false'
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # Blocking gate — HIGH/CRITICAL CVEs fail the job unless the finding is
@@ -93,7 +331,7 @@ jobs:
           python scripts/check_cve_exceptions.py
 
       - name: Run Snyk (Python, JSON for exception filtering)
-        uses: snyk/actions/python@master
+        uses: snyk/actions/python@12140f4059e244892ae643824a95459a102120dd # master
         continue-on-error: true # we make the decision in the next step
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
@@ -113,7 +351,7 @@ jobs:
           CVE_EXCEPTIONS_PATH: .security/exceptions.yaml
 
       - name: Upload Snyk results
-        uses: github/codeql-action/upload-sarif@v4.37.6
+        uses: github/codeql-action/upload-sarif@v4.37.7
         if: always() && hashFiles('snyk.sarif') != ''
         continue-on-error: true
         with:
@@ -121,6 +359,21 @@ jobs:
 
   snyk-node:
     name: Snyk Node.js Security
+    needs: [changes]
+    # Path-aware skip — see snyk-python's comment for the shared rationale.
+    # Gated on the JS-manifest predicate (any package.json/package-lock.json
+    # anywhere in the tree, not just the root ones change_map.py's
+    # EXACT_RULES literally matches — closes a verified nested-lockfile gap,
+    # e.g. apps/wa-mirror/package-lock.json, its own lockfile outside the
+    # root npm-workspaces tree this job's `npm ci` installs) in addition to
+    # security_sensitive.
+    if: >-
+      !cancelled() &&
+      (
+        (github.event_name != 'pull_request' && github.event_name != 'merge_group') ||
+        needs.changes.result != 'success' ||
+        needs.changes.outputs.run_snyk_node != 'false'
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # Blocking gate — see snyk-python. Exceptions honoured via
@@ -165,7 +418,7 @@ jobs:
           CVE_EXCEPTIONS_PATH: .security/exceptions.yaml
 
       - name: Upload Snyk results
-        uses: github/codeql-action/upload-sarif@v4.37.6
+        uses: github/codeql-action/upload-sarif@v4.37.7
         if: always() && hashFiles('snyk.sarif') != ''
         continue-on-error: true
         with:
@@ -173,6 +426,19 @@ jobs:
 
   snyk-docker:
     name: Snyk Docker Security
+    needs: [changes]
+    # Path-aware skip — see snyk-python's comment for the shared rationale.
+    # backend_python is included here (unlike snyk-python/safety) because
+    # this job also validates that the production Dockerfile still BUILDS
+    # (see the job's own comment below) — application code, not just the
+    # Dockerfile or requirements.lock.txt, can break that build.
+    if: >-
+      !cancelled() &&
+      (
+        (github.event_name != 'pull_request' && github.event_name != 'merge_group') ||
+        needs.changes.result != 'success' ||
+        needs.changes.outputs.run_snyk_docker != 'false'
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 20
     # This job does TWO different things and they deserve different verdicts:
@@ -211,7 +477,7 @@ jobs:
             -f apps/backend-rag/Dockerfile .
 
       - name: Run Snyk (Docker)
-        uses: snyk/actions/docker@master
+        uses: snyk/actions/docker@12140f4059e244892ae643824a95459a102120dd # master
         continue-on-error: true # vulnerability findings stay advisory (see job comment)
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
@@ -226,12 +492,39 @@ jobs:
       # failures at 19:57, 19:58, 20:06, 20:20 and 20:24, recovering by 20:42 — broke
       # the production image build repeatedly without anyone being told.
       #
-      # Restricted to pushes on main on purpose: on a pull request the author already
-      # has the signal, and duplicating it there would only train people to ignore the
-      # channel. `secrets.*` is available on main pushes.
-      - name: Telegram alert — production image failed to BUILD on main
-        if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+      # Restricted to non-PR triggers on purpose: on a pull request the author
+      # already has the signal, and duplicating it there would only train people
+      # to ignore the channel. That was originally written as `event_name=='push'
+      # && ref=='refs/heads/main'`, which commit 4e2d8367e (#4218, 2026-08-16)
+      # orphaned: narrowing `on.push.branches` from `[main, develop]` to
+      # `[develop]` means GitHub's own branch filter now guarantees
+      # `event_name=='push' ⟹ ref=='refs/heads/develop'` — the old conjunct
+      # against `refs/heads/main` became a standing contradiction, so this step
+      # could never fire on a push, and under `schedule` (the daily backstop
+      # #4218 named as the intended replacement) `event_name` is never `'push'`
+      # either. The alarm was armed and mute. Proven live: the 2026-08-20
+      # unbuildable image (upstream `claude-code@2.1.237` published without its
+      # `linux-x64` tarball) alarmed nobody. The condition below now names
+      # exactly the two triggers this `on:` block can actually deliver a
+      # failure() run through — a push to `develop`, or the daily `schedule`
+      # run (which always executes against the default branch, i.e. main).
+      # `secrets.*` is available on both: `schedule` only ever fires on the
+      # default branch, never a fork PR context, and this repo's other
+      # scheduled workflows (e.g. cron-cert-monitor.yml) already read
+      # `secrets.TELEGRAM_BOT_TOKEN`/`secrets.TELEGRAM_OWNER_CHAT_ID` live under
+      # `on: schedule:` with no special-casing.
+      # The alert NAMES the ref it fired on rather than asserting one. The step
+      # used to be titled "... on main" and say so in its body — true while the
+      # only trigger was a push to main, and a lie the moment the condition
+      # above gained the `develop` push and the scheduled run. An alert that
+      # inventories mutable state mislead exactly the person reading it at
+      # 07:30 (W114/W106), and it is the same belief that produced the
+      # condition, so the two must not be able to disagree. `github.ref_name`
+      # is `develop` on the push and the default branch on the scheduled run.
+      - name: Telegram alert — production image failed to BUILD
+        if: failure() && (github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/develop'))
         env:
+          REF: ${{ github.ref_name }}
           SHA: ${{ github.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -249,7 +542,7 @@ jobs:
           # column 0 CLOSES the YAML scalar, and the file stops being valid
           # YAML — caught by actionlint before this ever ran.
           TEXT="$(printf '%s\n' \
-            "🐳 <b>nuzantara-rag image failed to BUILD on main</b>" \
+            "🐳 <b>nuzantara-rag image failed to BUILD on ${REF}</b>" \
             "" \
             "<code>${SHA:0:8}</code>" \
             "" \
@@ -260,6 +553,47 @@ jobs:
 
   codeql:
     name: CodeQL Analysis
+    needs: [changes]
+    # Path-aware skip — ONE LAYER ONLY, and the missing second layer is the
+    # whole point. THERE IS DELIBERATELY NO JOB-LEVEL `if:` HERE. Do not add
+    # one back.
+    #
+    # An earlier version of this job carried a job-level `if:` whose comment
+    # asserted that skipping the job would still deliver "both required
+    # contexts". That assertion was never measured and is FALSE: when a
+    # MATRIX job is skipped at job level, GitHub emits ONE check run named
+    # for the bare job (`CodeQL Analysis`) — it does NOT expand the matrix,
+    # so `CodeQL Analysis (python)` and `CodeQL Analysis (javascript)`, both
+    # of which branch protection lists as required, never report at all.
+    # A required context that never reports stays pending forever, so the PR
+    # reads BLOCKED with every check green and nothing to point at.
+    # Measured live on PR #4452 (a docs-only change): 41 pass, 12 skipping,
+    # 0 fail, 0 cancelled, 0 review required — and permanently unmergeable,
+    # with `CodeQL Analysis: skipped` in the run and the two suffixed
+    # contexts absent from `gh pr checks` entirely. Any PR touching neither
+    # Python nor JavaScript hit this; PRs that touch code did not, which is
+    # why four of them merged in the same hour and hid it.
+    #
+    # The cost saving lives entirely in the per-leg step `if:` below (where
+    # `matrix.*` IS legal — actionlint refuses it in a job-level `if:`:
+    # "context matrix is not allowed here"). That layer skips the three
+    # EXPENSIVE steps — Initialize/Autobuild/Analyze, ~14.6min for python
+    # alone — for whichever language this run didn't need, while the leg
+    # still reports a clean `success` and satisfies its required context.
+    # What removing the job-level `if:` costs is only the runner spin-up +
+    # checkout for both legs on the ~38% of PRs that need neither language.
+    # That is the correct trade: seconds of runner time against a class of
+    # PR that can never merge. Domains verified live by extension count
+    # (2026-08-20): apps/evaluator, packages/cell-core, apps/nuzantara-mcp
+    # are Python; packages/core is TSX/TS.
+    #
+    # The `if:` that REMAINS is not a path filter and must stay: without any
+    # job-level `if:`, a failed or skipped `changes` job would make this job
+    # skip through `needs:` — the identical bug by another door. `!cancelled()`
+    # runs this job even when `changes` did not succeed, which is what the
+    # fail-open `needs.changes.result != 'success'` term in RUN_THIS_LANGUAGE
+    # below is written to handle (unknown domains → analyse both languages).
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -272,27 +606,53 @@ jobs:
       matrix:
         language: ["python", "javascript"]
 
+    # Per-leg gate (Layer 2 — see job `if:` comment above). Same fail-open
+    # polarity as every other gate in this workflow: only the exact literal
+    # 'false' skips; unset/malformed/any-other-value runs.
+    env:
+      RUN_THIS_LANGUAGE: >-
+        ${{
+          (github.event_name != 'pull_request' && github.event_name != 'merge_group') ||
+          needs.changes.result != 'success' ||
+          (matrix.language == 'python' && needs.changes.outputs.run_codeql_python != 'false') ||
+          (matrix.language == 'javascript' && needs.changes.outputs.run_codeql_js != 'false')
+        }}
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4.37.6
+        if: env.RUN_THIS_LANGUAGE == 'true'
+        uses: github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
         with:
           languages: ${{ matrix.language }}
           queries: security-extended,security-and-quality
           config-file: ./.github/codeql-config.yml
 
       - name: Autobuild
-        uses: github/codeql-action/autobuild@v4.37.6
+        if: env.RUN_THIS_LANGUAGE == 'true'
+        uses: github/codeql-action/autobuild@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4.37.6
+        if: env.RUN_THIS_LANGUAGE == 'true'
+        uses: github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
         with:
           category: "/language:${{matrix.language}}"
 
   bandit:
     name: Bandit Python Security
+    needs: [changes]
+    # Path-aware skip — see snyk-python's comment for the shared rationale.
+    # Bandit's scan target is fixed to apps/backend-rag/backend/ only, so
+    # backend_python (or security_sensitive) is the correct gate.
+    if: >-
+      !cancelled() &&
+      (
+        (github.event_name != 'pull_request' && github.event_name != 'merge_group') ||
+        needs.changes.result != 'success' ||
+        needs.changes.outputs.run_bandit != 'false'
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # Blocking gate (A1 fix 2026-06-13): this job is in the merge-blocking
@@ -361,6 +721,16 @@ jobs:
 
   safety:
     name: Safety Dependency Check
+    needs: [changes]
+    # Path-aware skip — see snyk-python's comment for the shared rationale
+    # (Safety scans apps/backend-rag/requirements.txt only; same gate).
+    if: >-
+      !cancelled() &&
+      (
+        (github.event_name != 'pull_request' && github.event_name != 'merge_group') ||
+        needs.changes.result != 'success' ||
+        needs.changes.outputs.run_safety != 'false'
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # Blocking gate — HIGH/CRITICAL CVEs fail the job unless the finding is
@@ -405,6 +775,26 @@ jobs:
 
   detect-secrets:
     name: Detect Secrets
+    # Deliberately NOT gated by the `changes` job (2026-08-20 path-aware
+    # gating pass) — unlike every other job in this workflow. A secret can
+    # land in ANY file, including a .md, a JSON test fixture, or a docs
+    # page that change_map.py classifies as docs_content_data — there is no
+    # domain a leaked credential is structurally confined to. This is the
+    # one scanner in this file where "better ten unnecessary scans than one
+    # skipped wrongly" has no exception, and it always runs on every
+    # pull_request/merge_group/push/schedule trigger, exactly as before.
+    #
+    # Scan WIDTH is a different question from WHETHER the job runs
+    # (2026-08-21, token-ceremony CI-critical-path audit, lever L3 —
+    # research/operations/2026-08-21-token-ceremony-ci-system-audit.md):
+    # on pull_request/merge_group the scan is scoped to the files the diff
+    # touches, because a secret can only ENTER through a changed file. A
+    # secret sitting in an UNCHANGED file is already on main — the daily +
+    # weekly scheduled full-tree scans (and any push/workflow_dispatch run)
+    # are the net that catches those, per the audit's own risk note. The
+    # full scan measured 19m34s on run 31312661093; the diff-scoped scan is
+    # seconds. The gate semantics are unchanged: any NEW finding in a
+    # changed file still arrives unaudited and still fails the job below.
     runs-on: ubuntu-latest
     # Run 31312661093 measured 19m34s in the scan alone and was cancelled at
     # the 20m job limit after every gating step had succeeded. Keep this gate
@@ -435,14 +825,93 @@ jobs:
       - name: Install detect-secrets
         run: pip install detect-secrets
 
-      - name: Run detect-secrets scan
+      - name: Decide scan scope
+        # L3 (see the job header above): pull_request/merge_group scan only
+        # the diff's files; every other event keeps the full-tree scan.
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          MQ_BASE: ${{ github.event.merge_group.base_sha }}
+          MQ_HEAD: ${{ github.event.merge_group.head_sha }}
         run: |
-          detect-secrets scan \
-            --baseline .secrets.baseline \
-            --exclude-files 'node_modules/.*' \
-            --exclude-files '\.venv/.*' \
-            --exclude-files 'venv/.*' \
-            --exclude-files '\.git/.*'
+          set -euo pipefail
+          if [ "${EVENT_NAME}" != "pull_request" ] && [ "${EVENT_NAME}" != "merge_group" ]; then
+            echo "full-tree scan (event: ${EVENT_NAME})"
+            echo "mode=full" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "${EVENT_NAME}" = "pull_request" ]; then
+            BASE="${PR_BASE}"; HEAD="${PR_HEAD}"; PRN="${PR_NUMBER}"
+          else
+            BASE="${MQ_BASE}"; HEAD="${MQ_HEAD}"; PRN=""
+          fi
+          # hotzone_changed_files.sh anchors on the merge-base (three-dot,
+          # exactly what the PR "Files changed" tab shows) and exits 3 when
+          # it cannot determine the changed set — `set -e` turns that into a
+          # RED job here, never a blind green (the script's own contract).
+          if [ -n "${PRN}" ]; then
+            bash scripts/ci/hotzone_changed_files.sh "${BASE}" "${HEAD}" "${PRN}" > /tmp/changed_all.txt
+          else
+            bash scripts/ci/hotzone_changed_files.sh "${BASE}" "${HEAD}" > /tmp/changed_all.txt
+          fi
+          # A diff can DELETE files, and detect-secrets errors on a path that
+          # does not exist in the worktree — scan only what is still there.
+          : > /tmp/changed_existing.txt
+          while IFS= read -r f; do
+            [ -f "$f" ] && printf '%s\n' "$f" >> /tmp/changed_existing.txt
+          done < /tmp/changed_all.txt
+          COUNT=$(wc -l < /tmp/changed_existing.txt | tr -d ' ')
+          echo "diff-scope: ${COUNT} scannable file(s) out of $(wc -l < /tmp/changed_all.txt | tr -d ' ') changed"
+          if [ "${COUNT}" -eq 0 ]; then
+            # Enumeration SUCCEEDED — hotzone_changed_files.sh exits 3 when
+            # it cannot determine the changed set, so a blind/lying scan set
+            # never reaches this line (that is the W84 tripwire, upstream).
+            # Zero scannable files here is therefore a TRUTHFUL statement:
+            # the diff is empty, or everything it touched was deleted — and
+            # a deletion cannot introduce a secret (Codex red-team round 1:
+            # the previous fail-on-0 blocked legitimate deletion-only PRs).
+            # Report the no-op explicitly — never the word "clean": this
+            # step scanned nothing.
+            echo "diff-scope: nothing to scan (empty or deletion-only diff; enumeration succeeded)"
+            echo "mode=noop" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "mode=diff" >> "$GITHUB_OUTPUT"
+
+      - name: Run detect-secrets scan
+        env:
+          SCAN_MODE: ${{ steps.scope.outputs.mode }}
+        run: |
+          set -euo pipefail
+          if [ "${SCAN_MODE}" = "noop" ]; then
+            # Empty or deletion-only diff — the Decide step proved the
+            # enumeration succeeded; there is nothing a scan could find.
+            echo "scan skipped: nothing to scan (see Decide scan scope)"
+          elif [ "${SCAN_MODE}" = "diff" ]; then
+            # Explicit paths keep repo-relative keys, so baseline audit
+            # decisions for known false positives in those files still
+            # match and stay filtered (verified against detect-secrets on
+            # a fixture: decisions preserved, new findings arrive unaudited,
+            # unscanned entries pruned — ephemeral in this workspace).
+            # Portable array build, no mapfile: bash 3.2-safe (fleet macs).
+            FILES=()
+            while IFS= read -r f; do
+              FILES+=("$f")
+            done < /tmp/changed_existing.txt
+            detect-secrets scan \
+              --baseline .secrets.baseline \
+              "${FILES[@]}"
+          else
+            detect-secrets scan \
+              --baseline .secrets.baseline \
+              --exclude-files 'node_modules/.*' \
+              --exclude-files '\.venv/.*' \
+              --exclude-files 'venv/.*' \
+              --exclude-files '\.git/.*'
+          fi
 
       - name: Auto-triage new findings
         # The scan step above updates .secrets.baseline in place with any new
@@ -487,18 +956,32 @@ jobs:
     if: always()
 
     steps:
+      # Path-aware gating (2026-08-20) means the seven jobs below no longer
+      # always run — a static "✅ ran" list would misreport a skip as a scan
+      # (the exact "message inventories mutable state" failure mode this
+      # repo already has a cicatrix about, W114/W106). List each job's ACTUAL
+      # `needs.<job>.result` instead of asserting it.
       - name: Create security summary
         uses: actions/github-script@v9
         with:
           script: |
+            const jobs = [
+              ["Snyk Python", "${{ needs.snyk-python.result }}"],
+              ["Snyk Node.js", "${{ needs.snyk-node.result }}"],
+              ["Snyk Docker", "${{ needs.snyk-docker.result }}"],
+              ["CodeQL", "${{ needs.codeql.result }}"],
+              ["Bandit", "${{ needs.bandit.result }}"],
+              ["Safety", "${{ needs.safety.result }}"],
+              ["Detect Secrets (never skipped)", "${{ needs.detect-secrets.result }}"],
+            ];
+            const icon = (r) => r === "success" ? "✅ ran" : r === "skipped" ? "⏭️ skipped (path-aware gate)" : r === "failure" ? "❌ FAILED" : `⚠️ ${r}`;
+            const scanLines = jobs.map(([name, result]) => `- **${name}**: ${icon(result)}`).join("\n            ");
+
             const summary = `
             ## 🔒 Security Scan Complete
 
-            ### Scans Performed
-            - ✅ Snyk (Python, Node.js, Docker)
-            - ✅ CodeQL (Python, JavaScript)
-            - ✅ Bandit (Python security linter)
-            - ✅ Safety (Python dependency checker)
+            ### Scans
+            ${scanLines}
 
             ### Results
             View detailed results in:

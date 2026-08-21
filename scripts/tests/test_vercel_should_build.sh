@@ -15,11 +15,23 @@
 #   * inverting the exit contract            -> 7 of 11 fail
 #   * dropping vercel.json from the paths    -> 1 fails
 #   * fetch failure treated as SKIP          -> 1 fails
-#   * removing BOTH production guards        -> 2 fail
-#   * removing ONLY the `$REF = main` guard  -> 0 fail.  Not a missing test: the `base == HEAD`
-#     guard below catches the same case, because on main the merge-base with main IS HEAD. The
-#     two guards are redundant on purpose and the suite asserts the OUTCOME (main always builds),
-#     which is the thing that matters. Removing both does fail, above.
+#   * removing the production guard entirely -> 4 fail  (measured 2026-08-18)
+#   * keying it on the literal "main" instead of $PROD_BRANCH -> 2 fail, one in each direction
+#   * dropping the VERCEL_ENV arm, leaving the branch test alone -> 1 fail
+#   * making the guard unconditional (`if true`) -> 11 fail. Recorded because it is the shape a
+#     future "just always build, it is safer" edit would take, and it must not pass quietly.
+#
+#   CORRECTED 2026-08-18, and the wrong version is quoted because it is the reason nobody looked.
+#   This header used to say: removing the `$REF = main` guard fails nothing, the `base == HEAD`
+#   guard covers the same case, "the two guards are redundant on purpose and the suite asserts the
+#   OUTCOME (main always builds), which is the thing that matters." The first two clauses were
+#   true. The last one was not, and it is the one that got believed. The suite asserted main
+#   always builds in the only two shapes it had: no previous SHA, and a previous SHA equal to
+#   HEAD. It never asserted the shape a production deployment takes once the project has one
+#   behind it — a previous SHA pointing at an EARLIER commit. There both guards were bypassed and
+#   main skipped, which is what froze balizero.com for three days from 2026-08-15. A mutation that
+#   kills nothing is worth a second look: here it was not redundancy, it was a guard unreachable
+#   from the case that mattered, and the note explained the zero away instead of chasing it.
 #   * grep exiting >=2                       -> 0 fail. Genuinely UNCOVERED: this corpus has no
 #     way to make grep itself error. The branch is written fail-open and reviewed, not proven.
 #   * pointer reverted to a bare invocation  -> 4 fail, every one as `rc=127 (DEPLOYMENT ERROR)`.
@@ -40,6 +52,12 @@ set -uo pipefail
 
 SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../ci" && pwd)/vercel_should_build.sh"
 [ -f "$SCRIPT" ] || { echo "FATAL: script not found at $SCRIPT"; exit 2; }
+
+# The guard reads VERCEL_ENV, so the corpus must own its value rather than inherit one. A shell
+# that happens to export VERCEL_ENV=production would turn every SKIP case green-to-red at once and
+# the failure would look like a code defect. Empty is neither "production" nor unset-and-guessed;
+# per-case assignments below still win, because the caller's environment beats this default.
+export VERCEL_ENV=
 
 PASS=0; FAIL=0
 ROOT=$(mktemp -d)
@@ -126,7 +144,7 @@ VERCEL_GIT_COMMIT_REF=ops/cron VERCEL_GIT_PREVIOUS_SHA= \
   run SKIP "first deploy of a multi-commit backend/ops branch"
 
 echo
-echo "=== THE PRODUCTION GUARD: main must never skip on a missing previous SHA"
+echo "=== THE PRODUCTION GUARD: main must never skip, with or without a previous SHA"
 # Comparing main against main gives an empty diff. Without the guard this single case would
 # freeze balizero.com and every subdomain — the 2026-07-27 outage, re-created by an optimisation.
 git -C "$WORK" checkout -q main
@@ -134,6 +152,54 @@ VERCEL_GIT_COMMIT_REF=main VERCEL_GIT_PREVIOUS_SHA= \
   run BUILD "main with no previous deployment"
 VERCEL_GIT_COMMIT_REF=main VERCEL_GIT_PREVIOUS_SHA="$MAIN_TIP" \
   run BUILD "main against its own tip (base == HEAD)"
+
+# The shape that actually froze production on 2026-08-18, and that neither line above can reach.
+# On main `VERCEL_GIT_PREVIOUS_SHA` is normally SET and names an EARLIER commit, so the empty-BASE
+# guard never runs and the base==HEAD guard never fires: the diff decides. The diff is honest and
+# the verdict is still wrong, because that variable holds the last ATTEMPTED deployment — skips
+# and cancellations included — not what is live. A frontend commit whose own build was superseded
+# falls behind the base and no later diff ever spans it again.
+#
+# Both of these were SKIP before the guard moved out of the empty-BASE block. Live consequence:
+# balizero.com served a 2026-08-15 build for three days while main ran 75 commits ahead with 30
+# frontend files among them, and kept publishing `Avg reply: 2 min` after we had measured it false.
+PROD_PREV=$MAIN_TIP
+commit "docs/prod-note.md" "a docs-only commit landing on main"
+VERCEL_GIT_COMMIT_REF=main VERCEL_GIT_PREVIOUS_SHA="$PROD_PREV" \
+  run BUILD "main, docs-only delta vs an EARLIER main commit (the 2026-08-18 freeze)"
+
+PROD_PREV=$(git -C "$WORK" rev-parse HEAD)
+commit ".claude/skills/modus/PENDING-ARMS.md" "a ledger line, also on main"
+VERCEL_GIT_COMMIT_REF=main VERCEL_GIT_PREVIOUS_SHA="$PROD_PREV" \
+  run BUILD "main, a second docs-only delta in a row (how the freeze persists)"
+
+# INNOCENCE. The guard must key on "is this the production branch", not on the literal string
+# main. Point production elsewhere and main is an ordinary branch again, skipping exactly as
+# before — without this, a hardcoded name would silently disable the whole optimisation on every
+# other branch the day production is renamed, and nothing would say so.
+VERCEL_GIT_PROD_BRANCH=release VERCEL_GIT_COMMIT_REF=main VERCEL_GIT_PREVIOUS_SHA="$PROD_PREV" \
+  run SKIP "main is NOT production when VERCEL_GIT_PROD_BRANCH names another branch"
+
+# ...and whichever branch IS production inherits the guard.
+git -C "$WORK" checkout -q -b release main
+PROD_PREV=$(git -C "$WORK" rev-parse HEAD)
+commit "docs/release-note.md" "docs only, on the configured production branch"
+VERCEL_GIT_PROD_BRANCH=release VERCEL_GIT_COMMIT_REF=release VERCEL_GIT_PREVIOUS_SHA="$PROD_PREV" \
+  run BUILD "the configured production branch gets the guard, whatever it is called"
+
+# The ref is not the environment. `vercel --prod` promotes whatever branch it is pointed at, and
+# that deployment is production however its ref reads — so a branch test alone can skip a real
+# production build. VERCEL_ENV is the documented variable for this question and answers it
+# directly. Raised by an adversarial review of the first version of this fix, which keyed on the
+# branch alone; the case below is that review's own repro.
+VERCEL_ENV=production VERCEL_GIT_COMMIT_REF=release VERCEL_GIT_PREVIOUS_SHA="$PROD_PREV" \
+  run BUILD "VERCEL_ENV=production on a NON-production branch (vercel --prod)"
+
+# INNOCENCE for that arm: a preview is still a preview, and a docs-only preview still skips.
+# Without this, keying on the environment could quietly become "always build".
+VERCEL_ENV=preview VERCEL_GIT_COMMIT_REF=release VERCEL_GIT_PREVIOUS_SHA="$PROD_PREV" \
+  run SKIP "VERCEL_ENV=preview, docs-only delta -> still skips"
+git -C "$WORK" checkout -q main
 
 echo
 echo "=== OFFLINE BASE RESOLUTION (added 2026-07-30 after the armed guard proved inert)"

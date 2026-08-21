@@ -74,9 +74,6 @@ def _allowed_origins() -> set[str]:
         "https://www.balizero.com",  # Primary production domain (www)
         "https://kita.balizero.com",
         "https://www.kita.balizero.com",
-        "https://mail.balizero.com",  # Mail subdomain
-        "https://calendar.balizero.com",  # Calendar subdomain
-        "https://drive.balizero.com",  # Drive subdomain
         "https://knowledge.balizero.com",  # Knowledge subdomain
         "https://nuzantara-mouth.vercel.app",  # Frontend Vercel deployment
         "http://localhost:3000",

@@ -112,6 +112,36 @@ jobs:
         with:
           fetch-depth: 0
 
+      # MANUAL OVERRIDE (Merge-OS v2 round-2 Cure #1, adapted 2026-08-18 —
+      # PENDING-ARMS.md "Wave 2 of Merge-OS v2 may be armed ONLY with the
+      # four round-2 cures incorporated"). Round-2 demanded an explicit,
+      # fail-safe-polarity kill switch for ring-gating; by the time this cure
+      # was revisited, ring-gating had already shipped default-ON via #4181
+      # with its own internal fail-open defaults (classifier/extraction/
+      # corpus failure -> run_all=true), so this is a DISCRETIONARY manual
+      # lever additive to those defaults, not a replacement for them — an
+      # operator can force the full suite during an incident regardless of
+      # whether the classifier is technically succeeding. Full truth-table
+      # rationale + why the literal v2 variable would have been a silent
+      # regression: scripts/ci/ring_gating_override.sh (guilt+innocence
+      # corpus: scripts/ci/test_ring_gating_override.py).
+      - name: Manual override — force full suite (Merge-OS round-2 Cure #1)
+        id: override
+        env:
+          MERGEOS_RING_GATING_DISABLED: ${{ vars.MERGEOS_RING_GATING_DISABLED }}
+        run: bash scripts/ci/ring_gating_override.sh >> "$GITHUB_OUTPUT"
+
+      # Self-test, unconditional (mirrors "Self-test changed-file
+      # enumerator" in hot-zone-pr-gate.yml): proves BOTH that the script's
+      # own truth table holds AND that it is actually wired into the `if:`
+      # of every step it is meant to gate (round-2 Cure #3's WIRED-shape
+      # demand, adapted) — never gated behind its own output, which would
+      # be a guard that can disable its own guilt test.
+      - name: Self-test ring-gating override (guilt + innocence)
+        run: |
+          python3 -m pip install --quiet pyyaml
+          python3 scripts/ci/test_ring_gating_override.py
+
       # ROOT OF TRUST (red-team CRITICAL-1, 2026-08-14): the PR's own checkout
       # cannot be trusted to judge itself — a PR that breaks backend code
       # could, in the SAME commit, edit hotzone_changed_files.sh or
@@ -131,6 +161,7 @@ jobs:
       # added to CODEOWNERS TIER 1 in this same commit.
       - name: Extract trusted classifier (base ref)
         id: extract
+        if: steps.override.outputs.active != 'true'
         env:
           BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
         run: |
@@ -160,6 +191,7 @@ jobs:
       # extraction above, not this checkout's copy (CRITICAL-1).
       - name: Verify change-map guilt and innocence corpus
         id: classifier-tests
+        if: steps.override.outputs.active != 'true'
         continue-on-error: true
         env:
           CLASSIFIER_DIR: ${{ steps.extract.outputs.dir }}
@@ -181,6 +213,7 @@ jobs:
       # is therefore not a live gap, it only narrows the fallback path.
       - name: Enumerate and classify this PR's files
         id: classify
+        if: steps.override.outputs.active != 'true'
         continue-on-error: true
         env:
           BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
@@ -253,6 +286,7 @@ jobs:
           MAP_JSON: ${{ steps.classify.outputs.map }}
           CLASSIFIER_TEST_OUTCOME: ${{ steps.classifier-tests.outcome }}
           CLASSIFY_OUTCOME: ${{ steps.classify.outcome }}
+          OVERRIDE_ACTIVE: ${{ steps.override.outputs.active }}
         run: |
           python3 - <<'PY'
           import json
@@ -261,6 +295,25 @@ jobs:
           raw = os.environ.get("MAP_JSON", "")
           if raw:
               result = json.loads(raw)
+          elif os.environ.get("OVERRIDE_ACTIVE") == "true":
+              # Manual override (Merge-OS round-2 Cure #1) — the classifier was
+              # never consulted, this is not a failure. Distinguished from the
+              # classifier_runtime_failure fallback below so the step summary
+              # never misreports an intentional operator action as a defect.
+              result = {
+                  "reason": "manual_override_disabled",
+                  "run_all": True,
+                  "suggested_jobs": [
+                      "backend-tests",
+                      "mcp-tests",
+                      "evaluator-critical-tests",
+                      "frontend-tests",
+                      "packages-core-tests",
+                      "e2e-tests",
+                  ],
+                  "would_skip": [],
+                  "unknown_paths": [],
+              }
           else:
               result = {
                   "reason": "classifier_runtime_failure",
@@ -544,6 +597,23 @@ jobs:
           cd apps/backend-rag
           PYTHONPATH=.:../crm-cell python scripts/backend_stability_gate.py
 
+      - name: Decide coverage-collection scope
+        # cicatrix-superscar #9 discipline: this is a NEW decision, made once,
+        # read everywhere it applies below — not re-derived per-step (which
+        # is how two steps drift on the same question). Coverage is only
+        # collected on merge_group/push/schedule/workflow_dispatch, never on
+        # pull_request: the coverage.xml Codecov upload and the --fail-under
+        # gate both add wall-clock to every PR for a signal that only needs
+        # to be current at the point a commit actually lands (research/
+        # operations/2026-08-21-token-ceremony-ci-system-audit.md).
+        id: test-scope
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "collect_coverage=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "collect_coverage=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Run unit tests
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
@@ -556,19 +626,33 @@ jobs:
           # their local-dev fallback (`nuzantara_dev`), which skipped 50 tests.
           INTAKE_TEST_DSN: postgresql://test:test@localhost:5432/nuzantara_test
           REDIS_URL: redis://localhost:6379
+          COLLECT_COVERAGE: ${{ steps.test-scope.outputs.collect_coverage }}
         run: |
           cd apps/backend-rag
           set -o pipefail
+          # xdist was briefly in this PR and was REMOVED 2026-08-21 (Kimi,
+          # lane continuation): under `-n auto --dist loadfile` every worker
+          # shares the SAME test Postgres (DATABASE_URL above), so a counting
+          # test in one file observed another worker's parallel writes —
+          # backend/tests/routers/test_intake_review.py::
+          # test_approve_live_claim_owned_by_other_rejected_without_write
+          # read (4, 1) where serial reads (2, 0). That is the 2026-07-14
+          # shared-Postgres scar the audit (L9(ii)) rates MED-HIGH: xdist
+          # needs per-worker DBs (nuzantara_test_gw{n}), which is its own
+          # spike PR. This PR keeps the safe levers only (queue-only
+          # coverage, npm-audit advisory, Playwright cache, main-red
+          # breaker).
+          COV_ARGS=()
+          if [ "$COLLECT_COVERAGE" = "true" ]; then
+            COV_ARGS=(--cov=backend --cov-branch --cov-report=xml:coverage.xml)
+          fi
           PYTHONPATH=.:../crm-cell pytest \
             backend/tests/ \
-            tests/test_sentry_lazy_import.py \
-            tests/test_sentry_pii_redaction.py \
-            tests/kb/test_politics_hierarchical.py \
+            ../../scripts/bot/test_build_deid_corpus.py \
+            ../../scripts/bot/test_wa_blind_bench.py \
             -q -ra --no-header --durations=50 \
             --ignore=backend/tests/e2e \
-            --cov=backend \
-            --cov-branch \
-            --cov-report=xml:coverage.xml \
+            "${COV_ARGS[@]}" \
             --junit-xml=test-results-unit.xml \
             --tb=short -x 2>&1 | tee pytest-output.log || PYTEST_RC=$?
           # Measurement-only (round-3 queue-acceleration plan, L3): the
@@ -602,13 +686,18 @@ jobs:
           exit "$PYTEST_RC"
 
       - name: Check coverage threshold
+        # Only meaningful when coverage.xml was actually produced (see
+        # "Decide coverage-collection scope" above) — on pull_request there
+        # is no coverage.xml, and `coverage report` would fail on a missing
+        # data file for a reason that has nothing to do with the diff.
+        if: steps.test-scope.outputs.collect_coverage == 'true'
         run: |
           cd apps/backend-rag
           PYTHONPATH=.:../crm-cell coverage report --fail-under=55
 
       - name: Upload coverage to Codecov
-        if: ${{ env.HAS_CODECOV_TOKEN == 'true' }}
-        uses: codecov/codecov-action@v7
+        if: ${{ env.HAS_CODECOV_TOKEN == 'true' && steps.test-scope.outputs.collect_coverage == 'true' }}
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
@@ -678,7 +767,7 @@ jobs:
 
       - name: Upload MCP coverage to Codecov
         if: ${{ env.HAS_CODECOV_TOKEN == 'true' }}
-        uses: codecov/codecov-action@v7
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
@@ -743,7 +832,7 @@ jobs:
 
       - name: Upload evaluator coverage to Codecov
         if: ${{ env.HAS_CODECOV_TOKEN == 'true' }}
-        uses: codecov/codecov-action@v7
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
@@ -854,27 +943,19 @@ jobs:
         if: steps.decide.outputs.run == 'true'
         run: npm install --no-fund
 
-      - name: npm audit
-        if: steps.decide.outputs.run == 'true'
-        # The gate itself lives in scripts/ci/npm_audit_gate.py so it can carry
-        # a guilt+innocence corpus instead of being a guard nobody can execute
-        # (same shape as scripts/ci/hotzone_changed_files.sh, W102). The waiver
-        # set — and, for each entry, WHY it is unreachable — is documented at
-        # the top of that file. Waivers are scoped to a dependency PATH, so the
-        # same advisory arriving on a path we never vetted still fails.
-        #
-        # --omit=dev: audit only what we ship to production, not the test
-        # toolchain. Dev-only advisories (vitest / @vitest/coverage-v8 "UI
-        # server arbitrary file read", vite, esbuild) are exploitable only when
-        # running `vitest --ui` locally, never in CI or prod; without --omit=dev
-        # they failed the gate on EVERY PR repo-wide. Production-dependency
-        # threshold stays at high.
-        run: |
-          python3 scripts/ci/test_npm_audit_gate.py
-          npm audit --audit-level=high --omit=dev --json > "$RUNNER_TEMP/audit.json" || true
-          python3 scripts/ci/npm_audit_gate.py "$RUNNER_TEMP/audit.json"
-        continue-on-error: false
-
+      # `npm audit` used to live here — moved to the standalone `npm-audit`
+      # job below (2026-08-21, token-ceremony CI-critical-path audit). It
+      # queries the LIVE npm advisory database, which moves on its own
+      # schedule independent of this repo's tree (cicatrix-superscar.md
+      # family #9, W118: an advisory publish 87s before an otherwise-healthy
+      # merge turned a REQUIRED context red with zero lines of ours changed —
+      # measured 2026-08-17, ×19 in one main-red window). It was also
+      # redundant here: this job's `if:` only depends on
+      # `steps.decide.outputs.run`, never on `matrix.app`, so it ran the
+      # identical repo-root audit TWICE per PR (once per matrix leg) for no
+      # extra coverage. Advisory-only now (continue-on-error, non-required)
+      # so external advisory churn can never eject this required job from
+      # the merge queue for a reason that isn't a code change here.
       - name: Run tests (with coverage)
         if: matrix.coverage && steps.decide.outputs.run == 'true'
         run: |
@@ -962,7 +1043,7 @@ jobs:
 
       - name: Upload coverage
         if: ${{ matrix.coverage && env.HAS_CODECOV_TOKEN == 'true' && steps.decide.outputs.run == 'true' }}
-        uses: codecov/codecov-action@v7
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
@@ -977,6 +1058,75 @@ jobs:
         with:
           name: frontend-${{ matrix.app }}-coverage
           path: apps/${{ matrix.app }}/coverage/
+
+  npm-audit:
+    name: npm audit (advisory)
+    # Split out of `frontend-tests` 2026-08-21 (token-ceremony CI-critical-
+    # path audit, research/operations/2026-08-21-token-ceremony-ci-system-
+    # audit.md) — this job is deliberately NOT in
+    # infra/required.d/contexts.json / branch protection's required list
+    # (verified via `gh api repos/.../branches/main/protection/
+    # required_status_checks` before and after this change — the contexts
+    # set is byte-identical). `npm audit` reads the LIVE npm advisory
+    # database, a resource that moves on its own schedule independent of
+    # this repo's tree (cicatrix-superscar.md family #9, W118: an advisory
+    # published 87 seconds before an otherwise-healthy merge queue entry
+    # turned a REQUIRED context red with zero lines of this repo changed —
+    # measured 2026-08-17, ×19 failures in one main-red window). A finding
+    # here is real and worth seeing; it is never grounds to eject a queue
+    # entry or block a PR whose diff never touched a dependency.
+    needs: [changes]
+    if: >-
+      !cancelled() &&
+      (
+        (github.event_name != 'pull_request' && github.event_name != 'merge_group') ||
+        needs.changes.result != 'success' ||
+        needs.changes.outputs.run_frontend_tests != 'false'
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Job-level, not step-level: an advisory finding must never flip this
+    # job's conclusion to something a future required-check addition (or a
+    # human reading the Checks tab) could mistake for a code regression.
+    continue-on-error: true
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Cache dependencies
+        uses: actions/cache@v6
+        with:
+          path: |
+            **/node_modules
+            ~/.npm
+          key: ${{ runner.os }}-node-npm-audit-${{ hashFiles('package-lock.json') }}
+
+      - name: Install dependencies
+        run: npm install --no-fund
+
+      - name: npm audit
+        # The gate itself lives in scripts/ci/npm_audit_gate.py so it can carry
+        # a guilt+innocence corpus instead of being a guard nobody can execute
+        # (same shape as scripts/ci/hotzone_changed_files.sh, W102). The waiver
+        # set — and, for each entry, WHY it is unreachable — is documented at
+        # the top of that file. Waivers are scoped to a dependency PATH, so the
+        # same advisory arriving on a path we never vetted still fails.
+        #
+        # --omit=dev: audit only what we ship to production, not the test
+        # toolchain. Dev-only advisories (vitest / @vitest/coverage-v8 "UI
+        # server arbitrary file read", vite, esbuild) are exploitable only when
+        # running `vitest --ui` locally, never in CI or prod; without --omit=dev
+        # they failed the gate on EVERY PR repo-wide. Production-dependency
+        # threshold stays at high.
+        run: |
+          python3 scripts/ci/test_npm_audit_gate.py
+          npm audit --audit-level=high --omit=dev --json > "$RUNNER_TEMP/audit.json" || true
+          python3 scripts/ci/npm_audit_gate.py "$RUNNER_TEMP/audit.json"
 
   packages-core-tests:
     name: Shared Core Package Tests
@@ -1016,7 +1166,7 @@ jobs:
 
       - name: Upload shared core coverage to Codecov
         if: ${{ env.HAS_CODECOV_TOKEN == 'true' }}
-        uses: codecov/codecov-action@v7
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
@@ -1190,8 +1340,57 @@ jobs:
             exit 1
           }
 
+      - name: Cache Playwright browser binaries
+        id: playwright-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+        run: |
+          # BOUNDED because `--with-deps` shells out to `apt-get` INSIDE
+          # playwright's own process: this step carries exactly the risk cured
+          # for our explicit apt call sites in scripts/ci/apt_install.sh, in a
+          # place that helper cannot reach.
+          #
+          # Deliberately ALWAYS runs, cache hit or miss (2026-08-21,
+          # token-ceremony CI-critical-path audit) — do not gate this on
+          # `steps.playwright-cache.outputs.cache-hit`. `actions/cache` only
+          # persists the ~/.cache/ms-playwright DIRECTORY; GitHub-hosted
+          # runners are a fresh VM per job, so the apt-installed OS shared
+          # libraries `--with-deps` provides are NEVER preserved by that
+          # cache, cache hit or not. Skipping this step on a warm cache would
+          # restore the browser binaries but silently drop the OS deps they
+          # need to actually launch — the exact "assumed a warm cache implies
+          # a warm machine" class of bug this repo's cicatrix ledger already
+          # has several entries for. `playwright install` is itself
+          # idempotent against an already-populated cache dir (it hashes and
+          # skips any browser binary already present), so the cache still
+          # does its job — cutting the download, not the apt step — without
+          # this step needing a conditional at all.
+          #
+          # Measured over 13 consecutive runs of this workflow (2026-08-18):
+          # eleven finish in 24-32s, one took 8m01s and still succeeded, and one
+          # was 17m33s deep with nothing to show when the job's 20-minute budget
+          # killed it. GitHub reports a budget kill as `cancelled`, NOT
+          # `failure` — and a cancelled REQUIRED context ejects the merge-queue
+          # entry with no failing check anywhere to point at, which is how the
+          # repo sat unmergeable for eleven hours (W118, cicatrix family #2).
+          #
+          # 600s is chosen against the MEASURED distribution, not a round
+          # number: comfortably above the worst observed SUCCESS (8m01s) so a
+          # slow-but-working mirror still passes, and half the job budget so the
+          # remaining 10 minutes still cover build + serve + the tests
+          # themselves. The other half of that arithmetic is the lesson: a bound
+          # sized without leaving room for the rest of the job does not avoid
+          # exhausting the budget, it guarantees it.
+          #
+          # No retry, deliberately. A retry is the remedy that LOOKS right when
+          # the symptom is "slow", and three of them inside one budget is how
+          # the first attempt at the apt cure failed. Failing once, loudly, at a
+          # named step beats being cancelled silently.
+          timeout 600 npx playwright install --with-deps chromium
 
       - name: Run E2E tests
         env:

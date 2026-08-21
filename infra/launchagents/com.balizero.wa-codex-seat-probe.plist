@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- LaunchDAEMON, not LaunchAgent (deliberate, spec §4.1, same reasoning
+	     as com.balizero.wa-codex-broker): zantara-codex is a login-less user,
+	     and a LaunchAgent for a user who never logs in never runs (scar
+	     family #2, armed-to-nothing). Installed by
+	     scripts/provision_zantara_codex.sh into /Library/LaunchDaemons with
+	     UserName demotion — launchd starts it at boot as zantara-codex, no
+	     session required. -->
+	<key>Label</key>
+	<string>com.balizero.wa-codex-seat-probe</string>
+	<key>UserName</key>
+	<string>zantara-codex</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/usr/local/libexec/wa-codex-seat-probe-wrapper.sh</string>
+	</array>
+	<key>WorkingDirectory</key>
+	<string>/Users/zantara-codex</string>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>HOME</key>
+		<string>/Users/zantara-codex</string>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/bin:/bin</string>
+	</dict>
+	<!-- ONE-SHOT cron shape (scar family #7): the probe runs one login-status
+	     check + one synthetic exec, writes its status file, and exits — it
+	     is NOT a long-running server, so KeepAlive stays ABSENT here (unlike
+	     the broker's exec-to-blocking-loop shape). StartInterval owns the
+	     cadence: 21600s = 6h, so the probe's own 1-token codex exec
+	     consumption is negligible (spec §4.4 accounting) while still
+	     catching an auth death well inside any reasonable response window. -->
+	<key>StartInterval</key>
+	<integer>21600</integer>
+	<!-- RunAtLoad (Kimi r1 m5): without it the first probe lands up to 6h
+	     after bootstrap AND after every reboot — a blind window, plus a
+	     false probe_silent page when a reboot pushes the status file's age
+	     past the sentinel's 2x-interval boundary minutes before the next
+	     scheduled run. One immediate run at load closes both. -->
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardOutPath</key>
+	<string>/usr/local/var/wa-codex-broker/seat-probe.log</string>
+	<key>StandardErrorPath</key>
+	<string>/usr/local/var/wa-codex-broker/seat-probe.err</string>
+</dict>
+</plist>

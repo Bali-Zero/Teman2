@@ -55,15 +55,18 @@ async def _build_timeline(
 ) -> dict[str, Any] | None:
     """Build timeline data for a practice. Returns None if not found."""
     async with pool.acquire() as conn:
+        # NOTE: this query is client-portal-only (see get_current_client
+        # dependency below) — it must never select staff-identity columns
+        # (practice_status_log.changed_by, clients.assigned_to). Those are
+        # internal actor emails, not something to hand to a client. See
+        # PR fixing the identity leak for the incident this guards against.
         practice = await conn.fetchrow(
             """
             SELECT p.id, p.client_id, p.status, p.start_date, p.completion_date,
                    p.expiry_date, p.notes, pt.name as practice_name,
-                   pt.category as practice_category,
-                   c.assigned_to
+                   pt.category as practice_category
             FROM practices p
             JOIN practice_types pt ON pt.id = p.practice_type_id
-            LEFT JOIN clients c ON c.id = p.client_id
             WHERE p.id = $1
               AND p.client_id = $2
               AND (p.client_visible IS TRUE OR p.client_visible IS NULL)
@@ -82,7 +85,7 @@ async def _build_timeline(
                 dict(r)
                 for r in await conn.fetch(
                     """
-                    SELECT old_status, new_status, changed_at, changed_by
+                    SELECT old_status, new_status, changed_at
                     FROM practice_status_log
                     WHERE practice_id = $1
                     ORDER BY changed_at ASC
@@ -108,7 +111,6 @@ async def _build_timeline(
                         "completed": not is_current,
                         "is_current": is_current,
                         "changed_at": str(row["changed_at"]) if row["changed_at"] else None,
-                        "changed_by": row.get("changed_by"),
                     }
                 )
         else:
@@ -121,7 +123,6 @@ async def _build_timeline(
                     "completed": current_status in ("completed", "approved"),
                     "is_current": current_status not in ("completed", "approved", "cancelled"),
                     "changed_at": str(practice["start_date"]) if practice["start_date"] else None,
-                    "changed_by": None,
                 }
             ]
 
@@ -130,7 +131,6 @@ async def _build_timeline(
             "practice_name": practice["practice_name"],
             "practice_category": practice["practice_category"],
             "current_status": current_status,
-            "assigned_to": practice["assigned_to"],
             "start_date": str(practice["start_date"]) if practice["start_date"] else None,
             "completion_date": str(practice["completion_date"])
             if practice["completion_date"]

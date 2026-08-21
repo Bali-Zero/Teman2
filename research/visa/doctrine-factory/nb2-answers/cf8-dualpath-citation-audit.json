@@ -1,0 +1,174 @@
+[
+  {
+    "query_id": "CF8DP-1",
+    "conversation_id_sent": "448e24b2-5b4f-4249-88e1-1efcbbb59ad9",
+    "bracket_pointers_found": 20,
+    "resolved_pointers": [
+      {
+        "pointer": "[1]",
+        "source_id": "1ac4063f-92f1-4dd0-9bc6-0d9e406d1af8",
+        "title": "Permenkumham_22_2023.pdf"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "1ac4063f-92f1-4dd0-9bc6-0d9e406d1af8",
+        "title": "Permenkumham_22_2023.pdf"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "1ac4063f-92f1-4dd0-9bc6-0d9e406d1af8",
+        "title": "Permenkumham_22_2023.pdf"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "1ac4063f-92f1-4dd0-9bc6-0d9e406d1af8",
+        "title": "Permenkumham_22_2023.pdf"
+      },
+      {
+        "pointer": "[4]",
+        "source_id": "1d475989-11fb-407f-83e8-a951b399e384",
+        "title": "https://peraturan.go.id/files/permenkumham-no-11-tahun-2024.pdf"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "1ac4063f-92f1-4dd0-9bc6-0d9e406d1af8",
+        "title": "Permenkumham_22_2023.pdf"
+      },
+      {
+        "pointer": "[9]",
+        "source_id": "1ac4063f-92f1-4dd0-9bc6-0d9e406d1af8",
+        "title": "Permenkumham_22_2023.pdf"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "1ac4063f-92f1-4dd0-9bc6-0d9e406d1af8",
+        "title": "Permenkumham_22_2023.pdf"
+      },
+      {
+        "pointer": "[10]",
+        "source_id": "147e332b-7d12-400e-b222-8c587efa7ef9",
+        "title": "nb2_golden_visa.txt"
+      },
+      {
+        "pointer": "[11]",
+        "source_id": "d14f6c39-c4c3-48dc-8b6c-275a6c8245ce",
+        "title": "nb2_visa_procedures_guide.txt"
+      },
+      {
+        "pointer": "[12]",
+        "source_id": "a1f41caa-cd15-4b17-8951-26c0606783e2",
+        "title": "izin_kerja_tka_procedura_completa_2025.txt"
+      },
+      {
+        "pointer": "[14]",
+        "source_id": "adc39025-f3ec-4a51-adc0-57f7c0c212ce",
+        "title": "UU No. 63 Tahun 2024 — Perubahan atas UU Keimigrasian (Key Provisions)"
+      },
+      {
+        "pointer": "[15]",
+        "source_id": "359c4c5f-90ca-4ae9-a6ba-c2704c6e42f3",
+        "title": "Permenimipas5_2025.pdf"
+      },
+      {
+        "pointer": "[16]",
+        "source_id": "1ac4063f-92f1-4dd0-9bc6-0d9e406d1af8",
+        "title": "Permenkumham_22_2023.pdf"
+      },
+      {
+        "pointer": "[17]",
+        "source_id": "1ac4063f-92f1-4dd0-9bc6-0d9e406d1af8",
+        "title": "Permenkumham_22_2023.pdf"
+      },
+      {
+        "pointer": "[18]",
+        "source_id": "1ac4063f-92f1-4dd0-9bc6-0d9e406d1af8",
+        "title": "Permenkumham_22_2023.pdf"
+      },
+      {
+        "pointer": "[19]",
+        "source_id": "1d475989-11fb-407f-83e8-a951b399e384",
+        "title": "https://peraturan.go.id/files/permenkumham-no-11-tahun-2024.pdf"
+      },
+      {
+        "pointer": "[22]",
+        "source_id": "3479ae6a-2e23-4ad1-8abc-975d256209b2",
+        "title": "Bali Tourist Levy — Perda Bali 2/2025 (was 6/2023) — Rp 150.000"
+      },
+      {
+        "pointer": "[23]",
+        "source_id": "1ac4063f-92f1-4dd0-9bc6-0d9e406d1af8",
+        "title": "Permenkumham_22_2023.pdf"
+      },
+      {
+        "pointer": "[24]",
+        "source_id": "22430d7c-6eb3-41fc-87f9-3501bee77ec2",
+        "title": "kitas_e31_famiglia_guida_2025.txt"
+      }
+    ],
+    "unresolved_pointers": [],
+    "unresolved_structured_source_ids": [],
+    "title_mentions": [
+      "izin_kerja_tka_procedura_completa_2025.txt",
+      "nb2_golden_visa.txt",
+      "nb2_visa_procedures_guide.txt"
+    ],
+    "structured_citations_present": true,
+    "verdict": "VERIFIED",
+    "reason": "structured citations present, every extracted prose pointer resolves, and every structured source_id the payload asserts also resolves"
+  },
+  {
+    "query_id": "CF8DP-2",
+    "conversation_id_sent": "9a0bd16a-c0f9-4b99-92b1-d7b6aa1be7af",
+    "verdict": "SKIPPED_TRANSPORT_ERROR",
+    "reason": "nlm did not return within the 260.0s query timeout (subprocess.run timeout=290.0s)"
+  },
+  {
+    "query_id": "CF8DP-2-RETRY",
+    "conversation_id_sent": "b5166071-e9ca-40f6-aec5-519e078c51ff",
+    "verdict": "SKIPPED_TRANSPORT_ERROR",
+    "reason": "nlm did not return within the 260.0s query timeout (subprocess.run timeout=290.0s)"
+  },
+  {
+    "query_id": "CF8DP-3",
+    "conversation_id_sent": "e33215b5-f5e6-469d-983d-9964e38fb1ed",
+    "bracket_pointers_found": 6,
+    "resolved_pointers": [
+      {
+        "pointer": "[1]",
+        "source_id": "adc39025-f3ec-4a51-adc0-57f7c0c212ce",
+        "title": "UU No. 63 Tahun 2024 — Perubahan atas UU Keimigrasian (Key Provisions)"
+      },
+      {
+        "pointer": "[2]",
+        "source_id": "adc39025-f3ec-4a51-adc0-57f7c0c212ce",
+        "title": "UU No. 63 Tahun 2024 — Perubahan atas UU Keimigrasian (Key Provisions)"
+      },
+      {
+        "pointer": "[1]",
+        "source_id": "adc39025-f3ec-4a51-adc0-57f7c0c212ce",
+        "title": "UU No. 63 Tahun 2024 — Perubahan atas UU Keimigrasian (Key Provisions)"
+      },
+      {
+        "pointer": "[4]",
+        "source_id": "1d475989-11fb-407f-83e8-a951b399e384",
+        "title": "https://peraturan.go.id/files/permenkumham-no-11-tahun-2024.pdf"
+      },
+      {
+        "pointer": "[5]",
+        "source_id": "1d475989-11fb-407f-83e8-a951b399e384",
+        "title": "https://peraturan.go.id/files/permenkumham-no-11-tahun-2024.pdf"
+      },
+      {
+        "pointer": "[7]",
+        "source_id": "adc39025-f3ec-4a51-adc0-57f7c0c212ce",
+        "title": "UU No. 63 Tahun 2024 — Perubahan atas UU Keimigrasian (Key Provisions)"
+      }
+    ],
+    "unresolved_pointers": [],
+    "unresolved_structured_source_ids": [],
+    "title_mentions": [],
+    "structured_citations_present": true,
+    "verdict": "VERIFIED",
+    "reason": "structured citations present, every extracted prose pointer resolves, and every structured source_id the payload asserts also resolves"
+  }
+]

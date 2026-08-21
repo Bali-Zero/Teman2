@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import httpx
@@ -21,7 +21,23 @@ from backend.tests.services.visa_engine import _gold_fixtures as gf
 from backend.tests.services.visa_engine.test_evaluator_gold import PERSONAS
 
 _GOLD_AT = gf.GOLD_EFFECTIVE_AT
-_OFFLINE_AT = datetime(2026, 8, 12, 12, 0, tzinfo=timezone.utc)
+
+# The offline clock must sit AFTER every repository pack's signed_at: the
+# driver verifies the selected bundle with observed_at=generated_at, and the
+# verifier rejects a signed_at in the future beyond its 5-minute tolerance.
+# A frozen wall date here is a frozen measurement that silently expires the
+# day a newer pack is signed — the seq-11 bundle broke the previous pin
+# (2026-08-19T12:00Z) within hours of signing. Deriving the clock from the
+# packs themselves keeps the test deterministic per checkout and immune to
+# every future pack landing.
+_OFFLINE_AT = max(
+    datetime.fromisoformat(
+        json.loads(path.read_text(encoding="utf-8"))["protected"]["signed_at"].replace(
+            "Z", "+00:00"
+        )
+    )
+    for path in driver.PACKS_DIR.glob("*.signed.json")
+) + timedelta(hours=1)
 
 
 def _fixture_decisions() -> tuple[Decision, ...]:

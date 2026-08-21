@@ -722,6 +722,22 @@ class OrchestratorCore:
             )
             return ""
 
+    async def curated_qa_grounding_block(
+        self,
+        query: str,
+        extracted_entities: dict[str, Any] | None = None,
+    ) -> str:
+        """Public passthrough to `_inject_curated_qa_grounding` (BOT-V4 S2, D3).
+
+        Exists so the WA codex-route package builder
+        (`wa_package_builder.build_context_package`) reuses the SAME
+        domain-gated, staleness-gated curated_qa injection logic instead of a
+        drifting copy — a caller outside this class cannot reach the
+        underscore-prefixed method directly. Behavior-neutral: this does not
+        touch `_inject_curated_qa_grounding` itself.
+        """
+        return await self._inject_curated_qa_grounding(query, extracted_entities)
+
     async def extract_entities_and_kg_context(
         self,
         query: str,

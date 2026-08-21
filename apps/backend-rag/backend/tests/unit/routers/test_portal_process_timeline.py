@@ -115,3 +115,88 @@ async def test_timeline_fallback_when_no_status_log() -> None:
     assert len(result["steps"]) == 1
     assert result["steps"][0]["status"] == "waiting_documents"
     assert result["steps"][0]["is_current"] is True
+
+
+@pytest.mark.asyncio
+async def test_timeline_response_never_carries_staff_identity() -> None:
+    """Client-facing timeline must not leak staff actor identity.
+
+    `changed_by` (practice_status_log actor) and `assigned_to` (case
+    officer) are staff email addresses — internal identity, never
+    client-facing. Even if a row/mock still carries them (e.g. a stale
+    caller or a DB column that outlives this query), the response dict
+    built for the client must not surface either key, at any nesting
+    level (outer dict + every step dict, both the history-rows path and
+    the single-step fallback path).
+    """
+    mock_conn = AsyncMock()
+    mock_conn.fetchrow.return_value = {
+        "id": 20,
+        "client_id": 1,
+        "status": "in_progress",
+        "start_date": "2026-01-15",
+        "completion_date": None,
+        "expiry_date": None,
+        "notes": None,
+        "practice_name": "KITAS B211A",
+        "practice_category": "visa",
+        # Extra keys a looser mock/caller might still attach — must never
+        # be read into the response even if present on the row.
+        "assigned_to": "staff@example.com",
+    }
+    mock_conn.fetch.return_value = [
+        {
+            "old_status": None,
+            "new_status": "inquiry",
+            "changed_at": "2026-01-15T10:00:00+00:00",
+            "changed_by": "staff@example.com",
+        },
+        {
+            "old_status": "inquiry",
+            "new_status": "in_progress",
+            "changed_at": "2026-01-16T09:00:00+00:00",
+            "changed_by": "other-staff@example.com",
+        },
+    ]
+
+    mock_pool = MagicMock()
+    mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
+    mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
+
+    result = await _build_timeline(mock_pool, practice_id=20, client_id=1)
+
+    assert result is not None
+    assert "assigned_to" not in result
+    assert len(result["steps"]) == 2
+    for step in result["steps"]:
+        assert "changed_by" not in step
+
+
+@pytest.mark.asyncio
+async def test_timeline_fallback_response_never_carries_staff_identity() -> None:
+    """Same guarantee on the single-step fallback path (no status_log rows)."""
+    mock_conn = AsyncMock()
+    mock_conn.fetchrow.return_value = {
+        "id": 21,
+        "client_id": 1,
+        "status": "waiting_documents",
+        "start_date": "2026-02-01",
+        "completion_date": None,
+        "expiry_date": None,
+        "notes": None,
+        "practice_name": "PT PMA Setup",
+        "practice_category": "company",
+        "assigned_to": "staff@example.com",
+    }
+    mock_conn.fetch.side_effect = Exception("relation practice_status_log does not exist")
+
+    mock_pool = MagicMock()
+    mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
+    mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
+
+    result = await _build_timeline(mock_pool, practice_id=21, client_id=1)
+
+    assert result is not None
+    assert "assigned_to" not in result
+    assert len(result["steps"]) == 1
+    assert "changed_by" not in result["steps"][0]

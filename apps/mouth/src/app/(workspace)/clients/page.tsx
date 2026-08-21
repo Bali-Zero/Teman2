@@ -352,7 +352,7 @@ function ClientsListContent() {
   });
 
   // Stats hook
-  const { data: stats } = useCrmStats();
+  const { data: stats, isError: statsError } = useCrmStats();
 
   // Load team assignees from API (not just from loaded clients)
   const { data: assigneesData } = useQuery({
@@ -564,6 +564,14 @@ function ClientsListContent() {
             {stats && (
               <span className="ml-2 text-xs">• {stats.totalClients} total</span>
             )}
+            {statsError && (
+              <span
+                className="ml-2 text-xs"
+                style={{ color: "var(--state-danger)" }}
+              >
+                • stats unavailable
+              </span>
+            )}
           </>
         }
         actions={
@@ -643,6 +651,11 @@ function ClientsListContent() {
       />
 
       {/* Revenue Stats Ribbon */}
+      {statsError && isMounted && (
+        <p className="text-xs" style={{ color: "var(--state-danger)" }}>
+          Stats unavailable — retry to reload counts.
+        </p>
+      )}
       {stats && isMounted && (
         <StatChips
           className="flex flex-wrap gap-3 text-xs"

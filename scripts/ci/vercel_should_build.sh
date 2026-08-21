@@ -73,6 +73,53 @@ BASE="${VERCEL_GIT_PREVIOUS_SHA:-}"
 
 log() { printf 'should-build: %s\n' "$1" >&2; }
 
+# Production never skips. Not on a missing previous SHA, and not on a present one.
+#
+# The guard used to live inside the `[ -z "$BASE" ]` block below, on the reasoning that the danger
+# was comparing main against main and reading the empty diff as "nothing to build". That named the
+# right danger and only half the doors. On main `VERCEL_GIT_PREVIOUS_SHA` is normally SET, so the
+# block was skipped whole and the guard inside it never ran.
+#
+# WHAT VERCEL_GIT_PREVIOUS_SHA ACTUALLY CONTAINED, measured rather than read off the docs. Vercel
+# documents it as the last SUCCESSFUL deployment for the project and branch. On 2026-08-18 that
+# was demonstrably not what arrived. The production build of 98ab65ab logged:
+#
+#     should-build: no frontend path in 18 changed file(s) -> SKIP
+#
+# Eighteen. Walking main's first-parent history and diffing each candidate against 98ab65ab, the
+# only commits that produce exactly 18 changed files are 5deddb30e / 41cd6b786 / e61c9e076 /
+# b6cb85034 — all landed the SAME DAY. The last successful production deployment, f6dfda99 from
+# 2026-08-15, sits 272 files back with 30 frontend paths among them, and would have produced
+# BUILD. #4178 sits 39 files back, also with frontend paths. So the base was neither: it had
+# already advanced past both, onto commits that never shipped anything.
+#
+# The exact SHA cannot be pinned from the log (four candidates give 18, the log does not print
+# the base). What IS established is the direction, and it is the whole point: the base advances
+# past commits whose builds never shipped, so a frontend commit that is superseded once is never
+# seen by any later diff again. It is stranded for good.
+#
+# The visible cost: balizero.com served the 2026-08-15 build for three days while main ran 75
+# commits ahead, and kept publishing `Avg reply: 2 min` — measured false against 189 message
+# pairs, average ~9h — for three days after #4178 removed it. Every check was green throughout.
+#
+# WHY THE TEST IS `VERCEL_ENV` FIRST. The branch comparison alone is not the deployment
+# environment: `vercel --prod` can promote a non-production branch, and that deployment is
+# production no matter what its ref says. `VERCEL_ENV` is the documented system variable for
+# exactly this question, so it leads; the branch test stays as the second arm because
+# `VERCEL_GIT_PROD_BRANCH` may be absent (the `:-main` fallback is correct for this repo) and
+# because the corpus runs the script outside Vercel entirely, where only the ref exists.
+#
+# Direction of failure is settled by the asymmetry at the top of this file: an unnecessary
+# production build costs ~6 minutes, a wrongly skipped one serves stale code across the whole
+# public surface until a human happens to notice. NOT claimed: that this is free. The 2026-07-29
+# measurement (83% of build minutes in PR previews) says where the historical minutes went, and
+# cannot price builds that were skipped and so never appear in it. The marginal cost of building
+# every production commit is unmeasured here; it is accepted, not shown to be zero.
+if [ "${VERCEL_ENV:-}" = "production" ] || { [ -n "$REF" ] && [ "$REF" = "$PROD_BRANCH" ]; }; then
+  log "production deployment (env='${VERCEL_ENV:-unset}' ref='${REF:-unset}') -> BUILD (a previous SHA names an earlier ATTEMPT, not what is live)"
+  exit 1
+fi
+
 if [ -z "$BASE" ]; then
   # No previous deployment on this ref — this is the case that matters. Measured on the real
   # billing data, first deployments are 89% of the waste: most PRs here are one or two commits
@@ -88,10 +135,11 @@ if [ -z "$BASE" ]; then
   # "cannot fetch" and nothing else. A fail-open branch that does not say WHICH stage opened
   # cannot be repaired from its own evidence. So: cheapest-first resolution, each stage
   # announcing itself without replaying Git stderr, which may contain an authenticated URL.
-  if [ "$REF" = "$PROD_BRANCH" ]; then
-    log "production branch with no previous deployment -> BUILD (never risk a stale production)"
-    exit 1
-  fi
+  # (The production check that used to sit here has moved above this block, where it also sees the
+  # deployments that DO carry a previous SHA — the case this block never reaches, and the one that
+  # froze production. A first deployment with no previous SHA still exists and is still covered,
+  # now by the same check one level up. Leaving a copy here would be unreachable code that reads
+  # like a second line of defence.)
 
   # (1) The merge queue puts the BASE COMMIT in the ref name:
   #     gh-readonly-queue/<base-branch>/pr-<n>-<base-sha>

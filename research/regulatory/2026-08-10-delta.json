@@ -1,0 +1,129 @@
+{
+  "run_at": "2026-08-10T07:07:58+08:00",
+  "today": "2026-08-10",
+  "yesterday_seen_count": 17,
+  "new_today_count": 3,
+  "partial": false,
+  "dedup_baseline_file": "2026-08-07-delta.json",
+  "dedup_baseline_note": "Literal yesterday (2026-08-09) has no delta file - runs on 2026-08-08 and 2026-08-09 appear to be missing. Fell back to the most recent available run (2026-08-07) as the seen_citations dedup baseline instead of a cold start, per agent spec intent (\"Last run's delta file\").",
+  "unreachable_sources": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "http_403",
+      "note": "Cloudflare/WAF block, confirmed after 1 mechanical retry"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "http_403",
+      "note": "confirmed after 1 mechanical retry"
+    },
+    {
+      "url": "https://ortax.org/news",
+      "reason": "empty_shell",
+      "note": "HTTP 200 but 'Artikel tidak ditemukan' error page, zero extractable dated entries"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "http_403",
+      "note": "WebFetch returned 403 despite a bare curl HEAD returning 200 - likely bot-detection on full page render"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "timeout",
+      "note": "curl connection failed (code 000)"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "empty_shell",
+      "note": "200 but only category counts visible, no extractable dated Permenaker list - could not confirm an actual read, defaulted to empty_shell per spec"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "articles present, none cite a PMK/PER-DJP matching filter; two article dates read back inconsistent/future - treated cautiously, not relied on"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "checked_no_new",
+      "note": "dated entries for 08/08 and 09/08 present, no regulation citation numbers extractable from listing"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "checked_no_new",
+      "note": "2 dated press releases (7 Aug: iAPI data exchange, Vietnamese nationals deportation), no formal Permenkumham/Permenimigrasi citation"
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [
+    {
+      "citation": "PMK Nomor 44 Tahun 2026",
+      "title_id": "Persyaratan untuk Menjadi Kuasa di Bidang Perpajakan dan Tata Cara Pelaksanaan Hak dan Pemenuhan Kewajiban Kuasa di Bidang Perpajakan",
+      "title_en": "Requirements to Act as a Tax Representative and Procedures for Exercising Rights and Fulfilling Obligations of a Tax Representative",
+      "service_line": [
+        "tax",
+        "company"
+      ],
+      "severity": "high",
+      "confidence": "high",
+      "impact_note": "Company employees can no longer automatically act as kuasa wajib pajak (tax proxy) for their employer - they now need a valid SKT (Surat Keterangan Terdaftar) or must otherwise qualify as an eligible 'other party'. PT PMA clients currently relying on a staff member as tax proxy without SKT must re-verify/re-authorize now.",
+      "summary": "PMK 44/2026 (in force since 6 Jul 2026, widely reported 7-9 Aug 2026) revokes PMK 229/PMK.03/2014 and tightens who may be appointed kuasa wajib pajak; eligible appointees now also extend beyond tax consultants to family members and other qualified parties.",
+      "source": "NB-INTEL-Tax | PajakOnline (7 Aug 2026) + Pajakku (9 Jul 2026)",
+      "verbatim_excerpt": "Dalam aturan terbaru tersebut, karyawan perusahaan yang ditunjuk sebagai kuasa wajib pajak tidak lagi otomatis dapat mewakili perusahaan, melainkan harus memenuhi persyaratan sebagai pihak lain, termasuk memiliki Surat Keterangan Terdaftar (SKT) yang masih berlaku.",
+      "first_seen_at": "2026-08-10T07:07:58+08:00"
+    },
+    {
+      "citation": "Peraturan Direktur Jenderal Pajak Nomor PER-8/PJ/2026",
+      "title_id": "Perubahan atas Peraturan Direktur Jenderal Pajak Nomor PER-10/PJ/2024 tentang Ketentuan Pembayaran dan Penyetoran Pajak serta Pengembalian Kelebihan Pembayaran Pajak dalam Rangka Pelaksanaan Sistem Inti Administrasi Perpajakan",
+      "title_en": "Amendment to DGT Regulation PER-10/PJ/2024 on Tax Payment/Deposit Provisions and Overpayment Refunds under the Core Tax Administration System",
+      "service_line": [
+        "tax"
+      ],
+      "severity": "medium",
+      "confidence": "high",
+      "impact_note": "Adds new Kode Jenis Setoran (KJS) deposit-type codes on certain KAP and caps billing/payment-code (kode billing) validity at 14 days. Clients paying tax via Coretax must generate a fresh billing code if the prior one lapses past 14 days, or the payment will be rejected.",
+      "summary": "PER-8/PJ/2026 (dated 28 Jul 2026, reported 3-7 Aug 2026) amends PER-10/PJ/2024: introduces new KJS codes and sets a 14-day billing-code expiry, part of post-Coretax administrative tuning by DJP.",
+      "source": "pajak.go.id (official, dated 2026-07-28) | NB-INTEL-Tax (PajakOnline, Pajak.com-style portal, 3-7 Aug 2026)",
+      "verbatim_excerpt": "PERUBAHAN ATAS PERATURAN DIREKTUR JENDERAL PAJAK NOMOR PER-10/PJ/2024 TENTANG KETENTUAN PEMBAYARAN DAN PENYETORAN PAJAK SERTA PENGEMBALIAN KELEBIHAN PEMBAYARAN PAJAK DALAM RANGKA PELAKSANAAN SISTEM INTI ADMINISTRASI PERPAJAKAN",
+      "first_seen_at": "2026-08-10T07:07:58+08:00"
+    },
+    {
+      "citation": "Peraturan Menteri Hukum Nomor 13 Tahun 2026",
+      "title_id": "Besaran Persyaratan dan Tata Cara Pengenaan Tarif Sampai Dengan Rp0,00",
+      "title_en": "Amount, Requirements and Procedure for the Imposition of Fees Down to Rp0.00 [fee-waiver mechanism]",
+      "service_line": [
+        "company"
+      ],
+      "severity": "low",
+      "confidence": "medium",
+      "impact_note": "Possible PNBP/AHU fee-waiver mechanism under Kementerian Hukum (the ministry that handles notary/company-registration matters) - relevance to PT PMA incorporation costs is plausible from the title alone but NOT confirmed. Verify full regulation text before citing to any client.",
+      "summary": "Single-source finding (peraturan.go.id listing only; established 1 Aug, published 3 Aug 2026). Exact scope unconfirmed - flagged for awareness, not for client-facing advice yet.",
+      "source": "peraturan.go.id (single source, unconfirmed elsewhere)",
+      "verbatim_excerpt": "Besaran Persyaratan dan Tata Cara Pengenaan Tarif Sampai Dengan Rp0,00",
+      "first_seen_at": "2026-08-10T07:07:58+08:00"
+    }
+  ],
+  "seen_citations": [
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 28 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "PMK Nomor 44 Tahun 2026",
+    "Peraturan Direktur Jenderal Pajak Nomor PER-8/PJ/2026",
+    "Peraturan Menteri Hukum Nomor 13 Tahun 2026"
+  ]
+}
