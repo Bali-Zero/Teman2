@@ -211,9 +211,12 @@ def test_innocence_unrelated_organ_named_like_arsenal_probe_prefix_still_flags(t
     regex ONLY on M5 and elsewhere asserted nothing — on Pro, on Mini and on any
     CI runner the organ is out-of-jurisdiction, scan_sidecars skips it before the
     regex is ever consulted, and `len(findings) == 1` fails. Green on exactly one
-    machine in the fleet, since 2026-08-07, and invisible because no workflow
-    named this corpus; the arming step added in this PR failed on its first real
-    run and produced this. Pinning restores what the docstring claims to test.
+    machine in the fleet from the day it was written (2026-08-20, #4467) — NOT
+    from 2026-08-07, which is when the jurisdiction MECHANISM landed (111049e8c);
+    an earlier draft of this note conflated the two, and a fact-check caught it.
+    Either way it was invisible, because no workflow named this corpus; the
+    arming step added in this PR failed on its first real run and produced this.
+    Pinning restores what the docstring claims to test.
     """
     d = str(tmp_path)
     old = time.time() - 9 * 86400

@@ -24,7 +24,8 @@ objective: |
      It ran only inside the generic `scripts/tests/` sweep, which is continue-on-error and
      therefore green by construction (W108). Armed in organ-conformance.yml — and on its
      first real CI run it immediately failed, exposing a test that was green on exactly one
-     machine in the fleet since 2026-08-07.
+     machine in the fleet since the day it was written (2026-08-20, #4467 — not 2026-08-07,
+     which is when the jurisdiction MECHANISM landed; a fact-check caught the conflation).
 constraints:
   - "The two status vocabularies stay SEPARATE. `warning` carries two populations — an organ
     that is blind, and routine advisory traffic (all three *.agent_worktree_cleanup organs say
@@ -73,11 +74,15 @@ risks:
     line per warning — 3 fleet-wide at time of writing."
   - "The severity split lives in TWO files and is only true if both agree. Mitigated by a
     cross-artifact pin test that fails if proprioception loses verdict_key/ok_values."
-  - "10 other calls in the corpus still omit host=. None fail, but some pass for the wrong reason
-    (a pro.-prefixed fixture read on M5 is skipped as foreign, so an 'assert no findings' is
-    satisfied by jurisdiction rather than freshness). Deliberately NOT pinned here: each needs the
-    jurisdiction its own scenario means, and a blanket host= would make the corpus worse while
-    looking tidier."
+  - "CORRECTED at HEAD by a fact-check, and the correction is the point: this line used to read
+    '10 other calls still omit host=, some passing for the wrong reason'. That was true when
+    written mid-PR and went stale inside the same PR — a later commit swept them. Measured at HEAD
+    by AST: 40 call sites, 5 still omit host=, and NONE of the 5 can exhibit the failure mode.
+    Four write no jurisdiction-scoped fixture at all (no fixture; wr2.html_apply.runtime x2;
+    mata_garuda.consumer_lag_check — `wr2`/`mata_garuda` are absent from ORGAN_PREFIX_HOST, which
+    holds only pro/mini/m5/cell/infra), and the fifth writes infra.eventbus_redis_mini, which is
+    in CROSS_HOST_SIDECAR_SOURCES so _is_foreign_jurisdiction returns False on every host by
+    design. host= is a no-op at all five; there is nothing left to pin."
 grader: independent refuter subagent on an immutable snapshot (never the live worktree — a reviewer reading a tree under mutation reports the mutation as a defect) + CI itself, which refuted the corpus on the first armed run
 budget: ~2 subagents, no council (single-concern reader fix; the divergent-priors gate does not fire)
 pii: none
