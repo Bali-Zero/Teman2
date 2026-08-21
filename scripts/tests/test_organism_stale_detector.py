@@ -759,3 +759,39 @@ def test_proprioception_exempts_warning_from_p1():
     from organism_stale_detector import WARNING_STATUSES
 
     assert "warning" in WARNING_STATUSES
+
+
+def test_this_corpus_has_a_named_executor_in_ci():
+    """The corpus must be RUN, not merely present.
+
+    Until 2026-08-22 no workflow named this file: it executed only inside the
+    `scripts/tests/` sweep, which is continue-on-error and therefore green by
+    construction — 44 cases that could not fail. That is the same shape the
+    detector under test exists to catch, one floor up (W108), and it is why the
+    warning-blindness could sit live with a full corpus sitting next to it.
+
+    organ-conformance.yml gates on TWO filters and the file must be in BOTH: the
+    `on.push.paths` list decides whether the workflow runs post-merge at all, the
+    in-job `git diff` pathspec decides whether its steps do any work. In one and
+    not the other = armed for pull_request only, silently skipped after merge —
+    the workflow's own comment records that exact regression happening before.
+    """
+    here = os.path.dirname(__file__)
+    wf = os.path.join(here, "..", "..", ".github", "workflows", "organ-conformance.yml")
+    assert os.path.exists(wf), wf
+    src = open(wf, encoding="utf-8").read()
+
+    me = "scripts/tests/test_organism_stale_detector.py"
+    subject = "scripts/organism_stale_detector.py"
+
+    # 1) a step actually runs it
+    assert f"pytest \\\n            {me}" in src or f"pytest {me}" in src, (
+        "no run-step names this corpus — the sweep does not count"
+    )
+    # 2) both trigger filters carry the corpus AND its subject
+    quoted, listed = f"'{me}'", f'- "{me}"'
+    assert quoted in src and listed in src, "corpus missing from one of the two filters"
+    assert f"'{subject}'" in src and f'- "{subject}"' in src, (
+        "the code under test is missing from one of the two filters — a PR "
+        "touching only the detector would skip its own corpus"
+    )
