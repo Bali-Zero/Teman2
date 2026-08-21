@@ -110,8 +110,9 @@ name: Harness floor recompute
 # because nothing read the status; now it is load-bearing, so the severity went UP. Tracked in
 # modus PENDING-ARMS as design gap (b) of the 2026-08-10 entry, owner there: "me (next session)
 # for the design work". Its SIBLING — the repo-wide required-check NAME-spoofing gap — is the one
-# with its own 2026-08-21 entry earmarked for a dedicated CI-integrity lane. Two rows, two owners;
-# an earlier draft of this line gave gap (b) the sibling's owner, which the Gear-3 gate caught.
+# with its own 2026-08-21 entry, whose owner field adds the CI-integrity lane qualifier. Both rows
+# name the same party; only the lane differs. An earlier draft of this line moved the qualifier
+# onto gap (b), where the ledger does not put it — the Gear-3 gate caught it.
 #
 # NAME NOTE (2026-08-21): `harness/fable-gate` does NOT invoke Fable and never has — it relays a
 # verdict a Gear-3 session already reached (scripts/harness_fable_gate.py is a publisher with no
