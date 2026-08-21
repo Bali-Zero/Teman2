@@ -323,7 +323,7 @@
           "accounts": ["G1"]
         },
         {
-          "model": "qwen-3.8-max",
+          "model": "qwen3.8-max",
           "accounts": ["TP1"],
           "note": "ARMED 2026-08-14 (PROBE-1-residual closed, 459 calls / 74.1M tokens measured 2026-08-08→14, see accounts.alibaba.slots.TP1 and research/operations/2026-08-14-probe1-tp1-burn-rate.md)"
         }
@@ -369,7 +369,7 @@
     "doc_mass_nonpii": {
       "chain": [
         {
-          "model": "qwen-3.8-max",
+          "model": "qwen3.8-max",
           "accounts": ["TP1"],
           "note": "ARMED 2026-08-14 (PROBE-1-residual closed, see accounts.alibaba.slots.TP1)"
         },
@@ -404,7 +404,7 @@
           "accounts": ["G1"]
         },
         {
-          "model": "qwen-3.8-max",
+          "model": "qwen3.8-max",
           "accounts": ["TP1"],
           "note": "ARMED 2026-08-14 (PROBE-1-residual closed, see accounts.alibaba.slots.TP1) — the compliance-exact hard_no below is unrelated to PROBATION status and still applies unconditionally"
         }
