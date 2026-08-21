@@ -1,0 +1,123 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "notebooklm-default",
+  "display_name": "NotebookLM default profile",
+  "identity": {
+    "provider": "google",
+    "family": "notebooklm",
+    "kind": "service",
+    "aliases": [],
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Google",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "known_unmeasured",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Google",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "knowledge_verification",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Google",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "MODEL_ROSTER.md#Google",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "MODEL_ROSTER.md#Google",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "role",
+      "value": "ground_truth_verifier",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Google",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "synthesis",
+      "value": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Google",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "declared_capability_profile",
+      "value": "Research-assistant service whose chat answers are grounded in notebook sources with inline citations; accepts PDFs, websites, YouTube, audio, Google Docs, and Slides and can create guides, briefs, audio, video, mind maps, infographics, and slide decks.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "Google NotebookLM Help: Learn about NotebookLM and Use NotebookLM with a work or school Google account | https://support.google.com/notebooklm/answer/16164461?hl=en | https://support.google.com/notebooklm/answer/17003757",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "declared_source_limits",
+      "value": "Per-source ingestion limit is 500,000 words or 200 MB; the standard free tier supports up to 50 sources per notebook. These are service ingestion limits, not model context or output token limits.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "Google NotebookLM Help: Add or discover new sources | https://support.google.com/notebooklm/answer/16215270",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "declared",
+      "ref": "MODEL_ROSTER.md#Google",
+      "observed_at": "2026-08-21"
+    },
+    {
+      "level": "declared",
+      "ref": "Google NotebookLM Help: Learn about NotebookLM | https://support.google.com/notebooklm/answer/16164461?hl=en",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

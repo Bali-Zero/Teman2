@@ -1,0 +1,112 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "qwen-audio-3.0-realtime-plus",
+  "display_name": "Qwen Audio 3.0 Realtime Plus",
+  "identity": {
+    "provider": "alibaba",
+    "family": "qwen",
+    "kind": "audio",
+    "aliases": [],
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.unexploited_capabilities",
+        "observed_at": "2026-08-14"
+      }
+    ]
+  },
+  "routing": {
+    "status": "listed_unexploited",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.unexploited_capabilities",
+        "observed_at": "2026-08-14"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "audio_tts",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.unexploited_capabilities",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    },
+    {
+      "id": "audio_realtime",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.unexploited_capabilities",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.unexploited_capabilities",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.unexploited_capabilities",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "declared_capabilities",
+      "value": "Documents real-time voice interaction with audio and text output and cloned-voice support.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://www.alibabacloud.com/help/en/model-studio/qwen-audio-realtime-user-guides | Qwen-Audio real-time voice model | accessed 2026-08-21 | Exact claim: qwen-audio-3.0-realtime-plus documents audio and text output plus cloned-voice support.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "wired_to_role_chain",
+      "value": false,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.unexploited_capabilities",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "declared",
+      "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.unexploited_capabilities",
+      "observed_at": "2026-08-14"
+    },
+    {
+      "level": "declared",
+      "ref": "https://www.alibabacloud.com/help/en/model-studio/qwen-audio-realtime-user-guides | Qwen-Audio real-time voice model | accessed 2026-08-21 | Exact claim: qwen-audio-3.0-realtime-plus documents real-time voice interaction with audio and text output plus cloned-voice support.",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

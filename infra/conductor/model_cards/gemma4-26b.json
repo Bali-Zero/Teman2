@@ -1,0 +1,128 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "gemma4-26b",
+  "display_name": "Gemma 4 26B",
+  "identity": {
+    "provider": "ollama",
+    "family": "gemma4",
+    "kind": "vision",
+    "aliases": ["gemma4:26b"],
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_TOPOLOGY.json#roles",
+        "observed_at": "2026-06-16"
+      },
+      {
+        "level": "declared",
+        "ref": "https://ollama.com/library/gemma4/tags | title=Gemma4 Ollama library tags | note=The exact gemma4:26b package is listed as a 256K-context text-and-image model with reasoning, coding, agentic, and function-calling features.",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "known_unmeasured",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "infra/conductor/inventory_observations.v1.json#observations",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    },
+    {
+      "id": "vision",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://ai.google.dev/gemma/docs/core/model_card_4 | title=Gemma 4 model card | note=The Google card documents multimodal text-and-image input for Gemma 4 26B A4B.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": 262144,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://ollama.com/library/gemma4/tags | title=Gemma4 Ollama library tags | note=Exact gemma4:26b package is listed with 256K context.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "role",
+      "value": "kg_json_or_translation",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    },
+    {
+      "id": "thinking",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://huggingface.co/google/gemma-4-26B-A4B | title=Gemma 4 26B A4B model card | note=The Google card documents thinking/reasoning support; local runtime behavior is unmeasured.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "function_calling",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://huggingface.co/google/gemma-4-26B-A4B | title=Gemma 4 26B A4B model card | note=The Google card documents function calling and coding capabilities; local serving behavior remains unmeasured.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "declared",
+      "ref": "MODEL_TOPOLOGY.json#roles",
+      "observed_at": "2026-06-16"
+    },
+    {
+      "level": "probed",
+      "ref": "infra/conductor/inventory_observations.v1.json#observations",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

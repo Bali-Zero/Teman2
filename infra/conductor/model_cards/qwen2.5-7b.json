@@ -1,0 +1,126 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "qwen2.5-7b",
+  "display_name": "Qwen 2.5 7B",
+  "identity": {
+    "provider": "ollama",
+    "family": "qwen2.5",
+    "kind": "language",
+    "aliases": ["qwen2.5:7b"],
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_TOPOLOGY.json#roles",
+        "observed_at": "2026-06-16"
+      },
+      {
+        "level": "declared",
+        "ref": "https://qwenlm.github.io/blog/qwen2.5-llm/ | Qwen2.5-LLM: Extending the boundary of LLMs | accessed 2026-08-21 | Exact claim: Qwen2.5-7B has a 128K context and 8K generation length.",
+        "observed_at": "2026-08-21"
+      },
+      {
+        "level": "declared",
+        "ref": "https://ollama.com/library/qwen2.5/tags | title=Qwen2.5 Ollama library tags | note=The exact qwen2.5:7b local package is listed with a 32K context; this package-level limit is kept distinct from the upstream 128K claim.",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "known_unmeasured",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_TOPOLOGY.json#roles",
+        "observed_at": "2026-06-16"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": 32768,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        },
+        {
+          "level": "declared",
+          "ref": "https://qwenlm.github.io/blog/qwen2.5-llm/ | Qwen2.5-LLM: Extending the boundary of LLMs | accessed 2026-08-21 | Exact claim: Qwen2.5-7B has a 128K context length.",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://ollama.com/library/qwen2.5/tags | title=Qwen2.5 Ollama library tags | note=Exact qwen2.5:7b package is listed with 32K context.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": 8192,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "MODEL_TOPOLOGY.json#roles",
+          "observed_at": "2026-06-16"
+        },
+        {
+          "level": "declared",
+          "ref": "https://qwenlm.github.io/blog/qwen2.5-llm/ | Qwen2.5-LLM: Extending the boundary of LLMs | accessed 2026-08-21 | Exact claim: Qwen2.5-7B has an 8K generation length.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "coding_math_json",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://qwenlm.github.io/blog/qwen2.5-llm/ | title=Qwen2.5-LLM: Extending the boundary of LLMs | note=The official Qwen source documents coding, mathematics, structured JSON generation, and multilingual support.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "generation_tokens",
+      "value": "8192",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://qwenlm.github.io/blog/qwen2.5-llm/ | title=Qwen2.5-LLM: Extending the boundary of LLMs | note=The upstream Qwen2.5-7B source documents an 8K generation length; local serving behavior is unmeasured.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "declared",
+      "ref": "MODEL_TOPOLOGY.json#roles",
+      "observed_at": "2026-06-16"
+    },
+    {
+      "level": "declared",
+      "ref": "https://qwenlm.github.io/blog/qwen2.5-llm/ | Qwen2.5-LLM: Extending the boundary of LLMs | accessed 2026-08-21 | Exact claim: Qwen2.5-7B has a 128K context and 8K generation length.",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

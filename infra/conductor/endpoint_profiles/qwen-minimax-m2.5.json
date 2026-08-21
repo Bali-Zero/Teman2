@@ -1,0 +1,93 @@
+{
+  "schema_version": "endpoint-profile.v1",
+  "id": "qwen-minimax-m2.5",
+  "model_card_id": "minimax-m2.5",
+  "aliases": [],
+  "invocation": {
+    "engine": "qwen",
+    "model_identifier": "MiniMax-M2.5",
+    "harness": "Qwen CLI",
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.roster.NOT_in_plan",
+        "observed_at": "2026-08-14"
+      }
+    ]
+  },
+  "account_class": {
+    "value": "alibaba-tp1",
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.roster.NOT_in_plan",
+        "observed_at": "2026-08-14"
+      }
+    ]
+  },
+  "auth_surface": "unknown",
+  "machine_constraints": {
+    "allowlist": ["air-m5", "pro", "mini-pro2"],
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.roster.NOT_in_plan",
+        "observed_at": "2026-08-14"
+      }
+    ]
+  },
+  "routing": {
+    "status": "phantom",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.roster.NOT_in_plan",
+        "observed_at": "2026-08-14"
+      }
+    ]
+  },
+  "enforcement": {
+    "mode": "unmeasured",
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.roster.NOT_in_plan",
+        "observed_at": "2026-08-14"
+      }
+    ]
+  },
+  "exposed_capabilities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.roster.NOT_in_plan",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    }
+  ],
+  "restrictions": [
+    {
+      "id": "client_pii",
+      "value": "not eligible for PII/local-only routing",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#_invariants",
+          "observed_at": "2026-08-20"
+        }
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "level": "declared",
+      "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.console_verified_2026_08_14.roster.NOT_in_plan",
+      "observed_at": "2026-08-14"
+    }
+  ]
+}

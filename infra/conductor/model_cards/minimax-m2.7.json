@@ -1,0 +1,122 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "minimax-m2.7",
+  "display_name": "MiniMax-M2.7",
+  "identity": {
+    "provider": "minimax",
+    "family": "MiniMax",
+    "kind": "language",
+    "aliases": [],
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "investigation_required",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": 204800,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://platform.minimax.io/docs/api-reference/api-overview | API Overview | accessed 2026-08-21 | Exact claim: MiniMax-M2.7 has a 204,800-token maximum for total input plus output.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "declared_capabilities",
+      "value": "Text-generation model that documents tool-call triggering; its text-generation guide classifies M2.7 as a reasoning model.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://platform.minimax.io/docs/api-reference/api-overview | API Overview | accessed 2026-08-21 | Exact claim: MiniMax-M2.7 documents text generation, tool-call triggering, and a 204,800-token total input/output maximum.",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://platform.minimax.io/docs/api-reference/text-post | Text Generation | accessed 2026-08-21 | Exact claim: MiniMax-M2.7 is documented as a reasoning model.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "live_probe_result",
+      "value": "PONG on Air-M5, Pro, and Mini-Pro2",
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "billing_plan_eligibility",
+      "value": "unresolved",
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "probed",
+      "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1.models_measured_2026_08_21",
+      "observed_at": "2026-08-21"
+    },
+    {
+      "level": "declared",
+      "ref": "https://platform.minimax.io/docs/api-reference/api-overview | API Overview | accessed 2026-08-21 | Exact claim: MiniMax-M2.7 documents text generation, tool-call triggering, and a 204,800-token total input/output maximum.",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

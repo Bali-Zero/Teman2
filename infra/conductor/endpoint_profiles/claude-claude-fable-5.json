@@ -1,0 +1,115 @@
+{
+  "schema_version": "endpoint-profile.v1",
+  "id": "claude-claude-fable-5",
+  "model_card_id": "claude-fable-5",
+  "aliases": [],
+  "invocation": {
+    "engine": "claude",
+    "model_identifier": "claude-fable-5",
+    "harness": null,
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Anthropic",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "account_class": {
+    "value": "anthropic-oauth-subscription",
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Anthropic",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "auth_surface": "anthropic_oauth_subscription",
+  "machine_constraints": {
+    "allowlist": ["air-m5", "pro", "mini-pro2"],
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Anthropic",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "manual_only",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Anthropic",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "enforcement": {
+    "mode": "manual_only",
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Anthropic",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "exposed_capabilities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "coding",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "reasoning_control",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Anthropic",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "restrictions": [
+    {
+      "id": "client_pii",
+      "value": "not eligible for PII/local-only routing",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#_invariants",
+          "observed_at": "2026-08-20"
+        }
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "level": "declared",
+      "ref": "MODEL_ROSTER.md#Anthropic",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

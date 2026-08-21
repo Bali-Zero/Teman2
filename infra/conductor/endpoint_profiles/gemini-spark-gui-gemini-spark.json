@@ -1,0 +1,93 @@
+{
+  "schema_version": "endpoint-profile.v1",
+  "id": "gemini-spark-gui-gemini-spark",
+  "model_card_id": "gemini-spark",
+  "aliases": [],
+  "invocation": {
+    "engine": "gemini-spark-gui",
+    "model_identifier": "gemini-spark",
+    "harness": null,
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Google",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "account_class": {
+    "value": "google-consumer",
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Google",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "auth_surface": "manual_gui",
+  "machine_constraints": {
+    "allowlist": ["air-m5", "pro", "mini-pro2"],
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Google",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "manual_only",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Google",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "enforcement": {
+    "mode": "manual_only",
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Google",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "exposed_capabilities": [
+    {
+      "id": "knowledge_verification",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Google",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "restrictions": [
+    {
+      "id": "client_pii",
+      "value": "not eligible for PII/local-only routing",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#_invariants",
+          "observed_at": "2026-08-20"
+        }
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "level": "declared",
+      "ref": "MODEL_ROSTER.md#Google",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

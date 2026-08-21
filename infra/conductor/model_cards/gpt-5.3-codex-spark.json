@@ -1,0 +1,112 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "gpt-5.3-codex-spark",
+  "display_name": "GPT-5.3 Codex Spark",
+  "identity": {
+    "provider": "openai",
+    "family": "gpt-5.3",
+    "kind": "language",
+    "aliases": [],
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "infra/conductor/inventory_observations.v1.json#observations",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "known_unmeasured",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "infra/conductor/inventory_observations.v1.json#observations",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "coding",
+      "value": true,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": 128000,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "OpenAI Introducing GPT-5.3-Codex-Spark | https://openai.com/index/introducing-gpt-5-3-codex-spark/",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "probed_fact_boundary",
+      "value": "Discovery only; auth, quota, effective served model, and inference access unverified.",
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "declared_capability_profile",
+      "value": "Research-preview, text-only coding model optimized for real-time interaction, targeted edits, logic, and UI work; lightweight by default and does not automatically run tests unless requested. Availability is Codex surfaces for Pro users with separate limits, not general API availability.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "OpenAI Introducing GPT-5.3-Codex-Spark | https://openai.com/index/introducing-gpt-5-3-codex-spark/",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "probed",
+      "ref": "infra/conductor/inventory_observations.v1.json#observations",
+      "observed_at": "2026-08-21"
+    },
+    {
+      "level": "declared",
+      "ref": "OpenAI Introducing GPT-5.3-Codex-Spark | https://openai.com/index/introducing-gpt-5-3-codex-spark/",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

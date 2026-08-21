@@ -1,0 +1,101 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "qwen3.7-max",
+  "display_name": "Qwen 3.7 Max",
+  "identity": {
+    "provider": "alibaba",
+    "family": "qwen-3",
+    "kind": "language",
+    "aliases": ["qwen-3.7-max"],
+    "evidence": [
+      {
+        "level": "production",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+        "observed_at": "2026-08-14"
+      }
+    ]
+  },
+  "routing": {
+    "status": "probation",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "production",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+        "observed_at": "2026-08-14"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": 1000000,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/qwen3-7-max | qwen3.7-max Model Info | accessed 2026-08-21 | Exact claim: qwen3.7-max documents a 1,000,000-token context limit.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": 131072,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/qwen3-7-max | qwen3.7-max Model Info | accessed 2026-08-21 | Exact claim: qwen3.7-max documents a 131,072-token output limit.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "declared_capabilities",
+      "value": "Accepts and returns text; documents Function Calling, Structured Outputs, Web Search, Prefix Completion, and Context Caching. Batch Inference is documented as supported in China (Beijing) and unsupported in Singapore, Germany, the US, and Japan.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://help.aliyun.com/en/model-studio/qwen3-7-max | qwen3.7-max Model Info | accessed 2026-08-21 | Exact claim: qwen3.7-max has text input/output, a 1,000,000-token context, a 131,072-token output limit, documents Structured Outputs, and documents Batch Inference as supported in China (Beijing) and unsupported in Singapore, Germany, the US, and Japan.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "zero_measured_calls",
+      "value": true,
+      "evidence": [
+        {
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "production",
+      "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+      "observed_at": "2026-08-14"
+    },
+    {
+      "level": "declared",
+      "ref": "https://help.aliyun.com/en/model-studio/qwen3-7-max | qwen3.7-max Model Info | accessed 2026-08-21 | Exact claim: qwen3.7-max has text input/output, a 1,000,000-token context, a 131,072-token output limit, documents Structured Outputs, and has region-dependent documented feature support.",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

@@ -1,0 +1,123 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "gpt-5.6-luna",
+  "display_name": "GPT-5.6 Luna",
+  "identity": {
+    "provider": "openai",
+    "family": "gpt-5.6",
+    "kind": "language",
+    "aliases": [],
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#2",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "eligible",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#2",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#2",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "coding",
+      "value": true,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#2",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "reasoning_control",
+      "value": true,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#2",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": 1050000,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "OpenAI GPT-5.6 Luna Model | https://developers.openai.com/api/docs/models/gpt-5.6-luna",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": 128000,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "OpenAI GPT-5.6 Luna Model | https://developers.openai.com/api/docs/models/gpt-5.6-luna",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "observed_explicit_slug",
+      "value": true,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#2",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "declared_capability_profile",
+      "value": "Text input/output and image input; reasoning effort none, low, medium, high, xhigh, or max; cost-sensitive high-volume tier optimized for fast and affordable workloads.",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "OpenAI GPT-5.6 Luna Model and GPT-5.6 announcement | https://developers.openai.com/api/docs/models/gpt-5.6-luna | https://openai.com/index/gpt-5-6/",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "probed",
+      "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#2",
+      "observed_at": "2026-08-21"
+    },
+    {
+      "level": "declared",
+      "ref": "OpenAI GPT-5.6 Luna Model | https://developers.openai.com/api/docs/models/gpt-5.6-luna",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

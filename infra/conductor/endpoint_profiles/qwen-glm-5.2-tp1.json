@@ -1,0 +1,104 @@
+{
+  "schema_version": "endpoint-profile.v1",
+  "id": "qwen-glm-5.2-tp1",
+  "model_card_id": "glm-5.2",
+  "aliases": [],
+  "invocation": {
+    "engine": "qwen",
+    "model_identifier": "glm-5.2",
+    "harness": "Qwen CLI",
+    "evidence": [
+      {
+        "level": "production",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+        "observed_at": "2026-08-14"
+      }
+    ]
+  },
+  "account_class": {
+    "value": "alibaba-tp1",
+    "evidence": [
+      {
+        "level": "production",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+        "observed_at": "2026-08-14"
+      }
+    ]
+  },
+  "auth_surface": "unknown",
+  "machine_constraints": {
+    "allowlist": ["air-m5", "pro", "mini-pro2"],
+    "evidence": [
+      {
+        "level": "production",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+        "observed_at": "2026-08-14"
+      }
+    ]
+  },
+  "routing": {
+    "status": "probation",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "production",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+        "observed_at": "2026-08-14"
+      }
+    ]
+  },
+  "enforcement": {
+    "mode": "advisory_only",
+    "evidence": [
+      {
+        "level": "production",
+        "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+        "observed_at": "2026-08-14"
+      }
+    ]
+  },
+  "exposed_capabilities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    },
+    {
+      "id": "coding",
+      "value": true,
+      "evidence": [
+        {
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    }
+  ],
+  "restrictions": [
+    {
+      "id": "load_bearing",
+      "value": false,
+      "evidence": [
+        {
+          "level": "production",
+          "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+          "observed_at": "2026-08-14"
+        }
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "level": "production",
+      "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
+      "observed_at": "2026-08-14"
+    }
+  ]
+}

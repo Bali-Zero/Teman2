@@ -1,0 +1,139 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "qwen3-vl-8b",
+  "display_name": "Qwen 3 VL 8B",
+  "identity": {
+    "provider": "ollama",
+    "family": "qwen-3",
+    "kind": "vision",
+    "aliases": ["qwen3-vl:8b"],
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "infra/conductor/inventory_observations.v1.json#observations",
+        "observed_at": "2026-08-21"
+      },
+      {
+        "level": "declared",
+        "ref": "https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct | title=Qwen3-VL-8B-Instruct model card | note=The exact upstream checkpoint documents 256K native context, visual agents, video, OCR, spatial understanding, and tool-oriented interaction; the local Ollama packaging is not independently documented here.",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "known_unmeasured",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "infra/conductor/inventory_observations.v1.json#observations",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "vision",
+      "value": true,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct | title=Qwen3-VL-8B-Instruct model card | note=The upstream checkpoint is multimodal; exact local serving identity and quality remain unmeasured.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct | title=Qwen3-VL-8B-Instruct model card | note=The upstream checkpoint accepts text and image/video inputs.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "video",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct | title=Qwen3-VL-8B-Instruct model card | note=The upstream checkpoint documents video understanding and long-video processing.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "ocr",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct | title=Qwen3-VL-8B-Instruct model card | note=The upstream checkpoint documents OCR in 32 languages and structured extraction from long documents.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "tool_calling_declared",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct | title=Qwen3-VL-8B-Instruct model card | note=The upstream checkpoint documents visual-agent and tool-oriented interaction capabilities; local execution is unmeasured.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": 262144,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct | title=Qwen3-VL-8B-Instruct model card | note=The upstream checkpoint documents 256K native context; this does not establish local Ollama runtime limits.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "probed_fact_boundary",
+      "value": "Discovery only; auth, quota, effective served model, and inference access unverified.",
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "infra/conductor/inventory_observations.v1.json#observations",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "probed",
+      "ref": "infra/conductor/inventory_observations.v1.json#observations",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

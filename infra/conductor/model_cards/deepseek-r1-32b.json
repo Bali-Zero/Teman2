@@ -1,0 +1,117 @@
+{
+  "schema_version": "model-card.v1",
+  "id": "deepseek-r1-32b",
+  "display_name": "DeepSeek R1 32B",
+  "identity": {
+    "provider": "ollama",
+    "family": "deepseek",
+    "kind": "language",
+    "aliases": ["deepseek-r1:32b"],
+    "evidence": [
+      {
+        "level": "declared",
+        "ref": "MODEL_ROSTER.md#Local-Ollama",
+        "observed_at": "2026-08-21"
+      },
+      {
+        "level": "declared",
+        "ref": "https://ollama.com/library/deepseek-r1/tags | title=DeepSeek-R1 Ollama library tags | note=The exact deepseek-r1:32b package is listed as a 128K-context text model; the library describes DeepSeek-R1 as a reasoning model and lists distilled variants.",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "known_unmeasured",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "infra/conductor/inventory_observations.v1.json#observations",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "modalities": [
+    {
+      "id": "language",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Local-Ollama",
+          "observed_at": "2026-08-21"
+        },
+        {
+          "level": "declared",
+          "ref": "https://ollama.com/library/deepseek-r1 | title=DeepSeek-R1 Ollama library page | note=The official library describes DeepSeek-R1 as a reasoning model; local reasoning quality is unmeasured.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "reasoning_control",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Local-Ollama",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "local_only",
+      "value": true,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Local-Ollama",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "context_tokens": {
+      "value": 131072,
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "https://ollama.com/library/deepseek-r1/tags | title=DeepSeek-R1 Ollama library tags | note=Exact deepseek-r1:32b package is listed with 128K context.",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    },
+    "output_tokens": {
+      "value": null,
+      "evidence": [
+        {
+          "level": "unmeasured",
+          "ref": "MODEL_ROSTER.md#Local-Ollama",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  },
+  "constraints": [
+    {
+      "id": "role",
+      "value": "offline_reasoning",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "MODEL_ROSTER.md#Local-Ollama",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "task_scores": [],
+  "evidence": [
+    {
+      "level": "declared",
+      "ref": "MODEL_ROSTER.md#Local-Ollama",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}

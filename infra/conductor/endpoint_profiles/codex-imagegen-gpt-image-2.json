@@ -1,0 +1,93 @@
+{
+  "schema_version": "endpoint-profile.v1",
+  "id": "codex-imagegen-gpt-image-2",
+  "model_card_id": "gpt-image-2",
+  "aliases": [],
+  "invocation": {
+    "engine": "codex-imagegen",
+    "model_identifier": "$imagegen",
+    "harness": null,
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#2",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "account_class": {
+    "value": "chatgpt-subscription",
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#2",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "auth_surface": "openai_chatgpt_subscription",
+  "machine_constraints": {
+    "allowlist": ["air-m5", "pro", "mini-pro2"],
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#2",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "routing": {
+    "status": "known_unmeasured",
+    "automated_routing": false,
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#2",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "enforcement": {
+    "mode": "unmeasured",
+    "evidence": [
+      {
+        "level": "probed",
+        "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#2",
+        "observed_at": "2026-08-21"
+      }
+    ]
+  },
+  "exposed_capabilities": [
+    {
+      "id": "image_generation",
+      "value": true,
+      "evidence": [
+        {
+          "level": "probed",
+          "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#2",
+          "observed_at": "2026-08-21"
+        }
+      ]
+    }
+  ],
+  "restrictions": [
+    {
+      "id": "client_pii",
+      "value": "not eligible for PII/local-only routing",
+      "evidence": [
+        {
+          "level": "declared",
+          "ref": "FLEET_TOPOLOGY.json#_invariants",
+          "observed_at": "2026-08-20"
+        }
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "level": "probed",
+      "ref": "research/operations/2026-08-21-universal-conductor-control-plane-design.md#2",
+      "observed_at": "2026-08-21"
+    }
+  ]
+}
