@@ -422,7 +422,24 @@ def selftest() -> int:
             failures.append(f"INNOCENCE false positive: {name} -> {hits}")
 
     for line in failures:
-        print(f"  ✗ {line}")
+        # CodeQL's default-setup `py/clear-text-logging-sensitive-data` query
+        # (the bare "CodeQL" check, GitHub Advanced Security — NOT a required
+        # merge-queue context; the required `CodeQL Analysis (python)` matrix
+        # job passes) flags this print as clear-text password logging. It is
+        # a false positive against what actually reaches it: `failures`
+        # entries are built ONLY from `scan_text()`'s finding strings, which
+        # this module's own docstring commits to never containing the raw
+        # password — `_scan_dsn_passwords` interpolates `len(body)` and
+        # `_fingerprint(body)` (a truncated sha256), never `body` itself.
+        # Proven, not asserted: `test_guilt_findings_never_contain_the_
+        # password_body` (scripts/tests/test_lint_pg_dsn_credentials.py)
+        # greps every finding this function can produce for the raw
+        # password fragment and fails if it's ever present. CodeQL's taint
+        # tracker flags the flow anyway because it does not model
+        # `hashlib.sha256(...).hexdigest()` as a sanitizer for this rule —
+        # the string is DERIVED from a value its heuristic labels sensitive,
+        # regardless of what actually survives into the derived value.
+        print(f"  ✗ {line}")  # lgtm[py/clear-text-logging-sensitive-data]
     if failures:
         print(f"selftest FAILED ({len(failures)} of {len(guilty) + len(innocent)})")
         return 1
@@ -474,7 +491,11 @@ def main() -> int:
     if findings:
         print(f"❌ literal secret(s) found in {len(findings)} place(s):")
         for line in findings:
-            print(f"   {line}")
+            # Same shape, same false-positive as the `selftest()` print
+            # above (see that comment): `findings` entries never carry the
+            # raw password — proven by `test_guilt_findings_never_contain_
+            # the_password_body` — only a role/count/sha256 fingerprint.
+            print(f"   {line}")  # lgtm[py/clear-text-logging-sensitive-data]
         print()
         print("   A secret in the tree is a secret in the PR diff, which is public")
         print("   while the PR is open even if the merge squashes it out of history.")
