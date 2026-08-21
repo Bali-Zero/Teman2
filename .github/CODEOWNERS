@@ -55,6 +55,14 @@
 /scripts/ci/test_change_map.py                       @Balizero1987
 /scripts/ci/hotzone_changed_files.sh                 @Balizero1987
 
+# Static test-impact map (tests.yml `changes` job, PR lane only —
+# world-patterns-import-map.md §1.2, 2026-08-21) — same trust boundary as
+# change_map.py above and extracted from BASE_SHA alongside it: it decides
+# which pytest modules backend-tests actually runs on a PR, so weakening it
+# is a merge-gate bypass on the same class as change_map.py itself.
+/scripts/ci/impact_map.py                             @Balizero1987
+/scripts/ci/test_impact_map.py                        @Balizero1987
+
 # Ring-gating manual kill-switch (Merge-OS v2 round-2 Cure #1, adapted
 # 2026-08-18) — sits in the same trust boundary as the classifier files
 # above: a PR that neuters this script's ability to force the full suite

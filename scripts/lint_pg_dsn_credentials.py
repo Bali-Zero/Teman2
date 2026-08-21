@@ -39,9 +39,16 @@ WHAT IT DOES
 ------------
 Scans tracked text files for two independent shapes:
 
-1. `backend_rag_v2:<password>@` where `<password>` is a real-looking
-   literal — a run of 10+ letters/digits, not a placeholder, not an
-   env-var reference, not a short human word.
+1. `postgres(ql)://<role>:<password>@` for ANY role — judged by the SHAPE
+   of `<password>`, never by which role it follows. Real-looking means:
+   10+ characters, more than 4 distinct characters (not `xxxxxxxxxx`),
+   no `<`/`>`/`$`/`{`/`}` (bracket or shell-interpolation placeholders),
+   no whitespace, and not "template-shaped" — an underscore/hyphen
+   segmented run where every segment is purely alphabetic or purely
+   numeric (`ROTATED_2026_05_22_...`, `nuzantara_local_2024`). A random
+   generator's output essentially never self-organizes into word/digit
+   blocks like that; a human writing a marker or a dev-local password
+   almost always does. See `_is_real_looking_password`.
 2. `GOCSPX-<body>` where `<body>` is a run of 20+ base64url characters,
    not a placeholder (repeated-character strings like `GOCSPX-XXX...X`
    still pass — see `_is_placeholder`).
@@ -50,12 +57,26 @@ Exits non-zero on any hit.
 
 HONEST LIMIT (declared, not closed by this file)
 -------------------------------------------------
-- The DSN check is anchored on the literal role name `backend_rag_v2`. A
-  `postgres://<other-role>:<password>@...` DSN for ANY other role — a new
-  service account, a per-client role, a local-dev role with a real-looking
-  password — is silently out of scope. This guard proves one role's
-  password is absent from the tree; it does not prove the tree has no
-  Postgres credentials at all.
+- The DSN check judges shape, not name — extended 2026-08-21 (this PR)
+  from an earlier version anchored on the single literal role name
+  `backend_rag_v2`, which proved one role's password was absent and
+  nothing about any other role's. The residual gap is narrower but real:
+  a genuinely random password that happens to fall into the
+  "underscore/hyphen-segmented, every segment purely alpha or purely
+  numeric" shape would read as template-shaped and pass as innocent.
+  Estimated astronomically unlikely for real generator output (that
+  shape requires every segment to independently avoid mixing letters
+  and digits), not verified against every password generator in use.
+- The DSN check requires a `postgres://` or `postgresql://` scheme
+  immediately before the role — a bare `role:password@host` fragment with
+  no scheme prefix (a log line, an f-string built without the scheme, a
+  fragment quoted in an error message) is out of scope by construction.
+  Matching without a scheme anchor was tried and rejected: without it,
+  ANY `word:word@word` shape in the tree — email-adjacent strings, ratio
+  notation, unrelated key:value pairs — becomes a candidate, and the
+  false-positive rate would make the guard the kind of noisy check that
+  gets disabled (superscar #3's own warning: an over-match this loose
+  turns a #3 into a #2).
 - The GOCSPX check catches Google OAuth **client secrets** only. The
   refresh_token that travels alongside a client secret in every leak this
   guard was born from (`1//...`-shaped, arguably the more dangerous of the
@@ -87,14 +108,16 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Anchored on the literal role name, not a bare DSN scheme — a `postgres://`
-# URL for any OTHER role (test fixtures use `test`, `nuzantara`, `secret`) is
-# out of this guard's scope by construction. The password group requires
-# 10+ alnum characters: short enough to still catch a real generated secret
-# (the one this guard was born from was 15), long enough that every known
-# placeholder in the tree today — `secret` (6), `PASS` (4), `CHANGE_ME` (9,
-# and non-alnum anyway) — falls under it without an explicit allowlist entry.
-DSN_PASSWORD_RE = re.compile(r"backend_rag_v2:([A-Za-z0-9]{10,})@")
+# Role-agnostic by design (2026-08-21) — an earlier version anchored this on
+# the literal `backend_rag_v2:` prefix, which proved one role's password
+# absent and left every OTHER role (a new service account, a per-client
+# role, `nuzantara_readonly`, `postgres`, `flypgadmin`, ...) silently out of
+# scope: family #3 in its classic form, a guard that judges the NAME instead
+# of the ENTITY (a DSN carrying a real password). Group 1 = role (context
+# only, never gates), group 2 = the full password segment up to `@` — kept
+# broad (anything but `@`/whitespace/quotes) so `_is_real_looking_password`
+# can judge its SHAPE rather than the regex pre-filtering by charset.
+DSN_PASSWORD_RE = re.compile(r"postgres(?:ql)?://([A-Za-z0-9_.-]+):([^@\s\"']+)@")
 
 # SHA-256 of passwords known to have been real. Present so a re-introduction
 # is named ("this is the sync_targeted.py leak") instead of merely flagged.
@@ -160,6 +183,64 @@ def _is_placeholder(body: str) -> bool:
     return len(set(body)) <= _PLACEHOLDER_MAX_DISTINCT
 
 
+def _is_template_shaped(body: str) -> bool:
+    """True if `body` reads as a human-written marker/placeholder rather
+    than generator output — an underscore/hyphen-delimited run where every
+    segment is purely alphabetic OR purely numeric, never mixed (the
+    rotation marker `ROTATED_2026_05_22_...`, a dev DSN's
+    `nuzantara_local_2024`). Random bytes essentially never self-organize
+    into clean word/digit blocks like that; a person composing an
+    identifier almost always does. A body with any character outside
+    `[A-Za-z0-9_-]`, or with no `_`/`-` at all, is judged on entropy alone
+    instead — this check exists only for the segmented case."""
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", body):
+        return False
+    segments = [s for s in re.split(r"[_-]", body) if s]
+    if len(segments) < 2:
+        return False
+    return all(seg.isalpha() or seg.isdigit() for seg in segments)
+
+
+def _is_real_looking_password(body: str) -> bool:
+    """Judge the SHAPE of a DSN password segment — the entity this guard
+    exists to catch — never the role name it followed. Guilty on any role,
+    including one this repo has never seen before; innocent on any
+    placeholder/template shape, including one built for a role this file
+    has never mentioned."""
+    if len(body) < 10:
+        return False
+    if _is_placeholder(body):
+        return False
+    if any(c in body for c in "<>${}"):
+        return False
+    if any(c.isspace() for c in body):
+        return False
+    if _is_template_shaped(body):
+        return False
+    return True
+
+
+def _scan_dsn_passwords(lines: list[str], path: str) -> list[str]:
+    """Postgres DSN password findings — role-agnostic, shape-judged."""
+    findings: list[str] = []
+    for lineno, line in enumerate(lines, 1):
+        for match in DSN_PASSWORD_RE.finditer(line):
+            role, body = match.group(1), match.group(2)
+            if not _is_real_looking_password(body):
+                continue
+            note = KNOWN_COMPROMISED.get(_fingerprint(body))
+            if note is None:
+                above = lines[lineno - 2] if lineno >= 2 else ""
+                if _SYNTHETIC_MARKER.search(line) or _SYNTHETIC_MARKER.search(above):
+                    continue
+            note_suffix = f" — {note}" if note else ""
+            findings.append(
+                f"{path}:{lineno}: literal Postgres DSN password for role "
+                f"'{role}' ({len(body)} chars, sha256:{_fingerprint(body)}){note_suffix}"
+            )
+    return findings
+
+
 def _scan_shape(
     lines: list[str],
     path: str,
@@ -167,7 +248,9 @@ def _scan_shape(
     known_compromised: dict[str, str],
     label_text: str,
 ) -> list[str]:
-    """One shape's findings — shared by the DSN-password and GOCSPX scans."""
+    """One shape's findings — used by the GOCSPX scan (single-group match;
+    the DSN scan has its own two-group function above, since it needs the
+    role for the finding message without letting the role gate the verdict)."""
     findings: list[str] = []
     for lineno, line in enumerate(lines, 1):
         for match in pattern.finditer(line):
@@ -190,9 +273,7 @@ def _scan_shape(
 def scan_text(text: str, path: str = "<memory>") -> list[str]:
     """Return one human-readable finding per real-looking secret literal."""
     lines = text.splitlines()
-    findings = _scan_shape(
-        lines, path, DSN_PASSWORD_RE, KNOWN_COMPROMISED, "backend_rag_v2 DSN password"
-    )
+    findings = _scan_dsn_passwords(lines, path)
     findings += _scan_shape(
         lines,
         path,
@@ -252,6 +333,17 @@ def selftest() -> int:
     real_body = "2z" + "Ejit43IF" + "6gNUV"  # the sync_targeted.py shape, 15 chars
     other_body = "Kx9" + "mQp2Rz" + "7Lb4Wt"  # a DIFFERENT 15-char literal
     mixed_body = "aB3dE6" + "fG9hJ2kL"  # a THIRD 14-char literal, mixed case, no separators
+    # Real-looking bodies on roles OTHER than backend_rag_v2 — the whole point
+    # of the 2026-08-21 generalization: guilt must not depend on which role
+    # the password follows. `readonly_body`/`super_body`/`proxy_body` are
+    # roles that actually exist in this repo's DSNs (per a tree-wide role
+    # census); `unseen_body` sits on a role string that appears NOWHERE else
+    # in this repo — the guard must catch it on first sight, not on
+    # recognition.
+    readonly_body = "Qm7" + "vX2pL9" + "sT4Rk"  # 14 chars, role nuzantara_readonly
+    super_body = "Hb8" + "wN3jY6" + "cF1Dm"  # 14 chars, role postgres
+    proxy_body = "Rt5" + "kL9qW2" + "xZ7Vn"  # 14 chars, role flypgadmin
+    unseen_body = "Yp4" + "cB8mN1" + "hJ6Wq"  # 14 chars, a role invented for this test only
     # Synthetic GOCSPX bodies, 22-26 chars each, NOT the real leaked value
     # (that one is named only by fingerprint — GOCSPX_KNOWN_COMPROMISED above).
     gocspx_body_a = "aZ3xQ9" + "mR7bN2kP5vT8" + "wY1c"
@@ -261,7 +353,12 @@ def selftest() -> int:
         ("python fallback default", 'DB = "postgresql://backend_rag_v2:' + real_body + '@127.0.0.1:15432/nuzantara_rag"'),
         ("shell export", "export DATABASE_URL=postgres://backend_rag_v2:" + other_body + "@nuzantara-postgres.flycast:5432/nuzantara_rag"),
         ("env file", "DATABASE_URL=postgresql://backend_rag_v2:" + other_body + "@localhost:15432/nuzantara_rag"),
-        ("dotted mixed case", "backend_rag_v2:" + mixed_body + "@nuzantara-postgres.flycast"),
+        ("dotted mixed case", "postgresql://backend_rag_v2:" + mixed_body + "@nuzantara-postgres.flycast:5432/nuzantara_rag"),
+        # Role-agnostic guilt — same password shape, four DIFFERENT roles.
+        ("readonly role, real-looking password", "postgresql://nuzantara_readonly:" + readonly_body + "@nuzantara-postgres.flycast:5432/nuzantara_rag"),
+        ("postgres superuser role", "postgres://postgres:" + super_body + "@127.0.0.1:5432/postgres"),
+        ("flypgadmin role", "postgresql://flypgadmin:" + proxy_body + "@nuzantara-postgres.internal:5432/postgres"),
+        ("role never mentioned anywhere else in this repo", "postgresql://zz_never_real_role_9f3:" + unseen_body + "@example.internal:5432/db"),
         ("gocspx python literal", 'OAUTH_CLIENT_SECRET = "GOCSPX-' + gocspx_body_a + '"'),
         ("gocspx shell export", "export GOOGLE_CLIENT_SECRET=GOCSPX-" + gocspx_body_b),
         ("gocspx json value", '"client_secret": "GOCSPX-' + gocspx_body_a + '"'),
@@ -279,17 +376,30 @@ def selftest() -> int:
     # still receives the identical assembled string at runtime, so the
     # guilt/innocence assertion below is unchanged.
     innocent = [
-        ("established rotation placeholder", "backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag"),
+        ("established rotation placeholder", "postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag"),
+        ("rotation marker on a DIFFERENT role — proves innocence is role-agnostic too", "postgresql://flypgadmin:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/postgres"),
         ("angle-bracket placeholder", "postgresql://backend_rag_v2:<password>@localhost:15432/nuzantara_rag"),
+        ("angle-bracket placeholder, other role", "postgresql://nuzantara_readonly:<password>@localhost:5432/nuzantara_rag"),
         ("short test word secret", "postgres://backend_rag_v2:secret" + "@nuzantara-postgres.flycast:5432/nuzantara_rag"),
         ("dot-env template value", "WA_MIRROR_DATABASE_URL=postgresql://backend_rag_v2:CHANGE_ME" + "@localhost:15432/nuzantara_rag"),
         ("short placeholder word", "FLY_TUNNEL_URL=postgresql://backend_rag_v2:PASS" + "@localhost:15432/nuzantara_rag"),
         ("env-var read, no literal", 'DB = os.environ.get("WA_LAUNCHER_DB_DSN") or os.environ.get("DATABASE_URL")'),
+        ("shell interpolation, braced", "DATABASE_URL=postgresql://backend_rag_v2:${DB_PASS}@localhost:15432/nuzantara_rag"),
+        ("shell interpolation, bare dollar", "DATABASE_URL=postgresql://backend_rag_v2:$DB_PASS@localhost:15432/nuzantara_rag"),
+        ("ellipsis placeholder", "postgresql://postgres:…@localhost:5432/postgres"),
         ("unrelated test DSN", "DATABASE_URL: postgresql://test:test" + "@localhost:5432/nuzantara_test"),
+        ("template role AND password, fake", "postgres://fake:fake" + "@localhost:5432/db"),
+        ("template role AND password, invalid", "postgres://invalid:invalid" + "@localhost:5432/db"),
+        ("template role/password, user/USER", "postgresql://USER:user" + "@localhost:5432/postgres"),
+        ("single-char role and password", "postgres://x:x" + "@localhost:5432/db"),
+        ("tunnel placeholder", "postgresql://tunnel:tunnel" + "@127.0.0.1:15432/db"),
+        ("localhost used as the password too", "postgres://default:localhost" + "@localhost:5432/db"),
         ("different role, same shape password", "postgresql://nuzantara:nuzantara_local_2024" + "@localhost:5432/nuzantara"),
-        ("repeated-char placeholder", "backend_rag_v2:" + "x" * 20 + "@localhost"),
+        ("repeated-char placeholder", "postgresql://backend_rag_v2:" + "x" * 20 + "@localhost:5432/nuzantara_rag"),
+        ("repeated-char placeholder, other role", "postgresql://postgres:" + "A" * 15 + "@localhost:5432/postgres"),
         ("bare role name, no password", 'RUNTIME_ROLE = "backend_rag_v2"'),
         ("comment mentioning the role", "# backend_rag_v2 does NOT have pg_monitor granted"),
+        ("role:password@host fragment with no scheme prefix — declared out of scope", "backend_rag_v2:" + mixed_body + "@nuzantara-postgres.flycast"),
         # GOCSPX innocence — mirrors the redaction convention this guard's own
         # PR introduced in the 9 files it fixed (`# Rotate GOCSPX-*** on Google
         # Cloud Console...`): only 3 non-alnum chars after the prefix, well
@@ -312,7 +422,24 @@ def selftest() -> int:
             failures.append(f"INNOCENCE false positive: {name} -> {hits}")
 
     for line in failures:
-        print(f"  ✗ {line}")
+        # CodeQL's default-setup `py/clear-text-logging-sensitive-data` query
+        # (the bare "CodeQL" check, GitHub Advanced Security — NOT a required
+        # merge-queue context; the required `CodeQL Analysis (python)` matrix
+        # job passes) flags this print as clear-text password logging. It is
+        # a false positive against what actually reaches it: `failures`
+        # entries are built ONLY from `scan_text()`'s finding strings, which
+        # this module's own docstring commits to never containing the raw
+        # password — `_scan_dsn_passwords` interpolates `len(body)` and
+        # `_fingerprint(body)` (a truncated sha256), never `body` itself.
+        # Proven, not asserted: `test_guilt_findings_never_contain_the_
+        # password_body` (scripts/tests/test_lint_pg_dsn_credentials.py)
+        # greps every finding this function can produce for the raw
+        # password fragment and fails if it's ever present. CodeQL's taint
+        # tracker flags the flow anyway because it does not model
+        # `hashlib.sha256(...).hexdigest()` as a sanitizer for this rule —
+        # the string is DERIVED from a value its heuristic labels sensitive,
+        # regardless of what actually survives into the derived value.
+        print(f"  ✗ {line}")  # lgtm[py/clear-text-logging-sensitive-data]
     if failures:
         print(f"selftest FAILED ({len(failures)} of {len(guilty) + len(innocent)})")
         return 1
@@ -364,7 +491,11 @@ def main() -> int:
     if findings:
         print(f"❌ literal secret(s) found in {len(findings)} place(s):")
         for line in findings:
-            print(f"   {line}")
+            # Same shape, same false-positive as the `selftest()` print
+            # above (see that comment): `findings` entries never carry the
+            # raw password — proven by `test_guilt_findings_never_contain_
+            # the_password_body` — only a role/count/sha256 fingerprint.
+            print(f"   {line}")  # lgtm[py/clear-text-logging-sensitive-data]
         print()
         print("   A secret in the tree is a secret in the PR diff, which is public")
         print("   while the PR is open even if the merge squashes it out of history.")
@@ -376,8 +507,8 @@ def main() -> int:
         return 1
 
     print(
-        f"✅ no literal backend_rag_v2 DSN password or GOCSPX- OAuth client "
-        f"secret in {scanned} tracked text file(s)"
+        f"✅ no literal Postgres DSN password (any role) or GOCSPX- OAuth "
+        f"client secret in {scanned} tracked text file(s)"
     )
     return 0
 

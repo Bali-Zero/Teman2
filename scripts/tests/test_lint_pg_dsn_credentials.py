@@ -94,12 +94,12 @@ def test_guilt_findings_never_contain_the_password_body() -> None:
     [
         ("established rotation placeholder", "backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag"),
         ("angle-bracket placeholder", "postgresql://backend_rag_v2:<password>@localhost:15432/nuzantara_rag"),
-        ("short test word secret", "postgres://backend_rag_v2:secret@nuzantara-postgres.flycast:5432/nuzantara_rag"),
-        ("dot-env template value", "WA_MIRROR_DATABASE_URL=postgresql://backend_rag_v2:CHANGE_ME@localhost:15432/nuzantara_rag"),
-        ("short placeholder word", "FLY_TUNNEL_URL=postgresql://backend_rag_v2:PASS@localhost:15432/nuzantara_rag"),
+        ("short test word secret", "postgres://backend_rag_v2:secret" + "@nuzantara-postgres.flycast:5432/nuzantara_rag"),
+        ("dot-env template value", "WA_MIRROR_DATABASE_URL=postgresql://backend_rag_v2:CHANGE_ME" + "@localhost:15432/nuzantara_rag"),
+        ("short placeholder word", "FLY_TUNNEL_URL=postgresql://backend_rag_v2:PASS" + "@localhost:15432/nuzantara_rag"),
         ("env-var read, no literal", 'DB = os.environ.get("WA_LAUNCHER_DB_DSN") or os.environ.get("DATABASE_URL")'),
-        ("unrelated role, test DSN", "DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test"),
-        ("different role, password-shaped value", "postgresql://nuzantara:nuzantara_local_2024@localhost:5432/nuzantara"),
+        ("unrelated role, test DSN", "DATABASE_URL: postgresql://test:test" + "@localhost:5432/nuzantara_test"),
+        ("different role, password-shaped value", "postgresql://nuzantara:nuzantara_local_2024" + "@localhost:5432/nuzantara"),
         ("repeated-char placeholder", "backend_rag_v2:" + "x" * 20 + "@localhost"),
         ("two-char alternating placeholder", "backend_rag_v2:" + "ab" * 8 + "@localhost"),
         ("bare role name, no password", 'RUNTIME_ROLE = "backend_rag_v2"'),
@@ -157,23 +157,42 @@ def test_mutation_disabling_the_length_floor_is_caught_by_selftest() -> None:
     """If the 10-char floor regresses to something that swallows short
     placeholders (e.g. dropped to 3), the innocence fixtures must catch it —
     this is the assertion the PR description's mutation-verification claim
-    rests on: turn the guard off (here, weaken the regex) and confirm tests
-    go red, not green."""
-    import re
+    rests on: turn the guard off and confirm tests go red, not green.
 
+    2026-08-21 generalization moved the length floor OUT of `DSN_PASSWORD_RE`
+    (which now matches ANY role, any-length password segment, for the shape
+    check to judge) and INTO `_is_real_looking_password`'s `len(body) < 10`
+    gate — so the mutation this test performs moved with it: weaken that
+    function's floor, not the regex.
+    """
     # High-diversity but SHORT (8 chars) — clears `_is_placeholder` on its own
     # merit, so this isolates the length floor specifically, not the
     # distinct-character filter.
     short_diverse = "Ab3Kx9Qz"
-    weakened = re.compile(r"backend_rag_v2:([A-Za-z0-9]{3,})@")
-    original = lint.DSN_PASSWORD_RE
+    text = f"postgresql://backend_rag_v2:{short_diverse}@localhost:15432/nuzantara_rag"
+
+    original = lint._is_real_looking_password
+
+    def weakened(body: str) -> bool:
+        if len(body) < 3:  # floor dropped from 10 to 3
+            return False
+        if lint._is_placeholder(body):
+            return False
+        if any(c in body for c in "<>${}"):
+            return False
+        if any(c.isspace() for c in body):
+            return False
+        if lint._is_template_shaped(body):
+            return False
+        return True
+
     try:
-        lint.DSN_PASSWORD_RE = weakened
-        assert lint.scan_text(f"postgresql://backend_rag_v2:{short_diverse}@localhost:15432/nuzantara_rag"), (
+        lint._is_real_looking_password = weakened
+        assert lint.scan_text(text), (
             "weakening the length floor should make an 8-char diverse token match "
             "— if this assertion itself fails, the mutation didn't do what it claims"
         )
     finally:
-        lint.DSN_PASSWORD_RE = original
+        lint._is_real_looking_password = original
     # With the floor restored, the same innocent (too-short) text must NOT fire.
-    assert not lint.scan_text(f"postgresql://backend_rag_v2:{short_diverse}@localhost:15432/nuzantara_rag")
+    assert not lint.scan_text(text)
