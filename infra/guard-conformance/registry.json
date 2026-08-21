@@ -97,9 +97,15 @@
       }
     },
     "command_hooks": {
-      "hooks_dirs": ["infra/claude-hooks", "scripts/hooks"],
+      "hooks_dirs": ["infra/claude-hooks", "scripts/hooks", ".claude/hooks"],
       "vaccine": "infra/claude-hooks/test_hook_innocence.py",
       "entries": {
+        ".claude/hooks/codex-spalla-trigger.sh": {
+          "scar": ["superscar-4-secret-in-the-clear"],
+          "symbols": {},
+          "tests": ["scripts/tests/test_codex_spalla_trigger_redaction.sh"],
+          "note": "PostToolUse hook logging tool_input.command verbatim to ~/logs/codex-spalla-trigger.jsonl -- secret-bearing by construction (a Bash call can carry a credential in argv). Found world-readable (0644) and never redacted; measured on the live file: 11 real sk-ant-oat... values, 108 chars each, in cleartext. Fixed 2026-08-21 with two independent defenses (umask 077 + explicit chmod 0600 for pre-existing files, since `>>` never widens/narrows an existing file's mode; plus redaction of the secret VALUE before the 200-char truncation, so the log stays safe even if a later rotation/copy resets the mode). Guilt+innocence in the test file: sk-ant-oat token, GitHub PAT (ghp_...), and the load-bearing SUFFIXED variable-name case (CLAUDE_CODE_OAUTH_TOKEN_5=, not just the bare TOKEN= a naive redactor would catch -- that exact off-by-one is how real tokens leaked from an earlier probe). Innocence: an ordinary command (`gh pr create ...`) survives intact with no REDACTED marker. Mode case: a freshly created log is 0600, never 0644."
+        },
         "infra/claude-hooks/worktree_isolation.py": {
           "scar": [
             "W79",

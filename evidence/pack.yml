@@ -1,99 +1,59 @@
 brief_ref: evidence/brief.yml
-plan_ref: "harness-floor.yml ARMING NOTE says a promotion is pending that already happened (2026-08-21); folds in superseded PR #4537"
+plan_ref: "codex-spalla hook wrote credentials to a world-readable log (2026-08-21)"
 diff:
-  files: 4
-  net_lines: "CODE +64/-4 (42/4 harness-floor.yml, 22/0 harness_fable_gate.py); WHOLE DIFF +193/-131 including the two evidence files. Measured at merge-base 3b1ca2fbb (git diff <merge-base> --numstat), never two-dot against a moving origin/main — that form attributes main's own commits to this PR (W102). Zero executable lines; the workflow non-comment body is byte-identical."
-  behaviour_change: none
+  behaviour_change: "none to trigger logic; the log's mode and logged value change by design"
 receipts:
-  - claim: "`Harness floor recompute` is ALREADY a required context on main; 27 contexts; app_id 15368; `harness/fable-gate` absent; strict false"
-    cmd: "gh api repos/Bali-Zero/Teman2/branches/main/protection --jq '.required_status_checks | {n:(.checks|length), harness:[...], fable:[...], strict}'"
+  - claim: "The live log held real OAuth token material, world-readable — counted, never printed"
+    cmd: "grep -c 'sk-ant-oat' ~/logs/codex-spalla-trigger.jsonl (-> 11); longest token-shaped run via grep -oE | awk length (-> 108); stat -f '%Lp' (-> 644)"
     exit: 0
-    ts: "2026-08-21T13:23:00Z"
+    ts: "2026-08-21T15:56:47Z"
     seat: session (m5)
-  - claim: "The tracked snapshot agrees and predates the unblock work — generated 2026-08-11"
-    cmd: "grep -m1 generated_at infra/required.d/contexts.json"
+  - claim: "Containment applied to the live file ahead of the fix"
+    cmd: "chmod 0600 ~/logs/codex-spalla-trigger.jsonl; stat -f '%Lp' (-> 600); no .bak siblings; it is the only file in ~/logs with such material"
     exit: 0
-    ts: "2026-08-21T13:23:00Z"
+    ts: "2026-08-21T15:56:47Z"
     seat: session (m5)
-  - claim: "NO BEHAVIOUR CHANGE: the workflow's non-comment body is byte-identical to origin/main"
-    cmd: "git show origin/main:.github/workflows/harness-floor.yml | grep -v '^\\s*#' > /tmp/a.yml; grep -v '^\\s*#' .github/workflows/harness-floor.yml > /tmp/b.yml; diff -q /tmp/a.yml /tmp/b.yml"
+  - claim: "The registered hook path is the REPO copy — no HOME fork (superscar #1 ruled out)"
+    cmd: "ls ~/.claude/hooks/codex-spalla-trigger.sh (-> No such file); grep settings.json (-> CLAUDE_PROJECT_DIR/.claude/hooks/codex-spalla-trigger.sh)"
     exit: 0
-    ts: "2026-08-21T13:34:36Z"
+    ts: "2026-08-21T15:56:47Z"
     seat: session (m5)
-  - claim: "actionlint passes on the rewritten workflow"
-    cmd: "actionlint .github/workflows/harness-floor.yml"
+  - claim: "Guilt+innocence suite passes against the fixed hook: 3 guilt, 1 innocence, 1 mode"
+    cmd: "bash scripts/tests/test_codex_spalla_trigger_redaction.sh"
     exit: 0
-    ts: "2026-08-21T13:34:36Z"
-    seat: session (m5)
-  - claim: "The publisher script still parses after the docstring insert"
-    cmd: 'python3 -c ''import ast,io;ast.parse(io.open("scripts/harness_fable_gate.py",encoding="utf-8").read())'''
-    exit: 0
-    ts: "2026-08-21T13:34:36Z"
-    seat: session (m5)
-  - claim: "FLEET_TOPOLOGY.json does NOT contain the context string, and its Fable-named key was already renamed"
-    cmd: "git show origin/main:FLEET_TOPOLOGY.json | grep -c 'fable-gate'  (prints 0, and grep exits 1 on zero matches -- the ZERO is the finding); then grep -B3 -A6 fable_gate_gear3 -> _renamed_from gear3_final_gate"
+    ts: "2026-08-21T15:56:47Z"
+    seat: session (m5), re-run independently of the implementer
+  - claim: "TARGETED mutation removing ONLY the [A-Z0-9_]* suffix wildcard fails exactly the suffixed-var case, and the suite exits non-zero"
+    cmd: "sed the wildcard out of the hook; bash scripts/tests/test_codex_spalla_trigger_redaction.sh (rc measured WITHOUT a pipe -- a pipe returns tail's rc, W97)"
     exit: 1
-    ts: "2026-08-21T13:34:36Z"
+    ts: "2026-08-21T15:56:47Z"
     seat: session (m5)
-  - claim: "The context string really does appear in 15 tracked files at origin/main"
-    cmd: "git grep -l 'harness/fable-gate' origin/main -- . | wc -l"
+  - claim: "Hook restored byte-identical after the mutation; suite green again"
+    cmd: "cp /tmp/hook.orig <hook>; cmp -s (-> identical); suite rc 0"
     exit: 0
-    ts: "2026-08-21T13:34:36Z"
+    ts: "2026-08-21T15:56:47Z"
     seat: session (m5)
 tests:
-  - "No new tests: comment-only diff. The behavioural proof is the byte-identical non-comment body receipt above, which is stronger than a test would be here."
-  - "Existing guards exercised by CI on this PR: actionlint, guard-conformance, R1 gate, evidence_pack_lint (this pack, on itself)."
+  - "scripts/tests/test_codex_spalla_trigger_redaction.sh — 5 named cases, 3 guilt / 1 innocence / 1 mode, run against the REAL hook with a temp HOME."
 static:
-  - "actionlint 1.7.12 — exit 0"
-  - "AST parse of scripts/harness_fable_gate.py — ok; grader independently confirmed ast.dump() equality with the docstring stripped"
+  - "actionlint exit 0 on guard-conformance.yml"
+  - "shellcheck clean on both the hook and the test"
+  - "check_guard_conformance.py -> 0 violations"
 runtime_proof:
-  - "None applicable and none claimed: nothing in this diff executes. Consumer-map in the brief records that both consumers' behaviour is unchanged, so 'live' equals 'merged' here — deliberately stated rather than skipped."
+  - "The hook is the runtime: the suite invokes the real file, not a copy or a mock, and asserts on the actual log it writes."
 dissent:
-  - seat: independent-review-session (sonnet, fresh context, not the author)
-    objection: "brief.yml claimed PR #4537's python hunk was 'carried verbatim' — it was edited ('interactive workflow' -> 'the workflow on 2026-08-20')"
+  - seat: implementer subagent (sonnet, fresh context)
+    objection: "The conformance checker's initial PASS was FALSE — is_armed() matched the substring 'scripts/tests/' present in 31 other workflow files, so the registration passed without any workflow actually executing the new .sh test. scripts-tests-sweep.yml collects only test_*.py via pytest and is continue-on-error anyway. This is W81 theater: armed on paper, executed by nothing."
     status: CONFIRMED
-  - seat: independent-review-session (sonnet, fresh context, not the author)
-    objection: "'the highest-traffic of the three' is unverifiable — no command measures which artifact more sessions read"
-    status: CONFIRMED
-  - seat: independent-review-session (sonnet, fresh context, not the author)
-    objection: "gate_class: opus5-max is outside the declared enum none|opus|fable (nothing machine-checks it, so drift rather than failure)"
-    status: CONFIRMED
-  - seat: kimi-k3 (cross-family, Moonshot)
-    objection: "Three added locations cite FLEET_TOPOLOGY.json as naming `harness/fable-gate`. It contains the string zero times — a phantom citation (superscar #6), inherited from #4537 and re-asserted here"
-    status: CONFIRMED
-  - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
-    objection: 'An ADDED line in harness-floor.yml attributed design gap (b) to "a dedicated CI-integrity lane". Measured: gap (b) is ledger line 933, owner "me (next session)"; the string CI-integrity occurs once in the whole ledger, at line 1108 — the SIBLING name-spoofing entry. The owner was attached to the wrong of the two rows the paragraph discusses, in the PR whose thesis is that headers must stop asserting unmeasured things'
-    status: CONFIRMED
-  - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
-    objection: 'pack net_lines "+~95 / -8" reproduced under no reading at the SHA it was raised against (6ee02427f): code files were +61/-4 there, whole diff +171/-133'
-    status: CONFIRMED
-  - seat: gear3-final-gate (opus 5, fresh context, read-only, not the author)
-    objection: "receipt R6 recorded exit 0, but grep -c exits 1 on zero matches — the claim reproduces, the exit field did not"
-    status: CONFIRMED
-  - seat: session (m5), verifying kimi-k3's finding rather than accepting it
-    objection: "Deleting the citation would have hidden the sharper fact: FLEET_TOPOLOGY.json DID carry `fable_gate_gear3`, already renamed to `gear3_final_gate` by the same 2026-08-20 ruling — the file cited against renaming had itself been renamed"
-    status: CONFIRMED
-  - seat: gear3-final-gate (opus 5, re-gate on 72ac75db0, read-only, not the author)
-    objection: 'REWORK-BUILD. The fix for the net_lines condition replaced an unreproducible approximation with a PRECISE value measured at the PREVIOUS SHA (6ee02427f) — false at the SHA it shipped on, because the same commit also edited harness-floor.yml. The gate named it "the same disease at higher confidence, in the one field the gate conditioned", and refused to soften on a repeat.'
-    status: CONFIRMED
-  - seat: gear3-final-gate (opus 5, re-gate on 72ac75db0, read-only, not the author)
-    objection: "CI cannot catch a wrong net_lines: evidence_pack_lint prefers a MEASURED --net-lines/--numstat-file over the pack field precisely because the field is untrustworthy, but the field here is a STRING, so the int path never engages and the rule never fires. Green lint was not evidence."
-    status: CONFIRMED
-  - seat: gear3-final-gate (opus 5, re-gate on 72ac75db0, read-only, not the author)
-    objection: '"single commit so not stale from an intermediate state" was false as shipped — git rev-list --count origin/main..HEAD was 2. Corrected to past tense against the SHA it was raised at.'
-    status: CONFIRMED
-  - seat: gear3-final-gate (opus 5, re-gate on 72ac75db0, read-only, not the author)
-    objection: '"Two rows, two owners" over-claimed: both ledger rows name the same party, me (next session); only the CI-integrity lane qualifier differs. A small over-claim in a PR about not over-claiming.'
-    status: CONFIRMED
+  - seat: session (m5), on its own measurement
+    objection: "I first recorded the mutated suite as exiting 0, i.e. a test that fails loudly but reports success. False: I had captured tail's exit code through a pipe (W97). Re-measured without the pipe: rc=1. Nearly logged a fabricated defect against the implementer's work."
+    status: RETRACTED
 residual_risks:
-  - "Design gap (b), verdict provenance, stays OPEN and is now load-bearing. Nothing here closes it; the corrected note says so explicitly."
-  - "Required-check NAME spoofing (Kimi K1) is repo-wide across all 27 contexts and bounds what this gate guarantees. Own ledger entry, own lane."
-  - "The corrected note asserts a live measurement and could go stale exactly as its predecessor did. Mitigated by naming the command, not just the state."
-  - "The modus PENDING-ARMS row still carries the stale 'flip pending' framing. Excluded here on purpose (merge=union mergeability defect); it needs its own PR and is not closed by this one."
+  - "The 11 already-leaked tokens remain valid. Containment is done; ROTATION is a credential action only the owner can perform and is NOT closed by this diff."
+  - "hook-innocence-gate.yml's path filter still does not cover .claude/hooks/ — the hooks that actually run from the repo's own hook dir are outside the gate that exists to prove hooks bite only the guilty. Deliberately not widened here."
+  - "An identical UNTRACKED .codex/hooks/ copy exists in the main checkout; git does not track it, so this diff cannot fix it."
 sources:
-  - research/operations/2026-08-21-fable-gate-required-promotion.md
-  - infra/required.d/contexts.json
-  - CLAUDE.md (2026-08-20 Fable-out ruling, line 114)
-  - PR #4537 (superseded, content carried), PR #4539 (redesign), PR #4541 (research capture correction)
+  - ~/logs/codex-spalla-trigger.jsonl (counted, never printed)
+  - .claude/settings.json (hook registration path)
 pii_scan: clean
-size_tokens: 1500
+size_tokens: 1400

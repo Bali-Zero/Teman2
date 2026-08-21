@@ -1,61 +1,47 @@
-task_id: ops-gate-header-truth
+task_id: ops-spalla-hook-secret-leak
 gear: 3
 l_level: L3
 gate_class: opus
 objective: |
-  Three artifacts in this repo tell a reader that promoting the harness gate to a required
-  branch-protection check is still PENDING and reserved for the operator. It is not, and it never
-  was: `Harness floor recompute` was already a required context before the unblock work of
-  2026-08-21 began — which is exactly why that redesign works. It moved enforcement onto a job
-  branch protection already demanded, instead of onto a hand-posted commit status that would have
-  needed promoting.
+  `.claude/hooks/codex-spalla-trigger.sh` logs `tool_input.command` — the full Bash command string,
+  truncated to 200 chars — to `~/logs/codex-spalla-trigger.jsonl`, and never chmods it. A Bash tool
+  call can carry a credential in argv, so that log is secret-bearing BY CONSTRUCTION.
 
-  This PR corrects the two artifacts that live in code:
-    - the ARMING NOTE in `.github/workflows/harness-floor.yml` — the one a session touching the
-      gate has to walk past, whereas the research capture has to be sought out;
-    - and, folded in from superseded PR #4537, two comment-only notes explaining that
-      `harness/fable-gate` does NOT invoke Fable — it relays a verdict a session already reached.
-      #4537 went DIRTY when the 2026-08-21 redesign rewrote its anchor point out from under it;
-      its `scripts/harness_fable_gate.py` hunk is carried with ONE phrasing fix — "Fable out of
-      the interactive workflow" becomes "out of the workflow on 2026-08-20", matching CLAUDE.md's
-      ruling verbatim; the 2026-08-20 ruling is not scoped to interactive sessions. Its workflow
-      hunk is re-anchored, since the text it sat against no longer exists.
+  Found live while hunting a different leak: 11 real `sk-ant-oat...` values, 108 chars each, mode
+  0644 (world-readable), 83 MB, still being appended to. Measured by counting and by run-length,
+  never by printing; the run-length check is what separated the real leak from a harmless 30-char
+  test fixture that also matched.
 
-  The third artifact (the research capture) is corrected in PR #4541. The fourth (the modus
-  PENDING-ARMS row) is deliberately NOT in this diff — see constraints.
+  Fix: two independent defenses plus a guilt/innocence proof, and registration so the proof
+  actually runs.
 constraints:
-  - "No behaviour change: comment/docstring text only in both files. The YAML `on:`, `jobs:`,
-    `permissions:` blocks and every step remain byte-identical, and the Python module's code is
-    untouched below the docstring."
-  - "The context string `harness/fable-gate` is NOT renamed. It is the literal string branch
-    protection would match, and it appears in 15 tracked files at origin/main including dated
-    research captures. Renaming across those is a doctrine change, not a cleanup."
-  - "The modus PENDING-ARMS ledger is deliberately excluded from this diff: it carries a
-    `merge=union` driver, and GitHub's server-side mergeability does not honour custom merge
-    drivers (PR-1 landing scar), so folding it in would make a clean docs PR read CONFLICTING.
-    It gets its own PR."
-  - "Nothing in this diff may be read as closing design gap (b), verdict provenance. It stays open
-    and the corrected note says so explicitly."
+  - "The live file was chmod-ed 0600 immediately, outside this diff. That is containment, not the
+    fix — a future rotation or copy recreates the exposure."
+  - "Redaction must happen BEFORE truncation: a 200-char window can slice a token and leave a
+    usable prefix."
+  - "The redactor must match a wildcard AFTER the keyword. `TOKEN=` catches
+    CLAUDE_CODE_OAUTH_TOKEN= and MISSES CLAUDE_CODE_OAUTH_TOKEN_1= — that exact off-by-one is how a
+    probe printed four tokens while believing it redacted."
+  - "No behaviour change to the hook's trigger logic: same rules, same stderr nudge, same fail-open
+    posture. Only the log's mode and the logged value change."
 acceptance:
-  - "The ARMING NOTE no longer asserts a pending operator action, and states the measured live
-    branch-protection fact together with the command that produced it."
-  - "The note explicitly forbids the plausible-but-wrong finish — adding `harness/fable-gate`
-    itself as a second required context, which resurrects blocker (a)."
-  - "actionlint passes on the rewritten workflow."
-  - "The publisher script still parses (AST) and still exits 0 on --help."
-  - "An independent grader with fresh context, not this diff's author, finds no false claim in the
-    ADDED lines."
+  - "Three guilt cases (OAuth token, SUFFIXED variable name, GitHub PAT) leave no secret in the log."
+  - "Innocence: an ordinary command is logged intact with no spurious REDACTED marker."
+  - "A freshly created log is mode 0600, not 0644."
+  - "A targeted mutation removing ONLY the suffix wildcard makes exactly the suffixed-var case fail
+    — the test is specific, not noisy."
+  - "The test is actually EXECUTED by a workflow, not merely referenced."
 consumer_map:
-  - "`.github/workflows/harness-floor.yml` — read by every PR run of the required job; its header
-    is the artifact sessions actually read before touching the gate."
-  - "`scripts/harness_fable_gate.py` — invoked by a Gear-3 gate session to publish a verdict."
-  - "Neither file's behaviour changes, so there is no runtime surface to prove-live beyond CI."
+  - "`.claude/hooks/codex-spalla-trigger.sh` — runs on every PostToolUse event in this repo, via
+    `${CLAUDE_PROJECT_DIR}/.claude/hooks/` in settings.json. No HOME fork exists (checked)."
+  - "`~/logs/codex-spalla-trigger.jsonl` — the leak surface; already contained at 0600."
+  - "`.codex/hooks/codex-spalla-trigger.sh` — an identical UNTRACKED copy exists in the main
+    checkout only. Not in this diff because git does not track it; flagged in residual_risks."
 risks:
-  - "The corrected note asserts a live measurement. If branch protection changed later, the note
-    would go stale exactly as the one it replaces did. Mitigated by naming the exact command, so a
-    reader can re-run it rather than trusting the assertion."
-  - "Folding #4537 in means closing it; if this PR were abandoned its content would be lost. The
-    close happens only after this PR merges."
-grader: independent-review-session (Agent tool, general-purpose, model sonnet, fresh context — not the diff's author) + cross-family seat (Kimi K3) on the added lines
-budget: ~2 subagents, no council (single-concern comment correction; the divergent-priors gate does not fire)
+  - "The 11 already-leaked tokens are NOT invalidated by this diff. Rotation is a credential action
+    only the owner can perform; containment (0600) is done, rotation is not."
+  - "hook-innocence-gate.yml's path filter does not cover `.claude/hooks/` at all. Widening it is a
+    behaviour change with its own blast radius and is deliberately NOT done here."
+grader: independent-review-session (fresh context, not the author) + a targeted mutation re-run by the orchestrator
+budget: ~2 subagents, no council
 pii: none
