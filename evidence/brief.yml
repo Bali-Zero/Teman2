@@ -1,61 +1,37 @@
-task_id: ops-gate-header-truth
+task_id: ops-orphan-clients-pr4542
 gear: 3
 l_level: L3
-gate_class: opus
+gate_class: fable
 objective: |
-  Three artifacts in this repo tell a reader that promoting the harness gate to a required
-  branch-protection check is still PENDING and reserved for the operator. It is not, and it never
-  was: `Harness floor recompute` was already a required context before the unblock work of
-  2026-08-21 began — which is exactly why that redesign works. It moved enforcement onto a job
-  branch protection already demanded, instead of onto a hand-posted commit status that would have
-  needed promoting.
-
-  This PR corrects the two artifacts that live in code:
-    - the ARMING NOTE in `.github/workflows/harness-floor.yml` — the one a session touching the
-      gate has to walk past, whereas the research capture has to be sought out;
-    - and, folded in from superseded PR #4537, two comment-only notes explaining that
-      `harness/fable-gate` does NOT invoke Fable — it relays a verdict a session already reached.
-      #4537 went DIRTY when the 2026-08-21 redesign rewrote its anchor point out from under it;
-      its `scripts/harness_fable_gate.py` hunk is carried with ONE phrasing fix — "Fable out of
-      the interactive workflow" becomes "out of the workflow on 2026-08-20", matching CLAUDE.md's
-      ruling verbatim; the 2026-08-20 ruling is not scoped to interactive sessions. Its workflow
-      hunk is re-anchored, since the text it sat against no longer exists.
-
-  The third artifact (the research capture) is corrected in PR #4541. The fourth (the modus
-  PENDING-ARMS row) is deliberately NOT in this diff — see constraints.
+  Repair one misclassified CRM client (typo'd assigned_to) and water-fill the
+  remaining 323 genuinely-orphaned live clients (no valid owner in
+  clients.assigned_to) across the six live setup-team caseworkers, leveling
+  the lowest-loaded first, via two dependency-ordered Postgres migrations
+  (277_correct_ari_email_typo.sql, 278_reassign_orphaned_clients_setup_team.sql).
 constraints:
-  - "No behaviour change: comment/docstring text only in both files. The YAML `on:`, `jobs:`,
-    `permissions:` blocks and every step remain byte-identical, and the Python module's code is
-    untouched below the docstring."
-  - "The context string `harness/fable-gate` is NOT renamed. It is the literal string branch
-    protection would match, and it appears in 15 tracked files at origin/main including dated
-    research captures. Renaming across those is a doctrine change, not a cleanup."
-  - "The modus PENDING-ARMS ledger is deliberately excluded from this diff: it carries a
-    `merge=union` driver, and GitHub's server-side mergeability does not honour custom merge
-    drivers (PR-1 landing scar), so folding it in would make a clean docs PR read CONFLICTING.
-    It gets its own PR."
-  - "Nothing in this diff may be read as closing design gap (b), verdict provenance. It stays open
-    and the corrected note says so explicitly."
+  - "no client PII (names, emails, document numbers) in any commit/PR/pack/log — only counts, client_id, and staff @balizero.com addresses"
+  - "both migrations' orphan/current_loads predicates must keep filtering deleted_at IS NULL — verified load-bearing: removing it takes the pool from 324 to 10,216"
+  - "278 must never execute before 277 in a combined apply-all run — enforced by an inline DO $$ ... RAISE EXCEPTION $$ guard against schema_migrations, because migration_manager.py's apply-all loop sorts by number but does not abort the batch on a prior migration's failure"
+  - "no mutation via the read-only postgres-nuzantara MCP or scripts/pg.sh — all writes go through the migration runner only"
+  - "no work in the main checkout — dedicated worktree .worktrees/ops-orphan-clients per Agent PR Contract §6"
+  - "no bypass/workaround of ~/.claude/hooks/guardrails-client.sh — the two real .sql files were written by the operator (owner-authorized cp, second key is his own deliberation), never by a session-side GUARDRAILS_BYPASS"
 acceptance:
-  - "The ARMING NOTE no longer asserts a pending operator action, and states the measured live
-    branch-protection fact together with the command that produced it."
-  - "The note explicitly forbids the plausible-but-wrong finish — adding `harness/fable-gate`
-    itself as a second required context, which resurrects blocker (a)."
-  - "actionlint passes on the rewritten workflow."
-  - "The publisher script still parses (AST) and still exits 0 on --help."
-  - "An independent grader with fresh context, not this diff's author, finds no false claim in the
-    ADDED lines."
+  - 'schema_migrations gains rows for 277_correct_ari_email_typo and 278_reassign_orphaned_clients_setup_team after apply — verified via scripts/pg.sh -c "SELECT migration_name FROM schema_migrations WHERE migration_name IN (...)"'
+  - "post-apply: client_id 11500's assigned_to reads ari.firda@balizero.com, not the typo'd ari@balizero.com"
+  - "post-apply: orphan pool (deleted_at IS NULL, no active team_members match) reads 0 for the six-caseworker predicate scope"
+  - "post-apply: the six caseworkers' loads reflect the water-filling level computed live at apply time, not the plan-time comment numbers"
+  - "cache invalidated post-apply: zantara:crm_clients_stats:* and zantara:crm_practices:* via RedisManager, confirmed backend: redis"
 consumer_map:
-  - "`.github/workflows/harness-floor.yml` — read by every PR run of the required job; its header
-    is the artifact sessions actually read before touching the gate."
-  - "`scripts/harness_fable_gate.py` — invoked by a Gear-3 gate session to publish a verdict."
-  - "Neither file's behaviour changes, so there is no runtime surface to prove-live beyond CI."
+  - "CRM client-list/detail views (kita.balizero.com) reading clients.assigned_to for the 323 reassigned + 1 repaired client"
+  - "CRM caseload dashboards (crm_clients_stats cache) for the six setup-team caseworkers"
+  - "crm_practices cache — any practice view keyed off client ownership"
+  - "schema_migrations / migration runner state, consumed by future migrations_v2/*.sql authors via discover_migrations()"
 risks:
-  - "The corrected note asserts a live measurement. If branch protection changed later, the note
-    would go stale exactly as the one it replaces did. Mitigated by naming the exact command, so a
-    reader can re-run it rather than trusting the assertion."
-  - "Folding #4537 in means closing it; if this PR were abandoned its content would be lost. The
-    close happens only after this PR merges."
-grader: independent-review-session (Agent tool, general-purpose, model sonnet, fresh context — not the diff's author) + cross-family seat (Kimi K3) on the added lines
-budget: ~2 subagents, no council (single-concern comment correction; the divergent-priors gate does not fire)
+  - "the migration's plan-time comment numbers (e.g. Ari 318) will not match a fresh measurement (317) hours later — expected, not a defect: verified none of the 8 occurrences of 200|77|27|19|323|324 sit in an executable line, the CTEs recompute from live data at apply time"
+  - "seven other active staff members hold clients outside the six-person water-filling pool (146 clients total, individually ranging 1-74) — a business decision (Legge 5) for Zero, not resolved by this task"
+  - "the 515 team_members rows with role='client' (portal-login accounts) could in principle collide with the orphan predicate's email match — measured zero collisions on live data today; deferred to a separate, non-concurrent lane (PENDING-ARMS.md)"
+grader: "kimi-k3 — cross-family refuter convened by team-lead (2026-08-21), never the author's own model. Four rounds against the same two files. Round 1: DO-NOT-APPLY (rollback didn't clear schema_migrations; dependency guard checked the log not the effect) — both fixed. Round 2: DO-NOT-APPLY (round 1's own effect-guard fix asserted an arbitrary literal instead of the true invariant — a false-block regression — plus a false idempotency claim in 277, a false justifying comment in 278, a missing BTRIM, and unchecked water-filling recipients) — all fixed in one pass, not staggered. Round 3: DO-NOT-APPLY (round 1's rollback fix was dead code — a self-INSERT into _schema_versions in both migrations' forward SQL, copied from three historical migrations, silently discarded _log_migration()'s own insert via ON CONFLICT DO NOTHING, so rollback_sql never landed and the runner's rollback path never ran; plus 278 needed a NULL-safe re-run guard) — both fixed. Round 4: SAFE-TO-APPLY — first clean pass after three dirty ones, run with an explicit read perimeter (migration_base.py, migration_manager.py, migrations_v2/*.sql allowed; .env*, backend/data/, client-record fixtures denied). Traced both round-3 fixes end-to-end against the runner rather than trusting headers: confirmed rollback_sql now lands and rollback_migration() executes it; confirmed nothing else in the runner reads the removed self-INSERT line; independently re-verified (not merely trusting the builder's claim) that only migrations 165/166/184 share the self-INSERT pattern; walked all four execution orders for the NULL-safe guard (first run, unchanged re-run, re-run after human reassignment, re-apply after rollback) and confirmed each behaves correctly. Two non-blocking observations recorded, not defects — see pack.yml dissent/residual_risks."
+budget:
+  seats: [sonnet-5]
+  fable_gate_est_tokens: 1400
 pii: none
