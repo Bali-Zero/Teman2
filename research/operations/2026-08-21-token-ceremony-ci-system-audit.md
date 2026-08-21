@@ -209,7 +209,7 @@ this week was reasoning nobody reads, at a budget nobody chose per task.
 | L2 | **DONE 2026-08-21 (Code Quality disabled).** Not CodeQL default setup as first identified (corrected, §13.1) — the duplicate was GitHub's separate **Code Quality** feature; disabled at repo Settings → Code quality | ~13.7 runner-min | LOW (one of two identical analyses) | session, via GUI (corrected from `operator[gui]` — the session executed it directly) | GitHub setting | `Code Quality`-named `dynamic`-event runs = 0 since 2026-08-20T18:40Z [measured 2026-08-20T18:51:39Z] |
 | L3 | **Diff-scope Detect Secrets on PRs** (scan `hotzone_changed_files.sh` output only) + keep the full-tree scan on `push: main` and nightly | ~15-17 min runner; ~15 min wall-clock on docs-only PRs | MED: a secret in an UNCHANGED file is caught by the nightly, not the PR (acceptable: it is already on main) | 1 PR | security.yml | Detect Secrets ≤ 2 min on PRs; nightly full scan green; baseline unchanged |
 | L4 | **Stop the serial double-run** — option A: make `pull_request` Backend Tests "impacted domains + smoke" and keep the queue run as THE gate; option B: skip the queue run when the queue merge-commit **tree hash** equals the tree the PR run tested (only true when main did not move) | option A ≈ 25-28 min wall-clock per PR; option B rarely fires at 37 merges/day | **MED-HIGH**: A moves failure discovery to the queue (ejection = +60 min for that PR; cross-PR coupling still caught); B is safe but low-yield | spike + 1 PR | tests.yml | median open→merge ≤ 40 min; queue failure rate not above today's 9% |
-| L5 | **Docs lane**: a PR whose diff is 100% in `DOC_PREFIXES/SUFFIXES` (already defined in `change_map.py`) runs actionlint + diff-scoped secrets + doc lints only; ledger writes ride in the feature PR that caused them (already the modus rule W86 for docs_sync) | 28-33% of PRs drop from ~55 min/80 runner-min to <5 min/<10 runner-min | LOW-MED: required contexts must still be *satisfied* (skipped-with-success pattern already proven by #4181) | 1 PR | change_map + required-check `if:` | docs-only PR median ≤ 8 min; ledger-only PR count/week ↓ |
+| L5 | **DONE 2026-08-21 (discovered stale, not built — §13.5).** ~~Docs lane: a PR whose diff is 100% in `DOC_PREFIXES/SUFFIXES` (already defined in `change_map.py`) runs actionlint + diff-scoped secrets + doc lints only~~ — the mechanism landed via #4181 (2026-08-14, tests.yml's six heavy jobs) and #4444 (2026-08-20, security.yml's CodeQL/Bandit/Snyk + diff-scoped Detect Secrets), both gated on the identical `change_map.py` domain model this row proposed building. All 27 required contexts measured green on two real single-file docs-only PRs in ≤1m53s each (§13.5) | **compute-cost target MET**: 28-33% of PRs already pay <2 min of required-check compute (was ~80 runner-min pre-#4181/#4444); the **wall-clock target (≤8 min median) is NOT yet met** — measured 25-38 min median on the same two PRs, of which ~72% is post-green merge-queue wait, not gate compute (§13.5). That residual is L1/L4's remit, not this row's | LOW-MED (realized): no new guard was added by this row's own PR — it only added one literal guilt+innocence test pinning the mandate's 50:1 docs:code ratio (`scripts/ci/test_change_map.py`) on top of the already-thorough corpus #4181/#4444 shipped with | 1 PR (`agent/air-m5/ops/l5-docs-lane`) | change_map + required-check `if:` (already on origin/main) | **met**: docs-only required-check compute ≤2 min (was ≤8 min target) — **not yet met**: docs-only PR median open→merge ≤8 min (blocked on L1/L4, tracked separately) |
 | L6 | **Give the floor a ceiling.** The deterministic gear floor ALREADY EXISTS and is CI-enforced (`scripts/evidence_pack_lint.py::compute_floor()` via `harness-floor.yml`, fail-closed, floor 1 = non-hot-zone / floor 3 = hot-zone; "the model may only raise the gear, never lower it below the floor") and the 2026-08-19 ruling already splits the FINAL GATE by floor (floor-1 → Opus 5, floor-3 → Fable). What is missing is the **ceiling**: a floor-1 diff still pays council, cross-family refuters, Evidence Pack prose and `xhigh` thinking. Amendment (operator-gated): floor 1 ⇒ no council, no external refuter unless the author requests one, `effort=medium`, targeted test + required CI + `--auto` + PROVE-LIVE on the one consumer; any CI red, second file, or hot-zone touch re-floors | the 70%-grader share on trivial diffs; the 120 codex calls/7d that killed O1 | MED: under-match is the dangerous direction → the floor stays the single source of truth (`compute_floor`, not a second predicate — Kimi B1); shadow refuter on a 20% random sample of floor-1 PRs; any shadow-only defect revokes the ceiling | modus §STAGE 0 amendment + 1 receipt line in the Evidence Pack | harness-floor (exists) + modus | ≥20 floor-1 PRs with revert/CI-red rate ≤ baseline; external-seat calls per floor-1 PR ≤ 0.2 (Codex C5 metric) |
 | L7 | **Prefix diet**: `cicatrix-superscar.md` declares itself "~2k tokens" in its own header and is 70,970 B (~19K tokens) on origin/main — a 10× drift (Kimi C6). Trim target = the scar-level inline narratives (W95-W119 verbatim bodies in the MEMBRI paragraphs), **keeping the per-family MALATTIA/segnale/antidoto skeleton** (that IS the design; a careless trim re-creates the W77 flat blob). Dedupe global vs project CLAUDE.md (−3-5 KB). Add a CI byte budget on the auto-loaded set (fail on growth) | ~25-30% of the 42K boot tokens, every session and every subagent — a context-room/quality lever, not a quota lever (Codex C6) | LOW for content (bodies stay in `cicatrix-scars.md`, `scar query` still finds them); the cap is a new guard → guilt+innocence tests | 1-2 PRs | CI lint | `wc -c` of the auto-loaded set ≤ 100 KB on main; median cache_creation/turn below today's 1,148 |
 | L8 | **Gemini metered**: static-first/volatile-last prompt order + explicit `cachedContents` for system prompt + RAG scaffold; proactive daily USD cap on THIS pool (not the cascade breaker) | $/msg — A/B needed; denominator known (16K in/msg, 12% hit) | MED: prompt reorder can change answer quality → shadow A/B on 50 msgs first; PII stays in the same pool it already uses | 1-2 PRs + Fly deploy | `gemini_service.py` + breaker | cache-hit ≥ 60% on `llm_cost_events`; $/day ↓ with msgs/day flat |
@@ -238,6 +238,7 @@ this week was reasoning nobody reads, at a budget nobody chose per task.
 L4(A) → L9(ii)**. **Corrected 2026-08-21 (see §13.2/§13.3):** L1 dropped out of this ranking — do not flip
 `min_entries_to_merge` until the conditional failure rate (24%→85% re-entry by group size) is understood; L13-L15
 (the tail, not the batching) take its place as the next lever after L0. L2 is DONE (Code Quality disabled, §13.1).
+L5 is DONE on the compute metric (§13.5) — its residual wall-clock gap is L1/L4, not further docs-lane work.
 L10/L11 are owner/operator actions and gate everything else's denominator. Codex's risk-adjusted order
 (C4 → C3 → C2 → C6 → C5 → C8) agrees on the CI head of the list and ranks the Gemini lever last because it buys
 dollars, not windows — accepted.
@@ -408,6 +409,70 @@ itself, after the required check `Backend Tests (Python)` went red first).
 them under — a census anchored on the wrong token is the W107 shape (23 counted where 9 were): grepping
 `apps/backend-rag/tests/` as a path prefix misses every consumer that references the tree by its cwd-relative
 `tests/...` form instead.
+
+### 13.5 L5 (docs lane) — discovered already-shipped, and the wall-clock gap decomposed
+
+Same shape as 13.3's L13-L15 close: this row was dispatched as new work ("implement L5") and turned out to be
+**stale, not built** — two other PRs had already shipped its mechanism before this lane started reading. Verified
+this lane, not assumed, against `origin/main` and two live PR samples.
+
+**Mechanism, verified on-disk.** `.github/workflows/tests.yml`'s `changes` job (#4181, merged 2026-08-14) gates all
+six heavy test jobs on `scripts/ci/change_map.py`'s `suggested_jobs` — for a diff whose only domain is
+`docs_content_data` (every path under `DOC_PREFIXES`/`DOC_SUFFIXES`), `suggested_jobs` is `[]` by construction
+(`docs_content_data` is not in `PRODUCT_DOMAINS`, so `_suggested_jobs()` never appends a job for it). Frontend Tests
+is a matrix job and — per that PR's own CRITICAL fix, cited in `security.yml`'s CodeQL job comment as the reason
+CodeQL never carries a job-level `if:` either — its legs are always instantiated, gated at the STEP level, so the
+required context still posts (fast, not absent). `.github/workflows/security.yml`'s `changes` job (#4444, merged
+2026-08-20T15:01:48Z, i.e. **before** this document's own commit) reuses the identical `change_map.py` classifier
+plus a new `scripts/ci/security_gate_flags.py` to gate CodeQL (python + javascript, same always-instantiate/
+step-skip pattern, with the job's own comment recording a live incident — PR #4452 — where an earlier job-level
+`if:` left both matrix legs' required contexts permanently absent) and Bandit off for docs-only diffs; Detect
+Secrets is deliberately never domain-gated (a secret can land in any file) but IS diff-scoped to the changed-file
+list (that job's own header cites this exact document as the L3 rationale) — full-tree scan measured 19m34s
+(run 31312661093), diff-scoped is seconds. Both `test_change_map.py` and `test_security_gate_flags.py` already
+carried a docs-only innocence test before this lane touched anything
+(`test_innocence_docs_only_skips_product_test_jobs`, `test_innocence_docs_content_data_only_skips_every_scanner`).
+
+**Empirical proof — all 27 required contexts, two real docs-only PRs, post-#4444.** `gh pr checks 4499` (single file
+`.claude/skills/workflow/SKILL.md`, opened 2026-08-21T04:39:32Z): every one of the 27 branch-protection-required
+contexts (`gh api repos/Bali-Zero/Teman2/branches/main/protection/required_status_checks --jq '.contexts[]'`) is
+either `skipping` in 0s (Backend/MCP/Frontend/E2E Tests, Bandit) or `pass` in ≤1m53s (slowest: `antidotes`;
+CodeQL python/js 25-29s; Detect Secrets 33s diff-scoped). The 19 "sentinel"/immune workflows this row never touches
+(root-guard, verify-the-verifiers, hot-zone-enforcement, R1 gate, guard-conformance, hook-innocence-gate,
+prepush-guards, harness-floor, organ-conformance, the canary/P3/P6/P7/P8/P9 gates, npm-lock-sync, actionlint) were
+**already** fast before any of this (29-59s each, confirmed both by this sample and by 3-run `gh run list` medians
+on `merge_group` across each workflow) — they were never part of the ~55 min/80 runner-min ceremony this row's
+mechanism was scoped to cut, so nothing further needed gating.
+
+**A second, pre-#4444 sample (#4407, created 2026-08-20T06:11, 4h55m BEFORE #4444 merged) shows the counterfactual**:
+its `Security Scanning` run took 17m25s wall-clock, with `CodeQL Analysis (python)` alone running 10m9s (full
+scan, ungated) and `Detect Secrets` 17m11s (full-tree, pre-diff-scoping) — the exact cost this row's mechanism
+removes. Comparing the two samples is what pins #4444's merge timestamp as the actual cutover, not a guess.
+
+**Wall-clock decomposition — where the acceptance bar (≤8 min median) actually fails.** #4499 opened 04:39:32Z,
+merged 05:04:42Z = 25m10s. Breakdown by trigger event (`gh api .../actions/runs?head_sha=...` for the PR branch SHA,
+then `?event=merge_group` filtered on `head_branch` containing `pr-4499`):
+- `pull_request`-triggered checks: all 29 runs complete by 04:41:49Z — **2m17s**.
+- `merge_group` queue entry created 04:41:52Z (3s after pull_request checks went green) — this is the serial
+  double-run L4 targets (PR #4505, open). Slowest `merge_group` run (`Immune enforcement`) completes 04:46:31Z —
+  **4m39s** of re-verification.
+- Merge itself lands 05:04:42Z — **18m11s** after every `merge_group` check was already green, with zero required
+  work running in that window.
+
+**18m11s of 25m10s (72%) is pure post-green queue wait — not gate compute, and not this row's mechanism.** It
+matches §13.2's still-open L1 finding (`min_entries_to_merge: 1`, 388 merge_group runs / 258 merged PRs since
+2026-08-14, ratio 1.5) and #4505's still-open L4 fix for the 4m39s double-run. **Conclusion**: this row's own
+acceptance bar as originally written ("docs-only PR median ≤8 min") conflated two different quantities — required-
+check *compute* cost (now ≤2 min, met, and was the entire mechanism this row described) and PR-open-to-*merge*
+wall clock (still 25-38 min median on n=2, blocked on L1/L4/L13-15, none of which this row's mechanism can move).
+Closing this row on the compute metric and handing the wall-clock metric to L1/L4 — rather than re-implementing
+already-shipped gating a third time — is the correct scope boundary, not a partial close.
+
+**What this PR actually shipped**, since the guard itself needed nothing new: one guilt test pinning the mandate's
+own literal 50-docs-files:1-code-file ratio in `scripts/ci/test_change_map.py`
+(`test_guilt_one_code_file_among_fifty_docs_still_forces_its_suite`) — mutation-verified against the real
+`_suggested_jobs()` (killing a mutant that short-circuits the `backend_python` branch, alongside 14 other tests in
+the existing corpus, confirming it is not decorative) — and this section + the corrected L5 row above.
 
 ## Adversarial review
 
