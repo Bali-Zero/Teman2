@@ -39,9 +39,12 @@ git push origin main   # builds — see the note below, this is NOT the whole st
 > production already carries it, and promotes the existing READY build — it never rebuilds.
 > Budget about half an hour, not fifteen minutes and not instantly: Vercel has to finish the
 > build first, and only then can the next cron tick promote it. Measured end-to-end once, on
-> 2026-08-21: merge at 12:37:57Z, live at 13:07:00Z — **29 minutes**. That is a single
-> observation, not a distribution; the 15 minutes is only the cron's cadence, which an earlier
-> draft of this note mistook for the whole wait.
+> 2026-08-21: merge (GitHub `merged_at`) at 12:54:38Z, live at 13:07:00Z — **about 12
+> minutes**. That is a single observation, not a distribution; the 15 minutes is only the
+> cron's cadence, which an earlier draft of this note mistook for the whole wait. (An even
+> earlier draft anchored on 12:37:57Z and reported 29 minutes: that was the merge-queue entry
+> timestamp, not the merge — the 29 included ~17 minutes of queue dwell, which is not part of
+> the deploy path.)
 >
 > To do it by hand from a machine where `vercel whoami` answers:
 > `python3 scripts/vercel_prod_deploy.py --dry-run` reports the gap and changes nothing;
