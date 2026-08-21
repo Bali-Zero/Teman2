@@ -245,7 +245,12 @@ def selftest() -> int:
     for name, text in innocent:
         hits = scan_text(text)
         if hits:
-            failures.append(f"INNOCENCE false positive: {name} -> {hits}")
+            # Never interpolate `hits` here: the findings embed fingerprints
+            # derived from the (synthetic) credential fixtures, and printing
+            # them trips CodeQL py/clear-text-logging-sensitive-data — the
+            # taint is right about the shape even though the values are
+            # synthetic. The fixture NAME is the diagnostic.
+            failures.append(f"INNOCENCE false positive: {name} ({len(hits)} finding(s))")
 
     for line in failures:
         print(f"  ✗ {line}")
