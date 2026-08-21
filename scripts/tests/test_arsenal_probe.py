@@ -411,12 +411,35 @@ def test_http_post_json_200_returns_scrubbed_evidence(monkeypatch):
         return _FakeHTTPResponse(200, b'{"model": "glm-5.2", "id": "abc"}')
 
     monkeypatch.setattr(ap.urllib.request, "urlopen", fake_urlopen)
-    status, ev = ap.http_post_json(
+    status, full, tail = ap.http_post_json(
         "https://api.z.ai/x", {"Authorization": "Bearer secrettoken12345678901234"}, {}, 10, ["secrettoken12345678901234"]
     )
     assert status == 200
-    assert "glm-5.2" in ev
-    assert "secrettoken12345678901234" not in ev
+    assert "glm-5.2" in full
+    assert "glm-5.2" in tail
+    assert "secrettoken12345678901234" not in full
+    assert "secrettoken12345678901234" not in tail
+
+
+def test_http_post_json_full_body_is_untruncated_past_160_chars(monkeypatch):
+    # scar (2026-08-21): the live-check marker must survive even when it sits
+    # BEFORE the last 160 chars of a long body — `full` is not tail-truncated.
+    # Padding uses short SPACED words, not one long run: any 24+-char contiguous
+    # alnum/._- run is itself redacted as token-shaped by scrub() (scar #4), which
+    # would shrink the body back under the tail window and hide the exact defect
+    # this test exists to pin.
+    padding = " ".join(["lorem"] * 40)
+    long_body = ('{"model": "glm-5.2", "padding": "' + padding + '"}').encode()
+
+    def fake_urlopen(req, timeout):
+        return _FakeHTTPResponse(200, long_body)
+
+    monkeypatch.setattr(ap.urllib.request, "urlopen", fake_urlopen)
+    status, full, tail = ap.http_post_json("https://api.z.ai/x", {}, {}, 10, [])
+    assert status == 200
+    assert '"model": "glm-5.2"' in full  # present in the untruncated body
+    assert '"model": "glm-5.2"' not in tail  # and absent from the 160-char tail
+    assert len(tail) <= 160
 
 
 def test_http_post_json_error_never_leaks_authorization_value(monkeypatch):
@@ -429,11 +452,12 @@ def test_http_post_json_error_never_leaks_authorization_value(monkeypatch):
         raise urllib.error.HTTPError(req.full_url, 401, "Unauthorized", {}, None)
 
     monkeypatch.setattr(ap.urllib.request, "urlopen", fake_urlopen)
-    status, ev = ap.http_post_json(
+    status, full, tail = ap.http_post_json(
         "https://api.z.ai/x", {"Authorization": "Bearer secrettoken12345678901234"}, {}, 10, ["secrettoken12345678901234"]
     )
     assert status == 401
-    assert "secrettoken12345678901234" not in ev
+    assert "secrettoken12345678901234" not in full
+    assert "secrettoken12345678901234" not in tail
 
 
 def test_http_post_json_url_error_is_scrubbed(monkeypatch):
@@ -443,11 +467,12 @@ def test_http_post_json_url_error_is_scrubbed(monkeypatch):
         raise urllib.error.URLError("connection refused, token was secrettoken12345678901234")
 
     monkeypatch.setattr(ap.urllib.request, "urlopen", fake_urlopen)
-    status, ev = ap.http_post_json(
+    status, full, tail = ap.http_post_json(
         "https://api.z.ai/x", {}, {}, 10, ["secrettoken12345678901234"]
     )
     assert status is None
-    assert "secrettoken12345678901234" not in ev
+    assert "secrettoken12345678901234" not in full
+    assert "secrettoken12345678901234" not in tail
 
 
 # ---------------------------------------------------------------------------
@@ -601,16 +626,41 @@ def test_probe_glm_cred_unavailable_when_keychain_locked(monkeypatch):
 
 def test_probe_glm_live_on_200_with_model(monkeypatch):
     monkeypatch.setattr(ap, "load_keychain_token", lambda service, timeout=10: ("tok123456789012345678901", None))
-    monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (200, '{"model": "glm-5.2"}'))
+    monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (200, '{"model": "glm-5.2"}', '{"model": "glm-5.2"}'))
     status, ev, latency = ap.probe_glm(timeout=5)
     assert status == ap.LIVE
 
 
+def test_probe_glm_live_when_model_marker_only_survives_in_full_body(monkeypatch):
+    # GUILT case (2026-08-21 scar): a genuinely LIVE 200 response whose "model" field
+    # sits before the 160-char tail must still classify LIVE — this is exactly the
+    # shape z.ai's Anthropic-compatible envelope produces (model near the start,
+    # content/usage padding pushes it out of any tail window). Before the fix this
+    # read UNKNOWN_ERR — a live seat silently misread as dead.
+    monkeypatch.setattr(ap, "load_keychain_token", lambda service, timeout=10: ("tok123456789012345678901", None))
+    full_body = '{"model": "glm-5.2", "id": "abc", "content": "' + ("y" * 300) + '"}'
+    tail_only = full_body[-160:]
+    assert '"model"' not in tail_only  # premise: the marker really is outside the tail
+    monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (200, full_body, tail_only))
+    status, ev, latency = ap.probe_glm(timeout=5)
+    assert status == ap.LIVE
+
+
+def test_probe_glm_not_live_when_model_absent_from_full_body(monkeypatch):
+    # INNOCENCE case: a genuinely dead/malformed 200 with no "model" field anywhere
+    # (not even truncated away) must NOT read LIVE — the fix widens WHERE the check
+    # looks, it must not widen WHAT counts as a positive marker.
+    monkeypatch.setattr(ap, "load_keychain_token", lambda service, timeout=10: ("tok123456789012345678901", None))
+    full_body = '{"id": "abc", "content": "' + ("y" * 300) + '"}'
+    monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (200, full_body, full_body[-160:]))
+    status, ev, latency = ap.probe_glm(timeout=5)
+    assert status != ap.LIVE
+
+
 def test_probe_glm_model_err_on_1211(monkeypatch):
     monkeypatch.setattr(ap, "load_keychain_token", lambda service, timeout=10: ("tok123456789012345678901", None))
-    monkeypatch.setattr(
-        ap, "http_post_json", lambda *a, **kw: (400, '{"error": {"code": 1211, "message": "Unknown Model"}}')
-    )
+    body = '{"error": {"code": 1211, "message": "Unknown Model"}}'
+    monkeypatch.setattr(ap, "http_post_json", lambda *a, **kw: (400, body, body))
     status, ev, latency = ap.probe_glm(timeout=5)
     assert status == ap.MODEL_ERR
 
@@ -621,7 +671,8 @@ def test_probe_glm_never_leaks_token_in_evidence(monkeypatch):
 
     def fake_http(url, headers, body, timeout, secret_values):
         assert token in secret_values  # the probe must pass its own secret for scrubbing
-        return 401, ap.evidence_tail(f"unauthorized, saw {token}", secret_values)
+        scrubbed = ap.evidence_tail(f"unauthorized, saw {token}", secret_values)
+        return 401, scrubbed, scrubbed
 
     monkeypatch.setattr(ap, "http_post_json", fake_http)
     status, ev, latency = ap.probe_glm(timeout=5)
