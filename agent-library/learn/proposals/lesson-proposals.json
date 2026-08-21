@@ -5,13 +5,14 @@
   "_enforcement": "none",
   "recurrence_threshold": 3,
   "totals": {
-    "scars_scanned": 14,
-    "mechanical_candidates": 9,
+    "scars_scanned": 15,
+    "mechanical_candidates": 10,
     "consultive": 1,
     "rejected_no_anchor": 4
   },
   "recurring_patterns": {
     "w_numbers": {
+      "W107": 3,
       "W108": 3,
       "W64": 3,
       "W68": 3,
@@ -113,6 +114,7 @@
       ],
       "recurring_via": {
         "w": [
+          "W107",
           "W108"
         ],
         "family": []
@@ -136,6 +138,22 @@
         "w": [
           "W84",
           "W85"
+        ],
+        "family": []
+      },
+      "pipeline": "mechanical",
+      "note": "Recurring objective pattern (>=3). Candidate for an EXECUTABLE antibody via scar_replay -> test -> SHADOW -> (human-gate) -> enforcement. NOT auto-applied."
+    },
+    {
+      "title": "🐛 W121 (P1 STRUCTURAL): il mutation testing girava su BYTECODE AVVELENATO — lo strumento che misura se il corpus morde stava giudicando una versione del codice diversa da quella sul disco",
+      "severity": "UNKNOWN",
+      "w_numbers": [
+        "W107",
+        "W121"
+      ],
+      "recurring_via": {
+        "w": [
+          "W107"
         ],
         "family": []
       },

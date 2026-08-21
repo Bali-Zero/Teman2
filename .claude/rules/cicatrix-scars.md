@@ -5,6 +5,35 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### 🐛 W121 (P1 STRUCTURAL): il mutation testing girava su BYTECODE AVVELENATO — lo strumento che misura se il corpus morde stava giudicando una versione del codice diversa da quella sul disco
+
+_Scoperto 2026-08-21, worktree `ops-vercel-autopromote`, armando `--promote-only` in `scripts/vercel_prod_deploy.py`. Non cercato: un test è andato ROSSO su codice CORRETTO, e la contraddizione non si scioglieva leggendo il sorgente._
+
+**TRAUMA.** Un ciclo di mutation testing scritto come `muta → pytest → ripristina dal backup` è la forma ovvia e la usiamo dappertutto. Python però valida un `.pyc` confrontando **mtime + size** del sorgente. Due condizioni ordinarie lo rompono insieme: (a) la mutazione non cambia la LUNGHEZZA in byte — `return 1` → `return 0` è il caso tipico, e sono proprio le mutazioni più utili; (b) mutazione e ripristino cadono nello **stesso secondo**, che per un ciclo automatizzato è la norma, non l'eccezione. Allora l'mtime registrato nel `.pyc` combacia ancora, la size pure, e Python **riusa il bytecode MUTATO** contro un sorgente che è tornato corretto.
+
+Misurato sul disco, non dedotto — stesso mtime al secondo, size diverse perché una è il `.py` e l'altra il `.pyc`:
+
+```
+1787297375 24404 scripts/vercel_prod_deploy.py
+1787297375 28345 scripts/__pycache__/vercel_prod_deploy.cpython-311.pyc
+```
+
+**Il sintomo che l'ha rivelato è quello benigno.** Un test asseriva `1`, il sorgente diceva `return 1`, e il `print` immediatamente sopra quel `return` VENIVA ESEGUITO (lo si leggeva nel captured stdout) — cioè il flusso arrivava lì e usciva con un altro valore. Riprodotto fuori da pytest prima di credere a qualunque ipotesi: `RC = 0` con `return 1` sotto gli occhi. Solo allora ho guardato il `__pycache__`.
+
+**Il verso opposto è quello che conta, ed è silenzioso.** Se il `.pyc` bloccato è quello PULITO, la mutazione successiva non viene mai eseguita e lo strumento riporta *«mutante sopravvissuto»* → si va a rinforzare un corpus che stava già benissimo. Se è quello MUTATO, si riporta *«mutante ucciso»* per un test che non ha mai visto la mutazione → **il numero che finisce nel PR body è prodotto dal filesystem, non dal corpus**, e in questo repo quel numero è una delle poche prove che offriamo che un test morda davvero. Nessuno dei due casi lascia un errore, un warning o una riga di log.
+
+Famiglia #2: green ≠ working, applicata allo strumento di verifica invece che a un organo. La cosa che dice «ho controllato» non ha controllato.
+
+**ANTIBODY.** `PYTHONDONTWRITEBYTECODE=1` (o `python3 -B`) su ogni ciclo di mutation, più `-p no:cacheprovider` su pytest. E la regola di condotta, che è la parte non automatizzabile: **un esito di mutation ottenuto senza aver disattivato il bytecode è inaffidabile e si RIFÀ** — non si discute, non si razionalizza, perché la sua invalidità non è osservabile a posteriori. Nel caso vissuto avevo già raccolto 4 esiti «uccisa» prima di accorgermene: li ho rifatti tutti e quattro, ed erano veri — ma non potevo saperlo prima di rieseguirli, ed è esattamente questo il punto.
+
+**GOTCHA — il ripristino con `git checkout --` cancella il lavoro non committato.** Chiudendo il ciclo ho usato `git checkout -- <file>` per «tornare al pulito» dopo l'ultima mutazione: ha riportato il file al COMMIT, che era anteriore a una correzione che avevo appena scritto e non ancora committato, cancellandola in silenzio. Il baseline post-restore è andato a 2 rossi e per un attimo li ho letti come un difetto della cura. Il ripristino di un ciclo di mutation deve venire da un backup del file COM'ERA (`cp`), mai da git: git conosce l'ultimo commit, non lo stato di partenza del ciclo.
+
+**GOTCHA — non è un difetto di questo ciclo, è di tutti.** Nessun ciclo di mutation in questo repo disattiva la scrittura del bytecode oggi; questa cicatrice è stata trovata perché il caso è caduto dal lato rumoroso. Quelli caduti dal lato silenzioso non hanno lasciato traccia da cercare — è un limite dichiarato di questa entry, non un invito a fidarsi degli esiti passati.
+
+**Reference:** memory `discovery_mutation_testing_can_run_on_poisoned_bytecode_2026_08_21` · scoperta durante PR #4521 (commit `988684c92`, "mutation-verified 10/10 across both") sul branch `agent/air-m5/ops/vercel-autopromote` — lo stesso worktree `ops-vercel-autopromote` citato sopra · parenti diretti [[lesson_a_corpus_can_pass_the_wrong_implementation_too_2026_08_21]] e [[lesson_mutation_guard_save_restore_reference_cannot_catch_shipped_weakness_2026_08_21]] · W107 (la sonda che misura una malattia può averla).
+
+---
+
 ### 🐛 W119 (P1 STRUCTURAL): il gruppo di cattura degli argomenti leggeva `\s` come separatore — un `rm -f` di riga 1 è stato accusato del `cd` di riga 6
 
 _Discovered: 2026-08-18, sessione parallela sul repair di `node_modules` (worktree `ops-kita-nav-dead-links`). Non cercato adversarialmente: un comando multi-riga innocuo (riparazione di un symlink rotto sotto `node_modules/`, gitignored) si è visto bloccare con "WORKTREE REMOVAL BLOCKED (dirty + unarmed — scar W80)" nominando l'INTERO worktree corrente come vittima._
