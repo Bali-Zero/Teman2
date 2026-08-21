@@ -411,6 +411,28 @@ def test_common_basename_include_common_forces_the_scan(tmp_path: Path) -> None:
     assert "runner.sh" in result.stdout
 
 
+def test_nextjs_convention_basename_skipped_by_default(tmp_path: Path) -> None:
+    """page.tsx (2026-08-21, PR #4344): deleting one app's page.tsx must not
+    flag every OTHER app's unrelated page.tsx of the same convention name —
+    same noise class as conftest.py, just framework convention instead of
+    test convention."""
+    repo = _init_repo(tmp_path)
+    target = repo / "apps" / "mouth" / "src" / "app" / "visa" / "voa" / "page.tsx"
+    _write(target, "export default function Page() { return null }\n")
+    _write(
+        repo / "apps" / "kbli-navigator" / "src" / "app" / "page.tsx",
+        "export default function Page() { return null }\n",
+    )
+    base = _commit_all(repo, "base")
+
+    target.unlink()
+    _commit_all(repo, "delete voa page.tsx")
+
+    result = _run(repo, "--base", base)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "SKIPPED-common-basename" in result.stdout
+
+
 # ---------------------------------------------------------------------------
 # CLI surface
 # ---------------------------------------------------------------------------
