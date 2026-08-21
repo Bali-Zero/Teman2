@@ -590,3 +590,172 @@ def test_is_foreign_jurisdiction_unit():
     assert _is_foreign_jurisdiction("infra.eventbus_redis_mini", "m5") is False
     assert _is_foreign_jurisdiction("m5.arsenal_probe", "m5") is False
     assert _is_foreign_jurisdiction("auth-sentinel", "m5") is False
+
+
+# ---------------------------------------------------------------------------
+# 2026-08-22 — `warning` was a note to nobody, and the note itself was dropped.
+#
+# Measured on the live fleet the day these landed: three organs write
+# status="warning" (one per node) and this reader knew none of them; and 57 of
+# the 58 note-bearing sidecars put `note` at the TOP level while the reader
+# looked only under `metadata`. The organ that proves both is
+# mini.vercel_autopromote, whose three not-working paths all write
+# {"status":"warning","note":"<why>"} — flat, and with the word this reader
+# could not see. Guilt + innocence, per cicatrix-superscar #2's antidote.
+# ---------------------------------------------------------------------------
+
+
+def test_warning_status_is_seen_and_kept_apart_from_unhealthy(tmp_path):
+    """GUILT: status=warning produces a finding (it used to produce silence),
+    and INNOCENCE-OF-SEVERITY: it is NOT spelled the same as failed."""
+    from organism_stale_detector import scan_sidecars_status
+
+    d = str(tmp_path)
+    _write(d, "blind_organ", {"ts": time.time(), "status": "warning"})
+    _write(d, "broken_organ", {"ts": time.time(), "status": "failed"})
+    findings = scan_sidecars_status(d, now=time.time(), host="air-m5")
+    kinds = {f.organ_id: f.kind for f in findings}
+    assert kinds.get("blind_organ") == "warning", (
+        f"status=warning silently dropped by the receptor: {findings}"
+    )
+    assert kinds.get("broken_organ") == "unhealthy"
+    assert kinds["blind_organ"] != kinds["broken_organ"], (
+        "warning and failed must not be spelled the same way — that collapse is "
+        "the defect, in the opposite direction"
+    )
+
+
+def test_warning_carries_the_organs_own_reason(tmp_path):
+    """GUILT: the finding must repeat WHY, not only THAT.
+
+    The real payload shape from mini.vercel_autopromote's degrade path.
+    """
+    from organism_stale_detector import scan_sidecars_status
+
+    d = str(tmp_path)
+    _write(
+        d,
+        "mini.vercel_autopromote",
+        {
+            "ts": time.time(),
+            "status": "warning",
+            "note": "degraded target — git could not be asked",
+        },
+    )
+    findings = scan_sidecars_status(d, now=time.time(), host="mini-pro2")
+    assert len(findings) == 1, findings
+    assert "git could not be asked" in findings[0].detail, (
+        f"the organ's own reason was dropped from the finding: {findings[0].detail!r}"
+    )
+
+
+def test_top_level_note_is_read_not_only_metadata_note(tmp_path):
+    """GUILT of the 57-of-58 measurement: a flat `note` must reach the detail.
+
+    Both shapes are honoured — picking one silently loses the other population.
+    """
+    from organism_stale_detector import scan_sidecars_status
+
+    d = str(tmp_path)
+    _write(d, "flat_note_organ", {"ts": time.time(), "status": "failed", "note": "flat-reason"})
+    _write(
+        d,
+        "nested_note_organ",
+        {"ts": time.time(), "status": "failed", "metadata": {"note": "nested-reason"}},
+    )
+    findings = {f.organ_id: f.detail for f in scan_sidecars_status(d, now=time.time(), host="air-m5")}
+    assert "flat-reason" in findings["flat_note_organ"], findings
+    assert "nested-reason" in findings["nested_note_organ"], findings
+
+
+def test_metadata_note_still_wins_when_both_are_present(tmp_path):
+    """INNOCENCE for the pre-existing population: adding the flat fallback must
+    not change what a metadata-bearing sidecar reports."""
+    from organism_stale_detector import scan_sidecars_status
+
+    d = str(tmp_path)
+    _write(
+        d,
+        "both_organ",
+        {
+            "ts": time.time(),
+            "status": "error",
+            "note": "flat-loses",
+            "metadata": {"note": "metadata-wins"},
+        },
+    )
+    (finding,) = scan_sidecars_status(d, now=time.time(), host="air-m5")
+    assert "metadata-wins" in finding.detail
+    assert "flat-loses" not in finding.detail
+
+
+def test_ok_and_disabled_stay_silent(tmp_path):
+    """INNOCENCE: widening the vocabulary must not start accusing healthy organs.
+
+    `disabled` is what every node-guard writes on the wrong node — if that ever
+    became a finding, every organ would alarm on two machines out of three.
+    """
+    from organism_stale_detector import scan_sidecars_status
+
+    d = str(tmp_path)
+    _write(d, "ok_organ", {"ts": time.time(), "status": "ok"})
+    _write(d, "ok_note_organ", {"ts": time.time(), "status": "ok", "note": "promoted"})
+    _write(d, "disabled_organ", {"ts": time.time(), "status": "disabled", "note": "wrong-node"})
+    _write(d, "no_status_organ", {"ts": time.time()})
+    assert scan_sidecars_status(d, now=time.time(), host="air-m5") == []
+
+
+def test_stale_still_dominates_a_warning(tmp_path):
+    """INNOCENCE for the documented precedence: a frozen channel is the headline,
+    never also reported as a warning about its last-known status."""
+    from organism_stale_detector import scan_sidecars_status
+
+    d = str(tmp_path)
+    old = time.time() - 30 * 86400
+    _write(d, "frozen_organ", {"ts": old, "status": "warning"})
+    findings = scan_sidecars_status(d, stale_days=7, now=time.time(), host="air-m5")
+    assert [f.kind for f in findings] == ["stale"], findings
+
+
+def test_human_report_separates_warning_from_unhealthy(tmp_path):
+    """GUILT at the surface a human actually reads: the two must not merge into
+    one group, or the split above is invisible where it matters."""
+    from organism_stale_detector import _human_report, scan_sidecars_status
+
+    d = str(tmp_path)
+    _write(d, "blind_organ", {"ts": time.time(), "status": "warning", "note": "why-blind"})
+    _write(d, "broken_organ", {"ts": time.time(), "status": "failed", "note": "why-broken"})
+    report = _human_report(scan_sidecars_status(d, now=time.time(), host="air-m5"))
+    assert "breathing but unhealthy" in report
+    assert "not working this tick" in report
+    assert "why-blind" in report and "why-broken" in report
+
+    # And it must appear ONCE, in that group only. The grouping predicate is an
+    # exclusion list: forget to exclude "warning" from it and the organ is ALSO
+    # rendered under "not breathing" as `🫥 blind_organ: stale -1.0d` — a
+    # breathing organ described as mute, with an invented negative age. Caught by
+    # mutation (M7), which the two membership asserts above let through.
+    assert "not breathing" not in report, report
+    assert report.count("blind_organ") == 1, report
+    assert "-1.0d" not in report and "🫥" not in report, report
+
+
+def test_proprioception_exempts_warning_from_p1():
+    """CROSS-ARTIFACT PIN: the severity split lives in TWO files and is only true
+    if both agree. If proprioception's organs_heartbeat entry loses its
+    verdict_key/ok_values, the three permanent advisories become a P1 on every
+    node forever — the alert-fatigue this split exists to prevent.
+    """
+    import re
+
+    here = os.path.dirname(__file__)
+    src = open(os.path.join(here, "..", "proprioception.py"), encoding="utf-8").read()
+    block = re.search(r'"id":\s*"organs_heartbeat".*?\n    \}', src, re.S)
+    assert block, "organs_heartbeat probe entry not found in proprioception.py"
+    body = block.group(0)
+    assert '"verdict_key": "kind"' in body, body[-400:]
+    assert '"ok_values": ["warning"]' in body, body[-400:]
+
+    from organism_stale_detector import WARNING_STATUSES
+
+    assert "warning" in WARNING_STATUSES

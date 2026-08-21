@@ -971,6 +971,14 @@ DEFAULT_REGISTRY: list[dict] = [
         "boundary": "organ heartbeat sidecar <-> declared liveness",
         "machines": ["all"], "tags": ["organs"], "timeout_sec": 45,
         "severity": "P1", "parse": "findings_list",
+        # kind="warning" (added 2026-08-22) is "breathing, not working this tick" —
+        # real enough to print in the SessionStart report a human reads, NOT a P1
+        # boundary divergence. Without this exemption the three permanent
+        # *.agent_worktree_cleanup advisories ("WIP worktree skipped") would sit at
+        # P1 on every node forever, which is how a channel earns being ignored —
+        # the failure this detector was born to end, re-created one severity up.
+        # stale / dead_channel / corrupt / unhealthy still DIVERGE, unchanged.
+        "verdict_key": "kind", "ok_values": ["warning"],
         "fix_hint": "read the organ's own log — restart is NOT the cure (heartbeat TAC 2026-07-02)",
     },
     {
