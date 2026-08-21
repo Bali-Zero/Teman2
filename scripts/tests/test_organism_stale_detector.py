@@ -1063,3 +1063,69 @@ def test_human_report_renders_every_kind_once_with_truthful_counts():
     # Deterministic ordering inside the warning group — an unsorted group makes
     # two identical fleets print two different reports.
     assert report.index("a.warn") < report.index("z.warn"), report
+
+
+def test_the_all_clear_sentence_is_the_hooks_only_branch_and_is_a_contract():
+    """CROSS-ARTIFACT PIN: this one string IS an interface, not prose.
+
+    The distinction matters, because the sibling test above deliberately does
+    NOT pin the report's glyphs or wording — pinning prose makes a corpus fight
+    legitimate rewording (W112). The exception is prose a consumer PARSES, and a
+    second seat's grep found exactly one: `scripts/hooks/organism_alert_sessionstart.sh`
+    captures the whole report and branches on a single literal —
+
+        case "$REPORT" in ""|*"all organs breathing"*) exit 0 ;;
+
+    — then passes everything else through verbatim into every session's context.
+    No glyph is parsed anywhere; this sentence is the entire decision.
+
+    Unpinned it failed in BOTH directions, and both mutations survived all 53
+    tests:
+
+      - reword the all-clear, and the hook stops matching it: an ORGANISM block
+        is injected into every session on every machine forever, saying that
+        everything is fine. Alert fatigue by construction — the failure this
+        detector exists to end.
+
+      - worse, and this is why the assertion is two-sided: the hook's match is a
+        SUBSTRING. Make the findings header read "not all organs breathing" —
+        an entirely natural rewording — and it CONTAINS the all-clear literal, so
+        the hook exits 0 and goes silent on real findings. Simulated against the
+        hook's own case-statement: 5 findings, hook exits 0. Classic over-match
+        (cicatrix family #3), pointing the wrong way.
+    """
+    import re
+
+    from organism_stale_detector import StaleFinding, _human_report
+
+    here = os.path.dirname(__file__)
+    hook = os.path.join(here, "..", "hooks", "organism_alert_sessionstart.sh")
+    assert os.path.exists(hook), hook
+    hook_src = open(hook, encoding="utf-8").read()
+
+    # Read the sentinel out of the CONSUMER, so this test cannot drift from the
+    # thing it protects: if the hook starts branching on different words, this
+    # asserts against those words, not against a copy frozen here.
+    m = re.search(r'\*"([^"]+)"\*\)\s*exit 0', hook_src)
+    assert m, f"the hook no longer branches on a quoted literal:\n{hook_src[-400:]}"
+    sentinel = m.group(1)
+
+    # GUILT direction 1 — the all-clear must carry it, or the hook alarms forever.
+    clear = _human_report([])
+    assert sentinel in clear, (
+        f"the all-clear report no longer contains {sentinel!r}, which is the only "
+        f"thing the SessionStart hook matches — it would inject an ORGANISM block "
+        f"into every session on every machine, forever. Got: {clear!r}"
+    )
+
+    # GUILT direction 2 — no report WITH findings may contain it, or the hook
+    # goes silent on them. The match is a substring, so this is not paranoia.
+    for kind in ("stale", "dead_channel", "corrupt", "unhealthy", "warning"):
+        noisy = _human_report(
+            [StaleFinding(organ_id="o", kind=kind, age_days=9.0, status="failed", detail="d")]
+        )
+        assert sentinel not in noisy, (
+            f"a report carrying a {kind} finding contains {sentinel!r} — the hook "
+            f"matches it as a substring and exits 0, going SILENT on a real "
+            f"finding. Got: {noisy!r}"
+        )
