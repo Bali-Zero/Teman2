@@ -199,11 +199,21 @@ def test_innocence_pro_arsenal_probe_stamp_not_flagged_stale(tmp_path):
 
 def test_innocence_unrelated_organ_named_like_arsenal_probe_prefix_still_flags(tmp_path):
     """The stem regex is anchored (^...$) — an unrelated organ that merely
-    starts with a machine label must not accidentally match and get exempted."""
+    starts with a machine label must not accidentally match and get exempted.
+
+    `host` is pinned because the subject is an `m5.`-prefixed organ: without it
+    the call inherits socket.gethostname(), so the test asserted the anchored
+    regex ONLY on M5 and elsewhere asserted nothing — on Pro, on Mini and on any
+    CI runner the organ is out-of-jurisdiction, scan_sidecars skips it before the
+    regex is ever consulted, and `len(findings) == 1` fails. Green on exactly one
+    machine in the fleet, since 2026-08-07, and invisible because no workflow
+    named this corpus; the arming step added in this PR failed on its first real
+    run and produced this. Pinning restores what the docstring claims to test.
+    """
     d = str(tmp_path)
     old = time.time() - 9 * 86400
     _write(d, "m5.arsenal_probe_extra", {"ts": old, "status": "ok"})
-    findings = scan_sidecars(d, stale_days=7)
+    findings = scan_sidecars(d, stale_days=7, host="air-m5")
     assert len(findings) == 1
     assert findings[0].organ_id == "m5.arsenal_probe_extra"
 
