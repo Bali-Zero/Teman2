@@ -31,6 +31,32 @@ It asserts STRUCTURE (which methods contain a `deleted_at`-filtering SQL
 clause), never PROSE — a test that asserts an English sentence becomes the
 owner of that claim and can keep a lie alive (this repo has been bitten by
 exactly that class of bug before).
+
+SECOND SCAR (2026-08-21): "own SQL filters deleted_at" used to mean, quite
+literally, "a string constant containing `deleted_at` sits directly inside
+the method's own AST body". PR #4415 (dd2fc3933, landed the same day this
+registry was pinned) replaced six hand-written copies of the document
+visibility predicate with one call to
+`backend.services.portal._document_visibility.document_visibility_clause()`,
+spliced into each query's f-string. The predicate text — including
+`deleted_at IS NULL` — still ends up in the SQL every one of those methods
+actually executes; it just no longer sits in the method's OWN source as a
+literal, it sits one function call away. The pure-literal detector went
+blind to that in EXACTLY THE SIGN this file warns about at the top: it
+under-reported `download_document` and `get_documents` as having LOST
+their guard (false alarm — the predicate still runs, unchanged), and it
+never told anyone that `get_company_detail` and `get_timeline` GAINED one
+(the other half of the same PR: those two dashboard reads previously
+filtered nothing at all; #4415's own commit message names them as the
+"company-tab list" and "activity timeline" ghost-document fixes).
+Re-measured 2026-08-21 against `origin/main` post-#4415: neither runtime
+behavior changed for `download_document`/`get_documents` (verified — their
+SQL still contains `deleted_at IS NULL` via the interpolated call), and no
+method actually lost a filter. The fix is not a bigger literal scan: a
+call to the canonical `document_visibility_clause` helper IS the
+structural fact "this method's own SQL filters deleted_at" now, exactly as
+much as an inline literal was before the helper existed — see
+`_has_deleted_at_guard` below.
 """
 
 from __future__ import annotations
@@ -48,20 +74,43 @@ MIXINS_DIR = BACKEND_DIR / "services" / "portal" / "_mixins"
 
 MIXIN_FILES = ("billing.py", "dashboard.py", "documents.py", "messaging.py")
 
-# The 10 PortalService mixin methods (class-level, non-nested) whose OWN
-# SQL filters `deleted_at` today. Measured 2026-08-20 by parsing the 4
-# mixin files with `ast` and attributing every `deleted_at`-mentioning
-# string literal to its enclosing CLASS-LEVEL method. A nested inner `def`
-# (e.g. `update_profile`'s `_val` phone-lock helper) must NOT swallow a
-# guard that actually belongs to the outer method — an earlier by-hand
-# count made exactly that mistake and wrongly reported `update_profile` as
-# unguarded.
+# The one SSOT predicate function (backend/services/portal/_document_visibility.py)
+# whose SQL text — `... AND deleted_at IS NULL AND ...` — every mixin method
+# below either writes out inline or reaches by calling this function. A call
+# to it is structural evidence of the same strength as the literal: the
+# returned string is spliced directly into the method's own f-string SQL
+# before it reaches the database.
+VISIBILITY_HELPER_NAME = "document_visibility_clause"
+
+# The 12 PortalService mixin methods (class-level, non-nested) whose OWN SQL
+# filters `deleted_at` today — either via an inline literal or via a call to
+# `document_visibility_clause()`. Measured 2026-08-21 by parsing the 4 mixin
+# files with `ast`, attributing every `deleted_at`-mentioning string literal
+# AND every call to the visibility helper to its enclosing CLASS-LEVEL
+# method. A nested inner `def` (e.g. `update_profile`'s `_val` phone-lock
+# helper) must NOT swallow a guard that actually belongs to the outer
+# method — an earlier by-hand count made exactly that mistake and wrongly
+# reported `update_profile` as unguarded.
+#
+# Two names were ADDED 2026-08-21 versus the 2026-08-20 pin, both via PR
+# #4415 (dd2fc3933) delegating to the shared helper for the first time —
+# not a narrowing decision, a widening one, and it needs the same owner
+# sign-off the module docstring asks for:
+#   - `get_company_detail`: previously filtered nothing; PR #4415 fixed the
+#     company-tab document list showing archived/trashed documents.
+#   - `get_timeline`: previously filtered nothing; PR #4415 fixed the
+#     activity timeline listing the same ghosts.
+# `download_document` and `get_documents` stay in the registry — same PR
+# moved their guard from an inline literal to the shared helper call, the
+# runtime SQL is unchanged.
 DELETED_AT_GUARD_REGISTRY = frozenset(
     {
         "_get_profile_data",
         "download_document",
+        "get_company_detail",
         "get_dashboard",
         "get_documents",
+        "get_timeline",
         "get_visa_status",
         "restore_document",
         "send_message",
@@ -87,12 +136,28 @@ def _iter_own_body(node: ast.AST):
 
 
 def _has_deleted_at_guard(method_node: ast.AST) -> bool:
-    """True if any string literal in `method_node`'s own body (excluding
-    nested function/lambda scopes) mentions `deleted_at`."""
+    """True if `method_node`'s own body (excluding nested function/lambda
+    scopes) either (a) contains a string literal mentioning `deleted_at`,
+    or (b) calls the shared `document_visibility_clause()` predicate —
+    whose own SQL text contains `deleted_at IS NULL` (see
+    `_document_visibility.py`) and is spliced verbatim into the caller's
+    f-string SQL. Both are structural evidence of the same fact: the SQL
+    this method actually executes filters `deleted_at`. Matched by bare
+    name only (`document_visibility_clause(...)`), which is how every
+    current call site uses it — all four mixin files import it directly
+    (`from backend.services.portal._document_visibility import
+    document_visibility_clause`), never via a module-qualified attribute.
+    """
     for sub in _iter_own_body(method_node):
         if isinstance(sub, ast.Constant) and isinstance(sub.value, str):
             if "deleted_at" in sub.value:
                 return True
+        if (
+            isinstance(sub, ast.Call)
+            and isinstance(sub.func, ast.Name)
+            and sub.func.id == VISIBILITY_HELPER_NAME
+        ):
+            return True
     return False
 
 
@@ -163,7 +228,7 @@ def test_deleted_at_guard_registry_matches_disk() -> None:
 
     assert not missing and not extra, (
         "PortalService mixin `deleted_at`-guard set changed since the "
-        "2026-08-20 registry was pinned.\n"
+        "2026-08-21 registry was pinned.\n"
         f"  Registry expects guarded: {sorted(DELETED_AT_GUARD_REGISTRY)}\n"
         f"  Disk shows guarded now:   {sorted(guarded)}\n"
         f"  Lost their guard (in registry, not on disk): {sorted(missing) or 'none'}\n"
@@ -210,3 +275,54 @@ def test_update_profile_guard_is_not_swallowed_by_its_nested_helper() -> None:
         "logic in this file still applies to the new shape."
     )
     assert _has_deleted_at_guard(methods["update_profile"]) is True
+
+
+def test_delegating_to_the_visibility_helper_counts_as_guarded() -> None:
+    """
+    GUILT (regression pin, 2026-08-21): `get_company_detail` and
+    `get_timeline` (dashboard.py) carry NO `deleted_at` string literal
+    anywhere in their own body — their only connection to the guard is a
+    call to `document_visibility_clause()`. Pin that `_has_deleted_at_guard`
+    still recognizes them, so a future edit that reverts the detector to
+    literal-only scanning fails here first, loudly, instead of silently
+    re-triggering the false "guard lost" alarm this file was corrected for.
+    """
+    methods = _scan_mixins()
+    for name in ("get_company_detail", "get_timeline"):
+        node = methods[name]
+        assert not any(
+            isinstance(sub, ast.Constant)
+            and isinstance(sub.value, str)
+            and "deleted_at" in sub.value
+            for sub in _iter_own_body(node)
+        ), (
+            f"{name} now carries a `deleted_at` literal directly — this "
+            "test's premise (it is guarded ONLY via the shared helper) no "
+            "longer holds; re-verify instead of assuming the pin is still "
+            "meaningful."
+        )
+        assert _has_deleted_at_guard(node) is True, (
+            f"{name} calls document_visibility_clause() but "
+            "_has_deleted_at_guard no longer recognizes the call as a "
+            "guard — the helper-delegation detection regressed."
+        )
+
+
+def test_calling_an_unrelated_helper_does_not_count_as_a_guard() -> None:
+    """
+    INNOCENCE, paired with the guilt test above: a call to some OTHER
+    function — even one that also takes a table alias, even one whose name
+    also starts with `document_` — must NOT be mistaken for a call to
+    `document_visibility_clause`. Detection matches the exact function
+    name, not "any call inside the method" and not a substring.
+    """
+    tree = ast.parse(
+        "async def get_something(self, client_id):\n"
+        "    row = await self.pool.fetch(\n"
+        "        f'SELECT * FROM x WHERE {document_other_predicate(\"x\")}'\n"
+        "    )\n"
+        "    return row\n"
+    )
+    fn = tree.body[0]
+    assert isinstance(fn, ast.AsyncFunctionDef)
+    assert _has_deleted_at_guard(fn) is False
