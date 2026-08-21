@@ -37,8 +37,14 @@ still does not arm, merge, or deploy). The operational commands are documented i
    permits it.
 2. **Arm means freeze.** After `mq arm`, the branch is read-only. Put every follow-up in a new
    PR created from a fresh `origin/main`.
-3. **Never rerun a check without repointing the ref.** Use `mq requeue`; never use a bare
-   `gh run rerun`.
+3. **Never rerun a check without first knowing WHY it is red.** The gesture depends on the cause,
+   and a blanket prohibition here deadlocked two PRs on 2026-08-21. If the red is the CODE or the
+   base has moved, `gh run rerun` replays a stale merge ref (W111) — repoint it: `mq requeue`, or
+   `gh pr update-branch` first. If instead the red is an EXTERNAL COMMIT STATUS on an unchanged
+   head SHA — a Gear-3 gate verdict posted after the run finished — then `gh run rerun` on the
+   original `pull_request` run is the ONLY instrument that clears the PR's rollup, because a
+   `workflow_dispatch` run's check-run lands in a different check suite and never enters that
+   rollup at all. Details and the diagnostic traps: `docs/runbooks/merge-queue-discipline.md`.
 4. **Never commit while a push is in flight.** Judge the push by its captured return code, not
    by a background-task summary.
 5. **Serialize Dependabot PRs that share a lockfile.** Arm them one at a time.
