@@ -15,7 +15,7 @@ sources:
   - research/operations/2026-08-09-harness-v2-teman2.md §6/§9
   - .claude/skills/modus/PENDING-ARMS.md (2026-08-10 entry, three tracked design gaps — read in full during the independent review round, see below)
   - evidence/brief.yml + evidence/pack.yml (origin/main, PR #4474, read as a live precedent — and, per finding F1 below, as the live repro of the bug that precedent exposed)
-adversarial_review: confirmed — independent Gear-3 review round 1 returned REWORK-DESIGN with 8 findings (F1 CRITICAL, F2/F3 HIGH, F4/F5/F6/F7 MEDIUM, F8 LOW); all 8 addressed in this diff, disposition table below. Round 2 (post-fix) verdict + PASS/PWC recorded in this PR's own evidence/pack.yml dissent field and via scripts/harness_fable_gate.py on the PR's real head SHA.
+adversarial_review: pending-cross-family-kimi-k3
 ---
 
 # Unblocking `harness/fable-gate` promotion to a required status check
@@ -53,6 +53,33 @@ mechanics exactly:
   for that one path. **(b) is real, not stale.**
 
 Neither premise turned out to be false. Both are real properties of the mechanism as built.
+
+**Refinement on (a), requested and verified after the mandate first landed**: blocker (a) is real,
+but scoped to Gear-3 PRs specifically — never "every PR", exactly as the ARMING NOTE's own wording
+already said ("deadlock the merge queue for every Gear-3 PR"). Traced the mechanism in the pre-fix
+`origin/main` file: on a `merge_group` re-run, the default-publish steps' `SHA:` env
+(`${{ github.event.pull_request.head.sha || github.sha }}`) falls through to `github.sha`, which for
+a `merge_group` event *is* the synthetic queue SHA (same value this repo's own `docs-sync.yml` /
+`docs-guardian.yml` treat as equivalent to `github.event.merge_group.head_sha` in their own
+three-way fallback chains). `merge_group` runs are not fork-restricted, so that write succeeds. Net
+effect: for an **ordinary (non-Gear-3) PR**, the workflow's own default-publish step already
+self-heals on the merge_group re-run — a fresh `success` lands directly on the synthetic SHA with
+zero relay logic. For a **genuine Gear-3 PR**, the merge_group re-run instead hits a pure no-op
+notice ("`fable-gate` is intentionally NOT auto-published... must post a real verdict") — it never
+re-publishes the verdict a session posted earlier on the PR's real head SHA, so the synthetic SHA
+sits "Expected — Waiting for status" forever. A same-SHA relay fix (workflow reads the head-SHA
+verdict, re-posts it on `github.sha` during `merge_group`) was evaluated directly against this
+finding and confirmed technically executable for (a) alone (see "(a) — the two candidates" below) —
+it is rejected because it leaves (b) untouched, not because it wouldn't work mechanically.
+
+Also re-confirmed (b) directly against GitHub's own documentation (fetched live, "Events that
+trigger workflows"): *"The `GITHUB_TOKEN` has read-only permissions in pull requests from forked
+repositories."* This is a platform-level restriction — the workflow's own
+`permissions: statuses: write` declaration cannot elevate a fork-triggered `pull_request` token past
+it; the `permissions:` block only ever narrows a job's ambient scope, never widens it past what
+GitHub's own fork-safety policy issues for that specific event. No `pull_request_target` was
+evaluated as a workaround for this (see "(b) — the three candidates" below) — it was never proposed;
+the chosen design removes every write instead of trying to keep one safely.
 
 ## Recommendation
 
@@ -151,9 +178,20 @@ it."
   (`test_write_shaped_literal_scan_actually_catches_the_reviewers_counterexample`) proving the scan
   is not vacuously green.
 
-- **`scripts/tests/test_harness_floor_brief_diff_membership.sh`** (new) — guilt+innocence corpus,
-  same style as `scripts/ci/test_hotzone_changed_files.sh`, pinning the diff-membership fix (F1
-  below) in isolation from the surrounding workflow YAML.
+- **`scripts/ci/tracked_file_present_in_diff.sh`** (new, added in round 2 / G3) — the diff-membership
+  check itself, extracted out of the workflow YAML so both `harness-floor.yml` and its test corpus
+  call the *same* file. Prints exactly one of `present` / `inherited` / `absent` for
+  `<head_sha> <relative_path> <changed_files_file>` — `inherited` is a distinct outcome from
+  `present`/`absent` on purpose, so a caller can tell "exists in the tree but not this diff" apart
+  from either extreme rather than collapsing it into a boolean.
+
+- **`scripts/tests/test_harness_floor_brief_diff_membership.sh`** (6 tests, all pass) — guilt +
+  innocence corpus, same style as `scripts/ci/test_hotzone_changed_files.sh`, now exercising
+  `scripts/ci/tracked_file_present_in_diff.sh` directly (round 1's version reimplemented the check
+  privately — see G3 above) — plus a scar-pin that greps `harness-floor.yml` for the real script's
+  path, and a self-mutation test proving the corpus does fail against the pre-G3 tree-presence-only
+  behavior (verified live: 2/6 fail under the mutant, 6/6 pass against the restored, byte-identical
+  original).
 
 - **`.github/workflows/harness-floor.yml`** (edited) — `workflow_dispatch: {}` trigger added (the
   re-trigger surface the operational corollary below needs); every `HEAD_SHA`/`BASE_SHA` fallback
@@ -161,9 +199,12 @@ it."
   works under a manual dispatch; `permissions.statuses` narrowed `write` → `read`; the three
   `gh api .../statuses` WRITE calls removed (kill-switch bypass, "no brief/floor<3", "gear<3");
   Step 7c replaced with a call to `harness_gate_read.py`, guarded for the bootstrap window (F6);
-  Steps 4 and 7b corrected to gate on the PR's own diff, not HEAD-tree presence (F1/F4, see below —
-  this is the load-bearing fix in the whole diff). Verified `actionlint` clean and `yaml.safe_load`
-  clean after every edit.
+  Steps 4 and 7b corrected to gate on the PR's own diff, not HEAD-tree presence, via
+  `scripts/ci/tracked_file_present_in_diff.sh` (F1/F4/G3 — this is the load-bearing fix in the whole
+  diff). Verified `actionlint` clean and `yaml.safe_load` clean after every edit.
+
+- **`.github/workflows/main-push-failure-watch.yml`** (edited, round 2 / G1) — watcher-coverage list
+  entry updated from the old workflow name to "Harness floor recompute".
 
 ## Independent Gear-3 review round — REWORK-DESIGN, 8 findings, all addressed
 
@@ -189,6 +230,46 @@ permission narrowing; `workflow_dispatch`'s security posture (no new trust bound
 `pull_request` run already executes the PR's own workflow-file version); the verdict-vocabulary
 mapping between `decide()` and `harness_fable_gate.py::VERDICT_STATE`; and the required-context name
 staying intact after the workflow-level (cosmetic) `name:` rename.
+
+## Round 2 — independent Gear-3 review on the pushed PR, REWORK-BUILD, 3 findings, all addressed
+
+A second fresh, non-fork subagent — dispatched cold against the actual pushed PR #4539 at its real
+head SHA, not against a local summary of round 1's fixes — returned **REWORK-BUILD**: the design is
+sound and both original blockers are genuinely solved, but three build defects had to land first.
+
+| # | Severity | Finding | Fix |
+|---|---|---|---|
+| G1 | HIGH | The workflow's `name:` was renamed from "Harness floor & gate publisher" to "Harness floor recompute" without updating `.github/workflows/main-push-failure-watch.yml`'s watcher-coverage list, which still named the old string — `scripts/check_watcher_coverage.py` exits 1 and the "Watcher coverage" job was red on this PR's own CI. | List entry updated to the new name, with a comment explaining the rename and pointing at the CI run that caught it. Re-verified: `check_watcher_coverage.py` now exits 0 (97/97 live workflows covered). |
+| G2 | HIGH | A REQUIRED check — `R1 gate — adversarial review present` — was red: this design doc's `adversarial_review:` frontmatter value was a narrative sentence, not the single vocabulary token `scripts/check_adversarial_review.py` requires, and no body heading matched `^##+\s+Adversarial review`. Both prior review rounds were same-vendor-family (Claude reviewing Claude-authored work) and don't satisfy R1's "generator != grader across model FAMILIES" requirement by the gate's own `KNOWN_SEATS` definition (zero Claude entries). | See the `## Adversarial review` section below — a genuine cross-family review (Kimi K3, Moonshot) was dispatched against the pushed diff after this finding, and its verbatim verdict is recorded there with the corresponding frontmatter token. |
+| G3 | MEDIUM-HIGH | The F1/F4 diff-membership fix (round 1's most severe finding) was pinned by a test that **reimplemented the same two-line shell idiom privately** rather than exercising `harness-floor.yml`'s actual code — live mutation proved it: reverting *both* inline conditions in the workflow left `test_harness_floor_brief_diff_membership.sh` (4/4) and `test_harness_gate_read.py` (37/37) fully green, because neither test suite ever imported or ran the reverted code. Compounding: neither new test file is wired into any blocking CI path. | Extracted the check into a standalone, tested file — `scripts/ci/tracked_file_present_in_diff.sh` (same shape as the pre-existing `hotzone_changed_files.sh` / `vercel_should_build.sh`, both already `run:`-invoked rather than duplicated inline) — and rewrote `harness-floor.yml`'s Step 4 and Step 7b to call it. The test corpus now invokes that exact file (`SCRIPT_DIR/../ci/tracked_file_present_in_diff.sh`), plus a scar-pin asserting the workflow YAML actually references it, plus a self-test that reverting the real script to tree-presence-only makes the corpus fail — reproduced live: the mutant script fails 2/6 cases, the restored script (byte-identical diff against its pre-mutation copy) passes 6/6. The CI-wiring half of G3 (getting these suites onto a blocking path rather than the nightly `continue-on-error` sweep) is **not** addressed by this PR — see "What this deliberately did not do" below. |
+
+Round 2 independently re-confirmed both original blockers are solved as designed: the required
+surface is the job (`jobs.harness-floor.name: Harness floor recompute`, byte-identical to main's,
+already in `required_status_checks` per a live API check), triggered on `pull_request` +
+`merge_group` + the new `workflow_dispatch`; and a full-file grep for `gh api`/`statuses` found zero
+live write call sites (only comments), `permissions.statuses` reads `read`, and no fail-open path
+exists in `harness_gate_read.py`'s `resolve_real_head_sha` / `read_fable_gate_state` / `decide`
+chain. It also reproduced F1 independently against a real merged PR (`#4535` inheriting `gear: 3`
+from `origin/main`'s `evidence/brief.yml`).
+
+## Adversarial review
+
+Two review rounds ran against this diff before this section existed (detailed above, with full
+disposition tables) — round 1 (REWORK-DESIGN, 8 findings, F1-F8, all fixed) and round 2
+(REWORK-BUILD, 3 findings, G1-G3, all fixed). **Neither counts as this repo's R1 "generator != grader"
+requirement**: both were fresh-context Agent-tool dispatches on Claude/Opus — the same model family
+as the diff's own author — and `scripts/check_adversarial_review.py`'s `KNOWN_SEATS` deliberately
+contains zero Claude entries, because a same-family review shares failure modes with the thing it is
+reviewing (cicatrix-superscar.md family #6, "anti-hallucination blindness" — the whole point of
+crossing families is that a defect invisible to one model's blind spots is often visible to another's).
+
+A genuine cross-family review (Kimi K3, Moonshot) is in progress against this PR's real pushed diff
+as this section is being written. Its verbatim verdict, findings, and the resulting
+`adversarial_review:` frontmatter token will be recorded here — and only here, once real — before
+this PR is armed to merge. Until that lands, the frontmatter token above (`pending-cross-family-kimi-k3`)
+deliberately does **not** satisfy `KNOWN_SEATS`/`human-*`/`exempt-*`, so the R1 gate stays correctly
+red: a token is an assertion about who reviewed, and it is written when there is a real answer, never
+adjusted to turn a check green.
 
 ## Operational corollary — the retrigger flow this design implies
 

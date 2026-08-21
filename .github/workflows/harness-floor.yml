@@ -222,8 +222,8 @@ jobs:
       # "file legitimately absent from that tree", silently defaulting to
       # success on a PR this workflow never actually inspected.
       #
-      # CORRECTED 2026-08-21 (independent Gear-3 review, F1, CRITICAL): the
-      # previous version checked `git cat-file -e "$HEAD_SHA:evidence/brief.yml"`
+      # CORRECTED 2026-08-21 (independent Gear-3 review round 1, F1, CRITICAL):
+      # the previous version checked `git cat-file -e "$HEAD_SHA:evidence/brief.yml"`
       # — TREE presence, not DIFF membership. `evidence/brief.yml` is a
       # tracked file at a FIXED repo-root path: whatever the most recently
       # merged Gear-3 PR (e.g. #4474) left there stays in the tree and is
@@ -234,10 +234,19 @@ jobs:
       # inherit `gear: 3` from whatever the last Gear-3 PR declared and take
       # the Gear-3 path, repo-wide, for a required check. Verified live: a
       # single-file docs-ledger PR (#4535) already showed gear=3 from #4474's
-      # leftover pack. Fix: `brief.present` requires BOTH tree presence AND
-      # membership in `/tmp/changed-files.txt` (Step 2's merge-base-anchored
-      # enumeration of what THIS diff itself touched) — a brief inherited
-      # from a prior merge and untouched by this PR is not this PR's brief.
+      # leftover pack.
+      #
+      # CORRECTED AGAIN 2026-08-21 (independent Gear-3 review round 2, same
+      # PR): round 1's fix was two inline conditions here, pinned only by a
+      # test that reimplemented the same two lines itself rather than
+      # exercising this file — reverting these conditions locally left every
+      # test green. Fix: the check now lives in
+      # scripts/ci/tracked_file_present_in_diff.sh (same shape as the
+      # existing hotzone_changed_files.sh / vercel_should_build.sh, both
+      # already `run:`-invoked rather than reimplemented inline), and the
+      # test corpus (scripts/tests/test_harness_floor_brief_diff_membership.sh)
+      # invokes that exact file — a mutation to the check is now visible to
+      # both the workflow and the test from the same source.
       # -----------------------------------------------------------------
       - name: Does this PR's own diff carry evidence/brief.yml?
         if: steps.kill_switch.outputs.disabled != 'true'
@@ -251,16 +260,25 @@ jobs:
             echo "::error::HEAD commit ${HEAD_SHA} could not be resolved after fetch — failing closed (cannot verify whether evidence/brief.yml exists, this is NOT the same as 'no brief')"
             exit 1
           fi
-          if git cat-file -e "$HEAD_SHA:evidence/brief.yml" 2>/dev/null && grep -qxF "evidence/brief.yml" /tmp/changed-files.txt; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
-            git show "$HEAD_SHA:evidence/brief.yml" > /tmp/brief.yml
-          elif git cat-file -e "$HEAD_SHA:evidence/brief.yml" 2>/dev/null; then
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::evidence/brief.yml exists at HEAD but was NOT touched by this PR's own diff (inherited from a prior merge, e.g. the last Gear-3 PR) — not THIS PR's brief, not a harness-gated task for it"
-          else
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::no evidence/brief.yml at HEAD — not a harness-gated task (pending the floor check below)"
-          fi
+          RESULT="$(bash scripts/ci/tracked_file_present_in_diff.sh "$HEAD_SHA" evidence/brief.yml /tmp/changed-files.txt)"
+          case "$RESULT" in
+            present)
+              echo "present=true" >> "$GITHUB_OUTPUT"
+              git show "$HEAD_SHA:evidence/brief.yml" > /tmp/brief.yml
+              ;;
+            inherited)
+              echo "present=false" >> "$GITHUB_OUTPUT"
+              echo "::notice::evidence/brief.yml exists at HEAD but was NOT touched by this PR's own diff (inherited from a prior merge, e.g. the last Gear-3 PR) — not THIS PR's brief, not a harness-gated task for it"
+              ;;
+            absent)
+              echo "present=false" >> "$GITHUB_OUTPUT"
+              echo "::notice::no evidence/brief.yml at HEAD — not a harness-gated task (pending the floor check below)"
+              ;;
+            *)
+              echo "::error::tracked_file_present_in_diff.sh returned an unrecognized value: '$RESULT' — failing closed"
+              exit 1
+              ;;
+          esac
 
       # -----------------------------------------------------------------
       # Step 5a — no brief, and the diff does NOT hit the floor: genuinely
@@ -433,14 +451,22 @@ jobs:
             exit 0
           fi
           mkdir -p /tmp/evidence-check/evidence
-          if ! git cat-file -e "$HEAD_SHA:evidence/pack.yml" 2>/dev/null; then
-            echo "::error::gear 3 declared in evidence/brief.yml but evidence/pack.yml is missing at HEAD — a Gear-3 task needs both"
-            exit 1
-          fi
-          if ! grep -qxF "evidence/pack.yml" /tmp/changed-files.txt; then
-            echo "::error::gear 3 declared in evidence/brief.yml (authored by this diff) but evidence/pack.yml was NOT touched by this diff — a Gear-3 PR must author BOTH files together in the same diff, never validate a pack.yml inherited from a prior PR"
-            exit 1
-          fi
+          RESULT="$(bash scripts/ci/tracked_file_present_in_diff.sh "$HEAD_SHA" evidence/pack.yml /tmp/changed-files.txt)"
+          case "$RESULT" in
+            present) : ;; # falls through to validation below
+            absent)
+              echo "::error::gear 3 declared in evidence/brief.yml but evidence/pack.yml is missing at HEAD — a Gear-3 task needs both"
+              exit 1
+              ;;
+            inherited)
+              echo "::error::gear 3 declared in evidence/brief.yml (authored by this diff) but evidence/pack.yml was NOT touched by this diff — a Gear-3 PR must author BOTH files together in the same diff, never validate a pack.yml inherited from a prior PR"
+              exit 1
+              ;;
+            *)
+              echo "::error::tracked_file_present_in_diff.sh returned an unrecognized value: '$RESULT' — failing closed"
+              exit 1
+              ;;
+          esac
           git show "$HEAD_SHA:evidence/pack.yml" > /tmp/evidence-check/evidence/pack.yml
           cp /tmp/brief.yml /tmp/evidence-check/evidence/brief.yml
           EXTRA_ARGS=()
