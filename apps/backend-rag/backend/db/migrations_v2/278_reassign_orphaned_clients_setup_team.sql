@@ -143,13 +143,28 @@ SET statement_timeout = '60s';
 -- patching the runner, which is out of scope here. This inline guard is the
 -- self-contained substitute: query `schema_migrations` (the table
 -- `_is_applied()` actually reads, NOT `_schema_versions`) directly.
--- Kimi K3 refuter finding (2026-08-21, CONFIRMED-minor, verified independently):
--- the guard below originally checked only the LOG (a schema_migrations row), not
--- the EFFECT (whether client 11500 actually carries the corrected email) -- W88/W106
--- class ("the proxy lies about state"). A schema_migrations row without the matching
--- data (e.g. a hand-run INSERT, or a future rollback bug of this exact shape on 277
--- itself) would satisfy the log-only check while the real orphan predicate below
--- still sees the typo'd row. Both conditions are now required.
+-- Kimi K3 refuter finding, round 2 (2026-08-21, CONFIRMED-minor, verified
+-- independently): the guard below originally checked only the LOG (a
+-- schema_migrations row), not the EFFECT -- W88/W106 class ("the proxy lies
+-- about state"). A schema_migrations row without the matching data (e.g. a
+-- hand-run INSERT, or a future rollback bug of this exact shape on 277
+-- itself) would satisfy the log-only check while the real orphan predicate
+-- below still sees the typo'd row. Both conditions are now required.
+--
+-- Kimi K3 round 3 (2026-08-21, CONFIRMED, our own regression from round 2's
+-- fix -- team-lead's own diagnosis of the cure they dictated): the round-2
+-- effect check asserted an ARBITRARY EXPECTED VALUE
+-- (assigned_to='ari.firda@balizero.com'), not the actual invariant this
+-- migration depends on ("client 11500 does not read as an orphan"). That
+-- broke three legitimate states: a split-deploy reassignment of 11500 to a
+-- DIFFERENT active operator after 277 ran (explicitly supported by this
+-- file's own header), 11500 being merged/deleted, or ari.firda@'s roster
+-- email changing -- all three leave the true invariant intact but would
+-- have raised this exception permanently, fixable only by hand-editing a
+-- shipped migration file. The check below now asserts the invariant itself:
+-- client 11500 does not satisfy the SAME orphan predicate the `orphans` CTE
+-- uses below, so it fails exactly when 278 would actually be wrong to run,
+-- and passes under any legitimate drift.
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -158,11 +173,46 @@ BEGIN
     ) THEN
         RAISE EXCEPTION 'Migration 278 requires migration 277 (ari@balizero.com typo correction for client_id 11500) to have already applied — schema_migrations has no row for 277_correct_ari_email_typo. Refusing to run: applying 278 before 277 would fold that client into the water-filling pool and assign it to Surya instead of leaving it with its real de-facto owner, Ari.';
     END IF;
-    IF NOT EXISTS (
-        SELECT 1 FROM clients
-        WHERE id = 11500 AND lower(BTRIM(assigned_to)) = 'ari.firda@balizero.com'
+    IF EXISTS (
+        SELECT 1 FROM clients c
+        WHERE c.id = 11500
+          AND c.deleted_at IS NULL
+          AND NOT EXISTS (
+              SELECT 1 FROM team_members tm
+              WHERE lower(BTRIM(tm.email)) = lower(BTRIM(c.assigned_to))
+                AND tm.active = true
+          )
     ) THEN
-        RAISE EXCEPTION 'Migration 278 requires migration 277''s EFFECT, not just its log row: schema_migrations has a row for 277_correct_ari_email_typo, but client_id 11500 does not carry the corrected assigned_to (ari.firda@balizero.com). Refusing to run on a log/data mismatch.';
+        RAISE EXCEPTION 'Migration 278 requires migration 277''s EFFECT, not just its log row: schema_migrations has a row for 277_correct_ari_email_typo, but client_id 11500 still satisfies the orphan predicate (no active team_members match). Refusing to run on a log/data mismatch.';
+    END IF;
+END $$;
+
+-- Kimi K3 refuter finding (2026-08-21, round 3, finding 3.2, CONFIRMED): the six
+-- water-filling recipients below (damar/surya/vino/adit/ari.firda/krisna) are
+-- literals baked into the `team` CTE further down, never checked against
+-- team_members. A stale or misspelled recipient email would silently receive
+-- zero clients while the level computation still counts them as an active
+-- bucket -- the level would be computed correctly on paper but the person who
+-- should receive that share would get nothing, and nobody watching the run
+-- would see an error. Cheap to close with the same "assert the true invariant"
+-- pattern as the guard above (2.1's lesson: check existence+active, never an
+-- arbitrary literal that can go stale on its own).
+DO $$
+DECLARE
+    missing_count INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO missing_count
+    FROM (VALUES
+        ('damar@balizero.com'), ('surya@balizero.com'), ('vino@balizero.com'),
+        ('adit@balizero.com'), ('ari.firda@balizero.com'), ('krisna@balizero.com')
+    ) AS t(email)
+    WHERE NOT EXISTS (
+        SELECT 1 FROM team_members tm
+        WHERE lower(BTRIM(tm.email)) = lower(BTRIM(t.email))
+          AND tm.active = true
+    );
+    IF missing_count > 0 THEN
+        RAISE EXCEPTION 'Migration 278 requires all six water-filling recipients to be active team_members rows -- % of 6 are missing or inactive. Refusing to run: a stale/misspelled recipient would silently receive zero clients while the level computation still counts them as active.', missing_count;
     END IF;
 END $$;
 
@@ -216,7 +266,10 @@ orphans AS (
     WHERE c.deleted_at IS NULL
       AND NOT EXISTS (
           SELECT 1 FROM team_members tm
-          WHERE lower(tm.email) = lower(BTRIM(c.assigned_to))
+          -- Kimi K3 round 3 (2026-08-21, CONFIRMED, cheap fix): tm.email had no
+          -- BTRIM -- a trailing/leading space on a roster email would make this
+          -- comparison fail and read that person's ENTIRE book as orphaned.
+          WHERE lower(BTRIM(tm.email)) = lower(BTRIM(c.assigned_to))
             AND tm.active = true
       )
 ),
@@ -383,8 +436,11 @@ WHERE migration_name = '278_reassign_orphaned_clients_setup_team';
 -- verified independently against migration_base.py::_is_applied()): clearing only
 -- `_schema_versions` leaves `schema_migrations` (the table _is_applied() actually
 -- reads, backend/db/migration_base.py:365) still saying 278 is applied -- the
--- runner will never re-apply it, and worse, 278's own dependency guard above reads
--- `schema_migrations` too, so it would still pass even after this rollback undid
--- the reassignment. This line closes that gap.
+-- runner will never re-apply it. (Corrected 2026-08-21, round 3: the original
+-- version of this comment additionally claimed 278's own dependency guard above
+-- would still pass after such a rollback -- that guard reads the row for
+-- MIGRATION 277, which a 278 rollback never touches, so that specific claim was
+-- false and has been removed; the schema_migrations DELETE below is justified by
+-- 278's own re-applicability alone, which is sufficient on its own.)
 DELETE FROM schema_migrations
 WHERE migration_name = '278_reassign_orphaned_clients_setup_team';

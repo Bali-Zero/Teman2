@@ -41,10 +41,20 @@
 -- ============================================================================
 
 -- Migration 277: correct a single known typo in clients.assigned_to.
--- Scoped to exactly one client_id, with a defensive WHERE guard on the
--- current (typo'd) value so this is a no-op if the data has already changed
--- by the time it runs (idempotent) and touches nothing else even if the
--- WHERE-by-id were ever loosened by a future edit.
+-- Scoped to exactly one client_id.
+--
+-- Kimi K3 refuter finding (2026-08-21, CONFIRMED, verified independently):
+-- this migration is NOT unconditionally safe to re-run, and the original
+-- header claiming it was ("no-op if the data has already changed ...
+-- idempotent") was FALSE -- the same class of risk 278 explicitly names for
+-- itself (a manual re-run with the archive already populated). The UPDATE
+-- keys off the archive table, not off the current (typo'd) value, so a
+-- second run would silently revert any human reassignment made to client
+-- 11500 after the first apply. The WHERE clause below now also requires the
+-- LIVE value to still match what the archive recorded as "old", which makes
+-- a genuine re-run (same starting state) a safe no-op while a re-run after a
+-- human has since moved the client elsewhere correctly does nothing (the
+-- live value no longer matches old_assigned_to, so the UPDATE's WHERE fails).
 
 SET lock_timeout = '5s';
 SET statement_timeout = '60s';
@@ -80,7 +90,8 @@ SET
 FROM client_owner_typo_correction_archive archive
 WHERE archive.migration_name = '277_correct_ari_email_typo'
   AND archive.client_id = c.id
-  AND c.assigned_to IS DISTINCT FROM archive.new_assigned_to;
+  AND c.assigned_to IS DISTINCT FROM archive.new_assigned_to
+  AND lower(BTRIM(c.assigned_to)) = lower(BTRIM(archive.old_assigned_to));
 
 INSERT INTO _schema_versions (
     migration_name,
