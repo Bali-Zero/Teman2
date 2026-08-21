@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, fireEvent, waitFor } from "@testing-library/react";
 
-import { trackLeadWhatsAppCTA } from "@/lib/analytics";
+import { trackLeadCreated, trackLeadWhatsAppCTA } from "@/lib/analytics";
 import { WhatsAppLeadButton, FALLBACK_WA_URL } from "./WhatsAppLeadButton";
 
 vi.mock("@/lib/analytics", () => ({
+  trackLeadCreated: vi.fn(),
   trackLeadWhatsAppCTA: vi.fn(),
 }));
 
@@ -12,6 +13,12 @@ describe("WhatsAppLeadButton", () => {
   const originalFetch = global.fetch;
 
   beforeEach(() => {
+    // vi.restoreAllMocks() in afterEach restores spies; it does NOT clear the
+    // call history of a vi.fn() from a vi.mock factory (measured: the analytics
+    // mock arrived here holding 3 calls from earlier tests). Every pre-existing
+    // assertion is toHaveBeenCalledWith, which tolerates leftovers, so nothing
+    // caught it until an exact-count assertion was added.
+    vi.clearAllMocks();
     global.fetch = vi.fn(async () => ({
       ok: true,
       json: async () => ({
@@ -31,10 +38,10 @@ describe("WhatsAppLeadButton", () => {
     global.fetch = originalFetch;
   });
 
-  function renderButton() {
+  function renderButton(source = "kbli_navigator") {
     return render(
       <WhatsAppLeadButton
-        source="kbli_navigator"
+        source={source}
         resultHash="56303"
         context={{ code: "56303" }}
         whatsappContext={[{ label: "KBLI", value: "56303" }]}
@@ -120,5 +127,36 @@ describe("WhatsAppLeadButton", () => {
         result_ref: "56303",
       });
     });
+  });
+
+  it("fires trackLeadCreated once with the prop source on a captured lead", async () => {
+    // "article" rather than the helper default: a component that hardcoded a
+    // source instead of forwarding the prop would still pass with the default.
+    const { getByRole } = renderButton("article");
+    fireEvent.click(getByRole("link"));
+
+    await waitFor(() => {
+      expect(trackLeadCreated).toHaveBeenCalledWith("article");
+    });
+    expect(trackLeadCreated).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not fire trackLeadCreated when capture fails", async () => {
+    global.fetch = vi.fn(async () => ({
+      ok: false,
+      status: 401,
+      json: async () => ({}),
+    })) as unknown as typeof fetch;
+
+    const { getByRole } = renderButton();
+    fireEvent.click(getByRole("link"));
+
+    // Anchored to the fallback navigation, not to a bare assertion: without a
+    // point the handoff has demonstrably finished, "not called" would also be
+    // true of a click that never ran.
+    await waitFor(() => {
+      expect(window.location.href).toBe(FALLBACK_WA_URL);
+    });
+    expect(trackLeadCreated).not.toHaveBeenCalled();
   });
 });

@@ -76,8 +76,23 @@ const FILES = SCANNED.flatMap((d) => walk(join(SRC, d)));
 //   - `AVG_REPLY_MINUTES = 2` — an identifier, no space to match.
 // The patterns below were chosen AFTER the innocence corpus was fixed, and each
 // was run against all of it. Widening any of them means re-running both lists.
+//
+// Third round (2026-08-20). `packages/core` was opened, so the two shapes the
+// DECLARED GAP block used to hold are now removable, and the block is gone —
+// what it described no longer exists. Two changes, both re-run against the
+// whole innocence list:
+//   - Pattern 1: `\s+` -> `\.?[^.\n]{0,16}?`, so a hyphenated infix lands
+//     ("avg first-reply"). The literal `\.?` is KEPT: `[^.\n]` excludes the
+//     period, and dropping it would have silently un-caught "Avg. reply: 2 min",
+//     which is in the guilt list. The recipe left in the old block omitted it.
+//     "Avg Latency" survives because `\brepl(y|ies)\b` needs a whole word
+//     within 16 chars, and "replace" is not one.
+//   - Pattern 9 (new): the `responseMinutes` prop, by name and by its snake and
+//     hyphen spellings. It is deliberately narrow — `responseTime` is a real
+//     variable in this app (innocence list) and any pattern reaching it would
+//     fire on machine latency, which is not a promise to a reader.
 const CLAIMS: RegExp[] = [
-  /\b(avg|average|typical)\.?\s+repl(y|ies)\b/i,
+  /\b(avg|average|typical)\.?[^.\n]{0,16}?\brepl(y|ies)\b/i,
   /\b(avg|average|typical)\.?\s+response\s*[:=]?\s*(under\s+|less\s+than\s+)?\d/i,
   /\brepl(y|ies|ying)\b[^.\n]{0,20}?\b(in|within)\s+(under\s+|less\s+than\s+)?\d/i,
   /\b(we|our\s+team|balizero)\s+(repl(y|ies)|responds?)\s+(in|within)\s+(under\s+)?\d/i,
@@ -85,41 +100,8 @@ const CLAIMS: RegExp[] = [
   /\brepl(y|ies)\s+time\s*[:=]\s*\d/i,
   /\bavg[_\s-]*repl(y|ies)(?![a-z])/i,
   /\busually\s+(?:within|under)\s+\d+\s*(?:min|hour|hr)[a-z]*\b/i,
+  /\b(response|repl(?:y|ies))[_\s-]*minutes\b/i,
 ];
-
-// ---------------------------------------------------------------------------
-// DECLARED GAP — two live claims this guard deliberately does NOT catch yet.
-//
-// Both are on pages right now, both are unmeasured, and neither can be removed
-// without editing `packages/core`, which this PR is not allowed to touch:
-//
-//   1. `{ value: "4.8h", label: "avg first-reply on WhatsApp" }`
-//      apps/mouth/src/app/visa/page.tsx:25 and app/visa/clock/page.tsx:95.
-//      `AppTrustStripProps.items` is a fixed-length tuple
-//      (packages/core/components/apps/AppTrustStrip.tsx:11), so dropping the
-//      third item is a compile error. Measured, `tsc --noEmit`:
-//        TS2322: Source has 2 element(s) but target requires 3.
-//      The CSS grid is auto-fit and handles two items fine — it is the TYPE,
-//      not the layout, that blocks it.
-//
-//   2. `responseMinutes: 15`
-//      app/kbli/page.tsx:44, app/kbli/[code]/page.tsx:191,
-//      app/(tax-calendar)/tax-calendar/page.tsx:12,
-//      app/property/eligibility/page.tsx:14.
-//      `TrustBandProps.responseMinutes` is a REQUIRED prop rendered as
-//      `~{responseMinutes} min` inside a hard `repeat(3, …)` grid
-//      (packages/core/components/TrustBand.tsx:6,43).
-//
-// A pattern that caught either would turn this suite red on main, so what is
-// scoped is the PATTERN — never a filename exception, which would hide the
-// claim instead of declaring it. Neither string is in the innocence corpus
-// below: they are not innocent, they are unreachable from here.
-//
-// When packages/core is opened: delete both claims, then widen pattern 1 to
-// allow a hyphenated infix (e.g. `(avg|average)\b[^.\n]{0,16}?\brepl(y|ies)`)
-// and add one for `responseMinutes`, and re-run the innocence corpus —
-// "Avg Latency" and `{ l: "Avg response" }` are the two that will fight you.
-// ---------------------------------------------------------------------------
 
 describe("no page claims a response time nobody measured", () => {
   it("scans a plausible number of files", () => {
@@ -147,11 +129,17 @@ describe("no page claims a response time nobody measured", () => {
       // identifier forms — no space for a word-spaced pattern to land on
       "export const AVG_REPLY_MINUTES = 2;",
       "export const AVG_REPLY = '2 min';",
-      // removed by this PR, at the file:line each was measured at
+      // removed 2026-08-18 (PR #4178), at the file:line each was measured at
       "Typical first reply on WhatsApp in under 5 hours.",
       "<span>Usually within 15 minutes.</span>",
       'note: "Fastest response — usually under 15 minutes.",',
       "Messages are typically responded to within 24 hours",
+      // removed 2026-08-20, once packages/core was opened. They sat in a
+      // DECLARED GAP block until now because the tuple arity and a required
+      // prop made them unremovable from apps/mouth alone.
+      '            { value: "4.8h", label: "avg first-reply on WhatsApp" },',
+      "      trust={{ clientCount: 5000, rating: 4.9, responseMinutes: 15 }}",
+      "  responseMinutes: number;",
       // caught by the first version, must not regress
       "  <p>We reply within 5 minutes</p>",
       "  <p>Our team responds in 2 minutes</p>",

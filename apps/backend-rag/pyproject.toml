@@ -430,7 +430,6 @@ exclude = [
 "backend/services/autonomous_agents/knowledge_graph_builder.py" = ["B007"]  # Intentional loop pattern
 "backend/tests/services/rag/evaluation/test_monitoring.py" = ["B007"]  # Test loop pattern
 "backend/tests/services/rag/evaluation/test_ragas_evaluator.py" = ["B015"]  # Test assertion pattern
-"tests/unit/test_conversation_trainer.py" = ["E402"]  # Must patch settings before importing
 "prompts/*.py" = ["E501"]  # Prompt strings can be long
 
 [tool.ruff.lint.isort]

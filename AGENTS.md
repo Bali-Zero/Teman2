@@ -755,7 +755,7 @@ Binding roster + corrections: research/operations/2026-08-10-fleet-order-spec.md
 
 - Zero may start the interactive session with **any frontier orchestrator**: Claude (Fable/Opus/Sonnet), Codex (Sol/Terra/Luna), agy/Antigravity, Kimi. Whoever conducts inherits the **same law**: this file, the harness (gears, Evidence Pack, verdicts), CLAUDE.md invariants. Same law, different door.
 - The conductor **orchestrates and dispatches** agents per `FLEET_TOPOLOGY.json` role chains, assembles the Evidence Pack, and arms the mechanical ship path: PR → required checks → armed auto-merge → `fly-deploy.yml` on `main`. **No conductor hand-merges around checks.**
-- Generator≠grader lifts to family level: the **Gear-2 verdict comes from a different family than the main builder**. Gear-3 verdict = **Fable check, no exceptions**, regardless of who conducts. **Final-review split (ruling Zero 2026-08-19): Fable reviews the Gear-3/large-feature class only; Gear 1-2 small interventions close on Opus 5 — Fable is never spent on small diffs.**
+- Generator≠grader lifts to family level: the **Gear-2 verdict comes from a different family than the main builder**. Gear-3 verdict = **Opus 5 xhigh-effort check, no exceptions**, regardless of who conducts. **RULED 2026-08-20 (supersedes the 2026-08-19 gear split): Fable is out of the workflow entirely — Opus 5 reviews every gear now, Gear-3 and Gear 1-2 alike. Fable is never auto-spent anywhere; Zero may still select it manually.**
 - Client-facing outputs (quotes, comms) remain **Anthropic-interactive-only**. PII remains **local-only**. Legge 5 unchanged.
 - **REVIEW-È-INVOCABILE** (ruling Zero 2026-08-10, `research/operations/2026-08-10-fleet-order-spec.md` §3.2/§4): "serve review" is a dispatch instruction, never a parking state — "chi conduce non aspetta i grader: li convoca". The conductor invokes the grader per the role chains (§17.2 below / `FLEET_TOPOLOGY.json`) the moment a diff exists to judge; a PR is never parked on "waiting for review" without the grader having been dispatched.
 
@@ -769,13 +769,13 @@ When a seat hits quota or dies, escalate IN ORDER and log each hop in the task e
 4. **Queue, never silent-stop**: chain fully dead → park in PENDING-ARMS with reason + timestamp.
 
 **Carve-outs (special ladders):**
-- **Gear-3 harness gate (ruling Zero 2026-08-09):** Fable 5 first, rotating across ALL Anthropic accounts (AZ→A2→A3→A1); only when NO account can run Fable → **Opus 5 `effort=max`** as gate, with `gate_degraded: fable→opus` recorded in the verdict check and Evidence Pack. All Anthropic accounts dead → queue. Never pay per-token to unblock.
-- **WR2 on-disk content gate: UNCHANGED** — unconditionally Fable, no fallback of any kind, window dead → SUSPEND. Zero's Gear-3 ruling does NOT extend to this lane.
+- **Gear-3 harness gate (RULED 2026-08-20, supersedes the 2026-08-09 ruling):** **Opus 5 `effort=xhigh`**, rotating across ALL Anthropic accounts (AZ→A2→A3→A1). No fallback tier below it — Fable is out of the workflow, so there is no `gate_degraded: fable→opus` to record anymore. All Anthropic accounts dead → queue. Never pay per-token to unblock.
+- **WR2 on-disk content gate (RULED 2026-08-20):** **Opus 5 `effort=xhigh`** — was unconditionally Fable; no fallback either way, window dead → SUSPEND.
 - PII lanes = local models only → queue. Client-facing = Anthropic interactive only.
 
 ### 17.3 Account-lane mapping (lanes with borrowing, not round-robin)
 
-Lanes are **home assignments, not fences**: each lane drains its home account first, then borrows automatically from the least-loaded other account — nothing sits idle, no line ever stops. Mapping (see `FLEET_TOPOLOGY.json` → `accounts`): **A1** antonellosiano interactive/architect · **A2** kaiser1987… subagents/build+Cowork · **A3** applevisionpro1987 cron/batch, **designated donor** (cron auto-pauses to free its window when the gate calls) · **AZ** zero (Team seat Premium) **gate primary** — the dedicated Fable weekly allowance lives here · **O1** antonellosiano (ChatGPT Pro) refuter-primary · **O2** zero (ChatGPT Pro) builders+refuter-backup.
+Lanes are **home assignments, not fences**: each lane drains its home account first, then borrows automatically from the least-loaded other account — nothing sits idle, no line ever stops. Mapping (see `FLEET_TOPOLOGY.json` → `accounts`): **A1** antonellosiano interactive/architect · **A2** kaiser1987… subagents/build+Cowork · **A3** applevisionpro1987 cron/batch, **designated donor** (cron auto-pauses to free its window when the gate calls) · **AZ** zero (Team seat Premium) **gate primary** — the dedicated allowance for the final on-disk gate lives here (Opus 5 xhigh effort, RULED 2026-08-20; was Fable's dedicated weekly allowance) · **O1** antonellosiano (ChatGPT Pro) refuter-primary · **O2** zero (ChatGPT Pro) builders+refuter-backup.
 
 ### 17.4 Spend order
 
