@@ -1,10 +1,5 @@
 ---
-paths:
-  [
-    "scripts/generate_*.py",
-    "scripts/*_doc*.py",
-    "scripts/*_reference*.py",
-  ]
+paths: ["scripts/generate_*.py", "scripts/*_doc*.py", "scripts/*_reference*.py"]
 ---
 
 # D3.1 — Doc Generator Write Blocklist
@@ -15,7 +10,7 @@ Automated doc generators MUST NEVER write to:
 - `backend/prompts/zantara_core.py` — prompt SSOT, human-only
 - `fly.toml` — infrastructure config, human-only
 - `.env*` — secrets
-- `alembic/env.py` — migration config
+- `apps/bali-intel-scraper/backend/db/migrations/env.py` — migration config (corrected 2026-08-21; `alembic/env.py` names no file in this repo)
 
 **Only allowed output target:** `docs/AUTOMATIONS_REFERENCE.md` (and other files under `docs/` that are explicitly auto-generated).
 

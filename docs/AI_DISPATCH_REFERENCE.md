@@ -69,7 +69,7 @@
 
 - Gemini: `--sandbox --approval-mode plan` → read-only. NEVER writes.
 - Codex: `--sandbox read-only` or `workspace-write`. NEVER `--dangerously-bypass`.
-- Off-limits files: `zantara_core.py`, `fly.toml`, `.env*`, `alembic/env.py`
+- Off-limits files: `zantara_core.py`, `fly.toml`, `.env*`, `apps/bali-intel-scraper/backend/db/migrations/env.py` (corrected 2026-08-21 — `alembic/env.py` names no file here)
 - Output: every command saves to `./ai-dispatch-output/` with metrics (structured JSON)
 - Cache: explore/search cached 24h. Redteam/sandbox never cached.
 

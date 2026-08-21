@@ -21,7 +21,8 @@
    the convention does. Mutations happen in `.worktrees/<lane>-<task>/`, never in the main
    checkout. Kimi Desktop: ask the operator to point the workspace at a worktree lane.
 5. **Off-limits files:** `zantara_core.py` (edit only via its own rules), `fly.toml`,
-   `.env*`, `alembic/env.py`, curated datasets (data-plane guard), the WR2 queue JSONs
+   `.env*`, `apps/bali-intel-scraper/backend/db/migrations/env.py` (corrected 2026-08-21 — the old
+   `alembic/env.py` names no file in this repo), curated datasets (data-plane guard), the WR2 queue JSONs
    (canonical writers only).
 6. **Scope tightly, don't improvise.** If the task is ambiguous, state your assumption in
    one line and take the narrowest reading — do NOT invent adjacent work (this is aimed
